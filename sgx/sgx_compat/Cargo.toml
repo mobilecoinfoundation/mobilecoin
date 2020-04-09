@@ -1,0 +1,30 @@
+[package]
+name = "sgx_compat"
+version = "1.0.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[lib]
+name = "sgx_compat"
+
+# All dependencies are optional
+[dependencies]
+cfg-if = "0.1"
+sgx_alloc = { path = "../sgx_alloc", optional = true }
+sgx_panic = { path = "../sgx_panic", optional = true }
+sgx_sync = { path = "../sgx_sync", optional = true }
+sgx_debug = { path = "../sgx_debug", optional = true }
+sgx_service = { path = "../sgx_service", optional = true }
+sgx_types = { path = "../sgx_types" }
+
+[features]
+# In default mode we depend on std, which is appropriate for `cargo test`
+default = []
+# In sgx mode we bring in sgx-only implementations
+sgx = [
+    'sgx_alloc', 'sgx_alloc/oom_panic',
+    'sgx_panic', 'sgx_panic/panic_abort',
+    'sgx_sync', 'sgx_sync/sgx_panic',
+    'sgx_debug',
+    'sgx_service',
+]

@@ -1,0 +1,11 @@
+[package]
+name = "mcconnection-tests"
+version = "0.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[dependencies]
+ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
+mcconnection = { path = "../../mcconnection" }
+mcuri = { path = "../../util/mcuri" }
+transaction = { path = "../../transaction/core" }

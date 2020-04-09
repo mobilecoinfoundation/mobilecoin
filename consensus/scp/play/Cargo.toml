@@ -1,0 +1,20 @@
+[package]
+name = "scp-play"
+version = "0.0.1"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[[bin]]
+name = "scp-play"
+path = "src/main.rs"
+
+[dependencies]
+common = { path = "../../../common" }
+mcserial = { path = "../../../util/mcserial", features = ["std"] }
+mcuri = { path = "../../../util/mcuri" }
+scp = { path = "../../../consensus/scp" }
+transaction = { path = "../../../transaction/core" }
+
+serde_json = "1.0"
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+structopt = "0.3"

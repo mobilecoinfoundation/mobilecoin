@@ -1,0 +1,15 @@
+[package]
+name = "sgx_sync"
+version = "1.0.0"
+authors = ["MobileCoin"]
+
+[lib]
+name = "sgx_sync"
+
+[dependencies]
+sgx_libc_types = { path = "../sgx_libc_types" }
+sgx_types = { path = "../sgx_types" }
+sgx_panic = { path = "../sgx_panic", optional = true }
+
+[features]
+default = ["sgx_panic"]

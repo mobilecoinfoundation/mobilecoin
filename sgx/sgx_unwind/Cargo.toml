@@ -1,0 +1,10 @@
+[package]
+name = "sgx_unwind"
+version = "1.0.0"
+authors = ["MobileCoin"]
+
+[lib]
+name = "sgx_unwind"
+
+[dependencies]
+sgx_libc_types = { path = "../sgx_libc_types" }

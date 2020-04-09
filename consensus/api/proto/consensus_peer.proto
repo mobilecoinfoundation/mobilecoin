@@ -1,0 +1,51 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
+// Consensus service peer-facing data types and service descriptors.
+
+syntax = "proto3";
+import "google/protobuf/empty.proto";
+import "attest.proto";
+import "blockchain.proto";
+import "consensus_common.proto";
+
+package consensus_peer;
+
+service ConsensusPeerAPI {
+    /// This API call is made with an encrypted payload for the enclave,
+    /// indicating a new value to be acted upon.
+    rpc PeerTxPropose(attest.Message) returns (consensus_common.ProposeTxResponse);
+
+    /// Feed a consensus message into the node.
+    rpc SendConsensusMsg (ConsensusMsg) returns (google.protobuf.Empty) {}
+
+    /// Fetch the latest SCP message a node has issued.
+    rpc FetchLatestMsg (google.protobuf.Empty) returns (FetchLatestMsgResponse) {}
+
+    /// Fetch transaction contents from a list of Tx Hashes.
+    /// The hashes are sent in the AAD data.
+    rpc FetchTxs(FetchTxsRequest) returns (attest.Message);
+}
+
+message ConsensusMsg {
+    // Serialized ReponsderId this message is coming from.
+    // This will get replace by an Enclave Session ID at some point.
+    bytes from_responder_id = 1;
+
+    // Serialized peers::ConsensusMsg.
+    bytes payload = 2;
+}
+
+message FetchLatestMsgResponse {
+    // Serialized consensus_service::ConsensusMsg<V>.
+    // Optional (may be empty if the node hasn't issued a message yet).
+    bytes payload = 1;
+}
+
+/// Payload for a FetchTxs call.
+message FetchTxsRequest {
+    /// Channel ID.
+    bytes channel_id = 1;
+
+    /// List of tx hashes to fetch.
+    repeated bytes tx_hashes = 2;
+}

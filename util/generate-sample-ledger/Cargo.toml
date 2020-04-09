@@ -1,0 +1,27 @@
+[package]
+name = "generate-sample-ledger"
+version = "0.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[dependencies]
+build-info = { path = "../../build-info" }
+common = { path = "../../common" }
+keyfile = { path = "../../util/keyfile" }
+keys = { path = "../../crypto/keys" }
+ledger-db = { path = "../../ledger/db" }
+transaction = { path = "../../transaction/core" }
+
+rand = "0.7"
+rand_hc = "0.2.0"
+rayon = "1.1"
+structopt = "0.3"
+
+[target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
+curve25519-dalek = { version = "2.0", default-features = false, features = ["simd_backend", "nightly"] }
+
+[target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
+curve25519-dalek = { version = "2.0", default-features = false, features = ["nightly", "u64_backend"] }
+
+[dev-dependencies]
+tempdir = "0.3"

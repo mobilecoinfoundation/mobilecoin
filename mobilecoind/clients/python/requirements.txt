@@ -1,0 +1,3 @@
+grpcio-tools
+qrcode
+halo

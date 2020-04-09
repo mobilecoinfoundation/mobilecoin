@@ -1,0 +1,48 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
+// Consensus service data types used by both client-facing and peer-facing APIs.
+
+syntax = "proto3";
+
+package consensus_common;
+
+/// Result of ProposeTx call that cannot be represented by a built-in GRPC error code.
+enum ProposeTxResult {
+    Ok = 0;
+    InputsProofsLengthMismatch = 10;
+    NoInputs = 11;
+    TooManyInputs = 12;
+    InsufficientInputSignatures = 13;
+    InvalidInputSignature = 14;
+    InvalidTransactionSignature = 15;
+    InvalidRangeProof = 16;
+    InsufficientRingSize = 17;
+    TombstoneBlockExceeded = 18;
+    TombstoneBlockTooFar = 19;
+    NoOutputs = 20;
+    TooManyOutputs = 21;
+    ExcessiveRingSize = 22;
+    DuplicateRingElements = 23;
+    UnsortedRingElements = 24;
+    UnequalRingSizes = 25;
+    UnsortedKeyImages = 26;
+    ContainsSpentKeyImage = 27;
+    DuplicateKeyImages = 28;
+    MissingTxOutMembershipProof = 29;
+    InvalidTxOutMembershipProof = 30;
+    InvalidRistrettoPublicKey = 31;
+    InvalidLedgerContext = 32;
+    Ledger = 33;
+    MembershipProofValidationError = 34;
+    TxFeeError = 35;
+    KeyError = 36;
+}
+
+/// Response from TxPropose RPC call.
+message ProposeTxResponse {
+    /// Result.
+    ProposeTxResult result = 1;
+
+    /// The number of blocks in the ledger at the time the request was received.
+    uint64 num_blocks = 2;
+}

@@ -1,0 +1,156 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
+// MUST BE KEPT IN SYNC WITH RUST CODE!
+
+syntax = "proto3";
+
+package external;
+
+///////////////////////////////////////////////////////////////////////////////
+// `keys` crate
+///////////////////////////////////////////////////////////////////////////////
+
+message RistrettoPublic {
+    bytes data = 1;
+}
+
+message RistrettoPrivate {
+    bytes data = 1;
+}
+
+message CurvePoint {
+    bytes data = 1;
+}
+
+message CurveScalar {
+    bytes data = 1;
+}
+
+message KeyImage {
+    bytes data = 1;
+}
+
+message Ed25519Public {
+    bytes data = 1;
+}
+
+message Ed25519Signature {
+    bytes data = 1;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// `common` crate
+///////////////////////////////////////////////////////////////////////////////
+
+message EncryptedFogHint {
+    bytes data = 1;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// `ringct` crate
+///////////////////////////////////////////////////////////////////////////////
+
+message RingCtInput {
+    RistrettoPublic address = 1;
+    CurvePoint commitment = 2;
+}
+
+message RingCtInputRow {
+    repeated RingCtInput row = 1;
+}
+
+message RingCtChallengeResponse {
+    repeated CurveScalar response = 1;
+}
+
+message RingCtSignature {
+    repeated KeyImage key_images = 1;
+    repeated RingCtChallengeResponse challenge_responses = 2;
+    CurveScalar challenge = 3;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// `ledger` crate
+///////////////////////////////////////////////////////////////////////////////
+
+message Range {
+    uint64 from = 1;
+    uint64 to = 2;
+}
+
+message TxOutMembershipHash {
+    bytes data = 1;
+}
+
+message TxOutMembershipElement {
+    Range range = 1;
+    TxOutMembershipHash hash = 2;
+}
+
+message TxOutMembershipProof {
+    uint64 index = 1;
+    uint64 highest_index = 2;
+    repeated TxOutMembershipElement elements = 3;
+}
+
+// Amount.
+message Amount {
+    // A Pedersen commitment `v*G + s*H`
+    CurvePoint commitment = 1;
+
+    // `masked_value = value + SHA3-512_scalar(shared_secret || n)`
+    CurveScalar masked_value = 2;
+
+    // `masked_blinding = value + SHA3-512_scalar(SHA3-512_scalar(shared_secret || n))
+    CurveScalar masked_blinding = 3;
+}
+
+// A Transaction Output.
+message TxOut {
+    // Amount.
+    Amount amount = 1;
+
+    // Public key.
+    RistrettoPublic target_key = 2;
+
+    // Public key.
+    RistrettoPublic public_key = 3;
+
+    // 128 byte encrypted fog hint
+    EncryptedFogHint e_account_hint = 4;
+}
+
+message TxIn {
+    // "Ring" of inputs, one of which is actually being spent.
+    repeated TxOut ring = 1;
+
+    // Proof that each TxOut in `ring` is in the ledger.
+    repeated TxOutMembershipProof proofs = 2;
+}
+
+// A transaction that a client submits to consensus
+message TxPrefix {
+    // Transaction inputs.
+    repeated TxIn inputs = 1;
+
+    // Transaction outputs.
+    repeated TxOut outputs = 2;
+
+    // Fee paid to the foundation for this transaction
+    uint64 fee = 3;
+}
+
+message Tx {
+    // The actual contents of the transaction
+    TxPrefix prefix = 1;
+
+    // The RingCT signature on the prefix
+    RingCtSignature signature = 2;
+
+    // The range proofs to show the values are in the proper range
+    bytes range_proofs = 3;
+
+    // The block index past which this submitted transaction is no longer valid
+    uint64 tombstone_block = 4;
+}

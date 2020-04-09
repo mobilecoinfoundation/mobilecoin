@@ -1,0 +1,25 @@
+[package]
+name = "attest-api"
+version = "0.1.0"
+authors = ["MobileCoin"]
+license = "MIT/Apache-2.0"
+edition = "2018"
+description = "gRPC APIs for encrypted communications with an enclave"
+keywords = ["SIGMA", "Cryptography", "Key Exchange", "Diffie-Hellman", "SGX", "Attestation"]
+readme = "README.md"
+
+[build-dependencies]
+protoc-grpcio = "0.3.1"
+
+[dependencies]
+attest-ake = { path = "../ake" }
+attest-enclave-api = { path = "../enclave_api" }
+keys = { path = "../../crypto/keys" }
+mcnoise = { path = "../../crypto/ake/mcnoise" }
+
+aead = "0.2"
+digest = "0.8"
+futures = "0.1.16"
+grpcio = "0.5.1"
+protobuf = "2.12"
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }

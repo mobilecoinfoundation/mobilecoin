@@ -1,0 +1,38 @@
+# Sample config for Prometheus.
+
+global:
+  scrape_interval:     15s # By default, scrape targets every 15 seconds.
+  evaluation_interval: 15s # By default, scrape targets every 15 seconds.
+  # scrape_timeout is set to the global default (10s).
+
+  # Attach these labels to any time series or alerts when communicating with
+  # external systems (federation, remote storage, Alertmanager).
+  # external_labels:
+  #    monitor: 'example'
+  #
+
+remote_write:
+- url: https://prometheus-us-central1.grafana.net/api/prom/push
+  basic_auth:
+    username: 8687
+    password: ${GRAFANA_PASSWORD}
+
+# Load and evaluate rules in this file every 'evaluation_interval' seconds.
+rule_files:
+  # - "first.rules"
+  # - "second.rules"
+
+# A scrape configuration containing exactly one endpoint to scrape:
+# Here it's Prometheus itself.
+scrape_configs:
+  - job_name: 'nodes'
+    scrape_interval: 5s
+    scrape_timeout: 5s
+    scheme: http
+    # metrics_path defaults to '/metrics'
+    # scheme defaults to 'http'.
+
+    static_configs:
+      - targets: [${HOSTS}]
+        labels:
+          network: ${BRANCH}

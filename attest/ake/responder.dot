@@ -1,0 +1,20 @@
+digraph AkeResponder {
+  AuthRequestInput [shape="none"];
+  AuthResponse [shape="note"];
+  PlaintextInput [shape="none", label="Plaintext"];
+  PlaintextOutput [shape="underline", label="Vec<u8>\n(Decrypted)"];
+  CiphertextInput [shape="none", label="Ciphertext"];
+  CiphertextOutput [shape="note", label="Vec<u8>\n(Encrypted)"];
+
+  Start -> AuthRequestInput;
+  AuthRequestInput -> Ready;
+  AuthRequestInput -> AuthResponse;
+
+  Ready -> CiphertextInput;
+  CiphertextInput -> Ready;
+  CiphertextInput -> PlaintextOutput;
+
+  Ready -> PlaintextInput;
+  PlaintextInput -> Ready;
+  PlaintextInput -> CiphertextOutput;
+}

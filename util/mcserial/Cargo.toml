@@ -1,0 +1,17 @@
+[package]
+name = "mcserial"
+version = "0.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[features]
+# Build everything with std flags turned on. This is generally needed in targets that use std
+# because rmp-ser../../alloc doesn't build against ser../../std,
+# so if anything else in your build plan will activate ser../../std, then mcseri../../std is
+# required.
+std = [ "serde/std", "serde_cbor/std" ]
+
+[dependencies]
+prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+serde_cbor = { version = "0.11.1", default-features = false, features = ["alloc"] }

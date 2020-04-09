@@ -1,0 +1,3 @@
+# gRPC-generated files
+src/attest.rs
+src/attest_grpc.rs

@@ -1,0 +1,16 @@
+[package]
+name = "transaction-test-utils"
+version = "0.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[dependencies]
+tempdir = "0.3"
+
+# MobileCoin dependencies
+keys = { path = "../../../crypto/keys", default-features = false }
+ledger-db = { path = "../../../ledger/db" }
+mcrand = { path = "../../../crypto/mcrand" }
+rand = "0.7"
+transaction = { path = "../../../transaction/core" }
+transaction-std = { path = "../../../transaction/std" }

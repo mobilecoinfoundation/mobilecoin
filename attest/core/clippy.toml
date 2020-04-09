@@ -1,0 +1,3 @@
+# We use enums for state machines, which can grow quite large by design
+enum-variant-size-threshold = 2048
+too-many-arguments-threshold = 16

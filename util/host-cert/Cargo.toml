@@ -1,0 +1,7 @@
+[package]
+name = "host-cert"
+version = "0.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[dependencies]

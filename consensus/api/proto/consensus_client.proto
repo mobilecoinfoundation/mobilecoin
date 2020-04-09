@@ -1,0 +1,15 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
+// Consensus service client-facing data types and service descriptors.
+
+syntax = "proto3";
+import "attest.proto";
+import "consensus_common.proto";
+
+package consensus_client;
+
+service ConsensusClientAPI {
+    /// This API call is made with an encrypted payload for the enclave,
+    /// indicating a new value to be acted upon.
+    rpc ClientTxPropose(attest.Message) returns (consensus_common.ProposeTxResponse);
+}

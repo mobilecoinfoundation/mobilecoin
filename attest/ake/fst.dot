@@ -1,0 +1,41 @@
+digraph UnifiedKeyExchange {
+  AuthRequestInput [shape="none" style="filled", fillcolor="cyan"];
+  AuthRequestOutput [shape="note", style="filled", fillcolor="yellow"];
+  AuthResponse [shape="none", style="filled", fillcolor="yellow"];
+  NodeInitiate [shape="none", style="filled", fillcolor="pink"];
+  ClientInitiate [shape="none", style="filled", fillcolor="green"];
+  Success [shape="none", style="filled", fillcolor="yellow"];
+  PlaintextInput [shape="none"];
+  PlaintextOutput [shape="note"];
+  CiphertextInput [shape="none"];
+  CiphertextOutput [shape="note"];
+
+  AuthPending [style="filled", fillcolor="yellow"];
+
+  Start -> AuthRequestInput [color="blue"];
+  AuthRequestInput -> Ready [color="blue"];
+  AuthRequestInput -> AuthResponse [color="blue", style="dashed"];
+
+  Start -> NodeInitiate [color="red"];
+  NodeInitiate -> AuthPending [color="red"];
+  NodeInitiate -> AuthRequestOutput [color="red"];
+
+  Start -> ClientInitiate [color="darkgreen"];
+  ClientInitiate -> AuthPending [color="darkgreen"];
+  ClientInitiate -> AuthRequestOutput [color="darkgreen"];
+
+  AuthPending -> AuthResponse;
+  AuthResponse -> Ready;
+  AuthResponse -> Success;
+
+  Ready -> CiphertextInput;
+  CiphertextInput -> Ready;
+  CiphertextInput -> PlaintextOutput;
+
+  Ready -> PlaintextInput;
+  PlaintextInput -> Ready;
+  PlaintextInput -> CiphertextOutput;
+
+  AuthRequestOutput -> AuthRequestInput [style="dashed"];
+  CiphertextOutput -> CiphertextInput [style="dashed"];
+}

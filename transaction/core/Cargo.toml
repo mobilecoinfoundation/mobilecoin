@@ -1,0 +1,76 @@
+[package]
+name = "transaction"
+version = "0.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[features]
+default = ["test-net-fee-keys"]
+
+# Specifies whether to use test net or main net fee output keys
+main-net-fee-keys = []
+test-net-fee-keys = []
+
+[dependencies]
+# External dependencies
+bs58 = { version = "0.3.0", default-features = false, features = ["alloc"] }
+blake2 = { version = "0.8.1", default-features = false, features = ["simd"] }
+byteorder = { version = "1.3.4", default-features = false }
+crc = { version = "1.8.1", default-features = false }
+cfg-if = "0.1"
+digest = { version = "0.8.1", default-features = false }
+ecies = { path = "../..//crypto/ecies" }
+failure = { version = "0.1.5", default-features = false, features = ["derive"] }
+generic-array = { version = "0.12", features = ["serde"] }
+hex_fmt = "0.3"
+hkdf = { version = "0.8.0", default-features = false }
+lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
+merlin = { version = "2.0", default-features = false }
+prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
+rand_core = { version = "0.5", default-features = false }
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+sha2 = { version = "0.8", default-features = false }
+subtle = { version = "2.1", default-features = false }
+
+# MobileCoin dependencies
+common = { path = "../../common", default-features = false }
+digestible = { path = "../..//crypto/digestible", features = ["dalek"] }
+keys = { path = "../../crypto/keys", default-features = false }
+mcrand = { path = "../../crypto/mcrand" }
+mcserial = { path = "../../util/mcserial" }
+
+[target.'cfg(target_feature = "avx2")'.dependencies]
+bulletproofs = {version = "2.0", default-features = false, features = ["avx2_backend"]}
+
+[target.'cfg(not(target_feature = "avx2"))'.dependencies]
+bulletproofs = {version = "2.0", default-features = false}
+
+[target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
+curve25519-dalek = { version = "2.0", default-features = false, features = ["simd_backend", "nightly"] }
+blake2 = { version = "0.8.1", default-features = false, features = ["simd"] }
+
+[target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
+curve25519-dalek = { version = "2.0", default-features = false, features = ["nightly", "u64_backend"] }
+blake2 = { version = "0.8.1", default-features = false }
+
+[dev-dependencies]
+criterion = "0.3"
+rand = "0.7"
+rand_hc = "0.2"
+tempdir = "0.3"
+time = "0.1"
+
+ledger-db = { path = "../../ledger/db" }
+mcserial = { path = "../../util/mcserial", features = ["std"] }
+test_helper = { path = "../../util/test-helper" }
+transaction-test-utils = { path = "../../transaction/core/test-utils" }
+
+[dev-dependencies.proptest]
+version = "0.9" # Only works for 0.9.1 or newer
+default-features = false
+# Enable all default features not known to break code coverage builds
+features = ["default-code-coverage"]
+
+[[bench]]
+name = "account_keys_benchmarks"
+harness = false

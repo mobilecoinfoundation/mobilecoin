@@ -1,0 +1,27 @@
+[package]
+name = "test_helper"
+version = "0.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[[bin]]
+name = "generate-account-keys"
+path = "src/bin/generate_account_keys.rs"
+
+[dependencies]
+# External dependencies
+lazy_static = "1.4"
+rand = "0.7"
+rand_core = "0.5"
+rand_hc = "0.2"
+structopt = "0.3"
+
+# MobileCoin dependencies
+keys = { path = "../../crypto/keys" }
+mcserial = { path = "../../util/mcserial", features = ["std"] }
+transaction = { path = "../../transaction/core" }
+transaction-std = { path = "../../transaction/std" }
+
+[dev-dependencies]
+common = { path = "../../common", features = ["log"] }
+itertools = "0.9.0"

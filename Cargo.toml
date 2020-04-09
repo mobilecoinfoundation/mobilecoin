@@ -1,0 +1,90 @@
+[workspace]
+members = [
+    "attest/core",
+    "attest/ake",
+    "attest/api",
+    "attest/net",
+    "attest/trusted",
+    "attest/untrusted",
+    "common",
+    "consensus/api",
+    "consensus/enclave",
+    "consensus/enclave/edl",
+    "consensus/enclave/measurement",
+    "consensus/enclave/api",
+    "consensus/enclave/impl",
+    "consensus/enclave/mock",
+    "consensus/scp",
+    "consensus/scp/play",
+    "consensus/service",
+    "crypto/ake/mcnoise",
+    "crypto/digestible",
+    "crypto/ecies",
+    "crypto/keys",
+    "crypto/mcrand",
+    "crypto/message-cipher",
+    "enclave-boundary",
+    "ledger/db",
+    "ledger/distribution",
+    "ledger/sync",
+    "mcbuild/enclave",
+    "mcbuild/sgx-utils",
+    "mcbuild/utils",
+    "mcconnection",
+    "mcconnection/test-utils",
+    "mobilecoind",
+    "mobilecoind/api",
+    "peers",
+    "peers/test-utils",
+    "sgx/core-types-sys",
+    "sgx/epid-sys",
+    "sgx/epid-types-sys",
+    "sgx/sgx_backtrace_edl",
+    "sgx/sgx_compat_edl",
+    "sgx/sgx_css",
+    "sgx/sgx_debug_edl",
+    "sgx/sgx_panic_edl",
+    "sgx/sgx_slog_edl",
+    "transaction/core",
+    "transaction/core/test-utils",
+    "transaction/std",
+    "util/b58-payloads",
+    "util/encodings",
+    "util/generate-sample-ledger",
+    "util/grpc",
+    "util/host-cert",
+    "util/keyfile",
+    "util/mclogger-macros",
+    "util/mcserial",
+    "util/mcuri",
+    "util/metered-channel",
+    "util/metrics",
+    "util/test-helper",
+]
+exclude = [
+    # mcserial should only be accessed via the `common` crate.
+    "mcserial",
+    # N.B. for some reason, putting these crates under `exclude` helps with
+    # making `cargo test --all` work, when `consensus-enclave-impl` is part of workspace
+    "sgx",
+]
+
+[profile.dev]
+opt-level = 0
+rpath = true
+
+[profile.release]
+opt-level = 3
+rpath = false
+lto = false
+debug-assertions = false
+overflow-checks = false
+
+# Skip the need for LD_LIBRARY_PATH in `cargo test`
+[profile.test]
+rpath = true
+
+[patch.crates-io]
+rouille = { git = "https://github.com/tomaka/rouille/", rev = "db66a3b47af4271939e1aba21d0f36ccba3d1b70" }
+prost = { git = "https://github.com/cbeck88/prost", rev = "4e1905329369ca7a1cac3eda978ee9379167ee95" }
+prost-derive = { git = "https://github.com/cbeck88/prost", rev = "4e1905329369ca7a1cac3eda978ee9379167ee95" }

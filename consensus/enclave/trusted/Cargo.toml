@@ -1,0 +1,69 @@
+[package]
+name = "consensus_enclave_trusted" # Note, this must maintain SnakeCase due to mcbuild/enclave expectations
+version = "1.0.0"
+authors = ["MobileCoin"]
+edition = "2018"
+description = "The MobileCoin Consensus Service's internal enclave entry point."
+
+[lib]
+crate-type = ["staticlib"]
+
+[features]
+sgx-sim = [
+    "attest/sgx-sim"
+]
+ias-dev = [
+    "attest/ias-dev"
+]
+
+[dependencies]
+attest = { path = "../../../attest/core", default-features = false }
+attest-trusted = { path = "../../../attest/trusted" }
+common = { path = "../../../common", default-features = false }
+consensus-enclave-api = { path = "../api", default-features = false }
+consensus-enclave-edl = { path = "../edl" }
+consensus-enclave-impl = { path = "../impl", default-features = false }
+enclave-boundary = { path = "../../../enclave-boundary" }
+keys = { path = "../../../crypto/keys", default-features = false }
+mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.2", default-features = false, features = ["aesni","force_aesni_support","rdrand"] }
+mcserial = { path = "../../../util/mcserial"}
+sgx_backtrace_edl = { path = "../../../sgx/sgx_backtrace_edl" }
+sgx_compat = { path = "../../../sgx/sgx_compat", features = ["sgx"] }
+sgx_debug_edl = { path = "../../../sgx/sgx_debug_edl" }
+sgx_enclave_id = { path = "../../../sgx/sgx_enclave_id" }
+sgx_panic_edl = { path = "../../../sgx/sgx_panic_edl" }
+sgx_slog = { path = "../../../sgx/sgx_slog" }
+sgx_slog_edl = { path = "../../../sgx/sgx_slog_edl" }
+sgx_types = { path = "../../../sgx/sgx_types" }
+
+lazy_static = { version = "1.4", features = ["spin_no_std"] }
+sha2 = { version = "0.8", default-features = false, features = ["asm"] }
+
+[build-dependencies]
+mcbuild-sgx-utils = { path = "../../../mcbuild/sgx-utils" }
+mcbuild-utils = { path = "../../../mcbuild/utils" }
+cargo-emit = "0.1"
+
+[profile.dev]
+opt-level = 0
+
+[profile.release]
+opt-level = 3
+rpath = false
+lto = true
+debug-assertions = false
+overflow-checks = false
+
+[patch.crates-io]
+prost = { git = "https://github.com/cbeck88/prost", rev = "4e1905329369ca7a1cac3eda978ee9379167ee95" }
+prost-derive = { git = "https://github.com/cbeck88/prost", rev = "4e1905329369ca7a1cac3eda978ee9379167ee95" }
+
+# Overridden to support cross-compiling iOS.
+# * Fixes an issue with cmake-rs not setting compiler flags for asm files
+#     Upstream: https://github.com/alexcrichton/cmake-rs/pull/86
+# * Fixes an issue with cmake-rs not configuring cmake properly for ios cross-compilation when using cmake 3.14
+#     Upstream: https://github.com/alexcrichton/cmake-rs/issues/87
+# See sdk_json_interface/Cargo.toml to update version
+cmake = { git = "https://github.com/mobilecoinofficial/cmake-rs", tag = "0.1.42.rev7" }
+
+[workspace]

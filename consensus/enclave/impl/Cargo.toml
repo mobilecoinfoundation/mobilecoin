@@ -1,0 +1,54 @@
+[package]
+name = "consensus-enclave-impl"
+version = "0.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+description = '''
+This crate contains the actual implementation of a mobilenode enclave.
+
+The intent is that this implementation can be built for one of several
+in-enclave configurations:
+
+ 1. Simulation mode (sgx-sim)
+ 1. Pre-release mode (debug, no sgx-sim)
+ 1. Production mode (no debug, no sgx-sim)
+
+sgx-sim is now applied to crates in build.rs as needed, by reading SGX_MODE env
+
+'''
+
+[features]
+default = ["std"]
+std = [
+    "consensus-enclave-api/std",
+    "mbedtls/std",
+]
+
+[dependencies]
+ake-enclave = { path = "../../../crypto/ake/enclave" }
+attest = { path = "../../../attest/core", default-features = false }
+attest-enclave-api = { path = "../../../attest/enclave_api", default-features = false }
+common = { path = "../../../common", default-features = false }
+attest-trusted = { path = "../../../attest/trusted", default-features = false }
+consensus-enclave-api = { path = "../api", default-features = false }
+digestible = { path = "../../..//crypto/digestible" }
+keys = { path = "../../../crypto/keys", default-features = false }
+mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.2", default-features = false, features = ["aesni", "rdrand", "force_aesni_support"] }
+mcrand = { path = "../../../crypto/mcrand" }
+mcserial = { path = "../../../util/mcserial" }
+message-cipher = { path = "../../..//crypto/message-cipher" }
+sgx_compat = { path = "../../../sgx/sgx_compat" }
+sgx_slog = { path = "../../../sgx/sgx_slog" }
+transaction = { path = "../../../transaction/core" }
+
+cfg-if = "0.1"
+digest = { version = "0.8", default-features = false }
+prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
+rand_core = { version = "0.5", default-features = false }
+sha2 = { version = "0.8", default-features = false, features = ["asm"] }
+
+[dev-dependencies]
+rand = "0.7"
+rand_hc = "0.2"
+ledger-db = { path = "../../../ledger/db" }
+transaction-test-utils = { path = "../../../transaction/core/test-utils" }

@@ -1,0 +1,71 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
+syntax = "proto3";
+import "attest.proto";
+import "external.proto";
+
+package ledger_enclave_server;
+
+service LedgerEnclaveServerAPI {
+    /// Check if key images have appeared in the ledger
+    rpc CheckKeyImages (attest.Message) returns (attest.Message) {}
+    /// Get rings and merkle proofs of membership
+    rpc GetOutputs (attest.Message) returns (attest.Message) {}
+}
+
+message GetOutputsRequest {
+    repeated uint64 indexes = 1;
+    uint64 merkle_root_block = 2;
+}
+
+message GetOutputsResponse {
+    repeated external.TxOut outputs = 1;
+    repeated external.TxOutMembershipProof proofs = 2;
+}
+
+message CheckKeyImagesRequest {
+    /// A list of key images queries, to check if they have appeared in the ledger
+    /// already, and if so, in what block.
+    repeated KeyImageQuery queries = 1;
+}
+
+message KeyImageQuery {
+    /// The key image to check. Should be exactly 32 bytes
+    bytes key_image = 1;
+    /// An optional start_block to start searching forward from when performing the check.
+    ///
+    /// Note:
+    /// A correct implementation of the server may ignore this, it is an optimization.
+    /// This may help scaling because then for daily active users we won't have to
+    /// obliviously scan the whole set to support their queries.
+    fixed64 start_block = 2;
+}
+
+/// A response to a request for key image checks
+///
+/// Contracts:
+/// If a KeyImageResult comes back with spent_at != 0, then it was spent in that block index.
+/// If a KeyImageResult comes back with spent_at == 0, then it was NOT spent, AT LEAST as of
+/// resp.block_height (the top level block height number). It is possible that it WAS actually
+/// spent in resp.block_height + 1, but the server didn't know, or didn't figure that out.
+message CheckKeyImagesResponse {
+    /// The block height at the time that the request was evaluated
+    ///
+    /// Note: This may be a conservative estimate, in the sense of being a lower bound.
+    /// It's allowed that the data is "more fresh" than we are telling the client, but not less fresh.
+    ///
+    /// Implementation note: If the server does not evaluate all the key image checks as one
+    /// database transaction, then this number should be a lower bound on the block height across
+    /// all of those transactions.
+    uint64 block_height = 1;
+    /// The results for each key image query
+    repeated KeyImageResult results = 2;
+}
+
+message KeyImageResult {
+    /// The key image that was queried. Exactly 32 bytes
+    bytes key_image = 1;
+    /// The block index at which it was spent
+    /// 0 indicates that it has not been spent (nothing can be spent in genesis block)
+    fixed64 spent_at = 2;
+}

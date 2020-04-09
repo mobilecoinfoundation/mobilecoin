@@ -1,0 +1,39 @@
+<html>
+<head>
+    <title>Consensus node</title>
+    <script type="text/javascript" src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $.getJSON('info').done(function(data) {
+                $('#info pre').text(JSON.stringify(data, null, 4));
+                $('input[name="rust_log"]').val(data.rust_log);
+            }).fail(function() {
+                alert('failed getting node info');
+            });
+        });
+    </script>
+</head>
+<body>
+    <div style="border: 1px solid #000; padding: 2px;">
+        <h1>Consensus Node - {{node_id.responder_id}}</h1>
+    </div>
+
+    <br><br>
+
+    <div style="border: 1px solid #000; padding: 2px;" id="info">
+        <pre>
+            Loading info...
+        </pre>
+    </div>
+
+    <br><br>
+
+    <div style="border: 1px solid #000; padding: 2px;">
+        <strong>Set log level</strong>
+        <form action="set-rust-log" method="GET">
+            <input type=text" name="rust_log" value="" size="100">
+            <input type="submit" value="Set">
+        </form>
+    </div>
+</body>
+</html>

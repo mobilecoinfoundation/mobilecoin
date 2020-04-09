@@ -1,0 +1,27 @@
+[package]
+name = "ledger-distribution"
+version = "0.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[[bin]]
+name = "ledger-distribution"
+path = "src/main.rs"
+
+[dependencies]
+common = { path = "../../common", features = ["log"] }
+ledger-db = { path = "../../ledger/db" }
+mobilecoin-api = { path = "../../consensus/api" }
+transaction = { path = "../../transaction/core" }
+
+dirs = "2.0"
+dotenv = "0.14"
+failure = "0.1.5"
+protobuf = "2.12"
+retry = "0.5"
+rusoto_core = { version = "0.42.0", features = ["rustls"], default_features = false }
+rusoto_s3 = { version = "0.42.0", features = ["rustls"], default_features = false }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+structopt = "0.3"
+url = "2.1"

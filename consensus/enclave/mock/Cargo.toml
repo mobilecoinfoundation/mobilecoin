@@ -1,0 +1,20 @@
+[package]
+name = "consensus-enclave-mock"
+version = "1.0.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[dependencies]
+attest = { path = "../../../attest/core" }
+attest-enclave-api = { path = "../../../attest/enclave_api" }
+common = { path = "../../../common" }
+consensus-enclave-api = { path = "../api" }
+digestible = { path = "../../..//crypto/digestible" }
+keys = { path = "../../../crypto/keys" }
+mcrand = { path = "../../../crypto/mcrand" }
+mcserial = { path = "../../../util/mcserial" }
+transaction = { path = "../../../transaction/core" }
+
+rand_core = "0.5"
+rand_hc = "0.2"
+sha2 = { version = "0.8", default-features = false, features = ["asm"] }

@@ -1,0 +1,13 @@
+[package]
+name = "mcsgx-core-types-sys"
+version = "2.9.0"
+authors = ["MobileCoin"]
+description = "Core FFI types for Intel SGX SDK."
+readme = "README.md"
+edition = "2018"
+
+[build-dependencies]
+mcbuild-utils = { path = "../../mcbuild/utils" }
+
+bindgen = "0.51.1"
+cargo-emit = "0.1.1"

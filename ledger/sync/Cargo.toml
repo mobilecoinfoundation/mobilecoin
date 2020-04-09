@@ -1,0 +1,46 @@
+[package]
+name = "ledger-sync"
+version = "0.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[lib]
+name = "ledger_sync"
+
+[[bin]]
+name = "ledger-sync-test-app"
+path = "src/test_app/main.rs"
+
+[dependencies]
+attest = { path = "../../attest/core" }
+common = { path = "../../common", features = ["log"] }
+consensus-enclave-measurement = { path = "../../consensus/enclave/measurement" }
+keys = { path = "../../crypto/keys" }
+ledger-db = { path = "../../ledger/db" }
+mcconnection = { path = "../../mcconnection" }
+mcuri = { path = "../../util/mcuri" }
+metrics = { path = "../..//util/metrics" }
+mobilecoin-api = { path = "../../consensus/api" }
+peers = { path = "../../peers" }
+scp = { path = "../../consensus/scp" }
+transaction = { path = "../../transaction/core" }
+transaction-test-utils = { path = "../../transaction/core/test-utils" }
+
+crossbeam-channel = "0.3"
+failure = "0.1.5"
+grpcio = "0.5.1"
+lazy_static = "1.4"
+reqwest = { version = "0.9" , features = ["rustls-tls"], default_features = false }
+retry = "0.5"
+protobuf = "2.12"
+rand = "0.7"
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+tempdir = "0.3"
+url = "2.1"
+
+[dev-dependencies]
+ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
+mcconnection-tests = { path = "../../mcconnection/test-utils" }
+peers-tests = { path = "../../peers/test-utils" }
+scp = { path = "../../consensus/scp", features = ["test_utils"] }
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }

@@ -1,0 +1,37 @@
+[package]
+name = "mobilecoin-api"
+version = "0.1.0"
+authors = ["MobileCoin"]
+build = "build.rs"
+edition = "2018"
+
+[lib]
+name = "mobilecoin_api"
+
+[dependencies]
+attest-api = { path = "../../attest/api" }
+common = { path = "../../common" }
+keys = { path = "../../crypto/keys" }
+mcserial = { path = "../../util/mcserial" }
+transaction = { path = "../../transaction/core" }
+
+futures = "0.1.16"
+grpcio = "0.5.1"
+prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
+protobuf = "2.12"
+
+[target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
+curve25519-dalek = { version = "2.0", default-features = false, features = ["simd_backend", "nightly"] }
+
+[target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
+curve25519-dalek = { version = "2.0", default-features = false, features = ["nightly", "u64_backend"] }
+
+[build-dependencies]
+protoc-grpcio = "0.3.1"
+
+[dev-dependencies]
+mcrand = { path = "../../crypto/mcrand" }
+rand = "0.7"
+tempdir = "0.3"
+transaction-std = { path = "../../transaction/std" }
+transaction-test-utils = { path = "../../transaction/core/test-utils" }

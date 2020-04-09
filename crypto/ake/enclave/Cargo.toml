@@ -1,0 +1,28 @@
+[package]
+name = "ake-enclave"
+version = "0.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[dependencies]
+attest = { path = "../../../attest/core", default-features = false }
+attest-ake = { path = "../../../attest/ake", default-features = false }
+attest-enclave-api = { path = "../../../attest/enclave_api", default-features = false }
+attest-trusted = { path = "../../../attest/trusted", default-features = false }
+common = { path = "../../../common", default-features = false }
+keys = { path = "../../../crypto/keys", default-features = false }
+mcnoise = { path = "../../../crypto/ake/mcnoise", default-features = false }
+mcrand = { path = "../../../crypto/mcrand", default-features = false }
+mcserial = { path = "../../../util/mcserial", default-features = false }
+sgx_compat = { path = "../../../sgx/sgx_compat", default-features = false }
+
+aead = "0.2"
+aes-gcm = "0.3"
+digest = { version = "0.8", default-features = false }
+failure = { version = "0.1.5", default-features = false, features = ["derive"] }
+rand_core = { version = "0.5", default-features = false }
+serde = { version = "1.0", default-features = false, features = ["alloc"] }
+sha2 = { version = "0.8", default-features = false }
+
+[build-dependencies]
+sgx_build = { path = "../../../sgx/sgx_build" }

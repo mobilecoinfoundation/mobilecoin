@@ -1,0 +1,1 @@
+This crate provides no-std FFI types used by the Intel SGX attestation process: notably `sgx_status_t`, `sgx_report_t`, and `sgx_target_info_t`. These types are not intended to be used directly, but rather wrapped by the `mcsgx-core` crate, which will provide safe, rusty access to them and their contents.

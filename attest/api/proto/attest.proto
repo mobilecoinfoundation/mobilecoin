@@ -1,0 +1,50 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
+/// This file defines the API to allow for a client to conduct an authenticated
+/// key exchange using a derivative of the noise protocol
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+package attest;
+
+/// A server-authenticated service for SGX enclaves. The responder is the
+/// attesting enclave, and the client is unauthenticated. When described
+/// within the noise protocol, this is similar to the "IX" style key exchange:
+///
+/// ```txt
+/// IX:
+///   -> e, s
+///   <- e, ee, se, s, es
+///   ->
+///   <-
+/// ```
+///
+/// The first two messages are contained within the Auth and AuthResponse
+service AttestedApi {
+    /// This API call is made when one enclave wants to start a mutually-
+    /// authenticated key-exchange session with an enclave.
+    rpc Auth(AuthMessage) returns (AuthMessage);
+}
+
+/// The first message of an exchange, sent by a client.
+///
+/// This contains the client's one-time ephemeral public key, and the
+/// cryptographic parameters which will be used in future messages.
+message AuthMessage {
+        /// A potentially encrypted bytestream containing opaque data intended
+        /// for use in the enclave.
+        bytes data = 1;
+}
+
+/// AEAD messages sent to and from authenticated clients.
+message Message {
+        /// A byte array containing plaintext authenticated data.
+        bytes aad = 1;
+        /// An byte array containing the channel ID this message is
+        /// associated with. A zero-length channel ID is not valid.
+        bytes channel_id = 2;
+        /// A potentially encrypted bytestream containing opaque data intended
+        /// for use in the enclave.
+        bytes data = 3;
+}

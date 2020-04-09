@@ -1,0 +1,24 @@
+[package]
+name = "mc-b58-payloads"
+version = "0.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[dependencies]
+bs58 = "0.3.0"
+failure = "0.1.5"
+hex_fmt = "0.3"
+crc = "1.8.1"
+
+# MobileCoin dependencies
+keys = { path = "../../crypto/keys" }
+mcserial = { path = "../../util/mcserial" }
+transaction = { path = "../../transaction/core" }
+transaction-std = { path = "../../transaction/std" }
+
+[dev-dependencies]
+rand = "0.7"
+
+# MobileCoin dependencies
+common = { path = "../../common", features = ["log"] }
+test_helper = { path = "../test-helper" }

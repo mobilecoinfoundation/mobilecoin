@@ -1,0 +1,36 @@
+[package]
+name = "keyfile"
+version = "0.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[lib]
+name = "keyfile"
+path = "src/lib.rs"
+
+[[bin]]
+name = "keyfile-view"
+path = "src/bin/main.rs"
+
+[[bin]]
+name = "keygen"
+path = "src/bin/keygen_main.rs"
+
+[[bin]]
+name = "sample-keys"
+path = "src/bin/sample_keys_main.rs"
+
+[dependencies]
+mcrand = { path = "../../crypto/mcrand" }
+mcserial = { path = "../../util/mcserial", features = ["std"] }
+transaction = { path = "../../transaction/core" }
+transaction-std = { path = "../../transaction/std" }
+
+hex = "0.3"
+rand = "0.7"
+rand_hc = "0.2.0"
+serde_json = "1.0"
+structopt = "0.3"
+
+[dev-dependencies]
+tempdir = "0.3"

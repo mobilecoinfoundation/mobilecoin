@@ -1,0 +1,28 @@
+digraph AkeInitiator {
+  AuthRequestOutput [shape="note"];
+  AuthResponse [shape="none"];
+  NodeInitiate [shape="none", label="NodeInitiate/ClientInitiate"];
+  AuthSuccess [shape="underline"];
+  PlaintextInput [shape="none", label="Plaintext"];
+  PlaintextOutput [shape="underline", label="Vec<u8>\n(Decrypted)"];
+  CiphertextInput [shape="none", label="Ciphertext"];
+  CiphertextOutput [shape="note", label="Vec<u8>\n(Encrypted)"];
+
+  AuthPending;
+
+  Start -> NodeInitiate;
+  NodeInitiate -> AuthPending;
+  NodeInitiate -> AuthRequestOutput;
+
+  AuthPending -> AuthResponse;
+  AuthResponse -> Ready;
+  AuthResponse -> AuthSuccess;
+
+  Ready -> CiphertextInput;
+  CiphertextInput -> Ready;
+  CiphertextInput -> PlaintextOutput;
+
+  Ready -> PlaintextInput;
+  PlaintextInput -> Ready;
+  PlaintextInput -> CiphertextOutput;
+}

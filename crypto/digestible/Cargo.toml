@@ -1,0 +1,34 @@
+[package]
+name = "digestible"
+version = "0.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[dependencies]
+cfg-if = "0.1"
+digest = { version = "0.8", default-features = false }
+
+# For derive support
+digestible-derive = { path = "./derive", optional = true }
+
+# Built-in support for dalek primitives
+ed25519-dalek = { git = "https://github.com/cbeck88/ed25519-dalek", rev = "c0b0ab31d3572de6fb01d6b4a4f052784034b0b2", default-features = false, optional = true }
+x25519-dalek = { version = "0.6", default-features = false, optional = true }
+
+[target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
+curve25519-dalek = { version = "2.0", default-features = false, features = ["simd_backend", "nightly"], optional = true }
+
+[target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
+curve25519-dalek = { version = "2.0", default-features = false, features = ["nightly", "u64_backend"], optional = true }
+
+[dev-dependencies]
+sha3 = "0.8"
+
+[features]
+default=["alloc", "derive"]
+# Enables support for types in alloc crate
+alloc=[]
+# Enables re-export of derive(Digestible) macro
+derive=["digestible-derive"]
+# Enables support for some crypto primitives in dalek crates
+dalek=["curve25519-dalek", "ed25519-dalek", "x25519-dalek"]

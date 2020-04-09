@@ -1,0 +1,38 @@
+// See https://github.com/grpc/grpc/blob/master/doc/health-checking.md for a basic explanation of this service.
+// Our implementation deviates from the proposed protocol in two ways:
+// 1) We do not support the Watch endpoint.
+// 2) We have a Ping endpoint that let's us measure end-to-end response times.
+
+syntax = "proto3";
+
+package grpc.health.v1;
+
+message HealthCheckRequest {
+  string service = 1;
+}
+
+message HealthCheckResponse {
+  enum ServingStatus {
+    UNKNOWN = 0;
+    SERVING = 1;
+    NOT_SERVING = 2;
+  }
+  ServingStatus status = 1;
+}
+
+message PingRequest {
+  bytes data = 1;
+}
+
+message PingResponse {
+  bytes data = 1;
+}
+
+service Health {
+  // Methods defined in the health check spec linked at the top of this file.
+  rpc Check(HealthCheckRequest) returns (HealthCheckResponse);
+  rpc Watch(HealthCheckRequest) returns (stream HealthCheckResponse);
+
+  // MobileCoin-specific extension:
+  rpc Ping(PingRequest) returns (PingResponse);
+}

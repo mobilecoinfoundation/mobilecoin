@@ -1,0 +1,21 @@
+[package]
+name = "sgx_urts"
+version = "1.0.0"
+authors = ["MobileCoin"]
+
+[lib]
+name = "sgx_urts"
+
+[features]
+default = [ "backtrace" ]
+backtrace = [ "rustc-demangle", "lazy_static" ]
+
+[dependencies]
+sgx_libc_types = { path = "../sgx_libc_types" }
+sgx_types = { path = "../sgx_types" }
+lazy_static = { version = "1.4", optional = true }
+rustc-demangle = { version = "0.1.10", optional = true }
+#backtrace-sys = { version = "0.1.24", optional = true }
+
+[build-dependencies]
+sgx_build = { path = "../sgx_build" }

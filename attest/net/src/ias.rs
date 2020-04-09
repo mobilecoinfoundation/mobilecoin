@@ -1,0 +1,172 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
+//! This module contains traits to support remote attestation using the
+//! Intel Attestation Service.
+
+use crate::traits::{Error, RaClient, Result};
+use attest::{EpidGroupId, IasNonce, Quote, SigRL, VerificationReport, VerificationSignature};
+use cfg_if::cfg_if;
+use common::logger::global_log;
+use mc_encodings::{FromBase64, FromHex, ToBase64};
+use pem::parse_many;
+use percent_encoding::percent_decode;
+use reqwest::{
+    header::{HeaderMap, HeaderValue, CONTENT_TYPE},
+    Client,
+};
+use serde_json::json;
+
+cfg_if! {
+    if #[cfg(feature = "ias-dev")] {
+        const IAS_BASEURI: &str = "https://api.trustedservices.intel.com/sgx/dev/attestation/v3";
+    } else {
+        const IAS_BASEURI: &str = "https://api.trustedservices.intel.com/attestation/sgx/v3";
+    }
+}
+
+/// The header used to transmit our IAS querier credentials
+const OCP_APIM_SUBSCRIPTION_KEY: &str = "Ocp-Apim-Subscription-Key";
+/// The header used for the IAS verification report signature
+const IAS_SIGNATURE: &str = "x-iasreport-signature";
+/// The header used to store the certificate chain of the signer
+const IAS_SIGNING_CERTS: &str = "x-iasreport-signing-certificate";
+
+/// A data type for communicating with the Intel Attestation Service
+pub struct IasClient {
+    client: Client,
+    api_key: String,
+    json_headers: HeaderMap,
+}
+
+impl RaClient for IasClient {
+    /// Create a new IAS client, using the PEM-encoded certificate data
+    /// as the client credentials.
+    fn new(api_key: &str) -> Result<Self> {
+        let client = Client::builder().gzip(true).use_rustls_tls().build()?;
+        let mut json_headers = HeaderMap::new();
+        json_headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+        json_headers.insert(
+            OCP_APIM_SUBSCRIPTION_KEY,
+            HeaderValue::from_str(api_key).or(Err(Error::BadApiKey))?,
+        );
+        Ok(Self {
+            client,
+            json_headers,
+            api_key: api_key.to_owned(),
+        })
+    }
+
+    /// Retrieve the SigRL for the given EPID Group ID.
+    fn get_sigrl(&self, gid: EpidGroupId) -> Result<SigRL> {
+        let mut response = self
+            .client
+            .get(format!("{}/sigrl/{}", IAS_BASEURI, gid).as_str())
+            .header(OCP_APIM_SUBSCRIPTION_KEY, &self.api_key)
+            .send()?
+            .error_for_status()?;
+
+        Ok(SigRL::from_base64(response.text()?.as_str())?)
+    }
+
+    /// Submit the given quote to IAS and parse the response into a
+    /// VerificationReport.
+    fn verify_quote(
+        &self,
+        quote: &Quote,
+        ias_nonce: Option<IasNonce>,
+    ) -> Result<VerificationReport> {
+        let quote_base64 = quote.to_base64_owned();
+        let jsvalue = match ias_nonce {
+            Some(nonce) => json!({ "isvEnclaveQuote": quote_base64, "nonce": nonce.to_string() }),
+            None => json!({"isvEnclaveQuote": quote_base64,}),
+        };
+
+        global_log::trace!(
+            "Submitting JSON request for {:?} to IAS: '{}'",
+            quote,
+            jsvalue.to_string()
+        );
+
+        let mut response = self
+            .client
+            .post(format!("{}/report", IAS_BASEURI).as_str())
+            .headers(self.json_headers.clone())
+            .body(jsvalue.to_string())
+            .send()?
+            .error_for_status()?;
+
+        let headers = response.headers();
+        let sig_str = headers
+            .get(IAS_SIGNATURE)
+            .ok_or(Error::MissingSignatureError)?;
+        let sig = VerificationSignature::from_hex(sig_str.to_str()?)?;
+
+        let pem_str = percent_decode(
+            headers
+                .get(IAS_SIGNING_CERTS)
+                .ok_or(Error::MissingSigningCertsError)?
+                .to_str()
+                .map_err(|_e| Error::BadSigningCertsError)?
+                .as_bytes(),
+        )
+        .decode_utf8()
+        .map_err(|_e| Error::BadSigningCertsError)?;
+
+        // It would be nice to eliminate the double-copy here, but... meh.
+        let chain: Vec<Vec<u8>> = parse_many(pem_str.as_bytes())
+            .iter()
+            .map(|p| p.contents.clone())
+            .collect();
+        let http_body = response.text()?;
+
+        let retval = VerificationReport {
+            sig,
+            chain,
+            http_body,
+        };
+
+        global_log::trace!("Received report from IAS: {:?}", &retval);
+
+        Ok(retval)
+    }
+}
+
+#[cfg(all(test, feature = "network-tests"))]
+mod test {
+    use super::*;
+    use attest::Nonce;
+    use rand::{prelude::StdRng, SeedableRng};
+    use std::ops::Deref;
+
+    const QUOTE_OK: &str = include_str!("../data/quote_ok.txt");
+    const DEV_SIGNING_CHAIN: &[&str] = &[concat!(
+        include_str!("../data/Dev_AttestationReportSigningCACert.pem"),
+        "\0"
+    )];
+
+    #[test]
+    // FIXME: MC-174
+    #[ignore]
+    fn test_ok() {
+        let quote = Quote::from_base64(QUOTE_OK).expect("Could not parse 'OK' quote");
+        let client = IasClient::new("").expect("Could not create IAS client");
+
+        let mut csprng: StdRng = SeedableRng::seed_from_u64(0);
+        let nonce = IasNonce::new(&mut csprng).expect("Could not create IAS nonce");
+
+        let report = client
+            .verify_quote(&quote, Some(nonce))
+            .expect("Could not verify result from IAS");
+
+        let signing_chain = DEV_SIGNING_CHAIN
+            .to_vec()
+            .iter()
+            .map(Deref::deref)
+            .map(String::from)
+            .collect();
+
+        report
+            .verify_signature(Some(signing_chain))
+            .expect("Could not verify signature");
+    }
+}

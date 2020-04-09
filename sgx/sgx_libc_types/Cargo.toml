@@ -1,0 +1,9 @@
+[package]
+name = "sgx_libc_types"
+version = "1.0.0"
+authors = ["MobileCoin"]
+
+[lib]
+name = "sgx_libc_types"
+
+[dependencies]

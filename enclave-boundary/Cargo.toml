@@ -1,0 +1,13 @@
+[package]
+name = "enclave-boundary"
+version = "1.0.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[dependencies]
+rand_core = { version = "0.5", default-features = false }
+
+common = { path = "../common", default-features = false }
+mcrand = { path = "../crypto/mcrand" }
+sgx_compat = { path = "../sgx/sgx_compat" }
+sgx_types = { path = "../sgx/sgx_types" }

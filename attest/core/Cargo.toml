@@ -1,0 +1,65 @@
+[package]
+name = "attest"
+version = "0.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+description = '''
+This crate contains necessary functions and utilities to perform remote
+attestation and verification of an SGX enclave.
+
+At present this is limited to the data structures and and errors necessary to
+verify the contents of the report as returned by Intel.
+'''
+
+[features]
+default = ["std"]
+std = [
+    "common/std",
+    "digest/std",
+    "failure/std",
+    "mbedtls/std",
+    "sha2/std",
+]
+
+# This means "use the fake SGX stuff where required"
+sgx-sim = []
+# This means "use the dev endpoint of Intel's Attestation Service"
+ias-dev = []
+
+[dependencies]
+common = { path = "../../common", default-features = false }
+mc-encodings = { path = "../../util/encodings" }
+mcrand = { path = "../../crypto/mcrand" }
+sgx_types = { path = "../../sgx/sgx_types" }
+
+mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.2", default-features = false }
+
+binascii = "0.1.2"
+bitflags = "1.2"
+cfg-if = "0.1"
+digest = { version = "0.8", default-features = false }
+failure = { version = "0.1.5", default-features = false, features = ["derive"] }
+hex_fmt = "0.3"
+rand_core = { version = "0.5", default-features = false }
+rjson = "0.3.1"
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+sha2 = { version = "0.8", default-features = false }
+subtle = { version = "2.1", default-features = false }
+generic-array = { version = "0.12" }
+prost = { version = "0.6.1", default-features = false }
+
+[dev-dependencies]
+mcserial = { path = "../../util/mcserial" }
+hex = "0.3.2"
+pem = "0.6"
+rand = "0.7"
+rand_hc = "0.2"
+
+[build-dependencies]
+# We use mbedtls to generate certificates for simulation mode
+mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.2", default-features = false }
+mbedtls-sys-auto = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.2", default-features = false }
+mcrand = { path = "../../crypto/mcrand" }
+rand_core = { version = "0.5", default-features = false }
+chrono = "0.4"
+sgx_build =  { path = "../../sgx/sgx_build" }

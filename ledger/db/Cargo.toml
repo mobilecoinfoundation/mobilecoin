@@ -1,0 +1,36 @@
+[package]
+name = "ledger-db"
+version = "0.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[lib]
+name = "ledger_db"
+
+[features]
+test_utils = ["rand", "keys"]
+
+[dependencies]
+common = { path = "../../common", features = ["log"] }
+failure = "0.1.5"
+lmdb = "0.8.0"
+mcserial = { path = "../../util/mcserial" }
+rand_core = "0.5"
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+transaction = { path = "../../transaction/core" }
+keys = { path = "../../crypto/keys", optional = true }
+rand = { version = "0.7", optional = true }
+
+[target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
+curve25519-dalek = { version = "2.0", default-features = false, features = ["simd_backend", "nightly"] }
+
+[target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
+curve25519-dalek = { version = "2.0", default-features = false, features = ["nightly", "u64_backend"] }
+
+[dev-dependencies]
+keys = { path = "../../crypto/keys" }
+transaction-std = { path = "../../transaction/std" }
+transaction-test-utils = { path = "../../transaction/core/test-utils" }
+mcrand = { path = "../../crypto/mcrand" }
+rand = "0.7"
+tempdir = "0.3"

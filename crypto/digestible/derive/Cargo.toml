@@ -1,0 +1,18 @@
+[package]
+name = "digestible-derive"
+version = "0.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[lib]
+proc_macro = true
+
+[dependencies]
+proc-macro2 = "0.4.4"
+quote = "0.6.3"
+syn = { version = "0.15", features = [ "extra-traits" ] }
+
+[dev-dependencies]
+digestible = { path = "../../digestible" }
+generic-array = "0.12"
+digest = { version = "0.8", default-features = false }

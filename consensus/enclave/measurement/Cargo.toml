@@ -1,0 +1,21 @@
+[package]
+name = "consensus-enclave-measurement"
+version = "1.0.0"
+authors = ["MobileCoin"]
+edition = "2018"
+description = "MobileCoin Consensus Enclave - Application Code"
+links = "consensus_enclave_measurement"
+
+[features]
+# Whether the enclave should be built in simulation mode when it needs to be built
+sgx-sim = []
+
+[dependencies]
+sgx_css = { path = "../../../sgx/sgx_css" }
+
+[build-dependencies]
+mcbuild-enclave = { path = "../../../mcbuild/enclave" }
+mcbuild-sgx-utils = { path = "../../../mcbuild/sgx-utils" }
+mcbuild-utils = { path = "../../../mcbuild/utils" }
+
+cargo-emit = "0.1"

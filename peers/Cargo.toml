@@ -1,0 +1,39 @@
+[package]
+name = "peers"
+version = "1.0.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[features]
+test_utils = []
+
+[dependencies]
+attest-api = { path = "../attest/api" }
+attest-enclave-api = { path = "../attest/enclave_api" }
+common = { path = "../common", features = ["log"] }
+consensus-enclave-api = { path = "../consensus/enclave/api" }
+keys = { path = "../crypto/keys" }
+ledger-db = { path = "../ledger/db" }
+mcconnection = { path = "../mcconnection" }
+mcserial = { path = "../util/mcserial" }
+mcuri = { path = "../util/mcuri" }
+mobilecoin-api = { path = "../consensus/api" }
+scp = { path = "../consensus/scp" }
+transaction = { path = "../transaction/core" }
+
+crossbeam-channel = "0.3"
+ed25519 = { version = "1.0.0-pre.1", default-features = false, features = ["serde"] }
+failure = "0.1.5"
+grpcio = "0.5.1"
+protobuf = "2.12"
+retry = "0.5"
+sha2 = { version = "0.8", default-features = false }
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+url = "2.1"
+
+[dev-dependencies]
+mcconnection-tests = { path = "../mcconnection/test-utils" }
+peers-tests = { path = "./test-utils" }
+
+rand_hc = "0.2"
+rand = "0.7"

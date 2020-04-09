@@ -1,0 +1,21 @@
+[package]
+name = "metered-channel"
+version = "0.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[lib]
+name = "metered_channel"
+
+[dependencies]
+common = { path = "../../common", features = ["log"] }
+metrics = { path = "../../util/metrics" }
+
+chrono = "0.4"
+crossbeam-channel = "0.3"
+grpcio = "0.5.1"
+lazy_static = "1.4"
+prometheus = "0.7"
+protobuf = "2.12"
+reqwest = { version = "0.9", features = ["rustls-tls"], default_features = false }
+serde_json = "1.0"

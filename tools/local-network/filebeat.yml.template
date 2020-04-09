@@ -1,0 +1,29 @@
+logging:
+  to_stderr: true
+
+filebeat.inputs:
+- type: udp
+  max_message_size: 65KiB
+  host: "localhost:16666"
+  fields_under_root: true
+  fields:
+      docker_branch: ${BRANCH}
+
+# The following processors are to ensure compatibility with version 7
+processors:
+- rename:
+    fields:
+     - from: "agent"
+       to: "beat_agent"
+    ignore_missing: true
+- rename:
+    fields:
+     - from: "log.file.path"
+       to: "source"
+    ignore_missing: true
+
+output:
+    logstash:
+       hosts: ["${LOGSTASH_HOST}"]
+       loadbalance: true
+       ssl.enabled: true

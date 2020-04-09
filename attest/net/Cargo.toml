@@ -1,0 +1,37 @@
+[package]
+name = "attest-net"
+version = "0.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+description = '''
+This crate contains necessary functions and utilities to communicate with
+remote attestation services. As such this only works in untrusted code.
+'''
+
+[features]
+default = ["network-tests"]
+network-tests = []
+sgx-sim = [
+    "attest/sgx-sim",
+]
+
+[dependencies]
+attest = { path = "../../attest/core" }
+common = { path = "../../common", features = ["log"] }
+mc-encodings = { path = "../../util/encodings" }
+
+mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.2" }
+
+cfg-if = "0.1"
+failure = { version = "0.1.5", features = ["derive"] }
+pem = "0.6"
+reqwest = { version = "0.9" , default-features = false, features = ["rustls-tls"] }
+percent-encoding = "1.0.1"
+serde_json = "1.0"
+sha2 = "0.8"
+
+[dev-dependencies]
+rand = "0.7"
+
+[build-dependencies]
+sgx_build =  { path = "../../sgx/sgx_build" }

@@ -1,0 +1,60 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
+// Blockchain-related data types and service descriptions.
+
+syntax = "proto3";
+import "google/protobuf/empty.proto";
+import "transaction.proto";
+import "external.proto";
+
+package blockchain;
+
+service BlockchainAPI {
+    rpc GetLastBlockInfo (google.protobuf.Empty) returns (LastBlockInfoResponse);
+    rpc GetBlocks (BlocksRequest) returns (BlocksResponse);
+}
+
+// Response to a `GetLastBlockInfo` call.
+message LastBlockInfoResponse {
+    // Block index
+    uint64 index = 1;
+}
+
+// Requests a range [offset, offset+limit) of Blocks.
+message BlocksRequest {
+    // Index of first block.
+    uint64 offset = 1;
+
+    // Maximum number of blocks.
+    uint32 limit = 2;
+}
+
+// Response to a `BlocksRequest`.
+message BlocksResponse {
+    repeated Block blocks = 1;
+}
+
+message Block {
+    bytes id = 1;
+    uint32 version = 2;
+    bytes parent_id = 3;
+    uint64 index = 4;
+    external.TxOutMembershipElement root_element = 5;
+    bytes contents_hash = 6;
+}
+
+message BlockSignature {
+    external.Ed25519Signature signature = 1;
+    external.Ed25519Public signer = 2;
+}
+
+message S3Block {
+    // Block
+    Block block = 1;
+
+    // Transactions in this block
+    repeated transaction.RedactedTx transactions = 2;
+
+    // Block signature, when available.
+    BlockSignature signature = 3;
+}
