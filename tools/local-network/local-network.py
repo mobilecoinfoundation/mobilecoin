@@ -333,8 +333,16 @@ class Network:
 
     def build_binaries(self):
         print('Building binaries...')
+        enclave_pem = os.path.join(PROJECT_DIR, 'Enclave_private.pem')
+        if not os.path.exists(enclave_pem):
+            subprocess.run(
+                f'openssl genrsa -out {enclave_pem} -3 3072',
+                shell=True,
+                check=True,
+            )
+
         subprocess.run(
-            f'cd {PROJECT_DIR} && openssl genrsa -out Enclave_private.pem -3 3072 && CONSENSUS_ENCLAVE_PRIVKEY=Enclave_private.pem cargo build -p consensus-service -p ledger-distribution {CARGO_FLAGS}',
+            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p consensus-service -p ledger-distribution {CARGO_FLAGS}',
             shell=True,
             check=True,
         )
