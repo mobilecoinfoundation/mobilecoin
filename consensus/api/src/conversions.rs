@@ -180,6 +180,16 @@ impl From<&RistrettoPublic> for external::RistrettoPublic {
     }
 }
 
+/// Convert external::RistrettoPublic --> RistrettoPublic.
+impl TryFrom<&external::RistrettoPublic> for RistrettoPublic {
+    type Error = ConversionError;
+
+    fn try_from(source: &external::RistrettoPublic) -> Result<Self, Self::Error> {
+        let bytes: &[u8] = source.get_data();
+        RistrettoPublic::try_from(bytes).map_err(|_| ConversionError::ArrayCastError)
+    }
+}
+
 /// Convert CompressedRistrettoPublic --> external::RistrettoPublic
 impl From<CompressedRistrettoPublic> for external::RistrettoPublic {
     fn from(other: CompressedRistrettoPublic) -> Self {
