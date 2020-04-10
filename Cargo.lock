@@ -151,7 +151,7 @@ dependencies = [
  "mcrand 1.0.0",
  "mcserial 0.1.0",
  "pem 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "prost 0.6.1 (git+https://github.com/cbeck88/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
+ "prost 0.6.1 (git+https://github.com/mobilecoinofficial/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
  "rand 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_hc 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -240,7 +240,7 @@ dependencies = [
  "attest 0.1.0",
  "common 0.1.0",
  "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "prost 0.6.1 (git+https://github.com/cbeck88/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
+ "prost 0.6.1 (git+https://github.com/mobilecoinofficial/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
  "sgx_compat 1.0.0",
  "sgx_types 1.0.1",
 ]
@@ -752,7 +752,7 @@ dependencies = [
  "mcrand 1.0.0",
  "mcserial 0.1.0",
  "message-cipher 0.1.0",
- "prost 0.6.1 (git+https://github.com/cbeck88/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
+ "prost 0.6.1 (git+https://github.com/mobilecoinofficial/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
  "rand 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_hc 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -830,7 +830,7 @@ dependencies = [
  "peers 1.0.0",
  "peers-tests 0.1.0",
  "prometheus 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "prost 0.6.1 (git+https://github.com/cbeck88/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
+ "prost 0.6.1 (git+https://github.com/mobilecoinofficial/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
  "protobuf 2.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1439,7 +1439,7 @@ dependencies = [
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mcserial 0.1.0",
  "metrics 0.1.0",
- "prost 0.6.1 (git+https://github.com/cbeck88/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
+ "prost 0.6.1 (git+https://github.com/mobilecoinofficial/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
  "protobuf 2.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "protoc-grpcio 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1813,7 +1813,7 @@ dependencies = [
  "hex_fmt 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mcserial 0.1.0",
  "pem 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "prost 0.6.1 (git+https://github.com/cbeck88/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
+ "prost 0.6.1 (git+https://github.com/mobilecoinofficial/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_hc 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "semver 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2176,7 +2176,7 @@ dependencies = [
 name = "mcserial"
 version = "0.1.0"
 dependencies = [
- "prost 0.6.1 (git+https://github.com/cbeck88/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
+ "prost 0.6.1 (git+https://github.com/mobilecoinofficial/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_cbor 0.11.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -2415,7 +2415,7 @@ dependencies = [
  "keys 0.1.0",
  "mcrand 1.0.0",
  "mcserial 0.1.0",
- "prost 0.6.1 (git+https://github.com/cbeck88/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
+ "prost 0.6.1 (git+https://github.com/mobilecoinofficial/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
  "protobuf 2.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "protoc-grpcio 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2454,7 +2454,7 @@ dependencies = [
  "mobilecoind-api 0.1.0",
  "more-asserts 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "num_cpus 1.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "prost 0.6.1 (git+https://github.com/cbeck88/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
+ "prost 0.6.1 (git+https://github.com/mobilecoinofficial/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
  "protobuf 2.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2898,16 +2898,16 @@ dependencies = [
 [[package]]
 name = "prost"
 version = "0.6.1"
-source = "git+https://github.com/cbeck88/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95#4e1905329369ca7a1cac3eda978ee9379167ee95"
+source = "git+https://github.com/mobilecoinofficial/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95#4e1905329369ca7a1cac3eda978ee9379167ee95"
 dependencies = [
  "bytes 0.5.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "prost-derive 0.6.1 (git+https://github.com/cbeck88/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
+ "prost-derive 0.6.1 (git+https://github.com/mobilecoinofficial/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
 ]
 
 [[package]]
 name = "prost-derive"
 version = "0.6.1"
-source = "git+https://github.com/cbeck88/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95#4e1905329369ca7a1cac3eda978ee9379167ee95"
+source = "git+https://github.com/mobilecoinofficial/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95#4e1905329369ca7a1cac3eda978ee9379167ee95"
 dependencies = [
  "anyhow 1.0.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "itertools 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3718,7 +3718,7 @@ name = "sgx_slog"
 version = "1.0.0"
 dependencies = [
  "cfg-if 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
- "prost 0.6.1 (git+https://github.com/cbeck88/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
+ "prost 0.6.1 (git+https://github.com/mobilecoinofficial/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
  "slog 2.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "slog-scope 4.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -4481,7 +4481,7 @@ dependencies = [
  "mcserial 0.1.0",
  "merlin 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "proptest 0.9.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "prost 0.6.1 (git+https://github.com/cbeck88/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
+ "prost 0.6.1 (git+https://github.com/mobilecoinofficial/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
  "rand 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_hc 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -4505,7 +4505,7 @@ dependencies = [
  "hkdf 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "keys 0.1.0",
  "mcserial 0.1.0",
- "prost 0.6.1 (git+https://github.com/cbeck88/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
+ "prost 0.6.1 (git+https://github.com/mobilecoinofficial/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
  "rand 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -5164,8 +5164,8 @@ dependencies = [
 "checksum proc-macro2 1.0.8 (registry+https://github.com/rust-lang/crates.io-index)" = "3acb317c6ff86a4e579dfa00fc5e6cca91ecbb4e7eb2df0468805b674eb88548"
 "checksum prometheus 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5567486d5778e2c6455b1b90ff1c558f29e751fc018130fa182e15828e728af1"
 "checksum proptest 0.9.5 (registry+https://github.com/rust-lang/crates.io-index)" = "bf6147d103a7c9d7598f4105cf049b15c99e2ecd93179bf024f0fd349be5ada4"
-"checksum prost 0.6.1 (git+https://github.com/cbeck88/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)" = "<none>"
-"checksum prost-derive 0.6.1 (git+https://github.com/cbeck88/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)" = "<none>"
+"checksum prost 0.6.1 (git+https://github.com/mobilecoinofficial/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)" = "<none>"
+"checksum prost-derive 0.6.1 (git+https://github.com/mobilecoinofficial/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)" = "<none>"
 "checksum protobuf 2.12.0 (registry+https://github.com/rust-lang/crates.io-index)" = "71964f34fd51cf04882d7ae3325fa0794d4cad66a03d0003f38d8ae4f63ba126"
 "checksum protobuf-codegen 2.12.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f122718d40a717194a9b6df594ab8f8718a31f40787a98606fcdc32fc308fdb6"
 "checksum protoc 2.10.1 (registry+https://github.com/rust-lang/crates.io-index)" = "9fd83d2547a9e2c8bc6016607281b3ec7ef4871c55be6930915481d80350ab88"
