@@ -26,7 +26,7 @@ dependencies {
 }
 application {
     // Define the main class for the application.
-    mainClassName = 'mobcurl.App'
+    mainClassName = 'com.mobilecoin.mob_client.App'
 }
 
 // Compile the protocol buffers in src/main/proto
