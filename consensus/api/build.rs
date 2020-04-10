@@ -8,7 +8,6 @@ fn compile_protos() {
         "transaction.proto",
         "blockchain.proto",
         "external.proto",
-        "ledger_enclave_server.proto",
         "consensus_client.proto",
         "consensus_common.proto",
         "consensus_peer.proto",

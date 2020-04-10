@@ -11,8 +11,6 @@ pub mod consensus_peer;
 pub mod consensus_peer_grpc;
 pub mod conversions;
 pub mod external;
-pub mod ledger_enclave_server;
-pub mod ledger_enclave_server_grpc;
 pub mod transaction;
 
 pub mod empty {
