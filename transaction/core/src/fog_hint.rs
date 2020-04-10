@@ -39,16 +39,14 @@ impl From<&PublicAddress> for FogHint {
 }
 
 impl FogHint {
-    #[inline]
     pub fn new(view_pubkey: RistrettoPublic) -> Self {
         Self {
             view_pubkey: CompressedRistrettoPublic::from(view_pubkey),
         }
     }
-    #[inline]
-    pub fn from_slice(bytes: &[u8]) -> Result<Self, ()> {
+    pub fn from_slice(bytes: &[u8]) -> Result<Self, ecies::Error> {
         Ok(Self {
-            view_pubkey: CompressedRistrettoPublic::try_from(bytes).or(Err(()))?,
+            view_pubkey: CompressedRistrettoPublic::try_from(bytes).map_err(ecies::Error::Key)?,
         })
     }
     #[inline]
@@ -92,13 +90,7 @@ impl FogHint {
             result
         };
         let mut ciphertext = [0u8; ENCRYPTED_FOG_HINT_LEN];
-        ecies::encrypt_into(
-            rng,
-            ingest_server_pubkey,
-            &plaintext,
-            &ecies::DEFAULT_HKDF_SALT,
-            &mut ciphertext,
-        );
+        ecies::encrypt_into(rng, ingest_server_pubkey, &plaintext, &mut ciphertext);
         EncryptedFogHint::from(&ciphertext)
     }
 
@@ -116,23 +108,18 @@ impl FogHint {
     /// * 128 byte encrypted payload
     ///
     /// # Returns
-    /// * Fog hint on success, () on error
-    #[inline]
+    /// * Fog hint on success, ecies error otherwise
     pub fn decrypt(
         ingest_server_private_key: &RistrettoPrivate,
         ciphertext: &EncryptedFogHint,
-    ) -> Result<Self, ()> {
+    ) -> Result<Self, ecies::Error> {
         let mut temp = [0u8; FOG_HINT_DECRYPTED_LEN];
-        ecies::decrypt_into(
-            ingest_server_private_key,
-            ciphertext.as_ref(),
-            &ecies::DEFAULT_HKDF_SALT,
-            &mut temp,
-        )?;
+        ecies::decrypt_into(ingest_server_private_key, ciphertext.as_ref(), &mut temp)?;
         // Check magic numbers
         for byte in &temp[RISTRETTO_PUBLIC_LEN..FOG_HINT_DECRYPTED_LEN] {
             if *byte != MAGIC_NUMBER {
-                return Err(());
+                // TODO: better error code
+                return Err(ecies::Error::MacFailed);
             }
         }
         FogHint::from_slice(&temp[0..RISTRETTO_PUBLIC_LEN])
@@ -177,7 +164,7 @@ mod testing {
             let not_z = RistrettoPrivate::from_random(&mut rng);
 
             let result = FogHint::decrypt(&not_z, &ciphertext);
-            assert_eq!(Err(()), result);
+            assert_eq!(Err(ecies::Error::MacFailed), result);
         });
     }
 }

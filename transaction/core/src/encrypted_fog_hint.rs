@@ -96,13 +96,7 @@ impl EncryptedFogHint {
         let mut plaintext = [0u8; ENCRYPTED_FOG_HINT_LEN - ecies::ECIES_EXTRA_SPACE];
         rng.fill_bytes(&mut plaintext);
         let key = keys::RistrettoPublic::from_random(rng);
-        ecies::encrypt_into(
-            rng,
-            &key,
-            &plaintext[..],
-            &ecies::DEFAULT_HKDF_SALT,
-            &mut result,
-        );
+        ecies::encrypt_into(rng, &key, &plaintext[..], &mut result);
         Self::from(&result)
     }
 }
