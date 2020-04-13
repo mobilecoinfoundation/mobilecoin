@@ -114,7 +114,7 @@ pub extern "C" fn mobileenclave_call(
 ) -> sgx_status_t {
     if inbuf.is_null()
         || outbuf.is_null()
-        || outbuf.is_null()
+        || outbuf_used.is_null()
         || outbuf_retry_id.is_null()
         || unsafe { sgx_is_outside_enclave(inbuf as *const c_void, inbuf_len) } != 1
         || unsafe { sgx_is_outside_enclave(outbuf as *const c_void, outbuf_len) } != 1
