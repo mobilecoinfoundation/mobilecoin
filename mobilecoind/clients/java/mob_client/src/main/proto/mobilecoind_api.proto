@@ -371,7 +371,6 @@ message GenerateOptimizationTxResponse {
 }
 
 // Generate a transaction that can be used for a "MobileCoin Transfer Code" QR.
-// TODO is that correct?
 message GenerateTransferCodeTxRequest {
     bytes sender_monitor_id = 1;
     uint64 change_subaddress = 2;
@@ -379,10 +378,23 @@ message GenerateTransferCodeTxRequest {
     uint64 value = 4;
     uint64 fee = 5;
     uint64 tombstone = 6;
+    string memo = 7;
 }
 message GenerateTransferCodeTxResponse {
+    // The tx proposal to submit to the network.
     TxProposal tx_proposal = 1;
+
+    // The entropy for constructing the AccountKey that can access the funds.
     bytes entropy = 2;
+
+    // The TxOut public key that has the funds.
+    external.RistrettoPublic tx_public_key = 3;
+
+    // The memo (simply copied from the request).
+    string memo = 4;
+
+    // The b58-encoded Transfer Code
+    string b58_code = 5;
 }
 
 // Submits a transaction to the network.
