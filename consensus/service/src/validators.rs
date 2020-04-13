@@ -164,7 +164,7 @@ pub mod well_formed_tests {
 
         let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger.clone());
 
-        let key_images: Vec<KeyImage> = tx.key_images().into_iter().cloned().collect();
+        let key_images: Vec<KeyImage> = tx.key_images();
         let membership_proof_highest_indices = tx.get_membership_proof_highest_indices();
 
         let (cur_block_index, membership_proofs) =
@@ -231,7 +231,7 @@ pub mod well_formed_tests {
         assert_eq!(is_well_formed(&tx, &ledger), Ok(()));
 
         // Corrupt the signature.
-        tx.signature.key_images[0] = KeyImage::from(77);
+        tx.signature.ring_signatures[0].key_image = KeyImage::from(77);
         assert_eq!(
             Err(TransactionValidationError::InvalidTransactionSignature),
             is_well_formed(&tx, &ledger)
@@ -580,7 +580,7 @@ mod is_valid_tests {
             &mut rng,
         );
 
-        tx.signature.key_images[0] = tx_stored.key_images[0].clone();
+        tx.signature.ring_signatures[0].key_image = tx_stored.key_images[0].clone();
         assert_eq!(
             Err(TransactionValidationError::ContainsSpentKeyImage),
             is_valid(&tx, &ledger)

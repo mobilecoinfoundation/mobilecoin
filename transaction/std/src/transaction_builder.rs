@@ -8,16 +8,16 @@ use keys::{FromRandom, RistrettoPrivate, RistrettoPublic};
 use std::collections::HashSet;
 
 use crate::{InputCredentials, TxBuilderError};
+use curve25519_dalek::scalar::Scalar;
 use rand_core::{CryptoRng, RngCore};
+use std::convert::TryFrom;
 use transaction::{
     account_keys::PublicAddress,
-    amount::AmountError,
     constants::BASE_FEE,
     encrypted_fog_hint::EncryptedFogHint,
     fog_hint::FogHint,
     onetime_keys::compute_shared_secret,
-    range_proofs::generate_range_proofs,
-    ring_signature::{get_input_rows, sign, Blinding, Commitment},
+    ring_signature::{Address, Commitment, SignatureRctBulletproofs},
     tx::{Tx, TxIn, TxOut, TxPrefix},
 };
 
@@ -109,113 +109,80 @@ impl TransactionBuilder {
             }
         }
 
-        // RCT_TYPE_FULL requires the true input to be in the same position within each ring.
-        // If each ring is a column of a matrix, the true inputs must be on the same row.
-        // Randomly choose a row that will contain the real inputs.
-        let ring_size = self.input_credentials[0].ring.len(); // ring size, e.g. 11
-        let chosen_input_row: usize = rng.next_u32() as usize % ring_size;
-
         let inputs: Vec<TxIn> = self
             .input_credentials
-            .iter_mut()
-            .map(|input_credential| {
-                // Swap the real input into the chosen position.
-                let real_index = input_credential.real_index;
-                input_credential.ring.swap(real_index, chosen_input_row);
-                input_credential
-                    .membership_proofs
-                    .swap(real_index, chosen_input_row);
-                input_credential.real_index = chosen_input_row;
-
-                TxIn {
-                    ring: input_credential.ring.clone(),
-                    proofs: input_credential.membership_proofs.clone(),
-                }
+            .iter()
+            .map(|input_credential| TxIn {
+                ring: input_credential.ring.clone(),
+                proofs: input_credential.membership_proofs.clone(),
             })
             .collect();
 
         let tx_prefix = TxPrefix::new(inputs, self.outputs.clone(), self.fee);
 
-        // Commitment and blinding factor for each output.
-        let mut output_commitments_and_blindings: Vec<(Commitment, Blinding)> = tx_prefix
+        let tx_prefix_hash = tx_prefix.hash();
+        let message = tx_prefix_hash.as_bytes();
+
+        let mut rings: Vec<Vec<(Address, Commitment)>> = Vec::new();
+        for tx_in in &tx_prefix.inputs {
+            let mut ring: Vec<(Address, Commitment)> = Vec::new();
+            for tx_out in &tx_in.ring {
+                let address = RistrettoPublic::try_from(&tx_out.target_key)?;
+                let commitment = tx_out.amount.commitment;
+                ring.push((address, commitment));
+            }
+            rings.push(ring);
+        }
+
+        let real_input_indices: Vec<usize> = self
+            .input_credentials
+            .iter()
+            .map(|input_credential| input_credential.real_index)
+            .collect();
+
+        // One-time private key, amount value, and amount blinding for each real input.
+        let mut input_secrets: Vec<(RistrettoPrivate, u64, Scalar)> = Vec::new();
+        for input_credential in &self.input_credentials {
+            let onetime_private_key = input_credential.onetime_private_key;
+            let amount = &input_credential.ring[input_credential.real_index].amount;
+            let shared_secret = compute_shared_secret(
+                &input_credential.real_output_public_key,
+                &input_credential.view_private_key,
+            );
+            let (value, blinding) = amount.get_value(&shared_secret)?;
+            input_secrets.push((onetime_private_key, value, blinding.into()));
+        }
+
+        let mut output_values_and_blindings: Vec<(u64, Scalar)> = tx_prefix
             .outputs
             .iter()
             .enumerate()
             .map(|(index, tx_out)| {
                 let amount = &tx_out.amount;
                 let shared_secret = &self.output_shared_secrets[index];
-                let (_value, blinding) = amount
+                let (value, blinding) = amount
                     .get_value(shared_secret)
                     .expect("TransactionBuilder created an invalid Amount");
-                (amount.commitment, blinding)
+                (value, blinding.into())
             })
             .collect();
 
-        // Add a commitment and blinding for the fee output.
-        let (fee_commitment, fee_blinding) = tx_prefix.fee_commitment_and_blinding();
-        output_commitments_and_blindings.push((fee_commitment, fee_blinding));
+        // The fee output is implicit in the tx_prefix.
+        output_values_and_blindings.push(tx_prefix.fee_value_and_blinding());
 
-        // Range proof
-        let (range_proof, _commitments) = {
-            let (mut output_values, mut output_blindings): (Vec<u64>, Vec<Blinding>) = tx_prefix
-                .outputs
-                .iter()
-                .enumerate()
-                .map(|(index, tx_out)| {
-                    let shared_secret = &self.output_shared_secrets[index];
-                    tx_out
-                        .amount
-                        .get_value(shared_secret)
-                        .expect("TransactionBuilder created an invalid output amount.")
-                })
-                .unzip();
-
-            output_values.push(tx_prefix.fee);
-            output_blindings.push(fee_blinding);
-
-            generate_range_proofs(&output_values, &output_blindings, rng)
-                .map_err(|_e| TxBuilderError::RangeProofFailed)?
-        };
-
-        // The one-time private key and blinding for each input.
-        let input_keys_and_blindings_result: Result<
-            Vec<(RistrettoPrivate, Blinding)>,
-            AmountError,
-        > = self
-            .input_credentials
-            .iter()
-            .map(|input_credential| {
-                let amount = &input_credential.ring[input_credential.real_index].amount;
-                let shared_secret = compute_shared_secret(
-                    &input_credential.real_output_public_key,
-                    &input_credential.view_private_key,
-                );
-                let (_value, blinding) = amount.get_value(&shared_secret)?;
-                let onetime_private_key = input_credential.onetime_private_key;
-                Ok((onetime_private_key, blinding))
-            })
-            .collect();
-
-        let input_keys_and_blindings: Vec<(RistrettoPrivate, Blinding)> =
-            input_keys_and_blindings_result?;
-
-        // RingCT Signature
-        let prefix_hash = tx_prefix.hash();
-        let input_rows = get_input_rows(&tx_prefix.inputs).unwrap();
-        let signature = sign(
-            prefix_hash.as_bytes(),
-            &input_rows,
-            &output_commitments_and_blindings,
-            &input_keys_and_blindings,
-            chosen_input_row,
+        let signature = SignatureRctBulletproofs::sign(
+            message,
+            &rings,
+            &real_input_indices,
+            &input_secrets,
+            &output_values_and_blindings,
             rng,
         )?;
 
         Ok(Tx {
             prefix: tx_prefix,
-            signature,
-            range_proofs: range_proof.to_bytes(),
             tombstone_block: self.tombstone_block,
+            signature,
         })
     }
 }
@@ -270,15 +237,15 @@ fn create_fog_hint<RNG: CryptoRng + RngCore>(
 }
 
 #[cfg(test)]
-pub mod tests {
+pub mod transaction_builder_tests {
     use super::*;
     use rand::{rngs::StdRng, SeedableRng};
     use std::convert::TryFrom;
     use transaction::{
         account_keys::{AccountKey, DEFAULT_SUBADDRESS_INDEX},
         onetime_keys::*,
-        ring_signature::{get_input_rows, verify},
         tx::TxOutMembershipProof,
+        validation::validate_transaction_signature,
     };
 
     #[test]
@@ -349,15 +316,15 @@ pub mod tests {
 
         let tx = transaction_builder.build(&mut rng).unwrap();
 
-        // `transaction` should have a single input.
+        // The transaction should have a single input.
         assert_eq!(tx.prefix.inputs.len(), 1);
 
         assert_eq!(tx.prefix.inputs[0].proofs.len(), membership_proofs.len());
 
         let expected_key_images = vec![key_image];
-        assert_eq!(*tx.key_images(), expected_key_images);
+        assert_eq!(tx.key_images(), expected_key_images);
 
-        // `transaction` should have one output.
+        // The transaction should have one output.
         assert_eq!(tx.prefix.outputs.len(), 1);
 
         // The output should belong to the correct recipient.
@@ -370,19 +337,8 @@ pub mod tests {
             ));
         }
 
-        // `transaction` should have a valid ringct signature
-        {
-            let prefix_hash = tx.prefix.hash();
-            let input_rows = get_input_rows(&tx.prefix.inputs).unwrap();
-            let commitments = tx.prefix.output_commitments();
-
-            assert!(verify(
-                prefix_hash.as_bytes(),
-                &input_rows,
-                &commitments,
-                &tx.signature
-            ));
-        }
+        // The transaction should have a valid signature.
+        assert!(validate_transaction_signature(&tx, &mut rng).is_ok());
     }
 
     #[test]

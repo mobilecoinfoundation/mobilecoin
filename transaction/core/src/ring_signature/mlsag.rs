@@ -7,14 +7,25 @@ use core::convert::TryInto;
 
 use blake2::{Blake2b, Digest};
 use curve25519_dalek::ristretto::RistrettoPoint;
-use rand_core::{CryptoRng, RngCore};
-
+use digestible::Digestible;
 use keys::RistrettoPrivate;
-use mcserial::ReprBytes32;
+use mcserial::{
+    prost::{
+        bytes::{Buf, BufMut},
+        encoding::{encoded_len_varint, key_len, skip_field, DecodeContext, WireType},
+        Message,
+    },
+    DecodeError, ReprBytes32,
+};
+use rand_core::{CryptoRng, RngCore};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     onetime_keys::compute_key_image,
-    ring_signature::{Address, Blinding, Commitment, Error, KeyImage, Scalar, GENERATORS},
+    ring_signature::{
+        encoding::{read_u8_32, write_u8_32},
+        Address, Blinding, Commitment, Error, KeyImage, Scalar, GENERATORS,
+    },
 };
 
 fn hash_to_point(address: &Address) -> RistrettoPoint {
@@ -22,7 +33,8 @@ fn hash_to_point(address: &Address) -> RistrettoPoint {
 }
 
 /// MLSAG for a ring of public keys and amount commitments.
-#[derive(Clone, Debug)]
+/// Note: Serialize and Deserialize appear to be cruft left over from sdk_json_interface.
+#[derive(Clone, Debug, Default, Digestible, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RingMLSAG {
     /// The initial challenge `c[0]`.
     pub c_zero: Scalar,
@@ -32,6 +44,76 @@ pub struct RingMLSAG {
 
     /// Key image "spent" by this signature.
     pub key_image: KeyImage,
+}
+
+const C_ZERO_TAG: u32 = 1;
+const RESPONSES_TAG: u32 = 2;
+const KEY_IMAGE_TAG: u32 = 3;
+
+/// Message allows RingMLSAG to be serialized with Prost (without using a protobuf).
+impl Message for RingMLSAG {
+    /// Encodes the message to the buffer.
+    fn encode_raw<B>(&self, buf: &mut B)
+    where
+        B: BufMut,
+        Self: Sized,
+    {
+        // c_zero
+        write_u8_32(self.c_zero.to_bytes(), C_ZERO_TAG, buf);
+
+        // responses
+        for response in &self.responses {
+            write_u8_32(response.to_bytes(), RESPONSES_TAG, buf);
+        }
+
+        // key_image
+        write_u8_32(self.key_image.to_bytes(), KEY_IMAGE_TAG, buf);
+    }
+
+    /// Decodes a field from a buffer, and merges it into `self`.
+    fn merge_field<B>(
+        &mut self,
+        tag: u32,
+        wire_type: WireType,
+        buf: &mut B,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError>
+    where
+        B: Buf,
+        Self: Sized,
+    {
+        match tag {
+            C_ZERO_TAG => {
+                self.c_zero = Scalar::from_bytes_mod_order(read_u8_32(wire_type, buf)?);
+                Ok(())
+            }
+            RESPONSES_TAG => {
+                let response = Scalar::from_bytes_mod_order(read_u8_32(wire_type, buf)?);
+                self.responses.push(response);
+                Ok(())
+            }
+            KEY_IMAGE_TAG => {
+                self.key_image = KeyImage::from(read_u8_32(wire_type, buf)?);
+                Ok(())
+            }
+            _ => skip_field(wire_type, tag, buf, ctx),
+        }
+    }
+
+    /// Returns the encoded length of the message without a length delimiter.
+    fn encoded_len(&self) -> usize {
+        let c_zero_len = key_len(C_ZERO_TAG) + encoded_len_varint(32 as u64) + 32;
+        let responses_len =
+            (key_len(RESPONSES_TAG) + encoded_len_varint(32 as u64) + 32) * self.responses.len();
+        let key_image_len = key_len(KEY_IMAGE_TAG) + encoded_len_varint(32 as u64) + 32;
+
+        c_zero_len + responses_len + key_image_len
+    }
+
+    /// Clears the message, resetting all fields to their default.
+    fn clear(&mut self) {
+        *self = Self::default();
+    }
 }
 
 impl RingMLSAG {
@@ -267,21 +349,19 @@ impl RingMLSAG {
 
 #[cfg(test)]
 mod mlsag_tests {
-    use keys::{FromRandom, RistrettoPrivate, RistrettoPublic};
+    use alloc::vec::Vec;
 
-    use crate::{
-        proptest_fixtures::*,
-        ring_signature::{Address, Commitment, Scalar, GENERATORS},
-    };
+    use keys::{FromRandom, RistrettoPrivate, RistrettoPublic};
+    use rand_core::RngCore;
+
+    use proptest::{array::uniform32, prelude::*};
+    use rand::{rngs::StdRng, CryptoRng, SeedableRng};
 
     use crate::{
         onetime_keys::compute_key_image,
-        ring_signature::{mlsag::RingMLSAG, Error},
+        proptest_fixtures::*,
+        ring_signature::{mlsag::RingMLSAG, Address, Commitment, Error, Scalar, GENERATORS},
     };
-    use alloc::vec::Vec;
-    use proptest::{array::uniform32, prelude::*};
-    use rand::{rngs::StdRng, CryptoRng, SeedableRng};
-    use rand_core::RngCore;
 
     extern crate std;
 
@@ -341,7 +421,7 @@ mod mlsag_tests {
     }
 
     proptest! {
-        #![proptest_config(ProptestConfig::with_cases(10))]
+        #![proptest_config(ProptestConfig::with_cases(3))]
 
         #[test]
         // `sign` should return a signature with 2*ring_size responses.
@@ -829,6 +909,39 @@ mod mlsag_tests {
                     _ => panic!(),
                 }
             }
+        }
+
+        #[test]
+        // decode(encode(&signature)) should be the identity function.
+        fn test_encode_decode(
+            num_mixins in 1..17usize,
+            seed in any::<[u8; 32]>(),
+        ) {
+            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let pseudo_output_blinding = Scalar::random(&mut rng);
+            let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
+
+            let signature = RingMLSAG::sign(
+                &params.message,
+                &params.ring,
+                params.real_index,
+                &params.onetime_private_key,
+                params.value,
+                &params.blinding,
+                &params.pseudo_output_blinding,
+                &mut rng,
+            )
+            .unwrap();
+
+            use mcserial::prost::Message;
+
+            // The encoded bytes should have the correct length.
+            let bytes = mcserial::encode(&signature);
+            assert_eq!(bytes.len(), signature.encoded_len());
+
+            // decode(encode(&signature)) should be the identity function.
+            let recovered_signature = mcserial::decode(&bytes).unwrap();
+            assert_eq!(signature, recovered_signature);
         }
 
     } // end proptest!

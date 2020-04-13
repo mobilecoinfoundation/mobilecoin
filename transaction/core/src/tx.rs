@@ -1,15 +1,5 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-use crate::{
-    account_keys::PublicAddress,
-    amount::{Amount, AmountError},
-    blake2b_256::Blake2b256,
-    encrypted_fog_hint::EncryptedFogHint,
-    onetime_keys::{compute_shared_secret, compute_tx_pubkey, create_onetime_public_key},
-    range::Range,
-    ring_signature::{Blinding, Commitment, KeyImage, SignatureRctFull, GENERATORS},
-    RedactedTx,
-};
 use alloc::vec::Vec;
 use common::{Hash, HashMap};
 use core::{
@@ -23,6 +13,17 @@ use mcserial::{prost_message_helper32, ReprBytes32};
 use prost::Message;
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
+
+use crate::{
+    account_keys::PublicAddress,
+    amount::{Amount, AmountError},
+    blake2b_256::Blake2b256,
+    encrypted_fog_hint::EncryptedFogHint,
+    onetime_keys::{compute_shared_secret, compute_tx_pubkey, create_onetime_public_key},
+    range::Range,
+    ring_signature::{Blinding, Commitment, KeyImage, SignatureRctBulletproofs, GENERATORS},
+    RedactedTx,
+};
 
 /// Transaction hash length, in bytes.
 pub const TX_HASH_LEN: usize = 32;
@@ -103,19 +104,13 @@ pub struct Tx {
     #[prost(message, required, tag = "1")]
     pub prefix: TxPrefix,
 
-    /// The transaction signature.
-    #[prost(message, required, tag = "2")]
-    pub signature: SignatureRctFull,
-
-    /// The proofs that output values are in the range [0,2^64)
-    /// These are serialized aggregated bulletproofs; must store as bytes
-    /// until we can use bulletproofs crate in enclave (nostd broken)
-    #[prost(bytes, tag = "3")]
-    pub range_proofs: Vec<u8>,
-
     /// The block number at which this transaction is no longer considered valid.
-    #[prost(uint64, tag = "4")]
+    #[prost(uint64, tag = "2")]
     pub tombstone_block: u64,
+
+    /// The transaction signature.
+    #[prost(message, required, tag = "3")]
+    pub signature: SignatureRctBulletproofs,
 }
 
 impl fmt::Display for Tx {
@@ -133,8 +128,8 @@ impl Tx {
     }
 
     /// Key images "spent" by this transaction.
-    pub fn key_images(&self) -> &Vec<KeyImage> {
-        &self.signature.key_images
+    pub fn key_images(&self) -> Vec<KeyImage> {
+        self.signature.key_images()
     }
 
     /// Get the highest index of each membership proof referenced by the transaction.
@@ -144,7 +139,7 @@ impl Tx {
 
     /// Redacts all sensitive information.
     pub fn redact(self) -> RedactedTx {
-        let key_images: Vec<KeyImage> = self.signature.key_images;
+        let key_images: Vec<KeyImage> = self.signature.key_images();
         let outputs = self.prefix.outputs;
         RedactedTx::new(outputs, key_images)
     }
@@ -204,14 +199,8 @@ impl TxPrefix {
     }
 
     /// Get the commitment and blinding for the fee output.
-    pub fn fee_commitment_and_blinding(&self) -> (Commitment, Blinding) {
-        let fee_blinding = Blinding::from(0);
-        (
-            Commitment::from(
-                GENERATORS.commit(Scalar::from(self.fee), fee_blinding.clone().into()),
-            ),
-            fee_blinding,
-        )
+    pub fn fee_value_and_blinding(&self) -> (u64, Scalar) {
+        (self.fee, Scalar::zero())
     }
 
     /// Get all output commitments (including explicit outputs and the implicit fee output).
@@ -221,7 +210,12 @@ impl TxPrefix {
             .iter()
             .map(|output| output.amount.commitment)
             .collect();
-        commitments.push(self.fee_commitment_and_blinding().0);
+
+        let fee_commitment = {
+            let (value, blinding) = self.fee_value_and_blinding();
+            Commitment::from(GENERATORS.commit(Scalar::from(value), blinding))
+        };
+        commitments.push(fee_commitment);
         commitments
     }
 }
@@ -399,19 +393,22 @@ prost_message_helper32! { TxOutMembershipHash }
 
 #[cfg(test)]
 mod tests {
+    use alloc::vec::Vec;
+
+    use keys::RistrettoPublic;
+    use mcserial::ReprBytes32;
+    use prost::Message;
+
+    use rand::{rngs::StdRng, SeedableRng};
+
     use crate::{
         account_keys::AccountKey,
         amount::Amount,
         constants::{BASE_FEE, FEE_SPEND_PUBLIC_KEY, FEE_VIEW_PRIVATE_KEY, FEE_VIEW_PUBLIC_KEY},
         encrypted_fog_hint::EncryptedFogHint,
-        ring_signature::{Blinding, CurvePoint, CurveScalar, KeyImage, SignatureRctFull},
+        ring_signature::{Blinding, CurvePoint, CurveScalar, KeyImage, SignatureRctBulletproofs},
         tx::{Tx, TxIn, TxOut, TxPrefix},
     };
-    use alloc::vec::Vec;
-    use keys::RistrettoPublic;
-    use mcserial::ReprBytes32;
-    use prost::Message;
-    use rand::{rngs::StdRng, SeedableRng};
 
     #[test]
     // `serialize_tx` should create a Tx, encode/decode it, and compare
@@ -458,22 +455,19 @@ mod tests {
 
         assert_eq!(prefix, TxPrefix::decode(&buf[..]).unwrap());
 
-        let signature = SignatureRctFull {
-            key_images: vec![KeyImage::from(CurvePoint::from(23))],
-            challenge_responses: vec![],
-            challenge: CurveScalar::from(8),
-        };
+        // TODO: use a meaningful signature.
+        let signature = SignatureRctBulletproofs::default();
 
         let tx = Tx {
             prefix,
-            signature,
-            range_proofs: vec![8u8; 32],
             tombstone_block: 23u64,
+            signature,
         };
 
         let mut buf = Vec::new();
         tx.encode(&mut buf).expect("failed to serialize into slice");
-        assert_eq!(tx, Tx::decode(&buf[..]).unwrap());
+        let recovered_tx: Tx = Tx::decode(&buf[..]).unwrap();
+        assert_eq!(tx, recovered_tx);
     }
 
     #[test]

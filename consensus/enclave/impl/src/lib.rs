@@ -238,7 +238,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 
         let tx_hash = tx.tx_hash();
         let highest_indices = tx.get_membership_proof_highest_indices();
-        let key_images: Vec<KeyImage> = tx.key_images().clone();
+        let key_images: Vec<KeyImage> = tx.key_images();
 
         Ok(TxContext {
             locally_encrypted_tx,
@@ -268,7 +268,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                 let locally_encrypted_tx = maybe_locally_encrypted_tx?;
                 let tx_hash = tx.tx_hash();
                 let highest_indices = tx.get_membership_proof_highest_indices();
-                let key_images: Vec<KeyImage> = tx.key_images().clone();
+                let key_images: Vec<KeyImage> = tx.key_images();
 
                 Ok(TxContext {
                     locally_encrypted_tx,
@@ -415,13 +415,13 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let mut used_key_images = BTreeSet::default();
         for tx in &transactions {
             for key_image in tx.key_images() {
-                if used_key_images.contains(key_image) {
+                if used_key_images.contains(&key_image) {
                     return Err(Error::RedactTxs(format!(
                         "Duplicate key image: {:?}",
                         key_image
                     )));
                 }
-                used_key_images.insert(key_image.clone());
+                used_key_images.insert(key_image);
             }
         }
 
@@ -602,10 +602,7 @@ mod tests {
         assert_eq!(well_formed_tx_context.tx_hash(), &tx.tx_hash());
         assert_eq!(well_formed_tx_context.fee(), tx.prefix.fee);
         assert_eq!(well_formed_tx_context.tombstone_block(), tx.tombstone_block);
-        assert_eq!(
-            well_formed_tx_context.key_images(),
-            &tx.key_images().into_iter().cloned().collect::<Vec<_>>()
-        );
+        assert_eq!(*well_formed_tx_context.key_images(), tx.key_images());
 
         // All three tx representations should be different.
         assert_ne!(tx_bytes, locally_encrypted_tx.0);

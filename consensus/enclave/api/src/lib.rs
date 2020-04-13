@@ -86,7 +86,7 @@ impl From<&Tx> for WellFormedTxContext {
             tx_hash: tx.tx_hash(),
             fee: tx.prefix.fee,
             tombstone_block: tx.tombstone_block,
-            key_images: tx.key_images().clone(),
+            key_images: tx.key_images(),
             highest_indices: tx.get_membership_proof_highest_indices(),
         }
     }

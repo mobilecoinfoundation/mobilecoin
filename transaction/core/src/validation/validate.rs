@@ -11,12 +11,14 @@ use crate::{
     constants::*,
     membership_proofs::{derive_proof_at_index, is_membership_proof_valid},
     range_proofs::check_range_proofs,
-    ring_signature::{get_input_rows, verify},
+    ring_signature::{Address, Commitment},
     tx::{Tx, TxOut, TxOutMembershipProof, TxPrefix},
 };
 use bulletproofs::RangeProof;
 use common::HashSet;
+use core::convert::TryFrom;
 use curve25519_dalek::ristretto::CompressedRistretto;
+use keys::RistrettoPublic;
 use rand_core::{CryptoRng, RngCore};
 
 /// Determines if the transaction is valid, with respect to the provided context.
@@ -42,9 +44,7 @@ pub fn validate<R: RngCore + CryptoRng>(
 
     validate_membership_proofs(&tx.prefix, &root_proofs)?;
 
-    validate_range_proofs(&tx, csprng)?;
-
-    validate_transaction_signature(&tx)?;
+    validate_transaction_signature(&tx, csprng)?;
 
     validate_transaction_fee(&tx)?;
 
@@ -52,9 +52,8 @@ pub fn validate<R: RngCore + CryptoRng>(
 
     validate_tombstone(current_block_index, tx.tombstone_block)?;
 
-    // TODO: The transaction must not contain a Key Image that has previously been spent.
-    // This should be implemented using proofs-of-non-membership, but could be implemented
-    // by a check in untrusted code.
+    // Note: The transaction must not contain a Key Image that has previously been spent.
+    // This must be checked outside the enclave.
 
     Ok(())
 }
@@ -167,34 +166,29 @@ fn validate_key_images_are_unique(tx: &Tx) -> TransactionValidationResult<()> {
     Ok(())
 }
 
-fn validate_range_proofs<R: RngCore + CryptoRng>(
+pub fn validate_transaction_signature<R: RngCore + CryptoRng>(
     tx: &Tx,
     rng: &mut R,
 ) -> TransactionValidationResult<()> {
-    let commitments: Vec<CompressedRistretto> = tx
-        .prefix
-        .output_commitments()
-        .iter()
-        .map(|commitment| CompressedRistretto::from_slice(&commitment.to_bytes()))
-        .collect();
+    let tx_prefix_hash = tx.prefix.hash();
+    let message = tx_prefix_hash.as_bytes();
 
-    let range_proof = RangeProof::from_bytes(&tx.range_proofs)
-        .map_err(|_e| TransactionValidationError::InvalidRangeProof)?;
-
-    check_range_proofs(&range_proof, &commitments, rng)
-        .map_err(|_e| TransactionValidationError::InvalidRangeProof)
-}
-
-fn validate_transaction_signature(tx: &Tx) -> TransactionValidationResult<()> {
-    let prefix_hash = tx.prefix.hash();
-    let input_rows = get_input_rows(&tx.prefix.inputs)?;
-    let commitments = tx.prefix.output_commitments();
-
-    if !verify(&prefix_hash.0, &input_rows, &commitments, &tx.signature) {
-        return Err(TransactionValidationError::InvalidTransactionSignature);
+    let mut rings: Vec<Vec<(Address, Commitment)>> = Vec::new();
+    for tx_in in &tx.prefix.inputs {
+        let mut ring: Vec<(Address, Commitment)> = Vec::new();
+        for tx_out in &tx_in.ring {
+            let address = RistrettoPublic::try_from(&tx_out.target_key)?;
+            let commitment = tx_out.amount.commitment;
+            ring.push((address, commitment));
+        }
+        rings.push(ring);
     }
 
-    Ok(())
+    let output_commitments = tx.prefix.output_commitments();
+
+    tx.signature
+        .verify(message, &rings, &output_commitments, rng)
+        .map_err(|_e| TransactionValidationError::InvalidTransactionSignature)
 }
 
 /// The fee amount must be greater than or equal to `BASE_FEE`.
@@ -329,6 +323,7 @@ pub fn validate_tombstone(
 #[allow(unused)]
 mod tests {
     extern crate alloc;
+
     use alloc::{string::ToString, vec::Vec};
 
     use crate::{
@@ -342,7 +337,7 @@ mod tests {
             error::TransactionValidationError,
             validate::{
                 validate_key_images_are_unique, validate_membership_proofs,
-                validate_number_of_inputs, validate_number_of_outputs, validate_range_proofs,
+                validate_number_of_inputs, validate_number_of_outputs,
                 validate_ring_elements_are_unique, validate_ring_sizes, validate_tombstone,
                 validate_transaction_fee, validate_transaction_signature, MAX_TOMBSTONE_BLOCKS,
             },
@@ -677,8 +672,10 @@ mod tests {
     /// validate_key_images_are_unique rejects duplicate key image.
     fn test_validate_key_images_are_unique_rejects_duplicate() {
         let (mut tx, _ledger) = create_test_tx();
-        let key_image = tx.key_images()[0].clone();
-        tx.signature.key_images.push(key_image);
+        // Tx only contains a single ring signature, which contains the key image. Duplicate the
+        // ring signature so that tx.key_images() returns a duplicate key image.
+        let ring_signature = tx.signature.ring_signatures[0].clone();
+        tx.signature.ring_signatures.push(ring_signature);
 
         assert_eq!(
             validate_key_images_are_unique(&tx),
@@ -694,43 +691,13 @@ mod tests {
     }
 
     #[test]
-    fn test_validate_range_proofs() {
-        let (orig_tx, _ledger) = create_test_tx();
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-
-        // Valid range proofs
-        {
-            assert_eq!(validate_range_proofs(&orig_tx, &mut rng), Ok(()));
-        }
-
-        // Range proofs that contain invalid data
-        {
-            let mut tx = orig_tx.clone();
-            tx.range_proofs = vec![1, 2, 3];
-            assert_eq!(
-                validate_range_proofs(&tx, &mut rng),
-                Err(TransactionValidationError::InvalidRangeProof)
-            );
-        }
-
-        // Invalid range proof
-        {
-            let mut tx = orig_tx.clone();
-            tx.prefix.outputs[0].amount.commitment = Commitment::from(46);
-            assert_eq!(
-                validate_range_proofs(&tx, &mut rng),
-                Err(TransactionValidationError::InvalidRangeProof)
-            );
-        }
-    }
-
-    #[test]
     fn test_validate_transaction_signature() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let (orig_tx, _ledger) = create_test_tx();
 
         // Valid signature
         {
-            assert_eq!(validate_transaction_signature(&orig_tx), Ok(()));
+            assert_eq!(validate_transaction_signature(&orig_tx, &mut rng), Ok(()));
         }
 
         // Invalid signature due to altered input
@@ -739,7 +706,7 @@ mod tests {
             tx.prefix.inputs[0].ring.pop();
 
             assert_eq!(
-                validate_transaction_signature(&tx),
+                validate_transaction_signature(&tx, &mut rng),
                 Err(TransactionValidationError::InvalidTransactionSignature)
             );
         }
@@ -750,7 +717,7 @@ mod tests {
             tx.prefix.outputs[0].amount.commitment = Commitment::from(46);
 
             assert_eq!(
-                validate_transaction_signature(&tx),
+                validate_transaction_signature(&tx, &mut rng),
                 Err(TransactionValidationError::InvalidTransactionSignature)
             );
         }
@@ -760,7 +727,7 @@ mod tests {
             // The amount here needs to be bigger than whatever is used in `initialize_ledger`.
             let (tx, _ledger) =
                 create_test_tx_with_amount(INITIALIZE_LEDGER_AMOUNT - BASE_FEE, BASE_FEE);
-            assert_eq!(validate_transaction_signature(&tx), Ok(()));
+            assert_eq!(validate_transaction_signature(&tx, &mut rng), Ok(()));
         }
     }
 

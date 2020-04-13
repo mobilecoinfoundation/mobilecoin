@@ -8,6 +8,7 @@
 
 use crate::{blockchain, consensus_common::ProposeTxResult, external, transaction as tx_grpc};
 use common::HashMap;
+use curve25519_dalek::ristretto::CompressedRistretto;
 use keys::{
     CompressedRistrettoPublic, Ed25519Public, Ed25519Signature, RistrettoPrivate, RistrettoPublic,
 };
@@ -24,8 +25,8 @@ use transaction::{
     encrypted_fog_hint::EncryptedFogHint,
     range::Range,
     ring_signature::{
-        Blinding, ChallengeResponse, Commitment, CurvePoint, CurveScalar, Error as RingSigError,
-        KeyImage, SignatureRctFull,
+        Blinding, Commitment, CurvePoint, CurveScalar, Error as RingSigError, KeyImage, RingMLSAG,
+        Scalar, SignatureRctBulletproofs,
     },
     tx,
     tx::{TxOutMembershipElement, TxOutMembershipHash, TxOutMembershipProof},
@@ -152,12 +153,69 @@ impl TryFrom<&external::CurvePoint> for CurvePoint {
     }
 }
 
+/// Convert Scalar --> external::CurveScalar.
+impl From<&Scalar> for external::CurveScalar {
+    fn from(other: &Scalar) -> Self {
+        let mut curve_scalar = external::CurveScalar::new();
+        curve_scalar.set_data(other.as_bytes().to_vec());
+        curve_scalar
+    }
+}
+
+/// Convert external::CurveScalar --> Scalar.
+impl TryFrom<&external::CurveScalar> for Scalar {
+    type Error = ConversionError;
+
+    fn try_from(source: &external::CurveScalar) -> Result<Self, Self::Error> {
+        let bytes: &[u8] = source.get_data();
+
+        let mut arr = [0u8; 32];
+        if bytes.len() != arr.len() {
+            return Err(ConversionError::ArrayCastError);
+        }
+        arr.copy_from_slice(bytes);
+        Ok(Scalar::from_bytes_mod_order(arr))
+    }
+}
+
+impl From<&CompressedRistretto> for external::CompressedRistretto {
+    fn from(source: &CompressedRistretto) -> Self {
+        let mut compressed_ristretto = external::CompressedRistretto::new();
+        compressed_ristretto.set_data(source.as_bytes().to_vec());
+        compressed_ristretto
+    }
+}
+
+impl TryFrom<&external::CompressedRistretto> for CompressedRistretto {
+    type Error = ConversionError;
+
+    fn try_from(source: &external::CompressedRistretto) -> Result<Self, Self::Error> {
+        let bytes: &[u8] = source.get_data();
+        let mut arr = [0u8; 32];
+        if bytes.len() != arr.len() {
+            return Err(ConversionError::ArrayCastError);
+        }
+        arr.copy_from_slice(bytes);
+        Ok(CompressedRistretto(arr))
+    }
+}
+
 /// Convert CurveScalar --> external::CurveScalar.
 impl From<&CurveScalar> for external::CurveScalar {
     fn from(other: &CurveScalar) -> Self {
         let mut scalar = external::CurveScalar::new();
         scalar.set_data(other.as_bytes().to_vec());
         scalar
+    }
+}
+
+/// Convert external::CurveScalar --> CurveScalar.
+impl TryFrom<&external::CurveScalar> for CurveScalar {
+    type Error = ConversionError;
+
+    fn try_from(source: &external::CurveScalar) -> Result<Self, Self::Error> {
+        let bytes: &[u8] = source.get_data();
+        CurveScalar::try_from(bytes).map_err(|_| ConversionError::ArrayCastError)
     }
 }
 
@@ -215,16 +273,6 @@ impl TryFrom<&external::RistrettoPrivate> for RistrettoPrivate {
     fn try_from(source: &external::RistrettoPrivate) -> Result<Self, Self::Error> {
         let bytes: &[u8] = source.get_data();
         RistrettoPrivate::try_from(bytes).map_err(|_| ConversionError::ArrayCastError)
-    }
-}
-
-/// Convert external::CurveScalar --> CurveScalar.
-impl TryFrom<&external::CurveScalar> for CurveScalar {
-    type Error = ConversionError;
-
-    fn try_from(source: &external::CurveScalar) -> Result<Self, Self::Error> {
-        let bytes: &[u8] = source.get_data();
-        CurveScalar::try_from(bytes).map_err(|_| ConversionError::ArrayCastError)
     }
 }
 
@@ -458,12 +506,9 @@ impl TryFrom<&external::TxPrefix> for tx::TxPrefix {
 impl From<&tx::Tx> for external::Tx {
     fn from(source: &tx::Tx) -> Self {
         let mut tx = external::Tx::new();
-
         tx.set_prefix(external::TxPrefix::from(&source.prefix));
-        tx.set_signature(external::RingCtSignature::from(&source.signature));
-        tx.set_range_proofs(source.range_proofs.clone());
         tx.set_tombstone_block(source.tombstone_block);
-
+        tx.set_signature(external::SignatureRctBulletproofs::from(&source.signature));
         tx
     }
 }
@@ -474,92 +519,97 @@ impl TryFrom<&external::Tx> for tx::Tx {
 
     fn try_from(source: &external::Tx) -> Result<Self, Self::Error> {
         let prefix = tx::TxPrefix::try_from(source.get_prefix())?;
-        let signature = SignatureRctFull::try_from(source.get_signature())?;
-        let range_proofs = source.get_range_proofs().to_vec();
         let tombstone_block = source.get_tombstone_block();
+        let signature = SignatureRctBulletproofs::try_from(source.get_signature())?;
 
         Ok(tx::Tx {
             prefix,
-            signature,
-            range_proofs,
             tombstone_block,
+            signature,
         })
     }
 }
 
-/// Convert Signature --> external::RingCtSignature.
-impl From<&SignatureRctFull> for external::RingCtSignature {
-    fn from(source: &SignatureRctFull) -> Self {
-        let mut signature = external::RingCtSignature::new();
-
-        let key_images: Vec<external::KeyImage> = source
-            .key_images
+impl From<&RingMLSAG> for external::RingMLSAG {
+    fn from(source: &RingMLSAG) -> Self {
+        let mut ring_mlsag = external::RingMLSAG::new();
+        ring_mlsag.set_c_zero(external::CurveScalar::from(&source.c_zero));
+        let responses: Vec<external::CurveScalar> = source
+            .responses
             .iter()
-            .map(external::KeyImage::from)
+            .map(external::CurveScalar::from)
             .collect();
-        signature.set_key_images(key_images.into());
+        ring_mlsag.set_responses(responses.into());
+        ring_mlsag.set_key_image(external::KeyImage::from(&source.key_image));
+        ring_mlsag
+    }
+}
 
-        let challenge_responses: Vec<external::RingCtChallengeResponse> = source
-            .challenge_responses
+impl TryFrom<&external::RingMLSAG> for RingMLSAG {
+    type Error = ConversionError;
+
+    fn try_from(source: &external::RingMLSAG) -> Result<Self, Self::Error> {
+        let c_zero = Scalar::try_from(source.get_c_zero())?;
+        let mut responses: Vec<Scalar> = Vec::new();
+        for response in source.get_responses() {
+            responses.push(Scalar::try_from(response)?);
+        }
+        let key_image = KeyImage::try_from(source.get_key_image())?;
+
+        Ok(RingMLSAG {
+            c_zero,
+            responses,
+            key_image,
+        })
+    }
+}
+
+impl From<&SignatureRctBulletproofs> for external::SignatureRctBulletproofs {
+    fn from(source: &SignatureRctBulletproofs) -> Self {
+        let mut signature = external::SignatureRctBulletproofs::new();
+
+        let ring_signatures: Vec<external::RingMLSAG> = source
+            .ring_signatures
             .iter()
-            .map(|challenge_response| {
-                let mut ringct_challenge_response = external::RingCtChallengeResponse::new();
-
-                let response: Vec<external::CurveScalar> = challenge_response
-                    .response
-                    .iter()
-                    .map(external::CurveScalar::from)
-                    .collect();
-                ringct_challenge_response.set_response(response.into());
-
-                ringct_challenge_response
-            })
+            .map(external::RingMLSAG::from)
             .collect();
-        signature.set_challenge_responses(challenge_responses.into());
+        signature.set_ring_signatures(ring_signatures.into());
 
-        signature
-            .mut_challenge()
-            .set_data(source.challenge.as_bytes().to_vec());
+        let pseudo_output_commitments: Vec<external::CompressedRistretto> = source
+            .pseudo_output_commitments
+            .iter()
+            .map(external::CompressedRistretto::from)
+            .collect();
+        signature.set_pseudo_output_commitments(pseudo_output_commitments.into());
+
+        signature.set_range_proofs(source.range_proof_bytes.clone());
 
         signature
     }
 }
 
-/// Convert external::RingCtSignature --> Signature.
-impl TryFrom<&external::RingCtSignature> for SignatureRctFull {
+impl TryFrom<&external::SignatureRctBulletproofs> for SignatureRctBulletproofs {
     type Error = ConversionError;
 
-    fn try_from(source: &external::RingCtSignature) -> Result<Self, Self::Error> {
-        let mut key_images: Vec<KeyImage> = Vec::new();
-        for image in source.get_key_images() {
-            let key_image =
-                KeyImage::try_from(image.get_data()).map_err(|_e| ConversionError::Other)?;
-            key_images.push(key_image);
+    fn try_from(source: &external::SignatureRctBulletproofs) -> Result<Self, Self::Error> {
+        let mut ring_signatures: Vec<RingMLSAG> = Vec::new();
+        for ring_signature in source.get_ring_signatures() {
+            ring_signatures.push(RingMLSAG::try_from(ring_signature)?);
         }
 
-        let mut challenge_responses: Vec<ChallengeResponse> = Vec::new();
-        for response in source.get_challenge_responses() {
-            let mut challenge_response: Vec<CurveScalar> = Vec::new();
-            for scalar in response.get_response() {
-                let curve_scalar = CurveScalar::try_from(scalar.get_data())
-                    .map_err(|_e| ConversionError::Other)?;
-
-                challenge_response.push(curve_scalar);
-            }
-            challenge_responses.push(ChallengeResponse {
-                response: challenge_response,
-            });
+        let mut pseudo_output_commitments: Vec<CompressedRistretto> = Vec::new();
+        for pseudo_output_commitment in source.get_pseudo_output_commitments() {
+            pseudo_output_commitments
+                .push(CompressedRistretto::try_from(pseudo_output_commitment)?);
         }
 
-        let challenge = CurveScalar::try_from(source.get_challenge().get_data())
-            .map_err(|_e| ConversionError::Other)?;
+        let range_proof_bytes = source.get_range_proofs().to_vec();
 
-        let tx_prefix = SignatureRctFull {
-            key_images,
-            challenge_responses,
-            challenge,
-        };
-        Ok(tx_prefix)
+        Ok(SignatureRctBulletproofs {
+            ring_signatures,
+            pseudo_output_commitments,
+            range_proof_bytes,
+        })
     }
 }
 
@@ -916,19 +966,18 @@ pub fn block_num_to_s3block_path(block_index: transaction::BlockIndex) -> PathBu
 }
 
 #[cfg(test)]
-mod tests {
+mod conversion_tests {
     extern crate rand;
 
     use self::rand::{rngs::StdRng, SeedableRng};
     use super::*;
     use curve25519_dalek::ristretto::RistrettoPoint;
     use keys::FromRandom;
-    use protobuf::Message;
     use transaction::{
         account_keys::{AccountKey, PublicAddress},
         onetime_keys::recover_onetime_private_key,
         ring_signature::Blinding,
-        tx::{TxOut, TxOutMembershipProof},
+        tx::{Tx, TxOut, TxOutMembershipProof},
     };
     use transaction_std::*;
 
@@ -1255,8 +1304,8 @@ mod tests {
     }
 
     #[test]
-    /// Check that external.proto is synced with our protobufy structs
-    fn test_external_proto() {
+    /// Tx --> externalTx --> Tx should be the identity function.
+    fn test_convert_tx() {
         // Generate a Tx to test with. This is copied from
         // transaction_builder.rs::test_simple_transaction
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
@@ -1313,147 +1362,19 @@ mod tests {
 
         let tx = transaction_builder.build(&mut rng).unwrap();
 
-        // Serialize the tx into bytes using Prost
-        let tx_prost_bytes = mcserial::encode(&tx);
+        // decode(encode(tx)) should be the identity function.
+        {
+            let bytes = mcserial::encode(&tx);
+            let recovered_tx = mcserial::decode(&bytes).unwrap();
+            assert_eq!(tx, recovered_tx);
+        }
 
-        // Deserialize using rust-protobuf external.proto data type.
-        let protobuf_tx =
-            protobuf::parse_from_bytes::<crate::external::Tx>(&tx_prost_bytes).unwrap();
-
-        // Serialize into bytes using protobuf
-        let tx_protobuf_bytes = protobuf_tx.write_to_bytes().unwrap();
-
-        // Make sure our bytes are not all zeros.
-        assert!(!tx_prost_bytes.iter().all(|b| *b == 0));
-
-        // Compare bytes. If this fails it means external.proto is no longer in sync with the #[prost()]
-        // decorations.
-        assert_eq!(tx_prost_bytes, tx_protobuf_bytes);
-
-        // Compare some select fields.
-        assert_eq!(
-            tx.prefix.inputs[0].ring[0].amount.commitment.to_bytes(),
-            &protobuf_tx.get_prefix().get_inputs()[0].get_ring()[0]
-                .get_amount()
-                .get_commitment()
-                .get_data()[..]
-        );
-
-        assert_eq!(
-            tx.prefix.inputs[0].ring[0].amount.masked_value.to_bytes(),
-            &protobuf_tx.get_prefix().get_inputs()[0].get_ring()[0]
-                .get_amount()
-                .get_masked_value()
-                .get_data()[..]
-        );
-
-        assert_eq!(
-            tx.prefix.inputs[0].ring[0]
-                .amount
-                .masked_blinding
-                .to_bytes(),
-            &protobuf_tx.get_prefix().get_inputs()[0].get_ring()[0]
-                .get_amount()
-                .get_masked_blinding()
-                .get_data()[..]
-        );
-
-        assert_eq!(
-            tx.key_images()[0].to_bytes(),
-            &protobuf_tx.signature.get_ref().key_images[0].data[..]
-        );
-
-        assert_eq!(
-            tx.prefix.outputs[0].amount.commitment.to_bytes(),
-            &protobuf_tx.prefix.get_ref().outputs[0]
-                .amount
-                .get_ref()
-                .commitment
-                .get_ref()
-                .data[..]
-        );
-
-        assert_eq!(
-            tx.prefix.outputs[0].amount.masked_value.to_bytes(),
-            &protobuf_tx.prefix.get_ref().outputs[0]
-                .amount
-                .get_ref()
-                .masked_value
-                .get_ref()
-                .data[..]
-        );
-
-        assert_eq!(
-            tx.prefix.outputs[0].amount.masked_blinding.to_bytes(),
-            &protobuf_tx.prefix.get_ref().outputs[0]
-                .amount
-                .get_ref()
-                .masked_blinding
-                .get_ref()
-                .data[..]
-        );
-
-        assert_eq!(
-            tx.prefix.outputs[0].target_key.to_bytes(),
-            &protobuf_tx.prefix.get_ref().outputs[0]
-                .target_key
-                .get_ref()
-                .data[..]
-        );
-
-        assert_eq!(
-            tx.prefix.outputs[0].public_key.to_bytes(),
-            &protobuf_tx.prefix.get_ref().outputs[0]
-                .public_key
-                .get_ref()
-                .data[..]
-        );
-
-        assert_eq!(
-            tx.prefix.outputs[0].e_account_hint.as_ref(),
-            &protobuf_tx.prefix.get_ref().outputs[0]
-                .e_account_hint
-                .get_ref()
-                .data[..]
-        );
-
-        assert_eq!(tx.prefix.fee, protobuf_tx.prefix.get_ref().fee);
-
-        assert_eq!(tx.range_proofs, &protobuf_tx.range_proofs[..]);
-
-        assert_eq!(tx.tombstone_block, protobuf_tx.tombstone_block);
-
-        let external_ring: Vec<external::TxOut> = ring.iter().map(external::TxOut::from).collect();
-
-        let ledger_ring: Vec<tx::TxOut> = external_ring
-            .iter()
-            .map(|tx_out| tx::TxOut::try_from(tx_out).unwrap())
-            .collect();
-
-        assert_eq!(ring, ledger_ring);
-
-        let input = tx.prefix.inputs[0].clone();
-        let external_input = external::TxIn::from(&input);
-        let ledger_input = tx::TxIn::try_from(&external_input).unwrap();
-
-        assert_eq!(input, ledger_input);
-
-        let prefix = tx.prefix.clone();
-        let external_prefix = external::TxPrefix::from(&prefix);
-        let ledger_prefix = tx::TxPrefix::try_from(&external_prefix).unwrap();
-
-        assert_eq!(prefix, ledger_prefix);
-
-        let signature = tx.signature.clone();
-        let external_signature = external::RingCtSignature::from(&signature);
-        let ledger_signature = SignatureRctFull::try_from(&external_signature).unwrap();
-
-        assert_eq!(signature, ledger_signature);
-
-        let external_tx = external::Tx::from(&tx);
-        let ledger_tx = tx::Tx::try_from(&external_tx).unwrap();
-
-        assert_eq!(tx, ledger_tx);
+        // Converting transaction::Tx -> external::Tx -> transaction::Tx should be the identity function.
+        {
+            let external_tx: external::Tx = external::Tx::from(&tx);
+            let recovered_tx: Tx = Tx::try_from(&external_tx).unwrap();
+            assert_eq!(tx, recovered_tx);
+        }
     }
 
     #[test]

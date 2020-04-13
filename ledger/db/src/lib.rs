@@ -715,7 +715,7 @@ mod ledger_db_test {
             ledger_db.get_transactions_by_block(1).unwrap()
         );
 
-        let key_images: &Vec<KeyImage> = tx.key_images();
+        let key_images: Vec<KeyImage> = tx.key_images();
         assert_eq!(1, key_images.len());
 
         assert!(ledger_db
@@ -723,7 +723,7 @@ mod ledger_db_test {
             .unwrap());
 
         let block_one_key_images = ledger_db.get_key_images_by_block(1).unwrap();
-        assert_eq!(*key_images, block_one_key_images);
+        assert_eq!(key_images, block_one_key_images);
     }
 
     #[test]
