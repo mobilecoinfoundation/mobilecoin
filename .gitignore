@@ -50,8 +50,6 @@ consensus/api/src/ledger_enclave_server.rs
 consensus/api/src/ledger_enclave_server_grpc.rs
 consensus/api/src/ledger_server.rs
 consensus/api/src/ledger_server_grpc.rs
-mobilecoind/api/src/mobilecoind_api.rs
-mobilecoind/api/src/mobilecoind_api_grpc.rs
 
 # Random junk
 .DS_Store
