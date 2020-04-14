@@ -1,5 +1,5 @@
 [package]
-name = "ecies"
+name = "mc-crypto-box"
 version = "0.1.0"
 authors = ["MobileCoin"]
 edition = "2018"
