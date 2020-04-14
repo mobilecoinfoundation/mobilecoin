@@ -2,7 +2,7 @@
  * A simple command line application for interaction with mobilecoind which also shows how to call 
  * mobilecoind from Java.
  * 
- * The `host` and `command` flags are required to generate gRPC calls. Additional parameters are required
+ * The `server` and `command` flags are required to generate gRPC calls. Additional parameters are required
  * depending on the command used.
  * 
  * An example invocation which simply returns a new root entropy is:
@@ -45,6 +45,14 @@ public class App {
         Option indexOption = new Option("i", "index", true, "Subaddress Index");
         options.addOption(indexOption);
 
+        Option recipientOption = new Option("r", "recipient", true, "b58 code for recipient of a transfer");
+        options.addOption(recipientOption);
+
+        Option amountOption = new Option("a", "amount", true, "amount in picoMOB to transfer");
+        options.addOption(amountOption);
+
+        // It is assumed that mobilecoind and clients such as this will run on the same machine, however
+        // there may be cases where a remote SSL connection is required
         Option sslOption = new Option("ssl", "Use SSL to connect to mobilecoind");
         options.addOption(sslOption);
 
@@ -92,6 +100,7 @@ public class App {
                 monitorId = ByteString.copyFrom(Hex.decodeHex(monitor));
             } catch (DecoderException e) {
                 System.out.println("monitor was not a valid hex string");
+                System.exit(1);
             }
         }
 
@@ -100,6 +109,20 @@ public class App {
         String indexStr = cmd.getOptionValue("index");
         if (indexStr != null) {
             index = Long.parseLong(indexStr);
+        }
+
+        // Recipient is a b58 code representing a public address
+        String recipient = cmd.getOptionValue("recipient");
+
+        // Amount should be a positive integer which is required for transfers
+        long amount = 0;
+        String amountStr = cmd.getOptionValue("amount");
+        if (amountStr != null) {
+            amount = Long.parseLong(amountStr);
+            if (amount <= 0) {
+                System.out.println("amount must be a positive integer");
+                System.exit(1);
+            }
         }
 
         // All the functions return strings which are printed as the result to the CLI
@@ -121,6 +144,20 @@ public class App {
                     output = "balance check requires a monitor";
                 } else {
                     output = getBalance(stub, monitorId, index);
+                }
+                break;
+            case "request":
+                if (monitorId == null) {
+                    output = "request code requires a monitor";
+                } else {
+                    output = getRequestCode(stub, monitorId, index);
+                }
+                break;
+            case "transfer":
+                if (monitorId == null || recipient == null || amount == 0) {
+                    output = "transfer requires a monitor, recipient and amount";
+                } else {
+                    output = transfer(stub, monitorId, index, recipient, amount);
                 }
                 break;
             default:
@@ -181,12 +218,59 @@ public class App {
      * @param stub      The gRPC stub connected to mobilecoind
      * @param monitorId 256-bit ID of the monitor observing the account
      * @param index     The subaddress index for which to check the balance
-     * @return A long integer representing the current balance for the account
+     * @return A string representing the current balance for the account
      */
     static String getBalance(MobilecoindAPIBlockingStub stub, ByteString monitorId, long index) {
         var request = MobileCoinDAPI.GetBalanceRequest.newBuilder().setMonitorId(monitorId).setSubaddressIndex(index)
                 .build();
         var balance = stub.getBalance(request).getBalance();
         return Long.toString(balance);
+    }
+
+    /**
+     * Given a monitor ID and subaddress index, generates the b58 request code (public address)
+     * for a payment
+     *
+     * @param stub      The gRPC stub connected to mobilecoind
+     * @param monitorId 256-bit ID of the monitor observing the account
+     * @param index     The subaddress index for which get the request code
+     * @return A b58 encoded string specifying a target public address
+     */
+    static String getRequestCode(MobilecoindAPIBlockingStub stub, ByteString monitorId, long index) {
+        // First get the public address
+        var paRequest = MobileCoinDAPI.GetPublicAddressRequest.newBuilder().setMonitorId(monitorId).setSubaddressIndex(index).build();
+        var publicAddress = stub.getPublicAddress(paRequest).getPublicAddress();
+
+        // Generates a payment address with no specific request value
+        var rcRequest = MobileCoinDAPI.GetRequestCodeRequest.newBuilder().
+            setReceiver(publicAddress).
+            build();
+
+        return stub.getRequestCode(rcRequest).getB58Code();
+    }
+
+    /**
+     * Creates a transfer to a given b58 request code for a stated amount
+     * @param stub      The gRPC stub connected to mobilecoind
+     * @param monitorId 256-bit ID of the monitor from which funds should be drawn
+     * @param index     The subaddress index from which the funds should be drawn
+     * @param requestCode The requestCode to which funds should be sent
+     * @param amount The amount of picoMOB to be sent
+     * @return A b58 encoded string specifying a target public address
+     */
+    static String transfer(MobilecoindAPIBlockingStub stub, ByteString monitorId, long index, String requestCode, long amount) {
+        // Convert the b58 code into a public address
+        var rcRequest = MobileCoinDAPI.ReadRequestCodeRequest.newBuilder().setB58Code(requestCode).build();
+        var publicAddress = stub.readRequestCode(rcRequest).getReceiver();
+
+        // Generate a single outlay for the given amount
+        var outlay = MobileCoinDAPI.Outlay.newBuilder().setReceiver(publicAddress).setValue(amount);
+
+        // Send a payment
+        var spRequest = MobileCoinDAPI.SendPaymentRequest.newBuilder().setSenderMonitorId(monitorId).addOutlayList(outlay).setSenderSubaddress(index).build();
+        var txReceipt = stub.sendPayment(spRequest).getSenderTxReceipt();
+
+        // Return the first key image from the transaction, used to verify later that the payment succeeded
+        return Hex.encodeHexString(txReceipt.getKeyImageList(0).getData().toByteArray());
     }
 }
