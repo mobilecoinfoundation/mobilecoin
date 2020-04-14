@@ -1,13 +1,11 @@
 # Copyright (c) 2018-2020 MobileCoin Inc.
 
-# WIP: Implementing QR code flow for exchanges
+# Implements command interface for interative wallet.
 
-import qrcode
 import sys
 import os.path
 import traceback
 import json
-import time
 import re
 import grpc
 
@@ -47,6 +45,10 @@ class ClientError(Exception):
     """
     pass
 
+class ParseError(Exception):
+    """ Error during argument parsing.
+    """
+    pass
 
 class Session(cmd.Cmd):
     """ Encapsulates a wallet session
@@ -87,6 +89,19 @@ class Session(cmd.Cmd):
         self.list_accounts()
 
     def do_monitor(self, args):
+        """monitor <account/subaddress_index: defaults to 0> - Monitor txos for an account
+
+            examples: monitor my_alias
+                      monitor my_alias/0
+        """
+        try:
+            account, index = self.parse_account(args)
+            index_range = {"first_index": index, "last_index": index + 1}
+            self.add_monitor(account, index_range)
+        except ParseError as e:
+            print(f"Could not parse account due to: {e}. Please try again")
+
+    def do_monitor_range(self, args):
         """monitor <account> (optional)<[min,max]: defaults to [0,10000]> - Monitor txos for a set of subaddresses"""
         parts = args.split()
         if len(parts) == 0:
@@ -112,71 +127,66 @@ class Session(cmd.Cmd):
         self.list_monitors()
 
     def do_public_address(self, args):
-        """public-address <account> (optional)<index: defaults to 0> - print public address for account"""
-        parts = args.split()
-        if len(self.known_accounts) == 0:
-            print("You have not loaded any accounts to monitor.")
-            return
-        if len(parts) == 0:
-            print("Please provide one monitored account and optional index.")
-            return
-        if len(parts) > 2:
-            print(
-                "Please provide one monitored account and the subaddress index for which to retrieve the public address."
-            )
-            return
-        index = int(parts[1]) if len(parts) > 1 else 0
-        account = self.known_accounts[parts[0]]
-        index = int(parts[1])
-        self.get_public_address(account, index)
+        """public_address <account/subaddress_index: defaults to 0> - print public address for account
+
+            examples: public_address my_alias
+                      public_address my_alias/0
+        """
+        try:
+            account, index = self.parse_account(args)
+            self.get_public_address(account, index)
+        except ParseError as e:
+            print(f"Could not parse account due to: {e}. Please try again")
 
     def do_balance(self, args):
-        """balance <account> (optional)<index: defaults to 0> - get the balance for a subaddress.
+        """balance <account/subaddress_index: defaults to 0> - get the balance for a subaddress.
+
+            examples: public_address my_alias
+                      public_address my_alias/0
         """
-        parts = args.split()
-        if len(parts) == 0:
-            print("Please provide one monitored account and optional index.")
-            return
-        if len(parts) > 2:
-            print("Please provide account and optional index.")
-            return
-        index = int(parts[1]) if len(parts) > 1 else 0
-        if parts[0] not in self.known_accounts:
-            print("We are not tracking that account.")
-            return
-        self.check_balance(self.known_accounts[parts[0]], index)
+        try:
+            account, index = self.parse_account(parts)
+            self.check_balance(account, index)
+        except ParseError as e:
+            print(f"Could not parse account due to: {e}. Please try again")
 
     def do_transfer(self, args):
-        """transfer <value> <from_account> <subaddress> <public_address>
+        """transfer <value> <from_account/subaddress_index> <public_address>
             - Transfer funds from your account+subaddresses to a public address."""
-        parts = args.split()
-        if len(parts) != 4:
-            print("Please provide all arguments")
-            return
-        parts = args.split()
-        self.transfer(int(parts[0]), self.known_accounts[parts[1]], int(parts[2]), parts[3])
+        try:
+            value, account_string, public_address = args.split()
+            from_account, from_index = self.parse_account(account_string)
+            self.transfer(int(value), from_account, from_index, public_address)
+        except ParseError as e:
+            print(f"Error parsing from_account {e}")
+        except Exception as e:
+            print(f"Error parsing args {e}")
 
     def do_private_transfer(self, args):
-        """private_transfer <value> <from_account> <subaddress> <to_account> <subaddress>
-            - Transfer funds between accounts and subaddresses that you own."""
-        if args.len() != 5:
-            print("Please provide all arguments")
-            return
-        parts = args.split()
-        self.private_transfer(int(parts[0]), self.known_accounts[parts[1]],
-                              int(parts[2]), self.known_accounts[parts[3]],
-                              int(parts[4]))
+        """private_transfer <value> <from_account/subaddress> <to_account/subaddress>
+            - Transfer funds between accounts and subaddresses that you own.
+
+            example: private_transfer 10 my_alias/0 my_alias/1
+                     private_transfer 10 my_alias/0 my_other_alias/0
+        """
+        try:
+            value, from_account_string, to_account_string = args.split()
+            from_account, from_index = self.parse_account(from_account_string)
+            to_account, to_index = self.parse_account(to_account_string)
+            self.private_transfer(int(value), from_account, from_index, to_account, to_index)
+        except Exception as e:
+            print(f"Eror parsing args {e}")
 
     def do_status(self, args):
         """status <account> - Print the status of the last transfer for a monitored account.
             Note: The status for transfers to an address not in known accounts will
                   remain pending.
         """
-        parts = args.split()
-        if len(parts) != 1:
-            print("Please provide exactly one account.")
-            return
-        self.status(self.known_accounts[parts[0]])
+        try:
+            parts = args.split()[0]
+            self.status(self.known_accounts[parts[0]])
+        except Exception as e:
+            print(f"Error getting status {e}")
 
     # Command implementations
 
@@ -200,8 +210,15 @@ class Session(cmd.Cmd):
     def new_account(self):
         """ Create a new account.
         """
-        # TODO
-        pass
+        # FIXME: ability to set/change alias
+        entropy = self.client.generate_entropy()
+        print("You root entropy is =", bytes.hex(entropy))
+        alias = str(len(self.known_accounts))
+        print("This has been added to known accounts under alias: {alias}")
+        self.known_accounts[alias] = {
+            "name": alias,
+            "entropy": entropy
+        }
 
     @mob_command
     def list_accounts(self):
@@ -227,14 +244,16 @@ class Session(cmd.Cmd):
     def add_monitor(self, account, index_range=None):
         """ Monitor incoming transactions for a set of subaddresses for a known alias.
         """
-        print(f"Adding monitor for {account['name']}, scanning ledger for txos.")
+        print(
+            f"Adding monitor for {account['name']}, scanning ledger for txos.")
         credentials = self.get_account_credentials(account)
         id = b''  # empty bytes
         if index_range is not None:
+            num = index_range['last_index'] - index_range['first_index']
             id = self.client.add_monitor(
                 credentials,
                 first_subaddress=index_range['first_index'],
-                num_subaddresses=index_range['last_index'])
+                num_subaddresses=num)
         else:
             id = self.client.add_monitor(credentials)
         account["monitors"] = [id]
@@ -295,7 +314,8 @@ class Session(cmd.Cmd):
         from_monitor = self.client.get_monitor_id(from_credentials, from_index)
 
         # Decode b58 transfer code. Note: value and memo are irrelevant
-        target_address, _value, _memo = self.client.read_request_code(to_public_address)
+        target_address, _value, _memo = self.client.read_request_code(
+            to_public_address)
 
         # Construct the transaction
         tx_list = self.client.get_unspent_tx_output_list(
@@ -312,7 +332,8 @@ class Session(cmd.Cmd):
         return f'Transaction submitted with key_images: {response.sender_tx_receipt.key_image_list}'
 
     @mob_command
-    def private_transfer(self, value, from_account, from_index, to_account, to_index):
+    def private_transfer(self, value, from_account, from_index, to_account,
+                         to_index):
         """ Send funds between accounts that are both owned by this wallet.
         """
         # Get sender info and monitor
@@ -364,11 +385,30 @@ class Session(cmd.Cmd):
         else:
             return 'No transaction has been sent.'
 
+    def parse_account(self, args):
+        """ Parse an account string of the form 'account/subaddress_index'
+        """
+        account_string = args.split()
+        if len(account_string) == 0:
+            raise ParseError("Please provide one monitored account and optional index")
+        elif len(account_string) > 1:
+            raise ParseError("Error parsing account args - too many provided")
+        parts = account_string[0].split('/')
+        if parts[0] not in self.known_accounts:
+            raise ParseError(f"We are not tracking account {parts[0]}")
+        if len(parts) == 1:
+            return self.known_accounts[parts[0]], 0
+        if len(parts) == 2:
+            return self.known_accounts[parts[0]], int(parts[1])
+        else:
+            raise ParseError("Could not parse account string. Please use format account/subaddress_index")
+
     def parse_index_range(self, index_range_string):
         """ Parse an index range of the form "[#,#]"
         """
         if index_range_string[0] != '[' or index_range_string[-1] != ']':
-            raise ClientError(f'failed to parse index range from "{index_range_string}"')
+            raise ClientError(
+                f'failed to parse index range from "{index_range_string}"')
         else:
             indices = []
             for index_string in index_range_string[1:-1].split(','):
