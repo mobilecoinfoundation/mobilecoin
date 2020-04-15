@@ -253,7 +253,7 @@ jobs:
       - check-dirty-git
 
   # Build internal in debug mode
-  build-all-debug:
+  build-all-and-lint-debug:
     executor: build-executor
     steps:
       - prepare-for-build
@@ -281,7 +281,7 @@ workflows:
       - run-all-tests
 
       # Build everything in debug
-      - build-all-debug
+      - build-all-and-lint-debug
 
   # Build and run tests in parallel - not needed at the moment since the test suite is fast enough.
   # build-and-run-tests:
