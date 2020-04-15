@@ -6,6 +6,10 @@ plugins {
     // Protocol buffers
     id 'com.google.protobuf' version '0.8.8'
 }
+compileJava   {
+  sourceCompatibility = JavaVersion.VERSION_1_10
+  targetCompatibility = JavaVersion.VERSION_1_10
+}
 repositories {
     // Use jcenter for resolving dependencies.
     // You can declare any Maven/Ivy/file repository here.

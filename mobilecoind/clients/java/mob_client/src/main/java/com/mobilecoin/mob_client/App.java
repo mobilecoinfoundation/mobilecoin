@@ -298,7 +298,13 @@ public class App {
 
         // Send a payment
         var spRequest = MobileCoinDAPI.SendPaymentRequest.newBuilder().setSenderMonitorId(monitorId).addOutlayList(outlay).setSenderSubaddress(index).build();
-        var txReceipt = stub.sendPayment(spRequest).getSenderTxReceipt();
+        MobileCoinDAPI.SenderTxReceipt txReceipt = null;
+        try {
+            txReceipt = stub.sendPayment(spRequest).getSenderTxReceipt();
+        } catch (Exception e) {
+            System.out.println("Your payment failed with error " + e.getMessage());
+            System.exit(1);
+        }
 
         // Generate a transaction receipt using the first key image and the tombstone block
         return Hex.encodeHexString(txReceipt.getKeyImageList(0).getData().toByteArray()) + ":" + txReceipt.getTombstone();
