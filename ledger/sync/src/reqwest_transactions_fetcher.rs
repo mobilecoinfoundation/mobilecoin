@@ -129,15 +129,15 @@ impl ReqwestTransactionsFetcher {
                 format!("block conversion failed: {:?}", err),
             )
         })?;
-        let mut tx_stored = Vec::new();
+        let mut redacted_transactions = Vec::new();
         for tx in bc_block.get_transactions().iter() {
-            let txs = RedactedTx::try_from(tx).map_err(|err| {
+            let redacted_tx = RedactedTx::try_from(tx).map_err(|err| {
                 ReqwestTransactionsFetcherError::InvalidBlockReceived(
                     url.to_string(),
                     format!("tx conversion failed: {:?}", err),
                 )
             })?;
-            tx_stored.push(txs);
+            redacted_transactions.push(redacted_tx);
         }
 
         let signature = bc_block
@@ -164,7 +164,7 @@ impl ReqwestTransactionsFetcher {
 
         let s3_block_data = S3BlockData {
             block: lg_block,
-            transactions: tx_stored,
+            transactions: redacted_transactions,
             signature,
         };
         Ok(s3_block_data)

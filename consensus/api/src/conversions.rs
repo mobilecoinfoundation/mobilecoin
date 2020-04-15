@@ -6,7 +6,7 @@
 //! values stored in the ledger and values transmitted over the API. This module provides conversions
 //! between "equivalent" types, such as `mobilecoin_api::blockchain::Block` and `transaction::Block`.
 
-use crate::{blockchain, consensus_common::ProposeTxResult, external, transaction as tx_grpc};
+use crate::{blockchain, consensus_common::ProposeTxResult, external};
 use common::HashMap;
 use curve25519_dalek::ristretto::CompressedRistretto;
 use keys::{
@@ -115,20 +115,20 @@ impl TryFrom<&blockchain::Block> for transaction::Block {
     }
 }
 
-/// Convert ledger_types::TxHash --> tx_grpc::TxHash.
-impl From<&tx::TxHash> for tx_grpc::TxHash {
+/// Convert tx::TxHash --> external::TxHash.
+impl From<&tx::TxHash> for external::TxHash {
     fn from(other: &tx::TxHash) -> Self {
-        let mut tx_hash = tx_grpc::TxHash::new();
+        let mut tx_hash = external::TxHash::new();
         tx_hash.set_hash(other.to_vec());
         tx_hash
     }
 }
 
-/// Convert  tx_grpc::TxHash --> ledger_types::TxHash.
-impl TryFrom<&tx_grpc::TxHash> for tx::TxHash {
+/// Convert  external::TxHash --> tx::TxHash.
+impl TryFrom<&external::TxHash> for tx::TxHash {
     type Error = ConversionError;
 
-    fn try_from(value: &tx_grpc::TxHash) -> Result<Self, Self::Error> {
+    fn try_from(value: &external::TxHash) -> Result<Self, Self::Error> {
         let hash_bytes: &[u8] = value.get_hash();
         tx::TxHash::try_from(hash_bytes).or(Err(ConversionError::ArrayCastError))
     }
@@ -276,25 +276,6 @@ impl TryFrom<&external::RistrettoPrivate> for RistrettoPrivate {
     }
 }
 
-/// Convert KeyImage --> external::KeyImage.
-impl From<&KeyImage> for external::KeyImage {
-    fn from(other: &KeyImage) -> Self {
-        let mut point = external::KeyImage::new();
-        point.set_data(other.to_vec());
-        point
-    }
-}
-
-/// Convert external::KeyImage --> KeyImage.
-impl TryFrom<&external::KeyImage> for KeyImage {
-    type Error = ConversionError;
-
-    fn try_from(source: &external::KeyImage) -> Result<Self, Self::Error> {
-        let bytes: &[u8] = source.get_data();
-        Ok(KeyImage::try_from(bytes)?)
-    }
-}
-
 /// Convert Ed25519Signature --> external::Ed25519Signature.
 impl From<&Ed25519Signature> for external::Ed25519Signature {
     fn from(src: &Ed25519Signature) -> Self {
@@ -355,63 +336,64 @@ impl TryFrom<&blockchain::BlockSignature> for BlockSignature {
     }
 }
 
-/// Convert KeyImage -->  tx_grpc::KeyImage.
-impl From<&KeyImage> for tx_grpc::KeyImage {
+/// Convert KeyImage -->  external::KeyImage.
+impl From<&KeyImage> for external::KeyImage {
     fn from(other: &KeyImage) -> Self {
-        let mut key_image = tx_grpc::KeyImage::new();
-        key_image.set_value(other.to_vec());
+        let mut key_image = external::KeyImage::new();
+        key_image.set_data(other.to_vec());
         key_image
     }
 }
 
-/// Convert  tx_grpc::KeyImage --> KeyImage.
-impl TryFrom<&tx_grpc::KeyImage> for KeyImage {
+/// Convert external::KeyImage --> KeyImage.
+impl TryFrom<&external::KeyImage> for KeyImage {
     type Error = ConversionError;
 
-    fn try_from(source: &tx_grpc::KeyImage) -> Result<Self, Self::Error> {
-        let bytes: &[u8] = source.get_value();
+    fn try_from(source: &external::KeyImage) -> Result<Self, Self::Error> {
+        let bytes: &[u8] = source.get_data();
         Ok(KeyImage::try_from(bytes)?)
     }
 }
 
-/// Convert RedactedTx -->  tx_grpc::RedactedTx.
-impl From<&RedactedTx> for tx_grpc::RedactedTx {
+/// Convert RedactedTx -->  external::RedactedTx.
+impl From<&RedactedTx> for external::RedactedTx {
     fn from(redacted_tx: &RedactedTx) -> Self {
-        let mut transaction = tx_grpc::RedactedTx::new();
+        let mut transaction = external::RedactedTx::new();
         //transaction.set_version(tx_stored.version as u32);
-        let tx_outs: Vec<tx_grpc::TxOut> = redacted_tx
+        let tx_outs: Vec<external::TxOut> = redacted_tx
             .outputs
             .iter()
-            .map(tx_grpc::TxOut::from)
+            .map(external::TxOut::from)
             .collect();
-        transaction.set_outs(RepeatedField::from_vec(tx_outs));
+        transaction.set_outputs(RepeatedField::from_vec(tx_outs));
 
-        let key_images: Vec<tx_grpc::KeyImage> = redacted_tx
+        let key_images: Vec<external::KeyImage> = redacted_tx
             .key_images
             .iter()
-            .map(tx_grpc::KeyImage::from)
+            .map(external::KeyImage::from)
             .collect();
         transaction.set_key_images(RepeatedField::from_vec(key_images));
         transaction
     }
 }
 
-/// Convert  tx_grpc::RedactedTx --> transaction::RedactedTx
-impl TryFrom<&tx_grpc::RedactedTx> for RedactedTx {
+/// Convert  external::RedactedTx --> transaction::RedactedTx
+impl TryFrom<&external::RedactedTx> for RedactedTx {
     type Error = ConversionError;
 
-    fn try_from(source: &tx_grpc::RedactedTx) -> Result<Self, Self::Error> {
-        // Convert blockchain::TxOut --> ledger_types::TxOutStored.
-        let output_conversions: Result<Vec<tx::TxOut>, ConversionError> =
-            source.get_outs().iter().map(tx::TxOut::try_from).collect();
-
-        let outputs = output_conversions?;
+    fn try_from(source: &external::RedactedTx) -> Result<Self, Self::Error> {
+        let mut outputs: Vec<tx::TxOut> = Vec::new();
+        for source_output in source.get_outputs() {
+            let tx_out = tx::TxOut::try_from(source_output)?;
+            outputs.push(tx_out);
+        }
 
         let mut key_images: Vec<KeyImage> = Vec::with_capacity(source.get_key_images().len());
         for source_key_image in source.get_key_images() {
             let key_image = KeyImage::try_from(source_key_image)?;
             key_images.push(key_image);
         }
+
         let redacted_tx = RedactedTx::new(outputs, key_images);
         Ok(redacted_tx)
     }
@@ -613,24 +595,6 @@ impl TryFrom<&external::SignatureRctBulletproofs> for SignatureRctBulletproofs {
     }
 }
 
-/// Convert tx::TxOut --> tx_grpc::TxOut.
-impl From<&tx::TxOut> for tx_grpc::TxOut {
-    fn from(source: &tx::TxOut) -> Self {
-        let mut tx_out = tx_grpc::TxOut::new();
-        let target_key_bytes: &[u8] = source.target_key.as_ref();
-        tx_out.set_target_key(Vec::from(target_key_bytes));
-        let public_key_bytes: &[u8] = source.public_key.as_ref();
-        tx_out.set_public_key(Vec::from(public_key_bytes));
-        let masked_value_bytes = source.amount.masked_value.as_bytes().to_vec();
-        tx_out.set_masked_value(masked_value_bytes);
-        let masked_blinding_bytes = source.amount.masked_blinding.as_bytes().to_vec();
-        tx_out.set_masked_blinding(masked_blinding_bytes);
-        tx_out.set_commitment(source.amount.commitment.to_bytes().to_vec());
-        tx_out.set_e_account_hint(source.e_account_hint.as_ref().to_vec());
-        tx_out
-    }
-}
-
 /// Convert tx::TxOut --> external::TxOut.
 impl From<&tx::TxOut> for external::TxOut {
     fn from(source: &tx::TxOut) -> Self {
@@ -651,7 +615,9 @@ impl From<&tx::TxOut> for external::TxOut {
             .mut_amount()
             .mut_masked_value()
             .set_data(masked_value_bytes);
+
         let masked_blinding_bytes = source.amount.masked_blinding.as_bytes().to_vec();
+
         tx_out
             .mut_amount()
             .mut_masked_blinding()
@@ -664,60 +630,6 @@ impl From<&tx::TxOut> for external::TxOut {
             .mut_e_account_hint()
             .set_data(source.e_account_hint.as_ref().to_vec());
         tx_out
-    }
-}
-
-/// Convert  tx_grpc::TxOut --> tx::TxOut.
-impl TryFrom<&tx_grpc::TxOut> for tx::TxOut {
-    type Error = ConversionError;
-
-    fn try_from(source: &tx_grpc::TxOut) -> Result<Self, Self::Error> {
-        let commitment = Commitment::try_from(source.get_commitment())
-            .map_err(|_| ConversionError::KeyCastError)?;
-
-        fn vec_to_curve_scalar(bytes: &[u8]) -> Result<CurveScalar, ConversionError> {
-            if bytes.len() != 32 {
-                return Err(ConversionError::Other);
-            }
-            let mut curve_bytes = [0u8; 32];
-            curve_bytes.copy_from_slice(&bytes);
-            Ok(CurveScalar::from_bytes_mod_order(curve_bytes))
-        };
-
-        let masked_value: CurveScalar = {
-            let bytes = source.get_masked_value();
-            vec_to_curve_scalar(bytes)?
-        };
-
-        let masked_blinding: Blinding = {
-            let bytes = source.get_masked_blinding();
-            vec_to_curve_scalar(bytes)?
-        };
-
-        let amount = Amount {
-            commitment,
-            masked_value,
-            masked_blinding,
-        };
-
-        let target_key_bytes: &[u8] = source.get_target_key();
-        let target_key = RistrettoPublic::try_from(target_key_bytes)
-            .map_err(|_| ConversionError::KeyCastError)?
-            .into();
-        let public_key_bytes: &[u8] = source.get_public_key();
-        let public_key = RistrettoPublic::try_from(public_key_bytes)
-            .map_err(|_| ConversionError::KeyCastError)?
-            .into();
-        let e_account_hint = EncryptedFogHint::try_from(source.get_e_account_hint())
-            .map_err(|_| ConversionError::ArrayCastError)?;
-
-        let tx_out_stored = tx::TxOut {
-            amount,
-            target_key,
-            public_key,
-            e_account_hint,
-        };
-        Ok(tx_out_stored)
     }
 }
 
@@ -765,13 +677,13 @@ impl TryFrom<&external::TxOut> for tx::TxOut {
         let e_account_hint = EncryptedFogHint::try_from(source.get_e_account_hint().get_data())
             .map_err(|_| ConversionError::ArrayCastError)?;
 
-        let tx_out_stored = tx::TxOut {
+        let tx_out = tx::TxOut {
             amount,
             target_key,
             public_key,
             e_account_hint,
         };
-        Ok(tx_out_stored)
+        Ok(tx_out)
     }
 }
 
@@ -1066,17 +978,17 @@ mod conversion_tests {
     }
 
     #[test]
-    // ledger_types::TxHash --> blockchain::TxHash.
+    // tx::TxHash --> external::TxHash.
     fn test_tx_hash_from() {
         let source: tx::TxHash = tx::TxHash::from([7u8; 32]);
-        let converted = tx_grpc::TxHash::from(&source);
+        let converted = external::TxHash::from(&source);
         assert_eq!(converted.hash.as_slice(), source.as_bytes());
     }
 
     #[test]
-    // blockchain::TxHash --> ledger_types::TxHash
+    // blockchain::TxHash --> tx::TxHash
     fn test_tx_hash_try_from() {
-        let mut source = tx_grpc::TxHash::new();
+        let mut source = external::TxHash::new();
         source.set_hash([7u8; 32].to_vec());
         let converted = tx::TxHash::try_from(&source).unwrap();
         assert_eq!(converted.0, [7u8; 32]);
@@ -1085,7 +997,7 @@ mod conversion_tests {
     #[test]
     // Unmarshalling too many bytes into a TxHash should produce an error.
     fn test_tx_hash_try_from_too_many_bytes() {
-        let mut source = tx_grpc::TxHash::new();
+        let mut source = external::TxHash::new();
         source.set_hash([7u8; 99].to_vec()); // Too many bytes.
         assert!(tx::TxHash::try_from(&source).is_err());
     }
@@ -1093,7 +1005,7 @@ mod conversion_tests {
     #[test]
     // Unmarshalling too few bytes into a TxHash should produce an error.
     fn test_tx_hash_try_from_too_few_bytes() {
-        let mut source = tx_grpc::TxHash::new();
+        let mut source = external::TxHash::new();
         source.set_hash([7u8; 3].to_vec()); // Too few bytes.
         assert!(tx::TxHash::try_from(&source).is_err());
     }
@@ -1152,11 +1064,11 @@ mod conversion_tests {
     }
 
     #[test]
-    // tx::TxOutStored -> blockchain::TxOut
+    // tx::TxOut -> blockchain::TxOut --> tx::TxOut
     fn test_tx_out_from_tx_out_stored() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
-        let tx_out_stored = tx::TxOut {
+        let source = tx::TxOut {
             amount: Amount::new(
                 1u64 << 13,
                 Blinding::from(9u64),
@@ -1168,88 +1080,79 @@ mod conversion_tests {
             e_account_hint: (&[0u8; 128]).into(),
         };
 
-        let tx_out = tx_grpc::TxOut::from(&tx_out_stored);
-        let tx_out_ledger = tx::TxOut::try_from(&tx_out).unwrap();
+        let converted = external::TxOut::from(&source);
 
-        assert_eq!(tx_out_stored.amount, tx_out_ledger.amount);
-
-        assert_eq!(
-            tx_out.target_key,
-            tx_out_stored.target_key.to_bytes().to_vec()
-        );
-        assert_eq!(
-            tx_out.e_account_hint,
-            (&tx_out_stored.e_account_hint.to_bytes()[..]).to_vec()
-        );
+        let recovered_tx_out = tx::TxOut::try_from(&converted).unwrap();
+        assert_eq!(source.amount, recovered_tx_out.amount);
     }
 
     #[test]
-    // A RedactedTx that contains zero outputs or key images.
-    fn test_transaction_from_tx_stored_no_outs() {
-        let redacted_tx = RedactedTx::new(vec![], vec![]);
-        let transaction = tx_grpc::RedactedTx::from(&redacted_tx);
-        assert_eq!(transaction.outs.len(), 0);
+    // Empty RedactedTx --> external::RedactedTx
+    fn test_empty_redacted_tx() {
+        let source = RedactedTx::new(vec![], vec![]);
+        let redacted_tx = external::RedactedTx::from(&source);
+        assert_eq!(redacted_tx.outputs.len(), 0);
     }
 
     #[test]
-    // RedactedTx -> blockchain::Transaction
+    // RedactedTx -> external::RedactedTx
     fn test_transaction_from_tx_stored() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
-        let tx_out_a = tx::TxOut {
-            amount: Amount::new(
-                1u64 << 17,
-                Blinding::from(9u64),
-                &RistrettoPublic::from_random(&mut rng),
-            )
-            .unwrap(),
-            target_key: RistrettoPublic::from_random(&mut rng).into(),
-            public_key: RistrettoPublic::from_random(&mut rng).into(),
-            e_account_hint: (&[0u8; 128]).into(),
+        let source: RedactedTx = {
+            let tx_out_a = tx::TxOut {
+                amount: Amount::new(
+                    1u64 << 17,
+                    Blinding::from(9u64),
+                    &RistrettoPublic::from_random(&mut rng),
+                )
+                .unwrap(),
+                target_key: RistrettoPublic::from_random(&mut rng).into(),
+                public_key: RistrettoPublic::from_random(&mut rng).into(),
+                e_account_hint: (&[0u8; 128]).into(),
+            };
+
+            let tx_out_b = tx::TxOut {
+                amount: Amount::new(
+                    1u64 << 18,
+                    Blinding::from(9u64),
+                    &RistrettoPublic::from_random(&mut rng),
+                )
+                .unwrap(),
+                target_key: RistrettoPublic::from_random(&mut rng).into(),
+                public_key: RistrettoPublic::from_random(&mut rng).into(),
+                e_account_hint: (&[0u8; 128]).into(),
+            };
+
+            let outputs = vec![tx_out_a, tx_out_b];
+            let key_images: Vec<KeyImage> = vec![KeyImage::from(RistrettoPoint::random(&mut rng))];
+            RedactedTx::new(outputs, key_images)
         };
 
-        let tx_out_b = tx::TxOut {
-            amount: Amount::new(
-                1u64 << 18,
-                Blinding::from(9u64),
-                &RistrettoPublic::from_random(&mut rng),
-            )
-            .unwrap(),
-            target_key: RistrettoPublic::from_random(&mut rng).into(),
-            public_key: RistrettoPublic::from_random(&mut rng).into(),
-            e_account_hint: (&[0u8; 128]).into(),
-        };
-
-        let outputs = vec![tx_out_a, tx_out_b];
-        let key_images: Vec<KeyImage> = vec![KeyImage::from(RistrettoPoint::random(&mut rng))];
-        let redacted_tx = RedactedTx::new(outputs, key_images);
-
-        let transaction = tx_grpc::RedactedTx::from(&redacted_tx);
-        assert_eq!(transaction.outs.len(), 2);
-        assert_eq!(transaction.key_images.len(), 1);
+        let redacted_tx = external::RedactedTx::from(&source);
+        assert_eq!(redacted_tx.outputs.len(), 2);
+        assert_eq!(redacted_tx.key_images.len(), 1);
     }
 
     #[test]
+    // KeyImage --> external::KeyImage
     fn test_key_image_from() {
         let source: KeyImage = KeyImage::from(7);
-        let converted = tx_grpc::KeyImage::from(&source);
-        assert_eq!(converted.value, source.to_vec());
+        let converted = external::KeyImage::from(&source);
+        assert_eq!(converted.data, source.to_vec());
     }
 
     #[test]
+    // external::keyImage --> KeyImage
     fn test_key_image_try_from() {
-        let key_image = KeyImage::from(11);
-        let mut source = tx_grpc::KeyImage::new();
-        source.set_value(key_image.to_vec());
+        let mut source = external::KeyImage::new();
+        source.set_data(KeyImage::from(11).to_vec());
 
-        match KeyImage::try_from(&source) {
-            Ok(image) => {
-                assert_eq!(image.to_vec(), source.take_value());
-            }
-            Err(_e) => {
-                panic!();
-            }
-        }
+        // try_from should succeed.
+        let key_image = KeyImage::try_from(&source).unwrap();
+
+        // key_image should have the correct value.
+        assert_eq!(key_image, KeyImage::from(11));
     }
 
     #[test]
@@ -1258,8 +1161,8 @@ mod conversion_tests {
     fn test_key_image_try_from_conversion_errors() {
         // Helper function asserts that a ConversionError::ArrayCastError is produced.
         fn expects_array_cast_error(bytes: &[u8]) {
-            let mut source = tx_grpc::KeyImage::new();
-            source.set_value(bytes.to_vec());
+            let mut source = external::KeyImage::new();
+            source.set_data(bytes.to_vec());
             match KeyImage::try_from(&source).unwrap_err() {
                 ConversionError::ArrayCastError => {} // Expected outcome.
                 _ => panic!(),
