@@ -253,7 +253,7 @@ jobs:
             cargo test
       - check-dirty-git
 
-  # Build internal in debug mode
+  # Build and lint in debug mode
   build-all-and-lint-debug:
     executor: build-executor
     steps:
