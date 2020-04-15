@@ -175,7 +175,7 @@ dependencies = [
 
 [[package]]
 name = "attest-api"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "aead 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "attest-ake 0.1.0",
@@ -795,7 +795,7 @@ name = "consensus-service"
 version = "1.0.0"
 dependencies = [
  "attest 0.1.0",
- "attest-api 0.1.0",
+ "attest-api 0.1.1",
  "attest-enclave-api 0.1.0",
  "attest-net 0.1.0",
  "attest-untrusted 0.1.0",
@@ -824,7 +824,7 @@ dependencies = [
  "mcuri 0.1.0",
  "metered-channel 0.1.0",
  "metrics 0.1.0",
- "mobilecoin-api 0.1.0",
+ "mobilecoin-api 0.1.1",
  "peers 1.0.0",
  "peers-tests 0.1.0",
  "prometheus 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2000,7 +2000,7 @@ dependencies = [
  "dotenv 0.14.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "ledger-db 0.1.0",
- "mobilecoin-api 0.1.0",
+ "mobilecoin-api 0.1.1",
  "protobuf 2.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "retry 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rusoto_core 0.42.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2029,7 +2029,7 @@ dependencies = [
  "mcconnection-tests 0.1.0",
  "mcuri 0.1.0",
  "metrics 0.1.0",
- "mobilecoin-api 0.1.0",
+ "mobilecoin-api 0.1.1",
  "peers 1.0.0",
  "peers-tests 0.1.0",
  "protobuf 2.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2258,7 +2258,7 @@ dependencies = [
  "aes-gcm 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "attest 0.1.0",
  "attest-ake 0.1.0",
- "attest-api 0.1.0",
+ "attest-api 0.1.1",
  "common 0.1.0",
  "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "grpcio 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2268,7 +2268,7 @@ dependencies = [
  "mcrand 1.0.0",
  "mcserial 0.1.0",
  "mcuri 0.1.0",
- "mobilecoin-api 0.1.0",
+ "mobilecoin-api 0.1.1",
  "rand 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_hc 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "retry 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2562,15 +2562,17 @@ dependencies = [
 
 [[package]]
 name = "mobilecoin-api"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
- "attest-api 0.1.0",
+ "attest-api 0.1.1",
+ "cargo-emit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "common 0.1.0",
  "curve25519-dalek 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.29 (registry+https://github.com/rust-lang/crates.io-index)",
  "grpcio 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "keys 0.1.0",
  "mc-build-grpc 1.0.0",
+ "mcbuild-utils 0.2.0",
  "mcrand 1.0.0",
  "mcserial 0.1.0",
  "prost 0.6.1 (git+https://github.com/mobilecoinofficial/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
@@ -2608,7 +2610,7 @@ dependencies = [
  "mcrand 1.0.0",
  "mcserial 0.1.0",
  "mcuri 0.1.0",
- "mobilecoin-api 0.1.0",
+ "mobilecoin-api 0.1.1",
  "mobilecoind-api 0.1.0",
  "more-asserts 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "num_cpus 1.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2637,7 +2639,7 @@ dependencies = [
  "hex_fmt 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "keys 0.1.0",
  "mc-build-grpc 1.0.0",
- "mobilecoin-api 0.1.0",
+ "mobilecoin-api 0.1.1",
  "protobuf 2.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "transaction 0.1.0",
@@ -2774,7 +2776,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "peers"
 version = "1.0.0"
 dependencies = [
- "attest-api 0.1.0",
+ "attest-api 0.1.1",
  "attest-enclave-api 0.1.0",
  "common 0.1.0",
  "consensus-enclave-api 0.1.0",
@@ -2788,7 +2790,7 @@ dependencies = [
  "mcconnection-tests 0.1.0",
  "mcserial 0.1.0",
  "mcuri 0.1.0",
- "mobilecoin-api 0.1.0",
+ "mobilecoin-api 0.1.1",
  "peers-tests 0.1.0",
  "protobuf 2.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
