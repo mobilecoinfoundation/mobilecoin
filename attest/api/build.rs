@@ -1,8 +1,12 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-extern crate protoc_grpcio;
+use mcbuild_utils::Environment;
 
 fn compile_protos() {
+    let env = Environment::default();
+    let proto_dir = env.out_dir().join("proto");
+    cargo_emit::pair!("PROTOS_PATH", "{}", proto_dir.as_os_str().to_str().expect("Invalid UTF-8 in proto dir path"));
+
     let proto_root = "./proto";
     let proto_files = ["attest.proto"];
     let output_destination = "src";
