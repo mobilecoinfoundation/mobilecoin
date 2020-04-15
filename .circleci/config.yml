@@ -251,12 +251,6 @@ jobs:
           command: |
             cargo test
       - check-dirty-git
-      - run:
-          name: Lint/fmt
-          command: |
-            ./tools/lint.sh
-      - save-cargo-cache
-      - save-sccache-cache
 
   # Build internal in debug mode
   build-all-debug:
@@ -269,6 +263,14 @@ jobs:
             cargo build
       - check-dirty-git
 
+      # The lint and saving of caches happens here since this job is faster than the run-all-tests job.
+      # This results in shorter CI times.
+      - run:
+          name: Lint/fmt
+          command: |
+            ./tools/lint.sh
+      - save-cargo-cache
+      - save-sccache-cache
 
 workflows:
   version: 2
