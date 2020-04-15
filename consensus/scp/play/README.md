@@ -14,7 +14,7 @@ Notes:
 
 ## Usage with a Jenkins cloud deployed network
 
-1. Log files are stored in `/home/deploybot/scp-debug-dump/<node id>`, e.g. `/home/deploybot/scp-debug-dump/node3.alpha.mobilecoin.com:8443/`.
-1. You will need to SSH into the machine (as the `mobilecoin` user), and grab the logs: `sudo tar -czvf /home/mobilecoin/scp.tgz -C /home/deploybot/scp-debug-dump/ .`
-1. From your machine, scp the files: `scp mobilecoin@node3.alpha.mobilecoin.com:~/scp.tgz .`
-1. Extract the archive and run `scp_play` (inside `public/`): `MC_LOG=trace cargo run -p scp_play -- --scp-debug-dump /tmp/node3.alpha.mobilecoin.com:8443/`
+1. Log files are stored in `$HOME/scp-debug-dump/<node id>`, e.g. `$HOME/scp-debug-dump/node3.test.mobilecoin.com:8443/`.
+1. You will need to SSH into the machine (as the `mobilecoin` user), and grab the logs: `sudo tar -czvf /home/mobilecoin/scp.tgz -C $HOME/scp-debug-dump/ .`
+1. From your machine, scp the files: `scp mobilecoin@node3.test.mobilecoin.com:~/scp.tgz .`
+1. Extract the archive and run `scp_play` (inside `public/`): `MC_LOG=trace cargo run -p scp_play -- --scp-debug-dump /tmp/node3.test.mobilecoin.com:8443/`

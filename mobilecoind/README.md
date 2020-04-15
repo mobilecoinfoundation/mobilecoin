@@ -12,6 +12,7 @@ Wallet Clients, such as a CLI, wanting to use wallet services can register their
 
   - [Getting Started](#getting-started)
     - [Setup](#setup)
+    - [Verifying Signed Enclaves](#verifying-signed-enclaves)
     - [Example Invocation](#example-invocation)
 
 ### Getting Started
@@ -29,14 +30,47 @@ mc://node1.test.mobilecoin.com/
 You will need to specify a ledger location to which to sync the ledger. This directory can be empty (or non-existent), or can contain the origin block, created from [generate_sample_ledger](../generate_sample_ledger/README.md).
 You will also need to specify a directory for the MobileCoin Daemon database, where keys and transaction data would be stored.
 
+#### Verifying Signed Enclaves
+
+When mobilecoind connects to consensus validators, it verifies the integrity of their software using Intel's Secure Guard eXtensions (SGX) via attestation evidence.
+
+The consensus validator provides a signed measurement of its internal state to assure that it is running exactly the software you expect. You must provide a specific file to mobilecoind on startup so that it has the materials it needs to validate the enclave's evidence.
+
+The TestNet signature artifacts are available via
+
+```
+curl -O https://enclave-distribution.test.mobilecoin.com/production.json
+```
+
+This retrieves a json record of:
+
+```json
+{
+    "enclave": "pool/<git revision>,
+    "sigstruct": "pool/<git revision>,
+}
+```
+
+The git revision refers to the TestNet release version, and provides the full path to the production version of the artifact.
+
+For example, MobileCoin's TestNet enclave signature materials are available via:
+
+```
+curl -O https://enclave-distribution.test.mobilecoin.com/pool/e57b6902aee60be45b78b496c1bef781746e4389/bf7fa957a6a94acb588851bc8767eca5776c79f4fc2aa6bcb99312c3c386c/consensus-enclave.css
+```
+
+Once you fetch the sigstruct artifact, you must provide the sigstruct to mobilecoind via the environment variable `CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css`.
+
 #### Example Invocation
 
 This invocation connects to two consensus validators in the MobileCoin demo network, uses their respective S3 buckets to download new blocks, polls every second for updates and provides a MobileCoinD API on port 4444.
 
->Note: The MobileCoin Daemon validates attestation evidence from the Consensus Validators, and so needs to know whether those validators are running with hardware SGX or in simulation mode, via the SGX_MODE variable.
+>Note: The MobileCoin Daemon validates attestation evidence from the Consensus Validators, and so needs to know whether those validators are running with hardware SGX or in simulation mode, via the `SGX_MODE` variable. In addiiton it needs to know whether the enclave was built in debug or relase, via the `IAS_MODE` variable.
 
 ```
-SGX_MODE=HW MC_LOG=debug,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,rusoto_core=error,h2=error,reqwest=error cargo run --release -p mobilecoind -- \
+SGX_MODE=HW IAS_MODE=PROD CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css \
+    MC_LOG=debug,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,rusoto_core=error,h2=error,reqwest=error \
+    cargo run --release -p mobilecoind -- \
     --ledger-db /path/to/ledger \
     --poll-interval 1 \
     --peer mc://node1.test.mobilecoin.com/ \

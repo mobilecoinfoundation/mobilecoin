@@ -17,7 +17,7 @@ To encrypt or decrypt, use the `CryptoBox` trait and exercise the `encrypt` or
 `decrypt` APIs or their variations.
 
 Encryption takes an rng, a public key, and a message, and produces a "cryptogram",
-including the ciphertext, an ephemeral public key, an aes mac value, and a small versioning tag.
+which includes the ciphertext, an ephemeral public key, an aes mac value, and a small versioning tag.
 
 Decryption takes the private key and the cryptogram and repoduces the message.
 
@@ -68,14 +68,14 @@ is used for key exchange, then Hsalsa20 is used to extract entropy from the shar
 Hsalsa20 is then used as a CSPRNG and this pseudorandom sequence is xor'd with the plaintext
 to achieve encryption. Poly1305 is used to produce a MAC.
 
-So, McCryptoBox can be viewed as a variation on NaCl cryptobox.
+So, `mc-crypto-box` can be viewed as a variation on NaCl cryptobox.
 For technical reasons, it is a requirement in Mobilecoin to have a version of
 cryptobox based on the Ristretto group.
 
 Choice to use random nonces derived from key exchange
 -----------------------------------------------------
 
-In NaCl cryptobox, the nonce used to drive authenticated encryption is NOT derived from
+In NaCl cryptobox, the nonce used to drive authenticated encryption is NOT derived
 exclusively from the shared secret, as it was in all previous IES designs. Instead,
 there is a nonce value which is input from the user, and users are expected to choose
 nonces such that a nonce is never reused when sending to a particular recipient.
@@ -84,28 +84,41 @@ NaCl cryptobox documentation specifies that randomly generated nonces have negli
 chance of collision, but that counter-based nonces work also in their design and can
 moreover prevent replay attacks.
 
-In Mobilecoin Fog, the CryptoBox is used to enable users to send encrypted messages
-to a Fog ingest enclave, and to enable that enclave to send encrypted messages to users,
-having learned their public keys.
+It is explained in "The security impact of a new cryptographic library" that part of
+the idea with the nonces is that if Alice wants to send a massive payload to Bob
+using NaCl cryptobox, she would do key exchange once (using the two-step cryptobox
+API), then break her payload into 4k-sized chunks (depending on transport layer),
+and apply cryptobox to each of these chunks, counting up the nonce in sequence.
+This ensures that each packet that Bob recieves has its own mac -- there is not one
+mac value for the entire payload, and it ensures that we don't have to do an elliptic
+curve operation once for each packet, which is what a naive implementation would do.
 
-In both of these cases, it is impossible for the enclave to coordinate in advance with
-the users about a nonce, in a way that will prevent nonce reuse from ever occuring.
-This is because many users are encrypting for the enclave, before their transactions
-have reached consensus and been ordered. Similarly, there may be several ingest enclaves
-processing the blockchain, which have no way of coordinating with one-another when encrypting
-messages for a particular recipient. Additionally, for an ingest node to preserve a counter
-as well as an RNG, for each user, will require additional memory footprint on a per user
-basis. This means that it exhausts its memory after serving only a fraction of the number
-of users that it could have.
+In Mobilecoin Fog, the CryptoBox is used to enable users to send encrypted messages
+to a fog enclave, and to enable that enclave to send encrypted messages to users,
+having learned their public keys. These messages are all very small, not more than
+a few hundred bytes, so we simply have little use for the nonce / large payloads
+optimization. If Fog is expected to preserve Cryptobox context objects across many
+transactions, this creates additional memory pressure on the enclave to store those
+context objects, which effectively halves the number of users that a single node
+can support, if it is memory-bound as expected.
+
+Moreover, it's generally very difficult in fog for the enclaves to coordinate
+with the users about the nonce value in a way that will prevent nonce reuse from
+ever occurring. If the fog enclave must store per-user nonces that also adds substantial
+memory pressure to the fog enclave.
 
 Additionally, the "nonce counting up" strategy only works if messages between the users
-are never lost. In conventional settings like TLS, messages that are lost can be retransmitted.
-In Mobilecoin fog, the messages between the users and the ingest node are essentially mediated
-by databases -- in one direction, the blockchain, and in another, the recovery database.
-There is no possibility to retransmit a message if there is data loss in the recovery database.
+can be resent if they are lost. In conventional settings like TLS, messages that are lost can
+be retransmitted. In Mobilecoin fog, the messages between the users and the fog enclave
+are essentially mediated by databases -- in one direction, the blockchain, and in another,
+the recovery database. There is no possibility to retransmit a message if there is data
+loss in the recovery database.
 
 Choosing exclusively random nonces derived from key exchange avoids these practical
 operational concerns and simplifies the API.
+
+In a future revision, we may wish to
+extend the API to support the two-step construction + user-provided nonce idea.
 
 Comparison to `aead` crate
 --------------------------

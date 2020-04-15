@@ -16,6 +16,7 @@ import io.grpc.ManagedChannelBuilder;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Empty;
+import com.mobilecoin.consensus.ConsensusAPI.KeyImage;
 import com.mobilecoin.mobilecoind.MobileCoinDAPI;
 import com.mobilecoin.mobilecoind.MobilecoindAPIGrpc;
 import com.mobilecoin.mobilecoind.MobileCoinDAPI.AccountKey;
@@ -50,6 +51,9 @@ public class App {
 
         Option amountOption = new Option("a", "amount", true, "amount in picoMOB to transfer");
         options.addOption(amountOption);
+
+        Option transferReceiptOption = new Option("t", "transfer-receipt", true, "receipt code for transfer status");
+        options.addOption(transferReceiptOption);
 
         // It is assumed that mobilecoind and clients such as this will run on the same machine, however
         // there may be cases where a remote SSL connection is required
@@ -125,6 +129,25 @@ public class App {
             }
         }
 
+        // Transfer Receipt consists of a hex-ecoded key image an a tombstone block
+        ByteString transferKeyImage = null;
+        long tombstoneBlock = 0;
+        String transerReceiptStr = cmd.getOptionValue("transfer-receipt");
+        if (transerReceiptStr != null) {
+            String[] parts = transerReceiptStr.split(":");
+            if (parts.length != 2) {
+                System.out.println("The transfer receipt format is KEYIMAGE:TOMBSTONE");
+                System.exit(1);
+            }
+            try {
+                transferKeyImage = ByteString.copyFrom(Hex.decodeHex(parts[0]));
+                tombstoneBlock = Long.parseLong(parts[1]);
+            } catch (Exception e) {
+                System.out.println("The transfer receipt format is KEYIMAGE:TOMBSTONE");
+                System.exit(1);
+            }
+        }
+
         // All the functions return strings which are printed as the result to the CLI
         // tool
         String output = "";
@@ -158,6 +181,13 @@ public class App {
                     output = "transfer requires a monitor, recipient and amount";
                 } else {
                     output = transfer(stub, monitorId, index, recipient, amount);
+                }
+                break;
+            case "status":
+                if (transferKeyImage == null) {
+                    output = "status requires a transfer receipit";
+                } else {
+                    output = transferStatus(stub, transferKeyImage, tombstoneBlock);
                 }
                 break;
             default:
@@ -256,7 +286,7 @@ public class App {
      * @param index     The subaddress index from which the funds should be drawn
      * @param requestCode The requestCode to which funds should be sent
      * @param amount The amount of picoMOB to be sent
-     * @return A b58 encoded string specifying a target public address
+     * @return A string to use in a future call to see if the transfer succeeded, consisting of KEYIMAGE:TOMBSTONE
      */
     static String transfer(MobilecoindAPIBlockingStub stub, ByteString monitorId, long index, String requestCode, long amount) {
         // Convert the b58 code into a public address
@@ -268,9 +298,31 @@ public class App {
 
         // Send a payment
         var spRequest = MobileCoinDAPI.SendPaymentRequest.newBuilder().setSenderMonitorId(monitorId).addOutlayList(outlay).setSenderSubaddress(index).build();
-        var txReceipt = stub.sendPayment(spRequest).getSenderTxReceipt();
+        MobileCoinDAPI.SenderTxReceipt txReceipt = null;
+        try {
+            txReceipt = stub.sendPayment(spRequest).getSenderTxReceipt();
+        } catch (Exception e) {
+            System.out.println("Your payment failed with error " + e.getMessage());
+            System.exit(1);
+        }
 
-        // Return the first key image from the transaction, used to verify later that the payment succeeded
-        return Hex.encodeHexString(txReceipt.getKeyImageList(0).getData().toByteArray());
+        // Generate a transaction receipt using the first key image and the tombstone block
+        return Hex.encodeHexString(txReceipt.getKeyImageList(0).getData().toByteArray()) + ":" + txReceipt.getTombstone();
+    }
+    /**
+     * Checks the status of a transfer given a key image and a tombstone block
+     * @param stub            The gRPC stub connected to mobilecoind
+     * @param keyImage        Bytes of any of the key images used in the transaction
+     * @param tombstoneBlock  The tombstone block for the transaction
+     * @return A string representing the current status of the transaction, one of 'Unknown', 'Verified' or 'TombstoneBlockExceeded'
+     */
+    static String transferStatus(MobilecoindAPIBlockingStub stub, ByteString keyImageBytes, long tombstoneBlock) {
+        var keyImage = KeyImage.newBuilder().setData(keyImageBytes).build();
+        var receipt = MobileCoinDAPI.SenderTxReceipt.newBuilder().addKeyImageList(keyImage).setTombstone(tombstoneBlock).build();
+        var request = MobileCoinDAPI.GetTxStatusAsSenderRequest.newBuilder().setReceipt(receipt).build();
+
+        var status = stub.getTxStatusAsSender(request).getStatus();
+
+        return status.toString();
     }
 }

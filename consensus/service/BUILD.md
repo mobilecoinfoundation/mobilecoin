@@ -5,6 +5,7 @@
     - [Building for SGX](#building-for-sgx)
       - [Hardware Mode](#hardware-mode)
       - [Simulation Mode](#simulation-mode)
+    - [Enclave Signing Material](#enclave-signing-material)
     - [Build](#build)
 
 #### Requirements
@@ -138,22 +139,57 @@ For local testing, it is possible to run in simulation mode as well as with SGX 
 
 Install the packages specified in [Hardware Mode](#hardware-mode) without running the daemons.
 
-#### Signing the Enclave
+#### Enclave Signing Material
 
 The enclave needs to be signed in order to run in production. The MobileCoin Foundation manages the key that signs the enclave which is used in the production MobileCoin Consensus Validator. You can pull down the publicly available signature material in order to run the enclave that will attest with other MobileCoin consensus validators.
 
-If you want to build a signed enclave locally, you can provide a private key with which to sign the enclave, as CONSENSUS_ENCLAVE_PRIVKEY=./Enclave_private.pem.
+##### Building without Signing Material
 
-You can generate a private key with the appropriate length and exponent with:
+Building locally does not require providing a private key, as a random key will be generated during build.
+
+##### Using a Signed Enclave
+
+There are two ways to use materials from a previously signed enclave to build your enclave locally.
+
+The TestNet signature artifacts are available via
 
 ```
-openssl genrsa -out Enclave_private.pem -3 3072
+curl -O https://enclave-distribution.test.mobilecoin.com/production.json
 ```
+
+This retrieves a json record of:
+
+```json
+{
+    "enclave": "pool/<git revision>,
+    "sigstruct": "pool/<git revision>,
+}
+```
+
+The git revision refers to the TestNet release version.
+
+Once you have the desired artifact, you will need to extract both the signed enclave and the sigstruct file to build:
+
+MobileCoin's TestNet Signed Enclave materials are available at, for example:
+
+```
+ curl -O https://enclave-distribution.test.mobilecoin.com/pool/e57b6902aee60be45b78b496c1bef781746e4389/bf7fa957a6a94acb588851bc8767eca5776c79f4fc2aa6bcb99312c3c386c/libconsensus-enclave.signed.so
+ curl -O https://enclave-distribution.test.mobilecoin.com/pool/e57b6902aee60be45b78b496c1bef781746e4389/bf7fa957a6a94acb588851bc8767eca5776c79f4fc2aa6bcb99312c3c386c/consensus-enclave.css
+```
+
+Then, when you build, you will provide both `CONSENSUS_ENCLAVE_SIGNED=$(pwd)/libconsensus-enclave.signed.so CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css`.
 
 #### Build
 
-To build consensus, specify the desired `SGX_MODE` (either `HW` for hardware or `SW` for simulation), as well as the desired IAS_MODE (depending on which EPID policy you registered for), and then run:
+To build consensus, you will need to specify the following:
+
+* `SGX_MODE` (either `HW` for hardware or `SW` for simulation)
+* `IAS_MODE` (depending on which EPID policy you registered for, either `DEV` or `PROD`)
+* (Optional) Signing material, `CONSENSUS_ENCLAVE_SIGNED` and `CONSENSUS_ENCLAVE_CSS` (see [Enclave Signing Material](#enclave-signing-material) above)
+
+And then you can build with:
 
 ```
-SGX_MODE=HW IAS_MODE=DEV CONSENSUS_ENCLAVE_PRIVKEY=./Enclave_private.pem cargo build --release -p consensus-service
+SGX_MODE=HW IAS_MODE=DEV CONSENSUS_ENCLAVE_SIGNED=$(pwd)/libconsensus-enclave.signed.so CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css \
+    cargo build --release -p consensus-service
 ```
