@@ -33,10 +33,6 @@ logs
 *.so
 *.a
 
-# grpc
-grpc_util/src/health_api.rs
-grpc_util/src/health_api_grpc.rs
-
 # Random junk
 .DS_Store
 .factorypath
