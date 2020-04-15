@@ -103,11 +103,26 @@ commands:
           paths:
             - "~/.cargo"
 
-  build_setup:
+  generate-pem-file:
+    steps:
+      - run:
+          name: Generating Enclave_private.pem
+          command: |
+            openssl genrsa -out $(pwd)/Enclave_private.pem -3 3072
+            export CONSENSUS_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
+            export INGEST_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
+            export LEDGER_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
+            export VIEW_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
+
+  prepare-for-build:
     steps:
       - checkout
       - print_versions
       - env_setup
+      - enable_sccache
+      - restore-cargo-cache
+      - restore-sccache-cache
+      - generate-pem-file
 
   check-dirty-git:
     steps:
@@ -129,11 +144,7 @@ jobs:
   build-parallel-tests:
     executor: build-executor
     steps:
-      - build_setup
-      - enable_sccache
-      - restore-cargo-cache
-      - restore-sccache-cache
-
+      - prepare-for-build
       - run:
           name: Build/prepare unit tests
           command: |
@@ -234,43 +245,39 @@ jobs:
     executor: build-executor
     parallelism: 1
     steps:
-      - build_setup
-      - enable_sccache
-      - restore-cargo-cache
-      - restore-sccache-cache
+      - prepare-for-build
       - run:
           name: Run all unit tests
           command: |
-            openssl genrsa -out $(pwd)/Enclave_private.pem -3 3072
-            export CONSENSUS_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
-            export INGEST_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
-            export LEDGER_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
-            export VIEW_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
-
             cargo test
-
-            rm $(pwd)/Enclave_private.pem
       - run:
           name: Lint/fmt
           command: |
-            openssl genrsa -out $(pwd)/Enclave_private.pem -3 3072
-            export CONSENSUS_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
-            export INGEST_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
-            export LEDGER_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
-            export VIEW_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
-
             ./tools/lint.sh
-
-            rm $(pwd)/Enclave_private.pem
       - save-cargo-cache
       - save-sccache-cache
+
+  # Build internal in debug mode
+  build-all-debug:
+    executor: build-executor
+    steps:
+      - prepare-for-build
+      - run:
+        name: Cargo build
+        command: |
+          cargo build
+
 
 workflows:
   version: 2
   # Build and run tests on a single container
-  run-all-tests:
+  build-and-run-all-tests:
     jobs:
+      # Run tests on a single container
       - run-all-tests
+
+      # Build everything in debug
+      - build-all-debug
 
   # Build and run tests in parallel - not needed at the moment since the test suite is fast enough.
   # build-and-run-tests:
