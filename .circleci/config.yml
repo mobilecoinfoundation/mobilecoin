@@ -136,6 +136,7 @@ commands:
               echo "repo is dirty"
               git status
               exit 1
+            fi
 
 jobs:
   # A job that builds all the tests in the workspace, and stores them in a test-bins/ directory.
