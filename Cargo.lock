@@ -184,9 +184,9 @@ dependencies = [
  "futures 0.1.29 (registry+https://github.com/rust-lang/crates.io-index)",
  "grpcio 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "keys 0.1.0",
+ "mc-build-grpc 1.0.0",
  "mcnoise 0.1.0",
  "protobuf 2.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "protoc-grpcio 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

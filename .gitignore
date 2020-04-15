@@ -34,8 +34,6 @@ logs
 *.a
 
 # grpc
-attest_api/src/attest.rs
-attest_api/src/attest_grpc.rs
 grpc_util/src/health_api.rs
 grpc_util/src/health_api_grpc.rs
 

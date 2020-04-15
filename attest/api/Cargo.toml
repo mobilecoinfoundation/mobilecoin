@@ -9,7 +9,7 @@ keywords = ["SIGMA", "Cryptography", "Key Exchange", "Diffie-Hellman", "SGX", "A
 readme = "README.md"
 
 [build-dependencies]
-protoc-grpcio = "0.3.1"
+mc-build-grpc = { path = "../../util/build-grpc" }
 
 [dependencies]
 attest-ake = { path = "../ake" }
