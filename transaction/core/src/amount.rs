@@ -1,16 +1,13 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-//! A commitment to an output's amount.
+//! A commitment to an output's amount, denominated in picoMOB.
 //!
 //! Amounts are implemented as Pedersen commitments. The associated private keys are "masked" using
 //! a shared secret.
 
 #![cfg_attr(test, allow(clippy::unnecessary_operation))]
 
-use crate::{
-    constants::MAX_TINY_MOB,
-    ring_signature::{Blinding, Commitment, CurveScalar, GENERATORS},
-};
+use crate::ring_signature::{Blinding, Commitment, CurveScalar, GENERATORS};
 use blake2::{Blake2b, Digest};
 use curve25519_dalek::scalar::Scalar;
 use digestible::Digestible;
@@ -23,16 +20,12 @@ use serde::{Deserialize, Serialize};
 /// Errors that can occur when constructing an amount.
 #[derive(Debug, Fail, Eq, PartialEq)]
 pub enum AmountError {
-    /// The Amount is too damn high.
-    #[fail(display = "Amount exceeds MAX_TINY_MOB: {}", _0)]
-    ExceedsLimit(u64),
-
     /// The masked value, masked blinding, or shared secret are not consistent with the commitment.
     #[fail(display = "Inconsistent Commitment")]
     InconsistentCommitment,
 }
 
-/// A commitment to the amount of the `n^th` output in a transaction.
+/// A commitment to an amount of MobileCoin, denominated in picoMOB.
 #[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Message, Digestible)]
 pub struct Amount {
     /// A Pedersen commitment `v*G + b*H` to a quantity `v` of MobileCoin, with blinding `b`,
@@ -53,7 +46,7 @@ impl Amount {
     /// so that they can be recovered by the recipient.
     ///
     /// # Arguments
-    /// * `value` - The committed value `v`.
+    /// * `value` - The committed value `v`, in picoMOB.
     /// * `blinding` - The blinding `b`.
     /// * `shared_secret` - The shared secret, e.g. `rB` for transaction private key `r` and recipient public key `B`.
     #[inline]
@@ -62,10 +55,6 @@ impl Amount {
         blinding: Blinding,
         shared_secret: &RistrettoPublic,
     ) -> Result<Amount, AmountError> {
-        if value > MAX_TINY_MOB {
-            return Err(AmountError::ExceedsLimit(value));
-        }
-
         let value: Scalar = Scalar::from(value);
 
         // Pedersen commitment `v*G + b*H`.
@@ -91,6 +80,8 @@ impl Amount {
     }
 
     /// Returns the value `v` and blinding `b` in the commitment `v*G + b*H`.
+    ///
+    /// Value is denominated in picoMOB.
     ///
     /// # Arguments
     /// * `shared_secret` - The shared secret, e.g. `rB`.
@@ -170,7 +161,6 @@ mod tests {
 
     use crate::{
         amount::{Amount, AmountError},
-        constants::MAX_TINY_MOB,
         ring_signature::{Scalar, GENERATORS},
     };
 
@@ -179,30 +169,17 @@ mod tests {
             #[test]
             /// Amount::new() should return Ok for valid values and blindings.
             fn test_new_ok(
-                value in (0u64..=MAX_TINY_MOB),
+                value in any::<u64>(),
                 blinding in arbitrary_blinding(),
                 shared_secret in arbitrary_ristretto_public()) {
                 assert!(Amount::new(value, blinding, &shared_secret).is_ok());
             }
 
             #[test]
-            /// Amount::new() should return ExceedsLimit for values larger than MAX_TINY_MOB.
-            fn test_new_exceeds_limit_error(
-                value in ((MAX_TINY_MOB+1)..=core::u64::MAX),
-                blinding in arbitrary_blinding(),
-                shared_secret in arbitrary_ristretto_public()) {
-
-                match Amount::new(value, blinding, &shared_secret){
-                    Err(AmountError::ExceedsLimit(_)) => {}, // This is expected.
-                    _ => panic!(),
-                }
-            }
-
-            #[test]
             #[allow(non_snake_case)]
             /// amount.commitment should agree with the value and blinding.
             fn test_commitment(
-                value in (0u64..=MAX_TINY_MOB),
+                value in any::<u64>(),
                 blinding in arbitrary_blinding(),
                 shared_secret in arbitrary_ristretto_public()) {
                     let amount = Amount::new(value, blinding,  &shared_secret).unwrap();
@@ -217,7 +194,7 @@ mod tests {
             #[test]
             /// amount.unmask_value should return the value used to construct the amount.
             fn test_unmask_value(
-                value in (0u64..=MAX_TINY_MOB),
+                value in any::<u64>(),
                 blinding in arbitrary_blinding(),
                 shared_secret in arbitrary_ristretto_public())
             {
@@ -232,7 +209,7 @@ mod tests {
             #[test]
             /// amount.unmask_blinding should return the blinding used to construct the amount.
             fn test_unmask_blinding(
-                value in (0u64..=MAX_TINY_MOB),
+                value in any::<u64>(),
                 blinding in arbitrary_blinding(),
                 shared_secret in arbitrary_ristretto_public())
             {
@@ -246,7 +223,7 @@ mod tests {
             #[test]
             /// get_value should return the correct value and blinding.
             fn test_get_value_ok(
-                value in (0u64..=MAX_TINY_MOB),
+                value in any::<u64>(),
                 blinding in arbitrary_blinding(),
                 shared_secret in arbitrary_ristretto_public()) {
 
@@ -260,7 +237,7 @@ mod tests {
             #[test]
             /// get_value should return InconsistentCommitment if the masked value is incorrect.
             fn test_get_value_incorrect_masked_value(
-                value in (0u64..=MAX_TINY_MOB),
+                value in any::<u64>(),
                 other_masked_value in arbitrary_curve_scalar(),
                 blinding in arbitrary_blinding(),
                 shared_secret in arbitrary_ristretto_public())
@@ -277,9 +254,9 @@ mod tests {
             #[test]
             /// get_value should return InconsistentCommitment if the masked blinding is incorrect.
             fn test_get_value_incorrect_blinding(
-                value in (0u64..=MAX_TINY_MOB),
+                value in any::<u64>(),
                 blinding in arbitrary_blinding(),
-                 other_masked_blinding in arbitrary_curve_scalar(),
+                other_masked_blinding in arbitrary_curve_scalar(),
                 shared_secret in arbitrary_ristretto_public())
             {
                 // Mutate amount to use a other_masked_blinding.
@@ -293,7 +270,7 @@ mod tests {
             #[test]
             /// get_value should return an Error if shared_secret is incorrect.
             fn test_get_value_invalid_shared_secret(
-                value in (0u64..=MAX_TINY_MOB),
+                value in any::<u64>(),
                 blinding in arbitrary_blinding(),
                 shared_secret in arbitrary_ristretto_public(),
                 other_shared_secret in arbitrary_ristretto_public(),
