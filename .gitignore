@@ -33,24 +33,6 @@ logs
 *.so
 *.a
 
-# grpc
-attest_api/src/attest.rs
-attest_api/src/attest_grpc.rs
-grpc_util/src/health_api.rs
-grpc_util/src/health_api_grpc.rs
-consensus/api/src/blockchain.rs
-consensus/api/src/blockchain_grpc.rs
-consensus/api/src/consensus_client.rs
-consensus/api/src/consensus_client_grpc.rs
-consensus/api/src/consensus_common.rs
-consensus/api/src/consensus_peer.rs
-consensus/api/src/consensus_peer_grpc.rs
-consensus/api/src/external.rs
-consensus/api/src/ledger_enclave_server.rs
-consensus/api/src/ledger_enclave_server_grpc.rs
-consensus/api/src/ledger_server.rs
-consensus/api/src/ledger_server_grpc.rs
-
 # Random junk
 .DS_Store
 .factorypath

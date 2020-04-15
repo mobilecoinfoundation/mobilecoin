@@ -184,9 +184,9 @@ dependencies = [
  "futures 0.1.29 (registry+https://github.com/rust-lang/crates.io-index)",
  "grpcio 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "keys 0.1.0",
+ "mc-build-grpc 1.0.0",
  "mcnoise 0.1.0",
  "protobuf 2.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "protoc-grpcio 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -1481,11 +1481,11 @@ dependencies = [
  "grpcio 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex_fmt 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mc-build-grpc 1.0.0",
  "mcserial 0.1.0",
  "metrics 0.1.0",
  "prost 0.6.1 (git+https://github.com/mobilecoinofficial/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
  "protobuf 2.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "protoc-grpcio 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -2568,11 +2568,11 @@ dependencies = [
  "futures 0.1.29 (registry+https://github.com/rust-lang/crates.io-index)",
  "grpcio 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "keys 0.1.0",
+ "mc-build-grpc 1.0.0",
  "mcrand 1.0.0",
  "mcserial 0.1.0",
  "prost 0.6.1 (git+https://github.com/mobilecoinofficial/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
  "protobuf 2.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "protoc-grpcio 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempdir 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "transaction 0.1.0",
