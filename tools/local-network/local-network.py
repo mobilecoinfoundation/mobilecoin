@@ -159,7 +159,7 @@ class Node:
     def peer_uri(self, broadcast_consensus_msgs=True):
         pub_key = subprocess.check_output(f'openssl pkey -in {self.msg_signer_key_file} -pubout | head -n-1 | tail -n+2 | sed "s/+/-/g; s/\//_/g"', shell=True).decode().strip()
         broadcast_consensus_msgs = '1' if broadcast_consensus_msgs else '0'
-        return f'mcp://localhost:{self.peer_port}/?ca-bundle=./attest/test_certs/selfsigned_mobilecoin.crt&tls-hostname=www.mobilecoin.com&consensus-msg-key={pub_key}&broadcast-consensus-msgs={broadcast_consensus_msgs}'
+        return f'insecure-mcp://localhost:{self.peer_port}/?consensus-msg-key={pub_key}&broadcast-consensus-msgs={broadcast_consensus_msgs}'
 
     def __repr__(self):
         return self.name
@@ -214,7 +214,7 @@ class Node:
             f'--origin-block-path {LEDGER_BASE}',
             f'--ledger-path {self.ledger_dir}',
             f'--client-listen-uri="insecure-mc://0.0.0.0:{self.client_port}/"',
-            f'--peer-listen-uri="mcp://0.0.0.0:{self.peer_port}/?tls-chain=./attest/test_certs/selfsigned_mobilecoin.crt&tls-key=./attest/test_certs/selfsigned_mobilecoin.key"',
+            f'--peer-listen-uri="insecure-mcp://0.0.0.0:{self.peer_port}/"',
             f'--scp-debug-dump {WORK_DIR}/scp-debug-dump-{self.node_num}',
             f'--management-listen-addr=0.0.0.0:{self.management_port}',
             f'--sealed-block-signing-key {WORK_DIR}/consensus-sealed-block-signing-key-{self.node_num}',
@@ -333,8 +333,16 @@ class Network:
 
     def build_binaries(self):
         print('Building binaries...')
+        enclave_pem = os.path.join(PROJECT_DIR, 'Enclave_private.pem')
+        if not os.path.exists(enclave_pem):
+            subprocess.run(
+                f'openssl genrsa -out {enclave_pem} -3 3072',
+                shell=True,
+                check=True,
+            )
+
         subprocess.run(
-            f'cd {PROJECT_DIR} && openssl genrsa -out Enclave_private.pem -3 3072 && CONSENSUS_ENCLAVE_PRIVKEY=Enclave_private.pem cargo build -p consensus-service -p ledger-distribution {CARGO_FLAGS}',
+            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p consensus-service -p ledger-distribution {CARGO_FLAGS}',
             shell=True,
             check=True,
         )

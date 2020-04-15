@@ -38,7 +38,7 @@ Follow the steps below:
     An example URI is:
 
     ```
-    mcp://node1.test.mobilecoin.com:8443/?consensus-msg-key=MCowBQYDK2VwAyEA-21ShHmvuuynH7EcIgkdH2dWxCojgnWYbHxLrRseQ1s=&ca-bundle=/root/mobilenode/public/attest/test_certs/selfsigned_mobilecoin.crt&tls-hostname=www.mobilecoin.com
+    mcp://node1.test.mobilecoin.com:8443/?consensus-msg-key=MCowBQYDK2VwAyEA-21ShHmvuuynH7EcIgkdH2dWxCojgnWYbHxLrRseQ1s=
     ```
 
     The quorum set chosen represents a json dictionary specifying the `threshold` of nodes that you consider necessary to reach agreement, followed by the `members` of your quorum. An example quorum set is:
@@ -148,7 +148,7 @@ SGX_MODE=HW IAS_MODE=DEV cargo run --release -p consensus-service -- \
     --ias-api-key="${IAS_API_KEY}" \
     --ias-spid="${IAS_SPID}" \
     --ledger-path /tmp/ledger-db-1 \
-    --peer-listen-uri='mcp://0.0.0.0:8443/?tls-chain=/root/mobilenode/public/attest/test_certs/selfsigned_mobilecoin.crt&tls-key=/root/mobilenode/public/attest/test_certs/selfsigned_mobilecoin.key' \
+    --peer-listen-uri='mcp://0.0.0.0:8443/' \
     --management-listen-addr=0.0.0.0:9090
 ```
 

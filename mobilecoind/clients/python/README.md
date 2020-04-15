@@ -2,6 +2,30 @@
 
 This code demonstrates a text-based client implementation in Python, that uses `mobilecoind` to interact with the MobileCoin network.
 
+### Quick Start
+
+After you [sign up for TestNet](https://forms.gle/ULNjA6cMxCD5XNyT7), we will reach out to you to distribute your TestNet keys. You can start the client with the quickstart scripts below:
+
+1. Start the mobilecoind client to sync the ledger from TestNet
+
+    ```
+    ./start-testnet-mobilecoind.sh
+    ```
+
+1. Start the interactive client to get and send transactions.
+
+   ```
+   ./start-testnet-client.sh
+   ```
+
+1. Load your account keys:
+
+    ```
+    # load my_accounts.json
+    ```
+
+1. Enter `help` or `?` to see a full list of commands, and `help <cmd>` to see help for that command.
+
 ### Python client setup
 
 To install required packages for the example client:
@@ -20,18 +44,18 @@ To generate the pb2 files from the protocol buffers:
 
 To run the MobileCoin client:
 ```
-py ./main.py <host>:<port>
+python3 ./main.py <host>:<port>
 ```
 
 This document describes how to start a local `mobilecoind` instance below, for use with the command:
 ```
-py ./main.py localhost:4444
+python3 ./main.py localhost:4444
 ```
 
-If you do not want to run a local instance, there is a hosted instance of `mobilecoind` available online connected to a preproduction network:
-```
-py ./main.py --ssl mobilecoind.master.mobilecoin.com:443
-```
+### Providing an account
+
+You will need to provide your account credentials. During TestNet, your account credentials will be emailed to you, if you sign up [here](https://forms.gle/ULNjA6cMxCD5XNyT7).
+
 
 ### Client interaction
 
@@ -62,30 +86,4 @@ alice/0 has 4999999999990000 pMOB @ block 14
 carol/1 has 10000 pMOB @ block 15
 # balance carol/0
 carol/1 has 5000000000000000 pMOB @ block 16
-```
-
-### Running a local instance of `mobilecoind`
-
-For security, users should prefer connecting to a local `mobilecoind` instance. This can be run using `cargo` with some variation of:
-
-(from `mobilecoinofficial/mobilecoin`)
-```
-cargo run --bin `mobilecoind` -- \
-   --ledger-db /tmp/ledger-db \
-   --ledger-db-bootstrap target/sample_data/dev/ledger \
-   --poll-interval 10 \
-   --client-port 4444 \
-   --peer mc://node1.dev.mobilecoin.com/ \
-   --tx-source-url https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node1.dev.mobilecoin.com/ \
-   --tx-source-url https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node2.dev.mobilecoin.com/ \
-   --db /tmp/transaction_db \
-   --service-port 4444
-```
-
-This command will launch a local `mobilecoind` instance that syncs the ledger from two nodes in the dev network and hosts the wallet service running on port 4444.
-
-Note that it may be necessary to delete the previous transaction database for a clean run:
-
-```
-rm -rf /tmp/ledger-db; rm -rf /tmp/transaction_db; mkdir /tmp/transaction_db
 ```

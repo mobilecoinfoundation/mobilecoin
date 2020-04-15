@@ -17,6 +17,7 @@ grpc-util = { path = "../util/grpc" }
 keys = { path = "../crypto/keys" }
 ledger-db = { path = "../ledger/db" }
 ledger-sync = { path = "../ledger/sync" }
+mc-b58-payloads = { path = "../util/b58-payloads" }
 mcconnection = { path = "../mcconnection" }
 mcrand = { path = "../crypto/mcrand" }
 mcserial = { path = "../util/mcserial" }

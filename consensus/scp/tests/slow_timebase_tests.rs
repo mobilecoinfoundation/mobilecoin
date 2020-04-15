@@ -1,8 +1,20 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
+#![allow(unused_attributes)]
+//TODO -- which attribute is unused???
 
-extern crate rand;
-
+use common::{
+    logger::{log, o, test_with_logger, Logger},
+    HashMap, HashSet, NodeID,
+};
 use rand::{rngs::StdRng, Rng, RngCore, SeedableRng};
+use scp::{
+    core_types::{CombineFn, SlotIndex, ValidityFn},
+    msg::Msg,
+    node::{Node, ScpNode},
+    quorum_set::QuorumSet,
+    test_utils,
+    test_utils::{test_node_id, TransactionValidationError},
+};
 use serial_test_derive::serial;
 use std::{
     collections::BTreeSet,
@@ -11,19 +23,6 @@ use std::{
     thread,
     thread::JoinHandle,
     time::{Duration, Instant},
-};
-
-use crate::{
-    core_types::{CombineFn, SlotIndex, ValidityFn},
-    msg::Msg,
-    node::{Node, ScpNode},
-    quorum_set::QuorumSet,
-    test_utils,
-    test_utils::{test_node_id, TransactionValidationError},
-};
-use common::{
-    logger::{log, o, test_with_logger, Logger},
-    HashMap, HashSet, NodeID,
 };
 
 #[derive(Debug)]

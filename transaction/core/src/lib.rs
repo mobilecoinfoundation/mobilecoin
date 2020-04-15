@@ -21,7 +21,6 @@ pub mod amount;
 pub mod blake2b_256;
 mod block;
 pub mod constants;
-pub mod encoders;
 pub mod encrypted_fog_hint;
 pub mod fog_hint;
 pub mod membership_proofs;

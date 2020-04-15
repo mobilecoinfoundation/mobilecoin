@@ -1,4 +1,4 @@
-# MobileNode Enclave API Implementation
+# MobileCoin Enclave API Implementation
 
 This is the in-enclave implementation of the traits defined in `enclave_api`. In particular, it provides the `ReportingEnclave` and `PeeringEnclave` structs, which implement the inside-the-enclave version of the `ReportableEnclave` and `PeerableEnclave` structures.
 

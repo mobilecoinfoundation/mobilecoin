@@ -6,6 +6,9 @@ syntax = "proto3";
 
 package external;
 
+option java_package = "com.mobilecoin.consensus";
+option java_outer_classname = "ConsensusAPI";
+
 ///////////////////////////////////////////////////////////////////////////////
 // `keys` crate
 ///////////////////////////////////////////////////////////////////////////////
@@ -19,6 +22,10 @@ message RistrettoPrivate {
 }
 
 message CurvePoint {
+    bytes data = 1;
+}
+
+message CompressedRistretto {
     bytes data = 1;
 }
 
@@ -47,28 +54,20 @@ message EncryptedFogHint {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// `ringct` crate
+// Ring Signature
 ///////////////////////////////////////////////////////////////////////////////
 
-message RingCtInput {
-    RistrettoPublic address = 1;
-    CurvePoint commitment = 2;
+message RingMLSAG {
+    CurveScalar c_zero = 1;
+    repeated CurveScalar responses = 2;
+    KeyImage key_image = 3;
 }
 
-message RingCtInputRow {
-    repeated RingCtInput row = 1;
+message SignatureRctBulletproofs {
+    repeated RingMLSAG ring_signatures = 1;
+    repeated CompressedRistretto pseudo_output_commitments = 2;
+    bytes range_proofs = 3;
 }
-
-message RingCtChallengeResponse {
-    repeated CurveScalar response = 1;
-}
-
-message RingCtSignature {
-    repeated KeyImage key_images = 1;
-    repeated RingCtChallengeResponse challenge_responses = 2;
-    CurveScalar challenge = 3;
-}
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // `ledger` crate
@@ -145,12 +144,9 @@ message Tx {
     // The actual contents of the transaction
     TxPrefix prefix = 1;
 
-    // The RingCT signature on the prefix
-    RingCtSignature signature = 2;
-
-    // The range proofs to show the values are in the proper range
-    bytes range_proofs = 3;
-
     // The block index past which this submitted transaction is no longer valid
-    uint64 tombstone_block = 4;
+    uint64 tombstone_block = 2;
+
+    // The RingCT signature on the prefix
+    SignatureRctBulletproofs signature = 3;
 }

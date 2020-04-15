@@ -9,26 +9,38 @@
 extern crate alloc;
 
 use alloc::{vec, vec::Vec};
-use core::convert::TryInto;
-
 use blake2::{Blake2b, Digest};
 use bulletproofs::RangeProof;
 use common::HashSet;
+use core::convert::TryInto;
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
+use digestible::Digestible;
+use generic_array::GenericArray;
 use keys::RistrettoPrivate;
-use mcserial::ReprBytes32;
+use mcserial::{
+    prost::{
+        bytes::{Buf, BufMut},
+        encoding::{bytes, encode_key, encoded_len_varint, key_len, skip_field},
+        Message,
+    },
+    DecodeError, ReprBytes32,
+};
+use prost::encoding::{DecodeContext, WireType};
 use rand_core::{CryptoRng, RngCore};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     onetime_keys::compute_key_image,
     range_proofs::{check_range_proofs, generate_range_proofs},
     ring_signature::{
-        mlsag::RingMLSAG, Address, Blinding, Commitment, Error, KeyImage, Scalar, GENERATORS,
+        encoding::{read_u8_32, write_u8_32},
+        mlsag::RingMLSAG,
+        Address, Blinding, Commitment, Error, KeyImage, Scalar, GENERATORS,
     },
 };
 
 /// An RCT_TYPE_BULLETPROOFS_2 signature.
-#[allow(dead_code)]
+#[derive(Clone, Debug, Default, Digestible, Eq, PartialEq, Serialize, Deserialize)]
 pub struct SignatureRctBulletproofs {
     /// Signature for each input ring.
     pub ring_signatures: Vec<RingMLSAG>,
@@ -37,7 +49,97 @@ pub struct SignatureRctBulletproofs {
     pub pseudo_output_commitments: Vec<CompressedRistretto>,
 
     /// Proof that all pseudo_outputs and transaction outputs are in [0, 2^64).
-    pub range_proof: RangeProof,
+    /// This contains range_proof.to_bytes(). It is stored this way so that this struct may derive
+    /// Default, which is a requirement for serializing with Prost.
+    pub range_proof_bytes: Vec<u8>,
+}
+
+const RING_SIGNATURE_TAG: u32 = 1;
+const PSEUDO_OUTPUT_TAG: u32 = 2;
+const RANGE_PROOF_TAG: u32 = 3;
+
+impl Message for SignatureRctBulletproofs {
+    /// Encodes the message to the buffer.
+    ///
+    /// This method will panic if the buffer has insufficient capacity, and is meant to only be
+    /// used by `Message` implementations.
+    fn encode_raw<B>(&self, buf: &mut B)
+    where
+        B: BufMut,
+        Self: Sized,
+    {
+        for ring_mlsag in &self.ring_signatures {
+            encode_key(RING_SIGNATURE_TAG, WireType::LengthDelimited, buf);
+            ring_mlsag.encode_length_delimited(buf).unwrap();
+        }
+
+        for pseudo_output in &self.pseudo_output_commitments {
+            write_u8_32(pseudo_output.to_bytes(), PSEUDO_OUTPUT_TAG, buf);
+        }
+
+        bytes::encode(RANGE_PROOF_TAG, &self.range_proof_bytes, buf);
+    }
+
+    /// Decodes a field from a buffer, and merges it into `self`.
+    fn merge_field<B>(
+        &mut self,
+        tag: u32,
+        wire_type: WireType,
+        buf: &mut B,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError>
+    where
+        B: Buf,
+        Self: Sized,
+    {
+        match tag {
+            RING_SIGNATURE_TAG => {
+                let ring_mlsag = RingMLSAG::decode_length_delimited(buf)?;
+                self.ring_signatures.push(ring_mlsag);
+                Ok(())
+            }
+            PSEUDO_OUTPUT_TAG => {
+                let pseudo_output_commitment = CompressedRistretto {
+                    0: read_u8_32(wire_type, buf)?,
+                };
+                self.pseudo_output_commitments
+                    .push(pseudo_output_commitment);
+                Ok(())
+            }
+            RANGE_PROOF_TAG => {
+                bytes::merge(wire_type, &mut self.range_proof_bytes, buf, ctx)?;
+                Ok(())
+            }
+            _ => skip_field(wire_type, tag, buf, ctx),
+        }
+    }
+
+    /// Returns the encoded length of the message without a length delimiter.
+    fn encoded_len(&self) -> usize {
+        let mut len = 0;
+
+        for ring_mlsag in &self.ring_signatures {
+            let encoded_len = ring_mlsag.encoded_len(); // Encoded length, without delimiter.
+
+            len += key_len(RING_SIGNATURE_TAG);
+            len += encoded_len_varint(encoded_len as u64); // Length delimiter.
+            len += encoded_len;
+        }
+
+        for _pseudo_output in &self.pseudo_output_commitments {
+            len += key_len(PSEUDO_OUTPUT_TAG) + encoded_len_varint(32 as u64) + 32;
+        }
+
+        len += key_len(RANGE_PROOF_TAG)
+            + encoded_len_varint(self.range_proof_bytes.len() as u64)
+            + self.range_proof_bytes.len();
+        len
+    }
+
+    /// Clears the message, resetting all fields to their default.
+    fn clear(&mut self) {
+        *self = Self::default();
+    }
 }
 
 impl SignatureRctBulletproofs {
@@ -49,7 +151,6 @@ impl SignatureRctBulletproofs {
     /// * `real_input_indices` - The index of the real input in each ring.
     /// * `input_secrets` - One-time private key, amount value, and amount blinding for each real input.
     /// * `output_values_and_blindings` - Value and blinding for each output amount commitment.
-    #[allow(unused)]
     pub fn sign<CSPRNG: RngCore + CryptoRng>(
         message: &[u8; 32],
         rings: &[Vec<(Address, Commitment)>],
@@ -76,7 +177,6 @@ impl SignatureRctBulletproofs {
     /// * `rings` - One or more rings of one-time addresses and amount commitments.
     /// * `output_commitments` - Output amount commitments.
     /// * `rng` -
-    #[allow(unused)]
     pub fn verify<CSPRNG: RngCore + CryptoRng>(
         &self,
         message: &[u8; 32],
@@ -138,7 +238,10 @@ impl SignatureRctBulletproofs {
                 .cloned()
                 .collect();
 
-            check_range_proofs(&self.range_proof, &commitments, rng)
+            let range_proof = RangeProof::from_bytes(&self.range_proof_bytes)
+                .map_err(|_e| Error::RangeProofError)?;
+
+            check_range_proofs(&range_proof, &commitments, rng)
                 .map_err(|_e| Error::InvalidSignature)?;
         }
 
@@ -170,7 +273,6 @@ impl SignatureRctBulletproofs {
     }
 
     /// Key images spent by this signature.
-    #[allow(unused)]
     pub fn key_images(&self) -> Vec<KeyImage> {
         self.ring_signatures
             .iter()
@@ -301,7 +403,7 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
     Ok(SignatureRctBulletproofs {
         ring_signatures,
         pseudo_output_commitments,
-        range_proof,
+        range_proof_bytes: range_proof.to_bytes(),
     })
 }
 
@@ -309,7 +411,7 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
 mod rct_bulletproofs_tests {
     use alloc::vec::Vec;
 
-    use curve25519_dalek::scalar::Scalar;
+    use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
     use keys::{FromRandom, RistrettoPrivate, RistrettoPublic};
     use rand_core::RngCore;
 
@@ -323,7 +425,6 @@ mod rct_bulletproofs_tests {
             Address, Blinding, Commitment, Error, KeyImage, SignatureRctBulletproofs, GENERATORS,
         },
     };
-    use curve25519_dalek::ristretto::RistrettoPoint;
 
     use super::sign_with_balance_check;
 
@@ -632,7 +733,7 @@ mod rct_bulletproofs_tests {
                 range_proof
             };
 
-            signature.range_proof = wrong_range_proof;
+            signature.range_proof_bytes = wrong_range_proof.to_bytes();
 
             let result = signature.verify(
                 &params.message,
@@ -678,6 +779,36 @@ mod rct_bulletproofs_tests {
             );
 
             assert_eq!(result, Err(Error::InvalidSignature));
+        }
+
+        #[test]
+        // decode(encode(&signature)) should be the identity function.
+        fn test_encode_decode(
+            num_inputs in 4..8usize,
+            num_mixins in 1..17usize,
+            seed in any::<[u8; 32]>(),
+        ) {
+            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let params = SignatureParams::random(num_inputs, num_mixins, &mut rng);
+            let signature = SignatureRctBulletproofs::sign(
+                &params.message,
+                &params.rings,
+                &params.real_input_indices,
+                &params.input_secrets,
+                &params.output_values_and_blindings,
+                &mut rng,
+            )
+            .unwrap();
+
+            use mcserial::prost::Message;
+
+            // The encoded bytes should have the correct length.
+            let bytes = mcserial::encode(&signature);
+            assert_eq!(bytes.len(), signature.encoded_len());
+
+            // decode(encode(&signature)) should be the identity function.
+            let recovered_signature : SignatureRctBulletproofs = mcserial::decode(&bytes).unwrap();
+            assert_eq!(signature, recovered_signature);
         }
 
     } // end proptest

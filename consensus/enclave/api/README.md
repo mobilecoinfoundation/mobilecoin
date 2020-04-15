@@ -1,6 +1,6 @@
-# Mobilenode Enclave API
+# MobileCoin Enclave API
 
-This crate contains the untrusted-facing APIs for a Mobilenode enclave. The goal is to provide an API to the enclave that interacts as a special-case of the more commonly understood object remoting. In particular, there should be an "untrusted" implementation of these APIs which lives in the node, and a "trusted" implementation of these APIs which lives in the enclave.
+This crate contains the untrusted-facing APIs for a MobileCoin enclave. The goal is to provide an API to the enclave that interacts as a special-case of the more commonly understood object remoting. In particular, there should be an "untrusted" implementation of these APIs which lives in the node, and a "trusted" implementation of these APIs which lives in the enclave.
 
 This particular use of remoting, where we simply want to cross a trust boundary that lives within the same process on the same machine, is significantly simplified from the typically-maligned *networked* remoting, and is therefore significantly less insane than most remoting frameworks. In this model, the typical workflow is something akin to this:
 
