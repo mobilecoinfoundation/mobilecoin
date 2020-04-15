@@ -138,10 +138,13 @@ Follow the steps below:
 
 #### Run
 
-An example run command is the following:
+An example run command is the below.
+
+>Note: The environment variables, `SGX_MODE`, `IAS_MODE`, `CONSENSUS_ENCLAVE_CSS` and `CONSENSUS_ENCLAVE_SIGNED` indicate important parameters to the SGX Enclave build. Please see [BUILD.md](./BUILD.md) for more details.
 
 ```
-SGX_MODE=HW IAS_MODE=DEV cargo run --release -p consensus-service -- \
+SGX_MODE=HW IAS_MODE=DEV CONSENSUS_ENCLAVE_CSS=consensus-enclave.css CONSENSUS_ENCLAVE_SIGNED=libconsensus-enclave.signed.so
+    cargo run --release -p consensus-service -- \
     --client-responder-id my_node.my_domain.com:443 \
     --local-node-id node1.my_domain.com:8443 \
     --network /etc/mc-network.toml \
