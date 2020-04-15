@@ -45,32 +45,9 @@ message Ed25519Signature {
     bytes data = 1;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// `common` crate
-///////////////////////////////////////////////////////////////////////////////
-
-message EncryptedFogHint {
-    bytes data = 1;
-}
 
 ///////////////////////////////////////////////////////////////////////////////
-// Ring Signature
-///////////////////////////////////////////////////////////////////////////////
-
-message RingMLSAG {
-    CurveScalar c_zero = 1;
-    repeated CurveScalar responses = 2;
-    KeyImage key_image = 3;
-}
-
-message SignatureRctBulletproofs {
-    repeated RingMLSAG ring_signatures = 1;
-    repeated CompressedRistretto pseudo_output_commitments = 2;
-    bytes range_proofs = 3;
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// `ledger` crate
+// `trasaction/core` crate
 ///////////////////////////////////////////////////////////////////////////////
 
 message Range {
@@ -103,6 +80,10 @@ message Amount {
 
     // `masked_blinding = value + SHA3-512_scalar(SHA3-512_scalar(shared_secret || n))
     CurveScalar masked_blinding = 3;
+}
+
+message EncryptedFogHint {
+    bytes data = 1;
 }
 
 // A Transaction Output.
@@ -140,13 +121,41 @@ message TxPrefix {
     uint64 fee = 3;
 }
 
+message RingMLSAG {
+    CurveScalar c_zero = 1;
+    repeated CurveScalar responses = 2;
+    KeyImage key_image = 3;
+}
+
+message SignatureRctBulletproofs {
+    repeated RingMLSAG ring_signatures = 1;
+    repeated CompressedRistretto pseudo_output_commitments = 2;
+    bytes range_proofs = 3;
+}
+
 message Tx {
-    // The actual contents of the transaction
+    // The actual contents of the transaction.
     TxPrefix prefix = 1;
 
-    // The block index past which this submitted transaction is no longer valid
+    // The block index past which this submitted transaction is no longer valid.
     uint64 tombstone_block = 2;
 
-    // The RingCT signature on the prefix
+    // The RingCT signature on the prefix.
     SignatureRctBulletproofs signature = 3;
+}
+
+message TxHash {
+    // Hash of a single transaction.
+    bytes hash = 1;
+}
+
+// A redacted transaction.
+message RedactedTx {
+    uint32 version = 1;
+
+    // Outputs created by this transaction.
+    repeated TxOut outputs = 2;
+
+    // Key images "spent" by this transaction.
+    repeated KeyImage key_images = 3;
 }

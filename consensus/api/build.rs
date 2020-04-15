@@ -16,7 +16,6 @@ fn main() {
     mc_build_grpc::compile_protos_and_generate_mod_rs(
         all_proto_dirs.as_slice(),
         &[
-            "transaction.proto",
             "blockchain.proto",
             "external.proto",
             "consensus_client.proto",

@@ -8,7 +8,7 @@ pub mod uri;
 use crate::uri::{Destination, Uri};
 use common::logger::{create_app_logger, log, o, Logger};
 use ledger_db::{Error as LedgerDbError, Ledger, LedgerDB};
-use mobilecoin_api::{blockchain, conversions::block_num_to_s3block_path, transaction as tx_grpc};
+use mobilecoin_api::{blockchain, conversions::block_num_to_s3block_path, external};
 use protobuf::Message;
 use rusoto_core::{Region, RusotoError};
 use rusoto_s3::{PutObjectError, PutObjectRequest, S3Client, S3};
@@ -151,7 +151,10 @@ impl BlockHandler for S3BlockWriter {
         log::info!(self.logger, "S3: Handling block {}", block.index);
 
         let bc_block = blockchain::Block::from(block);
-        let bc_transactions = transactions.iter().map(tx_grpc::RedactedTx::from).collect();
+        let bc_transactions = transactions
+            .iter()
+            .map(external::RedactedTx::from)
+            .collect();
 
         let mut s3_block = blockchain::S3Block::new();
         s3_block.set_block(bc_block);
@@ -203,7 +206,10 @@ impl BlockHandler for LocalBlockWriter {
         log::info!(self.logger, "S3: Handling block {}", block.index);
 
         let bc_block = blockchain::Block::from(block);
-        let bc_transactions = transactions.iter().map(tx_grpc::RedactedTx::from).collect();
+        let bc_transactions = transactions
+            .iter()
+            .map(external::RedactedTx::from)
+            .collect();
 
         let mut s3_block = blockchain::S3Block::new();
         s3_block.set_block(bc_block);
