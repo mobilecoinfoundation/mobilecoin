@@ -170,6 +170,24 @@ def get_git_commit():
 # Environment checks
 ##
 
+# Check if docker is available and bail out early with a message if appropriate
+if not args.dry_run:
+    cmd = "command -v docker > /dev/null 2>&1"
+    vprint(cmd)
+    try:
+        retcode = subprocess.call(cmd, shell=True)
+    except:
+        eprint("Warning: unable to check for docker being installed")
+    else:
+        if retcode != 0:
+            if not args.verbose:
+                eprint(cmd)
+            eprint("docker not found: retcode =", retcode)
+            eprint("Docker is required to use the mob tool.")
+            eprint("It is recommended to install from https://docs.docker.com/get-docker/")
+            sys.exit(1)
+
+# Check for any SSH handling
 if "SSH_AUTH_SOCK" in os.environ:
     if platform.system().lower() != "linux":
         vprint("SSH Auth Socket found, but not running on linux")
