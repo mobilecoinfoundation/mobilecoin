@@ -57,6 +57,9 @@ pub struct Slot<V: Value, ValidationError: Display> {
     /// Map of Node ID -> highest message from each node, including the local node.
     M: HashMap<NodeID, Msg<V>>,
 
+    /// Set of values that have been proposed, but not yet voted for.
+    W: BTreeSet<V>,
+
     /// Set of values we have voted to nominate.
     X: BTreeSet<V>,
 
@@ -166,6 +169,7 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
             node_id,
             quorum_set,
             M: HashMap::default(),
+            W: BTreeSet::default(),
             X: BTreeSet::default(),
             Y: BTreeSet::default(),
             Z: BTreeSet::new(),
@@ -285,34 +289,35 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
 
         if timeout_occurred {
             if let Some(emitted) = self.out_msg() {
-                if let Some(previous_emitted) = &self.last_sent_msg {
-                    if emitted != *previous_emitted {
-                        // A new emitted message.
-                        self.last_sent_msg = Some(emitted.clone());
-                        self.M.insert(emitted.sender_id.clone(), emitted.clone());
-                        msgs.push(emitted);
-                    } else {
-                        // Ignoring duplicate outgoing messages.
-                    }
-                } else {
-                    // The first emitted message.
-                    self.last_sent_msg = Some(emitted.clone());
-                    self.M.insert(emitted.sender_id.clone(), emitted.clone());
-                    msgs.push(emitted);
-                }
-            } else {
-                // No message to emit yet.
+                msgs.push(emitted);
             }
         }
 
         msgs
     }
 
-    /// Handles an incoming message from a peer, or from this node.
+    /// Propose values for this node to nominate.
+    pub fn propose_values(&mut self, values: &BTreeSet<V>) -> Result<Option<Msg<V>>, String> {
+        // Only accept values during the Nominate phase and if no other values have been confirmed nominated.
+        if !(self.phase == Phase::NominatePrepare && self.Z.is_empty()) {
+            return Ok(self.out_msg());
+        }
+
+        // Reject invalid values.
+        for value in values {
+            self.is_valid(value)?;
+        }
+
+        self.W.extend(values.iter().cloned());
+        self.do_nominate_phase();
+        self.do_ballot_protocol();
+        Ok(self.out_msg())
+    }
+
+    /// Handles an incoming message from a peer.
     ///
     /// Returns:
-    /// * Ok(out_msg) - `out_msg` is a new outgoing message from this node.
-    /// * Ok(None) - This node may not yet emit a new message.
+    /// * Ok(out_msg) - `out_msg` is an outgoing message from this node, if any.
     /// * Err(e) - Something went wrong while processing `msg`.
     pub fn handle(&mut self, msg: &Msg<V>) -> Result<Option<Msg<V>>, String> {
         // Reject messages for other slots.
@@ -330,15 +335,10 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
 
         // TODO: Reject messages with incorrectly ordered values.
 
-        // Special case for nominate messages from self.
-        if msg.sender_id == self.node_id && self.phase != Phase::NominatePrepare {
-            return Ok(None);
-        }
-
         // Ignore the message if it not higher than a previous message from the same peer.
         if let Some(existing_msg) = self.M.get(&msg.sender_id) {
             if msg.topic <= existing_msg.topic {
-                return Ok(None);
+                return Ok(self.out_msg());
             }
         }
 
@@ -350,29 +350,7 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
 
         self.do_ballot_protocol();
 
-        // This stuff is funky. It might be better to let Slot return whatever it is
-        // capable of, and let higher layers decide what gets broadcast.
-        if let Some(emitted) = self.out_msg() {
-            if let Some(previous_emitted) = &self.last_sent_msg {
-                if emitted != *previous_emitted {
-                    // A new emitted message.
-                    self.last_sent_msg = Some(emitted.clone());
-                    self.M.insert(emitted.sender_id.clone(), emitted.clone());
-                    Ok(Some(emitted))
-                } else {
-                    // Ignoring duplicate outgoing messages.
-                    Ok(None)
-                }
-            } else {
-                // The first emitted message.
-                self.last_sent_msg = Some(emitted.clone());
-                self.M.insert(emitted.sender_id.clone(), emitted.clone());
-                Ok(Some(emitted))
-            }
-        } else {
-            // No message to emit yet.
-            Ok(None)
-        }
+        Ok(self.out_msg())
     }
 
     fn is_valid(&mut self, value: &V) -> Result<(), String> {
@@ -492,15 +470,27 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
 
         // If no values have been confirmed nominated, the node may add new values to its voted set.
         if self.Z.is_empty() {
-            // Gather all nominate payloads.
+            // Gather all nominate payloads from other nodes.
             let mut nominate_payloads: HashMap<NodeID, &NominatePayload<V>> = Default::default();
             for (node_id, msg) in &self.M {
+                if *node_id == self.node_id {
+                    continue;
+                }
                 match &msg.topic {
                     Topic::Nominate(nominate_payload)
                     | Topic::NominatePrepare(nominate_payload, _) => {
                         nominate_payloads.insert(node_id.clone(), nominate_payload);
                     }
                     _ => {}
+                }
+            }
+
+            // This node may nominate new values when it is among max_priority_peers.
+            if self.max_priority_peers.contains(&self.node_id) {
+                for value in &self.W {
+                    if !self.Y.contains(value) {
+                        self.X.insert(value.clone());
+                    }
                 }
             }
 
@@ -522,7 +512,8 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
         self.update_YZ();
 
         if !self.Z.is_empty() && self.B.is_zero() {
-            self.B = Ballot::new(1, &self.Z.iter().cloned().collect::<Vec<V>>()[..]);
+            let values: Vec<_> = self.Z.iter().cloned().collect();
+            self.B = Ballot::new(1, &values);
         }
     }
 
@@ -1139,7 +1130,8 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
     }
 
     /// Calculate the message to send to the network based on our current state.
-    fn out_msg(&self) -> Option<Msg<V>> {
+    /// Any duplicate messages are suppressed.
+    fn out_msg(&mut self) -> Option<Msg<V>> {
         // Prepared is " the highest accepted prepared ballot not exceeding the "ballot" field...
         // if "ballot = <n, x>" and the highest prepared ballot is "<n, y>" where "x < y",
         // then the "prepared" field in sent messages must be set to "<n-1, y>" instead of "<n, y>""
@@ -1181,12 +1173,12 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
                     None
                 } else {
                     let HN: u32 = if let Some(h) = &self.H {
-                        //  If "h" is the highest confirmed prepared ballot and "h.value ==
-                        //      ballot.value", then this field is set to "h.counter".  Otherwise,
-                        //      if no ballot is confirmed prepared or if "h.value !=
-                        //      ballot.value", then this field is 0.  Note that by the rules
-                        //      above, if "h" exists, then "ballot.value" will be set to "h.value"
-                        //      the next time "ballot" is updated.
+                        // If "h" is the highest confirmed prepared ballot and "h.value ==
+                        // ballot.value", then this field is set to "h.counter".  Otherwise,
+                        // if no ballot is confirmed prepared or if "h.value != ballot.value",
+                        // then this field is 0. Note that by the rules above, if "h" exists,
+                        // then "ballot.value" will be set to "h.value" the next time "ballot"
+                        // is updated.
                         if h.X == self.B.X {
                             h.N
                         } else {
@@ -1200,9 +1192,9 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
 
                     let CN: u32 = if let Some(c) = &self.C {
                         // The value "cCounter" is maintained based on an internally-
-                        //      maintained _commit ballot_ "c", initially "NULL".  "cCounter" is 0
-                        //      while "c == NULL" or "hCounter == 0", and is "c.counter"
-                        //      otherwise.
+                        // maintained _commit ballot_ "c", initially "NULL".  "cCounter" is 0
+                        // while "c == NULL" or "hCounter == 0", and is "c.counter"
+                        // otherwise.
                         if HN != 0 {
                             c.N
                         } else {
@@ -1243,12 +1235,12 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
 
             Phase::Prepare => {
                 let HN: u32 = if let Some(h) = &self.H {
-                    //  If "h" is the highest confirmed prepared ballot and "h.value ==
-                    //      ballot.value", then this field is set to "h.counter".  Otherwise,
-                    //      if no ballot is confirmed prepared or if "h.value !=
-                    //      ballot.value", then this field is 0.  Note that by the rules
-                    //      above, if "h" exists, then "ballot.value" will be set to "h.value"
-                    //      the next time "ballot" is updated.
+                    // If "h" is the highest confirmed prepared ballot and "h.value ==
+                    // ballot.value", then this field is set to "h.counter".  Otherwise,
+                    // if no ballot is confirmed prepared or if "h.value !=
+                    // ballot.value", then this field is 0.  Note that by the rules
+                    // above, if "h" exists, then "ballot.value" will be set to "h.value"
+                    // the next time "ballot" is updated.
                     if h.X == self.B.X {
                         h.N
                     } else {
@@ -1262,9 +1254,9 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
 
                 let CN: u32 = if let Some(c) = &self.C {
                     // The value "cCounter" is maintained based on an internally-
-                    //      maintained _commit ballot_ "c", initially "NULL".  "cCounter" is 0
-                    //      while "c == NULL" or "hCounter == 0", and is "c.counter"
-                    //      otherwise.
+                    // maintained _commit ballot_ "c", initially "NULL".  "cCounter" is 0
+                    // while "c == NULL" or "hCounter == 0", and is "c.counter"
+                    // otherwise.
                     if HN != 0 {
                         c.N
                     } else {
@@ -1305,11 +1297,26 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
             )
         });
 
-        if let Some(msg) = &msg_opt {
+        // Suppress duplicate outgoing messages.
+        if let Some(msg) = msg_opt {
             assert_eq!(msg.validate(), Ok(()));
+
+            if let Some(last_msg) = &self.last_sent_msg {
+                if msg != *last_msg {
+                    self.last_sent_msg = Some(msg.clone());
+                    return Some(msg);
+                } else {
+                    // Ignore duplicate outgoing message.
+                    return None;
+                }
+            } else {
+                // The first emitted message.
+                self.last_sent_msg = Some(msg.clone());
+                return Some(msg);
+            }
         }
 
-        msg_opt
+        None
     }
 
     /// Checks that at least one node in each quorum slice satisfies pred
@@ -2179,6 +2186,94 @@ mod nominate_protocol_tests {
         slot.update_YZ();
         assert_eq!(slot.Z, BTreeSet::from_iter(vec!["A", "B", "C", "D"]));
     }
+
+    #[test_with_logger]
+    /// A node should not nominate proposed values if it is not in max_priority_peers.
+    fn test_wait_to_nominate_proposed_values(logger: Logger) {
+        let (local_node, _node_2, _node_3) = three_node_cycle();
+
+        let slot_index = 2;
+        let mut slot = Slot::<u32, TransactionValidationError>::new(
+            local_node.0.clone(),
+            local_node.1.clone(),
+            slot_index,
+            Arc::new(trivial_validity_fn),
+            Arc::new(trivial_combine_fn),
+            logger,
+        );
+
+        println!("max_priority_peers: {:?}", slot.max_priority_peers);
+        // Ensure that the local node **is not** in max_priority_peers.
+        assert!(!slot.max_priority_peers.contains(&local_node.0));
+
+        let values: BTreeSet<u32> = BTreeSet::from_iter(vec![1000, 2000]);
+        let msg_opt = slot
+            .propose_values(&values)
+            .expect("slot.propose_values failed");
+        assert_eq!(msg_opt, None);
+    }
+
+    #[test_with_logger]
+    /// A node should nominate proposed values if it is in max_priority_peers.
+    fn test_nominate_proposed_values(logger: Logger) {
+        let (local_node, _node_2, _node_3) = three_node_cycle();
+
+        let slot_index = 2;
+        let mut slot = Slot::<u32, TransactionValidationError>::new(
+            local_node.0.clone(),
+            local_node.1.clone(),
+            slot_index,
+            Arc::new(trivial_validity_fn),
+            Arc::new(trivial_combine_fn),
+            logger,
+        );
+
+        println!("max_priority_peers: {:?}", slot.max_priority_peers);
+        // Ensure that the local node **is** in max_priority_peers.
+        slot.max_priority_peers.insert(local_node.0.clone());
+
+        {
+            // The node should nominate proposed values.
+            let values: BTreeSet<u32> = BTreeSet::from_iter(vec![1000, 2000]);
+            let emitted = slot
+                .propose_values(&values)
+                .expect("slot.propose_values failed")
+                .expect("No message emitted");
+
+            let expected = Msg::new(
+                local_node.0.clone(),
+                local_node.1.clone(),
+                slot_index,
+                Topic::Nominate(NominatePayload {
+                    X: BTreeSet::from_iter(vec![1000, 2000]),
+                    Y: BTreeSet::default(),
+                }),
+            );
+
+            assert_eq!(emitted, expected);
+        }
+
+        {
+            // The node should continue to nominate new proposed values.
+            let values: BTreeSet<u32> = BTreeSet::from_iter(vec![777, 4242]);
+            let emitted = slot
+                .propose_values(&values)
+                .expect("slot.propose_values failed")
+                .expect("No message emitted");
+
+            let expected = Msg::new(
+                local_node.0.clone(),
+                local_node.1.clone(),
+                slot_index,
+                Topic::Nominate(NominatePayload {
+                    X: BTreeSet::from_iter(vec![777, 1000, 2000, 4242]),
+                    Y: BTreeSet::default(),
+                }),
+            );
+
+            assert_eq!(emitted, expected);
+        }
+    }
 }
 
 #[cfg(test)]
@@ -2207,32 +2302,22 @@ mod ballot_protocol_tests {
             logger,
         );
 
-        let msg = Msg::new(
+        let values = BTreeSet::from_iter(vec![5678, 1234, 1337, 1338]);
+        let emitted_msg = slot
+            .propose_values(&values)
+            .unwrap()
+            .expect("No message emitted.");
+
+        let expected = Msg::new(
             local_node.0.clone(),
             local_node.1.clone(),
             slot_index,
-            Topic::Nominate(NominatePayload {
-                X: BTreeSet::from_iter(vec![5678, 1234, 1337, 1338]),
-                Y: BTreeSet::default(),
+            Topic::Externalize(ExternalizePayload {
+                C: Ballot::new(1, &vec![1234, 1337, 1338, 5678]),
+                HN: 1,
             }),
         );
-        let emitted_msg = slot
-            .handle(&msg)
-            .expect("failed handling msg")
-            .expect("no msg emitted");
-
-        assert_eq!(
-            emitted_msg,
-            Msg::new(
-                local_node.0.clone(),
-                local_node.1,
-                slot_index,
-                Topic::Externalize(ExternalizePayload {
-                    C: Ballot::new(1, &[1234, 1337, 1338, 5678]),
-                    HN: 1,
-                }),
-            )
-        );
+        assert_eq!(emitted_msg, expected);
     }
 
     #[test_with_logger]
@@ -2253,18 +2338,10 @@ mod ballot_protocol_tests {
         // Ensure our node id is inside max priority peers list.
         slot.max_priority_peers.insert(node_id.clone());
 
-        // Submit a nomination message
+        let values: BTreeSet<u32> = BTreeSet::from_iter(vec![1000, 2000]);
         let emitted_msg = slot
-            .handle(&Msg::new(
-                node_id.clone(),
-                quorum_set.clone(),
-                1,
-                Topic::Nominate(NominatePayload {
-                    X: BTreeSet::from_iter(vec![1000, 2000]),
-                    Y: BTreeSet::default(),
-                }),
-            ))
-            .expect("failed handling message")
+            .propose_values(&values)
+            .expect("slot.propose_values failed")
             .expect("expected emitted message, got None");
 
         let expected_msg = Msg::new(
@@ -2319,21 +2396,26 @@ mod ballot_protocol_tests {
 
         // Vote nominate on 1337, 1338 and confirm nominate 5678, 1234.
         {
-            let initial_msg = Msg::new(
+            let values: BTreeSet<u32> = BTreeSet::<u32>::from_iter(vec![5678, 1234, 1337, 1338]);
+            let emitted_msg = slot
+                .propose_values(&values)
+                .expect("slot.propose failed")
+                .expect("no msg emitted");
+
+            let expected = Msg::new(
                 node_1.0.clone(),
                 node_1.1.clone(),
                 slot_index,
                 Topic::Nominate(NominatePayload {
-                    X: BTreeSet::from_iter(vec![5678, 1234, 1337, 1338]),
+                    X: BTreeSet::from_iter(values),
                     Y: BTreeSet::default(),
                 }),
             );
-            let emitted_msg = slot
-                .handle(&initial_msg)
-                .expect("failed handling msg")
-                .expect("no msg emitted");
-            assert_eq!(emitted_msg, initial_msg);
 
+            // Node 1 issues vote nominate [5678, 1234, 1337, 1338].
+            assert_eq!(emitted_msg, expected);
+
+            // Node 2 issues confirm nominate [5678, 1234].
             let confirm_nominate_msg = Msg::new(
                 node_2.0.clone(),
                 node_2.1.clone(),
@@ -2347,6 +2429,7 @@ mod ballot_protocol_tests {
                 .handle(&confirm_nominate_msg)
                 .expect("failed handling msg")
                 .expect("no msg emitted");
+
             let expected_msg = Msg::new(
                 node_1.0.clone(),
                 node_1.1.clone(),
@@ -2365,6 +2448,7 @@ mod ballot_protocol_tests {
                     },
                 ),
             );
+            // Node 1 confirms [5678, 1234] nominated, and votes to prepare them.
             assert_eq!(emitted_msg, expected_msg);
         }
 
