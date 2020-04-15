@@ -250,6 +250,7 @@ jobs:
           name: Run all unit tests
           command: |
             cargo test
+      - check-dirty-git
       - run:
           name: Lint/fmt
           command: |
@@ -266,6 +267,7 @@ jobs:
           name: Cargo build
           command: |
             cargo build
+      - check-dirty-git
 
 
 workflows:
