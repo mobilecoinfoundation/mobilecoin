@@ -4,7 +4,6 @@
 
 syntax = "proto3";
 import "google/protobuf/empty.proto";
-import "transaction.proto";
 import "external.proto";
 
 package blockchain;
@@ -53,7 +52,7 @@ message S3Block {
     Block block = 1;
 
     // Transactions in this block
-    repeated transaction.RedactedTx transactions = 2;
+    repeated external.RedactedTx transactions = 2;
 
     // Block signature, when available.
     BlockSignature signature = 3;

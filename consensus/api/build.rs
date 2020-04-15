@@ -4,7 +4,6 @@ fn main() {
     mc_build_grpc::compile_protos_and_generate_mod_rs(
         &["./proto", "../../attest/api/proto"],
         &[
-            "transaction.proto",
             "blockchain.proto",
             "external.proto",
             "consensus_client.proto",
