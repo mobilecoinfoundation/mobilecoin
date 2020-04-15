@@ -14,7 +14,7 @@ use std::{convert::TryFrom, path::PathBuf, str::FromStr, sync::Arc};
 use tempdir::TempDir;
 use transaction::account_keys::AccountKey;
 
-const NETWORK: &str = "master";
+const NETWORK: &str = "test";
 
 fn _make_ledger_long(ledger: &mut LedgerDB) {
     use rand::{rngs::StdRng, SeedableRng};
@@ -138,13 +138,13 @@ fn main() {
     let transactions_fetcher = ledger_sync::ReqwestTransactionsFetcher::new(
         vec![
             String::from(
-                "https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node2.master.mobilecoin.com/",
+                "https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node2.test.mobilecoin.com/",
             ),
             String::from(
-                "https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node3.master.mobilecoin.com/",
+                "https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node3.test.mobilecoin.com/",
             ),
             String::from(
-                "https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node4.master.mobilecoin.com/",
+                "https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node4.test.mobilecoin.com/",
             ),
         ],
         logger.clone(),

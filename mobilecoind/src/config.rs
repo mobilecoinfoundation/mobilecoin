@@ -33,7 +33,7 @@ pub struct Config {
 
     /// URLs to use for transaction data.
     ///
-    /// For example: https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node1.master.mobilecoin.com/
+    /// For example: https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node1.test.mobilecoin.com/
     #[structopt(long = "tx-source-url", required = true, min_values = 1)]
     pub tx_source_urls: Vec<String>,
 
