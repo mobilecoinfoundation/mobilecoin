@@ -10,10 +10,10 @@ readme = "README.md"
 links = "mc-attest-api"
 
 [build-dependencies]
+mc-build-grpc = { path = "../../util/build-grpc" }
 mcbuild-utils = { path = "../../mcbuild/utils" }
 
 cargo-emit = "0.1.1"
-protoc-grpcio = "0.3.1"
 
 [dependencies]
 attest-ake = { path = "../ake" }
