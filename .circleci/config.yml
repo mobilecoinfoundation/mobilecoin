@@ -263,9 +263,9 @@ jobs:
     steps:
       - prepare-for-build
       - run:
-        name: Cargo build
-        command: |
-          cargo build
+          name: Cargo build
+          command: |
+            cargo build
 
 
 workflows:
