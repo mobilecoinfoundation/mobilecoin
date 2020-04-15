@@ -27,8 +27,9 @@ def mob_command(func):
         except ClientError as e:
             print(f"Client error:\n{type(e).__name__}:{e.args}")
         except grpc.RpcError as e:
+            relevant_error = traceback.format_exc().split('\n')[-5:-1]
             print(
-                f"mobilecoind error:\n{type(e).__name__}:{e.args}\n{traceback.format_exc()}"
+                f"mobilecoind error:\n{type(e).__name__}:{e.args}\n{relevant_error}"
             )
             print("Please try again.")
         except Exception as e:
@@ -45,10 +46,12 @@ class ClientError(Exception):
     """
     pass
 
+
 class ParseError(Exception):
     """ Error during argument parsing.
     """
     pass
+
 
 class Session(cmd.Cmd):
     """ Encapsulates a wallet session
@@ -145,7 +148,7 @@ class Session(cmd.Cmd):
                       public_address my_alias/0
         """
         try:
-            account, index = self.parse_account(parts)
+            account, index = self.parse_account(args)
             self.check_balance(account, index)
         except ParseError as e:
             print(f"Could not parse account due to: {e}. Please try again")
@@ -173,7 +176,8 @@ class Session(cmd.Cmd):
             value, from_account_string, to_account_string = args.split()
             from_account, from_index = self.parse_account(from_account_string)
             to_account, to_index = self.parse_account(to_account_string)
-            self.private_transfer(int(value), from_account, from_index, to_account, to_index)
+            self.private_transfer(int(value), from_account, from_index,
+                                  to_account, to_index)
         except Exception as e:
             print(f"Eror parsing args {e}")
 
@@ -215,10 +219,10 @@ class Session(cmd.Cmd):
         print("You root entropy is =", bytes.hex(entropy))
         alias = str(len(self.known_accounts))
         print("This has been added to known accounts under alias: {alias}")
-        self.known_accounts[alias] = {
-            "name": alias,
-            "entropy": entropy
-        }
+        if alias in self.known_accounts:
+            print(f"Not overwriting existing alias {alias}")
+        else:
+            self.known_accounts[alias] = {"name": alias, "entropy": entropy}
 
     @mob_command
     def list_accounts(self):
@@ -390,7 +394,8 @@ class Session(cmd.Cmd):
         """
         account_string = args.split()
         if len(account_string) == 0:
-            raise ParseError("Please provide one monitored account and optional index")
+            raise ParseError(
+                "Please provide one monitored account and optional index")
         elif len(account_string) > 1:
             raise ParseError("Error parsing account args - too many provided")
         parts = account_string[0].split('/')
@@ -401,7 +406,9 @@ class Session(cmd.Cmd):
         if len(parts) == 2:
             return self.known_accounts[parts[0]], int(parts[1])
         else:
-            raise ParseError("Could not parse account string. Please use format account/subaddress_index")
+            raise ParseError(
+                "Could not parse account string. Please use format account/subaddress_index"
+            )
 
     def parse_index_range(self, index_range_string):
         """ Parse an index range of the form "[#,#]"
