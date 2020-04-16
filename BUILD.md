@@ -89,7 +89,17 @@ The `SGX_MODE` environment variable configuration is also used throughout Intel 
 #### Building the enclave
 
 For technical reasons, the `consensus_enclave` must be in a separate workspace.
-Its build is invoked automatically if needed from the `consensus_service` build.
+It is also built using `cargo build`.
+
+The enclave build is invoked *automatically* if needed from the `consensus_service` `build.rs`.
 
 To reproducibly build the enclave, (get exactly the right MRENCLAVE value), you must build
 in the container.
+
+For local testing, you don't need to get exactly the right MRENCLAVE value. You can set up
+test networks with whatever MRENCLAVE your build produces, and clients that check this value
+using the Remote Attestation process.
+
+If you want to downlaod a prebuilt and properly-signed enclave, in order use `IAS_MODE=PROD`
+and participate in a production network, check out the `enclave-signing-material` instructions:
+https://github.com/mobilecoinofficial/mobilecoin/blob/master/consensus/service/BUILD.md#enclave-signing-material
