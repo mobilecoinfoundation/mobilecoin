@@ -601,7 +601,10 @@ mod tests {
         // Check that the context we got back is correct.
         assert_eq!(well_formed_tx_context.tx_hash(), &tx.tx_hash());
         assert_eq!(well_formed_tx_context.fee(), tx.prefix.fee);
-        assert_eq!(well_formed_tx_context.tombstone_block(), tx.tombstone_block);
+        assert_eq!(
+            well_formed_tx_context.tombstone_block(),
+            tx.prefix.tombstone_block
+        );
         assert_eq!(*well_formed_tx_context.key_images(), tx.key_images());
 
         // All three tx representations should be different.
@@ -877,10 +880,20 @@ mod tests {
             new_transactions.push(tx);
         }
 
-        // Create a double-spend by duplicating one of the transactions.
-        let mut duplicate_spend = new_transactions[0].clone();
-        duplicate_spend.tombstone_block += 1; // Ensure txs have a different hash
-        new_transactions.push(duplicate_spend);
+        // Create another transaction that spends the zero^th output in block zero.
+        let double_spend = {
+            let tx_out = &block_zero_redacted_tx.outputs[0];
+
+            create_transaction(
+                &mut ledger,
+                tx_out,
+                &sender,
+                &recipient.default_subaddress(),
+                n_blocks + 1,
+                &mut rng,
+            )
+        };
+        new_transactions.push(double_spend);
 
         // Create WellFormedEncryptedTxs + proofs
         let well_formed_encrypted_txs_with_proofs: Vec<_> = new_transactions

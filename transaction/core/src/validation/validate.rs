@@ -27,7 +27,7 @@ use rand_core::{CryptoRng, RngCore};
 /// * `tx` - A pending transaction.
 /// * `current_block_index` - The index of the current block that is being built.
 /// * `root_proofs` - Membership proofs for each input ring element contained in `tx`.
-/// * `
+/// * `csprng` - Cryptographically secure random number generator.
 pub fn validate<R: RngCore + CryptoRng>(
     tx: &Tx,
     current_block_index: u64,
@@ -50,7 +50,7 @@ pub fn validate<R: RngCore + CryptoRng>(
 
     validate_key_images_are_unique(&tx)?;
 
-    validate_tombstone(current_block_index, tx.tombstone_block)?;
+    validate_tombstone(current_block_index, tx.prefix.tombstone_block)?;
 
     // Note: The transaction must not contain a Key Image that has previously been spent.
     // This must be checked outside the enclave.

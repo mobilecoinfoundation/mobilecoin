@@ -118,7 +118,7 @@ impl TransactionBuilder {
             })
             .collect();
 
-        let tx_prefix = TxPrefix::new(inputs, self.outputs.clone(), self.fee);
+        let tx_prefix = TxPrefix::new(inputs, self.outputs.clone(), self.fee, self.tombstone_block);
 
         let tx_prefix_hash = tx_prefix.hash();
         let message = tx_prefix_hash.as_bytes();
@@ -181,7 +181,6 @@ impl TransactionBuilder {
 
         Ok(Tx {
             prefix: tx_prefix,
-            tombstone_block: self.tombstone_block,
             signature,
         })
     }
