@@ -54,7 +54,7 @@ impl TransactionBuilder {
     /// Add an output to the transaction.
     ///
     /// # Arguments
-    /// * `value` - The value of this output.
+    /// * `value` - The value of this output, in picoMOB.
     /// * `recipient` - The recipient's public address
     /// * `recipient_fog_ingest_key` - The recipient's fog server's public key
     /// * `rng` - RNG used to generate blinding for commitment
@@ -86,7 +86,7 @@ impl TransactionBuilder {
     /// Sets the transaction fee.
     ///
     /// # Arguments
-    /// * `fee` - Transaction fee.
+    /// * `fee` - Transaction fee, in picoMOB.
     pub fn set_fee(&mut self, fee: u64) {
         self.fee = fee;
     }
@@ -196,7 +196,7 @@ impl Default for TransactionBuilder {
 /// Creates a TxOut that sends `value` to `recipient`.
 ///
 /// # Arguments
-/// * `value` - Value of the output.
+/// * `value` - Value of the output, in picoMOB.
 /// * `recipient` - Recipient's address.
 /// * `ingest_pubkey` - The public key for the recipients fog server, if any
 /// * `rng` -
