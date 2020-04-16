@@ -379,6 +379,9 @@ if args.action == "prompt":
         "--expose", "3228",
         "--expose", "4444",
     ])
+    docker_run.extend([
+        "--publish", "4444:4444",
+    ])
     if args.expose is not None:
         for port in args.expose:
             docker_run.extend(["--expose", port])
