@@ -1,8 +1,10 @@
 use dialoguer::{theme::ColorfulTheme, Input, Select};
+use grpcio::ChannelBuilder;
 use indicatif::{ProgressBar, ProgressStyle};
 use mc_b58_payloads::payloads::RequestPayload;
+use mobilecoind_api::mobilecoind_api_grpc::MobilecoindApiClient;
 use rust_decimal::{prelude::ToPrimitive, Decimal};
-use std::{fmt, str::FromStr, thread, time::Duration};
+use std::{fmt, str::FromStr, sync::Arc, thread, time::Duration};
 
 fn main() {
     TestnetClient::new().run();
@@ -25,18 +27,45 @@ impl fmt::Display for Command {
     }
 }
 
-struct TestnetClient;
+struct TestnetClient {
+    client: MobilecoindApiClient,
+    monitor_id: Vec<u8>,
+}
 
 impl TestnetClient {
     pub fn new() -> Self {
-        TestnetClient {}
+        let env = Arc::new(grpcio::EnvBuilder::new().build());
+        let ch = ChannelBuilder::new(env)
+            .keepalive_permit_without_calls(true)
+            .keepalive_time(Duration::from_secs(1))
+            .keepalive_timeout(Duration::from_secs(20))
+            .max_reconnect_backoff(Duration::from_millis(2000))
+            .initial_reconnect_backoff(Duration::from_millis(1000))
+            .max_receive_message_len(std::i32::MAX)
+            .max_send_message_len(std::i32::MAX)
+            .connect("cvm:4444");
+        let client = MobilecoindApiClient::new(ch);
+
+        TestnetClient {
+            client,
+            monitor_id: Vec::new(),
+        }
     }
 
-    pub fn run(&self) {
+    pub fn run(&mut self) {
         Self::print_intro();
 
-        let root_entropy = Self::get_root_entropy();
-        self.add_monitor_and_wait_for_sync(&root_entropy);
+        loop {
+            let root_entropy = Self::get_root_entropy();
+            match self.add_monitor_and_wait_for_sync(&root_entropy) {
+                Ok(_) => {
+                    break;
+                }
+                Err(err) => {
+                    println!("{}", err);
+                }
+            }
+        }
 
         loop {
             self.print_balance();
@@ -116,8 +145,37 @@ Please enter the 32 byte root entropy for an account. If you received an email w
             .0
     }
 
-    fn add_monitor_and_wait_for_sync(&self, _entropy: &[u8; 32]) {
-        let num_blocks = 5; // TODO get from mobilecoind
+    fn add_monitor_and_wait_for_sync(&mut self, entropy: &[u8; 32]) -> Result<(), String> {
+        // Get account key from entropy
+        let mut req = mobilecoind_api::GetAccountKeyRequest::new();
+        req.set_entropy(entropy.to_vec());
+
+        let mut resp = self
+            .client
+            .get_account_key(&req)
+            .map_err(|err| format!("Failed getting account key for entropy: {}", err))?;
+
+        let account_key = resp.take_account_key();
+
+        // Add monitor for this account.
+        let mut req = mobilecoind_api::AddMonitorRequest::new();
+        req.set_account_key(account_key);
+        req.set_first_subaddress(0);
+        req.set_num_subaddresses(1);
+        req.set_first_block(0);
+
+        let resp = self
+            .client
+            .add_monitor(&req)
+            .map_err(|err| format!("Failed adding monitor: {}", err))?;
+        self.monitor_id = resp.get_monitor_id().to_vec();
+
+        // Get current number of blocks in ledger.
+        let resp = self
+            .client
+            .get_ledger_info(&mobilecoind_api::Empty::new())
+            .map_err(|err| format!("Failed getting number of blocks in ledger: {}", err))?;
+        let num_blocks = resp.block_count;
 
         let pb = ProgressBar::new(num_blocks);
         pb.set_style(
@@ -130,21 +188,43 @@ Please enter the 32 byte root entropy for an account. If you received an email w
 
         let mut blocks_synced = 0;
         while blocks_synced < num_blocks {
+            // Get current number of blocks synced.
+            let mut req = mobilecoind_api::GetMonitorStatusRequest::new();
+            req.set_monitor_id(self.monitor_id.clone());
+
+            let resp = self
+                .client
+                .get_monitor_status(&req)
+                .map_err(|err| format!("Failed getting monitor status: {}", err))?;
+
             pb.set_position(blocks_synced);
-            std::thread::sleep(std::time::Duration::from_millis(100));
-            blocks_synced += 1;
+            blocks_synced = resp.get_status().next_block;
         }
+
+        // Done!
+        Ok(())
     }
 
     fn print_balance(&self) {
-        let balance = 31337; // TODO
+        let mut req = mobilecoind_api::GetBalanceRequest::new();
+        req.set_monitor_id(self.monitor_id.clone());
+        req.set_subaddress_index(0);
 
-        println!();
-        println!(
-            "        >>> Your balance is now {} <<<",
-            u64_to_mob_display(balance)
-        );
-        println!();
+        match self.client.get_balance(&req) {
+            Ok(resp) => {
+                let balance = resp.get_balance();
+
+                println!();
+                println!(
+                    "        >>> Your balance is now {} <<<",
+                    u64_to_mob_display(balance)
+                );
+                println!();
+            }
+            Err(err) => {
+                println!("Error getting balance: {}", err);
+            }
+        }
     }
 
     fn send(&self) {
@@ -209,6 +289,8 @@ Please enter a payment request code. If you received an email with an allocation
                 println!("{}", request_code.memo);
                 println!();
             }
+
+            // Construct a transaction so that we can figure out the fee.
 
             // TODO construct TX to figure out the fee.
             let fee = 12345;
@@ -325,7 +407,9 @@ fn u64_to_mob_display(val: u64) -> String {
     let mob = Decimal::from_scientific("1e12").unwrap();
     let micro_mob = Decimal::from_scientific("1e6").unwrap();
 
-    if decimal_val >= kilo_mob {
+    if val == 0 {
+        "0 MOB".to_owned()
+    } else if decimal_val >= kilo_mob {
         decimal_val /= kilo_mob;
         format!("{:.3} kMOB", decimal_val)
     } else if decimal_val >= mob {
