@@ -311,17 +311,20 @@ impl RingMLSAG {
         let G = GENERATORS.B;
         let H = GENERATORS.B_blinding;
 
-        // The uncompressed key image.
+        // The key image must decompress.
+        // This ensures that the key image encodes a valid Ristretto point.
         let I: RistrettoPoint = self
             .key_image
             .try_into()
             .map_err(|_e| Error::InvalidKeyImage)?;
+
         let r = &self.responses;
 
         // Output commitment must decompress.
         let output_commitment: Commitment = Commitment::try_from(output_commitment)?;
 
         // Ring must decompress.
+        // This ensures that each address and commitment encodes a valid Ristretto point.
         let mut decompressed_ring: Vec<(RistrettoPublic, Commitment)> = Vec::new();
         for (compressed_address, compressed_commitment) in ring {
             let ristretto_public = RistrettoPublic::try_from(compressed_address)?;

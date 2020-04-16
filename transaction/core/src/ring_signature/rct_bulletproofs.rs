@@ -215,6 +215,7 @@ impl SignatureRctBulletproofs {
         }
 
         // output_commitments must decompress.
+        // This ensures that each commitment encodes a valid Ristretto point.
         let mut decompressed_output_commitments: Vec<Commitment> = Vec::new();
         for output_commitment in output_commitments {
             let commitment = Commitment::try_from(output_commitment)?;
@@ -222,6 +223,7 @@ impl SignatureRctBulletproofs {
         }
 
         // pseudo_output_commitments must decompress.
+        // This ensures that each commitment encodes a valid Ristretto point.
         let mut decompressed_pseudo_output_commitments: Vec<Commitment> = Vec::new();
         for pseudo_output in &self.pseudo_output_commitments {
             let point = pseudo_output.decompress().ok_or(Error::InvalidCurvePoint)?;
