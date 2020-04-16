@@ -197,15 +197,11 @@ impl RingMLSAG {
         let I: RistrettoPoint = key_image.try_into().expect("key_image should decompress");
 
         // Uncompressed output commitment.
+        // This ensures that each address and commitment encodes a valid Ristretto point.
         let output_commitment: Commitment = Commitment::new(value, *output_blinding);
 
         // Ring must decompress.
-        let mut decompressed_ring: Vec<(RistrettoPublic, Commitment)> = Vec::new();
-        for (compressed_address, compressed_commitment) in ring {
-            let ristretto_public = RistrettoPublic::try_from(compressed_address)?;
-            let commitment = Commitment::try_from(compressed_commitment)?;
-            decompressed_ring.push((ristretto_public, commitment));
-        }
+        let decompressed_ring = decompress_ring(ring)?;
 
         // Challenges `c_0, ... c_{ring_size - 1}`.
         let mut c: Vec<Scalar> = vec![Scalar::zero(); ring_size];
@@ -325,12 +321,7 @@ impl RingMLSAG {
 
         // Ring must decompress.
         // This ensures that each address and commitment encodes a valid Ristretto point.
-        let mut decompressed_ring: Vec<(RistrettoPublic, Commitment)> = Vec::new();
-        for (compressed_address, compressed_commitment) in ring {
-            let ristretto_public = RistrettoPublic::try_from(compressed_address)?;
-            let commitment = Commitment::try_from(compressed_commitment)?;
-            decompressed_ring.push((ristretto_public, commitment));
-        }
+        let decompressed_ring = decompress_ring(ring)?;
 
         // Recompute challenges.
         let mut recomputed_c = vec![Scalar::zero(); ring.len()];
@@ -371,6 +362,19 @@ impl RingMLSAG {
             Err(Error::InvalidSignature)
         }
     }
+}
+
+fn decompress_ring(
+    ring: &[(CompressedRistrettoPublic, CompressedCommitment)],
+) -> Result<Vec<(RistrettoPublic, Commitment)>, Error> {
+    // Ring must decompress.
+    let mut decompressed_ring: Vec<(RistrettoPublic, Commitment)> = Vec::new();
+    for (compressed_address, compressed_commitment) in ring {
+        let ristretto_public = RistrettoPublic::try_from(compressed_address)?;
+        let commitment = Commitment::try_from(compressed_commitment)?;
+        decompressed_ring.push((ristretto_public, commitment));
+    }
+    Ok(decompressed_ring)
 }
 
 #[cfg(test)]
