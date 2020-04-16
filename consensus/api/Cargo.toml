@@ -1,9 +1,10 @@
 [package]
 name = "mobilecoin-api"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["MobileCoin"]
 build = "build.rs"
 edition = "2018"
+links = "mc-consensus-api"
 
 [lib]
 name = "mobilecoin_api"
@@ -28,6 +29,9 @@ curve25519-dalek = { version = "2.0", default-features = false, features = ["nig
 
 [build-dependencies]
 mc-build-grpc = { path = "../../util/build-grpc" }
+mcbuild-utils = { path = "../../mcbuild/utils" }
+
+cargo-emit = "0.1.1"
 
 [dev-dependencies]
 mcrand = { path = "../../crypto/mcrand" }
