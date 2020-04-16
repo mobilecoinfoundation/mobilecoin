@@ -24,7 +24,7 @@ use std::{
 };
 use transaction::{
     account_keys::{AccountKey, PublicAddress},
-    constants::{BASE_FEE, MAX_INPUTS, MIN_RING_SIZE},
+    constants::{BASE_FEE, MAX_INPUTS, RING_SIZE},
     onetime_keys::{compute_key_image, recover_onetime_private_key},
     tx::{Tx, TxOut, TxOutMembershipProof},
     BlockIndex,
@@ -36,7 +36,7 @@ use transaction_std::{InputCredentials, TransactionBuilder};
 pub const DEFAULT_NEW_TX_BLOCK_ATTEMPTS: u64 = 50;
 
 /// Default ring size
-pub const DEFAULT_RING_SIZE: usize = MIN_RING_SIZE;
+pub const DEFAULT_RING_SIZE: usize = RING_SIZE;
 
 /// An outlay - the API representation of a desired transaction output.
 #[derive(Clone, Debug, Eq, PartialEq)]

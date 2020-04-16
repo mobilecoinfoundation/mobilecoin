@@ -141,7 +141,7 @@ pub fn create_transaction_with_amount<L: Ledger, R: RngCore + CryptoRng>(
 /// Populates the LedgerDB with initial data.
 ///
 /// Creates a number of blocks, each of which contains a single transaction.
-/// The first contains MIN_RING_SIZE txos so we can create more valid transactions.
+/// The first contains RING_SIZE txos so we can create more valid transactions.
 /// The rest have a single TxOut.
 ///
 /// The first block "mints" coins, and each subsequent block spends the TxOut produced by the

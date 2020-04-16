@@ -861,7 +861,7 @@ mod tests {
         let num_transactions = 5;
         let recipient = AccountKey::random(&mut rng);
 
-        // The first block contains a single transaction with MIN_RING_SIZE outputs.
+        // The first block contains a single transaction with RING_SIZE outputs.
         let block_zero_transactions = ledger.get_transactions_by_block(0).unwrap();
         let block_zero_redacted_tx = block_zero_transactions.get(0).unwrap();
 
@@ -946,7 +946,7 @@ mod tests {
         let num_transactions = 6;
         let recipient = AccountKey::random(&mut rng);
 
-        // The first block contains a single transaction with MIN_RING_SIZE outputs.
+        // The first block contains a single transaction with RING_SIZE outputs.
         let block_zero_transactions = ledger.get_transactions_by_block(0).unwrap();
         let block_zero_redacted_tx = block_zero_transactions.get(0).unwrap();
 
