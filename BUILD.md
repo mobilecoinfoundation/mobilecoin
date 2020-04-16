@@ -71,7 +71,7 @@ The clients and servers must all agree about this setting, or attestation will f
 `cargo` supports crate-level features, and feature unification across the build plan.
 `cargo` does not support any notion of "global project-wide configuration".
 
-In practice, it's too hard invoke cargo to get all the features enables exactly correctly on
+In practice, it's too hard invoke cargo to get all the features enabled exactly correctly on
 all the right crates, if every crate has an `sgx_mode` and `ias_mode` feature.
 
 Even if cargo had workspace-level features, which it doesn't, that wouldn't be good enough for us
@@ -82,7 +82,7 @@ This is because the enclave builds in a special `no_std` environment.
 
 Making `SGX_MODE` and `IAS_MODE` environment variables, and making `build.rs` scripts that read
 them and set features on these crates as needed, is the simplest way to make sure that there is
-one source of truth for these values for all the artifacts in the whole build.
+one source of truth for these values for all of the artifacts in the whole build.
 
 The `SGX_MODE` environment variable configuration is also used throughout Intel SGX SDK examples.
 
@@ -100,6 +100,6 @@ For local testing, you don't need to get exactly the right MRENCLAVE value. You 
 test networks with whatever MRENCLAVE your build produces, and clients that check this value
 using the Remote Attestation process.
 
-If you want to downlaod a prebuilt and properly-signed enclave, in order use `IAS_MODE=PROD`
-and participate in a production network, check out the `enclave-signing-material` instructions:
+If you want to download a prebuilt enclave, signed using the production signing key, in order use `IAS_MODE=PROD`
+and participate in a production-environment network, check out the `enclave-signing-material` instructions:
 https://github.com/mobilecoinofficial/mobilecoin/blob/master/consensus/service/BUILD.md#enclave-signing-material
