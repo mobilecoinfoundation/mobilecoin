@@ -126,7 +126,7 @@ impl RingMLSAG {
     //
     // # Arguments
     // * `message` - Message to be signed.
-    // * `ring` - A ring of input onetime addresses and uncompressed amount commitments.
+    // * `ring` - A ring of input onetime addresses and amount commitments.
     // * `real_index` - The index in the ring of the real input.
     // * `onetime_private_key` - The real input's private key.
     // * `value` - Value of the real input.
@@ -163,7 +163,7 @@ impl RingMLSAG {
     //
     // # Arguments
     // * `message` - Message to be signed.
-    // * `ring` - A ring of input onetime addresses and uncompressed amount commitments.
+    // * `ring` - A ring of input onetime addresses and amount commitments.
     // * `real_index` - The index in the ring of the real input.
     // * `onetime_private_key` - The real input's private key.
     // * `value` - Value of the real input.
