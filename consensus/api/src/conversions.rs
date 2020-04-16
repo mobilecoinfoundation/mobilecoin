@@ -25,13 +25,13 @@ use transaction::{
     encrypted_fog_hint::EncryptedFogHint,
     range::Range,
     ring_signature::{
-        Blinding, Commitment, CurvePoint, CurveScalar, Error as RingSigError, KeyImage, RingMLSAG,
-        Scalar, SignatureRctBulletproofs,
+        Blinding, CurvePoint, CurveScalar, Error as RingSigError, KeyImage, RingMLSAG, Scalar,
+        SignatureRctBulletproofs,
     },
     tx,
     tx::{TxOutMembershipElement, TxOutMembershipHash, TxOutMembershipProof},
     validation::TransactionValidationError,
-    BlockSignature, RedactedTx,
+    BlockSignature, CompressedCommitment, RedactedTx,
 };
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
@@ -595,51 +595,51 @@ impl TryFrom<&external::SignatureRctBulletproofs> for SignatureRctBulletproofs {
     }
 }
 
-/// Convert tx::TxOut --> external::TxOut.
-impl From<&tx::TxOut> for external::TxOut {
-    fn from(source: &tx::TxOut) -> Self {
-        let mut tx_out = external::TxOut::new();
-
-        let target_key_bytes: &[u8] = source.target_key.as_ref();
-        tx_out
-            .mut_target_key()
-            .set_data(Vec::from(target_key_bytes));
-
-        let public_key_bytes: &[u8] = source.public_key.as_ref();
-        tx_out
-            .mut_public_key()
-            .set_data(Vec::from(public_key_bytes));
-
-        let masked_value_bytes = source.amount.masked_value.as_bytes().to_vec();
-        tx_out
-            .mut_amount()
-            .mut_masked_value()
-            .set_data(masked_value_bytes);
-
-        let masked_blinding_bytes = source.amount.masked_blinding.as_bytes().to_vec();
-
-        tx_out
-            .mut_amount()
-            .mut_masked_blinding()
-            .set_data(masked_blinding_bytes);
-        tx_out
-            .mut_amount()
-            .mut_commitment()
-            .set_data(source.amount.commitment.to_bytes().to_vec());
-        tx_out
-            .mut_e_account_hint()
-            .set_data(source.e_account_hint.as_ref().to_vec());
-        tx_out
+impl From<&CompressedCommitment> for external::CurvePoint {
+    fn from(source: &CompressedCommitment) -> Self {
+        let bytes = source.to_bytes().to_vec();
+        let mut curve_point = external::CurvePoint::new();
+        curve_point.set_data(bytes);
+        curve_point
     }
 }
 
-/// Convert external::TxOut --> tx::TxOut.
-impl TryFrom<&external::TxOut> for tx::TxOut {
+impl TryFrom<&external::CurvePoint> for CompressedCommitment {
     type Error = ConversionError;
 
-    fn try_from(source: &external::TxOut) -> Result<Self, Self::Error> {
-        let commitment = Commitment::try_from(source.get_amount().get_commitment())
-            .map_err(|_| ConversionError::KeyCastError)?;
+    fn try_from(source: &external::CurvePoint) -> Result<Self, Self::Error> {
+        let bytes = source.get_data();
+        let mut arr = [0u8; 32];
+        if bytes.len() != arr.len() {
+            return Err(ConversionError::ArrayCastError);
+        }
+        arr.copy_from_slice(bytes);
+        CompressedCommitment::from_bytes(&arr).map_err(|_e| ConversionError::Other)
+    }
+}
+
+impl From<&Amount> for external::Amount {
+    fn from(source: &Amount) -> Self {
+        let mut amount = external::Amount::new();
+
+        let commitment_bytes = source.commitment.to_bytes().to_vec();
+        amount.mut_commitment().set_data(commitment_bytes);
+
+        let masked_value_bytes = source.masked_value.as_bytes().to_vec();
+        amount.mut_masked_value().set_data(masked_value_bytes);
+
+        let masked_blinding_bytes = source.masked_blinding.as_bytes().to_vec();
+        amount.mut_masked_blinding().set_data(masked_blinding_bytes);
+
+        amount
+    }
+}
+
+impl TryFrom<&external::Amount> for Amount {
+    type Error = ConversionError;
+
+    fn try_from(source: &external::Amount) -> Result<Self, Self::Error> {
+        let commitment = CompressedCommitment::try_from(source.get_commitment())?;
 
         fn vec_to_curve_scalar(bytes: &[u8]) -> Result<CurveScalar, ConversionError> {
             if bytes.len() != 32 {
@@ -651,12 +651,12 @@ impl TryFrom<&external::TxOut> for tx::TxOut {
         };
 
         let masked_value: CurveScalar = {
-            let bytes = source.get_amount().get_masked_value().get_data();
+            let bytes = source.get_masked_value().get_data();
             vec_to_curve_scalar(bytes)?
         };
 
         let masked_blinding: Blinding = {
-            let bytes = source.get_amount().get_masked_blinding().get_data();
+            let bytes = source.get_masked_blinding().get_data();
             vec_to_curve_scalar(bytes)?
         };
 
@@ -666,14 +666,48 @@ impl TryFrom<&external::TxOut> for tx::TxOut {
             masked_blinding,
         };
 
+        Ok(amount)
+    }
+}
+
+/// Convert tx::TxOut --> external::TxOut.
+impl From<&tx::TxOut> for external::TxOut {
+    fn from(source: &tx::TxOut) -> Self {
+        let mut tx_out = external::TxOut::new();
+
+        let amount = external::Amount::from(&source.amount);
+        tx_out.set_amount(amount);
+
+        let target_key_bytes = source.target_key.as_bytes().to_vec();
+        tx_out.mut_target_key().set_data(target_key_bytes);
+
+        let public_key_bytes = source.public_key.as_bytes().to_vec();
+        tx_out.mut_public_key().set_data(public_key_bytes);
+
+        let hint_bytes = source.e_account_hint.as_ref().to_vec();
+        tx_out.mut_e_account_hint().set_data(hint_bytes);
+
+        tx_out
+    }
+}
+
+/// Convert external::TxOut --> tx::TxOut.
+impl TryFrom<&external::TxOut> for tx::TxOut {
+    type Error = ConversionError;
+
+    fn try_from(source: &external::TxOut) -> Result<Self, Self::Error> {
+        let amount = Amount::try_from(source.get_amount())?;
+
         let target_key_bytes: &[u8] = source.get_target_key().get_data();
-        let target_key = RistrettoPublic::try_from(target_key_bytes)
+        let target_key: CompressedRistrettoPublic = RistrettoPublic::try_from(target_key_bytes)
             .map_err(|_| ConversionError::KeyCastError)?
             .into();
+
         let public_key_bytes: &[u8] = source.get_public_key().get_data();
-        let public_key = RistrettoPublic::try_from(public_key_bytes)
+        let public_key: CompressedRistrettoPublic = RistrettoPublic::try_from(public_key_bytes)
             .map_err(|_| ConversionError::KeyCastError)?
             .into();
+
         let e_account_hint = EncryptedFogHint::try_from(source.get_e_account_hint().get_data())
             .map_err(|_| ConversionError::ArrayCastError)?;
 

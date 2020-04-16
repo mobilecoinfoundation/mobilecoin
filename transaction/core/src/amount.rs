@@ -7,7 +7,10 @@
 
 #![cfg_attr(test, allow(clippy::unnecessary_operation))]
 
-use crate::ring_signature::{Blinding, Commitment, CurveScalar, GENERATORS};
+use crate::{
+    ring_signature::{Blinding, CurveScalar, GENERATORS},
+    CompressedCommitment,
+};
 use blake2::{Blake2b, Digest};
 use curve25519_dalek::scalar::Scalar;
 use digestible::Digestible;
@@ -30,7 +33,7 @@ pub enum AmountError {
 pub struct Amount {
     /// A Pedersen commitment `v*G + b*H` to a quantity `v` of MobileCoin, with blinding `b`,
     #[prost(message, required, tag = "1")]
-    pub commitment: Commitment,
+    pub commitment: CompressedCommitment,
 
     /// `masked_value = value + Blake2B(shared_secret)`
     #[prost(message, required, tag = "2")]
@@ -55,13 +58,12 @@ impl Amount {
         blinding: Blinding,
         shared_secret: &RistrettoPublic,
     ) -> Result<Amount, AmountError> {
-        let value: Scalar = Scalar::from(value);
-
         // Pedersen commitment `v*G + b*H`.
-        let commitment: Commitment = Commitment::from(GENERATORS.commit(value, blinding.into()));
+        let commitment = CompressedCommitment::new(value, blinding.into());
 
         // `v + Blake2B(shared_secret)`
         let masked_value: Scalar = {
+            let value: Scalar = Scalar::from(value);
             let mask = get_value_mask(&shared_secret);
             value + mask
         };
@@ -92,8 +94,7 @@ impl Amount {
         let value: u64 = self.unmask_value(shared_secret);
         let blinding = self.unmask_blinding(shared_secret);
 
-        let expected_commitment =
-            Commitment::from(GENERATORS.commit(Scalar::from(value), blinding.into()));
+        let expected_commitment = CompressedCommitment::new(value, blinding.into());
         if self.commitment != expected_commitment {
             // The commitment does not agree with the provided value and blinding.
             // This either means that the commitment does not correspond to the shared secret, or
@@ -156,12 +157,13 @@ fn get_mask(shared_secret: &RistrettoPublic) -> Scalar {
 
 #[cfg(test)]
 mod tests {
-    use crate::{proptest_fixtures::*, ring_signature::Commitment};
+    use crate::proptest_fixtures::*;
     use proptest::prelude::*;
 
     use crate::{
         amount::{Amount, AmountError},
         ring_signature::{Scalar, GENERATORS},
+        CompressedCommitment,
     };
 
     proptest! {
@@ -183,11 +185,7 @@ mod tests {
                 blinding in arbitrary_blinding(),
                 shared_secret in arbitrary_ristretto_public()) {
                     let amount = Amount::new(value, blinding,  &shared_secret).unwrap();
-                    let G = GENERATORS.B;
-                    let H = GENERATORS.B_blinding;
-
-                    let blinding: Scalar = blinding.into();
-                    let expected_commitment: Commitment = Commitment::from(Scalar::from(value) * G + blinding * H);
+                    let expected_commitment = CompressedCommitment::new(value, blinding.into());
                     assert_eq!(amount.commitment, expected_commitment);
             }
 

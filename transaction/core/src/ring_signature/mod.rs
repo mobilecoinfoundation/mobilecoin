@@ -39,9 +39,6 @@ lazy_static! {
         BulletproofGens::new(64, MAX_INPUTS as usize + MAX_OUTPUTS as usize);
 }
 
-/// A Pedersen commitment.
-pub type Commitment = CurvePoint;
-
 // The "blinding factor" in a Pedersen commitment.
 pub type Blinding = CurveScalar;
 
