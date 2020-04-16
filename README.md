@@ -37,11 +37,13 @@ To validate the blockchain, see [The MobileCoin Daemon](#the-mobilecoin-daemon).
 
 This workspace is built with `cargo build`, and tested with `cargo test`.
 
-Some crates, such as consensus-service, build binaries that have special runtime requirements, such as Intel's Software Guard eXtensions (SGX). You will need to provide an environment variable to indicate whether to build for hardware mode (`HW`) or simulation mode (`SW`) mode, as well as which attestation service to use, e.g. `SGX_MODE=HW IAS_MODE=DEV cargo build`. You will find more information in the BUILD.md in these crates, for example, [consensus/service/BUILD.md](consensus/service/BUILD.md).
+Some crates depend on SGX, which creates build and runtime requirements. (Specifically, `consensus-service`.)
 
-To ease the process of building, we provide a tool which starts a docker container with all the correct dependencies, including the necessary versions of SGX and proto libraries.
+For detailed information about setting up a build environment, how enclaves are built, and configuring
+the build, check out [BUILD.md](BUILD.md).
 
-You can use it with the following:
+For a quick start, you can build in the same docker image that we use for CI, using the `mob` tool.
+This requires you to install docker.
 
 ```
 # From the root of the repo
@@ -50,8 +52,6 @@ You can use it with the following:
 # At the container prompt
 cargo build
 ```
-
-The consensus_enclave is a nested workspace, which is built with `cargo build.`
 
 #### License
 
