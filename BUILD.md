@@ -71,15 +71,18 @@ The clients and servers must all agree about this setting, or attestation will f
 `cargo` supports crate-level features, and feature unification across the build plan.
 `cargo` does not support any notion of "global project-wide configuration".
 
-In practice, it's too hard to get all the features on all the right crates, if every
-crate has an `sgx_mode` and `ias_mode` feature. Even if cargo had workspace-level
-features, which it doesn't, that wouldn't be good enough for us because our build requires using
-multiple workspaces, in order to keep the cargo features on some targets separated and not unified.
-Unifying cargo features across enclave targets and server targets will break the enclave builds.
+In practice, it's too hard invoke cargo to get all the features enables exactly correctly on
+all the right crates, if every crate has an `sgx_mode` and `ias_mode` feature.
 
-Making these environment variables, and making `build.rs` scripts that read them and set features
-on these crates, is the simplest way to make sure that there is one source of truth for these
-values for all the artifacts in the whole build.
+Even if cargo had workspace-level features, which it doesn't, that wouldn't be good enough for us
+because our build requires using multiple workspaces. We must keep the cargo features on some
+targets separated and not unified.
+Unifying cargo features across enclave targets and server targets will break the enclave builds.
+This is because the enclave builds in a special `no_std` environment.
+
+Making `SGX_MODE` and `IAS_MODE` environment variables, and making `build.rs` scripts that read
+them and set features on these crates as needed, is the simplest way to make sure that there is
+one source of truth for these values for all the artifacts in the whole build.
 
 The `SGX_MODE` environment variable configuration is also used throughout Intel SGX SDK examples.
 
