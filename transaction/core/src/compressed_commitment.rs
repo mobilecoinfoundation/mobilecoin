@@ -69,3 +69,33 @@ prost_message_helper32! { CompressedCommitment }
 
 // Implements try_from<&[u8;32]> and try_from<&[u8]>. Requires ReprBytes32.
 try_from_helper32! { CompressedCommitment }
+
+#[cfg(test)]
+#[allow(non_snake_case)]
+mod compressed_commitment_tests {
+    use crate::{
+        ring_signature::{Scalar, GENERATORS},
+        CompressedCommitment,
+    };
+    use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
+    use rand::{rngs::StdRng, RngCore, SeedableRng};
+
+    #[test]
+    // Commitment::new should create the correct RistrettoPoint.
+    fn test_new() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let value = rng.next_u64();
+        let blinding = Scalar::random(&mut rng);
+
+        let commitment = CompressedCommitment::new(value, blinding);
+
+        let expected_point: CompressedRistretto = {
+            let G = GENERATORS.B;
+            let H = GENERATORS.B_blinding;
+            let point = Scalar::from(value) * G + blinding * H;
+            point.compress()
+        };
+
+        assert_eq!(commitment.point, expected_point);
+    }
+}
