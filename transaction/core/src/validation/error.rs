@@ -43,18 +43,6 @@ pub enum TransactionValidationError {
     #[fail(display = "InsufficientRingSize")]
     InsufficientRingSize,
 
-    /// Each input must contain a ring with no more than the maximum number of elements.
-    #[fail(display = "ExcessiveRingSize")]
-    ExcessiveRingSize,
-
-    /// All elements in all rings within the transaction must be unique.
-    #[fail(display = "DuplicateRingElements")]
-    DuplicateRingElements,
-
-    /// The elements of each ring must be sorted.
-    #[fail(display = "UnsortedRingElements")]
-    UnsortedRingElements,
-
     /// Number of blocks in ledger exceeds the tombstone block number.
     #[fail(display = "TombstoneBlockExceeded")]
     TombstoneBlockExceeded,
@@ -70,6 +58,22 @@ pub enum TransactionValidationError {
     /// A transaction must have no more than the maximum allowed number of outputs.
     #[fail(display = "TooManyOutputs")]
     TooManyOutputs,
+
+    /// Each input must contain a ring with no more than the maximum number of elements.
+    #[fail(display = "ExcessiveRingSize")]
+    ExcessiveRingSize,
+
+    /// All elements in all rings within the transaction must be unique.
+    #[fail(display = "DuplicateRingElements")]
+    DuplicateRingElements,
+
+    /// The elements of each ring must be sorted.
+    #[fail(display = "UnsortedRingElements")]
+    UnsortedRingElements,
+
+    /// All rings in a transaction must be of the same size.
+    #[fail(display = "UnequalRingSizes")]
+    UnequalRingSizes,
 
     /// Key Images must be sorted.
     #[fail(display = "UnsortedKeyImages")]
