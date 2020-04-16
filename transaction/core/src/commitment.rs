@@ -44,15 +44,6 @@ impl fmt::Debug for Commitment {
     }
 }
 
-// impl AsRef<[u8; 32]> for Commitment {
-//     fn as_ref(&self) -> &[u8; 32] {
-//         self.point.compress().as_bytes()
-//     }
-// }
-//
-// // Implements Ord, PartialOrd, PartialEq, Hash. Requires AsRef<[u8;32]>.
-// deduce_core_traits_from_public_bytes! { Commitment }
-
 impl ReprBytes32 for Commitment {
     type Error = Error;
     fn to_bytes(&self) -> [u8; 32] {
@@ -71,3 +62,32 @@ prost_message_helper32! { Commitment }
 
 // Implements try_from<&[u8;32]> and try_from<&[u8]>. Requires ReprBytes32.
 try_from_helper32! { Commitment }
+
+#[cfg(test)]
+#[allow(non_snake_case)]
+mod commitment_tests {
+    use crate::{
+        ring_signature::{Scalar, GENERATORS},
+        Commitment,
+    };
+    use curve25519_dalek::ristretto::RistrettoPoint;
+    use rand::{rngs::StdRng, RngCore, SeedableRng};
+
+    #[test]
+    // Commitment::new should create the correct RistrettoPoint.
+    fn test_new() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let value = rng.next_u64();
+        let blinding = Scalar::random(&mut rng);
+
+        let commitment = Commitment::new(value, blinding);
+
+        let expected_point: RistrettoPoint = {
+            let G = GENERATORS.B;
+            let H = GENERATORS.B_blinding;
+            Scalar::from(value) * G + blinding * H
+        };
+
+        assert_eq!(commitment.point, expected_point);
+    }
+}
