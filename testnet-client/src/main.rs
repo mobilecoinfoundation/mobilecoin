@@ -2,7 +2,7 @@ use dialoguer::{theme::ColorfulTheme, Input, Select};
 use indicatif::{ProgressBar, ProgressStyle};
 use mc_b58_payloads::payloads::RequestPayload;
 use rust_decimal::{prelude::ToPrimitive, Decimal};
-use std::{fmt, str::FromStr};
+use std::{fmt, str::FromStr, thread, time::Duration};
 
 fn main() {
     TestnetClient::new().run();
@@ -35,8 +35,8 @@ impl TestnetClient {
     pub fn run(&self) {
         Self::print_intro();
 
-        // let root_entropy = Self::get_root_entropy();
-        // self.add_monitor_and_wait_for_sync(&root_entropy);
+        let root_entropy = Self::get_root_entropy();
+        self.add_monitor_and_wait_for_sync(&root_entropy);
 
         loop {
             self.print_balance();
@@ -55,8 +55,14 @@ impl TestnetClient {
             match commands[selection] {
                 Command::Send => self.send(),
                 Command::Receive => self.receive(),
-                Command::CheckBalance => todo!(),
-                Command::Quit => break,
+                Command::CheckBalance => {
+                    // Balance updates every loop iteration
+                }
+                Command::Quit => {
+                    println!("Thanks for using the MobileCoin TestNet!");
+                    thread::sleep(Duration::from_secs(1));
+                    break;
+                }
             }
         }
     }
@@ -110,7 +116,7 @@ Please enter the 32 byte root entropy for an account. If you received an email w
             .0
     }
 
-    fn add_monitor_and_wait_for_sync(&self, entropy: &[u8; 32]) {
+    fn add_monitor_and_wait_for_sync(&self, _entropy: &[u8; 32]) {
         let num_blocks = 5; // TODO get from mobilecoind
 
         let pb = ProgressBar::new(num_blocks);
@@ -131,8 +137,13 @@ Please enter the 32 byte root entropy for an account. If you received an email w
     }
 
     fn print_balance(&self) {
+        let balance = 31337; // TODO
+
         println!();
-        println!("        >>> Your balance is now 500.000 MOB <<<"); // TODO
+        println!(
+            "        >>> Your balance is now {} <<<",
+            u64_to_mob_display(balance)
+        );
         println!();
     }
 
@@ -186,31 +197,34 @@ Please enter a payment request code. If you received an email with an allocation
             println!();
             if request_code.memo.is_empty() {
                 println!(
-                    "This request code is a bill for {} MOB.",
-                    request_code.value
-                ); // TODO mob conversion
+                    "This request code is a bill for {}.",
+                    u64_to_mob_display(request_code.value),
+                );
             } else {
                 println!(
-                    "This request code is a bill for {} MOB. It includes the memo:",
-                    request_code.value
-                ); // TODO mob conversion
+                    "This request code is a bill for {}. It includes the memo:",
+                    u64_to_mob_display(request_code.value),
+                );
                 println!();
                 println!("{}", request_code.memo);
                 println!();
             }
 
             // TODO construct TX to figure out the fee.
-            // TODO mob conversion
             let fee = 12345;
             let remaining_balance = 66666;
-            println!("You will be charged a fee of {} mMOB to send this payment. Your remaining balance after paying this bill will be {} MOB.", fee, remaining_balance);
+            println!(
+                "You will be charged a fee of {} to send this payment. Your remaining balance after paying this bill will be {}.",
+                u64_to_mob_display(fee),
+                u64_to_mob_display(remaining_balance),
+            );
             println!();
 
             println!("Please select from the following available options:");
             let selection = Select::with_theme(&ColorfulTheme::default())
                 .default(0)
                 .items(&[
-                    format!("Send payment of {} MOB", request_code.value),
+                    format!("Send payment of {}", u64_to_mob_display(request_code.value)),
                     "Change payment amount".to_owned(),
                     "Cancel payment".to_owned(),
                 ])
@@ -288,13 +302,61 @@ Please enter a payment request code. If you received an email with an allocation
     }
 
     fn input_mob(prompt: &str, default: u64) -> u64 {
-        // TODO mob stuff
-        Input::<Decimal>::new()
+        // default is in picoMOB but we need it in MOB
+        let mob_default = Decimal::from(default) / Decimal::from_scientific("1e12").unwrap();
+
+        let mob = Input::<Decimal>::new()
             .with_prompt(prompt)
-            .default(default.into()) // TODO MOB
+            .default(mob_default)
             .interact()
-            .expect("failed getting request code")
+            .expect("failed getting request code");
+
+        // Convert MOB back to pMOB
+        (mob * Decimal::from_scientific("1e12").unwrap())
             .to_u64()
             .expect("failed converting to u64")
+    }
+}
+
+fn u64_to_mob_display(val: u64) -> String {
+    let mut decimal_val: Decimal = val.into();
+
+    let kilo_mob = Decimal::from_scientific("1000e12").unwrap();
+    let mob = Decimal::from_scientific("1e12").unwrap();
+    let micro_mob = Decimal::from_scientific("1e6").unwrap();
+
+    if decimal_val >= kilo_mob {
+        decimal_val /= kilo_mob;
+        format!("{:.3} kMOB", decimal_val)
+    } else if decimal_val >= mob {
+        decimal_val /= mob;
+        format!("{:.3} MOB", decimal_val)
+    } else if decimal_val >= micro_mob {
+        decimal_val /= micro_mob;
+        format!("{:.3} µMOB", decimal_val)
+    } else {
+        format!("{} pMOB", decimal_val)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_u64_to_mob_display() {
+        const MOB: u64 = 1_000_000_000_000;
+        assert_eq!(u64_to_mob_display(1), "1 pMOB");
+        assert_eq!(u64_to_mob_display(123), "123 pMOB");
+
+        assert_eq!(u64_to_mob_display(MOB - 1), "999999.999 µMOB");
+        assert_eq!(u64_to_mob_display(MOB), "1.000 MOB");
+        assert_eq!(u64_to_mob_display(MOB + 1), "1.000 MOB");
+        assert_eq!(u64_to_mob_display(MOB + 100_000_000), "1.000 MOB");
+        assert_eq!(u64_to_mob_display(MOB + 1_000_000_000), "1.001 MOB");
+
+        assert_eq!(u64_to_mob_display(MOB * 1000), "1.000 kMOB");
+        assert_eq!(u64_to_mob_display((MOB * 1000) + 1), "1.000 kMOB");
+        assert_eq!(u64_to_mob_display((MOB * 1000) + MOB), "1.001 kMOB");
     }
 }
