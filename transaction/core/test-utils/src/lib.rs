@@ -6,9 +6,10 @@ use ledger_db::{Ledger, LedgerDB};
 use mcrand::{CryptoRng, RngCore};
 use rand::{seq::SliceRandom, Rng};
 use tempdir::TempDir;
+use transaction::constants::RING_SIZE;
 pub use transaction::{
     account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX},
-    constants::{BASE_FEE, MIN_RING_SIZE},
+    constants::BASE_FEE,
     get_tx_out_shared_secret,
     onetime_keys::recover_onetime_private_key,
     range::Range,
@@ -90,7 +91,7 @@ pub fn create_transaction_with_amount<L: Ledger, R: RngCore + CryptoRng>(
     let origin_outputs = &origin_tx.outputs;
 
     // Populate a ring with mixins.
-    let mut ring: Vec<TxOut> = origin_outputs.iter().take(MIN_RING_SIZE).cloned().collect();
+    let mut ring: Vec<TxOut> = origin_outputs.iter().take(RING_SIZE).cloned().collect();
     if !ring.contains(tx_out) {
         ring[0] = tx_out.clone();
     }
@@ -193,7 +194,7 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
             }
             None => {
                 // Create an origin block.
-                let outputs: Vec<TxOut> = (0..MIN_RING_SIZE)
+                let outputs: Vec<TxOut> = (0..RING_SIZE)
                     .map(|_i| {
                         TxOut::new(
                             value,

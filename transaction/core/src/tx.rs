@@ -225,7 +225,7 @@ impl TxPrefix {
 /// An "input" to a transaction.
 #[derive(Clone, Deserialize, Eq, PartialEq, Serialize, Message, Digestible)]
 pub struct TxIn {
-    /// A "ring" of outpuuts containing the single output that is being spent.
+    /// A "ring" of outputs containing the single output that is being spent.
     #[prost(message, repeated, tag = "1")]
     pub ring: Vec<TxOut>,
 
