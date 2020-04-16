@@ -93,7 +93,7 @@ To build and run ledger distribution, see the [ledger/distribution](./ledger/dis
 
 To send and receive transactions, run a [wallet client](./mobilecoind/clients) alongside [`mobilecoind`](./mobilecoind/README.md).
 
->Note: `mobilecoind` provides the wallet bindings in gRPC, so that you can write a wallet client in any language. We provide a [python example](./mobilecoind/clients/python).
+>Note: `mobilecoind` provides the wallet bindings in gRPC, so that you can write a wallet client in any language. We provide both a [python and java example](./mobilecoind/clients/).
 
 ##### The MobileCoin Daemon
 
