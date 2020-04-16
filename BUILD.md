@@ -40,11 +40,11 @@ These are set by environment variables, and they must be the same for all artifa
 even those that don't depend directly on SGX. E.g. `mobilecoind` must have the same configuration
 as `consensus_service` for Intel Remote Attestation to work, otherwise an error will occur at runtime.
 
-For testing, you should usually use `SGX_MODE=SIM` and `IAS_MODE=DEV`.
+For testing, you should usually use `SGX_MODE=SW` and `IAS_MODE=DEV`.
 
 ## SGX_MODE
 
-`SGX_MODE=SIM` means that the enclaves won't be "real" enclaves -- consensus service will link
+`SGX_MODE=SW` means that the enclaves won't be "real" enclaves -- consensus service will link
 to Intel-provided "_sim" versions of the Intel SGX SDK, and the enclave will be loaded approximately
 like a shared library being `dlopen`'ed. This means that you will be able to use `gdb` and get
 backtraces normally through the enclave code. In this mode, the CPU does not securely compute
@@ -65,6 +65,23 @@ These won't require the real production signing key in connection to the MRENCLA
 In code, this discrepancy is largely handled by the `attest-net` crate.
 
 The clients and servers must all agree about this setting, or attestation will fail.
+
+## Why are these environment variables?
+
+`cargo` supports crate-level features, and feature unification across the build plan.
+`cargo` does not support any notion of "global project-wide configuration".
+
+In practice, it's too hard to get all the features on all the right crates, if every
+crate has an `sgx_mode` and `ias_mode` feature. Even if cargo had workspace-level
+features, which it doesn't, that wouldn't be good enough for us because our build requires using
+multiple workspaces, in order to keep the cargo features on some targets separated and not unified.
+Unifying cargo features across enclave targets and server targets will break the enclave builds.
+
+Making these environment variables, and making `build.rs` scripts that read them and set features
+on these crates, is the simplest way to make sure that there is one source of truth for these
+values for all the artifacts in the whole build.
+
+The `SGX_MODE` environment variable configuration is also used throughout Intel SGX SDK examples.
 
 #### Building the enclave
 
