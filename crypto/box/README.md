@@ -147,10 +147,10 @@ There are a couple of major differences in our setting:
 References
 ----------
 
-[1] DHIES (Abdalla, Bellare, Rogaway, 2001): https://web.cs.ucdavis.edu/~rogaway/papers/dhies.pdf
-[2] SECG-Sec1 v2.0 (Certicom Research, 2009): http://www.secg.org/sec1-v2.pdf
-[3] NaCl Cryptobox (Bernstien, Lange, Schwabe, 2019): https://nacl.cr.yp.to/box.html
-[4] Cryptography in Nacl (Bernstein, 2009): https://cr.yp.to/highspeed/naclcrypto-20090310.pdf
-[5] The security impact of a new cryptographic library: (Bernstein, Lange, Schwabe, 2012): https://cr.yp.to/highspeed/coolnacl-20120725.pdf
-[6] Authenticated Encryption in the Public-Key Setting (Jee Hea An, 2001): https://eprint.iacr.org/2001/079
-[7] Practical Cryptography for Developers (Svetlin Nakov, 2018): https://cryptobook.nakov.com/asymmetric-key-ciphers/ecies-public-key-encryption
+1. DHIES (Abdalla, Bellare, Rogaway, 2001): https://web.cs.ucdavis.edu/~rogaway/papers/dhies.pdf
+2. SECG-Sec1 v2.0 (Certicom Research, 2009): http://www.secg.org/sec1-v2.pdf
+3. NaCl Cryptobox (Bernstien, Lange, Schwabe, 2019): https://nacl.cr.yp.to/box.html
+4. Cryptography in Nacl (Bernstein, 2009): https://cr.yp.to/highspeed/naclcrypto-20090310.pdf
+5. The security impact of a new cryptographic library: (Bernstein, Lange, Schwabe, 2012): https://cr.yp.to/highspeed/coolnacl-20120725.pdf
+6. Authenticated Encryption in the Public-Key Setting (Jee Hea An, 2001): https://eprint.iacr.org/2001/079
+7. Practical Cryptography for Developers (Svetlin Nakov, 2018): https://cryptobook.nakov.com/asymmetric-key-ciphers/ecies-public-key-encryption
