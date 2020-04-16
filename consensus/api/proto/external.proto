@@ -119,6 +119,9 @@ message TxPrefix {
 
     // Fee paid to the foundation for this transaction
     uint64 fee = 3;
+
+    // The block index at which this transaction is no longer valid.
+    uint64 tombstone_block = 4;
 }
 
 message RingMLSAG {
@@ -137,11 +140,8 @@ message Tx {
     // The actual contents of the transaction.
     TxPrefix prefix = 1;
 
-    // The block index past which this submitted transaction is no longer valid.
-    uint64 tombstone_block = 2;
-
     // The RingCT signature on the prefix.
-    SignatureRctBulletproofs signature = 3;
+    SignatureRctBulletproofs signature = 2;
 }
 
 message TxHash {

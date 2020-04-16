@@ -104,12 +104,8 @@ pub struct Tx {
     #[prost(message, required, tag = "1")]
     pub prefix: TxPrefix,
 
-    /// The block number at which this transaction is no longer considered valid.
-    #[prost(uint64, tag = "2")]
-    pub tombstone_block: u64,
-
     /// The transaction signature.
-    #[prost(message, required, tag = "3")]
+    #[prost(message, required, tag = "2")]
     pub signature: SignatureRctBulletproofs,
 }
 
@@ -160,6 +156,10 @@ pub struct TxPrefix {
     /// Fee paid to the foundation for this transaction
     #[prost(uint64, tag = "3")]
     pub fee: u64,
+
+    /// The block index at which this transaction is no longer valid.
+    #[prost(uint64, tag = "4")]
+    pub tombstone_block: u64,
 }
 
 impl TxPrefix {
@@ -169,11 +169,13 @@ impl TxPrefix {
     /// * `inputs` - Inputs spent by the transaction.
     /// * `outputs` - Outputs created by the transaction.
     /// * `fee` - Transaction fee.
-    pub fn new(inputs: Vec<TxIn>, outputs: Vec<TxOut>, fee: u64) -> TxPrefix {
+    /// * `tombstone_block` - The block index at which this transaction is no longer valid.
+    pub fn new(inputs: Vec<TxIn>, outputs: Vec<TxOut>, fee: u64, tombstone_block: u64) -> TxPrefix {
         TxPrefix {
             inputs,
             outputs,
             fee,
+            tombstone_block,
         }
     }
 
@@ -446,6 +448,7 @@ mod tests {
             inputs: vec![tx_in],
             outputs: vec![tx_out],
             fee: BASE_FEE,
+            tombstone_block: 23,
         };
 
         let mut buf = Vec::new();
@@ -458,11 +461,7 @@ mod tests {
         // TODO: use a meaningful signature.
         let signature = SignatureRctBulletproofs::default();
 
-        let tx = Tx {
-            prefix,
-            tombstone_block: 23u64,
-            signature,
-        };
+        let tx = Tx { prefix, signature };
 
         let mut buf = Vec::new();
         tx.encode(&mut buf).expect("failed to serialize into slice");

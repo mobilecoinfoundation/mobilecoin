@@ -454,6 +454,8 @@ impl From<&tx::TxPrefix> for external::TxPrefix {
 
         tx_prefix.set_fee(source.fee);
 
+        tx_prefix.set_tombstone_block(source.tombstone_block);
+
         tx_prefix
     }
 }
@@ -479,6 +481,7 @@ impl TryFrom<&external::TxPrefix> for tx::TxPrefix {
             inputs,
             outputs,
             fee: source.get_fee(),
+            tombstone_block: source.get_tombstone_block(),
         };
         Ok(tx_prefix)
     }
@@ -489,7 +492,6 @@ impl From<&tx::Tx> for external::Tx {
     fn from(source: &tx::Tx) -> Self {
         let mut tx = external::Tx::new();
         tx.set_prefix(external::TxPrefix::from(&source.prefix));
-        tx.set_tombstone_block(source.tombstone_block);
         tx.set_signature(external::SignatureRctBulletproofs::from(&source.signature));
         tx
     }
@@ -501,14 +503,8 @@ impl TryFrom<&external::Tx> for tx::Tx {
 
     fn try_from(source: &external::Tx) -> Result<Self, Self::Error> {
         let prefix = tx::TxPrefix::try_from(source.get_prefix())?;
-        let tombstone_block = source.get_tombstone_block();
         let signature = SignatureRctBulletproofs::try_from(source.get_signature())?;
-
-        Ok(tx::Tx {
-            prefix,
-            tombstone_block,
-            signature,
-        })
+        Ok(tx::Tx { prefix, signature })
     }
 }
 

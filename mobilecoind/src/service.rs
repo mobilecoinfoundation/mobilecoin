@@ -664,7 +664,7 @@ impl<T: UserTxConnection + 'static> ServiceApi<T> {
         if let Err(err) = self.mobilecoind_db.update_attempted_spend(
             &utxo_ids,
             block_height,
-            tx_proposal.tx.tombstone_block,
+            tx_proposal.tx.prefix.tombstone_block,
         ) {
             log::error!(
                 self.logger,
@@ -683,7 +683,7 @@ impl<T: UserTxConnection + 'static> ServiceApi<T> {
                 .map(|utxo| (&utxo.key_image).into())
                 .collect(),
         ));
-        sender_tx_receipt.set_tombstone(tx_proposal.tx.tombstone_block);
+        sender_tx_receipt.set_tombstone(tx_proposal.tx.prefix.tombstone_block);
 
         // Construct receiver receipts.
         let receiver_tx_receipts: Vec<_> = tx_proposal
@@ -717,7 +717,7 @@ impl<T: UserTxConnection + 'static> ServiceApi<T> {
                 receiver_tx_receipt.set_receipient((&outlay.receiver).into());
                 receiver_tx_receipt.set_tx_public_key(tx_out.public_key.into());
                 receiver_tx_receipt.set_tx_out_hash(tx_out.hash().to_vec());
-                receiver_tx_receipt.set_tombstone(tx_proposal.tx.tombstone_block);
+                receiver_tx_receipt.set_tombstone(tx_proposal.tx.prefix.tombstone_block);
 
                 Ok(receiver_tx_receipt)
             })
@@ -1781,7 +1781,7 @@ mod test {
             // Sanity test tombstone block
             let num_blocks = ledger_db.num_blocks().unwrap();
             assert_eq!(
-                tx_proposal.get_tx().tombstone_block,
+                tx_proposal.get_tx().get_prefix().tombstone_block,
                 num_blocks + DEFAULT_NEW_TX_BLOCK_ATTEMPTS
             );
         }
@@ -2043,7 +2043,7 @@ mod test {
         // Sanity test tombstone block
         let num_blocks = ledger_db.num_blocks().unwrap();
         assert_eq!(
-            tx_proposal.tx.tombstone_block,
+            tx_proposal.tx.prefix.tombstone_block,
             num_blocks + DEFAULT_NEW_TX_BLOCK_ATTEMPTS
         );
     }
@@ -2167,7 +2167,7 @@ mod test {
 
             assert_eq!(
                 response.get_sender_tx_receipt().tombstone,
-                tx.tombstone_block
+                tx.prefix.tombstone_block
             );
 
             // Sanity the receiver receipts.
@@ -2181,7 +2181,7 @@ mod test {
                     PublicAddress::try_from(receipt.get_receipient()).unwrap()
                 );
 
-                assert_eq!(receipt.tombstone, tx.tombstone_block);
+                assert_eq!(receipt.tombstone, tx.prefix.tombstone_block);
             }
 
             assert_eq!(
@@ -2393,7 +2393,7 @@ mod test {
 
         assert_eq!(
             response.get_sender_tx_receipt().tombstone,
-            submitted_tx.tombstone_block
+            submitted_tx.prefix.tombstone_block
         );
 
         // Sanity the receiver receipts.
@@ -2407,7 +2407,7 @@ mod test {
                 PublicAddress::try_from(receipt.get_receipient()).unwrap()
             );
 
-            assert_eq!(receipt.tombstone, submitted_tx.tombstone_block);
+            assert_eq!(receipt.tombstone, submitted_tx.prefix.tombstone_block);
         }
 
         assert_eq!(
