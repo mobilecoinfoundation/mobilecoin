@@ -24,18 +24,17 @@ enum ProposeTxResult {
     ExcessiveRingSize = 22;
     DuplicateRingElements = 23;
     UnsortedRingElements = 24;
-    UnequalRingSizes = 25;
-    UnsortedKeyImages = 26;
-    ContainsSpentKeyImage = 27;
-    DuplicateKeyImages = 28;
-    MissingTxOutMembershipProof = 29;
-    InvalidTxOutMembershipProof = 30;
-    InvalidRistrettoPublicKey = 31;
-    InvalidLedgerContext = 32;
-    Ledger = 33;
-    MembershipProofValidationError = 34;
-    TxFeeError = 35;
-    KeyError = 36;
+    UnsortedKeyImages = 25;
+    ContainsSpentKeyImage = 26;
+    DuplicateKeyImages = 27;
+    MissingTxOutMembershipProof = 28;
+    InvalidTxOutMembershipProof = 29;
+    InvalidRistrettoPublicKey = 30;
+    InvalidLedgerContext = 31;
+    Ledger = 32;
+    MembershipProofValidationError = 33;
+    TxFeeError = 34;
+    KeyError = 35;
 }
 
 /// Response from TxPropose RPC call.

@@ -102,7 +102,12 @@ fn validate_number_of_outputs(
 fn validate_ring_sizes(tx_prefix: &TxPrefix, ring_size: usize) -> TransactionValidationResult<()> {
     for input in &tx_prefix.inputs {
         if input.ring.len() != ring_size {
-            return Err(TransactionValidationError::UnequalRingSizes);
+            let e = if input.ring.len() > ring_size {
+                TransactionValidationError::ExcessiveRingSize
+            } else {
+                TransactionValidationError::InsufficientRingSize
+            };
+            return Err(e);
         }
     }
     Ok(())
@@ -477,41 +482,71 @@ mod tests {
         }
     }
 
-    // #[test]
-    // fn test_validate_ring_sizes() {
-    //     let (orig_tx, _ledger) = create_test_tx();
-    //     assert_eq!(orig_tx.prefix.inputs.len(), 1);
-    //     assert_eq!(orig_tx.prefix.inputs[0].ring.len(), RING_SIZE);
-    //
-    //     // A transaction with a single input containing zero elements.
-    //     {
-    //         let mut tx_prefix = orig_tx.prefix.clone();
-    //         tx_prefix.inputs[0].ring.clear();
-    //
-    //         assert_eq!(
-    //             validate_ring_sizes(&tx_prefix, RING_SIZE),
-    //             Err(TransactionValidationError::InsufficientRingSize),
-    //         );
-    //     }
-    //
-    //     // A transaction with a single input containing too few elements.
-    //     {
-    //         let mut tx_prefix = orig_tx.prefix.clone();
-    //         tx_prefix.inputs[0].ring.truncate(min_ring_size - 1);
-    //
-    //         assert_eq!(
-    //             validate_ring_sizes(&tx_prefix, RING_SIZE),
-    //             Err(TransactionValidationError::InsufficientRingSize),
-    //         );
-    //     }
-    //
-    //     // A transaction with a single input containing RING_SIZE elements.
-    //     {
-    //         assert_eq!(validate_ring_sizes(&orig_tx.prefix, RING_SIZE), Ok(()));
-    //     }
-    //
-    //     // TODO: A transaction with a single input containing too many elements.
-    // }
+    #[test]
+    fn test_validate_ring_sizes() {
+        let (tx, _ledger) = create_test_tx();
+        assert_eq!(tx.prefix.inputs.len(), 1);
+        assert_eq!(tx.prefix.inputs[0].ring.len(), RING_SIZE);
+
+        // A transaction with a single input containing RING_SIZE elements.
+        assert_eq!(validate_ring_sizes(&tx.prefix, RING_SIZE), Ok(()));
+
+        // A single input containing zero elements.
+        {
+            let mut tx_prefix = tx.prefix.clone();
+            tx_prefix.inputs[0].ring.clear();
+
+            assert_eq!(
+                validate_ring_sizes(&tx_prefix, RING_SIZE),
+                Err(TransactionValidationError::InsufficientRingSize),
+            );
+        }
+
+        // A single input containing too few elements.
+        {
+            let mut tx_prefix = tx.prefix.clone();
+            tx_prefix.inputs[0].ring.pop();
+
+            assert_eq!(
+                validate_ring_sizes(&tx_prefix, RING_SIZE),
+                Err(TransactionValidationError::InsufficientRingSize),
+            );
+        }
+
+        // A single input containing too many elements.
+        {
+            let mut tx_prefix = tx.prefix.clone();
+            let element = tx_prefix.inputs[0].ring[0].clone();
+            tx_prefix.inputs[0].ring.push(element);
+
+            assert_eq!(
+                validate_ring_sizes(&tx_prefix, RING_SIZE),
+                Err(TransactionValidationError::ExcessiveRingSize),
+            );
+        }
+
+        // Two inputs each containing RING_SIZE elements.
+        {
+            let mut tx_prefix = tx.prefix.clone();
+            let input = tx_prefix.inputs[0].clone();
+            tx_prefix.inputs.push(input);
+
+            assert_eq!(validate_ring_sizes(&tx_prefix, RING_SIZE), Ok(()));
+        }
+
+        // The second input contains too few elements.
+        {
+            let mut tx_prefix = tx.prefix.clone();
+            let mut input = tx_prefix.inputs[0].clone();
+            input.ring.pop();
+            tx_prefix.inputs.push(input);
+
+            assert_eq!(
+                validate_ring_sizes(&tx_prefix, RING_SIZE),
+                Err(TransactionValidationError::InsufficientRingSize),
+            );
+        }
+    }
 
     #[test]
     fn test_validate_ring_elements_are_unique() {
