@@ -34,115 +34,25 @@ use crate::{
     compressed_commitment::CompressedCommitment,
     onetime_keys::compute_key_image,
     range_proofs::{check_range_proofs, generate_range_proofs},
-    ring_signature::{
-        encoding::{read_u8_32, write_u8_32},
-        mlsag::RingMLSAG,
-        Blinding, Error, KeyImage, Scalar, GENERATORS,
-    },
+    ring_signature::{mlsag::RingMLSAG, Blinding, Error, KeyImage, Scalar, GENERATORS},
 };
 
 /// An RCT_TYPE_BULLETPROOFS_2 signature.
-#[derive(Clone, Debug, Default, Digestible, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Digestible, Eq, PartialEq, Serialize, Deserialize, Message)]
 pub struct SignatureRctBulletproofs {
     /// Signature for each input ring.
+    #[prost(message, repeated, tag = "1")]
     pub ring_signatures: Vec<RingMLSAG>,
 
     /// Commitments of value equal to each real input.
-    /// TODO: Make this a CompressedCommitment.
-    pub pseudo_output_commitments: Vec<CompressedRistretto>,
+    #[prost(message, repeated, tag = "2")]
+    pub pseudo_output_commitments: Vec<CompressedCommitment>,
 
     /// Proof that all pseudo_outputs and transaction outputs are in [0, 2^64).
     /// This contains range_proof.to_bytes(). It is stored this way so that this struct may derive
     /// Default, which is a requirement for serializing with Prost.
+    #[prost(bytes, tag = "3")]
     pub range_proof_bytes: Vec<u8>,
-}
-
-const RING_SIGNATURE_TAG: u32 = 1;
-const PSEUDO_OUTPUT_TAG: u32 = 2;
-const RANGE_PROOF_TAG: u32 = 3;
-
-impl Message for SignatureRctBulletproofs {
-    /// Encodes the message to the buffer.
-    ///
-    /// This method will panic if the buffer has insufficient capacity, and is meant to only be
-    /// used by `Message` implementations.
-    fn encode_raw<B>(&self, buf: &mut B)
-    where
-        B: BufMut,
-        Self: Sized,
-    {
-        for ring_mlsag in &self.ring_signatures {
-            encode_key(RING_SIGNATURE_TAG, WireType::LengthDelimited, buf);
-            ring_mlsag.encode_length_delimited(buf).unwrap();
-        }
-
-        for pseudo_output in &self.pseudo_output_commitments {
-            write_u8_32(pseudo_output.to_bytes(), PSEUDO_OUTPUT_TAG, buf);
-        }
-
-        bytes::encode(RANGE_PROOF_TAG, &self.range_proof_bytes, buf);
-    }
-
-    /// Decodes a field from a buffer, and merges it into `self`.
-    fn merge_field<B>(
-        &mut self,
-        tag: u32,
-        wire_type: WireType,
-        buf: &mut B,
-        ctx: DecodeContext,
-    ) -> Result<(), DecodeError>
-    where
-        B: Buf,
-        Self: Sized,
-    {
-        match tag {
-            RING_SIGNATURE_TAG => {
-                let ring_mlsag = RingMLSAG::decode_length_delimited(buf)?;
-                self.ring_signatures.push(ring_mlsag);
-                Ok(())
-            }
-            PSEUDO_OUTPUT_TAG => {
-                let pseudo_output_commitment = CompressedRistretto {
-                    0: read_u8_32(wire_type, buf)?,
-                };
-                self.pseudo_output_commitments
-                    .push(pseudo_output_commitment);
-                Ok(())
-            }
-            RANGE_PROOF_TAG => {
-                bytes::merge(wire_type, &mut self.range_proof_bytes, buf, ctx)?;
-                Ok(())
-            }
-            _ => skip_field(wire_type, tag, buf, ctx),
-        }
-    }
-
-    /// Returns the encoded length of the message without a length delimiter.
-    fn encoded_len(&self) -> usize {
-        let mut len = 0;
-
-        for ring_mlsag in &self.ring_signatures {
-            let encoded_len = ring_mlsag.encoded_len(); // Encoded length, without delimiter.
-
-            len += key_len(RING_SIGNATURE_TAG);
-            len += encoded_len_varint(encoded_len as u64); // Length delimiter.
-            len += encoded_len;
-        }
-
-        for _pseudo_output in &self.pseudo_output_commitments {
-            len += key_len(PSEUDO_OUTPUT_TAG) + encoded_len_varint(32 as u64) + 32;
-        }
-
-        len += key_len(RANGE_PROOF_TAG)
-            + encoded_len_varint(self.range_proof_bytes.len() as u64)
-            + self.range_proof_bytes.len();
-        len
-    }
-
-    /// Clears the message, resetting all fields to their default.
-    fn clear(&mut self) {
-        *self = Self::default();
-    }
 }
 
 impl SignatureRctBulletproofs {
@@ -226,22 +136,17 @@ impl SignatureRctBulletproofs {
         // This ensures that each commitment encodes a valid Ristretto point.
         let mut decompressed_pseudo_output_commitments: Vec<Commitment> = Vec::new();
         for pseudo_output in &self.pseudo_output_commitments {
-            let point = pseudo_output.decompress().ok_or(Error::InvalidCurvePoint)?;
-            decompressed_pseudo_output_commitments.push(Commitment { point });
+            let commitment = Commitment::try_from(pseudo_output)?;
+            decompressed_pseudo_output_commitments.push(commitment);
         }
 
         // pseudo_output_commitments and output commitments must be in [0, 2^64).
         {
-            let compressed_output_commitments: Vec<&CompressedRistretto> = output_commitments
-                .iter()
-                .map(|commitment| &commitment.point)
-                .collect();
-
             let commitments: Vec<CompressedRistretto> = self
                 .pseudo_output_commitments
                 .iter()
-                .chain(compressed_output_commitments.into_iter())
-                .cloned()
+                .chain(output_commitments.iter())
+                .map(|compressed_commitment| compressed_commitment.point)
                 .collect();
 
             let range_proof = RangeProof::from_bytes(&self.range_proof_bytes)
@@ -254,8 +159,7 @@ impl SignatureRctBulletproofs {
         // Each MLSAG must be valid.
         for (i, ring) in rings.iter().enumerate() {
             let ring_signature = &self.ring_signatures[i];
-            let point = self.pseudo_output_commitments[i];
-            let pseudo_output = CompressedCommitment { point };
+            let pseudo_output = self.pseudo_output_commitments[i];
             ring_signature.verify(message, ring, &pseudo_output)?;
         }
 
@@ -407,8 +311,11 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
         }
     }
 
-    let pseudo_output_commitments: Vec<CompressedRistretto> =
-        commitments.into_iter().take(num_inputs).collect();
+    let pseudo_output_commitments: Vec<CompressedCommitment> = commitments
+        .iter()
+        .take(num_inputs)
+        .map(CompressedCommitment::from)
+        .collect();
 
     Ok(SignatureRctBulletproofs {
         ring_signatures,

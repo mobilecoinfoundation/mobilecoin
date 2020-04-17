@@ -24,7 +24,6 @@ use crate::{
 
 mod curve_point;
 mod curve_scalar;
-mod encoding;
 mod error;
 mod key_image;
 mod mlsag;
