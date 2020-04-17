@@ -28,6 +28,12 @@ pub enum AmountError {
     InconsistentCommitment,
 }
 
+/// Value mask hash function domain separator.
+const VALUE_MASK: &str = "value_mask";
+
+/// Blinding mask hash function domain separator.
+const BLINDING_MASK: &str = "value_mask";
+
 /// A commitment to an amount of MobileCoin, denominated in picoMOB.
 #[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Message, Digestible)]
 pub struct Amount {
@@ -35,11 +41,11 @@ pub struct Amount {
     #[prost(message, required, tag = "1")]
     pub commitment: CompressedCommitment,
 
-    /// `masked_value = value + Blake2B(shared_secret)`
+    /// `masked_value = value + Blake2B("value_mask" | shared_secret)`
     #[prost(message, required, tag = "2")]
     pub masked_value: CurveScalar,
 
-    /// `masked_blinding = blinding + Blake2B(Blake2B(shared_secret))
+    /// `masked_blinding = blinding + Blake2B("blinding_mask" | shared_secret))
     #[prost(message, required, tag = "3")]
     pub masked_blinding: Blinding,
 }
@@ -127,37 +133,31 @@ impl Amount {
     }
 }
 
-/// Computes `Blake2B(shared_secret)`
+/// Computes `Blake2B("value_mask" | shared_secret)`.
 ///
 /// # Arguments
 /// * `shared_secret` - The shared secret, e.g. `rB`.
 fn get_value_mask(shared_secret: &RistrettoPublic) -> Scalar {
-    get_mask(&shared_secret)
+    let mut hasher = Blake2b::new();
+    hasher.input(&VALUE_MASK);
+    hasher.input(&shared_secret.to_bytes());
+    Scalar::from_hash(hasher)
 }
 
-/// Computes `Blake2B(Blake2B(shared_secret)`.
+/// Computes `Blake2B("blinding_mask | shared_secret)`.
 ///
 /// # Arguments
 /// * `shared_secret` - The shared secret, e.g. `rB`.
 fn get_blinding_mask(shared_secret: &RistrettoPublic) -> Scalar {
-    let inner_mask = get_mask(shared_secret);
-
     let mut hasher = Blake2b::new();
-    hasher.input(&inner_mask.to_bytes());
-
-    Scalar::from_hash(hasher)
-}
-
-/// Computes `Blake2B(shared_secret)`.
-fn get_mask(shared_secret: &RistrettoPublic) -> Scalar {
-    let mut hasher = Blake2b::new();
+    hasher.input(&BLINDING_MASK);
     hasher.input(&shared_secret.to_bytes());
     Scalar::from_hash(hasher)
 }
 
 #[cfg(test)]
-mod tests {
-    use crate::proptest_fixtures::*;
+mod amount_tests {
+    use crate::{proptest_fixtures::*, ring_signature::Commitment};
     use proptest::prelude::*;
 
     use crate::{
