@@ -21,8 +21,8 @@ use crate::{
     encrypted_fog_hint::EncryptedFogHint,
     onetime_keys::{compute_shared_secret, compute_tx_pubkey, create_onetime_public_key},
     range::Range,
-    ring_signature::{Blinding, Commitment, KeyImage, SignatureRctBulletproofs, GENERATORS},
-    RedactedTx,
+    ring_signature::{Blinding, KeyImage, SignatureRctBulletproofs, GENERATORS},
+    CompressedCommitment, RedactedTx,
 };
 
 /// Transaction hash length, in bytes.
@@ -206,8 +206,8 @@ impl TxPrefix {
     }
 
     /// Get all output commitments (including explicit outputs and the implicit fee output).
-    pub fn output_commitments(&self) -> Vec<Commitment> {
-        let mut commitments: Vec<Commitment> = self
+    pub fn output_commitments(&self) -> Vec<CompressedCommitment> {
+        let mut commitments: Vec<CompressedCommitment> = self
             .outputs
             .iter()
             .map(|output| output.amount.commitment)
@@ -215,7 +215,7 @@ impl TxPrefix {
 
         let fee_commitment = {
             let (value, blinding) = self.fee_value_and_blinding();
-            Commitment::from(GENERATORS.commit(Scalar::from(value), blinding))
+            CompressedCommitment::new(value, blinding)
         };
         commitments.push(fee_commitment);
         commitments

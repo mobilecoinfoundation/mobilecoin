@@ -8,17 +8,17 @@ use alloc::vec::Vec;
 
 use super::error::{TransactionValidationError, TransactionValidationResult};
 use crate::{
+    compressed_commitment::CompressedCommitment,
     constants::*,
     membership_proofs::{derive_proof_at_index, is_membership_proof_valid},
     range_proofs::check_range_proofs,
-    ring_signature::{Address, Commitment},
     tx::{Tx, TxOut, TxOutMembershipProof, TxPrefix},
 };
 use bulletproofs::RangeProof;
 use common::HashSet;
 use core::convert::TryFrom;
 use curve25519_dalek::ristretto::CompressedRistretto;
-use keys::RistrettoPublic;
+use keys::{CompressedRistrettoPublic, RistrettoPublic};
 use rand_core::{CryptoRng, RngCore};
 
 /// Determines if the transaction is valid, with respect to the provided context.
@@ -173,14 +173,13 @@ pub fn validate_transaction_signature<R: RngCore + CryptoRng>(
     let tx_prefix_hash = tx.prefix.hash();
     let message = tx_prefix_hash.as_bytes();
 
-    let mut rings: Vec<Vec<(Address, Commitment)>> = Vec::new();
-    for tx_in in &tx.prefix.inputs {
-        let mut ring: Vec<(Address, Commitment)> = Vec::new();
-        for tx_out in &tx_in.ring {
-            let address = RistrettoPublic::try_from(&tx_out.target_key)?;
-            let commitment = tx_out.amount.commitment;
-            ring.push((address, commitment));
-        }
+    let mut rings: Vec<Vec<(CompressedRistrettoPublic, CompressedCommitment)>> = Vec::new();
+    for input in &tx.prefix.inputs {
+        let ring: Vec<(CompressedRistrettoPublic, CompressedCommitment)> = input
+            .ring
+            .iter()
+            .map(|tx_out| (tx_out.target_key, tx_out.amount.commitment))
+            .collect();
         rings.push(ring);
     }
 
@@ -331,7 +330,7 @@ mod tests {
         constants::{BASE_FEE, MIN_RING_SIZE},
         get_tx_out_shared_secret,
         onetime_keys::recover_onetime_private_key,
-        ring_signature::{Commitment, KeyImage},
+        ring_signature::{KeyImage, Scalar},
         tx::{Tx, TxOut, TxOutMembershipHash, TxOutMembershipProof, TxPrefix},
         validation::{
             error::TransactionValidationError,
@@ -342,11 +341,13 @@ mod tests {
                 validate_transaction_fee, validate_transaction_signature, MAX_TOMBSTONE_BLOCKS,
             },
         },
+        CompressedCommitment,
     };
     use keys::{CompressedRistrettoPublic, RistrettoPublic};
     use ledger_db::{Ledger, LedgerDB};
     use mcserial::ReprBytes32;
     use rand::{rngs::StdRng, SeedableRng};
+    use rand_core::RngCore;
     use serde::{de::DeserializeOwned, ser::Serialize};
     use tempdir::TempDir;
     use transaction_test_utils::{
@@ -711,10 +712,15 @@ mod tests {
             );
         }
 
-        // Invalid signature due to altered output
+        // Invalid signature due to altered output.
         {
             let mut tx = orig_tx.clone();
-            tx.prefix.outputs[0].amount.commitment = Commitment::from(46);
+            let wrong_commitment = {
+                let value = rng.next_u64();
+                let blinding = Scalar::random(&mut rng);
+                CompressedCommitment::new(value, blinding)
+            };
+            tx.prefix.outputs[0].amount.commitment = wrong_commitment;
 
             assert_eq!(
                 validate_transaction_signature(&tx, &mut rng),

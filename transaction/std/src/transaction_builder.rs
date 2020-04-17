@@ -4,21 +4,21 @@
 //!
 //! See https://cryptonote.org/img/cryptonote_transaction.png
 
-use keys::{FromRandom, RistrettoPrivate, RistrettoPublic};
+use keys::{CompressedRistrettoPublic, FromRandom, RistrettoPrivate, RistrettoPublic};
 use std::collections::HashSet;
 
 use crate::{InputCredentials, TxBuilderError};
 use curve25519_dalek::scalar::Scalar;
 use rand_core::{CryptoRng, RngCore};
-use std::convert::TryFrom;
 use transaction::{
     account_keys::PublicAddress,
     constants::BASE_FEE,
     encrypted_fog_hint::EncryptedFogHint,
     fog_hint::FogHint,
     onetime_keys::compute_shared_secret,
-    ring_signature::{Address, Commitment, SignatureRctBulletproofs},
+    ring_signature::SignatureRctBulletproofs,
     tx::{Tx, TxIn, TxOut, TxPrefix},
+    CompressedCommitment,
 };
 
 /// Helper utility for building and signing a CryptoNote-style transaction.
@@ -123,14 +123,13 @@ impl TransactionBuilder {
         let tx_prefix_hash = tx_prefix.hash();
         let message = tx_prefix_hash.as_bytes();
 
-        let mut rings: Vec<Vec<(Address, Commitment)>> = Vec::new();
-        for tx_in in &tx_prefix.inputs {
-            let mut ring: Vec<(Address, Commitment)> = Vec::new();
-            for tx_out in &tx_in.ring {
-                let address = RistrettoPublic::try_from(&tx_out.target_key)?;
-                let commitment = tx_out.amount.commitment;
-                ring.push((address, commitment));
-            }
+        let mut rings: Vec<Vec<(CompressedRistrettoPublic, CompressedCommitment)>> = Vec::new();
+        for input in &tx_prefix.inputs {
+            let ring: Vec<(CompressedRistrettoPublic, CompressedCommitment)> = input
+                .ring
+                .iter()
+                .map(|tx_out| (tx_out.target_key, tx_out.amount.commitment))
+                .collect();
             rings.push(ring);
         }
 
