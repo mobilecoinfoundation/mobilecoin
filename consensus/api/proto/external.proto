@@ -75,10 +75,10 @@ message Amount {
     // A Pedersen commitment `v*G + s*H`
     CurvePoint commitment = 1;
 
-    // `masked_value = value + SHA3-512_scalar(shared_secret || n)`
-    CurveScalar masked_value = 2;
+    // `masked_value = value XOR_8 SBlake2B("value_mask" || shared_secret)`
+    uint64 masked_value = 2;
 
-    // `masked_blinding = value + SHA3-512_scalar(SHA3-512_scalar(shared_secret || n))
+    // `masked_blinding = blinding + Blake2B("bliding_mask" || shared_secret))
     CurveScalar masked_blinding = 3;
 }
 

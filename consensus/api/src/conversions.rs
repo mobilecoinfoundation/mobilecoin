@@ -616,17 +616,13 @@ impl TryFrom<&external::CurvePoint> for CompressedCommitment {
 
 impl From<&Amount> for external::Amount {
     fn from(source: &Amount) -> Self {
-        let mut amount = external::Amount::new();
-
         let commitment_bytes = source.commitment.to_bytes().to_vec();
-        amount.mut_commitment().set_data(commitment_bytes);
-
-        let masked_value_bytes = source.masked_value.as_bytes().to_vec();
-        amount.mut_masked_value().set_data(masked_value_bytes);
-
         let masked_blinding_bytes = source.masked_blinding.as_bytes().to_vec();
-        amount.mut_masked_blinding().set_data(masked_blinding_bytes);
 
+        let mut amount = external::Amount::new();
+        amount.mut_commitment().set_data(commitment_bytes);
+        amount.set_masked_value(source.masked_value);
+        amount.mut_masked_blinding().set_data(masked_blinding_bytes);
         amount
     }
 }
@@ -646,10 +642,7 @@ impl TryFrom<&external::Amount> for Amount {
             Ok(CurveScalar::from_bytes_mod_order(curve_bytes))
         };
 
-        let masked_value: CurveScalar = {
-            let bytes = source.get_masked_value().get_data();
-            vec_to_curve_scalar(bytes)?
-        };
+        let masked_value = source.get_masked_value();
 
         let masked_blinding: Blinding = {
             let bytes = source.get_masked_blinding().get_data();
