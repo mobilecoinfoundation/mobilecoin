@@ -30,11 +30,12 @@ use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    amount::Blinding,
     commitment::Commitment,
     compressed_commitment::CompressedCommitment,
     onetime_keys::compute_key_image,
     range_proofs::{check_range_proofs, generate_range_proofs},
-    ring_signature::{mlsag::RingMLSAG, Blinding, Error, KeyImage, Scalar, GENERATORS},
+    ring_signature::{mlsag::RingMLSAG, Error, KeyImage, Scalar, GENERATORS},
 };
 
 /// An RCT_TYPE_BULLETPROOFS_2 signature.
@@ -336,9 +337,10 @@ mod rct_bulletproofs_tests {
     use rand::{rngs::StdRng, CryptoRng, SeedableRng};
 
     use crate::{
+        amount::Blinding,
         proptest_fixtures::*,
         range_proofs::generate_range_proofs,
-        ring_signature::{Blinding, Error, KeyImage, SignatureRctBulletproofs, GENERATORS},
+        ring_signature::{Error, KeyImage, SignatureRctBulletproofs, GENERATORS},
     };
 
     use super::sign_with_balance_check;

@@ -16,13 +16,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     account_keys::PublicAddress,
-    amount::{Amount, AmountError},
+    amount::{Amount, AmountError, Blinding},
     blake2b_256::Blake2b256,
     constants::RING_SIZE,
     encrypted_fog_hint::EncryptedFogHint,
     onetime_keys::{compute_shared_secret, compute_tx_pubkey, create_onetime_public_key},
     range::Range,
-    ring_signature::{Blinding, KeyImage, SignatureRctBulletproofs, GENERATORS},
+    ring_signature::{KeyImage, SignatureRctBulletproofs, GENERATORS},
     CompressedCommitment, RedactedTx,
 };
 
@@ -408,10 +408,10 @@ mod tests {
 
     use crate::{
         account_keys::AccountKey,
-        amount::Amount,
+        amount::{Amount, Blinding},
         constants::{BASE_FEE, FEE_SPEND_PUBLIC_KEY, FEE_VIEW_PRIVATE_KEY, FEE_VIEW_PUBLIC_KEY},
         encrypted_fog_hint::EncryptedFogHint,
-        ring_signature::{Blinding, CurvePoint, CurveScalar, KeyImage, SignatureRctBulletproofs},
+        ring_signature::{CurvePoint, CurveScalar, KeyImage, SignatureRctBulletproofs},
         tx::{Tx, TxIn, TxOut, TxPrefix},
     };
 

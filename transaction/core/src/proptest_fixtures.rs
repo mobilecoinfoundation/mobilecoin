@@ -1,8 +1,8 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use crate::{
-    amount::Amount,
-    ring_signature::{Blinding, CurveScalar},
+    amount::{Amount, Blinding},
+    ring_signature::CurveScalar,
 };
 use curve25519_dalek::scalar::Scalar;
 use keys::{RistrettoPrivate, RistrettoPublic};

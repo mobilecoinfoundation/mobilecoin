@@ -8,7 +8,7 @@
 #![cfg_attr(test, allow(clippy::unnecessary_operation))]
 
 use crate::{
-    ring_signature::{Blinding, CurveScalar, GENERATORS},
+    ring_signature::{CurveScalar, GENERATORS},
     CompressedCommitment,
 };
 use blake2::{Blake2b, Digest};
@@ -33,6 +33,9 @@ const VALUE_MASK: &str = "amount_value_mask";
 
 /// Blinding mask hash function domain separator.
 const BLINDING_MASK: &str = "amount_blinding_mask";
+
+// The "blinding factor" in a Pedersen commitment.
+pub type Blinding = CurveScalar;
 
 /// A commitment to an amount of MobileCoin, denominated in picoMOB.
 #[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Message, Digestible)]

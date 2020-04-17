@@ -8,7 +8,10 @@ use merlin::Transcript;
 use rand_core::{CryptoRng, RngCore};
 
 pub mod error;
-use crate::ring_signature::{Blinding, BP_GENERATORS, GENERATORS};
+use crate::{
+    amount::Blinding,
+    ring_signature::{BP_GENERATORS, GENERATORS},
+};
 use error::Error;
 
 /// The domain separation label should be unique for each application.
