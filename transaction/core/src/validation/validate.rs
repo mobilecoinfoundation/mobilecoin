@@ -38,7 +38,7 @@ pub fn validate<R: RngCore + CryptoRng>(
 
     validate_number_of_outputs(&tx.prefix, MAX_OUTPUTS)?;
 
-    validate_ring_sizes(&tx.prefix, MIN_RING_SIZE, MAX_RING_SIZE)?;
+    validate_ring_sizes(&tx.prefix, RING_SIZE)?;
 
     validate_ring_elements_are_unique(&tx.prefix)?;
 
@@ -98,42 +98,18 @@ fn validate_number_of_outputs(
     Ok(())
 }
 
-/// The transaction's input(s) must each have a ring with an allowable number of elements:
-/// * All rings in a transaction must contain the same number of elements.
-/// * Each input must contain a ring with no fewer than the minimum number of elements.
-/// * Each input must contain a ring with no more than the maximum number of elements.
-fn validate_ring_sizes(
-    tx_prefix: &TxPrefix,
-    minimum_ring_size: usize,
-    maximum_ring_size: usize,
-) -> TransactionValidationResult<()> {
-    let ring_sizes: Vec<usize> = tx_prefix
-        .inputs
-        .iter()
-        .map(|tx_in| tx_in.ring.len())
-        .collect();
-
-    // This should be enforced before this function is called by checking the number of inputs.
-    assert!(!ring_sizes.is_empty());
-
-    let first_ring_size = ring_sizes[0];
-    for ring_size in &ring_sizes {
-        // All rings in a transaction must contain the same number of elements.
-        if *ring_size != first_ring_size {
-            return Err(TransactionValidationError::UnequalRingSizes);
-        }
-
-        // Each input must contain a ring with no fewer than the minimum number of elements.
-        if *ring_size < minimum_ring_size as usize {
-            return Err(TransactionValidationError::InsufficientRingSize);
-        }
-
-        // Each input must contain a ring with no more than the maximum number of elements.
-        if *ring_size > maximum_ring_size as usize {
-            return Err(TransactionValidationError::ExcessiveRingSize);
+/// Each input must contain a ring containing `ring_size` elements.
+fn validate_ring_sizes(tx_prefix: &TxPrefix, ring_size: usize) -> TransactionValidationResult<()> {
+    for input in &tx_prefix.inputs {
+        if input.ring.len() != ring_size {
+            let e = if input.ring.len() > ring_size {
+                TransactionValidationError::ExcessiveRingSize
+            } else {
+                TransactionValidationError::InsufficientRingSize
+            };
+            return Err(e);
         }
     }
-
     Ok(())
 }
 
@@ -319,7 +295,6 @@ pub fn validate_tombstone(
 }
 
 #[cfg(test)]
-#[allow(unused)]
 mod tests {
     extern crate alloc;
 
@@ -327,7 +302,7 @@ mod tests {
 
     use crate::{
         account_keys::{AccountKey, PublicAddress},
-        constants::{BASE_FEE, MIN_RING_SIZE},
+        constants::{BASE_FEE, RING_SIZE},
         get_tx_out_shared_secret,
         onetime_keys::recover_onetime_private_key,
         ring_signature::{KeyImage, Scalar},
@@ -462,7 +437,7 @@ mod tests {
         for num_inputs in 0..100 {
             let mut tx_prefix = orig_tx.prefix.clone();
             tx_prefix.inputs.clear();
-            for i in 0..num_inputs {
+            for _i in 0..num_inputs {
                 tx_prefix.inputs.push(orig_tx.prefix.inputs[0].clone());
             }
 
@@ -489,7 +464,7 @@ mod tests {
         for num_outputs in 0..100 {
             let mut tx_prefix = orig_tx.prefix.clone();
             tx_prefix.outputs.clear();
-            for i in 0..num_outputs {
+            for _i in 0..num_outputs {
                 tx_prefix.outputs.push(orig_tx.prefix.outputs[0].clone());
             }
 
@@ -510,126 +485,84 @@ mod tests {
 
     #[test]
     fn test_validate_ring_sizes() {
-        let (orig_tx, _ledger) = create_test_tx();
-        assert_eq!(orig_tx.prefix.inputs.len(), 1);
-        let min_ring_size = MIN_RING_SIZE;
-        let max_ring_size = min_ring_size + 3;
+        let (tx, _ledger) = create_test_tx();
+        assert_eq!(tx.prefix.inputs.len(), 1);
+        assert_eq!(tx.prefix.inputs[0].ring.len(), RING_SIZE);
 
-        // A transaction with a single input and ring size of 0.
+        // A transaction with a single input containing RING_SIZE elements.
+        assert_eq!(validate_ring_sizes(&tx.prefix, RING_SIZE), Ok(()));
+
+        // A single input containing zero elements.
         {
-            let mut tx_prefix = orig_tx.prefix.clone();
+            let mut tx_prefix = tx.prefix.clone();
             tx_prefix.inputs[0].ring.clear();
 
             assert_eq!(
-                validate_ring_sizes(&tx_prefix, min_ring_size, max_ring_size),
+                validate_ring_sizes(&tx_prefix, RING_SIZE),
                 Err(TransactionValidationError::InsufficientRingSize),
             );
         }
 
-        // A transaction with a single input and ring size < minimum_ring_size.
+        // A single input containing too few elements.
         {
-            let mut tx_prefix = orig_tx.prefix.clone();
-            tx_prefix.inputs[0].ring.truncate(min_ring_size - 1);
+            let mut tx_prefix = tx.prefix.clone();
+            tx_prefix.inputs[0].ring.pop();
 
             assert_eq!(
-                validate_ring_sizes(&tx_prefix, min_ring_size, max_ring_size),
+                validate_ring_sizes(&tx_prefix, RING_SIZE),
                 Err(TransactionValidationError::InsufficientRingSize),
             );
         }
 
-        // A transaction with a single input and ring size = minimum_ring_size.
+        // A single input containing too many elements.
         {
-            assert_eq!(orig_tx.prefix.inputs[0].ring.len(), min_ring_size);
+            let mut tx_prefix = tx.prefix.clone();
+            let element = tx_prefix.inputs[0].ring[0].clone();
+            tx_prefix.inputs[0].ring.push(element);
 
             assert_eq!(
-                validate_ring_sizes(&orig_tx.prefix, min_ring_size, max_ring_size),
-                Ok(())
+                validate_ring_sizes(&tx_prefix, RING_SIZE),
+                Err(TransactionValidationError::ExcessiveRingSize),
             );
         }
 
-        // A transaction with a single input and minimum_ring_size < ring size < maximum_ring_size.
+        // Two inputs each containing RING_SIZE elements.
         {
-            let mut tx_prefix = orig_tx.prefix.clone();
-            tx_prefix.inputs[0]
-                .ring
-                .push(orig_tx.prefix.inputs[0].ring[0].clone());
+            let mut tx_prefix = tx.prefix.clone();
+            let input = tx_prefix.inputs[0].clone();
+            tx_prefix.inputs.push(input);
 
-            assert_eq!(
-                validate_ring_sizes(&tx_prefix, min_ring_size, max_ring_size),
-                Ok(())
-            );
+            assert_eq!(validate_ring_sizes(&tx_prefix, RING_SIZE), Ok(()));
         }
 
-        // A transaction with a single input ring size = maximum_ring_size.
+        // The second input contains too few elements.
         {
-            let mut tx_prefix = orig_tx.prefix.clone();
-            for _ in 0..max_ring_size - min_ring_size {
-                tx_prefix.inputs[0]
-                    .ring
-                    .push(orig_tx.prefix.inputs[0].ring[0].clone());
-            }
-            assert_eq!(tx_prefix.inputs[0].ring.len(), max_ring_size);
+            let mut tx_prefix = tx.prefix.clone();
+            let mut input = tx_prefix.inputs[0].clone();
+            input.ring.pop();
+            tx_prefix.inputs.push(input);
 
             assert_eq!(
-                validate_ring_sizes(&tx_prefix, min_ring_size, max_ring_size),
-                Ok(())
-            );
-        }
-
-        // A transaction with a single input ring size > maximum_ring_size.
-        {
-            let mut tx_prefix = orig_tx.prefix.clone();
-            for _ in 0..=max_ring_size - min_ring_size {
-                tx_prefix.inputs[0]
-                    .ring
-                    .push(orig_tx.prefix.inputs[0].ring[0].clone());
-            }
-            assert_eq!(tx_prefix.inputs[0].ring.len(), max_ring_size + 1);
-
-            assert_eq!(
-                validate_ring_sizes(&tx_prefix, min_ring_size, max_ring_size),
-                Err(TransactionValidationError::ExcessiveRingSize)
-            );
-        }
-
-        // A transaction with multiple inputs and unequal ring sizes.
-        {
-            let mut tx_prefix = orig_tx.prefix.clone();
-            tx_prefix.inputs.push(orig_tx.prefix.inputs[0].clone());
-            tx_prefix.inputs[1]
-                .ring
-                .push(orig_tx.prefix.inputs[0].ring[0].clone());
-
-            assert_eq!(
-                validate_ring_sizes(&tx_prefix, min_ring_size, max_ring_size),
-                Err(TransactionValidationError::UnequalRingSizes)
+                validate_ring_sizes(&tx_prefix, RING_SIZE),
+                Err(TransactionValidationError::InsufficientRingSize),
             );
         }
     }
 
     #[test]
     fn test_validate_ring_elements_are_unique() {
-        let (orig_tx, _ledger) = create_test_tx();
-        assert_eq!(orig_tx.prefix.inputs.len(), 1);
-        let min_ring_size = MIN_RING_SIZE;
-        let max_ring_size = min_ring_size + 3;
+        let (tx, _ledger) = create_test_tx();
+        assert_eq!(tx.prefix.inputs.len(), 1);
 
         // A transaction with a single input and unique ring elements.
-        {
-            let mut tx_prefix = orig_tx.prefix.clone();
-            assert_eq!(tx_prefix.inputs.len(), 1);
-
-            assert_eq!(validate_ring_elements_are_unique(&tx_prefix), Ok(()));
-        }
+        assert_eq!(validate_ring_elements_are_unique(&tx.prefix), Ok(()));
 
         // A transaction with a single input and duplicate ring elements.
         {
-            let mut tx_prefix = orig_tx.prefix.clone();
-            assert_eq!(tx_prefix.inputs.len(), 1);
-
+            let mut tx_prefix = tx.prefix.clone();
             tx_prefix.inputs[0]
                 .ring
-                .push(orig_tx.prefix.inputs[0].ring[0].clone());
+                .push(tx.prefix.inputs[0].ring[0].clone());
 
             assert_eq!(
                 validate_ring_elements_are_unique(&tx_prefix),
@@ -639,8 +572,8 @@ mod tests {
 
         // A transaction with a multiple inputs and unique ring elements.
         {
-            let mut tx_prefix = orig_tx.prefix.clone();
-            tx_prefix.inputs.push(orig_tx.prefix.inputs[0].clone());
+            let mut tx_prefix = tx.prefix.clone();
+            tx_prefix.inputs.push(tx.prefix.inputs[0].clone());
 
             for mut tx_out in tx_prefix.inputs[1].ring.iter_mut() {
                 let mut bytes = tx_out.target_key.to_bytes();
@@ -653,8 +586,8 @@ mod tests {
 
         // A transaction with a multiple inputs and duplicate ring elements in different rings.
         {
-            let mut tx_prefix = orig_tx.prefix.clone();
-            tx_prefix.inputs.push(orig_tx.prefix.inputs[0].clone());
+            let mut tx_prefix = tx.prefix.clone();
+            tx_prefix.inputs.push(tx.prefix.inputs[0].clone());
 
             assert_eq!(
                 validate_ring_elements_are_unique(&tx_prefix),

@@ -5,11 +5,8 @@
 /// Maximum number of transactions that may be included in a Block.
 pub const MAX_TRANSACTIONS_PER_BLOCK: usize = 5000;
 
-/// Each input ring must contain at least this many TxOuts.
-pub const MIN_RING_SIZE: usize = 11;
-
-/// Each input ring must contain no more than this many TxOuts.
-pub const MAX_RING_SIZE: usize = 11;
+/// Each input ring must contain this many elements.
+pub const RING_SIZE: usize = 11;
 
 /// Each transaction must contain no more than this many inputs (rings).
 pub const MAX_INPUTS: u16 = 16;

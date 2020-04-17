@@ -1066,7 +1066,7 @@ mod test {
     use std::{convert::TryFrom, iter::FromIterator};
     use transaction::{
         account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX},
-        constants::{BASE_FEE, MAX_INPUTS, MIN_RING_SIZE},
+        constants::{BASE_FEE, MAX_INPUTS, RING_SIZE},
         get_tx_out_shared_secret,
         onetime_keys::{compute_key_image, recover_onetime_private_key},
         tx::{Tx, TxOut},
@@ -1966,7 +1966,7 @@ mod test {
 
         // 1 known recipient, and a bunch of random recipients and no monitors.
         // The random recipients are needed for mixins.
-        let num_random_recipients = MAX_INPUTS as u32 * MIN_RING_SIZE as u32
+        let num_random_recipients = MAX_INPUTS as u32 * RING_SIZE as u32
             / test_utils::GET_TESTING_ENVIRONMENT_NUM_BLOCKS as u32;
         let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(

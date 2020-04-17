@@ -18,6 +18,7 @@ use crate::{
     account_keys::PublicAddress,
     amount::{Amount, AmountError},
     blake2b_256::Blake2b256,
+    constants::RING_SIZE,
     encrypted_fog_hint::EncryptedFogHint,
     onetime_keys::{compute_shared_secret, compute_tx_pubkey, create_onetime_public_key},
     range::Range,
@@ -225,11 +226,13 @@ impl TxPrefix {
 /// An "input" to a transaction.
 #[derive(Clone, Deserialize, Eq, PartialEq, Serialize, Message, Digestible)]
 pub struct TxIn {
-    /// A "ring" of outpuuts containing the single output that is being spent.
+    /// A "ring" of outputs containing the single output that is being spent.
+    /// It would be nice to use [TxOut; RING_SIZE] here, but Prost only works with Vec.
     #[prost(message, repeated, tag = "1")]
     pub ring: Vec<TxOut>,
 
     /// Proof that each TxOut in `ring` is in the ledger.
+    /// It would be nice to use [TxOutMembershipProof; RING_SIZE] here, but Prost only works with Vec.
     #[prost(message, repeated, tag = "2")]
     pub proofs: Vec<TxOutMembershipProof>,
 }

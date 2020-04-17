@@ -24,7 +24,7 @@ enum ProposeTxResult {
     ExcessiveRingSize = 22;
     DuplicateRingElements = 23;
     UnsortedRingElements = 24;
-    UnequalRingSizes = 25;
+    UnequalRingSizes = 25 [deprecated=true];
     UnsortedKeyImages = 26;
     ContainsSpentKeyImage = 27;
     DuplicateKeyImages = 28;
