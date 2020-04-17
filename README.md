@@ -14,6 +14,7 @@ MobileCoin is a privacy-preserving payments network designed for use on mobile d
 - [Repository Structure](#repository-structure)
 - [Build Instructions](#build-instructions)
 - [Overview](#overview)
+- [FAQ](#faq)
 - [Support](#support)
 
 ## License
