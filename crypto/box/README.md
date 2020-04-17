@@ -40,9 +40,9 @@ Comparison to related schemes
 This can be compared with many "hybrid public key encryption" systems that have
 been proposed in the literature or exist in established cryptographic libraries:
 
-- DHIES (Abdalla, Bellare, Rogaway, 2001) [^1]
-- ECIES (SECG-Sec1 v2.0, 2009, IEEE P1363a published 2004-09-02 withdrawn 2019-11-07) [^2]
-- NaCl Cryptobox (Daniel J. Bernstein, Tanja Lange, Peter Schwabe, latest 2019) [^3]
+- DHIES (Abdalla, Bellare, Rogaway, 2001) [1]
+- ECIES (SECG-Sec1 v2.0, 2009, IEEE P1363a published 2004-09-02 withdrawn 2019-11-07) [2]
+- NaCl Cryptobox (Daniel J. Bernstein, Tanja Lange, Peter Schwabe, latest 2019) [3]
 
 (This list is not exhaustive. Skip to the bottom for links to these and other references.)
 
@@ -51,19 +51,19 @@ followed by a KDF-step extracting suitable key material from the shared secret, 
 AEAD implementation.
 
 The current version of McCryptoBox conforms quite closely to the diagram and explanation
-of ECIES in Svetlin Nakov's [^7] "Practical Cryptography for Developers":
+of ECIES in Svetlin Nakov's [7] "Practical Cryptography for Developers":
 https://cryptobook.nakov.com/asymmetric-key-ciphers/ecies-public-key-encryption
 
 However, none of the standardization efforts related to ECIES have specified Ristretto
 as an elliptic curve that could be used in the scheme. All of these standardization
 efforts are much older than the Ristretto group.
 
-NaCl cryptobox is specified[^3] as `curve25519xsalsa20poly1305`, that is, to use
+NaCl cryptobox is specified [3] as `curve25519xsalsa20poly1305`, that is, to use
 curve25519 + salsa20 + poly1305. However, it is mentioned as a TODO to also implement
 `crypto_box_nistp256aes256gcm`, that is, using the nistp256 curve and
 AES-256-GCM for authenticated encryption.
 
-In "Cryptography in NaCl"[^4] it is explained that in the current version of cryptobox, curve25519
+In "Cryptography in NaCl" [4] it is explained that in the current version of cryptobox, curve25519
 is used for key exchange, then Hsalsa20 is used to extract entropy from the shared secret.
 Hsalsa20 is then used as a CSPRNG and this pseudorandom sequence is xor'd with the plaintext
 to achieve encryption. Poly1305 is used to produce a MAC.
@@ -84,7 +84,7 @@ NaCl cryptobox documentation specifies that randomly generated nonces have negli
 chance of collision, but that counter-based nonces work also in their design and can
 moreover prevent replay attacks.
 
-It is explained in "The security impact of a new cryptographic library"[^5] that part of
+It is explained in "The security impact of a new cryptographic library"[5] that part of
 the idea with the nonces is that if Alice wants to send a massive payload to Bob
 using NaCl cryptobox, she would do key exchange once (using the two-step cryptobox
 API), then break her payload into 4k-sized chunks (depending on transport layer),
@@ -106,7 +106,7 @@ extend the API to support the two-step construction + user-provided nonce idea.
 Comparison to `aead` crate
 --------------------------
 
-The API is meant to be not too different from the rust `aead` crate [^8], but it can't
+The API is meant to be not too different from the rust `aead` crate [8], but it can't
 be exactly the same as that, for several reasons.
 
 - The API requires to implement low-level functions`encrypt_in_place_detached`
@@ -130,11 +130,11 @@ There are a couple of major differences in our setting:
 References
 ----------
 
-[^1]: DHIES (Abdalla, Bellare, Rogaway, 2001): https://web.cs.ucdavis.edu/~rogaway/papers/dhies.pdf
-[^2]: SECG-Sec1 v2.0 (Certicom Research, 2009): http://www.secg.org/sec1-v2.pdf
-[^3]: NaCl Cryptobox (Bernstien, Lange, Schwabe, 2019): https://nacl.cr.yp.to/box.html
-[^4]: Cryptography in Nacl (Bernstein, 2009): https://cr.yp.to/highspeed/naclcrypto-20090310.pdf
-[^5]: The security impact of a new cryptographic library: (Bernstein, Lange, Schwabe, 2012): https://cr.yp.to/highspeed/coolnacl-20120725.pdf
-[^6]: Authenticated Encryption in the Public-Key Setting (Jee Hea An, 2001): https://eprint.iacr.org/2001/079
-[^7]: Practical Cryptography for Developers (Svetlin Nakov, 2018): https://cryptobook.nakov.com/asymmetric-key-ciphers/ecies-public-key-encryption
-[^8]: Rust Aead crate: https://docs.rs/aead/0.2.0/aead/
+1. DHIES (Abdalla, Bellare, Rogaway, 2001): https://web.cs.ucdavis.edu/~rogaway/papers/dhies.pdf
+2. SECG-Sec1 v2.0 (Certicom Research, 2009): http://www.secg.org/sec1-v2.pdf
+3. NaCl Cryptobox (Bernstien, Lange, Schwabe, 2019): https://nacl.cr.yp.to/box.html
+4. Cryptography in Nacl (Bernstein, 2009): https://cr.yp.to/highspeed/naclcrypto-20090310.pdf
+5. The security impact of a new cryptographic library: (Bernstein, Lange, Schwabe, 2012): https://cr.yp.to/highspeed/coolnacl-20120725.pdf
+6. Authenticated Encryption in the Public-Key Setting (Jee Hea An, 2001): https://eprint.iacr.org/2001/079
+7. Practical Cryptography for Developers (Svetlin Nakov, 2018): https://cryptobook.nakov.com/asymmetric-key-ciphers/ecies-public-key-encryption
+8. Rust Aead crate: https://docs.rs/aead/0.2.0/aead/
