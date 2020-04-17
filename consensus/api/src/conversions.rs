@@ -153,25 +153,24 @@ impl TryFrom<&external::CurvePoint> for CurvePoint {
     }
 }
 
-impl From<&CompressedRistretto> for external::CompressedRistretto {
-    fn from(source: &CompressedRistretto) -> Self {
+impl From<&CompressedCommitment> for external::CompressedRistretto {
+    fn from(source: &CompressedCommitment) -> Self {
         let mut compressed_ristretto = external::CompressedRistretto::new();
-        compressed_ristretto.set_data(source.as_bytes().to_vec());
+        compressed_ristretto.set_data(source.point.as_bytes().to_vec());
         compressed_ristretto
     }
 }
 
-impl TryFrom<&external::CompressedRistretto> for CompressedRistretto {
+impl TryFrom<&external::CompressedRistretto> for CompressedCommitment {
     type Error = ConversionError;
 
     fn try_from(source: &external::CompressedRistretto) -> Result<Self, Self::Error> {
         let bytes: &[u8] = source.get_data();
-        let mut arr = [0u8; 32];
-        if bytes.len() != arr.len() {
+        if bytes.len() != 32 {
             return Err(ConversionError::ArrayCastError);
         }
-        arr.copy_from_slice(bytes);
-        Ok(CompressedRistretto(arr))
+        let point = CompressedRistretto::from_slice(bytes);
+        Ok(CompressedCommitment { point })
     }
 }
 
@@ -550,10 +549,10 @@ impl TryFrom<&external::SignatureRctBulletproofs> for SignatureRctBulletproofs {
             ring_signatures.push(RingMLSAG::try_from(ring_signature)?);
         }
 
-        let mut pseudo_output_commitments: Vec<CompressedRistretto> = Vec::new();
+        let mut pseudo_output_commitments: Vec<CompressedCommitment> = Vec::new();
         for pseudo_output_commitment in source.get_pseudo_output_commitments() {
             pseudo_output_commitments
-                .push(CompressedRistretto::try_from(pseudo_output_commitment)?);
+                .push(CompressedCommitment::try_from(pseudo_output_commitment)?);
         }
 
         let range_proof_bytes = source.get_range_proofs().to_vec();

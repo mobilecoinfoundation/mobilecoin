@@ -32,6 +32,11 @@ impl From<&Commitment> for CompressedCommitment {
         }
     }
 }
+impl From<&CompressedRistretto> for CompressedCommitment {
+    fn from(source: &CompressedRistretto) -> Self {
+        Self { point: *source }
+    }
+}
 
 impl fmt::Debug for CompressedCommitment {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
