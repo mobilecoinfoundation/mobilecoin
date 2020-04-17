@@ -274,7 +274,7 @@ Please enter a payment request code. If you received an email with an allocation
         let mut request_code = opt_request_code.unwrap();
 
         // Allow user to confirm, change amount or cancel.
-        loop {
+        let tx_proposal = loop {
             println!();
             if request_code.memo.is_empty() {
                 println!(
@@ -346,7 +346,7 @@ Please enter a payment request code. If you received an email with an allocation
                 .unwrap();
             match selection {
                 0 => {
-                    break;
+                    break tx_proposal;
                 }
                 1 => {
                     request_code.value =
@@ -357,19 +357,88 @@ Please enter a payment request code. If you received an email with an allocation
                 }
                 _ => unreachable!(),
             }
-        }
+        };
 
         // Send payment
         let pb = ProgressBar::new_spinner();
         pb.enable_steady_tick(120);
-        pb.set_message("Sending payment...");
-        std::thread::sleep(std::time::Duration::from_secs(1));
-        pb.set_message("Waiting for payment to complete...");
-        std::thread::sleep(std::time::Duration::from_secs(4));
-        pb.finish_with_message("Done");
 
-        println!("Payment was successful!");
+        pb.set_message("Sending payment...");
+        let mut req = mobilecoind_api::SubmitTxRequest::new();
+        req.set_tx_proposal(tx_proposal);
+
+        let mut resp = match self.client.submit_tx(&req) {
+            Ok(resp) => resp,
+            Err(err) => {
+                println!("Error submitting transaction: {}", err);
+                return;
+            }
+        };
+
+        let sender_tx_receipt = resp.take_sender_tx_receipt();
+
+        pb.set_message("Waiting for payment to complete...");
+        let mut req = mobilecoind_api::GetTxStatusAsSenderRequest::new();
+        req.set_receipt(sender_tx_receipt.clone());
+
+        loop {
+            let resp = match self.client.get_tx_status_as_sender(&req) {
+                Ok(resp) => resp,
+                Err(err) => {
+                    println!("Failed checking tx status: {}", err);
+                    thread::sleep(Duration::from_secs(1));
+                    continue;
+                }
+            };
+
+            match resp.get_status() {
+                mobilecoind_api::TxStatus::Unknown => {
+                    thread::sleep(Duration::from_millis(250));
+                }
+                mobilecoind_api::TxStatus::Verified => {
+                    // Wait for monitor to sync so that we show the updated balance - this is a
+                    // best effort attempt, if it fails we just skip it.
+                    pb.set_message("Waiting for sync to complete...");
+                    let _ = self.wait_for_sync();
+
+                    pb.finish_with_message("Payment was successful!");
+                    break;
+                }
+                mobilecoind_api::TxStatus::TombstoneBlockExceeded => {
+                    pb.finish_with_message(
+                        "Tombstone block exceeded - transaction did not go through!",
+                    );
+                    println!("");
+                    break;
+                }
+            }
+        }
+
         println!();
+    }
+
+    fn wait_for_sync(&self) -> Result<(), String> {
+        let resp = self
+            .client
+            .get_ledger_info(&mobilecoind_api::Empty::new())
+            .map_err(|err| format!("Failed getting number of blocks in ledger: {}", err))?;
+        let num_blocks = resp.block_count;
+
+        let mut blocks_synced = 0;
+        while blocks_synced < num_blocks {
+            // Get current number of blocks synced.
+            let mut req = mobilecoind_api::GetMonitorStatusRequest::new();
+            req.set_monitor_id(self.monitor_id.clone());
+
+            let resp = self
+                .client
+                .get_monitor_status(&req)
+                .map_err(|err| format!("Failed getting monitor status: {}", err))?;
+
+            blocks_synced = resp.get_status().next_block;
+        }
+
+        Ok(())
     }
 
     fn receive(&self) {
@@ -399,20 +468,39 @@ Please enter a payment request code. If you received an email with an allocation
         };
         println!();
 
-        // TODO
-        let view_key = [0; 32];
-        let spend_key = [0; 32];
-        match RequestPayload::new_v3(&view_key, &spend_key, "", amount, &memo) {
-            Ok(payload) => {
-                println!("Your request code is:");
-                println!();
-                println!("        {}", payload.encode());
-                println!();
-            }
+        // Get our public address.
+        let mut req = mobilecoind_api::GetPublicAddressRequest::new();
+        req.set_monitor_id(self.monitor_id.clone());
+        req.set_subaddress_index(0);
+
+        let mut resp = match self.client.get_public_address(&req) {
+            Ok(resp) => resp,
             Err(err) => {
-                println!("Error creating request code: {}", err);
+                println!("Failed getting our public address: {}", err);
+                return;
             }
-        }
+        };
+
+        let public_address = resp.take_public_address();
+
+        // Generate b58 code
+        let mut req = mobilecoind_api::GetRequestCodeRequest::new();
+        req.set_receiver(public_address);
+        req.set_value(amount);
+        req.set_memo(memo);
+
+        let resp = match self.client.get_request_code(&req) {
+            Ok(resp) => resp,
+            Err(err) => {
+                println!("Failed generating request code: {}", err);
+                return;
+            }
+        };
+
+        println!("Your request code is:");
+        println!();
+        println!("        {}", resp.get_b58_code());
+        println!();
     }
 
     fn input_mob(prompt: &str, default: u64) -> u64 {
