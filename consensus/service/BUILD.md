@@ -161,8 +161,8 @@ This retrieves a json record of:
 
 ```json
 {
-    "enclave": "pool/<git revision>,
-    "sigstruct": "pool/<git revision>,
+    "enclave": "pool/<git revision>",
+    "sigstruct": "pool/<git revision>",
 }
 ```
 

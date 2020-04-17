@@ -102,16 +102,20 @@ Follow the steps below:
 
 1. Start the SGX daemons.
 
-    ```
-    export AESM_PATH=/opt/intel/libsgx-enclave-common/aesm
-    export LD_LIBRARY_PATH=/opt/intel/libsgx-enclave-common/aesm
+>Note: Check your aesm location. It is either at `/opt/intel/libsgx-enclave-common/aesm` or `/opt/intel/sgx-aesm-service/aesm`. Update the commands below accordingly.
 
-    /opt/intel/libsgx-enclave-common/aesm/linksgx.sh
+    ```
+    source /opt/intel/sgxsdk/environment
+
+    export AESM_PATH=/opt/intel/libsgx-enclave-common/aesm
+    export LD_LIBRARY_PATH=${AESM_PATH}
+
+    ${AESM_PATH}/linksgx.sh
     /bin/mkdir -p /var/run/aesmd/
     /bin/chown -R aesmd:aesmd /var/run/aesmd/
     /bin/chmod 0755 /var/run/aesmd/
     /bin/chown -R aesmd:aesmd /var/opt/aesmd/
-    /opt/intel/libsgx-enclave-common/aesm/aesm_service &
+    ${AESM_PATH}/aesm_service &
     ```
 
 1. Set up your network.toml file.
@@ -142,16 +146,22 @@ An example run command is the below.
 
 >Note: The environment variables, `SGX_MODE`, `IAS_MODE`, `CONSENSUS_ENCLAVE_CSS` and `CONSENSUS_ENCLAVE_SIGNED` indicate important parameters to the SGX Enclave build. Please see [BUILD.md](./BUILD.md) for more details.
 
+>Note: Running in `IAS_MODE=DEV` runs a debug enclave.
+
 ```
-SGX_MODE=HW IAS_MODE=DEV CONSENSUS_ENCLAVE_CSS=consensus-enclave.css CONSENSUS_ENCLAVE_SIGNED=libconsensus-enclave.signed.so
+SGX_MODE=HW IAS_MODE=DEV \
+    CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css \
+    CONSENSUS_ENCLAVE_SIGNED=$(pwd)/libconsensus-enclave.signed.so \
     cargo run --release -p consensus-service -- \
     --client-responder-id my_node.my_domain.com:443 \
-    --local-node-id node1.my_domain.com:8443 \
+    --peer-responder-id node1.my_domain.com:8443 \
     --network /etc/mc-network.toml \
     --ias-api-key="${IAS_API_KEY}" \
     --ias-spid="${IAS_SPID}" \
     --ledger-path /tmp/ledger-db-1 \
     --peer-listen-uri='mcp://0.0.0.0:8443/' \
+    --msg-signer-key MC4CAQAwBQYDK2VwBCIEIGz4xR7wuPKjwM1EK0MKrc9ukTjiDqvKKREITPXPkNku \
+    --sealed-block-signing-key /sealed \
     --management-listen-addr=0.0.0.0:9090
 ```
 
