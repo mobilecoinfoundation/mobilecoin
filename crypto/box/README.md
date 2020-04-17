@@ -28,7 +28,7 @@ The scheme aims for semantic security at a 128-bit security level, and non-malle
 of the cryptograms. The primitives used at current version are:
 
 - Ristretto elliptic curve (`curve25519-dalek` crate) for key exchange
-- HKDF<Blake2b> for the KDF step
+- HKDF + Blake2b for the KDF step
 - aes-gcm for authenticated encryption
 
 The wire-format is intended to be stable, with forwards and backwards compatibility
@@ -40,9 +40,9 @@ Comparison to related schemes
 This can be compared with many "hybrid public key encryption" systems that have
 been proposed in the literature or exist in established cryptographic libraries:
 
-- DHIES (Abdalla, Bellare, Rogaway, 2001)
-- ECIES (SECG-Sec1 v2.0, 2009, IEEE P1363a published 2004-09-02 withdrawn 2019-11-07)
-- NaCl Cryptobox (Daniel J. Bernstein, Tanja Lange, Peter Schwabe, latest 2019)
+- DHIES (Abdalla, Bellare, Rogaway, 2001) [1]
+- ECIES (SECG-Sec1 v2.0, 2009, IEEE P1363a published 2004-09-02 withdrawn 2019-11-07) [2]
+- NaCl Cryptobox (Daniel J. Bernstein, Tanja Lange, Peter Schwabe, latest 2019) [3]
 
 (This list is not exhaustive. Skip to the bottom for links to these and other references.)
 
@@ -51,19 +51,19 @@ followed by a KDF-step extracting suitable key material from the shared secret, 
 AEAD implementation.
 
 The current version of McCryptoBox conforms quite closely to the diagram and explanation
-of ECIES in "Practical Cryptography for Developers" by Svetlin Nakov:
+of ECIES in Svetlin Nakov's [7] "Practical Cryptography for Developers":
 https://cryptobook.nakov.com/asymmetric-key-ciphers/ecies-public-key-encryption
 
 However, none of the standardization efforts related to ECIES have specified Ristretto
 as an elliptic curve that could be used in the scheme. All of these standardization
 efforts are much older than the Ristretto group.
 
-NaCl cryptobox is specified as `curve25519xsalsa20poly1305`, that is, to use
+NaCl cryptobox is specified [3] as `curve25519xsalsa20poly1305`, that is, to use
 curve25519 + salsa20 + poly1305. However, it is mentioned as a TODO to also implement
 `crypto_box_nistp256aes256gcm`, that is, using the nistp256 curve and
 AES-256-GCM for authenticated encryption.
 
-In "Cryptography in NaCl" it is explained that in the current version of cryptobox, curve25519
+In "Cryptography in NaCl" [4] it is explained that in the current version of cryptobox, curve25519
 is used for key exchange, then Hsalsa20 is used to extract entropy from the shared secret.
 Hsalsa20 is then used as a CSPRNG and this pseudorandom sequence is xor'd with the plaintext
 to achieve encryption. Poly1305 is used to produce a MAC.
@@ -84,7 +84,7 @@ NaCl cryptobox documentation specifies that randomly generated nonces have negli
 chance of collision, but that counter-based nonces work also in their design and can
 moreover prevent replay attacks.
 
-It is explained in "The security impact of a new cryptographic library" that part of
+It is explained in "The security impact of a new cryptographic library"[5] that part of
 the idea with the nonces is that if Alice wants to send a massive payload to Bob
 using NaCl cryptobox, she would do key exchange once (using the two-step cryptobox
 API), then break her payload into 4k-sized chunks (depending on transport layer),
@@ -93,26 +93,9 @@ This ensures that each packet that Bob recieves has its own mac -- there is not 
 mac value for the entire payload, and it ensures that we don't have to do an elliptic
 curve operation once for each packet, which is what a naive implementation would do.
 
-In Mobilecoin Fog, the CryptoBox is used to enable users to send encrypted messages
-to a fog enclave, and to enable that enclave to send encrypted messages to users,
-having learned their public keys. These messages are all very small, not more than
-a few hundred bytes, so we simply have little use for the nonce / large payloads
-optimization. If Fog is expected to preserve Cryptobox context objects across many
-transactions, this creates additional memory pressure on the enclave to store those
-context objects, which effectively halves the number of users that a single node
-can support, if it is memory-bound as expected.
-
-Moreover, it's generally very difficult in fog for the enclaves to coordinate
-with the users about the nonce value in a way that will prevent nonce reuse from
-ever occurring. If the fog enclave must store per-user nonces that also adds substantial
-memory pressure to the fog enclave.
-
-Additionally, the "nonce counting up" strategy only works if messages between the users
-can be resent if they are lost. In conventional settings like TLS, messages that are lost can
-be retransmitted. In Mobilecoin fog, the messages between the users and the fog enclave
-are essentially mediated by databases -- in one direction, the blockchain, and in another,
-the recovery database. There is no possibility to retransmit a message if there is data
-loss in the recovery database.
+In our use-cases right now, we have no need for sending very large messages this way,
+and it would present operational difficulties to establish and preserve information
+about these nonces.
 
 Choosing exclusively random nonces derived from key exchange avoids these practical
 operational concerns and simplifies the API.
@@ -123,7 +106,7 @@ extend the API to support the two-step construction + user-provided nonce idea.
 Comparison to `aead` crate
 --------------------------
 
-The API is meant to be not too different from the rust `aead` crate, but it can't
+The API is meant to be not too different from the rust `aead` crate [8], but it can't
 be exactly the same as that, for several reasons.
 
 - The API requires to implement low-level functions`encrypt_in_place_detached`
@@ -154,3 +137,4 @@ References
 5. The security impact of a new cryptographic library: (Bernstein, Lange, Schwabe, 2012): https://cr.yp.to/highspeed/coolnacl-20120725.pdf
 6. Authenticated Encryption in the Public-Key Setting (Jee Hea An, 2001): https://eprint.iacr.org/2001/079
 7. Practical Cryptography for Developers (Svetlin Nakov, 2018): https://cryptobook.nakov.com/asymmetric-key-ciphers/ecies-public-key-encryption
+8. Rust Aead crate: https://docs.rs/aead/0.2.0/aead/
