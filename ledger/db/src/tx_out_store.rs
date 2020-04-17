@@ -731,7 +731,7 @@ pub mod tx_out_store_tests {
     use tempdir::TempDir;
     use transaction::{
         account_keys::AccountKey, amount::Amount, encrypted_fog_hint::EncryptedFogHint,
-        onetime_keys::*, range::Range, ring_signature::Blinding, tx::TxOut,
+        onetime_keys::*, range::Range, ring_signature::Scalar, tx::TxOut,
     };
 
     fn get_env() -> Environment {
@@ -769,7 +769,7 @@ pub mod tx_out_store_tests {
                 recipient_account.default_subaddress().spend_public_key(),
             );
             let shared_secret: RistrettoPublic = compute_shared_secret(&target_key, &tx_secret_key);
-            let blinding = Blinding::from_random(&mut rng);
+            let blinding = Scalar::random(&mut rng);
             let amount = Amount::new(value, blinding, &shared_secret).unwrap();
             let tx_out = TxOut {
                 amount,

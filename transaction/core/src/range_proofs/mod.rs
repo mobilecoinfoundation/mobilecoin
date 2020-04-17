@@ -12,7 +12,7 @@ use crate::ring_signature::{BP_GENERATORS, GENERATORS};
 use error::Error;
 
 /// The domain separation label should be unique for each application.
-const DOMAIN_SEPARATOR_LABEL: &[u8] = b"range_proof";
+const DOMAIN_SEPARATOR_LABEL: &[u8] = b"mobilecoin_range_proof";
 
 /// Create an aggregated 64-bit rangeproof for a set of values.
 ///
@@ -102,6 +102,7 @@ fn resize_slice_to_pow2<T: Clone>(slice: &[T]) -> Result<Vec<T>, Error> {
 pub mod tests {
     use super::*;
     use bulletproofs::PedersenGens;
+    use curve25519_dalek::ristretto::RistrettoPoint;
     use rand::{rngs::StdRng, SeedableRng};
     use rand_core::RngCore;
 
@@ -119,38 +120,31 @@ pub mod tests {
     fn test_pow2_number_of_inputs() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let vals: Vec<u64> = (0..2).map(|_| rng.next_u64()).collect();
-        let serial_scalars: Vec<Scalar> = vals.iter().map(|_| Scalar::random(&mut rng)).collect();
-        generate_and_check(vals, serial_scalars);
+        let blindings: Vec<Scalar> = vals.iter().map(|_| Scalar::random(&mut rng)).collect();
+        generate_and_check(vals, blindings);
     }
 
     #[test]
     fn test_not_pow2_number_of_inputs() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let vals: Vec<u64> = (0..9).map(|_| rng.next_u64()).collect();
-        let serial_scalars: Vec<Scalar> = vals.iter().map(|_| Scalar::random(&mut rng)).collect();
-        generate_and_check(vals, serial_scalars);
+        let blindings: Vec<Scalar> = vals.iter().map(|_| Scalar::random(&mut rng)).collect();
+        generate_and_check(vals, blindings);
     }
 
     #[test]
     // `check_range_proofs` should return an error if the commitments do not agree with the proof.
-    fn test_wrong_commitments() {
+    fn test_check_range_proofs_rejects_wrong_commitments() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
         let num_values: usize = 4;
         let values: Vec<u64> = (0..num_values).map(|_| rng.next_u64()).collect();
         let blindings: Vec<Scalar> = (0..num_values).map(|_| Scalar::random(&mut rng)).collect();
-        let (proof, _commitments) = generate_range_proofs(&values, &blindings, &mut rng).unwrap();
+        let (proof, commitments) = generate_range_proofs(&values, &blindings, &mut rng).unwrap();
 
-        // Create commitments that do not agree with the proof.
-        let gen = PedersenGens::default();
-        let wrong_commitments: Vec<CompressedRistretto> = blindings
-            .into_iter()
-            .map(|serial| {
-                let scalar_val = Scalar::from_bytes_mod_order([77u8; 32]);
-                let commitment_point = gen.commit(scalar_val, serial);
-                commitment_point.compress()
-            })
-            .collect();
+        // Modify a commitment.
+        let mut wrong_commitments = commitments.clone();
+        wrong_commitments[0] = RistrettoPoint::random(&mut rng).compress();
 
         match check_range_proofs(&proof, &wrong_commitments, &mut rng) {
             Ok(_) => panic!(),

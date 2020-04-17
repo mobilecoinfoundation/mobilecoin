@@ -25,7 +25,7 @@ use transaction::{
     encrypted_fog_hint::EncryptedFogHint,
     range::Range,
     ring_signature::{
-        Blinding, CurvePoint, CurveScalar, Error as RingSigError, KeyImage, RingMLSAG,
+        CurvePoint, CurveScalar, Error as RingSigError, KeyImage, RingMLSAG,
         SignatureRctBulletproofs,
     },
     tx,
@@ -560,7 +560,7 @@ impl TryFrom<&external::Amount> for Amount {
 
         let masked_value = source.get_masked_value();
 
-        let masked_blinding: Blinding = {
+        let masked_blinding: CurveScalar = {
             let bytes = source.get_masked_blinding().get_data();
             vec_to_curve_scalar(bytes)?
         };
@@ -914,14 +914,14 @@ pub fn block_num_to_s3block_path(block_index: transaction::BlockIndex) -> PathBu
 mod conversion_tests {
     extern crate rand;
 
-    use self::rand::{rngs::StdRng, SeedableRng};
+    use self::rand::{rngs::StdRng, RngCore, SeedableRng};
     use super::*;
     use curve25519_dalek::ristretto::RistrettoPoint;
     use keys::FromRandom;
     use transaction::{
         account_keys::{AccountKey, PublicAddress},
         onetime_keys::recover_onetime_private_key,
-        ring_signature::Blinding,
+        ring_signature::Scalar,
         tx::{Tx, TxOut, TxOutMembershipProof},
     };
     use transaction_std::*;
@@ -1104,7 +1104,7 @@ mod conversion_tests {
         let source = tx::TxOut {
             amount: Amount::new(
                 1u64 << 13,
-                Blinding::from(9u64),
+                Scalar::random(&mut rng),
                 &RistrettoPublic::from_random(&mut rng),
             )
             .unwrap(),
@@ -1135,8 +1135,8 @@ mod conversion_tests {
         let source: RedactedTx = {
             let tx_out_a = tx::TxOut {
                 amount: Amount::new(
-                    1u64 << 17,
-                    Blinding::from(9u64),
+                    rng.next_u64(),
+                    Scalar::random(&mut rng),
                     &RistrettoPublic::from_random(&mut rng),
                 )
                 .unwrap(),
@@ -1147,8 +1147,8 @@ mod conversion_tests {
 
             let tx_out_b = tx::TxOut {
                 amount: Amount::new(
-                    1u64 << 18,
-                    Blinding::from(9u64),
+                    rng.next_u64(),
+                    Scalar::random(&mut rng),
                     &RistrettoPublic::from_random(&mut rng),
                 )
                 .unwrap(),
