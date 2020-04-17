@@ -75,7 +75,7 @@ message Amount {
     // A Pedersen commitment `v*G + s*H`
     CurvePoint commitment = 1;
 
-    // `masked_value = value XOR_8 SBlake2B("value_mask" || shared_secret)`
+    // `masked_value = value XOR_8 Blake2B("value_mask" || shared_secret)`
     uint64 masked_value = 2;
 
     // `masked_blinding = blinding + Blake2B("bliding_mask" || shared_secret))
