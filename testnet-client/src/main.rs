@@ -15,9 +15,11 @@ use structopt::StructOpt;
 /// Command lien config.
 #[derive(StructOpt)]
 struct Config {
+    /// The host:port of the mobilecoind instance to connect to.
     #[structopt(short = "s", long = "server", default_value = "127.0.0.1:4444")]
     pub mobilecoind_host: String,
 
+    /// Use SSL when connecting to mobilecoind.
     #[structopt(long)]
     pub use_ssl: bool,
 }
@@ -26,7 +28,10 @@ struct Config {
 fn main() {
     let config = Config::from_args();
 
-    TestnetClient::new(&config).run();
+    match TestnetClient::new(&config) {
+        Ok(mut client) => client.run(),
+        Err(_) => std::process::exit(1),
+    }
 }
 
 /// Commands in the main menu.
@@ -54,7 +59,7 @@ struct TestnetClient {
 }
 
 impl TestnetClient {
-    pub fn new(config: &Config) -> Self {
+    pub fn new(config: &Config) -> Result<Self, String> {
         // Construct GRPC connection to mobilecoind.
         let env = Arc::new(grpcio::EnvBuilder::new().build());
         let ch_builder = ChannelBuilder::new(env)
@@ -75,10 +80,19 @@ impl TestnetClient {
 
         let client = MobilecoindApiClient::new(ch);
 
-        TestnetClient {
+        // Do a simple check to see if mobilecoind is alive.
+        if let Err(err) = client.get_ledger_info(&mobilecoind_api::Empty::new()) {
+            println!("Unable to connect to mobilecoind on {} - are you sure it is running and accepting connections?", config.mobilecoind_host);
+            println!();
+            println!("The error was: {}", err);
+            return Err(format!("unable to connect to mobilecoind - {}", err));
+        }
+
+        // Return.
+        Ok(TestnetClient {
             client,
             monitor_id: Vec::new(),
-        }
+        })
     }
 
     /// The main UI loop.
