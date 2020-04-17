@@ -34,11 +34,7 @@ use crate::{
     compressed_commitment::CompressedCommitment,
     onetime_keys::compute_key_image,
     range_proofs::{check_range_proofs, generate_range_proofs},
-    ring_signature::{
-        encoding::{read_u8_32, write_u8_32},
-        mlsag::RingMLSAG,
-        Blinding, Error, KeyImage, Scalar, GENERATORS,
-    },
+    ring_signature::{mlsag::RingMLSAG, Blinding, Error, KeyImage, Scalar, GENERATORS},
 };
 
 /// An RCT_TYPE_BULLETPROOFS_2 signature.
