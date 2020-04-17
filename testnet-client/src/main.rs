@@ -427,7 +427,7 @@ Please enter a payment request code. If you received an email with an allocation
 
         pb.set_message("Waiting for payment to complete...");
         let mut req = mobilecoind_api::GetTxStatusAsSenderRequest::new();
-        req.set_receipt(sender_tx_receipt.clone());
+        req.set_receipt(sender_tx_receipt);
 
         loop {
             let resp = match self.client.get_tx_status_as_sender(&req) {
@@ -456,7 +456,7 @@ Please enter a payment request code. If you received an email with an allocation
                     pb.finish_with_message(
                         "Tombstone block exceeded - transaction did not go through!",
                     );
-                    println!("");
+                    println!();
                     break;
                 }
             }
@@ -601,7 +601,7 @@ Please enter a payment request code. If you received an email with an allocation
             .client
             .get_unspent_tx_out_list(&req)
             .map_err(|err| format!("Unable to get unspent txouts: {}", err))?;
-        let utxos = resp.output_list.clone();
+        let utxos = resp.output_list;
         let balance = utxos.iter().map(|utxo| utxo.get_value()).sum::<u64>();
 
         // Create the outlay
