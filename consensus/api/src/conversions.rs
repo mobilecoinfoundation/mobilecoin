@@ -25,7 +25,7 @@ use transaction::{
     encrypted_fog_hint::EncryptedFogHint,
     range::Range,
     ring_signature::{
-        Blinding, CurvePoint, CurveScalar, Error as RingSigError, KeyImage, RingMLSAG, Scalar,
+        Blinding, CurvePoint, CurveScalar, Error as RingSigError, KeyImage, RingMLSAG,
         SignatureRctBulletproofs,
     },
     tx,
@@ -150,31 +150,6 @@ impl TryFrom<&external::CurvePoint> for CurvePoint {
     fn try_from(source: &external::CurvePoint) -> Result<Self, Self::Error> {
         let bytes: &[u8] = source.get_data();
         CurvePoint::try_from(bytes).map_err(|_| ConversionError::ArrayCastError)
-    }
-}
-
-/// Convert Scalar --> external::CurveScalar.
-impl From<&Scalar> for external::CurveScalar {
-    fn from(other: &Scalar) -> Self {
-        let mut curve_scalar = external::CurveScalar::new();
-        curve_scalar.set_data(other.as_bytes().to_vec());
-        curve_scalar
-    }
-}
-
-/// Convert external::CurveScalar --> Scalar.
-impl TryFrom<&external::CurveScalar> for Scalar {
-    type Error = ConversionError;
-
-    fn try_from(source: &external::CurveScalar) -> Result<Self, Self::Error> {
-        let bytes: &[u8] = source.get_data();
-
-        let mut arr = [0u8; 32];
-        if bytes.len() != arr.len() {
-            return Err(ConversionError::ArrayCastError);
-        }
-        arr.copy_from_slice(bytes);
-        Ok(Scalar::from_bytes_mod_order(arr))
     }
 }
 
@@ -527,10 +502,10 @@ impl TryFrom<&external::RingMLSAG> for RingMLSAG {
     type Error = ConversionError;
 
     fn try_from(source: &external::RingMLSAG) -> Result<Self, Self::Error> {
-        let c_zero = Scalar::try_from(source.get_c_zero())?;
-        let mut responses: Vec<Scalar> = Vec::new();
+        let c_zero = CurveScalar::try_from(source.get_c_zero())?;
+        let mut responses: Vec<CurveScalar> = Vec::new();
         for response in source.get_responses() {
-            responses.push(Scalar::try_from(response)?);
+            responses.push(CurveScalar::try_from(response)?);
         }
         let key_image = KeyImage::try_from(source.get_key_image())?;
 
