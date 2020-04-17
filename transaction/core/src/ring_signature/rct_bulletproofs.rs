@@ -30,7 +30,6 @@ use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    amount::Blinding,
     commitment::Commitment,
     compressed_commitment::CompressedCommitment,
     onetime_keys::compute_key_image,
@@ -285,10 +284,10 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
         .collect();
 
     let (range_proof, commitments) = {
-        let values_and_blindings: Vec<(u64, Blinding)> = pseudo_output_values_and_blindings
+        let values_and_blindings: Vec<(u64, Scalar)> = pseudo_output_values_and_blindings
             .iter()
             .chain(output_values_and_blindings.iter())
-            .map(|(value, blinding)| (*value, Blinding::from(*blinding)))
+            .map(|(value, blinding)| (*value, *blinding))
             .collect();
 
         let (values, blindings): (Vec<_>, Vec<_>) = values_and_blindings.into_iter().unzip();
@@ -337,7 +336,6 @@ mod rct_bulletproofs_tests {
     use rand::{rngs::StdRng, CryptoRng, SeedableRng};
 
     use crate::{
-        amount::Blinding,
         proptest_fixtures::*,
         range_proofs::generate_range_proofs,
         ring_signature::{Error, KeyImage, SignatureRctBulletproofs, GENERATORS},
@@ -644,9 +642,9 @@ mod rct_bulletproofs_tests {
             // Modify the range proof
             let wrong_range_proof = {
                 let values = [13; 6];
-                let blindings: Vec<Blinding> = values
+                let blindings: Vec<Scalar> = values
                     .iter()
-                    .map(|_value| Blinding::from(Scalar::random(&mut rng)))
+                    .map(|_value| Scalar::random(&mut rng))
                     .collect();
                 let (range_proof, _commitments) =
                     generate_range_proofs(&values, &blindings, &mut rng).unwrap();
