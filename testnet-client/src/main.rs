@@ -1,8 +1,9 @@
-use dialoguer::{theme::ColorfulTheme, Input, Select};
+use dialoguer::{theme::ColorfulTheme, Input, Select, Validator};
 use grpcio::ChannelBuilder;
 use indicatif::{ProgressBar, ProgressStyle};
 use mc_b58_payloads::payloads::RequestPayload;
 use mobilecoind_api::mobilecoind_api_grpc::MobilecoindApiClient;
+use protobuf::RepeatedField;
 use rust_decimal::{prelude::ToPrimitive, Decimal};
 use std::{fmt, str::FromStr, sync::Arc, thread, time::Duration};
 
@@ -290,17 +291,48 @@ Please enter a payment request code. If you received an email with an allocation
                 println!();
             }
 
-            // Construct a transaction so that we can figure out the fee.
+            // Construct TX to figure out the fee and whether we have enough funds.
+            let tx_proposal = match self.generate_tx(&request_code) {
+                Ok((tx_proposal, balance)) => {
+                    let fee = tx_proposal.get_fee();
+                    let remaining_balance = balance - fee - request_code.value;
+                    println!(
+                        "You will be charged a fee of {} to send this payment. Your remaining balance after paying this bill will be {}.",
+                        u64_to_mob_display(fee),
+                        u64_to_mob_display(remaining_balance),
+                    );
+                    println!();
 
-            // TODO construct TX to figure out the fee.
-            let fee = 12345;
-            let remaining_balance = 66666;
-            println!(
-                "You will be charged a fee of {} to send this payment. Your remaining balance after paying this bill will be {}.",
-                u64_to_mob_display(fee),
-                u64_to_mob_display(remaining_balance),
-            );
-            println!();
+                    tx_proposal
+                }
+
+                Err(err) => {
+                    println!("Error generating transaction: {}", err);
+                    println!("You will not be able to send this payment. It is possible you do not have enough funds, in which case you can edit the payment amount.");
+                    println!();
+
+                    println!("Please select from the following available options:");
+                    let selection = Select::with_theme(&ColorfulTheme::default())
+                        .default(0)
+                        .items(&[
+                            "Change payment amount".to_owned(),
+                            "Cancel payment".to_owned(),
+                        ])
+                        .interact()
+                        .unwrap();
+                    match selection {
+                        0 => {
+                            request_code.value =
+                                Self::input_mob("Enter new amount (in MOB)", request_code.value);
+                            continue;
+                        }
+                        1 => {
+                            return;
+                        }
+                        _ => unreachable!(),
+                    };
+                }
+            };
 
             println!("Please select from the following available options:");
             let selection = Select::with_theme(&ColorfulTheme::default())
@@ -387,9 +419,22 @@ Please enter a payment request code. If you received an email with an allocation
         // default is in picoMOB but we need it in MOB
         let mob_default = Decimal::from(default) / Decimal::from_scientific("1e12").unwrap();
 
+        struct CanConvertToMOB;
+        impl Validator for CanConvertToMOB {
+            type Err = String;
+            fn validate(&self, text: &str) -> Result<(), Self::Err> {
+                let dec = Decimal::from_str(text).map_err(|err| format!("{}", err))?;
+                (dec * Decimal::from_scientific("1e12").unwrap())
+                    .to_u64()
+                    .ok_or_else(|| "Value too big".to_owned())?;
+                Ok(())
+            }
+        }
+
         let mob = Input::<Decimal>::new()
             .with_prompt(prompt)
             .default(mob_default)
+            .validate_with(CanConvertToMOB)
             .interact()
             .expect("failed getting request code");
 
@@ -397,6 +442,47 @@ Please enter a payment request code. If you received an email with an allocation
         (mob * Decimal::from_scientific("1e12").unwrap())
             .to_u64()
             .expect("failed converting to u64")
+    }
+
+    fn generate_tx(
+        &self,
+        request_payload: &RequestPayload,
+    ) -> Result<(mobilecoind_api::TxProposal, u64), String> {
+        let pb = ProgressBar::new_spinner();
+        pb.enable_steady_tick(120);
+        pb.set_message("Preparing transaction...");
+
+        // Get our UnspentTxOuts.
+        let mut req = mobilecoind_api::GetUnspentTxOutListRequest::new();
+        req.set_monitor_id(self.monitor_id.clone());
+        req.set_subaddress_index(0);
+
+        let resp = self
+            .client
+            .get_unspent_tx_out_list(&req)
+            .map_err(|err| format!("Unable to get unspent txouts: {}", err))?;
+        let utxos = resp.output_list.clone();
+        let balance = utxos.iter().map(|utxo| utxo.get_value()).sum::<u64>();
+
+        // Create the outlay
+        let mut outlay = mobilecoind_api::Outlay::new();
+        outlay.set_value(request_payload.value);
+        outlay.set_receiver(mobilecoind_api::PublicAddress::from(
+            &request_payload.into(),
+        ));
+
+        // Construct the tx
+        let mut req = mobilecoind_api::GenerateTxRequest::new();
+        req.set_sender_monitor_id(self.monitor_id.clone());
+        req.set_change_subaddress(0);
+        req.set_input_list(utxos);
+        req.set_outlay_list(RepeatedField::from_vec(vec![outlay]));
+
+        let mut resp = self
+            .client
+            .generate_tx(&req)
+            .map_err(|err| format!("Unable to generate transaction: {}", err))?;
+        Ok((resp.take_tx_proposal(), balance))
     }
 }
 
