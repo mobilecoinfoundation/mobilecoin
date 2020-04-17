@@ -157,14 +157,13 @@ fn get_blinding_mask(shared_secret: &RistrettoPublic) -> Scalar {
 
 #[cfg(test)]
 mod amount_tests {
-    use crate::{proptest_fixtures::*, ring_signature::Commitment};
-    use proptest::prelude::*;
-
     use crate::{
         amount::{Amount, AmountError},
+        proptest_fixtures::*,
         ring_signature::{Scalar, GENERATORS},
         CompressedCommitment,
     };
+    use proptest::prelude::*;
 
     proptest! {
 
