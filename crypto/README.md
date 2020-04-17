@@ -1,4 +1,4 @@
-#### MobileCoin Crypto
+## crypto
 
 Provides implementations of cryptography primitives and wrappers around primitives needed in MobileCoin components.
 

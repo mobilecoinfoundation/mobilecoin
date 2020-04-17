@@ -1,5 +1,4 @@
-common
-======
+## common
 
 This crate contains several things right now:
 

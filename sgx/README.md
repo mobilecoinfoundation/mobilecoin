@@ -1,5 +1,4 @@
-sgx
-===
+## sgx
 
 This collection of crates can be used to construct a light-weight `no_std` rust
 environment for use inside an sgx enclave. The assumption is that your enclave
@@ -20,14 +19,13 @@ making crates that are easily `cargo test`-able, and run in the enclave.
 Acknowledgements:
 -----------------
 
-Some of this code is indeed factored out of rust `std` and the Baidu `rust-sgx-sdk` (https://github.com/baidu/rust-sgx-sdk).
+Some of this code is indeed factored out of rust `std` and the Baidu [`rust-sgx-sdk`](https://github.com/baidu/rust-sgx-sdk).
 However, the goal of this project is different from Baidu `rust-sgx-sdk`.
 
 We are not trying to create a drop-in replacement for the entire rust standard library,
 and then patch third-party dependencies to compile against it.
 
-Rather, we take
-a stricter point of view that third-party dependencies that need to talk to the
+Rather, we take a stricter point of view that third-party dependencies that need to talk to the
 OS may not be appropriate to run in the enclave. Making an OCALL out of the
 enclave in order to make a system call to support such applications may expose
 vulnerabilities, see Iago attacks.
