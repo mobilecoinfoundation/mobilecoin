@@ -17,75 +17,88 @@ use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
 #[derive(Copy, Clone, Default, Eq, Serialize, Deserialize, Digestible)]
-pub struct CurveScalar(pub(crate) Scalar);
+pub struct CurveScalar {
+    pub scalar: Scalar,
+}
 
 impl CurveScalar {
     /// Construct a `CurveScalar` by reducing a 256-bit little-endian integer
     /// modulo the group order \\( \ell \\).
     pub fn from_bytes_mod_order(bytes: [u8; 32]) -> Self {
-        Self(Scalar::from_bytes_mod_order(bytes))
+        Self {
+            scalar: Scalar::from_bytes_mod_order(bytes),
+        }
     }
 
     /// The little-endian byte encoding of the integer representing this Scalar.
     pub fn as_bytes(&self) -> &[u8; 32] {
-        self.0.as_bytes()
+        self.scalar.as_bytes()
     }
 }
 
 impl keys::FromRandom for CurveScalar {
     fn from_random(csprng: &mut (impl CryptoRng + RngCore)) -> Self {
-        Self(Scalar::random(csprng))
-    }
-}
-
-impl AsRef<[u8; 32]> for CurveScalar {
-    #[inline]
-    fn as_ref(&self) -> &[u8; 32] {
-        self.0.as_bytes()
-    }
-}
-
-impl AsRef<[u8]> for CurveScalar {
-    #[inline]
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_bytes()
-    }
-}
-
-impl AsRef<Scalar> for CurveScalar {
-    #[inline]
-    fn as_ref(&self) -> &Scalar {
-        &self.0
+        Self {
+            scalar: Scalar::random(csprng),
+        }
     }
 }
 
 impl From<Scalar> for CurveScalar {
     #[inline]
     fn from(scalar: Scalar) -> Self {
-        Self(scalar)
+        Self { scalar }
     }
 }
 
 impl From<u64> for CurveScalar {
     #[inline]
     fn from(val: u64) -> Self {
-        Self(Scalar::from(val))
+        Self {
+            scalar: Scalar::from(val),
+        }
+    }
+}
+
+impl AsRef<[u8; 32]> for CurveScalar {
+    #[inline]
+    fn as_ref(&self) -> &[u8; 32] {
+        self.scalar.as_bytes()
+    }
+}
+
+// Implements Ord, PartialOrd, PartialEq, Hash. Requires AsRef<[u8;32]>.
+deduce_core_traits_from_public_bytes! { CurveScalar }
+
+impl AsRef<[u8]> for CurveScalar {
+    #[inline]
+    fn as_ref(&self) -> &[u8] {
+        self.scalar.as_bytes()
+    }
+}
+
+impl AsRef<Scalar> for CurveScalar {
+    #[inline]
+    fn as_ref(&self) -> &Scalar {
+        &self.scalar
     }
 }
 
 impl Into<Scalar> for CurveScalar {
     fn into(self) -> Scalar {
-        self.0
+        self.scalar
     }
 }
 
 impl ReprBytes32 for CurveScalar {
     type Error = Error;
     fn to_bytes(&self) -> [u8; 32] {
-        self.0.to_bytes()
+        self.scalar.to_bytes()
     }
     fn from_bytes(src: &[u8; 32]) -> Result<Self, Error> {
-        Ok(Self(Scalar::from_bytes_mod_order(*src)))
+        Ok(Self {
+            scalar: Scalar::from_bytes_mod_order(*src),
+        })
     }
 }
 
@@ -95,9 +108,11 @@ impl fmt::Debug for CurveScalar {
     }
 }
 
+// Implements prost::Message. Requires Debug and ReprBytes32.
 prost_message_helper32! { CurveScalar }
+
+// Implements try_from<&[u8;32]> and try_from<&[u8]>. Requires ReprBytes32.
 try_from_helper32! { CurveScalar }
-deduce_core_traits_from_public_bytes! { CurveScalar }
 
 #[cfg(test)]
 mod tests {
@@ -107,7 +122,7 @@ mod tests {
     fn test_to_from_bytes() {
         let one = Scalar::one();
         let curve_scalar = CurveScalar::from_bytes_mod_order(*one.as_bytes());
-        assert_eq!(curve_scalar.0, one);
+        assert_eq!(curve_scalar.scalar, one);
         assert_eq!(curve_scalar.as_bytes(), one.as_bytes());
     }
 
@@ -123,7 +138,7 @@ mod tests {
         let curve_scalar = CurveScalar::from_bytes_mod_order(l_plus_two_bytes);
         let two: Scalar = Scalar::one() + Scalar::one();
 
-        assert_eq!(curve_scalar.0, two);
+        assert_eq!(curve_scalar.scalar, two);
     }
 
     #[test]

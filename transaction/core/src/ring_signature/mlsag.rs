@@ -26,7 +26,7 @@ use crate::{
     onetime_keys::compute_key_image,
     ring_signature::{
         encoding::{read_u8_32, write_u8_32},
-        Blinding, Error, KeyImage, Scalar, GENERATORS,
+        Blinding, CurveScalar, Error, KeyImage, Scalar, GENERATORS,
     },
 };
 
@@ -36,86 +36,19 @@ fn hash_to_point(ristretto_public: &RistrettoPublic) -> RistrettoPoint {
 
 /// MLSAG for a ring of public keys and amount commitments.
 /// Note: Serialize and Deserialize appear to be cruft left over from sdk_json_interface.
-#[derive(Clone, Debug, Default, Digestible, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Digestible, PartialEq, Eq, Serialize, Deserialize, Message)]
 pub struct RingMLSAG {
     /// The initial challenge `c[0]`.
-    pub c_zero: Scalar,
+    #[prost(message, required, tag = "1")]
+    pub c_zero: CurveScalar,
 
     /// Responses `r_{0,0}, r_{0,1}, ... , r_{ring_size-1,0}, r_{ring_size-1,1}`.
-    pub responses: Vec<Scalar>,
+    #[prost(message, repeated, tag = "2")]
+    pub responses: Vec<CurveScalar>,
 
     /// Key image "spent" by this signature.
+    #[prost(message, required, tag = "3")]
     pub key_image: KeyImage,
-}
-
-const C_ZERO_TAG: u32 = 1;
-const RESPONSES_TAG: u32 = 2;
-const KEY_IMAGE_TAG: u32 = 3;
-
-/// Message allows RingMLSAG to be serialized with Prost (without using a protobuf).
-impl Message for RingMLSAG {
-    /// Encodes the message to the buffer.
-    fn encode_raw<B>(&self, buf: &mut B)
-    where
-        B: BufMut,
-        Self: Sized,
-    {
-        // c_zero
-        write_u8_32(self.c_zero.to_bytes(), C_ZERO_TAG, buf);
-
-        // responses
-        for response in &self.responses {
-            write_u8_32(response.to_bytes(), RESPONSES_TAG, buf);
-        }
-
-        // key_image
-        write_u8_32(self.key_image.to_bytes(), KEY_IMAGE_TAG, buf);
-    }
-
-    /// Decodes a field from a buffer, and merges it into `self`.
-    fn merge_field<B>(
-        &mut self,
-        tag: u32,
-        wire_type: WireType,
-        buf: &mut B,
-        ctx: DecodeContext,
-    ) -> Result<(), DecodeError>
-    where
-        B: Buf,
-        Self: Sized,
-    {
-        match tag {
-            C_ZERO_TAG => {
-                self.c_zero = Scalar::from_bytes_mod_order(read_u8_32(wire_type, buf)?);
-                Ok(())
-            }
-            RESPONSES_TAG => {
-                let response = Scalar::from_bytes_mod_order(read_u8_32(wire_type, buf)?);
-                self.responses.push(response);
-                Ok(())
-            }
-            KEY_IMAGE_TAG => {
-                self.key_image = KeyImage::from(read_u8_32(wire_type, buf)?);
-                Ok(())
-            }
-            _ => skip_field(wire_type, tag, buf, ctx),
-        }
-    }
-
-    /// Returns the encoded length of the message without a length delimiter.
-    fn encoded_len(&self) -> usize {
-        let c_zero_len = key_len(C_ZERO_TAG) + encoded_len_varint(32 as u64) + 32;
-        let responses_len =
-            (key_len(RESPONSES_TAG) + encoded_len_varint(32 as u64) + 32) * self.responses.len();
-        let key_image_len = key_len(KEY_IMAGE_TAG) + encoded_len_varint(32 as u64) + 32;
-
-        c_zero_len + responses_len + key_image_len
-    }
-
-    /// Clears the message, resetting all fields to their default.
-    fn clear(&mut self) {
-        *self = Self::default();
-    }
 }
 
 impl RingMLSAG {
@@ -279,9 +212,11 @@ impl RingMLSAG {
             }
         }
 
+        let responses: Vec<CurveScalar> = r.into_iter().map(CurveScalar::from).collect();
+
         Ok(RingMLSAG {
-            c_zero: c[0],
-            responses: r,
+            c_zero: CurveScalar::from(c[0]),
+            responses,
             key_image,
         })
     }
@@ -314,7 +249,11 @@ impl RingMLSAG {
             .try_into()
             .map_err(|_e| Error::InvalidKeyImage)?;
 
-        let r = &self.responses;
+        let r: Vec<Scalar> = self
+            .responses
+            .iter()
+            .map(|response| response.scalar)
+            .collect();
 
         // Output commitment must decompress.
         let output_commitment: Commitment = Commitment::try_from(output_commitment)?;
@@ -329,7 +268,7 @@ impl RingMLSAG {
         for (i, (P_i, input_commitment)) in decompressed_ring.iter().enumerate() {
             let c_i = if i == 0 {
                 // Initialize loop using the signature's c_0 term.
-                self.c_zero
+                self.c_zero.scalar
             } else {
                 recomputed_c[i]
             };
@@ -356,7 +295,7 @@ impl RingMLSAG {
             };
         }
 
-        if self.c_zero == recomputed_c[0] {
+        if self.c_zero.scalar == recomputed_c[0] {
             Ok(())
         } else {
             Err(Error::InvalidSignature)
@@ -390,7 +329,7 @@ mod mlsag_tests {
     use crate::{
         onetime_keys::compute_key_image,
         proptest_fixtures::*,
-        ring_signature::{mlsag::RingMLSAG, Error, Scalar, GENERATORS},
+        ring_signature::{mlsag::RingMLSAG, CurveScalar, Error, Scalar, GENERATORS},
         CompressedCommitment,
     };
 
@@ -484,7 +423,7 @@ mod mlsag_tests {
 
             // All responses should be non-zero.
             for r in &signature.responses {
-                assert_ne!(*r, Scalar::zero());
+                assert_ne!(r.scalar, Scalar::zero());
             }
         }
 
@@ -897,7 +836,7 @@ mod mlsag_tests {
             // Modify the signature to have too many responses.
             {
                 let mut invalid_signature = signature.clone();
-                invalid_signature.responses.push(Scalar::random(&mut rng));
+                invalid_signature.responses.push(CurveScalar::from_random(&mut rng));
 
                 let result =
                     invalid_signature.verify(&params.message, &params.ring, &output_commitment);
