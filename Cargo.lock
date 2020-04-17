@@ -2278,6 +2278,7 @@ dependencies = [
  "mobilecoind-api 0.1.0",
  "protobuf 2.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rust_decimal 1.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "structopt 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

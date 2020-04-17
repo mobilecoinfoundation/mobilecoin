@@ -1,16 +1,35 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
+//! A demo client for interacting with the MobileCoin test network using mobilecoind.
+
 use dialoguer::{theme::ColorfulTheme, Input, Select, Validator};
-use grpcio::ChannelBuilder;
+use grpcio::{ChannelBuilder, ChannelCredentialsBuilder};
 use indicatif::{ProgressBar, ProgressStyle};
 use mc_b58_payloads::payloads::RequestPayload;
 use mobilecoind_api::mobilecoind_api_grpc::MobilecoindApiClient;
 use protobuf::RepeatedField;
 use rust_decimal::{prelude::ToPrimitive, Decimal};
 use std::{fmt, str::FromStr, sync::Arc, thread, time::Duration};
+use structopt::StructOpt;
 
-fn main() {
-    TestnetClient::new().run();
+/// Command lien config.
+#[derive(StructOpt)]
+struct Config {
+    #[structopt(short = "s", long = "server", default_value = "127.0.0.1:4444")]
+    pub mobilecoind_host: String,
+
+    #[structopt(long)]
+    pub use_ssl: bool,
 }
 
+/// The main entry point.
+fn main() {
+    let config = Config::from_args();
+
+    TestnetClient::new(&config).run();
+}
+
+/// Commands in the main menu.
 enum Command {
     Send,
     Receive,
@@ -28,23 +47,32 @@ impl fmt::Display for Command {
     }
 }
 
+/// The actual test-net client implementation.
 struct TestnetClient {
     client: MobilecoindApiClient,
     monitor_id: Vec<u8>,
 }
 
 impl TestnetClient {
-    pub fn new() -> Self {
+    pub fn new(config: &Config) -> Self {
+        // Construct GRPC connection to mobilecoind.
         let env = Arc::new(grpcio::EnvBuilder::new().build());
-        let ch = ChannelBuilder::new(env)
+        let ch_builder = ChannelBuilder::new(env)
             .keepalive_permit_without_calls(true)
             .keepalive_time(Duration::from_secs(1))
             .keepalive_timeout(Duration::from_secs(20))
             .max_reconnect_backoff(Duration::from_millis(2000))
             .initial_reconnect_backoff(Duration::from_millis(1000))
             .max_receive_message_len(std::i32::MAX)
-            .max_send_message_len(std::i32::MAX)
-            .connect("cvm:4444");
+            .max_send_message_len(std::i32::MAX);
+
+        let ch = if config.use_ssl {
+            let creds = ChannelCredentialsBuilder::new().build();
+            ch_builder.secure_connect(&config.mobilecoind_host, creds)
+        } else {
+            ch_builder.connect(&config.mobilecoind_host)
+        };
+
         let client = MobilecoindApiClient::new(ch);
 
         TestnetClient {
@@ -53,6 +81,7 @@ impl TestnetClient {
         }
     }
 
+    /// The main UI loop.
     pub fn run(&mut self) {
         Self::print_intro();
 
@@ -97,6 +126,7 @@ impl TestnetClient {
         }
     }
 
+    /// Print a short introductory message.
     fn print_intro() {
         let intro = r#"
 **********************************************************************
@@ -114,6 +144,7 @@ Please enter the 32 byte root entropy for an account. If you received an email w
         println!("{}", intro);
     }
 
+    /// Get root entropy from user.
     fn get_root_entropy() -> [u8; 32] {
         #[derive(Clone)]
         struct EntropyBytes(pub [u8; 32]);
@@ -146,6 +177,7 @@ Please enter the 32 byte root entropy for an account. If you received an email w
             .0
     }
 
+    /// Add a monitor and wait for it to catch up.
     fn add_monitor_and_wait_for_sync(&mut self, entropy: &[u8; 32]) -> Result<(), String> {
         // Get account key from entropy
         let mut req = mobilecoind_api::GetAccountKeyRequest::new();
@@ -206,6 +238,7 @@ Please enter the 32 byte root entropy for an account. If you received an email w
         Ok(())
     }
 
+    /// Print the current balance.
     fn print_balance(&self) {
         let mut req = mobilecoind_api::GetBalanceRequest::new();
         req.set_monitor_id(self.monitor_id.clone());
@@ -228,6 +261,7 @@ Please enter the 32 byte root entropy for an account. If you received an email w
         }
     }
 
+    /// Send coins flow.
     fn send(&self) {
         // Print intro text.
         println!(
@@ -417,6 +451,7 @@ Please enter a payment request code. If you received an email with an allocation
         println!();
     }
 
+    /// Wait for mobilecoind to finish syncing our monitor.
     fn wait_for_sync(&self) -> Result<(), String> {
         let resp = self
             .client
@@ -441,6 +476,7 @@ Please enter a payment request code. If you received an email with an allocation
         Ok(())
     }
 
+    /// Receive coins flow.
     fn receive(&self) {
         println!("You can create a request code to share with another MobileCoin user as a bill to receive a payment. You can meet other TestNet users and share request codes online at the MobileCoin forum.");
         println!();
@@ -503,6 +539,7 @@ Please enter a payment request code. If you received an email with an allocation
         println!();
     }
 
+    /// Read an amount in MOB from the user.
     fn input_mob(prompt: &str, default: u64) -> u64 {
         // default is in picoMOB but we need it in MOB
         let mob_default = Decimal::from(default) / Decimal::from_scientific("1e12").unwrap();
@@ -532,6 +569,7 @@ Please enter a payment request code. If you received an email with an allocation
             .expect("failed converting to u64")
     }
 
+    /// Helper method for generating a transaction from a B58 request code.
     fn generate_tx(
         &self,
         request_payload: &RequestPayload,
@@ -574,6 +612,7 @@ Please enter a payment request code. If you received an email with an allocation
     }
 }
 
+/// Helper method for converting a u64 picomob value into human-readable form.
 fn u64_to_mob_display(val: u64) -> String {
     let mut decimal_val: Decimal = val.into();
 
@@ -597,6 +636,7 @@ fn u64_to_mob_display(val: u64) -> String {
     }
 }
 
+/// Tests.
 #[cfg(test)]
 mod tests {
     use super::*;
