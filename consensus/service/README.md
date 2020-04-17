@@ -154,7 +154,7 @@ SGX_MODE=HW IAS_MODE=DEV \
     CONSENSUS_ENCLAVE_SIGNED=$(pwd)/libconsensus-enclave.signed.so \
     cargo run --release -p consensus-service -- \
     --client-responder-id my_node.my_domain.com:443 \
-    --peer-responder-id node1.my_domain.com:8443?consensus-msg-key=MCowBQYDK2VwAyEAdm6tv2Mqp1ZM6Uw0MvhaiMq85l5GPDCH8-BAiO6itAo= \
+    --peer-responder-id node1.my_domain.com:8443 \
     --network /etc/mc-network.toml \
     --ias-api-key="${IAS_API_KEY}" \
     --ias-spid="${IAS_SPID}" \
