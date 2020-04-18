@@ -1,6 +1,6 @@
 [package]
-name = "ledger-distribution"
-version = "0.1.0"
+name = "mc-ledger-distribution"
+version = "0.1.5-alpha-1"
 authors = ["MobileCoin"]
 edition = "2018"
 
@@ -9,10 +9,10 @@ name = "ledger-distribution"
 path = "src/main.rs"
 
 [dependencies]
-common = { path = "../../common", features = ["log"] }
-ledger-db = { path = "../../ledger/db" }
-mobilecoin-api = { path = "../../consensus/api" }
-transaction = { path = "../../transaction/core" }
+mc-common = { path = "../../common", features = ["log"] }
+mc-ledger-db = { path = "../../ledger/db" }
+mc-consensus-api = { path = "../../consensus/api" }
+mc-transaction-core = { path = "../../transaction/core" }
 
 dirs = "2.0"
 dotenv = "0.14"

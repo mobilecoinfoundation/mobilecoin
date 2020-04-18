@@ -1,11 +1,11 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use crate::TxBuilderError;
-use keys::{RistrettoPrivate, RistrettoPublic};
+use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
+use mc_transaction_core::tx::{TxOut, TxOutMembershipProof};
 use rand::Rng;
 use rand_core::CryptoRng;
 use std::convert::TryFrom;
-use transaction::tx::{TxOut, TxOutMembershipProof};
 
 /// Credentials required to construct a ring signature for an input.
 #[derive(Clone, Debug)]

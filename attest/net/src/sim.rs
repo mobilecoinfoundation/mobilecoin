@@ -3,16 +3,16 @@
 //! An implementation of the IAS client for simulation purposes
 
 use crate::traits::{RaClient, Result};
-use attest::{
-    EpidGroupId, IasNonce, Quote, QuoteSignType, SigRL, VerificationReport, VerificationSignature,
-    IAS_SIM_SIGNING_CHAIN, IAS_SIM_SIGNING_KEY,
-};
 use mbedtls::{
     hash::Type as HashType,
     pk::Pk,
     rng::{CtrDrbg, OsEntropy},
 };
-use mc_encodings::ToBase64;
+use mc_attest_core::{
+    EpidGroupId, IasNonce, Quote, QuoteSignType, SigRL, VerificationReport, VerificationSignature,
+    IAS_SIM_SIGNING_CHAIN, IAS_SIM_SIGNING_KEY,
+};
+use mc_util_encodings::ToBase64;
 use pem::parse_many;
 use serde_json::json;
 use sha2::{digest::Digest, Sha256};
@@ -118,8 +118,8 @@ impl RaClient for SimClient {
 #[cfg(test)]
 mod test {
     use super::*;
-    use attest::IAS_SIM_ROOT_ANCHORS;
-    use mc_encodings::FromBase64;
+    use mc_attest_core::IAS_SIM_ROOT_ANCHORS;
+    use mc_util_encodings::FromBase64;
 
     const QUOTE_TEST: &str = include_str!("../data/quote_out_of_date.txt");
 

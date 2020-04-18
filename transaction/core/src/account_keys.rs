@@ -23,10 +23,10 @@ use core::{
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_POINT, ristretto::RistrettoPoint, scalar::Scalar,
 };
-use digestible::Digestible;
-use keys::{RistrettoPrivate, RistrettoPublic};
+use mc_crypto_digestible::Digestible;
+use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_util_from_random::FromRandom;
-use mcserial::{Message, ReprBytes32};
+use mc_util_serial::{Message, ReprBytes32};
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
@@ -333,18 +333,18 @@ mod testing {
 
     #[test]
     //Deserializing should recover a serialized a PublicAddress.
-    fn mcserial_roundtrip_public_address() {
-        test_helper::run_with_several_seeds(|mut rng| {
+    fn mc_util_serial_roundtrip_public_address() {
+        mc_util_test_helper::run_with_several_seeds(|mut rng| {
             {
                 let acct = AccountKey::random(&mut rng);
-                let ser = mcserial::serialize(&acct.default_subaddress()).unwrap();
-                let result: PublicAddress = mcserial::deserialize(&ser).unwrap();
+                let ser = mc_util_serial::serialize(&acct.default_subaddress()).unwrap();
+                let result: PublicAddress = mc_util_serial::deserialize(&ser).unwrap();
                 assert_eq!(acct.default_subaddress(), result);
             }
             {
                 let acct = AccountKey::random_with_fog(&mut rng);
-                let ser = mcserial::serialize(&acct.default_subaddress()).unwrap();
-                let result: PublicAddress = mcserial::deserialize(&ser).unwrap();
+                let ser = mc_util_serial::serialize(&acct.default_subaddress()).unwrap();
+                let result: PublicAddress = mc_util_serial::deserialize(&ser).unwrap();
                 assert_eq!(acct.default_subaddress(), result);
             }
         });

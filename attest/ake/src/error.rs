@@ -2,9 +2,9 @@
 
 //! AKE Errors
 
-use attest::VerifyError;
 use failure::Fail;
-use mcnoise::{CipherError, HandshakeError};
+use mc_attest_core::VerifyError;
+use mc_crypto_noise::{CipherError, HandshakeError};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Fail, PartialEq, PartialOrd, Serialize)]

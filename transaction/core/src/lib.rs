@@ -13,7 +13,7 @@ extern crate std;
 extern crate lazy_static;
 
 use crate::onetime_keys::compute_shared_secret;
-use keys::{RistrettoPrivate, RistrettoPublic};
+use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 
 pub mod account_keys;
 pub mod amount;

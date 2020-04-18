@@ -1,0 +1,16 @@
+[package]
+name = "mc-util-build-info"
+version = "0.1.5-alpha-1"
+authors = ["MobileCoin"]
+build = "build.rs"
+edition = "2018"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "show-build-info"
+path = "src/bin/main.rs"
+
+[dev-dependencies]
+json = "0.12"

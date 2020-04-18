@@ -13,8 +13,8 @@ use crate::{
     membership_proofs::{derive_proof_at_index, is_membership_proof_valid},
     tx::{Tx, TxOut, TxOutMembershipProof, TxPrefix},
 };
-use common::HashSet;
-use keys::CompressedRistrettoPublic;
+use mc_common::HashSet;
+use mc_crypto_keys::CompressedRistrettoPublic;
 use rand_core::{CryptoRng, RngCore};
 
 /// Determines if the transaction is valid, with respect to the provided context.
@@ -311,16 +311,16 @@ mod tests {
         },
         CompressedCommitment,
     };
-    use keys::CompressedRistrettoPublic;
-    use ledger_db::{Ledger, LedgerDB};
-    use mcserial::ReprBytes32;
-    use rand::{rngs::StdRng, SeedableRng};
-    use rand_core::RngCore;
-    use serde::{de::DeserializeOwned, ser::Serialize};
-    use transaction_test_utils::{
+    use mc_crypto_keys::CompressedRistrettoPublic;
+    use mc_ledger_db::{Ledger, LedgerDB};
+    use mc_transaction_core_test_utils::{
         create_ledger, create_transaction, create_transaction_with_amount, initialize_ledger,
         INITIALIZE_LEDGER_AMOUNT,
     };
+    use mc_util_serial::ReprBytes32;
+    use rand::{rngs::StdRng, SeedableRng};
+    use rand_core::RngCore;
+    use serde::{de::DeserializeOwned, ser::Serialize};
 
     // HACK: To test validation we need valid Tx objects. The code to create them is complicated,
     // and a variant of it resides inside the `transaction_test_utils` crate. However,when we
@@ -331,13 +331,13 @@ mod tests {
     // compiled as part of building test tests.
     // If we want to avoid this hack, we could move transaction validation into its own crate.
     fn adapt_hack<Src: Serialize, Dst: DeserializeOwned>(src: &Src) -> Dst {
-        let bytes = mcserial::serialize(src).unwrap();
-        mcserial::deserialize(&bytes).unwrap()
+        let bytes = mc_util_serial::serialize(src).unwrap();
+        mc_util_serial::deserialize(&bytes).unwrap()
     }
 
     fn create_test_tx() -> (Tx, LedgerDB) {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-        let sender = transaction_test_utils::AccountKey::random(&mut rng);
+        let sender = mc_transaction_core_test_utils::AccountKey::random(&mut rng);
         let mut ledger = create_ledger();
         let n_blocks = 1;
         initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
@@ -346,7 +346,7 @@ mod tests {
         let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
         let tx_out = block_contents.outputs[0].clone();
 
-        let recipient = transaction_test_utils::AccountKey::random(&mut rng);
+        let recipient = mc_transaction_core_test_utils::AccountKey::random(&mut rng);
         let tx = create_transaction(
             &mut ledger,
             &tx_out,
@@ -361,7 +361,7 @@ mod tests {
 
     fn create_test_tx_with_amount(amount: u64, fee: u64) -> (Tx, LedgerDB) {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-        let sender = transaction_test_utils::AccountKey::random(&mut rng);
+        let sender = mc_transaction_core_test_utils::AccountKey::random(&mut rng);
         let mut ledger = create_ledger();
         let n_blocks = 1;
         initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
@@ -370,7 +370,7 @@ mod tests {
         let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
         let tx_out = block_contents.outputs[0].clone();
 
-        let recipient = transaction_test_utils::AccountKey::random(&mut rng);
+        let recipient = mc_transaction_core_test_utils::AccountKey::random(&mut rng);
         let tx = create_transaction_with_amount(
             &mut ledger,
             &tx_out,

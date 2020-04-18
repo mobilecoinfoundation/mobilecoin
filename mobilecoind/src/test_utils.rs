@@ -11,22 +11,22 @@ use crate::{
     payments::TransactionsManager,
     service::Service,
 };
-use common::logger::{log, Logger};
 use grpcio::{ChannelBuilder, EnvBuilder};
-use keys::RistrettoPrivate;
-use ledger_db::{Ledger, LedgerDB};
-use mc_util_from_random::FromRandom;
-use mcconnection::ConnectionManager;
-use mcconnection_tests::{test_client_uri, MockUserTxConnection};
-use mcrand::{CryptoRng, RngCore};
-use mobilecoind_api::mobilecoind_api_grpc::MobilecoindApiClient;
-use tempdir::TempDir;
-use transaction::{
+use mc_common::logger::{log, Logger};
+use mc_connection::ConnectionManager;
+use mc_connection_test_utils::{test_client_uri, MockUserTxConnection};
+use mc_crypto_keys::RistrettoPrivate;
+use mc_crypto_rand::{CryptoRng, RngCore};
+use mc_ledger_db::{Ledger, LedgerDB};
+use mc_mobilecoind_api::mobilecoind_api_grpc::MobilecoindApiClient;
+use mc_transaction_core::{
     account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX},
     ring_signature::KeyImage,
     tx::TxOut,
     Block, BlockContents, BlockIndex, BLOCK_VERSION,
 };
+use mc_util_from_random::FromRandom;
+use tempdir::TempDir;
 
 use std::{
     path::PathBuf,
@@ -61,7 +61,9 @@ pub fn get_test_databases(
     mut rng: &mut (impl CryptoRng + RngCore),
 ) -> (LedgerDB, Database) {
     let mut public_addresses: Vec<PublicAddress> = (0..num_random_recipients)
-        .map(|_i| transaction::account_keys::AccountKey::random(&mut rng).default_subaddress())
+        .map(|_i| {
+            mc_transaction_core::account_keys::AccountKey::random(&mut rng).default_subaddress()
+        })
         .collect();
 
     public_addresses.extend(known_recipients.iter().cloned());

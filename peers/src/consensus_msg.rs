@@ -2,16 +2,16 @@
 
 //! Messages used in Consensus by Peers
 
-use common::{NodeID, ResponderId};
 use ed25519::signature::Error as SignatureError;
 use failure::Fail;
-use keys::{Ed25519Pair, Ed25519Signature, KeyError, Signer, Verifier};
-use ledger_db::Ledger;
-use scp::Msg;
+use mc_common::{NodeID, ResponderId};
+use mc_consensus_scp::Msg;
+use mc_crypto_keys::{Ed25519Pair, Ed25519Signature, KeyError, Signer, Verifier};
+use mc_ledger_db::Ledger;
+use mc_transaction_core::{tx::TxHash, BlockID};
 use serde::{Deserialize, Serialize};
 use sha2::{digest::Digest, Sha256};
 use std::{convert::TryFrom, result::Result as StdResult};
-use transaction::{tx::TxHash, BlockID};
 
 /// A consensus message holds the data that is exchanged by consensus service nodes as part of the
 /// process of reaching agreement on the contents of the next block.
@@ -78,7 +78,7 @@ pub enum ConsensusMsgError {
     ZeroSlot,
 
     #[fail(display = "Ledger db error: {}", _0)]
-    LedgerDbError(ledger_db::Error),
+    LedgerDbError(mc_ledger_db::Error),
 
     #[fail(display = "Serialization")]
     Serialization,
@@ -90,14 +90,14 @@ pub enum ConsensusMsgError {
     SignatureError(SignatureError),
 }
 
-impl From<ledger_db::Error> for ConsensusMsgError {
-    fn from(src: ledger_db::Error) -> Self {
+impl From<mc_ledger_db::Error> for ConsensusMsgError {
+    fn from(src: mc_ledger_db::Error) -> Self {
         ConsensusMsgError::LedgerDbError(src)
     }
 }
 
-impl From<mcserial::encode::Error> for ConsensusMsgError {
-    fn from(_src: mcserial::encode::Error) -> Self {
+impl From<mc_util_serial::encode::Error> for ConsensusMsgError {
+    fn from(_src: mc_util_serial::encode::Error) -> Self {
         ConsensusMsgError::Serialization
     }
 }
@@ -128,8 +128,8 @@ impl ConsensusMsg {
 
         let contents_hash = Sha256::digest(
             &[
-                mcserial::serialize(&scp_msg)?,
-                mcserial::serialize(&prev_block.id)?,
+                mc_util_serial::serialize(&scp_msg)?,
+                mc_util_serial::serialize(&prev_block.id)?,
             ]
             .concat(),
         );
@@ -156,8 +156,8 @@ impl ConsensusMsg {
     pub fn verify_signature(&self) -> StdResult<(), ConsensusMsgError> {
         let contents_hash = Sha256::digest(
             &[
-                mcserial::serialize(&self.scp_msg)?,
-                mcserial::serialize(&self.prev_block_id)?,
+                mc_util_serial::serialize(&self.scp_msg)?,
+                mc_util_serial::serialize(&self.prev_block_id)?,
             ]
             .concat(),
         );
@@ -172,9 +172,9 @@ impl ConsensusMsg {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ledger_db::test_utils::get_mock_ledger;
-    use peers_tests::test_node_id_and_signer;
-    use scp::{core_types::Ballot, msg::*, QuorumSet, SlotIndex};
+    use mc_consensus_scp::{core_types::Ballot, msg::*, QuorumSet, SlotIndex};
+    use mc_ledger_db::test_utils::get_mock_ledger;
+    use mc_peers_test_utils::test_node_id_and_signer;
     use std::convert::TryFrom;
 
     // Create a minimal ConsensusMsg for testing
@@ -230,36 +230,36 @@ mod tests {
     fn test_serialization() {
         let msg = create_msg_node_a();
 
-        let ser = mcserial::serialize(&msg.scp_msg.sender_id).unwrap();
-        let m: NodeID = mcserial::deserialize(&ser).unwrap();
+        let ser = mc_util_serial::serialize(&msg.scp_msg.sender_id).unwrap();
+        let m: NodeID = mc_util_serial::deserialize(&ser).unwrap();
         assert_eq!(msg.scp_msg.sender_id, m);
 
-        let ser = mcserial::serialize(&msg.scp_msg.slot_index).unwrap();
-        let m: SlotIndex = mcserial::deserialize(&ser).unwrap();
+        let ser = mc_util_serial::serialize(&msg.scp_msg.slot_index).unwrap();
+        let m: SlotIndex = mc_util_serial::deserialize(&ser).unwrap();
         assert_eq!(msg.scp_msg.slot_index, m);
 
-        let ser = mcserial::serialize(&msg.scp_msg.quorum_set).unwrap();
-        let m: QuorumSet = mcserial::deserialize(&ser).unwrap();
+        let ser = mc_util_serial::serialize(&msg.scp_msg.quorum_set).unwrap();
+        let m: QuorumSet = mc_util_serial::deserialize(&ser).unwrap();
         assert_eq!(msg.scp_msg.quorum_set, m);
 
-        let ser = mcserial::serialize(&msg.scp_msg.topic).unwrap();
-        let m: Topic<TxHash> = mcserial::deserialize(&ser).unwrap();
+        let ser = mc_util_serial::serialize(&msg.scp_msg.topic).unwrap();
+        let m: Topic<TxHash> = mc_util_serial::deserialize(&ser).unwrap();
         assert_eq!(msg.scp_msg.topic, m);
 
-        let ser = mcserial::serialize(&msg.scp_msg).unwrap();
-        let m: Msg<TxHash> = mcserial::deserialize(&ser).unwrap();
+        let ser = mc_util_serial::serialize(&msg.scp_msg).unwrap();
+        let m: Msg<TxHash> = mc_util_serial::deserialize(&ser).unwrap();
         assert_eq!(msg.scp_msg, m);
 
-        let ser = mcserial::serialize(&msg.prev_block_id).unwrap();
-        let b: BlockID = mcserial::deserialize(&ser).unwrap();
+        let ser = mc_util_serial::serialize(&msg.prev_block_id).unwrap();
+        let b: BlockID = mc_util_serial::deserialize(&ser).unwrap();
         assert_eq!(msg.prev_block_id, b);
 
-        let ser = mcserial::serialize(&msg.signature).unwrap();
-        let s: Ed25519Signature = mcserial::deserialize(&ser).unwrap();
+        let ser = mc_util_serial::serialize(&msg.signature).unwrap();
+        let s: Ed25519Signature = mc_util_serial::deserialize(&ser).unwrap();
         assert_eq!(msg.signature, s);
 
-        let serialized = mcserial::serialize(&msg).unwrap();
-        let m: ConsensusMsg = mcserial::deserialize(&serialized).unwrap();
+        let serialized = mc_util_serial::serialize(&msg).unwrap();
+        let m: ConsensusMsg = mc_util_serial::deserialize(&serialized).unwrap();
         assert_eq!(msg, m);
     }
 

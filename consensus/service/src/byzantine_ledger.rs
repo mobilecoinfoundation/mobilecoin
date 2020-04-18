@@ -8,23 +8,26 @@ use crate::{
     counters,
     tx_manager::{TxManager, TxManagerError, UntrustedInterfaces},
 };
-use common::{
+use mc_common::{
     logger::{log, Logger},
     HashMap, NodeID, ResponderId,
 };
-use consensus_enclave::ConsensusEnclaveProxy;
-use keys::Ed25519Pair;
-use ledger_db::Ledger;
-use ledger_sync::{LedgerSyncService, ReqwestTransactionsFetcher, SCPNetworkState};
-use mcconnection::{BlockchainConnection, ConnectionManager};
-use metered_channel::{self, Receiver, Sender};
-use peers::{
+use mc_connection::{BlockchainConnection, ConnectionManager};
+use mc_consensus_enclave::ConsensusEnclaveProxy;
+use mc_consensus_scp::{
+    scp_log::LoggingScpNode, slot::Phase, Msg, Node, QuorumSet, ScpNode, SlotIndex,
+};
+use mc_crypto_keys::Ed25519Pair;
+use mc_ledger_db::Ledger;
+use mc_ledger_sync::{LedgerSyncService, ReqwestTransactionsFetcher, SCPNetworkState};
+use mc_peers::{
     ConsensusConnection, ConsensusMsg, RetryableConsensusConnection, ThreadedBroadcaster,
     VerifiedConsensusMsg,
 };
+use mc_transaction_core::{tx::TxHash, BlockID};
+use mc_util_metered_channel::{self, Receiver, Sender};
 use rayon::{iter::ParallelIterator, prelude::IntoParallelIterator};
 use retry::delay::Fibonacci;
-use scp::{scp_log::LoggingScpNode, slot::Phase, Msg, Node, QuorumSet, ScpNode, SlotIndex};
 use std::{
     cmp::min,
     collections::{btree_map::Entry::Vacant, BTreeMap, BTreeSet},
@@ -37,7 +40,6 @@ use std::{
     thread::{self, JoinHandle},
     time::{Duration, Instant},
 };
-use transaction::{tx::TxHash, BlockID};
 
 /// Time we're allowed to stay behind before we initiate catchup.
 /// This reduces the amount of unnecessary catchups due to minor network issues.
@@ -88,7 +90,7 @@ impl ByzantineLedger {
         logger: Logger,
     ) -> Self {
         let (sender, receiver) =
-            metered_channel::unbounded(&counters::BYZANTINE_LEDGER_MESSAGE_QUEUE_SIZE);
+            mc_util_metered_channel::unbounded(&counters::BYZANTINE_LEDGER_MESSAGE_QUEUE_SIZE);
         let tx_manager_validate = tx_manager.clone();
         let tx_manager_combine = tx_manager.clone();
         let scp_node = Node::new(
@@ -943,17 +945,19 @@ impl<
 mod tests {
     use super::*;
     use crate::validators::DefaultTxManagerUntrustedInterfaces;
-    use common::logger::test_with_logger;
-    use consensus_enclave_mock::ConsensusServiceMockEnclave;
     use hex;
-    use keys::{DistinguishedEncoding, Ed25519Private};
-    use ledger_db::Ledger;
+    use mc_common::logger::test_with_logger;
+    use mc_consensus_enclave_mock::ConsensusServiceMockEnclave;
+    use mc_consensus_scp::{core_types::Ballot, msg::*};
+    use mc_crypto_keys::{DistinguishedEncoding, Ed25519Private};
+    use mc_ledger_db::Ledger;
+    use mc_peers_test_utils::MockPeerConnection;
+    use mc_transaction_core::account_keys::AccountKey;
+    use mc_transaction_core_test_utils::{create_ledger, create_transaction, initialize_ledger};
     use mc_util_from_random::FromRandom;
-    use mcuri::{ConnectionUri, ConsensusPeerUri as PeerUri};
-    use peers_tests::MockPeerConnection;
+    use mc_util_uri::{ConnectionUri, ConsensusPeerUri as PeerUri};
     use rand::{rngs::StdRng, SeedableRng};
     use rand_hc::Hc128Rng as FixedRng;
-    use scp::{core_types::Ballot, msg::*};
     use std::{
         collections::BTreeSet,
         convert::TryInto,
@@ -962,8 +966,6 @@ mod tests {
         sync::{Arc, Mutex},
         time::Instant,
     };
-    use transaction::account_keys::AccountKey;
-    use transaction_test_utils::{create_ledger, create_transaction, initialize_ledger};
 
     fn test_peer_uri(node_id: u32, pubkey: String) -> PeerUri {
         PeerUri::from_str(&format!(
@@ -1046,7 +1048,7 @@ mod tests {
 
         let broadcaster = Arc::new(Mutex::new(ThreadedBroadcaster::new(
             &peer_manager,
-            &peers::ThreadedBroadcasterFibonacciRetryPolicy::default(),
+            &mc_peers::ThreadedBroadcasterFibonacciRetryPolicy::default(),
             logger.clone(),
         )));
 

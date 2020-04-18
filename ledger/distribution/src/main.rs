@@ -6,16 +6,16 @@
 pub mod uri;
 
 use crate::uri::{Destination, Uri};
-use common::logger::{create_app_logger, log, o, Logger};
-use ledger_db::{Error as LedgerDbError, Ledger, LedgerDB};
-use mobilecoin_api::{blockchain, conversions::block_num_to_s3block_path};
+use mc_common::logger::{create_app_logger, log, o, Logger};
+use mc_consensus_api::{blockchain, conversions::block_num_to_s3block_path};
+use mc_ledger_db::{Error as LedgerDbError, Ledger, LedgerDB};
+use mc_transaction_core::{Block, BlockContents, BlockIndex, BlockSignature};
 use protobuf::Message;
 use rusoto_core::{Region, RusotoError};
 use rusoto_s3::{PutObjectError, PutObjectRequest, S3Client, S3};
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf, str::FromStr};
 use structopt::StructOpt;
-use transaction::{Block, BlockContents, BlockIndex, BlockSignature};
 
 pub trait BlockHandler {
     fn handle_block(
@@ -236,8 +236,8 @@ impl BlockHandler for LocalBlockWriter {
 fn main() {
     let config = Config::from_args();
 
-    common::setup_panic_handler();
-    let _sentry_guard = common::sentry::init();
+    mc_common::setup_panic_handler();
+    let _sentry_guard = mc_common::sentry::init();
     let (logger, _global_logger_guard) = create_app_logger(o!());
 
     // Get path to our state file.

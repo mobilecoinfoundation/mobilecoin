@@ -2,16 +2,16 @@
 
 //! Serves node-to-node attested gRPC requests.
 
-use attest_api::{attest::AuthMessage, attest_grpc::AttestedApi};
-use attest_enclave_api::{ClientSession, PeerSession, Session};
-use common::{
+use grpcio::{RpcContext, UnarySink};
+use mc_attest_api::{attest::AuthMessage, attest_grpc::AttestedApi};
+use mc_attest_enclave_api::{ClientSession, PeerSession, Session};
+use mc_common::{
     logger::{log, Logger},
     HashSet,
 };
-use consensus_enclave::ConsensusEnclaveProxy;
-use grpc_util::{rpc_logger, rpc_permissions_error, send_result};
-use grpcio::{RpcContext, UnarySink};
-use metrics::SVC_COUNTERS;
+use mc_consensus_enclave::ConsensusEnclaveProxy;
+use mc_util_grpc::{rpc_logger, rpc_permissions_error, send_result};
+use mc_util_metrics::SVC_COUNTERS;
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
@@ -34,7 +34,7 @@ impl<E: ConsensusEnclaveProxy, S: Session> AttestedApiService<E, S> {
 impl<E: ConsensusEnclaveProxy> AttestedApi for AttestedApiService<E, PeerSession> {
     fn auth(&mut self, ctx: RpcContext, request: AuthMessage, sink: UnarySink<AuthMessage>) {
         let _timer = SVC_COUNTERS.req(&ctx);
-        common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+        mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             // TODO: Use the prost message directly, once available
             match self.enclave.peer_accept(request.into()) {
                 Ok((response, session_id)) => {
@@ -73,7 +73,7 @@ impl<E: ConsensusEnclaveProxy> AttestedApi for AttestedApiService<E, PeerSession
 impl<E: ConsensusEnclaveProxy> AttestedApi for AttestedApiService<E, ClientSession> {
     fn auth(&mut self, ctx: RpcContext, request: AuthMessage, sink: UnarySink<AuthMessage>) {
         let _timer = SVC_COUNTERS.req(&ctx);
-        common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+        mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             // TODO: Use the prost message directly, once available
             match self.enclave.client_accept(request.into()) {
                 Ok((response, session_id)) => {

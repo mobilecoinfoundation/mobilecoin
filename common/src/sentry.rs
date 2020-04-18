@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-use build_info;
+use mc_util_build_info;
 use sentry as sentry_core;
 use std::env;
 
@@ -33,7 +33,7 @@ pub fn init() -> Option<sentry_core::internals::ClientInitGuard> {
 
             sentry_core::configure_scope(|scope| {
                 // Add our GIT commit to each message.
-                scope.set_tag("git_commit", build_info::GIT_COMMIT);
+                scope.set_tag("git_commit", mc_util_build_info::GIT_COMMIT);
 
                 // Add current thread name to each message.
                 scope.add_event_processor(Box::new(move |mut event| {

@@ -12,9 +12,9 @@ use lmdb::{
     Database, DatabaseFlags, Environment, EnvironmentFlags, RoTransaction, RwTransaction,
     Transaction, WriteFlags,
 };
-use mcserial::{deserialize, serialize, Message};
+use mc_transaction_core::{Block, BlockContents, BlockID, BlockSignature, BLOCK_VERSION};
+use mc_util_serial::{deserialize, serialize, Message};
 use std::{path::PathBuf, sync::Arc};
-use transaction::{Block, BlockContents, BlockID, BlockSignature, BLOCK_VERSION};
 
 mod error;
 mod ledger_trait;
@@ -25,7 +25,7 @@ pub mod test_utils;
 
 pub use error::Error;
 pub use ledger_trait::Ledger;
-use transaction::{
+use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipProof},
 };
@@ -151,7 +151,7 @@ impl Ledger for LedgerDB {
 
         // Get all TxOuts in block.
         let bytes = db_transaction.get(self.tx_outs_by_block, &u64_to_key_bytes(block_number))?;
-        let value: TxOutsByBlockValue = mcserial::decode(&bytes)?;
+        let value: TxOutsByBlockValue = mc_util_serial::decode(&bytes)?;
 
         let outputs = (value.first_tx_out_index..(value.first_tx_out_index + value.num_tx_outs))
             .map(|tx_out_index| {
@@ -378,7 +378,7 @@ impl LedgerDB {
         let next_tx_out_index = self.tx_out_store.num_tx_outs(db_transaction)?;
 
         // Store information about the TxOuts included in this block.
-        let bytes = mcserial::encode(&TxOutsByBlockValue {
+        let bytes = mc_util_serial::encode(&TxOutsByBlockValue {
             first_tx_out_index: next_tx_out_index,
             num_tx_outs: tx_outs.len() as u64,
         });
@@ -474,13 +474,13 @@ pub fn key_bytes_to_u64(bytes: &[u8]) -> u64 {
 mod ledger_db_test {
     use super::*;
     use core::convert::TryFrom;
-    use keys::RistrettoPrivate;
+    use mc_crypto_keys::RistrettoPrivate;
+    use mc_transaction_core::{account_keys::AccountKey, compute_block_id};
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
     use rand_core::RngCore;
     use tempdir::TempDir;
     use test::Bencher;
-    use transaction::{account_keys::AccountKey, compute_block_id};
 
     /// Creates a LedgerDB instance.
     fn create_db() -> LedgerDB {

@@ -1,0 +1,9 @@
+[package]
+name = "mc-sgx-debug-edl"
+version = "0.1.5-alpha-1"
+authors = ["MobileCoin"]
+edition = "2018"
+links = "sgx_debug_edl"
+
+[build-dependencies]
+cargo-emit = "0.1"

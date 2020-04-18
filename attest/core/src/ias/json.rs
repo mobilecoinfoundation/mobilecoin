@@ -2,8 +2,8 @@
 
 use crate::error::JsonError;
 use alloc::{string::String, vec::Vec};
-use common::HashMap;
 use core::convert::TryInto;
+use mc_common::HashMap;
 use rjson::{Array, Null, Object, Value};
 
 pub(crate) enum JsonValue {

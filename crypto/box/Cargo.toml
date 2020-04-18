@@ -1,6 +1,6 @@
 [package]
 name = "mc-crypto-box"
-version = "0.1.0"
+version = "0.1.5-alpha-1"
 authors = ["MobileCoin"]
 edition = "2018"
 
@@ -10,9 +10,9 @@ aes-gcm = { version = "0.3.0", default-features = false }
 blake2 = { version = "0.8", default-features = false }
 failure = { version = "0.1.5", default-features = false }
 hkdf = { version = "0.8.0", default-features = false }
-keys = { path = "../keys", default-features = false }
+mc-crypto-keys = { path = "../keys", default-features = false }
 rand_core = { version = "0.5", default-features = false }
 
 [dev_dependencies]
 mc-util-from-random = { path = "../../util/from-random" }
-test_helper = { path = "../../util/test-helper" }
+mc-util-test-helper = { path = "../../util/test-helper" }

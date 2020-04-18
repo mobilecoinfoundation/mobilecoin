@@ -10,12 +10,12 @@ extern crate alloc;
 
 use alloc::vec::Vec;
 use bulletproofs::RangeProof;
-use common::HashSet;
 use core::convert::TryFrom;
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
-use digestible::Digestible;
-use keys::{CompressedRistrettoPublic, RistrettoPrivate};
-use mcserial::{prost::Message, serialize};
+use mc_common::HashSet;
+use mc_crypto_digestible::Digestible;
+use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
+use mc_util_serial::{prost::Message, serialize};
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
@@ -350,7 +350,7 @@ mod rct_bulletproofs_tests {
     };
     use alloc::vec::Vec;
     use curve25519_dalek::scalar::Scalar;
-    use keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
+    use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
     use mc_util_from_random::FromRandom;
     use proptest::prelude::*;
     use rand::{rngs::StdRng, CryptoRng, SeedableRng};
@@ -730,14 +730,14 @@ mod rct_bulletproofs_tests {
             )
             .unwrap();
 
-            use mcserial::prost::Message;
+            use mc_util_serial::prost::Message;
 
             // The encoded bytes should have the correct length.
-            let bytes = mcserial::encode(&signature);
+            let bytes = mc_util_serial::encode(&signature);
             assert_eq!(bytes.len(), signature.encoded_len());
 
             // decode(encode(&signature)) should be the identity function.
-            let recovered_signature : SignatureRctBulletproofs = mcserial::decode(&bytes).unwrap();
+            let recovered_signature : SignatureRctBulletproofs = mc_util_serial::decode(&bytes).unwrap();
             assert_eq!(signature, recovered_signature);
         }
 

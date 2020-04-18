@@ -1,6 +1,6 @@
 [package]
-name = "attest"
-version = "0.1.0"
+name = "mc-attest-core"
+version = "0.1.5-alpha-1"
 authors = ["MobileCoin"]
 edition = "2018"
 description = '''
@@ -14,7 +14,7 @@ verify the contents of the report as returned by Intel.
 [features]
 default = ["std"]
 std = [
-    "common/std",
+    "mc-common/std",
     "digest/std",
     "failure/std",
     "mbedtls/std",
@@ -27,10 +27,10 @@ sgx-sim = []
 ias-dev = []
 
 [dependencies]
-common = { path = "../../common", default-features = false }
-mc-encodings = { path = "../../util/encodings" }
-mcrand = { path = "../../crypto/mcrand" }
-sgx_types = { path = "../../sgx/sgx_types" }
+mc-common = { path = "../../common", default-features = false }
+mc-crypto-rand = { path = "../../crypto/rand" }
+mc-util-encodings = { path = "../../util/encodings" }
+mc-sgx-types = { path = "../../sgx/types" }
 
 mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.2", default-features = false }
 
@@ -49,7 +49,7 @@ generic-array = { version = "0.12" }
 prost = { version = "0.6.1", default-features = false }
 
 [dev-dependencies]
-mcserial = { path = "../../util/mcserial" }
+mc-util-serial = { path = "../../util/serial" }
 hex = "0.3.2"
 pem = "0.6"
 rand = "0.7"
@@ -59,7 +59,7 @@ rand_hc = "0.2"
 # We use mbedtls to generate certificates for simulation mode
 mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.2", default-features = false }
 mbedtls-sys-auto = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.2", default-features = false }
-mcrand = { path = "../../crypto/mcrand" }
 rand_core = { version = "0.5", default-features = false }
 chrono = "0.4"
-sgx_build =  { path = "../../sgx/sgx_build" }
+mc-crypto-rand = { path = "../../crypto/rand" }
+mc-sgx-build =  { version = "0.1.5-alpha-1", path = "../../sgx/build" }

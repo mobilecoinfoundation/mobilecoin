@@ -3,15 +3,15 @@
 //! A Peer-to-Peer networking error.
 
 use crate::ConsensusMsgError;
-use consensus_enclave_api::Error as EnclaveError;
 use failure::Fail;
 use grpcio::Error as GrpcError;
-use mcconnection::AttestationError;
-use mcserial::{
+use mc_connection::AttestationError;
+use mc_consensus_api::ConversionError;
+use mc_consensus_enclave_api::Error as EnclaveError;
+use mc_util_serial::{
     decode::Error as RmpDecodeError, encode::Error as RmpEncodeError,
     DecodeError as ProstDecodeError, EncodeError as ProstEncodeError,
 };
-use mobilecoin_api::ConversionError;
 use retry::Error as RetryError;
 use std::{array::TryFromSliceError, result::Result as StdResult};
 

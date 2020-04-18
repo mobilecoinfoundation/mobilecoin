@@ -5,10 +5,10 @@
 use crate::mealy::State;
 use aead::{AeadMut, NewAead};
 use alloc::{string::String, vec::Vec};
-use attest::Measurement;
 use digest::{BlockInput, FixedOutput, Input, Reset};
-use keys::Kex;
-use mcnoise::{CipherError, CipherState, HandshakeState, NoiseCipher};
+use mc_attest_core::Measurement;
+use mc_crypto_keys::Kex;
+use mc_crypto_noise::{CipherError, CipherState, HandshakeState, NoiseCipher};
 
 /// The state of a node (initiator or responder) before anything has happened
 /// yet.

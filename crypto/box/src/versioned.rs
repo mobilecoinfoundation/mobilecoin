@@ -32,7 +32,7 @@ use aead::{
 };
 use alloc::vec::Vec;
 use failure::Fail;
-use keys::{RistrettoPrivate, RistrettoPublic};
+use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use rand_core::{CryptoRng, RngCore};
 
 ////

@@ -1,6 +1,6 @@
 [package]
-name = "peers"
-version = "1.0.0"
+name = "mc-peers"
+version = "0.1.5-alpha-1"
 authors = ["MobileCoin"]
 edition = "2018"
 
@@ -8,18 +8,18 @@ edition = "2018"
 test_utils = []
 
 [dependencies]
-attest-api = { path = "../attest/api" }
-attest-enclave-api = { path = "../attest/enclave_api" }
-common = { path = "../common", features = ["log"] }
-consensus-enclave-api = { path = "../consensus/enclave/api" }
-keys = { path = "../crypto/keys" }
-ledger-db = { path = "../ledger/db" }
-mcconnection = { path = "../mcconnection" }
-mcserial = { path = "../util/mcserial" }
-mcuri = { path = "../util/mcuri" }
-mobilecoin-api = { path = "../consensus/api" }
-scp = { path = "../consensus/scp" }
-transaction = { path = "../transaction/core" }
+mc-attest-api = { path = "../attest/api" }
+mc-attest-enclave-api = { path = "../attest/enclave-api" }
+mc-common = { path = "../common", features = ["log"] }
+mc-connection = { path = "../connection" }
+mc-consensus-api = { path = "../consensus/api" }
+mc-consensus-enclave-api = { path = "../consensus/enclave/api" }
+mc-consensus-scp = { path = "../consensus/scp" }
+mc-crypto-keys = { path = "../crypto/keys" }
+mc-ledger-db = { path = "../ledger/db" }
+mc-transaction-core = { path = "../transaction/core" }
+mc-util-serial = { path = "../util/serial" }
+mc-util-uri = { path = "../util/uri" }
 
 crossbeam-channel = "0.3"
 ed25519 = { version = "1.0.0-pre.1", default-features = false, features = ["serde"] }
@@ -32,8 +32,8 @@ serde = { version = "1.0", default-features = false, features = ["alloc", "deriv
 url = "2.1"
 
 [dev-dependencies]
-mcconnection-tests = { path = "../mcconnection/test-utils" }
-peers-tests = { path = "./test-utils" }
+mc-connection-test-utils = { path = "../connection/test-utils" }
+mc-peers-test-utils = { path = "./test-utils" }
 
 rand_hc = "0.2"
 rand = "0.7"

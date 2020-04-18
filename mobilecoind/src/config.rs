@@ -2,11 +2,11 @@
 
 //! Configuration parameters for mobilecoind
 
-use attest::Measurement;
-use common::{logger::Logger, ResponderId};
-use mcconnection::{ConnectionManager, ThickClient};
-use mcuri::{ConnectionUri, ConsensusClientUri};
-use scp::QuorumSet;
+use mc_attest_core::Measurement;
+use mc_common::{logger::Logger, ResponderId};
+use mc_connection::{ConnectionManager, ThickClient};
+use mc_consensus_scp::QuorumSet;
+use mc_util_uri::{ConnectionUri, ConsensusClientUri};
 use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 use structopt::StructOpt;
 

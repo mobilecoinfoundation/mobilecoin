@@ -1,13 +1,13 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use crate::tx_manager::TxManagerError;
-use common::logger::global_log;
-use consensus_enclave::Error as EnclaveError;
 use failure::Fail;
 use grpcio::{RpcStatus, RpcStatusCode};
-use ledger_db::Error as LedgerError;
-use mobilecoin_api::consensus_common::{ProposeTxResponse, ProposeTxResult};
-use transaction::validation::TransactionValidationError;
+use mc_common::logger::global_log;
+use mc_consensus_api::consensus_common::{ProposeTxResponse, ProposeTxResult};
+use mc_consensus_enclave::Error as EnclaveError;
+use mc_ledger_db::Error as LedgerError;
+use mc_transaction_core::validation::TransactionValidationError;
 
 #[derive(Debug, Fail)]
 pub enum ConsensusGrpcError {

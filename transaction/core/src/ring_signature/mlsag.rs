@@ -7,9 +7,9 @@ use core::convert::TryFrom;
 
 use blake2::{Blake2b, Digest};
 use curve25519_dalek::ristretto::RistrettoPoint;
-use digestible::Digestible;
-use keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
-use mcserial::{prost::Message, ReprBytes32};
+use mc_crypto_digestible::Digestible;
+use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
+use mc_util_serial::{prost::Message, ReprBytes32};
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
@@ -333,7 +333,7 @@ mod mlsag_tests {
         CompressedCommitment,
     };
     use alloc::vec::Vec;
-    use keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
+    use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
     use mc_util_from_random::FromRandom;
     use proptest::prelude::*;
     use rand::{rngs::StdRng, CryptoRng, SeedableRng};
@@ -876,14 +876,14 @@ mod mlsag_tests {
             )
             .unwrap();
 
-            use mcserial::prost::Message;
+            use mc_util_serial::prost::Message;
 
             // The encoded bytes should have the correct length.
-            let bytes = mcserial::encode(&signature);
+            let bytes = mc_util_serial::encode(&signature);
             assert_eq!(bytes.len(), signature.encoded_len());
 
             // decode(encode(&signature)) should be the identity function.
-            let recovered_signature = mcserial::decode(&bytes).unwrap();
+            let recovered_signature = mc_util_serial::decode(&bytes).unwrap();
             assert_eq!(signature, recovered_signature);
         }
 

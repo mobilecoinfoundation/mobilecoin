@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-use digestible::{Digest, Digestible};
+use mc_crypto_digestible::{Digest, Digestible};
 use sha3::Sha3_256;
 
 struct Foo {}

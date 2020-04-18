@@ -8,11 +8,11 @@ use crate::{
     subaddress_store::SubaddressId,
 };
 
-use common::{logger::Logger, HashMap};
 use lmdb::{Cursor, Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
-use mcserial::Message;
+use mc_common::{logger::Logger, HashMap};
+use mc_transaction_core::{ring_signature::KeyImage, tx::TxOut};
+use mc_util_serial::Message;
 use std::{convert::TryFrom, sync::Arc};
-use transaction::{ring_signature::KeyImage, tx::TxOut};
 
 // LMDB Database Names
 pub const SUBADDRESS_ID_TO_UTXO_ID_DB_NAME: &str =
@@ -141,7 +141,7 @@ impl UtxoStore {
         }
 
         // Store the utxo_id -> UnspentTxOut if it is not already in the database.
-        let utxo_bytes = mcserial::encode(utxo);
+        let utxo_bytes = mc_util_serial::encode(utxo);
         match db_txn.put(
             self.utxo_id_to_utxo,
             &utxo_id,
@@ -350,7 +350,7 @@ impl UtxoStore {
             utxo.attempted_spend_height = attempted_spend_height;
             utxo.attempted_spend_tombstone = attempted_spend_tombstone;
 
-            let utxo_bytes = mcserial::encode(&utxo);
+            let utxo_bytes = mc_util_serial::encode(&utxo);
             db_txn.put(
                 self.utxo_id_to_utxo,
                 utxo_id,
@@ -390,7 +390,7 @@ impl UtxoStore {
         utxo_id: &UtxoId,
     ) -> Result<UnspentTxOut, Error> {
         match db_txn.get(self.utxo_id_to_utxo, &utxo_id) {
-            Ok(value_bytes) => Ok(mcserial::decode(value_bytes)?),
+            Ok(value_bytes) => Ok(mc_util_serial::decode(value_bytes)?),
             Err(lmdb::Error::NotFound) => Err(Error::UtxoIdNotFound),
             Err(err) => Err(err.into()),
         }
@@ -401,12 +401,12 @@ impl UtxoStore {
 mod test {
     use super::*;
     use crate::test_utils::{get_test_databases, get_test_monitor_data_and_id};
-    use common::{
+    use mc_common::{
         logger::{test_with_logger, Logger},
         HashSet,
     };
-    use ledger_db::{Ledger, LedgerDB};
-    use mcrand::{CryptoRng, RngCore};
+    use mc_crypto_rand::{CryptoRng, RngCore};
+    use mc_ledger_db::{Ledger, LedgerDB};
     use rand::{rngs::StdRng, SeedableRng};
     use std::iter::FromIterator;
     use tempdir::TempDir;

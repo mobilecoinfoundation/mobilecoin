@@ -32,11 +32,11 @@ fn main() {
 
     println!("Writing to {:?}", path);
 
-    keyfile::keygen::write_default_keyfiles(
+    mc_util_keyfile::keygen::write_default_keyfiles(
         path,
         config.num,
         config.acct.as_ref().map(|x| x.as_str()),
-        config.seed.unwrap_or(keyfile::keygen::DEFAULT_SEED),
+        config.seed.unwrap_or(mc_util_keyfile::keygen::DEFAULT_SEED),
     )
     .unwrap();
 }

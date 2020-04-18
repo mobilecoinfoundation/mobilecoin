@@ -1,10 +1,10 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 //! This file provides a no-std Hasher object that is wired to take seeds from mcrand
-//! RdRandRng. This hasher is used in `common::HashMap` in and out of the enclave.
+//! RdRandRng. This hasher is used in `mc_common::HashMap` in and out of the enclave.
 
 use core::hash::BuildHasher;
-use mcrand::McRng;
+use mc_crypto_rand::McRng;
 use rand_core::RngCore;
 use siphasher::sip::SipHasher13;
 

@@ -14,29 +14,29 @@ extern crate alloc;
 
 mod identity;
 
-use ake_enclave::AkeEnclaveState;
 use alloc::{collections::BTreeSet, format, vec::Vec};
-use attest::{IasNonce, IntelSealed, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
-use attest_enclave_api::{
+use core::convert::{TryFrom, TryInto};
+use identity::Ed25519Identity;
+use mc_attest_core::{
+    IasNonce, IntelSealed, Quote, QuoteNonce, Report, TargetInfo, VerificationReport,
+};
+use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage,
     Error as AttestEnclaveError, PeerAuthRequest, PeerAuthResponse, PeerSession,
 };
-use attest_trusted::SealAlgo;
-use common::ResponderId;
-use consensus_enclave_api::{
+use mc_attest_trusted::SealAlgo;
+use mc_common::ResponderId;
+use mc_consensus_enclave_api::{
     ConsensusEnclave, Error, LocallyEncryptedTx, Result, SealedBlockSigningKey, TxContext,
     WellFormedEncryptedTx, WellFormedTxContext,
 };
-use core::convert::{TryFrom, TryInto};
-use digestible::Digestible;
-use identity::Ed25519Identity;
-use keys::{Ed25519Pair, Ed25519Public, RistrettoPrivate, RistrettoPublic, X25519Public};
-use mcrand::McRng;
-use message_cipher::{AesMessageCipher, MessageCipher};
-use prost::Message;
-use rand_core::{CryptoRng, RngCore};
-use sgx_compat::sync::Mutex;
-use transaction::{
+use mc_crypto_ake_enclave::AkeEnclaveState;
+use mc_crypto_digestible::Digestible;
+use mc_crypto_keys::{Ed25519Pair, Ed25519Public, RistrettoPrivate, RistrettoPublic, X25519Public};
+use mc_crypto_message_cipher::{AesMessageCipher, MessageCipher};
+use mc_crypto_rand::McRng;
+use mc_sgx_compat::sync::Mutex;
+use mc_transaction_core::{
     account_keys::PublicAddress,
     amount::Amount,
     blake2b_256::Blake2b256,
@@ -46,6 +46,8 @@ use transaction::{
     tx::{Tx, TxOut, TxOutMembershipProof},
     Block, BlockContents, BlockSignature, BLOCK_VERSION,
 };
+use prost::Message;
+use rand_core::{CryptoRng, RngCore};
 
 /// A well-formed transaction.
 #[derive(Clone, Eq, PartialEq, Message)]
@@ -110,7 +112,7 @@ impl SgxConsensusEnclave {
         well_formed_tx: &WellFormedTx,
         rng: &mut R,
     ) -> Result<WellFormedEncryptedTx> {
-        let well_formed_tx_bytes = mcserial::encode(well_formed_tx);
+        let well_formed_tx_bytes = mc_util_serial::encode(well_formed_tx);
 
         Ok(WellFormedEncryptedTx(
             self.well_formed_encrypted_tx_cipher
@@ -122,7 +124,7 @@ impl SgxConsensusEnclave {
     fn decrypt_well_formed_tx(&self, encrypted: &WellFormedEncryptedTx) -> Result<WellFormedTx> {
         let mut cipher = self.well_formed_encrypted_tx_cipher.lock()?;
         let plaintext = cipher.decrypt_bytes(encrypted.0.clone())?;
-        let well_formed_tx: WellFormedTx = mcserial::decode(&plaintext)?;
+        let well_formed_tx: WellFormedTx = mc_util_serial::decode(&plaintext)?;
         Ok(well_formed_tx)
     }
 }
@@ -215,7 +217,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let tx_bytes = self.ake.client_decrypt(msg)?;
 
         // Try and deserialize.
-        let tx: Tx = mcserial::decode(&tx_bytes)?;
+        let tx: Tx = mc_util_serial::decode(&tx_bytes)?;
 
         // Convert to TxContext
         let maybe_locally_encrypted_tx: Result<LocallyEncryptedTx> = {
@@ -244,13 +246,13 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 
         // Try and deserialize.
         // Use prost
-        let txs = mcserial::decode::<TxList>(&data)?.txs;
+        let txs = mc_util_serial::decode::<TxList>(&data)?.txs;
 
         // Convert to TxContexts
         let mut rng = McRng::default();
         txs.into_iter()
             .map(|tx| {
-                let tx_bytes = mcserial::encode(&tx);
+                let tx_bytes = mc_util_serial::encode(&tx);
                 let maybe_locally_encrypted_tx: Result<LocallyEncryptedTx> = {
                     let mut cipher = self.locally_encrypted_tx_cipher.lock()?;
                     Ok(LocallyEncryptedTx(cipher.encrypt_bytes(&mut rng, tx_bytes)))
@@ -295,11 +297,11 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             .locally_encrypted_tx_cipher
             .lock()?
             .decrypt_bytes(locally_encrypted_tx.0)?;
-        let tx: Tx = mcserial::decode(&decrypted_bytes)?;
+        let tx: Tx = mc_util_serial::decode(&decrypted_bytes)?;
 
         // Validate.
         let mut csprng = McRng::default();
-        transaction::validation::validate(&tx, block_index, &proofs, &mut csprng)?;
+        mc_transaction_core::validation::validate(&tx, block_index, &proofs, &mut csprng)?;
 
         // Convert into a well formed encrypted transaction + context.
         let well_formed_tx_context = WellFormedTxContext::from(&tx);
@@ -334,7 +336,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                 });
 
         // Serialize this for the peer.
-        let serialized_txs = mcserial::encode(&TxList { txs: txs? });
+        let serialized_txs = mc_util_serial::encode(&TxList { txs: txs? });
 
         // Encrypt for the peer.
         Ok(self.ake.peer_encrypt(peer, aad, &serialized_txs)?)
@@ -363,7 +365,12 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let mut rng = McRng::default();
 
         for (tx, proofs) in transactions_with_proofs.iter() {
-            transaction::validation::validate(tx, parent_block.index + 1, proofs, &mut rng)?;
+            mc_transaction_core::validation::validate(
+                tx,
+                parent_block.index + 1,
+                proofs,
+                &mut rng,
+            )?;
 
             for proof in proofs {
                 let root_element = proof
@@ -506,15 +513,15 @@ fn mint_aggregate_fee(tx_private_key: &RistrettoPrivate, total_fee: u64) -> Resu
 mod tests {
 
     use super::*;
-    use ledger_db::Ledger;
-    use rand_core::SeedableRng;
-    use rand_hc::Hc128Rng;
-    use transaction::{
+    use mc_ledger_db::Ledger;
+    use mc_transaction_core::{
         account_keys::AccountKey, constants::FEE_VIEW_PRIVATE_KEY,
         onetime_keys::view_key_matches_output, tx::TxOutMembershipHash,
         validation::TransactionValidationError, view_key::ViewKey,
     };
-    use transaction_test_utils::{create_ledger, create_transaction, initialize_ledger};
+    use mc_transaction_core_test_utils::{create_ledger, create_transaction, initialize_ledger};
+    use rand_core::SeedableRng;
+    use rand_hc::Hc128Rng;
 
     #[test]
     fn test_tx_is_well_formed_works() {
@@ -543,7 +550,7 @@ mod tests {
         );
 
         // Create a LocallyEncryptedTx that can be fed into `tx_is_well_formed`.
-        let tx_bytes = mcserial::encode(&tx);
+        let tx_bytes = mc_util_serial::encode(&tx);
         let locally_encrypted_tx = LocallyEncryptedTx(
             enclave
                 .locally_encrypted_tx_cipher
@@ -610,7 +617,7 @@ mod tests {
         );
 
         // Create a LocallyEncryptedTx that can be fed into `tx_is_well_formed`.
-        let tx_bytes = mcserial::encode(&tx);
+        let tx_bytes = mc_util_serial::encode(&tx);
         let locally_encrypted_tx = LocallyEncryptedTx(
             enclave
                 .locally_encrypted_tx_cipher
@@ -629,7 +636,7 @@ mod tests {
         assert_eq!(
             enclave.tx_is_well_formed(
                 locally_encrypted_tx.clone(),
-                block_index + transaction::constants::MAX_TOMBSTONE_BLOCKS,
+                block_index + mc_transaction_core::constants::MAX_TOMBSTONE_BLOCKS,
                 proofs.clone(),
             ),
             Err(Error::MalformedTx(
@@ -654,7 +661,9 @@ mod tests {
 
         assert_eq!(
             enclave.tx_is_well_formed(corrputed_locally_encrypted_tx, block_index, proofs),
-            Err(Error::CacheCipher(message_cipher::CipherError::MacFailure))
+            Err(Error::CacheCipher(
+                mc_crypto_message_cipher::CipherError::MacFailure
+            ))
         );
     }
 

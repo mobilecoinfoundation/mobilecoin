@@ -14,8 +14,8 @@ use core::{
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
-use mc_encodings::{Error as EncodingError, FromX64, ToX64};
 use mc_sgx_core_types_sys::sgx_report_t;
+use mc_util_encodings::{Error as EncodingError, FromX64, ToX64};
 
 const BODY_START: usize = 0;
 const BODY_END: usize = REPORT_BODY_SIZE;

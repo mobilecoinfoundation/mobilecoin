@@ -4,23 +4,25 @@
 //! consensus. This is currently implemented by faking SCP messages and utilizing SCPNetworkState.
 
 use crate::{network_state_trait::NetworkState, scp_network_state::SCPNetworkState};
-use common::{
+use mc_common::{
     logger::{log, Logger},
     HashMap, HashSet, ResponderId,
 };
-use mcconnection::{
+use mc_connection::{
     BlockchainConnection, Connection, ConnectionManager, RetryableBlockchainConnection,
 };
-use mcuri::ConnectionUri;
+use mc_consensus_scp::{
+    core_types::Ballot, msg::ExternalizePayload, Msg, QuorumSet, SlotIndex, Topic,
+};
+use mc_transaction_core::BlockIndex;
+use mc_util_uri::ConnectionUri;
 use retry::delay::Fibonacci;
-use scp::{core_types::Ballot, msg::ExternalizePayload, Msg, QuorumSet, SlotIndex, Topic};
 use std::{
     str::FromStr,
     sync::{Arc, Condvar, Mutex},
     thread,
     time::Duration,
 };
-use transaction::BlockIndex;
 
 // Since PollingNetworkState is not a full-fledged consensus node, it does not have a local node
 // id. However, quorum tests inside the scp crate require a local node id, so we provide one.

@@ -8,9 +8,9 @@ use crate::{
     empty::Empty,
     rpc_logger, send_result,
 };
-use common::logger::Logger;
 use grpcio::{RpcContext, Service, UnarySink};
-use metrics::SVC_COUNTERS;
+use mc_common::logger::Logger;
+use mc_util_metrics::SVC_COUNTERS;
 
 #[derive(Clone)]
 pub struct BuildInfoService {
@@ -33,16 +33,16 @@ impl BuildInfoApi for BuildInfoService {
         let logger = rpc_logger(&ctx, &self.logger);
 
         let mut resp = BuildInfoResponse::new();
-        resp.set_git_commit(::build_info::GIT_COMMIT.to_owned());
-        resp.set_profile(::build_info::PROFILE.to_owned());
-        resp.set_debug(::build_info::DEBUG.to_owned());
-        resp.set_opt_level(::build_info::OPT_LEVEL.to_owned());
-        resp.set_debug_assertions(::build_info::DEBUG_ASSERTIONS.to_owned());
-        resp.set_target_arch(::build_info::TARGET_OS.to_owned());
-        resp.set_target_feature(::build_info::TARGET_FEATURE.to_owned());
-        resp.set_rustflags(::build_info::RUSTFLAGS.to_owned());
-        resp.set_sgx_mode(::build_info::SGX_MODE.to_owned());
-        resp.set_ias_mode(::build_info::IAS_MODE.to_owned());
+        resp.set_git_commit(::mc_util_build_info::GIT_COMMIT.to_owned());
+        resp.set_profile(::mc_util_build_info::PROFILE.to_owned());
+        resp.set_debug(::mc_util_build_info::DEBUG.to_owned());
+        resp.set_opt_level(::mc_util_build_info::OPT_LEVEL.to_owned());
+        resp.set_debug_assertions(::mc_util_build_info::DEBUG_ASSERTIONS.to_owned());
+        resp.set_target_arch(::mc_util_build_info::TARGET_OS.to_owned());
+        resp.set_target_feature(::mc_util_build_info::TARGET_FEATURE.to_owned());
+        resp.set_rustflags(::mc_util_build_info::RUSTFLAGS.to_owned());
+        resp.set_sgx_mode(::mc_util_build_info::SGX_MODE.to_owned());
+        resp.set_ias_mode(::mc_util_build_info::IAS_MODE.to_owned());
         send_result(ctx, sink, Ok(resp), &logger);
     }
 }

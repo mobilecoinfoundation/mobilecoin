@@ -1,6 +1,6 @@
 [package]
-name = "consensus-enclave-impl"
-version = "0.1.0"
+name = "mc-consensus-enclave-impl"
+version = "0.1.5-alpha-1"
 authors = ["MobileCoin"]
 edition = "2018"
 description = '''
@@ -20,27 +20,28 @@ sgx-sim is now applied to crates in build.rs as needed, by reading SGX_MODE env
 [features]
 default = ["std"]
 std = [
-    "consensus-enclave-api/std",
+    "mc-consensus-enclave-api/std",
     "mbedtls/std",
 ]
 
 [dependencies]
-ake-enclave = { path = "../../../crypto/ake/enclave" }
-attest = { path = "../../../attest/core", default-features = false }
-attest-enclave-api = { path = "../../../attest/enclave_api", default-features = false }
-common = { path = "../../../common", default-features = false }
-attest-trusted = { path = "../../../attest/trusted", default-features = false }
-consensus-enclave-api = { path = "../api", default-features = false }
-digestible = { path = "../../..//crypto/digestible" }
-keys = { path = "../../../crypto/keys", default-features = false }
+mc-attest-core = { path = "../../../attest/core", default-features = false }
+mc-attest-enclave-api = { path = "../../../attest/enclave-api", default-features = false }
+mc-attest-trusted = { path = "../../../attest/trusted", default-features = false }
+mc-common = { path = "../../../common", default-features = false }
+mc-consensus-enclave-api = { path = "../api", default-features = false }
+mc-crypto-ake-enclave = { path = "../../../crypto/ake/enclave" }
+mc-crypto-digestible = { path = "../../../crypto/digestible" }
+mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
+mc-crypto-rand = { path = "../../../crypto/rand" }
+mc-crypto-message-cipher = { path = "../../../crypto/message-cipher" }
+mc-sgx-compat = { path = "../../../sgx/compat" }
+mc-sgx-slog = { path = "../../../sgx/slog" }
+mc-transaction-core = { path = "../../../transaction/core" }
 mc-util-from-random = { path = "../../../util/from-random" }
+mc-util-serial = { path = "../../../util/serial" }
+
 mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.2", default-features = false, features = ["aesni", "rdrand", "force_aesni_support"] }
-mcrand = { path = "../../../crypto/mcrand" }
-mcserial = { path = "../../../util/mcserial" }
-message-cipher = { path = "../../..//crypto/message-cipher" }
-sgx_compat = { path = "../../../sgx/sgx_compat" }
-sgx_slog = { path = "../../../sgx/sgx_slog" }
-transaction = { path = "../../../transaction/core" }
 
 cfg-if = "0.1"
 digest = { version = "0.8", default-features = false }
@@ -51,5 +52,5 @@ sha2 = { version = "0.8", default-features = false, features = ["asm"] }
 [dev-dependencies]
 rand = "0.7"
 rand_hc = "0.2"
-ledger-db = { path = "../../../ledger/db" }
-transaction-test-utils = { path = "../../../transaction/core/test-utils" }
+mc-ledger-db = { path = "../../../ledger/db" }
+mc-transaction-core-test-utils = { path = "../../../transaction/core/test-utils" }

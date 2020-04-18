@@ -2,9 +2,9 @@
 
 # Copyright (c) 2018-2020 MobileCoin Inc.
 #
-# Launches a local `mobilecoind` instance that syncs the ledger from two nodes in the
+# Launches a local `mc-mobilecoind` instance that syncs the ledger from two nodes in the
 # test network and hosts a wallet service running on port 4444, then launches a local
-# `mc-testnet-client` instance that interacts with the local `mobilecoind`.
+# `mc-testnet-client` instance that interacts with the local `mc-mobilecoind`.
 
 set -e
 
@@ -21,7 +21,7 @@ TARGETDIR=./target/release
 
 echo "Building mobilecoind and mc-testnet-client. This will take a few moments."
 SGX_MODE=HW IAS_MODE=PROD CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css \
-        cargo build --release -p mobilecoind -p mc-testnet-client
+        cargo build --release -p mc-mobilecoind -p mc-testnet-client
 
 if [[ -f /tmp/ledger-db ]] || [[ -f /tmp/transaction-db ]]; then
     echo "Removing ledger-db and transaction_db from previous runs. Comment out this line to keep them for future runs."

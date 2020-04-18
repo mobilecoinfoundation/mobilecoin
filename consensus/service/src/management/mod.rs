@@ -1,11 +1,11 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use crate::config::Config;
-use build_info;
-use common::logger::{log, o, Logger};
 use handlebars::Handlebars;
 use lazy_static::lazy_static;
-use metrics::OpMetrics;
+use mc_common::logger::{log, o, Logger};
+use mc_util_build_info;
+use mc_util_metrics::OpMetrics;
 use prometheus::{self, Encoder};
 use rouille::{router, Request, Response, Server};
 use serde_json::json;
@@ -130,7 +130,7 @@ impl ManagementServer {
                 if let Some(val) = request.get_param("rust_log") {
                     log::info!(logger, "Updating RUST_LOG to '{}'", val);
                     env::set_var("RUST_LOG", val);
-                    common::logger::recreate_app_logger();
+                    mc_common::logger::recreate_app_logger();
                 }
 
                 Response::redirect_302("/")
@@ -138,7 +138,7 @@ impl ManagementServer {
             (GET) (/info) => {
                 let build : serde_json::Value = {
                     let mut buf = String::new();
-                    build_info::write_report(&mut buf).unwrap();
+                    mc_util_build_info::write_report(&mut buf).unwrap();
                     serde_json::from_str(&buf).expect("build_info wrote a bad json")
                 };
                 Self::json(&json!({
@@ -170,7 +170,7 @@ impl ManagementServer {
             },
             (GET) (/metrics-json) => {
                 let metric_families = prometheus::gather();
-                let encoder = metrics::MetricsJsonEncoder {};
+                let encoder = mc_util_metrics::MetricsJsonEncoder {};
                 let mut buffer = vec![];
                 encoder.encode(&metric_families, &mut buffer).unwrap();
                 Response::text(

@@ -4,14 +4,23 @@
 
 use crate::{database::Database, error::Error, monitor_store::MonitorId, utxo_store::UnspentTxOut};
 
-use common::{
+use mc_common::{
     logger::{log, o, Logger},
     HashMap, HashSet,
 };
-use keys::RistrettoPublic;
-use ledger_db::{Error as LedgerError, Ledger, LedgerDB};
-use mcconnection::{ConnectionManager, RetryableUserTxConnection, UserTxConnection};
-use mcrand::{CryptoRng, RngCore};
+use mc_connection::{ConnectionManager, RetryableUserTxConnection, UserTxConnection};
+use mc_crypto_keys::RistrettoPublic;
+use mc_crypto_rand::{CryptoRng, RngCore};
+use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
+use mc_transaction_core::{
+    account_keys::{AccountKey, PublicAddress},
+    constants::{BASE_FEE, MAX_INPUTS, RING_SIZE},
+    onetime_keys::recover_onetime_private_key,
+    ring_signature::KeyImage,
+    tx::{Tx, TxOut, TxOutMembershipProof},
+    BlockIndex,
+};
+use mc_transaction_std::{InputCredentials, TransactionBuilder};
 use rand::Rng;
 use std::{
     cmp::Reverse,
@@ -22,15 +31,6 @@ use std::{
         Arc,
     },
 };
-use transaction::{
-    account_keys::{AccountKey, PublicAddress},
-    constants::{BASE_FEE, MAX_INPUTS, RING_SIZE},
-    onetime_keys::recover_onetime_private_key,
-    ring_signature::KeyImage,
-    tx::{Tx, TxOut, TxOutMembershipProof},
-    BlockIndex,
-};
-use transaction_std::{InputCredentials, TransactionBuilder};
 
 /// Default number of blocks used for calculating transaction tombstone block number.
 // TODO support for making this configurable
@@ -741,9 +741,9 @@ impl<T: UserTxConnection + 'static> TransactionsManager<T> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use keys::RistrettoPrivate;
+    use mc_connection::ThickClient;
+    use mc_crypto_keys::RistrettoPrivate;
     use mc_util_from_random::FromRandom;
-    use mcconnection::ThickClient;
     use rand::{rngs::StdRng, SeedableRng};
 
     fn generate_utxos(num_utxos: usize) -> Vec<UnspentTxOut> {

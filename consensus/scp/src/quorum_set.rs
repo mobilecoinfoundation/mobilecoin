@@ -3,7 +3,7 @@
 //! The quorum set is the essential unit of trust in SCP.
 //!
 //! A quorum set includes the members of the network, which a given node trusts and depends on.
-use common::{HashMap, HashSet, NodeID, ResponderId};
+use mc_common::{HashMap, HashSet, NodeID, ResponderId};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     fmt::{Debug, Display},
@@ -366,7 +366,7 @@ impl<ID: GenericNodeId + AsRef<ResponderId>> From<&QuorumSet<ID>> for QuorumSet<
 mod quorum_set_tests {
     use super::*;
     use crate::{core_types::*, msg::*, predicates::*, test_utils::test_node_id};
-    use common::ResponderId;
+    use mc_common::ResponderId;
 
     #[test]
     // findBlockingSet returns an empty set when there is no blocking set

@@ -3,17 +3,17 @@
 //! NetworkState implementation for the `scp` module.
 
 use crate::network_state_trait::NetworkState;
-use common::{
+use mc_common::{
     logger::{log, Logger},
     HashMap, HashSet, NodeID, ResponderId,
 };
-use scp::{
+use mc_consensus_scp::{
     core_types::Ballot, msg::ExternalizePayload, predicates::FuncPredicate, GenericNodeId, Msg,
     QuorumSet, SlotIndex, Topic, Value,
 };
+use mc_transaction_core::BlockIndex;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{hash::Hash, iter::FromIterator};
-use transaction::BlockIndex;
 
 #[derive(Clone)]
 pub struct SCPNetworkState<ID: GenericNodeId = NodeID> {
@@ -142,9 +142,9 @@ impl<ID: GenericNodeId + Send + AsRef<ResponderId> + DeserializeOwned + Serializ
 #[cfg(test)]
 mod tests {
     use super::*;
-    use common::logger::test_with_logger;
-    use peers_tests::test_node_id;
-    use scp::{core_types::Ballot, msg::*};
+    use mc_common::logger::test_with_logger;
+    use mc_consensus_scp::{core_types::Ballot, msg::*};
+    use mc_peers_test_utils::test_node_id;
     use std::collections::BTreeSet;
 
     #[test_with_logger]

@@ -161,7 +161,7 @@ impl<L: ArrayLength<u8>> Nonce<L> {
 mod tests {
     use super::*;
     use crate::AesMessageCipher;
-    use test_helper::run_with_several_seeds;
+    use mc_util_test_helper::run_with_several_seeds;
 
     #[test]
     fn round_trip() {

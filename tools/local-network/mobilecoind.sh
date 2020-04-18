@@ -35,7 +35,7 @@ echo "Ledger sync url: $LEDGER_SYNC_URL"
 
 rm -rf $WORK_DIR/mobilecoind-ledger-db $WORK_DIR/mobilecoind-tx-db
 
-cargo run -p mobilecoind $CARGO_FLAGS -- \
+cargo run -p mc-mobilecoind $CARGO_FLAGS -- \
     --ledger-db $WORK_DIR/mobilecoind-ledger-db \
     --poll-interval 1 \
     --peer insecure-mc://$NODES_HOST:3223/ \

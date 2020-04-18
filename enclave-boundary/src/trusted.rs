@@ -2,11 +2,11 @@
 
 use alloc::{boxed::Box, vec::Vec};
 
-use common::HashMap;
-use mcrand::McRng;
+use mc_common::HashMap;
+use mc_crypto_rand::McRng;
+use mc_sgx_compat::sync::Mutex;
+use mc_sgx_types::sgx_status_t;
 use rand_core::RngCore;
-use sgx_compat::sync::Mutex;
-use sgx_types::sgx_status_t;
 
 pub struct RetryBuffer {
     retry_data: Mutex<HashMap<u64, Vec<u8>>>,

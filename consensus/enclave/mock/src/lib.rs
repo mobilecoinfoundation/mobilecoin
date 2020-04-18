@@ -2,28 +2,28 @@
 
 //! Mock enclave, used for tests
 
-pub use consensus_enclave_api::{
+pub use mc_consensus_enclave_api::{
     ConsensusEnclave, ConsensusEnclaveProxy, Error, LocallyEncryptedTx, Result,
     SealedBlockSigningKey, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
 };
 
-use attest::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
-use attest_enclave_api::{
+use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
+use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, PeerAuthRequest,
     PeerAuthResponse, PeerSession,
 };
-use common::ResponderId;
-use keys::{Ed25519Pair, Ed25519Public, X25519EphemeralPrivate, X25519Public};
-use mc_util_from_random::FromRandom;
-use mcrand::McRng;
-use rand_core::SeedableRng;
-use rand_hc::Hc128Rng;
-use std::sync::Arc;
-use transaction::{
+use mc_common::ResponderId;
+use mc_crypto_keys::{Ed25519Pair, Ed25519Public, X25519EphemeralPrivate, X25519Public};
+use mc_crypto_rand::McRng;
+use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{Tx, TxOut, TxOutMembershipProof},
     Block, BlockContents, BlockSignature, BLOCK_VERSION,
 };
+use mc_util_from_random::FromRandom;
+use rand_core::SeedableRng;
+use rand_hc::Hc128Rng;
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct ConsensusServiceMockEnclave {
@@ -41,7 +41,7 @@ impl Default for ConsensusServiceMockEnclave {
 
 impl ConsensusServiceMockEnclave {
     pub fn tx_to_tx_context(tx: &Tx) -> TxContext {
-        let locally_encrypted_tx = LocallyEncryptedTx(mcserial::encode(tx));
+        let locally_encrypted_tx = LocallyEncryptedTx(mc_util_serial::encode(tx));
         let tx_hash = tx.tx_hash();
         let highest_indices = tx.get_membership_proof_highest_indices();
         let key_images: Vec<KeyImage> = tx.key_images();
@@ -136,7 +136,7 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         _block_index: u64,
         _proofs: Vec<TxOutMembershipProof>,
     ) -> Result<(WellFormedEncryptedTx, WellFormedTxContext)> {
-        let tx = mcserial::decode(&locally_encrypted_tx.0)?;
+        let tx = mc_util_serial::decode(&locally_encrypted_tx.0)?;
         let well_formed_encrypted_tx = WellFormedEncryptedTx(locally_encrypted_tx.0);
         let well_formed_tx_context = WellFormedTxContext::from(&tx);
 
@@ -163,7 +163,7 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
                 .map(|(encrypted_tx, proofs)| {
                     // These bytes are normally an enclave-encrypted Tx, but here, it is just serialized.
                     let ciphertext = &encrypted_tx.0;
-                    let tx = mcserial::decode::<Tx>(ciphertext).unwrap();
+                    let tx = mc_util_serial::decode::<Tx>(ciphertext).unwrap();
                     (tx, proofs.clone())
                 })
                 .collect();
@@ -174,7 +174,12 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         let mut rng = McRng::default();
 
         for (tx, proofs) in transactions_with_proofs.iter() {
-            transaction::validation::validate(tx, parent_block.index + 1, proofs, &mut rng)?;
+            mc_transaction_core::validation::validate(
+                tx,
+                parent_block.index + 1,
+                proofs,
+                &mut rng,
+            )?;
 
             for proof in proofs {
                 let root_element = proof

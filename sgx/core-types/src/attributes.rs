@@ -10,8 +10,8 @@ use core::{
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
-use mc_encodings::{Error as EncodingError, FromX64, ToX64, INTEL_U64_SIZE};
 use mc_sgx_core_types_sys::sgx_attributes_t;
+use mc_util_encodings::{Error as EncodingError, FromX64, ToX64, INTEL_U64_SIZE};
 
 bitflags! {
     /// A set of bitflags which can be set on an attributes structure.

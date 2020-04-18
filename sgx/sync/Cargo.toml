@@ -1,0 +1,12 @@
+[package]
+name = "mc-sgx-sync"
+version = "0.1.5-alpha-1"
+authors = ["MobileCoin"]
+
+[dependencies]
+mc-sgx-libc-types = { version= "0.1.5-alpha-1", path = "../libc-types" }
+mc-sgx-types = { path = "../types" }
+mc-sgx-panic = { verson = "0.1.5-alpha-1", path = "../panic", optional = true }
+
+[features]
+default = ["mc-sgx-panic"]

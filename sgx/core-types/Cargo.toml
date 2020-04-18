@@ -14,7 +14,7 @@ std = [
 ]
 
 [dependencies]
-mc-encodings = { path = "../../util/encodings" }
+mc-util-encodings = { path = "../../util/encodings" }
 mc-sgx-core-types-sys = { path = "../core-types-sys" }
 
 binascii = "0.1.4"

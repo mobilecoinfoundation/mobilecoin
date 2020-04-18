@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use alloc::{vec, vec::Vec};
-use sgx_types::{sgx_enclave_id_t, sgx_status_t};
+use mc_sgx_types::{sgx_enclave_id_t, sgx_status_t};
 
 // Unified variable-length ECALL signature (from untrusted side)
 pub type EcallSig = unsafe extern "C" fn(

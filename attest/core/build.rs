@@ -21,7 +21,7 @@ use mbedtls_sys::{
     },
     x509_crt,
 };
-use mcrand::McRng;
+use mc_crypto_rand::McRng;
 use rand_core::RngCore;
 use std::{
     convert::TryFrom,
@@ -254,6 +254,6 @@ fn main() {
         write(chain_path, &(root_cert_pem + &signer_cert_pem)).expect("Unable to write cert chain");
     }
 
-    sgx_build::handle_sgx_sim_feature();
-    sgx_build::handle_ias_dev_feature();
+    mc_sgx_build::handle_sgx_sim_feature();
+    mc_sgx_build::handle_ias_dev_feature();
 }

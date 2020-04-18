@@ -2,15 +2,15 @@
 
 //! Entrypoint for the MobileCoin server.
 
-use attest::DEBUG_ENCLAVE;
-use attest_net::{Client, RaClient};
-use common::logger::{create_app_logger, log, o};
-use consensus_enclave::{ConsensusServiceSgxEnclave, ENCLAVE_FILE};
-use consensus_service::{
+use mc_attest_core::DEBUG_ENCLAVE;
+use mc_attest_net::{Client, RaClient};
+use mc_common::logger::{create_app_logger, log, o};
+use mc_consensus_enclave::{ConsensusServiceSgxEnclave, ENCLAVE_FILE};
+use mc_consensus_service::{
     config::Config,
     consensus_service::{ConsensusService, ConsensusServiceError},
 };
-use ledger_db::LedgerDB;
+use mc_ledger_db::LedgerDB;
 use std::{
     env,
     fs::File,
@@ -20,8 +20,8 @@ use std::{
 use structopt::StructOpt;
 
 fn main() -> Result<(), ConsensusServiceError> {
-    common::setup_panic_handler();
-    let _sentry_guard = common::sentry::init();
+    mc_common::setup_panic_handler();
+    let _sentry_guard = mc_common::sentry::init();
 
     let config = Config::from_args();
     let local_node_id = config.node_id();
@@ -42,7 +42,7 @@ fn main() -> Result<(), ConsensusServiceError> {
         Err(_) => None,
     };
 
-    common::sentry::configure_scope(|scope| {
+    mc_common::sentry::configure_scope(|scope| {
         scope.set_tag("local_node_id", local_node_id.responder_id.to_string());
     });
 

@@ -1,4 +1,4 @@
-# mobilecoin_api
+# mc-consensus-api
 
 gRPC API for client-to-node and node-to-node requests.
 

@@ -5,7 +5,7 @@
 #![no_std]
 
 use core::convert::TryFrom;
-use sgx_css::Signature;
+use mc_sgx_css::Signature;
 
 pub fn sigstruct() -> Signature {
     Signature::try_from(&include_bytes!(env!("MCBUILD_ENCLAVE_CSS_PATH"))[..])

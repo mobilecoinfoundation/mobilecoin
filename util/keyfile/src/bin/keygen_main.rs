@@ -2,9 +2,9 @@
 
 //! A CLI tool for generating individual MobileCoin identities
 
-use keyfile::config::Config;
+use mc_transaction_std::identity::RootIdentity;
+use mc_util_keyfile::config::Config;
 use structopt::StructOpt;
-use transaction_std::identity::RootIdentity;
 
 fn main() {
     let config = Config::from_args();
@@ -24,5 +24,5 @@ fn main() {
 
     println!("Writing to {:?}", path);
 
-    keyfile::keygen::write_keyfiles(path, &name, &id).unwrap();
+    mc_util_keyfile::keygen::write_keyfiles(path, &name, &id).unwrap();
 }

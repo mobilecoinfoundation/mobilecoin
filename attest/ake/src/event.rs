@@ -5,11 +5,11 @@
 use crate::mealy::{Input as MealyInput, Output as MealyOutput};
 use aead::{AeadMut, NewAead};
 use alloc::vec::Vec;
-use attest::VerificationReport;
 use core::marker::PhantomData;
 use digest::{BlockInput, FixedOutput, Input, Reset};
-use keys::Kex;
-use mcnoise::{HandshakePattern, NoiseCipher, ProtocolName};
+use mc_attest_core::VerificationReport;
+use mc_crypto_keys::Kex;
+use mc_crypto_noise::{HandshakePattern, NoiseCipher, ProtocolName};
 
 /// An input used to inject the relevant local data needed to transform Start
 /// into an AuthPending for node-to-node authentication.

@@ -4,13 +4,13 @@
 
 use crate::{LocallyEncryptedTx, ResponderId, SealedBlockSigningKey, WellFormedEncryptedTx};
 use alloc::vec::Vec;
-use attest::{Quote, Report, TargetInfo, VerificationReport};
-use attest_enclave_api::{
+use mc_attest_core::{Quote, Report, TargetInfo, VerificationReport};
+use mc_attest_enclave_api::{
     ClientAuthRequest, ClientSession, EnclaveMessage, PeerAuthRequest, PeerAuthResponse,
     PeerSession,
 };
+use mc_transaction_core::{tx::TxOutMembershipProof, Block};
 use serde::{Deserialize, Serialize};
-use transaction::{tx::TxOutMembershipProof, Block};
 
 /// An enumeration of API calls and their arguments for use across serialization boundaries.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]

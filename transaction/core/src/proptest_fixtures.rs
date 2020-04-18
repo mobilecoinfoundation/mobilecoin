@@ -2,7 +2,7 @@
 
 use crate::{amount::Amount, ring_signature::CurveScalar};
 use curve25519_dalek::scalar::Scalar;
-use keys::{RistrettoPrivate, RistrettoPublic};
+use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use proptest::prelude::*;
 
 /// Generates an arbitrary Scalar.

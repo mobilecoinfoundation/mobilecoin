@@ -8,34 +8,34 @@ use crate::{
     counters, management::ManagementServer, peer_api_service, peer_keepalive::PeerKeepalive,
     tx_manager::TxManager, validators::DefaultTxManagerUntrustedInterfaces,
 };
-use attest::{
+use failure::Fail;
+use futures::Future;
+use grpcio;
+use mc_attest_api::attest_grpc::create_attested_api;
+use mc_attest_core::{
     IasQuoteError, PibError, QuoteError, QuoteSignType, TargetInfoError, VerificationReport,
     VerifyError,
 };
-use attest_api::attest_grpc::create_attested_api;
-use attest_enclave_api::{ClientSession, Error as AttestEnclaveError, PeerSession};
-use attest_net::{Error as RaError, RaClient};
-use attest_untrusted::QuotingEnclave;
-use common::{
+use mc_attest_enclave_api::{ClientSession, Error as AttestEnclaveError, PeerSession};
+use mc_attest_net::{Error as RaError, RaClient};
+use mc_attest_untrusted::QuotingEnclave;
+use mc_common::{
     logger::{log, Logger},
     NodeID, ResponderId,
 };
-use consensus_enclave::{ConsensusEnclaveProxy, Error as EnclaveError};
-use failure::Fail;
-use futures::Future;
-use grpc_util::{BuildInfoService, HealthCheckStatus, HealthService};
-use grpcio;
-use ledger_db::LedgerDB;
-use mcconnection::{Connection, ConnectionManager, ConnectionUriGrpcioServer};
-use mcuri::{ConnectionUri, ConsensusPeerUriApi};
-use mobilecoin_api::{blockchain_grpc, consensus_client_grpc, consensus_peer_grpc};
-use peers::{PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
+use mc_connection::{Connection, ConnectionManager, ConnectionUriGrpcioServer};
+use mc_consensus_api::{blockchain_grpc, consensus_client_grpc, consensus_peer_grpc};
+use mc_consensus_enclave::{ConsensusEnclaveProxy, Error as EnclaveError};
+use mc_ledger_db::LedgerDB;
+use mc_peers::{PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
+use mc_transaction_core::tx::TxHash;
+use mc_util_grpc::{BuildInfoService, HealthCheckStatus, HealthService};
+use mc_util_uri::{ConnectionUri, ConsensusPeerUriApi};
 use retry::{delay::Fibonacci, retry, Error as RetryError, OperationResult};
 use std::{
     sync::{Arc, Mutex},
     time::Instant,
 };
-use transaction::tx::TxHash;
 
 #[derive(Debug, Fail)]
 pub enum ConsensusServiceError {
@@ -174,7 +174,7 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
         // Broadcaster
         let broadcaster = Arc::new(Mutex::new(ThreadedBroadcaster::new(
             &peer_manager,
-            &peers::ThreadedBroadcasterFibonacciRetryPolicy::default(),
+            &mc_peers::ThreadedBroadcasterFibonacciRetryPolicy::default(),
             logger.clone(),
         )));
 

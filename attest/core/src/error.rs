@@ -19,9 +19,9 @@ use core::{
     hash::{Hash, Hasher},
 };
 use failure::Fail;
-use mc_encodings::Error as EncodingError;
+use mc_sgx_types::sgx_status_t;
+use mc_util_encodings::Error as EncodingError;
 use serde::{Deserialize, Serialize};
-use sgx_types::sgx_status_t;
 
 /// A collection of errors surrounding the EPID pseudonym
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Fail, Hash, Ord, PartialEq, PartialOrd, Serialize)]
@@ -386,11 +386,11 @@ pub type SgxResult<T> = Result<T, SgxError>;
 
 mod sgx_status_t_serde {
     use core::fmt::{Formatter, Result as FmtResult};
+    use mc_sgx_types::sgx_status_t;
     use serde::{
         de::{Deserializer, Error, Visitor},
         ser::Serializer,
     };
-    use sgx_types::sgx_status_t;
 
     // We ignore this clippy error to comply with Serde's serialize API.
     #[allow(clippy::trivially_copy_pass_by_ref)]

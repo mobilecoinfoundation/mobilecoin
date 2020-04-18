@@ -3,7 +3,7 @@
 //! Export the EDL file location as a variable
 
 use cargo_emit::pair;
-use mcbuild_utils::Environment;
+use mc_util_build_script::Environment;
 
 fn main() {
     pair!(

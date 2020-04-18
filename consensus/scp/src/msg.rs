@@ -6,7 +6,7 @@ use crate::{
     msg::Topic::*,
     quorum_set::QuorumSet,
 };
-use common::{HashSet, NodeID};
+use mc_common::{HashSet, NodeID};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     cmp,
@@ -650,7 +650,7 @@ mod msg_tests {
     use crate::test_utils::test_node_id;
     use rand::seq::SliceRandom;
     use std::iter::FromIterator;
-    extern crate test_helper;
+    extern crate mc_util_test_helper;
 
     #[test]
     /// Prepare implies "vote_or_accept prepare" for B, P, and PP.
@@ -995,9 +995,9 @@ mod msg_tests {
     // deterministically.
     fn nominatepayload_deterministic_serialize() {
         let values = "kantzzcemc xzbvuwkjae wllqmutprx hkhdtpehmo myfcxwjtim rihkjzfayw ykifmibexv fbyzrjpjte ylbycdyprn cflmqswwrf".split(' ').map(|s| s.to_string()).collect::<Vec<String>>();
-        let mut rng = test_helper::get_seeded_rng();
+        let mut rng = mc_util_test_helper::get_seeded_rng();
 
-        let reference = mcserial::serialize(&NominatePayload {
+        let reference = mc_util_serial::serialize(&NominatePayload {
             X: BTreeSet::from_iter(values.clone()),
             Y: BTreeSet::from_iter(values.clone()),
         })
@@ -1006,7 +1006,7 @@ mod msg_tests {
         for _i in 0..100 {
             let mut test_values = values.clone();
             test_values.shuffle(&mut rng);
-            let serialized = mcserial::serialize(&NominatePayload {
+            let serialized = mc_util_serial::serialize(&NominatePayload {
                 X: BTreeSet::from_iter(test_values.clone()),
                 Y: BTreeSet::from_iter(test_values.clone()),
             })
@@ -1023,8 +1023,9 @@ mod msg_tests {
             Y: BTreeSet::from_iter(vec![10, 20, 30]),
         };
 
-        let serialized_payload = mcserial::serialize(&payload).unwrap();
-        let payload2: NominatePayload<u32> = mcserial::deserialize(&serialized_payload).unwrap();
+        let serialized_payload = mc_util_serial::serialize(&payload).unwrap();
+        let payload2: NominatePayload<u32> =
+            mc_util_serial::deserialize(&serialized_payload).unwrap();
 
         assert_eq!(payload, payload2);
     }

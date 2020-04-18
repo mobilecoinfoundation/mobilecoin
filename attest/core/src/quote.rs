@@ -21,12 +21,12 @@ use core::{
     convert::{TryFrom, TryInto},
     fmt::{Debug, Display, Formatter, Result as FmtResult},
 };
-use mc_encodings::{
+use mc_sgx_types::{sgx_quote_sign_type_t, sgx_quote_t};
+use mc_util_encodings::{
     base64_buffer_size, Error as EncodingError, FromBase64, IntelLayout, ToBase64, ToX64,
     INTEL_U16_SIZE, INTEL_U32_SIZE,
 };
 use serde::{Deserialize, Serialize};
-use sgx_types::{sgx_quote_sign_type_t, sgx_quote_t};
 
 const QUOTE_VERSION_START: usize = 0;
 const QUOTE_VERSION_END: usize = QUOTE_VERSION_START + INTEL_U16_SIZE;
@@ -478,7 +478,7 @@ mod test {
     use std::format;
 
     use super::*;
-    use mcserial::*;
+    use mc_util_serial::*;
 
     const QUOTE_OK: &str = include_str!("../data/test/quote_ok.txt");
     const QUOTE_OK_STR: &str = include_str!("../data/test/quote_ok_str.txt");

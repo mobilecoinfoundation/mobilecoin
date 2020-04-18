@@ -10,10 +10,10 @@ use alloc::vec;
 
 use alloc::{string::String, vec::Vec};
 use core::{convert::TryFrom, fmt::Debug, hash::Hash};
-use digestible::Digestible;
 use failure::Fail;
+use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;
-use mcserial::LengthMismatch32;
+use mc_util_serial::LengthMismatch32;
 use rand_core::{CryptoRng, RngCore};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 

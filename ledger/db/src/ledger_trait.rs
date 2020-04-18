@@ -1,8 +1,8 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use crate::Error;
-use common::Hash;
-use transaction::{
+use mc_common::Hash;
+use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipProof},
     Block, BlockContents, BlockSignature,

@@ -1,9 +1,0 @@
-[package]
-name = "sgx_css"
-version = "0.1.0"
-authors = ["MobileCoin"]
-edition = "2018"
-
-[dependencies]
-failure = "0.1"
-sha2 = { version = "0.8", default-features = false }

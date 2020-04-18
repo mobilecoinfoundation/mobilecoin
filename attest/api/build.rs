@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-use mcbuild_utils::Environment;
+use mc_util_build_script::Environment;
 
 fn main() {
     let env = Environment::default();
@@ -14,5 +14,5 @@ fn main() {
             .expect("Invalid UTF-8 in proto dir path")
     );
 
-    mc_build_grpc::compile_protos_and_generate_mod_rs(&["./proto"], &["attest.proto"]);
+    mc_util_build_grpc::compile_protos_and_generate_mod_rs(&["./proto"], &["attest.proto"]);
 }

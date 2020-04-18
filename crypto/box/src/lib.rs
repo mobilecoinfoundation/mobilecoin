@@ -33,10 +33,10 @@ pub use fixed_buffer::FixedBuffer;
 mod test {
     use super::*;
     use aead::generic_array::{arr, arr_impl};
-    use keys::{RistrettoPrivate, RistrettoPublic};
+    use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
     use mc_util_from_random::FromRandom;
 
-    extern crate test_helper;
+    extern crate mc_util_test_helper;
 
     #[test]
     fn test_round_trip() {
@@ -44,7 +44,7 @@ mod test {
         let plaintext1 = b"01234567".to_vec();
         let plaintext2 = plaintext1.repeat(50);
 
-        test_helper::run_with_several_seeds(|mut rng| {
+        mc_util_test_helper::run_with_several_seeds(|mut rng| {
             let a = RistrettoPrivate::from_random(&mut rng);
             let a_pub = RistrettoPublic::from(&a);
 
@@ -65,7 +65,7 @@ mod test {
         let plaintext1 = b"01234567".to_vec();
         let plaintext2 = plaintext1.repeat(50);
 
-        test_helper::run_with_several_seeds(|mut rng| {
+        mc_util_test_helper::run_with_several_seeds(|mut rng| {
             let a = RistrettoPrivate::from_random(&mut rng);
             let a_pub = RistrettoPublic::from(&a);
 
@@ -88,7 +88,7 @@ mod test {
         let plaintext1 = arr![u8; 0, 1, 2, 3, 4, 4, 3, 2];
         let plaintext2 = arr![u8; 42, 42, 42, 42, 78, 78, 78, 78];
 
-        test_helper::run_with_several_seeds(|mut rng| {
+        mc_util_test_helper::run_with_several_seeds(|mut rng| {
             let a = RistrettoPrivate::from_random(&mut rng);
             let a_pub = RistrettoPublic::from(&a);
 

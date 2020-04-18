@@ -10,10 +10,10 @@ use crate::{
     monitor_store::{MonitorData, MonitorId},
 };
 
-use common::logger::{log, Logger};
-use keys::RistrettoPublic;
 use lmdb::{Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
-use mcserial::{Message, ReprBytes32};
+use mc_common::logger::{log, Logger};
+use mc_crypto_keys::RistrettoPublic;
+use mc_util_serial::{Message, ReprBytes32};
 use std::{convert::TryFrom, sync::Arc};
 
 // LMDB Database Names
@@ -120,7 +120,7 @@ impl SubaddressStore {
             SubaddressSPKId::from(data.account_key.subaddress(index).spend_public_key());
         let subaddress_id: SubaddressId = SubaddressId::new(monitor_id, index);
 
-        let value_bytes = mcserial::encode(&subaddress_id);
+        let value_bytes = mc_util_serial::encode(&subaddress_id);
         match db_txn.put(
             self.spk_to_index_data,
             &subaddress_spk,
@@ -150,7 +150,7 @@ impl SubaddressStore {
         subaddress_spk: &SubaddressSPKId,
     ) -> Result<SubaddressId, Error> {
         match db_txn.get(self.spk_to_index_data, &subaddress_spk) {
-            Ok(value_bytes) => Ok(mcserial::decode(value_bytes)?),
+            Ok(value_bytes) => Ok(mc_util_serial::decode(value_bytes)?),
             Err(lmdb::Error::NotFound) => Err(Error::SubaddressSPKNotFound),
             Err(err) => Err(err.into()),
         }

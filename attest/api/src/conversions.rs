@@ -4,14 +4,14 @@
 
 use crate::attest::{AuthMessage, Message};
 use aead::{AeadMut, NewAead};
-use attest_ake::{AuthRequestOutput, AuthResponse};
-use attest_enclave_api::{
+use digest::{BlockInput, FixedOutput, Input, Reset};
+use mc_attest_ake::{AuthRequestOutput, AuthResponse};
+use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, EnclaveMessage, PeerAuthRequest, PeerAuthResponse,
     Session,
 };
-use digest::{BlockInput, FixedOutput, Input, Reset};
-use keys::Kex;
-use mcnoise::{HandshakePattern, NoiseCipher};
+use mc_crypto_keys::Kex;
+use mc_crypto_noise::{HandshakePattern, NoiseCipher};
 
 impl<Handshake, KexAlgo, Cipher, DigestType>
     From<AuthRequestOutput<Handshake, KexAlgo, Cipher, DigestType>> for AuthMessage

@@ -12,7 +12,7 @@ use blake2::{Blake2b, Digest};
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_POINT, ristretto::RistrettoPoint, scalar::Scalar,
 };
-use keys::{RistrettoPrivate, RistrettoPublic};
+use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
 
@@ -165,8 +165,8 @@ pub fn compute_tx_pubkey(
 mod tests {
     use super::*;
     use crate::account_keys::AccountKey;
+    use mc_crypto_rand::McRng;
     use mc_util_from_random::FromRandom;
-    use mcrand::McRng;
 
     #[test]
     // `create_onetime_public_key` should produce a public key that agrees with the recipient's view key.

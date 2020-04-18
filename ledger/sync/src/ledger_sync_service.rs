@@ -8,15 +8,18 @@ use crate::{
     counters, ledger_sync_error::LedgerSyncError, network_state_trait::NetworkState,
     transactions_fetcher_trait::TransactionsFetcher,
 };
-use common::{
+use mc_common::{
     logger::{log, Logger},
     HashMap, HashSet, ResponderId,
 };
-use ledger_db::Ledger;
-use mcconnection::{
+use mc_connection::{
     BlockchainConnection, Connection, ConnectionManager, RetryableBlockchainConnection,
 };
-use mcuri::ConnectionUri;
+use mc_ledger_db::Ledger;
+use mc_transaction_core::{
+    compute_block_id, ring_signature::KeyImage, Block, BlockContents, BlockID, BlockIndex,
+};
+use mc_util_uri::ConnectionUri;
 use retry::delay::Fibonacci;
 use std::{
     collections::BTreeMap,
@@ -24,9 +27,6 @@ use std::{
     sync::{Arc, Condvar, Mutex},
     thread,
     time::{Duration, Instant},
-};
-use transaction::{
-    compute_block_id, ring_signature::KeyImage, Block, BlockContents, BlockID, BlockIndex,
 };
 
 /// Maximal amount to allow for getting block and transaction data.
@@ -300,7 +300,7 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
                 .num_blocks()
                 .expect("failed getting number of blocks"),
         );
-        common::trace_time!(
+        mc_common::trace_time!(
             self.logger,
             "Appended {} blocks to ledger",
             blocks_and_contents.len()
@@ -792,10 +792,10 @@ fn identify_safe_blocks<L: Ledger>(
 mod tests {
     use super::*;
     use crate::{test_utils::MockTransactionsFetcher, SCPNetworkState};
-    use common::{logger::test_with_logger, NodeID};
-    use ledger_db::test_utils::{get_mock_ledger, get_test_ledger_blocks};
-    use peers_tests::{test_node_id, test_peer_uri, MockPeerConnection};
-    use scp::{core_types::Ballot, msg::*, *};
+    use mc_common::{logger::test_with_logger, NodeID};
+    use mc_consensus_scp::{core_types::Ballot, msg::*, *};
+    use mc_ledger_db::test_utils::{get_mock_ledger, get_test_ledger_blocks};
+    use mc_peers_test_utils::{test_node_id, test_peer_uri, MockPeerConnection};
     use std::convert::TryFrom;
 
     #[test_with_logger]

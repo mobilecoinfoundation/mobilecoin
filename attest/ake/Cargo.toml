@@ -1,26 +1,26 @@
 [package]
-name = "attest-ake"
-version = "0.1.0"
+name = "mc-attest-ake"
+version = "0.1.5-alpha-1"
 authors = ["MobileCoin"]
 edition = "2018"
 
 [features]
 default = ["std"]
 std = [
-    "attest/std",
+    "mc-attest-core/std",
     "digest/std",
     "serde/std",
 ]
 sgx-sim = [
-    "attest/sgx-sim",
+    "mc-attest-core/sgx-sim",
 ]
 
 [dependencies]
-attest = { path = "../../attest/core", default-features = false }
-common = { path = "../../common", default-features = false }
-keys = { path = "../../crypto/keys", default-features = false }
-mcnoise = { path = "../../crypto/ake/mcnoise", default-features = false }
-mcserial = { path = "../../util/mcserial", default-features = false }
+mc-attest-core = { path = "../../attest/core", default-features = false }
+mc-common = { path = "../../common", default-features = false }
+mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
+mc-crypto-noise = { path = "../../crypto/noise", default-features = false }
+mc-util-serial = { path = "../../util/serial", default-features = false }
 
 aead = "0.2"
 digest = { version = "0.8", default-features = false }
@@ -29,12 +29,12 @@ rand_core = "0.5"
 serde = { version = "1.0", default-features = false, features = ["alloc"] }
 
 [dev-dependencies]
-attest-net = { path = "../net" }
-mc-encodings = { path = "../../util/encodings" }
+mc-attest-net = { path = "../net" }
+mc-util-encodings = { path = "../../util/encodings" }
 mc-util-from-random = { path = "../../util/from-random" }
 aes-gcm = "0.3"
 rand_hc = "0.2"
 sha2 = "0.8"
 
 [build-dependencies]
-sgx_build = { path = "../../sgx/sgx_build" }
+mc-sgx-build = { path = "../../sgx/build" }

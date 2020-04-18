@@ -1,15 +1,15 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use alloc::vec::Vec;
-use common::{Hash, HashMap};
 use core::{
     convert::{TryFrom, TryInto},
     fmt,
 };
 use curve25519_dalek::scalar::Scalar;
-use digestible::Digestible;
-use keys::{CompressedRistrettoPublic, RistrettoPrivate};
-use mcserial::{prost_message_helper32, ReprBytes32};
+use mc_common::{Hash, HashMap};
+use mc_crypto_digestible::Digestible;
+use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
+use mc_util_serial::{prost_message_helper32, ReprBytes32};
 use prost::Message;
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
@@ -391,9 +391,9 @@ prost_message_helper32! { TxOutMembershipHash }
 #[cfg(test)]
 mod tests {
     use alloc::vec::Vec;
-    use keys::RistrettoPublic;
+    use mc_crypto_keys::RistrettoPublic;
     use mc_util_from_random::FromRandom;
-    use mcserial::ReprBytes32;
+    use mc_util_serial::ReprBytes32;
     use prost::Message;
     use rand::{rngs::StdRng, SeedableRng};
 

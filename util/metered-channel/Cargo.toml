@@ -1,15 +1,12 @@
 [package]
-name = "metered-channel"
-version = "0.1.0"
+name = "mc-util-metered-channel"
+version = "0.1.5-alpha-1"
 authors = ["MobileCoin"]
 edition = "2018"
 
-[lib]
-name = "metered_channel"
-
 [dependencies]
-common = { path = "../../common", features = ["log"] }
-metrics = { path = "../../util/metrics" }
+mc-common = { path = "../../common", features = ["log"] }
+mc-util-metrics = { path = "../../util/metrics" }
 
 chrono = "0.4"
 crossbeam-channel = "0.3"

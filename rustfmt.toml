@@ -1,5 +1,5 @@
 merge_imports = true
 
 ignore = [
-    "sgx/sgx_types",   # copy-pasta from rust-sgx-sdk
+    "sgx/types",   # copy-pasta from rust-sgx-sdk
 ]

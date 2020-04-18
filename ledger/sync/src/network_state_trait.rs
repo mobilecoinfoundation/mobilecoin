@@ -2,8 +2,8 @@
 
 //! Tracks the state of peers' ledgers.
 
-use common::{HashSet, ResponderId};
-use transaction::BlockIndex;
+use mc_common::{HashSet, ResponderId};
+use mc_transaction_core::BlockIndex;
 
 /// An interface for an object that keeps track of the network's status, allowing SyncService to
 /// check if the local node has fallen behind a certain block index.

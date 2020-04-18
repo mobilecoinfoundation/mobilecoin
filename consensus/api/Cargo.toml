@@ -1,20 +1,17 @@
 [package]
-name = "mobilecoin-api"
-version = "0.1.1"
+name = "mc-consensus-api"
+version = "0.1.5-alpha-1"
 authors = ["MobileCoin"]
 build = "build.rs"
 edition = "2018"
 links = "mc-consensus-api"
 
-[lib]
-name = "mobilecoin_api"
-
 [dependencies]
-attest-api = { path = "../../attest/api" }
-common = { path = "../../common" }
-keys = { path = "../../crypto/keys" }
-mcserial = { path = "../../util/mcserial" }
-transaction = { path = "../../transaction/core" }
+mc-attest-api = { path = "../../attest/api" }
+mc-common = { path = "../../common" }
+mc-crypto-keys = { path = "../../crypto/keys" }
+mc-util-serial = { path = "../../util/serial" }
+mc-transaction-core = { path = "../../transaction/core" }
 
 futures = "0.1.16"
 grpcio = "0.5.1"
@@ -28,15 +25,15 @@ curve25519-dalek = { version = "2.0", default-features = false, features = ["sim
 curve25519-dalek = { version = "2.0", default-features = false, features = ["nightly", "u64_backend"] }
 
 [build-dependencies]
-mc-build-grpc = { path = "../../util/build-grpc" }
-mcbuild-utils = { path = "../../mcbuild/utils" }
+mc-util-build-grpc = { path = "../../util/build/grpc" }
+mc-util-build-script = { path = "../../util/build/script" }
 
 cargo-emit = "0.1.1"
 
 [dev-dependencies]
+mc-crypto-rand = { path = "../../crypto/rand" }
 mc-util-from-random = { path = "../../util/from-random" }
-mcrand = { path = "../../crypto/mcrand" }
 rand = "0.7"
 tempdir = "0.3"
-transaction-std = { path = "../../transaction/std" }
-transaction-test-utils = { path = "../../transaction/core/test-utils" }
+mc-transaction-std = { path = "../../transaction/std" }
+mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }

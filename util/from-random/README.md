@@ -5,7 +5,7 @@ This provides a common API for types which can be initialized from random number
 # Example
 
 ```rust
-use mc_from_random::FromRandom;
+use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
 
 struct MyStruct {
