@@ -81,6 +81,7 @@ pub fn bootstrap_ledger(
                 BLOCK_VERSION,
                 &parent.id,
                 block_index,
+                parent.cumulative_txo_count + minting_transactions.len() as u64,
                 &Default::default(),
                 &minting_transactions,
             ),

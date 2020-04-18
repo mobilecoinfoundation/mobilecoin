@@ -477,6 +477,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             BLOCK_VERSION,
             &parent_block.id,
             parent_block.index + 1,
+            parent_block.cumulative_txo_count + redacted_transactions.len() as u64,
             &root_elements[0],
             &redacted_transactions,
         );

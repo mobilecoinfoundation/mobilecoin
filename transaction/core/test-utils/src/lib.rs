@@ -186,6 +186,7 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
                     BLOCK_VERSION,
                     &parent.as_ref().unwrap().id,
                     block_index,
+                    parent.as_ref().unwrap().cumulative_txo_count + 1,
                     &Default::default(),
                     &redacted_transactions,
                 );
@@ -249,6 +250,7 @@ pub fn get_blocks<T: Rng + RngCore + CryptoRng>(
 
     let mut results = Vec::<(Block, Vec<RedactedTx>)>::new();
     let mut last_block_id = initial_block_id;
+    let mut cumulative_txo_count = 0u64;
 
     for block_index in 0..n_blocks {
         let n_txs = rng.gen_range(min_txs_per_block, max_txs_per_block + 1);
@@ -269,6 +271,8 @@ pub fn get_blocks<T: Rng + RngCore + CryptoRng>(
             txs.push(tx);
         }
 
+        cumulative_txo_count += txs.len() as u64;
+
         // Fake proofs
         let root_element = TxOutMembershipElement {
             range: Range::new(0, block_index as u64).unwrap(),
@@ -279,6 +283,7 @@ pub fn get_blocks<T: Rng + RngCore + CryptoRng>(
             BLOCK_VERSION,
             &last_block_id,
             initial_block_index + block_index as u64,
+            cumulative_txo_count,
             &root_element,
             &txs,
         );

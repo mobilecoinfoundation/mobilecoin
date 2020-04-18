@@ -518,6 +518,7 @@ mod ledger_db_test {
                     BLOCK_VERSION,
                     &parent.id,
                     block_index,
+                    parent.cumulative_txo_count + redacted_transactions.len() as u64,
                     &Default::default(),
                     &redacted_transactions,
                 ),
@@ -821,6 +822,7 @@ mod ledger_db_test {
             BLOCK_VERSION,
             &block_zero.id,
             1,
+            3,
             &Default::default(),
             &block_one_transactions,
         );
@@ -1167,6 +1169,7 @@ mod ledger_db_test {
             BLOCK_VERSION,
             &blocks[0].id,
             1,
+            3,
             &Default::default(),
             &redacted_transactions,
         );
@@ -1442,6 +1445,7 @@ mod ledger_db_test {
                 BLOCK_VERSION,
                 &bad_parent_id,
                 1,
+                1,
                 &Default::default(),
                 &redacted_transactions,
             );
@@ -1455,6 +1459,7 @@ mod ledger_db_test {
             let block_one_good = Block::new(
                 BLOCK_VERSION,
                 &block_zero.id,
+                1,
                 1,
                 &Default::default(),
                 &redacted_transactions,

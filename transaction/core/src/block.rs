@@ -133,6 +133,9 @@ pub struct Block {
     /// The index of this block in the blockchain.
     pub index: BlockIndex,
 
+    /// The total number of transactions in the blockchain INCLUDING this block
+    pub cumulative_txo_count: u64,
+
     /// Root hash of the membership proofs provided by the untrusted local system for validation.
     /// This captures the state of all TxOuts in the ledger that this block was validated against.
     pub root_element: TxOutMembershipElement,
@@ -150,15 +153,24 @@ impl Block {
         let version = BLOCK_VERSION;
         let parent_id = BlockID::default();
         let index: BlockIndex = 0;
+        let cumulative_txo_count = minting_transactions.len() as u64;
         let root_element = TxOutMembershipElement::default();
         let contents_hash = hash_block_contents(minting_transactions);
 
-        let id = compute_block_id(version, &parent_id, index, &root_element, &contents_hash);
+        let id = compute_block_id(
+            version,
+            &parent_id,
+            index,
+            cumulative_txo_count,
+            &root_element,
+            &contents_hash,
+        );
         Self {
             id,
             version,
             parent_id,
             index,
+            cumulative_txo_count,
             root_element,
             contents_hash,
         }
@@ -170,23 +182,33 @@ impl Block {
     /// * `version` - The block format version.
     /// * `parent_id` - `BlockID` of previous block in the blockchain.
     /// * `index` - The index of this block in the blockchain.
+    /// * `cumulative_txo_count` - The total number of Txos in the blockchain, including this block.
     /// * `stored_transactions` - Transactions included in this block.
     pub fn new(
         version: u32,
         parent_id: &BlockID,
         index: BlockIndex,
+        cumulative_txo_count: u64,
         root_element: &TxOutMembershipElement,
         redacted_transactions: &[RedactedTx],
     ) -> Self {
         let contents_hash = hash_block_contents(redacted_transactions);
 
-        let id = compute_block_id(version, &parent_id, index, &root_element, &contents_hash);
+        let id = compute_block_id(
+            version,
+            &parent_id,
+            index,
+            cumulative_txo_count,
+            &root_element,
+            &contents_hash,
+        );
 
         Self {
             id,
             version,
             parent_id: parent_id.clone(),
             index,
+            cumulative_txo_count,
             root_element: root_element.clone(),
             contents_hash,
         }
@@ -201,6 +223,7 @@ impl Block {
             self.version,
             &self.parent_id,
             self.index,
+            self.cumulative_txo_count,
             &self.root_element,
             &self.contents_hash,
         );
@@ -222,6 +245,7 @@ pub fn compute_block_id<D: Digest>(
     version: u32,
     parent_id: &BlockID<D>,
     index: BlockIndex,
+    cumulative_txo_count: u64,
     root_element: &TxOutMembershipElement,
     contents_hash: &BlockContentsHash<D>,
 ) -> BlockID<D> {
@@ -230,6 +254,7 @@ pub fn compute_block_id<D: Digest>(
     version.digest(&mut hasher);
     parent_id.digest(&mut hasher);
     index.digest(&mut hasher);
+    cumulative_txo_count.digest(&mut hasher);
     root_element.digest(&mut hasher);
     contents_hash.digest(&mut hasher);
 
@@ -360,6 +385,7 @@ mod block_tests {
             BLOCK_VERSION,
             &parent_id,
             3,
+            100_000,
             &root_element,
             &redacted_transactions,
         )

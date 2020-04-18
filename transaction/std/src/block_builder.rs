@@ -52,10 +52,16 @@ impl BlockBuilder {
             .parent_block
             .as_ref()
             .map_or(0, |block| block.index + 1);
+        let new_cumulative_txo_count = self
+            .parent_block
+            .as_ref()
+            .map_or(0, |block| block.cumulative_txo_count)
+            + redacted_transactions.len() as u64;
         let block = Block::new(
             BLOCK_VERSION,
             &parent_id,
             new_block_index,
+            new_cumulative_txo_count,
             &self.root_element,
             &redacted_transactions,
         );

@@ -38,6 +38,7 @@ message Block {
     uint32 version = 2;
     bytes parent_id = 3;
     uint64 index = 4;
+    uint64 cumulative_txo_count = 7;
     external.TxOutMembershipElement root_element = 5;
     bytes contents_hash = 6;
 }

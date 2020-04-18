@@ -236,10 +236,16 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, Vec<RedactedTx>)> 
             };
 
             let redacted_transactions = vec![redacted_tx];
+            // Compute cumulative_txo_count
+            let cumulative_txo_count = blocks_and_transactions[block_index - 1]
+                .0
+                .cumulative_txo_count
+                + redacted_transactions.len() as u64;
             let block = Block::new(
                 BLOCK_VERSION,
                 &parent_id,
                 block_index as u64,
+                cumulative_txo_count,
                 &TxOutMembershipElement::default(),
                 &redacted_transactions,
             );
@@ -290,6 +296,7 @@ mod tests {
                 block.version,
                 &block.parent_id,
                 block.index,
+                block.cumulative_txo_count,
                 &block.root_element,
                 &block.contents_hash,
             );

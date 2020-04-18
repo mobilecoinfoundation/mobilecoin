@@ -174,6 +174,7 @@ pub fn add_block_to_ledger_db(
             BLOCK_VERSION,
             &parent.id,
             num_blocks as BlockIndex,
+            parent.cumulative_txo_count + redacted_transactions.len() as u64,
             &Default::default(),
             &redacted_transactions,
         );
