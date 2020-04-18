@@ -1,122 +1,14 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
-
-//! Blockchain data structures.
-
-use crate::{blake2b_256::Blake2b256, tx::TxOutMembershipElement, RedactedTx};
-use core::{
-    convert::TryFrom,
-    fmt::{Debug, Display, Formatter, Result as FmtResult},
-    hash::{Hash, Hasher},
+use crate::{
+    blake2b_256::Blake2b256, tx::TxOutMembershipElement, BlockContentsHash, BlockID, RedactedTx,
 };
 use digestible::{Digest, Digestible};
-use failure::Fail;
-use generic_array::{typenum::Unsigned, GenericArray};
-use keys::{
-    DigestSigner, DigestVerifier, Ed25519Pair, Ed25519Public, Ed25519Signature,
-    Ed25519SignatureError,
-};
 use serde::{Deserialize, Serialize};
-use sha2::Sha512;
-
-/// The index of a block in the blockchain.
-pub type BlockIndex = u64;
-
-#[derive(Debug, Fail)]
-/// Array conversion errors.
-pub enum ConvertError {
-    /// Unable to coerce data of the wrong length into an array.
-    #[fail(display = "Length mismatch (expected {}, got {})", _0, _1)]
-    LengthMismatch(usize, usize),
-}
-
-#[repr(transparent)]
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
-/// Identifies a block with its hash.
-pub struct BlockID<D: Digest = Blake2b256>(pub GenericArray<u8, D::OutputSize>);
-
-impl<D: Digest> Digestible for BlockID<D> {
-    fn digest<DD: Digest>(&self, hasher: &mut DD) {
-        hasher.input(&self.0)
-    }
-}
-
-impl<D: Digest> PartialEq for BlockID<D> {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-
-impl<D: Digest> Eq for BlockID<D> {}
-
-impl<D: Digest> TryFrom<&[u8]> for BlockID<D> {
-    type Error = ConvertError;
-
-    fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
-        if src.len() != D::OutputSize::to_usize() {
-            Err(ConvertError::LengthMismatch(
-                D::OutputSize::to_usize(),
-                src.len(),
-            ))
-        } else {
-            Ok(Self(GenericArray::clone_from_slice(src)))
-        }
-    }
-}
-
-impl<D: Digest> AsRef<[u8]> for BlockID<D> {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-
-impl<D: Digest> Hash for BlockID<D> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.hash(state);
-    }
-}
-
-#[repr(transparent)]
-#[derive(Clone, Debug, Serialize, Deserialize)]
-/// Hash of contents (i.e. transactions) in a block.
-pub struct BlockContentsHash<D: Digest = Blake2b256>(pub GenericArray<u8, D::OutputSize>);
-
-impl<D: Digest> Digestible for BlockContentsHash<D> {
-    fn digest<DD: Digest>(&self, hasher: &mut DD) {
-        hasher.input(&self.0)
-    }
-}
-
-impl<D: Digest> PartialEq for BlockContentsHash<D> {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-
-impl<D: Digest> Eq for BlockContentsHash<D> {}
-
-impl<D: Digest> TryFrom<&[u8]> for BlockContentsHash<D> {
-    type Error = ConvertError;
-
-    fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
-        if src.len() != D::OutputSize::to_usize() {
-            Err(ConvertError::LengthMismatch(
-                D::OutputSize::to_usize(),
-                src.len(),
-            ))
-        } else {
-            Ok(Self(GenericArray::clone_from_slice(src)))
-        }
-    }
-}
-
-impl<D: Digest> AsRef<[u8]> for BlockContentsHash<D> {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
 
 /// Version identifier.
 pub const BLOCK_VERSION: u32 = 0;
+
+/// The index of a block in the blockchain.
+pub type BlockIndex = u64;
 
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Digestible)]
 /// A block of transactions in the blockchain.
@@ -234,82 +126,6 @@ pub fn compute_block_id<D: Digest>(
     contents_hash.digest(&mut hasher);
 
     BlockID(hasher.result())
-}
-
-/// A block signature.
-#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BlockSignature {
-    /// The actual signature of the block.
-    signature: Ed25519Signature,
-
-    /// The public key of the keypair used to generate the signature.
-    signer: Ed25519Public,
-}
-
-impl BlockSignature {
-    /// Create a new BlockSignature from an existing signature.
-    ///
-    /// # Arguments
-    /// * `signature` - A block signature.
-    /// * `signer` - The signer of the signature.
-    pub fn new(signature: Ed25519Signature, signer: Ed25519Public) -> Self {
-        Self { signature, signer }
-    }
-
-    /// Create a new BlockSignature by signing a block.
-    pub fn from_block_and_keypair(
-        block: &Block,
-        keypair: &Ed25519Pair,
-    ) -> Result<Self, Ed25519SignatureError> {
-        // SHA512 is used for compatibility with Ed25519ph.
-        let mut hasher = Sha512::default();
-        block.digest(&mut hasher);
-        let signature = keypair.try_sign_digest(hasher)?;
-
-        let signer = keypair.public_key();
-
-        Ok(Self { signature, signer })
-    }
-
-    /// Get the signature.
-    pub fn signature(&self) -> &Ed25519Signature {
-        &self.signature
-    }
-
-    /// Get the signer.
-    pub fn signer(&self) -> &Ed25519Public {
-        &self.signer
-    }
-
-    /// Verify that this signature is over a given block.
-    pub fn verify(&self, block: &Block) -> Result<(), Ed25519SignatureError> {
-        let mut hasher = Sha512::default();
-        block.digest(&mut hasher);
-
-        self.signer.verify_digest(hasher, &self.signature)
-    }
-}
-
-impl Display for BlockSignature {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(
-            f,
-            "{}:{}",
-            hex_fmt::HexFmt(&self.signature),
-            hex_fmt::HexFmt(&self.signer)
-        )
-    }
-}
-
-impl Debug for BlockSignature {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(
-            f,
-            "BlockSignature({}:{})",
-            hex_fmt::HexFmt(&self.signature),
-            hex_fmt::HexFmt(&self.signer)
-        )
-    }
 }
 
 #[cfg(test)]
