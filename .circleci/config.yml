@@ -3,7 +3,7 @@
 version: 2.1
 
 defaults:
-  builder-install: &builder-install gcr.io/mobilenode-211420/builder-install:1_8
+  builder-install: &builder-install gcr.io/mobilenode-211420/builder-install:1_9
 
 executors:
   build-executor:
@@ -103,11 +103,26 @@ commands:
           paths:
             - "~/.cargo"
 
-  build_setup:
+  generate-pem-file:
+    steps:
+      - run:
+          name: Generating Enclave_private.pem
+          command: |
+            openssl genrsa -out $(pwd)/Enclave_private.pem -3 3072
+            export CONSENSUS_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
+            export INGEST_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
+            export LEDGER_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
+            export VIEW_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
+
+  prepare-for-build:
     steps:
       - checkout
       - print_versions
       - env_setup
+      - enable_sccache
+      - restore-cargo-cache
+      - restore-sccache-cache
+      - generate-pem-file
 
   check-dirty-git:
     steps:
@@ -121,6 +136,7 @@ commands:
               echo "repo is dirty"
               git status
               exit 1
+            fi
 
 jobs:
   # A job that builds all the tests in the workspace, and stores them in a test-bins/ directory.
@@ -129,11 +145,7 @@ jobs:
   build-parallel-tests:
     executor: build-executor
     steps:
-      - build_setup
-      - enable_sccache
-      - restore-cargo-cache
-      - restore-sccache-cache
-
+      - prepare-for-build
       - run:
           name: Build/prepare unit tests
           command: |
@@ -202,7 +214,6 @@ jobs:
 
             # Crates that define macros (e.g. `digestible_derive`) link dynamically against libtest*.so, which sits here.
             export LD_LIBRARY_PATH="$HOME/.rustup/toolchains/$(rustup show active-toolchain | awk '{print $1}')/lib"
-            source /opt/intel/sgxsdk/environment
             echo "LD_LIBRARY_PATH = $LD_LIBRARY_PATH"
 
             # Run the test binaries for all the packages we're assigned by CircleCI's test splitting mechanism,
@@ -235,43 +246,43 @@ jobs:
     executor: build-executor
     parallelism: 1
     steps:
-      - build_setup
-      - enable_sccache
-      - restore-cargo-cache
-      - restore-sccache-cache
+      - prepare-for-build
       - run:
           name: Run all unit tests
           command: |
-            openssl genrsa -out $(pwd)/Enclave_private.pem -3 3072
-            export CONSENSUS_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
-            export INGEST_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
-            export LEDGER_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
-            export VIEW_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
-
             cargo test
+      - check-dirty-git
 
-            rm $(pwd)/Enclave_private.pem
+  # Build and lint in debug mode
+  build-all-and-lint-debug:
+    executor: build-executor
+    steps:
+      - prepare-for-build
+      - run:
+          name: Cargo build
+          command: |
+            cargo build
+      - check-dirty-git
+
+      # The lint and saving of caches happens here since this job is faster than the run-all-tests job.
+      # This results in shorter CI times.
       - run:
           name: Lint/fmt
           command: |
-            openssl genrsa -out $(pwd)/Enclave_private.pem -3 3072
-            export CONSENSUS_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
-            export INGEST_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
-            export LEDGER_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
-            export VIEW_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
-
             ./tools/lint.sh
-
-            rm $(pwd)/Enclave_private.pem
       - save-cargo-cache
       - save-sccache-cache
 
 workflows:
   version: 2
   # Build and run tests on a single container
-  run-all-tests:
+  build-and-run-all-tests:
     jobs:
+      # Run tests on a single container
       - run-all-tests
+
+      # Build everything in debug
+      - build-all-and-lint-debug
 
   # Build and run tests in parallel - not needed at the moment since the test suite is fast enough.
   # build-and-run-tests:

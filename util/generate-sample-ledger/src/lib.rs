@@ -8,7 +8,7 @@ use rand_hc::Hc128Rng as FixedRng;
 use rayon::prelude::*;
 use std::{path::PathBuf, vec::Vec};
 use transaction::{
-    account_keys::PublicAddress, constants::MAX_TINY_MOB, encrypted_fog_hint::EncryptedFogHint,
+    account_keys::PublicAddress, constants::TOTAL_MOB, encrypted_fog_hint::EncryptedFogHint,
     ring_signature::KeyImage, tx::TxOut, Block, RedactedTx, BLOCK_VERSION,
 };
 
@@ -21,6 +21,8 @@ use transaction::{
 /// * `recipients` -
 /// * `num_outputs_per_recipient` - Number of equal-valued outputs that each recipient receives, per block.
 /// * `num_blocks` - Number of blocks that will be created.
+///
+/// This will panic if it attempts to distribute the total value of mobilecoin into fewer than 16 outputs.
 pub fn bootstrap_ledger(
     path: &PathBuf,
     recipients: &[PublicAddress],
@@ -34,12 +36,12 @@ pub fn bootstrap_ledger(
     let mut db = LedgerDB::open(path.clone()).expect("Could not open ledger_db");
 
     let num_outputs: u64 = (recipients.len() * num_txos_per_account * num_blocks) as u64;
-    let initial_amount: u64 = MAX_TINY_MOB / num_outputs;
+    let picomob_per_output: u64 = (TOTAL_MOB / num_outputs) * 1_000_000_000_000;
 
     println!("recipients: {}", recipients.len());
     println!(
-        "Making {:?} transactions for {:?} tiny mob",
-        num_outputs, initial_amount
+        "Making {:?} outputs of {:?} picoMOB.",
+        num_outputs, picomob_per_output
     );
 
     let mut blocks_and_transactions: Vec<(Block, Vec<RedactedTx>)> = Vec::new();
@@ -63,7 +65,7 @@ pub fn bootstrap_ledger(
                     .map(|_i| {
                         create_minting_transaction(
                             recipient,
-                            initial_amount,
+                            picomob_per_output,
                             key_image_count as u64,
                             &mut rng,
                         )

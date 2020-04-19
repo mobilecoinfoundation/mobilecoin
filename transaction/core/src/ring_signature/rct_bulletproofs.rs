@@ -9,35 +9,50 @@
 extern crate alloc;
 
 use alloc::{vec, vec::Vec};
-use core::convert::TryInto;
-
 use blake2::{Blake2b, Digest};
 use bulletproofs::RangeProof;
 use common::HashSet;
+use core::convert::{TryFrom, TryInto};
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
-use keys::RistrettoPrivate;
-use mcserial::ReprBytes32;
+use digestible::Digestible;
+use generic_array::GenericArray;
+use keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
+use mcserial::{
+    prost::{
+        bytes::{Buf, BufMut},
+        encoding::{bytes, encode_key, encoded_len_varint, key_len, skip_field},
+        Message,
+    },
+    DecodeError, ReprBytes32,
+};
+use prost::encoding::{DecodeContext, WireType};
 use rand_core::{CryptoRng, RngCore};
+use serde::{Deserialize, Serialize};
 
 use crate::{
+    commitment::Commitment,
+    compressed_commitment::CompressedCommitment,
     onetime_keys::compute_key_image,
     range_proofs::{check_range_proofs, generate_range_proofs},
-    ring_signature::{
-        mlsag::RingMLSAG, Address, Blinding, Commitment, Error, KeyImage, Scalar, GENERATORS,
-    },
+    ring_signature::{mlsag::RingMLSAG, Blinding, Error, KeyImage, Scalar, GENERATORS},
 };
 
 /// An RCT_TYPE_BULLETPROOFS_2 signature.
-#[allow(dead_code)]
+#[derive(Clone, Digestible, Eq, PartialEq, Serialize, Deserialize, Message)]
 pub struct SignatureRctBulletproofs {
     /// Signature for each input ring.
+    #[prost(message, repeated, tag = "1")]
     pub ring_signatures: Vec<RingMLSAG>,
 
     /// Commitments of value equal to each real input.
-    pub pseudo_output_commitments: Vec<CompressedRistretto>,
+    #[prost(message, repeated, tag = "2")]
+    pub pseudo_output_commitments: Vec<CompressedCommitment>,
 
     /// Proof that all pseudo_outputs and transaction outputs are in [0, 2^64).
-    pub range_proof: RangeProof,
+    /// This contains range_proof.to_bytes(). It is stored this way so that this struct may derive
+    /// Default, which is a requirement for serializing with Prost.
+    #[prost(bytes, tag = "3")]
+    pub range_proof_bytes: Vec<u8>,
 }
 
 impl SignatureRctBulletproofs {
@@ -49,10 +64,9 @@ impl SignatureRctBulletproofs {
     /// * `real_input_indices` - The index of the real input in each ring.
     /// * `input_secrets` - One-time private key, amount value, and amount blinding for each real input.
     /// * `output_values_and_blindings` - Value and blinding for each output amount commitment.
-    #[allow(unused)]
     pub fn sign<CSPRNG: RngCore + CryptoRng>(
         message: &[u8; 32],
-        rings: &[Vec<(Address, Commitment)>],
+        rings: &[Vec<(CompressedRistrettoPublic, CompressedCommitment)>],
         real_input_indices: &[usize],
         input_secrets: &[(RistrettoPrivate, u64, Scalar)],
         output_values_and_blindings: &[(u64, Scalar)],
@@ -76,12 +90,11 @@ impl SignatureRctBulletproofs {
     /// * `rings` - One or more rings of one-time addresses and amount commitments.
     /// * `output_commitments` - Output amount commitments.
     /// * `rng` -
-    #[allow(unused)]
     pub fn verify<CSPRNG: RngCore + CryptoRng>(
         &self,
         message: &[u8; 32],
-        rings: &[Vec<(Address, Commitment)>],
-        output_commitments: &[Commitment],
+        rings: &[Vec<(CompressedRistrettoPublic, CompressedCommitment)>],
+        output_commitments: &[CompressedCommitment],
         rng: &mut CSPRNG,
     ) -> Result<(), Error> {
         // Signature must contain one ring signature for each ring.
@@ -111,53 +124,57 @@ impl SignatureRctBulletproofs {
             }
         }
 
-        // pseudo_output_commitments must decompress to RistrettoPoints.
-        let decompression_result: Result<Vec<_>, Error> = self
-            .pseudo_output_commitments
-            .iter()
-            .map(|compressed_ristretto| {
-                compressed_ristretto
-                    .decompress()
-                    .ok_or(Error::InvalidSignature)
-            })
-            .collect();
+        // output_commitments must decompress.
+        // This ensures that each commitment encodes a valid Ristretto point.
+        let mut decompressed_output_commitments: Vec<Commitment> = Vec::new();
+        for output_commitment in output_commitments {
+            let commitment = Commitment::try_from(output_commitment)?;
+            decompressed_output_commitments.push(commitment);
+        }
 
-        let decompressed_pseudo_output_commitments: Vec<RistrettoPoint> = decompression_result?;
+        // pseudo_output_commitments must decompress.
+        // This ensures that each commitment encodes a valid Ristretto point.
+        let mut decompressed_pseudo_output_commitments: Vec<Commitment> = Vec::new();
+        for pseudo_output in &self.pseudo_output_commitments {
+            let commitment = Commitment::try_from(pseudo_output)?;
+            decompressed_pseudo_output_commitments.push(commitment);
+        }
 
-        // Range proof must be valid
+        // pseudo_output_commitments and output commitments must be in [0, 2^64).
         {
-            let compressed_output_commitments: Vec<CompressedRistretto> = output_commitments
-                .iter()
-                .map(|commitment| commitment.as_ref().compress())
-                .collect();
-
             let commitments: Vec<CompressedRistretto> = self
                 .pseudo_output_commitments
                 .iter()
-                .chain(compressed_output_commitments.iter())
-                .cloned()
+                .chain(output_commitments.iter())
+                .map(|compressed_commitment| compressed_commitment.point)
                 .collect();
 
-            check_range_proofs(&self.range_proof, &commitments, rng)
+            let range_proof = RangeProof::from_bytes(&self.range_proof_bytes)
+                .map_err(|_e| Error::RangeProofError)?;
+
+            check_range_proofs(&range_proof, &commitments, rng)
                 .map_err(|_e| Error::InvalidSignature)?;
         }
 
         // Each MLSAG must be valid.
         for (i, ring) in rings.iter().enumerate() {
-            let pseudo_output = decompressed_pseudo_output_commitments[i];
             let ring_signature = &self.ring_signatures[i];
-            ring_signature.verify(message, ring, &Commitment::from(pseudo_output))?;
+            let pseudo_output = self.pseudo_output_commitments[i];
+            ring_signature.verify(message, ring, &pseudo_output)?;
         }
 
         // Output commitments - pseudo_outputs must be zero.
         {
-            let sum_of_output_commitments: RistrettoPoint = output_commitments
+            let sum_of_output_commitments: RistrettoPoint = decompressed_output_commitments
                 .iter()
-                .map(|commitment| commitment.0)
+                .map(|commitment| commitment.point)
                 .sum();
 
             let sum_of_pseudo_output_commitments: RistrettoPoint =
-                decompressed_pseudo_output_commitments.iter().sum();
+                decompressed_pseudo_output_commitments
+                    .iter()
+                    .map(|commitment| commitment.point)
+                    .sum();
 
             let difference = sum_of_output_commitments - sum_of_pseudo_output_commitments;
             if difference != GENERATORS.commit(Scalar::zero(), Scalar::zero()) {
@@ -170,7 +187,6 @@ impl SignatureRctBulletproofs {
     }
 
     /// Key images spent by this signature.
-    #[allow(unused)]
     pub fn key_images(&self) -> Vec<KeyImage> {
         self.ring_signatures
             .iter()
@@ -190,7 +206,7 @@ impl SignatureRctBulletproofs {
 /// * `check_value_is_preserved` - If true, check that the value of inputs equals value of outputs.
 fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
     message: &[u8; 32],
-    rings: &[Vec<(Address, Commitment)>],
+    rings: &[Vec<(CompressedRistrettoPublic, CompressedCommitment)>],
     real_input_indices: &[usize],
     input_secrets: &[(RistrettoPrivate, u64, Scalar)],
     output_values_and_blindings: &[(u64, Scalar)],
@@ -295,13 +311,16 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
         }
     }
 
-    let pseudo_output_commitments: Vec<CompressedRistretto> =
-        commitments.into_iter().take(num_inputs).collect();
+    let pseudo_output_commitments: Vec<CompressedCommitment> = commitments
+        .iter()
+        .take(num_inputs)
+        .map(CompressedCommitment::from)
+        .collect();
 
     Ok(SignatureRctBulletproofs {
         ring_signatures,
         pseudo_output_commitments,
-        range_proof,
+        range_proof_bytes: range_proof.to_bytes(),
     })
 }
 
@@ -309,8 +328,8 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
 mod rct_bulletproofs_tests {
     use alloc::vec::Vec;
 
-    use curve25519_dalek::scalar::Scalar;
-    use keys::{FromRandom, RistrettoPrivate, RistrettoPublic};
+    use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
+    use keys::{CompressedRistrettoPublic, FromRandom, RistrettoPrivate, RistrettoPublic};
     use rand_core::RngCore;
 
     use proptest::{array::uniform32, prelude::*};
@@ -319,13 +338,11 @@ mod rct_bulletproofs_tests {
     use crate::{
         proptest_fixtures::*,
         range_proofs::generate_range_proofs,
-        ring_signature::{
-            Address, Blinding, Commitment, Error, KeyImage, SignatureRctBulletproofs, GENERATORS,
-        },
+        ring_signature::{Blinding, Error, KeyImage, SignatureRctBulletproofs, GENERATORS},
     };
-    use curve25519_dalek::ristretto::RistrettoPoint;
 
     use super::sign_with_balance_check;
+    use crate::{commitment::Commitment, compressed_commitment::CompressedCommitment};
 
     extern crate std;
 
@@ -334,7 +351,7 @@ mod rct_bulletproofs_tests {
         message: [u8; 32],
 
         /// Rings of input onetime addresses and amount commitments.
-        rings: Vec<Vec<(Address, Commitment)>>,
+        rings: Vec<Vec<(CompressedRistrettoPublic, CompressedCommitment)>>,
 
         /// The index of the real input in each ring.
         real_input_indices: Vec<usize>,
@@ -360,23 +377,26 @@ mod rct_bulletproofs_tests {
             let mut input_secrets = Vec::new();
 
             for _i in 0..num_inputs {
-                let mut ring: Vec<(Address, Commitment)> = Vec::new();
+                let mut ring: Vec<(CompressedRistrettoPublic, CompressedCommitment)> = Vec::new();
+                // Create random mixins.
                 for _i in 0..num_mixins {
-                    let address = RistrettoPublic::from_random(rng);
+                    let address =
+                        CompressedRistrettoPublic::from(RistrettoPublic::from_random(rng));
                     let commitment = {
-                        let value = Scalar::from(rng.next_u64());
+                        let value = rng.next_u64();
                         let blinding = Scalar::random(rng);
-                        Commitment::from(GENERATORS.commit(value, blinding))
+                        CompressedCommitment::new(value, blinding)
                     };
                     ring.push((address, commitment));
                 }
                 // The real input.
                 let onetime_private_key = RistrettoPrivate::from_random(rng);
-                let onetime_public_key = RistrettoPublic::from(&onetime_private_key);
+                let onetime_public_key =
+                    CompressedRistrettoPublic::from(RistrettoPublic::from(&onetime_private_key));
 
                 let value = rng.next_u64();
                 let blinding = Scalar::random(rng);
-                let commitment = Commitment::from(GENERATORS.commit(Scalar::from(value), blinding));
+                let commitment = CompressedCommitment::new(value, blinding);
 
                 let real_index = rng.next_u64() as usize % (num_mixins + 1);
                 ring.insert(real_index, (onetime_public_key, commitment));
@@ -404,11 +424,10 @@ mod rct_bulletproofs_tests {
             }
         }
 
-        fn get_output_commitments(&self) -> Vec<Commitment> {
+        fn get_output_commitments(&self) -> Vec<CompressedCommitment> {
             self.output_values_and_blindings
                 .iter()
-                .map(|(value, blinding)| GENERATORS.commit(Scalar::from(*value), *blinding))
-                .map(Commitment::from)
+                .map(|(value, blinding)| CompressedCommitment::new(*value, *blinding))
                 .collect()
         }
     }
@@ -632,7 +651,7 @@ mod rct_bulletproofs_tests {
                 range_proof
             };
 
-            signature.range_proof = wrong_range_proof;
+            signature.range_proof_bytes = wrong_range_proof.to_bytes();
 
             let result = signature.verify(
                 &params.message,
@@ -678,6 +697,36 @@ mod rct_bulletproofs_tests {
             );
 
             assert_eq!(result, Err(Error::InvalidSignature));
+        }
+
+        #[test]
+        // decode(encode(&signature)) should be the identity function.
+        fn test_encode_decode(
+            num_inputs in 4..8usize,
+            num_mixins in 1..17usize,
+            seed in any::<[u8; 32]>(),
+        ) {
+            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let params = SignatureParams::random(num_inputs, num_mixins, &mut rng);
+            let signature = SignatureRctBulletproofs::sign(
+                &params.message,
+                &params.rings,
+                &params.real_input_indices,
+                &params.input_secrets,
+                &params.output_values_and_blindings,
+                &mut rng,
+            )
+            .unwrap();
+
+            use mcserial::prost::Message;
+
+            // The encoded bytes should have the correct length.
+            let bytes = mcserial::encode(&signature);
+            assert_eq!(bytes.len(), signature.encoded_len());
+
+            // decode(encode(&signature)) should be the identity function.
+            let recovered_signature : SignatureRctBulletproofs = mcserial::decode(&bytes).unwrap();
+            assert_eq!(signature, recovered_signature);
         }
 
     } // end proptest

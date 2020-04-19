@@ -3,34 +3,48 @@
 extern crate alloc;
 
 use alloc::{vec, vec::Vec};
-use core::convert::TryInto;
+use core::convert::{TryFrom, TryInto};
 
 use blake2::{Blake2b, Digest};
-use curve25519_dalek::ristretto::RistrettoPoint;
+use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
+use digestible::Digestible;
+use keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
+use mcserial::{
+    prost::{
+        bytes::{Buf, BufMut},
+        encoding::{encoded_len_varint, key_len, skip_field, DecodeContext, WireType},
+        Message,
+    },
+    DecodeError, ReprBytes32,
+};
 use rand_core::{CryptoRng, RngCore};
-
-use keys::RistrettoPrivate;
-use mcserial::ReprBytes32;
+use serde::{Deserialize, Serialize};
 
 use crate::{
+    commitment::Commitment,
+    compressed_commitment::CompressedCommitment,
     onetime_keys::compute_key_image,
-    ring_signature::{Address, Blinding, Commitment, Error, KeyImage, Scalar, GENERATORS},
+    ring_signature::{Blinding, CurveScalar, Error, KeyImage, Scalar, GENERATORS},
 };
 
-fn hash_to_point(address: &Address) -> RistrettoPoint {
-    RistrettoPoint::hash_from_bytes::<Blake2b>(&address.to_bytes())
+fn hash_to_point(ristretto_public: &RistrettoPublic) -> RistrettoPoint {
+    RistrettoPoint::hash_from_bytes::<Blake2b>(&ristretto_public.to_bytes())
 }
 
 /// MLSAG for a ring of public keys and amount commitments.
-#[derive(Clone, Debug)]
+/// Note: Serialize and Deserialize appear to be cruft left over from sdk_json_interface.
+#[derive(Clone, Digestible, PartialEq, Eq, Serialize, Deserialize, Message)]
 pub struct RingMLSAG {
     /// The initial challenge `c[0]`.
-    pub c_zero: Scalar,
+    #[prost(message, required, tag = "1")]
+    pub c_zero: CurveScalar,
 
     /// Responses `r_{0,0}, r_{0,1}, ... , r_{ring_size-1,0}, r_{ring_size-1,1}`.
-    pub responses: Vec<Scalar>,
+    #[prost(message, repeated, tag = "2")]
+    pub responses: Vec<CurveScalar>,
 
     /// Key image "spent" by this signature.
+    #[prost(message, required, tag = "3")]
     pub key_image: KeyImage,
 }
 
@@ -51,7 +65,7 @@ impl RingMLSAG {
     // * `rng` - Randomness.
     pub fn sign<CSPRNG: RngCore + CryptoRng>(
         message: &[u8; 32],
-        ring: &[(Address, Commitment)],
+        ring: &[(CompressedRistrettoPublic, CompressedCommitment)],
         real_index: usize,
         onetime_private_key: &RistrettoPrivate,
         value: u64,
@@ -89,7 +103,7 @@ impl RingMLSAG {
     // * `rng` - Randomness.
     fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
         message: &[u8; 32],
-        ring: &[(Address, Commitment)],
+        ring: &[(CompressedRistrettoPublic, CompressedCommitment)],
         real_index: usize,
         onetime_private_key: &RistrettoPrivate,
         value: u64,
@@ -108,11 +122,16 @@ impl RingMLSAG {
         let H = GENERATORS.B_blinding;
 
         let key_image = compute_key_image(onetime_private_key);
+
         // The uncompressed key_image.
         let I: RistrettoPoint = key_image.try_into().expect("key_image should decompress");
 
-        let output_commitment =
-            Commitment::from(GENERATORS.commit(Scalar::from(value), *output_blinding));
+        // Uncompressed output commitment.
+        // This ensures that each address and commitment encodes a valid Ristretto point.
+        let output_commitment: Commitment = Commitment::new(value, *output_blinding);
+
+        // Ring must decompress.
+        let decompressed_ring = decompress_ring(ring)?;
 
         // Challenges `c_0, ... c_{ring_size - 1}`.
         let mut c: Vec<Scalar> = vec![Scalar::zero(); ring_size];
@@ -133,7 +152,7 @@ impl RingMLSAG {
         for n in 0..ring_size {
             // Iterate around the ring, starting at real_index.
             let i = (real_index + n) % ring_size;
-            let (P_i, input_commitment) = &ring[i];
+            let (P_i, input_commitment) = &decompressed_ring[i];
 
             let (L0, R0, L1) = if i == real_index {
                 // c_{i+1} = Hn( m | alpha_0 * G | alpha_0 * Hp(P_i) | alpha_1 * H )
@@ -159,7 +178,8 @@ impl RingMLSAG {
 
                 let L0 = r[2 * i] * G + c[i] * P_i.as_ref();
                 let R0 = r[2 * i] * hash_to_point(&P_i) + c[i] * I;
-                let L1 = r[2 * i + 1] * H + c[i] * (output_commitment.0 - input_commitment.0);
+                let L1 =
+                    r[2 * i + 1] * H + c[i] * (output_commitment.point - input_commitment.point);
                 (L0, R0, L1)
             };
 
@@ -182,16 +202,18 @@ impl RingMLSAG {
         r[2 * real_index + 1] = alpha_1 - c[real_index] * z;
 
         if check_value_is_preserved {
-            let input_commitment = ring[real_index].1;
-            let difference: RistrettoPoint = output_commitment.0 - input_commitment.0;
+            let (_, input_commitment) = decompressed_ring[real_index];
+            let difference: RistrettoPoint = output_commitment.point - input_commitment.point;
             if difference != (z * H) {
                 return Err(Error::ValueNotConserved);
             }
         }
 
+        let responses: Vec<CurveScalar> = r.into_iter().map(CurveScalar::from).collect();
+
         Ok(RingMLSAG {
-            c_zero: c[0],
-            responses: r,
+            c_zero: CurveScalar::from(c[0]),
+            responses,
             key_image,
         })
     }
@@ -205,8 +227,8 @@ impl RingMLSAG {
     pub fn verify(
         &self,
         message: &[u8; 32],
-        ring: &[(Address, Commitment)],
-        output_commitment: &Commitment,
+        ring: &[(CompressedRistrettoPublic, CompressedCommitment)],
+        output_commitment: &CompressedCommitment,
     ) -> Result<(), Error> {
         let ring_size = ring.len();
         // `responses` must contain `2 * ring_size` elements.
@@ -217,20 +239,33 @@ impl RingMLSAG {
         let G = GENERATORS.B;
         let H = GENERATORS.B_blinding;
 
-        // The uncompressed key image.
+        // The key image must decompress.
+        // This ensures that the key image encodes a valid Ristretto point.
         let I: RistrettoPoint = self
             .key_image
             .try_into()
             .map_err(|_e| Error::InvalidKeyImage)?;
-        let r = &self.responses;
+
+        let r: Vec<Scalar> = self
+            .responses
+            .iter()
+            .map(|response| response.scalar)
+            .collect();
+
+        // Output commitment must decompress.
+        let output_commitment: Commitment = Commitment::try_from(output_commitment)?;
+
+        // Ring must decompress.
+        // This ensures that each address and commitment encodes a valid Ristretto point.
+        let decompressed_ring = decompress_ring(ring)?;
 
         // Recompute challenges.
         let mut recomputed_c = vec![Scalar::zero(); ring.len()];
 
-        for (i, (P_i, input_commitment)) in ring.iter().enumerate() {
+        for (i, (P_i, input_commitment)) in decompressed_ring.iter().enumerate() {
             let c_i = if i == 0 {
                 // Initialize loop using the signature's c_0 term.
-                self.c_zero
+                self.c_zero.scalar
             } else {
                 recomputed_c[i]
             };
@@ -244,8 +279,8 @@ impl RingMLSAG {
             // * Z_i is the i^th "commitment to zero" = output_commitment - i^th input_commitment.
 
             let L0 = r[2 * i] * G + c_i * P_i.as_ref();
-            let R0 = r[2 * i] * hash_to_point(&P_i) + c_i * I;
-            let L1 = r[2 * i + 1] * H + c_i * (output_commitment.0 - input_commitment.0);
+            let R0 = r[2 * i] * hash_to_point(P_i) + c_i * I;
+            let L1 = r[2 * i + 1] * H + c_i * (output_commitment.point - input_commitment.point);
 
             recomputed_c[(i + 1) % ring_size] = {
                 let mut hasher = Blake2b::new();
@@ -257,7 +292,7 @@ impl RingMLSAG {
             };
         }
 
-        if self.c_zero == recomputed_c[0] {
+        if self.c_zero.scalar == recomputed_c[0] {
             Ok(())
         } else {
             Err(Error::InvalidSignature)
@@ -265,30 +300,42 @@ impl RingMLSAG {
     }
 }
 
+fn decompress_ring(
+    ring: &[(CompressedRistrettoPublic, CompressedCommitment)],
+) -> Result<Vec<(RistrettoPublic, Commitment)>, Error> {
+    // Ring must decompress.
+    let mut decompressed_ring: Vec<(RistrettoPublic, Commitment)> = Vec::new();
+    for (compressed_address, compressed_commitment) in ring {
+        let ristretto_public = RistrettoPublic::try_from(compressed_address)?;
+        let commitment = Commitment::try_from(compressed_commitment)?;
+        decompressed_ring.push((ristretto_public, commitment));
+    }
+    Ok(decompressed_ring)
+}
+
 #[cfg(test)]
 mod mlsag_tests {
-    use keys::{FromRandom, RistrettoPrivate, RistrettoPublic};
+    use alloc::vec::Vec;
 
-    use crate::{
-        proptest_fixtures::*,
-        ring_signature::{Address, Commitment, Scalar, GENERATORS},
-    };
+    use keys::{CompressedRistrettoPublic, FromRandom, RistrettoPrivate, RistrettoPublic};
+    use rand_core::RngCore;
+
+    use proptest::{array::uniform32, prelude::*};
+    use rand::{rngs::StdRng, CryptoRng, SeedableRng};
 
     use crate::{
         onetime_keys::compute_key_image,
-        ring_signature::{mlsag::RingMLSAG, Error},
+        proptest_fixtures::*,
+        ring_signature::{mlsag::RingMLSAG, CurveScalar, Error, Scalar, GENERATORS},
+        CompressedCommitment,
     };
-    use alloc::vec::Vec;
-    use proptest::{array::uniform32, prelude::*};
-    use rand::{rngs::StdRng, CryptoRng, SeedableRng};
-    use rand_core::RngCore;
 
     extern crate std;
 
     #[derive(Debug)]
     struct RingMLSAGParameters {
         message: [u8; 32],
-        ring: Vec<(Address, Commitment)>,
+        ring: Vec<(CompressedRistrettoPublic, CompressedCommitment)>,
         real_index: usize,
         onetime_private_key: RistrettoPrivate,
         value: u64,
@@ -305,24 +352,25 @@ mod mlsag_tests {
             let mut message = [0u8; 32];
             rng.fill_bytes(&mut message);
 
-            let mut ring: Vec<(Address, Commitment)> = Vec::new();
+            let mut ring: Vec<(CompressedRistrettoPublic, CompressedCommitment)> = Vec::new();
             for _i in 0..num_mixins {
-                let address = RistrettoPublic::from_random(rng);
+                let address = CompressedRistrettoPublic::from(RistrettoPublic::from_random(rng));
                 let commitment = {
-                    let value = Scalar::from(rng.next_u64());
+                    let value = rng.next_u64();
                     let blinding = Scalar::random(rng);
-                    Commitment::from(GENERATORS.commit(value, blinding))
+                    CompressedCommitment::new(value, blinding)
                 };
                 ring.push((address, commitment));
             }
 
             // The real input.
             let onetime_private_key = RistrettoPrivate::from_random(rng);
-            let onetime_public_key = RistrettoPublic::from(&onetime_private_key);
+            let onetime_public_key =
+                CompressedRistrettoPublic::from(RistrettoPublic::from(&onetime_private_key));
 
             let value = rng.next_u64();
             let blinding = Scalar::random(rng);
-            let commitment = Commitment::from(GENERATORS.commit(Scalar::from(value), blinding));
+            let commitment = CompressedCommitment::new(value, blinding);
 
             let real_index = rng.next_u64() as usize % (num_mixins + 1);
             ring.insert(real_index, (onetime_public_key, commitment));
@@ -341,7 +389,7 @@ mod mlsag_tests {
     }
 
     proptest! {
-        #![proptest_config(ProptestConfig::with_cases(10))]
+        #![proptest_config(ProptestConfig::with_cases(3))]
 
         #[test]
         // `sign` should return a signature with 2*ring_size responses.
@@ -372,7 +420,7 @@ mod mlsag_tests {
 
             // All responses should be non-zero.
             for r in &signature.responses {
-                assert_ne!(*r, Scalar::zero());
+                assert_ne!(r.scalar, Scalar::zero());
             }
         }
 
@@ -481,11 +529,7 @@ mod mlsag_tests {
             )
             .unwrap();
 
-            let output_commitment = {
-                let value = Scalar::from(params.value);
-                let blinding = params.pseudo_output_blinding;
-                Commitment::from(GENERATORS.commit(value, blinding))
-            };
+            let output_commitment = CompressedCommitment::new(params.value, params.pseudo_output_blinding);
 
             assert!(signature
                 .verify(&params.message, &params.ring, &output_commitment)
@@ -515,11 +559,7 @@ mod mlsag_tests {
             )
             .unwrap();
 
-            let output_commitment = {
-                let value = Scalar::from(params.value);
-                let blinding = params.pseudo_output_blinding;
-                Commitment::from(GENERATORS.commit(value, blinding))
-            };
+            let output_commitment = CompressedCommitment::new(params.value, params.pseudo_output_blinding);
 
             match signature.verify(&params.message, &params.ring, &output_commitment) {
                 Err(Error::InvalidSignature) => {} // This is expected.
@@ -554,10 +594,7 @@ mod mlsag_tests {
                 )
                 .unwrap();
 
-                let output_commitment = {
-                    let blinding = params.pseudo_output_blinding;
-                    Commitment::from(GENERATORS.commit(Scalar::from(wrong_value), blinding))
-                };
+                let output_commitment = CompressedCommitment::new(wrong_value, params.pseudo_output_blinding);
 
                 let result =
                     invalid_signature.verify(&params.message, &params.ring, &output_commitment);
@@ -586,10 +623,7 @@ mod mlsag_tests {
                 )
                 .unwrap();
 
-                let output_commitment = {
-                    let value = Scalar::from(params.value);
-                    Commitment::from(GENERATORS.commit(value, wrong_blinding))
-                };
+                let output_commitment = CompressedCommitment::new(params.value, wrong_blinding);
 
                 let result =
                     invalid_signature.verify(&params.message, &params.ring, &output_commitment);
@@ -627,11 +661,7 @@ mod mlsag_tests {
             let wrong_key_image = compute_key_image(&RistrettoPrivate::from_random(&mut rng));
             signature.key_image = wrong_key_image;
 
-            let output_commitment = {
-                let value = Scalar::from(params.value);
-                let blinding = params.pseudo_output_blinding;
-                Commitment::from(GENERATORS.commit(value, blinding))
-            };
+            let output_commitment = CompressedCommitment::new(params.value, params.pseudo_output_blinding);
 
             match signature.verify(&params.message, &params.ring, &output_commitment) {
                 Err(Error::InvalidSignature) => {} // This is expected.
@@ -665,11 +695,7 @@ mod mlsag_tests {
             let mut wrong_message = [0u8; 32];
             rng.fill_bytes(&mut wrong_message);
 
-            let output_commitment = {
-                let value = Scalar::from(params.value);
-                let blinding = params.pseudo_output_blinding;
-                Commitment::from(GENERATORS.commit(value, blinding))
-            };
+            let output_commitment = CompressedCommitment::new(params.value, params.pseudo_output_blinding);
 
             let result = signature.verify(&wrong_message, &params.ring, &output_commitment);
 
@@ -701,16 +727,12 @@ mod mlsag_tests {
             )
             .unwrap();
 
-            let output_commitment = {
-                let value = Scalar::from(params.value);
-                let blinding = params.pseudo_output_blinding;
-                Commitment::from(GENERATORS.commit(value, blinding))
-            };
+            let output_commitment = CompressedCommitment::new(params.value, params.pseudo_output_blinding);
 
             // Modify a ring element's public key.
             {
                 let index = (rng.next_u64() as usize) % num_mixins;
-                params.ring[index].0 = RistrettoPublic::from_random(&mut rng);
+                params.ring[index].0 = CompressedRistrettoPublic::from(RistrettoPublic::from_random(&mut rng));
 
                 let result = signature.verify(&params.message, &params.ring, &output_commitment);
 
@@ -722,10 +744,10 @@ mod mlsag_tests {
 
             // Modify a ring element's amount commitment.
             {
-                let value = Scalar::from(rng.next_u64());
-                let blinding = Scalar::random(&mut rng);
                 let index = (rng.next_u64() as usize) % num_mixins;
-                params.ring[index].1 = Commitment::from(GENERATORS.commit(value, blinding));
+                let value = rng.next_u64();
+                let blinding = Scalar::random(&mut rng);
+                params.ring[index].1 = CompressedCommitment::new(value, blinding);
 
                 let result = signature.verify(&params.message, &params.ring, &output_commitment);
 
@@ -760,11 +782,7 @@ mod mlsag_tests {
 
             // The output_commitment should match the value and pseudo_output_blinding used by the signature.
             // Here, the output_commitment uses a different value.
-            let wrong_output_commitment = {
-                let value = Scalar::random(&mut rng);
-                let blinding = params.pseudo_output_blinding;
-                Commitment::from(GENERATORS.commit(value, blinding))
-            };
+            let wrong_output_commitment = CompressedCommitment::new(rng.next_u64(), params.pseudo_output_blinding);
 
             let result = signature.verify(&params.message, &params.ring, &wrong_output_commitment);
 
@@ -796,11 +814,7 @@ mod mlsag_tests {
             )
             .unwrap();
 
-            let output_commitment = {
-                let value = Scalar::from(params.value);
-                let blinding = params.pseudo_output_blinding;
-                Commitment::from(GENERATORS.commit(value, blinding))
-            };
+            let output_commitment = CompressedCommitment::new(params.value, params.pseudo_output_blinding);
 
             // Modify the signature to have too few responses.
             {
@@ -819,7 +833,7 @@ mod mlsag_tests {
             // Modify the signature to have too many responses.
             {
                 let mut invalid_signature = signature.clone();
-                invalid_signature.responses.push(Scalar::random(&mut rng));
+                invalid_signature.responses.push(CurveScalar::from_random(&mut rng));
 
                 let result =
                     invalid_signature.verify(&params.message, &params.ring, &output_commitment);
@@ -829,6 +843,39 @@ mod mlsag_tests {
                     _ => panic!(),
                 }
             }
+        }
+
+        #[test]
+        // decode(encode(&signature)) should be the identity function.
+        fn test_encode_decode(
+            num_mixins in 1..17usize,
+            seed in any::<[u8; 32]>(),
+        ) {
+            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let pseudo_output_blinding = Scalar::random(&mut rng);
+            let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
+
+            let signature = RingMLSAG::sign(
+                &params.message,
+                &params.ring,
+                params.real_index,
+                &params.onetime_private_key,
+                params.value,
+                &params.blinding,
+                &params.pseudo_output_blinding,
+                &mut rng,
+            )
+            .unwrap();
+
+            use mcserial::prost::Message;
+
+            // The encoded bytes should have the correct length.
+            let bytes = mcserial::encode(&signature);
+            assert_eq!(bytes.len(), signature.encoded_len());
+
+            // decode(encode(&signature)) should be the identity function.
+            let recovered_signature = mcserial::decode(&bytes).unwrap();
+            assert_eq!(signature, recovered_signature);
         }
 
     } // end proptest!

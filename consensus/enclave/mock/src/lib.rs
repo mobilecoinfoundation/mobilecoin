@@ -43,7 +43,7 @@ impl ConsensusServiceMockEnclave {
         let locally_encrypted_tx = LocallyEncryptedTx(mcserial::encode(tx));
         let tx_hash = tx.tx_hash();
         let highest_indices = tx.get_membership_proof_highest_indices();
-        let key_images: Vec<KeyImage> = tx.key_images().clone();
+        let key_images: Vec<KeyImage> = tx.key_images();
 
         TxContext {
             locally_encrypted_tx,

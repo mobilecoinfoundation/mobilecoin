@@ -4,4 +4,4 @@ mod error;
 mod validate;
 
 pub use error::{TransactionValidationError, TransactionValidationResult};
-pub use validate::{validate, validate_tombstone};
+pub use validate::{validate, validate_tombstone, validate_transaction_signature};

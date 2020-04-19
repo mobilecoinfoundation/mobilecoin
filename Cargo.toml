@@ -1,25 +1,25 @@
 [workspace]
 members = [
-    "attest/core",
     "attest/ake",
     "attest/api",
+    "attest/core",
     "attest/net",
     "attest/trusted",
     "attest/untrusted",
     "common",
     "consensus/api",
     "consensus/enclave",
-    "consensus/enclave/edl",
-    "consensus/enclave/measurement",
     "consensus/enclave/api",
+    "consensus/enclave/edl",
     "consensus/enclave/impl",
+    "consensus/enclave/measurement",
     "consensus/enclave/mock",
     "consensus/scp",
     "consensus/scp/play",
     "consensus/service",
     "crypto/ake/mcnoise",
+    "crypto/box",
     "crypto/digestible",
-    "crypto/ecies",
     "crypto/keys",
     "crypto/mcrand",
     "crypto/message-cipher",
@@ -45,10 +45,12 @@ members = [
     "sgx/sgx_debug_edl",
     "sgx/sgx_panic_edl",
     "sgx/sgx_slog_edl",
+    "testnet-client",
     "transaction/core",
     "transaction/core/test-utils",
     "transaction/std",
     "util/b58-payloads",
+    "util/build-grpc",
     "util/encodings",
     "util/generate-sample-ledger",
     "util/grpc",
@@ -86,5 +88,5 @@ rpath = true
 
 [patch.crates-io]
 rouille = { git = "https://github.com/tomaka/rouille/", rev = "db66a3b47af4271939e1aba21d0f36ccba3d1b70" }
-prost = { git = "https://github.com/cbeck88/prost", rev = "4e1905329369ca7a1cac3eda978ee9379167ee95" }
-prost-derive = { git = "https://github.com/cbeck88/prost", rev = "4e1905329369ca7a1cac3eda978ee9379167ee95" }
+prost = { git = "https://github.com/mobilecoinofficial/prost", rev = "4e1905329369ca7a1cac3eda978ee9379167ee95" }
+prost-derive = { git = "https://github.com/mobilecoinofficial/prost", rev = "4e1905329369ca7a1cac3eda978ee9379167ee95" }

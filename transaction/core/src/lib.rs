@@ -20,8 +20,9 @@ pub mod account_keys;
 pub mod amount;
 pub mod blake2b_256;
 mod block;
+mod commitment;
+mod compressed_commitment;
 pub mod constants;
-pub mod encoders;
 pub mod encrypted_fog_hint;
 pub mod fog_hint;
 pub mod membership_proofs;
@@ -38,6 +39,8 @@ pub mod view_key;
 pub mod proptest_fixtures;
 
 pub use block::*;
+pub use commitment::*;
+pub use compressed_commitment::*;
 pub use redacted_tx::RedactedTx;
 
 /// Get the shared secret for a transaction output.

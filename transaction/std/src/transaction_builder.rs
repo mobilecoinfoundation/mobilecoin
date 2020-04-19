@@ -4,21 +4,21 @@
 //!
 //! See https://cryptonote.org/img/cryptonote_transaction.png
 
-use keys::{FromRandom, RistrettoPrivate, RistrettoPublic};
+use keys::{CompressedRistrettoPublic, FromRandom, RistrettoPrivate, RistrettoPublic};
 use std::collections::HashSet;
 
 use crate::{InputCredentials, TxBuilderError};
+use curve25519_dalek::scalar::Scalar;
 use rand_core::{CryptoRng, RngCore};
 use transaction::{
     account_keys::PublicAddress,
-    amount::AmountError,
     constants::BASE_FEE,
     encrypted_fog_hint::EncryptedFogHint,
     fog_hint::FogHint,
     onetime_keys::compute_shared_secret,
-    range_proofs::generate_range_proofs,
-    ring_signature::{get_input_rows, sign, Blinding, Commitment},
+    ring_signature::SignatureRctBulletproofs,
     tx::{Tx, TxIn, TxOut, TxPrefix},
+    CompressedCommitment,
 };
 
 /// Helper utility for building and signing a CryptoNote-style transaction.
@@ -54,7 +54,7 @@ impl TransactionBuilder {
     /// Add an output to the transaction.
     ///
     /// # Arguments
-    /// * `value` - The value of this output.
+    /// * `value` - The value of this output, in picoMOB.
     /// * `recipient` - The recipient's public address
     /// * `recipient_fog_ingest_key` - The recipient's fog server's public key
     /// * `rng` - RNG used to generate blinding for commitment
@@ -86,7 +86,7 @@ impl TransactionBuilder {
     /// Sets the transaction fee.
     ///
     /// # Arguments
-    /// * `fee` - Transaction fee.
+    /// * `fee` - Transaction fee, in picoMOB.
     pub fn set_fee(&mut self, fee: u64) {
         self.fee = fee;
     }
@@ -109,113 +109,78 @@ impl TransactionBuilder {
             }
         }
 
-        // RCT_TYPE_FULL requires the true input to be in the same position within each ring.
-        // If each ring is a column of a matrix, the true inputs must be on the same row.
-        // Randomly choose a row that will contain the real inputs.
-        let ring_size = self.input_credentials[0].ring.len(); // ring size, e.g. 11
-        let chosen_input_row: usize = rng.next_u32() as usize % ring_size;
-
         let inputs: Vec<TxIn> = self
             .input_credentials
-            .iter_mut()
-            .map(|input_credential| {
-                // Swap the real input into the chosen position.
-                let real_index = input_credential.real_index;
-                input_credential.ring.swap(real_index, chosen_input_row);
-                input_credential
-                    .membership_proofs
-                    .swap(real_index, chosen_input_row);
-                input_credential.real_index = chosen_input_row;
-
-                TxIn {
-                    ring: input_credential.ring.clone(),
-                    proofs: input_credential.membership_proofs.clone(),
-                }
+            .iter()
+            .map(|input_credential| TxIn {
+                ring: input_credential.ring.clone(),
+                proofs: input_credential.membership_proofs.clone(),
             })
             .collect();
 
-        let tx_prefix = TxPrefix::new(inputs, self.outputs.clone(), self.fee);
+        let tx_prefix = TxPrefix::new(inputs, self.outputs.clone(), self.fee, self.tombstone_block);
 
-        // Commitment and blinding factor for each output.
-        let mut output_commitments_and_blindings: Vec<(Commitment, Blinding)> = tx_prefix
+        let tx_prefix_hash = tx_prefix.hash();
+        let message = tx_prefix_hash.as_bytes();
+
+        let mut rings: Vec<Vec<(CompressedRistrettoPublic, CompressedCommitment)>> = Vec::new();
+        for input in &tx_prefix.inputs {
+            let ring: Vec<(CompressedRistrettoPublic, CompressedCommitment)> = input
+                .ring
+                .iter()
+                .map(|tx_out| (tx_out.target_key, tx_out.amount.commitment))
+                .collect();
+            rings.push(ring);
+        }
+
+        let real_input_indices: Vec<usize> = self
+            .input_credentials
+            .iter()
+            .map(|input_credential| input_credential.real_index)
+            .collect();
+
+        // One-time private key, amount value, and amount blinding for each real input.
+        let mut input_secrets: Vec<(RistrettoPrivate, u64, Scalar)> = Vec::new();
+        for input_credential in &self.input_credentials {
+            let onetime_private_key = input_credential.onetime_private_key;
+            let amount = &input_credential.ring[input_credential.real_index].amount;
+            let shared_secret = compute_shared_secret(
+                &input_credential.real_output_public_key,
+                &input_credential.view_private_key,
+            );
+            let (value, blinding) = amount.get_value(&shared_secret)?;
+            input_secrets.push((onetime_private_key, value, blinding.into()));
+        }
+
+        let mut output_values_and_blindings: Vec<(u64, Scalar)> = tx_prefix
             .outputs
             .iter()
             .enumerate()
             .map(|(index, tx_out)| {
                 let amount = &tx_out.amount;
                 let shared_secret = &self.output_shared_secrets[index];
-                let (_value, blinding) = amount
+                let (value, blinding) = amount
                     .get_value(shared_secret)
                     .expect("TransactionBuilder created an invalid Amount");
-                (amount.commitment, blinding)
+                (value, blinding.into())
             })
             .collect();
 
-        // Add a commitment and blinding for the fee output.
-        let (fee_commitment, fee_blinding) = tx_prefix.fee_commitment_and_blinding();
-        output_commitments_and_blindings.push((fee_commitment, fee_blinding));
+        // The fee output is implicit in the tx_prefix.
+        output_values_and_blindings.push(tx_prefix.fee_value_and_blinding());
 
-        // Range proof
-        let (range_proof, _commitments) = {
-            let (mut output_values, mut output_blindings): (Vec<u64>, Vec<Blinding>) = tx_prefix
-                .outputs
-                .iter()
-                .enumerate()
-                .map(|(index, tx_out)| {
-                    let shared_secret = &self.output_shared_secrets[index];
-                    tx_out
-                        .amount
-                        .get_value(shared_secret)
-                        .expect("TransactionBuilder created an invalid output amount.")
-                })
-                .unzip();
-
-            output_values.push(tx_prefix.fee);
-            output_blindings.push(fee_blinding);
-
-            generate_range_proofs(&output_values, &output_blindings, rng)
-                .map_err(|_e| TxBuilderError::RangeProofFailed)?
-        };
-
-        // The one-time private key and blinding for each input.
-        let input_keys_and_blindings_result: Result<
-            Vec<(RistrettoPrivate, Blinding)>,
-            AmountError,
-        > = self
-            .input_credentials
-            .iter()
-            .map(|input_credential| {
-                let amount = &input_credential.ring[input_credential.real_index].amount;
-                let shared_secret = compute_shared_secret(
-                    &input_credential.real_output_public_key,
-                    &input_credential.view_private_key,
-                );
-                let (_value, blinding) = amount.get_value(&shared_secret)?;
-                let onetime_private_key = input_credential.onetime_private_key;
-                Ok((onetime_private_key, blinding))
-            })
-            .collect();
-
-        let input_keys_and_blindings: Vec<(RistrettoPrivate, Blinding)> =
-            input_keys_and_blindings_result?;
-
-        // RingCT Signature
-        let prefix_hash = tx_prefix.hash();
-        let input_rows = get_input_rows(&tx_prefix.inputs).unwrap();
-        let signature = sign(
-            prefix_hash.as_bytes(),
-            &input_rows,
-            &output_commitments_and_blindings,
-            &input_keys_and_blindings,
-            chosen_input_row,
+        let signature = SignatureRctBulletproofs::sign(
+            message,
+            &rings,
+            &real_input_indices,
+            &input_secrets,
+            &output_values_and_blindings,
             rng,
         )?;
 
         Ok(Tx {
             prefix: tx_prefix,
             signature,
-            range_proofs: range_proof.to_bytes(),
-            tombstone_block: self.tombstone_block,
         })
     }
 }
@@ -230,7 +195,7 @@ impl Default for TransactionBuilder {
 /// Creates a TxOut that sends `value` to `recipient`.
 ///
 /// # Arguments
-/// * `value` - Value of the output.
+/// * `value` - Value of the output, in picoMOB.
 /// * `recipient` - Recipient's address.
 /// * `ingest_pubkey` - The public key for the recipients fog server, if any
 /// * `rng` -
@@ -270,49 +235,62 @@ fn create_fog_hint<RNG: CryptoRng + RngCore>(
 }
 
 #[cfg(test)]
-pub mod tests {
+pub mod transaction_builder_tests {
     use super::*;
     use rand::{rngs::StdRng, SeedableRng};
     use std::convert::TryFrom;
     use transaction::{
         account_keys::{AccountKey, DEFAULT_SUBADDRESS_INDEX},
+        get_tx_out_shared_secret,
         onetime_keys::*,
-        ring_signature::{get_input_rows, verify},
         tx::TxOutMembershipProof,
+        validation::validate_transaction_signature,
     };
+
+    /// Creates a ring of of TxOuts.
+    ///
+    /// # Arguments
+    /// * `ring_size` - Number of elements in the ring.
+    /// * `account` - Owner of one of the ring elements.
+    /// * `value` - Value of the real element.
+    /// * `rng` - Randomness.
+    ///
+    /// Returns (ring, real_index)
+    fn get_ring<RNG: CryptoRng + RngCore>(
+        ring_size: usize,
+        account: &AccountKey,
+        value: u64,
+        rng: &mut RNG,
+    ) -> (Vec<TxOut>, usize) {
+        let mut ring: Vec<TxOut> = Vec::new();
+
+        // Create ring_size - 1 mixins.
+        for _i in 0..ring_size - 1 {
+            let address = AccountKey::random(rng).default_subaddress();
+            let (tx_out, _) = create_output(value, &address, None, rng).unwrap();
+            ring.push(tx_out);
+        }
+
+        // Insert the real element.
+        let real_index = (rng.next_u64() % ring_size as u64) as usize;
+        let (tx_out, _) = create_output(value, &account.default_subaddress(), None, rng).unwrap();
+        ring.insert(real_index, tx_out);
+        assert_eq!(ring.len(), ring_size);
+
+        (ring, real_index)
+    }
 
     #[test]
     // Spend a single input and send its full value to a single recipient.
     fn test_simple_transaction() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-
         let alice = AccountKey::random(&mut rng);
         let bob = AccountKey::random(&mut rng);
+        let value = 1475;
 
         // Mint an initial collection of outputs, including one belonging to Alice.
-        let minted_outputs: Vec<TxOut> = {
-            let mut recipient_and_amounts: Vec<(PublicAddress, u64)> = Vec::new();
-            recipient_and_amounts.push((alice.default_subaddress(), 65536));
-
-            // Some outputs belonging to this account will be used as mix-ins.
-            let other_account = AccountKey::random(&mut rng);
-            recipient_and_amounts.push((other_account.default_subaddress(), 65536));
-            recipient_and_amounts.push((other_account.default_subaddress(), 65536));
-
-            recipient_and_amounts
-                .iter()
-                .map(|(recipient, amount)| {
-                    let (tx_out, _shared_secret) =
-                        create_output(*amount, &recipient, None, &mut rng).unwrap();
-                    tx_out
-                })
-                .collect()
-        };
-
-        let ring = minted_outputs;
-        // Spend the first minted_output
-        let real_index: usize = 0;
-        let real_output = ring[real_index as usize].clone();
+        let (ring, real_index) = get_ring(3, &alice, value, &mut rng);
+        let real_output = ring[real_index].clone();
 
         let onetime_private_key = recover_onetime_private_key(
             &RistrettoPublic::try_from(&real_output.public_key).unwrap(),
@@ -327,7 +305,7 @@ pub mod tests {
             .map(|_tx_out| {
                 // TransactionBuilder does not validate membership proofs, but does require one
                 // for each ring member.
-                TxOutMembershipProof::new(0, 0, Default::default())
+                TxOutMembershipProof::default()
             })
             .collect();
 
@@ -344,45 +322,43 @@ pub mod tests {
         let mut transaction_builder = TransactionBuilder::new();
         transaction_builder.add_input(input_credentials);
         transaction_builder
-            .add_output(65536 - BASE_FEE, &bob.default_subaddress(), None, &mut rng)
+            .add_output(value - BASE_FEE, &bob.default_subaddress(), None, &mut rng)
             .unwrap();
 
         let tx = transaction_builder.build(&mut rng).unwrap();
 
-        // `transaction` should have a single input.
+        // The transaction should have a single input.
         assert_eq!(tx.prefix.inputs.len(), 1);
 
         assert_eq!(tx.prefix.inputs[0].proofs.len(), membership_proofs.len());
 
         let expected_key_images = vec![key_image];
-        assert_eq!(*tx.key_images(), expected_key_images);
+        assert_eq!(tx.key_images(), expected_key_images);
 
-        // `transaction` should have one output.
+        // The transaction should have one output.
         assert_eq!(tx.prefix.outputs.len(), 1);
+
+        let output: &TxOut = tx.prefix.outputs.get(0).unwrap();
 
         // The output should belong to the correct recipient.
         {
-            let tx_out: &TxOut = tx.prefix.outputs.get(0).unwrap();
             assert!(view_key_matches_output(
                 &bob.view_key(),
-                &RistrettoPublic::try_from(&tx_out.target_key).unwrap(),
-                &RistrettoPublic::try_from(&tx_out.public_key).unwrap()
+                &RistrettoPublic::try_from(&output.target_key).unwrap(),
+                &RistrettoPublic::try_from(&output.public_key).unwrap()
             ));
         }
 
-        // `transaction` should have a valid ringct signature
+        // The output should have the correct value.
         {
-            let prefix_hash = tx.prefix.hash();
-            let input_rows = get_input_rows(&tx.prefix.inputs).unwrap();
-            let commitments = tx.prefix.output_commitments();
-
-            assert!(verify(
-                prefix_hash.as_bytes(),
-                &input_rows,
-                &commitments,
-                &tx.signature
-            ));
+            let public_key = RistrettoPublic::try_from(&output.public_key).unwrap();
+            let shared_secret = get_tx_out_shared_secret(bob.view_private_key(), &public_key);
+            let (output_value, _blinding) = output.amount.get_value(&shared_secret).unwrap();
+            assert_eq!(output_value, value - BASE_FEE);
         }
+
+        // The transaction should have a valid signature.
+        assert!(validate_transaction_signature(&tx, &mut rng).is_ok());
     }
 
     #[test]
@@ -390,5 +366,58 @@ pub mod tests {
     // `build` should return an error if the inputs contain rings of different sizes.
     fn test_inputs_with_different_ring_sizes() {
         unimplemented!()
+    }
+
+    #[test]
+    // `build` should return an error if the sum of inputs does not equal the sum of outputs and the fee.
+    fn test_inputs_do_not_equal_outputs() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let alice = AccountKey::random(&mut rng);
+        let bob = AccountKey::random(&mut rng);
+        let value = 1475;
+
+        // Mint an initial collection of outputs, including one belonging to Alice.
+        let (ring, real_index) = get_ring(3, &alice, value, &mut rng);
+        let real_output = ring[real_index].clone();
+
+        let onetime_private_key = recover_onetime_private_key(
+            &RistrettoPublic::try_from(&real_output.public_key).unwrap(),
+            &alice.view_private_key(),
+            &alice.subaddress_spend_key(DEFAULT_SUBADDRESS_INDEX),
+        );
+
+        let membership_proofs: Vec<TxOutMembershipProof> = ring
+            .iter()
+            .map(|_tx_out| {
+                // TransactionBuilder does not validate membership proofs, but does require one
+                // for each ring member.
+                TxOutMembershipProof::default()
+            })
+            .collect();
+
+        let input_credentials = InputCredentials::new(
+            ring,
+            membership_proofs.clone(),
+            real_index,
+            onetime_private_key,
+            *alice.view_private_key(),
+            &mut rng,
+        )
+        .unwrap();
+
+        let mut transaction_builder = TransactionBuilder::new();
+        transaction_builder.add_input(input_credentials);
+
+        let wrong_value = 999;
+        transaction_builder
+            .add_output(wrong_value, &bob.default_subaddress(), None, &mut rng)
+            .unwrap();
+
+        let result = transaction_builder.build(&mut rng);
+        // Signing should fail if value is not conserved.
+        match result {
+            Err(TxBuilderError::RingSignatureFailed) => {} // Expected.
+            _ => panic!("Unexpected result {:?}", result),
+        }
     }
 }

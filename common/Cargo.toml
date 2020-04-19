@@ -55,7 +55,7 @@ chrono = { version = "0.4", optional = true }
 hostname = { version = "0.1", optional = true }
 lazy_static = { version = "1.4", optional = true }
 mclogger-macros = { path = "../util/mclogger-macros", optional = true }
-sentry = { version = "0.16", optional = true, default-features = false, features = ["with_client_implementation", "with_default_transport", "with_panic", "with_failure", "with_device_info", "with_rust_info", "with_rustls"] }
+sentry = { version = "0.18", optional = true, default-features = false, features = ["with_client_implementation", "with_reqwest_transport", "with_panic", "with_failure", "with_device_info", "with_rust_info", "with_rustls"] }
 slog = { version = "2.5", features = ["dynamic-keys", "max_level_trace", "release_max_level_trace"], optional = true }
 slog-async = { version = "2.3", optional = true }
 slog-atomic = { version = "3.0", optional = true }

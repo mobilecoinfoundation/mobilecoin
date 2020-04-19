@@ -21,12 +21,18 @@ use common::{
 };
 use grpc_util::{rpc_internal_error, rpc_logger, send_result};
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
+use keys::RistrettoPublic;
 use ledger_db::{Ledger, LedgerDB};
+use mc_b58_payloads::payloads::{RequestPayload, TransferPayload};
 use mcconnection::UserTxConnection;
+use mcserial::ReprBytes32;
 use mobilecoind_api::mobilecoind_api_grpc::{create_mobilecoind_api, MobilecoindApi};
 use protobuf::RepeatedField;
 use std::{convert::TryFrom, sync::Arc};
-use transaction::{account_keys::AccountKey, ring_signature::KeyImage};
+use transaction::{
+    account_keys::{AccountKey, PublicAddress},
+    ring_signature::KeyImage,
+};
 use transaction_std::identity::RootIdentity;
 
 pub struct Service {
@@ -325,30 +331,88 @@ impl<T: UserTxConnection + 'static> ServiceApi<T> {
 
     fn read_request_code_impl(
         &mut self,
-        _request: mobilecoind_api::ReadRequestCodeRequest,
+        request: mobilecoind_api::ReadRequestCodeRequest,
     ) -> Result<mobilecoind_api::ReadRequestCodeResponse, RpcStatus> {
-        todo!();
+        let request_payload = RequestPayload::decode(request.get_b58_code())
+            .map_err(|err| rpc_internal_error("RequestPayload.decode", err, &self.logger))?;
+
+        let mut response = mobilecoind_api::ReadRequestCodeResponse::new();
+        response.set_receiver(mobilecoind_api::PublicAddress::from(&PublicAddress::from(
+            &request_payload,
+        )));
+        response.set_value(request_payload.value);
+        response.set_memo(request_payload.memo);
+        Ok(response)
     }
 
     fn get_request_code_impl(
         &mut self,
-        _request: mobilecoind_api::GetRequestCodeRequest,
+        request: mobilecoind_api::GetRequestCodeRequest,
     ) -> Result<mobilecoind_api::GetRequestCodeResponse, RpcStatus> {
-        todo!();
+        let receiver = PublicAddress::try_from(request.get_receiver())
+            .map_err(|err| rpc_internal_error("PublicAddress.try_from", err, &self.logger))?;
+
+        let view_key = receiver.view_public_key().to_bytes();
+        let spend_key = receiver.spend_public_key().to_bytes();
+        let fog_url = receiver.fog_url().unwrap_or("");
+
+        let payload = RequestPayload::new_v3(
+            &view_key,
+            &spend_key,
+            fog_url,
+            request.get_value(),
+            request.get_memo(),
+        )
+        .map_err(|err| rpc_internal_error("RequestPayload.new_v3", err, &self.logger))?;
+        let b58_code = payload.encode();
+
+        let mut response = mobilecoind_api::GetRequestCodeResponse::new();
+        response.set_b58_code(b58_code);
+        Ok(response)
     }
 
     fn read_transfer_code_impl(
         &mut self,
-        _request: mobilecoind_api::ReadTransferCodeRequest,
+        request: mobilecoind_api::ReadTransferCodeRequest,
     ) -> Result<mobilecoind_api::ReadTransferCodeResponse, RpcStatus> {
-        todo!();
+        let transfer_payload = TransferPayload::decode(request.get_b58_code())
+            .map_err(|err| rpc_internal_error("TransferPayload.decode", err, &self.logger))?;
+
+        let tx_public_key = RistrettoPublic::try_from(&transfer_payload.utxo)
+            .map_err(|err| rpc_internal_error("RistrettoPublic.try_from", err, &self.logger))?;
+
+        let mut response = mobilecoind_api::ReadTransferCodeResponse::new();
+        response.set_entropy(transfer_payload.entropy.to_vec());
+        response.set_tx_public_key((&tx_public_key).into());
+        response.set_memo(transfer_payload.memo);
+        Ok(response)
     }
 
     fn get_transfer_code_impl(
         &mut self,
-        _request: mobilecoind_api::GetTransferCodeRequest,
+        request: mobilecoind_api::GetTransferCodeRequest,
     ) -> Result<mobilecoind_api::GetTransferCodeResponse, RpcStatus> {
-        todo!();
+        let mut entropy: [u8; 32] = [0; 32];
+        if request.entropy.len() != entropy.len() {
+            return Err(RpcStatus::new(
+                RpcStatusCode::INVALID_ARGUMENT,
+                Some("entropy".to_string()),
+            ));
+        }
+        entropy.copy_from_slice(request.get_entropy());
+
+        let tx_public_key = RistrettoPublic::try_from(request.get_tx_public_key())
+            .map_err(|err| rpc_internal_error("RistrettoPublic.try_from", err, &self.logger))?;
+
+        let payload =
+            TransferPayload::new_v1(&entropy, &tx_public_key.to_bytes(), request.get_memo())
+                .map_err(|err| rpc_internal_error("TransferPayload.new_v1", err, &self.logger))?;
+
+        let b58_code = payload.encode();
+
+        let mut response = mobilecoind_api::GetTransferCodeResponse::new();
+        response.set_b58_code(b58_code);
+        Ok(response)
     }
 
     fn generate_tx_impl(
@@ -472,9 +536,108 @@ impl<T: UserTxConnection + 'static> ServiceApi<T> {
 
     fn generate_transfer_code_tx_impl(
         &mut self,
-        _request: mobilecoind_api::GenerateTransferCodeTxRequest,
+        request: mobilecoind_api::GenerateTransferCodeTxRequest,
     ) -> Result<mobilecoind_api::GenerateTransferCodeTxResponse, RpcStatus> {
-        todo!();
+        // Generate entropy.
+        let entropy_response = self.generate_entropy_impl(mobilecoind_api::Empty::new())?;
+        let entropy = entropy_response.get_entropy().to_vec();
+
+        let mut entropy_bytes = [0; 32];
+        if entropy.len() != entropy_bytes.len() {
+            return Err(RpcStatus::new(
+                RpcStatusCode::INTERNAL,
+                Some("entropy returned was not 32 bytes".to_owned()),
+            ));
+        }
+        entropy_bytes.copy_from_slice(&entropy);
+
+        // Generate a new account using this entropy.
+        let mut account_key_request = mobilecoind_api::GetAccountKeyRequest::new();
+        account_key_request.set_entropy(entropy.clone());
+
+        let account_key_response = self.get_account_key_impl(account_key_request)?;
+        let account_key = AccountKey::try_from(account_key_response.get_account_key())
+            .map_err(|err| rpc_internal_error("account_key.try_from", err, &self.logger))?;
+
+        // The outlay we are sending the money to.
+        let outlay = Outlay {
+            receiver: account_key.default_subaddress(),
+            value: request.value,
+        };
+
+        // Generate transaction.
+        let mut generate_tx_request = mobilecoind_api::GenerateTxRequest::new();
+        generate_tx_request.set_sender_monitor_id(request.get_sender_monitor_id().to_vec());
+        generate_tx_request.set_change_subaddress(request.change_subaddress);
+        generate_tx_request.set_input_list(RepeatedField::from_vec(request.input_list.to_vec()));
+        generate_tx_request.set_outlay_list(RepeatedField::from_vec(vec![(&outlay).into()]));
+        generate_tx_request.set_fee(request.fee);
+        generate_tx_request.set_tombstone(request.tombstone);
+
+        let mut generate_tx_response = self.generate_tx_impl(generate_tx_request)?;
+        let tx_proposal = generate_tx_response.take_tx_proposal();
+
+        // Grab the public key of the relevant tx out.
+        let proto_tx_public_key = {
+            // We expect only a single outlay.
+            if tx_proposal.get_outlay_index_to_tx_out_index().len() != 1 {
+                return Err(RpcStatus::new(
+                    RpcStatusCode::INTERNAL,
+                    Some(format!(
+                        "outlay_index_to_tx_out_index contains {} elements, was expecting 1",
+                        tx_proposal.get_outlay_index_to_tx_out_index().len()
+                    )),
+                ));
+            }
+
+            // Get the TxOut index of our single outlay.
+            let tx_out_index = tx_proposal
+                .get_outlay_index_to_tx_out_index()
+                .get(&0)
+                .ok_or_else(|| {
+                    RpcStatus::new(
+                        RpcStatusCode::INTERNAL,
+                        Some("outlay_index_to_tx_out_index doesn't contain index 0".to_owned()),
+                    )
+                })?;
+
+            // Get the TxOut
+            let tx_out = tx_proposal
+                .get_tx()
+                .get_prefix()
+                .get_outputs()
+                .get(*tx_out_index as usize)
+                .ok_or_else(|| {
+                    RpcStatus::new(
+                        RpcStatusCode::INTERNAL,
+                        Some(format!("tx out index {} not found", tx_out_index)),
+                    )
+                })?;
+
+            // Get the public key
+            tx_out.get_public_key().clone()
+        };
+
+        let tx_public_key = RistrettoPublic::try_from(&proto_tx_public_key)
+            .map_err(|err| rpc_internal_error("ristretto_public.try_from", err, &self.logger))?;
+
+        // Generate b58 code.
+        let transfer_payload = TransferPayload::new_v1(
+            &entropy_bytes,
+            &tx_public_key.to_bytes(),
+            request.get_memo(),
+        )
+        .map_err(|err| rpc_internal_error("transfer_payload.new_v1", err, &self.logger))?;
+        let b58_code = transfer_payload.encode();
+
+        // Construct response.
+        let mut response = mobilecoind_api::GenerateTransferCodeTxResponse::new();
+        response.set_tx_proposal(tx_proposal);
+        response.set_entropy(entropy);
+        response.set_tx_public_key(proto_tx_public_key);
+        response.set_memo(request.get_memo().to_owned());
+        response.set_b58_code(b58_code);
+        Ok(response)
     }
 
     fn submit_tx_impl(
@@ -501,7 +664,7 @@ impl<T: UserTxConnection + 'static> ServiceApi<T> {
         if let Err(err) = self.mobilecoind_db.update_attempted_spend(
             &utxo_ids,
             block_height,
-            tx_proposal.tx.tombstone_block,
+            tx_proposal.tx.prefix.tombstone_block,
         ) {
             log::error!(
                 self.logger,
@@ -520,7 +683,7 @@ impl<T: UserTxConnection + 'static> ServiceApi<T> {
                 .map(|utxo| (&utxo.key_image).into())
                 .collect(),
         ));
-        sender_tx_receipt.set_tombstone(tx_proposal.tx.tombstone_block);
+        sender_tx_receipt.set_tombstone(tx_proposal.tx.prefix.tombstone_block);
 
         // Construct receiver receipts.
         let receiver_tx_receipts: Vec<_> = tx_proposal
@@ -554,7 +717,7 @@ impl<T: UserTxConnection + 'static> ServiceApi<T> {
                 receiver_tx_receipt.set_receipient((&outlay.receiver).into());
                 receiver_tx_receipt.set_tx_public_key(tx_out.public_key.into());
                 receiver_tx_receipt.set_tx_out_hash(tx_out.hash().to_vec());
-                receiver_tx_receipt.set_tombstone(tx_proposal.tx.tombstone_block);
+                receiver_tx_receipt.set_tombstone(tx_proposal.tx.prefix.tombstone_block);
 
                 Ok(receiver_tx_receipt)
             })
@@ -898,15 +1061,16 @@ mod test {
         utxo_store::UnspentTxOut,
     };
     use common::{logger::test_with_logger, HashSet};
-    use keys::RistrettoPublic;
+    use keys::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
     use std::{convert::TryFrom, iter::FromIterator};
     use transaction::{
         account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX},
-        constants::{BASE_FEE, MAX_INPUTS, MIN_RING_SIZE},
+        constants::{BASE_FEE, MAX_INPUTS, RING_SIZE},
         get_tx_out_shared_secret,
         onetime_keys::{compute_key_image, recover_onetime_private_key},
         tx::{Tx, TxOut},
+        Block, BlockIndex, BLOCK_VERSION,
     };
 
     #[test_with_logger]
@@ -1617,7 +1781,7 @@ mod test {
             // Sanity test tombstone block
             let num_blocks = ledger_db.num_blocks().unwrap();
             assert_eq!(
-                tx_proposal.get_tx().tombstone_block,
+                tx_proposal.get_tx().get_prefix().tombstone_block,
                 num_blocks + DEFAULT_NEW_TX_BLOCK_ATTEMPTS
             );
         }
@@ -1677,6 +1841,116 @@ mod test {
     }
 
     #[test_with_logger]
+    fn test_generate_transfer_code_tx(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        let sender = AccountKey::random(&mut rng);
+        let data = MonitorData::new(
+            sender.clone(),
+            0,  // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+        )
+        .unwrap();
+
+        // 1 known recipient, 3 random recipients and no monitors.
+        let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(
+                3,
+                &vec![sender.default_subaddress()],
+                &vec![],
+                logger.clone(),
+                &mut rng,
+            );
+
+        // Insert into database.
+        let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
+
+        // Allow the new monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Get list of unspent tx outs
+        let utxos = mobilecoind_db
+            .get_utxos_for_subaddress(&monitor_id, 0)
+            .unwrap();
+        assert!(!utxos.is_empty());
+
+        // Call generate transfer code ctx.
+        let mut request = mobilecoind_api::GenerateTransferCodeTxRequest::new();
+        request.set_sender_monitor_id(monitor_id.to_vec());
+        request.set_change_subaddress(0);
+        request.set_input_list(RepeatedField::from_vec(
+            utxos
+                .iter()
+                .map(mobilecoind_api::UnspentTxOut::from)
+                .collect(),
+        ));
+        request.set_value(1337);
+
+        let response = client.generate_transfer_code_tx(&request).unwrap();
+
+        // Test that the generated transaction can be picked up by mobilecoind.
+        {
+            // Get the transaction, and redact it so that we could append it to the ledger.
+            let tx_proposal = TxProposal::try_from(response.get_tx_proposal()).unwrap();
+            let redacted_transactions = vec![tx_proposal.tx.redact()];
+
+            // Append to ledger.
+            let num_blocks = ledger_db.num_blocks().unwrap();
+            let parent = ledger_db.get_block(num_blocks - 1).unwrap();
+            let new_block = Block::new(
+                BLOCK_VERSION,
+                &parent.id,
+                num_blocks as BlockIndex,
+                &Default::default(),
+                &redacted_transactions,
+            );
+            ledger_db
+                .append_block(&new_block, &redacted_transactions, None)
+                .unwrap();
+
+            // Add a monitor based on the entropy we received.
+            let mut root_entropy = [0; 32];
+            root_entropy.copy_from_slice(response.get_entropy());
+            let root_id = RootIdentity {
+                root_entropy,
+                fog_url: None,
+            };
+
+            // TODO: change to production AccountKey derivation
+            let account_key = AccountKey::from(&root_id);
+            let monitor_data = MonitorData::new(
+                account_key,
+                DEFAULT_SUBADDRESS_INDEX, // first_subaddress
+                1,                        // num_subaddresses
+                0,                        // first_block
+            )
+            .unwrap();
+
+            let monitor_id = mobilecoind_db.add_monitor(&monitor_data).unwrap();
+
+            // Wait for sync to complete.
+            wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+            // Get utxos for the new account and verify we only have the one utxo we are looking forc.
+            let utxos = mobilecoind_db
+                .get_utxos_for_subaddress(&monitor_id, 0)
+                .unwrap();
+            assert_eq!(utxos.len(), 1);
+
+            let utxo = &utxos[0];
+
+            assert_eq!(utxo.value, 1337);
+            assert_eq!(
+                utxo.tx_out.public_key,
+                RistrettoPublic::try_from(response.get_tx_public_key())
+                    .unwrap()
+                    .into()
+            );
+        }
+    }
+
+    #[test_with_logger]
     fn test_generate_optimization_tx(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
 
@@ -1692,7 +1966,7 @@ mod test {
 
         // 1 known recipient, and a bunch of random recipients and no monitors.
         // The random recipients are needed for mixins.
-        let num_random_recipients = MAX_INPUTS as u32 * MIN_RING_SIZE as u32
+        let num_random_recipients = MAX_INPUTS as u32 * RING_SIZE as u32
             / test_utils::GET_TESTING_ENVIRONMENT_NUM_BLOCKS as u32;
         let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(
@@ -1769,7 +2043,7 @@ mod test {
         // Sanity test tombstone block
         let num_blocks = ledger_db.num_blocks().unwrap();
         assert_eq!(
-            tx_proposal.tx.tombstone_block,
+            tx_proposal.tx.prefix.tombstone_block,
             num_blocks + DEFAULT_NEW_TX_BLOCK_ATTEMPTS
         );
     }
@@ -1893,7 +2167,7 @@ mod test {
 
             assert_eq!(
                 response.get_sender_tx_receipt().tombstone,
-                tx.tombstone_block
+                tx.prefix.tombstone_block
             );
 
             // Sanity the receiver receipts.
@@ -1907,7 +2181,7 @@ mod test {
                     PublicAddress::try_from(receipt.get_receipient()).unwrap()
                 );
 
-                assert_eq!(receipt.tombstone, tx.tombstone_block);
+                assert_eq!(receipt.tombstone, tx.prefix.tombstone_block);
             }
 
             assert_eq!(
@@ -2119,7 +2393,7 @@ mod test {
 
         assert_eq!(
             response.get_sender_tx_receipt().tombstone,
-            submitted_tx.tombstone_block
+            submitted_tx.prefix.tombstone_block
         );
 
         // Sanity the receiver receipts.
@@ -2133,7 +2407,7 @@ mod test {
                 PublicAddress::try_from(receipt.get_receipient()).unwrap()
             );
 
-            assert_eq!(receipt.tombstone, submitted_tx.tombstone_block);
+            assert_eq!(receipt.tombstone, submitted_tx.prefix.tombstone_block);
         }
 
         assert_eq!(
@@ -2172,5 +2446,149 @@ mod test {
             }
         }
         assert_eq!(matched_utxos, tx_proposal.utxos.len());
+    }
+
+    #[test_with_logger]
+    fn test_request_code(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        // no known recipient, 3 random recipients and no monitors.
+        let (_ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
+
+        // Random receiver address.
+        let receiver = AccountKey::random(&mut rng).default_subaddress();
+
+        // Try with just a receiver
+        {
+            // Generate a request code
+            let mut request = mobilecoind_api::GetRequestCodeRequest::new();
+            request.set_receiver(mobilecoind_api::PublicAddress::from(&receiver));
+
+            let response = client.get_request_code(&request).unwrap();
+            let b58_code = response.get_b58_code();
+
+            // Attempt to decode it.
+            let mut request = mobilecoind_api::ReadRequestCodeRequest::new();
+            request.set_b58_code(b58_code.to_owned());
+
+            let response = client.read_request_code(&request).unwrap();
+
+            // Check that input equals output.
+            assert_eq!(
+                PublicAddress::try_from(response.get_receiver()).unwrap(),
+                receiver
+            );
+            assert_eq!(response.value, 0);
+            assert_eq!(response.get_memo(), "");
+        }
+        // Try with receiver and value
+        {
+            // Generate a request code
+            let mut request = mobilecoind_api::GetRequestCodeRequest::new();
+            request.set_receiver(mobilecoind_api::PublicAddress::from(&receiver));
+            request.set_value(1234567890);
+
+            let response = client.get_request_code(&request).unwrap();
+            let b58_code = response.get_b58_code();
+
+            // Attempt to decode it.
+            let mut request = mobilecoind_api::ReadRequestCodeRequest::new();
+            request.set_b58_code(b58_code.to_owned());
+
+            let response = client.read_request_code(&request).unwrap();
+
+            // Check that input equals output.
+            assert_eq!(
+                PublicAddress::try_from(response.get_receiver()).unwrap(),
+                receiver
+            );
+            assert_eq!(response.value, 1234567890);
+            assert_eq!(response.get_memo(), "");
+        }
+        // Try with receiver, value and memo
+        {
+            // Generate a request code
+            let mut request = mobilecoind_api::GetRequestCodeRequest::new();
+            request.set_receiver(mobilecoind_api::PublicAddress::from(&receiver));
+            request.set_value(1234567890);
+            request.set_memo("hello there".to_owned());
+
+            let response = client.get_request_code(&request).unwrap();
+            let b58_code = response.get_b58_code();
+
+            // Attempt to decode it.
+            let mut request = mobilecoind_api::ReadRequestCodeRequest::new();
+            request.set_b58_code(b58_code.to_owned());
+
+            let response = client.read_request_code(&request).unwrap();
+
+            // Check that input equals output.
+            assert_eq!(
+                PublicAddress::try_from(response.get_receiver()).unwrap(),
+                receiver
+            );
+            assert_eq!(response.value, 1234567890);
+            assert_eq!(response.get_memo(), "hello there");
+        }
+
+        // Attempting to decode junk data should fail
+        {
+            let mut request = mobilecoind_api::ReadRequestCodeRequest::new();
+            request.set_b58_code("junk".to_owned());
+
+            assert!(client.read_request_code(&request).is_err());
+        }
+    }
+
+    #[test_with_logger]
+    fn test_transfer_code(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        // no known recipient, 3 random recipients and no monitors.
+        let (_ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
+
+        // Text public key
+        let tx_public_key = RistrettoPublic::from_random(&mut rng);
+
+        // An invalid request should fail.
+        {
+            let mut request = mobilecoind_api::GetTransferCodeRequest::new();
+            request.set_entropy(vec![3; 8]);
+            request.set_tx_public_key((&tx_public_key).into());
+            request.set_memo("memo".to_owned());
+            assert!(client.get_transfer_code(&request).is_err());
+
+            let mut request = mobilecoind_api::GetTransferCodeRequest::new();
+            request.set_memo("memo".to_owned());
+            assert!(client.get_transfer_code(&request).is_err());
+        }
+
+        // A valid request should allow us to encode to b58 and back to the original data.
+        {
+            // Encode
+            let mut request = mobilecoind_api::GetTransferCodeRequest::new();
+            request.set_entropy(vec![3; 32]);
+            request.set_tx_public_key((&tx_public_key).into());
+            request.set_memo("test memo".to_owned());
+
+            let response = client.get_transfer_code(&request).unwrap();
+            let b58_code = response.get_b58_code();
+
+            // Decode
+            let mut request = mobilecoind_api::ReadTransferCodeRequest::new();
+            request.set_b58_code(b58_code.to_owned());
+
+            let response = client.read_transfer_code(&request).unwrap();
+
+            // Compare
+            assert_eq!(vec![3; 32], response.get_entropy());
+            assert_eq!(
+                tx_public_key,
+                RistrettoPublic::try_from(response.get_tx_public_key()).unwrap()
+            );
+            assert_eq!(response.get_memo(), "test memo");
+        }
     }
 }

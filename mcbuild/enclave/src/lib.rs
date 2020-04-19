@@ -3,30 +3,43 @@
 #![feature(external_doc)]
 #![doc(include = "../README.md")]
 
-use base64::encode;
 use cargo_emit::{rerun_if_changed, rustc_env, warning};
 use cargo_metadata::{CargoOpt, Error as MetadataError, Metadata, MetadataCommand};
 use failure::Fail;
+use mbedtls::{pk::Pk, rng::RngCallback};
+use mbedtls_sys::types::{
+    raw_types::{c_int, c_uchar, c_void},
+    size_t,
+};
 use mcbuild_sgx_utils::{ConfigBuilder, IasMode, SgxEnvironment, SgxMode, SgxSign};
 use mcbuild_utils::{rerun_if_path_changed, CargoBuilder, Environment};
-use rand::rngs::OsRng;
-use rsa::{errors::Error as RsaError, hash::Hashes, PaddingScheme, PublicKey, RSAPrivateKey};
+use rand::{thread_rng, RngCore};
 use sgx_css::{Error as SignatureError, Signature};
-use sha2::{digest::Digest, Sha256};
 use std::{
     convert::TryFrom,
-    fs::{self, File},
-    io::{Error as IoError, Write},
+    fs,
+    io::Error as IoError,
     path::{Path, PathBuf},
     process::Command,
+    ptr, slice,
     sync::PoisonError,
 };
 
-const RSA_DER_PREFIX: [u8; 33] = [
-    0x30, 0x82, 0x01, 0xA2, 0x30, 0x0D, 0x06, 0x09, 0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x01,
-    0x01, 0x05, 0x00, 0x03, 0x82, 0x01, 0x8F, 0x00, 0x30, 0x82, 0x01, 0x8A, 0x02, 0x82, 0x01, 0x81,
-    0x00,
-];
+struct ThreadRngForMbedTls;
+
+impl RngCallback for ThreadRngForMbedTls {
+    #[inline(always)]
+    unsafe extern "C" fn call(_: *mut c_void, data: *mut c_uchar, len: size_t) -> c_int {
+        let outbuf = slice::from_raw_parts_mut(data, len);
+        let mut csprng = thread_rng();
+        csprng.fill_bytes(outbuf);
+        0
+    }
+
+    fn data_ptr(&mut self) -> *mut c_void {
+        ptr::null_mut()
+    }
+}
 
 /// An enumeration of builder errors.
 #[derive(Debug, Fail)]
@@ -63,10 +76,6 @@ pub enum Error {
     #[fail(display = "sgx_sign gendata failed")]
     SgxSignGendata,
 
-    /// There was an error generating an RSA private key.
-    #[fail(display = "RSA error: {}", _0)]
-    Rsa(RsaError),
-
     /// The gendata to be signed doesn't match what the given unsigned enclave produces.
     #[fail(display = "The given gendata doesn't match the unsigned enclave")]
     BadGendata,
@@ -99,12 +108,6 @@ impl From<SignatureError> for Error {
 impl From<IoError> for Error {
     fn from(src: IoError) -> Error {
         Error::Io(src.to_string())
-    }
-}
-
-impl From<RsaError> for Error {
-    fn from(src: RsaError) -> Error {
-        Error::Rsa(src)
     }
 }
 
@@ -429,78 +432,64 @@ impl Builder {
             };
         }
 
-        let (pubkey, signature) =
-            if enclave_rebuilt || (self.pubkey.is_none() && self.signature.is_none()) {
-                warning!("Generating single-use key for insecure, one-shot signature");
+        if enclave_rebuilt || (self.pubkey.is_none() && self.signature.is_none()) {
+            warning!("Generating single-use key for insecure, one-shot signature");
 
-                let mut pubkey = self.out_dir.join(&self.name);
-                let mut signature = pubkey.clone();
-                pubkey.set_extension("pub");
-                signature.set_extension("sig");
+            let mut csprng = ThreadRngForMbedTls {};
 
-                // Get the hash of the gendata output
-                let data = fs::read(&gendata)?;
-                let mut hasher = Sha256::default();
-                hasher.input(&data);
-                let digest = hasher.result();
+            let mut privkey =
+                Pk::generate_rsa(&mut csprng, 3072, 3).expect("Could not generate privkey");
 
-                // Generate a new key and sign the gendata hash
-                let mut rng = OsRng::default();
-                let private = RSAPrivateKey::new(&mut rng, 3072)?;
-                let sig = private.sign(
-                    PaddingScheme::PKCS1v15,
-                    Some(&Hashes::SHA2_256),
-                    digest.as_slice(),
-                )?;
-                fs::write(&signature, &sig)?;
+            let mut private_key = self.out_dir.join(&self.name);
+            private_key.set_extension("key");
 
-                let public = private.to_public_key();
-
-                // Build the pubkey DER
-                let mut pubkey_der = Vec::with_capacity(512);
-                pubkey_der.extend_from_slice(&RSA_DER_PREFIX[..]);
-                pubkey_der.append(&mut public.n().to_bytes_be());
-                let mut exponent_bytes = public.e().to_bytes_be();
-                let exponent_len = exponent_bytes.len() as u8;
-                pubkey_der.extend_from_slice(&[0x02, exponent_len]);
-                pubkey_der.append(&mut exponent_bytes);
-
-                // Write the PEM
-                let mut pubkey_file = File::create(&pubkey)?;
-                write!(&mut pubkey_file, "-----BEGIN PUBLIC KEY-----")?;
-                write!(&mut pubkey_file, "{}", encode(&pubkey_der))?;
-                write!(&mut pubkey_file, "-----END PUBLIC KEY-----")?;
-                (pubkey, signature)
-            } else {
-                let pubkey = self.pubkey.as_ref().unwrap();
-                let signature = self.signature.as_ref().unwrap();
-                rerun_if_changed!(signature
-                    .as_os_str()
-                    .to_str()
-                    .expect("Invalid UTF-8 in signature path"));
-                rerun_if_changed!(pubkey
-                    .as_os_str()
-                    .to_str()
-                    .expect("Invalid UTF-8 in pubkey path"));
-                (pubkey.clone(), signature.clone())
-            };
-
-        if self
-            .signer
-            .catsig(
-                &unsigned_enclave,
-                &config_xml,
-                &pubkey,
-                &gendata,
-                &signature,
-                signed_enclave,
+            fs::write(
+                &private_key,
+                privkey
+                    .write_private_pem_string()
+                    .expect("Could not write PEM string for private key"),
             )
-            .status()?
-            .success()
-        {
-            Ok(())
+            .expect("Could not write PEM string to private key file");
+
+            if self
+                .signer
+                .sign(&unsigned_enclave, &config_xml, &private_key, signed_enclave)
+                .status()?
+                .success()
+            {
+                Ok(())
+            } else {
+                Err(Error::SgxSign)
+            }
         } else {
-            Err(Error::SgxSignCatsig)
+            let pubkey = self.pubkey.as_ref().unwrap();
+            let signature = self.signature.as_ref().unwrap();
+            rerun_if_changed!(signature
+                .as_os_str()
+                .to_str()
+                .expect("Invalid UTF-8 in signature path"));
+            rerun_if_changed!(pubkey
+                .as_os_str()
+                .to_str()
+                .expect("Invalid UTF-8 in pubkey path"));
+
+            if self
+                .signer
+                .catsig(
+                    &unsigned_enclave,
+                    &config_xml,
+                    &pubkey,
+                    &gendata,
+                    &signature,
+                    signed_enclave,
+                )
+                .status()?
+                .success()
+            {
+                Ok(())
+            } else {
+                Err(Error::SgxSignCatsig)
+            }
         }
     }
 

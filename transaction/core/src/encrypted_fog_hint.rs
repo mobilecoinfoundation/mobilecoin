@@ -10,8 +10,12 @@
 use alloc::{vec, vec::Vec};
 use core::{convert::TryFrom, fmt};
 use digestible::Digestible;
-use generic_array::{typenum, GenericArray};
+use generic_array::{
+    typenum::{Diff, Unsigned, U128},
+    GenericArray,
+};
 use keys::FromRandom;
+use mc_crypto_box::{CryptoBox, VersionedCryptoBox};
 use prost::{
     bytes::{Buf, BufMut},
     encoding::{bytes, skip_field, DecodeContext, WireType},
@@ -20,31 +24,37 @@ use prost::{
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
-// The length of the discovery hint field in the ledger.
-// Must be at least as large as ecies::ECIES_EXTRA_SPACE, or it can't hold an ECIES encryption.
-pub type EncryptedFogHintSize = typenum::U128;
-// TODO: When generic array marks this function const, use this version
-// use typenum::marker_traits::Unsigned;
-///pub const ENCRYPTED_FOG_HINT_LEN: usize = EncryptedFogHintSize::to_usize();
-pub const ENCRYPTED_FOG_HINT_LEN: usize = 128;
+// The length of the encrypted fog hint field in the ledger.
+// Must be at least as large as McRistrettoBox::FooterSize, or it can't hold a
+// Ristretto-Box encryption.
+pub type EncryptedFogHintSize = U128;
+pub const ENCRYPTED_FOG_HINT_LEN: usize = EncryptedFogHintSize::USIZE;
+
+type Bytes = GenericArray<u8, EncryptedFogHintSize>;
 
 #[derive(
     Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Serialize, Deserialize, Default, Digestible,
 )]
 pub struct EncryptedFogHint {
-    bytes: GenericArray<u8, EncryptedFogHintSize>,
+    bytes: Bytes,
 }
 
 // AsRef and AsMut slice conversions
-impl AsRef<[u8]> for EncryptedFogHint {
-    fn as_ref(&self) -> &[u8] {
-        self.bytes.as_slice()
+impl AsRef<Bytes> for EncryptedFogHint {
+    fn as_ref(&self) -> &Bytes {
+        &self.bytes
     }
 }
 
-impl AsMut<[u8]> for EncryptedFogHint {
-    fn as_mut(&mut self) -> &mut [u8] {
-        self.bytes.as_mut_slice()
+impl AsMut<Bytes> for EncryptedFogHint {
+    fn as_mut(&mut self) -> &mut Bytes {
+        &mut self.bytes
+    }
+}
+
+impl From<Bytes> for EncryptedFogHint {
+    fn from(bytes: Bytes) -> Self {
+        Self { bytes }
     }
 }
 
@@ -89,21 +99,21 @@ impl EncryptedFogHint {
     /// To be used in prod when sending to a recipient with no known fog server
     /// This means it should be indistinguishable from an ecies encryption of a
     /// random plaintext. There are several ways we could sample that distribution
-    /// but the simplest is to do exactly that. This is also future proof if we later
-    /// tweak the ECIES implementation.
+    /// but the simplest is to do exactly that. This is also future-proof if we later
+    /// tweak the cryptobox implementation.
     pub fn fake_onetime_hint<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
-        let mut result = [0u8; ENCRYPTED_FOG_HINT_LEN];
-        let mut plaintext = [0u8; ENCRYPTED_FOG_HINT_LEN - ecies::ECIES_EXTRA_SPACE];
-        rng.fill_bytes(&mut plaintext);
+        // Make plaintext of the right size
+        let plaintext = GenericArray::<
+            u8,
+            Diff<EncryptedFogHintSize, <VersionedCryptoBox as CryptoBox>::FooterSize>,
+        >::default();
+        // Make a random key
         let key = keys::RistrettoPublic::from_random(rng);
-        ecies::encrypt_into(
-            rng,
-            &key,
-            &plaintext[..],
-            &ecies::DEFAULT_HKDF_SALT,
-            &mut result,
-        );
-        Self::from(&result)
+        // encrypt_in_place into the buffer
+        let bytes = VersionedCryptoBox::default()
+            .encrypt_fixed_length(rng, &key, &plaintext)
+            .expect("Encryption error");
+        Self { bytes }
     }
 }
 

@@ -238,7 +238,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 
         let tx_hash = tx.tx_hash();
         let highest_indices = tx.get_membership_proof_highest_indices();
-        let key_images: Vec<KeyImage> = tx.key_images().clone();
+        let key_images: Vec<KeyImage> = tx.key_images();
 
         Ok(TxContext {
             locally_encrypted_tx,
@@ -268,7 +268,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                 let locally_encrypted_tx = maybe_locally_encrypted_tx?;
                 let tx_hash = tx.tx_hash();
                 let highest_indices = tx.get_membership_proof_highest_indices();
-                let key_images: Vec<KeyImage> = tx.key_images().clone();
+                let key_images: Vec<KeyImage> = tx.key_images();
 
                 Ok(TxContext {
                     locally_encrypted_tx,
@@ -415,13 +415,13 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let mut used_key_images = BTreeSet::default();
         for tx in &transactions {
             for key_image in tx.key_images() {
-                if used_key_images.contains(key_image) {
+                if used_key_images.contains(&key_image) {
                     return Err(Error::RedactTxs(format!(
                         "Duplicate key image: {:?}",
                         key_image
                     )));
                 }
-                used_key_images.insert(key_image.clone());
+                used_key_images.insert(key_image);
             }
         }
 
@@ -601,11 +601,11 @@ mod tests {
         // Check that the context we got back is correct.
         assert_eq!(well_formed_tx_context.tx_hash(), &tx.tx_hash());
         assert_eq!(well_formed_tx_context.fee(), tx.prefix.fee);
-        assert_eq!(well_formed_tx_context.tombstone_block(), tx.tombstone_block);
         assert_eq!(
-            well_formed_tx_context.key_images(),
-            &tx.key_images().into_iter().cloned().collect::<Vec<_>>()
+            well_formed_tx_context.tombstone_block(),
+            tx.prefix.tombstone_block
         );
+        assert_eq!(*well_formed_tx_context.key_images(), tx.key_images());
 
         // All three tx representations should be different.
         assert_ne!(tx_bytes, locally_encrypted_tx.0);
@@ -861,7 +861,7 @@ mod tests {
         let num_transactions = 5;
         let recipient = AccountKey::random(&mut rng);
 
-        // The first block contains a single transaction with MIN_RING_SIZE outputs.
+        // The first block contains a single transaction with RING_SIZE outputs.
         let block_zero_transactions = ledger.get_transactions_by_block(0).unwrap();
         let block_zero_redacted_tx = block_zero_transactions.get(0).unwrap();
 
@@ -880,10 +880,20 @@ mod tests {
             new_transactions.push(tx);
         }
 
-        // Create a double-spend by duplicating one of the transactions.
-        let mut duplicate_spend = new_transactions[0].clone();
-        duplicate_spend.tombstone_block += 1; // Ensure txs have a different hash
-        new_transactions.push(duplicate_spend);
+        // Create another transaction that spends the zero^th output in block zero.
+        let double_spend = {
+            let tx_out = &block_zero_redacted_tx.outputs[0];
+
+            create_transaction(
+                &mut ledger,
+                tx_out,
+                &sender,
+                &recipient.default_subaddress(),
+                n_blocks + 1,
+                &mut rng,
+            )
+        };
+        new_transactions.push(double_spend);
 
         // Create WellFormedEncryptedTxs + proofs
         let well_formed_encrypted_txs_with_proofs: Vec<_> = new_transactions
@@ -936,7 +946,7 @@ mod tests {
         let num_transactions = 6;
         let recipient = AccountKey::random(&mut rng);
 
-        // The first block contains a single transaction with MIN_RING_SIZE outputs.
+        // The first block contains a single transaction with RING_SIZE outputs.
         let block_zero_transactions = ledger.get_transactions_by_block(0).unwrap();
         let block_zero_redacted_tx = block_zero_transactions.get(0).unwrap();
 

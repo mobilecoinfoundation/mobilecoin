@@ -3,7 +3,7 @@
 //! A node determines whether transactions are valid, and participates in voting with the members of its quorum set.
 use crate::{
     core_types::{CombineFn, SlotIndex, ValidityFn, Value},
-    msg::{ExternalizePayload, Msg, NominatePayload, Topic},
+    msg::{ExternalizePayload, Msg, Topic},
     quorum_set::QuorumSet,
     slot::{Slot, SlotMetrics},
 };
@@ -101,6 +101,33 @@ impl<V: Value, ValidationError: Display> Node<V, ValidationError> {
         // Return slot.
         self.pending.get_mut(&slot_index).unwrap()
     }
+
+    fn externalize(
+        &mut self,
+        slot_index: SlotIndex,
+        payload: &ExternalizePayload<V>,
+    ) -> Result<(), String> {
+        // Check for invalid values. This should be redundant, but may be helpful during development.
+        let mut externalized_invalid_values = false;
+        for value in &payload.C.X {
+            if let Err(e) = (self.validity_fn)(value) {
+                externalized_invalid_values = true;
+                log::error!(
+                    self.logger,
+                    "Slot {} externalized invalid value: {:?}, {}",
+                    slot_index,
+                    value,
+                    e
+                );
+            }
+        }
+        if externalized_invalid_values {
+            return Err("Slot Externalized invalid values.".to_string());
+        }
+
+        self.externalized.put(slot_index, payload.clone());
+        Ok(())
+    }
 }
 
 /// A node capable of participating in SCP.
@@ -171,19 +198,31 @@ impl<V: Value, ValidationError: Display> ScpNode<V> for Node<V, ValidationError>
             return Ok(None);
         }
 
-        self.handle(&Msg::new(
-            self.ID.clone(),
-            self.Q.clone(),
-            slot_index,
-            Topic::Nominate(NominatePayload {
-                X: valid_values,
-                Y: Default::default(),
-            }),
-        ))
+        let slot = self.get_or_create_pending_slot(slot_index);
+        let outbound = slot.propose_values(&valid_values)?;
+
+        match &outbound {
+            None => Ok(None),
+            Some(msg) => {
+                if let Topic::Externalize(ext_payload) = &msg.topic {
+                    self.externalize(msg.slot_index, ext_payload)?;
+                }
+                Ok(outbound)
+            }
+        }
     }
 
     /// Handle incoming message from the network.
     fn handle(&mut self, msg: &Msg<V>) -> Result<Option<Msg<V>>, String> {
+        if msg.sender_id == self.ID {
+            log::error!(
+                self.logger,
+                "node.handle received message from self: {:?}",
+                msg
+            );
+            return Ok(None);
+        }
+
         // Log an error if another node Externalizes different values.
         if let Topic::Externalize(received_externalized_payload) = &msg.topic {
             if let Some(our_externalized_payload) = self.externalized.get(&msg.slot_index) {
@@ -204,23 +243,18 @@ impl<V: Value, ValidationError: Display> ScpNode<V> for Node<V, ValidationError>
             }
         }
 
-        // If the node messaged itself, it means someone called `.nominate()`. We always forward
-        // those messages down to the slot. If the message came from anywhere else, we'd only pass
-        // it down if we haven't seen it before.
-        if self.ID != msg.sender_id {
-            // Calculate message hash.
-            let serialized_msg = mcserial::serialize(&msg).expect("failed serializing msg");
-            let msg_hash = fast_hash(&serialized_msg);
+        // Calculate message hash.
+        let serialized_msg = mcserial::serialize(&msg).expect("failed serializing msg");
+        let msg_hash = fast_hash(&serialized_msg);
 
-            // If we've already seen this message, we don't need to do anything.
-            // We use `get()` instead of `contains()` to update LRU state.
-            if self.seen_msg_hashes.get(&msg_hash).is_some() {
-                return Ok(None);
-            }
-
-            // Store message so it doesn't get processed again.
-            self.seen_msg_hashes.put(msg_hash, ());
+        // If we've already seen this message, we don't need to do anything.
+        // We use `get()` instead of `contains()` to update LRU state.
+        if self.seen_msg_hashes.get(&msg_hash).is_some() {
+            return Ok(None);
         }
+
+        // Store message so it doesn't get processed again.
+        self.seen_msg_hashes.put(msg_hash, ());
 
         // Process message using the Slot.
         let slot = self.get_or_create_pending_slot(msg.slot_index);
@@ -230,27 +264,8 @@ impl<V: Value, ValidationError: Display> ScpNode<V> for Node<V, ValidationError>
             None => Ok(None),
             Some(msg) => {
                 if let Topic::Externalize(ext_payload) = &msg.topic {
-                    let invalid_ext_values: Vec<(&V, String)> = ext_payload
-                        .C
-                        .X
-                        .iter()
-                        .map(|val| (val, (self.validity_fn)(val)))
-                        .filter(|(_val, result)| result.is_err())
-                        .map(|(val, result)| (val, result.unwrap_err().to_string()))
-                        .collect();
-
-                    if !invalid_ext_values.is_empty() {
-                        let err = format!(
-                            "Slot {} externalized invalid values! {:?}",
-                            msg.slot_index, invalid_ext_values
-                        );
-                        log::error!(self.logger, "{}", err);
-                        return Err(err);
-                    } else {
-                        self.externalized.put(msg.slot_index, ext_payload.clone());
-                    }
+                    self.externalize(msg.slot_index, ext_payload)?;
                 }
-
                 Ok(outbound)
             }
         }

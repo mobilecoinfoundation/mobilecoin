@@ -11,11 +11,11 @@ futures = "0.1"
 grpcio = "0.5.1"
 hex_fmt = "0.3"
 lazy_static = "1.4"
-mcserial = { path = "../../util/mcserial", features = ["std"]}
-metrics = { path = "../../util/metrics" }
+mcserial = { path = "../mcserial", features = ["std"]}
+metrics = { path = "../metrics" }
 prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
 protobuf = "2.12"
 rand = "0.6.5"
 
 [build-dependencies]
-protoc-grpcio = "0.3.1"
+mc-build-grpc = { path = "../build-grpc" }
