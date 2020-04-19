@@ -15,13 +15,13 @@ use rusoto_s3::{PutObjectError, PutObjectRequest, S3Client, S3};
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf, str::FromStr};
 use structopt::StructOpt;
-use transaction::{Block, BlockIndex, BlockSignature, RedactedTx};
+use transaction::{Block, BlockContents, BlockIndex, BlockSignature};
 
 pub trait BlockHandler {
     fn handle_block(
         &mut self,
         block: &Block,
-        transactions: &[RedactedTx],
+        block_contents: &BlockContents,
         signature: &Option<BlockSignature>,
     );
 }
@@ -145,7 +145,7 @@ impl BlockHandler for S3BlockWriter {
     fn handle_block(
         &mut self,
         block: &Block,
-        transactions: &[RedactedTx],
+        block_contents: &BlockContents,
         signature: &Option<BlockSignature>,
     ) {
         log::info!(self.logger, "S3: Handling block {}", block.index);
@@ -301,8 +301,8 @@ fn main() {
     );
     let mut next_block_num = first_desired_block;
     loop {
-        while let (Ok(transactions), Ok(block)) = (
-            ledger_db.get_transactions_by_block(next_block_num),
+        while let (Ok(block_contents), Ok(block)) = (
+            ledger_db.get_block_contents(next_block_num),
             ledger_db.get_block(next_block_num),
         ) {
             log::trace!(logger, "Handling block #{}", next_block_num);
@@ -321,7 +321,7 @@ fn main() {
                 }
             };
 
-            block_handler.handle_block(&block, &transactions, &signature);
+            block_handler.handle_block(&block, &block_contents, &signature);
             next_block_num += 1;
 
             let state = StateData {

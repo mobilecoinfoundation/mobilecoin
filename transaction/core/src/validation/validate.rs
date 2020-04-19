@@ -351,8 +351,8 @@ mod tests {
         initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
 
         let mut transactions = ledger.get_transactions_by_block(n_blocks - 1).unwrap();
-        let tx_stored = transactions.pop().unwrap();
-        let tx_out = tx_stored.outputs[0].clone();
+        let redacted_tx = transactions.pop().unwrap();
+        let tx_out = redacted_tx.outputs[0].clone();
 
         let recipient = transaction_test_utils::AccountKey::random(&mut rng);
         let tx = create_transaction(
@@ -364,7 +364,6 @@ mod tests {
             &mut rng,
         );
 
-        // Hack: TODO explain this
         (adapt_hack(&tx), ledger)
     }
 
@@ -618,7 +617,7 @@ mod tests {
     }
 
     #[test]
-    /// validate_key_images_are_unique rejects returns Ok if all key images are unique.
+    /// validate_key_images_are_unique returns Ok if all key images are unique.
     fn test_validate_key_images_are_unique_ok() {
         let (tx, _ledger) = create_test_tx();
         assert_eq!(validate_key_images_are_unique(&tx), Ok(()),);

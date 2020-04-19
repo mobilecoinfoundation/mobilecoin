@@ -1,6 +1,9 @@
 use crate::{
-    blake2b_256::Blake2b256, tx::TxOutMembershipElement, BlockContentsHash, BlockID, RedactedTx,
+    blake2b_256::Blake2b256,
+    tx::{TxOut, TxOutMembershipElement},
+    BlockContents, BlockContentsHash, BlockID, RedactedTx,
 };
+use alloc::vec::Vec;
 use digestible::{Digest, Digestible};
 use serde::{Deserialize, Serialize};
 
@@ -29,7 +32,7 @@ pub struct Block {
     /// This captures the state of all TxOuts in the ledger that this block was validated against.
     pub root_element: TxOutMembershipElement,
 
-    /// Hash of the block's contents (a hash of all the RedactedTxs in the block).
+    /// Hash of the block's contents.
     pub contents_hash: BlockContentsHash,
 }
 
@@ -37,13 +40,16 @@ impl Block {
     /// Creates the origin block.
     ///
     /// # Arguments
-    /// * `minting_transactions` - Transactions whose outputs are "minted" by the origin block.
-    pub fn new_origin_block(minting_transactions: &[RedactedTx]) -> Self {
+    /// * `outputs` - Outputs "minted" by the origin block.
+    pub fn new_origin_block(outputs: &[TxOut]) -> Self {
         let version = BLOCK_VERSION;
         let parent_id = BlockID::default();
         let index: BlockIndex = 0;
         let root_element = TxOutMembershipElement::default();
-        let contents_hash = hash_block_contents(minting_transactions);
+        // The origin block does not contain any key images.
+        let key_images = Vec::new();
+        let block_contents = BlockContents::new(key_images, outputs.to_vec());
+        let contents_hash = block_contents.hash();
 
         let id = compute_block_id(version, &parent_id, index, &root_element, &contents_hash);
         Self {
@@ -62,16 +68,15 @@ impl Block {
     /// * `version` - The block format version.
     /// * `parent_id` - `BlockID` of previous block in the blockchain.
     /// * `index` - The index of this block in the blockchain.
-    /// * `stored_transactions` - Transactions included in this block.
+    /// * `block_contents` - Contents of the block.
     pub fn new(
         version: u32,
         parent_id: &BlockID,
         index: BlockIndex,
         root_element: &TxOutMembershipElement,
-        redacted_transactions: &[RedactedTx],
+        block_contents: &BlockContents,
     ) -> Self {
-        let contents_hash = hash_block_contents(redacted_transactions);
-
+        let contents_hash = block_contents.hash();
         let id = compute_block_id(version, &parent_id, index, &root_element, &contents_hash);
 
         Self {
@@ -134,7 +139,7 @@ mod block_tests {
         account_keys::AccountKey,
         range::Range,
         tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash},
-        Block, BlockContentsHash, BlockID, RedactedTx, BLOCK_VERSION,
+        Block, BlockContents, BlockContentsHash, BlockID, RedactedTx, BLOCK_VERSION,
     };
     use alloc::vec::Vec;
     use core::convert::TryFrom;
@@ -166,19 +171,9 @@ mod block_tests {
             })
             .collect();
 
-        let redacted_transaction = RedactedTx {
-            outputs,
-            key_images: vec![], // TODO: include key images.
-        };
-        let redacted_transactions = vec![redacted_transaction];
-
-        Block::new(
-            BLOCK_VERSION,
-            &parent_id,
-            3,
-            &root_element,
-            &redacted_transactions,
-        )
+        let key_images = Vec::new(); // TODO: include key images.
+        let block_contents = BlockContents::new(key_images, outputs);
+        Block::new(BLOCK_VERSION, &parent_id, 3, &root_element, &block_contents)
     }
 
     #[test]

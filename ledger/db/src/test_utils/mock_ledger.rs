@@ -12,15 +12,13 @@ use std::{
 use transaction::{
     account_keys::AccountKey,
     ring_signature::KeyImage,
-    tx::{TxHash, TxOut, TxOutMembershipElement, TxOutMembershipProof},
-    Block, BlockID, BlockSignature, RedactedTx, BLOCK_VERSION,
+    tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
+    Block, BlockContents, BlockID, BlockSignature, BLOCK_VERSION,
 };
 
 pub struct MockLedgerInner {
     pub blocks_by_block_number: HashMap<u64, Block>,
     pub blocks_by_block_id: HashMap<BlockID, Block>,
-    pub transactions_by_block_number: HashMap<u64, Vec<RedactedTx>>,
-    pub transactions_by_hash: HashMap<TxHash, RedactedTx>,
     pub tx_outs: HashSet<TxOut>,
     pub membership_proofs: HashMap<u64, TxOutMembershipProof>,
     pub key_images_by_block_number: HashMap<u64, Vec<KeyImage>>,
@@ -38,8 +36,6 @@ impl Default for MockLedger {
             inner: Arc::new(Mutex::new(MockLedgerInner {
                 blocks_by_block_number: HashMap::default(),
                 blocks_by_block_id: HashMap::default(),
-                transactions_by_block_number: HashMap::default(),
-                transactions_by_hash: HashMap::default(),
                 tx_outs: HashSet::default(),
                 membership_proofs: HashMap::default(),
                 key_images_by_block_number: HashMap::default(),
@@ -58,8 +54,8 @@ impl MockLedger {
     ///
     /// # Arguments
     /// * `block` - Block to write.
-    /// * `transactions` - Transactions referenced by hashes in the `block`.
-    pub fn set_block(&mut self, block: &Block, transactions: &[RedactedTx]) {
+    /// * `block_contents` - Contents of the block.
+    pub fn set_block(&mut self, block: &Block, block_contents: &BlockContents) {
         let mut inner = self.lock();
 
         inner
@@ -68,24 +64,14 @@ impl MockLedger {
         inner
             .blocks_by_block_id
             .insert(block.id.clone(), block.clone());
-        inner
-            .transactions_by_block_number
-            .insert(block.index, transactions.to_vec());
-        for tx_stored in transactions {
-            let hash = tx_stored.hash();
-            inner.transactions_by_hash.insert(hash, tx_stored.clone());
-        }
-        for tx_stored in transactions {
-            for tx_out in &tx_stored.outputs {
-                inner.tx_outs.insert(tx_out.clone());
-            }
+
+        for tx_out in &block_contents.outputs {
+            inner.tx_outs.insert(tx_out.clone());
         }
 
-        let key_images: Vec<KeyImage> = transactions
-            .iter()
-            .flat_map(|redacted_tx| redacted_tx.key_images.clone())
-            .collect();
+        let key_images = block_contents.key_images.clone();
         inner.key_images = HashMap::from_iter(key_images.iter().map(|ki| (*ki, block.index)));
+
         inner
             .key_images_by_block_number
             .insert(block.index, key_images);
@@ -96,20 +82,16 @@ impl Ledger for MockLedger {
     fn append_block(
         &mut self,
         block: &Block,
-        transactions: &[RedactedTx],
+        block_contents: &BlockContents,
         _signature: Option<&BlockSignature>,
     ) -> Result<(), Error> {
         assert_eq!(block.index, self.num_blocks().unwrap());
-        self.set_block(block, transactions);
+        self.set_block(block, block_contents);
         Ok(())
     }
 
     fn num_blocks(&self) -> Result<u64, Error> {
         Ok(self.lock().blocks_by_block_number.len() as u64)
-    }
-
-    fn num_txs(&self) -> Result<u64, Error> {
-        Ok(self.lock().transactions_by_hash.len() as u64)
     }
 
     fn num_txos(&self) -> Result<u64, Error> {
@@ -124,6 +106,10 @@ impl Ledger for MockLedger {
             .ok_or(Error::NotFound)
     }
 
+    fn get_block_contents(&self, _block_number: u64) -> Result<BlockContents, Error> {
+        unimplemented!()
+    }
+
     fn get_block_signature(&self, _block_number: u64) -> Result<BlockSignature, Error> {
         Err(Error::NotFound)
     }
@@ -136,14 +122,6 @@ impl Ledger for MockLedger {
     fn get_tx_out_by_index(&self, _: u64) -> Result<TxOut, Error> {
         // Unused for these tests.
         unimplemented!()
-    }
-
-    fn get_transactions_by_block(&self, block_number: u64) -> Result<Vec<RedactedTx>, Error> {
-        self.lock()
-            .transactions_by_block_number
-            .get(&block_number)
-            .cloned()
-            .ok_or(Error::NotFound)
     }
 
     fn check_key_image(&self, key_image: &KeyImage) -> Result<Option<u64>, Error> {
@@ -179,30 +157,27 @@ impl Ledger for MockLedger {
 pub fn get_mock_ledger(n_blocks: usize) -> MockLedger {
     let mut mock_ledger = MockLedger::default();
     let blocks_and_transactions = get_test_ledger_blocks(n_blocks);
-    for (block, transactions) in blocks_and_transactions {
-        mock_ledger.set_block(&block, &transactions);
+    for (block, block_contents) in blocks_and_transactions {
+        mock_ledger.set_block(&block, &block_contents);
     }
     mock_ledger
 }
 
 #[allow(dead_code)]
 /// Creates a sequence of `Block`s and the transactions corresponding to each block.
-pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, Vec<RedactedTx>)> {
+pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
     let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
     // The owner of all outputs in the mock ledger.
     let account_key = AccountKey::random(&mut rng);
-
     let value = 134_217_728; // 2^27
-                             // let zero_key = RistrettoPublic::try_from(&[0u8; 32]).unwrap();
 
     let mut block_ids: Vec<BlockID> = Vec::with_capacity(n_blocks);
-    let mut blocks_and_transactions: Vec<(Block, Vec<RedactedTx>)> = Vec::with_capacity(n_blocks);
+    let mut blocks_and_contents: Vec<(Block, BlockContents)> = Vec::with_capacity(n_blocks);
 
     for block_index in 0..n_blocks {
         if block_index == 0 {
             // Create the origin block.
-
             let tx_out = TxOut::new(
                 value,
                 &account_key.default_subaddress(),
@@ -212,11 +187,11 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, Vec<RedactedTx>)> 
             )
             .unwrap();
 
-            let redacted_tx = RedactedTx::new(vec![tx_out], vec![]);
-            let redacted_transactions = vec![redacted_tx];
-            let origin_block = Block::new_origin_block(&redacted_transactions);
+            let outputs = vec![tx_out];
+            let origin_block = Block::new_origin_block(&outputs);
+            let block_contents = BlockContents::new(vec![], outputs);
             block_ids.push(origin_block.id.clone());
-            blocks_and_transactions.push((origin_block, redacted_transactions));
+            blocks_and_contents.push((origin_block, block_contents));
         } else {
             // Create a normal block.
             let parent_id: BlockID = block_ids[block_index - 1].clone();
@@ -230,25 +205,23 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, Vec<RedactedTx>)> 
             )
             .unwrap();
 
-            let redacted_tx = RedactedTx {
-                outputs: vec![tx_out],
-                key_images: vec![KeyImage::from(RistrettoPoint::random(&mut rng))],
-            };
+            let outputs = vec![tx_out];
+            let key_images = vec![KeyImage::from(RistrettoPoint::random(&mut rng))];
+            let block_contents = BlockContents::new(key_images, outputs);
 
-            let redacted_transactions = vec![redacted_tx];
             let block = Block::new(
                 BLOCK_VERSION,
                 &parent_id,
                 block_index as u64,
                 &TxOutMembershipElement::default(),
-                &redacted_transactions,
+                &block_contents,
             );
             block_ids.push(block.id.clone());
-            blocks_and_transactions.push((block, redacted_transactions));
+            blocks_and_contents.push((block, block_contents));
         }
     }
 
-    blocks_and_transactions
+    blocks_and_contents
 }
 
 #[cfg(test)]

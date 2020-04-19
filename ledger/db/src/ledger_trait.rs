@@ -5,7 +5,7 @@ use common::Hash;
 use transaction::{
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipProof},
-    Block, BlockSignature, RedactedTx,
+    Block, BlockContents, BlockSignature,
 };
 
 pub trait Ledger: Clone + Send {
@@ -13,7 +13,7 @@ pub trait Ledger: Clone + Send {
     fn append_block(
         &mut self,
         block: &Block,
-        transactions: &[RedactedTx],
+        block_contents: &BlockContents,
         signature: Option<&BlockSignature>,
     ) -> Result<(), Error>;
 
@@ -22,6 +22,9 @@ pub trait Ledger: Clone + Send {
 
     /// Gets a Block by its index in the blockchain.
     fn get_block(&self, block_number: u64) -> Result<Block, Error>;
+
+    /// Get the contents of a block.
+    fn get_block_contents(&self, block_number: u64) -> Result<BlockContents, Error>;
 
     /// Gets a block signature by its index in the blockchain.
     fn get_block_signature(&self, block_number: u64) -> Result<BlockSignature, Error>;
@@ -41,11 +44,11 @@ pub trait Ledger: Clone + Send {
         indexes: &[u64],
     ) -> Result<Vec<TxOutMembershipProof>, Error>;
 
-    /// Get the total number of transactions in the ledger.
-    fn num_txs(&self) -> Result<u64, Error>;
-
-    /// Gets all transactions associated with a given block.
-    fn get_transactions_by_block(&self, block_number: u64) -> Result<Vec<RedactedTx>, Error>;
+    // /// Get the total number of transactions in the ledger.
+    // fn num_txs(&self) -> Result<u64, Error>;
+    //
+    // /// Gets all transactions associated with a given block.
+    // fn get_transactions_by_block(&self, block_number: u64) -> Result<Vec<RedactedTx>, Error>;
 
     /// Returns true if the Ledger contains the given key image.
     fn contains_key_image(&self, key_image: &KeyImage) -> Result<bool, Error> {

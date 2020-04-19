@@ -14,7 +14,7 @@ use lmdb::{
 };
 use mcserial::{deserialize, serialize};
 use std::{path::PathBuf, sync::Arc};
-use transaction::{hash_block_contents, Block, BlockID, BlockSignature, RedactedTx, BLOCK_VERSION};
+use transaction::{Block, BlockContents, BlockID, BlockSignature, BLOCK_VERSION};
 
 mod error;
 mod ledger_trait;
@@ -36,14 +36,13 @@ const MAX_LMDB_FILE_SIZE: usize = 1_099_511_627_776; // 1 TB
 // LMDB Database names.
 pub const COUNTS_DB_NAME: &str = "ledger_db:counts";
 pub const BLOCKS_DB_NAME: &str = "ledger_db:blocks";
+pub const BLOCK_CONTENTS_DB_NAME: &str = "ledger_db:block_contents";
 pub const BLOCK_SIGNATURES_DB_NAME: &str = "ledger_db:block_signatures";
 pub const KEY_IMAGES_DB_NAME: &str = "ledger_db:key_images";
 pub const KEY_IMAGES_BY_BLOCK_DB_NAME: &str = "ledger_db:key_images_by_block";
-pub const TRANSACTIONS_BY_BLOCK_DB_NAME: &str = "ledger_db:transactions_by_block";
 
 // Keys used by the `counts` database.
 const NUM_BLOCKS_KEY: &str = "num_blocks";
-const NUM_TXS_KEY: &str = "num_txs";
 
 #[derive(Clone)]
 pub struct LedgerDB {
@@ -51,17 +50,16 @@ pub struct LedgerDB {
 
     /// Aggregate counts about the ledger.
     /// * `NUM_BLOCKS_KEY` --> number of blocks in the ledger.
-    /// * `NUM_TXS_KEY` --> number of txs in the ledger.
     counts: Database,
 
     /// Blocks by block number. `block number -> Block`
     blocks: Database,
 
+    /// Block contents by block number, `block number -> BlockContents`
+    block_contents: Database,
+
     /// Block signatures by number. `block number -> BlockSignature`
     block_signatures: Database,
-
-    /// Transactions by block. `block number -> Vec<TxStored>`
-    transactions_by_block: Database,
 
     /// Key Images
     key_images: Database,
@@ -82,42 +80,26 @@ impl Ledger for LedgerDB {
     ///
     /// # Arguments
     /// * `block` - A block.
-    /// * `transactions` - The ith element of `transactions` corresponds to the ith element of `block.tx_hashes`.
+    /// * `block_contents` - The contents of the block.
+    /// * `signature` - This node's signature over the block.
     fn append_block(
         &mut self,
         block: &Block,
-        transactions: &[RedactedTx],
+        block_contents: &BlockContents,
         signature: Option<&BlockSignature>,
     ) -> Result<(), Error> {
         // Note: This function must update every LMDB database managed by LedgerDB.
         let mut db_transaction = self.env.begin_rw_txn()?;
 
-        self.validate_append_block(block, transactions)?;
+        self.validate_append_block(block, block_contents)?;
 
-        let key_images = transactions
-            .iter()
-            .flat_map(|redacted_tx| redacted_tx.key_images.clone())
-            .collect::<Vec<_>>();
+        self.write_key_images(block.index, &block_contents.key_images, &mut db_transaction)?;
 
-        self.write_key_images(block.index, &key_images, &mut db_transaction)?;
-
-        for tx_stored in transactions {
-            for tx_out in &tx_stored.outputs {
-                self.tx_out_store.push(tx_out, &mut db_transaction)?;
-            }
+        for tx_out in &block_contents.outputs {
+            self.tx_out_store.push(tx_out, &mut db_transaction)?;
         }
 
-        // Update counts
-        let num_txs: u64 = key_bytes_to_u64(&db_transaction.get(self.counts, &NUM_TXS_KEY)?);
-        db_transaction.put(
-            self.counts,
-            &NUM_TXS_KEY,
-            &u64_to_key_bytes(num_txs + transactions.len() as u64),
-            WriteFlags::empty(),
-        )?;
-
-        self.write_transactions_by_block(block.index, transactions, &mut db_transaction)?;
-        self.write_block(block, signature, &mut db_transaction)?;
+        self.write_block(block, block_contents, signature, &mut db_transaction)?;
         db_transaction.commit()?;
         Ok(())
     }
@@ -127,14 +109,6 @@ impl Ledger for LedgerDB {
         let db_transaction = self.env.begin_ro_txn()?;
         Ok(key_bytes_to_u64(
             &db_transaction.get(self.counts, &NUM_BLOCKS_KEY)?,
-        ))
-    }
-
-    /// Get the total number of transactions in the ledger.
-    fn num_txs(&self) -> Result<u64, Error> {
-        let db_transaction = self.env.begin_ro_txn()?;
-        Ok(key_bytes_to_u64(
-            &db_transaction.get(self.counts, &NUM_TXS_KEY)?,
         ))
     }
 
@@ -151,6 +125,15 @@ impl Ledger for LedgerDB {
         let block_bytes = db_transaction.get(self.blocks, &key)?;
         let block = deserialize(&block_bytes)?;
         Ok(block)
+    }
+
+    /// Get the contents of a block.
+    fn get_block_contents(&self, block_number: u64) -> Result<BlockContents, Error> {
+        let db_transaction = self.env.begin_ro_txn()?;
+        let key = u64_to_key_bytes(block_number);
+        let bytes = db_transaction.get(self.block_contents, &key)?;
+        let block_contents = deserialize(&bytes)?;
+        Ok(block_contents)
     }
 
     /// Gets a block signature by its index in the blockchain.
@@ -174,15 +157,6 @@ impl Ledger for LedgerDB {
         let db_transaction = self.env.begin_ro_txn()?;
         self.tx_out_store
             .get_tx_out_by_index(index, &db_transaction)
-    }
-
-    /// Gets all transactions associated with a given Block.
-    fn get_transactions_by_block(&self, block_number: u64) -> Result<Vec<RedactedTx>, Error> {
-        let db_transaction = self.env.begin_ro_txn()?;
-        let key = u64_to_key_bytes(block_number);
-        let bytes = db_transaction.get(self.transactions_by_block, &key)?;
-        let transactions: Vec<RedactedTx> = deserialize(bytes)?;
-        Ok(transactions)
     }
 
     /// Returns true if the Ledger contains the given KeyImage.
@@ -237,10 +211,10 @@ impl LedgerDB {
 
         let counts = env.open_db(Some(COUNTS_DB_NAME))?;
         let blocks = env.open_db(Some(BLOCKS_DB_NAME))?;
+        let block_contents = env.open_db(Some(BLOCK_CONTENTS_DB_NAME))?;
         let block_signatures = env.open_db(Some(BLOCK_SIGNATURES_DB_NAME))?;
         let key_images = env.open_db(Some(KEY_IMAGES_DB_NAME))?;
         let key_images_by_block = env.open_db(Some(KEY_IMAGES_BY_BLOCK_DB_NAME))?;
-        let transactions_by_block = env.open_db(Some(TRANSACTIONS_BY_BLOCK_DB_NAME))?;
 
         let tx_out_store = TxOutStore::new(&env)?;
 
@@ -249,10 +223,10 @@ impl LedgerDB {
             path,
             counts,
             blocks,
+            block_contents,
             block_signatures,
             key_images,
             key_images_by_block,
-            transactions_by_block,
             tx_out_store,
         })
     }
@@ -272,10 +246,10 @@ impl LedgerDB {
 
         let counts = env.create_db(Some(COUNTS_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(BLOCKS_DB_NAME), DatabaseFlags::empty())?;
+        env.create_db(Some(BLOCK_CONTENTS_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(BLOCK_SIGNATURES_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(KEY_IMAGES_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(KEY_IMAGES_BY_BLOCK_DB_NAME), DatabaseFlags::empty())?;
-        env.create_db(Some(TRANSACTIONS_BY_BLOCK_DB_NAME), DatabaseFlags::empty())?;
 
         TxOutStore::create(&env)?;
 
@@ -288,13 +262,6 @@ impl LedgerDB {
             WriteFlags::empty(),
         )?;
 
-        db_transaction.put(
-            counts,
-            &NUM_TXS_KEY,
-            &u64_to_key_bytes(0),
-            WriteFlags::empty(),
-        )?;
-
         db_transaction.commit()?;
         Ok(())
     }
@@ -303,14 +270,10 @@ impl LedgerDB {
     fn write_block(
         &self,
         block: &Block,
+        block_contents: &BlockContents,
         signature: Option<&BlockSignature>,
         db_transaction: &mut RwTransaction,
     ) -> Result<(), lmdb::Error> {
-        // TODO: validate block.
-        // * Is the block's index correct?
-        // * Is the block's parent_id correct?
-        // * Is the block's ID the hash of its contents?
-
         // Update total number of blocks.
         let num_blocks_before: u64 =
             key_bytes_to_u64(&db_transaction.get(self.counts, &NUM_BLOCKS_KEY)?);
@@ -325,6 +288,15 @@ impl LedgerDB {
             self.blocks,
             &u64_to_key_bytes(block.index),
             &serialize(block).unwrap_or_else(|_| panic!("Could not serialize block {:?}", block)),
+            WriteFlags::empty(),
+        )?;
+
+        db_transaction.put(
+            self.block_contents,
+            &u64_to_key_bytes(block.index),
+            &serialize(block_contents).unwrap_or_else(|_| {
+                panic!("Could not serialize block contents{:?}", block_contents)
+            }),
             WriteFlags::empty(),
         )?;
 
@@ -369,67 +341,55 @@ impl LedgerDB {
         Ok(())
     }
 
-    fn write_transactions_by_block(
-        &self,
-        block_index: u64,
-        transactions: &[RedactedTx],
-        db_transaction: &mut RwTransaction,
-    ) -> Result<(), lmdb::Error> {
-        db_transaction.put(
-            self.transactions_by_block,
-            &u64_to_key_bytes(block_index),
-            &serialize(&transactions.to_vec())
-                .unwrap_or_else(|_| panic!("Could not serialize chunk {:?}", transactions)),
-            WriteFlags::empty(),
-        )?;
-        Ok(())
-    }
-
-    /// Checks if a block can be appended to the db
+    /// Checks if a block can be appended to the db.
     fn validate_append_block(
         &self,
         block: &Block,
-        transactions: &[RedactedTx],
+        block_contents: &BlockContents,
     ) -> Result<(), Error> {
-        // We don't want empty blocks
-        if transactions.is_empty() {
-            return Err(Error::NoTransactions);
-        }
-
         // Check that version is correct
         if block.version != BLOCK_VERSION {
             return Err(Error::InvalidBlock);
         }
 
-        // Check if block is being appended at the correct place
+        // A block must have outputs.
+        if block_contents.outputs.is_empty() {
+            return Err(Error::InvalidBlock);
+        }
+
+        // // Non-origin blocks must have key images.
+        // if block.index == 0 && block_contents.key_images.is_empty() {
+        //     return Err(Error::InvalidBlock);
+        // }
+
+        // Check if block is being appended at the correct place.
         let num_blocks = self.num_blocks()?;
         if num_blocks == 0 {
+            // This must be an origin block.
             if block.index != 0 || block.parent_id != BlockID::default() {
                 return Err(Error::InvalidBlock);
             }
         } else {
+            // The block must have the correct index and parent.
             let last_block = self.get_block(num_blocks - 1)?;
             if block.index != num_blocks || block.parent_id != last_block.id {
                 return Err(Error::InvalidBlock);
             }
         }
 
-        // Check that the block contents match the hash
-        if block.contents_hash != hash_block_contents(&transactions) {
+        // Check that the block contents match the hash.
+        if block.contents_hash != block_contents.hash() {
             return Err(Error::InvalidBlockContents);
         }
 
-        // Check that none of the key images were previously spent
-        for redacted_tx in transactions.iter() {
-            for key_image in redacted_tx.key_images.iter() {
-                if self.contains_key_image(key_image)? {
-                    return Err(Error::KeyImageAlreadySpent);
-                }
+        // Check that none of the key images were previously spent.
+        for key_image in &block_contents.key_images {
+            if self.contains_key_image(key_image)? {
+                return Err(Error::KeyImageAlreadySpent);
             }
         }
 
-        // Validate block id
-
+        // Validate block id.
         if !block.is_block_id_valid() {
             return Err(Error::InvalidBlockID);
         }

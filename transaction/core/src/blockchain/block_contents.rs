@@ -1,8 +1,33 @@
-use crate::{blake2b_256::Blake2b256, ConvertError};
+use crate::{blake2b_256::Blake2b256, ring_signature::KeyImage, tx::TxOut, ConvertError};
+use alloc::vec::Vec;
 use core::convert::TryFrom;
 use digestible::{Digest, Digestible};
 use generic_array::{typenum::Unsigned, GenericArray};
 use serde::{Deserialize, Serialize};
+
+/// The contents of a Block.
+#[derive(Clone, PartialEq, Eq, Debug, Digestible, Serialize, Deserialize)]
+pub struct BlockContents {
+    /// Key images "spent" by this block.
+    pub key_images: Vec<KeyImage>,
+
+    /// Outputs minted by this block.
+    pub outputs: Vec<TxOut>,
+}
+
+impl BlockContents {
+    pub fn new(key_images: Vec<KeyImage>, outputs: Vec<TxOut>) -> Self {
+        Self {
+            key_images,
+            outputs,
+        }
+    }
+
+    /// The Blake2B256 digest of `self`.
+    pub fn hash(&self) -> BlockContentsHash {
+        BlockContentsHash(self.digest_with::<Blake2b256>())
+    }
+}
 
 #[repr(transparent)]
 #[derive(Clone, Debug, Serialize, Deserialize)]
