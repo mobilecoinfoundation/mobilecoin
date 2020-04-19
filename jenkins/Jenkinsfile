@@ -75,9 +75,8 @@ pipeline {
           // Generate sample data
           dir('ops/sample_data') {
             sh '../bin/sample-keys --num 1000'
-            sh '../bin/bootstrap --num 100'
+            sh '../bin/generate_sample_ledger -t 100'
             sh 'rm -f ./ledger/lock.mdb'
-            sh 'rm -f ./account/lock.mdb'
           }
 
           // Stash the ops data/binaries for usage in later steps
