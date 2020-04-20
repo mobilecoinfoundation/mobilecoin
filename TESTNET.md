@@ -35,3 +35,15 @@ If you have a Linux-compatible home computer, or if you are willing to operate a
 If you have an SGX-capable machine, or if you are willing to operate an SGX-capable server in the cloud, you can run a *validator node* in the MobileCoin TestNet.
 
 1. Send an email to [support@mobilecoin.com](mailto://support@mobilecoin.com) and let us know how you'd like to get involved!
+
+## MobileCoin TestNet Schedule
+
+The MobileCoin ledger will be reset at the end of each TestNet period to accommodate breaking changes. Each time the ledger is reset, new TestNet coins will be allocated to all registered users.
+
+During normal service hours our goal will be to maintain 100% uptime. We plan to rehearse enclave updates that will cause service interruption during *Maintenance Hours*.
+
+|Period | Start Date | End Date | Maintenance Hours |
+| -- | -- | -- | -- | -- |
+| 1 | Wed Apr 22 | Wed Apr 29 |  Daily 5PM-10PM PST |
+| 2 | Wed Apr 29 | Wed May 13 |  M-F 5PM-7PM PST |
+| 3 | Wed May 13 | (TBD) | M,W,F 5PM-6PM PST |
