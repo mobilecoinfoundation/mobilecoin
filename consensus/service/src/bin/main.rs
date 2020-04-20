@@ -58,7 +58,7 @@ fn main() -> Result<(), ConsensusServiceError> {
 
     // write the sealed block signing key
     let mut sealed_key_file =
-        File::create(&config.sealed_block_signing_key).expect("Failed to open sealey key file");
+        File::create(&config.sealed_block_signing_key).expect("Failed to open sealed key file");
     sealed_key_file
         .write_all(&sealed_key)
         .expect("Failed to write sealed key bytes");
