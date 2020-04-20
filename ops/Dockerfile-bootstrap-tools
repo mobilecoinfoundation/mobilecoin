@@ -1,0 +1,22 @@
+FROM ubuntu:18.04
+#
+# This builds a slim runtime container based on Ubuntu 18.04 LTS 
+# for bootstrapping ledger and account data
+#
+
+SHELL ["/bin/bash", "-c"]
+
+# Install any updates
+#
+RUN apt-get update -q -q && \
+    apt-get upgrade --yes --force-yes && \
+    apt-get install --yes --force-yes \
+    ca-certificates \
+    gettext \
+    libssl1.1 \
+    wget && \
+    rm -rf /var/cache/apt && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY bin/generate_sample_ledger /usr/local/bin/
+COPY bin/sample-keys /usr/local/bin/

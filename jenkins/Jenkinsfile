@@ -63,9 +63,14 @@ pipeline {
             ls -la $WORKSPACE/ops/bin
           '''
 
-          sh 'ls -1tr ./ops/bin/'
-          sh 'mkdir -p ops/attest && cp -a public/attest/test_certs ops/attest/test_certs'
+          // Copy the one-shot test-certificates into the staging area
+          sh 'mkdir -p $WORKSPACE/ops/attest && cp -a $WORKSPACE/attest/test_certs $WORKSPACE/ops/attest/test_certs'
 
+          // FIXME: copy the correct signed enclave into the staging area
+          sh '''
+            SIGNED_ENCLAVE=$(find $WORKSPACE/target/release -name libconsensus-enclave.signed.so -print)
+            cp $SIGNED_ENCLAVE $WORKSPACE/ops/bin
+          '''
           // Make directories and populate sample_data
           dir('ops') {
             sh 'mkdir -p sample_data/ledger'
@@ -81,6 +86,91 @@ pipeline {
 
           // Stash the ops data/binaries for usage in later steps
           stash name: 'ops_data', includes: 'ops/**'
+        }
+      }
+    }
+    stage('Build Images') {
+      parallel {
+        stage('Build bootstrap-tools container') {
+          options {
+            skipDefaultCheckout true
+          }
+          agent {
+            kubernetes {
+              slaveConnectTimeout 240000
+              activeDeadlineSeconds 43200
+              yamlFile 'jenkins/packaging-pod.yaml'
+            }
+          }
+          steps {
+            container('jnlp'){
+              unstash name: 'sources'
+              unstash name: 'ops_data'
+            }
+            container('kaniko'){
+              sh '''
+                /kaniko/executor -f $WORKSPACE/ops/Dockerfile-bootstrap-tools -c $WORKSPACE/ops \
+                  --destination=$DOCKER_OWNER/$BOOTSTRAP_TOOLS_DOCKER_REPO:${NETWORK}-${TAG_VERSION} \
+                  --destination=$DOCKER_OWNER/$BOOTSTRAP_TOOLS_DOCKER_REPO:${NETWORK}-latest
+              '''
+            }
+          }
+        }
+        stage('Build Consensus Service container') {
+          options {
+            skipDefaultCheckout true
+          }
+          agent {
+            kubernetes {
+              slaveConnectTimeout 240000
+              activeDeadlineSeconds 43200
+              yamlFile 'jenkins/packaging-pod.yaml'
+            }
+          }
+          steps {
+            container('jnlp'){
+              unstash name: 'sources'
+              unstash name: 'ops_data'
+            }
+            container('kaniko'){
+              sh '''
+                /kaniko/executor -f $WORKSPACE/ops/Dockerfile-consensus -c $WORKSPACE/ops \
+                  --build-arg ORIGIN_DATA_DIR=sample_data \
+                  --build-arg GIT_COMMIT=${GIT_COMMIT} \
+                  --build-arg BRANCH=${NETWORK} \
+                  --destination=$DOCKER_OWNER/$CONSENSUS_NODE_DOCKER_REPO:${NETWORK}-${TAG_VERSION} \
+                  --destination=$DOCKER_OWNER/$CONSENSUS_NODE_DOCKER_REPO:${NETWORK}-latest
+              '''
+            }
+          }
+        }
+        stage('Build mobilecoind container') {
+          options {
+            skipDefaultCheckout true
+          }
+          agent {
+            kubernetes {
+              slaveConnectTimeout 240000
+              activeDeadlineSeconds 43200
+              yamlFile 'jenkins/packaging-pod.yaml'
+            }
+          }
+          steps {
+            container('jnlp'){
+              unstash name: 'sources'
+              unstash name: 'ops_data'
+            }
+            container('kaniko'){
+              sh '''
+                /kaniko/executor -f $WORKSPACE/ops/Dockerfile-mobilecoind -c $WORKSPACE/ops \
+                  --build-arg ORIGIN_DATA_DIR=sample_data \
+                  --build-arg GIT_COMMIT=${GIT_COMMIT} \
+                  --build-arg BRANCH=${NETWORK} \
+                  --destination=$DOCKER_OWNER/$MOBILECOIND_DOCKER_REPO:${NETWORK}-${TAG_VERSION} \
+                  --destination=$DOCKER_OWNER/$MOBILECOIND_DOCKER_REPO:${NETWORK}-latest
+              '''
+            }
+          }
         }
       }
     }
