@@ -56,14 +56,12 @@ pipeline {
           sh 'mkdir -p $WORKSPACE/ops/bin'
 
           // Copy relevant binaries to staging area
-          dir('target/release') {
-            sh '''
-              find . -maxdepth 1 -type f \
-                "(" -name '*.so' -o -executable ")" \
-                -not -name '*_test' | \
-                cpio -pdm $WORKSPACE/ops/bin
-            '''
-          }
+          sh '''
+            for file in $(find $WORKSPACE/target/release -maxdepth 1 -type f "(" -name '*.so' -o -executable ")" -not -name '*_test' ); do
+              cp -v ${file} $WORKSPACE/ops/bin/
+            done
+            ls -la $WORKSPACE/ops/bin
+          '''
 
           sh 'ls -1tr ./ops/bin/'
           sh 'mkdir -p ops/attest && cp -a public/attest/test_certs ops/attest/test_certs'
