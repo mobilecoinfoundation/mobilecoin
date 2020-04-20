@@ -145,7 +145,7 @@ mod tests {
     use ledger_db::LedgerDB;
     use rand::{rngs::StdRng, SeedableRng};
     use tempdir::TempDir;
-    use transaction::{account_keys::AccountKey, tx::TxOut, Block, RedactedTx, BLOCK_VERSION};
+    use transaction::{account_keys::AccountKey, tx::TxOut, Block, BlockContents, BLOCK_VERSION};
 
     /// Creates a LedgerDB instance.
     fn create_db() -> LedgerDB {
@@ -180,23 +180,21 @@ mod tests {
             )
             .unwrap();
 
-            let redacted_transactions = vec![RedactedTx {
-                outputs: vec![tx_out],
-                key_images: vec![],
-            }];
+            let outputs = vec![tx_out];
+            let block_contents = BlockContents::new(vec![], outputs.clone());
 
             let block = match parent_block {
-                None => Block::new_origin_block(&redacted_transactions),
+                None => Block::new_origin_block(&outputs),
                 Some(parent) => Block::new(
                     BLOCK_VERSION,
                     &parent.id,
                     block_index,
                     &Default::default(),
-                    &redacted_transactions,
+                    &block_contents,
                 ),
             };
 
-            db.append_block(&block, &redacted_transactions, None)
+            db.append_block(&block, &block_contents, None)
                 .expect("failed writing initial transactions");
             blocks.push(block.clone());
             parent_block = Some(block);

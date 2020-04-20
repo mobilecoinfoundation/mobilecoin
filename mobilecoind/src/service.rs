@@ -1058,7 +1058,7 @@ mod test {
         get_tx_out_shared_secret,
         onetime_keys::{compute_key_image, recover_onetime_private_key},
         tx::{Tx, TxOut},
-        Block, BlockIndex, BLOCK_VERSION,
+        Block, BlockContents, BlockIndex, BLOCK_VERSION,
     };
 
     #[test_with_logger]
@@ -1310,11 +1310,11 @@ mod test {
         let num_blocks = ledger_db.num_blocks().unwrap();
         let account_tx_outs: Vec<TxOut> = (0..num_blocks)
             .map(|idx| {
-                let redacted_txs = ledger_db.get_transactions_by_block(idx as u64).unwrap();
+                let block_contents = ledger_db.get_block_contents(idx as u64).unwrap();
                 // We grab the 4th tx out in each block since the test ledger had 3 random
                 // recipients, followed by our known recipient.
                 // See the call to `get_testing_environment` at the beginning of the test.
-                redacted_txs[0].outputs[3].clone()
+                block_contents.outputs[3].clone()
             })
             .collect();
 
@@ -1879,9 +1879,10 @@ mod test {
 
         // Test that the generated transaction can be picked up by mobilecoind.
         {
-            // Get the transaction, and redact it so that we could append it to the ledger.
             let tx_proposal = TxProposal::try_from(response.get_tx_proposal()).unwrap();
-            let redacted_transactions = vec![tx_proposal.tx.redact()];
+            let key_images = tx_proposal.tx.key_images();
+            let outputs = tx_proposal.tx.prefix.outputs.clone();
+            let block_contents = BlockContents::new(key_images, outputs);
 
             // Append to ledger.
             let num_blocks = ledger_db.num_blocks().unwrap();
@@ -1891,10 +1892,10 @@ mod test {
                 &parent.id,
                 num_blocks as BlockIndex,
                 &Default::default(),
-                &redacted_transactions,
+                &block_contents,
             );
             ledger_db
-                .append_block(&new_block, &redacted_transactions, None)
+                .append_block(&new_block, &block_contents, None)
                 .unwrap();
 
             // Add a monitor based on the entropy we received.

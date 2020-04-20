@@ -1030,16 +1030,14 @@ mod tests {
             );
         }
 
-        // Generate and submit transactions
+        // Generate and submit transactions.
         let mut transactions = {
-            let mut transactions = ledger.get_transactions_by_block(0).unwrap();
-            let tx_stored = transactions.pop().unwrap();
+            let block_contents = ledger.get_block_contents(0).unwrap();
 
             let recipient = AccountKey::random(&mut rng);
-            let tx_out = tx_stored.outputs[0].clone();
             let tx1 = create_transaction(
                 &mut ledger,
-                &tx_out,
+                &block_contents.outputs[0],
                 &sender,
                 &recipient.default_subaddress(),
                 10,
@@ -1047,10 +1045,9 @@ mod tests {
             );
 
             let recipient = AccountKey::random(&mut rng);
-            let tx_out = tx_stored.outputs[1].clone();
             let tx2 = create_transaction(
                 &mut ledger,
-                &tx_out,
+                &block_contents.outputs[1],
                 &sender,
                 &recipient.default_subaddress(),
                 10,
@@ -1058,10 +1055,9 @@ mod tests {
             );
 
             let recipient = AccountKey::random(&mut rng);
-            let tx_out = tx_stored.outputs[2].clone();
             let tx3 = create_transaction(
                 &mut ledger,
-                &tx_out,
+                &block_contents.outputs[2],
                 &sender,
                 &recipient.default_subaddress(),
                 10,

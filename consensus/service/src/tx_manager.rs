@@ -391,9 +391,8 @@ mod tests {
             let mut ledger = create_ledger();
             let n_blocks = 3;
             initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
-            let mut transactions = ledger.get_transactions_by_block(n_blocks - 1).unwrap();
-            let tx_stored = transactions.pop().unwrap();
-            let tx_out = tx_stored.outputs[0].clone();
+            let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
+            let tx_out = block_contents.outputs[0].clone();
 
             let recipient = AccountKey::random(&mut rng);
             let tx1 = create_transaction(
@@ -488,16 +487,16 @@ mod tests {
         // Attempting to assemble a block without duplicates or missing transactions should
         // succeed.
         // TODO: Right now this relies on ConsensusServiceMockEnclave::form_block
-        let (block, txs, _signature) = tx_manager
+        let (block, block_contents, _signature) = tx_manager
             .tx_hashes_to_block(&[hash_tx_zero, hash_tx_one])
             .expect("failed assembling block");
         assert_eq!(
             client_tx_zero.prefix.outputs[0].public_key,
-            txs[0].outputs[0].public_key
+            block_contents.outputs[0].public_key
         );
         assert_eq!(
             client_tx_one.prefix.outputs[0].public_key,
-            txs[1].outputs[0].public_key
+            block_contents.outputs[1].public_key
         );
 
         // The ledger was previously initialized with 3 blocks.

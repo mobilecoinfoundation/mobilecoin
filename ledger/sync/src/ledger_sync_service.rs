@@ -767,7 +767,6 @@ mod tests {
     use peers_tests::{test_node_id, test_peer_uri, MockPeerConnection};
     use scp::{core_types::Ballot, msg::*, *};
     use std::convert::TryFrom;
-    use RedactedTx;
 
     #[test_with_logger]
     // A node with the trivial quorum set should never be "behind".
@@ -933,17 +932,17 @@ mod tests {
         // The correct number of results should be returned.
         assert_eq!(transactions_by_block.len(), 10);
 
-        for (block_index, transactions_opt) in transactions_by_block {
-            match transactions_opt {
-                Some(transactions) => {
-                    let expected_transactions = mock_ledger
+        for (block_index, contents_opt) in transactions_by_block {
+            match contents_opt {
+                Some(block_contents) => {
+                    let expected_contents = mock_ledger
                         .lock()
-                        .transactions_by_block_number
+                        .block_contents_by_block_number
                         .get(&block_index)
                         .unwrap()
                         .clone();
                     // The transactions should be correct for each block.
-                    assert_eq!(transactions, expected_transactions);
+                    assert_eq!(block_contents, expected_contents);
                 }
                 None => {
                     panic!("All results should be Some");
@@ -1011,19 +1010,19 @@ mod tests {
         // The correct number of results should be returned.
         assert_eq!(transactions_by_block.len(), 10);
 
-        for (block_index, transactions_opt) in transactions_by_block {
-            match transactions_opt {
-                Some(transactions) => {
+        for (block_index, contents_opt) in transactions_by_block {
+            match contents_opt {
+                Some(block_contents) => {
                     assert_ne!(block_index, BAD_BLOCK_INDEX);
 
-                    let expected_transactions = mock_ledger
+                    let expected_contents = mock_ledger
                         .lock()
-                        .transactions_by_block_number
+                        .block_contents_by_block_number
                         .get(&block_index)
                         .unwrap()
                         .clone();
                     // The transactions should be correct for each block.
-                    assert_eq!(transactions, expected_transactions);
+                    assert_eq!(block_contents, expected_contents);
                 }
                 None => {
                     assert_eq!(block_index, BAD_BLOCK_INDEX);
@@ -1273,7 +1272,7 @@ mod tests {
         // Blocks other than the origin block should be safe to append to the local node's ledger.
         let potentially_safe_blocks_and_transactions = &blocks_and_transactions[1..];
 
-        let safe_blocks: Vec<(Block, Vec<RedactedTx>)> = identify_safe_blocks(
+        let safe_blocks: Vec<(Block, BlockContents)> = identify_safe_blocks(
             &local_ledger,
             potentially_safe_blocks_and_transactions,
             &logger,
@@ -1293,21 +1292,21 @@ mod tests {
         let local_ledger = get_mock_ledger(1);
 
         // These blocks and transactions ought to be a valid blockchain.
-        let blocks_and_transactions = get_test_ledger_blocks(2);
+        let blocks_and_contents = get_test_ledger_blocks(2);
 
         // Set an incorrect parent_id
-        let (mut block, transactions) = blocks_and_transactions.get(1).unwrap().clone();
+        let (mut block, block_contents) = blocks_and_contents.get(1).unwrap().clone();
         block.parent_id = BlockID::try_from(&[200u8; 32][..]).unwrap();
 
-        let potentially_safe_blocks_and_transactions: Vec<(Block, Vec<RedactedTx>)> =
-            vec![(block, transactions)];
+        let potentially_safe_blocks_and_contents: Vec<(Block, BlockContents)> =
+            vec![(block, block_contents)];
 
-        let safe_blocks: Vec<(Block, Vec<RedactedTx>)> = identify_safe_blocks(
+        let safe_blocks: Vec<(Block, BlockContents)> = identify_safe_blocks(
             &local_ledger,
-            &potentially_safe_blocks_and_transactions,
+            &potentially_safe_blocks_and_contents,
             &logger,
         )
-        .expect("All inputs blocks should be safe.");
+        .unwrap();
 
         assert_eq!(safe_blocks.len(), 0);
     }
@@ -1324,29 +1323,29 @@ mod tests {
         let local_ledger = get_mock_ledger(1);
 
         // These blocks and transactions ought to be a valid blockchain.
-        let blocks_and_transactions = get_test_ledger_blocks(3);
+        let blocks_and_contents = get_test_ledger_blocks(3);
 
-        let mut potentially_safe_blocks_and_transactions: Vec<(Block, Vec<RedactedTx>)> =
-            Vec::new();
-        let (block_one, transactions_one) = blocks_and_transactions.get(1).unwrap();
-        potentially_safe_blocks_and_transactions
-            .push((block_one.clone(), transactions_one.clone()));
+        let mut potentially_safe_blocks_and_contents: Vec<(Block, BlockContents)> = Vec::new();
+        let (block_one, contents_one) = blocks_and_contents.get(1).unwrap();
+        potentially_safe_blocks_and_contents.push((block_one.clone(), contents_one.clone()));
 
         // Modify a block to reuse a key image from block 1.
-        let (block_two, mut transactions_two) = blocks_and_transactions.get(2).unwrap().clone();
-        transactions_two[0].key_images = transactions_one[0].key_images.clone();
-        potentially_safe_blocks_and_transactions.push((block_two, transactions_two));
+        let (block_two, mut contents_two) = blocks_and_contents.get(2).unwrap().clone();
+        contents_two
+            .key_images
+            .push(contents_one.key_images.get(0).unwrap().clone());
+        potentially_safe_blocks_and_contents.push((block_two, contents_two));
 
-        let safe_blocks: Vec<(Block, Vec<RedactedTx>)> = identify_safe_blocks(
+        let safe_blocks: Vec<(Block, BlockContents)> = identify_safe_blocks(
             &local_ledger,
-            &potentially_safe_blocks_and_transactions,
+            &potentially_safe_blocks_and_contents,
             &logger,
         )
         .expect("All inputs blocks should be safe.");
 
         // Block one should be safe, but block two is not.
         assert_eq!(safe_blocks.len(), 1);
-        let (safe_block, _transactions) = safe_blocks.get(0).unwrap();
+        let (safe_block, _contents) = safe_blocks.get(0).unwrap();
         assert_eq!(safe_block.index, 1);
     }
 
@@ -1362,20 +1361,21 @@ mod tests {
         let local_ledger = get_mock_ledger(2);
 
         // These blocks and transactions ought to be a valid blockchain.
-        let blocks_and_transactions = get_test_ledger_blocks(3);
+        let blocks_and_contents = get_test_ledger_blocks(3);
 
-        let mut potentially_safe_blocks_and_transactions: Vec<(Block, Vec<RedactedTx>)> =
-            Vec::new();
+        let mut potentially_safe_blocks_and_contents: Vec<(Block, BlockContents)> = Vec::new();
 
         // Modify a block to reuse a key image from block 1.
-        let (_block_one, transactions_one) = blocks_and_transactions.get(1).unwrap().clone();
-        let (block_two, mut transactions_two) = blocks_and_transactions.get(2).unwrap().clone();
-        transactions_two[0].key_images = transactions_one[0].key_images.clone();
-        potentially_safe_blocks_and_transactions.push((block_two, transactions_two));
+        let (_block_one, contents_one) = blocks_and_contents.get(1).unwrap().clone();
+        let (block_two, mut contents_two) = blocks_and_contents.get(2).unwrap().clone();
+        contents_two
+            .key_images
+            .push(contents_one.key_images.get(0).unwrap().clone());
+        potentially_safe_blocks_and_contents.push((block_two, contents_two));
 
-        let safe_blocks: Vec<(Block, Vec<RedactedTx>)> = identify_safe_blocks(
+        let safe_blocks: Vec<(Block, BlockContents)> = identify_safe_blocks(
             &local_ledger,
-            &potentially_safe_blocks_and_transactions,
+            &potentially_safe_blocks_and_contents,
             &logger,
         )
         .expect("All inputs blocks should be safe.");
@@ -1391,18 +1391,18 @@ mod tests {
         let local_ledger = get_mock_ledger(1);
 
         // These blocks and transactions ought to be a valid blockchain.
-        let blocks_and_transactions = get_test_ledger_blocks(2);
+        let blocks_and_contents = get_test_ledger_blocks(2);
 
         // Set an incorrect parent_id
-        let (mut block_one, transactions) = blocks_and_transactions.get(1).unwrap().clone();
+        let (mut block_one, contents) = blocks_and_contents.get(1).unwrap().clone();
         block_one.id = BlockID::try_from(&[99u8; 32][..]).unwrap();
 
-        let potentially_safe_blocks_and_transactions: Vec<(Block, Vec<RedactedTx>)> =
-            vec![(block_one, transactions)];
+        let potentially_safe_blocks_and_contents: Vec<(Block, BlockContents)> =
+            vec![(block_one, contents)];
 
-        let safe_blocks: Vec<(Block, Vec<RedactedTx>)> = identify_safe_blocks(
+        let safe_blocks: Vec<(Block, BlockContents)> = identify_safe_blocks(
             &local_ledger,
-            &potentially_safe_blocks_and_transactions,
+            &potentially_safe_blocks_and_contents,
             &logger,
         )
         .expect("All inputs blocks should be safe.");

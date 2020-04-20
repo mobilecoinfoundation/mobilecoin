@@ -19,6 +19,7 @@ use transaction::{
 pub struct MockLedgerInner {
     pub blocks_by_block_number: HashMap<u64, Block>,
     pub blocks_by_block_id: HashMap<BlockID, Block>,
+    pub block_contents_by_block_number: HashMap<u64, BlockContents>,
     pub tx_outs: HashSet<TxOut>,
     pub membership_proofs: HashMap<u64, TxOutMembershipProof>,
     pub key_images_by_block_number: HashMap<u64, Vec<KeyImage>>,
@@ -36,6 +37,7 @@ impl Default for MockLedger {
             inner: Arc::new(Mutex::new(MockLedgerInner {
                 blocks_by_block_number: HashMap::default(),
                 blocks_by_block_id: HashMap::default(),
+                block_contents_by_block_number: HashMap::default(),
                 tx_outs: HashSet::default(),
                 membership_proofs: HashMap::default(),
                 key_images_by_block_number: HashMap::default(),
@@ -64,6 +66,10 @@ impl MockLedger {
         inner
             .blocks_by_block_id
             .insert(block.id.clone(), block.clone());
+
+        inner
+            .block_contents_by_block_number
+            .insert(block.index, block_contents.clone());
 
         for tx_out in &block_contents.outputs {
             inner.tx_outs.insert(tx_out.clone());
@@ -106,8 +112,12 @@ impl Ledger for MockLedger {
             .ok_or(Error::NotFound)
     }
 
-    fn get_block_contents(&self, _block_number: u64) -> Result<BlockContents, Error> {
-        unimplemented!()
+    fn get_block_contents(&self, block_number: u64) -> Result<BlockContents, Error> {
+        self.lock()
+            .block_contents_by_block_number
+            .get(&block_number)
+            .cloned()
+            .ok_or(Error::NotFound)
     }
 
     fn get_block_signature(&self, _block_number: u64) -> Result<BlockSignature, Error> {
@@ -227,7 +237,7 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use transaction::{compute_block_id, hash_block_contents};
+    use transaction::compute_block_id;
 
     #[test]
     // `get_test_ledger_blocks` should return a valid blockchain of the specified length.
@@ -270,8 +280,8 @@ mod tests {
         }
 
         // Contents hashes maust match contents
-        for (block, transactions) in blocks_and_transactions {
-            assert_eq!(block.contents_hash, hash_block_contents(&transactions));
+        for (block, block_contents) in blocks_and_transactions {
+            assert_eq!(block.contents_hash, block_contents.hash());
         }
     }
 }

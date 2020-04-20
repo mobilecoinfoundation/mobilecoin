@@ -451,8 +451,8 @@ mod test {
         // recipient.
         let account0_tx_outs: Vec<TxOut> = (0..num_blocks)
             .map(|idx| {
-                let redacted_txs = ledger_db.get_transactions_by_block(idx as u64).unwrap();
-                redacted_txs[0].outputs[0].clone()
+                let block_contents = ledger_db.get_block_contents(idx as u64).unwrap();
+                block_contents.outputs[0].clone()
             })
             .collect();
 

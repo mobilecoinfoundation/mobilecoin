@@ -3,7 +3,7 @@
 use crate::{TransactionFetcherError, TransactionsFetcher};
 use common::ResponderId;
 use ledger_db::Ledger;
-use transaction::{Block, RedactedTx};
+use transaction::{Block, BlockContents};
 
 impl TransactionFetcherError for String {}
 
@@ -25,14 +25,9 @@ impl<L: Ledger + Sync> TransactionsFetcher for MockTransactionsFetcher<L> {
         &self,
         _safe_responder_ids: &[ResponderId],
         block: &Block,
-    ) -> Result<Vec<RedactedTx>, Self::Error> {
+    ) -> Result<BlockContents, Self::Error> {
         self.ledger
-            .get_transactions_by_block(block.index)
-            .map_err(|e| {
-                format!(
-                    "Error getting transactions for block #{}: {:?}",
-                    block.index, e
-                )
-            })
+            .get_block_contents(block.index)
+            .map_err(|e| format!("Error getting contents of block #{}: {:?}", block.index, e))
     }
 }

@@ -350,9 +350,9 @@ mod tests {
         let n_blocks = 1;
         initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
 
-        let mut transactions = ledger.get_transactions_by_block(n_blocks - 1).unwrap();
-        let redacted_tx = transactions.pop().unwrap();
-        let tx_out = redacted_tx.outputs[0].clone();
+        // Spend an output from the last block.
+        let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
+        let tx_out = block_contents.outputs[0].clone();
 
         let recipient = transaction_test_utils::AccountKey::random(&mut rng);
         let tx = create_transaction(
@@ -374,9 +374,9 @@ mod tests {
         let n_blocks = 1;
         initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
 
-        let mut transactions = ledger.get_transactions_by_block(n_blocks - 1).unwrap();
-        let tx_stored = transactions.pop().unwrap();
-        let tx_out = tx_stored.outputs[0].clone();
+        // Spend an output from the last block.
+        let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
+        let tx_out = block_contents.outputs[0].clone();
 
         let recipient = transaction_test_utils::AccountKey::random(&mut rng);
         let tx = create_transaction_with_amount(
@@ -390,7 +390,6 @@ mod tests {
             &mut rng,
         );
 
-        // Hack: TODO explain this
         (adapt_hack(&tx), ledger)
     }
 
