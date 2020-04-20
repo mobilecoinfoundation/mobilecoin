@@ -97,7 +97,7 @@ fn setup_ledger_dir(config_origin_path: &Option<PathBuf>, ledger_path: &PathBuf)
     if let Some(origin_block_path) = config_origin_path.clone() {
         // Copy origin block to ledger_db path if there are not already contents in ledger_db.
         // If ledger_path does not exist, create the dir.
-        std::fs::create_dir_all(ledger_path.clone()).expect("Could not create ledger directory");
+        std::fs::create_dir_all(ledger_path).expect("Could not create ledger directory");
         let mut options = fs_extra::dir::CopyOptions::new();
         options.skip_exist = true;
         options.copy_inside = true;
@@ -105,7 +105,7 @@ fn setup_ledger_dir(config_origin_path: &Option<PathBuf>, ledger_path: &PathBuf)
 
         // Copy the data.mdb file from the origin directory to the ledger
         data_file_path.push("data.mdb");
-        fs_extra::copy_items(&vec![data_file_path], ledger_path.clone(), &options)
+        fs_extra::copy_items(&vec![data_file_path], ledger_path, &options)
             .expect("Could not copy origin block");
     }
 }
