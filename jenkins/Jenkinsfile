@@ -1,0 +1,88 @@
+pipeline {
+  options {
+    parallelsAlwaysFailFast()
+  }
+  agent {
+    kubernetes {
+      slaveConnectTimeout 240000
+      activeDeadlineSeconds 43200
+      yamlFile 'jenkins/build-pod.yaml'
+    }
+  }
+  stages {
+    stage('Source and Environment Setup') {
+      steps {
+        script {
+          // SGX Compile mode
+          env.SGX_MODE = "HW"
+
+          // Intel Attestation Service compile/runtime mode
+          env.IAS_MODE = "DEV"
+ 
+          // Network name, results in node names like nodeX.$NETWORK.mobilecoin.com
+          env.NETWORK = "cd"
+
+          // Owner of the Docker repos for pushing container images
+          env.DOCKER_OWNER = "mobilecoin"
+
+          // Container repository for the consensus service
+          env.CONSENSUS_NODE_DOCKER_REPO = "node_hw"
+
+          // Container repository for the mobilecoind service
+          env.MOBILECOIND_DOCKER_REPO = "mobilecoind"
+
+          // Container repository for the mobilecoind service
+          env.BOOTSTRAP_TOOLS_DOCKER_REPO = "bootstrap-tools"
+
+          // Set a dateformat string to be used as a docker tag
+          env.TAG_VERSION = sh(returnStdout: true, script: 'date +"v%Y%m%d%H%m%S"').trim()
+        }
+
+        // Stash sources for later use on multiple Jenkins nodes
+        stash name: 'sources', useDefaultExcludes: false, includes: '**', excludes: '**/.git, **/.git/**'
+      }
+    }
+    stage('Cargo Build') {
+      // Reusing the default agent/pod config
+      steps {
+        container('rust-builder-default') {
+          // Show the environment for posterity
+          sh 'printenv | sort'
+
+          // Can be swapped out for specific build commands
+          sh 'cargo build --release'
+
+          // Staging area for binary packaging
+          sh 'mkdir -p $WORKSPACE/ops/bin'
+
+          // Copy relevant binaries to staging area
+          sh '''
+            for file in $(find $WORKSPACE/target/release -maxdepth 1 -type f "(" -name '*.so' -o -executable ")" -not -name '*_test' ); do
+              cp -v ${file} $WORKSPACE/ops/bin/
+            done
+            ls -la $WORKSPACE/ops/bin
+          '''
+
+          sh 'ls -1tr ./ops/bin/'
+          sh 'mkdir -p ops/attest && cp -a public/attest/test_certs ops/attest/test_certs'
+
+          // Make directories and populate sample_data
+          dir('ops') {
+            sh 'mkdir -p sample_data/ledger'
+            sh 'mkdir -p sample_data/keys'
+          }
+          
+          // Generate sample data
+          dir('ops/sample_data') {
+            sh '../bin/sample-keys --num 1000'
+            sh '../bin/generate_sample_ledger -t 100'
+            sh 'rm -f ./ledger/lock.mdb'
+          }
+
+          // Stash the ops data/binaries for usage in later steps
+          stash name: 'ops_data', includes: 'ops/**'
+        }
+      }
+    }
+  }
+}

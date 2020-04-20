@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    build-pipeline-name: mobilecoin-build
+spec:
+  nodeSelector:
+    builder-node: "true"
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: build-pipeline-name
+              operator: In
+              values:
+                - mobilecoin-build
+          topologyKey: "kubernetes.io/hostname"
+  containers:
+    - name: rust-builder-default
+      image: gcr.io/mobilenode-211420/builder-install:1_9
+      env:
+        - name: PATH
+          value: "/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/intel/sgxsdk/bin:/opt/intel/sgxsdk/bin/x64"
+        - name: RUST_BACKTRACE
+          value: full
+      command:
+        - /bin/cat
+      tty: true
+      resources:
+        limits:
+          cpu: "4.5"
+          memory: "8000Mi"
+        requests:
+          cpu: "3"
+          memory: "6000Mi"
