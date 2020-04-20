@@ -5,11 +5,10 @@ use keys::{FromRandom, RistrettoPrivate};
 use ledger_db::{Ledger, LedgerDB};
 use rand::SeedableRng;
 use rand_hc::Hc128Rng as FixedRng;
-use rayon::prelude::*;
 use std::{path::PathBuf, vec::Vec};
 use transaction::{
     account_keys::PublicAddress, constants::TOTAL_MOB, encrypted_fog_hint::EncryptedFogHint,
-    ring_signature::KeyImage, tx::TxOut, Block, RedactedTx, BLOCK_VERSION,
+    ring_signature::KeyImage, tx::TxOut, Block, BlockContents, BLOCK_VERSION,
 };
 
 /// Deterministically populates a testnet ledger.
@@ -21,21 +20,22 @@ use transaction::{
 /// * `recipients` -
 /// * `num_outputs_per_recipient` - Number of equal-valued outputs that each recipient receives, per block.
 /// * `num_blocks` - Number of blocks that will be created.
+/// * `key_images_per_block` - Number of randomly generated key images per block.
 ///
 /// This will panic if it attempts to distribute the total value of mobilecoin into fewer than 16 outputs.
 pub fn bootstrap_ledger(
     path: &PathBuf,
     recipients: &[PublicAddress],
-    num_txos_per_account: usize,
+    outputs_per_recipient_per_block: usize,
     num_blocks: usize,
-    key_image_count: usize,
+    key_images_per_block: usize,
 ) {
     // Create the DB
     std::fs::create_dir_all(path.clone()).expect("Could not create ledger dir");
     LedgerDB::create(path.clone()).expect("Could not create ledger_db");
     let mut db = LedgerDB::open(path.clone()).expect("Could not open ledger_db");
 
-    let num_outputs: u64 = (recipients.len() * num_txos_per_account * num_blocks) as u64;
+    let num_outputs: u64 = (recipients.len() * outputs_per_recipient_per_block * num_blocks) as u64;
     let picomob_per_output: u64 = (TOTAL_MOB / num_outputs) * 1_000_000_000_000;
 
     println!("recipients: {}", recipients.len());
@@ -44,37 +44,26 @@ pub fn bootstrap_ledger(
         num_outputs, picomob_per_output
     );
 
-    let mut blocks_and_transactions: Vec<(Block, Vec<RedactedTx>)> = Vec::new();
+    let mut blocks_and_contents: Vec<(Block, BlockContents)> = Vec::new();
     let mut previous_block: Option<Block> = None;
+
+    let mut rng: FixedRng = SeedableRng::from_seed([33u8; 32]);
 
     for block_index in 0..num_blocks as u64 {
         println!("Creating block {} of {}.", block_index, num_blocks);
 
-        // Transactions in this block.
-        let minting_transactions: Vec<RedactedTx> = recipients
-            .par_iter()
-            .enumerate()
-            .flat_map(|(recipient_index, recipient)| {
-                // Create a uniquely seeded RNG for this block and recipient. This allows parallelization.
-                let mut seed = [0u8; 32];
-                seed[0..8].clone_from_slice(&(recipient_index as u64).to_le_bytes());
-                seed[8..16].clone_from_slice(&(block_index as u64).to_le_bytes());
-                let mut rng: FixedRng = SeedableRng::from_seed(seed);
+        let mut outputs: Vec<TxOut> = Vec::new();
+        for recipient in recipients {
+            for _i in 0..outputs_per_recipient_per_block {
+                outputs.push(create_output(recipient, picomob_per_output, &mut rng));
+            }
+        }
 
-                let redacted_transactions: Vec<RedactedTx> = (0..num_txos_per_account)
-                    .map(|_i| {
-                        create_minting_transaction(
-                            recipient,
-                            picomob_per_output,
-                            key_image_count as u64,
-                            &mut rng,
-                        )
-                    })
-                    .collect();
-
-                redacted_transactions
-            })
+        let key_images: Vec<KeyImage> = (0..key_images_per_block)
+            .map(|_i| KeyImage::from(RistrettoPoint::random(&mut rng)))
             .collect();
+
+        let block_contents = BlockContents::new(key_images, outputs.clone());
 
         let block = match previous_block {
             Some(parent) => Block::new(
@@ -82,47 +71,33 @@ pub fn bootstrap_ledger(
                 &parent.id,
                 block_index,
                 &Default::default(),
-                &minting_transactions,
+                &block_contents,
             ),
-            None => Block::new_origin_block(&minting_transactions),
+            None => Block::new_origin_block(&outputs),
         };
         previous_block = Some(block.clone());
-        blocks_and_transactions.push((block, minting_transactions));
+        blocks_and_contents.push((block, block_contents));
     }
 
-    for (block, redacted_transactions) in blocks_and_transactions {
-        db.append_block(&block, &redacted_transactions, None)
-            .unwrap();
+    for (block, block_contents) in blocks_and_contents {
+        db.append_block(&block, &block_contents, None).unwrap();
     }
 
     // Write conf.json
     let mut file = std::fs::File::create("conf.json").expect("File creation");
     use std::io::Write;
     write!(&mut file,
-        r##"{{ "NUM_KEYS": {}, "NUM_UTXOS_PER_ACCOUNT": {}, "NUM_BLOCKS": {}, "NUM_EXTRA_KEY_IMAGES_PER_BLOCK": {}, "GIT_COMMIT": "{}" }}"##,
-        recipients.len(),
-        num_txos_per_account,
-        num_blocks,
-        key_image_count,
-        build_info::GIT_COMMIT,
+           r##"{{ "NUM_KEYS": {}, "NUM_UTXOS_PER_ACCOUNT": {}, "NUM_BLOCKS": {}, "NUM_EXTRA_KEY_IMAGES_PER_BLOCK": {}, "GIT_COMMIT": "{}" }}"##,
+           recipients.len(),
+           outputs_per_recipient_per_block,
+           num_blocks,
+           key_images_per_block,
+           build_info::GIT_COMMIT,
     ).expect("File I/O");
 }
 
-/// Creates a Redacted Tx that outputs `amount` to a single `recipient`.
-fn create_minting_transaction(
-    recipient: &PublicAddress,
-    amount: u64,
-    num_key_images: u64,
-    rng: &mut FixedRng,
-) -> RedactedTx {
+fn create_output(recipient: &PublicAddress, value: u64, rng: &mut FixedRng) -> TxOut {
     let tx_private_key = RistrettoPrivate::from_random(rng);
-    // TODO: Use the "minting" fog public key? See mobilecoin-internal/bootstrap
     let hint = EncryptedFogHint::fake_onetime_hint(rng);
-    let tx_out = TxOut::new(amount, recipient, &tx_private_key, hint, rng).unwrap();
-
-    // Generate random key images.
-    let key_images: Vec<KeyImage> = (0..num_key_images)
-        .map(|_i| KeyImage::from(RistrettoPoint::random(rng)))
-        .collect();
-    RedactedTx::new(vec![tx_out], key_images)
+    TxOut::new(value, recipient, &tx_private_key, hint, rng).unwrap()
 }

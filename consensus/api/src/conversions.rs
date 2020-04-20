@@ -31,7 +31,7 @@ use transaction::{
     tx,
     tx::{TxOutMembershipElement, TxOutMembershipHash, TxOutMembershipProof},
     validation::TransactionValidationError,
-    BlockSignature, CompressedCommitment, RedactedTx,
+    BlockContents, BlockSignature, CompressedCommitment, RedactedTx,
 };
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
@@ -75,62 +75,6 @@ impl Error for ConversionError {}
 impl fmt::Display for ConversionError {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "ConversionError")
-    }
-}
-
-/// Convert transaction::Block --> blockchain::Block.
-impl From<&transaction::Block> for blockchain::Block {
-    fn from(other: &transaction::Block) -> Self {
-        let mut block = blockchain::Block::new();
-        block.set_id(other.id.as_ref().to_vec());
-        block.set_version(other.version);
-        block.set_parent_id(other.parent_id.as_ref().to_vec());
-        block.set_index(other.index);
-        block.set_root_element((&other.root_element).into());
-        block.set_contents_hash(other.contents_hash.as_ref().to_vec());
-        block
-    }
-}
-
-/// Convert blockchain::Block --> transaction::Block.
-impl TryFrom<&blockchain::Block> for transaction::Block {
-    type Error = ConversionError;
-
-    fn try_from(value: &blockchain::Block) -> Result<Self, Self::Error> {
-        let block_id = transaction::BlockID::try_from(value.id.as_slice())?;
-        let parent_id = transaction::BlockID::try_from(value.parent_id.as_slice())?;
-        let root_element = TxOutMembershipElement::try_from(value.get_root_element())?;
-        let contents_hash =
-            transaction::BlockContentsHash::try_from(value.contents_hash.as_slice())?;
-
-        let block = transaction::Block {
-            id: block_id,
-            version: value.version,
-            parent_id,
-            index: value.index,
-            root_element,
-            contents_hash,
-        };
-        Ok(block)
-    }
-}
-
-/// Convert tx::TxHash --> external::TxHash.
-impl From<&tx::TxHash> for external::TxHash {
-    fn from(other: &tx::TxHash) -> Self {
-        let mut tx_hash = external::TxHash::new();
-        tx_hash.set_hash(other.to_vec());
-        tx_hash
-    }
-}
-
-/// Convert  external::TxHash --> tx::TxHash.
-impl TryFrom<&external::TxHash> for tx::TxHash {
-    type Error = ConversionError;
-
-    fn try_from(value: &external::TxHash) -> Result<Self, Self::Error> {
-        let hash_bytes: &[u8] = value.get_hash();
-        tx::TxHash::try_from(hash_bytes).or(Err(ConversionError::ArrayCastError))
     }
 }
 
@@ -289,24 +233,22 @@ impl TryFrom<&external::Ed25519Public> for Ed25519Public {
     }
 }
 
-/// Convert BlockSignature --> blockchain::BlockSignature.
-impl From<&BlockSignature> for blockchain::BlockSignature {
-    fn from(src: &BlockSignature) -> Self {
-        let mut dst = blockchain::BlockSignature::new();
-        dst.set_signature(external::Ed25519Signature::from(src.signature()));
-        dst.set_signer(external::Ed25519Public::from(src.signer()));
-        dst
+/// Convert tx::TxHash --> external::TxHash.
+impl From<&tx::TxHash> for external::TxHash {
+    fn from(other: &tx::TxHash) -> Self {
+        let mut tx_hash = external::TxHash::new();
+        tx_hash.set_hash(other.to_vec());
+        tx_hash
     }
 }
 
-/// Convert blockchain::BlockSignature --> BlockSignature.
-impl TryFrom<&blockchain::BlockSignature> for BlockSignature {
+/// Convert  external::TxHash --> tx::TxHash.
+impl TryFrom<&external::TxHash> for tx::TxHash {
     type Error = ConversionError;
 
-    fn try_from(source: &blockchain::BlockSignature) -> Result<Self, Self::Error> {
-        let signature = Ed25519Signature::try_from(source.get_signature())?;
-        let signer = Ed25519Public::try_from(source.get_signer())?;
-        Ok(BlockSignature::new(signature, signer))
+    fn try_from(value: &external::TxHash) -> Result<Self, Self::Error> {
+        let hash_bytes: &[u8] = value.get_hash();
+        tx::TxHash::try_from(hash_bytes).or(Err(ConversionError::ArrayCastError))
     }
 }
 
@@ -867,6 +809,103 @@ impl TryInto<TransactionValidationError> for ProposeTxResult {
             Self::TxFeeError => Ok(TransactionValidationError::TxFeeError),
             Self::KeyError => Ok(TransactionValidationError::KeyError),
         }
+    }
+}
+
+/// Convert transaction::Block --> blockchain::Block.
+impl From<&transaction::Block> for blockchain::Block {
+    fn from(other: &transaction::Block) -> Self {
+        let mut block = blockchain::Block::new();
+        block.set_id(other.id.as_ref().to_vec());
+        block.set_version(other.version);
+        block.set_parent_id(other.parent_id.as_ref().to_vec());
+        block.set_index(other.index);
+        block.set_root_element((&other.root_element).into());
+        block.set_contents_hash(other.contents_hash.as_ref().to_vec());
+        block
+    }
+}
+
+/// Convert blockchain::Block --> transaction::Block.
+impl TryFrom<&blockchain::Block> for transaction::Block {
+    type Error = ConversionError;
+
+    fn try_from(value: &blockchain::Block) -> Result<Self, Self::Error> {
+        let block_id = transaction::BlockID::try_from(value.id.as_slice())?;
+        let parent_id = transaction::BlockID::try_from(value.parent_id.as_slice())?;
+        let root_element = TxOutMembershipElement::try_from(value.get_root_element())?;
+        let contents_hash =
+            transaction::BlockContentsHash::try_from(value.contents_hash.as_slice())?;
+
+        let block = transaction::Block {
+            id: block_id,
+            version: value.version,
+            parent_id,
+            index: value.index,
+            root_element,
+            contents_hash,
+        };
+        Ok(block)
+    }
+}
+
+impl From<&transaction::BlockContents> for blockchain::BlockContents {
+    fn from(source: &transaction::BlockContents) -> Self {
+        let mut block_contents = blockchain::BlockContents::new();
+
+        let key_images: Vec<external::KeyImage> = source
+            .key_images
+            .iter()
+            .map(|key_image| external::KeyImage::from(key_image))
+            .collect();
+
+        let outputs = source
+            .outputs
+            .iter()
+            .map(|tx_out| external::TxOut::from(tx_out))
+            .collect();
+
+        block_contents.set_key_images(RepeatedField::from_vec(key_images));
+        block_contents.set_outputs(outputs);
+        block_contents
+    }
+}
+
+impl TryFrom<&blockchain::BlockContents> for transaction::BlockContents {
+    type Error = ConversionError;
+
+    fn try_from(source: &blockchain::BlockContents) -> Result<Self, Self::Error> {
+        let mut key_images: Vec<KeyImage> = Vec::new();
+        for key_image in source.get_key_images() {
+            key_images.push(KeyImage::try_from(key_image)?);
+        }
+
+        let mut outputs: Vec<tx::TxOut> = Vec::new();
+        for output in source.get_outputs() {
+            outputs.push(tx::TxOut::try_from(output)?);
+        }
+        Ok(BlockContents::new(key_images, outputs))
+    }
+}
+
+/// Convert BlockSignature --> blockchain::BlockSignature.
+impl From<&BlockSignature> for blockchain::BlockSignature {
+    fn from(src: &BlockSignature) -> Self {
+        let mut dst = blockchain::BlockSignature::new();
+        dst.set_signature(external::Ed25519Signature::from(src.signature()));
+        dst.set_signer(external::Ed25519Public::from(src.signer()));
+        dst
+    }
+}
+
+/// Convert blockchain::BlockSignature --> BlockSignature.
+impl TryFrom<&blockchain::BlockSignature> for BlockSignature {
+    type Error = ConversionError;
+
+    fn try_from(source: &blockchain::BlockSignature) -> Result<Self, Self::Error> {
+        let signature = Ed25519Signature::try_from(source.get_signature())?;
+        let signer = Ed25519Public::try_from(source.get_signer())?;
+        Ok(BlockSignature::new(signature, signer))
     }
 }
 

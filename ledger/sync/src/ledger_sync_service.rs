@@ -26,8 +26,7 @@ use std::{
     time::{Duration, Instant},
 };
 use transaction::{
-    compute_block_id, hash_block_contents, ring_signature::KeyImage, Block, BlockID, BlockIndex,
-    RedactedTx,
+    compute_block_id, ring_signature::KeyImage, Block, BlockContents, BlockID, BlockIndex,
 };
 
 /// Maximal amount to allow for getting block and transaction data.
@@ -122,8 +121,8 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
         }
 
         // Get transactions.
-        let block_index_to_opt_transactions: BTreeMap<BlockIndex, Option<Vec<RedactedTx>>> =
-            get_transactions(
+        let block_index_to_opt_transactions: BTreeMap<BlockIndex, Option<BlockContents>> =
+            get_block_contents(
                 self.transactions_fetcher.clone(),
                 &responder_ids,
                 &potentially_safe_blocks,
@@ -131,12 +130,12 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
                 &self.logger,
             );
 
-        let mut blocks_with_transactions: Vec<(Block, Vec<RedactedTx>)> = Vec::new();
+        let mut blocks_and_contents: Vec<(Block, BlockContents)> = Vec::new();
 
         {
             // Populate `blocks_with_transactions`. This just returns all (block, transactions) until
             // it reaches a None.
-            let mut block_index_to_transactions: BTreeMap<BlockIndex, Vec<RedactedTx>> =
+            let mut block_index_to_transactions: BTreeMap<BlockIndex, BlockContents> =
                 block_index_to_opt_transactions
                     .into_iter()
                     .take_while(|(_block_index, transactions_opt)| transactions_opt.is_some())
@@ -151,8 +150,8 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
             // Join blocks and transactions, allowing for the possibility that transactions
             // may not be available for some blocks due to failed network requests for transactions.
             for (block_index, block) in block_index_to_block {
-                if let Some(transactions) = block_index_to_transactions.remove(&block_index) {
-                    blocks_with_transactions.push((block, transactions));
+                if let Some(block_contents) = block_index_to_transactions.remove(&block_index) {
+                    blocks_and_contents.push((block, block_contents));
                 } else {
                     log::error!(self.logger, "No transactions for block {:?}", block);
                     break;
@@ -164,10 +163,10 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
         log::trace!(
             &self.logger,
             "Identifying safe blocks out of {} blocks",
-            blocks_with_transactions.len()
+            blocks_and_contents.len()
         );
         if let Ok(safe_blocks) =
-            identify_safe_blocks(&self.ledger, &blocks_with_transactions, &self.logger)
+            identify_safe_blocks(&self.ledger, &blocks_and_contents, &self.logger)
         {
             self.append_safe_blocks(&safe_blocks)?;
         } else {
@@ -280,12 +279,12 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
     /// Append safe blocks to the local ledger.
     fn append_safe_blocks(
         &mut self,
-        blocks_and_transactions: &[(Block, Vec<RedactedTx>)],
+        blocks_and_contents: &[(Block, BlockContents)],
     ) -> Result<(), LedgerSyncError> {
         log::info!(
             self.logger,
             "Appending {} blocks to ledger, which currently has {} blocks",
-            blocks_and_transactions.len(),
+            blocks_and_contents.len(),
             self.ledger
                 .num_blocks()
                 .expect("failed getting number of blocks"),
@@ -293,20 +292,20 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
         common::trace_time!(
             self.logger,
             "Appended {} blocks to ledger",
-            blocks_and_transactions.len()
+            blocks_and_contents.len()
         );
 
-        for (block, transactions) in blocks_and_transactions {
+        for (block, contents) in blocks_and_contents {
             {
                 let _timer = counters::APPEND_BLOCK_TIME.start_timer();
-                self.ledger.append_block(block, transactions, None)?;
+                self.ledger.append_block(block, contents, None)?;
             }
 
             // FIXME: MC-365 Move ledger counters into ledger_db
             counters::BLOCKS_WRITTEN_COUNT.inc();
-            counters::TX_WRITTEN_COUNT.inc_by(transactions.len() as i64);
+            // counters::TX_WRITTEN_COUNT.inc_by(transactions.len() as i64);
             counters::BLOCKS_IN_LEDGER.set(self.ledger.num_blocks()? as i64);
-            counters::TX_IN_LEDGER.set(self.ledger.num_txs()? as i64);
+            // counters::TX_IN_LEDGER.set(self.ledger.num_txs()? as i64);
             counters::TXO_IN_LEDGER.set(self.ledger.num_txos()? as i64);
         }
 
@@ -476,14 +475,14 @@ fn group_by_block(
 ///
 /// Peers are queried concurrently. Currently, this method will run indefinitely until all
 /// transactions have been retrieved.
-fn get_transactions<TF: TransactionsFetcher + 'static>(
+fn get_block_contents<TF: TransactionsFetcher + 'static>(
     transactions_fetcher: Arc<TF>,
     safe_responder_ids: &[ResponderId],
     blocks: &[Block],
     timeout: Duration,
     logger: &Logger,
-) -> BTreeMap<BlockIndex, Option<Vec<RedactedTx>>> {
-    type ResultsMap = BTreeMap<BlockIndex, Option<Vec<RedactedTx>>>;
+) -> BTreeMap<BlockIndex, Option<BlockContents>> {
+    type ResultsMap = BTreeMap<BlockIndex, Option<BlockContents>>;
 
     enum Msg {
         ProcessBlock(Block),
@@ -538,7 +537,7 @@ fn get_transactions<TF: TransactionsFetcher + 'static>(
                                 continue;
                             }
 
-                            // Try and get transactions for this block.
+                            // Try and get contents of this block.
                             log::trace!(
                                 thread_logger,
                                 "Worker {} attempting block {}",
@@ -547,39 +546,35 @@ fn get_transactions<TF: TransactionsFetcher + 'static>(
                             );
 
                             match thread_transactions_fetcher
-                                .get_transactions_by_block(
-                                    thread_safe_responder_ids.as_slice(),
-                                    &block,
-                                )
+                                .get_block_contents(thread_safe_responder_ids.as_slice(), &block)
                                 .map_err(LedgerSyncError::from)
-                                .and_then(|transactions| {
-                                    let contents_hash = hash_block_contents(&transactions);
+                                .and_then(|block_contents| {
+                                    let contents_hash = block_contents.hash();
                                     if contents_hash != block.contents_hash {
                                         log::debug!(
                                             thread_logger,
-                                            "Transaction and block mismatch: {:02x?} vs {:02x?}",
+                                            "Contents and block mismatch: {:02x?} vs {:02x?}",
                                             contents_hash,
                                             block.contents_hash,
                                         );
                                         Err(LedgerSyncError::TransactionsAndBlockMismatch)
                                     } else {
-                                        Ok(transactions)
+                                        Ok(block_contents)
                                     }
                                 }) {
-                                Ok(transactions) => {
+                                Ok(block_contents) => {
                                     // Log
                                     log::trace!(
                                         thread_logger,
-                                        "Worker {} got {} transactions for block {}",
+                                        "Worker {} got contents for block {}",
                                         worker_num,
-                                        transactions.len(),
                                         block.index
                                     );
 
                                     // passing the actual block and not just a block index.
                                     let mut results = lock.lock().expect("mutex poisoned");
                                     let old_result =
-                                        results.insert(block.index, Some(transactions));
+                                        results.insert(block.index, Some(block_contents));
 
                                     // We should encounter each block index only once.
                                     assert!(old_result.is_none());
@@ -662,26 +657,26 @@ fn get_transactions<TF: TransactionsFetcher + 'static>(
 ///
 /// # Arguments
 /// * `ledger` - The local node's ledger.
-/// * `blocks_with_transactions` - A sequence of Blocks with their associated transactions, in increasing order of block number.
+/// * `blocks_and_contents` - A sequence of Blocks with their associated transactions, in increasing order of block number.
 fn identify_safe_blocks<L: Ledger>(
     ledger: &L,
-    blocks_with_transactions: &[(Block, Vec<RedactedTx>)],
+    blocks_and_contents: &[(Block, BlockContents)],
     logger: &Logger,
-) -> Result<Vec<(Block, Vec<RedactedTx>)>, ()> {
+) -> Result<Vec<(Block, BlockContents)>, ()> {
     // The highest block externalized by the local node.
     let highest_local_block = ledger
         .num_blocks()
         .and_then(|num_blocks| ledger.get_block(num_blocks - 1))
         .expect("Failed getting highest local block");
 
-    let mut safe_blocks_and_transactions: Vec<(Block, Vec<RedactedTx>)> = Vec::new();
+    let mut safe_blocks_and_contents: Vec<(Block, BlockContents)> = Vec::new();
     let mut last_safe_block: Block = highest_local_block;
 
     // KeyImages used by new, safe blocks.
     // They are not yet in the ledger, but may not be used again.
     let mut additional_key_images: HashSet<KeyImage> = HashSet::default();
 
-    'block_loop: for (block, transactions) in blocks_with_transactions {
+    'block_loop: for (block, block_contents) in blocks_and_contents {
         // The block must be part of a chain of safe blocks.
         if block.parent_id != last_safe_block.id {
             log::error!(
@@ -697,14 +692,12 @@ fn identify_safe_blocks<L: Ledger>(
             break;
         }
 
-        let contents_hash = hash_block_contents(&transactions);
-
         let derived_block_id = compute_block_id(
             block.version,
             &block.parent_id,
             block.index,
             &block.root_element,
-            &contents_hash,
+            &block_contents.hash(),
         );
 
         // The block's ID must agree with the merkle hash of its transactions.
@@ -719,52 +712,50 @@ fn identify_safe_blocks<L: Ledger>(
         }
 
         // No key images in the block may have been previously seen.
-        for redacted_tx in transactions.iter() {
-            for key_image in redacted_tx.key_images.iter() {
-                // Check if the key image is already in the local ledger.
-                match ledger.contains_key_image(key_image) {
-                    Ok(contains_key_image) => {
-                        if contains_key_image {
-                            log::error!(
-                                logger,
-                                "Previously used KeyImage {:?} in block {:?}",
-                                key_image,
-                                block
-                            );
-                            break 'block_loop;
-                        }
-                    }
-                    Err(e) => {
+        for key_image in &block_contents.key_images {
+            // Check if the key image is already in the local ledger.
+            match ledger.contains_key_image(key_image) {
+                Ok(contains_key_image) => {
+                    if contains_key_image {
                         log::error!(
                             logger,
-                            "contains_key_image failed on {:?}: {:?}",
+                            "Previously used KeyImage {:?} in block {:?}",
                             key_image,
-                            e
+                            block
                         );
                         break 'block_loop;
                     }
                 }
-
-                // Check if the key image was used by another potentially safe block.
-                if additional_key_images.contains(key_image) {
+                Err(e) => {
                     log::error!(
                         logger,
-                        "Previously used KeyImage {:?} in block {:?}",
+                        "contains_key_image failed on {:?}: {:?}",
                         key_image,
-                        block
+                        e
                     );
                     break 'block_loop;
                 }
-                additional_key_images.insert(key_image.clone());
             }
+
+            // Check if the key image was used by another potentially safe block.
+            if additional_key_images.contains(key_image) {
+                log::error!(
+                    logger,
+                    "Previously used KeyImage {:?} in block {:?}",
+                    key_image,
+                    block
+                );
+                break 'block_loop;
+            }
+            additional_key_images.insert(key_image.clone());
         }
 
         // This block is safe.
         last_safe_block = block.clone();
-        safe_blocks_and_transactions.push((block.clone(), transactions.clone()));
+        safe_blocks_and_contents.push((block.clone(), block_contents.clone()));
     }
 
-    Ok(safe_blocks_and_transactions)
+    Ok(safe_blocks_and_contents)
 }
 
 #[cfg(test)]
@@ -925,7 +916,7 @@ mod tests {
             .map(|idx| mock_ledger.get_block(idx).unwrap())
             .collect();
 
-        let transactions_by_block = get_transactions(
+        let transactions_by_block = get_block_contents(
             transactions_fetcher,
             &responder_ids.as_slice(),
             &blocks,
@@ -1003,7 +994,7 @@ mod tests {
         blocks[BAD_BLOCK_INDEX as usize].contents_hash.0[0] =
             !blocks[BAD_BLOCK_INDEX as usize].contents_hash.0[0];
 
-        let transactions_by_block = get_transactions(
+        let transactions_by_block = get_block_contents(
             transactions_fetcher,
             &responder_ids.as_slice(),
             &blocks,

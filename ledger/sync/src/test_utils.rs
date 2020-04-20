@@ -21,7 +21,7 @@ impl<L: Ledger + Sync> MockTransactionsFetcher<L> {
 impl<L: Ledger + Sync> TransactionsFetcher for MockTransactionsFetcher<L> {
     type Error = String;
 
-    fn get_transactions_by_block(
+    fn get_block_contents(
         &self,
         _safe_responder_ids: &[ResponderId],
         block: &Block,
