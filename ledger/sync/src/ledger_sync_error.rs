@@ -34,6 +34,9 @@ pub enum LedgerSyncError {
 
     #[fail(display = "Invalid block ID.")]
     InvalidBlockId,
+
+    #[fail(display = "No transaction data.")]
+    NoTransactionData,
 }
 
 impl<TFE: TransactionFetcherError + 'static> From<TFE> for LedgerSyncError {
