@@ -754,25 +754,13 @@ impl<T: UserTxConnection + 'static> ServiceApi<T> {
         &mut self,
         request: mobilecoind_api::GetBlockInfoRequest,
     ) -> Result<mobilecoind_api::GetBlockInfoResponse, RpcStatus> {
-        // Get transactions for block and count number of Txos.
-        let txs = self
+        let block_contents = self
             .ledger_db
-            .get_transactions_by_block(request.block)
-            .map_err(|err| {
-                rpc_internal_error("ledger_db.get_transactions_by_block", err, &self.logger)
-            })?;
+            .get_block_contents(request.block)
+            .map_err(|err| rpc_internal_error("ledger_db.get_block_contents", err, &self.logger))?;
 
-        let num_tx_outs = txs.iter().flat_map(|tx| tx.outputs.iter()).count();
-
-        // Get key images and count them.
-        let key_images = self
-            .ledger_db
-            .get_key_images_by_block(request.block)
-            .map_err(|err| {
-                rpc_internal_error("ledger_db.get_key_images_by_block", err, &self.logger)
-            })?;
-
-        let num_key_images = key_images.len();
+        let num_tx_outs = block_contents.outputs.len();
+        let num_key_images = block_contents.key_images.len();
 
         // Return response.
         let mut response = mobilecoind_api::GetBlockInfoResponse::new();

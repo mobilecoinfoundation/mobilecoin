@@ -12,7 +12,7 @@ use mcuri::ConsensusClientUri as ClientUri;
 use scp::{test_utils::test_node_id, QuorumSet};
 use std::{convert::TryFrom, path::PathBuf, str::FromStr, sync::Arc};
 use tempdir::TempDir;
-use transaction::account_keys::AccountKey;
+use transaction::{account_keys::AccountKey, Block, BlockContents};
 
 const NETWORK: &str = "test";
 
@@ -30,7 +30,7 @@ fn _make_ledger_long(ledger: &mut LedgerDB) {
         .map(|account| account.default_subaddress())
         .collect::<Vec<_>>();
 
-    let results = transaction_test_utils::get_blocks(
+    let results: Vec<(Block, BlockContents)> = transaction_test_utils::get_blocks(
         &recipient_pub_keys[..],
         1,
         1000,
@@ -40,9 +40,9 @@ fn _make_ledger_long(ledger: &mut LedgerDB) {
         &mut rng,
     );
 
-    for (block, txs) in results {
-        println!("block {} with {} txs", block.index, txs.len());
-        ledger.append_block(&block, &txs, None).unwrap();
+    for (block, block_contents) in &results {
+        println!("block {} containing {:?}", block.index, block_contents);
+        ledger.append_block(block, block_contents, None).unwrap();
     }
 }
 

@@ -24,7 +24,7 @@ use transaction::{
     ring_signature::KeyImage,
     tx::{TxHash, TxOutMembershipProof},
     validation::{TransactionValidationError, TransactionValidationResult},
-    Block, BlockSignature, RedactedTx,
+    Block, BlockContents, BlockSignature,
 };
 
 #[derive(Clone, Debug, Fail)]
@@ -294,7 +294,7 @@ impl<E: ConsensusEnclaveProxy, L: Ledger, UI: UntrustedInterfaces> TxManager<E, 
     pub fn tx_hashes_to_block(
         &self,
         tx_hashes: &[TxHash],
-    ) -> TxManagerResult<(Block, Vec<RedactedTx>, BlockSignature)> {
+    ) -> TxManagerResult<(Block, BlockContents, BlockSignature)> {
         let cache = self.lock_cache();
 
         let encrypted_txs_with_proofs = tx_hashes
@@ -313,11 +313,11 @@ impl<E: ConsensusEnclaveProxy, L: Ledger, UI: UntrustedInterfaces> TxManager<E, 
 
         let num_blocks = self.ledger.num_blocks()?;
         let parent_block = self.ledger.get_block(num_blocks - 1)?;
-        let (block, redacted_transactions, signature) = self
+        let (block, block_contents, signature) = self
             .enclave
             .form_block(&parent_block, &encrypted_txs_with_proofs)?;
 
-        Ok((block, redacted_transactions, signature))
+        Ok((block, block_contents, signature))
     }
 
     /// For a given list of TxHashes and a peer session, return a message to send to that peer

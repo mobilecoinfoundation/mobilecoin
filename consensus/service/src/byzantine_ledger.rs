@@ -671,7 +671,7 @@ impl<
 
         // Write to ledger.
         {
-            let (block, transactions, signature) = self
+            let (block, block_contents, signature) = self
                 .tx_manager
                 .tx_hashes_to_block(&ext_vals)
                 .unwrap_or_else(|e| panic!("Failed to build block from {:?}: {:?}", ext_vals, e));
@@ -687,14 +687,12 @@ impl<
             {
                 let _timer = counters::APPEND_BLOCK_TIME.start_timer();
                 self.ledger
-                    .append_block(&block, &transactions, Some(&signature))
+                    .append_block(&block, &block_contents, Some(&signature))
                     .expect("failed appending block");
             }
 
             counters::BLOCKS_WRITTEN_COUNT.inc();
-            counters::TX_WRITTEN_COUNT.inc_by(transactions.len() as i64);
             counters::BLOCKS_IN_LEDGER.set(self.ledger.num_blocks().unwrap() as i64);
-            counters::TX_IN_LEDGER.set(self.ledger.num_txs().unwrap() as i64);
             counters::TXO_IN_LEDGER.set(self.ledger.num_txos().unwrap() as i64);
         }
 
