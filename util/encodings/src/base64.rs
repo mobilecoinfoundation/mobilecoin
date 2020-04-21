@@ -3,7 +3,7 @@
 //! To/From Hex traits
 
 use alloc::{string::String, vec::Vec};
-use failure::_core::cmp::max;
+use core::cmp::max;
 
 /// A trait to support reading a string as hex.
 pub trait FromBase64: Sized {
