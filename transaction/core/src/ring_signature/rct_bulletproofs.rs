@@ -342,8 +342,7 @@ fn extend_message(
     pseudo_output_commitments: &[CompressedCommitment],
     range_proof_bytes: &[u8],
 ) -> Result<Vec<u8>, Error> {
-    let pseudo_output_bytes = serialize(&pseudo_output_commitments).unwrap(); // TODO
-
+    let pseudo_output_bytes = serialize(&pseudo_output_commitments)?;
     let mut extended_message: Vec<u8> =
         Vec::with_capacity(message.len() + pseudo_output_bytes.len() + range_proof_bytes.len());
     extended_message.extend_from_slice(&message[..]);
