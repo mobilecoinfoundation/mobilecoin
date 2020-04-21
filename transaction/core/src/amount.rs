@@ -28,6 +28,12 @@ pub enum AmountError {
     InconsistentCommitment,
 }
 
+/// Value mask hash function domain separator.
+const VALUE_MASK: &str = "amount_value_mask";
+
+/// Blinding mask hash function domain separator.
+const BLINDING_MASK: &str = "amount_blinding_mask";
+
 /// A commitment to an amount of MobileCoin, denominated in picoMOB.
 #[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Message, Digestible)]
 pub struct Amount {
@@ -35,11 +41,11 @@ pub struct Amount {
     #[prost(message, required, tag = "1")]
     pub commitment: CompressedCommitment,
 
-    /// `masked_value = value + Blake2B(shared_secret)`
-    #[prost(message, required, tag = "2")]
-    pub masked_value: CurveScalar,
+    /// `masked_value = value XOR_8 Blake2B(value_mask | shared_secret)`
+    #[prost(uint64, required, tag = "2")]
+    pub masked_value: u64,
 
-    /// `masked_blinding = blinding + Blake2B(Blake2B(shared_secret))
+    /// `masked_blinding = blinding + Blake2B(blinding_mask | shared_secret))
     #[prost(message, required, tag = "3")]
     pub masked_blinding: Blinding,
 }
@@ -61,14 +67,18 @@ impl Amount {
         // Pedersen commitment `v*G + b*H`.
         let commitment = CompressedCommitment::new(value, blinding.into());
 
-        // `v + Blake2B(shared_secret)`
-        let masked_value: Scalar = {
-            let value: Scalar = Scalar::from(value);
-            let mask = get_value_mask(&shared_secret);
-            value + mask
+        // The value is XORed with the first 8 bytes of the mask.
+        // `v XOR_8 Blake2B(value_mask | shared_secret)`
+        let masked_value: u64 = {
+            let mask: u64 = {
+                let mut temp = [0u8; 8];
+                temp.copy_from_slice(&get_value_mask(&shared_secret).as_bytes()[0..8]);
+                u64::from_le_bytes(temp)
+            };
+            value ^ mask
         };
 
-        // `s + Blake2B(Blake2B(shared_secret))`
+        // `b + Blake2B("blinding_mask" | shared_secret)`
         let masked_blinding: Scalar = {
             let mask = get_blinding_mask(&shared_secret);
             blinding.as_ref() + mask
@@ -76,8 +86,8 @@ impl Amount {
 
         Ok(Amount {
             commitment,
+            masked_value,
             masked_blinding: Blinding::from(masked_blinding),
-            masked_value: CurveScalar::from(masked_value),
         })
     }
 
@@ -107,19 +117,15 @@ impl Amount {
 
     /// Reveals `masked_value`.
     fn unmask_value(&self, shared_secret: &RistrettoPublic) -> u64 {
-        let mask = get_value_mask(shared_secret);
-        let masked_value: Scalar = self.masked_value.into();
-        let value_as_scalar = masked_value - mask;
-        // TODO: better way to do this?
-        // We might want to give an error if scalar.as_bytes() is larger than u64
-        let mut temp = [0u8; 8];
-        temp.copy_from_slice(&value_as_scalar.as_bytes()[0..8]);
-        // Note: Dalek documents that scalar.as_bytes() returns in little-endian
-        // https://doc.dalek.rs/curve25519_dalek/scalar/struct.Scalar.html#method.as_bytes
-        u64::from_le_bytes(temp)
+        let mask: u64 = {
+            let mut temp = [0u8; 8];
+            temp.copy_from_slice(&get_value_mask(&shared_secret).as_bytes()[0..8]);
+            u64::from_le_bytes(temp)
+        };
+        self.masked_value ^ mask
     }
 
-    /// Reveals masked_blinding.
+    /// Reveals `masked_blinding`.
     fn unmask_blinding(&self, shared_secret: &RistrettoPublic) -> Blinding {
         let mask = get_blinding_mask(shared_secret);
         let masked_blinding: Scalar = self.masked_blinding.into();
@@ -127,44 +133,37 @@ impl Amount {
     }
 }
 
-/// Computes `Blake2B(shared_secret)`
+/// Computes `Blake2B(value_mask | shared_secret)`.
 ///
 /// # Arguments
 /// * `shared_secret` - The shared secret, e.g. `rB`.
 fn get_value_mask(shared_secret: &RistrettoPublic) -> Scalar {
-    get_mask(&shared_secret)
+    let mut hasher = Blake2b::new();
+    hasher.input(&VALUE_MASK);
+    hasher.input(&shared_secret.to_bytes());
+    Scalar::from_hash(hasher)
 }
 
-/// Computes `Blake2B(Blake2B(shared_secret)`.
+/// Computes `Blake2B(blinding_mask | shared_secret)`.
 ///
 /// # Arguments
 /// * `shared_secret` - The shared secret, e.g. `rB`.
 fn get_blinding_mask(shared_secret: &RistrettoPublic) -> Scalar {
-    let inner_mask = get_mask(shared_secret);
-
     let mut hasher = Blake2b::new();
-    hasher.input(&inner_mask.to_bytes());
-
-    Scalar::from_hash(hasher)
-}
-
-/// Computes `Blake2B(shared_secret)`.
-fn get_mask(shared_secret: &RistrettoPublic) -> Scalar {
-    let mut hasher = Blake2b::new();
+    hasher.input(&BLINDING_MASK);
     hasher.input(&shared_secret.to_bytes());
     Scalar::from_hash(hasher)
 }
 
 #[cfg(test)]
-mod tests {
-    use crate::proptest_fixtures::*;
-    use proptest::prelude::*;
-
+mod amount_tests {
     use crate::{
         amount::{Amount, AmountError},
+        proptest_fixtures::*,
         ring_signature::{Scalar, GENERATORS},
         CompressedCommitment,
     };
+    use proptest::prelude::*;
 
     proptest! {
 
@@ -236,7 +235,7 @@ mod tests {
             /// get_value should return InconsistentCommitment if the masked value is incorrect.
             fn test_get_value_incorrect_masked_value(
                 value in any::<u64>(),
-                other_masked_value in arbitrary_curve_scalar(),
+                other_masked_value in any::<u64>(),
                 blinding in arbitrary_blinding(),
                 shared_secret in arbitrary_ristretto_public())
             {
