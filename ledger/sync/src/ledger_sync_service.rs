@@ -161,10 +161,10 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
             }
         }
 
-        if blocks_with_transactions.is_empty() {
+        if blocks_and_contents.is_empty() {
             log::error!(
                 self.logger,
-                "Identified {} safe blocks but was unable to get transaction data",
+                "Identified {} safe blocks but was unable to get block contents.",
                 num_potentially_safe_blocks,
             );
             return Err(LedgerSyncError::NoTransactionData);
