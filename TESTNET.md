@@ -6,19 +6,23 @@ In addition to bug reports and code contributions, we are seeking feedback on th
 
 MobileCoin Inc. will be announcing details on a formal bug bounty program in the coming weeks.
 
-### Sending Your First Payment
+### Sign up to receive TestNet *mobilecoins*
+
+Register to participate in the MobileCoin TestNet to receive an allocation of *mobilecoins*.
+
+1. Sign up using our [online form](https://forms.gle/ULNjA6cMxCD5XNyT7).
+
+1. You will receive an email containing a *root entropy* value that you can use to claim *mobilecoins* in the TestNet ledger. Anyone who knows your *root entropy* will be able to spend your TestNet coin allocation, so keep it secret!
+
+### Send Your First Payment
 
 You can make your first MobileCoin payment right now!
-
-1. Sign up to participate in the MobileCoin TestNet using our [online form](https://forms.gle/ULNjA6cMxCD5XNyT7).
-
-1. You will receive an email with a *root entropy* value that you can use to claim *mobilecoins* in the TestNet ledger. Anyone who knows your *root entropy* will be able to spend your TestNet coin allocation, so keep it secret!
 
 1. Download the TestNet Client for [mac](), [windows](), or [linux]()
 
 1. Launch the TestNet Client and follow the on screen instructions to send your first payment.
 
-### Running a TestNet *Watcher Node*
+### Run a TestNet *Watcher Node*
 
 If you have a Linux-compatible home computer, or if you are willing to operate a linux-compatible server in the cloud, you can run a *watcher node* in the MobileCoin TestNet.
 
@@ -30,7 +34,7 @@ If you have a Linux-compatible home computer, or if you are willing to operate a
 
 1. Collaborate to help stress test the *validator nodes* to help discover potential problems.
 
-### Running a TestNet *Validator Node*
+### Run a TestNet *Validator Node*
 
 If you have an SGX-capable machine, or if you are willing to operate an SGX-capable server in the cloud, you can run a *validator node* in the MobileCoin TestNet.
 
