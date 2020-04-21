@@ -23,7 +23,7 @@ use mcserial::{
         encoding::{bytes, encode_key, encoded_len_varint, key_len, skip_field},
         Message,
     },
-    DecodeError, ReprBytes32,
+    serialize, DecodeError, ReprBytes32,
 };
 use prost::encoding::{DecodeContext, WireType};
 use rand_core::{CryptoRng, RngCore};
@@ -34,7 +34,7 @@ use crate::{
     compressed_commitment::CompressedCommitment,
     onetime_keys::compute_key_image,
     range_proofs::{check_range_proofs, generate_range_proofs},
-    ring_signature::{mlsag::RingMLSAG, Error, KeyImage, Scalar, GENERATORS},
+    ring_signature::{mlsag::RingMLSAG, CurveScalar, Error, KeyImage, Scalar, GENERATORS},
 };
 
 /// An RCT_TYPE_BULLETPROOFS_2 signature.
@@ -156,13 +156,6 @@ impl SignatureRctBulletproofs {
                 .map_err(|_e| Error::InvalidSignature)?;
         }
 
-        // Each MLSAG must be valid.
-        for (i, ring) in rings.iter().enumerate() {
-            let ring_signature = &self.ring_signatures[i];
-            let pseudo_output = self.pseudo_output_commitments[i];
-            ring_signature.verify(message, ring, &pseudo_output)?;
-        }
-
         // Output commitments - pseudo_outputs must be zero.
         {
             let sum_of_output_commitments: RistrettoPoint = decompressed_output_commitments
@@ -180,6 +173,20 @@ impl SignatureRctBulletproofs {
             if difference != GENERATORS.commit(Scalar::zero(), Scalar::zero()) {
                 return Err(Error::ValueNotConserved);
             }
+        }
+
+        // Extend the message with the range proof and pseudo_output_commitments.
+        let extended_message = extend_message(
+            message,
+            &self.pseudo_output_commitments,
+            &self.range_proof_bytes,
+        )?;
+
+        // Each MLSAG must be valid.
+        for (i, ring) in rings.iter().enumerate() {
+            let ring_signature = &self.ring_signatures[i];
+            let pseudo_output = self.pseudo_output_commitments[i];
+            ring_signature.verify(&extended_message, ring, &pseudo_output)?;
         }
 
         // Signature is valid.
@@ -257,25 +264,6 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
     let last_blinding: Scalar = sum_of_output_blindings - sum_of_pseudo_output_blindings;
     pseudo_output_blindings.push(last_blinding);
 
-    // Prove that the signer is allowed to spend a public key in each ring, and that
-    // the input's value equals the value of the pseudo_output.
-    let mut ring_signatures: Vec<RingMLSAG> = Vec::new();
-    for i in 0..num_inputs {
-        let real_index = real_input_indices[i];
-        let (onetime_private_key, value, blinding) = input_secrets[i];
-        let ring_signature = RingMLSAG::sign(
-            message,
-            &rings[i],
-            real_index,
-            &onetime_private_key,
-            value,
-            &blinding,
-            &pseudo_output_blindings[i],
-            rng,
-        )?;
-        ring_signatures.push(ring_signature);
-    }
-
     // Create Range proofs for outputs and pseudo-outputs.
     let pseudo_output_values_and_blindings: Vec<(u64, Scalar)> = input_secrets
         .iter()
@@ -317,11 +305,50 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
         .map(CompressedCommitment::from)
         .collect();
 
+    // Extend the message with the range proof and pseudo_output_commitments.
+    // This ensures that they are signed.
+    let range_proof_bytes = range_proof.to_bytes();
+    let extended_message = extend_message(message, &pseudo_output_commitments, &range_proof_bytes)?;
+
+    // Prove that the signer is allowed to spend a public key in each ring, and that
+    // the input's value equals the value of the pseudo_output.
+    let mut ring_signatures: Vec<RingMLSAG> = Vec::new();
+    for i in 0..num_inputs {
+        let real_index = real_input_indices[i];
+        let (onetime_private_key, value, blinding) = input_secrets[i];
+        let ring_signature = RingMLSAG::sign(
+            &extended_message,
+            &rings[i],
+            real_index,
+            &onetime_private_key,
+            value,
+            &blinding,
+            &pseudo_output_blindings[i],
+            rng,
+        )?;
+        ring_signatures.push(ring_signature);
+    }
+
     Ok(SignatureRctBulletproofs {
         ring_signatures,
         pseudo_output_commitments,
-        range_proof_bytes: range_proof.to_bytes(),
+        range_proof_bytes,
     })
+}
+
+/// Concatenates [message || pseudo_output_commitments || range_proof].
+fn extend_message(
+    message: &[u8],
+    pseudo_output_commitments: &[CompressedCommitment],
+    range_proof_bytes: &[u8],
+) -> Result<Vec<u8>, Error> {
+    let pseudo_output_bytes = serialize(&pseudo_output_commitments)?;
+    let mut extended_message: Vec<u8> =
+        Vec::with_capacity(message.len() + pseudo_output_bytes.len() + range_proof_bytes.len());
+    extended_message.extend_from_slice(&message[..]);
+    extended_message.extend_from_slice(&pseudo_output_bytes);
+    extended_message.extend_from_slice(&range_proof_bytes);
+    Ok(extended_message)
 }
 
 #[cfg(test)]
