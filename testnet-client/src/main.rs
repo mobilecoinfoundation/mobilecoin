@@ -14,7 +14,7 @@ use std::{fmt, str::FromStr, sync::Arc, thread, time::Duration};
 use structopt::StructOpt;
 
 /// Command lien config.
-#[derive(StructOpt)]
+#[derive(Clone, StructOpt)]
 struct Config {
     /// The host:port of the mobilecoind instance to connect to.
     #[structopt(short = "s", long = "server", default_value = "127.0.0.1:4444")]
@@ -55,6 +55,7 @@ impl fmt::Display for Command {
 
 /// The actual test-net client implementation.
 struct TestnetClient {
+    config: Config,
     client: MobilecoindApiClient,
     monitor_id: Vec<u8>,
 }
@@ -122,6 +123,7 @@ impl TestnetClient {
 
         // Return.
         Ok(TestnetClient {
+            config: config.clone(),
             client,
             monitor_id: Vec::new(),
         })
@@ -129,7 +131,7 @@ impl TestnetClient {
 
     /// The main UI loop.
     pub fn run(&mut self) {
-        Self::print_intro();
+        self.print_intro();
 
         loop {
             let root_entropy = Self::get_root_entropy();
@@ -173,21 +175,23 @@ impl TestnetClient {
     }
 
     /// Print a short introductory message.
-    fn print_intro() {
-        let intro = r#"
+    fn print_intro(&self) {
+        println!(
+            r#"
 **********************************************************************
 
                  Welcome to the MobileCoin TestNet
 
 **********************************************************************
 
-You are now connected to: testnet-west.mobilecoin.com:444
+You are now connected to: {}
 
 Please enter the 32 byte root entropy for an account. If you received an email with an allocation of TestNet mobilecoins, this is the hexadecimal string we sent you. It should look something like
 
         dc74edf1d8892dfdf49d6db5d3d4e873665c2dd400c0955dd9729571826a26be
-"#;
-        println!("{}", intro);
+"#,
+            self.config.mobilecoind_host,
+        );
     }
 
     /// Get root entropy from user.
