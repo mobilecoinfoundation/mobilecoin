@@ -3,6 +3,7 @@
 //! A demo client for interacting with the MobileCoin test network using mobilecoind.
 
 use dialoguer::{theme::ColorfulTheme, Input, Select, Validator};
+use grpc_util::build_info_grpc::BuildInfoApiClient;
 use grpcio::{ChannelBuilder, ChannelCredentialsBuilder};
 use indicatif::{ProgressBar, ProgressStyle};
 use mc_b58_payloads::payloads::RequestPayload;
@@ -78,15 +79,46 @@ impl TestnetClient {
             ch_builder.connect(&config.mobilecoind_host)
         };
 
-        let client = MobilecoindApiClient::new(ch);
+        // Connect to mobilecoind and get some information from it. Log that to ease with potential debugging.
+        let build_info_client = BuildInfoApiClient::new(ch.clone());
+        let build_info = match build_info_client.get_build_info(&mobilecoind_api::Empty::new()) {
+            Ok(resp) => resp,
+            Err(err) => {
+                println!("Unable to connect to mobilecoind on {} - are you sure it is running and accepting connections?", config.mobilecoind_host);
+                println!();
+                println!("The error was: {}", err);
+                return Err(format!(
+                    "unable to get build info from mobilecoind - {}",
+                    err
+                ));
+            }
+        };
+        println!(
+            "Connected to mobilecoind on {}: commit={} profile={} target_arch={} target_feature={} rustflags={} sgx_mode={} ias_mode={}",
+            config.mobilecoind_host,
+            build_info.git_commit,
+            build_info.profile,
+            build_info.target_arch,
+            build_info.target_feature,
+            build_info.rustflags,
+            build_info.sgx_mode,
+            build_info.ias_mode,
+        );
 
-        // Do a simple check to see if mobilecoind is alive.
-        if let Err(err) = client.get_ledger_info(&mobilecoind_api::Empty::new()) {
-            println!("Unable to connect to mobilecoind on {} - are you sure it is running and accepting connections?", config.mobilecoind_host);
-            println!();
-            println!("The error was: {}", err);
-            return Err(format!("unable to connect to mobilecoind - {}", err));
-        }
+        let client = MobilecoindApiClient::new(ch);
+        let ledger_info = match client.get_ledger_info(&mobilecoind_api::Empty::new()) {
+            Ok(resp) => resp,
+            Err(err) => {
+                println!("Unable to query ledger using mobilecoind on {} - are you sure it is running and accepting connections?", config.mobilecoind_host);
+                println!();
+                println!("The error was: {}", err);
+                return Err(format!("unable to query ledger from mobilecoind - {}", err));
+            }
+        };
+        println!(
+            "mobilecoind currently has {} blocks in ledger.",
+            ledger_info.block_count
+        );
 
         // Return.
         Ok(TestnetClient {
