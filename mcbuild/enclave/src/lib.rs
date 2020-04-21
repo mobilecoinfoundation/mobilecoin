@@ -561,6 +561,34 @@ impl Builder {
         static_archive.set_extension("a");
         self.build_enclave()?;
 
+        // Note: Some of the linker flags here are important for security [1]
+        //
+        // -noexecstack makes the stack not executable. This is also called NX [3]
+        //
+        // -pie is relevant to making sure there are no relocatable text sections
+        // in the enclave. If there are relocatable text sections, then those
+        // pages will writeable. See discussion in [2] second paragraph.
+        //
+        // -relro is also relevant to that -- relro means that relocated text
+        //  segments will be made read-only after relocation. But there is no mechanism
+        //  for that in SGX [4]. So I think perhaps relro is not needed with -pie,
+        //  but we should include it if it is in [1], and it likely has no effect.
+        //
+        // -now means that the usual "lazily resolve symbol on first use" strategy
+        //  for shared libraries is disabled and all symbols get resolved immediately on load.
+        //  Since the enclave is ultimatley a self-contained static blob, we don't need or
+        //  want any of those trampolines. [4]
+        //
+        // Note: [2] suggests in the last sentence that the sgx_sign utility
+        // *should* issue a warning if there are any text relocations.
+        // We might also want to use `checksec.sh` [3] against the signed enclave (?)
+        // because that can also check for PIE and for NX.
+        //
+        // [1] https://github.com/intel/linux-sgx/blob/master/SampleCode/SampleEnclave/Makefile#L135
+        // [2] https://software.intel.com/sites/default/files/managed/ae/48/Software-Guard-Extensions-Enclave-Writers-Guide.pdf), in section 10, page 30
+        // [3] https://github.com/slimm609/checksec.sh
+        // [4] man ld(1)
+
         if Command::new(&self.linker)
             .args(&[
                 "-o",
@@ -568,6 +596,7 @@ impl Builder {
                     .to_str()
                     .expect("Invalid UTF-8 in unsigned enclave path"),
             ])
+            .args(&["-z", "relro", "-z", "now", "-z", "noexecstack"])
             .args(&["--no-undefined", "-nostdlib"])
             .arg(format!("-L{}", self.libdir.display()))
             .args(&[
