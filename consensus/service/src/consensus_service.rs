@@ -23,7 +23,7 @@ use common::{
 use consensus_enclave::{ConsensusEnclaveProxy, Error as EnclaveError};
 use failure::Fail;
 use futures::Future;
-use grpc_util::{HealthCheckStatus, HealthService};
+use grpc_util::{BuildInfoService, HealthCheckStatus, HealthService};
 use grpcio;
 use ledger_db::LedgerDB;
 use mcconnection::{Connection, ConnectionManager, ConnectionUriGrpcioServer};
@@ -447,6 +447,7 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
             });
         let health_service =
             HealthService::new(Some(health_check_callback), self.logger.clone()).into_service();
+        let build_info_service = BuildInfoService::new(self.logger.clone()).into_service();
 
         // Start GRPC server.
         let env = Arc::new(
@@ -461,6 +462,7 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
             .register_service(blockchain_service)
             .register_service(health_service)
             .register_service(attested_service)
+            .register_service(build_info_service)
             .bind_using_uri(&self.config.client_listen_uri);
 
         let mut server = server_builder.build().unwrap();
@@ -517,6 +519,7 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
         ));
 
         let health_service = HealthService::new(None, self.logger.clone()).into_service();
+        let build_info_service = BuildInfoService::new(self.logger.clone()).into_service();
 
         // Start GRPC server.
         let server_builder = grpcio::ServerBuilder::new(self.env.clone())
@@ -524,6 +527,7 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
             .register_service(peer_service)
             .register_service(health_service)
             .register_service(attested_service)
+            .register_service(build_info_service)
             .bind_using_uri(&self.config.peer_listen_uri);
 
         let mut server = server_builder.build().unwrap();

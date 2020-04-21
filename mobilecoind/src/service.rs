@@ -19,7 +19,7 @@ use common::{
     logger::{log, Logger},
     HashMap,
 };
-use grpc_util::{rpc_internal_error, rpc_logger, send_result};
+use grpc_util::{rpc_internal_error, rpc_logger, send_result, BuildInfoService};
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
 use keys::RistrettoPublic;
 use ledger_db::{Ledger, LedgerDB};
@@ -73,17 +73,20 @@ impl Service {
             logger.clone(),
         );
 
-        // Package it into grpc service
+        // Package it into grpc service.
         let mobilecoind_service = create_mobilecoind_api(api);
 
-        // Health check service
+        // Build info API service.
+        let build_info_service = BuildInfoService::new(logger.clone()).into_service();
+
+        // Health check service.
         let health_service = grpc_util::HealthService::new(None, logger.clone()).into_service();
 
-        // Package service into grpc server
+        // Package service into grpc server.
         log::info!(logger, "Starting mobilecoind API Service on port {}", port);
         let server = grpc_util::run_server(
             env,
-            vec![mobilecoind_service, health_service],
+            vec![mobilecoind_service, health_service, build_info_service],
             port,
             &logger,
         );

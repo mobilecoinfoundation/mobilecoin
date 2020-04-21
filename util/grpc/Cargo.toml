@@ -6,6 +6,7 @@ edition = "2018"
 build = "build.rs"
 
 [dependencies]
+build-info = { path = "../../build-info" }
 common = { path = "../../common", features = ["log"] }
 futures = "0.1"
 grpcio = "0.5.1"
