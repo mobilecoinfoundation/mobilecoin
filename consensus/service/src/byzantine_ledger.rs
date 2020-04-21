@@ -538,7 +538,7 @@ impl<
         // Sanity - code here should never run if we're behind.
         assert!(!self.is_behind.load(Ordering::SeqCst));
         if let LedgerSyncState::IsBehind { .. } = &self.ledger_sync_state {
-            assert!(false);
+            unreachable!();
         }
 
         // Nominate values for current slot.
