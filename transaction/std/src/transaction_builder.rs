@@ -149,7 +149,7 @@ impl TransactionBuilder {
                 &input_credential.view_private_key,
             );
             let (value, blinding) = amount.get_value(&shared_secret)?;
-            input_secrets.push((onetime_private_key, value, blinding.into()));
+            input_secrets.push((onetime_private_key, value, blinding));
         }
 
         let mut output_values_and_blindings: Vec<(u64, Scalar)> = tx_prefix
@@ -162,7 +162,7 @@ impl TransactionBuilder {
                 let (value, blinding) = amount
                     .get_value(shared_secret)
                     .expect("TransactionBuilder created an invalid Amount");
-                (value, blinding.into())
+                (value, blinding)
             })
             .collect();
 

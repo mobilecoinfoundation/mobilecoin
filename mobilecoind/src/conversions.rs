@@ -152,7 +152,7 @@ mod test {
     use keys::{FromRandom, RistrettoPublic};
     use ledger_db::Ledger;
     use rand::{rngs::StdRng, SeedableRng};
-    use transaction::{account_keys::AccountKey, amount::Amount, ring_signature::Blinding};
+    use transaction::{account_keys::AccountKey, amount::Amount, ring_signature::Scalar};
     use transaction_test_utils::{create_ledger, create_transaction, initialize_ledger};
 
     #[test]
@@ -163,7 +163,7 @@ mod test {
         let tx_out = TxOut {
             amount: Amount::new(
                 1u64 << 13,
-                Blinding::from(9u64),
+                Scalar::from(9u64),
                 &RistrettoPublic::from_random(&mut rng),
             )
             .unwrap(),
@@ -252,7 +252,7 @@ mod test {
             let tx_out = TxOut {
                 amount: Amount::new(
                     1u64 << 13,
-                    Blinding::from(9u64),
+                    Scalar::from(9u64),
                     &RistrettoPublic::from_random(&mut rng),
                 )
                 .unwrap(),

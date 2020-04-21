@@ -37,9 +37,3 @@ lazy_static! {
     pub static ref BP_GENERATORS: BulletproofGens =
         BulletproofGens::new(64, MAX_INPUTS as usize + MAX_OUTPUTS as usize);
 }
-
-// The "blinding factor" in a Pedersen commitment.
-pub type Blinding = CurveScalar;
-
-/// An output's one-time public address.
-pub type Address = RistrettoPublic;

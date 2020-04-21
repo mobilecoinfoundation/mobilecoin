@@ -22,7 +22,7 @@ use crate::{
     encrypted_fog_hint::EncryptedFogHint,
     onetime_keys::{compute_shared_secret, compute_tx_pubkey, create_onetime_public_key},
     range::Range,
-    ring_signature::{Blinding, KeyImage, SignatureRctBulletproofs, GENERATORS},
+    ring_signature::{KeyImage, SignatureRctBulletproofs, GENERATORS},
     CompressedCommitment, RedactedTx,
 };
 
@@ -278,7 +278,7 @@ impl TxOut {
 
         let amount = {
             let shared_secret = compute_shared_secret(recipient.view_public_key(), tx_private_key);
-            Amount::new(value, Blinding::from_random(rng), &shared_secret)
+            Amount::new(value, Scalar::random(rng), &shared_secret)
         }?;
 
         Ok(TxOut {
@@ -411,7 +411,7 @@ mod tests {
         amount::Amount,
         constants::{BASE_FEE, FEE_SPEND_PUBLIC_KEY, FEE_VIEW_PRIVATE_KEY, FEE_VIEW_PUBLIC_KEY},
         encrypted_fog_hint::EncryptedFogHint,
-        ring_signature::{Blinding, CurvePoint, CurveScalar, KeyImage, SignatureRctBulletproofs},
+        ring_signature::{CurvePoint, CurveScalar, KeyImage, Scalar, SignatureRctBulletproofs},
         tx::{Tx, TxIn, TxOut, TxPrefix},
     };
 
@@ -422,7 +422,7 @@ mod tests {
             let shared_secret = RistrettoPublic::from(*CurvePoint::from(2).as_ref());
             let target_key = RistrettoPublic::from(*CurvePoint::from(3).as_ref()).into();
             let public_key = RistrettoPublic::from(*CurvePoint::from(3).as_ref()).into();
-            let blinding = Blinding::from_bytes_mod_order([77u8; 32]);
+            let blinding = Scalar::from_bytes_mod_order([77u8; 32]);
             let amount = Amount::new(23u64, blinding, &shared_secret).unwrap();
             TxOut {
                 amount,

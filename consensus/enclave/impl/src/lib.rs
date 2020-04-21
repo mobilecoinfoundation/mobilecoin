@@ -43,7 +43,7 @@ use transaction::{
     blake2b_256::Blake2b256,
     constants::{FEE_SPEND_PUBLIC_KEY, FEE_VIEW_PUBLIC_KEY},
     onetime_keys::{compute_shared_secret, compute_tx_pubkey, create_onetime_public_key},
-    ring_signature::{Blinding, KeyImage, Scalar},
+    ring_signature::{KeyImage, Scalar},
     tx::{Tx, TxOut, TxOutMembershipProof},
     Block, BlockContents, BlockSignature, RedactedTx, BLOCK_VERSION,
 };
@@ -456,7 +456,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 
             // This private key is generated from the hash of all transactions in this block.
             // This ensures that all nodes generate the same fee output transaction.
-            Blinding::from_bytes_mod_order(hash_value)
+            Scalar::from_bytes_mod_order(hash_value)
         };
 
         let total_fee: u64 = transactions.iter().map(|tx| tx.prefix.fee).sum();
@@ -495,11 +495,11 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 /// # Arguments:
 /// * `tx_private_key` - Transaction key used to output the aggregate fee.
 /// * `total_fee` - The sum of all fees in the block.
-/// * `blinding` - The` Blinding` value to use for constructing the Amount.
+/// * `blinding` - The blinding to use for constructing the Amount.
 fn mint_aggregate_fee(
     tx_private_key: &RistrettoPrivate,
     total_fee: u64,
-    blinding: Blinding,
+    blinding: Scalar,
 ) -> Result<TxOut> {
     let fee_recipient = PublicAddress::new(
         &RistrettoPublic::try_from(&FEE_SPEND_PUBLIC_KEY).unwrap(),

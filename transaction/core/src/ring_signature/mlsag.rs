@@ -24,7 +24,7 @@ use crate::{
     commitment::Commitment,
     compressed_commitment::CompressedCommitment,
     onetime_keys::compute_key_image,
-    ring_signature::{Blinding, CurveScalar, Error, KeyImage, Scalar, GENERATORS},
+    ring_signature::{CurveScalar, Error, KeyImage, Scalar, GENERATORS},
 };
 
 fn hash_to_point(ristretto_public: &RistrettoPublic) -> RistrettoPoint {
