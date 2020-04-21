@@ -23,7 +23,7 @@ const DOMAIN_SEPARATOR_LABEL: &[u8] = b"mobilecoin_range_proof";
 /// `blindings` - Pedersen commitment blinding for each value.
 ///
 /// # Returns
-/// The proof and the (padded) vector of Pedersen commitments from `values` and `blindings`.
+/// The proof and the Pedersen commitments from `values` and `blindings` (padded to a power of 2).
 pub fn generate_range_proofs<T: RngCore + CryptoRng>(
     values: &[u64],
     blindings: &[Scalar],
