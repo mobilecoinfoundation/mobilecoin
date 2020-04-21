@@ -18,17 +18,25 @@ Register to participate in the MobileCoin TestNet to receive an allocation of *m
 
 You can make your first MobileCoin payment right now!
 
-1. Download the TestNet Client for [mac](), [windows](), or [linux]()
+1. Download the TestNet client package for [mac](), [windows](), or [linux]().
 
-1. Launch the TestNet Client and follow the on screen instructions to send your first payment.
+1. Expand the client package archive and read the included instructions file.
+
+1. Exchange payment requests with other community members at the [MobileCoin Forum](https://community.mobilecoin.com).
 
 ### Run a TestNet *Watcher Node*
 
-If you have a Linux-compatible home computer, or if you are willing to operate a linux-compatible server in the cloud, you can run a *watcher node* in the MobileCoin TestNet.
+If you have a Linux-compatible home computer, or if you are willing to operate a Linux-compatible server in the cloud, you can run a *watcher node* in the MobileCoin TestNet.
 
-1. Compile and run the [`mobilecoind`](./mobilecoind/) daemon.
+1. Clone the official MobileCoin repository at [Github](https://github.com/mobilecoinofficial/mobilecoin).
 
-1. Use your *root entropy* with one of the `mobilecoind` [example clients](./mobilecoind/clients) (or write your own!) to create an account.
+1. Make sure you've installed [Docker](https://docs.docker.com/get-docker/) and [Python](https://www.python.org/downloads/).
+
+1. Launch the MobileCoin build system Docker container using the command: `./mob prompt`
+
+1. At the container prompt, compile and launch the [`mobilecoind`](./mobilecoind/) daemon using the command: `TBD`
+
+1. Use your *root entropy* with the [TestNet client](#send-your-first-payment), one of the `mobilecoind` [example clients](./mobilecoind/clients), or your own code!
 
 1. Exchange payment request information with other community members at the [MobileCoin Forum](https://community.mobilecoin.com).
 
