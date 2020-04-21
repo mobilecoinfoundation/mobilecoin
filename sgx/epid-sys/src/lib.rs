@@ -8,7 +8,7 @@
 #![allow(clippy::missing_safety_doc)]
 #![allow(clippy::useless_transmute)]
 
-use mcsgx_core_types_sys::*;
-use mcsgx_epid_types_sys::*;
+use mc_sgx_core_types_sys::*;
+use mc_sgx_epid_types_sys::*;
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));

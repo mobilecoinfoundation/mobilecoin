@@ -1,5 +1,5 @@
 [package]
-name = "mcsgx-epid-sys"
+name = "mc-sgx-epid-sys"
 version = "2.9.0"
 authors = ["MobileCoin"]
 description = "EPID FFI for Intel SGX SDK."
@@ -8,8 +8,8 @@ edition = "2018"
 links = "sgx_epid"
 
 [dependencies]
-mcsgx-core-types-sys = { version = "=2.9.0", path = "../core-types-sys" }
-mcsgx-epid-types-sys = { version = "=2.9.0", path = "../epid-types-sys" }
+mc-sgx-core-types-sys = { version = "=2.9.0", path = "../core-types-sys" }
+mc-sgx-epid-types-sys = { version = "=2.9.0", path = "../epid-types-sys" }
 
 [build-dependencies]
 mcbuild-sgx-utils = { path = "../../mcbuild/sgx-utils" }

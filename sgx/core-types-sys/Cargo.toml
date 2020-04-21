@@ -1,5 +1,5 @@
 [package]
-name = "mcsgx-core-types-sys"
+name = "mc-sgx-core-types-sys"
 version = "2.9.0"
 authors = ["MobileCoin"]
 description = "Core FFI types for Intel SGX SDK."

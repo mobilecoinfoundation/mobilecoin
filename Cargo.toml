@@ -36,6 +36,7 @@ members = [
     "mobilecoind/api",
     "peers",
     "peers/test-utils",
+    "sgx/core-types",
     "sgx/core-types-sys",
     "sgx/epid-sys",
     "sgx/epid-types-sys",
