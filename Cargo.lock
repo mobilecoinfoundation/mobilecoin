@@ -1519,6 +1519,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "grpc-util"
 version = "1.0.0"
 dependencies = [
+ "build-info 0.1.0",
  "common 0.1.0",
  "futures 0.1.29 (registry+https://github.com/rust-lang/crates.io-index)",
  "grpcio 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2271,6 +2272,7 @@ name = "mc-testnet-client"
 version = "0.1.0"
 dependencies = [
  "dialoguer 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "grpc-util 1.0.0",
  "grpcio 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "indicatif 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",

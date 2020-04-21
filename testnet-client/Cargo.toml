@@ -13,5 +13,6 @@ protobuf = "2.12"
 rust_decimal = { version = "1.4", default-features = false }
 structopt = "0.3"
 
+grpc-util = { path = "../util/grpc" }
 mc-b58-payloads = { path = "../util/b58-payloads" }
 mobilecoind-api = { path = "../mobilecoind/api" }

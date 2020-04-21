@@ -3,6 +3,7 @@
 //! A demo client for interacting with the MobileCoin test network using mobilecoind.
 
 use dialoguer::{theme::ColorfulTheme, Input, Select, Validator};
+use grpc_util::build_info_grpc::BuildInfoApiClient;
 use grpcio::{ChannelBuilder, ChannelCredentialsBuilder};
 use indicatif::{ProgressBar, ProgressStyle};
 use mc_b58_payloads::payloads::RequestPayload;
@@ -13,7 +14,7 @@ use std::{fmt, str::FromStr, sync::Arc, thread, time::Duration};
 use structopt::StructOpt;
 
 /// Command lien config.
-#[derive(StructOpt)]
+#[derive(Clone, StructOpt)]
 struct Config {
     /// The host:port of the mobilecoind instance to connect to.
     #[structopt(short = "s", long = "server", default_value = "127.0.0.1:4444")]
@@ -54,6 +55,7 @@ impl fmt::Display for Command {
 
 /// The actual test-net client implementation.
 struct TestnetClient {
+    config: Config,
     client: MobilecoindApiClient,
     monitor_id: Vec<u8>,
 }
@@ -78,18 +80,50 @@ impl TestnetClient {
             ch_builder.connect(&config.mobilecoind_host)
         };
 
-        let client = MobilecoindApiClient::new(ch);
+        // Connect to mobilecoind and get some information from it. Log that to ease with potential debugging.
+        let build_info_client = BuildInfoApiClient::new(ch.clone());
+        let build_info = match build_info_client.get_build_info(&mobilecoind_api::Empty::new()) {
+            Ok(resp) => resp,
+            Err(err) => {
+                println!("Unable to connect to mobilecoind on {} - are you sure it is running and accepting connections?", config.mobilecoind_host);
+                println!();
+                println!("The error was: {}", err);
+                return Err(format!(
+                    "unable to get build info from mobilecoind - {}",
+                    err
+                ));
+            }
+        };
+        println!(
+            "Connected to mobilecoind on {}: commit={} profile={} target_arch={} target_feature={} rustflags={} sgx_mode={} ias_mode={}",
+            config.mobilecoind_host,
+            build_info.git_commit,
+            build_info.profile,
+            build_info.target_arch,
+            build_info.target_feature,
+            build_info.rustflags,
+            build_info.sgx_mode,
+            build_info.ias_mode,
+        );
 
-        // Do a simple check to see if mobilecoind is alive.
-        if let Err(err) = client.get_ledger_info(&mobilecoind_api::Empty::new()) {
-            println!("Unable to connect to mobilecoind on {} - are you sure it is running and accepting connections?", config.mobilecoind_host);
-            println!();
-            println!("The error was: {}", err);
-            return Err(format!("unable to connect to mobilecoind - {}", err));
-        }
+        let client = MobilecoindApiClient::new(ch);
+        let ledger_info = match client.get_ledger_info(&mobilecoind_api::Empty::new()) {
+            Ok(resp) => resp,
+            Err(err) => {
+                println!("Unable to query ledger using mobilecoind on {} - are you sure it is running and accepting connections?", config.mobilecoind_host);
+                println!();
+                println!("The error was: {}", err);
+                return Err(format!("unable to query ledger from mobilecoind - {}", err));
+            }
+        };
+        println!(
+            "mobilecoind currently has {} blocks in ledger.",
+            ledger_info.block_count
+        );
 
         // Return.
         Ok(TestnetClient {
+            config: config.clone(),
             client,
             monitor_id: Vec::new(),
         })
@@ -97,7 +131,7 @@ impl TestnetClient {
 
     /// The main UI loop.
     pub fn run(&mut self) {
-        Self::print_intro();
+        self.print_intro();
 
         loop {
             let root_entropy = Self::get_root_entropy();
@@ -141,21 +175,23 @@ impl TestnetClient {
     }
 
     /// Print a short introductory message.
-    fn print_intro() {
-        let intro = r#"
+    fn print_intro(&self) {
+        println!(
+            r#"
 **********************************************************************
 
                  Welcome to the MobileCoin TestNet
 
 **********************************************************************
 
-You are now connected to: testnet-west.mobilecoin.com:444
+You are now connected to: {}
 
 Please enter the 32 byte root entropy for an account. If you received an email with an allocation of TestNet mobilecoins, this is the hexadecimal string we sent you. It should look something like
 
         dc74edf1d8892dfdf49d6db5d3d4e873665c2dd400c0955dd9729571826a26be
-"#;
-        println!("{}", intro);
+"#,
+            self.config.mobilecoind_host,
+        );
     }
 
     /// Get root entropy from user.
