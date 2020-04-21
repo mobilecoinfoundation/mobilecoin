@@ -408,31 +408,24 @@ impl Builder {
         gendata_artifact.set_extension("dat");
         fs::copy(&gendata, gendata_artifact)?;
 
+        // The signed enclave is also an artifact, so we will copy it to the target profile dir
+        let mut signed_artifact = self.profile_target_dir.join(
+            unsigned_enclave
+                .file_name()
+                .expect("Unsigned enclave has no file name"),
+        );
+        signed_artifact.set_extension("signed.so");
+
         // If we have been given a private key to use, just sign the enclave in the insecure,
         // one-shot mode
-        if let Some(privkey) = &self.privkey {
-            return if self
-                .signer
-                .sign(&unsigned_enclave, &config_xml, &privkey, signed_enclave)
-                .status()?
-                .success()
-            {
-                // If we signed an enclave, then it's an artifact.
-
-                let mut signed_artifact = self.profile_target_dir.join(
-                    unsigned_enclave
-                        .file_name()
-                        .expect("Unsigned enclave has no file name"),
-                );
-                signed_artifact.set_extension("signed.so");
-                fs::copy(signed_enclave, &signed_artifact)?;
-                Ok(())
-            } else {
-                Err(Error::SgxSign)
-            };
-        }
-
-        if enclave_rebuilt || (self.pubkey.is_none() && self.signature.is_none()) {
+        if let Some(private_key) = &self.privkey.clone() {
+            self.oneshot(
+                &unsigned_enclave,
+                &config_xml,
+                &private_key,
+                &signed_enclave,
+            )?;
+        } else if enclave_rebuilt || (self.pubkey.is_none() && self.signature.is_none()) {
             warning!("Generating single-use key for insecure, one-shot signature");
 
             let mut csprng = ThreadRngForMbedTls {};
@@ -451,16 +444,12 @@ impl Builder {
             )
             .expect("Could not write PEM string to private key file");
 
-            if self
-                .signer
-                .sign(&unsigned_enclave, &config_xml, &private_key, signed_enclave)
-                .status()?
-                .success()
-            {
-                Ok(())
-            } else {
-                Err(Error::SgxSign)
-            }
+            self.oneshot(
+                &unsigned_enclave,
+                &config_xml,
+                &private_key,
+                &signed_enclave,
+            )?;
         } else {
             let pubkey = self.pubkey.as_ref().unwrap();
             let signature = self.signature.as_ref().unwrap();
@@ -473,7 +462,7 @@ impl Builder {
                 .to_str()
                 .expect("Invalid UTF-8 in pubkey path"));
 
-            if self
+            if !self
                 .signer
                 .catsig(
                     &unsigned_enclave,
@@ -486,10 +475,35 @@ impl Builder {
                 .status()?
                 .success()
             {
-                Ok(())
-            } else {
-                Err(Error::SgxSignCatsig)
+                return Err(Error::SgxSignCatsig);
             }
+        }
+
+        fs::copy(signed_enclave, &signed_artifact)?;
+        Ok(())
+    }
+
+    fn oneshot(
+        &mut self,
+        unsigned_enclave: &Path,
+        config_path: &Path,
+        private_key: &Path,
+        output_enclave: &Path,
+    ) -> Result<(), Error> {
+        if self
+            .signer
+            .sign(
+                &unsigned_enclave,
+                &config_path,
+                &private_key,
+                output_enclave,
+            )
+            .status()?
+            .success()
+        {
+            Ok(())
+        } else {
+            Err(Error::SgxSign)
         }
     }
 
