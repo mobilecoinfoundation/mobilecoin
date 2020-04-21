@@ -693,6 +693,9 @@ impl<
 
             counters::BLOCKS_WRITTEN_COUNT.inc();
             counters::BLOCKS_IN_LEDGER.set(self.ledger.num_blocks().unwrap() as i64);
+            for _output in &block_contents.outputs {
+                counters::TXO_WRITTEN_COUNT.inc();
+            }
             counters::TXO_IN_LEDGER.set(self.ledger.num_txos().unwrap() as i64);
         }
 
