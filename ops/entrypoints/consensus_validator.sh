@@ -37,7 +37,6 @@ if [[ -z "${AWS_PATH}" ]] || [[ -z "${AWS_SECRET_ACCESS_KEY}" ]] || [[ -z "${AWS
 else
   /usr/bin/ledger-distribution \
     --ledger-path "${NODE_LEDGER_DIR}" \
-    --start-from "next" \
     --dest "${AWS_PATH}" &
 fi
 

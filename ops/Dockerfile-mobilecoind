@@ -43,13 +43,11 @@ COPY attest/test_certs/ /var/lib/mobilecoin/attest/test_certs
 COPY entrypoints/mobilecoind.sh /usr/bin/entrypoint.sh
 
 # Put arg and env configuration at the end when possible to improve use of docker layer caching
-ARG LEDGER_SERVER_PORT=3228
 ARG MOBILECOIND_SERVICE_PORT=4444
 
 ARG BRANCH
 ARG NODE_LEDGER_DIR="/var/lib/mobilecoin/ledger"
 ARG MOBILECOIND_DB_DIR="/var/lib/mobilecoin/mobilecoind_db"
-ENV LEDGER_SERVER_PORT="${LEDGER_SERVER_PORT}"
 ENV MOBILECOIND_SERVICE_PORT="${MOBILECOIND_SERVICE_PORT}"
 ENV BRANCH="${BRANCH}"
 ENV RUST_LOG "debug"
@@ -61,8 +59,6 @@ ENV ORIGIN_DATA_DIR=${ORIGIN_DATA_DIR}
 ENV GIT_COMMIT=${GIT_COMMIT}
 ENV BRANCH=${BRANCH}
 
-EXPOSE $NODE_LEDGERVIEW_PORT
-EXPOSE $LEDGER_SERVER_PORT
 EXPOSE $MOBILECOIND_SERVICE_PORT
 
 ENTRYPOINT ["entrypoint.sh"]

@@ -20,11 +20,4 @@ mobilecoind \
     --ledger-db "${NODE_LEDGER_DIR}" \
     --poll-interval 1 \
     --mobilecoind-db "${MOBILECOIND_DB_DIR}" \
-    --service-port "${MOBILECOIND_SERVICE_PORT}" &
-
-mcd_pid=$!
-
-# Let ledger_db populate
-sleep 5
-
-wait "${mcd_pid}"
+    --service-port "${MOBILECOIND_SERVICE_PORT}"
