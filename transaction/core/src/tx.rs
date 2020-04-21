@@ -271,14 +271,14 @@ impl TxOut {
         recipient: &PublicAddress,
         tx_private_key: &RistrettoPrivate,
         hint: EncryptedFogHint,
-        rng: &mut RNG,
+        _rng: &mut RNG,
     ) -> Result<Self, AmountError> {
         let target_key = create_onetime_public_key(recipient, tx_private_key).into();
         let public_key = compute_tx_pubkey(tx_private_key, recipient.spend_public_key()).into();
 
         let amount = {
             let shared_secret = compute_shared_secret(recipient.view_public_key(), tx_private_key);
-            Amount::new(value, Scalar::random(rng), &shared_secret)
+            Amount::new(value, &shared_secret)
         }?;
 
         Ok(TxOut {
@@ -423,8 +423,7 @@ mod tests {
             let shared_secret = RistrettoPublic::from_random(&mut rng);
             let target_key = RistrettoPublic::from_random(&mut rng).into();
             let public_key = RistrettoPublic::from_random(&mut rng).into();
-            let blinding = Scalar::from_bytes_mod_order([77u8; 32]);
-            let amount = Amount::new(23u64, blinding, &shared_secret).unwrap();
+            let amount = Amount::new(23u64, &shared_secret).unwrap();
             TxOut {
                 amount,
                 target_key,

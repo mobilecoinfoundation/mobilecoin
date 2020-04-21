@@ -152,7 +152,7 @@ mod test {
     use keys::{FromRandom, RistrettoPublic};
     use ledger_db::Ledger;
     use rand::{rngs::StdRng, SeedableRng};
-    use transaction::{account_keys::AccountKey, amount::Amount, ring_signature::Scalar};
+    use transaction::{account_keys::AccountKey, amount::Amount};
     use transaction_test_utils::{create_ledger, create_transaction, initialize_ledger};
 
     #[test]
@@ -161,12 +161,7 @@ mod test {
 
         // Rust -> Proto
         let tx_out = TxOut {
-            amount: Amount::new(
-                1u64 << 13,
-                Scalar::from(9u64),
-                &RistrettoPublic::from_random(&mut rng),
-            )
-            .unwrap(),
+            amount: Amount::new(1u64 << 13, &RistrettoPublic::from_random(&mut rng)).unwrap(),
             target_key: RistrettoPublic::from_random(&mut rng).into(),
             public_key: RistrettoPublic::from_random(&mut rng).into(),
             e_account_hint: (&[0u8; 128]).into(),
@@ -250,12 +245,7 @@ mod test {
 
         let utxo = {
             let tx_out = TxOut {
-                amount: Amount::new(
-                    1u64 << 13,
-                    Scalar::from(9u64),
-                    &RistrettoPublic::from_random(&mut rng),
-                )
-                .unwrap(),
+                amount: Amount::new(1u64 << 13, &RistrettoPublic::from_random(&mut rng)).unwrap(),
                 target_key: RistrettoPublic::from_random(&mut rng).into(),
                 public_key: RistrettoPublic::from_random(&mut rng).into(),
                 e_account_hint: (&[0u8; 128]).into(),
