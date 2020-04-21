@@ -538,7 +538,9 @@ mod tests {
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
     use transaction::{
-        account_keys::AccountKey, tx::TxOutMembershipHash, validation::TransactionValidationError,
+        account_keys::AccountKey, constants::FEE_VIEW_PRIVATE_KEY,
+        onetime_keys::view_key_matches_output, tx::TxOutMembershipHash,
+        validation::TransactionValidationError, view_key::ViewKey,
     };
     use transaction_test_utils::{create_ledger, create_transaction, initialize_ledger};
 
@@ -729,11 +731,11 @@ mod tests {
         initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
 
         // Spend outputs from the origin block.
-        let block_contents = ledger.get_block_contents(0).unwrap();
+        let origin_block_contents = ledger.get_block_contents(0).unwrap();
 
         let input_transactions: Vec<Tx> = (0..3)
             .map(|i| {
-                let tx_out = block_contents.outputs[i].clone();
+                let tx_out = origin_block_contents.outputs[i].clone();
 
                 create_transaction(
                     &mut ledger,
@@ -746,7 +748,7 @@ mod tests {
             })
             .collect();
 
-        // let total_fee: u64 = input_transactions.iter().map(|tx| tx.prefix.fee).sum();
+        let total_fee: u64 = input_transactions.iter().map(|tx| tx.prefix.fee).sum();
 
         // Create WellFormedEncryptedTxs + proofs
         let well_formed_encrypted_txs_with_proofs: Vec<_> = input_transactions
@@ -768,68 +770,61 @@ mod tests {
         // Form block
         let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
 
-        let (block, _block_contents, signature) = enclave
+        let (block, block_contents, signature) = enclave
             .form_block(&parent_block, &well_formed_encrypted_txs_with_proofs)
             .unwrap();
 
         // Verify signature.
-        assert_eq!(
-            signature.signer(),
-            &enclave
-                .ake
-                .get_identity()
-                .signing_keypair
-                .lock()
-                .unwrap()
-                .public_key()
-        );
+        {
+            assert_eq!(
+                signature.signer(),
+                &enclave
+                    .ake
+                    .get_identity()
+                    .signing_keypair
+                    .lock()
+                    .unwrap()
+                    .public_key()
+            );
 
-        let signature_verification_result = signature.verify(&block);
-        assert!(signature_verification_result.is_ok());
+            assert!(signature.verify(&block).is_ok());
+        }
 
-        // TODO: update the following tests.
+        // `block_contents` should include the aggregate fee.
 
-        // // `block_contents` should include the aggregate fee.
-        // assert_eq!(block_contents.len(), input_transactions.len() + 1);
-        //
-        // // The zero-th RedactedTx should send a single output to the Fee recipient account.
-        // let fee_minting_transaction = &block_contents[0];
-        // assert_eq!(fee_minting_transaction.key_images.len(), 0);
-        // assert_eq!(fee_minting_transaction.outputs.len(), 1);
-        // let aggregate_fee_output = &fee_minting_transaction.outputs[0];
-        //
-        // let view_secret_key = RistrettoPrivate::try_from(&FEE_VIEW_PRIVATE_KEY).unwrap();
-        // let public_address = PublicAddress::new(
-        //     &RistrettoPublic::try_from(&FEE_SPEND_PUBLIC_KEY).unwrap(),
-        //     &RistrettoPublic::from(&view_secret_key),
-        // );
-        //
-        // // The FEE address should be the recipient of the aggregate fee.
-        // let fee_view_key = ViewKey::new(view_secret_key, *public_address.spend_public_key());
-        // let output_target_key: RistrettoPublic =
-        //     RistrettoPublic::try_from(&aggregate_fee_output.target_key).unwrap();
-        // let tx_public_key = RistrettoPublic::try_from(&aggregate_fee_output.public_key).unwrap();
-        //
-        // assert!(view_key_matches_output(
-        //     &fee_view_key,
-        //     &output_target_key,
-        //     &tx_public_key
-        // ));
-        //
-        // // The value of the aggregate fee should equal the total value of fees in the input transaction.
-        // let shared_secret = compute_shared_secret(&tx_public_key, &view_secret_key);
-        // let (value, _blinding) = aggregate_fee_output
-        //     .amount
-        //     .get_value(&shared_secret)
-        //     .unwrap();
-        // assert_eq!(value, total_fee);
-        //
-        // // Each of the input transactions should be redacted.
-        // for (i, tx) in input_transactions.into_iter().enumerate() {
-        //     let expected = tx.redact();
-        //
-        //     assert_eq!(expected, block_contents[i + 1]);
-        // }
+        let num_outputs: usize = input_transactions
+            .iter()
+            .map(|tx| tx.prefix.outputs.len())
+            .sum();
+        assert_eq!(num_outputs + 1, block_contents.outputs.len());
+
+        // One of the outputs should be the aggregate fee.
+        let view_secret_key = RistrettoPrivate::try_from(&FEE_VIEW_PRIVATE_KEY).unwrap();
+
+        let fee_view_key = {
+            let public_address = PublicAddress::new(
+                &RistrettoPublic::try_from(&FEE_SPEND_PUBLIC_KEY).unwrap(),
+                &RistrettoPublic::from(&view_secret_key),
+            );
+            ViewKey::new(view_secret_key, *public_address.spend_public_key())
+        };
+
+        let fee_output = block_contents
+            .outputs
+            .iter()
+            .find(|output| {
+                let output_public_key = RistrettoPublic::try_from(&output.public_key).unwrap();
+                let output_target_key = RistrettoPublic::try_from(&output.target_key).unwrap();
+                view_key_matches_output(&fee_view_key, &output_target_key, &output_public_key)
+            })
+            .unwrap();
+
+        let fee_output_public_key = RistrettoPublic::try_from(&fee_output.public_key).unwrap();
+
+        // The value of the aggregate fee should equal the total value of fees in the input transaction.
+        let shared_secret = compute_shared_secret(&fee_output_public_key, &view_secret_key);
+        let (value, _blinding) = fee_output.amount.get_value(&shared_secret).unwrap();
+        assert_eq!(value, total_fee);
     }
 
     #[test]
