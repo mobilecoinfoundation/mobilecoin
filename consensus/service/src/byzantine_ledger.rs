@@ -476,7 +476,7 @@ impl<
                 {
                     log::error!(self.logger, "Could not sync ledger: {:?}", err);
 
-                    // The next time we attempt to sync is an exponential back-off based on how many
+                    // The next time we attempt to sync is a linear back-off based on how many
                     // attempts we've done so far, capped at 60 seconds.
                     let next_sync_at = now + Duration::from_secs(min(num_sync_attempts + 1, 60));
                     self.ledger_sync_state = LedgerSyncState::IsBehind {

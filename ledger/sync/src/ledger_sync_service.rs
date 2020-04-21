@@ -621,7 +621,7 @@ fn get_transactions<TF: TransactionsFetcher + 'static>(
                                         err
                                     );
 
-                                    // Sleep, with an exponential delay. This prevents endless retries
+                                    // Sleep, with a linearly increasing delay. This prevents endless retries
                                     // as long as the deadline is not exceeded.
                                     thread::sleep(Duration::from_secs(num_attempts + 1));
 
