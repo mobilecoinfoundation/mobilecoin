@@ -228,7 +228,6 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
 
     // Verify that db now contains n transactions.
     assert_eq!(ledger.num_blocks().unwrap(), n_blocks as u64);
-    // assert_eq!(ledger.num_txs().unwrap(), n_blocks as u64);
 
     blocks
 }

@@ -713,112 +713,50 @@ mod ledger_db_test {
         }
     }
 
-    // #[test]
-    // // `get_key_images_by_block` should return the correct set of key images used in a single block.
-    // fn test_get_key_images_by_block() {
-    //     let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-    //     let mut ledger_db = create_db();
-    //
-    //     // Block 0
-    //     let key_images = generate_key_image_test_block(
-    //         &mut ledger_db,
-    //         vec![
-    //             AccountKey::random(&mut rng),
-    //             AccountKey::random(&mut rng),
-    //             AccountKey::random(&mut rng),
-    //         ],
-    //         AccountKey::random(&mut rng),
-    //     );
-    //
-    //     let key_image_a = key_images.get(0).unwrap();
-    //     let key_image_b = key_images.get(1).unwrap();
-    //     let key_image_c = key_images.get(2).unwrap();
-    //
-    //     // Block 1
-    //     let key_images = generate_key_image_test_block(
-    //         &mut ledger_db,
-    //         vec![AccountKey::random(&mut rng), AccountKey::random(&mut rng)],
-    //         AccountKey::random(&mut rng),
-    //     );
-    //
-    //     let key_image_d = key_images.get(0).unwrap();
-    //     let key_image_e = key_images.get(1).unwrap();
-    //
-    //     // Block 2
-    //     let key_images = generate_key_image_test_block(
-    //         &mut ledger_db,
-    //         vec![
-    //             AccountKey::random(&mut rng),
-    //             AccountKey::random(&mut rng),
-    //             AccountKey::random(&mut rng),
-    //             AccountKey::random(&mut rng),
-    //         ],
-    //         AccountKey::random(&mut rng),
-    //     );
-    //
-    //     let key_image_f = key_images.get(0).unwrap();
-    //     let key_image_g = key_images.get(1).unwrap();
-    //     let key_image_h = key_images.get(2).unwrap();
-    //     let key_image_i = key_images.get(3).unwrap();
-    //
-    //     // Key Images in block 0
-    //     {
-    //         let images_by_block_zero: Vec<KeyImage> = ledger_db.get_key_images_by_block(0).unwrap();
-    //         assert_eq!(3, images_by_block_zero.len());
-    //         assert!(images_by_block_zero
-    //             .iter()
-    //             .any(|image| image == key_image_a));
-    //         assert!(images_by_block_zero
-    //             .iter()
-    //             .any(|image| image == key_image_b));
-    //         assert!(images_by_block_zero
-    //             .iter()
-    //             .any(|image| image == key_image_c));
-    //
-    //         assert!(images_by_block_zero
-    //             .iter()
-    //             .find(|&image| image == key_image_d)
-    //             .is_none());
-    //         assert!(images_by_block_zero
-    //             .iter()
-    //             .find(|&image| image == key_image_e)
-    //             .is_none());
-    //         assert!(images_by_block_zero
-    //             .iter()
-    //             .find(|&image| image == key_image_f)
-    //             .is_none());
-    //         assert!(images_by_block_zero
-    //             .iter()
-    //             .find(|&image| image == key_image_g)
-    //             .is_none());
-    //         assert!(images_by_block_zero
-    //             .iter()
-    //             .find(|&image| image == key_image_h)
-    //             .is_none());
-    //         assert!(images_by_block_zero
-    //             .iter()
-    //             .find(|&image| image == key_image_i)
-    //             .is_none());
-    //     }
-    //
-    //     // Key Images in block 1
-    //     {
-    //         let images_by_block_one: Vec<KeyImage> = ledger_db.get_key_images_by_block(1).unwrap();
-    //         assert_eq!(2, images_by_block_one.len());
-    //         assert!(images_by_block_one.iter().any(|image| image == key_image_d));
-    //         assert!(images_by_block_one.iter().any(|image| image == key_image_e));
-    //     }
-    //
-    //     // Key Images in block 2
-    //     {
-    //         let images_by_block_two: Vec<KeyImage> = ledger_db.get_key_images_by_block(2).unwrap();
-    //         assert_eq!(4, images_by_block_two.len());
-    //         assert!(images_by_block_two.iter().any(|image| image == key_image_f));
-    //         assert!(images_by_block_two.iter().any(|image| image == key_image_g));
-    //         assert!(images_by_block_two.iter().any(|image| image == key_image_h));
-    //         assert!(images_by_block_two.iter().any(|image| image == key_image_i));
-    //     }
-    // }
+    #[test]
+    // `get_key_images_by_block` should return the correct set of key images used in a single block.
+    fn test_get_key_images_by_block() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut ledger_db = create_db();
+
+        // Populate the ledger with some initial blocks.
+        let n_blocks = 3;
+        populate_db(&mut ledger_db, n_blocks, 2);
+
+        // Append a new block to the ledger.
+        let account_key = AccountKey::random(&mut rng);
+        let num_key_images = 3;
+        let key_images: Vec<KeyImage> = (0..num_key_images)
+            .map(|_i| KeyImage::from(RistrettoPoint::random(&mut rng)))
+            .collect();
+
+        let tx_out = TxOut::new(
+            10,
+            &account_key.default_subaddress(),
+            &RistrettoPrivate::from_random(&mut rng),
+            Default::default(),
+            &mut rng,
+        )
+        .unwrap();
+        let outputs = vec![tx_out];
+
+        let block_contents = BlockContents::new(key_images.clone(), outputs);
+        let parent = ledger_db.get_block(n_blocks - 1).unwrap();
+        let block = Block::new(
+            BLOCK_VERSION,
+            &parent.id,
+            parent.index + 1,
+            &Default::default(),
+            &block_contents,
+        );
+
+        ledger_db
+            .append_block(&block, &block_contents, None)
+            .unwrap();
+
+        let returned_key_images = ledger_db.get_key_images_by_block(block.index).unwrap();
+        assert_eq!(key_images, returned_key_images);
+    }
 
     #[test]
     /// Attempting to append an empty block should return Error::InvalidBlock.
