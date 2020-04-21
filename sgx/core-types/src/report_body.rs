@@ -399,8 +399,8 @@ mod test {
         reserved1: [0u8; 12],
         isv_ext_prod_id: [1u8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
         attributes: sgx_attributes_t {
-            flags: 0x0102_0304_0506_0708,
-            xfrm: 0x0807_0605_0403_0201,
+            flags: 0x0000_0000_0000_0001 | 0x0000_0000_0000_0004 | 0x0000_0000_0000_0080,
+            xfrm: 0x0000_0000_0000_0006,
         },
         mr_enclave: sgx_measurement_t {
             m: [

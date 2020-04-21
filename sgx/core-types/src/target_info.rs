@@ -259,8 +259,8 @@ mod test {
             ],
         },
         attributes: sgx_attributes_t {
-            flags: 0xffff_ffff_ffff_ffff,
-            xfrm: 0x0000_0000_0000_0000,
+            flags: 0x0000_0000_0000_0001 | 0x0000_0000_0000_0004 | 0x0000_0000_0000_0080,
+            xfrm: 0x0000_0000_0000_0006,
         },
         reserved1: [0u8; SGX_TARGET_INFO_RESERVED1_BYTES],
         config_svn: 0xDEAD,

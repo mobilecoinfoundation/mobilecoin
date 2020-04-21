@@ -230,7 +230,7 @@ mod test {
     use bincode::{deserialize, serialize};
 
     #[test]
-    fn serde() {
+    fn bad_flags_serde() {
         let src = sgx_attributes_t {
             flags: 0x0102_0304_0506_0708,
             xfrm: 0x0807_0605_0403_0201,
@@ -238,9 +238,37 @@ mod test {
 
         let attrs = Attributes::from(&src);
         let bytes = serialize(&attrs).expect("Could not serialize attributes");
-        let attrs2: Attributes = deserialize(&bytes).expect("Could not deserialize attributes");
+        assert!(deserialize::<Attributes>(&bytes).is_err());
+    }
+
+    #[test]
+    fn bad_xfrm_serde() {
+        let src = sgx_attributes_t {
+            flags: 0x0000_0000_0000_0001 | 0x0000_0000_0000_0004 | 0x0000_0000_0000_0080,
+            xfrm: 0x0807_0605_0403_0201,
+        };
+
+        let attrs = Attributes::from(&src);
+        let bytes = serialize(&attrs).expect("Could not serialize attributes");
+        assert!(deserialize::<Attributes>(&bytes).is_err());
+    }
+
+    #[test]
+    fn good_serde() {
+        let src = sgx_attributes_t {
+            flags: 0x0000_0000_0000_0001 | 0x0000_0000_0000_0004 | 0x0000_0000_0000_0080,
+            xfrm: 0x0000_0000_0000_0006,
+        };
+
+        let attrs = Attributes::from(&src);
+        let bytes = serialize(&attrs).expect("Could not serialize attributes");
+        let attrs2 = deserialize::<Attributes>(&bytes).expect("Could not deserialize attributes");
+
         assert_eq!(attrs, attrs2);
-        assert_eq!(0x0102_0304_0506_0708, attrs2.flags().bits);
-        assert_eq!(0x0807_0605_0403_0201, attrs2.xfrm().bits);
+        assert_eq!(
+            0x0000_0000_0000_0001 | 0x0000_0000_0000_0004 | 0x0000_0000_0000_0080,
+            attrs2.flags().bits
+        );
+        assert_eq!(0x0000_0000_0000_0006, attrs2.xfrm().bits);
     }
 }
