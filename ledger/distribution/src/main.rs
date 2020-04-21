@@ -153,15 +153,10 @@ impl BlockHandler for S3BlockWriter {
         let bc_block = blockchain::Block::from(block);
         let bc_block_contents = blockchain::BlockContents::from(block_contents);
 
-        // let bc_transactions = transactions
-        //     .iter()
-        //     .map(external::RedactedTx::from)
-        //     .collect();
-
         let mut s3_block = blockchain::S3Block::new();
         s3_block.set_block(bc_block);
         s3_block.set_block_contents(bc_block_contents);
-        // s3_block.set_transactions(bc_transactions);
+
         if let Some(signature) = signature {
             let bc_signature = blockchain::BlockSignature::from(signature);
             s3_block.set_signature(bc_signature);
@@ -210,15 +205,11 @@ impl BlockHandler for LocalBlockWriter {
 
         let bc_block = blockchain::Block::from(block);
         let bc_block_contents = blockchain::BlockContents::from(block_contents);
-        // let bc_transactions = transactions
-        //     .iter()
-        //     .map(external::RedactedTx::from)
-        //     .collect();
 
         let mut s3_block = blockchain::S3Block::new();
         s3_block.set_block(bc_block);
         s3_block.set_block_contents(bc_block_contents);
-        // s3_block.set_transactions(bc_transactions);
+
         if let Some(signature) = signature {
             let bc_signature = blockchain::BlockSignature::from(signature);
             s3_block.set_signature(bc_signature);

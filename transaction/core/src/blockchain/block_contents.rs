@@ -3,15 +3,18 @@ use alloc::vec::Vec;
 use core::convert::TryFrom;
 use digestible::{Digest, Digestible};
 use generic_array::{typenum::Unsigned, GenericArray};
+use prost::Message;
 use serde::{Deserialize, Serialize};
 
 /// The contents of a Block.
-#[derive(Clone, PartialEq, Eq, Debug, Digestible, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Digestible, Serialize, Deserialize, Message)]
 pub struct BlockContents {
     /// Key images "spent" by this block.
+    #[prost(message, repeated, tag = "1")]
     pub key_images: Vec<KeyImage>,
 
     /// Outputs minted by this block.
+    #[prost(message, repeated, tag = "2")]
     pub outputs: Vec<TxOut>,
 }
 

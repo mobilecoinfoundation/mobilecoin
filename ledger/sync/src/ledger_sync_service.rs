@@ -303,9 +303,10 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
 
             // FIXME: MC-365 Move ledger counters into ledger_db
             counters::BLOCKS_WRITTEN_COUNT.inc();
-            // counters::TX_WRITTEN_COUNT.inc_by(transactions.len() as i64);
             counters::BLOCKS_IN_LEDGER.set(self.ledger.num_blocks()? as i64);
-            // counters::TX_IN_LEDGER.set(self.ledger.num_txs()? as i64);
+            for _output in &contents.outputs {
+                counters::TXO_WRITTEN_COUNT.inc();
+            }
             counters::TXO_IN_LEDGER.set(self.ledger.num_txos()? as i64);
         }
 

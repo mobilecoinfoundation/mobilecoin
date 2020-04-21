@@ -124,10 +124,10 @@ impl ReqwestTransactionsFetcher {
             )
         })?;
 
-        let lg_block = Block::try_from(s3_block.get_block()).map_err(|err| {
+        let block = Block::try_from(s3_block.get_block()).map_err(|err| {
             ReqwestTransactionsFetcherError::InvalidBlockReceived(
                 url.to_string(),
-                format!("block conversion failed: {:?}", err),
+                format!("Block conversion failed: {:?}", err),
             )
         })?;
 
@@ -139,17 +139,6 @@ impl ReqwestTransactionsFetcher {
                 )
             })?;
 
-        // let mut redacted_transactions = Vec::new();
-        // for tx in s3_block.get_transactions().iter() {
-        //     let redacted_tx = RedactedTx::try_from(tx).map_err(|err| {
-        //         ReqwestTransactionsFetcherError::InvalidBlockReceived(
-        //             url.to_string(),
-        //             format!("tx conversion failed: {:?}", err),
-        //         )
-        //     })?;
-        //     redacted_transactions.push(redacted_tx);
-        // }
-
         let signature = s3_block
             .signature
             .into_option()
@@ -159,21 +148,31 @@ impl ReqwestTransactionsFetcher {
             .map_err(|err| {
                 ReqwestTransactionsFetcherError::InvalidBlockReceived(
                     url.to_string(),
-                    format!("invalid block signature: {:?}", err),
+                    format!("Invalid block signature: {:?}", err),
                 )
             })?;
 
         if let Some(signature) = signature.as_ref() {
-            signature.verify(&lg_block).map_err(|err| {
+            signature.verify(&block).map_err(|err| {
                 ReqwestTransactionsFetcherError::InvalidBlockReceived(
                     url.to_string(),
-                    format!("unable to verify block signature: {:?}", err),
+                    format!("Unable to verify block signature: {:?}", err),
                 )
             })?;
         }
 
+        if block.contents_hash != block_contents.hash() {
+            return Err(ReqwestTransactionsFetcherError::InvalidBlockReceived(
+                url.to_string(),
+                format!(
+                    "Invalid block contents hash. Block: {:?}, BlockContents: {:?}",
+                    block, block_contents
+                ),
+            ));
+        }
+
         let s3_block_data = S3BlockData {
-            block: lg_block,
+            block,
             block_contents,
             signature,
         };

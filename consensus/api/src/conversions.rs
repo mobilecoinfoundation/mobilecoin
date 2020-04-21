@@ -859,10 +859,11 @@ impl From<&transaction::BlockContents> for blockchain::BlockContents {
             .map(external::KeyImage::from)
             .collect();
 
-        let outputs = source.outputs.iter().map(external::TxOut::from).collect();
+        let outputs: Vec<external::TxOut> =
+            source.outputs.iter().map(external::TxOut::from).collect();
 
         block_contents.set_key_images(RepeatedField::from_vec(key_images));
-        block_contents.set_outputs(outputs);
+        block_contents.set_outputs(RepeatedField::from_vec(outputs));
         block_contents
     }
 }
