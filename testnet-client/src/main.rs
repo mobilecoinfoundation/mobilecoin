@@ -85,7 +85,8 @@ impl TestnetClient {
         let build_info = match build_info_client.get_build_info(&mobilecoind_api::Empty::new()) {
             Ok(resp) => resp,
             Err(err) => {
-                println!("Unable to connect to mobilecoind on {} - are you sure it is running and accepting connections?", config.mobilecoind_host);
+                println!("Unable to connect to mobilecoind on {}.", config.mobilecoind_host);
+                println!("Are you sure it is running and accepting connections?");
                 println!();
                 println!("The error was: {}", err);
                 return Err(format!(
@@ -94,23 +95,21 @@ impl TestnetClient {
                 ));
             }
         };
-        println!(
-            "Connected to mobilecoind on {}: commit={} profile={} target_arch={} target_feature={} rustflags={} sgx_mode={} ias_mode={}",
-            config.mobilecoind_host,
-            build_info.git_commit,
-            build_info.profile,
-            build_info.target_arch,
-            build_info.target_feature,
-            build_info.rustflags,
-            build_info.sgx_mode,
-            build_info.ias_mode,
-        );
+        println!("Connected to mobilecoind on {}.", config.mobilecoind_host);
+        println!("commit = {}", build_info.git_commit);
+        println!("profile = {}", build_info.profile);
+        println!("target_arch = {}", build_info.target_arch);
+        println!("target_feature = {}", build_info.target_feature);
+        println!("rustflags = {}", build_info.rustflags);
+        println!("sgx_mode = {}", build_info.sgx_mode);
+        println!("ias_mode = {}", build_info.ias_mode);
 
         let client = MobilecoindApiClient::new(ch);
         let ledger_info = match client.get_ledger_info(&mobilecoind_api::Empty::new()) {
             Ok(resp) => resp,
             Err(err) => {
-                println!("Unable to query ledger using mobilecoind on {} - are you sure it is running and accepting connections?", config.mobilecoind_host);
+                println!("Unable to query ledger using mobilecoind on {}.", config.mobilecoind_host);
+                println!("Are you sure it is running and accepting connections?");
                 println!();
                 println!("The error was: {}", err);
                 return Err(format!("unable to query ledger from mobilecoind - {}", err));
@@ -186,9 +185,12 @@ impl TestnetClient {
 
 You are now connected to: {}
 
-Please enter the 32 byte root entropy for an account. If you received an email with an allocation of TestNet mobilecoins, this is the hexadecimal string we sent you. It should look something like
+Please enter the 32 byte master key for an account. If you received an
+email with an allocation of TestNet mobilecoins, this is the master
+key that we sent to you. It should look something like:
 
-        dc74edf1d8892dfdf49d6db5d3d4e873665c2dd400c0955dd9729571826a26be
+  dc74edf1d8892dfdf49d6db5d3d4e873665c2dd400c0955dd9729571826a26be
+
 "#,
             self.config.mobilecoind_host,
         );
@@ -221,9 +223,9 @@ Please enter the 32 byte root entropy for an account. If you received an email w
         }
 
         Input::<EntropyBytes>::new()
-            .with_prompt("Enter your root entropy")
+            .with_prompt("Enter your master key")
             .interact()
-            .expect("failed getting root entropy")
+            .expect("failed getting master key")
             .0
     }
 
@@ -264,7 +266,7 @@ Please enter the 32 byte root entropy for an account. If you received an email w
         pb.set_style(
             ProgressStyle::default_bar()
                 .template(
-                    "Syncing account... {spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({eta})",
+                    "Syncing account... {spinner:.green} [{elapsed_precise}] [{bar:20.cyan/blue}] {pos}/{len} ({eta})",
                 )
                 .progress_chars("#>-"),
         );
@@ -316,9 +318,18 @@ Please enter the 32 byte root entropy for an account. If you received an email w
         // Print intro text.
         println!(
             r#"
-Please enter a payment request code. If you received an email with an allocation of TestNet mobilecoins, this is the longer alphanumeric string. It should look something like
+**********************************************************************
 
-        3CioMy13rUrFWRCcXMjz4GayaVgRcqpRpz6JXzmryaN2NJjSv2YaKED33iYnUyAMa9vi1XLRoW8xVuzzJTsc6MArq5NBDHMZXDtYRSrA9AjFdfv6QzLF21AWc36yXcsiqGZkgLKk
+                         Sending a Payment
+
+**********************************************************************
+
+Please enter a payment request code. If you received an email with an
+allocation of TestNet mobilecoins, this is the longer alphanumeric
+string that we send you. It should look something like:
+
+  3CioMy13rUrFWRCcXMjz4GayaVgRcqpRpz6JXzmryaN2NJjSv2YaKED33iYnUyAMa9vi1XLRoW8xVuzzJTsc6MArq5NBDHMZXDtYRSrA9AjFdfv6QzLF21AWc36yXcsiqGZkgLKk
+
 "#
         );
 
@@ -367,7 +378,7 @@ Please enter a payment request code. If you received an email with an allocation
                 );
             } else {
                 println!(
-                    "This request code is a bill for {}. It includes the memo:",
+                    "This request code is a bill for {}. It includes a memo:",
                     u64_to_mob_display(request_code.value),
                 );
                 println!();
@@ -381,8 +392,11 @@ Please enter a payment request code. If you received an email with an allocation
                     let fee = tx_proposal.get_fee();
                     let remaining_balance = balance - fee - request_code.value;
                     println!(
-                        "You will be charged a fee of {} to send this payment. Your remaining balance after paying this bill will be {}.",
+                        "You will be charged a fee of {} to send this payment. Your remaining",
                         u64_to_mob_display(fee),
+                    );
+                    println!(
+                        "balance after paying this bill will be {}.",
                         u64_to_mob_display(remaining_balance),
                     );
                     println!();
@@ -392,7 +406,8 @@ Please enter a payment request code. If you received an email with an allocation
 
                 Err(err) => {
                     println!("Error generating transaction: {}", err);
-                    println!("You will not be able to send this payment. It is possible you do not have enough funds, in which case you can edit the payment amount.");
+                    println!("You will not be able to send this payment. It is possible you do not");
+                    println!("have enough funds, in which case you can edit the payment amount.");
                     println!();
 
                     println!("Please select from the following available options:");
@@ -528,11 +543,25 @@ Please enter a payment request code. If you received an email with an allocation
 
     /// Receive coins flow.
     fn receive(&self) {
-        println!("You can create a request code to share with another MobileCoin user as a bill to receive a payment. You can meet other TestNet users and share request codes online at the MobileCoin forum.");
-        println!();
+        // Print intro text.
+        println!(
+            r#"
+**********************************************************************
+
+                        Receiving a Payment
+
+**********************************************************************
+
+You can create a request code to share with another MobileCoin user
+to receive a payment. You can meet other TestNet users online at the
+MobileCoin forums. Visit http://community.mobilecoin.com
+
+"#
+        );
+
 
         let amount = Self::input_mob(
-            "How many mobilecoins would you like to receive (in MOB)?",
+            "How many mobilecoins would you like to request (in MOB)?",
             0,
         );
 
@@ -585,7 +614,7 @@ Please enter a payment request code. If you received an email with an allocation
 
         println!("Your request code is:");
         println!();
-        println!("        {}", resp.get_b58_code());
+        println!("  {}", resp.get_b58_code());
         println!();
     }
 
