@@ -98,53 +98,66 @@ fn create_or_open_ledger_db(
     logger: &Logger,
     transactions_fetcher: &ReqwestTransactionsFetcher,
 ) -> LedgerDB {
-    // Check if the ledger DB file exists, and if not, try and copy from bootstrap database.
-    let ledger_db_file = Path::new(&config.ledger_db).join("data.mdb");
-    if !ledger_db_file.exists() {
-        match &config.ledger_db_bootstrap {
-            Some(ledger_db_bootstrap) => {
-                log::debug!(
-                    logger,
-                    "Ledger DB {:?} does not exist, copying from {}",
-                    config.ledger_db,
-                    ledger_db_bootstrap
-                );
-
-                // Try and create directory in case it doesn't exist. We need it to exist before we
-                // can copy the data.mdb file.
-                if !Path::new(&config.ledger_db).exists() {
-                    std::fs::create_dir_all(config.ledger_db.clone()).unwrap_or_else(|_| {
-                        panic!("Failed creating directory {:?}", config.ledger_db)
-                    });
-                }
-
-                let src = format!("{}/data.mdb", ledger_db_bootstrap);
-                std::fs::copy(src.clone(), ledger_db_file.clone()).unwrap_or_else(|_| {
-                    panic!(
-                        "Failed copying ledger from {} into directory {}",
-                        src,
-                        ledger_db_file.display()
-                    )
-                });
-            }
-            None => {
+    // Attempt to open the ledger and see if it has anything in it.
+    if let Ok(ledger_db) = LedgerDB::open(config.ledger_db.clone()) {
+        if let Ok(num_blocks) = ledger_db.num_blocks() {
+            if num_blocks > 0 {
+                // Successfully opened a ledger that has blocks in it.
                 log::info!(
+                    logger,
+                    "Ledger DB {:?} opened: num_blocks={} num_txos={}",
+                    config.ledger_db,
+                    num_blocks,
+                    ledger_db.num_txos().expect("Failed getting number of txos")
+                );
+                return ledger_db;
+            }
+        }
+    }
+
+    // Ledger doesn't exist, or is empty. Copy a bootstrapped ledger or try and get it from the network.
+    let ledger_db_file = Path::new(&config.ledger_db).join("data.mdb");
+    match &config.ledger_db_bootstrap {
+        Some(ledger_db_bootstrap) => {
+            log::debug!(
+                logger,
+                "Ledger DB {:?} does not exist, copying from {}",
+                config.ledger_db,
+                ledger_db_bootstrap
+            );
+
+            // Try and create directory in case it doesn't exist. We need it to exist before we
+            // can copy the data.mdb file.
+            if !Path::new(&config.ledger_db).exists() {
+                std::fs::create_dir_all(config.ledger_db.clone())
+                    .unwrap_or_else(|_| panic!("Failed creating directory {:?}", config.ledger_db));
+            }
+
+            let src = format!("{}/data.mdb", ledger_db_bootstrap);
+            std::fs::copy(src.clone(), ledger_db_file.clone()).unwrap_or_else(|_| {
+                panic!(
+                    "Failed copying ledger from {} into directory {}",
+                    src,
+                    ledger_db_file.display()
+                )
+            });
+        }
+        None => {
+            log::info!(
                     logger,
                     "Ledger DB {:?} does not exist, bootstrapping from peer, this may take a few minutes",
                     config.ledger_db
                 );
-                std::fs::create_dir_all(config.ledger_db.clone())
-                    .expect("Could not create ledger dir");
-                LedgerDB::create(config.ledger_db.clone()).expect("Could not create ledger_db");
-                let (block, transactions) = transactions_fetcher
-                    .get_origin_block_and_transactions()
-                    .expect("Failed to download initial transactions");
-                let mut db =
-                    LedgerDB::open(config.ledger_db.clone()).expect("Could not open ledger_db");
-                db.append_block(&block, &transactions, None)
-                    .expect("Failed to appened initial transactions");
-                log::info!(logger, "Bootstrapping completed!");
-            }
+            std::fs::create_dir_all(config.ledger_db.clone()).expect("Could not create ledger dir");
+            LedgerDB::create(config.ledger_db.clone()).expect("Could not create ledger_db");
+            let (block, transactions) = transactions_fetcher
+                .get_origin_block_and_transactions()
+                .expect("Failed to download initial transactions");
+            let mut db =
+                LedgerDB::open(config.ledger_db.clone()).expect("Could not open ledger_db");
+            db.append_block(&block, &transactions, None)
+                .expect("Failed to appened initial transactions");
+            log::info!(logger, "Bootstrapping completed!");
         }
     }
 
