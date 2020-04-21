@@ -64,7 +64,7 @@ impl RingMLSAG {
     // * `output_blinding` - The output amount's blinding factor.
     // * `rng` - Randomness.
     pub fn sign<CSPRNG: RngCore + CryptoRng>(
-        message: &[u8; 32],
+        message: &[u8],
         ring: &[(CompressedRistrettoPublic, CompressedCommitment)],
         real_index: usize,
         onetime_private_key: &RistrettoPrivate,
@@ -102,7 +102,7 @@ impl RingMLSAG {
     ///* `check_value_is_preserved` - If true, check that the value of inputs equals value of outputs.
     // * `rng` - Randomness.
     fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
-        message: &[u8; 32],
+        message: &[u8],
         ring: &[(CompressedRistrettoPublic, CompressedCommitment)],
         real_index: usize,
         onetime_private_key: &RistrettoPrivate,
@@ -226,7 +226,7 @@ impl RingMLSAG {
     /// * `output_commitment` - Output amount commitment.
     pub fn verify(
         &self,
-        message: &[u8; 32],
+        message: &[u8],
         ring: &[(CompressedRistrettoPublic, CompressedCommitment)],
         output_commitment: &CompressedCommitment,
     ) -> Result<(), Error> {
