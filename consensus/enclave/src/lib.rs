@@ -20,7 +20,7 @@ use keys::{Ed25519Public, X25519Public};
 use sgx_types::{sgx_enclave_id_t, sgx_status_t, *};
 use sgx_urts::SgxEnclave;
 use std::{path, result::Result as StdResult, sync::Arc};
-use transaction::{tx::TxOutMembershipProof, Block, BlockSignature, RedactedTx};
+use transaction::{tx::TxOutMembershipProof, Block, BlockContents, BlockSignature};
 
 #[allow(unused_imports)]
 use sgx_slog;
@@ -227,7 +227,7 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
         &self,
         parent_block: &Block,
         txs_with_proofs: &[(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)],
-    ) -> Result<(Block, Vec<RedactedTx>, BlockSignature)> {
+    ) -> Result<(Block, BlockContents, BlockSignature)> {
         let inbuf = mcserial::serialize(&EnclaveCall::FormBlock(
             parent_block.clone(),
             txs_with_proofs.to_vec(),

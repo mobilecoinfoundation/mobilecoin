@@ -8,20 +8,20 @@ pub mod uri;
 use crate::uri::{Destination, Uri};
 use common::logger::{create_app_logger, log, o, Logger};
 use ledger_db::{Error as LedgerDbError, Ledger, LedgerDB};
-use mobilecoin_api::{blockchain, conversions::block_num_to_s3block_path, external};
+use mobilecoin_api::{blockchain, conversions::block_num_to_s3block_path};
 use protobuf::Message;
 use rusoto_core::{Region, RusotoError};
 use rusoto_s3::{PutObjectError, PutObjectRequest, S3Client, S3};
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf, str::FromStr};
 use structopt::StructOpt;
-use transaction::{Block, BlockIndex, BlockSignature, RedactedTx};
+use transaction::{Block, BlockContents, BlockIndex, BlockSignature};
 
 pub trait BlockHandler {
     fn handle_block(
         &mut self,
         block: &Block,
-        transactions: &[RedactedTx],
+        block_contents: &BlockContents,
         signature: &Option<BlockSignature>,
     );
 }
@@ -145,20 +145,18 @@ impl BlockHandler for S3BlockWriter {
     fn handle_block(
         &mut self,
         block: &Block,
-        transactions: &[RedactedTx],
+        block_contents: &BlockContents,
         signature: &Option<BlockSignature>,
     ) {
         log::info!(self.logger, "S3: Handling block {}", block.index);
 
         let bc_block = blockchain::Block::from(block);
-        let bc_transactions = transactions
-            .iter()
-            .map(external::RedactedTx::from)
-            .collect();
+        let bc_block_contents = blockchain::BlockContents::from(block_contents);
 
         let mut s3_block = blockchain::S3Block::new();
         s3_block.set_block(bc_block);
-        s3_block.set_transactions(bc_transactions);
+        s3_block.set_block_contents(bc_block_contents);
+
         if let Some(signature) = signature {
             let bc_signature = blockchain::BlockSignature::from(signature);
             s3_block.set_signature(bc_signature);
@@ -200,20 +198,18 @@ impl BlockHandler for LocalBlockWriter {
     fn handle_block(
         &mut self,
         block: &Block,
-        transactions: &[RedactedTx],
+        block_contents: &BlockContents,
         signature: &Option<BlockSignature>,
     ) {
         log::info!(self.logger, "S3: Handling block {}", block.index);
 
         let bc_block = blockchain::Block::from(block);
-        let bc_transactions = transactions
-            .iter()
-            .map(external::RedactedTx::from)
-            .collect();
+        let bc_block_contents = blockchain::BlockContents::from(block_contents);
 
         let mut s3_block = blockchain::S3Block::new();
         s3_block.set_block(bc_block);
-        s3_block.set_transactions(bc_transactions);
+        s3_block.set_block_contents(bc_block_contents);
+
         if let Some(signature) = signature {
             let bc_signature = blockchain::BlockSignature::from(signature);
             s3_block.set_signature(bc_signature);
@@ -301,8 +297,8 @@ fn main() {
     );
     let mut next_block_num = first_desired_block;
     loop {
-        while let (Ok(transactions), Ok(block)) = (
-            ledger_db.get_transactions_by_block(next_block_num),
+        while let (Ok(block_contents), Ok(block)) = (
+            ledger_db.get_block_contents(next_block_num),
             ledger_db.get_block(next_block_num),
         ) {
             log::trace!(logger, "Handling block #{}", next_block_num);
@@ -321,7 +317,7 @@ fn main() {
                 }
             };
 
-            block_handler.handle_block(&block, &transactions, &signature);
+            block_handler.handle_block(&block, &block_contents, &signature);
             next_block_num += 1;
 
             let state = StateData {

@@ -186,9 +186,8 @@ pub mod well_formed_tests {
         initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
 
         // Choose a TxOut to spend. Only the TxOut in the last block is unspent.
-        let mut transactions = ledger.get_transactions_by_block(n_blocks - 1).unwrap();
-        let tx_stored = transactions.pop().unwrap();
-        let tx_out = tx_stored.outputs[0].clone();
+        let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
+        let tx_out = block_contents.outputs[0].clone();
 
         let tx = create_transaction(
             &mut ledger,
@@ -215,9 +214,8 @@ pub mod well_formed_tests {
         initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
 
         // Choose a TxOut to spend. Only the output of the last block is unspent.
-        let mut transactions = ledger.get_transactions_by_block(n_blocks - 1).unwrap();
-        let tx_stored = transactions.pop().unwrap();
-        let tx_out = tx_stored.outputs[0].clone();
+        let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
+        let tx_out = block_contents.outputs[0].clone();
 
         let mut tx = create_transaction(
             &mut ledger,
@@ -251,9 +249,8 @@ pub mod well_formed_tests {
         initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
 
         // Choose a TxOut to re-spend. All TxOuts except the output of the last block have been spent.
-        let mut transactions = ledger.get_transactions_by_block(1).unwrap();
-        let tx_stored = transactions.pop().unwrap();
-        let tx_out = tx_stored.outputs[0].clone();
+        let block_contents = ledger.get_block_contents(n_blocks - 2).unwrap();
+        let tx_out = block_contents.outputs[0].clone();
 
         let tx = create_transaction(
             &mut ledger,
@@ -288,11 +285,8 @@ pub mod well_formed_tests {
             initialize_ledger(&mut bizarro_ledger, n_blocks, &sender, &mut rng);
 
             // Choose a TxOut to spend. Only the TxOut in the last block is unspent.
-            let mut transactions = bizarro_ledger
-                .get_transactions_by_block(n_blocks - 1)
-                .unwrap();
-            let tx_stored = transactions.pop().unwrap();
-            let tx_out = tx_stored.outputs[0].clone();
+            let block_contents = bizarro_ledger.get_block_contents(n_blocks - 1).unwrap();
+            let tx_out = block_contents.outputs[0].clone();
 
             create_transaction(
                 &mut bizarro_ledger,
@@ -328,9 +322,8 @@ pub mod well_formed_tests {
         initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
 
         // Choose a TxOut to spend. Only the output of the last block is unspent.
-        let mut transactions = ledger.get_transactions_by_block(n_blocks - 1).unwrap();
-        let tx_stored = transactions.pop().unwrap();
-        let tx_out = tx_stored.outputs[0].clone();
+        let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
+        let tx_out = block_contents.outputs[0].clone();
 
         let tx = create_transaction(
             &mut ledger,
@@ -385,9 +378,8 @@ pub mod well_formed_tests {
         initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
 
         // Choose a TxOut to spend. Only the output of the last block is unspent.
-        let mut transactions = ledger.get_transactions_by_block(n_blocks - 1).unwrap();
-        let tx_stored = transactions.pop().unwrap();
-        let tx_out = tx_stored.outputs[0].clone();
+        let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
+        let tx_out = block_contents.outputs[0].clone();
 
         let tx = create_transaction(
             &mut ledger,
@@ -427,9 +419,8 @@ pub mod well_formed_tests {
         initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
 
         // Choose a TxOut to spend. Only the output of the last block is unspent.
-        let mut transactions = ledger.get_transactions_by_block(n_blocks - 1).unwrap();
-        let tx_stored = transactions.pop().unwrap();
-        let tx_out = tx_stored.outputs[0].clone();
+        let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
+        let tx_out = block_contents.outputs[0].clone();
 
         let tx = create_transaction(
             &mut ledger,
@@ -510,9 +501,8 @@ mod is_valid_tests {
         initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
 
         // Choose a TxOut to spend. Only the output of the last block is unspent.
-        let mut transactions = ledger.get_transactions_by_block(n_blocks - 1).unwrap();
-        let tx_stored = transactions.pop().unwrap();
-        let tx_out = tx_stored.outputs[0].clone();
+        let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
+        let tx_out = block_contents.outputs[0].clone();
 
         let tx = create_transaction(
             &mut ledger,
@@ -567,9 +557,8 @@ mod is_valid_tests {
         initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
 
         // Choose a TxOut to spend. Only the output of the last block is unspent.
-        let mut transactions = ledger.get_transactions_by_block(n_blocks - 1).unwrap();
-        let tx_stored = transactions.pop().unwrap();
-        let tx_out = tx_stored.outputs[0].clone();
+        let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
+        let tx_out = block_contents.outputs[0].clone();
 
         let mut tx = create_transaction(
             &mut ledger,
@@ -580,7 +569,7 @@ mod is_valid_tests {
             &mut rng,
         );
 
-        tx.signature.ring_signatures[0].key_image = tx_stored.key_images[0].clone();
+        tx.signature.ring_signatures[0].key_image = block_contents.key_images[0].clone();
         assert_eq!(
             Err(TransactionValidationError::ContainsSpentKeyImage),
             is_valid(&tx, &ledger)

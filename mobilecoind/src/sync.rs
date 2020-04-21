@@ -41,7 +41,7 @@ use std::{
 use transaction::{
     get_tx_out_shared_secret,
     onetime_keys::{compute_key_image, recover_onetime_private_key, subaddress_for_key},
-    RedactedTx,
+    tx::TxOut,
 };
 
 ///  The maximal number of blocks a worker thread would process at once.
@@ -290,10 +290,8 @@ fn sync_monitor(
         // Get the monitor data. If it is no longer available, the monitor has been removed and we
         // can simply return.
         let monitor_data = mobilecoind_db.get_monitor_data(monitor_id)?;
-
-        // Get transactions and key images from the block, stop processing if block is not found.
-        let transactions = match ledger_db.get_transactions_by_block(monitor_data.next_block) {
-            Ok(transactions) => transactions,
+        let block_contents = match ledger_db.get_block_contents(monitor_data.next_block) {
+            Ok(block_contents) => block_contents,
             Err(ledger_db::Error::NotFound) => {
                 return Ok(SyncMonitorOk::NoMoreBlocks);
             }
@@ -302,24 +300,11 @@ fn sync_monitor(
             }
         };
 
-        let key_images = match ledger_db.get_key_images_by_block(monitor_data.next_block) {
-            Ok(key_images) => key_images,
-            Err(ledger_db::Error::NotFound) => {
-                // If we succeeded calling `get_transactions_by_block` but got a NotFound error
-                // from `get_key_images_by_block` something is wrong with the ledger database.
-                return Err(Error::MissingKeyImagesInLedgerDb);
-            }
-            Err(err) => {
-                return Err(err.into());
-            }
-        };
-
-        // Log.
         log::trace!(
             logger,
-            "processing {} txos and {} key images from block {} for monitor_id {}",
-            transactions.len(),
-            key_images.len(),
+            "processing {} outputs and {} key images from block {} for monitor_id {}",
+            block_contents.outputs.len(),
+            block_contents.key_images.len(),
             monitor_data.next_block,
             monitor_id,
         );
@@ -327,14 +312,19 @@ fn sync_monitor(
         // Match tx outs into UTXOs.
         let utxos = match_redacted_txs_into_utxos(
             &mobilecoind_db,
-            &transactions,
+            &block_contents.outputs,
             monitor_id,
             &monitor_data,
             logger,
         )?;
 
         // Update database.
-        mobilecoind_db.block_processed(monitor_id, monitor_data.next_block, &utxos, &key_images)?;
+        mobilecoind_db.block_processed(
+            monitor_id,
+            monitor_data.next_block,
+            &utxos,
+            &block_contents.key_images,
+        )?;
     }
 
     Ok(SyncMonitorOk::MoreBlocksPotentiallyAvailable)
@@ -343,7 +333,7 @@ fn sync_monitor(
 /// Helper function for matching a list of TxOuts to a given monitor.
 fn match_redacted_txs_into_utxos(
     mobilecoind_db: &Database,
-    redacted_txs: &[RedactedTx],
+    outputs: &[TxOut],
     monitor_id: &MonitorId,
     monitor_data: &MonitorData,
     logger: &Logger,
@@ -352,64 +342,62 @@ fn match_redacted_txs_into_utxos(
     let view_key = account_key.view_key();
     let mut results = Vec::new();
 
-    for redacted_tx in redacted_txs {
-        for tx_out in redacted_tx.outputs.iter() {
-            // Calculate the subaddress spend public key for this tx out.
-            let tx_out_target_key = RistrettoPublic::try_from(&tx_out.target_key)?;
-            let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key)?;
+    for tx_out in outputs {
+        // Calculate the subaddress spend public key for tx_out.
+        let tx_out_target_key = RistrettoPublic::try_from(&tx_out.target_key)?;
+        let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key)?;
 
-            let subaddress_spk = SubaddressSPKId::from(&subaddress_for_key(
-                &view_key.view_private_key,
-                &tx_out_target_key,
-                &tx_public_key,
-            ));
+        let subaddress_spk = SubaddressSPKId::from(&subaddress_for_key(
+            &view_key.view_private_key,
+            &tx_out_target_key,
+            &tx_public_key,
+        ));
 
-            // See if it matches any of our monitors.
-            let subaddress_id = match mobilecoind_db.get_subaddress_id_by_spk(&subaddress_spk) {
-                Ok(data) => {
-                    log::trace!(
-                        logger,
-                        "matched subaddress index {} for monitor_id {}",
-                        data.index,
-                        data.monitor_id,
-                    );
+        // See if it matches any of our monitors.
+        let subaddress_id = match mobilecoind_db.get_subaddress_id_by_spk(&subaddress_spk) {
+            Ok(data) => {
+                log::trace!(
+                    logger,
+                    "matched subaddress index {} for monitor_id {}",
+                    data.index,
+                    data.monitor_id,
+                );
 
-                    data
-                }
-                Err(Error::SubaddressSPKNotFound) => continue,
-                Err(err) => {
-                    return Err(err);
-                }
-            };
+                data
+            }
+            Err(Error::SubaddressSPKNotFound) => continue,
+            Err(err) => {
+                return Err(err);
+            }
+        };
 
-            // Sanity - we should only get a match for our own monitor id.
-            assert_eq!(monitor_id, &subaddress_id.monitor_id);
+        // Sanity - we should only get a match for our own monitor id.
+        assert_eq!(monitor_id, &subaddress_id.monitor_id);
 
-            let shared_secret =
-                get_tx_out_shared_secret(account_key.view_private_key(), &tx_public_key);
+        let shared_secret =
+            get_tx_out_shared_secret(account_key.view_private_key(), &tx_public_key);
 
-            let (value, _blinding) = tx_out
-                .amount
-                .get_value(&shared_secret)
-                .expect("Malformed amount");
+        let (value, _blinding) = tx_out
+            .amount
+            .get_value(&shared_secret)
+            .expect("Malformed amount"); // TODO
 
-            let onetime_private_key = recover_onetime_private_key(
-                &tx_public_key,
-                account_key.view_private_key(),
-                &account_key.subaddress_spend_key(subaddress_id.index),
-            );
+        let onetime_private_key = recover_onetime_private_key(
+            &tx_public_key,
+            account_key.view_private_key(),
+            &account_key.subaddress_spend_key(subaddress_id.index),
+        );
 
-            let key_image = compute_key_image(&onetime_private_key);
+        let key_image = compute_key_image(&onetime_private_key);
 
-            results.push(UnspentTxOut {
-                tx_out: tx_out.clone(),
-                subaddress_index: subaddress_id.index,
-                key_image,
-                value,
-                attempted_spend_height: 0,
-                attempted_spend_tombstone: 0,
-            });
-        }
+        results.push(UnspentTxOut {
+            tx_out: tx_out.clone(),
+            subaddress_index: subaddress_id.index,
+            key_image,
+            value,
+            attempted_spend_height: 0,
+            attempted_spend_tombstone: 0,
+        });
     }
 
     Ok(results)
@@ -463,8 +451,8 @@ mod test {
         // recipient.
         let account0_tx_outs: Vec<TxOut> = (0..num_blocks)
             .map(|idx| {
-                let redacted_txs = ledger_db.get_transactions_by_block(idx as u64).unwrap();
-                redacted_txs[0].outputs[0].clone()
+                let block_contents = ledger_db.get_block_contents(idx as u64).unwrap();
+                block_contents.outputs[0].clone()
             })
             .collect();
 

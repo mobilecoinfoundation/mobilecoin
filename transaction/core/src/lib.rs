@@ -19,7 +19,7 @@ use keys::{RistrettoPrivate, RistrettoPublic};
 pub mod account_keys;
 pub mod amount;
 pub mod blake2b_256;
-mod block;
+mod blockchain;
 mod commitment;
 mod compressed_commitment;
 pub mod constants;
@@ -38,7 +38,7 @@ pub mod view_key;
 #[cfg(test)]
 pub mod proptest_fixtures;
 
-pub use block::*;
+pub use blockchain::*;
 pub use commitment::*;
 pub use compressed_commitment::*;
 pub use redacted_tx::RedactedTx;

@@ -17,7 +17,7 @@ use std::{
     fs,
     sync::atomic::{AtomicU64, Ordering},
 };
-use transaction::{Block, BlockSignature, RedactedTx};
+use transaction::{Block, BlockContents, BlockSignature};
 use url::Url;
 
 #[derive(Debug, Fail)]
@@ -49,7 +49,7 @@ impl TransactionFetcherError for ReqwestTransactionsFetcherError {}
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct S3BlockData {
     pub block: Block,
-    pub transactions: Vec<RedactedTx>,
+    pub block_contents: BlockContents,
     pub signature: Option<BlockSignature>,
 }
 
@@ -117,30 +117,29 @@ impl ReqwestTransactionsFetcher {
             bytes
         };
 
-        let bc_block: blockchain::S3Block = protobuf::parse_from_bytes(&bytes).map_err(|err| {
+        let s3_block: blockchain::S3Block = protobuf::parse_from_bytes(&bytes).map_err(|err| {
             ReqwestTransactionsFetcherError::InvalidBlockReceived(
                 url.to_string(),
                 format!("prorobuf parse failed: {:?}", err),
             )
         })?;
-        let lg_block = Block::try_from(bc_block.get_block()).map_err(|err| {
+
+        let block = Block::try_from(s3_block.get_block()).map_err(|err| {
             ReqwestTransactionsFetcherError::InvalidBlockReceived(
                 url.to_string(),
-                format!("block conversion failed: {:?}", err),
+                format!("Block conversion failed: {:?}", err),
             )
         })?;
-        let mut redacted_transactions = Vec::new();
-        for tx in bc_block.get_transactions().iter() {
-            let redacted_tx = RedactedTx::try_from(tx).map_err(|err| {
+
+        let block_contents =
+            BlockContents::try_from(s3_block.get_block_contents()).map_err(|err| {
                 ReqwestTransactionsFetcherError::InvalidBlockReceived(
                     url.to_string(),
-                    format!("tx conversion failed: {:?}", err),
+                    format!("Block contents conversion failed: {:?}", err),
                 )
             })?;
-            redacted_transactions.push(redacted_tx);
-        }
 
-        let signature = bc_block
+        let signature = s3_block
             .signature
             .into_option()
             .as_ref()
@@ -149,22 +148,32 @@ impl ReqwestTransactionsFetcher {
             .map_err(|err| {
                 ReqwestTransactionsFetcherError::InvalidBlockReceived(
                     url.to_string(),
-                    format!("invalid block signature: {:?}", err),
+                    format!("Invalid block signature: {:?}", err),
                 )
             })?;
 
         if let Some(signature) = signature.as_ref() {
-            signature.verify(&lg_block).map_err(|err| {
+            signature.verify(&block).map_err(|err| {
                 ReqwestTransactionsFetcherError::InvalidBlockReceived(
                     url.to_string(),
-                    format!("unable to verify block signature: {:?}", err),
+                    format!("Unable to verify block signature: {:?}", err),
                 )
             })?;
         }
 
+        if block.contents_hash != block_contents.hash() {
+            return Err(ReqwestTransactionsFetcherError::InvalidBlockReceived(
+                url.to_string(),
+                format!(
+                    "Invalid block contents hash. Block: {:?}, BlockContents: {:?}",
+                    block, block_contents
+                ),
+            ));
+        }
+
         let s3_block_data = S3BlockData {
-            block: lg_block,
-            transactions: redacted_transactions,
+            block,
+            block_contents,
             signature,
         };
         Ok(s3_block_data)
@@ -172,7 +181,7 @@ impl ReqwestTransactionsFetcher {
 
     pub fn get_origin_block_and_transactions(
         &self,
-    ) -> Result<(Block, Vec<RedactedTx>), ReqwestTransactionsFetcherError> {
+    ) -> Result<(Block, BlockContents), ReqwestTransactionsFetcherError> {
         let source_url = &self.source_urls[0];
         let filename = block_num_to_s3block_path(0)
             .into_os_string()
@@ -180,18 +189,18 @@ impl ReqwestTransactionsFetcher {
             .unwrap();
         let url = source_url.join(&filename).unwrap();
         let s3block = self.block_from_url(&url)?;
-        Ok((s3block.block, s3block.transactions))
+        Ok((s3block.block, s3block.block_contents))
     }
 }
 
 impl TransactionsFetcher for ReqwestTransactionsFetcher {
     type Error = ReqwestTransactionsFetcherError;
 
-    fn get_transactions_by_block(
+    fn get_block_contents(
         &self,
         _safe_responder_ids: &[ResponderId],
         block: &Block,
-    ) -> Result<Vec<RedactedTx>, Self::Error> {
+    ) -> Result<BlockContents, Self::Error> {
         // Get the source to fetch from.
         let source_index_counter =
             self.source_index_counter.fetch_add(1, Ordering::SeqCst) as usize;
@@ -225,6 +234,6 @@ impl TransactionsFetcher for ReqwestTransactionsFetcher {
         }
 
         // Got what we wanted!
-        Ok(s3_block_data.transactions)
+        Ok(s3_block_data.block_contents)
     }
 }

@@ -45,7 +45,7 @@ use transaction::{
     onetime_keys::{compute_shared_secret, compute_tx_pubkey, create_onetime_public_key},
     ring_signature::{Blinding, KeyImage, Scalar},
     tx::{Tx, TxOut, TxOutMembershipProof},
-    Block, BlockSignature, RedactedTx, BLOCK_VERSION,
+    Block, BlockContents, BlockSignature, RedactedTx, BLOCK_VERSION,
 };
 
 /// The prefix used when constructing the fees output blinding.
@@ -354,7 +354,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         &self,
         parent_block: &Block,
         encrypted_txs_with_proofs: &[(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)],
-    ) -> Result<(Block, Vec<RedactedTx>, BlockSignature)> {
+    ) -> Result<(Block, BlockContents, BlockSignature)> {
         // This implicitly converts Vec<Result<(Tx Vec<TxOutMembershipProof>),_>> into Result<Vec<(Tx, Vec<TxOutMembershipProof>)>, _>,
         // and terminates the iteration when the first Error is encountered.
         let transactions_with_proofs = encrypted_txs_with_proofs
@@ -425,8 +425,6 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             }
         }
 
-        let mut redacted_transactions: Vec<RedactedTx> = Vec::with_capacity(transactions.len() + 1);
-
         // Create an aggregate fee output.
         let fee_tx_private_key = {
             let hash_value: [u8; 32] = {
@@ -462,15 +460,18 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         };
 
         let total_fee: u64 = transactions.iter().map(|tx| tx.prefix.fee).sum();
-        let fee_minting_transaction = mint_aggregate_fee(&fee_tx_private_key, total_fee, blinding)?;
+        let fee_output = mint_aggregate_fee(&fee_tx_private_key, total_fee, blinding)?;
 
-        // The fee is created in the zero-th redacted transaction.
-        redacted_transactions.push(fee_minting_transaction);
-
-        // Redact each input transaction.
-        for tx in transactions {
-            redacted_transactions.push(tx.redact());
+        let mut outputs: Vec<TxOut> = Vec::new();
+        let mut key_images: Vec<KeyImage> = Vec::new();
+        for tx in &transactions {
+            outputs.extend(tx.prefix.outputs.iter().cloned());
+            key_images.extend(tx.key_images().iter().cloned());
         }
+        outputs.push(fee_output);
+
+        // TODO: sort outputs and key images.
+        let block_contents = BlockContents::new(key_images, outputs);
 
         // Form the block
         let block = Block::new(
@@ -478,28 +479,28 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             &parent_block.id,
             parent_block.index + 1,
             &root_elements[0],
-            &redacted_transactions,
+            &block_contents,
         );
 
         // Sign the block
         let public_key = self.ake.get_identity().signing_keypair.lock()?;
         let signature = BlockSignature::from_block_and_keypair(&block, &public_key)?;
 
-        Ok((block, redacted_transactions, signature))
+        Ok((block, block_contents, signature))
     }
 }
 
-/// Creates a RedactedTx with a single output belonging to the fee recipient account.
+/// Creates a single output belonging to the fee recipient account.
 ///
 /// # Arguments:
 /// * `tx_private_key` - Transaction key used to output the aggregate fee.
 /// * `total_fee` - The sum of all fees in the block.
-/// * `blinding` - The` Blidning` value to use for constructing the Amount.
+/// * `blinding` - The` Blinding` value to use for constructing the Amount.
 fn mint_aggregate_fee(
     tx_private_key: &RistrettoPrivate,
     total_fee: u64,
     blinding: Blinding,
-) -> Result<RedactedTx> {
+) -> Result<TxOut> {
     let fee_recipient = PublicAddress::new(
         &RistrettoPublic::try_from(&FEE_SPEND_PUBLIC_KEY).unwrap(),
         &RistrettoPublic::try_from(&FEE_VIEW_PUBLIC_KEY).unwrap(),
@@ -526,15 +527,7 @@ fn mint_aggregate_fee(
         }
     };
 
-    let mut outputs = Vec::new();
-    outputs.push(fee_output);
-
-    let fee_minting_transaction = RedactedTx {
-        outputs,
-        key_images: Vec::new(),
-    };
-
-    Ok(fee_minting_transaction)
+    Ok(fee_output)
 }
 
 #[cfg(test)]
@@ -565,9 +558,8 @@ mod tests {
         initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
 
         // Choose a TxOut to spend. Only the TxOut in the last block is unspent.
-        let mut transactions = ledger.get_transactions_by_block(n_blocks - 1).unwrap();
-        let tx_stored = transactions.pop().unwrap();
-        let tx_out = tx_stored.outputs[0].clone();
+        let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
+        let tx_out = block_contents.outputs[0].clone();
 
         let tx = create_transaction(
             &mut ledger,
@@ -633,9 +625,8 @@ mod tests {
         initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
 
         // Choose a TxOut to spend. Only the TxOut in the last block is unspent.
-        let mut transactions = ledger.get_transactions_by_block(n_blocks - 1).unwrap();
-        let tx_stored = transactions.pop().unwrap();
-        let tx_out = tx_stored.outputs[0].clone();
+        let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
+        let tx_out = block_contents.outputs[0].clone();
 
         let tx = create_transaction(
             &mut ledger,
@@ -736,19 +727,15 @@ mod tests {
         let recipient = AccountKey::random(&mut rng);
 
         let mut ledger = create_ledger();
-        let n_blocks = 2;
+        let n_blocks = 1;
         initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
 
-        // A transaction from the ledger, whose outputs will be "spent" in this test.
-        // This assumes the first transaction in the ledger has enough TxOuts.
-        let tx_stored = {
-            let mut transactions = ledger.get_transactions_by_block(0).unwrap();
-            transactions.pop().unwrap()
-        };
+        // Spend outputs from the origin block.
+        let origin_block_contents = ledger.get_block_contents(0).unwrap();
 
         let input_transactions: Vec<Tx> = (0..3)
             .map(|i| {
-                let tx_out = tx_stored.outputs[i].clone();
+                let tx_out = origin_block_contents.outputs[i].clone();
 
                 create_transaction(
                     &mut ledger,
@@ -783,66 +770,61 @@ mod tests {
         // Form block
         let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
 
-        let (block, redacted_transactions, signature) = enclave
+        let (block, block_contents, signature) = enclave
             .form_block(&parent_block, &well_formed_encrypted_txs_with_proofs)
             .unwrap();
 
         // Verify signature.
-        assert_eq!(
-            signature.signer(),
-            &enclave
-                .ake
-                .get_identity()
-                .signing_keypair
-                .lock()
-                .unwrap()
-                .public_key()
-        );
+        {
+            assert_eq!(
+                signature.signer(),
+                &enclave
+                    .ake
+                    .get_identity()
+                    .signing_keypair
+                    .lock()
+                    .unwrap()
+                    .public_key()
+            );
 
-        let signature_verification_result = signature.verify(&block);
-        assert!(signature_verification_result.is_ok());
+            assert!(signature.verify(&block).is_ok());
+        }
 
-        // `redacted_transactions` should include an additional transaction for the aggregate fee.
-        assert_eq!(redacted_transactions.len(), input_transactions.len() + 1);
+        // `block_contents` should include the aggregate fee.
 
-        // The zero-th RedactedTx should send a single output to the Fee recipient account.
-        let fee_minting_transaction = &redacted_transactions[0];
-        assert_eq!(fee_minting_transaction.key_images.len(), 0);
-        assert_eq!(fee_minting_transaction.outputs.len(), 1);
-        let aggregate_fee_output = &fee_minting_transaction.outputs[0];
+        let num_outputs: usize = input_transactions
+            .iter()
+            .map(|tx| tx.prefix.outputs.len())
+            .sum();
+        assert_eq!(num_outputs + 1, block_contents.outputs.len());
 
+        // One of the outputs should be the aggregate fee.
         let view_secret_key = RistrettoPrivate::try_from(&FEE_VIEW_PRIVATE_KEY).unwrap();
-        let public_address = PublicAddress::new(
-            &RistrettoPublic::try_from(&FEE_SPEND_PUBLIC_KEY).unwrap(),
-            &RistrettoPublic::from(&view_secret_key),
-        );
 
-        // The FEE address should be the recipient of the aggregate fee.
-        let fee_view_key = ViewKey::new(view_secret_key, *public_address.spend_public_key());
-        let output_target_key: RistrettoPublic =
-            RistrettoPublic::try_from(&aggregate_fee_output.target_key).unwrap();
-        let tx_public_key = RistrettoPublic::try_from(&aggregate_fee_output.public_key).unwrap();
+        let fee_view_key = {
+            let public_address = PublicAddress::new(
+                &RistrettoPublic::try_from(&FEE_SPEND_PUBLIC_KEY).unwrap(),
+                &RistrettoPublic::from(&view_secret_key),
+            );
+            ViewKey::new(view_secret_key, *public_address.spend_public_key())
+        };
 
-        assert!(view_key_matches_output(
-            &fee_view_key,
-            &output_target_key,
-            &tx_public_key
-        ));
+        let fee_output = block_contents
+            .outputs
+            .iter()
+            .find(|output| {
+                let output_public_key = RistrettoPublic::try_from(&output.public_key).unwrap();
+                let output_target_key = RistrettoPublic::try_from(&output.target_key).unwrap();
+                view_key_matches_output(&fee_view_key, &output_target_key, &output_public_key)
+            })
+            .unwrap();
+
+        let fee_output_public_key = RistrettoPublic::try_from(&fee_output.public_key).unwrap();
 
         // The value of the aggregate fee should equal the total value of fees in the input transaction.
-        let shared_secret = compute_shared_secret(&tx_public_key, &view_secret_key);
-        let (value, _blinding) = aggregate_fee_output
-            .amount
-            .get_value(&shared_secret)
-            .unwrap();
+        let shared_secret = compute_shared_secret(&fee_output_public_key, &view_secret_key);
+        let (value, _blinding) = fee_output.amount.get_value(&shared_secret).unwrap();
         assert_eq!(value, total_fee);
-
-        // Each of the input transactions should be redacted.
-        for (i, tx) in input_transactions.into_iter().enumerate() {
-            let expected = tx.redact();
-
-            assert_eq!(expected, redacted_transactions[i + 1]);
-        }
     }
 
     #[test]
@@ -861,13 +843,12 @@ mod tests {
         let num_transactions = 5;
         let recipient = AccountKey::random(&mut rng);
 
-        // The first block contains a single transaction with RING_SIZE outputs.
-        let block_zero_transactions = ledger.get_transactions_by_block(0).unwrap();
-        let block_zero_redacted_tx = block_zero_transactions.get(0).unwrap();
+        // The first block contains RING_SIZE outputs.
+        let block_zero_contents = ledger.get_block_contents(0).unwrap();
 
         let mut new_transactions = Vec::new();
         for i in 0..num_transactions {
-            let tx_out = &block_zero_redacted_tx.outputs[i];
+            let tx_out = &block_zero_contents.outputs[i];
 
             let tx = create_transaction(
                 &mut ledger,
@@ -882,7 +863,7 @@ mod tests {
 
         // Create another transaction that spends the zero^th output in block zero.
         let double_spend = {
-            let tx_out = &block_zero_redacted_tx.outputs[0];
+            let tx_out = &block_zero_contents.outputs[0];
 
             create_transaction(
                 &mut ledger,
@@ -947,12 +928,11 @@ mod tests {
         let recipient = AccountKey::random(&mut rng);
 
         // The first block contains a single transaction with RING_SIZE outputs.
-        let block_zero_transactions = ledger.get_transactions_by_block(0).unwrap();
-        let block_zero_redacted_tx = block_zero_transactions.get(0).unwrap();
+        let block_zero_contents = ledger.get_block_contents(0).unwrap();
 
         let mut new_transactions = Vec::new();
         for i in 0..num_transactions {
-            let tx_out = &block_zero_redacted_tx.outputs[i];
+            let tx_out = &block_zero_contents.outputs[i];
 
             let tx = create_transaction(
                 &mut ledger,

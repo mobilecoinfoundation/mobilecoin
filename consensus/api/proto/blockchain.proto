@@ -42,6 +42,14 @@ message Block {
     bytes contents_hash = 6;
 }
 
+message BlockContents {
+    // Key images spent in this block.
+    repeated external.KeyImage key_images = 1;
+
+    // Outputs created in this block.
+    repeated external.TxOut outputs = 2;
+}
+
 message BlockSignature {
     external.Ed25519Signature signature = 1;
     external.Ed25519Public signer = 2;
@@ -51,8 +59,8 @@ message S3Block {
     // Block
     Block block = 1;
 
-    // Transactions in this block
-    repeated external.RedactedTx transactions = 2;
+    // Contents of the block.
+    BlockContents block_contents = 2;
 
     // Block signature, when available.
     BlockSignature signature = 3;

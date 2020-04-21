@@ -6,7 +6,6 @@ use ledger_db::{Ledger, LedgerDB};
 use mcrand::{CryptoRng, RngCore};
 use rand::{seq::SliceRandom, Rng};
 use tempdir::TempDir;
-use transaction::constants::RING_SIZE;
 pub use transaction::{
     account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX},
     constants::BASE_FEE,
@@ -16,6 +15,7 @@ pub use transaction::{
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipHash},
     Block, BlockID, BlockIndex, RedactedTx, BLOCK_VERSION,
 };
+use transaction::{constants::RING_SIZE, BlockContents};
 use transaction_std::{InputCredentials, TransactionBuilder};
 
 /// The amount minted by `initialize_ledger`.
@@ -87,8 +87,8 @@ pub fn create_transaction_with_amount<L: Ledger, R: RngCore + CryptoRng>(
     let mut transaction_builder = TransactionBuilder::new();
 
     // The first transaction in the origin block should contain enough outputs to use as mixins.
-    let origin_tx = &ledger.get_transactions_by_block(0).unwrap()[0];
-    let origin_outputs = &origin_tx.outputs;
+    let origin_block_contents = ledger.get_block_contents(0).unwrap();
+    let origin_outputs = &origin_block_contents.outputs;
 
     // Populate a ring with mixins.
     let mut ring: Vec<TxOut> = origin_outputs.iter().take(RING_SIZE).cloned().collect();
@@ -169,7 +169,7 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
     let mut blocks: Vec<Block> = Vec::new();
 
     for block_index in 0..n_blocks {
-        let (block, redacted_transactions) = match to_spend {
+        let (block, block_contents) = match to_spend {
             Some(tx_out) => {
                 let tx = create_transaction(
                     ledger,
@@ -180,17 +180,20 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
                     rng,
                 );
 
-                let redacted_transactions = vec![tx.redact()];
+                let key_images = tx.key_images();
+                let outputs = tx.prefix.outputs.clone();
+
+                let block_contents = BlockContents::new(key_images, outputs);
 
                 let block = Block::new(
                     BLOCK_VERSION,
                     &parent.as_ref().unwrap().id,
                     block_index,
                     &Default::default(),
-                    &redacted_transactions,
+                    &block_contents,
                 );
 
-                (block, redacted_transactions)
+                (block, block_contents)
             }
             None => {
                 // Create an origin block.
@@ -207,34 +210,29 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
                     })
                     .collect();
 
-                let redacted_transactions = vec![RedactedTx {
-                    outputs,
-                    key_images: vec![],
-                }];
-
-                let block = Block::new_origin_block(&redacted_transactions);
-                (block, redacted_transactions)
+                let block = Block::new_origin_block(&outputs);
+                let block_contents = BlockContents::new(Vec::new(), outputs);
+                (block, block_contents)
             }
         };
 
         ledger
-            .append_block(&block, &redacted_transactions, None)
+            .append_block(&block, &block_contents, None)
             .expect("failed writing initial transactions");
 
         blocks.push(block.clone());
         parent = Some(block);
-        let tx_out = redacted_transactions[0].outputs[0].clone();
+        let tx_out = block_contents.outputs[0].clone();
         to_spend = Some(tx_out);
     }
 
     // Verify that db now contains n transactions.
     assert_eq!(ledger.num_blocks().unwrap(), n_blocks as u64);
-    assert_eq!(ledger.num_txs().unwrap(), n_blocks as u64);
 
     blocks
 }
 
-/// Generate a list of blocks, each with a random number of transactions
+/// Generate a list of blocks, each with a random number of transactions.
 pub fn get_blocks<T: Rng + RngCore + CryptoRng>(
     recipients: &[PublicAddress],
     n_blocks: usize,
@@ -243,16 +241,15 @@ pub fn get_blocks<T: Rng + RngCore + CryptoRng>(
     initial_block_index: u64,
     initial_block_id: BlockID,
     rng: &mut T,
-) -> Vec<(Block, Vec<RedactedTx>)> {
+) -> Vec<(Block, BlockContents)> {
     assert!(!recipients.is_empty());
     assert!(max_txs_per_block >= min_txs_per_block);
 
-    let mut results = Vec::<(Block, Vec<RedactedTx>)>::new();
+    let mut results = Vec::<(Block, BlockContents)>::new();
     let mut last_block_id = initial_block_id;
 
     for block_index in 0..n_blocks {
         let n_txs = rng.gen_range(min_txs_per_block, max_txs_per_block + 1);
-        let mut txs = Vec::<RedactedTx>::new();
         let recipient_and_amount: Vec<(PublicAddress, u64)> = (0..n_txs)
             .map(|_| {
                 (
@@ -263,11 +260,7 @@ pub fn get_blocks<T: Rng + RngCore + CryptoRng>(
             .collect();
         let outputs = get_outputs(&recipient_and_amount, rng);
 
-        for output in outputs {
-            let key_images = Vec::new();
-            let tx = RedactedTx::new(vec![output.clone()], key_images);
-            txs.push(tx);
-        }
+        let block_contents = BlockContents::new(Vec::new(), outputs);
 
         // Fake proofs
         let root_element = TxOutMembershipElement {
@@ -280,11 +273,11 @@ pub fn get_blocks<T: Rng + RngCore + CryptoRng>(
             &last_block_id,
             initial_block_index + block_index as u64,
             &root_element,
-            &txs,
+            &block_contents,
         );
 
         last_block_id = block.id.clone();
-        results.push((block, txs));
+        results.push((block, block_contents));
     }
 
     results

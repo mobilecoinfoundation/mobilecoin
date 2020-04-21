@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
 use transaction::{
     ring_signature::KeyImage,
     tx::{Tx, TxHash, TxOutMembershipProof},
-    Block, BlockSignature, RedactedTx,
+    Block, BlockContents, BlockSignature,
 };
 
 /// A generic result type for enclave calls
@@ -216,13 +216,12 @@ pub trait ConsensusEnclave {
     ) -> Result<EnclaveMessage<PeerSession>>;
 
     /// Redact txs in order to form a new block.
-    /// Returns a block, the set of redacted transactions included in it, and a signature over the
-    /// block's digest.
+    /// Returns a block, the block contents, and a signature over the block's digest.
     fn form_block(
         &self,
         parent_block: &Block,
         txs: &[(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)],
-    ) -> Result<(Block, Vec<RedactedTx>, BlockSignature)>;
+    ) -> Result<(Block, BlockContents, BlockSignature)>;
 }
 
 /// Helper trait which reduces boiler-plate in untrusted side

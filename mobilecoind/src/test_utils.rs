@@ -24,7 +24,7 @@ use transaction::{
     account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX},
     ring_signature::KeyImage,
     tx::TxOut,
-    Block, BlockIndex, RedactedTx, BLOCK_VERSION,
+    Block, BlockContents, BlockIndex, BLOCK_VERSION,
 };
 
 use std::{
@@ -158,10 +158,7 @@ pub fn add_block_to_ledger_db(
         })
         .collect();
 
-    let redacted_transactions = vec![RedactedTx {
-        outputs,
-        key_images: key_images.to_vec(),
-    }];
+    let block_contents = BlockContents::new(key_images.to_vec(), outputs.clone());
 
     let num_blocks = ledger_db.num_blocks().expect("failed to get block height");
 
@@ -175,14 +172,14 @@ pub fn add_block_to_ledger_db(
             &parent.id,
             num_blocks as BlockIndex,
             &Default::default(),
-            &redacted_transactions,
+            &block_contents,
         );
     } else {
-        new_block = Block::new_origin_block(&redacted_transactions);
+        new_block = Block::new_origin_block(&outputs);
     }
 
     ledger_db
-        .append_block(&new_block, &redacted_transactions, None)
+        .append_block(&new_block, &block_contents, None)
         .expect("failed writing initial transactions");
 
     ledger_db.num_blocks().expect("failed to get block height")

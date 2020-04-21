@@ -20,8 +20,8 @@ use rand_hc::Hc128Rng;
 use std::sync::Arc;
 use transaction::{
     ring_signature::KeyImage,
-    tx::{Tx, TxOutMembershipProof},
-    Block, BlockSignature, RedactedTx, BLOCK_VERSION,
+    tx::{Tx, TxOut, TxOutMembershipProof},
+    Block, BlockContents, BlockSignature, BLOCK_VERSION,
 };
 
 #[derive(Clone)]
@@ -155,7 +155,7 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         &self,
         parent_block: &Block,
         encrypted_txs_with_proofs: &[(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)],
-    ) -> Result<(Block, Vec<RedactedTx>, BlockSignature)> {
+    ) -> Result<(Block, BlockContents, BlockSignature)> {
         let transactions_with_proofs: Vec<(Tx, Vec<TxOutMembershipProof>)> =
             encrypted_txs_with_proofs
                 .iter()
@@ -191,22 +191,26 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
             return Err(Error::InvalidLocalMembershipProof);
         }
 
-        let redacted_transactions: Vec<_> = transactions_with_proofs
-            .into_iter()
-            .map(|(tx, _proofs)| tx.redact())
-            .collect();
+        let mut key_images: Vec<KeyImage> = Vec::new();
+        let mut outputs: Vec<TxOut> = Vec::new();
+        for (tx, _proofs) in transactions_with_proofs {
+            key_images.extend(tx.key_images().into_iter());
+            outputs.extend(tx.prefix.outputs.into_iter());
+        }
+
+        let block_contents = BlockContents::new(key_images, outputs);
 
         let block = Block::new(
             BLOCK_VERSION,
             &parent_block.id,
             parent_block.index + 1,
             &root_elements[0],
-            &redacted_transactions,
+            &block_contents,
         );
 
         let signature = BlockSignature::from_block_and_keypair(&block, &self.signing_keypair)?;
 
-        Ok((block, redacted_transactions, signature))
+        Ok((block, block_contents, signature))
     }
 }
 

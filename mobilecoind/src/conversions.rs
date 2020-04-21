@@ -235,9 +235,9 @@ mod test {
             let recipient = AccountKey::random(&mut rng);
             initialize_ledger(&mut ledger, 1, &sender, &mut rng);
 
-            let mut transactions = ledger.get_transactions_by_block(0).unwrap();
-            let tx_stored = transactions.pop().unwrap();
-            let tx_out = tx_stored.outputs[0].clone();
+            let block_contents = ledger.get_block_contents(0).unwrap();
+            let tx_out = block_contents.outputs[0].clone();
+
             create_transaction(
                 &mut ledger,
                 &tx_out,

@@ -720,7 +720,7 @@ impl<
 
         // Write to ledger.
         {
-            let (block, transactions, signature) = self
+            let (block, block_contents, signature) = self
                 .tx_manager
                 .tx_hashes_to_block(&ext_vals)
                 .unwrap_or_else(|e| panic!("Failed to build block from {:?}: {:?}", ext_vals, e));
@@ -736,14 +736,15 @@ impl<
             {
                 let _timer = counters::APPEND_BLOCK_TIME.start_timer();
                 self.ledger
-                    .append_block(&block, &transactions, Some(&signature))
+                    .append_block(&block, &block_contents, Some(&signature))
                     .expect("failed appending block");
             }
 
             counters::BLOCKS_WRITTEN_COUNT.inc();
-            counters::TX_WRITTEN_COUNT.inc_by(transactions.len() as i64);
             counters::BLOCKS_IN_LEDGER.set(self.ledger.num_blocks().unwrap() as i64);
-            counters::TX_IN_LEDGER.set(self.ledger.num_txs().unwrap() as i64);
+            for _output in &block_contents.outputs {
+                counters::TXO_WRITTEN_COUNT.inc();
+            }
             counters::TXO_IN_LEDGER.set(self.ledger.num_txos().unwrap() as i64);
         }
 
@@ -1081,16 +1082,14 @@ mod tests {
             );
         }
 
-        // Generate and submit transactions
+        // Generate and submit transactions.
         let mut transactions = {
-            let mut transactions = ledger.get_transactions_by_block(0).unwrap();
-            let tx_stored = transactions.pop().unwrap();
+            let block_contents = ledger.get_block_contents(0).unwrap();
 
             let recipient = AccountKey::random(&mut rng);
-            let tx_out = tx_stored.outputs[0].clone();
             let tx1 = create_transaction(
                 &mut ledger,
-                &tx_out,
+                &block_contents.outputs[0],
                 &sender,
                 &recipient.default_subaddress(),
                 10,
@@ -1098,10 +1097,9 @@ mod tests {
             );
 
             let recipient = AccountKey::random(&mut rng);
-            let tx_out = tx_stored.outputs[1].clone();
             let tx2 = create_transaction(
                 &mut ledger,
-                &tx_out,
+                &block_contents.outputs[1],
                 &sender,
                 &recipient.default_subaddress(),
                 10,
@@ -1109,10 +1107,9 @@ mod tests {
             );
 
             let recipient = AccountKey::random(&mut rng);
-            let tx_out = tx_stored.outputs[2].clone();
             let tx3 = create_transaction(
                 &mut ledger,
-                &tx_out,
+                &block_contents.outputs[2],
                 &sender,
                 &recipient.default_subaddress(),
                 10,
