@@ -66,11 +66,6 @@ pipeline {
           // Copy the one-shot test-certificates into the staging area
           sh 'mkdir -p $WORKSPACE/ops/attest && cp -a $WORKSPACE/attest/test_certs $WORKSPACE/ops/attest/test_certs'
 
-          // FIXME: copy the correct signed enclave into the staging area
-          sh '''
-            SIGNED_ENCLAVE=$(find $WORKSPACE/target/release -name libconsensus-enclave.signed.so -print)
-            cp $SIGNED_ENCLAVE $WORKSPACE/ops/bin
-          '''
           // Make directories and populate sample_data
           dir('ops') {
             sh 'mkdir -p sample_data/ledger'
