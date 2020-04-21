@@ -26,6 +26,7 @@ use rayon::{iter::ParallelIterator, prelude::IntoParallelIterator};
 use retry::delay::Fibonacci;
 use scp::{scp_log::LoggingScpNode, slot::Phase, Msg, Node, QuorumSet, ScpNode, SlotIndex};
 use std::{
+    cmp::min,
     collections::{btree_map::Entry::Vacant, BTreeMap, BTreeSet},
     iter::FromIterator,
     path::PathBuf,
@@ -253,7 +254,13 @@ enum LedgerSyncState {
     MaybeBehind(Instant),
 
     /// We are behind the network and need to perform catchup.
-    IsBehind,
+    IsBehind {
+        // Time when we should attempt to sync.
+        attempt_sync_at: Instant,
+
+        // Number of attempts made so far,
+        num_sync_attempts: u64,
+    },
 }
 
 struct ByzantineLedgerThread<
@@ -411,7 +418,10 @@ impl<
                     );
                     counters::CATCHUP_INITIATED.inc();
                     self.is_behind.store(true, Ordering::SeqCst);
-                    self.ledger_sync_state = LedgerSyncState::IsBehind;
+                    self.ledger_sync_state = LedgerSyncState::IsBehind {
+                        attempt_sync_at: Instant::now(),
+                        num_sync_attempts: 0,
+                    };
 
                     // Continue on the next tick.
                     return true;
@@ -428,10 +438,34 @@ impl<
             }
 
             // We think we're behind and sync service confirms that, attempt to sync.
-            (LedgerSyncState::IsBehind, true) => {
+            (
+                LedgerSyncState::IsBehind {
+                    attempt_sync_at,
+                    num_sync_attempts,
+                },
+                true,
+            ) => {
+                // See if it's time to attempt syncing.
+                let now = Instant::now();
+                if attempt_sync_at > now {
+                    // Not yet. Continue on to the next tick and then try again. We sleep here to
+                    // throttle the event loop as it won't be doing anything until we reach the next
+                    // attempt_sync_at milestone.
+                    log::trace!(
+                        self.logger,
+                        "sync_service reported we're behind, but deadline {:?} not reached yet (attempt {})!",
+                        attempt_sync_at,
+                        num_sync_attempts,
+                    );
+
+                    thread::sleep(Duration::from_secs(1));
+                    return true;
+                }
+
                 log::info!(
                     self.logger,
-                    "sync_service reported we're behind, attempting catchup!"
+                    "sync_service reported we're behind, attempting catchup (attempt {})!",
+                    num_sync_attempts,
                 );
 
                 // Attempt incremental catch-up.
@@ -441,7 +475,20 @@ impl<
                     .attempt_ledger_sync(&self.network_state, blocks_per_attempt)
                 {
                     log::error!(self.logger, "Could not sync ledger: {:?}", err);
-                    thread::sleep(Duration::from_secs(1));
+
+                    // The next time we attempt to sync is a linear back-off based on how many
+                    // attempts we've done so far, capped at 60 seconds.
+                    let next_sync_at = now + Duration::from_secs(min(num_sync_attempts + 1, 60));
+                    self.ledger_sync_state = LedgerSyncState::IsBehind {
+                        attempt_sync_at: next_sync_at,
+                        num_sync_attempts: num_sync_attempts + 1,
+                    };
+                } else {
+                    // We successfully synced a chunk of blocks, so reset our attempts to zero for the next chunk.
+                    self.ledger_sync_state = LedgerSyncState::IsBehind {
+                        attempt_sync_at,
+                        num_sync_attempts: 0,
+                    };
                 }
 
                 // Continue on the next tick.
@@ -449,7 +496,7 @@ impl<
             }
 
             // We think we're behind but sync service indicates we're back to being in sync.
-            (LedgerSyncState::IsBehind, false) => {
+            (LedgerSyncState::IsBehind { .. }, false) => {
                 log::info!(self.logger, "sync_service reports we are no longer behind!");
 
                 // Reset scp state.
@@ -490,7 +537,9 @@ impl<
 
         // Sanity - code here should never run if we're behind.
         assert!(!self.is_behind.load(Ordering::SeqCst));
-        assert!(self.ledger_sync_state != LedgerSyncState::IsBehind);
+        if let LedgerSyncState::IsBehind { .. } = &self.ledger_sync_state {
+            unreachable!();
+        }
 
         // Nominate values for current slot.
         self.nominate_pending_values();

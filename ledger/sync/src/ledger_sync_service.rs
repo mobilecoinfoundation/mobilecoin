@@ -121,6 +121,8 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
             return Err(LedgerSyncError::EmptyBlockVec);
         }
 
+        let num_potentially_safe_blocks = potentially_safe_blocks.len();
+
         // Get transactions.
         let block_index_to_opt_transactions: BTreeMap<BlockIndex, Option<Vec<RedactedTx>>> =
             get_transactions(
@@ -158,6 +160,15 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
                     break;
                 }
             }
+        }
+
+        if blocks_with_transactions.is_empty() {
+            log::error!(
+                self.logger,
+                "Identified {} safe blocks but was unable to get transaction data",
+                num_potentially_safe_blocks,
+            );
+            return Err(LedgerSyncError::NoTransactionData);
         }
 
         // Process safe blocks.
@@ -486,7 +497,13 @@ fn get_transactions<TF: TransactionsFetcher + 'static>(
     type ResultsMap = BTreeMap<BlockIndex, Option<Vec<RedactedTx>>>;
 
     enum Msg {
-        ProcessBlock(Block),
+        ProcessBlock {
+            // Block we are trying to fetch transactions for.
+            block: Block,
+
+            // How many attempts have we made so far (this is used for calculating retry delays).
+            num_attempts: u64,
+        },
         Stop,
     }
 
@@ -495,7 +512,10 @@ fn get_transactions<TF: TransactionsFetcher + 'static>(
     let (sender, receiver) = crossbeam_channel::bounded(blocks.len());
     for block in blocks.iter().cloned() {
         sender
-            .send(Msg::ProcessBlock(block))
+            .send(Msg::ProcessBlock {
+                block,
+                num_attempts: 0,
+            })
             .expect("failed sending to channel");
     }
 
@@ -522,7 +542,10 @@ fn get_transactions<TF: TransactionsFetcher + 'static>(
 
                 for msg in thread_receiver.iter() {
                     match msg {
-                        Msg::ProcessBlock(block) => {
+                        Msg::ProcessBlock {
+                            block,
+                            num_attempts,
+                        } => {
                             // Check for timeout.
                             if Instant::now() > deadline {
                                 log::error!(
@@ -598,10 +621,16 @@ fn get_transactions<TF: TransactionsFetcher + 'static>(
                                         err
                                     );
 
+                                    // Sleep, with a linearly increasing delay. This prevents endless retries
+                                    // as long as the deadline is not exceeded.
+                                    thread::sleep(Duration::from_secs(num_attempts + 1));
+
                                     // Put back to queue for a retry
-                                    // TODO sleep?
                                     thread_sender
-                                        .send(Msg::ProcessBlock(block))
+                                        .send(Msg::ProcessBlock {
+                                            block,
+                                            num_attempts: num_attempts + 1,
+                                        })
                                         .expect("failed sending to channel");
                                 }
                             }
