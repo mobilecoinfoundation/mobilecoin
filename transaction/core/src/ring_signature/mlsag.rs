@@ -259,6 +259,18 @@ impl RingMLSAG {
         // This ensures that each address and commitment encodes a valid Ristretto point.
         let decompressed_ring = decompress_ring(ring)?;
 
+        // Scalars must be canonical.
+        if !self.c_zero.scalar.is_canonical() {
+            return Err(Error::InvalidCurveScalar);
+        }
+
+        // Scalars must be canonical.
+        for response in &self.responses {
+            if !response.scalar.is_canonical() {
+                return Err(Error::InvalidCurveScalar);
+            }
+        }
+
         // Recompute challenges.
         let mut recomputed_c = vec![Scalar::zero(); ring.len()];
 
