@@ -158,11 +158,12 @@ bitflags! {
 
 impl Display for KeyPolicy {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        let mut previous = false;
-        if self.contains(KeyPolicy::MR_ENCLAVE) {
+        let mut previous = if self.contains(KeyPolicy::MR_ENCLAVE) {
             write!(f, "MRENCLAVE")?;
-            previous = true;
-        }
+            true
+        } else {
+            false
+        };
 
         if self.contains(KeyPolicy::MR_SIGNER) {
             if previous {
@@ -369,13 +370,13 @@ impl FromX64 for KeyRequest {
         Ok(Self(sgx_key_request_t {
             key_name: key_name as u16,
             key_policy: key_policy.bits,
-            isv_svn: isv_svn.into(),
+            isv_svn,
             reserved1: 0,
             cpu_svn: cpu_svn.into(),
             attribute_mask: attribute_mask.into(),
             key_id: key_id.into(),
-            misc_mask: misc_mask.into(),
-            config_svn: config_svn.into(),
+            misc_mask,
+            config_svn,
             reserved2: [0u8; SGX_KEY_REQUEST_RESERVED2_BYTES],
         }))
     }

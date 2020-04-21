@@ -133,17 +133,17 @@ impl FromX64 for TargetInfo {
         }
 
         let reserved1 = [0u8; SGX_TARGET_INFO_RESERVED1_BYTES];
-        if &src[RESERVED1_START..RESERVED1_END] != &reserved1[..] {
+        if src[RESERVED1_START..RESERVED1_END] != reserved1[..] {
             return Err(EncodingError::InvalidInput);
         }
 
         let reserved2 = [0u8; SGX_TARGET_INFO_RESERVED2_BYTES];
-        if &src[RESERVED2_START..RESERVED2_END] != &reserved2[..] {
+        if src[RESERVED2_START..RESERVED2_END] != reserved2[..] {
             return Err(EncodingError::InvalidInput);
         }
 
         let reserved3 = [0u8; SGX_TARGET_INFO_RESERVED3_BYTES];
-        if &src[RESERVED3_START..RESERVED3_END] != &reserved3[..] {
+        if src[RESERVED3_START..RESERVED3_END] != reserved3[..] {
             return Err(EncodingError::InvalidInput);
         }
 

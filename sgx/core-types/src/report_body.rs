@@ -207,22 +207,22 @@ impl FromX64 for ReportBody {
         }
 
         let reserved1 = [0u8; SGX_REPORT_BODY_RESERVED1_BYTES];
-        if &src[RESERVED1_START..RESERVED1_END] != &reserved1[..] {
+        if src[RESERVED1_START..RESERVED1_END] != reserved1[..] {
             return Err(EncodingError::InvalidInput);
         }
 
         let reserved2 = [0u8; SGX_REPORT_BODY_RESERVED2_BYTES];
-        if &src[RESERVED2_START..RESERVED2_END] != &reserved2[..] {
+        if src[RESERVED2_START..RESERVED2_END] != reserved2[..] {
             return Err(EncodingError::InvalidInput);
         }
 
         let reserved3 = [0u8; SGX_REPORT_BODY_RESERVED3_BYTES];
-        if &src[RESERVED3_START..RESERVED3_END] != &reserved3[..] {
+        if src[RESERVED3_START..RESERVED3_END] != reserved3[..] {
             return Err(EncodingError::InvalidInput);
         }
 
         let reserved4 = [0u8; SGX_REPORT_BODY_RESERVED4_BYTES];
-        if &src[RESERVED4_START..RESERVED4_END] != &reserved4[..] {
+        if src[RESERVED4_START..RESERVED4_END] != reserved4[..] {
             return Err(EncodingError::InvalidInput);
         }
 

@@ -419,7 +419,7 @@ macro_rules! impl_ffi_wrapper {
 
         impl $crate::_macros::ConstantTimeEq for $wrapper {
             fn ct_eq(&self, other: &Self) -> subtle::Choice {
-                (&self.0).$fieldname[..].ct_eq(&(other.0).$fieldname[..])
+                (self.0).$fieldname[..].ct_eq(&(other.0).$fieldname[..])
             }
         }
 
@@ -485,19 +485,19 @@ macro_rules! impl_ffi_wrapper {
 
         impl core::hash::Hash for $wrapper {
             fn hash<H: core::hash::Hasher>(&self, hasher: &mut H) {
-                (&self.0).$fieldname[..].hash(hasher)
+                (self.0).$fieldname[..].hash(hasher)
             }
         }
 
         impl Ord for $wrapper {
             fn cmp(&self, other: &Self) -> core::cmp::Ordering {
-                (&self.0).$fieldname[..].cmp(&(&other.0).$fieldname[..])
+                (self.0).$fieldname[..].cmp(&(other.0).$fieldname[..])
             }
         }
 
         impl PartialEq for $wrapper {
             fn eq(&self, other: &Self) -> bool {
-                (&self.0).$fieldname[..] == (&other.0).$fieldname[..]
+                (self.0).$fieldname[..] == (other.0).$fieldname[..]
             }
         }
 

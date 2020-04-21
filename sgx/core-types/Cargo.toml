@@ -12,8 +12,6 @@ std = [
     "failure/std",
     "serde/std"
 ]
-sgx-sim = []
-ias-dev = []
 
 [dependencies]
 mc-encodings = { path = "../../util/encodings" }

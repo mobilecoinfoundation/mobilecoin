@@ -1,0 +1,129 @@
+#!/bin/bash
+
+# Inspired by https://github.com/google/tarpc/blob/master/hooks/pre-commit
+#
+# Pre-commit hook for the mobilenode repository. To use this hook, copy it or
+# add a symlink to it in .git/hooks in your repository root
+#
+# This precommit checks the following:
+# 1. All filenames are ascii
+# 2. There is no bad whitespace
+# 3. rustfmt is installed
+# 4. rustfmt is a noop on files that are in the index
+#
+# Options:
+#
+# - SKIP_RUSTFMT, default = 0
+#
+#   Set this to 1 to skip running rustfmt
+#
+# Note that these options are most useful for testing the hooks themselves. Use git commit
+# --no-verify to skip the pre-commit hook altogether.
+
+BOLD='\033[33;1m'
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
+
+PREFIX="${GREEN}[PRECOMMIT]${NC}"
+FAILURE="${RED}FAILED${NC}"
+WARNING="${RED}[WARNING]${NC}"
+SKIPPED="${YELLOW}SKIPPED${NC}"
+SUCCESS="${GREEN}ok${NC}"
+
+GITROOT=$(git rev-parse --show-toplevel)
+pushd "$GITROOT" >/dev/null 2>&1
+
+if git rev-parse --verify HEAD &>/dev/null
+then
+	against=HEAD
+else
+	# Initial commit: diff against an empty tree object
+	against=$(git hash-object -t tree /dev/null)
+fi
+
+FAILED=0
+
+printf "${PREFIX} Checking that all filenames are ascii ... "
+# Note that the use of brackets around a tr range is ok here, (it's
+# even required, for portability to Solaris 10's /usr/bin/tr), since
+# the square bracket bytes happen to fall in the designated range.
+if test $(git diff --cached --name-only --diff-filter=A -z $against | LC_ALL=C tr -d '[ -~]\0' | wc -c) != 0
+then
+	FAILED=1
+	printf "${FAILURE}\n"
+else
+	printf "${SUCCESS}\n"
+fi
+
+printf "${PREFIX} Checking for bad whitespace ... "
+WHITESPACE_OUTPUT=$(git diff-index --color=always --check --cached $against -- 2>&1 | grep -v '^[^a-zA-Z]' | egrep -v '^sgx/sgx_(tcrypto|urts|types)' | grep -v '.*.patch' )
+if [[ -n "$WHITESPACE_OUTPUT" ]]; then
+	FAILED=1
+	printf "${FAILURE}\n"
+
+	echo -e "$WHITESPACE_OUTPUT"
+else
+	printf "${SUCCESS}\n"
+fi
+
+printf "${PREFIX} Checking for rustfmt ... "
+cargo fmt --version
+if [ $? == 0 ]; then
+	printf "${SUCCESS}\n"
+else
+	printf "${FAILURE}\n"
+	popd >/dev/null 2>&1
+	exit 1
+fi
+
+CARGOFMT="cargo fmt -- --unstable-features --skip-children"
+
+# Just check that running rustfmt doesn't do anything to the file. I do this instead of
+# modifying the file because I don't want to mess with the developer's index, which may
+# not only contain discrete files.
+printf "${PREFIX} Checking formatting ... "
+FMTRESULT=0
+diff=""
+for file in $(git diff --name-only --cached --diff-filter=d | egrep -v '^sgx/sgx_(tcrypto|urts|types)');
+do
+	if [[ ${file: -3} == ".rs" ]]; then
+		newdiff=$($CARGOFMT --check $file | grep '^Diff in ' | awk -F' ' '{print $3;}')
+		if [[ -n "$newdiff" ]]; then
+			for filename in $newdiff; do
+				diff="$filename\n$diff"
+			done
+		fi
+	fi
+done
+
+if [[ "${SKIP_RUSTFMT}" == 1 ]]; then
+	printf "${SKIPPED}\n"$?
+elif [[ -n "$diff" ]]; then
+	FAILED=1
+	printf "${FAILURE}\n"
+	echo -e "\033[33;1mFiles Needing Rustfmt:\033[0m"
+	echo -e "$diff" | sort -u
+	if [[ -n "$(which tty)" ]] && [[ -n "$(tty)" ]]; then
+		exec < /dev/tty
+		echo "Do you want to fix all these files automatically? (y/N) "
+		read YESNO
+		if [[ -n "$YESNO" ]] && [[ "$(echo "${YESNO:0:1}" | tr '[[:lower:]]' '[[:upper:]]')" = "Y" ]]; then
+			echo -e "$diff" | while read file; do
+				$CARGOFMT $file
+			done
+			echo "You should attempt this commit again to pick up these changes."
+		else
+			echo -e "Run ${BOLD}$CARGOFMT -- <file>${NC} to format the files you have staged."
+		fi
+		exec <&-
+	else
+		echo -e "Run ${BOLD}$CARGOFMT -- <file>${NC} to format the files you have staged."
+	fi
+else
+	printf "${SUCCESS}\n"
+fi
+
+popd >/dev/null 2>&1
+exit ${FAILED}

@@ -51,7 +51,7 @@ impl MiscAttribute {
 
     /// Retrieve the attribute selection mask
     pub fn misc_select(&self) -> MiscSelect {
-        self.0.misc_select.into()
+        self.0.misc_select
     }
 }
 
