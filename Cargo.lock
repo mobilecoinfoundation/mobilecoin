@@ -1519,6 +1519,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "grpc-util"
 version = "1.0.0"
 dependencies = [
+ "build-info 0.1.0",
  "common 0.1.0",
  "futures 0.1.29 (registry+https://github.com/rust-lang/crates.io-index)",
  "grpcio 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",

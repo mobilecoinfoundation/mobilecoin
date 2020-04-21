@@ -1,0 +1,25 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
+// Build information data types and service descriptor.
+
+syntax = "proto3";
+import "google/protobuf/empty.proto";
+
+package build_info;
+
+service BuildInfoApi {
+  rpc GetBuildInfo (google.protobuf.Empty) returns (BuildInfoResponse) {}
+}
+
+message BuildInfoResponse {
+  string git_commit = 1;
+  string profile = 2;
+  string debug = 3;
+  string opt_level = 4;
+  string debug_assertions = 5;
+  string target_arch = 6;
+  string target_feature = 7;
+  string rustflags = 8;
+  string sgx_mode = 9;
+  string ias_mode = 10;
+}
