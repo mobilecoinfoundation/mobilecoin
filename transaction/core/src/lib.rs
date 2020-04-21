@@ -52,5 +52,5 @@ pub fn get_tx_out_shared_secret(
     view_key: &RistrettoPrivate,
     tx_public_key: &RistrettoPublic,
 ) -> RistrettoPublic {
-    compute_shared_secret(tx_public_key, &view_key)
+    compute_shared_secret(tx_public_key, view_key)
 }
