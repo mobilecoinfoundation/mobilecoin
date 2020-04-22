@@ -33,6 +33,7 @@ ${TARGETDIR}/mobilecoind \
         --ledger-db /tmp/ledger-db \
         --poll-interval 10 \
         --peer mc://node1.test.mobilecoin.com/ \
+        --peer mc://node2.test.mobilecoin.com/ \
         --tx-source-url https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node1.test.mobilecoin.com/ \
         --tx-source-url https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node2.test.mobilecoin.com/ \
         --mobilecoind-db /tmp/transaction-db \
