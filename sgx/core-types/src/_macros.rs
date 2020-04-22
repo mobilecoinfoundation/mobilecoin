@@ -160,7 +160,7 @@ macro_rules! impl_ffi_wrapper_base {
 
                 struct NewtypeVisitor;
 
-                impl<'de> serde::de::Visitor<'de> for NewtypeVisitor {
+                impl<'de> $crate::_macros::Visitor<'de> for NewtypeVisitor {
                     type Value = $wrapper;
 
                     fn expecting(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
@@ -418,7 +418,7 @@ macro_rules! impl_ffi_wrapper {
         }
 
         impl $crate::_macros::ConstantTimeEq for $wrapper {
-            fn ct_eq(&self, other: &Self) -> subtle::Choice {
+            fn ct_eq(&self, other: &Self) -> $crate::_macros::Choice {
                 (self.0).$fieldname[..].ct_eq(&(other.0).$fieldname[..])
             }
         }
