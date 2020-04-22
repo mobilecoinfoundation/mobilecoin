@@ -16,6 +16,7 @@ test_utils = []
 [dependencies]
 common = { path = "../../common", features = ["log"] }
 keys = { path = "../../crypto/keys" }
+mc-util-from-random = { path = "../../util/from-random" }
 mcserial = { path = "../../util/mcserial", features = ["std"] }
 metrics = { path = "../..//util/metrics" }
 

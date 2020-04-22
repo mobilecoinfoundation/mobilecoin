@@ -24,7 +24,8 @@ use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_POINT, ristretto::RistrettoPoint, scalar::Scalar,
 };
 use digestible::Digestible;
-use keys::{FromRandom, RistrettoPrivate, RistrettoPublic};
+use keys::{RistrettoPrivate, RistrettoPublic};
+use mc_util_from_random::FromRandom;
 use mcserial::{Message, ReprBytes32};
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};

@@ -37,6 +37,7 @@ subtle = { version = "2.1", default-features = false }
 common = { path = "../../common", default-features = false }
 digestible = { path = "../../crypto/digestible", features = ["dalek"] }
 keys = { path = "../../crypto/keys", default-features = false }
+mc-util-from-random = { path = "../../util/from-random" }
 mcrand = { path = "../../crypto/mcrand" }
 mcserial = { path = "../../util/mcserial" }
 

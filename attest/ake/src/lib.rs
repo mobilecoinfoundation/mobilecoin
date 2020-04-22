@@ -42,8 +42,9 @@ mod test {
     use attest::{Quote, IAS_SIM_ROOT_ANCHORS};
     use attest_net::{Client, RaClient};
     use core::convert::TryFrom;
-    use keys::{FromRandom, X25519Private, X25519Public, X25519};
+    use keys::{X25519Private, X25519Public, X25519};
     use mc_encodings::{FromBase64, ToX64};
+    use mc_util_from_random::FromRandom;
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
     use sha2::Sha512;

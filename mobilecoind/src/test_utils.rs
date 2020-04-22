@@ -13,8 +13,9 @@ use crate::{
 };
 use common::logger::{log, Logger};
 use grpcio::{ChannelBuilder, EnvBuilder};
-use keys::{FromRandom, RistrettoPrivate};
+use keys::RistrettoPrivate;
 use ledger_db::{Ledger, LedgerDB};
+use mc_util_from_random::FromRandom;
 use mcconnection::ConnectionManager;
 use mcconnection_tests::{test_client_uri, MockUserTxConnection};
 use mcrand::{CryptoRng, RngCore};

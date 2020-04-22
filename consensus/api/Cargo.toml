@@ -34,6 +34,7 @@ mcbuild-utils = { path = "../../mcbuild/utils" }
 cargo-emit = "0.1.1"
 
 [dev-dependencies]
+mc-util-from-random = { path = "../../util/from-random" }
 mcrand = { path = "../../crypto/mcrand" }
 rand = "0.7"
 tempdir = "0.3"

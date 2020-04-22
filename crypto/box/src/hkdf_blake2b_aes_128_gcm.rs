@@ -94,7 +94,7 @@ fn kdf_step(dh_shared_secret: &[u8; 32]) -> (GenericArray<u8, U16>, GenericArray
 #[cfg(test)]
 mod test {
     use super::*;
-    use keys::FromRandom;
+    use mc_util_from_random::FromRandom;
 
     extern crate test_helper;
 

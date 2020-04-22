@@ -8,7 +8,8 @@ use core::{
 };
 use curve25519_dalek::scalar::Scalar;
 use digestible::Digestible;
-use keys::{CompressedRistrettoPublic, FromRandom, RistrettoPrivate};
+use keys::{CompressedRistrettoPublic, RistrettoPrivate};
+use mc_util_from_random::FromRandom;
 use mcserial::{prost_message_helper32, ReprBytes32};
 use prost::Message;
 use rand_core::{CryptoRng, RngCore};
@@ -399,11 +400,10 @@ prost_message_helper32! { TxOutMembershipHash }
 #[cfg(test)]
 mod tests {
     use alloc::vec::Vec;
-
-    use keys::{FromRandom, RistrettoPublic};
+    use keys::RistrettoPublic;
+    use mc_util_from_random::FromRandom;
     use mcserial::ReprBytes32;
     use prost::Message;
-
     use rand::{rngs::StdRng, SeedableRng};
 
     use crate::{

@@ -5,8 +5,9 @@
 use common::{NodeID, ResponderId};
 use consensus_enclave_api::{TxContext, WellFormedEncryptedTx};
 use hex;
-use keys::{Ed25519Pair, FromRandom};
+use keys::Ed25519Pair;
 use ledger_db::{test_utils::mock_ledger::MockLedger, Ledger};
+use mc_util_from_random::FromRandom;
 use mcconnection::{
     BlockchainConnection, Connection, Error as ConnectionError, Result as ConnectionResult,
 };

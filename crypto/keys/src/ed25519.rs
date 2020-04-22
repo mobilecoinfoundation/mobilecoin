@@ -15,6 +15,7 @@ use ed25519_dalek::{
     Keypair, PublicKey as DalekPublicKey, SecretKey, Signature as DalekSignature,
     PUBLIC_KEY_LENGTH, SECRET_KEY_LENGTH,
 };
+use mc_util_from_random::FromRandom;
 use mcserial::deduce_core_traits_from_public_bytes;
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
@@ -261,7 +262,7 @@ impl PrivateKey for Ed25519Private {
 }
 
 impl FromRandom for Ed25519Private {
-    fn from_random(csprng: &mut (impl CryptoRng + RngCore)) -> Self {
+    fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> Self {
         Self(SecretKey::generate(csprng))
     }
 }
@@ -321,7 +322,7 @@ impl From<Ed25519Private> for Ed25519Pair {
 }
 
 impl FromRandom for Ed25519Pair {
-    fn from_random(csprng: &mut (impl CryptoRng + RngCore)) -> Self {
+    fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> Self {
         Self(Keypair::generate(csprng))
     }
 }

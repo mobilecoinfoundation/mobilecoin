@@ -5,16 +5,17 @@
 pub use digest::Digest;
 pub use ed25519::signature::{DigestSigner, DigestVerifier, Signature, Signer, Verifier};
 
+// Macros with names that overlap a module name...
+use alloc::vec;
+
 use alloc::{string::String, vec::Vec};
 use core::{convert::TryFrom, fmt::Debug, hash::Hash};
 use digestible::Digestible;
 use failure::Fail;
+use mc_util_from_random::FromRandom;
 use mcserial::LengthMismatch32;
 use rand_core::{CryptoRng, RngCore};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-
-// Macros with names that overlap a module name...
-use alloc::vec;
 
 /// A collection of common errors for use by implementers
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Fail, Ord, PartialEq, PartialOrd, Serialize)]
@@ -40,13 +41,6 @@ impl From<LengthMismatch32> for KeyError {
     fn from(src: LengthMismatch32) -> Self {
         KeyError::LengthMismatch(src.0, 32)
     }
-}
-
-/// A trait which can construct an object from a cryptographically secure
-/// pseudo-random number generator.
-pub trait FromRandom: Sized {
-    /// Using a mutable RNG, take it's output to securely initialize the object
-    fn from_random(csprng: &mut (impl CryptoRng + RngCore)) -> Self;
 }
 
 /// A trait indicating that a key can be read/written as ASN.1 using the

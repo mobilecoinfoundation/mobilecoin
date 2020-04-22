@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 keys = { path = "../../../crypto/keys", default-features = false }
+mc-util-from-random = { path = "../../../util/from-random" }
 
 aes-gcm = "0.3"
 aead = "0.2"

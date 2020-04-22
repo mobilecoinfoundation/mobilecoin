@@ -1,8 +1,9 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use curve25519_dalek::ristretto::RistrettoPoint;
-use keys::{FromRandom, RistrettoPrivate};
+use keys::RistrettoPrivate;
 use ledger_db::{Ledger, LedgerDB};
+use mc_util_from_random::FromRandom;
 use rand::SeedableRng;
 use rand_hc::Hc128Rng as FixedRng;
 use std::{path::PathBuf, vec::Vec};

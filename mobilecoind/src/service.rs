@@ -1052,7 +1052,7 @@ mod test {
         utxo_store::UnspentTxOut,
     };
     use common::{logger::test_with_logger, HashSet};
-    use keys::FromRandom;
+    use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
     use std::{convert::TryFrom, iter::FromIterator};
     use transaction::{

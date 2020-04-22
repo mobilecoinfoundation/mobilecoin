@@ -17,6 +17,7 @@ serde = { version = "1.0", default-features = false, features = ["alloc", "deriv
 # MobileCoin dependencies
 common = { path = "../../common", default-features = false }
 keys = { path = "../../crypto/keys", default-features = false }
+mc-util-from-random = { path = "../../util/from-random" }
 mcserial = { path = "../../util/mcserial" }
 transaction = { path = "../../transaction/core"}
 
@@ -27,7 +28,6 @@ blake2 = { version = "0.8.1", default-features = false, features = ["simd"] }
 [target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
 curve25519-dalek = { version = "2.0", default-features = false, features = ["nightly", "u64_backend"] }
 blake2 = { version = "0.8.1", default-features = false }
-
 
 [dev-dependencies]
 test_helper = { path = "../../util/test-helper" }

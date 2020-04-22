@@ -14,7 +14,8 @@ use core::convert::{TryFrom, TryInto};
 use digest::{BlockInput, Digest, FixedOutput, Input, Reset};
 use failure::Fail;
 use generic_array::typenum::Unsigned;
-use keys::{FromRandom, Kex, KexReusablePrivate, PublicKey};
+use keys::{Kex, KexReusablePrivate, PublicKey};
+use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 

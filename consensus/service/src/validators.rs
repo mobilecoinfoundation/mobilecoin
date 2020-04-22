@@ -581,8 +581,9 @@ mod is_valid_tests {
 mod combine_tests {
     use super::*;
     use common::HashMap;
-    use keys::{FromRandom, RistrettoPrivate, RistrettoPublic};
+    use keys::{RistrettoPrivate, RistrettoPublic};
     use ledger_db::test_utils::get_mock_ledger;
+    use mc_util_from_random::FromRandom;
     use rand::SeedableRng;
     use rand_hc::Hc128Rng;
     use std::convert::TryFrom;

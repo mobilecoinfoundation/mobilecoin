@@ -31,6 +31,7 @@ serde = { version = "1.0", default-features = false, features = ["alloc"] }
 [dev-dependencies]
 attest-net = { path = "../net" }
 mc-encodings = { path = "../../util/encodings" }
+mc-util-from-random = { path = "../../util/from-random" }
 aes-gcm = "0.3"
 rand_hc = "0.2"
 sha2 = "0.8"

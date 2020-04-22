@@ -53,6 +53,7 @@ members = [
     "util/b58-payloads",
     "util/build-grpc",
     "util/encodings",
+    "util/from-random",
     "util/generate-sample-ledger",
     "util/grpc",
     "util/host-cert",

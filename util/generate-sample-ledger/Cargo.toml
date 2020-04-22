@@ -10,6 +10,7 @@ common = { path = "../../common" }
 keyfile = { path = "../../util/keyfile" }
 keys = { path = "../../crypto/keys" }
 ledger-db = { path = "../../ledger/db" }
+mc-util-from-random = { path = "../../util/from-random" }
 transaction = { path = "../../transaction/core" }
 
 rand = "0.7"

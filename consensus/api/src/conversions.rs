@@ -874,7 +874,7 @@ mod conversion_tests {
     use self::rand::{rngs::StdRng, RngCore, SeedableRng};
     use super::*;
     use curve25519_dalek::ristretto::RistrettoPoint;
-    use keys::FromRandom;
+    use mc_util_from_random::FromRandom;
     use transaction::{
         account_keys::{AccountKey, PublicAddress},
         onetime_keys::recover_onetime_private_key,

@@ -14,7 +14,8 @@ use curve25519_dalek::{
     ristretto::{CompressedRistretto, RistrettoPoint},
     scalar::Scalar,
 };
-use keys::{FromRandom, RistrettoPrivate, RistrettoPublic};
+use keys::{RistrettoPrivate, RistrettoPublic};
+use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
 
 const G: RistrettoPoint = RISTRETTO_BASEPOINT_POINT;
@@ -187,7 +188,7 @@ pub fn compute_tx_pubkey(
 mod tests {
     use super::*;
     use crate::account_keys::AccountKey;
-    use keys::FromRandom;
+    use mc_util_from_random::FromRandom;
     use mcrand::McRng;
 
     #[test]

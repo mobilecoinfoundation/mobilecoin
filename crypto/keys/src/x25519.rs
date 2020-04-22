@@ -18,6 +18,7 @@ use core::{
     str::from_utf8,
 };
 use digestible::Digestible;
+use mc_util_from_random::FromRandom;
 use mcserial::deduce_core_traits_from_public_bytes;
 use rand_core::{CryptoRng, RngCore};
 use serde::{
@@ -377,7 +378,7 @@ impl KexEphemeralPrivate for X25519EphemeralPrivate {
 }
 
 impl FromRandom for X25519EphemeralPrivate {
-    fn from_random(csprng: &mut (impl RngCore + CryptoRng)) -> X25519EphemeralPrivate {
+    fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> X25519EphemeralPrivate {
         X25519EphemeralPrivate(EphemeralSecret::new(csprng))
     }
 }
@@ -400,7 +401,7 @@ impl PrivateKey for X25519Private {
 }
 
 impl FromRandom for X25519Private {
-    fn from_random(csprng: &mut (impl RngCore + CryptoRng)) -> X25519Private {
+    fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> X25519Private {
         X25519Private(StaticSecret::new(csprng))
     }
 }
@@ -504,12 +505,10 @@ impl<'de> Deserialize<'de> for X25519Private {
         impl<'de> Visitor<'de> for KeyVisitor {
             type Value = X25519Private;
 
-            #[inline]
             fn expecting(&self, formatter: &mut Formatter) -> FmtResult {
                 write!(formatter, "An public key structure as DER bytes")
             }
 
-            #[inline]
             fn visit_bytes<E: DeserializeError>(self, value: &[u8]) -> Result<Self::Value, E> {
                 Ok(X25519Private::try_from_der(value).map_err(|err| E::custom(err.to_string()))?)
             }
