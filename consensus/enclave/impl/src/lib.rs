@@ -470,10 +470,13 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         }
         outputs.push(fee_output);
 
-        // TODO: sort outputs and key images.
+        // Sort outputs and key images. This removes ordering information which could be used to
+        // infer the per-transaction relationships among outputs and/or key images.
+        outputs.sort_by(|a, b| a.public_key.cmp(&b.public_key));
+        key_images.sort();
         let block_contents = BlockContents::new(key_images, outputs);
 
-        // Form the block
+        // Form the block.
         let block = Block::new(
             BLOCK_VERSION,
             &parent_block.id,
@@ -482,7 +485,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             &block_contents,
         );
 
-        // Sign the block
+        // Sign the block.
         let public_key = self.ake.get_identity().signing_keypair.lock()?;
         let signature = BlockSignature::from_block_and_keypair(&block, &public_key)?;
 
