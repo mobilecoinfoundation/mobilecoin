@@ -17,13 +17,11 @@ pushd "$(dirname "$0")"
 echo "Pulling down TestNet consensus validator signature material"
 curl -O https://enclave-distribution.test.mobilecoin.com/pool/e57b6902aee60be45b78b496c1bef781746e4389/bf7fa957a6a94acb588851bc8767eca5776c79f4fc2aa6bcb99312c3c386c/consensus-enclave.css
 
-TARGETDIR=../target/release
+TARGETDIR=./target/release
 
-if [[ ! -f ${TARGETDIR}/mc-testnet-client ]] || [[ ! -f ../../../target/release/mobilecoind ]]; then
-    echo "Building mobilecoind and mc-testnet-client. This will take a few moments."
-    SGX_MODE=HW IAS_MODE=PROD CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css \
-            cargo build --release -p mobilecoind -p mc-testnet-client
-fi
+echo "Building mobilecoind and mc-testnet-client. This will take a few moments."
+SGX_MODE=HW IAS_MODE=PROD CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css \
+        cargo build --release -p mobilecoind -p mc-testnet-client
 
 if [[ -f /tmp/ledger-db ]] || [[ -f /tmp/transaction-db ]]; then
     echo "Removing ledger-db and transaction_db from previous runs. Comment out this line to keep them for future runs."
@@ -31,7 +29,7 @@ if [[ -f /tmp/ledger-db ]] || [[ -f /tmp/transaction-db ]]; then
 fi
 
 echo "Starting local mobilecoind using TestNet servers for source of ledger. Check log at $(pwd)/mobilecoind.log."
-SGX_MODE=HW IAS_MODE=PROD CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css ${TARGETDIR}/mobilecoind \
+${TARGETDIR}/mobilecoind \
         --ledger-db /tmp/ledger-db \
         --poll-interval 10 \
         --peer mc://node1.test.mobilecoin.com/ \
