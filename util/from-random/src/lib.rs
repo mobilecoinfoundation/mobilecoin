@@ -1,5 +1,7 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
 //! A trait which provides a common API for types which can be initialized
-//! from random number generators.
+//! from data provided by random number generators.
 
 #![no_std]
 
