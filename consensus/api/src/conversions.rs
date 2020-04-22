@@ -487,29 +487,6 @@ impl TryFrom<&external::SignatureRctBulletproofs> for SignatureRctBulletproofs {
     }
 }
 
-impl From<&CompressedCommitment> for external::CurvePoint {
-    fn from(source: &CompressedCommitment) -> Self {
-        let bytes = source.to_bytes().to_vec();
-        let mut curve_point = external::CurvePoint::new();
-        curve_point.set_data(bytes);
-        curve_point
-    }
-}
-
-impl TryFrom<&external::CurvePoint> for CompressedCommitment {
-    type Error = ConversionError;
-
-    fn try_from(source: &external::CurvePoint) -> Result<Self, Self::Error> {
-        let bytes = source.get_data();
-        let mut arr = [0u8; 32];
-        if bytes.len() != arr.len() {
-            return Err(ConversionError::ArrayCastError);
-        }
-        arr.copy_from_slice(bytes);
-        CompressedCommitment::from_bytes(&arr).map_err(|_e| ConversionError::Other)
-    }
-}
-
 impl From<&Amount> for external::Amount {
     fn from(source: &Amount) -> Self {
         let commitment_bytes = source.commitment.to_bytes().to_vec();
@@ -1150,7 +1127,7 @@ mod conversion_tests {
     #[test]
     // KeyImage --> external::KeyImage
     fn test_key_image_from() {
-        let source: KeyImage = KeyImage::from([17u8; 32]);
+        let source: KeyImage = KeyImage::from(7);
         let converted = external::KeyImage::from(&source);
         assert_eq!(converted.data, source.to_vec());
     }
@@ -1159,13 +1136,13 @@ mod conversion_tests {
     // external::keyImage --> KeyImage
     fn test_key_image_try_from() {
         let mut source = external::KeyImage::new();
-        source.set_data(KeyImage::from([11u8; 32]).to_vec());
+        source.set_data(KeyImage::from(11).to_vec());
 
         // try_from should succeed.
         let key_image = KeyImage::try_from(&source).unwrap();
 
         // key_image should have the correct value.
-        assert_eq!(key_image, KeyImage::from([11u8; 32]));
+        assert_eq!(key_image, KeyImage::from(11));
     }
 
     #[test]
