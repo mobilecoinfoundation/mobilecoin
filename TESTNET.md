@@ -12,7 +12,7 @@ Register to participate in the MobileCoin TestNet to receive an allocation of *m
 
 1. Sign up using our [online form](https://forms.gle/ULNjA6cMxCD5XNyT7).
 
-1. You will receive an email containing a *master key* that you can use to claim *mobilecoins* in the TestNet ledger. Anyone who knows your *master key* will be able to spend your TestNet coin allocation, so keep it secret!
+1. You will receive an email containing a *master key* that you can use to claim *mobilecoins* in the TestNet ledger. Anyone who knows your *master key* will be able to spend your money, so keep it secret!
 
 ### Send Your First Payment
 
@@ -50,7 +50,7 @@ If you have an SGX-capable machine, or if you are willing to operate an SGX-capa
 
 ## MobileCoin TestNet Schedule
 
-The MobileCoin ledger will be reset at the end of each TestNet period to accommodate breaking changes. Each time the ledger is reset, new TestNet coins will be allocated to all registered users.
+The MobileCoin ledger will be reset at the end of each TestNet period to accommodate breaking changes. Each time the ledger is reset, new TestNet *mobilecoins* will be allocated to all registered users.
 
 During normal service hours our goal will be to maintain 100% uptime. We plan to rehearse enclave updates that will cause service interruption during *Maintenance Hours*.
 
