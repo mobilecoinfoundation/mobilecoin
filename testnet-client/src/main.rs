@@ -370,7 +370,7 @@ string that we send you. It should look something like:
         }
 
         let opt_request_code = Input::<WrappedRequestPayload>::new()
-            .with_prompt("Enter your request code")
+            .with_prompt("Enter the request code to fulfill")
             .allow_empty(true)
             .interact()
             .expect("failed getting request code")
