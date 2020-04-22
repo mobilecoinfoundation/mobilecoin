@@ -125,7 +125,7 @@ To run a *watcher node*, build and run the [`mobilecoind`](./mobilecoind) daemon
 
 ## Support
 
-For troubleshooting and questions, please visit our [support center](https://mobilecoin.zendesk.com/) or our [community forum](https://community.mobilecoin.com/).
+For troubleshooting help and other questions, please visit our [community forum](https://community.mobilecoin.com/).
 
 You can also open a technical support ticket via [email](mailto://support@mobilecoin.com).
 
