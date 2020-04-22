@@ -12,7 +12,7 @@ Register to participate in the MobileCoin TestNet to receive an allocation of *m
 
 1. Sign up using our [online form](https://forms.gle/ULNjA6cMxCD5XNyT7).
 
-1. You will receive an email containing a *root entropy* value that you can use to claim *mobilecoins* in the TestNet ledger. Anyone who knows your *root entropy* will be able to spend your TestNet coin allocation, so keep it secret!
+1. You will receive an email containing a *master key* that you can use to claim *mobilecoins* in the TestNet ledger. Anyone who knows your *master key* will be able to spend your TestNet coin allocation, so keep it secret!
 
 ### Send Your First Payment
 
@@ -36,7 +36,7 @@ If you have a Linux-compatible home computer, or if you are willing to operate a
 
 1. At the container prompt, compile and launch the [`mobilecoind`](./mobilecoind/) daemon using the command: `TBD`
 
-1. Use your *root entropy* with the [TestNet client](#send-your-first-payment), one of the `mobilecoind` [example clients](./mobilecoind/clients), or your own code!
+1. Use your *master key* with the [TestNet client](#send-your-first-payment), or as the *root entropy* in one of the `mobilecoind` [example clients](./mobilecoind/clients) or your own code!
 
 1. Exchange payment request information with other community members at the [MobileCoin Forum](https://community.mobilecoin.com).
 
