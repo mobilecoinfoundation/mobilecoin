@@ -72,6 +72,18 @@ impl From<mcserial::encode::Error> for Error {
     }
 }
 
+impl From<mcserial::DecodeError> for Error {
+    fn from(_: mcserial::DecodeError) -> Self {
+        Error::Deserialization
+    }
+}
+
+impl From<mcserial::EncodeError> for Error {
+    fn from(_: mcserial::EncodeError) -> Self {
+        Error::Serialization
+    }
+}
+
 impl From<transaction::range::RangeError> for Error {
     fn from(_: transaction::range::RangeError) -> Self {
         Error::RangeError

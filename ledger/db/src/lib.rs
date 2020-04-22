@@ -12,7 +12,7 @@ use lmdb::{
     Database, DatabaseFlags, Environment, EnvironmentFlags, RoTransaction, RwTransaction,
     Transaction, WriteFlags,
 };
-use mcserial::{deserialize, serialize};
+use mcserial::{deserialize, serialize, Message};
 use std::{path::PathBuf, sync::Arc};
 use transaction::{Block, BlockContents, BlockID, BlockSignature, BLOCK_VERSION};
 
@@ -40,9 +40,22 @@ pub const BLOCK_CONTENTS_DB_NAME: &str = "ledger_db:block_contents";
 pub const BLOCK_SIGNATURES_DB_NAME: &str = "ledger_db:block_signatures";
 pub const KEY_IMAGES_DB_NAME: &str = "ledger_db:key_images";
 pub const KEY_IMAGES_BY_BLOCK_DB_NAME: &str = "ledger_db:key_images_by_block";
+pub const TX_OUTS_BY_BLOCK_DB_NAME: &str = "ledger_db:tx_outs_by_block";
 
 // Keys used by the `counts` database.
 const NUM_BLOCKS_KEY: &str = "num_blocks";
+
+// The value stored for each entry in the `tx_outs_by_block` database.
+#[derive(Clone, Message)]
+pub struct TxOutsByBlockValue {
+    /// The first TxOut index for the block.
+    #[prost(uint64, tag = "1")]
+    pub first_tx_out_index: u64,
+
+    /// The number of TxOuts in the block.
+    #[prost(uint64, tag = "2")]
+    pub num_tx_outs: u64,
+}
 
 #[derive(Clone)]
 pub struct LedgerDB {
@@ -70,6 +83,11 @@ pub struct LedgerDB {
     /// Storage abstraction for TxOuts.
     tx_out_store: TxOutStore,
 
+    /// TxOuts by block number. `block number -> (first TxOut index, number of TxOuts in block)`.
+    /// This map allows retrieval of all TxOuts that were included in a given block number by
+    /// querying `tx_out_store`.
+    tx_outs_by_block: Database,
+
     /// Location on filesystem.
     path: PathBuf,
 }
@@ -91,15 +109,19 @@ impl Ledger for LedgerDB {
         // Note: This function must update every LMDB database managed by LedgerDB.
         let mut db_transaction = self.env.begin_rw_txn()?;
 
+        // Validate the block is safe to append.
         self.validate_append_block(block, block_contents)?;
 
+        // Write key images included in block.
         self.write_key_images(block.index, &block_contents.key_images, &mut db_transaction)?;
 
-        for tx_out in &block_contents.outputs {
-            self.tx_out_store.push(tx_out, &mut db_transaction)?;
-        }
+        // Write information about TxOuts included in block.
+        self.write_tx_outs(block.index, &block_contents.outputs, &mut db_transaction)?;
 
+        // Write block.
         self.write_block(block, block_contents, signature, &mut db_transaction)?;
+
+        // Commit.
         db_transaction.commit()?;
         Ok(())
     }
@@ -130,10 +152,28 @@ impl Ledger for LedgerDB {
     /// Get the contents of a block.
     fn get_block_contents(&self, block_number: u64) -> Result<BlockContents, Error> {
         let db_transaction = self.env.begin_ro_txn()?;
-        let key = u64_to_key_bytes(block_number);
-        let bytes = db_transaction.get(self.block_contents, &key)?;
-        let block_contents = deserialize(&bytes)?;
-        Ok(block_contents)
+
+        // Get all TxOuts in block.
+        let bytes = db_transaction.get(self.tx_outs_by_block, &u64_to_key_bytes(block_number))?;
+        let value: TxOutsByBlockValue = mcserial::decode(&bytes)?;
+
+        let outputs = (value.first_tx_out_index..(value.first_tx_out_index + value.num_tx_outs))
+            .map(|tx_out_index| {
+                self.tx_out_store
+                    .get_tx_out_by_index(tx_out_index, &db_transaction)
+            })
+            .collect::<Result<Vec<TxOut>, Error>>()?;
+
+        // Get all KeyImages in block.
+        let key_images: Vec<KeyImage> = deserialize(
+            db_transaction.get(self.key_images_by_block, &u64_to_key_bytes(block_number))?,
+        )?;
+
+        // Returns block contents.
+        Ok(BlockContents {
+            key_images,
+            outputs,
+        })
     }
 
     /// Gets a block signature by its index in the blockchain.
@@ -215,6 +255,7 @@ impl LedgerDB {
         let block_signatures = env.open_db(Some(BLOCK_SIGNATURES_DB_NAME))?;
         let key_images = env.open_db(Some(KEY_IMAGES_DB_NAME))?;
         let key_images_by_block = env.open_db(Some(KEY_IMAGES_BY_BLOCK_DB_NAME))?;
+        let tx_outs_by_block = env.open_db(Some(TX_OUTS_BY_BLOCK_DB_NAME))?;
 
         let tx_out_store = TxOutStore::new(&env)?;
 
@@ -227,6 +268,7 @@ impl LedgerDB {
             block_signatures,
             key_images,
             key_images_by_block,
+            tx_outs_by_block,
             tx_out_store,
         })
     }
@@ -250,6 +292,7 @@ impl LedgerDB {
         env.create_db(Some(BLOCK_SIGNATURES_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(KEY_IMAGES_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(KEY_IMAGES_BY_BLOCK_DB_NAME), DatabaseFlags::empty())?;
+        env.create_db(Some(TX_OUTS_BY_BLOCK_DB_NAME), DatabaseFlags::empty())?;
 
         TxOutStore::create(&env)?;
 
@@ -338,6 +381,38 @@ impl LedgerDB {
             &serialize(&key_images)?,
             WriteFlags::empty(),
         )?;
+        Ok(())
+    }
+
+    fn write_tx_outs(
+        &self,
+        block_index: u64,
+        tx_outs: &[TxOut],
+        db_transaction: &mut RwTransaction,
+    ) -> Result<(), Error> {
+        // The index of the next TxOut we would be writing, which is the first one for this block,
+        // is determined by how many TxOuts are currently in the ledger.
+        let next_tx_out_index = self.tx_out_store.num_tx_outs(db_transaction)?;
+
+        // Store information about the TxOuts included in this block.
+        let bytes = mcserial::encode(&TxOutsByBlockValue {
+            first_tx_out_index: next_tx_out_index,
+            num_tx_outs: tx_outs.len() as u64,
+        });
+
+        db_transaction.put(
+            self.tx_outs_by_block,
+            &u64_to_key_bytes(block_index),
+            &bytes,
+            WriteFlags::empty(),
+        )?;
+
+        // Write the actual TxOuts.
+        for tx_out in tx_outs {
+            self.tx_out_store.push(tx_out, db_transaction)?;
+        }
+
+        // Done.
         Ok(())
     }
 
