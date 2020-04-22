@@ -303,6 +303,7 @@ impl From<&X25519Private> for X25519Public {
     /// # Examples
     /// ```
     /// use keys::*;
+    /// use mc_util_from_random::FromRandom;
     /// use rand_core::SeedableRng;
     /// use rand_hc::Hc128Rng;
     /// use sha2::*;
@@ -324,6 +325,7 @@ impl From<&X25519EphemeralPrivate> for X25519Public {
     /// # Examples
     /// ```
     /// use keys::*;
+    /// use mc_util_from_random::FromRandom;
     /// use rand_core::SeedableRng;
     /// use rand_hc::Hc128Rng;
     /// use sha2::*;

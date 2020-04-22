@@ -5,6 +5,8 @@
 
 pub use ed25519::{signature::Error as Ed25519SignatureError, Signature as Ed25519Signature};
 
+use alloc::vec;
+
 use crate::traits::*;
 use alloc::vec::Vec;
 use core::convert::TryFrom;
@@ -20,8 +22,6 @@ use mcserial::deduce_core_traits_from_public_bytes;
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
-
-use alloc::vec;
 
 // ASN.1 DER Signature Bytes -- this is a set of nested TLVs describing
 // a detached signature -- use https://lapo.it/asn1js/
@@ -200,6 +200,7 @@ impl TryFrom<&[u8]> for Ed25519Public {
         ))
     }
 }
+
 /// An Ed25519 private key
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct Ed25519Private(SecretKey);
