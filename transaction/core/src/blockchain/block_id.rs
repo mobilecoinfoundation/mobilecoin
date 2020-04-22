@@ -1,4 +1,5 @@
 use crate::{blake2b_256::Blake2b256, ConvertError};
+use alloc::{vec, vec::Vec};
 use core::{
     convert::TryFrom,
     fmt::{Debug, Display, Formatter, Result as FmtResult},
@@ -6,6 +7,11 @@ use core::{
 };
 use digestible::{Digest, Digestible};
 use generic_array::{typenum::Unsigned, GenericArray};
+use prost::{
+    bytes::{Buf, BufMut},
+    encoding::{bytes, skip_field, DecodeContext, WireType},
+    DecodeError, Message,
+};
 use serde::{Deserialize, Serialize};
 
 #[repr(transparent)]
@@ -51,5 +57,53 @@ impl<D: Digest> AsRef<[u8]> for BlockID<D> {
 impl<D: Digest> Hash for BlockID<D> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.0.hash(state);
+    }
+}
+
+impl<D: Digest + Debug> Message for BlockID<D>
+where
+    <D as Digest>::OutputSize: Debug,
+    Self: Default,
+{
+    fn encode_raw<B>(&self, buf: &mut B)
+    where
+        B: BufMut,
+    {
+        bytes::encode(1, &self.as_ref().to_vec(), buf)
+    }
+
+    fn merge_field<B>(
+        &mut self,
+        tag: u32,
+        wire_type: WireType,
+        buf: &mut B,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError>
+    where
+        B: Buf,
+    {
+        if tag == 1 {
+            let mut vbuf = Vec::new();
+            bytes::merge(wire_type, &mut vbuf, buf, ctx)?;
+            if vbuf.len() != D::OutputSize::to_usize() {
+                return Err(DecodeError::new(alloc::format!(
+                    "BlockID: expected {} bytes, got {}",
+                    D::OutputSize::to_usize(),
+                    vbuf.len()
+                )));
+            }
+            *self = Self(GenericArray::clone_from_slice(&vbuf[..]));
+            Ok(())
+        } else {
+            skip_field(wire_type, tag, buf, ctx)
+        }
+    }
+
+    fn encoded_len(&self) -> usize {
+        bytes::encoded_len(1, &vec![0u8; D::OutputSize::to_usize()])
+    }
+
+    fn clear(&mut self) {
+        *self = Self::default();
     }
 }
