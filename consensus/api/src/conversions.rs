@@ -25,8 +25,7 @@ use transaction::{
     encrypted_fog_hint::EncryptedFogHint,
     range::Range,
     ring_signature::{
-        CurvePoint, CurveScalar, Error as RingSigError, KeyImage, RingMLSAG,
-        SignatureRctBulletproofs,
+        CurveScalar, Error as RingSigError, KeyImage, RingMLSAG, SignatureRctBulletproofs,
     },
     tx,
     tx::{TxOutMembershipElement, TxOutMembershipHash, TxOutMembershipProof},
@@ -75,25 +74,6 @@ impl Error for ConversionError {}
 impl fmt::Display for ConversionError {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "ConversionError")
-    }
-}
-
-/// Convert CurvePoint --> external::CurvePoint.
-impl From<&CurvePoint> for external::CurvePoint {
-    fn from(other: &CurvePoint) -> Self {
-        let mut point = external::CurvePoint::new();
-        point.set_data(other.to_bytes().to_vec());
-        point
-    }
-}
-
-/// Convert external::CurvePoint --> CurvePoint.
-impl TryFrom<&external::CurvePoint> for CurvePoint {
-    type Error = ConversionError;
-
-    fn try_from(source: &external::CurvePoint) -> Result<Self, Self::Error> {
-        let bytes: &[u8] = source.get_data();
-        CurvePoint::try_from(bytes).map_err(|_| ConversionError::ArrayCastError)
     }
 }
 
@@ -504,29 +484,6 @@ impl TryFrom<&external::SignatureRctBulletproofs> for SignatureRctBulletproofs {
             pseudo_output_commitments,
             range_proof_bytes,
         })
-    }
-}
-
-impl From<&CompressedCommitment> for external::CurvePoint {
-    fn from(source: &CompressedCommitment) -> Self {
-        let bytes = source.to_bytes().to_vec();
-        let mut curve_point = external::CurvePoint::new();
-        curve_point.set_data(bytes);
-        curve_point
-    }
-}
-
-impl TryFrom<&external::CurvePoint> for CompressedCommitment {
-    type Error = ConversionError;
-
-    fn try_from(source: &external::CurvePoint) -> Result<Self, Self::Error> {
-        let bytes = source.get_data();
-        let mut arr = [0u8; 32];
-        if bytes.len() != arr.len() {
-            return Err(ConversionError::ArrayCastError);
-        }
-        arr.copy_from_slice(bytes);
-        CompressedCommitment::from_bytes(&arr).map_err(|_e| ConversionError::Other)
     }
 }
 
