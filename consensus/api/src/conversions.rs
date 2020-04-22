@@ -911,6 +911,7 @@ mod conversion_tests {
     use super::*;
     use curve25519_dalek::ristretto::RistrettoPoint;
     use mc_util_from_random::FromRandom;
+    use protobuf::Message;
     use transaction::{
         account_keys::{AccountKey, PublicAddress},
         onetime_keys::recover_onetime_private_key,
@@ -1056,6 +1057,43 @@ mod conversion_tests {
         assert_eq!(block.root_element.range.to, 20);
         assert_eq!(block.root_element.hash.as_ref(), &[13u8; 32]);
         assert_eq!(block.contents_hash.as_ref(), [66u8; 32]);
+    }
+
+    #[test]
+    // the blockchain::Block definition matches the Block prost attributes.
+    // This ensures the definition in the .proto files matches the prost attributes inside the
+    // Block struct.
+    fn test_blockchain_block_matches_prost() {
+        let source_block = transaction::Block {
+            id: transaction::BlockID::try_from(&[2u8; 32][..]).unwrap(),
+            version: 1,
+            parent_id: transaction::BlockID::try_from(&[1u8; 32][..]).unwrap(),
+            index: 99,
+            root_element: TxOutMembershipElement {
+                range: Range::new(10, 20).unwrap(),
+                hash: TxOutMembershipHash::from([12u8; 32]),
+            },
+            contents_hash: transaction::BlockContentsHash::try_from(&[66u8; 32][..]).unwrap(),
+        };
+
+        // Encode using `protobuf`, decode using `prost`.
+        {
+            let blockchain_block = blockchain::Block::from(&source_block);
+            let blockchain_block_bytes = blockchain_block.write_to_bytes().unwrap();
+
+            let block_from_prost: transaction::Block =
+                mcserial::decode(&blockchain_block_bytes).expect("failed decoding");
+            assert_eq!(source_block, block_from_prost);
+        }
+
+        // Encode using `prost`, decode using `protobuf`.
+        {
+            let prost_block_bytes = mcserial::encode(&source_block);
+            let blockchain_block: blockchain::Block =
+                protobuf::parse_from_bytes(&prost_block_bytes).expect("failed decoding");
+
+            assert_eq!(blockchain_block, blockchain::Block::from(&source_block));
+        }
     }
 
     #[test]
@@ -1271,6 +1309,21 @@ mod conversion_tests {
         {
             let external_tx: external::Tx = external::Tx::from(&tx);
             let recovered_tx: Tx = Tx::try_from(&external_tx).unwrap();
+            assert_eq!(tx, recovered_tx);
+        }
+
+        // Encoding with prost, decoding with protobuf should be the identity function.
+        {
+            let bytes = mcserial::encode(&tx);
+            let recovered_tx: external::Tx = protobuf::parse_from_bytes(&bytes).unwrap();
+            assert_eq!(recovered_tx, external::Tx::from(&tx));
+        }
+
+        // Encoding with protobuf, decoding with prost should be the identity function.
+        {
+            let external_tx: external::Tx = external::Tx::from(&tx);
+            let bytes = external_tx.write_to_bytes().unwrap();
+            let recovered_tx: Tx = mcserial::decode(&bytes).unwrap();
             assert_eq!(tx, recovered_tx);
         }
     }
