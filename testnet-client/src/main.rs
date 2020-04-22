@@ -2,6 +2,7 @@
 
 //! A demo client for interacting with the MobileCoin test network using mobilecoind.
 
+use chrono::Local;
 use dialoguer::{theme::ColorfulTheme, Input, Select, Validator};
 use grpc_util::build_info_grpc::BuildInfoApiClient;
 use grpcio::{ChannelBuilder, ChannelCredentialsBuilder};
@@ -12,7 +13,6 @@ use protobuf::RepeatedField;
 use rust_decimal::{prelude::ToPrimitive, Decimal};
 use std::{fmt, str::FromStr, sync::Arc, thread, time::Duration};
 use structopt::StructOpt;
-use chrono::Local;
 
 /// Command lien config.
 #[derive(Clone, StructOpt)]
@@ -315,8 +315,7 @@ dc74edf1d8842dfdf49d6db5d3d4e873665c2dd400c0955dd9729571826a26be
                              at {}
 
 **********************************************************************
-"#
-                    ,
+"#,
                     u64_to_mob_display(balance),
                     date.format("%H:%M:%S"),
                 );
