@@ -31,13 +31,13 @@ This distribution includes cryptographic software. Your country may have restric
 | [common](./common) | Items shared across MobileCoin crates. |
 | [consensus](./consensus) | Byzantine Fault Tolerant Consensus. |
 | [crypto](./crypto) | Cryptography. |
-| [enclave-boundary](./enclave-boundary) | SGX ECALL infrastructure. |
+| [enclave-boundary](./enclave-boundary) | Intel® SGX ECALL infrastructure. |
 | [ledger](./ledger) | Storage and synchronization for the MobileCoin blockchain. |
 | [mcbuild](./mcbuild/) | Tools for building and signing enclaves. |
 | [mcconnection](./mcconnection/) | Attested MobileCoin connections. |
 | [mobilecoind](./mobilecoind/) | Blockchain daemon and example client code. |
 | [peers](./peers/) | Peer-to-peer networking. |
-| [sgx](./sgx/) | Support for Intel® Software Guard eXtensions (Intel® SGX). |
+| [sgx](./sgx/) | Support for Intel® Software Guard eXtensions (Intel SGX). |
 | [transaction](./transaction/) | Private transactions. |
 | [util](./util/) | Testing and bootstrap utilities. |
 
@@ -52,9 +52,9 @@ This distribution includes cryptographic software. Your country may have restric
 
 The workspace can be built with `cargo build` and tested with `cargo test`. Either command will recognize the cargo `--release` flag to build with optimizations.
 
-Some crates require additional environment variables to build successfully. For example, the `consensus` crate requires an environment variable "SGX_MODE" to be set for either "hardware mode" or "simulation mode" as well as a variable "IAS_MODE" to indicate the type of attestation service to use. You can find more information in the *BUILD.md* file found in crates that require additional build information.
+Some crates (for example [`consensus-service`](./consensus/service)) depend on Intel SGX, which adds additional build and runtime requirements. For detailed information about setting up a build environment, how enclaves are built, and on configuring the build, see [BUILD.md](BUILD.md).
 
-To simplify the build process, we provide a tool, `mob` which creates a docker container with the required dependencies, including the necessary versions of SGX and protobuf libraries. You can use this tool with the following commands:
+For a quick start, you can build in the same docker image that we use for CI, using the `mob` tool. Note that this requires you to install [Docker](https://docs.docker.com/get-docker/). You can use the `mob` tool with the following commands:
 
 ```
 # From the root of the cloned repository
@@ -88,9 +88,9 @@ To understand the blockchain format and storage, see the [ledger_db](./ledger/db
 
 New transactions must be checked for attempts to counterfeit value before new *key images* and *utxos* can be added to the MobileCoin blockchain. Transactions are prepared by the user on their local computer or mobile device, and submitted to a secure enclave running on a *validator node* of their choice. The *validator node* checks the transaction and, assuming it believes the transaction is valid, shares it with other nodes in the MobileCoin network. The transaction is passed only to peer secure enclaves that can establish via remote attestation that they are running unmodified MobileCoin software on an authentic Intel processor. Each secure enclave replicates a state machine that adds valid transactions to the ledger in a deterministic order using a consensus algorithm called the MobileCoin Consensus Protocol.
 
-The MobileCoin Consensus Protocol is a high-performance solution to the byzantine agreement problem that allows new payments to be rapidly confirmed. The `consensus-service` target binary uses Intel Software Guard eXtensions (SGX) to provide defense-in-depth improvements to privacy and trust.
+The MobileCoin Consensus Protocol is a high-performance solution to the byzantine agreement problem that allows new payments to be rapidly confirmed. The `consensus-service` target binary uses Intel Software Guard eXtensions (Intel SGX) to provide defense-in-depth improvements to privacy and trust.
 
-To learn how MobileCoin uses SGX to provide integrity in Byzantine Fault Tolerant (BFT) consensus as well as forward secrecy to secure your privacy, see the [consensus/enclave](./consensus/enclave) crate. To build and run consensus, see the [consensus/service](./consensus/service) crate.
+To learn how MobileCoin uses Intel SGX to provide integrity in Byzantine Fault Tolerant (BFT) consensus as well as forward secrecy to secure your privacy, see the [consensus/enclave](./consensus/enclave) crate. To build and run consensus, see the [consensus/service](./consensus/service) crate.
 
 *Full validator nodes* additionally use the `ledger-distribution` target binary to publish a copy of their computed blockchain to content delivery networks (currently to Amazon S3 only). The public blockchain is a zero-knowledge data structure that consists only of *utxos*, *key images* and block metadata used to ensure consistency and to construct Merkle proofs. To build and run ledger distribution, see the [ledger/distribution](./ledger/distribution) crate.
 
@@ -100,19 +100,19 @@ To run a *watcher node*, build and run the [`mobilecoind`](./mobilecoind) daemon
 
 ## FAQ
 
-1. What is the impact of an SGX compromise on transaction privacy?
+1. What is the impact of an Intel SGX compromise on transaction privacy?
 
   Secure enclaves can provide improved integrity and confidentiality while functioning as intended. Like most complex new technologies, we should anticipate that design flaws will inevitably be discovered. Several side channel attacks against secrets protected by Intel SGX have been published, and subsequently patched or otherwise mitigated. MobileCoin is designed to provide "defense in depth" in the event of an attack based on a secure enclave exploit. MobileCoin transactions use CryptoNote technology to ensure that, even in the clear, the recipient is concealed with a one-time address, the sender is concealed in a ring signature, and the amounts are concealed with Ring Confidential Transactions (RingCT).
 
-  In the event of an SGX compromise, the attacker's view of the ledger inside the enclave would still be protected by both ring signatures and one-time addresses, and amounts would remain concealed with RingCT. These privacy protection mechanisms leave open the possibility of statistical attacks that rely on tracing the inputs in ring signatures to determine probabilistic relationships between transactions. This attack is only applicable to transactions made during the time that the secure enclave exploit is known, but not patched. Once the SGX vulnerability is discovered and addressed, statistical attacks are no longer possible, therefore forward secrecy is preserved.
+  In the event of an Intel SGX compromise, the attacker's view of the ledger inside the enclave would still be protected by both ring signatures and one-time addresses, and amounts would remain concealed with RingCT. These privacy protection mechanisms leave open the possibility of statistical attacks that rely on tracing the inputs in ring signatures to determine probabilistic relationships between transactions. This attack is only applicable to transactions made during the time that the secure enclave exploit is known, but not patched. Once the Intel SGX vulnerability is discovered and addressed, statistical attacks are no longer possible, therefore forward secrecy is preserved.
 
 1. Can I run a *validator node* without Intel SGX?
 
-  You can run the `consensus-service` using SGX in simulation mode, however you will not be able to participate in consensus with other *validator nodes*. Your software measurement will be different from hardware-enabled SGX peers and remote attestation will fail.
+  You can run the `consensus-service` using Intel SGX in simulation mode, however you will not be able to participate in consensus with other *validator nodes*. Your software measurement will be different from hardware-enabled Intel SGX peers and remote attestation will fail.
 
 1. Can I run a *watcher node* without Intel SGX?
 
-  Yes, you can operate a *watcher node* and validate block signatures by running the `mobilecoind` daemon, which does not require SGX.
+  Yes, you can operate a *watcher node* and validate block signatures by running the `mobilecoind` daemon, which does not require Intel SGX.
 
 1. I thought you were called *MobileCoin*. Where is the code for mobile devices?
 
