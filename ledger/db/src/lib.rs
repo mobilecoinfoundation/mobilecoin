@@ -498,7 +498,11 @@ mod ledger_db_test {
     /// * `num_blocks` - number of blocks  to write to `db`.
     /// * `n_txs_per_block` - number of transactions per block.
     ///
-    fn populate_db(db: &mut LedgerDB, num_blocks: u64, num_outputs_per_block: u64) -> Vec<Block> {
+    fn populate_db(
+        db: &mut LedgerDB,
+        num_blocks: u64,
+        num_outputs_per_block: u64,
+    ) -> (Vec<Block>, Vec<BlockContents>) {
         let initial_amount: u64 = 5_000 * 1_000_000_000_000;
 
         // Generate 1 public / private addresses and create transactions.
@@ -507,6 +511,7 @@ mod ledger_db_test {
 
         let mut parent_block: Option<Block> = None;
         let mut blocks: Vec<Block> = Vec::new();
+        let mut blocks_contents: Vec<BlockContents> = Vec::new();
 
         for block_index in 0..num_blocks {
             let outputs: Vec<TxOut> = (0..num_outputs_per_block)
@@ -540,13 +545,14 @@ mod ledger_db_test {
             db.append_block(&block, &block_contents, None)
                 .expect("failed writing initial transactions");
             blocks.push(block.clone());
+            blocks_contents.push(block_contents);
             parent_block = Some(block);
         }
 
         // Verify that db now contains n transactions.
         assert_eq!(db.num_blocks().unwrap(), num_blocks as u64);
 
-        blocks
+        (blocks, blocks_contents)
     }
 
     #[test]
@@ -689,7 +695,7 @@ mod ledger_db_test {
     fn test_get_block_by_index() {
         let mut ledger_db = create_db();
         let n_blocks = 43;
-        let expected_blocks = populate_db(&mut ledger_db, n_blocks, 1);
+        let (expected_blocks, _) = populate_db(&mut ledger_db, n_blocks, 1);
 
         for block_index in 0..n_blocks {
             let block = ledger_db
@@ -698,6 +704,26 @@ mod ledger_db_test {
 
             let expected_block: Block = expected_blocks.get(block_index as usize).unwrap().clone();
             assert_eq!(block, expected_block);
+        }
+    }
+
+    #[test]
+    // Getting block contents by index should return the correct block contents, if that exists.
+    fn test_get_block_contents_by_index() {
+        let mut ledger_db = create_db();
+        let n_blocks = 43;
+        let (_, expected_block_contents) = populate_db(&mut ledger_db, n_blocks, 1);
+
+        for block_index in 0..n_blocks {
+            let block_contents = ledger_db
+                .get_block_contents(block_index as u64)
+                .unwrap_or_else(|_| panic!("Could not get block contents {:?}", block_index));
+
+            let expected_block_contents = expected_block_contents
+                .get(block_index as usize)
+                .unwrap()
+                .clone();
+            assert_eq!(block_contents, expected_block_contents);
         }
     }
 
@@ -885,7 +911,7 @@ mod ledger_db_test {
 
         // initialize a ledger with 3 blocks.
         let n_blocks = 3;
-        let blocks = populate_db(&mut ledger_db, n_blocks, 2);
+        let (blocks, _) = populate_db(&mut ledger_db, n_blocks, 2);
         assert_eq!(ledger_db.num_blocks().unwrap(), n_blocks);
 
         let key_images = vec![KeyImage::from(rng.next_u64())];
