@@ -30,6 +30,9 @@ pub enum Error {
     #[fail(display = "InvalidBlockID")]
     InvalidBlockID,
 
+    #[fail(display = "NoOutputs")]
+    NoOutputs,
+
     /// LMDB error, may mean database is opened multiple times in a process.
     #[fail(display = "BadRslot")]
     BadRslot,

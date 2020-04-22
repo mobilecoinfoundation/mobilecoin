@@ -412,8 +412,7 @@ impl LedgerDB {
 
         // A block must have outputs.
         if block_contents.outputs.is_empty() {
-            // TODO: better error type.
-            return Err(Error::InvalidBlock);
+            return Err(Error::NoOutputs);
         }
 
         // TODO: enable this.
@@ -873,7 +872,7 @@ mod ledger_db_test {
 
         assert_eq!(
             ledger_db.append_block(&block, &block_contents, None),
-            Err(Error::InvalidBlock)
+            Err(Error::NoOutputs)
         );
     }
 
