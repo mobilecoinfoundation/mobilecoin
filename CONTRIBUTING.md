@@ -9,7 +9,7 @@ Please report issues to https://github.com/mobilecoinofficial/mobilecoin/issues.
 
 ## Pull Requests (PRs)
 
-During TestNet, the MobileCoin team is actively developing in an internal repo, occasionally merging batches of PRs to the public repository. We are happy to review and consider PRs submitted against the public MobileCoin repo, but your changes will be taken as suggestions and may be rolled into a merge batch from the internal repo.
+During TestNet, the MobileCoin team is actively developing in an internal repository, occasionally merging batches of PRs to the public repository. We are happy to review and consider PRs submitted against the public MobileCoin repository, but your changes will be taken as suggestions and may be rolled into a merge batch from the internal repository.
 
 Coming soon: Code Style Guidelines
 
@@ -23,4 +23,4 @@ If you would like to participate in TestNet, please [apply here](https://forms.g
 
 ## Get in Touch
 
-We're friendly. Feel free to [ping us](testnet@mobilecoin.com)!
+We're friendly. Feel free to [ping us](mailto://testnet@mobilecoin.com)!
