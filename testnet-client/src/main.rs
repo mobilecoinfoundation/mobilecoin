@@ -85,7 +85,10 @@ impl TestnetClient {
         let build_info = match build_info_client.get_build_info(&mobilecoind_api::Empty::new()) {
             Ok(resp) => resp,
             Err(err) => {
-                println!("Unable to connect to mobilecoind on {}.", config.mobilecoind_host);
+                println!(
+                    "Unable to connect to mobilecoind on {}.",
+                    config.mobilecoind_host
+                );
                 println!("Are you sure it is running and accepting connections?");
                 println!();
                 println!("The error was: {}", err);
@@ -108,7 +111,10 @@ impl TestnetClient {
         let ledger_info = match client.get_ledger_info(&mobilecoind_api::Empty::new()) {
             Ok(resp) => resp,
             Err(err) => {
-                println!("Unable to query ledger using mobilecoind on {}.", config.mobilecoind_host);
+                println!(
+                    "Unable to query ledger using mobilecoind on {}.",
+                    config.mobilecoind_host
+                );
                 println!("Are you sure it is running and accepting connections?");
                 println!();
                 println!("The error was: {}", err);
@@ -406,7 +412,9 @@ string that we send you. It should look something like:
 
                 Err(err) => {
                     println!("Error generating transaction: {}", err);
-                    println!("You will not be able to send this payment. It is possible you do not");
+                    println!(
+                        "You will not be able to send this payment. It is possible you do not"
+                    );
                     println!("have enough funds, in which case you can edit the payment amount.");
                     println!();
 
@@ -558,7 +566,6 @@ MobileCoin forums. Visit http://community.mobilecoin.com
 
 "#
         );
-
 
         let amount = Self::input_mob(
             "How many mobilecoins would you like to request (in MOB)?",
