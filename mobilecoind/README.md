@@ -1,10 +1,10 @@
 ## mobilecoind
 
-The `mobilecoind` daemon is a standalone executable, which provides blockchain synchronization and wallet services.
+The MobileCoin Daemon is a standalone executable, `mobilecoind`, which provides blockchain synchronization and wallet services.
 
 It creates encrypted, attested connections to validator nodes who are participating in federated voting in order to get the current block height, block headers, and to submit transactions. These validator nodes are considered highly trusted due to their use of SGX, and they are used as a reliable source for block information as well as to validate and process the proposed transactions from `mobilecoind`.
 
-To keep the blockchain in sync, the MobileCoin Daemon downloads new blocks from cloud storage and checks with the validator nodes that the block headers are correct. If this succeeds, they are added to a local copy of the blockchain called the Ledger DB. This is done periodically and ensures the local copy of the blockchain is fresh enough to calculate balances and generate transactions.
+To keep the blockchain in sync, `mobilecoind` downloads new blocks from cloud storage and checks with the validator nodes that the block headers are correct. If this succeeds, they are added to a local copy of the blockchain called the Ledger DB. This is done periodically and ensures the local copy of the blockchain is fresh enough to calculate balances and generate transactions.
 
 Wallet Clients, such as a CLI, wanting to use wallet services can register their keys through the [API](./api/proto/mobilecoind_api.proto). In addition to keeping the blockchain in sync, the MobileCoin Daemon maintains a list of unspent transactions owned by any registered keys for fast lookup and spending, in a database called the MobileCoin Daemon DB.
 
@@ -34,7 +34,7 @@ You will also need to specify a directory for the MobileCoin Daemon database, wh
 
 When mobilecoind connects to validator nodes, it verifies the integrity of their software using Intel's Secure Guard eXtensions (SGX) via attestation evidence.
 
-The consensus validator provides a signed measurement of its internal state to assure that it is running exactly the software you expect. You must provide a specific file to mobilecoind on startup so that it has the materials it needs to validate the enclave's evidence.
+The validator node provides a signed measurement of its internal state to assure that it is running exactly the software you expect. You must provide a specific file to mobilecoind on startup so that it has the materials it needs to validate the enclave's evidence.
 
 The TestNet signature artifacts are available via
 
