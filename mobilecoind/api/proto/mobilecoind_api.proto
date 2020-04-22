@@ -47,7 +47,6 @@ service MobilecoindAPI {
     // Convenience calls
     rpc GetBalance (GetBalanceRequest) returns (GetBalanceResponse) {}
     rpc SendPayment (SendPaymentRequest) returns (SendPaymentResponse) {}
-    // SendPayment (monitor id, subaddress, public address, value) --> simple payment with change back to subaddress
 }
 
 //*********************************
@@ -84,7 +83,7 @@ message AccountKey {
     string fog_fqdn = 3;
 }
 
-// A public address, used to identify receipients.
+// A public address, used to identify recipients.
 message PublicAddress {
     external.RistrettoPublic view_public_key = 1;
     external.RistrettoPublic spend_public_key = 2;
@@ -133,7 +132,7 @@ message TxProposal {
     repeated Outlay outlay_list = 2;
 
     // The actual transaction object.
-    // Together with the private view/spend keys, this structure contains all information in existance about the transaction.
+    // Together with the private view/spend keys, this structure contains all information in existence about the transaction.
     external.Tx tx = 3;
 
     // The transaction fee. This is equal to `tx.prefix.fee`.
@@ -156,14 +155,14 @@ message SenderTxReceipt {
     uint64 tombstone = 2;
 }
 
-// Structure used to check transaction status as a receipient.
+// Structure used to check transaction status as a recipient.
 // There exists one receipt per output, so a transaction having multiple outputs would have
 // multiple ReceiverTxReceipts.
 message ReceiverTxReceipt {
-    // The receipient this receipt refers to
-    PublicAddress receipient = 1;
+    // The recipient this receipt refers to
+    PublicAddress recipient = 1;
 
-    // The public key of the TxOut sent to this receipient.
+    // The public key of the TxOut sent to this recipient.
     external.RistrettoPublic tx_public_key = 2;
 
     // The hash of the TxOut sent to this recipient.
@@ -202,7 +201,7 @@ message MonitorStatus {
 // Monitors
 //
 
-// Add a new Monitor.
+// Add a new monitor.
 message AddMonitorRequest {
     // Account key to monitor.
     AccountKey account_key = 1;
@@ -216,32 +215,33 @@ message AddMonitorRequest {
     // Block index to start monitoring from.
     uint64 first_block = 4;
 }
-
 message AddMonitorResponse {
-    bytes monitor_id  = 1;
+    bytes monitor_id = 1;
 }
 
 // Remove a monitor and all associated data.
 message RemoveMonitorRequest {
-    bytes monitor_id  = 1;
+    bytes monitor_id = 1;
 }
+// - empty response
 
-// List of all known monitor ids.
+// List all known monitor ids.
+// - empty request
 message GetMonitorListResponse {
-    repeated bytes monitor_id_list  = 1;
+    repeated bytes monitor_id_list = 1;
 }
 
 // Get the status of a specific monitor.
 message GetMonitorStatusRequest {
-    bytes monitor_id  = 1;
+    bytes monitor_id = 1;
 }
 message GetMonitorStatusResponse {
     MonitorStatus status = 1;
 }
 
-// Return the list of UnspentTxOuts for a given monitor belonging to a specific subadddress index.
+// Get a list of UnspentTxOuts for a given monitor and subadddress index.
 message GetUnspentTxOutListRequest {
-    bytes monitor_id  = 1;
+    bytes monitor_id = 1;
     uint64 subaddress_index = 2;
 }
 message GetUnspentTxOutListResponse {
@@ -252,21 +252,22 @@ message GetUnspentTxOutListResponse {
 // Utilities
 //
 
-// Generated root entropy data.
+// Generate a new random root entropy value.
+// - empty request
 message GenerateEntropyResponse {
-	// 32 bytes generated using a cryptographically secure RNG.
+	  // 32 bytes generated using a cryptographically secure RNG.
     bytes entropy = 1;
 }
 
-// Generate an AccountKey from 32 bytes of random entropy.
+// Generate an AccountKey from a 32 byte root entropy value.
 message GetAccountKeyRequest {
-    bytes entropy  = 1;
+    bytes entropy = 1;
 }
 message GetAccountKeyResponse {
     AccountKey account_key = 1;
 }
 
-// Get the public address for a given monitor id + subaddress tuple.
+// Get the public address for a given monitor and subadddress index.
 message GetPublicAddressRequest {
     bytes monitor_id = 1;
     uint64 subaddress_index = 2;
@@ -311,6 +312,7 @@ message ReadTransferCodeResponse {
     string memo = 3;
 }
 
+// Encode entropy/tx_public_key/memo into a base-58 "MobileCoin Transfer Code".
 message GetTransferCodeRequest {
     bytes entropy = 1;
     external.RistrettoPublic tx_public_key = 2;
@@ -329,7 +331,7 @@ message GetTransferCodeResponse {
 // - Sum of inputs needs to be greater than sum of outlays and fee.
 // - The set of inputs to use would be chosen automatically by mobilecoind.
 // - The fee field could be set to zero, in which case mobilecoind would choose a fee.
- //  Right now that fee is hardcoded.
+// Right now that fee is hardcoded.
 message GenerateTxRequest {
     // Monitor id sending the funds.
     bytes sender_monitor_id = 1;
@@ -339,20 +341,20 @@ message GenerateTxRequest {
 
     // List of UnspentTxOuts to be spent by the transaction.
     // All UnspentTxOuts must belong to the same sender_monitor_id.
-    // Mobilecoind would choose a subset of these inputs to construct the transaction.
+    // mobilecoind would choose a subset of these inputs to construct the transaction.
     // Total input amount must be >= sum of outlays + fees.
     repeated UnspentTxOut input_list = 3;
 
     // Outputs to be generated by the transaction. This excludes change and fee.
     repeated Outlay outlay_list = 4;
 
-    // Fee (optional, setting to 0 would cause mobilecoind to choose a fee).
+    // Fee in picoMOB (setting to 0 causes mobilecoind to choose a value).
+    // The value used can be checked (but not changed) in tx_proposal.tx.prefix.fee
     uint64 fee = 5;
 
-    // Tombstone block to use for the transaction. Note that this can later be changed by manipulating
-    // tx_proposal.tx.tombstoneb_clock
+    // Tombstone block (setting to 0 causes mobilecoind to choose a value).
+    // The value used can be checked (but not changed) in tx_proposal.tx.prefix.tombstone_block
     uint64 tombstone = 6;
-
 }
 message GenerateTxResponse {
     TxProposal tx_proposal = 1;
@@ -410,7 +412,8 @@ message SubmitTxResponse {
 // Databases
 //
 
-// Empty Request
+// Get information about the downloaded ledger.
+// - empty request
 message GetLedgerInfoResponse {
     // Total number of blocks in the ledger.
     uint64 block_count = 1;
@@ -419,6 +422,7 @@ message GetLedgerInfoResponse {
     uint64 txo_count = 2;
 }
 
+// Get information about a downloaded block.
 message GetBlockInfoRequest {
     uint64 block = 1;
 }
@@ -430,7 +434,7 @@ message GetBlockInfoResponse {
     uint64 txo_count = 2;
 }
 
-
+// Get the status of a submitted transaction as the Sender (using the key image).
 message GetTxStatusAsSenderRequest {
     SenderTxReceipt receipt = 1;
 }
@@ -438,6 +442,7 @@ message GetTxStatusAsSenderResponse {
     TxStatus status = 1;
 }
 
+// Get the status of a submitted transaction as the Recipient (using the tx public key).
 message GetTxStatusAsReceiverRequest {
     ReceiverTxReceipt receipt = 1;
 }
@@ -449,9 +454,10 @@ message GetTxStatusAsReceiverResponse {
 // Convenience calls
 ///
 
+// Get the balance for a given monitor and subadddress index, in picoMOB.
 message GetBalanceRequest {
     // Monitor id to query balance for.
-    bytes monitor_id  = 1;
+    bytes monitor_id = 1;
 
     // Subaddress to query balance for.
     uint64 subaddress_index = 2;
@@ -461,6 +467,7 @@ message GetBalanceResponse {
     uint64 balance = 1;
 }
 
+// Build and submit a simple payment and return any change to the Sender's subaddress.
 message SendPaymentRequest {
     // Monitor id sending the funds.
     bytes sender_monitor_id = 1;
@@ -471,11 +478,12 @@ message SendPaymentRequest {
     // Outputs to be generated by the transaction. This excludes change and fee.
     repeated Outlay outlay_list = 3;
 
-    // Fee (optional, setting to 0 would cause mobilecoind to choose a fee).
+    // Fee in picoMOB (setting to 0 causes mobilecoind to choose a value).
+    // The value used can be checked (but not changed) in tx_proposal.tx.prefix.fee
     uint64 fee = 4;
 
-    // Tombstone block to use for the transaction. Note that this can later be changed by manipulating
-    // tx_proposal.tx.tombstoneb_clock
+    // Tombstone block (setting to 0 causes mobilecoind to choose a value).
+    // The value used can be checked (but not changed) in tx_proposal.tx.prefix.tombstone_block
     uint64 tombstone = 5;
 }
 message SendPaymentResponse {
@@ -485,6 +493,7 @@ message SendPaymentResponse {
     // Information receivers can use to check if the transaction landed in the ledger.
     repeated ReceiverTxReceipt receiver_tx_receipt_list = 2;
 
-    // The Tx Proposal that was submitted to the network.
+    // The TxProposal that was submitted to the network. The fee that was paid can be checked at
+    // tx_proposal.tx.prefix.fee
     TxProposal tx_proposal = 3;
 }
