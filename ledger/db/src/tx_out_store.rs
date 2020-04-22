@@ -723,8 +723,9 @@ pub mod tx_out_store_tests {
     };
     use crate::Error;
     use common::Hash;
-    use keys::{FromRandom, RistrettoPrivate, RistrettoPublic};
+    use keys::{RistrettoPrivate, RistrettoPublic};
     use lmdb::{Environment, RoTransaction, RwTransaction, Transaction};
+    use mc_util_from_random::FromRandom;
     use mcserial::serialize;
     use rand::{rngs::StdRng, SeedableRng};
     use std::path::Path;

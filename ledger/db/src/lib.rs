@@ -418,7 +418,8 @@ mod ledger_db_test {
     use super::*;
     use core::convert::TryFrom;
     use curve25519_dalek::ristretto::RistrettoPoint;
-    use keys::{FromRandom, RistrettoPrivate};
+    use keys::RistrettoPrivate;
+    use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
     use rand_core::RngCore;
     use tempdir::TempDir;

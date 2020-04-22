@@ -6,7 +6,6 @@ use crate::{
     payments::{Outlay, TxProposal},
     utxo_store::UnspentTxOut,
 };
-
 use common::HashMap;
 use mobilecoind_api::{self, ConversionError};
 use protobuf::RepeatedField;
@@ -149,8 +148,9 @@ impl TryFrom<&mobilecoind_api::TxProposal> for TxProposal {
 #[cfg(test)]
 mod test {
     use super::*;
-    use keys::{FromRandom, RistrettoPublic};
+    use keys::RistrettoPublic;
     use ledger_db::Ledger;
+    use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
     use transaction::{account_keys::AccountKey, amount::Amount, ring_signature::Scalar};
     use transaction_test_utils::{create_ledger, create_transaction, initialize_ledger};

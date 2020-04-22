@@ -14,4 +14,5 @@ keys = { path = "../keys", default-features = false }
 rand_core = { version = "0.5", default-features = false }
 
 [dev_dependencies]
+mc-util-from-random = { path = "../../util/from-random" }
 test_helper = { path = "../../util/test-helper" }

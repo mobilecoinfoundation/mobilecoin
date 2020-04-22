@@ -353,23 +353,21 @@ fn extend_message(
 
 #[cfg(test)]
 mod rct_bulletproofs_tests {
-    use alloc::vec::Vec;
-
-    use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
-    use keys::{CompressedRistrettoPublic, FromRandom, RistrettoPrivate, RistrettoPublic};
-    use rand_core::RngCore;
-
-    use proptest::{array::uniform32, prelude::*};
-    use rand::{rngs::StdRng, CryptoRng, SeedableRng};
-
+    use super::sign_with_balance_check;
     use crate::{
+        commitment::Commitment,
+        compressed_commitment::CompressedCommitment,
         proptest_fixtures::*,
         range_proofs::generate_range_proofs,
         ring_signature::{Error, KeyImage, SignatureRctBulletproofs, GENERATORS},
     };
-
-    use super::sign_with_balance_check;
-    use crate::{commitment::Commitment, compressed_commitment::CompressedCommitment};
+    use alloc::vec::Vec;
+    use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
+    use keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
+    use mc_util_from_random::FromRandom;
+    use proptest::{array::uniform32, prelude::*};
+    use rand::{rngs::StdRng, CryptoRng, SeedableRng};
+    use rand_core::RngCore;
 
     extern crate std;
 

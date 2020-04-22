@@ -9,6 +9,7 @@ common = { path = "../../common" }
 consensus-enclave-api = { path = "../../consensus/enclave/api" }
 keys = { path = "../../crypto/keys" }
 ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
+mc-util-from-random = { path = "../../util/from-random" }
 mcconnection = { path = "../../mcconnection" }
 mcuri = { path = "../../util/mcuri" }
 peers = { path = "../../peers" }

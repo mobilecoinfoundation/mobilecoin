@@ -3,7 +3,8 @@
 use crate::{Error, Ledger};
 use common::{HashMap, HashSet};
 use curve25519_dalek::ristretto::RistrettoPoint;
-use keys::{FromRandom, RistrettoPrivate};
+use keys::RistrettoPrivate;
+use mc_util_from_random::FromRandom;
 use rand::{rngs::StdRng, SeedableRng};
 use std::{
     iter::FromIterator,

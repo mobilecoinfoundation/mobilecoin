@@ -5,6 +5,8 @@
 
 pub use ed25519::{signature::Error as Ed25519SignatureError, Signature as Ed25519Signature};
 
+use alloc::vec;
+
 use crate::traits::*;
 use alloc::vec::Vec;
 use core::convert::TryFrom;
@@ -15,12 +17,11 @@ use ed25519_dalek::{
     Keypair, PublicKey as DalekPublicKey, SecretKey, Signature as DalekSignature,
     PUBLIC_KEY_LENGTH, SECRET_KEY_LENGTH,
 };
+use mc_util_from_random::FromRandom;
 use mcserial::deduce_core_traits_from_public_bytes;
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
-
-use alloc::vec;
 
 // ASN.1 DER Signature Bytes -- this is a set of nested TLVs describing
 // a detached signature -- use https://lapo.it/asn1js/
@@ -199,6 +200,7 @@ impl TryFrom<&[u8]> for Ed25519Public {
         ))
     }
 }
+
 /// An Ed25519 private key
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct Ed25519Private(SecretKey);
@@ -261,7 +263,7 @@ impl PrivateKey for Ed25519Private {
 }
 
 impl FromRandom for Ed25519Private {
-    fn from_random(csprng: &mut (impl CryptoRng + RngCore)) -> Self {
+    fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> Self {
         Self(SecretKey::generate(csprng))
     }
 }
@@ -321,7 +323,7 @@ impl From<Ed25519Private> for Ed25519Pair {
 }
 
 impl FromRandom for Ed25519Pair {
-    fn from_random(csprng: &mut (impl CryptoRng + RngCore)) -> Self {
+    fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> Self {
         Self(Keypair::generate(csprng))
     }
 }

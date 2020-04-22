@@ -14,6 +14,7 @@ test_utils = ["rand", "keys"]
 common = { path = "../../common", features = ["log"] }
 failure = "0.1.5"
 lmdb = "0.8.0"
+mc-util-from-random = { path = "../../util/from-random" }
 mcserial = { path = "../../util/mcserial" }
 rand_core = "0.5"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }

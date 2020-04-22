@@ -740,7 +740,8 @@ impl<T: UserTxConnection + 'static> TransactionsManager<T> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use keys::{FromRandom, RistrettoPrivate};
+    use keys::RistrettoPrivate;
+    use mc_util_from_random::FromRandom;
     use mcconnection::ThickClient;
     use rand::{rngs::StdRng, SeedableRng};
 

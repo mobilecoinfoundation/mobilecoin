@@ -11,6 +11,7 @@ common = { path = "../../../common" }
 consensus-enclave-api = { path = "../api" }
 digestible = { path = "../../..//crypto/digestible" }
 keys = { path = "../../../crypto/keys" }
+mc-util-from-random = { path = "../../../util/from-random" }
 mcrand = { path = "../../../crypto/mcrand" }
 mcserial = { path = "../../../util/mcserial" }
 transaction = { path = "../../../transaction/core" }

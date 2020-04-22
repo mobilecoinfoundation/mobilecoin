@@ -71,6 +71,7 @@ dependencies = [
  "digest 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "keys 0.1.0",
+ "mc-util-from-random 0.1.0",
  "mcnoise 0.1.0",
  "mcrand 1.0.0",
  "mcserial 0.1.0",
@@ -439,6 +440,7 @@ dependencies = [
  "digestible 0.1.0",
  "keys 0.1.0",
  "mbedtls 0.5.1 (git+https://github.com/mobilecoinofficial/rust-mbedtls.git?tag=mc-0.2)",
+ "mc-util-from-random 0.1.0",
  "mcrand 1.0.0",
  "mcserial 0.1.0",
  "message-cipher 0.1.0",
@@ -741,6 +743,7 @@ dependencies = [
  "ed25519-dalek 1.0.0-pre.3 (git+https://github.com/cbeck88/ed25519-dalek?rev=c0b0ab31d3572de6fb01d6b4a4f052784034b0b2)",
  "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex_fmt 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mc-util-from-random 0.1.0",
  "mcserial 0.1.0",
  "prost 0.6.1 (git+https://github.com/cbeck88/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -832,6 +835,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-util-from-random"
+version = "0.1.0"
+dependencies = [
+ "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "mcbuild-sgx-utils"
 version = "0.2.0"
 dependencies = [
@@ -864,6 +874,7 @@ dependencies = [
  "generic-array 0.12.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "hkdf 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "keys 0.1.0",
+ "mc-util-from-random 0.1.0",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "secrecy 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1423,6 +1434,7 @@ dependencies = [
  "keys 0.1.0",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mc-crypto-box 0.1.0",
+ "mc-util-from-random 0.1.0",
  "mcrand 1.0.0",
  "mcserial 0.1.0",
  "merlin 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",

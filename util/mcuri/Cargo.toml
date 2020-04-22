@@ -17,5 +17,7 @@ serde = { version = "1.0", default-features = false, features = ["alloc", "deriv
 url = "2.1"
 
 [dev-dependencies]
+mc-util-from-random = { path = "../../util/from-random" }
+
 rand = "0.7"
 rand_hc = "0.2.0"

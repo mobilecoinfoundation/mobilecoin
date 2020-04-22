@@ -1,8 +1,9 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use core::convert::TryFrom;
-use keys::{FromRandom, RistrettoPrivate, RistrettoPublic};
+use keys::{RistrettoPrivate, RistrettoPublic};
 use ledger_db::{Ledger, LedgerDB};
+use mc_util_from_random::FromRandom;
 use mcrand::{CryptoRng, RngCore};
 use rand::{seq::SliceRandom, Rng};
 use tempdir::TempDir;

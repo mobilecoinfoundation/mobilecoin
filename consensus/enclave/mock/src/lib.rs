@@ -13,7 +13,8 @@ use attest_enclave_api::{
     PeerAuthResponse, PeerSession,
 };
 use common::ResponderId;
-use keys::{Ed25519Pair, Ed25519Public, FromRandom, X25519EphemeralPrivate, X25519Public};
+use keys::{Ed25519Pair, Ed25519Public, X25519EphemeralPrivate, X25519Public};
+use mc_util_from_random::FromRandom;
 use mcrand::McRng;
 use rand_core::SeedableRng;
 use rand_hc::Hc128Rng;

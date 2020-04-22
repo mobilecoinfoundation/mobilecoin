@@ -4,12 +4,12 @@
 //!
 //! See https://cryptonote.org/img/cryptonote_transaction.png
 
-use keys::{CompressedRistrettoPublic, FromRandom, RistrettoPrivate, RistrettoPublic};
-use std::collections::HashSet;
-
 use crate::{InputCredentials, TxBuilderError};
 use curve25519_dalek::scalar::Scalar;
+use keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
+use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
+use std::collections::HashSet;
 use transaction::{
     account_keys::PublicAddress,
     constants::BASE_FEE,

@@ -119,7 +119,7 @@ impl FogHint {
 #[cfg(test)]
 mod testing {
     use super::*;
-    use keys::FromRandom;
+    use mc_util_from_random::FromRandom;
 
     fn random_fog_hint<T: RngCore + CryptoRng>(rng: &mut T) -> FogHint {
         let view = RistrettoPublic::from_random(rng);
