@@ -54,7 +54,7 @@ class mob_client:
     def remove_monitor(self, monitor_id):
         """ Remove an existing monitor and delete any data it has stored.
         """
-        request = api.RemoveMonitorRequest(monitor_id)
+        request = api.RemoveMonitorRequest(monitor_id=monitor_id)
         return self.stub.RemoveMonitor(request)
 
     def get_monitor_list(self):
@@ -147,14 +147,16 @@ class mob_client:
     def read_transfer_code(self, b58_code):
         """ Process a b58 transfer code to recover content.
         """
-        request = api.ReadTransferCodeRequest(b58_code)
+        request = api.ReadTransferCodeRequest(b58_code=b58_code)
         response = self.stub.ReadTransferCode(request)
         return response.entropy, response.tx_public_key, response.memo
 
     def get_transfer_code(self, entropy, tx_public_key, memo=""):
         """ Prepare a "transfer code" used to generate a QR code for wallet apps.
         """
-        request = api.GetTransferCodeRequest(entropy, tx_public_key, memo)
+        request = api.GetTransferCodeRequest(entropy=entropy,
+                                             tx_public_key=tx_public_key,
+                                             memo=memo)
         return self.stub.GetTransferCode(request).b58_code
 
     #
@@ -182,19 +184,28 @@ class mob_client:
                                         fee=fee)
         return self.stub.GenerateTx(request).tx_proposal
 
-    def generate_optimization_tx(self, sender, output_list):
+    def generate_optimization_tx(self, monitor_id, subaddress):
         """ Due to limits on the number of inputs allowed for a transaction, a wallet can contain
         more value than is spendable in a single transaction. This generates a self-payment
         that combines small value tx outputs together.
         """
-        request = api.GenerateOptimizationTxRequest(sender, output_list)
+        request = api.GenerateOptimizationTxRequest(monitor_id=monitor_id,
+                                                    subaddress=subaddress)
         return self.stub.GenerateOptimizationTx(request).tx_proposal
 
-    def generate_transfer_code_tx(self, sender, output_list, value):
+    def generate_transfer_code_tx(self, sender_monitor_id, change_subaddress,
+                                  input_list, value, fee, tombstone, memo):
         """ Prepares a transaction that can be submitted to fund a transfer code for a new
         one time account.
         """
-        request = api.GenerateTransferCodeTxRequest(sender, output_list, value)
+        request = api.GenerateTransferCodeTxRequest(
+            sender_monitor_id=sender_monitor_id,
+            change_subaddress=change_subaddress,
+            input_list=input_list,
+            value=value,
+            fee=fee,
+            tombstone=tombstone,
+            memo=memo)
         response = self.stub.GenerateTransferCodeTx(request)
         return response.tx_proposal, response.entropy
 

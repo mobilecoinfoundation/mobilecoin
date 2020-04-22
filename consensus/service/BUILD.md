@@ -161,8 +161,8 @@ This retrieves a json record of:
 
 ```json
 {
-    "enclave": "pool/<git revision>",
-    "sigstruct": "pool/<git revision>",
+    "enclave": "pool/<git revision>/<signing hash>/<filename>",
+    "sigstruct": "pool/<git revision>/<signing hash>/<filename>",
 }
 ```
 
@@ -173,8 +173,8 @@ Once you have the desired artifact, you will need to extract both the signed enc
 MobileCoin's TestNet Signed Enclave materials are available at, for example:
 
 ```
- curl -O https://enclave-distribution.test.mobilecoin.com/pool/e57b6902aee60be45b78b496c1bef781746e4389/bf7fa957a6a94acb588851bc8767eca5776c79f4fc2aa6bcb99312c3c386c/libconsensus-enclave.signed.so
- curl -O https://enclave-distribution.test.mobilecoin.com/pool/e57b6902aee60be45b78b496c1bef781746e4389/bf7fa957a6a94acb588851bc8767eca5776c79f4fc2aa6bcb99312c3c386c/consensus-enclave.css
+ curl -O https://enclave-distribution.test.mobilecoin.com/pool/bceca6256b2ad9a6ccc1b88c109687365677f0c9/bf7fa957a6a94acb588851bc8767eca5776c79f4fc2aa6bcb99312c3c386c/libconsensus-enclave.signed.so
+ curl -O https://enclave-distribution.test.mobilecoin.com/pool/bceca6256b2ad9a6ccc1b88c109687365677f0c9/bf7fa957a6a94acb588851bc8767eca5776c79f4fc2aa6bcb99312c3c386c/consensus-enclave.css
 ```
 
 Then, when you build, you will provide both `CONSENSUS_ENCLAVE_SIGNED=$(pwd)/libconsensus-enclave.signed.so CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css`.

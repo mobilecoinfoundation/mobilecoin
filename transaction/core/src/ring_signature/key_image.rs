@@ -8,8 +8,10 @@ use mcserial::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::{CurvePoint, Error};
+use super::Error;
+use crate::ring_signature::Scalar;
 use core::convert::TryInto;
+use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 
 #[derive(Copy, Clone, Default, Eq, Serialize, Deserialize, Digestible)]
 /// The "image" of a private key `x`: I = x * H(x * G) = x * H(P).
@@ -71,16 +73,11 @@ impl From<RistrettoPoint> for KeyImage {
     }
 }
 
-impl From<CurvePoint> for KeyImage {
-    fn from(src: CurvePoint) -> Self {
-        <Self as From<RistrettoPoint>>::from(src.0)
-    }
-}
-
 // Many tests use this
 impl From<u64> for KeyImage {
-    fn from(src: u64) -> Self {
-        <Self as From<CurvePoint>>::from(CurvePoint::from(src))
+    fn from(n: u64) -> Self {
+        let point = Scalar::from(n) * RISTRETTO_BASEPOINT_POINT;
+        Self::from(point)
     }
 }
 

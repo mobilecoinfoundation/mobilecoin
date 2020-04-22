@@ -1,5 +1,9 @@
 ![](./img/mobilecoin_logo.png)
 
+### Sending your first payment
+
+* Please see [*TESTNET.md*](./TESTNET.md) for instructions on participating in the TestNet!
+
 ### Note to Developers
 
 * MobileCoin is a prototype. Expect substantial changes before the release.

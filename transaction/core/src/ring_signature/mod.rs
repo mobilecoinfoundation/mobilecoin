@@ -9,7 +9,6 @@ use bulletproofs::{BulletproofGens, PedersenGens};
 use core::convert::TryFrom;
 use curve25519_dalek::ristretto::CompressedRistretto;
 pub use curve25519_dalek::scalar::Scalar;
-pub use curve_point::*;
 pub use curve_scalar::*;
 pub use error::Error;
 pub use key_image::*;
@@ -22,7 +21,6 @@ use crate::{
     tx::TxIn,
 };
 
-mod curve_point;
 mod curve_scalar;
 mod error;
 mod key_image;
