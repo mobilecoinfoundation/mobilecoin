@@ -38,10 +38,17 @@ ${TARGETDIR}/mobilecoind \
         --mobilecoind-db /tmp/transaction-db \
         --service-port 4444 &> $(pwd)/mobilecoind.log &
 
-echo "Sleeping 10s to allow mobilecoind to sync the ledger"
-sleep 10
+pid=$!
 
-echo "Starting local mc-test-client."
-${TARGETDIR}/mc-testnet-client
+sleep 2
+if ps -p $pid > /dev/null; then
+    echo "Sleeping 5s to allow mobilecoind to sync the ledger"
+    sleep 5
+
+    echo "Starting local mc-test-client."
+    ${TARGETDIR}/mc-testnet-client
+else
+    echo "Starting mobilecoind failed. Please check logs at $(pwd)/mobilecoind.log."
+fi
 
 popd
