@@ -1,3 +1,3 @@
 ## util
 
-Testing and bootstrap utilities.
+Miscellaneous utilities.

@@ -39,7 +39,7 @@ This distribution includes cryptographic software. Your country may have restric
 | [peers](./peers/) | Peer-to-peer networking. |
 | [sgx](./sgx/) | Support for Intel® Software Guard eXtensions (Intel SGX). |
 | [transaction](./transaction/) | Private transactions. |
-| [util](./util/) | Testing and bootstrap utilities. |
+| [util](./util/) | Miscellaneous utilities. |
 
 #### Selected Binaries
 | Target | Description | Used by... |
