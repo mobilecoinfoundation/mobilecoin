@@ -34,7 +34,7 @@ If you have a Linux-compatible home computer, or if you are willing to operate a
 
 1. Launch the MobileCoin build system Docker container using the command: `./mob prompt`
 
-1. At the container prompt, compile and launch the [`mobilecoind`](./mobilecoind/) daemon using the command: `TBD`
+1. At the container prompt, compile and launch the [`mobilecoind`](./mobilecoind/) daemon using the TestNet quickstart script: `./start-testnet-client.sh`
 
 1. Use your *master key* with the [TestNet client](#send-your-first-payment), or as the *root entropy* in one of the `mobilecoind` [example clients](./mobilecoind/clients) or your own code!
 
