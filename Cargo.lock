@@ -74,7 +74,7 @@ dependencies = [
  "attest-trusted 0.1.0",
  "common 0.1.0",
  "digest 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "keys 0.1.0",
  "mcnoise 0.1.0",
  "mcrand 1.0.0",
@@ -129,7 +129,7 @@ dependencies = [
  "chrono 0.4.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "common 0.1.0",
  "digest 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "generic-array 0.12.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex_fmt 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -161,7 +161,7 @@ dependencies = [
  "attest-net 0.1.0",
  "common 0.1.0",
  "digest 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "keys 0.1.0",
  "mc-encodings 0.1.0",
  "mcnoise 0.1.0",
@@ -198,7 +198,7 @@ version = "0.1.0"
 dependencies = [
  "attest 0.1.0",
  "attest-ake 0.1.0",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "mcnoise 0.1.0",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
  "sgx_compat 1.0.0",
@@ -211,7 +211,7 @@ dependencies = [
  "attest 0.1.0",
  "cfg-if 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "common 0.1.0",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "mbedtls 0.5.1 (git+https://github.com/mobilecoinofficial/rust-mbedtls.git?tag=mc-0.2)",
  "mc-encodings 0.1.0",
  "pem 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -229,7 +229,7 @@ version = "0.1.0"
 dependencies = [
  "attest 0.1.0",
  "common 0.1.0",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "prost 0.6.1 (git+https://github.com/mobilecoinofficial/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
  "sgx_compat 1.0.0",
  "sgx_types 1.0.1",
@@ -310,6 +310,15 @@ dependencies = [
 name = "binascii"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "bincode"
+version = "1.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "byteorder 1.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "bindgen"
@@ -661,7 +670,7 @@ dependencies = [
  "cfg-if 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "chrono 0.4.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "digestible 0.1.0",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "generic-array 0.12.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "hashbrown 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex_fmt 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -724,7 +733,7 @@ dependencies = [
  "attest-enclave-api 0.1.0",
  "cfg-if 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "common 0.1.0",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "keys 0.1.0",
  "mcnoise 0.1.0",
  "mcserial 0.1.0",
@@ -818,7 +827,7 @@ dependencies = [
  "consensus-enclave 1.0.0",
  "consensus-enclave-mock 1.0.0",
  "curve25519-dalek 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "fs_extra 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.29 (registry+https://github.com/rust-lang/crates.io-index)",
  "grpc-util 1.0.0",
@@ -896,7 +905,7 @@ version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "cookie 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "idna 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "publicsuffix 1.5.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1226,7 +1235,7 @@ name = "dotenv"
 version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 1.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -1309,16 +1318,16 @@ dependencies = [
 
 [[package]]
 name = "failure"
-version = "0.1.6"
+version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "backtrace 0.3.46 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure_derive 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure_derive 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "failure_derive"
-version = "0.1.6"
+version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "proc-macro2 1.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1998,7 +2007,7 @@ dependencies = [
  "digestible 0.1.0",
  "ed25519 1.0.0-pre.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "ed25519-dalek 1.0.0-pre.3 (git+https://github.com/cbeck88/ed25519-dalek?rev=c0b0ab31d3572de6fb01d6b4a4f052784034b0b2)",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex_fmt 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mcserial 0.1.0",
  "pem 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2030,7 +2039,7 @@ version = "0.1.0"
 dependencies = [
  "common 0.1.0",
  "curve25519-dalek 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "keys 0.1.0",
  "lmdb 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mcrand 1.0.0",
@@ -2051,7 +2060,7 @@ dependencies = [
  "common 0.1.0",
  "dirs 2.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "dotenv 0.14.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "ledger-db 0.1.0",
  "mobilecoin-api 0.1.1",
  "protobuf 2.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2073,7 +2082,7 @@ dependencies = [
  "common 0.1.0",
  "consensus-enclave-measurement 1.0.0",
  "crossbeam-channel 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "grpcio 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "keys 0.1.0",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2226,7 +2235,7 @@ dependencies = [
  "bs58 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "common 0.1.0",
  "crc 1.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex_fmt 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "keys 0.1.0",
  "mcserial 0.1.0",
@@ -2251,7 +2260,7 @@ dependencies = [
  "aead 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "aes-gcm 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "blake2 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "hkdf 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "keys 0.1.0",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2263,8 +2272,54 @@ name = "mc-encodings"
 version = "0.1.0"
 dependencies = [
  "binascii 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "mc-sgx-core-types"
+version = "0.1.3"
+dependencies = [
+ "binascii 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bincode 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitflags 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hex_fmt 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mc-encodings 0.1.0",
+ "mc-sgx-core-types-sys 0.1.3",
+ "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
+ "subtle 2.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "mc-sgx-core-types-sys"
+version = "0.1.3"
+dependencies = [
+ "bindgen 0.51.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cargo-emit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mcbuild-utils 0.2.0",
+]
+
+[[package]]
+name = "mc-sgx-epid-sys"
+version = "0.1.3"
+dependencies = [
+ "bindgen 0.51.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cargo-emit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mc-sgx-core-types-sys 0.1.3",
+ "mc-sgx-epid-types-sys 0.1.3",
+ "mcbuild-sgx-utils 0.2.0",
+ "mcbuild-utils 0.2.0",
+]
+
+[[package]]
+name = "mc-sgx-epid-types-sys"
+version = "0.1.3"
+dependencies = [
+ "bindgen 0.51.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cargo-emit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mc-sgx-core-types-sys 0.1.3",
+ "mcbuild-utils 0.2.0",
 ]
 
 [[package]]
@@ -2289,7 +2344,7 @@ version = "0.1.0"
 dependencies = [
  "cargo-emit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "cargo_metadata 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "mbedtls 0.5.1 (git+https://github.com/mobilecoinofficial/rust-mbedtls.git?tag=mc-0.2)",
  "mbedtls-sys-auto 2.18.1 (git+https://github.com/mobilecoinofficial/rust-mbedtls.git?tag=mc-0.2)",
  "mcbuild-sgx-utils 0.2.0",
@@ -2304,7 +2359,7 @@ version = "0.2.0"
 dependencies = [
  "cargo-emit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "cc 1.0.50 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mcbuild-utils 0.2.0",
 ]
@@ -2314,7 +2369,7 @@ name = "mcbuild-utils"
 version = "0.2.0"
 dependencies = [
  "cargo-emit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "url 2.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "walkdir 2.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2329,7 +2384,7 @@ dependencies = [
  "attest-ake 0.1.0",
  "attest-api 0.1.1",
  "common 0.1.0",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "grpcio 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "host-cert 0.1.0",
  "keys 0.1.0",
@@ -2374,7 +2429,7 @@ dependencies = [
  "aead 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "aes-gcm 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "generic-array 0.12.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "hkdf 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "keys 0.1.0",
@@ -2408,44 +2463,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "mcsgx-core-types-sys"
-version = "2.9.0"
-dependencies = [
- "bindgen 0.51.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "cargo-emit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "mcbuild-utils 0.2.0",
-]
-
-[[package]]
-name = "mcsgx-epid-sys"
-version = "2.9.0"
-dependencies = [
- "bindgen 0.51.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "cargo-emit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "mcbuild-sgx-utils 0.2.0",
- "mcbuild-utils 0.2.0",
- "mcsgx-core-types-sys 2.9.0",
- "mcsgx-epid-types-sys 2.9.0",
-]
-
-[[package]]
-name = "mcsgx-epid-types-sys"
-version = "2.9.0"
-dependencies = [
- "bindgen 0.51.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "cargo-emit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "mcbuild-utils 0.2.0",
- "mcsgx-core-types-sys 2.9.0",
-]
-
-[[package]]
 name = "mcuri"
 version = "0.1.0"
 dependencies = [
  "base64 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "common 0.1.0",
  "ed25519 1.0.0-pre.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "host-cert 0.1.0",
  "keys 0.1.0",
@@ -2489,7 +2513,7 @@ name = "message-cipher"
 version = "0.1.0"
 dependencies = [
  "aes-gcm 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "generic-array 0.12.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "mcserial 0.1.0",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2663,7 +2687,7 @@ dependencies = [
  "consensus-enclave-measurement 1.0.0",
  "crossbeam-channel 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "digestible 0.1.0",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.29 (registry+https://github.com/rust-lang/crates.io-index)",
  "grpc-util 1.0.0",
  "grpcio 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2856,7 +2880,7 @@ dependencies = [
  "consensus-enclave-api 0.1.0",
  "crossbeam-channel 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "ed25519 1.0.0-pre.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "grpcio 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "keys 0.1.0",
  "ledger-db 0.1.0",
@@ -2904,7 +2928,7 @@ version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "base64 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 1.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -3191,7 +3215,7 @@ name = "protoc-grpcio"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "grpcio-compiler 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "protobuf 2.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "protobuf-codegen 2.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3896,7 +3920,7 @@ version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "backtrace 0.3.46 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "hostname 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "httpdate 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "im 14.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3918,7 +3942,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "chrono 0.4.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "debugid 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.51 (registry+https://github.com/rust-lang/crates.io-index)",
  "url 2.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -4039,7 +4063,7 @@ dependencies = [
 name = "sgx_css"
 version = "0.1.0"
 dependencies = [
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha2 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -4865,7 +4889,7 @@ dependencies = [
  "curve25519-dalek 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "digestible 0.1.0",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "generic-array 0.12.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex_fmt 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "hkdf 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -4897,7 +4921,7 @@ dependencies = [
  "blake2 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "common 0.1.0",
  "curve25519-dalek 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "hkdf 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "keys 0.1.0",
  "mcserial 0.1.0",
@@ -5391,6 +5415,7 @@ dependencies = [
 "checksum base64 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b41b7ea54a0c9d92199de89e20e58d49f02f8e699814ef3fdf266f6f748d15c7"
 "checksum bigint 4.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "ebecac13b3c745150d7b6c3ea7572d372f09d627c2077e893bf26c5c7f70d282"
 "checksum binascii 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)" = "383d29d513d8764dcdc42ea295d979eb99c3c9f00607b3692cf68a431f7dca72"
+"checksum bincode 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "5753e2a71534719bf3f4e57006c3a4f0d2c672a4b676eec84161f763eca87dbf"
 "checksum bindgen 0.51.1 (registry+https://github.com/rust-lang/crates.io-index)" = "ebd71393f1ec0509b553aa012b9b58e81dadbdff7130bd3b8cba576e69b32f75"
 "checksum bit-set 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "e84c238982c4b1e1ee668d136c510c67a13465279c0cb367ea6baf6310620a80"
 "checksum bit-vec 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "f59bbe95d4e52a6398ec21238d31577f2b28a9d86807f06ca59d191d8440d0bb"
@@ -5473,8 +5498,8 @@ dependencies = [
 "checksum encoding_rs 0.8.22 (registry+https://github.com/rust-lang/crates.io-index)" = "cd8d03faa7fe0c1431609dfad7bbe827af30f82e1e2ae6f7ee4fca6bd764bc28"
 "checksum env_logger 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "aafcde04e90a5226a6443b7aabdb016ba2f8307c847d524724bd9b346dd1a2d3"
 "checksum error-chain 0.12.1 (registry+https://github.com/rust-lang/crates.io-index)" = "3ab49e9dcb602294bc42f9a7dfc9bc6e936fca4418ea300dbfb84fe16de0b7d9"
-"checksum failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "f8273f13c977665c5db7eb2b99ae520952fe5ac831ae4cd09d80c4c7042b5ed9"
-"checksum failure_derive 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "0bc225b78e0391e4b8683440bf2e63c2deeeb2ce5189eab46e2b68c6d3725d08"
+"checksum failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)" = "b8529c2421efa3066a5cbd8063d2244603824daccb6936b079010bb2aa89464b"
+"checksum failure_derive 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)" = "030a733c8287d6213886dd487564ff5c8f6aae10278b3588ed177f9d18f8d231"
 "checksum fake-simd 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "e88a8acf291dafb59c2d96e8f59828f3838bb1a70398823ade51a84de6a6deed"
 "checksum filetime 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)" = "1ff6d4dab0aa0c8e6346d46052e93b13a16cf847b54ed357087c35011048cc7d"
 "checksum flate2 1.0.13 (registry+https://github.com/rust-lang/crates.io-index)" = "6bd6d6f4752952feb71363cffc9ebac9411b75b87c6ab6058c40c8900cf43c0f"

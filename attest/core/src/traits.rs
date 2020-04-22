@@ -190,7 +190,7 @@ macro_rules! impl_sgx_wrapper_reqs {
         }
 
         impl $crate::traits::ToX64 for $wrapper {
-            fn to_x64_bytes(&self, dest: &mut [u8]) -> core::result::Result<usize, usize> {
+            fn to_x64(&self, dest: &mut [u8]) -> core::result::Result<usize, usize> {
                 use $crate::traits::{IntelLayout, SgxWrapperType};
 
                 let len = self.intel_size();

@@ -1,0 +1,28 @@
+[package]
+name = "mc-sgx-core-types"
+version = "0.1.3"
+authors = ["James Cape <james@mobilecoin.com>"]
+description = "Core Rust types for Intel SGX SDK."
+readme = "README.md"
+edition = "2018"
+
+[features]
+default = ["std"]
+std = [
+    "failure/std",
+    "serde/std"
+]
+
+[dependencies]
+mc-encodings = { path = "../../util/encodings" }
+mc-sgx-core-types-sys = { path = "../core-types-sys" }
+
+binascii = "0.1.4"
+bitflags = "1.2.1"
+failure = { version = "0.1.7", default-features = false, features = ["derive"] }
+hex_fmt = "0.3"
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+subtle = { version = "2.1", default-features = false }
+
+[dev-dependencies]
+bincode = "1.2"

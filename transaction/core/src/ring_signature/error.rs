@@ -48,6 +48,9 @@ pub enum Error {
 
     #[fail(display = "Invalid RangeProof")]
     RangeProofError,
+
+    #[fail(display = "Serialization failed")]
+    SerializationFailed,
 }
 
 impl From<mcserial::LengthMismatch32> for Error {
@@ -59,5 +62,11 @@ impl From<mcserial::LengthMismatch32> for Error {
 impl From<keys::KeyError> for Error {
     fn from(_src: KeyError) -> Self {
         Self::KeyError
+    }
+}
+
+impl From<mcserial::encode::Error> for Error {
+    fn from(_e: mcserial::encode::Error) -> Self {
+        Error::SerializationFailed
     }
 }

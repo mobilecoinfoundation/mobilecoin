@@ -1,5 +1,4 @@
-enclave_boundary
-================
+## enclave_boundary
 
 This crate contains infrastructure to (effectively) allow making ECALL's with
 variable return buffer size.

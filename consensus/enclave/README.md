@@ -1,7 +1,27 @@
 # Consensus Enclave Omnibus
 
-Recent advances in trusted computing make it possible to run software on a remote host without exposing sensitive data to that server’s operator, even when he or she has complete control of the remote computer’s operating system (i.e. root access). Originally designed for digital rights management, these secure enclave technologies behave like a black box that ensures confidentiality and integrity for its content.
+This collection of crates implements a "fully formed" interface for the `consensus_service` application to interact with its enclave, which is used to process inputs from clients. The "outer" `mc-consensus-enclave` crate is the one which the application will interact with, and it, in turn, will proxy requests to the actual enclave.
 
-The MobileCoin Network implements secure enclaves using Intel’s Software Guard eXtensions (SGX) to process new transactions according to the MobileCoin implementation of the Stellar Consensus Protocol. Any code that needs to observe the input rings of a new transaction executes inside the black box created by the SGX trusted execution environment. Remote attestation and end-to-end encryption are used to protect the communication channel between a user submitting a new transaction and the secure enclave running on the remote server. The operator of the remote server cannot access any data that the user submits to the secure enclave, and so cannot see the set of txos used in the transaction input ring.
+|Crate|Use|
+|-----|---|
+|`mc-consensus-enclave`|Application-facing proxy to object in the enclave|
+|`mc-consensus-enclave-api`|Common API for app-facing proxy and internal enclave object|
+|`mc-consensus-enclave-edl`|Enclave Definition Language (EDL) sources for code-gen|
+|`mc-consensus-enclave-impl`|Internal enclave object|
+|`mc-consensus-enclave-measurement`|Access to the SIGSTRUCT data for a built enclave|
+|`mc-consensus-enclave-mock`|Simple mock object for use in unit testing|
+|`mc-consensus-enclave-trusted`|The enclave-side of the proxy provided by the base crate|
 
-Remote attestation and end-to-end encryption similarly protect the communication channels between secure enclaves running on different remote servers. When the SGX remote attestation system is functioning as Intel designed, it is not possible for any operator in the MobileCoin Network to observe the full content of transactions. Complete data is only shared between secure enclaves that safely delete the information that could otherwise be used to statistically associate payment senders to payment recipients. Further, the mutual attestation between consensus validators provides integrity that both participants are running the exact same software, preventing malicious byzantine behavior.
+The API implemented by this crate is contained within the inner `mc-consensus-enclave-api` crate, who's contents are re-exported by this crate for ease of use. The API is also used by the `mc-consensus-enclave-impl`, which runs inside the enclave.
+
+The data flow, therefore is:
+
+ 1. Application makes an API call to `mc-consensus-enclave` using traits found in `mc-consensus-api`.
+ 1. `mc-consensus-enclave` serializes a request structure request into bytes, and calls `mobileenclave_call`.
+ 1. Generated code passes that through the SGX ECALL machinery into the corresponding `mobileenclave_ecall` definition in `mc-consensus-enclave-trusted`.
+ 1. `mc-consensus-enclave-trusted` deserializes the request structure, and gives it to the "real" implementation, which lives in `mc-consensus-enclave-impl`.
+ 1. Returned data is handled in a similar fashion as the stack is unwound.
+ 
+ Therefore, the "base" crate contains a basic remoting implementation that proxies data into the enclave across the SGX boundary.
+ 
+ The `mc-consensus-enclave-edl` crate contains build-time Enclave Definition Language (EDL) files which describe the code to be generated, and is used by both outer and `-trusted` crates. 

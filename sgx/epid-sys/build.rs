@@ -14,7 +14,7 @@ fn main() {
     let mut header = env.dir().join("include");
     header.push("sgx_uae_epid.h");
     Builder::default()
-        .ctypes_prefix("mcsgx_core_types_sys::ctypes")
+        .ctypes_prefix("mc_sgx_core_types_sys::ctypes")
         .derive_copy(true)
         .derive_debug(true)
         .derive_default(true)

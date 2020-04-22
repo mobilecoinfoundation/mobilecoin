@@ -420,7 +420,7 @@ impl ToBase64 for Quote {
 }
 
 impl ToX64 for Quote {
-    fn to_x64_bytes(&self, dest: &mut [u8]) -> Result<usize, usize> {
+    fn to_x64(&self, dest: &mut [u8]) -> Result<usize, usize> {
         let required_len = self.intel_size();
         if dest.len() < required_len {
             Err(required_len)
