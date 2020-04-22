@@ -45,8 +45,8 @@ enum Command {
 impl fmt::Display for Command {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Command::Send => write!(f, "Pay a bill"),
-            Command::Receive => write!(f, "Create a bill"),
+            Command::Send => write!(f, "Send a payment"),
+            Command::Receive => write!(f, "Request a payment"),
             Command::CheckBalance => write!(f, "Check balance"),
             Command::Quit => write!(f, "Quit"),
         }
@@ -379,12 +379,12 @@ string that we send you. It should look something like:
             println!();
             if request_code.memo.is_empty() {
                 println!(
-                    "This request code is a bill for {}.",
+                    "This is a payment request for {}.",
                     u64_to_mob_display(request_code.value),
                 );
             } else {
                 println!(
-                    "This request code is a bill for {}. It includes a memo:",
+                    "This is a payment request for {}. It includes a memo:",
                     u64_to_mob_display(request_code.value),
                 );
                 println!();
@@ -402,7 +402,7 @@ string that we send you. It should look something like:
                         u64_to_mob_display(fee),
                     );
                     println!(
-                        "balance after paying this bill will be {}.",
+                        "balance after sending this payment will be {}.",
                         u64_to_mob_display(remaining_balance),
                     );
                     println!();
