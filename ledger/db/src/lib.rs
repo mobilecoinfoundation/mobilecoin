@@ -36,7 +36,6 @@ const MAX_LMDB_FILE_SIZE: usize = 1_099_511_627_776; // 1 TB
 // LMDB Database names.
 pub const COUNTS_DB_NAME: &str = "ledger_db:counts";
 pub const BLOCKS_DB_NAME: &str = "ledger_db:blocks";
-pub const BLOCK_CONTENTS_DB_NAME: &str = "ledger_db:block_contents";
 pub const BLOCK_SIGNATURES_DB_NAME: &str = "ledger_db:block_signatures";
 pub const KEY_IMAGES_DB_NAME: &str = "ledger_db:key_images";
 pub const KEY_IMAGES_BY_BLOCK_DB_NAME: &str = "ledger_db:key_images_by_block";
@@ -67,9 +66,6 @@ pub struct LedgerDB {
 
     /// Blocks by block number. `block number -> Block`
     blocks: Database,
-
-    /// Block contents by block number, `block number -> BlockContents`
-    block_contents: Database,
 
     /// Block signatures by number. `block number -> BlockSignature`
     block_signatures: Database,
@@ -119,7 +115,7 @@ impl Ledger for LedgerDB {
         self.write_tx_outs(block.index, &block_contents.outputs, &mut db_transaction)?;
 
         // Write block.
-        self.write_block(block, block_contents, signature, &mut db_transaction)?;
+        self.write_block(block, signature, &mut db_transaction)?;
 
         // Commit.
         db_transaction.commit()?;
@@ -251,7 +247,6 @@ impl LedgerDB {
 
         let counts = env.open_db(Some(COUNTS_DB_NAME))?;
         let blocks = env.open_db(Some(BLOCKS_DB_NAME))?;
-        let block_contents = env.open_db(Some(BLOCK_CONTENTS_DB_NAME))?;
         let block_signatures = env.open_db(Some(BLOCK_SIGNATURES_DB_NAME))?;
         let key_images = env.open_db(Some(KEY_IMAGES_DB_NAME))?;
         let key_images_by_block = env.open_db(Some(KEY_IMAGES_BY_BLOCK_DB_NAME))?;
@@ -264,7 +259,6 @@ impl LedgerDB {
             path,
             counts,
             blocks,
-            block_contents,
             block_signatures,
             key_images,
             key_images_by_block,
@@ -288,7 +282,6 @@ impl LedgerDB {
 
         let counts = env.create_db(Some(COUNTS_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(BLOCKS_DB_NAME), DatabaseFlags::empty())?;
-        env.create_db(Some(BLOCK_CONTENTS_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(BLOCK_SIGNATURES_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(KEY_IMAGES_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(KEY_IMAGES_BY_BLOCK_DB_NAME), DatabaseFlags::empty())?;
@@ -313,7 +306,6 @@ impl LedgerDB {
     fn write_block(
         &self,
         block: &Block,
-        block_contents: &BlockContents,
         signature: Option<&BlockSignature>,
         db_transaction: &mut RwTransaction,
     ) -> Result<(), lmdb::Error> {
@@ -331,15 +323,6 @@ impl LedgerDB {
             self.blocks,
             &u64_to_key_bytes(block.index),
             &serialize(block).unwrap_or_else(|_| panic!("Could not serialize block {:?}", block)),
-            WriteFlags::empty(),
-        )?;
-
-        db_transaction.put(
-            self.block_contents,
-            &u64_to_key_bytes(block.index),
-            &serialize(block_contents).unwrap_or_else(|_| {
-                panic!("Could not serialize block contents{:?}", block_contents)
-            }),
             WriteFlags::empty(),
         )?;
 
