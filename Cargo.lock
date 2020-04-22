@@ -2717,6 +2717,7 @@ dependencies = [
  "lmdb 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lru 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "mc-b58-payloads 0.1.0",
+ "mc-util-from-random 0.1.0",
  "mcconnection 0.1.0",
  "mcconnection-tests 0.1.0",
  "mcrand 1.0.0",

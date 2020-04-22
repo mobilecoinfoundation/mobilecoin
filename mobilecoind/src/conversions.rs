@@ -6,7 +6,6 @@ use crate::{
     payments::{Outlay, TxProposal},
     utxo_store::UnspentTxOut,
 };
-
 use common::HashMap;
 use mobilecoind_api::{self, ConversionError};
 use protobuf::RepeatedField;
