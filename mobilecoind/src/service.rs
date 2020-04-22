@@ -717,7 +717,7 @@ impl<T: UserTxConnection + 'static> ServiceApi<T> {
                     })?;
 
                 let mut receiver_tx_receipt = mobilecoind_api::ReceiverTxReceipt::new();
-                receiver_tx_receipt.set_receipient((&outlay.receiver).into());
+                receiver_tx_receipt.set_recipient((&outlay.receiver).into());
                 receiver_tx_receipt.set_tx_public_key(tx_out.public_key.into());
                 receiver_tx_receipt.set_tx_out_hash(tx_out.hash().to_vec());
                 receiver_tx_receipt.set_tombstone(tx_proposal.tx.prefix.tombstone_block);
@@ -2170,7 +2170,7 @@ mod test {
             {
                 assert_eq!(
                     outlay.receiver,
-                    PublicAddress::try_from(receipt.get_receipient()).unwrap()
+                    PublicAddress::try_from(receipt.get_recipient()).unwrap()
                 );
 
                 assert_eq!(receipt.tombstone, tx.prefix.tombstone_block);
@@ -2396,7 +2396,7 @@ mod test {
         {
             assert_eq!(
                 outlay.receiver,
-                PublicAddress::try_from(receipt.get_receipient()).unwrap()
+                PublicAddress::try_from(receipt.get_recipient()).unwrap()
             );
 
             assert_eq!(receipt.tombstone, submitted_tx.prefix.tombstone_block);
