@@ -42,7 +42,7 @@ This distribution includes cryptographic software. Your country may have restric
 | [util](./util/) | Testing and bootstrap utilities. |
 
 #### Selected Binaries
-| Target | Description | Nodes |
+| Target | Description | Used by... |
 | :-- | :-- |:--|
 | [`consensus-service`](./consensus/service) | Validates new transactions for the public ledger.| Validator Nodes |
 | [`ledger-distribution`](./ledger/distribution) | Publishes the ledger to long-term storage. | Full Validator Nodes|
