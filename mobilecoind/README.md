@@ -1,6 +1,6 @@
 ## mobilecoind
 
-The MobileCoin Daemon is a standalone executable, `mobilecoind`, which provides blockchain synchronization and wallet services.
+The MobileCoin Daemon, or `mobilecoind`, is a standalone executable which provides blockchain synchronization and wallet services.
 
 It creates encrypted, attested connections to validator nodes who are participating in federated voting in order to get the current block height, block headers, and to submit transactions. These validator nodes are considered highly trusted due to their use of SGX, and they are used as a reliable source for block information as well as to validate and process the proposed transactions from `mobilecoind`.
 
