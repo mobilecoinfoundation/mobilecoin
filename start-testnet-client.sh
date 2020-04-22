@@ -31,7 +31,7 @@ if [[ -f /tmp/ledger-db ]] || [[ -f /tmp/transaction-db ]]; then
 fi
 
 echo "Starting local mobilecoind using TestNet servers for source of ledger. Check log at $(pwd)/mobilecoind.log."
-SGX_MODE=HW IAS_MODE=PROD CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css ../../../target/release/mobilecoind \
+SGX_MODE=HW IAS_MODE=PROD CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css ${TARGETDIR}/mobilecoind \
         --ledger-db /tmp/ledger-db \
         --poll-interval 10 \
         --peer mc://node1.test.mobilecoin.com/ \
@@ -39,6 +39,9 @@ SGX_MODE=HW IAS_MODE=PROD CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css ../
         --tx-source-url https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node2.test.mobilecoin.com/ \
         --mobilecoind-db /tmp/transaction-db \
         --service-port 4444 &> $(pwd)/mobilecoind.log &
+
+echo "Sleeping 10s to allow mobilecoind to sync the ledger"
+sleep 10
 
 echo "Starting local mc-test-client."
 ${TARGETDIR}/mc-testnet-client
