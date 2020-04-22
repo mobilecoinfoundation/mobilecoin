@@ -400,7 +400,7 @@ prost_message_helper32! { TxOutMembershipHash }
 mod tests {
     use alloc::vec::Vec;
 
-    use keys::RistrettoPublic;
+    use keys::{FromRandom, RistrettoPublic};
     use mcserial::ReprBytes32;
     use prost::Message;
 
@@ -411,17 +411,18 @@ mod tests {
         amount::Amount,
         constants::{BASE_FEE, FEE_SPEND_PUBLIC_KEY, FEE_VIEW_PRIVATE_KEY, FEE_VIEW_PUBLIC_KEY},
         encrypted_fog_hint::EncryptedFogHint,
-        ring_signature::{CurvePoint, CurveScalar, KeyImage, Scalar, SignatureRctBulletproofs},
+        ring_signature::{CurveScalar, KeyImage, Scalar, SignatureRctBulletproofs},
         tx::{Tx, TxIn, TxOut, TxPrefix},
     };
 
     #[test]
     // `serialize_tx` should create a Tx, encode/decode it, and compare
     fn test_serialize_tx() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let tx_out = {
-            let shared_secret = RistrettoPublic::from(*CurvePoint::from(2).as_ref());
-            let target_key = RistrettoPublic::from(*CurvePoint::from(3).as_ref()).into();
-            let public_key = RistrettoPublic::from(*CurvePoint::from(3).as_ref()).into();
+            let shared_secret = RistrettoPublic::from_random(&mut rng);
+            let target_key = RistrettoPublic::from_random(&mut rng).into();
+            let public_key = RistrettoPublic::from_random(&mut rng).into();
             let blinding = Scalar::from_bytes_mod_order([77u8; 32]);
             let amount = Amount::new(23u64, blinding, &shared_secret).unwrap();
             TxOut {

@@ -25,8 +25,7 @@ use transaction::{
     encrypted_fog_hint::EncryptedFogHint,
     range::Range,
     ring_signature::{
-        CurvePoint, CurveScalar, Error as RingSigError, KeyImage, RingMLSAG,
-        SignatureRctBulletproofs,
+        CurveScalar, Error as RingSigError, KeyImage, RingMLSAG, SignatureRctBulletproofs,
     },
     tx,
     tx::{TxOutMembershipElement, TxOutMembershipHash, TxOutMembershipProof},
@@ -75,25 +74,6 @@ impl Error for ConversionError {}
 impl fmt::Display for ConversionError {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "ConversionError")
-    }
-}
-
-/// Convert CurvePoint --> external::CurvePoint.
-impl From<&CurvePoint> for external::CurvePoint {
-    fn from(other: &CurvePoint) -> Self {
-        let mut point = external::CurvePoint::new();
-        point.set_data(other.to_bytes().to_vec());
-        point
-    }
-}
-
-/// Convert external::CurvePoint --> CurvePoint.
-impl TryFrom<&external::CurvePoint> for CurvePoint {
-    type Error = ConversionError;
-
-    fn try_from(source: &external::CurvePoint) -> Result<Self, Self::Error> {
-        let bytes: &[u8] = source.get_data();
-        CurvePoint::try_from(bytes).map_err(|_| ConversionError::ArrayCastError)
     }
 }
 
@@ -1170,7 +1150,7 @@ mod conversion_tests {
     #[test]
     // KeyImage --> external::KeyImage
     fn test_key_image_from() {
-        let source: KeyImage = KeyImage::from(7);
+        let source: KeyImage = KeyImage::from([17u8; 32]);
         let converted = external::KeyImage::from(&source);
         assert_eq!(converted.data, source.to_vec());
     }
@@ -1179,13 +1159,13 @@ mod conversion_tests {
     // external::keyImage --> KeyImage
     fn test_key_image_try_from() {
         let mut source = external::KeyImage::new();
-        source.set_data(KeyImage::from(11).to_vec());
+        source.set_data(KeyImage::from([11u8; 32]).to_vec());
 
         // try_from should succeed.
         let key_image = KeyImage::try_from(&source).unwrap();
 
         // key_image should have the correct value.
-        assert_eq!(key_image, KeyImage::from(11));
+        assert_eq!(key_image, KeyImage::from([11u8; 32]));
     }
 
     #[test]
