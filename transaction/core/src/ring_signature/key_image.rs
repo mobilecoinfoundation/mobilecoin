@@ -1,19 +1,16 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
+use super::Error;
+use crate::ring_signature::Scalar;
+use blake2::Blake2b;
 use core::{convert::TryFrom, fmt};
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use digestible::Digestible;
+use keys::{RistrettoPrivate, RistrettoPublic};
 use mcserial::{
     deduce_core_traits_from_public_bytes, prost_message_helper32, try_from_helper32, ReprBytes32,
 };
 use serde::{Deserialize, Serialize};
-
-use super::Error;
-use crate::ring_signature::Scalar;
-use blake2::Blake2b;
-use core::convert::TryInto;
-use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
-use keys::{RistrettoPrivate, RistrettoPublic};
 
 #[derive(Copy, Clone, Default, Eq, Serialize, Deserialize, Digestible)]
 /// The "image" of a private key `x`: I = x * Hp(x * G) = x * Hp(P).

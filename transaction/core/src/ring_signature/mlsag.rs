@@ -3,7 +3,7 @@
 extern crate alloc;
 
 use alloc::{vec, vec::Vec};
-use core::convert::{TryFrom, TryInto};
+use core::convert::TryFrom;
 
 use blake2::{Blake2b, Digest};
 use curve25519_dalek::ristretto::RistrettoPoint;

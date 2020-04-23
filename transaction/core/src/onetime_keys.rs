@@ -7,12 +7,10 @@
 
 #![allow(non_snake_case)]
 
-use crate::{account_keys::PublicAddress, ring_signature::KeyImage, view_key::ViewKey};
+use crate::{account_keys::PublicAddress, view_key::ViewKey};
 use blake2::{Blake2b, Digest};
 use curve25519_dalek::{
-    constants::RISTRETTO_BASEPOINT_POINT,
-    ristretto::{CompressedRistretto, RistrettoPoint},
-    scalar::Scalar,
+    constants::RISTRETTO_BASEPOINT_POINT, ristretto::RistrettoPoint, scalar::Scalar,
 };
 use keys::{RistrettoPrivate, RistrettoPublic};
 use mc_util_from_random::FromRandom;
