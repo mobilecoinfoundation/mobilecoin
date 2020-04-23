@@ -215,7 +215,7 @@ impl BlockchainConnection for ThickClient {
         self.attested_call(|this| this.blockchain_api_client.get_blocks(&request))?
             .get_blocks()
             .iter()
-            .map(|proto_block| BlockID::try_from(&proto_block.id[..]).map_err(Error::from))
+            .map(|proto_block| BlockID::try_from(proto_block.get_id()).map_err(Error::from))
             .collect::<Result<Vec<BlockID>>>()
     }
 

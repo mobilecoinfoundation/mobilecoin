@@ -5,6 +5,7 @@ use crate::{
 };
 use alloc::vec::Vec;
 use digestible::{Digest, Digestible};
+use prost::Message;
 use serde::{Deserialize, Serialize};
 
 /// Version identifier.
@@ -13,26 +14,32 @@ pub const BLOCK_VERSION: u32 = 0;
 /// The index of a block in the blockchain.
 pub type BlockIndex = u64;
 
-#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Digestible)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Digestible, Message)]
 /// A block of transactions in the blockchain.
 pub struct Block {
     /// Block ID.
+    #[prost(message, required, tag = "1")]
     pub id: BlockID,
 
     /// Block format version.
+    #[prost(uint32, tag = "2")]
     pub version: u32,
 
     /// Id of the previous block.
+    #[prost(message, required, tag = "3")]
     pub parent_id: BlockID,
 
     /// The index of this block in the blockchain.
+    #[prost(uint64, tag = "4")]
     pub index: BlockIndex,
 
     /// Root hash of the membership proofs provided by the untrusted local system for validation.
     /// This captures the state of all TxOuts in the ledger that this block was validated against.
+    #[prost(message, required, tag = "5")]
     pub root_element: TxOutMembershipElement,
 
     /// Hash of the block's contents.
+    #[prost(message, required, tag = "6")]
     pub contents_hash: BlockContentsHash,
 }
 

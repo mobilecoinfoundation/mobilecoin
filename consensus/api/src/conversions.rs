@@ -697,16 +697,53 @@ impl TryInto<TransactionValidationError> for ProposeTxResult {
     }
 }
 
+/// Convert transaction::BlockID --> blockchain::BlockID.
+impl From<&transaction::BlockID> for blockchain::BlockID {
+    fn from(src: &transaction::BlockID) -> Self {
+        let mut dst = blockchain::BlockID::new();
+        dst.set_data(src.as_ref().to_vec());
+        dst
+    }
+}
+
+/// Convert blockchain::BlockContentsHash --> transaction::BlockID.
+impl TryFrom<&blockchain::BlockID> for transaction::BlockID {
+    type Error = ConversionError;
+
+    fn try_from(src: &blockchain::BlockID) -> Result<Self, Self::Error> {
+        transaction::BlockID::try_from(src.get_data()).map_err(|_| ConversionError::ArrayCastError)
+    }
+}
+
+/// Convert transaction::BlockContentsHash --> blockchain::BlockContentsHash.
+impl From<&transaction::BlockContentsHash> for blockchain::BlockContentsHash {
+    fn from(src: &transaction::BlockContentsHash) -> Self {
+        let mut dst = blockchain::BlockContentsHash::new();
+        dst.set_data(src.as_ref().to_vec());
+        dst
+    }
+}
+
+/// Convert blockchain::BlockContentsHash --> transaction::BlockContentsHash.
+impl TryFrom<&blockchain::BlockContentsHash> for transaction::BlockContentsHash {
+    type Error = ConversionError;
+
+    fn try_from(src: &blockchain::BlockContentsHash) -> Result<Self, Self::Error> {
+        transaction::BlockContentsHash::try_from(src.get_data())
+            .map_err(|_| ConversionError::ArrayCastError)
+    }
+}
+
 /// Convert transaction::Block --> blockchain::Block.
 impl From<&transaction::Block> for blockchain::Block {
     fn from(other: &transaction::Block) -> Self {
         let mut block = blockchain::Block::new();
-        block.set_id(other.id.as_ref().to_vec());
+        block.set_id(blockchain::BlockID::from(&other.id));
         block.set_version(other.version);
-        block.set_parent_id(other.parent_id.as_ref().to_vec());
+        block.set_parent_id(blockchain::BlockID::from(&other.parent_id));
         block.set_index(other.index);
         block.set_root_element((&other.root_element).into());
-        block.set_contents_hash(other.contents_hash.as_ref().to_vec());
+        block.set_contents_hash(blockchain::BlockContentsHash::from(&other.contents_hash));
         block
     }
 }
@@ -716,11 +753,10 @@ impl TryFrom<&blockchain::Block> for transaction::Block {
     type Error = ConversionError;
 
     fn try_from(value: &blockchain::Block) -> Result<Self, Self::Error> {
-        let block_id = transaction::BlockID::try_from(value.id.as_slice())?;
-        let parent_id = transaction::BlockID::try_from(value.parent_id.as_slice())?;
+        let block_id = transaction::BlockID::try_from(value.get_id())?;
+        let parent_id = transaction::BlockID::try_from(value.get_parent_id())?;
         let root_element = TxOutMembershipElement::try_from(value.get_root_element())?;
-        let contents_hash =
-            transaction::BlockContentsHash::try_from(value.contents_hash.as_slice())?;
+        let contents_hash = transaction::BlockContentsHash::try_from(value.get_contents_hash())?;
 
         let block = transaction::Block {
             id: block_id,
@@ -809,6 +845,7 @@ mod conversion_tests {
     use self::rand::{rngs::StdRng, SeedableRng};
     use super::*;
     use mc_util_from_random::FromRandom;
+    use protobuf::Message;
     use transaction::{
         account_keys::{AccountKey, PublicAddress},
         onetime_keys::recover_onetime_private_key,
@@ -819,84 +856,44 @@ mod conversion_tests {
     #[test]
     // Unmarshalling too many bytes into a BlockID should produce an error.
     fn test_from_blockchain_block_id_error() {
-        let mut source = blockchain::Block::new(); // Cannot convert 37 bytes to a BlockID.
-        source.set_id([1u8; 37].to_vec());
-        source.set_version(1u32);
-        source.set_parent_id([1u8; 32].to_vec());
-        source.set_index(1);
-        source.set_contents_hash([1u8; 32].to_vec());
+        // Cannot convert 37 bytes to a BlockID.
+        let mut bad_block_id = blockchain::BlockID::new();
+        bad_block_id.set_data(vec![1u8; 37]);
 
-        let converted = transaction::Block::try_from(&source);
+        let converted = transaction::BlockID::try_from(&bad_block_id);
         assert!(converted.is_err());
     }
 
     #[test]
     // Unmarshalling too few bytes into a BlockID should produce an error.
     fn test_from_blockchain_block_id_error_two() {
-        let mut source = blockchain::Block::new();
-        source.set_id([1u8; 11].to_vec()); // Cannot convert 11 bytes to a BlockID.
-        source.set_version(1u32);
-        source.set_parent_id([1u8; 32].to_vec());
-        source.set_index(1);
-        source.set_contents_hash([1u8; 32].to_vec());
+        // Cannot convert 11 bytes to a BlockID.
+        let mut bad_block_id = blockchain::BlockID::new();
+        bad_block_id.set_data(vec![1u8; 11]);
 
-        let converted = transaction::Block::try_from(&source);
-        assert!(converted.is_err());
-    }
-
-    #[test]
-    // Unmarshalling too many bytes into a BlockID should produce an error.
-    fn test_from_blockchain_block_parent_id_error() {
-        let mut source = blockchain::Block::new();
-        source.set_id([1u8; 32].to_vec());
-        source.set_version(1u32);
-        source.set_parent_id([1u8; 37].to_vec()); // Cannot convert 37 bytes to a BlockID.
-        source.set_index(1);
-        source.set_contents_hash([1u8; 32].to_vec());
-
-        let converted = transaction::Block::try_from(&source);
-        assert!(converted.is_err());
-    }
-
-    #[test]
-    // Unmarshalling too few bytes into a BlockID should produce an error.
-    fn test_from_blockchain_block_parent_id_error_two() {
-        let mut source = blockchain::Block::new();
-        source.set_id([1u8; 32].to_vec());
-        source.set_version(1u32);
-        source.set_parent_id([1u8; 11].to_vec()); // Cannot convert 11 bytes to a BlockID.
-        source.set_index(1);
-        source.set_contents_hash([1u8; 32].to_vec());
-
-        let converted = transaction::Block::try_from(&source);
+        let converted = transaction::BlockID::try_from(&bad_block_id);
         assert!(converted.is_err());
     }
 
     #[test]
     // Unmarshalling too many bytes into a BlockContentsHash should produce an error.
     fn test_from_blockchain_block_contents_hash_error() {
-        let mut source = blockchain::Block::new();
-        source.set_id([1u8; 32].to_vec());
-        source.set_version(1u32);
-        source.set_parent_id([1u8; 32].to_vec());
-        source.set_index(1);
-        source.set_contents_hash([1u8; 37].to_vec()); // Cannot convert 37 bytes to a BlockContentsHash.
+        // Cannot convert 37 bytes to a BlockContentsHash.
+        let mut bad_block_contents_hash = blockchain::BlockContentsHash::new();
+        bad_block_contents_hash.set_data(vec![1u8; 37]);
 
-        let converted = transaction::Block::try_from(&source);
+        let converted = transaction::BlockContentsHash::try_from(&bad_block_contents_hash);
         assert!(converted.is_err());
     }
 
     #[test]
     // Unmarshalling too few bytes into a BlockContentsHash should produce an error.
     fn test_from_blockchain_block_contents_hash_error_two() {
-        let mut source = blockchain::Block::new();
-        source.set_id([1u8; 32].to_vec());
-        source.set_version(1u32);
-        source.set_parent_id([1u8; 32].to_vec());
-        source.set_index(1);
-        source.set_contents_hash([1u8; 11].to_vec()); // Cannot convert 11 bytes to a BlockID.
+        // Cannot convert 11 bytes to a BlockContentsHash.
+        let mut bad_block_contents_hash = blockchain::BlockContentsHash::new();
+        bad_block_contents_hash.set_data(vec![1u8; 11]);
 
-        let converted = transaction::Block::try_from(&source);
+        let converted = transaction::BlockContentsHash::try_from(&bad_block_contents_hash);
         assert!(converted.is_err());
     }
 
@@ -912,7 +909,7 @@ mod conversion_tests {
     // blockchain::TxHash --> tx::TxHash
     fn test_tx_hash_try_from() {
         let mut source = external::TxHash::new();
-        source.set_hash([7u8; 32].to_vec());
+        source.set_hash(vec![7u8; 32]);
         let converted = tx::TxHash::try_from(&source).unwrap();
         assert_eq!(converted.0, [7u8; 32]);
     }
@@ -921,7 +918,7 @@ mod conversion_tests {
     // Unmarshalling too many bytes into a TxHash should produce an error.
     fn test_tx_hash_try_from_too_many_bytes() {
         let mut source = external::TxHash::new();
-        source.set_hash([7u8; 99].to_vec()); // Too many bytes.
+        source.set_hash(vec![7u8; 99]); // Too many bytes.
         assert!(tx::TxHash::try_from(&source).is_err());
     }
 
@@ -929,7 +926,7 @@ mod conversion_tests {
     // Unmarshalling too few bytes into a TxHash should produce an error.
     fn test_tx_hash_try_from_too_few_bytes() {
         let mut source = external::TxHash::new();
-        source.set_hash([7u8; 3].to_vec()); // Too few bytes.
+        source.set_hash(vec![7u8; 3]); // Too few bytes.
         assert!(tx::TxHash::try_from(&source).is_err());
     }
 
@@ -949,14 +946,14 @@ mod conversion_tests {
         };
 
         let block = blockchain::Block::from(&source_block);
-        assert_eq!(block.get_id(), [2u8; 32]);
+        assert_eq!(block.get_id().get_data(), [2u8; 32]);
         assert_eq!(block.get_version(), 1);
-        assert_eq!(block.get_parent_id(), [1u8; 32]);
+        assert_eq!(block.get_parent_id().get_data(), [1u8; 32]);
         assert_eq!(block.get_index(), 99);
         assert_eq!(block.get_root_element().get_range().get_from(), 10);
         assert_eq!(block.get_root_element().get_range().get_to(), 20);
         assert_eq!(block.get_root_element().get_hash().get_data(), &[12u8; 32]);
-        assert_eq!(block.get_contents_hash(), [66u8; 32]);
+        assert_eq!(block.get_contents_hash().get_data(), [66u8; 32]);
     }
 
     #[test]
@@ -965,15 +962,24 @@ mod conversion_tests {
         let mut root_element = external::TxOutMembershipElement::new();
         root_element.mut_range().set_from(10);
         root_element.mut_range().set_to(20);
-        root_element.mut_hash().set_data([13u8; 32].to_vec());
+        root_element.mut_hash().set_data(vec![13u8; 32]);
+
+        let mut block_id = blockchain::BlockID::new();
+        block_id.set_data(vec![10u8; 32]);
+
+        let mut parent_block_id = blockchain::BlockID::new();
+        parent_block_id.set_data(vec![9u8; 32]);
+
+        let mut contents_hash = blockchain::BlockContentsHash::new();
+        contents_hash.set_data(vec![66u8; 32]);
 
         let mut source_block = blockchain::Block::new();
-        source_block.set_id([10u8; 32].to_vec());
+        source_block.set_id(block_id);
         source_block.set_version(1u32);
-        source_block.set_parent_id([9u8; 32].to_vec());
+        source_block.set_parent_id(parent_block_id);
         source_block.set_index(2);
         source_block.set_root_element(root_element);
-        source_block.set_contents_hash([66u8; 32].to_vec());
+        source_block.set_contents_hash(contents_hash);
 
         let block = transaction::Block::try_from(&source_block).unwrap();
         assert_eq!(block.id.as_ref(), [10u8; 32]);
@@ -984,6 +990,43 @@ mod conversion_tests {
         assert_eq!(block.root_element.range.to, 20);
         assert_eq!(block.root_element.hash.as_ref(), &[13u8; 32]);
         assert_eq!(block.contents_hash.as_ref(), [66u8; 32]);
+    }
+
+    #[test]
+    // the blockchain::Block definition matches the Block prost attributes.
+    // This ensures the definition in the .proto files matches the prost attributes inside the
+    // Block struct.
+    fn test_blockchain_block_matches_prost() {
+        let source_block = transaction::Block {
+            id: transaction::BlockID::try_from(&[2u8; 32][..]).unwrap(),
+            version: 1,
+            parent_id: transaction::BlockID::try_from(&[1u8; 32][..]).unwrap(),
+            index: 99,
+            root_element: TxOutMembershipElement {
+                range: Range::new(10, 20).unwrap(),
+                hash: TxOutMembershipHash::from([12u8; 32]),
+            },
+            contents_hash: transaction::BlockContentsHash::try_from(&[66u8; 32][..]).unwrap(),
+        };
+
+        // Encode using `protobuf`, decode using `prost`.
+        {
+            let blockchain_block = blockchain::Block::from(&source_block);
+            let blockchain_block_bytes = blockchain_block.write_to_bytes().unwrap();
+
+            let block_from_prost: transaction::Block =
+                mcserial::decode(&blockchain_block_bytes).expect("failed decoding");
+            assert_eq!(source_block, block_from_prost);
+        }
+
+        // Encode using `prost`, decode using `protobuf`.
+        {
+            let prost_block_bytes = mcserial::encode(&source_block);
+            let blockchain_block: blockchain::Block =
+                protobuf::parse_from_bytes(&prost_block_bytes).expect("failed decoding");
+
+            assert_eq!(blockchain_block, blockchain::Block::from(&source_block));
+        }
     }
 
     #[test]
@@ -1146,6 +1189,21 @@ mod conversion_tests {
         {
             let external_tx: external::Tx = external::Tx::from(&tx);
             let recovered_tx: Tx = Tx::try_from(&external_tx).unwrap();
+            assert_eq!(tx, recovered_tx);
+        }
+
+        // Encoding with prost, decoding with protobuf should be the identity function.
+        {
+            let bytes = mcserial::encode(&tx);
+            let recovered_tx: external::Tx = protobuf::parse_from_bytes(&bytes).unwrap();
+            assert_eq!(recovered_tx, external::Tx::from(&tx));
+        }
+
+        // Encoding with protobuf, decoding with prost should be the identity function.
+        {
+            let external_tx: external::Tx = external::Tx::from(&tx);
+            let bytes = external_tx.write_to_bytes().unwrap();
+            let recovered_tx: Tx = mcserial::decode(&bytes).unwrap();
             assert_eq!(tx, recovered_tx);
         }
     }

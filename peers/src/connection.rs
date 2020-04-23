@@ -205,7 +205,7 @@ impl<Enclave: ConsensusEnclaveProxy> BlockchainConnection for PeerConnection<Enc
             .get_blocks()
             .iter()
             .map(|proto_block| {
-                BlockID::try_from(&proto_block.id[..]).map_err(ConnectionError::from)
+                BlockID::try_from(proto_block.get_id()).map_err(ConnectionError::from)
             })
             .collect::<ConnectionResult<Vec<BlockID>>>()
     }
