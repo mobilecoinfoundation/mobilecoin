@@ -32,7 +32,6 @@ use serde::{Deserialize, Serialize};
 use crate::{
     commitment::Commitment,
     compressed_commitment::CompressedCommitment,
-    onetime_keys::compute_key_image,
     range_proofs::{check_range_proofs, generate_range_proofs},
     ring_signature::{mlsag::RingMLSAG, CurveScalar, Error, KeyImage, Scalar, GENERATORS},
 };

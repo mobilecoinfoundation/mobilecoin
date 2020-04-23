@@ -10,11 +10,13 @@ use serde::{Deserialize, Serialize};
 
 use super::Error;
 use crate::ring_signature::Scalar;
+use blake2::Blake2b;
 use core::convert::TryInto;
 use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
+use keys::{RistrettoPrivate, RistrettoPublic};
 
 #[derive(Copy, Clone, Default, Eq, Serialize, Deserialize, Digestible)]
-/// The "image" of a private key `x`: I = x * H(x * G) = x * H(P).
+/// The "image" of a private key `x`: I = x * Hp(x * G) = x * Hp(P).
 pub struct KeyImage(pub(crate) CompressedRistretto);
 
 impl KeyImage {
@@ -26,6 +28,15 @@ impl KeyImage {
     /// Copies `self` into a new Vec.
     pub fn to_vec(&self) -> alloc::vec::Vec<u8> {
         self.0.as_bytes().to_vec()
+    }
+}
+
+impl From<&RistrettoPrivate> for KeyImage {
+    fn from(x: &RistrettoPrivate) -> Self {
+        let P = RistrettoPublic::from(x);
+        let Hp = RistrettoPoint::hash_from_bytes::<Blake2b>(&P.to_bytes());
+        let point = x.as_ref() * Hp;
+        KeyImage(point.compress())
     }
 }
 
@@ -51,8 +62,13 @@ impl ReprBytes32 for KeyImage {
     }
 }
 
+// Implements prost::Message. Requires Debug and ReprBytes32.
 prost_message_helper32! { KeyImage }
+
+// Implements try_from<&[u8;32]> and try_from<&[u8]>. Requires ReprBytes32.
 try_from_helper32! { KeyImage }
+
+// Implements Ord, PartialOrd, PartialEq, Hash. Requires AsRef<[u8;32]>.
 deduce_core_traits_from_public_bytes! { KeyImage }
 
 impl From<[u8; 32]> for KeyImage {

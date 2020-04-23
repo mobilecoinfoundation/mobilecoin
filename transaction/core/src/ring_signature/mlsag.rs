@@ -23,7 +23,6 @@ use serde::{Deserialize, Serialize};
 use crate::{
     commitment::Commitment,
     compressed_commitment::CompressedCommitment,
-    onetime_keys::compute_key_image,
     ring_signature::{CurveScalar, Error, KeyImage, Scalar, GENERATORS},
 };
 
@@ -121,7 +120,7 @@ impl RingMLSAG {
         let G = GENERATORS.B;
         let H = GENERATORS.B_blinding;
 
-        let key_image = compute_key_image(onetime_private_key);
+        let key_image = KeyImage::from(onetime_private_key);
 
         // The uncompressed key_image.
         let I: RistrettoPoint = key_image.try_into().expect("key_image should decompress");
@@ -330,9 +329,8 @@ fn decompress_ring(
 #[cfg(test)]
 mod mlsag_tests {
     use crate::{
-        onetime_keys::compute_key_image,
         proptest_fixtures::*,
-        ring_signature::{mlsag::RingMLSAG, CurveScalar, Error, Scalar, GENERATORS},
+        ring_signature::{mlsag::RingMLSAG, CurveScalar, Error, KeyImage, Scalar, GENERATORS},
         CompressedCommitment,
     };
     use alloc::vec::Vec;
@@ -458,7 +456,7 @@ mod mlsag_tests {
             )
             .unwrap();
 
-            let expected_key_image = compute_key_image(&params.onetime_private_key);
+            let expected_key_image = KeyImage::from(&params.onetime_private_key);
             assert_eq!(signature.key_image, expected_key_image);
         }
 
@@ -670,7 +668,7 @@ mod mlsag_tests {
             .unwrap();
 
             // Modify the key image.
-            let wrong_key_image = compute_key_image(&RistrettoPrivate::from_random(&mut rng));
+            let wrong_key_image = KeyImage::from(rng.next_u64());
             signature.key_image = wrong_key_image;
 
             let output_commitment = CompressedCommitment::new(params.value, params.pseudo_output_blinding);

@@ -121,27 +121,6 @@ pub fn recover_onetime_private_key(
     RistrettoPrivate::from(x)
 }
 
-/// Computes the (compressed) Key Image `I = x*Hp(x*G)` for a private key `x`.
-///
-/// # Arguments
-/// * `private_key` - A private key `x`.
-pub fn compute_key_image(private_key: &RistrettoPrivate) -> KeyImage {
-    let uncompressed_key_image = compute_key_image_uncompressed(private_key);
-    KeyImage::from(uncompressed_key_image)
-}
-
-/// Computes the (uncompressed) Key Image `I = x*Hp(x*G)` for a private key `x`.
-///
-/// # Arguments
-/// * `private_key` - A private key `x`.
-pub fn compute_key_image_uncompressed(private_key: &RistrettoPrivate) -> RistrettoPoint {
-    let x = private_key.as_ref();
-    // The compressed encoding is canonical.
-    let P: CompressedRistretto = RistrettoPublic::from(private_key).as_ref().compress();
-    let Hp = RistrettoPoint::hash_from_bytes::<Blake2b>(P.as_bytes());
-    x * Hp
-}
-
 /// Computes the shared secret `aB` from a private key `a` and a public key `B`.
 ///
 /// # Arguments
