@@ -1059,7 +1059,7 @@ mod test {
         account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX},
         constants::{BASE_FEE, MAX_INPUTS, RING_SIZE},
         get_tx_out_shared_secret,
-        onetime_keys::{compute_key_image, recover_onetime_private_key},
+        onetime_keys::recover_onetime_private_key,
         tx::{Tx, TxOut},
         Block, BlockContents, BlockIndex, BLOCK_VERSION,
     };
@@ -1331,7 +1331,7 @@ mod test {
                     account_key.view_private_key(),
                     &account_key.subaddress_spend_key(0),
                 );
-                let key_image = compute_key_image(&onetime_private_key);
+                let key_image = KeyImage::from(&onetime_private_key);
 
                 // Craft the expected UnspentTxOut
                 UnspentTxOut {

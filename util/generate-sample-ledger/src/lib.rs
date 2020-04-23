@@ -1,10 +1,9 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-use curve25519_dalek::ristretto::RistrettoPoint;
 use keys::RistrettoPrivate;
 use ledger_db::{Ledger, LedgerDB};
 use mc_util_from_random::FromRandom;
-use rand::SeedableRng;
+use rand::{RngCore, SeedableRng};
 use rand_hc::Hc128Rng as FixedRng;
 use std::{path::PathBuf, vec::Vec};
 use transaction::{
@@ -61,7 +60,7 @@ pub fn bootstrap_ledger(
         }
 
         let key_images: Vec<KeyImage> = (0..key_images_per_block)
-            .map(|_i| KeyImage::from(RistrettoPoint::random(&mut rng)))
+            .map(|_i| KeyImage::from(rng.next_u64()))
             .collect();
 
         let block_contents = BlockContents::new(key_images, outputs.clone());

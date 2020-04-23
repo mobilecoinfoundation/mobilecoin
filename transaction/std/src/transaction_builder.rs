@@ -243,6 +243,7 @@ pub mod transaction_builder_tests {
         account_keys::{AccountKey, DEFAULT_SUBADDRESS_INDEX},
         get_tx_out_shared_secret,
         onetime_keys::*,
+        ring_signature::KeyImage,
         tx::TxOutMembershipProof,
         validation::validate_transaction_signature,
     };
@@ -298,7 +299,7 @@ pub mod transaction_builder_tests {
             &alice.subaddress_spend_key(DEFAULT_SUBADDRESS_INDEX),
         );
 
-        let key_image = compute_key_image(&onetime_private_key);
+        let key_image = KeyImage::from(&onetime_private_key);
 
         let membership_proofs: Vec<TxOutMembershipProof> = ring
             .iter()

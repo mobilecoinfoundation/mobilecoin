@@ -417,7 +417,6 @@ pub fn key_bytes_to_u64(bytes: &[u8]) -> u64 {
 mod ledger_db_test {
     use super::*;
     use core::convert::TryFrom;
-    use curve25519_dalek::ristretto::RistrettoPoint;
     use keys::RistrettoPrivate;
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
@@ -567,9 +566,7 @@ mod ledger_db_test {
             })
             .collect();
 
-        let key_images: Vec<KeyImage> = (0..5)
-            .map(|_i| KeyImage::from(RistrettoPoint::random(&mut rng)))
-            .collect();
+        let key_images: Vec<KeyImage> = (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
 
         let block_contents = BlockContents::new(key_images.clone(), outputs);
         let block = Block::new(
@@ -682,7 +679,7 @@ mod ledger_db_test {
         let account_key = AccountKey::random(&mut rng);
         let num_key_images = 3;
         let key_images: Vec<KeyImage> = (0..num_key_images)
-            .map(|_i| KeyImage::from(RistrettoPoint::random(&mut rng)))
+            .map(|_i| KeyImage::from(rng.next_u64()))
             .collect();
 
         let tx_out = TxOut::new(
@@ -728,7 +725,7 @@ mod ledger_db_test {
         let account_key = AccountKey::random(&mut rng);
         let num_key_images = 3;
         let key_images: Vec<KeyImage> = (0..num_key_images)
-            .map(|_i| KeyImage::from(RistrettoPoint::random(&mut rng)))
+            .map(|_i| KeyImage::from(rng.next_u64()))
             .collect();
 
         let tx_out = TxOut::new(
@@ -776,7 +773,7 @@ mod ledger_db_test {
         // Write the next block, containing several key images but no outputs.
         let num_key_images = 3;
         let key_images: Vec<KeyImage> = (0..num_key_images)
-            .map(|_i| KeyImage::from(RistrettoPoint::random(&mut rng)))
+            .map(|_i| KeyImage::from(rng.next_u64()))
             .collect();
 
         let outputs = Vec::new();
@@ -833,7 +830,7 @@ mod ledger_db_test {
         let blocks = populate_db(&mut ledger_db, n_blocks, 2);
         assert_eq!(ledger_db.num_blocks().unwrap(), n_blocks);
 
-        let key_images = vec![KeyImage::from(RistrettoPoint::random(&mut rng))];
+        let key_images = vec![KeyImage::from(rng.next_u64())];
 
         let tx_out = TxOut::new(
             100,
@@ -887,7 +884,7 @@ mod ledger_db_test {
         let account_key = AccountKey::random(&mut rng);
         let num_key_images = 3;
         let block_one_key_images: Vec<KeyImage> = (0..num_key_images)
-            .map(|_i| KeyImage::from(RistrettoPoint::random(&mut rng)))
+            .map(|_i| KeyImage::from(rng.next_u64()))
             .collect();
 
         let block_one_contents = {
@@ -988,7 +985,7 @@ mod ledger_db_test {
             )
             .unwrap();
 
-            let key_images = vec![KeyImage::from(RistrettoPoint::random(&mut rng))];
+            let key_images = vec![KeyImage::from(rng.next_u64())];
             let block_contents = BlockContents::new(key_images, vec![tx_out]);
 
             let bytes = [14u8; 32];
