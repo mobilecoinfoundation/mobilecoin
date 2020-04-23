@@ -16,33 +16,68 @@ use mcserial::serialize;
 mod errors;
 use crate::blake2b_256::Blake2b256;
 use core::convert::TryInto;
+use digestible::Digestible;
 pub use errors::Error as MembershipProofError;
 
-/// Merkle tree hash function for leaf nodes.
-pub fn leaf_hash_fn(bytes: &[u8]) -> [u8; 32] {
-    const LEAF_PREFIX: u8 = 0x00;
-    hash_with_prefix(&[LEAF_PREFIX], bytes)
+// Hash function Ddomain separators.
+const TXOUT_MERKLE_LEAF: &str = "mc_txout_merkle_leaf";
+const TXOUT_MERKLE_NODE: &str = "mc_txout_merkle_node";
+const TXOUT_MERKLE_NIL: &str = "mc_txout_merkle_nil";
+
+lazy_static! {
+    pub static ref NIL_HASH: [u8; 32] = hash_nil();
 }
 
-// Merkle tree Hash function for internal nodes.
-pub fn internal_hash_fn(bytes: &[u8]) -> [u8; 32] {
-    const NODE_PREFIX: u8 = 0x01;
-    hash_with_prefix(&[NODE_PREFIX], bytes)
-}
-
-// Merkle tree Hash function for hashing a "nil" value.
-pub fn nil_hash_fn() -> [u8; 32] {
-    const NIL_PREFIX: u8 = 0x02;
-    hash_with_prefix(&[NIL_PREFIX], &[])
-}
-
-/// Hash(prefix_bytes | data_bytes)
-fn hash_with_prefix(prefix_bytes: &[u8], data_bytes: &[u8]) -> [u8; 32] {
+#[allow(unused)]
+/// Merkle tree hash function for a leaf node.
+pub fn hash_leaf(tx_out: &TxOut) -> [u8; 32] {
     let mut hasher = Blake2b256::new();
-    hasher.input(prefix_bytes);
-    hasher.input(data_bytes);
+    hasher.input(&TXOUT_MERKLE_LEAF);
+    tx_out.digest(&mut hasher);
     hasher.result().try_into().unwrap()
 }
+
+#[allow(unused)]
+/// Merkle tree hash function for leaf nodes.
+pub fn hash_nodes(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
+    let mut hasher = Blake2b256::new();
+    hasher.input(&TXOUT_MERKLE_NODE);
+    hasher.input(left);
+    hasher.input(right);
+    hasher.result().try_into().unwrap()
+}
+
+#[allow(unused)]
+/// Merkle tree Hash function for hashing a "nil" value.
+fn hash_nil() -> [u8; 32] {
+    let mut hasher = Blake2b256::new();
+    hasher.input(&TXOUT_MERKLE_NIL);
+    hasher.result().try_into().unwrap()
+}
+
+// /// Merkle tree hash function for leaf nodes.
+// pub fn leaf_hash_fn(bytes: &[u8]) -> [u8; 32] {
+//     hash_with_prefix(&[LEAF_PREFIX], bytes)
+// }
+//
+// /// Merkle tree Hash function for internal nodes.
+// pub fn internal_hash_fn(bytes: &[u8]) -> [u8; 32] {
+//     hash_with_prefix(&[NODE_PREFIX], bytes)
+// }
+//
+// /// Merkle tree Hash function for hashing a "nil" value.
+// pub fn nil_hash_fn() -> [u8; 32] {
+//     const NIL_PREFIX: u8 = 0x02;
+//     hash_with_prefix(&[NIL_PREFIX], &[])
+// }
+//
+// /// Hash(prefix_bytes | data_bytes)
+// fn hash_with_prefix(prefix_bytes: &[u8], data_bytes: &[u8]) -> [u8; 32] {
+//     let mut hasher = Blake2b256::new();
+//     hasher.input(prefix_bytes);
+//     hasher.input(data_bytes);
+//     hasher.result().try_into().unwrap()
+// }
 
 /// Validates a proof-of-membership.
 ///
@@ -74,9 +109,7 @@ pub fn is_membership_proof_valid(
         .collect();
 
     if let Some(leaf_hash) = range_to_hash.get(&leaf) {
-        let tx_out_bytes: Vec<u8> = serialize(tx_out)?;
-        let expected_leaf_hash = leaf_hash_fn(&tx_out_bytes);
-        if *leaf_hash != expected_leaf_hash {
+        if *leaf_hash != hash_leaf(tx_out) {
             // Proof contains incorrect leaf hash.
             return Err(Error::IncorrectLeafHash(leaf.from));
         }
@@ -138,16 +171,17 @@ pub fn is_membership_proof_valid(
                 }
             };
 
-            let left_slice: &[u8] = left_child_hash;
-            let right_slice: &[u8] = right_child_hash;
-
-            // A no_std implementation of concat:
-            let mut concatenated_slices: Vec<u8> =
-                Vec::with_capacity(left_slice.len() + right_slice.len());
-            concatenated_slices.extend_from_slice(left_slice);
-            concatenated_slices.extend_from_slice(right_slice);
-
-            let expected_hash = internal_hash_fn(&concatenated_slices);
+            // let left_slice: &[u8] = left_child_hash;
+            // let right_slice: &[u8] = right_child_hash;
+            //
+            // // A no_std implementation of concat:
+            // let mut concatenated_slices: Vec<u8> =
+            //     Vec::with_capacity(left_slice.len() + right_slice.len());
+            // concatenated_slices.extend_from_slice(left_slice);
+            // concatenated_slices.extend_from_slice(right_slice);
+            //
+            // let expected_hash = internal_hash_fn(&concatenated_slices);
+            let expected_hash = hash_nodes(left_child_hash, right_child_hash);
             if *hash != expected_hash {
                 // Proof contains an incorrect hash value.
                 return Ok(false);
@@ -198,7 +232,7 @@ pub fn derive_proof_at_index(
 
         let hash = if element.range.from > index {
             // This range exceeds `index`.
-            TxOutMembershipHash::from(nil_hash_fn())
+            TxOutMembershipHash::from(hash_nil())
         } else if element.range.from == element.range.to {
             // A leaf. Re-use the hash supplied by the input proof.
             element.hash.clone()
@@ -227,16 +261,17 @@ pub fn derive_proof_at_index(
             };
 
             // This node.
-            let left_slice: &[u8] = &left_child_hash;
-            let right_slice: &[u8] = &right_child_hash;
-            // let concatenated_slices: &[u8] = &[left_slice, right_slice].concat();
-            // A no_std implementation of concat:
-            let mut concatenated_slices: Vec<u8> =
-                Vec::with_capacity(left_slice.len() + right_slice.len());
-            concatenated_slices.extend_from_slice(left_slice);
-            concatenated_slices.extend_from_slice(right_slice);
-
-            TxOutMembershipHash::from(internal_hash_fn(&concatenated_slices))
+            // let left_slice: &[u8] = &left_child_hash;
+            // let right_slice: &[u8] = &right_child_hash;
+            // // let concatenated_slices: &[u8] = &[left_slice, right_slice].concat();
+            // // A no_std implementation of concat:
+            // let mut concatenated_slices: Vec<u8> =
+            //     Vec::with_capacity(left_slice.len() + right_slice.len());
+            // concatenated_slices.extend_from_slice(left_slice);
+            // concatenated_slices.extend_from_slice(right_slice);
+            //
+            // TxOutMembershipHash::from(internal_hash_fn(&concatenated_slices))
+            TxOutMembershipHash::from(hash_nodes(&left_child_hash, &right_child_hash))
         };
         derived_elements.insert(element.range.clone(), *hash.as_ref());
     }
