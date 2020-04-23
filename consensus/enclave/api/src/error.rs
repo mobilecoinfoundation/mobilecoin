@@ -47,9 +47,9 @@ pub enum Error {
     #[fail(display = "Invalid membership proof provided by local system")]
     InvalidLocalMembershipProof,
 
-    /// Error redacting transactions (not expected to happen if untrusted plays by the rules).
-    #[fail(display = "Redact txs error: {}", _0)]
-    RedactTxs(String),
+    /// Error forming block (not expected to happen if untrusted plays by the rules).
+    #[fail(display = "Form block error: {}", _0)]
+    FormBlock(String),
 
     /// Signature error
     #[fail(display = "Signature error")]

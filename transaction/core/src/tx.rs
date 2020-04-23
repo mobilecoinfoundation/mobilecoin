@@ -24,7 +24,7 @@ use crate::{
     onetime_keys::{compute_shared_secret, compute_tx_pubkey, create_onetime_public_key},
     range::Range,
     ring_signature::{KeyImage, SignatureRctBulletproofs, GENERATORS},
-    CompressedCommitment, RedactedTx,
+    CompressedCommitment,
 };
 
 /// Transaction hash length, in bytes.
@@ -133,13 +133,6 @@ impl Tx {
     /// Get the highest index of each membership proof referenced by the transaction.
     pub fn get_membership_proof_highest_indices(&self) -> Vec<u64> {
         self.prefix.get_membership_proof_highest_indices()
-    }
-
-    /// Redacts all sensitive information.
-    pub fn redact(self) -> RedactedTx {
-        let key_images: Vec<KeyImage> = self.signature.key_images();
-        let outputs = self.prefix.outputs;
-        RedactedTx::new(outputs, key_images)
     }
 }
 

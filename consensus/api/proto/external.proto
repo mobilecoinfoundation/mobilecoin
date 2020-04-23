@@ -141,14 +141,3 @@ message TxHash {
     // Hash of a single transaction.
     bytes hash = 1;
 }
-
-// A redacted transaction.
-message RedactedTx {
-    uint32 version = 1;
-
-    // Outputs created by this transaction.
-    repeated TxOut outputs = 2;
-
-    // Key images "spent" by this transaction.
-    repeated KeyImage key_images = 3;
-}

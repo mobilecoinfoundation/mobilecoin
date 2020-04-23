@@ -30,7 +30,7 @@ use transaction::{
     tx,
     tx::{TxOutMembershipElement, TxOutMembershipHash, TxOutMembershipProof},
     validation::TransactionValidationError,
-    BlockContents, BlockSignature, CompressedCommitment, RedactedTx,
+    BlockContents, BlockSignature, CompressedCommitment,
 };
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
@@ -248,50 +248,6 @@ impl TryFrom<&external::KeyImage> for KeyImage {
     fn try_from(source: &external::KeyImage) -> Result<Self, Self::Error> {
         let bytes: &[u8] = source.get_data();
         Ok(KeyImage::try_from(bytes)?)
-    }
-}
-
-/// Convert RedactedTx -->  external::RedactedTx.
-impl From<&RedactedTx> for external::RedactedTx {
-    fn from(redacted_tx: &RedactedTx) -> Self {
-        let mut transaction = external::RedactedTx::new();
-        //transaction.set_version(tx_stored.version as u32);
-        let tx_outs: Vec<external::TxOut> = redacted_tx
-            .outputs
-            .iter()
-            .map(external::TxOut::from)
-            .collect();
-        transaction.set_outputs(RepeatedField::from_vec(tx_outs));
-
-        let key_images: Vec<external::KeyImage> = redacted_tx
-            .key_images
-            .iter()
-            .map(external::KeyImage::from)
-            .collect();
-        transaction.set_key_images(RepeatedField::from_vec(key_images));
-        transaction
-    }
-}
-
-/// Convert  external::RedactedTx --> transaction::RedactedTx
-impl TryFrom<&external::RedactedTx> for RedactedTx {
-    type Error = ConversionError;
-
-    fn try_from(source: &external::RedactedTx) -> Result<Self, Self::Error> {
-        let mut outputs: Vec<tx::TxOut> = Vec::new();
-        for source_output in source.get_outputs() {
-            let tx_out = tx::TxOut::try_from(source_output)?;
-            outputs.push(tx_out);
-        }
-
-        let mut key_images: Vec<KeyImage> = Vec::with_capacity(source.get_key_images().len());
-        for source_key_image in source.get_key_images() {
-            let key_image = KeyImage::try_from(source_key_image)?;
-            key_images.push(key_image);
-        }
-
-        let redacted_tx = RedactedTx::new(outputs, key_images);
-        Ok(redacted_tx)
     }
 }
 
@@ -850,9 +806,8 @@ pub fn block_num_to_s3block_path(block_index: transaction::BlockIndex) -> PathBu
 mod conversion_tests {
     extern crate rand;
 
-    use self::rand::{rngs::StdRng, RngCore, SeedableRng};
+    use self::rand::{rngs::StdRng, SeedableRng};
     use super::*;
-    use curve25519_dalek::ristretto::RistrettoPoint;
     use mc_util_from_random::FromRandom;
     use transaction::{
         account_keys::{AccountKey, PublicAddress},
@@ -1047,46 +1002,6 @@ mod conversion_tests {
 
         let recovered_tx_out = tx::TxOut::try_from(&converted).unwrap();
         assert_eq!(source.amount, recovered_tx_out.amount);
-    }
-
-    #[test]
-    // Empty RedactedTx --> external::RedactedTx
-    fn test_empty_redacted_tx() {
-        let source = RedactedTx::new(vec![], vec![]);
-        let redacted_tx = external::RedactedTx::from(&source);
-        assert_eq!(redacted_tx.outputs.len(), 0);
-    }
-
-    #[test]
-    // RedactedTx -> external::RedactedTx
-    fn test_transaction_from_tx_stored() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-
-        let source: RedactedTx = {
-            let tx_out_a = tx::TxOut {
-                amount: Amount::new(rng.next_u64(), &RistrettoPublic::from_random(&mut rng))
-                    .unwrap(),
-                target_key: RistrettoPublic::from_random(&mut rng).into(),
-                public_key: RistrettoPublic::from_random(&mut rng).into(),
-                e_account_hint: (&[0u8; 128]).into(),
-            };
-
-            let tx_out_b = tx::TxOut {
-                amount: Amount::new(rng.next_u64(), &RistrettoPublic::from_random(&mut rng))
-                    .unwrap(),
-                target_key: RistrettoPublic::from_random(&mut rng).into(),
-                public_key: RistrettoPublic::from_random(&mut rng).into(),
-                e_account_hint: (&[0u8; 128]).into(),
-            };
-
-            let outputs = vec![tx_out_a, tx_out_b];
-            let key_images: Vec<KeyImage> = vec![KeyImage::from(RistrettoPoint::random(&mut rng))];
-            RedactedTx::new(outputs, key_images)
-        };
-
-        let redacted_tx = external::RedactedTx::from(&source);
-        assert_eq!(redacted_tx.outputs.len(), 2);
-        assert_eq!(redacted_tx.key_images.len(), 1);
     }
 
     #[test]

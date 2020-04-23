@@ -44,7 +44,7 @@ use transaction::{
     onetime_keys::{compute_shared_secret, compute_tx_pubkey, create_onetime_public_key},
     ring_signature::{KeyImage, Scalar},
     tx::{Tx, TxOut, TxOutMembershipProof},
-    Block, BlockContents, BlockSignature, RedactedTx, BLOCK_VERSION,
+    Block, BlockContents, BlockSignature, BLOCK_VERSION,
 };
 
 /// A well-formed transaction.
@@ -64,12 +64,6 @@ impl WellFormedTx {
 impl From<Tx> for WellFormedTx {
     fn from(tx: Tx) -> Self {
         Self { tx }
-    }
-}
-
-impl Into<RedactedTx> for WellFormedTx {
-    fn into(self) -> RedactedTx {
-        self.tx.redact()
     }
 }
 
@@ -399,7 +393,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         for tx in &transactions {
             let tx_hash = tx.tx_hash();
             if tx_hashes.contains(&tx_hash) {
-                return Err(Error::RedactTxs(format!(
+                return Err(Error::FormBlock(format!(
                     "Duplicate transaction: {}",
                     tx_hash
                 )));
@@ -412,7 +406,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         for tx in &transactions {
             for key_image in tx.key_images() {
                 if used_key_images.contains(&key_image) {
-                    return Err(Error::RedactTxs(format!(
+                    return Err(Error::FormBlock(format!(
                         "Duplicate key image: {:?}",
                         key_image
                     )));
@@ -494,7 +488,7 @@ fn mint_aggregate_fee(tx_private_key: &RistrettoPrivate, total_fee: u64) -> Resu
                 compute_shared_secret(fee_recipient.view_public_key(), tx_private_key);
             // The fee view key is publicly known, so there is no need for a blinding.
             Amount::new(total_fee, &shared_secret)
-                .map_err(|e| Error::RedactTxs(format!("AmountError: {:?}", e)))?
+                .map_err(|e| Error::FormBlock(format!("AmountError: {:?}", e)))?
         };
 
         TxOut {
@@ -879,7 +873,7 @@ mod tests {
         let expected_duplicate_key_image = new_transactions[0].key_images()[0];
 
         // Check
-        let expected = Err(Error::RedactTxs(format!(
+        let expected = Err(Error::FormBlock(format!(
             "Duplicate key image: {:?}",
             expected_duplicate_key_image
         )));

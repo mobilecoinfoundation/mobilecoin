@@ -108,8 +108,8 @@ pub enum EnclaveCall {
 
     /// The [ConsensusEnclave::form_block()] method.
     ///
-    /// Converts a list of well-formed, encrypted txs + proofs into a block, a set of redacted transactions
-    /// and a signature.
+    /// Converts a list of well-formed, encrypted txs + proofs into a block, block contents (key
+    /// images + tx outs) and a signature.
     FormBlock(
         Block,
         Vec<(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)>,
