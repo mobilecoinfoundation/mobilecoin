@@ -490,12 +490,9 @@ impl TryFrom<&external::SignatureRctBulletproofs> for SignatureRctBulletproofs {
 impl From<&Amount> for external::Amount {
     fn from(source: &Amount) -> Self {
         let commitment_bytes = source.commitment.to_bytes().to_vec();
-        let masked_blinding_bytes = source.masked_blinding.as_bytes().to_vec();
-
         let mut amount = external::Amount::new();
         amount.mut_commitment().set_data(commitment_bytes);
         amount.set_masked_value(source.masked_value);
-        amount.mut_masked_blinding().set_data(masked_blinding_bytes);
         amount
     }
 }
@@ -505,29 +502,11 @@ impl TryFrom<&external::Amount> for Amount {
 
     fn try_from(source: &external::Amount) -> Result<Self, Self::Error> {
         let commitment = CompressedCommitment::try_from(source.get_commitment())?;
-
-        fn vec_to_curve_scalar(bytes: &[u8]) -> Result<CurveScalar, ConversionError> {
-            if bytes.len() != 32 {
-                return Err(ConversionError::Other);
-            }
-            let mut curve_bytes = [0u8; 32];
-            curve_bytes.copy_from_slice(&bytes);
-            Ok(CurveScalar::from_bytes_mod_order(curve_bytes))
-        };
-
         let masked_value = source.get_masked_value();
-
-        let masked_blinding: CurveScalar = {
-            let bytes = source.get_masked_blinding().get_data();
-            vec_to_curve_scalar(bytes)?
-        };
-
         let amount = Amount {
             commitment,
             masked_value,
-            masked_blinding,
         };
-
         Ok(amount)
     }
 }
@@ -878,7 +857,6 @@ mod conversion_tests {
     use transaction::{
         account_keys::{AccountKey, PublicAddress},
         onetime_keys::recover_onetime_private_key,
-        ring_signature::Scalar,
         tx::{Tx, TxOut, TxOutMembershipProof},
     };
     use transaction_std::*;
@@ -1059,12 +1037,7 @@ mod conversion_tests {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
         let source = tx::TxOut {
-            amount: Amount::new(
-                1u64 << 13,
-                Scalar::random(&mut rng),
-                &RistrettoPublic::from_random(&mut rng),
-            )
-            .unwrap(),
+            amount: Amount::new(1u64 << 13, &RistrettoPublic::from_random(&mut rng)).unwrap(),
             target_key: RistrettoPublic::from_random(&mut rng).into(),
             public_key: RistrettoPublic::from_random(&mut rng).into(),
             e_account_hint: (&[0u8; 128]).into(),
@@ -1091,24 +1064,16 @@ mod conversion_tests {
 
         let source: RedactedTx = {
             let tx_out_a = tx::TxOut {
-                amount: Amount::new(
-                    rng.next_u64(),
-                    Scalar::random(&mut rng),
-                    &RistrettoPublic::from_random(&mut rng),
-                )
-                .unwrap(),
+                amount: Amount::new(rng.next_u64(), &RistrettoPublic::from_random(&mut rng))
+                    .unwrap(),
                 target_key: RistrettoPublic::from_random(&mut rng).into(),
                 public_key: RistrettoPublic::from_random(&mut rng).into(),
                 e_account_hint: (&[0u8; 128]).into(),
             };
 
             let tx_out_b = tx::TxOut {
-                amount: Amount::new(
-                    rng.next_u64(),
-                    Scalar::random(&mut rng),
-                    &RistrettoPublic::from_random(&mut rng),
-                )
-                .unwrap(),
+                amount: Amount::new(rng.next_u64(), &RistrettoPublic::from_random(&mut rng))
+                    .unwrap(),
                 target_key: RistrettoPublic::from_random(&mut rng).into(),
                 public_key: RistrettoPublic::from_random(&mut rng).into(),
                 e_account_hint: (&[0u8; 128]).into(),

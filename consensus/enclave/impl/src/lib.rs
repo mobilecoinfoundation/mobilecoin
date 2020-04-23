@@ -28,7 +28,6 @@ use consensus_enclave_api::{
     WellFormedEncryptedTx, WellFormedTxContext,
 };
 use core::convert::{TryFrom, TryInto};
-use digest::Input;
 use digestible::Digestible;
 use identity::Ed25519Identity;
 use keys::{Ed25519Pair, Ed25519Public, RistrettoPrivate, RistrettoPublic, X25519Public};
@@ -47,9 +46,6 @@ use transaction::{
     tx::{Tx, TxOut, TxOutMembershipProof},
     Block, BlockContents, BlockSignature, RedactedTx, BLOCK_VERSION,
 };
-
-/// The prefix used when constructing the fees output blinding.
-const BLINDING_HASH_PREFIX: &[u8] = b"BLINDING_1";
 
 /// A well-formed transaction.
 #[derive(Clone, Eq, PartialEq, Message)]
@@ -429,6 +425,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let fee_tx_private_key = {
             let hash_value: [u8; 32] = {
                 let mut hasher = Blake2b256::new();
+                // TODO: domain separator.
                 transactions.digest(&mut hasher);
                 hasher
                     .result()
@@ -442,25 +439,8 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             RistrettoPrivate::from(Scalar::from_bytes_mod_order(hash_value))
         };
 
-        let blinding = {
-            let hash_value: [u8; 32] = {
-                let mut hasher = Blake2b256::new();
-                hasher.input(BLINDING_HASH_PREFIX);
-                transactions.digest(&mut hasher);
-                hasher
-                    .result()
-                    .as_slice()
-                    .try_into()
-                    .expect("Wrong length.")
-            };
-
-            // This private key is generated from the hash of all transactions in this block.
-            // This ensures that all nodes generate the same fee output transaction.
-            Scalar::from_bytes_mod_order(hash_value)
-        };
-
         let total_fee: u64 = transactions.iter().map(|tx| tx.prefix.fee).sum();
-        let fee_output = mint_aggregate_fee(&fee_tx_private_key, total_fee, blinding)?;
+        let fee_output = mint_aggregate_fee(&fee_tx_private_key, total_fee)?;
 
         let mut outputs: Vec<TxOut> = Vec::new();
         let mut key_images: Vec<KeyImage> = Vec::new();
@@ -498,12 +478,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 /// # Arguments:
 /// * `tx_private_key` - Transaction key used to output the aggregate fee.
 /// * `total_fee` - The sum of all fees in the block.
-/// * `blinding` - The blinding to use for constructing the Amount.
-fn mint_aggregate_fee(
-    tx_private_key: &RistrettoPrivate,
-    total_fee: u64,
-    blinding: Scalar,
-) -> Result<TxOut> {
+fn mint_aggregate_fee(tx_private_key: &RistrettoPrivate, total_fee: u64) -> Result<TxOut> {
     let fee_recipient = PublicAddress::new(
         &RistrettoPublic::try_from(&FEE_SPEND_PUBLIC_KEY).unwrap(),
         &RistrettoPublic::try_from(&FEE_VIEW_PUBLIC_KEY).unwrap(),
@@ -518,7 +493,7 @@ fn mint_aggregate_fee(
             let shared_secret =
                 compute_shared_secret(fee_recipient.view_public_key(), tx_private_key);
             // The fee view key is publicly known, so there is no need for a blinding.
-            Amount::new(total_fee, blinding, &shared_secret)
+            Amount::new(total_fee, &shared_secret)
                 .map_err(|e| Error::RedactTxs(format!("AmountError: {:?}", e)))?
         };
 

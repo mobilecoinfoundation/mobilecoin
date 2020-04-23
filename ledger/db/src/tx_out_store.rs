@@ -732,7 +732,7 @@ pub mod tx_out_store_tests {
     use tempdir::TempDir;
     use transaction::{
         account_keys::AccountKey, amount::Amount, encrypted_fog_hint::EncryptedFogHint,
-        onetime_keys::*, range::Range, ring_signature::Scalar, tx::TxOut,
+        onetime_keys::*, range::Range, tx::TxOut,
     };
 
     fn get_env() -> Environment {
@@ -758,20 +758,20 @@ pub mod tx_out_store_tests {
     pub fn get_tx_outs(num_tx_outs: u32) -> Vec<TxOut> {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut tx_outs: Vec<TxOut> = Vec::new();
-        let tx_secret_key = RistrettoPrivate::from_random(&mut rng);
         let recipient_account = AccountKey::random(&mut rng);
         let value: u64 = 100;
 
         for _i in 0..num_tx_outs {
+            let tx_private_key = RistrettoPrivate::from_random(&mut rng);
             let target_key =
-                create_onetime_public_key(&recipient_account.default_subaddress(), &tx_secret_key);
+                create_onetime_public_key(&recipient_account.default_subaddress(), &tx_private_key);
             let public_key = compute_tx_pubkey(
-                &tx_secret_key,
+                &tx_private_key,
                 recipient_account.default_subaddress().spend_public_key(),
             );
-            let shared_secret: RistrettoPublic = compute_shared_secret(&target_key, &tx_secret_key);
-            let blinding = Scalar::random(&mut rng);
-            let amount = Amount::new(value, blinding, &shared_secret).unwrap();
+            let shared_secret: RistrettoPublic =
+                compute_shared_secret(&target_key, &tx_private_key);
+            let amount = Amount::new(value, &shared_secret).unwrap();
             let tx_out = TxOut {
                 amount,
                 target_key: target_key.into(),
