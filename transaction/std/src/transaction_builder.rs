@@ -71,12 +71,6 @@ impl TransactionBuilder {
 
         self.outputs.push(tx_out.clone());
         self.output_shared_secrets.push(shared_secret);
-
-        // TODO: sort outputs and their corresponding secrets.
-        // Sort outputs by public_key. This removes ordering information that could be used to
-        // infer things like the identity of a "change" output.
-        // outputs.sort_by(|a, b| a.public_key.cmp(&b.public_key));
-
         Ok(tx_out)
     }
 
