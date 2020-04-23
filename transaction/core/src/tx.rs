@@ -9,7 +9,6 @@ use core::{
 use curve25519_dalek::scalar::Scalar;
 use digestible::Digestible;
 use keys::{CompressedRistrettoPublic, RistrettoPrivate};
-use mc_util_from_random::FromRandom;
 use mcserial::{prost_message_helper32, ReprBytes32};
 use prost::Message;
 use rand_core::{CryptoRng, RngCore};
@@ -19,11 +18,10 @@ use crate::{
     account_keys::PublicAddress,
     amount::{Amount, AmountError},
     blake2b_256::Blake2b256,
-    constants::RING_SIZE,
     encrypted_fog_hint::EncryptedFogHint,
     onetime_keys::{compute_shared_secret, compute_tx_pubkey, create_onetime_public_key},
     range::Range,
-    ring_signature::{KeyImage, SignatureRctBulletproofs, GENERATORS},
+    ring_signature::{KeyImage, SignatureRctBulletproofs},
     CompressedCommitment,
 };
 
@@ -404,7 +402,7 @@ mod tests {
         amount::Amount,
         constants::{BASE_FEE, FEE_SPEND_PUBLIC_KEY, FEE_VIEW_PRIVATE_KEY, FEE_VIEW_PUBLIC_KEY},
         encrypted_fog_hint::EncryptedFogHint,
-        ring_signature::{CurveScalar, KeyImage, Scalar, SignatureRctBulletproofs},
+        ring_signature::SignatureRctBulletproofs,
         tx::{Tx, TxIn, TxOut, TxPrefix},
     };
 

@@ -2,7 +2,6 @@
 
 #![no_std]
 // #![deny(missing_docs)]
-#![allow(unused_imports)] // During development...
 
 extern crate alloc;
 

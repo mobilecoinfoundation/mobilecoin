@@ -3,20 +3,13 @@
 extern crate alloc;
 
 use alloc::{vec, vec::Vec};
-use core::convert::{TryFrom, TryInto};
+use core::convert::TryFrom;
 
 use blake2::{Blake2b, Digest};
-use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
+use curve25519_dalek::ristretto::RistrettoPoint;
 use digestible::Digestible;
 use keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
-use mcserial::{
-    prost::{
-        bytes::{Buf, BufMut},
-        encoding::{encoded_len_varint, key_len, skip_field, DecodeContext, WireType},
-        Message,
-    },
-    DecodeError, ReprBytes32,
-};
+use mcserial::{prost::Message, ReprBytes32};
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
@@ -330,14 +323,13 @@ fn decompress_ring(
 #[cfg(test)]
 mod mlsag_tests {
     use crate::{
-        proptest_fixtures::*,
-        ring_signature::{mlsag::RingMLSAG, CurveScalar, Error, KeyImage, Scalar, GENERATORS},
+        ring_signature::{mlsag::RingMLSAG, CurveScalar, Error, KeyImage, Scalar},
         CompressedCommitment,
     };
     use alloc::vec::Vec;
     use keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
     use mc_util_from_random::FromRandom;
-    use proptest::{array::uniform32, prelude::*};
+    use proptest::prelude::*;
     use rand::{rngs::StdRng, CryptoRng, SeedableRng};
     use rand_core::RngCore;
 

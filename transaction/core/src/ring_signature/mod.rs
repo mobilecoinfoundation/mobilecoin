@@ -4,22 +4,15 @@
 #![macro_use]
 extern crate alloc;
 
-use alloc::{vec, vec::Vec};
 use bulletproofs::{BulletproofGens, PedersenGens};
-use core::convert::TryFrom;
-use curve25519_dalek::ristretto::CompressedRistretto;
 pub use curve25519_dalek::scalar::Scalar;
 pub use curve_scalar::*;
 pub use error::Error;
 pub use key_image::*;
-use keys::RistrettoPublic;
 pub use mlsag::*;
 pub use rct_bulletproofs::*;
 
-use crate::{
-    constants::{MAX_INPUTS, MAX_OUTPUTS},
-    tx::TxIn,
-};
+use crate::constants::{MAX_INPUTS, MAX_OUTPUTS};
 
 mod curve_scalar;
 mod error;

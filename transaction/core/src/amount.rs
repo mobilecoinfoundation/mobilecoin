@@ -7,10 +7,7 @@
 
 #![cfg_attr(test, allow(clippy::unnecessary_operation))]
 
-use crate::{
-    ring_signature::{CurveScalar, GENERATORS},
-    CompressedCommitment,
-};
+use crate::{ring_signature::CurveScalar, CompressedCommitment};
 use blake2::{Blake2b, Digest};
 use curve25519_dalek::scalar::Scalar;
 use digestible::Digestible;
@@ -140,7 +137,6 @@ mod amount_tests {
     use crate::{
         amount::{get_blinding, Amount, AmountError},
         proptest_fixtures::*,
-        ring_signature::{Scalar, GENERATORS},
         CompressedCommitment,
     };
     use proptest::prelude::*;

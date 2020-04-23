@@ -3,7 +3,7 @@ use crate::{
     ring_signature::{Error, Scalar, GENERATORS},
 };
 use core::{convert::TryFrom, fmt};
-use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
+use curve25519_dalek::ristretto::CompressedRistretto;
 use digestible::Digestible;
 use mcserial::{
     deduce_core_traits_from_public_bytes, prost_message_helper32, try_from_helper32, ReprBytes32,
@@ -82,7 +82,7 @@ mod compressed_commitment_tests {
         ring_signature::{Scalar, GENERATORS},
         CompressedCommitment,
     };
-    use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
+    use curve25519_dalek::ristretto::CompressedRistretto;
     use rand::{rngs::StdRng, RngCore, SeedableRng};
 
     #[test]

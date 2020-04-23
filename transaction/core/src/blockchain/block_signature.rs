@@ -1,10 +1,6 @@
 use crate::Block;
-use core::{
-    convert::TryFrom,
-    fmt::{Debug, Display, Formatter, Result as FmtResult},
-    hash::{Hash, Hasher},
-};
-use digestible::{Digest, Digestible};
+use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
+use digestible::Digestible;
 use keys::{
     DigestSigner, DigestVerifier, Ed25519Pair, Ed25519Public, Ed25519Signature,
     Ed25519SignatureError,
