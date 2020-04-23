@@ -30,6 +30,9 @@ pub enum Error {
     #[fail(display = "InvalidBlockID")]
     InvalidBlockID,
 
+    #[fail(display = "NoOutputs")]
+    NoOutputs,
+
     /// LMDB error, may mean database is opened multiple times in a process.
     #[fail(display = "BadRslot")]
     BadRslot,
@@ -68,6 +71,18 @@ impl From<mcserial::decode::Error> for Error {
 
 impl From<mcserial::encode::Error> for Error {
     fn from(_: mcserial::encode::Error) -> Self {
+        Error::Serialization
+    }
+}
+
+impl From<mcserial::DecodeError> for Error {
+    fn from(_: mcserial::DecodeError) -> Self {
+        Error::Deserialization
+    }
+}
+
+impl From<mcserial::EncodeError> for Error {
+    fn from(_: mcserial::EncodeError) -> Self {
         Error::Serialization
     }
 }
