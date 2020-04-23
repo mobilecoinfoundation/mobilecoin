@@ -17,17 +17,25 @@ use keys::{RistrettoPrivate, RistrettoPublic};
 
 #[derive(Copy, Clone, Default, Eq, Serialize, Deserialize, Digestible)]
 /// The "image" of a private key `x`: I = x * Hp(x * G) = x * Hp(P).
-pub struct KeyImage(pub(crate) CompressedRistretto);
+pub struct KeyImage {
+    pub point: CompressedRistretto,
+}
 
 impl KeyImage {
     /// View the underlying `CompressedRistretto` as an array of bytes.
     pub fn as_bytes(&self) -> &[u8; 32] {
-        self.0.as_bytes()
+        self.point.as_bytes()
     }
 
     /// Copies `self` into a new Vec.
     pub fn to_vec(&self) -> alloc::vec::Vec<u8> {
-        self.0.as_bytes().to_vec()
+        self.point.as_bytes().to_vec()
+    }
+}
+
+impl fmt::Debug for KeyImage {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "KeyImage({})", hex_fmt::HexFmt(self.as_bytes()))
     }
 }
 
@@ -36,29 +44,55 @@ impl From<&RistrettoPrivate> for KeyImage {
         let P = RistrettoPublic::from(x);
         let Hp = RistrettoPoint::hash_from_bytes::<Blake2b>(&P.to_bytes());
         let point = x.as_ref() * Hp;
-        KeyImage(point.compress())
+        KeyImage {
+            point: point.compress(),
+        }
+    }
+}
+
+// Many tests use this
+impl From<u64> for KeyImage {
+    fn from(n: u64) -> Self {
+        let private_key = RistrettoPrivate::from(Scalar::from(n));
+        Self::from(&private_key)
+    }
+}
+
+impl From<[u8; 32]> for KeyImage {
+    fn from(src: [u8; 32]) -> Self {
+        Self {
+            point: CompressedRistretto::from_slice(&src),
+        }
+    }
+}
+
+impl AsRef<CompressedRistretto> for KeyImage {
+    fn as_ref(&self) -> &CompressedRistretto {
+        &self.point
     }
 }
 
 impl AsRef<[u8; 32]> for KeyImage {
     fn as_ref(&self) -> &[u8; 32] {
-        self.0.as_bytes()
+        self.point.as_bytes()
     }
 }
 
 impl AsRef<[u8]> for KeyImage {
     fn as_ref(&self) -> &[u8] {
-        &self.0.as_bytes()[..]
+        &self.point.as_bytes()[..]
     }
 }
 
 impl ReprBytes32 for KeyImage {
     type Error = Error;
     fn to_bytes(&self) -> [u8; 32] {
-        self.0.to_bytes()
+        self.point.to_bytes()
     }
     fn from_bytes(src: &[u8; 32]) -> Result<Self, Error> {
-        Ok(Self(CompressedRistretto::from_slice(src)))
+        Ok(Self {
+            point: CompressedRistretto::from_slice(src),
+        })
     }
 }
 
@@ -70,43 +104,3 @@ try_from_helper32! { KeyImage }
 
 // Implements Ord, PartialOrd, PartialEq, Hash. Requires AsRef<[u8;32]>.
 deduce_core_traits_from_public_bytes! { KeyImage }
-
-impl From<[u8; 32]> for KeyImage {
-    fn from(src: [u8; 32]) -> Self {
-        Self(CompressedRistretto::from_slice(&src))
-    }
-}
-
-impl fmt::Debug for KeyImage {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "KeyImage({})", hex_fmt::HexFmt(self.as_bytes()))
-    }
-}
-
-impl From<RistrettoPoint> for KeyImage {
-    fn from(src: RistrettoPoint) -> Self {
-        Self(src.compress())
-    }
-}
-
-// Many tests use this
-impl From<u64> for KeyImage {
-    fn from(n: u64) -> Self {
-        let point = Scalar::from(n) * RISTRETTO_BASEPOINT_POINT;
-        Self::from(point)
-    }
-}
-
-impl AsRef<CompressedRistretto> for KeyImage {
-    fn as_ref(&self) -> &CompressedRistretto {
-        &self.0
-    }
-}
-
-impl TryInto<RistrettoPoint> for KeyImage {
-    type Error = ();
-
-    fn try_into(self) -> Result<RistrettoPoint, Self::Error> {
-        self.0.decompress().ok_or(())
-    }
-}

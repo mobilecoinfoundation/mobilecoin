@@ -123,7 +123,7 @@ impl RingMLSAG {
         let key_image = KeyImage::from(onetime_private_key);
 
         // The uncompressed key_image.
-        let I: RistrettoPoint = key_image.try_into().expect("key_image should decompress");
+        let I: RistrettoPoint = key_image.point.decompress().ok_or(Error::InvalidKeyImage)?;
 
         // Uncompressed output commitment.
         // This ensures that each address and commitment encodes a valid Ristretto point.
@@ -243,8 +243,9 @@ impl RingMLSAG {
         // This ensures that the key image encodes a valid Ristretto point.
         let I: RistrettoPoint = self
             .key_image
-            .try_into()
-            .map_err(|_e| Error::InvalidKeyImage)?;
+            .point
+            .decompress()
+            .ok_or(Error::InvalidKeyImage)?;
 
         let r: Vec<Scalar> = self
             .responses

@@ -592,7 +592,7 @@ mod rct_bulletproofs_tests {
 
             // Modify an MLSAG ring signature
             let index = rng.next_u64() as usize % (num_inputs);
-            signature.ring_signatures[index].key_image = KeyImage::from(RistrettoPoint::random(&mut rng));
+            signature.ring_signatures[index].key_image = KeyImage::from(rng.next_u64());
 
             let result = signature.verify(
                 &params.message,
