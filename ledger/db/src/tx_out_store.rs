@@ -161,7 +161,7 @@ impl TxOutStore {
         let num_tx_outs = self.num_tx_outs(db_transaction)?;
 
         if num_tx_outs == 0 {
-            return Ok(NIL_HASH.clone());
+            return Ok(*NIL_HASH);
         }
 
         if let Some(num_leaves_full_tree) = num_tx_outs.checked_next_power_of_two() {
@@ -246,7 +246,7 @@ impl TxOutStore {
                 // Right child.
                 let right_child_hash = if mid + 1 >= num_tx_outs {
                     // The right subtree contains no TxOuts, so use the nil hash.
-                    NIL_HASH.clone()
+                    *NIL_HASH
                 } else {
                     // The right subtree contains some TxOuts, so look up the child's hash.
                     let right_child_range = Range::new(mid + 1, high)?;
@@ -298,7 +298,7 @@ impl TxOutStore {
                 // Supply the nil hash if the range contains no data.
                 // Note: Nil hashes could probably be omitted as an optimization if validation
                 // knows that it must supply them for any range where `low >= num_tx_outs`.
-                NIL_HASH.clone()
+                *NIL_HASH
             } else {
                 self.get_merkle_hash(&range, db_transaction)?
             };
