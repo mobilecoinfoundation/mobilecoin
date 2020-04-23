@@ -1,7 +1,7 @@
 use crate::{blake2b_256::Blake2b256, ConvertError};
 use core::{
     convert::TryFrom,
-    fmt::{Debug, Display, Formatter, Result as FmtResult},
+    fmt::Debug,
     hash::{Hash, Hasher},
 };
 use digestible::{Digest, Digestible};

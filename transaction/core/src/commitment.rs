@@ -5,10 +5,7 @@ use crate::{
 use core::{convert::TryFrom, fmt};
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use digestible::Digestible;
-use mcserial::{
-    deduce_core_traits_from_public_bytes, prost_message_helper32, try_from_helper32, ReprBytes32,
-};
-use serde::{Deserialize, Serialize};
+use mcserial::{prost_message_helper32, try_from_helper32, ReprBytes32};
 
 /// A Pedersen commitment in uncompressed Ristretto format.
 #[derive(Copy, Clone, Default, Digestible)]

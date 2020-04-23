@@ -1,5 +1,4 @@
 use crate::{
-    blake2b_256::Blake2b256,
     tx::{TxOut, TxOutMembershipElement},
     BlockContents, BlockContentsHash, BlockID,
 };

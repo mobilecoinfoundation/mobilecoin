@@ -11,14 +11,10 @@ use crate::{
     compressed_commitment::CompressedCommitment,
     constants::*,
     membership_proofs::{derive_proof_at_index, is_membership_proof_valid},
-    range_proofs::check_range_proofs,
     tx::{Tx, TxOut, TxOutMembershipProof, TxPrefix},
 };
-use bulletproofs::RangeProof;
 use common::HashSet;
-use core::convert::TryFrom;
-use curve25519_dalek::ristretto::CompressedRistretto;
-use keys::{CompressedRistrettoPublic, RistrettoPublic};
+use keys::CompressedRistrettoPublic;
 use rand_core::{CryptoRng, RngCore};
 
 /// Determines if the transaction is valid, with respect to the provided context.
@@ -298,15 +294,12 @@ pub fn validate_tombstone(
 mod tests {
     extern crate alloc;
 
-    use alloc::{string::ToString, vec::Vec};
+    use alloc::vec::Vec;
 
     use crate::{
-        account_keys::{AccountKey, PublicAddress},
         constants::{BASE_FEE, RING_SIZE},
-        get_tx_out_shared_secret,
-        onetime_keys::recover_onetime_private_key,
-        ring_signature::{KeyImage, Scalar},
-        tx::{Tx, TxOut, TxOutMembershipHash, TxOutMembershipProof, TxPrefix},
+        ring_signature::Scalar,
+        tx::{Tx, TxOutMembershipHash, TxOutMembershipProof},
         validation::{
             error::TransactionValidationError,
             validate::{
@@ -318,13 +311,12 @@ mod tests {
         },
         CompressedCommitment,
     };
-    use keys::{CompressedRistrettoPublic, RistrettoPublic};
+    use keys::CompressedRistrettoPublic;
     use ledger_db::{Ledger, LedgerDB};
     use mcserial::ReprBytes32;
     use rand::{rngs::StdRng, SeedableRng};
     use rand_core::RngCore;
     use serde::{de::DeserializeOwned, ser::Serialize};
-    use tempdir::TempDir;
     use transaction_test_utils::{
         create_ledger, create_transaction, create_transaction_with_amount, initialize_ledger,
         INITIALIZE_LEDGER_AMOUNT,

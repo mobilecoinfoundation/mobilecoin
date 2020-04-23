@@ -101,7 +101,6 @@ fn resize_slice_to_pow2<T: Clone>(slice: &[T]) -> Result<Vec<T>, Error> {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use bulletproofs::PedersenGens;
     use curve25519_dalek::ristretto::RistrettoPoint;
     use rand::{rngs::StdRng, SeedableRng};
     use rand_core::RngCore;

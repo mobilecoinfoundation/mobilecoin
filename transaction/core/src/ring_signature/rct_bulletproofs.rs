@@ -8,24 +8,14 @@
 
 extern crate alloc;
 
-use alloc::{vec, vec::Vec};
-use blake2::{Blake2b, Digest};
+use alloc::vec::Vec;
 use bulletproofs::RangeProof;
 use common::HashSet;
-use core::convert::{TryFrom, TryInto};
+use core::convert::TryFrom;
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use digestible::Digestible;
-use generic_array::GenericArray;
-use keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
-use mcserial::{
-    prost::{
-        bytes::{Buf, BufMut},
-        encoding::{bytes, encode_key, encoded_len_varint, key_len, skip_field},
-        Message,
-    },
-    serialize, DecodeError, ReprBytes32,
-};
-use prost::encoding::{DecodeContext, WireType};
+use keys::{CompressedRistrettoPublic, RistrettoPrivate};
+use mcserial::{prost::Message, serialize};
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
@@ -33,7 +23,7 @@ use crate::{
     commitment::Commitment,
     compressed_commitment::CompressedCommitment,
     range_proofs::{check_range_proofs, generate_range_proofs},
-    ring_signature::{mlsag::RingMLSAG, CurveScalar, Error, KeyImage, Scalar, GENERATORS},
+    ring_signature::{mlsag::RingMLSAG, Error, KeyImage, Scalar, GENERATORS},
 };
 
 /// An RCT_TYPE_BULLETPROOFS_2 signature.
@@ -354,17 +344,15 @@ fn extend_message(
 mod rct_bulletproofs_tests {
     use super::sign_with_balance_check;
     use crate::{
-        commitment::Commitment,
         compressed_commitment::CompressedCommitment,
-        proptest_fixtures::*,
         range_proofs::generate_range_proofs,
-        ring_signature::{Error, KeyImage, SignatureRctBulletproofs, GENERATORS},
+        ring_signature::{Error, KeyImage, SignatureRctBulletproofs},
     };
     use alloc::vec::Vec;
     use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
     use keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
     use mc_util_from_random::FromRandom;
-    use proptest::{array::uniform32, prelude::*};
+    use proptest::prelude::*;
     use rand::{rngs::StdRng, CryptoRng, SeedableRng};
     use rand_core::RngCore;
 
