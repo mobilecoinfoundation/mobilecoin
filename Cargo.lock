@@ -2335,6 +2335,7 @@ dependencies = [
 name = "mc-testnet-client"
 version = "0.1.0"
 dependencies = [
+ "chrono 0.4.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "dialoguer 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "grpc-util 1.0.0",
  "grpcio 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",

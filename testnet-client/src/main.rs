@@ -2,6 +2,7 @@
 
 //! A demo client for interacting with the MobileCoin test network using mobilecoind.
 
+use chrono::Local;
 use dialoguer::{theme::ColorfulTheme, Input, Select, Validator};
 use grpc_util::build_info_grpc::BuildInfoApiClient;
 use grpcio::{ChannelBuilder, ChannelCredentialsBuilder};
@@ -106,6 +107,7 @@ impl TestnetClient {
         println!("rustflags = {}", build_info.rustflags);
         println!("sgx_mode = {}", build_info.sgx_mode);
         println!("ias_mode = {}", build_info.ias_mode);
+        println!();
 
         let client = MobilecoindApiClient::new(ch);
         let ledger_info = match client.get_ledger_info(&mobilecoind_api::Empty::new()) {
@@ -185,7 +187,7 @@ impl TestnetClient {
             r#"
 **********************************************************************
 
-                 Welcome to the MobileCoin TestNet
+                  Welcome to the MobileCoin TestNet
 
 **********************************************************************
 
@@ -195,8 +197,7 @@ Please enter the 32 byte master key for an account. If you received an
 email with an allocation of TestNet mobilecoins, this is the master
 key that we sent to you. It should look something like:
 
-  dc74edf1d8892dfdf49d6db5d3d4e873665c2dd400c0955dd9729571826a26be
-
+dc74edf1d8842dfdf49d6db5d3d4e873665c2dd400c0955dd9729571826a26be
 "#,
             self.config.mobilecoind_host,
         );
@@ -305,13 +306,19 @@ key that we sent to you. It should look something like:
         match self.client.get_balance(&req) {
             Ok(resp) => {
                 let balance = resp.get_balance();
-
-                println!();
+                let date = Local::now();
                 println!(
-                    "        >>> Your balance is now {} <<<",
-                    u64_to_mob_display(balance)
+                    r#"
+**********************************************************************
+
+                     Your balance was {}
+                             at {}
+
+**********************************************************************
+"#,
+                    u64_to_mob_display(balance),
+                    date.format("%H:%M:%S"),
                 );
-                println!();
             }
             Err(err) => {
                 println!("Error getting balance: {}", err);
@@ -326,7 +333,7 @@ key that we sent to you. It should look something like:
             r#"
 **********************************************************************
 
-                         Sending a Payment
+                          Sending a Payment
 
 **********************************************************************
 
@@ -334,8 +341,7 @@ Please enter a payment request code. If you received an email with an
 allocation of TestNet mobilecoins, this is the longer alphanumeric
 string that we send you. It should look something like:
 
-  3CioMy13rUrFWRCcXMjz4GayaVgRcqpRpz6JXzmryaN2NJjSv2YaKED33iYnUyAMa9vi1XLRoW8xVuzzJTsc6MArq5NBDHMZXDtYRSrA9AjFdfv6QzLF21AWc36yXcsiqGZkgLKk
-
+3CioMy13rUrFWRCcXMjz4GayaVgRcqpRpz6JXzmryaN2NJjSv2YaKED33iYnUyAMa9vi1XLRoW8xVuzzJTsc6MArq5NBDHMZXDtYRSrA9AjFdfv6QzLF21AWc36yXcsiqGZkgLKk
 "#
         );
 
@@ -364,7 +370,7 @@ string that we send you. It should look something like:
         }
 
         let opt_request_code = Input::<WrappedRequestPayload>::new()
-            .with_prompt("Enter your request code")
+            .with_prompt("Enter the request code to fulfill")
             .allow_empty(true)
             .interact()
             .expect("failed getting request code")
@@ -556,7 +562,7 @@ string that we send you. It should look something like:
             r#"
 **********************************************************************
 
-                        Receiving a Payment
+                         Receiving a Payment
 
 **********************************************************************
 

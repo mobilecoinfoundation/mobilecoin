@@ -5,6 +5,7 @@ authors = ["MobileCoin"]
 edition = "2018"
 
 [dependencies]
+chrono = "0.4"
 dialoguer = "0.5"
 grpcio = "0.5.1"
 hex = "0.4"
