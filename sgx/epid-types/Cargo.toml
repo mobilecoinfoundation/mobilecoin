@@ -7,8 +7,13 @@ readme = "README.md"
 edition = "2018"
 
 [dependencies]
+mc-encodings = { path = "../../util/encodings" }
 mc-sgx-core-types = { path = "../core-types" }
 mc-sgx-epid-types-sys = { path = "../epid-types-sys" }
+mc-util-from-random = { path = "../../util/from-random" }
+
+rand_core = "0.5"
 
 [dev-dependencies]
 bincode = "1.2"
+rand_hc = "0.2"
