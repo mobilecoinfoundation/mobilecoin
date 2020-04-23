@@ -66,11 +66,6 @@ impl TestnetClient {
         // Construct GRPC connection to mobilecoind.
         let env = Arc::new(grpcio::EnvBuilder::new().build());
         let ch_builder = ChannelBuilder::new(env)
-            .keepalive_permit_without_calls(true)
-            .keepalive_time(Duration::from_secs(1))
-            .keepalive_timeout(Duration::from_secs(20))
-            .max_reconnect_backoff(Duration::from_millis(2000))
-            .initial_reconnect_backoff(Duration::from_millis(1000))
             .max_receive_message_len(std::i32::MAX)
             .max_send_message_len(std::i32::MAX);
 
