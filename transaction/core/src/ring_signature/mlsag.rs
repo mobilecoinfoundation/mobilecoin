@@ -323,7 +323,6 @@ fn decompress_ring(
 #[cfg(test)]
 mod mlsag_tests {
     use crate::{
-        onetime_keys::compute_key_image,
         ring_signature::{mlsag::RingMLSAG, CurveScalar, Error, KeyImage, Scalar},
         CompressedCommitment,
     };

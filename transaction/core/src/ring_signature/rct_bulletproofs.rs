@@ -349,7 +349,7 @@ mod rct_bulletproofs_tests {
         ring_signature::{Error, KeyImage, SignatureRctBulletproofs},
     };
     use alloc::vec::Vec;
-    use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
+    use curve25519_dalek::scalar::Scalar;
     use keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
     use mc_util_from_random::FromRandom;
     use proptest::prelude::*;
