@@ -219,7 +219,7 @@ impl ReprBytes32 for Ed25519Public {
     type Error = SignatureError;
 
     fn to_bytes(&self) -> [u8; 32] {
-        <Self as AsRef<[u8; PUBLIC_KEY_LENGTH]>>::as_ref(self).clone()
+        *<Self as AsRef<[u8; PUBLIC_KEY_LENGTH]>>::as_ref(self)
     }
 
     fn from_bytes(src: &[u8; 32]) -> Result<Self, <Self as ReprBytes32>::Error> {
