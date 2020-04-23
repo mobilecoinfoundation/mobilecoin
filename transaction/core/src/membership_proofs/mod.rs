@@ -144,16 +144,6 @@ pub fn is_membership_proof_valid(
                 }
             };
 
-            // let left_slice: &[u8] = left_child_hash;
-            // let right_slice: &[u8] = right_child_hash;
-            //
-            // // A no_std implementation of concat:
-            // let mut concatenated_slices: Vec<u8> =
-            //     Vec::with_capacity(left_slice.len() + right_slice.len());
-            // concatenated_slices.extend_from_slice(left_slice);
-            // concatenated_slices.extend_from_slice(right_slice);
-            //
-            // let expected_hash = internal_hash_fn(&concatenated_slices);
             let expected_hash = hash_nodes(left_child_hash, right_child_hash);
             if *hash != expected_hash {
                 // Proof contains an incorrect hash value.
@@ -233,17 +223,6 @@ pub fn derive_proof_at_index(
                     .expect("Child range should already exist.")
             };
 
-            // This node.
-            // let left_slice: &[u8] = &left_child_hash;
-            // let right_slice: &[u8] = &right_child_hash;
-            // // let concatenated_slices: &[u8] = &[left_slice, right_slice].concat();
-            // // A no_std implementation of concat:
-            // let mut concatenated_slices: Vec<u8> =
-            //     Vec::with_capacity(left_slice.len() + right_slice.len());
-            // concatenated_slices.extend_from_slice(left_slice);
-            // concatenated_slices.extend_from_slice(right_slice);
-            //
-            // TxOutMembershipHash::from(internal_hash_fn(&concatenated_slices))
             TxOutMembershipHash::from(hash_nodes(&left_child_hash, &right_child_hash))
         };
         derived_elements.insert(element.range.clone(), *hash.as_ref());
