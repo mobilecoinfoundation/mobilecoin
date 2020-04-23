@@ -181,7 +181,8 @@ class mob_client:
                                         change_subaddress=change_subaddress,
                                         input_list=input_list,
                                         outlay_list=outlay_list,
-                                        fee=fee)
+                                        fee=fee,
+                                        tombstone=tombstone)
         return self.stub.GenerateTx(request).tx_proposal
 
     def generate_optimization_tx(self, monitor_id, subaddress):
