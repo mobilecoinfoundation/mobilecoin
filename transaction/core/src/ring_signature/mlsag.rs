@@ -155,8 +155,8 @@ impl RingMLSAG {
             let (P_i, input_commitment) = &decompressed_ring[i];
 
             let (L0, R0, L1) = if i == real_index {
-                // c_{i+1} = Hn( m | alpha_0 * G | alpha_0 * Hp(P_i) | alpha_1 * H )
-                //         = Hn( m |      L0     |         R0        |      L1     )
+                // c_{i+1} = Hn( m | key_image | alpha_0 * G | alpha_0 * Hp(P_i) | alpha_1 * H )
+                //         = Hn( m | key_image |      L0     |         R0        |      L1     )
                 //
                 // where P_i is the i^th onetime public key.
                 // There is no R1 term because no key image is needed for the commitment to zero.
@@ -166,8 +166,8 @@ impl RingMLSAG {
                 let L1 = alpha_1 * H;
                 (L0, R0, L1)
             } else {
-                // c_{i+1} = Hn( m | r_{i,0} * G + c_i * P_i | r_{i,0} * Hp(P_i) + c_i * I | r_{i,1} * G + c_i * Z_i )
-                //         = Hn( m |           L0            |               R0            |             L1          )
+                // c_{i+1} = Hn( m | key_image | r_{i,0} * G + c_i * P_i | r_{i,0} * Hp(P_i) + c_i * I | r_{i,1} * G + c_i * Z_i )
+                //         = Hn( m | key_image |           L0            |               R0            |             L1          )
                 //
                 // where:
                 // * P_i is the i^th onetime public key.
@@ -186,6 +186,7 @@ impl RingMLSAG {
             c[(i + 1) % ring_size] = {
                 let mut hasher = Blake2b::new();
                 hasher.input(message);
+                hasher.input(&key_image);
                 hasher.input(L0.compress().as_bytes());
                 hasher.input(R0.compress().as_bytes());
                 hasher.input(L1.compress().as_bytes());
@@ -282,8 +283,8 @@ impl RingMLSAG {
                 recomputed_c[i]
             };
 
-            // c_{i+1} = Hn( m | r_{i,0} * G + c_i * P_i | r_{i,0} * Hp(P_i) + c_i * I | r_{i,1} * H + c_i * Z_i )
-            //         = Hn( m |           L0            |               R0            |           L1            )
+            // c_{i+1} = Hn( m | key_image |  r_{i,0} * G + c_i * P_i | r_{i,0} * Hp(P_i) + c_i * I | r_{i,1} * H + c_i * Z_i )
+            //         = Hn( m | key_image |           L0            |               R0            |           L1            )
             //
             // where:
             // * P_i is the i^th onetime public key.
@@ -297,6 +298,7 @@ impl RingMLSAG {
             recomputed_c[(i + 1) % ring_size] = {
                 let mut hasher = Blake2b::new();
                 hasher.input(message);
+                hasher.input(&self.key_image);
                 hasher.input(L0.compress().as_bytes());
                 hasher.input(R0.compress().as_bytes());
                 hasher.input(L1.compress().as_bytes());
