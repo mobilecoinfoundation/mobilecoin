@@ -16,6 +16,7 @@ failure = "0.1.5"
 keys = { path = "../../crypto/keys", optional = true }
 lmdb = "0.8.0"
 mc-util-from-random = { path = "../../util/from-random" }
+mcserial = { path = "../../util/mcserial", features = ["std"] }
 prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
 rand = { version = "0.7", optional = true }
 rand_core = "0.5"
