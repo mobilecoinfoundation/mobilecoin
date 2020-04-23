@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
 use crate::Block;
 use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use digestible::Digestible;
