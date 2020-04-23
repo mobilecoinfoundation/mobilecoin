@@ -280,7 +280,6 @@ pub mod transaction_builder_tests {
     }
 
     // Uses TransactionBuilder to build a transaction.
-    #[allow(unused)]
     fn get_transaction<RNG: RngCore + CryptoRng>(
         num_inputs: usize,
         num_outputs: usize,
