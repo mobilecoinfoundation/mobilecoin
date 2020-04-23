@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
 use crate::{blake2b_256::Blake2b256, ConvertError};
 use alloc::{vec, vec::Vec};
 use core::{

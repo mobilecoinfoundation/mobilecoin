@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
 use crate::{
     tx::{TxOut, TxOutMembershipElement},
     BlockContents, BlockContentsHash, BlockID,
