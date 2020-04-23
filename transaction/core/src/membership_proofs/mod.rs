@@ -141,8 +141,6 @@ pub fn is_membership_proof_valid(
                     // Missing hashes are assumed to be the Nil hash, indicating that the range of
                     // TxOuts do not exist yet.
                     &NIL_HASH
-                    // // Proof does not contain a required hash.
-                    // return Ok(false);
                 }
             };
 
