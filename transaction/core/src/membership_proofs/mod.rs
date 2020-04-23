@@ -3,17 +3,18 @@
 #![allow(clippy::if_same_then_else)]
 
 extern crate alloc;
-use alloc::vec::Vec;
+
+mod errors;
 
 use crate::{
+    blake2b_256::Blake2b256,
     membership_proofs::errors::Error,
     range::Range,
     tx::{TxOut, TxOutMembershipHash, TxOutMembershipProof},
 };
+use alloc::vec::Vec;
 use blake2::digest::Input;
 use common::HashMap;
-mod errors;
-use crate::blake2b_256::Blake2b256;
 use core::convert::TryInto;
 use digestible::Digestible;
 pub use errors::Error as MembershipProofError;
