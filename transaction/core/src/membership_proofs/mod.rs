@@ -12,7 +12,6 @@ use crate::{
 };
 use blake2::digest::Input;
 use common::HashMap;
-use mcserial::serialize;
 mod errors;
 use crate::blake2b_256::Blake2b256;
 use core::convert::TryInto;
