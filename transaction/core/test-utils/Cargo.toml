@@ -10,6 +10,7 @@ tempdir = "0.3"
 # MobileCoin dependencies
 keys = { path = "../../../crypto/keys", default-features = false }
 ledger-db = { path = "../../../ledger/db" }
+mc-util-from-random = { path = "../../../util/from-random" }
 mcrand = { path = "../../../crypto/mcrand" }
 rand = "0.7"
 transaction = { path = "../../../transaction/core" }

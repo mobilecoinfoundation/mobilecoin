@@ -327,20 +327,18 @@ fn decompress_ring(
 
 #[cfg(test)]
 mod mlsag_tests {
-    use alloc::vec::Vec;
-
-    use keys::{CompressedRistrettoPublic, FromRandom, RistrettoPrivate, RistrettoPublic};
-    use rand_core::RngCore;
-
-    use proptest::{array::uniform32, prelude::*};
-    use rand::{rngs::StdRng, CryptoRng, SeedableRng};
-
     use crate::{
         onetime_keys::compute_key_image,
         proptest_fixtures::*,
         ring_signature::{mlsag::RingMLSAG, CurveScalar, Error, Scalar, GENERATORS},
         CompressedCommitment,
     };
+    use alloc::vec::Vec;
+    use keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
+    use mc_util_from_random::FromRandom;
+    use proptest::{array::uniform32, prelude::*};
+    use rand::{rngs::StdRng, CryptoRng, SeedableRng};
+    use rand_core::RngCore;
 
     extern crate std;
 

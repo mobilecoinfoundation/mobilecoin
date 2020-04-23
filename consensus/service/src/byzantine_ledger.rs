@@ -946,8 +946,9 @@ mod tests {
     use common::logger::test_with_logger;
     use consensus_enclave_mock::ConsensusServiceMockEnclave;
     use hex;
-    use keys::{DistinguishedEncoding, Ed25519Private, FromRandom};
+    use keys::{DistinguishedEncoding, Ed25519Private};
     use ledger_db::Ledger;
+    use mc_util_from_random::FromRandom;
     use mcuri::{ConnectionUri, ConsensusPeerUri as PeerUri};
     use peers_tests::MockPeerConnection;
     use rand::{rngs::StdRng, SeedableRng};

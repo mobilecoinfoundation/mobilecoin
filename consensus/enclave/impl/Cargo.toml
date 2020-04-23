@@ -33,6 +33,7 @@ attest-trusted = { path = "../../../attest/trusted", default-features = false }
 consensus-enclave-api = { path = "../api", default-features = false }
 digestible = { path = "../../..//crypto/digestible" }
 keys = { path = "../../../crypto/keys", default-features = false }
+mc-util-from-random = { path = "../../../util/from-random" }
 mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.2", default-features = false, features = ["aesni", "rdrand", "force_aesni_support"] }
 mcrand = { path = "../../../crypto/mcrand" }
 mcserial = { path = "../../../util/mcserial" }

@@ -11,6 +11,7 @@ attest-enclave-api = { path = "../../../attest/enclave_api", default-features = 
 attest-trusted = { path = "../../../attest/trusted", default-features = false }
 common = { path = "../../../common", default-features = false }
 keys = { path = "../../../crypto/keys", default-features = false }
+mc-util-from-random = { path = "../../../util/from-random" }
 mcnoise = { path = "../../../crypto/ake/mcnoise", default-features = false }
 mcrand = { path = "../../../crypto/mcrand", default-features = false }
 mcserial = { path = "../../../util/mcserial", default-features = false }

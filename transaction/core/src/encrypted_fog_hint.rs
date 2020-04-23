@@ -14,8 +14,8 @@ use generic_array::{
     typenum::{Diff, Unsigned, U128},
     GenericArray,
 };
-use keys::FromRandom;
 use mc_crypto_box::{CryptoBox, VersionedCryptoBox};
+use mc_util_from_random::FromRandom;
 use prost::{
     bytes::{Buf, BufMut},
     encoding::{bytes, skip_field, DecodeContext, WireType},

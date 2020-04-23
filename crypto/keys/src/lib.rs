@@ -8,6 +8,7 @@
 //!
 //! ```
 //! use keys::*;
+//! use mc_util_from_random::FromRandom;
 //! use rand_core::SeedableRng;
 //! use rand_hc::Hc128Rng;
 //!
@@ -33,6 +34,7 @@
 //!
 //! ```
 //! use keys::*;
+//! use mc_util_from_random::FromRandom;
 //! use rand_core::SeedableRng;
 //! use rand_hc::Hc128Rng;
 //!

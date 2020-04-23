@@ -6,10 +6,10 @@
 //! represents an element of \\(\mathbb Z / \ell\\).
 
 use super::Error;
-
 use core::{convert::TryFrom, fmt};
 use curve25519_dalek::scalar::Scalar;
 use digestible::Digestible;
+use mc_util_from_random::FromRandom;
 use mcserial::{
     deduce_core_traits_from_public_bytes, prost_message_helper32, try_from_helper32, ReprBytes32,
 };
@@ -36,8 +36,8 @@ impl CurveScalar {
     }
 }
 
-impl keys::FromRandom for CurveScalar {
-    fn from_random(csprng: &mut (impl CryptoRng + RngCore)) -> Self {
+impl FromRandom for CurveScalar {
+    fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> Self {
         Self {
             scalar: Scalar::random(csprng),
         }

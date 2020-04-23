@@ -141,8 +141,9 @@ impl<L: Ledger + Clone> BlockchainApi for BlockchainApiService<L> {
 mod tests {
     use super::*;
     use common::logger::test_with_logger;
-    use keys::{FromRandom, RistrettoPrivate};
+    use keys::RistrettoPrivate;
     use ledger_db::LedgerDB;
+    use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
     use tempdir::TempDir;
     use transaction::{account_keys::AccountKey, tx::TxOut, Block, BlockContents, BLOCK_VERSION};

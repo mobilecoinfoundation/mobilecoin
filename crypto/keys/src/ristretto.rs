@@ -18,6 +18,7 @@ use curve25519_dalek::{
 };
 use digestible::Digestible;
 use hex_fmt::HexFmt;
+use mc_util_from_random::FromRandom;
 use mcserial::{
     deduce_core_traits_from_public_bytes, prost_message_helper32, serde_helper32,
     try_from_helper32, ReprBytes32,
@@ -94,7 +95,7 @@ impl PrivateKey for RistrettoPrivate {
 }
 
 impl FromRandom for RistrettoPrivate {
-    fn from_random(csprng: &mut (impl RngCore + CryptoRng)) -> RistrettoPrivate {
+    fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> RistrettoPrivate {
         Self(Scalar::random(csprng))
     }
 }
@@ -135,7 +136,7 @@ impl AsRef<RistrettoPoint> for RistrettoPublic {
 }
 
 impl FromRandom for RistrettoPublic {
-    fn from_random(csprng: &mut (impl CryptoRng + RngCore)) -> RistrettoPublic {
+    fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> RistrettoPublic {
         Self(RistrettoPoint::random(csprng))
     }
 }
@@ -379,7 +380,6 @@ mod test {
     extern crate test_helper;
 
     use super::*;
-    use crate::traits::FromRandom;
 
     // Test that mcserial can serialize a pubkey
     #[test]

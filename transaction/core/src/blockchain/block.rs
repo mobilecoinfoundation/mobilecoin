@@ -144,7 +144,8 @@ mod block_tests {
     use alloc::vec::Vec;
     use core::convert::TryFrom;
     use generic_array::GenericArray;
-    use keys::{FromRandom, RistrettoPrivate};
+    use keys::RistrettoPrivate;
+    use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, CryptoRng, RngCore, SeedableRng};
 
     fn get_block<RNG: CryptoRng + RngCore>(rng: &mut RNG) -> Block {

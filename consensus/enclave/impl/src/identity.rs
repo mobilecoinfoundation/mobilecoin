@@ -2,7 +2,8 @@
 
 /// Implementation of ed25519 signer identity for report
 use ake_enclave::EnclaveIdentity;
-use keys::{Ed25519Pair, Ed25519Public, FromRandom};
+use keys::{Ed25519Pair, Ed25519Public};
+use mc_util_from_random::FromRandom;
 use mcrand::McRng;
 use sgx_compat::sync::Mutex;
 

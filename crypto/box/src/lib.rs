@@ -33,7 +33,8 @@ pub use fixed_buffer::FixedBuffer;
 mod test {
     use super::*;
     use aead::generic_array::{arr, arr_impl};
-    use keys::{FromRandom, RistrettoPrivate, RistrettoPublic};
+    use keys::{RistrettoPrivate, RistrettoPublic};
+    use mc_util_from_random::FromRandom;
 
     extern crate test_helper;
 
