@@ -3,7 +3,7 @@
 //! This module implements the common keys traits for the Ed25519 digital
 //! signature scheme.
 
-pub use ed25519::{signature::Error as Ed25519SignatureError, Signature as Ed25519Signature};
+pub use ed25519::signature::Error as Ed25519SignatureError;
 
 use alloc::vec;
 
@@ -11,7 +11,13 @@ use crate::traits::*;
 use alloc::vec::Vec;
 use core::convert::TryFrom;
 use digest::generic_array::typenum::U64;
-use ed25519::signature::{DigestSigner, DigestVerifier, Error as SignatureError, Signer, Verifier};
+use ed25519::{
+    signature::{
+        DigestSigner, DigestVerifier, Error as SignatureError, Signature as SignatureTrait, Signer,
+        Verifier,
+    },
+    Signature, SIGNATURE_LENGTH,
+};
 use ed25519_dalek::{
     Keypair, PublicKey as DalekPublicKey, SecretKey, Signature as DalekSignature,
     PUBLIC_KEY_LENGTH, SECRET_KEY_LENGTH,
@@ -19,8 +25,14 @@ use ed25519_dalek::{
 use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;
 use mc_util_serial::deduce_core_traits_from_public_bytes;
+use prost::{
+    bytes::{Buf, BufMut},
+    encoding::{bytes, skip_field, DecodeContext, WireType},
+    DecodeError, Message,
+};
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
+use signature::Error;
 use zeroize::Zeroize;
 
 // ASN.1 DER Signature Bytes -- this is a set of nested TLVs describing
@@ -75,7 +87,9 @@ impl DistinguishedEncoding for Ed25519Signature {
         if src[..12] != ED25519_SIG_DER_PREFIX {
             return Err(KeyError::InvalidPublicKey);
         }
-        Self::try_from(&src[12..]).map_err(|_e| KeyError::InternalError)
+        Ok(Self(
+            Signature::try_from(&src[12..]).map_err(|_e| KeyError::InternalError)?,
+        ))
     }
 
     /// Serializes this object into a DER-encoded SubjectPublicKeyInfo structure
@@ -331,7 +345,9 @@ impl FromRandom for Ed25519Pair {
 impl Signer<Ed25519Signature> for Ed25519Pair {
     fn try_sign(&self, msg: &[u8]) -> Result<Ed25519Signature, SignatureError> {
         let sig = self.0.sign(msg);
-        Ed25519Signature::from_bytes(&sig.to_bytes()[..])
+        Ok(Ed25519Signature(Signature::from_bytes(
+            &sig.to_bytes()[..],
+        )?))
     }
 }
 
@@ -353,6 +369,96 @@ impl Verifier<Ed25519Signature> for Ed25519Pair {
             .public
             .verify_strict(message, &sig)
             .map_err(|_e| SignatureError::new())
+    }
+}
+
+/// An Ed25519 signature.
+#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+pub struct Ed25519Signature(Signature);
+
+impl Ed25519Signature {
+    /// Create a new signature from a byte array
+    pub fn new(bytes: [u8; SIGNATURE_LENGTH]) -> Self {
+        Self(Signature::from(bytes))
+    }
+
+    /// Return the inner byte array
+    pub fn to_bytes(&self) -> [u8; SIGNATURE_LENGTH] {
+        self.0.to_bytes()
+    }
+}
+
+// Deriving doesn't work, ed25519 crate says:
+// derive `PartialEq` after const generics are available
+impl Eq for Ed25519Signature {}
+
+impl PartialEq for Ed25519Signature {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.eq(&other.0)
+    }
+}
+
+// This is needed to implement prost::Message
+impl Default for Ed25519Signature {
+    fn default() -> Self {
+        Self::new([0; SIGNATURE_LENGTH])
+    }
+}
+
+impl SignatureTrait for Ed25519Signature {
+    fn from_bytes(bytes: &[u8]) -> Result<Self, Error> {
+        Ok(Self(Signature::from_bytes(bytes)?))
+    }
+}
+
+impl AsRef<[u8]> for Ed25519Signature {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
+
+impl Message for Ed25519Signature {
+    fn encode_raw<B>(&self, buf: &mut B)
+    where
+        B: BufMut,
+    {
+        bytes::encode(1, &self.as_ref().to_vec(), buf)
+    }
+
+    fn merge_field<B>(
+        &mut self,
+        tag: u32,
+        wire_type: WireType,
+        buf: &mut B,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError>
+    where
+        B: Buf,
+    {
+        if tag == 1 {
+            let mut vbuf = Vec::new();
+            bytes::merge(wire_type, &mut vbuf, buf, ctx)?;
+            if vbuf.len() != SIGNATURE_LENGTH {
+                return Err(DecodeError::new(alloc::format!(
+                    "Ed25519Signature: expected {} bytes, got {}",
+                    SIGNATURE_LENGTH,
+                    vbuf.len()
+                )));
+            }
+            *self = Self::from_bytes(&vbuf[..])
+                .map_err(|err| DecodeError::new(alloc::format!("Ed25519Signature: {}", err)))?;
+            Ok(())
+        } else {
+            skip_field(wire_type, tag, buf, ctx)
+        }
+    }
+
+    fn encoded_len(&self) -> usize {
+        bytes::encoded_len(1, &vec![0u8; SIGNATURE_LENGTH])
+    }
+
+    fn clear(&mut self) {
+        *self = Self::default();
     }
 }
 
