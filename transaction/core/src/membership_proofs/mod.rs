@@ -36,7 +36,7 @@ pub fn hash_leaf(tx_out: &TxOut) -> [u8; 32] {
     hasher.result().try_into().unwrap()
 }
 
-/// Merkle tree hash function for leaf nodes.
+/// Merkle tree hash function for an internal node.
 pub fn hash_nodes(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
     let mut hasher = Blake2b256::new();
     hasher.input(&TXOUT_MERKLE_NODE);
