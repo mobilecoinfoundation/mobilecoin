@@ -8,7 +8,8 @@
 #![cfg_attr(test, allow(clippy::unnecessary_operation))]
 
 use crate::{
-    domain_separators::AMOUNT_BLINDING_DOMAIN_TAG, ring_signature::CurveScalar,
+    domain_separators::{AMOUNT_BLINDING_DOMAIN_TAG, AMOUNT_VALUE_DOMAIN_TAG},
+    ring_signature::CurveScalar,
     CompressedCommitment,
 };
 use blake2::{Blake2b, Digest};
