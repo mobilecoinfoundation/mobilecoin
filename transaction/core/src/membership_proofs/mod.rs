@@ -4,10 +4,11 @@
 
 extern crate alloc;
 
-mod errors;
-
 use crate::{
     blake2b_256::Blake2b256,
+    domain_separators::{
+        TXOUT_MERKLE_LEAF_DOMAIN_TAG, TXOUT_MERKLE_NIL_DOMAIN_TAG, TXOUT_MERKLE_NODE_DOMAIN_TAG,
+    },
     membership_proofs::errors::Error,
     range::Range,
     tx::{TxOut, TxOutMembershipHash, TxOutMembershipProof},
@@ -19,10 +20,7 @@ use core::convert::TryInto;
 use digestible::Digestible;
 pub use errors::Error as MembershipProofError;
 
-// Hash function Ddomain separators.
-const TXOUT_MERKLE_LEAF: &str = "mc_txout_merkle_leaf";
-const TXOUT_MERKLE_NODE: &str = "mc_txout_merkle_node";
-const TXOUT_MERKLE_NIL: &str = "mc_txout_merkle_nil";
+mod errors;
 
 lazy_static! {
     pub static ref NIL_HASH: [u8; 32] = hash_nil();
@@ -31,7 +29,7 @@ lazy_static! {
 /// Merkle tree hash function for a leaf node.
 pub fn hash_leaf(tx_out: &TxOut) -> [u8; 32] {
     let mut hasher = Blake2b256::new();
-    hasher.input(&TXOUT_MERKLE_LEAF);
+    hasher.input(&TXOUT_MERKLE_LEAF_DOMAIN_TAG);
     tx_out.digest(&mut hasher);
     hasher.result().try_into().unwrap()
 }
@@ -39,7 +37,7 @@ pub fn hash_leaf(tx_out: &TxOut) -> [u8; 32] {
 /// Merkle tree hash function for an internal node.
 pub fn hash_nodes(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
     let mut hasher = Blake2b256::new();
-    hasher.input(&TXOUT_MERKLE_NODE);
+    hasher.input(&TXOUT_MERKLE_NODE_DOMAIN_TAG);
     hasher.input(left);
     hasher.input(right);
     hasher.result().try_into().unwrap()
@@ -48,7 +46,7 @@ pub fn hash_nodes(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
 /// Merkle tree Hash function for hashing a "nil" value.
 fn hash_nil() -> [u8; 32] {
     let mut hasher = Blake2b256::new();
-    hasher.input(&TXOUT_MERKLE_NIL);
+    hasher.input(&TXOUT_MERKLE_NIL_DOMAIN_TAG);
     hasher.result().try_into().unwrap()
 }
 
