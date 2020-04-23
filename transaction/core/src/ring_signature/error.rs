@@ -57,9 +57,9 @@ pub enum Error {
     SerializationFailed,
 }
 
-impl From<mc_util_serial::LengthMismatch32> for Error {
-    fn from(src: mc_util_serial::LengthMismatch32) -> Self {
-        Error::LengthMismatch(src.0, 32)
+impl From<mc_util_repr_bytes::LengthMismatch> for Error {
+    fn from(src: mc_util_repr_bytes::LengthMismatch) -> Self {
+        Error::LengthMismatch(src.found, src.expected)
     }
 }
 

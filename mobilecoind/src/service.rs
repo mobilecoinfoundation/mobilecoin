@@ -33,7 +33,6 @@ use mc_transaction_core::{
 use mc_transaction_std::identity::RootIdentity;
 use mc_util_b58_payloads::payloads::{RequestPayload, TransferPayload};
 use mc_util_grpc::{rpc_internal_error, rpc_logger, send_result, BuildInfoService};
-use mc_util_serial::ReprBytes32;
 use mc_watcher::watcher_db::WatcherDB;
 use protobuf::RepeatedField;
 use std::{
@@ -1177,6 +1176,7 @@ mod test {
         Block, BlockContents, BLOCK_VERSION,
     };
     use mc_util_from_random::FromRandom;
+    use mc_util_repr_bytes::{typenum::U32, GenericArray, ReprBytes};
     use rand::{rngs::StdRng, SeedableRng};
     use std::{
         convert::{TryFrom, TryInto},
@@ -2372,8 +2372,8 @@ mod test {
                 let hash: [u8; 32] = receipt.get_tx_out_hash().try_into().unwrap();
                 assert!(tx_out_hashes.contains(&hash));
 
-                let public_key: [u8; 32] =
-                    receipt.get_tx_public_key().get_data().try_into().unwrap();
+                let public_key =
+                    GenericArray::<u8, U32>::from_slice(receipt.get_tx_public_key().get_data());
                 assert!(tx_out_public_keys.contains(&public_key));
             }
 
@@ -2612,7 +2612,8 @@ mod test {
             let hash: [u8; 32] = receipt.get_tx_out_hash().try_into().unwrap();
             assert!(tx_out_hashes.contains(&hash));
 
-            let public_key: [u8; 32] = receipt.get_tx_public_key().get_data().try_into().unwrap();
+            let public_key =
+                GenericArray::<u8, U32>::from_slice(receipt.get_tx_public_key().get_data());
             assert!(tx_out_public_keys.contains(&public_key));
         }
 

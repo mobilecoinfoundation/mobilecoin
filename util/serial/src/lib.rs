@@ -7,9 +7,6 @@ use alloc::vec::Vec;
 
 pub extern crate prost;
 
-pub mod helpers;
-pub use helpers::{LengthMismatch32, ReprBytes32};
-
 pub use prost::{DecodeError, EncodeError, Message};
 
 // We put a new-type around serde_cbor::Error in `mod decode` and `mod encode`,

@@ -13,7 +13,7 @@ use crate::{
 use lmdb::{Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
 use mc_common::logger::{log, Logger};
 use mc_crypto_keys::RistrettoPublic;
-use mc_util_serial::{Message, ReprBytes32};
+use prost::Message;
 use std::{convert::TryFrom, sync::Arc};
 
 // LMDB Database Names

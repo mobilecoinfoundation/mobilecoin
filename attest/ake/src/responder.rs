@@ -12,7 +12,7 @@ use alloc::vec::Vec;
 use core::convert::TryFrom;
 use digest::{BlockInput, Digest, FixedOutput, Input, Reset};
 use mc_attest_core::{QuoteSignType, ReportDataMask, VerificationReport};
-use mc_crypto_keys::Kex;
+use mc_crypto_keys::{Kex, ReprBytes};
 use mc_crypto_noise::{
     HandshakeIX, HandshakeNX, HandshakePattern, HandshakeState, HandshakeStatus, NoiseCipher,
     ProtocolName,
@@ -145,6 +145,7 @@ where
         // Parse and verify the received IAS report
         let remote_report: VerificationReport =
             deserialize(&payload).map_err(|_e| Error::ReportDeserialization)?;
+        #[allow(clippy::redundant_closure)]
         remote_report.verify(
             self.trust_anchors,
             None,
@@ -155,13 +156,11 @@ where
             &self.expected_measurement,
             self.expected_product_id,
             self.expected_minimum_svn,
-            &ReportDataMask::try_from(
-                handshake_state
-                    .remote_identity()
-                    .ok_or(Error::MissingRemoteIdentity)?
-                    .as_ref(),
-            )
-            .map_err(|_e| Error::BadRemoteIdentity)?,
+            &handshake_state
+                .remote_identity()
+                .ok_or(Error::MissingRemoteIdentity)?
+                .map_bytes(|bytes| ReportDataMask::try_from(bytes))
+                .map_err(|_e| Error::BadRemoteIdentity)?,
         )?;
 
         Self::handle_response(csprng, handshake_state, input.ias_report)

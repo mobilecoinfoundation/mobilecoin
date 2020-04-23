@@ -6,8 +6,9 @@ use core::{convert::TryFrom, fmt};
 use curve25519_dalek::ristretto::CompressedRistretto;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
-use mc_util_serial::{
-    deduce_core_traits_from_public_bytes, prost_message_helper32, try_from_helper32, ReprBytes32,
+use mc_util_repr_bytes::{
+    derive_core_cmp_from_as_ref, derive_prost_message_from_repr_bytes,
+    derive_repr_bytes_from_as_ref_and_try_from, typenum::U32, LengthMismatch,
 };
 use serde::{Deserialize, Serialize};
 
@@ -80,23 +81,21 @@ impl AsRef<[u8]> for KeyImage {
     }
 }
 
-impl ReprBytes32 for KeyImage {
+impl TryFrom<&[u8]> for KeyImage {
     type Error = Error;
-    fn to_bytes(&self) -> [u8; 32] {
-        self.point.to_bytes()
-    }
-    fn from_bytes(src: &[u8; 32]) -> Result<Self, Error> {
+    fn try_from(src: &[u8]) -> Result<Self, Error> {
+        if src.len() != 32 {
+            return Err(Error::from(LengthMismatch {
+                expected: 32,
+                found: src.len(),
+            }));
+        }
         Ok(Self {
             point: CompressedRistretto::from_slice(src),
         })
     }
 }
 
-// Implements prost::Message. Requires Debug and ReprBytes32.
-prost_message_helper32! { KeyImage }
-
-// Implements try_from<&[u8;32]> and try_from<&[u8]>. Requires ReprBytes32.
-try_from_helper32! { KeyImage }
-
-// Implements Ord, PartialOrd, PartialEq, Hash. Requires AsRef<[u8;32]>.
-deduce_core_traits_from_public_bytes! { KeyImage }
+derive_repr_bytes_from_as_ref_and_try_from!(KeyImage, U32);
+derive_prost_message_from_repr_bytes!(KeyImage);
+derive_core_cmp_from_as_ref!(KeyImage, [u8; 32]);

@@ -14,7 +14,7 @@ using `VersionedCryptoBox::select_version`, to ensure compatibility with the rec
 Otherwise you can `default()` to the latest version.
 
 To encrypt or decrypt, use the `CryptoBox` trait and exercise the `encrypt` or
-`decrypt` APIs or their variations.
+`decrypt` APIs or their variations. (You need Ristretto curve points for the default object.)
 
 Encryption takes an rng, a public key, and a message, and produces a "cryptogram",
 which includes the ciphertext, an ephemeral public key, an aes mac value, and a small versioning tag.
@@ -24,15 +24,39 @@ Decryption takes the private key and the cryptogram and repoduces the message.
 Properties
 ----------
 
-The scheme aims for semantic security at a 128-bit security level, and non-malleability
-of the cryptograms. The primitives used at current version are:
+The `VersionedCryptoBox` object aims for semantic security at a 128-bit security level,
+and non-malleability of the cryptograms. The primitives used at current version are:
 
 - Ristretto elliptic curve (`curve25519-dalek` crate) for key exchange
 - HKDF + Blake2b for the KDF step
-- aes-gcm for authenticated encryption
+- AES-128-GCM for authenticated encryption
 
 The wire-format is intended to be stable, with forwards and backwards compatibility
 if we must change the primitives.
+
+Extensibility
+-------------
+
+Although `VersionedCryptoBox` uses specific primitives, the traits and components
+in this crate could be used to instantiate any variation of Cryptobox.
+
+- `CryptoBox` trait is generic over a `Kex` and supports any footer size
+- The `HkdfBox` object is generic over a `Kex`, a `Digest`, and an `Aead`.
+
+Thus, you could easily use this to assemble your own CryptoBox-like scheme, with
+different elliptic curves and ciphers, or to write code that is generic against
+such a scheme.
+
+The security statement for this assembly is roughly as follows:
+- If the `Kex` is well-chosen, then the shared secret that results is hard for
+  an adversary to predict, or even, distinguish from a random nonce.
+- If `Digest` is well-chosen, then `Hkdf<Digest>` 
+  and derives from the shared secret, a key and IV that are hard to distinguish
+  from uniformly random bytes.
+- If the key and IV are such, then a suitable `Aead` provides confidentiality and
+  integrity of the message.
+
+The security parameter here will be the weakest of the components that are used.
 
 Comparison to related schemes
 -----------------------------
@@ -138,3 +162,4 @@ References
 6. Authenticated Encryption in the Public-Key Setting (Jee Hea An, 2001): https://eprint.iacr.org/2001/079
 7. Practical Cryptography for Developers (Svetlin Nakov, 2018): https://cryptobook.nakov.com/asymmetric-key-ciphers/ecies-public-key-encryption
 8. Rust Aead crate: https://docs.rs/aead/0.2.0/aead/
+9. Uses of EC integrated encryption scheme in practice: https://crypto.stackexchange.com/questions/51203/is-ec-integrated-encryption-scheme-used-in-practice
