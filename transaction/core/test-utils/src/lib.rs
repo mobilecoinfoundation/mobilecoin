@@ -14,7 +14,7 @@ pub use transaction::{
     onetime_keys::recover_onetime_private_key,
     range::Range,
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipHash},
-    Block, BlockID, BlockIndex, RedactedTx, BLOCK_VERSION,
+    Block, BlockID, BlockIndex, BLOCK_VERSION,
 };
 use transaction::{constants::RING_SIZE, BlockContents};
 use transaction_std::{InputCredentials, TransactionBuilder};

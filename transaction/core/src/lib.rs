@@ -29,7 +29,6 @@ pub mod membership_proofs;
 pub mod onetime_keys;
 pub mod range;
 pub mod range_proofs;
-mod redacted_tx;
 pub mod ring_signature;
 pub mod tx;
 pub mod validation;
@@ -41,7 +40,6 @@ pub mod proptest_fixtures;
 pub use blockchain::*;
 pub use commitment::*;
 pub use compressed_commitment::*;
-pub use redacted_tx::RedactedTx;
 
 /// Get the shared secret for a transaction output.
 ///

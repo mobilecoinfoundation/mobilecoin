@@ -1,7 +1,7 @@
 use crate::{
     blake2b_256::Blake2b256,
     tx::{TxOut, TxOutMembershipElement},
-    BlockContents, BlockContentsHash, BlockID, RedactedTx,
+    BlockContents, BlockContentsHash, BlockID,
 };
 use alloc::vec::Vec;
 use digestible::{Digest, Digestible};
@@ -106,11 +106,6 @@ impl Block {
     }
 }
 
-/// Computes the hashes of an array of transactions.
-pub fn hash_block_contents(transactions: &[RedactedTx]) -> BlockContentsHash {
-    BlockContentsHash(transactions.digest_with::<Blake2b256>())
-}
-
 /// Computes the BlockID by hashing the contents of a block.
 ///
 /// The identifier of a block is the result of hashing everything inside a block except the `id`
@@ -139,7 +134,7 @@ mod block_tests {
         account_keys::AccountKey,
         range::Range,
         tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash},
-        Block, BlockContents, BlockContentsHash, BlockID, RedactedTx, BLOCK_VERSION,
+        Block, BlockContents, BlockContentsHash, BlockID, BLOCK_VERSION,
     };
     use alloc::vec::Vec;
     use core::convert::TryFrom;
