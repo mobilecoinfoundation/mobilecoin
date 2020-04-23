@@ -24,7 +24,7 @@ use ed25519_dalek::{
 };
 use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;
-use mc_util_serial::deduce_core_traits_from_public_bytes;
+use mc_util_serial::{deduce_core_traits_from_public_bytes, prost_message_helper32, ReprBytes32};
 use prost::{
     bytes::{Buf, BufMut},
     encoding::{bytes, skip_field, DecodeContext, WireType},
@@ -214,6 +214,20 @@ impl TryFrom<&[u8]> for Ed25519Public {
         ))
     }
 }
+
+impl ReprBytes32 for Ed25519Public {
+    type Error = SignatureError;
+
+    fn to_bytes(&self) -> [u8; 32] {
+        <Self as AsRef<[u8; PUBLIC_KEY_LENGTH]>>::as_ref(self).clone()
+    }
+
+    fn from_bytes(src: &[u8; 32]) -> Result<Self, <Self as ReprBytes32>::Error> {
+        Self::try_from(&src[..])
+    }
+}
+
+prost_message_helper32! { Ed25519Public }
 
 /// An Ed25519 private key
 #[derive(Debug, Default, Deserialize, Serialize)]
