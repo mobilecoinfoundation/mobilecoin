@@ -154,7 +154,6 @@ impl TxOutStore {
     }
 
     /// Get the root hash of the Merkle Tree
-    #[allow(dead_code)]
     pub fn get_root_merkle_hash<T: Transaction>(
         &self,
         db_transaction: &T,
@@ -265,7 +264,6 @@ impl TxOutStore {
     }
 
     /// Merkle proof-of-membership for TxOut with the given index.
-    #[allow(dead_code)]
     pub fn get_merkle_proof_of_membership<T: Transaction>(
         &self,
         index: u64,

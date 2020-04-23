@@ -28,7 +28,6 @@ lazy_static! {
     pub static ref NIL_HASH: [u8; 32] = hash_nil();
 }
 
-#[allow(unused)]
 /// Merkle tree hash function for a leaf node.
 pub fn hash_leaf(tx_out: &TxOut) -> [u8; 32] {
     let mut hasher = Blake2b256::new();
@@ -37,7 +36,6 @@ pub fn hash_leaf(tx_out: &TxOut) -> [u8; 32] {
     hasher.result().try_into().unwrap()
 }
 
-#[allow(unused)]
 /// Merkle tree hash function for leaf nodes.
 pub fn hash_nodes(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
     let mut hasher = Blake2b256::new();
@@ -47,37 +45,12 @@ pub fn hash_nodes(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
     hasher.result().try_into().unwrap()
 }
 
-#[allow(unused)]
 /// Merkle tree Hash function for hashing a "nil" value.
 fn hash_nil() -> [u8; 32] {
     let mut hasher = Blake2b256::new();
     hasher.input(&TXOUT_MERKLE_NIL);
     hasher.result().try_into().unwrap()
 }
-
-// /// Merkle tree hash function for leaf nodes.
-// pub fn leaf_hash_fn(bytes: &[u8]) -> [u8; 32] {
-//     hash_with_prefix(&[LEAF_PREFIX], bytes)
-// }
-//
-// /// Merkle tree Hash function for internal nodes.
-// pub fn internal_hash_fn(bytes: &[u8]) -> [u8; 32] {
-//     hash_with_prefix(&[NODE_PREFIX], bytes)
-// }
-//
-// /// Merkle tree Hash function for hashing a "nil" value.
-// pub fn nil_hash_fn() -> [u8; 32] {
-//     const NIL_PREFIX: u8 = 0x02;
-//     hash_with_prefix(&[NIL_PREFIX], &[])
-// }
-//
-// /// Hash(prefix_bytes | data_bytes)
-// fn hash_with_prefix(prefix_bytes: &[u8], data_bytes: &[u8]) -> [u8; 32] {
-//     let mut hasher = Blake2b256::new();
-//     hasher.input(prefix_bytes);
-//     hasher.input(data_bytes);
-//     hasher.result().try_into().unwrap()
-// }
 
 /// Validates a proof-of-membership.
 ///
