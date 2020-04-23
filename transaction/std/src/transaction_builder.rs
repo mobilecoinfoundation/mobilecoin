@@ -72,6 +72,11 @@ impl TransactionBuilder {
         self.outputs.push(tx_out.clone());
         self.output_shared_secrets.push(shared_secret);
 
+        // TODO: sort outputs and their corresponding secrets.
+        // Sort outputs by public_key. This removes ordering information that could be used to
+        // infer things like the identity of a "change" output.
+        // outputs.sort_by(|a, b| a.public_key.cmp(&b.public_key));
+
         Ok(tx_out)
     }
 
@@ -120,9 +125,6 @@ impl TransactionBuilder {
 
         let tx_prefix = TxPrefix::new(inputs, self.outputs.clone(), self.fee, self.tombstone_block);
 
-        let tx_prefix_hash = tx_prefix.hash();
-        let message = tx_prefix_hash.as_bytes();
-
         let mut rings: Vec<Vec<(CompressedRistrettoPublic, CompressedCommitment)>> = Vec::new();
         for input in &tx_prefix.inputs {
             let ring: Vec<(CompressedRistrettoPublic, CompressedCommitment)> = input
@@ -169,8 +171,9 @@ impl TransactionBuilder {
         // The fee output is implicit in the tx_prefix.
         output_values_and_blindings.push(tx_prefix.fee_value_and_blinding());
 
+        let message = tx_prefix.hash().0;
         let signature = SignatureRctBulletproofs::sign(
-            message,
+            &message,
             &rings,
             &real_input_indices,
             &input_secrets,
@@ -241,6 +244,7 @@ pub mod transaction_builder_tests {
     use std::convert::TryFrom;
     use transaction::{
         account_keys::{AccountKey, DEFAULT_SUBADDRESS_INDEX},
+        constants::{MAX_INPUTS, MAX_OUTPUTS},
         get_tx_out_shared_secret,
         onetime_keys::*,
         ring_signature::KeyImage,
@@ -281,22 +285,83 @@ pub mod transaction_builder_tests {
         (ring, real_index)
     }
 
+    // Uses TransactionBuilder to build a transaction.
+    #[allow(unused)]
+    fn get_transaction<RNG: RngCore + CryptoRng>(
+        num_inputs: usize,
+        num_outputs: usize,
+        sender: &AccountKey,
+        recipient: &AccountKey,
+        rng: &mut RNG,
+    ) -> Result<Tx, TxBuilderError> {
+        let mut transaction_builder = TransactionBuilder::new();
+        let input_value = 1000;
+        let output_value = 10;
+
+        // Inputs
+        for _i in 0..num_inputs {
+            let (ring, real_index) = get_ring(3, sender, input_value, rng);
+            let real_output = ring[real_index].clone();
+
+            let onetime_private_key = recover_onetime_private_key(
+                &RistrettoPublic::try_from(&real_output.public_key).unwrap(),
+                &sender.view_private_key(),
+                &sender.subaddress_spend_key(DEFAULT_SUBADDRESS_INDEX),
+            );
+
+            let key_image = KeyImage::from(&onetime_private_key);
+
+            let membership_proofs: Vec<TxOutMembershipProof> = ring
+                .iter()
+                .map(|_tx_out| {
+                    // TransactionBuilder does not validate membership proofs, but does require one
+                    // for each ring member.
+                    TxOutMembershipProof::default()
+                })
+                .collect();
+
+            let input_credentials = InputCredentials::new(
+                ring,
+                membership_proofs.clone(),
+                real_index,
+                onetime_private_key,
+                *sender.view_private_key(),
+                rng,
+            )
+            .unwrap();
+            transaction_builder.add_input(input_credentials);
+        }
+
+        // Outputs
+        for _i in 0..num_outputs {
+            transaction_builder
+                .add_output(output_value, &recipient.default_subaddress(), None, rng)
+                .unwrap();
+        }
+
+        // Set the fee so that sum(inputs) = sum(outputs) + fee.
+        let fee = num_inputs as u64 * input_value - num_outputs as u64 * output_value;
+        transaction_builder.set_fee(fee);
+
+        transaction_builder.build(rng)
+    }
+
     #[test]
     // Spend a single input and send its full value to a single recipient.
     fn test_simple_transaction() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-        let alice = AccountKey::random(&mut rng);
-        let bob = AccountKey::random(&mut rng);
+        let sender = AccountKey::random(&mut rng);
+        let recipient = AccountKey::random(&mut rng);
         let value = 1475;
 
         // Mint an initial collection of outputs, including one belonging to Alice.
-        let (ring, real_index) = get_ring(3, &alice, value, &mut rng);
+        let (ring, real_index) = get_ring(3, &sender, value, &mut rng);
         let real_output = ring[real_index].clone();
 
         let onetime_private_key = recover_onetime_private_key(
             &RistrettoPublic::try_from(&real_output.public_key).unwrap(),
-            &alice.view_private_key(),
-            &alice.subaddress_spend_key(DEFAULT_SUBADDRESS_INDEX),
+            &sender.view_private_key(),
+            &sender.subaddress_spend_key(DEFAULT_SUBADDRESS_INDEX),
         );
 
         let key_image = KeyImage::from(&onetime_private_key);
@@ -315,7 +380,7 @@ pub mod transaction_builder_tests {
             membership_proofs.clone(),
             real_index,
             onetime_private_key,
-            *alice.view_private_key(),
+            *sender.view_private_key(),
             &mut rng,
         )
         .unwrap();
@@ -323,7 +388,12 @@ pub mod transaction_builder_tests {
         let mut transaction_builder = TransactionBuilder::new();
         transaction_builder.add_input(input_credentials);
         transaction_builder
-            .add_output(value - BASE_FEE, &bob.default_subaddress(), None, &mut rng)
+            .add_output(
+                value - BASE_FEE,
+                &recipient.default_subaddress(),
+                None,
+                &mut rng,
+            )
             .unwrap();
 
         let tx = transaction_builder.build(&mut rng).unwrap();
@@ -344,7 +414,7 @@ pub mod transaction_builder_tests {
         // The output should belong to the correct recipient.
         {
             assert!(view_key_matches_output(
-                &bob.view_key(),
+                &recipient.view_key(),
                 &RistrettoPublic::try_from(&output.target_key).unwrap(),
                 &RistrettoPublic::try_from(&output.public_key).unwrap()
             ));
@@ -353,7 +423,7 @@ pub mod transaction_builder_tests {
         // The output should have the correct value.
         {
             let public_key = RistrettoPublic::try_from(&output.public_key).unwrap();
-            let shared_secret = get_tx_out_shared_secret(bob.view_private_key(), &public_key);
+            let shared_secret = get_tx_out_shared_secret(recipient.view_private_key(), &public_key);
             let (output_value, _blinding) = output.amount.get_value(&shared_secret).unwrap();
             assert_eq!(output_value, value - BASE_FEE);
         }
@@ -420,5 +490,23 @@ pub mod transaction_builder_tests {
             Err(TxBuilderError::RingSignatureFailed) => {} // Expected.
             _ => panic!("Unexpected result {:?}", result),
         }
+    }
+
+    #[test]
+    // `build` should succeed with MAX_INPUTS and MAX_OUTPUTS.
+    fn test_max_transaction_size() {
+        let mut rng: StdRng = SeedableRng::from_seed([18u8; 32]);
+        let sender = AccountKey::random(&mut rng);
+        let recipient = AccountKey::random(&mut rng);
+        let tx = get_transaction(
+            MAX_INPUTS as usize,
+            MAX_OUTPUTS as usize,
+            &sender,
+            &recipient,
+            &mut rng,
+        )
+        .unwrap();
+        assert_eq!(tx.prefix.inputs.len(), MAX_INPUTS as usize);
+        assert_eq!(tx.prefix.outputs.len(), MAX_OUTPUTS as usize);
     }
 }
