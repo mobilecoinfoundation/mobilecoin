@@ -86,31 +86,6 @@ pipeline {
     }
     stage('Build Images') {
       parallel {
-        stage('Build bootstrap-tools container') {
-          options {
-            skipDefaultCheckout true
-          }
-          agent {
-            kubernetes {
-              slaveConnectTimeout 240000
-              activeDeadlineSeconds 43200
-              yamlFile 'jenkins/packaging-pod.yaml'
-            }
-          }
-          steps {
-            container('jnlp'){
-              unstash name: 'sources'
-              unstash name: 'ops_data'
-            }
-            container('kaniko'){
-              sh '''
-                /kaniko/executor -f $WORKSPACE/ops/Dockerfile-bootstrap-tools -c $WORKSPACE/ops \
-                  --destination=$DOCKER_OWNER/$BOOTSTRAP_TOOLS_DOCKER_REPO:${NETWORK}-${TAG_VERSION} \
-                  --destination=$DOCKER_OWNER/$BOOTSTRAP_TOOLS_DOCKER_REPO:${NETWORK}-latest
-              '''
-            }
-          }
-        }
         stage('Build Consensus Service container') {
           options {
             skipDefaultCheckout true
@@ -165,6 +140,73 @@ pipeline {
                   --destination=$DOCKER_OWNER/$MOBILECOIND_DOCKER_REPO:${NETWORK}-latest
               '''
             }
+          }
+        }
+      }
+    }
+    stage('Deploy to k8s') {
+      options {
+        skipDefaultCheckout true
+      }
+      agent {
+        kubernetes {
+          slaveConnectTimeout 240000
+          activeDeadlineSeconds 43200
+          yamlFile 'jenkins/kubectl-pod.yaml'
+        }
+      }
+      steps {
+        container('jnlp') {
+          unstash name: 'sources'          
+          dir('deploy') {
+            sh './generate-manifests -n ${NETWORK} -t ${NETWORK}-${TAG_VERSION}'
+          }
+        }
+        container('kubectl') {
+          dir('deploy/build') {
+            script {
+              sh(script: 'kubectl get po -n ${NETWORK}')
+
+              // Delete the consensus nodes, and {discovery, mobilecoind, ledger} nodes if any
+              sh(script: 'for i in 03* 04*; do kubectl delete --ignore-not-found -n ${NETWORK} -f ${i}; done')
+
+              // Launch the consensus node deployments
+              sh(script: 'for i in 03*yaml; do kubectl apply -n ${NETWORK} -f ${i}; done')
+
+              // Wait until the deployments have achieved an Available state.
+              sh(script: 'for i in 1 2 3 4 5; do kubectl wait --for=condition=Available deploy/node${i} -n ${NETWORK} --timeout=2500s; done')
+
+              // Deploy an internal mobilecoind to test with
+              sh(script: 'kubectl apply -n ${NETWORK} -f 04-mobilecoind.yaml')
+
+              // Wait for mobilecoind to achieve and Available state
+              sh(script: 'kubectl wait --for=condition=Available deploy/mobilecoind -n ${NETWORK} --timeout=480s')
+
+              sh(script: 'kubectl get po -n ${NETWORK}')
+            }
+          }
+        }
+      }
+    }
+    stage('Wallet Integration Test') {
+      steps {
+        container('rust-builder-default') {
+          dir('mobilecoind/strategies') {
+            sh 'pip3 install -r requirements.txt'
+            sh '''
+              python3 -m grpc_tools.protoc -I../../consensus/api/proto \
+                --python_out=. ../../consensus/api/proto/external.proto
+            '''
+            sh '''
+              python3 -m grpc_tools.protoc -I../api/proto -I../../consensus/api/proto \
+                --python_out=. --grpc_python_out=. ../api/proto/mobilecoind_api.proto
+            '''
+            sh '''
+              python3 test_client.py \
+                --key-dir $WORKSPACE/ops/sample_data/keys \
+                --mobilecoind-host mobilecoind.${NETWORK}.svc.cluster.local\
+                --mobilecoind-port 3229
+            '''
           }
         }
       }
