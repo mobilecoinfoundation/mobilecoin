@@ -4,10 +4,11 @@
 
 extern crate alloc;
 
-mod errors;
-
 use crate::{
     blake2b_256::Blake2b256,
+    domain_separators::{
+        TXOUT_MERKLE_LEAF_DOMAIN_TAG, TXOUT_MERKLE_NIL_DOMAIN_TAG, TXOUT_MERKLE_NODE_DOMAIN_TAG,
+    },
     membership_proofs::errors::Error,
     range::Range,
     tx::{TxOut, TxOutMembershipHash, TxOutMembershipProof},
@@ -15,17 +16,11 @@ use crate::{
 use alloc::vec::Vec;
 use blake2::digest::Input;
 use common::HashMap;
-use mcserial::serialize;
-mod errors;
-use crate::{
-    blake2b_256::Blake2b256,
-    domain_separators::{
-        TXOUT_MERKLE_LEAF_DOMAIN_TAG, TXOUT_MERKLE_NIL_DOMAIN_TAG, TXOUT_MERKLE_NODE_DOMAIN_TAG,
-    },
-};
 use core::convert::TryInto;
 use digestible::Digestible;
 pub use errors::Error as MembershipProofError;
+
+mod errors;
 
 lazy_static! {
     pub static ref NIL_HASH: [u8; 32] = hash_nil();
