@@ -68,6 +68,7 @@ members = [
     "util/logger-macros",
     "util/metered-channel",
     "util/metrics",
+    "util/repr-bytes",
     "util/serial",
     "util/test-helper",
     "util/uri",
