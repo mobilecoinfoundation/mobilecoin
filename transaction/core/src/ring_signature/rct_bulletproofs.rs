@@ -32,7 +32,6 @@ use serde::{Deserialize, Serialize};
 use crate::{
     commitment::Commitment,
     compressed_commitment::CompressedCommitment,
-    onetime_keys::compute_key_image,
     range_proofs::{check_range_proofs, generate_range_proofs},
     ring_signature::{mlsag::RingMLSAG, CurveScalar, Error, KeyImage, Scalar, GENERATORS},
 };
@@ -593,7 +592,7 @@ mod rct_bulletproofs_tests {
 
             // Modify an MLSAG ring signature
             let index = rng.next_u64() as usize % (num_inputs);
-            signature.ring_signatures[index].key_image = KeyImage::from(RistrettoPoint::random(&mut rng));
+            signature.ring_signatures[index].key_image = KeyImage::from(rng.next_u64());
 
             let result = signature.verify(
                 &params.message,

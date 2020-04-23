@@ -25,7 +25,8 @@ use std::{
 use transaction::{
     account_keys::{AccountKey, PublicAddress},
     constants::{BASE_FEE, MAX_INPUTS, RING_SIZE},
-    onetime_keys::{compute_key_image, recover_onetime_private_key},
+    onetime_keys::recover_onetime_private_key,
+    ring_signature::KeyImage,
     tx::{Tx, TxOut, TxOutMembershipProof},
     BlockIndex,
 };
@@ -627,7 +628,7 @@ impl<T: UserTxConnection + 'static> TransactionsManager<T> {
                 &from_account_key.subaddress_spend_key(utxo.subaddress_index),
             );
 
-            let key_image = compute_key_image(&onetime_private_key);
+            let key_image = KeyImage::from(&onetime_private_key);
             log::debug!(
                 logger,
                 "Adding input: ring {:?}, utxo index {:?}, key image {:?}, pubkey {:?}",

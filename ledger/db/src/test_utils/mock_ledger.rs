@@ -2,10 +2,10 @@
 
 use crate::{Error, Ledger};
 use common::{HashMap, HashSet};
-use curve25519_dalek::ristretto::RistrettoPoint;
 use keys::RistrettoPrivate;
 use mc_util_from_random::FromRandom;
 use rand::{rngs::StdRng, SeedableRng};
+use rand_core::RngCore;
 use std::{
     iter::FromIterator,
     sync::{Arc, Mutex, MutexGuard},
@@ -217,7 +217,7 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
             .unwrap();
 
             let outputs = vec![tx_out];
-            let key_images = vec![KeyImage::from(RistrettoPoint::random(&mut rng))];
+            let key_images = vec![KeyImage::from(rng.next_u64())];
             let block_contents = BlockContents::new(key_images, outputs);
 
             let block = Block::new(

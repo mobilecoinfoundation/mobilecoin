@@ -40,7 +40,8 @@ use std::{
 };
 use transaction::{
     get_tx_out_shared_secret,
-    onetime_keys::{compute_key_image, recover_onetime_private_key, subaddress_for_key},
+    onetime_keys::{recover_onetime_private_key, subaddress_for_key},
+    ring_signature::KeyImage,
     tx::TxOut,
 };
 
@@ -388,7 +389,7 @@ fn match_tx_outs_into_utxos(
             &account_key.subaddress_spend_key(subaddress_id.index),
         );
 
-        let key_image = compute_key_image(&onetime_private_key);
+        let key_image = KeyImage::from(&onetime_private_key);
 
         results.push(UnspentTxOut {
             tx_out: tx_out.clone(),
