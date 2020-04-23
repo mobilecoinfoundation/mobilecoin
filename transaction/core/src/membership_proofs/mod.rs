@@ -111,8 +111,7 @@ pub fn is_membership_proof_valid(
 
     // * All internal node's hashes between leaf and root must be recomputable from their children's hashes.
     let ranges_containing_tx_out: Vec<&Range> = ranges
-        .iter()
-        .cloned()
+        .into_iter()
         .filter(|range| range.from <= proof.index && proof.index <= range.to)
         .collect();
 
@@ -139,8 +138,11 @@ pub fn is_membership_proof_valid(
             let right_child_hash = match range_to_hash.get(&right_child_range) {
                 Some(hash) => hash,
                 None => {
-                    // Proof does not contain a required hash.
-                    return Ok(false);
+                    // Missing hashes are assumed to be the Nil hash, indicating that the range of
+                    // TxOuts do not exist yet.
+                    &NIL_HASH
+                    // // Proof does not contain a required hash.
+                    // return Ok(false);
                 }
             };
 
@@ -195,7 +197,7 @@ pub fn derive_proof_at_index(
 
         let hash = if element.range.from > index {
             // This range exceeds `index`.
-            TxOutMembershipHash::from(hash_nil())
+            continue;
         } else if element.range.from == element.range.to {
             // A leaf. Re-use the hash supplied by the input proof.
             element.hash.clone()
@@ -216,11 +218,14 @@ pub fn derive_proof_at_index(
             };
 
             // Right child.
-            let right_child_hash = {
-                let right_child_range = Range::new(mid + 1, element.range.to)?;
-                *derived_elements
-                    .get(&right_child_range)
-                    .expect("Child range should already exist.")
+            let right_child_range = Range::new(mid + 1, element.range.to)?;
+            let right_child_hash = match derived_elements.get(&right_child_range) {
+                Some(hash) => hash,
+                None => {
+                    // Missing hashes are assumed to be the Nil hash, indicating that the range of
+                    // TxOuts do not exist yet.
+                    &NIL_HASH
+                }
             };
 
             TxOutMembershipHash::from(hash_nodes(&left_child_hash, &right_child_hash))

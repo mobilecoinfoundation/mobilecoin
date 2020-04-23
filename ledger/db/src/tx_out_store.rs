@@ -294,15 +294,11 @@ impl TxOutStore {
         let mut range_to_hash: HashMap<Range, [u8; 32]> = HashMap::default();
         for &(low, high) in ranges.iter().chain(other_ranges.iter()) {
             let range = Range::new(low, high)?;
-            let hash = if low >= num_tx_outs {
-                // Supply the nil hash if the range contains no data.
-                // Note: Nil hashes could probably be omitted as an optimization if validation
-                // knows that it must supply them for any range where `low >= num_tx_outs`.
-                *NIL_HASH
-            } else {
-                self.get_merkle_hash(&range, db_transaction)?
-            };
-            range_to_hash.insert(range, hash);
+            if low < num_tx_outs {
+                // The range contains some TxOuts.
+                let hash = self.get_merkle_hash(&range, db_transaction)?;
+                range_to_hash.insert(range, hash);
+            }
         }
 
         Ok(TxOutMembershipProof::new(
@@ -1127,7 +1123,7 @@ pub mod tx_out_store_tests {
                                |                                  |
                             H(0,3)                       ______ H(4,7)_____
                                                          |                |
-                                                   ___H(4,5)__          H(6,7) = H(Nil)
+                                                   ___H(4,5)__          H(6,7) = H(Nil) Omitted
                                                    |         |
                                                  H(4,4)   H(5,5)
                                                    |        |
@@ -1135,7 +1131,7 @@ pub mod tx_out_store_tests {
 
             */
 
-            assert_eq!(7, proof.elements.len());
+            assert_eq!(6, proof.elements.len());
 
             let ranges: Vec<Range> = proof.elements.iter().map(|e| e.range).collect();
 
@@ -1143,7 +1139,8 @@ pub mod tx_out_store_tests {
             assert!(ranges.contains(&Range::new(4, 4).unwrap()));
             assert!(ranges.contains(&Range::new(5, 5).unwrap()));
             assert!(ranges.contains(&Range::new(4, 5).unwrap()));
-            assert!(ranges.contains(&Range::new(6, 7).unwrap()));
+            // H(6,7) can be inferred, so it is omitted.
+            assert!(!ranges.contains(&Range::new(6, 7).unwrap()));
             assert!(ranges.contains(&Range::new(4, 7).unwrap()));
             assert!(ranges.contains(&Range::new(0, 3).unwrap()));
             assert!(ranges.contains(&Range::new(0, 7).unwrap()));
