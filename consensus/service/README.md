@@ -76,8 +76,8 @@ Follow the steps below:
     To get the public key from the private key, use:
 
     ```
-    openssl genpkey -algorithm ed25519 -out /tmp/node1.pem
-    openssl pkey -in /tmp/node{}.pem -pubout -out /tmp/node1_pubkey.pem
+    openssl genpkey -algorithm ed25519 -out example.com.key
+    openssl pkey -in example.com.key -pubout -out example.com.pub.pem
     ```
 
     Note: For the URIs, the base64 encoding needs to use URL-safe characters, which you can achieve with:
