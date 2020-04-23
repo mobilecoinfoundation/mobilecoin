@@ -7,7 +7,10 @@
 
 #![cfg_attr(test, allow(clippy::unnecessary_operation))]
 
-use crate::{ring_signature::CurveScalar, CompressedCommitment};
+use crate::{
+    domain_separators::AMOUNT_BLINDING_DOMAIN_TAG, ring_signature::CurveScalar,
+    CompressedCommitment,
+};
 use blake2::{Blake2b, Digest};
 use curve25519_dalek::scalar::Scalar;
 use digestible::Digestible;
@@ -24,12 +27,6 @@ pub enum AmountError {
     #[fail(display = "Inconsistent Commitment")]
     InconsistentCommitment,
 }
-
-/// Value mask hash function domain separator.
-const VALUE_MASK: &str = "amount_value_mask";
-
-/// Blinding mask hash function domain separator.
-const BLINDING_MASK: &str = "amount_blinding";
 
 // The "blinding factor" in a Pedersen commitment.
 pub type Blinding = CurveScalar;
@@ -116,7 +113,7 @@ impl Amount {
 /// * `shared_secret` - The shared secret, e.g. `rB`.
 fn get_value_mask(shared_secret: &RistrettoPublic) -> Scalar {
     let mut hasher = Blake2b::new();
-    hasher.input(&VALUE_MASK);
+    hasher.input(&AMOUNT_VALUE_DOMAIN_TAG);
     hasher.input(&shared_secret.to_bytes());
     Scalar::from_hash(hasher)
 }
@@ -127,7 +124,7 @@ fn get_value_mask(shared_secret: &RistrettoPublic) -> Scalar {
 /// * `shared_secret` - The shared secret, e.g. `rB`.
 fn get_blinding(shared_secret: &RistrettoPublic) -> Scalar {
     let mut hasher = Blake2b::new();
-    hasher.input(&BLINDING_MASK);
+    hasher.input(&AMOUNT_BLINDING_DOMAIN_TAG);
     hasher.input(&shared_secret.to_bytes());
     Scalar::from_hash(hasher)
 }

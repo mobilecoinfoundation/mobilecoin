@@ -16,11 +16,15 @@ use serde::{Deserialize, Serialize};
 use crate::{
     commitment::Commitment,
     compressed_commitment::CompressedCommitment,
+    domain_separators::RING_MLSAG_CHALLENGE_DOMAIN_TAG,
     ring_signature::{CurveScalar, Error, KeyImage, Scalar, GENERATORS},
 };
 
+// This needs to be the same "Hp" function used by the onetime keys.
 fn hash_to_point(ristretto_public: &RistrettoPublic) -> RistrettoPoint {
-    RistrettoPoint::hash_from_bytes::<Blake2b>(&ristretto_public.to_bytes())
+    let mut hasher = Blake2b::new();
+    hasher.input(&ristretto_public.to_bytes());
+    RistrettoPoint::from_hash(hasher)
 }
 
 /// MLSAG for a ring of public keys and amount commitments.
@@ -177,6 +181,7 @@ impl RingMLSAG {
 
             c[(i + 1) % ring_size] = {
                 let mut hasher = Blake2b::new();
+                hasher.input(&RING_MLSAG_CHALLENGE_DOMAIN_TAG);
                 hasher.input(message);
                 hasher.input(&key_image);
                 hasher.input(L0.compress().as_bytes());
@@ -290,6 +295,7 @@ impl RingMLSAG {
 
             recomputed_c[(i + 1) % ring_size] = {
                 let mut hasher = Blake2b::new();
+                hasher.input(&RING_MLSAG_CHALLENGE_DOMAIN_TAG);
                 hasher.input(message);
                 hasher.input(&self.key_image);
                 hasher.input(L0.compress().as_bytes());
