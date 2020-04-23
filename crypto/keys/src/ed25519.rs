@@ -431,6 +431,14 @@ impl AsRef<[u8]> for Ed25519Signature {
     }
 }
 
+impl<'a> TryFrom<&'a [u8]> for Ed25519Signature {
+    type Error = Ed25519SignatureError;
+
+    fn try_from(bytes: &'a [u8]) -> Result<Self, Error> {
+        Ok(Self(Signature::try_from(bytes)?))
+    }
+}
+
 impl Message for Ed25519Signature {
     fn encode_raw<B>(&self, buf: &mut B)
     where
