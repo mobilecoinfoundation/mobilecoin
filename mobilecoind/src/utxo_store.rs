@@ -435,10 +435,12 @@ mod test {
             .collect();
 
         // The instance to test.
-        let db_tmp = TempDir::new("utxo_store_db")
-            .expect("Could not make tempdir for utxo store db")
-            .into_path();
-        let db_path = db_tmp.to_str().expect("Could not get path as string");
+        let db_tmp =
+            TempDir::new("utxo_store_db").expect("Could not make tempdir for utxo store db");
+        let db_path = db_tmp
+            .path()
+            .to_str()
+            .expect("Could not get path as string");
 
         let env = Arc::new(
             Environment::new()

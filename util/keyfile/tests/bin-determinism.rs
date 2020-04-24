@@ -22,7 +22,7 @@ fn sample_keys_determinism() {
         sample_keys_bin.display()
     );
 
-    let tempdir = TempDir::new("keys").unwrap().into_path();
+    let tempdir = TempDir::new("keys").unwrap();
     env::set_current_dir(&tempdir).unwrap();
     assert!(Command::new(sample_keys_bin.clone())
         .args(&["--num", "10", "--acct", "discovery.example.mobilecoin.com"])
@@ -30,7 +30,7 @@ fn sample_keys_determinism() {
         .expect("sample_keys failed")
         .success());
 
-    let tempdir2 = TempDir::new("keys").unwrap().into_path();
+    let tempdir2 = TempDir::new("keys").unwrap();
     env::set_current_dir(&tempdir2).unwrap();
     assert!(Command::new(sample_keys_bin)
         .args(&["--num", "10", "--acct", "discovery.example.mobilecoin.com"])
@@ -39,7 +39,11 @@ fn sample_keys_determinism() {
         .success());
 
     assert!(Command::new("diff")
-        .args(&["-rq", tempdir.to_str().unwrap(), tempdir2.to_str().unwrap()])
+        .args(&[
+            "-rq",
+            tempdir.path().to_str().unwrap(),
+            tempdir2.path().to_str().unwrap()
+        ])
         .status()
         .expect("Diff reported unexpected differences, this indicates nondeterminism")
         .success());
@@ -56,7 +60,7 @@ fn sample_keys_determinism2() {
         sample_keys_bin.display()
     );
 
-    let tempdir = TempDir::new("keys").unwrap().into_path();
+    let tempdir = TempDir::new("keys").unwrap();
     env::set_current_dir(&tempdir).unwrap();
     assert!(Command::new(sample_keys_bin.clone())
         .args(&["--num", "10", "--acct", "discovery.example.mobilecoin.com"])
@@ -64,7 +68,7 @@ fn sample_keys_determinism2() {
         .expect("sample_keys failed")
         .success());
 
-    let tempdir2 = TempDir::new("keys").unwrap().into_path();
+    let tempdir2 = TempDir::new("keys").unwrap();
     env::set_current_dir(&tempdir2).unwrap();
     assert!(Command::new(sample_keys_bin)
         .args(&["--num", "20", "--acct", "discovery.example.mobilecoin.com"])
@@ -77,8 +81,8 @@ fn sample_keys_determinism2() {
         .args(&[
             "-rq",
             "--exclude=*1[0123456789].*",
-            tempdir.to_str().unwrap(),
-            tempdir2.to_str().unwrap()
+            tempdir.path().to_str().unwrap(),
+            tempdir2.path().to_str().unwrap()
         ])
         .status()
         .expect("Diff reported unexpected differences, this indicates nondeterminism")
