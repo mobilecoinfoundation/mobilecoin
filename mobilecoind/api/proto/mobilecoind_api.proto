@@ -514,4 +514,7 @@ message GetNetworkStatusResponse {
 
     // A map of node responder id to the block index reported by it.
     map<string, uint64> peer_block_index_map = 2;
+
+    // The local ledger block index.
+    uint64 local_block_index = 3;
 }

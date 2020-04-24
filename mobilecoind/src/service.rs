@@ -23,7 +23,7 @@ use mc_common::{
 use mc_connection::{BlockchainConnection, UserTxConnection};
 use mc_crypto_keys::RistrettoPublic;
 use mc_ledger_db::{Ledger, LedgerDB};
-use mc_ledger_sync::PollingNetworkState;
+use mc_ledger_sync::{NetworkState, PollingNetworkState};
 use mc_mobilecoind_api::mobilecoind_api_grpc::{create_mobilecoind_api, MobilecoindApi};
 use mc_transaction_core::{
     account_keys::{AccountKey, PublicAddress},
@@ -1003,7 +1003,33 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         &mut self,
         _request: mc_mobilecoind_api::Empty,
     ) -> Result<mc_mobilecoind_api::GetNetworkStatusResponse, RpcStatus> {
-        todo!();
+        let network_state = self.network_state.lock().expect("mutex poisoned");
+        let num_blocks = self
+            .ledger_db
+            .num_blocks()
+            .map_err(|err| rpc_internal_error("ledger_db.num_blocks", err, &self.logger))?;
+        if num_blocks == 0 {
+            return Err(RpcStatus::new(
+                RpcStatusCode::INTERNAL,
+                Some("no bootstrap block".to_owned()),
+            ));
+        }
+
+        let mut response = mc_mobilecoind_api::GetNetworkStatusResponse::new();
+
+        response.set_network_highest_block_index(
+            network_state.highest_block_index_on_network().unwrap_or(0),
+        );
+        response.set_peer_block_index_map(
+            network_state
+                .peer_to_current_block_index()
+                .iter()
+                .map(|(responder_id, block_index)| (responder_id.to_string(), *block_index))
+                .collect(),
+        );
+        response.set_local_block_index(num_blocks - 1);
+
+        Ok(response)
     }
 }
 
