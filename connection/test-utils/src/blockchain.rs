@@ -110,7 +110,7 @@ impl<L: Ledger + Sync> BlockchainConnection for MockBlockchainConnection<L> {
     }
 
     fn fetch_block_height(&mut self) -> ConnectionResult<BlockIndex> {
-        unimplemented!()
+        Ok(self.ledger.num_blocks().unwrap() - 1)
     }
 }
 

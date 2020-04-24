@@ -2642,4 +2642,26 @@ mod test {
             assert_eq!(response.get_memo(), "test memo");
         }
     }
+
+    #[test_with_logger]
+    fn test_get_network_status(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        let (ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
+
+        let network_status = client
+            .get_network_status(&mobilecoind_api::Empty::new())
+            .unwrap();
+
+        assert_eq!(
+            network_status.network_highest_block_index,
+            ledger_db.num_blocks().unwrap() - 1
+        );
+
+        assert_eq!(
+            network_status.local_block_index,
+            ledger_db.num_blocks().unwrap() - 1
+        );
+    }
 }

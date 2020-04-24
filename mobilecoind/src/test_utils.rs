@@ -215,6 +215,11 @@ fn setup_server(
         logger.clone(),
     )));
 
+    {
+        let mut network_state = network_state.lock().unwrap();
+        network_state.poll();
+    }
+
     let transactions_manager = TransactionsManager::new(
         ledger_db.clone(),
         mobilecoind_db.clone(),
