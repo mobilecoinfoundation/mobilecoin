@@ -62,7 +62,7 @@ fn main() {
             let _ = std::fs::create_dir_all(mobilecoind_db);
 
             let mobilecoind_db = Database::new(mobilecoind_db, logger.clone())
-                .expect("Could not open mobilecoinddb");
+                .expect("Could not open mobilecoind_db");
 
             let transactions_manager = TransactionsManager::new(
                 ledger_db.clone(),
