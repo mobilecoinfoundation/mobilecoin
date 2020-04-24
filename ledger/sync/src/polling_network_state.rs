@@ -137,6 +137,10 @@ impl<BC: BlockchainConnection + 'static> PollingNetworkState<BC> {
         }
     }
 
+    pub fn peer_to_current_block_index(&self) -> &HashMap<ResponderId, BlockIndex> {
+        self.scp_network_state.peer_to_current_slot()
+    }
+
     fn get_retry_iterator() -> Box<dyn Iterator<Item = Duration>> {
         // Start at 50ms, make 10 attempts (total would be 7150ms)
         Box::new(Fibonacci::from_millis(50).take(10))
