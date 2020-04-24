@@ -9,6 +9,7 @@ use crate::{
 };
 use mc_common::{NodeID, ResponderId};
 use mc_connection::{impl_sync_connection_retry, SyncConnection};
+use mc_consensus_api::consensus_peer::ConsensusMsgResponse;
 use mc_consensus_enclave_api::{TxContext, WellFormedEncryptedTx};
 use mc_transaction_core::tx::TxHash;
 use std::time::Duration;
@@ -24,7 +25,7 @@ impl<CC: ConsensusConnection> RetryableConsensusConnection for SyncConnection<CC
         &self,
         msg: &ConsensusMsg,
         retry_iterator: impl IntoIterator<Item = Duration>,
-    ) -> RetryResult<()> {
+    ) -> RetryResult<ConsensusMsgResponse> {
         impl_sync_connection_retry!(
             self.write(),
             self.logger(),

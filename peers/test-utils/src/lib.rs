@@ -7,6 +7,7 @@ use mc_common::{NodeID, ResponderId};
 use mc_connection::{
     BlockchainConnection, Connection, Error as ConnectionError, Result as ConnectionResult,
 };
+use mc_consensus_api::consensus_peer::{ConsensusMsgResponse, ConsensusMsgResult};
 use mc_consensus_enclave_api::{TxContext, WellFormedEncryptedTx};
 use mc_consensus_scp::{
     msg::{Msg, NominatePayload},
@@ -186,7 +187,7 @@ impl<L: Ledger + Sync> ConsensusConnection for MockPeerConnection<L> {
         self.local_node_id.clone()
     }
 
-    fn send_consensus_msg(&mut self, msg: &ConsensusMsg) -> PeerResult<()> {
+    fn send_consensus_msg(&mut self, msg: &ConsensusMsg) -> PeerResult<ConsensusMsgResponse> {
         let mut locked_state = self.state.lock().expect("Locked poisoned");
         locked_state.send_consensus_msg_call_count += 1;
         if locked_state.send_consensus_msg_should_error_count > 0 {
@@ -195,8 +196,9 @@ impl<L: Ledger + Sync> ConsensusConnection for MockPeerConnection<L> {
         }
 
         locked_state.msgs.push_back(msg.clone());
-
-        Ok(())
+        let mut resp = ConsensusMsgResponse::new();
+        resp.set_result(ConsensusMsgResult::Ok);
+        Ok(resp)
     }
 
     fn send_propose_tx(

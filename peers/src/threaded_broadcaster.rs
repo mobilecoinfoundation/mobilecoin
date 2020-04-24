@@ -14,6 +14,7 @@ use mc_common::{
     Hash, LruCache, NodeID, ResponderId,
 };
 use mc_connection::{Connection, ConnectionManager, SyncConnection};
+use mc_consensus_api::consensus_peer::ConsensusMsgResult;
 use mc_consensus_enclave_api::WellFormedEncryptedTx;
 use mc_transaction_core::tx::TxHash;
 use mc_util_serial;
@@ -390,13 +391,23 @@ impl PeerThread {
 
         let retry_iterator = retry_policy.get_delay_iterator().with_deadline(deadline);
 
-        if let Err(err) = conn.send_consensus_msg(&*arc_msg, retry_iterator) {
-            log::error!(
-                logger,
-                "failed broadcasting send consensus msg to {}: {:?}",
-                conn,
-                err
-            );
+        match conn.send_consensus_msg(&*arc_msg, retry_iterator) {
+            Ok(resp) => match resp.get_result() {
+                ConsensusMsgResult::Ok => {}
+                ConsensusMsgResult::UnknownPeer => log::info!(
+                    logger,
+                    "Peer {}: does not accept broadcast messages from unknown peers",
+                    conn
+                ),
+            },
+            Err(err) => {
+                log::error!(
+                    logger,
+                    "failed broadcasting send consensus msg to {}: {:?}",
+                    conn,
+                    err
+                );
+            }
         }
     }
 

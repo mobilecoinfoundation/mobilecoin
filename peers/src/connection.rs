@@ -22,7 +22,10 @@ use mc_connection::{
 use mc_consensus_api::{
     blockchain::BlocksRequest,
     blockchain_grpc::BlockchainApiClient,
-    consensus_peer::{ConsensusMsg as GrpcConsensusMsg, FetchTxsRequest as GrpcFetchTxsRequest},
+    consensus_peer::{
+        ConsensusMsg as GrpcConsensusMsg, ConsensusMsgResponse,
+        FetchTxsRequest as GrpcFetchTxsRequest,
+    },
     consensus_peer_grpc::ConsensusPeerApiClient,
     empty::Empty,
 };
@@ -231,13 +234,14 @@ impl<Enclave: ConsensusEnclaveProxy> ConsensusConnection for PeerConnection<Encl
         self.local_node_id.clone()
     }
 
-    fn send_consensus_msg(&mut self, msg: &ConsensusMsg) -> Result<()> {
+    fn send_consensus_msg(&mut self, msg: &ConsensusMsg) -> Result<ConsensusMsgResponse> {
         let mut grpc_msg = GrpcConsensusMsg::default();
         grpc_msg.set_from_responder_id(serialize(&self.local_node_id.responder_id)?);
         grpc_msg.set_payload(serialize(&msg)?);
 
-        self.attested_call(|this| this.consensus_api_client.send_consensus_msg(&grpc_msg))?;
-        Ok(())
+        let response =
+            self.attested_call(|this| this.consensus_api_client.send_consensus_msg(&grpc_msg))?;
+        Ok(response)
     }
 
     fn send_propose_tx(
