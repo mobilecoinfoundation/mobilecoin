@@ -235,10 +235,14 @@ pub mod well_formed_tests {
 
         // Corrupt the signature.
         tx.signature.ring_signatures[0].key_image = KeyImage::from(77);
-        assert_eq!(
-            Err(TransactionValidationError::InvalidTransactionSignature),
-            is_well_formed(&tx, &ledger)
-        );
+
+        match is_well_formed(&tx, &ledger) {
+            Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
+            Err(e) => {
+                panic!(format!("Unexpected error {}", e));
+            }
+            Ok(()) => panic!(),
+        }
     }
 
     #[test_with_logger]

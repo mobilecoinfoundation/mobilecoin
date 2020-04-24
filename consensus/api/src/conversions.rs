@@ -609,7 +609,7 @@ impl From<TransactionValidationError> for ProposeTxResult {
                 Self::InsufficientInputSignatures
             }
             TransactionValidationError::InvalidInputSignature => Self::InvalidInputSignature,
-            TransactionValidationError::InvalidTransactionSignature => {
+            TransactionValidationError::InvalidTransactionSignature(_e) => {
                 Self::InvalidTransactionSignature
             }
             TransactionValidationError::InvalidRangeProof => Self::InvalidRangeProof,
@@ -662,7 +662,9 @@ impl TryInto<TransactionValidationError> for ProposeTxResult {
             }
             Self::InvalidInputSignature => Ok(TransactionValidationError::InvalidInputSignature),
             Self::InvalidTransactionSignature => {
-                Ok(TransactionValidationError::InvalidTransactionSignature)
+                Ok(TransactionValidationError::InvalidTransactionSignature(
+                    transaction::ring_signature::Error::InvalidSignature,
+                ))
             }
             Self::InvalidRangeProof => Ok(TransactionValidationError::InvalidRangeProof),
             Self::InsufficientRingSize => Ok(TransactionValidationError::InsufficientRingSize),

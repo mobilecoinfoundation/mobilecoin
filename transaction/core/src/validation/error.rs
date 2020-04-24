@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 pub type TransactionValidationResult<T> = Result<T, TransactionValidationError>;
 
 /// Reasons why a single transaction may fail to be valid with respect to the current ledger.
-#[derive(Clone, Debug, Deserialize, Eq, Fail, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Eq, Fail, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum TransactionValidationError {
     /// Each input should have one membership proof.
     #[fail(display = "InputsProofsLengthMismatch")]
@@ -33,7 +33,7 @@ pub enum TransactionValidationError {
 
     /// The transaction must have a valid RingCT signature.
     #[fail(display = "InvalidTransactionSignature")]
-    InvalidTransactionSignature,
+    InvalidTransactionSignature(#[fail(cause)] crate::ring_signature::Error),
 
     /// All Range Proofs in the transaction must be valid.
     #[fail(display = "InvalidRangeProof")]

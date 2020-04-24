@@ -5,6 +5,7 @@ use core::{
     convert::{TryFrom, TryInto},
     fmt,
 };
+
 use curve25519_dalek::scalar::Scalar;
 use mc_common::{Hash, HashMap};
 use mc_crypto_digestible::Digestible;
@@ -193,25 +194,12 @@ impl TxPrefix {
             .collect()
     }
 
-    /// Get the commitment and blinding for the fee output.
-    pub fn fee_value_and_blinding(&self) -> (u64, Scalar) {
-        (self.fee, Scalar::zero())
-    }
-
-    /// Get all output commitments (including explicit outputs and the implicit fee output).
+    /// Get all output commitments.
     pub fn output_commitments(&self) -> Vec<CompressedCommitment> {
-        let mut commitments: Vec<CompressedCommitment> = self
-            .outputs
+        self.outputs
             .iter()
             .map(|output| output.amount.commitment)
-            .collect();
-
-        let fee_commitment = {
-            let (value, blinding) = self.fee_value_and_blinding();
-            CompressedCommitment::new(value, blinding)
-        };
-        commitments.push(fee_commitment);
-        commitments
+            .collect()
     }
 }
 
