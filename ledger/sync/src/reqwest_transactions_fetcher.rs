@@ -120,7 +120,7 @@ impl ReqwestTransactionsFetcher {
         let s3_block: blockchain::S3Block = protobuf::parse_from_bytes(&bytes).map_err(|err| {
             ReqwestTransactionsFetcherError::InvalidBlockReceived(
                 url.to_string(),
-                format!("prorobuf parse failed: {:?}", err),
+                format!("protobuf parse failed: {:?}", err),
             )
         })?;
 
