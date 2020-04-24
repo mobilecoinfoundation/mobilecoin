@@ -9,10 +9,10 @@ pub const MAX_TRANSACTIONS_PER_BLOCK: usize = 5000;
 pub const RING_SIZE: usize = 11;
 
 /// Each transaction must contain no more than this many inputs (rings).
-pub const MAX_INPUTS: u16 = 16;
+pub const MAX_INPUTS: u64 = 16;
 
 /// Each transaction must contain no more than this many outputs.
-pub const MAX_OUTPUTS: u16 = 16;
+pub const MAX_OUTPUTS: u64 = 16;
 
 /// Maximum number of blocks in the future a transaction's tombstone block can be set to.
 pub const MAX_TOMBSTONE_BLOCKS: u64 = 100;

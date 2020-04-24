@@ -12,8 +12,6 @@ pub use key_image::*;
 pub use mlsag::*;
 pub use rct_bulletproofs::*;
 
-use crate::constants::{MAX_INPUTS, MAX_OUTPUTS};
-
 mod curve_scalar;
 mod error;
 mod key_image;
@@ -25,6 +23,8 @@ lazy_static! {
     pub static ref GENERATORS: PedersenGens = PedersenGens::default();
 
     /// Generators (base points) for Bulletproofs.
+    /// The `party_capacity` is the maximum number of values in one proof. It should
+    /// be at least 2 * num_inputs + num_outputs + 1, which allows for inputs, pseudo outputs, outputs, and the fee.
     pub static ref BP_GENERATORS: BulletproofGens =
-        BulletproofGens::new(64, MAX_INPUTS as usize + MAX_OUTPUTS as usize);
+        BulletproofGens::new(64, 64);
 }
