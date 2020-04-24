@@ -58,11 +58,11 @@ The MobileCoin ledger will be reset at the end of each TestNet period to accommo
 
 During normal service hours our goal will be to maintain 100% uptime. We plan to rehearse enclave updates that will cause service interruption during *Maintenance Hours*.
 
-|Period | Start Date | End Date | Maintenance Hours |
+|Period | Start Date | End Date | Operational Hours |
 | -- | -- | -- | -- |
-| 1 | Wed Apr 22 | Wed Apr 29 |  Daily 5PM-10PM PST |
-| 2 | Wed Apr 29 | Wed May 13 |  M-F 5PM-7PM PST |
-| 3 | Wed May 13 | (TBD) | M,W,F 5PM-6PM PST |
+| 1 | Wed Apr 22 | Wed Apr 29 |  M-F 10AM-5PM PST |
+| 2 | Wed Apr 29 | Wed May 13 |  M-F 10AM-5PM PST |
+| 3 | Wed May 13 | (TBD) | M-F 10AM-5PM PST |
 
 ## Getting Help
 
