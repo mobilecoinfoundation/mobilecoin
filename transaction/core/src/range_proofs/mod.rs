@@ -8,11 +8,11 @@ use merlin::Transcript;
 use rand_core::{CryptoRng, RngCore};
 
 pub mod error;
-use crate::ring_signature::{BP_GENERATORS, GENERATORS};
+use crate::{
+    domain_separators::BULLETPROOF_DOMAIN_TAG,
+    ring_signature::{BP_GENERATORS, GENERATORS},
+};
 use error::Error;
-
-/// The domain separation label should be unique for each application.
-const DOMAIN_SEPARATOR_LABEL: &[u8] = b"mobilecoin_range_proof";
 
 /// Create an aggregated 64-bit rangeproof for a set of values.
 ///
@@ -41,7 +41,7 @@ pub fn generate_range_proofs<T: RngCore + CryptoRng>(
     RangeProof::prove_multiple_with_rng(
         &BP_GENERATORS,
         &GENERATORS,
-        &mut Transcript::new(DOMAIN_SEPARATOR_LABEL),
+        &mut Transcript::new(BULLETPROOF_DOMAIN_TAG.as_ref()),
         &values_padded,
         &blindings_padded,
         64,
@@ -69,7 +69,7 @@ pub fn check_range_proofs<T: RngCore + CryptoRng>(
         .verify_multiple_with_rng(
             &BP_GENERATORS,
             &GENERATORS,
-            &mut Transcript::new(DOMAIN_SEPARATOR_LABEL),
+            &mut Transcript::new(BULLETPROOF_DOMAIN_TAG.as_ref()),
             &resized_commitments,
             64,
             rng,

@@ -18,6 +18,9 @@ pub const AMOUNT_VALUE_DOMAIN_TAG: &str = "mc_amount_value";
 /// Domain separator for Amount's blinding mask hash function.
 pub const AMOUNT_BLINDING_DOMAIN_TAG: &str = "mc_amount_blinding";
 
+/// Domain separator for Bulletproof transcript.
+pub const BULLETPROOF_DOMAIN_TAG: &str = "mc_bulletproof_transcript";
+
 // TODO:
 // pub const HASH_TO_POINT_DOMAIN_TAG: &str = "mc_hash_to_point";
 
