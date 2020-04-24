@@ -1014,6 +1014,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                 Some("no bootstrap block".to_owned()),
             ));
         }
+        let local_block_index = num_blocks - 1;
 
         let mut response = mc_mobilecoind_api::GetNetworkStatusResponse::new();
 
@@ -1027,7 +1028,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                 .map(|(responder_id, block_index)| (responder_id.to_string(), *block_index))
                 .collect(),
         );
-        response.set_local_block_index(num_blocks - 1);
+        response.set_local_block_index(local_block_index);
+        response.set_is_behind(network_state.is_behind(local_block_index));
 
         Ok(response)
     }
@@ -2651,7 +2653,7 @@ mod test {
             get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
 
         let network_status = client
-            .get_network_status(&mobilecoind_api::Empty::new())
+            .get_network_status(&mc_mobilecoind_api::Empty::new())
             .unwrap();
 
         assert_eq!(

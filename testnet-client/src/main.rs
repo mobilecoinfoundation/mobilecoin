@@ -105,22 +105,25 @@ impl TestnetClient {
         println!();
 
         let client = MobilecoindApiClient::new(ch);
-        let ledger_info = match client.get_ledger_info(&mc_mobilecoind_api::Empty::new()) {
+        let network_status = match client.get_network_status(&mc_mobilecoind_api::Empty::new()) {
             Ok(resp) => resp,
             Err(err) => {
                 println!(
-                    "Unable to query ledger using mobilecoind on {}.",
+                    "Unable to query network status using mobilecoind on {}.",
                     config.mobilecoind_host
                 );
                 println!("Are you sure it is running and accepting connections?");
                 println!();
                 println!("The error was: {}", err);
-                return Err(format!("unable to query ledger from mobilecoind - {}", err));
+                return Err(format!(
+                    "unable to query network status from mobilecoind - {}",
+                    err
+                ));
             }
         };
         println!(
-            "mobilecoind currently has {} blocks in ledger.",
-            ledger_info.block_count
+            "mobilecoind is at block #{}, network is at block #{}.",
+            network_status.local_block_index, network_status.network_highest_block_index,
         );
 
         // Return.
@@ -148,7 +151,9 @@ impl TestnetClient {
         }
 
         loop {
-            self.print_balance();
+            if let Err(err) = self.print_balance() {
+                println!("{}", err);
+            }
 
             let commands = [
                 Command::Send,
@@ -257,12 +262,13 @@ dc74edf1d8842dfdf49d6db5d3d4e873665c2dd400c0955dd9729571826a26be
             .map_err(|err| format!("Failed adding monitor: {}", err))?;
         self.monitor_id = resp.get_monitor_id().to_vec();
 
-        // Get current number of blocks in ledger.
-        let resp = self
+        // Get the network block height.
+        let network_status = self
             .client
-            .get_ledger_info(&mc_mobilecoind_api::Empty::new())
-            .map_err(|err| format!("Failed getting number of blocks in ledger: {}", err))?;
-        let num_blocks = resp.block_count;
+            .get_network_status(&mc_mobilecoind_api::Empty::new())
+            .map_err(|err| format!("Failed getting network status: {}", err))?;
+
+        let num_blocks = network_status.network_highest_block_index + 1;
 
         let pb = ProgressBar::new(num_blocks);
         pb.set_style(
@@ -293,32 +299,41 @@ dc74edf1d8842dfdf49d6db5d3d4e873665c2dd400c0955dd9729571826a26be
     }
 
     /// Print the current balance.
-    fn print_balance(&self) {
-        let mut req = mc_mobilecoind_api::GetBalanceRequest::new();
+    fn print_balance(&self) -> Result<(), String> {
+        let network_status = self
+            .client
+            .get_network_status(&mc_mobilecoind_api::Empty::new())
+            .map_err(|err| format!("Failed getting network status: {}", err))?;
+
+        let mut req = mobilecoind_api::GetBalanceRequest::new();
         req.set_monitor_id(self.monitor_id.clone());
         req.set_subaddress_index(0);
 
-        match self.client.get_balance(&req) {
-            Ok(resp) => {
-                let balance = resp.get_balance();
-                let date = Local::now();
-                println!(
-                    r#"
+        let resp = self
+            .client
+            .get_balance(&req)
+            .map_err(|err| format!("Failed getting balance: {}", err))?;
+        let balance = resp.get_balance();
+        let date = Local::now();
+        println!(
+            r#"
 **********************************************************************
 
                      Your balance was {}
                              at {}
-
-**********************************************************************
 "#,
-                    u64_to_mob_display(balance),
-                    date.format("%H:%M:%S"),
-                );
-            }
-            Err(err) => {
-                println!("Error getting balance: {}", err);
-            }
+            u64_to_mob_display(balance),
+            date.format("%H:%M:%S"),
+        );
+
+        if network_status.network_highest_block_index > network_status.local_block_index {
+            println!(
+                "               Warning! Ledger is behind by {} blocks.",
+                network_status.network_highest_block_index - network_status.local_block_index
+            );
         }
+        println!("**********************************************************************",);
+        Ok(())
     }
 
     /// Send coins flow.

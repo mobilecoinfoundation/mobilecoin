@@ -517,4 +517,7 @@ message GetNetworkStatusResponse {
 
     // The local ledger block index.
     uint64 local_block_index = 3;
+
+    // Whether we are behind.
+    bool is_behind = 4;
 }
