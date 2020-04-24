@@ -15,7 +15,6 @@ use mc_transaction_core::BlockIndex;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{hash::Hash, iter::FromIterator};
 
-#[derive(Clone)]
 pub struct SCPNetworkState<ID: GenericNodeId = NodeID> {
     // The local node ID.
     local_node_id: ID,
