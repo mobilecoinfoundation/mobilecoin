@@ -10,7 +10,11 @@ use mc_ledger_sync::{LedgerSyncServiceThread, PollingNetworkState, ReqwestTransa
 use mc_mobilecoind::{
     config::Config, database::Database, payments::TransactionsManager, service::Service,
 };
-use std::{convert::TryFrom, path::Path};
+use std::{
+    convert::TryFrom,
+    path::Path,
+    sync::{Arc, Mutex},
+};
 use structopt::StructOpt;
 
 fn main() {
@@ -28,8 +32,11 @@ fn main() {
     );
 
     // Create network state, transactions fetcher and ledger sync.
-    let network_state =
-        PollingNetworkState::new(config.quorum_set(), peer_manager.clone(), logger.clone());
+    let network_state = Arc::new(Mutex::new(PollingNetworkState::new(
+        config.quorum_set(),
+        peer_manager.clone(),
+        logger.clone(),
+    )));
 
     let transactions_fetcher =
         ReqwestTransactionsFetcher::new(config.tx_source_urls.clone(), logger.clone())
