@@ -818,7 +818,10 @@ mod rct_bulletproofs_tests {
                 wrong_fee,
                 &mut rng,
             ) {
-                Err(_e) => {} // Expected
+                Err(Error::ValueNotConserved) => {} // Expected
+                Err(e) => {
+                    panic!(alloc::format!("Unexpected error {}", e));
+                }
                 _ => panic!()
             }
 
