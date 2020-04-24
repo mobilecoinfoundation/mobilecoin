@@ -988,6 +988,13 @@ impl<T: UserTxConnection + 'static> ServiceApi<T> {
         response.set_tx_proposal(proto_tx_proposal);
         Ok(response)
     }
+
+    fn get_network_status_impl(
+        &mut self,
+        _request: mobilecoind_api::Empty,
+    ) -> Result<mobilecoind_api::GetNetworkStatusResponse, RpcStatus> {
+        todo!();
+    }
 }
 
 macro_rules! build_api {
@@ -1037,7 +1044,8 @@ build_api! {
     get_tx_status_as_sender GetTxStatusAsSenderRequest GetTxStatusAsSenderResponse get_tx_status_as_sender_impl,
     get_tx_status_as_receiver GetTxStatusAsReceiverRequest GetTxStatusAsReceiverResponse get_tx_status_as_receiver_impl,
     get_balance GetBalanceRequest GetBalanceResponse get_balance_impl,
-    send_payment SendPaymentRequest SendPaymentResponse send_payment_impl
+    send_payment SendPaymentRequest SendPaymentResponse send_payment_impl,
+    get_network_status Empty GetNetworkStatusResponse get_network_status_impl
 }
 
 #[cfg(test)]
