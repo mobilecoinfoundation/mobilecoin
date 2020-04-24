@@ -302,8 +302,6 @@ pub mod transaction_builder_tests {
                 &sender.subaddress_spend_key(DEFAULT_SUBADDRESS_INDEX),
             );
 
-            let key_image = KeyImage::from(&onetime_private_key);
-
             let membership_proofs: Vec<TxOutMembershipProof> = ring
                 .iter()
                 .map(|_tx_out| {
