@@ -25,12 +25,11 @@ It relies on environment variables for configuration:
 - (required) `IAS_API_KEY` - IAS Api key.
 - (required) `IAS_SPID` - IAS Service Provider ID.
 - (optional) `MC_LOG` - Log level configuration.
-- (optional) `CLIENT_RESPONDER_HOST` - Override the default client responder hostname (defaults to localhost).
-- (optional) `MOB_RELEASE` - When set to 1, build in release mode.
+- (optional) `MOB_RELEASE` - When set to 1 (default), build in release mode.
 - (optional) `LOG_BRANCH` - Enable cloud logging, tagging all logs/metrics with the provided branch name.
 - (optional) `LOGSTASH_HOST` - Logstash host:port to send logs to.
 - (optional) `GRAFANA_PASSWORD` - Grafana API key to sent metrics to.
-- (optional) `LEDGER_SYNC_S3` - Setting this to a path (`bucket/dir`) would configure `ledger-distribution` to store blocks on S3 instead of the local drive.
+of the local drive.
 
 ## mobilecoind.sh
 

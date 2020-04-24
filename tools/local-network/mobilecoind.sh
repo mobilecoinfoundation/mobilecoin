@@ -27,7 +27,7 @@ mkdir -p $WORK_DIR
 NODES_HOST="${NODES_HOST:-localhost}"
 
 # URL to sync ledger from
-LEDGER_SYNC_URL=${LEDGER_SYNC_URL:-file://$WORK_DIR/ledger-db-1-dist}
+LEDGER_SYNC_URL=${LEDGER_SYNC_URL:-file:///tmp/mc-local-network/node-ledger-distribution-1}
 
 # Run mobilecoind
 echo "Nodes host:      $NODES_HOST"
