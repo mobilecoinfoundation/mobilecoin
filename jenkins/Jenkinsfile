@@ -74,7 +74,7 @@ pipeline {
           
           // Generate sample data
           dir('ops/sample_data') {
-            sh '../bin/sample-keys --num 1000'
+            sh '../bin/sample-keys --num 6'
             sh '../bin/generate_sample_ledger -t 100'
             sh 'rm -f ./ledger/lock.mdb'
           }
