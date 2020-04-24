@@ -24,7 +24,7 @@ lazy_static! {
 
     /// Generators (base points) for Bulletproofs.
     /// The `party_capacity` is the maximum number of values in one proof. It should
-    /// be at least 2 * num_inputs + num_outputs + 1, which allows for inputs, pseudo outputs, outputs, and the fee.
+    /// be at least 2 * MAX_INPUTS + MAX_OUTPUTS, which allows for inputs, pseudo outputs, and outputs.
     pub static ref BP_GENERATORS: BulletproofGens =
         BulletproofGens::new(64, 64);
 }
