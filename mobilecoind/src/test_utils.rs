@@ -68,16 +68,15 @@ pub fn get_test_databases(
 
     // Note that TempDir manages uniqueness by constructing paths
     // like: /tmp/ledger_db.tvF0XHTKsilx
-    let ledger_db_tmp = TempDir::new("ledger_db")
-        .expect("Could not make tempdir for ledger db")
-        .into_path();
+    let ledger_db_tmp = TempDir::new("ledger_db").expect("Could not make tempdir for ledger db");
     let ledger_db_path = ledger_db_tmp
+        .path()
         .to_str()
         .expect("Could not get path as string");
-    let mobilecoind_db_tmp = TempDir::new("mobilecoind_db")
-        .expect("Could not make tempdir for mobilecoind db")
-        .into_path();
+    let mobilecoind_db_tmp =
+        TempDir::new("mobilecoind_db").expect("Could not make tempdir for mobilecoind db");
     let mobilecoind_db_path = mobilecoind_db_tmp
+        .path()
         .to_str()
         .expect("Could not get path as string");
 

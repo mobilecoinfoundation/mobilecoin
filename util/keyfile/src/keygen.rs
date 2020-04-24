@@ -95,8 +95,8 @@ mod testing {
 
     #[test]
     fn test_default_generation() {
-        let dir1 = TempDir::new("test").unwrap().into_path();
-        let dir2 = TempDir::new("test").unwrap().into_path();
+        let dir1 = TempDir::new("test").unwrap();
+        let dir2 = TempDir::new("test").unwrap();
 
         let fqdn = "example.com".to_string();
         write_default_keyfiles(&dir1, 10, Some(&fqdn), DEFAULT_SEED).unwrap();
@@ -122,8 +122,8 @@ mod testing {
 
     #[test]
     fn test_default_generation_no_acct() {
-        let dir1 = TempDir::new("test").unwrap().into_path();
-        let dir2 = TempDir::new("test").unwrap().into_path();
+        let dir1 = TempDir::new("test").unwrap();
+        let dir2 = TempDir::new("test").unwrap();
 
         write_default_keyfiles(&dir1, 10, None, DEFAULT_SEED).unwrap();
         write_default_keyfiles(&dir2, 10, None, DEFAULT_SEED).unwrap();
@@ -148,7 +148,7 @@ mod testing {
 
     #[test]
     fn test_hard_coded_root_entropy() {
-        let dir1 = TempDir::new("test").unwrap().into_path();
+        let dir1 = TempDir::new("test").unwrap();
 
         write_default_keyfiles(&dir1, 10, None, DEFAULT_SEED).unwrap();
 

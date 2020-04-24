@@ -465,8 +465,9 @@ mod ed25519_tests {
     #[test]
     #[ignore]
     fn validate_ed25519_priv_der_prefix() {
-        let tempdir = TempDir::new("keys").unwrap().into_path();
+        let tempdir = TempDir::new("keys").unwrap();
         let privder = tempdir
+            .path()
             .join("openssl-ed25519-private.der")
             .to_str()
             .unwrap()
@@ -501,13 +502,15 @@ mod ed25519_tests {
     #[test]
     #[ignore]
     fn validate_ed25519_pub_der_prefix() {
-        let tempdir = TempDir::new("keys").unwrap().into_path();
+        let tempdir = TempDir::new("keys").unwrap();
         let privkey = tempdir
+            .path()
             .join("openssl-ed25519-private.pem")
             .to_str()
             .unwrap()
             .to_string();
         let pubder = tempdir
+            .path()
             .join("openssl-ed25519-pubkey.der")
             .to_str()
             .unwrap()
