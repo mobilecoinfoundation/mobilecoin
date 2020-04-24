@@ -6,7 +6,7 @@ use mc_connection::{
     BlockchainConnection, Connection, Error as ConnectionError, Result as ConnectionResult,
     UserTxConnection,
 };
-use mc_ledger_db::{test_utils::MockLedger, Ledger};
+use mc_ledger_db::Ledger;
 use mc_transaction_core::{tx::Tx, Block, BlockID, BlockIndex};
 use mc_util_uri::{ConnectionUri, ConsensusClientUri};
 use std::{
@@ -19,60 +19,64 @@ use std::{
 };
 
 #[derive(Clone)]
-pub struct MockBlockchainConnection {
+pub struct MockBlockchainConnection<L: Ledger + Sync> {
     /// The destination uri
     pub uri: ConsensusClientUri,
 
     /// The mock ledger to be used when serving blockchain objects
-    pub ledger: MockLedger,
+    pub ledger: L,
 
     /// Additional latency added to be added requests to this peer
     pub latency_millis: u64,
+
+    /// Proposed transactions.
+    pub proposed_txs: Vec<Tx>,
 }
 
-impl MockBlockchainConnection {
-    pub fn new(uri: ConsensusClientUri, ledger: MockLedger, latency_millis: u64) -> Self {
+impl<L: Ledger + Sync> MockBlockchainConnection<L> {
+    pub fn new(uri: ConsensusClientUri, ledger: L, latency_millis: u64) -> Self {
         Self {
             uri,
             ledger,
             latency_millis,
+            proposed_txs: Vec::new(),
         }
     }
 }
 
-impl Display for MockBlockchainConnection {
+impl<L: Ledger + Sync> Display for MockBlockchainConnection<L> {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         write!(f, "{}", self.uri())
     }
 }
 
-impl Eq for MockBlockchainConnection {}
+impl<L: Ledger + Sync> Eq for MockBlockchainConnection<L> {}
 
-impl Hash for MockBlockchainConnection {
+impl<L: Ledger + Sync> Hash for MockBlockchainConnection<L> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.uri.addr().hash(state);
     }
 }
 
-impl Ord for MockBlockchainConnection {
+impl<L: Ledger + Sync> Ord for MockBlockchainConnection<L> {
     fn cmp(&self, other: &Self) -> Ordering {
         self.uri.addr().cmp(&other.uri.addr())
     }
 }
 
-impl PartialEq for MockBlockchainConnection {
-    fn eq(&self, other: &MockBlockchainConnection) -> bool {
+impl<L: Ledger + Sync> PartialEq for MockBlockchainConnection<L> {
+    fn eq(&self, other: &MockBlockchainConnection<L>) -> bool {
         self.uri.addr() == other.uri.addr()
     }
 }
 
-impl PartialOrd for MockBlockchainConnection {
-    fn partial_cmp(&self, other: &MockBlockchainConnection) -> Option<Ordering> {
+impl<L: Ledger + Sync> PartialOrd for MockBlockchainConnection<L> {
+    fn partial_cmp(&self, other: &MockBlockchainConnection<L>) -> Option<Ordering> {
         self.uri.addr().partial_cmp(&other.uri.addr())
     }
 }
 
-impl Connection for MockBlockchainConnection {
+impl<L: Ledger + Sync> Connection for MockBlockchainConnection<L> {
     type Uri = ConsensusClientUri;
 
     fn uri(&self) -> Self::Uri {
@@ -80,7 +84,7 @@ impl Connection for MockBlockchainConnection {
     }
 }
 
-impl BlockchainConnection for MockBlockchainConnection {
+impl<L: Ledger + Sync> BlockchainConnection for MockBlockchainConnection<L> {
     fn fetch_blocks(&mut self, range: Range<u64>) -> ConnectionResult<Vec<Block>> {
         thread::sleep(Duration::from_millis(self.latency_millis));
 
@@ -110,9 +114,10 @@ impl BlockchainConnection for MockBlockchainConnection {
     }
 }
 
-impl UserTxConnection for MockBlockchainConnection {
-    fn propose_tx(&mut self, _tx: &Tx) -> ConnectionResult<BlockIndex> {
-        unimplemented!()
+impl<L: Ledger + Sync> UserTxConnection for MockBlockchainConnection<L> {
+    fn propose_tx(&mut self, tx: &Tx) -> ConnectionResult<BlockIndex> {
+        self.proposed_txs.push(tx.clone());
+        Ok(self.ledger.num_blocks().unwrap())
     }
 }
 

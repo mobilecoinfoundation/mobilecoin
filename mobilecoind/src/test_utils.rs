@@ -13,11 +13,13 @@ use crate::{
 };
 use grpcio::{ChannelBuilder, EnvBuilder};
 use mc_common::logger::{log, Logger};
-use mc_connection::ConnectionManager;
-use mc_connection_test_utils::{test_client_uri, MockUserTxConnection};
+use mc_connection::{Connection, ConnectionManager};
+use mc_connection_test_utils::{test_client_uri, MockBlockchainConnection};
+use mc_consensus_scp::QuorumSet;
 use mc_crypto_keys::RistrettoPrivate;
 use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_ledger_db::{Ledger, LedgerDB};
+use mc_ledger_sync::PollingNetworkState;
 use mc_mobilecoind_api::mobilecoind_api_grpc::MobilecoindApiClient;
 use mc_transaction_core::{
     account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX},
@@ -26,15 +28,15 @@ use mc_transaction_core::{
     Block, BlockContents, BlockIndex, BLOCK_VERSION,
 };
 use mc_util_from_random::FromRandom;
-use tempdir::TempDir;
-
+use mc_util_uri::ConnectionUri;
 use std::{
     path::PathBuf,
     sync::{
         atomic::{AtomicUsize, Ordering::SeqCst},
-        Arc,
+        Arc, Mutex,
     },
 };
+use tempdir::TempDir;
 
 /// The amount each recipient gets in the test ledger.
 pub const PER_RECIPIENT_AMOUNT: u64 = 5_000 * 1_000_000_000_000;
@@ -109,13 +111,6 @@ pub fn get_test_monitor_data_and_id(
 
     let monitor_id = MonitorId::from(&data);
     (data, monitor_id)
-}
-
-fn get_mock_connection_manager(logger: Logger) -> ConnectionManager<MockUserTxConnection> {
-    let peer1 = MockUserTxConnection::new(test_client_uri(1));
-    let peer2 = MockUserTxConnection::new(test_client_uri(2));
-
-    ConnectionManager::new(vec![peer1, peer2], logger.clone())
 }
 
 /// Creates an empty LedgerDB.
@@ -197,8 +192,29 @@ fn setup_server(
     ledger_db: LedgerDB,
     mobilecoind_db: Database,
     test_port: u16,
-) -> (Service, ConnectionManager<MockUserTxConnection>) {
-    let conn_manager = get_mock_connection_manager(logger.clone());
+) -> (
+    Service,
+    ConnectionManager<MockBlockchainConnection<LedgerDB>>,
+) {
+    let peer1 = MockBlockchainConnection::new(test_client_uri(1), ledger_db.clone(), 0);
+    let peer2 = MockBlockchainConnection::new(test_client_uri(2), ledger_db.clone(), 0);
+
+    let quorum_set = QuorumSet::new_with_node_ids(
+        2,
+        vec![
+            peer1.uri().responder_id().unwrap(),
+            peer2.uri().responder_id().unwrap(),
+        ],
+    );
+
+    let conn_manager = ConnectionManager::new(vec![peer1, peer2], logger.clone());
+
+    let network_state = Arc::new(Mutex::new(PollingNetworkState::new(
+        quorum_set,
+        conn_manager.clone(),
+        logger.clone(),
+    )));
+
     let transactions_manager = TransactionsManager::new(
         ledger_db.clone(),
         mobilecoind_db.clone(),
@@ -210,6 +226,7 @@ fn setup_server(
         ledger_db,
         mobilecoind_db,
         transactions_manager,
+        network_state,
         test_port,
         None,
         logger,
@@ -253,7 +270,7 @@ pub fn get_testing_environment(
     Database,
     MobilecoindApiClient,
     Service,
-    ConnectionManager<MockUserTxConnection>,
+    ConnectionManager<MockBlockchainConnection<LedgerDB>>,
 ) {
     let (ledger_db, mobilecoind_db) = get_test_databases(
         num_random_recipients,

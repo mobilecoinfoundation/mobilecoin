@@ -34,7 +34,10 @@ use mc_util_b58_payloads::payloads::{RequestPayload, TransferPayload};
 use mc_util_grpc::{rpc_internal_error, rpc_logger, send_result, BuildInfoService};
 use mc_util_serial::ReprBytes32;
 use protobuf::RepeatedField;
-use std::{convert::TryFrom, sync::Arc};
+use std::{
+    convert::TryFrom,
+    sync::{Arc, Mutex},
+};
 
 pub struct Service {
     /// Sync thread.
@@ -2149,13 +2152,13 @@ mod test {
             let mut opt_submitted_tx: Option<Tx> = None;
             for mock_peer in server_conn_manager.conns() {
                 let inner = mock_peer.read();
-                match (inner.submitted_txs.len(), opt_submitted_tx.clone()) {
+                match (inner.proposed_txs.len(), opt_submitted_tx.clone()) {
                     (0, _) => {
                         // Nothing submitted to the current peer.
                     }
                     (1, None) => {
                         // Found our tx.
-                        opt_submitted_tx = Some(inner.submitted_txs[0].clone())
+                        opt_submitted_tx = Some(inner.proposed_txs[0].clone())
                     }
                     (1, Some(_)) => {
                         panic!("Tx submitted to two peers?!");
@@ -2375,13 +2378,13 @@ mod test {
         let mut opt_submitted_tx: Option<Tx> = None;
         for mock_peer in server_conn_manager.conns() {
             let inner = mock_peer.read();
-            match (inner.submitted_txs.len(), opt_submitted_tx.clone()) {
+            match (inner.proposed_txs.len(), opt_submitted_tx.clone()) {
                 (0, _) => {
                     // Nothing submitted to the current peer.
                 }
                 (1, None) => {
                     // Found our tx.
-                    opt_submitted_tx = Some(inner.submitted_txs[0].clone())
+                    opt_submitted_tx = Some(inner.proposed_txs[0].clone())
                 }
                 (1, Some(_)) => {
                     panic!("Tx submitted to two peers?!");
