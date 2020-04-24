@@ -56,7 +56,7 @@ If you have an SGX-capable machine, or if you are willing to operate an SGX-capa
 
 The MobileCoin ledger will be reset at the end of each TestNet period to accommodate breaking changes. Each time the ledger is reset, new TestNet *mobilecoins* will be allocated to all registered users.
 
-During normal service hours our goal will be to maintain 100% uptime. We plan to rehearse enclave updates that will cause service interruption during *Maintenance Hours*.
+During *Operating Hours* our goal will be to maintain 100% uptime. We plan to rehearse enclave updates that will cause service interruption during maintenance hours.
 
 |Period | Start Date | End Date | Operational Hours |
 | -- | -- | -- | -- |
