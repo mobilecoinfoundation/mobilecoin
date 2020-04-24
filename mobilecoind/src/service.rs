@@ -20,9 +20,10 @@ use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
-use mc_connection::UserTxConnection;
+use mc_connection::{BlockchainConnection, UserTxConnection};
 use mc_crypto_keys::RistrettoPublic;
 use mc_ledger_db::{Ledger, LedgerDB};
+use mc_ledger_sync::PollingNetworkState;
 use mc_mobilecoind_api::mobilecoind_api_grpc::{create_mobilecoind_api, MobilecoindApi};
 use mc_transaction_core::{
     account_keys::{AccountKey, PublicAddress},
@@ -44,10 +45,11 @@ pub struct Service {
 }
 
 impl Service {
-    pub fn new<T: UserTxConnection + 'static>(
+    pub fn new<T: BlockchainConnection + UserTxConnection + 'static>(
         ledger_db: LedgerDB,
         mobilecoind_db: Database,
         transactions_manager: TransactionsManager<T>,
+        network_state: Arc<Mutex<PollingNetworkState<T>>>,
         port: u16,
         num_workers: Option<usize>,
         logger: Logger,
@@ -70,6 +72,7 @@ impl Service {
             transactions_manager,
             ledger_db,
             mobilecoind_db,
+            network_state,
             logger.clone(),
         );
 
@@ -98,35 +101,39 @@ impl Service {
     }
 }
 
-pub struct ServiceApi<T: UserTxConnection + 'static> {
+pub struct ServiceApi<T: BlockchainConnection + UserTxConnection + 'static> {
     transactions_manager: TransactionsManager<T>,
     ledger_db: LedgerDB,
     mobilecoind_db: Database,
+    network_state: Arc<Mutex<PollingNetworkState<T>>>,
     logger: Logger,
 }
 
-impl<T: UserTxConnection + 'static> Clone for ServiceApi<T> {
+impl<T: BlockchainConnection + UserTxConnection + 'static> Clone for ServiceApi<T> {
     fn clone(&self) -> Self {
         Self {
             transactions_manager: self.transactions_manager.clone(),
             ledger_db: self.ledger_db.clone(),
             mobilecoind_db: self.mobilecoind_db.clone(),
+            network_state: self.network_state.clone(),
             logger: self.logger.clone(),
         }
     }
 }
 
-impl<T: UserTxConnection + 'static> ServiceApi<T> {
+impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
     pub fn new(
         transactions_manager: TransactionsManager<T>,
         ledger_db: LedgerDB,
         mobilecoind_db: Database,
+        network_state: Arc<Mutex<PollingNetworkState<T>>>,
         logger: Logger,
     ) -> Self {
         Self {
             transactions_manager,
             ledger_db,
             mobilecoind_db,
+            network_state,
             logger,
         }
     }
@@ -991,8 +998,8 @@ impl<T: UserTxConnection + 'static> ServiceApi<T> {
 
     fn get_network_status_impl(
         &mut self,
-        _request: mobilecoind_api::Empty,
-    ) -> Result<mobilecoind_api::GetNetworkStatusResponse, RpcStatus> {
+        _request: mc_mobilecoind_api::Empty,
+    ) -> Result<mc_mobilecoind_api::GetNetworkStatusResponse, RpcStatus> {
         todo!();
     }
 }
@@ -1001,7 +1008,7 @@ macro_rules! build_api {
     ($( $service_function_name:ident $service_request_type:ident $service_response_type:ident $service_function_impl:ident ),+)
     =>
     (
-        impl<T: UserTxConnection + 'static> MobilecoindApi for ServiceApi<T> {
+        impl<T: BlockchainConnection + UserTxConnection + 'static> MobilecoindApi for ServiceApi<T> {
             $(
                 fn $service_function_name(
                     &mut self,

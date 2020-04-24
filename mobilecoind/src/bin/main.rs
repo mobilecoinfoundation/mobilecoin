@@ -48,7 +48,7 @@ fn main() {
     let _ledger_sync_service_thread = LedgerSyncServiceThread::new(
         ledger_db.clone(),
         peer_manager.clone(),
-        network_state,
+        network_state.clone(),
         transactions_fetcher,
         config.poll_interval,
         logger.clone(),
@@ -75,6 +75,7 @@ fn main() {
                 ledger_db,
                 mobilecoind_db,
                 transactions_manager,
+                network_state,
                 *service_port,
                 config.num_workers,
                 logger,
