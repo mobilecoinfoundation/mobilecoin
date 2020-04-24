@@ -160,4 +160,10 @@ impl<BC: BlockchainConnection> NetworkState for PollingNetworkState<BC> {
     fn is_behind(&self, local_block_index: BlockIndex) -> bool {
         self.scp_network_state.is_behind(local_block_index)
     }
+
+    /// Returns the highest block index the network agrees on (the highest block index from a set
+    /// of peers that passes the "is blocking nad quorum" test).
+    fn highest_block_index_on_network(&self) -> Option<BlockIndex> {
+        self.scp_network_state.highest_block_index_on_network()
+    }
 }
