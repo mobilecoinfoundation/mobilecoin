@@ -777,5 +777,52 @@ mod rct_bulletproofs_tests {
             assert_eq!(signature, recovered_signature);
         }
 
+        // `verify` should accept valid signatures with correct fee.
+        fn verify_with_fee(
+            num_inputs in 2..8usize,
+            num_mixins in 1..17usize,
+            seed in any::<[u8; 32]>(),
+        ) {
+            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut params = SignatureParams::random(num_inputs, num_mixins, &mut rng);
+            // Remove one of the outputs, and use its value as the fee. This conserves value.
+            let (fee, _) = params.output_values_and_blindings.pop().unwrap();
+
+            let signature = SignatureRctBulletproofs::sign(
+                &params.message,
+                &params.rings,
+                &params.real_input_indices,
+                &params.input_secrets,
+                &params.output_values_and_blindings,
+                fee,
+                &mut rng,
+            )
+            .unwrap();
+
+
+            let result = signature.verify(
+                &params.message,
+                &params.rings,
+                &params.get_output_commitments(),
+                fee,
+                &mut rng,
+            );
+            assert!(result.is_ok());
+
+            // Verify should fail if the signature disagrees with the fee.
+            let wrong_fee = fee + 1;
+            match signature.verify(
+                &params.message,
+                &params.rings,
+                &params.get_output_commitments(),
+                wrong_fee,
+                &mut rng,
+            ) {
+                Err(_e) => {} // Expected
+                _ => panic!()
+            }
+
+        }
+
     } // end proptest
 }
