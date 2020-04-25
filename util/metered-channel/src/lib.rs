@@ -1,10 +1,10 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 //! Provides an mpsc (multi-producer single-consumer) channel wrapped in an
-//! [`IntGauge`](metrics::IntGauge)
+//! [`IntGauge`](mc_util_metrics::IntGauge)
 
 use crossbeam_channel::{RecvError, RecvTimeoutError, SendError, TryRecvError, TrySendError};
-use metrics::IntGauge;
+use mc_util_metrics::IntGauge;
 use std::{fmt, iter::FusedIterator, time::Duration};
 
 /// Similar to `crossbeam_channel::Sender`, but with an `IntGauge`.

@@ -7,14 +7,12 @@
 
 #![allow(non_snake_case)]
 
-use crate::{account_keys::PublicAddress, ring_signature::KeyImage, view_key::ViewKey};
+use crate::{account_keys::PublicAddress, view_key::ViewKey};
 use blake2::{Blake2b, Digest};
 use curve25519_dalek::{
-    constants::RISTRETTO_BASEPOINT_POINT,
-    ristretto::{CompressedRistretto, RistrettoPoint},
-    scalar::Scalar,
+    constants::RISTRETTO_BASEPOINT_POINT, ristretto::RistrettoPoint, scalar::Scalar,
 };
-use keys::{RistrettoPrivate, RistrettoPublic};
+use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
 
@@ -121,27 +119,6 @@ pub fn recover_onetime_private_key(
     RistrettoPrivate::from(x)
 }
 
-/// Computes the (compressed) Key Image `I = x*Hp(x*G)` for a private key `x`.
-///
-/// # Arguments
-/// * `private_key` - A private key `x`.
-pub fn compute_key_image(private_key: &RistrettoPrivate) -> KeyImage {
-    let uncompressed_key_image = compute_key_image_uncompressed(private_key);
-    KeyImage::from(uncompressed_key_image)
-}
-
-/// Computes the (uncompressed) Key Image `I = x*Hp(x*G)` for a private key `x`.
-///
-/// # Arguments
-/// * `private_key` - A private key `x`.
-pub fn compute_key_image_uncompressed(private_key: &RistrettoPrivate) -> RistrettoPoint {
-    let x = private_key.as_ref();
-    // The compressed encoding is canonical.
-    let P: CompressedRistretto = RistrettoPublic::from(private_key).as_ref().compress();
-    let Hp = RistrettoPoint::hash_from_bytes::<Blake2b>(P.as_bytes());
-    x * Hp
-}
-
 /// Computes the shared secret `aB` from a private key `a` and a public key `B`.
 ///
 /// # Arguments
@@ -188,8 +165,8 @@ pub fn compute_tx_pubkey(
 mod tests {
     use super::*;
     use crate::account_keys::AccountKey;
+    use mc_crypto_rand::McRng;
     use mc_util_from_random::FromRandom;
-    use mcrand::McRng;
 
     #[test]
     // `create_onetime_public_key` should produce a public key that agrees with the recipient's view key.

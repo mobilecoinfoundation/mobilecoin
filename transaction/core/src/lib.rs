@@ -2,7 +2,6 @@
 
 #![no_std]
 // #![deny(missing_docs)]
-#![allow(unused_imports)] // During development...
 
 extern crate alloc;
 
@@ -14,7 +13,7 @@ extern crate std;
 extern crate lazy_static;
 
 use crate::onetime_keys::compute_shared_secret;
-use keys::{RistrettoPrivate, RistrettoPublic};
+use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 
 pub mod account_keys;
 pub mod amount;
@@ -23,13 +22,13 @@ mod blockchain;
 mod commitment;
 mod compressed_commitment;
 pub mod constants;
+mod domain_separators;
 pub mod encrypted_fog_hint;
 pub mod fog_hint;
 pub mod membership_proofs;
 pub mod onetime_keys;
 pub mod range;
 pub mod range_proofs;
-mod redacted_tx;
 pub mod ring_signature;
 pub mod tx;
 pub mod validation;
@@ -41,7 +40,6 @@ pub mod proptest_fixtures;
 pub use blockchain::*;
 pub use commitment::*;
 pub use compressed_commitment::*;
-pub use redacted_tx::RedactedTx;
 
 /// Get the shared secret for a transaction output.
 ///

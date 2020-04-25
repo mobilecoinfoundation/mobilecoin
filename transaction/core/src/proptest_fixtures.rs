@@ -2,7 +2,7 @@
 
 use crate::{amount::Amount, ring_signature::CurveScalar};
 use curve25519_dalek::scalar::Scalar;
-use keys::{RistrettoPrivate, RistrettoPublic};
+use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use proptest::prelude::*;
 
 /// Generates an arbitrary Scalar.
@@ -28,7 +28,7 @@ pub fn arbitrary_ristretto_public() -> impl Strategy<Value = RistrettoPublic> {
 prop_compose! {
     /// Generates an arbitrary amount with value in [0,max_value].
     pub fn arbitrary_amount(max_value: u64, shared_secret: RistrettoPublic)
-                (value in 0..=max_value, blinding in arbitrary_scalar()) -> Amount {
-            Amount::new(value,  blinding, &shared_secret).unwrap()
+                (value in 0..=max_value) -> Amount {
+            Amount::new(value, &shared_secret).unwrap()
     }
 }

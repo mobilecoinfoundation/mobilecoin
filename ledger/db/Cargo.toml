@@ -1,26 +1,25 @@
 [package]
-name = "ledger-db"
-version = "0.1.0"
+name = "mc-ledger-db"
+version = "0.1.5-alpha-1"
 authors = ["MobileCoin"]
 edition = "2018"
 
-[lib]
-name = "ledger_db"
-
 [features]
-test_utils = ["rand", "keys"]
+test_utils = ["rand", "mc-crypto-keys"]
 
 [dependencies]
-common = { path = "../../common", features = ["log"] }
+mc-common = { path = "../../common", features = ["log"] }
+mc-crypto-keys = { path = "../../crypto/keys", optional = true }
+mc-transaction-core = { path = "../../transaction/core" }
+mc-util-from-random = { path = "../../util/from-random" }
+mc-util-serial = { path = "../../util/serial", features = ["std"] }
+
 failure = "0.1.5"
 lmdb = "0.8.0"
-mc-util-from-random = { path = "../../util/from-random" }
-mcserial = { path = "../../util/mcserial" }
+prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
+rand = { version = "0.7", optional = true }
 rand_core = "0.5"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-transaction = { path = "../../transaction/core" }
-keys = { path = "../../crypto/keys", optional = true }
-rand = { version = "0.7", optional = true }
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
 curve25519-dalek = { version = "2.0", default-features = false, features = ["simd_backend", "nightly"] }
@@ -29,9 +28,9 @@ curve25519-dalek = { version = "2.0", default-features = false, features = ["sim
 curve25519-dalek = { version = "2.0", default-features = false, features = ["nightly", "u64_backend"] }
 
 [dev-dependencies]
-keys = { path = "../../crypto/keys" }
-transaction-std = { path = "../../transaction/std" }
-transaction-test-utils = { path = "../../transaction/core/test-utils" }
-mcrand = { path = "../../crypto/mcrand" }
+mc-crypto-keys = { path = "../../crypto/keys" }
+mc-crypto-rand = { path = "../../crypto/rand" }
+mc-transaction-std = { path = "../../transaction/std" }
+mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
 rand = "0.7"
 tempdir = "0.3"

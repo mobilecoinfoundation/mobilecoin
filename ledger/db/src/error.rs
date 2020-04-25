@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-use common::logger::global_log;
 use failure::Fail;
+use mc_common::logger::global_log;
 
 /// A Ledger error kind.
 #[derive(Debug, Eq, PartialEq, Copy, Clone, Fail)]
@@ -29,6 +29,9 @@ pub enum Error {
 
     #[fail(display = "InvalidBlockID")]
     InvalidBlockID,
+
+    #[fail(display = "NoOutputs")]
+    NoOutputs,
 
     /// LMDB error, may mean database is opened multiple times in a process.
     #[fail(display = "BadRslot")]
@@ -60,20 +63,32 @@ impl From<lmdb::Error> for Error {
     }
 }
 
-impl From<mcserial::decode::Error> for Error {
-    fn from(_: mcserial::decode::Error) -> Self {
+impl From<mc_util_serial::decode::Error> for Error {
+    fn from(_: mc_util_serial::decode::Error) -> Self {
         Error::Deserialization
     }
 }
 
-impl From<mcserial::encode::Error> for Error {
-    fn from(_: mcserial::encode::Error) -> Self {
+impl From<mc_util_serial::encode::Error> for Error {
+    fn from(_: mc_util_serial::encode::Error) -> Self {
         Error::Serialization
     }
 }
 
-impl From<transaction::range::RangeError> for Error {
-    fn from(_: transaction::range::RangeError) -> Self {
+impl From<mc_util_serial::DecodeError> for Error {
+    fn from(_: mc_util_serial::DecodeError) -> Self {
+        Error::Deserialization
+    }
+}
+
+impl From<mc_util_serial::EncodeError> for Error {
+    fn from(_: mc_util_serial::EncodeError) -> Self {
+        Error::Serialization
+    }
+}
+
+impl From<mc_transaction_core::range::RangeError> for Error {
+    fn from(_: mc_transaction_core::range::RangeError) -> Self {
         Error::RangeError
     }
 }

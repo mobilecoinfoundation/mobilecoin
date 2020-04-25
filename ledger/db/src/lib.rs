@@ -12,9 +12,9 @@ use lmdb::{
     Database, DatabaseFlags, Environment, EnvironmentFlags, RoTransaction, RwTransaction,
     Transaction, WriteFlags,
 };
-use mcserial::{deserialize, serialize};
+use mc_transaction_core::{Block, BlockContents, BlockID, BlockSignature, BLOCK_VERSION};
+use mc_util_serial::{deserialize, serialize, Message};
 use std::{path::PathBuf, sync::Arc};
-use transaction::{Block, BlockContents, BlockID, BlockSignature, BLOCK_VERSION};
 
 mod error;
 mod ledger_trait;
@@ -25,7 +25,7 @@ pub mod test_utils;
 
 pub use error::Error;
 pub use ledger_trait::Ledger;
-use transaction::{
+use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipProof},
 };
@@ -36,13 +36,25 @@ const MAX_LMDB_FILE_SIZE: usize = 1_099_511_627_776; // 1 TB
 // LMDB Database names.
 pub const COUNTS_DB_NAME: &str = "ledger_db:counts";
 pub const BLOCKS_DB_NAME: &str = "ledger_db:blocks";
-pub const BLOCK_CONTENTS_DB_NAME: &str = "ledger_db:block_contents";
 pub const BLOCK_SIGNATURES_DB_NAME: &str = "ledger_db:block_signatures";
 pub const KEY_IMAGES_DB_NAME: &str = "ledger_db:key_images";
 pub const KEY_IMAGES_BY_BLOCK_DB_NAME: &str = "ledger_db:key_images_by_block";
+pub const TX_OUTS_BY_BLOCK_DB_NAME: &str = "ledger_db:tx_outs_by_block";
 
 // Keys used by the `counts` database.
 const NUM_BLOCKS_KEY: &str = "num_blocks";
+
+// The value stored for each entry in the `tx_outs_by_block` database.
+#[derive(Clone, Message)]
+pub struct TxOutsByBlockValue {
+    /// The first TxOut index for the block.
+    #[prost(uint64, tag = "1")]
+    pub first_tx_out_index: u64,
+
+    /// The number of TxOuts in the block.
+    #[prost(uint64, tag = "2")]
+    pub num_tx_outs: u64,
+}
 
 #[derive(Clone)]
 pub struct LedgerDB {
@@ -55,9 +67,6 @@ pub struct LedgerDB {
     /// Blocks by block number. `block number -> Block`
     blocks: Database,
 
-    /// Block contents by block number, `block number -> BlockContents`
-    block_contents: Database,
-
     /// Block signatures by number. `block number -> BlockSignature`
     block_signatures: Database,
 
@@ -69,6 +78,11 @@ pub struct LedgerDB {
 
     /// Storage abstraction for TxOuts.
     tx_out_store: TxOutStore,
+
+    /// TxOuts by block number. `block number -> (first TxOut index, number of TxOuts in block)`.
+    /// This map allows retrieval of all TxOuts that were included in a given block number by
+    /// querying `tx_out_store`.
+    tx_outs_by_block: Database,
 
     /// Location on filesystem.
     path: PathBuf,
@@ -91,15 +105,19 @@ impl Ledger for LedgerDB {
         // Note: This function must update every LMDB database managed by LedgerDB.
         let mut db_transaction = self.env.begin_rw_txn()?;
 
+        // Validate the block is safe to append.
         self.validate_append_block(block, block_contents)?;
 
+        // Write key images included in block.
         self.write_key_images(block.index, &block_contents.key_images, &mut db_transaction)?;
 
-        for tx_out in &block_contents.outputs {
-            self.tx_out_store.push(tx_out, &mut db_transaction)?;
-        }
+        // Write information about TxOuts included in block.
+        self.write_tx_outs(block.index, &block_contents.outputs, &mut db_transaction)?;
 
-        self.write_block(block, block_contents, signature, &mut db_transaction)?;
+        // Write block.
+        self.write_block(block, signature, &mut db_transaction)?;
+
+        // Commit.
         db_transaction.commit()?;
         Ok(())
     }
@@ -123,17 +141,35 @@ impl Ledger for LedgerDB {
         let db_transaction = self.env.begin_ro_txn()?;
         let key = u64_to_key_bytes(block_number);
         let block_bytes = db_transaction.get(self.blocks, &key)?;
-        let block = deserialize(&block_bytes)?;
+        let block = mc_util_serial::decode(&block_bytes)?;
         Ok(block)
     }
 
     /// Get the contents of a block.
     fn get_block_contents(&self, block_number: u64) -> Result<BlockContents, Error> {
         let db_transaction = self.env.begin_ro_txn()?;
-        let key = u64_to_key_bytes(block_number);
-        let bytes = db_transaction.get(self.block_contents, &key)?;
-        let block_contents = deserialize(&bytes)?;
-        Ok(block_contents)
+
+        // Get all TxOuts in block.
+        let bytes = db_transaction.get(self.tx_outs_by_block, &u64_to_key_bytes(block_number))?;
+        let value: TxOutsByBlockValue = mc_util_serial::decode(&bytes)?;
+
+        let outputs = (value.first_tx_out_index..(value.first_tx_out_index + value.num_tx_outs))
+            .map(|tx_out_index| {
+                self.tx_out_store
+                    .get_tx_out_by_index(tx_out_index, &db_transaction)
+            })
+            .collect::<Result<Vec<TxOut>, Error>>()?;
+
+        // Get all KeyImages in block.
+        let key_images: Vec<KeyImage> = deserialize(
+            db_transaction.get(self.key_images_by_block, &u64_to_key_bytes(block_number))?,
+        )?;
+
+        // Returns block contents.
+        Ok(BlockContents {
+            key_images,
+            outputs,
+        })
     }
 
     /// Gets a block signature by its index in the blockchain.
@@ -211,10 +247,10 @@ impl LedgerDB {
 
         let counts = env.open_db(Some(COUNTS_DB_NAME))?;
         let blocks = env.open_db(Some(BLOCKS_DB_NAME))?;
-        let block_contents = env.open_db(Some(BLOCK_CONTENTS_DB_NAME))?;
         let block_signatures = env.open_db(Some(BLOCK_SIGNATURES_DB_NAME))?;
         let key_images = env.open_db(Some(KEY_IMAGES_DB_NAME))?;
         let key_images_by_block = env.open_db(Some(KEY_IMAGES_BY_BLOCK_DB_NAME))?;
+        let tx_outs_by_block = env.open_db(Some(TX_OUTS_BY_BLOCK_DB_NAME))?;
 
         let tx_out_store = TxOutStore::new(&env)?;
 
@@ -223,10 +259,10 @@ impl LedgerDB {
             path,
             counts,
             blocks,
-            block_contents,
             block_signatures,
             key_images,
             key_images_by_block,
+            tx_outs_by_block,
             tx_out_store,
         })
     }
@@ -246,10 +282,10 @@ impl LedgerDB {
 
         let counts = env.create_db(Some(COUNTS_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(BLOCKS_DB_NAME), DatabaseFlags::empty())?;
-        env.create_db(Some(BLOCK_CONTENTS_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(BLOCK_SIGNATURES_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(KEY_IMAGES_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(KEY_IMAGES_BY_BLOCK_DB_NAME), DatabaseFlags::empty())?;
+        env.create_db(Some(TX_OUTS_BY_BLOCK_DB_NAME), DatabaseFlags::empty())?;
 
         TxOutStore::create(&env)?;
 
@@ -270,7 +306,6 @@ impl LedgerDB {
     fn write_block(
         &self,
         block: &Block,
-        block_contents: &BlockContents,
         signature: Option<&BlockSignature>,
         db_transaction: &mut RwTransaction,
     ) -> Result<(), lmdb::Error> {
@@ -287,16 +322,7 @@ impl LedgerDB {
         db_transaction.put(
             self.blocks,
             &u64_to_key_bytes(block.index),
-            &serialize(block).unwrap_or_else(|_| panic!("Could not serialize block {:?}", block)),
-            WriteFlags::empty(),
-        )?;
-
-        db_transaction.put(
-            self.block_contents,
-            &u64_to_key_bytes(block.index),
-            &serialize(block_contents).unwrap_or_else(|_| {
-                panic!("Could not serialize block contents{:?}", block_contents)
-            }),
+            &mc_util_serial::encode(block),
             WriteFlags::empty(),
         )?;
 
@@ -341,6 +367,38 @@ impl LedgerDB {
         Ok(())
     }
 
+    fn write_tx_outs(
+        &self,
+        block_index: u64,
+        tx_outs: &[TxOut],
+        db_transaction: &mut RwTransaction,
+    ) -> Result<(), Error> {
+        // The index of the next TxOut we would be writing, which is the first one for this block,
+        // is determined by how many TxOuts are currently in the ledger.
+        let next_tx_out_index = self.tx_out_store.num_tx_outs(db_transaction)?;
+
+        // Store information about the TxOuts included in this block.
+        let bytes = mc_util_serial::encode(&TxOutsByBlockValue {
+            first_tx_out_index: next_tx_out_index,
+            num_tx_outs: tx_outs.len() as u64,
+        });
+
+        db_transaction.put(
+            self.tx_outs_by_block,
+            &u64_to_key_bytes(block_index),
+            &bytes,
+            WriteFlags::empty(),
+        )?;
+
+        // Write the actual TxOuts.
+        for tx_out in tx_outs {
+            self.tx_out_store.push(tx_out, db_transaction)?;
+        }
+
+        // Done.
+        Ok(())
+    }
+
     /// Checks if a block can be appended to the db.
     fn validate_append_block(
         &self,
@@ -354,8 +412,7 @@ impl LedgerDB {
 
         // A block must have outputs.
         if block_contents.outputs.is_empty() {
-            // TODO: better error type.
-            return Err(Error::InvalidBlock);
+            return Err(Error::NoOutputs);
         }
 
         // TODO: enable this.
@@ -417,14 +474,13 @@ pub fn key_bytes_to_u64(bytes: &[u8]) -> u64 {
 mod ledger_db_test {
     use super::*;
     use core::convert::TryFrom;
-    use curve25519_dalek::ristretto::RistrettoPoint;
-    use keys::RistrettoPrivate;
+    use mc_crypto_keys::RistrettoPrivate;
+    use mc_transaction_core::{account_keys::AccountKey, compute_block_id};
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
     use rand_core::RngCore;
     use tempdir::TempDir;
     use test::Bencher;
-    use transaction::{account_keys::AccountKey, compute_block_id};
 
     /// Creates a LedgerDB instance.
     fn create_db() -> LedgerDB {
@@ -441,7 +497,11 @@ mod ledger_db_test {
     /// * `num_blocks` - number of blocks  to write to `db`.
     /// * `n_txs_per_block` - number of transactions per block.
     ///
-    fn populate_db(db: &mut LedgerDB, num_blocks: u64, num_outputs_per_block: u64) -> Vec<Block> {
+    fn populate_db(
+        db: &mut LedgerDB,
+        num_blocks: u64,
+        num_outputs_per_block: u64,
+    ) -> (Vec<Block>, Vec<BlockContents>) {
         let initial_amount: u64 = 5_000 * 1_000_000_000_000;
 
         // Generate 1 public / private addresses and create transactions.
@@ -450,6 +510,7 @@ mod ledger_db_test {
 
         let mut parent_block: Option<Block> = None;
         let mut blocks: Vec<Block> = Vec::new();
+        let mut blocks_contents: Vec<BlockContents> = Vec::new();
 
         for block_index in 0..num_blocks {
             let outputs: Vec<TxOut> = (0..num_outputs_per_block)
@@ -483,13 +544,14 @@ mod ledger_db_test {
             db.append_block(&block, &block_contents, None)
                 .expect("failed writing initial transactions");
             blocks.push(block.clone());
+            blocks_contents.push(block_contents);
             parent_block = Some(block);
         }
 
         // Verify that db now contains n transactions.
         assert_eq!(db.num_blocks().unwrap(), num_blocks as u64);
 
-        blocks
+        (blocks, blocks_contents)
     }
 
     #[test]
@@ -567,9 +629,7 @@ mod ledger_db_test {
             })
             .collect();
 
-        let key_images: Vec<KeyImage> = (0..5)
-            .map(|_i| KeyImage::from(RistrettoPoint::random(&mut rng)))
-            .collect();
+        let key_images: Vec<KeyImage> = (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
 
         let block_contents = BlockContents::new(key_images.clone(), outputs);
         let block = Block::new(
@@ -634,7 +694,7 @@ mod ledger_db_test {
     fn test_get_block_by_index() {
         let mut ledger_db = create_db();
         let n_blocks = 43;
-        let expected_blocks = populate_db(&mut ledger_db, n_blocks, 1);
+        let (expected_blocks, _) = populate_db(&mut ledger_db, n_blocks, 1);
 
         for block_index in 0..n_blocks {
             let block = ledger_db
@@ -643,6 +703,26 @@ mod ledger_db_test {
 
             let expected_block: Block = expected_blocks.get(block_index as usize).unwrap().clone();
             assert_eq!(block, expected_block);
+        }
+    }
+
+    #[test]
+    // Getting block contents by index should return the correct block contents, if that exists.
+    fn test_get_block_contents_by_index() {
+        let mut ledger_db = create_db();
+        let n_blocks = 43;
+        let (_, expected_block_contents) = populate_db(&mut ledger_db, n_blocks, 1);
+
+        for block_index in 0..n_blocks {
+            let block_contents = ledger_db
+                .get_block_contents(block_index as u64)
+                .unwrap_or_else(|_| panic!("Could not get block contents {:?}", block_index));
+
+            let expected_block_contents = expected_block_contents
+                .get(block_index as usize)
+                .unwrap()
+                .clone();
+            assert_eq!(block_contents, expected_block_contents);
         }
     }
 
@@ -682,7 +762,7 @@ mod ledger_db_test {
         let account_key = AccountKey::random(&mut rng);
         let num_key_images = 3;
         let key_images: Vec<KeyImage> = (0..num_key_images)
-            .map(|_i| KeyImage::from(RistrettoPoint::random(&mut rng)))
+            .map(|_i| KeyImage::from(rng.next_u64()))
             .collect();
 
         let tx_out = TxOut::new(
@@ -728,7 +808,7 @@ mod ledger_db_test {
         let account_key = AccountKey::random(&mut rng);
         let num_key_images = 3;
         let key_images: Vec<KeyImage> = (0..num_key_images)
-            .map(|_i| KeyImage::from(RistrettoPoint::random(&mut rng)))
+            .map(|_i| KeyImage::from(rng.next_u64()))
             .collect();
 
         let tx_out = TxOut::new(
@@ -776,7 +856,7 @@ mod ledger_db_test {
         // Write the next block, containing several key images but no outputs.
         let num_key_images = 3;
         let key_images: Vec<KeyImage> = (0..num_key_images)
-            .map(|_i| KeyImage::from(RistrettoPoint::random(&mut rng)))
+            .map(|_i| KeyImage::from(rng.next_u64()))
             .collect();
 
         let outputs = Vec::new();
@@ -792,7 +872,7 @@ mod ledger_db_test {
 
         assert_eq!(
             ledger_db.append_block(&block, &block_contents, None),
-            Err(Error::InvalidBlock)
+            Err(Error::NoOutputs)
         );
     }
 
@@ -830,10 +910,10 @@ mod ledger_db_test {
 
         // initialize a ledger with 3 blocks.
         let n_blocks = 3;
-        let blocks = populate_db(&mut ledger_db, n_blocks, 2);
+        let (blocks, _) = populate_db(&mut ledger_db, n_blocks, 2);
         assert_eq!(ledger_db.num_blocks().unwrap(), n_blocks);
 
-        let key_images = vec![KeyImage::from(RistrettoPoint::random(&mut rng))];
+        let key_images = vec![KeyImage::from(rng.next_u64())];
 
         let tx_out = TxOut::new(
             100,
@@ -887,7 +967,7 @@ mod ledger_db_test {
         let account_key = AccountKey::random(&mut rng);
         let num_key_images = 3;
         let block_one_key_images: Vec<KeyImage> = (0..num_key_images)
-            .map(|_i| KeyImage::from(RistrettoPoint::random(&mut rng)))
+            .map(|_i| KeyImage::from(rng.next_u64()))
             .collect();
 
         let block_one_contents = {
@@ -988,7 +1068,7 @@ mod ledger_db_test {
             )
             .unwrap();
 
-            let key_images = vec![KeyImage::from(RistrettoPoint::random(&mut rng))];
+            let key_images = vec![KeyImage::from(rng.next_u64())];
             let block_contents = BlockContents::new(key_images, vec![tx_out]);
 
             let bytes = [14u8; 32];

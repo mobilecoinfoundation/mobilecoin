@@ -3,18 +3,18 @@
 //! Enclave API Errors
 
 use alloc::string::String;
-use attest::SgxError;
-use attest_enclave_api::Error as AttestEnclaveError;
 use failure::Fail;
-use keys::Ed25519SignatureError;
-use mcserial::{
+use mc_attest_core::SgxError;
+use mc_attest_enclave_api::Error as AttestEnclaveError;
+use mc_crypto_keys::Ed25519SignatureError;
+use mc_crypto_message_cipher::CipherError as MessageCipherError;
+use mc_sgx_compat::sync::PoisonError;
+use mc_transaction_core::validation::TransactionValidationError;
+use mc_util_serial::{
     decode::Error as RmpDecodeError, encode::Error as RmpEncodeError,
     DecodeError as ProstDecodeError, EncodeError as ProstEncodeError,
 };
-use message_cipher::CipherError as MessageCipherError;
 use serde::{Deserialize, Serialize};
-use sgx_compat::sync::PoisonError;
-use transaction::validation::TransactionValidationError;
 
 /// An enumeration of errors which can occur inside a consensus enclave.
 #[derive(Clone, Debug, Deserialize, Fail, PartialEq, PartialOrd, Serialize)]
@@ -47,9 +47,9 @@ pub enum Error {
     #[fail(display = "Invalid membership proof provided by local system")]
     InvalidLocalMembershipProof,
 
-    /// Error redacting transactions (not expected to happen if untrusted plays by the rules).
-    #[fail(display = "Redact txs error: {}", _0)]
-    RedactTxs(String),
+    /// Error forming block (not expected to happen if untrusted plays by the rules).
+    #[fail(display = "Form block error: {}", _0)]
+    FormBlock(String),
 
     /// Signature error
     #[fail(display = "Signature error")]

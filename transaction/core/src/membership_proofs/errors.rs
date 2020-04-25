@@ -26,8 +26,8 @@ pub enum Error {
     CapacityExceeded,
 }
 
-impl From<mcserial::encode::Error> for Error {
-    fn from(_e: mcserial::encode::Error) -> Self {
+impl From<mc_util_serial::encode::Error> for Error {
+    fn from(_e: mc_util_serial::encode::Error) -> Self {
         Error::TxOutSerializationError
     }
 }

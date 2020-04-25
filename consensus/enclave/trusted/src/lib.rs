@@ -7,14 +7,14 @@
 extern crate alloc;
 
 use alloc::vec::Vec;
-use consensus_enclave_api::{ConsensusEnclave, EnclaveCall};
-use consensus_enclave_impl::SgxConsensusEnclave;
 use core::slice;
-use enclave_boundary::trusted::RetryBuffer;
 use lazy_static::lazy_static;
-use mcserial::{deserialize, serialize};
-use sgx_compat::panic::catch_unwind;
-use sgx_types::{c_void, sgx_is_outside_enclave, sgx_status_t};
+use mc_consensus_enclave_api::{ConsensusEnclave, EnclaveCall};
+use mc_consensus_enclave_impl::SgxConsensusEnclave;
+use mc_enclave_boundary::trusted::RetryBuffer;
+use mc_sgx_compat::panic::catch_unwind;
+use mc_sgx_types::{c_void, sgx_is_outside_enclave, sgx_status_t};
+use mc_util_serial::{deserialize, serialize};
 
 lazy_static! {
     /// Storage for ECALL results whose given outbuf was not large enough
@@ -102,7 +102,7 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
 
 /// The entry point implementation for consensus_enclave_api
 ///
-/// See consensus_enclave_api::mobileenclave() declaration for more information
+/// See mc_consensus_enclave_api::mobileenclave() declaration for more information
 #[no_mangle]
 pub extern "C" fn mobileenclave_call(
     inbuf: *const u8,

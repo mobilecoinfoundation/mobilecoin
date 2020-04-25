@@ -2,17 +2,17 @@
 
 //! Ledger Sync test app
 
-use attest::{Measurement, MrSigner};
-use common::{logger::log, ResponderId};
-use consensus_enclave_measurement::sigstruct;
-use ledger_db::{Ledger, LedgerDB};
-use ledger_sync::{LedgerSyncService, PollingNetworkState};
-use mcconnection::{ConnectionManager, ThickClient};
-use mcuri::ConsensusClientUri as ClientUri;
-use scp::{test_utils::test_node_id, QuorumSet};
+use mc_attest_core::{Measurement, MrSigner};
+use mc_common::{logger::log, ResponderId};
+use mc_connection::{ConnectionManager, ThickClient};
+use mc_consensus_enclave_measurement::sigstruct;
+use mc_consensus_scp::{test_utils::test_node_id, QuorumSet};
+use mc_ledger_db::{Ledger, LedgerDB};
+use mc_ledger_sync::{LedgerSyncService, PollingNetworkState};
+use mc_transaction_core::{account_keys::AccountKey, Block, BlockContents};
+use mc_util_uri::ConsensusClientUri as ClientUri;
 use std::{convert::TryFrom, path::PathBuf, str::FromStr, sync::Arc};
 use tempdir::TempDir;
-use transaction::{account_keys::AccountKey, Block, BlockContents};
 
 const NETWORK: &str = "test";
 
@@ -30,7 +30,7 @@ fn _make_ledger_long(ledger: &mut LedgerDB) {
         .map(|account| account.default_subaddress())
         .collect::<Vec<_>>();
 
-    let results: Vec<(Block, BlockContents)> = transaction_test_utils::get_blocks(
+    let results: Vec<(Block, BlockContents)> = mc_transaction_core_test_utils::get_blocks(
         &recipient_pub_keys[..],
         1,
         1000,
@@ -47,7 +47,8 @@ fn _make_ledger_long(ledger: &mut LedgerDB) {
 }
 
 fn main() {
-    let (logger, _global_logger_guard) = common::logger::create_app_logger(common::logger::o!());
+    let (logger, _global_logger_guard) =
+        mc_common::logger::create_app_logger(mc_common::logger::o!());
     log::info!(logger, "starting, network = {}", NETWORK);
 
     // Get a ledger database to work on.
@@ -133,9 +134,9 @@ fn main() {
 
     /*
     let transactions_fetcher =
-        ledger_sync::ConnectionManagerTransactionsFetcher::new(conn_manager.clone(), logger.clone());
+        mc_ledger_sync::ConnectionManagerTransactionsFetcher::new(conn_manager.clone(), logger.clone());
     */
-    let transactions_fetcher = ledger_sync::ReqwestTransactionsFetcher::new(
+    let transactions_fetcher = mc_ledger_sync::ReqwestTransactionsFetcher::new(
         vec![
             String::from(
                 "https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node2.test.mobilecoin.com/",

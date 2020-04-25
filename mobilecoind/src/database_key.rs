@@ -4,8 +4,8 @@
 //! Keys are aliases for DatabaseByteArrayKey, which is a newtype for [u8; 32]
 
 use crate::error::Error;
-use digestible::Digestible;
-use mcserial::{prost_message_helper32, ReprBytes32};
+use mc_crypto_digestible::Digestible;
+use mc_util_serial::{prost_message_helper32, ReprBytes32};
 use std::{
     convert::{AsRef, TryFrom},
     fmt,

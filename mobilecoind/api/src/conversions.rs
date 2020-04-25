@@ -3,26 +3,26 @@
 //! provides conversions between types used in libmobilecoin and types from mobilecoind_api
 
 use crate::mobilecoind_api;
-use mobilecoin_api::external;
+use mc_consensus_api::external;
+use mc_transaction_core::account_keys;
 use std::convert::{From, TryFrom};
-use transaction::account_keys;
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum ConversionError {
-    Key(keys::KeyError),
-    MobilecoinApiConversion(mobilecoin_api::ConversionError),
+    Key(mc_crypto_keys::KeyError),
+    MobilecoinApiConversion(mc_consensus_api::ConversionError),
     FeeMismatch,
     IndexOutOfBounds,
 }
 
-impl From<keys::KeyError> for ConversionError {
-    fn from(src: keys::KeyError) -> Self {
+impl From<mc_crypto_keys::KeyError> for ConversionError {
+    fn from(src: mc_crypto_keys::KeyError) -> Self {
         Self::Key(src)
     }
 }
 
-impl From<mobilecoin_api::ConversionError> for ConversionError {
-    fn from(src: mobilecoin_api::ConversionError) -> Self {
+impl From<mc_consensus_api::ConversionError> for ConversionError {
+    fn from(src: mc_consensus_api::ConversionError) -> Self {
         Self::MobilecoinApiConversion(src)
     }
 }
@@ -49,14 +49,14 @@ impl TryFrom<&mobilecoind_api::AccountKey> for account_keys::AccountKey {
         let spend_private_key = src
             .spend_private_key
             .as_ref()
-            .ok_or(keys::KeyError::LengthMismatch(0, 32))
-            .and_then(|key| keys::RistrettoPrivate::try_from(&key.data[..]))?;
+            .ok_or(mc_crypto_keys::KeyError::LengthMismatch(0, 32))
+            .and_then(|key| mc_crypto_keys::RistrettoPrivate::try_from(&key.data[..]))?;
 
         let view_private_key = src
             .view_private_key
             .as_ref()
-            .ok_or(keys::KeyError::LengthMismatch(0, 32))
-            .and_then(|key| keys::RistrettoPrivate::try_from(&key.data[..]))?;
+            .ok_or(mc_crypto_keys::KeyError::LengthMismatch(0, 32))
+            .and_then(|key| mc_crypto_keys::RistrettoPrivate::try_from(&key.data[..]))?;
 
         if src.fog_fqdn.is_empty() {
             Ok(account_keys::AccountKey::new(
@@ -95,14 +95,14 @@ impl TryFrom<&mobilecoind_api::PublicAddress> for account_keys::PublicAddress {
         let spend_public_key = src
             .spend_public_key
             .as_ref()
-            .ok_or(keys::KeyError::LengthMismatch(0, 32))
-            .and_then(|key| keys::RistrettoPublic::try_from(&key.data[..]))?;
+            .ok_or(mc_crypto_keys::KeyError::LengthMismatch(0, 32))
+            .and_then(|key| mc_crypto_keys::RistrettoPublic::try_from(&key.data[..]))?;
 
         let view_public_key = src
             .view_public_key
             .as_ref()
-            .ok_or(keys::KeyError::LengthMismatch(0, 32))
-            .and_then(|key| keys::RistrettoPublic::try_from(&key.data[..]))?;
+            .ok_or(mc_crypto_keys::KeyError::LengthMismatch(0, 32))
+            .and_then(|key| mc_crypto_keys::RistrettoPublic::try_from(&key.data[..]))?;
 
         if src.fog_fqdn.is_empty() {
             Ok(account_keys::PublicAddress::new(
@@ -122,11 +122,11 @@ impl TryFrom<&mobilecoind_api::PublicAddress> for account_keys::PublicAddress {
 #[cfg(test)]
 mod tests {
     use crate::mobilecoind_api;
-    use common::logger::{test_with_logger, Logger};
-    use mobilecoin_api::external;
+    use mc_common::logger::{test_with_logger, Logger};
+    use mc_consensus_api::external;
+    use mc_transaction_core::account_keys;
     use rand::{rngs::StdRng, SeedableRng};
     use std::convert::{From, TryFrom};
-    use transaction::account_keys;
 
     // Test converting between mobilecoind_api::AccountKey and account_keys::AccountKey
     #[test_with_logger]

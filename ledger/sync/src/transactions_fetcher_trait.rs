@@ -3,9 +3,9 @@
 //! The `TransactionsFetcher` trait describes the interface used by `LedgerSyncService` for
 //! fetching transaction data.
 
-use common::ResponderId;
+use mc_common::ResponderId;
+use mc_transaction_core::{Block, BlockContents};
 use std::fmt::Debug;
-use transaction::{Block, BlockContents};
 
 pub trait TransactionFetcherError: Debug + Send + Sync {}
 

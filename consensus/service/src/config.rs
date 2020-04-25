@@ -2,12 +2,12 @@
 
 //! Configuration parameters for the Consensus Service application.
 
-use attest::ProviderId;
 use base64;
-use common::{HashMap, HashSet, NodeID, ResponderId};
-use keys::{DistinguishedEncoding, Ed25519Pair, Ed25519Private};
-use mcuri::{ConnectionUri, ConsensusClientUri as ClientUri, ConsensusPeerUri as PeerUri};
-use scp::{QuorumSet, QuorumSetMember};
+use mc_attest_core::ProviderId;
+use mc_common::{HashMap, HashSet, NodeID, ResponderId};
+use mc_consensus_scp::{QuorumSet, QuorumSetMember};
+use mc_crypto_keys::{DistinguishedEncoding, Ed25519Pair, Ed25519Private};
+use mc_util_uri::{ConnectionUri, ConsensusClientUri as ClientUri, ConsensusPeerUri as PeerUri};
 use serde::{Deserialize, Serialize};
 use std::{fmt::Debug, fs, iter::FromIterator, path::PathBuf, string::String, sync::Arc};
 use structopt::StructOpt;
@@ -244,8 +244,8 @@ impl Config {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use keys::Ed25519Public;
-    use scp::QuorumSetMember;
+    use mc_consensus_scp::QuorumSetMember;
+    use mc_crypto_keys::Ed25519Public;
     use std::str::FromStr;
 
     #[test]

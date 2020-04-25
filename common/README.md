@@ -1,4 +1,4 @@
-## common
+## mc-common
 
 This crate contains several things right now:
 
@@ -7,7 +7,7 @@ This crate contains several things right now:
   dependencies, and minimize the amount of code that compiles as `std` and `no_std`.
 - Common error types, used at API boundaries. The rationale is similar.
 - Forward declarations of functionality that is "common" to both inside and outside
-  the enclave. For instance, `mchash` and `mcserial` types are forwarded from the
+  the enclave. For instance, `mchash` and `mc-util-serial` types are forwarded from the
   `common` crate. This avoids needing to list these dependencies explicitly in
   all of the high level targets that use them.
 - Constants associated to attestation. These appear in `ias_settings` module.

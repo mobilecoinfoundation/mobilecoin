@@ -4,22 +4,13 @@
 #![macro_use]
 extern crate alloc;
 
-use alloc::{vec, vec::Vec};
 use bulletproofs::{BulletproofGens, PedersenGens};
-use core::convert::TryFrom;
-use curve25519_dalek::ristretto::CompressedRistretto;
 pub use curve25519_dalek::scalar::Scalar;
 pub use curve_scalar::*;
 pub use error::Error;
 pub use key_image::*;
-use keys::RistrettoPublic;
 pub use mlsag::*;
 pub use rct_bulletproofs::*;
-
-use crate::{
-    constants::{MAX_INPUTS, MAX_OUTPUTS},
-    tx::TxIn,
-};
 
 mod curve_scalar;
 mod error;
@@ -32,6 +23,8 @@ lazy_static! {
     pub static ref GENERATORS: PedersenGens = PedersenGens::default();
 
     /// Generators (base points) for Bulletproofs.
+    /// The `party_capacity` is the maximum number of values in one proof. It should
+    /// be at least 2 * num_inputs + num_outputs + 1, which allows for inputs, pseudo outputs, outputs, and the fee.
     pub static ref BP_GENERATORS: BulletproofGens =
-        BulletproofGens::new(64, MAX_INPUTS as usize + MAX_OUTPUTS as usize);
+        BulletproofGens::new(64, 64);
 }

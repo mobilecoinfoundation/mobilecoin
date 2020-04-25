@@ -8,33 +8,22 @@
 
 extern crate alloc;
 
-use alloc::{vec, vec::Vec};
-use blake2::{Blake2b, Digest};
+use alloc::vec::Vec;
 use bulletproofs::RangeProof;
-use common::HashSet;
-use core::convert::{TryFrom, TryInto};
+use core::convert::TryFrom;
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
-use digestible::Digestible;
-use generic_array::GenericArray;
-use keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
-use mcserial::{
-    prost::{
-        bytes::{Buf, BufMut},
-        encoding::{bytes, encode_key, encoded_len_varint, key_len, skip_field},
-        Message,
-    },
-    serialize, DecodeError, ReprBytes32,
-};
-use prost::encoding::{DecodeContext, WireType};
+use mc_common::HashSet;
+use mc_crypto_digestible::Digestible;
+use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
+use mc_util_serial::{prost::Message, serialize};
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     commitment::Commitment,
     compressed_commitment::CompressedCommitment,
-    onetime_keys::compute_key_image,
     range_proofs::{check_range_proofs, generate_range_proofs},
-    ring_signature::{mlsag::RingMLSAG, CurveScalar, Error, KeyImage, Scalar, GENERATORS},
+    ring_signature::{mlsag::RingMLSAG, Error, KeyImage, Scalar, GENERATORS},
 };
 
 /// An RCT_TYPE_BULLETPROOFS_2 signature.
@@ -355,17 +344,15 @@ fn extend_message(
 mod rct_bulletproofs_tests {
     use super::sign_with_balance_check;
     use crate::{
-        commitment::Commitment,
         compressed_commitment::CompressedCommitment,
-        proptest_fixtures::*,
         range_proofs::generate_range_proofs,
-        ring_signature::{Error, KeyImage, SignatureRctBulletproofs, GENERATORS},
+        ring_signature::{Error, KeyImage, SignatureRctBulletproofs},
     };
     use alloc::vec::Vec;
-    use curve25519_dalek::{ristretto::RistrettoPoint, scalar::Scalar};
-    use keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
+    use curve25519_dalek::scalar::Scalar;
+    use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
     use mc_util_from_random::FromRandom;
-    use proptest::{array::uniform32, prelude::*};
+    use proptest::prelude::*;
     use rand::{rngs::StdRng, CryptoRng, SeedableRng};
     use rand_core::RngCore;
 
@@ -593,7 +580,7 @@ mod rct_bulletproofs_tests {
 
             // Modify an MLSAG ring signature
             let index = rng.next_u64() as usize % (num_inputs);
-            signature.ring_signatures[index].key_image = KeyImage::from(RistrettoPoint::random(&mut rng));
+            signature.ring_signatures[index].key_image = KeyImage::from(rng.next_u64());
 
             let result = signature.verify(
                 &params.message,
@@ -743,14 +730,14 @@ mod rct_bulletproofs_tests {
             )
             .unwrap();
 
-            use mcserial::prost::Message;
+            use mc_util_serial::prost::Message;
 
             // The encoded bytes should have the correct length.
-            let bytes = mcserial::encode(&signature);
+            let bytes = mc_util_serial::encode(&signature);
             assert_eq!(bytes.len(), signature.encoded_len());
 
             // decode(encode(&signature)) should be the identity function.
-            let recovered_signature : SignatureRctBulletproofs = mcserial::decode(&bytes).unwrap();
+            let recovered_signature : SignatureRctBulletproofs = mc_util_serial::decode(&bytes).unwrap();
             assert_eq!(signature, recovered_signature);
         }
 

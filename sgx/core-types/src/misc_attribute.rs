@@ -6,7 +6,7 @@
 pub use mc_sgx_core_types_sys::sgx_misc_select_t as MiscSelect;
 
 /// The size of a [MiscSelect], in bytes.
-pub use mc_encodings::INTEL_U32_SIZE as MISC_SELECT_SIZE;
+pub use mc_util_encodings::INTEL_U32_SIZE as MISC_SELECT_SIZE;
 
 use crate::{
     _macros::FfiWrapper,
@@ -19,8 +19,8 @@ use core::{
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
-use mc_encodings::{Error as EncodingError, FromX64, ToX64, INTEL_U32_SIZE};
 use mc_sgx_core_types_sys::sgx_misc_attribute_t;
+use mc_util_encodings::{Error as EncodingError, FromX64, ToX64, INTEL_U32_SIZE};
 
 const ATTRIBUTES_START: usize = 0;
 const ATTRIBUTES_END: usize = ATTRIBUTES_START + ATTRIBUTES_SIZE;

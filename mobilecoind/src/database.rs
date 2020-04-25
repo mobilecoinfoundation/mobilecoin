@@ -10,13 +10,13 @@ use crate::{
 };
 
 use crate::utxo_store::UnspentTxOut;
-use common::{
+use lmdb::{Environment, Transaction};
+use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
-use lmdb::{Environment, Transaction};
+use mc_transaction_core::ring_signature::KeyImage;
 use std::{path::Path, sync::Arc};
-use transaction::ring_signature::KeyImage;
 
 // LMDB Constants
 
@@ -63,7 +63,7 @@ impl Database {
     }
 
     pub fn add_monitor(&self, data: &MonitorData) -> Result<MonitorId, Error> {
-        common::trace_time!(self.logger, "add_monitor");
+        mc_common::trace_time!(self.logger, "add_monitor");
 
         let mut db_txn = self.env.begin_rw_txn()?;
         let id = self.monitor_store.add(&mut db_txn, data)?;
@@ -79,7 +79,7 @@ impl Database {
     }
 
     pub fn remove_monitor(&self, id: &MonitorId) -> Result<(), Error> {
-        common::trace_time!(self.logger, "remove_monitor");
+        mc_common::trace_time!(self.logger, "remove_monitor");
 
         let mut db_txn = self.env.begin_rw_txn()?;
 
@@ -229,9 +229,9 @@ impl Database {
 mod test {
     use super::*;
     use crate::{error::Error, test_utils::get_test_databases};
-    use common::logger::{test_with_logger, Logger};
+    use mc_common::logger::{test_with_logger, Logger};
+    use mc_transaction_core::account_keys::AccountKey;
     use rand::{rngs::StdRng, SeedableRng};
-    use transaction::account_keys::AccountKey;
 
     // Inserting a monitor that overlaps subaddresses of another monitor should result in an error.
     #[test_with_logger]

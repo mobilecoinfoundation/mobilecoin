@@ -1,0 +1,11 @@
+[package]
+name = "mc-sgx-build"
+version = "0.1.5-alpha-1"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[dependencies]
+cc = "1.0"
+lazy_static = "1.4"
+serde = { version = "1", default-features = false, features = ["alloc", "derive"] }
+walkdir = "2"

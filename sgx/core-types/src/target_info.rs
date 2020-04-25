@@ -16,11 +16,11 @@ use core::{
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
-use mc_encodings::{Error as EncodingError, FromX64, ToX64};
 use mc_sgx_core_types_sys::{
     sgx_target_info_t, SGX_TARGET_INFO_RESERVED1_BYTES, SGX_TARGET_INFO_RESERVED2_BYTES,
     SGX_TARGET_INFO_RESERVED3_BYTES,
 };
+use mc_util_encodings::{Error as EncodingError, FromX64, ToX64};
 
 // byte positions for each field in an x86_64 representation
 const MR_ENCLAVE_START: usize = 0;

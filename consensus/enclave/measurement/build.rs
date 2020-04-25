@@ -3,14 +3,14 @@
 //! Build script for the consensus_enclave_measurement crate.
 
 use cargo_emit::{rerun_if_env_changed, rustc_cfg};
-use mcbuild_enclave::Builder;
-use mcbuild_sgx_utils::{IasMode, SgxEnvironment, SgxMode, TcsPolicy};
-use mcbuild_utils::Environment;
+use mc_util_build_enclave::Builder;
+use mc_util_build_script::Environment;
+use mc_util_build_sgx::{IasMode, SgxEnvironment, SgxMode, TcsPolicy};
 use std::{env::var, path::PathBuf};
 
 pub const CONSENSUS_ENCLAVE_PRODUCT_ID: u16 = 1;
 pub const CONSENSUS_ENCLAVE_SECURITY_VERSION: u16 = 1;
-pub const CONSENSUS_ENCLAVE_NAME: &str = "consensus-enclave";
+pub const CONSENSUS_ENCLAVE_NAME: &str = "consensus_enclave";
 pub const CONSENSUS_ENCLAVE_DIR: &str = "../trusted";
 
 fn main() {

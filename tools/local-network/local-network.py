@@ -342,7 +342,7 @@ class Network:
             )
 
         subprocess.run(
-            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p consensus-service -p ledger-distribution {CARGO_FLAGS}',
+            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p mc-consensus-service -p mc-ledger-distribution {CARGO_FLAGS}',
             shell=True,
             check=True,
         )

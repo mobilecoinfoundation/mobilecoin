@@ -3,28 +3,28 @@
 //! The entity that manages cached transactions on the untrusted side.
 
 use crate::counters;
-use attest_enclave_api::{EnclaveMessage, PeerSession};
-use common::{
+use failure::Fail;
+use mc_attest_enclave_api::{EnclaveMessage, PeerSession};
+use mc_common::{
     logger::{log, Logger},
     HashMap, HashSet,
 };
-use consensus_enclave::{
+use mc_consensus_enclave::{
     ConsensusEnclaveProxy, Error as ConsensusEnclaveError, TxContext, WellFormedEncryptedTx,
     WellFormedTxContext,
 };
-use failure::Fail;
-use ledger_db::{Error as LedgerDbError, Ledger};
-use std::{
-    collections::BTreeSet,
-    iter::FromIterator,
-    sync::{Arc, Mutex, MutexGuard},
-};
-use transaction::{
+use mc_ledger_db::{Error as LedgerDbError, Ledger};
+use mc_transaction_core::{
     constants::MAX_TRANSACTIONS_PER_BLOCK,
     ring_signature::KeyImage,
     tx::{TxHash, TxOutMembershipProof},
     validation::{TransactionValidationError, TransactionValidationResult},
     Block, BlockContents, BlockSignature,
+};
+use std::{
+    collections::BTreeSet,
+    iter::FromIterator,
+    sync::{Arc, Mutex, MutexGuard},
 };
 
 #[derive(Clone, Debug, Fail)]
@@ -363,11 +363,11 @@ impl<E: ConsensusEnclaveProxy, L: Ledger, UI: UntrustedInterfaces> TxManager<E, 
 mod tests {
     use super::*;
     use crate::validators::DefaultTxManagerUntrustedInterfaces;
-    use common::logger::test_with_logger;
-    use consensus_enclave_mock::ConsensusServiceMockEnclave;
+    use mc_common::logger::test_with_logger;
+    use mc_consensus_enclave_mock::ConsensusServiceMockEnclave;
+    use mc_transaction_core::account_keys::AccountKey;
+    use mc_transaction_core_test_utils::{create_ledger, create_transaction, initialize_ledger};
     use rand::{rngs::StdRng, SeedableRng};
-    use transaction::account_keys::AccountKey;
-    use transaction_test_utils::{create_ledger, create_transaction, initialize_ledger};
 
     #[test_with_logger]
     fn test_hashes_to_block(logger: Logger) {

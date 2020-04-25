@@ -1,4 +1,4 @@
-# ledger_db
+# mc-ledger-db
 
 Persistent storage for the blockchain.
 

@@ -1,11 +1,9 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
 use crate::Block;
-use core::{
-    convert::TryFrom,
-    fmt::{Debug, Display, Formatter, Result as FmtResult},
-    hash::{Hash, Hasher},
-};
-use digestible::{Digest, Digestible};
-use keys::{
+use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
+use mc_crypto_digestible::Digestible;
+use mc_crypto_keys::{
     DigestSigner, DigestVerifier, Ed25519Pair, Ed25519Public, Ed25519Signature,
     Ed25519SignatureError,
 };

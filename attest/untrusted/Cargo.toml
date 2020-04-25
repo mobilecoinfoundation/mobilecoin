@@ -1,17 +1,17 @@
 [package]
-name = "attest-untrusted"
-version = "0.1.0"
+name = "mc-attest-untrusted"
+version = "0.1.5-alpha-1"
 authors = ["MobileCoin"]
 edition = "2018"
 
 [features]
 sgx-sim = [
-    "attest/sgx-sim"
+    "mc-attest-core/sgx-sim"
 ]
 
 [dependencies]
-attest = { path = "../../attest/core", default-features = false }
-sgx_types = { path = "../../sgx/sgx_types" }
+mc-attest-core = { path = "../../attest/core", default-features = false }
+mc-sgx-types = { path = "../../sgx/types" }
 
 [build-dependencies]
-sgx_build = { path = "../../sgx/sgx_build" }
+mc-sgx-build = { path = "../../sgx/build" }

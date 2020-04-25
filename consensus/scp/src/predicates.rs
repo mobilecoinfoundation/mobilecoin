@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 //! Predicates for use in trust decisions for SCP.
-use common::{HashMap, HashSet, NodeID};
+use mc_common::{HashMap, HashSet, NodeID};
 use std::{collections::BTreeSet, sync::Arc};
 
 use crate::{
@@ -232,7 +232,7 @@ impl<'a, V: Value, ID: GenericNodeId> Predicate<V, ID> for FuncPredicate<'a, V, 
 mod predicates_tests {
     use super::*;
     use crate::{core_types::*, msg::*, quorum_set::*, test_utils::test_node_id};
-    use common::HashMap;
+    use mc_common::HashMap;
     use std::iter::FromIterator;
 
     #[test]

@@ -9,7 +9,7 @@ use crate::{
 };
 use aead::{AeadMut, NewAead};
 use alloc::vec::Vec;
-use mcnoise::{CipherError, NoiseCipher};
+use mc_crypto_noise::{CipherError, NoiseCipher};
 use rand_core::{CryptoRng, RngCore};
 
 /// Ready + Ciphertext => Ready + Vec-of-plaintext

@@ -12,25 +12,25 @@ mod messages;
 pub use crate::{error::Error, messages::EnclaveCall};
 
 use alloc::vec::Vec;
-use attest::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
-use attest_enclave_api::{
+use core::{hash::Hash, result::Result as StdResult};
+use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
+use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, PeerAuthRequest,
     PeerAuthResponse, PeerSession,
 };
-use common::ResponderId;
-use core::{hash::Hash, result::Result as StdResult};
-use keys::{Ed25519Public, X25519Public};
-use serde::{Deserialize, Serialize};
-use transaction::{
+use mc_common::ResponderId;
+use mc_crypto_keys::{Ed25519Public, X25519Public};
+use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{Tx, TxHash, TxOutMembershipProof},
     Block, BlockContents, BlockSignature,
 };
+use serde::{Deserialize, Serialize};
 
 /// A generic result type for enclave calls
 pub type Result<T> = StdResult<T, Error>;
 
-/// A `transaction::Tx` that has been encrypted for the local enclave, to be used during the
+/// A `mc_transaction_core::Tx` that has been encrypted for the local enclave, to be used during the
 /// two-step is-wellformed check.
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct LocallyEncryptedTx(pub Vec<u8>);

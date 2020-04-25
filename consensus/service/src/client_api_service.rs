@@ -8,18 +8,18 @@ use crate::{
     grpc_error::ConsensusGrpcError,
     tx_manager::{TxManager, TxManagerError},
 };
-use attest_api::attest::Message;
-use common::logger::{log, Logger};
-use consensus_enclave::ConsensusEnclaveProxy;
-use grpc_util::{rpc_logger, send_result};
 use grpcio::{RpcContext, UnarySink};
-use ledger_db::Ledger;
-use metrics::{self, SVC_COUNTERS};
-use mobilecoin_api::{
+use mc_attest_api::attest::Message;
+use mc_common::logger::{log, Logger};
+use mc_consensus_api::{
     consensus_client_grpc::ConsensusClientApi, consensus_common::ProposeTxResponse,
 };
+use mc_consensus_enclave::ConsensusEnclaveProxy;
+use mc_ledger_db::Ledger;
+use mc_transaction_core::validation::TransactionValidationError;
+use mc_util_grpc::{rpc_logger, send_result};
+use mc_util_metrics::{self, SVC_COUNTERS};
 use std::sync::Arc;
-use transaction::validation::TransactionValidationError;
 
 /// Maximum number of pending values for consensus service before rejecting add_transaction requests.
 const PENDING_LIMIT: i64 = 500;
@@ -139,7 +139,7 @@ impl<E: ConsensusEnclaveProxy, L: Ledger + Clone> ConsensusClientApi for ClientA
         sink: UnarySink<ProposeTxResponse>,
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
-        common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+        mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             send_result(
                 ctx,
                 sink,

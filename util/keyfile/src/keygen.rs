@@ -1,15 +1,15 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 //! A tool for writing .json file and .pub file to disk, corresponding to
-//! `transaction::account_keys::AccountKey` root entropy, and `transaction::account_keys::PublicAddress`
+//! `mc_transaction_core::account_keys::AccountKey` root entropy, and `mc_transaction_core::account_keys::PublicAddress`
 //! respectively.
 
 use crate::{read_keyfile, read_pubfile, write_keyfile, write_pubfile};
+use mc_transaction_core::account_keys::{AccountKey, PublicAddress};
+use mc_transaction_std::identity::RootIdentity;
 use rand::SeedableRng;
 use rand_hc::Hc128Rng as FixedRng;
 use std::{fs, path::Path};
-use transaction::account_keys::{AccountKey, PublicAddress};
-use transaction_std::identity::RootIdentity;
 
 pub const DEFAULT_SEED: [u8; 32] = [1; 32];
 
@@ -95,8 +95,8 @@ mod testing {
 
     #[test]
     fn test_default_generation() {
-        let dir1 = TempDir::new("test").unwrap().into_path();
-        let dir2 = TempDir::new("test").unwrap().into_path();
+        let dir1 = TempDir::new("test").unwrap();
+        let dir2 = TempDir::new("test").unwrap();
 
         let fqdn = "example.com".to_string();
         write_default_keyfiles(&dir1, 10, Some(&fqdn), DEFAULT_SEED).unwrap();
@@ -122,8 +122,8 @@ mod testing {
 
     #[test]
     fn test_default_generation_no_acct() {
-        let dir1 = TempDir::new("test").unwrap().into_path();
-        let dir2 = TempDir::new("test").unwrap().into_path();
+        let dir1 = TempDir::new("test").unwrap();
+        let dir2 = TempDir::new("test").unwrap();
 
         write_default_keyfiles(&dir1, 10, None, DEFAULT_SEED).unwrap();
         write_default_keyfiles(&dir2, 10, None, DEFAULT_SEED).unwrap();
@@ -148,7 +148,7 @@ mod testing {
 
     #[test]
     fn test_hard_coded_root_entropy() {
-        let dir1 = TempDir::new("test").unwrap().into_path();
+        let dir1 = TempDir::new("test").unwrap();
 
         write_default_keyfiles(&dir1, 10, None, DEFAULT_SEED).unwrap();
 

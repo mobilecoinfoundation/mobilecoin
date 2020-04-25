@@ -1,14 +1,14 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-// TODO: Would be nice to use serde_json instead of mcserial but it doesn't
+// TODO: Would be nice to use serde_json instead of mc_util_serial but it doesn't
 // work with Ristretto keys at time of writing
 
 pub mod config;
 pub mod keygen;
 
+use mc_transaction_core::account_keys::PublicAddress;
+use mc_transaction_std::identity::RootIdentity;
 use std::{fs::File, io::prelude::*, path::Path};
-use transaction::account_keys::PublicAddress;
-use transaction_std::identity::RootIdentity;
 
 /// Write user root identity to disk
 pub fn write_keyfile<P: AsRef<Path>>(
@@ -65,7 +65,7 @@ pub fn to_io_error(err: serde_json::error::Error) -> std::io::Error {
     std::io::Error::new(std::io::ErrorKind::Other, Box::new(err))
 }
 
-// Helper boilerplate mapping mcserial error to io::Error
+// Helper boilerplate mapping mc_util_serial error to io::Error
 #[derive(Debug)]
 struct McserialError;
 impl std::fmt::Display for McserialError {
@@ -94,18 +94,18 @@ pub fn mcserial_io_error() -> std::io::Error {
 mod testing {
     use super::*;
 
+    use mc_transaction_core::account_keys::AccountKey;
     use rand::{rngs::StdRng, SeedableRng};
     use tempdir::TempDir;
-    use transaction::account_keys::AccountKey;
 
     #[test]
     fn test_keyfile() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-        let dir = TempDir::new("test").unwrap().into_path();
+        let dir = TempDir::new("test").unwrap();
 
         {
             let entropy = RootIdentity::random(&mut rng, None);
-            let f1 = dir.join("f1");
+            let f1 = dir.path().join("f1");
             write_keyfile(&f1, &entropy).unwrap();
             let result = read_keyfile(&f1).unwrap();
             assert_eq!(entropy, result);
@@ -115,12 +115,12 @@ mod testing {
     #[test]
     fn test_pubfile() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-        let dir = TempDir::new("test").unwrap().into_path();
+        let dir = TempDir::new("test").unwrap();
 
         {
             let acct_key = AccountKey::random(&mut rng);
             let pubaddr = acct_key.default_subaddress();
-            let f2 = dir.join("f2");
+            let f2 = dir.path().join("f2");
             write_pubfile(&f2, &pubaddr).unwrap();
             let result = read_pubfile(&f2).unwrap();
             assert_eq!(pubaddr, result);
@@ -129,7 +129,7 @@ mod testing {
         {
             let acct_key = AccountKey::random_with_fog(&mut rng);
             let pubaddr = acct_key.default_subaddress();
-            let f3 = dir.join("f3");
+            let f3 = dir.path().join("f3");
             write_pubfile(&f3, &pubaddr).unwrap();
             let result = read_pubfile(&f3).unwrap();
             assert_eq!(pubaddr, result);

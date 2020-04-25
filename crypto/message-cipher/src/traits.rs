@@ -2,7 +2,7 @@
 
 use alloc::vec::Vec;
 use failure::Fail;
-use mcserial::prost;
+use mc_util_serial::prost;
 use prost::Message;
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
@@ -33,7 +33,7 @@ pub trait MessageCipher {
     // Helpers that incorporate prost serialization
     ////
     fn encrypt<R: CryptoRng + RngCore, M: Message>(&mut self, rng: &mut R, msg: &M) -> Vec<u8> {
-        let plaintext = mcserial::encode(msg);
+        let plaintext = mc_util_serial::encode(msg);
         self.encrypt_bytes(rng, plaintext)
     }
 
@@ -42,7 +42,7 @@ pub trait MessageCipher {
         cipher_text: Vec<u8>,
     ) -> Result<M, ProstCipherError> {
         let plaintext = self.decrypt_bytes(cipher_text)?;
-        Ok(mcserial::decode(&plaintext)?)
+        Ok(mc_util_serial::decode(&plaintext)?)
     }
 }
 

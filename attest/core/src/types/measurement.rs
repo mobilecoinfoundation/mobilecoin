@@ -8,8 +8,8 @@ use crate::{
     impl_base64str_for_bytestruct, impl_hexstr_for_bytestruct, impl_sgx_newtype_for_bytestruct,
 };
 use core::fmt::{Display, Formatter, Result as FmtResult};
+use mc_sgx_types::{sgx_measurement_t, SGX_HASH_SIZE};
 use serde::{Deserialize, Serialize};
-use sgx_types::{sgx_measurement_t, SGX_HASH_SIZE};
 
 /// An opaque type for MRENCLAVE values
 ///
@@ -93,7 +93,7 @@ impl Display for Measurement {
 #[cfg(test)]
 mod test {
     use super::*;
-    use mcserial::{deserialize, serialize};
+    use mc_util_serial::{deserialize, serialize};
 
     #[test]
     fn test_mrenclave_serde() {

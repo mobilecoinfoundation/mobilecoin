@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use core::cmp::Ordering;
-use digestible::Digestible;
+use mc_crypto_digestible::Digestible;
 use prost::Message;
 // These require the serde "derive" feature to be enabled.
 use serde::{Deserialize, Serialize};

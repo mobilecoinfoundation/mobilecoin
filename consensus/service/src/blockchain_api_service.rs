@@ -2,16 +2,16 @@
 
 //! Serves blockchain-related API requests.
 
-use common::logger::{log, Logger};
-use grpc_util::{rpc_logger, send_result};
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
-use ledger_db::Ledger;
-use metrics::{self, SVC_COUNTERS};
-use mobilecoin_api::{
+use mc_common::logger::{log, Logger};
+use mc_consensus_api::{
     blockchain::{self, BlocksRequest, BlocksResponse, LastBlockInfoResponse},
     blockchain_grpc::BlockchainApi,
     empty::Empty,
 };
+use mc_ledger_db::Ledger;
+use mc_util_grpc::{rpc_logger, send_result};
+use mc_util_metrics::{self, SVC_COUNTERS};
 use protobuf::RepeatedField;
 use std::{cmp, convert::From};
 
@@ -43,7 +43,7 @@ impl<L: Ledger + Clone> BlockchainApiService<L> {
     }
 
     /// Returns information about the last block.
-    fn get_last_block_info_helper(&mut self) -> Result<LastBlockInfoResponse, ledger_db::Error> {
+    fn get_last_block_info_helper(&mut self) -> Result<LastBlockInfoResponse, mc_ledger_db::Error> {
         let num_blocks = self.ledger.num_blocks()?;
         let mut resp = LastBlockInfoResponse::new();
         resp.set_index(num_blocks - 1);
@@ -61,11 +61,11 @@ impl<L: Ledger + Clone> BlockchainApiService<L> {
         let end_index = offset + cmp::min(limit, self.max_page_size as u32) as u64;
 
         // Get "persistence type" blocks.
-        let mut block_entities: Vec<transaction::Block> = vec![];
+        let mut block_entities: Vec<mc_transaction_core::Block> = vec![];
         for block_index in start_index..end_index {
             match self.ledger.get_block(block_index as u64) {
                 Ok(block) => block_entities.push(block),
-                Err(ledger_db::Error::NotFound) => {
+                Err(mc_ledger_db::Error::NotFound) => {
                     // This is okay - it means we have reached the last block in the ledger in the
                     // previous loop iteration.
                     break;
@@ -104,7 +104,7 @@ impl<L: Ledger + Clone> BlockchainApi for BlockchainApiService<L> {
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
 
-        common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+        mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             let resp = self
                 .get_last_block_info_helper()
                 .map_err(|_| RpcStatus::new(RpcStatusCode::INTERNAL, None));
@@ -121,7 +121,7 @@ impl<L: Ledger + Clone> BlockchainApi for BlockchainApiService<L> {
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
 
-        common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+        mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             log::trace!(
                 logger,
                 "Received BlocksRequest for offset {} and limit {})",
@@ -140,13 +140,15 @@ impl<L: Ledger + Clone> BlockchainApi for BlockchainApiService<L> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use common::logger::test_with_logger;
-    use keys::RistrettoPrivate;
-    use ledger_db::LedgerDB;
+    use mc_common::logger::test_with_logger;
+    use mc_crypto_keys::RistrettoPrivate;
+    use mc_ledger_db::LedgerDB;
+    use mc_transaction_core::{
+        account_keys::AccountKey, tx::TxOut, Block, BlockContents, BLOCK_VERSION,
+    };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
     use tempdir::TempDir;
-    use transaction::{account_keys::AccountKey, tx::TxOut, Block, BlockContents, BLOCK_VERSION};
 
     /// Creates a LedgerDB instance.
     fn create_db() -> LedgerDB {

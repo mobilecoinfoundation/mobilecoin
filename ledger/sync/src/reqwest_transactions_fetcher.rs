@@ -4,12 +4,13 @@
 //! using the `reqwest` library. It can be used, for example, to get transaction data from S3.
 
 use crate::transactions_fetcher_trait::{TransactionFetcherError, TransactionsFetcher};
-use common::{
+use failure::Fail;
+use mc_common::{
     logger::{log, Logger},
     ResponderId,
 };
-use failure::Fail;
-use mobilecoin_api::{blockchain, conversions::block_num_to_s3block_path};
+use mc_consensus_api::{blockchain, conversions::block_num_to_s3block_path};
+use mc_transaction_core::{Block, BlockContents, BlockSignature};
 use reqwest::Error as ReqwestError;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -17,7 +18,6 @@ use std::{
     fs,
     sync::atomic::{AtomicU64, Ordering},
 };
-use transaction::{Block, BlockContents, BlockSignature};
 use url::Url;
 
 #[derive(Debug, Fail)]
@@ -120,7 +120,7 @@ impl ReqwestTransactionsFetcher {
         let s3_block: blockchain::S3Block = protobuf::parse_from_bytes(&bytes).map_err(|err| {
             ReqwestTransactionsFetcherError::InvalidBlockReceived(
                 url.to_string(),
-                format!("prorobuf parse failed: {:?}", err),
+                format!("protobuf parse failed: {:?}", err),
             )
         })?;
 

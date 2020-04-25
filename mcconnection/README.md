@@ -1,3 +1,0 @@
-## mcconnection
-
-Attested MobileCoin connections.

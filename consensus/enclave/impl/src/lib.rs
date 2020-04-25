@@ -14,30 +14,29 @@ extern crate alloc;
 
 mod identity;
 
-use ake_enclave::AkeEnclaveState;
 use alloc::{collections::BTreeSet, format, vec::Vec};
-use attest::{IasNonce, IntelSealed, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
-use attest_enclave_api::{
+use core::convert::{TryFrom, TryInto};
+use identity::Ed25519Identity;
+use mc_attest_core::{
+    IasNonce, IntelSealed, Quote, QuoteNonce, Report, TargetInfo, VerificationReport,
+};
+use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage,
     Error as AttestEnclaveError, PeerAuthRequest, PeerAuthResponse, PeerSession,
 };
-use attest_trusted::SealAlgo;
-use common::ResponderId;
-use consensus_enclave_api::{
+use mc_attest_trusted::SealAlgo;
+use mc_common::ResponderId;
+use mc_consensus_enclave_api::{
     ConsensusEnclave, Error, LocallyEncryptedTx, Result, SealedBlockSigningKey, TxContext,
     WellFormedEncryptedTx, WellFormedTxContext,
 };
-use core::convert::{TryFrom, TryInto};
-use digest::Input;
-use digestible::Digestible;
-use identity::Ed25519Identity;
-use keys::{Ed25519Pair, Ed25519Public, RistrettoPrivate, RistrettoPublic, X25519Public};
-use mcrand::McRng;
-use message_cipher::{AesMessageCipher, MessageCipher};
-use prost::Message;
-use rand_core::{CryptoRng, RngCore};
-use sgx_compat::sync::Mutex;
-use transaction::{
+use mc_crypto_ake_enclave::AkeEnclaveState;
+use mc_crypto_digestible::Digestible;
+use mc_crypto_keys::{Ed25519Pair, Ed25519Public, RistrettoPrivate, RistrettoPublic, X25519Public};
+use mc_crypto_message_cipher::{AesMessageCipher, MessageCipher};
+use mc_crypto_rand::McRng;
+use mc_sgx_compat::sync::Mutex;
+use mc_transaction_core::{
     account_keys::PublicAddress,
     amount::Amount,
     blake2b_256::Blake2b256,
@@ -45,11 +44,10 @@ use transaction::{
     onetime_keys::{compute_shared_secret, compute_tx_pubkey, create_onetime_public_key},
     ring_signature::{KeyImage, Scalar},
     tx::{Tx, TxOut, TxOutMembershipProof},
-    Block, BlockContents, BlockSignature, RedactedTx, BLOCK_VERSION,
+    Block, BlockContents, BlockSignature, BLOCK_VERSION,
 };
-
-/// The prefix used when constructing the fees output blinding.
-const BLINDING_HASH_PREFIX: &[u8] = b"BLINDING_1";
+use prost::Message;
+use rand_core::{CryptoRng, RngCore};
 
 /// A well-formed transaction.
 #[derive(Clone, Eq, PartialEq, Message)]
@@ -68,12 +66,6 @@ impl WellFormedTx {
 impl From<Tx> for WellFormedTx {
     fn from(tx: Tx) -> Self {
         Self { tx }
-    }
-}
-
-impl Into<RedactedTx> for WellFormedTx {
-    fn into(self) -> RedactedTx {
-        self.tx.redact()
     }
 }
 
@@ -120,7 +112,7 @@ impl SgxConsensusEnclave {
         well_formed_tx: &WellFormedTx,
         rng: &mut R,
     ) -> Result<WellFormedEncryptedTx> {
-        let well_formed_tx_bytes = mcserial::encode(well_formed_tx);
+        let well_formed_tx_bytes = mc_util_serial::encode(well_formed_tx);
 
         Ok(WellFormedEncryptedTx(
             self.well_formed_encrypted_tx_cipher
@@ -132,7 +124,7 @@ impl SgxConsensusEnclave {
     fn decrypt_well_formed_tx(&self, encrypted: &WellFormedEncryptedTx) -> Result<WellFormedTx> {
         let mut cipher = self.well_formed_encrypted_tx_cipher.lock()?;
         let plaintext = cipher.decrypt_bytes(encrypted.0.clone())?;
-        let well_formed_tx: WellFormedTx = mcserial::decode(&plaintext)?;
+        let well_formed_tx: WellFormedTx = mc_util_serial::decode(&plaintext)?;
         Ok(well_formed_tx)
     }
 }
@@ -225,7 +217,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let tx_bytes = self.ake.client_decrypt(msg)?;
 
         // Try and deserialize.
-        let tx: Tx = mcserial::decode(&tx_bytes)?;
+        let tx: Tx = mc_util_serial::decode(&tx_bytes)?;
 
         // Convert to TxContext
         let maybe_locally_encrypted_tx: Result<LocallyEncryptedTx> = {
@@ -254,13 +246,13 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 
         // Try and deserialize.
         // Use prost
-        let txs = mcserial::decode::<TxList>(&data)?.txs;
+        let txs = mc_util_serial::decode::<TxList>(&data)?.txs;
 
         // Convert to TxContexts
         let mut rng = McRng::default();
         txs.into_iter()
             .map(|tx| {
-                let tx_bytes = mcserial::encode(&tx);
+                let tx_bytes = mc_util_serial::encode(&tx);
                 let maybe_locally_encrypted_tx: Result<LocallyEncryptedTx> = {
                     let mut cipher = self.locally_encrypted_tx_cipher.lock()?;
                     Ok(LocallyEncryptedTx(cipher.encrypt_bytes(&mut rng, tx_bytes)))
@@ -305,11 +297,11 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             .locally_encrypted_tx_cipher
             .lock()?
             .decrypt_bytes(locally_encrypted_tx.0)?;
-        let tx: Tx = mcserial::decode(&decrypted_bytes)?;
+        let tx: Tx = mc_util_serial::decode(&decrypted_bytes)?;
 
         // Validate.
         let mut csprng = McRng::default();
-        transaction::validation::validate(&tx, block_index, &proofs, &mut csprng)?;
+        mc_transaction_core::validation::validate(&tx, block_index, &proofs, &mut csprng)?;
 
         // Convert into a well formed encrypted transaction + context.
         let well_formed_tx_context = WellFormedTxContext::from(&tx);
@@ -344,7 +336,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                 });
 
         // Serialize this for the peer.
-        let serialized_txs = mcserial::encode(&TxList { txs: txs? });
+        let serialized_txs = mc_util_serial::encode(&TxList { txs: txs? });
 
         // Encrypt for the peer.
         Ok(self.ake.peer_encrypt(peer, aad, &serialized_txs)?)
@@ -373,7 +365,12 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let mut rng = McRng::default();
 
         for (tx, proofs) in transactions_with_proofs.iter() {
-            transaction::validation::validate(tx, parent_block.index + 1, proofs, &mut rng)?;
+            mc_transaction_core::validation::validate(
+                tx,
+                parent_block.index + 1,
+                proofs,
+                &mut rng,
+            )?;
 
             for proof in proofs {
                 let root_element = proof
@@ -403,7 +400,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         for tx in &transactions {
             let tx_hash = tx.tx_hash();
             if tx_hashes.contains(&tx_hash) {
-                return Err(Error::RedactTxs(format!(
+                return Err(Error::FormBlock(format!(
                     "Duplicate transaction: {}",
                     tx_hash
                 )));
@@ -416,7 +413,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         for tx in &transactions {
             for key_image in tx.key_images() {
                 if used_key_images.contains(&key_image) {
-                    return Err(Error::RedactTxs(format!(
+                    return Err(Error::FormBlock(format!(
                         "Duplicate key image: {:?}",
                         key_image
                     )));
@@ -429,6 +426,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let fee_tx_private_key = {
             let hash_value: [u8; 32] = {
                 let mut hasher = Blake2b256::new();
+                // TODO: domain separator.
                 transactions.digest(&mut hasher);
                 hasher
                     .result()
@@ -442,25 +440,8 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             RistrettoPrivate::from(Scalar::from_bytes_mod_order(hash_value))
         };
 
-        let blinding = {
-            let hash_value: [u8; 32] = {
-                let mut hasher = Blake2b256::new();
-                hasher.input(BLINDING_HASH_PREFIX);
-                transactions.digest(&mut hasher);
-                hasher
-                    .result()
-                    .as_slice()
-                    .try_into()
-                    .expect("Wrong length.")
-            };
-
-            // This private key is generated from the hash of all transactions in this block.
-            // This ensures that all nodes generate the same fee output transaction.
-            Scalar::from_bytes_mod_order(hash_value)
-        };
-
         let total_fee: u64 = transactions.iter().map(|tx| tx.prefix.fee).sum();
-        let fee_output = mint_aggregate_fee(&fee_tx_private_key, total_fee, blinding)?;
+        let fee_output = mint_aggregate_fee(&fee_tx_private_key, total_fee)?;
 
         let mut outputs: Vec<TxOut> = Vec::new();
         let mut key_images: Vec<KeyImage> = Vec::new();
@@ -498,12 +479,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 /// # Arguments:
 /// * `tx_private_key` - Transaction key used to output the aggregate fee.
 /// * `total_fee` - The sum of all fees in the block.
-/// * `blinding` - The blinding to use for constructing the Amount.
-fn mint_aggregate_fee(
-    tx_private_key: &RistrettoPrivate,
-    total_fee: u64,
-    blinding: Scalar,
-) -> Result<TxOut> {
+fn mint_aggregate_fee(tx_private_key: &RistrettoPrivate, total_fee: u64) -> Result<TxOut> {
     let fee_recipient = PublicAddress::new(
         &RistrettoPublic::try_from(&FEE_SPEND_PUBLIC_KEY).unwrap(),
         &RistrettoPublic::try_from(&FEE_VIEW_PUBLIC_KEY).unwrap(),
@@ -518,8 +494,8 @@ fn mint_aggregate_fee(
             let shared_secret =
                 compute_shared_secret(fee_recipient.view_public_key(), tx_private_key);
             // The fee view key is publicly known, so there is no need for a blinding.
-            Amount::new(total_fee, blinding, &shared_secret)
-                .map_err(|e| Error::RedactTxs(format!("AmountError: {:?}", e)))?
+            Amount::new(total_fee, &shared_secret)
+                .map_err(|e| Error::FormBlock(format!("AmountError: {:?}", e)))?
         };
 
         TxOut {
@@ -537,15 +513,15 @@ fn mint_aggregate_fee(
 mod tests {
 
     use super::*;
-    use ledger_db::Ledger;
-    use rand_core::SeedableRng;
-    use rand_hc::Hc128Rng;
-    use transaction::{
+    use mc_ledger_db::Ledger;
+    use mc_transaction_core::{
         account_keys::AccountKey, constants::FEE_VIEW_PRIVATE_KEY,
         onetime_keys::view_key_matches_output, tx::TxOutMembershipHash,
         validation::TransactionValidationError, view_key::ViewKey,
     };
-    use transaction_test_utils::{create_ledger, create_transaction, initialize_ledger};
+    use mc_transaction_core_test_utils::{create_ledger, create_transaction, initialize_ledger};
+    use rand_core::SeedableRng;
+    use rand_hc::Hc128Rng;
 
     #[test]
     fn test_tx_is_well_formed_works() {
@@ -574,7 +550,7 @@ mod tests {
         );
 
         // Create a LocallyEncryptedTx that can be fed into `tx_is_well_formed`.
-        let tx_bytes = mcserial::encode(&tx);
+        let tx_bytes = mc_util_serial::encode(&tx);
         let locally_encrypted_tx = LocallyEncryptedTx(
             enclave
                 .locally_encrypted_tx_cipher
@@ -641,7 +617,7 @@ mod tests {
         );
 
         // Create a LocallyEncryptedTx that can be fed into `tx_is_well_formed`.
-        let tx_bytes = mcserial::encode(&tx);
+        let tx_bytes = mc_util_serial::encode(&tx);
         let locally_encrypted_tx = LocallyEncryptedTx(
             enclave
                 .locally_encrypted_tx_cipher
@@ -660,7 +636,7 @@ mod tests {
         assert_eq!(
             enclave.tx_is_well_formed(
                 locally_encrypted_tx.clone(),
-                block_index + transaction::constants::MAX_TOMBSTONE_BLOCKS,
+                block_index + mc_transaction_core::constants::MAX_TOMBSTONE_BLOCKS,
                 proofs.clone(),
             ),
             Err(Error::MalformedTx(
@@ -685,7 +661,9 @@ mod tests {
 
         assert_eq!(
             enclave.tx_is_well_formed(corrputed_locally_encrypted_tx, block_index, proofs),
-            Err(Error::CacheCipher(message_cipher::CipherError::MacFailure))
+            Err(Error::CacheCipher(
+                mc_crypto_message_cipher::CipherError::MacFailure
+            ))
         );
     }
 
@@ -904,7 +882,7 @@ mod tests {
         let expected_duplicate_key_image = new_transactions[0].key_images()[0];
 
         // Check
-        let expected = Err(Error::RedactTxs(format!(
+        let expected = Err(Error::FormBlock(format!(
             "Duplicate key image: {:?}",
             expected_duplicate_key_image
         )));

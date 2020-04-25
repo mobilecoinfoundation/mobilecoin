@@ -5,26 +5,26 @@ extern crate alloc;
 
 use aes_gcm::Aes256Gcm;
 use alloc::{string::ToString, vec::Vec};
-use attest::{
-    IasNonce, Nonce, NonceError, Quote, QuoteNonce, Report, ReportData, TargetInfo,
-    VerificationReport, VerificationReportData, VerifyError, DEBUG_ENCLAVE, IAS_VERSION,
-};
-use attest_ake::{
+use core::convert::TryFrom;
+use digest::Digest;
+use mc_attest_ake::{
     AuthPending, AuthRequestInput, AuthRequestOutput, AuthResponse, NodeInitiate, Ready, Start,
     Transition,
 };
-use attest_enclave_api::{
+use mc_attest_core::{
+    IasNonce, Nonce, NonceError, Quote, QuoteNonce, Report, ReportData, TargetInfo,
+    VerificationReport, VerificationReportData, VerifyError, DEBUG_ENCLAVE, IAS_VERSION,
+};
+use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, Error, PeerAuthRequest,
     PeerAuthResponse, PeerSession, Result, Session,
 };
-use attest_trusted::EnclaveReport;
-use common::{LruCache, ResponderId};
-use core::convert::TryFrom;
-use digest::Digest;
-use keys::{X25519Private, X25519Public, X25519};
+use mc_attest_trusted::EnclaveReport;
+use mc_common::{LruCache, ResponderId};
+use mc_crypto_keys::{X25519Private, X25519Public, X25519};
+use mc_crypto_rand::McRng;
+use mc_sgx_compat::sync::Mutex;
 use mc_util_from_random::FromRandom;
-use mcrand::McRng;
-use sgx_compat::sync::Mutex;
 use sha2::{Sha256, Sha512};
 
 /// Max number of pending quotes.

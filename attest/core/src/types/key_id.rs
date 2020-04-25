@@ -3,7 +3,7 @@
 //! This is the FFI wrapper type for sgx_keyid_t
 
 use crate::impl_sgx_newtype_for_bytestruct;
-use sgx_types::{sgx_key_id_t, SGX_KEYID_SIZE};
+use mc_sgx_types::{sgx_key_id_t, SGX_KEYID_SIZE};
 
 /// An SGX Key ID
 #[derive(Clone, Copy, Default)]
@@ -17,7 +17,7 @@ impl_sgx_newtype_for_bytestruct! {
 #[cfg(test)]
 mod test {
     use super::*;
-    use mcserial::{deserialize, serialize};
+    use mc_util_serial::{deserialize, serialize};
 
     #[test]
     fn test_serde() {

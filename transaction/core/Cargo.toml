@@ -1,6 +1,6 @@
 [package]
-name = "transaction"
-version = "0.1.0"
+name = "mc-transaction-core"
+version = "0.1.5-alpha-1"
 authors = ["MobileCoin"]
 edition = "2018"
 
@@ -34,12 +34,12 @@ sha2 = { version = "0.8", default-features = false }
 subtle = { version = "2.1", default-features = false }
 
 # MobileCoin dependencies
-common = { path = "../../common", default-features = false }
-digestible = { path = "../../crypto/digestible", features = ["dalek"] }
-keys = { path = "../../crypto/keys", default-features = false }
+mc-common = { path = "../../common", default-features = false }
+mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek"] }
+mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
+mc-crypto-rand = { path = "../../crypto/rand" }
 mc-util-from-random = { path = "../../util/from-random" }
-mcrand = { path = "../../crypto/mcrand" }
-mcserial = { path = "../../util/mcserial" }
+mc-util-serial = { path = "../../util/serial" }
 
 [target.'cfg(target_feature = "avx2")'.dependencies]
 bulletproofs = {version = "2.0", default-features = false, features = ["avx2_backend"]}
@@ -62,10 +62,10 @@ rand_hc = "0.2"
 tempdir = "0.3"
 time = "0.1"
 
-ledger-db = { path = "../../ledger/db" }
-mcserial = { path = "../../util/mcserial", features = ["std"] }
-test_helper = { path = "../../util/test-helper" }
-transaction-test-utils = { path = "../../transaction/core/test-utils" }
+mc-ledger-db = { path = "../../ledger/db" }
+mc-util-serial = { path = "../../util/serial", features = ["std"] }
+mc-util-test-helper = { path = "../../util/test-helper" }
+mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
 
 [dev-dependencies.proptest]
 version = "0.9" # Only works for 0.9.1 or newer

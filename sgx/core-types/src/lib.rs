@@ -47,25 +47,25 @@ pub use crate::{
 };
 
 /// The size of a [ConfigSecurityVersion]'s x64 representation, in bytes.
-pub use mc_encodings::INTEL_U16_SIZE as CONFIG_SECURITY_VERSION_SIZE;
+pub use mc_util_encodings::INTEL_U16_SIZE as CONFIG_SECURITY_VERSION_SIZE;
 
 /// A CONFIGSVN value, which is used in the derivation of some keys.
 pub use mc_sgx_core_types_sys::sgx_config_svn_t as ConfigSecurityVersion;
 
 /// The size of a [MiscSelect]'s x64 representation, in bytes.
-pub use mc_encodings::INTEL_U32_SIZE as MISC_SELECT_SIZE;
+pub use mc_util_encodings::INTEL_U32_SIZE as MISC_SELECT_SIZE;
 
 /// A "miscellaneous selection" flags type, presently only zero is a valid value
 pub use mc_sgx_core_types_sys::sgx_misc_select_t as MiscSelect;
 
 /// The size of a [ProductId]'s x64 representation, in bytes.
-pub use mc_encodings::INTEL_U16_SIZE as PRODUCT_ID_SIZE;
+pub use mc_util_encodings::INTEL_U16_SIZE as PRODUCT_ID_SIZE;
 
 /// A vendor product ID used to distinguish between enclaves signed by the same author.
 pub use mc_sgx_core_types_sys::sgx_prod_id_t as ProductId;
 
 /// The size of a [SecurityVersion]'s x64 representation, in bytes.
-pub use mc_encodings::INTEL_U16_SIZE as SECURITY_VERSION_SIZE;
+pub use mc_util_encodings::INTEL_U16_SIZE as SECURITY_VERSION_SIZE;
 
 /// A security version of a given enclave.
 ///
@@ -77,7 +77,7 @@ pub use mc_encodings::INTEL_U16_SIZE as SECURITY_VERSION_SIZE;
 pub use mc_sgx_core_types_sys::sgx_isv_svn_t as SecurityVersion;
 
 /// The size of an [EnclaveId]'s x64 representation, in bytes.
-pub use mc_encodings::INTEL_U64_SIZE as ENCLAVE_ID_SIZE;
+pub use mc_util_encodings::INTEL_U64_SIZE as ENCLAVE_ID_SIZE;
 
 /// A handle for a running enclave.
 pub use mc_sgx_core_types_sys::sgx_enclave_id_t as EnclaveId;

@@ -9,7 +9,7 @@ pub use alloc::format as _alloc_format;
 pub use alloc::vec::Vec;
 pub use binascii::{b64decode, b64encode, bin2hex, hex2bin};
 pub use hex_fmt::HexFmt;
-pub use mc_encodings::{
+pub use mc_util_encodings::{
     base64_buffer_size, base64_size, Error as EncodingError, FromBase64, FromHex, FromX64,
     IntelLayout, ToBase64, ToHex, ToX64,
 };

@@ -37,7 +37,7 @@ use mbedtls::{
     hash, pk,
     x509::{Certificate, Profile},
 };
-use mc_encodings::{Error as EncodingError, FromBase64, FromHex, ToBase64};
+use mc_util_encodings::{Error as EncodingError, FromBase64, FromHex, ToBase64};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 

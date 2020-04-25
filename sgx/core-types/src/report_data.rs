@@ -35,7 +35,7 @@ impl BitAnd for ReportData {
 mod test {
     use super::*;
     use bincode::{deserialize, serialize};
-    use mc_encodings::FromX64;
+    use mc_util_encodings::FromX64;
 
     const REPORT_DATA_TEST: sgx_report_data_t = sgx_report_data_t {
         d: [

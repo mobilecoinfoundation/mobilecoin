@@ -3,12 +3,12 @@
 //! This module provides a consistent set of AccountKeys for use in testing
 
 use crate::{AccountKey, PublicAddress};
-use keys::RistrettoPrivate;
-use mcserial::helpers::ReprBytes32;
+use mc_crypto_keys::RistrettoPrivate;
+use mc_transaction_std::identity::RootIdentity;
+use mc_util_serial::helpers::ReprBytes32;
 use rand::rngs::StdRng;
 use rand_core::SeedableRng;
 use std::cmp;
-use transaction_std::identity::RootIdentity;
 
 // The default accounts are the first NUMBER_OF_DEFAULT_ACCOUNTS that we generate
 const NUMBER_OF_DEFAULT_ACCOUNTS: usize = 10;
@@ -170,8 +170,8 @@ pub fn default_addresses() -> Vec<PublicAddress> {
 #[cfg(test)]
 mod testing {
     use super::*;
-    use common::logger::{log, test_with_logger, Logger};
     use itertools::Itertools;
+    use mc_common::logger::{log, test_with_logger, Logger};
     use std::time::Instant;
 
     #[test]

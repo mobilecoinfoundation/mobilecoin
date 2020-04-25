@@ -15,7 +15,7 @@ pub(crate) use core::{
     hash::{Hash, Hasher},
 };
 pub(crate) use hex_fmt::HexFmt;
-pub(crate) use mc_encodings::{
+pub(crate) use mc_util_encodings::{
     base64_buffer_size, base64_size, Error as EncodingError, FromBase64, FromHex, IntelLayout,
     ToBase64, ToHex, ToX64,
 };

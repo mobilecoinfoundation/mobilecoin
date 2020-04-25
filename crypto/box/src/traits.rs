@@ -10,7 +10,7 @@ use aead::{
 };
 use core::ops::{Add, Sub};
 use failure::Fail;
-use keys::{KeyError, RistrettoPrivate, RistrettoPublic};
+use mc_crypto_keys::{KeyError, RistrettoPrivate, RistrettoPublic};
 use rand_core::{CryptoRng, RngCore};
 
 /// Error type for decryption
@@ -32,7 +32,7 @@ pub enum Error {
 }
 
 /// Trait defining the high-level interface to Crypto-Box in-terms of low-level
-/// This assumes use of keys::Ristretto* types, but could be more generic
+/// This assumes use of mc_crypto_keys::Ristretto* types, but could be more generic
 pub trait CryptoBox: Default {
     type FooterSize: ArrayLength<u8>;
 

@@ -1,16 +1,15 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-use curve25519_dalek::ristretto::RistrettoPoint;
-use keys::RistrettoPrivate;
-use ledger_db::{Ledger, LedgerDB};
-use mc_util_from_random::FromRandom;
-use rand::SeedableRng;
-use rand_hc::Hc128Rng as FixedRng;
-use std::{path::PathBuf, vec::Vec};
-use transaction::{
+use mc_crypto_keys::RistrettoPrivate;
+use mc_ledger_db::{Ledger, LedgerDB};
+use mc_transaction_core::{
     account_keys::PublicAddress, constants::TOTAL_MOB, encrypted_fog_hint::EncryptedFogHint,
     ring_signature::KeyImage, tx::TxOut, Block, BlockContents, BLOCK_VERSION,
 };
+use mc_util_from_random::FromRandom;
+use rand::{RngCore, SeedableRng};
+use rand_hc::Hc128Rng as FixedRng;
+use std::{path::PathBuf, vec::Vec};
 
 /// Deterministically populates a testnet ledger.
 ///
@@ -61,7 +60,7 @@ pub fn bootstrap_ledger(
         }
 
         let key_images: Vec<KeyImage> = (0..key_images_per_block)
-            .map(|_i| KeyImage::from(RistrettoPoint::random(&mut rng)))
+            .map(|_i| KeyImage::from(rng.next_u64()))
             .collect();
 
         let block_contents = BlockContents::new(key_images, outputs.clone());
@@ -93,7 +92,7 @@ pub fn bootstrap_ledger(
            outputs_per_recipient_per_block,
            num_blocks,
            key_images_per_block,
-           build_info::GIT_COMMIT,
+           mc_util_build_info::GIT_COMMIT,
     ).expect("File I/O");
 }
 

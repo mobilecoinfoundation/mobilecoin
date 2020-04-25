@@ -76,8 +76,8 @@ Follow the steps below:
     To get the public key from the private key, use:
 
     ```
-    openssl genpkey -algorithm ed25519 -out /tmp/node1.pem
-    openssl pkey -in /tmp/node{}.pem -pubout -out /tmp/node1_pubkey.pem
+    openssl genpkey -algorithm ed25519 -out example.com.key
+    openssl pkey -in example.com.key -pubout -out example.com.pub.pem
     ```
 
     Note: For the URIs, the base64 encoding needs to use URL-safe characters, which you can achieve with:
@@ -152,7 +152,7 @@ An example run command is the below.
 SGX_MODE=HW IAS_MODE=DEV \
     CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css \
     CONSENSUS_ENCLAVE_SIGNED=$(pwd)/libconsensus-enclave.signed.so \
-    cargo run --release -p consensus-service -- \
+    cargo run --release -p mc-consensus-service -- \
     --client-responder-id my_node.my_domain.com:443 \
     --peer-responder-id node1.my_domain.com:8443 \
     --network /etc/mc-network.toml \

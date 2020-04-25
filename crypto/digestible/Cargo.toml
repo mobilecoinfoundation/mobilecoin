@@ -1,6 +1,6 @@
 [package]
-name = "digestible"
-version = "0.1.0"
+name = "mc-crypto-digestible"
+version = "0.1.5-alpha-1"
 authors = ["MobileCoin"]
 edition = "2018"
 
@@ -9,7 +9,7 @@ cfg-if = "0.1"
 digest = { version = "0.8", default-features = false }
 
 # For derive support
-digestible-derive = { path = "./derive", optional = true }
+mc-crypto-digestible-derive = { path = "./derive", optional = true }
 
 # Built-in support for dalek primitives
 ed25519-dalek = { git = "https://github.com/cbeck88/ed25519-dalek", rev = "c0b0ab31d3572de6fb01d6b4a4f052784034b0b2", default-features = false, optional = true }
@@ -29,6 +29,6 @@ default=["alloc", "derive"]
 # Enables support for types in alloc crate
 alloc=[]
 # Enables re-export of derive(Digestible) macro
-derive=["digestible-derive"]
+derive=["mc-crypto-digestible-derive"]
 # Enables support for some crypto primitives in dalek crates
 dalek=["curve25519-dalek", "ed25519-dalek", "x25519-dalek"]

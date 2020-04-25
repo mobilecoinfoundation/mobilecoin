@@ -7,12 +7,12 @@
 use crate::{
     background_work_queue::BackgroundWorkQueueSenderFn, consensus_service::IncomingConsensusMsg,
 };
-use common::{
+use mc_common::{
     logger::{log, Logger},
     HashMap, ResponderId,
 };
-use mcconnection::ConnectionManager;
-use peers::{ConsensusConnection, RetryableConsensusConnection};
+use mc_connection::ConnectionManager;
+use mc_peers::{ConsensusConnection, RetryableConsensusConnection};
 use retry::Error as RetryError;
 use std::{
     convert::TryInto,

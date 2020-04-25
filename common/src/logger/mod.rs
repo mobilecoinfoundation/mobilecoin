@@ -90,7 +90,7 @@ pub mod global_log {
 }
 
 /// Macros to ease with tests/benches that require a Logger instance.
-pub use mclogger_macros::{bench_with_logger, test_with_logger};
+pub use mc_util_logger_macros::{bench_with_logger, test_with_logger};
 
 /// Expose slog, slog_scope, and select useful primitives.
 pub use slog;
@@ -101,9 +101,9 @@ mod sentry_logger;
 /// Internal modules/imports.
 mod udp_writer;
 
-use build_info;
 use chrono;
 use lazy_static::lazy_static;
+use mc_util_build_info;
 use sentry_logger::SentryLogger;
 use slog::Drain;
 use slog_gelf;
@@ -307,7 +307,7 @@ pub fn create_app_logger<T: slog::SendSyncRefUnwindSafeKV + 'static>(
 
     {
         let mut buf = String::new();
-        build_info::write_report(&mut buf).expect("Getting build_info report failed");
+        mc_util_build_info::write_report(&mut buf).expect("Getting build_info report failed");
         log::info!(app_logger, "{} started: {}", current_exe, buf);
     }
 
@@ -337,7 +337,7 @@ where
 
 /// Simple time measurement utility, based on the [measure_time](https://docs.rs/measure_time/) crate.
 /// Note that even though the macro lives inside the `logger` module, it needs to be imported by
-/// `use common::trace_time`, since Rust exports all macros at the crate level :/
+/// `use mc_common::trace_time`, since Rust exports all macros at the crate level :/
 #[macro_export]
 macro_rules! trace_time {
     ($logger:expr, $($arg:tt)+) => (
@@ -406,7 +406,7 @@ mod trace_time_tests {
 
 // `MaybeMcSrcValue` allows us to selectively include "mc.src" in our logging context.
 // We want to only include it for log messages that did not originate from inside an enclave,
-// since enclave logging context already includes this information (see sgx_urts::enclave_log).
+// since enclave logging context already includes this information (see mc_sgx_urts::enclave_log).
 // Doing it this way is necessary due due to how `slog` works.
 struct MaybeMcSrcValue;
 impl slog::Value for MaybeMcSrcValue {

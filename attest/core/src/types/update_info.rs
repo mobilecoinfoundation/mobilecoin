@@ -10,8 +10,8 @@ use core::{
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
-use mc_encodings::Error as EncodingError;
-use sgx_types::sgx_update_info_bit_t;
+use mc_sgx_types::sgx_update_info_bit_t;
+use mc_util_encodings::Error as EncodingError;
 
 const UPDATE_INFO_SIZE: usize = 12;
 
@@ -143,7 +143,7 @@ mod test {
 
     use super::*;
 
-    use mcserial::{deserialize, serialize};
+    use mc_util_serial::{deserialize, serialize};
     use std::collections::HashSet;
 
     #[test]

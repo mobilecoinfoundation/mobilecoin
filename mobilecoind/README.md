@@ -70,7 +70,7 @@ This invocation connects to two validator nodes in the MobileCoin demo network, 
 ```
 SGX_MODE=HW IAS_MODE=PROD CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css \
     MC_LOG=debug,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,rusoto_core=error,h2=error,reqwest=error \
-    cargo run --release -p mobilecoind -- \
+    cargo run --release -p mc-mobilecoind -- \
     --ledger-db /path/to/ledger \
     --poll-interval 1 \
     --peer mc://node1.test.mobilecoin.com/ \
@@ -82,4 +82,4 @@ SGX_MODE=HW IAS_MODE=PROD CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css \
 ```
 
 For more details about the various command line arguments supported by the MobileCoin Daemon, use the `--help` argument:
-```cargo run --release -p mobilecoind -- --help```
+```cargo run --release -p mc-mobilecoind -- --help```

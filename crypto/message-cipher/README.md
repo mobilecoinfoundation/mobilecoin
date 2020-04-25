@@ -1,4 +1,4 @@
-message_cipher
+mc-crypto-message-cipher
 ==============
 
 Message cipher provides a simple API for a short-lived cipher used to encrypt and decrypt messages.

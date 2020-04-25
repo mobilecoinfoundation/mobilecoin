@@ -3,7 +3,7 @@
 //! This is the FFI wrapper type for sgx_cpu_svn_t
 
 use crate::impl_sgx_newtype_for_bytestruct;
-use sgx_types::{sgx_cpu_svn_t, SGX_CPUSVN_SIZE};
+use mc_sgx_types::{sgx_cpu_svn_t, SGX_CPUSVN_SIZE};
 
 #[derive(Clone, Copy, Default)]
 #[repr(transparent)]
@@ -16,7 +16,7 @@ impl_sgx_newtype_for_bytestruct! {
 #[cfg(test)]
 mod test {
     use super::*;
-    use mcserial::{deserialize, serialize};
+    use mc_util_serial::{deserialize, serialize};
 
     #[test]
     fn test_serde() {

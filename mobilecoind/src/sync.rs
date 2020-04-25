@@ -24,12 +24,18 @@ use crate::{
     subaddress_store::SubaddressSPKId,
     utxo_store::UnspentTxOut,
 };
-use common::{
+use mc_common::{
     logger::{log, Logger},
     HashSet,
 };
-use keys::RistrettoPublic;
-use ledger_db::{Ledger, LedgerDB};
+use mc_crypto_keys::RistrettoPublic;
+use mc_ledger_db::{Ledger, LedgerDB};
+use mc_transaction_core::{
+    get_tx_out_shared_secret,
+    onetime_keys::{recover_onetime_private_key, subaddress_for_key},
+    ring_signature::KeyImage,
+    tx::TxOut,
+};
 use std::{
     convert::TryFrom,
     sync::{
@@ -37,11 +43,6 @@ use std::{
         Arc, Mutex,
     },
     thread,
-};
-use transaction::{
-    get_tx_out_shared_secret,
-    onetime_keys::{compute_key_image, recover_onetime_private_key, subaddress_for_key},
-    tx::TxOut,
 };
 
 ///  The maximal number of blocks a worker thread would process at once.
@@ -292,7 +293,7 @@ fn sync_monitor(
         let monitor_data = mobilecoind_db.get_monitor_data(monitor_id)?;
         let block_contents = match ledger_db.get_block_contents(monitor_data.next_block) {
             Ok(block_contents) => block_contents,
-            Err(ledger_db::Error::NotFound) => {
+            Err(mc_ledger_db::Error::NotFound) => {
                 return Ok(SyncMonitorOk::NoMoreBlocks);
             }
             Err(err) => {
@@ -310,7 +311,7 @@ fn sync_monitor(
         );
 
         // Match tx outs into UTXOs.
-        let utxos = match_redacted_txs_into_utxos(
+        let utxos = match_tx_outs_into_utxos(
             &mobilecoind_db,
             &block_contents.outputs,
             monitor_id,
@@ -331,7 +332,7 @@ fn sync_monitor(
 }
 
 /// Helper function for matching a list of TxOuts to a given monitor.
-fn match_redacted_txs_into_utxos(
+fn match_tx_outs_into_utxos(
     mobilecoind_db: &Database,
     outputs: &[TxOut],
     monitor_id: &MonitorId,
@@ -388,7 +389,7 @@ fn match_redacted_txs_into_utxos(
             &account_key.subaddress_spend_key(subaddress_id.index),
         );
 
-        let key_image = compute_key_image(&onetime_private_key);
+        let key_image = KeyImage::from(&onetime_private_key);
 
         results.push(UnspentTxOut {
             tx_out: tx_out.clone(),
@@ -410,13 +411,13 @@ mod test {
         monitor_store::MonitorData,
         test_utils::{self, add_block_to_ledger_db, get_test_databases},
     };
-    use common::logger::{test_with_logger, Logger};
-    use rand::{rngs::StdRng, SeedableRng};
-    use std::iter::FromIterator;
-    use transaction::{
+    use mc_common::logger::{test_with_logger, Logger};
+    use mc_transaction_core::{
         account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX},
         tx::TxOut,
     };
+    use rand::{rngs::StdRng, SeedableRng};
+    use std::iter::FromIterator;
 
     #[test_with_logger]
     fn test_sync_monitor(logger: Logger) {

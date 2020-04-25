@@ -2,7 +2,7 @@
 
 use crate::core_types::SlotIndex;
 use bigint::U256;
-use common::fast_hash;
+use mc_common::fast_hash;
 
 /// A "salted" Keccak hash function, parametrized by slot, round, and an extra value.
 ///

@@ -72,8 +72,8 @@ fn try_digestible(input: TokenStream) -> Result<TokenStream, &'static str> {
 
     // Final expanded result
     let expanded = quote! {
-        impl digestible::Digestible for #ident {
-            fn digest<D: digestible::Digest>(&self, hasher: &mut D) {
+        impl mc_crypto_digestible::Digestible for #ident {
+            fn digest<D: mc_crypto_digestible::Digest>(&self, hasher: &mut D) {
                 hasher.input(stringify!(#ident).as_bytes());
                 #(#call)*
             }

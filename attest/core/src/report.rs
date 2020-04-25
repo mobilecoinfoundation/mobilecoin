@@ -13,8 +13,8 @@ use core::{
     fmt::{Debug, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
-use mc_encodings::{Error as EncodingError, IntelLayout};
-use sgx_types::{sgx_report_t, SGX_MAC_SIZE};
+use mc_sgx_types::{sgx_report_t, SGX_MAC_SIZE};
+use mc_util_encodings::{Error as EncodingError, IntelLayout};
 
 const REPORT_BODY_START: usize = 0;
 const REPORT_BODY_END: usize = <ReportBody as IntelLayout>::X86_64_CSIZE;
@@ -143,11 +143,11 @@ mod test {
     use std::{format, vec};
 
     use super::*;
-    use mcserial::{deserialize, serialize};
-    use sgx_types::{
+    use mc_sgx_types::{
         sgx_attributes_t, sgx_cpu_svn_t, sgx_key_id_t, sgx_measurement_t, sgx_report_body_t,
         sgx_report_data_t,
     };
+    use mc_util_serial::{deserialize, serialize};
     const TEST_REPORT1: sgx_report_t = sgx_report_t {
         body: sgx_report_body_t {
             cpu_svn: sgx_cpu_svn_t {

@@ -1,10 +1,12 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
 use crate::{
-    blake2b_256::Blake2b256,
     tx::{TxOut, TxOutMembershipElement},
-    BlockContents, BlockContentsHash, BlockID, RedactedTx,
+    BlockContents, BlockContentsHash, BlockID,
 };
 use alloc::vec::Vec;
-use digestible::{Digest, Digestible};
+use mc_crypto_digestible::{Digest, Digestible};
+use prost::Message;
 use serde::{Deserialize, Serialize};
 
 /// Version identifier.
@@ -13,26 +15,32 @@ pub const BLOCK_VERSION: u32 = 0;
 /// The index of a block in the blockchain.
 pub type BlockIndex = u64;
 
-#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize, Digestible)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Digestible, Message)]
 /// A block of transactions in the blockchain.
 pub struct Block {
     /// Block ID.
+    #[prost(message, required, tag = "1")]
     pub id: BlockID,
 
     /// Block format version.
+    #[prost(uint32, tag = "2")]
     pub version: u32,
 
     /// Id of the previous block.
+    #[prost(message, required, tag = "3")]
     pub parent_id: BlockID,
 
     /// The index of this block in the blockchain.
+    #[prost(uint64, tag = "4")]
     pub index: BlockIndex,
 
     /// Root hash of the membership proofs provided by the untrusted local system for validation.
     /// This captures the state of all TxOuts in the ledger that this block was validated against.
+    #[prost(message, required, tag = "5")]
     pub root_element: TxOutMembershipElement,
 
     /// Hash of the block's contents.
+    #[prost(message, required, tag = "6")]
     pub contents_hash: BlockContentsHash,
 }
 
@@ -106,11 +114,6 @@ impl Block {
     }
 }
 
-/// Computes the hashes of an array of transactions.
-pub fn hash_block_contents(transactions: &[RedactedTx]) -> BlockContentsHash {
-    BlockContentsHash(transactions.digest_with::<Blake2b256>())
-}
-
 /// Computes the BlockID by hashing the contents of a block.
 ///
 /// The identifier of a block is the result of hashing everything inside a block except the `id`
@@ -139,12 +142,12 @@ mod block_tests {
         account_keys::AccountKey,
         range::Range,
         tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash},
-        Block, BlockContents, BlockContentsHash, BlockID, RedactedTx, BLOCK_VERSION,
+        Block, BlockContents, BlockContentsHash, BlockID, BLOCK_VERSION,
     };
     use alloc::vec::Vec;
     use core::convert::TryFrom;
     use generic_array::GenericArray;
-    use keys::RistrettoPrivate;
+    use mc_crypto_keys::RistrettoPrivate;
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, CryptoRng, RngCore, SeedableRng};
 

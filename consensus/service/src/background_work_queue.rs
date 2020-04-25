@@ -3,8 +3,8 @@
 //! BackgroundWorkQueue: A data structure that wraps crossbeam_channel queues for background message processing
 //! by a worker thread. It allows multiple threads to send messages to the queue.
 
-use metered_channel::{self, Receiver, Sender};
-use metrics::IntGauge;
+use mc_util_metered_channel::{self, Receiver, Sender};
+use mc_util_metrics::IntGauge;
 use std::{io, sync::Arc, thread};
 
 enum QueueMsg<T> {
@@ -32,7 +32,7 @@ pub type BackgroundWorkQueueSenderFn<T> =
 
 impl<T: Send + 'static> BackgroundWorkQueue<T> {
     pub fn new(gauge: &IntGauge) -> Self {
-        let (sender, receiver) = metered_channel::unbounded(gauge);
+        let (sender, receiver) = mc_util_metered_channel::unbounded(gauge);
 
         Self {
             join_handle: None,

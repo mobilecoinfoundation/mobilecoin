@@ -10,7 +10,7 @@ First, generate the sample keys for accounts, with `--num` specifying the number
 
 ```
 mkdir keys
-cargo run --release -p keyfile --bin sample-keys -- --num 10
+cargo run --release -p mc-util-keyfile --bin sample-keys -- --num 10
 ```
 
 ### Usage
@@ -19,5 +19,5 @@ Next, generate the ledger, with `--num` specifying the number of transactions pe
 
 ```
 mkdir ledger
-cargo run --release -p generate-sample-ledger -- --num 1000
+cargo run --release -p mc-util-generate-sample-ledger -- --num 1000
 ```

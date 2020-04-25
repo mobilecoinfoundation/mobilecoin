@@ -10,11 +10,11 @@
 use core::hash::Hash;
 use curve25519_dalek::scalar::Scalar;
 use hkdf::Hkdf;
-use keys::RistrettoPrivate;
+use mc_crypto_keys::RistrettoPrivate;
+use mc_transaction_core::{account_keys::AccountKey, blake2b_256::Blake2b256};
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 use std::convert::From;
-use transaction::{account_keys::AccountKey, blake2b_256::Blake2b256};
 
 /// A RootIdentity is used to quickly derive an AccountKey from 32 bytes of entropy
 /// for testing purposes. It should not be used to derive AccountKeys outside of a
@@ -79,16 +79,16 @@ mod testing {
 
     #[test]
     // Deserializing should recover a serialized RootIdentity.
-    fn mcserial_roundtrip_root_identity() {
-        test_helper::run_with_several_seeds(|mut rng| {
+    fn mc_util_serial_roundtrip_root_identity() {
+        mc_util_test_helper::run_with_several_seeds(|mut rng| {
             let root_id = RootIdentity::random(&mut rng, None);
-            let ser = mcserial::serialize(&root_id).unwrap();
-            let result: RootIdentity = mcserial::deserialize(&ser).unwrap();
+            let ser = mc_util_serial::serialize(&root_id).unwrap();
+            let result: RootIdentity = mc_util_serial::deserialize(&ser).unwrap();
             assert_eq!(root_id, result);
 
             let root_id = RootIdentity::random(&mut rng, Some("example.com"));
-            let ser = mcserial::serialize(&root_id).unwrap();
-            let result: RootIdentity = mcserial::deserialize(&ser).unwrap();
+            let ser = mc_util_serial::serialize(&root_id).unwrap();
+            let result: RootIdentity = mc_util_serial::deserialize(&ser).unwrap();
             assert_eq!(root_id, result);
         })
     }

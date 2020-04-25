@@ -11,8 +11,8 @@ use core::{
     hash::{Hash, Hasher},
     mem::size_of,
 };
-use mc_encodings::Error as EncodingError;
-use sgx_types::sgx_attributes_t;
+use mc_sgx_types::sgx_attributes_t;
+use mc_util_encodings::Error as EncodingError;
 
 const ATTRIBUTES_FLAGS_START: usize = 0;
 const ATTRIBUTES_FLAGS_END: usize = ATTRIBUTES_FLAGS_START + size_of::<u64>();
@@ -121,7 +121,7 @@ impl TryFrom<Vec<u8>> for Attributes {
 #[cfg(test)]
 mod test {
     use super::*;
-    use mcserial::{deserialize, serialize};
+    use mc_util_serial::{deserialize, serialize};
 
     #[test]
     fn test_serde() {

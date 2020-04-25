@@ -4,23 +4,15 @@
 //!
 //! gRPC and Protobuf provide a reduced selection of types, and so there are some differences between
 //! values stored in the ledger and values transmitted over the API. This module provides conversions
-//! between "equivalent" types, such as `mobilecoin_api::blockchain::Block` and `transaction::Block`.
+//! between "equivalent" types, such as `mc_consensus_api::blockchain::Block` and `mc_transaction_core::Block`.
 
 use crate::{blockchain, consensus_common::ProposeTxResult, external};
-use common::HashMap;
 use curve25519_dalek::ristretto::CompressedRistretto;
-use keys::{
+use mc_common::HashMap;
+use mc_crypto_keys::{
     CompressedRistrettoPublic, Ed25519Public, Ed25519Signature, RistrettoPrivate, RistrettoPublic,
 };
-use mcserial::ReprBytes32;
-use protobuf::RepeatedField;
-use std::{
-    convert::{From, TryFrom, TryInto},
-    error::Error,
-    fmt::{self, Formatter},
-    path::PathBuf,
-};
-use transaction::{
+use mc_transaction_core::{
     amount::Amount,
     encrypted_fog_hint::EncryptedFogHint,
     range::Range,
@@ -30,7 +22,15 @@ use transaction::{
     tx,
     tx::{TxOutMembershipElement, TxOutMembershipHash, TxOutMembershipProof},
     validation::TransactionValidationError,
-    BlockContents, BlockSignature, CompressedCommitment, RedactedTx,
+    BlockContents, BlockSignature, CompressedCommitment,
+};
+use mc_util_serial::ReprBytes32;
+use protobuf::RepeatedField;
+use std::{
+    convert::{From, TryFrom, TryInto},
+    error::Error,
+    fmt::{self, Formatter},
+    path::PathBuf,
 };
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
@@ -63,8 +63,8 @@ impl From<RingSigError> for ConversionError {
     }
 }
 
-impl From<transaction::ConvertError> for ConversionError {
-    fn from(_src: transaction::ConvertError) -> Self {
+impl From<mc_transaction_core::ConvertError> for ConversionError {
+    fn from(_src: mc_transaction_core::ConvertError) -> Self {
         Self::ArrayCastError
     }
 }
@@ -251,50 +251,6 @@ impl TryFrom<&external::KeyImage> for KeyImage {
     }
 }
 
-/// Convert RedactedTx -->  external::RedactedTx.
-impl From<&RedactedTx> for external::RedactedTx {
-    fn from(redacted_tx: &RedactedTx) -> Self {
-        let mut transaction = external::RedactedTx::new();
-        //transaction.set_version(tx_stored.version as u32);
-        let tx_outs: Vec<external::TxOut> = redacted_tx
-            .outputs
-            .iter()
-            .map(external::TxOut::from)
-            .collect();
-        transaction.set_outputs(RepeatedField::from_vec(tx_outs));
-
-        let key_images: Vec<external::KeyImage> = redacted_tx
-            .key_images
-            .iter()
-            .map(external::KeyImage::from)
-            .collect();
-        transaction.set_key_images(RepeatedField::from_vec(key_images));
-        transaction
-    }
-}
-
-/// Convert  external::RedactedTx --> transaction::RedactedTx
-impl TryFrom<&external::RedactedTx> for RedactedTx {
-    type Error = ConversionError;
-
-    fn try_from(source: &external::RedactedTx) -> Result<Self, Self::Error> {
-        let mut outputs: Vec<tx::TxOut> = Vec::new();
-        for source_output in source.get_outputs() {
-            let tx_out = tx::TxOut::try_from(source_output)?;
-            outputs.push(tx_out);
-        }
-
-        let mut key_images: Vec<KeyImage> = Vec::with_capacity(source.get_key_images().len());
-        for source_key_image in source.get_key_images() {
-            let key_image = KeyImage::try_from(source_key_image)?;
-            key_images.push(key_image);
-        }
-
-        let redacted_tx = RedactedTx::new(outputs, key_images);
-        Ok(redacted_tx)
-    }
-}
-
 /// Convert tx::TxIn --> external::TxIn.
 impl From<&tx::TxIn> for external::TxIn {
     fn from(source: &tx::TxIn) -> Self {
@@ -383,7 +339,7 @@ impl TryFrom<&external::TxPrefix> for tx::TxPrefix {
     }
 }
 
-/// Convert transaction::tx::Tx --> external::Tx.
+/// Convert mc_transaction_core::tx::Tx --> external::Tx.
 impl From<&tx::Tx> for external::Tx {
     fn from(source: &tx::Tx) -> Self {
         let mut tx = external::Tx::new();
@@ -393,7 +349,7 @@ impl From<&tx::Tx> for external::Tx {
     }
 }
 
-/// Convert external::Tx --> transaction::tx::Tx.
+/// Convert external::Tx --> mc_transaction_core::tx::Tx.
 impl TryFrom<&external::Tx> for tx::Tx {
     type Error = ConversionError;
 
@@ -490,12 +446,9 @@ impl TryFrom<&external::SignatureRctBulletproofs> for SignatureRctBulletproofs {
 impl From<&Amount> for external::Amount {
     fn from(source: &Amount) -> Self {
         let commitment_bytes = source.commitment.to_bytes().to_vec();
-        let masked_blinding_bytes = source.masked_blinding.as_bytes().to_vec();
-
         let mut amount = external::Amount::new();
         amount.mut_commitment().set_data(commitment_bytes);
         amount.set_masked_value(source.masked_value);
-        amount.mut_masked_blinding().set_data(masked_blinding_bytes);
         amount
     }
 }
@@ -505,29 +458,11 @@ impl TryFrom<&external::Amount> for Amount {
 
     fn try_from(source: &external::Amount) -> Result<Self, Self::Error> {
         let commitment = CompressedCommitment::try_from(source.get_commitment())?;
-
-        fn vec_to_curve_scalar(bytes: &[u8]) -> Result<CurveScalar, ConversionError> {
-            if bytes.len() != 32 {
-                return Err(ConversionError::Other);
-            }
-            let mut curve_bytes = [0u8; 32];
-            curve_bytes.copy_from_slice(&bytes);
-            Ok(CurveScalar::from_bytes_mod_order(curve_bytes))
-        };
-
         let masked_value = source.get_masked_value();
-
-        let masked_blinding: CurveScalar = {
-            let bytes = source.get_masked_blinding().get_data();
-            vec_to_curve_scalar(bytes)?
-        };
-
         let amount = Amount {
             commitment,
             masked_value,
-            masked_blinding,
         };
-
         Ok(amount)
     }
 }
@@ -762,32 +697,70 @@ impl TryInto<TransactionValidationError> for ProposeTxResult {
     }
 }
 
-/// Convert transaction::Block --> blockchain::Block.
-impl From<&transaction::Block> for blockchain::Block {
-    fn from(other: &transaction::Block) -> Self {
+/// Convert mc_transaction_core::BlockID --> blockchain::BlockID.
+impl From<&mc_transaction_core::BlockID> for blockchain::BlockID {
+    fn from(src: &mc_transaction_core::BlockID) -> Self {
+        let mut dst = blockchain::BlockID::new();
+        dst.set_data(src.as_ref().to_vec());
+        dst
+    }
+}
+
+/// Convert blockchain::BlockContentsHash --> mc_transaction_core::BlockID.
+impl TryFrom<&blockchain::BlockID> for mc_transaction_core::BlockID {
+    type Error = ConversionError;
+
+    fn try_from(src: &blockchain::BlockID) -> Result<Self, Self::Error> {
+        mc_transaction_core::BlockID::try_from(src.get_data())
+            .map_err(|_| ConversionError::ArrayCastError)
+    }
+}
+
+/// Convert mc_transaction_core::BlockContentsHash --> blockchain::BlockContentsHash.
+impl From<&mc_transaction_core::BlockContentsHash> for blockchain::BlockContentsHash {
+    fn from(src: &mc_transaction_core::BlockContentsHash) -> Self {
+        let mut dst = blockchain::BlockContentsHash::new();
+        dst.set_data(src.as_ref().to_vec());
+        dst
+    }
+}
+
+/// Convert blockchain::BlockContentsHash --> mc_transaction_core::BlockContentsHash.
+impl TryFrom<&blockchain::BlockContentsHash> for mc_transaction_core::BlockContentsHash {
+    type Error = ConversionError;
+
+    fn try_from(src: &blockchain::BlockContentsHash) -> Result<Self, Self::Error> {
+        mc_transaction_core::BlockContentsHash::try_from(src.get_data())
+            .map_err(|_| ConversionError::ArrayCastError)
+    }
+}
+
+/// Convert mc_transaction_core::Block --> blockchain::Block.
+impl From<&mc_transaction_core::Block> for blockchain::Block {
+    fn from(other: &mc_transaction_core::Block) -> Self {
         let mut block = blockchain::Block::new();
-        block.set_id(other.id.as_ref().to_vec());
+        block.set_id(blockchain::BlockID::from(&other.id));
         block.set_version(other.version);
-        block.set_parent_id(other.parent_id.as_ref().to_vec());
+        block.set_parent_id(blockchain::BlockID::from(&other.parent_id));
         block.set_index(other.index);
         block.set_root_element((&other.root_element).into());
-        block.set_contents_hash(other.contents_hash.as_ref().to_vec());
+        block.set_contents_hash(blockchain::BlockContentsHash::from(&other.contents_hash));
         block
     }
 }
 
-/// Convert blockchain::Block --> transaction::Block.
-impl TryFrom<&blockchain::Block> for transaction::Block {
+/// Convert blockchain::Block --> mc_transaction_core::Block.
+impl TryFrom<&blockchain::Block> for mc_transaction_core::Block {
     type Error = ConversionError;
 
     fn try_from(value: &blockchain::Block) -> Result<Self, Self::Error> {
-        let block_id = transaction::BlockID::try_from(value.id.as_slice())?;
-        let parent_id = transaction::BlockID::try_from(value.parent_id.as_slice())?;
+        let block_id = mc_transaction_core::BlockID::try_from(value.get_id())?;
+        let parent_id = mc_transaction_core::BlockID::try_from(value.get_parent_id())?;
         let root_element = TxOutMembershipElement::try_from(value.get_root_element())?;
         let contents_hash =
-            transaction::BlockContentsHash::try_from(value.contents_hash.as_slice())?;
+            mc_transaction_core::BlockContentsHash::try_from(value.get_contents_hash())?;
 
-        let block = transaction::Block {
+        let block = mc_transaction_core::Block {
             id: block_id,
             version: value.version,
             parent_id,
@@ -799,8 +772,8 @@ impl TryFrom<&blockchain::Block> for transaction::Block {
     }
 }
 
-impl From<&transaction::BlockContents> for blockchain::BlockContents {
-    fn from(source: &transaction::BlockContents) -> Self {
+impl From<&mc_transaction_core::BlockContents> for blockchain::BlockContents {
+    fn from(source: &mc_transaction_core::BlockContents) -> Self {
         let mut block_contents = blockchain::BlockContents::new();
 
         let key_images: Vec<external::KeyImage> = source
@@ -818,7 +791,7 @@ impl From<&transaction::BlockContents> for blockchain::BlockContents {
     }
 }
 
-impl TryFrom<&blockchain::BlockContents> for transaction::BlockContents {
+impl TryFrom<&blockchain::BlockContents> for mc_transaction_core::BlockContents {
     type Error = ConversionError;
 
     fn try_from(source: &blockchain::BlockContents) -> Result<Self, Self::Error> {
@@ -857,7 +830,7 @@ impl TryFrom<&blockchain::BlockSignature> for BlockSignature {
 }
 
 /// Helper method for getting the suggested path/filename for a given block index.
-pub fn block_num_to_s3block_path(block_index: transaction::BlockIndex) -> PathBuf {
+pub fn block_num_to_s3block_path(block_index: mc_transaction_core::BlockIndex) -> PathBuf {
     let filename = format!("{:016x}.pb", block_index);
     let mut path = PathBuf::new();
     for i in 0..7 {
@@ -871,99 +844,58 @@ pub fn block_num_to_s3block_path(block_index: transaction::BlockIndex) -> PathBu
 mod conversion_tests {
     extern crate rand;
 
-    use self::rand::{rngs::StdRng, RngCore, SeedableRng};
+    use self::rand::{rngs::StdRng, SeedableRng};
     use super::*;
-    use curve25519_dalek::ristretto::RistrettoPoint;
-    use mc_util_from_random::FromRandom;
-    use transaction::{
+    use mc_transaction_core::{
         account_keys::{AccountKey, PublicAddress},
         onetime_keys::recover_onetime_private_key,
-        ring_signature::Scalar,
         tx::{Tx, TxOut, TxOutMembershipProof},
     };
-    use transaction_std::*;
+    use mc_transaction_std::*;
+    use mc_util_from_random::FromRandom;
+    use protobuf::Message;
 
     #[test]
     // Unmarshalling too many bytes into a BlockID should produce an error.
     fn test_from_blockchain_block_id_error() {
-        let mut source = blockchain::Block::new(); // Cannot convert 37 bytes to a BlockID.
-        source.set_id([1u8; 37].to_vec());
-        source.set_version(1u32);
-        source.set_parent_id([1u8; 32].to_vec());
-        source.set_index(1);
-        source.set_contents_hash([1u8; 32].to_vec());
+        // Cannot convert 37 bytes to a BlockID.
+        let mut bad_block_id = blockchain::BlockID::new();
+        bad_block_id.set_data(vec![1u8; 37]);
 
-        let converted = transaction::Block::try_from(&source);
+        let converted = mc_transaction_core::BlockID::try_from(&bad_block_id);
         assert!(converted.is_err());
     }
 
     #[test]
     // Unmarshalling too few bytes into a BlockID should produce an error.
     fn test_from_blockchain_block_id_error_two() {
-        let mut source = blockchain::Block::new();
-        source.set_id([1u8; 11].to_vec()); // Cannot convert 11 bytes to a BlockID.
-        source.set_version(1u32);
-        source.set_parent_id([1u8; 32].to_vec());
-        source.set_index(1);
-        source.set_contents_hash([1u8; 32].to_vec());
+        // Cannot convert 11 bytes to a BlockID.
+        let mut bad_block_id = blockchain::BlockID::new();
+        bad_block_id.set_data(vec![1u8; 11]);
 
-        let converted = transaction::Block::try_from(&source);
-        assert!(converted.is_err());
-    }
-
-    #[test]
-    // Unmarshalling too many bytes into a BlockID should produce an error.
-    fn test_from_blockchain_block_parent_id_error() {
-        let mut source = blockchain::Block::new();
-        source.set_id([1u8; 32].to_vec());
-        source.set_version(1u32);
-        source.set_parent_id([1u8; 37].to_vec()); // Cannot convert 37 bytes to a BlockID.
-        source.set_index(1);
-        source.set_contents_hash([1u8; 32].to_vec());
-
-        let converted = transaction::Block::try_from(&source);
-        assert!(converted.is_err());
-    }
-
-    #[test]
-    // Unmarshalling too few bytes into a BlockID should produce an error.
-    fn test_from_blockchain_block_parent_id_error_two() {
-        let mut source = blockchain::Block::new();
-        source.set_id([1u8; 32].to_vec());
-        source.set_version(1u32);
-        source.set_parent_id([1u8; 11].to_vec()); // Cannot convert 11 bytes to a BlockID.
-        source.set_index(1);
-        source.set_contents_hash([1u8; 32].to_vec());
-
-        let converted = transaction::Block::try_from(&source);
+        let converted = mc_transaction_core::BlockID::try_from(&bad_block_id);
         assert!(converted.is_err());
     }
 
     #[test]
     // Unmarshalling too many bytes into a BlockContentsHash should produce an error.
     fn test_from_blockchain_block_contents_hash_error() {
-        let mut source = blockchain::Block::new();
-        source.set_id([1u8; 32].to_vec());
-        source.set_version(1u32);
-        source.set_parent_id([1u8; 32].to_vec());
-        source.set_index(1);
-        source.set_contents_hash([1u8; 37].to_vec()); // Cannot convert 37 bytes to a BlockContentsHash.
+        // Cannot convert 37 bytes to a BlockContentsHash.
+        let mut bad_block_contents_hash = blockchain::BlockContentsHash::new();
+        bad_block_contents_hash.set_data(vec![1u8; 37]);
 
-        let converted = transaction::Block::try_from(&source);
+        let converted = mc_transaction_core::BlockContentsHash::try_from(&bad_block_contents_hash);
         assert!(converted.is_err());
     }
 
     #[test]
     // Unmarshalling too few bytes into a BlockContentsHash should produce an error.
     fn test_from_blockchain_block_contents_hash_error_two() {
-        let mut source = blockchain::Block::new();
-        source.set_id([1u8; 32].to_vec());
-        source.set_version(1u32);
-        source.set_parent_id([1u8; 32].to_vec());
-        source.set_index(1);
-        source.set_contents_hash([1u8; 11].to_vec()); // Cannot convert 11 bytes to a BlockID.
+        // Cannot convert 11 bytes to a BlockContentsHash.
+        let mut bad_block_contents_hash = blockchain::BlockContentsHash::new();
+        bad_block_contents_hash.set_data(vec![1u8; 11]);
 
-        let converted = transaction::Block::try_from(&source);
+        let converted = mc_transaction_core::BlockContentsHash::try_from(&bad_block_contents_hash);
         assert!(converted.is_err());
     }
 
@@ -979,7 +911,7 @@ mod conversion_tests {
     // blockchain::TxHash --> tx::TxHash
     fn test_tx_hash_try_from() {
         let mut source = external::TxHash::new();
-        source.set_hash([7u8; 32].to_vec());
+        source.set_hash(vec![7u8; 32]);
         let converted = tx::TxHash::try_from(&source).unwrap();
         assert_eq!(converted.0, [7u8; 32]);
     }
@@ -988,7 +920,7 @@ mod conversion_tests {
     // Unmarshalling too many bytes into a TxHash should produce an error.
     fn test_tx_hash_try_from_too_many_bytes() {
         let mut source = external::TxHash::new();
-        source.set_hash([7u8; 99].to_vec()); // Too many bytes.
+        source.set_hash(vec![7u8; 99]); // Too many bytes.
         assert!(tx::TxHash::try_from(&source).is_err());
     }
 
@@ -996,53 +928,63 @@ mod conversion_tests {
     // Unmarshalling too few bytes into a TxHash should produce an error.
     fn test_tx_hash_try_from_too_few_bytes() {
         let mut source = external::TxHash::new();
-        source.set_hash([7u8; 3].to_vec()); // Too few bytes.
+        source.set_hash(vec![7u8; 3]); // Too few bytes.
         assert!(tx::TxHash::try_from(&source).is_err());
     }
 
     #[test]
-    // transaction::Block --> blockchain::Block
+    // mc_transaction_core::Block --> blockchain::Block
     fn test_block_from() {
-        let source_block = transaction::Block {
-            id: transaction::BlockID::try_from(&[2u8; 32][..]).unwrap(),
+        let source_block = mc_transaction_core::Block {
+            id: mc_transaction_core::BlockID::try_from(&[2u8; 32][..]).unwrap(),
             version: 1,
-            parent_id: transaction::BlockID::try_from(&[1u8; 32][..]).unwrap(),
+            parent_id: mc_transaction_core::BlockID::try_from(&[1u8; 32][..]).unwrap(),
             index: 99,
             root_element: TxOutMembershipElement {
                 range: Range::new(10, 20).unwrap(),
                 hash: TxOutMembershipHash::from([12u8; 32]),
             },
-            contents_hash: transaction::BlockContentsHash::try_from(&[66u8; 32][..]).unwrap(),
+            contents_hash: mc_transaction_core::BlockContentsHash::try_from(&[66u8; 32][..])
+                .unwrap(),
         };
 
         let block = blockchain::Block::from(&source_block);
-        assert_eq!(block.get_id(), [2u8; 32]);
+        assert_eq!(block.get_id().get_data(), [2u8; 32]);
         assert_eq!(block.get_version(), 1);
-        assert_eq!(block.get_parent_id(), [1u8; 32]);
+        assert_eq!(block.get_parent_id().get_data(), [1u8; 32]);
         assert_eq!(block.get_index(), 99);
         assert_eq!(block.get_root_element().get_range().get_from(), 10);
         assert_eq!(block.get_root_element().get_range().get_to(), 20);
         assert_eq!(block.get_root_element().get_hash().get_data(), &[12u8; 32]);
-        assert_eq!(block.get_contents_hash(), [66u8; 32]);
+        assert_eq!(block.get_contents_hash().get_data(), [66u8; 32]);
     }
 
     #[test]
-    // blockchain::Block -> transaction::Block
+    // blockchain::Block -> mc_transaction_core::Block
     fn test_block_try_from() {
         let mut root_element = external::TxOutMembershipElement::new();
         root_element.mut_range().set_from(10);
         root_element.mut_range().set_to(20);
-        root_element.mut_hash().set_data([13u8; 32].to_vec());
+        root_element.mut_hash().set_data(vec![13u8; 32]);
+
+        let mut block_id = blockchain::BlockID::new();
+        block_id.set_data(vec![10u8; 32]);
+
+        let mut parent_block_id = blockchain::BlockID::new();
+        parent_block_id.set_data(vec![9u8; 32]);
+
+        let mut contents_hash = blockchain::BlockContentsHash::new();
+        contents_hash.set_data(vec![66u8; 32]);
 
         let mut source_block = blockchain::Block::new();
-        source_block.set_id([10u8; 32].to_vec());
+        source_block.set_id(block_id);
         source_block.set_version(1u32);
-        source_block.set_parent_id([9u8; 32].to_vec());
+        source_block.set_parent_id(parent_block_id);
         source_block.set_index(2);
         source_block.set_root_element(root_element);
-        source_block.set_contents_hash([66u8; 32].to_vec());
+        source_block.set_contents_hash(contents_hash);
 
-        let block = transaction::Block::try_from(&source_block).unwrap();
+        let block = mc_transaction_core::Block::try_from(&source_block).unwrap();
         assert_eq!(block.id.as_ref(), [10u8; 32]);
         assert_eq!(block.version, 1);
         assert_eq!(block.parent_id.as_ref(), [9u8; 32]);
@@ -1054,17 +996,50 @@ mod conversion_tests {
     }
 
     #[test]
+    // the blockchain::Block definition matches the Block prost attributes.
+    // This ensures the definition in the .proto files matches the prost attributes inside the
+    // Block struct.
+    fn test_blockchain_block_matches_prost() {
+        let source_block = mc_transaction_core::Block {
+            id: mc_transaction_core::BlockID::try_from(&[2u8; 32][..]).unwrap(),
+            version: 1,
+            parent_id: mc_transaction_core::BlockID::try_from(&[1u8; 32][..]).unwrap(),
+            index: 99,
+            root_element: TxOutMembershipElement {
+                range: Range::new(10, 20).unwrap(),
+                hash: TxOutMembershipHash::from([12u8; 32]),
+            },
+            contents_hash: mc_transaction_core::BlockContentsHash::try_from(&[66u8; 32][..])
+                .unwrap(),
+        };
+
+        // Encode using `protobuf`, decode using `prost`.
+        {
+            let blockchain_block = blockchain::Block::from(&source_block);
+            let blockchain_block_bytes = blockchain_block.write_to_bytes().unwrap();
+
+            let block_from_prost: mc_transaction_core::Block =
+                mc_util_serial::decode(&blockchain_block_bytes).expect("failed decoding");
+            assert_eq!(source_block, block_from_prost);
+        }
+
+        // Encode using `prost`, decode using `protobuf`.
+        {
+            let prost_block_bytes = mc_util_serial::encode(&source_block);
+            let blockchain_block: blockchain::Block =
+                protobuf::parse_from_bytes(&prost_block_bytes).expect("failed decoding");
+
+            assert_eq!(blockchain_block, blockchain::Block::from(&source_block));
+        }
+    }
+
+    #[test]
     // tx::TxOut -> blockchain::TxOut --> tx::TxOut
     fn test_tx_out_from_tx_out_stored() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
         let source = tx::TxOut {
-            amount: Amount::new(
-                1u64 << 13,
-                Scalar::random(&mut rng),
-                &RistrettoPublic::from_random(&mut rng),
-            )
-            .unwrap(),
+            amount: Amount::new(1u64 << 13, &RistrettoPublic::from_random(&mut rng)).unwrap(),
             target_key: RistrettoPublic::from_random(&mut rng).into(),
             public_key: RistrettoPublic::from_random(&mut rng).into(),
             e_account_hint: (&[0u8; 128]).into(),
@@ -1074,54 +1049,6 @@ mod conversion_tests {
 
         let recovered_tx_out = tx::TxOut::try_from(&converted).unwrap();
         assert_eq!(source.amount, recovered_tx_out.amount);
-    }
-
-    #[test]
-    // Empty RedactedTx --> external::RedactedTx
-    fn test_empty_redacted_tx() {
-        let source = RedactedTx::new(vec![], vec![]);
-        let redacted_tx = external::RedactedTx::from(&source);
-        assert_eq!(redacted_tx.outputs.len(), 0);
-    }
-
-    #[test]
-    // RedactedTx -> external::RedactedTx
-    fn test_transaction_from_tx_stored() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-
-        let source: RedactedTx = {
-            let tx_out_a = tx::TxOut {
-                amount: Amount::new(
-                    rng.next_u64(),
-                    Scalar::random(&mut rng),
-                    &RistrettoPublic::from_random(&mut rng),
-                )
-                .unwrap(),
-                target_key: RistrettoPublic::from_random(&mut rng).into(),
-                public_key: RistrettoPublic::from_random(&mut rng).into(),
-                e_account_hint: (&[0u8; 128]).into(),
-            };
-
-            let tx_out_b = tx::TxOut {
-                amount: Amount::new(
-                    rng.next_u64(),
-                    Scalar::random(&mut rng),
-                    &RistrettoPublic::from_random(&mut rng),
-                )
-                .unwrap(),
-                target_key: RistrettoPublic::from_random(&mut rng).into(),
-                public_key: RistrettoPublic::from_random(&mut rng).into(),
-                e_account_hint: (&[0u8; 128]).into(),
-            };
-
-            let outputs = vec![tx_out_a, tx_out_b];
-            let key_images: Vec<KeyImage> = vec![KeyImage::from(RistrettoPoint::random(&mut rng))];
-            RedactedTx::new(outputs, key_images)
-        };
-
-        let redacted_tx = external::RedactedTx::from(&source);
-        assert_eq!(redacted_tx.outputs.len(), 2);
-        assert_eq!(redacted_tx.key_images.len(), 1);
     }
 
     #[test]
@@ -1215,7 +1142,7 @@ mod conversion_tests {
             // Some outputs belonging to this account will be used as mix-ins.
             recipient_and_amounts.push((charlie.default_subaddress(), 65536));
             recipient_and_amounts.push((charlie.default_subaddress(), 65536));
-            transaction_test_utils::get_outputs(&recipient_and_amounts, &mut rng)
+            mc_transaction_core_test_utils::get_outputs(&recipient_and_amounts, &mut rng)
         };
 
         let mut transaction_builder = TransactionBuilder::new();
@@ -1257,15 +1184,30 @@ mod conversion_tests {
 
         // decode(encode(tx)) should be the identity function.
         {
-            let bytes = mcserial::encode(&tx);
-            let recovered_tx = mcserial::decode(&bytes).unwrap();
+            let bytes = mc_util_serial::encode(&tx);
+            let recovered_tx = mc_util_serial::decode(&bytes).unwrap();
             assert_eq!(tx, recovered_tx);
         }
 
-        // Converting transaction::Tx -> external::Tx -> transaction::Tx should be the identity function.
+        // Converting mc_transaction_core::Tx -> external::Tx -> mc_transaction_core::Tx should be the identity function.
         {
             let external_tx: external::Tx = external::Tx::from(&tx);
             let recovered_tx: Tx = Tx::try_from(&external_tx).unwrap();
+            assert_eq!(tx, recovered_tx);
+        }
+
+        // Encoding with prost, decoding with protobuf should be the identity function.
+        {
+            let bytes = mc_util_serial::encode(&tx);
+            let recovered_tx: external::Tx = protobuf::parse_from_bytes(&bytes).unwrap();
+            assert_eq!(recovered_tx, external::Tx::from(&tx));
+        }
+
+        // Encoding with protobuf, decoding with prost should be the identity function.
+        {
+            let external_tx: external::Tx = external::Tx::from(&tx);
+            let bytes = external_tx.write_to_bytes().unwrap();
+            let recovered_tx: Tx = mc_util_serial::decode(&bytes).unwrap();
             assert_eq!(tx, recovered_tx);
         }
     }

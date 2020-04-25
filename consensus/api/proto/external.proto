@@ -73,9 +73,6 @@ message Amount {
 
     // `masked_value = value XOR_8 Blake2B("value_mask" || shared_secret)`
     uint64 masked_value = 2;
-
-    // `masked_blinding = blinding + Blake2B("bliding_mask" || shared_secret))
-    CurveScalar masked_blinding = 3;
 }
 
 message EncryptedFogHint {
@@ -143,15 +140,4 @@ message Tx {
 message TxHash {
     // Hash of a single transaction.
     bytes hash = 1;
-}
-
-// A redacted transaction.
-message RedactedTx {
-    uint32 version = 1;
-
-    // Outputs created by this transaction.
-    repeated TxOut outputs = 2;
-
-    // Key images "spent" by this transaction.
-    repeated KeyImage key_images = 3;
 }

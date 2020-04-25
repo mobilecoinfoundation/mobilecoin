@@ -7,7 +7,7 @@
 //! X25519 ECDH with Ephemeral Keys
 //!
 //! ```
-//! use keys::*;
+//! use mc_crypto_keys::*;
 //! use mc_util_from_random::FromRandom;
 //! use rand_core::SeedableRng;
 //! use rand_hc::Hc128Rng;
@@ -33,7 +33,7 @@
 //! Ed25519 Signing
 //!
 //! ```
-//! use keys::*;
+//! use mc_crypto_keys::*;
 //! use mc_util_from_random::FromRandom;
 //! use rand_core::SeedableRng;
 //! use rand_hc::Hc128Rng;

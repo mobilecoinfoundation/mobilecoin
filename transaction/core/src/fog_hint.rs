@@ -7,12 +7,14 @@ use crate::{
     encrypted_fog_hint::{EncryptedFogHint, EncryptedFogHintSize},
 };
 use core::convert::TryFrom;
-use keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic, RISTRETTO_PUBLIC_LEN};
 use mc_crypto_box::{
     generic_array::{typenum::Diff, GenericArray},
     CryptoBox, Error as CryptoBoxError, VersionedCryptoBox,
 };
-use mcserial::ReprBytes32;
+use mc_crypto_keys::{
+    CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic, RISTRETTO_PUBLIC_LEN,
+};
+use mc_util_serial::ReprBytes32;
 use rand_core::{CryptoRng, RngCore};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -44,7 +46,7 @@ impl FogHint {
             view_pubkey: CompressedRistrettoPublic::try_from(bytes).map_err(CryptoBoxError::Key)?,
         })
     }
-    pub fn to_bytes(&self) -> [u8; keys::RISTRETTO_PUBLIC_LEN] {
+    pub fn to_bytes(&self) -> [u8; mc_crypto_keys::RISTRETTO_PUBLIC_LEN] {
         self.view_pubkey.to_bytes()
     }
 
@@ -128,7 +130,7 @@ mod testing {
 
     #[test]
     fn test_round_trip() {
-        test_helper::run_with_several_seeds(|mut rng| {
+        mc_util_test_helper::run_with_several_seeds(|mut rng| {
             let z = RistrettoPrivate::from_random(&mut rng);
             let zpub = RistrettoPublic::from(&z);
 
@@ -142,7 +144,7 @@ mod testing {
 
     #[test]
     fn test_expected_failure() {
-        test_helper::run_with_several_seeds(|mut rng| {
+        mc_util_test_helper::run_with_several_seeds(|mut rng| {
             let z = RistrettoPrivate::from_random(&mut rng);
             let zpub = RistrettoPublic::from(&z);
 

@@ -13,10 +13,10 @@ use core::{
     write,
 };
 use hex_fmt::HexFmt;
-use mc_encodings::{Error as EncodingError, FromHex, ToHex};
-use mcrand::{CryptoRng, RngCore};
+use mc_crypto_rand::{CryptoRng, RngCore};
+use mc_sgx_types::sgx_quote_nonce_t;
+use mc_util_encodings::{Error as EncodingError, FromHex, ToHex};
 use serde::{Deserialize, Serialize};
-use sgx_types::sgx_quote_nonce_t;
 
 /// A trait used to define common operations on nonce values
 pub trait Nonce:
@@ -66,7 +66,7 @@ const QUOTE_NONCE_LENGTH: usize = 16;
 /// # Example
 ///
 /// ```
-/// use attest::{Nonce, QuoteNonce};
+/// use mc_attest_core::{Nonce, QuoteNonce};
 /// use rand::prelude::*;
 /// use rand_hc::Hc128Rng as FixedRng;
 ///

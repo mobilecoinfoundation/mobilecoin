@@ -33,13 +33,36 @@ message BlocksResponse {
     repeated Block blocks = 1;
 }
 
+// Block ID.
+message BlockID {
+    bytes data = 1;
+}
+
+// Hash of the block's contents.
+message BlockContentsHash {
+    bytes data = 1;
+}
+
+// A block in the blockchain.
 message Block {
-    bytes id = 1;
+    // Block ID.
+    BlockID id = 1;
+
+    // Block format version.
     uint32 version = 2;
-    bytes parent_id = 3;
+
+    // Id of the previous block.
+    BlockID parent_id = 3;
+
+    // The index of this block in the blockchain.
     uint64 index = 4;
+
+    // Root hash of the membership proofs provided by the untrusted local system for validation.
+    // This captures the state of all TxOuts in the ledger that this block was validated against.
     external.TxOutMembershipElement root_element = 5;
-    bytes contents_hash = 6;
+
+    // Hash of the block's contents.
+    BlockContentsHash contents_hash = 6;
 }
 
 message BlockContents {

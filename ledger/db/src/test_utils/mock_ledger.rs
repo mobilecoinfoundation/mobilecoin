@@ -1,20 +1,20 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use crate::{Error, Ledger};
-use common::{HashMap, HashSet};
-use curve25519_dalek::ristretto::RistrettoPoint;
-use keys::RistrettoPrivate;
-use mc_util_from_random::FromRandom;
-use rand::{rngs::StdRng, SeedableRng};
-use std::{
-    iter::FromIterator,
-    sync::{Arc, Mutex, MutexGuard},
-};
-use transaction::{
+use mc_common::{HashMap, HashSet};
+use mc_crypto_keys::RistrettoPrivate;
+use mc_transaction_core::{
     account_keys::AccountKey,
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
     Block, BlockContents, BlockID, BlockSignature, BLOCK_VERSION,
+};
+use mc_util_from_random::FromRandom;
+use rand::{rngs::StdRng, SeedableRng};
+use rand_core::RngCore;
+use std::{
+    iter::FromIterator,
+    sync::{Arc, Mutex, MutexGuard},
 };
 
 pub struct MockLedgerInner {
@@ -217,7 +217,7 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
             .unwrap();
 
             let outputs = vec![tx_out];
-            let key_images = vec![KeyImage::from(RistrettoPoint::random(&mut rng))];
+            let key_images = vec![KeyImage::from(rng.next_u64())];
             let block_contents = BlockContents::new(key_images, outputs);
 
             let block = Block::new(
@@ -238,7 +238,7 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use transaction::compute_block_id;
+    use mc_transaction_core::compute_block_id;
 
     #[test]
     // `get_test_ledger_blocks` should return a valid blockchain of the specified length.

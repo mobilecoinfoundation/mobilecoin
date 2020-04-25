@@ -1,6 +1,6 @@
 [package]
-name = "keys"
-version = "0.1.0"
+name = "mc-crypto-keys"
+version = "0.1.5-alpha-1"
 authors = ["MobileCoin"]
 edition = "2018"
 
@@ -8,12 +8,12 @@ edition = "2018"
 binascii = "0.1.2"
 cfg-if = "0.1"
 digest = { version = "0.8", default-features = false }
-digestible = { path = "../../crypto/digestible", features = ["dalek"] }
+mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek"] }
 ed25519 = { version = "1.0.0-pre.4", default-features = false, features = ["serde"] }
 failure = { version = "0.1.5", default-features = false, features = ["derive"] }
 hex_fmt = "0.3"
 mc-util-from-random = { path = "../../util/from-random" }
-mcserial = { path = "../../util/mcserial", default-features = false }
+mc-util-serial = { path = "../../util/serial", default-features = false }
 prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
 rand_core = { version = "0.5", default-features = false }
 signature = { version = "1.0.0-pre.5", default-features = false, features = ["digest-preview"] }
@@ -31,11 +31,11 @@ curve25519-dalek = { version = "2.0", default-features = false, features = ["nig
 ed25519-dalek = { git = "https://github.com/cbeck88/ed25519-dalek", rev = "c0b0ab31d3572de6fb01d6b4a4f052784034b0b2", default-features = false, features = ["alloc", "nightly", "serde", "u64_backend"] }
 
 [dev-dependencies]
-digestible = { path = "../../crypto/digestible", features = ["derive"] }
-mcserial = { path = "../../util/mcserial", features = ["std"] }
+mc-crypto-digestible = { path = "../../crypto/digestible", features = ["derive"] }
+mc-util-serial = { path = "../../util/serial", features = ["std"] }
 pem = "0.6"
 rand_hc = "0.2"
 serde_json = "1.0"
-test_helper = { path = "../../util/test-helper" }
+mc-util-test-helper = { path = "../../util/test-helper" }
 tempdir = "0.3"
 semver = "0.9"

@@ -21,11 +21,11 @@ use core::{
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
-use mc_encodings::{Error as EncodingError, FromX64, ToX64};
 use mc_sgx_core_types_sys::{
     sgx_report_body_t, SGX_REPORT_BODY_RESERVED1_BYTES, SGX_REPORT_BODY_RESERVED2_BYTES,
     SGX_REPORT_BODY_RESERVED3_BYTES, SGX_REPORT_BODY_RESERVED4_BYTES,
 };
+use mc_util_encodings::{Error as EncodingError, FromX64, ToX64};
 
 // Offsets of various fields in a sgx_report_body_t with x86_64 layout
 const CPU_SVN_START: usize = 0;

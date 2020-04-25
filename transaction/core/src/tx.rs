@@ -1,16 +1,15 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use alloc::vec::Vec;
-use common::{Hash, HashMap};
 use core::{
     convert::{TryFrom, TryInto},
     fmt,
 };
 use curve25519_dalek::scalar::Scalar;
-use digestible::Digestible;
-use keys::{CompressedRistrettoPublic, RistrettoPrivate};
-use mc_util_from_random::FromRandom;
-use mcserial::{prost_message_helper32, ReprBytes32};
+use mc_common::{Hash, HashMap};
+use mc_crypto_digestible::Digestible;
+use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
+use mc_util_serial::{prost_message_helper32, ReprBytes32};
 use prost::Message;
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
@@ -19,12 +18,11 @@ use crate::{
     account_keys::PublicAddress,
     amount::{Amount, AmountError},
     blake2b_256::Blake2b256,
-    constants::RING_SIZE,
     encrypted_fog_hint::EncryptedFogHint,
     onetime_keys::{compute_shared_secret, compute_tx_pubkey, create_onetime_public_key},
     range::Range,
-    ring_signature::{KeyImage, SignatureRctBulletproofs, GENERATORS},
-    CompressedCommitment, RedactedTx,
+    ring_signature::{KeyImage, SignatureRctBulletproofs},
+    CompressedCommitment,
 };
 
 /// Transaction hash length, in bytes.
@@ -133,13 +131,6 @@ impl Tx {
     /// Get the highest index of each membership proof referenced by the transaction.
     pub fn get_membership_proof_highest_indices(&self) -> Vec<u64> {
         self.prefix.get_membership_proof_highest_indices()
-    }
-
-    /// Redacts all sensitive information.
-    pub fn redact(self) -> RedactedTx {
-        let key_images: Vec<KeyImage> = self.signature.key_images();
-        let outputs = self.prefix.outputs;
-        RedactedTx::new(outputs, key_images)
     }
 }
 
@@ -272,14 +263,14 @@ impl TxOut {
         recipient: &PublicAddress,
         tx_private_key: &RistrettoPrivate,
         hint: EncryptedFogHint,
-        rng: &mut RNG,
+        _rng: &mut RNG,
     ) -> Result<Self, AmountError> {
         let target_key = create_onetime_public_key(recipient, tx_private_key).into();
         let public_key = compute_tx_pubkey(tx_private_key, recipient.spend_public_key()).into();
 
         let amount = {
             let shared_secret = compute_shared_secret(recipient.view_public_key(), tx_private_key);
-            Amount::new(value, Scalar::random(rng), &shared_secret)
+            Amount::new(value, &shared_secret)
         }?;
 
         Ok(TxOut {
@@ -400,9 +391,9 @@ prost_message_helper32! { TxOutMembershipHash }
 #[cfg(test)]
 mod tests {
     use alloc::vec::Vec;
-    use keys::RistrettoPublic;
+    use mc_crypto_keys::RistrettoPublic;
     use mc_util_from_random::FromRandom;
-    use mcserial::ReprBytes32;
+    use mc_util_serial::ReprBytes32;
     use prost::Message;
     use rand::{rngs::StdRng, SeedableRng};
 
@@ -411,7 +402,7 @@ mod tests {
         amount::Amount,
         constants::{BASE_FEE, FEE_SPEND_PUBLIC_KEY, FEE_VIEW_PRIVATE_KEY, FEE_VIEW_PUBLIC_KEY},
         encrypted_fog_hint::EncryptedFogHint,
-        ring_signature::{CurveScalar, KeyImage, Scalar, SignatureRctBulletproofs},
+        ring_signature::SignatureRctBulletproofs,
         tx::{Tx, TxIn, TxOut, TxPrefix},
     };
 
@@ -423,8 +414,7 @@ mod tests {
             let shared_secret = RistrettoPublic::from_random(&mut rng);
             let target_key = RistrettoPublic::from_random(&mut rng).into();
             let public_key = RistrettoPublic::from_random(&mut rng).into();
-            let blinding = Scalar::from_bytes_mod_order([77u8; 32]);
-            let amount = Amount::new(23u64, blinding, &shared_secret).unwrap();
+            let amount = Amount::new(23u64, &shared_secret).unwrap();
             TxOut {
                 amount,
                 target_key,

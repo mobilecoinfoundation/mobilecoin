@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use failure::Fail;
-use transaction::{amount::AmountError, ring_signature, ring_signature::Error};
+use mc_transaction_core::{amount::AmountError, ring_signature, ring_signature::Error};
 
 #[derive(Debug, Fail)]
 pub enum TxBuilderError {
@@ -12,7 +12,7 @@ pub enum TxBuilderError {
     RangeProofFailed,
 
     #[fail(display = "Serialization failed: {}", _0)]
-    SerializationFailed(mcserial::encode::Error),
+    SerializationFailed(mc_util_serial::encode::Error),
 
     #[fail(display = "Serialization failed: {}", _0)]
     EncodingFailed(prost::EncodeError),
@@ -40,11 +40,11 @@ pub enum TxBuilderError {
     IngestPubkeyNotProvided,
 
     #[fail(display = "Key error: {}", _0)]
-    KeyError(keys::KeyError),
+    KeyError(mc_crypto_keys::KeyError),
 }
 
-impl From<mcserial::encode::Error> for TxBuilderError {
-    fn from(x: mcserial::encode::Error) -> Self {
+impl From<mc_util_serial::encode::Error> for TxBuilderError {
+    fn from(x: mc_util_serial::encode::Error) -> Self {
         TxBuilderError::SerializationFailed(x)
     }
 }
@@ -55,14 +55,14 @@ impl From<prost::EncodeError> for TxBuilderError {
     }
 }
 
-impl From<transaction::amount::AmountError> for TxBuilderError {
-    fn from(x: transaction::amount::AmountError) -> Self {
+impl From<mc_transaction_core::amount::AmountError> for TxBuilderError {
+    fn from(x: mc_transaction_core::amount::AmountError) -> Self {
         TxBuilderError::BadAmount(x)
     }
 }
 
-impl From<keys::KeyError> for TxBuilderError {
-    fn from(e: keys::KeyError) -> Self {
+impl From<mc_crypto_keys::KeyError> for TxBuilderError {
+    fn from(e: mc_crypto_keys::KeyError) -> Self {
         TxBuilderError::KeyError(e)
     }
 }

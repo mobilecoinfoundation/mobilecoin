@@ -4,9 +4,9 @@
 //! a background thread.
 
 use crate::{LedgerSyncService, PollingNetworkState, TransactionsFetcher};
-use common::logger::{log, Logger};
-use ledger_db::Ledger;
-use mcconnection::{BlockchainConnection, ConnectionManager};
+use mc_common::logger::{log, Logger};
+use mc_connection::{BlockchainConnection, ConnectionManager};
+use mc_ledger_db::Ledger;
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},

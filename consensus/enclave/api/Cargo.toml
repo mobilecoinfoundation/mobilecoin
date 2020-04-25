@@ -1,6 +1,6 @@
 [package]
-name = "consensus-enclave-api"
-version = "0.1.0"
+name = "mc-consensus-enclave-api"
+version = "0.1.5-alpha-1"
 authors = ["MobileCoin"]
 edition = "2018"
 description = """
@@ -10,23 +10,23 @@ The ECALL API declarations and API for operating an enclave.
 [features]
 default = ["std"]
 std = [
-    "attest/std",
-    "attest-ake/std",
-    "mcserial/std",
+    "mc-attest-core/std",
+    "mc-attest-ake/std",
+    "mc-util-serial/std",
     "serde/std"
 ]
 
 [dependencies]
-attest = { path = "../../../attest/core", default-features = false }
-attest-ake = { path = "../../../attest/ake", default-features = false }
-attest-enclave-api = { path = "../../../attest/enclave_api", default-features = false }
-common = { path = "../../../common", default-features = false }
-keys = { path = "../../../crypto/keys", default-features = false }
-mcnoise = { path = "../../../crypto/ake/mcnoise", default-features = false }
-mcserial = { path = "../../../util/mcserial", default-features = false }
-message-cipher = { path = "../../..//crypto/message-cipher" }
-sgx_compat = { path = "../../../sgx/sgx_compat" }
-transaction = { path = "../../../transaction/core" }
+mc-attest-core = { path = "../../../attest/core", default-features = false }
+mc-attest-ake = { path = "../../../attest/ake", default-features = false }
+mc-attest-enclave-api = { path = "../../../attest/enclave-api", default-features = false }
+mc-common = { path = "../../../common", default-features = false }
+mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
+mc-crypto-noise = { path = "../../../crypto/noise", default-features = false }
+mc-util-serial = { path = "../../../util/serial", default-features = false }
+mc-crypto-message-cipher = { path = "../../../crypto/message-cipher" }
+mc-sgx-compat = { path = "../../../sgx/compat" }
+mc-transaction-core = { path = "../../../transaction/core" }
 
 cfg-if = "0.1"
 failure = { version = "0.1.5", default-features = false, features = ["derive"] }

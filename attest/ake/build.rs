@@ -2,5 +2,5 @@
 
 fn main() {
     // This is needed because there is a unit test that only works in sim mode
-    sgx_build::handle_sgx_sim_feature();
+    mc_sgx_build::handle_sgx_sim_feature();
 }

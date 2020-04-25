@@ -9,12 +9,12 @@
 
 use alloc::{vec, vec::Vec};
 use core::{convert::TryFrom, fmt};
-use digestible::Digestible;
 use generic_array::{
     typenum::{Diff, Unsigned, U128},
     GenericArray,
 };
 use mc_crypto_box::{CryptoBox, VersionedCryptoBox};
+use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;
 use prost::{
     bytes::{Buf, BufMut},
@@ -108,7 +108,7 @@ impl EncryptedFogHint {
             Diff<EncryptedFogHintSize, <VersionedCryptoBox as CryptoBox>::FooterSize>,
         >::default();
         // Make a random key
-        let key = keys::RistrettoPublic::from_random(rng);
+        let key = mc_crypto_keys::RistrettoPublic::from_random(rng);
         // encrypt_in_place into the buffer
         let bytes = VersionedCryptoBox::default()
             .encrypt_fixed_length(rng, &key, &plaintext)
@@ -173,8 +173,8 @@ mod testing {
     #[test]
     fn test_fog_hint_serde() {
         let a = EncryptedFogHint::new(&[17u8; ENCRYPTED_FOG_HINT_LEN]);
-        let a_ser = mcserial::serialize(&a).unwrap();
-        let b: EncryptedFogHint = mcserial::deserialize(&a_ser).unwrap();
+        let a_ser = mc_util_serial::serialize(&a).unwrap();
+        let b: EncryptedFogHint = mc_util_serial::deserialize(&a_ser).unwrap();
         assert_eq!(a.as_ref(), b.as_ref());
     }
 }

@@ -2,24 +2,25 @@
 
 //! Mock Peer test utilities
 
-use common::{NodeID, ResponderId};
-use consensus_enclave_api::{TxContext, WellFormedEncryptedTx};
 use hex;
-use keys::Ed25519Pair;
-use ledger_db::{test_utils::mock_ledger::MockLedger, Ledger};
-use mc_util_from_random::FromRandom;
-use mcconnection::{
+use mc_common::{NodeID, ResponderId};
+use mc_connection::{
     BlockchainConnection, Connection, Error as ConnectionError, Result as ConnectionResult,
 };
-use mcuri::{ConnectionUri, ConsensusPeerUri as PeerUri};
-use peers::{ConsensusConnection, ConsensusMsg, Error as PeerError, Result as PeerResult};
-use rand::SeedableRng;
-use rand_hc::Hc128Rng as FixedRng;
-use scp::{
+use mc_consensus_enclave_api::{TxContext, WellFormedEncryptedTx};
+use mc_consensus_scp::{
     msg::{Msg, NominatePayload},
     quorum_set::QuorumSet,
     SlotIndex, Topic,
 };
+use mc_crypto_keys::Ed25519Pair;
+use mc_ledger_db::{test_utils::mock_ledger::MockLedger, Ledger};
+use mc_peers::{ConsensusConnection, ConsensusMsg, Error as PeerError, Result as PeerResult};
+use mc_transaction_core::{tx::TxHash, Block, BlockID, BlockIndex};
+use mc_util_from_random::FromRandom;
+use mc_util_uri::{ConnectionUri, ConsensusPeerUri as PeerUri};
+use rand::SeedableRng;
+use rand_hc::Hc128Rng as FixedRng;
 use sha2::{digest::Digest, Sha512Trunc256};
 use std::{
     cmp::{min, Ordering},
@@ -34,7 +35,6 @@ use std::{
     thread,
     time::Duration,
 };
-use transaction::{tx::TxHash, Block, BlockID, BlockIndex};
 
 #[derive(Clone, Default)]
 pub struct MockPeerState {
@@ -272,10 +272,10 @@ pub fn test_peer_uri(node_id_int: u32) -> PeerUri {
 #[cfg(test)]
 mod peer_manager_tests {
     use super::*;
-    use common::logger::{test_with_logger, Logger};
-    use ledger_db::test_utils::get_mock_ledger;
-    use mcconnection::ConnectionManager;
-    use peers::RetryableConsensusConnection;
+    use mc_common::logger::{test_with_logger, Logger};
+    use mc_connection::ConnectionManager;
+    use mc_ledger_db::test_utils::get_mock_ledger;
+    use mc_peers::RetryableConsensusConnection;
     use retry::delay::Fibonacci;
 
     #[test]
@@ -390,14 +390,14 @@ mod peer_manager_tests {
 #[cfg(test)]
 mod threaded_broadcaster_tests {
     use super::*;
-    use common::logger::{test_with_logger, Logger};
-    use ledger_db::test_utils::get_mock_ledger;
-    use mcconnection::ConnectionManager;
-    use peers::{
+    use mc_common::logger::{test_with_logger, Logger};
+    use mc_connection::ConnectionManager;
+    use mc_consensus_scp::QuorumSet;
+    use mc_ledger_db::test_utils::get_mock_ledger;
+    use mc_peers::{
         ThreadedBroadcaster, ThreadedBroadcasterFibonacciRetryPolicy as FibonacciRetryPolicy,
         DEFAULT_RETRY_MAX_ATTEMPTS,
     };
-    use scp::QuorumSet;
 
     #[test_with_logger]
     // A message from a local node (who is not in the peers list) should be broadcasted

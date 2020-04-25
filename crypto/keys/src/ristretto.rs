@@ -16,10 +16,10 @@ use curve25519_dalek::{
     ristretto::{CompressedRistretto, RistrettoPoint},
     scalar::Scalar,
 };
-use digestible::Digestible;
 use hex_fmt::HexFmt;
+use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;
-use mcserial::{
+use mc_util_serial::{
     deduce_core_traits_from_public_bytes, prost_message_helper32, serde_helper32,
     try_from_helper32, ReprBytes32,
 };
@@ -377,30 +377,32 @@ impl PublicKey for CompressedRistrettoPublic {
 
 #[cfg(test)]
 mod test {
-    extern crate test_helper;
+    extern crate mc_util_test_helper;
 
     use super::*;
 
-    // Test that mcserial can serialize a pubkey
+    // Test that mc-util-serial can serialize a pubkey
     #[test]
     fn test_pubkey_serialize() {
-        test_helper::run_with_several_seeds(|mut rng| {
+        mc_util_test_helper::run_with_several_seeds(|mut rng| {
             let pubkey = RistrettoPublic::from_random(&mut rng);
-            let serialized = mcserial::serialize(&pubkey).expect("Could not serialize pubkey");
+            let serialized =
+                mc_util_serial::serialize(&pubkey).expect("Could not serialize pubkey");
             let deserialized: RistrettoPublic =
-                mcserial::deserialize(&serialized).expect("Could not deserialize pubkey");
+                mc_util_serial::deserialize(&serialized).expect("Could not deserialize pubkey");
             assert_eq!(deserialized, pubkey);
         });
     }
 
-    // Test that mcserial can serialize a private key
+    // Test that mc-util-serial can serialize a private key
     #[test]
     fn test_privkey_serialize() {
-        test_helper::run_with_several_seeds(|mut rng| {
+        mc_util_test_helper::run_with_several_seeds(|mut rng| {
             let privkey = RistrettoPrivate::from_random(&mut rng);
-            let serialized = mcserial::serialize(&privkey).expect("Could not serialize privkey.");
+            let serialized =
+                mc_util_serial::serialize(&privkey).expect("Could not serialize privkey.");
             let deserialized: RistrettoPrivate =
-                mcserial::deserialize(&serialized).expect("Could not deserialize privkey");
+                mc_util_serial::deserialize(&serialized).expect("Could not deserialize privkey");
             let pubkey = RistrettoPublic::from(&privkey);
             let deserialized_pubkey = RistrettoPublic::from(&deserialized);
             assert_eq!(deserialized_pubkey, pubkey);

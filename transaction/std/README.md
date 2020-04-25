@@ -1,3 +1,3 @@
-# transaction_std
+# mc-transaction-std
 
 Transaction utilities that require `std`.

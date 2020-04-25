@@ -12,7 +12,9 @@ use aes_gcm::Aes128Gcm;
 use blake2::Blake2b;
 use core::convert::TryFrom;
 use hkdf::Hkdf;
-use keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic, RISTRETTO_PUBLIC_LEN};
+use mc_crypto_keys::{
+    CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic, RISTRETTO_PUBLIC_LEN,
+};
 use rand_core::{CryptoRng, RngCore};
 
 type RistrettoLen = U32;
@@ -36,7 +38,7 @@ impl CryptoBox for RistrettoHkdfBlake2bAes128Gcm {
         buffer: &mut [u8],
     ) -> Result<GenericArray<u8, Self::FooterSize>, AeadError> {
         // ECDH
-        use keys::KexPublic;
+        use mc_crypto_keys::KexPublic;
         let (our_public, shared_secret) = key.new_secret(rng);
 
         let compressed_public = CompressedRistrettoPublic::from(our_public);
@@ -61,7 +63,7 @@ impl CryptoBox for RistrettoHkdfBlake2bAes128Gcm {
         buffer: &mut [u8],
     ) -> Result<(), Error> {
         // ECDH
-        use keys::KexReusablePrivate;
+        use mc_crypto_keys::KexReusablePrivate;
         let public_key =
             RistrettoPublic::try_from(&tag[..RISTRETTO_PUBLIC_LEN]).map_err(Error::Key)?;
         let shared_secret = key.key_exchange(&public_key);
@@ -96,7 +98,7 @@ mod test {
     use super::*;
     use mc_util_from_random::FromRandom;
 
-    extern crate test_helper;
+    extern crate mc_util_test_helper;
 
     #[test]
     fn test_round_trip() {
@@ -104,7 +106,7 @@ mod test {
         let plaintext1 = b"01234567".to_vec();
         let plaintext2 = plaintext1.repeat(50);
 
-        test_helper::run_with_several_seeds(|mut rng| {
+        mc_util_test_helper::run_with_several_seeds(|mut rng| {
             let a = RistrettoPrivate::from_random(&mut rng);
             let a_pub = RistrettoPublic::from(&a);
 
@@ -125,7 +127,7 @@ mod test {
         let plaintext1 = b"01234567".to_vec();
         let plaintext2 = plaintext1.repeat(50);
 
-        test_helper::run_with_several_seeds(|mut rng| {
+        mc_util_test_helper::run_with_several_seeds(|mut rng| {
             let a = RistrettoPrivate::from_random(&mut rng);
             let a_pub = RistrettoPublic::from(&a);
 

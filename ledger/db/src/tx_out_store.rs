@@ -24,14 +24,14 @@
 //! * [Attacking Merkle Trees with a Second Preimage Attack](https://flawed.net.nz/2018/02/21/attacking-merkle-trees-with-a-second-preimage-attack/)
 
 use crate::{key_bytes_to_u64, u64_to_key_bytes, Error};
-use common::{Hash, HashMap};
 use lmdb::{Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
-use mcserial::{deserialize, serialize};
-use transaction::{
+use mc_common::{Hash, HashMap};
+use mc_transaction_core::{
     membership_proofs::*,
     range::Range,
     tx::{TxOut, TxOutMembershipProof},
 };
+use mc_util_serial::{deserialize, serialize};
 
 // LMDB Database names.
 const COUNTS_DB_NAME: &str = "tx_out_store:counts";
@@ -154,7 +154,6 @@ impl TxOutStore {
     }
 
     /// Get the root hash of the Merkle Tree
-    #[allow(dead_code)]
     pub fn get_root_merkle_hash<T: Transaction>(
         &self,
         db_transaction: &T,
@@ -162,7 +161,7 @@ impl TxOutStore {
         let num_tx_outs = self.num_tx_outs(db_transaction)?;
 
         if num_tx_outs == 0 {
-            return Ok(nil_hash_fn());
+            return Ok(*NIL_HASH);
         }
 
         if let Some(num_leaves_full_tree) = num_tx_outs.checked_next_power_of_two() {
@@ -231,8 +230,7 @@ impl TxOutStore {
             if low == high {
                 // Leaf.
                 let tx_out = self.get_tx_out_by_index(index, db_transaction)?;
-                let tx_out_bytes: Vec<u8> = serialize(&tx_out)?;
-                let hash = leaf_hash_fn(&tx_out_bytes);
+                let hash = hash_leaf(&tx_out);
                 let range = Range::new(low, low)?;
                 self.write_merkle_hash(&range, &hash, db_transaction)?;
             } else {
@@ -248,7 +246,7 @@ impl TxOutStore {
                 // Right child.
                 let right_child_hash = if mid + 1 >= num_tx_outs {
                     // The right subtree contains no TxOuts, so use the nil hash.
-                    nil_hash_fn()
+                    *NIL_HASH
                 } else {
                     // The right subtree contains some TxOuts, so look up the child's hash.
                     let right_child_range = Range::new(mid + 1, high)?;
@@ -256,11 +254,7 @@ impl TxOutStore {
                 };
 
                 // This node.
-                let left_slice: &[u8] = &left_child_hash;
-                let right_slice: &[u8] = &right_child_hash;
-                let concatenated_slices: &[u8] = &[left_slice, right_slice].concat();
-
-                let hash = internal_hash_fn(&concatenated_slices);
+                let hash = hash_nodes(&left_child_hash, &right_child_hash);
                 let range = Range::new(low, high)?;
                 self.write_merkle_hash(&range, &hash, db_transaction)?;
             }
@@ -270,7 +264,6 @@ impl TxOutStore {
     }
 
     /// Merkle proof-of-membership for TxOut with the given index.
-    #[allow(dead_code)]
     pub fn get_merkle_proof_of_membership<T: Transaction>(
         &self,
         index: u64,
@@ -305,7 +298,7 @@ impl TxOutStore {
                 // Supply the nil hash if the range contains no data.
                 // Note: Nil hashes could probably be omitted as an optimization if validation
                 // knows that it must supply them for any range where `low >= num_tx_outs`.
-                nil_hash_fn()
+                *NIL_HASH
             } else {
                 self.get_merkle_hash(&range, db_transaction)?
             };
@@ -382,17 +375,14 @@ mod membership_proof_tests {
         *,
     };
     use lmdb::Transaction;
-    use transaction::tx::{TxOutMembershipElement, TxOutMembershipHash};
+    use mc_transaction_core::tx::{TxOutMembershipElement, TxOutMembershipHash};
 
     #[test]
     // A valid proof-of-membership for the only TxOut in a set.
     fn test_is_valid_singleton() {
         let tx_outs = get_tx_outs(1);
         let tx_out = tx_outs.get(0).unwrap();
-
-        let tx_out_bytes: Vec<u8> = serialize(&tx_out).unwrap();
-        let hash = leaf_hash_fn(&tx_out_bytes);
-
+        let hash = hash_leaf(&tx_out);
         let mut hashes: HashMap<Range, [u8; 32]> = HashMap::default();
         hashes.insert(Range::new(0, 0).unwrap(), hash.clone());
         let proof = TxOutMembershipProof::new(0, 0, hashes);
@@ -467,7 +457,11 @@ mod membership_proof_tests {
             // Tamper with proof after it is constructed. This bypasses checks in TxOutMembershipProof::new().
             proof.index = 3;
             assert_eq!(
-                Err(transaction::membership_proofs::MembershipProofError::MissingLeafHash(3)),
+                Err(
+                    mc_transaction_core::membership_proofs::MembershipProofError::MissingLeafHash(
+                        3
+                    )
+                ),
                 is_membership_proof_valid(&tx_outs.get(5).unwrap(), &proof, &known_root_hash)
             );
         }
@@ -717,23 +711,24 @@ mod membership_proof_tests {
 
 #[cfg(test)]
 pub mod tx_out_store_tests {
-    use super::{
-        containing_range, containing_ranges, internal_hash_fn, leaf_hash_fn, nil_hash_fn,
-        TxOutStore,
-    };
+    use super::{containing_range, containing_ranges, TxOutStore};
     use crate::Error;
-    use common::Hash;
-    use keys::{RistrettoPrivate, RistrettoPublic};
     use lmdb::{Environment, RoTransaction, RwTransaction, Transaction};
+    use mc_common::Hash;
+    use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
+    use mc_transaction_core::{
+        account_keys::AccountKey,
+        amount::Amount,
+        encrypted_fog_hint::EncryptedFogHint,
+        membership_proofs::{hash_leaf, hash_nodes, NIL_HASH},
+        onetime_keys::*,
+        range::Range,
+        tx::TxOut,
+    };
     use mc_util_from_random::FromRandom;
-    use mcserial::serialize;
     use rand::{rngs::StdRng, SeedableRng};
     use std::path::Path;
     use tempdir::TempDir;
-    use transaction::{
-        account_keys::AccountKey, amount::Amount, encrypted_fog_hint::EncryptedFogHint,
-        onetime_keys::*, range::Range, ring_signature::Scalar, tx::TxOut,
-    };
 
     fn get_env() -> Environment {
         let temp_dir = TempDir::new("test").unwrap();
@@ -758,20 +753,20 @@ pub mod tx_out_store_tests {
     pub fn get_tx_outs(num_tx_outs: u32) -> Vec<TxOut> {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut tx_outs: Vec<TxOut> = Vec::new();
-        let tx_secret_key = RistrettoPrivate::from_random(&mut rng);
         let recipient_account = AccountKey::random(&mut rng);
         let value: u64 = 100;
 
         for _i in 0..num_tx_outs {
+            let tx_private_key = RistrettoPrivate::from_random(&mut rng);
             let target_key =
-                create_onetime_public_key(&recipient_account.default_subaddress(), &tx_secret_key);
+                create_onetime_public_key(&recipient_account.default_subaddress(), &tx_private_key);
             let public_key = compute_tx_pubkey(
-                &tx_secret_key,
+                &tx_private_key,
                 recipient_account.default_subaddress().spend_public_key(),
             );
-            let shared_secret: RistrettoPublic = compute_shared_secret(&target_key, &tx_secret_key);
-            let blinding = Scalar::random(&mut rng);
-            let amount = Amount::new(value, blinding, &shared_secret).unwrap();
+            let shared_secret: RistrettoPublic =
+                compute_shared_secret(&target_key, &tx_private_key);
+            let amount = Amount::new(value, &shared_secret).unwrap();
             let tx_out = TxOut {
                 amount,
                 target_key: target_key.into(),
@@ -977,7 +972,7 @@ pub mod tx_out_store_tests {
 
         // Initially, the root hash should be the nil hash.
         let initial_hash = tx_out_store.get_root_merkle_hash(&rw_transaction).unwrap();
-        assert_eq!(nil_hash_fn(), initial_hash);
+        assert_eq!(*NIL_HASH, initial_hash);
 
         let tx_outs = get_tx_outs(4);
 
@@ -987,7 +982,7 @@ pub mod tx_out_store_tests {
                                        tx_out_0
         */
         let tx_out_zero: &TxOut = tx_outs.get(0).unwrap();
-        let leaf_hash_zero = leaf_hash_fn(&serialize(tx_out_zero).unwrap());
+        let leaf_hash_zero = hash_leaf(&tx_out_zero);
         {
             // The first root hash should be the leaf hash fn applied to the single TxOut.
             let _index = tx_out_store.push(tx_out_zero, &mut rw_transaction).unwrap();
@@ -1005,15 +1000,11 @@ pub mod tx_out_store_tests {
                              tx_out_0                tx_out_1
         */
         let tx_out_one: &TxOut = tx_outs.get(1).unwrap();
-        let leaf_hash_one = leaf_hash_fn(&serialize(tx_out_one).unwrap());
+        let leaf_hash_one = hash_leaf(&tx_out_one);
         let root_hash_one = {
             // The second root hash should be the internal hash fn applied to the leaf hash fn of tx_out_zero and tx_out_one.
             let _index = tx_out_store.push(tx_out_one, &mut rw_transaction).unwrap();
-
-            let concatenated_child_bytes =
-                &[&leaf_hash_zero as &[u8], &leaf_hash_one as &[u8]].concat();
-            let expected_root_hash = internal_hash_fn(&concatenated_child_bytes);
-
+            let expected_root_hash = hash_nodes(&leaf_hash_zero, &leaf_hash_one);
             let root_hash = tx_out_store.get_root_merkle_hash(&rw_transaction).unwrap();
             assert_eq!(expected_root_hash, root_hash);
             root_hash
@@ -1031,16 +1022,11 @@ pub mod tx_out_store_tests {
                  tx_out_0                tx_out_1              tx_out_2
         */
         let tx_out_two: &TxOut = tx_outs.get(2).unwrap();
-        let leaf_hash_two = leaf_hash_fn(&serialize(tx_out_two).unwrap());
+        let leaf_hash_two = hash_leaf(&tx_out_two);
         {
             let _index = tx_out_store.push(tx_out_two, &mut rw_transaction).unwrap();
-
-            let right_child_bytes = &[&leaf_hash_two as &[u8], &nil_hash_fn() as &[u8]].concat();
-            let right_child_hash = internal_hash_fn(&right_child_bytes);
-            let concatenated_child_bytes: &[u8] =
-                &[&root_hash_one as &[u8], &right_child_hash as &[u8]].concat();
-            let expected_root_hash = internal_hash_fn(&concatenated_child_bytes);
-
+            let right = hash_nodes(&hash_leaf(&tx_out_two), &NIL_HASH);
+            let expected_root_hash = hash_nodes(&root_hash_one, &right);
             let root_hash = tx_out_store.get_root_merkle_hash(&rw_transaction).unwrap();
             assert_eq!(expected_root_hash, root_hash);
         }
@@ -1057,18 +1043,14 @@ pub mod tx_out_store_tests {
              tx_out_0                tx_out_1              tx_out_2               tx_out_3
         */
         let tx_out_three: &TxOut = tx_outs.get(3).unwrap();
-        let leaf_hash_three = leaf_hash_fn(&serialize(tx_out_three).unwrap());
+        let leaf_hash_three = hash_leaf(&tx_out_three);
         {
             let _index = tx_out_store
                 .push(tx_out_three, &mut rw_transaction)
                 .unwrap();
 
-            let right_child_bytes = &[&leaf_hash_two as &[u8], &leaf_hash_three as &[u8]].concat();
-            let right_child_hash = internal_hash_fn(&right_child_bytes);
-            let concatenated_child_bytes: &[u8] =
-                &[&root_hash_one as &[u8], &right_child_hash as &[u8]].concat();
-            let expected_root_hash = internal_hash_fn(&concatenated_child_bytes);
-
+            let right = hash_nodes(&leaf_hash_two, &leaf_hash_three);
+            let expected_root_hash = hash_nodes(&root_hash_one, &right);
             let root_hash = tx_out_store.get_root_merkle_hash(&rw_transaction).unwrap();
             assert_eq!(expected_root_hash, root_hash);
         }
@@ -1172,7 +1154,7 @@ pub mod tx_out_store_tests {
 
             for element in proof.elements {
                 let expected_hash = if element.range.from >= num_tx_outs as u64 {
-                    nil_hash_fn()
+                    *NIL_HASH
                 } else {
                     tx_out_store
                         .get_merkle_hash(&element.range, &db_transaction)

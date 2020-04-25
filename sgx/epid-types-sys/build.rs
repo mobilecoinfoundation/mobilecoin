@@ -6,7 +6,7 @@ use bindgen::{
     callbacks::{IntKind, ParseCallbacks},
     Builder,
 };
-use mcbuild_utils::Environment;
+use mc_util_build_script::Environment;
 
 #[derive(Debug)]
 struct Callbacks;

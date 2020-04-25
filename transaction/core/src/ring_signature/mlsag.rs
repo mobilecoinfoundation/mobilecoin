@@ -3,32 +3,28 @@
 extern crate alloc;
 
 use alloc::{vec, vec::Vec};
-use core::convert::{TryFrom, TryInto};
+use core::convert::TryFrom;
 
 use blake2::{Blake2b, Digest};
-use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
-use digestible::Digestible;
-use keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
-use mcserial::{
-    prost::{
-        bytes::{Buf, BufMut},
-        encoding::{encoded_len_varint, key_len, skip_field, DecodeContext, WireType},
-        Message,
-    },
-    DecodeError, ReprBytes32,
-};
+use curve25519_dalek::ristretto::RistrettoPoint;
+use mc_crypto_digestible::Digestible;
+use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
+use mc_util_serial::{prost::Message, ReprBytes32};
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     commitment::Commitment,
     compressed_commitment::CompressedCommitment,
-    onetime_keys::compute_key_image,
+    domain_separators::RING_MLSAG_CHALLENGE_DOMAIN_TAG,
     ring_signature::{CurveScalar, Error, KeyImage, Scalar, GENERATORS},
 };
 
+// This needs to be the same "Hp" function used by the onetime keys.
 fn hash_to_point(ristretto_public: &RistrettoPublic) -> RistrettoPoint {
-    RistrettoPoint::hash_from_bytes::<Blake2b>(&ristretto_public.to_bytes())
+    let mut hasher = Blake2b::new();
+    hasher.input(&ristretto_public.to_bytes());
+    RistrettoPoint::from_hash(hasher)
 }
 
 /// MLSAG for a ring of public keys and amount commitments.
@@ -121,10 +117,10 @@ impl RingMLSAG {
         let G = GENERATORS.B;
         let H = GENERATORS.B_blinding;
 
-        let key_image = compute_key_image(onetime_private_key);
+        let key_image = KeyImage::from(onetime_private_key);
 
         // The uncompressed key_image.
-        let I: RistrettoPoint = key_image.try_into().expect("key_image should decompress");
+        let I: RistrettoPoint = key_image.point.decompress().ok_or(Error::InvalidKeyImage)?;
 
         // Uncompressed output commitment.
         // This ensures that each address and commitment encodes a valid Ristretto point.
@@ -155,8 +151,8 @@ impl RingMLSAG {
             let (P_i, input_commitment) = &decompressed_ring[i];
 
             let (L0, R0, L1) = if i == real_index {
-                // c_{i+1} = Hn( m | alpha_0 * G | alpha_0 * Hp(P_i) | alpha_1 * H )
-                //         = Hn( m |      L0     |         R0        |      L1     )
+                // c_{i+1} = Hn( m | key_image | alpha_0 * G | alpha_0 * Hp(P_i) | alpha_1 * H )
+                //         = Hn( m | key_image |      L0     |         R0        |      L1     )
                 //
                 // where P_i is the i^th onetime public key.
                 // There is no R1 term because no key image is needed for the commitment to zero.
@@ -166,8 +162,8 @@ impl RingMLSAG {
                 let L1 = alpha_1 * H;
                 (L0, R0, L1)
             } else {
-                // c_{i+1} = Hn( m | r_{i,0} * G + c_i * P_i | r_{i,0} * Hp(P_i) + c_i * I | r_{i,1} * G + c_i * Z_i )
-                //         = Hn( m |           L0            |               R0            |             L1          )
+                // c_{i+1} = Hn( m | key_image | r_{i,0} * G + c_i * P_i | r_{i,0} * Hp(P_i) + c_i * I | r_{i,1} * G + c_i * Z_i )
+                //         = Hn( m | key_image |           L0            |               R0            |             L1          )
                 //
                 // where:
                 // * P_i is the i^th onetime public key.
@@ -185,7 +181,9 @@ impl RingMLSAG {
 
             c[(i + 1) % ring_size] = {
                 let mut hasher = Blake2b::new();
+                hasher.input(&RING_MLSAG_CHALLENGE_DOMAIN_TAG);
                 hasher.input(message);
+                hasher.input(&key_image);
                 hasher.input(L0.compress().as_bytes());
                 hasher.input(R0.compress().as_bytes());
                 hasher.input(L1.compress().as_bytes());
@@ -243,8 +241,9 @@ impl RingMLSAG {
         // This ensures that the key image encodes a valid Ristretto point.
         let I: RistrettoPoint = self
             .key_image
-            .try_into()
-            .map_err(|_e| Error::InvalidKeyImage)?;
+            .point
+            .decompress()
+            .ok_or(Error::InvalidKeyImage)?;
 
         let r: Vec<Scalar> = self
             .responses
@@ -282,8 +281,8 @@ impl RingMLSAG {
                 recomputed_c[i]
             };
 
-            // c_{i+1} = Hn( m | r_{i,0} * G + c_i * P_i | r_{i,0} * Hp(P_i) + c_i * I | r_{i,1} * H + c_i * Z_i )
-            //         = Hn( m |           L0            |               R0            |           L1            )
+            // c_{i+1} = Hn( m | key_image |  r_{i,0} * G + c_i * P_i | r_{i,0} * Hp(P_i) + c_i * I | r_{i,1} * H + c_i * Z_i )
+            //         = Hn( m | key_image |           L0            |               R0            |           L1            )
             //
             // where:
             // * P_i is the i^th onetime public key.
@@ -296,7 +295,9 @@ impl RingMLSAG {
 
             recomputed_c[(i + 1) % ring_size] = {
                 let mut hasher = Blake2b::new();
+                hasher.input(&RING_MLSAG_CHALLENGE_DOMAIN_TAG);
                 hasher.input(message);
+                hasher.input(&self.key_image);
                 hasher.input(L0.compress().as_bytes());
                 hasher.input(R0.compress().as_bytes());
                 hasher.input(L1.compress().as_bytes());
@@ -328,15 +329,13 @@ fn decompress_ring(
 #[cfg(test)]
 mod mlsag_tests {
     use crate::{
-        onetime_keys::compute_key_image,
-        proptest_fixtures::*,
-        ring_signature::{mlsag::RingMLSAG, CurveScalar, Error, Scalar, GENERATORS},
+        ring_signature::{mlsag::RingMLSAG, CurveScalar, Error, KeyImage, Scalar},
         CompressedCommitment,
     };
     use alloc::vec::Vec;
-    use keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
+    use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
     use mc_util_from_random::FromRandom;
-    use proptest::{array::uniform32, prelude::*};
+    use proptest::prelude::*;
     use rand::{rngs::StdRng, CryptoRng, SeedableRng};
     use rand_core::RngCore;
 
@@ -456,7 +455,7 @@ mod mlsag_tests {
             )
             .unwrap();
 
-            let expected_key_image = compute_key_image(&params.onetime_private_key);
+            let expected_key_image = KeyImage::from(&params.onetime_private_key);
             assert_eq!(signature.key_image, expected_key_image);
         }
 
@@ -668,7 +667,7 @@ mod mlsag_tests {
             .unwrap();
 
             // Modify the key image.
-            let wrong_key_image = compute_key_image(&RistrettoPrivate::from_random(&mut rng));
+            let wrong_key_image = KeyImage::from(rng.next_u64());
             signature.key_image = wrong_key_image;
 
             let output_commitment = CompressedCommitment::new(params.value, params.pseudo_output_blinding);
@@ -877,14 +876,14 @@ mod mlsag_tests {
             )
             .unwrap();
 
-            use mcserial::prost::Message;
+            use mc_util_serial::prost::Message;
 
             // The encoded bytes should have the correct length.
-            let bytes = mcserial::encode(&signature);
+            let bytes = mc_util_serial::encode(&signature);
             assert_eq!(bytes.len(), signature.encoded_len());
 
             // decode(encode(&signature)) should be the identity function.
-            let recovered_signature = mcserial::decode(&bytes).unwrap();
+            let recovered_signature = mc_util_serial::decode(&bytes).unwrap();
             assert_eq!(signature, recovered_signature);
         }
 

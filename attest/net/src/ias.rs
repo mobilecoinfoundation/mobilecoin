@@ -4,10 +4,12 @@
 //! Intel Attestation Service.
 
 use crate::traits::{Error, RaClient, Result};
-use attest::{EpidGroupId, IasNonce, Quote, SigRL, VerificationReport, VerificationSignature};
 use cfg_if::cfg_if;
-use common::logger::global_log;
-use mc_encodings::{FromBase64, FromHex, ToBase64};
+use mc_attest_core::{
+    EpidGroupId, IasNonce, Quote, SigRL, VerificationReport, VerificationSignature,
+};
+use mc_common::logger::global_log;
+use mc_util_encodings::{FromBase64, FromHex, ToBase64};
 use pem::parse_many;
 use percent_encoding::percent_decode;
 use reqwest::{
@@ -135,7 +137,7 @@ impl RaClient for IasClient {
 #[cfg(all(test, feature = "network-tests"))]
 mod test {
     use super::*;
-    use attest::Nonce;
+    use mc_attest_core::Nonce;
     use rand::{prelude::StdRng, SeedableRng};
     use std::ops::Deref;
 
