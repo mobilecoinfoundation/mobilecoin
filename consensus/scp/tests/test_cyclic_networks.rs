@@ -2,13 +2,13 @@
 
 mod mock_network;
 
-use common::{
+use mc_common::{
     logger::{log, test_with_logger, Logger},
     HashSet,
 };
 
+use mc_consensus_scp::test_utils;
 use rand::{rngs::StdRng, Rng, SeedableRng};
-use scp::test_utils;
 use serial_test_derive::serial;
 use std::{
     sync::Arc,

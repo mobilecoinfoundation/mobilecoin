@@ -141,7 +141,7 @@ impl Ledger for LedgerDB {
         let db_transaction = self.env.begin_ro_txn()?;
         let key = u64_to_key_bytes(block_number);
         let block_bytes = db_transaction.get(self.blocks, &key)?;
-        let block = mcserial::decode(&block_bytes)?;
+        let block = mc_util_serial::decode(&block_bytes)?;
         Ok(block)
     }
 
@@ -322,7 +322,7 @@ impl LedgerDB {
         db_transaction.put(
             self.blocks,
             &u64_to_key_bytes(block.index),
-            &mcserial::encode(block),
+            &mc_util_serial::encode(block),
             WriteFlags::empty(),
         )?;
 
