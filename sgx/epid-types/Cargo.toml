@@ -9,10 +9,13 @@ edition = "2018"
 [dependencies]
 mc-encodings = { path = "../../util/encodings" }
 mc-sgx-core-types = { path = "../core-types" }
+mc-sgx-core-types-sys = { path = "../core-types-sys" }
 mc-sgx-epid-types-sys = { path = "../epid-types-sys" }
 mc-util-from-random = { path = "../../util/from-random" }
 
+hex_fmt = "0.3"
 rand_core = "0.5"
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 
 [dev-dependencies]
 bincode = "1.2"

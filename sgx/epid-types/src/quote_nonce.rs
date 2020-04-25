@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
 //! Quote nonce wrapper
 
 use mc_sgx_core_types::impl_ffi_wrapper;

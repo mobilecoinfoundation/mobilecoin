@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
 //! Service Provider ID wrapper
 
 use core::str::FromStr;

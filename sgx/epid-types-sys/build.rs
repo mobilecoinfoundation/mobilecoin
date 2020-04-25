@@ -70,6 +70,7 @@ fn main() {
                 .into_string()
                 .expect("Invalid UTF-8 in path to sgx_quote.h"),
         )
+        .opaque_type("_quote_t")
         .parse_callbacks(Box::new(Callbacks))
         .prepend_enum_name(false)
         .use_core()
