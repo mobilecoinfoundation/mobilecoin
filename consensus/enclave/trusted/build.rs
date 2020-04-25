@@ -3,8 +3,8 @@
 //! Generate the binding code that lives inside the enclave and link it in.
 
 use cargo_emit::rustc_cfg;
-use mcbuild_sgx_utils::{Edger8r, SgxEnvironment, SgxMode};
-use mcbuild_utils::Environment;
+use mc_util_build_script::Environment;
+use mc_util_build_sgx::{Edger8r, SgxEnvironment, SgxMode};
 
 fn main() {
     let env = Environment::default();

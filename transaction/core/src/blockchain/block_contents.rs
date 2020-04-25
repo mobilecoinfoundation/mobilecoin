@@ -3,8 +3,8 @@
 use crate::{blake2b_256::Blake2b256, ring_signature::KeyImage, tx::TxOut, ConvertError};
 use alloc::{vec, vec::Vec};
 use core::{convert::TryFrom, fmt::Debug};
-use digestible::{Digest, Digestible};
 use generic_array::{typenum::Unsigned, GenericArray};
+use mc_crypto_digestible::{Digest, Digestible};
 use prost::{
     bytes::{Buf, BufMut},
     encoding::{bytes, skip_field, DecodeContext, WireType},

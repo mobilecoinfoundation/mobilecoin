@@ -18,7 +18,6 @@ use core::{
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
-use mc_encodings::{Error as EncodingError, FromX64, IntelLayout, ToX64, INTEL_U16_SIZE};
 use mc_sgx_core_types_sys::{
     sgx_key_request_t, SGX_KEYPOLICY_CONFIGID, SGX_KEYPOLICY_ISVEXTPRODID,
     SGX_KEYPOLICY_ISVFAMILYID, SGX_KEYPOLICY_MRENCLAVE, SGX_KEYPOLICY_MRSIGNER,
@@ -26,6 +25,7 @@ use mc_sgx_core_types_sys::{
     SGX_KEYSELECT_PROVISION_SEAL, SGX_KEYSELECT_REPORT, SGX_KEYSELECT_SEAL,
     SGX_KEY_REQUEST_RESERVED2_BYTES,
 };
+use mc_util_encodings::{Error as EncodingError, FromX64, IntelLayout, ToX64, INTEL_U16_SIZE};
 use serde::{Deserialize, Serialize};
 
 const KEY_NAME_START: usize = 0;

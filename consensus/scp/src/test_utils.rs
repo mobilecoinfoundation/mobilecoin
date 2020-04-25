@@ -2,8 +2,8 @@
 
 //! Utilities for Stellar Consensus Protocol tests.
 use crate::{core_types::Value, slot::Slot, QuorumSet, SlotIndex};
-use common::{logger::Logger, NodeID, ResponderId};
-use keys::Ed25519Pair;
+use mc_common::{logger::Logger, NodeID, ResponderId};
+use mc_crypto_keys::Ed25519Pair;
 use mc_util_from_random::FromRandom;
 use rand::SeedableRng;
 use rand_hc::Hc128Rng as FixedRng;

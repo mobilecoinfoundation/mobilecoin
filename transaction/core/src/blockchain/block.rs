@@ -5,7 +5,7 @@ use crate::{
     BlockContents, BlockContentsHash, BlockID,
 };
 use alloc::vec::Vec;
-use digestible::{Digest, Digestible};
+use mc_crypto_digestible::{Digest, Digestible};
 use prost::Message;
 use serde::{Deserialize, Serialize};
 
@@ -147,7 +147,7 @@ mod block_tests {
     use alloc::vec::Vec;
     use core::convert::TryFrom;
     use generic_array::GenericArray;
-    use keys::RistrettoPrivate;
+    use mc_crypto_keys::RistrettoPrivate;
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, CryptoRng, RngCore, SeedableRng};
 

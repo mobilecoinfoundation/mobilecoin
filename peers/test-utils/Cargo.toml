@@ -1,20 +1,20 @@
 [package]
-name = "peers-tests"
-version = "0.1.0"
+name = "mc-peers-test-utils"
+version = "0.1.5-alpha-1"
 authors = ["MobileCoin"]
 edition = "2018"
 
 [dependencies]
-common = { path = "../../common" }
-consensus-enclave-api = { path = "../../consensus/enclave/api" }
-keys = { path = "../../crypto/keys" }
-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
+mc-common = { path = "../../common" }
+mc-connection = { path = "../../connection" }
+mc-consensus-enclave-api = { path = "../../consensus/enclave/api" }
+mc-consensus-scp = { path = "../../consensus/scp" }
+mc-crypto-keys = { path = "../../crypto/keys" }
+mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
+mc-peers = { path = "../../peers" }
+mc-transaction-core = { path = "../../transaction/core" }
 mc-util-from-random = { path = "../../util/from-random" }
-mcconnection = { path = "../../mcconnection" }
-mcuri = { path = "../../util/mcuri" }
-peers = { path = "../../peers" }
-scp = { path = "../../consensus/scp" }
-transaction = { path = "../../transaction/core" }
+mc-util-uri = { path = "../../util/uri" }
 
 grpcio = "0.5.1"
 hex = "0.4"

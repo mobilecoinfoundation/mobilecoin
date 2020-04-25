@@ -10,15 +10,15 @@ extern crate alloc;
 use alloc::vec;
 
 use alloc::vec::Vec;
-use attest::{
-    IntelSealed, ParseSealedError, Report, ReportData, Sealed, SgxError, SgxResult, TargetInfo,
-};
 use core::convert::TryFrom;
 use failure::Fail;
+use mc_attest_core::{
+    IntelSealed, ParseSealedError, Report, ReportData, Sealed, SgxError, SgxResult, TargetInfo,
+};
+use mc_sgx_types::sgx_status_t;
 use prost::Message;
-use sgx_types::sgx_status_t;
 
-/// Methods on the `attest::Report` object which are only usable inside a running SGX enclave.
+/// Methods on the `mc_attest_core::Report` object which are only usable inside a running SGX enclave.
 pub trait EnclaveReport: Sized {
     /// Create a new EREPORT for the specified target enclave, with the given user data.
     fn new(target_info: Option<&TargetInfo>, report_data: Option<&ReportData>) -> SgxResult<Self>;
@@ -30,7 +30,7 @@ pub trait EnclaveReport: Sized {
 /// Implement Reportable interface
 impl EnclaveReport for Report {
     fn new(target_info: Option<&TargetInfo>, report_data: Option<&ReportData>) -> SgxResult<Self> {
-        Ok(sgx_compat::report(
+        Ok(mc_sgx_compat::report(
             target_info.map(|x| x.as_ref()),
             report_data.map(|x| x.as_ref()),
         )
@@ -38,7 +38,7 @@ impl EnclaveReport for Report {
     }
 
     fn verify(&self) -> SgxResult<()> {
-        Ok(sgx_compat::verify_report(self.as_ref())?)
+        Ok(mc_sgx_compat::verify_report(self.as_ref())?)
     }
 }
 
@@ -75,17 +75,17 @@ pub trait SealAlgo: Sized {
 impl SealAlgo for IntelSealed {
     fn seal_raw(plaintext: &[u8], additional_mac_txt: &[u8]) -> Result<Self, IntelSealingError> {
         let result_len =
-            sgx_compat::calc_sealed_data_size(plaintext.len(), additional_mac_txt.len())?;
+            mc_sgx_compat::calc_sealed_data_size(plaintext.len(), additional_mac_txt.len())?;
         let mut result = vec![0u8; result_len as usize];
-        sgx_compat::seal_data(plaintext, additional_mac_txt, &mut result[..])?;
+        mc_sgx_compat::seal_data(plaintext, additional_mac_txt, &mut result[..])?;
 
         Ok(Self::try_from(result)?)
     }
     fn unseal_raw(&self) -> SgxResult<(Vec<u8>, Vec<u8>)> {
-        let (plaintext_len, mac_txt_len) = sgx_compat::get_sealed_payload_sizes(self.as_ref())?;
+        let (plaintext_len, mac_txt_len) = mc_sgx_compat::get_sealed_payload_sizes(self.as_ref())?;
         let mut plaintext = vec![0u8; plaintext_len as usize];
         let mut mac_txt = vec![0u8; mac_txt_len as usize];
-        sgx_compat::unseal_data(self.as_ref(), &mut plaintext[..], &mut mac_txt[..])?;
+        mc_sgx_compat::unseal_data(self.as_ref(), &mut plaintext[..], &mut mac_txt[..])?;
         Ok((plaintext, mac_txt))
     }
 }

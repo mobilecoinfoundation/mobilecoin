@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use failure::Fail;
-use keys::KeyError;
+use mc_crypto_keys::KeyError;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Fail, Ord, PartialEq, PartialOrd)]
 pub enum Error {
@@ -53,20 +53,20 @@ pub enum Error {
     SerializationFailed,
 }
 
-impl From<mcserial::LengthMismatch32> for Error {
-    fn from(src: mcserial::LengthMismatch32) -> Self {
+impl From<mc_util_serial::LengthMismatch32> for Error {
+    fn from(src: mc_util_serial::LengthMismatch32) -> Self {
         Error::LengthMismatch(src.0, 32)
     }
 }
 
-impl From<keys::KeyError> for Error {
+impl From<mc_crypto_keys::KeyError> for Error {
     fn from(_src: KeyError) -> Self {
         Self::KeyError
     }
 }
 
-impl From<mcserial::encode::Error> for Error {
-    fn from(_e: mcserial::encode::Error) -> Self {
+impl From<mc_util_serial::encode::Error> for Error {
+    fn from(_e: mc_util_serial::encode::Error) -> Self {
         Error::SerializationFailed
     }
 }

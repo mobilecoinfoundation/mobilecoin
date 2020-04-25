@@ -1,7 +1,7 @@
 //! Error types
 
 use failure::Fail;
-use keys::KeyError;
+use mc_crypto_keys::KeyError;
 use std::string::FromUtf8Error;
 
 #[derive(Clone, Debug, Eq, PartialEq, Fail)]

@@ -7,8 +7,8 @@ use alloc::vec;
 use crate::impl_sgx_newtype_for_bytestruct;
 use alloc::borrow::ToOwned;
 use binascii::{b64decode, hex2bin};
-use mc_encodings::{Error as EncodingError, FromBase64, FromHex};
-use sgx_types::{sgx_platform_info_t, SGX_PLATFORM_INFO_SIZE};
+use mc_sgx_types::{sgx_platform_info_t, SGX_PLATFORM_INFO_SIZE};
+use mc_util_encodings::{Error as EncodingError, FromBase64, FromHex};
 
 /// An opaque platform info blob structure.
 #[derive(Clone, Copy, Default)]
@@ -79,7 +79,7 @@ impl FromHex for PlatformInfoBlob {
 #[cfg(test)]
 mod test {
     use super::*;
-    use mcserial::{deserialize, serialize};
+    use mc_util_serial::{deserialize, serialize};
 
     #[test]
     fn test_serde() {

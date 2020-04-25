@@ -3,7 +3,7 @@
 //! This module contains the wrapper type for an sgx_config_id_t
 
 use crate::impl_sgx_newtype_for_bytearray;
-use sgx_types::{sgx_config_id_t, SGX_CONFIGID_SIZE};
+use mc_sgx_types::{sgx_config_id_t, SGX_CONFIGID_SIZE};
 
 /// A configuration ID data type
 ///
@@ -20,7 +20,7 @@ impl_sgx_newtype_for_bytearray! {
 #[cfg(test)]
 mod test {
     use super::*;
-    use mcserial::{deserialize, serialize};
+    use mc_util_serial::{deserialize, serialize};
 
     #[test]
     fn test_serde() {

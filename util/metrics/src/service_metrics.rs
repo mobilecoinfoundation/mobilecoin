@@ -26,8 +26,8 @@ fn sample_service_method(ctx: RpcContext, params: Params) {
 }
 */
 
-use common::logger::global_log;
 use grpcio::RpcContext;
+use mc_common::logger::global_log;
 use prometheus::{
     core::{Collector, Desc},
     exponential_buckets,

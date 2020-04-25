@@ -3,9 +3,9 @@
 //! Build script for attest_trusted, optionally links to libsgx_tservice.a when built on Linux,
 //! with the "sgx" feature enabled.
 
-use sgx_build;
+use mc_sgx_build;
 
 fn main() {
-    sgx_build::handle_sgx_sim_feature();
-    sgx_build::link_sgx_uae_service();
+    mc_sgx_build::handle_sgx_sim_feature();
+    mc_sgx_build::link_sgx_uae_service();
 }

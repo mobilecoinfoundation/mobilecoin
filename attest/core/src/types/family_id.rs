@@ -3,7 +3,7 @@
 //! This is the FFI Wrapper type for sgx_isvfamily_id_t
 
 use crate::impl_sgx_newtype_for_bytearray;
-use sgx_types::{sgx_isvfamily_id_t, SGX_ISV_FAMILY_ID_SIZE};
+use mc_sgx_types::{sgx_isvfamily_id_t, SGX_ISV_FAMILY_ID_SIZE};
 
 #[derive(Clone, Copy)]
 pub struct FamilyId(sgx_isvfamily_id_t);
@@ -15,7 +15,7 @@ impl_sgx_newtype_for_bytearray! {
 #[cfg(test)]
 mod test {
     use super::*;
-    use mcserial::*;
+    use mc_util_serial::*;
 
     #[test]
     fn test_serde() {

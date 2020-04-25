@@ -22,12 +22,12 @@ fn main() {
     let config = Config::from_args();
 
     // Read user public keys from disk
-    let pub_addrs = keyfile::keygen::read_default_pubfiles("keys")
+    let pub_addrs = mc_util_keyfile::keygen::read_default_pubfiles("keys")
         .expect("Could not read default pubfiles from ./keys");
     assert_ne!(0, pub_addrs.len());
 
     // Bootstrap the ledger db
-    generate_sample_ledger::bootstrap_ledger(
+    mc_util_generate_sample_ledger::bootstrap_ledger(
         &PathBuf::from("ledger"),
         &pub_addrs,
         config.num_txs,

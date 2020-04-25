@@ -1,11 +1,11 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 /// Implementation of ed25519 signer identity for report
-use ake_enclave::EnclaveIdentity;
-use keys::{Ed25519Pair, Ed25519Public};
+use mc_crypto_ake_enclave::EnclaveIdentity;
+use mc_crypto_keys::{Ed25519Pair, Ed25519Public};
+use mc_crypto_rand::McRng;
+use mc_sgx_compat::sync::Mutex;
 use mc_util_from_random::FromRandom;
-use mcrand::McRng;
-use sgx_compat::sync::Mutex;
 
 pub struct Ed25519Identity {
     pub signing_keypair: Mutex<Ed25519Pair>,

@@ -7,28 +7,29 @@ use crate::{
     error::{PeerAttestationError, Result},
     traits::ConsensusConnection,
 };
-use attest_api::attest_grpc::AttestedApiClient;
-use attest_enclave_api::PeerSession;
-use common::{
+use core::fmt::{Display, Formatter, Result as FmtResult};
+use grpcio::{ChannelBuilder, Environment};
+use mc_attest_api::attest_grpc::AttestedApiClient;
+use mc_attest_enclave_api::PeerSession;
+use mc_common::{
     logger::{log, o, Logger},
     trace_time, NodeID, ResponderId,
 };
-use consensus_enclave_api::{ConsensusEnclaveProxy, TxContext, WellFormedEncryptedTx};
-use core::fmt::{Display, Formatter, Result as FmtResult};
-use grpcio::{ChannelBuilder, Environment};
-use mcconnection::{
+use mc_connection::{
     AttestedConnection, BlockchainConnection, Connection, ConnectionUriGrpcioChannel,
     Error as ConnectionError, Result as ConnectionResult,
 };
-use mcserial::{deserialize, serialize};
-use mcuri::{ConnectionUri, ConsensusPeerUri as PeerUri};
-use mobilecoin_api::{
+use mc_consensus_api::{
     blockchain::BlocksRequest,
     blockchain_grpc::BlockchainApiClient,
     consensus_peer::{ConsensusMsg as GrpcConsensusMsg, FetchTxsRequest as GrpcFetchTxsRequest},
     consensus_peer_grpc::ConsensusPeerApiClient,
     empty::Empty,
 };
+use mc_consensus_enclave_api::{ConsensusEnclaveProxy, TxContext, WellFormedEncryptedTx};
+use mc_transaction_core::{tx::TxHash, Block, BlockID, BlockIndex};
+use mc_util_serial::{deserialize, serialize};
+use mc_util_uri::{ConnectionUri, ConsensusPeerUri as PeerUri};
 use protobuf::RepeatedField;
 use std::{
     cmp::Ordering,
@@ -38,7 +39,6 @@ use std::{
     result::Result as StdResult,
     sync::Arc,
 };
-use transaction::{tx::TxHash, Block, BlockID, BlockIndex};
 
 /// This is a PeerConnection implementation which ensures transparent attestation between the local
 /// and remote enclaves.
@@ -174,7 +174,7 @@ impl<Enclave: ConsensusEnclaveProxy> AttestedConnection for PeerConnection<Encla
     }
 }
 
-// FIXME: refactor into a common impl shared with mcconnection::ThickClient
+// FIXME: refactor into a common impl shared with mc_connection::ThickClient
 impl<Enclave: ConsensusEnclaveProxy> BlockchainConnection for PeerConnection<Enclave> {
     fn fetch_blocks(&mut self, range: Range<BlockIndex>) -> ConnectionResult<Vec<Block>> {
         trace_time!(self.logger, "PeerConnection::get_blocks");
@@ -249,7 +249,7 @@ impl<Enclave: ConsensusEnclaveProxy> ConsensusConnection for PeerConnection<Encl
             self.attest()?;
         }
 
-        let aad = mcserial::serialize(&TxProposeAAD {
+        let aad = mc_util_serial::serialize(&TxProposeAAD {
             origin_node: origin_node.clone(),
             relayed_by: self.local_node_id().responder_id,
         })?;

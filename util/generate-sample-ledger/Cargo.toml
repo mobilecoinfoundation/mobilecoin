@@ -1,17 +1,17 @@
 [package]
-name = "generate-sample-ledger"
-version = "0.1.0"
+name = "mc-util-generate-sample-ledger"
+version = "0.1.5-alpha-1"
 authors = ["MobileCoin"]
 edition = "2018"
 
 [dependencies]
-build-info = { path = "../../build-info" }
-common = { path = "../../common" }
-keyfile = { path = "../../util/keyfile" }
-keys = { path = "../../crypto/keys" }
-ledger-db = { path = "../../ledger/db" }
+mc-common = { path = "../../common" }
+mc-crypto-keys = { path = "../../crypto/keys" }
+mc-ledger-db = { path = "../../ledger/db" }
+mc-transaction-core = { path = "../../transaction/core" }
+mc-util-build-info = { path = "../../util/build/info" }
 mc-util-from-random = { path = "../../util/from-random" }
-transaction = { path = "../../transaction/core" }
+mc-util-keyfile = { path = "../../util/keyfile" }
 
 rand = "0.7"
 rand_hc = "0.2.0"

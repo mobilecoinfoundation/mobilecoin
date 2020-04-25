@@ -2,12 +2,12 @@
 
 //! mobilecoind daemon entry point
 
-use attest::MrSigner;
-use common::logger::{create_app_logger, log, o, Logger};
-use consensus_enclave_measurement::sigstruct;
-use ledger_db::{Ledger, LedgerDB};
-use ledger_sync::{LedgerSyncServiceThread, PollingNetworkState, ReqwestTransactionsFetcher};
-use mobilecoind::{
+use mc_attest_core::MrSigner;
+use mc_common::logger::{create_app_logger, log, o, Logger};
+use mc_consensus_enclave_measurement::sigstruct;
+use mc_ledger_db::{Ledger, LedgerDB};
+use mc_ledger_sync::{LedgerSyncServiceThread, PollingNetworkState, ReqwestTransactionsFetcher};
+use mc_mobilecoind::{
     config::Config, database::Database, payments::TransactionsManager, service::Service,
 };
 use std::{convert::TryFrom, path::Path};
@@ -16,8 +16,8 @@ use structopt::StructOpt;
 fn main() {
     let config = Config::from_args();
 
-    common::setup_panic_handler();
-    let _sentry_guard = common::sentry::init();
+    mc_common::setup_panic_handler();
+    let _sentry_guard = mc_common::sentry::init();
     let (logger, _global_logger_guard) = create_app_logger(o!());
 
     // Create peer manager.

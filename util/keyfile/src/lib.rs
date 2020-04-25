@@ -1,14 +1,14 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-// TODO: Would be nice to use serde_json instead of mcserial but it doesn't
+// TODO: Would be nice to use serde_json instead of mc_util_serial but it doesn't
 // work with Ristretto keys at time of writing
 
 pub mod config;
 pub mod keygen;
 
+use mc_transaction_core::account_keys::PublicAddress;
+use mc_transaction_std::identity::RootIdentity;
 use std::{fs::File, io::prelude::*, path::Path};
-use transaction::account_keys::PublicAddress;
-use transaction_std::identity::RootIdentity;
 
 /// Write user root identity to disk
 pub fn write_keyfile<P: AsRef<Path>>(
@@ -65,7 +65,7 @@ pub fn to_io_error(err: serde_json::error::Error) -> std::io::Error {
     std::io::Error::new(std::io::ErrorKind::Other, Box::new(err))
 }
 
-// Helper boilerplate mapping mcserial error to io::Error
+// Helper boilerplate mapping mc_util_serial error to io::Error
 #[derive(Debug)]
 struct McserialError;
 impl std::fmt::Display for McserialError {
@@ -94,9 +94,9 @@ pub fn mcserial_io_error() -> std::io::Error {
 mod testing {
     use super::*;
 
+    use mc_transaction_core::account_keys::AccountKey;
     use rand::{rngs::StdRng, SeedableRng};
     use tempdir::TempDir;
-    use transaction::account_keys::AccountKey;
 
     #[test]
     fn test_keyfile() {

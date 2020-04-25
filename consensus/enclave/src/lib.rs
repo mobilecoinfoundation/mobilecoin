@@ -2,28 +2,28 @@
 
 //! The Consensus Service SGX Enclave Proxy
 
-pub use consensus_enclave_api::{
+pub use mc_consensus_enclave_api::{
     ConsensusEnclave, ConsensusEnclaveProxy, EnclaveCall, Error, LocallyEncryptedTx, Result,
     TxContext, WellFormedEncryptedTx, WellFormedTxContext,
 };
 
-use attest::{
+use mc_attest_core::{
     IasNonce, Quote, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport, DEBUG_ENCLAVE,
 };
-use attest_enclave_api::{
+use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, PeerAuthRequest,
     PeerAuthResponse, PeerSession,
 };
-use common::ResponderId;
-use enclave_boundary::untrusted::make_variable_length_ecall;
-use keys::{Ed25519Public, X25519Public};
-use sgx_types::{sgx_enclave_id_t, sgx_status_t, *};
-use sgx_urts::SgxEnclave;
+use mc_common::ResponderId;
+use mc_crypto_keys::{Ed25519Public, X25519Public};
+use mc_enclave_boundary::untrusted::make_variable_length_ecall;
+use mc_sgx_types::{sgx_enclave_id_t, sgx_status_t, *};
+use mc_sgx_urts::SgxEnclave;
+use mc_transaction_core::{tx::TxOutMembershipProof, Block, BlockContents, BlockSignature};
 use std::{path, result::Result as StdResult, sync::Arc};
-use transaction::{tx::TxOutMembershipProof, Block, BlockContents, BlockSignature};
 
 #[allow(unused_imports)]
-use sgx_slog;
+use mc_sgx_slog;
 
 /// The default filename of the consensus service's SGX enclave binary.
 pub const ENCLAVE_FILE: &str = "libconsensus-enclave.signed.so";
@@ -94,103 +94,103 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
         self_client_id: &ResponderId,
         sealed_key: &Option<SealedBlockSigningKey>,
     ) -> Result<SealedBlockSigningKey> {
-        let inbuf = mcserial::serialize(&EnclaveCall::EnclaveInit(
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::EnclaveInit(
             self_peer_id.clone(),
             self_client_id.clone(),
             sealed_key.clone(),
         ))?;
         let outbuf = self.enclave_call(&inbuf)?;
-        mcserial::deserialize(&outbuf[..])?
+        mc_util_serial::deserialize(&outbuf[..])?
     }
 
     fn get_identity(&self) -> Result<X25519Public> {
-        let inbuf = mcserial::serialize(&EnclaveCall::GetIdentity)?;
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::GetIdentity)?;
         let outbuf = self.enclave_call(&inbuf)?;
-        mcserial::deserialize(&outbuf[..])?
+        mc_util_serial::deserialize(&outbuf[..])?
     }
 
     fn get_signer(&self) -> Result<Ed25519Public> {
-        let inbuf = mcserial::serialize(&EnclaveCall::GetSigner)?;
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::GetSigner)?;
         let outbuf = self.enclave_call(&inbuf)?;
-        mcserial::deserialize(&outbuf[..])?
+        mc_util_serial::deserialize(&outbuf[..])?
     }
 
     fn new_ereport(&self, qe_info: TargetInfo) -> Result<(Report, QuoteNonce)> {
-        let inbuf = mcserial::serialize(&EnclaveCall::NewEreport(qe_info))?;
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::NewEreport(qe_info))?;
         let outbuf = self.enclave_call(&inbuf)?;
-        mcserial::deserialize(&outbuf[..])?
+        mc_util_serial::deserialize(&outbuf[..])?
     }
 
     fn verify_quote(&self, quote: Quote, qe_report: Report) -> Result<IasNonce> {
-        let inbuf = mcserial::serialize(&EnclaveCall::VerifyQuote(quote, qe_report))?;
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::VerifyQuote(quote, qe_report))?;
         let outbuf = self.enclave_call(&inbuf)?;
-        mcserial::deserialize(&outbuf[..])?
+        mc_util_serial::deserialize(&outbuf[..])?
     }
 
     fn verify_ias_report(&self, ias_report: VerificationReport) -> Result<()> {
-        let inbuf = mcserial::serialize(&EnclaveCall::VerifyReport(ias_report))?;
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::VerifyReport(ias_report))?;
         let outbuf = self.enclave_call(&inbuf)?;
-        mcserial::deserialize(&outbuf[..])?
+        mc_util_serial::deserialize(&outbuf[..])?
     }
 
     fn get_ias_report(&self) -> Result<VerificationReport> {
-        let inbuf = mcserial::serialize(&EnclaveCall::GetReport)?;
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::GetReport)?;
         let outbuf = self.enclave_call(&inbuf)?;
-        mcserial::deserialize(&outbuf[..])?
+        mc_util_serial::deserialize(&outbuf[..])?
     }
 
     fn client_accept(&self, req: ClientAuthRequest) -> Result<(ClientAuthResponse, ClientSession)> {
-        let inbuf = mcserial::serialize(&EnclaveCall::ClientAccept(req))?;
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::ClientAccept(req))?;
         let outbuf = self.enclave_call(&inbuf)?;
-        mcserial::deserialize(&outbuf[..])?
+        mc_util_serial::deserialize(&outbuf[..])?
     }
 
     fn client_close(&self, channel_id: ClientSession) -> Result<()> {
-        let inbuf = mcserial::serialize(&EnclaveCall::ClientClose(channel_id))?;
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::ClientClose(channel_id))?;
         let outbuf = self.enclave_call(&inbuf)?;
-        mcserial::deserialize(&outbuf[..])?
+        mc_util_serial::deserialize(&outbuf[..])?
     }
 
     fn client_discard_message(&self, msg: EnclaveMessage<ClientSession>) -> Result<()> {
-        let inbuf = mcserial::serialize(&EnclaveCall::ClientDiscardMessage(msg))?;
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::ClientDiscardMessage(msg))?;
         let outbuf = self.enclave_call(&inbuf)?;
-        mcserial::deserialize(&outbuf[..])?
+        mc_util_serial::deserialize(&outbuf[..])?
     }
 
     fn peer_init(&self, peer_id: &ResponderId) -> Result<PeerAuthRequest> {
-        let inbuf = mcserial::serialize(&EnclaveCall::PeerInit(peer_id.clone()))?;
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::PeerInit(peer_id.clone()))?;
         let outbuf = self.enclave_call(&inbuf)?;
-        mcserial::deserialize(&outbuf[..])?
+        mc_util_serial::deserialize(&outbuf[..])?
     }
 
     fn peer_accept(&self, req: PeerAuthRequest) -> Result<(PeerAuthResponse, PeerSession)> {
-        let inbuf = mcserial::serialize(&EnclaveCall::PeerAccept(req))?;
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::PeerAccept(req))?;
         let outbuf = self.enclave_call(&inbuf)?;
-        mcserial::deserialize(&outbuf[..])?
+        mc_util_serial::deserialize(&outbuf[..])?
     }
 
     fn peer_connect(&self, peer_id: &ResponderId, msg: PeerAuthResponse) -> Result<PeerSession> {
-        let inbuf = mcserial::serialize(&EnclaveCall::PeerConnect(peer_id.clone(), msg))?;
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::PeerConnect(peer_id.clone(), msg))?;
         let outbuf = self.enclave_call(&inbuf)?;
-        mcserial::deserialize(&outbuf[..])?
+        mc_util_serial::deserialize(&outbuf[..])?
     }
 
     fn peer_close(&self, session_id: &PeerSession) -> Result<()> {
-        let inbuf = mcserial::serialize(&EnclaveCall::PeerClose(session_id.clone()))?;
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::PeerClose(session_id.clone()))?;
         let outbuf = self.enclave_call(&inbuf)?;
-        mcserial::deserialize(&outbuf[..])?
+        mc_util_serial::deserialize(&outbuf[..])?
     }
 
     fn client_tx_propose(&self, msg: EnclaveMessage<ClientSession>) -> Result<TxContext> {
-        let inbuf = mcserial::serialize(&EnclaveCall::ClientTxPropose(msg))?;
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::ClientTxPropose(msg))?;
         let outbuf = self.enclave_call(&inbuf)?;
-        mcserial::deserialize(&outbuf[..])?
+        mc_util_serial::deserialize(&outbuf[..])?
     }
 
     fn peer_tx_propose(&self, msg: EnclaveMessage<PeerSession>) -> Result<Vec<TxContext>> {
-        let inbuf = mcserial::serialize(&EnclaveCall::PeerTxPropose(msg))?;
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::PeerTxPropose(msg))?;
         let outbuf = self.enclave_call(&inbuf)?;
-        mcserial::deserialize(&outbuf[..])?
+        mc_util_serial::deserialize(&outbuf[..])?
     }
 
     fn tx_is_well_formed(
@@ -199,13 +199,13 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
         block_index: u64,
         proofs: Vec<TxOutMembershipProof>,
     ) -> Result<(WellFormedEncryptedTx, WellFormedTxContext)> {
-        let inbuf = mcserial::serialize(&EnclaveCall::TxIsWellFormed(
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::TxIsWellFormed(
             locally_encrypted_tx,
             block_index,
             proofs,
         ))?;
         let outbuf = self.enclave_call(&inbuf)?;
-        mcserial::deserialize(&outbuf[..])?
+        mc_util_serial::deserialize(&outbuf[..])?
     }
 
     fn txs_for_peer(
@@ -214,13 +214,13 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
         aad: &[u8],
         peer: &PeerSession,
     ) -> Result<EnclaveMessage<PeerSession>> {
-        let inbuf = mcserial::serialize(&EnclaveCall::TxsForPeer(
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::TxsForPeer(
             encrypted_txs.to_vec(),
             aad.to_vec(),
             peer.clone(),
         ))?;
         let outbuf = self.enclave_call(&inbuf)?;
-        mcserial::deserialize(&outbuf[..])?
+        mc_util_serial::deserialize(&outbuf[..])?
     }
 
     fn form_block(
@@ -228,12 +228,12 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
         parent_block: &Block,
         txs_with_proofs: &[(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)],
     ) -> Result<(Block, BlockContents, BlockSignature)> {
-        let inbuf = mcserial::serialize(&EnclaveCall::FormBlock(
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::FormBlock(
             parent_block.clone(),
             txs_with_proofs.to_vec(),
         ))?;
         let outbuf = self.enclave_call(&inbuf)?;
-        mcserial::deserialize(&outbuf[..])?
+        mc_util_serial::deserialize(&outbuf[..])?
     }
 }
 

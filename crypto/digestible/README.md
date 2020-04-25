@@ -1,19 +1,19 @@
-digestible
+mc-crypto-digestible
 ==========
 
 NOTE: This crate is WIP, use at your own risk!
 
-`digestible` and its companion crate `digestible-derive`, represent a scheme for
-secure (nonmalleable) hashing of common rust objects using a collision-resistant
-hash function. This represents critical infrastructure for blockchain projects,
-because if e.g. an attacker can find two different blocks with the same hash,
-they can subvert the integrity of the blockchain.
+`mc-crypto-digestible` and its companion crate `mc-crypto-digestible-derive`,
+represent a scheme for secure (nonmalleable) hashing of common rust objects using
+a collision-resistant hash function. This represents critical infrastructure for
+blockchain projects, because if e.g. an attacker can find two different blocks with
+the same hash, they can subvert the integrity of the blockchain.
 
 The `Digestible` trait is provided, which allows that the contents of the entire
 object can be hashed together in a non-malleable way, after an implementation of
 `Digest` trait is provided.
 
-The scheme implicitly defines an "encoding" whereby your object is turned into a 
+The scheme implicitly defines an "encoding" whereby your object is turned into a
 byte sequence which is fed into the hasher.
 
 This has a few benefits:
@@ -35,7 +35,7 @@ representation is not canonical, which makes this a bad way to hash objects.
 Overview
 --------
 
-To achieve its goals, `digestible` must specify an encoding for any type which
+To achieve its goals, `mc-crypto-digestible` must specify an encoding for any type which
 you derive `Digestible` on.
 
 Ultimately, the engineering requirement is to show that the encoding function,
@@ -60,8 +60,8 @@ Our strategy is to work "inductively" over the structure of your types.
     of each compound type as either a "product type" or a "sum type" and apply the corresponding
     rule.
   - This actual mapping is done either by generic implementations of `trait Digestible` e.g.
-    for slices or `Vec<T>`, or it is done in the proc-macro logic in `digestible-derive`, e.g.
-    for `struct` and `enum`.
+    for slices or `Vec<T>`, or it is done in the proc-macro logic in `mc-crypto-digestible-derive`,
+    e.g. for `struct` and `enum`.
 
 Roughly, the five categories that everything gets interpretted as, in this analysis, are:
 - Primitives

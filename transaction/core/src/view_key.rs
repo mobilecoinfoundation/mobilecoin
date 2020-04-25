@@ -6,7 +6,7 @@
 //! transaction outputs sent to the user, and to view the amounts of those outputs.
 
 use core::hash::{Hash, Hasher};
-use keys::{RistrettoPrivate, RistrettoPublic};
+use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use serde::{Deserialize, Serialize};
 
 /// The user's (a,B) keys.

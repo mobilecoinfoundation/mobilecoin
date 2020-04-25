@@ -4,8 +4,8 @@ use crate::{
 };
 use core::{convert::TryFrom, fmt};
 use curve25519_dalek::ristretto::CompressedRistretto;
-use digestible::Digestible;
-use mcserial::{
+use mc_crypto_digestible::Digestible;
+use mc_util_serial::{
     deduce_core_traits_from_public_bytes, prost_message_helper32, try_from_helper32, ReprBytes32,
 };
 use serde::{Deserialize, Serialize};

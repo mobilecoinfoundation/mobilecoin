@@ -8,15 +8,16 @@ use crate::{
     threaded_broadcaster_retry::{FibonacciRetryPolicy, IteratorWithDeadlineExt, RetryPolicy},
     traits::{ConsensusConnection, RetryableConsensusConnection},
 };
-use common::{
+use mc_common::{
     fast_hash,
     logger::{log, o, Logger},
     Hash, LruCache, NodeID, ResponderId,
 };
-use consensus_enclave_api::WellFormedEncryptedTx;
-use mcconnection::{Connection, ConnectionManager, SyncConnection};
-use mcserial;
-use mcuri::ConnectionUri;
+use mc_connection::{Connection, ConnectionManager, SyncConnection};
+use mc_consensus_enclave_api::WellFormedEncryptedTx;
+use mc_transaction_core::tx::TxHash;
+use mc_util_serial;
+use mc_util_uri::ConnectionUri;
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -25,7 +26,6 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
-use transaction::tx::TxHash;
 
 /// Number of messages to keep track of.
 const HISTORY_SIZE: usize = 10000;
@@ -109,7 +109,7 @@ impl<RP: RetryPolicy> ThreadedBroadcaster<RP> {
     /// * `msg` - The message to be broadcasted.
     ///
     pub fn broadcast_consensus_msg(&mut self, from_peer: &ResponderId, msg: &ConsensusMsg) {
-        let serialized_msg = mcserial::serialize(&msg).expect("failed serializing msg");
+        let serialized_msg = mc_util_serial::serialize(&msg).expect("failed serializing msg");
         let msg_hash = fast_hash(&serialized_msg);
 
         // If we've already seen this message, we don't need to do anything.

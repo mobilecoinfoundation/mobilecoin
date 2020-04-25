@@ -3,7 +3,7 @@
 //! This module contains the wrapper type for an sgx_isvext_prod_id_t
 
 use crate::impl_sgx_newtype_for_bytearray;
-use sgx_types::{sgx_isvext_prod_id_t, SGX_ISVEXT_PROD_ID_SIZE};
+use mc_sgx_types::{sgx_isvext_prod_id_t, SGX_ISVEXT_PROD_ID_SIZE};
 
 /// The Extended Product ID data type
 ///
@@ -20,7 +20,7 @@ impl_sgx_newtype_for_bytearray! {
 #[cfg(test)]
 mod test {
     use super::*;
-    use mcserial::*;
+    use mc_util_serial::*;
 
     #[test]
     fn test_serde() {

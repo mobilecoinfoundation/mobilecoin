@@ -11,14 +11,14 @@ use crate::traits::*;
 use alloc::vec::Vec;
 use core::convert::TryFrom;
 use digest::generic_array::typenum::U64;
-use digestible::Digestible;
 use ed25519::signature::{DigestSigner, DigestVerifier, Error as SignatureError, Signer, Verifier};
 use ed25519_dalek::{
     Keypair, PublicKey as DalekPublicKey, SecretKey, Signature as DalekSignature,
     PUBLIC_KEY_LENGTH, SECRET_KEY_LENGTH,
 };
+use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;
-use mcserial::deduce_core_traits_from_public_bytes;
+use mc_util_serial::deduce_core_traits_from_public_bytes;
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
@@ -359,7 +359,7 @@ impl Verifier<Ed25519Signature> for Ed25519Pair {
 #[cfg(test)]
 mod ed25519_tests {
     use super::*;
-    use digestible::Digestible;
+    use mc_crypto_digestible::Digestible;
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
     use sha2::Sha512;

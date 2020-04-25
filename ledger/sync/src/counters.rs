@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use lazy_static;
-use metrics::{Histogram, IntCounter, IntGauge, OpMetrics};
+use mc_util_metrics::{Histogram, IntCounter, IntGauge, OpMetrics};
 
 lazy_static::lazy_static! {
     pub static ref OP_COUNTERS: OpMetrics = OpMetrics::new_and_registered("ledger_sync");

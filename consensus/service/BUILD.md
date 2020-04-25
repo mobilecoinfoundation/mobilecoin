@@ -34,7 +34,7 @@ To ease environment set up, we provide a tool to set up a docker container with 
 
 
 # At the container prompt
-SGX_MODE=HW IAS_MODE=DEV cargo build -p consensus-service
+SGX_MODE=HW IAS_MODE=DEV cargo build -p mc-consensus-service
 ```
 
 >Note: The `--hw` flag loads the SGX device into the container. If you are running in simulation mode, or buliding the binary without running it, you can omit this.
@@ -191,5 +191,5 @@ And then you can build with:
 
 ```
 SGX_MODE=HW IAS_MODE=DEV CONSENSUS_ENCLAVE_SIGNED=$(pwd)/libconsensus-enclave.signed.so CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css \
-    cargo build --release -p consensus-service
+    cargo build --release -p mc-consensus-service
 ```

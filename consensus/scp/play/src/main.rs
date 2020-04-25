@@ -2,12 +2,13 @@
 
 //! A utility to play back SCP messages logged by `LoggingScpNode`.
 
-use common::{logger::log, NodeID};
-use mcuri::ConsensusPeerUri as PeerUri;
-use scp::{
+use mc_common::{logger::log, NodeID};
+use mc_consensus_scp::{
     scp_log::{LoggedMsg, ScpLogReader, StoredMsg},
     Msg, Node, QuorumSet, ScpNode, SlotIndex,
 };
+use mc_transaction_core::{constants::MAX_TRANSACTIONS_PER_BLOCK, tx::TxHash};
+use mc_util_uri::ConsensusPeerUri as PeerUri;
 use std::{
     collections::{BTreeSet, VecDeque},
     fmt,
@@ -19,7 +20,6 @@ use std::{
     time::Duration,
 };
 use structopt::StructOpt;
-use transaction::{constants::MAX_TRANSACTIONS_PER_BLOCK, tx::TxHash};
 
 #[derive(Debug, StructOpt)]
 pub struct Config {
@@ -68,7 +68,8 @@ fn trivial_combine_fn(values: BTreeSet<TxHash>) -> BTreeSet<TxHash> {
 }
 
 fn main() {
-    let (logger, _global_logger_guard) = common::logger::create_app_logger(common::logger::o!());
+    let (logger, _global_logger_guard) =
+        mc_common::logger::create_app_logger(mc_common::logger::o!());
     let config = Config::from_args();
 
     let validity_fn = Arc::new(trivial_validity_fn);

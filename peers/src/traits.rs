@@ -6,11 +6,11 @@ use crate::{
     error::{Result, RetryResult},
     ConsensusMsg,
 };
-use common::{NodeID, ResponderId};
-use consensus_enclave_api::{TxContext, WellFormedEncryptedTx};
-use mcconnection::Connection;
+use mc_common::{NodeID, ResponderId};
+use mc_connection::Connection;
+use mc_consensus_enclave_api::{TxContext, WellFormedEncryptedTx};
+use mc_transaction_core::tx::TxHash;
 use std::time::Duration;
-use transaction::tx::TxHash;
 
 /// A trait which describes a connection from one consensus node to another.
 pub trait ConsensusConnection: Connection {

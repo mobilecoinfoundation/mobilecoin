@@ -1,11 +1,11 @@
 [package]
-name = "consensus-enclave-edl"
-version = "0.1.0"
+name = "mc-consensus-enclave-edl"
+version = "0.1.5-alpha-1"
 authors = ["MobileCoin"]
 edition = "2018"
 links = "consensus_enclave_edl"
 
 [build-dependencies]
-mcbuild-utils = { path = "../../../mcbuild/utils" }
+mc-util-build-script = { path = "../../../util/build/script" }
 
 cargo-emit = "0.1"

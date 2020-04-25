@@ -10,15 +10,15 @@ use crate::{
 };
 use aead::{AeadMut, NewAead};
 use alloc::{string::String, vec::Vec};
-use attest::{Measurement, QuoteSignType, ReportDataMask, VerificationReport};
 use core::convert::TryFrom;
 use digest::{BlockInput, Digest, FixedOutput, Input, Reset};
-use keys::Kex;
-use mcnoise::{
+use mc_attest_core::{Measurement, QuoteSignType, ReportDataMask, VerificationReport};
+use mc_crypto_keys::Kex;
+use mc_crypto_noise::{
     HandshakeIX, HandshakeNX, HandshakeOutput, HandshakePattern, HandshakeState, HandshakeStatus,
     NoiseCipher, ProtocolName,
 };
-use mcserial::{deserialize, serialize};
+use mc_util_serial::{deserialize, serialize};
 use rand_core::{CryptoRng, RngCore};
 
 /// Helper function to create the output for an initiate

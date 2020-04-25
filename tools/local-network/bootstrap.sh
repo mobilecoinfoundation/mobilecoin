@@ -61,11 +61,11 @@ set -x
 if [ -f $PROJECT_ROOT/target/release/sample-keys ]; then
     $PROJECT_ROOT/target/release/sample-keys --num ${SAMPLE_KEYS_NUM} --output-dir keys
 else
-    cargo run -p keyfile --bin sample-keys --release -- --num ${SAMPLE_KEYS_NUM} --output-dir keys
+    cargo run -p mc-util-keyfile --bin sample-keys --release -- --num ${SAMPLE_KEYS_NUM} --output-dir keys
 fi
 
 if [ -f $PROJECT_ROOT/target/release/generate_sample_ledger ]; then
     $PROJECT_ROOT/target/release/generate_sample_ledger --txs ${BOOTSTRAP_NUM}
 else
-    cargo run --bin generate_sample_ledger --release -- --txs ${BOOTSTRAP_NUM}
+    cargo run --bin mc-util-generate_sample_ledger --release -- --txs ${BOOTSTRAP_NUM}
 fi

@@ -4,8 +4,8 @@
 
 use crate::{impl_hexstr_for_bytestruct, impl_sgx_newtype_for_bytestruct};
 use core::str::FromStr;
-use mc_encodings::FromHex;
-use sgx_types::sgx_spid_t;
+use mc_sgx_types::sgx_spid_t;
+use mc_util_encodings::FromHex;
 
 const SIZE: usize = 16;
 
@@ -37,7 +37,7 @@ impl FromStr for ProviderId {
 #[cfg(test)]
 mod test {
     use super::*;
-    use mcserial::{deserialize, serialize};
+    use mc_util_serial::{deserialize, serialize};
 
     #[test]
     fn test_serde() {

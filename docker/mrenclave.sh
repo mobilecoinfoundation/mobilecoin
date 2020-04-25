@@ -13,12 +13,12 @@ cd public
 FILE=target/debug/libconsensus-enclave.mrenclave
 
 cargo clean && (cd enclave && cargo clean)
-cargo build -p consensus-service --locked
+cargo build -p mc-consensus-service --locked
 test -f $FILE
 MRENCLAVE1=$(cat $FILE)
 
 cargo clean && (cd enclave && cargo clean)
-cargo build -p consensus-service --locked
+cargo build -p mc-consensus-service --locked
 test -f $FILE
 MRENCLAVE2=$(cat $FILE)
 

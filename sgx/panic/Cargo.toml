@@ -1,0 +1,16 @@
+[package]
+name = "mc-sgx-panic"
+version = "0.1.5-alpha-1"
+authors = ["MobileCoin"]
+
+[features]
+default = ["alloc"]
+alloc = []
+# Note: One of these two must be selected
+panic_abort = []
+panic_unwind = ["alloc", "mc-sgx-unwind"]
+
+[dependencies]
+mc-sgx-libc-types = { path = "../libc-types" }
+mc-sgx-backtrace = { path = "../backtrace", optional = true }
+mc-sgx-unwind = { path = "../unwind", optional = true }

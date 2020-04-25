@@ -1,13 +1,13 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use crate::tx_manager::UntrustedInterfaces;
-use consensus_enclave::WellFormedTxContext;
-use std::{collections::BTreeSet, iter::FromIterator};
-use transaction::{
+use mc_consensus_enclave::WellFormedTxContext;
+use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{TxHash, TxOutMembershipProof},
     validation::TransactionValidationResult,
 };
+use std::{collections::BTreeSet, iter::FromIterator};
 
 #[derive(Clone)]
 pub struct TrivialTxManagerUntrustedInterfaces;

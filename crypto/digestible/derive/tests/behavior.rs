@@ -1,8 +1,8 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-use digestible::{Digest, Digestible};
 /// Tests against the behavior of the generated Digestible traits
 use generic_array::{typenum, GenericArray};
+use mc_crypto_digestible::{Digest, Digestible};
 
 // A struct implementing Digest that remembers all its historical inputs
 #[derive(Clone, Default)]

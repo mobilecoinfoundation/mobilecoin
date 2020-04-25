@@ -11,7 +11,7 @@ use core::{
     ops::Deref,
 };
 use hex_fmt::HexFmt;
-use mc_encodings::{Error as EncodingError, FromBase64};
+use mc_util_encodings::{Error as EncodingError, FromBase64};
 use serde::{Deserialize, Serialize};
 
 /// A type containing the bytes of a Signature Revocation List

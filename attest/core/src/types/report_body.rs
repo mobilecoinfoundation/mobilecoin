@@ -25,8 +25,8 @@ use core::{
     hash::{Hash, Hasher},
     mem::size_of,
 };
-use mc_encodings::{Error as EncodingError, IntelLayout};
-use sgx_types::{sgx_report_body_t, SGX_FLAGS_DEBUG};
+use mc_sgx_types::{sgx_report_body_t, SGX_FLAGS_DEBUG};
+use mc_util_encodings::{Error as EncodingError, IntelLayout};
 
 // Offsets of various fields in a sgx_report_body_t with x86_64 layout
 const RB_CPUSVN_START: usize = 0;
@@ -387,8 +387,8 @@ impl TryFrom<Vec<u8>> for ReportBody {
 mod test {
     use super::*;
     use core::mem::size_of;
-    use mcserial::*;
-    use sgx_types::{sgx_attributes_t, sgx_cpu_svn_t, sgx_measurement_t, sgx_report_data_t};
+    use mc_sgx_types::{sgx_attributes_t, sgx_cpu_svn_t, sgx_measurement_t, sgx_report_data_t};
+    use mc_util_serial::*;
 
     const REPORT_BODY_SRC: sgx_report_body_t = sgx_report_body_t {
         cpu_svn: sgx_cpu_svn_t {

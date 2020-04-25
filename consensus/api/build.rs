@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-use mcbuild_utils::Environment;
+use mc_util_build_script::Environment;
 
 fn main() {
     let env = Environment::default();
@@ -19,7 +19,7 @@ fn main() {
     let mut all_proto_dirs = attest_proto_path.split(':').collect::<Vec<&str>>();
     all_proto_dirs.push(proto_str);
 
-    mc_build_grpc::compile_protos_and_generate_mod_rs(
+    mc_util_build_grpc::compile_protos_and_generate_mod_rs(
         all_proto_dirs.as_slice(),
         &[
             "blockchain.proto",

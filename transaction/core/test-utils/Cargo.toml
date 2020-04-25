@@ -1,17 +1,17 @@
 [package]
-name = "transaction-test-utils"
-version = "0.1.0"
+name = "mc-transaction-core-test-utils"
+version = "0.1.5-alpha-1"
 authors = ["MobileCoin"]
 edition = "2018"
 
 [dependencies]
+rand = "0.7"
 tempdir = "0.3"
 
 # MobileCoin dependencies
-keys = { path = "../../../crypto/keys", default-features = false }
-ledger-db = { path = "../../../ledger/db" }
+mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
+mc-crypto-rand = { path = "../../../crypto/rand" }
+mc-ledger-db = { path = "../../../ledger/db" }
+mc-transaction-core = { path = "../../../transaction/core" }
+mc-transaction-std = { path = "../../../transaction/std" }
 mc-util-from-random = { path = "../../../util/from-random" }
-mcrand = { path = "../../../crypto/mcrand" }
-rand = "0.7"
-transaction = { path = "../../../transaction/core" }
-transaction-std = { path = "../../../transaction/std" }

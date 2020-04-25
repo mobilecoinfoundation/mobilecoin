@@ -1,8 +1,8 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use criterion::{criterion_group, criterion_main, Criterion};
+use mc_transaction_core::account_keys::AccountKey;
 use rand::{rngs::StdRng, SeedableRng};
-use transaction::account_keys::AccountKey;
 
 fn account_keys_benchmarks(c: &mut Criterion) {
     let mut rng: StdRng = SeedableRng::from_seed([100u8; 32]);

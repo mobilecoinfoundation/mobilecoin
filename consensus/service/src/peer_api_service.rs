@@ -9,34 +9,34 @@ use crate::{
     grpc_error::ConsensusGrpcError,
     tx_manager::{TxManager, TxManagerError},
 };
-use attest_api::attest::Message;
-use attest_enclave_api::{EnclaveMessage, PeerSession};
-use common::{
+use grpcio::{RpcContext, UnarySink};
+use mc_attest_api::attest::Message;
+use mc_attest_enclave_api::{EnclaveMessage, PeerSession};
+use mc_common::{
     logger::{log, Logger},
     ResponderId,
 };
-use consensus_enclave::ConsensusEnclaveProxy;
-use grpc_util::{rpc_invalid_arg_error, rpc_logger, send_result};
-use grpcio::{RpcContext, UnarySink};
-use ledger_db::Ledger;
-use mcserial::deserialize;
-use metrics::SVC_COUNTERS;
-use mobilecoin_api::{
+use mc_consensus_api::{
     consensus_common::ProposeTxResponse,
     consensus_peer::{ConsensusMsg as GrpcConsensusMsg, FetchLatestMsgResponse, FetchTxsRequest},
     consensus_peer_grpc::ConsensusPeerApi,
     empty::Empty,
 };
-use peers::TxProposeAAD;
+use mc_consensus_enclave::ConsensusEnclaveProxy;
+use mc_ledger_db::Ledger;
+use mc_peers::TxProposeAAD;
+use mc_transaction_core::tx::TxHash;
+use mc_util_grpc::{rpc_invalid_arg_error, rpc_logger, send_result};
+use mc_util_metrics::SVC_COUNTERS;
+use mc_util_serial::deserialize;
 use std::{
     convert::{TryFrom, TryInto},
     sync::Arc,
 };
-use transaction::tx::TxHash;
 
 // Callback method for returning the latest SCP message issued by the local node, used to
 // implement the `fetch_latest_msg` RPC call.
-type FetchLatestMsgFn = Arc<dyn Fn() -> Option<peers::ConsensusMsg> + Sync + Send>;
+type FetchLatestMsgFn = Arc<dyn Fn() -> Option<mc_peers::ConsensusMsg> + Sync + Send>;
 
 #[derive(Clone)]
 pub struct PeerApiService<E: ConsensusEnclaveProxy, L: Ledger> {
@@ -103,7 +103,7 @@ impl<E: ConsensusEnclaveProxy, L: Ledger> PeerApiService<E, L> {
 
         // We fail silently here since the only effect of not having
         // origin_node/relayed_by node IDs is less efficient broadcasting.
-        let (origin_node, relayed_by) = mcserial::deserialize::<TxProposeAAD>(&aad)
+        let (origin_node, relayed_by) = mc_util_serial::deserialize::<TxProposeAAD>(&aad)
             .map(|aad| (Some(aad.origin_node), Some(aad.relayed_by)))
             .unwrap_or((None, None));
 
@@ -189,7 +189,7 @@ impl<E: ConsensusEnclaveProxy, L: Ledger> ConsensusPeerApi for PeerApiService<E,
         sink: UnarySink<ProposeTxResponse>,
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
-        common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+        mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             send_result(
                 ctx,
                 sink,
@@ -213,8 +213,8 @@ impl<E: ConsensusEnclaveProxy, L: Ledger> ConsensusPeerApi for PeerApiService<E,
         sink: UnarySink<Empty>,
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
-        common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            let unverified_consensus_msg: peers::ConsensusMsg =
+        mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            let unverified_consensus_msg: mc_peers::ConsensusMsg =
                 match deserialize(request.get_payload()) {
                     Ok(val) => val,
                     Err(err) => {
@@ -273,7 +273,7 @@ impl<E: ConsensusEnclaveProxy, L: Ledger> ConsensusPeerApi for PeerApiService<E,
 
             // Validate message signature
             // FIXME: Additional verification for quorum set members that public key matches expected
-            let consensus_msg: peers::VerifiedConsensusMsg = match unverified_consensus_msg
+            let consensus_msg: mc_peers::VerifiedConsensusMsg = match unverified_consensus_msg
                 .clone()
                 .try_into()
             {
@@ -324,11 +324,11 @@ impl<E: ConsensusEnclaveProxy, L: Ledger> ConsensusPeerApi for PeerApiService<E,
         sink: UnarySink<FetchLatestMsgResponse>,
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
-        common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+        mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             let mut response = FetchLatestMsgResponse::new();
             if let Some(latest_msg) = (self.fetch_latest_msg_fn)() {
-                let serialized_msg =
-                    mcserial::serialize(&latest_msg).expect("failed serializizng consensus msg");
+                let serialized_msg = mc_util_serial::serialize(&latest_msg)
+                    .expect("failed serializizng consensus msg");
                 response.set_payload(serialized_msg);
             }
             send_result(ctx, sink, Ok(response), &logger);
@@ -337,7 +337,7 @@ impl<E: ConsensusEnclaveProxy, L: Ledger> ConsensusPeerApi for PeerApiService<E,
 
     fn fetch_txs(&mut self, ctx: RpcContext, request: FetchTxsRequest, sink: UnarySink<Message>) {
         let _timer = SVC_COUNTERS.req(&ctx);
-        common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+        mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             send_result(
                 ctx,
                 sink,

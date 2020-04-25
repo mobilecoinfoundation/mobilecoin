@@ -4,8 +4,8 @@
 //!
 use crate::impl_sgx_newtype_for_bytestruct;
 use core::convert::TryFrom;
-use mc_encodings::{Error as EncodingError, IntelLayout};
-use sgx_types::{sgx_report_data_t, SGX_REPORT_DATA_SIZE};
+use mc_sgx_types::{sgx_report_data_t, SGX_REPORT_DATA_SIZE};
+use mc_util_encodings::{Error as EncodingError, IntelLayout};
 use subtle::ConstantTimeEq;
 
 /// A data structure used for the user data in a report.
@@ -70,7 +70,7 @@ impl PartialEq<ReportData> for ReportDataMask {
 #[cfg(test)]
 mod test {
     use super::*;
-    use mcserial::{deserialize, serialize};
+    use mc_util_serial::{deserialize, serialize};
 
     const REPORT_DATA_TEST: sgx_report_data_t = sgx_report_data_t {
         d: [

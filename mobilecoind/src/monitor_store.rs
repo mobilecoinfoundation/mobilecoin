@@ -6,16 +6,16 @@
 
 use crate::{database_key::DatabaseByteArrayKey, error::Error};
 
-use common::{
+use lmdb::{Cursor, Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
+use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
-use digestible::Digestible;
-use lmdb::{Cursor, Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
-use mcserial::Message;
+use mc_crypto_digestible::Digestible;
+use mc_transaction_core::account_keys::{AccountKey, PublicAddress};
+use mc_util_serial::Message;
 use sha3::Sha3_256;
 use std::{convert::TryFrom, ops::Range, sync::Arc};
-use transaction::account_keys::{AccountKey, PublicAddress};
 
 // LMDB Database Names
 pub const MONITOR_ID_TO_MONITOR_DATA_DB_NAME: &str =
@@ -137,7 +137,7 @@ impl MonitorStore {
         let monitor_id = MonitorId::from(data);
         let key_bytes = monitor_id.as_bytes();
 
-        let value_bytes = mcserial::encode(data);
+        let value_bytes = mc_util_serial::encode(data);
 
         log::trace!(self.logger, "adding new monitor {}: {:?}", monitor_id, data);
 
@@ -171,7 +171,7 @@ impl MonitorStore {
     ) -> Result<MonitorData, Error> {
         match db_txn.get(self.monitor_id_to_monitor_data, monitor_id) {
             Ok(value_bytes) => {
-                let data: MonitorData = mcserial::decode(value_bytes)?;
+                let data: MonitorData = mc_util_serial::decode(value_bytes)?;
                 Ok(data)
             }
             Err(lmdb::Error::NotFound) => Err(Error::MonitorIdNotFound),
@@ -190,7 +190,7 @@ impl MonitorStore {
         for (key_bytes, value_bytes) in cursor.iter() {
             let monitor_id =
                 MonitorId::try_from(key_bytes).map_err(|_| Error::KeyDeserializationError)?;
-            let data: MonitorData = mcserial::decode(value_bytes)?;
+            let data: MonitorData = mc_util_serial::decode(value_bytes)?;
             results.insert(monitor_id, data);
         }
         Ok(results)
@@ -217,7 +217,7 @@ impl MonitorStore {
         let key_bytes = monitor_id.to_vec();
         match db_txn.get(self.monitor_id_to_monitor_data, &key_bytes) {
             Ok(_value_bytes) => {
-                let new_value_bytes = mcserial::encode(data);
+                let new_value_bytes = mc_util_serial::encode(data);
                 db_txn.put(
                     self.monitor_id_to_monitor_data,
                     &key_bytes,
@@ -238,9 +238,9 @@ impl MonitorStore {
          let key_bytes = monitor_id.to_vec();
          match db_txn.get(self.monitor_id_to_monitor_data, &key_bytes) {
              Ok(value_bytes) => {
-                 let mut data: MonitorData = mcserial::decode(value_bytes)?;
+                 let mut data: MonitorData = mc_util_serial::decode(value_bytes)?;
                  data.active = false;
-                 let new_value_bytes = mcserial::encode(&data);
+                 let new_value_bytes = mc_util_serial::encode(&data);
                  db_txn.put(
                      self.monitor_id_to_monitor_data,
                      &key_bytes,
@@ -259,7 +259,7 @@ impl MonitorStore {
      pub fn set_index_as_active(&self, monitor_id: &MonitorId, index: u64) -> Result<(), Error> {
          let mut db_txn = self.env.begin_rw_txn()?;
          let monitor_id_bytes = monitor_id.to_vec();
-         let index_bytes = mcserial::encode(&index);
+         let index_bytes = mc_util_serial::encode(&index);
          db_txn.put(
              self.monitor_id_to_active_index,
              &monitor_id_bytes,
@@ -287,7 +287,7 @@ impl MonitorStore {
              Err(e) => return Err(Error::LMDB(e)),
              Ok(matching_database_pairs) => {
                  for (_monitor_id_bytes, index_bytes) in matching_database_pairs {
-                     let index: u64 = mcserial::decode(&index_bytes)?;
+                     let index: u64 = mc_util_serial::decode(&index_bytes)?;
                      results.push(index);
                  }
              }
@@ -312,7 +312,7 @@ mod test {
         error::Error,
         test_utils::{get_test_databases, get_test_monitor_data_and_id},
     };
-    use common::logger::{test_with_logger, Logger};
+    use mc_common::logger::{test_with_logger, Logger};
     use rand::{rngs::StdRng, SeedableRng};
 
     // MonitorStore basic functionality tests

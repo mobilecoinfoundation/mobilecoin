@@ -39,9 +39,9 @@ impl Config {
             let mut rng: StdRng = SeedableRng::from_seed([seed; 32]);
             return rng.gen();
         }
-        use mcrand::RngCore;
+        use mc_crypto_rand::RngCore;
         let mut result = [0u8; 32];
-        mcrand::McRng::default().fill_bytes(&mut result);
+        mc_crypto_rand::McRng::default().fill_bytes(&mut result);
         result
     }
 }

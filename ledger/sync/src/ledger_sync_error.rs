@@ -4,8 +4,8 @@
 
 use crate::transactions_fetcher_trait::TransactionFetcherError;
 use failure::Fail;
-use ledger_db::Error as LedgerDbError;
-use mcconnection::Error as ConnectionError;
+use mc_connection::Error as ConnectionError;
+use mc_ledger_db::Error as LedgerDbError;
 use retry::Error as RetryError;
 
 #[derive(Debug, Fail)]
@@ -30,7 +30,7 @@ pub enum LedgerSyncError {
     TransactionFetcher(Box<dyn TransactionFetcherError>),
 
     #[fail(display = "Api conversion error: {:?}", _0)]
-    ApiConversionError(mobilecoin_api::conversions::ConversionError),
+    ApiConversionError(mc_consensus_api::conversions::ConversionError),
 
     #[fail(display = "Invalid block ID.")]
     InvalidBlockId,

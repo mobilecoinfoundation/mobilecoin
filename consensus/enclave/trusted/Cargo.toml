@@ -1,6 +1,6 @@
 [package]
-name = "consensus_enclave_trusted" # Note, this must maintain SnakeCase due to mcbuild/enclave expectations
-version = "1.0.0"
+name = "mc-consensus-enclave-trusted"
+version = "0.1.5-alpha-1"
 authors = ["MobileCoin"]
 edition = "2018"
 description = "The MobileCoin Consensus Service's internal enclave entry point."
@@ -10,38 +10,39 @@ crate-type = ["staticlib"]
 
 [features]
 sgx-sim = [
-    "attest/sgx-sim"
+    "mc-attest-core/sgx-sim"
 ]
 ias-dev = [
-    "attest/ias-dev"
+    "mc-attest-core/ias-dev"
 ]
 
 [dependencies]
-attest = { path = "../../../attest/core", default-features = false }
-attest-trusted = { path = "../../../attest/trusted" }
-common = { path = "../../../common", default-features = false }
-consensus-enclave-api = { path = "../api", default-features = false }
-consensus-enclave-edl = { path = "../edl" }
-consensus-enclave-impl = { path = "../impl", default-features = false }
-enclave-boundary = { path = "../../../enclave-boundary" }
-keys = { path = "../../../crypto/keys", default-features = false }
+mc-attest-core = { path = "../../../attest/core", default-features = false }
+mc-attest-trusted = { path = "../../../attest/trusted" }
+mc-common = { path = "../../../common", default-features = false }
+mc-consensus-enclave-api = { path = "../api", default-features = false }
+mc-consensus-enclave-edl = { path = "../edl" }
+mc-consensus-enclave-impl = { path = "../impl", default-features = false }
+mc-enclave-boundary = { path = "../../../enclave-boundary" }
+mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
+mc-util-serial = { path = "../../../util/serial"}
+mc-sgx-backtrace-edl = { path = "../../../sgx/backtrace-edl" }
+mc-sgx-compat = { path = "../../../sgx/compat", features = ["sgx"] }
+mc-sgx-debug-edl = { path = "../../../sgx/debug-edl" }
+mc-sgx-enclave-id = { path = "../../../sgx/enclave-id" }
+mc-sgx-panic-edl = { path = "../../../sgx/panic-edl" }
+mc-sgx-slog = { path = "../../../sgx/slog" }
+mc-sgx-slog-edl = { path = "../../../sgx/slog-edl" }
+mc-sgx-types = { path = "../../../sgx/types" }
+
 mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.2", default-features = false, features = ["aesni","force_aesni_support","rdrand"] }
-mcserial = { path = "../../../util/mcserial"}
-sgx_backtrace_edl = { path = "../../../sgx/sgx_backtrace_edl" }
-sgx_compat = { path = "../../../sgx/sgx_compat", features = ["sgx"] }
-sgx_debug_edl = { path = "../../../sgx/sgx_debug_edl" }
-sgx_enclave_id = { path = "../../../sgx/sgx_enclave_id" }
-sgx_panic_edl = { path = "../../../sgx/sgx_panic_edl" }
-sgx_slog = { path = "../../../sgx/sgx_slog" }
-sgx_slog_edl = { path = "../../../sgx/sgx_slog_edl" }
-sgx_types = { path = "../../../sgx/sgx_types" }
 
 lazy_static = { version = "1.4", features = ["spin_no_std"] }
 sha2 = { version = "0.8", default-features = false, features = ["asm"] }
 
 [build-dependencies]
-mcbuild-sgx-utils = { path = "../../../mcbuild/sgx-utils" }
-mcbuild-utils = { path = "../../../mcbuild/utils" }
+mc-util-build-sgx = { path = "../../../util/build/sgx" }
+mc-util-build-script = { path = "../../../util/build/script" }
 cargo-emit = "0.1"
 
 [profile.dev]

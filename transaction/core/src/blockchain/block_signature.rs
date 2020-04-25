@@ -2,8 +2,8 @@
 
 use crate::Block;
 use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
-use digestible::Digestible;
-use keys::{
+use mc_crypto_digestible::Digestible;
+use mc_crypto_keys::{
     DigestSigner, DigestVerifier, Ed25519Pair, Ed25519Public, Ed25519Signature,
     Ed25519SignatureError,
 };

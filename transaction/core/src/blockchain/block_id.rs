@@ -7,8 +7,8 @@ use core::{
     fmt::Debug,
     hash::{Hash, Hasher},
 };
-use digestible::{Digest, Digestible};
 use generic_array::{typenum::Unsigned, GenericArray};
+use mc_crypto_digestible::{Digest, Digestible};
 use prost::{
     bytes::{Buf, BufMut},
     encoding::{bytes, skip_field, DecodeContext, WireType},

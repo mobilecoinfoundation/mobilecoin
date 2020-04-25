@@ -1,9 +1,0 @@
-[package]
-name = "sgx_backtrace_edl"
-version = "0.1.0"
-authors = ["MobileCoin"]
-edition = "2018"
-links = "sgx_backtrace_edl"
-
-[build-dependencies]
-cargo-emit = "0.1"

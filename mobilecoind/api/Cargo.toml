@@ -1,18 +1,15 @@
 [package]
-name = "mobilecoind-api"
-version = "0.1.0"
+name = "mc-mobilecoind-api"
+version = "0.1.5-alpha-1"
 authors = ["MobileCoin"]
 build = "build.rs"
 edition = "2018"
 
-[lib]
-name = "mobilecoind_api"
-
 [dependencies]
-keys = { path = "../../crypto/keys" }
-mobilecoin-api = { path = "../../consensus/api" }
-transaction = { path = "../../transaction/core" }
-common = { path = "../../common", features = ["log"] }
+mc-crypto-keys = { path = "../../crypto/keys" }
+mc-consensus-api = { path = "../../consensus/api" }
+mc-transaction-core = { path = "../../transaction/core" }
+mc-common = { path = "../../common", features = ["log"] }
 
 futures = "0.1.16"
 grpcio = "0.5.1"
@@ -23,4 +20,4 @@ rand = "0.7"
 hex_fmt = "0.3"
 
 [build-dependencies]
-mc-build-grpc = { path = "../../util/build-grpc" }
+mc-util-build-grpc = { path = "../../util/build/grpc" }

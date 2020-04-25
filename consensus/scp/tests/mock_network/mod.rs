@@ -4,18 +4,18 @@
 // TODO: consider breaking out new_mesh and new_cyclic into separate integration code source.
 #![allow(dead_code)]
 
-use common::{
+use mc_common::{
     logger::{log, o, Logger},
     HashMap, HashSet, NodeID,
 };
-use rand::{rngs::StdRng, RngCore};
-use scp::{
+use mc_consensus_scp::{
     core_types::{CombineFn, SlotIndex, ValidityFn},
     msg::Msg,
     node::{Node, ScpNode},
     quorum_set::QuorumSet,
     test_utils::{test_node_id, TransactionValidationError},
 };
+use rand::{rngs::StdRng, RngCore};
 use std::{
     collections::BTreeSet,
     iter::FromIterator,

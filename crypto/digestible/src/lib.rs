@@ -261,4 +261,4 @@ cfg_if! {
 // [1]: https://github.com/serde-rs/serde/blob/v1.0.89/serde/src/lib.rs#L245-L256
 #[cfg(feature = "derive")]
 #[doc(hidden)]
-pub use digestible_derive::*;
+pub use mc_crypto_digestible_derive::*;

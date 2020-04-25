@@ -6,11 +6,8 @@
 
 use crate::{InputCredentials, TxBuilderError};
 use curve25519_dalek::scalar::Scalar;
-use keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
-use mc_util_from_random::FromRandom;
-use rand_core::{CryptoRng, RngCore};
-use std::collections::HashSet;
-use transaction::{
+use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
+use mc_transaction_core::{
     account_keys::PublicAddress,
     constants::BASE_FEE,
     encrypted_fog_hint::EncryptedFogHint,
@@ -20,6 +17,9 @@ use transaction::{
     tx::{Tx, TxIn, TxOut, TxPrefix},
     CompressedCommitment,
 };
+use mc_util_from_random::FromRandom;
+use rand_core::{CryptoRng, RngCore};
+use std::collections::HashSet;
 
 /// Helper utility for building and signing a CryptoNote-style transaction.
 #[derive(Debug)]
@@ -234,9 +234,7 @@ fn create_fog_hint<RNG: CryptoRng + RngCore>(
 #[cfg(test)]
 pub mod transaction_builder_tests {
     use super::*;
-    use rand::{rngs::StdRng, SeedableRng};
-    use std::convert::TryFrom;
-    use transaction::{
+    use mc_transaction_core::{
         account_keys::{AccountKey, DEFAULT_SUBADDRESS_INDEX},
         constants::{MAX_INPUTS, MAX_OUTPUTS},
         get_tx_out_shared_secret,
@@ -245,6 +243,8 @@ pub mod transaction_builder_tests {
         tx::TxOutMembershipProof,
         validation::validate_transaction_signature,
     };
+    use rand::{rngs::StdRng, SeedableRng};
+    use std::convert::TryFrom;
 
     /// Creates a ring of of TxOuts.
     ///

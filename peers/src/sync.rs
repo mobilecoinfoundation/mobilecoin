@@ -7,11 +7,11 @@ use crate::{
     error::RetryResult,
     traits::{ConsensusConnection, RetryableConsensusConnection},
 };
-use common::{NodeID, ResponderId};
-use consensus_enclave_api::{TxContext, WellFormedEncryptedTx};
-use mcconnection::{impl_sync_connection_retry, SyncConnection};
+use mc_common::{NodeID, ResponderId};
+use mc_connection::{impl_sync_connection_retry, SyncConnection};
+use mc_consensus_enclave_api::{TxContext, WellFormedEncryptedTx};
+use mc_transaction_core::tx::TxHash;
 use std::time::Duration;
-use transaction::tx::TxHash;
 
 /// Blanket implementation of RetryableConsensusConnection for SyncConnection objects which own a
 /// ConsensusConnection.

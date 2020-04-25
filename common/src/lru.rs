@@ -34,7 +34,7 @@
 //!
 //! ```rust,no_run
 //!
-//! use common::LruCache;
+//! use mc_common::LruCache;
 //!
 //! fn main() {
 //!         let mut cache = LruCache::new(2);
@@ -150,7 +150,7 @@ impl<K: Hash + Eq, V> LruCache<K, V> {
     /// # Example
     ///
     /// ```
-    /// use common::LruCache;
+    /// use mc_common::LruCache;
     /// let mut cache: LruCache<isize, &str> = LruCache::new(10);
     /// ```
     pub fn new(cap: usize) -> LruCache<K, V> {
@@ -165,7 +165,7 @@ impl<K: Hash + Eq, V> LruCache<K, V> {
     /// # Example
     ///
     /// ```
-    /// use common::LruCache;
+    /// use mc_common::LruCache;
     /// let mut cache: LruCache<isize, &str> = LruCache::unbounded();
     /// ```
     pub fn unbounded() -> LruCache<K, V> {
@@ -180,7 +180,7 @@ impl<K: Hash + Eq, V, S: BuildHasher> LruCache<K, V, S> {
     /// # Example
     ///
     /// ```
-    /// use common::lru::{LruCache, DefaultHasher};
+    /// use mc_common::lru::{LruCache, DefaultHasher};
     ///
     /// let s = DefaultHasher::default();
     /// let mut cache: LruCache<isize, &str> = LruCache::with_hasher(10, s);
@@ -214,7 +214,7 @@ impl<K: Hash + Eq, V, S: BuildHasher> LruCache<K, V, S> {
     /// # Example
     ///
     /// ```
-    /// use common::LruCache;
+    /// use mc_common::LruCache;
     /// let mut cache = LruCache::new(2);
     ///
     /// assert_eq!(None, cache.put(1, "a"));
@@ -275,7 +275,7 @@ impl<K: Hash + Eq, V, S: BuildHasher> LruCache<K, V, S> {
     /// # Example
     ///
     /// ```
-    /// use common::LruCache;
+    /// use mc_common::LruCache;
     /// let mut cache = LruCache::new(2);
     ///
     /// cache.put(1, "a");
@@ -310,7 +310,7 @@ impl<K: Hash + Eq, V, S: BuildHasher> LruCache<K, V, S> {
     /// # Example
     ///
     /// ```
-    /// use common::LruCache;
+    /// use mc_common::LruCache;
     /// let mut cache = LruCache::new(2);
     ///
     /// cache.put("apple", 8);
@@ -346,7 +346,7 @@ impl<K: Hash + Eq, V, S: BuildHasher> LruCache<K, V, S> {
     /// # Example
     ///
     /// ```
-    /// use common::LruCache;
+    /// use mc_common::LruCache;
     /// let mut cache = LruCache::new(2);
     ///
     /// cache.put(1, "a");
@@ -373,7 +373,7 @@ impl<K: Hash + Eq, V, S: BuildHasher> LruCache<K, V, S> {
     /// # Example
     ///
     /// ```
-    /// use common::LruCache;
+    /// use mc_common::LruCache;
     /// let mut cache = LruCache::new(2);
     ///
     /// cache.put(1, "a");
@@ -400,7 +400,7 @@ impl<K: Hash + Eq, V, S: BuildHasher> LruCache<K, V, S> {
     /// # Example
     ///
     /// ```
-    /// use common::LruCache;
+    /// use mc_common::LruCache;
     /// let mut cache = LruCache::new(2);
     ///
     /// cache.put(1, "a");
@@ -429,7 +429,7 @@ impl<K: Hash + Eq, V, S: BuildHasher> LruCache<K, V, S> {
     /// # Example
     ///
     /// ```
-    /// use common::LruCache;
+    /// use mc_common::LruCache;
     /// let mut cache = LruCache::new(2);
     ///
     /// cache.put(1, "a");
@@ -454,7 +454,7 @@ impl<K: Hash + Eq, V, S: BuildHasher> LruCache<K, V, S> {
     /// # Example
     ///
     /// ```
-    /// use common::LruCache;
+    /// use mc_common::LruCache;
     /// let mut cache = LruCache::new(2);
     ///
     /// cache.put(2, "a");
@@ -485,7 +485,7 @@ impl<K: Hash + Eq, V, S: BuildHasher> LruCache<K, V, S> {
     /// # Example
     ///
     /// ```
-    /// use common::LruCache;
+    /// use mc_common::LruCache;
     /// let mut cache = LruCache::new(2);
     ///
     /// cache.put(2, "a");
@@ -511,7 +511,7 @@ impl<K: Hash + Eq, V, S: BuildHasher> LruCache<K, V, S> {
     /// # Example
     ///
     /// ```
-    /// use common::LruCache;
+    /// use mc_common::LruCache;
     /// let mut cache = LruCache::new(2);
     /// assert_eq!(cache.len(), 0);
     ///
@@ -533,7 +533,7 @@ impl<K: Hash + Eq, V, S: BuildHasher> LruCache<K, V, S> {
     /// # Example
     ///
     /// ```
-    /// use common::LruCache;
+    /// use mc_common::LruCache;
     /// let mut cache = LruCache::new(2);
     /// assert!(cache.is_empty());
     ///
@@ -549,7 +549,7 @@ impl<K: Hash + Eq, V, S: BuildHasher> LruCache<K, V, S> {
     /// # Example
     ///
     /// ```
-    /// use common::LruCache;
+    /// use mc_common::LruCache;
     /// let mut cache: LruCache<isize, &str> = LruCache::new(2);
     /// assert_eq!(cache.cap(), 2);
     /// ```
@@ -563,7 +563,7 @@ impl<K: Hash + Eq, V, S: BuildHasher> LruCache<K, V, S> {
     /// # Example
     ///
     /// ```
-    /// use common::LruCache;
+    /// use mc_common::LruCache;
     /// let mut cache: LruCache<isize, &str> = LruCache::new(2);
     ///
     /// cache.put(1, "a");
@@ -597,7 +597,7 @@ impl<K: Hash + Eq, V, S: BuildHasher> LruCache<K, V, S> {
     /// # Example
     ///
     /// ```
-    /// use common::LruCache;
+    /// use mc_common::LruCache;
     /// let mut cache: LruCache<isize, &str> = LruCache::new(2);
     /// assert_eq!(cache.len(), 0);
     ///
@@ -624,7 +624,7 @@ impl<K: Hash + Eq, V, S: BuildHasher> LruCache<K, V, S> {
     /// # Examples
     ///
     /// ```
-    /// use common::LruCache;
+    /// use mc_common::LruCache;
     ///
     /// let mut cache = LruCache::new(3);
     /// cache.put("a", 1);
@@ -650,7 +650,7 @@ impl<K: Hash + Eq, V, S: BuildHasher> LruCache<K, V, S> {
     /// # Examples
     ///
     /// ```
-    /// use common::LruCache;
+    /// use mc_common::LruCache;
     ///
     /// struct HddBlock {
     ///     dirty: bool,

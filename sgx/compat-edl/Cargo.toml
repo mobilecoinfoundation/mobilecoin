@@ -1,0 +1,14 @@
+[package]
+name = "mc-sgx-compat-edl"
+version = "0.1.5-alpha-1"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[dependencies]
+mc-sgx-debug-edl = { path = "../debug-edl" }
+mc-sgx-panic-edl = { path = "../panic-edl" }
+
+[build-dependencies]
+cargo-emit = "0.1"
+mc-sgx-debug-edl = { path = "../debug-edl" }
+mc-sgx-panic-edl = { path = "../panic-edl" }

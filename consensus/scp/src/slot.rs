@@ -12,7 +12,7 @@ use crate::{
     quorum_set::QuorumSet,
     utils,
 };
-use common::{
+use mc_common::{
     logger::{log, o, Logger},
     HashMap, HashSet, NodeID,
 };
@@ -1703,7 +1703,7 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
 mod nominate_protocol_tests {
     use super::*;
     use crate::{core_types::*, quorum_set::*, test_utils::*};
-    use common::logger::test_with_logger;
+    use mc_common::logger::test_with_logger;
 
     #[test_with_logger]
     // Should return no values if none can be accepted nominated.
@@ -2280,7 +2280,7 @@ mod nominate_protocol_tests {
 mod ballot_protocol_tests {
     use super::*;
     use crate::{core_types::*, quorum_set::*, test_utils::*};
-    use common::logger::test_with_logger;
+    use mc_common::logger::test_with_logger;
     use pretty_assertions::assert_eq;
 
     // TODO: reject a message if it contains a ballot containing incorrectly ordered values.
@@ -4306,7 +4306,7 @@ mod ballot_protocol_tests {
 mod tests {
     use super::*;
     use crate::{core_types::*, test_utils::*};
-    use common::logger::test_with_logger;
+    use mc_common::logger::test_with_logger;
 
     #[test_with_logger]
     // `ballots_accepted_prepared` should return all ballots accepted prepared by any blocking set.

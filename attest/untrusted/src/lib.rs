@@ -2,11 +2,11 @@
 
 //! Untrusted attestation support
 
-use attest::{
+use mc_attest_core::{
     EpidGroupId, PibError, PlatformInfoBlob, ProviderId, Quote, QuoteError, QuoteNonce,
     QuoteSignType, Report, SgxError, SigRL, TargetInfo, TargetInfoError, UpdateInfo,
 };
-use sgx_types::{
+use mc_sgx_types::{
     sgx_calc_quote_size, sgx_get_extended_epid_group_id, sgx_get_quote, sgx_init_quote,
     sgx_report_attestation_status, sgx_status_t,
 };

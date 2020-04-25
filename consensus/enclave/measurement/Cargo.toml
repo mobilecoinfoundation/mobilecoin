@@ -1,6 +1,6 @@
 [package]
-name = "consensus-enclave-measurement"
-version = "1.0.0"
+name = "mc-consensus-enclave-measurement"
+version = "0.1.5-alpha-1"
 authors = ["MobileCoin"]
 edition = "2018"
 description = "MobileCoin Consensus Enclave - Application Code"
@@ -11,11 +11,11 @@ links = "consensus_enclave_measurement"
 sgx-sim = []
 
 [dependencies]
-sgx_css = { path = "../../../sgx/sgx_css" }
+mc-sgx-css = { path = "../../../sgx/css" }
 
 [build-dependencies]
-mcbuild-enclave = { path = "../../../mcbuild/enclave" }
-mcbuild-sgx-utils = { path = "../../../mcbuild/sgx-utils" }
-mcbuild-utils = { path = "../../../mcbuild/utils" }
+mc-util-build-enclave = { path = "../../../util/build/enclave" }
+mc-util-build-sgx = { path = "../../../util/build/sgx" }
+mc-util-build-script = { path = "../../../util/build/script" }
 
 cargo-emit = "0.1"

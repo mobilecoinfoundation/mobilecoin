@@ -19,11 +19,11 @@ use core::{
     hash::{Hash, Hasher},
     mem::size_of,
 };
-use mc_encodings::{Error as EncodingError, IntelLayout};
-use sgx_types::{
+use mc_sgx_types::{
     sgx_target_info_t, SGX_TARGET_INFO_RESERVED1_BYTES, SGX_TARGET_INFO_RESERVED2_BYTES,
     SGX_TARGET_INFO_RESERVED3_BYTES,
 };
+use mc_util_encodings::{Error as EncodingError, IntelLayout};
 
 // byte positions for each field in an x86_64 representation
 const TI_MRENCLAVE_START: usize = 0;
@@ -209,11 +209,11 @@ mod test {
 
     use super::*;
     use crate::traits::SgxWrapperType;
-    use mcserial::{deserialize, serialize};
-    use sgx_types::{
+    use mc_sgx_types::{
         sgx_attributes_t, sgx_measurement_t, sgx_target_info_t, SGX_TARGET_INFO_RESERVED1_BYTES,
         SGX_TARGET_INFO_RESERVED2_BYTES, SGX_TARGET_INFO_RESERVED3_BYTES,
     };
+    use mc_util_serial::{deserialize, serialize};
 
     const TARGET_INFO_SAMPLE: sgx_target_info_t = sgx_target_info_t {
         mr_enclave: sgx_measurement_t {

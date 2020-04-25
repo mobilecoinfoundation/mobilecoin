@@ -14,10 +14,10 @@ use crate::{
 };
 use blake2::{Blake2b, Digest};
 use curve25519_dalek::scalar::Scalar;
-use digestible::Digestible;
 use failure::Fail;
-use keys::RistrettoPublic;
-use mcserial::ReprBytes32;
+use mc_crypto_digestible::Digestible;
+use mc_crypto_keys::RistrettoPublic;
+use mc_util_serial::ReprBytes32;
 use prost::Message;
 use serde::{Deserialize, Serialize};
 

@@ -4,8 +4,8 @@ use crate::{
 };
 use core::{convert::TryFrom, fmt};
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
-use digestible::Digestible;
-use mcserial::{prost_message_helper32, try_from_helper32, ReprBytes32};
+use mc_crypto_digestible::Digestible;
+use mc_util_serial::{prost_message_helper32, try_from_helper32, ReprBytes32};
 
 /// A Pedersen commitment in uncompressed Ristretto format.
 #[derive(Copy, Clone, Default, Digestible)]

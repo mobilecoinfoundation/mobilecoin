@@ -1,15 +1,15 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 //! A tool for writing .json file and .pub file to disk, corresponding to
-//! `transaction::account_keys::AccountKey` root entropy, and `transaction::account_keys::PublicAddress`
+//! `mc_transaction_core::account_keys::AccountKey` root entropy, and `mc_transaction_core::account_keys::PublicAddress`
 //! respectively.
 
 use crate::{read_keyfile, read_pubfile, write_keyfile, write_pubfile};
+use mc_transaction_core::account_keys::{AccountKey, PublicAddress};
+use mc_transaction_std::identity::RootIdentity;
 use rand::SeedableRng;
 use rand_hc::Hc128Rng as FixedRng;
 use std::{fs, path::Path};
-use transaction::account_keys::{AccountKey, PublicAddress};
-use transaction_std::identity::RootIdentity;
 
 pub const DEFAULT_SEED: [u8; 32] = [1; 32];
 

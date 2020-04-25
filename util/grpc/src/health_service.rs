@@ -12,10 +12,10 @@ use crate::{
     health_api_grpc::{create_health, Health},
     rpc_logger, send_result,
 };
-use common::logger::{log, Logger};
 use futures::Future;
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, ServerStreamingSink, Service, UnarySink};
-use metrics::SVC_COUNTERS;
+use mc_common::logger::{log, Logger};
+use mc_util_metrics::SVC_COUNTERS;
 use std::sync::Arc;
 
 // Re-export the health check status enum for convenience.

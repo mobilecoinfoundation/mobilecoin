@@ -1,6 +1,6 @@
 [package]
-name = "common"
-version = "0.1.0"
+name = "mc-common"
+version = "0.1.5-alpha-1"
 authors = ["MobileCoin"]
 edition = "2018"
 
@@ -8,16 +8,16 @@ edition = "2018"
 default = []
 std = [
     "failure/std",
-    "mcserial/std",
+    "mc-util-serial/std",
     "serde/std",
 ]
 log = [
     "backtrace",
     "chrono",
-    "build-info",
     "hostname",
     "lazy_static",
-    "mclogger-macros",
+    "mc-util-build-info",
+    "mc-util-logger-macros",
     "sentry",
     "slog",
     "slog-async",
@@ -32,14 +32,14 @@ log = [
 
 [dependencies]
 cfg-if = "0.1"
-digestible = { path = "..//crypto/digestible" }
+mc-crypto-digestible = { path = "../crypto/digestible" }
 failure = { version = "0.1.5", default-features = false, features = ["derive"] }
 generic-array = { version = "0.12", features = ["serde"] }
 hashbrown = { version = "0.6", default-features = false, features = ["serde", "nightly"] }
-keys = { path = "../crypto/keys", default-features = false }
-mcrand = { path = "../crypto/mcrand" }
-# Note: mcserial is an unused dependency, but anywhere we forward serde/std, we need to get rmp-serde/std also, or the build breaks.
-mcserial = { path = "../util/mcserial", default-features = false }
+mc-crypto-keys = { path = "../crypto/keys", default-features = false }
+mc-crypto-rand = { path = "../crypto/rand" }
+# Note: mc-util-serial is an unused dependency, but anywhere we forward serde/std, we need to get rmp-serde/std also, or the build breaks.
+mc-util-serial = { path = "../util/serial", default-features = false }
 
 binascii = "0.1.2"
 hex_fmt = "0.3"
@@ -50,11 +50,11 @@ siphasher = "0.3"
 
 # log-only dependencies
 backtrace = { version = "0.3", optional = true }
-build-info = { path = "../build-info", optional = true }
+mc-util-build-info = { path = "../util/build/info", optional = true }
 chrono = { version = "0.4", optional = true }
 hostname = { version = "0.1", optional = true }
 lazy_static = { version = "1.4", optional = true }
-mclogger-macros = { path = "../util/mclogger-macros", optional = true }
+mc-util-logger-macros = { path = "../util/logger-macros", optional = true }
 sentry = { version = "0.18", optional = true, default-features = false, features = ["with_client_implementation", "with_reqwest_transport", "with_panic", "with_failure", "with_device_info", "with_rust_info", "with_rustls"] }
 slog = { version = "2.5", features = ["dynamic-keys", "max_level_trace", "release_max_level_trace"], optional = true }
 slog-async = { version = "2.3", optional = true }
@@ -67,7 +67,7 @@ slog-stdlog = { version = "4.0.0", optional = true }
 slog-term = { version = "2.4", optional = true }
 
 [dev-dependencies]
-mcrand = { path = "../crypto/mcrand" }
+mc-crypto-rand = { path = "../crypto/rand" }
 scoped_threadpool = "0.1.*"
 
 [dev-dependencies.proptest]

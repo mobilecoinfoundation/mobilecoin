@@ -14,7 +14,7 @@ export AWS_SECRET_ACCESS_KEY=...
 ### Usage
 
 ```
-cargo run --release -p ledger-distribution -- \
+cargo run --release -p mc-ledger-distribution -- \
     ---ledger-path /tmp/ledger \
     ---dest "s3://my_bucket/my_node.my_domain.com?region=us-west-1"
 ```

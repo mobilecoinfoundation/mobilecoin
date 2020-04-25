@@ -8,9 +8,9 @@
 use super::Error;
 use core::{convert::TryFrom, fmt};
 use curve25519_dalek::scalar::Scalar;
-use digestible::Digestible;
+use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;
-use mcserial::{
+use mc_util_serial::{
     deduce_core_traits_from_public_bytes, prost_message_helper32, try_from_helper32, ReprBytes32,
 };
 use rand_core::{CryptoRng, RngCore};
@@ -145,8 +145,8 @@ mod tests {
     /// CurveScalar should serialize and deserialize.
     fn test_curve_scalar_roundtrip() {
         let five = CurveScalar::from(5u64);
-        let bytes = mcserial::encode(&five);
-        let result: CurveScalar = mcserial::decode(&bytes).unwrap();
+        let bytes = mc_util_serial::encode(&five);
+        let result: CurveScalar = mc_util_serial::decode(&bytes).unwrap();
         assert_eq!(five, result);
     }
 }

@@ -2,7 +2,7 @@
 
 //! This crate provides a logging framework for recording and replaying SCP messages.
 use crate::{slot::SlotMetrics, Msg, QuorumSet, ScpNode, SlotIndex, Value};
-use common::NodeID;
+use mc_common::NodeID;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeSet, VecDeque},
@@ -118,7 +118,8 @@ impl<V: Value, N: ScpNode<V>> LoggingScpNode<V, N> {
             msec_since_start: (Instant::now() - self.slot_start_time).as_millis() as u64,
             msg,
         };
-        let bytes = mcserial::serialize(&data).map_err(|e| format!("failed serialize: {:?}", e))?;
+        let bytes =
+            mc_util_serial::serialize(&data).map_err(|e| format!("failed serialize: {:?}", e))?;
 
         let mut file_path = self.out_path.clone();
         file_path.push(format!("{:08}", self.msg_count));
@@ -235,7 +236,7 @@ impl<V: serde::de::DeserializeOwned + Value> Iterator for ScpLogReader<V> {
     fn next(&mut self) -> Option<Self::Item> {
         let path = self.files.pop_front()?;
         let bytes = read(&path).unwrap_or_else(|_| panic!("failed reading {:?}", path));
-        let data: Self::Item = mcserial::deserialize(&bytes)
+        let data: Self::Item = mc_util_serial::deserialize(&bytes)
             .unwrap_or_else(|_| panic!("failed deserializing {:?}", path));
         Some(data)
     }

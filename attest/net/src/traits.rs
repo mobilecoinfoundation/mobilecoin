@@ -2,9 +2,9 @@
 
 //! A collection of generic traits for remote attestation providers
 
-use attest::{EpidGroupId, IasNonce, Quote, QuoteError, SigRL, VerificationReport};
 use failure::Fail;
-use mc_encodings::Error as EncodingError;
+use mc_attest_core::{EpidGroupId, IasNonce, Quote, QuoteError, SigRL, VerificationReport};
+use mc_util_encodings::Error as EncodingError;
 use reqwest::{header::ToStrError, Error as ReqwestError};
 use std::result::Result as StdResult;
 
@@ -35,14 +35,14 @@ pub enum Error {
     BadApiKey,
 }
 
-/// Automatically wrap mc_encodings::EncodingError into an RaClientError.
+/// Automatically wrap mc_util_encodings::EncodingError into an RaClientError.
 impl From<EncodingError> for Error {
     fn from(src: EncodingError) -> Error {
         Error::Encoding(src)
     }
 }
 
-/// Automatically wrap an attest::QuoteError into a RA Client error
+/// Automatically wrap an mc_attest_core::QuoteError into a RA Client error
 impl From<QuoteError> for Error {
     fn from(src: QuoteError) -> Error {
         Error::Quote(src)

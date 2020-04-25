@@ -2,7 +2,7 @@
 
 use alloc::string::String;
 use failure::Fail;
-use keys::KeyError;
+use mc_crypto_keys::KeyError;
 use serde::{Deserialize, Serialize};
 
 /// Type alias for transaction validation results.
@@ -120,7 +120,7 @@ pub enum TransactionValidationError {
     KeyError,
 }
 
-impl From<keys::KeyError> for TransactionValidationError {
+impl From<mc_crypto_keys::KeyError> for TransactionValidationError {
     fn from(_src: KeyError) -> Self {
         Self::KeyError
     }

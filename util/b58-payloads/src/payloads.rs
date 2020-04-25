@@ -3,10 +3,10 @@
 use crate::error::Error;
 use core::{convert::TryFrom, fmt};
 use crc::crc32;
-use keys::RistrettoPublic;
-use mcserial::ReprBytes32;
-use transaction::account_keys::{AccountKey, PublicAddress};
-use transaction_std::identity::RootIdentity;
+use mc_crypto_keys::RistrettoPublic;
+use mc_transaction_core::account_keys::{AccountKey, PublicAddress};
+use mc_transaction_std::identity::RootIdentity;
+use mc_util_serial::ReprBytes32;
 
 /// Type of payload standard encoding.
 #[repr(u8)] // we don't expect to ever need more than 255 payload types
@@ -393,15 +393,15 @@ impl From<&TransferPayload> for AccountKey {
 #[cfg(test)]
 mod testing {
     use super::*;
-    use common::logger::{log, test_with_logger, Logger};
-    use test_helper::RngCore;
-    use transaction::account_keys::{AccountKey, PublicAddress};
+    use mc_common::logger::{log, test_with_logger, Logger};
+    use mc_transaction_core::account_keys::{AccountKey, PublicAddress};
+    use mc_util_test_helper::RngCore;
 
     /// Test that random account keys are recovered after encoding into a payload string
     /// and subsequently decoding, with and without fog urls.
     #[test_with_logger]
     fn request_code_roundtrip(logger: Logger) {
-        test_helper::run_with_several_seeds(|mut rng| {
+        mc_util_test_helper::run_with_several_seeds(|mut rng| {
             {
                 let acct = AccountKey::random(&mut rng);
                 let public_address = acct.default_subaddress();
@@ -530,7 +530,7 @@ mod testing {
     /// and subsequently decoding, with and without a memo
     #[test_with_logger]
     fn transfer_code_roundtrip(logger: Logger) {
-        test_helper::run_with_several_seeds(|mut rng| {
+        mc_util_test_helper::run_with_several_seeds(|mut rng| {
             {
                 let mut entropy = [0u8; 32];
                 rng.fill_bytes(&mut entropy);

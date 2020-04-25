@@ -67,27 +67,27 @@ pub trait Sealed: AsRef<IntelSealed> + Into<IntelSealed> {
 macro_rules! impl_sealed_traits {
     ($sealed:ty) => {
         impl ::core::convert::TryFrom<&[u8]> for $sealed {
-            type Error = <Self as ::attest::Sealed>::Error;
+            type Error = <Self as ::mc_attest_core::Sealed>::Error;
             fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
-                <Self as ::attest::Sealed>::try_from_slice(src)
+                <Self as ::mc_attest_core::Sealed>::try_from_slice(src)
             }
         }
 
         impl ::core::convert::TryFrom<alloc::vec::Vec<u8>> for $sealed {
-            type Error = <Self as ::attest::Sealed>::Error;
+            type Error = <Self as ::mc_attest_core::Sealed>::Error;
             fn try_from(src: ::alloc::vec::Vec<u8>) -> Result<Self, Self::Error> {
-                <Self as ::attest::Sealed>::try_from_vec(src)
+                <Self as ::mc_attest_core::Sealed>::try_from_vec(src)
             }
         }
 
         impl AsRef<[u8]> for $sealed {
             fn as_ref(&self) -> &[u8] {
-                <Self as ::attest::Sealed>::as_bytes(self)
+                <Self as ::mc_attest_core::Sealed>::as_bytes(self)
             }
         }
         impl Into<::alloc::vec::Vec<u8>> for $sealed {
             fn into(self) -> ::alloc::vec::Vec<u8> {
-                <Self as ::attest::Sealed>::to_bytes(self)
+                <Self as ::mc_attest_core::Sealed>::to_bytes(self)
             }
         }
     };
@@ -256,7 +256,7 @@ const MAC_TEXT_OFFSET: usize = 512;
 #[cfg(target_arch = "x86_64")]
 mod conformance_tests {
     use super::*;
-    use sgx_types::sgx_sealed_data_t;
+    use mc_sgx_types::sgx_sealed_data_t;
 
     /// Validates SGX_SEALED_DATA_T
     #[test]

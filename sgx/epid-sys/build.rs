@@ -4,8 +4,8 @@
 
 use bindgen::Builder;
 use cargo_emit::{rustc_link_lib, rustc_link_search};
-use mcbuild_sgx_utils::{SgxEnvironment, SgxMode};
-use mcbuild_utils::Environment;
+use mc_util_build_script::Environment;
+use mc_util_build_sgx::{SgxEnvironment, SgxMode};
 
 fn main() {
     let env = Environment::default();

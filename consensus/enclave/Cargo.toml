@@ -1,30 +1,30 @@
 [package]
-name = "consensus-enclave"
-version = "1.0.0"
+name = "mc-consensus-enclave"
+version = "0.1.5-alpha-1"
 authors = ["MobileCoin"]
 edition = "2018"
 description = "MobileCoin Consensus Enclave - Application Code"
 
 [dependencies]
-attest = { path = "../../attest/core" }
-attest-enclave-api = { path = "../../attest/enclave_api" }
-common = { path = "../../common" }
-consensus-enclave-api = { path = "./api" }
-consensus-enclave-edl = { path = "./edl"}
-consensus-enclave-measurement = { path = "./measurement" }
-enclave-boundary = { path = "../../enclave-boundary" }
-keys = { path = "../../crypto/keys" }
-mcserial = { path = "../../util/mcserial" }
-sgx_backtrace_edl = { path = "../../sgx/sgx_backtrace_edl" }
-sgx_debug_edl = { path = "../../sgx/sgx_debug_edl" }
-sgx_panic_edl = { path = "../../sgx/sgx_panic_edl" }
-sgx_slog = { path = "../../sgx/sgx_slog" }
-sgx_slog_edl = { path = "../../sgx/sgx_slog_edl" }
-sgx_types = { path = "../../sgx/sgx_types" }
-sgx_urts = { path = "../../sgx/sgx_urts" }
-transaction = { path = "../../transaction/core" }
+mc-attest-core = { path = "../../attest/core" }
+mc-attest-enclave-api = { path = "../../attest/enclave-api" }
+mc-common = { path = "../../common" }
+mc-consensus-enclave-api = { path = "./api" }
+mc-consensus-enclave-edl = { path = "./edl"}
+mc-consensus-enclave-measurement = { path = "./measurement" }
+mc-enclave-boundary = { path = "../../enclave-boundary" }
+mc-crypto-keys = { path = "../../crypto/keys" }
+mc-util-serial = { path = "../../util/serial" }
+mc-sgx-backtrace-edl = { path = "../../sgx/backtrace-edl" }
+mc-sgx-debug-edl = { path = "../../sgx/debug-edl" }
+mc-sgx-panic-edl = { path = "../../sgx/panic-edl" }
+mc-sgx-slog = { path = "../../sgx/slog" }
+mc-sgx-slog-edl = { path = "../../sgx/slog-edl" }
+mc-sgx-types = { path = "../../sgx/types" }
+mc-sgx-urts = { path = "../../sgx/urts" }
+mc-transaction-core = { path = "../../transaction/core" }
 
 [build-dependencies]
-mcbuild-sgx-utils = { path = "../../mcbuild/sgx-utils" }
-mcbuild-utils = { path = "../../mcbuild/utils" }
+mc-util-build-sgx = { path = "../../util/build/sgx" }
+mc-util-build-script = { path = "../../util/build/script" }
 cargo-emit = "0.1.1"

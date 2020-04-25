@@ -152,7 +152,7 @@ An example run command is the below.
 SGX_MODE=HW IAS_MODE=DEV \
     CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css \
     CONSENSUS_ENCLAVE_SIGNED=$(pwd)/libconsensus-enclave.signed.so \
-    cargo run --release -p consensus-service -- \
+    cargo run --release -p mc-consensus-service -- \
     --client-responder-id my_node.my_domain.com:443 \
     --peer-responder-id node1.my_domain.com:8443 \
     --network /etc/mc-network.toml \

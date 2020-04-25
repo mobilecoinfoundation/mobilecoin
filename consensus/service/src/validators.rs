@@ -11,19 +11,19 @@
 //! 2) "Is valid [to add to the ledger]" - This checks whether a transaction can be safely appended
 //!    to a ledger in it's current state.
 //!
-//! This definition differs from what the `transaction::validation` module - the check provided by
+//! This definition differs from what the `mc_transaction_core::validation` module - the check provided by
 //! it is actually the "Is well formed" check, and might be renamed in the future to match this.
 
 use crate::tx_manager::UntrustedInterfaces as TxManagerUntrustedInterfaces;
-use common::HashSet;
-use consensus_enclave::WellFormedTxContext;
-use ledger_db::Ledger;
-use std::collections::BTreeSet;
-use transaction::{
+use mc_common::HashSet;
+use mc_consensus_enclave::WellFormedTxContext;
+use mc_ledger_db::Ledger;
+use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{TxHash, TxOutMembershipProof},
     validation::{validate_tombstone, TransactionValidationError, TransactionValidationResult},
 };
+use std::collections::BTreeSet;
 
 #[derive(Clone)]
 pub struct DefaultTxManagerUntrustedInterfaces<L: Ledger> {
@@ -148,16 +148,16 @@ impl<L: Ledger> TxManagerUntrustedInterfaces for DefaultTxManagerUntrustedInterf
 #[cfg(test)]
 pub mod well_formed_tests {
     use super::*;
-    use common::logger::{bench_with_logger, test_with_logger, Logger};
-    use ledger_db::LedgerDB;
-    use rand::SeedableRng;
-    use rand_hc::Hc128Rng;
-    use test::Bencher;
-    use transaction::{
+    use mc_common::logger::{bench_with_logger, test_with_logger, Logger};
+    use mc_ledger_db::LedgerDB;
+    use mc_transaction_core::{
         account_keys::AccountKey, constants::MAX_TOMBSTONE_BLOCKS, ring_signature::KeyImage,
         tx::Tx, validation::TransactionValidationError,
     };
-    use transaction_test_utils::{create_ledger, create_transaction, initialize_ledger};
+    use mc_transaction_core_test_utils::{create_ledger, create_transaction, initialize_ledger};
+    use rand::SeedableRng;
+    use rand_hc::Hc128Rng;
+    use test::Bencher;
 
     fn is_well_formed(tx: &Tx, ledger: &LedgerDB) -> TransactionValidationResult<()> {
         let mut rng = Hc128Rng::from_seed([77u8; 32]);
@@ -170,7 +170,12 @@ pub mod well_formed_tests {
         let (cur_block_index, membership_proofs) =
             untrusted.well_formed_check(&membership_proof_highest_indices[..], &key_images[..])?;
 
-        transaction::validation::validate(&tx, cur_block_index, &membership_proofs, &mut rng)
+        mc_transaction_core::validation::validate(
+            &tx,
+            cur_block_index,
+            &membership_proofs,
+            &mut rng,
+        )
     }
 
     #[test_with_logger]
@@ -477,11 +482,13 @@ pub mod well_formed_tests {
 #[cfg(test)]
 mod is_valid_tests {
     use super::*;
-    use ledger_db::LedgerDB;
+    use mc_ledger_db::LedgerDB;
+    use mc_transaction_core::{
+        account_keys::AccountKey, tx::Tx, validation::TransactionValidationError,
+    };
+    use mc_transaction_core_test_utils::{create_ledger, create_transaction, initialize_ledger};
     use rand::SeedableRng;
     use rand_hc::Hc128Rng;
-    use transaction::{account_keys::AccountKey, tx::Tx, validation::TransactionValidationError};
-    use transaction_test_utils::{create_ledger, create_transaction, initialize_ledger};
 
     fn is_valid(tx: &Tx, ledger: &LedgerDB) -> TransactionValidationResult<()> {
         let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger.clone());
@@ -580,19 +587,19 @@ mod is_valid_tests {
 #[cfg(test)]
 mod combine_tests {
     use super::*;
-    use common::HashMap;
-    use keys::{RistrettoPrivate, RistrettoPublic};
-    use ledger_db::test_utils::get_mock_ledger;
-    use mc_util_from_random::FromRandom;
-    use rand::SeedableRng;
-    use rand_hc::Hc128Rng;
-    use std::convert::TryFrom;
-    use transaction::{
+    use mc_common::HashMap;
+    use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
+    use mc_ledger_db::test_utils::get_mock_ledger;
+    use mc_transaction_core::{
         account_keys::AccountKey,
         onetime_keys::recover_onetime_private_key,
         tx::{TxOut, TxOutMembershipProof},
     };
-    use transaction_std::{InputCredentials, TransactionBuilder};
+    use mc_transaction_std::{InputCredentials, TransactionBuilder};
+    use mc_util_from_random::FromRandom;
+    use rand::SeedableRng;
+    use rand_hc::Hc128Rng;
+    use std::convert::TryFrom;
 
     fn combine(tx_contexts: Vec<WellFormedTxContext>, max_elements: usize) -> BTreeSet<TxHash> {
         let ledger = get_mock_ledger(10);

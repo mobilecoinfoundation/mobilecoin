@@ -1,13 +1,10 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use core::convert::TryFrom;
-use keys::{RistrettoPrivate, RistrettoPublic};
-use ledger_db::{Ledger, LedgerDB};
-use mc_util_from_random::FromRandom;
-use mcrand::{CryptoRng, RngCore};
-use rand::{seq::SliceRandom, Rng};
-use tempdir::TempDir;
-pub use transaction::{
+use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
+use mc_crypto_rand::{CryptoRng, RngCore};
+use mc_ledger_db::{Ledger, LedgerDB};
+pub use mc_transaction_core::{
     account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX},
     constants::BASE_FEE,
     get_tx_out_shared_secret,
@@ -16,8 +13,11 @@ pub use transaction::{
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipHash},
     Block, BlockID, BlockIndex, BLOCK_VERSION,
 };
-use transaction::{constants::RING_SIZE, BlockContents};
-use transaction_std::{InputCredentials, TransactionBuilder};
+use mc_transaction_core::{constants::RING_SIZE, BlockContents};
+use mc_transaction_std::{InputCredentials, TransactionBuilder};
+use mc_util_from_random::FromRandom;
+use rand::{seq::SliceRandom, Rng};
+use tempdir::TempDir;
 
 /// The amount minted by `initialize_ledger`.
 pub const INITIALIZE_LEDGER_AMOUNT: u64 = 1_000_000;

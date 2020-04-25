@@ -17,9 +17,9 @@ use core::{
     fmt::{Debug, Error as FmtError, Formatter, Result as FmtResult},
     str::from_utf8,
 };
-use digestible::Digestible;
+use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;
-use mcserial::deduce_core_traits_from_public_bytes;
+use mc_util_serial::deduce_core_traits_from_public_bytes;
 use rand_core::{CryptoRng, RngCore};
 use serde::{
     de::{Deserialize, Deserializer, Error as DeserializeError, Visitor},
@@ -108,7 +108,7 @@ impl DistinguishedEncoding for X25519Public {
     ///
     /// ```
     /// use pem::parse;
-    /// use keys::*;
+    /// use mc_crypto_keys::*;
     ///
     /// const PUBKEY: &'static str = "-----BEGIN PUBLIC KEY-----
     /// MCowBQYDK2VuAyEAQcOfK2+MHlDJoQUkjboENfdfpFf2Uhv+ESWue1ErPTM=
@@ -154,7 +154,7 @@ impl AsRef<[u8]> for X25519Public {
     /// Public keys can be referenced as bytes.
     ///
     /// ```
-    /// use keys::*;
+    /// use mc_crypto_keys::*;
     /// use std::convert::TryFrom;
     ///
     /// let key = [0x55u8; 32];
@@ -166,8 +166,8 @@ impl AsRef<[u8]> for X25519Public {
     /// Digesting a X25519 key's raw bytes
     ///
     /// ```
-    /// use keys::*;
-    /// use digestible::Digestible;
+    /// use mc_crypto_keys::*;
+    /// use mc_crypto_digestible::Digestible;
     /// use sha2::{Digest, Sha256};
     /// use std::convert::TryFrom;
     ///
@@ -200,7 +200,7 @@ impl Clone for X25519Public {
     /// # Examples
     ///
     /// ```
-    /// use keys::X25519Public;
+    /// use mc_crypto_keys::X25519Public;
     /// use std::convert::TryFrom;
     ///
     /// let key = [0x55u8; 32];
@@ -220,7 +220,7 @@ impl Debug for X25519Public {
     ///
     /// ```
     /// use pem::parse;
-    /// use keys::*;
+    /// use mc_crypto_keys::*;
     ///
     /// const PUBKEY: &'static str = "-----BEGIN PUBLIC KEY-----
     /// MCowBQYDK2VuAyEAQcOfK2+MHlDJoQUkjboENfdfpFf2Uhv+ESWue1ErPTM=
@@ -302,7 +302,7 @@ impl From<&X25519Private> for X25519Public {
     ///
     /// # Examples
     /// ```
-    /// use keys::*;
+    /// use mc_crypto_keys::*;
     /// use mc_util_from_random::FromRandom;
     /// use rand_core::SeedableRng;
     /// use rand_hc::Hc128Rng;
@@ -324,7 +324,7 @@ impl From<&X25519EphemeralPrivate> for X25519Public {
     ///
     /// # Examples
     /// ```
-    /// use keys::*;
+    /// use mc_crypto_keys::*;
     /// use mc_util_from_random::FromRandom;
     /// use rand_core::SeedableRng;
     /// use rand_hc::Hc128Rng;
@@ -471,7 +471,7 @@ impl Clone for X25519Private {
     ///
     /// ```
     /// use core::convert::TryFrom;
-    /// use keys::*;
+    /// use mc_crypto_keys::*;
     ///
     /// let key = [0x55u8; 32];
     /// let privkey1 = X25519Private::try_from(&key as &[u8]).expect("Could not load key.");
@@ -525,7 +525,7 @@ impl<'de> Deserialize<'de> for X25519Private {
 /// # Examples
 ///
 /// ```
-/// use keys::*;
+/// use mc_crypto_keys::*;
 /// use std::convert::TryFrom;
 ///
 /// let mut key = [0x55u8; 32];
@@ -558,7 +558,7 @@ impl<'bytes> TryFrom<&'bytes [u8]> for X25519Private {
     /// # Examples
     ///
     /// ```
-    /// use keys::X25519Private;
+    /// use mc_crypto_keys::X25519Private;
     /// use std::convert::TryFrom;
     ///
     /// let mut key = [0x55u8; 32];
@@ -591,7 +591,7 @@ impl Kex for X25519 {
 #[cfg(test)]
 mod test {
     use super::*;
-    use mcserial::{deserialize, serialize};
+    use mc_util_serial::{deserialize, serialize};
 
     #[test]
     fn test_pubkey_serialize() {

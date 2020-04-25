@@ -1,6 +1,6 @@
 [package]
-name = "test_helper"
-version = "0.1.0"
+name = "mc-util-test-helper"
+version = "0.1.5-alpha-1"
 authors = ["MobileCoin"]
 edition = "2018"
 
@@ -17,11 +17,11 @@ rand_hc = "0.2"
 structopt = "0.3"
 
 # MobileCoin dependencies
-keys = { path = "../../crypto/keys" }
-mcserial = { path = "../../util/mcserial", features = ["std"] }
-transaction = { path = "../../transaction/core" }
-transaction-std = { path = "../../transaction/std" }
+mc-crypto-keys = { path = "../../crypto/keys" }
+mc-util-serial = { path = "../../util/serial", features = ["std"] }
+mc-transaction-core = { path = "../../transaction/core" }
+mc-transaction-std = { path = "../../transaction/std" }
 
 [dev-dependencies]
-common = { path = "../../common", features = ["log"] }
+mc-common = { path = "../../common", features = ["log"] }
 itertools = "0.9.0"

@@ -15,10 +15,10 @@ use crate::{
 };
 use alloc::vec::Vec;
 use blake2::digest::Input;
-use common::HashMap;
 use core::convert::TryInto;
-use digestible::Digestible;
 pub use errors::Error as MembershipProofError;
+use mc_common::HashMap;
+use mc_crypto_digestible::Digestible;
 
 mod errors;
 

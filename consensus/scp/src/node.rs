@@ -7,12 +7,12 @@ use crate::{
     quorum_set::QuorumSet,
     slot::{Slot, SlotMetrics},
 };
-use common::{
+use mc_common::{
     fast_hash,
     logger::{log, Logger},
     Hash, LruCache, NodeID,
 };
-use mcserial;
+use mc_util_serial;
 use std::{collections::BTreeSet, fmt::Display, time::Duration};
 
 /// Max number of pending slots to store.
@@ -244,7 +244,7 @@ impl<V: Value, ValidationError: Display> ScpNode<V> for Node<V, ValidationError>
         }
 
         // Calculate message hash.
-        let serialized_msg = mcserial::serialize(&msg).expect("failed serializing msg");
+        let serialized_msg = mc_util_serial::serialize(&msg).expect("failed serializing msg");
         let msg_hash = fast_hash(&serialized_msg);
 
         // If we've already seen this message, we don't need to do anything.
@@ -311,7 +311,7 @@ impl<V: Value, ValidationError: Display> ScpNode<V> for Node<V, ValidationError>
 mod tests {
     use super::*;
     use crate::{core_types::Ballot, msg::*, test_utils::*};
-    use common::logger::test_with_logger;
+    use mc_common::logger::test_with_logger;
     use std::{iter::FromIterator, sync::Arc};
 
     #[test_with_logger]

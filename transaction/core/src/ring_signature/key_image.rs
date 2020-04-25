@@ -5,9 +5,9 @@ use crate::ring_signature::Scalar;
 use blake2::Blake2b;
 use core::{convert::TryFrom, fmt};
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
-use digestible::Digestible;
-use keys::{RistrettoPrivate, RistrettoPublic};
-use mcserial::{
+use mc_crypto_digestible::Digestible;
+use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
+use mc_util_serial::{
     deduce_core_traits_from_public_bytes, prost_message_helper32, try_from_helper32, ReprBytes32,
 };
 use serde::{Deserialize, Serialize};

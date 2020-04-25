@@ -24,14 +24,14 @@
 //! * [Attacking Merkle Trees with a Second Preimage Attack](https://flawed.net.nz/2018/02/21/attacking-merkle-trees-with-a-second-preimage-attack/)
 
 use crate::{key_bytes_to_u64, u64_to_key_bytes, Error};
-use common::{Hash, HashMap};
 use lmdb::{Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
-use mcserial::{deserialize, serialize};
-use transaction::{
+use mc_common::{Hash, HashMap};
+use mc_transaction_core::{
     membership_proofs::*,
     range::Range,
     tx::{TxOut, TxOutMembershipProof},
 };
+use mc_util_serial::{deserialize, serialize};
 
 // LMDB Database names.
 const COUNTS_DB_NAME: &str = "tx_out_store:counts";
@@ -375,7 +375,7 @@ mod membership_proof_tests {
         *,
     };
     use lmdb::Transaction;
-    use transaction::tx::{TxOutMembershipElement, TxOutMembershipHash};
+    use mc_transaction_core::tx::{TxOutMembershipElement, TxOutMembershipHash};
 
     #[test]
     // A valid proof-of-membership for the only TxOut in a set.
@@ -457,7 +457,11 @@ mod membership_proof_tests {
             // Tamper with proof after it is constructed. This bypasses checks in TxOutMembershipProof::new().
             proof.index = 3;
             assert_eq!(
-                Err(transaction::membership_proofs::MembershipProofError::MissingLeafHash(3)),
+                Err(
+                    mc_transaction_core::membership_proofs::MembershipProofError::MissingLeafHash(
+                        3
+                    )
+                ),
                 is_membership_proof_valid(&tx_outs.get(5).unwrap(), &proof, &known_root_hash)
             );
         }
@@ -709,14 +713,10 @@ mod membership_proof_tests {
 pub mod tx_out_store_tests {
     use super::{containing_range, containing_ranges, TxOutStore};
     use crate::Error;
-    use common::Hash;
-    use keys::{RistrettoPrivate, RistrettoPublic};
     use lmdb::{Environment, RoTransaction, RwTransaction, Transaction};
-    use mc_util_from_random::FromRandom;
-    use rand::{rngs::StdRng, SeedableRng};
-    use std::path::Path;
-    use tempdir::TempDir;
-    use transaction::{
+    use mc_common::Hash;
+    use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
+    use mc_transaction_core::{
         account_keys::AccountKey,
         amount::Amount,
         encrypted_fog_hint::EncryptedFogHint,
@@ -725,6 +725,10 @@ pub mod tx_out_store_tests {
         range::Range,
         tx::TxOut,
     };
+    use mc_util_from_random::FromRandom;
+    use rand::{rngs::StdRng, SeedableRng};
+    use std::path::Path;
+    use tempdir::TempDir;
 
     fn get_env() -> Environment {
         let temp_dir = TempDir::new("test").unwrap();

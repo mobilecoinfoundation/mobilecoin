@@ -1,6 +1,6 @@
 [package]
-name = "attest-api"
-version = "0.1.1"
+name = "mc-attest-api"
+version = "0.1.5-alpha-1"
 authors = ["MobileCoin"]
 license = "MIT/Apache-2.0"
 edition = "2018"
@@ -10,16 +10,16 @@ readme = "README.md"
 links = "mc-attest-api"
 
 [build-dependencies]
-mc-build-grpc = { path = "../../util/build-grpc" }
-mcbuild-utils = { path = "../../mcbuild/utils" }
+mc-util-build-grpc = { path = "../../util/build/grpc" }
+mc-util-build-script = { path = "../../util/build/script" }
 
 cargo-emit = "0.1.1"
 
 [dependencies]
-attest-ake = { path = "../ake" }
-attest-enclave-api = { path = "../enclave_api" }
-keys = { path = "../../crypto/keys" }
-mcnoise = { path = "../../crypto/ake/mcnoise" }
+mc-attest-ake = { path = "../ake" }
+mc-attest-enclave-api = { path = "../enclave-api" }
+mc-crypto-keys = { path = "../../crypto/keys" }
+mc-crypto-noise = { path = "../../crypto/noise" }
 
 aead = "0.2"
 digest = "0.8"

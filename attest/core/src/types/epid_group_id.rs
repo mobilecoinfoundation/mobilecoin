@@ -10,8 +10,8 @@ use core::{
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
-use mc_encodings::Error as EncodingError;
-use sgx_types::sgx_epid_group_id_t;
+use mc_sgx_types::sgx_epid_group_id_t;
+use mc_util_encodings::Error as EncodingError;
 
 const EPID_GROUP_ID_SIZE: usize = 4;
 
@@ -127,7 +127,7 @@ mod test {
 
     use super::*;
     use core::convert::TryFrom;
-    use mcserial::*;
+    use mc_util_serial::*;
 
     #[test]
     fn test_serde() {
