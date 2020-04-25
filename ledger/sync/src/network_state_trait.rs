@@ -21,6 +21,6 @@ pub trait NetworkState: Send {
     fn is_behind(&self, local_block_index: BlockIndex) -> bool;
 
     /// Returns the highest block index the network agrees on (the highest block index from a set
-    /// of peers that passes the "is blocking nad quorum" test).
+    /// of peers that passes the "is blocking and quorum" test).
     fn highest_block_index_on_network(&self) -> Option<BlockIndex>;
 }
