@@ -34,13 +34,17 @@ pub struct Block {
     #[prost(uint64, tag = "4")]
     pub index: BlockIndex,
 
+    /// The cumulative number of Txos in the blockchain, including this block.
+    #[prost(uint64, tag = "5")]
+    pub cumulative_txo_count: u64,
+
     /// Root hash of the membership proofs provided by the untrusted local system for validation.
     /// This captures the state of all TxOuts in the ledger that this block was validated against.
-    #[prost(message, required, tag = "5")]
+    #[prost(message, required, tag = "6")]
     pub root_element: TxOutMembershipElement,
 
     /// Hash of the block's contents.
-    #[prost(message, required, tag = "6")]
+    #[prost(message, required, tag = "7")]
     pub contents_hash: BlockContentsHash,
 }
 
@@ -53,18 +57,26 @@ impl Block {
         let version = BLOCK_VERSION;
         let parent_id = BlockID::default();
         let index: BlockIndex = 0;
+        let cumulative_txo_count = outputs.len() as u64;
         let root_element = TxOutMembershipElement::default();
         // The origin block does not contain any key images.
         let key_images = Vec::new();
         let block_contents = BlockContents::new(key_images, outputs.to_vec());
         let contents_hash = block_contents.hash();
-
-        let id = compute_block_id(version, &parent_id, index, &root_element, &contents_hash);
+        let id = compute_block_id(
+            version,
+            &parent_id,
+            index,
+            cumulative_txo_count,
+            &root_element,
+            &contents_hash,
+        );
         Self {
             id,
             version,
             parent_id,
             index,
+            cumulative_txo_count,
             root_element,
             contents_hash,
         }
@@ -76,22 +88,34 @@ impl Block {
     /// * `version` - The block format version.
     /// * `parent_id` - `BlockID` of previous block in the blockchain.
     /// * `index` - The index of this block in the blockchain.
+    /// * `parent_cumulative_txo_count` - The cumulative txo count of the parent
     /// * `block_contents` - Contents of the block.
     pub fn new(
         version: u32,
         parent_id: &BlockID,
         index: BlockIndex,
+        parent_cumulative_txo_count: u64,
         root_element: &TxOutMembershipElement,
         block_contents: &BlockContents,
     ) -> Self {
+        let cumulative_txo_count =
+            parent_cumulative_txo_count + block_contents.outputs.len() as u64;
         let contents_hash = block_contents.hash();
-        let id = compute_block_id(version, &parent_id, index, &root_element, &contents_hash);
+        let id = compute_block_id(
+            version,
+            &parent_id,
+            index,
+            cumulative_txo_count,
+            &root_element,
+            &contents_hash,
+        );
 
         Self {
             id,
             version,
             parent_id: parent_id.clone(),
             index,
+            cumulative_txo_count,
             root_element: root_element.clone(),
             contents_hash,
         }
@@ -106,6 +130,7 @@ impl Block {
             self.version,
             &self.parent_id,
             self.index,
+            self.cumulative_txo_count,
             &self.root_element,
             &self.contents_hash,
         );
@@ -122,6 +147,7 @@ pub fn compute_block_id<D: Digest>(
     version: u32,
     parent_id: &BlockID<D>,
     index: BlockIndex,
+    cumulative_txo_count: u64,
     root_element: &TxOutMembershipElement,
     contents_hash: &BlockContentsHash<D>,
 ) -> BlockID<D> {
@@ -130,6 +156,7 @@ pub fn compute_block_id<D: Digest>(
     version.digest(&mut hasher);
     parent_id.digest(&mut hasher);
     index.digest(&mut hasher);
+    cumulative_txo_count.digest(&mut hasher);
     root_element.digest(&mut hasher);
     contents_hash.digest(&mut hasher);
 
@@ -177,7 +204,14 @@ mod block_tests {
 
         let key_images = Vec::new(); // TODO: include key images.
         let block_contents = BlockContents::new(key_images, outputs);
-        Block::new(BLOCK_VERSION, &parent_id, 3, &root_element, &block_contents)
+        Block::new(
+            BLOCK_VERSION,
+            &parent_id,
+            3,
+            400,
+            &root_element,
+            &block_contents,
+        )
     }
 
     #[test]

@@ -190,6 +190,7 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
                     BLOCK_VERSION,
                     &parent.as_ref().unwrap().id,
                     block_index,
+                    parent.as_ref().unwrap().cumulative_txo_count,
                     &Default::default(),
                     &block_contents,
                 );
@@ -241,6 +242,7 @@ pub fn get_blocks<T: Rng + RngCore + CryptoRng>(
     max_txs_per_block: usize,
     initial_block_index: u64,
     initial_block_id: BlockID,
+    initial_cumulative_txo_count: u64,
     rng: &mut T,
 ) -> Vec<(Block, BlockContents)> {
     assert!(!recipients.is_empty());
@@ -248,6 +250,7 @@ pub fn get_blocks<T: Rng + RngCore + CryptoRng>(
 
     let mut results = Vec::<(Block, BlockContents)>::new();
     let mut last_block_id = initial_block_id;
+    let mut cumulative_txo_count = initial_cumulative_txo_count;
 
     for block_index in 0..n_blocks {
         let n_txs = rng.gen_range(min_txs_per_block, max_txs_per_block + 1);
@@ -260,6 +263,7 @@ pub fn get_blocks<T: Rng + RngCore + CryptoRng>(
             })
             .collect();
         let outputs = get_outputs(&recipient_and_amount, rng);
+        let outputs_len = outputs.len();
 
         let block_contents = BlockContents::new(Vec::new(), outputs);
 
@@ -273,11 +277,13 @@ pub fn get_blocks<T: Rng + RngCore + CryptoRng>(
             BLOCK_VERSION,
             &last_block_id,
             initial_block_index + block_index as u64,
+            cumulative_txo_count,
             &root_element,
             &block_contents,
         );
 
         last_block_id = block.id.clone();
+        cumulative_txo_count += outputs_len as u64;
         results.push((block, block_contents));
     }
 

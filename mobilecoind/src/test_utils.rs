@@ -173,6 +173,7 @@ pub fn add_block_to_ledger_db(
             BLOCK_VERSION,
             &parent.id,
             num_blocks as BlockIndex,
+            parent.cumulative_txo_count,
             &Default::default(),
             &block_contents,
         );

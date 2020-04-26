@@ -70,6 +70,7 @@ pub fn bootstrap_ledger(
                 BLOCK_VERSION,
                 &parent.id,
                 block_index,
+                parent.cumulative_txo_count,
                 &Default::default(),
                 &block_contents,
             ),

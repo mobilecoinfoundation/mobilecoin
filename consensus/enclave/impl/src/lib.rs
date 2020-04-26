@@ -462,6 +462,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             BLOCK_VERSION,
             &parent_block.id,
             parent_block.index + 1,
+            parent_block.cumulative_txo_count,
             &root_elements[0],
             &block_contents,
         );

@@ -535,6 +535,7 @@ mod ledger_db_test {
                     BLOCK_VERSION,
                     &parent.id,
                     block_index,
+                    parent.cumulative_txo_count,
                     &Default::default(),
                     &block_contents,
                 ),
@@ -636,6 +637,7 @@ mod ledger_db_test {
             BLOCK_VERSION,
             &origin_block.id,
             1,
+            origin_block.cumulative_txo_count,
             &Default::default(),
             &block_contents,
         );
@@ -780,6 +782,7 @@ mod ledger_db_test {
             BLOCK_VERSION,
             &origin_block.id,
             1,
+            origin_block.cumulative_txo_count,
             &Default::default(),
             &block_contents,
         );
@@ -827,6 +830,7 @@ mod ledger_db_test {
             BLOCK_VERSION,
             &parent.id,
             parent.index + 1,
+            parent.cumulative_txo_count,
             &Default::default(),
             &block_contents,
         );
@@ -866,6 +870,7 @@ mod ledger_db_test {
             BLOCK_VERSION,
             &origin_block.id,
             1,
+            origin_block.cumulative_txo_count,
             &Default::default(),
             &block_contents,
         );
@@ -892,6 +897,7 @@ mod ledger_db_test {
             block.version,
             &block.parent_id,
             block.index,
+            block.cumulative_txo_count,
             &block.root_element,
             &block.contents_hash,
         );
@@ -932,6 +938,7 @@ mod ledger_db_test {
             BLOCK_VERSION,
             &blocks[0].id,
             1,
+            blocks[0].cumulative_txo_count,
             &Default::default(),
             &block_contents,
         );
@@ -987,6 +994,7 @@ mod ledger_db_test {
             BLOCK_VERSION,
             &origin_block.id,
             1,
+            origin_block.cumulative_txo_count,
             &Default::default(),
             &block_one_contents,
         );
@@ -1013,6 +1021,7 @@ mod ledger_db_test {
             BLOCK_VERSION,
             &block_one.id,
             2,
+            block_one.cumulative_txo_count,
             &Default::default(),
             &block_two_contents,
         );
@@ -1079,6 +1088,7 @@ mod ledger_db_test {
                 BLOCK_VERSION,
                 &bad_parent_id,
                 1,
+                origin_block.cumulative_txo_count,
                 &Default::default(),
                 &block_contents,
             );
@@ -1093,6 +1103,7 @@ mod ledger_db_test {
                 BLOCK_VERSION,
                 &origin_block.id,
                 1,
+                origin_block.cumulative_txo_count,
                 &Default::default(),
                 &block_contents,
             );
@@ -1101,6 +1112,45 @@ mod ledger_db_test {
                 ledger_db.append_block(&block_one_good, &block_contents, None),
                 Ok(())
             );
+        }
+    }
+
+    #[test]
+    // ledger.num_txos agrees with the computed block header values
+    fn double_check_num_txos() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut ledger_db = create_db();
+
+        let origin_account_key = AccountKey::random(&mut rng);
+        let (origin_block, origin_block_contents) =
+            get_origin_block_and_contents(&origin_account_key);
+        ledger_db
+            .append_block(&origin_block, &origin_block_contents, None)
+            .unwrap();
+
+        // Make random recipients
+        let accounts: Vec<AccountKey> = (0..20).map(|_i| AccountKey::random(&mut rng)).collect();
+        let recipient_pub_keys = accounts
+            .iter()
+            .map(|account| account.default_subaddress())
+            .collect::<Vec<_>>();
+
+        // Get some random blocks
+        let results: Vec<(Block, BlockContents)> = mc_transaction_core_test_utils::get_blocks(
+            &recipient_pub_keys[..],
+            20,
+            20,
+            35,
+            origin_block.index + 1,
+            origin_block.id,
+            origin_block.cumulative_txo_count,
+            &mut rng,
+        );
+
+        for (block, block_contents) in &results {
+            println!("block {} containing {:?}", block.index, block_contents);
+            ledger_db.append_block(block, block_contents, None).unwrap();
+            assert_eq!(block.cumulative_txo_count, ledger_db.num_txos().unwrap());
         }
     }
 
