@@ -18,6 +18,17 @@ use rand_core::{CryptoRng, RngCore};
 
 const G: RistrettoPoint = RISTRETTO_BASEPOINT_POINT;
 
+/// Generate a tx pubkey for a subaddress transaction
+pub fn compute_tx_pubkey(
+    tx_secret_key: &RistrettoPrivate,
+    recipient_spend_key: &RistrettoPublic,
+) -> RistrettoPublic {
+    let s: &Scalar = tx_secret_key.as_ref();
+    let D = recipient_spend_key.as_ref();
+    let R = s * D;
+    RistrettoPublic::from(R)
+}
+
 /// Creates the one-time public key `P = Hs(s*C)*G + D`.
 ///
 /// # Arguments
@@ -148,17 +159,6 @@ pub fn generate_tx_keypair<T: CryptoRng + RngCore>(
     let tx_pubkey = compute_tx_pubkey(&tx_secret_key, &recipient_spend_key);
 
     (tx_pubkey, tx_secret_key)
-}
-
-/// Generate a tx pubkey for a subaddress transaction
-pub fn compute_tx_pubkey(
-    tx_secret_key: &RistrettoPrivate,
-    recipient_spend_key: &RistrettoPublic,
-) -> RistrettoPublic {
-    let s: &Scalar = tx_secret_key.as_ref();
-    let D = recipient_spend_key.as_ref();
-    let R = s * D;
-    RistrettoPublic::from(R)
 }
 
 #[cfg(test)]

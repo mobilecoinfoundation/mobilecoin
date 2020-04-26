@@ -35,15 +35,15 @@ const G: RistrettoPoint = RISTRETTO_BASEPOINT_POINT;
 /// An account's "default address" is its zero^th subaddress.
 pub const DEFAULT_SUBADDRESS_INDEX: u64 = 0;
 
-/// A MobileCoin user's public address.
+/// A MobileCoin user's public subaddress.
 #[derive(
     PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug, Serialize, Deserialize, Clone, Digestible,
 )]
 pub struct PublicAddress {
-    /// The user's public key `A`.
+    /// The user's public subaddress view key 'C'.
     view_public_key: RistrettoPublic,
 
-    /// The user's public key `B`.
+    /// The user's public subaddress spend key `D`.
     spend_public_key: RistrettoPublic,
 
     /// Fog Url, if the user has a fog service
@@ -72,8 +72,8 @@ impl PublicAddress {
     /// Create a new public address from CryptoNote key pair (with no account service)
     ///
     /// # Arguments
-    /// `spend_public_key` - The user's public key `B`,
-    /// `view_public_key` - The user's public key `A`,
+    /// `spend_public_key` - The user's public subaddress spend key `D`,
+    /// `view_public_key` - The user's public subaddress view key  `C`,
     #[inline]
     pub fn new(spend_public_key: &RistrettoPublic, view_public_key: &RistrettoPublic) -> Self {
         Self {
@@ -86,8 +86,8 @@ impl PublicAddress {
     /// Create a new public address from specific secret keys and account service name.
     ///
     /// # Arguments
-    /// `spend_public_key` - The user's public key `B`,
-    /// `view_public_key` - The user's public key `A`,
+    /// `spend_public_key` - The user's public subaddress spend key `D`,
+    /// `view_public_key` - The user's public subaddress view key `C`,
     /// `fog_url` - User's fog url
     #[inline]
     pub fn new_with_fog(
@@ -102,12 +102,12 @@ impl PublicAddress {
         }
     }
 
-    /// Get the view public key.
+    /// Get the public subaddress view key.
     pub fn view_public_key(&self) -> &RistrettoPublic {
         &self.view_public_key
     }
 
-    /// Get the spend public key
+    /// Get the public subaddress spend key.
     pub fn spend_public_key(&self) -> &RistrettoPublic {
         &self.spend_public_key
     }
@@ -216,7 +216,7 @@ impl AccountKey {
         }
     }
 
-    /// Obtain ViewKey struct (a, D) from AccountKey
+    /// Returns the default subaddress view key (a, D).
     #[inline]
     pub fn view_key(&self) -> ViewKey {
         ViewKey {
@@ -247,13 +247,13 @@ impl AccountKey {
         )
     }
 
-    /// Compute the default subaddress from private AccountKey data
+    /// Get the account's default subaddress.
     #[inline]
     pub fn default_subaddress(&self) -> PublicAddress {
         self.subaddress(DEFAULT_SUBADDRESS_INDEX)
     }
 
-    /// Compute a subaddress from private AccountKey data
+    /// Get the acocunt's i^th subaddress.
     pub fn subaddress(&self, index: u64) -> PublicAddress {
         let a: &Scalar = self.view_private_key.as_ref();
 
@@ -281,12 +281,12 @@ impl AccountKey {
         }
     }
 
-    /// Compute a subaddress spend key `d` from private AccountKey data
+    /// The private spend key for the default subaddress.
     pub fn default_subaddress_spend_key(&self) -> RistrettoPrivate {
         self.subaddress_spend_key(DEFAULT_SUBADDRESS_INDEX)
     }
 
-    /// Compute a subaddress spend key `d` from private AccountKey data
+    /// The private spend key for the i^th subaddress.
     pub fn subaddress_spend_key(&self, index: u64) -> RistrettoPrivate {
         let a: &Scalar = self.view_private_key.as_ref();
 
@@ -303,12 +303,12 @@ impl AccountKey {
         RistrettoPrivate::from(Hs + b)
     }
 
-    /// Compute a subaddress view key `c` from private AccountKey data
+    /// The private view key for the default subaddress.
     pub fn default_subaddress_view_key(&self) -> RistrettoPrivate {
         self.subaddress_view_key(DEFAULT_SUBADDRESS_INDEX)
     }
 
-    /// Compute a subaddress view key `c` from private AccountKey data
+    /// The private view key for the i^th subaddress.
     pub fn subaddress_view_key(&self, index: u64) -> RistrettoPrivate {
         let a: &Scalar = self.view_private_key.as_ref();
 
@@ -328,8 +328,10 @@ impl AccountKey {
 }
 
 #[cfg(test)]
-mod testing {
+mod account_key_tests {
     use super::*;
+    use rand::prelude::StdRng;
+    use rand_core::SeedableRng;
 
     #[test]
     //Deserializing should recover a serialized a PublicAddress.
@@ -348,5 +350,30 @@ mod testing {
                 assert_eq!(acct.default_subaddress(), result);
             }
         });
+    }
+
+    #[test]
+    // Subaddress private keys should agree with subaddress public keys.
+    fn test_subadress_private_keys_agree_with_subaddress_public_keys() {
+        let mut rng: StdRng = SeedableRng::from_seed([91u8; 32]);
+        let view_private = RistrettoPrivate::from_random(&mut rng);
+        let spend_private = RistrettoPrivate::from_random(&mut rng);
+
+        let account_key = AccountKey::new(&spend_private, &view_private);
+
+        let subaddress_index = rng.next_u64();
+        let subaddress = account_key.subaddress(subaddress_index);
+
+        let subaddress_view_private = account_key.subaddress_view_key(subaddress_index);
+        let subaddress_spend_private = account_key.subaddress_spend_key(subaddress_index);
+
+        let expected_subaddress_view_public = RistrettoPublic::from(&subaddress_view_private);
+        let expected_subaddress_spend_public = RistrettoPublic::from(&subaddress_spend_private);
+
+        assert_eq!(expected_subaddress_view_public, subaddress.view_public_key);
+        assert_eq!(
+            expected_subaddress_spend_public,
+            subaddress.spend_public_key
+        );
     }
 }
