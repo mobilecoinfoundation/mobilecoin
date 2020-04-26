@@ -20,17 +20,13 @@ use core::{
     fmt,
     hash::{Hash, Hasher},
 };
-use curve25519_dalek::{
-    constants::RISTRETTO_BASEPOINT_POINT, ristretto::RistrettoPoint, scalar::Scalar,
-};
+use curve25519_dalek::scalar::Scalar;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_util_from_random::FromRandom;
 use mc_util_serial::{Message, ReprBytes32};
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
-
-const G: RistrettoPoint = RISTRETTO_BASEPOINT_POINT;
 
 /// An account's "default address" is its zero^th subaddress.
 pub const DEFAULT_SUBADDRESS_INDEX: u64 = 0;
@@ -167,8 +163,8 @@ impl AccountKey {
     /// A user's AccountKey, without a fog service.
     ///
     /// # Arguments
-    /// * `spend_private_key` - The user's private key `b`.
-    /// * `view_private_key` - The user's private key `a`.
+    /// * `spend_private_key` - The user's private spend key `b`.
+    /// * `view_private_key` - The user's private view key `a`.
     #[inline]
     pub fn new(spend_private_key: &RistrettoPrivate, view_private_key: &RistrettoPrivate) -> Self {
         Self {
@@ -181,8 +177,8 @@ impl AccountKey {
     /// A user's AccountKey, with an fog service.
     ///
     /// # Arguments
-    /// * `spend_private_key` - The user's private key `b`.
-    /// * `view_private_key` - The user's private key `a`.
+    /// * `spend_private_key` - The user's private spend key `b`.
+    /// * `view_private_key` - The user's private view key `a`.
     /// * `fog_url` - Url of fog service
     pub fn new_with_fog(
         spend_private_key: &RistrettoPrivate,
@@ -253,30 +249,24 @@ impl AccountKey {
         self.subaddress(DEFAULT_SUBADDRESS_INDEX)
     }
 
-    /// Get the acocunt's i^th subaddress.
+    /// Get the account's i^th subaddress.
     pub fn subaddress(&self, index: u64) -> PublicAddress {
-        let a: &Scalar = self.view_private_key.as_ref();
-
-        // `Hs(a || n)`
-        let Hs: Scalar = {
-            let n = Scalar::from(index);
-            let mut digest = Blake2b::new();
-            digest.input(a.as_bytes());
-            digest.input(n.as_bytes());
-            Scalar::from_hash::<Blake2b>(digest)
+        let subaddress_view_public = {
+            let subaddress_view_private = self.subaddress_view_key(index);
+            RistrettoPublic::from(&subaddress_view_private)
         };
 
-        let M = Hs * G;
-        let B = RistrettoPublic::from(&self.spend_private_key);
-        let D = M + B.as_ref();
-        let C = a * D;
+        let subaddress_spend_public = {
+            let subaddress_spend_private = self.subaddress_spend_key(index);
+            RistrettoPublic::from(&subaddress_spend_private)
+        };
 
         match self.fog_url() {
-            None => PublicAddress::new(&RistrettoPublic::from(D), &RistrettoPublic::from(C)),
-            Some(acct_data) => PublicAddress::new_with_fog(
-                &RistrettoPublic::from(D),
-                &RistrettoPublic::from(C),
-                acct_data,
+            None => PublicAddress::new(&subaddress_spend_public, &subaddress_view_public),
+            Some(fog_url) => PublicAddress::new_with_fog(
+                &subaddress_spend_public,
+                &subaddress_view_public,
+                fog_url,
             ),
         }
     }
