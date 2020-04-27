@@ -6,6 +6,7 @@ use prost::Message;
 // Default database version. This should be bumped when breaking changes are introduced.
 // If this is properly maintained, we could check during ledger db opening for any
 // incompatibilities, and either refuse to open or perform a migration.
+#[allow(clippy::unreadable_literal)]
 pub const LATEST_VERSION: u64 = 20200427;
 
 // Metadata information about the ledger databse.
