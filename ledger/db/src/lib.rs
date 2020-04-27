@@ -13,11 +13,12 @@ use lmdb::{
     Transaction, WriteFlags,
 };
 use mc_transaction_core::{Block, BlockContents, BlockID, BlockSignature, BLOCK_VERSION};
-use mc_util_serial::{deserialize, serialize, Message};
+use mc_util_serial::{decode, encode, Message};
 use std::{path::PathBuf, sync::Arc};
 
 mod error;
 mod ledger_trait;
+pub mod metadata;
 pub mod tx_out_store;
 
 #[cfg(any(test, feature = "test_utils"))]
@@ -29,6 +30,7 @@ use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipProof},
 };
+pub use metadata::MetadataStore;
 use tx_out_store::TxOutStore;
 
 const MAX_LMDB_FILE_SIZE: usize = 1_099_511_627_776; // 1 TB
@@ -56,6 +58,14 @@ pub struct TxOutsByBlockValue {
     pub num_tx_outs: u64,
 }
 
+// A list of key images that can be prost-encoded. This is needed since that's the only way to
+// encode a Vec<KeyImage>.
+#[derive(Clone, Message)]
+pub struct KeyImageList {
+    #[prost(message, repeated, tag = "1")]
+    pub key_images: Vec<KeyImage>,
+}
+
 #[derive(Clone)]
 pub struct LedgerDB {
     env: Arc<Environment>,
@@ -75,6 +85,9 @@ pub struct LedgerDB {
 
     /// Key Images by Block
     key_images_by_block: Database,
+
+    /// Metadata - stores metadata information about the database.
+    metadata_store: MetadataStore,
 
     /// Storage abstraction for TxOuts.
     tx_out_store: TxOutStore,
@@ -141,7 +154,7 @@ impl Ledger for LedgerDB {
         let db_transaction = self.env.begin_ro_txn()?;
         let key = u64_to_key_bytes(block_number);
         let block_bytes = db_transaction.get(self.blocks, &key)?;
-        let block = mc_util_serial::decode(&block_bytes)?;
+        let block = decode(&block_bytes)?;
         Ok(block)
     }
 
@@ -151,7 +164,7 @@ impl Ledger for LedgerDB {
 
         // Get all TxOuts in block.
         let bytes = db_transaction.get(self.tx_outs_by_block, &u64_to_key_bytes(block_number))?;
-        let value: TxOutsByBlockValue = mc_util_serial::decode(&bytes)?;
+        let value: TxOutsByBlockValue = decode(&bytes)?;
 
         let outputs = (value.first_tx_out_index..(value.first_tx_out_index + value.num_tx_outs))
             .map(|tx_out_index| {
@@ -161,13 +174,12 @@ impl Ledger for LedgerDB {
             .collect::<Result<Vec<TxOut>, Error>>()?;
 
         // Get all KeyImages in block.
-        let key_images: Vec<KeyImage> = deserialize(
-            db_transaction.get(self.key_images_by_block, &u64_to_key_bytes(block_number))?,
-        )?;
+        let key_image_list: KeyImageList =
+            decode(db_transaction.get(self.key_images_by_block, &u64_to_key_bytes(block_number))?)?;
 
         // Returns block contents.
         Ok(BlockContents {
-            key_images,
+            key_images: key_image_list.key_images,
             outputs,
         })
     }
@@ -177,7 +189,7 @@ impl Ledger for LedgerDB {
         let db_transaction = self.env.begin_ro_txn()?;
         let key = u64_to_key_bytes(block_number);
         let signature_bytes = db_transaction.get(self.block_signatures, &key)?;
-        let signature = mc_util_serial::decode(&signature_bytes)?;
+        let signature = decode(&signature_bytes)?;
         Ok(signature)
     }
 
@@ -213,10 +225,9 @@ impl Ledger for LedgerDB {
     /// Gets the KeyImages used by transactions in a single Block.
     fn get_key_images_by_block(&self, block_number: u64) -> Result<Vec<KeyImage>, Error> {
         let db_transaction = self.env.begin_ro_txn()?;
-        let key_images: Vec<KeyImage> = deserialize(
-            db_transaction.get(self.key_images_by_block, &u64_to_key_bytes(block_number))?,
-        )?;
-        Ok(key_images)
+        let key_image_list: KeyImageList =
+            decode(db_transaction.get(self.key_images_by_block, &u64_to_key_bytes(block_number))?)?;
+        Ok(key_image_list.key_images)
     }
 
     /// Gets a proof of memberships for TxOuts with indexes `indexes`.
@@ -252,7 +263,14 @@ impl LedgerDB {
         let key_images_by_block = env.open_db(Some(KEY_IMAGES_BY_BLOCK_DB_NAME))?;
         let tx_outs_by_block = env.open_db(Some(TX_OUTS_BY_BLOCK_DB_NAME))?;
 
+        let metadata_store = MetadataStore::new(&env)?;
         let tx_out_store = TxOutStore::new(&env)?;
+
+        // Check if the database we opened is compatible with the current implementation.
+        let db_txn = env.begin_ro_txn()?;
+        let version = metadata_store.get_version(&db_txn)?;
+        version.is_compatible_with_latest()?;
+        db_txn.commit()?;
 
         Ok(LedgerDB {
             env: Arc::new(env),
@@ -263,6 +281,7 @@ impl LedgerDB {
             key_images,
             key_images_by_block,
             tx_outs_by_block,
+            metadata_store,
             tx_out_store,
         })
     }
@@ -287,6 +306,7 @@ impl LedgerDB {
         env.create_db(Some(KEY_IMAGES_BY_BLOCK_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(TX_OUTS_BY_BLOCK_DB_NAME), DatabaseFlags::empty())?;
 
+        MetadataStore::create(&env)?;
         TxOutStore::create(&env)?;
 
         let mut db_transaction = env.begin_rw_txn()?;
@@ -322,7 +342,7 @@ impl LedgerDB {
         db_transaction.put(
             self.blocks,
             &u64_to_key_bytes(block.index),
-            &mc_util_serial::encode(block),
+            &encode(block),
             WriteFlags::empty(),
         )?;
 
@@ -330,7 +350,7 @@ impl LedgerDB {
             db_transaction.put(
                 self.block_signatures,
                 &u64_to_key_bytes(block.index),
-                &mc_util_serial::encode(signature),
+                &encode(signature),
                 WriteFlags::empty(),
             )?;
         }
@@ -356,10 +376,14 @@ impl LedgerDB {
                 WriteFlags::empty(),
             )?;
         }
+
+        let key_image_list = KeyImageList {
+            key_images: key_images.to_vec(),
+        };
         db_transaction.put(
             self.key_images_by_block,
             &u64_to_key_bytes(block_index),
-            &serialize(&key_images)?,
+            &encode(&key_image_list),
             WriteFlags::empty(),
         )?;
         Ok(())
@@ -376,7 +400,7 @@ impl LedgerDB {
         let next_tx_out_index = self.tx_out_store.num_tx_outs(db_transaction)?;
 
         // Store information about the TxOuts included in this block.
-        let bytes = mc_util_serial::encode(&TxOutsByBlockValue {
+        let bytes = encode(&TxOutsByBlockValue {
             first_tx_out_index: next_tx_out_index,
             num_tx_outs: tx_outs.len() as u64,
         });
@@ -456,7 +480,7 @@ impl LedgerDB {
     }
 }
 
-// Specifies how we serialize the u64 chunk number in lmdb
+// Specifies how we encode the u64 chunk number in lmdb
 // The lexicographical sorting of the numbers, done by lmdb, must match the
 // numeric order of the chunks. Thus we use Big Endian byte order here
 pub fn u64_to_key_bytes(value: u64) -> [u8; 8] {
