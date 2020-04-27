@@ -252,12 +252,12 @@ impl AccountKey {
     /// Get the account's i^th subaddress.
     pub fn subaddress(&self, index: u64) -> PublicAddress {
         let subaddress_view_public = {
-            let subaddress_view_private = self.subaddress_view_key(index);
+            let subaddress_view_private = self.subaddress_view_private(index);
             RistrettoPublic::from(&subaddress_view_private)
         };
 
         let subaddress_spend_public = {
-            let subaddress_spend_private = self.subaddress_spend_key(index);
+            let subaddress_spend_private = self.subaddress_spend_private(index);
             RistrettoPublic::from(&subaddress_spend_private)
         };
 
@@ -272,12 +272,12 @@ impl AccountKey {
     }
 
     /// The private spend key for the default subaddress.
-    pub fn default_subaddress_spend_key(&self) -> RistrettoPrivate {
-        self.subaddress_spend_key(DEFAULT_SUBADDRESS_INDEX)
+    pub fn default_subaddress_spend_private(&self) -> RistrettoPrivate {
+        self.subaddress_spend_private(DEFAULT_SUBADDRESS_INDEX)
     }
 
     /// The private spend key for the i^th subaddress.
-    pub fn subaddress_spend_key(&self, index: u64) -> RistrettoPrivate {
+    pub fn subaddress_spend_private(&self, index: u64) -> RistrettoPrivate {
         let a: &Scalar = self.view_private_key.as_ref();
 
         // `Hs(a || n)`
@@ -294,12 +294,12 @@ impl AccountKey {
     }
 
     /// The private view key for the default subaddress.
-    pub fn default_subaddress_view_key(&self) -> RistrettoPrivate {
-        self.subaddress_view_key(DEFAULT_SUBADDRESS_INDEX)
+    pub fn default_subaddress_view_private(&self) -> RistrettoPrivate {
+        self.subaddress_view_private(DEFAULT_SUBADDRESS_INDEX)
     }
 
     /// The private view key for the i^th subaddress.
-    pub fn subaddress_view_key(&self, index: u64) -> RistrettoPrivate {
+    pub fn subaddress_view_private(&self, index: u64) -> RistrettoPrivate {
         let a: &Scalar = self.view_private_key.as_ref();
 
         // `Hs(a || n)`
@@ -351,11 +351,11 @@ mod account_key_tests {
 
         let account_key = AccountKey::new(&spend_private, &view_private);
 
-        let subaddress_index = rng.next_u64();
-        let subaddress = account_key.subaddress(subaddress_index);
+        let index = rng.next_u64();
+        let subaddress = account_key.subaddress(index);
 
-        let subaddress_view_private = account_key.subaddress_view_key(subaddress_index);
-        let subaddress_spend_private = account_key.subaddress_spend_key(subaddress_index);
+        let subaddress_view_private = account_key.subaddress_view_private(index);
+        let subaddress_spend_private = account_key.subaddress_spend_private(index);
 
         let expected_subaddress_view_public = RistrettoPublic::from(&subaddress_view_private);
         let expected_subaddress_spend_public = RistrettoPublic::from(&subaddress_spend_private);

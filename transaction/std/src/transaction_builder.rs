@@ -299,7 +299,7 @@ pub mod transaction_builder_tests {
             let onetime_private_key = recover_onetime_private_key(
                 &RistrettoPublic::try_from(&real_output.public_key).unwrap(),
                 &sender.view_private_key(),
-                &sender.subaddress_spend_key(DEFAULT_SUBADDRESS_INDEX),
+                &sender.subaddress_spend_private(DEFAULT_SUBADDRESS_INDEX),
             );
 
             let membership_proofs: Vec<TxOutMembershipProof> = ring
@@ -352,7 +352,7 @@ pub mod transaction_builder_tests {
         let onetime_private_key = recover_onetime_private_key(
             &RistrettoPublic::try_from(&real_output.public_key).unwrap(),
             &sender.view_private_key(),
-            &sender.subaddress_spend_key(DEFAULT_SUBADDRESS_INDEX),
+            &sender.subaddress_spend_private(DEFAULT_SUBADDRESS_INDEX),
         );
 
         let key_image = KeyImage::from(&onetime_private_key);
@@ -445,7 +445,7 @@ pub mod transaction_builder_tests {
         let onetime_private_key = recover_onetime_private_key(
             &RistrettoPublic::try_from(&real_output.public_key).unwrap(),
             &alice.view_private_key(),
-            &alice.subaddress_spend_key(DEFAULT_SUBADDRESS_INDEX),
+            &alice.subaddress_spend_private(DEFAULT_SUBADDRESS_INDEX),
         );
 
         let membership_proofs: Vec<TxOutMembershipProof> = ring

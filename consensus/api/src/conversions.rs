@@ -1152,7 +1152,7 @@ mod conversion_tests {
         let onetime_private_key = recover_onetime_private_key(
             &public_key,
             alice.view_private_key(),
-            &alice.default_subaddress_spend_key(),
+            &alice.default_subaddress_spend_private(),
         );
 
         let membership_proofs: Vec<TxOutMembershipProof> = ring

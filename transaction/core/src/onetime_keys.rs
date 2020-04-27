@@ -216,7 +216,7 @@ mod tests {
         let onetime_private_key = recover_onetime_private_key(
             &tx_pub_key,
             account.view_private_key(),
-            &account.default_subaddress_spend_key(),
+            &account.default_subaddress_spend_private(),
         );
         assert_eq!(
             onetime_public_key,

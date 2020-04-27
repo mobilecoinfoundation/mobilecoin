@@ -386,7 +386,7 @@ fn match_tx_outs_into_utxos(
         let onetime_private_key = recover_onetime_private_key(
             &tx_public_key,
             account_key.view_private_key(),
-            &account_key.subaddress_spend_key(subaddress_id.index),
+            &account_key.subaddress_spend_private(subaddress_id.index),
         );
 
         let key_image = KeyImage::from(&onetime_private_key);

@@ -647,7 +647,7 @@ mod combine_tests {
         let onetime_private_key = recover_onetime_private_key(
             &tx_public_key_for_txo,
             alice.view_private_key(),
-            &alice.default_subaddress_spend_key(),
+            &alice.default_subaddress_spend_private(),
         );
 
         let ring: Vec<TxOut> = vec![tx_out];
@@ -720,7 +720,7 @@ mod combine_tests {
                 let onetime_private_key = recover_onetime_private_key(
                     &tx_public_key_for_txo,
                     alice.view_private_key(),
-                    &alice.default_subaddress_spend_key(),
+                    &alice.default_subaddress_spend_private(),
                 );
 
                 // Create InputCredentials to spend the TxOut.
@@ -783,7 +783,7 @@ mod combine_tests {
         let onetime_private_key = recover_onetime_private_key(
             &RistrettoPublic::try_from(&tx_out.public_key).unwrap(),
             alice.view_private_key(),
-            &alice.default_subaddress_spend_key(),
+            &alice.default_subaddress_spend_private(),
         );
 
         // Create a transaction that sends the full value of  `tx_out` to bob.
@@ -873,7 +873,7 @@ mod combine_tests {
             let onetime_private_key = recover_onetime_private_key(
                 &tx_public_key_for_txo,
                 alice.view_private_key(),
-                &alice.default_subaddress_spend_key(),
+                &alice.default_subaddress_spend_private(),
             );
 
             let ring: Vec<TxOut> = vec![tx_out];
