@@ -105,7 +105,7 @@ pub fn create_transaction_with_amount<L: Ledger, R: RngCore + CryptoRng>(
         .collect::<Vec<u64>>();
     let membership_proofs = ledger.get_tx_out_proof_of_memberships(&indexes).unwrap();
 
-    let spend_private_key = sender.subaddress_spend_key(DEFAULT_SUBADDRESS_INDEX);
+    let spend_private_key = sender.subaddress_spend_private(DEFAULT_SUBADDRESS_INDEX);
     let tx_out_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
     let onetime_private_key = recover_onetime_private_key(
         &tx_out_public_key,

@@ -625,7 +625,7 @@ impl<T: UserTxConnection + 'static> TransactionsManager<T> {
             let onetime_private_key = recover_onetime_private_key(
                 &public_key,
                 from_account_key.view_private_key(),
-                &from_account_key.subaddress_spend_key(utxo.subaddress_index),
+                &from_account_key.subaddress_spend_private(utxo.subaddress_index),
             );
 
             let key_image = KeyImage::from(&onetime_private_key);
