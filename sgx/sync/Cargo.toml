@@ -6,7 +6,7 @@ authors = ["MobileCoin"]
 [dependencies]
 mc-sgx-libc-types = { version= "0.2.0", path = "../libc-types" }
 mc-sgx-types = { path = "../types" }
-mc-sgx-panic = { verson = "0.2.0", path = "../panic", optional = true }
+mc-sgx-panic = { path = "../panic", optional = true }
 
 [features]
 default = ["mc-sgx-panic"]
