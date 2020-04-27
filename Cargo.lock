@@ -2434,6 +2434,7 @@ dependencies = [
  "hex 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mc-common 0.1.5-alpha-1",
  "mc-connection 0.1.5-alpha-1",
+ "mc-consensus-api 0.1.5-alpha-1",
  "mc-consensus-enclave-api 0.1.5-alpha-1",
  "mc-consensus-scp 0.1.5-alpha-1",
  "mc-crypto-keys 0.1.5-alpha-1",

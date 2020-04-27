@@ -16,7 +16,7 @@ service ConsensusPeerAPI {
     rpc PeerTxPropose(attest.Message) returns (consensus_common.ProposeTxResponse);
 
     /// Feed a consensus message into the node.
-    rpc SendConsensusMsg (ConsensusMsg) returns (google.protobuf.Empty) {}
+    rpc SendConsensusMsg (ConsensusMsg) returns (ConsensusMsgResponse) {}
 
     /// Fetch the latest SCP message a node has issued.
     rpc FetchLatestMsg (google.protobuf.Empty) returns (FetchLatestMsgResponse) {}
@@ -33,6 +33,17 @@ message ConsensusMsg {
 
     // Serialized peers::ConsensusMsg.
     bytes payload = 2;
+}
+
+enum ConsensusMsgResult {
+    Ok = 0;
+    UnknownPeer = 10;
+}
+
+/// Response from a ConsensusMsg RPC call.
+message ConsensusMsgResponse {
+    /// Result.
+    ConsensusMsgResult result = 1;
 }
 
 message FetchLatestMsgResponse {

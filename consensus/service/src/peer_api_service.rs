@@ -18,7 +18,10 @@ use mc_common::{
 };
 use mc_consensus_api::{
     consensus_common::ProposeTxResponse,
-    consensus_peer::{ConsensusMsg as GrpcConsensusMsg, FetchLatestMsgResponse, FetchTxsRequest},
+    consensus_peer::{
+        ConsensusMsg as GrpcConsensusMsg, ConsensusMsgResponse, ConsensusMsgResult,
+        FetchLatestMsgResponse, FetchTxsRequest,
+    },
     consensus_peer_grpc::ConsensusPeerApi,
     empty::Empty,
 };
@@ -210,7 +213,7 @@ impl<E: ConsensusEnclaveProxy, L: Ledger> ConsensusPeerApi for PeerApiService<E,
         &mut self,
         ctx: RpcContext,
         request: GrpcConsensusMsg,
-        sink: UnarySink<Empty>,
+        sink: UnarySink<ConsensusMsgResponse>,
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
@@ -253,16 +256,9 @@ impl<E: ConsensusEnclaveProxy, L: Ledger> ConsensusPeerApi for PeerApiService<E,
 
             // See if we recognize this peer.
             if !self.known_responder_ids.contains(&from_responder_id) {
-                send_result(
-                    ctx,
-                    sink,
-                    Err(rpc_invalid_arg_error(
-                        "send_consensus_msg",
-                        format!("Unrecognized from_responder_id {}", from_responder_id),
-                        &logger,
-                    )),
-                    &logger,
-                );
+                let mut resp = ConsensusMsgResponse::new();
+                resp.set_result(ConsensusMsgResult::UnknownPeer);
+                send_result(ctx, sink, Ok(resp), &logger);
                 log::warn!(
                     logger,
                     "Rejecting consensus message from unrecognized responder id {}",
@@ -312,7 +308,8 @@ impl<E: ConsensusEnclaveProxy, L: Ledger> ConsensusPeerApi for PeerApiService<E,
                 consensus_msg,
             })
             .expect("Could not send consensus input");
-            let resp = Empty::new();
+            let mut resp = ConsensusMsgResponse::new();
+            resp.set_result(ConsensusMsgResult::Ok);
             send_result(ctx, sink, Ok(resp), &logger);
         });
     }
