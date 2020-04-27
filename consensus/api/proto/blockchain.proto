@@ -78,7 +78,8 @@ message BlockSignature {
     external.Ed25519Public signer = 2;
 }
 
-message S3BlockV1 {
+// Version 1 of an archived block.
+message ArchiveBlockV1 {
     // Block
     Block block = 1;
 
@@ -89,8 +90,9 @@ message S3BlockV1 {
     BlockSignature signature = 3;
 }
 
-message S3Block {
+// An archived block.
+message ArchiveBlock {
     oneof block {
-        S3BlockV1 v1 = 1;
+        ArchiveBlockV1 v1 = 1;
     }
 }

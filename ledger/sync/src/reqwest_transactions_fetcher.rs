@@ -47,7 +47,7 @@ impl From<ReqwestError> for ReqwestTransactionsFetcherError {
 impl TransactionFetcherError for ReqwestTransactionsFetcherError {}
 
 #[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
-pub struct S3BlockData {
+pub struct ArchiveBlockData {
     pub block: Block,
     pub block_contents: BlockContents,
     pub signature: Option<BlockSignature>,
@@ -100,7 +100,7 @@ impl ReqwestTransactionsFetcher {
     pub fn block_from_url(
         &self,
         url: &Url,
-    ) -> Result<S3BlockData, ReqwestTransactionsFetcherError> {
+    ) -> Result<ArchiveBlockData, ReqwestTransactionsFetcherError> {
         // Special treatment for file:// to read from a local directory.
         let bytes: Vec<u8> = if url.scheme() == "file" {
             let path = &url[url::Position::BeforeHost..url::Position::AfterPath];
@@ -117,36 +117,37 @@ impl ReqwestTransactionsFetcher {
             bytes
         };
 
-        let s3_block: blockchain::S3Block = protobuf::parse_from_bytes(&bytes).map_err(|err| {
-            ReqwestTransactionsFetcherError::InvalidBlockReceived(
-                url.to_string(),
-                format!("protobuf parse failed: {:?}", err),
-            )
-        })?;
+        let archive_block: blockchain::ArchiveBlock =
+            protobuf::parse_from_bytes(&bytes).map_err(|err| {
+                ReqwestTransactionsFetcherError::InvalidBlockReceived(
+                    url.to_string(),
+                    format!("protobuf parse failed: {:?}", err),
+                )
+            })?;
 
-        if !s3_block.has_v1() {
+        if !archive_block.has_v1() {
             return Err(ReqwestTransactionsFetcherError::InvalidBlockReceived(
                 url.to_string(),
                 "v1 block not present".to_owned(),
             ));
         }
 
-        let block = Block::try_from(s3_block.get_v1().get_block()).map_err(|err| {
+        let block = Block::try_from(archive_block.get_v1().get_block()).map_err(|err| {
             ReqwestTransactionsFetcherError::InvalidBlockReceived(
                 url.to_string(),
                 format!("Block conversion failed: {:?}", err),
             )
         })?;
 
-        let block_contents = BlockContents::try_from(s3_block.get_v1().get_block_contents())
+        let block_contents = BlockContents::try_from(archive_block.get_v1().get_block_contents())
             .map_err(|err| {
-                ReqwestTransactionsFetcherError::InvalidBlockReceived(
-                    url.to_string(),
-                    format!("Block contents conversion failed: {:?}", err),
-                )
-            })?;
+            ReqwestTransactionsFetcherError::InvalidBlockReceived(
+                url.to_string(),
+                format!("Block contents conversion failed: {:?}", err),
+            )
+        })?;
 
-        let signature = s3_block
+        let signature = archive_block
             .get_v1()
             .signature
             .as_ref()
@@ -178,12 +179,12 @@ impl ReqwestTransactionsFetcher {
             ));
         }
 
-        let s3_block_data = S3BlockData {
+        let archive_block_data = ArchiveBlockData {
             block,
             block_contents,
             signature,
         };
-        Ok(s3_block_data)
+        Ok(archive_block_data)
     }
 
     pub fn get_origin_block_and_transactions(

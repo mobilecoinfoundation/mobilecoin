@@ -153,17 +153,17 @@ impl BlockHandler for S3BlockWriter {
         let bc_block = blockchain::Block::from(block);
         let bc_block_contents = blockchain::BlockContents::from(block_contents);
 
-        let mut s3_block_v1 = blockchain::S3BlockV1::new();
-        s3_block_v1.set_block(bc_block);
-        s3_block_v1.set_block_contents(bc_block_contents);
+        let mut archive_block_v1 = blockchain::ArchiveBlockV1::new();
+        archive_block_v1.set_block(bc_block);
+        archive_block_v1.set_block_contents(bc_block_contents);
 
         if let Some(signature) = signature {
             let bc_signature = blockchain::BlockSignature::from(signature);
-            s3_block_v1.set_signature(bc_signature);
+            archive_block_v1.set_signature(bc_signature);
         }
 
-        let mut s3_block = blockchain::S3Block::new();
-        s3_block.set_v1(s3_block_v1);
+        let mut archive_block = blockchain::ArchiveBlock::new();
+        archive_block.set_v1(archive_block_v1);
 
         let dest = self
             .path
@@ -176,9 +176,9 @@ impl BlockHandler for S3BlockWriter {
         self.write_bytes_to_s3(
             dir.to_str().unwrap(),
             filename.to_str().unwrap(),
-            &s3_block
+            &archive_block
                 .write_to_bytes()
-                .expect("failed to serialize S3Block"),
+                .expect("failed to serialize ArchiveBlock"),
         );
     }
 }
@@ -209,21 +209,21 @@ impl BlockHandler for LocalBlockWriter {
         let bc_block = blockchain::Block::from(block);
         let bc_block_contents = blockchain::BlockContents::from(block_contents);
 
-        let mut s3_block_v1 = blockchain::S3BlockV1::new();
-        s3_block_v1.set_block(bc_block);
-        s3_block_v1.set_block_contents(bc_block_contents);
+        let mut archive_block_v1 = blockchain::ArchiveBlockV1::new();
+        archive_block_v1.set_block(bc_block);
+        archive_block_v1.set_block_contents(bc_block_contents);
 
         if let Some(signature) = signature {
             let bc_signature = blockchain::BlockSignature::from(signature);
-            s3_block_v1.set_signature(bc_signature);
+            archive_block_v1.set_signature(bc_signature);
         }
 
-        let mut s3_block = blockchain::S3Block::new();
-        s3_block.set_v1(s3_block_v1);
+        let mut archive_block = blockchain::ArchiveBlock::new();
+        archive_block.set_v1(archive_block_v1);
 
-        let bytes = s3_block
+        let bytes = archive_block
             .write_to_bytes()
-            .expect("failed to serialize S3Block");
+            .expect("failed to serialize ArchiveBlock");
 
         let dest = self
             .path
