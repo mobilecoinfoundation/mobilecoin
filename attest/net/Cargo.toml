@@ -34,4 +34,4 @@ sha2 = "0.8"
 rand = "0.7"
 
 [build-dependencies]
-mc-sgx-build =  { version = "0.2.0", path = "../../sgx/build" }
+mc-sgx-build =  { path = "../../sgx/build" }
