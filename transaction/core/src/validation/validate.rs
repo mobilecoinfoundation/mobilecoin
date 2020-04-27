@@ -329,7 +329,6 @@ mod tests {
     };
     use mc_util_serial::ReprBytes32;
     use rand::{rngs::StdRng, SeedableRng};
-    use rand_core::RngCore;
     use serde::{de::DeserializeOwned, ser::Serialize};
 
     // HACK: To test validation we need valid Tx objects. The code to create them is complicated,

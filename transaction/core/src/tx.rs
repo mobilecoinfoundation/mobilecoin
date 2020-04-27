@@ -6,7 +6,6 @@ use core::{
     fmt,
 };
 
-use curve25519_dalek::scalar::Scalar;
 use mc_common::{Hash, HashMap};
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
