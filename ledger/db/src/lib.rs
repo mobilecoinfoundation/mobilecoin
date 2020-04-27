@@ -13,7 +13,7 @@ use lmdb::{
     Transaction, WriteFlags,
 };
 use mc_transaction_core::{Block, BlockContents, BlockID, BlockSignature, BLOCK_VERSION};
-use mc_util_serial::{deserialize, serialize, Message};
+use mc_util_serial::{decode, encode, Message};
 use std::{path::PathBuf, sync::Arc};
 
 mod error;
@@ -141,7 +141,7 @@ impl Ledger for LedgerDB {
         let db_transaction = self.env.begin_ro_txn()?;
         let key = u64_to_key_bytes(block_number);
         let block_bytes = db_transaction.get(self.blocks, &key)?;
-        let block = mc_util_serial::decode(&block_bytes)?;
+        let block = decode(&block_bytes)?;
         Ok(block)
     }
 
@@ -151,7 +151,7 @@ impl Ledger for LedgerDB {
 
         // Get all TxOuts in block.
         let bytes = db_transaction.get(self.tx_outs_by_block, &u64_to_key_bytes(block_number))?;
-        let value: TxOutsByBlockValue = mc_util_serial::decode(&bytes)?;
+        let value: TxOutsByBlockValue = decode(&bytes)?;
 
         let outputs = (value.first_tx_out_index..(value.first_tx_out_index + value.num_tx_outs))
             .map(|tx_out_index| {
@@ -177,7 +177,7 @@ impl Ledger for LedgerDB {
         let db_transaction = self.env.begin_ro_txn()?;
         let key = u64_to_key_bytes(block_number);
         let signature_bytes = db_transaction.get(self.block_signatures, &key)?;
-        let signature = mc_util_serial::decode(&signature_bytes)?;
+        let signature = decode(&signature_bytes)?;
         Ok(signature)
     }
 
@@ -322,7 +322,7 @@ impl LedgerDB {
         db_transaction.put(
             self.blocks,
             &u64_to_key_bytes(block.index),
-            &mc_util_serial::encode(block),
+            &encode(block),
             WriteFlags::empty(),
         )?;
 
@@ -330,7 +330,7 @@ impl LedgerDB {
             db_transaction.put(
                 self.block_signatures,
                 &u64_to_key_bytes(block.index),
-                &mc_util_serial::encode(signature),
+                &encode(signature),
                 WriteFlags::empty(),
             )?;
         }
@@ -376,7 +376,7 @@ impl LedgerDB {
         let next_tx_out_index = self.tx_out_store.num_tx_outs(db_transaction)?;
 
         // Store information about the TxOuts included in this block.
-        let bytes = mc_util_serial::encode(&TxOutsByBlockValue {
+        let bytes = encode(&TxOutsByBlockValue {
             first_tx_out_index: next_tx_out_index,
             num_tx_outs: tx_outs.len() as u64,
         });
