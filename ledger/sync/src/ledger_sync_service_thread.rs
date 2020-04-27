@@ -10,7 +10,7 @@ use mc_ledger_db::Ledger;
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc,
+        Arc, Mutex,
     },
     thread,
     time::Duration,
@@ -33,7 +33,7 @@ impl LedgerSyncServiceThread {
     >(
         ledger: L,
         manager: ConnectionManager<BC>,
-        network_state: PollingNetworkState<BC>,
+        network_state: Arc<Mutex<PollingNetworkState<BC>>>,
         transactions_fetcher: TF,
         poll_interval: Duration,
         logger: Logger,
@@ -92,7 +92,7 @@ impl LedgerSyncServiceThread {
     >(
         ledger: L,
         mut ledger_sync_service: LedgerSyncService<L, BC, TF>,
-        mut network_state: PollingNetworkState<BC>,
+        network_state: Arc<Mutex<PollingNetworkState<BC>>>,
         poll_interval: Duration,
         currently_behind: Arc<AtomicBool>,
         stop_requested: Arc<AtomicBool>,
@@ -107,11 +107,15 @@ impl LedgerSyncServiceThread {
             }
 
             // See if we're currently behind. If we're not, poll to be sure.
-            let mut is_behind = ledger_sync_service.is_behind(&network_state);
-            if !is_behind {
-                network_state.poll();
-                is_behind = ledger_sync_service.is_behind(&network_state);
-            }
+            let is_behind = {
+                let mut network_state = network_state.lock().expect("mutex poisoned");
+                if ledger_sync_service.is_behind(&*network_state) {
+                    true
+                } else {
+                    network_state.poll();
+                    ledger_sync_service.is_behind(&*network_state)
+                }
+            };
 
             // Store current state and log.
             currently_behind.store(is_behind, Ordering::SeqCst);
@@ -126,8 +130,10 @@ impl LedgerSyncServiceThread {
 
             // Maybe sync, maybe wait and check again.
             if is_behind {
+                let network_state = network_state.lock().expect("mutex poisoned");
+
                 let _ = ledger_sync_service
-                    .attempt_ledger_sync(&network_state, MAX_BLOCKS_PER_SYNC_ITERATION);
+                    .attempt_ledger_sync(&*network_state, MAX_BLOCKS_PER_SYNC_ITERATION);
             } else if !stop_requested.load(Ordering::SeqCst) {
                 log::trace!(
                     logger,

@@ -15,7 +15,6 @@ use mc_transaction_core::BlockIndex;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{hash::Hash, iter::FromIterator};
 
-#[derive(Clone)]
 pub struct SCPNetworkState<ID: GenericNodeId = NodeID> {
     // The local node ID.
     local_node_id: ID,
@@ -136,6 +135,37 @@ impl<ID: GenericNodeId + Send + AsRef<ResponderId> + DeserializeOwned + Serializ
                 .iter()
                 .map(|node_id| node_id.as_ref().clone()),
         ))
+    }
+
+    fn highest_block_index_on_network(&self) -> Option<BlockIndex> {
+        // Create a sorted list of unique slot indexes. These are potential candidates for the
+        // highest slot index the network agrees on.
+        let mut seen_block_indexes: Vec<BlockIndex> =
+            self.peer_to_current_slot().values().cloned().collect();
+        seen_block_indexes.sort();
+        seen_block_indexes.dedup();
+
+        // For each potential block index we saw (from the highest to the lowest), see if we can pass
+        // the is_blocking_and_quorum test.
+        for highest_block_index in seen_block_indexes.iter().rev() {
+            let peers_on_higher_block: Vec<ID> = self
+                .peer_to_current_slot()
+                .iter()
+                .filter(|&(_id, block_index)| block_index >= highest_block_index)
+                .map(|(id, _block_index)| id.clone())
+                .collect();
+
+            if self.is_blocking_and_quorum(&HashSet::from_iter(
+                peers_on_higher_block
+                    .iter()
+                    .map(|node_id| node_id.as_ref().clone()),
+            )) {
+                // Found a block index the network agrees on.
+                return Some(*highest_block_index);
+            }
+        }
+
+        None
     }
 }
 
@@ -491,6 +521,156 @@ mod tests {
                 test_node_id(2).responder_id
             ])),
             true
+        );
+    }
+
+    #[test_with_logger]
+    // NetworkState highest_block_index_on_network should only return the highest block index
+    // a blocking set and quorum agrees on.
+    fn test_highest_block_index_on_network(logger: Logger) {
+        let local_node_quorum_set: QuorumSet = {
+            let inner_quorum_set_one: QuorumSet = QuorumSet::new_with_node_ids(
+                2,
+                vec![test_node_id(2), test_node_id(3), test_node_id(4)],
+            );
+            let inner_quorum_set_two: QuorumSet = QuorumSet::new_with_node_ids(
+                2,
+                vec![test_node_id(5), test_node_id(6), test_node_id(7)],
+            );
+            QuorumSet::new_with_inner_sets(2, vec![inner_quorum_set_one, inner_quorum_set_two])
+        };
+        let local_node_id = test_node_id(1);
+        let mut network_state = SCPNetworkState::new(local_node_id, local_node_quorum_set, logger);
+        let local_block = 5;
+
+        // Nodes 2 and 3 are a blocking set.
+        let node_2_id = test_node_id(2);
+        let node_2_quorum_set =
+            QuorumSet::new_with_node_ids(1, vec![test_node_id(3), test_node_id(4)]);
+
+        let node_3_id = test_node_id(3);
+        let node_3_quorum_set =
+            QuorumSet::new_with_node_ids(1, vec![test_node_id(2), test_node_id(4)]);
+
+        let node_5_id = test_node_id(5);
+        let node_5_quorum_set =
+            QuorumSet::new_with_node_ids(1, vec![test_node_id(6), test_node_id(7)]);
+
+        let node_6_id = test_node_id(6);
+        let node_6_quorum_set =
+            QuorumSet::new_with_node_ids(1, vec![test_node_id(5), test_node_id(7)]);
+
+        // No messages issued so far, so we don't know where the network is.
+        assert_eq!(network_state.highest_block_index_on_network(), None);
+
+        // Send a message from node 2. Nothing should change.
+        network_state.push(Msg::<&str>::new(
+            node_2_id.clone(),
+            node_2_quorum_set.clone(),
+            local_block + 5,
+            Topic::Externalize(ExternalizePayload {
+                C: Ballot::new(1, &["bleh"]),
+                HN: 0,
+            }),
+        ));
+        assert_eq!(network_state.highest_block_index_on_network(), None);
+
+        // Send a message from node 3, so we have a blocking set but no quorum.
+        network_state.push(Msg::<&str>::new(
+            node_3_id.clone(),
+            node_3_quorum_set.clone(),
+            local_block + 5,
+            Topic::Externalize(ExternalizePayload {
+                C: Ballot::new(1, &["bleh"]),
+                HN: 0,
+            }),
+        ));
+        assert_eq!(network_state.highest_block_index_on_network(), None);
+
+        // Send a message from node 5, not forming quorum.
+        network_state.push(Msg::<&str>::new(
+            node_5_id.clone(),
+            node_5_quorum_set.clone(),
+            local_block + 5,
+            Topic::Externalize(ExternalizePayload {
+                C: Ballot::new(1, &["bleh"]),
+                HN: 0,
+            }),
+        ));
+        assert_eq!(network_state.highest_block_index_on_network(), None);
+
+        // Send a message from node 6, we now have a blocking set and quorum agreeing on
+        // block `local_block + 5` (even though node 6 is on block +10, the rest of the network is
+        // on block +5).
+        network_state.push(Msg::<&str>::new(
+            node_6_id.clone(),
+            node_6_quorum_set.clone(),
+            local_block + 10,
+            Topic::Externalize(ExternalizePayload {
+                C: Ballot::new(1, &["bleh"]),
+                HN: 0,
+            }),
+        ));
+        assert_eq!(
+            network_state.highest_block_index_on_network(),
+            Some(local_block + 5)
+        );
+
+        // Node 2 and 3 advance to local_block+12 - the network continues to agree on local_block + 5.
+        network_state.push(Msg::<&str>::new(
+            node_2_id,
+            node_2_quorum_set,
+            local_block + 12,
+            Topic::Externalize(ExternalizePayload {
+                C: Ballot::new(1, &["bleh"]),
+                HN: 0,
+            }),
+        ));
+
+        network_state.push(Msg::<&str>::new(
+            node_3_id,
+            node_3_quorum_set,
+            local_block + 12,
+            Topic::Externalize(ExternalizePayload {
+                C: Ballot::new(1, &["bleh"]),
+                HN: 0,
+            }),
+        ));
+        assert_eq!(
+            network_state.highest_block_index_on_network(),
+            Some(local_block + 5)
+        );
+
+        // Node 5 moves to block local_block + 10, the network agrees on block local_block+10
+        // (since node 6 is on local_block + 10).
+        network_state.push(Msg::<&str>::new(
+            node_5_id,
+            node_5_quorum_set,
+            local_block + 12,
+            Topic::Externalize(ExternalizePayload {
+                C: Ballot::new(1, &["bleh"]),
+                HN: 0,
+            }),
+        ));
+        assert_eq!(
+            network_state.highest_block_index_on_network(),
+            Some(local_block + 10)
+        );
+
+        // Node 6 moves to block local_block + 12, the network agrees on local_block + 12 as all
+        // nodes have reported that.
+        network_state.push(Msg::<&str>::new(
+            node_6_id,
+            node_6_quorum_set,
+            local_block + 12,
+            Topic::Externalize(ExternalizePayload {
+                C: Ballot::new(1, &["bleh"]),
+                HN: 0,
+            }),
+        ));
+        assert_eq!(
+            network_state.highest_block_index_on_network(),
+            Some(local_block + 12)
         );
     }
 }

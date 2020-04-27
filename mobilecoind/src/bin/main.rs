@@ -10,7 +10,11 @@ use mc_ledger_sync::{LedgerSyncServiceThread, PollingNetworkState, ReqwestTransa
 use mc_mobilecoind::{
     config::Config, database::Database, payments::TransactionsManager, service::Service,
 };
-use std::{convert::TryFrom, path::Path};
+use std::{
+    convert::TryFrom,
+    path::Path,
+    sync::{Arc, Mutex},
+};
 use structopt::StructOpt;
 
 fn main() {
@@ -28,8 +32,11 @@ fn main() {
     );
 
     // Create network state, transactions fetcher and ledger sync.
-    let network_state =
-        PollingNetworkState::new(config.quorum_set(), peer_manager.clone(), logger.clone());
+    let network_state = Arc::new(Mutex::new(PollingNetworkState::new(
+        config.quorum_set(),
+        peer_manager.clone(),
+        logger.clone(),
+    )));
 
     let transactions_fetcher =
         ReqwestTransactionsFetcher::new(config.tx_source_urls.clone(), logger.clone())
@@ -41,7 +48,7 @@ fn main() {
     let _ledger_sync_service_thread = LedgerSyncServiceThread::new(
         ledger_db.clone(),
         peer_manager.clone(),
-        network_state,
+        network_state.clone(),
         transactions_fetcher,
         config.poll_interval,
         logger.clone(),
@@ -55,7 +62,7 @@ fn main() {
             let _ = std::fs::create_dir_all(mobilecoind_db);
 
             let mobilecoind_db = Database::new(mobilecoind_db, logger.clone())
-                .expect("Could not open mobilecoinddb");
+                .expect("Could not open mobilecoind_db");
 
             let transactions_manager = TransactionsManager::new(
                 ledger_db.clone(),
@@ -68,6 +75,7 @@ fn main() {
                 ledger_db,
                 mobilecoind_db,
                 transactions_manager,
+                network_state,
                 *service_port,
                 config.num_workers,
                 logger,

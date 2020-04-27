@@ -105,22 +105,25 @@ impl TestnetClient {
         println!();
 
         let client = MobilecoindApiClient::new(ch);
-        let ledger_info = match client.get_ledger_info(&mc_mobilecoind_api::Empty::new()) {
+        let network_status = match client.get_network_status(&mc_mobilecoind_api::Empty::new()) {
             Ok(resp) => resp,
             Err(err) => {
                 println!(
-                    "Unable to query ledger using mobilecoind on {}.",
+                    "Unable to query network status using mobilecoind on {}.",
                     config.mobilecoind_host
                 );
                 println!("Are you sure it is running and accepting connections?");
                 println!();
                 println!("The error was: {}", err);
-                return Err(format!("unable to query ledger from mobilecoind - {}", err));
+                return Err(format!(
+                    "unable to query network status from mobilecoind - {}",
+                    err
+                ));
             }
         };
         println!(
-            "mobilecoind currently has {} blocks in ledger.",
-            ledger_info.block_count
+            "mobilecoind is at block #{}, network is at block #{}.",
+            network_status.local_block_index, network_status.network_highest_block_index,
         );
 
         // Return.
@@ -148,7 +151,9 @@ impl TestnetClient {
         }
 
         loop {
-            self.print_balance();
+            if let Err(err) = self.print_balance() {
+                println!("{}", err);
+            }
 
             let commands = [
                 Command::Send,
@@ -257,53 +262,64 @@ dc74edf1d8842dfdf49d6db5d3d4e873665c2dd400c0955dd9729571826a26be
             .map_err(|err| format!("Failed adding monitor: {}", err))?;
         self.monitor_id = resp.get_monitor_id().to_vec();
 
-        // Get current number of blocks in ledger.
-        let resp = self
+        // Get the network block height.
+        let network_status = self
             .client
-            .get_ledger_info(&mc_mobilecoind_api::Empty::new())
-            .map_err(|err| format!("Failed getting number of blocks in ledger: {}", err))?;
-        let num_blocks = resp.block_count;
+            .get_network_status(&mc_mobilecoind_api::Empty::new())
+            .map_err(|err| format!("Failed getting network status: {}", err))?;
 
-        let pb = ProgressBar::new(num_blocks);
-        pb.set_style(
-            ProgressStyle::default_bar()
-                .template(
-                    "Syncing account... {spinner:.green} [{elapsed_precise}] [{bar:20.cyan/blue}] {pos}/{len} ({eta})",
-                )
-                .progress_chars("#>-"),
-        );
-
-        let mut blocks_synced = 0;
-        while blocks_synced < num_blocks {
-            // Get current number of blocks synced.
-            let mut req = mc_mobilecoind_api::GetMonitorStatusRequest::new();
-            req.set_monitor_id(self.monitor_id.clone());
-
-            let resp = self
-                .client
-                .get_monitor_status(&req)
-                .map_err(|err| format!("Failed getting monitor status: {}", err))?;
-
-            pb.set_position(blocks_synced);
-            blocks_synced = resp.get_status().next_block;
-        }
+        let num_blocks = network_status.network_highest_block_index + 1;
+        self.wait_for_monitor_sync(Some(num_blocks))?;
 
         // Done!
         Ok(())
     }
 
     /// Print the current balance.
-    fn print_balance(&self) {
+    fn print_balance(&mut self) -> Result<(), String> {
+        // See if we're behind.
+        let network_status = self
+            .client
+            .get_network_status(&mc_mobilecoind_api::Empty::new())
+            .map_err(|err| format!("Failed getting network status: {}", err))?;
+
+        if network_status.network_highest_block_index > network_status.local_block_index {
+            let blocks_behind =
+                network_status.network_highest_block_index - network_status.local_block_index;
+
+            // If we're behind by too many blocks (arbitrarily chosen for now), then display an error.
+            if blocks_behind > 10 {
+                println!(
+                    r#"
+**********************************************************************
+
+          The ledger must be current to check your balance.
+
+          Waiting for {} more blocks.
+
+**********************************************************************
+"#,
+                    blocks_behind
+                );
+                return Ok(());
+            }
+
+            // Syncing is not going to take very long, so wait until that happens.
+            self.wait_for_monitor_sync(Some(network_status.network_highest_block_index + 1))?;
+        }
+
         let mut req = mc_mobilecoind_api::GetBalanceRequest::new();
         req.set_monitor_id(self.monitor_id.clone());
         req.set_subaddress_index(0);
 
-        match self.client.get_balance(&req) {
-            Ok(resp) => {
-                let balance = resp.get_balance();
-                let date = Local::now();
-                println!(
-                    r#"
+        let resp = self
+            .client
+            .get_balance(&req)
+            .map_err(|err| format!("Failed getting balance: {}", err))?;
+        let balance = resp.get_balance();
+        let date = Local::now();
+        println!(
+            r#"
 **********************************************************************
 
                      Your balance was {}
@@ -311,18 +327,15 @@ dc74edf1d8842dfdf49d6db5d3d4e873665c2dd400c0955dd9729571826a26be
 
 **********************************************************************
 "#,
-                    u64_to_mob_display(balance),
-                    date.format("%H:%M:%S"),
-                );
-            }
-            Err(err) => {
-                println!("Error getting balance: {}", err);
-            }
-        }
+            u64_to_mob_display(balance),
+            date.format("%H:%M:%S"),
+        );
+
+        Ok(())
     }
 
     /// Send coins flow.
-    fn send(&self) {
+    fn send(&mut self) {
         // Print intro text.
         println!(
             r#"
@@ -507,7 +520,7 @@ string that we send you. It should look something like:
                     // Wait for monitor to sync so that we show the updated balance - this is a
                     // best effort attempt, if it fails we just skip it.
                     pb.set_message("Waiting for sync to complete...");
-                    let _ = self.wait_for_sync();
+                    let _ = self.wait_for_monitor_sync(None);
 
                     pb.finish_with_message("Payment was successful!");
                     break;
@@ -523,31 +536,6 @@ string that we send you. It should look something like:
         }
 
         println!();
-    }
-
-    /// Wait for mobilecoind to finish syncing our monitor.
-    fn wait_for_sync(&self) -> Result<(), String> {
-        let resp = self
-            .client
-            .get_ledger_info(&mc_mobilecoind_api::Empty::new())
-            .map_err(|err| format!("Failed getting number of blocks in ledger: {}", err))?;
-        let num_blocks = resp.block_count;
-
-        let mut blocks_synced = 0;
-        while blocks_synced < num_blocks {
-            // Get current number of blocks synced.
-            let mut req = mc_mobilecoind_api::GetMonitorStatusRequest::new();
-            req.set_monitor_id(self.monitor_id.clone());
-
-            let resp = self
-                .client
-                .get_monitor_status(&req)
-                .map_err(|err| format!("Failed getting monitor status: {}", err))?;
-
-            blocks_synced = resp.get_status().next_block;
-        }
-
-        Ok(())
     }
 
     /// Receive coins flow.
@@ -696,6 +684,42 @@ MobileCoin forums. Visit http://community.mobilecoin.com
             .generate_tx(&req)
             .map_err(|err| format!("Unable to generate transaction: {}", err))?;
         Ok((resp.take_tx_proposal(), balance))
+    }
+
+    // Display a progress bar and wait until the local monitor has synced to a given block height
+    // (if provided), or to the current ledger height if not.
+    fn wait_for_monitor_sync(&mut self, block_height: Option<u64>) -> Result<(), String> {
+        let resp = self
+            .client
+            .get_ledger_info(&mc_mobilecoind_api::Empty::new())
+            .map_err(|err| format!("Failed getting number of blocks in ledger: {}", err))?;
+        let num_blocks = block_height.unwrap_or(resp.block_count);
+
+        let pb = ProgressBar::new(num_blocks);
+        pb.set_style(
+            ProgressStyle::default_bar()
+                .template(
+                    "Syncing account... {spinner:.green} [{elapsed_precise}] [{bar:20.cyan/blue}] {pos}/{len} ({eta})",
+                )
+                .progress_chars("#>-"),
+        );
+
+        let mut blocks_synced = 0;
+        while blocks_synced < num_blocks {
+            // Get current number of blocks synced.
+            let mut req = mc_mobilecoind_api::GetMonitorStatusRequest::new();
+            req.set_monitor_id(self.monitor_id.clone());
+
+            let resp = self
+                .client
+                .get_monitor_status(&req)
+                .map_err(|err| format!("Failed getting monitor status: {}", err))?;
+
+            pb.set_position(blocks_synced);
+            blocks_synced = resp.get_status().next_block;
+        }
+
+        Ok(())
     }
 }
 
