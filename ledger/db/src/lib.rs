@@ -177,7 +177,7 @@ impl Ledger for LedgerDB {
         let db_transaction = self.env.begin_ro_txn()?;
         let key = u64_to_key_bytes(block_number);
         let signature_bytes = db_transaction.get(self.block_signatures, &key)?;
-        let signature = deserialize(&signature_bytes)?;
+        let signature = mc_util_serial::decode(&signature_bytes)?;
         Ok(signature)
     }
 
@@ -330,9 +330,7 @@ impl LedgerDB {
             db_transaction.put(
                 self.block_signatures,
                 &u64_to_key_bytes(block.index),
-                &serialize(signature).unwrap_or_else(|_| {
-                    panic!("Could not serialize block signature {:?}", signature)
-                }),
+                &mc_util_serial::encode(signature),
                 WriteFlags::empty(),
             )?;
         }

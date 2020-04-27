@@ -1,22 +1,25 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use crate::Block;
-use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
+use core::fmt::{Display, Formatter, Result as FmtResult};
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::{
     DigestSigner, DigestVerifier, Ed25519Pair, Ed25519Public, Ed25519Signature,
     Ed25519SignatureError,
 };
+use prost::Message;
 use serde::{Deserialize, Serialize};
 use sha2::Sha512;
 
 /// A block signature.
-#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Message)]
 pub struct BlockSignature {
     /// The actual signature of the block.
+    #[prost(message, required, tag = "1")]
     signature: Ed25519Signature,
 
     /// The public key of the keypair used to generate the signature.
+    #[prost(message, required, tag = "2")]
     signer: Ed25519Public,
 }
 
@@ -69,17 +72,6 @@ impl Display for BlockSignature {
         write!(
             f,
             "{}:{}",
-            hex_fmt::HexFmt(&self.signature),
-            hex_fmt::HexFmt(&self.signer)
-        )
-    }
-}
-
-impl Debug for BlockSignature {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(
-            f,
-            "BlockSignature({}:{})",
             hex_fmt::HexFmt(&self.signature),
             hex_fmt::HexFmt(&self.signer)
         )
