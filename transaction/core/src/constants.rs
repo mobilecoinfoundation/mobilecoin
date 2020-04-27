@@ -2,6 +2,8 @@
 
 //! MobileCoin Transaction Constants.
 
+use crate::ring_signature::Scalar;
+
 /// Maximum number of transactions that may be included in a Block.
 pub const MAX_TRANSACTIONS_PER_BLOCK: usize = 5000;
 
@@ -22,6 +24,11 @@ pub const TOTAL_MOB: u64 = 250_000_000;
 
 /// Minimum allowed fee, denominated in picoMOB.
 pub const BASE_FEE: u64 = 10;
+
+lazy_static! {
+    // Blinding for the implicit fee outputs.
+    pub static ref FEE_BLINDING: Scalar = Scalar::zero();
+}
 
 cfg_if::cfg_if! {
     if #[cfg(any(test, feature="test-net-fee-keys"))] {

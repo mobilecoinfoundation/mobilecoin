@@ -16,6 +16,7 @@ use mc_transaction_core::{
     amount::Amount,
     encrypted_fog_hint::EncryptedFogHint,
     range::Range,
+    ring_signature,
     ring_signature::{
         CurveScalar, Error as RingSigError, KeyImage, RingMLSAG, SignatureRctBulletproofs,
     },
@@ -609,7 +610,7 @@ impl From<TransactionValidationError> for ProposeTxResult {
                 Self::InsufficientInputSignatures
             }
             TransactionValidationError::InvalidInputSignature => Self::InvalidInputSignature,
-            TransactionValidationError::InvalidTransactionSignature => {
+            TransactionValidationError::InvalidTransactionSignature(_e) => {
                 Self::InvalidTransactionSignature
             }
             TransactionValidationError::InvalidRangeProof => Self::InvalidRangeProof,
@@ -662,7 +663,9 @@ impl TryInto<TransactionValidationError> for ProposeTxResult {
             }
             Self::InvalidInputSignature => Ok(TransactionValidationError::InvalidInputSignature),
             Self::InvalidTransactionSignature => {
-                Ok(TransactionValidationError::InvalidTransactionSignature)
+                Ok(TransactionValidationError::InvalidTransactionSignature(
+                    ring_signature::Error::InvalidSignature,
+                ))
             }
             Self::InvalidRangeProof => Ok(TransactionValidationError::InvalidRangeProof),
             Self::InsufficientRingSize => Ok(TransactionValidationError::InsufficientRingSize),

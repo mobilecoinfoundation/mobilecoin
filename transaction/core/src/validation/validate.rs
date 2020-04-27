@@ -40,7 +40,7 @@ pub fn validate<R: RngCore + CryptoRng>(
 
     validate_membership_proofs(&tx.prefix, &root_proofs)?;
 
-    validate_transaction_signature(&tx, csprng)?;
+    validate_signature(&tx, csprng)?;
 
     validate_transaction_fee(&tx)?;
 
@@ -138,28 +138,39 @@ fn validate_key_images_are_unique(tx: &Tx) -> TransactionValidationResult<()> {
     Ok(())
 }
 
-pub fn validate_transaction_signature<R: RngCore + CryptoRng>(
+/// Verifies the transaction signature.
+///
+/// A valid RctBulletproofs signature implies that:
+/// * tx.prefix has not been modified,
+/// * The signer owns one element in each input ring,
+/// * Each key image corresponds to the spent ring element,
+/// * The outputs have values in [0,2^64),
+/// * The transaction does not create or destroy mobilecoins.
+pub fn validate_signature<R: RngCore + CryptoRng>(
     tx: &Tx,
     rng: &mut R,
 ) -> TransactionValidationResult<()> {
-    let tx_prefix_hash = tx.prefix.hash();
-    let message = tx_prefix_hash.as_bytes();
-
-    let mut rings: Vec<Vec<(CompressedRistrettoPublic, CompressedCommitment)>> = Vec::new();
-    for input in &tx.prefix.inputs {
-        let ring: Vec<(CompressedRistrettoPublic, CompressedCommitment)> = input
-            .ring
-            .iter()
-            .map(|tx_out| (tx_out.target_key, tx_out.amount.commitment))
-            .collect();
-        rings.push(ring);
-    }
+    let rings: Vec<Vec<(CompressedRistrettoPublic, CompressedCommitment)>> = tx
+        .prefix
+        .inputs
+        .iter()
+        .map(|input| {
+            input
+                .ring
+                .iter()
+                .map(|tx_out| (tx_out.target_key, tx_out.amount.commitment))
+                .collect()
+        })
+        .collect();
 
     let output_commitments = tx.prefix.output_commitments();
 
+    let tx_prefix_hash = tx.prefix.hash();
+    let message = tx_prefix_hash.as_bytes();
+
     tx.signature
-        .verify(message, &rings, &output_commitments, rng)
-        .map_err(|_e| TransactionValidationError::InvalidTransactionSignature)
+        .verify(message, &rings, &output_commitments, tx.prefix.fee, rng)
+        .map_err(TransactionValidationError::InvalidTransactionSignature)
 }
 
 /// The fee amount must be greater than or equal to `BASE_FEE`.
@@ -298,19 +309,18 @@ mod tests {
 
     use crate::{
         constants::{BASE_FEE, RING_SIZE},
-        ring_signature::Scalar,
         tx::{Tx, TxOutMembershipHash, TxOutMembershipProof},
         validation::{
             error::TransactionValidationError,
             validate::{
                 validate_key_images_are_unique, validate_membership_proofs,
                 validate_number_of_inputs, validate_number_of_outputs,
-                validate_ring_elements_are_unique, validate_ring_sizes, validate_tombstone,
-                validate_transaction_fee, validate_transaction_signature, MAX_TOMBSTONE_BLOCKS,
+                validate_ring_elements_are_unique, validate_ring_sizes, validate_signature,
+                validate_tombstone, validate_transaction_fee, MAX_TOMBSTONE_BLOCKS,
             },
         },
-        CompressedCommitment,
     };
+
     use mc_crypto_keys::CompressedRistrettoPublic;
     use mc_ledger_db::{Ledger, LedgerDB};
     use mc_transaction_core_test_utils::{
@@ -319,7 +329,6 @@ mod tests {
     };
     use mc_util_serial::ReprBytes32;
     use rand::{rngs::StdRng, SeedableRng};
-    use rand_core::RngCore;
     use serde::{de::DeserializeOwned, ser::Serialize};
 
     // HACK: To test validation we need valid Tx objects. The code to create them is complicated,
@@ -615,48 +624,64 @@ mod tests {
     }
 
     #[test]
-    fn test_validate_transaction_signature() {
+    // `validate_signature` return OK for a valid transaction.
+    fn test_validate_signature_ok() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-        let (orig_tx, _ledger) = create_test_tx();
+        let (tx, _ledger) = create_test_tx();
+        assert_eq!(validate_signature(&tx, &mut rng), Ok(()));
+    }
 
-        // Valid signature
-        {
-            assert_eq!(validate_transaction_signature(&orig_tx, &mut rng), Ok(()));
+    #[test]
+    // Should return InvalidTransactionSignature if an input is modified.
+    fn test_transaction_signature_err_modified_input() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let (mut tx, _ledger) = create_test_tx();
+
+        // Remove an input.
+        tx.prefix.inputs[0].ring.pop();
+
+        match validate_signature(&tx, &mut rng) {
+            Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
+            Err(e) => {
+                panic!(alloc::format!("Unexpected error {}", e));
+            }
+            Ok(()) => panic!(),
         }
+    }
 
-        // Invalid signature due to altered input
-        {
-            let mut tx = orig_tx.clone();
-            tx.prefix.inputs[0].ring.pop();
+    #[test]
+    // Should return InvalidTransactionSignature if an output is modified.
+    fn test_transaction_signature_err_modified_output() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let (mut tx, _ledger) = create_test_tx();
 
-            assert_eq!(
-                validate_transaction_signature(&tx, &mut rng),
-                Err(TransactionValidationError::InvalidTransactionSignature)
-            );
+        // Add an output.
+        let output = tx.prefix.outputs.get(0).unwrap().clone();
+        tx.prefix.outputs.push(output);
+
+        match validate_signature(&tx, &mut rng) {
+            Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
+            Err(e) => {
+                panic!(alloc::format!("Unexpected error {}", e));
+            }
+            Ok(()) => panic!(),
         }
+    }
 
-        // Invalid signature due to altered output.
-        {
-            let mut tx = orig_tx.clone();
-            let wrong_commitment = {
-                let value = rng.next_u64();
-                let blinding = Scalar::random(&mut rng);
-                CompressedCommitment::new(value, blinding)
-            };
-            tx.prefix.outputs[0].amount.commitment = wrong_commitment;
+    #[test]
+    // Should return InvalidTransactionSignature if the fee is modified.
+    fn test_transaction_signature_err_modified_fee() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let (mut tx, _ledger) = create_test_tx();
 
-            assert_eq!(
-                validate_transaction_signature(&tx, &mut rng),
-                Err(TransactionValidationError::InvalidTransactionSignature)
-            );
-        }
+        tx.prefix.fee = tx.prefix.fee + 1;
 
-        // Sanity - a transaction with sum(inputs) = sum(outputs) validates.
-        {
-            // The amount here needs to be bigger than whatever is used in `initialize_ledger`.
-            let (tx, _ledger) =
-                create_test_tx_with_amount(INITIALIZE_LEDGER_AMOUNT - BASE_FEE, BASE_FEE);
-            assert_eq!(validate_transaction_signature(&tx, &mut rng), Ok(()));
+        match validate_signature(&tx, &mut rng) {
+            Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
+            Err(e) => {
+                panic!(alloc::format!("Unexpected error {}", e));
+            }
+            Ok(()) => panic!(),
         }
     }
 

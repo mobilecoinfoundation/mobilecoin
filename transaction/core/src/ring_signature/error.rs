@@ -2,8 +2,9 @@
 
 use failure::Fail;
 use mc_crypto_keys::KeyError;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, Eq, Hash, Fail, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Fail, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum Error {
     #[fail(
         display = "Incorrect length for array copy, provided {}, required {}",
@@ -34,6 +35,9 @@ pub enum Error {
 
     #[fail(display = "Failed to compress/decompress a KeyImage")]
     InvalidKeyImage,
+
+    #[fail(display = "Duplicate key image")]
+    DuplicateKeyImage,
 
     #[fail(display = "There was an opaque error returned by another crate or library")]
     InternalError,

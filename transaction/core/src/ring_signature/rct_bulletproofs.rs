@@ -22,6 +22,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     commitment::Commitment,
     compressed_commitment::CompressedCommitment,
+    constants::FEE_BLINDING,
     range_proofs::{check_range_proofs, generate_range_proofs},
     ring_signature::{mlsag::RingMLSAG, Error, KeyImage, Scalar, GENERATORS},
 };
@@ -53,12 +54,14 @@ impl SignatureRctBulletproofs {
     /// * `real_input_indices` - The index of the real input in each ring.
     /// * `input_secrets` - One-time private key, amount value, and amount blinding for each real input.
     /// * `output_values_and_blindings` - Value and blinding for each output amount commitment.
+    /// * `fee` - Value of the implicit fee output.
     pub fn sign<CSPRNG: RngCore + CryptoRng>(
         message: &[u8; 32],
         rings: &[Vec<(CompressedRistrettoPublic, CompressedCommitment)>],
         real_input_indices: &[usize],
         input_secrets: &[(RistrettoPrivate, u64, Scalar)],
         output_values_and_blindings: &[(u64, Scalar)],
+        fee: u64,
         rng: &mut CSPRNG,
     ) -> Result<Self, Error> {
         sign_with_balance_check(
@@ -67,6 +70,7 @@ impl SignatureRctBulletproofs {
             real_input_indices,
             input_secrets,
             output_values_and_blindings,
+            fee,
             true,
             rng,
         )
@@ -78,12 +82,14 @@ impl SignatureRctBulletproofs {
     /// * `message` - The signed message.
     /// * `rings` - One or more rings of one-time addresses and amount commitments.
     /// * `output_commitments` - Output amount commitments.
+    /// * `fee` - Value of the implicit fee output.
     /// * `rng` -
     pub fn verify<CSPRNG: RngCore + CryptoRng>(
         &self,
         message: &[u8; 32],
         rings: &[Vec<(CompressedRistrettoPublic, CompressedCommitment)>],
         output_commitments: &[CompressedCommitment],
+        fee: u64,
         rng: &mut CSPRNG,
     ) -> Result<(), Error> {
         // Signature must contain one ring signature for each ring.
@@ -109,7 +115,7 @@ impl SignatureRctBulletproofs {
                 self.key_images().into_iter().all(move |x| uniq.insert(x))
             };
             if !key_images_are_unique {
-                return Err(Error::InvalidSignature);
+                return Err(Error::DuplicateKeyImage);
             }
         }
 
@@ -142,7 +148,7 @@ impl SignatureRctBulletproofs {
                 .map_err(|_e| Error::RangeProofError)?;
 
             check_range_proofs(&range_proof, &commitments, rng)
-                .map_err(|_e| Error::InvalidSignature)?;
+                .map_err(|_e| Error::RangeProofError)?;
         }
 
         // Output commitments - pseudo_outputs must be zero.
@@ -158,7 +164,10 @@ impl SignatureRctBulletproofs {
                     .map(|commitment| commitment.point)
                     .sum();
 
-            let difference = sum_of_output_commitments - sum_of_pseudo_output_commitments;
+            // The implicit fee output.
+            let fee_commitment = GENERATORS.commit(Scalar::from(fee), *FEE_BLINDING);
+            let difference =
+                sum_of_output_commitments + fee_commitment - sum_of_pseudo_output_commitments;
             if difference != GENERATORS.commit(Scalar::zero(), Scalar::zero()) {
                 return Err(Error::ValueNotConserved);
             }
@@ -199,6 +208,7 @@ impl SignatureRctBulletproofs {
 /// * `real_input_indices` - The index of the real input in each ring.
 /// * `input_secrets` - One-time private key, amount value, and amount blinding for each real input.
 /// * `output_values_and_blindings` - Value and blinding for each output amount commitment.
+/// * `fee` - Value of the implicit fee output.
 /// * `check_value_is_preserved` - If true, check that the value of inputs equals value of outputs.
 fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
     message: &[u8; 32],
@@ -206,6 +216,7 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
     real_input_indices: &[usize],
     input_secrets: &[(RistrettoPrivate, u64, Scalar)],
     output_values_and_blindings: &[(u64, Scalar)],
+    fee: u64,
     check_value_is_preserved: bool,
     rng: &mut CSPRNG,
 ) -> Result<SignatureRctBulletproofs, Error> {
@@ -244,6 +255,7 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
     for _i in 0..num_inputs - 1 {
         pseudo_output_blindings.push(Scalar::random(rng));
     }
+    // The implicit fee output is ommitted because its blinding is zero.
     let sum_of_output_blindings: Scalar = output_values_and_blindings
         .iter()
         .map(|(_, blinding)| blinding)
@@ -267,6 +279,8 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
             .map(|(value, blinding)| (*value, *blinding))
             .collect();
 
+        // The implicit fee output is omitted from the range proof because it is known.
+
         let (values, blindings): (Vec<_>, Vec<_>) = values_and_blindings.into_iter().unzip();
         generate_range_proofs(&values, &blindings, rng).map_err(|_e| Error::RangeProofError)?
     };
@@ -282,7 +296,11 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
             .map(|(value, blinding)| GENERATORS.commit(Scalar::from(*value), *blinding))
             .sum();
 
-        let difference = sum_of_output_commitments - sum_of_pseudo_output_commitments;
+        // The implicit fee output.
+        let fee_commitment = GENERATORS.commit(Scalar::from(fee), *FEE_BLINDING);
+
+        let difference =
+            sum_of_output_commitments + fee_commitment - sum_of_pseudo_output_commitments;
         if difference != GENERATORS.commit(Scalar::zero(), Scalar::zero()) {
             return Err(Error::ValueNotConserved);
         }
@@ -464,6 +482,7 @@ mod rct_bulletproofs_tests {
                 &params.real_input_indices,
                 &params.input_secrets,
                 &params.output_values_and_blindings,
+                0,
                 &mut rng,
             );
 
@@ -491,6 +510,7 @@ mod rct_bulletproofs_tests {
                 &params.real_input_indices,
                 &params.input_secrets,
                 &params.output_values_and_blindings,
+                0,
                 &mut rng,
             );
 
@@ -515,6 +535,7 @@ mod rct_bulletproofs_tests {
                 &params.real_input_indices,
                 &params.input_secrets,
                 &params.output_values_and_blindings,
+                0,
                 &mut rng,
             )
             .unwrap();
@@ -540,12 +561,14 @@ mod rct_bulletproofs_tests {
         ) {
             let mut rng: StdRng = SeedableRng::from_seed(seed);
             let params = SignatureParams::random(num_inputs, num_mixins, &mut rng);
+            let fee = 0;
             let signature = SignatureRctBulletproofs::sign(
                 &params.message,
                 &params.rings,
                 &params.real_input_indices,
                 &params.input_secrets,
                 &params.output_values_and_blindings,
+                fee,
                 &mut rng,
             )
             .unwrap();
@@ -554,6 +577,7 @@ mod rct_bulletproofs_tests {
                 &params.message,
                 &params.rings,
                 &params.get_output_commitments(),
+                fee,
                 &mut rng,
             );
             assert!(result.is_ok());
@@ -568,12 +592,14 @@ mod rct_bulletproofs_tests {
         ) {
             let mut rng: StdRng = SeedableRng::from_seed(seed);
             let params = SignatureParams::random(num_inputs, num_mixins, &mut rng);
+            let fee = 0;
             let mut signature = SignatureRctBulletproofs::sign(
                 &params.message,
                 &params.rings,
                 &params.real_input_indices,
                 &params.input_secrets,
                 &params.output_values_and_blindings,
+                fee,
                 &mut rng,
             )
             .unwrap();
@@ -586,6 +612,7 @@ mod rct_bulletproofs_tests {
                 &params.message,
                 &params.rings,
                 &params.get_output_commitments(),
+                fee,
                 &mut rng,
             );
 
@@ -601,7 +628,7 @@ mod rct_bulletproofs_tests {
         ) {
             let mut rng: StdRng = SeedableRng::from_seed(seed);
             let mut params = SignatureParams::random(num_inputs, num_mixins, &mut rng);
-
+            let fee = 0;
             // Modify an output value
             {
                 let index = rng.next_u64() as usize % (num_inputs);
@@ -616,6 +643,7 @@ mod rct_bulletproofs_tests {
                 &params.real_input_indices,
                 &params.input_secrets,
                 &params.output_values_and_blindings,
+                fee,
                 false,
                 &mut rng,
             )
@@ -625,6 +653,7 @@ mod rct_bulletproofs_tests {
                 &params.message,
                 &params.rings,
                 &params.get_output_commitments(),
+                fee,
                 &mut rng,
             );
 
@@ -640,13 +669,14 @@ mod rct_bulletproofs_tests {
         ) {
             let mut rng: StdRng = SeedableRng::from_seed(seed);
             let params = SignatureParams::random(num_inputs, num_mixins, &mut rng);
-
+            let fee = 0;
             let mut signature = SignatureRctBulletproofs::sign(
                 &params.message,
                 &params.rings,
                 &params.real_input_indices,
                 &params.input_secrets,
                 &params.output_values_and_blindings,
+                fee,
                 &mut rng,
             )
             .unwrap();
@@ -669,10 +699,11 @@ mod rct_bulletproofs_tests {
                 &params.message,
                 &params.rings,
                 &params.get_output_commitments(),
+                fee,
                 &mut rng,
             );
 
-            assert_eq!(result, Err(Error::InvalidSignature));
+            assert_eq!(result, Err(Error::RangeProofError));
         }
 
         #[test]
@@ -684,6 +715,7 @@ mod rct_bulletproofs_tests {
         ) {
             let mut rng: StdRng = SeedableRng::from_seed(seed);
             let mut params = SignatureParams::random(num_inputs, num_mixins, &mut rng);
+            let fee = 0;
 
             // Duplicate one of the rings.
             params.rings[2] = params.rings[3].clone();
@@ -697,6 +729,7 @@ mod rct_bulletproofs_tests {
                 &params.real_input_indices,
                 &params.input_secrets,
                 &params.output_values_and_blindings,
+                fee,
                 &mut rng,
             )
             .unwrap();
@@ -705,10 +738,11 @@ mod rct_bulletproofs_tests {
                 &params.message,
                 &params.rings,
                 &params.get_output_commitments(),
+                fee,
                 &mut rng,
             );
 
-            assert_eq!(result, Err(Error::InvalidSignature));
+            assert_eq!(result, Err(Error::DuplicateKeyImage));
         }
 
         #[test]
@@ -720,12 +754,14 @@ mod rct_bulletproofs_tests {
         ) {
             let mut rng: StdRng = SeedableRng::from_seed(seed);
             let params = SignatureParams::random(num_inputs, num_mixins, &mut rng);
+            let fee = 0;
             let signature = SignatureRctBulletproofs::sign(
                 &params.message,
                 &params.rings,
                 &params.real_input_indices,
                 &params.input_secrets,
                 &params.output_values_and_blindings,
+                fee,
                 &mut rng,
             )
             .unwrap();
@@ -739,6 +775,56 @@ mod rct_bulletproofs_tests {
             // decode(encode(&signature)) should be the identity function.
             let recovered_signature : SignatureRctBulletproofs = mc_util_serial::decode(&bytes).unwrap();
             assert_eq!(signature, recovered_signature);
+        }
+
+        // `verify` should accept valid signatures with correct fee.
+        fn verify_with_fee(
+            num_inputs in 2..8usize,
+            num_mixins in 1..17usize,
+            seed in any::<[u8; 32]>(),
+        ) {
+            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let mut params = SignatureParams::random(num_inputs, num_mixins, &mut rng);
+            // Remove one of the outputs, and use its value as the fee. This conserves value.
+            let (fee, _) = params.output_values_and_blindings.pop().unwrap();
+
+            let signature = SignatureRctBulletproofs::sign(
+                &params.message,
+                &params.rings,
+                &params.real_input_indices,
+                &params.input_secrets,
+                &params.output_values_and_blindings,
+                fee,
+                &mut rng,
+            )
+            .unwrap();
+
+
+            let result = signature.verify(
+                &params.message,
+                &params.rings,
+                &params.get_output_commitments(),
+                fee,
+                &mut rng,
+            );
+            assert!(result.is_ok());
+
+            // Verify should fail if the signature disagrees with the fee.
+            let wrong_fee = fee + 1;
+            match signature.verify(
+                &params.message,
+                &params.rings,
+                &params.get_output_commitments(),
+                wrong_fee,
+                &mut rng,
+            ) {
+                Err(Error::ValueNotConserved) => {} // Expected
+                Err(e) => {
+                    panic!(alloc::format!("Unexpected error {}", e));
+                }
+                _ => panic!()
+            }
+
         }
 
     } // end proptest
