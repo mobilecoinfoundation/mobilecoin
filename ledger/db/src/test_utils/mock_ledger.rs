@@ -205,8 +205,6 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
             blocks_and_contents.push((origin_block, block_contents));
         } else {
             // Create a normal block.
-            let parent_id: BlockID = block_ids[block_index - 1].clone();
-
             let tx_out = TxOut::new(
                 16,
                 &account_key.default_subaddress(),
@@ -220,10 +218,9 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
             let key_images = vec![KeyImage::from(rng.next_u64())];
             let block_contents = BlockContents::new(key_images, outputs);
 
-            let block = Block::new(
+            let block = Block::new_with_parent(
                 BLOCK_VERSION,
-                &parent_id,
-                block_index as u64,
+                &blocks_and_contents[block_index - 1].0,
                 &TxOutMembershipElement::default(),
                 &block_contents,
             );
@@ -274,6 +271,7 @@ mod tests {
                 block.version,
                 &block.parent_id,
                 block.index,
+                block.cumulative_txo_count,
                 &block.root_element,
                 &block.contents_hash,
             );

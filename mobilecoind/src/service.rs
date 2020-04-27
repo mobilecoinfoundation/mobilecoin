@@ -1104,7 +1104,7 @@ mod test {
         get_tx_out_shared_secret,
         onetime_keys::recover_onetime_private_key,
         tx::{Tx, TxOut},
-        Block, BlockContents, BlockIndex, BLOCK_VERSION,
+        Block, BlockContents, BLOCK_VERSION,
     };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
@@ -1945,10 +1945,9 @@ mod test {
             // Append to ledger.
             let num_blocks = ledger_db.num_blocks().unwrap();
             let parent = ledger_db.get_block(num_blocks - 1).unwrap();
-            let new_block = Block::new(
+            let new_block = Block::new_with_parent(
                 BLOCK_VERSION,
-                &parent.id,
-                num_blocks as BlockIndex,
+                &parent,
                 &Default::default(),
                 &block_contents,
             );

@@ -25,7 +25,7 @@ use mc_transaction_core::{
     account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX},
     ring_signature::KeyImage,
     tx::TxOut,
-    Block, BlockContents, BlockIndex, BLOCK_VERSION,
+    Block, BlockContents, BLOCK_VERSION,
 };
 use mc_util_from_random::FromRandom;
 use mc_util_uri::ConnectionUri;
@@ -164,13 +164,8 @@ pub fn add_block_to_ledger_db(
         let parent = ledger_db
             .get_block(num_blocks - 1)
             .expect("failed to get parent block");
-        new_block = Block::new(
-            BLOCK_VERSION,
-            &parent.id,
-            num_blocks as BlockIndex,
-            &Default::default(),
-            &block_contents,
-        );
+        new_block =
+            Block::new_with_parent(BLOCK_VERSION, &parent, &Default::default(), &block_contents);
     } else {
         new_block = Block::new_origin_block(&outputs);
     }

@@ -746,6 +746,7 @@ impl From<&mc_transaction_core::Block> for blockchain::Block {
         block.set_version(other.version);
         block.set_parent_id(blockchain::BlockID::from(&other.parent_id));
         block.set_index(other.index);
+        block.set_cumulative_txo_count(other.cumulative_txo_count);
         block.set_root_element((&other.root_element).into());
         block.set_contents_hash(blockchain::BlockContentsHash::from(&other.contents_hash));
         block
@@ -768,6 +769,7 @@ impl TryFrom<&blockchain::Block> for mc_transaction_core::Block {
             version: value.version,
             parent_id,
             index: value.index,
+            cumulative_txo_count: value.cumulative_txo_count,
             root_element,
             contents_hash,
         };
@@ -944,6 +946,7 @@ mod conversion_tests {
             version: 1,
             parent_id: mc_transaction_core::BlockID::try_from(&[1u8; 32][..]).unwrap(),
             index: 99,
+            cumulative_txo_count: 400,
             root_element: TxOutMembershipElement {
                 range: Range::new(10, 20).unwrap(),
                 hash: TxOutMembershipHash::from([12u8; 32]),
@@ -957,6 +960,7 @@ mod conversion_tests {
         assert_eq!(block.get_version(), 1);
         assert_eq!(block.get_parent_id().get_data(), [1u8; 32]);
         assert_eq!(block.get_index(), 99);
+        assert_eq!(block.get_cumulative_txo_count(), 400);
         assert_eq!(block.get_root_element().get_range().get_from(), 10);
         assert_eq!(block.get_root_element().get_range().get_to(), 20);
         assert_eq!(block.get_root_element().get_hash().get_data(), &[12u8; 32]);
@@ -1009,6 +1013,7 @@ mod conversion_tests {
             version: 1,
             parent_id: mc_transaction_core::BlockID::try_from(&[1u8; 32][..]).unwrap(),
             index: 99,
+            cumulative_txo_count: 400,
             root_element: TxOutMembershipElement {
                 range: Range::new(10, 20).unwrap(),
                 hash: TxOutMembershipHash::from([12u8; 32]),
