@@ -1,7 +1,7 @@
 ## Intro
 
 This directory contains scripts for running a local mobilecoin consensus network and a `mobilecoind` instance.
-The nodes are run in debug mode, so it is only intended to be used for development and testing purposes.
+The enclaves are built in pre-release mode, which provides debug symbols for debugging purposes, so it is only intended to be used for development and testing purposes.
 
 To run a local network, you will provide both the `IAS_API_KEY` and `IAS_SPID`, which you can obtain by registering with the [Intel SGX Portal](https://api.portal.trustedservices.intel.com/EPID-attestation
 
