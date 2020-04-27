@@ -531,11 +531,9 @@ mod ledger_db_test {
 
             let block = match parent_block {
                 None => Block::new_origin_block(&outputs),
-                Some(parent) => Block::new(
+                Some(parent) => Block::new_with_parent(
                     BLOCK_VERSION,
-                    &parent.id,
-                    block_index,
-                    parent.cumulative_txo_count,
+                    &parent,
                     &Default::default(),
                     &block_contents,
                 ),
@@ -633,11 +631,9 @@ mod ledger_db_test {
         let key_images: Vec<KeyImage> = (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
 
         let block_contents = BlockContents::new(key_images.clone(), outputs);
-        let block = Block::new(
+        let block = Block::new_with_parent(
             BLOCK_VERSION,
-            &origin_block.id,
-            1,
-            origin_block.cumulative_txo_count,
+            &origin_block,
             &Default::default(),
             &block_contents,
         );
@@ -778,11 +774,9 @@ mod ledger_db_test {
         let outputs = vec![tx_out];
 
         let block_contents = BlockContents::new(key_images.clone(), outputs);
-        let block = Block::new(
+        let block = Block::new_with_parent(
             BLOCK_VERSION,
-            &origin_block.id,
-            1,
-            origin_block.cumulative_txo_count,
+            &origin_block,
             &Default::default(),
             &block_contents,
         );
@@ -826,14 +820,8 @@ mod ledger_db_test {
 
         let block_contents = BlockContents::new(key_images.clone(), outputs);
         let parent = ledger_db.get_block(n_blocks - 1).unwrap();
-        let block = Block::new(
-            BLOCK_VERSION,
-            &parent.id,
-            parent.index + 1,
-            parent.cumulative_txo_count,
-            &Default::default(),
-            &block_contents,
-        );
+        let block =
+            Block::new_with_parent(BLOCK_VERSION, &parent, &Default::default(), &block_contents);
 
         ledger_db
             .append_block(&block, &block_contents, None)
@@ -866,11 +854,9 @@ mod ledger_db_test {
         let outputs = Vec::new();
 
         let block_contents = BlockContents::new(key_images.clone(), outputs);
-        let block = Block::new(
+        let block = Block::new_with_parent(
             BLOCK_VERSION,
-            &origin_block.id,
-            1,
-            origin_block.cumulative_txo_count,
+            &origin_block,
             &Default::default(),
             &block_contents,
         );
@@ -990,11 +976,9 @@ mod ledger_db_test {
             BlockContents::new(block_one_key_images.clone(), outputs)
         };
 
-        let block_one = Block::new(
+        let block_one = Block::new_with_parent(
             BLOCK_VERSION,
-            &origin_block.id,
-            1,
-            origin_block.cumulative_txo_count,
+            &origin_block,
             &Default::default(),
             &block_one_contents,
         );
@@ -1017,11 +1001,9 @@ mod ledger_db_test {
             BlockContents::new(block_one_key_images.clone(), outputs)
         };
 
-        let block_two = Block::new(
+        let block_two = Block::new_with_parent(
             BLOCK_VERSION,
-            &block_one.id,
-            2,
-            block_one.cumulative_txo_count,
+            &block_one,
             &Default::default(),
             &block_two_contents,
         );
@@ -1141,9 +1123,7 @@ mod ledger_db_test {
             20,
             20,
             35,
-            origin_block.index + 1,
-            origin_block.id,
-            origin_block.cumulative_txo_count,
+            &origin_block,
             &mut rng,
         );
 

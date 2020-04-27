@@ -235,22 +235,20 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
 }
 
 /// Generate a list of blocks, each with a random number of transactions.
+/// TODO: Maybe this should take the parent block as a &Block?
 pub fn get_blocks<T: Rng + RngCore + CryptoRng>(
     recipients: &[PublicAddress],
     n_blocks: usize,
     min_txs_per_block: usize,
     max_txs_per_block: usize,
-    initial_block_index: u64,
-    initial_block_id: BlockID,
-    initial_cumulative_txo_count: u64,
+    initial_block: &Block,
     rng: &mut T,
 ) -> Vec<(Block, BlockContents)> {
     assert!(!recipients.is_empty());
     assert!(max_txs_per_block >= min_txs_per_block);
 
     let mut results = Vec::<(Block, BlockContents)>::new();
-    let mut last_block_id = initial_block_id;
-    let mut cumulative_txo_count = initial_cumulative_txo_count;
+    let mut last_block = initial_block.clone();
 
     for block_index in 0..n_blocks {
         let n_txs = rng.gen_range(min_txs_per_block, max_txs_per_block + 1);
@@ -263,7 +261,6 @@ pub fn get_blocks<T: Rng + RngCore + CryptoRng>(
             })
             .collect();
         let outputs = get_outputs(&recipient_and_amount, rng);
-        let outputs_len = outputs.len();
 
         let block_contents = BlockContents::new(Vec::new(), outputs);
 
@@ -273,17 +270,11 @@ pub fn get_blocks<T: Rng + RngCore + CryptoRng>(
             hash: TxOutMembershipHash::from([0u8; 32]),
         };
 
-        let block = Block::new(
-            BLOCK_VERSION,
-            &last_block_id,
-            initial_block_index + block_index as u64,
-            cumulative_txo_count,
-            &root_element,
-            &block_contents,
-        );
+        let block =
+            Block::new_with_parent(BLOCK_VERSION, &last_block, &root_element, &block_contents);
 
-        last_block_id = block.id.clone();
-        cumulative_txo_count += outputs_len as u64;
+        last_block = block.clone();
+
         results.push((block, block_contents));
     }
 

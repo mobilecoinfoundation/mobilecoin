@@ -16,19 +16,18 @@ fn test_cumulative_txo_counts() {
             1,
             50,
             50,
-            origin.index + 1,
-            origin.id,
-            origin.cumulative_txo_count,
+            &origin,
             &mut rng,
         );
 
-        let mut prev_cumulative_txo_count = origin.cumulative_txo_count;
+        let mut prev = origin.clone();
         for (block, block_contents) in &results {
             assert_eq!(
                 block.cumulative_txo_count,
-                prev_cumulative_txo_count + block_contents.outputs.len() as u64
+                prev.cumulative_txo_count + block_contents.outputs.len() as u64
             );
-            prev_cumulative_txo_count = block.cumulative_txo_count;
+            assert_eq!(block.parent_id, prev.id);
+            prev = block.clone();
         }
     })
 }

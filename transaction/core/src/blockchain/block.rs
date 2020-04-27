@@ -82,24 +82,50 @@ impl Block {
         }
     }
 
+    /// Creates a new `Block` intermediate in the block chain, from a parent block
+    /// Adds 1 to the parent.index, and adds block_contents.outputs.len()
+    /// to the parent.cumulative_txo_count, to compute values for the next block.
+    ///
+    /// # Arguments
+    /// * `version` - The block format version
+    /// * `parent` - The parent block
+    /// * `root_element` - The root element for membership proofs
+    /// * `block_contents - The Contents of the block.
+    pub fn new_with_parent(
+        version: u32,
+        parent: &Block,
+        root_element: &TxOutMembershipElement,
+        block_contents: &BlockContents,
+    ) -> Self {
+        Block::new(
+            version,
+            &parent.id,
+            parent.index + 1,
+            parent.cumulative_txo_count + block_contents.outputs.len() as u64,
+            root_element,
+            block_contents,
+        )
+    }
+
     /// Creates a new `Block`.
+    /// This low-level version doesn't require having the parent block in hand,
+    /// and takes all needed metadata for the block header as input.
     ///
     /// # Arguments
     /// * `version` - The block format version.
     /// * `parent_id` - `BlockID` of previous block in the blockchain.
     /// * `index` - The index of this block in the blockchain.
-    /// * `parent_cumulative_txo_count` - The cumulative txo count of the parent
+    /// * `cumulative_txo_count` - The cumulative txo count *including this block*
+    /// * `root_element` - The root element for membership proofs
     /// * `block_contents` - Contents of the block.
     pub fn new(
         version: u32,
         parent_id: &BlockID,
         index: BlockIndex,
-        parent_cumulative_txo_count: u64,
+        cumulative_txo_count: u64,
         root_element: &TxOutMembershipElement,
         block_contents: &BlockContents,
     ) -> Self {
-        let cumulative_txo_count =
-            parent_cumulative_txo_count + block_contents.outputs.len() as u64;
         let contents_hash = block_contents.hash();
         let id = compute_block_id(
             version,

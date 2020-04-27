@@ -36,9 +36,7 @@ fn _make_ledger_long(ledger: &mut LedgerDB) {
         1,
         1000,
         1000,
-        last_block.index + 1,
-        last_block.id,
-        last_block.cumulative_txo_count,
+        &last_block,
         &mut rng,
     );
 
