@@ -360,7 +360,7 @@ mod peer_manager_tests {
             .send_consensus_msg(&msg, Fibonacci::from_millis(10).take(7));
 
         match ret {
-            Ok(()) => panic!("should've failed"),
+            Ok(_) => panic!("should've failed"),
             Err(retry::Error::Operation { .. }) => {
                 // This is expected
             }
