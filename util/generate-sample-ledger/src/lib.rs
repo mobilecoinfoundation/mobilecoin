@@ -66,14 +66,9 @@ pub fn bootstrap_ledger(
         let block_contents = BlockContents::new(key_images, outputs.clone());
 
         let block = match previous_block {
-            Some(parent) => Block::new(
-                BLOCK_VERSION,
-                &parent.id,
-                block_index,
-                parent.cumulative_txo_count,
-                &Default::default(),
-                &block_contents,
-            ),
+            Some(parent) => {
+                Block::new_with_parent(BLOCK_VERSION, &parent, &Default::default(), &block_contents)
+            }
             None => Block::new_origin_block(&outputs),
         };
         previous_block = Some(block.clone());

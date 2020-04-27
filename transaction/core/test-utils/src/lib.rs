@@ -235,7 +235,6 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
 }
 
 /// Generate a list of blocks, each with a random number of transactions.
-/// TODO: Maybe this should take the parent block as a &Block?
 pub fn get_blocks<T: Rng + RngCore + CryptoRng>(
     recipients: &[PublicAddress],
     n_blocks: usize,
