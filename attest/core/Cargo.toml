@@ -62,4 +62,4 @@ mbedtls-sys-auto = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.g
 rand_core = { version = "0.5", default-features = false }
 chrono = "0.4"
 mc-crypto-rand = { path = "../../crypto/rand" }
-mc-sgx-build =  { version = "0.2.0", path = "../../sgx/build" }
+mc-sgx-build =  { path = "../../sgx/build" }
