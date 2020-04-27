@@ -78,7 +78,7 @@ message BlockSignature {
     external.Ed25519Public signer = 2;
 }
 
-message S3Block {
+message S3BlockV1 {
     // Block
     Block block = 1;
 
@@ -87,4 +87,10 @@ message S3Block {
 
     // Block signature, when available.
     BlockSignature signature = 3;
+}
+
+message S3Block {
+    oneof block {
+        S3BlockV1 v1 = 1;
+    }
 }

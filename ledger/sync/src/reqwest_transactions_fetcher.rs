@@ -124,15 +124,22 @@ impl ReqwestTransactionsFetcher {
             )
         })?;
 
-        let block = Block::try_from(s3_block.get_block()).map_err(|err| {
+        if !s3_block.has_v1() {
+            return Err(ReqwestTransactionsFetcherError::InvalidBlockReceived(
+                url.to_string(),
+                "v1 block not present".to_owned(),
+            ));
+        }
+
+        let block = Block::try_from(s3_block.get_v1().get_block()).map_err(|err| {
             ReqwestTransactionsFetcherError::InvalidBlockReceived(
                 url.to_string(),
                 format!("Block conversion failed: {:?}", err),
             )
         })?;
 
-        let block_contents =
-            BlockContents::try_from(s3_block.get_block_contents()).map_err(|err| {
+        let block_contents = BlockContents::try_from(s3_block.get_v1().get_block_contents())
+            .map_err(|err| {
                 ReqwestTransactionsFetcherError::InvalidBlockReceived(
                     url.to_string(),
                     format!("Block contents conversion failed: {:?}", err),
@@ -140,8 +147,8 @@ impl ReqwestTransactionsFetcher {
             })?;
 
         let signature = s3_block
+            .get_v1()
             .signature
-            .into_option()
             .as_ref()
             .map(BlockSignature::try_from)
             .transpose()
