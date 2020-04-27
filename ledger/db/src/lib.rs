@@ -56,6 +56,14 @@ pub struct TxOutsByBlockValue {
     pub num_tx_outs: u64,
 }
 
+// A list of key images that can be prost-encoded. This is needed since that's the only way to
+// encode a Vec<KeyImage>.
+#[derive(Clone, Message)]
+pub struct KeyImageList {
+    #[prost(message, repeated, tag = "1")]
+    pub key_images: Vec<KeyImage>,
+}
+
 #[derive(Clone)]
 pub struct LedgerDB {
     env: Arc<Environment>,
@@ -161,13 +169,12 @@ impl Ledger for LedgerDB {
             .collect::<Result<Vec<TxOut>, Error>>()?;
 
         // Get all KeyImages in block.
-        let key_images: Vec<KeyImage> = deserialize(
-            db_transaction.get(self.key_images_by_block, &u64_to_key_bytes(block_number))?,
-        )?;
+        let key_image_list: KeyImageList =
+            decode(db_transaction.get(self.key_images_by_block, &u64_to_key_bytes(block_number))?)?;
 
         // Returns block contents.
         Ok(BlockContents {
-            key_images,
+            key_images: key_image_list.key_images,
             outputs,
         })
     }
@@ -213,10 +220,9 @@ impl Ledger for LedgerDB {
     /// Gets the KeyImages used by transactions in a single Block.
     fn get_key_images_by_block(&self, block_number: u64) -> Result<Vec<KeyImage>, Error> {
         let db_transaction = self.env.begin_ro_txn()?;
-        let key_images: Vec<KeyImage> = deserialize(
-            db_transaction.get(self.key_images_by_block, &u64_to_key_bytes(block_number))?,
-        )?;
-        Ok(key_images)
+        let key_image_list: KeyImageList =
+            decode(db_transaction.get(self.key_images_by_block, &u64_to_key_bytes(block_number))?)?;
+        Ok(key_image_list.key_images)
     }
 
     /// Gets a proof of memberships for TxOuts with indexes `indexes`.
@@ -356,10 +362,14 @@ impl LedgerDB {
                 WriteFlags::empty(),
             )?;
         }
+
+        let key_image_list = KeyImageList {
+            key_images: key_images.to_vec(),
+        };
         db_transaction.put(
             self.key_images_by_block,
             &u64_to_key_bytes(block_index),
-            &serialize(&key_images)?,
+            &encode(&key_image_list),
             WriteFlags::empty(),
         )?;
         Ok(())
@@ -456,7 +466,7 @@ impl LedgerDB {
     }
 }
 
-// Specifies how we serialize the u64 chunk number in lmdb
+// Specifies how we encode the u64 chunk number in lmdb
 // The lexicographical sorting of the numbers, done by lmdb, must match the
 // numeric order of the chunks. Thus we use Big Endian byte order here
 pub fn u64_to_key_bytes(value: u64) -> [u8; 8] {
