@@ -31,7 +31,7 @@ use mc_transaction_core::{
     range::Range,
     tx::{TxOut, TxOutMembershipProof},
 };
-use mc_util_serial::{deserialize, serialize};
+use mc_util_serial::{decode, encode};
 
 // LMDB Database names.
 const COUNTS_DB_NAME: &str = "tx_out_store:counts";
@@ -48,7 +48,7 @@ pub struct TxOutStore {
     /// * `NUM_TX_OUTS_KEY` --> Number (u64) of TxOuts in the ledger.
     counts: Database,
 
-    /// TxOut by index. `key_bytes_to_u64(index) -> serialize(&tx_out)`
+    /// TxOut by index. `key_bytes_to_u64(index) -> encode(&tx_out)`
     tx_out_by_index: Database,
 
     /// `tx_out.hash() -> u64_to_key_bytes(index)`
@@ -111,7 +111,7 @@ impl TxOutStore {
             WriteFlags::empty(),
         )?;
 
-        let tx_out_bytes: Vec<u8> = serialize(tx_out)?;
+        let tx_out_bytes: Vec<u8> = encode(tx_out);
 
         db_transaction.put(
             self.tx_out_by_index,
@@ -149,7 +149,7 @@ impl TxOutStore {
         db_transaction: &T,
     ) -> Result<TxOut, Error> {
         let tx_out_bytes = db_transaction.get(self.tx_out_by_index, &u64_to_key_bytes(index))?;
-        let tx_out: TxOut = deserialize(tx_out_bytes)?;
+        let tx_out: TxOut = decode(tx_out_bytes)?;
         Ok(tx_out)
     }
 
@@ -202,7 +202,7 @@ impl TxOutStore {
             merkle_hash.copy_from_slice(bytes);
             Ok(merkle_hash)
         } else {
-            // Failed to deserialize the Merkle hash.
+            // Failed to decode the Merkle hash.
             Err(Error::Deserialization)
         }
     }
