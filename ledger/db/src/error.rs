@@ -48,6 +48,9 @@ pub enum Error {
 
     #[fail(display = "RangeError")]
     RangeError,
+
+    #[fail(display = "Database version {} is incompatible with {}", _0, _1)]
+    VersionIncompatible(u64, u64),
 }
 
 impl From<lmdb::Error> for Error {

@@ -18,6 +18,7 @@ use std::{path::PathBuf, sync::Arc};
 
 mod error;
 mod ledger_trait;
+pub mod metadata;
 pub mod tx_out_store;
 
 #[cfg(any(test, feature = "test_utils"))]
@@ -29,6 +30,7 @@ use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipProof},
 };
+pub use metadata::MetadataStore;
 use tx_out_store::TxOutStore;
 
 const MAX_LMDB_FILE_SIZE: usize = 1_099_511_627_776; // 1 TB
@@ -83,6 +85,9 @@ pub struct LedgerDB {
 
     /// Key Images by Block
     key_images_by_block: Database,
+
+    /// Metadata - stores metadata information about the database.
+    metadata_store: MetadataStore,
 
     /// Storage abstraction for TxOuts.
     tx_out_store: TxOutStore,
@@ -258,7 +263,14 @@ impl LedgerDB {
         let key_images_by_block = env.open_db(Some(KEY_IMAGES_BY_BLOCK_DB_NAME))?;
         let tx_outs_by_block = env.open_db(Some(TX_OUTS_BY_BLOCK_DB_NAME))?;
 
+        let metadata_store = MetadataStore::new(&env)?;
         let tx_out_store = TxOutStore::new(&env)?;
+
+        // Check if the database we opened is compatible with the current implementation.
+        let db_txn = env.begin_ro_txn()?;
+        let version = metadata_store.get_version(&db_txn)?;
+        version.is_compatible_with_latest()?;
+        db_txn.commit()?;
 
         Ok(LedgerDB {
             env: Arc::new(env),
@@ -269,6 +281,7 @@ impl LedgerDB {
             key_images,
             key_images_by_block,
             tx_outs_by_block,
+            metadata_store,
             tx_out_store,
         })
     }
@@ -293,6 +306,7 @@ impl LedgerDB {
         env.create_db(Some(KEY_IMAGES_BY_BLOCK_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(TX_OUTS_BY_BLOCK_DB_NAME), DatabaseFlags::empty())?;
 
+        MetadataStore::create(&env)?;
         TxOutStore::create(&env)?;
 
         let mut db_transaction = env.begin_rw_txn()?;
