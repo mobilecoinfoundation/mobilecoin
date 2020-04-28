@@ -236,7 +236,7 @@ impl<Enclave: ConsensusEnclaveProxy> ConsensusConnection for PeerConnection<Encl
 
     fn send_consensus_msg(&mut self, msg: &ConsensusMsg) -> Result<ConsensusMsgResponse> {
         let mut grpc_msg = GrpcConsensusMsg::default();
-        grpc_msg.set_from_responder_id(serialize(&self.local_node_id.responder_id)?);
+        grpc_msg.set_from_responder_id(self.local_node_id.responder_id.to_string());
         grpc_msg.set_payload(serialize(&msg)?);
 
         let response =
