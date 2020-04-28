@@ -27,9 +27,8 @@ service ConsensusPeerAPI {
 }
 
 message ConsensusMsg {
-    // Serialized ReponsderId this message is coming from.
-    // This will get replace by an Enclave Session ID at some point.
-    bytes from_responder_id = 1;
+    // ReponsderId this message is coming from.
+    string from_responder_id = 1;
 
     // Serialized peers::ConsensusMsg.
     bytes payload = 2;
