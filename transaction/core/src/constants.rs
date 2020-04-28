@@ -36,27 +36,58 @@ cfg_if::cfg_if! {
         ///
         ///   let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         ///   let foundation_account_key = AccountKey::random(&mut rng);
-        ///
-        /// This is available in the `generate_test_foundation_key` utility.
-        pub const FEE_SPEND_PUBLIC_KEY: [u8; 32] = [
-            160, 79, 78, 17, 132, 143, 209, 245, 178, 242, 129, 141, 206, 68, 64, 194, 71, 138, 167, 101,
-            214, 0, 76, 82, 159, 44, 114, 209, 83, 142, 35, 50,
-        ];
+        pub const FEE_SPEND_PUBLIC_KEY: [u8; 32] = [38, 181, 7, 198, 49, 36, 162, 245, 233, 64, 180, 251, 137, 228, 178, 187, 10, 32, 120, 237, 12, 142, 85, 26, 213, 146, 104, 185, 100, 110, 194, 65];
 
         /// Testnet fee recipient view public key.
-        pub const FEE_VIEW_PUBLIC_KEY: [u8; 32] = [
-            124, 128, 84, 41, 33, 74, 220, 50, 187, 243, 190, 2, 147, 221, 217, 118, 201, 40, 132, 194,
-            244, 55, 11, 0, 45, 196, 155, 137, 102, 68, 154, 84,
-        ];
+        pub const FEE_VIEW_PUBLIC_KEY: [u8; 32] = [82, 34, 161, 233, 174, 50, 210, 28, 35, 17, 74, 92, 230, 187, 57, 224, 203, 86, 174, 163, 80, 212, 97, 157, 67, 177, 32, 112, 97, 177, 3, 70];
 
         /// The private key is only used by tests. This does not need to be specified for main net.
-        pub const FEE_VIEW_PRIVATE_KEY: [u8; 32] = [
-            21, 152, 99, 251, 140, 2, 50, 154, 2, 171, 188, 60, 163, 243, 204, 195, 241, 78, 204, 85, 202,
-            52, 250, 242, 215, 247, 175, 59, 121, 185, 111, 8,
-        ];
+        pub const FEE_VIEW_PRIVATE_KEY: [u8; 32] = [21, 152, 99, 251, 140, 2, 50, 154, 2, 171, 188, 60, 163, 243, 204, 195, 241, 78, 204, 85, 202, 52, 250, 242, 215, 247, 175, 59, 121, 185, 111, 8];
+
     } else if #[cfg(feature="main-net-fee-keys")] {
         compile_error!("main net keys are not available yet");
     } else {
         compile_error!("must specify either main-net-fee-keys or test-net-fee-keys feature");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{FEE_SPEND_PUBLIC_KEY, FEE_VIEW_PRIVATE_KEY, FEE_VIEW_PUBLIC_KEY};
+    use crate::account_keys::AccountKey;
+    use mc_util_serial::ReprBytes32;
+    use rand::{rngs::StdRng, SeedableRng};
+
+    #[test]
+    /// The fee keys should be correctly derived.
+    fn generate_fee_view_key() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+        // Fees are sent to the default subaddress of the Fee account.
+        let fee_account = AccountKey::random(&mut rng);
+        let fee_subaddress = fee_account.default_subaddress();
+
+        let spend_public_key_bytes: [u8; 32] = fee_subaddress.spend_public_key().to_bytes();
+        let view_public_key_bytes: [u8; 32] = fee_subaddress.view_public_key().to_bytes();
+        let view_private_key_bytes: [u8; 32] = fee_account.view_private_key().to_bytes();
+
+        println!(
+            "pub const FEE_SPEND_PUBLIC_KEY: [u8; 32] = {:?};",
+            spend_public_key_bytes
+        );
+
+        println!(
+            "pub const FEE_VIEW_PUBLIC_KEY: [u8; 32] = {:?};",
+            view_public_key_bytes
+        );
+
+        println!(
+            "pub const FEE_VIEW_PRIVATE_KEY: [u8; 32] = {:?};",
+            view_private_key_bytes
+        );
+
+        assert_eq!(view_private_key_bytes, FEE_VIEW_PRIVATE_KEY);
+        assert_eq!(view_public_key_bytes, FEE_VIEW_PUBLIC_KEY);
+        assert_eq!(spend_public_key_bytes, FEE_SPEND_PUBLIC_KEY);
     }
 }
