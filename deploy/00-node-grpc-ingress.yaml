@@ -22,34 +22,26 @@ spec:
           backend:
             serviceName: node1
             servicePort: 3223
-        - path: /blockchain
-          backend:
-            serviceName: node1
-            servicePort: 8443
-        - path: /consensus_client
+        - path: /consensus_common
           backend:
             serviceName: node1
             servicePort: 3223
-        - path: /consensus_peer
-          backend:
-            serviceName: node1
-            servicePort: 8443
-        - path: /node_user
+        - path: /consensus_client
           backend:
             serviceName: node1
             servicePort: 3223
     - host: peer1.NETWORKNAME.mobilecoin.com
       http:
         paths:
-        - path: /consensus_peer
-          backend:
-            serviceName: node1
-            servicePort: 8443
         - path: /attest
           backend:
             serviceName: node1
             servicePort: 8443
-        - path: /blockchain
+        - path: /consensus_common
+          backend:
+            serviceName: node1
+            servicePort: 8443
+        - path: /consensus_peer
           backend:
             serviceName: node1
             servicePort: 8443
@@ -60,34 +52,26 @@ spec:
           backend:
             serviceName: node2
             servicePort: 3223
-        - path: /blockchain
-          backend:
-            serviceName: node2
-            servicePort: 8443
-        - path: /consensus_client
+        - path: /consensus_common
           backend:
             serviceName: node2
             servicePort: 3223
-        - path: /consensus_peer
-          backend:
-            serviceName: node2
-            servicePort: 8443
-        - path: /node_user
+        - path: /consensus_client
           backend:
             serviceName: node2
             servicePort: 3223
     - host: peer2.NETWORKNAME.mobilecoin.com
       http:
         paths:
-        - path: /consensus_peer
-          backend:
-            serviceName: node2
-            servicePort: 8443
         - path: /attest
           backend:
             serviceName: node2
             servicePort: 8443
-        - path: /blockchain
+        - path: /consensus_common
+          backend:
+            serviceName: node2
+            servicePort: 8443
+        - path: /consensus_peer
           backend:
             serviceName: node2
             servicePort: 8443
@@ -98,34 +82,26 @@ spec:
           backend:
             serviceName: node3
             servicePort: 3223
-        - path: /blockchain
-          backend:
-            serviceName: node3
-            servicePort: 8443
-        - path: /consensus_client
+        - path: /consensus_common
           backend:
             serviceName: node3
             servicePort: 3223
-        - path: /consensus_peer
-          backend:
-            serviceName: node3
-            servicePort: 8443
-        - path: /node_user
+        - path: /consensus_client
           backend:
             serviceName: node3
             servicePort: 3223
     - host: peer3.NETWORKNAME.mobilecoin.com
       http:
         paths:
-        - path: /consensus_peer
-          backend:
-            serviceName: node3
-            servicePort: 8443
         - path: /attest
           backend:
             serviceName: node3
             servicePort: 8443
-        - path: /blockchain
+        - path: /consensus_common
+          backend:
+            serviceName: node3
+            servicePort: 8443
+        - path: /consensus_peer
           backend:
             serviceName: node3
             servicePort: 8443
@@ -136,34 +112,26 @@ spec:
           backend:
             serviceName: node4
             servicePort: 3223
-        - path: /blockchain
-          backend:
-            serviceName: node4
-            servicePort: 8443
-        - path: /consensus_client
+        - path: /consensus_common
           backend:
             serviceName: node4
             servicePort: 3223
-        - path: /consensus_peer
-          backend:
-            serviceName: node4
-            servicePort: 8443
-        - path: /node_user
+        - path: /consensus_client
           backend:
             serviceName: node4
             servicePort: 3223
     - host: peer4.NETWORKNAME.mobilecoin.com
       http:
         paths:
-        - path: /consensus_peer
-          backend:
-            serviceName: node4
-            servicePort: 8443
         - path: /attest
           backend:
             serviceName: node4
             servicePort: 8443
-        - path: /blockchain
+        - path: /consensus_common
+          backend:
+            serviceName: node4
+            servicePort: 8443
+        - path: /consensus_peer
           backend:
             serviceName: node4
             servicePort: 8443
@@ -174,34 +142,26 @@ spec:
           backend:
             serviceName: node5
             servicePort: 3223
-        - path: /blockchain
-          backend:
-            serviceName: node5
-            servicePort: 8443
-        - path: /consensus_client
+        - path: /consensus_common
           backend:
             serviceName: node5
             servicePort: 3223
-        - path: /consensus_peer
-          backend:
-            serviceName: node5
-            servicePort: 8443
-        - path: /node_user
+        - path: /consensus_client
           backend:
             serviceName: node5
             servicePort: 3223
     - host: peer5.NETWORKNAME.mobilecoin.com
       http:
         paths:
-        - path: /consensus_peer
-          backend:
-            serviceName: node5
-            servicePort: 8443
         - path: /attest
           backend:
             serviceName: node5
             servicePort: 8443
-        - path: /blockchain
+        - path: /consensus_common
+          backend:
+            serviceName: node5
+            servicePort: 8443
+        - path: /consensus_peer
           backend:
             serviceName: node5
             servicePort: 8443
