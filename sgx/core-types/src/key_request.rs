@@ -277,7 +277,7 @@ impl KeyRequest {
 
     /// Retrieve the attribute mask to be used.
     pub fn attribute_mask(&self) -> Attributes {
-        Attributes::from(&self.0.attribute_mask)
+        Attributes::try_from(&self.0.attribute_mask).expect("Invalid attributes found")
     }
 
     /// Retrieve the Key ID used in this request.
@@ -324,20 +324,24 @@ impl Display for KeyRequest {
     }
 }
 
-impl From<&sgx_key_request_t> for KeyRequest {
-    fn from(src: &sgx_key_request_t) -> KeyRequest {
-        Self(sgx_key_request_t {
+impl TryFrom<&sgx_key_request_t> for KeyRequest {
+    type Error = EncodingError;
+
+    fn try_from(src: &sgx_key_request_t) -> Result<Self, Self::Error> {
+        let attribute_mask = Attributes::try_from(&src.attribute_mask)?.into();
+
+        Ok(Self(sgx_key_request_t {
             key_name: src.key_name,
             key_policy: src.key_policy,
             isv_svn: src.isv_svn,
             reserved1: 0,
             cpu_svn: CpuSecurityVersion::from(&src.cpu_svn).into(),
-            attribute_mask: Attributes::from(&src.attribute_mask).into(),
+            attribute_mask,
             key_id: KeyId::from(&src.key_id).into(),
             misc_mask: src.misc_mask,
             config_svn: src.config_svn,
             reserved2: [0u8; SGX_KEY_REQUEST_RESERVED2_BYTES],
-        })
+        }))
     }
 }
 

@@ -8,11 +8,7 @@ use mc_sgx_core_types_sys::sgx_isvext_prod_id_t;
 /// The size of the x64 representation of an [ExtendedProductId], in bytes.
 pub use mc_sgx_core_types_sys::SGX_ISVEXT_PROD_ID_SIZE as EXTENDED_PRODUCT_ID_SIZE;
 
-/// The Extended Product ID data type
-///
-/// This type exists because of the lack of non-type polymorphism, and
-/// should be removed once https://github.com/rust-lang/rust/issues/44580
-/// has been completed.
+/// The Extended Product ID data type.
 #[derive(Default)]
 #[repr(transparent)]
 pub struct ExtendedProductId(sgx_isvext_prod_id_t);

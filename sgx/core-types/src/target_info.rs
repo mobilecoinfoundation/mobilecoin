@@ -12,7 +12,7 @@ use crate::{
 };
 use core::{
     cmp::Ordering,
-    convert::TryInto,
+    convert::{TryFrom, TryInto},
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
@@ -54,7 +54,7 @@ pub struct TargetInfo(sgx_target_info_t);
 impl TargetInfo {
     /// Retrieve the target enclave's attributes
     pub fn attributes(&self) -> Attributes {
-        Attributes::from(&self.0.attributes)
+        Attributes::try_from(&self.0.attributes).expect("Invalid attributes found")
     }
 
     /// Retrieve the target enclave's XML config ID
@@ -100,8 +100,12 @@ impl Display for TargetInfo {
 
 impl FfiWrapper<sgx_target_info_t> for TargetInfo {}
 
-impl From<&sgx_target_info_t> for TargetInfo {
-    fn from(src: &sgx_target_info_t) -> Self {
+impl TryFrom<&sgx_target_info_t> for TargetInfo {
+    type Error = EncodingError;
+
+    fn try_from(src: &sgx_target_info_t) -> Result<Self, Self::Error> {
+        let attributes = Attributes::try_from(&src.attributes)?.into();
+
         let mut reserved1 = [0u8; SGX_TARGET_INFO_RESERVED1_BYTES];
         reserved1.copy_from_slice(&src.reserved1[..]);
 
@@ -111,16 +115,16 @@ impl From<&sgx_target_info_t> for TargetInfo {
         let mut reserved3 = [0u8; SGX_TARGET_INFO_RESERVED3_BYTES];
         reserved3.copy_from_slice(&src.reserved3[..]);
 
-        Self(sgx_target_info_t {
+        Ok(Self(sgx_target_info_t {
             mr_enclave: MrEnclave::from(&src.mr_enclave).into(),
-            attributes: Attributes::from(&src.attributes).into(),
+            attributes,
             reserved1,
             config_svn: src.config_svn,
             misc_select: src.misc_select,
             reserved2,
             config_id: ConfigId::from(&src.config_id).into(),
             reserved3,
-        })
+        }))
     }
 }
 
@@ -241,9 +245,6 @@ impl ToX64 for TargetInfo {
 
 #[cfg(test)]
 mod test {
-    extern crate std;
-    use std::vec;
-
     use super::*;
     use bincode::{deserialize, serialize};
     use mc_sgx_core_types_sys::{
@@ -276,15 +277,15 @@ mod test {
 
     #[test]
     fn test_bad_ffi_write_len() {
-        let ti = TargetInfo::from(&TARGET_INFO_SAMPLE);
-        let mut outbuf = vec![0u8; TARGET_INFO_SIZE - 1];
+        let ti = TargetInfo::try_from(&TARGET_INFO_SAMPLE).expect("Could not read target info");
+        let mut outbuf = [0u8; TARGET_INFO_SIZE - 1];
 
         assert_eq!(ti.to_x64(&mut outbuf[..]), Err(TARGET_INFO_SIZE));
     }
 
     #[test]
     fn test_bad_ffi_read_len() {
-        let ti = TargetInfo::from(&TARGET_INFO_SAMPLE);
+        let ti = TargetInfo::try_from(&TARGET_INFO_SAMPLE).expect("Could not read target info");
         let outbuf = ti.to_x64_vec();
 
         assert_eq!(
@@ -295,7 +296,7 @@ mod test {
 
     #[test]
     fn test_target_info_serde() {
-        let ti1 = TargetInfo::from(&TARGET_INFO_SAMPLE);
+        let ti1 = TargetInfo::try_from(&TARGET_INFO_SAMPLE).expect("Could not read target info");
         let ti1ser = serialize(&ti1).expect("TargetInfo serialization failure");
         let ti2 = deserialize(&ti1ser).expect("TargetInfo deserialization failure");
         assert_eq!(ti1, ti2);

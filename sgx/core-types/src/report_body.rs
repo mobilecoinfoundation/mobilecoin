@@ -17,7 +17,7 @@ use crate::{
 };
 use core::{
     cmp::Ordering,
-    convert::TryInto,
+    convert::{TryFrom, TryInto},
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
@@ -80,7 +80,7 @@ impl_serialize_to_x64! {
 impl ReportBody {
     /// Retrieve the attributes of an enclave's report.
     pub fn attributes(&self) -> Attributes {
-        Attributes::from(&self.0.attributes)
+        Attributes::try_from(&self.0.attributes).expect("Invalid attributes found")
     }
 
     /// Retrieve a 64-byte ID representing the enclave XML configuration
@@ -163,8 +163,12 @@ impl Display for ReportBody {
 
 impl FfiWrapper<sgx_report_body_t> for ReportBody {}
 
-impl From<&sgx_report_body_t> for ReportBody {
-    fn from(src: &sgx_report_body_t) -> Self {
+impl TryFrom<&sgx_report_body_t> for ReportBody {
+    type Error = EncodingError;
+
+    fn try_from(src: &sgx_report_body_t) -> Result<Self, Self::Error> {
+        let attributes = Attributes::try_from(&src.attributes)?.into();
+
         let mut reserved1 = [0u8; SGX_REPORT_BODY_RESERVED1_BYTES];
         reserved1[..].copy_from_slice(&src.reserved1[..]);
 
@@ -177,12 +181,12 @@ impl From<&sgx_report_body_t> for ReportBody {
         let mut reserved4 = [0u8; SGX_REPORT_BODY_RESERVED4_BYTES];
         reserved4[..].copy_from_slice(&src.reserved4[..]);
 
-        Self(sgx_report_body_t {
+        Ok(Self(sgx_report_body_t {
             cpu_svn: CpuSecurityVersion::from(&src.cpu_svn).into(),
             misc_select: src.misc_select,
             reserved1,
             isv_ext_prod_id: ExtendedProductId::from(&src.isv_ext_prod_id).into(),
-            attributes: Attributes::from(&src.attributes).into(),
+            attributes,
             mr_enclave: MrEnclave::from(&src.mr_enclave).into(),
             reserved2,
             mr_signer: MrSigner::from(&src.mr_signer).into(),
@@ -194,7 +198,7 @@ impl From<&sgx_report_body_t> for ReportBody {
             reserved4,
             isv_family_id: FamilyId::from(&src.isv_family_id).into(),
             report_data: ReportData::from(&src.report_data).into(),
-        })
+        }))
     }
 }
 
@@ -443,7 +447,7 @@ mod test {
     #[test]
     #[allow(clippy::cognitive_complexity)]
     fn test_ord() {
-        let body1 = ReportBody::from(&REPORT_BODY_SRC);
+        let body1 = ReportBody::try_from(&REPORT_BODY_SRC).expect("Could not read report");
         let mut body2 = body1.clone();
 
         let orig_value = body2.0.cpu_svn.svn[0];
@@ -529,8 +533,8 @@ mod test {
     fn test_serde() {
         assert_eq!(REPORT_BODY_SIZE, size_of::<sgx_report_body_t>());
 
-        let body = ReportBody::from(&REPORT_BODY_SRC);
-        let serialized = serialize(&body).expect("Error serializing report.");
+        let body = ReportBody::try_from(&REPORT_BODY_SRC).expect("Could not read report");
+        let serialized = serialize(&body).expect("Error serializing report");
         let body2: ReportBody = deserialize(&serialized).expect("Error deserializing report");
         assert_eq!(body, body2);
         let dest: sgx_report_body_t = body2.into();

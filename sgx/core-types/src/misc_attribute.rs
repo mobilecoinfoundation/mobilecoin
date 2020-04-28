@@ -15,7 +15,7 @@ use crate::{
 };
 use core::{
     cmp::Ordering,
-    convert::TryInto,
+    convert::{TryFrom, TryInto},
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
@@ -46,7 +46,7 @@ impl_serialize_to_x64! {
 impl MiscAttribute {
     /// Retrieve the attributes
     pub fn attributes(&self) -> Attributes {
-        Attributes::from(&self.0.secs_attr)
+        Attributes::try_from(&self.0.secs_attr).expect("Invalid attributes stored")
     }
 
     /// Retrieve the attribute selection mask
@@ -77,19 +77,21 @@ impl Display for MiscAttribute {
     }
 }
 
-impl From<&sgx_misc_attribute_t> for MiscAttribute {
-    fn from(src: &sgx_misc_attribute_t) -> Self {
-        Self(sgx_misc_attribute_t {
-            secs_attr: Attributes::from(&src.secs_attr).into(),
+impl TryFrom<&sgx_misc_attribute_t> for MiscAttribute {
+    type Error = EncodingError;
+
+    fn try_from(src: &sgx_misc_attribute_t) -> Result<Self, Self::Error> {
+        Ok(Self(sgx_misc_attribute_t {
+            secs_attr: Attributes::try_from(&src.secs_attr)?.into(),
             misc_select: src.misc_select,
-        })
+        }))
     }
 }
 
 impl Hash for MiscAttribute {
-    fn hash<H: Hasher>(&self, hasher: &mut H) {
-        self.attributes().hash(hasher);
-        self.misc_select().hash(hasher);
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.attributes().hash(state);
+        self.misc_select().hash(state);
     }
 }
 

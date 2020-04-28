@@ -6,7 +6,7 @@ use crate::{_macros::FfiWrapper, impl_ffi_wrapper_base, impl_serialize_to_x64};
 use bitflags::bitflags;
 use core::{
     cmp::Ordering,
-    convert::TryInto,
+    convert::{TryFrom, TryInto},
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
@@ -160,12 +160,18 @@ impl Display for Attributes {
     }
 }
 
-impl From<&sgx_attributes_t> for Attributes {
-    fn from(src: &sgx_attributes_t) -> Attributes {
-        Self(sgx_attributes_t {
-            flags: src.flags,
-            xfrm: src.xfrm,
-        })
+impl TryFrom<&sgx_attributes_t> for Attributes {
+    type Error = EncodingError;
+
+    fn try_from(src: &sgx_attributes_t) -> Result<Attributes, Self::Error> {
+        Ok(Self(sgx_attributes_t {
+            flags: AttributeFlags::from_bits(src.flags)
+                .ok_or(EncodingError::InvalidInput)?
+                .bits,
+            xfrm: AttributeXfeatures::from_bits(src.xfrm)
+                .ok_or(EncodingError::InvalidInput)?
+                .bits,
+        }))
     }
 }
 
@@ -188,10 +194,10 @@ impl FromX64 for Attributes {
 }
 
 impl Hash for Attributes {
-    fn hash<H: Hasher>(&self, hasher: &mut H) {
-        "Attributes".hash(hasher);
-        self.0.flags.hash(hasher);
-        self.0.xfrm.hash(hasher);
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        "Attributes".hash(state);
+        self.0.flags.hash(state);
+        self.0.xfrm.hash(state);
     }
 }
 
@@ -230,27 +236,23 @@ mod test {
     use bincode::{deserialize, serialize};
 
     #[test]
-    fn bad_flags_serde() {
-        let src = sgx_attributes_t {
-            flags: 0x0102_0304_0506_0708,
-            xfrm: 0x0807_0605_0403_0201,
-        };
+    fn bad_flags_from_x64() {
+        let src = [
+            0x01u8, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x08, 0x07, 0x06, 0x05, 0x04, 0x03,
+            0x02, 0x01,
+        ];
 
-        let attrs = Attributes::from(&src);
-        let bytes = serialize(&attrs).expect("Could not serialize attributes");
-        assert!(deserialize::<Attributes>(&bytes).is_err());
+        assert!(Attributes::from_x64(&src[..]).is_err());
     }
 
     #[test]
-    fn bad_xfrm_serde() {
-        let src = sgx_attributes_t {
-            flags: 0x0000_0000_0000_0001 | 0x0000_0000_0000_0004 | 0x0000_0000_0000_0080,
-            xfrm: 0x0807_0605_0403_0201,
-        };
+    fn bad_xfrm_from_x64() {
+        let src = [
+            0x00u8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x08, 0x07, 0x06, 0x05, 0x04, 0x03,
+            0x02, 0x01,
+        ];
 
-        let attrs = Attributes::from(&src);
-        let bytes = serialize(&attrs).expect("Could not serialize attributes");
-        assert!(deserialize::<Attributes>(&bytes).is_err());
+        assert!(Attributes::from_x64(&src[..]).is_err());
     }
 
     #[test]
@@ -260,7 +262,7 @@ mod test {
             xfrm: 0x0000_0000_0000_0006,
         };
 
-        let attrs = Attributes::from(&src);
+        let attrs = Attributes::try_from(&src).expect("Could not create attributes");
         let bytes = serialize(&attrs).expect("Could not serialize attributes");
         let attrs2 = deserialize::<Attributes>(&bytes).expect("Could not deserialize attributes");
 
