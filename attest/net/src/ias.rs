@@ -13,8 +13,8 @@ use mc_util_encodings::{FromBase64, FromHex, ToBase64};
 use pem::parse_many;
 use percent_encoding::percent_decode;
 use reqwest::{
+    blocking::Client,
     header::{HeaderMap, HeaderValue, CONTENT_TYPE},
-    Client,
 };
 use serde_json::json;
 
