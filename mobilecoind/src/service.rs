@@ -2473,18 +2473,26 @@ mod test {
             response.get_receiver_tx_receipt_list().len() + 1, // There's a change output that is not part of the receipts
             submitted_tx.prefix.outputs.len()
         );
-        for (tx_out, receipt) in submitted_tx
+
+        let tx_out_hashes: Vec<_> = submitted_tx
             .prefix
             .outputs
             .iter()
-            .zip(response.get_receiver_tx_receipt_list().iter())
-        {
-            assert_eq!(tx_out.hash(), receipt.get_tx_out_hash(),);
+            .map(TxOut::hash)
+            .collect();
+        let tx_out_public_keys: Vec<_> = submitted_tx
+            .prefix
+            .outputs
+            .iter()
+            .map(|tx_out| tx_out.public_key.to_bytes())
+            .collect();
 
-            assert_eq!(
-                tx_out.public_key.as_bytes(),
-                receipt.get_tx_public_key().get_data(),
-            );
+        for receipt in response.get_receiver_tx_receipt_list().iter() {
+            let hash: [u8; 32] = receipt.get_tx_out_hash().try_into().unwrap();
+            assert!(tx_out_hashes.contains(&hash));
+
+            let public_key: [u8; 32] = receipt.get_tx_public_key().get_data().try_into().unwrap();
+            assert!(tx_out_public_keys.contains(&public_key));
         }
 
         // Check that attempted_spend_height got updated for the relevant utxos.
