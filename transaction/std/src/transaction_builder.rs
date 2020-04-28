@@ -148,7 +148,7 @@ impl TransactionBuilder {
             input_secrets.push((onetime_private_key, value, blinding));
         }
 
-        let mut output_values_and_blindings: Vec<(u64, Scalar)> = tx_prefix
+        let output_values_and_blindings: Vec<(u64, Scalar)> = tx_prefix
             .outputs
             .iter()
             .enumerate()
@@ -162,9 +162,6 @@ impl TransactionBuilder {
             })
             .collect();
 
-        // The fee output is implicit in the tx_prefix.
-        output_values_and_blindings.push(tx_prefix.fee_value_and_blinding());
-
         let message = tx_prefix.hash().0;
         let signature = SignatureRctBulletproofs::sign(
             &message,
@@ -172,6 +169,7 @@ impl TransactionBuilder {
             &real_input_indices,
             &input_secrets,
             &output_values_and_blindings,
+            self.fee,
             rng,
         )?;
 
@@ -241,7 +239,7 @@ pub mod transaction_builder_tests {
         onetime_keys::*,
         ring_signature::KeyImage,
         tx::TxOutMembershipProof,
-        validation::validate_transaction_signature,
+        validation::validate_signature,
     };
     use rand::{rngs::StdRng, SeedableRng};
     use std::convert::TryFrom;
@@ -299,7 +297,7 @@ pub mod transaction_builder_tests {
             let onetime_private_key = recover_onetime_private_key(
                 &RistrettoPublic::try_from(&real_output.public_key).unwrap(),
                 &sender.view_private_key(),
-                &sender.subaddress_spend_key(DEFAULT_SUBADDRESS_INDEX),
+                &sender.subaddress_spend_private(DEFAULT_SUBADDRESS_INDEX),
             );
 
             let membership_proofs: Vec<TxOutMembershipProof> = ring
@@ -352,7 +350,7 @@ pub mod transaction_builder_tests {
         let onetime_private_key = recover_onetime_private_key(
             &RistrettoPublic::try_from(&real_output.public_key).unwrap(),
             &sender.view_private_key(),
-            &sender.subaddress_spend_key(DEFAULT_SUBADDRESS_INDEX),
+            &sender.subaddress_spend_private(DEFAULT_SUBADDRESS_INDEX),
         );
 
         let key_image = KeyImage::from(&onetime_private_key);
@@ -420,7 +418,7 @@ pub mod transaction_builder_tests {
         }
 
         // The transaction should have a valid signature.
-        assert!(validate_transaction_signature(&tx, &mut rng).is_ok());
+        assert!(validate_signature(&tx, &mut rng).is_ok());
     }
 
     #[test]
@@ -445,7 +443,7 @@ pub mod transaction_builder_tests {
         let onetime_private_key = recover_onetime_private_key(
             &RistrettoPublic::try_from(&real_output.public_key).unwrap(),
             &alice.view_private_key(),
-            &alice.subaddress_spend_key(DEFAULT_SUBADDRESS_INDEX),
+            &alice.subaddress_spend_private(DEFAULT_SUBADDRESS_INDEX),
         );
 
         let membership_proofs: Vec<TxOutMembershipProof> = ring

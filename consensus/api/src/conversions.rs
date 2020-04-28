@@ -16,6 +16,7 @@ use mc_transaction_core::{
     amount::Amount,
     encrypted_fog_hint::EncryptedFogHint,
     range::Range,
+    ring_signature,
     ring_signature::{
         CurveScalar, Error as RingSigError, KeyImage, RingMLSAG, SignatureRctBulletproofs,
     },
@@ -609,7 +610,7 @@ impl From<TransactionValidationError> for ProposeTxResult {
                 Self::InsufficientInputSignatures
             }
             TransactionValidationError::InvalidInputSignature => Self::InvalidInputSignature,
-            TransactionValidationError::InvalidTransactionSignature => {
+            TransactionValidationError::InvalidTransactionSignature(_e) => {
                 Self::InvalidTransactionSignature
             }
             TransactionValidationError::InvalidRangeProof => Self::InvalidRangeProof,
@@ -662,7 +663,9 @@ impl TryInto<TransactionValidationError> for ProposeTxResult {
             }
             Self::InvalidInputSignature => Ok(TransactionValidationError::InvalidInputSignature),
             Self::InvalidTransactionSignature => {
-                Ok(TransactionValidationError::InvalidTransactionSignature)
+                Ok(TransactionValidationError::InvalidTransactionSignature(
+                    ring_signature::Error::InvalidSignature,
+                ))
             }
             Self::InvalidRangeProof => Ok(TransactionValidationError::InvalidRangeProof),
             Self::InsufficientRingSize => Ok(TransactionValidationError::InsufficientRingSize),
@@ -743,6 +746,7 @@ impl From<&mc_transaction_core::Block> for blockchain::Block {
         block.set_version(other.version);
         block.set_parent_id(blockchain::BlockID::from(&other.parent_id));
         block.set_index(other.index);
+        block.set_cumulative_txo_count(other.cumulative_txo_count);
         block.set_root_element((&other.root_element).into());
         block.set_contents_hash(blockchain::BlockContentsHash::from(&other.contents_hash));
         block
@@ -765,6 +769,7 @@ impl TryFrom<&blockchain::Block> for mc_transaction_core::Block {
             version: value.version,
             parent_id,
             index: value.index,
+            cumulative_txo_count: value.cumulative_txo_count,
             root_element,
             contents_hash,
         };
@@ -846,6 +851,7 @@ mod conversion_tests {
 
     use self::rand::{rngs::StdRng, SeedableRng};
     use super::*;
+    use mc_crypto_keys::Ed25519Private;
     use mc_transaction_core::{
         account_keys::{AccountKey, PublicAddress},
         onetime_keys::recover_onetime_private_key,
@@ -940,6 +946,7 @@ mod conversion_tests {
             version: 1,
             parent_id: mc_transaction_core::BlockID::try_from(&[1u8; 32][..]).unwrap(),
             index: 99,
+            cumulative_txo_count: 400,
             root_element: TxOutMembershipElement {
                 range: Range::new(10, 20).unwrap(),
                 hash: TxOutMembershipHash::from([12u8; 32]),
@@ -953,6 +960,7 @@ mod conversion_tests {
         assert_eq!(block.get_version(), 1);
         assert_eq!(block.get_parent_id().get_data(), [1u8; 32]);
         assert_eq!(block.get_index(), 99);
+        assert_eq!(block.get_cumulative_txo_count(), 400);
         assert_eq!(block.get_root_element().get_range().get_from(), 10);
         assert_eq!(block.get_root_element().get_range().get_to(), 20);
         assert_eq!(block.get_root_element().get_hash().get_data(), &[12u8; 32]);
@@ -1005,6 +1013,7 @@ mod conversion_tests {
             version: 1,
             parent_id: mc_transaction_core::BlockID::try_from(&[1u8; 32][..]).unwrap(),
             index: 99,
+            cumulative_txo_count: 400,
             root_element: TxOutMembershipElement {
                 range: Range::new(10, 20).unwrap(),
                 hash: TxOutMembershipHash::from([12u8; 32]),
@@ -1049,6 +1058,89 @@ mod conversion_tests {
 
         let recovered_tx_out = tx::TxOut::try_from(&converted).unwrap();
         assert_eq!(source.amount, recovered_tx_out.amount);
+    }
+
+    #[test]
+    // mc_transaction_core::BlockSignature --> blockchain::BlockSignature
+    fn test_block_signature_from() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+        let source_block_signature = mc_transaction_core::BlockSignature::new(
+            Ed25519Signature::new([1; 64]),
+            (&Ed25519Private::from_random(&mut rng)).into(),
+        );
+
+        let block_signature = blockchain::BlockSignature::from(&source_block_signature);
+        assert_eq!(
+            block_signature.get_signature().get_data(),
+            source_block_signature.signature().as_ref()
+        );
+        assert_eq!(
+            block_signature.get_signer().get_data(),
+            source_block_signature.signer().to_bytes()
+        );
+    }
+
+    #[test]
+    // blockchain::BlockSignature -> mc_transaction_core::BlockSignature
+    fn test_block_signature_try_from() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+        let expected_block_signature = mc_transaction_core::BlockSignature::new(
+            Ed25519Signature::new([1; 64]),
+            (&Ed25519Private::from_random(&mut rng)).into(),
+        );
+
+        let mut source_block_signature = blockchain::BlockSignature::new();
+
+        let mut signature = external::Ed25519Signature::new();
+        signature.set_data(expected_block_signature.signature().to_bytes().to_vec());
+        source_block_signature.set_signature(signature);
+
+        let mut signer = external::Ed25519Public::new();
+        signer.set_data(expected_block_signature.signer().to_bytes().to_vec());
+        source_block_signature.set_signer(signer);
+
+        let block_signature =
+            mc_transaction_core::BlockSignature::try_from(&source_block_signature).unwrap();
+        assert_eq!(block_signature, expected_block_signature);
+    }
+
+    #[test]
+    // the blockchain::BlockSignature definition matches the BlockSignature prost attributes.
+    // This ensures the definition in the .proto files matches the prost attributes inside the
+    // BlockSignature struct.
+    fn test_blockchain_block_signature_matches_prost() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+
+        let source_block_signature = mc_transaction_core::BlockSignature::new(
+            Ed25519Signature::new([1; 64]),
+            (&Ed25519Private::from_random(&mut rng)).into(),
+        );
+
+        // Encode using `protobuf`, decode using `prost`.
+        {
+            let blockchain_block_signature =
+                blockchain::BlockSignature::from(&source_block_signature);
+            let blockchain_block_signature_bytes =
+                blockchain_block_signature.write_to_bytes().unwrap();
+
+            let block_signature_from_prost: mc_transaction_core::BlockSignature =
+                mc_util_serial::decode(&blockchain_block_signature_bytes).expect("failed decoding");
+            assert_eq!(source_block_signature, block_signature_from_prost);
+        }
+
+        // Encode using `prost`, decode using `protobuf`.
+        {
+            let prost_block_signature_bytes = mc_util_serial::encode(&source_block_signature);
+            let blockchain_block_signature: blockchain::BlockSignature =
+                protobuf::parse_from_bytes(&prost_block_signature_bytes).expect("failed decoding");
+
+            assert_eq!(
+                blockchain_block_signature,
+                blockchain::BlockSignature::from(&source_block_signature)
+            );
+        }
     }
 
     #[test]
@@ -1152,7 +1244,7 @@ mod conversion_tests {
         let onetime_private_key = recover_onetime_private_key(
             &public_key,
             alice.view_private_key(),
-            &alice.default_subaddress_spend_key(),
+            &alice.default_subaddress_spend_private(),
         );
 
         let membership_proofs: Vec<TxOutMembershipProof> = ring

@@ -726,6 +726,7 @@ fn identify_safe_blocks<L: Ledger>(
             block.version,
             &block.parent_id,
             block.index,
+            block.cumulative_txo_count,
             &block.root_element,
             &block_contents.hash(),
         );

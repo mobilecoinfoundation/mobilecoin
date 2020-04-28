@@ -6,7 +6,6 @@ metadata:
 spec:
   nodeSelector:
     builder-node: "true"
-    # sgx-enabled-node: "false"
   affinity:
     podAntiAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:

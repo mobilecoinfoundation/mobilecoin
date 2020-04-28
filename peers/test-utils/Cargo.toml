@@ -1,12 +1,13 @@
 [package]
 name = "mc-peers-test-utils"
-version = "0.1.5-alpha-1"
+version = "0.2.0"
 authors = ["MobileCoin"]
 edition = "2018"
 
 [dependencies]
 mc-common = { path = "../../common" }
 mc-connection = { path = "../../connection" }
+mc-consensus-api = { path = "../../consensus/api" }
 mc-consensus-enclave-api = { path = "../../consensus/enclave/api" }
 mc-consensus-scp = { path = "../../consensus/scp" }
 mc-crypto-keys = { path = "../../crypto/keys" }

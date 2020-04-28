@@ -20,9 +20,10 @@ use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
-use mc_connection::UserTxConnection;
+use mc_connection::{BlockchainConnection, UserTxConnection};
 use mc_crypto_keys::RistrettoPublic;
 use mc_ledger_db::{Ledger, LedgerDB};
+use mc_ledger_sync::{NetworkState, PollingNetworkState};
 use mc_mobilecoind_api::mobilecoind_api_grpc::{create_mobilecoind_api, MobilecoindApi};
 use mc_transaction_core::{
     account_keys::{AccountKey, PublicAddress},
@@ -33,7 +34,10 @@ use mc_util_b58_payloads::payloads::{RequestPayload, TransferPayload};
 use mc_util_grpc::{rpc_internal_error, rpc_logger, send_result, BuildInfoService};
 use mc_util_serial::ReprBytes32;
 use protobuf::RepeatedField;
-use std::{convert::TryFrom, sync::Arc};
+use std::{
+    convert::TryFrom,
+    sync::{Arc, Mutex},
+};
 
 pub struct Service {
     /// Sync thread.
@@ -44,10 +48,11 @@ pub struct Service {
 }
 
 impl Service {
-    pub fn new<T: UserTxConnection + 'static>(
+    pub fn new<T: BlockchainConnection + UserTxConnection + 'static>(
         ledger_db: LedgerDB,
         mobilecoind_db: Database,
         transactions_manager: TransactionsManager<T>,
+        network_state: Arc<Mutex<PollingNetworkState<T>>>,
         port: u16,
         num_workers: Option<usize>,
         logger: Logger,
@@ -70,6 +75,7 @@ impl Service {
             transactions_manager,
             ledger_db,
             mobilecoind_db,
+            network_state,
             logger.clone(),
         );
 
@@ -98,35 +104,39 @@ impl Service {
     }
 }
 
-pub struct ServiceApi<T: UserTxConnection + 'static> {
+pub struct ServiceApi<T: BlockchainConnection + UserTxConnection + 'static> {
     transactions_manager: TransactionsManager<T>,
     ledger_db: LedgerDB,
     mobilecoind_db: Database,
+    network_state: Arc<Mutex<PollingNetworkState<T>>>,
     logger: Logger,
 }
 
-impl<T: UserTxConnection + 'static> Clone for ServiceApi<T> {
+impl<T: BlockchainConnection + UserTxConnection + 'static> Clone for ServiceApi<T> {
     fn clone(&self) -> Self {
         Self {
             transactions_manager: self.transactions_manager.clone(),
             ledger_db: self.ledger_db.clone(),
             mobilecoind_db: self.mobilecoind_db.clone(),
+            network_state: self.network_state.clone(),
             logger: self.logger.clone(),
         }
     }
 }
 
-impl<T: UserTxConnection + 'static> ServiceApi<T> {
+impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
     pub fn new(
         transactions_manager: TransactionsManager<T>,
         ledger_db: LedgerDB,
         mobilecoind_db: Database,
+        network_state: Arc<Mutex<PollingNetworkState<T>>>,
         logger: Logger,
     ) -> Self {
         Self {
             transactions_manager,
             ledger_db,
             mobilecoind_db,
+            network_state,
             logger,
         }
     }
@@ -988,13 +998,48 @@ impl<T: UserTxConnection + 'static> ServiceApi<T> {
         response.set_tx_proposal(proto_tx_proposal);
         Ok(response)
     }
+
+    fn get_network_status_impl(
+        &mut self,
+        _request: mc_mobilecoind_api::Empty,
+    ) -> Result<mc_mobilecoind_api::GetNetworkStatusResponse, RpcStatus> {
+        let network_state = self.network_state.lock().expect("mutex poisoned");
+        let num_blocks = self
+            .ledger_db
+            .num_blocks()
+            .map_err(|err| rpc_internal_error("ledger_db.num_blocks", err, &self.logger))?;
+        if num_blocks == 0 {
+            return Err(RpcStatus::new(
+                RpcStatusCode::INTERNAL,
+                Some("no bootstrap block".to_owned()),
+            ));
+        }
+        let local_block_index = num_blocks - 1;
+
+        let mut response = mc_mobilecoind_api::GetNetworkStatusResponse::new();
+
+        response.set_network_highest_block_index(
+            network_state.highest_block_index_on_network().unwrap_or(0),
+        );
+        response.set_peer_block_index_map(
+            network_state
+                .peer_to_current_block_index()
+                .iter()
+                .map(|(responder_id, block_index)| (responder_id.to_string(), *block_index))
+                .collect(),
+        );
+        response.set_local_block_index(local_block_index);
+        response.set_is_behind(network_state.is_behind(local_block_index));
+
+        Ok(response)
+    }
 }
 
 macro_rules! build_api {
     ($( $service_function_name:ident $service_request_type:ident $service_response_type:ident $service_function_impl:ident ),+)
     =>
     (
-        impl<T: UserTxConnection + 'static> MobilecoindApi for ServiceApi<T> {
+        impl<T: BlockchainConnection + UserTxConnection + 'static> MobilecoindApi for ServiceApi<T> {
             $(
                 fn $service_function_name(
                     &mut self,
@@ -1037,7 +1082,8 @@ build_api! {
     get_tx_status_as_sender GetTxStatusAsSenderRequest GetTxStatusAsSenderResponse get_tx_status_as_sender_impl,
     get_tx_status_as_receiver GetTxStatusAsReceiverRequest GetTxStatusAsReceiverResponse get_tx_status_as_receiver_impl,
     get_balance GetBalanceRequest GetBalanceResponse get_balance_impl,
-    send_payment SendPaymentRequest SendPaymentResponse send_payment_impl
+    send_payment SendPaymentRequest SendPaymentResponse send_payment_impl,
+    get_network_status Empty GetNetworkStatusResponse get_network_status_impl
 }
 
 #[cfg(test)]
@@ -1058,7 +1104,7 @@ mod test {
         get_tx_out_shared_secret,
         onetime_keys::recover_onetime_private_key,
         tx::{Tx, TxOut},
-        Block, BlockContents, BlockIndex, BLOCK_VERSION,
+        Block, BlockContents, BLOCK_VERSION,
     };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
@@ -1329,7 +1375,7 @@ mod test {
                 let onetime_private_key = recover_onetime_private_key(
                     &tx_public_key,
                     account_key.view_private_key(),
-                    &account_key.subaddress_spend_key(0),
+                    &account_key.subaddress_spend_private(0),
                 );
                 let key_image = KeyImage::from(&onetime_private_key);
 
@@ -1899,10 +1945,9 @@ mod test {
             // Append to ledger.
             let num_blocks = ledger_db.num_blocks().unwrap();
             let parent = ledger_db.get_block(num_blocks - 1).unwrap();
-            let new_block = Block::new(
+            let new_block = Block::new_with_parent(
                 BLOCK_VERSION,
-                &parent.id,
-                num_blocks as BlockIndex,
+                &parent,
                 &Default::default(),
                 &block_contents,
             );
@@ -2134,13 +2179,13 @@ mod test {
             let mut opt_submitted_tx: Option<Tx> = None;
             for mock_peer in server_conn_manager.conns() {
                 let inner = mock_peer.read();
-                match (inner.submitted_txs.len(), opt_submitted_tx.clone()) {
+                match (inner.proposed_txs.len(), opt_submitted_tx.clone()) {
                     (0, _) => {
                         // Nothing submitted to the current peer.
                     }
                     (1, None) => {
                         // Found our tx.
-                        opt_submitted_tx = Some(inner.submitted_txs[0].clone())
+                        opt_submitted_tx = Some(inner.proposed_txs[0].clone())
                     }
                     (1, Some(_)) => {
                         panic!("Tx submitted to two peers?!");
@@ -2360,13 +2405,13 @@ mod test {
         let mut opt_submitted_tx: Option<Tx> = None;
         for mock_peer in server_conn_manager.conns() {
             let inner = mock_peer.read();
-            match (inner.submitted_txs.len(), opt_submitted_tx.clone()) {
+            match (inner.proposed_txs.len(), opt_submitted_tx.clone()) {
                 (0, _) => {
                     // Nothing submitted to the current peer.
                 }
                 (1, None) => {
                     // Found our tx.
-                    opt_submitted_tx = Some(inner.submitted_txs[0].clone())
+                    opt_submitted_tx = Some(inner.proposed_txs[0].clone())
                 }
                 (1, Some(_)) => {
                     panic!("Tx submitted to two peers?!");
@@ -2597,5 +2642,27 @@ mod test {
             );
             assert_eq!(response.get_memo(), "test memo");
         }
+    }
+
+    #[test_with_logger]
+    fn test_get_network_status(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        let (ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
+
+        let network_status = client
+            .get_network_status(&mc_mobilecoind_api::Empty::new())
+            .unwrap();
+
+        assert_eq!(
+            network_status.network_highest_block_index,
+            ledger_db.num_blocks().unwrap() - 1
+        );
+
+        assert_eq!(
+            network_status.local_block_index,
+            ledger_db.num_blocks().unwrap() - 1
+        );
     }
 }

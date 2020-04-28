@@ -1,0 +1,59 @@
+#!/bin/bash
+set -e
+
+usage() {
+    cat << EOF
+    usage: generate-manifests [-h]|[ARGS]
+    Generage Kubernetes manifests from templates in this directory
+    Required arguments:
+      -n, --namespace        Kubernetes namespace to deploy into. Also sets networkname
+                             and subdomain
+    Optional arguments:
+      -h, --help             Show this message and exit
+      -t, --tag              Docker tag to use. Default is to use <namespace>-latest.
+EOF
+}
+
+while (( "$#" )); do
+    case "$1" in
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        -k|--ias-api-key)
+            IAS_KEY="${2}"
+            shift 2
+            ;;
+        -n|--namespace)
+            NAMESPACE="${2}"
+            shift 2
+            ;;
+        -t|--tag)
+            DOCKER_TAG="${2}"
+            shift 2
+            ;;
+        -*|--*=)
+        echo "Error: Unsupported flag $1" >&2
+        exit 1
+        ;;
+    esac
+done
+
+if [ -z $NAMESPACE ]; then
+  echo
+  echo "Missing parameter: namespace"
+  echo
+  usage
+  exit 1
+fi
+
+if [ -z $DOCKER_TAG ]; then
+  DOCKER_TAG="${NAMESPACE}-latest"
+fi
+
+mkdir -p build
+
+for i in *.yaml; do
+  echo "Generating build/${i}"
+  sed "s/NETWORKNAME/${NAMESPACE}/g; s/DOCKER_TAG/${DOCKER_TAG}/g" ${i} > build/${i}
+done

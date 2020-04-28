@@ -105,7 +105,7 @@ pub fn create_transaction_with_amount<L: Ledger, R: RngCore + CryptoRng>(
         .collect::<Vec<u64>>();
     let membership_proofs = ledger.get_tx_out_proof_of_memberships(&indexes).unwrap();
 
-    let spend_private_key = sender.subaddress_spend_key(DEFAULT_SUBADDRESS_INDEX);
+    let spend_private_key = sender.subaddress_spend_private(DEFAULT_SUBADDRESS_INDEX);
     let tx_out_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
     let onetime_private_key = recover_onetime_private_key(
         &tx_out_public_key,
@@ -190,6 +190,7 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
                     BLOCK_VERSION,
                     &parent.as_ref().unwrap().id,
                     block_index,
+                    parent.as_ref().unwrap().cumulative_txo_count,
                     &Default::default(),
                     &block_contents,
                 );
@@ -239,15 +240,14 @@ pub fn get_blocks<T: Rng + RngCore + CryptoRng>(
     n_blocks: usize,
     min_txs_per_block: usize,
     max_txs_per_block: usize,
-    initial_block_index: u64,
-    initial_block_id: BlockID,
+    initial_block: &Block,
     rng: &mut T,
 ) -> Vec<(Block, BlockContents)> {
     assert!(!recipients.is_empty());
     assert!(max_txs_per_block >= min_txs_per_block);
 
     let mut results = Vec::<(Block, BlockContents)>::new();
-    let mut last_block_id = initial_block_id;
+    let mut last_block = initial_block.clone();
 
     for block_index in 0..n_blocks {
         let n_txs = rng.gen_range(min_txs_per_block, max_txs_per_block + 1);
@@ -269,15 +269,11 @@ pub fn get_blocks<T: Rng + RngCore + CryptoRng>(
             hash: TxOutMembershipHash::from([0u8; 32]),
         };
 
-        let block = Block::new(
-            BLOCK_VERSION,
-            &last_block_id,
-            initial_block_index + block_index as u64,
-            &root_element,
-            &block_contents,
-        );
+        let block =
+            Block::new_with_parent(BLOCK_VERSION, &last_block, &root_element, &block_contents);
 
-        last_block_id = block.id.clone();
+        last_block = block.clone();
+
         results.push((block, block_contents));
     }
 

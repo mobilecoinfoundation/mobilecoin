@@ -21,6 +21,7 @@ fn _make_ledger_long(ledger: &mut LedgerDB) {
 
     let num_blocks = ledger.num_blocks().unwrap();
     let last_block = ledger.get_block(num_blocks - 1).unwrap();
+    assert_eq!(last_block.cumulative_txo_count, ledger.num_txos().unwrap());
 
     let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
@@ -35,14 +36,14 @@ fn _make_ledger_long(ledger: &mut LedgerDB) {
         1,
         1000,
         1000,
-        last_block.index + 1,
-        last_block.id,
+        &last_block,
         &mut rng,
     );
 
     for (block, block_contents) in &results {
         println!("block {} containing {:?}", block.index, block_contents);
         ledger.append_block(block, block_contents, None).unwrap();
+        assert_eq!(block.cumulative_txo_count, ledger.num_txos().unwrap());
     }
 }
 

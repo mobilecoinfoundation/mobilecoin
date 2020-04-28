@@ -188,14 +188,14 @@ mod tests {
 
             let block = match parent_block {
                 None => Block::new_origin_block(&outputs),
-                Some(parent) => Block::new(
+                Some(parent) => Block::new_with_parent(
                     BLOCK_VERSION,
-                    &parent.id,
-                    block_index,
+                    &parent,
                     &Default::default(),
                     &block_contents,
                 ),
             };
+            assert_eq!(block_index, block.index);
 
             db.append_block(&block, &block_contents, None)
                 .expect("failed writing initial transactions");

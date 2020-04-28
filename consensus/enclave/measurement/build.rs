@@ -10,7 +10,7 @@ use std::{env::var, path::PathBuf};
 
 pub const CONSENSUS_ENCLAVE_PRODUCT_ID: u16 = 1;
 pub const CONSENSUS_ENCLAVE_SECURITY_VERSION: u16 = 1;
-pub const CONSENSUS_ENCLAVE_NAME: &str = "consensus_enclave";
+pub const CONSENSUS_ENCLAVE_NAME: &str = "consensus-enclave";
 pub const CONSENSUS_ENCLAVE_DIR: &str = "../trusted";
 
 fn main() {

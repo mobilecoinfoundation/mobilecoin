@@ -206,10 +206,9 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
 
         let block_contents = BlockContents::new(key_images, outputs);
 
-        let block = Block::new(
+        let block = Block::new_with_parent(
             BLOCK_VERSION,
-            &parent_block.id,
-            parent_block.index + 1,
+            &parent_block,
             &root_elements[0],
             &block_contents,
         );

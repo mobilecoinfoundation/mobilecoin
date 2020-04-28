@@ -67,5 +67,5 @@ fi
 if [ -f $PROJECT_ROOT/target/release/generate_sample_ledger ]; then
     $PROJECT_ROOT/target/release/generate_sample_ledger --txs ${BOOTSTRAP_NUM}
 else
-    cargo run --bin mc-util-generate_sample_ledger --release -- --txs ${BOOTSTRAP_NUM}
+    cargo run --bin mc-util-generate-sample-ledger --release -- --txs ${BOOTSTRAP_NUM}
 fi

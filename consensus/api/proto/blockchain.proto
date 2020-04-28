@@ -57,12 +57,15 @@ message Block {
     // The index of this block in the blockchain.
     uint64 index = 4;
 
+    // The cumulative number of TXOs in the blockchain, including this block
+    uint64 cumulative_txo_count = 5;
+
     // Root hash of the membership proofs provided by the untrusted local system for validation.
     // This captures the state of all TxOuts in the ledger that this block was validated against.
-    external.TxOutMembershipElement root_element = 5;
+    external.TxOutMembershipElement root_element = 6;
 
     // Hash of the block's contents.
-    BlockContentsHash contents_hash = 6;
+    BlockContentsHash contents_hash = 7;
 }
 
 message BlockContents {
@@ -78,7 +81,8 @@ message BlockSignature {
     external.Ed25519Public signer = 2;
 }
 
-message S3Block {
+// Version 1 of an archived block.
+message ArchiveBlockV1 {
     // Block
     Block block = 1;
 
@@ -87,4 +91,11 @@ message S3Block {
 
     // Block signature, when available.
     BlockSignature signature = 3;
+}
+
+// An archived block.
+message ArchiveBlock {
+    oneof block {
+        ArchiveBlockV1 v1 = 1;
+    }
 }

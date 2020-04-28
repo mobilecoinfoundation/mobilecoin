@@ -47,6 +47,9 @@ service MobilecoindAPI {
     // Convenience calls
     rpc GetBalance (GetBalanceRequest) returns (GetBalanceResponse) {}
     rpc SendPayment (SendPaymentRequest) returns (SendPaymentResponse) {}
+
+    // Network status
+    rpc GetNetworkStatus (google.protobuf.Empty) returns (GetNetworkStatusResponse) {}
 }
 
 //*********************************
@@ -496,4 +499,25 @@ message SendPaymentResponse {
     // The TxProposal that was submitted to the network. The fee that was paid can be checked at
     // tx_proposal.tx.prefix.fee
     TxProposal tx_proposal = 3;
+}
+
+//
+// Network status
+//
+
+// Get information about the network.
+// - empty request
+message GetNetworkStatusResponse {
+    // Total highest block number the network agrees on.
+    // (This is the block number we will try to sync to).
+    uint64 network_highest_block_index = 1;
+
+    // A map of node responder id to the block index reported by it.
+    map<string, uint64> peer_block_index_map = 2;
+
+    // The local ledger block index.
+    uint64 local_block_index = 3;
+
+    // Whether we are behind.
+    bool is_behind = 4;
 }
