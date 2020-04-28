@@ -4,6 +4,10 @@ version = "0.2.0"
 authors = ["MobileCoin"]
 edition = "2018"
 
+[[bin]]
+name = "generate-sample-ledger"
+path = "src/bin/generate_sample_ledger.rs"
+
 [dependencies]
 mc-common = { path = "../../common" }
 mc-crypto-keys = { path = "../../crypto/keys" }
