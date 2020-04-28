@@ -5,8 +5,9 @@
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
 use mc_common::logger::{log, Logger};
 use mc_consensus_api::{
-    blockchain::{self, BlocksRequest, BlocksResponse, LastBlockInfoResponse},
-    blockchain_grpc::BlockchainApi,
+    blockchain,
+    consensus_common::{BlocksRequest, BlocksResponse, LastBlockInfoResponse},
+    consensus_common_grpc::BlockchainApi,
     empty::Empty,
 };
 use mc_ledger_db::Ledger;

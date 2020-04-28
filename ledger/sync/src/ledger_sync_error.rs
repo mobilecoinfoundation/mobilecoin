@@ -30,7 +30,7 @@ pub enum LedgerSyncError {
     TransactionFetcher(Box<dyn TransactionFetcherError>),
 
     #[fail(display = "Api conversion error: {:?}", _0)]
-    ApiConversionError(mc_consensus_api::conversions::ConversionError),
+    ApiConversionError(mc_api::conversions::ConversionError),
 
     #[fail(display = "Invalid block ID.")]
     InvalidBlockId,

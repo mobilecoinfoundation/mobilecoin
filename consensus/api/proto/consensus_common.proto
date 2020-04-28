@@ -3,8 +3,36 @@
 // Consensus service data types used by both client-facing and peer-facing APIs.
 
 syntax = "proto3";
+import "google/protobuf/empty.proto";
+import "blockchain.proto";
 
 package consensus_common;
+
+/// Blockchain API shared between clients and peers.
+service BlockchainAPI {
+    rpc GetLastBlockInfo (google.protobuf.Empty) returns (LastBlockInfoResponse);
+    rpc GetBlocks (BlocksRequest) returns (BlocksResponse);
+}
+
+// Response to a `GetLastBlockInfo` call.
+message LastBlockInfoResponse {
+    // Block index
+    uint64 index = 1;
+}
+
+// Requests a range [offset, offset+limit) of Blocks.
+message BlocksRequest {
+    // Index of first block.
+    uint64 offset = 1;
+
+    // Maximum number of blocks.
+    uint32 limit = 2;
+}
+
+// Response to a `BlocksRequest`.
+message BlocksResponse {
+    repeated blockchain.Block blocks = 1;
+}
 
 /// Result of ProposeTx call that cannot be represented by a built-in GRPC error code.
 enum ProposeTxResult {

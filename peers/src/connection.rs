@@ -20,8 +20,8 @@ use mc_connection::{
     Error as ConnectionError, Result as ConnectionResult,
 };
 use mc_consensus_api::{
-    blockchain::BlocksRequest,
-    blockchain_grpc::BlockchainApiClient,
+    consensus_common::BlocksRequest,
+    consensus_common_grpc::BlockchainApiClient,
     consensus_peer::{
         ConsensusMsg as GrpcConsensusMsg, ConsensusMsgResponse,
         FetchTxsRequest as GrpcFetchTxsRequest,

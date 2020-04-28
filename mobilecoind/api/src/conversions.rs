@@ -3,14 +3,14 @@
 //! provides conversions between types used in libmobilecoin and types from mobilecoind_api
 
 use crate::mobilecoind_api;
-use mc_consensus_api::external;
+use mc_api::external;
 use mc_transaction_core::account_keys;
 use std::convert::{From, TryFrom};
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum ConversionError {
     Key(mc_crypto_keys::KeyError),
-    MobilecoinApiConversion(mc_consensus_api::ConversionError),
+    MobilecoinApiConversion(mc_api::ConversionError),
     FeeMismatch,
     IndexOutOfBounds,
 }
@@ -21,8 +21,8 @@ impl From<mc_crypto_keys::KeyError> for ConversionError {
     }
 }
 
-impl From<mc_consensus_api::ConversionError> for ConversionError {
-    fn from(src: mc_consensus_api::ConversionError) -> Self {
+impl From<mc_api::ConversionError> for ConversionError {
+    fn from(src: mc_api::ConversionError) -> Self {
         Self::MobilecoinApiConversion(src)
     }
 }
@@ -122,8 +122,8 @@ impl TryFrom<&mobilecoind_api::PublicAddress> for account_keys::PublicAddress {
 #[cfg(test)]
 mod tests {
     use crate::mobilecoind_api;
+    use mc_api::external;
     use mc_common::logger::{test_with_logger, Logger};
-    use mc_consensus_api::external;
     use mc_transaction_core::account_keys;
     use rand::{rngs::StdRng, SeedableRng};
     use std::convert::{From, TryFrom};

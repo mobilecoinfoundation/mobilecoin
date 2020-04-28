@@ -21,8 +21,9 @@ use mc_common::{
     trace_time,
 };
 use mc_consensus_api::{
-    blockchain::BlocksRequest, blockchain_grpc::BlockchainApiClient,
-    consensus_client_grpc::ConsensusClientApiClient, consensus_common::ProposeTxResult,
+    consensus_client_grpc::ConsensusClientApiClient,
+    consensus_common::{BlocksRequest, ProposeTxResult},
+    consensus_common_grpc::BlockchainApiClient,
     empty::Empty,
 };
 use mc_crypto_keys::X25519;

@@ -1643,6 +1643,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-api"
+version = "0.2.0"
+dependencies = [
+ "cargo-emit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "curve25519-dalek 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mc-common 0.2.0",
+ "mc-crypto-keys 0.2.0",
+ "mc-transaction-core 0.2.0",
+ "mc-transaction-core-test-utils 0.2.0",
+ "mc-transaction-std 0.2.0",
+ "mc-util-build-grpc 0.2.0",
+ "mc-util-build-script 0.2.0",
+ "mc-util-from-random 0.1.0",
+ "mc-util-serial 0.2.0",
+ "protobuf 2.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "mc-attest-ake"
 version = "0.2.0"
 dependencies = [
@@ -1849,24 +1868,14 @@ name = "mc-consensus-api"
 version = "0.2.0"
 dependencies = [
  "cargo-emit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "curve25519-dalek 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.29 (registry+https://github.com/rust-lang/crates.io-index)",
  "grpcio 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mc-api 0.2.0",
  "mc-attest-api 0.2.0",
- "mc-common 0.2.0",
- "mc-crypto-keys 0.2.0",
- "mc-crypto-rand 0.2.0",
  "mc-transaction-core 0.2.0",
- "mc-transaction-core-test-utils 0.2.0",
- "mc-transaction-std 0.2.0",
  "mc-util-build-grpc 0.2.0",
  "mc-util-build-script 0.2.0",
- "mc-util-from-random 0.1.0",
- "mc-util-serial 0.2.0",
- "prost 0.6.1 (git+https://github.com/mobilecoinofficial/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
  "protobuf 2.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rand 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "tempdir 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -2261,8 +2270,8 @@ dependencies = [
  "dirs 2.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "dotenv 0.14.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mc-api 0.2.0",
  "mc-common 0.2.0",
- "mc-consensus-api 0.2.0",
  "mc-ledger-db 0.2.0",
  "mc-transaction-core 0.2.0",
  "protobuf 2.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2283,11 +2292,11 @@ dependencies = [
  "failure 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "grpcio 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mc-api 0.2.0",
  "mc-attest-core 0.2.0",
  "mc-common 0.2.0",
  "mc-connection 0.2.0",
  "mc-connection-test-utils 0.2.0",
- "mc-consensus-api 0.2.0",
  "mc-consensus-enclave-measurement 0.2.0",
  "mc-consensus-scp 0.2.0",
  "mc-crypto-keys 0.2.0",
@@ -2357,14 +2366,16 @@ dependencies = [
 name = "mc-mobilecoind-api"
 version = "0.2.0"
 dependencies = [
+ "cargo-emit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.29 (registry+https://github.com/rust-lang/crates.io-index)",
  "grpcio 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex_fmt 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mc-api 0.2.0",
  "mc-common 0.2.0",
- "mc-consensus-api 0.2.0",
  "mc-crypto-keys 0.2.0",
  "mc-transaction-core 0.2.0",
  "mc-util-build-grpc 0.2.0",
+ "mc-util-build-script 0.2.0",
  "protobuf 2.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
