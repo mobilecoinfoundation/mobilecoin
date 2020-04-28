@@ -71,20 +71,20 @@ mod tests {
         let view_public_key_bytes: [u8; 32] = fee_subaddress.view_public_key().to_bytes();
         let view_private_key_bytes: [u8; 32] = fee_account.view_private_key().to_bytes();
 
-        println!(
-            "pub const FEE_SPEND_PUBLIC_KEY: [u8; 32] = {:?};",
-            spend_public_key_bytes
-        );
-
-        println!(
-            "pub const FEE_VIEW_PUBLIC_KEY: [u8; 32] = {:?};",
-            view_public_key_bytes
-        );
-
-        println!(
-            "pub const FEE_VIEW_PRIVATE_KEY: [u8; 32] = {:?};",
-            view_private_key_bytes
-        );
+        // println!(
+        //     "pub const FEE_SPEND_PUBLIC_KEY: [u8; 32] = {:?};",
+        //     spend_public_key_bytes
+        // );
+        //
+        // println!(
+        //     "pub const FEE_VIEW_PUBLIC_KEY: [u8; 32] = {:?};",
+        //     view_public_key_bytes
+        // );
+        //
+        // println!(
+        //     "pub const FEE_VIEW_PRIVATE_KEY: [u8; 32] = {:?};",
+        //     view_private_key_bytes
+        // );
 
         assert_eq!(view_private_key_bytes, FEE_VIEW_PRIVATE_KEY);
         assert_eq!(view_public_key_bytes, FEE_VIEW_PUBLIC_KEY);
