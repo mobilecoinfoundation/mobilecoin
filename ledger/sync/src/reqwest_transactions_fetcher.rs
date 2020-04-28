@@ -55,7 +55,7 @@ pub struct ArchiveBlockData {
 
 pub struct ReqwestTransactionsFetcher {
     pub source_urls: Vec<Url>,
-    client: reqwest::Client,
+    client: reqwest::blocking::Client,
     logger: Logger,
     source_index_counter: AtomicU64,
 }
@@ -65,12 +65,12 @@ impl ReqwestTransactionsFetcher {
         source_urls: Vec<String>,
         logger: Logger,
     ) -> Result<Self, ReqwestTransactionsFetcherError> {
-        Self::new_with_client(source_urls, reqwest::Client::new(), logger)
+        Self::new_with_client(source_urls, reqwest::blocking::Client::new(), logger)
     }
 
     pub fn new_with_client(
         source_urls: Vec<String>,
-        client: reqwest::Client,
+        client: reqwest::blocking::Client,
         logger: Logger,
     ) -> Result<Self, ReqwestTransactionsFetcherError> {
         let source_urls: Result<Vec<Url>, ReqwestTransactionsFetcherError> = source_urls
