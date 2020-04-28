@@ -35,6 +35,9 @@ lazy_static::lazy_static! {
     // Number of txouts in the ledger (by querying ledger)
     pub static ref TXO_IN_LEDGER: IntGauge = OP_COUNTERS.gauge("num_txos");
 
+    // Transactions externalized through byzantine ledger service since this node started.
+    pub static ref TX_EXTERNALIZED_COUNT: IntCounter = OP_COUNTERS.counter("tx_externalized_count");
+
     // Number of pending values. NOTE: This gauge is also used to rate limit
     // add_transaction requests, in order that our metered_channel of pending values remains
     // under a set limit.

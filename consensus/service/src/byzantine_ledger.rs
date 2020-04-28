@@ -744,10 +744,9 @@ impl<
 
             counters::BLOCKS_WRITTEN_COUNT.inc();
             counters::BLOCKS_IN_LEDGER.set(self.ledger.num_blocks().unwrap() as i64);
-            for _output in &block_contents.outputs {
-                counters::TXO_WRITTEN_COUNT.inc();
-            }
+            counters::TXO_WRITTEN_COUNT.inc_by(block_contents.outputs.len() as i64);
             counters::TXO_IN_LEDGER.set(self.ledger.num_txos().unwrap() as i64);
+            counters::TX_EXTERNALIZED_COUNT.inc_by(ext_vals.len() as i64);
         }
 
         // Sanity check + update current slot.
