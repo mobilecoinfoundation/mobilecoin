@@ -3,9 +3,9 @@
 //! Service Provider ID wrapper
 
 use core::str::FromStr;
-use mc_encodings::FromHex;
 use mc_sgx_core_types::impl_ffi_wrapper;
 use mc_sgx_epid_types_sys::sgx_spid_t;
+use mc_util_encodings::FromHex;
 
 /// The size of a [ProviderId]'s x64 representation, in bytes.
 pub const PROVIDER_ID_SIZE: usize = 16;

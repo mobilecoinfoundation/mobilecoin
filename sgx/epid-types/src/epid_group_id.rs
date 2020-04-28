@@ -23,7 +23,6 @@ mod test {
 
     use super::*;
     use bincode::{deserialize, serialize};
-    use core::convert::TryFrom;
     use std::format;
 
     #[test]

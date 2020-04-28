@@ -8,9 +8,9 @@ use core::{
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
-use mc_encodings::{Error as EncodingError, FromX64, ToX64, INTEL_U32_SIZE};
 use mc_sgx_core_types::{impl_ffi_wrapper_base, impl_serialize_to_x64, FfiWrapper};
 use mc_sgx_epid_types_sys::sgx_update_info_bit_t;
+use mc_util_encodings::{Error as EncodingError, FromX64, ToX64, INTEL_U32_SIZE};
 
 const UCODE_START: usize = 0;
 const UCODE_END: usize = UCODE_START + INTEL_U32_SIZE;

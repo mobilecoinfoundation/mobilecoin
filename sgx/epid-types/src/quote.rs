@@ -2,132 +2,194 @@
 
 //! SGX Quote wrapper
 
+use alloc::vec;
+
 use crate::{
     basename::{Basename, BASENAME_SIZE},
     epid_group_id::{EpidGroupId, EPID_GROUP_ID_SIZE},
     quote_sign::QuoteSign,
 };
-use alloc::vec::Vec;
+use alloc::{alloc::Layout, vec::Vec};
 use core::{
     cmp::Ordering,
-    convert::{TryFrom, TryInto},
+    convert::TryFrom,
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
-    ptr,
+    ops::Range,
 };
 use hex_fmt::HexFmt;
-use mc_encodings::{
-    Error as EncodingError, FromX64, IntelLayout, ToX64, INTEL_U16_SIZE, INTEL_U32_SIZE,
-};
-use mc_sgx_core_types::{
-    FfiWrapper, ReportBody, SecurityVersion, REPORT_BODY_SIZE, SECURITY_VERSION_SIZE,
-};
+use mc_sgx_core_types::{ReportBody, SecurityVersion, REPORT_BODY_SIZE, SECURITY_VERSION_SIZE};
 use mc_sgx_epid_types_sys::sgx_quote_t;
+use mc_util_encodings::{FromX64, IntelLayout, INTEL_U16_SIZE, INTEL_U32_SIZE};
 
 const VERSION_START: usize = 0;
-const VERSION_END: usize = VERSION_START + SECURITY_VERSION_SIZE;
-// Note: even though sgx_quote_sign_type_t is unsized (u32) C enum, the value is encoded here as a
-// u16.
+const VERSION_SIZE: usize = INTEL_U16_SIZE;
+const VERSION_END: usize = VERSION_START + VERSION_SIZE;
+
 const SIGN_TYPE_START: usize = VERSION_END;
-const SIGN_TYPE_END: usize = SIGN_TYPE_START + INTEL_U16_SIZE;
+const SIGN_TYPE_SIZE: usize = INTEL_U16_SIZE;
+const SIGN_TYPE_END: usize = SIGN_TYPE_START + SIGN_TYPE_SIZE;
+
 const EPID_GROUP_ID_START: usize = SIGN_TYPE_END;
 const EPID_GROUP_ID_END: usize = EPID_GROUP_ID_START + EPID_GROUP_ID_SIZE;
-const QESVN_START: usize = EPID_GROUP_ID_END;
-const QESVN_END: usize = QESVN_START + SECURITY_VERSION_SIZE;
-const PCESVN_START: usize = QESVN_END;
-const PCESVN_END: usize = PCESVN_START + SECURITY_VERSION_SIZE;
-const XEID_START: usize = PCESVN_END;
-const XEID_END: usize = XEID_START + INTEL_U32_SIZE;
+
+const QE_SVN_START: usize = EPID_GROUP_ID_END;
+const QE_SVN_END: usize = QE_SVN_START + SECURITY_VERSION_SIZE;
+
+const PCE_SVN_START: usize = QE_SVN_END;
+const PCE_SVN_END: usize = PCE_SVN_START + SECURITY_VERSION_SIZE;
+
+const XEID_START: usize = PCE_SVN_END;
+const XEID_SIZE: usize = INTEL_U32_SIZE;
+const XEID_END: usize = XEID_START + XEID_SIZE;
+
 const BASENAME_START: usize = XEID_END;
 const BASENAME_END: usize = BASENAME_START + BASENAME_SIZE;
+
 const REPORT_BODY_START: usize = BASENAME_END;
 const REPORT_BODY_END: usize = REPORT_BODY_START + REPORT_BODY_SIZE;
+
 const SIGLEN_START: usize = REPORT_BODY_END;
-const SIGLEN_END: usize = SIGLEN_START + INTEL_U32_SIZE;
+const SIGLEN_SIZE: usize = INTEL_U32_SIZE;
+const SIGLEN_END: usize = SIGLEN_START + SIGLEN_SIZE;
+
 const SIGNATURE_START: usize = SIGLEN_END;
 
 /// When we consume a quote from the Quoting Engine, the minimum size includes the quote len.
-pub const MIN_SIZE: usize = SIGLEN_END;
+pub const QUOTE_MIN_SIZE: usize = SIGLEN_END;
 
 /// Arbitrary maximum length for signatures, 4x larger than any reasonable cryptographic signature.
-pub const SIGLEN_MAX: usize = 16384;
+pub const QUOTE_SIGLEN_MAX: usize = 16384;
 
 /// The output from the Quoting Enclave.
 ///
-/// A quoting enclave will be given a [Report](mc_sgx_core_types::Report)
-/// from the enclave under examination, and it will verify the report is from
-/// the same platform, and quote the report in the QE's response. This quote
-/// will be returned to the requester, who will transmit it to IAS for further
-/// verification.
+/// A quoting enclave will be given a [Report](mc_sgx_core_types::Report) from the enclave under
+/// examination, and it will verify the report is from the same platform, and quote the report in
+/// its response. This quote will be returned to the requester, who will transmit it to IAS for
+/// further verification.
+///
+/// Internally, this struct contains a vector of bytes, with an internal object that is aligned to
+/// the size of [`sgx_quote_t`](mc_sgx_epid_tyeps_sys::sgx_quote_t). By manipulating the bytes
+/// directly, we can "safely" cast the internal bytes of the vector to an aligned pointer for use
+/// in FFI.
+///
+/// This is necessary because the underlying FFI type is variable-length, which is not representable
+/// directly in rust at this time.
 #[repr(transparent)]
 pub struct Quote(Vec<u8>);
 
 impl Quote {
+    /// Allocate a new quote structure with the given capacity
+    pub fn with_capacity(capacity: usize) -> Result<Quote, Range<usize>> {
+        let range = QUOTE_MIN_SIZE..QUOTE_MIN_SIZE + QUOTE_SIGLEN_MAX;
+        if !range.contains(&capacity) {
+            return Err(range);
+        }
+
+        Ok(Self(vec![
+            0u8;
+            capacity + Layout::new::<sgx_quote_t>().align()
+        ]))
+    }
+
+    /// Find out how many bytes to skip in order to have our internal sgx_quote_t be aligned.
+    fn head_len(&self) -> usize {
+        let (head, _body, _tail) = unsafe { self.0.align_to::<sgx_quote_t>() };
+        head.len()
+    }
+
+    /// Get a properly offset read-only slice
+    fn aligned_slice(&self, start: usize, len: usize) -> &[u8] {
+        let start = start + self.head_len();
+        let end = start + len;
+
+        &self.0[start..end]
+    }
+
+    /// Get a properly offset writeable slice
+    fn aligned_mut(&mut self, start: usize, len: usize) -> &mut [u8] {
+        let start = start + self.head_len();
+        let end = start + len;
+
+        &mut self.0[start..end]
+    }
+
     /// Read the quote version
     pub fn version(&self) -> u16 {
-        u16::from_le_bytes((&self.0[VERSION_START..VERSION_END]).try_into().unwrap())
+        let inner: &sgx_quote_t = self.as_ref();
+        u16::from_le(inner.version)
     }
 
     /// Read the signature type
-    pub fn sign_type(&self) -> Result<QuoteSignType, QuoteSignTypeError> {
-        u16::from_le_bytes((&self.0[SIGNTYPE_START..SIGNTYPE_END]).try_into().unwrap()).try_into()
+    pub fn sign_type(&self) -> QuoteSign {
+        let inner: &sgx_quote_t = self.as_ref();
+        QuoteSign::try_from(u16::from_le(inner.sign_type)).expect("Invalid quote sign found")
     }
 
     /// Read the EPID Group ID
     pub fn epid_group_id(&self) -> EpidGroupId {
-        EpidGroupId::try_from(&self.0[EPIDGROUP_ID_START..EPIDGROUP_ID_END])
-            .expect("Could not create EpidGroupId from quote")
+        let inner: &sgx_quote_t = self.as_ref();
+        EpidGroupId::from(&inner.epid_group_id)
     }
 
     /// Read the SVN of the enclave which generated the quote
     pub fn qe_security_version(&self) -> SecurityVersion {
-        u16::from_le_bytes((&self.0[QESVN_START..QESVN_END]).try_into().unwrap())
+        let inner: &sgx_quote_t = self.as_ref();
+        SecurityVersion::from_le(inner.qe_svn)
     }
 
     /// Read the SVN of the provisioning certificate enclave
     pub fn pce_security_version(&self) -> SecurityVersion {
-        u16::from_le_bytes((&self.0[PCESVN_START..PCESVN_END]).try_into().unwrap())
+        let inner: &sgx_quote_t = self.as_ref();
+        SecurityVersion::from_le(inner.pce_svn)
     }
 
     /// Read the extended EPID Group ID
     pub fn xeid(&self) -> u32 {
-        u32::from_le_bytes((&self.0[XEID_START..XEID_END]).try_into().unwrap())
+        let inner: &sgx_quote_t = self.as_ref();
+        u32::from_le(inner.xeid)
     }
 
     /// Read the basename from the quote
     pub fn basename(&self) -> Basename {
-        Basename::from_x64(&self.0[BASENAME_START..BASENAME_END])
-            .expect("Programming error while reading basename, check offsets.")
+        let inner: &sgx_quote_t = self.as_ref();
+        Basename::from(&inner.basename)
     }
 
     /// Read the report body from the quote
-    pub fn report_body(&self) -> Result<ReportBody, EncodingError> {
-        ReportBody::from_x64(&self.0[REPORT_BODY_START..REPORT_BODY_END])
+    pub fn report_body(&self) -> ReportBody {
+        ReportBody::from_x64(self.aligned_slice(REPORT_BODY_START, REPORT_BODY_SIZE))
+            .expect("Invalid report body")
     }
 
     /// Read the signature length from the quote (may be zero)
     pub fn signature_len(&self) -> u32 {
-        u32::from_le_bytes((&self.0[SIGLEN_START..SIGLEN_END]).try_into().unwrap())
+        let inner: &sgx_quote_t = self.as_ref();
+        u32::from_le(inner.signature_len)
     }
 
-    pub fn signature(&self) -> Option<&[u8]> {}
-}
+    /// Retrieve a slice of the signature
+    pub fn signature(&self) -> Option<&[u8]> {
+        let siglen = self.signature_len();
+        if siglen == 0 {
+            return None;
+        }
 
-impl AsMut<sgx_quote_t> for Quote {
-    fn as_mut(&mut self) -> &mut sgx_quote_t {
-        &mut self.0
+        Some(self.aligned_slice(SIGNATURE_START, siglen as usize))
     }
 }
 
 impl AsRef<sgx_quote_t> for Quote {
     fn as_ref(&self) -> &sgx_quote_t {
-        &(unsafe { *(self.0.as_ptr() as *const sgx_quote_t) })
+        let (_head, body, _tail) = unsafe { self.0.align_to::<sgx_quote_t>() };
+        &body[0]
     }
 }
 
 impl AsMut<sgx_quote_t> for Quote {
     fn as_mut(&mut self) -> &mut sgx_quote_t {
-        &(unsafe { *(self.0.as_mut_ptr() as *mut sgx_quote_t) })
+        let (_head, body, _tail) = unsafe { self.0.align_to_mut::<sgx_quote_t>() };
+        &mut body[0]
     }
 }
 
@@ -157,22 +219,20 @@ impl Display for Quote {
 
 impl Eq for Quote {}
 
-impl From<sgx_quote_t> for Quote {
-    fn from(src: sgx_quote_t) -> Quote {
+impl TryFrom<sgx_quote_t> for Quote {
+    type Error = EncodingError;
+
+    fn try_from(src: sgx_quote_t) -> Quote {
         Self::from(&src)
     }
 }
 
 impl From<&sgx_quote_t> for Quote {
-    fn from(src: &sgx_quote_t) -> Quote {
-        let target_size = src.signature_len as usize + MIN_SIZE;
+    fn try_from(src: &sgx_quote_t) -> Quote {
+        let target_size = src.signature_len as usize + QUOTE_MIN_SIZE;
 
-        // Figure out how large a buffer we need to allocate while maintaining Quote's alignment
-        let layout = Layout::from_size_align(
-            target_size.next_power_of_two(),
-            Layout::new::<Quote>().align(),
-        )
-        .map_err(|_e| EncodingError::InvalidInput)?;
+        // Allocate a new buffer at least as large as the target size + sgx_quote_t's alignment
+        let mut retval = Self::with_capacity(target_size).expect("")
 
         // Allocate a new structure
         let mut retval = unsafe { ptr::read(alloc::alloc::alloc(layout) as *mut Quote) };
@@ -199,87 +259,6 @@ impl From<&sgx_quote_t> for Quote {
     }
 }
 
-impl FromX64 for Quote {
-    type Error = EncodingError;
-
-    fn from_x64(src: &[u8]) -> Result<Self, EncodingError> {
-        if src.len() < MIN_SIZE {
-            return Err(EncodingError::InvalidInputLength);
-        }
-
-        let signature_len = u32::from_le_bytes(
-            src[SIGLEN_START..SIGLEN_END]
-                .try_into()
-                .expect("Could not convert siglen into 4 byte array"),
-        ) as usize;
-
-        if signature_len > SIGLEN_MAX {
-            return Err(EncodingError::InvalidInput);
-        }
-
-        let target_size = MIN_SIZE + signature_len;
-
-        if src.len() != target_size {
-            return Err(EncodingError::InvalidInputLength);
-        }
-
-        // Fallible member parsing (fail before we alloc)
-        let sign_type = QuoteSign::try_from(u16::from_le_bytes(
-            src[SIGN_TYPE_START..SIGN_TYPE_END]
-                .try_into()
-                .expect("Invalid length of quote sign type"),
-        ))
-        .map_err(|_e| EncodingError::InvalidInput)?;
-
-        let epid_group_id = EpidGroupId::from_x64(&src[EPID_GROUP_ID_START..EPID_GROUP_ID_END])
-            .map_err(|_e| EncodingError::InvalidInput)?;
-
-        let basename = Basename::from_x64(&src[BASENAME_START..BASENAME_END])
-            .map_err(|_e| EncodingError::InvalidInput)?;
-
-        let report_body = ReportBody::from_x64(&src[REPORT_BODY_START..REPORT_BODY_END])
-            .map_err(|_e| EncodingError::InvalidInput)?;
-
-        // Figure out how large a buffer we need to allocate while maintaining Quote's alignment
-        let layout = Layout::from_size_align(
-            target_size.next_power_of_two(),
-            Layout::new::<Quote>().align(),
-        )
-        .map_err(|_e| EncodingError::InvalidInput)?;
-
-        // Allocate a new structure
-        let mut retval = unsafe { ptr::read(alloc::alloc::alloc(layout) as *mut Quote) };
-
-        // Fill in it's contents
-        retval.0.version = u16::from_le_bytes(
-            src[VERSION_START..VERSION_END]
-                .try_into()
-                .expect("Invalid length of version"),
-        );
-        retval.0.sign_type = sign_type.into();
-        retval.0.epid_group_id = epid_group_id.into();
-        retval.0.qe_svn = u16::from_le_bytes(
-            src[QESVN_START..QESVN_END]
-                .try_into()
-                .expect("Invalid length of QE security version"),
-        );
-        retval.0.pce_svn = u16::from_le_bytes(
-            src[PCESVN_START..PCESVN_END]
-                .try_into()
-                .expect("Invalid length of PCE security version"),
-        );
-        retval.0.xeid = u32::from_le_bytes(
-            src[XEID_START..XEID_END]
-                .try_into()
-                .expect("Invalid length of XEID"),
-        );
-        retval.0.basename = basename.into();
-        retval.0.report_body = report_body.into();
-        retval.0.signature_len = signature_len as u32;
-        retval.0.signature.Ok(retval)
-    }
-}
-
 impl Hash for Quote {
     fn hash<H: Hasher>(&self, hasher: &mut H) {
         "mc_sgx_epid_types::quote::Quote".hash(hasher);
@@ -295,10 +274,10 @@ impl Hash for Quote {
 }
 
 impl IntelLayout for Quote {
-    const X86_64_CSIZE: usize = MIN_SIZE + SIGLEN_MAX;
+    const X86_64_CSIZE: usize = QUOTE_MIN_SIZE + QUOTE_SIGLEN_MAX;
 
     fn intel_size(&self) -> usize {
-        MIN_SIZE + self.signature_len()
+        QUOTE_MIN_SIZE + self.signature_len() as usize
     }
 }
 
@@ -368,45 +347,6 @@ impl PartialOrd for Quote {
         Some(self.cmp(other))
     }
 }
-
-impl ToX64 for Quote {
-    fn to_x64(&self, dest: &mut [u8]) -> Result<usize, usize> {
-        let required_len = self.intel_size();
-        if dest.len() < required_len {
-            Err(required_len)
-        } else {
-            dest[VERSION_START..VERSION_END].copy_from_slice(&self.version().to_le_bytes());
-            dest[SIGN_TYPE_START..SIGN_TYPE_END].copy_from_slice(&self.0.sign_type.to_le_bytes());
-
-            self.epid_group_id()
-                .to_x64(&mut dest[EPID_GROUP_ID_START..EPID_GROUP_ID_END])
-                .map_err(|_e| required_len)?;
-
-            dest[QESVN_START..QESVN_END].copy_from_slice(&self.qe_security_version().to_le_bytes());
-            dest[PCESVN_START..PCESVN_END]
-                .copy_from_slice(&self.pce_security_version().to_le_bytes());
-            dest[XEID_START..XEID_END].copy_from_slice(&self.xeid().to_le_bytes());
-
-            self.basename()
-                .to_x64(&mut dest[BASENAME_START..BASENAME_END])
-                .map_err(|_e| required_len)?;
-
-            self.report_body()
-                .to_x64(&mut dest[REPORT_BODY_START..REPORT_BODY_END])
-                .map_err(|_e| required_len)?;
-
-            dest[SIGLEN_START..SIGLEN_END].copy_from_slice(&self.0.signature_len.to_le_bytes());
-            self.signature().and_then(|value| {
-                dest[SIGNATURE_START..(SIGNATURE_START + value.len())].copy_from_slice(value);
-                Some(value)
-            });
-
-            Ok(required_len)
-        }
-    }
-}
-
-impl FfiWrapper<sgx_quote_t> for Quote {}
 
 #[cfg(test)]
 mod test {

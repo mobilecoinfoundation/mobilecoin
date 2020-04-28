@@ -6,8 +6,8 @@ use core::{
     convert::TryFrom,
     fmt::{Display, Formatter, Result as FmtResult},
 };
-use mc_encodings::Error as EncodingError;
 use mc_sgx_epid_types_sys::{SGX_LINKABLE_SIGNATURE, SGX_UNLINKABLE_SIGNATURE};
+use mc_util_encodings::Error as EncodingError;
 use serde::{Deserialize, Serialize};
 
 /// An enumeration of viable EPID quote signature types
