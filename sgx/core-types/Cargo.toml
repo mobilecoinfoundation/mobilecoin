@@ -22,7 +22,7 @@ bitflags = "1.2.1"
 failure = { version = "0.1.7", default-features = false, features = ["derive"] }
 hex_fmt = "0.3"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-subtle = { version = "2.1", default-features = false }
+subtle = { version = "2.2", default-features = false, features = ["i128"] }
 
 [dev-dependencies]
 bincode = "1.2"

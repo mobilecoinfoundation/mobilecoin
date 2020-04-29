@@ -181,7 +181,7 @@ impl Quote {
                 .bits(),
         };
         body.mr_enclave = MrEnclave::from(&inner.report_body.mr_enclave).into();
-        body.mr_signer = MrSigner::from(&inner.report_body.mr_enclave).into();
+        body.mr_signer = MrSigner::from(&inner.report_body.mr_signer).into();
         body.config_id = ConfigId::from(&inner.report_body.config_id).into();
         body.isv_prod_id = inner.report_body.isv_prod_id;
         body.isv_svn = inner.report_body.isv_svn;
@@ -264,11 +264,8 @@ impl<'de> Deserialize<'de> for Quote {
                 A::Error: DeserializeError,
             {
                 let mut bytes = Vec::<u8>::with_capacity(seq.size_hint().unwrap_or(1024usize));
-                loop {
-                    match seq.next_element()? {
-                        Some(byte) => bytes.push(byte),
-                        None => break,
-                    }
+                while let Some(byte) = seq.next_element()? {
+                    bytes.push(byte)
                 }
 
                 Self::Value::from_x64(bytes.as_slice())
@@ -404,8 +401,8 @@ impl Serialize for Quote {
 
 impl ToX64 for Quote {
     fn to_x64(&self, dest: &mut [u8]) -> Result<usize, usize> {
-        let signature_len = self.signature_len() as usize;
-        let required_len = signature_len + QUOTE_MIN_SIZE;
+        let signature_len = self.signature_len();
+        let required_len = signature_len as usize + QUOTE_MIN_SIZE;
         let dest_len = dest.len();
         if dest_len < required_len {
             return Err(required_len);
@@ -420,8 +417,9 @@ impl ToX64 for Quote {
             .map_err(|_e| required_len)?;
 
         dest[QE_SVN_START..QE_SVN_END].copy_from_slice(&self.qe_security_version().to_le_bytes());
-        dest[PCE_SVN_START..PCE_SVN_END].copy_from_slice(&self.qe_security_version().to_le_bytes());
-        dest[XEID_START..XEID_END].copy_from_slice(&self.qe_security_version().to_le_bytes());
+        dest[PCE_SVN_START..PCE_SVN_END]
+            .copy_from_slice(&self.pce_security_version().to_le_bytes());
+        dest[XEID_START..XEID_END].copy_from_slice(&self.xeid().to_le_bytes());
 
         self.basename()
             .to_x64(&mut dest[BASENAME_START..BASENAME_END])
@@ -441,27 +439,23 @@ impl ToX64 for Quote {
 
 #[cfg(test)]
 mod test {
-    extern crate std;
-
     use super::*;
     use bincode::{deserialize, serialize};
-    use std::format;
 
-    const OK: &[u8] = include_bytes!("test/quote_ok.bin");
-    const OK_STR: &str = include_str!("test/quote_ok.txt");
+    const QUOTE: &[u8] = include_bytes!("test/quote_ok.bin");
 
     #[test]
     fn serde() {
-        let quote = Quote::from_x64(OK).expect("Could not create quote from base64 string");
+        let quote = Quote::from_x64(QUOTE).expect("Could not create quote from x64.");
         let serialized = serialize(&quote).expect("Could not serialize quote.");
         let quote2 = deserialize::<Quote>(&serialized).expect("Could not deserialize quote.");
-        assert_eq!(quote, quote2);
-    }
 
-    #[test]
-    fn test_quote_debug_fmt() {
-        let quote = Quote::from_base64(OK).expect("Could not create quote from base64 string");
-        let debug_str = format!("{:?}", &quote);
-        assert_eq!(OK_STR, debug_str);
+        eprintln!("quote1({}) vs. quote2({})", quote.0.len(), quote2.0.len());
+        for i in 0..(quote.0.len()) {
+            if quote.0[i] != quote2.0[i] {
+                eprintln!("Byte difference found at {}", i);
+            }
+        }
+        assert_eq!(quote, quote2);
     }
 }

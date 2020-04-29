@@ -61,6 +61,9 @@ const FAMILY_ID_END: usize = FAMILY_ID_START + FAMILY_ID_SIZE;
 const REPORT_DATA_START: usize = FAMILY_ID_END;
 const REPORT_DATA_END: usize = REPORT_DATA_START + REPORT_DATA_SIZE;
 
+// Used in the absence of something like core::slice::fill()
+const ZEROES: [u8; SGX_REPORT_BODY_RESERVED4_BYTES] = [0u8; SGX_REPORT_BODY_RESERVED4_BYTES];
+
 /// The size of a [ReportData]'s x64 representation, in bytes.
 pub const REPORT_BODY_SIZE: usize = REPORT_DATA_END;
 
@@ -355,6 +358,9 @@ impl ToX64 for ReportBody {
 
         dest[MISC_SELECT_START..MISC_SELECT_END].copy_from_slice(&self.misc_select().to_le_bytes());
 
+        dest[RESERVED1_START..RESERVED1_END]
+            .copy_from_slice(&ZEROES[..SGX_REPORT_BODY_RESERVED1_BYTES]);
+
         self.extended_product_id()
             .to_x64(&mut dest[EXT_PROD_ID_START..EXT_PROD_ID_END])
             .or(Err(REPORT_BODY_SIZE))?;
@@ -364,9 +370,17 @@ impl ToX64 for ReportBody {
         self.mr_enclave()
             .to_x64(&mut dest[MRENCLAVE_START..MRENCLAVE_END])
             .or(Err(REPORT_BODY_SIZE))?;
+
+        dest[RESERVED2_START..RESERVED2_END]
+            .copy_from_slice(&ZEROES[..SGX_REPORT_BODY_RESERVED2_BYTES]);
+
         self.mr_signer()
             .to_x64(&mut dest[MRSIGNER_START..MRSIGNER_END])
             .or(Err(REPORT_BODY_SIZE))?;
+
+        dest[RESERVED3_START..RESERVED3_END]
+            .copy_from_slice(&ZEROES[..SGX_REPORT_BODY_RESERVED3_BYTES]);
+
         self.config_id()
             .to_x64(&mut dest[CONFIG_ID_START..CONFIG_ID_END])
             .or(Err(REPORT_BODY_SIZE))?;
@@ -375,6 +389,9 @@ impl ToX64 for ReportBody {
         dest[ISV_SVN_START..ISV_SVN_END].copy_from_slice(&self.security_version().to_le_bytes());
         dest[CONFIG_SVN_START..CONFIG_SVN_END]
             .copy_from_slice(&self.config_security_version().to_le_bytes());
+
+        dest[RESERVED4_START..RESERVED4_END]
+            .copy_from_slice(&ZEROES[..SGX_REPORT_BODY_RESERVED4_BYTES]);
 
         self.family_id()
             .to_x64(&mut dest[FAMILY_ID_START..FAMILY_ID_END])

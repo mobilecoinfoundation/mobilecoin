@@ -137,15 +137,12 @@ macro_rules! impl_ffi_wrapper_base {
 
                         let mut bytes =
                             $crate::_macros::Vec::<u8>::with_capacity(seq.size_hint().unwrap_or(1024usize));
-                        loop {
-                            match seq.next_element()? {
-                                Some(byte) => bytes.push(byte),
-                                None => break,
-                            }
+                        while let Some(byte) = seq.next_element()? {
+                            bytes.push(byte)
                         }
 
                         let bytelen = bytes.len();
-                        Self::Value::from_x64(bytes.as_mut_slice())
+                        Self::Value::from_x64(bytes.as_slice())
                             .map_err(|convert_error| {
                                 use $crate::_macros::DeserializeError;
 
