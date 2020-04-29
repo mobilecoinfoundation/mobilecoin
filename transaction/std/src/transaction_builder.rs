@@ -25,8 +25,7 @@ use std::collections::HashSet;
 #[derive(Debug)]
 pub struct TransactionBuilder {
     input_credentials: Vec<InputCredentials>,
-    outputs: Vec<TxOut>,
-    output_shared_secrets: Vec<RistrettoPublic>,
+    outputs_and_shared_secrets: Vec<(TxOut, RistrettoPublic)>,
     tombstone_block: u64,
     pub fee: u64,
 }
@@ -36,8 +35,7 @@ impl TransactionBuilder {
     pub fn new() -> Self {
         TransactionBuilder {
             input_credentials: Vec::new(),
-            outputs: Vec::new(),
-            output_shared_secrets: Vec::new(),
+            outputs_and_shared_secrets: Vec::new(),
             tombstone_block: u64::max_value(),
             fee: BASE_FEE,
         }
@@ -69,8 +67,8 @@ impl TransactionBuilder {
         let (tx_out, shared_secret) =
             create_output(value, recipient, recipient_fog_ingest_key, rng)?;
 
-        self.outputs.push(tx_out.clone());
-        self.output_shared_secrets.push(shared_secret);
+        self.outputs_and_shared_secrets
+            .push((tx_out.clone(), shared_secret));
         Ok(tx_out)
     }
 
@@ -91,7 +89,7 @@ impl TransactionBuilder {
     }
 
     /// Consume the builder and return the transaction.
-    pub fn build<RNG: CryptoRng + RngCore>(&mut self, rng: &mut RNG) -> Result<Tx, TxBuilderError> {
+    pub fn build<RNG: CryptoRng + RngCore>(mut self, rng: &mut RNG) -> Result<Tx, TxBuilderError> {
         if self.input_credentials.is_empty() {
             return Err(TxBuilderError::NoInputs);
         }
@@ -117,7 +115,26 @@ impl TransactionBuilder {
             })
             .collect();
 
-        let tx_prefix = TxPrefix::new(inputs, self.outputs.clone(), self.fee, self.tombstone_block);
+        // Sort outputs by public key.
+        self.outputs_and_shared_secrets
+            .sort_by(|(a, _), (b, _)| a.public_key.cmp(&b.public_key));
+
+        let output_values_and_blindings: Vec<(u64, Scalar)> = self
+            .outputs_and_shared_secrets
+            .iter()
+            .map(|(tx_out, shared_secret)| {
+                let amount = &tx_out.amount;
+                let (value, blinding) = amount
+                    .get_value(shared_secret)
+                    .expect("TransactionBuilder created an invalid Amount");
+                (value, blinding)
+            })
+            .collect();
+
+        let (outputs, _shared_serets): (Vec<TxOut>, Vec<_>) =
+            self.outputs_and_shared_secrets.into_iter().unzip();
+
+        let tx_prefix = TxPrefix::new(inputs, outputs, self.fee, self.tombstone_block);
 
         let mut rings: Vec<Vec<(CompressedRistrettoPublic, CompressedCommitment)>> = Vec::new();
         for input in &tx_prefix.inputs {
@@ -147,20 +164,6 @@ impl TransactionBuilder {
             let (value, blinding) = amount.get_value(&shared_secret)?;
             input_secrets.push((onetime_private_key, value, blinding));
         }
-
-        let output_values_and_blindings: Vec<(u64, Scalar)> = tx_prefix
-            .outputs
-            .iter()
-            .enumerate()
-            .map(|(index, tx_out)| {
-                let amount = &tx_out.amount;
-                let shared_secret = &self.output_shared_secrets[index];
-                let (value, blinding) = amount
-                    .get_value(shared_secret)
-                    .expect("TransactionBuilder created an invalid Amount");
-                (value, blinding)
-            })
-            .collect();
 
         let message = tx_prefix.hash().0;
         let signature = SignatureRctBulletproofs::sign(
@@ -497,5 +500,21 @@ pub mod transaction_builder_tests {
         .unwrap();
         assert_eq!(tx.prefix.inputs.len(), MAX_INPUTS as usize);
         assert_eq!(tx.prefix.outputs.len(), MAX_OUTPUTS as usize);
+    }
+
+    #[test]
+    // Transaction outputs should be sorted by public key.
+    fn test_outputs_are_sorted() {
+        let mut rng: StdRng = SeedableRng::from_seed([92u8; 32]);
+        let sender = AccountKey::random(&mut rng);
+        let recipient = AccountKey::random(&mut rng);
+        let num_inputs = 3;
+        let num_outputs = 11;
+        let tx = get_transaction(num_inputs, num_outputs, &sender, &recipient, &mut rng).unwrap();
+
+        let outputs = tx.prefix.outputs;
+        let mut expected_outputs = outputs.clone();
+        expected_outputs.sort_by(|a, b| a.public_key.cmp(&b.public_key));
+        assert_eq!(outputs, expected_outputs);
     }
 }
