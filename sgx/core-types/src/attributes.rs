@@ -16,11 +16,17 @@ use mc_util_encodings::{Error as EncodingError, FromX64, ToX64, INTEL_U64_SIZE};
 bitflags! {
     /// A set of bitflags which can be set on an attributes structure.
     pub struct AttributeFlags: u64 {
+        /// The enclave has been initialized.
         const INITIALIZED = 0x0000_0000_0000_0001;
+        /// The enclave is configured for debug mode.
         const DEBUG = 0x0000_0000_0000_0002;
+        /// The enclave is built for 64-bit execution
         const MODE_64_BIT = 0x0000_0000_0000_0004;
+        /// The enclave has access to the provisioning key
         const PROVISION_KEY = 0x0000_0000_0000_0010;
+        /// The enclave has access to the loader initialization token
         const ENCLAVE_INIT_TOKEN = 0x0000_0000_0000_0020;
+        /// The enclave uses key separation features
         const KSS = 0x0000_0000_0000_0080;
     }
 }
@@ -86,7 +92,9 @@ impl Display for AttributeFlags {
 bitflags! {
     /// The flags which can be set on an X-Feature Request Mask.
     pub struct AttributeXfeatures: u64 {
+        /// The enclave uses legacy XSAVE features
         const LEGACY = 0x0000_0000_0000_0003;
+        /// The enclave uses modern AVX features
         const AVX = 0x0000_0000_0000_0006;
     }
 }

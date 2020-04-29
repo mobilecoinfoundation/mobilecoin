@@ -31,12 +31,6 @@ impl From<ConvertError> for Error {
     }
 }
 
-impl From<Utf8Error> for Error {
-    fn from(_src: Utf8Error) -> Self {
-        Error::InvalidUtf8
-    }
-}
-
 impl From<FromUtf8Error> for Error {
     fn from(_src: FromUtf8Error) -> Self {
         Error::InvalidUtf8
@@ -46,5 +40,11 @@ impl From<FromUtf8Error> for Error {
 impl From<TryFromSliceError> for Error {
     fn from(_src: TryFromSliceError) -> Self {
         Error::InvalidInputLength
+    }
+}
+
+impl From<Utf8Error> for Error {
+    fn from(_src: Utf8Error) -> Self {
+        Error::InvalidUtf8
     }
 }

@@ -28,7 +28,7 @@ pub mod _macros;
 
 pub use crate::{
     _macros::FfiWrapper,
-    attributes::{Attributes, ATTRIBUTES_SIZE},
+    attributes::{AttributeFlags, AttributeXfeatures, Attributes, ATTRIBUTES_SIZE},
     config_id::{ConfigId, CONFIG_ID_SIZE},
     cpu_svn::{CpuSecurityVersion, CPU_SECURITY_VERSION_SIZE},
     error::{Error, Result},

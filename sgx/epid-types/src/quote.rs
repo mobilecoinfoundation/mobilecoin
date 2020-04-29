@@ -2,7 +2,7 @@
 
 //! SGX Quote wrapper
 
-use alloc::vec;
+use alloc::{format, vec};
 
 use crate::{
     basename::{Basename, BASENAME_SIZE},
@@ -11,16 +11,24 @@ use crate::{
 };
 use alloc::{alloc::Layout, vec::Vec};
 use core::{
-    cmp::Ordering,
-    convert::TryFrom,
+    convert::{TryFrom, TryInto},
     fmt::{Debug, Display, Formatter, Result as FmtResult},
-    hash::{Hash, Hasher},
     ops::Range,
 };
 use hex_fmt::HexFmt;
-use mc_sgx_core_types::{ReportBody, SecurityVersion, REPORT_BODY_SIZE, SECURITY_VERSION_SIZE};
+use mc_sgx_core_types::{
+    AttributeFlags, AttributeXfeatures, ConfigId, CpuSecurityVersion, FamilyId, MrEnclave,
+    MrSigner, ReportBody, ReportData, SecurityVersion, REPORT_BODY_SIZE, SECURITY_VERSION_SIZE,
+};
+use mc_sgx_core_types_sys::{sgx_attributes_t, sgx_report_body_t};
 use mc_sgx_epid_types_sys::sgx_quote_t;
-use mc_util_encodings::{FromX64, IntelLayout, INTEL_U16_SIZE, INTEL_U32_SIZE};
+use mc_util_encodings::{
+    Error as EncodingError, FromX64, IntelLayout, ToX64, INTEL_U16_SIZE, INTEL_U32_SIZE,
+};
+use serde::{
+    de::{Error as DeserializeError, SeqAccess, Visitor},
+    Deserialize, Deserializer, Serialize, Serializer,
+};
 
 const VERSION_START: usize = 0;
 const VERSION_SIZE: usize = INTEL_U16_SIZE;
@@ -69,17 +77,15 @@ pub const QUOTE_SIGLEN_MAX: usize = 16384;
 /// further verification.
 ///
 /// Internally, this struct contains a vector of bytes, with an internal object that is aligned to
-/// the size of [`sgx_quote_t`](mc_sgx_epid_tyeps_sys::sgx_quote_t). By manipulating the bytes
-/// directly, we can "safely" cast the internal bytes of the vector to an aligned pointer for use
-/// in FFI.
-///
-/// This is necessary because the underlying FFI type is variable-length, which is not representable
-/// directly in rust at this time.
+/// the size of [`sgx_quote_t`](mc_sgx_epid_types_sys::sgx_quote_t). We use the unsafe
+/// [`align_to()`](core::slice::align_to) method to reference the bytes in native order at the
+/// proper alignment.
+#[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
 pub struct Quote(Vec<u8>);
 
 impl Quote {
-    /// Allocate a new quote structure with the given capacity
+    /// Allocate a new quote structure with the given capacity.
     pub fn with_capacity(capacity: usize) -> Result<Quote, Range<usize>> {
         let range = QUOTE_MIN_SIZE..QUOTE_MIN_SIZE + QUOTE_SIGLEN_MAX;
         if !range.contains(&capacity) {
@@ -117,13 +123,13 @@ impl Quote {
     /// Read the quote version
     pub fn version(&self) -> u16 {
         let inner: &sgx_quote_t = self.as_ref();
-        u16::from_le(inner.version)
+        inner.version
     }
 
     /// Read the signature type
     pub fn sign_type(&self) -> QuoteSign {
         let inner: &sgx_quote_t = self.as_ref();
-        QuoteSign::try_from(u16::from_le(inner.sign_type)).expect("Invalid quote sign found")
+        QuoteSign::try_from(inner.sign_type).expect("Invalid quote sign found")
     }
 
     /// Read the EPID Group ID
@@ -135,19 +141,19 @@ impl Quote {
     /// Read the SVN of the enclave which generated the quote
     pub fn qe_security_version(&self) -> SecurityVersion {
         let inner: &sgx_quote_t = self.as_ref();
-        SecurityVersion::from_le(inner.qe_svn)
+        inner.qe_svn
     }
 
     /// Read the SVN of the provisioning certificate enclave
     pub fn pce_security_version(&self) -> SecurityVersion {
         let inner: &sgx_quote_t = self.as_ref();
-        SecurityVersion::from_le(inner.pce_svn)
+        inner.pce_svn
     }
 
     /// Read the extended EPID Group ID
     pub fn xeid(&self) -> u32 {
         let inner: &sgx_quote_t = self.as_ref();
-        u32::from_le(inner.xeid)
+        inner.xeid
     }
 
     /// Read the basename from the quote
@@ -158,8 +164,32 @@ impl Quote {
 
     /// Read the report body from the quote
     pub fn report_body(&self) -> ReportBody {
-        ReportBody::from_x64(self.aligned_slice(REPORT_BODY_START, REPORT_BODY_SIZE))
-            .expect("Invalid report body")
+        let inner: &sgx_quote_t = self.as_ref();
+
+        let mut retval = ReportBody::default();
+        let body: &mut sgx_report_body_t = retval.as_mut();
+
+        body.cpu_svn = CpuSecurityVersion::from(&inner.report_body.cpu_svn).into();
+        body.misc_select = inner.report_body.misc_select;
+        body.isv_ext_prod_id = inner.report_body.isv_ext_prod_id;
+        body.attributes = sgx_attributes_t {
+            flags: AttributeFlags::from_bits(inner.report_body.attributes.flags)
+                .expect("Invalid attribute flags found")
+                .bits(),
+            xfrm: AttributeXfeatures::from_bits(inner.report_body.attributes.xfrm)
+                .expect("Invalid attribute X features")
+                .bits(),
+        };
+        body.mr_enclave = MrEnclave::from(&inner.report_body.mr_enclave).into();
+        body.mr_signer = MrSigner::from(&inner.report_body.mr_enclave).into();
+        body.config_id = ConfigId::from(&inner.report_body.config_id).into();
+        body.isv_prod_id = inner.report_body.isv_prod_id;
+        body.isv_svn = inner.report_body.isv_svn;
+        body.config_svn = inner.report_body.config_svn;
+        body.isv_family_id = FamilyId::from(&inner.report_body.isv_family_id).into();
+        body.report_data = ReportData::from(&inner.report_body.report_data).into();
+
+        retval
     }
 
     /// Read the signature length from the quote (may be zero)
@@ -168,7 +198,7 @@ impl Quote {
         u32::from_le(inner.signature_len)
     }
 
-    /// Retrieve a slice of the signature
+    /// Retrieve a read-only slice of the signature, if one exists
     pub fn signature(&self) -> Option<&[u8]> {
         let siglen = self.signature_len();
         if siglen == 0 {
@@ -205,6 +235,68 @@ impl Debug for Quote {
     }
 }
 
+impl<'de> Deserialize<'de> for Quote {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct ByteVisitor;
+
+        impl<'de> Visitor<'de> for ByteVisitor {
+            type Value = Quote;
+
+            fn expecting(&self, f: &mut Formatter) -> FmtResult {
+                write!(f, "byte contents of Quote")
+            }
+
+            fn visit_bytes<E: DeserializeError>(self, value: &[u8]) -> Result<Self::Value, E> {
+                Self::Value::from_x64(value)
+                    .map_err(|err| E::custom(format!("Could not parse Quote: {}", err)))
+            }
+
+            fn visit_borrowed_bytes<E: DeserializeError>(
+                self,
+                value: &'de [u8],
+            ) -> Result<Self::Value, E> {
+                Self::Value::from_x64(value)
+                    .map_err(|err| E::custom(format!("Could not parse Quote: {}", err)))
+            }
+
+            fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A::Error: DeserializeError,
+            {
+                let mut bytes = Vec::<u8>::with_capacity(seq.size_hint().unwrap_or(1024usize));
+                loop {
+                    match seq.next_element()? {
+                        Some(byte) => bytes.push(byte),
+                        None => break,
+                    }
+                }
+
+                Self::Value::from_x64(bytes.as_slice())
+                    .map_err(|err| A::Error::custom(format!("Could not parse Quote: {}", err)))
+            }
+        }
+
+        struct NewtypeVisitor;
+
+        impl<'de> Visitor<'de> for NewtypeVisitor {
+            type Value = Quote;
+
+            fn expecting(&self, f: &mut Formatter) -> FmtResult {
+                write!(f, "struct Quote")
+            }
+
+            fn visit_newtype_struct<D: Deserializer<'de>>(
+                self,
+                deserializer: D,
+            ) -> Result<Self::Value, D::Error> {
+                deserializer.deserialize_bytes(ByteVisitor)
+            }
+        }
+
+        deserializer.deserialize_newtype_struct("Quote", NewtypeVisitor)
+    }
+}
+
 impl Display for Quote {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         write!(
@@ -217,59 +309,81 @@ impl Display for Quote {
     }
 }
 
-impl Eq for Quote {}
-
-impl TryFrom<sgx_quote_t> for Quote {
+impl FromX64 for Quote {
     type Error = EncodingError;
 
-    fn try_from(src: sgx_quote_t) -> Quote {
-        Self::from(&src)
-    }
-}
-
-impl From<&sgx_quote_t> for Quote {
-    fn try_from(src: &sgx_quote_t) -> Quote {
-        let target_size = src.signature_len as usize + QUOTE_MIN_SIZE;
-
-        // Allocate a new buffer at least as large as the target size + sgx_quote_t's alignment
-        let mut retval = Self::with_capacity(target_size).expect("")
-
-        // Allocate a new structure
-        let mut retval = unsafe { ptr::read(alloc::alloc::alloc(layout) as *mut Quote) };
-
-        // Copy the contents
-        retval.0.version = src.version;
-        retval.0.sign_type = src.sign_type;
-        retval.0.epid_group_id = src.epid_group_id;
-        retval.0.qe_svn = src.qe_svn;
-        retval.0.pce_svn = src.pce_svn;
-        retval.0.xeid = src.xeid;
-        retval.0.basename = src.basename;
-        retval.0.report_body = src.basename;
-        retval.0.signature_len = src.signature_len;
-        unsafe {
-            retval
-                .0
-                .signature
-                .as_mut_slice(retval.0.signature_len as usize)
-                .copy_from_slice(src.signature.as_slice(src.signature_len as usize));
+    fn from_x64(src: &[u8]) -> Result<Self, Self::Error> {
+        let src_len = src.len();
+        if src_len < QUOTE_MIN_SIZE {
+            return Err(EncodingError::InvalidInputLength);
         }
 
-        retval
-    }
-}
+        let signature_len = u32::from_le_bytes(
+            src[SIGLEN_START..SIGLEN_END]
+                .try_into()
+                .expect("Could not convert siglen into 4 byte array"),
+        ) as usize;
 
-impl Hash for Quote {
-    fn hash<H: Hasher>(&self, hasher: &mut H) {
-        "mc_sgx_epid_types::quote::Quote".hash(hasher);
-        self.version().hash(hasher);
-        self.sign_type().hash(hasher);
-        self.epid_group_id().hash(hasher);
-        self.qe_security_version().hash(hasher);
-        self.pce_security_version().hash(hasher);
-        self.xeid().hash(hasher);
-        self.basename().hash(hasher);
-        self.report_body().hash(hasher);
+        if signature_len > QUOTE_SIGLEN_MAX {
+            return Err(EncodingError::InvalidInput);
+        }
+
+        if src_len != QUOTE_MIN_SIZE + signature_len {
+            return Err(EncodingError::InvalidInputLength);
+        }
+
+        // Fallible member parsing (fail before we alloc)
+        let sign_type = QuoteSign::try_from(u16::from_le_bytes(
+            src[SIGN_TYPE_START..SIGN_TYPE_END]
+                .try_into()
+                .expect("Invalid length of quote sign type"),
+        ))
+        .map_err(|_e| EncodingError::InvalidInput)?;
+
+        let epid_group_id = EpidGroupId::from_x64(&src[EPID_GROUP_ID_START..EPID_GROUP_ID_END])
+            .map_err(|_e| EncodingError::InvalidInput)?;
+
+        let basename = Basename::from_x64(&src[BASENAME_START..BASENAME_END])
+            .map_err(|_e| EncodingError::InvalidInput)?;
+
+        let report_body = ReportBody::from_x64(&src[REPORT_BODY_START..REPORT_BODY_END])
+            .map_err(|_e| EncodingError::InvalidInput)?;
+
+        let mut retval =
+            Self::with_capacity(src_len).map_err(|_e| EncodingError::InvalidInputLength)?;
+
+        let inner: &mut sgx_quote_t = retval.as_mut();
+        inner.version = u16::from_le_bytes(
+            src[VERSION_START..VERSION_END]
+                .try_into()
+                .expect("Invalid length of version"),
+        );
+        inner.sign_type = sign_type.into();
+        inner.epid_group_id = epid_group_id.into();
+        inner.qe_svn = u16::from_le_bytes(
+            src[QE_SVN_START..QE_SVN_END]
+                .try_into()
+                .expect("Invalid length of QE security version"),
+        );
+        inner.pce_svn = u16::from_le_bytes(
+            src[PCE_SVN_START..PCE_SVN_END]
+                .try_into()
+                .expect("Invalid length of PCE security version"),
+        );
+        inner.xeid = u32::from_le_bytes(
+            src[XEID_START..XEID_END]
+                .try_into()
+                .expect("Invalid length of XEID"),
+        );
+        inner.basename = basename.into();
+        inner.report_body = report_body.into();
+        inner.signature_len = signature_len as u32;
+
+        retval
+            .aligned_mut(SIGNATURE_START, signature_len)
+            .copy_from_slice(&src[SIGNATURE_START..SIGNATURE_START + signature_len]);
+
+        Ok(retval)
     }
 }
 
@@ -281,70 +395,47 @@ impl IntelLayout for Quote {
     }
 }
 
-impl Ord for Quote {
-    fn cmp(&self, other: &Self) -> Ordering {
-        match self.version().cmp(&other.version()) {
-            Ordering::Equal => match self.sign_type().cmp(&other.sign_type()) {
-                Ordering::Equal => match self.epid_group_id().cmp(&other.epid_group_id()) {
-                    Ordering::Equal => {
-                        match self.qe_security_version().cmp(&other.qe_security_version()) {
-                            Ordering::Equal => match self
-                                .pce_security_version()
-                                .cmp(&other.pce_security_version())
-                            {
-                                Ordering::Equal => match self.xeid().cmp(&other.xeid()) {
-                                    Ordering::Equal => match self.basename().cmp(&other.basename())
-                                    {
-                                        Ordering::Equal => {
-                                            match self.report_body().cmp(&other.report_body()) {
-                                                Ordering::Equal => match self
-                                                    .signature_len()
-                                                    .cmp(&other.signature_len())
-                                                {
-                                                    Ordering::Equal => {
-                                                        self.signature().cmp(&other.signature())
-                                                    }
-                                                    other => other,
-                                                },
-                                                other => other,
-                                            }
-                                        }
-                                        other => other,
-                                    },
-                                    other => other,
-                                },
-                                other => other,
-                            },
-                            other => other,
-                        }
-                    }
-                    other => other,
-                },
-                other => other,
-            },
-            other => other,
+impl Serialize for Quote {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let bytes = self.to_x64_vec();
+        serializer.serialize_newtype_struct("Quote", &bytes[..])
+    }
+}
+
+impl ToX64 for Quote {
+    fn to_x64(&self, dest: &mut [u8]) -> Result<usize, usize> {
+        let signature_len = self.signature_len() as usize;
+        let required_len = signature_len + QUOTE_MIN_SIZE;
+        let dest_len = dest.len();
+        if dest_len < required_len {
+            return Err(required_len);
         }
-    }
-}
 
-impl PartialEq for Quote {
-    fn eq(&self, other: &Self) -> bool {
-        self.signature_len() == other.signature_len()
-            && self.signature() == other.signature()
-            && self.version() == other.version()
-            && self.sign_type() == other.sign_type()
-            && self.epid_group_id() == other.epid_group_id()
-            && self.qe_security_version() == other.qe_security_version()
-            && self.pce_security_version() == other.pce_security_version()
-            && self.xeid() == other.xeid()
-            && self.basename() == other.basename()
-            && self.report_body() == other.report_body()
-    }
-}
+        dest[VERSION_START..VERSION_END].copy_from_slice(&self.version().to_le_bytes());
+        let value: u16 = self.sign_type().into();
+        dest[SIGN_TYPE_START..SIGN_TYPE_END].copy_from_slice(&value.to_le_bytes());
 
-impl PartialOrd for Quote {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
+        self.epid_group_id()
+            .to_x64(&mut dest[EPID_GROUP_ID_START..EPID_GROUP_ID_END])
+            .map_err(|_e| required_len)?;
+
+        dest[QE_SVN_START..QE_SVN_END].copy_from_slice(&self.qe_security_version().to_le_bytes());
+        dest[PCE_SVN_START..PCE_SVN_END].copy_from_slice(&self.qe_security_version().to_le_bytes());
+        dest[XEID_START..XEID_END].copy_from_slice(&self.qe_security_version().to_le_bytes());
+
+        self.basename()
+            .to_x64(&mut dest[BASENAME_START..BASENAME_END])
+            .map_err(|_e| required_len)?;
+        self.report_body()
+            .to_x64(&mut dest[REPORT_BODY_START..REPORT_BODY_END])
+            .map_err(|_e| required_len)?;
+        dest[SIGLEN_START..SIGLEN_END].copy_from_slice(&signature_len.to_le_bytes());
+
+        if let Some(sigslice) = self.signature() {
+            dest[SIGNATURE_START..(SIGNATURE_START + sigslice.len())].copy_from_slice(sigslice);
+        }
+
+        Ok(required_len)
     }
 }
 
