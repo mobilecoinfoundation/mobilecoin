@@ -259,9 +259,14 @@ jobs:
     steps:
       - prepare-for-build
       - run:
-          name: Cargo build
+          name: Cargo build (SW/IAS dev)
           command: |
             cargo build
+      - check-dirty-git
+      - run:
+          name: Cargo build (HW/IAS prod)
+          command: |
+            SGX_MODE=HW IAS_MODE=PROD cargo build
       - check-dirty-git
 
       # The lint and saving of caches happens here since this job is faster than the run-all-tests job.
