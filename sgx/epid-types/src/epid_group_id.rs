@@ -63,9 +63,9 @@ impl Display for EpidGroupId {
 
 impl From<&sgx_epid_group_id_t> for EpidGroupId {
     fn from(src: &sgx_epid_group_id_t) -> Self {
-        let mut new_inner = [0u8; EPID_GROUP_ID_SIZE];
-        new_inner.copy_from_slice(&src[..]);
-        Self::from(new_inner)
+        let mut retval = Self::default();
+        retval.0.copy_from_slice(&src[..]);
+        retval
     }
 }
 
@@ -135,7 +135,7 @@ impl Ord for EpidGroupId {
 
 impl PartialEq for EpidGroupId {
     fn eq(&self, other: &Self) -> bool {
-        &self.0[..] == &other.0[..]
+        self.0[..] == other.0[..]
     }
 }
 
@@ -188,9 +188,7 @@ mod test {
 
     #[test]
     fn serde() {
-        let gid = [0u8, 1, 2, 3];
-        let epid_gid = EpidGroupId::from(gid);
-
+        let epid_gid = EpidGroupId::from([0u8, 1, 2, 3]);
         let ser = serialize(&epid_gid).expect("Error serializing epidgid.");
         let epid_gid2 = deserialize::<EpidGroupId>(&ser).expect("Error deserializing epidgid");
         assert_eq!(epid_gid, epid_gid2);
