@@ -7,6 +7,9 @@ readme = "README.md"
 edition = "2018"
 links = "sgx_epid"
 
+[features]
+sgx-sim = []
+
 [dependencies]
 mc-sgx-core-types-sys = { path = "../core-types-sys" }
 mc-sgx-epid-types-sys = { path = "../epid-types-sys" }
