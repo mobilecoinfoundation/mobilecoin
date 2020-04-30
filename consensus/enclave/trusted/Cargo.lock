@@ -695,7 +695,7 @@ dependencies = [
  "mc-sgx-compat 0.2.0",
  "mc-sgx-slog 0.2.0",
  "mc-transaction-core 0.2.0",
- "mc-util-from-random 0.1.0",
+ "mc-util-from-random 0.2.0",
  "mc-util-serial 0.2.0",
  "prost 0.6.1 (git+https://github.com/cbeck88/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -749,7 +749,7 @@ dependencies = [
  "mc-crypto-rand 0.2.0",
  "mc-sgx-build 0.2.0",
  "mc-sgx-compat 0.2.0",
- "mc-util-from-random 0.1.0",
+ "mc-util-from-random 0.2.0",
  "mc-util-serial 0.2.0",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -803,7 +803,7 @@ dependencies = [
  "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex_fmt 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mc-crypto-digestible 0.2.0",
- "mc-util-from-random 0.1.0",
+ "mc-util-from-random 0.2.0",
  "mc-util-serial 0.2.0",
  "prost 0.6.1 (git+https://github.com/cbeck88/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -838,7 +838,7 @@ dependencies = [
  "generic-array 0.12.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "hkdf 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mc-crypto-keys 0.2.0",
- "mc-util-from-random 0.1.0",
+ "mc-util-from-random 0.2.0",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "secrecy 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -999,7 +999,7 @@ dependencies = [
  "mc-crypto-digestible 0.2.0",
  "mc-crypto-keys 0.2.0",
  "mc-crypto-rand 0.2.0",
- "mc-util-from-random 0.1.0",
+ "mc-util-from-random 0.2.0",
  "mc-util-serial 0.2.0",
  "merlin 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "prost 0.6.1 (git+https://github.com/cbeck88/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
@@ -1042,7 +1042,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-from-random"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
