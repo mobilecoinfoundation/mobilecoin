@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 # Copyright (c) 2018-2020 MobileCoin Inc.
 
 # TODO

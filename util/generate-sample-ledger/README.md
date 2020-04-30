@@ -19,5 +19,5 @@ Next, generate the ledger, with `--num` specifying the number of transactions pe
 
 ```
 mkdir ledger
-cargo run --release -p mc-util-generate-sample-ledger -- --num 1000
+cargo run --release -p mc-util-generate-sample-ledger --bin generate-sample-ledger -- --num 1000
 ```

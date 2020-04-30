@@ -13,8 +13,8 @@ use mc_util_encodings::{FromBase64, FromHex, ToBase64};
 use pem::parse_many;
 use percent_encoding::percent_decode;
 use reqwest::{
+    blocking::Client,
     header::{HeaderMap, HeaderValue, CONTENT_TYPE},
-    Client,
 };
 use serde_json::json;
 
@@ -60,7 +60,7 @@ impl RaClient for IasClient {
 
     /// Retrieve the SigRL for the given EPID Group ID.
     fn get_sigrl(&self, gid: EpidGroupId) -> Result<SigRL> {
-        let mut response = self
+        let response = self
             .client
             .get(format!("{}/sigrl/{}", IAS_BASEURI, gid).as_str())
             .header(OCP_APIM_SUBSCRIPTION_KEY, &self.api_key)
@@ -90,7 +90,7 @@ impl RaClient for IasClient {
             format!("{}/report", IAS_BASEURI),
         );
 
-        let mut response = self
+        let response = self
             .client
             .post(format!("{}/report", IAS_BASEURI).as_str())
             .headers(self.json_headers.clone())

@@ -34,6 +34,7 @@ use mc_util_metrics::SVC_COUNTERS;
 use mc_util_serial::deserialize;
 use std::{
     convert::{TryFrom, TryInto},
+    str::FromStr,
     sync::Arc,
 };
 
@@ -236,8 +237,7 @@ impl<E: ConsensusEnclaveProxy, L: Ledger> ConsensusPeerApi for PeerApiService<E,
                 };
 
             // Get the peer who delivered this message to us.
-            let from_responder_id: ResponderId = match deserialize(request.get_from_responder_id())
-            {
+            let from_responder_id = match ResponderId::from_str(request.get_from_responder_id()) {
                 Ok(val) => val,
                 Err(err) => {
                     send_result(

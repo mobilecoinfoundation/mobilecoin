@@ -7,15 +7,11 @@ use alloc::{
     vec::Vec,
 };
 use core::{
-    convert::TryFrom,
     fmt::{Display, Formatter, Result as FmtResult},
     str::FromStr,
 };
 use failure::Fail;
 use serde::{Deserialize, Serialize};
-
-/// The type of data used by a ResponderId (must implement AsRef<[u8]>, Display,
-pub type ResponderIdType = String;
 
 /// Potential parse errors
 #[derive(Debug, Fail, Ord, PartialOrd, Eq, PartialEq, Clone)]
@@ -26,19 +22,13 @@ pub enum ResponderIdParseError {
     InvalidFormat(String),
 }
 
-/// Node unique identifier (this will eventually be the node's TLS name).
+/// Node unique identifier.
 #[derive(Clone, Default, Debug, Eq, Serialize, Deserialize, PartialEq, PartialOrd, Ord, Hash)]
-pub struct ResponderId(pub ResponderIdType);
+pub struct ResponderId(pub String);
 
 impl Display for ResponderId {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         write!(f, "{}", self.0)
-    }
-}
-
-impl AsRef<[u8]> for ResponderId {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
     }
 }
 
@@ -53,23 +43,6 @@ impl FromStr for ResponderId {
         }
 
         Ok(Self(src.to_string()))
-    }
-}
-
-impl TryFrom<Vec<u8>> for ResponderId {
-    type Error = ResponderIdParseError;
-
-    fn try_from(val: Vec<u8>) -> Result<Self, Self::Error> {
-        Self::from_str(
-            &String::from_utf8(val.clone())
-                .map_err(|_| ResponderIdParseError::FromUtf8Error(val))?,
-        )
-    }
-}
-
-impl ResponderId {
-    pub fn as_bytes(&self) -> &[u8] {
-        self.0.as_bytes()
     }
 }
 

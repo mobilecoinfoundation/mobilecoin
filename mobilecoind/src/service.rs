@@ -1108,7 +1108,10 @@ mod test {
     };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
-    use std::{convert::TryFrom, iter::FromIterator};
+    use std::{
+        convert::{TryFrom, TryInto},
+        iter::FromIterator,
+    };
 
     #[test_with_logger]
     fn test_add_monitor_impl(logger: Logger) {
@@ -1801,23 +1804,38 @@ mod test {
                 outlays.len() + 1
             ); // Extra output for change.
 
-            // Sanity test output amounts
             let tx = Tx::try_from(tx_proposal.get_tx()).unwrap();
 
-            let change = test_utils::PER_RECIPIENT_AMOUNT
+            // The transaction should contain an output for each outlay, and one for change.
+            assert_eq!(tx.prefix.outputs.len(), outlays.len() + 1);
+
+            let change_value = test_utils::PER_RECIPIENT_AMOUNT
                 - outlays.iter().map(|outlay| outlay.value).sum::<u64>()
                 - BASE_FEE;
 
-            for (account_key, tx_out, expected_amount) in &[
-                (&receiver1, &tx.prefix.outputs[0], outlays[0].value),
-                (&receiver2, &tx.prefix.outputs[1], outlays[1].value),
-                (&sender, &tx.prefix.outputs[2], change),
+            for (account_key, expected_value) in &[
+                (&receiver1, outlays[0].value),
+                (&receiver2, outlays[1].value),
+                (&sender, change_value),
             ] {
-                let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
-                let shared_secret =
-                    get_tx_out_shared_secret(account_key.view_private_key(), &tx_public_key);
-                let (value, _blinding) = tx_out.amount.get_value(&shared_secret).unwrap();
-                assert_eq!(value, *expected_amount);
+                // Find the first output belonging to the account, and get its value.
+                // This assumes that each output is sent to a different account key.
+                let (value, _blinding) = tx
+                    .prefix
+                    .outputs
+                    .iter()
+                    .find_map(|tx_out| {
+                        let output_public_key =
+                            RistrettoPublic::try_from(&tx_out.public_key).unwrap();
+                        let shared_secret = get_tx_out_shared_secret(
+                            account_key.view_private_key(),
+                            &output_public_key,
+                        );
+                        tx_out.amount.get_value(&shared_secret).ok()
+                    })
+                    .expect("There should be an output belonging to the account key.");
+
+                assert_eq!(value, *expected_value);
             }
 
             // Santity test fee
@@ -2237,18 +2255,22 @@ mod test {
                 response.get_receiver_tx_receipt_list().len() + 1, // There's a change output that is not part of the receipts
                 tx.prefix.outputs.len()
             );
-            for (tx_out, receipt) in tx
+
+            let tx_out_hashes: Vec<_> = tx.prefix.outputs.iter().map(TxOut::hash).collect();
+            let tx_out_public_keys: Vec<_> = tx
                 .prefix
                 .outputs
                 .iter()
-                .zip(response.get_receiver_tx_receipt_list().iter())
-            {
-                assert_eq!(tx_out.hash(), receipt.get_tx_out_hash(),);
+                .map(|tx_out| tx_out.public_key.to_bytes())
+                .collect();
 
-                assert_eq!(
-                    tx_out.public_key.as_bytes(),
-                    receipt.get_tx_public_key().get_data(),
-                );
+            for receipt in response.get_receiver_tx_receipt_list().iter() {
+                let hash: [u8; 32] = receipt.get_tx_out_hash().try_into().unwrap();
+                assert!(tx_out_hashes.contains(&hash));
+
+                let public_key: [u8; 32] =
+                    receipt.get_tx_public_key().get_data().try_into().unwrap();
+                assert!(tx_out_public_keys.contains(&public_key));
             }
 
             // Check that attempted_spend_height got updated for the relevant utxos.
@@ -2466,18 +2488,26 @@ mod test {
             response.get_receiver_tx_receipt_list().len() + 1, // There's a change output that is not part of the receipts
             submitted_tx.prefix.outputs.len()
         );
-        for (tx_out, receipt) in submitted_tx
+
+        let tx_out_hashes: Vec<_> = submitted_tx
             .prefix
             .outputs
             .iter()
-            .zip(response.get_receiver_tx_receipt_list().iter())
-        {
-            assert_eq!(tx_out.hash(), receipt.get_tx_out_hash(),);
+            .map(TxOut::hash)
+            .collect();
+        let tx_out_public_keys: Vec<_> = submitted_tx
+            .prefix
+            .outputs
+            .iter()
+            .map(|tx_out| tx_out.public_key.to_bytes())
+            .collect();
 
-            assert_eq!(
-                tx_out.public_key.as_bytes(),
-                receipt.get_tx_public_key().get_data(),
-            );
+        for receipt in response.get_receiver_tx_receipt_list().iter() {
+            let hash: [u8; 32] = receipt.get_tx_out_hash().try_into().unwrap();
+            assert!(tx_out_hashes.contains(&hash));
+
+            let public_key: [u8; 32] = receipt.get_tx_public_key().get_data().try_into().unwrap();
+            assert!(tx_out_public_keys.contains(&public_key));
         }
 
         // Check that attempted_spend_height got updated for the relevant utxos.
