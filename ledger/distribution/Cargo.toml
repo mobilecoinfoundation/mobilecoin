@@ -9,9 +9,9 @@ name = "ledger-distribution"
 path = "src/main.rs"
 
 [dependencies]
+mc-api = { path = "../../api" }
 mc-common = { path = "../../common", features = ["log"] }
 mc-ledger-db = { path = "../../ledger/db" }
-mc-consensus-api = { path = "../../consensus/api" }
 mc-transaction-core = { path = "../../transaction/core" }
 
 dirs = "2.0"

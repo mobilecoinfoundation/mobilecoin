@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "api",
     "attest/ake",
     "attest/api",
     "attest/core",

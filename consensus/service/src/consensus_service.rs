@@ -24,7 +24,7 @@ use mc_common::{
     NodeID, ResponderId,
 };
 use mc_connection::{Connection, ConnectionManager, ConnectionUriGrpcioServer};
-use mc_consensus_api::{blockchain_grpc, consensus_client_grpc, consensus_peer_grpc};
+use mc_consensus_api::{consensus_client_grpc, consensus_common_grpc, consensus_peer_grpc};
 use mc_consensus_enclave::{ConsensusEnclaveProxy, Error as EnclaveError};
 use mc_ledger_db::LedgerDB;
 use mc_peers::{PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
@@ -429,7 +429,7 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
             self.logger.clone(),
         ));
 
-        let blockchain_service = blockchain_grpc::create_blockchain_api(
+        let blockchain_service = consensus_common_grpc::create_blockchain_api(
             blockchain_api_service::BlockchainApiService::new(
                 self.ledger_db.clone(),
                 self.logger.clone(),
@@ -494,7 +494,7 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
                 .and_then(|byzantine_ledger| byzantine_ledger.get_highest_scp_message())
         });
 
-        let blockchain_service = blockchain_grpc::create_blockchain_api(
+        let blockchain_service = consensus_common_grpc::create_blockchain_api(
             blockchain_api_service::BlockchainApiService::new(
                 self.ledger_db.clone(),
                 self.logger.clone(),

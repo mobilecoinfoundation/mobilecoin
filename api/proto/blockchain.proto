@@ -1,37 +1,12 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-// Blockchain-related data types and service descriptions.
+// Blockchain-related data types.
 
 syntax = "proto3";
 import "google/protobuf/empty.proto";
 import "external.proto";
 
 package blockchain;
-
-service BlockchainAPI {
-    rpc GetLastBlockInfo (google.protobuf.Empty) returns (LastBlockInfoResponse);
-    rpc GetBlocks (BlocksRequest) returns (BlocksResponse);
-}
-
-// Response to a `GetLastBlockInfo` call.
-message LastBlockInfoResponse {
-    // Block index
-    uint64 index = 1;
-}
-
-// Requests a range [offset, offset+limit) of Blocks.
-message BlocksRequest {
-    // Index of first block.
-    uint64 offset = 1;
-
-    // Maximum number of blocks.
-    uint32 limit = 2;
-}
-
-// Response to a `BlocksRequest`.
-message BlocksResponse {
-    repeated Block blocks = 1;
-}
 
 // Block ID.
 message BlockID {

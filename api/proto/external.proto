@@ -6,8 +6,8 @@ syntax = "proto3";
 
 package external;
 
-option java_package = "com.mobilecoin.consensus";
-option java_outer_classname = "ConsensusAPI";
+option java_package = "com.mobilecoin.api";
+option java_outer_classname = "MobileCoinAPI";
 
 ///////////////////////////////////////////////////////////////////////////////
 // `keys` crate

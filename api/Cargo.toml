@@ -1,0 +1,34 @@
+[package]
+name = "mc-api"
+version = "0.2.0"
+authors = ["MobileCoin"]
+build = "build.rs"
+edition = "2018"
+links = "mc-api"
+
+[dependencies]
+mc-common = { path = "../common" }
+mc-crypto-keys = { path = "../crypto/keys" }
+mc-util-serial = { path = "../util/serial" }
+mc-transaction-core = { path = "../transaction/core" }
+
+protobuf = "2.12"
+
+[target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
+curve25519-dalek = { version = "2.0", default-features = false, features = ["simd_backend", "nightly"] }
+
+[target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
+curve25519-dalek = { version = "2.0", default-features = false, features = ["nightly", "u64_backend"] }
+
+[build-dependencies]
+mc-util-build-grpc = { path = "../util/build/grpc" }
+mc-util-build-script = { path = "../util/build/script" }
+
+cargo-emit = "0.1.1"
+
+[dev-dependencies]
+mc-transaction-core-test-utils = { path = "../transaction/core/test-utils" }
+mc-transaction-std = { path = "../transaction/std" }
+mc-util-from-random = { path = "../util/from-random" }
+
+rand = "0.7"

@@ -5,11 +5,11 @@
 
 use crate::transactions_fetcher_trait::{TransactionFetcherError, TransactionsFetcher};
 use failure::Fail;
+use mc_api::{blockchain, conversions::block_num_to_s3block_path};
 use mc_common::{
     logger::{log, Logger},
     ResponderId,
 };
-use mc_consensus_api::{blockchain, conversions::block_num_to_s3block_path};
 use mc_transaction_core::{Block, BlockContents, BlockSignature};
 use reqwest::Error as ReqwestError;
 use serde::{Deserialize, Serialize};
