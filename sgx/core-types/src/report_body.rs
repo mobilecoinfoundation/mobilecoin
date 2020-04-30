@@ -64,7 +64,7 @@ const REPORT_DATA_END: usize = REPORT_DATA_START + REPORT_DATA_SIZE;
 // Used in the absence of something like core::slice::fill()
 const ZEROES: [u8; SGX_REPORT_BODY_RESERVED4_BYTES] = [0u8; SGX_REPORT_BODY_RESERVED4_BYTES];
 
-/// The size of a [ReportData]'s x64 representation, in bytes.
+/// The size of a [ReportBody]'s x64 representation, in bytes.
 pub const REPORT_BODY_SIZE: usize = REPORT_DATA_END;
 
 /// The data pertinent to a Report and Quote.
