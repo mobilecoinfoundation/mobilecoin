@@ -251,6 +251,7 @@ mod test {
             0,  // first_subaddress
             10, // num_subaddresses
             0,  // first_block
+            "", // name
         )
         .unwrap();
 
@@ -264,6 +265,7 @@ mod test {
             0,  // first_subaddress
             10, // num_subaddresses
             0,  // first_block
+            "", // name
         )
         .unwrap();
 
@@ -279,6 +281,7 @@ mod test {
             5,  // first_subaddress
             10, // num_subaddresses
             0,  // first_block
+            "", // name
         )
         .unwrap();
 
@@ -295,6 +298,7 @@ mod test {
             0,  // first_subaddress
             10, // num_subaddresses
             10, // first_block
+            "", // name
         )
         .unwrap();
 
@@ -310,6 +314,7 @@ mod test {
             10, // first_subaddress
             10, // num_subaddresses
             0,  // first_block
+            "", // name
         )
         .unwrap();
 

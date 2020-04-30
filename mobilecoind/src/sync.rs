@@ -430,6 +430,7 @@ mod test {
             DEFAULT_SUBADDRESS_INDEX, // first subaddress
             5,                        // number of subaddresses
             0,                        // first block
+            "",                       // name
         )
         .unwrap();
 

@@ -106,6 +106,7 @@ pub fn get_test_monitor_data_and_id(
         DEFAULT_SUBADDRESS_INDEX, // first_subaddress
         1,                        // num_subaddresses
         0,                        // first_block
+        "",                       // name
     )
     .unwrap();
 

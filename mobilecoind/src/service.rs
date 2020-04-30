@@ -161,6 +161,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             request.first_subaddress,
             request.num_subaddresses,
             request.first_block,
+            &request.name,
         )
         .map_err(|err| rpc_internal_error("monitor_data.new", err, &self.logger))?;
 
@@ -1127,6 +1128,7 @@ mod test {
             DEFAULT_SUBADDRESS_INDEX, // first_subaddress
             1,                        // num_subaddresses
             0,                        // first_block
+            "",                       // name
         )
         .expect("failed to create data");
 
@@ -1170,6 +1172,7 @@ mod test {
                     DEFAULT_SUBADDRESS_INDEX, // first_subaddress
                     1,                        // num_subaddresses
                     0,                        // first_block
+                    "",                       // name
                 )
                 .unwrap();
                 mobilecoind_db.add_monitor(&data).unwrap()
@@ -1210,6 +1213,7 @@ mod test {
                     DEFAULT_SUBADDRESS_INDEX, // first_subaddress
                     1,                        // num_subaddresses
                     0,                        // first_block
+                    "",                       // name
                 )
                 .unwrap();
                 let id = mobilecoind_db.add_monitor(&data).unwrap();
@@ -1257,6 +1261,7 @@ mod test {
             10, // first_subaddress
             20, // num_subaddresses
             30, // first_block
+            "", // name
         )
         .unwrap();
 
@@ -1310,6 +1315,7 @@ mod test {
             0,  // first_subaddress
             20, // num_subaddresses
             0,  // first_block
+            "", // name
         )
         .unwrap();
 
@@ -1463,6 +1469,7 @@ mod test {
             10, // first_subaddress
             20, // num_subaddresses
             0,  // first_block
+            "", // name
         )
         .unwrap();
 
@@ -1723,6 +1730,7 @@ mod test {
             0,  // first_subaddress
             20, // num_subaddresses
             0,  // first_block
+            "", // name
         )
         .unwrap();
 
@@ -1866,6 +1874,7 @@ mod test {
                 0,  // first_subaddress
                 20, // num_subaddresses
                 0,  // first_block
+                "", // name
             )
             .unwrap();
 
@@ -1914,6 +1923,7 @@ mod test {
             0,  // first_subaddress
             20, // num_subaddresses
             0,  // first_block
+            "", // name
         )
         .unwrap();
 
@@ -1988,6 +1998,7 @@ mod test {
                 DEFAULT_SUBADDRESS_INDEX, // first_subaddress
                 1,                        // num_subaddresses
                 0,                        // first_block
+                "",                       // name
             )
             .unwrap();
 
@@ -2025,6 +2036,7 @@ mod test {
             0,  // first_subaddress
             20, // num_subaddresses
             0,  // first_block
+            "", // name
         )
         .unwrap();
 
@@ -2122,6 +2134,7 @@ mod test {
             0,  // first_subaddress
             20, // num_subaddresses
             0,  // first_block
+            "", // name
         )
         .unwrap();
 
@@ -2302,6 +2315,7 @@ mod test {
             0,  // first_subaddress
             20, // num_subaddresses
             0,  // first_block
+            "", // name
         )
         .unwrap();
 
@@ -2368,6 +2382,7 @@ mod test {
             0,  // first_subaddress
             20, // num_subaddresses
             0,  // first_block
+            "", // name
         )
         .unwrap();
 
