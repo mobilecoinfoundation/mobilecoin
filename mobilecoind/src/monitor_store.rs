@@ -43,6 +43,10 @@ pub struct MonitorData {
     /// The next block this monitor needs to process.
     #[prost(uint64, tag = "5")]
     pub next_block: u64,
+
+    /// Optional monitor name.
+    #[prost(string, tag = "6")]
+    pub name: String,
 }
 
 impl MonitorData {
@@ -51,6 +55,7 @@ impl MonitorData {
         first_subaddress: u64,
         num_subaddresses: u64,
         first_block: u64,
+        name: &str,
     ) -> Result<Self, Error> {
         if num_subaddresses == 0 {
             return Err(Error::InvalidArgument(
@@ -66,6 +71,7 @@ impl MonitorData {
             first_block,
             // The next block we need to sync is our first block.
             next_block: first_block,
+            name: name.to_owned(),
         })
     }
 
@@ -80,6 +86,8 @@ pub type MonitorId = DatabaseByteArrayKey;
 impl From<&MonitorData> for MonitorId {
     // When constructing a MonitorId from a given MonitorData object we only want to hash the data
     // that doesn't change over time.
+    // Name isn't included here - two monitors with identical address/subaddress range/first_block
+    // should have the same id even if they have a different name,
     fn from(src: &MonitorData) -> MonitorId {
         #[derive(Digestible)]
         struct ConstMonitorData {
@@ -230,79 +238,6 @@ impl MonitorStore {
             Err(err) => Err(Error::LMDB(err)),
         }
     }
-
-    /*
-    /// Stop collecting new data for a monitor. Used during monitor deletion.
-     pub fn stop(&self, monitor_id: &MonitorId) -> Result<(), Error> {
-         let mut db_txn = self.env.begin_rw_txn()?;
-         let key_bytes = monitor_id.to_vec();
-         match db_txn.get(self.monitor_id_to_monitor_data, &key_bytes) {
-             Ok(value_bytes) => {
-                 let mut data: MonitorData = mc_util_serial::decode(value_bytes)?;
-                 data.active = false;
-                 let new_value_bytes = mc_util_serial::encode(&data);
-                 db_txn.put(
-                     self.monitor_id_to_monitor_data,
-                     &key_bytes,
-                     &new_value_bytes,
-                     WriteFlags::empty(),
-                 )?;
-                 db_txn.commit()?;
-                 Ok(())
-             }
-             Err(lmdb::Error::NotFound) => Err(Error::MonitorIdNotFound),
-             Err(err) => Err(Error::LMDB(err)),
-         }
-     }
-
-     /// maintains a list of indices that have stored outputs
-     pub fn set_index_as_active(&self, monitor_id: &MonitorId, index: u64) -> Result<(), Error> {
-         let mut db_txn = self.env.begin_rw_txn()?;
-         let monitor_id_bytes = monitor_id.to_vec();
-         let index_bytes = mc_util_serial::encode(&index);
-         db_txn.put(
-             self.monitor_id_to_active_index,
-             &monitor_id_bytes,
-             &index_bytes,
-             WriteFlags::empty(),
-         )?;
-         db_txn.commit()?;
-         Ok(())
-     }
-
-     /// return a list of indices that have stored outputs
-     pub fn get_active_indices(&self, monitor_id: &MonitorId) -> Result<Vec<u64>, Error> {
-         log::trace!(
-             self.logger,
-             "retrieving active indices for monitor_id {}",
-             monitor_id,
-         );
-         let mut results = Vec::new();
-
-         let db_txn = self.env.begin_ro_txn()?;
-         let monitor_id_bytes = monitor_id.to_vec();
-         let mut cursor = db_txn.open_ro_cursor(self.monitor_id_to_active_index)?;
-         match cursor.iter_dup_of(&monitor_id_bytes) {
-             Err(lmdb::Error::NotFound) => return Ok(results),
-             Err(e) => return Err(Error::LMDB(e)),
-             Ok(matching_database_pairs) => {
-                 for (_monitor_id_bytes, index_bytes) in matching_database_pairs {
-                     let index: u64 = mc_util_serial::decode(&index_bytes)?;
-                     results.push(index);
-                 }
-             }
-         };
-         Ok(results)
-     }
-
-     /// Delete data for a given monitor.
-     pub fn delete(&self, monitor_id: &MonitorId) -> Result<(), Error> {
-         let mut db_txn = self.env.begin_rw_txn()?;
-         let key_bytes = monitor_id.to_vec();
-         db_txn.del(self.monitor_id_to_monitor_data, &key_bytes, None)?;
-         db_txn.commit()?;
-         Ok(())
-     }*/
 }
 
 #[cfg(test)]
@@ -338,9 +273,11 @@ mod test {
         log::trace!(logger, "confirmed database was created with no monitors");
 
         // Insert the monitors and check that that they appear in the db.
-        let (monitor_data0, monitor_id0) = get_test_monitor_data_and_id(&mut rng);
+        let (mut monitor_data0, monitor_id0) = get_test_monitor_data_and_id(&mut rng);
         let (monitor_data1, monitor_id1) = get_test_monitor_data_and_id(&mut rng);
         let (_monitor_data, monitor_id2) = get_test_monitor_data_and_id(&mut rng);
+
+        monitor_data0.name = "test name".to_owned();
 
         let _ = mobilecoind_db
             .add_monitor(&monitor_data0)

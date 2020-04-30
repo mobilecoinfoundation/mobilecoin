@@ -191,6 +191,9 @@ message MonitorStatus {
 
     // Next block we are waiting to sync.
     uint64 next_block = 5;
+
+    // Optional monitor name.
+    string name = 6;
 }
 
 
@@ -217,6 +220,9 @@ message AddMonitorRequest {
 
     // Block index to start monitoring from.
     uint64 first_block = 4;
+
+    // Optional name.
+    string name = 5;
 }
 message AddMonitorResponse {
     bytes monitor_id = 1;
