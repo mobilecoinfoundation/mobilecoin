@@ -4,12 +4,13 @@ version = "0.2.0"
 authors = ["MobileCoin"]
 build = "build.rs"
 edition = "2018"
+links = "mc-mobilecoind-api"
 
 [dependencies]
-mc-crypto-keys = { path = "../../crypto/keys" }
-mc-consensus-api = { path = "../../consensus/api" }
-mc-transaction-core = { path = "../../transaction/core" }
+mc-api = { path = "../../api" }
 mc-common = { path = "../../common", features = ["log"] }
+mc-crypto-keys = { path = "../../crypto/keys" }
+mc-transaction-core = { path = "../../transaction/core" }
 
 futures = "0.1.16"
 grpcio = "0.5.1"
@@ -21,3 +22,6 @@ hex_fmt = "0.3"
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../../util/build/grpc" }
+mc-util-build-script = { path = "../../util/build/script" }
+
+cargo-emit = "0.1.1"

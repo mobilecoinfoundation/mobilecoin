@@ -19,11 +19,15 @@ fn main() {
     let mut all_proto_dirs = attest_proto_path.split(':').collect::<Vec<&str>>();
     all_proto_dirs.push(proto_str);
 
+    let api_proto_path = env
+        .depvar("MC_API_PROTOS_PATH")
+        .expect("Could not read api's protos path")
+        .to_owned();
+    all_proto_dirs.extend(api_proto_path.split(':').collect::<Vec<&str>>());
+
     mc_util_build_grpc::compile_protos_and_generate_mod_rs(
         all_proto_dirs.as_slice(),
         &[
-            "blockchain.proto",
-            "external.proto",
             "consensus_client.proto",
             "consensus_common.proto",
             "consensus_peer.proto",

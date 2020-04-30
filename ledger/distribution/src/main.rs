@@ -6,8 +6,8 @@
 pub mod uri;
 
 use crate::uri::{Destination, Uri};
+use mc_api::{blockchain, conversions::block_num_to_s3block_path};
 use mc_common::logger::{create_app_logger, log, o, Logger};
-use mc_consensus_api::{blockchain, conversions::block_num_to_s3block_path};
 use mc_ledger_db::{Error as LedgerDbError, Ledger, LedgerDB};
 use mc_transaction_core::{Block, BlockContents, BlockIndex, BlockSignature};
 use protobuf::Message;
