@@ -7,6 +7,7 @@ use crate::{
     quorum_set::QuorumSet,
 };
 use mc_common::{HashSet, NodeID};
+use mc_crypto_digestible::Digestible;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     cmp,
@@ -20,7 +21,7 @@ use std::{
 pub const INFINITY: u32 = <u32>::max_value();
 
 /// The contents of a Nominate Message.
-#[derive(Clone, Debug, Eq, Hash, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, Serialize, Deserialize, PartialEq, Digestible)]
 pub struct NominatePayload<V: Value> {
     /// Voted values.
     pub X: BTreeSet<V>,
@@ -57,7 +58,7 @@ impl<V: Value> PartialOrd for NominatePayload<V> {
 /// The contents of a Prepare Message.
 ///
 /// See [IETF Draft 0](https://tools.ietf.org/html/draft-mazieres-dinrg-scp-00#page-7)
-#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq, Hash, Digestible)]
 pub struct PreparePayload<V: Value> {
     /// The ballot, containing the current and highest prepare vote.
     pub B: Ballot<V>,
@@ -106,7 +107,7 @@ impl<V: Value> PartialOrd for PreparePayload<V> {
 /// The contents of a Commit Message.
 ///
 /// See Commit Message in [IETF Draft 05](https://tools.ietf.org/pdf/draft-mazieres-dinrg-scp-05.pdf)
-#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq, Hash, Digestible)]
 pub struct CommitPayload<V: Value> {
     /// The ballot, containing the current and highest commit vote.
     ///
@@ -147,7 +148,7 @@ impl<V: Value> PartialOrd for CommitPayload<V> {
 }
 
 /// The contents of an Externalize Message.
-#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq, Hash, Digestible)]
 pub struct ExternalizePayload<V: Value> {
     /// The lowest confirmed committed ballot.
     pub C: Ballot<V>,
@@ -174,7 +175,7 @@ impl<V: Value> PartialOrd for ExternalizePayload<V> {
 }
 
 /// Encapsulates phase of SCP, and contains the appropriate payload.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Digestible)]
 pub enum Topic<V: Value> {
     /// Nominate Messages.
     Nominate(NominatePayload<V>),

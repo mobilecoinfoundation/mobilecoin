@@ -180,6 +180,7 @@ cfg_if! {
         extern crate alloc;
         use alloc::vec::Vec;
         use alloc::string::String;
+        use alloc::collections::BTreeSet;
 
         // Forward from Vec<T> to &[T] impl
         impl<T: Digestible> Digestible for Vec<T> {
@@ -202,6 +203,24 @@ cfg_if! {
             #[inline]
             fn digest<D: Digest>(&self, hasher: &mut D) {
                 self.as_bytes().digest(hasher);
+            }
+        }
+
+        // Forward from &str to &[u8] impl
+        impl Digestible for &str {
+            #[inline]
+            fn digest<D: Digest>(&self, hasher: &mut D) {
+                self.as_bytes().digest(hasher);
+            }
+        }
+
+        impl<T: Digestible> Digestible for BTreeSet<T> {
+            #[inline]
+            fn digest<D: Digest>(&self, hasher: &mut D) {
+                self.len().digest(hasher);
+                for elem in self.iter() {
+                    elem.digest(hasher);
+                }
             }
         }
     }
