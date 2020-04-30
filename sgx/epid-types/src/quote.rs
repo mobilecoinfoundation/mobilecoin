@@ -71,14 +71,14 @@ pub const QUOTE_SIGLEN_MAX: usize = 16384;
 
 /// The output from the Quoting Enclave.
 ///
-/// A quoting enclave will be given a [Report](mc_sgx_core_types::Report) from the enclave under
+/// A quoting enclave will be given a [`Report`](mc_sgx_core_types::Report) from the enclave under
 /// examination, and it will verify the report is from the same platform, and quote the report in
 /// its response. This quote will be returned to the requester, who will transmit it to IAS for
 /// further verification.
 ///
 /// Internally, this struct contains a vector of bytes, with an internal object that is aligned to
 /// the size of [`sgx_quote_t`](mc_sgx_epid_types_sys::sgx_quote_t). We use the unsafe
-/// [`align_to()`](core::slice::align_to) method to reference the bytes in native order at the
+/// [`core::slice::align_to()`] method to reference the bytes in native order at the
 /// proper alignment.
 #[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]

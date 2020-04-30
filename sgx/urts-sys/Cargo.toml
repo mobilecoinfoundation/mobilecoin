@@ -1,0 +1,18 @@
+[package]
+name = "mc-sgx-urts-sys"
+version = "0.2.0"
+authors = ["MobileCoin"]
+description = "Untrusted FFI for Intel SGX SDK."
+readme = "README.md"
+edition = "2018"
+links = "sgx_urts"
+
+[dependencies]
+mc-sgx-core-types-sys = { path = "../core-types-sys" }
+
+[build-dependencies]
+mc-util-build-sgx = { path = "../../util/build/sgx" }
+mc-util-build-script = { path = "../../util/build/script" }
+
+bindgen = "0.51.1"
+cargo-emit = "0.1.1"
