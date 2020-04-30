@@ -101,25 +101,11 @@ impl Hash for UpdateInfo {
 
 impl Ord for UpdateInfo {
     fn cmp(&self, other: &Self) -> Ordering {
-        let left_ucode = self.0.ucodeUpdate;
-        let right_ucode = other.0.ucodeUpdate;
-
-        match left_ucode.cmp(&right_ucode) {
-            Ordering::Equal => {
-                let left_csmefw = self.0.csmeFwUpdate;
-                let right_csmefw = other.0.csmeFwUpdate;
-
-                match left_csmefw.cmp(&right_csmefw) {
-                    Ordering::Equal => {
-                        let left_psw = self.0.pswUpdate;
-                        let right_psw = other.0.pswUpdate;
-                        left_psw.cmp(&right_psw)
-                    }
-                    other => other,
-                }
-            }
-            other => other,
-        }
+        (self.0.ucodeUpdate, self.0.csmeFwUpdate, self.0.pswUpdate).cmp(&(
+            other.0.ucodeUpdate,
+            other.0.csmeFwUpdate,
+            other.0.pswUpdate,
+        ))
     }
 }
 
@@ -219,5 +205,37 @@ mod test {
         src3.0.pswUpdate = 3;
 
         assert!(set.contains(&src3));
+    }
+
+    #[test]
+    fn ordering() {
+        let mut ui1 = UpdateInfo::default();
+        ui1.0.ucodeUpdate = 1;
+        ui1.0.csmeFwUpdate = 2;
+        ui1.0.pswUpdate = 3;
+
+        let mut ui2 = UpdateInfo::default();
+        ui2.0.ucodeUpdate = 2;
+        ui2.0.csmeFwUpdate = 2;
+        ui2.0.pswUpdate = 2;
+
+        // (1, 2, 3) vs. (2, 2, 2)
+        assert!(ui1 < ui2);
+
+        // (1, 2, 3) vs. (1, 2, 2)
+        ui2.0.ucodeUpdate = 1;
+        assert!(ui1 > ui2);
+
+        // (1, 2, 3) vs. (1, 4, 2)
+        ui2.0.csmeFwUpdate = 4;
+        assert!(ui1 < ui2);
+
+        // (1, 2, 3) vs. (1, 2, 2) -- reset
+        ui2.0.csmeFwUpdate = 2;
+        assert!(ui1 > ui2);
+
+        // (1, 2, 1) vs. (1, 2, 2)
+        ui1.0.pswUpdate = 1;
+        assert!(ui1 < ui2);
     }
 }
