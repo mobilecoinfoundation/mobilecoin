@@ -17,7 +17,7 @@ use crate::{
 };
 use core::{
     cmp::Ordering,
-    convert::TryInto,
+    convert::{TryFrom, TryInto},
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
@@ -61,7 +61,10 @@ const FAMILY_ID_END: usize = FAMILY_ID_START + FAMILY_ID_SIZE;
 const REPORT_DATA_START: usize = FAMILY_ID_END;
 const REPORT_DATA_END: usize = REPORT_DATA_START + REPORT_DATA_SIZE;
 
-/// The size of a [ReportData]'s x64 representation, in bytes.
+// Used in the absence of something like core::slice::fill()
+const ZEROES: [u8; SGX_REPORT_BODY_RESERVED4_BYTES] = [0u8; SGX_REPORT_BODY_RESERVED4_BYTES];
+
+/// The size of a [ReportBody]'s x64 representation, in bytes.
 pub const REPORT_BODY_SIZE: usize = REPORT_DATA_END;
 
 /// The data pertinent to a Report and Quote.
@@ -80,7 +83,7 @@ impl_serialize_to_x64! {
 impl ReportBody {
     /// Retrieve the attributes of an enclave's report.
     pub fn attributes(&self) -> Attributes {
-        Attributes::from(&self.0.attributes)
+        Attributes::try_from(&self.0.attributes).expect("Invalid attributes found")
     }
 
     /// Retrieve a 64-byte ID representing the enclave XML configuration
@@ -163,8 +166,12 @@ impl Display for ReportBody {
 
 impl FfiWrapper<sgx_report_body_t> for ReportBody {}
 
-impl From<&sgx_report_body_t> for ReportBody {
-    fn from(src: &sgx_report_body_t) -> Self {
+impl TryFrom<&sgx_report_body_t> for ReportBody {
+    type Error = EncodingError;
+
+    fn try_from(src: &sgx_report_body_t) -> Result<Self, Self::Error> {
+        let attributes = Attributes::try_from(&src.attributes)?.into();
+
         let mut reserved1 = [0u8; SGX_REPORT_BODY_RESERVED1_BYTES];
         reserved1[..].copy_from_slice(&src.reserved1[..]);
 
@@ -177,12 +184,12 @@ impl From<&sgx_report_body_t> for ReportBody {
         let mut reserved4 = [0u8; SGX_REPORT_BODY_RESERVED4_BYTES];
         reserved4[..].copy_from_slice(&src.reserved4[..]);
 
-        Self(sgx_report_body_t {
+        Ok(Self(sgx_report_body_t {
             cpu_svn: CpuSecurityVersion::from(&src.cpu_svn).into(),
             misc_select: src.misc_select,
             reserved1,
             isv_ext_prod_id: ExtendedProductId::from(&src.isv_ext_prod_id).into(),
-            attributes: Attributes::from(&src.attributes).into(),
+            attributes,
             mr_enclave: MrEnclave::from(&src.mr_enclave).into(),
             reserved2,
             mr_signer: MrSigner::from(&src.mr_signer).into(),
@@ -194,7 +201,7 @@ impl From<&sgx_report_body_t> for ReportBody {
             reserved4,
             isv_family_id: FamilyId::from(&src.isv_family_id).into(),
             report_data: ReportData::from(&src.report_data).into(),
-        })
+        }))
     }
 }
 
@@ -260,6 +267,7 @@ impl FromX64 for ReportBody {
 
 impl Hash for ReportBody {
     fn hash<H: Hasher>(&self, state: &mut H) {
+        "ReportBody".hash(state);
         self.cpu_security_version().hash(state);
         self.misc_select().hash(state);
         self.extended_product_id().hash(state);
@@ -350,6 +358,9 @@ impl ToX64 for ReportBody {
 
         dest[MISC_SELECT_START..MISC_SELECT_END].copy_from_slice(&self.misc_select().to_le_bytes());
 
+        dest[RESERVED1_START..RESERVED1_END]
+            .copy_from_slice(&ZEROES[..SGX_REPORT_BODY_RESERVED1_BYTES]);
+
         self.extended_product_id()
             .to_x64(&mut dest[EXT_PROD_ID_START..EXT_PROD_ID_END])
             .or(Err(REPORT_BODY_SIZE))?;
@@ -359,9 +370,17 @@ impl ToX64 for ReportBody {
         self.mr_enclave()
             .to_x64(&mut dest[MRENCLAVE_START..MRENCLAVE_END])
             .or(Err(REPORT_BODY_SIZE))?;
+
+        dest[RESERVED2_START..RESERVED2_END]
+            .copy_from_slice(&ZEROES[..SGX_REPORT_BODY_RESERVED2_BYTES]);
+
         self.mr_signer()
             .to_x64(&mut dest[MRSIGNER_START..MRSIGNER_END])
             .or(Err(REPORT_BODY_SIZE))?;
+
+        dest[RESERVED3_START..RESERVED3_END]
+            .copy_from_slice(&ZEROES[..SGX_REPORT_BODY_RESERVED3_BYTES]);
+
         self.config_id()
             .to_x64(&mut dest[CONFIG_ID_START..CONFIG_ID_END])
             .or(Err(REPORT_BODY_SIZE))?;
@@ -370,6 +389,9 @@ impl ToX64 for ReportBody {
         dest[ISV_SVN_START..ISV_SVN_END].copy_from_slice(&self.security_version().to_le_bytes());
         dest[CONFIG_SVN_START..CONFIG_SVN_END]
             .copy_from_slice(&self.config_security_version().to_le_bytes());
+
+        dest[RESERVED4_START..RESERVED4_END]
+            .copy_from_slice(&ZEROES[..SGX_REPORT_BODY_RESERVED4_BYTES]);
 
         self.family_id()
             .to_x64(&mut dest[FAMILY_ID_START..FAMILY_ID_END])
@@ -442,7 +464,7 @@ mod test {
     #[test]
     #[allow(clippy::cognitive_complexity)]
     fn test_ord() {
-        let body1 = ReportBody::from(&REPORT_BODY_SRC);
+        let body1 = ReportBody::try_from(&REPORT_BODY_SRC).expect("Could not read report");
         let mut body2 = body1.clone();
 
         let orig_value = body2.0.cpu_svn.svn[0];
@@ -528,8 +550,8 @@ mod test {
     fn test_serde() {
         assert_eq!(REPORT_BODY_SIZE, size_of::<sgx_report_body_t>());
 
-        let body = ReportBody::from(&REPORT_BODY_SRC);
-        let serialized = serialize(&body).expect("Error serializing report.");
+        let body = ReportBody::try_from(&REPORT_BODY_SRC).expect("Could not read report");
+        let serialized = serialize(&body).expect("Error serializing report");
         let body2: ReportBody = deserialize(&serialized).expect("Error deserializing report");
         assert_eq!(body, body2);
         let dest: sgx_report_body_t = body2.into();

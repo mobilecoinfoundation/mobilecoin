@@ -11,6 +11,7 @@ use crate::{
 };
 use core::{
     cmp::Ordering,
+    convert::TryFrom,
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
@@ -46,7 +47,7 @@ impl_serialize_to_x64! {
 impl Report {
     /// Retrieve the report body structure
     pub fn body(&self) -> ReportBody {
-        ReportBody::from(&self.0.body)
+        ReportBody::try_from(&self.0.body).expect("Invalid report body found")
     }
 
     /// Retrieve the Key ID used to construct the report
@@ -86,13 +87,15 @@ impl Display for Report {
 
 impl FfiWrapper<sgx_report_t> for Report {}
 
-impl From<&sgx_report_t> for Report {
-    fn from(src: &sgx_report_t) -> Self {
-        Self(sgx_report_t {
-            body: ReportBody::from(&src.body).into(),
+impl TryFrom<&sgx_report_t> for Report {
+    type Error = EncodingError;
+
+    fn try_from(src: &sgx_report_t) -> Result<Self, Self::Error> {
+        Ok(Self(sgx_report_t {
+            body: ReportBody::try_from(&src.body)?.into(),
             mac: Mac::from(&src.mac).into(),
             key_id: KeyId::from(&src.key_id).into(),
-        })
+        }))
     }
 }
 
@@ -101,18 +104,20 @@ impl FromX64 for Report {
 
     fn from_x64(src: &[u8]) -> Result<Self, EncodingError> {
         if src.len() < REPORT_SIZE {
-            return Err(EncodingError::InvalidInputLength);
+            Err(EncodingError::InvalidInputLength)
+        } else {
+            Ok(Self(sgx_report_t {
+                body: ReportBody::from_x64(&src[BODY_START..BODY_END])?.into(),
+                mac: Mac::from_x64(&src[MAC_START..MAC_END])?.into(),
+                key_id: KeyId::from_x64(&src[KEY_ID_START..KEY_ID_END])?.into(),
+            }))
         }
-        Ok(Self(sgx_report_t {
-            body: ReportBody::from_x64(&src[BODY_START..BODY_END])?.into(),
-            mac: Mac::from_x64(&src[MAC_START..MAC_END])?.into(),
-            key_id: KeyId::from_x64(&src[KEY_ID_START..KEY_ID_END])?.into(),
-        }))
     }
 }
 
 impl Hash for Report {
     fn hash<H: Hasher>(&self, state: &mut H) {
+        "Report".hash(state);
         self.body().hash(state);
         self.key_id().hash(state);
         self.mac().hash(state);
@@ -158,16 +163,13 @@ impl ToX64 for Report {
 
 #[cfg(test)]
 mod test {
-    extern crate std;
-
-    use std::vec;
-
     use super::*;
     use bincode::{deserialize, serialize};
     use mc_sgx_core_types_sys::{
         sgx_attributes_t, sgx_cpu_svn_t, sgx_key_id_t, sgx_measurement_t, sgx_report_body_t,
         sgx_report_data_t,
     };
+
     const TEST_REPORT1: sgx_report_t = sgx_report_t {
         body: sgx_report_body_t {
             cpu_svn: sgx_cpu_svn_t {
@@ -227,7 +229,7 @@ mod test {
 
     #[test]
     fn test_serde() {
-        let report = Report::from(&TEST_REPORT1);
+        let report = Report::try_from(&TEST_REPORT1).expect("Could not read report");
         let serialized = serialize(&report).expect("Could not serialize report");
         let report2: Report = deserialize(&serialized).expect("Could not deserialize report");
         assert_eq!(report, report2);
@@ -235,7 +237,7 @@ mod test {
 
     #[test]
     fn test_ord() {
-        let report1 = Report::from(&TEST_REPORT1);
+        let report1 = Report::try_from(&TEST_REPORT1).expect("Could not read report");
         let mut report2 = report1.clone();
         assert_eq!(report1, report2);
         assert!(!(report1 < report2));
@@ -252,7 +254,7 @@ mod test {
     // Report::try_from should return EncodingError::InvalidInputLength if the input contains fewer
     // than REPORT_SIZE bytes.
     fn test_report_try_from_insufficient_length() {
-        let sparkle_heart = vec![240, 159, 146, 150];
+        let sparkle_heart = [240u8, 159, 146, 150];
         match Report::from_x64(&sparkle_heart[..]) {
             Ok(_) => panic!(),
             Err(EncodingError::InvalidInputLength) => {} // Expected.

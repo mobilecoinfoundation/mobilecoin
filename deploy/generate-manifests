@@ -40,7 +40,7 @@ while (( "$#" )); do
 done
 
 if [ -z $NAMESPACE ]; then
-  echo 
+  echo
   echo "Missing parameter: namespace"
   echo
   usage

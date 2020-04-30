@@ -1,28 +1,24 @@
 [package]
-name = "mc-sgx-core-types"
+name = "mc-sgx-epid-types"
 version = "0.2.0"
-authors = ["James Cape <james@mobilecoin.com>"]
-description = "Core Rust types for Intel SGX SDK."
+authors = ["MobileCoin"]
+description = "EPID FFI types for Intel SGX SDK."
 readme = "README.md"
 edition = "2018"
 
-[features]
-default = ["std"]
-std = [
-    "failure/std",
-    "serde/std"
-]
-
 [dependencies]
-mc-util-encodings = { path = "../../util/encodings" }
+mc-sgx-core-types = { path = "../core-types" }
 mc-sgx-core-types-sys = { path = "../core-types-sys" }
+mc-sgx-epid-types-sys = { path = "../epid-types-sys" }
+mc-util-encodings = { path = "../../util/encodings" }
+mc-util-from-random = { path = "../../util/from-random" }
 
 binascii = "0.1.4"
-bitflags = "1.2.1"
-failure = { version = "0.1.7", default-features = false, features = ["derive"] }
 hex_fmt = "0.3"
+rand_core = "0.5"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 subtle = { version = "2.2", default-features = false, features = ["i128"] }
 
 [dev-dependencies]
 bincode = "1.2"
+rand_hc = "0.2"

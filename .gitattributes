@@ -1,0 +1,8 @@
+Cargo.lock merge=theirs
+.circleci merge=theirs
+consensus/enclave/trusted/Cargo.lock merge=theirs
+*.pem binary
+*.der binary
+**/*.bin binary
+**/*.mdb binary
+**/*.pub binary

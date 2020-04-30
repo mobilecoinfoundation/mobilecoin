@@ -8,6 +8,7 @@ pub use alloc::format as _alloc_format;
 // Re-export types our macros are using
 pub use alloc::vec::Vec;
 pub use binascii::{b64decode, b64encode, bin2hex, hex2bin};
+pub use core::convert::TryFrom;
 pub use hex_fmt::HexFmt;
 pub use mc_util_encodings::{
     base64_buffer_size, base64_size, Error as EncodingError, FromBase64, FromHex, FromX64,
@@ -39,7 +40,6 @@ pub trait FfiWrapper<FFI>:
     + DeserializeOwned
     + Display
     + Eq
-    + From<FFI>
     + FromX64
     + Hash
     + Into<FFI>
@@ -48,7 +48,8 @@ pub trait FfiWrapper<FFI>:
     + PartialOrd
     + Serialize
     + ToX64
-    + for<'any> From<&'any FFI>
+    + TryFrom<FFI>
+    + for<'any> TryFrom<&'any FFI>
 {
 }
 
@@ -71,7 +72,9 @@ macro_rules! impl_ffi_wrapper_base {
 
         impl Clone for $wrapper {
             fn clone(&self) -> Self {
-                Self::from(&self.0)
+                use $crate::_macros::TryFrom;
+
+                Self::try_from(&self.0).expect("Invalid data, cannot clone")
             }
         }
 
@@ -134,15 +137,12 @@ macro_rules! impl_ffi_wrapper_base {
 
                         let mut bytes =
                             $crate::_macros::Vec::<u8>::with_capacity(seq.size_hint().unwrap_or(1024usize));
-                        loop {
-                            match seq.next_element()? {
-                                Some(byte) => bytes.push(byte),
-                                None => break,
-                            }
+                        while let Some(byte) = seq.next_element()? {
+                            bytes.push(byte)
                         }
 
                         let bytelen = bytes.len();
-                        Self::Value::from_x64(bytes.as_mut_slice())
+                        Self::Value::from_x64(bytes.as_slice())
                             .map_err(|convert_error| {
                                 use $crate::_macros::DeserializeError;
 
@@ -160,7 +160,7 @@ macro_rules! impl_ffi_wrapper_base {
 
                 struct NewtypeVisitor;
 
-                impl<'de> serde::de::Visitor<'de> for NewtypeVisitor {
+                impl<'de> $crate::_macros::Visitor<'de> for NewtypeVisitor {
                     type Value = $wrapper;
 
                     fn expecting(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
@@ -329,8 +329,9 @@ macro_rules! impl_ffi_wrapper {
         }
 
         impl core::hash::Hash for $wrapper {
-            fn hash<H: core::hash::Hasher>(&self, hasher: &mut H) {
-                (&self.0[..]).hash(hasher)
+            fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+                stringify!($wrapper).hash(state);
+                (&self.0[..]).hash(state)
             }
         }
 
@@ -418,7 +419,7 @@ macro_rules! impl_ffi_wrapper {
         }
 
         impl $crate::_macros::ConstantTimeEq for $wrapper {
-            fn ct_eq(&self, other: &Self) -> subtle::Choice {
+            fn ct_eq(&self, other: &Self) -> $crate::_macros::Choice {
                 (self.0).$fieldname[..].ct_eq(&(other.0).$fieldname[..])
             }
         }
@@ -484,8 +485,9 @@ macro_rules! impl_ffi_wrapper {
         }
 
         impl core::hash::Hash for $wrapper {
-            fn hash<H: core::hash::Hasher>(&self, hasher: &mut H) {
-                (self.0).$fieldname[..].hash(hasher)
+            fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+                stringify!($wrapper).hash(state);
+                (self.0).$fieldname[..].hash(state)
             }
         }
 

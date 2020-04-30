@@ -29,17 +29,20 @@
 use mc_sgx_libc_types as libc;
 use mc_sgx_types::{sgx_thread_t, SysError, SGX_THREAD_T_NULL};
 //use panic::{UnwindSafe, RefUnwindSafe};
-use super::condvar::SgxThreadCondvar;
-use super::mutex::SgxThreadMutex;
-use super::poison::{self, LockResult, TryLockError, TryLockResult};
-use super::spinlock::SgxThreadSpinlock;
-use super::thread;
+use super::{
+    condvar::SgxThreadCondvar,
+    mutex::SgxThreadMutex,
+    poison::{self, LockResult, TryLockError, TryLockResult},
+    spinlock::SgxThreadSpinlock,
+    thread,
+};
 use alloc::boxed::Box;
-use core::cell::UnsafeCell;
-use core::fmt;
-use core::mem;
-use core::ops::{Deref, DerefMut};
-use core::ptr;
+use core::{
+    cell::UnsafeCell,
+    fmt, mem,
+    ops::{Deref, DerefMut},
+    ptr,
+};
 
 struct RwLockInfo {
     readers_num: u32,

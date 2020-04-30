@@ -37,6 +37,7 @@ members = [
     "sgx/core-types",
     "sgx/core-types-sys",
     "sgx/epid-sys",
+    "sgx/epid-types",
     "sgx/epid-types-sys",
     "sgx/backtrace-edl",
     "sgx/compat-edl",

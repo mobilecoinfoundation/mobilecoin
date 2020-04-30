@@ -59,8 +59,10 @@ pub unsafe fn rsgx_thread_mutex_init(
     mutex: &mut sgx_thread_mutex_t,
     unused: &sgx_thread_mutexattr_t,
 ) -> SysError {
-    let ret =
-        mc_sgx_types::sgx_thread_mutex_init(raw_mutex(mutex), unused as *const sgx_thread_mutexattr_t);
+    let ret = mc_sgx_types::sgx_thread_mutex_init(
+        raw_mutex(mutex),
+        unused as *const sgx_thread_mutexattr_t,
+    );
     if ret == 0 {
         Ok(())
     } else {

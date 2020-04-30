@@ -10,7 +10,7 @@ spec:
   # bitnami kubectl container has USER 1001 hardcoded
   securityContext:
     runAsUser: 1001
-    allowPrivilegeEscalation: false      
+    allowPrivilegeEscalation: false
   containers:
     - name: kubectl
       image: bitnami/kubectl:1.17-debian-10

@@ -13,4 +13,3 @@ echo Daemon is starting up
 sleep 5
 
 ./bin/mc-testnet-client
-

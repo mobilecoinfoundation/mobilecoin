@@ -330,10 +330,17 @@ impl SgxEnclave {
 
     #[cfg(feature = "backtrace")]
     fn store_id_and_path(&self) {
-        let mut lk = crate::backtrace::ENCLAVE_PATH_MAP.lock().expect("Could not lock enclave path map!");
+        let mut lk = crate::backtrace::ENCLAVE_PATH_MAP
+            .lock()
+            .expect("Could not lock enclave path map!");
         let maybe_old_path = lk.insert(self.id, self.path.clone());
         if let Some(old_path) = maybe_old_path {
-            panic!("The eid is already in the enclave path map! eid: {} old_path: {} new_path: {}", self.id, old_path.display(), self.path.display());
+            panic!(
+                "The eid is already in the enclave path map! eid: {} old_path: {} new_path: {}",
+                self.id,
+                old_path.display(),
+                self.path.display()
+            );
         }
     }
 }

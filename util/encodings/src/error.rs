@@ -4,7 +4,7 @@
 
 use alloc::string::FromUtf8Error;
 use binascii::ConvertError;
-use core::str::Utf8Error;
+use core::{array::TryFromSliceError, str::Utf8Error};
 use failure::Fail;
 use serde::{Deserialize, Serialize};
 
@@ -31,14 +31,20 @@ impl From<ConvertError> for Error {
     }
 }
 
-impl From<Utf8Error> for Error {
-    fn from(_src: Utf8Error) -> Self {
+impl From<FromUtf8Error> for Error {
+    fn from(_src: FromUtf8Error) -> Self {
         Error::InvalidUtf8
     }
 }
 
-impl From<FromUtf8Error> for Error {
-    fn from(_src: FromUtf8Error) -> Self {
+impl From<TryFromSliceError> for Error {
+    fn from(_src: TryFromSliceError) -> Self {
+        Error::InvalidInputLength
+    }
+}
+
+impl From<Utf8Error> for Error {
+    fn from(_src: Utf8Error) -> Self {
         Error::InvalidUtf8
     }
 }
