@@ -170,6 +170,7 @@ impl FromX64 for TargetInfo {
 
 impl Hash for TargetInfo {
     fn hash<H: Hasher>(&self, state: &mut H) {
+        "TargetInfo".hash(state);
         self.mr_enclave().hash(state);
         self.attributes().hash(state);
         self.config_security_version().hash(state);

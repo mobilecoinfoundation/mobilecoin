@@ -267,7 +267,7 @@ impl FromX64 for ReportBody {
 
 impl Hash for ReportBody {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        "mc_sgx_core_types::report_body::ReportBody".hash(state);
+        "ReportBody".hash(state);
         self.cpu_security_version().hash(state);
         self.misc_select().hash(state);
         self.extended_product_id().hash(state);

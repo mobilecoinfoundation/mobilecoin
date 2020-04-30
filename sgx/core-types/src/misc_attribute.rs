@@ -90,6 +90,7 @@ impl TryFrom<&sgx_misc_attribute_t> for MiscAttribute {
 
 impl Hash for MiscAttribute {
     fn hash<H: Hasher>(&self, state: &mut H) {
+        "MiscAttribute".hash(state);
         self.attributes().hash(state);
         self.misc_select().hash(state);
     }

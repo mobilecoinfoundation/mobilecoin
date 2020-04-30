@@ -387,15 +387,16 @@ impl FromX64 for KeyRequest {
 }
 
 impl Hash for KeyRequest {
-    fn hash<H: Hasher>(&self, hasher: &mut H) {
-        self.key_name().hash(hasher);
-        self.key_policy().hash(hasher);
-        self.security_version().hash(hasher);
-        self.cpu_security_version().hash(hasher);
-        self.attribute_mask().hash(hasher);
-        self.key_id().hash(hasher);
-        self.misc_mask().hash(hasher);
-        self.config_security_version().hash(hasher);
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        "KeyRequest".hash(state);
+        self.key_name().hash(state);
+        self.key_policy().hash(state);
+        self.security_version().hash(state);
+        self.cpu_security_version().hash(state);
+        self.attribute_mask().hash(state);
+        self.key_id().hash(state);
+        self.misc_mask().hash(state);
+        self.config_security_version().hash(state);
     }
 }
 

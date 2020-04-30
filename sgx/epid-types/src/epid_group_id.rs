@@ -122,8 +122,9 @@ impl<'src> FromX64 for EpidGroupId {
 }
 
 impl Hash for EpidGroupId {
-    fn hash<H: Hasher>(&self, hasher: &mut H) {
-        (&self.0[..]).hash(hasher)
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        "EpidGroupId".hash(state);
+        (&self.0[..]).hash(state)
     }
 }
 

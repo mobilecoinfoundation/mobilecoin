@@ -88,14 +88,14 @@ impl FromX64 for UpdateInfo {
 }
 
 impl Hash for UpdateInfo {
-    fn hash<H: Hasher>(&self, hasher: &mut H) {
-        "mc_sgx_epid_types::update_info::UpdateInfo".hash(hasher);
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        "UpdateInfo".hash(state);
         let mut value = self.0.ucodeUpdate;
-        value.hash(hasher);
+        value.hash(state);
         value = self.0.csmeFwUpdate;
-        value.hash(hasher);
+        value.hash(state);
         value = self.0.pswUpdate;
-        value.hash(hasher);
+        value.hash(state);
     }
 }
 
@@ -125,9 +125,8 @@ impl Ord for UpdateInfo {
 
 impl PartialEq for UpdateInfo {
     fn eq(&self, other: &Self) -> bool {
-        self.0.ucodeUpdate == other.0.ucodeUpdate
-            && self.0.csmeFwUpdate == other.0.csmeFwUpdate
-            && self.0.pswUpdate == other.0.pswUpdate
+        (self.0.ucodeUpdate, self.0.csmeFwUpdate, self.0.pswUpdate)
+            == (other.0.ucodeUpdate, other.0.csmeFwUpdate, other.0.pswUpdate)
     }
 }
 

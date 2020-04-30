@@ -117,6 +117,7 @@ impl FromX64 for Report {
 
 impl Hash for Report {
     fn hash<H: Hasher>(&self, state: &mut H) {
+        "Report".hash(state);
         self.body().hash(state);
         self.key_id().hash(state);
         self.mac().hash(state);

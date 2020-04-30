@@ -329,8 +329,9 @@ macro_rules! impl_ffi_wrapper {
         }
 
         impl core::hash::Hash for $wrapper {
-            fn hash<H: core::hash::Hasher>(&self, hasher: &mut H) {
-                (&self.0[..]).hash(hasher)
+            fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+                stringify!($wrapper).hash(state);
+                (&self.0[..]).hash(state)
             }
         }
 
@@ -484,8 +485,9 @@ macro_rules! impl_ffi_wrapper {
         }
 
         impl core::hash::Hash for $wrapper {
-            fn hash<H: core::hash::Hasher>(&self, hasher: &mut H) {
-                (self.0).$fieldname[..].hash(hasher)
+            fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+                stringify!($wrapper).hash(state);
+                (self.0).$fieldname[..].hash(state)
             }
         }
 
