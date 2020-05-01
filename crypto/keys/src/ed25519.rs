@@ -402,6 +402,13 @@ impl Ed25519Signature {
     }
 }
 
+impl Digestible for Ed25519Signature {
+    #[inline]
+    fn digest<D: Digest>(&self, hasher: &mut D) {
+        hasher.input(&self.to_bytes()[..])
+    }
+}
+
 // Deriving doesn't work, ed25519 crate says:
 // derive `PartialEq` after const generics are available
 impl Eq for Ed25519Signature {}
