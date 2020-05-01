@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 //! Core types for MobileCoin's implementation of SCP.
+use mc_crypto_digestible::Digestible;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     clone::Clone,
@@ -13,9 +14,9 @@ use std::{
 };
 
 /// A generic node identifier.
-pub trait GenericNodeId: Clone + Debug + Display + Eq + PartialEq + Hash {}
+pub trait GenericNodeId: Clone + Debug + Display + Eq + PartialEq + Hash + Digestible {}
 impl<T> GenericNodeId for T where
-    T: Clone + Debug + Display + Serialize + DeserializeOwned + Eq + PartialEq + Hash
+    T: Clone + Debug + Display + Serialize + DeserializeOwned + Eq + PartialEq + Hash + Digestible
 {
 }
 
@@ -40,12 +41,12 @@ pub type SlotIndex = u64;
 
 /// The value on which to consense.
 pub trait Value:
-    Hash + Eq + PartialEq + Debug + Clone + PartialOrd + Ord + Send + Serialize
+    Hash + Eq + PartialEq + Debug + Clone + PartialOrd + Ord + Send + Serialize + Digestible
 {
 }
 
 impl<T> Value for T where
-    T: Hash + Eq + PartialEq + Debug + Clone + PartialOrd + Ord + Send + Serialize
+    T: Hash + Eq + PartialEq + Debug + Clone + PartialOrd + Ord + Send + Serialize + Digestible
 {
 }
 
@@ -55,7 +56,7 @@ impl<T> Value for T where
 /// which are moving through the phases of the federated voting.
 ///
 /// Ballots are totally ordered, with "counter" more significant than "value."
-#[derive(Hash, Eq, PartialEq, Debug, Clone, Serialize, Deserialize)]
+#[derive(Hash, Eq, PartialEq, Debug, Clone, Serialize, Deserialize, Digestible)]
 pub struct Ballot<V: Value> {
     /// Counter.
     pub N: u32,
@@ -114,8 +115,8 @@ mod core_types_tests {
     fn total_ordering() {
         // Ballots are ordered first by counter `N`.
         {
-            let high_ballot: Ballot<u8> = Ballot { N: 13, X: vec![] };
-            let low_ballot = Ballot {
+            let high_ballot: Ballot<u32> = Ballot { N: 13, X: vec![] };
+            let low_ballot: Ballot<u32> = Ballot {
                 N: 4,
                 X: vec![100, 200, 88],
             };
@@ -124,11 +125,11 @@ mod core_types_tests {
 
         // Ballots are then ordered lexicographically by `X`.
         {
-            let high_ballot = Ballot {
+            let high_ballot: Ballot<u32> = Ballot {
                 N: 13,
                 X: vec![2000, 1000],
             };
-            let low_ballot = Ballot {
+            let low_ballot: Ballot<u32> = Ballot {
                 N: 13,
                 X: vec![1000, 2001],
             };
