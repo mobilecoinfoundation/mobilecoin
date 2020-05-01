@@ -281,6 +281,8 @@ jobs:
             cargo doc --no-deps
       - save-cargo-cache
       - save-sccache-cache
+      - store_artifacts:
+          path: target/doc
 
 workflows:
   version: 2
