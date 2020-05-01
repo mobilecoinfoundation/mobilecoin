@@ -67,11 +67,23 @@ fn try_digestible_struct(
     // Final expanded result
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
+    // Hash the concrete type of each of the generics.
+    let generic_type_digests = generics
+        .type_params()
+        .map(|type_param| {
+            let ident = &type_param.ident;
+            quote! {
+                hasher.input(std::any::type_name::<#ident>().as_bytes());
+            }
+        })
+        .collect::<Vec<_>>();
+
     let expanded = quote! {
         impl #impl_generics mc_crypto_digestible::Digestible for #ident #ty_generics #where_clause {
             fn digest<D: mc_crypto_digestible::Digest>(&self, hasher: &mut D) {
                 hasher.input(stringify!(#ident).as_bytes());
                 hasher.input(stringify!(#impl_generics).as_bytes());
+                #(#generic_type_digests)*
                 #(#call)*
             }
         }
@@ -190,12 +202,24 @@ fn try_digestible_enum(
 
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
+    // Hash the concrete type of each of the generics.
+    let generic_type_digests = generics
+        .type_params()
+        .map(|type_param| {
+            let ident = &type_param.ident;
+            quote! {
+                hasher.input(std::any::type_name::<#ident>().as_bytes());
+            }
+        })
+        .collect::<Vec<_>>();
+
     let expanded = quote! {
         impl #impl_generics mc_crypto_digestible::Digestible for #ident #ty_generics #where_clause {
             fn digest<D: mc_crypto_digestible::Digest>(&self, hasher: &mut D) {
                 // Hash the name of the enum and generic specializations.
                 hasher.input(stringify!(#ident).as_bytes());
                 hasher.input(stringify!(#impl_generics).as_bytes());
+                #(#generic_type_digests)*
 
                 // Per-variant hashing.
                 match self {

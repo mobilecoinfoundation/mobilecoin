@@ -58,6 +58,12 @@ struct Bar {
     f: Foo,
 }
 
+#[derive(Digestible)]
+struct GenericFoo<X: Digestible> {
+    a: X,
+    b: X,
+}
+
 #[test]
 fn foo1() {
     let arg = Foo { a: 0, b: 1, c: 2 };
@@ -130,6 +136,54 @@ fn bar1() {
     assert_eq!(hasher.args, expected);
 }
 
+#[test]
+fn generic_foo1() {
+    let arg = GenericFoo {
+        a: 123 as u32,
+        b: 456 as u32,
+    };
+
+    let mut hasher = Tester::new();
+    arg.digest(&mut hasher);
+
+    let expected: Vec<Vec<u8>> = vec![
+        b"GenericFoo".to_vec(),
+        b"< X : Digestible >".to_vec(),
+        b"u32".to_vec(),
+        b"a".to_vec(),
+        (123 as u32).to_le_bytes().to_vec(),
+        b"b".to_vec(),
+        (456 as u32).to_le_bytes().to_vec(),
+    ];
+
+    assert_eq!(hasher.args, expected);
+}
+
+#[test]
+fn generic_foo2() {
+    let arg = GenericFoo {
+        a: String::from("str1"),
+        b: String::from("str2"),
+    };
+
+    let mut hasher = Tester::new();
+    arg.digest(&mut hasher);
+
+    let expected: Vec<Vec<u8>> = vec![
+        b"GenericFoo".to_vec(),
+        b"< X : Digestible >".to_vec(),
+        b"alloc::string::String".to_vec(),
+        b"a".to_vec(),
+        (4 as usize).to_le_bytes().to_vec(),
+        b"str1".to_vec(),
+        b"b".to_vec(),
+        (4 as usize).to_le_bytes().to_vec(),
+        b"str2".to_vec(),
+    ];
+
+    assert_eq!(hasher.args, expected);
+}
+
 // Test digesting an enum.
 #[test]
 fn test_digest_enum() {
@@ -147,6 +201,7 @@ fn test_digest_enum() {
         let expected: Vec<Vec<u8>> = vec![
             b"TestEnum".to_vec(),
             b"< V : Digestible >".to_vec(),
+            b"u64".to_vec(),
             (0 as u64).to_le_bytes().to_vec(),
             b"Option1".to_vec(),
         ];
@@ -162,6 +217,7 @@ fn test_digest_enum() {
         let expected: Vec<Vec<u8>> = vec![
             b"TestEnum".to_vec(),
             b"< V : Digestible >".to_vec(),
+            b"u64".to_vec(),
             (1 as u64).to_le_bytes().to_vec(),
             b"Option2".to_vec(),
             b"0".to_vec(),
@@ -180,6 +236,7 @@ fn test_digest_enum() {
         let expected: Vec<Vec<u8>> = vec![
             b"TestEnum".to_vec(),
             b"< V : Digestible >".to_vec(),
+            b"u64".to_vec(),
             (2 as u64).to_le_bytes().to_vec(),
             b"Option3".to_vec(),
             b"0".to_vec(),
@@ -200,6 +257,7 @@ fn test_digest_enum() {
         let expected: Vec<Vec<u8>> = vec![
             b"TestEnum".to_vec(),
             b"< V : Digestible >".to_vec(),
+            b"u64".to_vec(),
             (3 as u64).to_le_bytes().to_vec(),
             b"Option4".to_vec(),
             b"a".to_vec(),
