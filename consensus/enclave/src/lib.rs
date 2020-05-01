@@ -56,12 +56,7 @@ impl ConsensusServiceSgxEnclave {
             &mut launch_token_updated,
             &mut misc_attr,
         )
-        .unwrap_or_else(|_| {
-            panic!(
-                "SgxEnclave::create(file_name={:?}, debug={}) failed",
-                &enclave_path, DEBUG_ENCLAVE as i32
-            )
-        });
+        .expect("Could not create consensus enclave");
 
         let sgx_enclave = ConsensusServiceSgxEnclave {
             enclave: Arc::new(enclave),
