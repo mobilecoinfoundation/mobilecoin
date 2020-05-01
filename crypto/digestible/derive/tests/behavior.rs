@@ -66,6 +66,7 @@ fn foo1() {
 
     let expected: Vec<Vec<u8>> = vec![
         b"Foo".to_vec(),
+        b"".to_vec(),
         b"a".to_vec(),
         vec![0u8, 0u8],
         b"b".to_vec(),
@@ -85,6 +86,7 @@ fn blob1() {
 
     let expected: Vec<Vec<u8>> = vec![
         b"Blob".to_vec(),
+        b"".to_vec(),
         b"0".to_vec(),
         4usize.to_le_bytes().to_vec(),
         vec![1u8, 2u8, 3u8, 4u8],
@@ -105,8 +107,10 @@ fn bar1() {
 
     let expected: Vec<Vec<u8>> = vec![
         b"Bar".to_vec(),
+        b"".to_vec(),
         b"d".to_vec(),
         b"Blob".to_vec(),
+        b"".to_vec(),
         b"0".to_vec(),
         5usize.to_le_bytes().to_vec(),
         b"Koala".to_vec(),
@@ -114,6 +118,7 @@ fn bar1() {
         vec![255u8, 255u8, 255u8, 255u8],
         b"f".to_vec(),
         b"Foo".to_vec(),
+        b"".to_vec(),
         b"a".to_vec(),
         vec![5u8, 0u8],
         b"b".to_vec(),
@@ -123,4 +128,88 @@ fn bar1() {
     ];
 
     assert_eq!(hasher.args, expected);
+}
+
+// Test digesting an enum.
+#[test]
+fn test_digest_enum() {
+    #[derive(Digestible)]
+    enum TestEnum<V: Digestible> {
+        Option1,
+        Option2(V),
+        Option3(u32, String),
+        Option4 { a: V, b: V },
+    }
+
+    {
+        let obj = TestEnum::<u64>::Option1;
+
+        let expected: Vec<Vec<u8>> = vec![
+            b"TestEnum".to_vec(),
+            b"< V : Digestible >".to_vec(),
+            (0 as u64).to_le_bytes().to_vec(),
+            b"Option1".to_vec(),
+        ];
+
+        let mut hasher = Tester::new();
+        obj.digest(&mut hasher);
+        assert_eq!(hasher.args, expected);
+    }
+
+    {
+        let obj = TestEnum::<u64>::Option2(123);
+
+        let expected: Vec<Vec<u8>> = vec![
+            b"TestEnum".to_vec(),
+            b"< V : Digestible >".to_vec(),
+            (1 as u64).to_le_bytes().to_vec(),
+            b"Option2".to_vec(),
+            b"0".to_vec(),
+            (123 as u64).to_le_bytes().to_vec(),
+        ];
+
+        let mut hasher = Tester::new();
+        obj.digest(&mut hasher);
+        assert_eq!(hasher.args, expected);
+    }
+
+    {
+        let s: &str = "a string";
+        let obj = TestEnum::<u64>::Option3(1234, s.to_owned());
+
+        let expected: Vec<Vec<u8>> = vec![
+            b"TestEnum".to_vec(),
+            b"< V : Digestible >".to_vec(),
+            (2 as u64).to_le_bytes().to_vec(),
+            b"Option3".to_vec(),
+            b"0".to_vec(),
+            (1234 as u32).to_le_bytes().to_vec(),
+            b"1".to_vec(),
+            s.len().to_le_bytes().to_vec(),
+            s.as_bytes().to_vec(),
+        ];
+
+        let mut hasher = Tester::new();
+        obj.digest(&mut hasher);
+        assert_eq!(hasher.args, expected);
+    }
+
+    {
+        let obj = TestEnum::<u64>::Option4 { a: 123, b: 456 };
+
+        let expected: Vec<Vec<u8>> = vec![
+            b"TestEnum".to_vec(),
+            b"< V : Digestible >".to_vec(),
+            (3 as u64).to_le_bytes().to_vec(),
+            b"Option4".to_vec(),
+            b"a".to_vec(),
+            (123 as u64).to_le_bytes().to_vec(),
+            b"b".to_vec(),
+            (456 as u64).to_le_bytes().to_vec(),
+        ];
+
+        let mut hasher = Tester::new();
+        obj.digest(&mut hasher);
+        assert_eq!(hasher.args, expected);
+    }
 }

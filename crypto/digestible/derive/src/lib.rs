@@ -76,6 +76,7 @@ fn try_digestible_struct(
             }
         }
     };
+
     Ok(expanded.into())
 }
 
