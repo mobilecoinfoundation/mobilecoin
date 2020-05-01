@@ -194,8 +194,7 @@ pipeline {
           dir('mobilecoind/strategies') {
             sh 'pip3 install -r requirements.txt'
             sh '''
-              python3 -m grpc_tools.protoc \
-                -I$WORKSPACE/consensus/api/proto -I$WORKSPACE/api/proto \
+              python3 -m grpc_tools.protoc -I$WORKSPACE/api/proto \
                 --python_out=. $WORKSPACE/api/proto/external.proto
             '''
             sh '''
