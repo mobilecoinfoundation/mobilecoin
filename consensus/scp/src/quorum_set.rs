@@ -4,6 +4,7 @@
 //!
 //! A quorum set includes the members of the network, which a given node trusts and depends on.
 use mc_common::{HashMap, HashSet, NodeID, ResponderId};
+use mc_crypto_digestible::Digestible;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     fmt::{Debug, Display},
@@ -18,7 +19,7 @@ use crate::{
 };
 
 /// The quorum set defining the trusted set of peers.
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Digestible)]
 pub struct QuorumSet<ID: GenericNodeId = NodeID> {
     /// Threshold (how many members do we need to reach quorum).
     pub threshold: u32,
@@ -28,7 +29,7 @@ pub struct QuorumSet<ID: GenericNodeId = NodeID> {
 }
 
 /// A member in a QuorumSet. Can be either a Node or another QuorumSet.
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Digestible)]
 #[serde(tag = "type", content = "args")]
 pub enum QuorumSetMember<ID: GenericNodeId> {
     /// A single trusted entity with an identity.

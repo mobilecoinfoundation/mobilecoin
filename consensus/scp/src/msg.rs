@@ -254,7 +254,7 @@ impl<V: Value> PartialOrd for Topic<V> {
 }
 
 /// The Messsage type for Consensus.
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Digestible)]
 pub struct Msg<V: Value, ID: GenericNodeId = NodeID> {
     /// ID of the node sending this message.
     pub sender_id: ID,

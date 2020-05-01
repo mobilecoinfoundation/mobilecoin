@@ -11,6 +11,7 @@ use core::{
     str::FromStr,
 };
 use failure::Fail;
+use mc_crypto_digestible::Digestible;
 use serde::{Deserialize, Serialize};
 
 /// Potential parse errors
@@ -23,7 +24,9 @@ pub enum ResponderIdParseError {
 }
 
 /// Node unique identifier.
-#[derive(Clone, Default, Debug, Eq, Serialize, Deserialize, PartialEq, PartialOrd, Ord, Hash)]
+#[derive(
+    Clone, Default, Debug, Eq, Serialize, Deserialize, PartialEq, PartialOrd, Ord, Hash, Digestible,
+)]
 pub struct ResponderId(pub String);
 
 impl Display for ResponderId {

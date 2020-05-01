@@ -14,9 +14,9 @@ use std::{
 };
 
 /// A generic node identifier.
-pub trait GenericNodeId: Clone + Debug + Display + Eq + PartialEq + Hash {}
+pub trait GenericNodeId: Clone + Debug + Display + Eq + PartialEq + Hash + Digestible {}
 impl<T> GenericNodeId for T where
-    T: Clone + Debug + Display + Serialize + DeserializeOwned + Eq + PartialEq + Hash
+    T: Clone + Debug + Display + Serialize + DeserializeOwned + Eq + PartialEq + Hash + Digestible
 {
 }
 
