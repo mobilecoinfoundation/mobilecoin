@@ -23,10 +23,10 @@ export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
 In order to use `grpcurl`, you must generate a `.protoset` file describing the service:
 
 ```commandline
-protoc --proto_path=./src/blockchain_api/proto/ --descriptor_set_out=blockchain_api.protoset --include_imports ./src/blockchain_api/proto/block_headers.proto
+protoc --proto_path=./consensus/api/proto/ --proto_path=./api/proto/ --descriptor_set_out=consensus_common.protoset --include_imports ./consensus/api/proto/consensus_common.proto
 ```
 
 Try it out with:
 ```commandline
-grpcurl -protoset ./blockchain_api.protoset list
+grpcurl  -protoset ./consensus_common.protoset node1.test.mobilecoin.com:443 consensus_common.BlockchainAPI.GetLastBlockInfo
 ```
