@@ -194,12 +194,14 @@ pipeline {
           dir('mobilecoind/strategies') {
             sh 'pip3 install -r requirements.txt'
             sh '''
-              python3 -m grpc_tools.protoc -I../../consensus/api/proto \
-                --python_out=. ../../consensus/api/proto/external.proto
+              python3 -m grpc_tools.protoc \
+                -I$WORKSPACE/consensus/api/proto -I$WORKSPACE/api/proto \
+                --python_out=. $WORKSPACE/api/proto/external.proto
             '''
             sh '''
-              python3 -m grpc_tools.protoc -I../api/proto -I../../consensus/api/proto \
-                --python_out=. --grpc_python_out=. ../api/proto/mobilecoind_api.proto
+              python3 -m grpc_tools.protoc \
+                -I$WORKSPACE/mobilecoind/api/proto -I$WORKSPACE/api/proto -I$WORKSPACE/consensus/api/proto \
+                --python_out=. --grpc_python_out=. $WORKSPACE/mobilecoind/api/proto/mobilecoind_api.proto
             '''
             sh '''
               python3 test_client.py \
