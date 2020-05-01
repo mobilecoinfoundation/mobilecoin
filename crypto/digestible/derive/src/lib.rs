@@ -21,7 +21,7 @@ fn try_digestible(input: TokenStream) -> Result<TokenStream, &'static str> {
     match input.data {
         Data::Struct(variant_data) => try_digestible_struct(&ident, generics, &variant_data),
         Data::Enum(variant_data) => try_digestible_enum(&ident, generics, &variant_data),
-        Data::Union(..) => return Err("Digestible can not be derived for a union"),
+        Data::Union(..) => Err("Digestible can not be derived for a union"),
     }
 }
 
