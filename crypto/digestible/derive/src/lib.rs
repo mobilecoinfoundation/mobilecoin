@@ -195,10 +195,7 @@ fn try_digestible_enum(
         }
     };
 
-    let expanded2: TokenStream = expanded.into();
-    println!("{}", expanded2);
-    Ok(expanded2)
-    // Ok(expanded.into())
+    Ok(expanded.into())
 }
 
 #[proc_macro_derive(Digestible)]
