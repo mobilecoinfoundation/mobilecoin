@@ -275,6 +275,10 @@ jobs:
           name: Lint/fmt
           command: |
             ./tools/lint.sh
+      - run:
+          name: Generating docs...
+          command: |
+            cargo doc --no-deps
       - save-cargo-cache
       - save-sccache-cache
 
