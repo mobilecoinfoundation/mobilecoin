@@ -57,6 +57,8 @@ fn test_digest_enum() {
 
         let mut expected_digest = Sha3_256::new();
         expected_digest.input("TestEnum");
+        expected_digest.input("< V : Digestible >");
+        expected_digest.input(&(0 as u64).to_le_bytes());
         expected_digest.input("Option1");
         assert_eq!(obj.digest_with::<Sha3_256>(), expected_digest.result());
     }
@@ -66,6 +68,8 @@ fn test_digest_enum() {
 
         let mut expected_digest = Sha3_256::new();
         expected_digest.input("TestEnum");
+        expected_digest.input("< V : Digestible >");
+        expected_digest.input(&(1 as u64).to_le_bytes());
         expected_digest.input("Option2");
         expected_digest.input("0");
         expected_digest.input((123 as u64).to_le_bytes());
@@ -78,6 +82,8 @@ fn test_digest_enum() {
 
         let mut expected_digest = Sha3_256::new();
         expected_digest.input("TestEnum");
+        expected_digest.input("< V : Digestible >");
+        expected_digest.input(&(2 as u64).to_le_bytes());
         expected_digest.input("Option3");
         expected_digest.input("0");
         expected_digest.input((1234 as u32).to_le_bytes());
@@ -92,6 +98,8 @@ fn test_digest_enum() {
 
         let mut expected_digest = Sha3_256::new();
         expected_digest.input("TestEnum");
+        expected_digest.input("< V : Digestible >");
+        expected_digest.input(&(3 as u64).to_le_bytes());
         expected_digest.input("Option4");
         expected_digest.input("a");
         expected_digest.input((123 as u64).to_le_bytes());
