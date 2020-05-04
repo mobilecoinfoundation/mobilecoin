@@ -789,21 +789,26 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         request: mc_mobilecoind_api::GetBlockDetailsRequest,
     ) -> Result<mc_mobilecoind_api::GetBlockDetailsResponse, RpcStatus> {
         let block = self
-            .ledger_db.get_block(request.block)
+            .ledger_db
+            .get_block(request.block)
             .map_err(|err| rpc_internal_error("ledger_db.get_block", err, &self.logger))?;
 
         let block_contents = self
             .ledger_db
             .get_block_contents(request.block)
             .map_err(|err| rpc_internal_error("ledger_db.get_block_contents", err, &self.logger))?;
-        
+
         // Create response and add the block details
         let mut response = mc_mobilecoind_api::GetBlockDetailsResponse::new();
         for key_image in block_contents.key_images {
-            response.mut_key_images().push(mc_consensus_api::external::KeyImage::from(&key_image));
+            response
+                .mut_key_images()
+                .push(mc_consensus_api::external::KeyImage::from(&key_image));
         }
         for output in block_contents.outputs {
-            response.mut_txos().push(mc_consensus_api::external::TxOut::from(&output));
+            response
+                .mut_txos()
+                .push(mc_consensus_api::external::TxOut::from(&output));
         }
 
         response.set_hash(block.contents_hash.as_ref().to_vec());

@@ -17,10 +17,10 @@
         <table>
             <thead>
                 <tr>
-                    <td>Index</td><td>Key Image Count</td><td>TXO Count</td>
+                    <td>Index</td><td>Size(txos)</td><td>Size(kB)</td><td>Hash</td>
                 </tr>
                 <tr>
-                    <td>*****</td><td>***************</td><td>*********</td>
+                    <td>*****</td><td>***********</td><td>*********</td><td>*****************************************************************</td>
                 </tr>
             </thead>
             <tbody>
@@ -29,6 +29,7 @@
                         <td><a href="/block/{{ block[0]}}">{{ block[0] }}</a></td>
                         <td>{{ block[1] }}</td>
                         <td>{{ block[2] }}</td>
+                        <td>{{ block[3] }}</td>
                     </tr>
                 {%- endfor %}
             </tbody>
