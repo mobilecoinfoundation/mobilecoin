@@ -936,11 +936,22 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             })?;
 
         // Sum them up.
-        let balance = utxos.iter().map(|utxo| utxo.value).sum::<u64>();
+        let balance = utxos.iter().map(|utxo| utxo.value as u128).sum::<u128>();
+
+        // It's possible the balance does not fit into a u64.
+        if balance > u64::max_value().into() {
+            return Err(RpcStatus::new(
+                RpcStatusCode::INTERNAL,
+                Some(format!(
+                    "balance of {} won't fit in u64, fetch utxo list instead",
+                    balance
+                )),
+            ));
+        }
 
         // Return response.
         let mut response = mc_mobilecoind_api::GetBalanceResponse::new();
-        response.set_balance(balance);
+        response.set_balance(balance as u64);
         Ok(response)
     }
 
