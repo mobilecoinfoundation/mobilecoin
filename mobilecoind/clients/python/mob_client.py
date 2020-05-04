@@ -234,6 +234,13 @@ class mob_client:
         info = self.stub.GetBlockInfo(request)
         return info.key_image_count, info.txo_count
 
+    def get_block_details(self, block):
+        """ Returns detailed information for a ledger block.
+        """
+        request = api.GetBlockDetailsRequest(block=block)
+        details = self.stub.GetBlockDetails(request)
+        return details.hash, details.signature, details.txos, details.key_images 
+
     def get_tx_status_as_sender(self, sender_tx_receipt):
         """ Check if a key image appears in the ledger.
         """
