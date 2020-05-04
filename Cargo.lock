@@ -2520,6 +2520,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-sgx-epid"
+version = "0.2.0"
+dependencies = [
+ "mc-sgx-core-types 0.2.0",
+ "mc-sgx-epid-sys 0.2.0",
+ "mc-sgx-epid-types 0.2.0",
+]
+
+[[package]]
 name = "mc-sgx-epid-sys"
 version = "0.2.0"
 dependencies = [

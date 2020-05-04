@@ -52,8 +52,8 @@ pub type Result<T> = StdResult<T, Error>;
 ///  8. `0x7000-0x7fff`: Errors with the "SGX Encrypted FS" utility.
 ///  9. `0x8000-0x8fff`: Attestation key errors.
 /// 10. `0xf000-0xffff`: Internal (to SGX) errors.
-#[repr(u32)]
 #[derive(Copy, Clone, Debug, Eq, Fail, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[repr(u32)]
 pub enum Error {
     // 0x0001 - 0x0fff: Generic errors
     /// `0x0001`, An unexpected error.
@@ -329,10 +329,11 @@ pub enum Error {
 }
 
 impl TryFrom<sgx_status_t> for Error {
-    type Error = ();
+    type Error = bool;
 
-    fn try_from(src: sgx_status_t) -> StdResult<Error, ()> {
+    fn try_from(src: sgx_status_t) -> StdResult<Error, bool> {
         match src {
+            0x0000 => Err(true),
             0x0001 => Ok(Error::Unexpected),
             0x0002 => Ok(Error::InvalidParameter),
             0x0003 => Ok(Error::OutOfMemory),
@@ -413,7 +414,7 @@ impl TryFrom<sgx_status_t> for Error {
 
             0xF001 => Ok(Error::EnclaveCreateInterrupted),
 
-            _ => Err(()),
+            _ => Err(false),
         }
     }
 }

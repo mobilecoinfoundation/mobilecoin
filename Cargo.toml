@@ -36,6 +36,7 @@ members = [
     "peers/test-utils",
     "sgx/core-types",
     "sgx/core-types-sys",
+    "sgx/epid",
     "sgx/epid-sys",
     "sgx/epid-types",
     "sgx/epid-types-sys",
