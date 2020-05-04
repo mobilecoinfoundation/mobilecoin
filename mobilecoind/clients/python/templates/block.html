@@ -12,18 +12,33 @@
                        MobileCoin Blockchain Explorer
                                  Block {{ block_num }}
 ********************************************************************************
+Size (txos)  {{ txo_count }}
+Size (kB)    {{ size_of_block }}
 Hash         {{ block_hash.hex() }}
 Key Images   {{ key_image_count }}
-TXOs         {{ txo_count }}
 
 
 ********************************************************************************
 Key Images
 ********************************************************************************
-
-{%- for key_image in key_images %}
-{{ key_image.data.hex() }}
-{%- endfor %}
+            <table>
+                <thead>
+                    <tr>
+                        <td>Index</td><td>Key Image (base64 bytes)</td>
+                    </tr>
+                    <tr>
+                      <td>*****</td><td>************************</td>
+                    </tr>
+                </thead>
+                <tbody>
+                    {%- for key_image in key_images %}
+                    <tr>
+                      <td>{{ key_image[0] }}</td>
+                      <td>{{ key_image[1].data.hex() }}</td>
+                    </tr>
+                    {%- endfor %}
+                </tbody>
+            </table>
 
 
 ********************************************************************************
@@ -32,18 +47,19 @@ Transaction Outputs
             <table>
                 <thead>
                     <tr>
-                        <td>Public Key</td><td>Target Address</td><td>Amount</td>
+                        <td>Index</td><td>TXO public key (base64 bytes)</td><td>Target Address (base64 bytes)</td><td>Amount (base64 bytes)</td>
                     </tr>
                     <tr>
-                        <td>**********</td><td>**************</td><td>******</td>
+                        <td>*****</td><td>*****************************</td><td>*****************************</td><td>*********************</td>
                     </tr>
                 </thead>
                 <tbody>
                     {%- for txo in txos %}
-                        <tr>
-                            <td>{{ txo.public_key.data.hex() }}</td>
-                            <td>{{ txo.target_key.data.hex() }}</td>
-                            <td>{{ txo.amount.commitment.data.hex() }}</td>
+                         <tr>
+                            <td>{{ txo[0] }}</td>
+                            <td>{{ txo[1].public_key.data.hex() }}</td>
+                            <td>{{ txo[1].target_key.data.hex() }}</td>
+                            <td>{{ txo[1].amount.commitment.data.hex() }}</td>
                         </tr>
                     {%- endfor %}
                 </tbody>
