@@ -8,11 +8,11 @@ use crate::{
     slot::{Slot, SlotMetrics},
 };
 use mc_common::{
-    fast_hash,
     logger::{log, Logger},
     Hash, LruCache, NodeID,
 };
-use mc_util_serial;
+use mc_crypto_digestible::Digestible;
+use sha3::Sha3_256;
 use std::{collections::BTreeSet, fmt::Display, time::Duration};
 
 /// Max number of pending slots to store.
@@ -244,8 +244,7 @@ impl<V: Value, ValidationError: Display> ScpNode<V> for Node<V, ValidationError>
         }
 
         // Calculate message hash.
-        let serialized_msg = mc_util_serial::serialize(&msg).expect("failed serializing msg");
-        let msg_hash = fast_hash(&serialized_msg);
+        let msg_hash = msg.digest_with::<Sha3_256>().into();
 
         // If we've already seen this message, we don't need to do anything.
         // We use `get()` instead of `contains()` to update LRU state.

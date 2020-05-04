@@ -2025,6 +2025,7 @@ dependencies = [
  "serde_json 1.0.51 (registry+https://github.com/rust-lang/crates.io-index)",
  "serial_test 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serial_test_derive 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sha3 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -2409,6 +2410,7 @@ dependencies = [
  "mc-consensus-api 0.2.0",
  "mc-consensus-enclave-api 0.2.0",
  "mc-consensus-scp 0.2.0",
+ "mc-crypto-digestible 0.2.0",
  "mc-crypto-keys 0.2.0",
  "mc-ledger-db 0.2.0",
  "mc-peers-test-utils 0.2.0",
