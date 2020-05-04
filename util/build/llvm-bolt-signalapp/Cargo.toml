@@ -1,0 +1,7 @@
+[package]
+name = "mc-util-build-llvm-bolt-signalapp"
+version = "0.2.0"
+authors = ["MobileCoin"]
+edition = "2018"
+readme = "README.md"
+description = "A programmatic interface to Signal's patched llvm-bolt utility."
