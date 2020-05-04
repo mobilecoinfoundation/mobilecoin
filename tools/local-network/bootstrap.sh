@@ -55,17 +55,5 @@ cd $TARGET
 
 set -x
 
-# We are using if else here because `cargo run` often causes things to be rebuilt unnecessarily,
-# because the features will be different if keyfile is the only target (because cargo).
-# In workflows where you simply build all, you don't want to reinvoke cargo usually.
-if [ -f $PROJECT_ROOT/target/release/sample-keys ]; then
-    $PROJECT_ROOT/target/release/sample-keys --num ${SAMPLE_KEYS_NUM} --output-dir keys
-else
-    cargo run -p mc-util-keyfile --bin sample-keys --release -- --num ${SAMPLE_KEYS_NUM} --output-dir keys
-fi
-
-if [ -f $PROJECT_ROOT/target/release/generate_sample_ledger ]; then
-    $PROJECT_ROOT/target/release/generate_sample_ledger --txs ${BOOTSTRAP_NUM}
-else
-    cargo run --bin mc-util-generate-sample-ledger --release -- --txs ${BOOTSTRAP_NUM}
-fi
+cargo run -p mc-util-keyfile --bin sample-keys --release -- --num ${SAMPLE_KEYS_NUM} --output-dir keys
+cargo run -p mc-util-generate-sample-ledger --bin generate-sample-ledger --release -- --txs ${BOOTSTRAP_NUM}
