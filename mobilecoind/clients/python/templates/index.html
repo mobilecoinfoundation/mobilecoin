@@ -1,0 +1,38 @@
+<html>
+    <head>
+        <title>MobileCoin Blockchain Explorer</title>
+        <style>
+            td {text-align: center; padding-left: 20px;}
+            body {font-family: 'Courier New', Courier, monospace; background-color: black; color: #00FF00;}
+            a { color: #00FF00;}
+        </style>
+    </head>
+    <body>
+        <pre>
+********************************************************************************
+                       MobileCoin Blockchain Explorer
+
+********************************************************************************
+        There are {{ num_blocks }} blocks and {{ num_transactions }} transactions in the ledger
+        <table>
+            <thead>
+                <tr>
+                    <td>Index</td><td>Key Image Count</td><td>TXO Count</td>
+                </tr>
+                <tr>
+                    <td>*****</td><td>***************</td><td>*********</td>
+                </tr>
+            </thead>
+            <tbody>
+                {%- for block in blocks %}
+                    <tr>
+                        <td><a href="/block/{{ block[0]}}">{{ block[0] }}</a></td>
+                        <td>{{ block[1] }}</td>
+                        <td>{{ block[2] }}</td>
+                    </tr>
+                {%- endfor %}
+            </tbody>
+        </table>
+    </pre>
+</body>
+</html>
