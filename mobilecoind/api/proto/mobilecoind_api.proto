@@ -41,6 +41,7 @@ service MobilecoindAPI {
     // Databases
     rpc GetLedgerInfo (google.protobuf.Empty) returns (GetLedgerInfoResponse) {}
     rpc GetBlockInfo (GetBlockInfoRequest) returns (GetBlockInfoResponse) {}
+    rpc GetBlockDetails (GetBlockDetailsRequest) returns (GetBlockDetailsResponse) {}
     rpc GetTxStatusAsSender (GetTxStatusAsSenderRequest) returns (GetTxStatusAsSenderResponse) {}
     rpc GetTxStatusAsReceiver (GetTxStatusAsReceiverRequest) returns (GetTxStatusAsReceiverResponse) {}
 
@@ -435,6 +436,24 @@ message GetBlockInfoResponse {
 
     // Number of TxOuts in the block.
     uint64 txo_count = 2;
+}
+
+// Get more detailed information about a downloaded block
+message GetBlockDetailsRequest {
+    uint64 block = 1;
+}
+message GetBlockDetailsResponse {
+    // Key images in the block
+    repeated external.KeyImage key_images = 1;
+
+    // TxOuts in the block.
+    repeated external.TxOut txos = 2;
+
+    // The block signature
+    bytes signature = 3;
+
+    // The block hash
+    bytes hash = 4;
 }
 
 // Get the status of a submitted transaction as the Sender (using the key image).
