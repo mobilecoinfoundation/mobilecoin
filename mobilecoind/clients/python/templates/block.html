@@ -1,0 +1,53 @@
+<html>
+    <head>
+        <title>MobileCoin Blockchain Explorer</title>
+        <style>
+            td {text-align: left; padding-right: 20px;}
+            body {font-family: 'Courier New', Courier, monospace; background-color: black; color: #00FF00;}
+        </style>
+    </head>
+    <body>
+        <pre>
+********************************************************************************
+                       MobileCoin Blockchain Explorer
+                                 Block {{ block_num }}
+********************************************************************************
+Hash         {{ block_hash.hex() }}
+Key Images   {{ key_image_count }}
+TXOs         {{ txo_count }}
+
+
+********************************************************************************
+Key Images
+********************************************************************************
+
+{%- for key_image in key_images %}
+{{ key_image.data.hex() }}
+{%- endfor %}
+
+
+********************************************************************************
+Transaction Outputs
+********************************************************************************
+            <table>
+                <thead>
+                    <tr>
+                        <td>Public Key</td><td>Target Address</td><td>Amount</td>
+                    </tr>
+                    <tr>
+                        <td>**********</td><td>**************</td><td>******</td>
+                    </tr>
+                </thead>
+                <tbody>
+                    {%- for txo in txos %}
+                        <tr>
+                            <td>{{ txo.public_key.data.hex() }}</td>
+                            <td>{{ txo.target_key.data.hex() }}</td>
+                            <td>{{ txo.amount.commitment.data.hex() }}</td>
+                        </tr>
+                    {%- endfor %}
+                </tbody>
+            </table>
+        </pre>
+    </body>
+</html>
