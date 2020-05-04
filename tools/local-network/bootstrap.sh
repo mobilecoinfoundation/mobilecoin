@@ -26,7 +26,7 @@ echo "PWD: $PWD"
 PROJECT_ROOT=$PWD
 
 # Collect parameters for the bootstrap
-SAMPLE_KEYS_NUM=${NUM_KEYS:-10}
+SAMPLE_KEYS_NUM=${NUM_KEYS:-20}
 BOOTSTRAP_NUM=${NUM_UTXOS_PER_ACCOUNT:-100}
 
 TARGET="./target/sample_data"
