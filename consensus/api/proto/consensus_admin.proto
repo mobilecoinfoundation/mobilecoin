@@ -1,0 +1,49 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
+// Consensus administrative data types and service descriptors.
+// There are APIs related to managing a consensus-service instance and getting information out of it.
+// Some of them are sensitive, and as such these are not intended to be exposed to the world.
+
+syntax = "proto3";
+import "google/protobuf/empty.proto";
+
+package consensus_admin;
+
+service ConsensusAdminAPI {
+    // Get Prometheus metrics.
+    rpc GetPrometheusMetrics (google.protobuf.Empty) returns (GetPrometheusMetricsResponse);
+
+    // Get information such as build info, logging configuration, etc.
+    rpc GetInfo (google.protobuf.Empty) returns (GetInfoResponse);
+
+    // Update RUST_LOG.
+    rpc UpdateRustLog (UpdateRustLogRequest) returns (google.protobuf.Empty);
+
+    // Logs a test error message.
+    rpc TestLogError (google.protobuf.Empty) returns (google.protobuf.Empty);
+}
+
+message GetPrometheusMetricsResponse {
+    // Prometheus-encoded metrics.
+    // https://github.com/prometheus/docs/blob/master/content/docs/instrumenting/exposition_formats.md
+    string metrics = 1;
+}
+
+message GetInfoResponse {
+    // JSON-encoded build information.
+    string build_info_json = 1;
+
+    // JSON-encoded configuration (see `consensus_service::Config`).
+    string config_json = 2;
+
+    // JSON-encoded network configuration (see `consensus_service::NetworkConfig`).
+    string network_json = 3;
+
+    // Current RUST_LOG value.
+    string rust_log = 4;
+}
+
+message UpdateRustLogRequest {
+    // New value to set RUST_LOG to.
+    string rust_log = 1;
+}
