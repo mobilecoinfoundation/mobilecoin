@@ -14,6 +14,7 @@ pub use uri::{Uri, UriParseError};
 
 pub type ConsensusClientUri = Uri<ConsensusClientScheme>;
 pub type ConsensusPeerUri = Uri<ConsensusPeerScheme>;
+pub type ConsensusAdminUri = Uri<ConsensusAdminScheme>;
 pub type FogClientUri = Uri<FogClientScheme>;
 pub type LedgerClientUri = Uri<LedgerClientScheme>;
 
@@ -66,6 +67,19 @@ impl UriScheme for ConsensusPeerScheme {
     /// Default port numbers
     const DEFAULT_SECURE_PORT: u16 = 8443;
     const DEFAULT_INSECURE_PORT: u16 = 8080;
+}
+
+/// Consensus Admin Uri Scheme
+#[derive(Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Clone)]
+pub struct ConsensusAdminScheme {}
+impl UriScheme for ConsensusAdminScheme {
+    /// The part before the '://' of a URL.
+    const SCHEME_SECURE: &'static str = "mca";
+    const SCHEME_INSECURE: &'static str = "insecure-mca";
+
+    /// Default port numbers
+    const DEFAULT_SECURE_PORT: u16 = 9443;
+    const DEFAULT_INSECURE_PORT: u16 = 9090;
 }
 
 /// Fog Client Uri Scheme

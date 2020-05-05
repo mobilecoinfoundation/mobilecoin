@@ -7,7 +7,10 @@ use mc_attest_core::ProviderId;
 use mc_common::{HashMap, HashSet, NodeID, ResponderId};
 use mc_consensus_scp::{QuorumSet, QuorumSetMember};
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Pair, Ed25519Private};
-use mc_util_uri::{ConnectionUri, ConsensusClientUri as ClientUri, ConsensusPeerUri as PeerUri};
+use mc_util_uri::{
+    ConnectionUri, ConsensusAdminUri as AdminUri, ConsensusClientUri as ClientUri,
+    ConsensusPeerUri as PeerUri,
+};
 use serde::{Deserialize, Serialize};
 use std::{fmt::Debug, fs, iter::FromIterator, path::PathBuf, string::String, sync::Arc};
 use structopt::StructOpt;
@@ -58,6 +61,10 @@ pub struct Config {
     /// Client listening URI.
     #[structopt(long, default_value = "insecure-mc://0.0.0.0:3223/")]
     pub client_listen_uri: ClientUri,
+
+    /// Admin listening URI.
+    #[structopt(long, default_value = "insecure-mca://127.0.0.0.1:9090/")]
+    pub admin_listen_uri: AdminUri,
 
     /// The address on which to listen for metrics and logs.
     #[structopt(long)]
