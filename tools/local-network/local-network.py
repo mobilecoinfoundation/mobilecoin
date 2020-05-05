@@ -19,7 +19,8 @@ from pprint import pformat
 
 BASE_CLIENT_PORT = 3200
 BASE_PEER_PORT = 3300
-BASE_MANAGEMENT_PORT = 3400
+BASE_ADMIN_PORT = 3400
+BASE_ADMIN_HTTP_GATEWAY_PORT = 3500
 
 # TODO make these command line arguments
 LEDGER_BASE = os.path.abspath(os.getenv('LEDGER_BASE'))
@@ -61,7 +62,7 @@ class CloudLogging:
 
         if GRAFANA_PASSWORD:
             hosts = ', '.join(
-                f"'127.0.0.1:{BASE_MANAGEMENT_PORT + i}'" for i in range(len(network.nodes))
+                f"'127.0.0.1:{BASE_ADMIN_PORT + i}'" for i in range(len(network.nodes))
             )
             self.start_prometheus(LOG_BRANCH, GRAFANA_PASSWORD, hosts)
 
@@ -138,7 +139,7 @@ class Peer:
 
 
 class Node:
-    def __init__(self, name, node_num, client_port, peer_port, management_port, peers, quorum_set):
+    def __init__(self, name, node_num, client_port, peer_port, admin_port, admin_http_gateway_port, peers, quorum_set):
         assert all(isinstance(peer, Peer) for peer in peers)
         assert isinstance(quorum_set, QuorumSet)
 
@@ -146,12 +147,14 @@ class Node:
         self.node_num = node_num
         self.client_port = client_port
         self.peer_port = peer_port
-        self.management_port = management_port
+        self.admin_port = admin_port
+        self.admin_http_gateway_port = admin_http_gateway_port
         self.peers = peers
         self.quorum_set = quorum_set
 
         self.consensus_process = None
         self.ledger_distribution_process = None
+        self.admin_http_gateway_process = None
         self.ledger_dir = os.path.join(WORK_DIR, f'node-ledger-{self.node_num}')
         self.ledger_distribution_dir = os.path.join(WORK_DIR, f'node-ledger-distribution-{self.node_num}')
         self.msg_signer_key_file = os.path.join(WORK_DIR, f'node-scp-{self.node_num}.pem')
@@ -171,6 +174,10 @@ class Node:
         if self.ledger_distribution_process:
             self.ledger_distribution_process.terminate()
             self.ledger_distribution_process = None
+
+        if self.admin_http_gateway_process:
+            self.admin_http_gateway_process.terminate()
+            self.admin_http_gateway_process = None
 
         # A map of node name -> Node object
         nodes_by_name = {node.name: node for node in network.nodes}
@@ -214,14 +221,14 @@ class Node:
             f'--ias-spid={IAS_SPID}',
             f'--origin-block-path {LEDGER_BASE}',
             f'--ledger-path {self.ledger_dir}',
+            f'--admin-listen-uri="insecure-mca://0.0.0.0:{self.admin_port}/"',
             f'--client-listen-uri="insecure-mc://0.0.0.0:{self.client_port}/"',
             f'--peer-listen-uri="insecure-mcp://0.0.0.0:{self.peer_port}/"',
             f'--scp-debug-dump {WORK_DIR}/scp-debug-dump-{self.node_num}',
-            f'--management-listen-addr=0.0.0.0:{self.management_port}',
             f'--sealed-block-signing-key {WORK_DIR}/consensus-sealed-block-signing-key-{self.node_num}',
         ])
 
-        print(f'Starting node {self.name}: client_port={self.client_port} peer_port={self.peer_port} management_port={self.management_port}')
+        print(f'Starting node {self.name}: client_port={self.client_port} peer_port={self.peer_port} admin_port={self.admin_port}')
         print(f' - Peers: {self.peers}')
         print(f' - Quorum set: {pformat(quorum_set)}')
         print(cmd)
@@ -238,6 +245,15 @@ class Node:
         ])
         print(f'Starting local ledger distribution: {cmd}')
         self.ledger_distribution_process= subprocess.Popen(cmd, shell=True)
+
+        cmd = ' '.join([
+            f'cd {PROJECT_DIR} && export ROCKET_CLI_COLORS=0 && exec {TARGET_DIR}/mc-consensus-admin-http-gateway',
+            f'--listen-host 0.0.0.0',
+            f'--listen-port {self.admin_http_gateway_port}',
+            f'--admin-uri mca-insecure://127.0.0.1:{self.admin_port}/',
+        ])
+        print(f'Starting admin http gateway: {cmd}')
+        self.admin_http_gateway_process = subprocess.Popen(cmd, shell=True)
 
     def status(self):
         if not self.consensus_process:
@@ -256,6 +272,10 @@ class Node:
         if self.ledger_distribution_process and self.ledger_distribution_process.poll() is None:
             self.ledger_distribution_process.terminate()
             self.ledger_distribution_process = None
+
+        if self.admin_http_gateway_process and self.admin_http_gateway_process.poll() is None:
+            self.admin_http_gateway_process.terminate()
+            self.admin_http_gateway_process = None
 
         print(f'Stopped node {self}!')
 
@@ -343,7 +363,7 @@ class Network:
             )
 
         subprocess.run(
-            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p mc-consensus-service -p mc-ledger-distribution {CARGO_FLAGS}',
+            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p mc-consensus-service -p mc-ledger-distribution -p mc-consensus-admin-http-gateway {CARGO_FLAGS}',
             shell=True,
             check=True,
         )
@@ -355,7 +375,8 @@ class Network:
             node_num,
             BASE_CLIENT_PORT + node_num,
             BASE_PEER_PORT + node_num,
-            BASE_MANAGEMENT_PORT + node_num,
+            BASE_ADMIN_PORT + node_num,
+            BASE_ADMIN_HTTP_GATEWAY_PORT + node_num,
             peers,
             quorum_set,
         ))
@@ -388,11 +409,15 @@ class Network:
         while True:
             for node in self.nodes:
                 if node.consensus_process and node.consensus_process.poll() is not None:
-                    print(f'Node {node} died with exit code {node.consensus_process.poll()}')
+                    print(f'Node {node} consensus service died with exit code {node.consensus_process.poll()}')
+                    return False
+
+                if node.admin_http_gateway_process and node.admin_http_gateway_process.poll() is not None:
+                    print(f'Node {node} admin http gateway died with exit code {node.admin_http_gateway_process.poll()}')
                     return False
 
                 if node.ledger_distribution_process and node.ledger_distribution_process.poll() is not None:
-                    print(f'Node {node} died with exit code {node.ledger_distribution_process.poll()}')
+                    print(f'Node {node} ledger distribution died with exit code {node.ledger_distribution_process.poll()}')
                     return False
 
             time.sleep(1)
