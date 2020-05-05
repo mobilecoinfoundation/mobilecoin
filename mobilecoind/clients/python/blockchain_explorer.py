@@ -1,3 +1,5 @@
+# Copyright (c) 2018-2020 MobileCoin Inc.
+
 from mob_client import mob_client
 from flask import Flask
 from flask import render_template
@@ -13,10 +15,10 @@ def index():
     blocks = []
     for i in range(num_blocks - 1, max(num_blocks - 100, -1), -1):
         _key_image_count, txo_count = mob_client.get_block_info(i)
-        block_hash, signature, txos, key_images = mob_client.get_block_details(i)
-        size_of_block = sum([getsizeof(x) for x in [block_hash, signature, txos, key_images]]) * .001
-        block = (i, txo_count, size_of_block, bytes.hex(block_hash))
-        blocks.append(block)
+        block = mob_client.get_block(i)
+        size_of_block = getsizeof(block) * .001
+        block_row = (i, txo_count, size_of_block, bytes.hex(block.hash))
+        blocks.append(block_row)
 
     return render_template('index.html',
         blocks=blocks,
@@ -35,5 +37,3 @@ def block(block_num):
         txos=enumerate(txos),
         key_images=enumerate(key_images),
         size_of_block=size_of_block)
-
-    #return str(mob_client.get_block_details(int(block_num)))

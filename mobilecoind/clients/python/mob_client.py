@@ -1,6 +1,7 @@
 # Copyright (c) 2018-2020 MobileCoin Inc.
 
 import external_pb2
+import blockchain_pb2
 from google.protobuf import empty_pb2
 import grpc
 import mobilecoind_api_pb2 as api
@@ -234,12 +235,12 @@ class mob_client:
         info = self.stub.GetBlockInfo(request)
         return info.key_image_count, info.txo_count
 
-    def get_block_details(self, block):
+    def get_block(self, block):
         """ Returns detailed information for a ledger block.
         """
         request = api.GetBlockDetailsRequest(block=block)
-        details = self.stub.GetBlockDetails(request)
-        return details.hash, details.signature, details.txos, details.key_images 
+        block_contents = self.stub.GetBlockDetails(request)
+        return block_contents
 
     def get_tx_status_as_sender(self, sender_tx_receipt):
         """ Check if a key image appears in the ledger.

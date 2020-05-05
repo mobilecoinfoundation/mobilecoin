@@ -784,22 +784,23 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         Ok(response)
     }
 
-    fn get_block_details_impl(
+    fn get_block_impl(
         &mut self,
-        request: mc_mobilecoind_api::GetBlockDetailsRequest,
-    ) -> Result<mc_mobilecoind_api::GetBlockDetailsResponse, RpcStatus> {
+        request: mc_mobilecoind_api::GetBlockRequest,
+    ) -> Result<mc_mobilecoind_api::GetBlockResponse, RpcStatus> {
+        let mut response = mc_mobilecoind_api::GetBlockResponse::new();
+
         let block = self
             .ledger_db
             .get_block(request.block)
             .map_err(|err| rpc_internal_error("ledger_db.get_block", err, &self.logger))?;
+        response.set_block(mc_consensus_api::blockchain::Block::from(&block));
 
         let block_contents = self
             .ledger_db
             .get_block_contents(request.block)
             .map_err(|err| rpc_internal_error("ledger_db.get_block_contents", err, &self.logger))?;
 
-        // Create response and add the block details
-        let mut response = mc_mobilecoind_api::GetBlockDetailsResponse::new();
         for key_image in block_contents.key_images {
             response
                 .mut_key_images()
@@ -811,7 +812,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                 .push(mc_consensus_api::external::TxOut::from(&output));
         }
 
-        response.set_hash(block.contents_hash.as_ref().to_vec());
+        let signature = self
+            .ledger_db
+            .get_block_signature(request.block)
+            .map_err(|err| {
+                rpc_internal_error("ledger_db.get_block_signtaure", err, &self.logger)
+            })?;
+        response.set_signature(mc_consensus_api::blockchain::BlockSignature::from(&signature));
+
         Ok(response)
     }
 
@@ -1123,7 +1131,7 @@ build_api! {
     submit_tx SubmitTxRequest SubmitTxResponse submit_tx_impl,
     get_ledger_info Empty GetLedgerInfoResponse get_ledger_info_impl,
     get_block_info GetBlockInfoRequest GetBlockInfoResponse get_block_info_impl,
-    get_block_details GetBlockDetailsRequest GetBlockDetailsResponse get_block_details_impl,
+    get_block GetBlockRequest GetBlockResponse get_block_impl,
     get_tx_status_as_sender GetTxStatusAsSenderRequest GetTxStatusAsSenderResponse get_tx_status_as_sender_impl,
     get_tx_status_as_receiver GetTxStatusAsReceiverRequest GetTxStatusAsReceiverResponse get_tx_status_as_receiver_impl,
     get_balance GetBalanceRequest GetBalanceResponse get_balance_impl,

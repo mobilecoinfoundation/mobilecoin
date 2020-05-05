@@ -1,3 +1,4 @@
 grpcio-tools
 qrcode
 halo
+flask
