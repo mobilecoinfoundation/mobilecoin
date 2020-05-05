@@ -52,7 +52,7 @@ members = [
     "util/b58-payloads",
     "util/build/enclave",
     "util/build/grpc",
-    "util/build/llvm-bolt-signalapp",
+    "util/build/bolt-signalapp",
     "util/build/sgx",
     "util/build/script",
     "util/encodings",

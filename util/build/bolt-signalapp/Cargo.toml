@@ -1,7 +1,11 @@
 [package]
-name = "mc-util-build-llvm-bolt-signalapp"
+name = "mc-util-build-bolt-signalapp"
 version = "0.2.0"
 authors = ["MobileCoin"]
 edition = "2018"
 readme = "README.md"
 description = "A programmatic interface to Signal's patched llvm-bolt utility."
+
+[build-dependencies]
+mc-util-build-script = { path = "../script" }
+reqwest = "0.10"
