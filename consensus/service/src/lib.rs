@@ -20,7 +20,6 @@ mod byzantine_ledger;
 mod client_api_service;
 mod counters;
 mod grpc_error;
-mod management;
 mod peer_api_service;
 mod peer_keepalive;
 

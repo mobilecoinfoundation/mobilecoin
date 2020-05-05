@@ -73,7 +73,7 @@ impl AdminApiService {
             "ias_spid": config.ias_spid,
             "peer_listen_uri": config.peer_listen_uri,
             "client_listen_uri": config.client_listen_uri,
-            "management_listen_addr": config.management_listen_addr,
+            "admin_listen_uri": config.admin_listen_uri,
             "ledger_path": config.ledger_path,
             "scp_debug_dump": config.scp_debug_dump,
         })

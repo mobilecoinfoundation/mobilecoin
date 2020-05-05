@@ -6,8 +6,8 @@ use crate::{
     admin_api_service, attested_api_service::AttestedApiService,
     background_work_queue::BackgroundWorkQueue, blockchain_api_service,
     byzantine_ledger::ByzantineLedger, client_api_service, config::Config, counters,
-    management::ManagementServer, peer_api_service, peer_keepalive::PeerKeepalive,
-    tx_manager::TxManager, validators::DefaultTxManagerUntrustedInterfaces,
+    peer_api_service, peer_keepalive::PeerKeepalive, tx_manager::TxManager,
+    validators::DefaultTxManagerUntrustedInterfaces,
 };
 use failure::Fail;
 use futures::Future;
@@ -121,7 +121,6 @@ pub struct ConsensusService<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync 
     env: Arc<grpcio::Environment>,
     ra_client: R,
     logger: Logger,
-    management_server: Option<ManagementServer>,
 
     consensus_msgs_from_network: BackgroundWorkQueue<IncomingConsensusMsg>,
 
@@ -197,13 +196,6 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
             logger.clone(),
         )));
 
-        // Management Server
-        let management_server = if config.management_listen_addr.is_some() {
-            Some(ManagementServer::new(config.clone(), logger.clone()))
-        } else {
-            None
-        };
-
         // Return
         Self {
             config,
@@ -213,7 +205,6 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
             env,
             ra_client,
             logger,
-            management_server,
 
             consensus_msgs_from_network,
 
@@ -240,7 +231,6 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
             self.start_consensus_rpc_server()?;
             self.start_user_rpc_server()?;
             self.start_byzantine_ledger_service()?;
-            self.start_management_server()?;
 
             // Success.
             Ok(())
@@ -253,10 +243,6 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
 
     pub fn stop(&mut self) -> Result<(), ConsensusServiceError> {
         log::debug!(self.logger, "Attempting to stop node...");
-
-        if let Some(ref mut server) = self.management_server.take() {
-            server.stop();
-        }
 
         self.peer_keepalive.lock().expect("mutex poisoned").stop();
 
@@ -637,14 +623,6 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
                 ))
             })?;
 
-        Ok(())
-    }
-
-    fn start_management_server(&mut self) -> Result<(), ConsensusServiceError> {
-        if let Some(ref mut server) = self.management_server {
-            log::info!(self.logger, "Starting management server.");
-            server.start();
-        }
         Ok(())
     }
 
