@@ -10,4 +10,5 @@ mc-consensus-api = { path = "../../consensus/api" }
 mc-util-uri = { path = "../../util/uri" }
 
 grpcio = "0.5.1"
+rocket = { version = "0.4.4", default-features = false }
 structopt = "0.3"
