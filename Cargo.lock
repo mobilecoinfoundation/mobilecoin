@@ -2606,6 +2606,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-sgx-urts-sys"
+version = "0.2.0"
+dependencies = [
+ "bindgen 0.51.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cargo-emit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mc-sgx-core-types-sys 0.2.0",
+ "mc-util-build-script 0.2.0",
+ "mc-util-build-sgx 0.2.0",
+]
+
+[[package]]
 name = "mc-testnet-client"
 version = "0.2.0"
 dependencies = [

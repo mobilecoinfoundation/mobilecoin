@@ -1,18 +1,17 @@
 [package]
-name = "mc-sgx-epid-sys"
+name = "mc-sgx-urts-sys"
 version = "0.2.0"
 authors = ["MobileCoin"]
-description = "EPID FFI for Intel SGX SDK."
+description = "Untrusted FFI for Intel SGX SDK."
 readme = "README.md"
 edition = "2018"
-links = "sgx_epid"
+links = "sgx_urts"
 
 [features]
 sgx-sim = []
 
 [dependencies]
 mc-sgx-core-types-sys = { path = "../core-types-sys" }
-mc-sgx-epid-types-sys = { path = "../epid-types-sys" }
 
 [build-dependencies]
 mc-util-build-sgx = { path = "../../util/build/sgx" }
