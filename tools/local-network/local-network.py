@@ -39,7 +39,7 @@ if MOB_RELEASE == '0':
 
 # Sane default log configuration
 if 'MC_LOG' not in os.environ:
-    os.environ['MC_LOG'] = 'debug,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,rusoto_core=error,h2=error,reqwest=error'
+    os.environ['MC_LOG'] = 'debug,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,rusoto_core=error,h2=error,reqwest=error,rocket=error,<unknown>=error'
 
 # Cloud logging-sepcific configuration
 LOG_BRANCH = os.getenv('LOG_BRANCH', None)
@@ -62,7 +62,7 @@ class CloudLogging:
 
         if GRAFANA_PASSWORD:
             hosts = ', '.join(
-                f"'127.0.0.1:{BASE_ADMIN_PORT + i}'" for i in range(len(network.nodes))
+                f"'127.0.0.1:{BASE_ADMIN_HTTP_GATEWAY_PORT + i}'" for i in range(len(network.nodes))
             )
             self.start_prometheus(LOG_BRANCH, GRAFANA_PASSWORD, hosts)
 
@@ -389,7 +389,7 @@ class Network:
     def start(self):
         print("Killing any existing processes")
         try:
-            subprocess.check_output("killall -9 consensus-service filebeat ledger-distribution prometheus 2>/dev/null", shell=True)
+            subprocess.check_output("killall -9 consensus-service filebeat ledger-distribution prometheus mc-consensus-admin-http-gateway 2>/dev/null", shell=True)
         except subprocess.CalledProcessError as exc:
             if exc.returncode != 1:
                 raise

@@ -6,7 +6,7 @@ use crate::{config::Config, grpc_error::ConsensusGrpcError};
 use grpcio::{RpcContext, UnarySink};
 use mc_common::logger::{log, Logger};
 use mc_consensus_api::{
-    consensus_admin::{GetInfoResponse, GetPrometheusMetricsResponse, UpdateRustLogRequest},
+    consensus_admin::{GetInfoResponse, GetPrometheusMetricsResponse, SetRustLogRequest},
     consensus_admin_grpc::ConsensusAdminApi,
     empty::Empty,
 };
@@ -93,9 +93,9 @@ impl AdminApiService {
         Ok(response)
     }
 
-    fn update_rust_log_impl(
+    fn set_rust_log_impl(
         &mut self,
-        request: UpdateRustLogRequest,
+        request: SetRustLogRequest,
         logger: &Logger,
     ) -> Result<Empty, ConsensusGrpcError> {
         log::info!(logger, "Updating RUST_LOG to '{}'", request.rust_log);
@@ -148,10 +148,10 @@ impl ConsensusAdminApi for AdminApiService {
         });
     }
 
-    fn update_rust_log(
+    fn set_rust_log(
         &mut self,
         ctx: RpcContext,
-        request: UpdateRustLogRequest,
+        request: SetRustLogRequest,
         sink: UnarySink<Empty>,
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
@@ -159,7 +159,7 @@ impl ConsensusAdminApi for AdminApiService {
             send_result(
                 ctx,
                 sink,
-                self.update_rust_log_impl(request, &logger)
+                self.set_rust_log_impl(request, &logger)
                     .map_err(ConsensusGrpcError::into),
                 &logger,
             )

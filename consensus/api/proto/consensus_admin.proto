@@ -16,8 +16,8 @@ service ConsensusAdminAPI {
     // Get information such as build info, logging configuration, etc.
     rpc GetInfo (google.protobuf.Empty) returns (GetInfoResponse);
 
-    // Update RUST_LOG.
-    rpc UpdateRustLog (UpdateRustLogRequest) returns (google.protobuf.Empty);
+    // Set RUST_LOG.
+    rpc SetRustLog (SetRustLogRequest) returns (google.protobuf.Empty);
 
     // Logs a test error message.
     rpc TestLogError (google.protobuf.Empty) returns (google.protobuf.Empty);
@@ -43,7 +43,7 @@ message GetInfoResponse {
     string rust_log = 4;
 }
 
-message UpdateRustLogRequest {
+message SetRustLogRequest {
     // New value to set RUST_LOG to.
     string rust_log = 1;
 }

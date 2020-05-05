@@ -7,9 +7,14 @@
 use grpcio::ChannelBuilder;
 use mc_common::logger::{create_app_logger, log, o};
 use mc_connection::ConnectionUriGrpcioChannel;
-use mc_consensus_api::{consensus_admin_grpc::ConsensusAdminApiClient, Empty};
+use mc_consensus_api::{consensus_admin, consensus_admin_grpc::ConsensusAdminApiClient, Empty};
 use mc_util_uri::ConsensusAdminUri;
-use rocket::{get, response::content, routes};
+use rocket::{
+    get, post,
+    request::Form,
+    response::{content, Redirect},
+    routes, FromForm,
+};
 use rocket_contrib::json::Json;
 use serde_derive::Serialize;
 use std::{convert::TryFrom, sync::Arc};
@@ -51,12 +56,10 @@ struct JsonInfoResponse {
     rust_log: String,
 }
 
-impl TryFrom<&mc_consensus_api::consensus_admin::GetInfoResponse> for JsonInfoResponse {
+impl TryFrom<&consensus_admin::GetInfoResponse> for JsonInfoResponse {
     type Error = String;
 
-    fn try_from(
-        src: &mc_consensus_api::consensus_admin::GetInfoResponse,
-    ) -> Result<Self, Self::Error> {
+    fn try_from(src: &consensus_admin::GetInfoResponse) -> Result<Self, Self::Error> {
         Ok(Self {
             build_info: serde_json::from_str(&src.build_info_json).map_err(|err| {
                 format!(
@@ -81,6 +84,36 @@ fn info(state: rocket::State<State>) -> Result<Json<JsonInfoResponse>, String> {
         .map_err(|err| format!("Failed getting info: {}", err))?;
 
     Ok(Json(JsonInfoResponse::try_from(&info)?))
+}
+
+#[derive(FromForm)]
+struct SetRustLogForm {
+    rust_log: String,
+}
+
+#[post("/set-rust-log", data = "<form>")]
+fn set_rust_log(
+    state: rocket::State<State>,
+    form: Form<SetRustLogForm>,
+) -> Result<Redirect, String> {
+    let mut req = consensus_admin::SetRustLogRequest::new();
+    req.set_rust_log(form.rust_log.clone());
+
+    let _resp = state
+        .admin_api_client
+        .set_rust_log(&req)
+        .map_err(|err| format!("failed setting rust_log: {}", err))?;
+
+    Ok(Redirect::to("/"))
+}
+
+#[get("/metrics")]
+fn metrics(state: rocket::State<State>) -> Result<String, String> {
+    let resp = state
+        .admin_api_client
+        .get_prometheus_metrics(&Empty::new())
+        .map_err(|err| format!("failed getting metrics: {}", err))?;
+    Ok(resp.metrics)
 }
 
 fn main() {
@@ -109,7 +142,7 @@ fn main() {
         .unwrap();
 
     rocket::custom(rocket_config)
-        .mount("/", routes![index, info])
+        .mount("/", routes![index, info, set_rust_log, metrics])
         .manage(State { admin_api_client })
         .launch();
 }
