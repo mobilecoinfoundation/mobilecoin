@@ -4,9 +4,15 @@
 
 #![feature(proc_macro_hygiene, decl_macro)]
 
+use grpcio::ChannelBuilder;
 use mc_common::logger::{create_app_logger, log, o};
+use mc_connection::ConnectionUriGrpcioChannel;
+use mc_consensus_api::{consensus_admin_grpc::ConsensusAdminApiClient, Empty};
 use mc_util_uri::ConsensusAdminUri;
-use rocket::{get, routes};
+use rocket::{get, response::content, routes};
+use rocket_contrib::json::Json;
+use serde_derive::Serialize;
+use std::{convert::TryFrom, sync::Arc};
 use structopt::StructOpt;
 
 #[derive(Clone, Debug, StructOpt)]
@@ -28,9 +34,53 @@ pub struct Config {
     pub admin_uri: ConsensusAdminUri,
 }
 
+struct State {
+    pub admin_api_client: ConsensusAdminApiClient,
+}
+
 #[get("/")]
-fn index() -> &'static str {
-    "Hello, world!"
+fn index() -> content::Html<String> {
+    content::Html(include_str!("../templates/index.html").to_owned())
+}
+
+#[derive(Serialize)]
+struct JsonInfoResponse {
+    build_info: serde_json::Value,
+    config: serde_json::Value,
+    network: serde_json::Value,
+    rust_log: String,
+}
+
+impl TryFrom<&mc_consensus_api::consensus_admin::GetInfoResponse> for JsonInfoResponse {
+    type Error = String;
+
+    fn try_from(
+        src: &mc_consensus_api::consensus_admin::GetInfoResponse,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            build_info: serde_json::from_str(&src.build_info_json).map_err(|err| {
+                format!(
+                    "failed parsing build info '{}': {}",
+                    src.build_info_json, err
+                )
+            })?,
+            config: serde_json::from_str(&src.config_json)
+                .map_err(|err| format!("failed parsing config '{}': {}", src.config_json, err))?,
+            network: serde_json::from_str(&src.network_json)
+                .map_err(|err| format!("failed parsing network '{}': {}", src.network_json, err))?,
+            rust_log: src.rust_log.clone(),
+        })
+    }
+}
+
+#[get("/info")]
+fn info(state: rocket::State<State>) -> Result<Json<JsonInfoResponse>, String> {
+    let info = state
+        .admin_api_client
+        .get_info(&Empty::new())
+        .map_err(|err| format!("Failed getting info: {}", err))?;
+
+    Ok(Json(JsonInfoResponse::try_from(&info)?))
 }
 
 fn main() {
@@ -48,12 +98,18 @@ fn main() {
         config.admin_uri
     );
 
+    let env = Arc::new(grpcio::EnvBuilder::new().build());
+    let ch =
+        ChannelBuilder::default_channel_builder(env).connect_to_uri(&config.admin_uri, &logger);
+    let admin_api_client = ConsensusAdminApiClient::new(ch);
+
     let rocket_config = rocket::Config::build(rocket::config::Environment::Production)
         .address(&config.listen_host)
         .port(config.listen_port)
         .unwrap();
 
     rocket::custom(rocket_config)
-        .mount("/", routes![index])
+        .mount("/", routes![index, info])
+        .manage(State { admin_api_client })
         .launch();
 }

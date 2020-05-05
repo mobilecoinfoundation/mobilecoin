@@ -250,7 +250,7 @@ class Node:
             f'cd {PROJECT_DIR} && export ROCKET_CLI_COLORS=0 && exec {TARGET_DIR}/mc-consensus-admin-http-gateway',
             f'--listen-host 0.0.0.0',
             f'--listen-port {self.admin_http_gateway_port}',
-            f'--admin-uri mca-insecure://127.0.0.1:{self.admin_port}/',
+            f'--admin-uri insecure-mca://127.0.0.1:{self.admin_port}/',
         ])
         print(f'Starting admin http gateway: {cmd}')
         self.admin_http_gateway_process = subprocess.Popen(cmd, shell=True)
