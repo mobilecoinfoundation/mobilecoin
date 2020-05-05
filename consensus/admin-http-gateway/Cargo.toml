@@ -1,0 +1,13 @@
+[package]
+name = "mc-consensus-admin-http-gateway"
+version = "0.2.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[dependencies]
+mc-common = { path = "../../common", features = ["log"] }
+mc-consensus-api = { path = "../../consensus/api" }
+mc-util-uri = { path = "../../util/uri" }
+
+grpcio = "0.5.1"
+structopt = "0.3"

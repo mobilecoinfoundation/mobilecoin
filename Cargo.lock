@@ -1876,6 +1876,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-consensus-admin-http-gateway"
+version = "0.2.0"
+dependencies = [
+ "grpcio 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mc-common 0.2.0",
+ "mc-consensus-api 0.2.0",
+ "mc-util-uri 0.2.0",
+ "structopt 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "mc-consensus-api"
 version = "0.2.0"
 dependencies = [
