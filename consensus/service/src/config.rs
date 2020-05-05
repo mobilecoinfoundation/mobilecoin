@@ -62,9 +62,9 @@ pub struct Config {
     #[structopt(long, default_value = "insecure-mc://0.0.0.0:3223/")]
     pub client_listen_uri: ClientUri,
 
-    /// Admin listening URI.
-    #[structopt(long, default_value = "insecure-mca://127.0.0.0.1:9090/")]
-    pub admin_listen_uri: AdminUri,
+    /// Optional admin listening URI.
+    #[structopt(long)]
+    pub admin_listen_uri: Option<AdminUri>,
 
     /// The location to write the externalized blocks for the ledger.
     #[structopt(long, parse(from_os_str))]

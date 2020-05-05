@@ -479,35 +479,37 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
     }
 
     fn start_admin_rpc_server(&mut self) -> Result<(), ConsensusServiceError> {
-        log::info!(
-            self.logger,
-            "Starting admin rpc server on {}...",
-            self.config.admin_listen_uri.addr(),
-        );
+        if let Some(admin_listen_uri) = self.config.admin_listen_uri.as_ref() {
+            log::info!(
+                self.logger,
+                "Starting admin rpc server on {}...",
+                admin_listen_uri.addr(),
+            );
 
-        // Initialize services.
-        let admin_service = consensus_admin_grpc::create_consensus_admin_api(
-            admin_api_service::AdminApiService::new(self.config.clone(), self.logger.clone()),
-        );
+            // Initialize services.
+            let admin_service = consensus_admin_grpc::create_consensus_admin_api(
+                admin_api_service::AdminApiService::new(self.config.clone(), self.logger.clone()),
+            );
 
-        let health_service = HealthService::new(None, self.logger.clone()).into_service();
-        let build_info_service = BuildInfoService::new(self.logger.clone()).into_service();
+            let health_service = HealthService::new(None, self.logger.clone()).into_service();
+            let build_info_service = BuildInfoService::new(self.logger.clone()).into_service();
 
-        // Start GRPC server.
-        let server_builder = grpcio::ServerBuilder::new(self.env.clone())
-            .register_service(admin_service)
-            .register_service(health_service)
-            .register_service(build_info_service)
-            .bind_using_uri(&self.config.admin_listen_uri);
+            // Start GRPC server.
+            let server_builder = grpcio::ServerBuilder::new(self.env.clone())
+                .register_service(admin_service)
+                .register_service(health_service)
+                .register_service(build_info_service)
+                .bind_using_uri(admin_listen_uri);
 
-        let mut server = server_builder.build().unwrap();
-        server.start();
+            let mut server = server_builder.build().unwrap();
+            server.start();
 
-        for (host, port) in server.bind_addrs() {
-            log::info!(self.logger, "Admin GRPC API listening on {}:{}", host, port);
+            for (host, port) in server.bind_addrs() {
+                log::info!(self.logger, "Admin GRPC API listening on {}:{}", host, port);
+            }
+
+            self.admin_rpc_server = Some(server);
         }
-
-        self.admin_rpc_server = Some(server);
 
         Ok(())
     }
