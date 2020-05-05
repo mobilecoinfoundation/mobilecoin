@@ -78,7 +78,7 @@ pipeline {
             sh '../bin/sample-keys --num 1000'
             sh '../bin/generate-sample-ledger -t 100'
             // Remove extra keys otherwise test_client will try all combinations
-            sh 'for i in $(seq 6 999); do rm -rf sample_data/keys/*_${i}.*; done'
+            sh 'for i in $(seq 6 999); do rm -rf keys/*_${i}.*; done'
             sh 'rm -f ./ledger/lock.mdb'
           }
 
