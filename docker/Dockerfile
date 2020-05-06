@@ -107,6 +107,11 @@ RUN wget https://github.com/SimonKagstrom/kcov/archive/v36.tar.gz && \
     make && \
     make install
 
+# Patch and install the patched LLVM BOLT utility
+
+COPY --chown=root:root install-bolt.sh /tmp
+RUN /bin/bash /tmp/install-bolt.sh
+
 # Conditionally install intel SGX libs
 
 ARG DOCKER_NO_SGX=false
