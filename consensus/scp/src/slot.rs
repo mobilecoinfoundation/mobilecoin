@@ -512,8 +512,9 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
         self.update_YZ();
 
         if !self.Z.is_empty() && self.B.is_zero() {
-            let values: Vec<_> = self.Z.iter().cloned().collect();
-            self.B = Ballot::new(1, &values);
+            let values = (self.combine_fn)(self.Z.clone());
+            let values_as_vec: Vec<V> = values.into_iter().collect();
+            self.B = Ballot::new(1, &values_as_vec);
         }
     }
 
@@ -526,11 +527,13 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
         // Invariant: X and Y are disjoint.
         assert!(self.X.is_disjoint(&self.Y));
 
-        let mut new_Z = self.additional_values_confirmed_nominated();
-        if !new_Z.is_empty() {
-            new_Z.append(&mut self.Z);
-            self.Z = (self.combine_fn)(new_Z);
-        }
+        self.Z
+            .extend(self.additional_values_confirmed_nominated().into_iter());
+        // let mut new_Z = self.additional_values_confirmed_nominated();
+        // if !new_Z.is_empty() {
+        //     new_Z.append(&mut self.Z);
+        //     self.Z = (self.combine_fn)(new_Z);
+        // }
     }
 
     fn do_ballot_protocol(&mut self) {
@@ -1110,7 +1113,8 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
         // then "ballot.value" is taken as the output of the deterministic combining function
         // applied to all confirmed nominated values."
         if !self.Z.is_empty() {
-            return Some(self.Z.iter().cloned().collect());
+            let values: Vec<V> = (self.combine_fn)(self.Z.clone()).into_iter().collect();
+            return Some(values);
         }
 
         // "Otherwise, if no ballot is confirmed prepared and no value is confirmed nominated,
