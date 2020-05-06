@@ -812,16 +812,6 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                 .push(mc_consensus_api::external::TxOut::from(&output));
         }
 
-        let signature = self
-            .ledger_db
-            .get_block_signature(request.block)
-            .map_err(|err| {
-                rpc_internal_error("ledger_db.get_block_signtaure", err, &self.logger)
-            })?;
-        response.set_signature(mc_consensus_api::blockchain::BlockSignature::from(
-            &signature,
-        ));
-
         Ok(response)
     }
 
@@ -1602,6 +1592,28 @@ mod test {
         request.set_block(ledger_db.num_blocks().unwrap());
 
         assert!(client.get_block_info(&request).is_err());
+    }
+
+    #[test_with_logger]
+    fn test_get_block_impl(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        // no known recipient, 3 random recipients and no monitors.
+        let (ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
+
+        // Call get block info for a valid block.
+        let mut request = mc_mobilecoind_api::GetBlockRequest::new();
+        request.set_block(0);
+
+        let response = client.get_block(&request).unwrap();
+        assert_eq!(
+            Block::try_from(response.get_block()).unwrap(),
+            ledger_db.get_block(0).unwrap()
+        );
+        // FIXME: Implement block signatures for mobilecoind and test
+        assert_eq!(response.txos.len(), 3); // 3 recipients = 3 tx outs
+        assert_eq!(response.key_images.len(), 0); // test code does not generate any key images
     }
 
     #[test_with_logger]
