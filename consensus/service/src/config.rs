@@ -398,7 +398,7 @@ mod tests {
             ias_spid: ProviderId::from_str("22222222222222222222222222222222").unwrap(),
             peer_listen_uri: PeerUri::from_str("insecure-mcp://0.0.0.0:8081/").unwrap(),
             client_listen_uri: ClientUri::from_str("insecure-mc://0.0.0.0:3223/").unwrap(),
-            admin_listen_uri: ClientUri::from_str("insecure-mca://0.0.0.0:9090/").unwrap(),
+            admin_listen_uri: Some(AdminUri::from_str("insecure-mca://0.0.0.0:9090/").unwrap()),
             ledger_path: PathBuf::default(),
             scp_debug_dump: None,
             origin_block_path: None,
@@ -434,7 +434,7 @@ mod tests {
         );
         assert_eq!(
             config.admin_listen_uri,
-            PeerUri::from_str("insecure-mca://0.0.0.0:9090/").unwrap()
+            Some(AdminUri::from_str("insecure-mca://0.0.0.0:9090/").unwrap())
         );
     }
 
@@ -451,7 +451,7 @@ mod tests {
             ias_spid: ProviderId::from_str("22222222222222222222222222222222").unwrap(),
             peer_listen_uri: PeerUri::from_str("mcp://0.0.0.0:8443/?tls-chain=./public/attest/test_certs/selfsigned_mobilecoin.crt&tls-key=./public/attest/test_certs/selfsigned_mobilecoin.key").unwrap(),
             client_listen_uri: ClientUri::from_str("insecure-mc://0.0.0.0:3223/").unwrap(),
-            admin_listen_uri: ClientUri::from_str("insecure-mc://0.0.0.0:9090/").unwrap(),
+            admin_listen_uri: Some(AdminUri::from_str("insecure-mca://0.0.0.0:9090/").unwrap()),
             ledger_path: PathBuf::default(),
             scp_debug_dump: None,
             origin_block_path: None,
@@ -480,7 +480,7 @@ mod tests {
         );
         assert_eq!(
             config.admin_listen_uri,
-            ClientUri::from_str("insecure-mca://0.0.0.0:9090/").unwrap()
+            Some(AdminUri::from_str("insecure-mca://0.0.0.0:9090/").unwrap())
         );
         assert_eq!(
             config.client_listen_uri,
