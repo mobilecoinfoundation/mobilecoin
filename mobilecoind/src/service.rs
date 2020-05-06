@@ -818,7 +818,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             .map_err(|err| {
                 rpc_internal_error("ledger_db.get_block_signtaure", err, &self.logger)
             })?;
-        response.set_signature(mc_consensus_api::blockchain::BlockSignature::from(&signature));
+        response.set_signature(mc_consensus_api::blockchain::BlockSignature::from(
+            &signature,
+        ));
 
         Ok(response)
     }
