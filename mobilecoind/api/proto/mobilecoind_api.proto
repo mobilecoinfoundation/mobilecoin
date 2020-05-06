@@ -450,17 +450,17 @@ message GetBlockRequest {
     uint64 block = 1;
 }
 message GetBlockResponse {
-    // Key images in the block
-    repeated external.KeyImage key_images = 1;
-
-    // TxOuts in the block.
-    repeated external.TxOut txos = 2;
+    // The block
+    blockchain.Block block = 1;
 
     // The block signature
-    blockchain.BlockSignature signature = 3;
+    blockchain.BlockSignature signature = 2;
 
-    // The block
-    blockchain.Block block = 4;
+    // Key images in the block
+    repeated external.KeyImage key_images = 3;
+
+    // TxOuts in the block.
+    repeated external.TxOut txos = 4;
 }
 
 // Get the status of a submitted transaction as the Sender (using the key image).
