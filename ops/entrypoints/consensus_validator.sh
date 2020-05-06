@@ -43,6 +43,6 @@ fi
 # Clean old dump directory - consensus writes a new dir, which is owned by root due to docker volume ownership
 rm -rf /scp-debug-dump/${LOCAL_NODE_ID}
 
-/usr/bin/mc-consensus-admin-http-gateway --listen-host 127.0.0.1 --listen-port ${NODE_MANAGEMENT_PORT} --admin-uri insecure-mca://127.0.0.1:9091/ &
+/usr/bin/mc-consensus-admin-http-gateway --listen-host 0.0.0.0 --listen-port ${NODE_MANAGEMENT_PORT} --admin-uri insecure-mca://127.0.0.1:9091/ &
 
 exec env consensus-service --admin-listen-uri insecure-mca://127.0.0.1:9091/ $@
