@@ -19,7 +19,6 @@ def index():
             continue
         block = mob_client.get_block(i)
         size_of_block = getsizeof(block) * .001
-        print("block= ", block)
         block_row = (i, txo_count, size_of_block, bytes.hex(block.block.contents_hash.data))
         blocks.append(block_row)
 
