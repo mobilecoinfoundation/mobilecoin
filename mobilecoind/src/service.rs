@@ -21,6 +21,7 @@ use mc_common::{
     HashMap,
 };
 use mc_connection::{BlockchainConnection, UserTxConnection};
+use mc_consensus_api;
 use mc_crypto_keys::RistrettoPublic;
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::{NetworkState, PollingNetworkState};
@@ -783,6 +784,37 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         Ok(response)
     }
 
+    fn get_block_impl(
+        &mut self,
+        request: mc_mobilecoind_api::GetBlockRequest,
+    ) -> Result<mc_mobilecoind_api::GetBlockResponse, RpcStatus> {
+        let mut response = mc_mobilecoind_api::GetBlockResponse::new();
+
+        let block = self
+            .ledger_db
+            .get_block(request.block)
+            .map_err(|err| rpc_internal_error("ledger_db.get_block", err, &self.logger))?;
+        response.set_block(mc_consensus_api::blockchain::Block::from(&block));
+
+        let block_contents = self
+            .ledger_db
+            .get_block_contents(request.block)
+            .map_err(|err| rpc_internal_error("ledger_db.get_block_contents", err, &self.logger))?;
+
+        for key_image in block_contents.key_images {
+            response
+                .mut_key_images()
+                .push(mc_consensus_api::external::KeyImage::from(&key_image));
+        }
+        for output in block_contents.outputs {
+            response
+                .mut_txos()
+                .push(mc_consensus_api::external::TxOut::from(&output));
+        }
+
+        Ok(response)
+    }
+
     fn get_tx_status_as_sender_impl(
         &mut self,
         request: mc_mobilecoind_api::GetTxStatusAsSenderRequest,
@@ -1091,6 +1123,7 @@ build_api! {
     submit_tx SubmitTxRequest SubmitTxResponse submit_tx_impl,
     get_ledger_info Empty GetLedgerInfoResponse get_ledger_info_impl,
     get_block_info GetBlockInfoRequest GetBlockInfoResponse get_block_info_impl,
+    get_block GetBlockRequest GetBlockResponse get_block_impl,
     get_tx_status_as_sender GetTxStatusAsSenderRequest GetTxStatusAsSenderResponse get_tx_status_as_sender_impl,
     get_tx_status_as_receiver GetTxStatusAsReceiverRequest GetTxStatusAsReceiverResponse get_tx_status_as_receiver_impl,
     get_balance GetBalanceRequest GetBalanceResponse get_balance_impl,
@@ -1559,6 +1592,28 @@ mod test {
         request.set_block(ledger_db.num_blocks().unwrap());
 
         assert!(client.get_block_info(&request).is_err());
+    }
+
+    #[test_with_logger]
+    fn test_get_block_impl(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        // no known recipient, 3 random recipients and no monitors.
+        let (ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
+
+        // Call get block info for a valid block.
+        let mut request = mc_mobilecoind_api::GetBlockRequest::new();
+        request.set_block(0);
+
+        let response = client.get_block(&request).unwrap();
+        assert_eq!(
+            Block::try_from(response.get_block()).unwrap(),
+            ledger_db.get_block(0).unwrap()
+        );
+        // FIXME: Implement block signatures for mobilecoind and test
+        assert_eq!(response.txos.len(), 3); // 3 recipients = 3 tx outs
+        assert_eq!(response.key_images.len(), 0); // test code does not generate any key images
     }
 
     #[test_with_logger]

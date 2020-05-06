@@ -7,6 +7,7 @@
 syntax = "proto3";
 import "google/protobuf/empty.proto";
 import "external.proto";
+import "blockchain.proto";
 
 package mobilecoind_api;
 
@@ -41,6 +42,7 @@ service MobilecoindAPI {
     // Databases
     rpc GetLedgerInfo (google.protobuf.Empty) returns (GetLedgerInfoResponse) {}
     rpc GetBlockInfo (GetBlockInfoRequest) returns (GetBlockInfoResponse) {}
+    rpc GetBlock (GetBlockRequest) returns (GetBlockResponse) {}
     rpc GetTxStatusAsSender (GetTxStatusAsSenderRequest) returns (GetTxStatusAsSenderResponse) {}
     rpc GetTxStatusAsReceiver (GetTxStatusAsReceiverRequest) returns (GetTxStatusAsReceiverResponse) {}
 
@@ -441,6 +443,24 @@ message GetBlockInfoResponse {
 
     // Number of TxOuts in the block.
     uint64 txo_count = 2;
+}
+
+// Get more detailed information about a downloaded block
+message GetBlockRequest {
+    uint64 block = 1;
+}
+message GetBlockResponse {
+    // The block
+    blockchain.Block block = 1;
+
+    // The block signature
+    blockchain.BlockSignature signature = 2;
+
+    // Key images in the block
+    repeated external.KeyImage key_images = 3;
+
+    // TxOuts in the block.
+    repeated external.TxOut txos = 4;
 }
 
 // Get the status of a submitted transaction as the Sender (using the key image).
