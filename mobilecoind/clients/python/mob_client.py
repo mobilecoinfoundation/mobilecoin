@@ -238,8 +238,8 @@ class mob_client:
     def get_block(self, block):
         """ Returns detailed information for a ledger block.
         """
-        request = api.GetBlockDetailsRequest(block=block)
-        block_contents = self.stub.GetBlockDetails(request)
+        request = api.GetBlockRequest(block=block)
+        block_contents = self.stub.GetBlock(request)
         return block_contents
 
     def get_tx_status_as_sender(self, sender_tx_receipt):
