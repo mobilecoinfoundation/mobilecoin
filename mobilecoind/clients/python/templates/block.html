@@ -73,8 +73,8 @@
 </div>
 {%- for key_image in key_images %}
     <div class="row">
-        <div class="col_15">{{ key_image[0] }}</div>
-        <div class="col_30">{{ key_image[1].data.hex() }}</div>
+        <div class="col_15">{{ loop.index }}</div>
+        <div class="col_30">{{ key_image.data.hex() }}</div>
     </div>
 {%- endfor %}
 <div class="row">&nbsp;</div>
@@ -95,19 +95,19 @@
     <div class="row">&nbsp;</div>
     <div class="row">&nbsp;</div>
     <div class="row">
-        <div class="col_8">{{ txo[0] }}</div>
+        <div class="col_8">{{ loop.index }}</div>
         <div class="col_25">TXO public key (base64)</div>
-        <div class="col_40">{{ txo[1].public_key.data.hex() }}</div>
+        <div class="col_40">{{ txo.public_key.data.hex() }}</div>
     </div>
     <div class="row">
         <div class="col_8">&nbsp;</div>
         <div class="col_25">Target Address (base64)</div>
-        <div class="col_40">{{ txo[1].target_key.data.hex() }}</div>
+        <div class="col_40">{{ txo.target_key.data.hex() }}</div>
     </div>
     <div class="row">
         <div class="col_8">&nbsp;</div>
         <div class="col_25">Amount (base64)</div>
-        <div class="col_50">{{ txo[1].amount.commitment.data.hex() }}</div>
+        <div class="col_50">{{ txo.amount.commitment.data.hex() }}</div>
     </div>
 {%- endfor %}
 <div class="row">&nbsp;</div>

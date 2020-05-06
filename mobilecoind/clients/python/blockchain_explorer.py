@@ -36,6 +36,6 @@ def block(block_num):
         block_hash=block.block.contents_hash.data,
         key_image_count=len(block.key_images),
         txo_count=len(block.txos),
-        txos=enumerate(block.txos),
-        key_images=enumerate(block.key_images),
+        txos=block.txos,
+        key_images=block.key_images,
         size_of_block=size_of_block)
