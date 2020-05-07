@@ -378,7 +378,7 @@ string that we send you. It should look something like:
         }
 
         let opt_request_code = Input::<WrappedRequestPayload>::new()
-            .with_prompt("Enter the request code to fulfill")
+            .with_prompt("Enter the request code to fulfill, or leave blank to cancel")
             .allow_empty(true)
             .get_text()
             .expect("failed getting request code")
@@ -444,7 +444,7 @@ string that we send you. It should look something like:
                     match selection {
                         0 => {
                             request_code.value =
-                                Self::input_mob("Enter new amount (in MOB)", request_code.value);
+                                Self::input_mob("Enter new amount in MOB, or leave blank to cancel", request_code.value);
                             continue;
                         }
                         1 => {
@@ -471,7 +471,7 @@ string that we send you. It should look something like:
                 }
                 1 => {
                     request_code.value =
-                        Self::input_mob("Enter new amount (in MOB)", request_code.value);
+                        Self::input_mob("Enter new amount in MOB, or leave blank to cancel", request_code.value);
                 }
                 2 => {
                     return;
@@ -570,7 +570,7 @@ MobileCoin forums. Visit http://community.mobilecoin.com
             .unwrap();
         let memo = match selection {
             0 => Input::<String>::new()
-                .with_prompt("Please enter your memo")
+                .with_prompt("Please enter your memo, or leave blank to cancel")
                 .allow_empty(true)
                 .get_text()
                 .expect("failed getting memo"),
