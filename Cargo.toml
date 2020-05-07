@@ -53,6 +53,7 @@ members = [
     "util/b58-payloads",
     "util/build/enclave",
     "util/build/grpc",
+    "util/build/bolt-signalapp",
     "util/build/sgx",
     "util/build/script",
     "util/encodings",

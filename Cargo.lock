@@ -2727,6 +2727,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-util-build-bolt-signalapp"
+version = "0.2.0"
+
+[[package]]
 name = "mc-util-build-enclave"
 version = "0.2.0"
 dependencies = [
