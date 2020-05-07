@@ -26,45 +26,46 @@ SHELL ["/bin/bash", "-c"]
 RUN apt-get update -q -q && \
  apt-get upgrade --yes --force-yes && \
  apt-get install --yes --force-yes \
-  systemd \
-  llvm-3.9-dev \
-  libclang-3.9-dev \
-  clang-3.9 \
-  wget \
-  python \
-  python3-pip \
-  git \
-  patch \
-  build-essential \
-  ocaml-native-compilers \
-  ocamlbuild \
   automake \
   autoconf \
-  libtool \
-  libssl1.1 \
-  libssl-dev \
-  libcurl4-openssl-dev \
-  protobuf-compiler \
-  protobuf-c-compiler \
-  libprotobuf-dev \
-  libprotobuf-c-dev \
   alien \
-  uuid-dev \
-  libxml2-dev \
-  cmake \
-  pkg-config \
-  libsystemd-dev \
-  golang \
-  unzip \
   binutils-dev \
-  zlib1g-dev \
+  build-essential \
+  libclang-dev \
+  clang \
+  cmake \
+  curl \
+  libcurl4-openssl-dev \
   libdw-dev \
+  git \
+  golang \
   libiberty-dev \
   jq \
-  curl \
+  llvm-dev \
   nano \
+  ninja-build \
+  ocaml-native-compilers \
+  ocamlbuild \
+  patch \
+  protobuf-compiler \
+  protobuf-c-compiler \
+  libprotobuf-c-dev \
+  libprotobuf-dev \
   psmisc \
-  prometheus
+  pkg-config \
+  prometheus \
+  python \
+  python3-pip \
+  libssl1.1 \
+  libssl-dev \
+  systemd \
+  libsystemd-dev \
+  libtool \
+  unzip \
+  uuid-dev \
+  wget \
+  libxml2-dev \
+  zlib1g-dev
 
 # psmisc = killall
 # prometheus = helps with running slam scripts locally
