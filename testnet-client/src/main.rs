@@ -724,18 +724,17 @@ MobileCoin forums. Visit http://community.mobilecoin.com
 }
 
 /// Helper method for converting a u64 picomob value into human-readable form.
+/// For values > 999.999 MOB, display as ({:.3} kMOB)
+/// Prefer MOB units whenever we can display in the form ({:.3} MOB)
+/// For values < 0.001 MOB, we display as ({:.3} µMOB)
+/// For values < 0.001 µMOB, we display as ({} pMOB)
 fn u64_to_mob_display(val: u64) -> String {
     let mut decimal_val: Decimal = val.into();
 
     let kilo_mob = Decimal::from_scientific("1e15").unwrap();
     let mob = Decimal::from_scientific("1e12").unwrap();
-    let milli_mob = Decimal::from_scientific("1e9").unwrap();
     let micro_mob = Decimal::from_scientific("1e6").unwrap();
-    let nano_mob = Decimal::from_scientific("1e3").unwrap();
-
     let thousand = Decimal::from_scientific("1e3").unwrap();
-    let hundred = Decimal::from_scientific("1e2").unwrap();
-    let ten = Decimal::from_scientific("1e1").unwrap();
 
     if val == 0 {
         "0 MOB".to_owned()
@@ -745,15 +744,9 @@ fn u64_to_mob_display(val: u64) -> String {
     } else if decimal_val >= mob / thousand {
         decimal_val /= mob;
         format!("{:.3} MOB", decimal_val)
-    } else if decimal_val >= milli_mob / hundred {
-        decimal_val /= milli_mob;
-        format!("{:.3} mMOB", decimal_val)
-    } else if decimal_val >= micro_mob / ten {
+    } else if decimal_val >= micro_mob / thousand {
         decimal_val /= micro_mob;
         format!("{:.3} µMOB", decimal_val)
-    } else if decimal_val >= nano_mob / ten {
-        decimal_val /= nano_mob;
-        format!("{:.3} nMOB", decimal_val)
     } else {
         format!("{} pMOB", decimal_val)
     }
@@ -770,21 +763,13 @@ mod tests {
 
         assert_eq!(u64_to_mob_display(0), "0 MOB");
         assert_eq!(u64_to_mob_display(99), "99 pMOB");
-
-        assert_eq!(u64_to_mob_display(100), "0.100 nMOB");
-        assert_eq!(u64_to_mob_display(999), "0.999 nMOB");
-        assert_eq!(u64_to_mob_display(1_000), "1.000 nMOB");
-        assert_eq!(u64_to_mob_display(1_001), "1.001 nMOB");
-        assert_eq!(u64_to_mob_display(99_999), "99.999 nMOB");
-
+        assert_eq!(u64_to_mob_display(999), "999 pMOB");
+        
         assert_eq!(u64_to_mob_display(100_000), "0.100 µMOB");
         assert_eq!(u64_to_mob_display(999_999), "0.999 µMOB");
         assert_eq!(u64_to_mob_display(1_000_000), "1.000 µMOB");
         assert_eq!(u64_to_mob_display(9_999_999), "9.999 µMOB");
-
-        assert_eq!(u64_to_mob_display(10_000_000), "0.010 mMOB");
-        assert_eq!(u64_to_mob_display(100_000_000), "0.100 mMOB");
-        assert_eq!(u64_to_mob_display(999_999_999), "0.999 mMOB");
+        assert_eq!(u64_to_mob_display(999_999_999), "999.999 µMOB");
 
         assert_eq!(u64_to_mob_display(1_000_000_000), "0.001 MOB");
         assert_eq!(u64_to_mob_display(1_000_000_001), "0.001 MOB");
