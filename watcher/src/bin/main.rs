@@ -5,6 +5,7 @@
 
 use mc_watcher::{config::WatcherConfig, watcher_db::WatcherDB};
 
+use mc_api::conversions::block_num_to_s3block_path;
 use mc_common::logger::{create_app_logger, log, o};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::ReqwestTransactionsFetcher;
@@ -32,7 +33,7 @@ fn main() {
     // Open WatcherDB
     WatcherDB::create(config.watcher_db.clone(), logger.clone())
         .expect("Could not create WatcherDB");
-    let mut _watcher_db =
+    let mut watcher_db =
         WatcherDB::open(config.watcher_db, logger.clone()).expect("Failed opening WatcherDB");
 
     // Sync Origin Block - FIXME: MC-1420 include origin signature
@@ -45,4 +46,47 @@ fn main() {
         .expect("Could not append origin block to ledger");
 
     // Sync all blocks and collect signatures
+    let mut block_index = 1;
+    loop {
+        // Construct URL for the block we are trying to fetch.
+        let filename = block_num_to_s3block_path(block_index)
+            .into_os_string()
+            .into_string()
+            .unwrap();
+
+        for src_url in transactions_fetcher.source_urls {
+            let url = src_url.join(&filename).unwrap();
+
+            // Try and get the block.
+            log::debug!(
+                logger,
+                "Attempting to fetch block {} from {}",
+                block_index,
+                url
+            );
+            match transactions_fetcher.block_from_url(&url) {
+                Ok(archive_block) => {
+                    // Reconcile block append new data to the ledger
+                    local_ledger
+                        .append_block(
+                            &s3_block_data.block,
+                            &s3_block_data.block_contents,
+                            s3_block_data.signature.as_ref(),
+                        )
+                        .unwrap_or_else(|_| panic!("Could not append block {:?}", block_index));
+                    watcher_db.add_signature(&s3_block_data.signature.take());
+                }
+                Err(err) => {
+                    log::debug!(
+                        logger,
+                        "Done fetching transactions for {} blocks ({:?})",
+                        block_index,
+                        err
+                    );
+                    return;
+                }
+            }
+            block_index += 1;
+        }
+    }
 }
