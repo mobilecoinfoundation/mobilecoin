@@ -727,21 +727,33 @@ MobileCoin forums. Visit http://community.mobilecoin.com
 fn u64_to_mob_display(val: u64) -> String {
     let mut decimal_val: Decimal = val.into();
 
-    let kilo_mob = Decimal::from_scientific("1000e12").unwrap();
+    let kilo_mob = Decimal::from_scientific("1e15").unwrap();
     let mob = Decimal::from_scientific("1e12").unwrap();
+    let milli_mob = Decimal::from_scientific("1e9").unwrap();
     let micro_mob = Decimal::from_scientific("1e6").unwrap();
+    let nano_mob = Decimal::from_scientific("1e3").unwrap();
+
+    let thousand = Decimal::from_scientific("1e3").unwrap();
+    let hundred = Decimal::from_scientific("1e2").unwrap();
+    let ten = Decimal::from_scientific("1e1").unwrap();
 
     if val == 0 {
         "0 MOB".to_owned()
     } else if decimal_val >= kilo_mob {
         decimal_val /= kilo_mob;
         format!("{:.3} kMOB", decimal_val)
-    } else if decimal_val >= mob {
+    } else if decimal_val >= mob / thousand {
         decimal_val /= mob;
         format!("{:.3} MOB", decimal_val)
-    } else if decimal_val >= micro_mob {
+    } else if decimal_val >= milli_mob / hundred {
+        decimal_val /= milli_mob;
+        format!("{:.3} mMOB", decimal_val)
+    } else if decimal_val >= micro_mob / ten {
         decimal_val /= micro_mob;
         format!("{:.3} µMOB", decimal_val)
+    } else if decimal_val >= nano_mob / ten {
+        decimal_val /= nano_mob;
+        format!("{:.3} nMOB", decimal_val)
     } else {
         format!("{} pMOB", decimal_val)
     }
@@ -755,17 +767,49 @@ mod tests {
     #[test]
     fn test_u64_to_mob_display() {
         const MOB: u64 = 1_000_000_000_000;
-        assert_eq!(u64_to_mob_display(1), "1 pMOB");
-        assert_eq!(u64_to_mob_display(123), "123 pMOB");
 
-        assert_eq!(u64_to_mob_display(MOB - 1), "999999.999 µMOB");
-        assert_eq!(u64_to_mob_display(MOB), "1.000 MOB");
-        assert_eq!(u64_to_mob_display(MOB + 1), "1.000 MOB");
+        assert_eq!(u64_to_mob_display(0), "0 MOB");
+        assert_eq!(u64_to_mob_display(99), "99 pMOB");
+
+        assert_eq!(u64_to_mob_display(100), "0.100 nMOB");
+        assert_eq!(u64_to_mob_display(999), "0.999 nMOB");
+        assert_eq!(u64_to_mob_display(1_000), "1.000 nMOB");
+        assert_eq!(u64_to_mob_display(1_001), "1.001 nMOB");
+        assert_eq!(u64_to_mob_display(99_999), "99.999 nMOB");
+
+        assert_eq!(u64_to_mob_display(100_000), "0.100 µMOB");
+        assert_eq!(u64_to_mob_display(999_999), "0.999 µMOB");
+        assert_eq!(u64_to_mob_display(1_000_000), "1.000 µMOB");
+        assert_eq!(u64_to_mob_display(9_999_999), "9.999 µMOB");
+
+        assert_eq!(u64_to_mob_display(10_000_000), "0.010 mMOB");
+        assert_eq!(u64_to_mob_display(100_000_000), "0.100 mMOB");
+        assert_eq!(u64_to_mob_display(999_999_999), "0.999 mMOB");
+
+        assert_eq!(u64_to_mob_display(1_000_000_000), "0.001 MOB");
+        assert_eq!(u64_to_mob_display(1_000_000_001), "0.001 MOB");
+        assert_eq!(u64_to_mob_display(9_999_999_999), "0.009 MOB");
+        assert_eq!(u64_to_mob_display(10_000_000_000), "0.010 MOB");
+        assert_eq!(u64_to_mob_display(100_000_000_000), "0.100 MOB");
+        assert_eq!(u64_to_mob_display(999_999_999_999), "0.999 MOB");
+        assert_eq!(u64_to_mob_display(1_000_000_000_000), "1.000 MOB");
+        assert_eq!(u64_to_mob_display(1_000_000_000_001), "1.000 MOB");
+        assert_eq!(u64_to_mob_display(99_999_999_999_999), "99.999 MOB");
+        assert_eq!(u64_to_mob_display(MOB - 100_000_000_000), "0.900 MOB");
+        assert_eq!(u64_to_mob_display(MOB - 910_000_000_000), "0.090 MOB");
+        assert_eq!(u64_to_mob_display(MOB - 991_000_000_000), "0.009 MOB");
+        assert_eq!(u64_to_mob_display(999_999_999_999), "0.999 MOB");
+        assert_eq!(u64_to_mob_display(1_000_000_000_000), "1.000 MOB");
+        assert_eq!(u64_to_mob_display(1_000_000_000_001), "1.000 MOB");
         assert_eq!(u64_to_mob_display(MOB + 100_000_000), "1.000 MOB");
         assert_eq!(u64_to_mob_display(MOB + 1_000_000_000), "1.001 MOB");
+        assert_eq!(u64_to_mob_display(MOB + 10_000_000_000), "1.010 MOB");
+        assert_eq!(u64_to_mob_display(MOB + 100_000_000_000), "1.100 MOB");
+        assert_eq!(u64_to_mob_display(MOB * 999), "999.000 MOB");
+        assert_eq!(u64_to_mob_display(999_999_999_999_999), "999.999 MOB");
 
         assert_eq!(u64_to_mob_display(MOB * 1000), "1.000 kMOB");
-        assert_eq!(u64_to_mob_display((MOB * 1000) + 1), "1.000 kMOB");
-        assert_eq!(u64_to_mob_display((MOB * 1000) + MOB), "1.001 kMOB");
+        assert_eq!(u64_to_mob_display(MOB * 1000 + 1), "1.000 kMOB");
+        assert_eq!(u64_to_mob_display(MOB * 1001), "1.001 kMOB");
     }
 }
