@@ -100,7 +100,7 @@ chmod +x ./sgx_linux_x64_driver_2.6.0_4f5bb63.bin
 
 Recommended SDK install:
 
->Note: You will need to always source the sgxsdk environment before running consensus.
+>Note: You will need to always source the sgxsdk environment before building consensus.
 
 ```
 wget https://download.01.org/intel-sgx/sgx-linux/2.7.1/distro/ubuntu18.04-server/sgx_linux_x64_sdk_2.7.101.3.bin
