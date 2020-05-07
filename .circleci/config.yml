@@ -103,17 +103,6 @@ commands:
           paths:
             - "~/.cargo"
 
-  generate-pem-file:
-    steps:
-      - run:
-          name: Generating Enclave_private.pem
-          command: |
-            openssl genrsa -out $(pwd)/Enclave_private.pem -3 3072
-            export CONSENSUS_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
-            export INGEST_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
-            export LEDGER_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
-            export VIEW_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
-
   prepare-for-build:
     steps:
       - checkout
@@ -122,7 +111,6 @@ commands:
       - enable_sccache
       - restore-cargo-cache
       - restore-sccache-cache
-      - generate-pem-file
 
   check-dirty-git:
     steps:
