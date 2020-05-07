@@ -453,8 +453,8 @@ message GetBlockResponse {
     // The block
     blockchain.Block block = 1;
 
-    // The block signature
-    blockchain.BlockSignature signature = 2;
+    // Signatures for this block
+    repeated blockchain.BlockSignature signatures = 2;
 
     // Key images in the block
     repeated external.KeyImage key_images = 3;

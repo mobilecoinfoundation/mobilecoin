@@ -10,6 +10,7 @@ use mc_ledger_sync::{LedgerSyncServiceThread, PollingNetworkState, ReqwestTransa
 use mc_mobilecoind::{
     config::Config, database::Database, payments::TransactionsManager, service::Service,
 };
+use mc_watcher::watcher_db::WatcherDB;
 use std::{
     convert::TryFrom,
     path::Path,
@@ -64,6 +65,12 @@ fn main() {
             let mobilecoind_db = Database::new(mobilecoind_db, logger.clone())
                 .expect("Could not open mobilecoind_db");
 
+            // Optionally load the watcher_db FIXME: make this simpler
+            let watcher_db = config.watcher_db.map(|db_path|
+                WatcherDB::create(db_path, logger.clone())
+                    .expect("Could not create WatcherDB"),
+            );
+
             let transactions_manager = TransactionsManager::new(
                 ledger_db.clone(),
                 mobilecoind_db.clone(),
@@ -74,6 +81,7 @@ fn main() {
             let _api_server = Service::new(
                 ledger_db,
                 mobilecoind_db,
+                watcher_db,
                 transactions_manager,
                 network_state,
                 *service_port,

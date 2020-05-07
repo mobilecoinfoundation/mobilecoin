@@ -34,6 +34,7 @@ use mc_transaction_std::identity::RootIdentity;
 use mc_util_b58_payloads::payloads::{RequestPayload, TransferPayload};
 use mc_util_grpc::{rpc_internal_error, rpc_logger, send_result, BuildInfoService};
 use mc_util_serial::ReprBytes32;
+use mc_watcher::watcher_db::WatcherDB;
 use protobuf::RepeatedField;
 use std::{
     convert::TryFrom,
@@ -52,6 +53,7 @@ impl Service {
     pub fn new<T: BlockchainConnection + UserTxConnection + 'static>(
         ledger_db: LedgerDB,
         mobilecoind_db: Database,
+        watcher_db: Option<WatcherDB>,
         transactions_manager: TransactionsManager<T>,
         network_state: Arc<Mutex<PollingNetworkState<T>>>,
         port: u16,
@@ -76,6 +78,7 @@ impl Service {
             transactions_manager,
             ledger_db,
             mobilecoind_db,
+            watcher_db,
             network_state,
             logger.clone(),
         );
@@ -109,6 +112,7 @@ pub struct ServiceApi<T: BlockchainConnection + UserTxConnection + 'static> {
     transactions_manager: TransactionsManager<T>,
     ledger_db: LedgerDB,
     mobilecoind_db: Database,
+    watcher_db: Option<WatcherDB>,
     network_state: Arc<Mutex<PollingNetworkState<T>>>,
     logger: Logger,
 }
@@ -119,6 +123,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> Clone for ServiceApi<
             transactions_manager: self.transactions_manager.clone(),
             ledger_db: self.ledger_db.clone(),
             mobilecoind_db: self.mobilecoind_db.clone(),
+            watcher_db: self.watcher_db.clone(),
             network_state: self.network_state.clone(),
             logger: self.logger.clone(),
         }
@@ -130,6 +135,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         transactions_manager: TransactionsManager<T>,
         ledger_db: LedgerDB,
         mobilecoind_db: Database,
+        watcher_db: Option<WatcherDB>,
         network_state: Arc<Mutex<PollingNetworkState<T>>>,
         logger: Logger,
     ) -> Self {
@@ -137,6 +143,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             transactions_manager,
             ledger_db,
             mobilecoind_db,
+            watcher_db,
             network_state,
             logger,
         }
@@ -812,6 +819,18 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                 .push(mc_consensus_api::external::TxOut::from(&output));
         }
 
+        if let Some(watcher_db) = self.watcher_db.clone() {
+            let signatures = watcher_db.get_block_signatures(&block.id).map_err(|err| {
+                rpc_internal_error("watcher_db.get_block_signatures", err, &self.logger)
+            })?;
+            for signature in signatures.iter() {
+                response
+                    .mut_signatures()
+                    .push(mc_consensus_api::blockchain::BlockSignature::from(
+                        signature,
+                    ));
+            }
+        }
         Ok(response)
     }
 
