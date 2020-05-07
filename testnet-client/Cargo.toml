@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 chrono = "0.4"
-dialoguer = "0.5"
+dialoguer = { git = "https://github.com/rjwalters/dialoguer" }
 grpcio = "0.5.1"
 hex = "0.4"
 indicatif = "0.14"
