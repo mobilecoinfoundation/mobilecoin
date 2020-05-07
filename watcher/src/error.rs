@@ -32,7 +32,10 @@ impl From<prost::EncodeError> for SignatureStoreError {
 
 impl From<lmdb::Error> for SignatureStoreError {
     fn from(src: lmdb::Error) -> Self {
-        SignatureStoreError::LmdbError(src)
+        match src {
+            lmdb::Error::NotFound => SignatureStoreError::NotFound,
+            _ => SignatureStoreError::LmdbError(src),
+        }
     }
 }
 

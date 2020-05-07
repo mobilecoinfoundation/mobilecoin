@@ -45,11 +45,13 @@ There are {{ num_blocks }} blocks and {{ num_transactions }} transactions in the
     <div class="col_8">Index</div>
     <div class="col_12">Size(txos)</div>
     <div class="col_12">Size(~kB)</div>
+    <div class="col_12">Signatures</div>
     <div class="col_34">Hash</div>
 </div>
 <div class="row">
     <div class="col_8">*****</div>
     <div class="col_12">**********</div>
+    <div class="col_12">*********</div>
     <div class="col_12">*********</div>
     <div class="col_34">********************************</div>
 </div>
@@ -58,7 +60,8 @@ There are {{ num_blocks }} blocks and {{ num_transactions }} transactions in the
         <div class="col_8"><a href="/block/{{ block[0]}}">{{ block[0] }}</a></div>
         <div class="col_12">{{ block[1] }}</div>
         <div class="col_12">{{ block[2] }}</div>
-        <div class="col_34">{{ block[3] }}</div>
+        <div class="col_12">{{ block[3] }}</div>
+        <div class="col_34">{{ block[4] }}</div>
     </div>
 {%- endfor %}
 </div>

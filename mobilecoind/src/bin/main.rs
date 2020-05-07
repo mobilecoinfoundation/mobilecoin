@@ -66,10 +66,9 @@ fn main() {
                 .expect("Could not open mobilecoind_db");
 
             // Optionally load the watcher_db FIXME: make this simpler
-            let watcher_db = config.watcher_db.map(|db_path|
-                WatcherDB::create(db_path, logger.clone())
-                    .expect("Could not create WatcherDB"),
-            );
+            let watcher_db = config.watcher_db.map(|db_path| {
+                WatcherDB::create(db_path, logger.clone()).expect("Could not create WatcherDB")
+            });
 
             let transactions_manager = TransactionsManager::new(
                 ledger_db.clone(),

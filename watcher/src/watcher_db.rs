@@ -2,7 +2,10 @@
 
 //! The watcher database
 
-use crate::{error::WatcherDBError, signature_store::SignatureStore};
+use crate::{
+    error::{SignatureStoreError, WatcherDBError},
+    signature_store::SignatureStore,
+};
 
 use mc_common::logger::Logger;
 use mc_transaction_core::{BlockID, BlockSignature};
@@ -81,6 +84,10 @@ impl WatcherDB {
         block_id: &BlockID,
     ) -> Result<Vec<BlockSignature>, WatcherDBError> {
         let db_txn = self.env.begin_ro_txn()?;
-        Ok(self.signature_store.get_signatures(&db_txn, block_id)?)
+        match self.signature_store.get_signatures(&db_txn, block_id) {
+            Ok(signatures) => Ok(signatures),
+            Err(SignatureStoreError::NotFound) => Ok(Vec::new()),
+            Err(e) => Err(WatcherDBError::SignatureStore(e)),
+        }
     }
 }

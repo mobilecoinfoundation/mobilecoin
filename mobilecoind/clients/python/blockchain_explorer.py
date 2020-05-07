@@ -45,28 +45,31 @@ def index():
             continue
         block = client.get_block(i)
         size_of_block = getsizeof(block) * .001
-        block_row = (i, txo_count, size_of_block, bytes.hex(block.block.contents_hash.data))
+        block_row = (i, txo_count, size_of_block, len(block.signatures),
+                     bytes.hex(block.block.contents_hash.data))
         blocks.append(block_row)
 
     return render_template('index.html',
-        blocks=blocks,
-        num_blocks=num_blocks,
-        num_transactions=num_transactions)
+                           blocks=blocks,
+                           num_blocks=num_blocks,
+                           num_transactions=num_transactions)
+
 
 @app.route('/block/<block_num>')
 def block(block_num):
     block = client.get_block(int(block_num))
     size_of_block = getsizeof(block)
     return render_template('block.html',
-        block_num=int(block_num),
-        block_hash=block.block.contents_hash.data,
-        key_image_count=len(block.key_images),
-        txo_count=len(block.txos),
-        txos=block.txos,
-        key_images=block.key_images,
-        size_of_block=size_of_block)
+                           block_num=int(block_num),
+                           block_hash=block.block.contents_hash.data,
+                           key_image_count=len(block.key_images),
+                           txo_count=len(block.txos),
+                           txos=block.txos,
+                           key_images=block.key_images,
+                           size_of_block=size_of_block,
+                           signatures=block.signatures)
 
 if __name__ == "__main__":
     args = command_args()
-    client = mob_client(args.mobilecoind_host + ':' + str(args.mobilecoind_port), False) 
+    client = mob_client(args.mobilecoind_host + ':' + str(args.mobilecoind_port), False)
     app.run(host='0.0.0.0', port=str(args.port))

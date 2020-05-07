@@ -64,6 +64,23 @@
 </div>
 <div class="row">&nbsp;</div>
 ********************************************************************************
+<div class="row inset">Signatures</div>
+********************************************************************************
+<div class="row">&nbsp;</div>
+<div class="row">
+    <div class="col_15">Index</div>
+    <div class="col_30">Signer (base64)</div>
+    <div class="col_30">Signature (base64)</div>
+</div>
+{%- for signature in signatures %}
+    <div class="row">
+        <div class="col_15">{{ loop.index }}</div>
+        <div class="col_30">{{ signature.signer.hex() }}</div>
+        <div class="col_30">{{ signature.signature.hex() }}</div>
+    </div>
+{%- endfor %}
+<div class="row">&nbsp;</div>
+********************************************************************************
 <div class="row inset">Key Images</div>
 ********************************************************************************
 <div class="row">&nbsp;</div>
