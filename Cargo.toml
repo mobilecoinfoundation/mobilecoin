@@ -10,6 +10,7 @@ members = [
     "common",
     "connection",
     "connection/test-utils",
+    "consensus/admin-http-gateway",
     "consensus/api",
     "consensus/enclave",
     "consensus/enclave/api",
@@ -93,6 +94,5 @@ overflow-checks = false
 rpath = true
 
 [patch.crates-io]
-rouille = { git = "https://github.com/tomaka/rouille/", rev = "db66a3b47af4271939e1aba21d0f36ccba3d1b70" }
 prost = { git = "https://github.com/mobilecoinofficial/prost", rev = "4e1905329369ca7a1cac3eda978ee9379167ee95" }
 prost-derive = { git = "https://github.com/mobilecoinofficial/prost", rev = "4e1905329369ca7a1cac3eda978ee9379167ee95" }

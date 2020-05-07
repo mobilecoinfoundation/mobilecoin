@@ -7,6 +7,7 @@
             $.getJSON('info').done(function(data) {
                 $('#info pre').text(JSON.stringify(data, null, 4));
                 $('input[name="rust_log"]').val(data.rust_log);
+                $('#peer_responder_id').text(data.config.peer_responder_id);
             }).fail(function() {
                 alert('failed getting node info');
             });
@@ -15,7 +16,7 @@
 </head>
 <body>
     <div style="border: 1px solid #000; padding: 2px;">
-        <h1>Consensus Node - {{node_id.responder_id}}</h1>
+        <h1>Consensus Node - <span id="peer_responder_id">Loading...</span></h1>
     </div>
 
     <br><br>
@@ -30,7 +31,7 @@
 
     <div style="border: 1px solid #000; padding: 2px;">
         <strong>Set log level</strong>
-        <form action="set-rust-log" method="GET">
+        <form action="set-rust-log" method="POST">
             <input type=text" name="rust_log" value="" size="100">
             <input type="submit" value="Set">
         </form>

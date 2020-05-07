@@ -19,6 +19,25 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  name: supervisor-admin-http-gw-node3
+  namespace: NETWORKNAME
+data:
+  admin_http_gw.conf: |
+    [program:mc-consensus-admin-http-gateway]
+    command=/usr/bin/mc-consensus-admin-http-gateway
+      --listen-host 0.0.0.0
+      --listen-port 8000
+      --admin-uri insecure-mca://127.0.0.1:8001/
+
+    stdout_logfile=/dev/fd/1
+    stdout_logfile_maxbytes=0
+    stderr_logfile=/dev/fd/2
+    stderr_logfile_maxbytes=0
+    autorestart=true
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: supervisor-consensus-node3
   namespace: NETWORKNAME
 data:
@@ -29,7 +48,7 @@ data:
       --peer-responder-id peer3.NETWORKNAME.mobilecoin.com:443
       --peer-listen-uri=mcp://0.0.0.0:8443/?tls-chain=/certs/tls.crt&tls-key=/certs/tls.key
       --client-listen-uri=mc://0.0.0.0:3223/?tls-chain=/certs/tls.crt&tls-key=/certs/tls.key
-      --management-listen-addr=0.0.0.0:8000
+      --admin-listen-uri=insecure-mca://127.0.0.1:8001/
       --network /config/network.toml
       --ledger-path /ledger
       --ias-spid %(ENV_PROD_IAS_SPID)s
@@ -174,7 +193,7 @@ spec:
             - name: "RUST_BACKTRACE"
               value: "1"
             - name: "RUST_LOG"
-              value: "debug,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusto_signature=error,h2=error"
+              value: "debug,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusto_signature=error,h2=error,rocket=warn,<unknown>=warn"
             - name: "SGX_MODE"
               value: "HW"
             - name: "IAS_MODE"
@@ -265,3 +284,5 @@ spec:
                 name: supervisor-consensus-node3
             - configMap:
                 name: supervisor-ledger-dist-node3
+            - configMap:
+                name: supervisor-admin-http-gw-node3
