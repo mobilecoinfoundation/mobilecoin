@@ -6,9 +6,12 @@
 use mc_watcher::{config::WatcherConfig, watcher_db::WatcherDB};
 
 use mc_api::conversions::block_num_to_s3block_path;
-use mc_common::logger::{create_app_logger, log, o};
+use mc_common::{
+    logger::{create_app_logger, log, o},
+    HashMap,
+};
 use mc_ledger_db::{Ledger, LedgerDB};
-use mc_ledger_sync::ReqwestTransactionsFetcher;
+use mc_ledger_sync::{ArchiveBlockData, ReqwestTransactionsFetcher};
 use structopt::StructOpt;
 
 fn main() {
@@ -33,7 +36,7 @@ fn main() {
     // Open WatcherDB
     WatcherDB::create(config.watcher_db.clone(), logger.clone())
         .expect("Could not create WatcherDB");
-    let mut watcher_db =
+    let watcher_db =
         WatcherDB::open(config.watcher_db, logger.clone()).expect("Failed opening WatcherDB");
 
     // Sync Origin Block - FIXME: MC-1420 include origin signature
@@ -53,8 +56,8 @@ fn main() {
             .into_os_string()
             .into_string()
             .unwrap();
-
-        for src_url in transactions_fetcher.source_urls {
+        let mut archive_blocks: HashMap<String, ArchiveBlockData> = HashMap::default();
+        for src_url in transactions_fetcher.source_urls.iter() {
             let url = src_url.join(&filename).unwrap();
 
             // Try and get the block.
@@ -66,15 +69,7 @@ fn main() {
             );
             match transactions_fetcher.block_from_url(&url) {
                 Ok(archive_block) => {
-                    // Reconcile block append new data to the ledger
-                    local_ledger
-                        .append_block(
-                            &s3_block_data.block,
-                            &s3_block_data.block_contents,
-                            s3_block_data.signature.as_ref(),
-                        )
-                        .unwrap_or_else(|_| panic!("Could not append block {:?}", block_index));
-                    watcher_db.add_signature(&s3_block_data.signature.take());
+                    archive_blocks.insert(src_url.to_string(), archive_block);
                 }
                 Err(err) => {
                     log::debug!(
@@ -86,7 +81,27 @@ fn main() {
                     return;
                 }
             }
-            block_index += 1;
         }
+        // FIXME: reconcile all the blocks
+        for (_src_url, archive_block) in archive_blocks {
+            // FIXME: add_signatures, and store src_url -> signature
+            if let Some(signature) = archive_block.signature {
+                watcher_db
+                    .add_block_signature(&archive_block.block.id, &signature)
+                    .expect("Could not insert block signature");
+            }
+        }
+        // FIXME: If block is reconciled, append to ledger:
+        // Reconcile block append new data to the ledger
+        /*
+        local_ledger
+            .append_block(
+                &archive_block.block,
+                &archive_block.block_contents,
+                archive_block.signature.as_ref(),
+            )
+            .unwrap_or_else(|_| panic!("Could not append block {:?}", block_index));
+        */
+        block_index += 1;
     }
 }
