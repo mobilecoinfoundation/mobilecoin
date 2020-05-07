@@ -764,7 +764,7 @@ mod tests {
         assert_eq!(u64_to_mob_display(0), "0 MOB");
         assert_eq!(u64_to_mob_display(99), "99 pMOB");
         assert_eq!(u64_to_mob_display(999), "999 pMOB");
-        
+
         assert_eq!(u64_to_mob_display(100_000), "0.100 µMOB");
         assert_eq!(u64_to_mob_display(999_999), "0.999 µMOB");
         assert_eq!(u64_to_mob_display(1_000_000), "1.000 µMOB");
