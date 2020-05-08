@@ -12,6 +12,7 @@ use mc_common::{
 };
 //use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::{ArchiveBlockData, ReqwestTransactionsFetcher};
+use mc_transaction_core::BlockSignature;
 use structopt::StructOpt;
 
 fn main() {
@@ -59,6 +60,7 @@ fn main() {
             .into_string()
             .unwrap();
         let mut archive_blocks: HashMap<String, ArchiveBlockData> = HashMap::default();
+        let mut signatures: Vec<BlockSignature> = Vec::new();
         for src_url in transactions_fetcher.source_urls.iter() {
             let url = src_url.join(&filename).unwrap();
 
@@ -78,6 +80,9 @@ fn main() {
                         archive_block,
                         block_index,
                     );
+                    if let Some(signature) = archive_block.signature {
+                        signatures.push(signature)
+                    }
                 }
                 Err(err) => {
                     log::debug!(
@@ -90,15 +95,20 @@ fn main() {
                 }
             }
         }
-        // FIXME: reconcile all the blocks
-        for (_src_url, archive_block) in archive_blocks {
-            // FIXME: add_signatures, and store src_url -> signature
-            if let Some(signature) = archive_block.signature {
-                watcher_db
-                    .add_block_signature(&archive_block.block.id, &signature)
-                    .expect("Could not insert block signature");
-            }
-        }
+        println!(
+            "\x1b[1;33m How many archive blocks for block ID? {}: {:?}\x1b[0m",
+            block_index,
+            archive_blocks.len()
+        );
+        println!(
+            "\x1b[1;36m How many signatures for block ID? {}: {:?}\x1b[0m",
+            block_index,
+            signatures.len()
+        );
+        watcher_db
+            .add_signatures(block_index, &signatures)
+            .expect("Could not add signatures");
+
         // FIXME: If block is reconciled, append to ledger:
         // Reconcile block append new data to the ledger
         /*

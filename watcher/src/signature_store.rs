@@ -6,12 +6,12 @@ use crate::error::SignatureStoreError;
 
 use lmdb::{Cursor, Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
 use mc_common::logger::{log, Logger};
-use mc_transaction_core::{BlockID, BlockSignature};
+use mc_transaction_core::BlockSignature;
 use mc_util_serial::{decode, encode};
 use std::sync::Arc;
 
 // LMDB Database Names
-pub const BLOCK_SIGNATURES: &str = "watcher_db:signature_store:block_signatures";
+pub const BLOCK_SIGNATURES_DB_NAME: &str = "watcher_db:signature_store:block_signatures";
 
 #[derive(Clone)]
 /// Storage of Block Signatures.
@@ -28,7 +28,10 @@ pub struct SignatureStore {
 
 impl SignatureStore {
     pub fn new(env: Arc<Environment>, logger: Logger) -> Result<Self, SignatureStoreError> {
-        let block_signatures = env.create_db(Some(BLOCK_SIGNATURES), DatabaseFlags::empty())?;
+        let block_signatures = env.create_db(
+            Some(BLOCK_SIGNATURES_DB_NAME),
+            DatabaseFlags::DUP_SORT | DatabaseFlags::DUP_FIXED,
+        )?;
         Ok(Self {
             env,
             block_signatures,
@@ -37,27 +40,27 @@ impl SignatureStore {
     }
 
     /// Insert a block signature for a block ID.
-    pub fn insert(
+    pub fn add_signatures(
         &self,
         db_txn: &mut RwTransaction,
-        block_id: &BlockID,
-        signature: &BlockSignature,
+        block_index: u64,
+        signatures: &Vec<BlockSignature>,
     ) -> Result<(), SignatureStoreError> {
-        let key_bytes = encode(block_id);
-        let value_bytes = encode(signature);
-        db_txn.put(
-            self.block_signatures,
-            &key_bytes,
-            &value_bytes,
-            WriteFlags::empty(),
-        )?;
+        let key_bytes = encode(&block_index);
+        for signature in signatures {
+            let value_bytes = encode(signature);
+            db_txn.put(
+                self.block_signatures,
+                &key_bytes,
+                &value_bytes,
+                WriteFlags::empty(),
+            )?;
 
-        log::trace!(
-            self.logger,
-            "Inserting {:?} ({:?}) to block_signatures store",
-            block_id,
-            signature,
-        );
+            println!(
+                "\x1b[1;32mInserting {:?} ({:?}) to block_signatures store\x1b[0m",
+                block_index, signature,
+            );
+        }
 
         Ok(())
     }
@@ -66,29 +69,37 @@ impl SignatureStore {
     pub fn get_signatures(
         &self,
         db_txn: &impl Transaction,
-        block_id: &BlockID,
+        block_index: u64,
     ) -> Result<Vec<BlockSignature>, SignatureStoreError> {
         let mut cursor = db_txn.open_ro_cursor(self.block_signatures)?;
+        let key_bytes = encode(&block_index);
 
-        let mut results: Vec<BlockSignature> = Vec::new();
-        let key_bytes = encode(block_id);
-
-        log::trace!(self.logger, "Getting block signatures for {:?}", block_id,);
+        log::trace!(
+            self.logger,
+            "Getting block signatures for {:?}",
+            block_index
+        );
 
         let sig = db_txn.get(self.block_signatures, &key_bytes)?;
         log::trace!(self.logger, "Is there anything for the key? {:?}", sig);
 
-        for (_key_bytes, value_bytes) in cursor.iter_dup_of(&key_bytes)? {
-            let block_signature = decode(value_bytes)?;
-            log::trace!(
-                self.logger,
-                "Got block signatures for {:?} ({:?})",
-                block_id,
-                block_signature,
-            );
-            results.push(block_signature);
+        match cursor.iter_dup_of(&key_bytes) {
+            Ok(iter) => {
+                let mut results: Vec<BlockSignature> = Vec::new();
+                for (_key_bytes, value_bytes) in iter {
+                    let block_signature = decode(value_bytes)?;
+                    log::trace!(
+                        self.logger,
+                        "Got block signatures for {:?} ({:?})",
+                        block_index,
+                        block_signature,
+                    );
+                    results.push(block_signature);
+                }
+                Ok(results)
+            }
+            Err(err) => Err(err.into()),
         }
-        Ok(results)
     }
 }
 
@@ -141,25 +152,16 @@ mod test {
         let signing_key_a = Ed25519Pair::from_random(&mut rng);
         let signing_key_b = Ed25519Pair::from_random(&mut rng);
 
-        let block_id1 = blocks[1].0.id.clone();
         let signed_block_a1 =
             BlockSignature::from_block_and_keypair(&blocks[1].0, &signing_key_a).unwrap();
         let _signed_block_b1 =
             BlockSignature::from_block_and_keypair(&blocks[1].0, &signing_key_b).unwrap();
 
         let mut db_txn = sig_store.env.begin_rw_txn().unwrap();
-        sig_store
-            .insert(&mut db_txn, &block_id1, &signed_block_a1)
-            .unwrap();
+        sig_store.insert(&mut db_txn, 1, &signed_block_a1).unwrap();
         db_txn.commit().unwrap();
 
         let db_ro_txn = sig_store.env.begin_ro_txn().unwrap();
-        assert_eq!(
-            sig_store
-                .get_signatures(&db_ro_txn, &block_id1)
-                .unwrap()
-                .len(),
-            1
-        );
+        assert_eq!(sig_store.get_signatures(&db_ro_txn, 1).unwrap().len(), 1);
     }
 }

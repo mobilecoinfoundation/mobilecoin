@@ -8,7 +8,7 @@ use crate::{
 };
 
 use mc_common::logger::Logger;
-use mc_transaction_core::{BlockID, BlockSignature};
+use mc_transaction_core::BlockSignature;
 
 use lmdb::{Environment, Transaction};
 use std::{path::PathBuf, sync::Arc};
@@ -66,14 +66,14 @@ impl WatcherDB {
     }
 
     /// Add a signature for a block.
-    pub fn add_block_signature(
+    pub fn add_signatures(
         &self,
-        block_id: &BlockID,
-        signature: &BlockSignature,
+        block_index: u64,
+        signatures: &Vec<BlockSignature>,
     ) -> Result<(), WatcherDBError> {
         let mut db_txn = self.env.begin_rw_txn()?;
         self.signature_store
-            .insert(&mut db_txn, block_id, signature)?;
+            .add_signatures(&mut db_txn, block_index, signatures)?;
         db_txn.commit()?;
         Ok(())
     }
@@ -81,10 +81,10 @@ impl WatcherDB {
     /// Get the signatures for a block.
     pub fn get_block_signatures(
         &self,
-        block_id: &BlockID,
+        block_index: u64,
     ) -> Result<Vec<BlockSignature>, WatcherDBError> {
         let db_txn = self.env.begin_ro_txn()?;
-        match self.signature_store.get_signatures(&db_txn, block_id) {
+        match self.signature_store.get_signatures(&db_txn, block_index) {
             Ok(signatures) => Ok(signatures),
             Err(SignatureStoreError::NotFound) => Ok(Vec::new()),
             Err(e) => Err(WatcherDBError::SignatureStore(e)),

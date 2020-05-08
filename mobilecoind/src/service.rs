@@ -820,9 +820,16 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         }
 
         if let Some(watcher_db) = self.watcher_db.clone() {
-            let signatures = watcher_db.get_block_signatures(&block.id).map_err(|err| {
-                rpc_internal_error("watcher_db.get_block_signatures", err, &self.logger)
-            })?;
+            let signatures = watcher_db
+                .get_block_signatures(request.block)
+                .map_err(|err| {
+                    rpc_internal_error("watcher_db.get_block_signatures", err, &self.logger)
+                })?;
+            println!(
+                "\x1b[1;33m Got signatures len: {:?} for block index {:?}\x1b[0m",
+                signatures.len(),
+                request.block
+            );
             for signature in signatures.iter() {
                 response
                     .mut_signatures()
