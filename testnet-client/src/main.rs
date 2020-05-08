@@ -487,8 +487,8 @@ string that we send you. It should look something like:
         // Send payment
         let pb = ProgressBar::new_spinner();
         pb.enable_steady_tick(120);
-
         pb.set_message("Sending payment...");
+
         let mut req = mc_mobilecoind_api::SubmitTxRequest::new();
         req.set_tx_proposal(tx_proposal);
 
@@ -693,11 +693,17 @@ MobileCoin forums. Visit http://community.mobilecoin.com
     // Display a progress bar and wait until the local monitor has synced to a given block height
     // (if provided), or to the current ledger height if not.
     fn wait_for_monitor_sync(&mut self, block_height: Option<u64>) -> Result<(), String> {
+        let pb0 = ProgressBar::new_spinner();
+        pb0.enable_steady_tick(120);
+        pb0.set_message("Checking current ledger size...");
+
         let resp = self
             .client
             .get_ledger_info(&mc_mobilecoind_api::Empty::new())
             .map_err(|err| format!("Failed getting number of blocks in ledger: {}", err))?;
         let num_blocks = block_height.unwrap_or(resp.block_count);
+
+        pb0.finish_with_message(&format!("Ledger contains {} blocks.", num_blocks));
 
         let pb = ProgressBar::new(num_blocks);
         pb.set_style(
