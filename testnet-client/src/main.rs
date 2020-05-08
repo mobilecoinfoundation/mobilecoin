@@ -262,10 +262,6 @@ dc74edf1d8842dfdf49d6db5d3d4e873665c2dd400c0955dd9729571826a26be
             .map_err(|err| format!("Failed adding monitor: {}", err))?;
         self.monitor_id = resp.get_monitor_id().to_vec();
 
-        let pb = ProgressBar::new_spinner();
-        pb.enable_steady_tick(120);
-        pb.set_message("Checking current ledger size...");
-
         // Get the network block height.
         let network_status = self
             .client
@@ -273,8 +269,6 @@ dc74edf1d8842dfdf49d6db5d3d4e873665c2dd400c0955dd9729571826a26be
             .map_err(|err| format!("Failed getting network status: {}", err))?;
 
         let num_blocks = network_status.network_highest_block_index + 1;
-        pb.finish_with_message(&format!("Ledger contains {} blocks.", num_blocks));
-
         self.wait_for_monitor_sync(Some(num_blocks))?;
 
         // Done!
