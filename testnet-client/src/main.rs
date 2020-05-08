@@ -105,7 +105,14 @@ impl TestnetClient {
         println!();
 
         let client = MobilecoindApiClient::new(ch);
-        let network_status = match client.get_network_status(&mc_mobilecoind_api::Empty::new()) {
+
+        let testnet_client = TestnetClient {
+            config: config.clone(),
+            client,
+            monitor_id: Vec::new(),
+        };
+
+        let network_status = match testnet_client.get_network_status() {
             Ok(resp) => resp,
             Err(err) => {
                 println!(
@@ -122,16 +129,12 @@ impl TestnetClient {
             }
         };
         println!(
-            "mobilecoind is at block #{}, network is at block #{}.",
+            "The local ledger is at block #{}. The MobileCoin Network is at block #{}.",
             network_status.local_block_index, network_status.network_highest_block_index,
         );
 
         // Return.
-        Ok(TestnetClient {
-            config: config.clone(),
-            client,
-            monitor_id: Vec::new(),
-        })
+        Ok(testnet_client)
     }
 
     /// The main UI loop.
@@ -236,6 +239,22 @@ dc74edf1d8842dfdf49d6db5d3d4e873665c2dd400c0955dd9729571826a26be
             .0
     }
 
+    /// Contact the MobileCoin network to collect the latest ledger size information
+    fn get_network_status(&self) -> Result<mc_mobilecoind_api::GetNetworkStatusResponse, String> {
+        let pb = ProgressBar::new_spinner();
+        pb.enable_steady_tick(120);
+        pb.set_message("Checking the MobileCoin public ledger...");
+
+        // Get the network status.
+        let network_status = self
+            .client
+            .get_network_status(&mc_mobilecoind_api::Empty::new())
+            .map_err(|err| format!("Failed getting network status: {}", err))?;
+
+        pb.finish_and_clear();
+        Ok(network_status)
+    }
+
     /// Add a monitor and wait for it to catch up.
     fn add_monitor_and_wait_for_sync(&mut self, entropy: &[u8; 32]) -> Result<(), String> {
         // Get account key from entropy
@@ -262,14 +281,9 @@ dc74edf1d8842dfdf49d6db5d3d4e873665c2dd400c0955dd9729571826a26be
             .map_err(|err| format!("Failed adding monitor: {}", err))?;
         self.monitor_id = resp.get_monitor_id().to_vec();
 
-        // Get the network block height.
-        let network_status = self
-            .client
-            .get_network_status(&mc_mobilecoind_api::Empty::new())
-            .map_err(|err| format!("Failed getting network status: {}", err))?;
+        let network_status = self.get_network_status()?;
 
-        let num_blocks = network_status.network_highest_block_index + 1;
-        self.wait_for_monitor_sync(Some(num_blocks))?;
+        self.wait_for_monitor_sync(Some(network_status.network_highest_block_index + 1))?;
 
         // Done!
         Ok(())
@@ -277,11 +291,7 @@ dc74edf1d8842dfdf49d6db5d3d4e873665c2dd400c0955dd9729571826a26be
 
     /// Print the current balance.
     fn print_balance(&mut self) -> Result<(), String> {
-        // See if we're behind.
-        let network_status = self
-            .client
-            .get_network_status(&mc_mobilecoind_api::Empty::new())
-            .map_err(|err| format!("Failed getting network status: {}", err))?;
+        let network_status = self.get_network_status()?;
 
         if network_status.network_highest_block_index > network_status.local_block_index {
             let blocks_behind =
