@@ -29,6 +29,7 @@ use mc_transaction_core::{
 };
 use mc_util_from_random::FromRandom;
 use mc_util_uri::ConnectionUri;
+use mc_watcher::watcher_db::WatcherDB;
 use std::{
     path::PathBuf,
     sync::{
@@ -187,6 +188,7 @@ fn setup_server(
     logger: Logger,
     ledger_db: LedgerDB,
     mobilecoind_db: Database,
+    watcher_db: Option<WatcherDB>,
     test_port: u16,
 ) -> (
     Service,
@@ -226,6 +228,7 @@ fn setup_server(
     let service = Service::new(
         ledger_db,
         mobilecoind_db,
+        watcher_db,
         transactions_manager,
         network_state,
         test_port,
@@ -286,6 +289,7 @@ pub fn get_testing_environment(
         logger.clone(),
         ledger_db.clone(),
         mobilecoind_db.clone(),
+        None,
         port,
     );
     log::debug!(logger, "Setting up client {:?}", port);
