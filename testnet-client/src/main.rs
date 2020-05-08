@@ -231,7 +231,7 @@ dc74edf1d8842dfdf49d6db5d3d4e873665c2dd400c0955dd9729571826a26be
 
         Input::<EntropyBytes>::new()
             .with_prompt("Enter your master key")
-            .get_text()
+            .interact_text()
             .expect("failed getting master key")
             .0
     }
@@ -380,7 +380,7 @@ string that we send you. It should look something like:
         let opt_request_code = Input::<WrappedRequestPayload>::new()
             .with_prompt("Enter the request code to fulfill, or leave blank to cancel")
             .allow_empty(true)
-            .get_text()
+            .interact_text()
             .expect("failed getting request code")
             .0;
         if opt_request_code.is_none() {
@@ -572,7 +572,7 @@ MobileCoin forums. Visit http://community.mobilecoin.com
             0 => Input::<String>::new()
                 .with_prompt("Please enter your memo, or leave blank to cancel")
                 .allow_empty(true)
-                .get_text()
+                .interact_text()
                 .expect("failed getting memo"),
             1 => String::from(""),
             _ => unreachable!(),
@@ -635,7 +635,7 @@ MobileCoin forums. Visit http://community.mobilecoin.com
             .with_prompt(prompt)
             .default(mob_default)
             .validate_with(CanConvertToMOB)
-            .get_text()
+            .interact_text()
             .expect("failed getting request code");
 
         // Convert MOB back to pMOB
