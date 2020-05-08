@@ -17,7 +17,3 @@ structopt = "0.3"
 mc-util-grpc = { path = "../util/grpc" }
 mc-util-b58-payloads = { path = "../util/b58-payloads" }
 mc-mobilecoind-api = { path = "../mobilecoind/api" }
-
-[patch.crates-io]
-dialoguer = { git = "https://github.com/mitsuhiko/dialoguer" }
-console = { git = "https://github.com/mitsuhiko/console" }
