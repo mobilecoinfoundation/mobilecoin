@@ -30,6 +30,7 @@ members = [
     "enclave-boundary",
     "ledger/db",
     "ledger/distribution",
+    "ledger/from-archive",
     "ledger/sync",
     "mobilecoind",
     "mobilecoind/api",
