@@ -443,8 +443,10 @@ string that we send you. It should look something like:
                         .unwrap();
                     match selection {
                         0 => {
-                            request_code.value =
-                                Self::input_mob("Enter new amount in MOB, or leave blank to cancel", request_code.value);
+                            request_code.value = Self::input_mob(
+                                "Enter new amount in MOB, or leave blank to cancel",
+                                request_code.value,
+                            );
                             continue;
                         }
                         1 => {
@@ -470,8 +472,10 @@ string that we send you. It should look something like:
                     break tx_proposal;
                 }
                 1 => {
-                    request_code.value =
-                        Self::input_mob("Enter new amount in MOB, or leave blank to cancel", request_code.value);
+                    request_code.value = Self::input_mob(
+                        "Enter new amount in MOB, or leave blank to cancel",
+                        request_code.value,
+                    );
                 }
                 2 => {
                     return;
