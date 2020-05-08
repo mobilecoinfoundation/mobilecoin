@@ -204,7 +204,7 @@ impl WatcherSyncThread {
 
             // Maybe sync, maybe wait and check again.
             if is_behind {
-                let _ = watcher.sync_signatures(
+                watcher.sync_signatures(
                     watcher.num_blocks(),
                     Some(watcher.num_blocks() + MAX_BLOCKS_PER_SYNC_ITERATION as u64),
                 );

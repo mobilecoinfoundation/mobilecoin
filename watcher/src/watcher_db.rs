@@ -85,7 +85,7 @@ impl WatcherDB {
     pub fn add_block_signatures(
         &self,
         block_index: u64,
-        signatures: &Vec<BlockSignature>,
+        signatures: &[BlockSignature],
     ) -> Result<(), WatcherDBError> {
         let mut db_txn = self.env.begin_rw_txn()?;
         // Assumes always adding signatures to monotonically increasing block indices.
