@@ -506,7 +506,7 @@ dependencies = [
 [[package]]
 name = "console"
 version = "0.11.2"
-source = "git+https://github.com/mitsuhiko/console#13078231718e5a328dc9aba27117ec0a9674ae3f"
+source = "git+https://github.com/mitsuhiko/console?rev=1307823#13078231718e5a328dc9aba27117ec0a9674ae3f"
 dependencies = [
  "encode_unicode 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -791,9 +791,9 @@ dependencies = [
 [[package]]
 name = "dialoguer"
 version = "0.6.2"
-source = "git+https://github.com/mitsuhiko/dialoguer#a0c6c1e0e9d536b04c20d76c3097de4fccd59caf"
+source = "git+https://github.com/mitsuhiko/dialoguer?rev=a0c6c1e#a0c6c1e0e9d536b04c20d76c3097de4fccd59caf"
 dependencies = [
- "console 0.11.2 (git+https://github.com/mitsuhiko/console)",
+ "console 0.11.2 (git+https://github.com/mitsuhiko/console?rev=1307823)",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempfile 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "zeroize 0.9.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2685,7 +2685,7 @@ name = "mc-testnet-client"
 version = "0.2.0"
 dependencies = [
  "chrono 0.4.10 (registry+https://github.com/rust-lang/crates.io-index)",
- "dialoguer 0.6.2 (git+https://github.com/mitsuhiko/dialoguer)",
+ "dialoguer 0.6.2 (git+https://github.com/mitsuhiko/dialoguer?rev=a0c6c1e)",
  "grpcio 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "indicatif 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -5496,7 +5496,7 @@ dependencies = [
 "checksum cloudabi 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "ddfc5b9aa5d4507acaf872de71051dfd0e309860e88966e1051e462a077aac4f"
 "checksum cmake 0.1.42 (registry+https://github.com/rust-lang/crates.io-index)" = "81fb25b677f8bf1eb325017cb6bb8452f87969db0fedb4f757b297bee78a7c62"
 "checksum console 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "6728a28023f207181b193262711102bfbaf47cc9d13bc71d0736607ef8efe88c"
-"checksum console 0.11.2 (git+https://github.com/mitsuhiko/console)" = "<none>"
+"checksum console 0.11.2 (git+https://github.com/mitsuhiko/console?rev=1307823)" = "<none>"
 "checksum constant_time_eq 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "245097e9a4535ee1e3e3931fcfcd55a796a44c643e8596ff6566d68f09b87bbc"
 "checksum cookie 0.11.2 (registry+https://github.com/rust-lang/crates.io-index)" = "d9fac5e7bdefb6160fb181ee0eaa6f96704b625c70e6d61c465cb35750a4ea12"
 "checksum core-foundation 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "57d24c7a13c43e870e37c1556b74555437870a04514f7685f5b354e090567171"
@@ -5525,7 +5525,7 @@ dependencies = [
 "checksum devise 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "74e04ba2d03c5fa0d954c061fc8c9c288badadffc272ebb87679a89846de3ed3"
 "checksum devise_codegen 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "066ceb7928ca93a9bedc6d0e612a8a0424048b0ab1f75971b203d01420c055d7"
 "checksum devise_core 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "cf41c59b22b5e3ec0ea55c7847e5f358d340f3a8d6d53a5cf4f1564967f96487"
-"checksum dialoguer 0.6.2 (git+https://github.com/mitsuhiko/dialoguer)" = "<none>"
+"checksum dialoguer 0.6.2 (git+https://github.com/mitsuhiko/dialoguer?rev=a0c6c1e)" = "<none>"
 "checksum difference 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "524cbf6897b527295dff137cec09ecf3a05f4fddffd7dfcd1585403449e74198"
 "checksum digest 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)" = "f3d0c8c8752312f9713efd397ff63acb9f85585afbf179282e720e7704954dd5"
 "checksum dirs 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)" = "3fd78930633bd1c6e35c4b42b1df7b0cbc6bc191146e512bb3bedf243fcc3901"
