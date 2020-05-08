@@ -2346,6 +2346,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-ledger-from-archive"
+version = "0.1.0"
+dependencies = [
+ "mc-api 0.2.0",
+ "mc-common 0.2.0",
+ "mc-ledger-db 0.2.0",
+ "mc-ledger-sync 0.2.0",
+ "structopt 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "mc-ledger-sync"
 version = "0.2.0"
 dependencies = [
