@@ -2,7 +2,7 @@
 
 //! Configuration parameters to reconstitute the ledger
 
-use std::path::PathBuf;
+use std::{path::PathBuf, str::FromStr, time::Duration};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -12,10 +12,6 @@ use structopt::StructOpt;
 )]
 /// Configuration for the Watcher Node.
 pub struct WatcherConfig {
-    /// Path to reconciled ledger db (lmdb).
-    #[structopt(long, default_value = "/tmp/ledger-db", parse(from_os_str))]
-    pub ledger_db: PathBuf,
-
     /// Path to watcher db (lmdb).
     #[structopt(long, default_value = "/tmp/watcher-db", parse(from_os_str))]
     pub watcher_db: PathBuf,
@@ -28,5 +24,13 @@ pub struct WatcherConfig {
 
     /// (Optional) Number of blocks to sync
     #[structopt(long)]
-    pub num_blocks: Option<u64>,
+    pub max_blocks: Option<u64>,
+
+    /// Poll Interval
+    #[structopt(long, default_value = "5", parse(try_from_str=parse_duration_in_seconds))]
+    pub poll_interval: Duration,
+}
+
+fn parse_duration_in_seconds(src: &str) -> Result<Duration, std::num::ParseIntError> {
+    Ok(Duration::from_secs(u64::from_str(src)?))
 }

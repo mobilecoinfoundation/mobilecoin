@@ -4,13 +4,14 @@
 
 use crate::error::SignatureStoreError;
 
-use lmdb::{Cursor, Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
 use mc_common::logger::{log, Logger};
 use mc_transaction_core::BlockSignature;
 use mc_util_serial::{decode, encode};
+
+use lmdb::{Cursor, Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
 use std::sync::Arc;
 
-// LMDB Database Names
+/// LMDB Database Names
 pub const BLOCK_SIGNATURES_DB_NAME: &str = "watcher_db:signature_store:block_signatures";
 
 #[derive(Clone)]
@@ -79,9 +80,6 @@ impl SignatureStore {
             "Getting block signatures for {:?}",
             block_index
         );
-
-        let sig = db_txn.get(self.block_signatures, &key_bytes)?;
-        log::trace!(self.logger, "Is there anything for the key? {:?}", sig);
 
         match cursor.iter_dup_of(&key_bytes) {
             Ok(iter) => {

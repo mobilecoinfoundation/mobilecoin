@@ -10,7 +10,7 @@ use mc_ledger_sync::{LedgerSyncServiceThread, PollingNetworkState, ReqwestTransa
 use mc_mobilecoind::{
     config::Config, database::Database, payments::TransactionsManager, service::Service,
 };
-use mc_watcher::watcher_db::WatcherDB;
+use mc_watcher::{watcher::WatcherSyncThread, watcher_db::WatcherDB};
 use std::{
     convert::TryFrom,
     path::Path,
@@ -55,6 +55,29 @@ fn main() {
         logger.clone(),
     );
 
+    // Optionally Instantiate the watcher sync thread and get the watcher_db handle
+    let watcher_db = match config.watcher_db {
+        Some(watcher_db_path) => {
+            println!("\x1b[1;31m CREATING WATCHER DB\x1b[0m");
+            let watcher_db = WatcherDB::create(watcher_db_path, logger.clone()).unwrap();
+            println!("\x1b[1;36m CREATING TRANSACTIONS FETCHER \x1b[0m");
+            let watcher_transactions_fetcher =
+                ReqwestTransactionsFetcher::new(config.tx_source_urls.clone(), logger.clone())
+                    .expect("Failed creating ReqwestTransactionsFetcher");
+            println!("\x1b[1;34m CREATING SYNC THREAD \x1b[0m");
+            let _watcher_sync_thread = WatcherSyncThread::new(
+                watcher_db.clone(),
+                watcher_transactions_fetcher,
+                ledger_db.clone(),
+                config.poll_interval,
+                logger.clone(),
+            );
+            println!("\x1b[1;32m WE DID IT \x1b[0m");
+            Some(watcher_db)
+        }
+        None => None,
+    };
+
     // Potentially launch API server
     match (&config.mobilecoind_db, &config.service_port) {
         (Some(mobilecoind_db), Some(service_port)) => {
@@ -65,11 +88,6 @@ fn main() {
             let mobilecoind_db = Database::new(mobilecoind_db, logger.clone())
                 .expect("Could not open mobilecoind_db");
 
-            // Optionally load the watcher_db FIXME: make this simpler
-            let watcher_db = config.watcher_db.map(|db_path| {
-                WatcherDB::create(db_path, logger.clone()).expect("Could not create WatcherDB")
-            });
-
             let transactions_manager = TransactionsManager::new(
                 ledger_db.clone(),
                 mobilecoind_db.clone(),
@@ -77,6 +95,7 @@ fn main() {
                 logger.clone(),
             );
 
+            println!("\x1b[1;35m NOW RUNNING MOBILECOIND SERVICE \x1b[0m");
             let _api_server = Service::new(
                 ledger_db,
                 mobilecoind_db,

@@ -14,7 +14,7 @@ pub enum SignatureStoreError {
     #[fail(display = "Deserialization")]
     Deserialization,
 
-    #[fail(display = "LmdbError")]
+    #[fail(display = "LmdbError: {}", _0)]
     LmdbError(lmdb::Error),
 }
 
@@ -51,10 +51,13 @@ pub enum WatcherDBError {
     #[fail(display = "Deserialization")]
     Deserialization,
 
-    #[fail(display = "LmdbError")]
+    #[fail(display = "Loading blocks out of order.")]
+    BlockOrder,
+
+    #[fail(display = "LmdbError: {}", _0)]
     LmdbError(lmdb::Error),
 
-    #[fail(display = "SignatureStore")]
+    #[fail(display = "SignatureStore: {}", _0)]
     SignatureStore(SignatureStoreError),
 }
 
@@ -67,5 +70,11 @@ impl From<lmdb::Error> for WatcherDBError {
 impl From<SignatureStoreError> for WatcherDBError {
     fn from(src: SignatureStoreError) -> Self {
         WatcherDBError::SignatureStore(src)
+    }
+}
+
+impl From<prost::DecodeError> for WatcherDBError {
+    fn from(_src: prost::DecodeError) -> Self {
+        WatcherDBError::Deserialization
     }
 }
