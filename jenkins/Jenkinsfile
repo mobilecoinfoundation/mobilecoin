@@ -201,6 +201,10 @@ pipeline {
                 --python_out=. $WORKSPACE/api/proto/external.proto
             '''
             sh '''
+              python3 -m grpc_tools.protoc -I$WORKSPACE/api/proto \
+                --python_out=. $WORKSPACE/api/proto/blockchain.proto
+            '''
+            sh '''
               python3 -m grpc_tools.protoc \
                 -I$WORKSPACE/mobilecoind/api/proto -I$WORKSPACE/api/proto -I$WORKSPACE/consensus/api/proto \
                 --python_out=. --grpc_python_out=. $WORKSPACE/mobilecoind/api/proto/mobilecoind_api.proto
