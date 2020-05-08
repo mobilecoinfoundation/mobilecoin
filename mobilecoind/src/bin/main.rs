@@ -10,7 +10,7 @@ use mc_ledger_sync::{LedgerSyncServiceThread, PollingNetworkState, ReqwestTransa
 use mc_mobilecoind::{
     config::Config, database::Database, payments::TransactionsManager, service::Service,
 };
-use mc_watcher::{watcher::WatcherSyncThread, watcher_db::WatcherDB};
+use mc_watcher::{watcher::WatcherSyncThread, watcher_db::create_or_open_watcher_db};
 
 use std::{
     convert::TryFrom,
@@ -59,8 +59,8 @@ fn main() {
     // Optionally Instantiate the watcher sync thread and get the watcher_db handle
     let watcher_db = match config.watcher_db {
         Some(watcher_db_path) => {
-            WatcherDB::create(watcher_db_path.clone()).unwrap();
-            let watcher_db = WatcherDB::open(watcher_db_path, logger.clone()).unwrap();
+            let watcher_db = create_or_open_watcher_db(watcher_db_path, logger.clone())
+                .expect("Could not create or open WatcherDB");
             let watcher_transactions_fetcher =
                 ReqwestTransactionsFetcher::new(config.tx_source_urls.clone(), logger.clone())
                     .expect("Failed creating ReqwestTransactionsFetcher");

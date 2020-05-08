@@ -87,17 +87,25 @@ impl WatcherDB {
         block_index: u64,
         signatures: &[BlockSignature],
     ) -> Result<(), WatcherDBError> {
+        // NOTE: num_blocks is actually "block height" - some blocks may be missing.
+        // This allows us to skip the origin block, and assumes we are adding signatures
+        // to monotonically increasing block indices.
         let mut db_txn = self.env.begin_rw_txn()?;
-        // Assumes always adding signatures to monotonically increasing block indices.
         let num_blocks = self.num_blocks()?;
-        if block_index == num_blocks + 1 {
+        if block_index >= num_blocks {
             db_txn.put(
                 self.counts,
                 &NUM_BLOCKS_KEY,
-                &encode(&block_index),
+                &encode(&(block_index + 1)),
                 WriteFlags::empty(),
             )?;
         } else {
+            log::error!(
+                self.logger,
+                "Can not add new block at {:?}. Height is {:?}",
+                block_index,
+                num_blocks
+            );
             return Err(WatcherDBError::BlockOrder);
         }
 
@@ -156,6 +164,37 @@ impl WatcherDB {
         let db_txn = self.env.begin_ro_txn()?;
         Ok(decode(db_txn.get(self.counts, &NUM_BLOCKS_KEY)?)?)
     }
+}
+
+/// Open an existing WatcherDB or create a new one.
+pub fn create_or_open_watcher_db(
+    watcher_db_path: PathBuf,
+    logger: Logger,
+) -> Result<WatcherDB, WatcherDBError> {
+    // Create the path if it does not exist.
+    if !watcher_db_path.exists() {
+        std::fs::create_dir_all(watcher_db_path.clone())?;
+    }
+
+    // Attempt to open the WatcherDB and see if it has anything in it.
+    if let Ok(watcher_db) = WatcherDB::open(watcher_db_path.clone(), logger.clone()) {
+        if let Ok(num_blocks) = watcher_db.num_blocks() {
+            if num_blocks > 0 {
+                // Successfully opened a ledger that has blocks in it.
+                log::info!(
+                    logger,
+                    "Watcher DB {:?} opened: num_blocks={}",
+                    watcher_db_path,
+                    num_blocks,
+                );
+                return Ok(watcher_db);
+            }
+        }
+    }
+
+    // WatcherDB does't exist, or is empty. Create a new WatcherDB, and open it.
+    WatcherDB::create(watcher_db_path.clone())?;
+    WatcherDB::open(watcher_db_path, logger)
 }
 
 #[cfg(test)]

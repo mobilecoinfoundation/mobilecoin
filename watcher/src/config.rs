@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-//! Configuration parameters to reconstitute the ledger
+//! Configuration parameters for the watcher.
 
 use std::{path::PathBuf, str::FromStr, time::Duration};
 use structopt::StructOpt;

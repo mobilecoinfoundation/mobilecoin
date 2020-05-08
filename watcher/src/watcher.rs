@@ -2,7 +2,7 @@
 
 //! Basic Watcher Node
 
-use crate::watcher_db::WatcherDB;
+use crate::{error::WatcherError, watcher_db::WatcherDB};
 
 use mc_api::conversions::block_num_to_s3block_path;
 use mc_common::{
@@ -49,14 +49,21 @@ impl Watcher {
     }
 
     /// Sync blocks and collect signatures.
-    pub fn sync_signatures(&self, start: u64, end: Option<u64>) {
-        let mut block_index = start;
+    pub fn sync_signatures(&self, start: u64, end: Option<u64>) -> Result<(), WatcherError> {
+        let mut block_index = std::cmp::max(start, self.watcher_db.num_blocks()?);
+        log::debug!(
+            self.logger,
+            "Now syncing signatures from {} to {:?}",
+            block_index,
+            end,
+        );
         loop {
             if let Some(max_blocks) = end {
                 if block_index > max_blocks {
-                    return;
+                    return Ok(());
                 }
             }
+
             // Construct URL for the block we are trying to fetch.
             let filename = block_num_to_s3block_path(block_index)
                 .into_os_string()
@@ -65,7 +72,7 @@ impl Watcher {
             let mut archive_blocks: HashMap<String, ArchiveBlockData> = HashMap::default();
             let mut signatures: Vec<BlockSignature> = Vec::new();
             for src_url in self.transactions_fetcher.source_urls.iter() {
-                let url = src_url.join(&filename).unwrap();
+                let url = src_url.join(&filename)?;
 
                 // Try and get the block.
                 log::debug!(
@@ -94,13 +101,12 @@ impl Watcher {
                             block_index,
                             err
                         );
-                        return;
+                        return Ok(());
                     }
                 }
             }
             self.watcher_db
-                .add_block_signatures(block_index, &signatures)
-                .expect("Could not add signatures");
+                .add_block_signatures(block_index, &signatures)?;
 
             block_index += 1;
         }
@@ -204,10 +210,12 @@ impl WatcherSyncThread {
 
             // Maybe sync, maybe wait and check again.
             if is_behind {
-                watcher.sync_signatures(
-                    watcher.num_blocks(),
-                    Some(watcher.num_blocks() + MAX_BLOCKS_PER_SYNC_ITERATION as u64),
-                );
+                watcher
+                    .sync_signatures(
+                        watcher.num_blocks(),
+                        Some(watcher.num_blocks() + MAX_BLOCKS_PER_SYNC_ITERATION as u64),
+                    )
+                    .expect("Could not sync signatures");
             } else if !stop_requested.load(Ordering::SeqCst) {
                 log::trace!(logger, "Sleeping, num_blocks = {}...", watcher.num_blocks());
                 std::thread::sleep(poll_interval);
