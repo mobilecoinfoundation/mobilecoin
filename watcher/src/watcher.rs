@@ -98,18 +98,8 @@ impl Watcher {
                     }
                 }
             }
-            println!(
-                "\x1b[1;33m How many archive blocks for block ID? {}: {:?}\x1b[0m",
-                block_index,
-                archive_blocks.len()
-            );
-            println!(
-                "\x1b[1;36m How many signatures for block ID? {}: {:?}\x1b[0m",
-                block_index,
-                signatures.len()
-            );
             self.watcher_db
-                .add_signatures(block_index, &signatures)
+                .add_block_signatures(block_index, &signatures)
                 .expect("Could not add signatures");
 
             block_index += 1;

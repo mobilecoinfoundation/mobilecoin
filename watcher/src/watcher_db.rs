@@ -82,7 +82,7 @@ impl WatcherDB {
     }
 
     /// Add a signature for a block.
-    pub fn add_signatures(
+    pub fn add_block_signatures(
         &self,
         block_index: u64,
         signatures: &Vec<BlockSignature>,
@@ -172,8 +172,8 @@ mod test {
 
     fn setup_watcher_db(logger: Logger) -> WatcherDB {
         let db_tmp = TempDir::new("wallet_db").expect("Could not make tempdir for wallet db");
-        let db_path = db_tmp.path().to_str().unwrap();
-        WatcherDB::create(db_path, env, logger).unwrap()
+        WatcherDB::create(db_tmp.path().to_path_buf()).unwrap();
+        WatcherDB::open(db_tmp.path().to_path_buf(), logger).unwrap()
     }
 
     fn setup_blocks() -> Vec<(Block, BlockContents)> {
@@ -192,7 +192,7 @@ mod test {
     #[test_with_logger]
     fn test_insert_and_get(logger: Logger) {
         let mut rng: Hc128Rng = Hc128Rng::from_seed([8u8; 32]);
-        let sig_store = setup_watcher_db(logger.clone());
+        let watcher_db = setup_watcher_db(logger.clone());
 
         let blocks = setup_blocks();
 
@@ -204,13 +204,10 @@ mod test {
         let _signed_block_b1 =
             BlockSignature::from_block_and_keypair(&blocks[1].0, &signing_key_b).unwrap();
 
-        let mut db_txn = sig_store.env.begin_rw_txn().unwrap();
-        sig_store
-            .add_signatures(&mut db_txn, 1, &vec![signed_block_a1])
+        watcher_db
+            .add_block_signatures(1, &vec![signed_block_a1])
             .unwrap();
-        db_txn.commit().unwrap();
 
-        let db_ro_txn = sig_store.env.begin_ro_txn().unwrap();
-        assert_eq!(sig_store.get_signatures(&db_ro_txn, 1).unwrap().len(), 1);
+        assert_eq!(watcher_db.get_block_signatures(1).unwrap().len(), 1);
     }
 }

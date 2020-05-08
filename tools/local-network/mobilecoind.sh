@@ -37,6 +37,7 @@ rm -rf $WORK_DIR/mobilecoind-ledger-db $WORK_DIR/mobilecoind-tx-db
 
 cargo run -p mc-mobilecoind $CARGO_FLAGS -- \
     --ledger-db $WORK_DIR/mobilecoind-ledger-db \
+    --watcher-db $WORK_DIR/watcher-db \
     --poll-interval 1 \
     --peer insecure-mc://$NODES_HOST:3223/ \
     --peer insecure-mc://$NODES_HOST:3233/ \
