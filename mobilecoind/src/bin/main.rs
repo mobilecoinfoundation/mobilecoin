@@ -11,6 +11,7 @@ use mc_mobilecoind::{
     config::Config, database::Database, payments::TransactionsManager, service::Service,
 };
 use mc_watcher::{watcher::WatcherSyncThread, watcher_db::WatcherDB};
+
 use std::{
     convert::TryFrom,
     path::Path,
@@ -58,13 +59,11 @@ fn main() {
     // Optionally Instantiate the watcher sync thread and get the watcher_db handle
     let watcher_db = match config.watcher_db {
         Some(watcher_db_path) => {
-            println!("\x1b[1;31m CREATING WATCHER DB\x1b[0m");
-            let watcher_db = WatcherDB::create(watcher_db_path, logger.clone()).unwrap();
-            println!("\x1b[1;36m CREATING TRANSACTIONS FETCHER \x1b[0m");
+            WatcherDB::create(watcher_db_path.clone()).unwrap();
+            let watcher_db = WatcherDB::open(watcher_db_path, logger.clone()).unwrap();
             let watcher_transactions_fetcher =
                 ReqwestTransactionsFetcher::new(config.tx_source_urls.clone(), logger.clone())
                     .expect("Failed creating ReqwestTransactionsFetcher");
-            println!("\x1b[1;34m CREATING SYNC THREAD \x1b[0m");
             let _watcher_sync_thread = WatcherSyncThread::new(
                 watcher_db.clone(),
                 watcher_transactions_fetcher,
@@ -72,7 +71,6 @@ fn main() {
                 config.poll_interval,
                 logger.clone(),
             );
-            println!("\x1b[1;32m WE DID IT \x1b[0m");
             Some(watcher_db)
         }
         None => None,
@@ -95,7 +93,6 @@ fn main() {
                 logger.clone(),
             );
 
-            println!("\x1b[1;35m NOW RUNNING MOBILECOIND SERVICE \x1b[0m");
             let _api_server = Service::new(
                 ledger_db,
                 mobilecoind_db,

@@ -10,4 +10,3 @@ pub mod watcher;
 pub mod watcher_db;
 
 mod error;
-mod signature_store;
