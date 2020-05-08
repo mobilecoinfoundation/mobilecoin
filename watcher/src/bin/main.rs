@@ -10,7 +10,7 @@ use mc_common::{
     logger::{create_app_logger, log, o},
     HashMap,
 };
-use mc_ledger_db::{Ledger, LedgerDB};
+//use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::{ArchiveBlockData, ReqwestTransactionsFetcher};
 use structopt::StructOpt;
 
@@ -30,8 +30,8 @@ fn main() {
         config.ledger_db.clone()
     );
     // Open LedgerDB
-    LedgerDB::create(config.ledger_db.clone()).expect("Could not create LedgerDB");
-    let mut local_ledger = LedgerDB::open(config.ledger_db).expect("Failed opening LedgerDB");
+    //LedgerDB::create(config.ledger_db.clone()).expect("Could not create LedgerDB");
+    //let mut local_ledger = LedgerDB::open(config.ledger_db).expect("Failed opening LedgerDB");
 
     // Open WatcherDB
     WatcherDB::create(config.watcher_db.clone(), logger.clone())
@@ -39,6 +39,7 @@ fn main() {
     let watcher_db =
         WatcherDB::open(config.watcher_db, logger.clone()).expect("Failed opening WatcherDB");
 
+    /*
     // Sync Origin Block - FIXME: MC-1420 include origin signature
     log::debug!(logger, "Getting origin block");
     let (origin_block, origin_txs) = transactions_fetcher
@@ -47,6 +48,7 @@ fn main() {
     local_ledger
         .append_block(&origin_block, &origin_txs, None)
         .expect("Could not append origin block to ledger");
+    */
 
     // Sync all blocks and collect signatures
     let mut block_index = 1;
@@ -69,7 +71,13 @@ fn main() {
             );
             match transactions_fetcher.block_from_url(&url) {
                 Ok(archive_block) => {
-                    archive_blocks.insert(src_url.to_string(), archive_block);
+                    archive_blocks.insert(src_url.to_string(), archive_block.clone());
+                    log::debug!(
+                        logger,
+                        "Got archve block {:?} for block index ({:?})",
+                        archive_block,
+                        block_index,
+                    );
                 }
                 Err(err) => {
                     log::debug!(
