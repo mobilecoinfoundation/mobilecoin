@@ -819,7 +819,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                 .push(mc_consensus_api::external::TxOut::from(&output));
         }
 
-        if let Some(watcher_db) = self.watcher_db.clone() {
+        if let Some(watcher_db) = self.watcher_db.as_ref() {
             let signatures = watcher_db
                 .get_block_signatures(request.block)
                 .map_err(|err| {

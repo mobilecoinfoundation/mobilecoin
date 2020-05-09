@@ -10,8 +10,7 @@ use mc_common::{
     HashMap,
 };
 use mc_ledger_db::Ledger;
-use mc_ledger_sync::{ArchiveBlockData, ReqwestTransactionsFetcher};
-use mc_transaction_core::BlockSignature;
+use mc_ledger_sync::ReqwestTransactionsFetcher;
 
 use std::{
     sync::{
@@ -21,6 +20,7 @@ use std::{
     thread,
     time::Duration,
 };
+use url::Url;
 
 /// Watches multiple consensus validators and collects block signatures.
 pub struct Watcher {
@@ -44,71 +44,84 @@ impl Watcher {
     }
 
     /// The number of blocks in the watcher db.
-    pub fn num_blocks(&self) -> u64 {
-        self.watcher_db.num_blocks().unwrap()
+    pub fn min_synced(&self) -> Result<u64, WatcherError> {
+        let last_synced = self.watcher_db.last_synced_blocks()?;
+        Ok(last_synced.values().min().map_or(0, |x| *x))
+    }
+
+    /// Sync a signature from a url at a given block_index.
+    pub fn sync_signature(&self, src_url: &Url, block_index: u64) -> Result<(), WatcherError> {
+        let filename = block_num_to_s3block_path(block_index)
+            .into_os_string()
+            .into_string()
+            .unwrap();
+        let url = src_url.join(&filename)?;
+
+        // Try and get the block.
+        log::debug!(
+            self.logger,
+            "Attempting to fetch block {} from {}",
+            block_index,
+            url
+        );
+        match self.transactions_fetcher.block_from_url(&url) {
+            Ok(archive_block) => {
+                log::debug!(
+                    self.logger,
+                    "Got archive block {:?} for block index ({:?})",
+                    archive_block,
+                    block_index,
+                );
+                if let Some(signature) = archive_block.signature {
+                    self.watcher_db.add_block_signature(
+                        src_url,
+                        block_index,
+                        signature,
+                        filename,
+                    )?;
+                };
+            }
+            Err(err) => {
+                log::debug!(
+                    self.logger,
+                    "Could not sync block {} for url ({:?})",
+                    block_index,
+                    err
+                );
+            }
+        }
+        Ok(())
     }
 
     /// Sync blocks and collect signatures.
-    pub fn sync_signatures(&self, start: u64, end: Option<u64>) -> Result<(), WatcherError> {
-        let mut block_index = std::cmp::max(start, self.watcher_db.num_blocks()?);
+    ///
+    /// * `start` - starting block to sync.
+    /// * `max_blocks` - max number of blocks to sync per archive url.
+    pub fn sync_signatures(&self, start: u64, max_blocks: Option<u64>) -> Result<(), WatcherError> {
         log::debug!(
             self.logger,
             "Now syncing signatures from {} to {:?}",
-            block_index,
-            end,
+            start,
+            max_blocks,
         );
+        let synced_count: HashMap<String, usize> = HashMap::default();
         loop {
-            if let Some(max_blocks) = end {
-                if block_index > max_blocks {
-                    return Ok(());
-                }
-            }
-
             // Construct URL for the block we are trying to fetch.
-            let filename = block_num_to_s3block_path(block_index)
-                .into_os_string()
-                .into_string()
-                .unwrap();
-            let mut archive_blocks: HashMap<String, ArchiveBlockData> = HashMap::default();
-            let mut signatures: Vec<BlockSignature> = Vec::new();
+            let last_synced = self.watcher_db.last_synced_blocks()?;
             for src_url in self.transactions_fetcher.source_urls.iter() {
-                let url = src_url.join(&filename)?;
-
-                // Try and get the block.
-                log::debug!(
-                    self.logger,
-                    "Attempting to fetch block {} from {}",
-                    block_index,
-                    url
-                );
-                match self.transactions_fetcher.block_from_url(&url) {
-                    Ok(archive_block) => {
-                        archive_blocks.insert(src_url.to_string(), archive_block.clone());
-                        log::debug!(
+                if let Some(max_blocks) = max_blocks {
+                    if synced_count[&src_url.as_str().to_string()] as u64 >= max_blocks {
+                        log::trace!(
                             self.logger,
-                            "Got archve block {:?} for block index ({:?})",
-                            archive_block,
-                            block_index,
+                            "{:?} has synced max_blocks {:?}",
+                            src_url,
+                            max_blocks
                         );
-                        if let Some(signature) = archive_block.signature {
-                            signatures.push(signature)
-                        }
-                    }
-                    Err(err) => {
-                        log::debug!(
-                            self.logger,
-                            "Done fetching transactions for {} blocks ({:?})",
-                            block_index,
-                            err
-                        );
-                        return Ok(());
+                        continue;
                     }
                 }
+                self.sync_signature(&src_url, last_synced[&src_url.as_str().to_string()])?;
             }
-            self.watcher_db
-                .add_block_signatures(block_index, &signatures)?;
-
-            block_index += 1;
         }
     }
 }
@@ -193,8 +206,10 @@ impl WatcherSyncThread {
                 break;
             }
 
+            let min_synced = watcher.min_synced().unwrap();
+            let ledger_num_blocks = ledger.num_blocks().unwrap();
             // See if we're currently behind. If we're not, poll to be sure.
-            let is_behind = { watcher.num_blocks() < ledger.num_blocks().unwrap() };
+            let is_behind = { min_synced < ledger_num_blocks };
 
             // Store current state and log.
             currently_behind.store(is_behind, Ordering::SeqCst);
@@ -203,8 +218,8 @@ impl WatcherSyncThread {
                     logger,
                     "watcher sync is_behind: {:?} num blocks watcher: {:?} vs ledger: {:?}",
                     is_behind,
-                    watcher.num_blocks(),
-                    ledger.num_blocks().unwrap(),
+                    min_synced,
+                    ledger_num_blocks,
                 );
             }
 
@@ -212,12 +227,16 @@ impl WatcherSyncThread {
             if is_behind {
                 watcher
                     .sync_signatures(
-                        watcher.num_blocks(),
-                        Some(watcher.num_blocks() + MAX_BLOCKS_PER_SYNC_ITERATION as u64),
+                        min_synced,
+                        Some(min_synced + MAX_BLOCKS_PER_SYNC_ITERATION as u64),
                     )
                     .expect("Could not sync signatures");
             } else if !stop_requested.load(Ordering::SeqCst) {
-                log::trace!(logger, "Sleeping, num_blocks = {}...", watcher.num_blocks());
+                log::trace!(
+                    logger,
+                    "Sleeping, watcher blocks synced = {}...",
+                    min_synced
+                );
                 std::thread::sleep(poll_interval);
             }
         }

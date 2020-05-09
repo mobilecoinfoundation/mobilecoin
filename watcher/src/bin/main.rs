@@ -19,8 +19,12 @@ fn main() {
         ReqwestTransactionsFetcher::new(config.tx_source_urls.clone(), logger.clone())
             .expect("Failed creating ReqwestTransactionsFetcher");
 
-    let watcher_db = create_or_open_watcher_db(config.watcher_db, logger.clone())
-        .expect("Could not create or open watcher db");
+    let watcher_db = create_or_open_watcher_db(
+        config.watcher_db,
+        &transactions_fetcher.source_urls,
+        logger.clone(),
+    )
+    .expect("Could not create or open watcher db");
     let watcher = Watcher::new(watcher_db, transactions_fetcher, logger);
     // For now, ignore origin block, as it does not have a signature.
     watcher
