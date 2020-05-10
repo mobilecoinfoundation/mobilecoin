@@ -207,6 +207,23 @@ impl WatcherDB {
         }
         Ok(results)
     }
+
+    /// In the case where a synced block did not have a signature, update last synced.
+    pub fn update_last_synced(
+        &self,
+        src_url: &Url,
+        block_index: u64,
+    ) -> Result<(), WatcherDBError> {
+        let mut db_txn = self.env.begin_rw_txn()?;
+        db_txn.put(
+            self.last_synced,
+            &encode(&src_url.as_str().to_string()),
+            &encode(&block_index),
+            WriteFlags::empty(),
+        )?;
+        db_txn.commit()?;
+        Ok(())
+    }
 }
 
 /// Open an existing WatcherDB or create a new one.

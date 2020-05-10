@@ -10,6 +10,9 @@ pub enum WatcherError {
 
     #[fail(display = "WatcherDBError: {}", _0)]
     DB(WatcherDBError),
+
+    #[fail(display = "SyncFailed")]
+    SyncFailed,
 }
 
 impl From<url::ParseError> for WatcherError {
