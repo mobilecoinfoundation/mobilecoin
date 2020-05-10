@@ -67,9 +67,21 @@
 <div class="row inset">Signatures</div>
 ********************************************************************************
 <div class="row">&nbsp;</div>
+<div class="row">
+    <div class="col_40">Url</div>
+    <div class="col_15">Signer</div>
+    <div class="col_15">Signature</div>
+</div>
+<div class="row">
+    <div class="col_40">***</div>
+    <div class="col_15">******</div>
+    <div class="col_15">*********</div>
+</div>
 {%- for signature in signatures %}
     <div class="row">
-        <div class="col_65">{{ signature.signature.data.hex() }}</div>
+      <div class="col_40">{{ signature.src_url }}</div>
+      <div class="col_15">{{ signature.signature.signer.data.hex()[:7] }}</div>
+      <div class="col_15">{{ signature.signature.signature.data.hex()[:9] }}</div>
     </div>
 {%- endfor %}
 <div class="row">&nbsp;</div>
