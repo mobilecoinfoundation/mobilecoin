@@ -140,7 +140,7 @@ impl Watcher {
                         sync_failed.insert(url_key, true);
                     }
                     Err(e) => {
-                        return Err(WatcherError::from(e));
+                        return Err(e);
                     }
                 }
             }
