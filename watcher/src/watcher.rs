@@ -142,6 +142,7 @@ impl WatcherSyncThread {
         poll_interval: Duration,
         logger: Logger,
     ) -> Self {
+        log::debug!(logger, "Creating watcher sync thread.");
         let watcher = Watcher::new(watcher_db, transactions_fetcher, logger.clone());
 
         let currently_behind = Arc::new(AtomicBool::new(false));
@@ -196,15 +197,19 @@ impl WatcherSyncThread {
     ) {
         log::debug!(logger, "WatcherSyncThread has started.");
 
+        let mut loop_cntr = 0;
         loop {
+            log::debug!(logger, "Watcher loop on {:?}", loop_cntr);
             if stop_requested.load(Ordering::SeqCst) {
                 log::debug!(logger, "WatcherSyncThread stop requested.");
                 break;
             }
 
             let min_synced = watcher.min_synced().unwrap();
+            log::debug!(logger, "Minimum synced  block {:?}", min_synced);
             let ledger_num_blocks = ledger.num_blocks().unwrap();
             // See if we're currently behind. If we're not, poll to be sure.
+            log::debug!(logger, "Ledger block height {:?}", ledger_num_blocks);
             let is_behind = { min_synced < ledger_num_blocks };
 
             // Store current state and log.
@@ -235,6 +240,7 @@ impl WatcherSyncThread {
                 );
                 std::thread::sleep(poll_interval);
             }
+            loop_cntr += 1;
         }
     }
 }

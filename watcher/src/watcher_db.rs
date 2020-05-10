@@ -165,7 +165,7 @@ impl WatcherDB {
     pub fn get_block_signatures(
         &self,
         block_index: u64,
-    ) -> Result<Vec<BlockSignature>, WatcherDBError> {
+    ) -> Result<Vec<BlockSignatureData>, WatcherDBError> {
         let db_txn = self.env.begin_ro_txn()?;
 
         let mut cursor = db_txn.open_ro_cursor(self.block_signatures)?;
@@ -179,7 +179,7 @@ impl WatcherDB {
 
         match cursor.iter_dup_of(&key_bytes) {
             Ok(iter) => {
-                let mut results: Vec<BlockSignature> = Vec::new();
+                let mut results: Vec<BlockSignatureData> = Vec::new();
                 for (_key_bytes, value_bytes) in iter {
                     let signature_data: BlockSignatureData = decode(value_bytes)?;
                     log::trace!(
@@ -188,7 +188,7 @@ impl WatcherDB {
                         block_index,
                         signature_data,
                     );
-                    results.push(signature_data.block_signature);
+                    results.push(signature_data);
                 }
                 Ok(results)
             }

@@ -38,6 +38,7 @@ def index():
     num_blocks, num_transactions = client.get_ledger_info()
 
     blocks = []
+    signers = {}
     for i in range(num_blocks - 1, max(num_blocks - 100, -1), -1):
         _key_image_count, txo_count = client.get_block_info(i)
         # Will get ResourceExhausted if message larger than 4194304
@@ -45,14 +46,25 @@ def index():
             continue
         block = client.get_block(i)
         size_of_block = getsizeof(block) * .001
+        print("block.signatures = ", block.signatures)
         block_row = (i, txo_count, size_of_block, len(block.signatures),
                      bytes.hex(block.block.contents_hash.data))
         blocks.append(block_row)
 
+        # Process signature data - sort by signer
+        for signature_data in block.signatures:
+            signature = signature_data.signature
+            signer = signature_data.signer
+            # If a new signer has appeared, prepend False for all previous blocks
+            if signer not in signers:
+                signers[signer] = [False for i in range(i - 1)]
+            signers[signer].append(True)
+
     return render_template('index.html',
                            blocks=blocks,
                            num_blocks=num_blocks,
-                           num_transactions=num_transactions)
+                           num_transactions=num_transactions,
+                           signers=signers)
 
 
 @app.route('/block/<block_num>')

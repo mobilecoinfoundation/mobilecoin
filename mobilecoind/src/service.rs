@@ -825,12 +825,16 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                 .map_err(|err| {
                     rpc_internal_error("watcher_db.get_block_signatures", err, &self.logger)
                 })?;
-            for signature in signatures.iter() {
-                response
-                    .mut_signatures()
-                    .push(mc_consensus_api::blockchain::BlockSignature::from(
-                        signature,
-                    ));
+            for signature_data in signatures.iter() {
+                let mut signature_message = mc_mobilecoind_api::ArchiveBlockSignatureData::new();
+                signature_message.set_src_url(signature_data.src_url.clone());
+                signature_message.set_filename(signature_data.archive_filename.clone());
+                signature_message.set_signature(
+                    mc_consensus_api::blockchain::BlockSignature::from(
+                        &signature_data.block_signature,
+                    ),
+                );
+                response.mut_signatures().push(signature_message);
             }
         }
         Ok(response)

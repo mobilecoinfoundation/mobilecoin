@@ -445,6 +445,17 @@ message GetBlockInfoResponse {
     uint64 txo_count = 2;
 }
 
+message ArchiveBlockSignatureData {
+    // The origin of the Archive Block.
+    string src_url = 1;
+
+    // The archive filename.
+    string filename = 2;
+
+    // The block signature.
+    blockchain.BlockSignature signature = 3;
+}
+
 // Get more detailed information about a downloaded block
 message GetBlockRequest {
     uint64 block = 1;
@@ -454,7 +465,7 @@ message GetBlockResponse {
     blockchain.Block block = 1;
 
     // Signatures for this block
-    repeated blockchain.BlockSignature signatures = 2;
+    repeated ArchiveBlockSignatureData signatures = 2;
 
     // Key images in the block
     repeated external.KeyImage key_images = 3;
