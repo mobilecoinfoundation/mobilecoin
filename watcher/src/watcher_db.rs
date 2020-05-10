@@ -58,11 +58,7 @@ pub struct WatcherDB {
 
 impl WatcherDB {
     /// Open an existing WatcherDB.
-    pub fn open(
-        path: PathBuf,
-        src_urls: &Vec<Url>,
-        logger: Logger,
-    ) -> Result<Self, WatcherDBError> {
+    pub fn open(path: PathBuf, src_urls: &[Url], logger: Logger) -> Result<Self, WatcherDBError> {
         let env = Arc::new(
             Environment::new()
                 .set_max_dbs(10)
@@ -105,7 +101,7 @@ impl WatcherDB {
     }
 
     /// Create a fresh WatcherDB.
-    pub fn create(path: PathBuf, src_urls: &Vec<Url>) -> Result<(), WatcherDBError> {
+    pub fn create(path: PathBuf, src_urls: &[Url]) -> Result<(), WatcherDBError> {
         let env = Arc::new(
             Environment::new()
                 .set_max_dbs(10)
@@ -216,7 +212,7 @@ impl WatcherDB {
 /// Open an existing WatcherDB or create a new one.
 pub fn create_or_open_watcher_db(
     watcher_db_path: PathBuf,
-    src_urls: &Vec<Url>,
+    src_urls: &[Url],
     logger: Logger,
 ) -> Result<WatcherDB, WatcherDBError> {
     // Create the path if it does not exist.
