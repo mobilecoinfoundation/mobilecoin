@@ -68,9 +68,9 @@ impl Watcher {
             Ok(archive_block) => {
                 log::debug!(
                     self.logger,
-                    "Got archive block {:?} for block index ({:?})",
-                    archive_block,
-                    block_index,
+                    "Archive block retrieved for {:?} {:?}",
+                    src_url,
+                    block_index
                 );
                 if let Some(signature) = archive_block.signature {
                     self.watcher_db.add_block_signature(
@@ -96,7 +96,7 @@ impl Watcher {
     /// Sync blocks and collect signatures.
     ///
     /// * `start` - starting block to sync.
-    /// * `max_blocks` - max number of blocks to sync per archive url.
+    /// * `max_blocks` - max number of blocks to sync per archive url. If None, continue polling.
     pub fn sync_signatures(&self, start: u64, max_blocks: Option<u64>) -> Result<(), WatcherError> {
         log::debug!(
             self.logger,
@@ -104,23 +104,19 @@ impl Watcher {
             start,
             max_blocks,
         );
-        let synced_count: HashMap<String, usize> = HashMap::default();
+
         loop {
+            let mut last_synced: HashMap<String, u64> = self.watcher_db.last_synced_blocks()?;
+            if let Some(max_blocks) = max_blocks {
+                last_synced.retain(|_url, block_index| *block_index < max_blocks);
+            }
+            if last_synced.is_empty() {
+                return Ok(());
+            }
             // Construct URL for the block we are trying to fetch.
-            let last_synced = self.watcher_db.last_synced_blocks()?;
             for src_url in self.transactions_fetcher.source_urls.iter() {
-                if let Some(max_blocks) = max_blocks {
-                    if synced_count[&src_url.as_str().to_string()] as u64 >= max_blocks {
-                        log::trace!(
-                            self.logger,
-                            "{:?} has synced max_blocks {:?}",
-                            src_url,
-                            max_blocks
-                        );
-                        continue;
-                    }
-                }
-                self.sync_signature(&src_url, last_synced[&src_url.as_str().to_string()])?;
+                let next_block_index = last_synced[&src_url.as_str().to_string()] + 1;
+                self.sync_signature(&src_url, next_block_index)?;
             }
         }
     }
