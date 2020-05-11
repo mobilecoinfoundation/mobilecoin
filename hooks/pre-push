@@ -2,15 +2,19 @@
 # Use this file to prevent pushes to origin
 # Based on https://gist.githubusercontent.com/stefansundin/d465f1e331fc5c632088/raw/pre-push-2
 #
-# This is not installed by install_git_settings.sh, to turn this on, use a similar command
+# This is not installed by install_git_settings.sh.
+# To turn this on, use a similar command
 # as the one there that creates a symlink in .git/hooks
+#
+# It may require manual configuration depending on how you have configured your remotes
+# https://git-scm.com/docs/githooks#_pre_push
 
 ORIGIN="$1"
 REMOTE_URL="$2"
 
-if [[ "$REMOTE_URL" == *"origin/"* ]]; then
+if [[ "$REMOTE_URL" == *"mobilecoinofficial/"* ]]; then
   echo
-  echo "Prevented pushing to origin. Please push to your fork instead."
+  echo "Prevented pushing to mobilecoinofficial/mobilecoin. Please push to your fork instead."
   echo "If you really want to do this, use --no-verify to bypass this pre-push hook."
   echo
   exit 1
