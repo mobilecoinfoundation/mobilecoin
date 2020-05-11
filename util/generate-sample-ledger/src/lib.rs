@@ -29,6 +29,7 @@ pub fn bootstrap_ledger(
     outputs_per_recipient_per_block: usize,
     num_blocks: usize,
     key_images_per_block: usize,
+    seed: Option<[u8; 32]>,
 ) {
     // Create the DB
     std::fs::create_dir_all(path.clone()).expect("Could not create ledger dir");
@@ -47,7 +48,7 @@ pub fn bootstrap_ledger(
     let mut blocks_and_contents: Vec<(Block, BlockContents)> = Vec::new();
     let mut previous_block: Option<Block> = None;
 
-    let mut rng: FixedRng = SeedableRng::from_seed([33u8; 32]);
+    let mut rng: FixedRng = SeedableRng::from_seed(seed.unwrap_or([33u8; 32]));
 
     for block_index in 0..num_blocks as u64 {
         println!("Creating block {} of {}.", block_index, num_blocks);
