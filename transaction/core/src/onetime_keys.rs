@@ -8,7 +8,9 @@
 #![allow(non_snake_case)]
 
 use crate::{
-    account_keys::PublicAddress, domain_separators::HASH_TO_SCALAR_DOMAIN_TAG, view_key::ViewKey,
+    account_keys::PublicAddress,
+    domain_separators::{HASH_TO_POINT_DOMAIN_TAG, HASH_TO_SCALAR_DOMAIN_TAG},
+    view_key::ViewKey,
 };
 use blake2::{Blake2b, Digest};
 use curve25519_dalek::{
@@ -16,9 +18,18 @@ use curve25519_dalek::{
 };
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_util_from_random::FromRandom;
+use mc_util_serial::ReprBytes32;
 use rand_core::{CryptoRng, RngCore};
 
 const G: RistrettoPoint = RISTRETTO_BASEPOINT_POINT;
+
+// This needs to be the same "Hp" function used by the onetime keys.
+pub fn hash_to_point(ristretto_public: &RistrettoPublic) -> RistrettoPoint {
+    let mut hasher = Blake2b::new();
+    hasher.input(&HASH_TO_POINT_DOMAIN_TAG);
+    hasher.input(&ristretto_public.to_bytes());
+    RistrettoPoint::from_hash(hasher)
+}
 
 /// Applies a hash function and returns a Scalar.
 pub fn hash_to_scalar<B: AsRef<[u8]>>(data: B) -> Scalar {

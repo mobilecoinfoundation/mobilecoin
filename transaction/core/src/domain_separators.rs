@@ -21,8 +21,8 @@ pub const AMOUNT_BLINDING_DOMAIN_TAG: &str = "mc_amount_blinding";
 /// Domain separator for Bulletproof transcript.
 pub const BULLETPROOF_DOMAIN_TAG: &str = "mc_bulletproof_transcript";
 
-// /// Domain separator for onetime key "hash_to_point" function.
-// pub const HASH_TO_POINT_DOMAIN_TAG: &str = "mc_onetime_key_hash_to_point";
+/// Domain separator for onetime key "hash_to_point" function.
+pub const HASH_TO_POINT_DOMAIN_TAG: &str = "mc_onetime_key_hash_to_point";
 
 /// Domain separator for onetime key "hash_to_scalar" function.
 pub const HASH_TO_SCALAR_DOMAIN_TAG: &str = "mc_onetime_key_hash_to_scalar";

@@ -1,10 +1,9 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use super::Error;
-use crate::ring_signature::Scalar;
-use blake2::Blake2b;
+use crate::{onetime_keys::hash_to_point, ring_signature::Scalar};
 use core::{convert::TryFrom, fmt};
-use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
+use curve25519_dalek::ristretto::CompressedRistretto;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_util_serial::{
@@ -39,7 +38,7 @@ impl fmt::Debug for KeyImage {
 impl From<&RistrettoPrivate> for KeyImage {
     fn from(x: &RistrettoPrivate) -> Self {
         let P = RistrettoPublic::from(x);
-        let Hp = RistrettoPoint::hash_from_bytes::<Blake2b>(&P.to_bytes());
+        let Hp = hash_to_point(&P);
         let point = x.as_ref() * Hp;
         KeyImage {
             point: point.compress(),
