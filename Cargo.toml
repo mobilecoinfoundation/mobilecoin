@@ -97,3 +97,5 @@ rpath = true
 [patch.crates-io]
 prost = { git = "https://github.com/mobilecoinofficial/prost", rev = "4e1905329369ca7a1cac3eda978ee9379167ee95" }
 prost-derive = { git = "https://github.com/mobilecoinofficial/prost", rev = "4e1905329369ca7a1cac3eda978ee9379167ee95" }
+dialoguer = { git = "https://github.com/mitsuhiko/dialoguer", rev = "a0c6c1e" }
+console = { git = "https://github.com/mitsuhiko/console", rev = "1307823" }
