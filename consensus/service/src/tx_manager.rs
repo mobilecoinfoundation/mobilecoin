@@ -282,7 +282,7 @@ impl<E: ConsensusEnclaveProxy, L: Ledger, UI: UntrustedInterfaces> TxManager<E, 
             if let Some(entry) = cache.get(&tx_hash) {
                 tx_contexts.push(entry.context());
             } else {
-                log::info!(self.logger, "ignoring non-existent tx hash {:?}", tx_hash);
+                log::error!(self.logger, "Ignoring non-existent TxHash {:?}", tx_hash);
             }
         }
 
