@@ -7,7 +7,9 @@
 
 #![allow(non_snake_case)]
 
-use crate::{account_keys::PublicAddress, view_key::ViewKey};
+use crate::{
+    account_keys::PublicAddress, domain_separators::HASH_TO_SCALAR_DOMAIN_TAG, view_key::ViewKey,
+};
 use blake2::{Blake2b, Digest};
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_POINT, ristretto::RistrettoPoint, scalar::Scalar,
@@ -17,6 +19,14 @@ use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
 
 const G: RistrettoPoint = RISTRETTO_BASEPOINT_POINT;
+
+/// Applies a hash function and returns a Scalar.
+pub fn hash_to_scalar<B: AsRef<[u8]>>(data: B) -> Scalar {
+    let mut digest = Blake2b::new();
+    digest.input(&HASH_TO_SCALAR_DOMAIN_TAG);
+    digest.input(data);
+    Scalar::from_hash::<Blake2b>(digest)
+}
 
 /// Generate a tx pubkey for a subaddress transaction
 pub fn compute_tx_pubkey(
@@ -44,10 +54,7 @@ pub fn create_onetime_public_key(
         let s = tx_private_key.as_ref();
         let C = recipient.view_public_key().as_ref();
         let sC = s * C;
-
-        let mut digest = Blake2b::new();
-        digest.input(sC.compress().as_bytes());
-        Scalar::from_hash::<Blake2b>(digest)
+        hash_to_scalar(sC.compress().as_bytes())
     };
 
     let D = recipient.spend_public_key().as_ref();
@@ -72,9 +79,7 @@ pub fn subaddress_for_key(
         let a = view_private_key.as_ref();
         let R = tx_public_key.as_ref();
         let aR = a * R;
-        let mut digest = Blake2b::new();
-        digest.input(aR.compress().as_bytes());
-        Scalar::from_hash::<Blake2b>(digest)
+        hash_to_scalar(aR.compress().as_bytes())
     };
 
     let P = output_public_key.as_ref();
@@ -120,9 +125,7 @@ pub fn recover_onetime_private_key(
         let a = view_private_key.as_ref();
         let R = tx_public_key.as_ref();
         let aR = a * R;
-        let mut digest = Blake2b::new();
-        digest.input(aR.compress().as_bytes());
-        Scalar::from_hash::<Blake2b>(digest)
+        hash_to_scalar(aR.compress().as_bytes())
     };
 
     let d = subaddress_spend_private_key.as_ref();
