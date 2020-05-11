@@ -3,6 +3,9 @@
 #![feature(external_doc)]
 #![doc(include = "../../README.md")]
 
+//! This is a test utility for the watcher, to sync block signatures and stop once all
+//! blocks are synced.
+
 use mc_watcher::{config::WatcherConfig, watcher::Watcher, watcher_db::create_or_open_watcher_db};
 
 use mc_common::logger::{create_app_logger, o};
@@ -28,6 +31,6 @@ fn main() {
     let watcher = Watcher::new(watcher_db, transactions_fetcher, logger);
     // For now, ignore origin block, as it does not have a signature.
     watcher
-        .sync_signatures(1, config.max_blocks)
+        .sync_signatures(1, config.max_block_height)
         .expect("Could not sync signatures");
 }

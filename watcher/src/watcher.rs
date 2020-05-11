@@ -99,34 +99,37 @@ impl Watcher {
     /// Sync blocks and collect signatures.
     ///
     /// * `start` - starting block to sync.
-    /// * `max_blocks` - max number of blocks to sync per archive url. If None, continue polling.
-    pub fn sync_signatures(&self, start: u64, max_blocks: Option<u64>) -> Result<(), WatcherError> {
+    /// * `max_block_height` - the max block height to sync per archive url. If None, continue polling.
+    pub fn sync_signatures(
+        &self,
+        start: u64,
+        max_block_height: Option<u64>,
+    ) -> Result<(), WatcherError> {
         log::debug!(
             self.logger,
             "Now syncing signatures from {} to {:?}",
             start,
-            max_blocks,
+            max_block_height,
         );
 
-        // Track whether sync failed - this catches cases where S3 is behind local ledger,
-        // which could happen if your local ledger was synced previously from different nodes
-        // than you are now watching. We track the sync failures so we can return control to the
-        // polling thread rather than continuously loop in this method.
-        let mut sync_failed: HashMap<String, bool> = self
-            .transactions_fetcher
-            .source_urls
-            .iter()
-            .map(|url| (url.as_str().to_string(), false))
-            .collect();
-
         loop {
+            // Get the last synced block for each URL we are tracking.
             let mut last_synced: HashMap<String, u64> = self.watcher_db.last_synced_blocks()?;
-            log::debug!(self.logger, "Last synced: {:?}", last_synced);
-            log::debug!(self.logger, "max blocks: {:?}", max_blocks);
-            if let Some(max_blocks) = max_blocks {
-                last_synced.retain(|_url, block_index| *block_index < max_blocks);
+
+            // Track whether sync failed - this catches cases where S3 is behind local ledger,
+            // which could happen if your local ledger was synced previously from different nodes
+            // than you are now watching. We track the sync failures so we can return control to the
+            // polling thread rather than continuously loop in this method.
+            let mut sync_failed: HashMap<String, bool> = self
+                .transactions_fetcher
+                .source_urls
+                .iter()
+                .map(|url| (url.as_str().to_string(), false))
+                .collect();
+
+            if let Some(max_block_height) = max_block_height {
+                last_synced.retain(|_url, block_index| *block_index < max_block_height);
             }
-            log::debug!(self.logger, "After filter: last synced: {:?}", last_synced);
             if last_synced.is_empty() {
                 return Ok(());
             }

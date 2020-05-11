@@ -1,8 +1,8 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-//! Configuration parameters for the watcher.
+//! Configuration parameters for the watcher test utility.
 
-use std::{path::PathBuf, str::FromStr, time::Duration};
+use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -24,13 +24,5 @@ pub struct WatcherConfig {
 
     /// (Optional) Number of blocks to sync
     #[structopt(long)]
-    pub max_blocks: Option<u64>,
-
-    /// Poll Interval
-    #[structopt(long, default_value = "5", parse(try_from_str=parse_duration_in_seconds))]
-    pub poll_interval: Duration,
-}
-
-fn parse_duration_in_seconds(src: &str) -> Result<Duration, std::num::ParseIntError> {
-    Ok(Duration::from_secs(u64::from_str(src)?))
+    pub max_block_height: Option<u64>,
 }
