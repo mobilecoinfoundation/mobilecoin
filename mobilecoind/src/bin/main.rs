@@ -10,6 +10,8 @@ use mc_ledger_sync::{LedgerSyncServiceThread, PollingNetworkState, ReqwestTransa
 use mc_mobilecoind::{
     config::Config, database::Database, payments::TransactionsManager, service::Service,
 };
+use mc_watcher::{watcher::WatcherSyncThread, watcher_db::create_or_open_watcher_db};
+
 use std::{
     convert::TryFrom,
     path::Path,
@@ -54,6 +56,34 @@ fn main() {
         logger.clone(),
     );
 
+    // Optionally Instantiate the watcher sync thread and get the watcher_db handle
+    let (watcher_db, _watcher_sync_thread) = match config.watcher_db {
+        Some(watcher_db_path) => {
+            log::info!(logger, "Launching watcher.");
+            let watcher_transactions_fetcher =
+                ReqwestTransactionsFetcher::new(config.tx_source_urls.clone(), logger.clone())
+                    .expect("Failed creating ReqwestTransactionsFetcher");
+
+            log::info!(logger, "Opening watcher db at {:?}.", watcher_db_path);
+            let watcher_db = create_or_open_watcher_db(
+                watcher_db_path,
+                &watcher_transactions_fetcher.source_urls,
+                logger.clone(),
+            )
+            .expect("Could not create or open WatcherDB");
+            log::info!(logger, "Starting watcher sync thread from mobilecoind.");
+            let watcher_sync_thread = WatcherSyncThread::new(
+                watcher_db.clone(),
+                watcher_transactions_fetcher,
+                ledger_db.clone(),
+                config.poll_interval,
+                logger.clone(),
+            );
+            (Some(watcher_db), Some(watcher_sync_thread))
+        }
+        None => (None, None),
+    };
+
     // Potentially launch API server
     match (&config.mobilecoind_db, &config.service_port) {
         (Some(mobilecoind_db), Some(service_port)) => {
@@ -74,6 +104,7 @@ fn main() {
             let _api_server = Service::new(
                 ledger_db,
                 mobilecoind_db,
+                watcher_db,
                 transactions_manager,
                 network_state,
                 *service_port,

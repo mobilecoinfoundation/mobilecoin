@@ -70,6 +70,7 @@ members = [
     "util/serial",
     "util/test-helper",
     "util/uri",
+    "watcher",
 ]
 exclude = [
     # mc-util-serial should only be accessed via the `common` crate.

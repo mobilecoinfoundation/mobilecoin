@@ -64,17 +64,43 @@
 </div>
 <div class="row">&nbsp;</div>
 ********************************************************************************
+<div class="row inset">Signatures</div>
+********************************************************************************
+<div class="row">&nbsp;</div>
+<div class="row">
+    <div class="col_40">Url</div>
+    <div class="col_15">Signer</div>
+    <div class="col_15">Signature</div>
+</div>
+<div class="row">
+    <div class="col_40">***</div>
+    <div class="col_15">******</div>
+    <div class="col_15">*********</div>
+</div>
+{%- for signature in signatures %}
+    <div class="row">
+      <div class="col_40">{{ signature.src_url }}</div>
+      <div class="col_15">{{ signature.signature.signer.data.hex()[:7] }}</div>
+      <div class="col_15">{{ signature.signature.signature.data.hex()[:9] }}</div>
+    </div>
+{%- endfor %}
+<div class="row">&nbsp;</div>
+********************************************************************************
 <div class="row inset">Key Images</div>
 ********************************************************************************
 <div class="row">&nbsp;</div>
 <div class="row">
-    <div class="col_15">Index</div>
-    <div class="col_30">Key Image (base64)</div>
+    <div class="col_8">Index</div>
+    <div class="col_65">Key Image</div>
+</div>
+<div class="row">
+    <div class="col_8">*****</div>
+    <div class="col_65">*********</div>
 </div>
 {%- for key_image in key_images %}
     <div class="row">
-        <div class="col_15">{{ loop.index }}</div>
-        <div class="col_30">{{ key_image.data.hex() }}</div>
+        <div class="col_8">{{ loop.index }}</div>
+        <div class="col_65">{{ key_image.data.hex() }}</div>
     </div>
 {%- endfor %}
 <div class="row">&nbsp;</div>
@@ -84,7 +110,7 @@
 <div class="row">&nbsp;</div>
 <div class="row">
     <div class="col_8">Index</div>
-    <div class="col_30">Transaction Data</div>
+    <div class="col_65">Transaction Data</div>
 </div>
 <div class="row">
     <div class="col_8">*****</div>
@@ -96,18 +122,18 @@
     <div class="row">&nbsp;</div>
     <div class="row">
         <div class="col_8">{{ loop.index }}</div>
-        <div class="col_25">TXO public key (base64)</div>
-        <div class="col_40">{{ txo.public_key.data.hex() }}</div>
+        <div class="col_25">TXO Pubkey</div>
+        <div class="col_65">{{ txo.public_key.data.hex() }}</div>
     </div>
     <div class="row">
         <div class="col_8">&nbsp;</div>
-        <div class="col_25">Target Address (base64)</div>
-        <div class="col_40">{{ txo.target_key.data.hex() }}</div>
+        <div class="col_25">Target Addr</div>
+        <div class="col_65">{{ txo.target_key.data.hex() }}</div>
     </div>
     <div class="row">
         <div class="col_8">&nbsp;</div>
-        <div class="col_25">Amount (base64)</div>
-        <div class="col_50">{{ txo.amount.commitment.data.hex() }}</div>
+        <div class="col_25">Amount</div>
+        <div class="col_65">{{ txo.amount.commitment.data.hex() }}</div>
     </div>
 {%- endfor %}
 <div class="row">&nbsp;</div>
