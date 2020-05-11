@@ -23,7 +23,7 @@ use rand_core::{CryptoRng, RngCore};
 
 const G: RistrettoPoint = RISTRETTO_BASEPOINT_POINT;
 
-// This needs to be the same "Hp" function used by the onetime keys.
+/// Applies a hash function and returns a RistrettoPoint.
 pub fn hash_to_point(ristretto_public: &RistrettoPublic) -> RistrettoPoint {
     let mut hasher = Blake2b::new();
     hasher.input(&HASH_TO_POINT_DOMAIN_TAG);
@@ -33,10 +33,10 @@ pub fn hash_to_point(ristretto_public: &RistrettoPublic) -> RistrettoPoint {
 
 /// Applies a hash function and returns a Scalar.
 pub fn hash_to_scalar<B: AsRef<[u8]>>(data: B) -> Scalar {
-    let mut digest = Blake2b::new();
-    digest.input(&HASH_TO_SCALAR_DOMAIN_TAG);
-    digest.input(data);
-    Scalar::from_hash::<Blake2b>(digest)
+    let mut hasher = Blake2b::new();
+    hasher.input(&HASH_TO_SCALAR_DOMAIN_TAG);
+    hasher.input(data);
+    Scalar::from_hash::<Blake2b>(hasher)
 }
 
 /// Generate a tx pubkey for a subaddress transaction
