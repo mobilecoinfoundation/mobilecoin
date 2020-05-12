@@ -313,7 +313,8 @@ fn decompress_ring(
     // Ring must decompress.
     let mut decompressed_ring: Vec<(RistrettoPublic, Commitment)> = Vec::new();
     for (compressed_address, compressed_commitment) in ring {
-        let ristretto_public = RistrettoPublic::try_from(compressed_address)?;
+        let ristretto_public =
+            RistrettoPublic::try_from(compressed_address).map_err(|_e| Error::InvalidCurvePoint)?;
         let commitment = Commitment::try_from(compressed_commitment)?;
         decompressed_ring.push((ristretto_public, commitment));
     }
