@@ -15,7 +15,7 @@ use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use mc_common::HashSet;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
-use mc_util_serial::{prost::Message, serialize};
+use mc_util_serial::prost::Message;
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
@@ -178,7 +178,7 @@ impl SignatureRctBulletproofs {
             message,
             &self.pseudo_output_commitments,
             &self.range_proof_bytes,
-        )?;
+        );
 
         // Each MLSAG must be valid.
         for (i, ring) in rings.iter().enumerate() {
@@ -313,9 +313,9 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
         .collect();
 
     // Extend the message with the range proof and pseudo_output_commitments.
-    // This ensures that they are signed.
+    // This ensures that they are signed by each RingMLSAG.
     let range_proof_bytes = range_proof.to_bytes();
-    let extended_message = extend_message(message, &pseudo_output_commitments, &range_proof_bytes)?;
+    let extended_message = extend_message(message, &pseudo_output_commitments, &range_proof_bytes);
 
     // Prove that the signer is allowed to spend a public key in each ring, and that
     // the input's value equals the value of the pseudo_output.
@@ -348,14 +348,16 @@ fn extend_message(
     message: &[u8],
     pseudo_output_commitments: &[CompressedCommitment],
     range_proof_bytes: &[u8],
-) -> Result<Vec<u8>, Error> {
-    let pseudo_output_bytes = serialize(&pseudo_output_commitments)?;
-    let mut extended_message: Vec<u8> =
-        Vec::with_capacity(message.len() + pseudo_output_bytes.len() + range_proof_bytes.len());
+) -> Vec<u8> {
+    let mut extended_message: Vec<u8> = Vec::with_capacity(
+        message.len() + pseudo_output_commitments.len() * 32 + range_proof_bytes.len(),
+    );
     extended_message.extend_from_slice(&message[..]);
-    extended_message.extend_from_slice(&pseudo_output_bytes);
+    for commitment in pseudo_output_commitments {
+        extended_message.extend_from_slice(commitment.as_ref());
+    }
     extended_message.extend_from_slice(&range_proof_bytes);
-    Ok(extended_message)
+    extended_message
 }
 
 #[cfg(test)]
