@@ -17,6 +17,8 @@ grpcio = "0.5.1"
 protobuf = "2.12"
 
 [dev-dependencies]
+mc-common = { path = "../../common", features = ["loggers"] }
+
 rand = "0.7"
 hex_fmt = "0.3"
 

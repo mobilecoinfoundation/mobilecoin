@@ -50,6 +50,7 @@ structopt = "0.3"
 tempdir = "0.3"
 
 [dev-dependencies]
+mc-common = { path = "../common", features = ["loggers"] }
 mc-connection-test-utils = { path = "../connection/test-utils" }
 mc-transaction-core-test-utils = { path = "../transaction/core/test-utils" }
 mc-util-from-random = { path = "../util/from-random" }
