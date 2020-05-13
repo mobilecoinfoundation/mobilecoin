@@ -15,7 +15,7 @@ source "$HOME/.cargo/env"
 pushd "$(dirname "$0")"
 
 echo "Pulling down TestNet consensus validator signature material"
-curl -O https://enclave-distribution.test.mobilecoin.com/pool/bceca6256b2ad9a6ccc1b88c109687365677f0c9/bf7fa957a6a94acb588851bc8767eca5776c79f4fc2aa6bcb99312c3c386c/consensus-enclave.css
+curl -O https://enclave-distribution.test.mobilecoin.com/pool/81708af1c53bc1c3a44eac9060f664277d5c8e6a/bf7fa957a6a94acb588851bc8767eca5776c79f4fc2aa6bcb99312c3c386c/consensus-enclave.css
 
 TARGETDIR=./target/release
 
