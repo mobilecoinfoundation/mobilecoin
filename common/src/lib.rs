@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-#![cfg_attr(not(feature = "log"), no_std)]
+#![cfg_attr(not(any(test, feature = "log")), no_std)]
 #![feature(optin_builtin_traits)]
 #![warn(unused_extern_crates)]
 
