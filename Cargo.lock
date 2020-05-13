@@ -3060,7 +3060,6 @@ version = "0.2.0"
 dependencies = [
  "curve25519-dalek",
  "hex 0.3.2",
- "mc-common",
  "mc-crypto-keys",
  "mc-ledger-db",
  "mc-transaction-core",
