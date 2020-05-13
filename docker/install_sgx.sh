@@ -53,7 +53,7 @@ https://download.01.org/intel-sgx/sgx-linux/2.9.1/distro/ubuntu18.04-server/debi
 https://download.01.org/intel-sgx/sgx-linux/2.9.1/distro/ubuntu18.04-server/debian_pkgs/utils/libsgx-aesm-pce-plugin/libsgx-aesm-pce-plugin_2.9.101.2-bionic1_amd64.deb
 https://download.01.org/intel-sgx/sgx-linux/2.9.1/distro/ubuntu18.04-server/debian_pkgs/libs/libsgx-enclave-common/libsgx-enclave-common_2.9.101.2-bionic1_amd64.deb
 https://download.01.org/intel-sgx/sgx-linux/2.9.1/distro/ubuntu18.04-server/debian_pkgs/libs/libsgx-epid/libsgx-epid_2.9.101.2-bionic1_amd64.deb
-https://download.01.org/intel-sgx/sgx-linux/2.9.1/distro/ubuntu18.04-server/debian_pkgs/libs/libsgx-pce-logic/libsgx-pce-logic_2.9.101.2-bionic1_amd64.deb
+https://download.01.org/intel-sgx/sgx-linux/2.9.1/distro/ubuntu18.04-server/debian_pkgs/libs/libsgx-pce-logic/libsgx-pce-logic_1.6.100.2-bionic1_amd64.deb
 https://download.01.org/intel-sgx/sgx-linux/2.9.1/distro/ubuntu18.04-server/debian_pkgs/libs/libsgx-urts/libsgx-urts_2.9.101.2-bionic1_amd64.deb
 https://download.01.org/intel-sgx/sgx-linux/2.9.1/distro/ubuntu18.04-server/debian_pkgs/utils/sgx-aesm-service/sgx-aesm-service_2.9.101.2-bionic1_amd64.deb
 EOF
