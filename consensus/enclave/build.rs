@@ -49,15 +49,11 @@ fn main() {
     if sgx.sgx_mode() == SgxMode::Simulation {
         rustc_link_lib! {
             "sgx_epid_sim",
-            "sgx_quote_ex_sim",
-            "sgx_uae_service_sim",
             "sgx_urts_sim",
         };
     } else {
         rustc_link_lib! {
             "sgx_epid",
-            "sgx_quote_ex",
-            "sgx_uae_service",
             "sgx_urts",
         };
     }
