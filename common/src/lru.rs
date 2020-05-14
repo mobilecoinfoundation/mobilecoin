@@ -108,7 +108,7 @@ where
     D: NotKeyRef + ?Sized,
 {
     fn borrow(&self) -> &D {
-        unsafe { (&*self.k) }.borrow()
+        unsafe { &*self.k }.borrow()
     }
 }
 

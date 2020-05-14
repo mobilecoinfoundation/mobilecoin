@@ -44,7 +44,7 @@ use sha2::Sha256;
 // The lengths of the two EPID Pseudonym chunks
 const EPID_PSEUDONYM_B_LEN: usize = 64;
 const EPID_PSEUDONYM_K_LEN: usize = 64;
-const EPID_PSEUDONYM_LEN: usize = (EPID_PSEUDONYM_B_LEN + EPID_PSEUDONYM_K_LEN);
+const EPID_PSEUDONYM_LEN: usize = EPID_PSEUDONYM_B_LEN + EPID_PSEUDONYM_K_LEN;
 
 /// A linkable EPID signature, used to link a quote to a given piece of
 /// hardware.
