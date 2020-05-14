@@ -59,12 +59,4 @@ overflow-checks = false
 prost = { git = "https://github.com/cbeck88/prost", rev = "4e1905329369ca7a1cac3eda978ee9379167ee95" }
 prost-derive = { git = "https://github.com/cbeck88/prost", rev = "4e1905329369ca7a1cac3eda978ee9379167ee95" }
 
-# Overridden to support cross-compiling iOS.
-# * Fixes an issue with cmake-rs not setting compiler flags for asm files
-#     Upstream: https://github.com/alexcrichton/cmake-rs/pull/86
-# * Fixes an issue with cmake-rs not configuring cmake properly for ios cross-compilation when using cmake 3.14
-#     Upstream: https://github.com/alexcrichton/cmake-rs/issues/87
-# See sdk_json_interface/Cargo.toml to update version
-cmake = { git = "https://github.com/mobilecoinofficial/cmake-rs", tag = "0.1.42.rev7" }
-
 [workspace]
