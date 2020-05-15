@@ -317,8 +317,9 @@ public class App {
      * @return A string representing the current status of the transaction, one of 'Unknown', 'Verified' or 'TombstoneBlockExceeded'
      */
     static String transferStatus(MobilecoindAPIBlockingStub stub, ByteString keyImageBytes, long tombstoneBlock) {
-        var keyImage = KeyImage.newBuilder().setData(keyImageBytes).build();
+        var keyImage = com.mobilecoin.api.MobileCoinAPI.KeyImage.newBuilder().setData(keyImageBytes).build();
         var receipt = MobileCoinDAPI.SenderTxReceipt.newBuilder().addKeyImageList(keyImage).setTombstone(tombstoneBlock).build();
+        //var receipt = MobileCoinDAPI.SenderTxReceipt.newBuilder().setTombstone(tombstoneBlock).build();
         var request = MobileCoinDAPI.GetTxStatusAsSenderRequest.newBuilder().setReceipt(receipt).build();
 
         var status = stub.getTxStatusAsSender(request).getStatus();
