@@ -78,7 +78,7 @@ lazy_static! {
     };
 
     // Intel SDK include dir
-    pub static ref SDK_INCLUDE_DIR: PathBuf = { SDK_DIR.join("include") };
+    pub static ref SDK_INCLUDE_DIR: PathBuf = SDK_DIR.join("include");
 
     // Cargo variables
     pub static ref OUT_DIR: PathBuf = {
