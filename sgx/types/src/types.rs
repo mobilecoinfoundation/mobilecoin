@@ -44,12 +44,12 @@ pub const SGX_FLAGS_MODE64BIT: ::uint64_t       = 0x0000_0000_0000_0004;    //If
 pub const SGX_FLAGS_PROVISION_KEY: ::uint64_t   = 0x0000_0000_0000_0010;    //If set, then the enclave has access to provision key
 pub const SGX_FLAGS_EINITTOKEN_KEY: ::uint64_t  = 0x0000_0000_0000_0020;    //If set, then the enclave has access to EINITTOKEN key
 pub const SGX_FLAGS_KSS: ::uint64_t             = 0x0000_0000_0000_0080;    //If set enclave uses KSS
-pub const SGX_FLAGS_RESERVED: ::uint64_t        = (!(SGX_FLAGS_INITTED
+pub const SGX_FLAGS_RESERVED: ::uint64_t        = !(SGX_FLAGS_INITTED
                                                 | SGX_FLAGS_DEBUG
                                                 | SGX_FLAGS_MODE64BIT
                                                 | SGX_FLAGS_PROVISION_KEY
                                                 | SGX_FLAGS_EINITTOKEN_KEY
-                                                | SGX_FLAGS_KSS));
+                                                | SGX_FLAGS_KSS);
 
 // XSAVE Feature Request Mask
 pub const SGX_XFRM_LEGACY: ::uint64_t           = 0x0000_0000_0000_0003;  //Legacy XFRM
@@ -57,7 +57,7 @@ pub const SGX_XFRM_AVX: ::uint64_t              = 0x0000_0000_0000_0006;  // AVX
 pub const SGX_XFRM_AVX512: ::uint64_t           = 0x0000_0000_0000_00E6;  // AVX-512 - not supported
 pub const SGX_XFRM_MPX: ::uint64_t              = 0x0000_0000_0000_0018;  // MPX - not supported
 
-pub const SGX_XFRM_RESERVED: ::uint64_t         = (!(SGX_XFRM_LEGACY | SGX_XFRM_AVX));
+pub const SGX_XFRM_RESERVED: ::uint64_t         = !(SGX_XFRM_LEGACY | SGX_XFRM_AVX);
 
 impl_struct! {
     pub struct sgx_attributes_t {
@@ -539,7 +539,7 @@ pub const SGX_MC_POLICY_ENCLAVE: ::uint16_t  = 0x02;
 pub const SGX_SHA1_HASH_SIZE: ::size_t         = 20;
 pub const SGX_SHA256_HASH_SIZE: ::size_t       = 32;
 pub const SGX_ECP256_KEY_SIZE: ::size_t        = 32;
-pub const SGX_NISTP_ECP256_KEY_SIZE: ::size_t  = (SGX_ECP256_KEY_SIZE / 4);
+pub const SGX_NISTP_ECP256_KEY_SIZE: ::size_t  = SGX_ECP256_KEY_SIZE / 4;
 pub const SGX_AESGCM_IV_SIZE: ::size_t         = 12;
 pub const SGX_AESGCM_KEY_SIZE: ::size_t        = 16;
 pub const SGX_AESGCM_MAC_SIZE: ::size_t        = 16;
@@ -698,14 +698,14 @@ pub const DMQ1_SIZE_IN_BYTES: ::size_t  = 192;
 pub const IQMP_SIZE_IN_BYTES: ::size_t  = 192;
 
 /* intel sgx sdk 2.1.3 */
-pub const N_SIZE_IN_UINT: ::size_t      = (N_SIZE_IN_BYTES / 4);
-pub const E_SIZE_IN_UINT: ::size_t      = (E_SIZE_IN_BYTES / 4);
-pub const D_SIZE_IN_UINT: ::size_t      = (D_SIZE_IN_BYTES / 4);
-pub const P_SIZE_IN_UINT: ::size_t      = (P_SIZE_IN_BYTES / 4);
-pub const Q_SIZE_IN_UINT: ::size_t      = (Q_SIZE_IN_BYTES / 4);
-pub const DMP1_SIZE_IN_UINT: ::size_t   = (DMP1_SIZE_IN_BYTES / 4);
-pub const DMQ1_SIZE_IN_UINT: ::size_t   = (DMQ1_SIZE_IN_BYTES / 4);
-pub const IQMP_SIZE_IN_UINT: ::size_t   = (IQMP_SIZE_IN_BYTES / 4);
+pub const N_SIZE_IN_UINT: ::size_t      = N_SIZE_IN_BYTES / 4;
+pub const E_SIZE_IN_UINT: ::size_t      = E_SIZE_IN_BYTES / 4;
+pub const D_SIZE_IN_UINT: ::size_t      = D_SIZE_IN_BYTES / 4;
+pub const P_SIZE_IN_UINT: ::size_t      = P_SIZE_IN_BYTES / 4;
+pub const Q_SIZE_IN_UINT: ::size_t      = Q_SIZE_IN_BYTES / 4;
+pub const DMP1_SIZE_IN_UINT: ::size_t   = DMP1_SIZE_IN_BYTES / 4;
+pub const DMQ1_SIZE_IN_UINT: ::size_t   = DMQ1_SIZE_IN_BYTES / 4;
+pub const IQMP_SIZE_IN_UINT: ::size_t   = IQMP_SIZE_IN_BYTES / 4;
 
 pub type sgx_rsa_key_t = * mut ::c_void;
 
@@ -949,11 +949,11 @@ impl_struct! {
 
 // previously in sgx_tseal/src/internal.rs
 use {uint64_t, uint32_t};
-pub const FLAGS_NON_SECURITY_BITS: uint64_t = (0x00FF_FFFF_FFFF_FFC0 | SGX_FLAGS_MODE64BIT | SGX_FLAGS_PROVISION_KEY| SGX_FLAGS_EINITTOKEN_KEY);
-pub const TSEAL_DEFAULT_FLAGSMASK: uint64_t = (!FLAGS_NON_SECURITY_BITS);
+pub const FLAGS_NON_SECURITY_BITS: uint64_t = 0x00FF_FFFF_FFFF_FFC0 | SGX_FLAGS_MODE64BIT | SGX_FLAGS_PROVISION_KEY| SGX_FLAGS_EINITTOKEN_KEY;
+pub const TSEAL_DEFAULT_FLAGSMASK: uint64_t = !FLAGS_NON_SECURITY_BITS;
 
 pub const MISC_NON_SECURITY_BITS: uint32_t =  0x0FFF_FFFF;  /* bit[27:0]: have no security implications */
-pub const TSEAL_DEFAULT_MISCMASK: uint32_t =  (!MISC_NON_SECURITY_BITS);
+pub const TSEAL_DEFAULT_MISCMASK: uint32_t =  !MISC_NON_SECURITY_BITS;
 
 //
 // sgx_uae_service.h
@@ -1006,15 +1006,15 @@ pub type sgx_launch_token_t = [::uint8_t; 1024];
 /* intel sgx sdk 2.2 */
 pub const MAX_EX_FEATURES_COUNT: ::size_t = 32;
 pub const SGX_CREATE_ENCLAVE_EX_PCL_BIT_IDX: ::size_t = 0;
-pub const SGX_CREATE_ENCLAVE_EX_PCL: ::uint32_t = (1 << SGX_CREATE_ENCLAVE_EX_PCL_BIT_IDX as ::uint32_t);
+pub const SGX_CREATE_ENCLAVE_EX_PCL: ::uint32_t = 1 << SGX_CREATE_ENCLAVE_EX_PCL_BIT_IDX as ::uint32_t;
 pub const SGX_CREATE_ENCLAVE_EX_SWITCHLESS_BIT_IDX: ::size_t = 1;
-pub const SGX_CREATE_ENCLAVE_EX_SWITCHLESS: ::uint32_t = (1 << SGX_CREATE_ENCLAVE_EX_SWITCHLESS_BIT_IDX as ::uint32_t);
+pub const SGX_CREATE_ENCLAVE_EX_SWITCHLESS: ::uint32_t = 1 << SGX_CREATE_ENCLAVE_EX_SWITCHLESS_BIT_IDX as ::uint32_t;
 /* intel sgx sdk 2.4 */
 pub const SGX_CREATE_ENCLAVE_EX_KSS_BIT_IDX: ::size_t = 2;
-pub const SGX_CREATE_ENCLAVE_EX_KSS: ::uint32_t = (1 << SGX_CREATE_ENCLAVE_EX_KSS_BIT_IDX as ::uint32_t);
+pub const SGX_CREATE_ENCLAVE_EX_KSS: ::uint32_t = 1 << SGX_CREATE_ENCLAVE_EX_KSS_BIT_IDX as ::uint32_t;
 
 pub const _SGX_LAST_EX_FEATURE_IDX_: ::uint32_t = SGX_CREATE_ENCLAVE_EX_KSS_BIT_IDX as ::uint32_t;
-pub const _SGX_EX_FEATURES_MASK_: ::uint32_t = (0xFFFF_FFFF_u32 >> (MAX_EX_FEATURES_COUNT as ::uint32_t - 1 - _SGX_LAST_EX_FEATURE_IDX_));
+pub const _SGX_EX_FEATURES_MASK_: ::uint32_t = 0xFFFF_FFFF_u32 >> (MAX_EX_FEATURES_COUNT as ::uint32_t - 1 - _SGX_LAST_EX_FEATURE_IDX_);
 
 /* intel sgx sdk 2.4 */
 impl_copy_clone! {

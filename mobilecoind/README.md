@@ -32,7 +32,7 @@ You will also need to specify a directory for the MobileCoin Daemon database, wh
 
 #### Verifying Block Signatures
 
-When started with `--watcher-db`, mobilecoind syncs all block signatures from the consensus validator archives listed in the tx-source-urls. On sync, each block signature is verified.
+When started with `--watcher-db`, mobilecoind syncs all block signatures from the consensus validator archives listed in the tx-source-urls. On sync, each block signature is verified. See the [watcher](../watcher/README.md) crate for more information.
 
 #### Verifying Signed Enclaves
 

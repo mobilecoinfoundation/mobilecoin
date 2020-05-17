@@ -47,7 +47,7 @@ pub fn link_sgx_capable() {
 // Used in untrusted code, counterpart is tservice
 pub fn link_sgx_uae_service() {
     let _ = *MAYBE_EMIT_LIB_DIR;
-    link("dylib", "sgx_uae_service", sim_postfix());
+    link("dylib", "sgx_epid", sim_postfix());
 }
 
 // Used in trusted code.
