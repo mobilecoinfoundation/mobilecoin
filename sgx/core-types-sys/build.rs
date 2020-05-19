@@ -7,6 +7,7 @@ use bindgen::{
     Builder,
 };
 use mc_util_build_script::Environment;
+use mc_util_build_sgx::SgxEnvironment;
 
 #[derive(Debug)]
 struct Callbacks;
@@ -42,19 +43,15 @@ impl ParseCallbacks for Callbacks {
 
 fn main() {
     let env = Environment::default();
+    let mut sgx = SgxEnvironment::new(&env).expect("Could not read SGX environment");
 
-    let header = env.dir().join("include");
-    let eid_header = header
-        .join("sgx_eid.h")
-        .into_os_string()
-        .into_string()
-        .expect("Invalid UTF-8 in path to sgx.h");
-    let sgx_header = header
-        .join("sgx.h")
-        .into_os_string()
-        .into_string()
-        .expect("Invalid UTF-8 in path to sgx.h");
-    Builder::default()
+    // Intel is stingy with their pkg-config support, so we're going to use
+    // libsgx_urts to get the right types. We don't do any linkage here, so
+    // this is fine.
+    sgx.add_library("2.9.101.2", "sgx_urts")
+        .expect("Could not add SGX URTS to SGX environment");
+
+    let mut builder = Builder::default()
         .ctypes_prefix("crate::ctypes")
         .derive_copy(true)
         .derive_debug(true)
@@ -63,9 +60,51 @@ fn main() {
         .derive_hash(true)
         .derive_ord(true)
         .derive_partialeq(true)
-        .derive_partialord(true)
-        .header(eid_header)
-        .header(sgx_header)
+        .derive_partialord(true);
+
+    let mut sgx_h_found = false;
+    let mut sgx_eid_h_found = false;
+
+    for path in sgx
+        .include_paths()
+        .expect("Could not retrieve include paths for SGX libraries")
+    {
+        if !sgx_h_found {
+            let sgx_h_path = path.join("sgx.h");
+            if sgx_h_path.exists() {
+                builder = builder.header(
+                    sgx_h_path
+                        .as_os_str()
+                        .to_str()
+                        .expect("Invalid UTF-8 in path to sgx.h"),
+                );
+                sgx_h_found = true;
+            }
+        }
+
+        if !sgx_eid_h_found {
+            let sgx_eid_h_path = path.join("sgx_eid.h");
+            if sgx_eid_h_path.exists() {
+                builder = builder.header(
+                    sgx_eid_h_path
+                        .as_os_str()
+                        .to_str()
+                        .expect("Invalid UTF-8 in path to sgx_eid.h"),
+                );
+                sgx_eid_h_found = true;
+            }
+        }
+
+        if sgx_h_found && sgx_eid_h_found {
+            break;
+        }
+    }
+
+    if !sgx_h_found || !sgx_eid_h_found {
+        panic!("Could not find both sgx.h and sgx_eid.h in our include paths");
+    }
+
+    builder
         .parse_callbacks(Box::new(Callbacks))
         .prepend_enum_name(false)
         .use_core()

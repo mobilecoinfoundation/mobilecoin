@@ -10,7 +10,7 @@ fn main() {
     let env = Environment::default();
     let sgx = SgxEnvironment::new(&env).expect("Could not read SGX build environment");
 
-    let mut edger8r = Edger8r::new(&env, &sgx);
+    let mut edger8r = Edger8r::new(&env, &sgx).expect("Could not create linkage");
 
     for edl_data in [
         "SGX_BACKTRACE_EDL_SEARCH_PATH",

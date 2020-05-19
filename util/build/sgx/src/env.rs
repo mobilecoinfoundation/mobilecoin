@@ -2,30 +2,40 @@
 
 //! SGX Build Utilities
 
-use crate::vars::{ENV_IAS_MODE, ENV_SGX_MODE, ENV_SGX_SDK};
-use failure::Fail;
-use mc_util_build_script::{Environment, EnvironmentError};
+use crate::vars::{ENV_IAS_MODE, ENV_SGX_MODE};
+use displaydoc::Display;
+use mc_util_build_script::Environment;
+use pkg_config::{Config, Error as PkgConfigError, Library};
 use std::{
+    collections::{HashMap, HashSet},
     convert::TryFrom,
-    env::var,
+    env::{var, VarError},
+    iter::FromIterator,
     path::{Path, PathBuf},
+    result::Result as StdResult,
+    str::FromStr,
 };
 
 /// An enumeration of environment errors which occur when parsing SGX environments
-#[derive(Clone, Debug, Fail)]
-pub enum SgxEnvironmentError {
-    /// The IAS mode is unknown
-    #[fail(display = "The IAS mode '{}' is unknown", _0)]
+#[derive(Debug, Display)]
+pub enum Error {
+    /// The IAS mode '{0}' is unknown
     UnknownIasMode(String),
 
-    /// The SGX mode is unknown
-    #[fail(display = "The SGX mode '{}' is unknown", _0)]
+    /// The SGX mode '{0}' is unknown
     UnknownSgxMode(String),
 
-    /// There was an error reading the underlying environment
-    #[fail(display = "Environment error: {}", _0)]
-    Environment(EnvironmentError),
+    /// There was an error reading an environment variable: {0}
+    Variable(VarError),
 }
+
+impl From<VarError> for Error {
+    fn from(src: VarError) -> Error {
+        Error::Variable(src)
+    }
+}
+
+type Result<T> = StdResult<T, Error>;
 
 /// The style of interaction with IAS
 #[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -37,13 +47,13 @@ pub enum IasMode {
 }
 
 impl TryFrom<&str> for IasMode {
-    type Error = SgxEnvironmentError;
+    type Error = Error;
 
-    fn try_from(src: &str) -> Result<Self, Self::Error> {
+    fn try_from(src: &str) -> Result<Self> {
         match src {
             "PROD" => Ok(IasMode::Production),
             "DEV" => Ok(IasMode::Development),
-            other => Err(SgxEnvironmentError::UnknownIasMode(other.to_owned())),
+            other => Err(Error::UnknownIasMode(other.to_owned())),
         }
     }
 }
@@ -58,13 +68,13 @@ pub enum SgxMode {
 }
 
 impl TryFrom<&str> for SgxMode {
-    type Error = SgxEnvironmentError;
+    type Error = Error;
 
-    fn try_from(src: &str) -> Result<Self, Self::Error> {
+    fn try_from(src: &str) -> Result<Self> {
         match src {
             "HW" => Ok(SgxMode::Hardware),
             "SW" => Ok(SgxMode::Simulation),
-            other => Err(SgxEnvironmentError::UnknownSgxMode(other.to_owned())),
+            other => Err(Error::UnknownSgxMode(other.to_owned())),
         }
     }
 }
@@ -72,93 +82,27 @@ impl TryFrom<&str> for SgxMode {
 /// The SGX environment reader structure
 #[derive(Clone, Debug)]
 pub struct SgxEnvironment {
-    dir: PathBuf,
-    bindir: PathBuf,
-    libdir: PathBuf,
-    includedir: PathBuf,
     ias_mode: IasMode,
     sgx_mode: SgxMode,
 }
 
 impl SgxEnvironment {
-    /// Construct a new SGX environment reader
-    pub fn new(env: &Environment) -> Result<Self, SgxEnvironmentError> {
-        let dir =
-            PathBuf::from(var(ENV_SGX_SDK).unwrap_or_else(|_e| String::from("/opt/intel/sgxsdk")));
-
-        let bindir = {
-            let arch_str = match env.target_arch() {
-                "x86_64" => "x64",
-                "x86" => "x86",
-                other => panic!("Unknown target architecture {}", other),
-            };
-
-            let mut bindir = dir.join("bin");
-            bindir.push(arch_str);
-            bindir
-        };
-        let libdir = {
-            let libdir = match env.target_arch() {
-                "x86_64" => "lib64",
-                "x86" => "lib",
-                other => panic!("Unknown target architecture {}", other),
-            };
-
-            dir.join(libdir)
-        };
-        let includedir = dir.join("include");
-
+    /// Construct a new SGX environment reader.
+    pub fn new(env: &Environment) -> Result<Self> {
         // Prioritize feature selection over environment variables.
         let ias_mode = if env.feature("ias-dev") {
             IasMode::Development
         } else {
-            IasMode::try_from(
-                var(ENV_IAS_MODE)
-                    .expect("Could not read IAS_MODE variable")
-                    .as_str(),
-            )
-            .expect("Could not parse the IAS mode")
+            IasMode::try_from(var(ENV_IAS_MODE)?.as_str())?
         };
 
         let sgx_mode = if env.feature("sgx-sim") {
             SgxMode::Simulation
         } else {
-            SgxMode::try_from(
-                var(ENV_SGX_MODE)
-                    .expect("Could not read SGX_MODE variable")
-                    .as_str(),
-            )
-            .expect("Could not parse the SGX mode")
+            SgxMode::try_from(var(ENV_SGX_MODE)?.as_str())?
         };
 
-        Ok(Self {
-            dir,
-            bindir,
-            libdir,
-            includedir,
-            ias_mode,
-            sgx_mode,
-        })
-    }
-
-    /// Get the SGX SDK directory
-    pub fn dir(&self) -> &Path {
-        &self.dir
-    }
-
-    /// Get the SGX SDK binary directory
-    pub fn bindir(&self) -> &Path {
-        &self.bindir
-    }
-
-    /// Get the SGX SDK library directory
-    pub fn libdir(&self) -> &Path {
-        &self.libdir
-    }
-
-    /// Get the SGX SDK include directory
-    pub fn includedir(&self) -> &Path {
-        &self.includedir
+        Ok(Self { ias_mode, sgx_mode })
     }
 
     /// Get the IAS mode requested

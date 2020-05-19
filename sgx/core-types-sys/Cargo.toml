@@ -5,9 +5,12 @@ authors = ["MobileCoin"]
 description = "Core FFI types for Intel SGX SDK."
 readme = "README.md"
 edition = "2018"
+# This is here to prevent simultaneous compilation of multiple versions of this
+links = "mc-sgx-core-types"
 
 [build-dependencies]
 mc-util-build-script = { path = "../../util/build/script" }
+mc-util-build-sgx = { path = "../../util/build/sgx" }
 
 bindgen = "0.51.1"
 cargo-emit = "0.1.1"
