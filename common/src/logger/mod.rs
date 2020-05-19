@@ -263,8 +263,8 @@ pub fn create_null_logger() -> Logger {
     Logger::root(slog::Discard, o!())
 }
 
-/// Switchable app logger support.
 lazy_static! {
+    /// Switchable app logger support.
     static ref SWITCHABLE_APP_LOGGER: slog_atomic::AtomicSwitchCtrl<(), io::Error> =
         slog_atomic::AtomicSwitch::new(
             slog::Discard.map_err(|_| io::Error::new(io::ErrorKind::Other, "should not happen"))

@@ -76,7 +76,7 @@ impl MonitorData {
     }
 
     pub fn subaddress_indexes(&self) -> Range<u64> {
-        (self.first_subaddress..self.first_subaddress + self.num_subaddresses)
+        self.first_subaddress..self.first_subaddress + self.num_subaddresses
     }
 }
 
