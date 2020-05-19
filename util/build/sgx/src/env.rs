@@ -91,7 +91,10 @@ impl SgxEnvironment {
             let arch_str = match env.target_arch() {
                 "x86_64" => "x64",
                 "x86" => "x86",
-                other => warning!("Unknown target architecture {}", other),
+                other => {
+                    warning!("Unknown target architecture {}", other);
+                    other
+                }
             };
 
             let mut bindir = dir.join("bin");
@@ -102,7 +105,10 @@ impl SgxEnvironment {
             let libdir = match env.target_arch() {
                 "x86_64" => "lib64",
                 "x86" => "lib",
-                other => warning!("Unknown target architecture {}", other),
+                other => {
+                    warning!("Unknown target architecture {}", other);
+                    other
+                }
             };
 
             dir.join(libdir)
