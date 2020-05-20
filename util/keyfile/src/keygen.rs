@@ -67,7 +67,7 @@ pub fn read_default_pubfiles<P: AsRef<Path>>(
             entries.push(filename);
         }
     }
-    entries.sort_by(|a, b| a.cmp(&b));
+    entries.sort();
     let result: Vec<PublicAddress> = entries
         .iter()
         .map(|f| read_pubfile(f).expect("Could not read pubfile"))
@@ -86,7 +86,7 @@ pub fn read_default_root_entropies<P: AsRef<Path>>(
             entries.push(filename);
         }
     }
-    entries.sort_by(|a, b| a.cmp(&b));
+    entries.sort();
     let result: Vec<RootIdentity> = entries
         .iter()
         .map(|f| read_keyfile(f).expect("Could not read keyfile"))
