@@ -9,7 +9,7 @@ use mc_transaction_core::account_keys::{AccountKey, PublicAddress};
 use mc_transaction_std::identity::RootIdentity;
 use rand::SeedableRng;
 use rand_hc::Hc128Rng as FixedRng;
-use std::{fs, path::Path};
+use std::{ffi::OsStr, fs, path::Path};
 
 pub const DEFAULT_SEED: [u8; 32] = [1; 32];
 
@@ -61,13 +61,14 @@ pub fn read_default_pubfiles<P: AsRef<Path>>(
     path: P,
 ) -> Result<Vec<PublicAddress>, std::io::Error> {
     let mut result = Vec::new();
-    loop {
-        let name = keyfile_name(result.len());
-        let file = path.as_ref().join(name).with_extension("pub");
-        if !file.exists() {
-            break;
+    for entry in fs::read_dir(path)? {
+        let filename = entry?.path();
+        match filename.extension().and_then(OsStr::to_str) {
+            Some("pub") => {
+                result.push(read_pubfile(filename)?);
+            }
+            _ => {}
         }
-        result.push(read_pubfile(file)?);
     }
     Ok(result)
 }
@@ -78,7 +79,13 @@ pub fn read_default_root_entropies<P: AsRef<Path>>(
 ) -> Result<Vec<RootIdentity>, std::io::Error> {
     let mut result = Vec::new();
     for entry in fs::read_dir(path)? {
-        result.push(read_keyfile(entry?.path())?);
+        let filename = entry?.path();
+        match filename.extension().and_then(OsStr::to_str) {
+            Some("json") => {
+                result.push(read_keyfile(filename)?);
+            }
+            _ => {}
+        }
     }
     Ok(result)
 }
@@ -151,14 +158,14 @@ mod testing {
             let bin1 = read_default_root_entropies(&dir1).unwrap();
             assert_eq!(bin1.len(), 10);
             assert_eq!(
-                bin1[0],
-                RootIdentity {
+                bin1,
+                vec![RootIdentity {
                     root_entropy: [
                         2, 154, 47, 57, 69, 168, 246, 187, 31, 181, 177, 26, 84, 40, 58, 64, 82,
                         109, 40, 35, 89, 36, 57, 5, 241, 163, 13, 184, 42, 158, 89, 124
                     ],
                     fog_url: None
-                }
+                }]
             );
         }
     }
