@@ -77,13 +77,8 @@ pub fn read_default_root_entropies<P: AsRef<Path>>(
     path: P,
 ) -> Result<Vec<RootIdentity>, std::io::Error> {
     let mut result = Vec::new();
-    loop {
-        let name = keyfile_name(result.len());
-        let file = path.as_ref().join(name).with_extension("json");
-        if !file.exists() {
-            break;
-        }
-        result.push(read_keyfile(file)?);
+    for entry in fs::read_dir(path)? {
+        result.push(read_keyfile(entry?.path())?);
     }
     Ok(result)
 }
