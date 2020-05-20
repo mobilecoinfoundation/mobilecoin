@@ -93,6 +93,7 @@ pub fn read_default_root_entropies<P: AsRef<Path>>(
 #[cfg(test)]
 mod testing {
     use super::*;
+    use std::{collections::HashSet, iter::FromIterator};
     use tempdir::TempDir;
 
     #[test]
@@ -157,16 +158,89 @@ mod testing {
         {
             let bin1 = read_default_root_entropies(&dir1).unwrap();
             assert_eq!(bin1.len(), 10);
-            assert_eq!(
-                bin1,
-                vec![RootIdentity {
+            // Order doesn't matter for the keys - just that they are all processed.
+            let bin_set: HashSet<RootIdentity> = HashSet::from_iter(bin1.iter().cloned());
+            let expected = vec![
+                RootIdentity {
                     root_entropy: [
                         2, 154, 47, 57, 69, 168, 246, 187, 31, 181, 177, 26, 84, 40, 58, 64, 82,
-                        109, 40, 35, 89, 36, 57, 5, 241, 163, 13, 184, 42, 158, 89, 124
+                        109, 40, 35, 89, 36, 57, 5, 241, 163, 13, 184, 42, 158, 89, 124,
                     ],
-                    fog_url: None
-                }]
-            );
+                    fog_url: None,
+                },
+                RootIdentity {
+                    root_entropy: [
+                        145, 231, 241, 91, 240, 144, 214, 193, 230, 37, 152, 119, 69, 3, 60, 14,
+                        43, 117, 90, 203, 54, 133, 25, 210, 33, 104, 135, 216, 57, 67, 62, 212,
+                    ],
+                    fog_url: None,
+                },
+                RootIdentity {
+                    root_entropy: [
+                        29, 186, 225, 89, 96, 98, 80, 144, 202, 70, 150, 149, 157, 150, 60, 120,
+                        14, 200, 137, 235, 152, 231, 77, 80, 71, 212, 32, 82, 69, 206, 81, 55,
+                    ],
+                    fog_url: None,
+                },
+                RootIdentity {
+                    root_entropy: [
+                        28, 126, 75, 230, 193, 96, 159, 197, 223, 166, 62, 106, 153, 87, 184, 180,
+                        126, 12, 188, 128, 238, 64, 134, 207, 195, 142, 37, 20, 117, 39, 246, 63,
+                    ],
+                    fog_url: None,
+                },
+                RootIdentity {
+                    root_entropy: [
+                        86, 38, 184, 6, 231, 115, 110, 86, 143, 103, 115, 30, 138, 38, 216, 229,
+                        129, 195, 47, 10, 175, 253, 198, 67, 251, 189, 171, 114, 161, 235, 87, 8,
+                    ],
+                    fog_url: None,
+                },
+                RootIdentity {
+                    root_entropy: [
+                        77, 190, 236, 181, 53, 105, 80, 210, 166, 168, 216, 199, 228, 200, 146, 11,
+                        243, 21, 55, 191, 160, 155, 194, 74, 110, 129, 37, 21, 75, 113, 65, 97,
+                    ],
+                    fog_url: None,
+                },
+                RootIdentity {
+                    root_entropy: [
+                        79, 213, 120, 85, 72, 42, 9, 104, 143, 186, 253, 144, 137, 115, 37, 43,
+                        155, 47, 60, 75, 157, 110, 124, 55, 155, 101, 175, 167, 95, 235, 51, 66,
+                    ],
+                    fog_url: None,
+                },
+                RootIdentity {
+                    root_entropy: [
+                        235, 248, 189, 155, 66, 104, 44, 250, 214, 183, 186, 1, 207, 223, 8, 175,
+                        44, 56, 144, 124, 175, 51, 183, 218, 248, 136, 152, 109, 7, 181, 84, 156,
+                    ],
+                    fog_url: None,
+                },
+                RootIdentity {
+                    root_entropy: [
+                        114, 112, 34, 231, 208, 185, 252, 112, 117, 246, 59, 224, 40, 126, 182,
+                        209, 39, 130, 89, 86, 102, 77, 203, 73, 253, 88, 59, 238, 85, 130, 15, 200,
+                    ],
+                    fog_url: None,
+                },
+                RootIdentity {
+                    root_entropy: [
+                        79, 44, 181, 167, 130, 174, 148, 20, 20, 23, 100, 145, 154, 136, 48, 168,
+                        119, 124, 91, 161, 187, 53, 159, 117, 252, 55, 199, 84, 204, 164, 37, 64,
+                    ],
+                    fog_url: None,
+                },
+                RootIdentity {
+                    root_entropy: [
+                        2, 154, 47, 57, 69, 168, 246, 187, 31, 181, 177, 26, 84, 40, 58, 64, 82,
+                        109, 40, 35, 89, 36, 57, 5, 241, 163, 13, 184, 42, 158, 89, 124,
+                    ],
+                    fog_url: None,
+                },
+            ];
+
+            assert_eq!(bin_set, HashSet::from_iter(expected.iter().cloned()),);
         }
     }
 }
