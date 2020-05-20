@@ -36,7 +36,7 @@ fn main() {
     };
 
     let libraries = libnames
-        .into_iter()
+        .iter()
         .map(|libname| cfg.probe(libname))
         .collect::<Result<Vec<Library>, PkgConfigError>>()
         .expect("Could not find SGX libraries, check PKG_CONFIG_PATH variable");
