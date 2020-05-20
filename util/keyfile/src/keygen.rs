@@ -60,13 +60,18 @@ pub fn write_default_keyfiles<P: AsRef<Path>>(
 pub fn read_default_pubfiles<P: AsRef<Path>>(
     path: P,
 ) -> Result<Vec<PublicAddress>, std::io::Error> {
-    let mut result = Vec::new();
+    let mut entries = Vec::new();
     for entry in fs::read_dir(path)? {
         let filename = entry?.path();
         if let Some("pub") = filename.extension().and_then(OsStr::to_str) {
-            result.push(read_pubfile(filename)?);
+            entries.push(filename);
         }
     }
+    entries.sort_by(|a, b| a.cmp(&b));
+    let result: Vec<PublicAddress> = entries
+        .iter()
+        .map(|f| read_pubfile(f).expect("Could not read pubfile"))
+        .collect();
     Ok(result)
 }
 
@@ -74,13 +79,18 @@ pub fn read_default_pubfiles<P: AsRef<Path>>(
 pub fn read_default_root_entropies<P: AsRef<Path>>(
     path: P,
 ) -> Result<Vec<RootIdentity>, std::io::Error> {
-    let mut result = Vec::new();
+    let mut entries = Vec::new();
     for entry in fs::read_dir(path)? {
         let filename = entry?.path();
         if let Some("json") = filename.extension().and_then(OsStr::to_str) {
-            result.push(read_keyfile(filename)?);
+            entries.push(filename);
         }
     }
+    entries.sort_by(|a, b| a.cmp(&b));
+    let result: Vec<RootIdentity> = entries
+        .iter()
+        .map(|f| read_keyfile(f).expect("Could not read keyfile"))
+        .collect();
     Ok(result)
 }
 
