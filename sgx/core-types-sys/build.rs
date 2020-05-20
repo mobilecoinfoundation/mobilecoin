@@ -6,10 +6,15 @@ use bindgen::{
     callbacks::{IntKind, ParseCallbacks},
     Builder,
 };
+use cargo_emit::rustc_cfg;
 use mc_util_build_script::Environment;
 use mc_util_build_sgx::{SgxEnvironment, SgxLibraryCollection, SgxMode};
-use pkg_config::Config;
+use pkg_config::{Config, Error as PkgConfigError, Library};
 
+const SGX_LIBS: &[&str] = &["libsgx_launch"];
+const SGX_SIMULATION_LIBS: &[&str] = &["libsgx_launch_sim"];
+
+// Changing this version is a breaking change, you must update the crate version if you do.
 const SGX_VERSION: &str = "2.9.101.2";
 
 #[derive(Debug)]
@@ -47,7 +52,6 @@ impl ParseCallbacks for Callbacks {
 fn main() {
     let env = Environment::default();
     let sgx = SgxEnvironment::new(&env).expect("Could not read SGX environment");
-    let mut libraries = Vec::default();
 
     // We're going to use libsgx_launch as our stub for something better from Intel.
     let mut cfg = Config::new();
@@ -55,17 +59,19 @@ fn main() {
         .print_system_libs(true)
         .cargo_metadata(false)
         .env_metadata(true);
-    if sgx.sgx_mode() == SgxMode::Simulation {
-        libraries.push(
-            cfg.probe("libsgx_launch_sim")
-                .expect("Could not find libsgx_launch_sim"),
-        );
+
+    let libnames = if sgx.sgx_mode() == SgxMode::Simulation {
+        rustc_cfg!("feature=\"sgx-sim\"");
+        SGX_SIMULATION_LIBS
     } else {
-        libraries.push(
-            cfg.probe("libsgx_launch")
-                .expect("Could not find libsgx_launch"),
-        );
-    }
+        SGX_LIBS
+    };
+
+    let libraries = libnames
+        .iter()
+        .map(|libname| cfg.probe(libname))
+        .collect::<Result<Vec<Library>, PkgConfigError>>()
+        .expect("Could not find SGX libraries, check PKG_CONFIG_PATH variable");
 
     let mut builder = Builder::default()
         .ctypes_prefix("crate::ctypes")
