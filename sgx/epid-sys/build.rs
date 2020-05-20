@@ -3,16 +3,20 @@
 //! Build script to generate bindings for the Intel SGX SDK EPID FFI functions
 
 use bindgen::Builder;
+use cargo_emit::rustc_cfg;
 use mc_util_build_script::Environment;
 use mc_util_build_sgx::{SgxEnvironment, SgxLibraryCollection, SgxMode};
-use pkg_config::Config;
+use pkg_config::{Config, Error as PkgConfigError, Library};
 
+const SGX_LIBS: &[&str] = &["libsgx_epid"];
+const SGX_SIMULATION_LIBS: &[&str] = &["libsgx_epid_sim"];
+
+// Changing this version is a breaking change, you must update the crate version if you do.
 const SGX_VERSION: &str = "2.9.101.2";
 
 fn main() {
     let env = Environment::default();
     let sgx = SgxEnvironment::new(&env).expect("Could not read SGX environment");
-    let mut libraries = Vec::default();
 
     let mut cfg = Config::new();
     cfg.exactly_version(SGX_VERSION)
@@ -20,17 +24,18 @@ fn main() {
         .cargo_metadata(true)
         .env_metadata(true);
 
-    if sgx.sgx_mode() == SgxMode::Simulation {
-        libraries.push(
-            cfg.probe("libsgx_epid_sim")
-                .expect("Could not find libsgx_epid_sim"),
-        );
+    let libnames = if sgx.sgx_mode() == SgxMode::Simulation {
+        rustc_cfg!("feature=\"sgx-sim\"");
+        SGX_SIMULATION_LIBS
     } else {
-        libraries.push(
-            cfg.probe("libsgx_epid")
-                .expect("Could not find libsgx_epid"),
-        );
-    }
+        SGX_LIBS
+    };
+
+    let libraries = libnames
+        .iter()
+        .map(|libname| cfg.probe(libname))
+        .collect::<Result<Vec<Library>, PkgConfigError>>()
+        .expect("Could not find SGX libraries, check PKG_CONFIG_PATH variable");
 
     let header = libraries
         .include_paths()

@@ -7,7 +7,8 @@ use mc_util_build_script::Environment;
 use mc_util_build_sgx::{Edger8r, SgxEnvironment, SgxMode};
 use pkg_config::{Config, Error as PkgConfigError, Library};
 
-// This should (for now) match the untrusted bridge code.
+// This should (for now) match the untrusted bridge code. Eventually if Intel
+// cleans up their build, this can use, e.g. libsgx_trts.
 const SGX_LIBS: &[&str] = &["libsgx_urts", "libsgx_epid"];
 const SGX_SIMULATION_LIBS: &[&str] = &["libsgx_urts_sim", "libsgx_epid_sim"];
 const SGX_VERSION: &str = "2.9.101.2";
@@ -20,6 +21,7 @@ fn main() {
     cfg.exactly_version(SGX_VERSION)
         .cargo_metadata(false)
         .env_metadata(true);
+
     let libnames = if sgx.sgx_mode() == SgxMode::Simulation {
         rustc_cfg!("feature=\"sgx-sim\"");
         SGX_SIMULATION_LIBS
@@ -28,7 +30,7 @@ fn main() {
     };
 
     let libraries = libnames
-        .into_iter()
+        .iter()
         .map(|libname| cfg.probe(libname))
         .collect::<Result<Vec<Library>, PkgConfigError>>()
         .expect("Could not find SGX libraries, check PKG_CONFIG_PATH variable");
