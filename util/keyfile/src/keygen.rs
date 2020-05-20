@@ -63,11 +63,8 @@ pub fn read_default_pubfiles<P: AsRef<Path>>(
     let mut result = Vec::new();
     for entry in fs::read_dir(path)? {
         let filename = entry?.path();
-        match filename.extension().and_then(OsStr::to_str) {
-            Some("pub") => {
-                result.push(read_pubfile(filename)?);
-            }
-            _ => {}
+        if let Some("pub") = filename.extension().and_then(OsStr::to_str) {
+            result.push(read_pubfile(filename)?);
         }
     }
     Ok(result)
@@ -80,11 +77,8 @@ pub fn read_default_root_entropies<P: AsRef<Path>>(
     let mut result = Vec::new();
     for entry in fs::read_dir(path)? {
         let filename = entry?.path();
-        match filename.extension().and_then(OsStr::to_str) {
-            Some("json") => {
-                result.push(read_keyfile(filename)?);
-            }
-            _ => {}
+        if let Some("json") =  filename.extension().and_then(OsStr::to_str) {
+            result.push(read_keyfile(filename)?);
         }
     }
     Ok(result)
