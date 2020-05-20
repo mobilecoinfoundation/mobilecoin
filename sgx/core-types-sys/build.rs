@@ -7,7 +7,10 @@ use bindgen::{
     Builder,
 };
 use mc_util_build_script::Environment;
-use mc_util_build_sgx::SgxEnvironment;
+use mc_util_build_sgx::{SgxEnvironment, SgxLibraryCollection, SgxMode};
+use pkg_config::Config;
+
+const SGX_VERSION: &str = "2.9.101.2";
 
 #[derive(Debug)]
 struct Callbacks;
@@ -43,13 +46,26 @@ impl ParseCallbacks for Callbacks {
 
 fn main() {
     let env = Environment::default();
-    let mut sgx = SgxEnvironment::new(&env).expect("Could not read SGX environment");
+    let sgx = SgxEnvironment::new(&env).expect("Could not read SGX environment");
+    let mut libraries = Vec::default();
 
-    // Intel is stingy with their pkg-config support, so we're going to use
-    // libsgx_urts to get the right types. We don't do any linkage here, so
-    // this is fine.
-    sgx.add_library("2.9.101.2", "sgx_urts")
-        .expect("Could not add SGX URTS to SGX environment");
+    // We're going to use libsgx_launch as our stub for something better from Intel.
+    let mut cfg = Config::new();
+    cfg.exactly_version(SGX_VERSION)
+        .print_system_libs(true)
+        .cargo_metadata(false)
+        .env_metadata(true);
+    if sgx.sgx_mode() == SgxMode::Simulation {
+        libraries.push(
+            cfg.probe("libsgx_launch_sim")
+                .expect("Could not find libsgx_launch_sim"),
+        );
+    } else {
+        libraries.push(
+            cfg.probe("libsgx_launch")
+                .expect("Could not find libsgx_launch"),
+        );
+    }
 
     let mut builder = Builder::default()
         .ctypes_prefix("crate::ctypes")
@@ -65,10 +81,7 @@ fn main() {
     let mut sgx_h_found = false;
     let mut sgx_eid_h_found = false;
 
-    for path in sgx
-        .include_paths()
-        .expect("Could not retrieve include paths for SGX libraries")
-    {
+    for path in libraries.include_paths() {
         if !sgx_h_found {
             let sgx_h_path = path.join("sgx.h");
             if sgx_h_path.exists() {

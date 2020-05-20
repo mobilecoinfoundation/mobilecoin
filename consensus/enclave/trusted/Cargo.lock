@@ -736,6 +736,7 @@ dependencies = [
  "mc-util-build-script 0.2.0",
  "mc-util-build-sgx 0.2.0",
  "mc-util-serial 0.2.0",
+ "pkg-config 0.3.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha2 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -1035,7 +1036,6 @@ dependencies = [
  "cargo-emit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "cc 1.0.50 (registry+https://github.com/rust-lang/crates.io-index)",
  "displaydoc 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mc-util-build-script 0.2.0",
  "pkg-config 0.3.17 (registry+https://github.com/rust-lang/crates.io-index)",

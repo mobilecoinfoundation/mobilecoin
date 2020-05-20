@@ -1,68 +1,62 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-use pkg_config::{Config, Error as PkgConfigError, Library};
-use std::{
-    collections::{HashMap, HashSet},
-    iter::FromIterator,
-    path::{Path, PathBuf},
-    result::Result as StdResult,
-};
+use cargo_emit::{rustc_link_lib, rustc_link_search};
+use pkg_config::Library;
+use std::{collections::HashSet, path::Path};
 
-pub enum Error {
-    DuplicateLibrary,
-    PrefixNotFound,
+/// A trait which adds SGX functionality onto a [`Library`] collection.
+pub trait SgxLibraryCollection {
+    /// Retrieve all the unique include paths for this collection.
+    fn include_paths(&self) -> HashSet<&Path>;
+
+    /// Retrieve all the unique linker search paths for this collection.
+    fn link_paths(&self) -> HashSet<&Path>;
+
+    /// Retrieve all the unique libraries to link to in this collection.
+    fn libs(&self) -> HashSet<&str>;
+
+    /// Emit all the relevant cargo linkage instructions for this collection.
+    // This function can be deprecated once we're done with baidu.
+    fn emit_cargo(&self);
 }
 
-type Result<T> = StdResult<T, Error>;
-
-pub struct LibraryCollection(HashMap<String, Library>);
-
-impl LibraryCollection {
-    /// Add an SGX library to our environment, by name.
-    ///
-    /// Adding duplicate libraries will result in [`Error::DuplicateLibrary`].
-    pub fn add_library(&mut self, version: &str, libname: &str) -> Result<()> {
-        if self.0.contains_key(libname) {
-            return Err(Error::DuplicateLibrary);
-        }
-
-        let mut cfg = Config::new();
-        cfg.exactly_version(version);
-        self.0.insert(libname.to_owned(), cfg.probe(libname)?);
-        Ok(())
+/// A blanket implementation fo the SGX libraries collection for a [`Library`] slice.
+impl SgxLibraryCollection for [Library] {
+    /// Gather the include paths for all the include libraries together.
+    fn include_paths(&self) -> HashSet<&Path> {
+        self.iter()
+            .map(|library| library.include_paths.iter().map(AsRef::<Path>::as_ref))
+            .flatten()
+            .collect::<HashSet<&Path>>()
     }
 
-    /// Retrieve the bindir where SGX build utility executables are located.
-    pub fn bindir(&self) -> Result<PathBuf> {
-        if let Some(mut prefix) = self.0.values().find_map(|lib| {
-            if let Some(Some(prefix)) = lib.defines.get("prefix") {
-                PathBuf::from_str(prefix).ok()
-            } else {
-                None
+    /// Gather all the library search paths together.
+    fn link_paths(&self) -> HashSet<&Path> {
+        self.iter()
+            .map(|library| library.link_paths.iter().map(AsRef::<Path>::as_ref))
+            .flatten()
+            .collect::<HashSet<&Path>>()
+    }
+
+    /// Gather a list of SONAMEs which are used by the libraries
+    fn libs(&self) -> HashSet<&str> {
+        self.iter()
+            .map(|library| library.libs.iter().map(AsRef::<str>::as_ref))
+            .flatten()
+            .collect::<HashSet<&str>>()
+    }
+
+    /// Emit the relevant instructions to cargo to link the current rust crate
+    /// with all the contained libraries.
+    fn emit_cargo(&self) {
+        for library in self {
+            for link in &library.libs {
+                rustc_link_lib!(link);
             }
-        }) {
-            prefix.push("bin");
-            prefix.push(&self.target_arch);
-            Ok(prefix)
-        } else {
-            Err(Error::PrefixNotFound)
-        }
-    }
 
-    /// Retrieve a set of all include paths provided by the selected SGX libraries.
-    pub fn include_paths(&self) -> Result<HashSet<&Path>> {
-        let retval = HashSet::from_iter(
-            self.0
-                .values()
-                .map(|lib| lib.include_paths.iter().map(AsRef::<Path>::as_ref))
-                .flatten()
-                .collect::<Vec<&Path>>()
-                .into_iter(),
-        );
-        if retval.is_empty() {
-            Err(Error::NoIncludePaths)
-        } else {
-            Ok(retval)
+            for link_path in &library.link_paths {
+                rustc_link_search!(link_path.display());
+            }
         }
     }
 }

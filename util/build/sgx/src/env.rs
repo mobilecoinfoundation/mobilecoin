@@ -5,15 +5,10 @@
 use crate::vars::{ENV_IAS_MODE, ENV_SGX_MODE};
 use displaydoc::Display;
 use mc_util_build_script::Environment;
-use pkg_config::{Config, Error as PkgConfigError, Library};
 use std::{
-    collections::{HashMap, HashSet},
     convert::TryFrom,
     env::{var, VarError},
-    iter::FromIterator,
-    path::{Path, PathBuf},
     result::Result as StdResult,
-    str::FromStr,
 };
 
 /// An enumeration of environment errors which occur when parsing SGX environments
@@ -79,7 +74,7 @@ impl TryFrom<&str> for SgxMode {
     }
 }
 
-/// The SGX environment reader structure
+/// The SGX environment variable reader structure
 #[derive(Clone, Debug)]
 pub struct SgxEnvironment {
     ias_mode: IasMode,

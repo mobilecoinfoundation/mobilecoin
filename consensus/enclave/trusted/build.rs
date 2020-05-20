@@ -5,16 +5,35 @@
 use cargo_emit::rustc_cfg;
 use mc_util_build_script::Environment;
 use mc_util_build_sgx::{Edger8r, SgxEnvironment, SgxMode};
+use pkg_config::{Config, Error as PkgConfigError, Library};
+
+// This should (for now) match the untrusted bridge code.
+const SGX_LIBS: &[&str] = &["libsgx_urts", "libsgx_epid"];
+const SGX_SIMULATION_LIBS: &[&str] = &["libsgx_urts_sim", "libsgx_epid_sim"];
+const SGX_VERSION: &str = "2.9.101.2";
 
 fn main() {
     let env = Environment::default();
-    let sgx = SgxEnvironment::new(&env).expect("Could not read SGX build environment");
+    let sgx = SgxEnvironment::new(&env).expect("Could not parse SGX environment");
 
-    if sgx.sgx_mode() == SgxMode::Simulation {
+    let mut cfg = Config::new();
+    cfg.exactly_version(SGX_VERSION)
+        .cargo_metadata(false)
+        .env_metadata(true);
+    let libnames = if sgx.sgx_mode() == SgxMode::Simulation {
         rustc_cfg!("feature=\"sgx-sim\"");
-    }
+        SGX_SIMULATION_LIBS
+    } else {
+        SGX_LIBS
+    };
 
-    let mut edger8r = Edger8r::new(&env, &sgx);
+    let libraries = libnames
+        .into_iter()
+        .map(|libname| cfg.probe(libname))
+        .collect::<Result<Vec<Library>, PkgConfigError>>()
+        .expect("Could not find SGX libraries, check PKG_CONFIG_PATH variable");
+
+    let mut edger8r = Edger8r::new(&env, libraries.as_slice()).expect("Could not create linkage");
 
     for edl_data in [
         "SGX_BACKTRACE_EDL_SEARCH_PATH",
@@ -41,5 +60,6 @@ fn main() {
         .edl(enclave_edl.as_ref())
         .trusted()
         .generate()
+        .expect("Could not generate code")
         .build();
 }

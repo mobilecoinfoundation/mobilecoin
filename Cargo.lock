@@ -2142,6 +2142,7 @@ dependencies = [
  "mc-util-build-script",
  "mc-util-build-sgx",
  "mc-util-serial",
+ "pkg-config",
 ]
 
 [[package]]
@@ -2211,6 +2212,7 @@ dependencies = [
  "mc-util-build-enclave",
  "mc-util-build-script",
  "mc-util-build-sgx",
+ "pkg-config",
 ]
 
 [[package]]
@@ -2744,6 +2746,7 @@ dependencies = [
  "cargo-emit",
  "mc-util-build-script",
  "mc-util-build-sgx",
+ "pkg-config",
 ]
 
 [[package]]
@@ -2771,6 +2774,7 @@ dependencies = [
  "mc-sgx-epid-types-sys",
  "mc-util-build-script",
  "mc-util-build-sgx",
+ "pkg-config",
 ]
 
 [[package]]
@@ -2799,6 +2803,8 @@ dependencies = [
  "cargo-emit",
  "mc-sgx-core-types-sys",
  "mc-util-build-script",
+ "mc-util-build-sgx",
+ "pkg-config",
 ]
 
 [[package]]
@@ -2853,6 +2859,7 @@ dependencies = [
  "mc-sgx-core-types-sys",
  "mc-util-build-script",
  "mc-util-build-sgx",
+ "pkg-config",
 ]
 
 [[package]]
@@ -2975,12 +2982,13 @@ version = "0.2.0"
 dependencies = [
  "cargo-emit",
  "cargo_metadata 0.9.1",
- "failure",
+ "displaydoc",
  "mbedtls",
  "mbedtls-sys-auto",
  "mc-sgx-css",
  "mc-util-build-script",
  "mc-util-build-sgx",
+ "pkg-config",
  "rand 0.7.3",
 ]
 
@@ -3017,7 +3025,6 @@ dependencies = [
  "cargo-emit",
  "cc",
  "displaydoc",
- "failure",
  "lazy_static",
  "mc-util-build-script",
  "pkg-config",

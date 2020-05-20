@@ -2,10 +2,11 @@
 
 //! Edger8r Tool Wrapper
 
-use crate::env::{Error as EnvironmentError, SgxEnvironment};
+use crate::{env::Error as EnvironmentError, libraries::SgxLibraryCollection, utils::get_binary};
 use cc::Build;
 use displaydoc::Display;
 use mc_util_build_script::Environment;
+use pkg_config::{Error as PkgConfigError, Library};
 use std::{
     borrow::ToOwned,
     io::Error as IoError,
@@ -17,14 +18,20 @@ use std::{
 /// Errors which can occur when working with edger8r.
 #[derive(Debug, Display)]
 pub enum Error {
+    /// There was an issue querying pkg-config
+    PkgConfig(PkgConfigError),
     /// There was missing data in the environment
     Environment(EnvironmentError),
+    /// The given SGX library collection did not allow us to deduce the binary location
+    NoBinDir,
+    /// The given SGX library collection did not contain any include paths
+    NoIncludePaths,
     /// There was an error running the command: {0}
     Io(IoError),
     /// The edger8r command failed, and also printed invalid UTF-8
     Utf8Error,
-    /// There was an error generating the code, stdout:\n{0}\n\nstderr:\n{1}
-    Generate(String, String),
+    /// There was an error generating the code, command:\n{0}\nstdout:\n{0}\n\nstderr:\n{1}
+    Generate(String, String, String),
     /// There was an error building the generated code
     Build,
 }
@@ -35,15 +42,21 @@ impl From<EnvironmentError> for Error {
     }
 }
 
+impl From<FromUtf8Error> for Error {
+    fn from(_src: FromUtf8Error) -> Error {
+        Error::Utf8Error
+    }
+}
+
 impl From<IoError> for Error {
     fn from(src: IoError) -> Error {
         Error::Io(src)
     }
 }
 
-impl From<FromUtf8Error> for Error {
-    fn from(_src: FromUtf8Error) -> Error {
-        Error::Utf8Error
+impl From<PkgConfigError> for Error {
+    fn from(src: PkgConfigError) -> Error {
+        Error::PkgConfig(src)
     }
 }
 
@@ -79,15 +92,14 @@ pub struct Edger8r {
 
 impl Edger8r {
     /// Create a new edger8r executor.
-    pub fn new(env: &Environment, sgx: &SgxEnvironment) -> Result<Self, Error> {
+    pub fn new(env: &Environment, sgx_libs: &[Library]) -> Result<Self, Error> {
         let mut edl_path = env.dir().join(env.name());
         edl_path.set_extension("edl");
 
-        let edger8r_path = sgx.bindir()?.join("sgx_edger8r");
+        let edger8r_path = get_binary(env.target_arch(), "sgx_edger8r")?;
 
-        let paths = sgx.include_paths()?;
-
-        let search_paths = paths
+        let search_paths = sgx_libs
+            .include_paths()
             .iter()
             .map(|path| (*path).to_owned())
             .collect::<Vec<PathBuf>>();
@@ -124,8 +136,7 @@ impl Edger8r {
 
     /// Add a search path for edl files included by ours
     pub fn search_path(&mut self, search_path: &Path) -> &mut Self {
-        self.search_paths.push("--search-path".into());
-        self.search_paths.push(search_path.to_owned().into());
+        self.search_paths.push(search_path.to_owned());
         self
     }
 
@@ -145,7 +156,14 @@ impl Edger8r {
     pub fn generate(&self) -> Result<&Self, Error> {
         let mut command = Command::new(&self.edger8r_path);
 
-        command.args(&self.search_paths);
+        for path in &self.search_paths {
+            command.args(&[
+                "--search-path",
+                path.as_os_str()
+                    .to_str()
+                    .expect("Invalid UTF-8 in EDL search path"),
+            ]);
+        }
 
         if self.output_kind == OutputKind::Trusted {
             command
@@ -160,12 +178,15 @@ impl Edger8r {
         }
         command.arg(&self.out_dir.to_str().expect("Invalid UTF-8 in out dir"));
 
+        eprintln!("command: {:?}", &command);
+
         let output = command.output()?;
 
         if output.status.success() {
             Ok(self)
         } else {
             Err(Error::Generate(
+                format!("{:?}", command),
                 String::from_utf8(output.stdout)?,
                 String::from_utf8(output.stderr)?,
             ))
