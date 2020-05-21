@@ -1,35 +1,7 @@
 <html>
     <head>
         <title>MobileCoin Blockchain Explorer</title>
-        <style>
-            a { color:#00FF00;
-                text-decoration: none;
-                margin: 2px;
-                padding: 3px;
-                height: 2vw; }
-            body { font-family:monospace;
-                   background-color:#222;
-                   color:#00FF00;
-                   font-size:1.5vw; }
-            .container { display:flex;
-                         height:100%;
-                         background-color: #222;
-                         justify-content:center; }
-            .center { width:80ch;
-                      border:solid #eee 1px;
-                      padding:10px;
-                      overflow-x:scroll;
-                      background-color: #000; }
-            .row { height:1.8vw; display:flex; }
-            .centered {display:block; text-align:center; }
-            .col_8 { width: 8ch; }
-            .col_15 { width: 15ch; }
-            .col_25 { width: 25ch; }
-            .col_30 { width: 30ch; }
-            .col_40 { width: 40ch; }
-            .col_65 { width: 65ch; }
-            .inset { margin-left: 2ch; }
-        </style>
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/lofi.css') }}">
     </head>
     <body>
         <div class="container">
