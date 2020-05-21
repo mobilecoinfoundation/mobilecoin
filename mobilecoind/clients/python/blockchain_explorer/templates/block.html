@@ -81,30 +81,30 @@
 ********************************************************************************
 <div class="row">&nbsp;</div>
 <div class="row">
-    <div class="col_8">Index</div>
-    <div class="col_65">Transaction Data</div>
+    <div class="col_3">Index</div>
+    <div class="col_77">Transaction Data</div>
 </div>
 <div class="row">
-    <div class="col_8">*****</div>
-    <div class="col_65">*****************************************************************</div>
+    <div class="col_3">*****</div>
+    <div class="col_77">*****************************************************************</div>
 </div>
 <div class="row">&nbsp;</div>
 {%- for txo in txos %}
     <div class="row">&nbsp;</div>
     <div class="row">&nbsp;</div>
     <div class="row">
-        <div class="col_8">{{ loop.index }}</div>
-        <div class="col_25">TXO Pubkey</div>
+        <div class="col_3">{{ loop.index }}</div>
+        <div class="col_13">TXO Pubkey</div>
         <div class="col_65">{{ txo.public_key.data.hex() }}</div>
     </div>
     <div class="row">
-        <div class="col_8">&nbsp;</div>
-        <div class="col_25">Target Addr</div>
+        <div class="col_3">&nbsp;</div>
+        <div class="col_13">Target Addr</div>
         <div class="col_65">{{ txo.target_key.data.hex() }}</div>
     </div>
     <div class="row">
-        <div class="col_8">&nbsp;</div>
-        <div class="col_25">Amount</div>
+        <div class="col_3">&nbsp;</div>
+        <div class="col_13">Amount</div>
         <div class="col_65">{{ txo.amount.commitment.data.hex() }}</div>
     </div>
 {%- endfor %}
