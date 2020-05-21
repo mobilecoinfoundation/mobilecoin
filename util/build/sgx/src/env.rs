@@ -3,6 +3,7 @@
 //! SGX Build Utilities
 
 use crate::vars::{ENV_IAS_MODE, ENV_SGX_MODE, ENV_SGX_SDK};
+use cargo_emit::warning;
 use failure::Fail;
 use mc_util_build_script::{Environment, EnvironmentError};
 use std::{
@@ -90,7 +91,10 @@ impl SgxEnvironment {
             let arch_str = match env.target_arch() {
                 "x86_64" => "x64",
                 "x86" => "x86",
-                other => panic!("Unknown target architecture {}", other),
+                other => {
+                    warning!("Unknown target architecture {}", other);
+                    other
+                }
             };
 
             let mut bindir = dir.join("bin");
@@ -101,7 +105,10 @@ impl SgxEnvironment {
             let libdir = match env.target_arch() {
                 "x86_64" => "lib64",
                 "x86" => "lib",
-                other => panic!("Unknown target architecture {}", other),
+                other => {
+                    warning!("Unknown target architecture {}", other);
+                    other
+                }
             };
 
             dir.join(libdir)

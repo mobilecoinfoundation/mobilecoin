@@ -7,7 +7,10 @@ use mc_attest_core::ProviderId;
 use mc_common::{HashMap, HashSet, NodeID, ResponderId};
 use mc_consensus_scp::{QuorumSet, QuorumSetMember};
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Pair, Ed25519Private};
-use mc_util_uri::{ConnectionUri, ConsensusClientUri as ClientUri, ConsensusPeerUri as PeerUri};
+use mc_util_uri::{
+    ConnectionUri, ConsensusAdminUri as AdminUri, ConsensusClientUri as ClientUri,
+    ConsensusPeerUri as PeerUri,
+};
 use serde::{Deserialize, Serialize};
 use std::{fmt::Debug, fs, iter::FromIterator, path::PathBuf, string::String, sync::Arc};
 use structopt::StructOpt;
@@ -59,9 +62,9 @@ pub struct Config {
     #[structopt(long, default_value = "insecure-mc://0.0.0.0:3223/")]
     pub client_listen_uri: ClientUri,
 
-    /// The address on which to listen for metrics and logs.
+    /// Optional admin listening URI.
     #[structopt(long)]
-    pub management_listen_addr: Option<String>,
+    pub admin_listen_uri: Option<AdminUri>,
 
     /// The location to write the externalized blocks for the ledger.
     #[structopt(long, parse(from_os_str))]
@@ -395,7 +398,7 @@ mod tests {
             ias_spid: ProviderId::from_str("22222222222222222222222222222222").unwrap(),
             peer_listen_uri: PeerUri::from_str("insecure-mcp://0.0.0.0:8081/").unwrap(),
             client_listen_uri: ClientUri::from_str("insecure-mc://0.0.0.0:3223/").unwrap(),
-            management_listen_addr: None,
+            admin_listen_uri: Some(AdminUri::from_str("insecure-mca://0.0.0.0:9090/").unwrap()),
             ledger_path: PathBuf::default(),
             scp_debug_dump: None,
             origin_block_path: None,
@@ -429,6 +432,10 @@ mod tests {
             config.peer_listen_uri,
             PeerUri::from_str("insecure-mcp://0.0.0.0:8081/").unwrap()
         );
+        assert_eq!(
+            config.admin_listen_uri,
+            Some(AdminUri::from_str("insecure-mca://0.0.0.0:9090/").unwrap())
+        );
     }
 
     #[test]
@@ -444,7 +451,7 @@ mod tests {
             ias_spid: ProviderId::from_str("22222222222222222222222222222222").unwrap(),
             peer_listen_uri: PeerUri::from_str("mcp://0.0.0.0:8443/?tls-chain=./public/attest/test_certs/selfsigned_mobilecoin.crt&tls-key=./public/attest/test_certs/selfsigned_mobilecoin.key").unwrap(),
             client_listen_uri: ClientUri::from_str("insecure-mc://0.0.0.0:3223/").unwrap(),
-            management_listen_addr: None,
+            admin_listen_uri: Some(AdminUri::from_str("insecure-mca://0.0.0.0:9090/").unwrap()),
             ledger_path: PathBuf::default(),
             scp_debug_dump: None,
             origin_block_path: None,
@@ -470,6 +477,10 @@ mod tests {
         assert_eq!(
             config.peer_responder_id,
             ResponderId::from_str("peer1.NETWORKNAME.mobilecoin.com:443").unwrap(),
+        );
+        assert_eq!(
+            config.admin_listen_uri,
+            Some(AdminUri::from_str("insecure-mca://0.0.0.0:9090/").unwrap())
         );
         assert_eq!(
             config.client_listen_uri,

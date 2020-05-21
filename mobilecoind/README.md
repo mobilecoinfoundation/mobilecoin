@@ -30,6 +30,10 @@ mc://node1.test.mobilecoin.com/
 You will need to specify a ledger location to which to sync the ledger. This directory can be empty (or non-existent), or can contain the origin block, created from [generate_sample_ledger](../generate_sample_ledger/README.md).
 You will also need to specify a directory for the MobileCoin Daemon database, where keys and transaction data would be stored.
 
+#### Verifying Block Signatures
+
+When started with `--watcher-db`, mobilecoind syncs all block signatures from the consensus validator archives listed in the tx-source-urls. On sync, each block signature is verified. See the [watcher](../watcher/README.md) crate for more information.
+
 #### Verifying Signed Enclaves
 
 When mobilecoind connects to validator nodes, it verifies the integrity of their software using Intel's Secure Guard eXtensions (SGX) via attestation evidence.
@@ -72,6 +76,7 @@ SGX_MODE=HW IAS_MODE=PROD CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css \
     MC_LOG=debug,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,rusoto_core=error,h2=error,reqwest=error \
     cargo run --release -p mc-mobilecoind -- \
     --ledger-db /path/to/ledger \
+    --watcher-db /path/to/watcher-db \
     --poll-interval 1 \
     --peer mc://node1.test.mobilecoin.com/ \
     --peer mc://node2.test.mobilecoin.com/ \

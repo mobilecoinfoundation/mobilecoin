@@ -162,7 +162,7 @@ SGX_MODE=HW IAS_MODE=DEV \
     --peer-listen-uri='mcp://0.0.0.0:8443/' \
     --msg-signer-key MC4CAQAwBQYDK2VwBCIEIGz4xR7wuPKjwM1EK0MKrc9ukTjiDqvKKREITPXPkNku \
     --sealed-block-signing-key /sealed \
-    --management-listen-addr=0.0.0.0:9090
+    --admin-listen-uri=insecure-mca://127.0.0.1:9091/
 ```
 
 Alternatively, if the binary has already been built, you can run:

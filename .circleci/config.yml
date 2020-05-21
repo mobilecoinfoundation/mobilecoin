@@ -3,7 +3,7 @@
 version: 2.1
 
 defaults:
-  builder-install: &builder-install gcr.io/mobilenode-211420/builder-install:1_9
+  builder-install: &builder-install gcr.io/mobilenode-211420/builder-install:1_11
 
 executors:
   build-executor:
@@ -103,17 +103,6 @@ commands:
           paths:
             - "~/.cargo"
 
-  generate-pem-file:
-    steps:
-      - run:
-          name: Generating Enclave_private.pem
-          command: |
-            openssl genrsa -out $(pwd)/Enclave_private.pem -3 3072
-            export CONSENSUS_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
-            export INGEST_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
-            export LEDGER_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
-            export VIEW_ENCLAVE_PRIVKEY=$(pwd)/Enclave_private.pem
-
   prepare-for-build:
     steps:
       - checkout
@@ -122,7 +111,6 @@ commands:
       - enable_sccache
       - restore-cargo-cache
       - restore-sccache-cache
-      - generate-pem-file
 
   check-dirty-git:
     steps:
@@ -275,8 +263,15 @@ jobs:
           name: Lint/fmt
           command: |
             ./tools/lint.sh
+      - run:
+          name: Generating docs...
+          command: |
+            cargo doc --no-deps
+            tar -C target -czvf /tmp/doc.tgz doc/
       - save-cargo-cache
       - save-sccache-cache
+      - store_artifacts:
+          path: /tmp/doc.tgz
 
 workflows:
   version: 2

@@ -3,10 +3,11 @@
 //! The MobileCoin consensus service.
 
 use crate::{
-    attested_api_service::AttestedApiService, background_work_queue::BackgroundWorkQueue,
-    blockchain_api_service, byzantine_ledger::ByzantineLedger, client_api_service, config::Config,
-    counters, management::ManagementServer, peer_api_service, peer_keepalive::PeerKeepalive,
-    tx_manager::TxManager, validators::DefaultTxManagerUntrustedInterfaces,
+    admin_api_service, attested_api_service::AttestedApiService,
+    background_work_queue::BackgroundWorkQueue, blockchain_api_service,
+    byzantine_ledger::ByzantineLedger, client_api_service, config::Config, counters,
+    peer_api_service, peer_keepalive::PeerKeepalive, tx_manager::TxManager,
+    validators::DefaultTxManagerUntrustedInterfaces,
 };
 use failure::Fail;
 use futures::Future;
@@ -24,7 +25,9 @@ use mc_common::{
     NodeID, ResponderId,
 };
 use mc_connection::{Connection, ConnectionManager, ConnectionUriGrpcioServer};
-use mc_consensus_api::{consensus_client_grpc, consensus_common_grpc, consensus_peer_grpc};
+use mc_consensus_api::{
+    consensus_admin_grpc, consensus_client_grpc, consensus_common_grpc, consensus_peer_grpc,
+};
 use mc_consensus_enclave::{ConsensusEnclaveProxy, Error as EnclaveError};
 use mc_ledger_db::LedgerDB;
 use mc_peers::{PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
@@ -118,7 +121,6 @@ pub struct ConsensusService<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync 
     env: Arc<grpcio::Environment>,
     ra_client: R,
     logger: Logger,
-    management_server: Option<ManagementServer>,
 
     consensus_msgs_from_network: BackgroundWorkQueue<IncomingConsensusMsg>,
 
@@ -127,6 +129,7 @@ pub struct ConsensusService<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync 
     tx_manager: TxManager<E, LedgerDB>,
     peer_keepalive: Arc<Mutex<PeerKeepalive>>,
 
+    admin_rpc_server: Option<grpcio::Server>,
     consensus_rpc_server: Option<grpcio::Server>,
     user_rpc_server: Option<grpcio::Server>,
     byzantine_ledger: Arc<Mutex<Option<ByzantineLedger>>>,
@@ -193,13 +196,6 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
             logger.clone(),
         )));
 
-        // Management Server
-        let management_server = if config.management_listen_addr.is_some() {
-            Some(ManagementServer::new(config.clone(), logger.clone()))
-        } else {
-            None
-        };
-
         // Return
         Self {
             config,
@@ -209,7 +205,6 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
             env,
             ra_client,
             logger,
-            management_server,
 
             consensus_msgs_from_network,
 
@@ -218,6 +213,7 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
             tx_manager,
             peer_keepalive,
 
+            admin_rpc_server: None,
             consensus_rpc_server: None,
             user_rpc_server: None,
             byzantine_ledger: Arc::new(Mutex::new(None)),
@@ -231,10 +227,10 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
     pub fn start(&mut self) -> Result<(), ConsensusServiceError> {
         let ret = {
             self.update_enclave_report_cache()?;
+            self.start_admin_rpc_server()?;
             self.start_consensus_rpc_server()?;
             self.start_user_rpc_server()?;
             self.start_byzantine_ledger_service()?;
-            self.start_management_server()?;
 
             // Success.
             Ok(())
@@ -247,10 +243,6 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
 
     pub fn stop(&mut self) -> Result<(), ConsensusServiceError> {
         log::debug!(self.logger, "Attempting to stop node...");
-
-        if let Some(ref mut server) = self.management_server.take() {
-            server.stop();
-        }
 
         self.peer_keepalive.lock().expect("mutex poisoned").stop();
 
@@ -266,6 +258,14 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
             server.shutdown().wait().or_else(|_| {
                 Err(ConsensusServiceError::RpcShutdown(
                     "consensus_rpc_server".to_string(),
+                ))
+            })?
+        }
+
+        if let Some(ref mut server) = self.admin_rpc_server.take() {
+            server.shutdown().wait().or_else(|_| {
+                Err(ConsensusServiceError::RpcShutdown(
+                    "admin_rpc_server".to_string(),
                 ))
             })?
         }
@@ -478,6 +478,42 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
         Ok(())
     }
 
+    fn start_admin_rpc_server(&mut self) -> Result<(), ConsensusServiceError> {
+        if let Some(admin_listen_uri) = self.config.admin_listen_uri.as_ref() {
+            log::info!(
+                self.logger,
+                "Starting admin rpc server on {}...",
+                admin_listen_uri.addr(),
+            );
+
+            // Initialize services.
+            let admin_service = consensus_admin_grpc::create_consensus_admin_api(
+                admin_api_service::AdminApiService::new(self.config.clone(), self.logger.clone()),
+            );
+
+            let health_service = HealthService::new(None, self.logger.clone()).into_service();
+            let build_info_service = BuildInfoService::new(self.logger.clone()).into_service();
+
+            // Start GRPC server.
+            let server_builder = grpcio::ServerBuilder::new(self.env.clone())
+                .register_service(admin_service)
+                .register_service(health_service)
+                .register_service(build_info_service)
+                .bind_using_uri(admin_listen_uri);
+
+            let mut server = server_builder.build().unwrap();
+            server.start();
+
+            for (host, port) in server.bind_addrs() {
+                log::info!(self.logger, "Admin GRPC API listening on {}:{}", host, port);
+            }
+
+            self.admin_rpc_server = Some(server);
+        }
+
+        Ok(())
+    }
+
     fn start_consensus_rpc_server(&mut self) -> Result<(), ConsensusServiceError> {
         log::info!(
             self.logger,
@@ -589,14 +625,6 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
                 ))
             })?;
 
-        Ok(())
-    }
-
-    fn start_management_server(&mut self) -> Result<(), ConsensusServiceError> {
-        if let Some(ref mut server) = self.management_server {
-            log::info!(self.logger, "Starting management server.");
-            server.start();
-        }
         Ok(())
     }
 

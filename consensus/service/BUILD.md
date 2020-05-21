@@ -39,7 +39,7 @@ SGX_MODE=HW IAS_MODE=DEV cargo build -p mc-consensus-service
 
 >Note: The `--hw` flag loads the SGX device into the container. If you are running in simulation mode, or buliding the binary without running it, you can omit this.
 
-This will build using the provided Dockerfile specified at [docker/Dockerfile](../docker/Dockerfile), similar to the following:
+This will build using the provided Dockerfile specified at [docker/Dockerfile](../../docker/Dockerfile), similar to the following:
 
 ```
 # From the root of the repo
@@ -51,7 +51,7 @@ docker run -v $(pwd):/tmp/mobilecoin --workdir /tmp/mobilecoin --device /dev/isg
 
 #### Setting up your Environment
 
-Please see our example Dockerfile in [docker/Dockerfile](../docker/Dockerfile) for the current requirements to set up your environment for building consensus. We recommend Ubuntu 18.04.
+Please see our example Dockerfile in [docker/Dockerfile](../../docker/Dockerfile) for the current requirements to set up your environment for building consensus. We recommend Ubuntu 18.04.
 
 You may also need to install the following to run consensus:
 
@@ -86,7 +86,7 @@ To run the consensus service, you need:
 -  [API key obtained from Intel](https://api.portal.trustedservices.intel.com/EPID-attestation) to utilize their attestation services
 >Note: A successful attestation of a hardware-enabled enclave is required to participate in consensus.
 
-We provide an example install_sgx script that we use in our deployment in [docker/install_sgx.sh](../docker/install_sgx.sh).
+We provide an example install_sgx script that we use in our deployment in [docker/install_sgx.sh](../../docker/install_sgx.sh).
 
 >Note: You will need to run the following as root.
 
@@ -100,7 +100,7 @@ chmod +x ./sgx_linux_x64_driver_2.6.0_4f5bb63.bin
 
 Recommended SDK install:
 
->Note: You will need to always source the sgxsdk environment before running consensus.
+>Note: You will need to always source the sgxsdk environment before building consensus.
 
 ```
 wget https://download.01.org/intel-sgx/sgx-linux/2.7.1/distro/ubuntu18.04-server/sgx_linux_x64_sdk_2.7.101.3.bin

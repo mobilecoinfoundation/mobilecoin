@@ -9,7 +9,6 @@ name = "generate-sample-ledger"
 path = "src/bin/generate_sample_ledger.rs"
 
 [dependencies]
-mc-common = { path = "../../common" }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-ledger-db = { path = "../../ledger/db" }
 mc-transaction-core = { path = "../../transaction/core" }
@@ -17,6 +16,7 @@ mc-util-build-info = { path = "../../util/build/info" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-keyfile = { path = "../../util/keyfile" }
 
+hex = "0.3"
 rand = "0.7"
 rand_hc = "0.2.0"
 rayon = "1.1"

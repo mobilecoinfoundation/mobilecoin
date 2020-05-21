@@ -10,6 +10,7 @@ members = [
     "common",
     "connection",
     "connection/test-utils",
+    "consensus/admin-http-gateway",
     "consensus/api",
     "consensus/enclave",
     "consensus/enclave/api",
@@ -29,23 +30,25 @@ members = [
     "enclave-boundary",
     "ledger/db",
     "ledger/distribution",
+    "ledger/from-archive",
     "ledger/sync",
     "mobilecoind",
     "mobilecoind/api",
     "peers",
     "peers/test-utils",
+    "sgx/backtrace-edl",
+    "sgx/compat-edl",
     "sgx/core-types",
     "sgx/core-types-sys",
+    "sgx/css",
+    "sgx/debug-edl",
     "sgx/epid",
     "sgx/epid-sys",
     "sgx/epid-types",
     "sgx/epid-types-sys",
-    "sgx/backtrace-edl",
-    "sgx/compat-edl",
-    "sgx/css",
-    "sgx/debug-edl",
     "sgx/panic-edl",
     "sgx/slog-edl",
+    "sgx/urts-sys",
     "testnet-client",
     "transaction/core",
     "transaction/core/test-utils",
@@ -53,6 +56,7 @@ members = [
     "util/b58-payloads",
     "util/build/enclave",
     "util/build/grpc",
+    "util/build/bolt-signalapp",
     "util/build/sgx",
     "util/build/script",
     "util/encodings",
@@ -67,6 +71,7 @@ members = [
     "util/serial",
     "util/test-helper",
     "util/uri",
+    "watcher",
 ]
 exclude = [
     # mc-util-serial should only be accessed via the `common` crate.
@@ -92,6 +97,7 @@ overflow-checks = false
 rpath = true
 
 [patch.crates-io]
-rouille = { git = "https://github.com/tomaka/rouille/", rev = "db66a3b47af4271939e1aba21d0f36ccba3d1b70" }
 prost = { git = "https://github.com/mobilecoinofficial/prost", rev = "4e1905329369ca7a1cac3eda978ee9379167ee95" }
 prost-derive = { git = "https://github.com/mobilecoinofficial/prost", rev = "4e1905329369ca7a1cac3eda978ee9379167ee95" }
+dialoguer = { git = "https://github.com/mitsuhiko/dialoguer", rev = "a0c6c1e" }
+console = { git = "https://github.com/mitsuhiko/console", rev = "1307823" }

@@ -13,6 +13,10 @@ During TestNet, the MobileCoin team is actively developing in an internal reposi
 
 Coming soon: Code Style Guidelines
 
+### Sign the Contributor License Agreement (CLA)
+
+You will need to sign [our CLA](./CLA.md) before your pull request can be merged. Please email [cla@mobilecoin.com](mailto://cla@mobilecoin.com) and we will send you a copy.
+
 ## Participating in TestNet
 
 MobileCoin is launching a test network. Help us try it out.

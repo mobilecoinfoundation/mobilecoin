@@ -377,21 +377,18 @@ prost_message_helper32! { TxOutMembershipHash }
 
 #[cfg(test)]
 mod tests {
-    use alloc::vec::Vec;
-    use mc_crypto_keys::RistrettoPublic;
-    use mc_util_from_random::FromRandom;
-    use mc_util_serial::ReprBytes32;
-    use prost::Message;
-    use rand::{rngs::StdRng, SeedableRng};
-
     use crate::{
-        account_keys::AccountKey,
         amount::Amount,
-        constants::{BASE_FEE, FEE_SPEND_PUBLIC_KEY, FEE_VIEW_PRIVATE_KEY, FEE_VIEW_PUBLIC_KEY},
+        constants::BASE_FEE,
         encrypted_fog_hint::EncryptedFogHint,
         ring_signature::SignatureRctBulletproofs,
         tx::{Tx, TxIn, TxOut, TxPrefix},
     };
+    use alloc::vec::Vec;
+    use mc_crypto_keys::RistrettoPublic;
+    use mc_util_from_random::FromRandom;
+    use prost::Message;
+    use rand::{rngs::StdRng, SeedableRng};
 
     #[test]
     // `serialize_tx` should create a Tx, encode/decode it, and compare
@@ -448,29 +445,5 @@ mod tests {
         tx.encode(&mut buf).expect("failed to serialize into slice");
         let recovered_tx: Tx = Tx::decode(&buf[..]).unwrap();
         assert_eq!(tx, recovered_tx);
-    }
-
-    #[test]
-    fn generate_fee_view_key() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-        let account_key = AccountKey::random(&mut rng);
-        let account_public_addr = account_key.default_subaddress();
-
-        let spend_public_key = account_public_addr.spend_public_key();
-        let spend_public_key_bytes: [u8; 32] = spend_public_key.to_bytes();
-
-        let view_public_key = account_public_addr.view_public_key();
-        let view_public_key_bytes: [u8; 32] = view_public_key.to_bytes();
-
-        let view_private_key = *account_key.view_private_key();
-        let view_private_key_bytes: [u8; 32] = view_private_key.to_bytes();
-
-        //println!("view private key {:?}", view_private_key_bytes);
-        //println!("view public key {:?}", view_public_key_bytes);
-        //println!("spend public key {:?}", spend_public_key_bytes);
-
-        assert_eq!(view_private_key_bytes, FEE_VIEW_PRIVATE_KEY);
-        assert_eq!(view_public_key_bytes, FEE_VIEW_PUBLIC_KEY);
-        assert_eq!(spend_public_key_bytes, FEE_SPEND_PUBLIC_KEY);
     }
 }

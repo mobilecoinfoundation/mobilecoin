@@ -11,6 +11,7 @@ use core::{
 };
 use failure::Fail;
 use hex_fmt::HexFmt;
+use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::{Ed25519Public, KeyError};
 use serde::{Deserialize, Serialize};
 
@@ -45,7 +46,7 @@ impl From<KeyError> for NodeIDError {
 }
 
 /// Node unique identifier containing a responder_id as well as a unique public key
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Digestible)]
 pub struct NodeID {
     pub responder_id: ResponderId,
     pub public_key: Ed25519Public,

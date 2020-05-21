@@ -18,10 +18,10 @@ use mc_util_serial::{deserialize, serialize};
 
 lazy_static! {
     /// Storage for ECALL results whose given outbuf was not large enough
-    static ref RETRY_BUFFER: RetryBuffer = { RetryBuffer::new(&ecall_dispatcher) };
+    static ref RETRY_BUFFER: RetryBuffer = RetryBuffer::new(&ecall_dispatcher);
 
     /// Storage for the business logic / implementation state
-    static ref ENCLAVE: SgxConsensusEnclave = { Default::default() };
+    static ref ENCLAVE: SgxConsensusEnclave = Default::default();
 }
 
 /// Dispatch ecalls with the unified signature

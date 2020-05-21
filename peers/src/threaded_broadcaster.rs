@@ -9,16 +9,16 @@ use crate::{
     traits::{ConsensusConnection, RetryableConsensusConnection},
 };
 use mc_common::{
-    fast_hash,
     logger::{log, o, Logger},
     Hash, LruCache, NodeID, ResponderId,
 };
 use mc_connection::{Connection, ConnectionManager, SyncConnection};
 use mc_consensus_api::consensus_peer::ConsensusMsgResult;
 use mc_consensus_enclave_api::WellFormedEncryptedTx;
+use mc_crypto_digestible::Digestible;
 use mc_transaction_core::tx::TxHash;
-use mc_util_serial;
 use mc_util_uri::ConnectionUri;
+use sha2::Sha256;
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -110,8 +110,7 @@ impl<RP: RetryPolicy> ThreadedBroadcaster<RP> {
     /// * `msg` - The message to be broadcasted.
     ///
     pub fn broadcast_consensus_msg(&mut self, from_peer: &ResponderId, msg: &ConsensusMsg) {
-        let serialized_msg = mc_util_serial::serialize(&msg).expect("failed serializing msg");
-        let msg_hash = fast_hash(&serialized_msg);
+        let msg_hash = msg.digest_with::<Sha256>().into();
 
         // If we've already seen this message, we don't need to do anything.
         // We use `get()` instead of `contains()` to update LRU state.

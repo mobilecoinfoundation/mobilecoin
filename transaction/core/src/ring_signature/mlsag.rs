@@ -9,7 +9,7 @@ use blake2::{Blake2b, Digest};
 use curve25519_dalek::ristretto::RistrettoPoint;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
-use mc_util_serial::{prost::Message, ReprBytes32};
+use mc_util_serial::prost::Message;
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
@@ -17,15 +17,9 @@ use crate::{
     commitment::Commitment,
     compressed_commitment::CompressedCommitment,
     domain_separators::RING_MLSAG_CHALLENGE_DOMAIN_TAG,
+    onetime_keys::hash_to_point,
     ring_signature::{CurveScalar, Error, KeyImage, Scalar, GENERATORS},
 };
-
-// This needs to be the same "Hp" function used by the onetime keys.
-fn hash_to_point(ristretto_public: &RistrettoPublic) -> RistrettoPoint {
-    let mut hasher = Blake2b::new();
-    hasher.input(&ristretto_public.to_bytes());
-    RistrettoPoint::from_hash(hasher)
-}
 
 /// MLSAG for a ring of public keys and amount commitments.
 /// Note: Serialize and Deserialize appear to be cruft left over from sdk_json_interface.

@@ -21,6 +21,10 @@ pub struct Config {
     #[structopt(long)]
     pub ledger_db_bootstrap: Option<String>,
 
+    /// Path to watcher db (lmdb).
+    #[structopt(long, parse(from_os_str))]
+    pub watcher_db: Option<PathBuf>,
+
     #[structopt(flatten)]
     pub peers_config: PeersConfig,
 

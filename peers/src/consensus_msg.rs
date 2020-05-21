@@ -6,6 +6,7 @@ use ed25519::signature::Error as SignatureError;
 use failure::Fail;
 use mc_common::{NodeID, ResponderId};
 use mc_consensus_scp::Msg;
+use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::{Ed25519Pair, Ed25519Signature, KeyError, Signer, Verifier};
 use mc_ledger_db::Ledger;
 use mc_transaction_core::{tx::TxHash, BlockID};
@@ -15,7 +16,7 @@ use std::{convert::TryFrom, result::Result as StdResult};
 
 /// A consensus message holds the data that is exchanged by consensus service nodes as part of the
 /// process of reaching agreement on the contents of the next block.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize, Digestible)]
 pub struct ConsensusMsg {
     /// An SCP message, used to reach agreement on the set of values the next block will contain.
     pub scp_msg: Msg<TxHash>,
@@ -126,13 +127,10 @@ impl ConsensusMsg {
 
         let prev_block = ledger.get_block(scp_msg.slot_index - 1)?;
 
-        let contents_hash = Sha256::digest(
-            &[
-                mc_util_serial::serialize(&scp_msg)?,
-                mc_util_serial::serialize(&prev_block.id)?,
-            ]
-            .concat(),
-        );
+        let mut contents_hasher = Sha256::new();
+        scp_msg.digest(&mut contents_hasher);
+        prev_block.id.digest(&mut contents_hasher);
+        let contents_hash = contents_hasher.result();
 
         let signature = signer_key.try_sign(&contents_hash)?;
 
@@ -154,13 +152,11 @@ impl ConsensusMsg {
     }
 
     pub fn verify_signature(&self) -> StdResult<(), ConsensusMsgError> {
-        let contents_hash = Sha256::digest(
-            &[
-                mc_util_serial::serialize(&self.scp_msg)?,
-                mc_util_serial::serialize(&self.prev_block_id)?,
-            ]
-            .concat(),
-        );
+        let mut contents_hasher = Sha256::new();
+        self.scp_msg.digest(&mut contents_hasher);
+        self.prev_block_id.digest(&mut contents_hasher);
+        let contents_hash = contents_hasher.result();
+
         Ok(self
             .scp_msg
             .sender_id

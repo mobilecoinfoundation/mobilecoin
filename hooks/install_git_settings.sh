@@ -1,17 +1,21 @@
-#!/bin/sh
+#!/bin/bash
+
 set -e
 
 ROOT=`git rev-parse --show-toplevel`
 
-echo -n "Installing pre-commit hook..."
+pushd $ROOT/.git/hooks >/dev/null
 
-# symlink the precommit hook into .git/hooks
-# see https://stackoverflow.com/questions/4592838/symbolic-link-to-a-hook-in-git
-ln -s -f "$ROOT/hooks/pre-commit" "$ROOT/.git/hooks/pre-commit"
+echo -n "Installing pre-commit hook..."
+ln -sf "../../hooks/pre-commit"
 echo " Done."
 
+echo -n "Installing pre-push hook..."
+ln -sf "../../hooks/pre-push"
+echo " Done."
+
+popd >/dev/null
+
 echo -n "Installing 'theirs' merge driver..."
-# define a 'theirs' merge driver which uses unix false utility to always choose
-# theirs. In .gitattributes we apply this to Cargo.lock files
-git config --local merge.theirs.driver false
+git config --local merge.theirs.driver "mv %B %A"
 echo " Done."

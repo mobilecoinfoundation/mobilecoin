@@ -105,7 +105,14 @@ impl TestnetClient {
         println!();
 
         let client = MobilecoindApiClient::new(ch);
-        let network_status = match client.get_network_status(&mc_mobilecoind_api::Empty::new()) {
+
+        let testnet_client = TestnetClient {
+            config: config.clone(),
+            client,
+            monitor_id: Vec::new(),
+        };
+
+        let network_status = match testnet_client.get_network_status() {
             Ok(resp) => resp,
             Err(err) => {
                 println!(
@@ -122,16 +129,12 @@ impl TestnetClient {
             }
         };
         println!(
-            "mobilecoind is at block #{}, network is at block #{}.",
+            "The local ledger is at block #{}. The MobileCoin Network is at block #{}.",
             network_status.local_block_index, network_status.network_highest_block_index,
         );
 
         // Return.
-        Ok(TestnetClient {
-            config: config.clone(),
-            client,
-            monitor_id: Vec::new(),
-        })
+        Ok(testnet_client)
     }
 
     /// The main UI loop.
@@ -231,9 +234,25 @@ dc74edf1d8842dfdf49d6db5d3d4e873665c2dd400c0955dd9729571826a26be
 
         Input::<EntropyBytes>::new()
             .with_prompt("Enter your master key")
-            .interact()
+            .interact_text()
             .expect("failed getting master key")
             .0
+    }
+
+    /// Contact the MobileCoin network to collect the latest ledger size information
+    fn get_network_status(&self) -> Result<mc_mobilecoind_api::GetNetworkStatusResponse, String> {
+        let pb = ProgressBar::new_spinner();
+        pb.enable_steady_tick(120);
+        pb.set_message("Checking the MobileCoin public ledger...");
+
+        // Get the network status.
+        let network_status = self
+            .client
+            .get_network_status(&mc_mobilecoind_api::Empty::new())
+            .map_err(|err| format!("Failed getting network status: {}", err))?;
+
+        pb.finish_and_clear();
+        Ok(network_status)
     }
 
     /// Add a monitor and wait for it to catch up.
@@ -262,14 +281,9 @@ dc74edf1d8842dfdf49d6db5d3d4e873665c2dd400c0955dd9729571826a26be
             .map_err(|err| format!("Failed adding monitor: {}", err))?;
         self.monitor_id = resp.get_monitor_id().to_vec();
 
-        // Get the network block height.
-        let network_status = self
-            .client
-            .get_network_status(&mc_mobilecoind_api::Empty::new())
-            .map_err(|err| format!("Failed getting network status: {}", err))?;
+        let network_status = self.get_network_status()?;
 
-        let num_blocks = network_status.network_highest_block_index + 1;
-        self.wait_for_monitor_sync(Some(num_blocks))?;
+        self.wait_for_monitor_sync(Some(network_status.network_highest_block_index + 1))?;
 
         // Done!
         Ok(())
@@ -277,11 +291,7 @@ dc74edf1d8842dfdf49d6db5d3d4e873665c2dd400c0955dd9729571826a26be
 
     /// Print the current balance.
     fn print_balance(&mut self) -> Result<(), String> {
-        // See if we're behind.
-        let network_status = self
-            .client
-            .get_network_status(&mc_mobilecoind_api::Empty::new())
-            .map_err(|err| format!("Failed getting network status: {}", err))?;
+        let network_status = self.get_network_status()?;
 
         if network_status.network_highest_block_index > network_status.local_block_index {
             let blocks_behind =
@@ -378,9 +388,9 @@ string that we send you. It should look something like:
         }
 
         let opt_request_code = Input::<WrappedRequestPayload>::new()
-            .with_prompt("Enter the request code to fulfill")
+            .with_prompt("Enter the request code to fulfill, or leave blank to cancel")
             .allow_empty(true)
-            .interact()
+            .interact_text()
             .expect("failed getting request code")
             .0;
         if opt_request_code.is_none() {
@@ -443,8 +453,10 @@ string that we send you. It should look something like:
                         .unwrap();
                     match selection {
                         0 => {
-                            request_code.value =
-                                Self::input_mob("Enter new amount (in MOB)", request_code.value);
+                            request_code.value = Self::input_mob(
+                                "Enter new amount in MOB, or leave blank to cancel",
+                                request_code.value,
+                            );
                             continue;
                         }
                         1 => {
@@ -470,8 +482,10 @@ string that we send you. It should look something like:
                     break tx_proposal;
                 }
                 1 => {
-                    request_code.value =
-                        Self::input_mob("Enter new amount (in MOB)", request_code.value);
+                    request_code.value = Self::input_mob(
+                        "Enter new amount in MOB, or leave blank to cancel",
+                        request_code.value,
+                    );
                 }
                 2 => {
                     return;
@@ -483,8 +497,8 @@ string that we send you. It should look something like:
         // Send payment
         let pb = ProgressBar::new_spinner();
         pb.enable_steady_tick(120);
-
         pb.set_message("Sending payment...");
+
         let mut req = mc_mobilecoind_api::SubmitTxRequest::new();
         req.set_tx_proposal(tx_proposal);
 
@@ -570,9 +584,9 @@ MobileCoin forums. Visit http://community.mobilecoin.com
             .unwrap();
         let memo = match selection {
             0 => Input::<String>::new()
-                .with_prompt("Please enter your memo")
+                .with_prompt("Please enter your memo, or leave blank to cancel")
                 .allow_empty(true)
-                .interact()
+                .interact_text()
                 .expect("failed getting memo"),
             1 => String::from(""),
             _ => unreachable!(),
@@ -635,7 +649,7 @@ MobileCoin forums. Visit http://community.mobilecoin.com
             .with_prompt(prompt)
             .default(mob_default)
             .validate_with(CanConvertToMOB)
-            .interact()
+            .interact_text()
             .expect("failed getting request code");
 
         // Convert MOB back to pMOB
@@ -724,22 +738,27 @@ MobileCoin forums. Visit http://community.mobilecoin.com
 }
 
 /// Helper method for converting a u64 picomob value into human-readable form.
+/// For values > 999.999 MOB, display as ({:.3} kMOB)
+/// Prefer MOB units whenever we can display in the form ({:.3} MOB)
+/// For values < 0.001 MOB, we display as ({:.3} µMOB)
+/// For values < 0.001 µMOB, we display as ({} pMOB)
 fn u64_to_mob_display(val: u64) -> String {
     let mut decimal_val: Decimal = val.into();
 
-    let kilo_mob = Decimal::from_scientific("1000e12").unwrap();
+    let kilo_mob = Decimal::from_scientific("1e15").unwrap();
     let mob = Decimal::from_scientific("1e12").unwrap();
     let micro_mob = Decimal::from_scientific("1e6").unwrap();
+    let thousand = Decimal::from_scientific("1e3").unwrap();
 
     if val == 0 {
         "0 MOB".to_owned()
     } else if decimal_val >= kilo_mob {
         decimal_val /= kilo_mob;
         format!("{:.3} kMOB", decimal_val)
-    } else if decimal_val >= mob {
+    } else if decimal_val >= mob / thousand {
         decimal_val /= mob;
         format!("{:.3} MOB", decimal_val)
-    } else if decimal_val >= micro_mob {
+    } else if decimal_val >= micro_mob / thousand {
         decimal_val /= micro_mob;
         format!("{:.3} µMOB", decimal_val)
     } else {
@@ -755,17 +774,41 @@ mod tests {
     #[test]
     fn test_u64_to_mob_display() {
         const MOB: u64 = 1_000_000_000_000;
-        assert_eq!(u64_to_mob_display(1), "1 pMOB");
-        assert_eq!(u64_to_mob_display(123), "123 pMOB");
 
-        assert_eq!(u64_to_mob_display(MOB - 1), "999999.999 µMOB");
-        assert_eq!(u64_to_mob_display(MOB), "1.000 MOB");
-        assert_eq!(u64_to_mob_display(MOB + 1), "1.000 MOB");
+        assert_eq!(u64_to_mob_display(0), "0 MOB");
+        assert_eq!(u64_to_mob_display(99), "99 pMOB");
+        assert_eq!(u64_to_mob_display(999), "999 pMOB");
+
+        assert_eq!(u64_to_mob_display(100_000), "0.100 µMOB");
+        assert_eq!(u64_to_mob_display(999_999), "0.999 µMOB");
+        assert_eq!(u64_to_mob_display(1_000_000), "1.000 µMOB");
+        assert_eq!(u64_to_mob_display(9_999_999), "9.999 µMOB");
+        assert_eq!(u64_to_mob_display(999_999_999), "999.999 µMOB");
+
+        assert_eq!(u64_to_mob_display(1_000_000_000), "0.001 MOB");
+        assert_eq!(u64_to_mob_display(1_000_000_001), "0.001 MOB");
+        assert_eq!(u64_to_mob_display(9_999_999_999), "0.009 MOB");
+        assert_eq!(u64_to_mob_display(10_000_000_000), "0.010 MOB");
+        assert_eq!(u64_to_mob_display(100_000_000_000), "0.100 MOB");
+        assert_eq!(u64_to_mob_display(999_999_999_999), "0.999 MOB");
+        assert_eq!(u64_to_mob_display(1_000_000_000_000), "1.000 MOB");
+        assert_eq!(u64_to_mob_display(1_000_000_000_001), "1.000 MOB");
+        assert_eq!(u64_to_mob_display(99_999_999_999_999), "99.999 MOB");
+        assert_eq!(u64_to_mob_display(MOB - 100_000_000_000), "0.900 MOB");
+        assert_eq!(u64_to_mob_display(MOB - 910_000_000_000), "0.090 MOB");
+        assert_eq!(u64_to_mob_display(MOB - 991_000_000_000), "0.009 MOB");
+        assert_eq!(u64_to_mob_display(999_999_999_999), "0.999 MOB");
+        assert_eq!(u64_to_mob_display(1_000_000_000_000), "1.000 MOB");
+        assert_eq!(u64_to_mob_display(1_000_000_000_001), "1.000 MOB");
         assert_eq!(u64_to_mob_display(MOB + 100_000_000), "1.000 MOB");
         assert_eq!(u64_to_mob_display(MOB + 1_000_000_000), "1.001 MOB");
+        assert_eq!(u64_to_mob_display(MOB + 10_000_000_000), "1.010 MOB");
+        assert_eq!(u64_to_mob_display(MOB + 100_000_000_000), "1.100 MOB");
+        assert_eq!(u64_to_mob_display(MOB * 999), "999.000 MOB");
+        assert_eq!(u64_to_mob_display(999_999_999_999_999), "999.999 MOB");
 
         assert_eq!(u64_to_mob_display(MOB * 1000), "1.000 kMOB");
-        assert_eq!(u64_to_mob_display((MOB * 1000) + 1), "1.000 kMOB");
-        assert_eq!(u64_to_mob_display((MOB * 1000) + MOB), "1.001 kMOB");
+        assert_eq!(u64_to_mob_display(MOB * 1000 + 1), "1.000 kMOB");
+        assert_eq!(u64_to_mob_display(MOB * 1001), "1.001 kMOB");
     }
 }

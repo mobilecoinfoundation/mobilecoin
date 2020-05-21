@@ -70,6 +70,7 @@ RUN rm -rf /tmp/sgx-debs
 COPY bin/libconsensus-enclave.signed.so /usr/bin/
 COPY bin/consensus-service /usr/bin/
 COPY bin/ledger-distribution /usr/bin/
+COPY bin/mc-consensus-admin-http-gateway /usr/bin/
 
 # Q: Why not use NODE_LEDGER_DIR here?
 # A: The ENV dictates where the app actually looks, and the ARG sets
@@ -102,5 +103,6 @@ ENV RUST_LOG_STYLE "never"
 
 EXPOSE $NODE_CLIENT_PORT
 EXPOSE $NODE_CONSENSUS_PORT
+EXPOSE $NODE_MANAGEMENT_PORT
 
 ENTRYPOINT ["entrypoint.sh"]
