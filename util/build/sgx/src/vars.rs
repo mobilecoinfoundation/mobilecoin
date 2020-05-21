@@ -4,4 +4,3 @@
 
 pub const ENV_IAS_MODE: &str = "IAS_MODE";
 pub const ENV_SGX_MODE: &str = "SGX_MODE";
-pub const ENV_SGX_SDK: &str = "SGX_SDK";
