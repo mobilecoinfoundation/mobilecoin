@@ -88,7 +88,7 @@ The `SGX_MODE` environment variable configuration is also used throughout Intel 
 
 #### BIOS Settings
 
-In order to run SGX securely with `SGX_MODE=HW` you will may need to change certain settings in your BIOS. These settings reduce the risk of certain side-channel attacks and are required
+In order to run SGX securely with `SGX_MODE=HW` you may need to change certain settings in your BIOS. These settings reduce the risk of certain side-channel attacks and are required
 by the MobileCoin network to accept an enclave quote.
 
 These may look different depending on your BIOS type.
