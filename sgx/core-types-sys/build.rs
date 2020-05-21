@@ -6,7 +6,16 @@ use bindgen::{
     callbacks::{IntKind, ParseCallbacks},
     Builder,
 };
+use cargo_emit::rustc_cfg;
 use mc_util_build_script::Environment;
+use mc_util_build_sgx::{SgxEnvironment, SgxLibraryCollection, SgxMode};
+use pkg_config::{Config, Error as PkgConfigError, Library};
+
+const SGX_LIBS: &[&str] = &["libsgx_launch"];
+const SGX_SIMULATION_LIBS: &[&str] = &["libsgx_launch_sim"];
+
+// Changing this version is a breaking change, you must update the crate version if you do.
+const SGX_VERSION: &str = "2.9.101.2";
 
 #[derive(Debug)]
 struct Callbacks;
@@ -42,19 +51,29 @@ impl ParseCallbacks for Callbacks {
 
 fn main() {
     let env = Environment::default();
+    let sgx = SgxEnvironment::new(&env).expect("Could not read SGX environment");
 
-    let header = env.dir().join("include");
-    let eid_header = header
-        .join("sgx_eid.h")
-        .into_os_string()
-        .into_string()
-        .expect("Invalid UTF-8 in path to sgx.h");
-    let sgx_header = header
-        .join("sgx.h")
-        .into_os_string()
-        .into_string()
-        .expect("Invalid UTF-8 in path to sgx.h");
-    Builder::default()
+    // We're going to use libsgx_launch as our stub for something better from Intel.
+    let mut cfg = Config::new();
+    cfg.exactly_version(SGX_VERSION)
+        .print_system_libs(true)
+        .cargo_metadata(false)
+        .env_metadata(true);
+
+    let libnames = if sgx.sgx_mode() == SgxMode::Simulation {
+        rustc_cfg!("feature=\"sgx-sim\"");
+        SGX_SIMULATION_LIBS
+    } else {
+        SGX_LIBS
+    };
+
+    let libraries = libnames
+        .iter()
+        .map(|libname| cfg.probe(libname))
+        .collect::<Result<Vec<Library>, PkgConfigError>>()
+        .expect("Could not find SGX libraries, check PKG_CONFIG_PATH variable");
+
+    let mut builder = Builder::default()
         .ctypes_prefix("crate::ctypes")
         .derive_copy(true)
         .derive_debug(true)
@@ -63,9 +82,48 @@ fn main() {
         .derive_hash(true)
         .derive_ord(true)
         .derive_partialeq(true)
-        .derive_partialord(true)
-        .header(eid_header)
-        .header(sgx_header)
+        .derive_partialord(true);
+
+    let mut sgx_h_found = false;
+    let mut sgx_eid_h_found = false;
+
+    for path in libraries.include_paths() {
+        if !sgx_h_found {
+            let sgx_h_path = path.join("sgx.h");
+            if sgx_h_path.exists() {
+                builder = builder.header(
+                    sgx_h_path
+                        .as_os_str()
+                        .to_str()
+                        .expect("Invalid UTF-8 in path to sgx.h"),
+                );
+                sgx_h_found = true;
+            }
+        }
+
+        if !sgx_eid_h_found {
+            let sgx_eid_h_path = path.join("sgx_eid.h");
+            if sgx_eid_h_path.exists() {
+                builder = builder.header(
+                    sgx_eid_h_path
+                        .as_os_str()
+                        .to_str()
+                        .expect("Invalid UTF-8 in path to sgx_eid.h"),
+                );
+                sgx_eid_h_found = true;
+            }
+        }
+
+        if sgx_h_found && sgx_eid_h_found {
+            break;
+        }
+    }
+
+    if !sgx_h_found || !sgx_eid_h_found {
+        panic!("Could not find both sgx.h and sgx_eid.h in our include paths");
+    }
+
+    builder
         .parse_callbacks(Box::new(Callbacks))
         .prepend_enum_name(false)
         .use_core()

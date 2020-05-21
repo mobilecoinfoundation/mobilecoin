@@ -16,5 +16,6 @@ mbedtls-sys-auto = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.g
 
 cargo-emit = "0.1.1"
 cargo_metadata = "0.9"
-failure = { version = "0.1.6", default-features = false }
+displaydoc = "0.1"
+pkg-config = "0.3"
 rand = "0.7"
