@@ -11,6 +11,8 @@ use pkg_config::{Config, Error as PkgConfigError, Library};
 // cleans up their build, this can use, e.g. libsgx_trts.
 const SGX_LIBS: &[&str] = &["libsgx_urts", "libsgx_epid"];
 const SGX_SIMULATION_LIBS: &[&str] = &["libsgx_urts_sim", "libsgx_epid_sim"];
+
+// Changing this version is a breaking change, you must update the crate version if you do.
 const SGX_VERSION: &str = "2.9.101.2";
 
 fn main() {

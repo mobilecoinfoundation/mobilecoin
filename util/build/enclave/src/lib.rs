@@ -50,9 +50,6 @@ pub enum Error {
     /// A lock was poisoned
     Poison,
 
-    /// A binary location could not be determined from the provided libraries
-    BadLibs,
-
     /// There was an error parsing the signature output: {0}
     Signature(SignatureError),
 
