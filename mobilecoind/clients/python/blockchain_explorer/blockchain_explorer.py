@@ -10,7 +10,6 @@ from mob_client import mob_client
 client = mob_client('localhost:4444', False)
 app = Flask(__name__)
 
-
 def command_args():
     parser = argparse.ArgumentParser(description='MobileCoin Block Explorer')
     parser.add_argument('--port',
@@ -70,6 +69,12 @@ def block(block_num):
 
     for signature in block.signatures:
         signature.src_url = signature.src_url.split('/')[-2]
+
+    if block_num >= num_blocks:
+        return render_template('block404.html',
+                               block_num=int(block_num),
+                               num_blocks=num_blocks)
+
     return render_template('block.html',
                            block_num=int(block_num),
                            block_hash=block.block.contents_hash.data,
