@@ -1,0 +1,27 @@
+<html>
+    <head>
+        <title>MobileCoin Blockchain Explorer</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/lofi.css') }}">
+    </head>
+    <body>
+        <div class="container">
+<div class="center">
+********************************************************************************
+<div class="row">&nbsp;&nbsp;<a href="/"><</a></div>
+<div class="row centered">MobileCoin Blockchain Explorer</div>
+<div class="row">&nbsp;</div>
+<div class="row centered">Block {{ block_num }} is not available!</div>
+<div class="row">&nbsp;</div>
+********************************************************************************
+<div class="row">&nbsp;</div>
+<div class="row">&nbsp;</div>
+<div class="row centered">
+The last index in the ledger is <a href="/block/{{num_blocks}}">{{ num_blocks }}</a>. 
+</div>
+<div class="row">&nbsp;</div>
+<div class="row">&nbsp;</div>
+********************************************************************************
+</div>
+        </div>
+    </body>
+</html>
