@@ -4,13 +4,12 @@
 
 #![deny(missing_docs)]
 
-use mc_sgx_core_types::{Error as SgxError, Report, Result as SgxResult, TargetInfo};
-use mc_sgx_epid_sys::{sgx_calc_quote_size, sgx_init_quote};
+use mc_sgx_core_types::{Report, Result as SgxResult, SgxStatusToResult, TargetInfo};
+use mc_sgx_epid_sys::{sgx_calc_quote_size, sgx_get_quote, sgx_init_quote};
 use mc_sgx_epid_types::{
     EpidGroupId, PlatformInfo, ProviderId, Quote, QuoteNonce, QuoteSign, SignatureRevocationList,
     UpdateInfo,
 };
-use std::convert::TryFrom;
 
 /// Monkey-patch an existing structure to allow creation by Intel's EPID Quoting Enclave.
 pub trait EpidQuotingEnclave: Sized {
@@ -31,29 +30,19 @@ impl EpidQuotingEnclave for TargetInfo {
         let mut target_info = TargetInfo::default();
         let mut epid_gid = EpidGroupId::default();
 
-        let status = unsafe { sgx_init_quote(target_info.as_mut(), epid_gid.as_mut()) };
-        match SgxError::try_from(status) {
-            Ok(e) => Err(e),
-            Err(true) => Ok(target_info),
-            Err(false) => panic!("Unknown SGX status code: {}", status),
-        }
+        unsafe { sgx_init_quote(target_info.as_mut(), epid_gid.as_mut()) }.into_result(target_info)
     }
 }
 
 /// Retrieve the EpidGroupId of the current Quoting Enclave.
 ///
 /// This is used to contact IAS and retrieve the [`SigRL`] data structure.
-impl EpidEpidQuotingEnclave for EpidGroupId {
+impl EpidQuotingEnclave for EpidGroupId {
     fn for_epid_qe() -> SgxResult<EpidGroupId> {
         let mut target_info = TargetInfo::default();
         let mut epid_gid = EpidGroupId::default();
 
-        let status = unsafe { sgx_init_quote(target_info.as_mut(), epid_gid.as_mut()) };
-        match SgxError::try_from(status) {
-            Ok(e) => Err(e),
-            Err(true) => Ok(epid_gid),
-            Err(false) => panic!("Unknown SGX status code: {}", status),
-        }
+        unsafe { sgx_init_quote(target_info.as_mut(), epid_gid.as_mut()) }.into_result(epid_gid)
     }
 }
 
@@ -94,42 +83,28 @@ impl EpidQuoteReport for Quote {
     ) -> SgxResult<(Quote, Report)> {
         let sigrl_ref = sigrl.as_ref();
         let mut quote_size = 0u32;
-        let status = unsafe {
-            sgx_calc_quote_size(sigrl_ref.as_ptr(), sigrl_ref.len() as u32, &mut quote_size)
-        };
-
-        match SgxError::try_from(status) {
-            Ok(err) => return Err(err),
-            Err(false) => panic!("Unknown SGX status code: {}", status),
-            _ => (),
-        };
+        unsafe { sgx_calc_quote_size(sigrl_ref.as_ptr(), sigrl_ref.len() as u32, &mut quote_size) }
+            .into_result(())?;
 
         let mut quote = Quote::with_capacity(quote_size as usize)
             .expect("SGX SDK requested a quote larger than we are allowed to use");
 
         let mut qe_report = Report::default();
 
-        let status = unsafe {
+        unsafe {
             sgx_get_quote(
-                report,
+                report.as_ref(),
                 quote_type.into(),
-                provider_id,
-                &nonce,
+                provider_id.as_ref(),
+                nonce.as_ref(),
                 sigrl_ref.as_ptr(),
                 sigrl_ref.len() as u32,
-                &mut qe_report,
-                &mut quote,
+                qe_report.as_mut(),
+                quote.as_mut(),
                 quote_size,
             )
-        };
-
-        match SgxError::try_from(status) {
-            Ok(err) => return Err(err),
-            Err(false) => panic!("Unknown SGX status code: {}", status),
-            _ => (),
-        };
-
-        OK(quote, qe_report)
+        }
+        .into_result((quote, qe_report))
     }
 }
 
