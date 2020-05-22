@@ -46,7 +46,7 @@ def index():
                      bytes.hex(block.block.contents_hash.data),
                      txo_count,
                      key_image_count,
-                     len(block.signatures).
+                     len(block.signatures),
                      )
         blocks.append(block_row)
 
