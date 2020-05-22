@@ -75,8 +75,8 @@ def index():
     num_blocks, num_transactions = client.get_ledger_info()
     return render_ledger_range(num_blocks - 101, 100)
 
-@app.route('/<block_num>')
-def page(block_num):
+@app.route('/from/<block_num>')
+def ledger(block_num):
     num_blocks, num_transactions = client.get_ledger_info()
     block_num = int(block_num)
     return render_ledger_range(block_num, 100)
