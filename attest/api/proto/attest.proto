@@ -4,8 +4,6 @@
 /// key exchange using a derivative of the noise protocol
 syntax = "proto3";
 
-import "google/protobuf/empty.proto";
-
 package attest;
 
 /// A server-authenticated service for SGX enclaves. The responder is the
