@@ -35,7 +35,7 @@ There are {{ num_blocks }} blocks and {{ num_transactions }} transactions in the
     <div class="col_8">*******</div>
     {%- endfor %}
 </div>
-{%- for block in blocks|slice:":20" %}
+{%- for block in blocks[-20:] %}
     <div class="row">
         <div class="col_8"><a href="/block/{{ block[0]}}">{{ block[0] }}</a></div>
         <div class="col_12"><a href="/block/{{ block[0]}}">{{ block[1] }}</a></div>
