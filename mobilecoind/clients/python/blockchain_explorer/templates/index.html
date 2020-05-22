@@ -24,7 +24,7 @@ There are {{ num_blocks }} blocks and {{ num_transactions }} transactions in the
     {% if signers is defined %}
         <div class="col_12">Signatures</div>
         {%- for signer in signers %}
-        <div class="col_5">{{ signer[:4] }}</div>
+        <div class="col_4">{{ signer[:3] }}</div>
         {%- endfor %}
     {% endif %}
 </div>
@@ -35,7 +35,7 @@ There are {{ num_blocks }} blocks and {{ num_transactions }} transactions in the
     {% if signers is defined %}
         <div class="col_12">**********</div>
         {%- for signer in signers %}
-        <div class="col_5">****</div>
+        <div class="col_4">****</div>
         {%- endfor %}
     {% endif %}
 </div>
@@ -47,7 +47,7 @@ There are {{ num_blocks }} blocks and {{ num_transactions }} transactions in the
         {% if signers is defined %}
             <div class="col_12"><a href="/block/{{ block[0]}}">{{ block[3] }}</a></div>
             {%- for signer in signers %}
-            <div class="col_5">{{ "|" if signers[signer] }}</div>
+            <div class="col_4">{{ "&nbsp;|" if signers[signer] }}</div>
             {%- endfor %}
         {% endif %}
     </div>
