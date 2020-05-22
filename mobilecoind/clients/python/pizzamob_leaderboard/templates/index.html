@@ -69,13 +69,12 @@ function getText(passphrase) {
     return "Welcome to Satoshi's Pizzeria.\n\nPlease enter your passphrase.\n\n";
   }
     return getStatus(passphrase).then(status => {
-        console.log(status.code1, status.code2, status.mob, status.time);
+        console.log(status.code, status.mob, status.time);
         var line = "*******************************************************************************";
         var text = line + '\n\n';
         text += "Remember your passphrase to claim your pizza: \n\n" + passphrase + "\n\n";
         text += "Your request code is: \n\n";
-        text += status.code1 + "\n";
-        text += status.code2;
+        text += status.code;
         text += "\n\n" ;
         text += "You have deposited " + status.mob + " MOB" + ". Deposit 10000 MOB to win.\n\n";
         text += line + '\n\n';

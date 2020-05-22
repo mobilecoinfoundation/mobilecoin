@@ -85,8 +85,7 @@ def add_user():
     leaderboard = get_leaderboard()
 
     response = {
-        "code1": request_code[:-30],
-        "code2": request_code[-30:],
+        "code": request_code[:79] + '\n' + request_code[79:],
         "mob": balance,
         "time": timestamp,
         "leaderboard": render_leaderboard(leaderboard)
