@@ -31,7 +31,7 @@ pub use crate::{
     attributes::{AttributeFlags, AttributeXfeatures, Attributes, ATTRIBUTES_SIZE},
     config_id::{ConfigId, CONFIG_ID_SIZE},
     cpu_svn::{CpuSecurityVersion, CPU_SECURITY_VERSION_SIZE},
-    error::{Error, Result},
+    error::{Error, Result, SgxStatusToResult},
     ext_prod_id::{ExtendedProductId, EXTENDED_PRODUCT_ID_SIZE},
     family_id::{FamilyId, FAMILY_ID_SIZE},
     key_128bit::{Key128, KEY128_SIZE},
