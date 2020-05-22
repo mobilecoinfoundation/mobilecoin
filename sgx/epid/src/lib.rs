@@ -6,7 +6,10 @@
 
 use bitflags::bitflags;
 use mc_sgx_core_types::{Report, Result as SgxResult, SgxStatusToResult, TargetInfo};
-use mc_sgx_epid_sys::{sgx_calc_quote_size, sgx_get_quote, sgx_init_quote};
+use mc_sgx_core_types_sys::{SGX_ERROR_UPDATE_NEEDED, SGX_SUCCESS};
+use mc_sgx_epid_sys::{
+    sgx_calc_quote_size, sgx_check_update_status, sgx_get_quote, sgx_init_quote,
+};
 use mc_sgx_epid_types::{
     EpidGroupId, PlatformInfo, ProviderId, Quote, QuoteNonce, QuoteSign, SignatureRevocationList,
     UpdateInfo,
@@ -65,7 +68,7 @@ pub trait EpidQuoteReport {
     ///  1. Enclave A verifies the QE enclave's report data contains the hash of the nonce and the
     ///     quote.
     ///  1. Enclave A verifies the contents of the quote.
-    fn new(
+    fn quote(
         sigrl: &SignatureRevocationList,
         report: &Report,
         quote_type: QuoteSign,
@@ -75,7 +78,7 @@ pub trait EpidQuoteReport {
 }
 
 impl EpidQuoteReport for Quote {
-    fn new(
+    fn quote(
         sigrl: &SignatureRevocationList,
         report: &Report,
         quote_type: QuoteSign,
@@ -123,6 +126,8 @@ bitflags! {
 bitflags! {
     /// A set of bitflags indicating what, if any updates were done/required.
     pub struct EpidUpdateStatus: u32 {
+        /// Set if any update is available, the adjacent update_info field will have the details.
+        const UPDATE_NEEDED = 1;
         /// Set if Intel EPID provisioning is or was needed/pending. Set or cleared independent of
         /// config input.
         const EPID_NEEDED = 1 << 1;
@@ -133,6 +138,7 @@ bitflags! {
 }
 
 /// An optional update return, indicating what updates, if any are available or were performed.
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct TcbUpdate {
     /// A description of what updates are needed/pending.
     pub status: EpidUpdateStatus,
@@ -154,8 +160,29 @@ pub trait EpidPlatformInfo: Sized {
 }
 
 impl EpidPlatformInfo for PlatformInfo {
-    fn check_update_status(&self, _config: EpidUpdateConfig) -> SgxResult<Option<TcbUpdate>> {
-        // TODO: left off here, pass to sgx_check_update_status
-        unimplemented!()
+    fn check_update_status(&self, config: EpidUpdateConfig) -> SgxResult<Option<TcbUpdate>> {
+        let mut update_info = UpdateInfo::default();
+        let mut p_status = 0u32;
+
+        match unsafe {
+            sgx_check_update_status(
+                self.as_ref(),
+                update_info.as_mut(),
+                config.bits,
+                &mut p_status,
+            )
+        } {
+            SGX_SUCCESS => Ok(None),
+            SGX_ERROR_UPDATE_NEEDED => {
+                let tcb_update = TcbUpdate {
+                    status: EpidUpdateStatus::from_bits(p_status)
+                        .expect("Unknown bitflag found in check_update_status p_status"),
+                    update_info,
+                };
+
+                Ok(Some(tcb_update))
+            }
+            other => other.into_result(None),
+        }
     }
 }

@@ -13,6 +13,7 @@ sgx-sim = [
 
 [dependencies]
 mc-sgx-core-types = { path = "../core-types" }
+mc-sgx-core-types-sys = { path = "../core-types-sys" }
 mc-sgx-epid-sys = { path = "../epid-sys" }
 mc-sgx-epid-types = { path = "../epid-types" }
 bitflags = "1.2"
