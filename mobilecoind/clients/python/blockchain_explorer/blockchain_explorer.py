@@ -64,11 +64,12 @@ def render_ledger_range(start, count):
                 signers[signer] = [False for i in range(i - 1)]
             signers[signer].append(True)
     return render_template('index.html',
+                           start=start,
+                           finish=finish,
                            blocks=blocks,
                            num_blocks=num_blocks,
                            num_transactions=num_transactions,
                            signers=signers)
-
 
 @app.route('/')
 def index():
@@ -105,7 +106,6 @@ def block(block_num):
                            key_images=block.key_images,
                            size_of_block=size_of_block,
                            signatures=block.signatures)
-
 
 if __name__ == "__main__":
     args = command_args()

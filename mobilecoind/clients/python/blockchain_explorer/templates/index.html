@@ -14,6 +14,11 @@
 <div class="row">********************************************************************************</div>
 <div class="row">There are {{ num_blocks }} blocks and {{ num_transactions }} transactions in the ledger.</div>
 <div class="row">&nbsp;</div>
+<div class="row">
+<a href="/from/{{start-(finish-start)}}"><</a>&nbsp;&nbsp;
+Displaying block index {{ start }} to {{ finish }}.
+&nbsp;&nbsp;<a href="/from/{{start+(finish-start)}}">></a></div>
+</div>
 <div class="row">&nbsp;</div>
 <div class="row">
     <div class="col_8">Index</div>
@@ -49,7 +54,7 @@
         {% if signers|length %}
             <div class="col_8"><a href="/block/{{ block[0]}}">{{ block[4] }}</a></div>
             {%- for signer in signers %}
-            <div class="col_4">{{ "&nbsp;|" if signers[signer] }}</div>
+            <div class="col_4">&nbsp;{{ "|" if signers[signer] }}</div>
             {%- endfor %}
         {% endif %}
     </div>
