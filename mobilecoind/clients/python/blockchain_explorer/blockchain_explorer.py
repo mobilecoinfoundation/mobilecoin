@@ -29,18 +29,23 @@ def command_args():
                         help='Hostname of mobilecoind service to connect to')
     return parser.parse_args()
 
-
-@app.route('/')
-def index():
+def render_ledger_range(start, count):
     num_blocks, num_transactions = client.get_ledger_info()
-
+    start = max(int(start), 0)
+    finish = min(int(start + 100), num_blocks - 1)
     blocks = []
     signers = {}
-    for i in range(num_blocks - 1, max(num_blocks - 100, -1), -1):
+
+    for i in range(finish, start, -1):
         key_image_count, txo_count = client.get_block_info(i)
-        # Will get ResourceExhausted if message larger than 4194304
-        if txo_count > 20000:
+
+        # very large blocks cause errors for client.get_block()
+        # specifically ResourceExhausted for messages larger than 4194304
+        # this is uniquely a problem for large origin blocks in testing
+        # and should not appear in production
+        if txo_count > 10000:
             continue
+
         block = client.get_block(i)
         block_row = (i,
                      bytes.hex(block.block.contents_hash.data),
@@ -58,13 +63,23 @@ def index():
             if signer not in signers:
                 signers[signer] = [False for i in range(i - 1)]
             signers[signer].append(True)
-
     return render_template('index.html',
                            blocks=blocks,
                            num_blocks=num_blocks,
                            num_transactions=num_transactions,
                            signers=signers)
 
+
+@app.route('/')
+def index():
+    num_blocks, num_transactions = client.get_ledger_info()
+    return render_ledger_range(num_blocks - 101, 100)
+
+@app.route('/<block_num>')
+def index():
+    num_blocks, num_transactions = client.get_ledger_info()
+    block_num = int(block_num)
+    return render_ledger_range(block_num, 100)
 
 @app.route('/block/<block_num>')
 def block(block_num):
