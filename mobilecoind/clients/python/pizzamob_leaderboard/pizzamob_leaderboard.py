@@ -72,7 +72,7 @@ def add_user():
 
     monitor = get_or_add_monitor(subaddress)
     request_code = get_request_code(monitor, subaddress)
-    balance = int(client.get_balance(monitor, subaddress) / MOB)
+    balance = client.get_balance(monitor, subaddress)
     timestamp = datetime.now().strftime('%Y%m%d')
 
     if new_player:
@@ -86,7 +86,7 @@ def add_user():
 
     response = {
         "code": request_code[:79] + '\n' + request_code[79:],
-        "mob": balance,
+        "mob": balance / MOB,
         "time": timestamp,
         "leaderboard": render_leaderboard(leaderboard)
     }
@@ -129,7 +129,7 @@ def get_leaderboard():
 def render_leaderboard(leaderboard):
     res = ""
     for leader in leaderboard:
-        res += f"[{leader['balance']}] {leader['code'][:17]}...\n"
+        res += f"[{leader['balance'] / MOB}] {leader['code'][:17]}...\n"
     return res
 
 if __name__ == "__main__":
