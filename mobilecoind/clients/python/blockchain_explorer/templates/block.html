@@ -20,19 +20,19 @@
 <div class="row">&nbsp;</div>
 <div class="row">
     <div class="col_16">Size (txos)</div>
-    <div class="col_65">{{ txo_count }}</div>
+    <div class="col_64">{{ txo_count }}</div>
 </div>
 <div class="row">
     <div class="col_16">Size (kB)</div>
-    <div class="col_65">{{ size_of_block }}</div>
+    <div class="col_64">{{ size_of_block }}</div>
 </div>
 <div class="row">
     <div class="col_16">Hash</div>
-    <div class="col_65">{{ block_hash.hex() }}</div>
+    <div class="col_64">{{ block_hash.hex() }}</div>
 </div>
 <div class="row">
     <div class="col_16">Key Images</div>
-    <div class="col_65">{{ key_image_count }}</div>
+    <div class="col_64">{{ key_image_count }}</div>
 </div>
 <div class="row">&nbsp;</div>
 
@@ -67,16 +67,16 @@
 <div class="row">&nbsp;</div>
 <div class="row">
     <div class="col_16">n</div>
-    <div class="col_65">Key Image</div>
+    <div class="col_64">Key Image</div>
 </div>
 <div class="row">
     <div class="col_16">*</div>
-    <div class="col_65">*********</div>
+    <div class="col_64">*********</div>
 </div>
 {%- for key_image in key_images %}
     <div class="row">
         <div class="col_16">{{ loop.index }}</div>
-        <div class="col_65">{{ key_image.data.hex() }}</div>
+        <div class="col_64">{{ key_image.data.hex() }}</div>
     </div>
 {%- endfor %}
 <div class="row">&nbsp;</div>
@@ -87,29 +87,29 @@
 <div class="row">
     <div class="col_3">n</div>
     <div class="col_13">TXO Field</div>
-    <div class="col_65">TXO Data</div>
+    <div class="col_64">TXO Data</div>
 </div>
 <div class="row">
     <div class="col_3">*</div>
     <div class="col_13">*********</div>
-    <div class="col_65">********</div>
+    <div class="col_64">********</div>
 </div>
 <div class="row">&nbsp;</div>
 {%- for txo in txos %}
     <div class="row">
         <div class="col_3">{{ loop.index }}</div>
         <div class="col_13">TXO Pubkey</div>
-        <div class="col_65">{{ txo.public_key.data.hex() }}</div>
+        <div class="col_64">{{ txo.public_key.data.hex() }}</div>
     </div>
     <div class="row">
         <div class="col_3">&nbsp;</div>
         <div class="col_13">Target Addr</div>
-        <div class="col_65">{{ txo.target_key.data.hex() }}</div>
+        <div class="col_64">{{ txo.target_key.data.hex() }}</div>
     </div>
     <div class="row">
         <div class="col_3">&nbsp;</div>
         <div class="col_13">Amount</div>
-        <div class="col_65">{{ txo.amount.commitment.data.hex() }}</div>
+        <div class="col_64">{{ txo.amount.commitment.data.hex() }}</div>
     </div>
     <div class="row">&nbsp;</div>
 {%- endfor %}
