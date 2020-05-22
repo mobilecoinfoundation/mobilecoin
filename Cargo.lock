@@ -2768,6 +2768,7 @@ dependencies = [
 name = "mc-sgx-epid"
 version = "0.2.0"
 dependencies = [
+ "bitflags",
  "mc-sgx-core-types",
  "mc-sgx-epid-sys",
  "mc-sgx-epid-types",

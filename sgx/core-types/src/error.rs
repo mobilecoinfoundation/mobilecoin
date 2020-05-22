@@ -75,7 +75,7 @@ impl<T> SgxStatusToResult<T> for sgx_status_t {
 #[repr(u32)]
 pub enum Error {
     // 0x0001 - 0x0fff: Generic errors
-    /// `0x0001`, An unexpected error.
+    /// An unexpected error (`0x0001`)
     Unexpected = SGX_ERROR_UNEXPECTED,
     /// The parameter is incorrect (`0x0002`)
     InvalidParameter = SGX_ERROR_INVALID_PARAMETER,

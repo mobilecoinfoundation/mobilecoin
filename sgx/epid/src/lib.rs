@@ -4,6 +4,7 @@
 
 #![deny(missing_docs)]
 
+use bitflags::bitflags;
 use mc_sgx_core_types::{Report, Result as SgxResult, SgxStatusToResult, TargetInfo};
 use mc_sgx_epid_sys::{sgx_calc_quote_size, sgx_get_quote, sgx_init_quote};
 use mc_sgx_epid_types::{
@@ -108,11 +109,53 @@ impl EpidQuoteReport for Quote {
     }
 }
 
+bitflags! {
+    /// A set of bitflags describing what kind of reprovisioning to perform, if any.
+    pub struct EpidUpdateConfig: u32 {
+        /// Set if the caller wants to trigger Intel EPID provisioning if it is needed/pending.
+        const PROVISION_EPID = 1 << 1;
+        /// Set if the caller wants to trigger PSE provisioning/long-term pairing if it is
+        /// needed/pending.
+        const PROVISION_PSE = 1 << 2;
+    }
+}
+
+bitflags! {
+    /// A set of bitflags indicating what, if any updates were done/required.
+    pub struct EpidUpdateStatus: u32 {
+        /// Set if Intel EPID provisioning is or was needed/pending. Set or cleared independent of
+        /// config input.
+        const EPID_NEEDED = 1 << 1;
+        /// Set if PSE provisioning/long-term pairing is or was needed/pending. Set or cleared
+        /// independent of config input.
+        const PSE_NEEDED = 1 << 2;
+    }
+}
+
+/// An optional update return, indicating what updates, if any are available or were performed.
+pub struct TcbUpdate {
+    /// A description of what updates are needed/pending.
+    pub status: EpidUpdateStatus,
+    /// The update info describing whether software updates must be performed out-of band.
+    pub update_info: UpdateInfo,
+}
+
 /// A trait encapsulating the various means of interacting with the TCB update process.
 pub trait EpidPlatformInfo: Sized {
-    /// Perform a live update of the EPID TCB, returning a set of bitflags indicating what may have
-    /// been changed, and an update info indicating what out-of-band updates are required.
-    // FIXME: Result should be a TcbUpdateDetails structure, which contains an UpdateInfo and a
-    //        set of booleans for what else needs/has changed.
-    fn update_tcb(&self, provision_epid: bool, provision_pse: bool) -> Result<u32, u32>;
+    /// Check if there is a TCB update available, potentially updating it.
+    ///
+    /// This is fairly complex machinery: the given configuration will alternatively check for any
+    /// available updates, update some of the TCB, or update all of the TCB which can be updated.
+    ///
+    /// The outer `Result` indicates whether the API calls succeeded, and the inner `Option` on
+    /// the `Ok` branch indicates whether there is an update available, and/or whether one was
+    /// performed.
+    fn check_update_status(&self, config: EpidUpdateConfig) -> SgxResult<Option<TcbUpdate>>;
+}
+
+impl EpidPlatformInfo for PlatformInfo {
+    fn check_update_status(&self, _config: EpidUpdateConfig) -> SgxResult<Option<TcbUpdate>> {
+        // TODO: left off here, pass to sgx_check_update_status
+        unimplemented!()
+    }
 }
