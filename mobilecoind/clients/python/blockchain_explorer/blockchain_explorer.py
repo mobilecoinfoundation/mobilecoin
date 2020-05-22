@@ -36,14 +36,18 @@ def index():
 
     blocks = []
     signers = {}
-    for i in range(num_blocks - 1, max(num_blocks - 20, -1), -1):
+    for i in range(num_blocks - 1, max(num_blocks - 100, -1), -1):
         _key_image_count, txo_count = client.get_block_info(i)
         # Will get ResourceExhausted if message larger than 4194304
         if txo_count > 20000:
             continue
         block = client.get_block(i)
-        block_row = (i, txo_count, bytes.hex(block.block.contents_hash.data),
-                     len(block.signatures))
+        block_row = (i,
+                     bytes.hex(block.block.contents_hash.data),
+                     txo_count,
+                     key_image_count,
+                     len(block.signatures).
+                     )
         blocks.append(block_row)
 
         # Process signature data - sort by signer

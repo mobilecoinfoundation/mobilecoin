@@ -17,10 +17,11 @@
 <div class="row">&nbsp;</div>
 <div class="row">
     <div class="col_8">Index</div>
-    <div class="col_12">Size(txos)</div>
-    <div class="col_12">Hash</div>
-    {% if signers is defined %}
-        <div class="col_12">Signatures</div>
+    <div class="col_8">Hash</div>
+    <div class="col_8">TXOs</div>
+    <div class="col_8">IMGs</div>
+    {% if signers|length %}
+        <div class="col_8">SIGs</div>
         {%- for signer in signers %}
         <div class="col_4">{{ signer[:3] }}</div>
         {%- endfor %}
@@ -28,22 +29,24 @@
 </div>
 <div class="row">
     <div class="col_8">-----</div>
-    <div class="col_12">----------</div>
-    <div class="col_12">----</div>
-    {% if signers is defined %}
-        <div class="col_12">----------</div>
+    <div class="col_8">----</div>
+    <div class="col_8">----</div>
+    <div class="col_8">----</div>
+    {% if signers|length %}
+        <div class="col_8">----</div>
         {%- for signer in signers %}
-        <div class="col_4">----</div>
+        <div class="col_4">---</div>
         {%- endfor %}
     {% endif %}
 </div>
 {%- for block in blocks %}
     <div class="row">
         <div class="col_8"><a href="/block/{{ block[0]}}">{{ block[0] }}</a></div>
-        <div class="col_12"><a href="/block/{{ block[0]}}">{{ block[1] }}</a></div>
-        <div class="col_12"><a href="/block/{{ block[0]}}">{{ block[2][:5] }}...</a></div>
-        {% if signers is defined %}
-            <div class="col_12"><a href="/block/{{ block[0]}}">{{ block[3] }}</a></div>
+        <div class="col_8"><a href="/block/{{ block[0]}}">{{ block[1][:4] }}...</a></div>
+        <div class="col_8"><a href="/block/{{ block[0]}}">{{ block[2] }}</a></div>
+        <div class="col_8"><a href="/block/{{ block[0]}}">{{ block[3] }}</a></div>
+        {% if signers|length %}
+            <div class="col_8"><a href="/block/{{ block[0]}}">{{ block[4][:4] }}...</a></div>
             {%- for signer in signers %}
             <div class="col_4">{{ "&nbsp;|" if signers[signer] }}</div>
             {%- endfor %}
