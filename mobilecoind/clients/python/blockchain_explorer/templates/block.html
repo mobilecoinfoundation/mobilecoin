@@ -85,8 +85,8 @@
     <div class="col_77">Transaction Data</div>
 </div>
 <div class="row">
-    <div class="col_3">*****</div>
-    <div class="col_77">*****************************************************************</div>
+    <div class="col_3">***</div>
+    <div class="col_77">****************</div>
 </div>
 <div class="row">&nbsp;</div>
 {%- for txo in txos %}
@@ -105,6 +105,7 @@
         <div class="col_13">Amount</div>
         <div class="col_65">{{ txo.amount.commitment.data.hex() }}</div>
     </div>
+    <div class="row">&nbsp;</div>
 {%- endfor %}
 <div class="row">&nbsp;</div>
 </div>
