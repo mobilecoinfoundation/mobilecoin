@@ -41,7 +41,7 @@ mc-transaction-core = { path = "../../../transaction/core" }
 mc-util-from-random = { path = "../../../util/from-random" }
 mc-util-serial = { path = "../../../util/serial" }
 
-mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.2", default-features = false, features = ["aesni", "rdrand", "force_aesni_support"] }
+mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.3", default-features = false, features = ["aesni", "rdrand", "force_aesni_support"] }
 
 cfg-if = "0.1"
 digest = { version = "0.8", default-features = false }
