@@ -20,7 +20,7 @@ mc-attest-core = { path = "../../attest/core" }
 mc-common = { path = "../../common", features = ["log"] }
 mc-util-encodings = { path = "../../util/encodings" }
 
-mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.2" }
+mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.3" }
 
 cfg-if = "0.1"
 failure = { version = "0.1.5", features = ["derive"] }
