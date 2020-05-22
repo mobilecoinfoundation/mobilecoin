@@ -33,6 +33,9 @@ def render_ledger_range(start, count):
     num_blocks, num_transactions = client.get_ledger_info()
     start = max(int(start), 0)
     finish = min(int(start + 100), num_blocks - 1)
+    if finish - start < 100:
+        start = max(0, finish - 100)
+
     blocks = []
     signers = {}
 
