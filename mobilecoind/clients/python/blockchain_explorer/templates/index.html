@@ -47,7 +47,7 @@
         <div class="col_8"><a href="/block/{{ block[0]}}">{{ block[2] }}</a></div>
         <div class="col_8"><a href="/block/{{ block[0]}}">{{ block[3] }}</a></div>
         {% if signers|length %}
-            <div class="col_8"><a href="/block/{{ block[0]}}">{{ block[4][:4] }}...</a></div>
+            <div class="col_8"><a href="/block/{{ block[0]}}">{{ block[4] }}</a></div>
             {%- for signer in signers %}
             <div class="col_4">{{ "&nbsp;|" if signers[signer] }}</div>
             {%- endfor %}
