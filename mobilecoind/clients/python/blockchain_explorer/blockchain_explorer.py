@@ -76,7 +76,7 @@ def index():
     return render_ledger_range(num_blocks - 101, 100)
 
 @app.route('/<block_num>')
-def index(block_num):
+def page(block_num):
     num_blocks, num_transactions = client.get_ledger_info()
     block_num = int(block_num)
     return render_ledger_range(block_num, 100)
