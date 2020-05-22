@@ -7,14 +7,12 @@
         <div class="container">
 
 <div class="center">
-********************************************************************************
+<div class="row">********************************************************************************</div>
 <div class="row">&nbsp;</div>
 <div class="row centered">MobileCoin Blockchain Explorer</div>
 <div class="row">&nbsp;</div>
-********************************************************************************
-<div class="row">
-There are {{ num_blocks }} blocks and {{ num_transactions }} transactions in the ledger.
-</div>
+<div class="row">********************************************************************************</div>
+<div class="row">There are {{ num_blocks }} blocks and {{ num_transactions }} transactions in the ledger.</div>
 <div class="row">&nbsp;</div>
 <div class="row">&nbsp;</div>
 <div class="row">
@@ -43,7 +41,7 @@ There are {{ num_blocks }} blocks and {{ num_transactions }} transactions in the
     <div class="row">
         <div class="col_8"><a href="/block/{{ block[0]}}">{{ block[0] }}</a></div>
         <div class="col_12"><a href="/block/{{ block[0]}}">{{ block[1] }}</a></div>
-        <div class="col_12"><a href="/block/{{ block[0]}}">{{ block[2][:9] }}</a></div>
+        <div class="col_12"><a href="/block/{{ block[0]}}">{{ block[2][:5] }}...</a></div>
         {% if signers is defined %}
             <div class="col_12"><a href="/block/{{ block[0]}}">{{ block[3] }}</a></div>
             {%- for signer in signers %}

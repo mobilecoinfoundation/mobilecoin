@@ -6,7 +6,7 @@
     <body>
         <div class="container">
 <div class="center">
-********************************************************************************
+<div class="row">********************************************************************************</div>
 <div class="row">&nbsp;&nbsp;<a href="/"><</a></div>
 <div class="row centered">MobileCoin Blockchain Explorer</div>
 <div class="row">&nbsp;</div>
@@ -16,7 +16,7 @@
     <a href="/block/{{ block_num + 1 }}">+</a>
 </div>
 <div class="row">&nbsp;</div>
-********************************************************************************
+<div class="row">********************************************************************************</div>
 <div class="row">&nbsp;</div>
 <div class="row">
     <div class="col_16">Size (txos)</div>
@@ -37,9 +37,9 @@
 <div class="row">&nbsp;</div>
 
 {% if signers is defined %}
-********************************************************************************
-<div class="row inset">Signatures</div>
-********************************************************************************
+<div class="row">********************************************************************************</div>
+<div class="row">Signatures</div>
+<div class="row">********************************************************************************</div>
 <div class="row">&nbsp;</div>
 <div class="row">
     <div class="col_40">Url</div>
@@ -61,9 +61,9 @@
 <div class="row">&nbsp;</div>
 {% endif %}
 
-********************************************************************************
-<div class="row inset">Key Images</div>
-********************************************************************************
+<div class="row">********************************************************************************</div>
+<div class="row">Key Images</div>
+<div class="row">********************************************************************************</div>
 <div class="row">&nbsp;</div>
 <div class="row">
     <div class="col_16">n</div>
@@ -73,6 +73,7 @@
     <div class="col_16">*</div>
     <div class="col_64">*********</div>
 </div>
+<div class="row">&nbsp;</div>
 {%- for key_image in key_images %}
     <div class="row">
         <div class="col_16">{{ loop.index }}</div>
@@ -80,9 +81,9 @@
     </div>
 {%- endfor %}
 <div class="row">&nbsp;</div>
-********************************************************************************
-<div class="row inset">Transaction Outputs</div>
-********************************************************************************
+<div class="row">********************************************************************************</div>
+<div class="row">Transaction Outputs</div>
+<div class="row">********************************************************************************</div>
 <div class="row">&nbsp;</div>
 <div class="row">
     <div class="col_3">n</div>
