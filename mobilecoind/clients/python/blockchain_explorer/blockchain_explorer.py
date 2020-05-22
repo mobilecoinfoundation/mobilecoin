@@ -64,19 +64,21 @@ def index():
 
 @app.route('/block/<block_num>')
 def block(block_num):
-    block = client.get_block(int(block_num))
+    num_blocks, num_transactions = client.get_ledger_info()
+    block_num = int(block_num)
+    if block_num < 0 or block_num >= num_blocks:
+        return render_template('block404.html',
+                               block_num=block_num,
+                               num_blocks=num_blocks)
+
+    block = client.get_block(block_num)
     size_of_block = getsizeof(block)
 
     for signature in block.signatures:
         signature.src_url = signature.src_url.split('/')[-2]
-    '''
-    if block_num >= num_blocks:
-        return render_template('block404.html',
-                               block_num=int(block_num),
-                               num_blocks=num_blocks)
-    '''
+
     return render_template('block.html',
-                           block_num=int(block_num),
+                           block_num=block_num,
                            block_hash=block.block.contents_hash.data,
                            key_image_count=len(block.key_images),
                            txo_count=len(block.txos),
