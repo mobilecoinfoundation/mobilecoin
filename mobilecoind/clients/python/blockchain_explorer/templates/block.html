@@ -47,9 +47,9 @@
     <div class="col_15">Signature</div>
 </div>
 <div class="row">
-    <div class="col_40">***</div>
-    <div class="col_15">******</div>
-    <div class="col_15">*********</div>
+    <div class="col_40">---</div>
+    <div class="col_15">------</div>
+    <div class="col_15">---------</div>
 </div>
 {%- for signature in signatures %}
     <div class="row">
@@ -70,10 +70,9 @@
     <div class="col_64">Key Image</div>
 </div>
 <div class="row">
-    <div class="col_16">*</div>
-    <div class="col_64">*********</div>
+    <div class="col_16">-</div>
+    <div class="col_64">---------</div>
 </div>
-<div class="row">&nbsp;</div>
 {%- for key_image in key_images %}
     <div class="row">
         <div class="col_16">{{ loop.index }}</div>
@@ -91,11 +90,10 @@
     <div class="col_64">TXO Data</div>
 </div>
 <div class="row">
-    <div class="col_3">*</div>
-    <div class="col_13">*********</div>
-    <div class="col_64">********</div>
+    <div class="col_3">-</div>
+    <div class="col_13">---------</div>
+    <div class="col_64">--------</div>
 </div>
-<div class="row">&nbsp;</div>
 {%- for txo in txos %}
     <div class="row">
         <div class="col_3">{{ loop.index }}</div>
