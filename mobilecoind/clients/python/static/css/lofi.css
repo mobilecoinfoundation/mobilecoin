@@ -20,7 +20,6 @@ a {
 }
 
 .center {
-  width: 80ch;
   border: solid #eee 1px;
   padding: 40px;
   overflow-x: hidden;
@@ -42,7 +41,7 @@ a {
 }
 
 .col_4 {
-  width: 5ch;
+  width: 4ch;
 }
 
 .col_8 {
@@ -62,7 +61,7 @@ a {
 }
 
 .col_16 {
-  width: 15ch;
+  width: 16ch;
 }
 
 .col_34 {
