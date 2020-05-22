@@ -17,7 +17,7 @@
 <div class="row">&nbsp;</div>
 <div class="row">
     <div class="col_8">Index</div>
-    <div class="col_8">Hash</div>
+    <div class="col_10">Hash</div>
     <div class="col_8">TXOs</div>
     <div class="col_8">IMGs</div>
     {% if signers|length %}
@@ -29,7 +29,7 @@
 </div>
 <div class="row">
     <div class="col_8">-----</div>
-    <div class="col_8">----</div>
+    <div class="col_10">----</div>
     <div class="col_8">----</div>
     <div class="col_8">----</div>
     {% if signers|length %}
@@ -42,7 +42,7 @@
 {%- for block in blocks %}
     <div class="row">
         <div class="col_8"><a href="/block/{{ block[0]}}">{{ block[0] }}</a></div>
-        <div class="col_8"><a href="/block/{{ block[0]}}">{{ block[1][:4] }}...</a></div>
+        <div class="col_10"><a href="/block/{{ block[0]}}">{{ block[1][:4] }}...</a></div>
         <div class="col_8"><a href="/block/{{ block[0]}}">{{ block[2] }}</a></div>
         <div class="col_8"><a href="/block/{{ block[0]}}">{{ block[3] }}</a></div>
         {% if signers|length %}
