@@ -55,8 +55,8 @@
 {%- for signature in signatures %}
     <div class="row">
       <div class="col_40">{{ signature.src_url }}</div>
-      <div class="col_15">{{ signature.signature.signer.data.hex()[:7] }}</div>
-      <div class="col_15">{{ signature.signature.signature.data.hex()[:9] }}</div>
+      <div class="col_15">{{ signature.signature.signer.data.hex()[:5] }}...</div>
+      <div class="col_15">{{ signature.signature.signature.data.hex()[:9] }}...</div>
     </div>
 {%- endfor %}
 <div class="row">&nbsp;</div>
