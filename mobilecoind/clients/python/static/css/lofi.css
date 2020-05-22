@@ -8,9 +8,8 @@ body {
 a {
   color: #00FF00;
   text-decoration: none;
-  margin: 2px;
-  padding: 3px;
-  height: 2vw;
+  margin: 0px;
+  padding: 0px;
 }
 
 .container {
