@@ -1,9 +1,28 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
 #![no_std]
 
-pub use generic_array::{typenum, ArrayLength, GenericArray};
+// Exports are used so that macros can do $crate::_exports and obtain symbols
+// from this crate.
+#[doc(hidden)]
+pub mod _exports {
+    pub use generic_array::{typenum, ArrayLength, GenericArray};
+
+    #[cfg(feature = "alloc")]
+    pub extern crate alloc;
+
+    #[cfg(feature = "prost")]
+    pub use prost;
+
+    #[cfg(feature = "serde")]
+    pub use serde;
+}
 
 use core::fmt::Display;
 use typenum::Unsigned;
+
+// These can be used by who implements ReprBytes
+pub use generic_array::{typenum, ArrayLength, GenericArray};
 
 /// ReprBytes represents a type that has a canonical representation as a fixed
 /// number of bytes. This interface is meant to support generic programming.
@@ -105,10 +124,12 @@ macro_rules! derive_repr_bytes_from_as_ref_and_try_from {
     ($mytype:ty, $mysize:ty) => {
         impl $crate::ReprBytes for $mytype {
             type Size = $mysize;
-            type Error = <$mytype as TryFrom<&'static [u8]>>::Error;
+            type Error = <$mytype as ::core::convert::TryFrom<&'static [u8]>>::Error;
 
             fn from_bytes(src: &$crate::GenericArray<u8, Self::Size>) -> Result<Self, Self::Error> {
-                Ok(<Self as TryFrom<&[u8]>>::try_from(src.as_slice())?)
+                Ok(<Self as ::core::convert::TryFrom<&[u8]>>::try_from(
+                    src.as_slice(),
+                )?)
             }
 
             fn to_bytes(&self) -> $crate::GenericArray<u8, Self::Size> {
@@ -133,7 +154,7 @@ macro_rules! derive_repr_bytes_from_as_ref_and_try_from {
 #[macro_export]
 macro_rules! derive_into_vec_from_repr_bytes {
     ($mytype:ty) => {
-        impl Into<::alloc::vec::Vec<u8>> for $mytype {
+        impl Into<$crate::_exports::alloc::vec::Vec<u8>> for $mytype {
             fn into(self) -> Vec<u8> {
                 <$mytype as $crate::ReprBytes>::map_bytes(&self, |slice| slice.to_vec())
             }
@@ -146,7 +167,7 @@ macro_rules! derive_into_vec_from_repr_bytes {
 #[macro_export]
 macro_rules! derive_try_from_slice_from_repr_bytes {
     ($mytype:ty) => {
-        impl<'a> TryFrom<&'a [u8]> for $mytype {
+        impl<'a> ::core::convert::TryFrom<&'a [u8]> for $mytype {
             type Error = <Self as $crate::ReprBytes>::Error;
             fn try_from(src: &'a [u8]) -> Result<Self, Self::Error> {
                 if src.len() != <Self as $crate::ReprBytes>::size() {
@@ -169,43 +190,42 @@ macro_rules! derive_try_from_slice_from_repr_bytes {
 #[macro_export]
 macro_rules! derive_prost_message_from_repr_bytes {
     ($mytype:ty) => {
-        impl ::prost::Message for $mytype {
-            #[inline]
+        impl $crate::_exports::prost::Message for $mytype {
             fn encode_raw<B>(&self, buf: &mut B)
             where
-                B: ::prost::bytes::BufMut,
+                B: $crate::_exports::prost::bytes::BufMut,
             {
-                use ::prost::encoding::*;
+                use $crate::_exports::prost::encoding::*;
                 let tag = 1;
                 encode_key(tag, WireType::LengthDelimited, buf);
                 encode_varint(<Self as $crate::ReprBytes>::size() as u64, buf);
                 <Self as $crate::ReprBytes>::map_bytes(self, |bytes| buf.put_slice(bytes));
             }
 
-            #[inline]
             fn merge_field<B>(
                 &mut self,
                 tag: u32,
-                wire_type: ::prost::encoding::WireType,
+                wire_type: $crate::_exports::prost::encoding::WireType,
                 buf: &mut B,
-                ctx: ::prost::encoding::DecodeContext,
-            ) -> Result<(), ::prost::DecodeError>
+                ctx: $crate::_exports::prost::encoding::DecodeContext,
+            ) -> Result<(), $crate::_exports::prost::DecodeError>
             where
-                B: ::prost::bytes::Buf,
+                B: $crate::_exports::prost::bytes::Buf,
             {
-                use ::alloc::string::ToString;
-                use ::prost::encoding::*;
-                use core::convert::TryInto;
+                use ::core::convert::TryInto;
+                use $crate::_exports::{alloc::string::ToString, prost::encoding::*};
                 if tag == 1 {
                     let expected_size = <Self as $crate::ReprBytes>::size();
 
                     check_wire_type(WireType::LengthDelimited, wire_type)?;
                     let len = decode_varint(buf)?;
                     if len > buf.remaining() as u64 {
-                        return Err(::prost::DecodeError::new("buffer underflow"));
+                        return Err($crate::_exports::prost::DecodeError::new(
+                            "buffer underflow",
+                        ));
                     }
                     if len != expected_size as u64 {
-                        return Err(::prost::DecodeError::new(
+                        return Err($crate::_exports::prost::DecodeError::new(
                             LengthMismatch {
                                 expected: expected_size,
                                 found: len as usize,
@@ -214,24 +234,25 @@ macro_rules! derive_prost_message_from_repr_bytes {
                         ));
                     }
                     let result = <Self as $crate::ReprBytes>::from_bytes(
-                        (&buf.bytes()[0..expected_size]).try_into().unwrap(),
+                        (&buf.bytes()[0..expected_size])
+                            .try_into()
+                            .expect("buffer size arithmetic"),
                     );
                     buf.advance(expected_size);
-                    *self = result.map_err(|e| ::prost::DecodeError::new(e.to_string()))?;
+                    *self = result
+                        .map_err(|e| $crate::_exports::prost::DecodeError::new(e.to_string()))?;
                     Ok(())
                 } else {
                     skip_field(wire_type, tag, buf, ctx)
                 }
             }
 
-            #[inline]
             fn encoded_len(&self) -> usize {
-                use ::prost::encoding::*;
+                use $crate::_exports::prost::encoding::*;
                 let size = <Self as $crate::ReprBytes>::size();
                 key_len(1) + encoded_len_varint(size as u64) + size
             }
 
-            #[inline]
             fn clear(&mut self) {
                 *self = Self::default();
             }
@@ -245,9 +266,8 @@ macro_rules! derive_prost_message_from_repr_bytes {
 #[macro_export]
 macro_rules! derive_serde_from_repr_bytes {
     ($mytype:ty) => {
-        impl ::serde::ser::Serialize for $mytype {
-            #[inline]
-            fn serialize<S: ::serde::ser::Serializer>(
+        impl $crate::_exports::serde::ser::Serialize for $mytype {
+            fn serialize<S: $crate::_exports::serde::ser::Serializer>(
                 &self,
                 serializer: S,
             ) -> Result<S::Ok, S::Error> {
@@ -257,43 +277,45 @@ macro_rules! derive_serde_from_repr_bytes {
             }
         }
 
-        impl<'de> ::serde::de::Deserialize<'de> for $mytype {
-            fn deserialize<D: ::serde::de::Deserializer<'de>>(
+        impl<'de> $crate::_exports::serde::de::Deserialize<'de> for $mytype {
+            fn deserialize<D: $crate::_exports::serde::de::Deserializer<'de>>(
                 deserializer: D,
             ) -> Result<$mytype, D::Error> {
                 struct KeyVisitor;
 
-                impl<'de> ::serde::de::Visitor<'de> for KeyVisitor {
+                impl<'de> $crate::_exports::serde::de::Visitor<'de> for KeyVisitor {
                     type Value = $mytype;
 
                     fn expecting(
                         &self,
                         formatter: &mut ::core::fmt::Formatter,
-                    ) -> core::fmt::Result {
+                    ) -> ::core::fmt::Result {
                         write!(
                             formatter,
                             concat!("A ", stringify!($mytype), " as array of bytes")
                         )
                     }
 
-                    #[inline]
-                    fn visit_bytes<E: ::serde::de::Error>(
+                    fn visit_bytes<E: $crate::_exports::serde::de::Error>(
                         self,
                         value: &[u8],
                     ) -> Result<Self::Value, E> {
                         use $crate::{GenericArray, LengthMismatch, ReprBytes};
                         if value.len() != <$mytype as ReprBytes>::size() {
-                            return Err(<E as ::serde::de::Error>::custom(LengthMismatch {
-                                expected: <$mytype as ReprBytes>::size(),
-                                found: value.len(),
-                            }));
+                            return Err(<E as $crate::_exports::serde::de::Error>::custom(
+                                LengthMismatch {
+                                    expected: <$mytype as ReprBytes>::size(),
+                                    found: value.len(),
+                                },
+                            ));
                         }
                         let value =
                             &<GenericArray<u8, <$mytype as ReprBytes>::Size>>::from_slice(value);
-                        Ok(<$mytype as ReprBytes>::from_bytes(value)
-                            .map_err(|err| <E as ::serde::de::Error>::custom(err))?)
+                        Ok(<$mytype as ReprBytes>::from_bytes(value).map_err(|err| {
+                            <E as $crate::_exports::serde::de::Error>::custom(err)
+                        })?)
                     }
-                    #[inline]
+
                     fn visit_seq<V>(self, mut seq: V) -> Result<Self::Value, V::Error>
                     where
                         V: ::serde::de::SeqAccess<'de>,
@@ -304,21 +326,25 @@ macro_rules! derive_serde_from_repr_bytes {
                         let mut idx = 0;
                         while let Some(elem) = seq.next_element()? {
                             if idx >= expected_len {
-                                return Err(<V::Error as ::serde::de::Error>::custom(
-                                    LengthMismatch {
-                                        expected: expected_len,
-                                        found: expected_len + 1,
-                                    },
-                                ));
+                                return Err(
+                                    <V::Error as $crate::_exports::serde::de::Error>::custom(
+                                        LengthMismatch {
+                                            expected: expected_len,
+                                            found: expected_len + 1,
+                                        },
+                                    ),
+                                );
                             }
                             res[idx] = elem;
                             idx += 1;
                         }
                         if idx != expected_len {
-                            return Err(<V::Error as ::serde::de::Error>::custom(LengthMismatch {
-                                expected: expected_len,
-                                found: idx,
-                            }));
+                            return Err(<V::Error as $crate::_exports::serde::de::Error>::custom(
+                                LengthMismatch {
+                                    expected: expected_len,
+                                    found: idx,
+                                },
+                            ));
                         }
                         self.visit_bytes(res.as_slice())
                     }
@@ -362,9 +388,9 @@ macro_rules! derive_core_cmp_from_as_ref {
             }
         }
 
-        impl core::hash::Hash for $mytype {
-            fn hash<H: core::hash::Hasher>(&self, hasher: &mut H) {
-                use core::hash::Hash;
+        impl ::core::hash::Hash for $mytype {
+            fn hash<H: ::core::hash::Hasher>(&self, hasher: &mut H) {
+                use ::core::hash::Hash;
                 <Self as AsRef<$asref>>::as_ref(self).hash(hasher)
             }
         }
@@ -372,20 +398,17 @@ macro_rules! derive_core_cmp_from_as_ref {
 }
 
 #[cfg(test)]
-extern crate alloc;
-
-#[cfg(test)]
 mod tests {
     use super::*;
 
-    use core::convert::{TryFrom, TryInto};
     use generic_array::sequence::{Concat, Split};
     use typenum::{U12, U20, U4};
 
+    use core::convert::{TryFrom, TryInto};
+
+    extern crate alloc;
     use alloc::vec::Vec;
 
-    extern crate prost;
-    extern crate serde;
     extern crate serde_cbor;
 
     use prost::Message;
