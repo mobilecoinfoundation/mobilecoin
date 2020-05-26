@@ -268,7 +268,6 @@ impl<E: ConsensusEnclaveProxy, L: Ledger> ConsensusPeerApi for PeerApiService<E,
             }
 
             // Validate message signature
-            // FIXME: Additional verification for quorum set members that public key matches expected
             let consensus_msg: mc_peers::VerifiedConsensusMsg = match unverified_consensus_msg
                 .clone()
                 .try_into()
