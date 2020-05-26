@@ -151,6 +151,7 @@ macro_rules! derive_repr_bytes_from_as_ref_and_try_from {
 }
 
 /// Derive Into<Vec<u8>> from a ReprBytes implementation
+#[cfg(feature = "alloc")]
 #[macro_export]
 macro_rules! derive_into_vec_from_repr_bytes {
     ($mytype:ty) => {
@@ -187,6 +188,7 @@ macro_rules! derive_try_from_slice_from_repr_bytes {
 
 /// Derive prost::Message from a ReprBytes implementation
 /// The corresponding protobuf has exactly one member, of type `bytes`.
+#[cfg(feature = "prost")]
 #[macro_export]
 macro_rules! derive_prost_message_from_repr_bytes {
     ($mytype:ty) => {
@@ -263,6 +265,7 @@ macro_rules! derive_prost_message_from_repr_bytes {
 /// Derive serde::{Deserialize, Serialize} from a ReprBytes implementation
 /// This is represented within serde as a bytes primitive. During deserialization,
 /// a sequence of individual bytes also works, which helps serde_json.
+#[cfg(feature = "serde")]
 #[macro_export]
 macro_rules! derive_serde_from_repr_bytes {
     ($mytype:ty) => {
