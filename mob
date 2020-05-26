@@ -30,7 +30,7 @@ the image and doesn't run it or give you a prompt. `--dry-run` just
 shows you the shell commands without executing them. `--no-pull` means you don't
 pull a docker image at all.
 
-`mob` tool attemps to mount the `/dev/isgx` device correctly if it is avialable
+`mob` tool attemps to mount the `/dev/isgx` device correctly if it is available
 and you selected `--hw` mode, so that you can run tests in hardware mode.
 
 usage notes (ssh)
@@ -38,9 +38,9 @@ usage notes (ssh)
 
 The `--ssh-dir` and `--ssh-agent` options can be used if the build requires
 access to private repos on github (mobilecoin repo sources will be mounted so
-ssh stuff is not needed for that, this is for any private dependencies of mobilcoin
+ssh stuff is not needed for that, this is for any private dependencies of the mobilecoin
 repo.) If provided, these options will try to get your credentials from the host
-enviornment into the container so that cargo can pull.
+environment into the container so that cargo can pull.
 
 usage notes (changing the Dockerfile)
 -------------------------------------
