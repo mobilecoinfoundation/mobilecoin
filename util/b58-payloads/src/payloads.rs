@@ -6,7 +6,6 @@ use crc::crc32;
 use mc_crypto_keys::RistrettoPublic;
 use mc_transaction_core::account_keys::{AccountKey, PublicAddress};
 use mc_transaction_std::identity::RootIdentity;
-use mc_util_serial::ReprBytes32;
 
 /// Type of payload standard encoding.
 #[repr(u8)] // we don't expect to ever need more than 255 payload types
@@ -268,10 +267,9 @@ impl From<&RequestPayload> for PublicAddress {
 impl TryFrom<&PublicAddress> for RequestPayload {
     type Error = Error;
     fn try_from(src: &PublicAddress) -> Result<Self, <Self as TryFrom<&PublicAddress>>::Error> {
-        let mut payload = RequestPayload::new_v0(
-            &src.view_public_key().to_bytes(),
-            &src.spend_public_key().to_bytes(),
-        )?;
+        let view_pub: [u8; 32] = src.view_public_key().to_bytes();
+        let spend_pub: [u8; 32] = src.spend_public_key().to_bytes();
+        let mut payload = RequestPayload::new_v0(&view_pub, &spend_pub)?;
         if let Some(fog_url_string) = src.fog_url() {
             payload.version = 1;
             payload.fog_url = fog_url_string.to_string();

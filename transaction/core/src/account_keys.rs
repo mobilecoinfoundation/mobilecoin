@@ -24,7 +24,7 @@ use curve25519_dalek::scalar::Scalar;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_util_from_random::FromRandom;
-use mc_util_serial::{Message, ReprBytes32};
+use prost::Message;
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 

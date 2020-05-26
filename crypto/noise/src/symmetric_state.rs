@@ -17,7 +17,7 @@ use digest::{BlockInput, FixedOutput, Input, Reset};
 use failure::Fail;
 use generic_array::typenum::Unsigned;
 use hkdf::{Hkdf, InvalidLength};
-use mc_crypto_keys::{Kex, KexPublic, PublicKey};
+use mc_crypto_keys::{Kex, KexPublic, ReprBytes};
 use secrecy::{ExposeSecret, SecretVec};
 use serde::{Deserialize, Serialize};
 

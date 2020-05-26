@@ -15,6 +15,7 @@ use generic_array::{
 };
 use mc_crypto_box::{CryptoBox, VersionedCryptoBox};
 use mc_crypto_digestible::Digestible;
+use mc_crypto_keys::Ristretto;
 use mc_util_from_random::FromRandom;
 use prost::{
     bytes::{Buf, BufMut},
@@ -105,7 +106,7 @@ impl EncryptedFogHint {
         // Make plaintext of the right size
         let plaintext = GenericArray::<
             u8,
-            Diff<EncryptedFogHintSize, <VersionedCryptoBox as CryptoBox>::FooterSize>,
+            Diff<EncryptedFogHintSize, <VersionedCryptoBox as CryptoBox<Ristretto>>::FooterSize>,
         >::default();
         // Make a random key
         let key = mc_crypto_keys::RistrettoPublic::from_random(rng);

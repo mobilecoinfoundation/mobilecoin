@@ -10,7 +10,7 @@ use alloc::vec;
 use crate::traits::*;
 use alloc::vec::Vec;
 use core::convert::TryFrom;
-use digest::generic_array::typenum::U64;
+use digest::generic_array::typenum::{U32, U64};
 use ed25519::{
     signature::{
         DigestSigner, DigestVerifier, Error as SignatureError, Signature as SignatureTrait, Signer,
@@ -24,11 +24,9 @@ use ed25519_dalek::{
 };
 use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;
-use mc_util_serial::{deduce_core_traits_from_public_bytes, prost_message_helper32, ReprBytes32};
-use prost::{
-    bytes::{Buf, BufMut},
-    encoding::{bytes, skip_field, DecodeContext, WireType},
-    DecodeError, Message,
+use mc_util_repr_bytes::{
+    derive_core_cmp_from_as_ref, derive_into_vec_from_repr_bytes,
+    derive_prost_message_from_repr_bytes, derive_repr_bytes_from_as_ref_and_try_from,
 };
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
@@ -112,6 +110,28 @@ impl AsRef<[u8]> for Ed25519Public {
     }
 }
 
+impl TryFrom<&[u8]> for Ed25519Public {
+    type Error = KeyError;
+
+    fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
+        Ok(Self(
+            DalekPublicKey::from_bytes(src).map_err(|_e| KeyError::InvalidPublicKey)?,
+        ))
+    }
+}
+
+derive_repr_bytes_from_as_ref_and_try_from!(Ed25519Public, U32);
+derive_into_vec_from_repr_bytes!(Ed25519Public);
+
+impl AsRef<[u8; PUBLIC_KEY_LENGTH]> for Ed25519Public {
+    fn as_ref(&self) -> &[u8; PUBLIC_KEY_LENGTH] {
+        self.0.as_bytes()
+    }
+}
+
+derive_core_cmp_from_as_ref! { Ed25519Public, [u8; PUBLIC_KEY_LENGTH] }
+derive_prost_message_from_repr_bytes!(Ed25519Public);
+
 // ASN.1 DER SubjectPublicKeyInfo Bytes -- this is a set of nested TLVs
 // describing a pubkey -- use https://lapo.it/asn1js/
 //
@@ -159,14 +179,6 @@ impl DistinguishedEncoding for Ed25519Public {
     }
 }
 
-deduce_core_traits_from_public_bytes! { Ed25519Public }
-
-impl AsRef<[u8; PUBLIC_KEY_LENGTH]> for Ed25519Public {
-    fn as_ref(&self) -> &[u8; PUBLIC_KEY_LENGTH] {
-        self.0.as_bytes()
-    }
-}
-
 impl<D: Digest<OutputSize = U64>> DigestVerifier<D, Ed25519Signature> for Ed25519Public {
     fn verify_digest(&self, digest: D, signature: &Ed25519Signature) -> Result<(), SignatureError> {
         let sig =
@@ -183,17 +195,7 @@ impl From<&Ed25519Private> for Ed25519Public {
     }
 }
 
-impl Into<Vec<u8>> for Ed25519Public {
-    fn into(self) -> Vec<u8> {
-        Vec::from(self.0.as_ref())
-    }
-}
-
-impl PublicKey for Ed25519Public {
-    fn size() -> usize {
-        ed25519_dalek::PUBLIC_KEY_LENGTH
-    }
-}
+impl PublicKey for Ed25519Public {}
 
 impl Verifier<Ed25519Signature> for Ed25519Public {
     fn verify(&self, message: &[u8], signature: &Ed25519Signature) -> Result<(), SignatureError> {
@@ -204,30 +206,6 @@ impl Verifier<Ed25519Signature> for Ed25519Public {
             .map_err(|_e| SignatureError::new())
     }
 }
-
-impl TryFrom<&[u8]> for Ed25519Public {
-    type Error = SignatureError;
-
-    fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
-        Ok(Self(
-            DalekPublicKey::from_bytes(src).map_err(|_e| SignatureError::new())?,
-        ))
-    }
-}
-
-impl ReprBytes32 for Ed25519Public {
-    type Error = SignatureError;
-
-    fn to_bytes(&self) -> [u8; 32] {
-        *<Self as AsRef<[u8; PUBLIC_KEY_LENGTH]>>::as_ref(self)
-    }
-
-    fn from_bytes(src: &[u8; 32]) -> Result<Self, <Self as ReprBytes32>::Error> {
-        Self::try_from(&src[..])
-    }
-}
-
-prost_message_helper32! { Ed25519Public }
 
 /// An Ed25519 private key
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -446,54 +424,13 @@ impl<'a> TryFrom<&'a [u8]> for Ed25519Signature {
     }
 }
 
-impl Message for Ed25519Signature {
-    fn encode_raw<B>(&self, buf: &mut B)
-    where
-        B: BufMut,
-    {
-        bytes::encode(1, &self.as_ref().to_vec(), buf)
-    }
-
-    fn merge_field<B>(
-        &mut self,
-        tag: u32,
-        wire_type: WireType,
-        buf: &mut B,
-        ctx: DecodeContext,
-    ) -> Result<(), DecodeError>
-    where
-        B: Buf,
-    {
-        if tag == 1 {
-            let mut vbuf = Vec::new();
-            bytes::merge(wire_type, &mut vbuf, buf, ctx)?;
-            if vbuf.len() != SIGNATURE_LENGTH {
-                return Err(DecodeError::new(alloc::format!(
-                    "Ed25519Signature: expected {} bytes, got {}",
-                    SIGNATURE_LENGTH,
-                    vbuf.len()
-                )));
-            }
-            *self = Self::from_bytes(&vbuf[..])
-                .map_err(|err| DecodeError::new(alloc::format!("Ed25519Signature: {}", err)))?;
-            Ok(())
-        } else {
-            skip_field(wire_type, tag, buf, ctx)
-        }
-    }
-
-    fn encoded_len(&self) -> usize {
-        bytes::encoded_len(1, &vec![0u8; SIGNATURE_LENGTH])
-    }
-
-    fn clear(&mut self) {
-        *self = Self::default();
-    }
-}
+derive_repr_bytes_from_as_ref_and_try_from!(Ed25519Signature, U64);
+derive_prost_message_from_repr_bytes!(Ed25519Signature);
 
 #[cfg(test)]
 mod ed25519_tests {
     use super::*;
+    use digest::generic_array::typenum::Unsigned;
     use mc_crypto_digestible::Digestible;
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
@@ -540,6 +477,20 @@ mod ed25519_tests {
         data.digest(&mut hasher);
         pair.verify_digest(hasher, &sig)
             .expect("Failed to validate digest signature");
+    }
+
+    // Test that our (typenum) constant for the size of Ed25519 matches the published constant
+    // in the dalek interface.
+    #[test]
+    fn test_key_len() {
+        assert_eq!(
+            ed25519_dalek::PUBLIC_KEY_LENGTH,
+            <Ed25519Public as ReprBytes>::Size::USIZE
+        );
+        assert_eq!(
+            ed25519_dalek::SIGNATURE_LENGTH,
+            <Ed25519Signature as ReprBytes>::Size::USIZE
+        );
     }
 
     ////

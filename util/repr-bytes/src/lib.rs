@@ -79,8 +79,8 @@ pub trait ReprBytes: Sized {
 /// Error that indicates that we got a different number of bytes than expected
 #[derive(Debug)]
 pub struct LengthMismatch {
-    expected: usize,
-    found: usize,
+    pub expected: usize,
+    pub found: usize,
 }
 
 impl Display for LengthMismatch {
@@ -228,7 +228,7 @@ macro_rules! derive_prost_message_from_repr_bytes {
                     }
                     if len != expected_size as u64 {
                         return Err($crate::_exports::prost::DecodeError::new(
-                            LengthMismatch {
+                            $crate::LengthMismatch {
                                 expected: expected_size,
                                 found: len as usize,
                             }

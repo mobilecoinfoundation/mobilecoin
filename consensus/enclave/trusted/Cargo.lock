@@ -404,6 +404,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "generic-array"
+version = "0.13.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "typenum 1.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "genio"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -772,6 +780,7 @@ dependencies = [
  "aead 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "aes-gcm 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "blake2 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "digest 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "hkdf 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mc-crypto-keys 0.2.0",
@@ -813,6 +822,7 @@ dependencies = [
  "hex_fmt 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mc-crypto-digestible 0.2.0",
  "mc-util-from-random 0.2.0",
+ "mc-util-repr-bytes 0.1.0",
  "mc-util-serial 0.2.0",
  "prost 0.6.1 (git+https://github.com/cbeck88/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -820,7 +830,7 @@ dependencies = [
  "sha2 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "signature 1.0.0-pre.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "x25519-dalek 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "zeroize 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "zeroize 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -848,6 +858,7 @@ dependencies = [
  "hkdf 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mc-crypto-keys 0.2.0",
  "mc-util-from-random 0.2.0",
+ "mc-util-repr-bytes 0.1.0",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "secrecy 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1009,6 +1020,7 @@ dependencies = [
  "mc-crypto-keys 0.2.0",
  "mc-crypto-rand 0.2.0",
  "mc-util-from-random 0.2.0",
+ "mc-util-repr-bytes 0.1.0",
  "mc-util-serial 0.2.0",
  "merlin 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "prost 0.6.1 (git+https://github.com/cbeck88/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
@@ -1055,6 +1067,15 @@ name = "mc-util-from-random"
 version = "0.2.0"
 dependencies = [
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "mc-util-repr-bytes"
+version = "0.1.0"
+dependencies = [
+ "generic-array 0.13.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "prost 0.6.1 (git+https://github.com/cbeck88/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
+ "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1631,6 +1652,7 @@ dependencies = [
 "checksum failure_derive 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "0bc225b78e0391e4b8683440bf2e63c2deeeb2ce5189eab46e2b68c6d3725d08"
 "checksum fake-simd 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "e88a8acf291dafb59c2d96e8f59828f3838bb1a70398823ade51a84de6a6deed"
 "checksum generic-array 0.12.3 (registry+https://github.com/rust-lang/crates.io-index)" = "c68f0274ae0e023facc3c97b2e00f076be70e254bc851d972503b328db79b2ec"
+"checksum generic-array 0.13.2 (registry+https://github.com/rust-lang/crates.io-index)" = "0ed1e761351b56f54eb9dcd0cfaca9fd0daecf93918e1cfc01c8a3d26ee7adcd"
 "checksum genio 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "f4e26859a808ffa83a83f20c7e3c9366afea91edae637a6ac203051885882dc8"
 "checksum getrandom 0.1.14 (registry+https://github.com/rust-lang/crates.io-index)" = "7abc8dd8451921606d809ba32e95b6111925cd2906060d2dcc29c070220503eb"
 "checksum ghash 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "9f0930ed19a7184089ea46d2fedead2f6dc2b674c5db4276b7da336c7cd83252"

@@ -17,9 +17,13 @@ use core::{
     fmt::{Debug, Error as FmtError, Formatter, Result as FmtResult},
     str::from_utf8,
 };
+use digest::generic_array::typenum::U32;
 use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;
-use mc_util_serial::deduce_core_traits_from_public_bytes;
+use mc_util_repr_bytes::{
+    derive_core_cmp_from_as_ref, derive_into_vec_from_repr_bytes,
+    derive_repr_bytes_from_as_ref_and_try_from,
+};
 use rand_core::{CryptoRng, RngCore};
 use serde::{
     de::{Deserialize, Deserializer, Error as DeserializeError, Visitor},
@@ -28,6 +32,9 @@ use serde::{
 use sha2::{self, Sha256};
 use x25519_dalek::{EphemeralSecret, PublicKey as DalekPublicKey, SharedSecret, StaticSecret};
 use zeroize::Zeroize;
+
+/// The length in bytes of canonical representation of x25519 (public and private keys)
+pub const X25519_LEN: usize = 32;
 
 /// A structure for keeping an X25519 shared secret
 pub struct X25519Secret(SharedSecret);
@@ -91,11 +98,7 @@ const X25519_SPKI_DER_PREFIX: [u8; 12] = [
 // the length of T and L themselves.
 const X25519_SPKI_DER_LEN: usize = 0x02 + 0x2A;
 
-impl PublicKey for X25519Public {
-    fn size() -> usize {
-        32
-    }
-}
+impl PublicKey for X25519Public {}
 
 impl DistinguishedEncoding for X25519Public {
     fn der_size() -> usize {
@@ -187,12 +190,22 @@ impl AsRef<[u8]> for X25519Public {
     }
 }
 
-impl Into<Vec<u8>> for X25519Public {
-    /// Dump a public key into a new vector.
-    fn into(self) -> Vec<u8> {
-        Vec::from(&self.0.as_bytes()[..])
+impl TryFrom<&[u8]> for X25519Public {
+    type Error = KeyError;
+
+    /// Try to load the given byte slice as a public key.
+    fn try_from(src: &[u8]) -> Result<Self, <Self as TryFrom<&[u8]>>::Error> {
+        if src.len() != X25519_LEN {
+            return Err(KeyError::LengthMismatch(src.len(), X25519_LEN));
+        }
+        let mut src_copy = [0u8; X25519_LEN];
+        src_copy.copy_from_slice(src);
+        Ok(Self(DalekPublicKey::from(src_copy)))
     }
 }
+
+derive_repr_bytes_from_as_ref_and_try_from!(X25519Public, U32);
+derive_into_vec_from_repr_bytes!(X25519Public);
 
 impl Clone for X25519Public {
     /// Public keys can be cloned.
@@ -281,13 +294,13 @@ impl<'de> Deserialize<'de> for X25519Public {
     }
 }
 
-impl AsRef<[u8; 32]> for X25519Public {
-    fn as_ref(&self) -> &[u8; 32] {
+impl AsRef<[u8; X25519_LEN]> for X25519Public {
+    fn as_ref(&self) -> &[u8; X25519_LEN] {
         self.0.as_bytes()
     }
 }
 
-deduce_core_traits_from_public_bytes! { X25519Public }
+derive_core_cmp_from_as_ref!(X25519Public, [u8; X25519_LEN]);
 impl Eq for X25519Public {}
 
 impl Serialize for X25519Public {
@@ -338,20 +351,6 @@ impl From<&X25519EphemeralPrivate> for X25519Public {
     /// ```
     fn from(pair: &X25519EphemeralPrivate) -> Self {
         Self(DalekPublicKey::from(&pair.0))
-    }
-}
-
-impl TryFrom<&[u8]> for X25519Public {
-    type Error = KeyError;
-
-    /// Try to load the given byte slice as a public key.
-    fn try_from(src: &[u8]) -> Result<Self, <Self as TryFrom<&[u8]>>::Error> {
-        if src.len() != 32 {
-            return Err(KeyError::LengthMismatch(src.len(), 32));
-        }
-        let mut src_copy = [0u8; 32];
-        src_copy.copy_from_slice(src);
-        Ok(Self(DalekPublicKey::from(src_copy)))
     }
 }
 
@@ -568,10 +567,10 @@ impl<'bytes> TryFrom<&'bytes [u8]> for X25519Private {
     /// assert_eq!(&key as &[u8], keyout.as_slice());
     /// ```
     fn try_from(src: &[u8]) -> Result<Self, <Self as TryFrom<&'bytes [u8]>>::Error> {
-        if src.len() != 32 {
-            return Err(KeyError::LengthMismatch(src.len(), 32));
+        if src.len() != X25519_LEN {
+            return Err(KeyError::LengthMismatch(src.len(), X25519_LEN));
         }
-        let mut bytes = [0u8; 32];
+        let mut bytes = [0u8; X25519_LEN];
         bytes.copy_from_slice(src);
         Ok(X25519Private(StaticSecret::from(bytes)))
     }
@@ -592,6 +591,11 @@ impl Kex for X25519 {
 mod test {
     use super::*;
     use mc_util_serial::{deserialize, serialize};
+
+    #[test]
+    fn test_repr_bytes_size_vs_constant() {
+        assert_eq!(<X25519Public as ReprBytes>::Size::USIZE, X25519_LEN);
+    }
 
     #[test]
     fn test_pubkey_serialize() {
