@@ -33,6 +33,9 @@ use sha2::{self, Sha256};
 use x25519_dalek::{EphemeralSecret, PublicKey as DalekPublicKey, SharedSecret, StaticSecret};
 use zeroize::Zeroize;
 
+/// The length in bytes of canonical representation of x25519 (public and private keys)
+pub const X25519_LEN: usize = 32;
+
 /// A structure for keeping an X25519 shared secret
 pub struct X25519Secret(SharedSecret);
 
@@ -192,10 +195,10 @@ impl TryFrom<&[u8]> for X25519Public {
 
     /// Try to load the given byte slice as a public key.
     fn try_from(src: &[u8]) -> Result<Self, <Self as TryFrom<&[u8]>>::Error> {
-        if src.len() != 32 {
-            return Err(KeyError::LengthMismatch(src.len(), 32));
+        if src.len() != X25519_LEN {
+            return Err(KeyError::LengthMismatch(src.len(), X25519_LEN));
         }
-        let mut src_copy = [0u8; 32];
+        let mut src_copy = [0u8; X25519_LEN];
         src_copy.copy_from_slice(src);
         Ok(Self(DalekPublicKey::from(src_copy)))
     }
@@ -291,13 +294,13 @@ impl<'de> Deserialize<'de> for X25519Public {
     }
 }
 
-impl AsRef<[u8; 32]> for X25519Public {
-    fn as_ref(&self) -> &[u8; 32] {
+impl AsRef<[u8; X25519_LEN]> for X25519Public {
+    fn as_ref(&self) -> &[u8; X25519_LEN] {
         self.0.as_bytes()
     }
 }
 
-derive_core_cmp_from_as_ref!(X25519Public, [u8; 32]);
+derive_core_cmp_from_as_ref!(X25519Public, [u8; X25519_LEN]);
 impl Eq for X25519Public {}
 
 impl Serialize for X25519Public {
@@ -564,10 +567,10 @@ impl<'bytes> TryFrom<&'bytes [u8]> for X25519Private {
     /// assert_eq!(&key as &[u8], keyout.as_slice());
     /// ```
     fn try_from(src: &[u8]) -> Result<Self, <Self as TryFrom<&'bytes [u8]>>::Error> {
-        if src.len() != 32 {
-            return Err(KeyError::LengthMismatch(src.len(), 32));
+        if src.len() != X25519_LEN {
+            return Err(KeyError::LengthMismatch(src.len(), X25519_LEN));
         }
-        let mut bytes = [0u8; 32];
+        let mut bytes = [0u8; X25519_LEN];
         bytes.copy_from_slice(src);
         Ok(X25519Private(StaticSecret::from(bytes)))
     }
@@ -588,6 +591,11 @@ impl Kex for X25519 {
 mod test {
     use super::*;
     use mc_util_serial::{deserialize, serialize};
+
+    #[test]
+    fn test_repr_bytes_size_vs_constant() {
+        assert_eq!(<X25519Public as ReprBytes>::Size::USIZE, X25519_LEN);
+    }
 
     #[test]
     fn test_pubkey_serialize() {

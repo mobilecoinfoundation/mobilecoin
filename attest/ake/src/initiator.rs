@@ -186,7 +186,6 @@ where
             HandshakeStatus::Complete(result) => {
                 let remote_report: VerificationReport =
                     deserialize(&output.payload).map_err(|_e| Error::ReportDeserialization)?;
-                #[allow(clippy::redundant_closure)]
                 remote_report.verify(
                     self.trust_anchors,
                     None,
@@ -201,8 +200,9 @@ where
                         .remote_identity
                         .as_ref()
                         .ok_or(Error::MissingRemoteIdentity)?
-                        .map_bytes(|bytes| ReportDataMask::try_from(bytes))
-                        .map_err(|_e| Error::BadRemoteIdentity)?,
+                        .map_bytes(|bytes| {
+                            ReportDataMask::try_from(bytes).map_err(|_| Error::BadRemoteIdentity)
+                        })?,
                 )?;
                 Ok((
                     Ready {
