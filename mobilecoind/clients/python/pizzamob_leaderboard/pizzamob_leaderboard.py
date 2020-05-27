@@ -86,7 +86,7 @@ def add_user():
 
     response = {
         "code": request_code,
-        "mob": balance / MOB,
+        "balance": balance / MOB,
         "time": timestamp,
         "leaderboard": leaderboard,
         "goal": WINNING_AMOUNT / MOB,
