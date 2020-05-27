@@ -5,11 +5,16 @@ cd ../mob_client
 pip3 install -r requirements.txt
 ./compile_proto.sh
 
-# download and install the compiled mobilecoind
 cd ../blockchain_explorer
-curl -L https://github.com/mobilecoinofficial/mobilecoin/releases/latest/download/mobilecoin-testnet-linux.tar.gz --output latest.tar.gz
-tar -zxvf ./latest.tar.gz
-rm ./latest.tar.gz
+
+# install mobilecoind
+if [ ! -d "./mobilecoin-testnet-linux" ]
+  then
+    echo "Installing mobilecoind binary."
+    curl -L https://github.com/mobilecoinofficial/mobilecoin/releases/latest/download/mobilecoin-testnet-linux.tar.gz --output latest.tar.gz
+    tar -zxvf ./latest.tar.gz
+    rm ./latest.tar.gz
+fi
 
 # kill old mobilecoind processes
 ps -ef | grep mobilecoind | grep -v grep | awk '{print $2}' | xargs kill
