@@ -35,7 +35,8 @@ function getStatus(passphrase) {
   var url = "/add_user";
   var salt = CryptoJS.enc.Utf16.parse("don't oversalt the dough!");
   console.log(passphrase);
-  var hashed_passphrase = CryptoJS.PBKDF2(passphrase, salt, {keySize: 8, iterations: 500});
+  var hashed_passphrase = CryptoJS.PBKDF2(passphrase, salt, {keySize: 256/32, iterations: 500});
+  console.log(hashed_passphrase);
   var data = { player_data: hashed_passphrase };
   return $.ajax({method, url, data}).then(r => {
       return JSON.parse(r);
