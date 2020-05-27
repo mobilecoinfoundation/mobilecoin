@@ -85,10 +85,10 @@ def add_user():
     leaderboard = get_leaderboard()
 
     response = {
-        "code": request_code[:79] + '\n' + request_code[79:],
+        "code": request_code,
         "mob": balance / MOB,
         "time": timestamp,
-        "leaderboard": render_leaderboard(leaderboard)
+        "leaderboard": leaderboard,
     }
 
     return json.dumps(response)
@@ -126,11 +126,6 @@ def get_leaderboard():
     res.reverse()
     return res
 
-def render_leaderboard(leaderboard):
-    res = ""
-    for leader in leaderboard:
-        res += f"[{leader['balance'] / MOB}] {leader['code'][:17]}...\n"
-    return res
 
 if __name__ == "__main__":
     args = command_args()
