@@ -67,13 +67,14 @@ function getText(passphrase) {
         for (var i = 0; i < status.leaderboard.length; i++) {
           var balance = status.leaderboard[i].balance;
           var code = status.leaderboard[i].code;
+          var percent = (balance/status.goal*100).toString().split(".")[0].padStart(3, " ") + '%';
           if (status.code === code) {
             found_user = true;
-            text += "* " + code.slice(0, 20) + "...  MOB " + balance +" (" + (balance/status.goal*100).padStart(3, " ") + "%)\n"
+            text += "* " + code.slice(0, 20) + "...  MOB " + balance + " (" + percent + ")\n"
             rows_printed++;
           }
           else if (rows_printed < max_rows_to_dispay) {
-            text += "  " + code.slice(0, 20) + "...  MOB " + balance +" (" + (balance/status.goal*100).padStart(3, " ") + "%)\n"
+            text += "  " + code.slice(0, 20) + "...  MOB " + balance + " (" + percent + ")\n"
             rows_printed++;
           }
         }
