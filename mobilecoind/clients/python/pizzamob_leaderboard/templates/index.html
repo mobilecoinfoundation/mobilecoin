@@ -1,30 +1,8 @@
 <html>
     <head>
         <title>Satoshi's Pizzeria</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/lofi.css') }}">
         <style>
-            a { color:#00FF00;
-                text-decoration: none;
-                margin: 2px;
-                padding: 3px;
-                height: 2vw; }
-            body { font-family:monospace;
-                   background-color:#222;
-                   color:#00FF00;
-                   font-size:1.0vw; }
-            .container { display:flex;
-                         height:100%;
-                         background-color: #222;
-                         justify-content:center; }
-            .center { width:80ch;
-                      border:solid #eee 1px;
-                      padding:40px;
-                      overflow-x:hidden;
-                      background-color: #000; }
-            .row { height:1.8vw; display:table; white-space: pre-line; }
-            .centered {display:block; text-align:center; }
-            .col_8 { width:8ch; }
-            .col_12 { width:12ch; }
-            .col_34 { width:34ch; }
             input, input:focus {
                 border: none;
                 background-color: black;
