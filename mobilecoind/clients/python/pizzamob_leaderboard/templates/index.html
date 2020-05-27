@@ -48,7 +48,9 @@ function getText(passphrase) {
         text += "\n\n" ;
         text += "You have deposited " + status.mob + " MOB" + ". Deposit 10000 MOB to win.\n\n";
         text += line + '\n\n';
-        text += '\n\n' + line + '\n\n';
+        // render the leaderboard here
+
+        text += '\n\n' + line + '\n\nPlease enter a unique passphrase.\n\n;
 
         // copy request code to clipboard
         $('#code').val(status.code);
@@ -113,9 +115,15 @@ $(document).keydown(async function(e) {
 $(document).mousedown(async function(e) {
   e.preventDefault();
   $("input[name=cmd]").focus();
+});
+
+$(document).mouseup(async function(e) {
+  e.preventDefault();
   alert("Request code copied to clipboard.\n\n" + $("#code").val() );
 });
 
 </script>
 
 </html>
+
+

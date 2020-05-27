@@ -45,6 +45,7 @@ input, input:focus {
 }
 
 .hidden {
+  position: absolute;
   top: -5000px;
   left: -5000px;
 }
