@@ -39,8 +39,6 @@ function getText(passphrase) {
     return getStatus(passphrase).then(status => {
         console.log(status.code, status.mob, status.time, status.leaderboard);
 
-        $('#code').val(status.code);
-
         var line = "********************************************************************************\n";
 
         var text = line + '\n';
@@ -52,7 +50,15 @@ function getText(passphrase) {
         text += line + '\n\n';
         text += '\n\n' + line + '\n\n';
 
+        // copy request code to clipboard
+        $('#code').val(status.code);
+        $('#code').focus();
+        $('#code').select();
+        document.execCommand('copy');
+        $("input[name=cmd]").focus();
+
         return text;
+
       });
   }
 };
@@ -106,11 +112,8 @@ $(document).keydown(async function(e) {
 
 $(document).mousedown(async function(e) {
   e.preventDefault();
-  // copy request code to clipboard
-  $('#code').focus();
-  $('#code').select();
-  document.execCommand('copy');
   $("input[name=cmd]").focus();
+  alert("Request code copied to clipboard.\n\n" + $("#code").val() );
 });
 
 </script>
