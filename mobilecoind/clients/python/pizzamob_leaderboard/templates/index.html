@@ -76,12 +76,13 @@ function slowWrite(content) {
     var count = 0;
     if (current < letters.length) {
       var current_letter = letters[current];
-      if current_letter === '\n' {
+      
+      if (current_letter === '\n') {
         count = 0;
       } else {
         count++;
       }
-      if count == 79 {
+      if (count == 79) {
         count = 0;
         elem.text(elem.text() + '\n' + current_letter);
       } else {
