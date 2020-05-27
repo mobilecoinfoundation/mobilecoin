@@ -125,10 +125,9 @@ function slowWrite(content) {
       } else {
         count++;
       }
-      if (count == 81) {
+      if (count == 80) {
         count = 0;
-        elem.text(elem.text() + '\n' + current_letter);
-        //maybe strip space
+        elem.text(elem.text() + current_letter + '\n');
         if (letters[current+1] === " "){
           current++;
         }
