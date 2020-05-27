@@ -60,26 +60,22 @@ function getText(passphrase) {
         text += "You have deposited " + status.mob + " MOB" + ". Deposit 10000 MOB to win.\n\n";
         text += line + '\n\n';
         // render the leaderboard here
-
+        text += 'LEADING CONTESTANTS:\n';
         var found_user = false;
         var rows_printed = 0;
         for (var i = 0; i < status.leaderboard.length; i++) {
           var balance = status.leaderboard[i].balance;
           var code = status.leaderboard[i].code;
           if (status.code === code) {
-            console.log("found user");
             found_user = true;
-            text += "*** ";
+            text += "* " + code.slice(0, 20) + "...  MOB " + balance +" (" + (balance/status.goal*100) + "%)\n"
+            rows_printed++;
           }
-          else {
-           text += "    ";
+          else if (rows_printed < 10) {
+            text += "  " + code.slice(0, 20) + "...  MOB " + balance +" (" + (balance/status.goal*100) + "%)\n"
+            rows_printed++;
           }
-          rows_printed++;
-
-
-          text += i + " " + code.slice(0, 10) + "... " + balance + "\n"
         }
-
 
         text += "\n\n" + line + "\n\n"
 
