@@ -121,7 +121,7 @@ def get_leaderboard():
     for p in players:
         monitor = get_or_add_monitor(p['subaddress'])
         balance = client.get_balance(monitor, p['subaddress'])
-        res.append({'balance': balance, 'code': p['code'][:17]})
+        res.append({'balance': balance, 'code': p['code']})
     res.sort(key=lambda player: player['balance'])
     res.reverse()
     return res
