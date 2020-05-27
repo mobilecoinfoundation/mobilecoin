@@ -10,6 +10,9 @@ cd ../blockchain_explorer
 curl -L https://github.com/mobilecoinofficial/mobilecoin/releases/latest/download/mobilecoin-testnet-linux.tar.gz --output latest.tar.gz
 tar -zxvf ./latest.tar.gz
 
+# kill old mobilecoind processes
+ps -ef | grep mobilecoind | grep -v grep | awk '{print $2}' | xargs kill
+
 # run mobilecoind
 ./mobilecoin-testnet-linux/bin/mobilecoind \
         --ledger-db /tmp/ledger-db \
