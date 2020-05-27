@@ -119,7 +119,7 @@ $(document).mousedown(async function(e) {
 
 $(document).mouseup(async function(e) {
   e.preventDefault();
-  var code = $("#code").val().match(/.{1,25}/g).join("\n");
+  var code = $("#code").val().match(/.{1,40}/g).join("\n");
 
   alert("Request code copied to clipboard.\n\n" + code );
 });
