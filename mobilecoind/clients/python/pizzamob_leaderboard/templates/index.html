@@ -72,8 +72,21 @@ function slowWrite(content) {
   var elem = $("#output");
   $("#output").text("");
   var interval = setInterval(function() {
+    var count = 0;
     if (current < letters.length) {
-      elem.text(elem.text() + letters[current++]);
+      var current_letter = letters[current];
+      if current_letter = '\n' {
+        count = 0;
+      } else {
+        count++;
+      }
+      if count == 80 {
+        count = 0;
+        elem.text(elem.text() + '\n' + current_letter);
+      } else {
+        elem.text(elem.text() + current_letter);
+      }
+      current++;
     }
     else {
       dfd.resolve();

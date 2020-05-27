@@ -89,6 +89,7 @@ def add_user():
         "mob": balance / MOB,
         "time": timestamp,
         "leaderboard": leaderboard,
+        "goal": WINNING_AMOUNT / MOB,
     }
 
     return json.dumps(response)
