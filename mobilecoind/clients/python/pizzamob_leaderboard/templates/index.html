@@ -10,7 +10,7 @@
     </head>
     <body>
         <div class="container">
-          <div class="center">
+          <div class="center" id="screen">
             <div id="output" class="row"></div>
             <div id="input" class="row">
               <span id="prompt">>&nbsp;</span>
@@ -143,6 +143,11 @@ function slowWrite(content) {
       $("input[name=cmd]").val("");
       $("input[name=cmd]").focus();
     }
+
+    // keep the view scrolled down
+    var element = document.getElementById("screen");
+    element.scrollTop = element.scrollHeight;
+
   }, 2);
   return dfd.promise();
 };
