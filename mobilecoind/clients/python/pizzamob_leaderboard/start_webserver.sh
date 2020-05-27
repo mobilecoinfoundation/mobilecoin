@@ -26,6 +26,6 @@ ps -ef | grep mobilecoind | grep -v grep | awk '{print $2}' | xargs kill
         --service-port 4444 \
         --watcher-db /tmp/watcher-db &
 
-# run the blockchain explorer flask site
+# run the pizzamob_leaderboard flask site
 pip3 install -r requirements.txt
-python3 ./blockchain_explorer.py
+python3 ./pizzamob_leaderboard.py
