@@ -70,10 +70,10 @@ function slowWrite(content) {
   var dfd = $.Deferred();
   var letters = content.split("");
   var current = 0;
+  var count = 0;
   var elem = $("#output");
   $("#output").text("");
   var interval = setInterval(function() {
-    var count = 0;
     if (current < letters.length) {
       var current_letter = letters[current];
 
@@ -82,10 +82,8 @@ function slowWrite(content) {
       } else {
         count++;
       }
-      console.log(current_letter, count);
       if (count == 79) {
         count = 0;
-        console.log("reset!");
         elem.text(elem.text() + '\n' + current_letter);
       } else {
         elem.text(elem.text() + current_letter);
