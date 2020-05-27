@@ -23,6 +23,8 @@
 
 <script>
 
+var ready = true;
+
 function getStatus(passphrase) {
   var method = "POST";
   var url = "/add_user";
@@ -37,7 +39,6 @@ function getStatus(passphrase) {
 function getText(passphrase) {
   if (passphrase === "" ) {
     return "Welcome to Satoshi's Pizzeria.\n\nPlease enter a unique passphrase.\n\n";
-    $('#prompt').show();
   }
   else {
     return getStatus(passphrase).then(status => {
@@ -55,19 +56,19 @@ function getText(passphrase) {
         // render the leaderboard here
 
         text += "\n\n" + line + "\n\n"
-
         text += "Press any key to continue...";
-        $('#prompt').hide();
 
         // copy request code to clipboard
         $('#code').val(status.code);
         $('#code').focus();
         $('#code').select();
         document.execCommand('copy');
+
+        // hide prompt
+        $('#prompt').hide();
         $("input[name=cmd]").focus();
 
         return text;
-
       });
   }
 };
@@ -111,11 +112,17 @@ function slowWrite(content) {
 slowWrite(getText(""))
 
 $(document).keydown(async function(e) {
-  key = e.keyCode;
-  if(key == 13) { // enter
-    e.preventDefault();
-    var cmd = $("#cmd").val().trim();
-    slowWrite(await getText(cmd));
+  if (!ready) {
+    slowWrite(getText(""));
+    $('#prompt').hide();
+  }
+  else {
+    key = e.keyCode;
+    if(key == 13) { // enter
+      e.preventDefault();
+      var cmd = $("#cmd").val().trim();
+      slowWrite(await getText(cmd));
+    }
   }
 });
 
