@@ -28,4 +28,4 @@ ps -ef | grep mobilecoind | grep -v grep | awk '{print $2}' | xargs kill
 
 # run the pizzamob_leaderboard flask site
 pip3 install -r requirements.txt
-python3 ./pizzamob_leaderboard.py
+python3 ./pizzamob_leaderboard.py --entropy $1
