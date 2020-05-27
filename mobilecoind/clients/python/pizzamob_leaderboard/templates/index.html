@@ -45,11 +45,11 @@ function getText(passphrase) {
     return "Welcome to Satoshi's Pizzeria.\n\nPlease enter a unique passphrase.\n\n";
   }
   else {
-    getStatus(passphrase).then(status => {
+    return getStatus(passphrase).then(status => {
         console.log(status.code, status.mob, status.time, status.leaderboard);
-        
+
         var line = "********************************************************************************\n";
-        
+
         var text = line + '\n';
         text += "Remember your passphrase to claim your pizza: \n\n" + passphrase + "\n\n";
         text += "Your request code is: \n\n";
@@ -59,7 +59,7 @@ function getText(passphrase) {
         text += line + '\n\n';
         text += '\n\n' + line + '\n\n';
 
-        slowWrite(text);
+        return text;
       });
   }
 };
