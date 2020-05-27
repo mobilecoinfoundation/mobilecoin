@@ -5,7 +5,9 @@
 
 use crate::error::Error;
 use mc_crypto_digestible::Digestible;
-use mc_util_serial::{prost_message_helper32, ReprBytes32};
+use mc_util_repr_bytes::{
+    derive_prost_message_from_repr_bytes, derive_repr_bytes_from_as_ref_and_try_from, typenum::U32,
+};
 use std::{
     convert::{AsRef, TryFrom},
     fmt,
@@ -18,18 +20,6 @@ pub struct DatabaseByteArrayKey([u8; 32]);
 impl DatabaseByteArrayKey {
     pub fn as_bytes(&self) -> &[u8; 32] {
         &self.0
-    }
-}
-
-impl ReprBytes32 for DatabaseByteArrayKey {
-    type Error = Error;
-
-    fn to_bytes(&self) -> [u8; 32] {
-        self.0
-    }
-
-    fn from_bytes(src: &[u8; 32]) -> Result<Self, <Self as ReprBytes32>::Error> {
-        Ok(Self(*src))
     }
 }
 
@@ -65,15 +55,7 @@ impl TryFrom<&Vec<u8>> for DatabaseByteArrayKey {
     type Error = Error;
 
     fn try_from(src: &Vec<u8>) -> Result<Self, <Self as TryFrom<&Vec<u8>>>::Error> {
-        if src.len() != 32 {
-            return Err(Error::InvalidArgument(
-                "src".to_string(),
-                "length needs to be 32".to_string(),
-            ));
-        }
-        let mut bytes = [0u8; 32];
-        bytes.copy_from_slice(src);
-        Ok(Self(bytes))
+        Self::try_from(&src[..])
     }
 }
 
@@ -104,4 +86,5 @@ impl fmt::Debug for DatabaseByteArrayKey {
     }
 }
 
-prost_message_helper32! { DatabaseByteArrayKey }
+derive_repr_bytes_from_as_ref_and_try_from!(DatabaseByteArrayKey, U32);
+derive_prost_message_from_repr_bytes!(DatabaseByteArrayKey);

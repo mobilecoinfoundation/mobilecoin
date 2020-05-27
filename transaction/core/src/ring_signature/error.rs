@@ -1,7 +1,6 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use failure::Fail;
-use mc_crypto_keys::KeyError;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Fail, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
@@ -42,35 +41,16 @@ pub enum Error {
     #[fail(display = "There was an opaque error returned by another crate or library")]
     InternalError,
 
-    /// Public keys must be valid Ristretto points.
-    #[fail(display = "KeyError")]
-    KeyError,
-
     /// Signing failed because the value of inputs did not equal the value of outputs.
     #[fail(display = "ValueNotConserved")]
     ValueNotConserved,
 
     #[fail(display = "Invalid RangeProof")]
     RangeProofError,
-
-    #[fail(display = "Serialization failed")]
-    SerializationFailed,
 }
 
-impl From<mc_util_serial::LengthMismatch32> for Error {
-    fn from(src: mc_util_serial::LengthMismatch32) -> Self {
-        Error::LengthMismatch(src.0, 32)
-    }
-}
-
-impl From<mc_crypto_keys::KeyError> for Error {
-    fn from(_src: KeyError) -> Self {
-        Self::KeyError
-    }
-}
-
-impl From<mc_util_serial::encode::Error> for Error {
-    fn from(_e: mc_util_serial::encode::Error) -> Self {
-        Error::SerializationFailed
+impl From<mc_util_repr_bytes::LengthMismatch> for Error {
+    fn from(src: mc_util_repr_bytes::LengthMismatch) -> Self {
+        Error::LengthMismatch(src.found, src.expected)
     }
 }

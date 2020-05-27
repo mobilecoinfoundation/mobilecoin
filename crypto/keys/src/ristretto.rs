@@ -9,19 +9,20 @@ use core::{
     convert::{AsRef, TryFrom, TryInto},
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
-    mem::size_of,
 };
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_POINT,
     ristretto::{CompressedRistretto, RistrettoPoint},
     scalar::Scalar,
 };
+use digest::generic_array::typenum::U32;
 use hex_fmt::HexFmt;
 use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;
-use mc_util_serial::{
-    deduce_core_traits_from_public_bytes, prost_message_helper32, serde_helper32,
-    try_from_helper32, ReprBytes32,
+use mc_util_repr_bytes::{
+    derive_core_cmp_from_as_ref, derive_into_vec_from_repr_bytes,
+    derive_prost_message_from_repr_bytes, derive_repr_bytes_from_as_ref_and_try_from,
+    derive_serde_from_repr_bytes, derive_try_from_slice_from_repr_bytes, ReprBytes,
 };
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
@@ -31,15 +32,48 @@ use zeroize::Zeroize;
 #[derive(Clone, Copy, Default)]
 pub struct RistrettoPrivate(pub(crate) Scalar);
 
+impl AsRef<[u8; 32]> for RistrettoPrivate {
+    fn as_ref(&self) -> &[u8; 32] {
+        self.0.as_bytes()
+    }
+}
+
+impl TryFrom<&[u8; 32]> for RistrettoPrivate {
+    type Error = KeyError;
+
+    fn try_from(src: &[u8; 32]) -> Result<Self, KeyError> {
+        Ok(Self(
+            Scalar::from_canonical_bytes(*src).ok_or(KeyError::InvalidPrivateKey)?,
+        ))
+    }
+}
+
 impl AsRef<[u8]> for RistrettoPrivate {
     fn as_ref(&self) -> &[u8] {
         self.0.as_bytes()
     }
 }
 
-impl AsRef<[u8; 32]> for RistrettoPrivate {
-    fn as_ref(&self) -> &[u8; 32] {
-        self.0.as_bytes()
+impl TryFrom<&[u8]> for RistrettoPrivate {
+    type Error = KeyError;
+    fn try_from(src: &[u8]) -> Result<Self, KeyError> {
+        let bytes: &[u8; 32] = src
+            .try_into()
+            .map_err(|_| KeyError::LengthMismatch(src.len(), 32))?;
+        Self::try_from(bytes)
+    }
+}
+
+derive_repr_bytes_from_as_ref_and_try_from!(RistrettoPrivate, U32);
+derive_into_vec_from_repr_bytes!(RistrettoPrivate);
+derive_serde_from_repr_bytes!(RistrettoPrivate);
+derive_prost_message_from_repr_bytes!(RistrettoPrivate);
+
+impl RistrettoPrivate {
+    /// This is used by some code that used to use ReprBytes32 API
+    /// This is okay in code that is not generic over the key type.
+    pub fn to_bytes(&self) -> [u8; 32] {
+        *self.0.as_bytes()
     }
 }
 
@@ -54,31 +88,6 @@ impl From<Scalar> for RistrettoPrivate {
         Self(scalar)
     }
 }
-
-impl Into<Vec<u8>> for RistrettoPrivate {
-    fn into(self) -> Vec<u8> {
-        let bytes: &[u8] = self.as_ref();
-        Vec::from(bytes)
-    }
-}
-
-impl ReprBytes32 for RistrettoPrivate {
-    type Error = KeyError;
-
-    fn to_bytes(&self) -> [u8; 32] {
-        self.0.to_bytes()
-    }
-
-    fn from_bytes(src: &[u8; 32]) -> Result<Self, KeyError> {
-        Ok(Self(
-            Scalar::from_canonical_bytes(*src).ok_or(KeyError::InvalidPrivateKey)?,
-        ))
-    }
-}
-
-serde_helper32! { RistrettoPrivate }
-prost_message_helper32! { RistrettoPrivate }
-try_from_helper32! { RistrettoPrivate }
 
 impl Debug for RistrettoPrivate {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
@@ -122,12 +131,52 @@ impl KexPrivate for RistrettoPrivate {
     type Secret = RistrettoSecret;
 }
 
+/// A private ristretto key which is ephemeral, should never be copied,
+/// and should be zeroized
+pub struct RistrettoEphemeralPrivate(Scalar);
+
+impl Drop for RistrettoEphemeralPrivate {
+    fn drop(&mut self) {
+        self.0.zeroize();
+    }
+}
+
+impl PrivateKey for RistrettoEphemeralPrivate {
+    type Public = RistrettoPublic;
+}
+
+impl KexPrivate for RistrettoEphemeralPrivate {
+    type Secret = RistrettoSecret;
+}
+
+impl KexEphemeralPrivate for RistrettoEphemeralPrivate {
+    fn key_exchange(
+        self,
+        their_public: &<Self as PrivateKey>::Public,
+    ) -> <Self as KexPrivate>::Secret {
+        RistrettoSecret((self.0 * their_public.0).compress().to_bytes())
+    }
+}
+
+impl FromRandom for RistrettoEphemeralPrivate {
+    fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> Self {
+        Self(Scalar::random(csprng))
+    }
+}
+
+impl Debug for RistrettoEphemeralPrivate {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        write!(
+            f,
+            "RistrettoEphemeralPrivate for {:?}",
+            RistrettoPublic::from(self)
+        )
+    }
+}
+
 /// A Ristretto-format curve point for use as a public key
 #[derive(Clone, Copy, Default, Digestible)]
 pub struct RistrettoPublic(pub(crate) RistrettoPoint);
-
-/// The length of Ristretto Public in bytes on the wire
-pub const RISTRETTO_PUBLIC_LEN: usize = size_of::<CompressedRistretto>();
 
 impl AsRef<RistrettoPoint> for RistrettoPublic {
     fn as_ref(&self) -> &RistrettoPoint {
@@ -147,29 +196,42 @@ impl From<RistrettoPoint> for RistrettoPublic {
     }
 }
 
-impl ReprBytes32 for RistrettoPublic {
+impl ReprBytes for RistrettoPublic {
+    type Size = U32;
     type Error = KeyError;
 
-    fn to_bytes(&self) -> [u8; 32] {
-        self.0.compress().to_bytes()
+    fn to_bytes(&self) -> GenericArray<u8, U32> {
+        self.0.compress().to_bytes().into()
     }
 
-    fn from_bytes(src: &[u8; 32]) -> Result<Self, KeyError> {
+    fn from_bytes(src: &GenericArray<u8, U32>) -> Result<Self, KeyError> {
         Ok(Self(
-            CompressedRistretto::from_slice(src)
+            CompressedRistretto::from_slice(src.as_slice())
                 .decompress()
                 .ok_or(KeyError::InvalidPublicKey)?,
         ))
     }
 }
 
-serde_helper32! { RistrettoPublic }
-prost_message_helper32! { RistrettoPublic }
-try_from_helper32! { RistrettoPublic }
+derive_serde_from_repr_bytes!(RistrettoPublic);
+derive_prost_message_from_repr_bytes!(RistrettoPublic);
+derive_into_vec_from_repr_bytes!(RistrettoPublic);
+derive_try_from_slice_from_repr_bytes!(RistrettoPublic);
 
-impl Into<Vec<u8>> for RistrettoPublic {
-    fn into(self) -> Vec<u8> {
-        self.0.compress().as_bytes().to_vec()
+// Many historical APIs assumed TryFrom<&[u8;32]> existed for RistrettoPublic
+// This will work fine in code that is not generic over the size of the key
+impl TryFrom<&[u8; 32]> for RistrettoPublic {
+    type Error = KeyError;
+    fn try_from(src: &[u8; 32]) -> Result<Self, KeyError> {
+        Self::try_from(&src[..])
+    }
+}
+
+impl RistrettoPublic {
+    // Many historical APIs based on ReprBytes32 in mobilecoin use to_bytes() -> [u8;32].
+    // This is okay in non-generic code
+    pub fn to_bytes(&self) -> [u8; 32] {
+        self.0.compress().to_bytes()
     }
 }
 
@@ -199,14 +261,20 @@ impl PartialEq for RistrettoPublic {
     }
 }
 
-impl PublicKey for RistrettoPublic {
-    fn size() -> usize {
-        RISTRETTO_PUBLIC_LEN
-    }
-}
+impl PublicKey for RistrettoPublic {}
 
 impl From<&RistrettoPrivate> for RistrettoPublic {
     fn from(private: &RistrettoPrivate) -> Self {
+        let x = private.0;
+        let G = RISTRETTO_BASEPOINT_POINT;
+        let Y = x * G;
+
+        Self(Y)
+    }
+}
+
+impl From<&RistrettoEphemeralPrivate> for RistrettoPublic {
+    fn from(private: &RistrettoEphemeralPrivate) -> Self {
         let x = private.0;
         let G = RISTRETTO_BASEPOINT_POINT;
         let Y = x * G;
@@ -235,7 +303,7 @@ impl From<&RistrettoPublic> for Vec<u8> {
 }
 
 impl KexPublic for RistrettoPublic {
-    type KexEphemeralPrivate = RistrettoPrivate;
+    type KexEphemeralPrivate = RistrettoEphemeralPrivate;
 }
 
 impl TryFrom<&CompressedRistrettoPublic> for RistrettoPublic {
@@ -291,23 +359,34 @@ impl CompressedRistrettoPublic {
     }
 }
 
-impl AsRef<CompressedRistretto> for CompressedRistrettoPublic {
-    fn as_ref(&self) -> &CompressedRistretto {
-        &self.0
-    }
-}
-
 impl AsRef<[u8]> for CompressedRistrettoPublic {
     fn as_ref(&self) -> &[u8] {
         self.0.as_bytes()
     }
 }
 
+impl TryFrom<&[u8]> for CompressedRistrettoPublic {
+    type Error = KeyError;
+    fn try_from(src: &[u8]) -> Result<Self, KeyError> {
+        if src.len() != 32 {
+            return Err(KeyError::LengthMismatch(src.len(), 32));
+        }
+        Ok(Self(CompressedRistretto::from_slice(src)))
+    }
+}
+
+derive_repr_bytes_from_as_ref_and_try_from!(CompressedRistrettoPublic, U32);
+derive_into_vec_from_repr_bytes!(CompressedRistrettoPublic);
+derive_serde_from_repr_bytes!(CompressedRistrettoPublic);
+derive_prost_message_from_repr_bytes!(CompressedRistrettoPublic);
+
 impl AsRef<[u8; 32]> for CompressedRistrettoPublic {
     fn as_ref(&self) -> &[u8; 32] {
         self.0.as_bytes()
     }
 }
+
+derive_core_cmp_from_as_ref!(CompressedRistrettoPublic, [u8; 32]);
 
 impl Debug for CompressedRistrettoPublic {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
@@ -323,13 +402,9 @@ impl Display for CompressedRistrettoPublic {
     }
 }
 
-impl ReprBytes32 for CompressedRistrettoPublic {
-    type Error = KeyError;
-    fn to_bytes(&self) -> [u8; 32] {
-        *self.0.as_bytes()
-    }
-    fn from_bytes(src: &[u8; 32]) -> Result<Self, KeyError> {
-        Ok(Self(CompressedRistretto::from_slice(src)))
+impl AsRef<CompressedRistretto> for CompressedRistrettoPublic {
+    fn as_ref(&self) -> &CompressedRistretto {
+        &self.0
     }
 }
 
@@ -357,22 +432,17 @@ impl From<CompressedRistretto> for CompressedRistrettoPublic {
     }
 }
 
-impl Into<Vec<u8>> for CompressedRistrettoPublic {
-    fn into(self) -> Vec<u8> {
-        let bytes: &[u8] = self.as_ref();
-        Vec::from(bytes)
-    }
-}
+impl PublicKey for CompressedRistrettoPublic {}
 
-deduce_core_traits_from_public_bytes! { CompressedRistrettoPublic }
-serde_helper32! { CompressedRistrettoPublic }
-prost_message_helper32! { CompressedRistrettoPublic }
-try_from_helper32! { CompressedRistrettoPublic }
+/// A zero-width type used to identify the Ristretto key exchange system.
+pub struct Ristretto {}
 
-impl PublicKey for CompressedRistrettoPublic {
-    fn size() -> usize {
-        core::mem::size_of::<Self>()
-    }
+/// The implementation of the Ristretto key exchange system.
+impl Kex for Ristretto {
+    type Public = RistrettoPublic;
+    type Private = RistrettoPrivate;
+    type EphemeralPrivate = RistrettoEphemeralPrivate;
+    type Secret = RistrettoSecret;
 }
 
 #[cfg(test)]

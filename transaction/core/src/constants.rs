@@ -55,7 +55,6 @@ cfg_if::cfg_if! {
 mod tests {
     use super::{FEE_SPEND_PUBLIC_KEY, FEE_VIEW_PRIVATE_KEY, FEE_VIEW_PUBLIC_KEY};
     use crate::account_keys::AccountKey;
-    use mc_util_serial::ReprBytes32;
     use rand::{rngs::StdRng, SeedableRng};
 
     #[test]

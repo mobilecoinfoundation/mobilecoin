@@ -11,5 +11,6 @@ mc-util-build-script = { path = "../script" }
 
 cargo-emit = "0.1.1"
 cc = "1.0"
-failure = { version = "0.1.6", default-features = false }
+displaydoc = { version = "0.1", default-features = false }
 lazy_static = "1.4"
+pkg-config = "0.3"

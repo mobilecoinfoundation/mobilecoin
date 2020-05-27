@@ -23,7 +23,7 @@ use mc_transaction_core::{
     tx::{TxOutMembershipElement, TxOutMembershipHash, TxOutMembershipProof},
     BlockContents, BlockSignature, CompressedCommitment,
 };
-use mc_util_serial::ReprBytes32;
+use mc_util_repr_bytes::ReprBytes;
 use protobuf::RepeatedField;
 use std::{
     convert::{From, TryFrom},
@@ -751,6 +751,7 @@ mod conversion_tests {
     };
     use mc_transaction_std::*;
     use mc_util_from_random::FromRandom;
+    use mc_util_repr_bytes::ReprBytes;
     use protobuf::Message;
     use rand::{rngs::StdRng, SeedableRng};
 
@@ -970,7 +971,7 @@ mod conversion_tests {
         );
         assert_eq!(
             block_signature.get_signer().get_data(),
-            source_block_signature.signer().to_bytes()
+            source_block_signature.signer().to_bytes().as_ref(),
         );
     }
 
