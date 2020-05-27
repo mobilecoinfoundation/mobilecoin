@@ -12,7 +12,10 @@
         <div class="container">
           <div class="center">
             <div id="output" class="row"></div>
-            <div id="input" class="row">>&nbsp;<input id="prompt" name="cmd"></input></div>
+            <div id="input" class="row">
+              <span id="prompt">&nbsp;</span>
+              <input id="cmd" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="cmd"></input>
+            </div>
           </div>
         </div>
         <div class="hidden"><input id="code" type="text" value=''></input></div>
@@ -34,6 +37,7 @@ function getStatus(passphrase) {
 function getText(passphrase) {
   if (passphrase === "" ) {
     return "Welcome to Satoshi's Pizzeria.\n\nPlease enter a unique passphrase.\n\n";
+    $('#prompt').show();
   }
   else {
     return getStatus(passphrase).then(status => {
@@ -50,7 +54,10 @@ function getText(passphrase) {
         text += line + '\n\n';
         // render the leaderboard here
 
-        text += "\n\n" + line + "\n\nPlease enter a unique passphrase.\n\n";
+        text += "\n\n" + line + "\n\n"
+
+        text += "Press any key to continue...";
+        $('#prompt').hide();
 
         // copy request code to clipboard
         $('#code').val(status.code);
@@ -107,22 +114,18 @@ $(document).keydown(async function(e) {
   key = e.keyCode;
   if(key == 13) { // enter
     e.preventDefault();
-    var cmd = $("#prompt").val().trim();
+    var cmd = $("#cmd").val().trim();
     slowWrite(await getText(cmd));
   }
 });
 
 $(document).mousedown(async function(e) {
   e.preventDefault();
-  $("input[name=cmd]").focus();
-});
-
-$(document).mouseup(async function(e) {
-  e.preventDefault();
   if ( $("#code").val() ) {
     var code = $("#code").val().match(/.{1,40}/g).join("\n");
     alert("Request code copied to clipboard.\n\n" + code );
   }
+  $("input[name=cmd]").focus();
 });
 
 </script>
