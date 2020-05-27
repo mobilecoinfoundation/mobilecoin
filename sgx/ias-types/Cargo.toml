@@ -1,0 +1,29 @@
+[package]
+name = "mc-sgx-ias-types"
+version = "0.2.0"
+authors = ["MobileCoin"]
+description = "IAS types for Intel SGX SDK."
+readme = "README.md"
+edition = "2018"
+
+[features]
+default = ["prost", "serde"]
+
+[dependencies]
+mc-sgx-core-types = { path = "../core-types" }
+mc-sgx-epid-types = { path = "../epid-types" }
+mc-util-encodings = { path = "../../util/encodings" }
+mc-util-from-random = { path = "../../util/from-random" }
+
+base64 = { version = "0.12", default-features = false, features = ["alloc"] }
+displaydoc = { version = "0.1", default-features = false }
+hex = { version = "0.4", default-features = false }
+hex_fmt = "0.3"
+prost = { version = "0.6", optional = true, default-features = false, features = ["prost-derive"] }
+rand_core = "0.5"
+rjson = "0.3"
+serde = { version = "1.0", optional = true, default-features = false, features = ["alloc", "derive"] }
+subtle = { version = "2.2", default-features = false, features = ["i128"] }
+
+[dev-dependencies]
+rand_hc = "0.2"

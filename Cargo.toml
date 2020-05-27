@@ -45,6 +45,7 @@ members = [
     "sgx/epid-sys",
     "sgx/epid-types",
     "sgx/epid-types-sys",
+    "sgx/ias-types",
     "sgx/panic-edl",
     "sgx/slog-edl",
     "sgx/urts-sys",
