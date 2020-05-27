@@ -65,14 +65,14 @@ function getText(passphrase) {
         text += "Your request code is: \n\n";
         text += status.code;
         text += "\n\n" ;
-        
-        if (status.balance < status.goal){
+
+        if (status.balance >= status.goal){
           text += "You have deposited " + status.mob + " MOB" + ". Deposit 10000 MOB to win.\n\n";
         }
         else {
           text += "Congratulations! You have won. Send an email to <pizza@mobilecoin.com> with your passphrase to claim your prize.\n\n";
         }
-        
+
         text += line + '\n\n';
         // render the leaderboard here
         text += 'LEADING CONTESTANTS:\n\n';
@@ -128,6 +128,10 @@ function slowWrite(content) {
       if (count == 81) {
         count = 0;
         elem.text(elem.text() + '\n' + current_letter);
+        //maybe strip space
+        if (letters[current+1] === " "){
+          current++;
+        }
       } else {
         elem.text(elem.text() + current_letter);
       }
