@@ -28,8 +28,8 @@ a {
 }
 
 .row {
-  height:1.8vw; 
-  display:table; 
+  height:1.8vw;
+  display:table;
   white-space: pre-line;
 }
 
@@ -42,4 +42,9 @@ input, input:focus {
   font-size:1.0vw;
   width:70ch;
   outline:none;
+}
+
+.hidden {
+  top: -5000px;
+  left: -5000px;
 }

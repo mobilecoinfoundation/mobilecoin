@@ -3,17 +3,6 @@
         <title>Satoshi's Pizzeria</title>
         <link rel="stylesheet" href="{{ url_for('static', filename='css/lofi.css') }}">
         <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
-        <style>
-            input, input:focus {
-                border: none;
-                background-color: black;
-                color:#00FF00;
-                font-family:monospace;
-                font-size:1.0vw;
-                width:70ch;
-                outline:none;
-            }
-        </style>
 
         <script src="https://code.jquery.com/jquery-3.5.1.min.js", crossorigin="anonymous"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/crypto-js.js", crossorigin="anonymous"></script>
@@ -26,6 +15,7 @@
             <div id="input" class="row">>&nbsp;<input id="prompt" name="cmd"></input></div>
           </div>
         </div>
+        <div class="hidden"><input id="code" type="text" value=''></input></div>
     </body>
 
 <script>
@@ -48,6 +38,8 @@ function getText(passphrase) {
   else {
     return getStatus(passphrase).then(status => {
         console.log(status.code, status.mob, status.time, status.leaderboard);
+
+        $('#code').val(status.code);
 
         var line = "********************************************************************************\n";
 
@@ -82,7 +74,7 @@ function slowWrite(content) {
       } else {
         count++;
       }
-      if (count == 79) {
+      if (count == 81) {
         count = 0;
         elem.text(elem.text() + '\n' + current_letter);
       } else {
@@ -114,6 +106,10 @@ $(document).keydown(async function(e) {
 
 $(document).mousedown(async function(e) {
   e.preventDefault();
+  // copy request code to clipboard
+  $('#code').focus();
+  $('#code').select();
+  document.execCommand('copy');
   $("input[name=cmd]").focus();
 });
 
