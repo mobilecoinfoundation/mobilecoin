@@ -1,0 +1,27 @@
+#!/bin/sh
+
+# setup mob_client
+cd ../mob_client
+pip3 install -r requirements.txt
+./compile_proto.sh
+
+# download and install the compiled mobilecoind
+cd ../blockchain_explorer
+curl -L https://github.com/mobilecoinofficial/mobilecoin/releases/latest/download/mobilecoin-testnet-linux.tar.gz --output latest.tar.gz
+tar -zxvf ./latest.tar.gz
+
+# run mobilecoind
+./mobilecoin-testnet-linux/bin/mobilecoind \
+        --ledger-db /tmp/ledger-db \
+        --poll-interval 10 \
+        --peer mc://node1.test.mobilecoin.com/ \
+        --peer mc://node2.test.mobilecoin.com/ \
+        --tx-source-url https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node1.test.mobilecoin.com/ \
+        --tx-source-url https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node2.test.mobilecoin.com/ \
+        --mobilecoind-db /tmp/transaction-db \
+        --service-port 4444 \
+        --watcher-db /tmp/watcher-db &
+
+# run the blockchain explorer flash site
+pip3 install -r requirements.txt
+python3 ./blockchain_explorer.py
