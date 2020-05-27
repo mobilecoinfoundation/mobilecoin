@@ -1,9 +1,11 @@
 # Copyright (c) 2018-2020 MobileCoin Inc.
 
 import argparse
-from mob_client import mob_client
 from flask import Flask, render_template
 from sys import getsizeof
+
+sys.path.append('../mob_client')
+from mob_client import mob_client
 
 client = mob_client('localhost:4444', False)
 app = Flask(__name__)

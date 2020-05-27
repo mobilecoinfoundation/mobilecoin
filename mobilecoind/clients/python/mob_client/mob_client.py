@@ -127,7 +127,7 @@ class mob_client:
         """ Returns the public address for a given monitor and index
         """
         request = api.GetPublicAddressRequest(
-            monitor_id=monitor_id, subaddress_index=subaddress_index)
+            monitor_id=monitor_id, subaddress_index=int(subaddress_index))
         return self.stub.GetPublicAddress(request).public_address
 
     def read_request_code(self, b58_code):
