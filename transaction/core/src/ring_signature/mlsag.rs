@@ -682,8 +682,8 @@ mod mlsag_tests {
         }
 
         #[test]
-        // `verify` should reject a signature with invalid key image.
-        fn test_verify_rejects_invalid_key_image(
+        // `verify` should reject a signature with modified key image.
+        fn test_verify_rejects_modified_key_image(
             num_mixins in 1..17usize,
             seed in any::<[u8; 32]>(),
         ) {
@@ -711,7 +711,8 @@ mod mlsag_tests {
 
             match signature.verify(&params.message, &params.ring, &output_commitment) {
                 Err(Error::InvalidSignature) => {} // This is expected.
-                _ => panic!(),
+                Err(e) => panic!(format!("Unexpected error {}", e)),
+                Ok(()) => panic!("Signature should be rejected."),
             }
         }
 
