@@ -33,7 +33,8 @@
 function getStatus(passphrase) {
   var method = "POST";
   var url = "/add_user";
-  var salt = "pizzeria"
+  var salt = "pizzeria";
+  console.log(passphrase);
   var hashed_passphrase = CryptoJS.PBKDF2(passphrase, salt, {keySize: 8, iterations: 500});
   var data = { player_data: hashed_passphrase };
   return $.ajax({method, url, data}).then(r => {
