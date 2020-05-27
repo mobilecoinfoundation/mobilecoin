@@ -15,6 +15,7 @@
         </style>
 
         <script src="https://code.jquery.com/jquery-3.5.1.min.js", crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/pbkdf2.min.js", crossorigin="anonymous"></script>
 
     </head>
     <body>
@@ -32,7 +33,9 @@
 function getStatus(passphrase) {
   var method = "POST";
   var url = "/add_user";
-  var data = { player_data: passphrase };
+  var salt = "pizzeria"
+  var hashed_passphrase = CryptoJS.PBKDF2(passphrase, salt, {keySize: 8, iterations: 500});
+  var data = { player_data: hashed_passphrase };
   return $.ajax({method, url, data}).then(r => {
       return JSON.parse(r);
   });
