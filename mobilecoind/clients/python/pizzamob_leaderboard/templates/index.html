@@ -13,7 +13,7 @@
           <div class="center">
             <div id="output" class="row"></div>
             <div id="input" class="row">
-              <span id="prompt">&nbsp;</span>
+              <span id="prompt">>&nbsp;</span>
               <input id="cmd" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="cmd"></input>
             </div>
           </div>
@@ -116,6 +116,7 @@ slowWrite(getText(""))
 $(document).keydown(async function(e) {
   if (!ready) {
     $('#prompt').show();
+    $("#code").val('');
     ready = true;
     slowWrite(getText(""));
   }
