@@ -119,9 +119,10 @@ $(document).mousedown(async function(e) {
 
 $(document).mouseup(async function(e) {
   e.preventDefault();
-  var code = $("#code").val().match(/.{1,40}/g).join("\n");
-
-  alert("Request code copied to clipboard.\n\n" + code );
+  if ( $("#code").val() ) {
+    var code = $("#code").val().match(/.{1,40}/g).join("\n");
+    alert("Request code copied to clipboard.\n\n" + code );
+  }
 });
 
 </script>
