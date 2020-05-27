@@ -9,6 +9,7 @@ pip3 install -r requirements.txt
 cd ../blockchain_explorer
 curl -L https://github.com/mobilecoinofficial/mobilecoin/releases/latest/download/mobilecoin-testnet-linux.tar.gz --output latest.tar.gz
 tar -zxvf ./latest.tar.gz
+rm ./latest.tar.gz
 
 # kill old mobilecoind processes
 ps -ef | grep mobilecoind | grep -v grep | awk '{print $2}' | xargs kill
