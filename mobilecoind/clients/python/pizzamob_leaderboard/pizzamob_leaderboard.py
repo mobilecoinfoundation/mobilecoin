@@ -90,6 +90,7 @@ def add_user():
         "time": timestamp,
         "leaderboard": leaderboard,
         "goal": WINNING_AMOUNT / MOB,
+        "new": new_player,
     }
 
     return json.dumps(response)
