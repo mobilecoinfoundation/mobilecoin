@@ -42,14 +42,14 @@ function getText(passphrase) {
   }
   else {
     return getStatus(passphrase).then(status => {
-        console.log(status.code, status.mob, status.time, status.leaderboard);
-        
+        console.log(status);
+
         // copy request code to clipboard
         $('#code').val(status.code);
         $('#code').focus();
         $('#code').select();
         document.execCommand('copy');
-        
+
         var line = "********************************************************************************\n";
 
         var text = line + '\n';
@@ -61,9 +61,25 @@ function getText(passphrase) {
         text += line + '\n\n';
         // render the leaderboard here
 
+        var found_user = false;
+        var rows_printed = 0;
+        for (var i = 0; i < status.leaderboard.length; i++) {
+          var balance = status.leaderboard[i].balance;
+          var code = status.leaderboard[i].code;
+          if (status.code === code) {
+            console.log("found user");
+            found_user = true;
+          }
+          rows_printed++;
+
+          text += str(i) + " " + str(balance) + "\n"
+        }
+
+
         text += "\n\n" + line + "\n\n"
 
-        $('#prompt').hide(); // hide prompt '> ' 
+        $('#prompt').hide(); // hide prompt '> '
+        text += "Your request code was copied to the clipboard. "
         text += "Press any key to continue...";
         $("input[name=cmd]").focus();
 
@@ -135,7 +151,7 @@ $(document).mousedown(async function(e) {
   e.preventDefault();
   if ( $("#code").val() ) {
     var code = $("#code").val().match(/.{1,40}/g).join("\n");
-    alert("Request code copied to clipboard.\n\n" + code );
+    alert("Your request code was copied to the clipboard.\n\n" + code );
   }
   $("input[name=cmd]").focus();
 });
