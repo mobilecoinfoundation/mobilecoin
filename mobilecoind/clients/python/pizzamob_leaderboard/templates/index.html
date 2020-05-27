@@ -69,10 +69,15 @@ function getText(passphrase) {
           if (status.code === code) {
             console.log("found user");
             found_user = true;
+            text += "*** ";
+          }
+          else {
+           text += "    ";
           }
           rows_printed++;
 
-          text += str(i) + " " + str(balance) + "\n"
+
+          text += i + " " + code.slice(0, 10) + "... " + balance + "\n"
         }
 
 
