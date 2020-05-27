@@ -6,7 +6,7 @@ pip3 install -r requirements.txt
 ./compile_proto.sh
 
 # download and install the compiled mobilecoind
-cd ../blockchain_explorer
+cd ../pizzamob_leaderboard
 curl -L https://github.com/mobilecoinofficial/mobilecoin/releases/latest/download/mobilecoin-testnet-linux.tar.gz --output latest.tar.gz
 tar -zxvf ./latest.tar.gz
 rm ./latest.tar.gz
