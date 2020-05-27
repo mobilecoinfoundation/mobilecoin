@@ -14,7 +14,9 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Copy, Debug, Deserialize, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 #[repr(u32)]
 pub enum QuoteSign {
+    /// The EPID pseudonym will not be linkable between reports.
     Unlinkable = SGX_UNLINKABLE_SIGNATURE,
+    /// The EPID pseudonym will be linkable between reports.
     Linkable = SGX_LINKABLE_SIGNATURE,
 }
 

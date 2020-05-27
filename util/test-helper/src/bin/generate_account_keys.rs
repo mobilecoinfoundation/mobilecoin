@@ -7,7 +7,6 @@
 //!
 //! Suggested use:
 //! cargo run --release -- --num 1000 >> account_keys.json
-use mc_util_serial::helpers::ReprBytes32;
 use mc_util_test_helper::{known_accounts, AccountKey};
 use structopt::StructOpt;
 

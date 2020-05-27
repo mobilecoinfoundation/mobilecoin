@@ -1,0 +1,4 @@
+grpcio-tools==1.24.1
+qrcode==6.1
+halo==0.0.29
+flask==1.1.2

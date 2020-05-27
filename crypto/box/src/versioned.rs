@@ -17,7 +17,7 @@
 //! 0 = hkdf_blake2b_aes_128_gcm
 
 use crate::{
-    hkdf_blake2b_aes_128_gcm::RistrettoHkdfBlake2bAes128Gcm,
+    hkdf_box::HkdfBox,
     traits::{CryptoBox, Error},
 };
 
@@ -30,14 +30,18 @@ use aead::{
     },
     Error as AeadError,
 };
+use aes_gcm::Aes128Gcm;
 use alloc::vec::Vec;
+use blake2::Blake2b;
 use failure::Fail;
-use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
+use mc_crypto_keys::{Kex, Ristretto};
 use rand_core::{CryptoRng, RngCore};
 
 ////
 // CONFIGURATION
 ////
+
+pub type RistrettoHkdfBlake2bAes128Gcm = HkdfBox<Ristretto, Blake2b, Aes128Gcm>;
 
 /// A "magic byte" value checked during this process, but not interpretted.
 const MAJOR_VERSION: u8 = 0;
@@ -103,7 +107,7 @@ impl Default for VersionedCryptoBox {
     }
 }
 
-impl CryptoBox for VersionedCryptoBox {
+impl CryptoBox<Ristretto> for VersionedCryptoBox {
     // The footer size is:
     // 32 for curve point
     // 16 for mac, at 128 bit sec level
@@ -114,7 +118,7 @@ impl CryptoBox for VersionedCryptoBox {
     fn encrypt_in_place_detached<T: RngCore + CryptoRng>(
         &self,
         rng: &mut T,
-        key: &RistrettoPublic,
+        key: &<Ristretto as Kex>::Public,
         buffer: &mut [u8],
     ) -> Result<GenericArray<u8, Self::FooterSize>, AeadError> {
         // Match is used because we cannot index into a tuple with run-time values,
@@ -134,14 +138,15 @@ impl CryptoBox for VersionedCryptoBox {
     // Choose the algo based on the version data in the ciphertext
     fn decrypt_in_place_detached(
         &self,
-        key: &RistrettoPrivate,
+        key: &<Ristretto as Kex>::Private,
         footer: &GenericArray<u8, Self::FooterSize>,
         buffer: &mut [u8],
     ) -> Result<(), Error> {
         // Note: When generic_array is upreved, this can be tidier using this:
         // https://docs.rs/generic-array/0.14.1/src/generic_array/sequence.rs.html#302-320
         // For now we have to split as a slice, then convert back to Generic Array.
-        let (footer, version_data) = footer.split_at(<Self as CryptoBox>::FooterSize::USIZE - 2);
+        let (footer, version_data) =
+            footer.split_at(<Self as CryptoBox<Ristretto>>::FooterSize::USIZE - 2);
         let footer = GenericArray::from_slice(footer);
         if MAJOR_VERSION != version_data[0] {
             return Err(Error::WrongMagicBytes);
@@ -158,4 +163,57 @@ impl CryptoBox for VersionedCryptoBox {
 pub enum VersionError {
     #[fail(display = "No mutually acceptable CryptoBox versions could be found")]
     NoAcceptableVersions,
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
+    use mc_util_from_random::FromRandom;
+
+    extern crate mc_util_test_helper;
+
+    #[test]
+    fn test_ristretto_hkdf_blake2b_aes128_gcm_round_trip() {
+        let algo = RistrettoHkdfBlake2bAes128Gcm::default();
+        let plaintext1 = b"01234567".to_vec();
+        let plaintext2 = plaintext1.repeat(50);
+
+        mc_util_test_helper::run_with_several_seeds(|mut rng| {
+            let a = RistrettoPrivate::from_random(&mut rng);
+            let a_pub = RistrettoPublic::from(&a);
+
+            for plaintext in &[&plaintext1[..], &plaintext2[..]] {
+                for _reps in 0..50 {
+                    let ciphertext = algo.encrypt(&mut rng, &a_pub, plaintext).unwrap();
+                    let decrypted = algo.decrypt(&a, &ciphertext).expect("decryption failed!");
+                    assert_eq!(plaintext.len(), decrypted.len());
+                    assert_eq!(plaintext, &&decrypted[..]);
+                }
+            }
+        });
+    }
+
+    #[test]
+    fn test_ristretto_hkdf_blake2b_aes128_expected_failure() {
+        let algo = RistrettoHkdfBlake2bAes128Gcm::default();
+        let plaintext1 = b"01234567".to_vec();
+        let plaintext2 = plaintext1.repeat(50);
+
+        mc_util_test_helper::run_with_several_seeds(|mut rng| {
+            let a = RistrettoPrivate::from_random(&mut rng);
+            let a_pub = RistrettoPublic::from(&a);
+
+            let not_a = RistrettoPrivate::from_random(&mut rng);
+
+            for plaintext in &[&plaintext1[..], &plaintext2[..]] {
+                for _reps in 0..50 {
+                    let ciphertext = algo.encrypt(&mut rng, &a_pub, plaintext).unwrap();
+                    let decrypted = algo.decrypt(&not_a, &ciphertext);
+                    assert!(decrypted.is_err());
+                    assert_eq!(decrypted, Err(Error::MacFailed));
+                }
+            }
+        });
+    }
 }

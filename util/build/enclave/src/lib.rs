@@ -5,7 +5,7 @@
 
 use cargo_emit::{rerun_if_changed, rustc_env, warning};
 use cargo_metadata::{CargoOpt, Error as MetadataError, Metadata, MetadataCommand};
-use failure::Fail;
+use displaydoc::Display;
 use mbedtls::{pk::Pk, rng::RngCallback};
 use mbedtls_sys::types::{
     raw_types::{c_int, c_uchar, c_void},
@@ -13,7 +13,10 @@ use mbedtls_sys::types::{
 };
 use mc_sgx_css::{Error as SignatureError, Signature};
 use mc_util_build_script::{rerun_if_path_changed, CargoBuilder, Environment};
-use mc_util_build_sgx::{ConfigBuilder, IasMode, SgxEnvironment, SgxMode, SgxSign};
+use mc_util_build_sgx::{
+    ConfigBuilder, IasMode, SgxEnvironment, SgxLibraryCollection, SgxMode, SgxSign,
+};
+use pkg_config::{Error as PkgConfigError, Library};
 use rand::{thread_rng, RngCore};
 use std::{
     convert::TryFrom,
@@ -42,67 +45,46 @@ impl RngCallback for ThreadRngForMbedTls {
 }
 
 /// An enumeration of builder errors.
-#[derive(Debug, Fail)]
+#[derive(Debug, Display)]
 pub enum Error {
-    /// A lock was poisoned.
-    #[fail(display = "Lock poisoned")]
+    /// A lock was poisoned
     Poison,
 
-    /// There was an error parsing the signature output.
-    #[fail(display = "Signature failure: {}", _0)]
+    /// There was an error parsing the signature output: {0}
     Signature(SignatureError),
 
-    /// There was an error reading the signature file.
-    #[fail(display = "I/O error: {}", _0)]
+    /// There was an error reading the signature file: {0}
     Io(String),
 
-    /// There was an error executing cargo metadata against the staticlib crate.
-    #[fail(display = "Error retrieving metadata about staticlib crate: {}", _0)]
+    /// There was an error executing cargo metadata against the staticlib crate: {0}
     Metadata(MetadataError),
 
-    /// The SGX signing executable could not dump output.
-    #[fail(display = "sgx_sign dump failed")]
+    /// There was an error executing pkg-config
+    PkgConfig(PkgConfigError),
+
+    /// The SGX signing executable could not dump output
     SgxSignDump,
 
-    /// The SGX signing executable could not append the signature to the unsigned binary.
-    #[fail(display = "sgx_sign catsig failed")]
+    /// The SGX signing executable could not append the signature to the unsigned binary
     SgxSignCatsig,
 
-    /// The SGX signing executable could not perform a one-shot signature.
-    #[fail(display = "sgx_sign sign failed")]
+    /// The SGX signing executable could not perform a one-shot signature
     SgxSign,
 
-    /// The SGX signing executable could not generate the data to be signed.
-    #[fail(display = "sgx_sign gendata failed")]
+    /// The SGX signing executable could not generate the data to be signed
     SgxSignGendata,
 
-    /// The gendata to be signed doesn't match what the given unsigned enclave produces.
-    #[fail(display = "The given gendata doesn't match the unsigned enclave")]
+    /// The gendata to be signed doesn't match what the given unsigned enclave produces
     BadGendata,
 
-    /// The enclave staticlib's crate name was in a screwy format.
-    #[fail(display = "There was a problem trying to read the enclave staticlib's crate name")]
+    /// The enclave staticlib's crate name was in a screwy format
     TrustedCrateName,
 
-    /// The enclave staticlib's crate name was in a screwy format.
-    #[fail(display = "Failed to link the enclave")]
+    /// The enclave staticlib's crate name was in a screwy format
     TrustedLink,
 
-    /// The enclave staticlib's crate name was in a screwy format.
-    #[fail(display = "Cargo returned non-zero trying to build the enclave staticlib crate")]
+    /// The enclave staticlib's crate name was in a screwy format
     TrustedBuild,
-}
-
-impl<T> From<PoisonError<T>> for Error {
-    fn from(_src: PoisonError<T>) -> Error {
-        Error::Poison
-    }
-}
-
-impl From<SignatureError> for Error {
-    fn from(src: SignatureError) -> Error {
-        Error::Signature(src)
-    }
 }
 
 impl From<IoError> for Error {
@@ -114,6 +96,24 @@ impl From<IoError> for Error {
 impl From<MetadataError> for Error {
     fn from(src: MetadataError) -> Error {
         Error::Metadata(src)
+    }
+}
+
+impl From<PkgConfigError> for Error {
+    fn from(src: PkgConfigError) -> Error {
+        Error::PkgConfig(src)
+    }
+}
+
+impl<T> From<PoisonError<T>> for Error {
+    fn from(_src: PoisonError<T>) -> Error {
+        Error::Poison
+    }
+}
+
+impl From<SignatureError> for Error {
+    fn from(src: SignatureError) -> Error {
+        Error::Signature(src)
     }
 }
 
@@ -133,7 +133,7 @@ pub struct Builder {
     target_dir: PathBuf,
     profile_target_dir: PathBuf,
     profile: String,
-    libdir: PathBuf,
+    link_paths: Vec<PathBuf>,
     linker: PathBuf,
     sgx_mode: SgxMode,
     css: Option<PathBuf>,
@@ -153,6 +153,7 @@ impl Builder {
     pub fn new(
         env: &Environment,
         sgx: &SgxEnvironment,
+        sgx_libs: &[Library],
         enclave_name: &str,
         staticlib_dir: &Path,
     ) -> Result<Self, Error> {
@@ -171,17 +172,38 @@ impl Builder {
             .features(CargoOpt::SomeFeatures(features_vec))
             .exec()?;
 
+        let link_paths = sgx_libs
+            .link_paths()
+            .into_iter()
+            .map(|path| {
+                // We would like to try and use the static libs which are built
+                // with LVI mitigation.
+                if sgx.sgx_mode() != SgxMode::Simulation {
+                    let cve_load = path.join("cve_2020_0551_load");
+                    if cve_load.exists() {
+                        cve_load
+                    } else {
+                        PathBuf::from(path)
+                    }
+                } else {
+                    PathBuf::from(path)
+                }
+            })
+            .collect::<Vec<PathBuf>>();
+
+        let signer = SgxSign::new(env)?;
+
         Ok(Self {
             cargo_builder: CargoBuilder::new(&env, staticlib_dir, false),
             config_builder: ConfigBuilder::default(),
             name: enclave_name.to_owned(),
             staticlib,
-            signer: SgxSign::new(&sgx),
+            signer,
             out_dir: env.out_dir().to_owned(),
             target_dir: env.target_dir().to_owned(),
             profile_target_dir: env.profile_target_dir().to_owned(),
             profile: env.profile().to_owned(),
-            libdir: sgx.libdir().to_owned(),
+            link_paths,
             linker: env.linker().to_owned(),
             sgx_mode: sgx.sgx_mode(),
             css: None,
@@ -590,7 +612,9 @@ impl Builder {
         // [3] https://github.com/slimm609/checksec.sh
         // [4] man ld(1)
 
-        if Command::new(&self.linker)
+        let mut command = Command::new(&self.linker);
+
+        command
             .args(&[
                 "-o",
                 unsigned_enclave
@@ -598,8 +622,14 @@ impl Builder {
                     .expect("Invalid UTF-8 in unsigned enclave path"),
             ])
             .args(&["-z", "relro", "-z", "now", "-z", "noexecstack"])
-            .args(&["--no-undefined", "-nostdlib"])
-            .arg(format!("-L{}", self.libdir.display()))
+            .args(&["--no-undefined", "-nostdlib"]);
+
+        // We're only using link paths here, actual linkage is hard-coded.
+        for libdir in &self.link_paths {
+            command.arg(format!("-L{}", libdir.display()));
+        }
+
+        command
             .args(&[
                 "--whole-archive",
                 &format!("-lsgx_trts{}", sim_postfix),
@@ -624,10 +654,9 @@ impl Builder {
                 "--version-script={}",
                 lds.to_str()
                     .expect("Invalid UTF-8 in linker version-script filename")
-            ))
-            .status()?
-            .success()
-        {
+            ));
+
+        if command.status()?.success() {
             let unsigned_artifact = self.profile_target_dir.join(
                 unsigned_enclave
                     .file_name()

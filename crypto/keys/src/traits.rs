@@ -4,6 +4,7 @@
 
 pub use digest::Digest;
 pub use ed25519::signature::{DigestSigner, DigestVerifier, Signature, Signer, Verifier};
+pub use mc_util_repr_bytes::{typenum::Unsigned, GenericArray, LengthMismatch, ReprBytes};
 
 // Macros with names that overlap a module name...
 use alloc::vec;
@@ -13,7 +14,6 @@ use core::{convert::TryFrom, fmt::Debug, hash::Hash};
 use failure::Fail;
 use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;
-use mc_util_serial::LengthMismatch32;
 use rand_core::{CryptoRng, RngCore};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -37,9 +37,9 @@ pub enum KeyError {
     InternalError,
 }
 
-impl From<LengthMismatch32> for KeyError {
-    fn from(src: LengthMismatch32) -> Self {
-        KeyError::LengthMismatch(src.0, 32)
+impl From<LengthMismatch> for KeyError {
+    fn from(src: LengthMismatch) -> Self {
+        KeyError::LengthMismatch(src.found, src.expected)
     }
 }
 
@@ -100,16 +100,14 @@ pub trait PublicKey:
     + Digestible
     + Eq
     + Hash
-    + Into<Vec<u8>>
     + PartialEq
     + PartialOrd
     + Ord
+    + ReprBytes<Error = KeyError>
     + Serialize
     + Sized
-    + for<'bytes> TryFrom<&'bytes [u8]>
+    + for<'bytes> TryFrom<&'bytes [u8], Error = KeyError>
 {
-    /// Retrieve the size of this public key's raw bytes.
-    fn size() -> usize;
 }
 
 /// A trait for all public key types to implement.
@@ -119,8 +117,8 @@ pub trait PrivateKey: Debug + Sized + FromRandom {
 
 /// A dependency trait for shared secret implementations
 ///
-/// Objects which implement this can be stored, but not loaded.
-pub trait KexSecret: AsRef<[u8]> + Debug + Serialize + Sized {}
+/// Objects which implement this can be read as bytes, but not copied or serialized.
+pub trait KexSecret: AsRef<[u8]> + Debug + Sized {}
 
 /// A marker trait for public keys to be used in key exchange
 pub trait KexPublic: PublicKey
@@ -194,8 +192,7 @@ where
 /// the various types associated with a given algorithm.
 pub trait Kex {
     type Public: KexPublic<KexEphemeralPrivate = Self::EphemeralPrivate>
-        + for<'reusable> From<&'reusable Self::Private>
-        + AsRef<[u8]>;
+        + for<'reusable> From<&'reusable Self::Private>;
     type Private: KexReusablePrivate
         + PrivateKey<Public = Self::Public>
         + KexPrivate<Secret = Self::Secret>;

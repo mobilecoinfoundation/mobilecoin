@@ -5,7 +5,10 @@ use crate::{
 use core::{convert::TryFrom, fmt};
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use mc_crypto_digestible::Digestible;
-use mc_util_serial::{prost_message_helper32, try_from_helper32, ReprBytes32};
+use mc_util_repr_bytes::{
+    derive_prost_message_from_repr_bytes, derive_try_from_slice_from_repr_bytes, typenum::U32,
+    GenericArray, ReprBytes,
+};
 
 /// A Pedersen commitment in uncompressed Ristretto format.
 #[derive(Copy, Clone, Default, Digestible)]
@@ -41,24 +44,22 @@ impl fmt::Debug for Commitment {
     }
 }
 
-impl ReprBytes32 for Commitment {
+impl ReprBytes for Commitment {
     type Error = Error;
-    fn to_bytes(&self) -> [u8; 32] {
-        self.point.compress().to_bytes()
+    type Size = U32;
+    fn to_bytes(&self) -> GenericArray<u8, U32> {
+        self.point.compress().to_bytes().into()
     }
-    fn from_bytes(src: &[u8; 32]) -> Result<Self, Error> {
-        let point = CompressedRistretto::from_slice(src)
+    fn from_bytes(src: &GenericArray<u8, U32>) -> Result<Self, Error> {
+        let point = CompressedRistretto::from_slice(src.as_slice())
             .decompress()
             .ok_or(Error::InvalidCurvePoint)?;
         Ok(Self { point })
     }
 }
 
-// Implements prost::Message. Requires Debug and ReprBytes32.
-prost_message_helper32! { Commitment }
-
-// Implements try_from<&[u8;32]> and try_from<&[u8]>. Requires ReprBytes32.
-try_from_helper32! { Commitment }
+derive_prost_message_from_repr_bytes!(Commitment);
+derive_try_from_slice_from_repr_bytes!(Commitment);
 
 #[cfg(test)]
 #[allow(non_snake_case)]

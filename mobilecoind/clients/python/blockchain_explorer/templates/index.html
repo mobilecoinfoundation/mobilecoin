@@ -1,0 +1,68 @@
+<html>
+    <head>
+        <title>MobileCoin Blockchain Explorer</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/lofi.css') }}">
+    </head>
+    <body>
+        <div class="container">
+
+<div class="center">
+<div class="row">********************************************************************************</div>
+<div class="row">&nbsp;</div>
+<div class="row centered">MobileCoin Blockchain Explorer</div>
+<div class="row">&nbsp;</div>
+<div class="row">********************************************************************************</div>
+<div class="row">There are {{ num_blocks }} blocks and {{ num_transactions }} transactions in the ledger.</div>
+<div class="row">&nbsp;</div>
+<div class="row centered">
+<a href="/from/{{start-(finish-start)}}"><</a>
+&nbsp;&nbsp;
+Displaying block index {{ start }} to {{ finish }}.
+&nbsp;&nbsp;
+<a href="/from/{{start+(finish-start)}}">></a>
+</div>
+<div class="row">&nbsp;</div>
+<div class="row">
+    <div class="col_8">Index</div>
+    <div class="col_10">Hash</div>
+    <div class="col_8">TXOs</div>
+    <div class="col_8">IMGs</div>
+    {% if signers|length %}
+        <div class="col_8">SIGs</div>
+        {%- for signer in signers %}
+        <div class="col_4">{{ signer[:3] }}</div>
+        {%- endfor %}
+    {% endif %}
+</div>
+<div class="row">
+    <div class="col_8">-----</div>
+    <div class="col_10">----</div>
+    <div class="col_8">----</div>
+    <div class="col_8">----</div>
+    {% if signers|length %}
+        <div class="col_8">----</div>
+        {%- for signer in signers %}
+        <div class="col_4">---</div>
+        {%- endfor %}
+    {% endif %}
+</div>
+<div class="row">&nbsp;</div>
+{%- for block in blocks %}
+    <div class="row">
+        <div class="col_8"><a href="/block/{{ block[0]}}">{{ block[0] }}</a></div>
+        <div class="col_10"><a href="/block/{{ block[0]}}">{{ block[1][:4] }}...</a></div>
+        <div class="col_8"><a href="/block/{{ block[0]}}">{{ block[2] }}</a></div>
+        <div class="col_8"><a href="/block/{{ block[0]}}">{{ block[3] }}</a></div>
+        {% if signers|length %}
+            <div class="col_8"><a href="/block/{{ block[0]}}">{{ block[4] }}</a></div>
+            {%- for signer in signers %}
+            <div class="col_4">&nbsp;{{ "|" if signers[signer] }}</div>
+            {%- endfor %}
+        {% endif %}
+    </div>
+{%- endfor %}
+</div>
+
+        </div>
+    </body>
+</html>

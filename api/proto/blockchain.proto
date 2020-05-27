@@ -3,7 +3,6 @@
 // Blockchain-related data types.
 
 syntax = "proto3";
-import "google/protobuf/empty.proto";
 import "external.proto";
 
 package blockchain;

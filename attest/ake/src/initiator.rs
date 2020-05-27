@@ -13,7 +13,7 @@ use alloc::{string::String, vec::Vec};
 use core::convert::TryFrom;
 use digest::{BlockInput, Digest, FixedOutput, Input, Reset};
 use mc_attest_core::{Measurement, QuoteSignType, ReportDataMask, VerificationReport};
-use mc_crypto_keys::Kex;
+use mc_crypto_keys::{Kex, ReprBytes};
 use mc_crypto_noise::{
     HandshakeIX, HandshakeNX, HandshakeOutput, HandshakePattern, HandshakeState, HandshakeStatus,
     NoiseCipher, ProtocolName,
@@ -196,14 +196,13 @@ where
                     &self.expected_measurement,
                     self.expected_product_id,
                     self.expected_minimum_svn,
-                    &ReportDataMask::try_from(
-                        result
-                            .remote_identity
-                            .as_ref()
-                            .ok_or(Error::MissingRemoteIdentity)?
-                            .as_ref(),
-                    )
-                    .map_err(|_e| Error::BadRemoteIdentity)?,
+                    &result
+                        .remote_identity
+                        .as_ref()
+                        .ok_or(Error::MissingRemoteIdentity)?
+                        .map_bytes(|bytes| {
+                            ReportDataMask::try_from(bytes).map_err(|_| Error::BadRemoteIdentity)
+                        })?,
                 )?;
                 Ok((
                     Ready {

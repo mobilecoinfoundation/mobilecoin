@@ -86,6 +86,19 @@ one source of truth for these values for all of the artifacts in the whole build
 
 The `SGX_MODE` environment variable configuration is also used throughout Intel SGX SDK examples.
 
+#### BIOS Settings
+
+In order to run SGX securely with `SGX_MODE=HW` you may need to change certain settings in your BIOS. These settings reduce the risk of certain side-channel attacks and are required
+by the MobileCoin network to accept an enclave quote.
+
+These may look different depending on your BIOS type.
+
+`Software Guard Extensions (SGX)` must be **enabled**. This is usually found under `CPU Configuration`
+
+`Hyperthreading` must be **disabled**. This is also usually found under `CPU Configuration`
+
+`Integrated Graphics` must be **disabled**. This is usually found under `Display`
+
 ## Building the enclave
 
 For technical reasons, the `consensus_enclave` must be in a separate workspace.

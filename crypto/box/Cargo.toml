@@ -8,6 +8,7 @@ edition = "2018"
 aead = "0.2"
 aes-gcm = { version = "0.3.0", default-features = false }
 blake2 = { version = "0.8", default-features = false }
+digest = { version = "0.8" }
 failure = { version = "0.1.5", default-features = false }
 hkdf = { version = "0.8.0", default-features = false }
 mc-crypto-keys = { path = "../keys", default-features = false }

@@ -321,13 +321,12 @@ mod tests {
         },
     };
 
-    use mc_crypto_keys::CompressedRistrettoPublic;
+    use mc_crypto_keys::{CompressedRistrettoPublic, ReprBytes};
     use mc_ledger_db::{Ledger, LedgerDB};
     use mc_transaction_core_test_utils::{
         create_ledger, create_transaction, create_transaction_with_amount, initialize_ledger,
         INITIALIZE_LEDGER_AMOUNT,
     };
-    use mc_util_serial::ReprBytes32;
     use rand::{rngs::StdRng, SeedableRng};
     use serde::{de::DeserializeOwned, ser::Serialize};
 

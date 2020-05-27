@@ -17,7 +17,6 @@ use curve25519_dalek::scalar::Scalar;
 use failure::Fail;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::RistrettoPublic;
-use mc_util_serial::ReprBytes32;
 use prost::Message;
 use serde::{Deserialize, Serialize};
 

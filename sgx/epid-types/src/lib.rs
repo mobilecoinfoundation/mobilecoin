@@ -13,6 +13,7 @@ mod platform_info;
 mod quote;
 mod quote_nonce;
 mod quote_sign;
+mod sigrl;
 mod spid;
 mod update_info;
 
@@ -22,6 +23,8 @@ pub use crate::{
     platform_info::{PlatformInfo, PLATFORM_INFO_SIZE},
     quote::{Quote, QUOTE_MIN_SIZE, QUOTE_SIGLEN_MAX},
     quote_nonce::{QuoteNonce, QUOTE_NONCE_SIZE},
+    quote_sign::QuoteSign,
+    sigrl::SignatureRevocationList,
     spid::{ProviderId, PROVIDER_ID_SIZE},
     update_info::{UpdateInfo, UPDATE_INFO_SIZE},
 };
