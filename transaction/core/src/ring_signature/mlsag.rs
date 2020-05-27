@@ -328,6 +328,7 @@ mod mlsag_tests {
         CompressedCommitment,
     };
     use alloc::vec::Vec;
+    use curve25519_dalek::ristretto::CompressedRistretto;
     use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
     use mc_util_from_random::FromRandom;
     use proptest::prelude::*;
@@ -636,6 +637,47 @@ mod mlsag_tests {
                     Err(Error::InvalidSignature) => {} // This is expected.
                     _ => panic!(),
                 }
+            }
+        }
+
+
+        #[test]
+        // `verify` should reject a signature if the key image is not canonically encoded.
+        fn test_verify_rejects_noncanonical_key_image(
+            num_mixins in 1..17usize,
+            seed in any::<[u8; 32]>(),
+        ) {
+            let mut rng: StdRng = SeedableRng::from_seed(seed);
+            let pseudo_output_blinding = Scalar::random(&mut rng);
+            let params = RingMLSAGParameters::random(num_mixins, pseudo_output_blinding, &mut rng);
+
+            let mut signature = RingMLSAG::sign(
+                &params.message,
+                &params.ring,
+                params.real_index,
+                &params.onetime_private_key,
+                params.value,
+                &params.blinding,
+                &params.pseudo_output_blinding,
+                &mut rng,
+            )
+            .unwrap();
+
+            // Replace the key image with a non-canonical compressed Ristretto point.
+            // This is constants::EDWARDS_D.to_bytes(), which is a negative point, so decompression should fail.
+            // Edwards `d` value, equal to `-121665/121666 mod p`.
+            let edwards_d : [u8; 32] = [163, 120, 89, 19, 202, 77, 235, 117, 171, 216, 65, 65, 77, 10, 112, 0, 152, 232, 121, 119, 121, 64, 199, 140, 115, 254, 111, 43, 238, 108, 3, 82];
+            let bad_compressed = CompressedRistretto(edwards_d);
+            assert!(bad_compressed.decompress().is_none());
+
+            signature.key_image = KeyImage{point: bad_compressed};
+
+            let output_commitment = CompressedCommitment::new(params.value, params.pseudo_output_blinding);
+
+            match signature.verify(&params.message, &params.ring, &output_commitment) {
+                Err(Error::InvalidKeyImage) => {} // This is expected.
+                Err(e) => panic!(format!("Unexpected error {}", e)),
+                Ok(()) => panic!("Signature should be rejected."),
             }
         }
 
