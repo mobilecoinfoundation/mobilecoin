@@ -20,6 +20,7 @@ a {
 }
 
 .center {
+  width:80ch;
   border: solid #eee 1px;
   padding: 40px;
   overflow-x: hidden;
@@ -27,59 +28,18 @@ a {
 }
 
 .row {
-  height: 1.8vw;
-  display: flex;
+  height:1.8vw; 
+  display:table; 
+  white-space: pre-line;
 }
 
-.centered {
-  display: block;
-  text-align: center;
-}
 
-.col_3 {
-  width: 3ch;
-}
-
-.col_4 {
-  width: 4ch;
-}
-
-.col_8 {
-  width: 8ch;
-}
-
-.col_10 {
-  width: 10ch;
-}
-
-.col_12 {
-  width: 12ch;
-}
-
-.col_13 {
-  width: 13ch;
-}
-
-.col_15 {
-  width: 15ch;
-}
-
-.col_16 {
-  width: 16ch;
-}
-
-.col_34 {
-  width: 34ch;
-}
-
-.col_40 {
-  width: 40ch;
-}
-
-.col_64 {
-  width: 64ch;
-}
-
-.col_77 {
-  width: 77ch;
+input, input:focus {
+  border: none;
+  background-color: black;
+  color:#00FF00;
+  font-family:monospace;
+  font-size:1.0vw;
+  width:70ch;
+  outline:none;
 }
