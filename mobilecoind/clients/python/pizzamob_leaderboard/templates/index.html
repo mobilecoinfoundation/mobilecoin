@@ -53,26 +53,27 @@ function getText(passphrase) {
         var line = "********************************************************************************\n";
 
         var text = line + '\n';
-        text += "Remember your passphrase to claim your pizza: \n\n" + passphrase + "\n\n";
+        text += "Remember your passphrase to claim your pizza: \n\n* " + passphrase + "\n\n";
         text += "Your request code is: \n\n";
         text += status.code;
         text += "\n\n" ;
         text += "You have deposited " + status.mob + " MOB" + ". Deposit 10000 MOB to win.\n\n";
         text += line + '\n\n';
         // render the leaderboard here
-        text += 'LEADING CONTESTANTS:\n';
+        text += 'LEADING CONTESTANTS:\n\n';
         var found_user = false;
         var rows_printed = 0;
+        var max_rows_to_dispay = 4;
         for (var i = 0; i < status.leaderboard.length; i++) {
           var balance = status.leaderboard[i].balance;
           var code = status.leaderboard[i].code;
           if (status.code === code) {
             found_user = true;
-            text += "* " + code.slice(0, 20) + "...  MOB " + balance +" (" + (balance/status.goal*100) + "%)\n"
+            text += "* " + code.slice(0, 20) + "...  MOB " + balance +" (" + (balance/status.goal*100).padStart(3, " ") + "%)\n"
             rows_printed++;
           }
-          else if (rows_printed < 10) {
-            text += "  " + code.slice(0, 20) + "...  MOB " + balance +" (" + (balance/status.goal*100) + "%)\n"
+          else if (rows_printed < max_rows_to_dispay) {
+            text += "  " + code.slice(0, 20) + "...  MOB " + balance +" (" + (balance/status.goal*100).padStart(3, " ") + "%)\n"
             rows_printed++;
           }
         }

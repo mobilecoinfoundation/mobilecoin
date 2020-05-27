@@ -30,7 +30,7 @@ a {
 .row {
   height:1.8vw;
   display:table;
-  white-space: pre-line;
+  white-space: pre;
 }
 
 
