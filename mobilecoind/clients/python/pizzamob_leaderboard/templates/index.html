@@ -66,6 +66,8 @@ function getText(passphrase) {
 
         // hide prompt
         $('#prompt').hide();
+        ready = false;
+
         $("input[name=cmd]").focus();
 
         return text;
@@ -113,8 +115,9 @@ slowWrite(getText(""))
 
 $(document).keydown(async function(e) {
   if (!ready) {
+    $('#prompt').show();
+    ready = true;
     slowWrite(getText(""));
-    $('#prompt').hide();
   }
   else {
     key = e.keyCode;
