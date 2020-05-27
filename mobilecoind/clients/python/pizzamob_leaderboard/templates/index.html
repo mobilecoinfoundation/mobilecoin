@@ -23,7 +23,7 @@
 
 <script>
 
-var ready = true;
+var needs_reset = false;
 
 function getStatus(passphrase) {
   var method = "POST";
@@ -43,7 +43,13 @@ function getText(passphrase) {
   else {
     return getStatus(passphrase).then(status => {
         console.log(status.code, status.mob, status.time, status.leaderboard);
-
+        
+        // copy request code to clipboard
+        $('#code').val(status.code);
+        $('#code').focus();
+        $('#code').select();
+        document.execCommand('copy');
+        
         var line = "********************************************************************************\n";
 
         var text = line + '\n';
@@ -56,19 +62,12 @@ function getText(passphrase) {
         // render the leaderboard here
 
         text += "\n\n" + line + "\n\n"
+
+        $('#prompt').hide(); // hide prompt '> ' 
         text += "Press any key to continue...";
-
-        // copy request code to clipboard
-        $('#code').val(status.code);
-        $('#code').focus();
-        $('#code').select();
-        document.execCommand('copy');
-
-        // hide prompt
-        $('#prompt').hide();
-        ready = false;
-
         $("input[name=cmd]").focus();
+
+        needs_reset = true;
 
         return text;
       });
@@ -111,14 +110,16 @@ function slowWrite(content) {
   return dfd.promise();
 };
 
-slowWrite(getText(""))
+function resetAll() {
+  $('#prompt').show();
+  $("#code").val('');
+  needs_reset = false;
+  slowWrite(getText(""));
+}
 
 $(document).keydown(async function(e) {
-  if (!ready) {
-    $('#prompt').show();
-    $("#code").val('');
-    ready = true;
-    slowWrite(getText(""));
+  if (needs_reset) {
+    resetAll();
   }
   else {
     key = e.keyCode;
@@ -138,6 +139,8 @@ $(document).mousedown(async function(e) {
   }
   $("input[name=cmd]").focus();
 });
+
+resetAll();
 
 </script>
 
