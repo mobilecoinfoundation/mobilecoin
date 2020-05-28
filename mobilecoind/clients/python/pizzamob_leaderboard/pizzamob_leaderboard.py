@@ -83,7 +83,7 @@ def add_user():
         })
     else:
         # update the request code
-        db.update({'code': request_code}, Players.passphrase == player_data)
+        players.update({'code': request_code}, player.passphrase == player_data)
 
     leaderboard = get_leaderboard()
 
