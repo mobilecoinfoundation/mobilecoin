@@ -35,17 +35,14 @@ async function getStatus(passphrase) {
   var data = { player_data: hashed_passphrase };
   var status;
   await $.ajax({method, url, data}).then(r => {
-    console.log("ajax complete");
     status = JSON.parse(r);
   });
-  console.log("after await", status);
 
   // copy request code to clipboard
   $('#code').val(status.code);
   $('#code').focus();
   $('#code').select();
   document.execCommand('copy');
-
   return status;
 };
 
@@ -180,8 +177,8 @@ $(document).keydown(async function(e) {
       var status = await getStatus(passphrase);
       var intro = getIntroText(passphrase, status);
       var leaderboard = getLeaderboardText(status);
-      var ending = "Your request code was copied to the clipboard." +
-                   " Refreshing in 10 seconds, or press any key to restart...";
+      var ending = "Your request code was copied to the clipboard.\n\n" +
+                   "Refreshing in 10 seconds, or press any key to restart...";
       await slowWrite(intro + leaderboard + ending);
 
       // setup for refresh
