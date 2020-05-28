@@ -139,6 +139,7 @@ function slowWrite(content, prefix="", postfix="") {
 };
 
 async function resetAll() {
+  console.log("reset!");
   needs_reset = false;
   $('#prompt').hide();
   $("#code").val("");
@@ -167,8 +168,11 @@ $(document).keydown(async function(e) {
       e.preventDefault();
 
       var passphrase = $("#cmd").val().trim();
+
       if (passphrase === "") {
+        console.log("empty passphrase");
         resetAll();
+        return;
       }
 
       status = await getStatus(passphrase);
