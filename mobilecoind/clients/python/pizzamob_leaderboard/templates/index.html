@@ -164,13 +164,16 @@ $(document).keydown(async function(e) {
     key = e.keyCode;
     if(key == 13) { // enter key pressed
       e.preventDefault();
+
       var passphrase = $("#cmd").val().trim();
 
       status = await getStatus(passphrase);
+
       $('#prompt').hide(); // hide prompt '> '
-      await slowWrite(getIntroText(passphrase, status));
-      await slowWrite(getLeaderboardText(status));
-      await slowWrite("Your request code was copied to the clipboard. Refreshing in 10 seconds, or press any key to restart...");
+      await slowWrite(getIntroText(passphrase, status) +
+                      getLeaderboardText(status) +
+                      "Your request code was copied to the clipboard." +
+                      "Refreshing in 10 seconds, or press any key to restart...");
 
       // setup for refresh
       var elapsed_seconds = 0;
