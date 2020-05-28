@@ -26,6 +26,7 @@ var needs_reset = false;
 var printing = false;
 
 function getStatus(passphrase) {
+  console.log("getting status for: ", passphrase);
   var method = "POST";
   var url = "/add_user";
   var salt = CryptoJS.enc.Utf16.parse("don't oversalt the dough!");
@@ -33,7 +34,7 @@ function getStatus(passphrase) {
   var data = { player_data: hashed_passphrase };
   return $.ajax({method, url, data}).then(r => {
     var status = JSON.parse(r);
-    console.log(status);
+    console.log("status is: ", status);
 
     // copy request code to clipboard
     $('#code').val(status.code);
@@ -174,8 +175,8 @@ $(document).keydown(async function(e) {
         resetAll();
         return;
       }
-
       status = await getStatus(passphrase);
+
       var intro = getIntroText(passphrase, status);
       var leaderboard = getLeaderboardText(status);
       var ending = "Your request code was copied to the clipboard." +
