@@ -170,14 +170,14 @@ impl ReportBody {
             ));
         }
 
-        // Check mr_signer/mr_enclave
+        // Check mr_signer/mr_enclave against acceptable measurements.
+        // Any match of expected mr_signers or mr_enclaves passes verification.
         let mr_signer = self.mr_signer();
         let mr_enclave = self.mr_enclave();
-        let matching_measurements: Vec<&Measurement> = expected_measurements
+        if !expected_measurements
             .iter()
-            .filter(|m| *m == &mr_signer || *m == &mr_enclave)
-            .collect();
-        if matching_measurements.is_empty() {
+            .any(|m| m == &mr_signer || m == &mr_enclave)
+        {
             return Err(ReportBodyVerifyError::MrMismatch(
                 expected_measurements.to_vec(),
                 mr_enclave,
