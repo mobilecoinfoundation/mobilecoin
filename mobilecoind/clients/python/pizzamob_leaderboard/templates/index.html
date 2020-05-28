@@ -165,7 +165,7 @@ $(document).keydown(async function(e) {
     if(key == 13) { // enter key pressed
       e.preventDefault();
 
-      var passphrase = $("#cmd").val().trim();
+      var passphrase = $("input[name=cmd]").val().trim();
 
       if (passphrase === "") {
         return; // ignore without reset
@@ -174,8 +174,7 @@ $(document).keydown(async function(e) {
       var status = await getStatus(passphrase);
       var intro = getIntroText(passphrase, status);
       var leaderboard = getLeaderboardText(status);
-      var ending = "Your request code was copied to the clipboard.\n\n" +
-                   "Refreshing in 10 seconds, or press any key to restart...";
+      var ending = "Your request code was copied to the clipboard. Press any key to restart...\n\n";
       await slowWrite(intro + leaderboard + ending);
 
       // setup for refresh
@@ -187,12 +186,11 @@ $(document).keydown(async function(e) {
 
           var intro = getIntroText(passphrase, status);
           var leaderboard = getLeaderboardText(status);
-          var ending = "Your request code was copied to the clipboard.\n\n" +
-                       "Refreshing in 10 seconds, or press any key to restart...";
+
           await slowWrite(intro + leaderboard + ending);
         } else {
           elapsed_seconds++;
-          console.log(elapsed_seconds);
+          $("input[name=cmd]").val("Refreshing in " + (10 - elapsed_seconds) + "seconds");
         }
       }, 1000);
 
