@@ -116,7 +116,7 @@ impl PeersConfig {
 
     pub fn create_peers(
         &self,
-        expected_measurements: Vec<Measurement>,
+        expected_measurements: &[Measurement],
         grpc_env: Arc<grpcio::Environment>,
         logger: Logger,
     ) -> Vec<ThickClient> {
@@ -144,8 +144,8 @@ impl PeersConfig {
                 .name_prefix("RPC".to_string())
                 .build(),
         );
-        let measurements: Vec<Measurement> = vec![measurement.into()];
-        let peers = self.create_peers(measurements, grpc_env, logger.clone());
+        let measurements = [measurement.into()];
+        let peers = self.create_peers(&measurements, grpc_env, logger.clone());
 
         ConnectionManager::new(peers, logger.clone())
     }

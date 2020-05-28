@@ -37,19 +37,14 @@ impl Start {
     /// details about how to authenticate a participant.
     pub fn new(
         responder_id: String,
-        expected_measurements: Vec<impl Into<Measurement> + Clone>,
+        expected_measurements: &[Measurement],
         expected_product_id: u16,
         expected_minimum_svn: u16,
         allow_debug: bool,
     ) -> Self {
-        let measurements: Vec<Measurement> = expected_measurements
-            .iter()
-            .cloned()
-            .map(|x| x.into())
-            .collect();
         Self {
             responder_id,
-            expected_measurements: measurements,
+            expected_measurements: expected_measurements.to_vec(),
             expected_product_id,
             expected_minimum_svn,
             allow_debug,
