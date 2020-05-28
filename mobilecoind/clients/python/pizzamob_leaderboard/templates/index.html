@@ -27,7 +27,6 @@ var max_rows_to_dispay = 15;
 var refresh_interval_seconds = 20;
 
 async function getStatus(passphrase) {
-  console.log("getting status for: ", passphrase);
   var method = "POST";
   var url = "/add_user";
   var salt = CryptoJS.enc.Utf16.parse("don't oversalt the dough!");
@@ -43,6 +42,8 @@ async function getStatus(passphrase) {
   $('#code').focus();
   $('#code').select();
   document.execCommand('copy');
+
+  console.log("status updated!", passphrase, hashed_passphrase, status);
   return status;
 };
 
