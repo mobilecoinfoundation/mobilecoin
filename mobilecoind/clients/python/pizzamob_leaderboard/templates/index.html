@@ -177,7 +177,7 @@ $(document).keydown(async function(e) {
         resetAll();
         return;
       }
-      status = await getStatus(passphrase);
+      var status = await getStatus(passphrase);
 
       var intro = getIntroText(passphrase, status);
       var leaderboard = getLeaderboardText(status);
@@ -191,7 +191,7 @@ $(document).keydown(async function(e) {
       var elapsed_seconds = 0;
       refresh_interval = setInterval(async function() {
         if (elapsed_seconds > 10) {
-          status = await getStatus(passphrase);
+          var status = await getStatus(passphrase);
 
           await slowWrite(getLeaderboardText(status),
                           prefix=getIntroText(passphrase, status),
