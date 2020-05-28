@@ -94,6 +94,7 @@ function getLeaderboardText(status) {
 function slowWrite(content, prefix="", postfix="") {
   printing = true;
   $("#input").hide();
+  $('#prompt').hide(); // hide prompt '> '
   var dfd = $.Deferred();
   var letters = content.split("");
   var current = 0;
@@ -168,12 +169,13 @@ $(document).keydown(async function(e) {
       var passphrase = $("#cmd").val().trim();
 
       status = await getStatus(passphrase);
+      var intro = getIntroText(passphrase, status);
+      var leaderboard = getLeaderboardText(status);
+      var ending = "Your request code was copied to the clipboard." +
+                   "Refreshing in 10 seconds, or press any key to restart...";
 
-      $('#prompt').hide(); // hide prompt '> '
-      await slowWrite(getIntroText(passphrase, status) +
-                      getLeaderboardText(status) +
-                      "Your request code was copied to the clipboard." +
-                      "Refreshing in 10 seconds, or press any key to restart...");
+      console.log(intro + leaderboard + ending);
+      await slowWrite(intro + leaderboard + ending);
 
       // setup for refresh
       var elapsed_seconds = 0;
