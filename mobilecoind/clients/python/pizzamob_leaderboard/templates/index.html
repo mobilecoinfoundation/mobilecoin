@@ -24,6 +24,7 @@
 <script>
 
 var needs_reset = false;
+var printing = false;
 
 function getStatus(passphrase) {
   var method = "POST";
@@ -98,7 +99,7 @@ function getText(passphrase) {
 
         $('#prompt').hide(); // hide prompt '> '
         text += "Your request code was copied to the clipboard. "
-        text += "Press any key to continue...";
+        text += "Press any key to restart...";
         $("input[name=cmd]").focus();
 
         needs_reset = true;
@@ -109,6 +110,7 @@ function getText(passphrase) {
 };
 
 function slowWrite(content) {
+  printing = true;
   $("#input").hide();
   var dfd = $.Deferred();
   var letters = content.split("");
@@ -139,16 +141,17 @@ function slowWrite(content) {
     else {
       dfd.resolve();
       clearInterval(interval);
+      printing = false;
       $("#input").show();
       $("input[name=cmd]").val("");
       $("input[name=cmd]").focus();
     }
-
     // keep the view scrolled down
     var element = document.getElementById("screen");
     element.scrollTop = element.scrollHeight;
 
   }, 2);
+
   return dfd.promise();
 };
 
@@ -160,6 +163,11 @@ function resetAll() {
 }
 
 $(document).keydown(async function(e) {
+  if (printing) {
+    e.preventDefault();
+    return;
+  }
+
   if (needs_reset) {
     resetAll();
   }
