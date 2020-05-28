@@ -141,7 +141,7 @@ function slowWrite(content, prefix="", postfix="") {
 async function resetAll() {
   needs_reset = false;
   $('#prompt').hide();
-  $("#code").val('');
+  $("#code").val("");
   await slowWrite("Welcome to Satoshi's Pizzeria.\n\nPlease enter a unique passphrase.\n\n");
   $('#prompt').show();
   $("#input").show();
@@ -167,6 +167,9 @@ $(document).keydown(async function(e) {
       e.preventDefault();
 
       var passphrase = $("#cmd").val().trim();
+      if (passphrase === "") {
+        resetAll();
+      }
 
       status = await getStatus(passphrase);
       var intro = getIntroText(passphrase, status);
