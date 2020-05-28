@@ -168,7 +168,8 @@ function resetAll() {
   $('#prompt').show();
   $("#code").val('');
   needs_reset = false;
-  slowWrite(getText(""));
+  slowWrite(await getIntroText(""))
+    .then(slowWrite(await getFinalText("")));
 }
 
 $(document).keydown(async function(e) {
