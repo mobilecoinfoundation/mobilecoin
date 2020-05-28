@@ -40,76 +40,71 @@ function getIntroText(passphrase) {
   if (passphrase === "" ) {
     return "Welcome to Satoshi's Pizzeria.\n\n";
   }
-  else {
-    return getStatus(passphrase).then(status => {
-      console.log(status);
+  return getStatus(passphrase).then(status => {
+    console.log(status);
 
-      // copy request code to clipboard
-      $('#code').val(status.code);
-      $('#code').focus();
-      $('#code').select();
-      document.execCommand('copy');
+    // copy request code to clipboard
+    $('#code').val(status.code);
+    $('#code').focus();
+    $('#code').select();
+    document.execCommand('copy');
 
-      var line = "********************************************************************************";
+    var line = "********************************************************************************";
 
-      var text = line + '\n';
+    var text = line + '\n';
 
-      if (status.new) {
-        text += "Your passphrase is unique. Good luck!\n\n";
-      }
-      else {
-        text += "Welcome back!\n\n";
-      }
+    if (status.new) {
+      text += "Your passphrase is unique. Good luck!\n\n";
+    } else {
+      text += "Welcome back!\n\n";
+    }
 
-      text += "Remember your passphrase to claim your pizza: \n\n--> " + passphrase + "\n\n";
-      text += "Your request code is: \n\n";
-      text += status.code;
-      text += "\n\n" ;
+    text += "Remember your passphrase to claim your pizza: \n\n--> " + passphrase + "\n\n";
+    text += "Your request code is: \n\n";
+    text += status.code;
+    text += "\n\n" ;
 
-      if (status.balance < status.goal){
-        text += "You have deposited " + status.balance + " MOB" + ". Deposit 10000 MOB to win.\n\n";
-      }
-      else {
-        text += "Congratulations! You have won. Send an email to <pizza@mobilecoin.com> with your passphrase to claim your prize.\n\n";
-      }
+    if (status.balance < status.goal){
+      text += "You have deposited " + status.balance + " MOB" + ". Deposit 10000 MOB to win.\n\n";
+    }
+    else {
+      text += "Congratulations! You have won. Send an email to <pizza@mobilecoin.com> with your passphrase to claim your prize.\n\n";
+    }
 
-      text += line + '\n\n';
-      return text;
+    text += line + '\n\n';
+    return text;
 
-    });
-  }
+  });
 };
 
 function getLeaderboardText(passphrase) {
   return getStatus(passphrase).then(status => {
-      console.log(status);
+    console.log(status);
 
-      var line = "********************************************************************************";
-      var text = line + '\n\n';
-      text += 'LEADING CONTESTANTS:\n\n';
-      var found_user = false;
-      var rows_printed = 0;
-      var max_rows_to_dispay = 15;
-      for (var i = 0; i < status.leaderboard.length; i++) {
-        var balance = status.leaderboard[i].balance;
-        var code = status.leaderboard[i].code;
-        var percent = (balance/status.goal*100).toString().split(".")[0] + '%';
-        if (status.code === code) {
-          found_user = true;
-          text += "--> " + code.slice(0, 20) + "...  MOB " + balance + "  [" + percent + "]\n"
-          rows_printed++;
-        }
-        else if (rows_printed < max_rows_to_dispay) {
-          text += "    " + code.slice(0, 20) + "...  MOB " + balance + "  [" + percent + "]\n"
-          rows_printed++;
-        }
+    var line = "********************************************************************************";
+    var text = line + '\n\n';
+    text += 'LEADING CONTESTANTS:\n\n';
+    var found_user = false;
+    var rows_printed = 0;
+    var max_rows_to_dispay = 15;
+    for (var i = 0; i < status.leaderboard.length; i++) {
+      var balance = status.leaderboard[i].balance;
+      var code = status.leaderboard[i].code;
+      var percent = (balance/status.goal*100).toString().split(".")[0] + '%';
+      if (status.code === code) {
+        found_user = true;
+        text += "--> " + code.slice(0, 20) + "...  MOB " + balance + "  [" + percent + "]\n"
+        rows_printed++;
+      } else if (rows_printed < max_rows_to_dispay) {
+        text += "    " + code.slice(0, 20) + "...  MOB " + balance + "  [" + percent + "]\n"
+        rows_printed++;
       }
-      text += "\n\n" + line;
+    }
+    text += "\n\n" + line;
 
-      return text;
-    });
-  }
-};
+    return text;
+  });
+}
 
 function getFinalText(passphrase) {
   if (passphrase === "" ) {
@@ -152,8 +147,7 @@ function slowWrite(content) {
         elem.text(elem.text() + current_letter);
       }
       current++;
-    }
-    else {
+    } else {
       dfd.resolve();
       clearInterval(interval);
       printing = false;
@@ -185,8 +179,7 @@ $(document).keydown(async function(e) {
 
   if (needs_reset) {
     resetAll();
-  }
-  else {
+  } else {
     key = e.keyCode;
     if(key == 13) { // enter
       e.preventDefault();
