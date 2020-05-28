@@ -28,7 +28,6 @@ fn main() {
     mc_util_build_grpc::compile_protos_and_generate_mod_rs(
         all_proto_dirs.as_slice(),
         &[
-            "consensus_admin.proto",
             "consensus_client.proto",
             "consensus_common.proto",
             "consensus_peer.proto",

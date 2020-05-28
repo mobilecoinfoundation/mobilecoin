@@ -3104,6 +3104,7 @@ dependencies = [
  "mc-util-build-info",
  "mc-util-metrics",
  "mc-util-serial",
+ "prometheus",
  "prost",
  "protobuf",
  "rand 0.6.5",

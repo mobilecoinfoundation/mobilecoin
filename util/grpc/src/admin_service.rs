@@ -1,41 +1,50 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-//! Serves administrative gRPC requests.
+//! Customizable implementation of the AdminApi service.
 
-use crate::{config::Config, grpc_error::ConsensusGrpcError};
-use grpcio::{RpcContext, UnarySink};
-use mc_common::logger::{log, Logger};
-use mc_consensus_api::{
-    consensus_admin::{GetInfoResponse, GetPrometheusMetricsResponse, SetRustLogRequest},
-    consensus_admin_grpc::ConsensusAdminApi,
+use crate::{
+    admin::{GetInfoResponse, GetPrometheusMetricsResponse, SetRustLogRequest},
+    admin_grpc::{create_admin_api, AdminApi},
+    build_info_service::get_build_info,
     empty::Empty,
+    rpc_logger, send_result,
 };
-use mc_util_grpc::{rpc_logger, send_result};
+use grpcio::{RpcContext, RpcStatus, RpcStatusCode, Service, UnarySink};
+use mc_common::logger::{log, Logger};
 use mc_util_metrics::SVC_COUNTERS;
 use prometheus::{self, Encoder};
-use serde_json::json;
-use std::env;
+use std::{env, sync::Arc};
 
-/// Admin api service implementation.
+/// A callback for getting service-specific configuration data.
+pub type GetConfigJsonFn = Arc<dyn Fn() -> Result<String, RpcStatus> + Sync + Send>;
+
+/// Admin GRPC service.
 #[derive(Clone)]
-pub struct AdminApiService {
-    /// Consensus service global configuration.
-    config: Config,
+pub struct AdminService {
+    /// Optional callback for returning service-specific configuration JSON blob
+    get_config_json: Option<GetConfigJsonFn>,
 
     /// Logger.
     logger: Logger,
 }
 
-impl AdminApiService {
-    pub fn new(config: Config, logger: Logger) -> Self {
-        Self { config, logger }
+impl AdminService {
+    pub fn new(get_config_json: Option<GetConfigJsonFn>, logger: Logger) -> Self {
+        Self {
+            get_config_json,
+            logger,
+        }
+    }
+
+    pub fn into_service(self) -> Service {
+        create_admin_api(self)
     }
 
     fn get_prometheus_metrics_impl(
         &mut self,
         _request: Empty,
         logger: &Logger,
-    ) -> Result<GetPrometheusMetricsResponse, ConsensusGrpcError> {
+    ) -> Result<GetPrometheusMetricsResponse, RpcStatus> {
         log::trace!(logger, "get_prometheus_metrics_impl");
 
         let metric_families = prometheus::gather();
@@ -44,10 +53,12 @@ impl AdminApiService {
         encoder.encode(&metric_families, &mut buffer).unwrap();
 
         let mut response = GetPrometheusMetricsResponse::new();
-        response.set_metrics(
-            String::from_utf8(buffer)
-                .map_err(|err| ConsensusGrpcError::Other(format!("from_utf8 failed: {}", err)))?,
-        );
+        response.set_metrics(String::from_utf8(buffer).map_err(|err| {
+            RpcStatus::new(
+                RpcStatusCode::INTERNAL,
+                Some(format!("from_utf8 failed: {}", err)),
+            )
+        })?);
         Ok(response)
     }
 
@@ -55,40 +66,31 @@ impl AdminApiService {
         &mut self,
         _request: Empty,
         logger: &Logger,
-    ) -> Result<GetInfoResponse, ConsensusGrpcError> {
+    ) -> Result<GetInfoResponse, RpcStatus> {
         log::trace!(logger, "get_info_impl");
 
         let mut build_info_json = String::new();
-        mc_util_build_info::write_report(&mut build_info_json)
-            .map_err(|err| ConsensusGrpcError::Other(format!("write_report failed: {}", err)))?;
-
-        let config = &self.config;
-        let config_json = json!({
-            "public_key": config.node_id().public_key,
-            "peer_responder_id": config.peer_responder_id,
-            "client_responder_id": config.client_responder_id,
-            "message_pubkey": config.msg_signer_key.public_key(),
-            "network": config.network_path,
-            "ias_api_key": config.ias_api_key,
-            "ias_spid": config.ias_spid,
-            "peer_listen_uri": config.peer_listen_uri,
-            "client_listen_uri": config.client_listen_uri,
-            "admin_listen_uri": config.admin_listen_uri,
-            "ledger_path": config.ledger_path,
-            "scp_debug_dump": config.scp_debug_dump,
-        })
-        .to_string();
-
-        let network_json = serde_json::to_string(&config.network()).map_err(|err| {
-            ConsensusGrpcError::Other(format!("failed encoding network json: {}", err))
+        mc_util_build_info::write_report(&mut build_info_json).map_err(|err| {
+            RpcStatus::new(
+                RpcStatusCode::INTERNAL,
+                Some(format!("write_report failed: {}", err)),
+            )
         })?;
+
+        let build_info = get_build_info();
+
+        let config_json = if let Some(get_config_json) = self.get_config_json.as_ref() {
+            get_config_json()?
+        } else {
+            String::from("")
+        };
 
         let rust_log = env::var("RUST_LOG").unwrap_or_else(|_| "".to_string());
 
         let mut response = GetInfoResponse::new();
         response.set_build_info_json(build_info_json);
+        response.set_build_info(build_info);
         response.set_config_json(config_json);
-        response.set_network_json(network_json);
         response.set_rust_log(rust_log);
         Ok(response)
     }
@@ -97,7 +99,7 @@ impl AdminApiService {
         &mut self,
         request: SetRustLogRequest,
         logger: &Logger,
-    ) -> Result<Empty, ConsensusGrpcError> {
+    ) -> Result<Empty, RpcStatus> {
         log::info!(logger, "Updating RUST_LOG to '{}'", request.rust_log);
         env::set_var("RUST_LOG", request.rust_log);
         mc_common::logger::recreate_app_logger();
@@ -109,14 +111,14 @@ impl AdminApiService {
         &mut self,
         _request: Empty,
         logger: &Logger,
-    ) -> Result<Empty, ConsensusGrpcError> {
+    ) -> Result<Empty, RpcStatus> {
         log::error!(logger, "Test log message admin admin interface");
 
         Ok(Empty::new())
     }
 }
 
-impl ConsensusAdminApi for AdminApiService {
+impl AdminApi for AdminService {
     fn get_prometheus_metrics(
         &mut self,
         ctx: RpcContext,
@@ -128,8 +130,7 @@ impl ConsensusAdminApi for AdminApiService {
             send_result(
                 ctx,
                 sink,
-                self.get_prometheus_metrics_impl(request, &logger)
-                    .map_err(ConsensusGrpcError::into),
+                self.get_prometheus_metrics_impl(request, &logger),
                 &logger,
             )
         });
@@ -138,13 +139,7 @@ impl ConsensusAdminApi for AdminApiService {
     fn get_info(&mut self, ctx: RpcContext, request: Empty, sink: UnarySink<GetInfoResponse>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            send_result(
-                ctx,
-                sink,
-                self.get_info_impl(request, &logger)
-                    .map_err(ConsensusGrpcError::into),
-                &logger,
-            )
+            send_result(ctx, sink, self.get_info_impl(request, &logger), &logger)
         });
     }
 
@@ -156,13 +151,7 @@ impl ConsensusAdminApi for AdminApiService {
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            send_result(
-                ctx,
-                sink,
-                self.set_rust_log_impl(request, &logger)
-                    .map_err(ConsensusGrpcError::into),
-                &logger,
-            )
+            send_result(ctx, sink, self.set_rust_log_impl(request, &logger), &logger)
         });
     }
 
@@ -172,8 +161,7 @@ impl ConsensusAdminApi for AdminApiService {
             send_result(
                 ctx,
                 sink,
-                self.test_log_error_impl(request, &logger)
-                    .map_err(ConsensusGrpcError::into),
+                self.test_log_error_impl(request, &logger),
                 &logger,
             )
         });
