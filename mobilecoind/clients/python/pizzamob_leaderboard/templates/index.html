@@ -190,7 +190,11 @@ $(document).keydown(async function(e) {
           await slowWrite(intro + leaderboard + ending);
         } else {
           elapsed_seconds++;
-          $("input[name=cmd]").val("Refreshing in " + (10 - elapsed_seconds) + "seconds");
+          if (elapsed_seconds < 10) {
+            $("input[name=cmd]").val("Refreshing in " + (10 - elapsed_seconds) + " seconds...");
+          } else {
+            $("input[name=cmd]").val("Refreshing now!");
+          }
         }
       }, 1000);
 
