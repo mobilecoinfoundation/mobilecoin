@@ -24,6 +24,7 @@
 
 var needs_reset = false;
 var printing = false;
+var refresh_interval;
 
 async function getStatus(passphrase) {
   console.log("getting status for: ", passphrase);
@@ -142,7 +143,6 @@ function slowWrite(content, prefix="", postfix="") {
 };
 
 async function resetAll() {
-  console.log("reset!");
   needs_reset = false;
   $('#prompt').hide();
   $("#code").val("");
@@ -151,18 +151,18 @@ async function resetAll() {
   $("#input").show();
   $("input[name=cmd]").val("");
   $("input[name=cmd]").focus();
+  if (refresh_interval) {
+    clearInterval(refresh_interval);
+  }
 }
 
 $(document).keydown(async function(e) {
-  var refresh_interval;
-
   if (printing) {
     e.preventDefault();
     return;
   }
 
   if (needs_reset) {
-    clearInterval(refresh_interval);
     resetAll();
   }
   else {
@@ -173,18 +173,15 @@ $(document).keydown(async function(e) {
       var passphrase = $("#cmd").val().trim();
 
       if (passphrase === "") {
-        console.log("empty passphrase");
         resetAll();
         return;
       }
-      var status = await getStatus(passphrase);
 
+      var status = await getStatus(passphrase);
       var intro = getIntroText(passphrase, status);
       var leaderboard = getLeaderboardText(status);
       var ending = "Your request code was copied to the clipboard." +
-                   "Refreshing in 10 seconds, or press any key to restart...";
-
-      console.log(intro + leaderboard + ending);
+                   " Refreshing in 10 seconds, or press any key to restart...";
       await slowWrite(intro + leaderboard + ending);
 
       // setup for refresh
