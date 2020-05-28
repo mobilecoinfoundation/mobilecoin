@@ -409,7 +409,7 @@ if args.action == "prompt":
             docker_run.extend(["--expose", port])
     if args.publish is not None:
         for port in args.publish:
-            docker_run.extend(["--publish", port])
+            docker_run.extend(["--publish", "{}:{}".format(port, port)])
 
 # Map in the ssh directory, or the ssh-agent socket
 if args.ssh_dir:
