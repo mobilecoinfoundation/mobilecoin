@@ -169,7 +169,7 @@ function resetAll() {
   $("#code").val('');
   needs_reset = false;
   slowWrite(await getIntroText(""))
-    .then(slowWrite(await getFinalText("")));
+    .then( () => slowWrite(await getFinalText("")));
 }
 
 $(document).keydown(async function(e) {
@@ -186,8 +186,8 @@ $(document).keydown(async function(e) {
       e.preventDefault();
       var cmd = $("#cmd").val().trim();
       slowWrite(await getIntroText(cmd))
-        .then(slowWrite(await getLeaderboardText(cmd)))
-        .then(slowWrite(await getFinalText(cmd)));
+        .then( () => slowWrite(await getLeaderboardText(cmd)))
+        .then( () => slowWrite(await getFinalText(cmd)));
     }
   }
 });
