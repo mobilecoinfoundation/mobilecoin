@@ -164,7 +164,7 @@ function slowWrite(content) {
   return dfd.promise();
 };
 
-function resetAll() {
+async function resetAll() {
   $('#prompt').show();
   $("#code").val('');
   needs_reset = false;
