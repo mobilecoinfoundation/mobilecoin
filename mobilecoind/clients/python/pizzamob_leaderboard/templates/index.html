@@ -91,7 +91,7 @@ function getLeaderboardText(status) {
   return text;
 }
 
-function slowWrite(content, prefix="", postfix="") {
+function slowWrite(content) {
   printing = true;
   $("#input").hide();
   $('#prompt').hide(); // hide prompt '> '
@@ -100,7 +100,7 @@ function slowWrite(content, prefix="", postfix="") {
   var current = 0;
   var count = 0;
   var elem = $("#output");
-  elem.text(prefix);
+  elem.text("");
   var interval = setInterval(function() {
     if (current < letters.length) {
       var current_letter = letters[current];
@@ -123,7 +123,6 @@ function slowWrite(content, prefix="", postfix="") {
     } else {
       dfd.resolve();
       clearInterval(interval);
-      elem.text(elem.text() + postfix);
       printing = false;
       $("#input").show();
       $("input[name=cmd]").val("");
@@ -190,7 +189,7 @@ $(document).keydown(async function(e) {
           var leaderboard = getLeaderboardText(status);
           var ending = "Your request code was copied to the clipboard.\n\n" +
                        "Refreshing in 10 seconds, or press any key to restart...";
-          await slowWrite(leaderboard, prefix=intro, postfix=ending);
+          await slowWrite(intro + leaderboard + ending);
         } else {
           elapsed_seconds++;
           console.log(elapsed_seconds);
