@@ -42,7 +42,11 @@ impl Start {
         expected_minimum_svn: u16,
         allow_debug: bool,
     ) -> Self {
-        let measurements: Vec<Measurement> = expected_measurements.iter().cloned().map(|x| x.into()).collect();
+        let measurements: Vec<Measurement> = expected_measurements
+            .iter()
+            .cloned()
+            .map(|x| x.into())
+            .collect();
         Self {
             responder_id,
             expected_measurements: measurements,

@@ -173,9 +173,10 @@ impl ReportBody {
         // Check mr_signer/mr_enclave
         let mr_signer = self.mr_signer();
         let mr_enclave = self.mr_enclave();
-        let matching_measurements: Vec<&Measurement> = expected_measurements.iter().filter(|m| {
-            *m == &mr_signer || *m == &mr_enclave
-        }).collect();
+        let matching_measurements: Vec<&Measurement> = expected_measurements
+            .iter()
+            .filter(|m| *m == &mr_signer || *m == &mr_enclave)
+            .collect();
         if matching_measurements.is_empty() {
             return Err(ReportBodyVerifyError::MrMismatch(
                 expected_measurements.to_vec(),

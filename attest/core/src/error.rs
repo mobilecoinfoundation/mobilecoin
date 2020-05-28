@@ -11,8 +11,7 @@ use crate::{
         update_info::UpdateInfo,
     },
 };
-use alloc::string::String;
-use alloc::vec::Vec;
+use alloc::{string::String, vec::Vec};
 use binascii::ConvertError;
 use bitflags::bitflags;
 use core::{

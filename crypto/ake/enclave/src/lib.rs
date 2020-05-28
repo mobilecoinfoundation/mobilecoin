@@ -170,7 +170,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         expected_measurements.push(report_body.mr_enclave());
         let initiator = Start::new(
             peer_id.to_string(),
-             expected_measurements,
+            expected_measurements,
             report_body.product_id(),
             report_body.security_version(),
             DEBUG_ENCLAVE,
@@ -489,7 +489,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         expected_measurements.push(report_body.mr_enclave());
         let responder = Start::new(
             self_id.to_string(),
-             expected_measurements,
+            expected_measurements,
             report_body.product_id(),
             report_body.security_version(),
             DEBUG_ENCLAVE,

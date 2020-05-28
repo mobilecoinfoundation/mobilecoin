@@ -120,13 +120,12 @@ impl PeersConfig {
         grpc_env: Arc<grpcio::Environment>,
         logger: Logger,
     ) -> Vec<ThickClient> {
-
         self.peers
             .iter()
             .map(|client_uri| {
                 ThickClient::new(
                     client_uri.clone(),
-                     expected_measurements.clone(),
+                    expected_measurements.clone(),
                     grpc_env.clone(),
                     logger.clone(),
                 )
