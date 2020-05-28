@@ -6,7 +6,6 @@ import sys
 
 from flask import Flask, render_template, request
 from tinydb import TinyDB, Query
-from datetime import datetime
 
 sys.path.append('../mob_client')
 from mob_client import mob_client
@@ -73,7 +72,6 @@ def add_user():
     monitor = get_or_add_monitor(subaddress)
     request_code = get_request_code(monitor, subaddress)
     balance = client.get_balance(monitor, subaddress)
-    timestamp = datetime.now().strftime('%Y%m%d')
 
     if new_player:
         players.insert({
@@ -90,7 +88,6 @@ def add_user():
     response = {
         "code": request_code,
         "balance": balance / MOB,
-        "time": timestamp,
         "leaderboard": leaderboard,
         "goal": WINNING_AMOUNT / MOB,
         "new": new_player,
