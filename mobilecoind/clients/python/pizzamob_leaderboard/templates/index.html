@@ -22,9 +22,9 @@
 
 <script>
 
-var needs_reset = false;
-var printing = false;
-var refresh_interval;
+// Configuration Parameters
+var max_rows_to_dispay = 15;
+var refresh_interval_seconds = 20;
 
 async function getStatus(passphrase) {
   console.log("getting status for: ", passphrase);
@@ -72,7 +72,7 @@ function getLeaderboardText(status) {
   var text = 'LEADING CONTESTANTS:\n\n';
   var found_user = false;
   var rows_printed = 0;
-  var max_rows_to_dispay = 15;
+
   for (var i = 0; i < status.leaderboard.length; i++) {
     var balance = status.leaderboard[i].balance;
     var code = status.leaderboard[i].code;
@@ -90,6 +90,11 @@ function getLeaderboardText(status) {
 
   return text;
 }
+
+
+var refresh_interval_handle;
+var needs_reset = false;
+var printing = false;
 
 function slowWrite(content) {
   printing = true;
@@ -162,13 +167,12 @@ $(document).keydown(async function(e) {
   }
   else {
     key = e.keyCode;
-    if(key == 13) { // enter key pressed
+    if(key == 13) { // enter key was pressed
       e.preventDefault();
 
       var passphrase = $("input[name=cmd]").val().trim();
-
       if (passphrase === "") {
-        return; // ignore without reset
+        return; // ignore empty input without reset
       }
 
       var status = await getStatus(passphrase);
@@ -177,10 +181,10 @@ $(document).keydown(async function(e) {
       var ending = "Your request code was copied to the clipboard. Press any key to restart...\n\n";
       await slowWrite(intro + leaderboard + ending);
 
-      // setup for refresh
+      // setup to refresh
       var elapsed_seconds = 0;
-      refresh_interval = setInterval(async function() {
-        if (elapsed_seconds > 10 && !printing) {
+      refresh_interval_handle = setInterval(async function() {
+        if (elapsed_seconds > refresh_interval_seconds && !printing) {
           elapsed_seconds = 0;
           var status = await getStatus(passphrase);
 
@@ -190,8 +194,8 @@ $(document).keydown(async function(e) {
           await slowWrite(intro + leaderboard + ending);
         } else {
           elapsed_seconds++;
-          if (elapsed_seconds < 10) {
-            $("input[name=cmd]").val("Refreshing in " + (10 - elapsed_seconds) + " seconds...");
+          if (elapsed_seconds < refresh_interval_seconds) {
+            $("input[name=cmd]").val("Refreshing in " + (refresh_interval_seconds - elapsed_seconds) + " seconds...");
           } else {
             $("input[name=cmd]").val("Refreshing now!");
           }
