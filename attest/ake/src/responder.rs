@@ -152,7 +152,7 @@ where
             None,
             QuoteSignType::Linkable,
             self.allow_debug,
-            &self.expected_measurement,
+            &self.expected_measurements,
             self.expected_product_id,
             self.expected_minimum_svn,
             &handshake_state

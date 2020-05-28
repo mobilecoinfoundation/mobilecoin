@@ -57,9 +57,21 @@ impl From<MrEnclave> for Measurement {
     }
 }
 
+impl From<&MrEnclave> for Measurement {
+    fn from(mr_enclave: &MrEnclave) -> Self {
+        Measurement::MrEnclave(*mr_enclave)
+    }
+}
+
 impl From<MrSigner> for Measurement {
     fn from(mr_signer: MrSigner) -> Self {
         Measurement::MrSigner(mr_signer)
+    }
+}
+
+impl From<&MrSigner> for Measurement {
+    fn from(mr_signer: &MrSigner) -> Self {
+        Measurement::MrSigner(*mr_signer)
     }
 }
 

@@ -166,9 +166,11 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         let mut csprng = McRng::default();
         // TODO: Cache expected values rather than creating a new report each time.
         let report_body = Report::new(None, None)?.body();
+        let mut expected_measurements = Vec::new();
+        expected_measurements.push(report_body.mr_enclave());
         let initiator = Start::new(
             peer_id.to_string(),
-            report_body.mr_enclave(),
+             expected_measurements,
             report_body.product_id(),
             report_body.security_version(),
             DEBUG_ENCLAVE,
@@ -483,9 +485,11 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         let mut csprng = McRng::default();
         // TODO: Cache expected values rather than creating a new report each time.
         let report_body = Report::new(None, None)?.body();
+        let mut expected_measurements = Vec::new();
+        expected_measurements.push(report_body.mr_enclave());
         let responder = Start::new(
             self_id.to_string(),
-            report_body.mr_enclave(),
+             expected_measurements,
             report_body.product_id(),
             report_body.security_version(),
             DEBUG_ENCLAVE,
