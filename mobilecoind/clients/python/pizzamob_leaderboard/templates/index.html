@@ -25,25 +25,24 @@
 var needs_reset = false;
 var printing = false;
 
-function getStatus(passphrase) {
+async function getStatus(passphrase) {
   console.log("getting status for: ", passphrase);
   var method = "POST";
   var url = "/add_user";
   var salt = CryptoJS.enc.Utf16.parse("don't oversalt the dough!");
   var hashed_passphrase = CryptoJS.PBKDF2(passphrase, salt, {keySize: 256/32, iterations: 500}).toString(CryptoJS.enc.Hex);
   var data = { player_data: hashed_passphrase };
-  return $.ajax({method, url, data}).then(r => {
-    var status = JSON.parse(r);
-    console.log("status is: ", status);
+  var status;
+  await $.ajax({method, url, data}).then(r => {status = JSON.parse(r);}
+  console.log("status is: ", status);
 
-    // copy request code to clipboard
-    $('#code').val(status.code);
-    $('#code').focus();
-    $('#code').select();
-    document.execCommand('copy');
+  // copy request code to clipboard
+  $('#code').val(status.code);
+  $('#code').focus();
+  $('#code').select();
+  document.execCommand('copy');
 
-    return status;
-  });
+  return status;
 };
 
 function getIntroText(passphrase, status) {
