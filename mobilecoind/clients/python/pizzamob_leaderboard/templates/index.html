@@ -89,7 +89,7 @@ function getLeaderboardText(status) {
       rows_printed++;
     }
   }
-  text += "\n\n" + line;
+  text += "\n\n" + line + "\n";
 
   return text;
 }
@@ -191,11 +191,13 @@ $(document).keydown(async function(e) {
       var elapsed_seconds = 0;
       refresh_interval = setInterval(async function() {
         if (elapsed_seconds > 10) {
+          /*
           var status = await getStatus(passphrase);
 
           await slowWrite(getLeaderboardText(status),
                           prefix=getIntroText(passphrase, status),
                           postfix="Your request code was copied to the clipboard. Press any key to restart...");
+          */
           elapsed_seconds = 0;
         } else {
           elapsed_seconds++;
