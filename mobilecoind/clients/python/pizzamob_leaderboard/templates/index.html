@@ -211,7 +211,7 @@ $(document).keydown(async function(e) {
 $(document).mousedown(function(e) {
   e.preventDefault();
   if ( $("#code").val() ) {
-    var code = $("#code").val().match(/.{1,40}/g).join("\n");
+    var code = $("#code").val().match(/.{1,50}/g).join("\n");
     alert("Your request code was copied to the clipboard.\n\n" + code );
   }
   $("input[name=cmd]").focus();

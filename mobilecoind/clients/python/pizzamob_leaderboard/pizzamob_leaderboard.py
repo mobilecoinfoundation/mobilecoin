@@ -114,7 +114,7 @@ def get_or_add_monitor(subaddress):
 
 def get_request_code(monitor, subaddress):
     public_address = client.get_public_address(monitor, subaddress)
-    return client.get_request_code(public_address, value=WINNING_AMOUNT, memo="PizzaMOB 2.0!")
+    return client.get_request_code(public_address)
 
 def get_leaderboard():
     player_table = db.table('Players')
