@@ -81,6 +81,9 @@ def add_user():
             'subaddress': subaddress,
             'code': request_code
         })
+    else:
+        # update the request code
+        db.update({'code': request_code}, Players.passphrase == player_data)
 
     leaderboard = get_leaderboard()
 
