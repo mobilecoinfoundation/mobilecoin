@@ -153,6 +153,7 @@ async function resetAll() {
   $("input[name=cmd]").focus();
   if (refresh_interval_handle) {
     clearInterval(refresh_interval_handle);
+    refresh_interval_handle = null;
   }
 }
 
