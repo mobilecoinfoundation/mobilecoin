@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "admin-http-gateway",
     "api",
     "attest/ake",
     "attest/api",
@@ -10,7 +11,6 @@ members = [
     "common",
     "connection",
     "connection/test-utils",
-    "consensus/admin-http-gateway",
     "consensus/api",
     "consensus/enclave",
     "consensus/enclave/api",

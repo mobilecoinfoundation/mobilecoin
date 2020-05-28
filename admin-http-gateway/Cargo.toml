@@ -1,14 +1,14 @@
 [package]
-name = "mc-consensus-admin-http-gateway"
+name = "mc-admin-http-gateway"
 version = "0.2.0"
 authors = ["MobileCoin"]
 edition = "2018"
 
 [dependencies]
-mc-common = { path = "../../common", features = ["log"] }
-mc-connection = { path = "../../connection" }
-mc-consensus-api = { path = "../../consensus/api" }
-mc-util-uri = { path = "../../util/uri" }
+mc-common = { path = "../common", features = ["log"] }
+mc-connection = { path = "../connection" }
+mc-util-grpc = { path = "../util/grpc" }
+mc-util-uri = { path = "../util/uri" }
 
 grpcio = "0.5.1"
 rocket = { version = "0.4.4", default-features = false }

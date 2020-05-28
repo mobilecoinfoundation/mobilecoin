@@ -21,6 +21,12 @@ pub type GetConfigJsonFn = Arc<dyn Fn() -> Result<String, RpcStatus> + Sync + Se
 /// Admin GRPC service.
 #[derive(Clone)]
 pub struct AdminService {
+    /// User-friendly service name (e.g. "Consensus Service").
+    name: String,
+
+    /// Unique identifier for the service (e.g. the hostname it is running on).
+    id: String,
+
     /// Optional callback for returning service-specific configuration JSON blob
     get_config_json: Option<GetConfigJsonFn>,
 
@@ -29,8 +35,15 @@ pub struct AdminService {
 }
 
 impl AdminService {
-    pub fn new(get_config_json: Option<GetConfigJsonFn>, logger: Logger) -> Self {
+    pub fn new(
+        name: String,
+        id: String,
+        get_config_json: Option<GetConfigJsonFn>,
+        logger: Logger,
+    ) -> Self {
         Self {
+            name,
+            id,
             get_config_json,
             logger,
         }
@@ -88,6 +101,8 @@ impl AdminService {
         let rust_log = env::var("RUST_LOG").unwrap_or_else(|_| "".to_string());
 
         let mut response = GetInfoResponse::new();
+        response.set_name(self.name.clone());
+        response.set_id(self.id.clone());
         response.set_build_info_json(build_info_json);
         response.set_build_info(build_info);
         response.set_config_json(config_json);

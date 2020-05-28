@@ -32,17 +32,23 @@ message GetPrometheusMetricsResponse {
 }
 
 message GetInfoResponse {
+    // User-friendly service name (e.g. "Consensus Service").
+    string name = 1;
+
+    // Unique identifier for the service (e.g. the hostname it is running on).
+    string id = 2;
+
     // JSON-encoded build information.
-    string build_info_json = 1;
+    string build_info_json = 3;
 
     // Structured build information.
-    build_info.BuildInfo build_info = 2;
+    build_info.BuildInfo build_info = 4;
 
     // Service-specific JSON-encoded configuration.
-    string config_json = 3;
+    string config_json = 5;
 
     // Current RUST_LOG value.
-    string rust_log = 4;
+    string rust_log = 6;
 }
 
 message SetRustLogRequest {

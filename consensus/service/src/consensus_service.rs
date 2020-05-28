@@ -487,9 +487,13 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
             );
 
             // Initialize services.
-            let admin_service =
-                AdminService::new(Some(self.create_get_config_json_fn()), self.logger.clone())
-                    .into_service();
+            let admin_service = AdminService::new(
+                "Consensus Service".to_owned(),
+                self.config.peer_responder_id.to_string(),
+                Some(self.create_get_config_json_fn()),
+                self.logger.clone(),
+            )
+            .into_service();
             let health_service = HealthService::new(None, self.logger.clone()).into_service();
             let build_info_service = BuildInfoService::new(self.logger.clone()).into_service();
 
