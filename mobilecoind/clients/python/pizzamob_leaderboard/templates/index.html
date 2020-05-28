@@ -47,7 +47,7 @@ async function getStatus(passphrase) {
   return status;
 };
 
-function getIntroText(passphrase, status) {
+function getText(passphrase, status) {
   var line = "********************************************************************************";
   var text = line + '\n';
   if (status.new) {
@@ -65,12 +65,7 @@ function getIntroText(passphrase, status) {
     text += "Congratulations! You have won. Send an email to <pizza@mobilecoin.com> with your passphrase to claim your prize.\n\n";
   }
   text += line + "\n\n";
-  return text;
-};
-
-function getLeaderboardText(status) {
-  var line = "********************************************************************************";
-  var text = "LEADING CONTESTANTS:\n\n";
+  text += "LEADING CONTESTANTS:\n\n";
   var found_user = false;
   var rows_printed = 0;
 
@@ -88,7 +83,7 @@ function getLeaderboardText(status) {
     }
   }
   text += "\n\n" + line + "\n";
-
+  text += "Your request code was copied to the clipboard. Press any key to restart...\n\n";
   return text;
 }
 
@@ -177,10 +172,7 @@ $(document).keydown(async function(e) {
       }
 
       var status = await getStatus(passphrase);
-      var intro = getIntroText(passphrase, status);
-      var leaderboard = getLeaderboardText(status);
-      var ending = "Your request code was copied to the clipboard. Press any key to restart...\n\n";
-      await slowWrite(intro + leaderboard + ending);
+      await slowWrite(getText(passphrase, status));
 
       // setup to refresh
       if (refresh_interval_handle == null) {
@@ -188,9 +180,7 @@ $(document).keydown(async function(e) {
           if (elapsed_seconds > refresh_interval_seconds && !printing) {
             elapsed_seconds = 0;
             var status = await getStatus(passphrase);
-            var intro = getIntroText(passphrase, status);
-            var leaderboard = getLeaderboardText(status);
-            await slowWrite(intro + leaderboard + ending);
+            await slowWrite(getText(passphrase, status));
           } else {
             elapsed_seconds++;
             if (elapsed_seconds < refresh_interval_seconds) {
