@@ -32,15 +32,7 @@ function getStatus(passphrase) {
   var hashed_passphrase = CryptoJS.PBKDF2(passphrase, salt, {keySize: 256/32, iterations: 500}).toString(CryptoJS.enc.Hex);
   var data = { player_data: hashed_passphrase };
   return $.ajax({method, url, data}).then(r => {
-    return JSON.parse(r);
-  });
-};
-
-function getIntroText(passphrase) {
-  if (passphrase === "" ) {
-    return "Welcome to Satoshi's Pizzeria.\n\n";
-  }
-  return getStatus(passphrase).then(status => {
+    var status = JSON.parse(r);
     console.log(status);
 
     // copy request code to clipboard
@@ -49,77 +41,57 @@ function getIntroText(passphrase) {
     $('#code').select();
     document.execCommand('copy');
 
-    var line = "********************************************************************************";
-
-    var text = line + '\n';
-
-    if (status.new) {
-      text += "Your passphrase is unique. Good luck!\n\n";
-    } else {
-      text += "Welcome back!\n\n";
-    }
-
-    text += "Remember your passphrase to claim your pizza: \n\n--> " + passphrase + "\n\n";
-    text += "Your request code is: \n\n";
-    text += status.code;
-    text += "\n\n" ;
-
-    if (status.balance < status.goal){
-      text += "You have deposited " + status.balance + " MOB" + ". Deposit 10000 MOB to win.\n\n";
-    }
-    else {
-      text += "Congratulations! You have won. Send an email to <pizza@mobilecoin.com> with your passphrase to claim your prize.\n\n";
-    }
-
-    text += line + '\n\n';
-    return text;
-
+    return status;
   });
 };
 
-function getLeaderboardText(passphrase) {
-  return getStatus(passphrase).then(status => {
-    console.log(status);
+function getIntroText(passphrase, status) {
+  var line = "********************************************************************************";
+  var text = line + '\n';
+  if (status.new) {
+    text += "Your passphrase is unique. Good luck!\n\n";
+  } else {
+    text += "Welcome back!\n\n";
+  }
+  text += "Remember your passphrase to claim your pizza: \n\n--> " + passphrase + "\n\n";
+  text += "Your request code is: \n\n";
+  text += status.code;
+  text += "\n\n" ;
+  if (status.balance < status.goal){
+    text += "You have deposited " + status.balance + " MOB" + ". Deposit 10000 MOB to win.\n\n";
+  } else {
+    text += "Congratulations! You have won. Send an email to <pizza@mobilecoin.com> with your passphrase to claim your prize.\n\n";
+  }
+  text += line + '\n\n';
+  return text;
+};
 
-    var line = "********************************************************************************";
-    var text = line + '\n\n';
-    text += 'LEADING CONTESTANTS:\n\n';
-    var found_user = false;
-    var rows_printed = 0;
-    var max_rows_to_dispay = 15;
-    for (var i = 0; i < status.leaderboard.length; i++) {
-      var balance = status.leaderboard[i].balance;
-      var code = status.leaderboard[i].code;
-      var percent = (balance/status.goal*100).toString().split(".")[0] + '%';
-      if (status.code === code) {
-        found_user = true;
-        text += "--> " + code.slice(0, 20) + "...  MOB " + balance + "  [" + percent + "]\n"
-        rows_printed++;
-      } else if (rows_printed < max_rows_to_dispay) {
-        text += "    " + code.slice(0, 20) + "...  MOB " + balance + "  [" + percent + "]\n"
-        rows_printed++;
-      }
+function getLeaderboardText(status) {
+  var line = "********************************************************************************";
+  var text = line + '\n\n';
+  text += 'LEADING CONTESTANTS:\n\n';
+  var found_user = false;
+  var rows_printed = 0;
+  var max_rows_to_dispay = 15;
+  for (var i = 0; i < status.leaderboard.length; i++) {
+    var balance = status.leaderboard[i].balance;
+    var code = status.leaderboard[i].code;
+    var percent = (balance/status.goal*100).toString().split(".")[0] + '%';
+    if (status.code === code) {
+      found_user = true;
+      text += "--> " + code.slice(0, 20) + "...  MOB " + balance + "  [" + percent + "]\n"
+      rows_printed++;
+    } else if (rows_printed < max_rows_to_dispay) {
+      text += "    " + code.slice(0, 20) + "...  MOB " + balance + "  [" + percent + "]\n"
+      rows_printed++;
     }
-    text += "\n\n" + line;
+  }
+  text += "\n\n" + line;
 
-    return text;
-  });
+  return text;
 }
 
-function getFinalText(passphrase) {
-  if (passphrase === "" ) {
-    return "Please enter a unique passphrase.\n\n";
-  }
-  else {
-    $('#prompt').hide(); // hide prompt '> '
-    text += "Your request code was copied to the clipboard. "
-    text += "Press any key to restart...";
-    $("input[name=cmd]").focus();
-    needs_reset = true;
-  }
-}
-
-function slowWrite(content) {
+function slowWrite(content, prefix="", postfix="") {
   printing = true;
   $("#input").hide();
   var dfd = $.Deferred();
@@ -127,7 +99,7 @@ function slowWrite(content) {
   var current = 0;
   var count = 0;
   var elem = $("#output");
-  $("#output").text("");
+  elem.text(prefix);
   var interval = setInterval(function() {
     if (current < letters.length) {
       var current_letter = letters[current];
@@ -150,6 +122,7 @@ function slowWrite(content) {
     } else {
       dfd.resolve();
       clearInterval(interval);
+      elem.text(elem.text() + postfix);
       printing = false;
       $("#input").show();
       $("input[name=cmd]").val("");
@@ -165,34 +138,63 @@ function slowWrite(content) {
 };
 
 async function resetAll() {
-  $('#prompt').show();
-  $("#code").val('');
   needs_reset = false;
-  await slowWrite(await getIntroText(""));
-  await slowWrite(await getFinalText(""));
+  $('#prompt').hide();
+  $("#code").val('');
+  await slowWrite("Welcome to Satoshi's Pizzeria.\n\nPlease enter a unique passphrase.\n\n");
+  $('#prompt').show();
+  $("#input").show();
+  $("input[name=cmd]").val("");
+  $("input[name=cmd]").focus();
 }
 
 $(document).keydown(async function(e) {
+  var refresh_interval;
+
   if (printing) {
     e.preventDefault();
     return;
   }
 
   if (needs_reset) {
+    clearInterval(refresh_interval);
     resetAll();
-  } else {
+  }
+  else {
     key = e.keyCode;
-    if(key == 13) { // enter
+    if(key == 13) { // enter key pressed
       e.preventDefault();
-      var cmd = $("#cmd").val().trim();
-      await slowWrite(await getIntroText(cmd));
-      await slowWrite(await getLeaderboardText(cmd));
-      await slowWrite(await getFinalText(cmd));
+      var passphrase = $("#cmd").val().trim();
+
+      status = await getStatus(passphrase);
+      $('#prompt').hide(); // hide prompt '> '
+      await slowWrite(getIntroText(passphrase, status));
+      await slowWrite(getLeaderboardText(status));
+      await slowWrite("Your request code was copied to the clipboard. Refreshing in 10 seconds, or press any key to restart...");
+
+      // setup for refresh
+      var elapsed_seconds = 0;
+      refresh_interval = setInterval(function() {
+        if (elapsed_seconds > 10) {
+          status = await getStatus(passphrase);
+
+          await slowWrite(getLeaderboardText(status),
+                          prefix=getIntroText(passphrase, status),
+                          postfix="Your request code was copied to the clipboard. Press any key to restart...");
+          elapsed_seconds = 0;
+        } else {
+          elapsed_seconds++;
+          console.log(elapsed_seconds);
+        }
+      }, 1);
+
+      $("input[name=cmd]").focus();
+      needs_reset = true;
     }
   }
 });
 
-$(document).mousedown(async function(e) {
+$(document).mousedown(function(e) {
   e.preventDefault();
   if ( $("#code").val() ) {
     var code = $("#code").val().match(/.{1,40}/g).join("\n");
