@@ -6,7 +6,6 @@
 
         <script src="https://code.jquery.com/jquery-3.5.1.min.js", crossorigin="anonymous"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/crypto-js.js", crossorigin="anonymous"></script>
-
     </head>
     <body>
         <div class="container">
@@ -33,81 +32,97 @@ function getStatus(passphrase) {
   var hashed_passphrase = CryptoJS.PBKDF2(passphrase, salt, {keySize: 256/32, iterations: 500}).toString(CryptoJS.enc.Hex);
   var data = { player_data: hashed_passphrase };
   return $.ajax({method, url, data}).then(r => {
-      return JSON.parse(r);
+    return JSON.parse(r);
   });
 };
 
-function getText(passphrase) {
+function getIntroText(passphrase) {
   if (passphrase === "" ) {
-    return "Welcome to Satoshi's Pizzeria.\n\nPlease enter a unique passphrase.\n\n";
+    return "Welcome to Satoshi's Pizzeria.\n\n";
   }
   else {
     return getStatus(passphrase).then(status => {
-        console.log(status);
+      console.log(status);
 
-        // copy request code to clipboard
-        $('#code').val(status.code);
-        $('#code').focus();
-        $('#code').select();
-        document.execCommand('copy');
+      // copy request code to clipboard
+      $('#code').val(status.code);
+      $('#code').focus();
+      $('#code').select();
+      document.execCommand('copy');
 
-        var line = "********************************************************************************";
+      var line = "********************************************************************************";
 
-        var text = line + '\n\n';
+      var text = line + '\n';
 
-        if (status.new) {
-          text += "Your passphrase is unique. Good luck!\n\n";
-        }
-        else {
-          text += "Welcome back!\n\n";
-        }
+      if (status.new) {
+        text += "Your passphrase is unique. Good luck!\n\n";
+      }
+      else {
+        text += "Welcome back!\n\n";
+      }
 
-        text += "Remember your passphrase to claim your pizza: \n\n--> " + passphrase + "\n\n";
-        text += "Your request code is: \n\n";
-        text += status.code;
-        text += "\n\n" ;
+      text += "Remember your passphrase to claim your pizza: \n\n--> " + passphrase + "\n\n";
+      text += "Your request code is: \n\n";
+      text += status.code;
+      text += "\n\n" ;
 
-        if (status.balance < status.goal){
-          text += "You have deposited " + status.balance + " MOB" + ". Deposit 10000 MOB to win.\n\n";
-        }
-        else {
-          text += "Congratulations! You have won. Send an email to <pizza@mobilecoin.com> with your passphrase to claim your prize.\n\n";
-        }
+      if (status.balance < status.goal){
+        text += "You have deposited " + status.balance + " MOB" + ". Deposit 10000 MOB to win.\n\n";
+      }
+      else {
+        text += "Congratulations! You have won. Send an email to <pizza@mobilecoin.com> with your passphrase to claim your prize.\n\n";
+      }
 
-        text += line + '\n\n';
-        // render the leaderboard here
-        text += 'LEADING CONTESTANTS:\n\n';
-        var found_user = false;
-        var rows_printed = 0;
-        var max_rows_to_dispay = 15;
-        for (var i = 0; i < status.leaderboard.length; i++) {
-          var balance = status.leaderboard[i].balance;
-          var code = status.leaderboard[i].code;
-          var percent = (balance/status.goal*100).toString().split(".")[0] + '%';
-          if (status.code === code) {
-            found_user = true;
-            text += "--> " + code.slice(0, 20) + "...  MOB " + balance + "  [" + percent + "]\n"
-            rows_printed++;
-          }
-          else if (rows_printed < max_rows_to_dispay) {
-            text += "    " + code.slice(0, 20) + "...  MOB " + balance + "  [" + percent + "]\n"
-            rows_printed++;
-          }
-        }
+      text += line + '\n\n';
+      return text;
 
-        text += "\n\n" + line + "\n\n"
-
-        $('#prompt').hide(); // hide prompt '> '
-        text += "Your request code was copied to the clipboard. "
-        text += "Press any key to restart...";
-        $("input[name=cmd]").focus();
-
-        needs_reset = true;
-
-        return text;
-      });
+    });
   }
 };
+
+function getLeaderboardText(passphrase) {
+  return getStatus(passphrase).then(status => {
+      console.log(status);
+
+      var line = "********************************************************************************";
+      var text = line + '\n\n';
+      text += 'LEADING CONTESTANTS:\n\n';
+      var found_user = false;
+      var rows_printed = 0;
+      var max_rows_to_dispay = 15;
+      for (var i = 0; i < status.leaderboard.length; i++) {
+        var balance = status.leaderboard[i].balance;
+        var code = status.leaderboard[i].code;
+        var percent = (balance/status.goal*100).toString().split(".")[0] + '%';
+        if (status.code === code) {
+          found_user = true;
+          text += "--> " + code.slice(0, 20) + "...  MOB " + balance + "  [" + percent + "]\n"
+          rows_printed++;
+        }
+        else if (rows_printed < max_rows_to_dispay) {
+          text += "    " + code.slice(0, 20) + "...  MOB " + balance + "  [" + percent + "]\n"
+          rows_printed++;
+        }
+      }
+      text += "\n\n" + line;
+
+      return text;
+    });
+  }
+};
+
+function getFinalText(passphrase) {
+  if (passphrase === "" ) {
+    return "Please enter a unique passphrase.\n\n";
+  }
+  else {
+    $('#prompt').hide(); // hide prompt '> '
+    text += "Your request code was copied to the clipboard. "
+    text += "Press any key to restart...";
+    $("input[name=cmd]").focus();
+    needs_reset = true;
+  }
+}
 
 function slowWrite(content) {
   printing = true;
@@ -176,7 +191,9 @@ $(document).keydown(async function(e) {
     if(key == 13) { // enter
       e.preventDefault();
       var cmd = $("#cmd").val().trim();
-      slowWrite(await getText(cmd));
+      slowWrite(await getIntroText(cmd))
+        .then(slowWrite(await getLeaderboardText(cmd)))
+        .then(slowWrite(await getFinalText(cmd)));
     }
   }
 });
