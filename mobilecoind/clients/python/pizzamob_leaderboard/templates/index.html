@@ -168,8 +168,8 @@ function resetAll() {
   $('#prompt').show();
   $("#code").val('');
   needs_reset = false;
-  slowWrite(await getIntroText(""))
-    .then( () => slowWrite(await getFinalText("")));
+  await slowWrite(await getIntroText(""));
+  await slowWrite(await getFinalText(""));
 }
 
 $(document).keydown(async function(e) {
@@ -185,9 +185,9 @@ $(document).keydown(async function(e) {
     if(key == 13) { // enter
       e.preventDefault();
       var cmd = $("#cmd").val().trim();
-      slowWrite(await getIntroText(cmd))
-        .then( () => slowWrite(await getLeaderboardText(cmd)))
-        .then( () => slowWrite(await getFinalText(cmd)));
+      await slowWrite(await getIntroText(cmd));
+      await slowWrite(await getLeaderboardText(cmd));
+      await slowWrite(await getFinalText(cmd));
     }
   }
 });
