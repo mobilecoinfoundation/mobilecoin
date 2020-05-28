@@ -174,7 +174,7 @@ $(document).keydown(async function(e) {
 
       // setup for refresh
       var elapsed_seconds = 0;
-      refresh_interval = setInterval(function() {
+      refresh_interval = setInterval(async function() {
         if (elapsed_seconds > 10) {
           status = await getStatus(passphrase);
 
