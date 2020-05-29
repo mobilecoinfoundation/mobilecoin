@@ -1,13 +1,13 @@
 <html>
 <head>
-    <title>Consensus node</title>
+    <title></title>
     <script type="text/javascript" src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
     <script>
         $(document).ready(function() {
             $.getJSON('info').done(function(data) {
                 $('#info pre').text(JSON.stringify(data, null, 4));
                 $('input[name="rust_log"]').val(data.rust_log);
-                $('#peer_responder_id').text(data.config.peer_responder_id);
+                $('#name, head > title').text(data.name + ': ' + data.id);
             }).fail(function() {
                 alert('failed getting node info');
             });
@@ -16,7 +16,7 @@
 </head>
 <body>
     <div style="border: 1px solid #000; padding: 2px;">
-        <h1>Consensus Node - <span id="peer_responder_id">Loading...</span></h1>
+        <h1><span id="name">Loading...</span></h1>
     </div>
 
     <br><br>

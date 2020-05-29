@@ -12,9 +12,9 @@ pub use uri::{Uri, UriParseError};
 // Mobile-coin specific uri schemes and objects associated to them
 //
 
+pub type AdminUri = Uri<AdminScheme>;
 pub type ConsensusClientUri = Uri<ConsensusClientScheme>;
 pub type ConsensusPeerUri = Uri<ConsensusPeerScheme>;
-pub type ConsensusAdminUri = Uri<ConsensusAdminScheme>;
 pub type FogClientUri = Uri<FogClientScheme>;
 pub type LedgerClientUri = Uri<LedgerClientScheme>;
 
@@ -69,10 +69,10 @@ impl UriScheme for ConsensusPeerScheme {
     const DEFAULT_INSECURE_PORT: u16 = 8080;
 }
 
-/// Consensus Admin Uri Scheme
+/// Admin Uri Scheme
 #[derive(Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Clone)]
-pub struct ConsensusAdminScheme {}
-impl UriScheme for ConsensusAdminScheme {
+pub struct AdminScheme {}
+impl UriScheme for AdminScheme {
     /// The part before the '://' of a URL.
     const SCHEME_SECURE: &'static str = "mca";
     const SCHEME_INSECURE: &'static str = "insecure-mca";

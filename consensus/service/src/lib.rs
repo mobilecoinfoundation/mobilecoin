@@ -12,7 +12,6 @@ pub mod consensus_service;
 pub mod tx_manager;
 pub mod validators; // Public so that it can be benchmarked by the `benchmarks` crate.
 
-mod admin_api_service;
 mod attested_api_service;
 mod background_work_queue;
 mod blockchain_api_service;

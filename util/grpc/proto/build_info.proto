@@ -8,10 +8,10 @@ import "google/protobuf/empty.proto";
 package build_info;
 
 service BuildInfoApi {
-  rpc GetBuildInfo (google.protobuf.Empty) returns (BuildInfoResponse) {}
+  rpc GetBuildInfo (google.protobuf.Empty) returns (BuildInfo) {}
 }
 
-message BuildInfoResponse {
+message BuildInfo {
   string git_commit = 1;
   string profile = 2;
   string debug = 3;

@@ -1875,6 +1875,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-admin-http-gateway"
+version = "0.2.0"
+dependencies = [
+ "grpcio",
+ "mc-common",
+ "mc-connection",
+ "mc-util-grpc",
+ "mc-util-uri",
+ "rocket",
+ "rocket_contrib",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "structopt",
+]
+
+[[package]]
 name = "mc-api"
 version = "0.2.0"
 dependencies = [
@@ -2094,23 +2111,6 @@ dependencies = [
  "mc-ledger-db",
  "mc-transaction-core",
  "mc-util-uri",
-]
-
-[[package]]
-name = "mc-consensus-admin-http-gateway"
-version = "0.2.0"
-dependencies = [
- "grpcio",
- "mc-common",
- "mc-connection",
- "mc-consensus-api",
- "mc-util-uri",
- "rocket",
- "rocket_contrib",
- "serde",
- "serde_derive",
- "serde_json",
- "structopt",
 ]
 
 [[package]]
@@ -3104,6 +3104,7 @@ dependencies = [
  "mc-util-build-info",
  "mc-util-metrics",
  "mc-util-serial",
+ "prometheus",
  "prost",
  "protobuf",
  "rand 0.6.5",
