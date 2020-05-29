@@ -41,7 +41,7 @@ impl AdminServer {
         let health_service = HealthService::new(None, logger.clone()).into_service();
         let build_info_service = BuildInfoService::new(logger.clone()).into_service();
 
-        let server_builder = grpcio::ServerBuilder::new(env.clone())
+        let server_builder = grpcio::ServerBuilder::new(env)
             .register_service(admin_service)
             .register_service(health_service)
             .register_service(build_info_service)
