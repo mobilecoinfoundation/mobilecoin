@@ -30,7 +30,7 @@ use mc_ledger_db::LedgerDB;
 use mc_peers::{PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
 use mc_transaction_core::tx::TxHash;
 use mc_util_grpc::{
-    AdminService, BuildInfoService, GetConfigJsonFn, HealthCheckStatus, HealthService,
+    AdminServer, BuildInfoService, GetConfigJsonFn, HealthCheckStatus, HealthService,
 };
 use mc_util_uri::{ConnectionUri, ConsensusPeerUriApi};
 use retry::{delay::Fibonacci, retry, Error as RetryError, OperationResult};
@@ -129,7 +129,7 @@ pub struct ConsensusService<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync 
     tx_manager: TxManager<E, LedgerDB>,
     peer_keepalive: Arc<Mutex<PeerKeepalive>>,
 
-    admin_rpc_server: Option<grpcio::Server>,
+    admin_rpc_server: Option<AdminServer>,
     consensus_rpc_server: Option<grpcio::Server>,
     user_rpc_server: Option<grpcio::Server>,
     byzantine_ledger: Arc<Mutex<Option<ByzantineLedger>>>,
@@ -480,38 +480,17 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
 
     fn start_admin_rpc_server(&mut self) -> Result<(), ConsensusServiceError> {
         if let Some(admin_listen_uri) = self.config.admin_listen_uri.as_ref() {
-            log::info!(
-                self.logger,
-                "Starting admin rpc server on {}...",
-                admin_listen_uri.addr(),
+            self.admin_rpc_server = Some(
+                AdminServer::start(
+                    Some(self.env.clone()),
+                    admin_listen_uri,
+                    "Consensus Service".to_owned(),
+                    self.config.peer_responder_id.to_string(),
+                    Some(self.create_get_config_json_fn()),
+                    self.logger.clone(),
+                )
+                .expect("Failed starting admin grpc server"),
             );
-
-            // Initialize services.
-            let admin_service = AdminService::new(
-                "Consensus Service".to_owned(),
-                self.config.peer_responder_id.to_string(),
-                Some(self.create_get_config_json_fn()),
-                self.logger.clone(),
-            )
-            .into_service();
-            let health_service = HealthService::new(None, self.logger.clone()).into_service();
-            let build_info_service = BuildInfoService::new(self.logger.clone()).into_service();
-
-            // Start GRPC server.
-            let server_builder = grpcio::ServerBuilder::new(self.env.clone())
-                .register_service(admin_service)
-                .register_service(health_service)
-                .register_service(build_info_service)
-                .bind_using_uri(admin_listen_uri);
-
-            let mut server = server_builder.build().unwrap();
-            server.start();
-
-            for (host, port) in server.bind_addrs() {
-                log::info!(self.logger, "Admin GRPC API listening on {}:{}", host, port);
-            }
-
-            self.admin_rpc_server = Some(server);
         }
 
         Ok(())
