@@ -46,7 +46,7 @@ where
         HandshakeStatus::InProgress(state) => Ok((
             AuthPending::new(
                 state,
-                expected_measurements.to_vec(),
+                expected_measurements,
                 expected_product_id,
                 expected_minimum_svn,
                 allow_debug,

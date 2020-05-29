@@ -125,7 +125,7 @@ impl PeersConfig {
             .map(|client_uri| {
                 ThickClient::new(
                     client_uri.clone(),
-                    expected_measurements.clone(),
+                    expected_measurements,
                     grpc_env.clone(),
                     logger.clone(),
                 )
