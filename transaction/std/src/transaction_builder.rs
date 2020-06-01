@@ -509,10 +509,11 @@ pub mod transaction_builder_tests {
         let num_outputs = 11;
         let tx = get_transaction(num_inputs, num_outputs, &sender, &recipient, &mut rng).unwrap();
 
-        for tx_in in tx.prefix.inputs {
-            let mut expected_ring = tx_in.ring.clone();
-            expected_ring.sort_by(|a, b| a.public_key.cmp(&b.public_key));
-            assert_eq!(tx_in.ring, expected_ring);
+        for tx_in in &tx.prefix.inputs {
+            assert!(tx_in
+                .ring
+                .windows(2)
+                .all(|w| w[0].public_key < w[1].public_key));
         }
     }
 
