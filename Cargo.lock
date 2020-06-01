@@ -2843,19 +2843,24 @@ name = "mc-sgx-ias-types"
 version = "0.2.0"
 dependencies = [
  "base64 0.12.1",
+ "bitflags",
+ "chrono",
  "displaydoc",
  "hex 0.4.2",
  "hex_fmt",
  "mc-sgx-core-types",
+ "mc-sgx-core-types-sys",
  "mc-sgx-epid-types",
+ "mc-sgx-epid-types-sys",
  "mc-util-encodings",
  "mc-util-from-random",
- "prost",
+ "mc-util-repr-bytes",
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
  "rjson",
  "serde",
  "subtle 2.2.2",
+ "typenum",
 ]
 
 [[package]]

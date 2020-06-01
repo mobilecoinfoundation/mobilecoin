@@ -321,7 +321,7 @@ macro_rules! derive_serde_from_repr_bytes {
 
                     fn visit_seq<V>(self, mut seq: V) -> Result<Self::Value, V::Error>
                     where
-                        V: ::serde::de::SeqAccess<'de>,
+                        V: $crate::_exports::serde::de::SeqAccess<'de>,
                     {
                         use $crate::{GenericArray, LengthMismatch, ReprBytes};
                         let expected_len = <$mytype as ReprBytes>::size();

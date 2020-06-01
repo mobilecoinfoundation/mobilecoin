@@ -2,14 +2,15 @@
 
 //! EPID Pseudonym
 
-use binascii::b64decode;
+use base64::DecodeError;
 use core::{
     cmp::Ordering,
+    convert::TryFrom,
     fmt::{Debug, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
-use mc_sgx_core_types::_macros::EncodingError;
 use mc_util_encodings::FromBase64;
+use typenum::U128;
 
 const EPID_PSEUDONYM_B_SIZE: usize = 64;
 const EPID_PSEUDONYM_K_SIZE: usize = 64;
@@ -40,19 +41,30 @@ pub const EPID_PSEUDONYM_SIZE: usize = EPID_PSEUDONYM_B_SIZE + EPID_PSEUDONYM_K_
 // > using the same EPID private key. This field is encoded using Base 64
 // > encoding scheme.
 //
-#[repr(transparent)]
 #[derive(Clone)]
+#[repr(transparent)]
 pub struct EpidPseudonym([u8; EPID_PSEUDONYM_SIZE]);
 
+mc_util_repr_bytes::derive_repr_bytes_from_as_ref_and_try_from!(EpidPseudonym, U128);
+
+#[cfg(feature = "serde")]
+mc_util_repr_bytes::derive_serde_from_repr_bytes!(EpidPseudonym);
+
 impl EpidPseudonym {
-    /// Retrieve the "B" value for the pseudonym
+    /// Retrieve the "B" value for the pseudonym.
     pub fn b(&self) -> &[u8] {
         &self.0[..EPID_PSEUDONYM_B_SIZE]
     }
 
-    /// Retrieve the "K" value for the pseudonym
+    /// Retrieve the "K" value for the pseudonym.
     pub fn k(&self) -> &[u8] {
         &self.0[EPID_PSEUDONYM_K_SIZE..(EPID_PSEUDONYM_B_SIZE + EPID_PSEUDONYM_K_SIZE)]
+    }
+}
+
+impl AsRef<[u8]> for EpidPseudonym {
+    fn as_ref(&self) -> &[u8] {
+        &self.0[..]
     }
 }
 
@@ -71,11 +83,11 @@ impl Default for EpidPseudonym {
 impl Eq for EpidPseudonym {}
 
 impl FromBase64 for EpidPseudonym {
-    type Error = EncodingError;
+    type Error = DecodeError;
 
-    fn from_base64(src: &str) -> Result<Self, EncodingError> {
+    fn from_base64(src: &str) -> Result<Self, Self::Error> {
         let mut retval = Self::default();
-        b64decode(src.as_bytes(), &mut retval.0[..])?;
+        base64::decode_config_slice(src.as_bytes(), base64::STANDARD, &mut retval.0[..])?;
         Ok(retval)
     }
 }
@@ -102,5 +114,19 @@ impl PartialEq for EpidPseudonym {
 impl PartialOrd for EpidPseudonym {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
+    }
+}
+
+impl<'bytes> TryFrom<&'bytes [u8]> for EpidPseudonym {
+    type Error = usize;
+
+    fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
+        if src.len() != EPID_PSEUDONYM_SIZE {
+            return Err(EPID_PSEUDONYM_SIZE);
+        }
+
+        let mut retval = EpidPseudonym::default();
+        retval.0.copy_from_slice(src);
+        Ok(retval)
     }
 }

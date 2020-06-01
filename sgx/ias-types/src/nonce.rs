@@ -6,27 +6,27 @@ use core::{
     convert::TryFrom,
     fmt::{Display, Formatter, Result as FmtResult},
 };
-use hex::{FromHex, ToHex};
+use hex::{FromHex, FromHexError};
 use hex_fmt::HexFmt;
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
+use typenum::U16;
 
 const IAS_NONCE_SIZE: usize = 16;
-const IAS_NONCE_STR_SIZE: usize = 2 * IAS_NONCE_SIZE;
 
 /// The Nonce is provided with the JSON request payload to Intel Attestation Services.
 ///
 /// (IAS Spec Documentation)[https://software.intel.com/sites/default/files/managed/7e/3b/ias-api-spec.pdf]
 /// The documentation is slightly unclear as to what encoding should be used, so
 /// the Nonce struct here assumes the data will be hex encoded.
-
-#[cfg_attr(not(feature = "prost"), derive(Debug, Default))]
-#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
-#[derive(Clone, Hash, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Default, Hash, Eq, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
 pub struct Nonce([u8; IAS_NONCE_SIZE]);
+
+mc_util_repr_bytes::derive_repr_bytes_from_as_ref_and_try_from!(Nonce, U16);
+
+#[cfg(feature = "serde")]
+mc_util_repr_bytes::derive_serde_from_repr_bytes!(Nonce);
 
 impl AsRef<[u8]> for Nonce {
     fn as_ref(&self) -> &[u8] {
@@ -41,14 +41,11 @@ impl Display for Nonce {
 }
 
 impl FromHex for Nonce {
-    type Error = EncodingError;
+    type Error = FromHexError;
 
-    fn from_hex(s: &str) -> Result<Self, EncodingError> {
-        if s.len() != IAS_NONCE_STR_SIZE {
-            return Err(EncodingError::InvalidInputLength);
-        }
+    fn from_hex<T: AsRef<[u8]>>(src: T) -> Result<Self, Self::Error> {
         let mut retval = Self::default();
-        hex2bin(s.as_bytes(), &mut retval.0[..])?;
+        hex::decode_to_slice(src, &mut retval.0[..])?;
         Ok(retval)
     }
 }
@@ -61,21 +58,12 @@ impl FromRandom for Nonce {
     }
 }
 
-impl ToHex for Nonce {
-    fn to_hex(&self, dest: &mut [u8]) -> Result<usize, usize> {
-        match bin2hex(self.as_ref(), dest) {
-            Ok(buffer) => Ok(buffer.len()),
-            Err(_e) => Err(IAS_NONCE_STR_SIZE),
-        }
-    }
-}
-
 impl<'bytes> TryFrom<&'bytes [u8]> for Nonce {
-    type Error = EncodingError;
+    type Error = usize;
 
     fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
         if src.len() != IAS_NONCE_SIZE {
-            return Err(EncodingError::InvalidInputLength);
+            return Err(IAS_NONCE_SIZE);
         }
 
         let mut retval = Nonce::default();
@@ -93,21 +81,10 @@ mod test {
     use rand_hc::Hc128Rng;
 
     #[test]
-    /// Test the output of the Nonce to make sure it is a string compatible with IAS
-    fn test_ias_nonce_len() {
-        let mut seeded_rng = Hc128Rng::from_seed([1u8; 32]);
-        let ias_nonce = Nonce::from_random(&mut seeded_rng).unwrap();
-        assert_eq!(ias_nonce.len(), 16); // returned by Self.size()
-        let hexed = hex::encode(ias_nonce.0);
-        assert_eq!(ias_nonce.0.len(), 16);
-        assert_eq!(hexed.chars().count(), 32);
-    }
-
-    #[test]
     /// Test hex encoding using data explicitly, and that it matches our to_string hex
     fn test_to_string_and_hex_encoding() {
         let mut seeded_rng = Hc128Rng::from_seed([1u8; 32]);
-        let ias_nonce = Nonce::from_random(&mut seeded_rng).unwrap();
+        let ias_nonce = Nonce::from_random(&mut seeded_rng);
         assert_eq!(
             [2, 154, 47, 57, 69, 168, 246, 187, 31, 181, 177, 26, 84, 40, 58, 64],
             ias_nonce.0

@@ -12,6 +12,10 @@ mod json;
 mod nonce;
 mod parsed;
 mod pseudonym;
+mod quote;
 mod report;
 
-pub use crate::{nonce::Nonce, pseudonym::EpidPseudonym, report::Report};
+pub use crate::{
+    nonce::Nonce, parsed::Report as ParsedReport, pseudonym::EpidPseudonym, quote::Quote,
+    report::Report,
+};

@@ -1,13 +1,15 @@
 //! Basic RJSON DOM, taken from rjson tests.
 
 use alloc::{collections::BTreeMap, string::String, vec::Vec};
-use core::convert::TryInto;
+use core::{convert::TryInto, fmt::Debug};
 use displaydoc::Display;
 use rjson::{Array as RJsonArray, Null as RJsonNull, Object as RJsonObject, Value as RJsonValue};
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 /// An enumeration of errors which can occur while parsing the JSON of a verification report
-#[derive(Clone, Debug, Deserialize, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
+#[derive(Clone, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Error {
     /// There was no non-whitespace data to parse
     NoData,
