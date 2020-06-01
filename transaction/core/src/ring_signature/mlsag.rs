@@ -174,12 +174,15 @@ impl RingMLSAG {
             };
 
             let P_i_compressed = &ring[i].0;
+            let difference_compressed =
+                CompressedRistrettoPublic::from(output_commitment.point - input_commitment.point);
             c[(i + 1) % ring_size] = {
                 let mut hasher = Blake2b::new();
                 hasher.input(&RING_MLSAG_CHALLENGE_DOMAIN_TAG);
                 hasher.input(message);
                 hasher.input(P_i_compressed);
                 hasher.input(&key_image);
+                hasher.input(&difference_compressed);
                 hasher.input(L0.compress().as_bytes());
                 hasher.input(R0.compress().as_bytes());
                 hasher.input(L1.compress().as_bytes());
@@ -290,12 +293,15 @@ impl RingMLSAG {
             let L1 = r[2 * i + 1] * H + c_i * (output_commitment.point - input_commitment.point);
 
             let P_i_compressed = &ring[i].0;
+            let difference_compressed =
+                CompressedRistrettoPublic::from(output_commitment.point - input_commitment.point);
             recomputed_c[(i + 1) % ring_size] = {
                 let mut hasher = Blake2b::new();
                 hasher.input(&RING_MLSAG_CHALLENGE_DOMAIN_TAG);
                 hasher.input(message);
                 hasher.input(P_i_compressed);
                 hasher.input(&self.key_image);
+                hasher.input(&difference_compressed);
                 hasher.input(L0.compress().as_bytes());
                 hasher.input(R0.compress().as_bytes());
                 hasher.input(L1.compress().as_bytes());
