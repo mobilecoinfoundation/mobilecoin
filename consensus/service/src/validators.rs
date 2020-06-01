@@ -669,7 +669,6 @@ mod combine_tests {
             0,
             onetime_private_key,
             *alice.view_private_key(),
-            &mut rng,
         )
         .unwrap();
 
@@ -743,7 +742,6 @@ mod combine_tests {
                     0,
                     onetime_private_key,
                     *alice.view_private_key(),
-                    &mut rng,
                 )
                 .unwrap();
                 transaction_builder.add_input(input_credentials);
@@ -807,7 +805,6 @@ mod combine_tests {
                 0,
                 onetime_private_key,
                 *alice.view_private_key(),
-                &mut rng,
             )
             .unwrap();
 
@@ -840,7 +837,6 @@ mod combine_tests {
                 0,
                 onetime_private_key,
                 *alice.view_private_key(),
-                &mut rng,
             )
             .unwrap();
 
@@ -895,7 +891,6 @@ mod combine_tests {
                 0,
                 onetime_private_key,
                 *alice.view_private_key(),
-                &mut rng,
             )
             .unwrap();
 

@@ -1156,7 +1156,6 @@ mod conversion_tests {
             0,
             onetime_private_key,
             *alice.view_private_key(),
-            &mut rng,
         )
         .unwrap();
 

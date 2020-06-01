@@ -3,8 +3,6 @@
 use crate::TxBuilderError;
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_transaction_core::tx::{TxOut, TxOutMembershipProof};
-use rand::Rng;
-use rand_core::CryptoRng;
 use std::convert::TryFrom;
 
 /// Credentials required to construct a ring signature for an input.
@@ -39,45 +37,48 @@ impl InputCredentials {
     /// * `onetime_private_key` - Private key for the output being spent.
     /// * `view_private_key` - The view private key belonging to the owner of the real output.
     /// * `rng` - Randomness.
-    pub fn new<R: Rng + CryptoRng>(
+    pub fn new(
         ring: Vec<TxOut>,
         membership_proofs: Vec<TxOutMembershipProof>,
         real_index: usize,
         onetime_private_key: RistrettoPrivate,
         view_private_key: RistrettoPrivate,
-        rng: &mut R,
     ) -> Result<Self, TxBuilderError> {
         debug_assert_eq!(ring.len(), membership_proofs.len());
 
-        let real_tx_out: TxOut = ring
+        if real_index > ring.len() {
+            return Err(TxBuilderError::InvalidRingSize);
+        }
+
+        let real_input: TxOut = ring
             .get(real_index)
             .cloned()
             .ok_or(TxBuilderError::NoInputs)?;
-        let real_output_public_key = RistrettoPublic::try_from(&real_tx_out.public_key)?;
+        let real_output_public_key = RistrettoPublic::try_from(&real_input.public_key)?;
 
-        // Randomly shuffle the ring and the corresponding proofs. This ensures that the ordering
-        // of mixins in the transaction will not depend on the user's implementation for obtaining
+        // Sort the ring and the corresponding proofs. This ensures that the ordering
+        // of mixins in the transaction does not depend on the user's implementation for obtaining
         // mixins.
-        let (shuffled_ring, shuffled_membership_proofs): (Vec<TxOut>, Vec<TxOutMembershipProof>) = {
-            use rand::seq::SliceRandom;
-            let mut zipped: Vec<_> = ring
-                .into_iter()
-                .zip(membership_proofs.into_iter())
-                .collect();
-            let zipped_as_slice = zipped.as_mut_slice();
-            zipped_as_slice.shuffle(rng);
-            zipped.into_iter().unzip()
-        };
+        let mut ring_and_proofs: Vec<(TxOut, TxOutMembershipProof)> = ring
+            .into_iter()
+            .zip(membership_proofs.into_iter())
+            .collect();
 
-        let shuffled_real_index = shuffled_ring
+        ring_and_proofs
+            .sort_by(|(tx_out_a, _), (tx_out_b, _)| tx_out_a.public_key.cmp(&tx_out_b.public_key));
+
+        let (ring, membership_proofs): (Vec<TxOut>, Vec<TxOutMembershipProof>) =
+            ring_and_proofs.into_iter().unzip();
+
+        let real_index: usize = ring
             .iter()
-            .position(|tx_out| *tx_out == real_tx_out)
-            .expect("The real tx_out must still exist after shuffling.");
+            .position(|element| *element == real_input)
+            .expect("Must still contain real input");
 
         Ok(InputCredentials {
-            ring: shuffled_ring,
-            membership_proofs: shuffled_membership_proofs,
-            real_index: shuffled_real_index,
+            ring,
+            membership_proofs,
+            real_index,
             onetime_private_key,
             real_output_public_key,
             view_private_key,

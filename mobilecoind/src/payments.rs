@@ -645,7 +645,6 @@ impl<T: UserTxConnection + 'static> TransactionsManager<T> {
                     real_key_index,
                     onetime_private_key,
                     *from_account_key.view_private_key(),
-                    rng,
                 )
                 .or_else(|_| {
                     Err(Error::TxBuildError(
