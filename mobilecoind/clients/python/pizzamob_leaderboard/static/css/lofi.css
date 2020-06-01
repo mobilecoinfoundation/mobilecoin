@@ -1,0 +1,51 @@
+body {
+  font-family: monospace;
+  background-color: #222;
+  color: #00FF00;
+  font-size: 1.1vw;
+}
+
+a {
+  color: #00FF00;
+  text-decoration: none;
+  margin: 0px;
+  padding: 0px;
+}
+
+.container {
+  display: flex;
+  height: 100%;
+  background-color: #222;
+  justify-content: center;
+}
+
+.center {
+  width:80ch;
+  border: solid #eee 1px;
+  padding: 40px;
+  overflow-x: hidden;
+  background-color: #000;
+}
+
+.row {
+  height:1.8vw;
+  display:table;
+  white-space: pre;
+}
+
+
+input, input:focus {
+  border: none;
+  background-color: black;
+  color:#00FF00;
+  font-family:monospace;
+  font-size:1.0vw;
+  width:70ch;
+  outline:none;
+}
+
+.hidden {
+  position: absolute;
+  top: -5000px;
+  left: -5000px;
+}

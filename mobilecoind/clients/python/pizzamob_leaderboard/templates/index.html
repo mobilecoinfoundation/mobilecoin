@@ -1,123 +1,213 @@
 <html>
     <head>
         <title>Satoshi's Pizzeria</title>
-        <style>
-            a { color:#00FF00;
-                text-decoration: none;
-                margin: 2px;
-                padding: 3px;
-                height: 2vw; }
-            body { font-family:monospace;
-                   background-color:#222;
-                   color:#00FF00;
-                   font-size:1.0vw; }
-            .container { display:flex;
-                         height:100%;
-                         background-color: #222;
-                         justify-content:center; }
-            .center { width:80ch;
-                      border:solid #eee 1px;
-                      padding:40px;
-                      overflow-x:hidden;
-                      background-color: #000; }
-            .row { height:1.8vw; display:table; white-space: pre-line; }
-            .centered {display:block; text-align:center; }
-            .col_8 { width:8ch; }
-            .col_12 { width:12ch; }
-            .col_34 { width:34ch; }
-            input, input:focus {
-                border: none;
-                background-color: black;
-                color:#00FF00;
-                font-family:monospace;
-                font-size:1.0vw;
-                width:70ch;
-                outline:none;
-            }
-        </style>
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/lofi.css') }}">
+        <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
 
         <script src="https://code.jquery.com/jquery-3.5.1.min.js", crossorigin="anonymous"></script>
-
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/crypto-js.js", crossorigin="anonymous"></script>
     </head>
     <body>
         <div class="container">
-          <div class="center">
+          <div class="center" id="screen">
             <div id="output" class="row"></div>
-            <div id="input" class="row">>&nbsp;<input id="prompt" name="cmd"></input></div>
+            <div id="input" class="row">
+              <span id="prompt">>&nbsp;</span>
+              <input id="cmd" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="cmd"></input>
+            </div>
           </div>
         </div>
+        <div class="hidden"><input id="code" type="text" value=''></input></div>
     </body>
 
 <script>
 
-// if this is a new passphrase, set up a new monitored subaddress
-function getStatus(passphrase) {
+// Configuration Parameters
+var max_rows_to_dispay = 15;
+var refresh_interval_seconds = 20;
+
+async function getStatus(passphrase) {
   var method = "POST";
   var url = "/add_user";
-  var data = { player_data: passphrase };
-  return $.ajax({method, url, data}).then(r => {
-      return JSON.parse(r);
+  var salt = CryptoJS.enc.Utf16.parse("don't oversalt the dough!");
+  var hashed_passphrase = CryptoJS.PBKDF2(passphrase, salt, {keySize: 256/32, iterations: 500}).toString(CryptoJS.enc.Hex);
+  var data = { player_data: hashed_passphrase };
+  var status;
+  await $.ajax({method, url, data}).then(r => {
+    status = JSON.parse(r);
   });
+
+  // copy request code to clipboard
+  $('#code').val(status.code);
+  $('#code').focus();
+  $('#code').select();
+  document.execCommand('copy');
+
+  console.log("status updated!", passphrase, hashed_passphrase, status);
+  return status;
 };
 
-// passphrase --> hash
-// call mobilecoind with hash
-// add to table if a new hash
-// return hash status
-function getText(passphrase) {
-  if (passphrase === "" ) {
-    return "Welcome to Satoshi's Pizzeria.\n\nPlease enter your passphrase.\n\n";
+function getText(passphrase, status) {
+  var line = "********************************************************************************";
+  var text = line + '\n';
+  if (status.new) {
+    text += "Your passphrase is unique. Good luck!\n\n";
+  } else {
+    text += "Welcome back!\n\n";
   }
-    return getStatus(passphrase).then(status => {
-        console.log(status.code, status.mob, status.time);
-        var line = "*******************************************************************************";
-        var text = line + '\n\n';
-        text += "Remember your passphrase to claim your pizza: \n\n" + passphrase + "\n\n";
-        text += "Your request code is: \n\n";
-        text += status.code;
-        text += "\n\n" ;
-        text += "You have deposited " + status.mob + " MOB" + ". Deposit 10000 MOB to win.\n\n";
-        text += line + '\n\n';
-        text += "Leaderboard: \n";
-        text += status.leaderboard;
-        text += '\n\n' + line + '\n\n';
+  text += "Remember your passphrase to claim your pizza: \n\n--> " + passphrase + "\n\n";
+  text += "Your request code is: \n\n";
+  text += status.code;
+  text += "\n\n" ;
+  if (status.balance < status.goal){
+    text += "You have deposited " + status.balance + " MOB" + ". Deposit 10000 MOB to win.\n\n";
+  } else {
+    text += "Congratulations! You have won. Send an email to <pizza@mobilecoin.com> with your passphrase to claim your prize.\n\n";
+  }
+  text += line + "\n\n";
+  text += "LEADING CONTESTANTS:\n\n";
+  var found_user = false;
+  var rows_printed = 0;
 
-        return text;
-  });
-};
+  for (var i = 0; i < status.leaderboard.length; i++) {
+    var balance = status.leaderboard[i].balance;
+    var code = status.leaderboard[i].code;
+    var percent = (balance/status.goal*100).toString().split(".")[0] + "%";
+    if (status.code === code) {
+      found_user = true;
+      text += "--> " + code.slice(0, 20) + "...  MOB " + balance + "  [" + percent + "]\n"
+      rows_printed++;
+    } else if (rows_printed < max_rows_to_dispay) {
+      text += "    " + code.slice(0, 20) + "...  MOB " + balance + "  [" + percent + "]\n"
+      rows_printed++;
+    }
+  }
+  text += "\n\n" + line + "\n";
+  text += "Your request code was copied to the clipboard. Press any key to restart...\n\n";
+  return text;
+}
+
+var refresh_interval_handle = null;
+var elapsed_seconds = 0;
+var needs_reset = false;
+var printing = false;
 
 function slowWrite(content) {
-  $("#input").hide();
+  printing = true;
+  $('#input').hide();
+  $('#prompt').hide(); // hide prompt '> '
   var dfd = $.Deferred();
   var letters = content.split("");
   var current = 0;
-  var elem = $("#output");
-  $("#output").text("");
+  var count = 0;
+  var elem = $('#output');
+  elem.text("");
   var interval = setInterval(function() {
     if (current < letters.length) {
-      elem.text(elem.text() + letters[current++]);
-    }
-    else {
+      var current_letter = letters[current];
+
+      if (current_letter === "\n") {
+        count = 0;
+      } else {
+        count++;
+      }
+      if (count == 80) {
+        count = 0;
+        elem.text(elem.text() + current_letter + "\n");
+        if (letters[current+1] === " "){
+          current++;
+        }
+      } else {
+        elem.text(elem.text() + current_letter);
+      }
+      current++;
+    } else {
       dfd.resolve();
       clearInterval(interval);
-      $("#input").show();
-      $("input[name=cmd]").val("");
-      $("input[name=cmd]").focus();
+      printing = false;
+      $('#input').show();
+      $('input[name=cmd]').val("");
+      $('input[name=cmd]').focus();
     }
+    // keep the view scrolled down
+    var element = document.getElementById("screen");
+    element.scrollTop = element.scrollHeight;
+
   }, 2);
+
   return dfd.promise();
 };
 
-slowWrite(getText(""))
+async function resetAll() {
+  needs_reset = false;
+  $('#prompt').hide();
+  $('#code').val("");
+  await slowWrite("Welcome to Satoshi's Pizzeria.\n\nPlease enter a unique passphrase.\n\n");
+  $('#prompt').show();
+  $('#input').show();
+  $('input[name=cmd]').val("");
+  $('input[name=cmd]').focus();
+  if (refresh_interval_handle) {
+    clearInterval(refresh_interval_handle);
+    refresh_interval_handle = null;
+  }
+}
 
 $(document).keydown(async function(e) {
-  key = e.keyCode;
-  if(key == 13) { // enter
+  if (printing) {
     e.preventDefault();
-    var cmd = $("#prompt").val().trim();
-    slowWrite(await getText(cmd));
+    return;
+  }
+
+  if (needs_reset) {
+    resetAll();
+  } else {
+    key = e.keyCode;
+    if(key == 13) { // enter key was pressed
+      e.preventDefault();
+
+      var passphrase = $('input[name=cmd]').val().trim();
+      if (passphrase === "") {
+        return; // ignore empty input without reset
+      }
+
+      var status = await getStatus(passphrase);
+      await slowWrite(getText(passphrase, status));
+
+      // setup to refresh
+      if (refresh_interval_handle == null) {
+        refresh_interval_handle = setInterval(async function() {
+          if (elapsed_seconds > refresh_interval_seconds && !printing) {
+            elapsed_seconds = 0;
+            var status = await getStatus(passphrase);
+            await slowWrite(getText(passphrase, status));
+          } else {
+            elapsed_seconds++;
+            if (elapsed_seconds < refresh_interval_seconds) {
+              $('input[name=cmd]').val("Refreshing in " + (refresh_interval_seconds - elapsed_seconds) + " seconds...");
+            } else {
+              $('input[name=cmd]').val("Refreshing now!");
+            }
+          }
+        }, 1000);
+      }
+
+      $('input[name=cmd]').focus();
+      needs_reset = true;
+    }
   }
 });
+
+$(document).mousedown(function(e) {
+  e.preventDefault();
+  if ( $('#code').val() ) {
+    var code = $('#code').val().match(/.{1,50}/g).join("\n");
+    alert("Your request code was copied to the clipboard.\n\n" + code );
+  }
+  $('input[name=cmd]').focus();
+});
+
+resetAll();
 
 </script>
 
