@@ -1,14 +1,14 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-//! An HTTP frontend for a Consensus Service's admin GRPC interface.
+//! An HTTP frontend for a MobileCoin service's admin GRPC interface.
 
 #![feature(proc_macro_hygiene, decl_macro)]
 
 use grpcio::ChannelBuilder;
 use mc_common::logger::{create_app_logger, log, o};
 use mc_connection::ConnectionUriGrpcioChannel;
-use mc_consensus_api::{consensus_admin, consensus_admin_grpc::ConsensusAdminApiClient, Empty};
-use mc_util_uri::ConsensusAdminUri;
+use mc_util_grpc::{admin, admin_grpc::AdminApiClient, Empty};
+use mc_util_uri::AdminUri;
 use rocket::{
     get, post,
     request::Form,
@@ -22,8 +22,8 @@ use structopt::StructOpt;
 
 #[derive(Clone, Debug, StructOpt)]
 #[structopt(
-    name = "mc-consensus-admin-http-gateway",
-    about = "An HTTP frontend for a Consensus Service's admin GRPC interface."
+    name = "mc-admin-http-gateway",
+    about = "An HTTP frontend for a MobileCoin service's admin GRPC interface."
 )]
 pub struct Config {
     /// Host to listen on.
@@ -34,13 +34,13 @@ pub struct Config {
     #[structopt(long, default_value = "9090")]
     pub listen_port: u16,
 
-    /// Consensus service admin URI to connect to.
+    /// Service admin URI to connect to.
     #[structopt(long)]
-    pub admin_uri: ConsensusAdminUri,
+    pub admin_uri: AdminUri,
 }
 
 struct State {
-    pub admin_api_client: ConsensusAdminApiClient,
+    pub admin_api_client: AdminApiClient,
 }
 
 #[get("/")]
@@ -50,17 +50,20 @@ fn index() -> content::Html<String> {
 
 #[derive(Serialize)]
 struct JsonInfoResponse {
+    name: String,
+    id: String,
     build_info: serde_json::Value,
     config: serde_json::Value,
-    network: serde_json::Value,
     rust_log: String,
 }
 
-impl TryFrom<&consensus_admin::GetInfoResponse> for JsonInfoResponse {
+impl TryFrom<&admin::GetInfoResponse> for JsonInfoResponse {
     type Error = String;
 
-    fn try_from(src: &consensus_admin::GetInfoResponse) -> Result<Self, Self::Error> {
+    fn try_from(src: &admin::GetInfoResponse) -> Result<Self, Self::Error> {
         Ok(Self {
+            name: src.name.clone(),
+            id: src.id.clone(),
             build_info: serde_json::from_str(&src.build_info_json).map_err(|err| {
                 format!(
                     "failed parsing build info '{}': {}",
@@ -69,8 +72,6 @@ impl TryFrom<&consensus_admin::GetInfoResponse> for JsonInfoResponse {
             })?,
             config: serde_json::from_str(&src.config_json)
                 .map_err(|err| format!("failed parsing config '{}': {}", src.config_json, err))?,
-            network: serde_json::from_str(&src.network_json)
-                .map_err(|err| format!("failed parsing network '{}': {}", src.network_json, err))?,
             rust_log: src.rust_log.clone(),
         })
     }
@@ -96,7 +97,7 @@ fn set_rust_log(
     state: rocket::State<State>,
     form: Form<SetRustLogForm>,
 ) -> Result<Redirect, String> {
-    let mut req = consensus_admin::SetRustLogRequest::new();
+    let mut req = admin::SetRustLogRequest::new();
     req.set_rust_log(form.rust_log.clone());
 
     let _resp = state
@@ -125,7 +126,7 @@ fn main() {
     let (logger, _global_logger_guard) = create_app_logger(o!());
     log::info!(
         logger,
-        "Starting consensus admin HTTP gateway on {}:{}, connecting to {}",
+        "Starting admin HTTP gateway on {}:{}, connecting to {}",
         config.listen_host,
         config.listen_port,
         config.admin_uri
@@ -134,7 +135,7 @@ fn main() {
     let env = Arc::new(grpcio::EnvBuilder::new().build());
     let ch =
         ChannelBuilder::default_channel_builder(env).connect_to_uri(&config.admin_uri, &logger);
-    let admin_api_client = ConsensusAdminApiClient::new(ch);
+    let admin_api_client = AdminApiClient::new(ch);
 
     let rocket_config = rocket::Config::build(rocket::config::Environment::Production)
         .address(&config.listen_host)

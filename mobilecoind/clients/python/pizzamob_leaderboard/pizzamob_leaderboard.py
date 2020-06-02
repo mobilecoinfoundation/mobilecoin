@@ -6,7 +6,6 @@ import sys
 
 from flask import Flask, render_template, request
 from tinydb import TinyDB, Query
-from datetime import datetime
 
 sys.path.append('../mob_client')
 from mob_client import mob_client
@@ -73,7 +72,6 @@ def add_user():
     monitor = get_or_add_monitor(subaddress)
     request_code = get_request_code(monitor, subaddress)
     balance = client.get_balance(monitor, subaddress)
-    timestamp = datetime.now().strftime('%Y%m%d')
 
     if new_player:
         players.insert({
@@ -81,14 +79,18 @@ def add_user():
             'subaddress': subaddress,
             'code': request_code
         })
+    else:
+        # update the request code
+        players.update({'code': request_code}, player.passphrase == player_data)
 
     leaderboard = get_leaderboard()
 
     response = {
-        "code": request_code[:79] + '\n' + request_code[79:],
-        "mob": balance / MOB,
-        "time": timestamp,
-        "leaderboard": render_leaderboard(leaderboard)
+        "code": request_code,
+        "balance": balance / MOB,
+        "leaderboard": leaderboard,
+        "goal": WINNING_AMOUNT / MOB,
+        "new": new_player,
     }
 
     return json.dumps(response)
@@ -112,7 +114,7 @@ def get_or_add_monitor(subaddress):
 
 def get_request_code(monitor, subaddress):
     public_address = client.get_public_address(monitor, subaddress)
-    return client.get_request_code(public_address, value=WINNING_AMOUNT, memo="PizzaMOB 2.0!")
+    return client.get_request_code(public_address)
 
 def get_leaderboard():
     player_table = db.table('Players')
@@ -121,16 +123,11 @@ def get_leaderboard():
     for p in players:
         monitor = get_or_add_monitor(p['subaddress'])
         balance = client.get_balance(monitor, p['subaddress'])
-        res.append({'balance': balance, 'code': p['code'][:17]})
+        res.append({'balance': balance / MOB, 'code': p['code']})
     res.sort(key=lambda player: player['balance'])
     res.reverse()
     return res
 
-def render_leaderboard(leaderboard):
-    res = ""
-    for leader in leaderboard:
-        res += f"[{leader['balance'] / MOB}] {leader['code'][:17]}...\n"
-    return res
 
 if __name__ == "__main__":
     args = command_args()

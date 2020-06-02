@@ -1,8 +1,7 @@
 # Copyright (c) 2018-2020 MobileCoin Inc.
 
-import argparse
+import argparse, sys
 from flask import Flask, render_template
-from sys import getsizeof
 
 sys.path.append('../mob_client')
 from mob_client import mob_client
@@ -81,9 +80,7 @@ def index():
 
 @app.route('/from/<block_num>')
 def ledger(block_num):
-    num_blocks, num_transactions = client.get_ledger_info()
-    block_num = int(block_num)
-    return render_ledger_range(block_num, 100)
+    return render_ledger_range(int(block_num), 100)
 
 @app.route('/block/<block_num>')
 def block(block_num):
@@ -95,7 +92,7 @@ def block(block_num):
                                num_blocks=num_blocks)
 
     block = client.get_block(block_num)
-    size_of_block = getsizeof(block)
+    size_of_block = sys.getsizeof(block)
 
     for signature in block.signatures:
         signature.src_url = signature.src_url.split('/')[-2]

@@ -186,12 +186,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b41b7ea54a0c9d92199de89e20e58d49f02f8e699814ef3fdf266f6f748d15c7"
 
 [[package]]
-name = "base64"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53d1ccbaf7d9ec9537465a97bf19edc1a4e158ecb49fc16178202238c569cc42"
-
-[[package]]
 name = "bigint"
 version = "4.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1881,6 +1875,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-admin-http-gateway"
+version = "0.2.0"
+dependencies = [
+ "grpcio",
+ "mc-common",
+ "mc-connection",
+ "mc-util-grpc",
+ "mc-util-uri",
+ "rocket",
+ "rocket_contrib",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "structopt",
+]
+
+[[package]]
 name = "mc-api"
 version = "0.2.0"
 dependencies = [
@@ -2100,23 +2111,6 @@ dependencies = [
  "mc-ledger-db",
  "mc-transaction-core",
  "mc-util-uri",
-]
-
-[[package]]
-name = "mc-consensus-admin-http-gateway"
-version = "0.2.0"
-dependencies = [
- "grpcio",
- "mc-common",
- "mc-connection",
- "mc-consensus-api",
- "mc-util-uri",
- "rocket",
- "rocket_contrib",
- "serde",
- "serde_derive",
- "serde_json",
- "structopt",
 ]
 
 [[package]]
@@ -2839,31 +2833,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mc-sgx-ias-types"
-version = "0.2.0"
-dependencies = [
- "base64 0.12.1",
- "bitflags",
- "chrono",
- "displaydoc",
- "hex 0.4.2",
- "hex_fmt",
- "mc-sgx-core-types",
- "mc-sgx-core-types-sys",
- "mc-sgx-epid-types",
- "mc-sgx-epid-types-sys",
- "mc-util-encodings",
- "mc-util-from-random",
- "mc-util-repr-bytes",
- "rand_core 0.5.1",
- "rand_hc 0.2.0",
- "rjson",
- "serde",
- "subtle 2.2.2",
- "typenum",
-]
-
-[[package]]
 name = "mc-sgx-libc-types"
 version = "0.2.0"
 
@@ -3131,10 +3100,13 @@ dependencies = [
  "hex_fmt",
  "lazy_static",
  "mc-common",
+ "mc-connection",
  "mc-util-build-grpc",
  "mc-util-build-info",
  "mc-util-metrics",
  "mc-util-serial",
+ "mc-util-uri",
+ "prometheus",
  "prost",
  "protobuf",
  "rand 0.6.5",

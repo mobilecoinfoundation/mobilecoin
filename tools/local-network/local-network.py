@@ -247,7 +247,7 @@ class Node:
         self.ledger_distribution_process= subprocess.Popen(cmd, shell=True)
 
         cmd = ' '.join([
-            f'cd {PROJECT_DIR} && export ROCKET_CLI_COLORS=0 && exec {TARGET_DIR}/mc-consensus-admin-http-gateway',
+            f'cd {PROJECT_DIR} && export ROCKET_CLI_COLORS=0 && exec {TARGET_DIR}/mc-admin-http-gateway',
             f'--listen-host 0.0.0.0',
             f'--listen-port {self.admin_http_gateway_port}',
             f'--admin-uri insecure-mca://127.0.0.1:{self.admin_port}/',
@@ -363,7 +363,7 @@ class Network:
             )
 
         subprocess.run(
-            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p mc-consensus-service -p mc-ledger-distribution -p mc-consensus-admin-http-gateway {CARGO_FLAGS}',
+            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p mc-consensus-service -p mc-ledger-distribution -p mc-admin-http-gateway {CARGO_FLAGS}',
             shell=True,
             check=True,
         )
@@ -389,7 +389,7 @@ class Network:
     def start(self):
         print("Killing any existing processes")
         try:
-            subprocess.check_output("killall -9 consensus-service filebeat ledger-distribution prometheus mc-consensus-admin-http-gateway 2>/dev/null", shell=True)
+            subprocess.check_output("killall -9 consensus-service filebeat ledger-distribution prometheus mc-admin-http-gateway 2>/dev/null", shell=True)
         except subprocess.CalledProcessError as exc:
             if exc.returncode != 1:
                 raise

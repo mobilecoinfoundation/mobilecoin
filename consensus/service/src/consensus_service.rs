@@ -3,10 +3,9 @@
 //! The MobileCoin consensus service.
 
 use crate::{
-    admin_api_service, attested_api_service::AttestedApiService,
-    background_work_queue::BackgroundWorkQueue, blockchain_api_service,
-    byzantine_ledger::ByzantineLedger, client_api_service, config::Config, counters,
-    peer_api_service, peer_keepalive::PeerKeepalive, tx_manager::TxManager,
+    attested_api_service::AttestedApiService, background_work_queue::BackgroundWorkQueue,
+    blockchain_api_service, byzantine_ledger::ByzantineLedger, client_api_service, config::Config,
+    counters, peer_api_service, peer_keepalive::PeerKeepalive, tx_manager::TxManager,
     validators::DefaultTxManagerUntrustedInterfaces,
 };
 use failure::Fail;
@@ -25,16 +24,17 @@ use mc_common::{
     NodeID, ResponderId,
 };
 use mc_connection::{Connection, ConnectionManager, ConnectionUriGrpcioServer};
-use mc_consensus_api::{
-    consensus_admin_grpc, consensus_client_grpc, consensus_common_grpc, consensus_peer_grpc,
-};
+use mc_consensus_api::{consensus_client_grpc, consensus_common_grpc, consensus_peer_grpc};
 use mc_consensus_enclave::{ConsensusEnclaveProxy, Error as EnclaveError};
 use mc_ledger_db::LedgerDB;
 use mc_peers::{PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
 use mc_transaction_core::tx::TxHash;
-use mc_util_grpc::{BuildInfoService, HealthCheckStatus, HealthService};
+use mc_util_grpc::{
+    AdminServer, BuildInfoService, GetConfigJsonFn, HealthCheckStatus, HealthService,
+};
 use mc_util_uri::{ConnectionUri, ConsensusPeerUriApi};
 use retry::{delay::Fibonacci, retry, Error as RetryError, OperationResult};
+use serde_json::json;
 use std::{
     sync::{Arc, Mutex},
     time::Instant,
@@ -129,7 +129,7 @@ pub struct ConsensusService<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync 
     tx_manager: TxManager<E, LedgerDB>,
     peer_keepalive: Arc<Mutex<PeerKeepalive>>,
 
-    admin_rpc_server: Option<grpcio::Server>,
+    admin_rpc_server: Option<AdminServer>,
     consensus_rpc_server: Option<grpcio::Server>,
     user_rpc_server: Option<grpcio::Server>,
     byzantine_ledger: Arc<Mutex<Option<ByzantineLedger>>>,
@@ -480,35 +480,17 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
 
     fn start_admin_rpc_server(&mut self) -> Result<(), ConsensusServiceError> {
         if let Some(admin_listen_uri) = self.config.admin_listen_uri.as_ref() {
-            log::info!(
-                self.logger,
-                "Starting admin rpc server on {}...",
-                admin_listen_uri.addr(),
+            self.admin_rpc_server = Some(
+                AdminServer::start(
+                    Some(self.env.clone()),
+                    admin_listen_uri,
+                    "Consensus Service".to_owned(),
+                    self.config.peer_responder_id.to_string(),
+                    Some(self.create_get_config_json_fn()),
+                    self.logger.clone(),
+                )
+                .expect("Failed starting admin grpc server"),
             );
-
-            // Initialize services.
-            let admin_service = consensus_admin_grpc::create_consensus_admin_api(
-                admin_api_service::AdminApiService::new(self.config.clone(), self.logger.clone()),
-            );
-
-            let health_service = HealthService::new(None, self.logger.clone()).into_service();
-            let build_info_service = BuildInfoService::new(self.logger.clone()).into_service();
-
-            // Start GRPC server.
-            let server_builder = grpcio::ServerBuilder::new(self.env.clone())
-                .register_service(admin_service)
-                .register_service(health_service)
-                .register_service(build_info_service)
-                .bind_using_uri(admin_listen_uri);
-
-            let mut server = server_builder.build().unwrap();
-            server.start();
-
-            for (host, port) in server.bind_addrs() {
-                log::info!(self.logger, "Admin GRPC API listening on {}:{}", host, port);
-            }
-
-            self.admin_rpc_server = Some(server);
         }
 
         Ok(())
@@ -717,6 +699,31 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
             if let Some(byzantine_ledger) = &*byzantine_ledger {
                 byzantine_ledger.push_values(vec![tx_hash], timestamp);
             }
+        })
+    }
+
+    /// Helper method for creating the get config json function needed by the GRPC admin service.
+    fn create_get_config_json_fn(&self) -> GetConfigJsonFn {
+        let config = self.config.clone();
+        Arc::new(move || {
+            Ok(json!({
+                "config": {
+                    "public_key": config.node_id().public_key,
+                    "peer_responder_id": config.peer_responder_id,
+                    "client_responder_id": config.client_responder_id,
+                    "message_pubkey": config.msg_signer_key.public_key(),
+                    "network": config.network_path,
+                    "ias_api_key": config.ias_api_key,
+                    "ias_spid": config.ias_spid,
+                    "peer_listen_uri": config.peer_listen_uri,
+                    "client_listen_uri": config.client_listen_uri,
+                    "admin_listen_uri": config.admin_listen_uri,
+                    "ledger_path": config.ledger_path,
+                    "scp_debug_dump": config.scp_debug_dump,
+                },
+                "network": config.network(),
+            })
+            .to_string())
         })
     }
 }
