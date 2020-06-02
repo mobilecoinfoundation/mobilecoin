@@ -36,7 +36,6 @@ impl InputCredentials {
     /// * `real_index` - Index in `ring` of the output being spent.
     /// * `onetime_private_key` - Private key for the output being spent.
     /// * `view_private_key` - The view private key belonging to the owner of the real output.
-    /// * `rng` - Randomness.
     pub fn new(
         ring: Vec<TxOut>,
         membership_proofs: Vec<TxOutMembershipProof>,
