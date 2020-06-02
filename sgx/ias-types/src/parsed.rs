@@ -225,7 +225,7 @@ impl<'src> TryFrom<&'src IasReport> for Report {
             .ok_or_else(|| JsonError::FieldMissing("timestamp".to_owned()))?
             .try_into()?;
         let naive_timestamp = NaiveDateTime::parse_from_str(&string_timestamp, "%Y-%m-%d %H:%M:%S")
-            .map_err(|e| Error::Timestamp(e))?;
+            .map_err(Error::Timestamp)?;
         let timestamp = DateTime::from_utc(naive_timestamp, Utc);
         let version = data
             .remove("version")
@@ -236,7 +236,7 @@ impl<'src> TryFrom<&'src IasReport> for Report {
         let platform_info = match data.remove("platformInfoBlob") {
             Some(v) => {
                 let value: String = v.try_into()?;
-                Some(PlatformInfo::from_hex(&value).map_err(|e| Error::PlatformInfo(e))?)
+                Some(PlatformInfo::from_hex(&value).map_err(Error::PlatformInfo)?)
             }
             None => None,
         };
@@ -335,7 +335,7 @@ impl<'src> TryFrom<&'src IasReport> for Report {
         let pse_manifest_hash = match data.remove("pseManifestHash") {
             Some(v) => {
                 let value: String = v.try_into()?;
-                Some(decode(&value).map_err(|e| Error::PseManifest(e))?)
+                Some(decode(&value).map_err(Error::PseManifest)?)
             }
             None => None,
         };
@@ -344,7 +344,7 @@ impl<'src> TryFrom<&'src IasReport> for Report {
         let nonce = match data.remove("nonce") {
             Some(v) => {
                 let value: String = v.try_into()?;
-                Some(Nonce::from_hex(&value).map_err(|e| Error::Nonce(e))?)
+                Some(Nonce::from_hex(&value).map_err(Error::Nonce)?)
             }
             None => None,
         };
@@ -353,7 +353,7 @@ impl<'src> TryFrom<&'src IasReport> for Report {
         let epid_pseudonym = match data.remove("epidPseudonym") {
             Some(v) => {
                 let value: String = v.try_into()?;
-                Some(EpidPseudonym::from_base64(&value).map_err(|e| Error::EpidPseudonym(e))?)
+                Some(EpidPseudonym::from_base64(&value).map_err(Error::EpidPseudonym)?)
             }
             None => None,
         };
