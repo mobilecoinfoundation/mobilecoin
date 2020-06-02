@@ -40,7 +40,7 @@ impl EpidQuotingEnclave for TargetInfo {
 
 /// Retrieve the EpidGroupId of the current Quoting Enclave.
 ///
-/// This is used to contact IAS and retrieve the [`SigRL`] data structure.
+/// This is used to contact IAS and retrieve the [`SignatureRevocationList`] data structure.
 impl EpidQuotingEnclave for EpidGroupId {
     fn for_epid_qe() -> SgxResult<EpidGroupId> {
         let mut target_info = TargetInfo::default();

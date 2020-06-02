@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-//! Errors which can occur during the attestatio process
+//! Errors which can occur during the attestation process
 
 use crate::{
     quote::QuoteSignType,
