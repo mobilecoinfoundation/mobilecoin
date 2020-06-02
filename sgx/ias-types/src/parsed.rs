@@ -18,7 +18,7 @@ use core::{
     fmt::Debug,
 };
 use displaydoc::Display;
-use hex::{decode, FromHex, FromHexError};
+use hex::{FromHex, FromHexError};
 use mc_sgx_epid_types::PlatformInfo;
 use mc_util_encodings::{Error as EncodingError, FromBase64, FromHex as EncodingFromHex};
 #[cfg(feature = "serde")]
@@ -156,8 +156,7 @@ pub struct Report {
     /// A unqiue ID of this report.
     pub id: String,
 
-    /// The timestamp this report was generated, as the duration since time::SystemTime::UNIX_EPOCH
-    // FIXME: It would be nice to parse this into something useful, but it's not usable at this time
+    /// The timestamp this report was generated.
     pub timestamp: DateTime<Utc>,
 
     /// The version number of the API which generated this report.
@@ -233,145 +232,164 @@ impl<'src> TryFrom<&'src IasReport> for Report {
             .try_into()?;
 
         // Get the PIB, used in QuoteError, PseManifestError
-        let platform_info = match data.remove("platformInfoBlob") {
-            Some(v) => {
-                let value: String = v.try_into()?;
-                Some(PlatformInfo::from_hex(&value).map_err(Error::PlatformInfo)?)
-            }
-            None => None,
-        };
+        let platform_info: Option<PlatformInfo> = data
+            .remove("platformInfoBlob")
+            .map(TryInto::<String>::try_into)
+            .transpose()?
+            .map(|value| PlatformInfo::from_hex(&value).map_err(Error::PlatformInfo))
+            .transpose()?;
 
         // Get the (optional) revocation reason, used in QuoteError
-        let revocation_reason = match data.remove("revocationReason") {
-            Some(v) => {
-                let value: f64 = v.try_into()?;
-                RevocationCause::from_bits(value as u64)
-            }
-            None => None,
-        };
+        let revocation_reason: Option<RevocationCause> = data
+            .remove("revocationReason")
+            .map(TryInto::<f64>::try_into)
+            .transpose()?
+            .map(|v| RevocationCause::from_bits(v as u64))
+            .flatten();
 
-        // Get the PSE manifest status (parsed here since it may be used by QuoteError)
-        let pse_manifest_status = match data.remove("pseManifestStatus") {
-            Some(v) => {
-                let value: String = v.try_into()?;
-                Some(match value.as_str() {
-                    "OK" => Ok(()),
-                    "INVALID" => Err(PseManifestError::Invalid),
-                    "OUT_OF_DATE" => Err(PseManifestError::OutOfDate(
-                        platform_info.clone().ok_or_else(|| {
-                            JsonError::FieldMissing("platformInfoBlob".to_owned())
-                        })?,
-                    )),
-                    "REVOKED" => Err(PseManifestError::Revoked(
-                        platform_info.clone().ok_or_else(|| {
-                            JsonError::FieldMissing("platformInfoBlob".to_owned())
-                        })?,
-                    )),
-                    "RL_VERSION_MISMATCH" => Err(PseManifestError::RlVersionMismatch(
-                        platform_info.clone().ok_or_else(|| {
-                            JsonError::FieldMissing("platformInfoBlob".to_owned())
-                        })?,
-                    )),
-                    _ => Err(PseManifestError::Unknown),
-                })
-            }
-            None => None, // when the request doesn't contain a manifest
-        };
+        // Get the PSE manifest status, used later
+        //
+        // 1. Start with Option<Value>
+        // 2. TryInto<String> -> Option<Result<String, JsonError>>
+        // 3. transpose() -> Result<Option<String>, JsonError>
+        // 4. ? operator -> Option<String>
+        // 5. map -> Option<Result<PseManifestResult, JsonError>
+        // 6. transpose -> Result<Option<PseManifestResult>, JsonError>
+        // 7. ? operator - Option<PseManifestResult>
+        let pse_manifest_status = data
+            .remove("pseManifestStatus")
+            .map(TryInto::<String>::try_into)
+            .transpose()?
+            .map(|value| match value.as_str() {
+                // the outer result is is whether we found a platform info when needed
+                // the inner result is the actual pse manifest status
+                "OK" => Ok(Ok(())),
+                "INVALID" => Ok(Err(PseManifestError::Invalid)),
+                "OUT_OF_DATE" => {
+                    if let Some(pib) = platform_info.clone() {
+                        Ok(Err(PseManifestError::OutOfDate(pib)))
+                    } else {
+                        Err(JsonError::FieldMissing("platformInfoBlob".to_owned()))
+                    }
+                }
+                "REVOKED" => {
+                    if let Some(pib) = platform_info.clone() {
+                        Ok(Err(PseManifestError::Revoked(pib)))
+                    } else {
+                        Err(JsonError::FieldMissing("platformInfoBlob".to_owned()))
+                    }
+                }
+                "RL_VERSION_MISMATCH" => {
+                    if let Some(pib) = platform_info.clone() {
+                        Ok(Err(PseManifestError::RlVersionMismatch(pib)))
+                    } else {
+                        Err(JsonError::FieldMissing("platformInfoBlob".to_owned()))
+                    }
+                }
+                _ => Ok(Err(PseManifestError::Unknown)),
+            })
+            .transpose()?;
 
-        // Parse the quote status
-        let quote_status_str: String = data
+        // 1. Start with Option<Value>
+        // 2. TryInto<String> -> Option<Result<String, JsonError>>
+        // 3. transpose() -> Result<Option<String>, JsonError>
+        // 4. ? operator -> Option<String>
+        // 4. ok_or_else() -> Result<String, Error>
+        // 5. and_then() -> Result<Result<Option<PseManifestResult>, QuoteError>, Error>
+        // 6. ? -> Result<Option<PseManifestResult>, QuoteError>, aka QuoteResult
+        let quote_status = data
             .remove("isvEnclaveQuoteStatus")
-            .ok_or_else(|| JsonError::FieldMissing("isvEnclaveQuoteStatus".to_owned()))?
-            .try_into()?;
-        let quote_status = match quote_status_str.as_str() {
-            "OK" => Ok(pse_manifest_status.clone()),
-            "SIGNATURE_INVALID" => Err(QuoteError::SignatureInvalid),
-            "GROUP_REVOKED" => Err(QuoteError::GroupRevoked(
-                revocation_reason
-                    .ok_or_else(|| JsonError::FieldMissing("revocationReason".to_owned()))?,
-                platform_info
-                    .clone()
-                    .ok_or_else(|| JsonError::FieldMissing("platformInfoBlob".to_owned()))?,
-            )),
-            "SIGNATURE_REVOKED" => Err(QuoteError::SignatureRevoked),
-            "KEY_REVOKED" => Err(QuoteError::KeyRevoked),
-            "SIGRL_VERSION_MISMATCH" => Err(QuoteError::SigrlVersionMismatch),
-            "GROUP_OUT_OF_DATE" => Err(QuoteError::GroupOutOfDate(
-                pse_manifest_status.clone(),
-                platform_info
-                    .clone()
-                    .ok_or_else(|| JsonError::FieldMissing("platformInfoBlob".to_owned()))?,
-            )),
-            "CONFIGURATION_NEEDED" => Err(QuoteError::ConfigurationNeeded(
-                pse_manifest_status.clone(),
-                platform_info
-                    .clone()
-                    .ok_or_else(|| JsonError::FieldMissing("platformInfoBlob".to_owned()))?,
-            )),
-            "SW_HARDENING_NEEDED" => {
-                Err(QuoteError::SwHardeningNeeded(pse_manifest_status.clone()))
-            }
-            "CONFIGURATION_AND_SW_HARDENING_NEEDED" => {
-                Err(QuoteError::ConfigurationAndSwHardeningNeeded(
+            .map(TryInto::<String>::try_into)
+            .transpose()?
+            .ok_or_else(|| Error::Json(JsonError::FieldMissing("isvEnclaveQuoteStatus".to_owned())))
+            .and_then(|quote_status_str| match quote_status_str.as_ref() {
+                "OK" => Ok(Ok(pse_manifest_status.clone())),
+                "SIGNATURE_INVALID" => Ok(Err(QuoteError::SignatureInvalid)),
+                "GROUP_REVOKED" => Ok(Err(QuoteError::GroupRevoked(
+                    revocation_reason
+                        .ok_or_else(|| JsonError::FieldMissing("revocationReason".to_owned()))?,
+                    platform_info
+                        .clone()
+                        .ok_or_else(|| JsonError::FieldMissing("platformInfoBlob".to_owned()))?,
+                ))),
+                "SIGNATURE_REVOKED" => Ok(Err(QuoteError::SignatureRevoked)),
+                "KEY_REVOKED" => Ok(Err(QuoteError::KeyRevoked)),
+                "SIGRL_VERSION_MISMATCH" => Ok(Err(QuoteError::SigrlVersionMismatch)),
+                "GROUP_OUT_OF_DATE" => Ok(Err(QuoteError::GroupOutOfDate(
                     pse_manifest_status.clone(),
                     platform_info
                         .clone()
                         .ok_or_else(|| JsonError::FieldMissing("platformInfoBlob".to_owned()))?,
-                ))
-            }
-            s => Err(QuoteError::Other(s.to_owned())),
-        };
+                ))),
+                "CONFIGURATION_NEEDED" => Ok(Err(QuoteError::ConfigurationNeeded(
+                    pse_manifest_status.clone(),
+                    platform_info
+                        .clone()
+                        .ok_or_else(|| JsonError::FieldMissing("platformInfoBlob".to_owned()))?,
+                ))),
+                "SW_HARDENING_NEEDED" => Ok(Err(QuoteError::SwHardeningNeeded(
+                    pse_manifest_status.clone(),
+                ))),
+                "CONFIGURATION_AND_SW_HARDENING_NEEDED" => {
+                    Ok(Err(QuoteError::ConfigurationAndSwHardeningNeeded(
+                        pse_manifest_status.clone(),
+                        platform_info.clone().ok_or_else(|| {
+                            JsonError::FieldMissing("platformInfoBlob".to_owned())
+                        })?,
+                    )))
+                }
+                s => Ok(Err(QuoteError::Other(s.to_owned()))),
+            })?;
 
         // Parse the quote body
-        let quote = {
-            let s: String = data
-                .remove("isvEnclaveQuoteBody")
-                .ok_or_else(|| JsonError::FieldMissing("isvEnclaveQuoteBody".to_owned()))?
-                .try_into()?;
-            Quote::from_base64(&s)?
-        };
+        let quote = data
+            .remove("isvEnclaveQuoteBody")
+            .map(TryInto::<String>::try_into)
+            .transpose()?
+            .map(|string_value| Quote::from_base64(&string_value))
+            .transpose()?
+            .ok_or_else(|| JsonError::FieldMissing("isvEnclaveQuoteBody".to_owned()))?;
 
         // PSW manifest hash
-        let pse_manifest_hash = match data.remove("pseManifestHash") {
-            Some(v) => {
-                let value: String = v.try_into()?;
-                Some(decode(&value).map_err(Error::PseManifest)?)
-            }
-            None => None,
-        };
+        let pse_manifest_hash = data
+            .remove("pseManifestHash")
+            .map(TryInto::<String>::try_into)
+            .transpose()?
+            .map(|value| hex::decode(&value).map_err(Error::PseManifest))
+            .transpose()?;
 
         // Nonce
-        let nonce = match data.remove("nonce") {
-            Some(v) => {
-                let value: String = v.try_into()?;
-                Some(Nonce::from_hex(&value).map_err(Error::Nonce)?)
-            }
-            None => None,
-        };
+        let nonce = data
+            .remove("nonce")
+            .map(TryInto::<String>::try_into)
+            .transpose()?
+            .map(|value| Nonce::from_hex(&value).map_err(Error::Nonce))
+            .transpose()?;
 
         // EPID pseudonym
-        let epid_pseudonym = match data.remove("epidPseudonym") {
-            Some(v) => {
-                let value: String = v.try_into()?;
-                Some(EpidPseudonym::from_base64(&value).map_err(Error::EpidPseudonym)?)
-            }
-            None => None,
-        };
+        let epid_pseudonym = data
+            .remove("epidPseudonym")
+            .map(TryInto::<String>::try_into)
+            .transpose()?
+            .map(|value| EpidPseudonym::from_base64(&value).map_err(Error::EpidPseudonym))
+            .transpose()?;
 
-        let advisory_url = match data.remove("advisoryURL") {
-            Some(v) => Some(v.try_into()?),
-            None => None,
-        };
+        let advisory_url = data
+            .remove("advisoryURL")
+            .map(TryInto::<String>::try_into)
+            .transpose()?;
 
-        let advisory_ids = if let Some(v) = data.remove("advisoryIDs") {
-            let values: Vec<Value> = v.try_into()?;
-            values
-                .into_iter()
-                .map(Value::try_into)
-                .collect::<Result<BTreeSet<String>, JsonError>>()?
-        } else {
-            BTreeSet::<String>::default()
-        };
+        let advisory_ids = data
+            .remove("advisoryIDs")
+            .map(TryInto::<Vec<Value>>::try_into)
+            .transpose()?
+            .map(|ids| {
+                ids.into_iter()
+                    .map(TryInto::<String>::try_into)
+                    .collect::<Result<BTreeSet<String>, JsonError>>()
+            })
+            .transpose()?
+            .unwrap_or_default();
 
         Ok(Self {
             id,

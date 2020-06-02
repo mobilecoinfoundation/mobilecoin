@@ -1,6 +1,11 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 //! IAS Quote Structure
+//!
+//! This is the "special" version of sgx_quote_t that's returned by IAS (it does not contain the
+//! signature_len unsigned or variable-length signature fields) but not actually provided anywhere
+//! in the SGX headers. We skip the byte representation, as it's never used during FFI, in favor of
+//! parsing it directly into the rusty types that sit above the FFI types.
 
 use base64::DecodeError;
 use core::convert::{TryFrom, TryInto};
