@@ -33,6 +33,7 @@ members = [
     "ledger/from-archive",
     "ledger/sync",
     "mobilecoind",
+    "mobilecoind-json",
     "mobilecoind/api",
     "peers",
     "peers/test-utils",

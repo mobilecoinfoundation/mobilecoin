@@ -1,0 +1,20 @@
+[package]
+name = "mobilecoind-json"
+version = "0.1.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[dependencies]
+grpcio = "0.5.1"
+rocket = { version = "0.4.4", default-features = false }
+rocket_contrib = { version = "0.4.4", default-features = false, features = ["json"] }
+hex = "0.4"
+mc-api = { path = "../api" }
+mc-common = { path = "../common", features = ["log"] }
+mc-util-grpc = { path = "../util/grpc" }
+mc-util-b58-payloads = { path = "../util/b58-payloads" }
+mc-mobilecoind-api = { path = "../mobilecoind/api" }
+protobuf = "2.12"
+serde = "1.0"
+serde_derive = "1.0"
+structopt = "0.3"
