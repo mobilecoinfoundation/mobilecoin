@@ -61,9 +61,9 @@ fn entropy(state: rocket::State<State>) -> Result<Json<JsonEntropyResponse>, Str
 
 #[derive(Deserialize, Default)]
 struct JsonMonitorRequest {
-    key: String,
-    start: u64,
-    number: u64,
+    entropy: String,
+    first_subaddress: u64,
+    num_subaddresses: u64,
 }
 
 #[derive(Serialize, Default)]
@@ -72,13 +72,13 @@ struct JsonMonitorResponse {
 }
 
 /// Creates a monitor. Data for the key and range is POSTed using the struct above.
-#[post("/create-monitor", format = "json", data = "<monitor>")]
+#[post("/monitors", format = "json", data = "<monitor>")]
 fn create_monitor(
     state: rocket::State<State>,
     monitor: Json<JsonMonitorRequest>,
 ) -> Result<Json<JsonMonitorResponse>, String> {
     let entropy =
-        hex::decode(&monitor.key).map_err(|err| format!("Failed to decode hex key: {}", err))?;
+        hex::decode(&monitor.entropy).map_err(|err| format!("Failed to decode hex key: {}", err))?;
 
     let mut req = mc_mobilecoind_api::GetAccountKeyRequest::new();
     req.set_entropy(entropy.to_vec());
@@ -92,8 +92,8 @@ fn create_monitor(
 
     let mut req = mc_mobilecoind_api::AddMonitorRequest::new();
     req.set_account_key(account_key);
-    req.set_first_subaddress(monitor.start);
-    req.set_num_subaddresses(monitor.number);
+    req.set_first_subaddress(monitor.first_subaddress);
+    req.set_num_subaddresses(monitor.num_subaddresses);
     req.set_first_block(0);
 
     let monitor_response = state
@@ -107,52 +107,93 @@ fn create_monitor(
 }
 
 #[derive(Serialize, Default)]
+struct JsonMonitorStatusResponse {
+    first_subaddress: u64,
+    num_subaddresses: u64,
+    first_block: u64,
+    next_block: u64,
+}
+
+/// Get the current status of a created monitor
+#[get("/monitors/<monitor_hex>")]
+fn monitor_status(
+    state: rocket::State<State>,
+    monitor_hex: String,
+) -> Result<Json<JsonMonitorStatusResponse>, String> {
+    let monitor_id =
+        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
+
+    let mut req = mc_mobilecoind_api::GetMonitorStatusRequest::new();
+    req.set_monitor_id(monitor_id);
+
+    let resp = state
+        .mobilecoind_api_client
+        .get_monitor_status(&req)
+        .map_err(|err| format!("Failed getting monitor status: {}", err))?;
+
+    let status = resp.get_status();
+
+    Ok(Json(JsonMonitorStatusResponse {
+        first_subaddress: status.get_first_subaddress(),
+        num_subaddresses: status.get_num_subaddresses(),
+        first_block: status.get_first_block(),
+        next_block: status.get_next_block(),
+    }))
+}
+
+#[derive(Serialize, Default)]
 struct JsonBalanceResponse {
-    balance: u64,
+    balance: String,
 }
 
 /// Balance check using a created monitor and subaddress index
-#[get("/monitors/<monitor_hex>/balance/<index>")]
+#[get("/monitors/<monitor_hex>/balance/<subaddress_index>")]
 fn balance(
     state: rocket::State<State>,
     monitor_hex: String,
-    index: u64,
+    subaddress_index: u64,
 ) -> Result<Json<JsonBalanceResponse>, String> {
     let monitor_id =
         hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
 
     let mut req = mc_mobilecoind_api::GetBalanceRequest::new();
     req.set_monitor_id(monitor_id);
-    req.set_subaddress_index(index);
+    req.set_subaddress_index(subaddress_index);
 
     let resp = state
         .mobilecoind_api_client
         .get_balance(&req)
         .map_err(|err| format!("Failed getting balance: {}", err))?;
     let balance = resp.get_balance();
-    Ok(Json(JsonBalanceResponse { balance }))
+    Ok(Json(JsonBalanceResponse { balance: balance.to_string() }))
+}
+
+#[derive(Deserialize)]
+struct JsonRequestCodeRequest {
+    value: Option<u64>,
+    memo: Option<String>,
 }
 
 #[derive(Serialize, Default)]
-struct JsonRequestResponse {
+struct JsonRequestCodeResponse {
     request_code: String,
 }
 
-/// Generates a request code without a balance or memo
-/// TODO: also add a POST that includes balance and memo
-#[get("/monitors/<monitor_hex>/request-code/<index>")]
+/// Generates a request code with an optional value and memo
+#[post("/monitors/<monitor_hex>/request-code/<subaddress_index>", format="json", data="<extra>")]
 fn request_code(
     state: rocket::State<State>,
     monitor_hex: String,
-    index: u64,
-) -> Result<Json<JsonRequestResponse>, String> {
+    subaddress_index: u64,
+    extra: Json<JsonRequestCodeRequest>,
+) -> Result<Json<JsonRequestCodeResponse>, String> {
     let monitor_id =
         hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
 
     // Get our public address.
     let mut req = mc_mobilecoind_api::GetPublicAddressRequest::new();
     req.set_monitor_id(monitor_id);
-    req.set_subaddress_index(index);
+    req.set_subaddress_index(subaddress_index);
 
     let resp = state
         .mobilecoind_api_client
@@ -164,12 +205,19 @@ fn request_code(
     // Generate b58 code
     let mut req = mc_mobilecoind_api::GetRequestCodeRequest::new();
     req.set_receiver(public_address);
+    if let Some(value) = extra.value {
+        req.set_value(value);
+    }
+    if let Some(memo) = extra.memo.clone() {
+        req.set_memo(memo);
+    }
+
     let resp = state
         .mobilecoind_api_client
         .get_request_code(&req)
         .map_err(|err| format!("Failed getting request code: {}", err))?;
 
-    Ok(Json(JsonRequestResponse {
+    Ok(Json(JsonRequestCodeResponse {
         request_code: String::from(resp.get_b58_code()),
     }))
 }
@@ -187,14 +235,14 @@ struct JsonTransferResponse {
 
 /// Performs a transfer from a monitor and subaddress. The target and amount are in the POST data.
 #[post(
-    "/monitors/<monitor_hex>/transfer/<index>",
+    "/monitors/<monitor_hex>/transfer/<subaddress_index>",
     format = "json",
     data = "<transfer>"
 )]
 fn transfer(
     state: rocket::State<State>,
     monitor_hex: String,
-    index: u64,
+    subaddress_index: u64,
     transfer: Json<JsonTransferRequest>,
 ) -> Result<Json<JsonTransferResponse>, String> {
     let monitor_id =
@@ -214,7 +262,7 @@ fn transfer(
 
     let mut req = mc_mobilecoind_api::SendPaymentRequest::new();
     req.set_sender_monitor_id(monitor_id);
-    req.set_sender_subaddress(index);
+    req.set_sender_subaddress(subaddress_index);
     req.set_outlay_list(RepeatedField::from_vec(vec![outlay]));
 
     let resp = state
