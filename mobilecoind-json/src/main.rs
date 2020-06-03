@@ -77,8 +77,8 @@ fn create_monitor(
     state: rocket::State<State>,
     monitor: Json<JsonMonitorRequest>,
 ) -> Result<Json<JsonMonitorResponse>, String> {
-    let entropy =
-        hex::decode(&monitor.entropy).map_err(|err| format!("Failed to decode hex key: {}", err))?;
+    let entropy = hex::decode(&monitor.entropy)
+        .map_err(|err| format!("Failed to decode hex key: {}", err))?;
 
     let mut req = mc_mobilecoind_api::GetAccountKeyRequest::new();
     req.set_entropy(entropy.to_vec());
@@ -147,7 +147,7 @@ struct JsonBalanceResponse {
 }
 
 /// Balance check using a created monitor and subaddress index
-#[get("/monitors/<monitor_hex>/balance/<subaddress_index>")]
+#[get("/monitors/<monitor_hex>/<subaddress_index>/balance")]
 fn balance(
     state: rocket::State<State>,
     monitor_hex: String,
@@ -165,7 +165,9 @@ fn balance(
         .get_balance(&req)
         .map_err(|err| format!("Failed getting balance: {}", err))?;
     let balance = resp.get_balance();
-    Ok(Json(JsonBalanceResponse { balance: balance.to_string() }))
+    Ok(Json(JsonBalanceResponse {
+        balance: balance.to_string(),
+    }))
 }
 
 #[derive(Deserialize)]
@@ -180,7 +182,11 @@ struct JsonRequestCodeResponse {
 }
 
 /// Generates a request code with an optional value and memo
-#[post("/monitors/<monitor_hex>/request-code/<subaddress_index>", format="json", data="<extra>")]
+#[post(
+    "/monitors/<monitor_hex>/<subaddress_index>/request-code",
+    format = "json",
+    data = "<extra>"
+)]
 fn request_code(
     state: rocket::State<State>,
     monitor_hex: String,
@@ -235,7 +241,7 @@ struct JsonTransferResponse {
 
 /// Performs a transfer from a monitor and subaddress. The target and amount are in the POST data.
 #[post(
-    "/monitors/<monitor_hex>/transfer/<subaddress_index>",
+    "/monitors/<monitor_hex>/<subaddress_index>/transfer",
     format = "json",
     data = "<transfer>"
 )]
