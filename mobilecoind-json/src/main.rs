@@ -122,7 +122,7 @@ fn balance(
         hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
 
     let mut req = mc_mobilecoind_api::GetBalanceRequest::new();
-    req.set_monitor_id(monitor_id.clone());
+    req.set_monitor_id(monitor_id);
     req.set_subaddress_index(index);
 
     let resp = state
@@ -139,7 +139,7 @@ struct JsonRequestResponse {
 }
 
 /// Generates a request code without a balance or memo
-/// TODO: also add a POST that includes balance and memo 
+/// TODO: also add a POST that includes balance and memo
 #[get("/monitors/<monitor_hex>/request-code/<index>")]
 fn request_code(
     state: rocket::State<State>,
@@ -151,7 +151,7 @@ fn request_code(
 
     // Get our public address.
     let mut req = mc_mobilecoind_api::GetPublicAddressRequest::new();
-    req.set_monitor_id(monitor_id.clone());
+    req.set_monitor_id(monitor_id);
     req.set_subaddress_index(index);
 
     let resp = state
@@ -223,10 +223,10 @@ fn transfer(
         .map_err(|err| format!("Failed to send payment: {}", err))?;
 
     let receipt = resp.get_sender_tx_receipt();
-    return Ok(Json(JsonTransferResponse {
+    Ok(Json(JsonTransferResponse {
         key_image: hex::encode(receipt.get_key_image_list()[0].get_data()),
         tombstone: receipt.get_tombstone(),
-    }));
+    }))
 }
 
 #[derive(Serialize, Default)]
@@ -308,7 +308,14 @@ fn main() {
     rocket::custom(rocket_config)
         .mount(
             "/",
-            routes![entropy, create_monitor, balance, request_code, transfer, status],
+            routes![
+                entropy,
+                create_monitor,
+                balance,
+                request_code,
+                transfer,
+                status
+            ],
         )
         .manage(State {
             mobilecoind_api_client,
