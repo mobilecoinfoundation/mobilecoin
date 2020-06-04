@@ -228,12 +228,37 @@ fn request_code(
     }))
 }
 
+#[derive(Serialize, Default)]
+struct JsonReadRequestResponse {
+    value: String,
+    memo: String,
+}
+
+/// Retrieves the metadata in a request code
+#[get("/read-request/<request_code>")]
+fn read_request(
+    state: rocket::State<State>,
+    request_code: String,
+) -> Result<Json<JsonReadRequestResponse>, String> {
+    let mut req = mc_mobilecoind_api::ReadRequestCodeRequest::new();
+    req.set_b58_code(request_code.clone());
+    let resp = state
+        .mobilecoind_api_client
+        .read_request_code(&req)
+        .map_err(|err| format!("Failed reading request code: {}", err))?;
+
+    Ok(Json(JsonReadRequestResponse {
+        value: resp.get_value().to_string(),
+        memo: resp.get_memo().to_string(),
+    }))
+}
+
 #[derive(Deserialize)]
 struct JsonTransferRequest {
     request_code: String,
     amount: u64,
 }
-#[derive(Serialize)]
+#[derive(Deserialize, Serialize)]
 struct JsonTransferResponse {
     key_image: String,
     tombstone: u64,
@@ -289,22 +314,21 @@ struct JsonStatusResponse {
 }
 
 /// Checks the status of a transfer given a key image and tombstone block
-#[get("/status/<key_hex>/<tombstone>")]
+#[post("/status", format="json", data="<receipt>")]
 fn status(
     state: rocket::State<State>,
-    key_hex: String,
-    tombstone: u64,
+    receipt: Json<JsonTransferResponse>,
 ) -> Result<Json<JsonStatusResponse>, String> {
-    let mut receipt = mc_mobilecoind_api::SenderTxReceipt::new();
+    let mut sender_receipt = mc_mobilecoind_api::SenderTxReceipt::new();
     let mut key_image = KeyImage::new();
     key_image.set_data(
-        hex::decode(key_hex).map_err(|err| format!("Failed to decode key image hex: {}", err))?,
+        hex::decode(&receipt.key_image).map_err(|err| format!("Failed to decode key image hex: {}", err))?,
     );
-    receipt.set_key_image_list(RepeatedField::from_vec(vec![key_image]));
-    receipt.set_tombstone(tombstone);
+    sender_receipt.set_key_image_list(RepeatedField::from_vec(vec![key_image]));
+    sender_receipt.set_tombstone(receipt.tombstone);
 
     let mut req = mc_mobilecoind_api::GetTxStatusAsSenderRequest::new();
-    req.set_receipt(receipt);
+    req.set_receipt(sender_receipt);
 
     let resp = state
         .mobilecoind_api_client
