@@ -314,7 +314,7 @@ struct JsonStatusResponse {
 }
 
 /// Checks the status of a transfer given a key image and tombstone block
-#[post("/status", format="json", data="<receipt>")]
+#[post("/check-transfer-status", format="json", data="<receipt>")]
 fn status(
     state: rocket::State<State>,
     receipt: Json<JsonTransferResponse>,
