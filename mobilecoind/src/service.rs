@@ -359,7 +359,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
 
         let mut response = mc_mobilecoind_api::ReadRequestCodeResponse::new();
         response.set_receiver(mc_mobilecoind_api::PublicAddress::from(
-            &PublicAddress::from(&request_payload),
+            &(PublicAddress::try_from(&request_payload)
+                .map_err(|err| rpc_internal_error("PublicAddress.try_from", err, &self.logger))?),
         ));
         response.set_value(request_payload.value);
         response.set_memo(request_payload.memo);

@@ -3,7 +3,7 @@
 use crate::error::Error;
 use core::{convert::TryFrom, fmt};
 use crc::crc32;
-use mc_crypto_keys::RistrettoPublic;
+use mc_crypto_keys::{KeyError, RistrettoPublic};
 use mc_transaction_core::account_keys::{AccountKey, PublicAddress};
 use mc_transaction_std::identity::RootIdentity;
 
@@ -250,16 +250,17 @@ impl RequestPayload {
 }
 
 /// Decodes a RequestPayload to an account_keys::PublicAddress
-impl From<&RequestPayload> for PublicAddress {
-    fn from(src: &RequestPayload) -> Self {
-        let spend_key = RistrettoPublic::try_from(&src.spend_public_key).unwrap();
-        let view_key = RistrettoPublic::try_from(&src.view_public_key).unwrap();
+impl TryFrom<&RequestPayload> for PublicAddress {
+    type Error = KeyError;
+    fn try_from(src: &RequestPayload) -> Result<Self, KeyError> {
+        let spend_key = RistrettoPublic::try_from(&src.spend_public_key)?;
+        let view_key = RistrettoPublic::try_from(&src.view_public_key)?;
 
-        if src.version == 0 {
+        Ok(if src.version == 0 {
             PublicAddress::new(&spend_key, &view_key)
         } else {
             PublicAddress::new_with_fog(&spend_key, &view_key, &src.fog_url.clone())
-        }
+        })
     }
 }
 
