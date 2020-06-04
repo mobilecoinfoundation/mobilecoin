@@ -106,7 +106,7 @@ pub struct ThickClient {
     /// The gRPC API client we will use for legacy transaction submission.
     consensus_client_api_client: ConsensusClientApiClient,
     /// The expected node enclave measurement value.
-    expected_measurement: Measurement,
+    expected_measurements: Vec<Measurement>,
     /// The AKE state machine object, if one is available.
     enclave_connection: Option<Ready<Aes256Gcm>>,
 }
@@ -115,7 +115,7 @@ impl ThickClient {
     /// Create a new attested connection to the given consensus node.
     pub fn new(
         uri: ClientUri,
-        expected_measurement: impl Into<Measurement>,
+        expected_measurements: Vec<Measurement>,
         env: Arc<Environment>,
         logger: Logger,
     ) -> Result<Self> {
@@ -133,7 +133,7 @@ impl ThickClient {
             blockchain_api_client,
             consensus_client_api_client,
             attested_api_client,
-            expected_measurement: expected_measurement.into(),
+            expected_measurements,
             enclave_connection: None,
         })
     }
@@ -163,7 +163,7 @@ impl AttestedConnection for ThickClient {
 
         let initiator = Start::new(
             self.uri.responder_id()?.to_string(),
-            self.expected_measurement,
+            self.expected_measurements.clone(),
             MC_NODE_PRODUCT_ID,
             MC_SECURITY_VERSION,
             mc_attest_core::DEBUG_ENCLAVE,

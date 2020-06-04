@@ -17,7 +17,7 @@ pub struct Start {
     pub(crate) responder_id: String,
 
     /// The measurement we expect from authenticated counterparties
-    pub(crate) expected_measurement: Measurement,
+    pub(crate) expected_measurements: Vec<Measurement>,
 
     /// The product ID remote enclaves must be running
     pub(crate) expected_product_id: u16,
@@ -37,14 +37,14 @@ impl Start {
     /// details about how to authenticate a participant.
     pub fn new(
         responder_id: String,
-        expected_measurement: impl Into<Measurement>,
+        expected_measurements: Vec<Measurement>,
         expected_product_id: u16,
         expected_minimum_svn: u16,
         allow_debug: bool,
     ) -> Self {
         Self {
             responder_id,
-            expected_measurement: expected_measurement.into(),
+            expected_measurements,
             expected_product_id,
             expected_minimum_svn,
             allow_debug,
@@ -66,7 +66,7 @@ where
     /// The handshake state
     pub(crate) state: HandshakeState<KexAlgo, Cipher, DigestType>,
     /// The enclave measurement we expect in the AuthResponse
-    pub(crate) expected_measurement: Measurement,
+    pub(crate) expected_measurements: Vec<Measurement>,
     /// The product ID remote enclaves must be running
     pub(crate) expected_product_id: u16,
     /// The minimum security version remote enclaves must be running
@@ -94,7 +94,7 @@ where
 {
     pub(crate) fn new(
         state: HandshakeState<KexAlgo, Cipher, DigestType>,
-        expected_measurement: Measurement,
+        expected_measurements: Vec<Measurement>,
         expected_product_id: u16,
         expected_minimum_svn: u16,
         allow_debug: bool,
@@ -102,7 +102,7 @@ where
     ) -> Self {
         Self {
             state,
-            expected_measurement,
+            expected_measurements,
             expected_product_id,
             expected_minimum_svn,
             allow_debug,

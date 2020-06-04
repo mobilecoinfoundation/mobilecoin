@@ -294,7 +294,7 @@ impl Quote {
         expected_gid: Option<EpidGroupId>,
         expected_type: QuoteSignType,
         allow_debug: bool,
-        expected_measurement: &Measurement,
+        expected_measurements: &[Measurement],
         expected_product_id: ProductId,
         minimum_security_version: SecurityVersion,
         expected_data: &ReportDataMask,
@@ -315,7 +315,7 @@ impl Quote {
         // Check report body
         self.report_body()?.verify(
             allow_debug,
-            expected_measurement,
+            expected_measurements,
             expected_product_id,
             minimum_security_version,
             expected_data,

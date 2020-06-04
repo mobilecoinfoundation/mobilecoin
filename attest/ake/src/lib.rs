@@ -89,7 +89,7 @@ mod test {
 
         let mut initiator = Start::new(
             RESPONDER_ID_STR.into(),
-            mr_signer,
+            vec![mr_signer.into()],
             PRODUCT_ID,
             MIN_SVN,
             true,
@@ -97,7 +97,7 @@ mod test {
 
         let mut responder = Start::new(
             RESPONDER_ID_STR.into(),
-            mr_signer,
+            vec![mr_signer.into()],
             PRODUCT_ID,
             MIN_SVN,
             true,

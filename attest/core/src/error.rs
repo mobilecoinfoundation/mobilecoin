@@ -11,7 +11,7 @@ use crate::{
         update_info::UpdateInfo,
     },
 };
-use alloc::string::String;
+use alloc::{string::String, vec::Vec};
 use binascii::ConvertError;
 use bitflags::bitflags;
 use core::{
@@ -311,10 +311,10 @@ pub enum ReportBodyVerifyError {
     #[fail(display = "The enclave's security version was not at least {}", _0)]
     SecurityVersion(u16),
     #[fail(
-        display = "Measurement error, expected {}, got MRENCLAVE {}, and MRSIGNER {}",
+        display = "Measurement error, expected one of {:?}, got MRENCLAVE {}, and MRSIGNER {}",
         _0, _1, _2
     )]
-    MrMismatch(Measurement, MrEnclave, MrSigner),
+    MrMismatch(Vec<Measurement>, MrEnclave, MrSigner),
     #[fail(display = "Report data mismatch")]
     DataMismatch,
 }

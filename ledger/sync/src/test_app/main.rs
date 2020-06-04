@@ -93,10 +93,10 @@ fn main() {
             .build(),
     );
 
-    let expected_measurement = Measurement::MrSigner(
+    let expected_measurements = [Measurement::MrSigner(
         MrSigner::try_from(&sigstruct().mrsigner()[..])
             .expect("Could not read consensus MRSIGNER value"),
-    );
+    )];
 
     let peers: Vec<ThickClient> = vec!["1", "2", "3", "4"]
         .into_iter()
@@ -104,7 +104,7 @@ fn main() {
             ThickClient::new(
                 ClientUri::from_str(&format!("mc://node{}.{}.mobilecoin.com/", node_id, NETWORK))
                     .expect("failed parsing URI"),
-                expected_measurement,
+                expected_measurements.to_vec(),
                 grpc_env.clone(),
                 logger.clone(),
             )

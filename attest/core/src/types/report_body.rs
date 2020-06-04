@@ -143,7 +143,7 @@ impl ReportBody {
     pub fn verify(
         &self,
         allow_debug: bool,
-        expected_measurement: &Measurement,
+        expected_measurements: &[Measurement],
         expected_product_id: ProductId,
         minimum_security_version: SecurityVersion,
         expected_data: &ReportDataMask,
@@ -170,12 +170,16 @@ impl ReportBody {
             ));
         }
 
-        // Check mr_signer/mr_enclave
+        // Check mr_signer/mr_enclave against acceptable measurements.
+        // Any match of expected mr_signers or mr_enclaves passes verification.
         let mr_signer = self.mr_signer();
         let mr_enclave = self.mr_enclave();
-        if expected_measurement != &mr_signer && expected_measurement != &mr_enclave {
+        if !expected_measurements
+            .iter()
+            .any(|m| m == &mr_signer || m == &mr_enclave)
+        {
             return Err(ReportBodyVerifyError::MrMismatch(
-                *expected_measurement,
+                expected_measurements.to_vec(),
                 mr_enclave,
                 mr_signer,
             ));

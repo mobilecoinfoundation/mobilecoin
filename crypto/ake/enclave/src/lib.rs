@@ -12,7 +12,7 @@ use mc_attest_ake::{
     Transition,
 };
 use mc_attest_core::{
-    IasNonce, Nonce, NonceError, Quote, QuoteNonce, Report, ReportData, TargetInfo,
+    IasNonce, Measurement, Nonce, NonceError, Quote, QuoteNonce, Report, ReportData, TargetInfo,
     VerificationReport, VerificationReportData, VerifyError, DEBUG_ENCLAVE, IAS_VERSION,
 };
 use mc_attest_enclave_api::{
@@ -166,9 +166,10 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         let mut csprng = McRng::default();
         // TODO: Cache expected values rather than creating a new report each time.
         let report_body = Report::new(None, None)?.body();
+        let expected_measurements: [Measurement; 1] = [report_body.mr_enclave().into()];
         let initiator = Start::new(
             peer_id.to_string(),
-            report_body.mr_enclave(),
+            expected_measurements.to_vec(),
             report_body.product_id(),
             report_body.security_version(),
             DEBUG_ENCLAVE,
@@ -483,9 +484,10 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         let mut csprng = McRng::default();
         // TODO: Cache expected values rather than creating a new report each time.
         let report_body = Report::new(None, None)?.body();
+        let expected_measurements: [Measurement; 1] = [report_body.mr_enclave().into()];
         let responder = Start::new(
             self_id.to_string(),
-            report_body.mr_enclave(),
+            expected_measurements.to_vec(),
             report_body.product_id(),
             report_body.security_version(),
             DEBUG_ENCLAVE,
