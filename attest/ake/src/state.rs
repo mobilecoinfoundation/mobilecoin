@@ -37,14 +37,14 @@ impl Start {
     /// details about how to authenticate a participant.
     pub fn new(
         responder_id: String,
-        expected_measurements: &[Measurement],
+        expected_measurements: Vec<Measurement>,
         expected_product_id: u16,
         expected_minimum_svn: u16,
         allow_debug: bool,
     ) -> Self {
         Self {
             responder_id,
-            expected_measurements: expected_measurements.to_vec(),
+            expected_measurements: expected_measurements,
             expected_product_id,
             expected_minimum_svn,
             allow_debug,
@@ -94,7 +94,7 @@ where
 {
     pub(crate) fn new(
         state: HandshakeState<KexAlgo, Cipher, DigestType>,
-        expected_measurements: &[Measurement],
+        expected_measurements: Vec<Measurement>,
         expected_product_id: u16,
         expected_minimum_svn: u16,
         allow_debug: bool,
@@ -102,7 +102,7 @@ where
     ) -> Self {
         Self {
             state,
-            expected_measurements: expected_measurements.to_vec(),
+            expected_measurements: expected_measurements,
             expected_product_id,
             expected_minimum_svn,
             allow_debug,

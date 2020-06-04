@@ -115,7 +115,7 @@ impl ThickClient {
     /// Create a new attested connection to the given consensus node.
     pub fn new(
         uri: ClientUri,
-        expected_measurements: &[Measurement],
+        expected_measurements: Vec<Measurement>,
         env: Arc<Environment>,
         logger: Logger,
     ) -> Result<Self> {
@@ -133,7 +133,7 @@ impl ThickClient {
             blockchain_api_client,
             consensus_client_api_client,
             attested_api_client,
-            expected_measurements: expected_measurements.to_vec(),
+            expected_measurements: expected_measurements,
             enclave_connection: None,
         })
     }
@@ -163,7 +163,7 @@ impl AttestedConnection for ThickClient {
 
         let initiator = Start::new(
             self.uri.responder_id()?.to_string(),
-            &self.expected_measurements.clone(),
+            self.expected_measurements.clone(),
             MC_NODE_PRODUCT_ID,
             MC_SECURITY_VERSION,
             mc_attest_core::DEBUG_ENCLAVE,

@@ -24,7 +24,7 @@ use rand_core::{CryptoRng, RngCore};
 /// Helper function to create the output for an initiate
 fn parse_handshake_output<Handshake, KexAlgo, Cipher, DigestType>(
     output: HandshakeOutput<KexAlgo, Cipher, DigestType>,
-    expected_measurements: &[Measurement],
+    expected_measurements: Vec<Measurement>,
     expected_product_id: u16,
     expected_minimum_svn: u16,
     allow_debug: bool,
@@ -99,7 +99,7 @@ where
             handshake_state
                 .write_message(csprng, &[])
                 .map_err(Error::HandshakeWrite)?,
-            &self.expected_measurements,
+            self.expected_measurements,
             self.expected_product_id,
             self.expected_minimum_svn,
             self.allow_debug,
@@ -153,7 +153,7 @@ where
             handshake_state
                 .write_message(csprng, &serialized_report)
                 .map_err(Error::HandshakeWrite)?,
-            &self.expected_measurements,
+            self.expected_measurements,
             self.expected_product_id,
             self.expected_minimum_svn,
             self.allow_debug,

@@ -104,7 +104,7 @@ fn main() {
             ThickClient::new(
                 ClientUri::from_str(&format!("mc://node{}.{}.mobilecoin.com/", node_id, NETWORK))
                     .expect("failed parsing URI"),
-                &expected_measurements,
+                expected_measurements.to_vec(),
                 grpc_env.clone(),
                 logger.clone(),
             )
