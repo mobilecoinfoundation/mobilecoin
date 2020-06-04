@@ -44,7 +44,7 @@ impl Start {
     ) -> Self {
         Self {
             responder_id,
-            expected_measurements: expected_measurements,
+            expected_measurements,
             expected_product_id,
             expected_minimum_svn,
             allow_debug,
@@ -102,7 +102,7 @@ where
     ) -> Self {
         Self {
             state,
-            expected_measurements: expected_measurements,
+            expected_measurements,
             expected_product_id,
             expected_minimum_svn,
             allow_debug,

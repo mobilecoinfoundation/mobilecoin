@@ -133,7 +133,7 @@ impl ThickClient {
             blockchain_api_client,
             consensus_client_api_client,
             attested_api_client,
-            expected_measurements: expected_measurements,
+            expected_measurements,
             enclave_connection: None,
         })
     }
