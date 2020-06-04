@@ -193,7 +193,7 @@ spec:
             - name: "RUST_BACKTRACE"
               value: "1"
             - name: "RUST_LOG"
-              value: "debug,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_core=error,rusto_signature=error,h2=error,rocket=warn,<unknown>=warn"
+              value: "debug,rustls=warn,hyper=warn,tokio_reactor=warn,mio=warn,want=warn,reqwest=warn,rusoto_signature=warn,rusoto_core=error,h2=error,rocket=warn,<unknown>=warn"
             - name: "SGX_MODE"
               value: "HW"
             - name: "IAS_MODE"
