@@ -260,7 +260,7 @@ struct JsonTransferRequest {
 }
 #[derive(Deserialize, Serialize)]
 struct JsonTransferResponse {
-    key_image: String,
+    key_images: Vec<String>,
     tombstone: u64,
 }
 
@@ -303,7 +303,11 @@ fn transfer(
 
     let receipt = resp.get_sender_tx_receipt();
     Ok(Json(JsonTransferResponse {
-        key_image: hex::encode(receipt.get_key_image_list()[0].get_data()),
+        key_images: receipt
+            .get_key_image_list()
+            .iter()
+            .map(|key_image| hex::encode(key_image.get_data()))
+            .collect(),
         tombstone: receipt.get_tombstone(),
     }))
 }
@@ -314,17 +318,20 @@ struct JsonStatusResponse {
 }
 
 /// Checks the status of a transfer given a key image and tombstone block
-#[post("/check-transfer-status", format="json", data="<receipt>")]
+#[post("/check-transfer-status", format = "json", data = "<receipt>")]
 fn status(
     state: rocket::State<State>,
     receipt: Json<JsonTransferResponse>,
 ) -> Result<Json<JsonStatusResponse>, String> {
     let mut sender_receipt = mc_mobilecoind_api::SenderTxReceipt::new();
-    let mut key_image = KeyImage::new();
-    key_image.set_data(
-        hex::decode(&receipt.key_image).map_err(|err| format!("Failed to decode key image hex: {}", err))?,
-    );
-    sender_receipt.set_key_image_list(RepeatedField::from_vec(vec![key_image]));
+    let mut key_images = Vec::new();
+    for key_image_hex in &receipt.key_images {
+        key_images.push(KeyImage::from(
+            hex::decode(&key_image_hex).map_err(|err| format!("{}", err))?,
+        ))
+    }
+
+    sender_receipt.set_key_image_list(RepeatedField::from_vec(key_images));
     sender_receipt.set_tombstone(receipt.tombstone);
 
     let mut req = mc_mobilecoind_api::GetTxStatusAsSenderRequest::new();

@@ -740,6 +740,14 @@ pub fn block_num_to_s3block_path(block_index: mc_transaction_core::BlockIndex) -
     path
 }
 
+impl From<Vec<u8>> for external::KeyImage {
+    fn from(src: Vec<u8>) -> Self {
+        let mut key_image = external::KeyImage::new();
+        key_image.set_data(src);
+        key_image
+    }
+}
+
 #[cfg(test)]
 mod conversion_tests {
     use super::*;
