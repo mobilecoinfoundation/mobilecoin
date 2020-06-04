@@ -389,8 +389,10 @@ fn main() {
             routes![
                 entropy,
                 create_monitor,
+                monitor_status,
                 balance,
                 request_code,
+                read_request,
                 transfer,
                 status
             ],

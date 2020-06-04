@@ -27,33 +27,46 @@ $ curl localhost:9090/entropy
 ```
 #### Add a monitor for a key over a range of subaddress indices
 ```
-$ curl localhost:9090/create-monitor -d '{"key": "706db549844bc7b5c8328368d4b8276e9aa03a26ac02474d54aa99b7c3369e2e", "start": 0, "number": 10}' -X POST -H 'Content-Type: application/json'
+$ curl localhost:9090/monitors -d '{"entropy": "706db549844bc7b5c8328368d4b8276e9aa03a26ac02474d54aa99b7c3369e2e", "first_subaddress": 0, "num_subaddresses": 10}' -X POST -H 'Content-Type: application/json'
 {"monitor_id":"fca4ffa1a1b1faf8ad775d0cf020426ba7f161720403a76126bc8e40550d9872"}
 ```
+
+#### Get the status of an existing monitor
+```
+$ curl localhost:9090/monitors/fca4ffa1a1b1faf8ad775d0cf020426ba7f161720403a76126bc8e40550d9872
+{"first_subaddress":0,"num_subaddresses":10,"first_block":0,"next_block":2068}
+```
+
 #### Check the balance for a monitor and subaddress index
 ```
-$ curl localhost:9090/monitors/fca4ffa1a1b1faf8ad775d0cf020426ba7f161720403a76126bc8e40550d9872/balance/0
+$ curl localhost:9090/monitors/fca4ffa1a1b1faf8ad775d0cf020426ba7f161720403a76126bc8e40550d9872/0/balance
 {"balance":199999999999990}
 ```
 #### Generate a request code for a monitor and subaddress
 ```
-$ curl localhost:9090/monitors/fca4ffa1a1b1faf8ad775d0cf020426ba7f161720403a76126bc8e40550d9872/request-code/0
-{"request_code":"2AgApbiBLx25Rjr771KHEfxoN4CnHbQ642DWubc1uSrJj29P2uuHXPWgjPZyxo6yTBhkjksUxQVyrQmre2eAcoQbtMYvqUHPhb9CBm8fBg7fY3"}
+$ curl localhost:9090/monitors/fca4ffa1a1b1faf8ad775d0cf020426ba7f161720403a76126bc8e40550d9872/0/request-code -X POST -d '{"value": 10, "memo": "Please pay me"}' -H 'Content-Type: application/json'
+{"request_code":"HUGpTreNKe4ziGAwDNYeW1iayWJgZ4DgiYRk9fw8E7f21PXQRUt4kbFsWBxzcJj12K6atUMuAyRNnwCybw5oJcm6xYXazdZzx4Tc5QuKdFdH2XSuUYM8pgQ1jq2ZBBi"}
 ```
 
 ```
-$ curl localhost:9090/monitors/fca4ffa1a1b1faf8ad775d0cf020426ba7f161720403a76126bc8e40550d9872/request-code/1
+$ curl localhost:9090/monitors/fca4ffa1a1b1faf8ad775d0cf020426ba7f161720403a76126bc8e40550d9872/1/request-code -X POST -d '{}' -H 'Content-Type: application/json'
 {"request_code":"2dmFbXtoY78h6K5xsK1NyTHmVGk6oiqBaEYGvJeSLFsCxkL4Ed1vjxEjtwg65QWR8nBdyXnwjyFo6rHEiHmFcsFysjapemAgxWyTda9FVsSFEF"}
+```
+
+#### Get the additional information in a request code
+```
+$ curl localhost:9090/read-request/HUGpTreNKe4ziGAwDNYeW1iayWJgZ4DgiYRk9fw8E7f21PXQRUt4kbFsWBxzcJj12K6atUMuAyRNnwCybw5oJcm6xYXazdZzx4Tc5QuKdFdH2XSuUYM8pgQ1jq2ZBBi
+{"value":"10","memo":"Please pay me"}
 ```
 
 #### Transfer money from a monitor/subaddress to a request code
 ```
-$ curl localhost:9090//monitors/fca4ffa1a1b1faf8ad775d0cf020426ba7f161720403a76126bc8e40550d9872/transfer/0 -d '{"request_code": "2dmFbXtoY78h6K5xsK1NyTHmVGk6oiqBaEYGvJeSLFsCxkL4Ed1vjxEjtwg65QWR8nBdyXnwjyFo6rHEiHmFcsFysjapemAgxWyTda9FVsSFEF", "amount": 12345}' -X POST -H 'Content-Type: application/json'
-THmVGk6oiqBaEYGvJeSLFsCxkL4Ed1vjxEjtwg65QWR8nBdyXnwjyFo6rHEiHmFcsFysjapemAgxWyTda9FVsSFEF", "amount": 12345}' -X POST -H 'Content-Type: application/json'
-{"key_image":"f8b33cbe8832e9c29bdaef62378c4c1a8590076c2f585069623b1f49e5eaf73f","tombstone":2115}
+$ curl localhost:9090//monitors/fca4ffa1a1b1faf8ad775d0cf020426ba7f161720403a76126bc8e40550d9872/0/transfer -d '{"request_code": "2dmFbXtoY78h6K5xsK1NyTHmVGk6oiqBaEYGvJeSLFsCxkL4Ed1vjxEjtwg65QWR8nBdyXnwjyFo6rHEiHmFcsFysjapemAgxWyTda9FVsSFEF", "amount": 12345}' -X POST -H 'Content-Type: application/json'
+{"key_image":"1e9ed007fd05b8b2830af652e91be042bbff6d013eb6d5101001e83758a0c94d","tombstone":2118}
 ```
 #### Check the status of a transfer with a key image and tombstone block
+The return value from `transfer` can be passed directly directly to `get-transfer-status`
 ```
-$ curl localhost:9090/status/f8b33cbe8832e9c29bdaef62378c4c1a8590076c2f585069623b1f49e5eaf73f/2115
+$ curl localhost:9090/check-transfer-status -d '{"key_image":"1e9ed007fd05b8b2830af652e91be042bbff6d013eb6d5101001e83758a0c94d","tombstone":2118}' -X POST -H 'Content-Type: application/json'
 {"status":"verified"}
 ```
