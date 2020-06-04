@@ -3424,6 +3424,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "mobilecoind-json"
+version = "0.1.0"
+dependencies = [
+ "grpcio",
+ "hex 0.4.2",
+ "mc-api",
+ "mc-common",
+ "mc-mobilecoind-api",
+ "mc-util-grpc",
+ "protobuf",
+ "rocket",
+ "rocket_contrib",
+ "serde",
+ "serde_derive",
+ "structopt",
+]
+
+[[package]]
 name = "more-asserts"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
