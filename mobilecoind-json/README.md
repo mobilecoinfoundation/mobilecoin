@@ -53,15 +53,17 @@ $ curl localhost:9090/monitors/fca4ffa1a1b1faf8ad775d0cf020426ba7f161720403a7612
 {"request_code":"2dmFbXtoY78h6K5xsK1NyTHmVGk6oiqBaEYGvJeSLFsCxkL4Ed1vjxEjtwg65QWR8nBdyXnwjyFo6rHEiHmFcsFysjapemAgxWyTda9FVsSFEF"}
 ```
 
-#### Get the additional information in a request code
+#### Read all the information in a request code
 ```
 $ curl localhost:9090/read-request/HUGpTreNKe4ziGAwDNYeW1iayWJgZ4DgiYRk9fw8E7f21PXQRUt4kbFsWBxzcJj12K6atUMuAyRNnwCybw5oJcm6xYXazdZzx4Tc5QuKdFdH2XSuUYM8pgQ1jq2ZBBi
-{"value":"10","memo":"Please pay me"}
+{"receiver":{"view_public_key":"40f884563ff10fb1b37b589036db9abbf1ab7afcf88f17a4ea6ec0077e883263","spend_public_key":"ecf9f2fdb8714afd16446d530cf27f2775d9e356e17a6bba8ad395d16d1bbd45","fog_fqdn":""},"value":"10","memo":"Please pay me"}
 ```
+This JSON can be passed directly to `transfer` or you can change the amount if desired.
 
 #### Transfer money from a monitor/subaddress to a request code
+Using the information in the `read-request`, make a transfer to another address.
 ```
-$ curl localhost:9090//monitors/fca4ffa1a1b1faf8ad775d0cf020426ba7f161720403a76126bc8e40550d9872/0/transfer -d '{"request_code": "2dmFbXtoY78h6K5xsK1NyTHmVGk6oiqBaEYGvJeSLFsCxkL4Ed1vjxEjtwg65QWR8nBdyXnwjyFo6rHEiHmFcsFysjapemAgxWyTda9FVsSFEF", "amount": 12345}' -X POST -H 'Content-Type: application/json'
+$ curl localhost:9090//monitors/fca4ffa1a1b1faf8ad775d0cf020426ba7f161720403a76126bc8e40550d9872/0/transfer -d '{"receiver":{"view_public_key":"40f884563ff10fb1b37b589036db9abbf1ab7afcf88f17a4ea6ec0077e883263","spend_public_key":"ecf9f2fdb8714afd16446d530cf27f2775d9e356e17a6bba8ad395d16d1bbd45","fog_fqdn":""},"value":"10","memo":"Please pay me"}' -X POST -H 'Content-Type: application/json'
 {"key_image":"1e9ed007fd05b8b2830af652e91be042bbff6d013eb6d5101001e83758a0c94d","tombstone":2118}
 ```
 #### Check the status of a transfer with a key image and tombstone block

@@ -3,9 +3,9 @@
 use grpcio::{ChannelBuilder, ChannelCredentialsBuilder};
 use protobuf::RepeatedField;
 
-use mc_api::external::KeyImage;
+use mc_api::external::{KeyImage, RistrettoPublic};
 use mc_common::logger::{create_app_logger, log, o};
-use mc_mobilecoind_api::mobilecoind_api_grpc::MobilecoindApiClient;
+use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, PublicAddress};
 use rocket::{get, post, routes};
 use rocket_contrib::json::Json;
 use serde_derive::{Deserialize, Serialize};
@@ -228,43 +228,56 @@ fn request_code(
     }))
 }
 
-#[derive(Serialize, Default)]
+#[derive(Deserialize, Serialize, Default)]
+struct JsonPublicAddress {
+    view_public_key: String,
+    spend_public_key: String,
+    fog_fqdn: String,
+}
+
+#[derive(Deserialize, Serialize, Default)]
 struct JsonReadRequestResponse {
+    receiver: JsonPublicAddress,
     value: String,
     memo: String,
 }
 
-/// Retrieves the metadata in a request code
+/// Retrieves the data in a request code
 #[get("/read-request/<request_code>")]
 fn read_request(
     state: rocket::State<State>,
     request_code: String,
 ) -> Result<Json<JsonReadRequestResponse>, String> {
     let mut req = mc_mobilecoind_api::ReadRequestCodeRequest::new();
-    req.set_b58_code(request_code.clone());
+    req.set_b58_code(request_code);
     let resp = state
         .mobilecoind_api_client
         .read_request_code(&req)
         .map_err(|err| format!("Failed reading request code: {}", err))?;
 
+    let receiver = resp.get_receiver();
+
+    // The response contains the public keys encoded in the read request, as well as a memo and
+    // requested value. This can be used as-is in the transfer call below, or the value can be
+    // modified.
     Ok(Json(JsonReadRequestResponse {
+        receiver: JsonPublicAddress {
+            view_public_key: hex::encode(receiver.get_view_public_key().get_data().to_vec()),
+            spend_public_key: hex::encode(receiver.get_spend_public_key().get_data().to_vec()),
+            fog_fqdn: String::from(receiver.get_fog_fqdn()),
+        },
         value: resp.get_value().to_string(),
         memo: resp.get_memo().to_string(),
     }))
 }
 
-#[derive(Deserialize)]
-struct JsonTransferRequest {
-    request_code: String,
-    amount: u64,
-}
 #[derive(Deserialize, Serialize)]
 struct JsonTransferResponse {
     key_images: Vec<String>,
     tombstone: u64,
 }
 
-/// Performs a transfer from a monitor and subaddress. The target and amount are in the POST data.
+/// Performs a transfer from a monitor and subaddress. The public keys and amount are in the POST data.
 #[post(
     "/monitors/<monitor_hex>/<subaddress_index>/transfer",
     format = "json",
@@ -274,23 +287,40 @@ fn transfer(
     state: rocket::State<State>,
     monitor_hex: String,
     subaddress_index: u64,
-    transfer: Json<JsonTransferRequest>,
+    transfer: Json<JsonReadRequestResponse>,
 ) -> Result<Json<JsonTransferResponse>, String> {
     let monitor_id =
         hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
 
-    let mut req = mc_mobilecoind_api::ReadRequestCodeRequest::new();
-    req.set_b58_code(transfer.request_code.clone());
-    let resp = state
-        .mobilecoind_api_client
-        .read_request_code(&req)
-        .map_err(|err| format!("Failed reading request code: {}", err))?;
-    let public_address = resp.get_receiver();
+    // Decode the keys
+    let mut view_public_key = RistrettoPublic::new();
+    view_public_key.set_data(
+        hex::decode(&transfer.receiver.view_public_key)
+            .map_err(|err| format!("Failed to decode view key hex: {}", err))?,
+    );
+    let mut spend_public_key = RistrettoPublic::new();
+    spend_public_key.set_data(
+        hex::decode(&transfer.receiver.spend_public_key)
+            .map_err(|err| format!("Failed to decode spend key hex: {}", err))?,
+    );
 
+    // Reconstruct the public address as a protobuf
+    let mut public_address = PublicAddress::new();
+    public_address.set_view_public_key(view_public_key);
+    public_address.set_spend_public_key(spend_public_key);
+    public_address.set_fog_fqdn(transfer.receiver.fog_fqdn.clone());
+
+    // Generate an outlay
     let mut outlay = mc_mobilecoind_api::Outlay::new();
-    outlay.set_receiver(public_address.clone());
-    outlay.set_value(transfer.amount);
+    outlay.set_receiver(public_address);
+    outlay.set_value(
+        transfer
+            .value
+            .parse::<u64>()
+            .map_err(|err| format!("Failed to parse amount: {}", err))?,
+    );
 
+    // Send the payment request
     let mut req = mc_mobilecoind_api::SendPaymentRequest::new();
     req.set_sender_monitor_id(monitor_id);
     req.set_sender_subaddress(subaddress_index);
@@ -301,6 +331,7 @@ fn transfer(
         .send_payment(&req)
         .map_err(|err| format!("Failed to send payment: {}", err))?;
 
+    // The receipt from the payment request can be used by the status check below
     let receipt = resp.get_sender_tx_receipt();
     Ok(Json(JsonTransferResponse {
         key_images: receipt
@@ -319,7 +350,7 @@ struct JsonStatusResponse {
 
 /// Checks the status of a transfer given a key image and tombstone block
 #[post("/check-transfer-status", format = "json", data = "<receipt>")]
-fn status(
+fn check_transfer_status(
     state: rocket::State<State>,
     receipt: Json<JsonTransferResponse>,
 ) -> Result<Json<JsonStatusResponse>, String> {
@@ -341,18 +372,16 @@ fn status(
         .mobilecoind_api_client
         .get_tx_status_as_sender(&req)
         .map_err(|err| format!("Failed getting status: {}", err))?;
-    let status = resp.get_status();
-    match status {
-        mc_mobilecoind_api::TxStatus::Unknown => Ok(Json(JsonStatusResponse {
-            status: String::from("unknown"),
-        })),
-        mc_mobilecoind_api::TxStatus::Verified => Ok(Json(JsonStatusResponse {
-            status: String::from("verified"),
-        })),
-        mc_mobilecoind_api::TxStatus::TombstoneBlockExceeded => Ok(Json(JsonStatusResponse {
-            status: String::from("failed"),
-        })),
-    }
+
+    let status_str = match resp.get_status() {
+        mc_mobilecoind_api::TxStatus::Unknown => "unknown",
+        mc_mobilecoind_api::TxStatus::Verified => "verified",
+        mc_mobilecoind_api::TxStatus::TombstoneBlockExceeded => "failed",
+    };
+
+    Ok(Json(JsonStatusResponse {
+        status: String::from(status_str),
+    }))
 }
 
 fn main() {
@@ -401,7 +430,7 @@ fn main() {
                 request_code,
                 read_request,
                 transfer,
-                status
+                check_transfer_status
             ],
         )
         .manage(State {
