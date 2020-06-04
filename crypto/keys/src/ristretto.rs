@@ -380,6 +380,12 @@ derive_into_vec_from_repr_bytes!(CompressedRistrettoPublic);
 derive_serde_from_repr_bytes!(CompressedRistrettoPublic);
 derive_prost_message_from_repr_bytes!(CompressedRistrettoPublic);
 
+impl From<&[u8; 32]> for CompressedRistrettoPublic {
+    fn from(src: &[u8; 32]) -> Self {
+        Self(CompressedRistretto::from_slice(&src[..]))
+    }
+}
+
 impl AsRef<[u8; 32]> for CompressedRistrettoPublic {
     fn as_ref(&self) -> &[u8; 32] {
         self.0.as_bytes()
