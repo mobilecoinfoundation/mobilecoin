@@ -15,10 +15,7 @@ use structopt::StructOpt;
 /// Command line config, set with defaults that will work with
 /// a standard mobilecoind instance
 #[derive(Clone, Debug, StructOpt)]
-#[structopt(
-    name = "mobilecoind-rest-gateway",
-    about = "A REST frontend for mobilecoind"
-)]
+#[structopt(name = "mobilecoind-json", about = "A REST frontend for mobilecoind")]
 pub struct Config {
     /// Host to listen on.
     #[structopt(long, default_value = "127.0.0.1")]
@@ -272,9 +269,14 @@ fn read_request(
 }
 
 #[derive(Deserialize, Serialize)]
-struct JsonTransferResponse {
+struct JsonSenderTxReceipt {
     key_images: Vec<String>,
     tombstone: u64,
+}
+
+#[derive(Deserialize, Serialize)]
+struct JsonTransferResponse {
+    sender_tx_receipt: JsonSenderTxReceipt,
 }
 
 /// Performs a transfer from a monitor and subaddress. The public keys and amount are in the POST data.
@@ -334,12 +336,14 @@ fn transfer(
     // The receipt from the payment request can be used by the status check below
     let receipt = resp.get_sender_tx_receipt();
     Ok(Json(JsonTransferResponse {
-        key_images: receipt
-            .get_key_image_list()
-            .iter()
-            .map(|key_image| hex::encode(key_image.get_data()))
-            .collect(),
-        tombstone: receipt.get_tombstone(),
+        sender_tx_receipt: JsonSenderTxReceipt {
+            key_images: receipt
+                .get_key_image_list()
+                .iter()
+                .map(|key_image| hex::encode(key_image.get_data()))
+                .collect(),
+            tombstone: receipt.get_tombstone(),
+        },
     }))
 }
 
@@ -356,14 +360,14 @@ fn check_transfer_status(
 ) -> Result<Json<JsonStatusResponse>, String> {
     let mut sender_receipt = mc_mobilecoind_api::SenderTxReceipt::new();
     let mut key_images = Vec::new();
-    for key_image_hex in &receipt.key_images {
+    for key_image_hex in &receipt.sender_tx_receipt.key_images {
         key_images.push(KeyImage::from(
             hex::decode(&key_image_hex).map_err(|err| format!("{}", err))?,
         ))
     }
 
     sender_receipt.set_key_image_list(RepeatedField::from_vec(key_images));
-    sender_receipt.set_tombstone(receipt.tombstone);
+    sender_receipt.set_tombstone(receipt.sender_tx_receipt.tombstone);
 
     let mut req = mc_mobilecoind_api::GetTxStatusAsSenderRequest::new();
     req.set_receipt(sender_receipt);

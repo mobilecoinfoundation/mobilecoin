@@ -64,11 +64,11 @@ This JSON can be passed directly to `transfer` or you can change the amount if d
 Using the information in the `read-request`, make a transfer to another address.
 ```
 $ curl localhost:9090//monitors/fca4ffa1a1b1faf8ad775d0cf020426ba7f161720403a76126bc8e40550d9872/0/transfer -d '{"receiver":{"view_public_key":"40f884563ff10fb1b37b589036db9abbf1ab7afcf88f17a4ea6ec0077e883263","spend_public_key":"ecf9f2fdb8714afd16446d530cf27f2775d9e356e17a6bba8ad395d16d1bbd45","fog_fqdn":""},"value":"10","memo":"Please pay me"}' -X POST -H 'Content-Type: application/json'
-{"key_image":"1e9ed007fd05b8b2830af652e91be042bbff6d013eb6d5101001e83758a0c94d","tombstone":2118}
+{"sender_tx_receipt":{"key_images":["dc8a91dbacad97b59e9709379c279a28b3c35262f6744226d15ee87be6bbf132","7e22679d8e3c14ba9c6c45256902e7af8e82644618e65a4589bab268bfde4b61"],"tombstone":2121}}
 ```
 #### Check the status of a transfer with a key image and tombstone block
 The return value from `transfer` can be passed directly directly to `get-transfer-status`
 ```
-$ curl localhost:9090/check-transfer-status -d '{"key_image":"1e9ed007fd05b8b2830af652e91be042bbff6d013eb6d5101001e83758a0c94d","tombstone":2118}' -X POST -H 'Content-Type: application/json'
+$ curl localhost:9090/check-transfer-status -d '{"sender_tx_receipt":{"key_images":["dc8a91dbacad97b59e9709379c279a28b3c35262f6744226d15ee87be6bbf132","7e22679d8e3c14ba9c6c45256902e7af8e82644618e65a4589bab268bfde4b61"],"tombstone":2121}}'  -X POST -H 'Content-Type: application/json'
 {"status":"verified"}
 ```
