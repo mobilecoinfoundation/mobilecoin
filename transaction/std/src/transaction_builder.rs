@@ -318,7 +318,6 @@ pub mod transaction_builder_tests {
                 real_index,
                 onetime_private_key,
                 *sender.view_private_key(),
-                rng,
             )
             .unwrap();
             transaction_builder.add_input(input_credentials);
@@ -373,7 +372,6 @@ pub mod transaction_builder_tests {
             real_index,
             onetime_private_key,
             *sender.view_private_key(),
-            &mut rng,
         )
         .unwrap();
 
@@ -464,7 +462,6 @@ pub mod transaction_builder_tests {
             real_index,
             onetime_private_key,
             *alice.view_private_key(),
-            &mut rng,
         )
         .unwrap();
 
@@ -500,6 +497,24 @@ pub mod transaction_builder_tests {
         .unwrap();
         assert_eq!(tx.prefix.inputs.len(), MAX_INPUTS as usize);
         assert_eq!(tx.prefix.outputs.len(), MAX_OUTPUTS as usize);
+    }
+
+    #[test]
+    // Ring elements should be sorted by tx_out.public_key
+    fn test_ring_elements_are_sorted() {
+        let mut rng: StdRng = SeedableRng::from_seed([97u8; 32]);
+        let sender = AccountKey::random(&mut rng);
+        let recipient = AccountKey::random(&mut rng);
+        let num_inputs = 3;
+        let num_outputs = 11;
+        let tx = get_transaction(num_inputs, num_outputs, &sender, &recipient, &mut rng).unwrap();
+
+        for tx_in in &tx.prefix.inputs {
+            assert!(tx_in
+                .ring
+                .windows(2)
+                .all(|w| w[0].public_key < w[1].public_key));
+        }
     }
 
     #[test]

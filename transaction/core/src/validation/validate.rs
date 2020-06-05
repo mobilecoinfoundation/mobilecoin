@@ -38,6 +38,8 @@ pub fn validate<R: RngCore + CryptoRng>(
 
     validate_ring_elements_are_unique(&tx.prefix)?;
 
+    validate_ring_elements_are_sorted(&tx.prefix)?;
+
     validate_membership_proofs(&tx.prefix, &root_proofs)?;
 
     validate_signature(&tx, csprng)?;
@@ -121,6 +123,22 @@ fn validate_ring_elements_are_unique(tx_prefix: &TxPrefix) -> TransactionValidat
     for tx_out in &ring_elements {
         if !uniques.insert(tx_out) {
             return Err(TransactionValidationError::DuplicateRingElements);
+        }
+    }
+
+    Ok(())
+}
+
+/// Elements in a ring must be sorted.
+#[allow(unused)]
+fn validate_ring_elements_are_sorted(tx_prefix: &TxPrefix) -> TransactionValidationResult<()> {
+    for tx_in in &tx_prefix.inputs {
+        if !tx_in
+            .ring
+            .windows(2)
+            .all(|w| w[0].public_key < w[1].public_key)
+        {
+            return Err(TransactionValidationError::UnsortedRingElements);
         }
     }
 
@@ -321,6 +339,7 @@ mod tests {
         },
     };
 
+    use crate::validation::validate::validate_ring_elements_are_sorted;
     use mc_crypto_keys::{CompressedRistrettoPublic, ReprBytes};
     use mc_ledger_db::{Ledger, LedgerDB};
     use mc_transaction_core_test_utils::{
@@ -595,9 +614,17 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
+    /// validate_ring_elements_are_sorted should reject an unsorted ring.
     fn test_validate_ring_elements_are_sorted() {
-        unimplemented!()
+        let (mut tx, _ledger) = create_test_tx();
+        assert_eq!(validate_ring_elements_are_sorted(&tx.prefix), Ok(()));
+
+        // Change the ordering of a ring.
+        tx.prefix.inputs[0].ring.swap(0, 3);
+        assert_eq!(
+            validate_ring_elements_are_sorted(&tx.prefix),
+            Err(TransactionValidationError::UnsortedRingElements)
+        );
     }
 
     #[test]
