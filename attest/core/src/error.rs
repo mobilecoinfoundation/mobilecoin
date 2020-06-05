@@ -308,8 +308,12 @@ pub enum ReportBodyVerifyError {
     DebugNotAllowed,
     #[fail(display = "Product ID mismatch, expected {}, got {}", _0, _1)]
     ProductId(u16, u16),
+    #[fail(display = "Product ID not provided to verify, but only MrSigner matches")]
+    ProductIdNone,
     #[fail(display = "The enclave's security version was not at least {}", _0)]
     SecurityVersion(u16),
+    #[fail(display = "The Security Version was not provided to verify, but only MrSigner matches")]
+    SecurityVersionNone,
     #[fail(
         display = "Measurement error, expected one of {:?}, got MRENCLAVE {}, and MRSIGNER {}",
         _0, _1, _2

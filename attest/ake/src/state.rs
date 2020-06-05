@@ -19,11 +19,13 @@ pub struct Start {
     /// The measurement we expect from authenticated counterparties
     pub(crate) expected_measurements: Vec<Measurement>,
 
-    /// The product ID remote enclaves must be running
-    pub(crate) expected_product_id: u16,
+    /// The product ID remote enclaves must be running, compatible with
+    /// Measurement::MrSigner, as the Measurement::MrEnclave encompasses this value.
+    pub(crate) expected_product_id: Option<u16>,
 
-    /// The minimum security version remote enclaves must be running
-    pub(crate) expected_minimum_svn: u16,
+    /// The minimum security version remote enclaves must be running, compatible with
+    /// Measurement::MrSigner, as the Measurement::MrEnclave encompasses this value.
+    pub(crate) expected_minimum_svn: Option<u16>,
 
     /// Whether or not to allow remote enclaves to run in debug
     pub(crate) allow_debug: bool,
@@ -38,8 +40,8 @@ impl Start {
     pub fn new(
         responder_id: String,
         expected_measurements: Vec<Measurement>,
-        expected_product_id: u16,
-        expected_minimum_svn: u16,
+        expected_product_id: Option<u16>,
+        expected_minimum_svn: Option<u16>,
         allow_debug: bool,
     ) -> Self {
         Self {
@@ -68,9 +70,9 @@ where
     /// The enclave measurement we expect in the AuthResponse
     pub(crate) expected_measurements: Vec<Measurement>,
     /// The product ID remote enclaves must be running
-    pub(crate) expected_product_id: u16,
+    pub(crate) expected_product_id: Option<u16>,
     /// The minimum security version remote enclaves must be running
-    pub(crate) expected_minimum_svn: u16,
+    pub(crate) expected_minimum_svn: Option<u16>,
     /// Whether or not to allow remote enclaves to run in debug
     pub(crate) allow_debug: bool,
 
@@ -95,8 +97,8 @@ where
     pub(crate) fn new(
         state: HandshakeState<KexAlgo, Cipher, DigestType>,
         expected_measurements: Vec<Measurement>,
-        expected_product_id: u16,
-        expected_minimum_svn: u16,
+        expected_product_id: Option<u16>,
+        expected_minimum_svn: Option<u16>,
         allow_debug: bool,
         trust_anchors: Option<Vec<String>>,
     ) -> Self {

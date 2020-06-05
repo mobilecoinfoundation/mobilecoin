@@ -295,8 +295,8 @@ impl Quote {
         expected_type: QuoteSignType,
         allow_debug: bool,
         expected_measurements: &[Measurement],
-        expected_product_id: ProductId,
-        minimum_security_version: SecurityVersion,
+        expected_product_id: Option<ProductId>,
+        minimum_security_version: Option<SecurityVersion>,
         expected_data: &ReportDataMask,
     ) -> Result<(), QuoteError> {
         if let Some(expected) = expected_gid {

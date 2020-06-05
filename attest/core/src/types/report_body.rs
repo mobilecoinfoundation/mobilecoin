@@ -144,8 +144,8 @@ impl ReportBody {
         &self,
         allow_debug: bool,
         expected_measurements: &[Measurement],
-        expected_product_id: ProductId,
-        minimum_security_version: SecurityVersion,
+        expected_product_id: Option<ProductId>,
+        minimum_security_version: Option<SecurityVersion>,
         expected_data: &ReportDataMask,
     ) -> Result<(), ReportBodyVerifyError> {
         // Check debug
@@ -153,43 +153,69 @@ impl ReportBody {
             return Err(ReportBodyVerifyError::DebugNotAllowed);
         }
 
-        // Check if we're even using the right product ID
-        let product_id = self.product_id();
-        if expected_product_id != product_id {
-            return Err(ReportBodyVerifyError::ProductId(
-                expected_product_id,
-                product_id,
-            ));
+        // check report data
+        if expected_data != &self.report_data() {
+            return Err(ReportBodyVerifyError::DataMismatch);
         }
 
-        // Check if the security version is high enough
-        let svn = self.security_version();
-        if minimum_security_version > svn {
-            return Err(ReportBodyVerifyError::SecurityVersion(
-                minimum_security_version,
-            ));
-        }
-
-        // Check mr_signer/mr_enclave against acceptable measurements.
-        // Any match of expected mr_signers or mr_enclaves passes verification.
+        // The measurements of the enclave in this report:
         let mr_signer = self.mr_signer();
         let mr_enclave = self.mr_enclave();
-        if !expected_measurements
+
+        // Check mr_enclave against acceptable measurements.
+        // Any match of expected mr_enclaves passes verification.
+        if expected_measurements
             .iter()
-            .any(|m| m == &mr_signer || m == &mr_enclave)
+            .any(|m| m == &Measurement::MrEnclave && m == &mr_enclave)
         {
+            // MrEnclave is a superset of MrSigner, product ID, and security version, so
+            // if we get a match with any acceptable MrEnclave, we can return success.
+            return Ok(());
+        }
+
+        // Check mr_signer against acceptable measurements. Any match of expected
+        // mr_signer passes verification. If the measurement is MrSigner, we also need
+        // to check the product ID and the security version.
+        if expected_measurements
+            .iter()
+            .any(|m| m == Measurement::MrSigner && m == &mr_signer)
+        {
+            // Check if we're using the right product ID
+            if let Some(product_id) = self.product_id() {
+                if let Some(expected_prod_id) = expected_product_id {
+                    if expected_prod_id != product_id {
+                        return Err(ReportBodyVerifyError::ProductId(
+                            expected_prod_id,
+                            product_id,
+                        ));
+                    }
+                } else {
+                    return Err(ReportBodyVerifyError::ProductIdNone);
+                }
+            } else {
+                return Err(ReportBodyVerifyError::ProductIdNone);
+            }
+
+            // Check if the security version is high enough
+            if let Some(svn) = self.security_version() {
+                if let Some(min_security_version) = minimum_security_version {
+                    if minimum_security_version > svn {
+                        return Err(ReportBodyVerifyError::SecurityVersion(min_security_version));
+                    }
+                } else {
+                    return Err(ReportBodyVerifyError::SecurityVersionNone);
+                }
+            } else {
+                return Err(ReportBodyVerifyError::SecurityVersionNone);
+            }
+        } else {
+            // There were no matches for MrEnclave or MrSigner.
             return Err(ReportBodyVerifyError::MrMismatch(
                 expected_measurements.to_vec(),
                 mr_enclave,
                 mr_signer,
             ));
         }
-
-        // check report data
-        if expected_data != &self.report_data() {
-            return Err(ReportBodyVerifyError::DataMismatch);
-        }
-
         Ok(())
     }
 }
