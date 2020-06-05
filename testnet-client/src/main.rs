@@ -11,7 +11,7 @@ use mc_util_b58_payloads::payloads::RequestPayload;
 use mc_util_grpc::build_info_grpc::BuildInfoApiClient;
 use protobuf::RepeatedField;
 use rust_decimal::{prelude::ToPrimitive, Decimal};
-use std::{fmt, str::FromStr, sync::Arc, thread, time::Duration};
+use std::{convert::TryInto, fmt, str::FromStr, sync::Arc, thread, time::Duration};
 use structopt::StructOpt;
 
 /// Command lien config.
@@ -683,7 +683,9 @@ MobileCoin forums. Visit http://community.mobilecoin.com
         let mut outlay = mc_mobilecoind_api::Outlay::new();
         outlay.set_value(request_payload.value);
         outlay.set_receiver(mc_mobilecoind_api::PublicAddress::from(
-            &request_payload.into(),
+            &(request_payload
+                .try_into()
+                .map_err(|err| format!("Bad request payload: {}", err))?),
         ));
 
         // Construct the tx
