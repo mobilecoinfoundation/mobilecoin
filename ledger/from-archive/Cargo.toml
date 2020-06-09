@@ -10,7 +10,7 @@ path = "src/main.rs"
 
 [dependencies]
 mc-api = { path = "../../api" }
-mc-common = { path = "../../common", features = ["log"] }
+mc-common = { path = "../../common", features = ["loggers"] }
 mc-ledger-db = { path = "../../ledger/db" }
 mc-ledger-sync = { path = "../../ledger/sync" }
 

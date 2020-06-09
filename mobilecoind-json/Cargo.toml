@@ -10,7 +10,7 @@ rocket = { version = "0.4.4", default-features = false }
 rocket_contrib = { version = "0.4.4", default-features = false, features = ["json"] }
 hex = "0.4"
 mc-api = { path = "../api" }
-mc-common = { path = "../common", features = ["log"] }
+mc-common = { path = "../common", features = ["loggers"] }
 mc-util-grpc = { path = "../util/grpc" }
 mc-mobilecoind-api = { path = "../mobilecoind/api" }
 protobuf = "2.12"

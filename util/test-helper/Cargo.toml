@@ -23,5 +23,5 @@ mc-transaction-core = { path = "../../transaction/core" }
 mc-transaction-std = { path = "../../transaction/std" }
 
 [dev-dependencies]
-mc-common = { path = "../../common", features = ["log"] }
+mc-common = { path = "../../common", features = ["loggers"] }
 itertools = "0.9.0"

@@ -62,6 +62,7 @@ toml = "0.5"
 mc-sgx-build = { path = "../../sgx/build" }
 
 [dev-dependencies]
+mc-common = { path = "../../common", features = ["loggers"] }
 mc-consensus-enclave-mock = { path = "../../consensus/enclave/mock" }
 mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
 mc-peers-test-utils = { path = "../../peers/test-utils" }

@@ -20,5 +20,5 @@ mc-transaction-std = { path = "../../transaction/std" }
 rand = "0.7"
 
 # MobileCoin dependencies
-mc-common = { path = "../../common", features = ["log"] }
+mc-common = { path = "../../common", features = ["loggers"] }
 mc-util-test-helper = { path = "../test-helper" }

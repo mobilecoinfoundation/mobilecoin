@@ -36,6 +36,7 @@ tempdir = "0.3"
 url = "2.1"
 
 [dev-dependencies]
+mc-common = { path = "../../common", features = ["loggers"] }
 mc-connection-test-utils = { path = "../../connection/test-utils" }
 mc-consensus-scp = { path = "../../consensus/scp", features = ["test_utils"] }
 mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }

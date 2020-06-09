@@ -26,9 +26,10 @@ serde_json = "1.0"
 sha3 = "0.8"
 
 [dev-dependencies]
-
+mc-common = { path = "../../common", features = ["loggers"] }
 mc-util-logger-macros = { path = "../../util/logger-macros" }
 mc-util-test-helper = { path = "../../util/test-helper" }
+
 crossbeam-channel = "0.3"
 pretty_assertions = "0.6.1"
 serial_test = "0.1"
