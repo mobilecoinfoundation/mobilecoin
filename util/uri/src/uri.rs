@@ -111,6 +111,12 @@ impl<Scheme: UriScheme> FromStr for Uri<Scheme> {
     }
 }
 
+impl<Scheme: UriScheme> AsRef<str> for Uri<Scheme> {
+    fn as_ref(&self) -> &str {
+        self.url.as_str()
+    }
+}
+
 impl<Scheme: UriScheme> serde::Serialize for Uri<Scheme> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
