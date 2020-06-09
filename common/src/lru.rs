@@ -1,14 +1,19 @@
 //! A simple, safe LRU cache implementation.
-//! This implementation trades performance in favor of simplicity: looking up items in the cache
-//! (which also happens during insertion, in order to prevent duplicate keys being inserted) is an
-//! O(N) operation.
+//!
+//! This design tradeoffs some memory usage in favor of faster item lookup times by storing an
+//! additional HashMap that allows quickly checking if a key is already in the cache.
 
-use alloc::{collections::VecDeque, vec::Vec};
+use crate::HashMap;
+use alloc::{collections::VecDeque, sync::Arc, vec::Vec};
+use core::hash::Hash;
 
 /// LRU Cache.
 pub struct LruCache<K, V> {
     /// Entries currently in cache.
-    entries: Vec<Option<(K, V)>>,
+    entries: Vec<Option<(Arc<K>, V)>>,
+
+    /// A map of keys -> their index in the `entries` vector, used to speed up lookups.
+    key_to_entry_index: HashMap<Arc<K>, usize>,
 
     /// Indexes of used entries inside the `entries` array. Sorted from newest to oldest.
     used_indexes: VecDeque<usize>,
@@ -17,7 +22,7 @@ pub struct LruCache<K, V> {
     free_indexes: VecDeque<usize>,
 }
 
-impl<K: PartialEq, V> LruCache<K, V> {
+impl<K: PartialEq + Eq + Hash, V> LruCache<K, V> {
     /// Create a new LRU cache instance.
     pub fn new(capacity: usize) -> Self {
         let mut entries = Vec::with_capacity(capacity);
@@ -29,6 +34,7 @@ impl<K: PartialEq, V> LruCache<K, V> {
 
         Self {
             entries,
+            key_to_entry_index: HashMap::default(),
             used_indexes: VecDeque::with_capacity(capacity),
             free_indexes,
         }
@@ -36,6 +42,7 @@ impl<K: PartialEq, V> LruCache<K, V> {
 
     /// Returns the number of elements in the cache.
     pub fn len(&self) -> usize {
+        assert_eq!(self.used_indexes.len(), self.key_to_entry_index.len());
         self.used_indexes.len()
     }
 
@@ -51,13 +58,14 @@ impl<K: PartialEq, V> LruCache<K, V> {
 
     /// Checks if a given key is already in the cache, without touching it.
     pub fn contains(&self, key: &K) -> bool {
-        self.search_used(key).is_some()
+        self.key_to_entry_index.contains_key(key)
     }
 
     /// Clears the cache.
     pub fn clear(&mut self) {
         while let Some(used_index) = self.used_indexes.pop_front() {
             self.entries[used_index] = None;
+            self.key_to_entry_index.clear();
             self.free_indexes.push_front(used_index);
         }
     }
@@ -69,6 +77,8 @@ impl<K: PartialEq, V> LruCache<K, V> {
     /// If an item with the given key already existed, its value is replaced with the new value and
     /// the old value is returned.
     pub fn put(&mut self, key: K, val: V) -> Option<V> {
+        let key = Arc::new(key);
+
         if let Some(used_index) = self.search_used(&key) {
             let entry_idx = self.used_indexes[used_index];
 
@@ -76,7 +86,8 @@ impl<K: PartialEq, V> LruCache<K, V> {
             let prev_entry = self.entries[entry_idx].take();
 
             // Store the new entry in place of the old one.
-            self.entries[entry_idx] = Some((key, val));
+            self.entries[entry_idx] = Some((key.clone(), val));
+            self.key_to_entry_index.insert(key, entry_idx);
 
             // Move the entry to the front of the used list.
             self.used_indexes.remove(used_index);
@@ -90,7 +101,9 @@ impl<K: PartialEq, V> LruCache<K, V> {
             assert!(self.entries[free_index].is_none());
 
             // Store the new entry and put it at the front of the used list.
-            self.entries[free_index] = Some((key, val));
+            self.entries[free_index] = Some((key.clone(), val));
+            self.key_to_entry_index.insert(key, free_index);
+
             self.used_indexes.push_front(free_index);
         } else {
             // No free entries.
@@ -101,8 +114,12 @@ impl<K: PartialEq, V> LruCache<K, V> {
                 .expect("no free indexes and no used indexes!?");
             assert!(self.entries[index].is_some());
 
+            self.key_to_entry_index
+                .remove(&self.entries[index].as_ref().unwrap().0);
+
             // Replace it with the new entry and put at at the front.
-            self.entries[index] = Some((key, val));
+            self.entries[index] = Some((key.clone(), val));
+            self.key_to_entry_index.insert(key, index);
             self.used_indexes.push_front(index);
         }
 
@@ -134,11 +151,10 @@ impl<K: PartialEq, V> LruCache<K, V> {
     /// position will be unchanged.
     pub fn peek(&self, key: &K) -> Option<&V> {
         // Try and locate key.
-        let used_index = self.search_used(key)?;
+        let entry_index = self.key_to_entry_index.get(key)?;
 
         // If we located the key, return the matching value.
-        let entry_index = self.used_indexes[used_index];
-        self.entries[entry_index].as_ref().map(|(_k, v)| v)
+        self.entries[*entry_index].as_ref().map(|(_k, v)| v)
     }
 
     /// Removes and returns the value corresponding to the key from the cache or
@@ -151,7 +167,13 @@ impl<K: PartialEq, V> LruCache<K, V> {
 
         self.used_indexes.remove(used_index);
         self.free_indexes.push_front(entry_idx);
-        entry.map(|(_k, v)| v)
+
+        if let Some((k, v)) = entry {
+            self.key_to_entry_index.remove(&k);
+            Some(v)
+        } else {
+            None
+        }
     }
 
     /// Iterate over the contents of this cache.
@@ -172,10 +194,15 @@ impl<K: PartialEq, V> LruCache<K, V> {
 
     /// Search for a given key in the cache, returing its index in the used array if found.
     fn search_used(&self, key: &K) -> Option<usize> {
+        // Quick out if we do not have the key.
+        if !self.key_to_entry_index.contains_key(key) {
+            return None;
+        }
+
         for i in 0..self.used_indexes.len() {
             let entry_idx = self.used_indexes[i];
             if let Some((key2, _val2)) = &self.entries[entry_idx] {
-                if key == key2 {
+                if key == key2.as_ref() {
                     return Some(i);
                 }
             }
@@ -237,7 +264,7 @@ impl<'a, K, V> Iterator for LruCacheMutIterator<'a, K, V> {
             // This code is safe because the list of entries is not going to be modified during
             // iteration, since a mutable reference to the LruCache is held by the iterator.
             let entry =
-                unsafe { &mut *(&mut self.cache.entries[entry_index] as *mut Option<(K, V)>) };
+                unsafe { &mut *(&mut self.cache.entries[entry_index] as *mut Option<(Arc<K>, V)>) };
 
             self.pos += 1;
 
