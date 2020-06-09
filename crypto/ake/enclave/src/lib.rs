@@ -1,7 +1,6 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 #![no_std]
-#[macro_use]
 extern crate alloc;
 
 use aes_gcm::Aes256Gcm;
@@ -27,8 +26,6 @@ use mc_crypto_rand::McRng;
 use mc_sgx_compat::sync::Mutex;
 use mc_util_from_random::FromRandom;
 use sha2::{Sha256, Sha512};
-
-pub mod lru2;
 
 /// Max number of pending quotes.
 const MAX_PENDING_QUOTES: usize = 64;
