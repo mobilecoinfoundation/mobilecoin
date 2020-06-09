@@ -29,7 +29,8 @@ ps -ef | grep mobilecoind | grep -v grep | awk '{print $2}' | xargs kill
         --tx-source-url https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node2.test.mobilecoin.com/ \
         --mobilecoind-db /tmp/transaction-db \
         --service-port 4444 \
-        --watcher-db /tmp/watcher-db &
+        --watcher-db /tmp/watcher-db & \
+        > mobilecoind.log &
 
 # run the pizzamob_leaderboard flask site
 pip3 install -r requirements.txt
