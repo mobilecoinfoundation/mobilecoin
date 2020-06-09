@@ -1,4 +1,9 @@
 //! A simple, safe LRU cache implementation.
+//! This implementation trades performance in favor of simplicity: looking up items in the cache
+//! (which also happens during insertion, in order to prevent duplicate keys being inserted) is an
+//! O(N) operation.
+//! This could be improved by trading off memory usage and storing an additional HashMap of keys->values
+//! if we find out performance is an issue.
 
 use alloc::{collections::VecDeque, vec::Vec};
 
