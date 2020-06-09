@@ -250,7 +250,7 @@ impl LedgerDB {
     /// Opens an existing Ledger Database in the given path.
     pub fn open(path: PathBuf) -> Result<LedgerDB, Error> {
         let env = Environment::new()
-            .set_max_dbs(20)
+            .set_max_dbs(21)
             .set_map_size(MAX_LMDB_FILE_SIZE)
             // TODO - needed because currently our test cloud machines have slow disks.
             .set_flags(EnvironmentFlags::NO_SYNC)
