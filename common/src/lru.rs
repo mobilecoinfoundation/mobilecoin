@@ -2,8 +2,6 @@
 //! This implementation trades performance in favor of simplicity: looking up items in the cache
 //! (which also happens during insertion, in order to prevent duplicate keys being inserted) is an
 //! O(N) operation.
-//! This could be improved by trading off memory usage and storing an additional HashMap of keys->values
-//! if we find out performance is an issue.
 
 use alloc::{collections::VecDeque, vec::Vec};
 
@@ -53,13 +51,7 @@ impl<K: PartialEq, V> LruCache<K, V> {
 
     /// Checks if a given key is already in the cache, without touching it.
     pub fn contains(&self, key: &K) -> bool {
-        self.used_indexes
-            .iter()
-            .find(|idx| match &self.entries[**idx] {
-                Some((key2, _val)) => key == key2,
-                None => false,
-            })
-            .is_some()
+        self.search_used(key).is_some()
     }
 
     /// Clears the cache.
@@ -77,23 +69,20 @@ impl<K: PartialEq, V> LruCache<K, V> {
     /// If an item with the given key already existed, its value is replaced with the new value and
     /// the old value is returned.
     pub fn put(&mut self, key: K, val: V) -> Option<V> {
-        for i in 0..self.used_indexes.len() {
-            let entry_idx = self.used_indexes[i];
-            if let Some((key2, _val2)) = &self.entries[entry_idx] {
-                if key == *key2 {
-                    // Grab the old entry so that we could return the old value.
-                    let prev_entry = self.entries[entry_idx].take();
+        if let Some(used_index) = self.search_used(&key) {
+            let entry_idx = self.used_indexes[used_index];
 
-                    // Store the new entry in place of the old one.
-                    self.entries[entry_idx] = Some((key, val));
+            // Grab the old entry so that we could return the old value.
+            let prev_entry = self.entries[entry_idx].take();
 
-                    // Move the entry to the front of the used list.
-                    self.used_indexes.remove(i);
-                    self.used_indexes.push_front(entry_idx);
+            // Store the new entry in place of the old one.
+            self.entries[entry_idx] = Some((key, val));
 
-                    return prev_entry.map(|(_k, v)| v);
-                }
-            }
+            // Move the entry to the front of the used list.
+            self.used_indexes.remove(used_index);
+            self.used_indexes.push_front(entry_idx);
+
+            return prev_entry.map(|(_k, v)| v);
         }
 
         // Entry not present in cache, see if we have a free slot for it.
@@ -155,24 +144,14 @@ impl<K: PartialEq, V> LruCache<K, V> {
     /// Removes and returns the value corresponding to the key from the cache or
     /// `None` if it does not exist.
     pub fn pop(&mut self, key: &K) -> Option<V> {
-        for i in 0..self.used_indexes.len() {
-            let entry_idx = self.used_indexes[i];
-            let key_matches = if let Some((key2, _)) = &self.entries[entry_idx] {
-                key == key2
-            } else {
-                false
-            };
+        let used_index = self.search_used(key)?;
 
-            if key_matches {
-                let entry = self.entries[entry_idx].take();
+        let entry_idx = self.used_indexes[used_index];
+        let entry = self.entries[entry_idx].take();
 
-                self.used_indexes.remove(i);
-                self.free_indexes.push_front(entry_idx);
-                return entry.map(|(_k, v)| v);
-            }
-        }
-
-        None
+        self.used_indexes.remove(used_index);
+        self.free_indexes.push_front(entry_idx);
+        entry.map(|(_k, v)| v)
     }
 
     /// Iterate over the contents of this cache.
