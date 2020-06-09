@@ -1,80 +1,110 @@
+//! A simple, safe LRU cache implementation.
+
 use alloc::{collections::VecDeque, vec::Vec};
 
-struct Entry<K, V> {
-    val: Option<(K, V)>,
-    /// Index of the previous entry. If this entry is the head, ignore this field.
-    prev: usize,
-    /// Index of the next entry. If this entry is the tail, ignore this field.
-    next: usize,
-}
-
+/// LRU Cache.
 pub struct LruCache<K, V> {
-    entries: Vec<Entry<K, V>>,
-    free_indexes: VecDequeue<usize>,
-    head: usize,
-    tail: usize,
+    /// Entries currently in cache.
+    entries: Vec<Option<(K, V)>>,
+
+    /// Indexes of used entries inside the `entries` array. Sorted from newest to oldest.
+    used_indexes: VecDeque<usize>,
+
+    /// Indexes of free entries in the `entries` array.
+    free_indexes: VecDeque<usize>,
 }
 
 impl<K: PartialEq, V> LruCache<K, V> {
+    /// Create a new LRU cache instance.
     pub fn new(capacity: usize) -> Self {
+        let mut entries = Vec::with_capacity(capacity);
         let mut free_indexes = VecDeque::with_capacity(capacity);
         for i in 0..capacity {
+            entries.push(None);
             free_indexes.push_back(i);
         }
 
         Self {
-            entries: Vec::with_capacity(capacity),
+            entries,
+            used_indexes: VecDeque::with_capacity(capacity),
             free_indexes,
-            head: 0,
-            tail: 0,
         }
     }
 
     /// Returns the number of elements in the cache.
     pub fn len(&self) -> usize {
-        self.entries.capacity() - self.free_indexes.len()
+        self.used_indexes.len()
     }
 
     /// Returns a bool indicating whether the cache is empty or not.
     pub fn is_empty(&self) -> bool {
-        self.len() == 0
+        self.used_indexes.is_empty()
+    }
+
+    /// Returns a bool indicating whether the cache is full or not.
+    pub fn is_full(&self) -> bool {
+        self.free_indexes.is_empty()
     }
 
     /// Checks if a given key is already in the cache, without touching it.
     pub fn contains(&self, key: &K) -> bool {
-        self.iter().find(|(key2, _val)| key == *key2).is_some()
+        self.used_indexes
+            .iter()
+            .find(|idx| match &self.entries[**idx] {
+                Some((key2, _val)) => key == key2,
+                None => false,
+            })
+            .is_some()
     }
 
     /// Insert a given key in the cache.
     ///
     /// This item becomes the front (most-recently-used) item in the cache.  If the cache is full,
     /// the back (least-recently-used) item will be removed.
-    pub fn put(&mut self, key: K, val: V) -> bool {
-        if let Some(v) = self.get_mut(&key) {
-            *v = val;
-            return false;
+    /// If an item with the given key already existed, its value is replaced with the new value and
+    /// the old value is returned.
+    pub fn put(&mut self, key: K, val: V) -> Option<V> {
+        for i in 0..self.used_indexes.len() {
+            let entry_idx = self.used_indexes[i];
+            if let Some((key2, _val2)) = &self.entries[entry_idx] {
+                if key == *key2 {
+                    // Grab the old entry so that we could return the old value.
+                    let prev_entry = self.entries[entry_idx].take();
+
+                    // Store the new entry in place of the old one.
+                    self.entries[entry_idx] = Some((key, val));
+
+                    // Move the entry to the front of the used list.
+                    self.used_indexes.remove(i);
+                    self.used_indexes.push_front(entry_idx);
+
+                    return prev_entry.map(|(_k, v)| v);
+                }
+            }
         }
 
-        let entry = Entry {
-            val: Some((key, val)),
-            prev: 0,
-            next: 0,
-        };
+        // Entry not present in cache, see if we have a free slot for it.
+        if let Some(free_index) = self.free_indexes.pop_back() {
+            assert!(self.entries[free_index].is_none());
 
-        // If the cache is full, replace the oldest entry. Otherwise, add an entry.
-        let new_head = if self.entries.len() == self.entries.capacity() {
-            let i = self.pop_back();
-            let _ = self.entries[i].val.take();
-            self.entries[i] = entry;
-            i
+            // Store the new entry and put it at the front of the used list.
+            self.entries[free_index] = Some((key, val));
+            self.used_indexes.push_front(free_index);
         } else {
-            self.entries.push(entry);
-            self.entries.len() - 1
-        };
+            // No free entries.
+            // Get the index of the oldest entry in the cache, and remove it from the used list.
+            let index = self
+                .used_indexes
+                .pop_back()
+                .expect("no free indexes and no used indexes!?");
+            assert!(self.entries[index].is_some());
 
-        self.push_front(new_head);
+            // Replace it with the new entry and put at at the front.
+            self.entries[index] = Some((key, val));
+            self.used_indexes.push_front(index);
+        }
 
-        true
+        None
     }
 
     /// Returns a reference to the value of the key in the cache or `None` if it
@@ -86,100 +116,65 @@ impl<K: PartialEq, V> LruCache<K, V> {
     /// Returns a mutable reference to the value of the key in the cache or `None` if it
     /// is not present in the cache. Moves the key to the head of the LRU list if it exists.
     pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
-        match self.iter_mut().find(|(_index, key2, _val)| key == *key2) {
-            Some((i, _key, _val)) => {
-                self.touch(i);
-                self.front_mut()
+        // Try and locate the key in the used list.
+        let used_index: Option<usize> = {
+            let mut i = 0;
+            loop {
+                let entry_idx = self.used_indexes[i];
+                if let Some((key2, _val2)) = &self.entries[entry_idx] {
+                    if key == key2 {
+                        break Some(i);
+                    }
+                }
+
+                i += 1;
+                if i == self.used_indexes.len() {
+                    break None;
+                }
             }
-            None => None,
+        };
+
+        // If we located the key, move it to the front of the used list and return a reference to
+        // its value.
+        if let Some(used_index) = used_index {
+            let entry_index = self.used_indexes[used_index];
+            self.used_indexes.remove(used_index);
+            self.used_indexes.push_front(entry_index);
+            return self.entries[entry_index].as_mut().map(|(_k, v)| v);
         }
+
+        None
     }
 
-    /// TODO
+    /// Removes and returns the value corresponding to the key from the cache or
+    /// `None` if it does not exist.
     pub fn pop(&mut self, key: &K) -> Option<V> {
-        match self.iter_mut().find(|(_index, key2, _val)| key == *key2) {
-            Some((i, _key, _val)) => {
-                let v = self.entries[i].val.take();
-                //self.remove(i);
-                v.map(|e| e.1)
-            }
-            None => None,
-        }
-    }
+        for i in 0..self.used_indexes.len() {
+            let entry_idx = self.used_indexes[i];
+            let key_matches = if let Some((key2, _)) = &self.entries[entry_idx] {
+                key == key2
+            } else {
+                false
+            };
 
-    /// Returns a mutable reference to the front entry in the list (most recently used).
-    pub fn front_mut(&mut self) -> Option<&mut V> {
-        match self.entries.get_mut(self.head as usize).map(|e| &mut e.val) {
-            Some(Some((_k, v))) => Some(v),
-            _ => None,
+            if key_matches {
+                let entry = self.entries[entry_idx].take();
+
+                self.used_indexes.remove(i);
+                self.free_indexes.push_front(entry_idx);
+                return entry.map(|(_k, v)| v);
+            }
         }
+
+        None
     }
 
     /// Iterate over the contents of this cache.
     pub fn iter(&self) -> LruCacheIterator<K, V> {
         LruCacheIterator {
-            pos: self.head,
-            done: self.entries.is_empty(),
+            pos: 0,
             cache: self,
         }
-    }
-
-    /// Iterate mutably over the contents of this cache.
-    fn iter_mut(&mut self) -> LruCacheMutIterator<K, V> {
-        LruCacheMutIterator {
-            pos: self.head,
-            done: self.entries.is_empty(),
-            cache: self,
-        }
-    }
-
-    /// Touch a given entry, putting it first in the list.
-    fn touch(&mut self, idx: usize) {
-        if idx != self.head {
-            self.remove(idx);
-            self.push_front(idx);
-        }
-    }
-
-    /// Remove an entry from the linked list.
-    ///
-    /// Note: This only unlinks the entry from the list; it does not remove it from the array.
-    fn remove(&mut self, i: usize) {
-        let prev = self.entries[i].prev;
-        let next = self.entries[i].next;
-
-        if i == self.head {
-            self.head = next;
-        } else {
-            self.entries[prev].next = next;
-        }
-
-        if i == self.tail {
-            self.tail = prev;
-        } else {
-            self.entries[next].prev = prev;
-        }
-    }
-
-    /// Insert a new entry at the head of the list.
-    fn push_front(&mut self, i: usize) {
-        if self.entries.len() == 1 {
-            self.tail = i;
-        } else {
-            self.entries[i].next = self.head;
-            self.entries[self.head].prev = i;
-        }
-        self.head = i;
-    }
-
-    /// Remove the last entry from the linked list. Returns the index of the removed entry.
-    ///
-    /// Note: This only unlinks the entry from the list; it does not remove it from the array.
-    fn pop_back(&mut self) -> usize {
-        let old_tail = self.tail;
-        let new_tail = self.entries[old_tail].prev;
-        self.tail = new_tail;
-        old_tail
     }
 }
 
@@ -187,7 +182,6 @@ impl<K: PartialEq, V> LruCache<K, V> {
 pub struct LruCacheIterator<'a, K: 'a, V: 'a> {
     cache: &'a LruCache<K, V>,
     pos: usize,
-    done: bool,
 }
 
 impl<'a, K, V> Iterator for LruCacheIterator<'a, K, V> {
@@ -195,52 +189,17 @@ impl<'a, K, V> Iterator for LruCacheIterator<'a, K, V> {
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            if self.done {
+            if self.pos == self.cache.used_indexes.len() {
                 return None;
             }
 
-            // Use a raw pointer because the compiler doesn't know that subsequent calls can't alias.
-            let entry = unsafe { &*(&self.cache.entries[self.pos] as *const Entry<K, V>) };
+            let entry_index = self.cache.used_indexes[self.pos];
+            let entry = &self.cache.entries[entry_index];
 
-            if self.pos == self.cache.tail {
-                self.done = true;
-            }
-            self.pos = entry.next;
+            self.pos += 1;
 
-            if let Some((ref k, ref v)) = entry.val {
-                return Some((k, v));
-            }
-        }
-    }
-}
-
-/// Mutable iterator over values in an LruCache, from most-recently-used to least-recently-used.
-struct LruCacheMutIterator<'a, K: 'a, V: 'a> {
-    cache: &'a mut LruCache<K, V>,
-    pos: usize,
-    done: bool,
-}
-
-impl<'a, K, V> Iterator for LruCacheMutIterator<'a, K, V> {
-    type Item = (usize, &'a K, &'a mut V);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            if self.done {
-                return None;
-            }
-
-            // Use a raw pointer because the compiler doesn't know that subsequent calls can't alias.
-            let entry = unsafe { &mut *(&mut self.cache.entries[self.pos] as *mut Entry<K, V>) };
-
-            let index = self.pos;
-            if self.pos == self.cache.tail {
-                self.done = true;
-            }
-            self.pos = entry.next;
-
-            if let Some((ref k, ref mut v)) = entry.val {
-                return Some((index, k, v));
+            if let Some((ref k, ref v)) = entry {
+                return Some((&k, &v));
             }
         }
     }
@@ -276,8 +235,8 @@ mod tests {
         let mut cache = LruCache::new(2);
         assert!(cache.is_empty());
 
-        assert_eq!(cache.put("apple", "red"), true);
-        assert_eq!(cache.put("banana", "yellow"), true);
+        assert_eq!(cache.put("apple", "red"), None);
+        assert_eq!(cache.put("banana", "yellow"), None);
 
         assert_eq!(cache.len(), 2);
         assert!(!cache.is_empty());
@@ -318,8 +277,8 @@ mod tests {
     fn test_put_update() {
         let mut cache = LruCache::new(1);
 
-        assert_eq!(cache.put("apple", "red"), true);
-        assert_eq!(cache.put("apple", "green"), false);
+        assert_eq!(cache.put("apple", "red"), None);
+        assert_eq!(cache.put("apple", "green"), Some("red"));
 
         assert_eq!(cache.len(), 1);
         assert_opt_eq(cache.get(&"apple"), "green");
@@ -329,9 +288,13 @@ mod tests {
     fn test_put_removes_oldest() {
         let mut cache = LruCache::new(2);
 
-        assert_eq!(cache.put("apple", "red"), true);
-        assert_eq!(cache.put("banana", "yellow"), true);
-        assert_eq!(cache.put("pear", "green"), true);
+        assert_eq!(cache.len(), 0);
+        assert_eq!(cache.put("apple", "red"), None);
+        assert_eq!(cache.len(), 1);
+        assert_eq!(cache.put("banana", "yellow"), None);
+        assert_eq!(cache.len(), 2);
+        assert_eq!(cache.put("pear", "green"), None);
+        assert_eq!(cache.len(), 2);
 
         assert!(cache.get(&"apple").is_none());
         assert_opt_eq(cache.get(&"banana"), "yellow");
@@ -339,8 +302,8 @@ mod tests {
 
         // Even though we inserted "apple" into the cache earlier it has since been removed from
         // the cache so there is no current value for `put` to return.
-        assert_eq!(cache.put("apple", "green"), true);
-        assert_eq!(cache.put("tomato", "red"), true);
+        assert_eq!(cache.put("apple", "green"), None);
+        assert_eq!(cache.put("tomato", "red"), None);
 
         assert!(cache.get(&"pear").is_none());
         assert_opt_eq(cache.get(&"apple"), "green");
@@ -362,19 +325,47 @@ mod tests {
 
     #[test]
     fn test_iter_forwards() {
-        let mut cache = LruCache::new(3);
+        let mut cache = LruCache::new(4);
         cache.put("a", 1);
         cache.put("b", 2);
         cache.put("c", 3);
+        cache.put("d", 4);
 
         let mut iter = cache.iter();
+        assert_opt_eq_tuple(iter.next(), ("d", 4));
         assert_opt_eq_tuple(iter.next(), ("c", 3));
-
         assert_opt_eq_tuple(iter.next(), ("b", 2));
-
         assert_opt_eq_tuple(iter.next(), ("a", 1));
-
         assert_eq!(iter.next(), None);
+
+        // Get "b", that should move it to the front of the list.
+        assert_opt_eq(cache.get(&"b"), 2);
+
+        let mut iter = cache.iter();
+        assert_opt_eq_tuple(iter.next(), ("b", 2));
+        assert_opt_eq_tuple(iter.next(), ("d", 4));
+        assert_opt_eq_tuple(iter.next(), ("c", 3));
+        assert_opt_eq_tuple(iter.next(), ("a", 1));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn test_pop() {
+        let mut cache = LruCache::new(2);
+
+        cache.put("apple", "red");
+        cache.put("banana", "yellow");
+
+        assert_eq!(cache.len(), 2);
+        assert_opt_eq(cache.get(&"apple"), "red");
+        assert_opt_eq(cache.get(&"banana"), "yellow");
+
+        let popped = cache.pop(&"apple");
+        assert!(popped.is_some());
+        assert_eq!(popped.unwrap(), "red");
+        assert_eq!(cache.len(), 1);
+        assert!(cache.get(&"apple").is_none());
+        assert_opt_eq(cache.get(&"banana"), "yellow");
     }
 
     #[test]
@@ -387,7 +378,9 @@ mod tests {
         cache.put("d", 4);
         cache.put("e", 5);
 
+        assert!(cache.contains(&"c"));
         assert_eq!(cache.pop(&"c"), Some(3));
+        assert!(!cache.contains(&"c"));
 
         cache.put("f", 6);
 

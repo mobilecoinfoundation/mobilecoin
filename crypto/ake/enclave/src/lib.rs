@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 #![no_std]
+#[macro_use]
 extern crate alloc;
 
 use aes_gcm::Aes256Gcm;
@@ -27,7 +28,7 @@ use mc_sgx_compat::sync::Mutex;
 use mc_util_from_random::FromRandom;
 use sha2::{Sha256, Sha512};
 
-mod lru2;
+pub mod lru2;
 
 /// Max number of pending quotes.
 const MAX_PENDING_QUOTES: usize = 64;
@@ -63,7 +64,7 @@ pub struct AkeEnclaveState<EI: EnclaveIdentity> {
     custom_identity: EI,
 
     /// A map of generated EREPORTs awaiting confirmation by the quoting enclave.
-    quote_pending: Mutex<lru2::LruCache<QuoteNonce, Report>>,
+    quote_pending: Mutex<LruCache<QuoteNonce, Report>>,
 
     /// A map of generated quotes, awaiting reporting and signature by IAS.
     ias_pending: Mutex<LruCache<IasNonce, Quote>>,
@@ -98,7 +99,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             client_self_id: Mutex::new(None),
             kex_identity: X25519Private::from_random(&mut McRng::default()),
             custom_identity,
-            quote_pending: Mutex::new(lru2::LruCache::new(MAX_PENDING_QUOTES)),
+            quote_pending: Mutex::new(LruCache::new(MAX_PENDING_QUOTES)),
             ias_pending: Mutex::new(LruCache::new(MAX_PENDING_QUOTES)),
             current_ias_report: Mutex::new(None),
             initiator_auth_pending: Mutex::new(LruCache::new(MAX_AUTH_PENDING_REQUESTS)),
