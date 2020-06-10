@@ -6,7 +6,6 @@ use cargo_emit::{rerun_if_env_changed, rustc_cfg};
 use mc_util_build_enclave::Builder;
 use mc_util_build_script::Environment;
 use mc_util_build_sgx::{IasMode, SgxEnvironment, SgxMode, TcsPolicy};
-use pkg_config::{Config, Error as PkgConfigError, Library};
 use std::{env::var, path::PathBuf};
 
 const SGX_LIBS: &[&str] = &["libsgx_urts", "libsgx_epid"];
@@ -24,29 +23,18 @@ fn main() {
     let env = Environment::default();
     let sgx = SgxEnvironment::new(&env).expect("Could not read SGX environment");
 
-    let mut cfg = Config::new();
-    cfg.exactly_version(SGX_VERSION)
-        .print_system_libs(true)
-        .cargo_metadata(false)
-        .env_metadata(true);
-
-    let libnames = if sgx.sgx_mode() == SgxMode::Simulation {
+    let sgx_libs = if sgx.sgx_mode() == SgxMode::Simulation {
         rustc_cfg!("feature=\"sgx-sim\"");
         SGX_SIMULATION_LIBS
     } else {
         SGX_LIBS
     };
 
-    let libraries = libnames
-        .iter()
-        .map(|libname| cfg.probe(libname))
-        .collect::<Result<Vec<Library>, PkgConfigError>>()
-        .expect("Could not find SGX libraries, check PKG_CONFIG_PATH variable");
-
     let mut builder = Builder::new(
         &env,
         &sgx,
-        libraries.as_slice(),
+        SGX_VERSION,
+        sgx_libs,
         CONSENSUS_ENCLAVE_NAME,
         CONSENSUS_ENCLAVE_DIR.as_ref(),
     )

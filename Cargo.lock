@@ -2228,7 +2228,6 @@ dependencies = [
  "mc-util-build-enclave",
  "mc-util-build-script",
  "mc-util-build-sgx",
- "pkg-config",
 ]
 
 [[package]]
