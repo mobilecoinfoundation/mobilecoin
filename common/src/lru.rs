@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
 //! A simple, safe LRU cache implementation.
 //!
 //! This design tradeoffs some memory usage in favor of faster item lookup times by storing an
