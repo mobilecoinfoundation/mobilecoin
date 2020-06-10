@@ -12,9 +12,15 @@ use lmdb::{
     Database, DatabaseFlags, Environment, EnvironmentFlags, RoTransaction, RwTransaction,
     Transaction, WriteFlags,
 };
-use mc_transaction_core::{Block, BlockContents, BlockID, BlockSignature, BLOCK_VERSION};
+use mc_crypto_keys::CompressedRistrettoPublic;
+use mc_transaction_core::{
+    ring_signature::KeyImage,
+    tx::{TxOut, TxOutMembershipProof},
+    Block, BlockContents, BlockID, BlockSignature, BLOCK_VERSION,
+};
 use mc_util_serial::{decode, encode, Message};
 use std::{path::PathBuf, sync::Arc};
+use tx_out_store::TxOutStore;
 
 mod error;
 mod ledger_trait;
@@ -26,12 +32,7 @@ pub mod test_utils;
 
 pub use error::Error;
 pub use ledger_trait::Ledger;
-use mc_transaction_core::{
-    ring_signature::KeyImage,
-    tx::{TxOut, TxOutMembershipProof},
-};
 pub use metadata::MetadataStore;
-use tx_out_store::TxOutStore;
 
 const MAX_LMDB_FILE_SIZE: usize = 1_099_511_627_776; // 1 TB
 
@@ -198,6 +199,16 @@ impl Ledger for LedgerDB {
         let db_transaction: RoTransaction = self.env.begin_ro_txn()?;
         self.tx_out_store
             .get_tx_out_index_by_hash(tx_out_hash, &db_transaction)
+    }
+
+    /// Returns the index of the TxOut with the given public key.
+    fn get_tx_out_index_by_public_key(
+        &self,
+        tx_out_public_key: &CompressedRistrettoPublic,
+    ) -> Result<u64, Error> {
+        let db_transaction: RoTransaction = self.env.begin_ro_txn()?;
+        self.tx_out_store
+            .get_tx_out_index_by_public_key(tx_out_public_key, &db_transaction)
     }
 
     /// Gets a TxOut by its index in the ledger.

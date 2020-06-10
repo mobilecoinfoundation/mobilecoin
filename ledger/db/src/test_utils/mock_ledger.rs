@@ -2,7 +2,7 @@
 
 use crate::{Error, Ledger};
 use mc_common::{HashMap, HashSet};
-use mc_crypto_keys::RistrettoPrivate;
+use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
 use mc_transaction_core::{
     account_keys::AccountKey,
     ring_signature::KeyImage,
@@ -133,6 +133,13 @@ impl Ledger for MockLedger {
     fn get_tx_out_by_index(&self, _: u64) -> Result<TxOut, Error> {
         // Unused for these tests.
         unimplemented!()
+    }
+
+    fn get_tx_out_index_by_public_key(
+        &self,
+        _tx_out_public_key: &CompressedRistrettoPublic,
+    ) -> Result<u64, Error> {
+        unimplemented!();
     }
 
     fn check_key_image(&self, key_image: &KeyImage) -> Result<Option<u64>, Error> {
