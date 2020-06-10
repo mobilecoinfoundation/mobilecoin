@@ -87,6 +87,10 @@ pub enum TransactionValidationError {
     #[fail(display = "DuplicateKeyImages")]
     DuplicateKeyImages,
 
+    /// Output public keys in the transaction must be unique.
+    #[fail(display = "DuplicateOutputPublicKey")]
+    DuplicateOutputPublicKey,
+
     /// Each ring element must have a corresponding proof of membership.
     #[fail(display = "MissingTxOutMembershipProof")]
     MissingTxOutMembershipProof,

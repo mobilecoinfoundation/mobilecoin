@@ -48,6 +48,8 @@ pub fn validate<R: RngCore + CryptoRng>(
 
     validate_key_images_are_unique(&tx)?;
 
+    validate_outputs_public_keys_are_unique(&tx)?;
+
     validate_tombstone(current_block_index, tx.prefix.tombstone_block)?;
 
     // Note: The transaction must not contain a Key Image that has previously been spent.
@@ -156,6 +158,16 @@ fn validate_key_images_are_unique(tx: &Tx) -> TransactionValidationResult<()> {
     Ok(())
 }
 
+/// All output public keys within the transaction must be unique.
+fn validate_outputs_public_keys_are_unique(tx: &Tx) -> TransactionValidationResult<()> {
+    let mut uniques = HashSet::default();
+    for public_key in tx.output_public_keys() {
+        if !uniques.insert(public_key) {
+            return Err(TransactionValidationError::DuplicateOutputPublicKey);
+        }
+    }
+    Ok(())
+}
 /// Verifies the transaction signature.
 ///
 /// A valid RctBulletproofs signature implies that:
@@ -333,8 +345,9 @@ mod tests {
             validate::{
                 validate_key_images_are_unique, validate_membership_proofs,
                 validate_number_of_inputs, validate_number_of_outputs,
-                validate_ring_elements_are_unique, validate_ring_sizes, validate_signature,
-                validate_tombstone, validate_transaction_fee, MAX_TOMBSTONE_BLOCKS,
+                validate_outputs_public_keys_are_unique, validate_ring_elements_are_unique,
+                validate_ring_sizes, validate_signature, validate_tombstone,
+                validate_transaction_fee, MAX_TOMBSTONE_BLOCKS,
             },
         },
     };
@@ -647,6 +660,28 @@ mod tests {
     fn test_validate_key_images_are_unique_ok() {
         let (tx, _ledger) = create_test_tx();
         assert_eq!(validate_key_images_are_unique(&tx), Ok(()),);
+    }
+
+    #[test]
+    /// validate_outputs_public_keys_are_unique rejects duplicate public key.
+    fn test_validate_output_public_keys_are_unique_rejects_duplicate() {
+        let (mut tx, _ledger) = create_test_tx();
+        // Tx only contains a single output. Duplicate the
+        // output so that tx.output_public_keys() returns a duplicate public key.
+        let tx_out = tx.prefix.outputs[0].clone();
+        tx.prefix.outputs.push(tx_out);
+
+        assert_eq!(
+            validate_outputs_public_keys_are_unique(&tx),
+            Err(TransactionValidationError::DuplicateOutputPublicKey)
+        );
+    }
+
+    #[test]
+    /// validate_outputs_public_keys_are_unique returns Ok if all public keys are unique.
+    fn test_validate_output_public_keys_are_unique_ok() {
+        let (tx, _ledger) = create_test_tx();
+        assert_eq!(validate_outputs_public_keys_are_unique(&tx), Ok(()),);
     }
 
     #[test]
