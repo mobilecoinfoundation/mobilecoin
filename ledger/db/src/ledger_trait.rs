@@ -51,6 +51,12 @@ pub trait Ledger: Clone + Send {
         indexes: &[u64],
     ) -> Result<Vec<TxOutMembershipProof>, Error>;
 
+    /// Returns true if the Ledger contains the given TxOut public key.
+    fn contains_tx_out_public_key(
+        &self,
+        public_key: &CompressedRistrettoPublic,
+    ) -> Result<bool, Error>;
+
     /// Returns true if the Ledger contains the given key image.
     fn contains_key_image(&self, key_image: &KeyImage) -> Result<bool, Error> {
         self.check_key_image(key_image).map(|x| x.is_some())

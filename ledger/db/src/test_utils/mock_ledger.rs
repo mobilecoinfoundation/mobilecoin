@@ -142,6 +142,13 @@ impl Ledger for MockLedger {
         unimplemented!();
     }
 
+    fn contains_tx_out_public_key(
+        &self,
+        _public_key: &CompressedRistrettoPublic,
+    ) -> Result<bool, Error> {
+        unimplemented!();
+    }
+
     fn check_key_image(&self, key_image: &KeyImage) -> Result<Option<u64>, Error> {
         // Unused for these tests.
         Ok(self.lock().key_images.get(key_image).cloned())

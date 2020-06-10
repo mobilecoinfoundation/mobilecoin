@@ -218,6 +218,22 @@ impl Ledger for LedgerDB {
             .get_tx_out_by_index(index, &db_transaction)
     }
 
+    /// Returns true if the Ledger contains the given TxOut public key.
+    fn contains_tx_out_public_key(
+        &self,
+        public_key: &CompressedRistrettoPublic,
+    ) -> Result<bool, Error> {
+        let db_transaction = self.env.begin_ro_txn()?;
+        match self
+            .tx_out_store
+            .get_tx_out_index_by_public_key(public_key, &db_transaction)
+        {
+            Ok(_) => Ok(true),
+            Err(Error::NotFound) => Ok(false),
+            Err(e) => Err(e),
+        }
+    }
+
     /// Returns true if the Ledger contains the given KeyImage.
     fn check_key_image(&self, key_image: &KeyImage) -> Result<Option<u64>, Error> {
         let db_transaction = self.env.begin_ro_txn()?;
@@ -425,6 +441,10 @@ impl LedgerDB {
 
         // Write the actual TxOuts.
         for tx_out in tx_outs {
+            if self.contains_tx_out_public_key(&tx_out.public_key)? {
+                return Err(Error::DuplicateOutputPublicKey);
+            }
+
             self.tx_out_store.push(tx_out, db_transaction)?;
         }
 
@@ -478,6 +498,13 @@ impl LedgerDB {
         for key_image in &block_contents.key_images {
             if self.contains_key_image(key_image)? {
                 return Err(Error::KeyImageAlreadySpent);
+            }
+        }
+
+        // Check that none of the output public keys appear in the ledger.
+        for output in block_contents.outputs.iter() {
+            if self.contains_tx_out_public_key(&output.public_key)? {
+                return Err(Error::DuplicateOutputPublicKey);
             }
         }
 
@@ -1044,6 +1071,51 @@ mod ledger_db_test {
         assert_eq!(
             ledger_db.append_block(&block_two, &block_two_contents, None),
             Err(Error::KeyImageAlreadySpent)
+        );
+    }
+
+    #[test]
+    /// Appending a block with a pre-existing output public key should return Error::DuplicateOutputPublicKey.
+    fn test_append_block_with_duplicate_output_public_key() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut ledger_db = create_db();
+
+        // Write a block to the ledger.
+        let origin_account_key = AccountKey::random(&mut rng);
+        let (origin_block, origin_block_contents) =
+            get_origin_block_and_contents(&origin_account_key);
+        ledger_db
+            .append_block(&origin_block, &origin_block_contents, None)
+            .unwrap();
+
+        // The next block reuses a public key.
+        let existing_tx_out = ledger_db.get_tx_out_by_index(0).unwrap();
+        let account_key = AccountKey::random(&mut rng);
+
+        let block_one_contents = {
+            let mut tx_out = TxOut::new(
+                33,
+                &account_key.default_subaddress(),
+                &RistrettoPrivate::from_random(&mut rng),
+                Default::default(),
+                &mut rng,
+            )
+            .unwrap();
+            tx_out.public_key = existing_tx_out.public_key.clone();
+            let outputs = vec![tx_out];
+            BlockContents::new(vec![KeyImage::from(rng.next_u64())], outputs)
+        };
+
+        let block_one = Block::new_with_parent(
+            BLOCK_VERSION,
+            &origin_block,
+            &Default::default(),
+            &block_one_contents,
+        );
+
+        assert_eq!(
+            ledger_db.append_block(&block_one, &block_one_contents, None),
+            Err(Error::DuplicateOutputPublicKey)
         );
     }
 

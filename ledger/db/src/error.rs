@@ -24,6 +24,9 @@ pub enum Error {
     #[fail(display = "KeyImageAlreadySpent")]
     KeyImageAlreadySpent,
 
+    #[fail(display = "DuplicateOutputPublicKey")]
+    DuplicateOutputPublicKey,
+
     #[fail(display = "InvalidBlockContents")]
     InvalidBlockContents,
 
