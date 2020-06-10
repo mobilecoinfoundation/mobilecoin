@@ -8,9 +8,6 @@ use mc_util_build_script::Environment;
 use mc_util_build_sgx::{IasMode, SgxEnvironment, SgxMode, TcsPolicy};
 use std::{env::var, path::PathBuf};
 
-const SGX_LIBS: &[&str] = &["libsgx_urts", "libsgx_epid"];
-const SGX_SIMULATION_LIBS: &[&str] = &["libsgx_urts_sim", "libsgx_epid_sim"];
-
 // Changing this version is a breaking change, you must update the crate version if you do.
 const SGX_VERSION: &str = "2.9.101.2";
 
@@ -23,18 +20,14 @@ fn main() {
     let env = Environment::default();
     let sgx = SgxEnvironment::new(&env).expect("Could not read SGX environment");
 
-    let sgx_libs = if sgx.sgx_mode() == SgxMode::Simulation {
+    if sgx.sgx_mode() == SgxMode::Simulation {
         rustc_cfg!("feature=\"sgx-sim\"");
-        SGX_SIMULATION_LIBS
-    } else {
-        SGX_LIBS
-    };
+    }
 
     let mut builder = Builder::new(
         &env,
         &sgx,
         SGX_VERSION,
-        sgx_libs,
         CONSENSUS_ENCLAVE_NAME,
         CONSENSUS_ENCLAVE_DIR.as_ref(),
     )

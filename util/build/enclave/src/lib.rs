@@ -27,6 +27,9 @@ use std::{
     sync::PoisonError,
 };
 
+const SGX_LIBS: &[&str] = &["libsgx_urts"];
+const SGX_SIMULATION_LIBS: &[&str] = &["libsgx_urts_sim"];
+
 struct ThreadRngForMbedTls;
 
 impl RngCallback for ThreadRngForMbedTls {
@@ -134,9 +137,6 @@ pub struct Builder {
     /// A set of PkgConfig configurations and the libraries to use with it
     sgx_version: String,
 
-    /// A set of PkgConfig configurations and the libraries to use with it
-    sgx_libs: Vec<String>,
-
     /// The cargo metadata of the trusted crate
     staticlib: Metadata,
 
@@ -198,7 +198,6 @@ impl Builder {
         env: &Environment,
         sgx: &SgxEnvironment,
         sgx_version: &str,
-        sgx_libs: &[&str],
         enclave_name: &str,
         staticlib_dir: &Path,
     ) -> Result<Self, Error> {
@@ -217,8 +216,6 @@ impl Builder {
             .features(CargoOpt::SomeFeatures(features_vec))
             .exec()?;
 
-        let sgx_libs = sgx_libs.iter().map(|value| String::from(*value)).collect();
-
         Ok(Self {
             cargo_builder: CargoBuilder::new(&env, staticlib_dir, false),
             config_builder: ConfigBuilder::default(),
@@ -229,7 +226,6 @@ impl Builder {
             target_dir: env.target_dir().to_owned(),
             profile_target_dir: env.profile_target_dir().to_owned(),
             profile: env.profile().to_owned(),
-            sgx_libs,
             sgx_version: sgx_version.to_owned(),
             linker: env.linker().to_owned(),
             sgx_mode: sgx.sgx_mode(),
@@ -654,14 +650,17 @@ impl Builder {
             .cargo_metadata(false)
             .env_metadata(true);
 
-        let lib_paths = self
-            .sgx_libs
-            .iter()
-            .map(|libname| Ok(config.probe(libname.as_str())?.link_paths))
-            .collect::<Result<Vec<Vec<PathBuf>>, PkgConfigError>>()?
-            .into_iter()
-            .flatten()
-            .collect::<HashSet<PathBuf>>();
+        let lib_paths = if self.sgx_mode == SgxMode::Simulation {
+            SGX_SIMULATION_LIBS
+        } else {
+            SGX_LIBS
+        }
+        .iter()
+        .map(|libname| Ok(config.probe(libname)?.link_paths))
+        .collect::<Result<Vec<Vec<PathBuf>>, PkgConfigError>>()?
+        .into_iter()
+        .flatten()
+        .collect::<HashSet<PathBuf>>();
 
         for path in lib_paths {
             if self.sgx_mode == SgxMode::Simulation {
