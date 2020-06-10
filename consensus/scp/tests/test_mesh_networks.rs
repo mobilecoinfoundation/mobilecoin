@@ -33,7 +33,7 @@ fn new_mesh(
     validity_fn: ValidityFn<String, test_utils::TransactionValidationError>,
     combine_fn: CombineFn<String>,
     logger: Logger,
-) -> SCPNetwork {
+) -> mock_network::SCPNetwork {
     let mut node_options = Vec::<mock_network::NodeOptions>::new();
     for node_id in 0..num_nodes {
         let other_node_ids: Vec<u32> = (0..num_nodes)
