@@ -93,9 +93,9 @@ We provide an example install_sgx script that we use in our deployment in [docke
 Recommended driver install:
 
 ```
-wget https://download.01.org/intel-sgx/sgx-linux/2.7.1/distro/ubuntu18.04-server/sgx_linux_x64_driver_2.6.0_4f5bb63.bin
-chmod +x ./sgx_linux_x64_driver_2.6.0_4f5bb63.bin
-./sgx_linux_x64_driver_2.6.0_4f5bb63.bin
+wget https://download.01.org/intel-sgx/sgx-linux/2.9.1/distro/ubuntu18.04-server/sgx_linux_x64_driver_2.6.0_95eaa6f.bin
+chmod +x ./sgx_linux_x64_driver_2.6.0_95eaa6f.bin
+./sgx_linux_x64_driver_2.6.0_95eaa6f.bin
 ```
 
 Recommended SDK install:
@@ -103,9 +103,9 @@ Recommended SDK install:
 >Note: You will need to always source the sgxsdk environment before building consensus.
 
 ```
-wget https://download.01.org/intel-sgx/sgx-linux/2.7.1/distro/ubuntu18.04-server/sgx_linux_x64_sdk_2.7.101.3.bin
-chmod +x ./sgx_linux_x64_sdk_2.7.101.3.bin
-./sgx_linux_x64_sdk_2.7.101.3.bin --prefix=/opt/intel
+wget https://download.01.org/intel-sgx/sgx-linux/2.9.1/distro/ubuntu18.04-server/sgx_linux_x64_sdk_2.9.101.2.bin
+chmod +x ./sgx_linux_x64_sdk_2.9.101.2.bin
+./sgx_linux_x64_sdk_2.9.101.2.bin --prefix=/opt/intel
 source /opt/intel/sgxsdk/environment
 ```
 
@@ -114,22 +114,15 @@ Recommended common package:
 ```
 # Install SGX
 mkdir -p /tmp/sgx-debs && pushd /tmp/sgx-debs && cat <<EOF | wget -nv -i- && dpkg --install *.deb; pushd /tmp; rm -rf /tmp/sgx-debs
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/libs/libsgx-ae-qe3/libsgx-ae-qe3_1.5.100.2-bionic1_amd64.deb
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/libs/libsgx-enclave-common/libsgx-enclave-common_2.9.100.2-bionic1_amd64.deb
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/libs/libsgx-epid/libsgx-epid_2.9.100.2-bionic1_amd64.deb
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/libs/libsgx-launch/libsgx-launch_2.9.100.2-bionic1_amd64.deb
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/libs/libsgx-quote-ex/libsgx-quote-ex_2.9.100.2-bionic1_amd64.deb
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/libs/libsgx-uae-service/libsgx-uae-service_2.9.100.2-bionic1_amd64.deb
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/libs/libsgx-urts/libsgx-urts_2.9.100.2-bionic1_amd64.deb
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/utils/libsgx-ae-epid/libsgx-ae-epid_2.9.100.2-bionic1_amd64.deb
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/utils/libsgx-ae-le/libsgx-ae-le_2.9.100.2-bionic1_amd64.deb
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/utils/libsgx-ae-pce/libsgx-ae-pce_2.9.100.2-bionic1_amd64.deb
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/utils/libsgx-aesm-pce-plugin/libsgx-aesm-pce-plugin_2.9.100.2-bionic1_amd64.deb
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/utils/libsgx-aesm-ecdsa-plugin/libsgx-aesm-ecdsa-plugin_2.9.100.2-bionic1_amd64.deb
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/utils/libsgx-aesm-epid-plugin/libsgx-aesm-epid-plugin_2.9.100.2-bionic1_amd64.deb
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/utils/libsgx-aesm-launch-plugin/libsgx-aesm-launch-plugin_2.9.100.2-bionic1_amd64.deb
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/utils/libsgx-aesm-quote-ex-plugin/libsgx-aesm-quote-ex-plugin_2.9.100.2-bionic1_amd64.deb
-https://download.01.org/intel-sgx/sgx-linux/2.9/distro/ubuntu18.04-server/debian_pkgs/utils/sgx-aesm-service/sgx-aesm-service_2.9.100.2-bionic1_amd64.deb
+https://download.01.org/intel-sgx/sgx-linux/2.9.1/distro/ubuntu18.04-server/debian_pkgs/utils/libsgx-ae-epid/libsgx-ae-epid_2.9.101.2-bionic1_amd64.deb
+https://download.01.org/intel-sgx/sgx-linux/2.9.1/distro/ubuntu18.04-server/debian_pkgs/utils/libsgx-ae-pce/libsgx-ae-pce_2.9.101.2-bionic1_amd64.deb
+https://download.01.org/intel-sgx/sgx-linux/2.9.1/distro/ubuntu18.04-server/debian_pkgs/utils/libsgx-aesm-epid-plugin/libsgx-aesm-epid-plugin_2.9.101.2-bionic1_amd64.deb
+https://download.01.org/intel-sgx/sgx-linux/2.9.1/distro/ubuntu18.04-server/debian_pkgs/utils/libsgx-aesm-pce-plugin/libsgx-aesm-pce-plugin_2.9.101.2-bionic1_amd64.deb
+https://download.01.org/intel-sgx/sgx-linux/2.9.1/distro/ubuntu18.04-server/debian_pkgs/libs/libsgx-enclave-common/libsgx-enclave-common_2.9.101.2-bionic1_amd64.deb
+https://download.01.org/intel-sgx/sgx-linux/2.9.1/distro/ubuntu18.04-server/debian_pkgs/libs/libsgx-epid/libsgx-epid_2.9.101.2-bionic1_amd64.deb
+https://download.01.org/intel-sgx/sgx-linux/2.9.1/distro/ubuntu18.04-server/debian_pkgs/libs/libsgx-pce-logic/libsgx-pce-logic_1.6.100.2-bionic1_amd64.deb
+https://download.01.org/intel-sgx/sgx-linux/2.9.1/distro/ubuntu18.04-server/debian_pkgs/libs/libsgx-urts/libsgx-urts_2.9.101.2-bionic1_amd64.deb
+https://download.01.org/intel-sgx/sgx-linux/2.9.1/distro/ubuntu18.04-server/debian_pkgs/utils/sgx-aesm-service/sgx-aesm-service_2.9.101.2-bionic1_amd64.deb
 EOF
 ```
 
