@@ -31,8 +31,8 @@ fn new_cyclic(
     validity_fn: ValidityFn<String, TransactionValidationError>,
     combine_fn: CombineFn<String>,
     logger: Logger,
-) -> SCPNetwork {
-    let mut node_options = Vec::<NodeOptions>::new();
+) -> mock_network::SCPNetwork {
+    let mut node_options = Vec::<mock_network::NodeOptions>::new();
     for node_id in 0..num_nodes {
         let next_node_id: u32 = if node_id + 1 < num_nodes {
             node_id as u32 + 1
@@ -45,7 +45,7 @@ fn new_cyclic(
             .map(|other_node_id| other_node_id as u32)
             .collect();
 
-        node_options.push(NodeOptions::new(
+        node_options.push(mock_network::NodeOptions::new(
             format!("c-{}-node{}", num_nodes, node_id),
             other_node_ids,
             vec![next_node_id],
@@ -53,7 +53,7 @@ fn new_cyclic(
         ));
     }
 
-    SCPNetwork::new(node_options, validity_fn, combine_fn, logger)
+    mock_network::SCPNetwork::new(node_options, validity_fn, combine_fn, logger)
 }
 
 fn cyclic_test_helper(num_nodes: usize, logger: Logger) {
@@ -65,7 +65,7 @@ fn cyclic_test_helper(num_nodes: usize, logger: Logger) {
     let mut rng: StdRng = SeedableRng::from_seed([193u8; 32]);
     let start = Instant::now();
 
-    let network = mock_network::SCPNetwork::new_cyclic(
+    let network = new_cyclic(
         num_nodes,
         Arc::new(test_utils::trivial_validity_fn::<String>),
         //                Arc::new(test_utils::get_bounded_combine_fn::<String>(200)),

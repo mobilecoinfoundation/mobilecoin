@@ -27,21 +27,21 @@ fn skip_slow_tests() -> bool {
 ///////////////////////////////////////////////////////////////////////////////
 
 /// Constructs a mesh network, where each node has all of it's peers as validators.
-pub fn new_mesh(
+fn new_mesh(
     num_nodes: usize,
     k: u32,
     validity_fn: ValidityFn<String, TransactionValidationError>,
     combine_fn: CombineFn<String>,
     logger: Logger,
 ) -> SCPNetwork {
-    let mut node_options = Vec::<NodeOptions>::new();
+    let mut node_options = Vec::<mock_network::NodeOptions>::new();
     for node_id in 0..num_nodes {
         let other_node_ids: Vec<u32> = (0..num_nodes)
             .filter(|other_node_id| other_node_id != &node_id)
             .map(|other_node_id| other_node_id as u32)
             .collect();
 
-        node_options.push(NodeOptions::new(
+        node_options.push(mock_network::NodeOptions::new(
             format!("m-{}-{}-node{}", num_nodes, k, node_id),
             other_node_ids.clone(),
             other_node_ids,
@@ -49,7 +49,7 @@ pub fn new_mesh(
         ));
     }
 
-    SCPNetwork::new(node_options, validity_fn, combine_fn, logger)
+    mock_network::SCPNetwork::new(node_options, validity_fn, combine_fn, logger)
 }
 
 /// Performs a simple consensus test where a network of `num_nodes` nodes is started,
@@ -62,7 +62,7 @@ fn mesh_test_helper(num_nodes: usize, k: u32, logger: Logger) {
     let mut rng: StdRng = SeedableRng::from_seed([97u8; 32]);
     let start = Instant::now();
 
-    let network = mock_network::SCPNetwork::new_mesh(
+    let network = new_mesh(
         num_nodes,
         k,
         Arc::new(test_utils::trivial_validity_fn::<String>),
