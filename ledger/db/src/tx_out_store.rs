@@ -25,7 +25,7 @@
 
 use crate::{key_bytes_to_u64, u64_to_key_bytes, Error};
 use lmdb::{Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
-use mc_common::{Hash, HashMap};
+use mc_common::{logger::global_log, Hash, HashMap};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{
     membership_proofs::*,
@@ -200,6 +200,7 @@ impl TxOutStore {
             Err(Error::CapacityExceeded)
         }
     }
+
     /// Writes the Merkle hash value for a node spanning the given range.
     fn write_merkle_hash(
         &self,
@@ -337,6 +338,46 @@ impl TxOutStore {
             num_tx_outs - 1,
             range_to_hash,
         ))
+    }
+
+    /// A utility function for constructing the tx_out_index_by_public_key store using existing
+    /// data.
+    pub(crate) fn construct_tx_out_index_by_public_key_from_existing_data(
+        env: &Environment,
+    ) -> Result<(), Error> {
+        // When constructing the tx out index by public key database, we first need to create it.
+        env.create_db(
+            Some(TX_OUT_INDEX_BY_PUBLIC_KEY_DB_NAME),
+            DatabaseFlags::empty(),
+        )?;
+
+        // After the database has been created, we can use TxOutStore as normal.
+        let instance = Self::new(env)?;
+
+        let mut db_txn = env.begin_rw_txn()?;
+
+        let num_tx_outs = instance.num_tx_outs(&db_txn)?;
+        let mut percents: u64 = 0;
+        for tx_out_index in 0..num_tx_outs {
+            let tx_out = instance.get_tx_out_by_index(tx_out_index, &db_txn)?;
+            db_txn.put(
+                instance.tx_out_index_by_public_key,
+                &tx_out.public_key,
+                &u64_to_key_bytes(tx_out_index),
+                WriteFlags::NO_OVERWRITE,
+            )?;
+
+            // Throttled logging.
+            let new_percents = tx_out_index * 100 / num_tx_outs;
+            if new_percents != percents {
+                percents = new_percents;
+                global_log::info!(
+                    "Constructing tx_out_index_by_public_key: {}% complete",
+                    percents
+                );
+            }
+        }
+        Ok(db_txn.commit()?)
     }
 }
 
