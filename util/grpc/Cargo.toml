@@ -6,7 +6,7 @@ edition = "2018"
 build = "build.rs"
 
 [dependencies]
-mc-common = { path = "../../common", features = ["log"] }
+mc-common = { path = "../../common", features = ["loggers"] }
 mc-connection = { path = "../../connection" }
 mc-util-build-info = { path = "../build/info" }
 mc-util-metrics = { path = "../metrics" }
