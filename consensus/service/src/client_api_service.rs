@@ -99,6 +99,7 @@ impl<E: ConsensusEnclaveProxy, L: Ledger + Clone> ClientApiService<E, L> {
                 // These errors are common, so only trace them
                 if err == TransactionValidationError::TombstoneBlockExceeded
                     || err == TransactionValidationError::ContainsSpentKeyImage
+                    || err == TransactionValidationError::ContainsExistingOutputPublicKey
                 {
                     log::trace!(
                         logger,

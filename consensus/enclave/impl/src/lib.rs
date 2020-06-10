@@ -231,12 +231,14 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let tx_hash = tx.tx_hash();
         let highest_indices = tx.get_membership_proof_highest_indices();
         let key_images: Vec<KeyImage> = tx.key_images();
+        let output_public_keys = tx.output_public_keys();
 
         Ok(TxContext {
             locally_encrypted_tx,
             tx_hash,
             highest_indices,
             key_images,
+            output_public_keys,
         })
     }
 
@@ -261,12 +263,14 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                 let tx_hash = tx.tx_hash();
                 let highest_indices = tx.get_membership_proof_highest_indices();
                 let key_images: Vec<KeyImage> = tx.key_images();
+                let output_public_keys = tx.output_public_keys();
 
                 Ok(TxContext {
                     locally_encrypted_tx,
                     tx_hash,
                     highest_indices,
                     key_images,
+                    output_public_keys,
                 })
             })
             .collect()
@@ -419,6 +423,20 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                     )));
                 }
                 used_key_images.insert(key_image);
+            }
+        }
+
+        // Duplicate output public keys are not allowed.
+        let mut seen_output_public_keys = BTreeSet::default();
+        for tx in &transactions {
+            for public_key in tx.output_public_keys() {
+                if seen_output_public_keys.contains(&public_key) {
+                    return Err(Error::FormBlock(format!(
+                        "Duplicate output public key: {:?}",
+                        public_key
+                    )));
+                }
+                seen_output_public_keys.insert(public_key);
             }
         }
 
@@ -884,6 +902,98 @@ mod tests {
         let expected = Err(Error::FormBlock(format!(
             "Duplicate key image: {:?}",
             expected_duplicate_key_image
+        )));
+
+        assert_eq!(form_block_result, expected);
+    }
+
+    #[test]
+    /// form_block should return an error if the input transactions contain a duplicate output
+    /// public key.
+    fn test_form_block_prevents_duplicate_output_public_key() {
+        let enclave = SgxConsensusEnclave::default();
+        let mut rng = Hc128Rng::from_seed([77u8; 32]);
+
+        // Initialize a ledger. `sender` is the owner of all outputs in the initial ledger.
+        let sender = AccountKey::random(&mut rng);
+        let mut ledger = create_ledger();
+        let n_blocks = 3;
+        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
+
+        // Create a few transactions from `sender` to `recipient`.
+        let num_transactions = 5;
+        let recipient = AccountKey::random(&mut rng);
+
+        // The first block contains RING_SIZE outputs.
+        let block_zero_contents = ledger.get_block_contents(0).unwrap();
+
+        // Re-create the rng so that we could more easily generate a duplicate output public key.
+        let mut rng = Hc128Rng::from_seed([77u8; 32]);
+
+        let mut new_transactions = Vec::new();
+        for i in 0..num_transactions - 1 {
+            let tx_out = &block_zero_contents.outputs[i];
+
+            let tx = create_transaction(
+                &mut ledger,
+                tx_out,
+                &sender,
+                &recipient.default_subaddress(),
+                n_blocks + 1,
+                &mut rng,
+            );
+            new_transactions.push(tx);
+        }
+
+        // Re-creating the rng here would result in a duplicate output public key.
+        {
+            let mut rng = Hc128Rng::from_seed([77u8; 32]);
+            let tx_out = &block_zero_contents.outputs[num_transactions - 1];
+
+            let tx = create_transaction(
+                &mut ledger,
+                tx_out,
+                &sender,
+                &recipient.default_subaddress(),
+                n_blocks + 1,
+                &mut rng,
+            );
+            new_transactions.push(tx);
+
+            assert_eq!(
+                new_transactions[0].prefix.outputs[0].public_key,
+                new_transactions[num_transactions - 1].prefix.outputs[0].public_key,
+            );
+        }
+
+        // Create WellFormedEncryptedTxs + proofs
+        let well_formed_encrypted_txs_with_proofs: Vec<_> = new_transactions
+            .iter()
+            .map(|tx| {
+                let well_formed_tx = WellFormedTx::from(tx.clone());
+                let encrypted_tx = enclave
+                    .encrypt_well_formed_tx(&well_formed_tx, &mut rng)
+                    .unwrap();
+
+                let highest_indices = well_formed_tx.tx.get_membership_proof_highest_indices();
+                let membership_proofs = ledger
+                    .get_tx_out_proof_of_memberships(&highest_indices)
+                    .expect("failed getting proof");
+                (encrypted_tx, membership_proofs)
+            })
+            .collect();
+
+        // Form block
+        let parent_block = ledger.get_block(ledger.num_blocks().unwrap() - 1).unwrap();
+
+        let form_block_result =
+            enclave.form_block(&parent_block, &well_formed_encrypted_txs_with_proofs);
+        let expected_duplicate_output_public_key = new_transactions[0].output_public_keys()[0];
+
+        // Check
+        let expected = Err(Error::FormBlock(format!(
+            "Duplicate output public key: {:?}",
+            expected_duplicate_output_public_key
         )));
 
         assert_eq!(form_block_result, expected);

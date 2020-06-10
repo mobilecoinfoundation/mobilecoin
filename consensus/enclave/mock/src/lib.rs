@@ -45,12 +45,14 @@ impl ConsensusServiceMockEnclave {
         let tx_hash = tx.tx_hash();
         let highest_indices = tx.get_membership_proof_highest_indices();
         let key_images: Vec<KeyImage> = tx.key_images();
+        let output_public_keys = tx.output_public_keys();
 
         TxContext {
             locally_encrypted_tx,
             tx_hash,
             highest_indices,
             key_images,
+            output_public_keys,
         }
     }
 }

@@ -2,6 +2,7 @@
 
 use crate::tx_manager::UntrustedInterfaces;
 use mc_consensus_enclave::WellFormedTxContext;
+use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{TxHash, TxOutMembershipProof},
@@ -17,6 +18,7 @@ impl UntrustedInterfaces for TrivialTxManagerUntrustedInterfaces {
         &self,
         _highest_indices: &[u64],
         _key_images: &[KeyImage],
+        _output_public_keys: &[CompressedRistrettoPublic],
     ) -> TransactionValidationResult<(u64, Vec<TxOutMembershipProof>)> {
         Ok((1, Vec::new()))
     }
