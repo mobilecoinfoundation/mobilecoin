@@ -6,14 +6,13 @@ use crate::{
     _macros::FfiWrapper,
     attributes::{Attributes, ATTRIBUTES_SIZE},
     cpu_svn::{CpuSecurityVersion, CPU_SECURITY_VERSION_SIZE},
-    impl_ffi_wrapper_base, impl_serialize_to_x64,
+    impl_ffi_wrapper_base,
     key_id::{KeyId, KEY_ID_SIZE},
     misc_attribute::{MiscSelect, MISC_SELECT_SIZE},
     ConfigSecurityVersion, SecurityVersion, CONFIG_SECURITY_VERSION_SIZE, SECURITY_VERSION_SIZE,
 };
 use bitflags::bitflags;
 use core::{
-    cmp::Ordering,
     convert::{TryFrom, TryInto},
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
@@ -25,7 +24,9 @@ use mc_sgx_core_types_sys::{
     SGX_KEYSELECT_PROVISION_SEAL, SGX_KEYSELECT_REPORT, SGX_KEYSELECT_SEAL,
     SGX_KEY_REQUEST_RESERVED2_BYTES,
 };
-use mc_util_encodings::{Error as EncodingError, FromX64, IntelLayout, ToX64, INTEL_U16_SIZE};
+use mc_util_encodings::{Error as EncodingError, INTEL_U16_SIZE};
+use mc_util_repr_bytes::{typenum::U512, GenericArray, ReprBytes};
+#[cfg(feature = "use_serde")]
 use serde::{Deserialize, Serialize};
 
 const KEY_NAME_START: usize = 0;
@@ -59,7 +60,8 @@ pub const KEY_NAME_SIZE: usize = INTEL_U16_SIZE;
 pub const KEY_POLICY_SIZE: usize = INTEL_U16_SIZE;
 
 /// An enumeration of key names which can be used in a request.
-#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[cfg_attr(feature = "use_serde", derive(Deserialize, Serialize))]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(u16)]
 pub enum KeyName {
     /// Launch key
@@ -86,26 +88,6 @@ impl Display for KeyName {
     }
 }
 
-impl FromX64 for KeyName {
-    type Error = EncodingError;
-
-    fn from_x64(src: &[u8]) -> Result<Self, Self::Error> {
-        if src.len() < KEY_NAME_SIZE {
-            Err(EncodingError::InvalidInputLength)
-        } else {
-            KeyName::try_from(u16::from_le_bytes(
-                (&src[..KEY_NAME_SIZE])
-                    .try_into()
-                    .expect("Could not convert 2-byte slice to 2-byte array"),
-            ))
-        }
-    }
-}
-
-impl IntelLayout for KeyName {
-    const X86_64_CSIZE: usize = KEY_NAME_SIZE;
-}
-
 impl From<KeyName> for u16 {
     fn from(src: KeyName) -> u16 {
         match src {
@@ -115,17 +97,6 @@ impl From<KeyName> for u16 {
             KeyName::Report => 0x0003,
             KeyName::Seal => 0x0004,
         }
-    }
-}
-
-impl ToX64 for KeyName {
-    fn to_x64(&self, dest: &mut [u8]) -> Result<usize, usize> {
-        if dest.len() < KEY_NAME_SIZE {
-            return Err(KEY_NAME_SIZE);
-        }
-
-        dest.copy_from_slice(&u16::from(*self).to_le_bytes());
-        Ok(KEY_NAME_SIZE)
     }
 }
 
@@ -208,38 +179,6 @@ impl Display for KeyPolicy {
     }
 }
 
-impl FromX64 for KeyPolicy {
-    type Error = EncodingError;
-
-    fn from_x64(src: &[u8]) -> Result<Self, Self::Error> {
-        if src.len() < KEY_POLICY_SIZE {
-            Err(EncodingError::InvalidInputLength)
-        } else {
-            KeyPolicy::from_bits(u16::from_le_bytes(
-                (&src[..KEY_POLICY_SIZE])
-                    .try_into()
-                    .expect("Could not convert 2-byte slice to 2-byte array"),
-            ))
-            .ok_or(EncodingError::InvalidInput)
-        }
-    }
-}
-
-impl IntelLayout for KeyPolicy {
-    const X86_64_CSIZE: usize = INTEL_U16_SIZE;
-}
-
-impl ToX64 for KeyPolicy {
-    fn to_x64(&self, dest: &mut [u8]) -> Result<usize, usize> {
-        if dest.len() < KEY_POLICY_SIZE {
-            Err(KEY_POLICY_SIZE)
-        } else {
-            dest.copy_from_slice(&self.bits.to_le_bytes());
-            Ok(KEY_POLICY_SIZE)
-        }
-    }
-}
-
 /// A key request data structure.
 ///
 /// This is used with the `sgx_get_key()` inside-the-enclave method.
@@ -247,11 +186,7 @@ impl ToX64 for KeyPolicy {
 pub struct KeyRequest(sgx_key_request_t);
 
 impl_ffi_wrapper_base! {
-    KeyRequest, sgx_key_request_t, KEY_REQUEST_SIZE;
-}
-
-impl_serialize_to_x64! {
-    KeyRequest, KEY_REQUEST_SIZE;
+    KeyRequest, sgx_key_request_t;
 }
 
 impl KeyRequest {
@@ -324,6 +259,44 @@ impl Display for KeyRequest {
     }
 }
 
+impl ReprBytes for KeyRequest {
+    type Size = U512;
+    type Error = EncodingError;
+
+    fn from_bytes(src: &GenericArray<u8, Self::Size>) -> Result<Self, Self::Error> {
+        Self::try_from(src.as_slice())
+    }
+
+    fn to_bytes(&self) -> GenericArray<u8, Self::Size> {
+        let retval = GenericArray::default();
+
+        self.key_name()
+            .to_x64(&mut retval[KEY_NAME_START..KEY_NAME_END])
+            .expect("Could not write key name");
+        self.key_policy()
+            .to_x64(&mut retval[KEY_POLICY_START..KEY_POLICY_END])
+            .expect("Could not write key policy");
+        retval[ISV_SVN_START..ISV_SVN_END].copy_from_slice(&self.security_version().to_le_bytes());
+        retval[RESERVED1_START..RESERVED1_END].copy_from_slice(&[0u8; INTEL_U16_SIZE]);
+        self.cpu_security_version()
+            .to_x64(&mut retval[CPU_SVN_START..CPU_SVN_END])
+            .expect("Could not write CPU security version");
+        self.attribute_mask()
+            .to_x64(&mut retval[ATTRIBUTES_START..ATTRIBUTES_END])
+            .expect("Could not write attribute mask");
+        self.key_id()
+            .to_x64(&mut retval[KEY_ID_START..KEY_ID_END])
+            .expect("Could not write key ID");
+        retval[MISC_MASK_START..MISC_MASK_END].copy_from_slice(&self.misc_mask().to_le_bytes());
+        retval[CONFIG_SVN_START..CONFIG_SVN_END]
+            .copy_from_slice(&self.config_security_version().to_le_bytes());
+        retval[RESERVED2_START..RESERVED2_END]
+            .copy_from_slice(&[0u8; SGX_KEY_REQUEST_RESERVED2_BYTES]);
+
+        retval
+    }
+}
+
 impl TryFrom<&sgx_key_request_t> for KeyRequest {
     type Error = EncodingError;
 
@@ -345,10 +318,10 @@ impl TryFrom<&sgx_key_request_t> for KeyRequest {
     }
 }
 
-impl FromX64 for KeyRequest {
+impl<'src> TryFrom<&'src [u8]> for KeyRequest {
     type Error = EncodingError;
 
-    fn from_x64(src: &[u8]) -> Result<Self, Self::Error> {
+    fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
         if src.len() < KEY_REQUEST_SIZE {
             return Err(EncodingError::InvalidInputLength);
         }
@@ -397,85 +370,6 @@ impl Hash for KeyRequest {
         self.key_id().hash(state);
         self.misc_mask().hash(state);
         self.config_security_version().hash(state);
-    }
-}
-
-impl Ord for KeyRequest {
-    fn cmp(&self, other: &Self) -> Ordering {
-        match self.key_name().cmp(&other.key_name()) {
-            Ordering::Equal => match self.key_policy().cmp(&other.key_policy()) {
-                Ordering::Equal => match self.security_version().cmp(&other.security_version()) {
-                    Ordering::Equal => match self
-                        .cpu_security_version()
-                        .cmp(&other.cpu_security_version())
-                    {
-                        Ordering::Equal => match self.attribute_mask().cmp(&other.attribute_mask())
-                        {
-                            Ordering::Equal => match self.key_id().cmp(&other.key_id()) {
-                                Ordering::Equal => match self.misc_mask().cmp(&other.misc_mask()) {
-                                    Ordering::Equal => self
-                                        .config_security_version()
-                                        .cmp(&other.config_security_version()),
-                                    other => other,
-                                },
-                                other => other,
-                            },
-                            other => other,
-                        },
-                        other => other,
-                    },
-                    other => other,
-                },
-                other => other,
-            },
-            other => other,
-        }
-    }
-}
-
-impl PartialEq for KeyRequest {
-    fn eq(&self, other: &Self) -> bool {
-        self.key_name() == other.key_name()
-            && self.key_policy() == other.key_policy()
-            && self.security_version() == other.security_version()
-            && self.cpu_security_version() == other.cpu_security_version()
-            && self.attribute_mask() == other.attribute_mask()
-            && self.key_id() == other.key_id()
-            && self.misc_mask() == other.misc_mask()
-            && self.config_security_version() == other.config_security_version()
-    }
-}
-
-impl ToX64 for KeyRequest {
-    fn to_x64(&self, dest: &mut [u8]) -> Result<usize, usize> {
-        if dest.len() < KEY_REQUEST_SIZE {
-            return Err(KEY_REQUEST_SIZE);
-        }
-
-        self.key_name()
-            .to_x64(&mut dest[KEY_NAME_START..KEY_NAME_END])
-            .expect("Could not write key name");
-        self.key_policy()
-            .to_x64(&mut dest[KEY_POLICY_START..KEY_POLICY_END])
-            .expect("Could not write key policy");
-        dest[ISV_SVN_START..ISV_SVN_END].copy_from_slice(&self.security_version().to_le_bytes());
-        dest[RESERVED1_START..RESERVED1_END].copy_from_slice(&[0u8; INTEL_U16_SIZE]);
-        self.cpu_security_version()
-            .to_x64(&mut dest[CPU_SVN_START..CPU_SVN_END])
-            .expect("Could not write CPU security version");
-        self.attribute_mask()
-            .to_x64(&mut dest[ATTRIBUTES_START..ATTRIBUTES_END])
-            .expect("Could not write attribute mask");
-        self.key_id()
-            .to_x64(&mut dest[KEY_ID_START..KEY_ID_END])
-            .expect("Could not write key ID");
-        dest[MISC_MASK_START..MISC_MASK_END].copy_from_slice(&self.misc_mask().to_le_bytes());
-        dest[CONFIG_SVN_START..CONFIG_SVN_END]
-            .copy_from_slice(&self.config_security_version().to_le_bytes());
-        dest[RESERVED2_START..RESERVED2_END]
-            .copy_from_slice(&[0u8; SGX_KEY_REQUEST_RESERVED2_BYTES]);
-
-        Ok(KEY_REQUEST_SIZE)
     }
 }
 

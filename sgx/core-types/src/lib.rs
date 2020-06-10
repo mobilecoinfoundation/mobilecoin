@@ -8,43 +8,45 @@
 extern crate alloc;
 
 mod attributes;
-mod config_id;
-mod cpu_svn;
-mod error;
-mod ext_prod_id;
-mod family_id;
-mod key_128bit;
-mod key_id;
-mod key_request;
-mod mac;
-mod measurement;
-mod misc_attribute;
-mod report;
-mod report_body;
-mod report_data;
-mod target_info;
+// mod config_id;
+// mod cpu_svn;
+// mod error;
+// mod ext_prod_id;
+// mod family_id;
+// mod key_128bit;
+// mod key_id;
+// mod key_request;
+// mod mac;
+// mod measurement;
+// mod misc_attribute;
+// mod report;
+// mod report_body;
+// mod report_data;
+// mod target_info;
 
+#[doc(hidden)]
 pub mod _macros;
 
 pub use crate::{
     _macros::FfiWrapper,
     attributes::{AttributeFlags, AttributeXfeatures, Attributes, ATTRIBUTES_SIZE},
-    config_id::{ConfigId, CONFIG_ID_SIZE},
-    cpu_svn::{CpuSecurityVersion, CPU_SECURITY_VERSION_SIZE},
-    error::{Error, Result, SgxStatusToResult},
-    ext_prod_id::{ExtendedProductId, EXTENDED_PRODUCT_ID_SIZE},
-    family_id::{FamilyId, FAMILY_ID_SIZE},
-    key_128bit::{Key128, KEY128_SIZE},
-    key_id::{KeyId, KEY_ID_SIZE},
-    key_request::{KeyRequest, KEY_REQUEST_SIZE},
-    mac::{Mac, MAC_SIZE},
-    measurement::{MrEnclave, MrSigner, MRENCLAVE_SIZE, MRSIGNER_SIZE},
-    misc_attribute::{MiscAttribute, MISC_ATTRIBUTE_SIZE},
-    report::{Report, REPORT_SIZE},
-    report_body::{ReportBody, REPORT_BODY_SIZE},
-    report_data::{ReportData, REPORT_DATA_SIZE},
-    target_info::{TargetInfo, TARGET_INFO_SIZE},
 };
+
+// config_id::{ConfigId, CONFIG_ID_SIZE},
+// cpu_svn::{CpuSecurityVersion, CPU_SECURITY_VERSION_SIZE},
+// error::{Error, Result, SgxStatusToResult},
+// ext_prod_id::{ExtendedProductId, EXTENDED_PRODUCT_ID_SIZE},
+// family_id::{FamilyId, FAMILY_ID_SIZE},
+// key_128bit::{Key128, KEY128_SIZE},
+// key_id::{KeyId, KEY_ID_SIZE},
+// key_request::{KeyRequest, KEY_REQUEST_SIZE},
+// mac::{Mac, MAC_SIZE},
+// measurement::{MrEnclave, MrSigner, MRENCLAVE_SIZE, MRSIGNER_SIZE},
+// misc_attribute::{MiscAttribute, MISC_ATTRIBUTE_SIZE},
+// report::{Report, REPORT_SIZE},
+// report_body::{ReportBody, REPORT_BODY_SIZE},
+// report_data::{ReportData, REPORT_DATA_SIZE},
+// target_info::{TargetInfo, TARGET_INFO_SIZE},
 
 /// The size of a [ConfigSecurityVersion]'s x64 representation, in bytes.
 pub use mc_util_encodings::INTEL_U16_SIZE as CONFIG_SECURITY_VERSION_SIZE;
