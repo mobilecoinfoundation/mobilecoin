@@ -1,9 +1,5 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-// The separated integration tests do not use all common code.
-// TODO: consider breaking out new_mesh and new_cyclic into separate integration code source.
-#![allow(dead_code)]
-
 use mc_common::{
     logger::{log, o, Logger},
     HashMap, HashSet, NodeID,
@@ -51,65 +47,8 @@ pub struct SCPNetwork {
 }
 
 impl SCPNetwork {
-    /// Constructs a mesh network, where each node has all of it's peers as validators.
-    pub fn new_mesh(
-        num_nodes: usize,
-        k: u32,
-        validity_fn: ValidityFn<String, TransactionValidationError>,
-        combine_fn: CombineFn<String>,
-        logger: Logger,
-    ) -> Self {
-        let mut node_options = Vec::<NodeOptions>::new();
-        for node_id in 0..num_nodes {
-            let other_node_ids: Vec<u32> = (0..num_nodes)
-                .filter(|other_node_id| other_node_id != &node_id)
-                .map(|other_node_id| other_node_id as u32)
-                .collect();
 
-            node_options.push(NodeOptions::new(
-                format!("m{}-{}-SCPNode{}", num_nodes, k, node_id),
-                other_node_ids.clone(),
-                other_node_ids.clone(),
-                k,
-            ));
-        }
-
-        Self::new(node_options, validity_fn, combine_fn, logger)
-    }
-
-    /// Constructs a cyclic network (e.g. 1->2->3->4->1)
-    pub fn new_cyclic(
-        num_nodes: usize,
-        validity_fn: ValidityFn<String, TransactionValidationError>,
-        combine_fn: CombineFn<String>,
-        logger: Logger,
-    ) -> Self {
-        let mut node_options = Vec::<NodeOptions>::new();
-        for node_id in 0..num_nodes {
-            let next_node_id: u32 = if node_id + 1 < num_nodes {
-                node_id as u32 + 1
-            } else {
-                0
-            };
-
-            // TODO: Currently nodes do not relay messages, so each node needs to broadcast to the
-            // entire network
-            let other_node_ids: Vec<u32> = (0..num_nodes)
-                .filter(|other_node_id| other_node_id != &node_id)
-                .map(|other_node_id| other_node_id as u32)
-                .collect();
-
-            node_options.push(NodeOptions::new(
-                format!("c{}-SCPNode{}", num_nodes, node_id),
-                other_node_ids,
-                vec![next_node_id],
-                1,
-            ));
-        }
-
-        Self::new(node_options, validity_fn, combine_fn, logger)
-    }
-
+    // creates a network based on node_options
     pub fn new(
         node_options: Vec<NodeOptions>,
         validity_fn: ValidityFn<String, TransactionValidationError>,
@@ -130,15 +69,17 @@ impl SCPNetwork {
                 .map(|id| test_node_id(*id as u32))
                 .collect::<Vec<NodeID>>();
 
+            let qs = QuorumSet::new_with_node_ids(options_for_this_node.k, validators);
+
             let peers = options_for_this_node
                 .peers
                 .iter()
                 .map(|id| test_node_id(*id as u32))
                 .collect::<HashSet<NodeID>>();
 
-            let qs = QuorumSet::new_with_node_ids(options_for_this_node.k, validators);
-
             let node_id = test_node_id(node_id as u32);
+
+            assert!(!peers.contains(&node_id));
 
             let nodes_map_clone: Arc<Mutex<HashMap<NodeID, SCPNode>>> =
                 { Arc::clone(&network.nodes_map) };

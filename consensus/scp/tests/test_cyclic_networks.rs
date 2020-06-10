@@ -25,6 +25,37 @@ fn skip_slow_tests() -> bool {
 // Cyclic tests (similar to Figure 4 in the SCP whitepaper)
 ///////////////////////////////////////////////////////////////////////////////
 
+/// Constructs a cyclic network (e.g. 1->2->3->4->1)
+fn new_cyclic(
+    num_nodes: usize,
+    validity_fn: ValidityFn<String, TransactionValidationError>,
+    combine_fn: CombineFn<String>,
+    logger: Logger,
+) -> SCPNetwork {
+    let mut node_options = Vec::<NodeOptions>::new();
+    for node_id in 0..num_nodes {
+        let next_node_id: u32 = if node_id + 1 < num_nodes {
+            node_id as u32 + 1
+        } else {
+            0
+        };
+
+        let other_node_ids: Vec<u32> = (0..num_nodes)
+            .filter(|other_node_id| other_node_id != &node_id)
+            .map(|other_node_id| other_node_id as u32)
+            .collect();
+
+        node_options.push(NodeOptions::new(
+            format!("c-{}-node{}", num_nodes, node_id),
+            other_node_ids,
+            vec![next_node_id],
+            1,
+        ));
+    }
+
+    SCPNetwork::new(node_options, validity_fn, combine_fn, logger)
+}
+
 fn cyclic_test_helper(num_nodes: usize, logger: Logger) {
     if skip_slow_tests() {
         return;

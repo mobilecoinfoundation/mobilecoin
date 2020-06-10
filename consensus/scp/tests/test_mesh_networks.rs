@@ -26,6 +26,32 @@ fn skip_slow_tests() -> bool {
 /// (N nodes, each node has all other nodes as it's validators)
 ///////////////////////////////////////////////////////////////////////////////
 
+/// Constructs a mesh network, where each node has all of it's peers as validators.
+pub fn new_mesh(
+    num_nodes: usize,
+    k: u32,
+    validity_fn: ValidityFn<String, TransactionValidationError>,
+    combine_fn: CombineFn<String>,
+    logger: Logger,
+) -> SCPNetwork {
+    let mut node_options = Vec::<NodeOptions>::new();
+    for node_id in 0..num_nodes {
+        let other_node_ids: Vec<u32> = (0..num_nodes)
+            .filter(|other_node_id| other_node_id != &node_id)
+            .map(|other_node_id| other_node_id as u32)
+            .collect();
+
+        node_options.push(NodeOptions::new(
+            format!("m-{}-{}-node{}", num_nodes, k, node_id),
+            other_node_ids.clone(),
+            other_node_ids,
+            k,
+        ));
+    }
+
+    SCPNetwork::new(node_options, validity_fn, combine_fn, logger)
+}
+
 /// Performs a simple consensus test where a network of `num_nodes` nodes is started,
 /// and values are submitted only to the middle node.
 fn mesh_test_helper(num_nodes: usize, k: u32, logger: Logger) {
