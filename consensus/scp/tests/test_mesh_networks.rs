@@ -7,7 +7,7 @@ use mc_common::{
     HashSet,
 };
 
-use mc_consensus_scp::test_utils;
+use mc_consensus_scp::{core_types::{CombineFn, ValidityFn}, test_utils};
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use serial_test_derive::serial;
 use std::{
@@ -30,7 +30,7 @@ fn skip_slow_tests() -> bool {
 fn new_mesh(
     num_nodes: usize,
     k: u32,
-    validity_fn: ValidityFn<String, TransactionValidationError>,
+    validity_fn: ValidityFn<String, test_utils::TransactionValidationError>,
     combine_fn: CombineFn<String>,
     logger: Logger,
 ) -> SCPNetwork {
