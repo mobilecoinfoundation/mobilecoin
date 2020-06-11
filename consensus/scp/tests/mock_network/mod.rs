@@ -204,7 +204,7 @@ impl SCPNetwork {
         );
     }
 
-    fn broadcast_msg(
+    pub fn broadcast_msg(
         logger: Logger,
         nodes_map: &Arc<Mutex<HashMap<NodeID, SCPNode>>>,
         peers: &HashSet<NodeID>,
@@ -287,7 +287,7 @@ impl SCPNodeSharedData {
 struct SCPNode {
     local_node: Arc<Mutex<Node<String, TransactionValidationError>>>,
     sender: crossbeam_channel::Sender<SCPNodeTaskMessage>,
-    shared_data: Arc<Mutex<SCPNodeSharedData>>,
+    pub shared_data: Arc<Mutex<SCPNodeSharedData>>,
 }
 
 impl SCPNode {
