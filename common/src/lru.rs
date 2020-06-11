@@ -48,6 +48,40 @@ impl<K: PartialEq + Eq + Hash, V> LruCache<K, V> {
         self.used_indexes.len()
     }
 
+    /// Resizes the cache.
+    pub fn resize(&mut self, new_capacity: usize) {
+        // return early if capacity won't change
+        if new_capacity == self.used_indexes.capacity() {
+            return;
+        }
+        // re-initialize storage
+        self.free_indexes = VecDeque::with_capacity(new_capacity);
+        self.key_to_entry_index.clear();
+        let mut new_entries: Vec<Option<(Arc<K>, V)>> = Vec::with_capacity(new_capacity);
+        let mut new_used_indexes: VecDeque<usize> = VecDeque::with_capacity(new_capacity);
+        // resizing used_indexes will trim older indexes that no longer fit
+        if new_capacity <= self.used_indexes.len() {
+            self.used_indexes.resize(new_capacity, 0);
+        }
+
+        for i in 0..new_capacity {
+            new_entries.push(None);
+            if i < self.used_indexes.len() {
+                if let Some((k, v)) = self.entries[self.used_indexes[i]].take() {
+                    self.key_to_entry_index.insert(k.clone(), i);
+                    new_used_indexes.push_back(i);
+                    new_entries[i] = Some((k, v));
+                } else {
+                    self.free_indexes.push_back(i);
+                }
+            } else {
+                self.free_indexes.push_back(i);
+            }
+        }
+        self.used_indexes = new_used_indexes;
+        self.entries = new_entries;
+    }
+
     /// Returns a bool indicating whether the cache is empty or not.
     pub fn is_empty(&self) -> bool {
         self.used_indexes.is_empty()
@@ -554,5 +588,40 @@ mod tests {
 
         cache.clear();
         assert_eq!(cache.len(), 0);
+    }
+
+    #[test]
+    fn test_resize_larger() {
+        let mut cache = LruCache::new(2);
+
+        cache.put(1, "a");
+        cache.put(2, "b");
+        cache.resize(4);
+        cache.put(3, "c");
+        cache.put(4, "d");
+
+        assert_eq!(cache.len(), 4);
+        assert_eq!(cache.get(&1), Some(&"a"));
+        assert_eq!(cache.get(&2), Some(&"b"));
+        assert_eq!(cache.get(&3), Some(&"c"));
+        assert_eq!(cache.get(&4), Some(&"d"));
+    }
+
+    #[test]
+    fn test_resize_smaller() {
+        let mut cache = LruCache::new(4);
+
+        cache.put(1, "a");
+        cache.put(2, "b");
+        cache.put(3, "c");
+        cache.put(4, "d");
+
+        cache.resize(2);
+
+        assert_eq!(cache.len(), 2);
+        assert!(cache.get(&1).is_none());
+        assert!(cache.get(&2).is_none());
+        assert_eq!(cache.get(&3), Some(&"c"));
+        assert_eq!(cache.get(&4), Some(&"d"));
     }
 }
