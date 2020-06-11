@@ -62,7 +62,7 @@ fn cyclic_test_helper(num_nodes: usize, logger: Logger) {
         return;
     }
     
-    let network = mock_network::SCPNetwork::new_cyclic(
+    let network = new_cyclic(
         num_nodes,
         Arc::new(test_utils::trivial_validity_fn::<String>),
         Arc::new(test_utils::trivial_combine_fn::<String>),
@@ -70,7 +70,7 @@ fn cyclic_test_helper(num_nodes: usize, logger: Logger) {
     );
 
     let network_name = format!("cyclic{}", num_nodes);
-    mock_network::run_test(network, values_to_push, logger.clone(), &network_name);
+    mock_network::run_test(network, &network_name, logger.clone());
 }
 
 #[test_with_logger]
