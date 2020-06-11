@@ -544,7 +544,7 @@ pub fn run_test(mut network: SCPNetwork, network_name: &str, logger: Logger) {
 
     let start = Instant::now();
 
-    let mut rng = test_helper::get_seeded_rng();
+    let mut rng = mc_util_test_helper::get_seeded_rng();
 
     let mut values = Vec::<String>::new();
 
@@ -557,7 +557,7 @@ pub fn run_test(mut network: SCPNetwork, network_name: &str, logger: Logger) {
     };
 
     for i in 0..VALUES_TO_PUSH {
-        let value = test_helper::random_str(&mut rng, 20);
+        let value = mc_util_test_helper::random_str(&mut rng, 20);
 
         if SUBMIT_VALUES_IN_PARALLEL {
             // simulate broadcast of values to all nodes in parallel
