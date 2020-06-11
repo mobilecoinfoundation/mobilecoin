@@ -192,27 +192,6 @@ impl SCPNetwork {
             .clone()
     }
 
-    /// Wait for this node's ledger to grow to a specific block height
-    #[allow(dead_code)]
-    pub fn wait_for_block_height(&self, node_id: &NodeID, block_height: usize, max_wait: Duration) {
-        let deadline = Instant::now() + max_wait;
-        while Instant::now() < deadline {
-            let cur_block_height = self.get_shared_data(node_id).ledger.len();
-            if cur_block_height >= block_height {
-                return;
-            }
-
-            thread::sleep(Duration::from_millis(10));
-        }
-
-        let cur_block_height = self.get_shared_data(node_id).ledger.len();
-
-        panic!(
-            "{:?}: timeout while waiting for block height {} (currently at {})",
-            node_id, block_height, cur_block_height
-        );
-    }
-
     pub fn broadcast_msg(
         logger: Logger,
         nodes_map: &Arc<Mutex<HashMap<NodeID, SCPNode>>>,
