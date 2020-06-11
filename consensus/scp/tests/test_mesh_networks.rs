@@ -2,15 +2,14 @@
 
 mod mock_network;
 
-use mc_common::{
-    logger::{test_with_logger, Logger},
-};
+use mc_common::logger::{test_with_logger, Logger};
 
-use mc_consensus_scp::{core_types::{CombineFn, ValidityFn}, test_utils};
-use serial_test_derive::serial;
-use std::{
-    sync::Arc,
+use mc_consensus_scp::{
+    core_types::{CombineFn, ValidityFn},
+    test_utils,
 };
+use serial_test_derive::serial;
+use std::sync::Arc;
 
 /// Hack to skip certain tests (that are currently too slow) from running
 fn skip_slow_tests() -> bool {

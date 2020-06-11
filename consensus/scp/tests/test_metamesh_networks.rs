@@ -4,15 +4,16 @@ mod mock_network;
 
 use mc_common::{
     logger::{o, test_with_logger, Logger},
-    HashMap, HashSet,
-    NodeID
+    HashMap, HashSet, NodeID,
 };
 
-use mc_consensus_scp::{core_types::{CombineFn, ValidityFn}, quorum_set::QuorumSet, test_utils};
-use serial_test_derive::serial;
-use std::{
-    sync::{Arc, Mutex},
+use mc_consensus_scp::{
+    core_types::{CombineFn, ValidityFn},
+    quorum_set::QuorumSet,
+    test_utils,
 };
+use serial_test_derive::serial;
+use std::sync::{Arc, Mutex};
 
 /// Hack to skip certain tests (that are currently too slow) from running
 fn skip_slow_tests() -> bool {
@@ -69,11 +70,7 @@ fn new_meta_mesh(
             let other_servers_in_this_org = (0..num_servers_per_org)
                 .filter(|other_id| other_id != &server_id)
                 .map(|server_id| {
-                    meta_mesh_node_id(
-                        org_id as u32,
-                        num_servers_per_org as u32,
-                        server_id as u32,
-                    )
+                    meta_mesh_node_id(org_id as u32, num_servers_per_org as u32, server_id as u32)
                 })
                 .collect::<Vec<NodeID>>();
 
@@ -174,17 +171,17 @@ fn metamesh_test_helper(
 #[test_with_logger]
 #[serial]
 fn metamesh_2_3(logger: Logger) {
-    metamesh_test_helper(2,3,2,logger.clone(),);
+    metamesh_test_helper(2, 3, 2, logger.clone());
 }
 
 #[test_with_logger]
 #[serial]
 fn metamesh_3_3(logger: Logger) {
-    metamesh_test_helper(3,3,2,logger.clone(),);
+    metamesh_test_helper(3, 3, 2, logger.clone());
 }
 
 #[test_with_logger]
 #[serial]
 fn metamesh_3_4(logger: Logger) {
-    metamesh_test_helper(3,4,3,logger.clone(),);
+    metamesh_test_helper(3, 4, 3, logger.clone());
 }
