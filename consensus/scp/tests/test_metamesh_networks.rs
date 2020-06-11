@@ -3,8 +3,9 @@
 mod mock_network;
 
 use mc_common::{
-    logger::{log, o, test_with_logger, Logger},
+    logger::{o, test_with_logger, Logger},
     HashMap, HashSet,
+    NodeID
 };
 
 use mc_consensus_scp::{core_types::{CombineFn, ValidityFn}, quorum_set::QuorumSet, test_utils};
