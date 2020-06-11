@@ -61,11 +61,12 @@ impl<L: Ledger> TxManagerUntrustedInterfaces for DefaultTxManagerUntrustedInterf
         }
 
         // Output public keys should not exist in the ledger.
-        if output_public_keys.iter().any(|public_key| {
+        let contains_existing_public_key = output_public_keys.iter().any(|public_key| {
             self.ledger
                 .contains_tx_out_public_key(public_key)
                 .unwrap_or(true)
-        }) {
+        });
+        if contains_existing_public_key {
             // At least one public key is already in the ledger, or the ledger returned an error.
             return Err(TransactionValidationError::ContainsExistingOutputPublicKey);
         }
@@ -110,11 +111,12 @@ impl<L: Ledger> TxManagerUntrustedInterfaces for DefaultTxManagerUntrustedInterf
         }
 
         // The `output_public_keys` must not appear in the ledger.
-        if context.output_public_keys().iter().any(|public_key| {
+        let contains_existing_public_key = context.output_public_keys().iter().any(|public_key| {
             self.ledger
                 .contains_tx_out_public_key(public_key)
                 .unwrap_or(true)
-        }) {
+        });
+        if contains_existing_public_key {
             // At least one public key is already in the ledger, or the ledger returned an error.
             return Err(TransactionValidationError::ContainsExistingOutputPublicKey);
         }

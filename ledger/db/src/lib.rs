@@ -276,6 +276,7 @@ impl Ledger for LedgerDB {
 
 impl LedgerDB {
     /// Opens an existing Ledger Database in the given path.
+    #[allow(clippy::unreadable_literal)]
     pub fn open(path: PathBuf) -> Result<LedgerDB, Error> {
         let env = Environment::new()
             .set_max_dbs(21)
