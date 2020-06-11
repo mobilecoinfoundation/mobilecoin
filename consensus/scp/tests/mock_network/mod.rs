@@ -39,6 +39,8 @@ const LOG_FLUSH_DELAY_MILLIS: u64 = 500;
 /// SCP suggests one second, but threads can run much faster.
 const SCP_TIMEBASE: Duration = Duration::from_millis(100);
 
+/// Sleep when advancing to a new slot to help threads keep pace.
+const DURATION_TO_SLEEP_WHEN_ADVANCING_SLOT: Duration = Duration::from_millis(20);
 pub struct NodeOptions {
     thread_name: String,
     peers: Vec<u32>,
@@ -322,19 +324,19 @@ impl SCPNode {
             combine_fn.clone(),
             logger.clone(),
         )));
-        
+
         // see if an environment variable is available for the timebase
         let mut timebase_duration = SCP_TIMEBASE;
         if let Ok(timebase_string) = std::env::var("SCP_TIMEBASE") {
             let timebase_u64 = timebase_string.parse::<u64>().unwrap();
             timebase_duration = Duration::from_millis(timebase_u64);
         }
-        
+
         local_node
             .lock()
             .expect("lock failed on local node setting scp_timebase_millis")
             .scp_timebase = timebase_duration;
-            
+
         log::info!(
             logger,
             "setting timebase to {} msec",
@@ -439,7 +441,7 @@ impl SCPNode {
                             }
                         }
 
-                        // Process timeouts
+                        // Process timeouts (for all slots)
                         let timeout_msgs : Vec<Msg<String>> = {
                             thread_local_node
                             .lock()
@@ -481,24 +483,25 @@ impl SCPNode {
                             shared_data.ledger.push(ext_vals);
                             let total_values = shared_data.total_values();
 
-                            log::debug!(
+                            log::trace!(
                                 logger,
-                                "{}: Slot {} ended with {} externalized values and {} pending values.",
+                                "(  ledger ) node {} slot {:3} : {:5} new, {:5} total, {:5} pending",
                                 node_id,
-                                total_values,
+                                current_slot as SlotIndex,
                                 last_slot_values,
+                                total_values,
                                 remaining_values.len(),
                             );
 
                             pending_values = remaining_values;
                             current_slot += 1;
+                            // try to let other threads catch up
+                            std::thread::sleep(DURATION_TO_SLEEP_WHEN_ADVANCING_SLOT);
                         }
                     }
-
-                    // Wait
-                    thread::sleep(Duration::from_millis(10 as u64));
+                    log::info!(logger, "MESSAGES,{},{}", node_id, total_broadcasts);
                 }
-            ).expect("failed spawning SCPNode"));
+            ).expect("failed spawning SCPNode thread"));
 
         (node, thread_handle)
     }
