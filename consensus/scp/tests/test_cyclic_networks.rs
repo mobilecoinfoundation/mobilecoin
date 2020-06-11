@@ -56,76 +56,25 @@ fn new_cyclic(
     mock_network::SCPNetwork::new(node_options, validity_fn, combine_fn, logger)
 }
 
+/// Performs a consensus test for a cyclic network of `num_nodes` nodes.
 fn cyclic_test_helper(num_nodes: usize, logger: Logger) {
+    if num_nodes < 3 {
+        return;
+    }
+    
     if skip_slow_tests() {
         return;
     }
-
-    assert!(num_nodes >= 3);
-    let mut rng: StdRng = SeedableRng::from_seed([193u8; 32]);
-    let start = Instant::now();
-
-    let network = new_cyclic(
+    
+    let network = SCPNetwork::new_cyclic(
         num_nodes,
         Arc::new(test_utils::trivial_validity_fn::<String>),
-        //                Arc::new(test_utils::get_bounded_combine_fn::<String>(200)),
         Arc::new(test_utils::trivial_combine_fn::<String>),
         logger.clone(),
     );
 
-    // Send a few values, with random timeouts in between
-    let mut values = Vec::<String>::new();
-
-    for _i in 0..10 {
-        let n = test_utils::test_node_id(rng.gen_range(0, num_nodes as u32));
-        for _j in 0..1000 {
-            let value = format!("{}-{}", n, mock_network::random_str(&mut rng, 10));
-            network.push_value(&n, &value);
-            values.push(value);
-        }
-        sleep(Duration::from_millis(rng.gen_range(0, 50)));
-    }
-
-    // Check that the values got added to the nodes
-    for node_num in 0..num_nodes {
-        let node_id = test_utils::test_node_id(node_num as u32);
-
-        network.wait_for_total_values(&node_id, values.len(), Duration::from_secs(600));
-
-        assert_eq!(
-            values.iter().cloned().collect::<HashSet<String>>(),
-            network
-                .get_shared_data(&node_id)
-                .get_all_values()
-                .iter()
-                .cloned()
-                .collect::<HashSet<String>>()
-        );
-    }
-
-    // Check all blocks in the ledger are the same
-    let node0_data = network.get_shared_data(&test_utils::test_node_id(0)).ledger;
-    assert!(!node0_data.is_empty());
-
-    for node_num in 0..num_nodes {
-        let node_data = network
-            .get_shared_data(&test_utils::test_node_id(node_num as u32))
-            .ledger;
-        assert_eq!(node0_data.len(), node_data.len());
-
-        for block_num in 0..node0_data.len() {
-            assert_eq!(node0_data.get(block_num), node_data.get(block_num));
-        }
-    }
-
-    // Done
-    log::info!(
-        logger,
-        "cyclic_test_helper num_nodes={}: {:?} (avg {} tx/s)",
-        num_nodes,
-        start.elapsed(),
-        (1_000_000 * values.len() as u128) / start.elapsed().as_micros(),
-    );
+    let network_name = format!("cyclic{}", num_nodes);
+    mock_network::run_test(network, values_to_push, logger.clone(), &network_name);
 }
 
 #[test_with_logger]

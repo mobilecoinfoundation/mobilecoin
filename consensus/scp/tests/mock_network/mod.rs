@@ -21,6 +21,21 @@ use std::{
     time::{Duration, Instant},
 };
 
+/// Values can be submitted to all nodes in parallel (true) or to nodes in sequential order (false)
+const SUBMIT_VALUES_IN_PARALLEL: bool = true;
+
+/// Total number of values to submit. Tests run until all values are externalized by all nodes.
+const VALUES_TO_PUSH: u32 = 2000;
+
+/// Approximate rate that values are submitted to nodes.
+const VALUES_PER_SEC: u64 = 2000;
+
+/// The total allowed testing time
+const MAX_TEST_TIME_SEC: u64 = 200;
+
+/// wait this long for slog to flush values
+const LOG_FLUSH_DELAY_MILLIS: u64 = 500;
+
 pub struct NodeOptions {
     thread_name: String,
     peers: Vec<u32>,
@@ -47,7 +62,6 @@ pub struct SCPNetwork {
 }
 
 impl SCPNetwork {
-
     // creates a network based on node_options
     pub fn new(
         node_options: Vec<NodeOptions>,
@@ -502,6 +516,154 @@ impl SCPNode {
             },
         }
     }
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+/// Test Helpers
+///////////////////////////////////////////////////////////////////////////////
+
+/// Injects values to a network and waits for completion
+pub fn run_test(mut network: SCPNetwork, network_name: &str, logger: Logger) {
+
+    if SUBMIT_VALUES_IN_PARALLEL {
+        log::info!(
+            logger,
+            "( testing ) begin test for {} with {} values in parallel",
+            network_name,
+            VALUES_TO_PUSH
+        );
+    } else {
+        log::info!(
+            logger,
+            "( testing ) begin test for {} with {} values in sequence",
+            network_name,
+            VALUES_TO_PUSH
+        );
+    }
+
+    let start = Instant::now();
+
+    let mut rng = test_helper::get_seeded_rng();
+
+    let mut values = Vec::<String>::new();
+
+    let num_nodes: usize = {
+        network
+            .nodes_map
+            .lock()
+            .expect("lock failed on nodes_map getting length")
+            .len()
+    };
+
+    for i in 0..VALUES_TO_PUSH {
+        let value = test_helper::random_str(&mut rng, 20);
+
+        if SUBMIT_VALUES_IN_PARALLEL {
+            // simulate broadcast of values to all nodes in parallel
+            for n in 0..num_nodes as u32 {
+                network.push_value(&test_node_id(n), &value);
+            }
+        } else {
+            // submit values to nodes in sequence
+            let n = i % (num_nodes as u32);
+            network.push_value(&test_node_id(n), &value);
+        }
+
+        values.push(value);
+        std::thread::sleep(Duration::from_micros(1_000_000 / VALUES_PER_SEC));
+    }
+
+    // report end of value push
+    log::info!(
+        logger,
+        "( testing ) finished pushing values to {}",
+        network_name,
+    );
+
+    // Check that the values got added to the nodes
+    for node_num in 0..num_nodes {
+        let node_id = test_node_id(node_num as u32);
+
+        network.wait_for_total_values(
+            &node_id,
+            values.len(),
+            Duration::from_secs(MAX_TEST_TIME_SEC),
+        );
+
+        let all_values_are_correct = {
+            values.iter().cloned().collect::<HashSet<String>>()
+                == network
+                    .get_shared_data(&node_id)
+                    .get_all_values()
+                    .iter()
+                    .cloned()
+                    .collect::<HashSet<String>>()
+        };
+
+        if !all_values_are_correct {
+            log::error!(network.logger, "wrong values externalized!",);
+            assert!(all_values_are_correct); // exit
+        }
+
+        // report end of value push
+        log::info!(
+            network.logger,
+            "( testing ) node {} finished with {:5} values",
+            node_id,
+            VALUES_TO_PUSH,
+        );
+    }
+
+    // Check all blocks in the ledger are the same
+    let node0_data = network.get_shared_data(&test_node_id(0)).ledger;
+
+    if !(node0_data.len() > 0) {
+        log::error!(
+            network.logger,
+            "failing 'node0_data.len() > 0' in run_test()"
+        );
+    }
+    assert!(node0_data.len() > 0);
+
+    for node_num in 0..num_nodes {
+        let node_data = network
+            .get_shared_data(&test_node_id(node_num as u32))
+            .ledger;
+
+        if node0_data.len() != node_data.len() {
+            log::error!(
+                network.logger,
+                "failing 'node0_data.len() == node_data.len()' in run_test()"
+            );
+        }
+        assert_eq!(node0_data.len(), node_data.len());
+
+        for block_num in 0..node0_data.len() {
+            if node0_data.get(block_num) != node_data.get(block_num) {
+                log::error!(
+                    network.logger,
+                    "failing 'node0_data.get(block_num) == node_data.get(block_num)' in run_test()"
+                );
+            }
+            assert_eq!(node0_data.get(block_num), node_data.get(block_num));
+        }
+    }
+
+    // stop the threads
+    network.stop_all();
+
+    log::info!(
+        logger,
+        "RESULTS,{},{},{},{}",
+        network_name,
+        start.elapsed().as_millis(),
+        VALUES_TO_PUSH,
+        VALUES_PER_SEC,
+    );
+    
+    // allow log to flush
+    std::thread::sleep(Duration::from_millis(LOG_FLUSH_DELAY_MILLIS)); 
 }
 
 pub fn random_str(rng: &mut StdRng, len: usize) -> String {
