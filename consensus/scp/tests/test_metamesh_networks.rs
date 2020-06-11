@@ -9,12 +9,9 @@ use mc_common::{
 };
 
 use mc_consensus_scp::{core_types::{CombineFn, ValidityFn}, quorum_set::QuorumSet, test_utils};
-use rand::{rngs::StdRng, Rng, SeedableRng};
 use serial_test_derive::serial;
 use std::{
     sync::{Arc, Mutex},
-    thread::sleep,
-    time::{Duration, Instant},
 };
 
 /// Hack to skip certain tests (that are currently too slow) from running
@@ -22,9 +19,11 @@ fn skip_slow_tests() -> bool {
     std::env::var("SKIP_SLOW_TESTS") == Ok("1".to_string())
 }
 
+/// Creates NodeID from integer index for testing.
 fn meta_mesh_node_id(org_id: u32, num_servers_per_org: u32, server_id: u32) -> NodeID {
-    let node_id = org_id * num_servers_per_org + server_id;
-    NodeID(node_id.to_string())
+    let node_index = org_id * num_servers_per_org + server_id;
+    let (node_id, _signer) = test_node_id_and_signer(node_index);
+    node_id
 }
 
 /// Constructs a meta-mesh network, in which organizations run clusters of redundant servers
@@ -110,7 +109,7 @@ fn new_meta_mesh(
 
             assert!(!peers.contains(&node_id));
 
-            let nodes_map_clone: Arc<Mutex<HashMap<NodeID, SCPNode>>> =
+            let nodes_map_clone: Arc<Mutex<HashMap<NodeID, mock_network::SCPNode>>> =
                 { Arc::clone(&network.nodes_map) };
 
             let (node, thread_handle) = mock_network::SCPNode::new(

@@ -284,7 +284,7 @@ impl SCPNodeSharedData {
     }
 }
 
-struct SCPNode {
+pub struct SCPNode {
     local_node: Arc<Mutex<Node<String, TransactionValidationError>>>,
     sender: crossbeam_channel::Sender<SCPNodeTaskMessage>,
     pub shared_data: Arc<Mutex<SCPNodeSharedData>>,
