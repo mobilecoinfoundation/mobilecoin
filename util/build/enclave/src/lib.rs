@@ -13,12 +13,11 @@ use mbedtls_sys::types::{
 };
 use mc_sgx_css::{Error as SignatureError, Signature};
 use mc_util_build_script::{rerun_if_path_changed, CargoBuilder, Environment};
-use mc_util_build_sgx::{
-    ConfigBuilder, IasMode, SgxEnvironment, SgxLibraryCollection, SgxMode, SgxSign,
-};
-use pkg_config::{Error as PkgConfigError, Library};
+use mc_util_build_sgx::{ConfigBuilder, IasMode, SgxEnvironment, SgxMode, SgxSign};
+use pkg_config::{Config, Error as PkgConfigError};
 use rand::{thread_rng, RngCore};
 use std::{
+    collections::HashSet,
     convert::TryFrom,
     fs,
     io::Error as IoError,
@@ -27,6 +26,9 @@ use std::{
     ptr, slice,
     sync::PoisonError,
 };
+
+const SGX_LIBS: &[&str] = &["libsgx_urts"];
+const SGX_SIMULATION_LIBS: &[&str] = &["libsgx_urts_sim"];
 
 struct ThreadRngForMbedTls;
 
@@ -123,28 +125,70 @@ impl From<SignatureError> for Error {
 /// if they aren't specified
 #[derive(Clone, Debug)]
 pub struct Builder {
+    /// The cargo command builder
     pub cargo_builder: CargoBuilder,
+
+    /// The SGX configuration XML builder
     pub config_builder: ConfigBuilder,
 
+    /// The name of the enclave
     name: String,
+
+    /// A set of PkgConfig configurations and the libraries to use with it
+    sgx_version: String,
+
+    /// The cargo metadata of the trusted crate
     staticlib: Metadata,
-    signer: SgxSign,
+
+    /// The OUT_DIR path
     out_dir: PathBuf,
+
+    /// The target architecture
+    target_arch: String,
+
+    /// The CARGO_TARGET_DIR path
     target_dir: PathBuf,
+
+    /// The CARGO_TARGET_DIR/profile path
     profile_target_dir: PathBuf,
+
+    /// The name of the profile we're building for
     profile: String,
-    link_paths: Vec<PathBuf>,
+
+    /// The path to the linker to use
     linker: PathBuf,
+
+    /// The configured SGX mode
     sgx_mode: SgxMode,
+
+    /// An optional explicit path to an existing CSS (sigstruct) file
     css: Option<PathBuf>,
+
+    /// An optional explicit path to an existing sigstruct text dump
     dump: Option<PathBuf>,
+
+    /// An optional explicit path to a pre-signed enclave
     signed_enclave: Option<PathBuf>,
+
+    /// An optional explicit path to a pre-existing SGX config XML file
     config_xml: Option<PathBuf>,
+
+    /// An optional explicit path to a pre-existing unsigned enclave binary
     unsigned_enclave: Option<PathBuf>,
+
+    /// An optional explicit path to a pre-existing public key
     pubkey: Option<PathBuf>,
+
+    /// An optional explicit path to a pre-existing private key
     privkey: Option<PathBuf>,
+
+    /// An optional explicit path to pre-existing data under signature
     gendata: Option<PathBuf>,
+
+    /// An optional explicit path to a file containing a detached signature
     signature: Option<PathBuf>,
+
+    /// an option explicit path to a linker script
     lds: Option<PathBuf>,
 }
 
@@ -153,7 +197,7 @@ impl Builder {
     pub fn new(
         env: &Environment,
         sgx: &SgxEnvironment,
-        sgx_libs: &[Library],
+        sgx_version: &str,
         enclave_name: &str,
         staticlib_dir: &Path,
     ) -> Result<Self, Error> {
@@ -172,38 +216,17 @@ impl Builder {
             .features(CargoOpt::SomeFeatures(features_vec))
             .exec()?;
 
-        let link_paths = sgx_libs
-            .link_paths()
-            .into_iter()
-            .map(|path| {
-                // We would like to try and use the static libs which are built
-                // with LVI mitigation.
-                if sgx.sgx_mode() != SgxMode::Simulation {
-                    let cve_load = path.join("cve_2020_0551_load");
-                    if cve_load.exists() {
-                        cve_load
-                    } else {
-                        PathBuf::from(path)
-                    }
-                } else {
-                    PathBuf::from(path)
-                }
-            })
-            .collect::<Vec<PathBuf>>();
-
-        let signer = SgxSign::new(env)?;
-
         Ok(Self {
             cargo_builder: CargoBuilder::new(&env, staticlib_dir, false),
             config_builder: ConfigBuilder::default(),
             name: enclave_name.to_owned(),
             staticlib,
-            signer,
+            target_arch: env.target_arch().to_owned(),
             out_dir: env.out_dir().to_owned(),
             target_dir: env.target_dir().to_owned(),
             profile_target_dir: env.profile_target_dir().to_owned(),
             profile: env.profile().to_owned(),
-            link_paths,
+            sgx_version: sgx_version.to_owned(),
             linker: env.linker().to_owned(),
             sgx_mode: sgx.sgx_mode(),
             css: None,
@@ -365,8 +388,7 @@ impl Builder {
 
         let mut dump_path = self.out_dir.join(&self.name);
         dump_path.set_extension("dump");
-        if self
-            .signer
+        if SgxSign::new(&self.target_arch)?
             .dump(&signed_enclave, css_path, &dump_path)
             .status()?
             .success()
@@ -416,8 +438,7 @@ impl Builder {
         // Re-create the gendata from the unsigned enclave
         let mut gendata = self.out_dir.join(&self.name);
         gendata.set_extension("dat");
-        if !self
-            .signer
+        if !SgxSign::new(&self.target_arch)?
             .gendata(&unsigned_enclave, &config_xml, &gendata)
             .status()?
             .success()
@@ -484,8 +505,7 @@ impl Builder {
                 .to_str()
                 .expect("Invalid UTF-8 in pubkey path"));
 
-            if !self
-                .signer
+            if !SgxSign::new(&self.target_arch)?
                 .catsig(
                     &unsigned_enclave,
                     &config_xml,
@@ -512,8 +532,7 @@ impl Builder {
         private_key: &Path,
         output_enclave: &Path,
     ) -> Result<(), Error> {
-        if self
-            .signer
+        if SgxSign::new(&self.target_arch)?
             .sign(
                 &unsigned_enclave,
                 &config_path,
@@ -624,9 +643,33 @@ impl Builder {
             .args(&["-z", "relro", "-z", "now", "-z", "noexecstack"])
             .args(&["--no-undefined", "-nostdlib"]);
 
-        // We're only using link paths here, actual linkage is hard-coded.
-        for libdir in &self.link_paths {
-            command.arg(format!("-L{}", libdir.display()));
+        let mut config = Config::new();
+        config
+            .exactly_version(&self.sgx_version)
+            .print_system_libs(true)
+            .cargo_metadata(false)
+            .env_metadata(true);
+
+        let lib_paths = if self.sgx_mode == SgxMode::Simulation {
+            SGX_SIMULATION_LIBS
+        } else {
+            SGX_LIBS
+        }
+        .iter()
+        .map(|libname| Ok(config.probe(libname)?.link_paths))
+        .collect::<Result<Vec<Vec<PathBuf>>, PkgConfigError>>()?
+        .into_iter()
+        .flatten()
+        .collect::<HashSet<PathBuf>>();
+
+        for path in lib_paths {
+            if self.sgx_mode == SgxMode::Simulation {
+                let cve_load = path.join("cve_2020_0551_load");
+                if cve_load.exists() {
+                    command.arg(format!("-L{}", cve_load.display()));
+                }
+            }
+            command.arg(format!("-L{}", path.display()));
         }
 
         command
