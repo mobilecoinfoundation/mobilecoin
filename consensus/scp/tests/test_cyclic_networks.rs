@@ -3,17 +3,13 @@
 mod mock_network;
 
 use mc_common::{
-    logger::{log, test_with_logger, Logger},
-    HashSet,
+    logger::{test_with_logger, Logger},
 };
 
 use mc_consensus_scp::{core_types::{CombineFn, ValidityFn}, test_utils};
-use rand::{rngs::StdRng, Rng, SeedableRng};
 use serial_test_derive::serial;
 use std::{
     sync::Arc,
-    thread::sleep,
-    time::{Duration, Instant},
 };
 
 /// Hack to skip certain tests (that are currently too slow) from running
@@ -66,7 +62,7 @@ fn cyclic_test_helper(num_nodes: usize, logger: Logger) {
         return;
     }
     
-    let network = SCPNetwork::new_cyclic(
+    let network = mock_network::SCPNetwork::new_cyclic(
         num_nodes,
         Arc::new(test_utils::trivial_validity_fn::<String>),
         Arc::new(test_utils::trivial_combine_fn::<String>),
