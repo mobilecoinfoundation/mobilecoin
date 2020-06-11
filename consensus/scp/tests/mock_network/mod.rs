@@ -70,9 +70,9 @@ impl NodeOptions {
 }
 
 pub struct SCPNetwork {
-    nodes_map: Arc<Mutex<HashMap<NodeID, SCPNode>>>,
-    thread_handles: HashMap<NodeID, Option<JoinHandle<()>>>,
-    nodes_shared_data: HashMap<NodeID, Arc<Mutex<SCPNodeSharedData>>>,
+    pub nodes_map: Arc<Mutex<HashMap<NodeID, SCPNode>>>,
+    pub thread_handles: HashMap<NodeID, Option<JoinHandle<()>>>,
+    pub nodes_shared_data: HashMap<NodeID, Arc<Mutex<SCPNodeSharedData>>>,
     logger: Logger,
 }
 
