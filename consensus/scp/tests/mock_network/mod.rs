@@ -11,7 +11,6 @@ use mc_consensus_scp::{
     quorum_set::QuorumSet,
     test_utils::{test_node_id, TransactionValidationError},
 };
-use rand::{rngs::StdRng, RngCore};
 use std::{
     collections::BTreeSet,
     iter::FromIterator,
@@ -661,7 +660,7 @@ pub fn run_test(mut network: SCPNetwork, network_name: &str, logger: Logger) {
         VALUES_TO_PUSH,
         VALUES_PER_SEC,
     );
-    
+
     // allow log to flush
-    std::thread::sleep(Duration::from_millis(LOG_FLUSH_DELAY_MILLIS)); 
+    std::thread::sleep(Duration::from_millis(LOG_FLUSH_DELAY_MILLIS));
 }
