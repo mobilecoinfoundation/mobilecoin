@@ -3,15 +3,15 @@
 mod mock_network;
 
 use mc_common::{
-    logger::{log, test_with_logger, Logger},
-    HashSet,
+    logger::{log, o, test_with_logger, Logger},
+    HashMap, HashSet,
 };
 
 use mc_consensus_scp::{core_types::{CombineFn, ValidityFn}, quorum_set::QuorumSet, test_utils};
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use serial_test_derive::serial;
 use std::{
-    sync::Arc,
+    sync::{Arc, Mutex},
     thread::sleep,
     time::{Duration, Instant},
 };
@@ -21,12 +21,17 @@ fn skip_slow_tests() -> bool {
     std::env::var("SKIP_SLOW_TESTS") == Ok("1".to_string())
 }
 
+fn meta_mesh_node_id(org_id: u32, num_servers_per_org: u32, server_id: u32) -> NodeID {
+    let node_id = org_id * num_servers_per_org + server_id;
+    NodeID(node_id.to_string())
+}
+
 /// Constructs a meta-mesh network, in which organizations run clusters of redundant servers
 fn new_meta_mesh(
     num_orgs: usize,
     num_servers_per_org: usize,
     k_servers_per_org: u32,
-    validity_fn: ValidityFn<String, TransactionValidationError>,
+    validity_fn: ValidityFn<String, test_utils::TransactionValidationError>,
     combine_fn: CombineFn<String>,
     logger: Logger,
 ) -> mock_network::SCPNetwork {
@@ -107,7 +112,7 @@ fn new_meta_mesh(
             let nodes_map_clone: Arc<Mutex<HashMap<NodeID, SCPNode>>> =
                 { Arc::clone(&network.nodes_map) };
 
-            let (node, thread_handle) = SCPNode::new(
+            let (node, thread_handle) = mock_network::SCPNode::new(
                 thread_name,
                 node_id.clone(),
                 qs,
@@ -145,11 +150,11 @@ fn metamesh_test_helper(
     if num_servers_per_org < 3 || num_servers_per_org as u64 <= k_servers_per_org as u64 {
         return;
     }
-    
+
     if skip_slow_tests() {
         return;
     }
-    
+
     let network = new_meta_mesh(
         num_orgs,
         num_servers_per_org,
