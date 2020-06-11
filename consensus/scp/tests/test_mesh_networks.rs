@@ -1,15 +1,10 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 mod mock_network;
-
 use mc_common::logger::{test_with_logger, Logger};
-
-use mc_consensus_scp::{
-    core_types::{CombineFn, ValidityFn},
-    test_utils,
-};
+use mc_consensus_scp::test_utils;
 use serial_test_derive::serial;
-use std::sync::Arc;
+
 
 /// Hack to skip certain tests (that are currently too slow) from running
 fn skip_slow_tests() -> bool {
@@ -56,16 +51,16 @@ fn mesh_test_helper(num_nodes: usize, k: u32, logger: Logger) {
     if skip_slow_tests() {
         return;
     }
-    
+
     let test_options = mock_network::TestOptions::new();
-    
+
     let network = new_mesh(
         num_nodes,
         k,
         test_options.clone(),
         logger.clone(),
     );
-    
+
     let network_name = format!("mesh{}k{}", num_nodes, k);
     mock_network::run_test(network, &network_name, test_options, logger.clone());
 }

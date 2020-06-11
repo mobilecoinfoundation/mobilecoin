@@ -74,8 +74,8 @@ impl TestOptions {
             slot_advance_delay:  Duration::from_millis(10),
             seen_msg_hashes_lru_size: 50000,
             externalized_lru_size: 500,
-            validity_fn: Arc::new(test_utils::trivial_validity_fn::<String>),
-            combine_fn: Arc::new(test_utils::trivial_combine_fn::<String>),
+            validity_fn: Arc::new(trivial_validity_fn::<String>),
+            combine_fn: Arc::new(trivial_combine_fn::<String>),
         }
     }
 }
@@ -278,20 +278,19 @@ impl SCPNode {
         let local_node = Arc::new(Mutex::new(Node::new(
             node_id.clone(),
             quorum_set,
-            validity_fn.clone(),
-            combine_fn.clone(),
+            test_options.clone(),
             logger.clone(),
         )));
 
         local_node
             .lock()
             .expect("lock failed on local node setting lru externalized size")
-            .externalized = LruCache::new(test_options.seen_msg_hashes_lru_size),
+            .externalized = LruCache::new(test_options.seen_msg_hashes_lru_size);
 
         local_node
             .lock()
             .expect("lock failed on local node setting lru seen_msg_hashes size")
-            .seen_msg_hashes = LruCache::new(test_options.seen_msg_hashes_lru_size),
+            .seen_msg_hashes = LruCache::new(test_options.seen_msg_hashes_lru_size);
 
         local_node
             .lock()
@@ -601,14 +600,14 @@ pub fn run_test(
         loop {
             if Instant::now() > deadline {
                 log::error!(network.logger,
-                    "( testing ) failed to externalize all values within {} sec)!",
+                    "( testing ) failed to externalize all values within {} sec at node {}!",
+                    options.allowed_test_time,
                     node_id,
-                    options.allowed_test_time
                 );
                 panic!("TEST FAILED DUE TO TIMEOUT"); // exit
             }
 
-            let cur_num_values = self.get_shared_data(node_id).total_values();
+            let cur_num_values = network.get_shared_data(node_id).total_values();
             if cur_num_values >= values.len() {
                 log::info!(
                     network.logger,
@@ -627,7 +626,7 @@ pub fn run_test(
 
             if last_log.elapsed().as_secs() > 1 {
                 log::info!(
-                    self.logger,
+                    network.logger,
                     "( testing ) externalized {}/{} values at node {}",
                     cur_num_values,
                     values.len(),
