@@ -665,18 +665,3 @@ pub fn run_test(mut network: SCPNetwork, network_name: &str, logger: Logger) {
     // allow log to flush
     std::thread::sleep(Duration::from_millis(LOG_FLUSH_DELAY_MILLIS)); 
 }
-
-pub fn random_str(rng: &mut StdRng, len: usize) -> String {
-    const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
-                            abcdefghijklmnopqrstuvwxyz\
-                            0123456789";
-
-    let output: String = (0..len)
-        .map(|_| {
-            let idx = (rng.next_u64() % CHARSET.len() as u64) as usize;
-            char::from(CHARSET[idx])
-        })
-        .collect();
-
-    output
-}
