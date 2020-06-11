@@ -22,7 +22,7 @@ fn skip_slow_tests() -> bool {
 /// Creates NodeID from integer index for testing.
 fn meta_mesh_node_id(org_id: u32, num_servers_per_org: u32, server_id: u32) -> NodeID {
     let node_index = org_id * num_servers_per_org + server_id;
-    let (node_id, _signer) = test_node_id_and_signer(node_index);
+    let (node_id, _signer) = test_utils::test_node_id_and_signer(node_index);
     node_id
 }
 
