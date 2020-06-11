@@ -3,17 +3,13 @@
 mod mock_network;
 
 use mc_common::{
-    logger::{log, test_with_logger, Logger},
-    HashSet,
+    logger::{test_with_logger, Logger},
 };
 
 use mc_consensus_scp::{core_types::{CombineFn, ValidityFn}, test_utils};
-use rand::{rngs::StdRng, Rng, SeedableRng};
 use serial_test_derive::serial;
 use std::{
     sync::Arc,
-    thread::sleep,
-    time::{Duration, Instant},
 };
 
 /// Hack to skip certain tests (that are currently too slow) from running
@@ -57,7 +53,7 @@ fn mesh_test_helper(num_nodes: usize, k: u32, logger: Logger) {
     if num_nodes < 3 || num_nodes as u64 <= k as u64 {
         return;
     }
-    
+
     if skip_slow_tests() {
         return;
     }
@@ -71,7 +67,7 @@ fn mesh_test_helper(num_nodes: usize, k: u32, logger: Logger) {
     );
 
     let network_name = format!("mesh{}k{}", num_nodes, k);
-    run_test(network, &network_name, logger.clone());
+    mock_network::run_test(network, &network_name, logger.clone());
 }
 
 #[test_with_logger]
