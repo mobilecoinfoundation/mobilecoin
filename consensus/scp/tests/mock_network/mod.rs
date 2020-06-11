@@ -29,6 +29,9 @@ const VALUES_TO_PUSH: u32 = 2000;
 /// Approximate rate that values are submitted to nodes.
 const VALUES_PER_SEC: u64 = 2000;
 
+/// We allow only a single proposal per slot, with up to this many values.
+const MAX_VALUES_PER_SLOT: u32 = 50;
+
 /// The total allowed testing time
 const MAX_TEST_TIME_SEC: u64 = 200;
 
@@ -41,6 +44,13 @@ const SCP_TIMEBASE: Duration = Duration::from_millis(100);
 
 /// Sleep when advancing to a new slot to help threads keep pace.
 const DURATION_TO_SLEEP_WHEN_ADVANCING_SLOT: Duration = Duration::from_millis(20);
+
+/// Because thread testing doesn't implement catchup, increase the lrucache used to store msgs.
+const OVERRIDE_LAST_SEEN_HISTORY_SIZE: usize = 100000;
+
+/// Because thread testing doesn't implement catchup, increase the lrucache used to store externalized slots.
+const OVERRIDE_MAX_EXTERNALIZED_SLOTS: usize = 1000;
+
 pub struct NodeOptions {
     thread_name: String,
     peers: Vec<u32>,
@@ -204,19 +214,13 @@ impl SCPNetwork {
             .lock()
             .expect("lock failed on nodes_map in broadcast");
 
-        log::trace!(
-            logger,
-            "(broadcast) node {:3} slot {:3} : {:?}",
-            msg.sender_id,
-            msg.slot_index,
-            msg.topic
-        );
+        log::debug!(logger, "(broadcast) {}", msg.to_display(),);
 
         let amsg = Arc::new(msg);
 
-        for responder_id in peers {
+        for peer_id in peers {
             nodes_map
-                .get_mut(&responder_id)
+                .get_mut(&peer_id)
                 .expect("failed to get peer from nodes_map")
                 .send_msg(amsg.clone());
         }
@@ -231,17 +235,10 @@ impl SCPNetwork {
     ) {
         let mut deadline = Instant::now() + max_wait;
         let mut prev_num_values = 0;
-        let mut last_log = Instant::now();
 
         while Instant::now() < deadline {
             let cur_num_values = self.get_shared_data(node_id).total_values();
             if cur_num_values >= values_to_collect {
-                log::trace!(
-                    self.logger,
-                    "( testing ) node {:3}          : {:5} values ... WAIT COMPLETE!",
-                    node_id,
-                    values_to_collect,
-                );
                 return;
             }
 
@@ -250,19 +247,6 @@ impl SCPNetwork {
                 assert!(cur_num_values > prev_num_values);
                 prev_num_values = cur_num_values;
                 deadline = Instant::now() + max_wait;
-            }
-
-            thread::sleep(Duration::from_millis(10));
-
-            if last_log.elapsed().as_secs() > 1 {
-                log::info!(
-                    self.logger,
-                    "Got {}/{} values from Node {}",
-                    cur_num_values,
-                    values_to_collect,
-                    node_id
-                );
-                last_log = Instant::now();
             }
         }
 
@@ -325,6 +309,18 @@ impl SCPNode {
             logger.clone(),
         )));
 
+        local_node
+            .lock()
+            .expect("lock failed on local node setting lru externalized size")
+            .externalized
+            .resize(OVERRIDE_MAX_EXTERNALIZED_SLOTS);
+
+        local_node
+            .lock()
+            .expect("lock failed on local node setting lru seen_msg_hashes size")
+            .seen_msg_hashes
+            .resize(OVERRIDE_LAST_SEEN_HISTORY_SIZE);
+
         // see if an environment variable is available for the timebase
         let mut timebase_duration = SCP_TIMEBASE;
         if let Ok(timebase_string) = std::env::var("SCP_TIMEBASE") {
@@ -337,7 +333,7 @@ impl SCPNode {
             .expect("lock failed on local node setting scp_timebase_millis")
             .scp_timebase = timebase_duration;
 
-        log::info!(
+        log::debug!(
             logger,
             "setting timebase to {} msec",
             timebase_duration.as_millis()
@@ -351,6 +347,7 @@ impl SCPNode {
 
         let thread_shared_data = Arc::clone(&node.shared_data);
         let thread_local_node = Arc::clone(&node.local_node);
+        let mut allow_propose: bool = true;
         let mut current_slot: usize = 0;
         let mut total_broadcasts: u32 = 0;
 
@@ -403,25 +400,37 @@ impl SCPNode {
 
                         // Process values submitted to our node
                         if !pending_values.is_empty() {
-                            let vals = pending_values
+                            let mut vals = pending_values
                                               .iter()
                                               .cloned()
                                               .collect::<Vec<String>>();
 
-                            let outgoing_msg : Option<Msg<String>> = {
-                                thread_local_node
-                                .lock()
-                                .expect("lock failed on node nominating value")
-                                .nominate(
-                                    current_slot as SlotIndex,
-                                    BTreeSet::from_iter(vals),
-                                )
-                                .expect("node.nominate() failed")
-                            };
+                            if allow_propose {
+                                if vals.len() > MAX_VALUES_PER_SLOT as usize {
+                                    vals.sort();
+                                    vals.truncate(MAX_VALUES_PER_SLOT as usize);
+                                }
+                                allow_propose = false;
+                            } else {
+                                vals.clear();
+                            }
 
-                            if let Some(outgoing_msg) = outgoing_msg {
-                                (broadcast_msg_fn)(logger.clone(), outgoing_msg);
-                                total_broadcasts += 1;
+                            if vals.len() > 0 {
+                                let outgoing_msg : Option<Msg<String>> = {
+                                    thread_local_node
+                                    .lock()
+                                    .expect("lock failed on node nominating value")
+                                    .nominate(
+                                        current_slot as SlotIndex,
+                                        BTreeSet::from_iter(vals),
+                                    )
+                                    .expect("node.nominate() failed")
+                                };
+
+                                if let Some(outgoing_msg) = outgoing_msg {
+                                    (broadcast_msg_fn)(logger.clone(), outgoing_msg);
+                                    total_broadcasts += 1;
+                                }
                             }
                         }
 
@@ -495,6 +504,7 @@ impl SCPNode {
 
                             pending_values = remaining_values;
                             current_slot += 1;
+                            allow_propose = true;
                             // try to let other threads catch up
                             std::thread::sleep(DURATION_TO_SLEEP_WHEN_ADVANCING_SLOT);
                         }
@@ -547,7 +557,6 @@ impl SCPNode {
         }
     }
 }
-
 
 ///////////////////////////////////////////////////////////////////////////////
 /// Test Helpers
@@ -683,14 +692,25 @@ pub fn run_test(mut network: SCPNetwork, network_name: &str, logger: Logger) {
     // stop the threads
     network.stop_all();
 
+    // see if an environment variable is available for the timebase
+    let mut timebase_duration = SCP_TIMEBASE;
+    if let Ok(timebase_string) = std::env::var("SCP_TIMEBASE") {
+        let timebase_u64 = timebase_string.parse::<u64>().unwrap();
+        timebase_duration = Duration::from_millis(timebase_u64);
+    }
+
     log::info!(
         logger,
-        "RESULTS,{},{},{},{}",
+        "RESULTS,{},{},{},{},{},{}",
         network_name,
         start.elapsed().as_millis(),
         VALUES_TO_PUSH,
         VALUES_PER_SEC,
+        MAX_VALUES_PER_SLOT,
+        timebase_duration.as_millis(),
     );
+
+    log::info!(logger, "TEST COMPLETE, {}", network_name);
 
     // allow log to flush
     std::thread::sleep(Duration::from_millis(LOG_FLUSH_DELAY_MILLIS));
