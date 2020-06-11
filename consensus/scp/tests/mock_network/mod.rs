@@ -1,5 +1,14 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
+// Not all of the separated integration tests use all of the common code.
+// https://github.com/rust-lang/rust/issues/46379
+// Specifically, the metamesh codes don't use NodeOptions:new() or
+// SCPNetwork::new() since we construct the network more directly for those
+// tests. We should fix this by allowing arbitrary quorum sets in NodeOptions
+// rather than assuming k-of-n
+
+#![allow(dead_code)]
+
 use mc_common::{
     logger::{log, o, Logger},
     HashMap, HashSet, NodeID,
@@ -51,7 +60,6 @@ const OVERRIDE_LAST_SEEN_HISTORY_SIZE: usize = 100000;
 /// Because thread testing doesn't implement catchup, increase the lrucache used to store externalized slots.
 const OVERRIDE_MAX_EXTERNALIZED_SLOTS: usize = 1000;
 
-#[allow(dead_code)]
 pub struct NodeOptions {
     thread_name: String,
     peers: Vec<u32>,
@@ -79,7 +87,6 @@ pub struct SCPNetwork {
 
 impl SCPNetwork {
     // creates a network based on node_options
-    #[allow(dead_code)]
     pub fn new(
         node_options: Vec<NodeOptions>,
         validity_fn: ValidityFn<String, TransactionValidationError>,
