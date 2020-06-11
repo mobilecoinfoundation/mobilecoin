@@ -140,7 +140,7 @@ impl Tx {
         self.prefix
             .outputs
             .iter()
-            .map(|tx_out| tx_out.public_key.clone())
+            .map(|tx_out| tx_out.public_key)
             .collect()
     }
 }
