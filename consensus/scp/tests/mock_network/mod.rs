@@ -33,7 +33,7 @@ use std::{
 const SUBMIT_VALUES_IN_PARALLEL: bool = true;
 
 /// Total number of values to submit. Tests run until all values are externalized by all nodes.
-const VALUES_TO_PUSH: u32 = 2000;
+const VALUES_TO_PUSH: u32 = 200;
 
 /// Approximate rate that values are submitted to nodes.
 const VALUES_PER_SEC: u64 = 2000;
