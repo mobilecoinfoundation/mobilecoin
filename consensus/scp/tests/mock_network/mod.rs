@@ -51,6 +51,7 @@ const OVERRIDE_LAST_SEEN_HISTORY_SIZE: usize = 100000;
 /// Because thread testing doesn't implement catchup, increase the lrucache used to store externalized slots.
 const OVERRIDE_MAX_EXTERNALIZED_SLOTS: usize = 1000;
 
+#[allow(dead_code)]
 pub struct NodeOptions {
     thread_name: String,
     peers: Vec<u32>,
@@ -78,6 +79,7 @@ pub struct SCPNetwork {
 
 impl SCPNetwork {
     // creates a network based on node_options
+    #[allow(dead_code)]
     pub fn new(
         node_options: Vec<NodeOptions>,
         validity_fn: ValidityFn<String, TransactionValidationError>,
