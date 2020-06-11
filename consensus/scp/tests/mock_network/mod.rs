@@ -73,7 +73,7 @@ pub struct SCPNetwork {
     pub nodes_map: Arc<Mutex<HashMap<NodeID, SCPNode>>>,
     pub thread_handles: HashMap<NodeID, Option<JoinHandle<()>>>,
     pub nodes_shared_data: HashMap<NodeID, Arc<Mutex<SCPNodeSharedData>>>,
-    logger: Logger,
+    pub logger: Logger,
 }
 
 impl SCPNetwork {
