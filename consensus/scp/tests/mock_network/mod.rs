@@ -35,6 +35,10 @@ const MAX_TEST_TIME_SEC: u64 = 200;
 /// wait this long for slog to flush values
 const LOG_FLUSH_DELAY_MILLIS: u64 = 500;
 
+/// This parameter sets the interval for round and ballot timeout.
+/// SCP suggests one second, but threads can run much faster.
+const SCP_TIMEBASE: Duration = Duration::from_millis(100);
+
 pub struct NodeOptions {
     thread_name: String,
     peers: Vec<u32>,
@@ -268,12 +272,6 @@ impl SCPNetwork {
     }
 }
 
-impl Drop for SCPNetwork {
-    fn drop(&mut self) {
-        self.stop_all();
-    }
-}
-
 enum SCPNodeTaskMessage {
     Value(String),
     Msg(Arc<Msg<String>>),
@@ -324,6 +322,24 @@ impl SCPNode {
             combine_fn.clone(),
             logger.clone(),
         )));
+        
+        // see if an environment variable is available for the timebase
+        let mut timebase_duration = SCP_TIMEBASE;
+        if let Ok(timebase_string) = std::env::var("SCP_TIMEBASE") {
+            let timebase_u64 = timebase_string.parse::<u64>().unwrap();
+            timebase_duration = Duration::from_millis(timebase_u64);
+        }
+        
+        local_node
+            .lock()
+            .expect("lock failed on local node setting scp_timebase_millis")
+            .scp_timebase = timebase_duration;
+            
+        log::info!(
+            logger,
+            "setting timebase to {} msec",
+            timebase_duration.as_millis()
+        );
 
         let node = Self {
             local_node,
@@ -348,9 +364,9 @@ impl SCPNode {
                         // Collect and process any messages we have received
                         let mut incoming_msgs = Vec::<Arc<Msg<String>>>::new();
 
-                        for msg in receiver.try_iter() {
-                            // Handle message based on it's type
-                            match msg {
+                        // Handle one incoming message based on it's type
+                        match receiver.try_recv() { // non-blocking read
+                            Ok(scp_msg) => match scp_msg {
                                 // Value submitted by a client
                                 SCPNodeTaskMessage::Value(value) => {
                                     // Maintain invariant that pending_values contains all values
@@ -368,7 +384,19 @@ impl SCPNode {
                                 SCPNodeTaskMessage::StopTrigger => {
                                     break 'main_loop;
                                 }
-                            };
+                            },
+                            Err(_) => {
+                                // Yield to other threads when we don't get a new message
+                                // This improves performance significantly.
+                                std::thread::yield_now();
+                            },
+                        };
+
+                        let incoming_msgs_count = incoming_msgs.len();
+
+                        if !(incoming_msgs_count == 0 || incoming_msgs_count == 1) {
+                            log::error!(logger, "incoming_msgs_count > 1");
+                            assert!(incoming_msgs_count == 0 || incoming_msgs_count == 1); // exit
                         }
 
                         // Process values submitted to our node
