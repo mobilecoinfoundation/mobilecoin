@@ -293,7 +293,6 @@ impl SCPNode {
 
         // See byzantine_ledger.rs. Each slot nominates at most MAX_PENDING_VALUES_TO_NOMINATE values.
         let mut nominated_values: usize = 0;
-
         let mut current_slot: usize = 0;
         let mut total_broadcasts: u32 = 0;
 
@@ -350,7 +349,8 @@ impl SCPNode {
                             let mut vals = pending_values.iter().cloned().collect::<Vec<String>>();
                             vals.sort();
                             vals.truncate(test_options.max_values_per_slot - nominated_values);
-
+                            nominated_values += vals.len();
+                            
                             let outgoing_msg: Option<Msg<String>> = {
                                 thread_local_node
                                     .lock()
