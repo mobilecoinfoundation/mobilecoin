@@ -537,8 +537,18 @@ pub fn run_test(mut network: SCPNetwork, network_name: &str, options: TestOption
     let start = Instant::now();
 
     let mut rng = mc_util_test_helper::get_seeded_rng();
-
     let mut values = Vec::<String>::with_capacity(options.values_to_submit);
+    for i in 0..options.values_to_submit {
+        let value = mc_util_test_helper::random_str(&mut rng, 20);
+        values.push(value);
+    }
+
+    log::info!(
+        network.logger,
+        "( testing ) finished generating values",
+        options.values_to_submit,
+        options.values_to_submit
+    );
 
     let num_nodes: usize = {
         network
@@ -550,20 +560,18 @@ pub fn run_test(mut network: SCPNetwork, network_name: &str, options: TestOption
 
     let mut last_log = Instant::now();
     for i in 0..options.values_to_submit {
-        let value = mc_util_test_helper::random_str(&mut rng, 20);
 
         if options.submit_in_parallel {
             // simulate broadcast of values to all nodes in parallel
             for n in 0..num_nodes {
-                network.push_value(&test_utils::test_node_id(n as u32), &value);
+                network.push_value(&test_utils::test_node_id(n as u32), &values[i]);
             }
         } else {
             // submit values to nodes in sequence
             let n = i % num_nodes;
-            network.push_value(&test_utils::test_node_id(n as u32), &value);
+            network.push_value(&test_utils::test_node_id(n as u32), &values[i]);
         }
 
-        values.push(value);
         std::thread::sleep(Duration::from_micros(
             1_000_000 / options.submissions_per_sec,
         ));
