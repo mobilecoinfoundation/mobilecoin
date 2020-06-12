@@ -66,12 +66,12 @@ impl TestOptions {
         Self {
             submit_in_parallel: true,
             values_to_submit: 2000,
-            submissions_per_sec: 2000,
+            submissions_per_sec: 1000,
             max_values_per_slot: 100,
             allowed_test_time: Duration::from_secs(300),
-            log_flush_delay: Duration::from_millis(500),
+            log_flush_delay: Duration::from_millis(100),
             scp_timebase: Duration::from_millis(100),
-            slot_advance_delay: Duration::from_millis(10),
+            slot_advance_delay: Duration::from_millis(1),
             seen_msg_hashes_lru_size: 50000,
             externalized_lru_size: 500,
             validity_fn: Arc::new(test_utils::trivial_validity_fn::<String>),
@@ -557,25 +557,28 @@ pub fn run_test(mut network: SCPNetwork, network_name: &str, options: TestOption
             .len()
     };
 
+    // pre-compute node_ids
+    let mut node_ids = Vec::<NodeID>::with_capacity(num_nodes);
+    for n in 0..num_nodes {
+        node_ids.push(test_utils::test_node_id(n as u32));
+    }
+
     let mut last_log = Instant::now();
     for i in 0..options.values_to_submit {
+        let start = Instant::now();
 
         if options.submit_in_parallel {
             // simulate broadcast of values to all nodes in parallel
             for n in 0..num_nodes {
-                network.push_value(&test_utils::test_node_id(n as u32), &values[i]);
+                network.push_value(&node_ids[n], &values[i]);
             }
         } else {
             // submit values to nodes in sequence
             let n = i % num_nodes;
-            network.push_value(&test_utils::test_node_id(n as u32), &values[i]);
+            network.push_value(&node_ids[n], &values[i]);
         }
 
-        std::thread::sleep(Duration::from_micros(
-            1_000_000 / options.submissions_per_sec,
-        ));
-
-        if last_log.elapsed().as_secs() > 1 {
+        if last_log.elapsed().as_millis() > 999 {
             log::info!(
                 network.logger,
                 "( testing ) pushed {}/{} values",
@@ -584,6 +587,15 @@ pub fn run_test(mut network: SCPNetwork, network_name: &str, options: TestOption
             );
             last_log = Instant::now();
         }
+
+        let elapsed_duration = Instant::now().duration_since(start);
+        let target_duration = Duration::from_micros(
+            1_000_000 / options.submissions_per_sec
+        );
+        if let Some(extra_delay) = target_duration.checked_sub(elapsed_duration){
+            std::thread::sleep(extra_delay);
+        }
+
     }
 
     // report end of value push
@@ -631,7 +643,7 @@ pub fn run_test(mut network: SCPNetwork, network_name: &str, options: TestOption
                 prev_num_values = cur_num_values;
             }
 
-            if last_log.elapsed().as_secs() > 1 {
+            if last_log.elapsed().as_millis() > 999 {
                 log::info!(
                     network.logger,
                     "( testing ) externalized {}/{} values at node {}",
