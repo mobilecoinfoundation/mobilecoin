@@ -45,8 +45,6 @@ fn new_cyclic(
 
 /// Performs a consensus test for a cyclic network of `num_nodes` nodes.
 fn cyclic_test_helper(num_nodes: usize, logger: Logger) {
-    assert!(num_nodes > 2);
-
     if skip_slow_tests() {
         return;
     }
@@ -57,6 +55,18 @@ fn cyclic_test_helper(num_nodes: usize, logger: Logger) {
     let network = new_cyclic(num_nodes, test_options.clone(), logger.clone());
     let network_name = format!("cyclic{}", num_nodes);
     mock_network::run_test(network, &network_name, test_options, logger.clone());
+}
+
+#[test_with_logger]
+#[serial]
+fn cyclic_1(logger: Logger) {
+    cyclic_test_helper(1, logger);
+}
+
+#[test_with_logger]
+#[serial]
+fn cyclic_2(logger: Logger) {
+    cyclic_test_helper(2, logger);
 }
 
 #[test_with_logger]
