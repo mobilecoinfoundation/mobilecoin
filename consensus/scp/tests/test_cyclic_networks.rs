@@ -2,7 +2,6 @@
 
 mod mock_network;
 use mc_common::logger::{test_with_logger, Logger};
-use mc_consensus_scp::test_utils;
 use serial_test_derive::serial;
 
 
@@ -18,7 +17,7 @@ fn skip_slow_tests() -> bool {
 /// Constructs a cyclic network (e.g. 1->2->3->4->1)
 fn new_cyclic(
     num_nodes: usize,
-    test_options: TestOptions,
+    test_options: mock_network::TestOptions,
     logger: Logger,
 ) -> mock_network::SCPNetwork {
     let mut node_options = Vec::<mock_network::NodeOptions>::new();

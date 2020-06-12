@@ -107,7 +107,7 @@ pub struct SCPNetwork {
 
 impl SCPNetwork {
     // creates a network based on node_options
-    fn new(
+    pub fn new(
         node_options: Vec<NodeOptions>,
         test_options: TestOptions,
         logger: Logger,
@@ -278,7 +278,8 @@ impl SCPNode {
         let local_node = Arc::new(Mutex::new(Node::new(
             node_id.clone(),
             quorum_set,
-            test_options.clone(),
+            test_options.validity_fn.clone(),
+            test_options.combine_fn.clone(),
             logger.clone(),
         )));
 
