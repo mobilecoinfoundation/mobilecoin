@@ -341,7 +341,9 @@ impl SCPNode {
                         }
 
                         // Process values submitted to our node
-                        if (nominated_values < test_options.max_values_per_slot) && !pending_values.is_empty() {
+                        if (nominated_values < test_options.max_values_per_slot)
+                            && !pending_values.is_empty()
+                        {
                             let mut vals = pending_values.iter().cloned().collect::<Vec<String>>();
                             vals.sort();
                             vals.truncate(test_options.max_values_per_slot - nominated_values);
@@ -351,10 +353,7 @@ impl SCPNode {
                                 thread_local_node
                                     .lock()
                                     .expect("lock failed on node nominating value")
-                                    .nominate(
-                                        current_slot as SlotIndex,
-                                        BTreeSet::from_iter(vals),
-                                    )
+                                    .nominate(current_slot as SlotIndex, BTreeSet::from_iter(vals))
                                     .expect("node.nominate() failed")
                             };
 
