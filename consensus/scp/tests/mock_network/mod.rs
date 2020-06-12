@@ -507,7 +507,7 @@ impl SCPNode {
 ///////////////////////////////////////////////////////////////////////////////
 
 /// Injects values to a network and waits for completion
-pub fn run_test(mut network: SCPNetwork, network_name: &str, options: TestOptions, logger: Logger) {
+pub fn run_test(network: SCPNetwork, network_name: &str, options: TestOptions, logger: Logger) {
     if options.submit_in_parallel {
         log::info!(
             logger,
