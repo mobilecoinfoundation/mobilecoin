@@ -68,10 +68,10 @@ impl TestOptions {
             values_to_submit: 2000,
             submissions_per_sec: 2000,
             max_values_per_slot: 100,
-            allowed_test_time:  Duration::from_secs(300),
-            log_flush_delay:  Duration::from_millis(500),
-            scp_timebase:  Duration::from_millis(100),
-            slot_advance_delay:  Duration::from_millis(10),
+            allowed_test_time: Duration::from_secs(300),
+            log_flush_delay: Duration::from_millis(500),
+            scp_timebase: Duration::from_millis(100),
+            slot_advance_delay: Duration::from_millis(10),
             seen_msg_hashes_lru_size: 50000,
             externalized_lru_size: 500,
             validity_fn: Arc::new(test_utils::trivial_validity_fn::<String>),
@@ -107,11 +107,7 @@ pub struct SCPNetwork {
 
 impl SCPNetwork {
     // creates a network based on node_options
-    pub fn new(
-        node_options: Vec<NodeOptions>,
-        test_options: TestOptions,
-        logger: Logger,
-    ) -> Self {
+    pub fn new(node_options: Vec<NodeOptions>, test_options: TestOptions, logger: Logger) -> Self {
         let mut network = SCPNetwork {
             nodes_map: Arc::new(Mutex::new(HashMap::default())),
             thread_handles: HashMap::default(),
@@ -314,7 +310,6 @@ impl SCPNode {
             thread::Builder::new()
                 .name(thread_name)
                 .spawn(move || {
-
                     // All values that have not yet been externalized.
                     let mut pending_values: HashSet<String> = HashSet::default();
 
@@ -323,7 +318,8 @@ impl SCPNode {
                         let mut incoming_msgs = Vec::<Arc<Msg<String>>>::new();
 
                         // Handle one incoming message based on it's type
-                        match receiver.try_recv() { // non-blocking read
+                        match receiver.try_recv() {
+                            // non-blocking read
                             Ok(scp_msg) => match scp_msg {
                                 // Value submitted by a client
                                 SCPNodeTaskMessage::Value(value) => {
@@ -347,22 +343,20 @@ impl SCPNode {
                                 // Yield to other threads when we don't get a new message
                                 // This improves performance significantly.
                                 std::thread::yield_now();
-                            },
+                            }
                         };
 
                         let incoming_msgs_count = incoming_msgs.len();
 
                         if !(incoming_msgs_count == 0 || incoming_msgs_count == 1) {
                             log::error!(logger, "incoming_msgs_count > 1");
-                            assert!(incoming_msgs_count == 0 || incoming_msgs_count == 1); // exit
+                            assert!(incoming_msgs_count == 0 || incoming_msgs_count == 1);
+                            // exit
                         }
 
                         // Process values submitted to our node
                         if !pending_values.is_empty() {
-                            let mut vals = pending_values
-                                              .iter()
-                                              .cloned()
-                                              .collect::<Vec<String>>();
+                            let mut vals = pending_values.iter().cloned().collect::<Vec<String>>();
 
                             if allow_propose {
                                 if vals.len() > test_options.max_values_per_slot {
@@ -375,15 +369,15 @@ impl SCPNode {
                             }
 
                             if vals.len() > 0 {
-                                let outgoing_msg : Option<Msg<String>> = {
+                                let outgoing_msg: Option<Msg<String>> = {
                                     thread_local_node
-                                    .lock()
-                                    .expect("lock failed on node nominating value")
-                                    .nominate(
-                                        current_slot as SlotIndex,
-                                        BTreeSet::from_iter(vals),
-                                    )
-                                    .expect("node.nominate() failed")
+                                        .lock()
+                                        .expect("lock failed on node nominating value")
+                                        .nominate(
+                                            current_slot as SlotIndex,
+                                            BTreeSet::from_iter(vals),
+                                        )
+                                        .expect("node.nominate() failed")
                                 };
 
                                 if let Some(outgoing_msg) = outgoing_msg {
@@ -395,12 +389,12 @@ impl SCPNode {
 
                         // Process the incoming messages and re-broadcast to network
                         for msg in incoming_msgs.iter() {
-                            let outgoing_msg : Option<Msg<String>> = {
+                            let outgoing_msg: Option<Msg<String>> = {
                                 thread_local_node
-                                .lock()
-                                .expect("lock failed on node nominating value")
-                                .handle(msg)
-                                .expect("node.handle_msg() failed")
+                                    .lock()
+                                    .expect("lock failed on node nominating value")
+                                    .handle(msg)
+                                    .expect("node.handle_msg() failed")
                             };
 
                             if let Some(outgoing_msg) = outgoing_msg {
@@ -410,13 +404,13 @@ impl SCPNode {
                         }
 
                         // Process timeouts (for all slots)
-                        let timeout_msgs : Vec<Msg<String>> = {
+                        let timeout_msgs: Vec<Msg<String>> = {
                             thread_local_node
-                            .lock()
-                            .expect("lock failed on node processing timeouts in thread")
-                            .process_timeouts()
-                            .into_iter()
-                            .collect()
+                                .lock()
+                                .expect("lock failed on node processing timeouts in thread")
+                                .process_timeouts()
+                                .into_iter()
+                                .collect()
                         };
 
                         for outgoing_msg in timeout_msgs {
@@ -425,11 +419,11 @@ impl SCPNode {
                         }
 
                         // See if we're done with the current slot
-                        let ext_vals : Vec<String> = {
+                        let ext_vals: Vec<String> = {
                             thread_local_node
-                            .lock()
-                            .expect("lock failed on node getting ext_vals in thread")
-                            .get_externalized_values(current_slot as SlotIndex)
+                                .lock()
+                                .expect("lock failed on node getting ext_vals in thread")
+                                .get_externalized_values(current_slot as SlotIndex)
                         };
 
                         if !ext_vals.is_empty() {
@@ -446,8 +440,8 @@ impl SCPNode {
                             let last_slot_values = ext_vals.len();
 
                             let mut shared_data = thread_shared_data
-                                                  .lock()
-                                                  .expect("lock failed on shared_data in thread");
+                                .lock()
+                                .expect("lock failed on shared_data in thread");
                             shared_data.ledger.push(ext_vals);
                             let total_values = shared_data.total_values();
 
@@ -469,8 +463,9 @@ impl SCPNode {
                         }
                     }
                     log::info!(logger, "MESSAGES,{},{}", node_id, total_broadcasts);
-                }
-            ).expect("failed spawning SCPNode thread"));
+                })
+                .expect("failed spawning SCPNode thread"),
+            );
 
         (node, thread_handle)
     }
@@ -522,12 +517,7 @@ impl SCPNode {
 ///////////////////////////////////////////////////////////////////////////////
 
 /// Injects values to a network and waits for completion
-pub fn run_test(
-    mut network: SCPNetwork,
-    network_name: &str,
-    options: TestOptions,
-    logger: Logger
-) {
+pub fn run_test(mut network: SCPNetwork, network_name: &str, options: TestOptions, logger: Logger) {
     if options.submit_in_parallel {
         log::info!(
             logger,
@@ -573,7 +563,9 @@ pub fn run_test(
         }
 
         values.push(value);
-        std::thread::sleep(Duration::from_micros(1_000_000 / options.submissions_per_sec));
+        std::thread::sleep(Duration::from_micros(
+            1_000_000 / options.submissions_per_sec,
+        ));
     }
 
     // report end of value push
@@ -594,7 +586,8 @@ pub fn run_test(
         let mut last_log = Instant::now();
         loop {
             if Instant::now() > deadline {
-                log::error!(network.logger,
+                log::error!(
+                    network.logger,
                     "( testing ) failed to externalize all values within {} sec at node {}!",
                     options.allowed_test_time.as_secs(),
                     node_id,
@@ -642,9 +635,11 @@ pub fn run_test(
         };
 
         if !all_values_are_correct {
-            log::error!(network.logger,
+            log::error!(
+                network.logger,
                 "( testing ) node {} externalized wrong values!",
-                node_id);
+                node_id
+            );
             assert!(all_values_are_correct); // exit
         }
     }
