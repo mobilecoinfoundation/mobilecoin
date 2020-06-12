@@ -291,8 +291,9 @@ impl SCPNode {
         let thread_shared_data = Arc::clone(&node.shared_data);
         let thread_local_node = Arc::clone(&node.local_node);
 
-        // do not propose values more than once per slot
-        let mut allow_propose: bool = true;
+        // See byzantine_ledger.rs. Each slot nominates at most MAX_PENDING_VALUES_TO_NOMINATE values.
+        let mut nominated_values: usize = 0;
+
         let mut current_slot: usize = 0;
         let mut total_broadcasts: u32 = 0;
 
@@ -345,13 +346,11 @@ impl SCPNode {
                         }
 
                         // Process values submitted to our node
-                        if allow_propose && !pending_values.is_empty() {
+                        if (nominated_values < test_options.max_values_per_slot) && !pending_values.is_empty() {
                             let mut vals = pending_values.iter().cloned().collect::<Vec<String>>();
+                            vals.sort();
+                            vals.truncate(test_options.max_values_per_slot - nominated_values);
 
-                            if vals.len() > test_options.max_values_per_slot {
-                                vals.sort();
-                                vals.truncate(test_options.max_values_per_slot);
-                            }
                             let outgoing_msg: Option<Msg<String>> = {
                                 thread_local_node
                                     .lock()
@@ -367,7 +366,6 @@ impl SCPNode {
                                 (broadcast_msg_fn)(logger.clone(), outgoing_msg);
                                 total_broadcasts += 1;
                             }
-                            allow_propose = false;
                         }
 
                         // Process the incoming messages and re-broadcast to network
@@ -440,7 +438,7 @@ impl SCPNode {
 
                             pending_values = remaining_values;
                             current_slot += 1;
-                            allow_propose = true;
+                            nominated_values = 0;
                             // try to let other threads catch up
                             std::thread::sleep(test_options.slot_advance_delay);
                         }
