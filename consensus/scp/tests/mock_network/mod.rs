@@ -452,7 +452,13 @@ impl SCPNode {
                             std::thread::sleep(test_options.slot_advance_delay);
                         }
                     }
-                    log::info!(logger, "MESSAGES,{},{}", node_id, total_broadcasts);
+                    log::info!(
+                        logger,
+                        "thread results: {},{},{}",
+                        node_id,
+                        total_broadcasts,
+                        current_slot,
+                    );
                 })
                 .expect("failed spawning SCPNode thread"),
         );
@@ -704,7 +710,7 @@ pub fn run_test(network: SCPNetwork, network_name: &str, options: TestOptions, l
     // csv for scripting use
     log::info!(
         logger,
-        "RESULTS,{},{},{},{},{},{}",
+        "test results: {},{},{},{},{},{}",
         network_name,
         start.elapsed().as_millis(),
         values.len(),
