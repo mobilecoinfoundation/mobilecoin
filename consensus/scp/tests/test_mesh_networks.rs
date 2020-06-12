@@ -41,7 +41,7 @@ fn new_mesh(
 
 /// Performs a consensus test for a mesh network of `num_nodes` nodes.
 fn mesh_test_helper(num_nodes: usize, k: u32, logger: Logger) {
-    if num_nodes < 3 || num_nodes as u64 <= k as u64 {
+    if num_nodes < 3 || num_nodes as u32 <= k {
         return;
     }
 

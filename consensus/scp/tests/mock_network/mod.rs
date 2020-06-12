@@ -368,7 +368,7 @@ impl SCPNode {
                                 vals.clear();
                             }
 
-                            if vals.len() > 0 {
+                            if !vals.is_empty() {
                                 let outgoing_msg: Option<Msg<String>> = {
                                     thread_local_node
                                         .lock()
@@ -675,13 +675,14 @@ pub fn run_test(mut network: SCPNetwork, network_name: &str, options: TestOption
     // Check all blocks in the ledger are the same
     let node0_data = network.get_shared_data(&test_utils::test_node_id(0)).ledger;
 
-    if !(node0_data.len() > 0) {
+    if !node0_data.is_empty() {
         log::error!(
             network.logger,
-            "failing 'node0_data.len() > 0' in run_test()"
+            "failing '!node0_data.is_empty()' in run_test()"
         );
+        assert!(!node0_data.is_empty()); // exit
     }
-    assert!(node0_data.len() > 0);
+
 
     for node_num in 0..num_nodes {
         let node_data = network
@@ -693,8 +694,9 @@ pub fn run_test(mut network: SCPNetwork, network_name: &str, options: TestOption
                 network.logger,
                 "failing 'node0_data.len() == node_data.len()' in run_test()"
             );
+            assert_eq!(node0_data.len(), node_data.len()); // exit
         }
-        assert_eq!(node0_data.len(), node_data.len());
+
 
         for block_num in 0..node0_data.len() {
             if node0_data.get(block_num) != node_data.get(block_num) {
@@ -702,8 +704,8 @@ pub fn run_test(mut network: SCPNetwork, network_name: &str, options: TestOption
                     network.logger,
                     "failing 'node0_data.get(block_num) == node_data.get(block_num)' in run_test()"
                 );
+                assert_eq!(node0_data.get(block_num), node_data.get(block_num)); //exit
             }
-            assert_eq!(node0_data.get(block_num), node_data.get(block_num));
         }
     }
 
