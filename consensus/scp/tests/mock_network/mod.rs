@@ -340,8 +340,8 @@ impl SCPNode {
 
                         if !(incoming_msgs_count == 0 || incoming_msgs_count == 1) {
                             log::error!(logger, "incoming_msgs_count > 1");
+                            // panic
                             assert!(incoming_msgs_count == 0 || incoming_msgs_count == 1);
-                            // exit
                         }
 
                         // Process values submitted to our node
@@ -616,7 +616,8 @@ pub fn run_test(network: SCPNetwork, network_name: &str, options: TestOptions, l
                     options.allowed_test_time.as_secs(),
                     node_id,
                 );
-                panic!("TEST FAILED DUE TO TIMEOUT"); // exit
+                // panic
+                panic!("TEST FAILED DUE TO TIMEOUT");
             }
 
             let cur_num_values = network.get_shared_data(&node_id).total_values();
@@ -664,20 +665,18 @@ pub fn run_test(network: SCPNetwork, network_name: &str, options: TestOptions, l
                 "( testing ) node {} externalized wrong values!",
                 node_id
             );
-            assert!(all_values_are_correct); // exit
+            // panic
+            assert!(all_values_are_correct);
         }
     }
 
     // Check all blocks in the ledger are the same
     let node0_data = network.get_shared_data(&test_utils::test_node_id(0)).ledger;
     if node0_data.is_empty() {
-        log::error!(
-            network.logger,
-            "node0_data is empty in run_test()"
-        );
-        assert!(!node0_data.is_empty()); // exit
+        log::error!(network.logger, "node0_data is empty in run_test()");
+        // panic
+        assert!(!node0_data.is_empty());
     }
-
 
     for node_num in 0..num_nodes {
         let node_data = network
@@ -689,7 +688,8 @@ pub fn run_test(network: SCPNetwork, network_name: &str, options: TestOptions, l
                 network.logger,
                 "node0_data.len() != node_data.len() in run_test()"
             );
-            assert_eq!(node0_data.len(), node_data.len()); // exit
+            // panic
+            assert_eq!(node0_data.len(), node_data.len());
         }
 
 
@@ -699,7 +699,8 @@ pub fn run_test(network: SCPNetwork, network_name: &str, options: TestOptions, l
                     network.logger,
                     "node0_data.get(block_num) != node_data.get(block_num) in run_test()"
                 );
-                assert_eq!(node0_data.get(block_num), node_data.get(block_num)); //exit
+                //panic
+                assert_eq!(node0_data.get(block_num), node_data.get(block_num));
             }
         }
     }
