@@ -216,7 +216,7 @@ impl SCPNetwork {
             .lock()
             .expect("lock failed on nodes_map in broadcast");
 
-        log::debug!(logger, "(broadcast) {}", msg.to_display(),);
+        log::trace!(logger, "(broadcast) {}", msg.to_display(),);
 
         let amsg = Arc::new(msg);
 
@@ -258,7 +258,7 @@ impl SCPNodeSharedData {
 struct SCPNode {
     local_node: Arc<Mutex<Node<String, test_utils::TransactionValidationError>>>,
     sender: crossbeam_channel::Sender<SCPNodeTaskMessage>,
-    pub shared_data: Arc<Mutex<SCPNodeSharedData>>,
+    shared_data: Arc<Mutex<SCPNodeSharedData>>,
 }
 
 impl SCPNode {
