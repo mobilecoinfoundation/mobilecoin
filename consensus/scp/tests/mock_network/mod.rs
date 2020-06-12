@@ -56,12 +56,12 @@ impl TestOptions {
     pub fn new() -> Self {
         Self {
             submit_in_parallel: true,
-            values_to_submit: 2000,
-            submissions_per_sec: 2000,
+            values_to_submit: 1000,
+            submissions_per_sec: 500,
             max_values_per_slot: 100,
             allowed_test_time: Duration::from_secs(300),
-            log_flush_delay: Duration::from_millis(100),
-            scp_timebase: Duration::from_millis(100),
+            log_flush_delay: Duration::from_millis(50),
+            scp_timebase: Duration::from_millis(1000),
             validity_fn: Arc::new(test_utils::trivial_validity_fn::<String>),
             combine_fn: Arc::new(test_utils::trivial_combine_fn::<String>),
         }
