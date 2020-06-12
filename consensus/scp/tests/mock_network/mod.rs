@@ -284,6 +284,8 @@ impl SCPNode {
 
         let thread_shared_data = Arc::clone(&node.shared_data);
         let thread_local_node = Arc::clone(&node.local_node);
+
+        // do not propose values more than once per slot
         let mut allow_propose: bool = true;
         let mut current_slot: usize = 0;
         let mut total_broadcasts: u32 = 0;
