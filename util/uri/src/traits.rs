@@ -1,8 +1,8 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use base64;
+use displaydoc::Display;
 use ed25519::signature::Error as SignatureError;
-use failure::Fail;
 use hex;
 use mc_common::{NodeID, ResponderId, ResponderIdParseError};
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public, KeyError};
@@ -16,17 +16,17 @@ use core::{
     result::Result as StdResult,
 };
 
-#[derive(Debug, Fail, Ord, PartialOrd, Eq, PartialEq, Clone)]
+#[derive(Debug, Display, Ord, PartialOrd, Eq, PartialEq, Clone)]
 pub enum UriConversionError {
-    #[fail(display = "Error converting key {}", _0)]
+    /// Error converting key: {0}
     KeyConversion(KeyError),
-    #[fail(display = "Error with Ed25519 signature")]
+    /// Error with Ed25519 signature
     Signature,
-    #[fail(display = "Error decoding base64")]
+    /// Error decoding base64
     Base64Decode,
-    #[fail(display = "Error parsing ResponderId {} {}", _0, _1)]
+    /// Error parsing ResponderId {0}, {1}
     ResponderId(String, ResponderIdParseError),
-    #[fail(display = "No consensus-msg-key provided")]
+    /// No consensus-msg-key provided
     NoPubkey,
 }
 
