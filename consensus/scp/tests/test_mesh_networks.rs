@@ -50,7 +50,8 @@ fn mesh_test_helper(num_nodes: usize, k: u32, logger: Logger) {
         return;
     }
 
-    let test_options = mock_network::TestOptions::new();
+    let mut test_options = mock_network::TestOptions::new();
+    test_options.values_to_submit = 20000;
 
     let network = new_mesh(
         num_nodes,

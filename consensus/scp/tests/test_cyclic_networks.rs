@@ -54,7 +54,8 @@ fn cyclic_test_helper(num_nodes: usize, logger: Logger) {
         return;
     }
 
-    let test_options = mock_network::TestOptions::new();
+    let mut test_options = mock_network::TestOptions::new();
+    test_options.values_to_submit = 10000;
 
     let network = new_cyclic(
         num_nodes,
