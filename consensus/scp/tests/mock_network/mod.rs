@@ -664,11 +664,10 @@ pub fn run_test(network: SCPNetwork, network_name: &str, options: TestOptions, l
 
     // Check all blocks in the ledger are the same
     let node0_data = network.get_shared_data(&test_utils::test_node_id(0)).ledger;
-
-    if !node0_data.is_empty() {
+    if node0_data.is_empty() {
         log::error!(
             network.logger,
-            "failing '!node0_data.is_empty()' in run_test()"
+            "node0_data is empty in run_test()"
         );
         assert!(!node0_data.is_empty()); // exit
     }
@@ -682,7 +681,7 @@ pub fn run_test(network: SCPNetwork, network_name: &str, options: TestOptions, l
         if node0_data.len() != node_data.len() {
             log::error!(
                 network.logger,
-                "failing 'node0_data.len() == node_data.len()' in run_test()"
+                "node0_data.len() != node_data.len() in run_test()"
             );
             assert_eq!(node0_data.len(), node_data.len()); // exit
         }
@@ -692,7 +691,7 @@ pub fn run_test(network: SCPNetwork, network_name: &str, options: TestOptions, l
             if node0_data.get(block_num) != node_data.get(block_num) {
                 log::error!(
                     network.logger,
-                    "failing 'node0_data.get(block_num) == node_data.get(block_num)' in run_test()"
+                    "node0_data.get(block_num) != node_data.get(block_num) in run_test()"
                 );
                 assert_eq!(node0_data.get(block_num), node_data.get(block_num)); //exit
             }
