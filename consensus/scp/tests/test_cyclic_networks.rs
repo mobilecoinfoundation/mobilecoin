@@ -18,8 +18,7 @@ fn skip_slow_tests() -> bool {
 /// Constructs a cyclic network (e.g. 1->2->3->4->1)
 fn new_cyclic(
     num_nodes: usize,
-    validity_fn: ValidityFn<String, test_utils::TransactionValidationError>,
-    combine_fn: CombineFn<String>,
+    test_options: TestOptions,
     logger: Logger,
 ) -> mock_network::SCPNetwork {
     let mut node_options = Vec::<mock_network::NodeOptions>::new();
@@ -43,7 +42,7 @@ fn new_cyclic(
         ));
     }
 
-    mock_network::SCPNetwork::new(node_options, validity_fn, combine_fn, logger)
+    mock_network::SCPNetwork::new(node_options, test_options, logger)
 }
 
 /// Performs a consensus test for a cyclic network of `num_nodes` nodes.

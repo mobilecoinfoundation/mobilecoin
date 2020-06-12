@@ -9,7 +9,7 @@ use mc_consensus_scp::{
     msg::Msg,
     node::{Node, ScpNode},
     quorum_set::QuorumSet,
-    test_utils::{test_node_id, TransactionValidationError},
+    test_utils},
 };
 use std::{
     collections::BTreeSet,
@@ -55,7 +55,7 @@ pub struct TestOptions {
     externalized_lru_size: usize,
 
     /// The values validity function to use (typically trivial)
-    validity_fn: ValidityFn<String, TransactionValidationError>,
+    validity_fn: ValidityFn<String, test_utils::TransactionValidationError>,
 
     /// The values combine function to use (typically trivial)
     combine_fn: CombineFn<String>,
@@ -74,8 +74,8 @@ impl TestOptions {
             slot_advance_delay:  Duration::from_millis(10),
             seen_msg_hashes_lru_size: 50000,
             externalized_lru_size: 500,
-            validity_fn: Arc::new(trivial_validity_fn::<String>),
-            combine_fn: Arc::new(trivial_combine_fn::<String>),
+            validity_fn: Arc::new(test_utils::trivial_validity_fn::<String>),
+            combine_fn: Arc::new(test_utils::trivial_combine_fn::<String>),
         }
     }
 }
@@ -98,7 +98,7 @@ impl NodeOptions {
     }
 }
 
-struct SCPNetwork {
+pub struct SCPNetwork {
     nodes_map: Arc<Mutex<HashMap<NodeID, SCPNode>>>,
     thread_handles: HashMap<NodeID, Option<JoinHandle<()>>>,
     nodes_shared_data: HashMap<NodeID, Arc<Mutex<SCPNodeSharedData>>>,
@@ -123,7 +123,7 @@ impl SCPNetwork {
             let validators = options_for_this_node
                 .validators
                 .iter()
-                .map(|id| test_node_id(*id as u32))
+                .map(|id| test_utils::test_node_id(*id as u32))
                 .collect::<Vec<NodeID>>();
 
             let qs = QuorumSet::new_with_node_ids(options_for_this_node.k, validators);
@@ -131,10 +131,10 @@ impl SCPNetwork {
             let peers = options_for_this_node
                 .peers
                 .iter()
-                .map(|id| test_node_id(*id as u32))
+                .map(|id| test_utils::test_node_id(*id as u32))
                 .collect::<HashSet<NodeID>>();
 
-            let node_id = test_node_id(node_id as u32);
+            let node_id = test_utils::test_node_id(node_id as u32);
 
             assert!(!peers.contains(&node_id));
 
@@ -175,7 +175,7 @@ impl SCPNetwork {
         let num_nodes = nodes_map.len();
         for node_num in 0..num_nodes {
             nodes_map
-                .get_mut(&test_node_id(node_num as u32))
+                .get_mut(&test_utils::test_node_id(node_num as u32))
                 .expect("failed to get node from nodes_map")
                 .send_stop();
         }
@@ -183,7 +183,7 @@ impl SCPNetwork {
 
         // now join the threads
         for node_num in 0..num_nodes {
-            let node_id = &test_node_id(node_num as u32);
+            let node_id = &test_utils::test_node_id(node_num as u32);
             self.thread_handles
                 .remove(node_id)
                 .expect("failed to get handle option from thread_handles")
@@ -260,7 +260,7 @@ impl SCPNodeSharedData {
 }
 
 pub struct SCPNode {
-    local_node: Arc<Mutex<Node<String, TransactionValidationError>>>,
+    local_node: Arc<Mutex<Node<String, test_utils::TransactionValidationError>>>,
     sender: crossbeam_channel::Sender<SCPNodeTaskMessage>,
     pub shared_data: Arc<Mutex<SCPNodeSharedData>>,
 }
@@ -569,12 +569,12 @@ pub fn run_test(
         if options.submit_in_parallel {
             // simulate broadcast of values to all nodes in parallel
             for n in 0..num_nodes as u32 {
-                network.push_value(&test_node_id(n), &value);
+                network.push_value(&test_utils::test_node_id(n), &value);
             }
         } else {
             // submit values to nodes in sequence
             let n = i % (num_nodes as u32);
-            network.push_value(&test_node_id(n), &value);
+            network.push_value(&test_utils::test_node_id(n), &value);
         }
 
         values.push(value);
@@ -594,7 +594,7 @@ pub fn run_test(
     // Check that the values got added to the nodes
     for n in 0..num_nodes as u32 {
         // Wait for test_node_id(n) to externalize all values
-        let node_id = test_node_id(n);
+        let node_id = test_utils::test_node_id(n);
         let mut prev_num_values = 0;
         let mut last_log = Instant::now();
         loop {
@@ -655,7 +655,7 @@ pub fn run_test(
     }
 
     // Check all blocks in the ledger are the same
-    let node0_data = network.get_shared_data(&test_node_id(0)).ledger;
+    let node0_data = network.get_shared_data(&test_utils::test_node_id(0)).ledger;
 
     if !(node0_data.len() > 0) {
         log::error!(
@@ -667,7 +667,7 @@ pub fn run_test(
 
     for node_num in 0..num_nodes {
         let node_data = network
-            .get_shared_data(&test_node_id(node_num as u32))
+            .get_shared_data(&test_utils::test_node_id(node_num as u32))
             .ledger;
 
         if node0_data.len() != node_data.len() {
@@ -706,5 +706,5 @@ pub fn run_test(
     network.stop_all();
 
     // allow log to flush
-    std::thread::sleep(Duration::from_millis(LOG_FLUSH_DELAY_MILLIS));
+    std::thread::sleep(options.log_flush_delay);
 }
