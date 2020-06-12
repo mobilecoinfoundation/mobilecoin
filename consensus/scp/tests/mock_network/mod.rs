@@ -698,6 +698,9 @@ pub fn run_test(network: SCPNetwork, network_name: &str, options: TestOptions, l
         }
     }
 
+    // drop the network here so that MESSAGES log statements appear before results
+    drop(network);
+
     // csv for scripting use
     log::info!(
         logger,
@@ -713,7 +716,7 @@ pub fn run_test(network: SCPNetwork, network_name: &str, options: TestOptions, l
     // human readable throughput
     log::info!(
         logger,
-        "( testing ) {}: {:?} (avg {} tx/s)",
+        "test completed for {}: {:?} (avg {} tx/s)",
         network_name,
         start.elapsed(),
         (1_000_000 * values.len() as u128) / start.elapsed().as_micros(),
