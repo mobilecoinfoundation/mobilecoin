@@ -60,7 +60,7 @@ impl TestOptions {
         Self {
             submit_in_parallel: true,
             values_to_submit: 2000,
-            submissions_per_sec: 1000,
+            submissions_per_sec: 2000,
             max_values_per_slot: 100,
             allowed_test_time: Duration::from_secs(300),
             log_flush_delay: Duration::from_millis(100),
@@ -350,7 +350,7 @@ impl SCPNode {
                             vals.sort();
                             vals.truncate(test_options.max_values_per_slot - nominated_values);
                             nominated_values += vals.len();
-                            
+
                             let outgoing_msg: Option<Msg<String>> = {
                                 thread_local_node
                                     .lock()
