@@ -24,41 +24,41 @@ use std::{
 #[derive(Clone)]
 pub struct TestOptions {
     /// Values can be submitted to all nodes in parallel (true) or to nodes in sequential order (false)
-    submit_in_parallel: bool,
+    pub submit_in_parallel: bool,
 
     /// Total number of values to submit. Tests run until all values are externalized by all nodes.
-    values_to_submit: usize,
+    pub values_to_submit: usize,
 
     /// Approximate rate that values are submitted to nodes.
-    submissions_per_sec: u64,
+    pub submissions_per_sec: u64,
 
     /// We allow only a single proposal per slot, with up to this many values.
-    max_values_per_slot: usize,
+    pub max_values_per_slot: usize,
 
     /// The total allowed testing time before forcing a panic
-    allowed_test_time: Duration,
+    pub allowed_test_time: Duration,
 
     /// wait this long for slog to flush values before ending a test
-    log_flush_delay: Duration,
+    pub log_flush_delay: Duration,
 
     /// This parameter sets the interval for round and ballot timeout.
     /// SCP suggests one second, but threads can run much faster.
-    scp_timebase: Duration,
+    pub scp_timebase: Duration,
 
     /// Sleep when advancing to a new slot to help threads keep pace.
-    slot_advance_delay: Duration,
+    pub slot_advance_delay: Duration,
 
     /// Because thread testing doesn't implement catchup, increase the lrucache used to store msgs.
-    seen_msg_hashes_lru_size: usize,
+    pub seen_msg_hashes_lru_size: usize,
 
     /// Because thread testing doesn't implement catchup, increase the lrucache used to store externalized slots.
-    externalized_lru_size: usize,
+    pub externalized_lru_size: usize,
 
     /// The values validity function to use (typically trivial)
-    validity_fn: ValidityFn<String, test_utils::TransactionValidationError>,
+    pub validity_fn: ValidityFn<String, test_utils::TransactionValidationError>,
 
     /// The values combine function to use (typically trivial)
-    combine_fn: CombineFn<String>,
+    pub combine_fn: CombineFn<String>,
 }
 
 impl TestOptions {
