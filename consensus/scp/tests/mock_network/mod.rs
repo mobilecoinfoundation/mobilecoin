@@ -589,13 +589,10 @@ pub fn run_test(mut network: SCPNetwork, network_name: &str, options: TestOption
         }
 
         let elapsed_duration = Instant::now().duration_since(start);
-        let target_duration = Duration::from_micros(
-            1_000_000 / options.submissions_per_sec
-        );
-        if let Some(extra_delay) = target_duration.checked_sub(elapsed_duration){
+        let target_duration = Duration::from_micros(1_000_000 / options.submissions_per_sec);
+        if let Some(extra_delay) = target_duration.checked_sub(elapsed_duration) {
             std::thread::sleep(extra_delay);
         }
-
     }
 
     // report end of value push
