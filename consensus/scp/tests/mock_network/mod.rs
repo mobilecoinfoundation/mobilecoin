@@ -66,7 +66,7 @@ impl TestOptions {
         Self {
             submit_in_parallel: true,
             values_to_submit: 200,
-            submissions_per_sec: 2000,
+            submissions_per_sec: 20000,
             max_values_per_slot: 100,
             allowed_test_time:  Duration::from_secs(300),
             log_flush_delay:  Duration::from_millis(500),
@@ -700,8 +700,6 @@ pub fn run_test(
         options.max_values_per_slot,
         options.scp_timebase.as_millis(),
     );
-
-    log::info!(logger, "TEST COMPLETE, {}", network_name);
 
     // stop the threads
     network.stop_all();
