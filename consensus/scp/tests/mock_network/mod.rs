@@ -45,9 +45,6 @@ pub struct TestOptions {
     /// SCP suggests one second, but threads can run much faster.
     pub scp_timebase: Duration,
 
-    /// Sleep when advancing to a new slot to help threads keep pace.
-    pub slot_advance_delay: Duration,
-
     /// The values validity function to use (typically trivial)
     pub validity_fn: ValidityFn<String, test_utils::TransactionValidationError>,
 
@@ -65,7 +62,6 @@ impl TestOptions {
             allowed_test_time: Duration::from_secs(300),
             log_flush_delay: Duration::from_millis(100),
             scp_timebase: Duration::from_millis(100),
-            slot_advance_delay: Duration::from_millis(1),
             validity_fn: Arc::new(test_utils::trivial_validity_fn::<String>),
             combine_fn: Arc::new(test_utils::trivial_combine_fn::<String>),
         }
@@ -439,8 +435,6 @@ impl SCPNode {
                             pending_values = remaining_values;
                             current_slot += 1;
                             nominated_values = 0;
-                            // try to let other threads catch up
-                            std::thread::sleep(test_options.slot_advance_delay);
                         }
                     }
                     log::info!(
