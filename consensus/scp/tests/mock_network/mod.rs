@@ -9,7 +9,7 @@ use mc_consensus_scp::{
     msg::Msg,
     node::{Node, ScpNode},
     quorum_set::QuorumSet,
-    test_utils},
+    test_utils,
 };
 use std::{
     collections::BTreeSet,
