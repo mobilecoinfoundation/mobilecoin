@@ -548,6 +548,7 @@ pub fn run_test(mut network: SCPNetwork, network_name: &str, options: TestOption
             .len()
     };
 
+    let mut last_log = Instant::now();
     for i in 0..options.values_to_submit {
         let value = mc_util_test_helper::random_str(&mut rng, 20);
 
@@ -566,13 +567,24 @@ pub fn run_test(mut network: SCPNetwork, network_name: &str, options: TestOption
         std::thread::sleep(Duration::from_micros(
             1_000_000 / options.submissions_per_sec,
         ));
+
+        if last_log.elapsed().as_secs() > 1 {
+            log::info!(
+                network.logger,
+                "( testing ) pushed {}/{} values",
+                i,
+                options.values_to_submit
+            );
+            last_log = Instant::now();
+        }
     }
 
     // report end of value push
     log::info!(
-        logger,
-        "( testing ) finished pushing values to {}",
-        network_name,
+        network.logger,
+        "( testing ) pushed {}/{} values",
+        options.values_to_submit,
+        options.values_to_submit
     );
 
     // abort testing if we exceed allowed time
