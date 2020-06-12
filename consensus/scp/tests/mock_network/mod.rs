@@ -259,14 +259,14 @@ impl SCPNodeSharedData {
     }
 }
 
-pub struct SCPNode {
+struct SCPNode {
     local_node: Arc<Mutex<Node<String, test_utils::TransactionValidationError>>>,
     sender: crossbeam_channel::Sender<SCPNodeTaskMessage>,
     pub shared_data: Arc<Mutex<SCPNodeSharedData>>,
 }
 
 impl SCPNode {
-    pub fn new(
+    fn new(
         thread_name: String,
         node_id: NodeID,
         quorum_set: QuorumSet,
@@ -297,12 +297,6 @@ impl SCPNode {
             .lock()
             .expect("lock failed on local node setting scp_timebase_millis")
             .scp_timebase = test_options.scp_timebase;
-
-        log::debug!(
-            logger,
-            "setting timebase to {} msec",
-            test_options.scp_timebase.as_millis()
-        );
 
         let node = Self {
             local_node,
@@ -459,7 +453,7 @@ impl SCPNode {
 
                             log::trace!(
                                 logger,
-                                "(  ledger ) node {} slot {:3} : {:5} new, {:5} total, {:5} pending",
+                                "(  ledger ) node {} slot {} : {} new, {} total, {} pending",
                                 node_id,
                                 current_slot as SlotIndex,
                                 last_slot_values,
