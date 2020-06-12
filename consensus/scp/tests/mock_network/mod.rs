@@ -692,7 +692,6 @@ pub fn run_test(network: SCPNetwork, network_name: &str, options: TestOptions, l
             assert_eq!(node0_data.len(), node_data.len());
         }
 
-
         for block_num in 0..node0_data.len() {
             if node0_data.get(block_num) != node_data.get(block_num) {
                 log::error!(
