@@ -221,6 +221,12 @@ impl SCPNetwork {
     }
 }
 
+impl Drop for SCPNetwork {
+    fn drop(&mut self) {
+        self.stop_all();
+    }
+}
+
 enum SCPNodeTaskMessage {
     Value(String),
     Msg(Arc<Msg<String>>),
@@ -703,9 +709,6 @@ pub fn run_test(mut network: SCPNetwork, network_name: &str, options: TestOption
         options.max_values_per_slot,
         options.scp_timebase.as_millis(),
     );
-
-    // stop the threads
-    network.stop_all();
 
     // allow log to flush
     std::thread::sleep(options.log_flush_delay);
