@@ -538,7 +538,7 @@ pub fn run_test(mut network: SCPNetwork, network_name: &str, options: TestOption
 
     let mut rng = mc_util_test_helper::get_seeded_rng();
     let mut values = Vec::<String>::with_capacity(options.values_to_submit);
-    for i in 0..options.values_to_submit {
+    for _i in 0..options.values_to_submit {
         let value = mc_util_test_helper::random_str(&mut rng, 20);
         values.push(value);
     }
