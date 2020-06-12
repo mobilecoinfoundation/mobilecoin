@@ -27,7 +27,7 @@ pub struct TestOptions {
     submit_in_parallel: bool,
 
     /// Total number of values to submit. Tests run until all values are externalized by all nodes.
-    values_to_submit: u32,
+    values_to_submit: usize,
 
     /// Approximate rate that values are submitted to nodes.
     submissions_per_sec: u64,
@@ -590,7 +590,7 @@ pub fn run_test(
     );
 
     // abort testing if we exceed allowed time
-    let deadline = Instant::now() + Duration::from_secs(options.allowed_test_time);
+    let deadline = Instant::now() + options.allowed_test_time;
 
     // Check that the values got added to the nodes
     for n in 0..num_nodes as u32 {
@@ -602,13 +602,13 @@ pub fn run_test(
             if Instant::now() > deadline {
                 log::error!(network.logger,
                     "( testing ) failed to externalize all values within {} sec at node {}!",
-                    options.allowed_test_time,
+                    options.allowed_test_time.as_secs(),
                     node_id,
                 );
                 panic!("TEST FAILED DUE TO TIMEOUT"); // exit
             }
 
-            let cur_num_values = network.get_shared_data(node_id).total_values();
+            let cur_num_values = network.get_shared_data(&node_id).total_values();
             if cur_num_values >= values.len() {
                 log::info!(
                     network.logger,
