@@ -49,6 +49,9 @@ use mc_transaction_core::{
 use prost::Message;
 use rand_core::{CryptoRng, RngCore};
 
+/// Domain seperator for unified fees transaction private key.
+pub const FEES_OUTPUT_PRIVATE_KEY_DOMAIN_TAG: &str = "mc_fees_output_private_key";
+
 /// A well-formed transaction.
 #[derive(Clone, Eq, PartialEq, Message)]
 pub struct WellFormedTx {
@@ -444,7 +447,8 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let fee_tx_private_key = {
             let hash_value: [u8; 32] = {
                 let mut hasher = Blake2b256::new();
-                // TODO: domain separator.
+                FEES_OUTPUT_PRIVATE_KEY_DOMAIN_TAG.digest(&mut hasher);
+                parent_block.id.digest(&mut hasher);
                 transactions.digest(&mut hasher);
                 hasher
                     .result()
