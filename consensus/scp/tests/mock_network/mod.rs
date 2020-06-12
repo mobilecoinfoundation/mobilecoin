@@ -2,7 +2,7 @@
 
 use mc_common::{
     logger::{log, o, Logger},
-    HashMap, HashSet, LruCache, NodeID,
+    HashMap, HashSet, NodeID,
 };
 use mc_consensus_scp::{
     core_types::{CombineFn, SlotIndex, ValidityFn},
@@ -48,12 +48,6 @@ pub struct TestOptions {
     /// Sleep when advancing to a new slot to help threads keep pace.
     pub slot_advance_delay: Duration,
 
-    /// Because thread testing doesn't implement catchup, increase the lrucache used to store msgs.
-    pub seen_msg_hashes_lru_size: usize,
-
-    /// Because thread testing doesn't implement catchup, increase the lrucache used to store externalized slots.
-    pub externalized_lru_size: usize,
-
     /// The values validity function to use (typically trivial)
     pub validity_fn: ValidityFn<String, test_utils::TransactionValidationError>,
 
@@ -72,8 +66,6 @@ impl TestOptions {
             log_flush_delay: Duration::from_millis(100),
             scp_timebase: Duration::from_millis(100),
             slot_advance_delay: Duration::from_millis(1),
-            seen_msg_hashes_lru_size: 50000,
-            externalized_lru_size: 500,
             validity_fn: Arc::new(test_utils::trivial_validity_fn::<String>),
             combine_fn: Arc::new(test_utils::trivial_combine_fn::<String>),
         }
@@ -278,16 +270,6 @@ impl SCPNode {
             test_options.combine_fn.clone(),
             logger.clone(),
         )));
-
-        local_node
-            .lock()
-            .expect("lock failed on local node setting lru externalized size")
-            .externalized = LruCache::new(test_options.seen_msg_hashes_lru_size);
-
-        local_node
-            .lock()
-            .expect("lock failed on local node setting lru seen_msg_hashes size")
-            .seen_msg_hashes = LruCache::new(test_options.seen_msg_hashes_lru_size);
 
         local_node
             .lock()
