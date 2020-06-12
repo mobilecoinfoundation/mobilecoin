@@ -4,7 +4,6 @@ mod mock_network;
 use mc_common::logger::{test_with_logger, Logger};
 use serial_test_derive::serial;
 
-
 /// Hack to skip certain tests (that are currently too slow) from running
 fn skip_slow_tests() -> bool {
     std::env::var("SKIP_SLOW_TESTS") == Ok("1".to_string())
@@ -53,13 +52,7 @@ fn mesh_test_helper(num_nodes: usize, k: u32, logger: Logger) {
     let mut test_options = mock_network::TestOptions::new();
     test_options.values_to_submit = 20000;
 
-    let network = new_mesh(
-        num_nodes,
-        k,
-        test_options.clone(),
-        logger.clone(),
-    );
-
+    let network = new_mesh(num_nodes, k, test_options.clone(), logger.clone());
     let network_name = format!("mesh{}k{}", num_nodes, k);
     mock_network::run_test(network, &network_name, test_options, logger.clone());
 }

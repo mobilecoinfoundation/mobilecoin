@@ -465,7 +465,7 @@ impl SCPNode {
                     log::info!(logger, "MESSAGES,{},{}", node_id, total_broadcasts);
                 })
                 .expect("failed spawning SCPNode thread"),
-            );
+        );
 
         (node, thread_handle)
     }
