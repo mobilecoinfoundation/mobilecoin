@@ -345,36 +345,29 @@ impl SCPNode {
                         }
 
                         // Process values submitted to our node
-                        if !pending_values.is_empty() {
+                        if allow_propose && !pending_values.is_empty() {
                             let mut vals = pending_values.iter().cloned().collect::<Vec<String>>();
 
-                            if allow_propose {
-                                if vals.len() > test_options.max_values_per_slot {
-                                    vals.sort();
-                                    vals.truncate(test_options.max_values_per_slot);
-                                }
-                                allow_propose = false;
-                            } else {
-                                vals.clear();
+                            if vals.len() > test_options.max_values_per_slot {
+                                vals.sort();
+                                vals.truncate(test_options.max_values_per_slot);
                             }
+                            let outgoing_msg: Option<Msg<String>> = {
+                                thread_local_node
+                                    .lock()
+                                    .expect("lock failed on node nominating value")
+                                    .nominate(
+                                        current_slot as SlotIndex,
+                                        BTreeSet::from_iter(vals),
+                                    )
+                                    .expect("node.nominate() failed")
+                            };
 
-                            if !vals.is_empty() {
-                                let outgoing_msg: Option<Msg<String>> = {
-                                    thread_local_node
-                                        .lock()
-                                        .expect("lock failed on node nominating value")
-                                        .nominate(
-                                            current_slot as SlotIndex,
-                                            BTreeSet::from_iter(vals),
-                                        )
-                                        .expect("node.nominate() failed")
-                                };
-
-                                if let Some(outgoing_msg) = outgoing_msg {
-                                    (broadcast_msg_fn)(logger.clone(), outgoing_msg);
-                                    total_broadcasts += 1;
-                                }
+                            if let Some(outgoing_msg) = outgoing_msg {
+                                (broadcast_msg_fn)(logger.clone(), outgoing_msg);
+                                total_broadcasts += 1;
                             }
+                            allow_propose = false;
                         }
 
                         // Process the incoming messages and re-broadcast to network
