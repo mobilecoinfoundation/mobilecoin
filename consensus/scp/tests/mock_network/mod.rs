@@ -698,6 +698,7 @@ pub fn run_test(network: SCPNetwork, network_name: &str, options: TestOptions, l
         }
     }
 
+    // csv for scripting use
     log::info!(
         logger,
         "RESULTS,{},{},{},{},{},{}",
@@ -707,6 +708,15 @@ pub fn run_test(network: SCPNetwork, network_name: &str, options: TestOptions, l
         options.submissions_per_sec,
         options.max_values_per_slot,
         options.scp_timebase.as_millis(),
+    );
+
+    // human readable throughput
+    log::info!(
+        logger,
+        "( testing ) {}: {:?} (avg {} tx/s)",
+        network_name,
+        start.elapsed(),
+        (1_000_000 * values.len() as u128) / start.elapsed().as_micros(),
     );
 
     // allow log to flush
