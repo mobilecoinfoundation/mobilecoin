@@ -388,6 +388,50 @@ fn check_transfer_status(
     }))
 }
 
+#[derive(Serialize, Default)]
+struct JsonLedgerInfoResponse {
+    block_count: String,
+    txo_count: String,
+}
+
+/// Gets information about the entire ledger
+#[get("/ledger-info")]
+fn ledger_info(state: rocket::State<State>) -> Result<Json<JsonLedgerInfoResponse>, String> {
+    let resp = state
+        .mobilecoind_api_client
+        .get_ledger_info(&mc_mobilecoind_api::Empty::new())
+        .map_err(|err| format!("Failed getting ledger info: {}", err))?;
+    Ok(Json(JsonLedgerInfoResponse {
+        block_count: resp.block_count.to_string(),
+        txo_count: resp.txo_count.to_string(),
+    }))
+}
+
+#[derive(Serialize, Default)]
+struct JsonBlockInfoResponse {
+    key_image_count: String,
+    txo_count: String,
+}
+
+/// Retrieves the data in a request code
+#[get("/block-info/<block_num>")]
+fn block_info(
+    state: rocket::State<State>,
+    block_num: u64,
+) -> Result<Json<JsonBlockInfoResponse>, String> {
+    let mut req = mc_mobilecoind_api::GetBlockInfoRequest::new();
+    req.set_block(block_num);
+
+    let resp = state
+        .mobilecoind_api_client
+        .get_block_info(&req)
+        .map_err(|err| format!("Failed getting ledger info: {}", err))?;
+    Ok(Json(JsonBlockInfoResponse {
+        key_image_count: resp.key_image_count.to_string(),
+        txo_count: resp.txo_count.to_string(),
+    }))
+}
+
 fn main() {
     mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
@@ -434,7 +478,9 @@ fn main() {
                 request_code,
                 read_request,
                 transfer,
-                check_transfer_status
+                check_transfer_status,
+                ledger_info,
+                block_info,
             ],
         )
         .manage(State {
