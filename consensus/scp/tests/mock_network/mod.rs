@@ -561,13 +561,11 @@ pub fn run_test(network: SCPNetwork, network_name: &str, options: TestOptions, l
             // simulate broadcast of values to all nodes in parallel
             for n in 0..num_nodes {
                 network.push_value(&node_ids[n], &values[i]);
-                pushed_values += 1;
             }
         } else {
             // submit values to nodes in sequence
             let n = i % num_nodes;
             network.push_value(&node_ids[n], &values[i]);
-            pushed_values += 1;
         }
 
         if last_log.elapsed().as_millis() > 999 {
@@ -585,6 +583,8 @@ pub fn run_test(network: SCPNetwork, network_name: &str, options: TestOptions, l
         if let Some(extra_delay) = target_duration.checked_sub(elapsed_duration) {
             std::thread::sleep(extra_delay);
         }
+
+        pushed_values += 1;
     }
 
     // report end of value push
