@@ -3243,8 +3243,8 @@ name = "mc-util-uri"
 version = "0.2.0"
 dependencies = [
  "base64 0.11.0",
+ "displaydoc",
  "ed25519",
- "failure",
  "hex 0.4.2",
  "mc-common",
  "mc-crypto-keys",
