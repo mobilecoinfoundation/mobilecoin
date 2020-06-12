@@ -569,13 +569,13 @@ pub fn run_test(
 
         if options.submit_in_parallel {
             // simulate broadcast of values to all nodes in parallel
-            for n in 0..num_nodes as u32 {
-                network.push_value(&test_utils::test_node_id(n), &value);
+            for n in 0..num_nodes {
+                network.push_value(&test_utils::test_node_id(n as u32), &value);
             }
         } else {
             // submit values to nodes in sequence
-            let n = i % (num_nodes as u32);
-            network.push_value(&test_utils::test_node_id(n), &value);
+            let n = i % num_nodes;
+            network.push_value(&test_utils::test_node_id(n as u32), &value);
         }
 
         values.push(value);
