@@ -545,8 +545,7 @@ pub fn run_test(mut network: SCPNetwork, network_name: &str, options: TestOption
 
     log::info!(
         network.logger,
-        "( testing ) finished generating values",
-        options.values_to_submit,
+        "( testing ) finished generating {} values",
         options.values_to_submit
     );
 
