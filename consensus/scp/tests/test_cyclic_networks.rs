@@ -45,9 +45,7 @@ fn new_cyclic(
 
 /// Performs a consensus test for a cyclic network of `num_nodes` nodes.
 fn cyclic_test_helper(num_nodes: usize, logger: Logger) {
-    if num_nodes < 3 {
-        return;
-    }
+    assert!(num_nodes > 2);
 
     if skip_slow_tests() {
         return;
