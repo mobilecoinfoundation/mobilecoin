@@ -475,7 +475,7 @@ fn block_details(
     let resp = state
         .mobilecoind_api_client
         .get_block(&req)
-        .map_err(|err| format!("Failed getting ledger info: {}", err))?;
+        .map_err(|err| format!("Failed getting block details: {}", err))?;
     let block = resp.get_block();
     Ok(Json(JsonBlockDetailsResponse {
         block_id: hex::encode(&block.get_id().get_data()),
