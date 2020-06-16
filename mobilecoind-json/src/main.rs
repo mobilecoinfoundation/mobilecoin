@@ -116,11 +116,7 @@ fn monitors(state: rocket::State<State>) -> Result<Json<JsonMonitorListResponse>
         .get_monitor_list(&mc_mobilecoind_api::Empty::new())
         .map_err(|err| format!("Failed getting monitor list: {}", err))?;
     Ok(Json(JsonMonitorListResponse {
-        monitor_id: resp
-            .get_monitor_id_list()
-            .iter()
-            .map(hex::encode)
-            .collect(),
+        monitor_id: resp.get_monitor_id_list().iter().map(hex::encode).collect(),
     }))
 }
 
