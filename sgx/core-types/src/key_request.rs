@@ -13,6 +13,7 @@ use crate::{
 };
 use bitflags::bitflags;
 use core::{
+    cmp::Ordering,
     convert::{TryFrom, TryInto},
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
@@ -25,7 +26,12 @@ use mc_sgx_core_types_sys::{
     SGX_KEY_REQUEST_RESERVED2_BYTES,
 };
 use mc_util_encodings::{Error as EncodingError, INTEL_U16_SIZE};
-use mc_util_repr_bytes::{typenum::U512, GenericArray, ReprBytes};
+use mc_util_repr_bytes::{
+    derive_into_vec_from_repr_bytes, derive_serde_from_repr_bytes,
+    derive_try_from_slice_from_repr_bytes,
+    typenum::{U2, U512},
+    GenericArray, ReprBytes,
+};
 #[cfg(feature = "use_serde")]
 use serde::{Deserialize, Serialize};
 
@@ -76,6 +82,27 @@ pub enum KeyName {
     Seal = SGX_KEYSELECT_SEAL,
 }
 
+derive_try_from_slice_from_repr_bytes!(KeyName);
+derive_into_vec_from_repr_bytes!(KeyName);
+
+impl KeyName {
+    /// Check if the given i32 value is a valid value.
+    //
+    // This method is normally implemented by prost via derive(Enumeration), but the SGX SDK chooses
+    // to use a u16 for the in-situ data type.
+    pub fn is_valid(value: i32) -> bool {
+        Self::from_i32(value).is_some()
+    }
+
+    /// Create a new Error from the given i32 value.
+    //
+    // This method is normally implemented by prost via derive(Enumeration), but the SGX SDK chooses
+    // to use a u16 for the in-situ data type.
+    pub fn from_i32(value: i32) -> Option<KeyName> {
+        Self::try_from(u16::try_from(value).ok()?).ok()
+    }
+}
+
 impl Display for KeyName {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
@@ -100,6 +127,19 @@ impl From<KeyName> for u16 {
     }
 }
 
+impl ReprBytes for KeyName {
+    type Size = U2;
+    type Error = EncodingError;
+
+    fn from_bytes(src: &GenericArray<u8, Self::Size>) -> Result<Self, Self::Error> {
+        Self::try_from(u16::from_le_bytes(src.clone().into()))
+    }
+
+    fn to_bytes(&self) -> GenericArray<u8, Self::Size> {
+        GenericArray::from(u16::from(*self).to_le_bytes())
+    }
+}
+
 impl TryFrom<u16> for KeyName {
     type Error = EncodingError;
 
@@ -118,11 +158,17 @@ impl TryFrom<u16> for KeyName {
 bitflags! {
     /// An enumeration of flags controlling what values should be included when deriving a new key.
     pub struct KeyPolicy: u16 {
+        /// Derived keys are tied to the specific enclave measurement
         const MR_ENCLAVE = SGX_KEYPOLICY_MRENCLAVE;
+        /// Derived keys are tied to the signing public key
         const MR_SIGNER = SGX_KEYPOLICY_MRSIGNER;
+        /// Derived keys are not tied to the product ID
         const SKIP_PRODUCT_ID = SGX_KEYPOLICY_NOISVPRODID;
+        /// Derived keys are tied to the enclave configuration
         const CONFIG_ID = SGX_KEYPOLICY_CONFIGID;
+        /// Derived keys are tied to the signer's family ID
         const FAMILY_ID = SGX_KEYPOLICY_ISVFAMILYID;
+        /// Derived keys are tied to the signer's extended product ID
         const EXTENDED_PRODUCT_ID = SGX_KEYPOLICY_ISVEXTPRODID;
     }
 }
@@ -188,6 +234,11 @@ pub struct KeyRequest(sgx_key_request_t);
 impl_ffi_wrapper_base! {
     KeyRequest, sgx_key_request_t;
 }
+
+derive_into_vec_from_repr_bytes!(KeyRequest);
+
+#[cfg(feature = "use_serde")]
+derive_serde_from_repr_bytes!(KeyRequest);
 
 impl KeyRequest {
     /// Retrieve the name of the key contained in this request, if it's valid.
@@ -259,6 +310,60 @@ impl Display for KeyRequest {
     }
 }
 
+impl Hash for KeyRequest {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        "KeyRequest".hash(state);
+        self.key_name().hash(state);
+        self.key_policy().hash(state);
+        self.security_version().hash(state);
+        self.cpu_security_version().hash(state);
+        self.attribute_mask().hash(state);
+        self.key_id().hash(state);
+        self.misc_mask().hash(state);
+        self.config_security_version().hash(state);
+    }
+}
+
+impl Ord for KeyRequest {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.key_name().cmp(&other.key_name()).then(
+            self.key_policy().cmp(&other.key_policy()).then(
+                self.security_version().cmp(&other.security_version()).then(
+                    self.cpu_security_version()
+                        .cmp(&other.cpu_security_version())
+                        .then(
+                            self.key_id().cmp(&other.key_id()).then(
+                                self.misc_mask().cmp(&other.misc_masc()).then(
+                                    self.config_security_version()
+                                        .cmp(&other.config_security_version()),
+                                ),
+                            ),
+                        ),
+                ),
+            ),
+        )
+    }
+}
+
+impl PartialEq for KeyRequest {
+    fn eq(&self, other: &Self) -> bool {
+        self.key_name() == other.key_name()
+            && self.key_policy() == other.key_policy()
+            && self.security_version() == other.security_version()
+            && self.cpu_security_version() == other.cpu_security_version()
+            && self.attribute_mask() == other.attribute_mask()
+            && self.key_id() == other.key_id()
+            && self.misc_mask() == other.misc_mask()
+            && self.config_security_version() == other.config_security_version()
+    }
+}
+
+impl PartialOrd for KeyRequest {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 impl ReprBytes for KeyRequest {
     type Size = U512;
     type Error = EncodingError;
@@ -268,30 +373,26 @@ impl ReprBytes for KeyRequest {
     }
 
     fn to_bytes(&self) -> GenericArray<u8, Self::Size> {
-        let retval = GenericArray::default();
+        let mut retval = GenericArray::default();
 
-        self.key_name()
-            .to_x64(&mut retval[KEY_NAME_START..KEY_NAME_END])
-            .expect("Could not write key name");
-        self.key_policy()
-            .to_x64(&mut retval[KEY_POLICY_START..KEY_POLICY_END])
-            .expect("Could not write key policy");
+        retval[KEY_NAME_START..KEY_NAME_END].copy_from_slice(self.key_name().to_bytes().as_slice());
+
+        retval[KEY_POLICY_START..KEY_POLICY_END]
+            .copy_from_slice(self.key_name().to_bytes().as_slice());
+
         retval[ISV_SVN_START..ISV_SVN_END].copy_from_slice(&self.security_version().to_le_bytes());
-        retval[RESERVED1_START..RESERVED1_END].copy_from_slice(&[0u8; INTEL_U16_SIZE]);
-        self.cpu_security_version()
-            .to_x64(&mut retval[CPU_SVN_START..CPU_SVN_END])
-            .expect("Could not write CPU security version");
-        self.attribute_mask()
-            .to_x64(&mut retval[ATTRIBUTES_START..ATTRIBUTES_END])
-            .expect("Could not write attribute mask");
-        self.key_id()
-            .to_x64(&mut retval[KEY_ID_START..KEY_ID_END])
-            .expect("Could not write key ID");
+
+        retval[CPU_SVN_START..CPU_SVN_END]
+            .copy_from_slice(self.cpu_security_version().to_bytes().as_slice());
+
+        retval[ATTRIBUTES_START..ATTRIBUTES_END]
+            .copy_from_slice(self.attribute_mask().to_bytes().as_slice());
+
+        retval[KEY_ID_START..KEY_ID_END].copy_from_slice(self.key_id().to_bytes().as_slice());
+
         retval[MISC_MASK_START..MISC_MASK_END].copy_from_slice(&self.misc_mask().to_le_bytes());
         retval[CONFIG_SVN_START..CONFIG_SVN_END]
             .copy_from_slice(&self.config_security_version().to_le_bytes());
-        retval[RESERVED2_START..RESERVED2_END]
-            .copy_from_slice(&[0u8; SGX_KEY_REQUEST_RESERVED2_BYTES]);
 
         retval
     }
@@ -326,19 +427,23 @@ impl<'src> TryFrom<&'src [u8]> for KeyRequest {
             return Err(EncodingError::InvalidInputLength);
         }
 
-        let key_name = KeyName::from_x64(&src[KEY_NAME_START..KEY_NAME_END])?;
-        let key_policy = KeyPolicy::from_x64(&src[KEY_POLICY_START..KEY_POLICY_END])?;
+        let key_name = KeyName::try_from(&src[KEY_NAME_START..KEY_NAME_END])?;
+        let key_policy = KeyPolicy::try_from(&src[KEY_POLICY_START..KEY_POLICY_END])?;
+
         let isv_svn_bytes = (&src[ISV_SVN_START..ISV_SVN_END])
             .try_into()
             .map_err(|_e| EncodingError::InvalidInput)?;
         let isv_svn = SecurityVersion::from_le_bytes(isv_svn_bytes);
-        let cpu_svn = CpuSecurityVersion::from_x64(&src[CPU_SVN_START..CPU_SVN_END])?;
-        let attribute_mask = Attributes::from_x64(&src[ATTRIBUTES_START..ATTRIBUTES_END])?;
-        let key_id = KeyId::from_x64(&src[KEY_ID_START..KEY_ID_END])?;
+
+        let cpu_svn = CpuSecurityVersion::try_from(&src[CPU_SVN_START..CPU_SVN_END])?;
+        let attribute_mask = Attributes::try_from(&src[ATTRIBUTES_START..ATTRIBUTES_END])?;
+        let key_id = KeyId::try_from(&src[KEY_ID_START..KEY_ID_END])?;
+
         let misc_mask_bytes = (&src[MISC_MASK_START..MISC_MASK_END])
             .try_into()
             .map_err(|_e| EncodingError::InvalidInput)?;
         let misc_mask = MiscSelect::from_le_bytes(misc_mask_bytes);
+
         let config_svn_bytes = (&src[CONFIG_SVN_START..CONFIG_SVN_END])
             .try_into()
             .map_err(|_e| EncodingError::InvalidInput)?;
@@ -356,20 +461,6 @@ impl<'src> TryFrom<&'src [u8]> for KeyRequest {
             config_svn,
             reserved2: [0u8; SGX_KEY_REQUEST_RESERVED2_BYTES],
         }))
-    }
-}
-
-impl Hash for KeyRequest {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        "KeyRequest".hash(state);
-        self.key_name().hash(state);
-        self.key_policy().hash(state);
-        self.security_version().hash(state);
-        self.cpu_security_version().hash(state);
-        self.attribute_mask().hash(state);
-        self.key_id().hash(state);
-        self.misc_mask().hash(state);
-        self.config_security_version().hash(state);
     }
 }
 

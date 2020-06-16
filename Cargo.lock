@@ -3096,8 +3096,11 @@ dependencies = [
 name = "mc-util-encodings"
 version = "0.2.0"
 dependencies = [
+ "base64 0.12.1",
  "binascii",
- "failure",
+ "displaydoc",
+ "hex 0.4.2",
+ "mc-util-repr-bytes",
  "serde",
 ]
 
