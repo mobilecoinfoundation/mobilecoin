@@ -463,7 +463,7 @@ struct JsonBlockDetailsResponse {
     contents_hash: String,
 }
 
-/// Retrieves the data in a request code
+/// Retrieves the details for a given block.
 #[get("/block-details/<block_num>")]
 fn block_details(
     state: rocket::State<State>,
