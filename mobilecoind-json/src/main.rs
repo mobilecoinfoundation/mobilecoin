@@ -104,6 +104,23 @@ fn create_monitor(
 }
 
 #[derive(Serialize, Default)]
+struct JsonMonitorListResponse {
+    monitor_id: Vec<String>,
+}
+
+/// Gets a list of existing monitors
+#[get("/monitors")]
+fn monitors(state: rocket::State<State>) -> Result<Json<JsonMonitorListResponse>, String> {
+    let resp = state
+        .mobilecoind_api_client
+        .get_monitor_list(&mc_mobilecoind_api::Empty::new())
+        .map_err(|err| format!("Failed getting monitor list: {}", err))?;
+    Ok(Json(JsonMonitorListResponse {
+        monitor_id: resp.get_monitor_id_list().iter().map(hex::encode).collect(),
+    }))
+}
+
+#[derive(Serialize, Default)]
 struct JsonMonitorStatusResponse {
     first_subaddress: u64,
     num_subaddresses: u64,
@@ -432,6 +449,40 @@ fn block_info(
     }))
 }
 
+#[derive(Serialize, Default)]
+struct JsonBlockDetailsResponse {
+    block_id: String,
+    version: u32,
+    parent_id: String,
+    index: String,
+    cumulative_txo_count: String,
+    contents_hash: String,
+}
+
+/// Retrieves the details for a given block.
+#[get("/block-details/<block_num>")]
+fn block_details(
+    state: rocket::State<State>,
+    block_num: u64,
+) -> Result<Json<JsonBlockDetailsResponse>, String> {
+    let mut req = mc_mobilecoind_api::GetBlockRequest::new();
+    req.set_block(block_num);
+
+    let resp = state
+        .mobilecoind_api_client
+        .get_block(&req)
+        .map_err(|err| format!("Failed getting block details: {}", err))?;
+    let block = resp.get_block();
+    Ok(Json(JsonBlockDetailsResponse {
+        block_id: hex::encode(&block.get_id().get_data()),
+        version: block.get_version(),
+        parent_id: hex::encode(&block.get_parent_id().get_data()),
+        index: block.get_index().to_string(),
+        cumulative_txo_count: block.get_cumulative_txo_count().to_string(),
+        contents_hash: hex::encode(&block.get_contents_hash().get_data()),
+    }))
+}
+
 fn main() {
     mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
@@ -473,6 +524,7 @@ fn main() {
             routes![
                 entropy,
                 create_monitor,
+                monitors,
                 monitor_status,
                 balance,
                 request_code,
@@ -481,6 +533,7 @@ fn main() {
                 check_transfer_status,
                 ledger_info,
                 block_info,
+                block_details,
             ],
         )
         .manage(State {
