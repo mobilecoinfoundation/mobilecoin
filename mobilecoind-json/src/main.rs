@@ -117,10 +117,10 @@ fn monitors(state: rocket::State<State>) -> Result<Json<JsonMonitorListResponse>
         .map_err(|err| format!("Failed getting monitor list: {}", err))?;
     Ok(Json(JsonMonitorListResponse {
         monitor_id: resp
-        .get_monitor_id_list()
-        .iter()
-        .map(|monitor_id| hex::encode(monitor_id))
-        .collect()
+            .get_monitor_id_list()
+            .iter()
+            .map(hex::encode)
+            .collect(),
     }))
 }
 
