@@ -30,6 +30,9 @@ pub struct AdminService {
     /// Optional callback for returning service-specific configuration JSON blob
     get_config_json: Option<GetConfigJsonFn>,
 
+    /// Optional callback for returning service-specific status JSON blob
+    get_status_json: Option<GetConfigJsonFn>,
+
     /// Logger.
     logger: Logger,
 }
@@ -39,12 +42,14 @@ impl AdminService {
         name: String,
         id: String,
         get_config_json: Option<GetConfigJsonFn>,
+        get_status_json: Option<GetConfigJsonFn>,
         logger: Logger,
     ) -> Self {
         Self {
             name,
             id,
             get_config_json,
+            get_status_json,
             logger,
         }
     }
@@ -92,6 +97,7 @@ impl AdminService {
 
         let build_info = get_build_info();
 
+        log::info!(logger, "\x1b[1;36mGetting config json\x1b[0m");
         let config_json = if let Some(get_config_json) = self.get_config_json.as_ref() {
             get_config_json()?
         } else {
@@ -100,6 +106,13 @@ impl AdminService {
 
         let rust_log = env::var("RUST_LOG").unwrap_or_else(|_| "".to_string());
 
+        log::info!(logger, "\x1b[1;31mGetting status json\x1b[0m");
+        let status_json = if let Some(get_status_json) = self.get_status_json.as_ref() {
+            get_status_json()?
+        } else {
+            String::from("")
+        };
+
         let mut response = GetInfoResponse::new();
         response.set_name(self.name.clone());
         response.set_id(self.id.clone());
@@ -107,6 +120,7 @@ impl AdminService {
         response.set_build_info(build_info);
         response.set_config_json(config_json);
         response.set_rust_log(rust_log);
+        response.set_status_json(status_json);
         Ok(response)
     }
 

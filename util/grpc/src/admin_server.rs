@@ -18,6 +18,7 @@ impl AdminServer {
         name: String,
         id: String,
         get_config_json: Option<GetConfigJsonFn>,
+        get_status_json: Option<GetConfigJsonFn>,
         logger: Logger,
     ) -> Result<Self, grpcio::Error> {
         log::info!(
@@ -37,7 +38,8 @@ impl AdminServer {
 
         // Initialize services.
         let admin_service =
-            AdminService::new(name, id, get_config_json, logger.clone()).into_service();
+            AdminService::new(name, id, get_config_json, get_status_json, logger.clone())
+                .into_service();
         let health_service = HealthService::new(None, logger.clone()).into_service();
         let build_info_service = BuildInfoService::new(logger.clone()).into_service();
 

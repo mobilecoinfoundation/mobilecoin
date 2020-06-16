@@ -26,7 +26,7 @@ use mc_common::{
 use mc_connection::{Connection, ConnectionManager, ConnectionUriGrpcioServer};
 use mc_consensus_api::{consensus_client_grpc, consensus_common_grpc, consensus_peer_grpc};
 use mc_consensus_enclave::{ConsensusEnclaveProxy, Error as EnclaveError};
-use mc_ledger_db::LedgerDB;
+use mc_ledger_db::{Ledger, LedgerDB};
 use mc_peers::{PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
 use mc_transaction_core::tx::TxHash;
 use mc_util_grpc::{
@@ -487,6 +487,7 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
                     "Consensus Service".to_owned(),
                     self.config.peer_responder_id.to_string(),
                     Some(self.create_get_config_json_fn()),
+                    Some(self.create_get_status_json_fn()),
                     self.logger.clone(),
                 )
                 .expect("Failed starting admin grpc server"),
@@ -713,8 +714,6 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
                     "client_responder_id": config.client_responder_id,
                     "message_pubkey": config.msg_signer_key.public_key(),
                     "network": config.network_path,
-                    "ias_api_key": config.ias_api_key,
-                    "ias_spid": config.ias_spid,
                     "peer_listen_uri": config.peer_listen_uri,
                     "client_listen_uri": config.client_listen_uri,
                     "admin_listen_uri": config.admin_listen_uri,
@@ -724,6 +723,38 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
                 "network": config.network(),
             })
             .to_string())
+        })
+    }
+
+    /// Helper method for the status json function needed by the GRPC admin service
+    fn create_get_status_json_fn(&self) -> GetConfigJsonFn {
+        println!("\x1b[1;33m NOW CREATING GET STATUS FN\x1b[0m");
+        // FIXME: MC-1567 - timestamp for last block
+        let ledger_db = self.ledger_db.clone();
+        let byzantine_ledger = self.byzantine_ledger.clone();
+        let config = self.config.clone();
+
+        Arc::new(move || {
+            println!("\x1b[1;34m NOW EXECUTING GET STATUS\x1b[0m");
+            let block_height = ledger_db.num_blocks().expect("Could not get num blocks");
+            let byzantine_ledger = byzantine_ledger
+                .lock()
+                .expect("Could not unwrap byzantine ledger.");
+            let mut is_behind = false;
+            if let Some(byzantine_ledger) = &*byzantine_ledger {
+                is_behind = byzantine_ledger.is_behind();
+            }
+            println!("\x1b[1;34m NOW returning some json\x1b[0m");
+            Ok(json!({
+            "block_height": block_height,
+            "version": "1",
+            "broadcast_peer_count": config.network().broadcast_peers.len(),
+            "known_peer_count": config.network().known_peers.map(|x| x.len()),
+            "sync_status": is_behind,
+            // FIXME: needs to expose network state outside of byzantine ledger thread
+            //"peer_block_height": byzantine_ledger.lock().unwrap().network_state.highest_block_index_on_network(),
+            "latest_block_hash": ledger_db.get_block(block_height - 1).expect("Could not get block").id,
+            }).to_string())
         })
     }
 }
