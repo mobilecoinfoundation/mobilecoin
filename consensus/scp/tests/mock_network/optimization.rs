@@ -22,6 +22,9 @@ use std::{
 // this could be improved someday by observing the runtime settle
 const OPTIMIZER_ITERATIONS: usize = 30;
 
+const VALUES_TO_SUBMIT: usize = 500;
+const ALLOWED_TEST_TIME: Duration = Duration::from_secs(600);
+
 // Optimization range limits
 const MIN_SUBMISSIONS_PER_SEC: f64 = 5000.0;
 const MAX_SUBMISSIONS_PER_SEC: f64 = 20000.0;
@@ -47,8 +50,8 @@ pub fn mock_network_optimizer(
     logger: Logger,
 ) -> f64 {
     let mut test_options = mock_network::TestOptions::new();
-    test_options.values_to_submit = 1000;
-    test_options.allowed_test_time = Duration::from_secs(600);
+    test_options.values_to_submit = VALUES_TO_SUBMIT;
+    test_options.allowed_test_time = ALLOWED_TEST_TIME;
 
     if parameters_to_vary[0] {
         test_options.submissions_per_sec =
@@ -124,7 +127,7 @@ pub fn optimize(network: &mock_network::Network, parameters_to_vary: Vec<bool>, 
         u64::try_from(c0.trunc() as i64).unwrap(),
         usize::try_from(c1.trunc() as i64).unwrap(),
         u64::try_from(c2.trunc() as i64).unwrap(),
-        (default_options.values_to_submit as f64 * 1000.0) / min_value,
+        (VALUES_TO_SUBMIT as f64 * 1000.0) / min_value,
         start.elapsed().as_millis(),
         OPTIMIZER_ITERATIONS,
         input_interval,
