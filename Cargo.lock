@@ -2228,7 +2228,6 @@ dependencies = [
  "mc-util-build-enclave",
  "mc-util-build-script",
  "mc-util-build-sgx",
- "pkg-config",
 ]
 
 [[package]]
@@ -2747,16 +2746,13 @@ dependencies = [
 name = "mc-sgx-core-types"
 version = "0.2.0"
 dependencies = [
- "base64 0.12.1",
+ "binascii",
  "bincode",
  "bitflags",
  "displaydoc",
- "hex 0.4.2",
  "hex_fmt",
  "mc-sgx-core-types-sys",
  "mc-util-encodings",
- "mc-util-repr-bytes",
- "prost",
  "serde",
  "subtle 2.2.2",
 ]
@@ -2823,8 +2819,6 @@ dependencies = [
  "mc-sgx-epid-types-sys",
  "mc-util-encodings",
  "mc-util-from-random",
- "mc-util-repr-bytes",
- "prost",
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
  "serde",
@@ -3096,11 +3090,8 @@ dependencies = [
 name = "mc-util-encodings"
 version = "0.2.0"
 dependencies = [
- "base64 0.12.1",
  "binascii",
- "displaydoc",
- "hex 0.4.2",
- "mc-util-repr-bytes",
+ "failure",
  "serde",
 ]
 
@@ -3252,8 +3243,8 @@ name = "mc-util-uri"
 version = "0.2.0"
 dependencies = [
  "base64 0.11.0",
+ "displaydoc",
  "ed25519",
- "failure",
  "hex 0.4.2",
  "mc-common",
  "mc-crypto-keys",

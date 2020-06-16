@@ -1,5 +1,5 @@
 use crate::Error;
-use lmdb::{Database, DatabaseFlags, Environment, Transaction, WriteFlags};
+use lmdb::{Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
 use mc_util_serial::{decode, encode};
 use prost::Message;
 
@@ -7,7 +7,7 @@ use prost::Message;
 // If this is properly maintained, we could check during ledger db opening for any
 // incompatibilities, and either refuse to open or perform a migration.
 #[allow(clippy::unreadable_literal)]
-pub const LATEST_VERSION: u64 = 20200427;
+pub const LATEST_VERSION: u64 = 20200610;
 
 // Metadata information about the ledger databse.
 #[derive(Clone, Message)]
@@ -84,5 +84,15 @@ impl MetadataStore {
     // Get version data from the database.
     pub fn get_version(&self, db_txn: &impl Transaction) -> Result<MetadataVersion, Error> {
         Ok(decode(db_txn.get(self.metadata, &METADATA_VERSION_KEY)?)?)
+    }
+
+    // Set version to latest.
+    pub fn set_version_to_latest(&self, db_txn: &mut RwTransaction) -> Result<(), Error> {
+        Ok(db_txn.put(
+            self.metadata,
+            &METADATA_VERSION_KEY,
+            &encode(&MetadataVersion::latest()),
+            WriteFlags::empty(),
+        )?)
     }
 }

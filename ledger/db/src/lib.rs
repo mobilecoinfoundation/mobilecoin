@@ -12,9 +12,16 @@ use lmdb::{
     Database, DatabaseFlags, Environment, EnvironmentFlags, RoTransaction, RwTransaction,
     Transaction, WriteFlags,
 };
-use mc_transaction_core::{Block, BlockContents, BlockID, BlockSignature, BLOCK_VERSION};
+use mc_common::logger::global_log;
+use mc_crypto_keys::CompressedRistrettoPublic;
+use mc_transaction_core::{
+    ring_signature::KeyImage,
+    tx::{TxOut, TxOutMembershipProof},
+    Block, BlockContents, BlockID, BlockSignature, BLOCK_VERSION,
+};
 use mc_util_serial::{decode, encode, Message};
 use std::{path::PathBuf, sync::Arc};
+use tx_out_store::TxOutStore;
 
 mod error;
 mod ledger_trait;
@@ -26,12 +33,7 @@ pub mod test_utils;
 
 pub use error::Error;
 pub use ledger_trait::Ledger;
-use mc_transaction_core::{
-    ring_signature::KeyImage,
-    tx::{TxOut, TxOutMembershipProof},
-};
 pub use metadata::MetadataStore;
-use tx_out_store::TxOutStore;
 
 const MAX_LMDB_FILE_SIZE: usize = 1_099_511_627_776; // 1 TB
 
@@ -200,11 +202,37 @@ impl Ledger for LedgerDB {
             .get_tx_out_index_by_hash(tx_out_hash, &db_transaction)
     }
 
+    /// Returns the index of the TxOut with the given public key.
+    fn get_tx_out_index_by_public_key(
+        &self,
+        tx_out_public_key: &CompressedRistrettoPublic,
+    ) -> Result<u64, Error> {
+        let db_transaction: RoTransaction = self.env.begin_ro_txn()?;
+        self.tx_out_store
+            .get_tx_out_index_by_public_key(tx_out_public_key, &db_transaction)
+    }
+
     /// Gets a TxOut by its index in the ledger.
     fn get_tx_out_by_index(&self, index: u64) -> Result<TxOut, Error> {
         let db_transaction = self.env.begin_ro_txn()?;
         self.tx_out_store
             .get_tx_out_by_index(index, &db_transaction)
+    }
+
+    /// Returns true if the Ledger contains the given TxOut public key.
+    fn contains_tx_out_public_key(
+        &self,
+        public_key: &CompressedRistrettoPublic,
+    ) -> Result<bool, Error> {
+        let db_transaction = self.env.begin_ro_txn()?;
+        match self
+            .tx_out_store
+            .get_tx_out_index_by_public_key(public_key, &db_transaction)
+        {
+            Ok(_) => Ok(true),
+            Err(Error::NotFound) => Ok(false),
+            Err(e) => Err(e),
+        }
     }
 
     /// Returns true if the Ledger contains the given KeyImage.
@@ -248,13 +276,42 @@ impl Ledger for LedgerDB {
 
 impl LedgerDB {
     /// Opens an existing Ledger Database in the given path.
+    #[allow(clippy::unreadable_literal)]
     pub fn open(path: PathBuf) -> Result<LedgerDB, Error> {
         let env = Environment::new()
-            .set_max_dbs(20)
+            .set_max_dbs(21)
             .set_map_size(MAX_LMDB_FILE_SIZE)
             // TODO - needed because currently our test cloud machines have slow disks.
             .set_flags(EnvironmentFlags::NO_SYNC)
             .open(&path)?;
+
+        // Check if the database we opened is compatible with the current implementation.
+        let metadata_store = MetadataStore::new(&env)?;
+        let db_txn = env.begin_ro_txn()?;
+        let version = metadata_store.get_version(&db_txn)?;
+        global_log::info!("Ledger db is currently at version: {:?}", version);
+        db_txn.commit()?;
+
+        match version.is_compatible_with_latest() {
+            Ok(_) => {}
+            // Version 20200610 introduced the TxOut public key -> index store.
+            Err(Error::VersionIncompatible(20200427, 20200610)) => {
+                global_log::info!("Ledger db migrating from version 20200427 to 20200610, this might take awhile...");
+
+                TxOutStore::construct_tx_out_index_by_public_key_from_existing_data(&env)?;
+
+                let mut db_txn = env.begin_rw_txn()?;
+                metadata_store.set_version_to_latest(&mut db_txn)?;
+                global_log::info!(
+                    "Ledger db migration complete, now at version: {:?}",
+                    metadata_store.get_version(&db_txn),
+                );
+                db_txn.commit()?;
+            }
+            Err(err) => {
+                return Err(err);
+            }
+        };
 
         let counts = env.open_db(Some(COUNTS_DB_NAME))?;
         let blocks = env.open_db(Some(BLOCKS_DB_NAME))?;
@@ -263,14 +320,7 @@ impl LedgerDB {
         let key_images_by_block = env.open_db(Some(KEY_IMAGES_BY_BLOCK_DB_NAME))?;
         let tx_outs_by_block = env.open_db(Some(TX_OUTS_BY_BLOCK_DB_NAME))?;
 
-        let metadata_store = MetadataStore::new(&env)?;
         let tx_out_store = TxOutStore::new(&env)?;
-
-        // Check if the database we opened is compatible with the current implementation.
-        let db_txn = env.begin_ro_txn()?;
-        let version = metadata_store.get_version(&db_txn)?;
-        version.is_compatible_with_latest()?;
-        db_txn.commit()?;
 
         Ok(LedgerDB {
             env: Arc::new(env),
@@ -414,6 +464,10 @@ impl LedgerDB {
 
         // Write the actual TxOuts.
         for tx_out in tx_outs {
+            if self.contains_tx_out_public_key(&tx_out.public_key)? {
+                return Err(Error::DuplicateOutputPublicKey);
+            }
+
             self.tx_out_store.push(tx_out, db_transaction)?;
         }
 
@@ -467,6 +521,13 @@ impl LedgerDB {
         for key_image in &block_contents.key_images {
             if self.contains_key_image(key_image)? {
                 return Err(Error::KeyImageAlreadySpent);
+            }
+        }
+
+        // Check that none of the output public keys appear in the ledger.
+        for output in block_contents.outputs.iter() {
+            if self.contains_tx_out_public_key(&output.public_key)? {
+                return Err(Error::DuplicateOutputPublicKey);
             }
         }
 
@@ -1033,6 +1094,51 @@ mod ledger_db_test {
         assert_eq!(
             ledger_db.append_block(&block_two, &block_two_contents, None),
             Err(Error::KeyImageAlreadySpent)
+        );
+    }
+
+    #[test]
+    /// Appending a block with a pre-existing output public key should return Error::DuplicateOutputPublicKey.
+    fn test_append_block_with_duplicate_output_public_key() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut ledger_db = create_db();
+
+        // Write a block to the ledger.
+        let origin_account_key = AccountKey::random(&mut rng);
+        let (origin_block, origin_block_contents) =
+            get_origin_block_and_contents(&origin_account_key);
+        ledger_db
+            .append_block(&origin_block, &origin_block_contents, None)
+            .unwrap();
+
+        // The next block reuses a public key.
+        let existing_tx_out = ledger_db.get_tx_out_by_index(0).unwrap();
+        let account_key = AccountKey::random(&mut rng);
+
+        let block_one_contents = {
+            let mut tx_out = TxOut::new(
+                33,
+                &account_key.default_subaddress(),
+                &RistrettoPrivate::from_random(&mut rng),
+                Default::default(),
+                &mut rng,
+            )
+            .unwrap();
+            tx_out.public_key = existing_tx_out.public_key.clone();
+            let outputs = vec![tx_out];
+            BlockContents::new(vec![KeyImage::from(rng.next_u64())], outputs)
+        };
+
+        let block_one = Block::new_with_parent(
+            BLOCK_VERSION,
+            &origin_block,
+            &Default::default(),
+            &block_one_contents,
+        );
+
+        assert_eq!(
+            ledger_db.append_block(&block_one, &block_one_contents, None),
+            Err(Error::DuplicateOutputPublicKey)
         );
     }
 

@@ -19,7 +19,7 @@ use mc_attest_enclave_api::{
     PeerAuthResponse, PeerSession,
 };
 use mc_common::ResponderId;
-use mc_crypto_keys::{Ed25519Public, X25519Public};
+use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Public, X25519Public};
 use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{Tx, TxHash, TxOutMembershipProof},
@@ -56,6 +56,9 @@ pub struct WellFormedTxContext {
 
     /// Highest membership proofs indices.
     highest_indices: Vec<u64>,
+
+    /// Output public keys.
+    output_public_keys: Vec<CompressedRistrettoPublic>,
 }
 
 impl WellFormedTxContext {
@@ -78,6 +81,10 @@ impl WellFormedTxContext {
     pub fn highest_indices(&self) -> &Vec<u64> {
         &self.highest_indices
     }
+
+    pub fn output_public_keys(&self) -> &Vec<CompressedRistrettoPublic> {
+        &self.output_public_keys
+    }
 }
 
 impl From<&Tx> for WellFormedTxContext {
@@ -88,6 +95,7 @@ impl From<&Tx> for WellFormedTxContext {
             tombstone_block: tx.prefix.tombstone_block,
             key_images: tx.key_images(),
             highest_indices: tx.get_membership_proof_highest_indices(),
+            output_public_keys: tx.output_public_keys(),
         }
     }
 }
@@ -101,6 +109,7 @@ pub struct TxContext {
     pub tx_hash: TxHash,
     pub highest_indices: Vec<u64>,
     pub key_images: Vec<KeyImage>,
+    pub output_public_keys: Vec<CompressedRistrettoPublic>,
 }
 
 pub type SealedBlockSigningKey = Vec<u8>;

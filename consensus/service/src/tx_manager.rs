@@ -13,6 +13,7 @@ use mc_consensus_enclave::{
     ConsensusEnclaveProxy, Error as ConsensusEnclaveError, TxContext, WellFormedEncryptedTx,
     WellFormedTxContext,
 };
+use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_ledger_db::{Error as LedgerDbError, Ledger};
 use mc_transaction_core::{
     constants::MAX_TRANSACTIONS_PER_BLOCK,
@@ -95,6 +96,7 @@ pub trait UntrustedInterfaces: Clone {
         &self,
         highest_indices: &[u64],
         key_images: &[KeyImage],
+        output_public_keys: &[CompressedRistrettoPublic],
     ) -> TransactionValidationResult<(u64, Vec<TxOutMembershipProof>)>;
 
     /// Checks if a transaction is valid (see definition in validators.rs).
@@ -172,9 +174,11 @@ impl<E: ConsensusEnclaveProxy, L: Ledger, UI: UntrustedInterfaces> TxManager<E, 
         let timer = counters::WELL_FORMED_CHECK_TIME.start_timer();
 
         // Perform the untrusted part of the well-formed check.
-        let (current_block_index, membership_proofs) = self
-            .untrusted
-            .well_formed_check(&tx_context.highest_indices, &tx_context.key_images)?;
+        let (current_block_index, membership_proofs) = self.untrusted.well_formed_check(
+            &tx_context.highest_indices,
+            &tx_context.key_images,
+            &tx_context.output_public_keys,
+        )?;
 
         // Check if tx is well-formed, and if it is get the encrypted copy and context for us
         // to store.
@@ -305,6 +309,7 @@ impl<E: ConsensusEnclaveProxy, L: Ledger, UI: UntrustedInterfaces> TxManager<E, 
                 let (_current_block_index, membership_proofs) = self.untrusted.well_formed_check(
                     entry.context().highest_indices(),
                     entry.context().key_images(),
+                    entry.context().output_public_keys(),
                 )?;
 
                 Ok((entry.encrypted_tx().clone(), membership_proofs))

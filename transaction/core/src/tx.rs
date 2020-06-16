@@ -134,6 +134,15 @@ impl Tx {
     pub fn get_membership_proof_highest_indices(&self) -> Vec<u64> {
         self.prefix.get_membership_proof_highest_indices()
     }
+
+    /// Output public keys contained in this transaction.
+    pub fn output_public_keys(&self) -> Vec<CompressedRistrettoPublic> {
+        self.prefix
+            .outputs
+            .iter()
+            .map(|tx_out| tx_out.public_key)
+            .collect()
+    }
 }
 
 /// TxPrefix is the Tx struct without the signature.  It is used to

@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use crate::traits::{ConnectionUri, UriScheme};
-use failure::Fail;
+use displaydoc::Display;
 use std::{
     fmt::{Display, Formatter, Result as FmtResult},
     marker::PhantomData,
@@ -9,16 +9,14 @@ use std::{
 };
 use url::Url;
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Display)]
 pub enum UriParseError {
-    #[fail(display = "Url parse error: {}", _0)]
+    /// Url parse error: {0}
     UrlParse(url::ParseError),
-
-    #[fail(display = "Missing host")]
+    /// Missing host
     MissingHost,
-
-    #[fail(display = "Unknown scheme")]
-    UnknownScheme,
+    /// Unknown scheme: Valid possibilities are `{0}`, `{1}`
+    UnknownScheme(&'static str, &'static str),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -91,7 +89,10 @@ impl<Scheme: UriScheme> FromStr for Uri<Scheme> {
         } else if url.scheme().starts_with(Scheme::SCHEME_INSECURE) {
             false
         } else {
-            return Err(UriParseError::UnknownScheme);
+            return Err(UriParseError::UnknownScheme(
+                &Scheme::SCHEME_SECURE,
+                &Scheme::SCHEME_INSECURE,
+            ));
         };
 
         let port = match (url.port(), use_tls) {

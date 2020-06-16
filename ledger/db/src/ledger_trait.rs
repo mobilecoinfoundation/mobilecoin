@@ -2,6 +2,7 @@
 
 use crate::Error;
 use mc_common::Hash;
+use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipProof},
@@ -35,6 +36,12 @@ pub trait Ledger: Clone + Send {
     /// Returns the index of the TxOut with the given hash.
     fn get_tx_out_index_by_hash(&self, tx_out_hash: &Hash) -> Result<u64, Error>;
 
+    /// Returns the index of the TxOut with the given public key.
+    fn get_tx_out_index_by_public_key(
+        &self,
+        tx_out_public_key: &CompressedRistrettoPublic,
+    ) -> Result<u64, Error>;
+
     /// Gets a TxOut by its index in the ledger.
     fn get_tx_out_by_index(&self, index: u64) -> Result<TxOut, Error>;
 
@@ -43,6 +50,12 @@ pub trait Ledger: Clone + Send {
         &self,
         indexes: &[u64],
     ) -> Result<Vec<TxOutMembershipProof>, Error>;
+
+    /// Returns true if the Ledger contains the given TxOut public key.
+    fn contains_tx_out_public_key(
+        &self,
+        public_key: &CompressedRistrettoPublic,
+    ) -> Result<bool, Error>;
 
     /// Returns true if the Ledger contains the given key image.
     fn contains_key_image(&self, key_image: &KeyImage) -> Result<bool, Error> {
