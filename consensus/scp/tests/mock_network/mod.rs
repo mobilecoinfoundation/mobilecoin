@@ -1,8 +1,14 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
+// Thread-based simulation for consensus networks.
+
+// We allow dead code because not all integration tests use all of the common code.
+// https://github.com/rust-lang/rust/issues/46379
+#![allow(dead_code)]
+
 use mc_common::{
     logger::{log, o, Logger},
-    NodeID,
+    HashMap, HashSet, NodeID,
 };
 use mc_consensus_scp::{
     core_types::{CombineFn, SlotIndex, ValidityFn},
@@ -12,13 +18,17 @@ use mc_consensus_scp::{
     test_utils,
 };
 use std::{
-    collections::{BTreeSet, HashMap, HashSet},
+    collections::BTreeSet,
     iter::FromIterator,
     sync::{Arc, Mutex},
     thread,
     thread::JoinHandle,
     time::{Duration, Instant},
 };
+
+pub mod cyclic_topology;
+pub mod mesh_topology;
+pub mod optimization;
 
 // Controls test parameters
 #[derive(Clone)]
@@ -33,7 +43,7 @@ pub struct TestOptions {
     pub submissions_per_sec: u64,
 
     /// We allow only a single proposal per slot, with up to this many values.
-    pub max_values_per_slot: usize,
+    pub max_pending_values_to_nominate: usize,
 
     /// The total allowed testing time before forcing a panic
     pub allowed_test_time: Duration,
@@ -49,36 +59,49 @@ pub struct TestOptions {
     pub validity_fn: ValidityFn<String, test_utils::TransactionValidationError>,
 
     /// The values combine function to use (typically trivial)
-    pub combine_fn: CombineFn<String, test_utils::TransactionValidationError>,
+    pub combine_fn: CombineFn<String>,
 }
 
 impl TestOptions {
     pub fn new() -> Self {
         Self {
             submit_in_parallel: true,
-            values_to_submit: 1000,
-            submissions_per_sec: 500,
-            max_values_per_slot: 100,
+            values_to_submit: 5000,
+            submissions_per_sec: 10000,
+            max_pending_values_to_nominate: 100,
             allowed_test_time: Duration::from_secs(300),
             log_flush_delay: Duration::from_millis(50),
             scp_timebase: Duration::from_millis(1000),
             validity_fn: Arc::new(test_utils::trivial_validity_fn::<String>),
-            combine_fn: Arc::new(test_utils::get_bounded_combine_fn::<String>(100)),
+            combine_fn: Arc::new(test_utils::trivial_combine_fn::<String>),
         }
     }
 }
 
+// Describes a network of nodes for simulation
+#[derive(Clone)]
+pub struct Network {
+    name: String,
+    nodes: Vec<NodeOptions>,
+}
+
+impl Network {
+    pub fn new(name: String, nodes: Vec<NodeOptions>) -> Self {
+        Self { name, nodes }
+    }
+}
+
+// Describes one simulated node
+#[derive(Clone)]
 pub struct NodeOptions {
-    thread_name: String,
     peers: Vec<u32>,
     validators: Vec<u32>,
     k: u32,
 }
 
 impl NodeOptions {
-    pub fn new(thread_name: String, peers: Vec<u32>, validators: Vec<u32>, k: u32) -> Self {
+    pub fn new(peers: Vec<u32>, validators: Vec<u32>, k: u32) -> Self {
         Self {
-            thread_name,
             peers,
             validators,
             k,
@@ -86,28 +109,28 @@ impl NodeOptions {
     }
 }
 
-pub struct SCPNetwork {
-    nodes_map: Arc<Mutex<HashMap<NodeID, SCPNode>>>,
+pub struct SimulatedNetwork {
+    nodes_map: Arc<Mutex<HashMap<NodeID, SimulatedNode>>>,
     thread_handles: HashMap<NodeID, Option<JoinHandle<()>>>,
-    nodes_shared_data: HashMap<NodeID, Arc<Mutex<SCPNodeSharedData>>>,
+    nodes_shared_data: HashMap<NodeID, Arc<Mutex<SimulatedNodeSharedData>>>,
     logger: Logger,
 }
 
-impl SCPNetwork {
-    // creates a network based on node_options
-    pub fn new(node_options: Vec<NodeOptions>, test_options: TestOptions, logger: Logger) -> Self {
-        let mut network = SCPNetwork {
+impl SimulatedNetwork {
+    // creates a new network simulation
+    pub fn new(network: &Network, test_options: &TestOptions, logger: Logger) -> Self {
+        let mut simulation = SimulatedNetwork {
             nodes_map: Arc::new(Mutex::new(HashMap::default())),
             thread_handles: HashMap::default(),
             nodes_shared_data: HashMap::default(),
             logger: logger.clone(),
         };
 
-        for (node_id, options_for_this_node) in node_options.iter().enumerate() {
+        for (node_index, options_for_this_node) in network.nodes.iter().enumerate() {
             let validators = options_for_this_node
                 .validators
                 .iter()
-                .map(|id| test_utils::test_node_id(*id as u32))
+                .map(|node_index| test_utils::test_node_id(*node_index as u32))
                 .collect::<Vec<NodeID>>();
 
             let qs = QuorumSet::new_with_node_ids(options_for_this_node.k, validators);
@@ -115,44 +138,45 @@ impl SCPNetwork {
             let peers = options_for_this_node
                 .peers
                 .iter()
-                .map(|id| test_utils::test_node_id(*id as u32))
+                .map(|node_index| test_utils::test_node_id(*node_index as u32))
                 .collect::<HashSet<NodeID>>();
 
-            let node_id = test_utils::test_node_id(node_id as u32);
+            let node_id = test_utils::test_node_id(node_index as u32);
 
             assert!(!peers.contains(&node_id));
 
-            let nodes_map_clone: Arc<Mutex<HashMap<NodeID, SCPNode>>> =
-                { Arc::clone(&network.nodes_map) };
+            let nodes_map_clone: Arc<Mutex<HashMap<NodeID, SimulatedNode>>> =
+                { Arc::clone(&simulation.nodes_map) };
 
-            let (node, thread_handle) = SCPNode::new(
-                options_for_this_node.thread_name.clone(),
+            let thread_name_for_this_node = format!("{}-{}", network.name, node_index);
+
+            let (node, thread_handle) = SimulatedNode::new(
+                thread_name_for_this_node,
                 node_id.clone(),
                 qs,
-                test_options.clone(),
+                test_options,
                 Arc::new(move |logger, msg| {
-                    SCPNetwork::broadcast_msg(logger, &nodes_map_clone, &peers, msg)
+                    SimulatedNetwork::broadcast_msg(logger, &nodes_map_clone, &peers, msg)
                 }),
-                0,
                 logger.new(o!("mc.local_node_id" => node_id.to_string())),
             );
-            network
+            simulation
                 .thread_handles
                 .insert(node_id.clone(), thread_handle);
-            network
+            simulation
                 .nodes_shared_data
                 .insert(node_id.clone(), node.shared_data.clone());
-            network
+            simulation
                 .nodes_map
                 .lock()
                 .expect("lock failed on nodes_map inserting node")
                 .insert(node_id.clone(), node);
         }
 
-        network
+        simulation
     }
 
-    pub fn stop_all(&mut self) {
+    fn stop_all(&mut self) {
         let mut nodes_map = self
             .nodes_map
             .lock()
@@ -174,30 +198,43 @@ impl SCPNetwork {
                 .expect("failed to get handle option from thread_handles")
                 .expect("thread handle is missing")
                 .join()
-                .expect("SCPNode join failed");
+                .expect("SimulatedNode join failed");
         }
     }
 
-    pub fn push_value(&self, node_id: &NodeID, value: &str) {
-        let node: &SCPNode = {
-            &self
-                .nodes_map
-                .lock()
-                .expect("lock failed on nodes_map getting node")[node_id]
-        };
-        node.send_value(value);
+    fn push_value(&self, node_id: &NodeID, value: &str) {
+        self.nodes_map
+            .lock()
+            .expect("lock failed on nodes_map getting node")
+            .get(node_id)
+            .expect("could not find node_id in nodes_map")
+            .send_value(value);
     }
 
-    pub fn get_shared_data(&self, node_id: &NodeID) -> SCPNodeSharedData {
-        self.nodes_shared_data[node_id]
+    fn get_ledger(&self, node_id: &NodeID) -> Vec<Vec<String>> {
+        self.nodes_shared_data
+            .get(node_id)
+            .expect("could not find node_id in nodes_map")
             .lock()
             .expect("lock failed on shared_data getting clone")
+            .ledger
             .clone()
+    }
+
+    fn get_ledger_size(&self, node_id: &NodeID) -> usize {
+        self.nodes_shared_data
+            .get(node_id)
+            .expect("could not find node_id in nodes_map")
+            .lock()
+            .expect("lock failed on shared_data getting clone")
+            .ledger
+            .iter()
+            .fold(0, |acc, block| acc + block.len())
     }
 
     fn broadcast_msg(
         logger: Logger,
-        nodes_map: &Arc<Mutex<HashMap<NodeID, SCPNode>>>,
+        nodes_map: &Arc<Mutex<HashMap<NodeID, SimulatedNode>>>,
         peers: &HashSet<NodeID>,
         msg: Msg<String>,
     ) {
@@ -218,52 +255,38 @@ impl SCPNetwork {
     }
 }
 
-impl Drop for SCPNetwork {
+impl Drop for SimulatedNetwork {
     fn drop(&mut self) {
         self.stop_all();
     }
 }
 
-enum SCPNodeTaskMessage {
+enum SimulatedNodeTaskMessage {
     Value(String),
     Msg(Arc<Msg<String>>),
     StopTrigger,
 }
 
-// Data that's shared between tests and the node's thread
+// Node data shared between threads
 #[derive(Clone)]
-pub struct SCPNodeSharedData {
+struct SimulatedNodeSharedData {
     pub ledger: Vec<Vec<String>>,
 }
 
-impl SCPNodeSharedData {
-    pub fn get_all_values(&self) -> Vec<String> {
-        let mut ledger_copy = Vec::new();
-        for block in self.ledger.iter() {
-            ledger_copy.extend(block.clone())
-        }
-        ledger_copy
-    }
-
-    pub fn total_values(&self) -> usize {
-        self.ledger.iter().fold(0, |acc, block| acc + block.len())
-    }
-}
-
-struct SCPNode {
+// A simulated validator node
+struct SimulatedNode {
     local_node: Arc<Mutex<Node<String, test_utils::TransactionValidationError>>>,
-    sender: crossbeam_channel::Sender<SCPNodeTaskMessage>,
-    shared_data: Arc<Mutex<SCPNodeSharedData>>,
+    sender: crossbeam_channel::Sender<SimulatedNodeTaskMessage>,
+    shared_data: Arc<Mutex<SimulatedNodeSharedData>>,
 }
 
-impl SCPNode {
+impl SimulatedNode {
     fn new(
         thread_name: String,
         node_id: NodeID,
         quorum_set: QuorumSet,
-        test_options: TestOptions,
+        test_options: &TestOptions,
         broadcast_msg_fn: Arc<dyn Fn(Logger, Msg<String>) + Sync + Send>,
-        current_slot_index: SlotIndex,
         logger: Logger,
     ) -> (Self, Option<JoinHandle<()>>) {
         let (sender, receiver) = crossbeam_channel::unbounded();
@@ -272,7 +295,6 @@ impl SCPNode {
             quorum_set,
             test_options.validity_fn.clone(),
             test_options.combine_fn.clone(),
-            current_slot_index,
             logger.clone(),
         )));
 
@@ -284,14 +306,16 @@ impl SCPNode {
         let node = Self {
             local_node,
             sender,
-            shared_data: Arc::new(Mutex::new(SCPNodeSharedData { ledger: Vec::new() })),
+            shared_data: Arc::new(Mutex::new(SimulatedNodeSharedData { ledger: Vec::new() })),
         };
 
         let thread_shared_data = Arc::clone(&node.shared_data);
         let thread_local_node = Arc::clone(&node.local_node);
 
-        // See byzantine_ledger.rs. Each slot nominates at most MAX_PENDING_VALUES_TO_NOMINATE values.
-        let mut nominated_values: usize = 0;
+        // See byzantine_ledger.rs#L626
+        let max_pending_values_to_nominate: usize = test_options.max_pending_values_to_nominate;
+        let mut nominated_values: HashSet<String> = HashSet::default();
+
         let mut current_slot: usize = 0;
         let mut total_broadcasts: u32 = 0;
 
@@ -303,76 +327,81 @@ impl SCPNode {
                     let mut pending_values: HashSet<String> = HashSet::default();
 
                     'main_loop: loop {
-                        // Collect and process any messages we have received
-                        let mut incoming_msgs = Vec::<Arc<Msg<String>>>::new();
+                        // See byzantine_ledger.rs#L546 - nominate before handling consensus msg
+                        let mut incoming_msgs = Vec::<Arc<Msg<String>>>::with_capacity(1);
 
-                        // Handle one incoming message based on it's type
+                        // Collect one incoming message using a non-blocking channel read
                         match receiver.try_recv() {
-                            // non-blocking read
                             Ok(scp_msg) => match scp_msg {
-                                // Value submitted by a client
-                                SCPNodeTaskMessage::Value(value) => {
-                                    // Maintain invariant that pending_values contains all values
-                                    // that have not yet been externalized.
+                                // Collect values submitted from the client
+                                SimulatedNodeTaskMessage::Value(value) => {
                                     pending_values.insert(value.clone());
                                 }
 
-                                // SCP Statement
-                                SCPNodeTaskMessage::Msg(msg) => {
-                                    // Collect.
+                                // Process an incoming SCP message
+                                SimulatedNodeTaskMessage::Msg(msg) => {
                                     incoming_msgs.push(msg);
                                 }
 
-                                // Request to stop thread
-                                SCPNodeTaskMessage::StopTrigger => {
+                                // Stop the thread
+                                SimulatedNodeTaskMessage::StopTrigger => {
                                     break 'main_loop;
                                 }
                             },
                             Err(_) => {
                                 // Yield to other threads when we don't get a new message
-                                // This improves performance significantly.
                                 std::thread::yield_now();
                             }
                         };
 
-                        let incoming_msgs_count = incoming_msgs.len();
-
-                        if !(incoming_msgs_count == 0 || incoming_msgs_count == 1) {
-                            log::error!(logger, "incoming_msgs_count > 1");
-                            // panic
-                            assert!(incoming_msgs_count == 0 || incoming_msgs_count == 1);
-                        }
-
-                        // Process values submitted to our node
-                        if (nominated_values < test_options.max_values_per_slot)
+                        // Nominate pending values submitted to our node
+                        if (nominated_values.len() < max_pending_values_to_nominate)
                             && !pending_values.is_empty()
                         {
-                            let mut vals = pending_values.iter().cloned().collect::<Vec<String>>();
-                            vals.sort();
-                            vals.truncate(test_options.max_values_per_slot - nominated_values);
-                            nominated_values += vals.len();
+                            let mut values: Vec<String> = pending_values.iter().cloned().collect();
+                            values.sort();
+                            values.truncate(max_pending_values_to_nominate);
 
-                            let outgoing_msg: Option<Msg<String>> = {
-                                thread_local_node
-                                    .lock()
-                                    .expect("lock failed on node nominating value")
-                                    .propose_values(BTreeSet::from_iter(vals))
-                                    .expect("node.nominate() failed")
-                            };
+                            // mc_common::HashSet does not support extend because of our enclave-safe HasherBuilder
+                            let mut selected_values: HashSet<String> = HashSet::default();
+                            for v in values.iter().cloned() {
+                                selected_values.insert(v);
+                            }
 
-                            if let Some(outgoing_msg) = outgoing_msg {
-                                (broadcast_msg_fn)(logger.clone(), outgoing_msg);
-                                total_broadcasts += 1;
+                            let values_to_nominate: HashSet<String> = selected_values
+                                .difference(&nominated_values)
+                                .cloned()
+                                .collect();
+
+                            if !values_to_nominate.is_empty() {
+                                let outgoing_msg: Option<Msg<String>> = {
+                                    thread_local_node
+                                        .lock()
+                                        .expect("thread_local_node lock failed when nominating value")
+                                        .nominate(
+                                            current_slot as SlotIndex,
+                                            BTreeSet::from_iter(values_to_nominate.iter().cloned().collect())
+                                        )
+                                        .expect("node.nominate() failed")
+                                };
+                                if let Some(outgoing_msg) = outgoing_msg {
+                                    (broadcast_msg_fn)(logger.clone(), outgoing_msg);
+                                    total_broadcasts += 1;
+                                }
+
+                                for v in values_to_nominate.iter().cloned() {
+                                    nominated_values.insert(v);
+                                }
                             }
                         }
 
-                        // Process the incoming messages and re-broadcast to network
+                        // Process incoming consensus message.
                         for msg in incoming_msgs.iter() {
                             let outgoing_msg: Option<Msg<String>> = {
                                 thread_local_node
                                     .lock()
-                                    .expect("lock failed on node nominating value")
-                                    .handle_message(msg)
+                                    .expect("thread_local_node lock failed when handling msg")
+                                    .handle(msg)
                                     .expect("node.handle_msg() failed")
                             };
 
@@ -386,39 +415,47 @@ impl SCPNode {
                         let timeout_msgs: Vec<Msg<String>> = {
                             thread_local_node
                                 .lock()
-                                .expect("lock failed on node processing timeouts in thread")
+                                .expect("thread_local_node lock failed when processing timeouts")
                                 .process_timeouts()
                                 .into_iter()
                                 .collect()
                         };
-
                         for outgoing_msg in timeout_msgs {
                             (broadcast_msg_fn)(logger.clone(), outgoing_msg);
                             total_broadcasts += 1;
                         }
 
-                        // See if we're done with the current slot.
-                        if let Some(ext_vals) = thread_local_node
-                            .lock()
-                            .expect("lock failed on node getting ext_vals in thread")
-                            .get_externalized_values(current_slot as SlotIndex)
-                        {
-                            // Stop proposing/nominating any values that we have externalized.
+                        // See if we're done with the current slot
+                        let externalized_values: Vec<String> = {
+                            thread_local_node
+                                .lock()
+                                .expect("thread_local_node lock failed when getting externalized_values")
+                                .get_externalized_values(current_slot as SlotIndex)
+                        };
+
+                        if !externalized_values.is_empty() {
+                            // Stop proposing/nominating any values that we have externalized
+
                             let externalized_values_as_set: HashSet<String> =
-                                ext_vals.iter().cloned().collect();
+                                externalized_values.iter().cloned().collect();
 
                             let remaining_values: HashSet<String> = pending_values
                                 .difference(&externalized_values_as_set)
                                 .cloned()
                                 .collect();
 
-                            let last_slot_values = ext_vals.len();
+                            let last_slot_values = externalized_values.len();
 
-                            let mut shared_data = thread_shared_data
+                            let mut locked_shared_data = thread_shared_data
                                 .lock()
-                                .expect("lock failed on shared_data in thread");
-                            shared_data.ledger.push(ext_vals);
-                            let total_values = shared_data.total_values();
+                                .expect("thread_shared_data lock failed");
+                            locked_shared_data.ledger.push(externalized_values);
+
+                            let total_values = locked_shared_data
+                                .ledger
+                                .iter()
+                                .fold(0, |acc, block| acc + block.len());
+                            drop(locked_shared_data);
 
                             log::trace!(
                                 logger,
@@ -432,7 +469,7 @@ impl SCPNode {
 
                             pending_values = remaining_values;
                             current_slot += 1;
-                            nominated_values = 0;
+                            nominated_values = HashSet::default();
                         }
                     }
                     log::info!(
@@ -443,7 +480,7 @@ impl SCPNode {
                         current_slot,
                     );
                 })
-                .expect("failed spawning SCPNode thread"),
+                .expect("failed spawning SimulatedNode thread"),
         );
 
         (node, thread_handle)
@@ -453,7 +490,7 @@ impl SCPNode {
     pub fn send_value(&self, value: &str) {
         match self
             .sender
-            .try_send(SCPNodeTaskMessage::Value(value.to_owned()))
+            .try_send(SimulatedNodeTaskMessage::Value(value.to_owned()))
         {
             Ok(_) => {}
             Err(err) => match err {
@@ -467,7 +504,7 @@ impl SCPNode {
 
     /// Feed message from the network to this node's consensus task.
     pub fn send_msg(&self, msg: Arc<Msg<String>>) {
-        match self.sender.try_send(SCPNodeTaskMessage::Msg(msg)) {
+        match self.sender.try_send(SimulatedNodeTaskMessage::Msg(msg)) {
             Ok(_) => {}
             Err(err) => match err {
                 crossbeam_channel::TrySendError::Disconnected(_) => {}
@@ -479,7 +516,7 @@ impl SCPNode {
     }
 
     pub fn send_stop(&self) {
-        match self.sender.try_send(SCPNodeTaskMessage::StopTrigger) {
+        match self.sender.try_send(SimulatedNodeTaskMessage::StopTrigger) {
             Ok(_) => {}
             Err(err) => match err {
                 crossbeam_channel::TrySendError::Disconnected(_) => {}
@@ -492,44 +529,51 @@ impl SCPNode {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-/// Test Helper
+/// Test Helpers
 ///////////////////////////////////////////////////////////////////////////////
 
+/// Support skipping slow tests based on environment variables
+pub fn skip_slow_tests() -> bool {
+    std::env::var("SKIP_SLOW_TESTS") == Ok("1".to_string())
+}
+
 /// Injects values to a network and waits for completion
-pub fn run_test(network: SCPNetwork, network_name: &str, options: TestOptions, logger: Logger) {
-    if options.submit_in_parallel {
+pub fn build_and_test(network: &Network, test_options: &TestOptions, logger: Logger) {
+    let simulation = SimulatedNetwork::new(network, test_options, logger.clone());
+
+    if test_options.submit_in_parallel {
         log::info!(
             logger,
             "( testing ) begin test for {} with {} values in parallel",
-            network_name,
-            options.values_to_submit,
+            network.name,
+            test_options.values_to_submit,
         );
     } else {
         log::info!(
             logger,
             "( testing ) begin test for {} with {} values in sequence",
-            network_name,
-            options.values_to_submit,
+            network.name,
+            test_options.values_to_submit,
         );
     }
 
     let start = Instant::now();
 
     let mut rng = mc_util_test_helper::get_seeded_rng();
-    let mut values = Vec::<String>::with_capacity(options.values_to_submit);
-    for _i in 0..options.values_to_submit {
+    let mut values = Vec::<String>::with_capacity(test_options.values_to_submit);
+    for _i in 0..test_options.values_to_submit {
         let value = mc_util_test_helper::random_str(&mut rng, 20);
         values.push(value);
     }
 
     log::info!(
-        network.logger,
+        simulation.logger,
         "( testing ) finished generating {} values",
-        options.values_to_submit
+        test_options.values_to_submit
     );
 
     let num_nodes: usize = {
-        network
+        simulation
             .nodes_map
             .lock()
             .expect("lock failed on nodes_map getting length")
@@ -542,178 +586,200 @@ pub fn run_test(network: SCPNetwork, network_name: &str, options: TestOptions, l
         node_ids.push(test_utils::test_node_id(n as u32));
     }
 
+    // check that all ledgers start empty
+    for node_id in node_ids.iter() {
+        assert!(simulation.get_ledger_size(&node_id) == 0);
+    }
+
+    // push values
     let mut last_log = Instant::now();
-    let mut pushed_values = 0;
-    for i in 0..options.values_to_submit {
+    let mut num_pushed_values = 0;
+    for i in 0..test_options.values_to_submit {
         let start = Instant::now();
 
-        if options.submit_in_parallel {
+        if test_options.submit_in_parallel {
             // simulate broadcast of values to all nodes in parallel
             for n in 0..num_nodes {
-                network.push_value(&node_ids[n], &values[i]);
+                simulation.push_value(&node_ids[n], &values[i]);
             }
         } else {
             // submit values to nodes in sequence
             let n = i % num_nodes;
-            network.push_value(&node_ids[n], &values[i]);
+            simulation.push_value(&node_ids[n], &values[i]);
         }
+
+        num_pushed_values += 1;
 
         if last_log.elapsed().as_millis() > 999 {
             log::info!(
-                network.logger,
+                simulation.logger,
                 "( testing ) pushed {}/{} values",
-                i,
-                options.values_to_submit
+                num_pushed_values,
+                test_options.values_to_submit
             );
             last_log = Instant::now();
         }
 
         let elapsed_duration = Instant::now().duration_since(start);
-        let target_duration = Duration::from_micros(1_000_000 / options.submissions_per_sec);
+        let target_duration = Duration::from_micros(1_000_000 / test_options.submissions_per_sec);
         if let Some(extra_delay) = target_duration.checked_sub(elapsed_duration) {
             std::thread::sleep(extra_delay);
         }
-
-        pushed_values += 1;
     }
 
     // report end of value push
     log::info!(
-        network.logger,
+        simulation.logger,
         "( testing ) pushed {}/{} values",
-        pushed_values,
-        options.values_to_submit
+        num_pushed_values,
+        test_options.values_to_submit
     );
 
     // abort testing if we exceed allowed time
-    let deadline = Instant::now() + options.allowed_test_time;
+    let deadline = Instant::now() + test_options.allowed_test_time;
 
     // Check that the values got added to the nodes
-    for n in 0..num_nodes as u32 {
-        // Wait for test_node_id(n) to externalize all values
-        let node_id = test_utils::test_node_id(n);
-        let mut prev_num_values = 0;
+    for node_id in node_ids.iter() {
         let mut last_log = Instant::now();
         loop {
             if Instant::now() > deadline {
                 log::error!(
-                    network.logger,
+                    simulation.logger,
                     "( testing ) failed to externalize all values within {} sec at node {}!",
-                    options.allowed_test_time.as_secs(),
+                    test_options.allowed_test_time.as_secs(),
                     node_id,
                 );
                 // panic
-                panic!("TEST FAILED DUE TO TIMEOUT");
+                panic!("test failed due to timeout");
             }
 
-            let cur_num_values = network.get_shared_data(&node_id).total_values();
-            if cur_num_values >= values.len() {
+            let num_externalized_values = simulation.get_ledger_size(&node_id);
+            if num_externalized_values == num_pushed_values {
                 log::info!(
-                    network.logger,
+                    simulation.logger,
                     "( testing ) externalized {}/{} values at node {}",
-                    cur_num_values,
-                    values.len(),
+                    num_externalized_values,
+                    num_pushed_values,
                     node_id
                 );
                 break;
             }
 
-            if prev_num_values != cur_num_values {
-                assert!(cur_num_values > prev_num_values);
-                prev_num_values = cur_num_values;
+            if num_externalized_values > num_pushed_values {
+                log::error!(
+                    simulation.logger,
+                    "( testing ) externalized extra values at node {}: {} > {}",
+                    node_id,
+                    num_externalized_values,
+                    num_pushed_values,
+                );
+                // panic
+                panic!("test failed due to extra values being externalized");
             }
 
             if last_log.elapsed().as_millis() > 999 {
                 log::info!(
-                    network.logger,
+                    simulation.logger,
                     "( testing ) externalized {}/{} values at node {}",
-                    cur_num_values,
-                    values.len(),
+                    num_externalized_values,
+                    num_pushed_values,
                     node_id
                 );
                 last_log = Instant::now();
             }
         }
 
-        let all_values_are_correct = {
-            values.iter().cloned().collect::<HashSet<String>>()
-                == network
-                    .get_shared_data(&node_id)
-                    .get_all_values()
-                    .iter()
-                    .cloned()
-                    .collect::<HashSet<String>>()
-        };
+        let externalized_values_hashset = simulation
+            .get_ledger(&node_id)
+            .iter()
+            .flatten()
+            .cloned()
+            .collect::<HashSet<String>>();
 
-        if !all_values_are_correct {
+        let values_hashset = values.iter().cloned().collect::<HashSet<String>>();
+
+        if values_hashset != externalized_values_hashset {
+            let missing_values: HashSet<String> = values_hashset
+                .difference(&externalized_values_hashset)
+                .cloned()
+                .collect();
+
+            let unexpected_values: HashSet<String> = externalized_values_hashset
+                .difference(&values_hashset)
+                .cloned()
+                .collect();
+
             log::error!(
-                network.logger,
-                "( testing ) node {} externalized wrong values!",
-                node_id
+                simulation.logger,
+                "node {} externalized wrong values!",
+                node_id,
+            );
+
+            log::error!(
+                simulation.logger,
+                "lengths: {} / {} / {}, missing: {:?}, found unexpected: {:?}",
+                num_pushed_values,
+                values_hashset.len(),
+                externalized_values_hashset.len(),
+                missing_values,
+                unexpected_values,
             );
             // panic
-            assert!(all_values_are_correct);
+            panic!("test failed due to wrong values being externalized");
         }
     }
 
-    // Check all blocks in the ledger are the same
-    let node0_data = network.get_shared_data(&test_utils::test_node_id(0)).ledger;
-    if node0_data.is_empty() {
-        log::error!(network.logger, "node0_data is empty in run_test()");
-        // panic
-        assert!(!node0_data.is_empty());
-    }
+    // Check that all of the externalized ledgers match block-by-block
+    let first_node_ledger = simulation.get_ledger(&node_ids[0]);
+    for node_id in node_ids.iter().skip(1) {
+        let other_node_ledger = simulation.get_ledger(&node_id);
 
-    for node_num in 0..num_nodes {
-        let node_data = network
-            .get_shared_data(&test_utils::test_node_id(node_num as u32))
-            .ledger;
-
-        if node0_data.len() != node_data.len() {
+        if first_node_ledger.len() != other_node_ledger.len() {
             log::error!(
-                network.logger,
-                "node0_data.len() != node_data.len() in run_test()"
+                simulation.logger,
+                "first_node_ledger.len() != other_node_ledger.len() in run_test()"
             );
             // panic
-            assert_eq!(node0_data.len(), node_data.len());
+            panic!("test failed due to ledgers having different block count");
         }
 
-        for block_num in 0..node0_data.len() {
-            if node0_data.get(block_num) != node_data.get(block_num) {
+        for block_index in 0..first_node_ledger.len() {
+            if first_node_ledger.get(block_index) != other_node_ledger.get(block_index) {
                 log::error!(
-                    network.logger,
-                    "node0_data.get(block_num) != node_data.get(block_num) in run_test()"
+                    simulation.logger,
+                    "first_node_ledger block differs from other_node_ledger block at block {}",
+                    block_index,
                 );
                 //panic
-                assert_eq!(node0_data.get(block_num), node_data.get(block_num));
+                panic!("test failed due to ledgers having different block content");
             }
         }
     }
 
-    // drop the network here so that MESSAGES log statements appear before results
-    drop(network);
+    // drop the simulation here so that MESSAGES log statements appear before results
+    drop(simulation);
 
     // csv for scripting use
     log::info!(
         logger,
         "test results: {},{},{},{},{},{}",
-        network_name,
+        network.name,
         start.elapsed().as_millis(),
         values.len(),
-        options.submissions_per_sec,
-        options.max_values_per_slot,
-        options.scp_timebase.as_millis(),
+        test_options.submissions_per_sec,
+        test_options.max_pending_values_to_nominate,
+        test_options.scp_timebase.as_millis(),
     );
 
     // human readable throughput
     log::info!(
         logger,
         "test completed for {}: {:?} (avg {} tx/s)",
-        network_name,
+        network.name,
         start.elapsed(),
         (1_000_000 * values.len() as u128) / start.elapsed().as_micros(),
     );
 
     // allow log to flush
-    std::thread::sleep(options.log_flush_delay);
+    std::thread::sleep(test_options.log_flush_delay);
 }
