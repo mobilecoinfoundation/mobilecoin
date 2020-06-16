@@ -403,7 +403,8 @@ pub struct AddressRequestPayload {
 impl AddressRequestPayload {
     /// Creates a new AddressRequestPayload from an encoded string.
     pub fn decode(encoded_string: &str) -> Result<Self, Error> {
-        let (version, mut buffer_bytes) = decode_payload(encoded_string, PayloadType::AddressRequest)?;
+        let (version, mut buffer_bytes) =
+            decode_payload(encoded_string, PayloadType::AddressRequest)?;
 
         let url_size_byte = checked_split_off(&mut buffer_bytes, 1, "url_size_byte")?;
         let url_size: usize = url_size_byte[0] as usize;
@@ -415,10 +416,7 @@ impl AddressRequestPayload {
     }
 
     pub fn new_v0(url: String) -> Result<Self, Error> {
-        Ok(AddressRequestPayload {
-            version: 0,
-            url: url,
-        })
+        Ok(AddressRequestPayload { version: 0, url })
     }
 
     /// Encodes this AddressRequestPayload to a string
@@ -441,12 +439,7 @@ impl AddressRequestPayload {
 
 impl fmt::Debug for AddressRequestPayload {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "version:{}, url:{}",
-            self.version,
-            self.url,
-        )
+        write!(f, "version:{}, url:{}", self.version, self.url,)
     }
 }
 
