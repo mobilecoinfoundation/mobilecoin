@@ -185,18 +185,12 @@ impl SimulatedNetwork {
             .lock()
             .expect("lock failed on nodes_map in stop_all");
 
-        let num_nodes = nodes_map.len();
-        for node_num in 0..num_nodes {
-            nodes_map
-                .get_mut(&test_utils::test_node_id(node_num as u32))
-                .expect("could not find node_id in nodes_map")
-                .send_stop();
+        for (_node_id, node) in nodes_map.iter_mut() {
+            node.send_stop();
         }
-        drop(nodes_map);
 
         // now join the threads
-        for node_num in 0..num_nodes {
-            let node_id = &test_utils::test_node_id(node_num as u32);
+        for node_id in nodes_map.keys() {
             self.handle_map
                 .remove(node_id)
                 .expect("thread handle is missing")
