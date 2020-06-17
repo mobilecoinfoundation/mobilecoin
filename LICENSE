@@ -25,11 +25,9 @@ to those sources of IP. This list is for informational purposes only and is not
 intended to represent an exhaustive list of third party contributions to MobileCoin.
 
   * **lru-rs** (https://raw.githubusercontent.com/jeromefroe/lru-rs/master/src/lib.rs
-    @ a11d47ddc7ab86ff07e2308e96fa0a03bcc3f385) MobileCoin makes use of this LRU
-    because our no_std builds require the hashbrown without ahash. Without
-    introducing all of hashbrown's features into the lru crate, there is no way
-    to include hashbrown in our desired configuration. It is distributed with
-    MobileCoin under the terms of the MIT license below.
+    @ a11d47ddc7ab86ff07e2308e96fa0a03bcc3f385) MobileCoin makes use of the tests
+    from this lru implementation for our no_std, safe LRU implementation.
+    It is distributed with MobileCoin under the terms of the MIT license below.
 
   * **rjson tests** (https://github.com/yw662/rjson) MobileCoin makes use of these
     tests. It is distributed with MobileCoin under the terms of the MIT license below.
