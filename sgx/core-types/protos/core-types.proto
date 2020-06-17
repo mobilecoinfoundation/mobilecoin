@@ -20,9 +20,15 @@ enum AttributeXfeatures {
     AVX = 0x0000000000000006;
 }
 
+// TODO: use this once we have a better prost::Message story
+//
+//message Attributes {
+//    fixed64 flags = 1;
+//    fixed64 xfrm = 2;
+//}
+
 message Attributes {
-    fixed64 flags = 1;
-    fixed64 xfrm = 2;
+    bytes data = 1;
 }
 
 message ConfigId {
@@ -127,9 +133,15 @@ message Mac {
     bytes data = 1;
 }
 
+// TODO: use this once we have a better prost::Message story
+//
+//message MiscAttribute {
+//    Attributes attributes = 1;
+//    fixed32 select = 2;
+//}
+
 message MiscAttribute {
-    Attributes attributes = 1;
-    fixed32 select = 2;
+    bytes data = 1;
 }
 
 message MrEnclave {
@@ -158,12 +170,45 @@ enum KeyPolicy {
     EXTENDED_PRODUCT_ID = 32;
 }
 
+// TODO: use this once we have a better prost::Message story
+//
+//message KeyRequest {
+//    KeyName key_name = 1;
+//    KeyPolicy key_policy  = 2;
+//    int32 security_version = 3;
+//    CpuSecurityVersion cpu_security_version = 4;
+//    Attributes attribute_mask = 5;
+//    KeyId key_id = 6;
+//    fixed32 misc_select = 7;
+//    int32 config_security_version = 8;
+//}
+
 message KeyRequest {
-    KeyName key_name = 1;
-    KeyPolicy key_policy  = 2;
-    CpuSecurityVersion cpu_svn = 3;
-    Attributes attribute_mask = 4;
-    KeyId key_id = 5;
-    fixed32 misc_select = 6;
-    int32 config_svn = 7;
+    bytes data = 1;
+}
+
+message Report {
+    bytes data = 1;
+}
+
+message ReportBody {
+    bytes data = 1;
+}
+
+message ReportData {
+    bytes data = 1;
+}
+
+// TODO: use this once we have a better prost::Message story
+//
+//message TargetInfo {
+//    Attributes attributes = 1;
+//    ConfigId config_id = 2;
+//    int32 config_svn = 3;
+//    fixed32 misc_select = 4;
+//    MrEnclave mr_enclave = 5;
+//}
+
+message TargetInfo {
+    bytes data = 1;
 }

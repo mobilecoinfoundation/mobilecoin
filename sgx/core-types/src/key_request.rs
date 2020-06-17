@@ -6,7 +6,7 @@ use crate::{
     _macros::FfiWrapper,
     attributes::{Attributes, ATTRIBUTES_SIZE},
     cpu_svn::{CpuSecurityVersion, CPU_SECURITY_VERSION_SIZE},
-    impl_ffi_wrapper_base,
+    impl_ffi_wrapper_base, impl_hex_base64_with_repr_bytes,
     key_id::{KeyId, KEY_ID_SIZE},
     misc_attribute::{MiscSelect, MISC_SELECT_SIZE},
     ConfigSecurityVersion, SecurityVersion, CONFIG_SECURITY_VERSION_SIZE, SECURITY_VERSION_SIZE,
@@ -26,9 +26,12 @@ use mc_sgx_core_types_sys::{
     SGX_KEY_REQUEST_RESERVED2_BYTES,
 };
 use mc_util_encodings::{Error as EncodingError, INTEL_U16_SIZE};
+#[cfg(feature = "use_prost")]
+use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
+#[cfg(feature = "use_serde")]
+use mc_util_repr_bytes::derive_serde_from_repr_bytes;
 use mc_util_repr_bytes::{
-    derive_into_vec_from_repr_bytes, derive_serde_from_repr_bytes,
-    derive_try_from_slice_from_repr_bytes,
+    derive_into_vec_from_repr_bytes, derive_try_from_slice_from_repr_bytes,
     typenum::{U2, U512},
     GenericArray, ReprBytes,
 };
@@ -82,6 +85,7 @@ pub enum KeyName {
     Seal = SGX_KEYSELECT_SEAL,
 }
 
+impl_hex_base64_with_repr_bytes!(KeyName);
 derive_try_from_slice_from_repr_bytes!(KeyName);
 derive_into_vec_from_repr_bytes!(KeyName);
 
@@ -173,6 +177,10 @@ bitflags! {
     }
 }
 
+impl_hex_base64_with_repr_bytes!(KeyPolicy);
+derive_try_from_slice_from_repr_bytes!(KeyPolicy);
+derive_into_vec_from_repr_bytes!(KeyPolicy);
+
 impl Display for KeyPolicy {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         let mut previous = if self.contains(KeyPolicy::MR_ENCLAVE) {
@@ -225,6 +233,19 @@ impl Display for KeyPolicy {
     }
 }
 
+impl ReprBytes for KeyPolicy {
+    type Size = U2;
+    type Error = EncodingError;
+
+    fn from_bytes(src: &GenericArray<u8, Self::Size>) -> Result<Self, Self::Error> {
+        Self::from_bits(u16::from_le_bytes(src.clone().into())).ok_or(EncodingError::InvalidInput)
+    }
+
+    fn to_bytes(&self) -> GenericArray<u8, Self::Size> {
+        GenericArray::from(self.bits.to_le_bytes())
+    }
+}
+
 /// A key request data structure.
 ///
 /// This is used with the `sgx_get_key()` inside-the-enclave method.
@@ -235,7 +256,11 @@ impl_ffi_wrapper_base! {
     KeyRequest, sgx_key_request_t;
 }
 
+impl_hex_base64_with_repr_bytes!(KeyRequest);
 derive_into_vec_from_repr_bytes!(KeyRequest);
+
+#[cfg(feature = "use_prost")]
+derive_prost_message_from_repr_bytes!(KeyRequest);
 
 #[cfg(feature = "use_serde")]
 derive_serde_from_repr_bytes!(KeyRequest);
@@ -310,6 +335,8 @@ impl Display for KeyRequest {
     }
 }
 
+impl FfiWrapper<sgx_key_request_t> for KeyRequest {}
+
 impl Hash for KeyRequest {
     fn hash<H: Hasher>(&self, state: &mut H) {
         "KeyRequest".hash(state);
@@ -324,6 +351,8 @@ impl Hash for KeyRequest {
     }
 }
 
+// TODO: Implement prost::Message
+
 impl Ord for KeyRequest {
     fn cmp(&self, other: &Self) -> Ordering {
         self.key_name().cmp(&other.key_name()).then(
@@ -333,7 +362,7 @@ impl Ord for KeyRequest {
                         .cmp(&other.cpu_security_version())
                         .then(
                             self.key_id().cmp(&other.key_id()).then(
-                                self.misc_mask().cmp(&other.misc_masc()).then(
+                                self.misc_mask().cmp(&other.misc_mask()).then(
                                     self.config_security_version()
                                         .cmp(&other.config_security_version()),
                                 ),
@@ -463,5 +492,3 @@ impl<'src> TryFrom<&'src [u8]> for KeyRequest {
         }))
     }
 }
-
-impl FfiWrapper<sgx_key_request_t> for KeyRequest {}

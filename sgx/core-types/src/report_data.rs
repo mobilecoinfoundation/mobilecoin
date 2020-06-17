@@ -1,13 +1,18 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 //! The report data structure
-//!
-use crate::impl_ffi_wrapper;
-use core::ops::BitAnd;
-use mc_sgx_core_types_sys::sgx_report_data_t;
 
 /// The size of the [ReportData] x64 representation, in bytes.
 pub use mc_sgx_core_types_sys::SGX_REPORT_DATA_SIZE as REPORT_DATA_SIZE;
+
+use crate::impl_ffi_wrapper;
+use core::ops::BitAnd;
+use mc_sgx_core_types_sys::sgx_report_data_t;
+#[cfg(feature = "use_prost")]
+use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
+#[cfg(feature = "use_serde")]
+use mc_util_repr_bytes::derive_serde_from_repr_bytes;
+use mc_util_repr_bytes::typenum::U64;
 
 /// A data structure used for the user data in a report.
 #[derive(Default)]
@@ -15,8 +20,14 @@ pub use mc_sgx_core_types_sys::SGX_REPORT_DATA_SIZE as REPORT_DATA_SIZE;
 pub struct ReportData(sgx_report_data_t);
 
 impl_ffi_wrapper! {
-    ReportData, sgx_report_data_t, REPORT_DATA_SIZE, d;
+    ReportData, sgx_report_data_t, U64, d;
 }
+
+#[cfg(feature = "use_prost")]
+derive_prost_message_from_repr_bytes!(ReportData);
+
+#[cfg(feature = "use_serde")]
+derive_serde_from_repr_bytes!(ReportData);
 
 impl BitAnd for ReportData {
     type Output = Self;
@@ -34,8 +45,9 @@ impl BitAnd for ReportData {
 #[cfg(test)]
 mod test {
     use super::*;
+    #[cfg(feature = "use_serde")]
     use bincode::{deserialize, serialize};
-    use mc_util_encodings::FromX64;
+    use core::convert::TryFrom;
 
     const REPORT_DATA_TEST: sgx_report_data_t = sgx_report_data_t {
         d: [
@@ -45,6 +57,7 @@ mod test {
         ],
     };
 
+    #[cfg(feature = "use_serde")]
     #[test]
     fn test_serde() {
         let data = ReportData::from(&REPORT_DATA_TEST);
@@ -64,7 +77,7 @@ mod test {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         ];
 
-        let mask = ReportData::from_x64(&bitmask[..]).expect("Could not create mask structure");
+        let mask = ReportData::try_from(&bitmask[..]).expect("Could not create mask structure");
         let data = ReportData::from(&REPORT_DATA_TEST);
 
         assert!(mask & data.clone() != data);

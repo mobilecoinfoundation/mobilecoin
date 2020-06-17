@@ -10,7 +10,7 @@ pub use hex_fmt::HexFmt;
 pub use mc_util_encodings::{base64_size, Error as EncodingError, FromBase64, ToBase64};
 pub use mc_util_repr_bytes::{
     derive_core_cmp_from_as_ref, derive_into_vec_from_repr_bytes,
-    derive_repr_bytes_from_as_ref_and_try_from, typenum::Unsigned, GenericArray,
+    derive_repr_bytes_from_as_ref_and_try_from, typenum::Unsigned, GenericArray, ReprBytes,
 };
 pub use subtle::{Choice, ConstantTimeEq};
 
@@ -19,7 +19,6 @@ use ::core::{
     fmt::{Debug, Display},
     hash::Hash,
 };
-use mc_util_repr_bytes::ReprBytes;
 
 /// A helper marker trait which SGX-wrapper newtypes should implement to ensure a consistent API.
 ///
@@ -289,4 +288,40 @@ macro_rules! impl_ffi_wrapper {
             }
         }
     )*}
+}
+
+/// A boilerplate macro which implements the [`hex::FromHex`] and [`mc_util_encodings::FromBase64`]
+/// traits for a type which implements ReprBytes.
+#[macro_export]
+macro_rules! impl_hex_base64_with_repr_bytes {
+    ($wrapper:ty) => {
+        impl $crate::_macros::FromBase64 for $wrapper {
+            type Error = $crate::_macros::EncodingError;
+
+            fn from_base64(
+                input: &str,
+            ) -> ::core::result::Result<Self, $crate::_macros::EncodingError> {
+                let mut output = $crate::_macros::GenericArray::default();
+                if $crate::_macros::base64::decode_config_slice(
+                    input,
+                    $crate::_macros::base64::STANDARD,
+                    output.as_mut_slice(),
+                )? != <<$wrapper as $crate::_macros::ReprBytes>::Size as $crate::_macros::Unsigned>::USIZE
+                {
+                    return Err($crate::_macros::EncodingError::InvalidInputLength);
+                }
+                Self::from_bytes(&output)
+            }
+        }
+
+        impl $crate::_macros::hex::FromHex for $wrapper {
+            type Error = $crate::_macros::EncodingError;
+
+            fn from_hex<S: AsRef<[u8]>>(data: S) -> ::core::result::Result<Self, Self::Error> {
+                let mut out = $crate::_macros::GenericArray::default();
+                $crate::_macros::hex::decode_to_slice(data, out.as_mut_slice())?;
+                Self::from_bytes(&out)
+            }
+        }
+    };
 }

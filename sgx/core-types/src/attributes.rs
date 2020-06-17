@@ -2,7 +2,7 @@
 
 //! The wrapper type for an sgx_attributes_t
 
-use crate::{_macros::FfiWrapper, impl_ffi_wrapper_base};
+use crate::{_macros::FfiWrapper, impl_ffi_wrapper_base, impl_hex_base64_with_repr_bytes};
 use bitflags::bitflags;
 use core::{
     cmp::Ordering,
@@ -10,9 +10,10 @@ use core::{
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
-use hex::FromHex;
 use mc_sgx_core_types_sys::sgx_attributes_t;
-use mc_util_encodings::{Error as EncodingError, FromBase64, INTEL_U64_SIZE};
+use mc_util_encodings::{Error as EncodingError, INTEL_U64_SIZE};
+#[cfg(feature = "use_prost")]
+use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
 #[cfg(feature = "use_serde")]
 use mc_util_repr_bytes::derive_serde_from_repr_bytes;
 use mc_util_repr_bytes::{
@@ -40,6 +41,7 @@ bitflags! {
     }
 }
 
+impl_hex_base64_with_repr_bytes!(AttributeFlags);
 derive_try_from_slice_from_repr_bytes!(AttributeFlags);
 derive_into_vec_from_repr_bytes!(AttributeFlags);
 
@@ -130,6 +132,7 @@ bitflags! {
     }
 }
 
+impl_hex_base64_with_repr_bytes!(AttributeXfeatures);
 derive_try_from_slice_from_repr_bytes!(AttributeXfeatures);
 derive_into_vec_from_repr_bytes!(AttributeXfeatures);
 
@@ -200,8 +203,12 @@ impl_ffi_wrapper_base! {
     Attributes, sgx_attributes_t;
 }
 
+impl_hex_base64_with_repr_bytes!(Attributes);
 derive_try_from_slice_from_repr_bytes!(Attributes);
 derive_into_vec_from_repr_bytes!(Attributes);
+
+#[cfg(feature = "use_prost")]
+derive_prost_message_from_repr_bytes!(Attributes);
 
 #[cfg(feature = "use_serde")]
 derive_serde_from_repr_bytes!(Attributes);
@@ -222,29 +229,7 @@ impl Display for Attributes {
     }
 }
 
-impl FromBase64 for Attributes {
-    type Error = EncodingError;
-
-    fn from_base64(src: &str) -> Result<Self, Self::Error> {
-        let mut bytes = GenericArray::default();
-        if base64::decode_config_slice(src, base64::STANDARD, bytes.as_mut_slice())?
-            != ATTRIBUTES_SIZE
-        {
-            return Err(EncodingError::InvalidInput);
-        }
-        Self::from_bytes(&bytes)
-    }
-}
-
-impl FromHex for Attributes {
-    type Error = EncodingError;
-
-    fn from_hex<T: AsRef<[u8]>>(hex: T) -> Result<Self, Self::Error> {
-        let mut bytes = GenericArray::default();
-        hex::decode_to_slice(hex, bytes.as_mut_slice())?;
-        Self::from_bytes(&bytes)
-    }
-}
+impl FfiWrapper<sgx_attributes_t> for Attributes {}
 
 impl Hash for Attributes {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -311,8 +296,6 @@ impl TryFrom<&sgx_attributes_t> for Attributes {
         }))
     }
 }
-
-impl FfiWrapper<sgx_attributes_t> for Attributes {}
 
 #[cfg(test)]
 mod test {

@@ -28,6 +28,10 @@ use core::{
 use hex::FromHex;
 use mc_sgx_core_types_sys::sgx_misc_attribute_t;
 use mc_util_encodings::{Error as EncodingError, FromBase64, INTEL_U32_SIZE};
+#[cfg(feature = "use_prost")]
+use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
+#[cfg(feature = "use_serde")]
+use mc_util_repr_bytes::derive_serde_from_repr_bytes;
 use mc_util_repr_bytes::{
     derive_into_vec_from_repr_bytes, derive_try_from_slice_from_repr_bytes, typenum::U32,
     GenericArray, ReprBytes,
@@ -49,6 +53,12 @@ impl_ffi_wrapper_base! {
 
 derive_try_from_slice_from_repr_bytes!(MiscAttribute);
 derive_into_vec_from_repr_bytes!(MiscAttribute);
+
+#[cfg(feature = "use_prost")]
+derive_prost_message_from_repr_bytes!(MiscAttribute);
+
+#[cfg(feature = "use_serde")]
+derive_serde_from_repr_bytes!(MiscAttribute);
 
 impl MiscAttribute {
     /// Retrieve the attributes
@@ -83,6 +93,8 @@ impl Display for MiscAttribute {
         )
     }
 }
+
+impl FfiWrapper<sgx_misc_attribute_t> for MiscAttribute {}
 
 impl FromBase64 for MiscAttribute {
     type Error = EncodingError;
@@ -166,5 +178,3 @@ impl TryFrom<&sgx_misc_attribute_t> for MiscAttribute {
         }))
     }
 }
-
-impl FfiWrapper<sgx_misc_attribute_t> for MiscAttribute {}

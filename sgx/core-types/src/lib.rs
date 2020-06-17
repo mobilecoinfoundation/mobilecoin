@@ -22,10 +22,10 @@ mod key_request;
 mod mac;
 mod measurement;
 mod misc_attribute;
-// mod report;
-// mod report_body;
-// mod report_data;
-// mod target_info;
+mod report;
+mod report_body;
+mod report_data;
+mod target_info;
 
 pub use crate::{
     _macros::FfiWrapper,
@@ -41,12 +41,11 @@ pub use crate::{
     mac::{Mac, MAC_SIZE},
     measurement::{MrEnclave, MrSigner, MRENCLAVE_SIZE, MRSIGNER_SIZE},
     misc_attribute::{MiscAttribute, MISC_ATTRIBUTE_SIZE},
+    report::{Report, REPORT_SIZE},
+    report_body::{ReportBody, REPORT_BODY_SIZE},
+    report_data::{ReportData, REPORT_DATA_SIZE},
+    target_info::{TargetInfo, TARGET_INFO_SIZE},
 };
-
-// report::{Report, REPORT_SIZE},
-// report_body::{ReportBody, REPORT_BODY_SIZE},
-// report_data::{ReportData, REPORT_DATA_SIZE},
-//     target_info::{TargetInfo, TARGET_INFO_SIZE},
 
 /// The size of a [ConfigSecurityVersion]'s x64 representation, in bytes.
 pub use mc_util_encodings::INTEL_U16_SIZE as CONFIG_SECURITY_VERSION_SIZE;
