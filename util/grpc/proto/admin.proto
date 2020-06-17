@@ -49,9 +49,6 @@ message GetInfoResponse {
 
     // Current RUST_LOG value.
     string rust_log = 6;
-
-    // Status-specific JSON-encoded information.
-    string status_json = 7;
 }
 
 message SetRustLogRequest {
