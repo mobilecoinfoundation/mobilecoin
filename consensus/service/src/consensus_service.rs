@@ -712,12 +712,12 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
         let byzantine_ledger = self.byzantine_ledger.clone();
         let config = self.config.clone();
         Arc::new(move || {
-            let block_height = ledger_db.num_blocks().expect("Could not get num blocks");
-            let byzantine_ledger = byzantine_ledger
-                .lock()
-                .expect("Could not unwrap byzantine ledger.");
+            let block_height = ledger_db.num_blocks().unwrap_or(0);
             let mut sync_status = "synced";
             let mut peer_block_height: u64 = 0;
+            let byzantine_ledger = byzantine_ledger
+                .lock()
+                .expect("Could not get byzantine ledger.");
             if let Some(byzantine_ledger) = &*byzantine_ledger {
                 if byzantine_ledger.is_behind() {
                     sync_status = "catchup";
@@ -745,7 +745,7 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
                     "known_peer_count": config.network().known_peers.map(|x| x.len()),
                     "sync_status": sync_status,
                     "blocks_behind": std::cmp::min(peer_block_height - block_height, 0),
-                    "latest_block_hash": ledger_db.get_block(block_height - 1).expect("Could not get block").id,
+                    "latest_block_hash": ledger_db.get_block(block_height - 1).map(|x| x.id).ok(),
                 },
             })
             .to_string())
