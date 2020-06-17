@@ -330,7 +330,6 @@ impl SimulatedNode {
                     let mut pending_values: HashSet<String> = HashSet::default();
 
                     'main_loop: loop {
-
                         // See byzantine_ledger.rs#L546 - nominate before handling consensus msg
                         let mut incoming_msgs = Vec::<Arc<Msg<String>>>::with_capacity(1);
 
@@ -367,26 +366,25 @@ impl SimulatedNode {
                             values.truncate(max_pending_values_to_nominate);
 
                             // mc_common::HashSet does not support extend because of our enclave-safe HasherBuilder
-                            let mut values_to_nominate: HashSet<String> = values.iter().cloned().collect();
+                            let mut values_to_nominate: HashSet<String> =
+                                values.iter().cloned().collect();
 
                             for v in slot_nominated_values.iter() {
                                 values_to_nominate.remove(v);
                             }
 
                             if !values_to_nominate.is_empty() {
-
                                 for v in values_to_nominate.iter() {
                                     slot_nominated_values.insert(v.clone());
                                 }
 
-                                let outgoing_msg: Option<Msg<String>> = {
+                                let outgoing_msg: Option<Msg<String>> =
                                     thread_local_node
                                         .nominate(
                                             current_slot as SlotIndex,
-                                            BTreeSet::from_iter(values_to_nominate)
+                                            BTreeSet::from_iter(values_to_nominate),
                                         )
-                                        .expect("nominate() failed")
-                                };
+                                        .expect("nominate() failed");
 
                                 if let Some(outgoing_msg) = outgoing_msg {
                                     (broadcast_msg_fn)(logger.clone(), outgoing_msg);
@@ -397,11 +395,8 @@ impl SimulatedNode {
 
                         // Process incoming consensus message, which might be for a future slot
                         for msg in incoming_msgs.iter() {
-                            let outgoing_msg: Option<Msg<String>> = {
-                                thread_local_node
-                                    .handle(msg)
-                                    .expect("handle_msg() failed")
-                            };
+                            let outgoing_msg: Option<Msg<String>> =
+                                thread_local_node.handle(msg).expect("handle_msg() failed");
 
                             if let Some(outgoing_msg) = outgoing_msg {
                                 (broadcast_msg_fn)(logger.clone(), outgoing_msg);
@@ -410,22 +405,17 @@ impl SimulatedNode {
                         }
 
                         // Process timeouts (for all slots)
-                        let timeout_msgs: Vec<Msg<String>> = {
-                            thread_local_node
-                                .process_timeouts()
-                                .into_iter()
-                                .collect()
-                        };
+                        let timeout_msgs: Vec<Msg<String>> =
+                            thread_local_node.process_timeouts().into_iter().collect();
+
                         for outgoing_msg in timeout_msgs {
                             (broadcast_msg_fn)(logger.clone(), outgoing_msg);
                             total_broadcasts += 1;
                         }
 
                         // Check if the current slot is done
-                        let new_block:Vec<String> = {
-                            thread_local_node
-                                .get_externalized_values(current_slot as SlotIndex)
-                        };
+                        let new_block:Vec<String> =
+                            thread_local_node.get_externalized_values(current_slot as SlotIndex);
 
                         if !new_block.is_empty() {
                             // stop nominating the values we've externalized
