@@ -744,7 +744,7 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
                     "broadcast_peer_count": config.network().broadcast_peers.len(),
                     "known_peer_count": config.network().known_peers.map(|x| x.len()),
                     "sync_status": sync_status,
-                    "peer_block_height": peer_block_height,
+                    "blocks_behind": std::cmp::min(peer_block_height - block_height, 0),
                     "latest_block_hash": ledger_db.get_block(block_height - 1).expect("Could not get block").id,
                 },
             })
