@@ -150,8 +150,7 @@ impl SimulatedNetwork {
 
             assert!(!peers.contains(&node_id));
 
-            let nodes_map_clone: Arc<Mutex<HashMap<NodeID, SimulatedNode>>> =
-                { Arc::clone(&simulation.nodes_map) };
+            let nodes_map_clone = Arc::clone(&simulation.nodes_map);
 
             let (node, join_handle_option) = SimulatedNode::new(
                 format!("{}-{}", network.name, node_index),
