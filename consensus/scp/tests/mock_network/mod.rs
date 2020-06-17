@@ -83,19 +83,6 @@ impl TestOptions {
     }
 }
 
-// Describes a network of nodes for simulation
-#[derive(Clone)]
-pub struct Network {
-    name: String,
-    nodes: Vec<NodeOptions>,
-}
-
-impl Network {
-    pub fn new(name: String, nodes: Vec<NodeOptions>) -> Self {
-        Self { name, nodes }
-    }
-}
-
 // Describes one simulated node
 #[derive(Clone)]
 pub struct NodeOptions {
@@ -111,6 +98,19 @@ impl NodeOptions {
             validators,
             k,
         }
+    }
+}
+
+// Describes a network of nodes for simulation
+#[derive(Clone)]
+pub struct Network {
+    name: String,
+    nodes: Vec<NodeOptions>,
+}
+
+impl Network {
+    pub fn new(name: String, nodes: Vec<NodeOptions>) -> Self {
+        Self { name, nodes }
     }
 }
 
