@@ -13,30 +13,42 @@ option java_outer_classname = "MobileCoinAPI";
 // `keys` crate
 ///////////////////////////////////////////////////////////////////////////////
 
+/// Note: This is used only in mobilecoind. It is not recommended to use
+/// uncompressed RistrettoPublic in protobuf types because the decompressions
+/// may be unnecessary and can cause significant performance hit.
 message RistrettoPublic {
     bytes data = 1;
 }
 
+/// A Ristretto private key.
 message RistrettoPrivate {
     bytes data = 1;
 }
 
+/// A 32-byte compressed Ristretto curve point (public key)
 message CompressedRistretto {
     bytes data = 1;
 }
 
+/// A 32-byte scalar associated to the ristretto group.
+/// This is the same as RistrettoPrivate, but they are used in different places,
+/// the transaction crate generally uses CurveScalar and higher-level crates use
+/// RistrettoPrivate.
 message CurveScalar {
     bytes data = 1;
 }
 
+/// A 32-byte mobilecoin transaction key image.
 message KeyImage {
     bytes data = 1;
 }
 
+/// An Ed25519 public key, for validating signatures.
 message Ed25519Public {
     bytes data = 1;
 }
 
+/// An Ed25519 signature object
 message Ed25519Signature {
     bytes data = 1;
 }
@@ -85,10 +97,10 @@ message TxOut {
     Amount amount = 1;
 
     // Public key.
-    RistrettoPublic target_key = 2;
+    CompressedRistretto target_key = 2;
 
     // Public key.
-    RistrettoPublic public_key = 3;
+    CompressedRistretto public_key = 3;
 
     // 128 byte encrypted fog hint
     EncryptedFogHint e_account_hint = 4;
