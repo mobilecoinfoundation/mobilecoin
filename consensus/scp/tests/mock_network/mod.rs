@@ -548,17 +548,9 @@ pub fn build_and_test(network: &Network, test_options: &TestOptions, logger: Log
         test_options.values_to_submit
     );
 
-    let num_nodes: usize = {
-        simulation
-            .nodes_map
-            .lock()
-            .expect("lock failed on nodes_map getting length")
-            .len()
-    };
-
     // pre-compute node_ids
-    let mut node_ids = Vec::<NodeID>::with_capacity(num_nodes);
-    for n in 0..num_nodes {
+    let mut node_ids = Vec::<NodeID>::with_capacity(network.nodes.len());
+    for n in 0..network.nodes.len() {
         node_ids.push(test_utils::test_node_id(n as u32));
     }
 
@@ -574,12 +566,12 @@ pub fn build_and_test(network: &Network, test_options: &TestOptions, logger: Log
 
         if test_options.submit_in_parallel {
             // simulate broadcast of values to all nodes in parallel
-            for n in 0..num_nodes {
+            for n in 0..network.nodes.len() {
                 simulation.push_value(&node_ids[n], &values[i]);
             }
         } else {
             // submit values to nodes in sequence
-            let n = i % num_nodes;
+            let n = i % network.nodes.len();
             simulation.push_value(&node_ids[n], &values[i]);
         }
 
