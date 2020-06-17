@@ -115,9 +115,9 @@ impl Network {
 }
 
 pub struct SimulatedNetwork {
+    handle_map: HashMap<NodeID, JoinHandle<()>>,
     nodes_map: Arc<Mutex<HashMap<NodeID, SimulatedNode>>>,
-    thread_handles: HashMap<NodeID, JoinHandle<()>>,
-    nodes_shared_data: HashMap<NodeID, Arc<Mutex<SimulatedNodeSharedData>>>,
+    shared_data_map: HashMap<NodeID, Arc<Mutex<SimulatedNodeSharedData>>>,
     logger: Logger,
 }
 
@@ -125,9 +125,9 @@ impl SimulatedNetwork {
     // creates a new network simulation
     pub fn new(network: &Network, test_options: &TestOptions, logger: Logger) -> Self {
         let mut simulation = SimulatedNetwork {
+            handle_map: HashMap::default(),
             nodes_map: Arc::new(Mutex::new(HashMap::default())),
-            thread_handles: HashMap::default(),
-            nodes_shared_data: HashMap::default(),
+            shared_data_map: HashMap::default(),
             logger: logger.clone(),
         };
 
@@ -164,10 +164,10 @@ impl SimulatedNetwork {
                 logger.new(o!("mc.local_node_id" => node_id.to_string())),
             );
             simulation
-                .thread_handles
+                .handle_map
                 .insert(node_id.clone(), join_handle_option.expect("thread failed to spawn"));
             simulation
-                .nodes_shared_data
+                .shared_data_map
                 .insert(node_id.clone(), node.shared_data.clone());
             simulation
                 .nodes_map
@@ -197,7 +197,7 @@ impl SimulatedNetwork {
         // now join the threads
         for node_num in 0..num_nodes {
             let node_id = &test_utils::test_node_id(node_num as u32);
-            self.thread_handles
+            self.handle_map
                 .remove(node_id)
                 .expect("thread handle is missing")
                 .join()
@@ -215,9 +215,9 @@ impl SimulatedNetwork {
     }
 
     fn get_ledger(&self, node_id: &NodeID) -> Vec<Vec<String>> {
-        self.nodes_shared_data
+        self.shared_data_map
             .get(node_id)
-            .expect("could not find node_id in nodes_shared_data")
+            .expect("could not find node_id in shared_data_map")
             .lock()
             .expect("lock failed on shared_data getting ledger")
             .ledger
@@ -225,9 +225,9 @@ impl SimulatedNetwork {
     }
 
     fn get_ledger_size(&self, node_id: &NodeID) -> usize {
-        self.nodes_shared_data
+        self.shared_data_map
             .get(node_id)
-            .expect("could not find node_id in nodes_shared_data")
+            .expect("could not find node_id in shared_data_map")
             .lock()
             .expect("lock failed on shared_data getting ledger size")
             .ledger_size()
