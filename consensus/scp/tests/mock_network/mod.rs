@@ -116,7 +116,7 @@ impl NodeOptions {
 
 pub struct SimulatedNetwork {
     nodes_map: Arc<Mutex<HashMap<NodeID, SimulatedNode>>>,
-    thread_handles: HashMap<NodeID, Option<JoinHandle<()>>>,
+    thread_handles: HashMap<NodeID, JoinHandle<()>>,
     nodes_shared_data: HashMap<NodeID, Arc<Mutex<SimulatedNodeSharedData>>>,
     logger: Logger,
 }
@@ -153,10 +153,8 @@ impl SimulatedNetwork {
             let nodes_map_clone: Arc<Mutex<HashMap<NodeID, SimulatedNode>>> =
                 { Arc::clone(&simulation.nodes_map) };
 
-            let thread_name_for_this_node = format!("{}-{}", network.name, node_index);
-
-            let (node, thread_handle) = SimulatedNode::new(
-                thread_name_for_this_node,
+            let (node, join_handle_option) = SimulatedNode::new(
+                format!("{}-{}", network.name, node_index),
                 node_id.clone(),
                 qs,
                 test_options,
@@ -167,7 +165,7 @@ impl SimulatedNetwork {
             );
             simulation
                 .thread_handles
-                .insert(node_id.clone(), thread_handle);
+                .insert(node_id.clone(), join_handle_option.expect("thread failed to spawn"));
             simulation
                 .nodes_shared_data
                 .insert(node_id.clone(), node.shared_data.clone());
@@ -186,6 +184,7 @@ impl SimulatedNetwork {
             .nodes_map
             .lock()
             .expect("lock failed on nodes_map in stop_all");
+
         let num_nodes = nodes_map.len();
         for node_num in 0..num_nodes {
             nodes_map
@@ -200,7 +199,6 @@ impl SimulatedNetwork {
             let node_id = &test_utils::test_node_id(node_num as u32);
             self.thread_handles
                 .remove(node_id)
-                .expect("failed to get handle option from thread_handles")
                 .expect("thread handle is missing")
                 .join()
                 .expect("SimulatedNode join failed");
@@ -322,7 +320,7 @@ impl SimulatedNode {
         let mut current_slot: usize = 0;
         let mut total_broadcasts: u32 = 0;
 
-        let thread_handle = Some(
+        let join_handle_option = Some(
             thread::Builder::new()
                 .name(thread_name)
                 .spawn(move || {
@@ -459,7 +457,7 @@ impl SimulatedNode {
                 .expect("failed spawning SimulatedNode thread"),
         );
 
-        (simulated_node, thread_handle)
+        (simulated_node, join_handle_option)
     }
 
     /// Push value to this node's consensus task.
