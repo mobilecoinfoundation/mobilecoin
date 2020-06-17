@@ -8,6 +8,9 @@
 
 use crate::mock_network;
 
+use mc_common::{HashSet, NodeID};
+use mc_consensus_scp::{QuorumSet, test_utils};
+
 ///////////////////////////////////////////////////////////////////////////////
 /// Mesh tests
 /// (N nodes, each node has all other nodes as it's validators)
@@ -16,17 +19,18 @@ use crate::mock_network;
 /// Constructs a mesh network, where each node has all of it's peers as validators.
 pub fn dense_mesh(num_nodes: usize, k: usize) -> mock_network::Network {
     let mut nodes = Vec::<mock_network::NodeOptions>::new();
-    for node_id in 0..num_nodes {
-        let other_node_ids: Vec<u32> = (0..num_nodes)
-            .filter(|other_node_id| other_node_id != &node_id)
-            .map(|other_node_id| other_node_id as u32)
-            .collect();
+    for node_index in 0..num_nodes {
+        let peers_vector = (0..num_nodes)
+            .filter(|other_node_index| other_node_index != &node_index)
+            .map(|other_node_index| test_utils::test_node_id(other_node_index as u32))
+            .collect::<Vec<NodeID>>();
 
         nodes.push(mock_network::NodeOptions::new(
-            other_node_ids.clone(),
-            other_node_ids,
-            k as u32,
+            test_utils::test_node_id(node_index as u32),
+            peers_vector.iter().cloned().collect::<HashSet<NodeID>>(),
+            QuorumSet::new_with_node_ids(k as u32, peers_vector),
         ));
     }
+
     mock_network::Network::new(format!("m{}k{}", num_nodes, k), nodes)
 }

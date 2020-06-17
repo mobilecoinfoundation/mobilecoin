@@ -46,27 +46,6 @@ fn optimize_scp_timebase(logger: Logger) {
 
 #[test_with_logger]
 #[serial]
-fn optimize_11(logger: Logger) {
-    let parameters_to_vary = vec![true, true, false];
-    optimize_mesh_helper(parameters_to_vary, logger);
-}
-
-#[test_with_logger]
-#[serial]
-fn optimize_23(logger: Logger) {
-    let parameters_to_vary = vec![false, true, true];
-    optimize_mesh_helper(parameters_to_vary, logger);
-}
-
-#[test_with_logger]
-#[serial]
-fn optimize_31(logger: Logger) {
-    let parameters_to_vary = vec![true, false, true];
-    optimize_mesh_helper(parameters_to_vary, logger);
-}
-
-#[test_with_logger]
-#[serial]
 fn optimize_all(logger: Logger) {
     let parameters_to_vary = vec![true, true, true];
     optimize_mesh_helper(parameters_to_vary, logger);
