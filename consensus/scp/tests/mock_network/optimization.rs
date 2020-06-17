@@ -20,10 +20,13 @@ use std::{
 
 // we are using a fixed number of iterations for the optimizer
 // this could be improved someday by observing the runtime settle
-const OPTIMIZER_ITERATIONS: usize = 30;
+const OPTIMIZER_ITERATIONS: usize = 20;
 
-const VALUES_TO_SUBMIT: usize = 500;
-const ALLOWED_TEST_TIME: Duration = Duration::from_secs(600);
+// values to submit for consensus
+const VALUES_TO_SUBMIT: usize = 1000;
+
+// panic if any iteration requires more than the allowed time
+const ALLOWED_TEST_TIME: Duration = Duration::from_secs(90);
 
 // Optimization range limits
 const MIN_SUBMISSIONS_PER_SEC: f64 = 5000.0;

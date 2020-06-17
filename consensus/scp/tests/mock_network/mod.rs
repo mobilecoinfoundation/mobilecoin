@@ -30,6 +30,9 @@ pub mod cyclic_topology;
 pub mod mesh_topology;
 pub mod optimization;
 
+// Test values are random strings of this length.
+const CHARACTERS_PER_VALUE: usize = 10;
+
 // Controls test parameters
 #[derive(Clone)]
 pub struct TestOptions {
@@ -37,12 +40,14 @@ pub struct TestOptions {
     pub submit_in_parallel: bool,
 
     /// Total number of values to submit. Tests run until all values are externalized by all nodes.
+    /// N.B. if the validity fn doesn't enforce unique values, it's possible a value will appear in
+    /// multiple places in the ledger, and that the ledger will contain more than values_to_submit
     pub values_to_submit: usize,
 
     /// Approximate rate that values are submitted to nodes.
     pub submissions_per_sec: u64,
 
-    /// We allow only a single proposal per slot, with up to this many values.
+    /// We nominate up to this many values from our pending set per slot.
     pub max_pending_values_to_nominate: usize,
 
     /// The total allowed testing time before forcing a panic
@@ -216,7 +221,7 @@ impl SimulatedNetwork {
             .get(node_id)
             .expect("could not find node_id in nodes_map")
             .lock()
-            .expect("lock failed on shared_data getting clone")
+            .expect("lock failed on shared_data getting ledger")
             .ledger
             .clone()
     }
@@ -226,10 +231,8 @@ impl SimulatedNetwork {
             .get(node_id)
             .expect("could not find node_id in nodes_map")
             .lock()
-            .expect("lock failed on shared_data getting clone")
-            .ledger
-            .iter()
-            .fold(0, |acc, block| acc + block.len())
+            .expect("lock failed on shared_data getting ledger size")
+            .ledger_size()
     }
 
     fn broadcast_msg(
@@ -273,6 +276,12 @@ struct SimulatedNodeSharedData {
     pub ledger: Vec<Vec<String>>,
 }
 
+impl SimulatedNodeSharedData {
+    pub fn ledger_size(&self) -> usize {
+        self.ledger.iter().fold(0, |acc, block| acc + block.len())
+    }
+}
+
 // A simulated validator node
 struct SimulatedNode {
     local_node: Arc<Mutex<Node<String, test_utils::TransactionValidationError>>>,
@@ -314,7 +323,7 @@ impl SimulatedNode {
 
         // See byzantine_ledger.rs#L626
         let max_pending_values_to_nominate: usize = test_options.max_pending_values_to_nominate;
-        let mut nominated_values: HashSet<String> = HashSet::default();
+        let mut slot_nominated_values: HashSet<String> = HashSet::default();
 
         let mut current_slot: usize = 0;
         let mut total_broadcasts: u32 = 0;
@@ -327,6 +336,7 @@ impl SimulatedNode {
                     let mut pending_values: HashSet<String> = HashSet::default();
 
                     'main_loop: loop {
+
                         // See byzantine_ledger.rs#L546 - nominate before handling consensus msg
                         let mut incoming_msgs = Vec::<Arc<Msg<String>>>::with_capacity(1);
 
@@ -355,7 +365,7 @@ impl SimulatedNode {
                         };
 
                         // Nominate pending values submitted to our node
-                        if (nominated_values.len() < max_pending_values_to_nominate)
+                        if (slot_nominated_values.len() < max_pending_values_to_nominate)
                             && !pending_values.is_empty()
                         {
                             let mut values: Vec<String> = pending_values.iter().cloned().collect();
@@ -363,43 +373,37 @@ impl SimulatedNode {
                             values.truncate(max_pending_values_to_nominate);
 
                             // mc_common::HashSet does not support extend because of our enclave-safe HasherBuilder
-                            let mut selected_values: HashSet<String> = HashSet::default();
-                            for v in values.iter().cloned() {
-                                selected_values.insert(v);
+                            let mut values_to_nominate: HashSet<String> = values.iter().cloned().collect();
+
+                            for v in slot_nominated_values.iter() {
+                                values_to_nominate.remove(v);
                             }
 
-                            let values_to_nominate: HashSet<String> = selected_values
-                                .difference(&nominated_values)
-                                .cloned()
-                                .collect();
-
                             if !values_to_nominate.is_empty() {
+
+                                for v in values_to_nominate.iter() {
+                                    slot_nominated_values.insert(v.clone());
+                                }
+
                                 let outgoing_msg: Option<Msg<String>> = {
                                     thread_local_node
                                         .lock()
                                         .expect("thread_local_node lock failed when nominating value")
                                         .nominate(
                                             current_slot as SlotIndex,
-                                            BTreeSet::from_iter(values_to_nominate
-                                                .iter()
-                                                .cloned()
-                                                .collect::<HashSet<String>>()
-                                            )
+                                            BTreeSet::from_iter(values_to_nominate)
                                         )
                                         .expect("node.nominate() failed")
                                 };
+
                                 if let Some(outgoing_msg) = outgoing_msg {
                                     (broadcast_msg_fn)(logger.clone(), outgoing_msg);
                                     total_broadcasts += 1;
                                 }
-
-                                for v in values_to_nominate.iter().cloned() {
-                                    nominated_values.insert(v);
-                                }
                             }
                         }
 
-                        // Process incoming consensus message.
+                        // Process incoming consensus message, which might be for a future slot
                         for msg in incoming_msgs.iter() {
                             let outgoing_msg: Option<Msg<String>> = {
                                 thread_local_node
@@ -429,36 +433,30 @@ impl SimulatedNode {
                             total_broadcasts += 1;
                         }
 
-                        // See if we're done with the current slot
-                        let externalized_values: Vec<String> = {
+                        // Check if the current slot is done
+                        let new_block:Vec<String> = {
                             thread_local_node
-                                .lock()
-                                .expect("thread_local_node lock failed when getting externalized_values")
-                                .get_externalized_values(current_slot as SlotIndex)
+                              .lock()
+                              .expect("thread_local_node lock failed when collecting externalized values")
+                              .get_externalized_values(current_slot as SlotIndex)
                         };
 
-                        if !externalized_values.is_empty() {
-                            // Stop proposing/nominating any values that we have externalized
+                        if !new_block.is_empty() {
+                            // stop nominating the values we've externalized
+                            for v in &new_block {
+                                pending_values.remove(v);
+                            }
 
-                            let externalized_values_as_set: HashSet<String> =
-                                externalized_values.iter().cloned().collect();
-
-                            let remaining_values: HashSet<String> = pending_values
-                                .difference(&externalized_values_as_set)
-                                .cloned()
-                                .collect();
-
-                            let last_slot_values = externalized_values.len();
+                            let new_block_length = new_block.len();
 
                             let mut locked_shared_data = thread_shared_data
                                 .lock()
                                 .expect("thread_shared_data lock failed");
-                            locked_shared_data.ledger.push(externalized_values);
 
-                            let total_values = locked_shared_data
-                                .ledger
-                                .iter()
-                                .fold(0, |acc, block| acc + block.len());
+                            locked_shared_data.ledger.push(new_block);
+
+                            let ledger_size = locked_shared_data.ledger_size();
+
                             drop(locked_shared_data);
 
                             log::trace!(
@@ -466,14 +464,13 @@ impl SimulatedNode {
                                 "(  ledger ) node {} slot {} : {} new, {} total, {} pending",
                                 node_id,
                                 current_slot as SlotIndex,
-                                last_slot_values,
-                                total_values,
-                                remaining_values.len(),
+                                new_block_length,
+                                ledger_size,
+                                pending_values.len(),
                             );
 
-                            pending_values = remaining_values;
                             current_slot += 1;
-                            nominated_values = HashSet::default();
+                            slot_nominated_values = HashSet::default();
                         }
                     }
                     log::info!(
@@ -566,7 +563,7 @@ pub fn build_and_test(network: &Network, test_options: &TestOptions, logger: Log
     let mut rng = mc_util_test_helper::get_seeded_rng();
     let mut values = Vec::<String>::with_capacity(test_options.values_to_submit);
     for _i in 0..test_options.values_to_submit {
-        let value = mc_util_test_helper::random_str(&mut rng, 20);
+        let value = mc_util_test_helper::random_str(&mut rng, CHARACTERS_PER_VALUE);
         values.push(value);
     }
 
@@ -597,7 +594,6 @@ pub fn build_and_test(network: &Network, test_options: &TestOptions, logger: Log
 
     // push values
     let mut last_log = Instant::now();
-    let mut num_pushed_values = 0;
     for i in 0..test_options.values_to_submit {
         let start = Instant::now();
 
@@ -612,13 +608,11 @@ pub fn build_and_test(network: &Network, test_options: &TestOptions, logger: Log
             simulation.push_value(&node_ids[n], &values[i]);
         }
 
-        num_pushed_values += 1;
-
         if last_log.elapsed().as_millis() > 999 {
             log::info!(
                 simulation.logger,
                 "( testing ) pushed {}/{} values",
-                num_pushed_values,
+                i,
                 test_options.values_to_submit
             );
             last_log = Instant::now();
@@ -634,15 +628,14 @@ pub fn build_and_test(network: &Network, test_options: &TestOptions, logger: Log
     // report end of value push
     log::info!(
         simulation.logger,
-        "( testing ) pushed {}/{} values",
-        num_pushed_values,
+        "( testing ) pushed {} values",
         test_options.values_to_submit
     );
 
     // abort testing if we exceed allowed time
     let deadline = Instant::now() + test_options.allowed_test_time;
 
-    // Check that the values got added to the nodes
+    // Check that the values have been externalized by all nodes
     for node_id in node_ids.iter() {
         let mut last_log = Instant::now();
         loop {
@@ -658,27 +651,27 @@ pub fn build_and_test(network: &Network, test_options: &TestOptions, logger: Log
             }
 
             let num_externalized_values = simulation.get_ledger_size(&node_id);
-            if num_externalized_values == num_pushed_values {
+            if num_externalized_values >= test_options.values_to_submit {
+                // if the validity_fn does not enforce unique values, we can end up
+                // with values that appear in multiple slots. This is not a problem
+                // provided that all the nodes externalize the same ledger!
                 log::info!(
                     simulation.logger,
                     "( testing ) externalized {}/{} values at node {}",
                     num_externalized_values,
-                    num_pushed_values,
+                    test_options.values_to_submit,
                     node_id
                 );
-                break;
-            }
 
-            if num_externalized_values > num_pushed_values {
-                log::error!(
-                    simulation.logger,
-                    "( testing ) externalized extra values at node {}: {} > {}",
-                    node_id,
-                    num_externalized_values,
-                    num_pushed_values,
-                );
-                // panic
-                panic!("test failed due to extra values being externalized");
+                if num_externalized_values > test_options.values_to_submit {
+                    log::warn!(
+                        simulation.logger,
+                        "( testing ) externalized extra values at node {}",
+                        node_id
+                    );
+                }
+
+                break;
             }
 
             if last_log.elapsed().as_millis() > 999 {
@@ -686,13 +679,15 @@ pub fn build_and_test(network: &Network, test_options: &TestOptions, logger: Log
                     simulation.logger,
                     "( testing ) externalized {}/{} values at node {}",
                     num_externalized_values,
-                    num_pushed_values,
+                    test_options.values_to_submit,
                     node_id
                 );
                 last_log = Instant::now();
             }
         }
 
+        // check that all submitted values are externalized at least once
+        // duplicate values are possible depending on validity_fn
         let externalized_values_hashset = simulation
             .get_ledger(&node_id)
             .iter()
@@ -715,16 +710,8 @@ pub fn build_and_test(network: &Network, test_options: &TestOptions, logger: Log
 
             log::error!(
                 simulation.logger,
-                "node {} externalized wrong values!",
+                "node {} externalized wrong values! missing: {:?}, unexpected: {:?}",
                 node_id,
-            );
-
-            log::error!(
-                simulation.logger,
-                "lengths: {} / {} / {}, missing: {:?}, found unexpected: {:?}",
-                num_pushed_values,
-                values_hashset.len(),
-                externalized_values_hashset.len(),
                 missing_values,
                 unexpected_values,
             );
