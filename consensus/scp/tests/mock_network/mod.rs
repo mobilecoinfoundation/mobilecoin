@@ -163,9 +163,10 @@ impl SimulatedNetwork {
                 }),
                 logger.new(o!("mc.local_node_id" => node_id.to_string())),
             );
-            simulation
-                .handle_map
-                .insert(node_id.clone(), join_handle_option.expect("thread failed to spawn"));
+            simulation.handle_map.insert(
+                node_id.clone(),
+                join_handle_option.expect("thread failed to spawn"),
+            );
             simulation
                 .shared_data_map
                 .insert(node_id.clone(), node.shared_data.clone());
