@@ -378,13 +378,12 @@ impl SimulatedNode {
                                     slot_nominated_values.insert(v.clone());
                                 }
 
-                                let outgoing_msg: Option<Msg<String>> =
-                                    thread_local_node
-                                        .nominate(
-                                            current_slot as SlotIndex,
-                                            BTreeSet::from_iter(values_to_nominate),
-                                        )
-                                        .expect("nominate() failed");
+                                let outgoing_msg: Option<Msg<String>> = thread_local_node
+                                    .nominate(
+                                        current_slot as SlotIndex,
+                                        BTreeSet::from_iter(values_to_nominate),
+                                    )
+                                    .expect("nominate() failed");
 
                                 if let Some(outgoing_msg) = outgoing_msg {
                                     (broadcast_msg_fn)(logger.clone(), outgoing_msg);
@@ -414,7 +413,7 @@ impl SimulatedNode {
                         }
 
                         // Check if the current slot is done
-                        let new_block:Vec<String> =
+                        let new_block: Vec<String> =
                             thread_local_node.get_externalized_values(current_slot as SlotIndex);
 
                         if !new_block.is_empty() {
