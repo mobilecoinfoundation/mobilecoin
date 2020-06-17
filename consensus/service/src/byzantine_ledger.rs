@@ -243,6 +243,7 @@ impl ByzantineLedger {
             .clone()
     }
 
+    /// Get the highest block agreed upon by peers.
     pub fn highest_peer_block(&self) -> u64 {
         self.highest_peer_block.load(Ordering::SeqCst)
     }
