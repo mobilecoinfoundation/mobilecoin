@@ -135,7 +135,7 @@ impl SimulatedNetwork {
             let validators = options_for_this_node
                 .validators
                 .iter()
-                .map(|node_index| test_utils::test_node_id(*node_index as u32))
+                .map(|id| test_utils::test_node_id(*id as u32))
                 .collect::<Vec<NodeID>>();
 
             let qs = QuorumSet::new_with_node_ids(options_for_this_node.k, validators);
@@ -143,7 +143,7 @@ impl SimulatedNetwork {
             let peers = options_for_this_node
                 .peers
                 .iter()
-                .map(|node_index| test_utils::test_node_id(*node_index as u32))
+                .map(|id| test_utils::test_node_id(*id as u32))
                 .collect::<HashSet<NodeID>>();
 
             let node_id = test_utils::test_node_id(node_index as u32);
