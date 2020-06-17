@@ -42,7 +42,7 @@ use std::{
 };
 
 /// Crate version, used for admin info endpoint
-const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Debug, Fail)]
 pub enum ConsensusServiceError {
