@@ -149,12 +149,7 @@ impl SimulatedNetwork {
                 node_options.quorum_set.clone(),
                 test_options,
                 Arc::new( move |logger, msg| {
-                    SimulatedNetwork::broadcast_msg(
-                        logger,
-                        &nodes_map_clone,
-                        &peers_clone,
-                        msg
-                    )
+                    SimulatedNetwork::broadcast_msg(logger, &nodes_map_clone, &peers_clone, msg)
                 }),
                 logger.new(o!("mc.local_node_id" => node_options.id.to_string())),
             );
@@ -176,7 +171,6 @@ impl SimulatedNetwork {
     }
 
     fn stop_all(&mut self) {
-
         let mut nodes_map = self
             .nodes_map
             .lock()

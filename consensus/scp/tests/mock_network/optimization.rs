@@ -87,7 +87,7 @@ pub fn mock_network_optimizer(
         network.name,
         VALUES_TO_SUBMIT,
         run_time,
-        (VALUES_TO_SUBMIT as f64 * 1000.0) / ( run_time as f64 ),
+        (VALUES_TO_SUBMIT as f64 * 1000.0) / (run_time as f64),
         1,
         start.elapsed().as_millis(),
         v0,
@@ -98,7 +98,11 @@ pub fn mock_network_optimizer(
 }
 
 // simplex style optimization
-fn optimize_simplers(network: &mock_network::Network, parameters_to_vary: Vec<bool>, logger: Logger) {
+fn optimize_simplers(
+    network: &mock_network::Network,
+    parameters_to_vary: Vec<bool>,
+    logger: Logger
+) {
     let start = Instant::now();
 
     let f = |v: &[f64]| {
@@ -152,19 +156,14 @@ fn optimize_simplers(network: &mock_network::Network, parameters_to_vary: Vec<bo
 }
 
 // brute force optimization
-fn optimize_grid_search(network: &mock_network::Network, parameters_to_vary: Vec<bool>, logger: Logger) {
+fn optimize_grid_search(
+    network: &mock_network::Network,
+    parameters_to_vary: Vec<bool>,
+    logger: Logger
+) {
     let start = Instant::now();
 
-    let mut d:usize = 0;
-    if parameters_to_vary[0] {
-        d = 0;
-    }
-    if parameters_to_vary[1] {
-        d = 1;
-    }
-    if parameters_to_vary[2] {
-        d = 2;
-    }
+    let mut d: usize = parameters_to_vary.iter().position(|&b| b).unwrap()
 
     let f = |v: &[f64]| {
         mock_network_optimizer(
@@ -189,14 +188,14 @@ fn optimize_grid_search(network: &mock_network::Network, parameters_to_vary: Vec
     let c2 = default_options.scp_timebase.as_millis() as f64;
 
     let mut min_value = std::f64::MAX;
-    let mut coordinates = vec![c0,c1,c2];
+    let mut coordinates = vec![c0, c1, c2];
     for i in 0..OPTIMIZER_ITERATIONS {
-        let (min,max) = input_interval[d];
+        let (min, max) = input_interval[d];
         let v_i: f64 = min + (i as f64) / (OPTIMIZER_ITERATIONS as f64) * max;
-        let mut v = vec![c0,c1,c2];
+        let mut v = vec![c0, c1, c2];
         v[d] = v_i;
         let run_time = f(&v);
-        if run_time <= min_value{
+        if run_time <= min_value {
             min_value = run_time;
             coordinates = v;
         }
@@ -220,12 +219,14 @@ fn optimize_grid_search(network: &mock_network::Network, parameters_to_vary: Vec
 
 // optimize performance over submission rate, submissions per slot, and scp timebase
 pub fn optimize(network: &mock_network::Network, parameters_to_vary: Vec<bool>, logger: Logger) {
-    let dimensions = parameters_to_vary.iter().fold(0, |d, is_varied| d + *is_varied as usize);
+    let dimensions = parameters_to_vary
+        .iter()
+        .fold(0, |d, is_varied| d + *is_varied as usize);
     if dimensions == 0 {
         return; // probably not intended?
     }
     if dimensions == 1 {
-        return optimize_grid_search(network, parameters_to_vary, logger)
+        return optimize_grid_search(network, parameters_to_vary, logger);
     }
     optimize_simplers(network, parameters_to_vary, logger)
 }
