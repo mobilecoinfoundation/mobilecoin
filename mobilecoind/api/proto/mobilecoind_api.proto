@@ -401,7 +401,7 @@ message GenerateTransferCodeTxResponse {
     bytes entropy = 2;
 
     // The TxOut public key that has the funds.
-    external.RistrettoPublic tx_public_key = 3;
+    external.CompressedRistretto tx_public_key = 3;
 
     // The memo (simply copied from the request).
     string memo = 4;
