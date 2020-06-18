@@ -2816,4 +2816,22 @@ mod test {
             ledger_db.num_blocks().unwrap() - 1
         );
     }
+
+    #[test_with_logger]
+    fn test_address_request_code(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        let (_ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
+
+        let mut request = mc_mobilecoind_api::GetAddressRequestCodeRequest::new();
+        request.set_url("https://example.com".to_string());
+
+        let address_b58 = client.get_address_request_code(&request).unwrap();
+
+        assert_eq!(
+            address_b58.get_b58_code(),
+            "4mppAGCtx4xn42C36Ck7gGnAoGbdJceYBH6k",
+        );
+    }
 }
