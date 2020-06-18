@@ -32,6 +32,7 @@ service MobilecoindAPI {
     rpc GetRequestCode (GetRequestCodeRequest) returns (GetRequestCodeResponse) {}
     rpc ReadTransferCode (ReadTransferCodeRequest) returns (ReadTransferCodeResponse) {}
     rpc GetTransferCode (GetTransferCodeRequest) returns (GetTransferCodeResponse) {}
+    rpc GetAddressRequestCode (GetAddressRequestCodeRequest) returns (GetAddressRequestCodeResponse) {}
 
     // Txs
     rpc GenerateTx (GenerateTxRequest) returns (GenerateTxResponse) {}
@@ -330,6 +331,15 @@ message GetTransferCodeRequest {
     string memo = 3;
 }
 message GetTransferCodeResponse {
+    string b58_code = 1;
+}
+
+// Encode a URL into a base-58 "MobileCoin Address Request Code".
+message GetAddressRequestCodeRequest {
+    string url = 1;
+}
+
+message GetAddressRequestCodeResponse {
     string b58_code = 1;
 }
 
