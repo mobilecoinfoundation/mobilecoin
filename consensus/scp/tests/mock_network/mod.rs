@@ -622,7 +622,10 @@ pub fn build_and_test(network: &Network, test_options: &TestOptions, logger: Log
                     "( testing ) externalized {}/{} values at node {}",
                     num_externalized_values,
                     test_options.values_to_submit,
-                    simulation.names_map.get(node_id).expect("could not find node_id"),
+                    simulation
+                        .names_map
+                        .get(node_id)
+                        .expect("could not find node_id"),
                 );
 
                 if num_externalized_values > test_options.values_to_submit {
