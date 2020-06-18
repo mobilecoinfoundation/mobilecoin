@@ -494,11 +494,7 @@ struct JsonAddressRequestCodeResponse {
 }
 
 /// Generates a request code with an optional value and memo
-#[post(
-    "/address-request",
-    format = "json",
-    data = "<address_request>",
-)]
+#[post("/address-request", format = "json", data = "<address_request>")]
 fn address_request_code(
     state: rocket::State<State>,
     address_request: Json<JsonAddressRequestCodeRequest>,
