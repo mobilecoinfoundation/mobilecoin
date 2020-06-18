@@ -232,7 +232,7 @@ pipeline {
   post {
     always {
       slackSend color: COLOR_MAP[currentBuild.currentResult],
-        message: "*${currentBuild.currentResult}:*\nJob: ${env.JOB_NAME}\nCommit: ${env.GIT_COMMIT}\nDocker Tag: ${env.NETWORK}-v${env.TAG_NUMBER}\nBuild: ${env.BUILD_NUMBER}\nDuration: ${currentBuild.durationString}\nMore info at: ${env.BUILD_URL}"
+        message: "*${currentBuild.currentResult}:*\nJob: ${env.JOB_NAME}\nCommit: ${env.GIT_COMMIT}\nDocker Tag: ${env.NETWORK}-v${env.TAG_VERSION}\nBuild: ${env.BUILD_NUMBER}\nDuration: ${currentBuild.durationString}\nMore info at: ${env.BUILD_URL}"
     }
   }
 }
