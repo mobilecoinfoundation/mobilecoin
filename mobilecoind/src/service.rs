@@ -1181,6 +1181,7 @@ mod test {
         utxo_store::UnspentTxOut,
     };
     use mc_common::{logger::test_with_logger, HashSet};
+    use mc_crypto_rand::RngCore;
     use mc_transaction_core::{
         account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX},
         constants::{BASE_FEE, MAX_INPUTS, RING_SIZE},
@@ -2163,7 +2164,7 @@ mod test {
             let _ = add_block_to_ledger_db(
                 &mut ledger_db,
                 &[sender_default_subaddress.clone()],
-                &[],
+                &[KeyImage::from(rng.next_u64())],
                 &mut rng,
             );
         }

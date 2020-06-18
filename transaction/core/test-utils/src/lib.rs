@@ -10,6 +10,7 @@ pub use mc_transaction_core::{
     get_tx_out_shared_secret,
     onetime_keys::recover_onetime_private_key,
     range::Range,
+    ring_signature::KeyImage,
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipHash},
     Block, BlockID, BlockIndex, BLOCK_VERSION,
 };
@@ -260,7 +261,10 @@ pub fn get_blocks<T: Rng + RngCore + CryptoRng>(
             .collect();
         let outputs = get_outputs(&recipient_and_amount, rng);
 
-        let block_contents = BlockContents::new(Vec::new(), outputs);
+        // Non-origin blocks must have at least one key image.
+        let key_images = vec![KeyImage::from(block_index as u64)];
+
+        let block_contents = BlockContents::new(key_images, outputs);
 
         // Fake proofs
         let root_element = TxOutMembershipElement {
