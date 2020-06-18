@@ -26,7 +26,7 @@ const OPTIMIZER_ITERATIONS: usize = 100;
 const VALUES_TO_SUBMIT: usize = 5000;
 
 // panic if any iteration requires more than the allowed time
-const ALLOWED_TEST_TIME: Duration = Duration::from_secs(180);
+const ALLOWED_TEST_TIME: Duration = Duration::from_secs(300);
 
 // Optimization range limits
 const MIN_SUBMISSIONS_PER_SEC: f64 = 5000.0;
@@ -101,7 +101,7 @@ pub fn mock_network_optimizer(
 fn optimize_simplers(
     network: &mock_network::Network,
     parameters_to_vary: Vec<bool>,
-    logger: Logger
+    logger: Logger,
 ) {
     let start = Instant::now();
 
@@ -159,7 +159,7 @@ fn optimize_simplers(
 fn optimize_grid_search(
     network: &mock_network::Network,
     parameters_to_vary: Vec<bool>,
-    logger: Logger
+    logger: Logger,
 ) {
     let start = Instant::now();
 

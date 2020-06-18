@@ -148,7 +148,7 @@ impl SimulatedNetwork {
                 node_options.id.clone(),
                 node_options.quorum_set.clone(),
                 test_options,
-                Arc::new( move |logger, msg| {
+                Arc::new(move |logger, msg| {
                     SimulatedNetwork::broadcast_msg(logger, &nodes_map_clone, &peers_clone, msg)
                 }),
                 logger.new(o!("mc.local_node_id" => node_options.id.to_string())),
