@@ -147,77 +147,91 @@ pipeline {
         }
       }
     }
-    stage('Deploy to k8s') {
+    stage('Deploy and Test') {
       options {
-        skipDefaultCheckout true
+        lock resource: env.NETWORK
       }
-      agent {
-        kubernetes {
-          slaveConnectTimeout 240000
-          activeDeadlineSeconds 43200
-          yamlFile 'jenkins/kubectl-pod.yaml'
-        }
-      }
-      steps {
-        container('jnlp') {
-          unstash name: 'sources'
-          dir('deploy') {
-            sh './generate-manifests -n ${NETWORK} -t ${NETWORK}-${TAG_VERSION}'
+      stages {
+        stage('Deploy to k8s') {
+          options {
+            skipDefaultCheckout true
+          }
+          agent {
+            kubernetes {
+              slaveConnectTimeout 240000
+              activeDeadlineSeconds 43200
+              yamlFile 'jenkins/kubectl-pod.yaml'
+            }
+          }
+          steps {
+            container('jnlp') {
+              unstash name: 'sources'
+              dir('deploy') {
+                sh './generate-manifests -n ${NETWORK} -t ${NETWORK}-${TAG_VERSION}'
+              }
+            }
+            container('kubectl') {
+              dir('deploy/build') {
+                script {
+                  sh(script: 'kubectl get po -n ${NETWORK}')
+
+                  // Delete the consensus nodes, and {discovery, mobilecoind, ledger} nodes if any
+                  sh(script: 'for i in 03* 04*; do kubectl delete --ignore-not-found -n ${NETWORK} -f ${i}; done')
+
+                  // Launch the consensus node deployments
+                  sh(script: 'for i in 03*yaml; do kubectl apply -n ${NETWORK} -f ${i}; done')
+
+                  // Wait until the deployments have achieved an Available state.
+                  sh(script: 'for i in 1 2 3 4 5; do kubectl wait --for=condition=Available deploy/node${i} -n ${NETWORK} --timeout=2500s; done')
+
+                  // Deploy an internal mobilecoind to test with
+                  sh(script: 'kubectl apply -n ${NETWORK} -f 04-mobilecoind.yaml')
+
+                  // Wait for mobilecoind to achieve and Available state
+                  sh(script: 'kubectl wait --for=condition=Available deploy/mobilecoind -n ${NETWORK} --timeout=480s')
+
+                  sh(script: 'kubectl get po -n ${NETWORK}')
+                }
+              }
+            }
           }
         }
-        container('kubectl') {
-          dir('deploy/build') {
-            script {
-              sh(script: 'kubectl get po -n ${NETWORK}')
-
-              // Delete the consensus nodes, and {discovery, mobilecoind, ledger} nodes if any
-              sh(script: 'for i in 03* 04*; do kubectl delete --ignore-not-found -n ${NETWORK} -f ${i}; done')
-
-              // Launch the consensus node deployments
-              sh(script: 'for i in 03*yaml; do kubectl apply -n ${NETWORK} -f ${i}; done')
-
-              // Wait until the deployments have achieved an Available state.
-              sh(script: 'for i in 1 2 3 4 5; do kubectl wait --for=condition=Available deploy/node${i} -n ${NETWORK} --timeout=2500s; done')
-
-              // Deploy an internal mobilecoind to test with
-              sh(script: 'kubectl apply -n ${NETWORK} -f 04-mobilecoind.yaml')
-
-              // Wait for mobilecoind to achieve and Available state
-              sh(script: 'kubectl wait --for=condition=Available deploy/mobilecoind -n ${NETWORK} --timeout=480s')
-
-              sh(script: 'kubectl get po -n ${NETWORK}')
+        stage('Wallet Integration Test') {
+          steps {
+            container('rust-builder-default') {
+              dir('mobilecoind/strategies') {
+                sh 'pip3 install -r requirements.txt'
+                sh '''
+                  python3 -m grpc_tools.protoc -I$WORKSPACE/api/proto \
+                    --python_out=. $WORKSPACE/api/proto/external.proto
+                '''
+                sh '''
+                  python3 -m grpc_tools.protoc -I$WORKSPACE/api/proto \
+                    --python_out=. $WORKSPACE/api/proto/blockchain.proto
+                '''
+                sh '''
+                  python3 -m grpc_tools.protoc \
+                    -I$WORKSPACE/mobilecoind/api/proto -I$WORKSPACE/api/proto -I$WORKSPACE/consensus/api/proto \
+                    --python_out=. --grpc_python_out=. $WORKSPACE/mobilecoind/api/proto/mobilecoind_api.proto
+                '''
+                sh '''
+                  python3 test_client.py \
+                    --key-dir $WORKSPACE/ops/sample_data/keys \
+                    --mobilecoind-host mobilecoind.${NETWORK}.svc.cluster.local\
+                    --mobilecoind-port 3229
+                '''
+              }
             }
           }
         }
       }
     }
-    stage('Wallet Integration Test') {
-      steps {
-        container('rust-builder-default') {
-          dir('mobilecoind/strategies') {
-            sh 'pip3 install -r requirements.txt'
-            sh '''
-              python3 -m grpc_tools.protoc -I$WORKSPACE/api/proto \
-                --python_out=. $WORKSPACE/api/proto/external.proto
-            '''
-            sh '''
-              python3 -m grpc_tools.protoc -I$WORKSPACE/api/proto \
-                --python_out=. $WORKSPACE/api/proto/blockchain.proto
-            '''
-            sh '''
-              python3 -m grpc_tools.protoc \
-                -I$WORKSPACE/mobilecoind/api/proto -I$WORKSPACE/api/proto -I$WORKSPACE/consensus/api/proto \
-                --python_out=. --grpc_python_out=. $WORKSPACE/mobilecoind/api/proto/mobilecoind_api.proto
-            '''
-            sh '''
-              python3 test_client.py \
-                --key-dir $WORKSPACE/ops/sample_data/keys \
-                --mobilecoind-host mobilecoind.${NETWORK}.svc.cluster.local\
-                --mobilecoind-port 3229
-            '''
-          }
-        }
-      }
+  }
+  post {
+    always {
+      slackSend
+        color: COLOR_MAP[currentBuild.currentResult],
+        message: "*${currentBuild.currentResult}:*\nJob: ${env.JOB_NAME}\nCommit: ${env.GIT_COMMIT}\nDocker Tag: ${env.NETWORK}-v${env.TAG_NUMBER}\nBuild: ${env.BUILD_NUMBER}\nDuration: ${currentBuild.durationString}\nMore info at: ${env.BUILD_URL}"
     }
   }
 }
