@@ -160,10 +160,9 @@ impl SimulatedNetwork {
                 node_options.id.clone(),
                 join_handle_option.expect("thread failed to spawn"),
             );
-            simulation.names_map.insert(
-                node_options.id.clone(),
-                node_options.name.clone(),
-            );
+            simulation
+                .names_map
+                .insert(node_options.id.clone(), node_options.name.clone());
             simulation
                 .shared_data_map
                 .insert(node_options.id.clone(), node.shared_data.clone());
@@ -604,7 +603,10 @@ pub fn build_and_test(network: &Network, test_options: &TestOptions, logger: Log
                     simulation.logger,
                     "( testing ) failed to externalize all values within {} sec at node {}!",
                     test_options.allowed_test_time.as_secs(),
-                    simulation.names_map.get(node_id).expect("could not find node_id"),
+                    simulation
+                        .names_map
+                        .get(node_id)
+                        .expect("could not find node_id"),
                 );
                 // panic
                 panic!("test failed due to timeout");
@@ -627,7 +629,10 @@ pub fn build_and_test(network: &Network, test_options: &TestOptions, logger: Log
                     log::warn!(
                         simulation.logger,
                         "( testing ) externalized extra values at node {}",
-                        simulation.names_map.get(node_id).expect("could not find node_id"),
+                        simulation
+                            .names_map
+                            .get(node_id)
+                            .expect("could not find node_id"),
                     );
                 }
 
@@ -640,7 +645,10 @@ pub fn build_and_test(network: &Network, test_options: &TestOptions, logger: Log
                     "( testing ) externalized {}/{} values at node {}",
                     num_externalized_values,
                     test_options.values_to_submit,
-                    simulation.names_map.get(node_id).expect("could not find node_id"),
+                    simulation
+                        .names_map
+                        .get(node_id)
+                        .expect("could not find node_id"),
                 );
                 last_log = Instant::now();
             }
@@ -671,7 +679,10 @@ pub fn build_and_test(network: &Network, test_options: &TestOptions, logger: Log
             log::error!(
                 simulation.logger,
                 "node {} externalized wrong values! missing: {:?}, unexpected: {:?}",
-                simulation.names_map.get(node_id).expect("could not find node_id"),
+                simulation
+                    .names_map
+                    .get(node_id)
+                    .expect("could not find node_id"),
                 missing_values,
                 unexpected_values,
             );
