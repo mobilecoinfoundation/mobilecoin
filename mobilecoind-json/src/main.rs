@@ -483,6 +483,35 @@ fn block_details(
     }))
 }
 
+#[derive(Deserialize)]
+struct JsonAddressRequestCodeRequest {
+    url: String,
+}
+
+#[derive(Serialize, Default)]
+struct JsonAddressRequestCodeResponse {
+    request_code: String,
+}
+
+/// Generates an AddressRequest code with a URL for the client to POST payment instructions
+#[post("/address-request", format = "json", data = "<address_request>")]
+fn address_request_code(
+    state: rocket::State<State>,
+    address_request: Json<JsonAddressRequestCodeRequest>,
+) -> Result<Json<JsonAddressRequestCodeResponse>, String> {
+    let mut req = mc_mobilecoind_api::GetAddressRequestCodeRequest::new();
+    req.set_url(address_request.url.clone());
+
+    let resp = state
+        .mobilecoind_api_client
+        .get_address_request_code(&req)
+        .map_err(|err| format!("Failed address code: {}", err))?;
+
+    Ok(Json(JsonAddressRequestCodeResponse {
+        request_code: String::from(resp.get_b58_code()),
+    }))
+}
+
 fn main() {
     mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
@@ -534,6 +563,7 @@ fn main() {
                 ledger_info,
                 block_info,
                 block_details,
+                address_request_code,
             ],
         )
         .manage(State {
