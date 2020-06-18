@@ -81,13 +81,11 @@ pub fn mock_network_optimizer(
     let v1 = test_options.max_pending_values_to_nominate;
     let v2 = test_options.scp_timebase.as_millis();
 
-
-
-    let mut min_run_time = std::f64::MAX;
+    let mut min_run_time: f64 = std::f64::MAX;
     for i in 0..REPEATS_PER_ITERATION {
         let run_time_start = Instant::now();
         mock_network::build_and_test(&network, &test_options, logger.clone());
-        let run_time = run_time_start.elapsed().as_millis();
+        let run_time: f64 = run_time_start.elapsed().as_millis() as f64;
         if run_time <= min_run_time {
             min_run_time = run_time;
         }
