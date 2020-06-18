@@ -163,7 +163,7 @@ fn optimize_grid_search(
 ) {
     let start = Instant::now();
 
-    let mut d: usize = parameters_to_vary.iter().position(|&b| b).unwrap();
+    let d: usize = parameters_to_vary.iter().position(|&b| b).unwrap();
 
     let f = |v: &[f64]| {
         mock_network_optimizer(
