@@ -7,7 +7,7 @@
 #![allow(dead_code)]
 
 use mc_common::{
-    logger::{log, o, Logger},
+    logger::{log, Logger},
     HashMap, HashSet, NodeID,
 };
 use mc_consensus_scp::{
@@ -86,6 +86,9 @@ impl TestOptions {
 // Describes one simulated node
 #[derive(Clone)]
 pub struct NodeOptions {
+    /// This node's short name
+    name: String,
+
     /// This node's id
     id: NodeID,
 
@@ -97,8 +100,9 @@ pub struct NodeOptions {
 }
 
 impl NodeOptions {
-    pub fn new(id: NodeID, peers: HashSet<NodeID>, quorum_set: QuorumSet) -> Self {
+    pub fn new(name: String, id: NodeID, peers: HashSet<NodeID>, quorum_set: QuorumSet) -> Self {
         Self {
+            name,
             id,
             peers,
             quorum_set,
@@ -121,6 +125,7 @@ impl Network {
 
 pub struct SimulatedNetwork {
     handle_map: HashMap<NodeID, JoinHandle<()>>,
+    names_map: HashMap<NodeID, String>,
     nodes_map: Arc<Mutex<HashMap<NodeID, SimulatedNode>>>,
     shared_data_map: HashMap<NodeID, Arc<Mutex<SimulatedNodeSharedData>>>,
     logger: Logger,
@@ -131,6 +136,7 @@ impl SimulatedNetwork {
     pub fn new(network: &Network, test_options: &TestOptions, logger: Logger) -> Self {
         let mut simulation = SimulatedNetwork {
             handle_map: HashMap::default(),
+            names_map: HashMap::default(),
             nodes_map: Arc::new(Mutex::new(HashMap::default())),
             shared_data_map: HashMap::default(),
             logger: logger.clone(),
@@ -143,18 +149,20 @@ impl SimulatedNetwork {
             let peers_clone = node_options.peers.clone();
 
             let (node, join_handle_option) = SimulatedNode::new(
-                format!("{}-{}", network.name, node_options.id.clone()),
-                node_options.id.clone(),
-                node_options.quorum_set.clone(),
+                node_options.clone(),
                 test_options,
                 Arc::new(move |logger, msg| {
                     SimulatedNetwork::broadcast_msg(logger, &nodes_map_clone, &peers_clone, msg)
                 }),
-                logger.new(o!("mc.local_node_id" => node_options.id.to_string())),
+                logger.clone(),
             );
             simulation.handle_map.insert(
                 node_options.id.clone(),
                 join_handle_option.expect("thread failed to spawn"),
+            );
+            simulation.names_map.insert(
+                node_options.id.clone(),
+                node_options.name.clone(),
             );
             simulation
                 .shared_data_map
@@ -176,15 +184,19 @@ impl SimulatedNetwork {
             .expect("lock failed on nodes_map in stop_all");
         let mut node_ids: Vec<NodeID> = Vec::new();
         for (node_id, node) in nodes_map.iter_mut() {
-            log::trace!(self.logger, "sending stop to {}", node_id);
+            log::trace!(
+                self.logger,
+                "sending stop to {}",
+                self.names_map
+                    .get(node_id)
+                    .expect("could not find node_id in nodes_map"),
+            );
             node.send_stop();
             node_ids.push(node_id.clone());
         }
         drop(nodes_map);
 
         for node_id in node_ids {
-            log::trace!(self.logger, "joining {}", node_id);
-
             self.handle_map
                 .remove(&node_id)
                 .expect("thread handle is missing")
@@ -276,9 +288,7 @@ struct SimulatedNode {
 
 impl SimulatedNode {
     fn new(
-        thread_name: String,
-        node_id: NodeID,
-        quorum_set: QuorumSet,
+        node_options: NodeOptions,
         test_options: &TestOptions,
         broadcast_msg_fn: Arc<dyn Fn(Logger, Msg<String>) + Sync + Send>,
         logger: Logger,
@@ -291,8 +301,8 @@ impl SimulatedNode {
         };
 
         let mut thread_local_node = Node::new(
-            node_id.clone(),
-            quorum_set,
+            node_options.id.clone(),
+            node_options.quorum_set.clone(),
             test_options.validity_fn.clone(),
             test_options.combine_fn.clone(),
             logger.clone(),
@@ -310,7 +320,7 @@ impl SimulatedNode {
 
         let join_handle_option = Some(
             thread::Builder::new()
-                .name(thread_name)
+                .name(node_options.id.to_string())
                 .spawn(move || {
                     // All values that have not yet been externalized.
                     let mut pending_values: HashSet<String> = HashSet::default();
@@ -423,7 +433,7 @@ impl SimulatedNode {
                             log::trace!(
                                 logger,
                                 "(  ledger ) node {} slot {} : {} new, {} total, {} pending",
-                                node_id,
+                                node_options.name,
                                 current_slot as SlotIndex,
                                 new_block_length,
                                 ledger_size,
@@ -437,7 +447,7 @@ impl SimulatedNode {
                     log::info!(
                         logger,
                         "thread results: {},{},{}",
-                        node_id,
+                        node_options.name,
                         total_broadcasts,
                         current_slot,
                     );
@@ -594,7 +604,7 @@ pub fn build_and_test(network: &Network, test_options: &TestOptions, logger: Log
                     simulation.logger,
                     "( testing ) failed to externalize all values within {} sec at node {}!",
                     test_options.allowed_test_time.as_secs(),
-                    node_id,
+                    simulation.names_map.get(node_id).expect("could not find node_id"),
                 );
                 // panic
                 panic!("test failed due to timeout");
@@ -610,14 +620,14 @@ pub fn build_and_test(network: &Network, test_options: &TestOptions, logger: Log
                     "( testing ) externalized {}/{} values at node {}",
                     num_externalized_values,
                     test_options.values_to_submit,
-                    node_id
+                    simulation.names_map.get(node_id).expect("could not find node_id"),
                 );
 
                 if num_externalized_values > test_options.values_to_submit {
                     log::warn!(
                         simulation.logger,
                         "( testing ) externalized extra values at node {}",
-                        node_id
+                        simulation.names_map.get(node_id).expect("could not find node_id"),
                     );
                 }
 
@@ -630,7 +640,7 @@ pub fn build_and_test(network: &Network, test_options: &TestOptions, logger: Log
                     "( testing ) externalized {}/{} values at node {}",
                     num_externalized_values,
                     test_options.values_to_submit,
-                    node_id
+                    simulation.names_map.get(node_id).expect("could not find node_id"),
                 );
                 last_log = Instant::now();
             }
@@ -661,7 +671,7 @@ pub fn build_and_test(network: &Network, test_options: &TestOptions, logger: Log
             log::error!(
                 simulation.logger,
                 "node {} externalized wrong values! missing: {:?}, unexpected: {:?}",
-                node_id,
+                simulation.names_map.get(node_id).expect("could not find node_id"),
                 missing_values,
                 unexpected_values,
             );

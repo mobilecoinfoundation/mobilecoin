@@ -26,6 +26,7 @@ pub fn dense_mesh(num_nodes: usize, k: usize) -> mock_network::Network {
             .collect::<Vec<NodeID>>();
 
         nodes.push(mock_network::NodeOptions::new(
+            format!("m{}", node_index),
             test_utils::test_node_id(node_index as u32),
             peers_vector.iter().cloned().collect::<HashSet<NodeID>>(),
             QuorumSet::new_with_node_ids(k as u32, peers_vector),
