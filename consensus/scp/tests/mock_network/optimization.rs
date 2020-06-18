@@ -20,10 +20,15 @@ use std::{
 
 // we are using a fixed number of iterations for the optimizer
 // this could be improved someday by observing the runtime settle
-const OPTIMIZER_ITERATIONS: usize = 100;
+const OPTIMIZER_ITERATIONS: usize = 20;
+
+// Run time is quite noisy, so it isn't possible to optimize without
+// filtering. We repeat each parameter set this many times and keep
+// the best run.
+const REPEATS_PER_ITERATION: usize = 5;
 
 // values to submit for consensus
-const VALUES_TO_SUBMIT: usize = 5000;
+const VALUES_TO_SUBMIT: usize = 2000;
 
 // panic if any iteration requires more than the allowed time
 const ALLOWED_TEST_TIME: Duration = Duration::from_secs(300);
@@ -76,9 +81,17 @@ pub fn mock_network_optimizer(
     let v1 = test_options.max_pending_values_to_nominate;
     let v2 = test_options.scp_timebase.as_millis();
 
-    let run_time_start = Instant::now();
-    mock_network::build_and_test(&network, &test_options, logger.clone());
-    let run_time = run_time_start.elapsed().as_millis();
+
+
+    let mut min_run_time = std::f64::MAX;
+    for i in 0..REPEATS_PER_ITERATION {
+        let run_time_start = Instant::now();
+        mock_network::build_and_test(&network, &test_options, logger.clone());
+        let run_time = run_time_start.elapsed().as_millis();
+        if run_time <= min_run_time {
+            min_run_time = run_time;
+        }
+    }
 
     // observe progress
     log::warn!(
@@ -86,15 +99,15 @@ pub fn mock_network_optimizer(
         "{}, {}, {}, {}, {}, {}, {}, {}, {}, , ",
         network.name,
         VALUES_TO_SUBMIT,
-        run_time,
-        (VALUES_TO_SUBMIT as f64 * 1000.0) / (run_time as f64),
+        min_run_time,
+        (VALUES_TO_SUBMIT as f64 * 1000.0) / (min_run_time as f64),
         1,
         start.elapsed().as_millis(),
         v0,
         v1,
         v2,
     );
-    return run_time as f64;
+    return min_run_time as f64;
 }
 
 // simplex style optimization
@@ -191,7 +204,7 @@ fn optimize_grid_search(
     let mut coordinates = vec![c0, c1, c2];
     for i in 0..OPTIMIZER_ITERATIONS {
         let (min, max) = input_interval[d];
-        let v_i: f64 = min + (i as f64) / (OPTIMIZER_ITERATIONS as f64) * max;
+        let v_i: f64 = min + (i as f64) * (max - min) / ((OPTIMIZER_ITERATIONS - 1) as f64);
         let mut v = vec![c0, c1, c2];
         v[d] = v_i;
         let run_time = f(&v);
