@@ -491,11 +491,10 @@ impl LedgerDB {
             return Err(Error::NoOutputs);
         }
 
-        // TODO: enable this.
-        // // Non-origin blocks must have key images.
-        // if block.index == 0 && block_contents.key_images.is_empty() {
-        //     return Err(Error::InvalidBlock);
-        // }
+        // Non-origin blocks must have key images.
+        if block.index != 0 && block_contents.key_images.is_empty() {
+            return Err(Error::InvalidBlock);
+        }
 
         // Check if block is being appended at the correct place.
         let num_blocks = self.num_blocks()?;
@@ -609,7 +608,12 @@ mod ledger_db_test {
                 })
                 .collect();
 
-            let key_images: Vec<KeyImage> = Vec::new();
+            // Non-origin blocks must have at least one key image.
+            let key_images: Vec<KeyImage> = if block_index > 0 {
+                vec![KeyImage::from(block_index)]
+            } else {
+                vec![]
+            };
             let block_contents = BlockContents::new(key_images, outputs.clone());
 
             let block = match parent_block {
