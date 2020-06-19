@@ -2,7 +2,7 @@
 
 //! Utilities for Stellar Consensus Protocol tests.
 use crate::{core_types::Value, slot::Slot, QuorumSet, SlotIndex};
-use mc_common::{logger::Logger, NodeID, ResponderId};
+use mc_common::{logger::Logger, HashSet, NodeID, ResponderId};
 use mc_crypto_keys::Ed25519Pair;
 use mc_util_from_random::FromRandom;
 use rand::SeedableRng;
@@ -22,9 +22,11 @@ pub fn trivial_validity_fn<T: Value>(_value: &T) -> Result<(), TransactionValida
     Ok(())
 }
 
-/// Returns `values`.
-pub fn trivial_combine_fn<T: Value>(values: BTreeSet<T>) -> BTreeSet<T> {
-    values
+/// Returns `values` in sorted order.
+pub fn trivial_combine_fn<V: Value>(values: &HashSet<V>) -> Vec<V> {
+    let mut values_as_vec: Vec<_> = values.iter().cloned().collect();
+    values_as_vec.sort();
+    values_as_vec
 }
 
 /// Returns at most the first `n` values.

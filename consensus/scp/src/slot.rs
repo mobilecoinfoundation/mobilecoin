@@ -67,7 +67,7 @@ pub struct Slot<V: Value, ValidationError: Display> {
     Y: HashSet<V>,
 
     /// Set of values we have confirmed as nominated.
-    Z: BTreeSet<V>,
+    Z: HashSet<V>,
 
     /// Current ballot we are trying to pass.
     B: Ballot<V>,
@@ -172,7 +172,7 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
             W: HashSet::default(),
             X: HashSet::default(),
             Y: HashSet::default(),
-            Z: BTreeSet::new(),
+            Z: HashSet::default(),
             B: Ballot::new(0, &Vec::new()),
             P: None,
             PP: None,
@@ -512,9 +512,8 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
         self.update_YZ();
 
         if !self.Z.is_empty() && self.B.is_zero() {
-            let values = (self.combine_fn)(self.Z.clone());
-            let values_as_vec: Vec<V> = values.into_iter().collect();
-            self.B = Ballot::new(1, &values_as_vec);
+            let values: Vec<V> = (self.combine_fn)(&self.Z);
+            self.B = Ballot::new(1, &values);
         }
     }
 
@@ -1113,7 +1112,7 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
         // then "ballot.value" is taken as the output of the deterministic combining function
         // applied to all confirmed nominated values."
         if !self.Z.is_empty() {
-            let values: Vec<V> = (self.combine_fn)(self.Z.clone()).into_iter().collect();
+            let values: Vec<V> = (self.combine_fn)(&self.Z);
             return Some(values);
         }
 
@@ -1401,12 +1400,8 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
 
     /// "Confirmed Nominated" values that are not yet in self.Z.
     fn additional_values_confirmed_nominated(&self) -> BTreeSet<V> {
-        let mut candidates: BTreeSet<_> = self.Y.iter().cloned().collect();
-        candidates = candidates.difference(&self.Z).cloned().collect();
-
         let (quorum_ids, pred) = self.find_quorum(ValueSetPredicate::<V> {
-            // values: self.Y.difference(&self.Z).cloned().collect(),
-            values: candidates,
+            values: self.Y.difference(&self.Z).cloned().collect(),
             test_fn: Arc::new(|msg, values| match msg.accepts_nominated() {
                 None => BTreeSet::default(),
                 Some(values_accepted_nominated) => values
@@ -2016,7 +2011,7 @@ mod nominate_protocol_tests {
             logger,
         );
         slot.Y = HashSet::from_iter(vec!["B"]);
-        slot.Z = BTreeSet::from_iter(vec!["B"]);
+        slot.Z = HashSet::from_iter(vec!["B"]);
         slot.M.insert(msg_2.sender_id.clone(), msg_2);
         slot.M.insert(msg_3.sender_id.clone(), msg_3);
         slot.M.insert(msg_4.sender_id.clone(), msg_4);
@@ -2177,7 +2172,7 @@ mod nominate_protocol_tests {
             logger,
         );
         slot.Y = HashSet::from_iter(vec!["A", "B", "C", "D"]);
-        slot.Z = BTreeSet::from_iter(vec!["A", "B", "C"]);
+        slot.Z = HashSet::from_iter(vec!["A", "B", "C"]);
         slot.M.insert(msg_1.sender_id.clone(), msg_1);
         slot.M.insert(msg_3.sender_id.clone(), msg_3);
         slot.M.insert(msg_4.sender_id.clone(), msg_4);
@@ -2185,7 +2180,7 @@ mod nominate_protocol_tests {
 
         // Calling updateYZ should add "D" to confirmed nominated (Z) since a quorum (2,3,4,5) have accepted nominated (Y) it.
         slot.update_YZ();
-        assert_eq!(slot.Z, BTreeSet::from_iter(vec!["A", "B", "C", "D"]));
+        assert_eq!(slot.Z, HashSet::from_iter(vec!["A", "B", "C", "D"]));
     }
 
     #[test_with_logger]
