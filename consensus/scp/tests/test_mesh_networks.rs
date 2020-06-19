@@ -9,7 +9,7 @@ use serial_test_derive::serial;
 fn mesh_test_helper(
     n: usize, // the number of nodes in the network
     k: usize, // the number of nodes that must agree within the network
-    logger: Logger
+    logger: Logger,
 ) {
     assert!(k <= n);
 

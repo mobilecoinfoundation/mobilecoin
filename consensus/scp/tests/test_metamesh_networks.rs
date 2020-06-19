@@ -9,9 +9,9 @@ use std::time::Duration;
 
 /// Performs a consensus test for a metamesh network of `n * m` nodes.
 fn metamesh_test_helper(
-    n: usize, // the number of organizations in the network
+    n: usize,   // the number of organizations in the network
     k_n: usize, // the number of orgs that must agree within the network
-    m: usize, // the number of servers in each organization
+    m: usize,   // the number of servers in each organization
     k_m: usize, // the number of servers that must agree within the org
     logger: Logger,
 ) {
@@ -55,4 +55,3 @@ fn metamesh_3k2_4k3(logger: Logger) {
 fn metamesh_3k2_5k4(logger: Logger) {
     metamesh_test_helper(3, 2, 5, 4, logger.clone());
 }
-

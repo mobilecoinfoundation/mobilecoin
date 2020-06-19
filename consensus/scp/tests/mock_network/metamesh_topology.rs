@@ -28,12 +28,11 @@ use mc_consensus_scp::{test_utils, QuorumSet};
 ///////////////////////////////////////////////////////////////////////////////
 
 pub fn metamesh(
-    n: usize, // the number of organizations in the network
+    n: usize,   // the number of organizations in the network
     k_n: usize, // the number of orgs that must agree within the network
-    m: usize, // the number of servers in each organization
+    m: usize,   // the number of servers in each organization
     k_m: usize, // the number of servers that must agree within the org
 ) -> mock_network::Network {
-
     let mut nodes = Vec::<mock_network::NodeOptions>::new();
 
     let org_quorum_sets = (0..n)
