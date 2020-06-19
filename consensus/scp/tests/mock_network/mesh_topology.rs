@@ -17,10 +17,13 @@ use mc_consensus_scp::{test_utils, QuorumSet};
 ///////////////////////////////////////////////////////////////////////////////
 
 /// Constructs a mesh network, where each node has all of it's peers as validators.
-pub fn dense_mesh(num_nodes: usize, k: usize) -> mock_network::Network {
+pub fn dense_mesh(
+    n: usize, // the number of nodes in the network
+    k: usize, // the number of nodes that must agree within the network
+) -> mock_network::Network {
     let mut nodes = Vec::<mock_network::NodeOptions>::new();
-    for node_index in 0..num_nodes {
-        let peers_vector = (0..num_nodes)
+    for node_index in 0..n {
+        let peers_vector = (0..n)
             .filter(|other_node_index| other_node_index != &node_index)
             .map(|other_node_index| test_utils::test_node_id(other_node_index as u32))
             .collect::<Vec<NodeID>>();
@@ -33,5 +36,5 @@ pub fn dense_mesh(num_nodes: usize, k: usize) -> mock_network::Network {
         ));
     }
 
-    mock_network::Network::new(format!("m{}k{}", num_nodes, k), nodes)
+    mock_network::Network::new(format!("m{}k{}", n, k), nodes)
 }

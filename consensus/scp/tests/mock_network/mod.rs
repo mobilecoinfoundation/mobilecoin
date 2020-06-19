@@ -28,6 +28,7 @@ use std::{
 
 pub mod cyclic_topology;
 pub mod mesh_topology;
+pub mod metamesh_topology;
 
 // Test values are random strings of this length.
 const CHARACTERS_PER_VALUE: usize = 10;
