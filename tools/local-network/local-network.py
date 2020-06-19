@@ -236,7 +236,12 @@ class Node:
 
         self.consensus_process = subprocess.Popen(cmd, shell=True)
 
-        time.sleep(2)
+        # Wait for ledger db to become available
+        ledger_db = os.path.join(self.ledger_dir, 'data.mdb')
+        while not os.path.exists(ledger_db):
+            time.sleep(1)
+            print(f'Waiting for {ledger_db}')
+
         cmd = ' '.join([
             f'cd {PROJECT_DIR} && exec {TARGET_DIR}/ledger-distribution',
             f'--ledger-path {self.ledger_dir}',

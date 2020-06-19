@@ -6,7 +6,7 @@ from flask import Flask, render_template
 sys.path.append('../mob_client')
 from mob_client import mob_client
 
-client = mob_client('localhost:4444', False)
+client = None  # client is initialized at the bottom of this file
 app = Flask(__name__)
 
 def command_args():
