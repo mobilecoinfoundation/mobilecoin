@@ -9,7 +9,6 @@ default = []
 std = [
     "failure/std",
     "mc-util-serial/std",
-    "serde/std",
 ]
 log = [
     "backtrace",
@@ -19,7 +18,11 @@ log = [
     "slog-scope",
 ]
 loggers = [
+    # Features
     "log",
+    "std",
+
+    # Dependencies
     "hostname",
     "lazy_static",
     "mc-util-build-info",
