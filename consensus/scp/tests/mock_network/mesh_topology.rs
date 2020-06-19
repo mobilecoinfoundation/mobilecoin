@@ -20,15 +20,15 @@ use mc_consensus_scp::{test_utils, QuorumSet};
 pub fn dense_mesh(
     n: usize, // the number of nodes in the network
     k: usize, // the number of nodes that must agree within the network
-) -> mock_network::Network {
-    let mut nodes = Vec::<mock_network::NodeOptions>::new();
+) -> mock_network::NetworkConfig {
+    let mut nodes = Vec::<mock_network::NodeConfig>::new();
     for node_index in 0..n {
         let peers_vector = (0..n)
             .filter(|other_node_index| other_node_index != &node_index)
             .map(|other_node_index| test_utils::test_node_id(other_node_index as u32))
             .collect::<Vec<NodeID>>();
 
-        nodes.push(mock_network::NodeOptions::new(
+        nodes.push(mock_network::NodeConfig::new(
             format!("m{}", node_index),
             test_utils::test_node_id(node_index as u32),
             peers_vector.iter().cloned().collect::<HashSet<NodeID>>(),
@@ -36,5 +36,5 @@ pub fn dense_mesh(
         ));
     }
 
-    mock_network::Network::new(format!("m{}k{}", n, k), nodes)
+    mock_network::NetworkConfig::new(format!("m{}k{}", n, k), nodes)
 }

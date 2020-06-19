@@ -16,8 +16,8 @@ use mc_consensus_scp::{test_utils, QuorumSet};
 ///////////////////////////////////////////////////////////////////////////////
 
 /// Constructs a cyclic network (e.g. 1->2->3->4->1)
-pub fn directed_cycle(num_nodes: usize) -> mock_network::Network {
-    let mut nodes = Vec::<mock_network::NodeOptions>::new();
+pub fn directed_cycle(num_nodes: usize) -> mock_network::NetworkConfig {
+    let mut nodes = Vec::<mock_network::NodeConfig>::new();
     for node_index in 0..num_nodes {
         let next_node_id: NodeID = {
             if node_index + 1 < num_nodes {
@@ -32,7 +32,7 @@ pub fn directed_cycle(num_nodes: usize) -> mock_network::Network {
             .map(|other_node_index| test_utils::test_node_id(other_node_index as u32))
             .collect::<Vec<NodeID>>();
 
-        nodes.push(mock_network::NodeOptions::new(
+        nodes.push(mock_network::NodeConfig::new(
             format!("c{}", node_index),
             test_utils::test_node_id(node_index as u32),
             peers_vector.iter().cloned().collect::<HashSet<NodeID>>(),
@@ -40,5 +40,5 @@ pub fn directed_cycle(num_nodes: usize) -> mock_network::Network {
         ));
     }
 
-    mock_network::Network::new(format!("cyclic{}", num_nodes), nodes)
+    mock_network::NetworkConfig::new(format!("cyclic{}", num_nodes), nodes)
 }

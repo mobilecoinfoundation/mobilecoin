@@ -86,7 +86,7 @@ impl TestOptions {
 
 // Describes one simulated node
 #[derive(Clone)]
-pub struct NodeOptions {
+pub struct NodeConfig {
     /// This node's short name
     name: String,
 
@@ -100,7 +100,7 @@ pub struct NodeOptions {
     quorum_set: QuorumSet,
 }
 
-impl NodeOptions {
+impl NodeConfig {
     pub fn new(name: String, id: NodeID, peers: HashSet<NodeID>, quorum_set: QuorumSet) -> Self {
         Self {
             name,
@@ -113,13 +113,13 @@ impl NodeOptions {
 
 // Describes a network of nodes for simulation
 #[derive(Clone)]
-pub struct Network {
+pub struct NetworkConfig {
     name: String,
-    nodes: Vec<NodeOptions>,
+    nodes: Vec<NodeConfig>,
 }
 
-impl Network {
-    pub fn new(name: String, nodes: Vec<NodeOptions>) -> Self {
+impl NetworkConfig {
+    pub fn new(name: String, nodes: Vec<NodeConfig>) -> Self {
         Self { name, nodes }
     }
 }
@@ -134,8 +134,8 @@ pub struct SCPNetwork {
 
 impl SCPNetwork {
     // creates a new network simulation
-    pub fn new(network: &Network, test_options: &TestOptions, logger: Logger) -> Self {
-        let mut simulation = SCPNetwork {
+    pub fn new(network_config: &NetworkConfig, test_options: &TestOptions, logger: Logger) -> Self {
+        let mut network = SCPNetwork {
             handle_map: HashMap::default(),
             names_map: HashMap::default(),
             nodes_map: Arc::new(Mutex::new(HashMap::default())),
@@ -143,10 +143,10 @@ impl SCPNetwork {
             logger: logger.clone(),
         };
 
-        for node_options in network.nodes.iter() {
+        for node_options in network_config.nodes.iter() {
             assert!(!node_options.peers.contains(&node_options.id));
 
-            let nodes_map_clone = Arc::clone(&simulation.nodes_map);
+            let nodes_map_clone = Arc::clone(&network.nodes_map);
             let peers_clone = node_options.peers.clone();
 
             let (node, join_handle_option) = SCPNode::new(
@@ -157,24 +157,24 @@ impl SCPNetwork {
                 }),
                 logger.clone(),
             );
-            simulation.handle_map.insert(
+            network.handle_map.insert(
                 node_options.id.clone(),
                 join_handle_option.expect("thread failed to spawn"),
             );
-            simulation
+            network
                 .names_map
                 .insert(node_options.id.clone(), node_options.name.clone());
-            simulation
+            network
                 .shared_data_map
                 .insert(node_options.id.clone(), node.shared_data.clone());
-            simulation
+            network
                 .nodes_map
                 .lock()
                 .expect("lock failed on nodes_map inserting node")
                 .insert(node_options.id.clone(), node);
         }
 
-        simulation
+        network
     }
 
     fn stop_all(&mut self) {
@@ -288,7 +288,7 @@ struct SCPNode {
 
 impl SCPNode {
     fn new(
-        node_options: NodeOptions,
+        node_options: NodeConfig,
         test_options: &TestOptions,
         broadcast_msg_fn: Arc<dyn Fn(Logger, Msg<String>) + Sync + Send>,
         logger: Logger,
@@ -510,21 +510,21 @@ pub fn skip_slow_tests() -> bool {
 }
 
 /// Injects values to a network and waits for completion
-pub fn build_and_test(network: &Network, test_options: &TestOptions, logger: Logger) {
-    let simulation = SCPNetwork::new(network, test_options, logger.clone());
+pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions, logger: Logger) {
+    let simulation = SCPNetwork::new(network_config, test_options, logger.clone());
 
     if test_options.submit_in_parallel {
         log::info!(
             logger,
             "( testing ) begin test for {} with {} values in parallel",
-            network.name,
+            network_config.name,
             test_options.values_to_submit,
         );
     } else {
         log::info!(
             logger,
             "( testing ) begin test for {} with {} values in sequence",
-            network.name,
+            network_config.name,
             test_options.values_to_submit,
         );
     }
@@ -545,10 +545,10 @@ pub fn build_and_test(network: &Network, test_options: &TestOptions, logger: Log
     );
 
     // get a vector of the node_ids
-    let node_ids: Vec<NodeID> = network.nodes.iter().map(|n| n.id.clone()).collect();
+    let node_ids: Vec<NodeID> = network_config.nodes.iter().map(|n| n.id.clone()).collect();
 
     // check that all ledgers start empty
-    for n in 0..network.nodes.len() {
+    for n in 0..network_config.nodes.len() {
         assert!(simulation.get_ledger_size(&node_ids[n]) == 0);
     }
 
@@ -559,12 +559,12 @@ pub fn build_and_test(network: &Network, test_options: &TestOptions, logger: Log
 
         if test_options.submit_in_parallel {
             // simulate broadcast of values to all nodes in parallel
-            for n in 0..network.nodes.len() {
+            for n in 0..network_config.nodes.len() {
                 simulation.push_value(&node_ids[n], &values[i]);
             }
         } else {
             // submit values to nodes in sequence
-            let n = i % network.nodes.len();
+            let n = i % network_config.nodes.len();
             simulation.push_value(&node_ids[n], &values[i]);
         }
 
@@ -729,7 +729,7 @@ pub fn build_and_test(network: &Network, test_options: &TestOptions, logger: Log
     log::info!(
         logger,
         "test results: {},{},{},{},{},{}",
-        network.name,
+        network_config.name,
         start.elapsed().as_millis(),
         values.len(),
         test_options.submissions_per_sec,
@@ -741,7 +741,7 @@ pub fn build_and_test(network: &Network, test_options: &TestOptions, logger: Log
     log::info!(
         logger,
         "test completed for {}: {:?} (avg {} tx/s)",
-        network.name,
+        network_config.name,
         start.elapsed(),
         (1_000_000 * values.len() as u128) / start.elapsed().as_micros(),
     );

@@ -32,8 +32,8 @@ pub fn metamesh(
     k_n: usize, // the number of orgs that must agree within the network
     m: usize,   // the number of servers in each organization
     k_m: usize, // the number of servers that must agree within the org
-) -> mock_network::Network {
-    let mut nodes = Vec::<mock_network::NodeOptions>::new();
+) -> mock_network::NetworkConfig {
+    let mut nodes = Vec::<mock_network::NodeConfig>::new();
 
     let org_quorum_sets = (0..n)
         .map(|org_index| {
@@ -89,7 +89,7 @@ pub fn metamesh(
                 })
                 .collect::<HashSet<NodeID>>();
 
-            nodes.push(mock_network::NodeOptions::new(
+            nodes.push(mock_network::NodeConfig::new(
                 format!("mm{}-{}", org_index, server_index),
                 node_id,
                 peers,
@@ -98,5 +98,5 @@ pub fn metamesh(
         }
     }
 
-    mock_network::Network::new(format!("{}k{}-{}k{}", n, k_n, m, k_m), nodes)
+    mock_network::NetworkConfig::new(format!("{}k{}-{}k{}", n, k_n, m, k_m), nodes)
 }
