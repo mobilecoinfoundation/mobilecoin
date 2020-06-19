@@ -58,7 +58,7 @@ pub struct Slot<V: Value, ValidationError: Display> {
     M: HashMap<NodeID, Msg<V>>,
 
     /// Set of values that have been proposed, but not yet voted for.
-    W: BTreeSet<V>,
+    W: HashSet<V>,
 
     /// Set of values we have voted to nominate.
     X: BTreeSet<V>,
@@ -169,7 +169,7 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
             node_id,
             quorum_set,
             M: HashMap::default(),
-            W: BTreeSet::default(),
+            W: HashSet::default(),
             X: BTreeSet::default(),
             Y: BTreeSet::default(),
             Z: BTreeSet::new(),
