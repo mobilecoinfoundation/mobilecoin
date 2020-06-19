@@ -38,6 +38,7 @@ pub enum ConversionError {
     NarrowingCastError,
     ArrayCastError,
     KeyCastError,
+    Key(mc_crypto_keys::KeyError),
     Other,
 }
 
@@ -756,6 +757,12 @@ impl From<Vec<u8>> for external::KeyImage {
         let mut key_image = external::KeyImage::new();
         key_image.set_data(src);
         key_image
+    }
+}
+
+impl From<mc_crypto_keys::KeyError> for ConversionError {
+    fn from(src: mc_crypto_keys::KeyError) -> Self {
+        Self::Key(src)
     }
 }
 
