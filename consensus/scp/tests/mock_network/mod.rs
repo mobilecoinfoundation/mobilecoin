@@ -143,14 +143,14 @@ impl SCPNetwork {
             logger: logger.clone(),
         };
 
-        for node_options in network_config.nodes.iter() {
-            assert!(!node_options.peers.contains(&node_options.id));
+        for node_config in network_config.nodes.iter() {
+            assert!(!node_config.peers.contains(&node_config.id));
 
             let nodes_map_clone = Arc::clone(&network.nodes_map);
-            let peers_clone = node_options.peers.clone();
+            let peers_clone = node_config.peers.clone();
 
             let (node, join_handle_option) = SCPNode::new(
-                node_options.clone(),
+                node_config.clone(),
                 test_options,
                 Arc::new(move |logger, msg| {
                     SCPNetwork::broadcast_msg(logger, &nodes_map_clone, &peers_clone, msg)
@@ -158,20 +158,20 @@ impl SCPNetwork {
                 logger.clone(),
             );
             network.handle_map.insert(
-                node_options.id.clone(),
+                node_config.id.clone(),
                 join_handle_option.expect("thread failed to spawn"),
             );
             network
                 .names_map
-                .insert(node_options.id.clone(), node_options.name.clone());
+                .insert(node_config.id.clone(), node_config.name.clone());
             network
                 .shared_data_map
-                .insert(node_options.id.clone(), node.shared_data.clone());
+                .insert(node_config.id.clone(), node.shared_data.clone());
             network
                 .nodes_map
                 .lock()
                 .expect("lock failed on nodes_map inserting node")
-                .insert(node_options.id.clone(), node);
+                .insert(node_config.id.clone(), node);
         }
 
         network
@@ -288,7 +288,7 @@ struct SCPNode {
 
 impl SCPNode {
     fn new(
-        node_options: NodeConfig,
+        node_config: NodeConfig,
         test_options: &TestOptions,
         broadcast_msg_fn: Arc<dyn Fn(Logger, Msg<String>) + Sync + Send>,
         logger: Logger,
@@ -301,8 +301,8 @@ impl SCPNode {
         };
 
         let mut thread_local_node = Node::new(
-            node_options.id.clone(),
-            node_options.quorum_set.clone(),
+            node_config.id.clone(),
+            node_config.quorum_set.clone(),
             test_options.validity_fn.clone(),
             test_options.combine_fn.clone(),
             logger.clone(),
@@ -320,7 +320,7 @@ impl SCPNode {
 
         let join_handle_option = Some(
             thread::Builder::new()
-                .name(node_options.id.to_string())
+                .name(node_config.id.to_string())
                 .spawn(move || {
                     // All values that have not yet been externalized.
                     let mut pending_values: HashSet<String> = HashSet::default();
@@ -433,7 +433,7 @@ impl SCPNode {
                             log::trace!(
                                 logger,
                                 "(  ledger ) node {} slot {} : {} new, {} total, {} pending",
-                                node_options.name,
+                                node_config.name,
                                 current_slot as SlotIndex,
                                 new_block_length,
                                 ledger_size,
@@ -447,7 +447,7 @@ impl SCPNode {
                     log::info!(
                         logger,
                         "thread results: {},{},{}",
-                        node_options.name,
+                        node_config.name,
                         total_broadcasts,
                         current_slot,
                     );
