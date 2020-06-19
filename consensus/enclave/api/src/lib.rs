@@ -39,14 +39,17 @@ pub struct LocallyEncryptedTx(pub Vec<u8>);
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct WellFormedEncryptedTx(pub Vec<u8>);
 
-/// Tx data we wish to expose to untrusted from well-formed Txs
+/// Tx data we wish to expose to untrusted from well-formed Txs.
+///
+/// The derived ordering is a lexicographic ordering of this struct's members from top-to-bottom.
+/// This ordering is used to sort transactions in a slot.
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct WellFormedTxContext {
-    /// Tx hash.
-    tx_hash: TxHash,
-
     /// Fee included in the tx.
     fee: u64,
+
+    /// Tx hash.
+    tx_hash: TxHash,
 
     /// Tombstone block.
     tombstone_block: u64,
@@ -90,8 +93,8 @@ impl WellFormedTxContext {
 impl From<&Tx> for WellFormedTxContext {
     fn from(tx: &Tx) -> Self {
         Self {
-            tx_hash: tx.tx_hash(),
             fee: tx.prefix.fee,
+            tx_hash: tx.tx_hash(),
             tombstone_block: tx.prefix.tombstone_block,
             key_images: tx.key_images(),
             highest_indices: tx.get_membership_proof_highest_indices(),
