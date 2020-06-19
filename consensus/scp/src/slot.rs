@@ -61,10 +61,10 @@ pub struct Slot<V: Value, ValidationError: Display> {
     W: HashSet<V>,
 
     /// Set of values we have voted to nominate.
-    X: BTreeSet<V>,
+    X: HashSet<V>,
 
     /// Set of values we have accepted as nominated.
-    Y: BTreeSet<V>,
+    Y: HashSet<V>,
 
     /// Set of values we have confirmed as nominated.
     Z: BTreeSet<V>,
@@ -170,8 +170,8 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
             quorum_set,
             M: HashMap::default(),
             W: HashSet::default(),
-            X: BTreeSet::default(),
-            Y: BTreeSet::default(),
+            X: HashSet::default(),
+            Y: HashSet::default(),
             Z: BTreeSet::new(),
             B: Ballot::new(0, &Vec::new()),
             P: None,
@@ -1220,18 +1220,12 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
                 if let Some(prepare_payload) = prepare_payload_opt {
                     // Issue NominatePrepare
                     Some(Topic::NominatePrepare(
-                        NominatePayload {
-                            X: self.X.clone(),
-                            Y: self.Y.clone(),
-                        },
+                        NominatePayload::new(&self.X, &self.Y),
                         prepare_payload,
                     ))
                 } else if !self.X.is_empty() || !self.Y.is_empty() {
                     // Issue Nominate
-                    Some(Topic::Nominate(NominatePayload {
-                        X: self.X.clone(),
-                        Y: self.Y.clone(),
-                    }))
+                    Some(Topic::Nominate(NominatePayload::new(&self.X, &self.Y)))
                 } else {
                     None
                 }
@@ -1379,7 +1373,7 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
             // Predicate for identifying values in self.X that can be moved to self.Y because
             // a quorum of nodes has issued "vote nominate" or "accept nominate".
             let votes_or_accepts_predicate = ValueSetPredicate::<V> {
-                values: self.X.clone(),
+                values: self.X.iter().cloned().collect(),
                 test_fn: Arc::new(|msg, values| match msg.votes_or_accepts_nominated() {
                     None => BTreeSet::default(),
                     Some(values_voted_or_accepted_nominated) => values
@@ -1407,9 +1401,12 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
 
     /// "Confirmed Nominated" values that are not yet in self.Z.
     fn additional_values_confirmed_nominated(&self) -> BTreeSet<V> {
-        // Identify additional values that can be confirmed nominated.
+        let mut candidates: BTreeSet<_> = self.Y.iter().cloned().collect();
+        candidates = candidates.difference(&self.Z).cloned().collect();
+
         let (quorum_ids, pred) = self.find_quorum(ValueSetPredicate::<V> {
-            values: self.Y.difference(&self.Z).cloned().collect(),
+            // values: self.Y.difference(&self.Z).cloned().collect(),
+            values: candidates,
             test_fn: Arc::new(|msg, values| match msg.accepts_nominated() {
                 None => BTreeSet::default(),
                 Some(values_accepted_nominated) => values
@@ -1836,7 +1833,7 @@ mod nominate_protocol_tests {
                 Y: BTreeSet::default(),
             }),
         );
-        slot.X = BTreeSet::from_iter(vec![1234]);
+        slot.X = HashSet::from_iter(vec![1234]);
         slot.M.insert(msg_1.sender_id.clone(), msg_1);
         let expected = BTreeSet::default();
         assert_eq!(slot.additional_values_accepted_nominated(), expected);
@@ -2018,7 +2015,7 @@ mod nominate_protocol_tests {
             Arc::new(trivial_combine_fn),
             logger,
         );
-        slot.Y = BTreeSet::from_iter(vec!["B"]);
+        slot.Y = HashSet::from_iter(vec!["B"]);
         slot.Z = BTreeSet::from_iter(vec!["B"]);
         slot.M.insert(msg_2.sender_id.clone(), msg_2);
         slot.M.insert(msg_3.sender_id.clone(), msg_3);
@@ -2029,7 +2026,7 @@ mod nominate_protocol_tests {
         // node to update it's accepted nominated (Y) list from what the blocking set has agreed
         // on.
         slot.update_YZ();
-        assert_eq!(slot.Y, BTreeSet::from_iter(vec!["A", "B", "C", "D"]));
+        assert_eq!(slot.Y, HashSet::from_iter(vec!["A", "B", "C", "D"]));
     }
 
     #[test_with_logger]
@@ -2179,7 +2176,7 @@ mod nominate_protocol_tests {
             Arc::new(trivial_combine_fn),
             logger,
         );
-        slot.Y = BTreeSet::from_iter(vec!["A", "B", "C", "D"]);
+        slot.Y = HashSet::from_iter(vec!["A", "B", "C", "D"]);
         slot.Z = BTreeSet::from_iter(vec!["A", "B", "C"]);
         slot.M.insert(msg_1.sender_id.clone(), msg_1);
         slot.M.insert(msg_3.sender_id.clone(), msg_3);
@@ -2563,8 +2560,8 @@ mod ballot_protocol_tests {
         // a Prepare message from node 2 as well.
         {
             slot.phase = Phase::NominatePrepare;
-            slot.X = BTreeSet::from_iter(vec![1337, 1338]);
-            slot.Y = BTreeSet::from_iter(vec![1234, 5678]);
+            slot.X = HashSet::from_iter(vec![1337, 1338]);
+            slot.Y = HashSet::from_iter(vec![1234, 5678]);
             slot.B = Ballot::new(2, &[1234, 5678]);
             slot.P = Some(slot.B.clone());
             slot.last_sent_msg = slot.out_msg();
@@ -2694,8 +2691,8 @@ mod ballot_protocol_tests {
         // Initialize slot so that it has issued "confirm prepare(b)".
         {
             slot.phase = Phase::Prepare;
-            slot.X = BTreeSet::from_iter(vec![1337, 1338]);
-            slot.Y = BTreeSet::from_iter(vec![1234, 5678]);
+            slot.X = HashSet::from_iter(vec![1337, 1338]);
+            slot.Y = HashSet::from_iter(vec![1234, 5678]);
             slot.B = Ballot::new(3, &[1234, 5678]);
             slot.P = Some(Ballot::new(2, &[1234, 5678]));
             slot.H = slot.P.clone();
@@ -3442,7 +3439,7 @@ mod ballot_protocol_tests {
 
         // Node 1 has issued "vote prepare(b)".
         {
-            slot.Y = BTreeSet::from_iter(vec![1234, 5678]);
+            slot.Y = HashSet::from_iter(vec![1234, 5678]);
             slot.B = ballot.clone();
             slot.last_sent_msg = slot.out_msg();
 
