@@ -3,9 +3,9 @@
 use grpcio::{ChannelBuilder, ChannelCredentialsBuilder};
 use protobuf::RepeatedField;
 
-use mc_api::external::{KeyImage, RistrettoPublic};
+use mc_api::external::{KeyImage, PublicAddress, RistrettoPublic};
 use mc_common::logger::{create_app_logger, log, o};
-use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, PublicAddress};
+use mc_mobilecoind_api::mobilecoind_api_grpc::MobilecoindApiClient;
 use rocket::{get, post, routes};
 use rocket_contrib::json::Json;
 use serde_derive::{Deserialize, Serialize};
@@ -246,7 +246,7 @@ fn request_code(
 struct JsonPublicAddress {
     view_public_key: String,
     spend_public_key: String,
-    fog_fqdn: String,
+    fog_url: String,
 }
 
 #[derive(Deserialize, Serialize, Default)]
@@ -278,7 +278,7 @@ fn read_request(
         receiver: JsonPublicAddress {
             view_public_key: hex::encode(receiver.get_view_public_key().get_data().to_vec()),
             spend_public_key: hex::encode(receiver.get_spend_public_key().get_data().to_vec()),
-            fog_fqdn: String::from(receiver.get_fog_fqdn()),
+            fog_url: String::from(receiver.get_fog_url()),
         },
         value: resp.get_value().to_string(),
         memo: resp.get_memo().to_string(),
@@ -327,7 +327,7 @@ fn transfer(
     let mut public_address = PublicAddress::new();
     public_address.set_view_public_key(view_public_key);
     public_address.set_spend_public_key(spend_public_key);
-    public_address.set_fog_fqdn(transfer.receiver.fog_fqdn.clone());
+    public_address.set_fog_url(transfer.receiver.fog_url.clone());
 
     // Generate an outlay
     let mut outlay = mc_mobilecoind_api::Outlay::new();

@@ -6,8 +6,9 @@ use crate::{
     payments::{Outlay, TxProposal},
     utxo_store::UnspentTxOut,
 };
+use mc_api::ConversionError;
 use mc_common::HashMap;
-use mc_mobilecoind_api::{self, ConversionError};
+use mc_mobilecoind_api::{self};
 use mc_transaction_core::{
     account_keys::PublicAddress,
     ring_signature::KeyImage,

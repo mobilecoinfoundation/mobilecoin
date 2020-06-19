@@ -39,6 +39,8 @@ pub enum ConversionError {
     ArrayCastError,
     KeyCastError,
     Key(mc_crypto_keys::KeyError),
+    FeeMismatch,
+    IndexOutOfBounds,
     Other,
 }
 
