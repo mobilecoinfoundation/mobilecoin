@@ -124,18 +124,18 @@ impl Network {
     }
 }
 
-pub struct SimulatedNetwork {
+pub struct SCPNetwork {
     handle_map: HashMap<NodeID, JoinHandle<()>>,
     names_map: HashMap<NodeID, String>,
-    nodes_map: Arc<Mutex<HashMap<NodeID, SimulatedNode>>>,
-    shared_data_map: HashMap<NodeID, Arc<Mutex<SimulatedNodeSharedData>>>,
+    nodes_map: Arc<Mutex<HashMap<NodeID, SCPNode>>>,
+    shared_data_map: HashMap<NodeID, Arc<Mutex<SCPNodeSharedData>>>,
     logger: Logger,
 }
 
-impl SimulatedNetwork {
+impl SCPNetwork {
     // creates a new network simulation
     pub fn new(network: &Network, test_options: &TestOptions, logger: Logger) -> Self {
-        let mut simulation = SimulatedNetwork {
+        let mut simulation = SCPNetwork {
             handle_map: HashMap::default(),
             names_map: HashMap::default(),
             nodes_map: Arc::new(Mutex::new(HashMap::default())),
@@ -149,11 +149,11 @@ impl SimulatedNetwork {
             let nodes_map_clone = Arc::clone(&simulation.nodes_map);
             let peers_clone = node_options.peers.clone();
 
-            let (node, join_handle_option) = SimulatedNode::new(
+            let (node, join_handle_option) = SCPNode::new(
                 node_options.clone(),
                 test_options,
                 Arc::new(move |logger, msg| {
-                    SimulatedNetwork::broadcast_msg(logger, &nodes_map_clone, &peers_clone, msg)
+                    SCPNetwork::broadcast_msg(logger, &nodes_map_clone, &peers_clone, msg)
                 }),
                 logger.clone(),
             );
@@ -201,7 +201,7 @@ impl SimulatedNetwork {
                 .remove(&node_id)
                 .expect("thread handle is missing")
                 .join()
-                .expect("SimulatedNode join failed");
+                .expect("SCPNode join failed");
         }
     }
 
@@ -235,7 +235,7 @@ impl SimulatedNetwork {
 
     fn broadcast_msg(
         logger: Logger,
-        nodes_map: &Arc<Mutex<HashMap<NodeID, SimulatedNode>>>,
+        nodes_map: &Arc<Mutex<HashMap<NodeID, SCPNode>>>,
         peers: &HashSet<NodeID>,
         msg: Msg<String>,
     ) {
@@ -256,13 +256,13 @@ impl SimulatedNetwork {
     }
 }
 
-impl Drop for SimulatedNetwork {
+impl Drop for SCPNetwork {
     fn drop(&mut self) {
         self.stop_all();
     }
 }
 
-enum SimulatedNodeTaskMessage {
+enum SCPNodeTaskMessage {
     Value(String),
     Msg(Arc<Msg<String>>),
     StopTrigger,
@@ -270,23 +270,23 @@ enum SimulatedNodeTaskMessage {
 
 // Node data shared between threads
 #[derive(Clone)]
-struct SimulatedNodeSharedData {
+struct SCPNodeSharedData {
     pub ledger: Vec<Vec<String>>,
 }
 
-impl SimulatedNodeSharedData {
+impl SCPNodeSharedData {
     pub fn ledger_size(&self) -> usize {
         self.ledger.iter().fold(0, |acc, block| acc + block.len())
     }
 }
 
 // A simulated validator node
-struct SimulatedNode {
-    sender: crossbeam_channel::Sender<SimulatedNodeTaskMessage>,
-    shared_data: Arc<Mutex<SimulatedNodeSharedData>>,
+struct SCPNode {
+    sender: crossbeam_channel::Sender<SCPNodeTaskMessage>,
+    shared_data: Arc<Mutex<SCPNodeSharedData>>,
 }
 
-impl SimulatedNode {
+impl SCPNode {
     fn new(
         node_options: NodeOptions,
         test_options: &TestOptions,
@@ -297,7 +297,7 @@ impl SimulatedNode {
 
         let simulated_node = Self {
             sender,
-            shared_data: Arc::new(Mutex::new(SimulatedNodeSharedData { ledger: Vec::new() })),
+            shared_data: Arc::new(Mutex::new(SCPNodeSharedData { ledger: Vec::new() })),
         };
 
         let mut thread_local_node = Node::new(
@@ -333,17 +333,17 @@ impl SimulatedNode {
                         match receiver.try_recv() {
                             Ok(scp_msg) => match scp_msg {
                                 // Collect values submitted from the client
-                                SimulatedNodeTaskMessage::Value(value) => {
+                                SCPNodeTaskMessage::Value(value) => {
                                     pending_values.insert(value.clone());
                                 }
 
                                 // Process an incoming SCP message
-                                SimulatedNodeTaskMessage::Msg(msg) => {
+                                SCPNodeTaskMessage::Msg(msg) => {
                                     incoming_msgs.push(msg);
                                 }
 
                                 // Stop the thread
-                                SimulatedNodeTaskMessage::StopTrigger => {
+                                SCPNodeTaskMessage::StopTrigger => {
                                     break 'main_loop;
                                 }
                             },
@@ -452,7 +452,7 @@ impl SimulatedNode {
                         current_slot,
                     );
                 })
-                .expect("failed spawning SimulatedNode thread"),
+                .expect("failed spawning SCPNode thread"),
         );
 
         (simulated_node, join_handle_option)
@@ -462,7 +462,7 @@ impl SimulatedNode {
     pub fn send_value(&self, value: &str) {
         match self
             .sender
-            .try_send(SimulatedNodeTaskMessage::Value(value.to_owned()))
+            .try_send(SCPNodeTaskMessage::Value(value.to_owned()))
         {
             Ok(_) => {}
             Err(err) => match err {
@@ -476,7 +476,7 @@ impl SimulatedNode {
 
     /// Feed message from the network to this node's consensus task.
     pub fn send_msg(&self, msg: Arc<Msg<String>>) {
-        match self.sender.try_send(SimulatedNodeTaskMessage::Msg(msg)) {
+        match self.sender.try_send(SCPNodeTaskMessage::Msg(msg)) {
             Ok(_) => {}
             Err(err) => match err {
                 crossbeam_channel::TrySendError::Disconnected(_) => {}
@@ -488,7 +488,7 @@ impl SimulatedNode {
     }
 
     pub fn send_stop(&self) {
-        match self.sender.try_send(SimulatedNodeTaskMessage::StopTrigger) {
+        match self.sender.try_send(SCPNodeTaskMessage::StopTrigger) {
             Ok(_) => {}
             Err(err) => match err {
                 crossbeam_channel::TrySendError::Disconnected(_) => {}
@@ -511,7 +511,7 @@ pub fn skip_slow_tests() -> bool {
 
 /// Injects values to a network and waits for completion
 pub fn build_and_test(network: &Network, test_options: &TestOptions, logger: Logger) {
-    let simulation = SimulatedNetwork::new(network, test_options, logger.clone());
+    let simulation = SCPNetwork::new(network, test_options, logger.clone());
 
     if test_options.submit_in_parallel {
         log::info!(
