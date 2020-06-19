@@ -28,8 +28,8 @@ fn metamesh_test_helper(
     test_options.values_to_submit = 1;
     test_options.scp_timebase = Duration::from_millis(100);
 
-    let network = mock_network::metamesh_topology::metamesh(n, k_n, m, k_m);
-    mock_network::build_and_test(&network, &test_options, logger.clone());
+    let network_config = mock_network::metamesh_topology::metamesh(n, k_n, m, k_m);
+    mock_network::build_and_test(&network_config, &test_options, logger.clone());
 }
 
 #[test_with_logger]

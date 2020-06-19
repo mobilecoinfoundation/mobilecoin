@@ -135,7 +135,7 @@ pub struct SCPNetwork {
 impl SCPNetwork {
     // creates a new network simulation
     pub fn new(network_config: &NetworkConfig, test_options: &TestOptions, logger: Logger) -> Self {
-        let mut network = SCPNetwork {
+        let mut scp_network = SCPNetwork {
             handle_map: HashMap::default(),
             names_map: HashMap::default(),
             nodes_map: Arc::new(Mutex::new(HashMap::default())),
@@ -146,7 +146,7 @@ impl SCPNetwork {
         for node_config in network_config.nodes.iter() {
             assert!(!node_config.peers.contains(&node_config.id));
 
-            let nodes_map_clone = Arc::clone(&network.nodes_map);
+            let nodes_map_clone = Arc::clone(&scp_network.nodes_map);
             let peers_clone = node_config.peers.clone();
 
             let (node, join_handle_option) = SCPNode::new(
@@ -157,24 +157,24 @@ impl SCPNetwork {
                 }),
                 logger.clone(),
             );
-            network.handle_map.insert(
+            scp_network.handle_map.insert(
                 node_config.id.clone(),
                 join_handle_option.expect("thread failed to spawn"),
             );
-            network
+            scp_network
                 .names_map
                 .insert(node_config.id.clone(), node_config.name.clone());
-            network
+            scp_network
                 .shared_data_map
                 .insert(node_config.id.clone(), node.shared_data.clone());
-            network
+            scp_network
                 .nodes_map
                 .lock()
                 .expect("lock failed on nodes_map inserting node")
                 .insert(node_config.id.clone(), node);
         }
 
-        network
+        scp_network
     }
 
     fn stop_all(&mut self) {
@@ -295,7 +295,7 @@ impl SCPNode {
     ) -> (Self, Option<JoinHandle<()>>) {
         let (sender, receiver) = crossbeam_channel::unbounded();
 
-        let simulated_node = Self {
+        let scp_node = Self {
             sender,
             shared_data: Arc::new(Mutex::new(SCPNodeSharedData { ledger: Vec::new() })),
         };
@@ -309,7 +309,7 @@ impl SCPNode {
         );
         thread_local_node.scp_timebase = test_options.scp_timebase;
 
-        let thread_shared_data = Arc::clone(&simulated_node.shared_data);
+        let thread_shared_data = Arc::clone(&scp_node.shared_data);
 
         // See byzantine_ledger.rs#L626
         let max_pending_values_to_nominate: usize = test_options.max_pending_values_to_nominate;
@@ -455,7 +455,7 @@ impl SCPNode {
                 .expect("failed spawning SCPNode thread"),
         );
 
-        (simulated_node, join_handle_option)
+        (scp_node, join_handle_option)
     }
 
     /// Push value to this node's consensus task.
