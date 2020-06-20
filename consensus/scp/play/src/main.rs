@@ -2,7 +2,7 @@
 
 //! A utility to play back SCP messages logged by `LoggingScpNode`.
 
-use mc_common::{logger::log, NodeID};
+use mc_common::{logger::log, HashSet, NodeID};
 use mc_consensus_scp::{
     scp_log::{LoggedMsg, ScpLogReader, StoredMsg},
     Msg, Node, QuorumSet, ScpNode, SlotIndex,
@@ -10,13 +10,7 @@ use mc_consensus_scp::{
 use mc_transaction_core::{constants::MAX_TRANSACTIONS_PER_BLOCK, tx::TxHash};
 use mc_util_uri::ConsensusPeerUri as PeerUri;
 use std::{
-    collections::{BTreeSet, VecDeque},
-    fmt,
-    iter::FromIterator,
-    path::PathBuf,
-    str::FromStr,
-    sync::Arc,
-    thread::sleep,
+    collections::VecDeque, fmt, path::PathBuf, str::FromStr, sync::Arc, thread::sleep,
     time::Duration,
 };
 use structopt::StructOpt;
@@ -63,8 +57,11 @@ fn trivial_validity_fn(_value: &TxHash) -> Result<(), TransactionValidationError
     Ok(())
 }
 
-fn trivial_combine_fn(values: BTreeSet<TxHash>) -> BTreeSet<TxHash> {
-    BTreeSet::from_iter(values.into_iter().take(MAX_TRANSACTIONS_PER_BLOCK))
+fn trivial_combine_fn(values: &HashSet<TxHash>) -> Vec<TxHash> {
+    let mut values: Vec<_> = values.iter().cloned().collect();
+    values.sort();
+    values.truncate(MAX_TRANSACTIONS_PER_BLOCK);
+    values
 }
 
 fn main() {

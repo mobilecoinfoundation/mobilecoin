@@ -13,6 +13,7 @@ pub use crate::{error::Error, messages::EnclaveCall};
 
 use alloc::vec::Vec;
 use core::{hash::Hash, result::Result as StdResult};
+use failure::_core::cmp::Ordering;
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, PeerAuthRequest,
@@ -40,28 +41,25 @@ pub struct LocallyEncryptedTx(pub Vec<u8>);
 pub struct WellFormedEncryptedTx(pub Vec<u8>);
 
 /// Tx data we wish to expose to untrusted from well-formed Txs.
-///
-/// The derived ordering is a lexicographic ordering of this struct's members from top-to-bottom.
-/// This ordering is used to sort transactions in a slot.
-#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct WellFormedTxContext {
     /// Fee included in the tx.
-    fee: u64,
+    pub fee: u64,
 
     /// Tx hash.
-    tx_hash: TxHash,
+    pub tx_hash: TxHash,
 
     /// Tombstone block.
-    tombstone_block: u64,
+    pub tombstone_block: u64,
 
     /// Key images.
-    key_images: Vec<KeyImage>,
+    pub key_images: Vec<KeyImage>,
 
     /// Highest membership proofs indices.
-    highest_indices: Vec<u64>,
+    pub highest_indices: Vec<u64>,
 
     /// Output public keys.
-    output_public_keys: Vec<CompressedRistrettoPublic>,
+    pub output_public_keys: Vec<CompressedRistrettoPublic>,
 }
 
 impl WellFormedTxContext {
@@ -100,6 +98,83 @@ impl From<&Tx> for WellFormedTxContext {
             highest_indices: tx.get_membership_proof_highest_indices(),
             output_public_keys: tx.output_public_keys(),
         }
+    }
+}
+
+/// Defines a sort order for transactions in a block.
+/// Transactions are sorted by fee (high to low), then by transaction hash and any other fields.
+impl Ord for WellFormedTxContext {
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self.fee != other.fee {
+            // Sort by fee, descending.
+            other.fee.cmp(&self.fee)
+        } else {
+            // Sort by remaining fields in lexicographic order.
+            (
+                &self.tx_hash,
+                &self.tombstone_block,
+                &self.key_images,
+                &self.highest_indices,
+                &self.output_public_keys,
+            )
+                .cmp(&(
+                    &other.tx_hash,
+                    &other.tombstone_block,
+                    &other.key_images,
+                    &other.highest_indices,
+                    &other.output_public_keys,
+                ))
+        }
+    }
+}
+
+impl PartialOrd for WellFormedTxContext {
+    fn partial_cmp(&self, other: &WellFormedTxContext) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+#[cfg(test)]
+mod wellformed_tx_context_tests {
+    use crate::WellFormedTxContext;
+    use alloc::{vec, vec::Vec};
+
+    #[test]
+    /// WellformedTxContext should be sorted by fee, descending.
+    fn test_ordering() {
+        let a = WellFormedTxContext {
+            fee: 100,
+            tx_hash: Default::default(),
+            tombstone_block: 0,
+            key_images: vec![],
+            highest_indices: vec![],
+            output_public_keys: vec![],
+        };
+
+        let b = WellFormedTxContext {
+            fee: 557,
+            tx_hash: Default::default(),
+            tombstone_block: 0,
+            key_images: vec![],
+            highest_indices: vec![],
+            output_public_keys: vec![],
+        };
+
+        let c = WellFormedTxContext {
+            fee: 88,
+            tx_hash: Default::default(),
+            tombstone_block: 0,
+            key_images: vec![],
+            highest_indices: vec![],
+            output_public_keys: vec![],
+        };
+
+        let mut contexts = vec![a, b, c];
+        contexts.sort();
+
+        let fees: Vec<_> = contexts.iter().map(|context| context.fee).collect();
+        let expected = vec![557, 100, 88];
+        assert_eq!(fees, expected);
     }
 }
 

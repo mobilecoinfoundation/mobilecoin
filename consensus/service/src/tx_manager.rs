@@ -102,20 +102,15 @@ pub trait UntrustedInterfaces: Clone {
     /// Checks if a transaction is valid (see definition in validators.rs).
     fn is_valid(&self, context: &WellFormedTxContext) -> TransactionValidationResult<()>;
 
-    /// Combines a set of "candidate values" into a "composite value". This assumes all values are well
-    /// formed and safe to append to the ledger individually.
-    /// IT ALSO ASSUMES VALUES ARE SORTED.
+    /// Combines a set of "candidate values" into a "composite value".
+    /// This assumes all values are well-formed and safe to append to the ledger individually.
     ///
     /// # Arguments
     /// * `tx_contexts` - "Candidate" transactions. Each is assumed to be individually valid.
     /// * `max_elements` - Maximal number of elements to output.
     ///
     /// Returns a bounded, deterministically-ordered list of transactions that are safe to append to the ledger.
-    fn combine(
-        &self,
-        tx_contexts: &[&WellFormedTxContext],
-        max_elements: usize,
-    ) -> BTreeSet<TxHash>;
+    fn combine(&self, tx_contexts: &[&WellFormedTxContext], max_elements: usize) -> Vec<TxHash>;
 }
 
 #[derive(Clone)]
@@ -279,7 +274,7 @@ impl<E: ConsensusEnclaveProxy, L: Ledger, UI: UntrustedInterfaces> TxManager<E, 
     /// This will silently ignore non-existent hashes. Our combine methods are allowed to filter
     /// out transactions, so while non-existent hashes should not be fed into this method, they are
     /// not treated as an error.
-    pub fn combine_txs_by_hash(&self, tx_hashes: BTreeSet<TxHash>) -> BTreeSet<TxHash> {
+    pub fn combine_txs_by_hash(&self, tx_hashes: &HashSet<TxHash>) -> Vec<TxHash> {
         let cache = self.lock_cache();
         let mut tx_contexts = Vec::new();
         for tx_hash in tx_hashes {
