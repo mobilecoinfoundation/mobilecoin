@@ -780,41 +780,39 @@ mod quorum_set_parser_tests {
     use super::*;
     use pest::Parser;
 
-    #[test]
-    fn test_qs_parser() {
-        // simple quorum set
-        let mut qs_rules = QuorumSetParser::parse(Rule::qs, "([3],1,2,3,4,([2],5,6,([1],8,7)))")
+    fn qs_from_string(quorum_set_string: String) -> QuorumSet<u32> {
+        let mut qs_rules = QuorumSetParser::parse(Rule::qs, quorum_set_string)
             .unwrap()
             .next()
             .unwrap()
             .into_inner();
 
-        let _qs: QuorumSet<u32> = QuorumSet::empty();
-
-        let k:u32 = str::parse(qs_rules.next().unwrap().into_inner().next().unwrap().as_str()).unwrap();
+        let mut qs: QuorumSet<u32> = QuorumSet::empty();
+        qs.k = str::parse::<u32>(qs_rules.next().unwrap().into_inner().next().unwrap().as_str()).unwrap();
 
         let qs_list = qs_rules.next().unwrap().into_inner();
-
-
-        println!("{:?}", k);
+        println!("k = {:?}", k);
 
         for pair in qs_list {
             let element = pair.into_inner().next().unwrap();
             match element.as_rule() {
                 Rule::u32 => {
-                    let node_index:u32 = str::parse(element.as_str()).unwrap();
-                    println!("{:?}", node_index)
+                    let node_index:u32 = str::parse::<u32>(element.as_str()).unwrap();
+                    println!("id = {:?}", node_index)
                 },
                 Rule::qs => {
                     println!("{:?}", element)
+                    let inner_quorum_set = qs_from_string(element.as_str());
                 },
                 _ => {
                     panic!("unexpected rule!")
                 },
             }
-        }
-        //qs.threshold:u32 = u32::parse(rules.next().unwrap().next.unwrap());
-        //qs.members: Vec<QuorumSetMember<ID>>
+    }
 
+
+    #[test]
+    fn test_qs_parser() {
+        let qs = qs_from_string("([3],1,2,3,4,([2],5,6,([1],8,7)))".to_owned());
     }
 }
