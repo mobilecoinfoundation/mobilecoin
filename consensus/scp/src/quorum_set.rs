@@ -791,6 +791,9 @@ mod quorum_set_parser_tests {
         println!("inner_rules: {:?}", inner_rules);
         let mut quorum_set: QuorumSet<u32> = QuorumSet::empty();
         for pair in inner_rules {
+            println!("pair: {:?}", pair);
+
+
             match pair.as_rule() {
                 Rule::threshold => {
                     quorum_set.threshold = str::parse(pair
@@ -803,6 +806,9 @@ mod quorum_set_parser_tests {
                 },
                 Rule::members => {
                     for member in pair.into_inner() {
+
+                        println!("member: {:?}", member);
+
                         match member.as_rule() {
                             Rule::node => {
                                 let node:u32 = str::parse::<u32>(member.as_str()).unwrap();
