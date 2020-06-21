@@ -806,9 +806,3 @@ mod quorum_set_parser_tests {
 
     }
 }
-
-Pair { rule: qs, span: Span { str: "([3],1,2,3,4,([2],5,6,([1],8,7)))", start: 0, end: 33 },
-inner: [Pair { rule: k, span: Span { str: "[3]", start: 1, end: 4 },
-inner: [Pair { rule: u32, span: Span { str: "3", start: 2, end: 3 },
-inner: [] }] }, Pair { rule: list, span: Span { str:}
-test predicates::predicates_tests::test_ballot_set_predicate_quorum ... ok
