@@ -783,7 +783,7 @@ mod quorum_set_parser_tests {
     #[test]
     fn test_qs_parser() {
         // simple quorum set
-        let mut pairs = QuorumSetParser::parse(Rule::qs, "([3],1,2,3,4,([2],5,6,([1],8,7)))").expect("parsing failed!");
+        let pairs = QuorumSetParser::parse(Rule::qs, "([3],1,2,3,4,([2],5,6,([1],8,7)))").expect("parsing failed!");
         for p in pairs {
             println!("{:?}", p);
         }
