@@ -25,14 +25,14 @@
 //! ([3],1,2,3,4,([2],5,6,([1],8,7)))
 //! ([2],1,([2],3,9,10),4,([2],5,6),([1],8,7)))
 
-/// ignore whitespace
+/// ignore any whitespace
 WHITESPACE = _{ " " }
 
 /// A u32 value indexing a node
 u32 = @{ ASCII_DIGIT+ }
 
 /// a threshold for  a list of elements
-k = @{"[" ~ u32 ~ "]"}
+k = {"[" ~ u32 ~ "]"}
 
 /// an element is a validator or an inner quorum set
 element = { u32 | qs }
@@ -41,5 +41,4 @@ list = { ( element ~ ","?)+ }
 
 /// a quorum_set
 qs = { "(" ~ k ~ "," ~ list ~ ")" }
-
 
