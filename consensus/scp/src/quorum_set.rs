@@ -780,7 +780,7 @@ mod quorum_set_parser_tests {
     use super::*;
     use pest::Parser;
 
-    fn qs_from_string(quorum_set_string: String) -> QuorumSet<u32> {
+    fn qs_from_string(quorum_set_string: &str) -> QuorumSet<u32> {
         let mut qs_rules = QuorumSetParser::parse(Rule::qs, quorum_set_string)
             .unwrap()
             .next()
@@ -788,31 +788,35 @@ mod quorum_set_parser_tests {
             .into_inner();
 
         let mut qs: QuorumSet<u32> = QuorumSet::empty();
-        qs.k = str::parse::<u32>(qs_rules.next().unwrap().into_inner().next().unwrap().as_str()).unwrap();
+        qs.threshold = str::parse::<u32>(qs_rules.next().unwrap().into_inner().next().unwrap().as_str()).unwrap();
+        print!("([{:?}],", qs.threshold);
 
-        let qs_list = qs_rules.next().unwrap().into_inner();
-        println!("k = {:?}", k);
+        let mut members: Vec<QuorumSetMember<u32>> = Vec::new();
+        //QuorumSetMember::Node
+        //QuorumSetMember::InnerSet
 
-        for pair in qs_list {
+        for pair in qs_rules.next().unwrap().into_inner() {
             let element = pair.into_inner().next().unwrap();
             match element.as_rule() {
-                Rule::u32 => {
+                Rule::node_index => {
                     let node_index:u32 = str::parse::<u32>(element.as_str()).unwrap();
-                    println!("id = {:?}", node_index)
-                },
+                    qs.members.push(QuorumSetMember::Node(node_index));
+                    print!("{:?}", node_index)
+                }
                 Rule::qs => {
-                    println!("{:?}", element)
                     let inner_quorum_set = qs_from_string(element.as_str());
+                    qs.members.push(QuorumSetMember::InnerSet(inner_quorum_set));
                 },
                 _ => {
                     panic!("unexpected rule!")
                 },
             }
+        }
+        println!(")");
     }
-
 
     #[test]
     fn test_qs_parser() {
-        let qs = qs_from_string("([3],1,2,3,4,([2],5,6,([1],8,7)))".to_owned());
+        let qs = qs_from_string("([3],1,2,3,4,([2],5,6,([1],8,7)))");
     }
 }

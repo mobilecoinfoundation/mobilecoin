@@ -29,10 +29,10 @@
 WHITESPACE = _{ " " }
 
 /// A u32 value indexing a node
-u32 = @{ ASCII_DIGIT+ }
+node_index = @{ ASCII_DIGIT+ }
 
 /// a threshold for  a list of elements
-k = {"[" ~ u32 ~ "]"}
+k = {"[" ~ ASCII_DIGIT+ ~ "]"}
 
 /// an element is a validator or an inner quorum set
 element = { u32 | qs }
