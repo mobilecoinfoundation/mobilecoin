@@ -28,11 +28,14 @@
 /// ignore any whitespace
 WHITESPACE = _{ " " }
 
-/// A u32 value indexing a node
-node = @{ ASCII_DIGIT+ }
+/// A u32 value
+u32 = @{ ASCII_DIGIT+ }
+
+/// a node index - use test_utils to convert to NodeID type as needed
+node = @{ u32 }
 
 /// a threshold for  a list of elements
-threshold = {"[" ~ ASCII_DIGIT+ ~ "]"}
+threshold = {"[" ~ u32 ~ "]"}
 
 /// an element is a validator or an inner quorum set
 member = { node | quorum_set }
