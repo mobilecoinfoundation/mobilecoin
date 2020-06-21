@@ -783,23 +783,23 @@ mod quorum_set_parser_tests {
     fn qs_from_string(
         quorum_set_string: &str
     ) -> Result< QuorumSet<u32>, pest::error::Error<crate::quorum_set::Rule> > {
-        let mut inner_rules = QuorumSetParser::parse(Rule::qs, quorum_set_string)?
+        let mut inner_rules = QuorumSetParser::parse(Rule::quorum_set, quorum_set_string)?
             .next()
             .unwrap()
             .into_inner();
 
         println!("inner_rules: {:?}", inner_rules);
-        let mut qs: QuorumSet<u32> = QuorumSet::empty();
+        let mut quorum_set: QuorumSet<u32> = QuorumSet::empty();
         for pair in inner_rules.next().unwrap().into_inner() {
             match pair.as_rule() {
                 Rule::threshold => {
-                    qs.threshold = str::parse(pair
+                    quorum_set.threshold = str::parse(pair
                         .into_inner()
                         .next()
                         .unwrap()
                         .as_str()
                     ).unwrap();
-                    print!("([{:?}],", qs.threshold);
+                    print!("([{:?}],", quorum_set.threshold);
                 },
                 Rule::members => {
                     let members = pair.into_inner().next().unwrap();
@@ -807,12 +807,12 @@ mod quorum_set_parser_tests {
                         match member.as_rule() {
                             Rule::node => {
                                 let node:u32 = str::parse::<u32>(member.as_str()).unwrap();
-                                qs.members.push(QuorumSetMember::Node(node));
+                                quorum_set.members.push(QuorumSetMember::Node(node));
                                 print!("{:?}", node)
                             }
                             Rule::quorum_set => {
                                 let inner_set = qs_from_string(member.as_str())?;
-                                qs.members.push(QuorumSetMember::InnerSet(inner_set));
+                                quorum_set.members.push(QuorumSetMember::InnerSet(inner_set));
                             },
                             _ => {
                                 panic!("unexpected rule!")
@@ -826,7 +826,7 @@ mod quorum_set_parser_tests {
             }
         }
         println!(")");
-        Ok(qs)
+        Ok(quorum_set)
     }
 
     #[test]
