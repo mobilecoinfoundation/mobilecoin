@@ -780,14 +780,27 @@ mod quorum_set_parser_tests {
     use super::*;
     use pest::Parser;
 
-    fn qs_from_string(quorum_set_string: &str) -> Result< QuorumSet<u32>, pest::error::Error<crate::quorum_set::Rule>> {
+    fn qs_from_string(
+        quorum_set_string: &str
+    ) -> Result< QuorumSet<u32>, pest::error::Error<crate::quorum_set::Rule>> {
         let mut qs_rules = QuorumSetParser::parse(Rule::qs, quorum_set_string)?
             .next()
             .unwrap()
             .into_inner();
 
+        println!("rules: {:?}", qs_rules);
+
         let mut qs: QuorumSet<u32> = QuorumSet::empty();
-        qs.threshold = str::parse::<u32>(qs_rules.next().unwrap().into_inner().next().unwrap().as_str()).unwrap();
+
+        qs.threshold = str::parse::<u32>(qs_rules
+            .next()
+            .unwrap()
+            .into_inner()
+            .next()
+            .unwrap()
+            .as_str()
+        ).unwrap();
+
         print!("([{:?}],", qs.threshold);
 
         for pair in qs_rules.next().unwrap().into_inner() {
@@ -813,6 +826,6 @@ mod quorum_set_parser_tests {
 
     #[test]
     fn test_qs_parser() {
-        let _qs = qs_from_string("([3],1,2,3,4,([2],5,6,([1],8,7)))");
+        let _qs = qs_from_string("([3],1, 2,3, 4,([2],5,6,([1],8,7)))");
     }
 }
