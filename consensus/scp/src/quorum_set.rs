@@ -782,7 +782,8 @@ mod quorum_set_parser_tests {
 
     fn qs_from_string(quorum_set_string: &str) -> Result< QuorumSet<u32>, pest::error::Error<crate::quorum_set::Rule>> {
         let mut qs_rules = QuorumSetParser::parse(Rule::qs, quorum_set_string)?
-            .next()?
+            .next()
+            .unwrap()
             .into_inner();
 
         let mut qs: QuorumSet<u32> = QuorumSet::empty();
