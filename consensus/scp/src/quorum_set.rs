@@ -18,8 +18,6 @@ use crate::{
     predicates::Predicate,
 };
 
-use pest::Parser;
-
 /// A helper for parsing quorum sets from string representations
 #[derive(Parser)]
 #[grammar = "quorum_set_parser.pest"]
