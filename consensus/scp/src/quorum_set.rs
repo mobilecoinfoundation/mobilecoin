@@ -783,9 +783,32 @@ mod quorum_set_parser_tests {
     #[test]
     fn test_qs_parser() {
         // simple quorum set
-        let pairs = QuorumSetParser::parse(Rule::qs, "([3],1,2,3,4,([2],5,6,([1],8,7)))").expect("parsing failed!");
-        for p in pairs {
-            println!("{:?}", p);
-        }
+        let rules = QuorumSetParser::parse(Rule::qs, "([3],1,2,3,4,([2],5,6,([1],8,7)))")
+            .expect("parsing failed!")
+            .next()
+            .unwrap();
+
+        let mut qs: QuorumSet<u32> = QuorumSet::empty();
+
+        let k = rules.next().unwrap();
+        let list = rules.next().unwrap();
+
+
+        println!("{:?}", k);
+        println!("{:?}", list.as_str());
+
+        //qs.threshold:u32 = u32::parse(rules.next().unwrap().next.unwrap());
+        //qs.members: Vec<QuorumSetMember<ID>>
+
+
+
+
+
     }
 }
+
+Pair { rule: qs, span: Span { str: "([3],1,2,3,4,([2],5,6,([1],8,7)))", start: 0, end: 33 },
+inner: [Pair { rule: k, span: Span { str: "[3]", start: 1, end: 4 },
+inner: [Pair { rule: u32, span: Span { str: "3", start: 2, end: 3 },
+inner: [] }] }, Pair { rule: list, span: Span { str:}
+test predicates::predicates_tests::test_ballot_set_predicate_quorum ... ok
