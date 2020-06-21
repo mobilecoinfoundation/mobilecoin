@@ -19,6 +19,8 @@ mc-util-metrics = { path = "../../util/metrics" }
 mc-util-serial = { path = "../../util/serial", features = ["std"] }
 
 bigint = "4.4"
+pest = "2.0"
+pest_derive = "2.0"
 rand = "0.7"
 rand_hc = "0.2"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }

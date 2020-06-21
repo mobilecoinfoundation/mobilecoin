@@ -18,6 +18,15 @@ use crate::{
     predicates::Predicate,
 };
 
+use pest::Parser;
+#[macro_use]
+use pest_derive;
+
+/// A helper for parsing quorum sets from string representations
+#[derive(Parser)]
+#[grammar = "quorum_set_parser.pest"]
+pub struct QuorumSetParser;
+
 /// The quorum set defining the trusted set of peers.
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Digestible)]
 pub struct QuorumSet<ID: GenericNodeId = NodeID> {
@@ -767,5 +776,17 @@ mod quorum_set_tests {
                 test_node_id(3).responder_id
             ])
         );
+    }
+}
+
+#[cfg(test)]
+mod quorum_set_parser_tests {
+    use super::*;
+
+    #[test]
+    fn test_qs_parser() {
+        // simple quorum set
+        let successful_parse = QuorumSetParser::parse(Rule::qs, "([3],1,2,3,4,([2],5,6,([1],8,7)))");
+        println!("{:?}", successful_parse);
     }
 }

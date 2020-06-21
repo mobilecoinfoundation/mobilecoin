@@ -1,0 +1,40 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
+//! This file provides a grammar for describing quorum sets. Each node
+//! is assigned a unique u32 index value. Thresholds are specified as
+//! bracketed u32 values "[k]". Quorum sets are enclosed in parentheses.
+//! 
+//! This file is compiled by pest into rust code. See https://pest.rs/book/
+//!
+//! Examples: 
+//!
+//! Quorum sets for a four node cyclic network:
+//! (Node 0) ([1],1)
+//! (Node 1) ([1],2)
+//! (Node 2) ([1],3)
+//! (Node 3) ([1],0)
+//!
+//! Quorum sets for a 5k3 mesh network:
+//! (Node 0) ([3],1,2,3,4)
+//! (Node 1) ([3],2,3,4,0)
+//! (Node 2) ([3],3,4,0,1)
+//! (Node 3) ([3],4,0,2,1)
+//! (Node 4) ([3],0,1,2,3)
+//!
+//! Complex quorum sets:
+//! ([3],1,2,3,4,([2],5,6,([1],8,7))) 
+//! ([2],1,([2],3,9,10),4,([2],5,6),([1],8,7)))
+
+/// A u32 value indexing a node
+u32 = { ASCII_DIGIT+ }
+
+/// a threshold
+k = {'[' ~ u32 ~ ']'}
+
+/// a list continuing a quorum set
+list = { qs | u32 ~ ',' ~ list }
+
+/// a quorum_set
+qs = {'(' ~ k ~ ']' ~ ',' ~ list )
+
+
