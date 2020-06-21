@@ -783,7 +783,7 @@ mod quorum_set_parser_tests {
     #[test]
     fn test_qs_parser() {
         // simple quorum set
-        let mut rules = QuorumSetParser::parse(Rule::qs, "([3],1,2,3,4,([2],5,6,([1],8,7)))")
+        let mut qs_rules = QuorumSetParser::parse(Rule::qs, "([3],1,2,3,4,([2],5,6,([1],8,7)))")
             .unwrap()
             .next()
             .unwrap()
@@ -791,21 +791,27 @@ mod quorum_set_parser_tests {
 
         let _qs: QuorumSet<u32> = QuorumSet::empty();
 
-        let k = rules.next().unwrap().into_inner().next().unwrap().as_str();
-        let list = rules.next().unwrap().into_inner();
+        let k:u32 = str::parse(qs_rules.next().unwrap().into_inner().next().unwrap().as_str()).unwrap();
+
+        let qs_list = qs_rules.next().unwrap().into_inner();
 
 
         println!("{:?}", k);
 
-        for l in list {
-            println!("{:?}", l);
+        for pair in qs_list {
+            let element = pair.unwrap.next().unwrap().into_inner();
+            match element.as_rule() {
+                Rule::u32 => {
+                    let node_index:u32 = str::parse(element.as_str()).unwrap();
+                    println!("{:?}", node_index)
+                },
+                Rule::qs => {
+                    println!("{:?}", element)
+                }
+            }
         }
         //qs.threshold:u32 = u32::parse(rules.next().unwrap().next.unwrap());
         //qs.members: Vec<QuorumSetMember<ID>>
-
-
-
-
 
     }
 }
