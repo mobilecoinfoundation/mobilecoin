@@ -18,9 +18,11 @@ use crate::{
     predicates::Predicate,
 };
 
-use pest::Parser;
+extern crate pest;
 #[macro_use]
-use pest_derive;
+extern crate pest_derive;
+
+use pest::Parser;
 
 /// A helper for parsing quorum sets from string representations
 #[derive(Parser)]
