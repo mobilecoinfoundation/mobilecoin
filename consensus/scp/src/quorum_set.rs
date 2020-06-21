@@ -778,6 +778,7 @@ mod quorum_set_tests {
 #[cfg(test)]
 mod quorum_set_parser_tests {
     use super::*;
+    use pest::Parser;
 
     #[test]
     fn test_qs_parser() {

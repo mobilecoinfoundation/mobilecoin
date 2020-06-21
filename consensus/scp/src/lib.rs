@@ -3,7 +3,7 @@
 #![feature(external_doc)]
 #![doc(include = "../README.md")]
 #![allow(non_snake_case)]
-#![deny(missing_docs)]
+// #![deny(missing_docs)]
 
 #[macro_use]
 extern crate pest_derive;
