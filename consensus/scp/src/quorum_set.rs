@@ -780,7 +780,7 @@ mod quorum_set_parser_tests {
     use super::*;
     use pest::Parser;
 
-    fn qs_from_string(quorum_set_string: &str) -> Result< QuorumSet<u32>, Error > {
+    fn qs_from_string(quorum_set_string: &str) -> Result< QuorumSet<u32>, pest::error::Error > {
         let mut qs_rules = QuorumSetParser::parse(Rule::qs, quorum_set_string)?
             .next()?
             .into_inner();
