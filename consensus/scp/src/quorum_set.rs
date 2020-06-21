@@ -790,10 +790,6 @@ mod quorum_set_parser_tests {
         qs.threshold = str::parse::<u32>(qs_rules.next().unwrap().into_inner().next().unwrap().as_str()).unwrap();
         print!("([{:?}],", qs.threshold);
 
-        let mut members: Vec<QuorumSetMember<u32>> = Vec::new();
-        //QuorumSetMember::Node
-        //QuorumSetMember::InnerSet
-
         for pair in qs_rules.next().unwrap().into_inner() {
             let element = pair.into_inner().next().unwrap();
             match element.as_rule() {
@@ -817,6 +813,6 @@ mod quorum_set_parser_tests {
 
     #[test]
     fn test_qs_parser() {
-        let qs = qs_from_string("([3],1,2,3,4,([2],5,6,([1],8,7)))");
+        let _qs = qs_from_string("([3],1,2,3,4,([2],5,6,([1],8,7)))");
     }
 }
