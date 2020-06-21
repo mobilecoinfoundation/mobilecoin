@@ -29,12 +29,12 @@
 u32 = { ASCII_DIGIT+ }
 
 /// a threshold
-k = {'[' ~ u32 ~ ']'}
+k = {('[') ~ (u32) ~ (']')}
 
 /// a list continuing a quorum set
-list = { qs | u32 ~ ',' ~ list }
+list = { (qs) | ((u32) ~ (',') ~ (list)) }
 
 /// a quorum_set
-qs = {'(' ~ k ~ ']' ~ ',' ~ list )
+qs = {('(') ~ k ~ (']') ~ (',') ~ (list) )
 
 
