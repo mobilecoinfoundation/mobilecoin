@@ -3,10 +3,10 @@
 //! This file provides a grammar for describing quorum sets. Each node
 //! is assigned a unique u32 index value. Thresholds are specified as
 //! bracketed u32 values "[k]". Quorum sets are enclosed in parentheses.
-//! 
+//!
 //! This file is compiled by pest into rust code. See https://pest.rs/book/
 //!
-//! Examples: 
+//! Examples:
 //!
 //! Quorum sets for a four node cyclic network:
 //! (Node 0) ([1],1)
@@ -22,7 +22,7 @@
 //! (Node 4) ([3],0,1,2,3)
 //!
 //! Complex quorum sets:
-//! ([3],1,2,3,4,([2],5,6,([1],8,7))) 
+//! ([3],1,2,3,4,([2],5,6,([1],8,7)))
 //! ([2],1,([2],3,9,10),4,([2],5,6),([1],8,7)))
 
 /// ignore whitespace
@@ -31,11 +31,13 @@ WHITESPACE = _{ " " }
 /// A u32 value indexing a node
 u32 = @{ ASCII_DIGIT+ }
 
-/// a threshold
+/// a threshold for  a list of elements
 k = @{"[" ~ u32 ~ "]"}
 
-/// a list continuing a quorum set
-list = _{ qs | (u32 ~ "," ~ list) }
+/// an element is a validator or an inner quorum set
+element = { u32 | qs }
+
+list = { ( element ~ ","?)+ }
 
 /// a quorum_set
 qs = { "(" ~ k ~ "," ~ list ~ ")" }
