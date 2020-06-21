@@ -797,7 +797,7 @@ mod quorum_set_parser_tests {
                     print!("([{:?}],", quorum_set.threshold);
                 },
                 Rule::members => {
-                    for member_pair in pair.into_inner() {
+                    for member in pair.into_inner() {
                         match member.as_rule() {
                             Rule::node => {
                                 let node:u32 = str::parse::<u32>(member.as_str()).unwrap();
