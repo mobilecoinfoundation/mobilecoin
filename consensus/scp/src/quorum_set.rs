@@ -784,20 +784,22 @@ mod quorum_set_parser_tests {
     fn test_qs_parser() {
         // simple quorum set
         let mut rules = QuorumSetParser::parse(Rule::qs, "([3],1,2,3,4,([2],5,6,([1],8,7)))")
-            .expect("parsing failed!")
+            .unwrap()
             .next()
             .unwrap()
             .into_inner();
 
         let _qs: QuorumSet<u32> = QuorumSet::empty();
 
-        let k = rules.next().unwrap();
-        let list = rules.next().unwrap();
+        let k = rules.next().unwrap().into_inner().next().unwrap().as_str();
+        let list = rules.next().unwrap().into_inner();
 
 
         println!("{:?}", k);
-        println!("{:?}", list.as_str());
 
+        for l in list {
+            println!("{:?}", l);
+        }
         //qs.threshold:u32 = u32::parse(rules.next().unwrap().next.unwrap());
         //qs.members: Vec<QuorumSetMember<ID>>
 
