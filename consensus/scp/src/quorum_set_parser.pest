@@ -35,7 +35,7 @@ node_index = @{ ASCII_DIGIT+ }
 k = {"[" ~ ASCII_DIGIT+ ~ "]"}
 
 /// an element is a validator or an inner quorum set
-element = { u32 | qs }
+element = { node_index | qs }
 
 list = { ( element ~ ","?)+ }
 
