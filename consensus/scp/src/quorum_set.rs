@@ -806,6 +806,7 @@ mod quorum_set_parser_tests {
                             }
                             Rule::quorum_set => {
                                 let inner_set = qs_from_string(member.as_str())?;
+                                print!(",")
                                 quorum_set.members.push(QuorumSetMember::InnerSet(inner_set));
                             },
                             _ => {
