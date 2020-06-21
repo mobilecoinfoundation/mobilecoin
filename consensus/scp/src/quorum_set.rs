@@ -796,8 +796,8 @@ mod quorum_set_parser_tests {
 
             match pair.as_rule() {
                 Rule::threshold => {
-                    let threshold_str = pair.into_inner().next().unwrap().as_str();
-                    println!("pair: {:?}", threshold_str);
+                    let threshold_str = pair.into_inner().as_str();
+                    println!("threshold_str: {:?}", threshold_str);
 
                     quorum_set.threshold = str::parse(threshold_str).unwrap();
                     print!("([{:?}],", quorum_set.threshold);
