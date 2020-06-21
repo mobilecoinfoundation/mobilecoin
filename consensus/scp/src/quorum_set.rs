@@ -807,7 +807,10 @@ mod quorum_set_parser_tests {
                 },
                 Rule::qs => {
                     println!("{:?}", element)
-                }
+                },
+                _ => {
+                    panic!("unexpected rule!")
+                },
             }
         }
         //qs.threshold:u32 = u32::parse(rules.next().unwrap().next.unwrap());
