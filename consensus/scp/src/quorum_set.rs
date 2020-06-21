@@ -783,13 +783,13 @@ mod quorum_set_parser_tests {
     #[test]
     fn test_qs_parser() {
         // simple quorum set
-        let rules = QuorumSetParser::parse(Rule::qs, "([3],1,2,3,4,([2],5,6,([1],8,7)))")
+        let mut rules = QuorumSetParser::parse(Rule::qs, "([3],1,2,3,4,([2],5,6,([1],8,7)))")
             .expect("parsing failed!")
             .next()
             .unwrap()
             .into_inner();
 
-        let mut qs: QuorumSet<u32> = QuorumSet::empty();
+        let _qs: QuorumSet<u32> = QuorumSet::empty();
 
         let k = rules.next().unwrap();
         let list = rules.next().unwrap();
