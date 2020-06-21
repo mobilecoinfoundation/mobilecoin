@@ -799,7 +799,7 @@ mod quorum_set_parser_tests {
         println!("{:?}", k);
 
         for pair in qs_list {
-            let element = pair.unwrap().next().unwrap().into_inner();
+            let element = pair.into_inner().next().unwrap();
             match element.as_rule() {
                 Rule::u32 => {
                     let node_index:u32 = str::parse(element.as_str()).unwrap();
