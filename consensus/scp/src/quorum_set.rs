@@ -780,11 +780,9 @@ mod quorum_set_parser_tests {
     use super::*;
     use pest::Parser;
 
-    fn qs_from_string(quorum_set_string: &str) -> QuorumSet<u32> {
-        let mut qs_rules = QuorumSetParser::parse(Rule::qs, quorum_set_string)
-            .unwrap()
-            .next()
-            .unwrap()
+    fn qs_from_string(quorum_set_string: &str) -> Result< QuorumSet<u32>, _> {
+        let mut qs_rules = QuorumSetParser::parse(Rule::qs, quorum_set_string)?
+            .next()?
             .into_inner();
 
         let mut qs: QuorumSet<u32> = QuorumSet::empty();
@@ -804,7 +802,7 @@ mod quorum_set_parser_tests {
                     print!("{:?}", node_index)
                 }
                 Rule::qs => {
-                    let inner_quorum_set = qs_from_string(element.as_str());
+                    let inner_quorum_set = qs_from_string(element.as_str())?;
                     qs.members.push(QuorumSetMember::InnerSet(inner_quorum_set));
                 },
                 _ => {
@@ -813,6 +811,7 @@ mod quorum_set_parser_tests {
             }
         }
         println!(")");
+        Ok(qs)
     }
 
     #[test]
