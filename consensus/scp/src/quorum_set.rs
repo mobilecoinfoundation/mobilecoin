@@ -794,7 +794,7 @@ mod quorum_set_parser_tests {
                 Rule::threshold => {
                     let threshold_string = pair.into_inner().next().unwrap().as_str();
                     quorum_set.threshold = str::parse(threshold_string).unwrap();
-                    print!("([{:?}],", quorum_set.threshold);
+                    print!("([{:?}]", quorum_set.threshold);
                 },
                 Rule::members => {
                     for member in pair.into_inner() {
@@ -802,7 +802,7 @@ mod quorum_set_parser_tests {
                             Rule::node => {
                                 let node:u32 = str::parse::<u32>(member.as_str()).unwrap();
                                 quorum_set.members.push(QuorumSetMember::Node(node));
-                                print!("{:?}", node)
+                                print!(",{:?}", node)
                             }
                             Rule::quorum_set => {
                                 let inner_set = qs_from_string(member.as_str())?;
@@ -819,12 +819,12 @@ mod quorum_set_parser_tests {
                 },
             }
         }
-        println!(")");
+        print!(")");
         Ok(quorum_set)
     }
 
     #[test]
     fn test_qs_parser() {
-        let _qs = qs_from_string("([3],1, 2,3, 4,([2],5,6,([1],8,7)))");
+        let _qs = qs_from_string("([3],1, 2,3, 4,([2],5, 6,([1],8,7)))");
     }
 }
