@@ -782,38 +782,43 @@ mod quorum_set_parser_tests {
 
     fn qs_from_string(
         quorum_set_string: &str
-    ) -> Result< QuorumSet<u32>, pest::error::Error<crate::quorum_set::Rule>> {
-        let mut qs_rules = QuorumSetParser::parse(Rule::qs, quorum_set_string)?
+    ) -> Result< QuorumSet<u32>, pest::error::Error<crate::quorum_set::Rule> > {
+        let mut inner_rules = QuorumSetParser::parse(Rule::qs, quorum_set_string)?
             .next()
             .unwrap()
             .into_inner();
 
-        println!("rules: {:?}", qs_rules);
-
+        println!("inner_rules: {:?}", inner_rules);
         let mut qs: QuorumSet<u32> = QuorumSet::empty();
-
-        qs.threshold = str::parse::<u32>(qs_rules
-            .next()
-            .unwrap()
-            .into_inner()
-            .next()
-            .unwrap()
-            .as_str()
-        ).unwrap();
-
-        print!("([{:?}],", qs.threshold);
-
-        for pair in qs_rules.next().unwrap().into_inner() {
-            let element = pair.into_inner().next().unwrap();
-            match element.as_rule() {
-                Rule::node_index => {
-                    let node_index:u32 = str::parse::<u32>(element.as_str()).unwrap();
-                    qs.members.push(QuorumSetMember::Node(node_index));
-                    print!("{:?}", node_index)
-                }
-                Rule::qs => {
-                    let inner_quorum_set = qs_from_string(element.as_str())?;
-                    qs.members.push(QuorumSetMember::InnerSet(inner_quorum_set));
+        for pair in inner_rules.next().unwrap().into_inner() {
+            match pair.as_rule() {
+                Rule::threshold => {
+                    qs.threshold = str::parse(pair
+                        .into_inner()
+                        .next()
+                        .unwrap()
+                        .as_str()
+                    ).unwrap();
+                    print!("([{:?}],", qs.threshold);
+                },
+                Rule::members => {
+                    let members = pair.into_inner().next().unwrap();
+                    for member in members {
+                        match member.as_rule() {
+                            Rule::node => {
+                                let node:u32 = str::parse::<u32>(member.as_str()).unwrap();
+                                qs.members.push(QuorumSetMember::Node(node));
+                                print!("{:?}", node)
+                            }
+                            Rule::quorum_set => {
+                                let inner_set = qs_from_string(member.as_str())?;
+                                qs.members.push(QuorumSetMember::InnerSet(inner_set));
+                            },
+                            _ => {
+                                panic!("unexpected rule!")
+                            },
+                        }
+                    }
                 },
                 _ => {
                     panic!("unexpected rule!")
