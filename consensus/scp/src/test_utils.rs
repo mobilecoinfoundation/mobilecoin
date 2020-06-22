@@ -62,6 +62,7 @@ pub fn test_node_id_and_signer(node_id: u32) -> (NodeID, Ed25519Pair) {
 pub fn recover_test_id(node_id: NodeID) -> u32 {
     node_id
         .responder_id
+        .0
         .split('.')
         .fuse()
         .next()
