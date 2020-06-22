@@ -1,6 +1,6 @@
 # Copyright (c) 2018-2020 MobileCoin Inc.
 
-import argparse, sys
+import argparse, datetime, sys
 from flask import Flask, render_template
 
 sys.path.append('../mob_client')
@@ -72,6 +72,12 @@ def render_ledger_range(start, count):
                            num_blocks=num_blocks,
                            num_transactions=num_transactions,
                            signers=signers)
+
+@app.template_filter('datetime')
+def format_datetime(value):
+    if not value:
+        return 'N/A'
+    return datetime.datetime.fromtimestamp(value).isoformat()
 
 @app.route('/')
 def index():

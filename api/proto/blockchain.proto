@@ -51,8 +51,15 @@ message BlockContents {
 }
 
 message BlockSignature {
+    // The signature of the block.
     external.Ed25519Signature signature = 1;
+
+    // The signer that generated the above signature.
     external.Ed25519Public signer = 2;
+
+    // An approximate time in which the block was signed.
+    // Represented as seconds of UTC time since Unix epoch 1970-01-01T00:00:00Z.
+    uint64 signed_at = 3;
 }
 
 // Version 1 of an archived block.

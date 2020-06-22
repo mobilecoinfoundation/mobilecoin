@@ -52,3 +52,9 @@ dist/
 # Per-crate lock files
 Cargo.lock
 !/Cargo.lock
+
+# Python stuff
+__pycache__/
+mobilecoind/clients/python/blockchain_explorer/latest.tar.gz
+mobilecoind/clients/python/env/
+mobilecoind/clients/python/mob_client/blockchain_pb2.py
