@@ -897,7 +897,7 @@ mod quorum_set_parser_tests {
 
         let qs_string_reordered = "([3],  4, 3,2, 1,([2], 5, ([1],8,7), 6))".to_owned();
         let _qs4 = qs_from_string(&qs_string_reordered).expect("failed to parse");
-        //assert_eq!(qs3, qs4);
+        assert_eq!(qs3, qs4);
 
         let qs5 = qs_from_string("([1], ([1],1,2), ([1],3,4) )").expect("failed to parse");
         let qs6 = qs_from_string("([1], ([1],4,3), ([1],2,1) )").expect("failed to parse");
