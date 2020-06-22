@@ -822,8 +822,27 @@ mod quorum_set_parser_tests {
         Ok(quorum_set)
     }
 
+    fn qs_to_string(quorum_set: QuorumSet) -> String {
+        let mut quorum_set_string = format!("([{}]", quorum_set.threshold);
+        for member in quorum_set.members.iter() {
+            match member {
+                QuorumSetMember::Node(node) => {
+                    quorum_set_string.push_str(format!(",{}",node));
+                }
+                QuorumSetMember::InnerSet(inner_set) => {
+                    quorum_set_string.push(",");
+                    quorum_set_string.push_str(qs_to_string(inner_set));
+                }
+            }
+        }
+        quorum_set_string.push(")");
+        quorum_set_string
+    }
+
     #[test]
     fn test_qs_parser() {
-        let _qs = qs_from_string("([3],1, 2,3, 4,([2],5, 6,([1],8,7)))");
+        let qs = qs_from_string("([3],1, 2,3, 4,([2],5, 6,([1],8,7)))");
+        let canonical_string = qs_to_string(qs.clone());
+        assert_eq!(qs, qs_from_string(&canonical_string));
     }
 }
