@@ -21,6 +21,7 @@ use std::{
 };
 
 use pest;
+use pest::parser::Parser;
 use pest_derive::Parser;
 
 /// Helper for parsing quorum sets from string representations using "pest"
