@@ -6,11 +6,7 @@
 use mc_common::{HashMap, HashSet, NodeID, ResponderId};
 use mc_crypto_digestible::Digestible;
 use serde::{Deserialize, Serialize};
-use std::{
-    fmt::Debug,
-    hash::Hash,
-    iter::FromIterator,
-};
+use std::{fmt::Debug, hash::Hash, iter::FromIterator};
 
 use crate::{
     core_types::{GenericNodeId, Value},
@@ -37,22 +33,22 @@ pub enum QuorumSetMember<ID: GenericNodeId> {
 impl<ID: GenericNodeId> PartialEq for QuorumSetMember<ID> {
     fn eq(&self, other: &QuorumSetMember<ID>) -> bool {
         match self {
-            QuorumSetMember::Node(self_node) => {
-                match other {
-                    QuorumSetMember::Node(other_node) => {
-                        return self_node == other_node;
-                    }
-                    _ => { return false; }
+            QuorumSetMember::Node(self_node) => match other {
+                QuorumSetMember::Node(other_node) => {
+                    return self_node == other_node;
                 }
-            }
-            QuorumSetMember::InnerSet(self_qs) => {
-                match other {
-                    QuorumSetMember::InnerSet(other_qs) => {
-                        return self_qs == other_qs;
-                    }
-                    _ => { return false; }
+                _ => {
+                    return false;
                 }
-            }
+            },
+            QuorumSetMember::InnerSet(self_qs) => match other {
+                QuorumSetMember::InnerSet(other_qs) => {
+                    return self_qs == other_qs;
+                }
+                _ => {
+                    return false;
+                }
+            },
         }
     }
 }
@@ -70,9 +66,7 @@ pub struct QuorumSet<ID: GenericNodeId = NodeID> {
 
 impl<ID: GenericNodeId> PartialEq for QuorumSet<ID> {
     fn eq(&self, other: &QuorumSet<ID>) -> bool {
-        if self.threshold == other.threshold &&
-            self.members.len() == other.members.len()
-        {
+        if self.threshold == other.threshold && self.members.len() == other.members.len() {
             // sort before comparing
             let mut self_members: Vec<QuorumSetMember<ID>> = self.members.clone();
             let mut other_members: Vec<QuorumSetMember<ID>> = other.members.clone();
@@ -85,8 +79,7 @@ impl<ID: GenericNodeId> PartialEq for QuorumSet<ID> {
 }
 impl<ID: GenericNodeId> Eq for QuorumSet<ID> {}
 
-impl<ID: GenericNodeId> QuorumSet<ID>
-{
+impl<ID: GenericNodeId> QuorumSet<ID> {
     /// Create a new quorum set.
     pub fn new(threshold: u32, members: Vec<QuorumSetMember<ID>>) -> Self {
         Self { threshold, members }
@@ -856,7 +849,7 @@ mod quorum_set_parser_tests {
         for member in quorum_set.members.iter() {
             match member {
                 QuorumSetMember::Node(node) => {
-                    quorum_set_string.push_str(&format!(",{}",node));
+                    quorum_set_string.push_str(&format!(",{}", node));
                 }
                 QuorumSetMember::InnerSet(inner_set) => {
                     quorum_set_string.push(',');
@@ -874,7 +867,10 @@ mod quorum_set_parser_tests {
         assert_eq!(qs_to_string(&empty_qs), "([0])");
 
         let empty_qs_string = "([0])".to_owned();
-        assert_eq!(qs_from_string(&empty_qs_string).expect("failed to parse"),empty_qs);
+        assert_eq!(
+            qs_from_string(&empty_qs_string).expect("failed to parse"),
+            empty_qs
+        );
 
         let str1 = "([1],0)".to_owned();
         let qs_str1 = qs_from_string(&str1).expect("failed to parse");
@@ -893,7 +889,10 @@ mod quorum_set_parser_tests {
         let qs_string_with_spaces = "([3],1, 2,3, 4,([2],5, 6,([1],8,7)))".to_owned();
         let qs3 = qs_from_string(&qs_string_with_spaces).expect("failed to parse");
         let canonical_string = qs_to_string(&qs3);
-        assert_eq!(qs3, qs_from_string(&canonical_string).expect("failed to parse"));
+        assert_eq!(
+            qs3,
+            qs_from_string(&canonical_string).expect("failed to parse")
+        );
 
         let qs_string_reordered = "([3],  4, 3,2, 1,([2], 5, ([1],8,7), 6))".to_owned();
         let qs4 = qs_from_string(&qs_string_reordered).expect("failed to parse");
@@ -902,7 +901,6 @@ mod quorum_set_parser_tests {
         let qs5 = qs_from_string("([1], ([1],1,2), ([1],3,4) )").expect("failed to parse");
         let qs6 = qs_from_string("([1], ([1],4,3), ([1],2,1) )").expect("failed to parse");
         assert_eq!(qs5, qs6);
-
     }
 
     #[test]
