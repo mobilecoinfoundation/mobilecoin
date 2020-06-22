@@ -735,7 +735,7 @@ mod quorum_set_parser_tests {
 
     fn qs_from_string(
         quorum_set_string: &str,
-    ) -> Result<QuorumSet<u32>, pest::error::Error<Rule> {
+    ) -> Result<QuorumSet<u32>, pest::error::Error<Rule>> {
         let inner_rules = QuorumSetParser::parse(Rule::quorum_set, quorum_set_string)?
             .next()
             .unwrap()
