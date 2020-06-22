@@ -20,14 +20,13 @@ use std::{
     time::{Duration, Instant},
 };
 
-use pest::parser::Parser;
 use pest_derive::Parser;
 
 /// Helper for parsing quorum sets from string representations using "pest"
 /// Used in crate tests.
 #[derive(Parser)]
 #[grammar = "quorum_set_parser.pest"]
-pub struct QuorumSetParser;
+struct QuorumSetParser;
 
 // Controls test parameters
 #[derive(Clone)]
