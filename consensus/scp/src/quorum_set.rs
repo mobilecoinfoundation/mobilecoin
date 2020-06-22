@@ -34,7 +34,7 @@ pub enum QuorumSetMember<ID: GenericNodeId> {
     InnerSet(QuorumSet<ID>),
 }
 
-impl<ID: GenericNodeId + Ord> PartialEq for QuorumSetMember<ID> {
+impl<ID: GenericNodeId> PartialEq for QuorumSetMember<ID> {
     fn eq(&self, other: &QuorumSetMember<ID>) -> bool {
         match self {
             QuorumSetMember::Node(self_node) => {
@@ -56,7 +56,7 @@ impl<ID: GenericNodeId + Ord> PartialEq for QuorumSetMember<ID> {
         }
     }
 }
-impl<ID: GenericNodeId + Ord> Eq for QuorumSetMember<ID> {}
+impl<ID: GenericNodeId> Eq for QuorumSetMember<ID> {}
 
 /// The quorum set defining the trusted set of peers.
 #[derive(Clone, Debug, Ord, PartialOrd, Serialize, Deserialize, Hash, Digestible)]
@@ -68,7 +68,7 @@ pub struct QuorumSet<ID: GenericNodeId = NodeID> {
     pub members: Vec<QuorumSetMember<ID>>,
 }
 
-impl<ID: GenericNodeId + Ord> PartialEq for QuorumSet<ID> {
+impl<ID: GenericNodeId> PartialEq for QuorumSet<ID> {
     fn eq(&self, other: &QuorumSet<ID>) -> bool {
         if self.threshold == other.threshold &&
             self.members.len() == other.members.len()
@@ -83,19 +83,9 @@ impl<ID: GenericNodeId + Ord> PartialEq for QuorumSet<ID> {
         false
     }
 }
-impl<ID: GenericNodeId + Ord> Eq for QuorumSet<ID> {}
+impl<ID: GenericNodeId> Eq for QuorumSet<ID> {}
 
-impl<
-        ID: GenericNodeId
-            + Clone
-            + Debug
-            + Display
-            + Serialize
-            + DeserializeOwned
-            + Eq
-            + PartialEq
-            + Hash,
-    > QuorumSet<ID>
+impl<ID: GenericNodeId> QuorumSet<ID>
 {
     /// Create a new quorum set.
     pub fn new(threshold: u32, members: Vec<QuorumSetMember<ID>>) -> Self {
