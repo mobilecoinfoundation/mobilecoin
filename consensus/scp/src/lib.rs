@@ -5,9 +5,9 @@
 #![allow(non_snake_case)]
 #![deny(missing_docs)]
 
+#![allow(unused_macros)]
 
 #[cfg(test)]
-#[allow(unused_macros)]
 #[macro_use]
 extern crate pest_derive;
 
