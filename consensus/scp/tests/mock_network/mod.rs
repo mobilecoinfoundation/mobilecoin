@@ -838,7 +838,7 @@ pub fn qs_to_string(quorum_set: &QuorumSet<NodeID>) -> String {
     for member in quorum_set.members.iter() {
         match member {
             QuorumSetMember::Node(node_id) => {
-                quorum_set_string.push_str(&format!(",{}", test_utils::recover_test_id(node_id)));
+                quorum_set_string.push_str(&format!(",{}", test_utils::recover_test_id(node_id.clone())));
             }
             QuorumSetMember::InnerSet(inner_set) => {
                 quorum_set_string.push(',');
