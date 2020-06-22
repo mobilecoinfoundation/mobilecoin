@@ -24,14 +24,30 @@ use crate::{
 pub struct QuorumSetParser;
 
 /// The quorum set defining the trusted set of peers.
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Digestible)]
+#[derive(Clone, Debug, Serialize, Deserialize, Hash, Digestible)]
 pub struct QuorumSet<ID: GenericNodeId = NodeID> {
     /// Threshold (how many members do we need to reach quorum).
     pub threshold: u32,
 
     /// Members.
-    pub members: HashSet<QuorumSetMember<ID>>,
+    pub members: Vec<QuorumSetMember<ID>>,
 }
+
+impl PartialEq for QuorumSet<ID: GenericNodeId = NodeID> {
+    fn eq(&self, other: &QuorumSet<ID>) -> bool {
+        if self.threshold == other.threshold &&
+            self.members.len() == other..members.len()
+        {
+            // create hashsets to compare
+            let self_members: HashSet<QuorumSetMember<ID>> = HashSet::from_iter(self.members.iter().cloned());
+            let other_members: HashSet<QuorumSetMember<ID>> = HashSet::from_iter(other.members.iter().cloned());
+
+            return self_members == other_members;
+        }
+        false
+    }
+}
+impl Eq for NodeID {}
 
 /// A member in a QuorumSet. Can be either a Node or another QuorumSet.
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Digestible)]
