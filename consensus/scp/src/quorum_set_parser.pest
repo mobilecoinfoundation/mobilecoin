@@ -39,9 +39,7 @@ threshold = {"[" ~ u32 ~ "]"}
 
 /// a validator or an inner quorum set
 /// (note that this rule is silent)
-member = _{ node | quorum_set }
-
-members = { ( member ~ ","?)+ }
+members = { ( (node | quorum_set) ~ ","?)+ }
 
 /// a quorum_set
 quorum_set = { "(" ~ threshold ~ "," ~ members ~ ")" }
