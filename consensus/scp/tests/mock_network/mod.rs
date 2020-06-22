@@ -1,5 +1,8 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
+#[macro_use]
+extern crate pest_derive;
+
 use mc_common::{
     logger::{log, o, Logger},
     HashMap, HashSet, NodeID,
@@ -19,6 +22,11 @@ use std::{
     thread::JoinHandle,
     time::{Duration, Instant},
 };
+
+/// A helper for parsing quorum sets from string representations
+#[derive(Parser)]
+#[grammar = "quorum_set_parser.pest"]
+pub struct QuorumSetParser;
 
 // Controls test parameters
 #[derive(Clone)]
@@ -718,3 +726,117 @@ pub fn run_test(network: SCPNetwork, network_name: &str, options: TestOptions, l
     // allow log to flush
     std::thread::sleep(options.log_flush_delay);
 }
+
+
+#[cfg(test)]
+mod quorum_set_parser_tests {
+    use super::*;
+    use pest::Parser;
+
+    fn qs_from_string(
+        quorum_set_string: &str,
+    ) -> Result<QuorumSet<u32>, pest::error::Error<crate::quorum_set::Rule>> {
+        let inner_rules = QuorumSetParser::parse(Rule::quorum_set, quorum_set_string)?
+            .next()
+            .unwrap()
+            .into_inner();
+        let mut quorum_set: QuorumSet<u32> = QuorumSet::empty();
+        for pair in inner_rules {
+            match pair.as_rule() {
+                Rule::empty_set => {
+                    return Ok(quorum_set);
+                }
+                Rule::threshold => {
+                    let threshold_string = pair.into_inner().next().unwrap().as_str();
+                    quorum_set.threshold = str::parse(threshold_string).unwrap();
+                }
+                Rule::members => {
+                    for member in pair.into_inner() {
+                        match member.as_rule() {
+                            Rule::node => {
+                                let node: u32 = str::parse::<u32>(member.as_str()).unwrap();
+                                quorum_set.members.push(QuorumSetMember::Node(node));
+                            }
+                            Rule::quorum_set => {
+                                let inner_set = qs_from_string(member.as_str())?;
+                                quorum_set
+                                    .members
+                                    .push(QuorumSetMember::InnerSet(inner_set));
+                            }
+                            _ => panic!("unexpected rule!"),
+                        }
+                    }
+                }
+                _ => panic!("unexpected rule!"),
+            }
+        }
+        Ok(quorum_set)
+    }
+
+    fn qs_to_string(quorum_set: &QuorumSet<u32>) -> String {
+        let mut quorum_set_string = format!("([{}]", quorum_set.threshold);
+        for member in quorum_set.members.iter() {
+            match member {
+                QuorumSetMember::Node(node) => {
+                    quorum_set_string.push_str(&format!(",{}", node));
+                }
+                QuorumSetMember::InnerSet(inner_set) => {
+                    quorum_set_string.push(',');
+                    quorum_set_string.push_str(&qs_to_string(inner_set));
+                }
+            }
+        }
+        quorum_set_string.push(')');
+        quorum_set_string
+    }
+
+    #[test]
+    fn test_quorum_set_parser_succeeds() {
+        let empty_qs: QuorumSet<u32> = QuorumSet::empty();
+        assert_eq!(qs_to_string(&empty_qs), "([0])");
+
+        let empty_qs_string = "([0])".to_owned();
+        assert_eq!(
+            qs_from_string(&empty_qs_string).expect("failed to parse"),
+            empty_qs
+        );
+
+        let str1 = "([1],0)".to_owned();
+        let qs_str1 = qs_from_string(&str1).expect("failed to parse");
+        assert_eq!(1, qs_str1.threshold);
+        assert_eq!(1, qs_str1.members.len());
+        let node: u32 = match qs_str1.members[0] {
+            QuorumSetMember::Node(node) => node,
+            _ => panic!("unexpected inner set!"),
+        };
+        assert_eq!(0, node);
+
+        let qs1 = qs_from_string("([1], 1, 2)").expect("failed to parse");
+        let qs2 = qs_from_string("([1], 2, 1)").expect("failed to parse");
+        assert_eq!(qs1, qs2);
+
+        let qs_string_with_spaces = "([3],1, 2,3, 4,([2],5, 6,([1],8,7)))".to_owned();
+        let qs3 = qs_from_string(&qs_string_with_spaces).expect("failed to parse");
+        let canonical_string = qs_to_string(&qs3);
+        assert_eq!(
+            qs3,
+            qs_from_string(&canonical_string).expect("failed to parse")
+        );
+
+        let qs_string_reordered = "([3],  4, 3,2, 1,([2], 5, ([1],8,7), 6))".to_owned();
+        let qs4 = qs_from_string(&qs_string_reordered).expect("failed to parse");
+        assert_eq!(qs3, qs4);
+
+        let qs5 = qs_from_string("([1], ([1],1,2), ([1],3,4) )").expect("failed to parse");
+        let qs6 = qs_from_string("([1], ([1],4,3), ([1],2,1) )").expect("failed to parse");
+        assert_eq!(qs5, qs6);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_quorum_set_parser_fails() {
+        let bad_qs_string = "([3],1, [5], 2,3, 4,([2],5, 6,([1],8,7)))".to_owned();
+        let _qs = qs_from_string(&bad_qs_string).expect("failed to parse");
+    }
+}
+
