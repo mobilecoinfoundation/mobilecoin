@@ -6,6 +6,7 @@
 #![deny(missing_docs)]
 
 #[cfg_attr(test, macro_use)]
+#[cfg(test)]
 extern crate pest_derive;
 
 pub mod core_types;
