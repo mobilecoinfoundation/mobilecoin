@@ -835,7 +835,7 @@ mod quorum_set_parser_tests {
     }
 
     #[test]
-    fn test_qs_parser() {
+    fn test_quorum_set_parser_succeeds() {
         let qs_string_with_spaces = "([3],1, 2,3, 4,([2],5, 6,([1],8,7)))".to_owned();
         let qs = qs_from_string(&qs_string_with_spaces).expect("failed to parse");
         let canonical_string = qs_to_string(&qs);
@@ -844,7 +844,7 @@ mod quorum_set_parser_tests {
 
     #[test]
     #[should_panic]
-    fn test_qs_parser_error() {
+    fn test_quorum_set_parser_fails() {
         let bad_qs_string = "([3],1, [5], 2,3, 4,([2],5, 6,([1],8,7)))".to_owned();
         let _qs = qs_from_string(&bad_qs_string).expect("failed to parse");
     }
