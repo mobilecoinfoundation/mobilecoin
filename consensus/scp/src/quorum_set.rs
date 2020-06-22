@@ -23,6 +23,41 @@ use crate::{
 #[grammar = "quorum_set_parser.pest"]
 pub struct QuorumSetParser;
 
+/// A member in a QuorumSet. Can be either a Node or another QuorumSet.
+#[derive(Clone, Debug, Serialize, Deserialize, Hash, Digestible)]
+#[serde(tag = "type", content = "args")]
+pub enum QuorumSetMember<ID: GenericNodeId> {
+    /// A single trusted entity with an identity.
+    Node(ID),
+
+    /// A quorum set can also be a member of a quorum set.
+    InnerSet(QuorumSet<ID>),
+}
+
+impl<ID: GenericNodeId> PartialEq for QuorumSetMember<ID> {
+    fn eq(&self, other: &QuorumSetMember<ID>) -> bool {
+        match self {
+            QuorumSetMember::Node(self_node) => {
+                match other {
+                    QuorumSetMember::Node(other_node) => {
+                        return self_node == other_node;
+                    }
+                    _ => { return false; }
+                }
+            }
+            QuorumSetMember::InnerSet(self_qs) => {
+                match other {
+                    QuorumSetMember::InnerSet(other_qs) => {
+                        return self_qs == other_qs;
+                    }
+                    _ => { return false; }
+                }
+            }
+        }
+    }
+}
+impl<ID: GenericNodeId> Eq for QuorumSetMember<ID> {}
+
 /// The quorum set defining the trusted set of peers.
 #[derive(Clone, Debug, Serialize, Deserialize, Hash, Digestible)]
 pub struct QuorumSet<ID: GenericNodeId = NodeID> {
@@ -48,17 +83,6 @@ impl<ID: GenericNodeId> PartialEq for QuorumSet<ID> {
     }
 }
 impl<ID: GenericNodeId> Eq for QuorumSet<ID> {}
-
-/// A member in a QuorumSet. Can be either a Node or another QuorumSet.
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Digestible)]
-#[serde(tag = "type", content = "args")]
-pub enum QuorumSetMember<ID: GenericNodeId> {
-    /// A single trusted entity with an identity.
-    Node(ID),
-
-    /// A quorum set can also be a member of a quorum set.
-    InnerSet(QuorumSet<ID>),
-}
 
 impl<
         ID: GenericNodeId
