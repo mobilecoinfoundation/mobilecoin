@@ -16,6 +16,7 @@ use crate::{
 
 /// Helper for parsing quorum sets from string representations using "pest"
 /// Used in crate tests.
+#[allow(missing_docs)]
 #[derive(Parser)]
 #[grammar = "quorum_set_parser.pest"]
 pub struct QuorumSetParser;
