@@ -34,7 +34,7 @@ pub enum QuorumSetMember<ID: GenericNodeId> {
     InnerSet(QuorumSet<ID>),
 }
 
-impl<ID: GenericNodeId> PartialEq for QuorumSetMember<ID> {
+impl<ID: GenericNodeId + Ord> PartialEq for QuorumSetMember<ID> {
     fn eq(&self, other: &QuorumSetMember<ID>) -> bool {
         match self {
             QuorumSetMember::Node(self_node) => {
@@ -56,7 +56,7 @@ impl<ID: GenericNodeId> PartialEq for QuorumSetMember<ID> {
         }
     }
 }
-impl<ID: GenericNodeId> Eq for QuorumSetMember<ID> {}
+impl<ID: GenericNodeId + Ord> Eq for QuorumSetMember<ID> {}
 
 /// The quorum set defining the trusted set of peers.
 #[derive(Clone, Debug, Ord, PartialOrd, Serialize, Deserialize, Hash, Digestible)]
@@ -68,14 +68,14 @@ pub struct QuorumSet<ID: GenericNodeId = NodeID> {
     pub members: Vec<QuorumSetMember<ID>>,
 }
 
-impl<ID: GenericNodeId> PartialEq for QuorumSet<ID> {
+impl<ID: GenericNodeId + Ord> PartialEq for QuorumSet<ID> {
     fn eq(&self, other: &QuorumSet<ID>) -> bool {
         if self.threshold == other.threshold &&
             self.members.len() == other.members.len()
         {
             // sort before comparing
-            let mut self_members: Vec<QuorumSetMember<ID>> = self.members.cloned();
-            let mut other_members: Vec<QuorumSetMember<ID>> = other.members.cloned();
+            let mut self_members: Vec<QuorumSetMember<ID>> = self.members.clone();
+            let mut other_members: Vec<QuorumSetMember<ID>> = other.members.clone();
             self_members.sort();
             other_members.sort();
             return self_members == other_members;
@@ -83,7 +83,7 @@ impl<ID: GenericNodeId> PartialEq for QuorumSet<ID> {
         false
     }
 }
-impl<ID: GenericNodeId> Eq for QuorumSet<ID> {}
+impl<ID: GenericNodeId + Ord> Eq for QuorumSet<ID> {}
 
 impl<
         ID: GenericNodeId
