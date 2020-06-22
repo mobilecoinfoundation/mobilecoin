@@ -20,8 +20,9 @@ use std::{
     time::{Duration, Instant},
 };
 
-use pest::{Parser, Rule};
+use pest::Parser;
 
+use pest_derive::Parser;
 /// Helper for parsing quorum sets from string representations using "pest"
 /// Used in crate tests.
 #[derive(Parser)]
