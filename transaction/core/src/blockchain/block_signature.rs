@@ -21,6 +21,11 @@ pub struct BlockSignature {
     /// The public key of the keypair used to generate the signature.
     #[prost(message, required, tag = "2")]
     signer: Ed25519Public,
+
+    /// An approximate time in which the block was signed.
+    /// Represented as seconds of UTC time since Unix epoch 1970-01-01T00:00:00Z.
+    #[prost(uint64, tag = "3")]
+    signed_at: u64,
 }
 
 impl BlockSignature {
@@ -29,11 +34,19 @@ impl BlockSignature {
     /// # Arguments
     /// * `signature` - A block signature.
     /// * `signer` - The signer of the signature.
-    pub fn new(signature: Ed25519Signature, signer: Ed25519Public) -> Self {
-        Self { signature, signer }
+    /// * `signed_at` - The approximate time in which the block was signed, represented at seconds
+    ///                 of UTC time since Unix epoch 1970-01-01T00:00:00Z.
+    pub fn new(signature: Ed25519Signature, signer: Ed25519Public, signed_at: u64) -> Self {
+        Self {
+            signature,
+            signer,
+            signed_at,
+        }
     }
 
     /// Create a new BlockSignature by signing a block.
+    /// Since is generally done inside an enclave, time is not available. As such, `signed_at` is
+    /// being initialized to zero. It can then be set by calling `set_signed_at`.
     pub fn from_block_and_keypair(
         block: &Block,
         keypair: &Ed25519Pair,
@@ -45,7 +58,16 @@ impl BlockSignature {
 
         let signer = keypair.public_key();
 
-        Ok(Self { signature, signer })
+        Ok(Self {
+            signature,
+            signer,
+            signed_at: 0,
+        })
+    }
+
+    /// Set the value of `signed_at`.
+    pub fn set_signed_at(&mut self, signed_at: u64) {
+        self.signed_at = signed_at;
     }
 
     /// Get the signature.
@@ -56,6 +78,11 @@ impl BlockSignature {
     /// Get the signer.
     pub fn signer(&self) -> &Ed25519Public {
         &self.signer
+    }
+
+    /// Get the signed at timestamp.
+    pub fn signed_at(&self) -> u64 {
+        self.signed_at
     }
 
     /// Verify that this signature is over a given block.

@@ -12,7 +12,7 @@ use mc_transaction_core::BlockSignature;
 use mc_util_serial::{decode, encode, Message};
 
 use lmdb::{Cursor, Database, DatabaseFlags, Environment, Transaction, WriteFlags};
-use std::{path::PathBuf, sync::Arc};
+use std::{convert::TryInto, path::PathBuf, sync::Arc};
 use url::Url;
 
 /// LMDB Constant.
@@ -112,7 +112,7 @@ impl WatcherDB {
             archive_filename,
             block_signature,
         };
-        let key_bytes = encode(&block_index);
+        let key_bytes = block_index.to_be_bytes();
         let value_bytes = encode(&signature_data);
         db_txn.put(
             self.block_signatures,
@@ -124,7 +124,7 @@ impl WatcherDB {
         db_txn.put(
             self.last_synced,
             &src_url.as_str().as_bytes(),
-            &encode(&block_index),
+            &key_bytes,
             WriteFlags::empty(),
         )?;
         db_txn.commit()?;
@@ -139,7 +139,7 @@ impl WatcherDB {
         let db_txn = self.env.begin_ro_txn()?;
 
         let mut cursor = db_txn.open_ro_cursor(self.block_signatures)?;
-        let key_bytes = encode(&block_index);
+        let key_bytes = block_index.to_be_bytes();
 
         log::trace!(
             self.logger,
@@ -175,7 +175,17 @@ impl WatcherDB {
         for src_url in self.src_urls.iter() {
             match db_txn.get(self.last_synced, &src_url.as_str().as_bytes()) {
                 Ok(block_index_bytes) => {
-                    results.insert(src_url.clone(), Some(decode(block_index_bytes)?));
+                    if block_index_bytes.len() == 8 {
+                        let block_index = u64::from_be_bytes(block_index_bytes.try_into().unwrap());
+                        results.insert(src_url.clone(), Some(block_index));
+                    } else {
+                        log::error!(
+                            self.logger,
+                            "Got invalid block index bytes {:?} for {}",
+                            block_index_bytes,
+                            src_url,
+                        );
+                    }
                 }
                 Err(lmdb::Error::NotFound) => {
                     results.insert(src_url.clone(), None);
@@ -199,7 +209,7 @@ impl WatcherDB {
         db_txn.put(
             self.last_synced,
             &src_url.as_str().as_bytes(),
-            &encode(&block_index),
+            &block_index.to_be_bytes(),
             WriteFlags::empty(),
         )?;
         db_txn.commit()?;

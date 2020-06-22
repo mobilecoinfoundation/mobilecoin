@@ -724,6 +724,7 @@ impl From<&BlockSignature> for blockchain::BlockSignature {
         let mut dst = blockchain::BlockSignature::new();
         dst.set_signature(external::Ed25519Signature::from(src.signature()));
         dst.set_signer(external::Ed25519Public::from(src.signer()));
+        dst.set_signed_at(src.signed_at());
         dst
     }
 }
@@ -735,7 +736,8 @@ impl TryFrom<&blockchain::BlockSignature> for BlockSignature {
     fn try_from(source: &blockchain::BlockSignature) -> Result<Self, Self::Error> {
         let signature = Ed25519Signature::try_from(source.get_signature())?;
         let signer = Ed25519Public::try_from(source.get_signer())?;
-        Ok(BlockSignature::new(signature, signer))
+        let signed_at = source.get_signed_at();
+        Ok(BlockSignature::new(signature, signer, signed_at))
     }
 }
 
@@ -980,6 +982,7 @@ mod conversion_tests {
         let source_block_signature = mc_transaction_core::BlockSignature::new(
             Ed25519Signature::new([1; 64]),
             (&Ed25519Private::from_random(&mut rng)).into(),
+            31337,
         );
 
         let block_signature = blockchain::BlockSignature::from(&source_block_signature);
@@ -991,6 +994,10 @@ mod conversion_tests {
             block_signature.get_signer().get_data(),
             source_block_signature.signer().to_bytes().as_ref(),
         );
+        assert_eq!(
+            block_signature.get_signed_at(),
+            source_block_signature.signed_at(),
+        );
     }
 
     #[test]
@@ -1001,6 +1008,7 @@ mod conversion_tests {
         let expected_block_signature = mc_transaction_core::BlockSignature::new(
             Ed25519Signature::new([1; 64]),
             (&Ed25519Private::from_random(&mut rng)).into(),
+            31337,
         );
 
         let mut source_block_signature = blockchain::BlockSignature::new();
@@ -1012,6 +1020,8 @@ mod conversion_tests {
         let mut signer = external::Ed25519Public::new();
         signer.set_data(expected_block_signature.signer().to_bytes().to_vec());
         source_block_signature.set_signer(signer);
+
+        source_block_signature.set_signed_at(31337);
 
         let block_signature =
             mc_transaction_core::BlockSignature::try_from(&source_block_signature).unwrap();
@@ -1028,6 +1038,7 @@ mod conversion_tests {
         let source_block_signature = mc_transaction_core::BlockSignature::new(
             Ed25519Signature::new([1; 64]),
             (&Ed25519Private::from_random(&mut rng)).into(),
+            31337,
         );
 
         // Encode using `protobuf`, decode using `prost`.
