@@ -846,6 +846,6 @@ mod quorum_set_parser_tests {
     #[should_panic]
     fn test_qs_parser_error() {
         let bad_qs_string = "([3],1, [5], 2,3, 4,([2],5, 6,([1],8,7)))".to_owned();
-        let qs = qs_from_string(&bad_qs_string).expect("failed to parse");
+        let _qs = qs_from_string(&bad_qs_string).expect("failed to parse");
     }
 }
