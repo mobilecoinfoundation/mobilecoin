@@ -19,8 +19,8 @@ use std::{
     thread::JoinHandle,
     time::{Duration, Instant},
 };
-use pest::{Parser, Rule};
 
+use pest_derive::Parser;
 
 /// Helper for parsing quorum sets from string representations using "pest"
 /// Used in crate tests.
