@@ -780,7 +780,7 @@ pub fn qs_from_string(
         .next()
         .unwrap()
         .into_inner();
-    let mut quorum_set: QuorumSet<NodeId> = QuorumSet::empty();
+    let mut quorum_set: QuorumSet<NodeID> = QuorumSet::empty();
     for pair in inner_rules {
         match pair.as_rule() {
             Rule::empty_set => {
