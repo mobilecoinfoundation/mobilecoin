@@ -863,7 +863,7 @@ mod quorum_set_parser_tests {
     #[test]
     fn test_node_id_quorum_set_roundtrip() {
         let qs_string = "([3],1,2,3,4,([2],5,6,([1],7,8)))".to_owned();
-        let qs = qs_from_string(&qs_string_with_spaces).expect("failed to parse");
+        let qs = qs_from_string(&qs_string).expect("failed to parse");
         let qs_new_string = qs_to_string(&qs);
         assert_eq!(qs_string, qs_new_string);
     }
