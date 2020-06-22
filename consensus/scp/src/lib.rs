@@ -5,9 +5,6 @@
 #![allow(non_snake_case)]
 #![deny(missing_docs)]
 
-#[macro_use]
-extern crate pest_derive;
-
 pub mod core_types;
 pub mod msg;
 pub mod node;
