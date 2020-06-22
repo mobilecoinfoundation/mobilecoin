@@ -24,7 +24,7 @@ use crate::{
 pub struct QuorumSetParser;
 
 /// A member in a QuorumSet. Can be either a Node or another QuorumSet.
-#[derive(Clone, Debug, Serialize, Deserialize, Hash, Digestible)]
+#[derive(Clone, Debug, Ord, PartialOrd, Serialize, Deserialize, Hash, Digestible)]
 #[serde(tag = "type", content = "args")]
 pub enum QuorumSetMember<ID: GenericNodeId> {
     /// A single trusted entity with an identity.
@@ -59,7 +59,7 @@ impl<ID: GenericNodeId> PartialEq for QuorumSetMember<ID> {
 impl<ID: GenericNodeId> Eq for QuorumSetMember<ID> {}
 
 /// The quorum set defining the trusted set of peers.
-#[derive(Clone, Debug, Serialize, Deserialize, Hash, Digestible)]
+#[derive(Clone, Debug, Ord, PartialOrd, Serialize, Deserialize, Hash, Digestible)]
 pub struct QuorumSet<ID: GenericNodeId = NodeID> {
     /// Threshold (how many members do we need to reach quorum).
     pub threshold: u32,
@@ -74,8 +74,8 @@ impl<ID: GenericNodeId> PartialEq for QuorumSet<ID> {
             self.members.len() == other.members.len()
         {
             // sort before comparing
-            let mut self_members: Vec<QuorumSetMember<ID>> = self.members.iter().cloned();
-            let mut other_members: Vec<QuorumSetMember<ID>> = other.members.iter().cloned();
+            let mut self_members: Vec<QuorumSetMember<ID>> = self.members.cloned();
+            let mut other_members: Vec<QuorumSetMember<ID>> = other.members.cloned();
             self_members.sort();
             other_members.sort();
             return self_members == other_members;
