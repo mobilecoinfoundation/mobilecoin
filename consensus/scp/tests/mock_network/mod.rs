@@ -1,8 +1,5 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-#[macro_use]
-extern crate pest_derive;
-
 use mc_common::{
     logger::{log, o, Logger},
     HashMap, HashSet, NodeID,
