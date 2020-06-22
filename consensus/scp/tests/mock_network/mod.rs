@@ -20,7 +20,8 @@ use std::{
     time::{Duration, Instant},
 };
 
-use pest_derive::Parser;
+//use pest_derive::Parser;
+use pest::parser::Parser;
 
 /// Helper for parsing quorum sets from string representations using "pest"
 /// Used in crate tests.
@@ -843,7 +844,7 @@ pub fn qs_to_string(quorum_set: &QuorumSet<NodeID>) -> String {
         match member {
             QuorumSetMember::Node(node_id) => {
                 // lookup index for this node
-                let u32_id:u32 = nodes_vector.iter().position(|&id| id == node_id).unwrap() as u32;
+                let u32_id:u32 = nodes_vector.iter().position(|id| id == node_id).unwrap() as u32;
                 quorum_set_string.push_str(&format!(",{}", u32_id));
             }
             QuorumSetMember::InnerSet(inner_set) => {
