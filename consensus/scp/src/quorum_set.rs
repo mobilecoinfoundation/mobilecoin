@@ -73,10 +73,11 @@ impl<ID: GenericNodeId> PartialEq for QuorumSet<ID> {
         if self.threshold == other.threshold &&
             self.members.len() == other.members.len()
         {
-            // create hashsets to compare
-            let self_members: HashSet<QuorumSetMember<ID>> = HashSet::from_iter(self.members.iter().cloned());
-            let other_members: HashSet<QuorumSetMember<ID>> = HashSet::from_iter(other.members.iter().cloned());
-
+            // sort before comparing
+            let mut self_members: Vec<QuorumSetMember<ID>> = self.members.iter().cloned();
+            let mut other_members: Vec<QuorumSetMember<ID>> = other.members.iter().cloned();
+            self_members.sort();
+            other_members.sort();
             return self_members == other_members;
         }
         false
