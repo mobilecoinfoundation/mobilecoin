@@ -58,6 +58,18 @@ pub fn test_node_id_and_signer(node_id: u32) -> (NodeID, Ed25519Pair) {
     )
 }
 
+/// Recovers the u32 node_id value for a NodeID created using test_node_id_and_signer
+pub fn recover_test_id(id: NodeID) -> u32 {
+    NodeID
+        .responder_id
+        .split('.')
+        .fuse()
+        .next()
+        .expect("unexpected responder_id")[4..]
+        .parse::<u32>()
+        .expect("unable to parse node index");
+}
+
 /// Creates a new slot.
 pub fn get_slot(
     slot_index: SlotIndex,

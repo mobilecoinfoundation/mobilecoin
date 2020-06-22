@@ -834,17 +834,11 @@ pub fn qs_u32_to_string(quorum_set: &QuorumSet<u32>) -> String {
 
 /// creates a easy-to-read string from a QuorumSet<NodeID>
 pub fn qs_to_string(quorum_set: &QuorumSet<NodeID>) -> String {
-    // assign indexes to nodes - this prob. makes assumptions about the sort order of
-    // NodeIDs created by test_utils::test_node_id
-    let mut nodes_vector: Vec<NodeID> = quorum_set.nodes().into_iter().collect();
-    nodes_vector.sort();
     let mut quorum_set_string = format!("([{}]", quorum_set.threshold);
     for member in quorum_set.members.iter() {
         match member {
             QuorumSetMember::Node(node_id) => {
-                // lookup index for this node
-                let u32_id:u32 = nodes_vector.iter().position(|id| id == node_id).unwrap() as u32;
-                quorum_set_string.push_str(&format!(",{}", u32_id));
+                quorum_set_string.push_str(&format!(",{}", test_utils::recover_test_id(node_id)));
             }
             QuorumSetMember::InnerSet(inner_set) => {
                 quorum_set_string.push(',');
