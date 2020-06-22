@@ -33,7 +33,7 @@ pub struct QuorumSet<ID: GenericNodeId = NodeID> {
     pub members: Vec<QuorumSetMember<ID>>,
 }
 
-impl PartialEq for QuorumSet<ID: GenericNodeId = NodeID> {
+impl PartialEq<ID: GenericNodeId> for QuorumSet<ID> {
     fn eq(&self, other: &QuorumSet<ID>) -> bool {
         if self.threshold == other.threshold &&
             self.members.len() == other..members.len()
