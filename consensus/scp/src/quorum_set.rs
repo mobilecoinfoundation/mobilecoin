@@ -822,7 +822,7 @@ mod quorum_set_parser_tests {
         Ok(quorum_set)
     }
 
-    fn qs_to_string(quorum_set: &QuorumSet) -> String {
+    fn qs_to_string(quorum_set: &QuorumSet<u32>) -> String {
         let mut quorum_set_string = format!("([{}]", quorum_set.threshold);
         for member in quorum_set.members.iter() {
             match member {
