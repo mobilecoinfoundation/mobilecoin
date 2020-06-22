@@ -32,6 +32,7 @@ service MobilecoindAPI {
     rpc GetRequestCode (GetRequestCodeRequest) returns (GetRequestCodeResponse) {}
     rpc ReadTransferCode (ReadTransferCodeRequest) returns (ReadTransferCodeResponse) {}
     rpc GetTransferCode (GetTransferCodeRequest) returns (GetTransferCodeResponse) {}
+    rpc GetAddressRequestCode (GetAddressRequestCodeRequest) returns (GetAddressRequestCodeResponse) {}
 
     // Txs
     rpc GenerateTx (GenerateTxRequest) returns (GenerateTxResponse) {}
@@ -333,6 +334,15 @@ message GetTransferCodeResponse {
     string b58_code = 1;
 }
 
+// Encode a URL into a base-58 "MobileCoin Address Request Code".
+message GetAddressRequestCodeRequest {
+    string url = 1;
+}
+
+message GetAddressRequestCodeResponse {
+    string b58_code = 1;
+}
+
 //
 // Transactions
 //
@@ -401,7 +411,7 @@ message GenerateTransferCodeTxResponse {
     bytes entropy = 2;
 
     // The TxOut public key that has the funds.
-    external.RistrettoPublic tx_public_key = 3;
+    external.CompressedRistretto tx_public_key = 3;
 
     // The memo (simply copied from the request).
     string memo = 4;

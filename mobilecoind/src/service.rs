@@ -31,7 +31,7 @@ use mc_transaction_core::{
     ring_signature::KeyImage,
 };
 use mc_transaction_std::identity::RootIdentity;
-use mc_util_b58_payloads::payloads::{RequestPayload, TransferPayload};
+use mc_util_b58_payloads::payloads::{AddressRequestPayload, RequestPayload, TransferPayload};
 use mc_util_grpc::{rpc_internal_error, rpc_logger, send_result, BuildInfoService};
 use mc_watcher::watcher_db::WatcherDB;
 use protobuf::RepeatedField;
@@ -433,6 +433,18 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         let b58_code = payload.encode();
 
         let mut response = mc_mobilecoind_api::GetTransferCodeResponse::new();
+        response.set_b58_code(b58_code);
+        Ok(response)
+    }
+
+    fn get_address_request_code_impl(
+        &mut self,
+        request: mc_mobilecoind_api::GetAddressRequestCodeRequest,
+    ) -> Result<mc_mobilecoind_api::GetAddressRequestCodeResponse, RpcStatus> {
+        let payload = AddressRequestPayload::new_v0(request.get_url().to_string())
+            .map_err(|err| rpc_internal_error("AddressRequestPayload.new_v0", err, &self.logger))?;
+        let b58_code = payload.encode();
+        let mut response = mc_mobilecoind_api::GetAddressRequestCodeResponse::new();
         response.set_b58_code(b58_code);
         Ok(response)
     }
@@ -1142,6 +1154,7 @@ build_api! {
     get_request_code GetRequestCodeRequest GetRequestCodeResponse get_request_code_impl,
     read_transfer_code ReadTransferCodeRequest ReadTransferCodeResponse read_transfer_code_impl,
     get_transfer_code GetTransferCodeRequest GetTransferCodeResponse get_transfer_code_impl,
+    get_address_request_code GetAddressRequestCodeRequest GetAddressRequestCodeResponse get_address_request_code_impl,
     generate_tx GenerateTxRequest GenerateTxResponse generate_tx_impl,
     generate_optimization_tx GenerateOptimizationTxRequest GenerateOptimizationTxResponse generate_optimization_tx_impl,
     generate_transfer_code_tx GenerateTransferCodeTxRequest GenerateTransferCodeTxResponse generate_transfer_code_tx_impl,
@@ -1168,6 +1181,7 @@ mod test {
         utxo_store::UnspentTxOut,
     };
     use mc_common::{logger::test_with_logger, HashSet};
+    use mc_crypto_rand::RngCore;
     use mc_transaction_core::{
         account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX},
         constants::{BASE_FEE, MAX_INPUTS, RING_SIZE},
@@ -2150,7 +2164,7 @@ mod test {
             let _ = add_block_to_ledger_db(
                 &mut ledger_db,
                 &[sender_default_subaddress.clone()],
-                &[],
+                &[KeyImage::from(rng.next_u64())],
                 &mut rng,
             );
         }
@@ -2801,6 +2815,24 @@ mod test {
         assert_eq!(
             network_status.local_block_index,
             ledger_db.num_blocks().unwrap() - 1
+        );
+    }
+
+    #[test_with_logger]
+    fn test_address_request_code(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        let (_ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
+
+        let mut request = mc_mobilecoind_api::GetAddressRequestCodeRequest::new();
+        request.set_url("https://example.com".to_string());
+
+        let address_b58 = client.get_address_request_code(&request).unwrap();
+
+        assert_eq!(
+            address_b58.get_b58_code(),
+            "4mppAGCtx4xn42C36Ck7gGnAoGbdJceYBH6k",
         );
     }
 }

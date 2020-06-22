@@ -43,21 +43,24 @@
 <div class="row">********************************************************************************</div>
 <div class="row">&nbsp;</div>
 <div class="row">
-    <div class="col_40">Url</div>
+    <div class="col_30">Url</div>
     <div class="col_15">Signer</div>
     <div class="col_15">Signature</div>
+    <div class="col_19">Signed at</div>
 </div>
 <div class="row">
-    <div class="col_40">---</div>
+    <div class="col_30">---</div>
     <div class="col_15">------</div>
     <div class="col_15">---------</div>
+    <div class="col_19">---------</div>
 </div>
 <div class="row">&nbsp;</div>
 {%- for signature in signatures %}
     <div class="row">
-      <div class="col_40">{{ signature.src_url }}</div>
+      <div class="col_30">{{ signature.src_url }}</div>
       <div class="col_15">{{ signature.signature.signer.data.hex()[:5] }}...</div>
       <div class="col_15">{{ signature.signature.signature.data.hex()[:9] }}...</div>
+      <div class="col_19">{{ signature.signature.signed_at|datetime }}</div>
     </div>
 {%- endfor %}
 <div class="row">&nbsp;</div>

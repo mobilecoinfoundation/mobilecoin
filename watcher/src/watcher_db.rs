@@ -12,7 +12,7 @@ use mc_transaction_core::BlockSignature;
 use mc_util_serial::{decode, encode, Message};
 
 use lmdb::{Cursor, Database, DatabaseFlags, Environment, Transaction, WriteFlags};
-use std::{collections::HashSet, path::PathBuf, sync::Arc};
+use std::{convert::TryInto, path::PathBuf, sync::Arc};
 use url::Url;
 
 /// LMDB Constant.
@@ -46,6 +46,9 @@ pub struct WatcherDB {
     /// LMDB Environment (database).
     env: Arc<Environment>,
 
+    /// List of tracked URLs.
+    src_urls: Vec<Url>,
+
     /// Signature store.
     block_signatures: Database,
 
@@ -68,32 +71,9 @@ impl WatcherDB {
         let block_signatures = env.open_db(Some(BLOCK_SIGNATURES_DB_NAME))?;
         let last_synced = env.open_db(Some(LAST_SYNCED_DB_NAME))?;
 
-        // Add any new URLs to the db with last_synced 0
-        let tracked_urls: HashSet<String> = {
-            let db_txn = env.begin_ro_txn()?;
-            let mut cursor = db_txn.open_ro_cursor(last_synced)?;
-            cursor
-                .iter()
-                .map(|(k, _v)| decode(k).expect("Could not decode url"))
-                .collect()
-        };
-
-        let mut db_txn = env.begin_rw_txn()?;
-        for url in src_urls {
-            match tracked_urls.get(&url.as_str().to_string()) {
-                Some(_url) => {}
-                None => db_txn.put(
-                    last_synced,
-                    &encode(&url.as_str().to_string()),
-                    &encode(&0),
-                    WriteFlags::empty(),
-                )?,
-            }
-        }
-        db_txn.commit()?;
-
         Ok(WatcherDB {
             env,
+            src_urls: src_urls.to_vec(),
             block_signatures,
             last_synced,
             logger,
@@ -101,7 +81,7 @@ impl WatcherDB {
     }
 
     /// Create a fresh WatcherDB.
-    pub fn create(path: PathBuf, src_urls: &[Url]) -> Result<(), WatcherDBError> {
+    pub fn create(path: PathBuf) -> Result<(), WatcherDBError> {
         let env = Arc::new(
             Environment::new()
                 .set_max_dbs(10)
@@ -113,18 +93,8 @@ impl WatcherDB {
             Some(BLOCK_SIGNATURES_DB_NAME),
             DatabaseFlags::DUP_SORT | DatabaseFlags::DUP_FIXED,
         )?;
-        let last_synced = env.create_db(Some(LAST_SYNCED_DB_NAME), DatabaseFlags::empty())?;
+        env.create_db(Some(LAST_SYNCED_DB_NAME), DatabaseFlags::empty())?;
 
-        let mut db_txn = env.begin_rw_txn()?;
-        for url in src_urls {
-            db_txn.put(
-                last_synced,
-                &encode(&url.as_str().to_string()),
-                &encode(&0),
-                WriteFlags::empty(),
-            )?;
-        }
-        db_txn.commit()?;
         Ok(())
     }
 
@@ -142,7 +112,7 @@ impl WatcherDB {
             archive_filename,
             block_signature,
         };
-        let key_bytes = encode(&block_index);
+        let key_bytes = block_index.to_be_bytes();
         let value_bytes = encode(&signature_data);
         db_txn.put(
             self.block_signatures,
@@ -153,8 +123,8 @@ impl WatcherDB {
 
         db_txn.put(
             self.last_synced,
-            &encode(&src_url.as_str().to_string()),
-            &encode(&block_index),
+            &src_url.as_str().as_bytes(),
+            &key_bytes,
             WriteFlags::empty(),
         )?;
         db_txn.commit()?;
@@ -169,7 +139,7 @@ impl WatcherDB {
         let db_txn = self.env.begin_ro_txn()?;
 
         let mut cursor = db_txn.open_ro_cursor(self.block_signatures)?;
-        let key_bytes = encode(&block_index);
+        let key_bytes = block_index.to_be_bytes();
 
         log::trace!(
             self.logger,
@@ -198,13 +168,34 @@ impl WatcherDB {
     }
 
     /// Get the total number of Blocks in the watcher db.
-    pub fn last_synced_blocks(&self) -> Result<HashMap<String, u64>, WatcherDBError> {
+    pub fn last_synced_blocks(&self) -> Result<HashMap<Url, Option<u64>>, WatcherDBError> {
         let db_txn = self.env.begin_ro_txn()?;
-        let mut cursor = db_txn.open_ro_cursor(self.last_synced)?;
-        let mut results: HashMap<String, u64> = HashMap::default();
-        for (db_key, db_value) in cursor.iter() {
-            results.insert(decode(&db_key)?, decode(&db_value)?);
+        let mut results = HashMap::default();
+
+        for src_url in self.src_urls.iter() {
+            match db_txn.get(self.last_synced, &src_url.as_str().as_bytes()) {
+                Ok(block_index_bytes) => {
+                    if block_index_bytes.len() == 8 {
+                        let block_index = u64::from_be_bytes(block_index_bytes.try_into().unwrap());
+                        results.insert(src_url.clone(), Some(block_index));
+                    } else {
+                        log::error!(
+                            self.logger,
+                            "Got invalid block index bytes {:?} for {}",
+                            block_index_bytes,
+                            src_url,
+                        );
+                    }
+                }
+                Err(lmdb::Error::NotFound) => {
+                    results.insert(src_url.clone(), None);
+                }
+                Err(err) => {
+                    return Err(err.into());
+                }
+            };
         }
+
         Ok(results)
     }
 
@@ -217,8 +208,8 @@ impl WatcherDB {
         let mut db_txn = self.env.begin_rw_txn()?;
         db_txn.put(
             self.last_synced,
-            &encode(&src_url.as_str().to_string()),
-            &encode(&block_index),
+            &src_url.as_str().as_bytes(),
+            &block_index.to_be_bytes(),
             WriteFlags::empty(),
         )?;
         db_txn.commit()?;
@@ -240,7 +231,7 @@ pub fn create_or_open_watcher_db(
     // Attempt to open the WatcherDB and see if it has anything in it.
     if let Ok(watcher_db) = WatcherDB::open(watcher_db_path.clone(), src_urls, logger.clone()) {
         if let Ok(last_synced) = watcher_db.last_synced_blocks() {
-            if last_synced.values().max().map_or(0, |x| *x) > 0 {
+            if last_synced.values().any(|val| val.is_some()) {
                 // Successfully opened a ledger that has blocks in it.
                 log::info!(
                     logger,
@@ -254,7 +245,7 @@ pub fn create_or_open_watcher_db(
     }
 
     // WatcherDB does't exist, or is empty. Create a new WatcherDB, and open it.
-    WatcherDB::create(watcher_db_path.clone(), src_urls)?;
+    WatcherDB::create(watcher_db_path.clone())?;
     WatcherDB::open(watcher_db_path, &src_urls, logger)
 }
 
@@ -272,7 +263,7 @@ mod test {
 
     fn setup_watcher_db(urls: &Vec<Url>, logger: Logger) -> WatcherDB {
         let db_tmp = TempDir::new("wallet_db").expect("Could not make tempdir for wallet db");
-        WatcherDB::create(db_tmp.path().to_path_buf(), urls).unwrap();
+        WatcherDB::create(db_tmp.path().to_path_buf()).unwrap();
         WatcherDB::open(db_tmp.path().to_path_buf(), urls, logger).unwrap()
     }
 

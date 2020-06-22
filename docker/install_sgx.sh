@@ -19,6 +19,7 @@ set -u
 
 cd /tmp
 
+# NB: When updating dependencies, please remember to update the instructions in BUILD.md as well
 apt-get update
 apt-get install -yq --no-install-recommends \
 	ca-certificates \
@@ -43,6 +44,7 @@ apt-get install -yq --no-install-recommends \
 	libxml2-dev
 
 # Install SGX Development Environment
+# NB: When updating dependencies, please remember to update the instructions in BUILD.md as well
 mkdir -p /tmp/sgx-install
 cd /tmp/sgx-install
 cat <<EOF | wget -nv -i-

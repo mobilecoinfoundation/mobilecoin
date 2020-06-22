@@ -43,10 +43,19 @@ impl Watcher {
         }
     }
 
-    /// The number of blocks in the watcher db.
-    pub fn min_synced(&self) -> Result<u64, WatcherError> {
+    /// The lowest next block we need to try and sync.
+    pub fn lowest_next_block_to_sync(&self) -> Result<u64, WatcherError> {
         let last_synced = self.watcher_db.last_synced_blocks()?;
-        Ok(last_synced.values().min().map_or(0, |x| *x))
+        Ok(last_synced
+            .values()
+            .map(|last_synced_block| match last_synced_block {
+                // If we haven't synced any blocks yet, the next one is block 0.
+                None => 0,
+                // If we synced a block, the next one is the next one.
+                Some(index) => index + 1,
+            })
+            .min()
+            .unwrap_or(0))
     }
 
     /// Sync a signature from a url at a given block_index.
@@ -114,33 +123,37 @@ impl Watcher {
 
         loop {
             // Get the last synced block for each URL we are tracking.
-            let mut last_synced: HashMap<String, u64> = self.watcher_db.last_synced_blocks()?;
+            let mut last_synced = self.watcher_db.last_synced_blocks()?;
+
+            // Filter the list to only contain URLs we still need to sync from.
+            if let Some(max_block_height) = max_block_height {
+                last_synced.retain(|_url, opt_block_index| {
+                    opt_block_index
+                        .map(|block_index| block_index < max_block_height)
+                        .unwrap_or(true)
+                });
+            }
+            if last_synced.is_empty() {
+                return Ok(());
+            }
 
             // Track whether sync failed - this catches cases where S3 is behind local ledger,
             // which could happen if your local ledger was synced previously from different nodes
             // than you are now watching. We track the sync failures so we can return control to the
             // polling thread rather than continuously loop in this method.
-            let mut sync_failed: HashMap<String, bool> = self
-                .transactions_fetcher
-                .source_urls
+            let mut sync_failed: HashMap<Url, bool> = last_synced
                 .iter()
-                .map(|url| (url.as_str().to_string(), false))
+                .map(|(url, _opt_block_index)| (url.clone(), false))
                 .collect();
 
-            if let Some(max_block_height) = max_block_height {
-                last_synced.retain(|_url, block_index| *block_index < max_block_height);
-            }
-            if last_synced.is_empty() {
-                return Ok(());
-            }
-            // Construct URL for the block we are trying to fetch.
-            for src_url in self.transactions_fetcher.source_urls.iter() {
-                let url_key = src_url.as_str().to_string();
-                let next_block_index = last_synced[&url_key] + 1;
+            for (src_url, opt_last_synced) in last_synced {
+                let next_block_index = opt_last_synced
+                    .map(|block_index| block_index + 1)
+                    .unwrap_or(0);
                 match self.sync_signature(&src_url, next_block_index) {
                     Ok(()) => {}
                     Err(WatcherError::SyncFailed) => {
-                        sync_failed.insert(url_key, true);
+                        sync_failed.insert(src_url.clone(), true);
                     }
                     Err(e) => {
                         return Err(e);
@@ -235,14 +248,16 @@ impl WatcherSyncThread {
                 break;
             }
 
-            let min_synced = watcher.min_synced().unwrap();
+            let lowest_next_block_to_sync = watcher
+                .lowest_next_block_to_sync()
+                .expect("failed getting lowest next block to sync");
             let ledger_num_blocks = ledger.num_blocks().unwrap();
             // See if we're currently behind.
-            let is_behind = { min_synced < ledger_num_blocks };
+            let is_behind = { lowest_next_block_to_sync < ledger_num_blocks };
             log::debug!(
                 logger,
-                "Minimum synced block {:?} Ledger block height {:?}, is_behind {:?}",
-                min_synced,
+                "Lowest next block to sync: {}, Ledger block height {}, is_behind {}",
+                lowest_next_block_to_sync,
                 ledger_num_blocks,
                 is_behind
             );
@@ -252,9 +267,9 @@ impl WatcherSyncThread {
             if is_behind {
                 log::debug!(
                     logger,
-                    "watcher sync is_behind: {:?} num blocks watcher: {:?} vs ledger: {:?}",
+                    "watcher sync is_behind: {:?} lowest next block to sync: {:?} vs ledger: {:?}",
                     is_behind,
-                    min_synced,
+                    lowest_next_block_to_sync,
                     ledger_num_blocks,
                 );
             }
@@ -263,16 +278,16 @@ impl WatcherSyncThread {
             if is_behind {
                 let max_blocks = std::cmp::min(
                     ledger_num_blocks - 1,
-                    min_synced + MAX_BLOCKS_PER_SYNC_ITERATION as u64,
+                    lowest_next_block_to_sync + MAX_BLOCKS_PER_SYNC_ITERATION as u64,
                 );
                 watcher
-                    .sync_signatures(min_synced, Some(max_blocks))
+                    .sync_signatures(lowest_next_block_to_sync, Some(max_blocks))
                     .expect("Could not sync signatures");
             } else if !stop_requested.load(Ordering::SeqCst) {
                 log::trace!(
                     logger,
                     "Sleeping, watcher blocks synced = {}...",
-                    min_synced
+                    lowest_next_block_to_sync
                 );
                 std::thread::sleep(poll_interval);
             }

@@ -318,9 +318,12 @@ impl<E: ConsensusEnclaveProxy, L: Ledger, UI: UntrustedInterfaces> TxManager<E, 
 
         let num_blocks = self.ledger.num_blocks()?;
         let parent_block = self.ledger.get_block(num_blocks - 1)?;
-        let (block, block_contents, signature) = self
+        let (block, block_contents, mut signature) = self
             .enclave
             .form_block(&parent_block, &encrypted_txs_with_proofs)?;
+
+        // The enclave cannot provide a timestamp, so this happens in untrusted.
+        signature.set_signed_at(chrono::Utc::now().timestamp() as u64);
 
         Ok((block, block_contents, signature))
     }

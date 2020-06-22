@@ -491,11 +491,10 @@ impl LedgerDB {
             return Err(Error::NoOutputs);
         }
 
-        // TODO: enable this.
-        // // Non-origin blocks must have key images.
-        // if block.index == 0 && block_contents.key_images.is_empty() {
-        //     return Err(Error::InvalidBlock);
-        // }
+        // Non-origin blocks must have key images.
+        if block.index != 0 && block_contents.key_images.is_empty() {
+            return Err(Error::InvalidBlock);
+        }
 
         // Check if block is being appended at the correct place.
         let num_blocks = self.num_blocks()?;
@@ -609,7 +608,12 @@ mod ledger_db_test {
                 })
                 .collect();
 
-            let key_images: Vec<KeyImage> = Vec::new();
+            // Non-origin blocks must have at least one key image.
+            let key_images: Vec<KeyImage> = if block_index > 0 {
+                vec![KeyImage::from(block_index)]
+            } else {
+                vec![]
+            };
             let block_contents = BlockContents::new(key_images, outputs.clone());
 
             let block = match parent_block {
@@ -751,6 +755,55 @@ mod ledger_db_test {
 
         let block_one_key_images = ledger_db.get_key_images_by_block(1).unwrap();
         assert_eq!(key_images, block_one_key_images);
+    }
+
+    #[test]
+    #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: InvalidBlock")]
+    // Appending a non-origin block should fail if the block contains no key images.
+    fn test_append_block_fails_for_non_origin_blocks_without_key_images() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut ledger_db = create_db();
+
+        // === Create and append the origin block. ===
+        // The origin block contains a single output belonging to the `origin_account_key`.
+
+        let origin_account_key = AccountKey::random(&mut rng);
+        let (origin_block, origin_block_contents) =
+            get_origin_block_and_contents(&origin_account_key);
+
+        ledger_db
+            .append_block(&origin_block, &origin_block_contents, None)
+            .unwrap();
+
+        // === Attempt to append a block without key images ===
+        let recipient_account_key = AccountKey::random(&mut rng);
+        let outputs: Vec<TxOut> = (0..4)
+            .map(|_i| {
+                TxOut::new(
+                    1000,
+                    &recipient_account_key.default_subaddress(),
+                    &RistrettoPrivate::from_random(&mut rng),
+                    Default::default(),
+                    &mut rng,
+                )
+                .unwrap()
+            })
+            .collect();
+
+        let key_images = Vec::new();
+
+        let block_contents = BlockContents::new(key_images.clone(), outputs);
+        let block = Block::new_with_parent(
+            BLOCK_VERSION,
+            &origin_block,
+            &Default::default(),
+            &block_contents,
+        );
+
+        // This is expected to fail.
+        ledger_db
+            .append_block(&block, &block_contents, None)
+            .unwrap();
     }
 
     #[test]

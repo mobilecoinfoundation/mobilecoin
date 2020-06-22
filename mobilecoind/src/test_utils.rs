@@ -87,8 +87,14 @@ pub fn get_test_databases(
 
     let mut ledger_db = generate_ledger_db(&ledger_db_path);
 
-    for _i in 0..num_blocks {
-        let _new_block_height = add_block_to_ledger_db(&mut ledger_db, &public_addresses, &[], rng);
+    for block_index in 0..num_blocks {
+        let key_images = if block_index == 0 {
+            vec![]
+        } else {
+            vec![KeyImage::from(rng.next_u64())]
+        };
+        let _new_block_height =
+            add_block_to_ledger_db(&mut ledger_db, &public_addresses, &key_images, rng);
     }
 
     let mobilecoind_db = Database::new(mobilecoind_db_path.to_string(), logger)

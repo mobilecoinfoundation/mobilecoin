@@ -14,6 +14,7 @@ enum PayloadType {
     Transfer = 1,
     // Wallet = 2,
     // Envelope = 3,
+    AddressRequest = 5,
 }
 
 /// A little-endian IEEE CRC32 checksum is prepended to payloads.
@@ -389,6 +390,59 @@ impl From<&TransferPayload> for AccountKey {
     }
 }
 
+/// AddressRequestPayload encodes a URL to which a user to send a public address
+#[derive(PartialEq, Eq, Clone)]
+pub struct AddressRequestPayload {
+    /// The payload version.
+    version: u8,
+
+    /// utf-8 encoded url
+    pub url: String,
+}
+
+impl AddressRequestPayload {
+    /// Creates a new AddressRequestPayload from an encoded string.
+    pub fn decode(encoded_string: &str) -> Result<Self, Error> {
+        let (version, mut buffer_bytes) =
+            decode_payload(encoded_string, PayloadType::AddressRequest)?;
+
+        let url_size_byte = checked_split_off(&mut buffer_bytes, 1, "url_size_byte")?;
+        let url_size: usize = url_size_byte[0] as usize;
+        let url_bytes = checked_split_off(&mut buffer_bytes, url_size, "memo_bytes")?;
+
+        let mut payload = AddressRequestPayload::new_v0(String::from_utf8(url_bytes.to_vec())?)?;
+        payload.version = version;
+        Ok(payload)
+    }
+
+    pub fn new_v0(url: String) -> Result<Self, Error> {
+        Ok(AddressRequestPayload { version: 0, url })
+    }
+
+    /// Encodes this AddressRequestPayload to a string
+    /// [0..4]            checksum
+    /// [4]               PayloadType::AddressRequest
+    /// [5]               version (< 256)
+    /// [f]               length of URL
+    /// [6..(6+f)]        URL to POST address to
+    pub fn encode(&self) -> String {
+        let mut bytes_vec = Vec::new();
+        // Note that the checksum can't be calculated until all the other bytes are collected,
+        // and will be added in the call to `encode_payload` at the end of this function.
+        bytes_vec.push(PayloadType::AddressRequest as u8);
+        bytes_vec.push(self.version);
+        bytes_vec.push(self.url.len() as u8);
+        bytes_vec.extend_from_slice(&self.url.as_bytes());
+        encode_payload(bytes_vec)
+    }
+}
+
+impl fmt::Debug for AddressRequestPayload {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "version:{}, url:{}", self.version, self.url,)
+    }
+}
+
 #[cfg(test)]
 mod testing {
     use super::*;
@@ -571,5 +625,22 @@ mod testing {
                 let _account_key = AccountKey::from(&payload);
             }
         });
+    }
+
+    /// Test that Address Requests successfully encode and decode
+    #[test_with_logger]
+    fn address_request_roundtrip(logger: Logger) {
+        let url = "https://example.com/address-endpoint/8473212-2812349".to_string();
+
+        let payload = AddressRequestPayload::new_v0(url.clone()).unwrap();
+        log::info!(logger, " payload  {:?}", payload);
+
+        let encoded_string = payload.encode();
+        log::info!(logger, "encoded {:?}", encoded_string);
+
+        let roundtrip_payload = AddressRequestPayload::decode(&encoded_string).unwrap();
+        log::info!(logger, "recovered {:?}", roundtrip_payload);
+
+        assert_eq!(url, roundtrip_payload.url);
     }
 }
