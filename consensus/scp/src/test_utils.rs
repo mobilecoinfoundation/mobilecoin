@@ -68,7 +68,7 @@ pub fn recover_test_id(node_id: NodeID) -> u32 {
         .next()
         .expect("unexpected responder_id")[4..]
         .parse::<u32>()
-        .expect("unable to parse node index");
+        .expect("unable to parse node index")
 }
 
 /// Creates a new slot.
