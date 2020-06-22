@@ -8,7 +8,7 @@ use mc_consensus_scp::{
     core_types::{CombineFn, SlotIndex, ValidityFn},
     msg::Msg,
     node::{Node, ScpNode},
-    quorum_set::QuorumSet,
+    quorum_set::{QuorumSet,QuorumSetMember},
     test_utils,
 };
 use std::{
@@ -19,6 +19,7 @@ use std::{
     thread::JoinHandle,
     time::{Duration, Instant},
 };
+use pest::{Parser, Rule};
 
 
 /// Helper for parsing quorum sets from string representations using "pest"
