@@ -33,10 +33,10 @@ pub struct QuorumSet<ID: GenericNodeId = NodeID> {
     pub members: Vec<QuorumSetMember<ID>>,
 }
 
-impl PartialEq<ID: GenericNodeId> for QuorumSet<ID> {
+impl PartialEq for QuorumSet<ID> {
     fn eq(&self, other: &QuorumSet<ID>) -> bool {
         if self.threshold == other.threshold &&
-            self.members.len() == other..members.len()
+            self.members.len() == other.members.len()
         {
             // create hashsets to compare
             let self_members: HashSet<QuorumSetMember<ID>> = HashSet::from_iter(self.members.iter().cloned());
@@ -47,7 +47,7 @@ impl PartialEq<ID: GenericNodeId> for QuorumSet<ID> {
         false
     }
 }
-impl Eq for NodeID {}
+impl Eq for QuorumSet<ID> {}
 
 /// A member in a QuorumSet. Can be either a Node or another QuorumSet.
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Digestible)]
