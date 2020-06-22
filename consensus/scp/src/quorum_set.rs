@@ -871,14 +871,18 @@ mod quorum_set_parser_tests {
         };
         assert_eq!(0, node);
 
+        let qs1 = qs_from_string("([1], 1, 2)").expect("failed to parse");
+        let qs2 = qs_from_string("([1], 2, 1)").expect("failed to parse");
+        assert_eq!(qs1, qs2);
+
         let qs_string_with_spaces = "([3],1, 2,3, 4,([2],5, 6,([1],8,7)))".to_owned();
-        let qs1 = qs_from_string(&qs_string_with_spaces).expect("failed to parse");
-        let canonical_string = qs_to_string(&qs1);
-        assert_eq!(qs1, qs_from_string(&canonical_string).expect("failed to parse"));
+        let qs3 = qs_from_string(&qs_string_with_spaces).expect("failed to parse");
+        let canonical_string = qs_to_string(&qs3);
+        assert_eq!(qs3, qs_from_string(&canonical_string).expect("failed to parse"));
 
         let qs_string_reordered = "([3],  4, 3,2, 1,([2], 5, ([1],8,7), 6))".to_owned();
-        let qs2 = qs_from_string(&qs_string_reordered).expect("failed to parse");
-        assert_eq!(qs1, qs2);
+        let qs4 = qs_from_string(&qs_string_reordered).expect("failed to parse");
+        assert_eq!(qs3, qs4);
 
     }
 
