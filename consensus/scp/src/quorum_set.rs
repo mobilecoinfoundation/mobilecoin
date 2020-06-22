@@ -781,8 +781,8 @@ mod quorum_set_parser_tests {
     use pest::Parser;
 
     fn qs_from_string(
-        quorum_set_string: &str
-    ) -> Result< QuorumSet<u32>, pest::error::Error<crate::quorum_set::Rule> > {
+        quorum_set_string: &str,
+    ) -> Result<QuorumSet<u32>, pest::error::Error<crate::quorum_set::Rule>> {
         let inner_rules = QuorumSetParser::parse(Rule::quorum_set, quorum_set_string)?
             .next()
             .unwrap()
@@ -795,29 +795,27 @@ mod quorum_set_parser_tests {
                     let threshold_string = pair.into_inner().next().unwrap().as_str();
                     quorum_set.threshold = str::parse(threshold_string).unwrap();
                     print!("([{:?}]", quorum_set.threshold);
-                },
+                }
                 Rule::members => {
                     for member in pair.into_inner() {
                         match member.as_rule() {
                             Rule::node => {
-                                let node:u32 = str::parse::<u32>(member.as_str()).unwrap();
+                                let node: u32 = str::parse::<u32>(member.as_str()).unwrap();
                                 quorum_set.members.push(QuorumSetMember::Node(node));
                                 print!(",{:?}", node)
                             }
                             Rule::quorum_set => {
                                 print!(",");
                                 let inner_set = qs_from_string(member.as_str())?;
-                                quorum_set.members.push(QuorumSetMember::InnerSet(inner_set));
-                            },
-                            _ => {
-                                panic!("unexpected rule!")
-                            },
+                                quorum_set
+                                    .members
+                                    .push(QuorumSetMember::InnerSet(inner_set));
+                            }
+                            _ => panic!("unexpected rule!"),
                         }
                     }
-                },
-                _ => {
-                    panic!("unexpected rule!")
-                },
+                }
+                _ => panic!("unexpected rule!"),
             }
         }
         print!(")");
