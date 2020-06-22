@@ -4,6 +4,11 @@
 
 use mc_sgx_core_types::impl_ffi_wrapper;
 use mc_sgx_epid_types_sys::sgx_basename_t;
+#[cfg(feature = "use_prost")]
+use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
+#[cfg(feature = "use_serde")]
+use mc_util_repr_bytes::derive_serde_from_repr_bytes;
+use mc_util_repr_bytes::typenum::U32;
 
 /// The size of a [Basename] x64 representation, in bytes.
 pub const BASENAME_SIZE: usize = 32;
@@ -14,14 +19,22 @@ pub const BASENAME_SIZE: usize = 32;
 pub struct Basename(sgx_basename_t);
 
 impl_ffi_wrapper! {
-    Basename, sgx_basename_t, BASENAME_SIZE, name;
+    Basename, sgx_basename_t, U32, name;
 }
+
+#[cfg(feature = "use_prost")]
+derive_prost_message_from_repr_bytes!(Basename);
+
+#[cfg(feature = "use_serde")]
+derive_serde_from_repr_bytes!(Basename);
 
 #[cfg(test)]
 mod test {
     use super::*;
+    #[cfg(feature = "use_serde")]
     use bincode::{deserialize, serialize};
 
+    #[cfg(feature = "use_serde")]
     #[test]
     fn serde() {
         let src = sgx_basename_t {

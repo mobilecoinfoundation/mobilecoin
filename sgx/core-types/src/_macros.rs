@@ -301,6 +301,8 @@ macro_rules! impl_hex_base64_with_repr_bytes {
             fn from_base64(
                 input: &str,
             ) -> ::core::result::Result<Self, $crate::_macros::EncodingError> {
+                use $crate::_macros::ReprBytes;
+
                 let mut output = $crate::_macros::GenericArray::default();
                 if $crate::_macros::base64::decode_config_slice(
                     input,
@@ -318,6 +320,8 @@ macro_rules! impl_hex_base64_with_repr_bytes {
             type Error = $crate::_macros::EncodingError;
 
             fn from_hex<S: AsRef<[u8]>>(data: S) -> ::core::result::Result<Self, Self::Error> {
+                use $crate::_macros::ReprBytes;
+
                 let mut out = $crate::_macros::GenericArray::default();
                 $crate::_macros::hex::decode_to_slice(data, out.as_mut_slice())?;
                 Self::from_bytes(&out)

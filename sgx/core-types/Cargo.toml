@@ -19,7 +19,7 @@ use_prost = [
 
 [dependencies]
 mc-util-encodings = { path = "../../util/encodings" }
-mc-util-repr-bytes = { path = "../../util/repr-bytes" }
+mc-util-repr-bytes = { path = "../../util/repr-bytes", default-features = false, features = ["alloc"] }
 mc-sgx-core-types-sys = { path = "../core-types-sys" }
 
 base64 = "0.12"

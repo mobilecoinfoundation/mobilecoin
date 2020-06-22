@@ -2,11 +2,16 @@
 
 //! Platform Info Blob wrapper
 
-use mc_sgx_core_types::impl_ffi_wrapper;
-use mc_sgx_epid_types_sys::sgx_platform_info_t;
-
 /// The size of a [PlatformInfo]'s x64 representation, in bytes.
 pub use mc_sgx_epid_types_sys::SGX_PLATFORM_INFO_SIZE as PLATFORM_INFO_SIZE;
+
+use mc_sgx_core_types::impl_ffi_wrapper;
+use mc_sgx_epid_types_sys::sgx_platform_info_t;
+#[cfg(feature = "use_prost")]
+use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
+#[cfg(feature = "use_serde")]
+use mc_util_repr_bytes::derive_serde_from_repr_bytes;
+use mc_util_repr_bytes::typenum::U101;
 
 /// A structure containing a "platform info blob", used by IAS
 #[derive(Default)]
@@ -14,14 +19,22 @@ pub use mc_sgx_epid_types_sys::SGX_PLATFORM_INFO_SIZE as PLATFORM_INFO_SIZE;
 pub struct PlatformInfo(sgx_platform_info_t);
 
 impl_ffi_wrapper! {
-    PlatformInfo, sgx_platform_info_t, PLATFORM_INFO_SIZE, platform_info;
+    PlatformInfo, sgx_platform_info_t, U101, platform_info;
 }
+
+#[cfg(feature = "use_prost")]
+derive_prost_message_from_repr_bytes!(PlatformInfo);
+
+#[cfg(feature = "use_serde")]
+derive_serde_from_repr_bytes!(PlatformInfo);
 
 #[cfg(test)]
 mod test {
     use super::*;
+    #[cfg(feature = "use_serde")]
     use bincode::{deserialize, serialize};
 
+    #[cfg(feature = "use_serde")]
     #[test]
     fn serde() {
         let src = sgx_platform_info_t {

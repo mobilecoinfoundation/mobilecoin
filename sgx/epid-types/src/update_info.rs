@@ -4,13 +4,18 @@
 
 use core::{
     cmp::Ordering,
-    convert::TryInto,
+    convert::{TryFrom, TryInto},
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
-use mc_sgx_core_types::{impl_ffi_wrapper_base, impl_serialize_to_x64, FfiWrapper};
+use mc_sgx_core_types::{impl_ffi_wrapper_base, impl_hex_base64_with_repr_bytes, FfiWrapper};
 use mc_sgx_epid_types_sys::sgx_update_info_bit_t;
-use mc_util_encodings::{Error as EncodingError, FromX64, ToX64, INTEL_U32_SIZE};
+use mc_util_encodings::{Error as EncodingError, INTEL_U32_SIZE};
+#[cfg(feature = "use_prost")]
+use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
+#[cfg(feature = "use_serde")]
+use mc_util_repr_bytes::derive_serde_from_repr_bytes;
+use mc_util_repr_bytes::{derive_into_vec_from_repr_bytes, typenum::U12, GenericArray, ReprBytes};
 
 const UCODE_START: usize = 0;
 const UCODE_END: usize = UCODE_START + INTEL_U32_SIZE;
@@ -30,12 +35,17 @@ pub const UPDATE_INFO_SIZE: usize = PSW_END;
 pub struct UpdateInfo(sgx_update_info_bit_t);
 
 impl_ffi_wrapper_base! {
-    UpdateInfo, sgx_update_info_bit_t, UPDATE_INFO_SIZE;
+    UpdateInfo, sgx_update_info_bit_t;
 }
 
-impl_serialize_to_x64! {
-    UpdateInfo, UPDATE_INFO_SIZE;
-}
+derive_into_vec_from_repr_bytes!(UpdateInfo);
+impl_hex_base64_with_repr_bytes!(UpdateInfo);
+
+#[cfg(feature = "use_prost")]
+derive_prost_message_from_repr_bytes!(UpdateInfo);
+
+#[cfg(feature = "use_serde")]
+derive_serde_from_repr_bytes!(UpdateInfo);
 
 impl Debug for UpdateInfo {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
@@ -75,18 +85,6 @@ impl From<&sgx_update_info_bit_t> for UpdateInfo {
     }
 }
 
-impl FromX64 for UpdateInfo {
-    type Error = EncodingError;
-
-    fn from_x64(src: &[u8]) -> Result<UpdateInfo, EncodingError> {
-        Ok(Self(sgx_update_info_bit_t {
-            ucodeUpdate: i32::from_le_bytes(src[0..4].try_into()?),
-            csmeFwUpdate: i32::from_le_bytes(src[4..8].try_into()?),
-            pswUpdate: i32::from_le_bytes(src[8..12].try_into()?),
-        }))
-    }
-}
-
 impl Hash for UpdateInfo {
     fn hash<H: Hasher>(&self, state: &mut H) {
         "UpdateInfo".hash(state);
@@ -116,16 +114,40 @@ impl PartialEq for UpdateInfo {
     }
 }
 
-impl ToX64 for UpdateInfo {
-    fn to_x64(&self, dest: &mut [u8]) -> Result<usize, usize> {
-        if dest.len() < UPDATE_INFO_SIZE {
-            Err(UPDATE_INFO_SIZE)
-        } else {
-            dest[UCODE_START..UCODE_END].copy_from_slice(&self.0.ucodeUpdate.to_le_bytes());
-            dest[CSME_START..CSME_END].copy_from_slice(&self.0.csmeFwUpdate.to_le_bytes());
-            dest[PSW_START..PSW_END].copy_from_slice(&self.0.pswUpdate.to_le_bytes());
-            Ok(UPDATE_INFO_SIZE)
-        }
+impl PartialOrd for UpdateInfo {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl ReprBytes for UpdateInfo {
+    type Size = U12;
+    type Error = EncodingError;
+
+    fn from_bytes(src: &GenericArray<u8, Self::Size>) -> Result<UpdateInfo, Self::Error> {
+        Self::try_from(src.as_slice())
+    }
+
+    fn to_bytes(&self) -> GenericArray<u8, Self::Size> {
+        let mut retval = GenericArray::default();
+
+        retval[UCODE_START..UCODE_END].copy_from_slice(&self.0.ucodeUpdate.to_le_bytes());
+        retval[CSME_START..CSME_END].copy_from_slice(&self.0.csmeFwUpdate.to_le_bytes());
+        retval[PSW_START..PSW_END].copy_from_slice(&self.0.pswUpdate.to_le_bytes());
+
+        retval
+    }
+}
+
+impl TryFrom<&[u8]> for UpdateInfo {
+    type Error = EncodingError;
+
+    fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
+        Ok(Self(sgx_update_info_bit_t {
+            ucodeUpdate: i32::from_le_bytes(src[0..4].try_into()?),
+            csmeFwUpdate: i32::from_le_bytes(src[4..8].try_into()?),
+            pswUpdate: i32::from_le_bytes(src[8..12].try_into()?),
+        }))
     }
 }
 
@@ -134,6 +156,7 @@ mod test {
     extern crate std;
 
     use super::*;
+    #[cfg(feature = "use_serde")]
     use bincode::{deserialize, serialize};
     use std::{collections::HashSet, format, mem};
 
@@ -143,6 +166,7 @@ mod test {
         assert_eq!(UPDATE_INFO_SIZE, mem::size_of::<sgx_update_info_bit_t>())
     }
 
+    #[cfg(feature = "use_serde")]
     #[test]
     fn serde() {
         let mut src = UpdateInfo::default();

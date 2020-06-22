@@ -22,9 +22,8 @@ use mc_sgx_core_types::{
 };
 use mc_sgx_core_types_sys::{sgx_attributes_t, sgx_report_body_t};
 use mc_sgx_epid_types_sys::sgx_quote_t;
-use mc_util_encodings::{
-    Error as EncodingError, FromX64, IntelLayout, ToX64, INTEL_U16_SIZE, INTEL_U32_SIZE,
-};
+use mc_util_encodings::{Error as EncodingError, INTEL_U16_SIZE, INTEL_U32_SIZE};
+#[cfg(feature = "use_serde")]
 use serde::{
     de::{Error as DeserializeError, SeqAccess, Visitor},
     Deserialize, Deserializer, Serialize, Serializer,
@@ -209,10 +208,22 @@ impl Quote {
     }
 }
 
+impl AsRef<[u8]> for Quote {
+    fn as_ref(&self) -> &[u8] {
+        self.aligned_slice(0, QUOTE_MIN_SIZE + self.signature_len() as usize)
+    }
+}
+
 impl AsRef<sgx_quote_t> for Quote {
     fn as_ref(&self) -> &sgx_quote_t {
         let (_head, body, _tail) = unsafe { self.0.align_to::<sgx_quote_t>() };
         &body[0]
+    }
+}
+
+impl AsMut<[u8]> for Quote {
+    fn as_mut(&mut self) -> &mut [u8] {
+        self.aligned_mut(0, QUOTE_MIN_SIZE + self.signature_len() as usize)
     }
 }
 
@@ -235,6 +246,7 @@ impl Debug for Quote {
     }
 }
 
+#[cfg(feature = "use_serde")]
 impl<'de> Deserialize<'de> for Quote {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         struct ByteVisitor;
@@ -392,6 +404,7 @@ impl IntelLayout for Quote {
     }
 }
 
+#[cfg(feature = "use_serde")]
 impl Serialize for Quote {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let bytes = self.to_x64_vec();
@@ -440,10 +453,12 @@ impl ToX64 for Quote {
 #[cfg(test)]
 mod test {
     use super::*;
+    #[cfg(feature = "use_serde")]
     use bincode::{deserialize, serialize};
 
     const QUOTE: &[u8] = include_bytes!("test/quote_ok.bin");
 
+    #[cfg(feature = "use_serde")]
     #[test]
     fn serde() {
         let quote = Quote::from_x64(QUOTE).expect("Could not create quote from x64.");

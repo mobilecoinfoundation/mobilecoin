@@ -102,7 +102,7 @@ impl KeyName {
     //
     // This method is normally implemented by prost via derive(Enumeration), but the SGX SDK chooses
     // to use a u16 for the in-situ data type.
-    pub fn from_i32(value: i32) -> Option<KeyName> {
+    pub fn from_i32(value: i32) -> Option<Self> {
         Self::try_from(u16::try_from(value).ok()?).ok()
     }
 }

@@ -2,19 +2,23 @@
 
 //! SGX Quote wrapper
 
-use binascii::{b64decode, b64encode, bin2hex, hex2bin};
 use core::{
+    cmp::Ordering,
+    convert::TryFrom,
     fmt::{Debug, Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
 use hex_fmt::HexFmt;
-use mc_sgx_core_types::impl_ffi_wrapper_base;
+use mc_sgx_core_types::{impl_ffi_wrapper_base, impl_hex_base64_with_repr_bytes};
 use mc_sgx_epid_types_sys::sgx_epid_group_id_t;
-use mc_util_encodings::{
-    base64_buffer_size, base64_size, Error as EncodingError, FromBase64, FromHex, FromX64,
-    ToBase64, ToHex, ToX64,
+use mc_util_encodings::Error as EncodingError;
+#[cfg(feature = "use_prost")]
+use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
+#[cfg(feature = "use_serde")]
+use mc_util_repr_bytes::derive_serde_from_repr_bytes;
+use mc_util_repr_bytes::{
+    derive_into_vec_from_repr_bytes, derive_repr_bytes_from_as_ref_and_try_from, typenum::U4,
 };
-use serde::{Serialize, Serializer};
 use subtle::{Choice, ConstantTimeEq};
 
 /// The size of an [EpidGroupId] x64 representation, in bytes.
@@ -28,8 +32,18 @@ pub struct EpidGroupId(sgx_epid_group_id_t);
 // We can't just use impl_ffi_wrapper because in spite of the fact it's declared as a [u8; 4], it is
 // string-rendered as an LE u32. Yes, this is dumb.
 impl_ffi_wrapper_base! {
-    EpidGroupId, sgx_epid_group_id_t, EPID_GROUP_ID_SIZE;
+    EpidGroupId, sgx_epid_group_id_t;
 }
+
+derive_repr_bytes_from_as_ref_and_try_from!(EpidGroupId, U4);
+derive_into_vec_from_repr_bytes!(EpidGroupId);
+impl_hex_base64_with_repr_bytes!(EpidGroupId);
+
+#[cfg(feature = "use_prost")]
+derive_prost_message_from_repr_bytes!(EpidGroupId);
+
+#[cfg(feature = "use_serde")]
+derive_serde_from_repr_bytes!(EpidGroupId);
 
 impl AsRef<[u8]> for EpidGroupId {
     fn as_ref(&self) -> &[u8] {
@@ -69,58 +83,6 @@ impl From<&sgx_epid_group_id_t> for EpidGroupId {
     }
 }
 
-impl FromBase64 for EpidGroupId {
-    type Error = EncodingError;
-
-    fn from_base64(s: &str) -> Result<Self, EncodingError> {
-        if s.len() % 4 != 0 {
-            return Err(EncodingError::InvalidInputLength);
-        }
-
-        // Don't try to decode any base64 string that's larger than our size limits or smaller
-        // than our minimum size
-        if s.len() != base64_size(EPID_GROUP_ID_SIZE) {
-            return Err(EncodingError::InvalidInputLength);
-        }
-
-        // Create an output buffer of at least MINSIZE bytes
-        let mut retval = Self::default();
-        b64decode(s.as_bytes(), &mut retval.0[..])?;
-        Ok(retval)
-    }
-}
-
-impl FromHex for EpidGroupId {
-    type Error = EncodingError;
-
-    fn from_hex(s: &str) -> Result<Self, EncodingError> {
-        if s.len() % 2 != 0 {
-            return Err(EncodingError::InvalidInputLength);
-        }
-
-        if s.len() / 2 != EPID_GROUP_ID_SIZE {
-            return Err(EncodingError::InvalidInputLength);
-        }
-
-        let mut retval = Self::default();
-        hex2bin(s.as_bytes(), &mut retval.0[..])?;
-        Ok(retval)
-    }
-}
-
-impl<'src> FromX64 for EpidGroupId {
-    type Error = EncodingError;
-
-    fn from_x64(src: &[u8]) -> Result<Self, EncodingError> {
-        if src.len() < EPID_GROUP_ID_SIZE {
-            return Err(EncodingError::InvalidInputLength);
-        }
-        let mut retval = Self::default();
-        retval.0[..].copy_from_slice(&src[..EPID_GROUP_ID_SIZE]);
-        Ok(retval)
-    }
-}
-
 impl Hash for EpidGroupId {
     fn hash<H: Hasher>(&self, state: &mut H) {
         "EpidGroupId".hash(state);
@@ -140,42 +102,23 @@ impl PartialEq for EpidGroupId {
     }
 }
 
-impl Serialize for EpidGroupId {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_newtype_struct("EpidGroupId", &self.0[..])
+impl PartialOrd for EpidGroupId {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
-impl ToBase64 for EpidGroupId {
-    fn to_base64(&self, dest: &mut [u8]) -> Result<usize, usize> {
-        let required_buffer_len = base64_buffer_size(EPID_GROUP_ID_SIZE);
-        if dest.len() < required_buffer_len {
-            Err(required_buffer_len)
-        } else {
-            match b64encode(&self.0[..], dest) {
-                Ok(buffer) => Ok(buffer.len()),
-                Err(_convert) => Err(required_buffer_len),
-            }
-        }
-    }
-}
+impl TryFrom<&[u8]> for EpidGroupId {
+    type Error = EncodingError;
 
-impl ToHex for EpidGroupId {
-    fn to_hex(&self, dest: &mut [u8]) -> Result<usize, usize> {
-        match bin2hex(&self.0[..], dest) {
-            Ok(buffer) => Ok(buffer.len()),
-            Err(_e) => Err(EPID_GROUP_ID_SIZE * 2),
+    fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
+        let mut retval = Self::default();
+        if src.len() < EPID_GROUP_ID_SIZE {
+            return Err(EncodingError::InvalidInputLength);
         }
-    }
-}
 
-impl ToX64 for EpidGroupId {
-    fn to_x64(&self, dest: &mut [u8]) -> Result<usize, usize> {
-        if dest.len() < EPID_GROUP_ID_SIZE {
-            return Err(EPID_GROUP_ID_SIZE);
-        }
-        dest[..EPID_GROUP_ID_SIZE].copy_from_slice(&self.0[..EPID_GROUP_ID_SIZE]);
-        Ok(EPID_GROUP_ID_SIZE)
+        retval.0.copy_from_slice(&src[..EPID_GROUP_ID_SIZE]);
+        Ok(retval)
     }
 }
 
@@ -184,9 +127,11 @@ mod test {
     extern crate std;
 
     use super::*;
+    #[cfg(feature = "use_serde")]
     use bincode::{deserialize, serialize};
     use std::format;
 
+    #[cfg(feature = "use_serde")]
     #[test]
     fn serde() {
         let epid_gid = EpidGroupId::from([0u8, 1, 2, 3]);

@@ -10,22 +10,25 @@ edition = "2018"
 default = ["use_serde", "use_prost"]
 use_serde = [
     "serde",
+    "mc-sgx-core-types/use_serde",
     "mc-util-repr-bytes/serde"
 ]
 use_prost = [
     "prost",
+    "mc-sgx-core-types/use_prost",
     "mc-util-repr-bytes/prost"
 ]
 
 [dependencies]
 mc-util-encodings = { path = "../../util/encodings" }
 mc-util-from-random = { path = "../../util/from-random" }
-mc-util-repr-bytes = { path = "../../util/repr-bytes" }
-mc-sgx-core-types = { path = "../core-types" }
+mc-util-repr-bytes = { path = "../../util/repr-bytes", default-features = false, features = ["alloc"] }
+mc-sgx-core-types = { path = "../core-types", default-features = false }
 mc-sgx-core-types-sys = { path = "../core-types-sys" }
 mc-sgx-epid-types-sys = { path = "../epid-types-sys" }
 
-binascii = "0.1.4"
+base64 = "0.12"
+hex = "0.4"
 hex_fmt = "0.3"
 rand_core = "0.5"
 prost = { version = "0.6.1", optional = true, default-features = false }

@@ -2814,8 +2814,9 @@ dependencies = [
 name = "mc-sgx-epid-types"
 version = "0.2.0"
 dependencies = [
- "binascii",
+ "base64 0.12.1",
  "bincode",
+ "hex 0.4.2",
  "hex_fmt",
  "mc-sgx-core-types",
  "mc-sgx-core-types-sys",
