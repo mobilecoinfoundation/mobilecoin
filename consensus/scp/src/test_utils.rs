@@ -59,8 +59,8 @@ pub fn test_node_id_and_signer(node_id: u32) -> (NodeID, Ed25519Pair) {
 }
 
 /// Recovers the u32 node_id value for a NodeID created using test_node_id_and_signer
-pub fn recover_test_id(id: NodeID) -> u32 {
-    NodeID
+pub fn recover_test_id(node_id: NodeID) -> u32 {
+    node_id
         .responder_id
         .split('.')
         .fuse()
