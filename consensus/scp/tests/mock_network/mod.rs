@@ -8,7 +8,7 @@ use mc_consensus_scp::{
     core_types::{CombineFn, SlotIndex, ValidityFn},
     msg::Msg,
     node::{Node, ScpNode},
-    quorum_set::{QuorumSet,QuorumSetMember},
+    quorum_set::{QuorumSet, QuorumSetMember},
     test_utils,
 };
 use std::{
@@ -911,4 +911,3 @@ mod quorum_set_parser_tests {
         let _qs = qs_u32_from_string(&bad_qs_string).expect("failed to parse");
     }
 }
-
