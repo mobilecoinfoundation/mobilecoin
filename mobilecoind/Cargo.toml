@@ -30,7 +30,6 @@ mc-util-serial = { path = "../util/serial" }
 mc-util-uri = { path = "../util/uri" }
 mc-watcher = { path = "../watcher" }
 
-byteorder = "1.3.4"
 crossbeam-channel = "0.3"
 failure = "0.1.5"
 futures = "0.1"

@@ -16,7 +16,6 @@ test-net-fee-keys = []
 aead = "0.2"
 bs58 = { version = "0.3.0", default-features = false, features = ["alloc"] }
 blake2 = { version = "0.8.1", default-features = false, features = ["simd"] }
-byteorder = { version = "1.3.4", default-features = false }
 crc = { version = "1.8.1", default-features = false }
 cfg-if = "0.1"
 digest = { version = "0.8.1", default-features = false }
