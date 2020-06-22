@@ -30,7 +30,7 @@ pub struct QuorumSet<ID: GenericNodeId = NodeID> {
     pub threshold: u32,
 
     /// Members.
-    pub members: Vec<QuorumSetMember<ID>>,
+    pub members: HashSet<QuorumSetMember<ID>>,
 }
 
 /// A member in a QuorumSet. Can be either a Node or another QuorumSet.
