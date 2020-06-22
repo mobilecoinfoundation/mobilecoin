@@ -839,7 +839,7 @@ mod quorum_set_parser_tests {
 
     #[test]
     fn test_quorum_set_parser_succeeds() {
-        let empty_sq = QuorumSet::u32::empty();
+        let empty_sq = QuorumSet<u32>::empty();
         assert_eq!(qs_to_string(&empty_sq), "([0])");
 
         let empty_qs_string = "([0])".to_owned();
@@ -849,11 +849,11 @@ mod quorum_set_parser_tests {
         let qs_str1 = qs_from_string(&str1).expect("failed to parse");
         assert_eq!(1, qs_str1.threshold);
         assert_eq!(1, qs_str1.members.len());
-        let node = match qs_str1.members[0] {
+        let node: u32 = match qs_str1.members[0] {
             QuorumSetMember::Node(node) => node,
             _ => panic!("unexpected inner set!"),
         };
-        assert_eq(0, node);
+        assert_eq!(0, node);
 
         let qs_string_with_spaces = "([3],1, 2,3, 4,([2],5, 6,([1],8,7)))".to_owned();
         let qs = qs_from_string(&qs_string_with_spaces).expect("failed to parse");
