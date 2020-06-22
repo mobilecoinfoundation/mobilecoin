@@ -839,11 +839,11 @@ mod quorum_set_parser_tests {
 
     #[test]
     fn test_quorum_set_parser_succeeds() {
-        let empty_sq: QuorumSet<u32> = QuorumSet::empty();
-        assert_eq!(qs_to_string(&empty_sq), "([0])");
+        let empty_qs: QuorumSet<u32> = QuorumSet::empty();
+        assert_eq!(qs_to_string(&empty_qs), "([0])");
 
         let empty_qs_string = "([0])".to_owned();
-        assert_eq!(qs_from_string(&empty_qs_string).expect("failed to parse"),empty_sq);
+        assert_eq!(qs_from_string(&empty_qs_string).expect("failed to parse"),empty_qs);
 
         let str1 = "([1],0)".to_owned();
         let qs_str1 = qs_from_string(&str1).expect("failed to parse");
@@ -856,9 +856,14 @@ mod quorum_set_parser_tests {
         assert_eq!(0, node);
 
         let qs_string_with_spaces = "([3],1, 2,3, 4,([2],5, 6,([1],8,7)))".to_owned();
-        let qs = qs_from_string(&qs_string_with_spaces).expect("failed to parse");
-        let canonical_string = qs_to_string(&qs);
-        assert_eq!(qs, qs_from_string(&canonical_string).expect("failed to parse"));
+        let qs1 = qs_from_string(&qs_string_with_spaces).expect("failed to parse");
+        let canonical_string = qs_to_string(&qs1);
+        assert_eq!(qs1, qs_from_string(&canonical_string).expect("failed to parse"));
+
+        let qs_string_reordered = "([3],  4, 3,2, 1,([2], 5, ([1],8,7), 6))".to_owned();
+        let qs2 = qs_from_string(&qs_string_reordered).expect("failed to parse");
+        assert_eq!(qs1, qs2);
+
     }
 
     #[test]
