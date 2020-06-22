@@ -839,7 +839,7 @@ mod quorum_set_parser_tests {
 
     #[test]
     fn test_quorum_set_parser_succeeds() {
-        let empty_sq = QuorumSet<u32>::empty();
+        let empty_sq: QuorumSet<u32> = QuorumSet::empty();
         assert_eq!(qs_to_string(&empty_sq), "([0])");
 
         let empty_qs_string = "([0])".to_owned();
