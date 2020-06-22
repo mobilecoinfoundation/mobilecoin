@@ -787,14 +787,12 @@ mod quorum_set_parser_tests {
             .next()
             .unwrap()
             .into_inner();
-
         let mut quorum_set: QuorumSet<u32> = QuorumSet::empty();
         for pair in inner_rules {
             match pair.as_rule() {
                 Rule::threshold => {
                     let threshold_string = pair.into_inner().next().unwrap().as_str();
                     quorum_set.threshold = str::parse(threshold_string).unwrap();
-                    print!("([{:?}]", quorum_set.threshold);
                 }
                 Rule::members => {
                     for member in pair.into_inner() {
@@ -802,10 +800,8 @@ mod quorum_set_parser_tests {
                             Rule::node => {
                                 let node: u32 = str::parse::<u32>(member.as_str()).unwrap();
                                 quorum_set.members.push(QuorumSetMember::Node(node));
-                                print!(",{:?}", node)
                             }
                             Rule::quorum_set => {
-                                print!(",");
                                 let inner_set = qs_from_string(member.as_str())?;
                                 quorum_set
                                     .members
@@ -818,7 +814,6 @@ mod quorum_set_parser_tests {
                 _ => panic!("unexpected rule!"),
             }
         }
-        print!(")");
         Ok(quorum_set)
     }
 
@@ -841,8 +836,16 @@ mod quorum_set_parser_tests {
 
     #[test]
     fn test_qs_parser() {
-        let qs = qs_from_string("([3],1, 2,3, 4,([2],5, 6,([1],8,7)))").expect("failed to parse");
+        let qs_string_with_spaces = "([3],1, 2,3, 4,([2],5, 6,([1],8,7)))".to_owned();
+        let qs = qs_from_string(&qs_string_with_spaces).expect("failed to parse");
         let canonical_string = qs_to_string(&qs);
         assert_eq!(qs, qs_from_string(&canonical_string).expect("failed to parse"));
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_qs_parser_error() {
+        let bad_qs_string = "([3],1, [5], 2,3, 4,([2],5, 6,([1],8,7)))".to_owned();
+        let qs = qs_from_string(&bad_qs_string).expect("failed to parse");
     }
 }
