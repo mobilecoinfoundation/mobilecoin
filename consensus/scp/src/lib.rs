@@ -5,7 +5,10 @@
 #![allow(non_snake_case)]
 #![deny(missing_docs)]
 
-#[cfg_attr(test, macro_use)]
+#[cfg(test)]
+#[macro_use]
+extern crate pest_derive;
+#[cfg(not(test))]
 extern crate pest_derive;
 
 pub mod core_types;
