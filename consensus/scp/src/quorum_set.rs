@@ -822,7 +822,7 @@ mod quorum_set_parser_tests {
         Ok(quorum_set)
     }
 
-    fn qs_to_string(quorum_set: QuorumSet) -> String {
+    fn qs_to_string(quorum_set: &QuorumSet) -> String {
         let mut quorum_set_string = format!("([{}]", quorum_set.threshold);
         for member in quorum_set.members.iter() {
             match member {
@@ -842,7 +842,7 @@ mod quorum_set_parser_tests {
     #[test]
     fn test_qs_parser() {
         let qs = qs_from_string("([3],1, 2,3, 4,([2],5, 6,([1],8,7)))").expect("failed to parse");
-        let canonical_string = qs_to_string(qs.clone());
-        assert_eq!(qs, qs_from_string(&canonical_string));
+        let canonical_string = qs_to_string(&qs);
+        assert_eq!(qs, qs_from_string(&canonical_string).expect("failed to parse"));
     }
 }
