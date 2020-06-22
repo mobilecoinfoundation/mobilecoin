@@ -2,7 +2,7 @@
 
 //! A utility to play back SCP messages logged by `LoggingScpNode`.
 
-use mc_common::{logger::log, HashSet, NodeID};
+use mc_common::{logger::log, NodeID};
 use mc_consensus_scp::{
     scp_log::{LoggedMsg, ScpLogReader, StoredMsg},
     Msg, Node, QuorumSet, ScpNode, SlotIndex,
@@ -57,9 +57,10 @@ fn trivial_validity_fn(_value: &TxHash) -> Result<(), TransactionValidationError
     Ok(())
 }
 
-fn trivial_combine_fn(values: &HashSet<TxHash>) -> Vec<TxHash> {
-    let mut values: Vec<_> = values.iter().cloned().collect();
+fn trivial_combine_fn(values: &[TxHash]) -> Vec<TxHash> {
+    let mut values: Vec<_> = values.to_vec();
     values.sort();
+    values.dedup();
     values.truncate(MAX_TRANSACTIONS_PER_BLOCK);
     values
 }

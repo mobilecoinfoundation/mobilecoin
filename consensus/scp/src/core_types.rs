@@ -1,7 +1,6 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 //! Core types for MobileCoin's implementation of SCP.
-use mc_common::HashSet;
 use mc_crypto_digestible::Digestible;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
@@ -22,7 +21,7 @@ impl<T> GenericNodeId for T where
 }
 
 /// Application-specific function for combining multiple values. Must be deterministic.
-pub type CombineFn<V> = Arc<(dyn Fn(&HashSet<V>) -> Vec<V> + Sync + Send)>;
+pub type CombineFn<V> = Arc<(dyn Fn(&[V]) -> Vec<V> + Sync + Send)>;
 
 /// Application-specific validation of value.
 pub type ValidityFn<V, E> = Arc<(dyn Fn(&V) -> Result<(), E> + Sync + Send)>;

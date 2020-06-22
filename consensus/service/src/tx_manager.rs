@@ -271,12 +271,16 @@ impl<E: ConsensusEnclaveProxy, L: Ledger, UI: UntrustedInterfaces> TxManager<E, 
 
     /// Combine a list of transactions by their hashes and return the list of hashes of
     /// the combined transaction set.
+    ///
     /// This will silently ignore non-existent hashes. Our combine methods are allowed to filter
     /// out transactions, so while non-existent hashes should not be fed into this method, they are
     /// not treated as an error.
-    pub fn combine_txs_by_hash(&self, tx_hashes: &HashSet<TxHash>) -> Vec<TxHash> {
+    pub fn combine_txs_by_hash(&self, tx_hashes: &[TxHash]) -> Vec<TxHash> {
         let cache = self.lock_cache();
         let mut tx_contexts = Vec::new();
+
+        // Dedup
+        let tx_hashes: HashSet<&TxHash> = tx_hashes.iter().clone().collect();
         for tx_hash in tx_hashes {
             if let Some(entry) = cache.get(&tx_hash) {
                 tx_contexts.push(entry.context());

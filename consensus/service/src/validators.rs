@@ -132,7 +132,7 @@ impl<L: Ledger> TxManagerUntrustedInterfaces for DefaultTxManagerUntrustedInterf
     /// Returns a bounded, deterministically-ordered list of transactions that are safe to append to the ledger.
     fn combine(&self, tx_contexts: &[&WellFormedTxContext], max_elements: usize) -> Vec<TxHash> {
         // WellformedTxContext defines the sort oder of transactions within a block.
-        let mut candidates: Vec<&WellFormedTxContext> = tx_contexts.iter().cloned().collect();
+        let mut candidates: Vec<&WellFormedTxContext> = tx_contexts.to_vec();
         candidates.sort();
 
         // Allow transactions that do not cause duplicate key images or output public keys.

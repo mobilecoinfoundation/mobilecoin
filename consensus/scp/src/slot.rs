@@ -512,7 +512,8 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
         self.update_YZ();
 
         if !self.Z.is_empty() && self.B.is_zero() {
-            let values: Vec<V> = (self.combine_fn)(&self.Z);
+            let z_as_vec: Vec<V> = self.Z.iter().cloned().collect();
+            let values: Vec<V> = (self.combine_fn)(&z_as_vec);
             self.B = Ballot::new(1, &values);
         }
     }
@@ -1112,7 +1113,8 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
         // then "ballot.value" is taken as the output of the deterministic combining function
         // applied to all confirmed nominated values."
         if !self.Z.is_empty() {
-            let values: Vec<V> = (self.combine_fn)(&self.Z);
+            let z_as_vec: Vec<V> = self.Z.iter().cloned().collect();
+            let values: Vec<V> = (self.combine_fn)(&z_as_vec);
             return Some(values);
         }
 
