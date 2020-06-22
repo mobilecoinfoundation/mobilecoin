@@ -791,7 +791,7 @@ mod quorum_set_parser_tests {
         for pair in inner_rules {
             match pair.as_rule() {
                 Rule::empty_set => {
-                    return quorum_set;
+                    return Ok(quorum_set);
                 }
                 Rule::threshold => {
                     let threshold_string = pair.into_inner().next().unwrap().as_str();
@@ -847,8 +847,8 @@ mod quorum_set_parser_tests {
 
         let str1 = "([1],0)".to_owned();
         let qs_str1 = qs_from_string(&str1).expect("failed to parse");
-        assert_eq(1, qs_str1.threshold);
-        assert_eq(1, qs_str1.members.len());
+        assert_eq!(1, qs_str1.threshold);
+        assert_eq!(1, qs_str1.members.len());
         let node = match qs_str1.members[0] {
             QuorumSetMember::Node(node) => node,
             _ => panic!("unexpected inner set!"),
