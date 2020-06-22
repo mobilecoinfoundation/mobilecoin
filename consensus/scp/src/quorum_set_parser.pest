@@ -40,6 +40,9 @@ threshold = {"[" ~ u32 ~ "]"}
 /// a list of validators and inner quorum set
 members = { ( (node | quorum_set) ~ ","?)+ }
 
+/// empty quorum_set
+empty_set = @{ "(" ~ "[" ~ "0" ~ "]" ~ ")" }
+
 /// a quorum_set
-quorum_set = { "(" ~ threshold ~ "," ~ members ~ ")" }
+quorum_set = { "(" ~ threshold ~ "," ~ members ~ ")" | empty_set}
 
