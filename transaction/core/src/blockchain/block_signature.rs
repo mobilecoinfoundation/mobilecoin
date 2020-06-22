@@ -34,6 +34,8 @@ impl BlockSignature {
     /// # Arguments
     /// * `signature` - A block signature.
     /// * `signer` - The signer of the signature.
+    /// * `signed_at` - The approximate time in which the block was signed, represented at seconds
+    ///                 of UTC time since Unix epoch 1970-01-01T00:00:00Z.
     pub fn new(signature: Ed25519Signature, signer: Ed25519Public, signed_at: u64) -> Self {
         Self {
             signature,
