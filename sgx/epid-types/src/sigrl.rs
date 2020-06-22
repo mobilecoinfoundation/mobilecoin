@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 /// A structure containing a signature revocation list.
 #[cfg_attr(feature = "use_prost", derive(Message))]
 #[cfg_attr(feature = "use_serde", derive(Deserialize, Serialize))]
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct SignatureRevocationList {
     #[prost(bytes, tag = "1")]
     data: Vec<u8>,

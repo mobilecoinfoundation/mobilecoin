@@ -22,7 +22,10 @@ use mc_sgx_core_types::{
 };
 use mc_sgx_core_types_sys::{sgx_attributes_t, sgx_report_body_t};
 use mc_sgx_epid_types_sys::sgx_quote_t;
-use mc_util_encodings::{Error as EncodingError, INTEL_U16_SIZE, INTEL_U32_SIZE};
+use mc_util_encodings::{
+    Error as EncodingError, FromX64, IntelLayout, ToX64, INTEL_U16_SIZE, INTEL_U32_SIZE,
+};
+use mc_util_repr_bytes::ReprBytes;
 #[cfg(feature = "use_serde")]
 use serde::{
     de::{Error as DeserializeError, SeqAccess, Visitor},
@@ -349,13 +352,13 @@ impl FromX64 for Quote {
         ))
         .map_err(|_e| EncodingError::InvalidInput)?;
 
-        let epid_group_id = EpidGroupId::from_x64(&src[EPID_GROUP_ID_START..EPID_GROUP_ID_END])
+        let epid_group_id = EpidGroupId::try_from(&src[EPID_GROUP_ID_START..EPID_GROUP_ID_END])
             .map_err(|_e| EncodingError::InvalidInput)?;
 
-        let basename = Basename::from_x64(&src[BASENAME_START..BASENAME_END])
+        let basename = Basename::try_from(&src[BASENAME_START..BASENAME_END])
             .map_err(|_e| EncodingError::InvalidInput)?;
 
-        let report_body = ReportBody::from_x64(&src[REPORT_BODY_START..REPORT_BODY_END])
+        let report_body = ReportBody::try_from(&src[REPORT_BODY_START..REPORT_BODY_END])
             .map_err(|_e| EncodingError::InvalidInput)?;
 
         let mut retval =
@@ -425,21 +428,16 @@ impl ToX64 for Quote {
         let value: u16 = self.sign_type().into();
         dest[SIGN_TYPE_START..SIGN_TYPE_END].copy_from_slice(&value.to_le_bytes());
 
-        self.epid_group_id()
-            .to_x64(&mut dest[EPID_GROUP_ID_START..EPID_GROUP_ID_END])
-            .map_err(|_e| required_len)?;
+        dest[EPID_GROUP_ID_START..EPID_GROUP_ID_END].copy_from_slice(self.epid_group_id().as_ref());
 
         dest[QE_SVN_START..QE_SVN_END].copy_from_slice(&self.qe_security_version().to_le_bytes());
         dest[PCE_SVN_START..PCE_SVN_END]
             .copy_from_slice(&self.pce_security_version().to_le_bytes());
         dest[XEID_START..XEID_END].copy_from_slice(&self.xeid().to_le_bytes());
 
-        self.basename()
-            .to_x64(&mut dest[BASENAME_START..BASENAME_END])
-            .map_err(|_e| required_len)?;
-        self.report_body()
-            .to_x64(&mut dest[REPORT_BODY_START..REPORT_BODY_END])
-            .map_err(|_e| required_len)?;
+        dest[BASENAME_START..BASENAME_END].copy_from_slice(self.basename().as_ref());
+        dest[REPORT_BODY_START..REPORT_BODY_END]
+            .copy_from_slice(self.report_body().to_bytes().as_slice());
         dest[SIGLEN_START..SIGLEN_END].copy_from_slice(&signature_len.to_le_bytes());
 
         if let Some(sigslice) = self.signature() {
