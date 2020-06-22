@@ -5,9 +5,9 @@
 //! A quorum set includes the members of the network, which a given node trusts and depends on.
 use mc_common::{HashMap, HashSet, NodeID, ResponderId};
 use mc_crypto_digestible::Digestible;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::{
-    fmt::{Debug, Display},
+    fmt::Debug,
     hash::Hash,
     iter::FromIterator,
 };
