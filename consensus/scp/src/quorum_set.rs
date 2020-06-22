@@ -14,6 +14,12 @@ use crate::{
     predicates::Predicate,
 };
 
+/// Helper for parsing quorum sets from string representations using "pest"
+/// Used in crate tests.
+#[derive(Parser)]
+#[grammar = "quorum_set_parser.pest"]
+pub struct QuorumSetParser;
+
 /// A member in a QuorumSet. Can be either a Node or another QuorumSet.
 #[derive(Clone, Debug, Ord, PartialOrd, Serialize, Deserialize, Hash, Digestible)]
 #[serde(tag = "type", content = "args")]

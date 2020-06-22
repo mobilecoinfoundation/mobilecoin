@@ -20,11 +20,6 @@ use std::{
     time::{Duration, Instant},
 };
 
-/// A helper for parsing quorum sets from string representations
-#[derive(Parser)]
-#[grammar = "quorum_set_parser.pest"]
-pub struct QuorumSetParser;
-
 // Controls test parameters
 #[derive(Clone)]
 pub struct TestOptions {
