@@ -30,18 +30,18 @@ impl<ID: GenericNodeId> PartialEq for QuorumSetMember<ID> {
         match self {
             QuorumSetMember::Node(self_node) => match other {
                 QuorumSetMember::Node(other_node) => {
-                    return self_node == other_node;
+                    self_node == other_node
                 }
                 _ => {
-                    return false;
+                    false
                 }
             },
             QuorumSetMember::InnerSet(self_qs) => match other {
                 QuorumSetMember::InnerSet(other_qs) => {
-                    return self_qs == other_qs;
+                    self_qs == other_qs
                 }
                 _ => {
-                    return false;
+                    false
                 }
             },
         }
