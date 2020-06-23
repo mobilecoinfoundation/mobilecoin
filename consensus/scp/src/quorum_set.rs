@@ -41,6 +41,15 @@ impl<ID: GenericNodeId> PartialEq for QuorumSetMember<ID> {
 }
 impl<ID: GenericNodeId> Eq for QuorumSetMember<ID> {}
 
+impl<ID: GenericNodeId> Hash for QuorumSetMember<ID> {}
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self {
+            QuorumSetMember::Node(self_node) => self_node.hash(state),
+            QuorumSetMember::InnerSet(self_qs) => self_qs.hash(state),
+        }
+    }
+}
+
 /// The quorum set defining the trusted set of peers.
 #[derive(Clone, Debug, Ord, PartialOrd, Serialize, Deserialize, Hash, Digestible)]
 pub struct QuorumSet<ID: GenericNodeId = NodeID> {
@@ -66,6 +75,17 @@ impl<ID: GenericNodeId> PartialEq for QuorumSet<ID> {
 }
 impl<ID: GenericNodeId> Eq for QuorumSet<ID> {}
 
+impl<ID: GenericNodeId> Hash for QuorumSet<ID> {}
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.threshold.hash(state);
+        // sort before hashing
+        let mut self_members: Vec<QuorumSetMember<ID>> = self.members.clone();
+        self_members.sort();
+        for m in members {
+            m.hash(state);
+        }
+    }
+}
 impl<ID: GenericNodeId> QuorumSet<ID> {
     /// Create a new quorum set.
     pub fn new(threshold: u32, members: Vec<QuorumSetMember<ID>>) -> Self {
