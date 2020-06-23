@@ -82,8 +82,12 @@ pub struct Config {
     pub sealed_block_signing_key: PathBuf,
 }
 
-fn keypair_from_base64(src: &str) -> Result<Arc<Ed25519Pair>, String> {
-    let privkey_bytes = base64::decode_config(src, base64::STANDARD)
+/// Decodes an Ed25519 private key.
+///
+/// # Arguments
+/// * `private_key` - A DER formatted, Base64 encoded Ed25519 private key.
+fn keypair_from_base64(private_key: &str) -> Result<Arc<Ed25519Pair>, String> {
+    let privkey_bytes = base64::decode_config(private_key, base64::STANDARD)
         .map_err(|err| format!("Could not decode private key from base64 {:?}", err))?;
 
     let secret_key = Ed25519Private::try_from_der(privkey_bytes.as_slice())
@@ -489,5 +493,14 @@ mod tests {
             config.peer_listen_uri,
             PeerUri::from_str("mcp://0.0.0.0:8443/?tls-chain=./public/attest/test_certs/selfsigned_mobilecoin.crt&tls-key=./public/attest/test_certs/selfsigned_mobilecoin.key").unwrap()
         );
+    }
+
+    #[test]
+    /// Should successfully decode an Ed25519 private key.
+    fn test_keypair_from_base64() {
+        // openssl genpkey -algorithm ed25519 -outform DER | openssl base64
+        let private_key = "MC4CAQAwBQYDK2VwBCIEIFMx+OdFIVsMAXNDuOFtxrl/CiQRIblFjaf4/mQetmrq";
+
+        assert!(keypair_from_base64(private_key).is_ok());
     }
 }
