@@ -41,7 +41,7 @@ impl<ID: GenericNodeId> PartialEq for QuorumSetMember<ID> {
 }
 impl<ID: GenericNodeId> Eq for QuorumSetMember<ID> {}
 
-impl<ID: GenericNodeId> Hash for QuorumSetMember<ID> {}
+impl<ID: GenericNodeId> Hash for QuorumSetMember<ID> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         match self {
             QuorumSetMember::Node(self_node) => self_node.hash(state),
@@ -75,7 +75,7 @@ impl<ID: GenericNodeId> PartialEq for QuorumSet<ID> {
 }
 impl<ID: GenericNodeId> Eq for QuorumSet<ID> {}
 
-impl<ID: GenericNodeId> Hash for QuorumSet<ID> {}
+impl<ID: GenericNodeId> Hash for QuorumSet<ID> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.threshold.hash(state);
         // sort before hashing
