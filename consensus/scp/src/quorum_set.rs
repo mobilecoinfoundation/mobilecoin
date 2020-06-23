@@ -6,7 +6,7 @@
 use mc_common::{HashMap, HashSet, NodeID, ResponderId};
 use mc_crypto_digestible::Digestible;
 use serde::{Deserialize, Serialize};
-use std::{fmt::Debug, hash::Hash, iter::FromIterator};
+use std::{fmt::Debug, hash::{Hash, Hasher}, iter::FromIterator};
 
 use crate::{
     core_types::{GenericNodeId, Value},
@@ -81,7 +81,7 @@ impl<ID: GenericNodeId> Hash for QuorumSet<ID> {
         // sort before hashing
         let mut self_members: Vec<QuorumSetMember<ID>> = self.members.clone();
         self_members.sort();
-        for m in members {
+        for m in self.members {
             m.hash(state);
         }
     }
