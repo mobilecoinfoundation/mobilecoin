@@ -19,7 +19,7 @@ use crate::{
 };
 
 /// A member in a QuorumSet. Can be either a Node or another QuorumSet.
-#[derive(Clone, Debug, Ord, PartialOrd, Serialize, Deserialize, Digestible)]
+#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize, Digestible)]
 #[serde(tag = "type", content = "args")]
 pub enum QuorumSetMember<ID: GenericNodeId> {
     /// A single trusted entity with an identity.
@@ -27,31 +27,6 @@ pub enum QuorumSetMember<ID: GenericNodeId> {
 
     /// A quorum set can also be a member of a quorum set.
     InnerSet(QuorumSet<ID>),
-}
-
-impl<ID: GenericNodeId> PartialEq for QuorumSetMember<ID> {
-    fn eq(&self, other: &QuorumSetMember<ID>) -> bool {
-        match self {
-            QuorumSetMember::Node(self_node) => match other {
-                QuorumSetMember::Node(other_node) => self_node == other_node,
-                _ => false,
-            },
-            QuorumSetMember::InnerSet(self_qs) => match other {
-                QuorumSetMember::InnerSet(other_qs) => self_qs == other_qs,
-                _ => false,
-            },
-        }
-    }
-}
-impl<ID: GenericNodeId> Eq for QuorumSetMember<ID> {}
-
-impl<ID: GenericNodeId> Hash for QuorumSetMember<ID> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        match self {
-            QuorumSetMember::Node(self_node) => self_node.hash(state),
-            QuorumSetMember::InnerSet(self_qs) => self_qs.hash(state),
-        }
-    }
 }
 
 /// The quorum set defining the trusted set of peers.
