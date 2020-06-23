@@ -81,7 +81,7 @@ impl<ID: GenericNodeId> Hash for QuorumSet<ID> {
         // sort before hashing
         let mut self_members: Vec<QuorumSetMember<ID>> = self.members.clone();
         self_members.sort();
-        for m in self.members {
+        for m in self.members.iter() {
             m.hash(state);
         }
     }
