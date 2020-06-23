@@ -392,7 +392,7 @@ mod quorum_set_tests {
             2,
             vec![test_node_id(0), test_node_id(1)],
         );
-                let qs_2__3_4 = QuorumSet::new_with_node_ids(
+        let qs_2__3_4 = QuorumSet::new_with_node_ids(
             2,
             vec![test_node_id(3), test_node_id(4)],
         );
@@ -408,16 +408,17 @@ mod quorum_set_tests {
             2,
             vec![test_node_id(1), test_node_id(0)],
         );
-                let qs_2__3_4 = QuorumSet::new_with_node_ids(
+        let qs_2__4_3 = QuorumSet::new_with_node_ids(
             2,
             vec![test_node_id(4), test_node_id(3)],
         );
-        quorum_set_2.members.push(QuorumSetMember::<NodeID>::InnerSet(qs_2__3_4));
-        let qs_2__5_6_7 = QuorumSet::new_with_node_ids(
+        quorum_set_2.members.push(QuorumSetMember::<NodeID>::InnerSet(qs_2__4_3));
+        let qs_2__5_7_6 = QuorumSet::new_with_node_ids(
             2,
             vec![test_node_id(5), test_node_id(6), test_node_id(7)],
         );
-        quorum_set_2.members.push(QuorumSetMember::<NodeID>::InnerSet(qs_2__5_6_7));
+        quorum_set_2.members.push(QuorumSetMember::<NodeID>::InnerSet(qs_2__5_7_6));
+
         assert_eq!(quorum_set_1, quorum_set_2);
     }
 
@@ -447,7 +448,7 @@ mod quorum_set_tests {
         );
         let qs_2__3_4 = QuorumSet::new_with_node_ids(
             2,
-            vec![test_node_id(4), test_node_id(3)],
+            vec![test_node_id(3), test_node_id(4)],
         );
         quorum_set_2.members.push(QuorumSetMember::<NodeID>::InnerSet(qs_2__3_4));
 
@@ -459,6 +460,7 @@ mod quorum_set_tests {
             vec![test_node_id(5), test_node_id(6), test_node_id(7)],
         );
         quorum_set_2.members.push(QuorumSetMember::<NodeID>::InnerSet(qs_2__5_6_7));
+
         assert_eq!(quorum_set_1, quorum_set_2);
     }
 
