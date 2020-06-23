@@ -5,12 +5,8 @@
 //! A quorum set includes the members of the network, which a given node trusts and depends on.
 use mc_common::{HashMap, HashSet, NodeID, ResponderId};
 use mc_crypto_digestible::Digestible;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use std::{
-    fmt::{Debug, Display},
-    hash::Hash,
-    iter::FromIterator,
-};
+use serde::{Deserialize, Serialize};
+use std::{fmt::Debug, hash::{Hash, Hasher}, iter::FromIterator};
 
 use crate::{
     core_types::{GenericNodeId, Value},
@@ -18,18 +14,8 @@ use crate::{
     predicates::Predicate,
 };
 
-/// The quorum set defining the trusted set of peers.
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Digestible)]
-pub struct QuorumSet<ID: GenericNodeId = NodeID> {
-    /// Threshold (how many members do we need to reach quorum).
-    pub threshold: u32,
-
-    /// Members.
-    pub members: Vec<QuorumSetMember<ID>>,
-}
-
 /// A member in a QuorumSet. Can be either a Node or another QuorumSet.
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Digestible)]
+#[derive(Clone, Debug, Ord, PartialOrd, Serialize, Deserialize, Digestible)]
 #[serde(tag = "type", content = "args")]
 pub enum QuorumSetMember<ID: GenericNodeId> {
     /// A single trusted entity with an identity.
@@ -39,18 +25,68 @@ pub enum QuorumSetMember<ID: GenericNodeId> {
     InnerSet(QuorumSet<ID>),
 }
 
-impl<
-        ID: GenericNodeId
-            + Clone
-            + Debug
-            + Display
-            + Serialize
-            + DeserializeOwned
-            + Eq
-            + PartialEq
-            + Hash,
-    > QuorumSet<ID>
-{
+impl<ID: GenericNodeId> PartialEq for QuorumSetMember<ID> {
+    fn eq(&self, other: &QuorumSetMember<ID>) -> bool {
+        match self {
+            QuorumSetMember::Node(self_node) => match other {
+                QuorumSetMember::Node(other_node) => self_node == other_node,
+                _ => false,
+            },
+            QuorumSetMember::InnerSet(self_qs) => match other {
+                QuorumSetMember::InnerSet(other_qs) => self_qs == other_qs,
+                _ => false,
+            },
+        }
+    }
+}
+impl<ID: GenericNodeId> Eq for QuorumSetMember<ID> {}
+
+impl<ID: GenericNodeId> Hash for QuorumSetMember<ID> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self {
+            QuorumSetMember::Node(self_node) => self_node.hash(state),
+            QuorumSetMember::InnerSet(self_qs) => self_qs.hash(state),
+        }
+    }
+}
+
+/// The quorum set defining the trusted set of peers.
+#[derive(Clone, Debug, Ord, PartialOrd, Serialize, Deserialize, Digestible)]
+pub struct QuorumSet<ID: GenericNodeId = NodeID> {
+    /// Threshold (how many members do we need to reach quorum).
+    pub threshold: u32,
+
+    /// Members.
+    pub members: Vec<QuorumSetMember<ID>>,
+}
+
+impl<ID: GenericNodeId> PartialEq for QuorumSet<ID> {
+    fn eq(&self, other: &QuorumSet<ID>) -> bool {
+        if self.threshold == other.threshold && self.members.len() == other.members.len() {
+            // sort before comparing
+            let mut self_members: Vec<QuorumSetMember<ID>> = self.members.clone();
+            let mut other_members: Vec<QuorumSetMember<ID>> = other.members.clone();
+            self_members.sort();
+            other_members.sort();
+            return self_members == other_members;
+        }
+        false
+    }
+}
+impl<ID: GenericNodeId> Eq for QuorumSet<ID> {}
+
+impl<ID: GenericNodeId> Hash for QuorumSet<ID> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.threshold.hash(state);
+        // sort before hashing
+        let mut self_members: Vec<QuorumSetMember<ID>> = self.members.clone();
+        self_members.sort();
+        for m in self.members.iter() {
+            m.hash(state);
+        }
+    }
+}
+impl<ID: GenericNodeId> QuorumSet<ID> {
     /// Create a new quorum set.
     pub fn new(threshold: u32, members: Vec<QuorumSetMember<ID>>) -> Self {
         Self { threshold, members }
