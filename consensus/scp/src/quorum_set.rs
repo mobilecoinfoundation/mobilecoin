@@ -406,6 +406,34 @@ mod quorum_set_tests {
     use mc_common::ResponderId;
 
     #[test]
+    // ordering of QuorumSetMembers should not matter
+    fn test_quorum_set_equality() {
+        let quorum_set_1: QuorumSet = {
+            let inner_quorum_set_one = QuorumSet::new_with_node_ids(
+                2,
+                vec![test_node_id(2), test_node_id(3), test_node_id(4)],
+            );
+            let inner_quorum_set_two = QuorumSet::new_with_node_ids(
+                2,
+                vec![test_node_id(5), test_node_id(6), test_node_id(7)],
+            );
+            QuorumSet::new_with_inner_sets(2, vec![test_node_id(1), inner_quorum_set_one, inner_quorum_set_two])
+        };
+        let quorum_set_2: QuorumSet = {
+            let inner_quorum_set_one = QuorumSet::new_with_node_ids(
+                2,
+                vec![test_node_id(2), test_node_id(3), test_node_id(4)],
+            );
+            let inner_quorum_set_two = QuorumSet::new_with_node_ids(
+                2,
+                vec![test_node_id(5), test_node_id(7), test_node_id(6)],
+            );
+            QuorumSet::new_with_inner_sets(2, vec![inner_quorum_set_two, test_node_id(1), inner_quorum_set_one])
+        };
+        assert_eq!(quorum_set_1, quorum_set_2);
+    }
+
+    #[test]
     // findBlockingSet returns an empty set when there is no blocking set
     fn test_no_blocking_set() {
         // Node 2 and 3 form a blocking set
