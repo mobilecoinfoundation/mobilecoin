@@ -15,7 +15,7 @@ use crate::{
 };
 
 /// A member in a QuorumSet. Can be either a Node or another QuorumSet.
-#[derive(Clone, Debug, Ord, PartialOrd, Serialize, Deserialize, Hash, Digestible)]
+#[derive(Clone, Debug, Ord, PartialOrd, Serialize, Deserialize, Digestible)]
 #[serde(tag = "type", content = "args")]
 pub enum QuorumSetMember<ID: GenericNodeId> {
     /// A single trusted entity with an identity.
@@ -51,7 +51,7 @@ impl<ID: GenericNodeId> Hash for QuorumSetMember<ID> {
 }
 
 /// The quorum set defining the trusted set of peers.
-#[derive(Clone, Debug, Ord, PartialOrd, Serialize, Deserialize, Hash, Digestible)]
+#[derive(Clone, Debug, Ord, PartialOrd, Serialize, Deserialize, Digestible)]
 pub struct QuorumSet<ID: GenericNodeId = NodeID> {
     /// Threshold (how many members do we need to reach quorum).
     pub threshold: u32,
