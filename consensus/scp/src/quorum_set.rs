@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize};
 use std::{
     fmt::Debug,
     hash::{Hash, Hasher},
-    iter::FromIterator};
-}
+    iter::FromIterator,
+};
 
 use crate::{
     core_types::{GenericNodeId, Value},
