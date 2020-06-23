@@ -6,7 +6,11 @@
 use mc_common::{HashMap, HashSet, NodeID, ResponderId};
 use mc_crypto_digestible::Digestible;
 use serde::{Deserialize, Serialize};
-use std::{fmt::Debug, hash::{Hash, Hasher}, iter::FromIterator};
+use std::{
+    fmt::Debug,
+    hash::{Hash, Hasher},
+    iter::FromIterator};
+}
 
 use crate::{
     core_types::{GenericNodeId, Value},
