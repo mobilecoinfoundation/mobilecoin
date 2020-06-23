@@ -14,10 +14,10 @@ use crate::{
 };
 use mc_common::{
     logger::{log, o, Logger},
-    HashMap, HashSet, NodeID,
+    NodeID,
 };
 use std::{
-    collections::BTreeSet,
+    collections::{BTreeSet, HashSet, HashMap},
     fmt::Display,
     iter::FromIterator,
     sync::Arc,

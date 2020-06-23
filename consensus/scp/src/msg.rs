@@ -6,13 +6,13 @@ use crate::{
     msg::Topic::*,
     quorum_set::QuorumSet,
 };
-use mc_common::{HashSet, NodeID};
+use mc_common::NodeID;
 use mc_crypto_digestible::Digestible;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     cmp,
     cmp::Ordering,
-    collections::{hash_map::DefaultHasher, BTreeSet},
+    collections::{hash_map::DefaultHasher, BTreeSet, HashSet},
     fmt::{Debug, Display},
     hash::{Hash, Hasher},
 };
