@@ -237,7 +237,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             })?;
 
         let mut status = mc_mobilecoind_api::MonitorStatus::new();
-        status.set_account_key(mc_mobilecoind_api::AccountKey::from(&data.account_key));
+        status.set_account_key(mc_api::external::AccountKey::from(&data.account_key));
         status.set_first_subaddress(data.first_subaddress);
         status.set_num_subaddresses(data.num_subaddresses);
         status.set_first_block(data.first_block);
@@ -358,7 +358,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             .map_err(|err| rpc_internal_error("RequestPayload.decode", err, &self.logger))?;
 
         let mut response = mc_mobilecoind_api::ReadRequestCodeResponse::new();
-        response.set_receiver(mc_mobilecoind_api::PublicAddress::from(
+        response.set_receiver(mc_api::external::PublicAddress::from(
             &(PublicAddress::try_from(&request_payload)
                 .map_err(|err| rpc_internal_error("PublicAddress.try_from", err, &self.logger))?),
         ));
@@ -1217,7 +1217,7 @@ mod test {
         .expect("failed to create data");
 
         let mut request = mc_mobilecoind_api::AddMonitorRequest::new();
-        request.set_account_key(mc_mobilecoind_api::AccountKey::from(&data.account_key));
+        request.set_account_key(mc_api::external::AccountKey::from(&data.account_key));
         request.set_first_subaddress(data.first_subaddress);
         request.set_num_subaddresses(data.num_subaddresses);
         request.set_first_block(data.first_block);
@@ -2667,7 +2667,7 @@ mod test {
         {
             // Generate a request code
             let mut request = mc_mobilecoind_api::GetRequestCodeRequest::new();
-            request.set_receiver(mc_mobilecoind_api::PublicAddress::from(&receiver));
+            request.set_receiver(mc_api::external::PublicAddress::from(&receiver));
 
             let response = client.get_request_code(&request).unwrap();
             let b58_code = response.get_b58_code();
@@ -2690,7 +2690,7 @@ mod test {
         {
             // Generate a request code
             let mut request = mc_mobilecoind_api::GetRequestCodeRequest::new();
-            request.set_receiver(mc_mobilecoind_api::PublicAddress::from(&receiver));
+            request.set_receiver(mc_api::external::PublicAddress::from(&receiver));
             request.set_value(1234567890);
 
             let response = client.get_request_code(&request).unwrap();
@@ -2714,7 +2714,7 @@ mod test {
         {
             // Generate a request code
             let mut request = mc_mobilecoind_api::GetRequestCodeRequest::new();
-            request.set_receiver(mc_mobilecoind_api::PublicAddress::from(&receiver));
+            request.set_receiver(mc_api::external::PublicAddress::from(&receiver));
             request.set_value(1234567890);
             request.set_memo("hello there".to_owned());
 

@@ -682,7 +682,7 @@ MobileCoin forums. Visit http://community.mobilecoin.com
         // Create the outlay
         let mut outlay = mc_mobilecoind_api::Outlay::new();
         outlay.set_value(request_payload.value);
-        outlay.set_receiver(mc_mobilecoind_api::PublicAddress::from(
+        outlay.set_receiver(mc_api::external::PublicAddress::from(
             &(request_payload
                 .try_into()
                 .map_err(|err| format!("Bad request payload: {}", err))?),
