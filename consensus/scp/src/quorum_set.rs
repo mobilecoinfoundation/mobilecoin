@@ -449,8 +449,10 @@ mod quorum_set_tests {
         // qs1 == qs2 must imply hash(qs1)==hash(qs2)
         let mut quorum_set_1_hash = DefaultHasher::new();
         quorum_set_1.hash(&mut quorum_set_1_hash);
+        quorum_set_1.finish()
         let mut quorum_set_2_hash = DefaultHasher::new();
         quorum_set_2.hash(&mut quorum_set_2_hash);
+        quorum_set_2.finish()
         assert_eq!(quorum_set_1_hash, quorum_set_2_hash);
     }
 
@@ -506,8 +508,10 @@ mod quorum_set_tests {
         // qs1 == qs2 must imply hash(qs1)==hash(qs2)
         let mut quorum_set_1_hash = DefaultHasher::new();
         quorum_set_1.hash(&mut quorum_set_1_hash);
+        quorum_set_1.finish()
         let mut quorum_set_2_hash = DefaultHasher::new();
         quorum_set_2.hash(&mut quorum_set_2_hash);
+        quorum_set_2.finish()
         assert_eq!(quorum_set_1_hash, quorum_set_2_hash);
     }
 
@@ -563,8 +567,10 @@ mod quorum_set_tests {
         // qs1 == qs2 must imply hash(qs1)==hash(qs2)
         let mut quorum_set_1_hash = DefaultHasher::new();
         quorum_set_1.hash(&mut quorum_set_1_hash);
+        quorum_set_1.finish()
         let mut quorum_set_2_hash = DefaultHasher::new();
         quorum_set_2.hash(&mut quorum_set_2_hash);
+        quorum_set_2.finish()
         assert_eq!(quorum_set_1_hash, quorum_set_2_hash);
     }
 
