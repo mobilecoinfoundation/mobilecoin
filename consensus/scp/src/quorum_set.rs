@@ -60,9 +60,7 @@ impl<ID: GenericNodeId> Hash for QuorumSet<ID> {
         let mut qs_clone = self.clone();
         qs_clone.sort();
         qs_clone.threshold.hash(state);
-        for m in qs_clone.members.iter() {
-            m.hash(state);
-        }
+        qs_clone.members.hash(state);
     }
 }
 
