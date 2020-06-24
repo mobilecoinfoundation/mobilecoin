@@ -12,7 +12,7 @@ need private master keys.
 
 This is a simple script to bootstrap a test ledger and keys to play with. The script writes the keys to `target/sample_data/keys` and the ledger to `target_sample_data/ledger`.
 
-## local-network.py
+## local_network.py
 
 This script starts a local mobilecoin consensus network by launching a separate process for each consensus validator and configuring them to communicate via a default set of ports. It takes the following parameters:
 
@@ -33,6 +33,6 @@ of the local drive.
 
 ## mobilecoind.sh
 
-This script starts mobilecoind and connects it to the nodes started by `local-network.py`.
+This script starts mobilecoind and connects it to the nodes started by `local_network.py`.
 
 It has sane defaults and requires no extra configuration.

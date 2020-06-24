@@ -427,6 +427,50 @@ class Network:
 
             time.sleep(1)
 
+    def default_entry_point(self, network_type, skip_build=False):
+        if network_type == 'dense5':
+            #  5 node interconnected network requiring 4 out of 5  nodes.
+            num_nodes = 5
+            for i in range(num_nodes):
+                other_nodes = [str(j) for j in range(num_nodes) if i != j]
+                peers = [Peer(p) for p in other_nodes]
+                self.add_node(str(i), peers, QuorumSet(3, other_nodes))
+
+        elif network_type == 'a-b-c':
+            # 3 nodes, where all 3 are required but node `a` and `c` are not peered together.
+            # (i.e. a <-> b <-> c)
+            self.add_node('a', [Peer('b')], QuorumSet(2, ['b', 'c']))
+            self.add_node('b', [Peer('a'), Peer('c')], QuorumSet(2, ['a', 'c']))
+            self.add_node('c', [Peer('b')], QuorumSet(2, ['a', 'b']))
+
+        elif network_type == 'ring5':
+            # A ring of 5 nodes where each node:
+            # - sends SCP messages to the node before it and after it
+            # - has the node after it in its quorum set
+            self.add_node('1', [Peer('5'), Peer('2')], QuorumSet(1, ['2']))
+            self.add_node('2', [Peer('1'), Peer('3')], QuorumSet(1, ['3']))
+            self.add_node('3', [Peer('2'), Peer('4')], QuorumSet(1, ['4']))
+            self.add_node('4', [Peer('3'), Peer('5')], QuorumSet(1, ['5']))
+            self.add_node('5', [Peer('4'), Peer('1')], QuorumSet(1, ['1']))
+
+        elif network_type == 'ring5b':
+            # A ring of 5 nodes where each node:
+            # - sends SCP messages to the node after it
+            # - has the node after it in its quorum set
+            self.add_node('1', [Peer('5', broadcast_consensus_msgs=False), Peer('2')], QuorumSet(1, ['2']))
+            self.add_node('2', [Peer('1', broadcast_consensus_msgs=False), Peer('3')], QuorumSet(1, ['3']))
+            self.add_node('3', [Peer('2', broadcast_consensus_msgs=False), Peer('4')], QuorumSet(1, ['4']))
+            self.add_node('4', [Peer('3', broadcast_consensus_msgs=False), Peer('5')], QuorumSet(1, ['5']))
+            self.add_node('5', [Peer('4', broadcast_consensus_msgs=False), Peer('1')], QuorumSet(1, ['1']))
+
+        else:
+            raise Exception('Invalid network type')
+
+        if not skip_build:
+            self.build_binaries()
+
+        self.start()
+        self.wait()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Local network tester')
@@ -434,50 +478,4 @@ if __name__ == '__main__':
     parser.add_argument('--skip-build', help='Skip building binaries', action='store_true')
     args = parser.parse_args()
 
-
-    n = Network()
-    network_type = args.network_type
-
-    if network_type == 'dense5':
-        #  5 node interconnected network requiring 4 out of 5  nodes.
-        num_nodes = 5
-        for i in range(num_nodes):
-            other_nodes = [str(j) for j in range(num_nodes) if i != j]
-            peers = [Peer(p) for p in other_nodes]
-            n.add_node(str(i), peers, QuorumSet(3, other_nodes))
-
-    elif network_type == 'a-b-c':
-        # 3 nodes, where all 3 are required but node `a` and `c` are not peered together.
-        # (i.e. a <-> b <-> c)
-        n.add_node('a', [Peer('b')], QuorumSet(2, ['b', 'c']))
-        n.add_node('b', [Peer('a'), Peer('c')], QuorumSet(2, ['a', 'c']))
-        n.add_node('c', [Peer('b')], QuorumSet(2, ['a', 'b']))
-
-    elif network_type == 'ring5':
-        # A ring of 5 nodes where each node:
-        # - sends SCP messages to the node before it and after it
-        # - has the node after it in its quorum set
-        n.add_node('1', [Peer('5'), Peer('2')], QuorumSet(1, ['2']))
-        n.add_node('2', [Peer('1'), Peer('3')], QuorumSet(1, ['3']))
-        n.add_node('3', [Peer('2'), Peer('4')], QuorumSet(1, ['4']))
-        n.add_node('4', [Peer('3'), Peer('5')], QuorumSet(1, ['5']))
-        n.add_node('5', [Peer('4'), Peer('1')], QuorumSet(1, ['1']))
-
-    elif network_type == 'ring5b':
-        # A ring of 5 nodes where each node:
-        # - sends SCP messages to the node after it
-        # - has the node after it in its quorum set
-        n.add_node('1', [Peer('5', broadcast_consensus_msgs=False), Peer('2')], QuorumSet(1, ['2']))
-        n.add_node('2', [Peer('1', broadcast_consensus_msgs=False), Peer('3')], QuorumSet(1, ['3']))
-        n.add_node('3', [Peer('2', broadcast_consensus_msgs=False), Peer('4')], QuorumSet(1, ['4']))
-        n.add_node('4', [Peer('3', broadcast_consensus_msgs=False), Peer('5')], QuorumSet(1, ['5']))
-        n.add_node('5', [Peer('4', broadcast_consensus_msgs=False), Peer('1')], QuorumSet(1, ['1']))
-
-    else:
-        raise Exception('Invalid network type')
-
-    if not args.skip_build:
-        n.build_binaries()
-
-    n.start()
-    n.wait()
+    Network().default_entry_point(args.network_type, args.skip_build)
