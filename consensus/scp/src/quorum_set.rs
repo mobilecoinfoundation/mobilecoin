@@ -19,7 +19,7 @@ use crate::{
 };
 
 /// A member in a QuorumSet. Can be either a Node or another QuorumSet.
-#[derive(Clone, Debug, Ord, PartialOrd, Serialize, Deserialize, Digestible)]
+#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize, Digestible)]
 #[serde(tag = "type", content = "args")]
 pub enum QuorumSetMember<ID: GenericNodeId> {
     /// A single trusted entity with an identity.
@@ -27,31 +27,6 @@ pub enum QuorumSetMember<ID: GenericNodeId> {
 
     /// A quorum set can also be a member of a quorum set.
     InnerSet(QuorumSet<ID>),
-}
-
-impl<ID: GenericNodeId> PartialEq for QuorumSetMember<ID> {
-    fn eq(&self, other: &QuorumSetMember<ID>) -> bool {
-        match self {
-            QuorumSetMember::Node(self_node) => match other {
-                QuorumSetMember::Node(other_node) => self_node == other_node,
-                _ => false,
-            },
-            QuorumSetMember::InnerSet(self_qs) => match other {
-                QuorumSetMember::InnerSet(other_qs) => self_qs == other_qs,
-                _ => false,
-            },
-        }
-    }
-}
-impl<ID: GenericNodeId> Eq for QuorumSetMember<ID> {}
-
-impl<ID: GenericNodeId> Hash for QuorumSetMember<ID> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        match self {
-            QuorumSetMember::Node(self_node) => self_node.hash(state),
-            QuorumSetMember::InnerSet(self_qs) => self_qs.hash(state),
-        }
-    }
 }
 
 /// The quorum set defining the trusted set of peers.
@@ -81,15 +56,16 @@ impl<ID: GenericNodeId> Eq for QuorumSet<ID> {}
 
 impl<ID: GenericNodeId> Hash for QuorumSet<ID> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.threshold.hash(state);
-        // sort before hashing
-        let mut self_members: Vec<QuorumSetMember<ID>> = self.members.clone();
-        self_members.sort();
-        for m in self_members.iter() {
+        // hash over a recursively sorted copy
+        let mut qs_clone = self.clone();
+        qs_clone.sort();
+        qs_clone.threshold.hash(state);
+        for m in qs_clone.drain() {
             m.hash(state);
         }
     }
 }
+
 impl<ID: GenericNodeId> QuorumSet<ID> {
     /// Create a new quorum set.
     pub fn new(threshold: u32, members: Vec<QuorumSetMember<ID>>) -> Self {
@@ -118,6 +94,17 @@ impl<ID: GenericNodeId> QuorumSet<ID> {
     /// A quorum set with no members and a threshold of 0.
     pub fn empty() -> Self {
         Self::new(0, vec![])
+    }
+
+    /// Recursively sort the qs and all inner sets
+    pub fn sort(&mut self) -> {
+        self.members.sort();
+        for member in self.members.iter() {
+            match member {
+                QuorumSetMember::InnerSet(qs) => qs.sort(),
+                _ => {},
+            }
+        }
     }
 
     /// Returns a flattened set of all nodes contained in q and its nested QSets.
