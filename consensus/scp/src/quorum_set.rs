@@ -459,7 +459,7 @@ mod quorum_set_tests {
         let quorum_set_1 = QuorumSet::new(
             2,
             vec![
-                QuorumSetMember::Node(test_node_id(0),
+                QuorumSetMember::Node(test_node_id(0)),
                 QuorumSetMember::Node(test_node_id(1)),
                 QuorumSetMember::InnerSet(QuorumSet::new(
                     2,
@@ -489,7 +489,7 @@ mod quorum_set_tests {
                         QuorumSetMember::Node(test_node_id(4)),
                     ],
                 )),
-                QuorumSetMember::Node(test_node_id(0),
+                QuorumSetMember::Node(test_node_id(0)),
                 QuorumSetMember::InnerSet(QuorumSet::new(
                     2,
                     vec![
@@ -516,7 +516,7 @@ mod quorum_set_tests {
         let quorum_set_1 = QuorumSet::new(
             2,
             vec![
-                QuorumSetMember::Node(test_node_id(0),
+                QuorumSetMember::Node(test_node_id(0)),
                 QuorumSetMember::Node(test_node_id(1)),
                 QuorumSetMember::InnerSet(QuorumSet::new(
                     2,
@@ -538,7 +538,7 @@ mod quorum_set_tests {
         let quorum_set_2 = QuorumSet::new(
            2,
             vec![
-                QuorumSetMember::Node(test_node_id(1),
+                QuorumSetMember::Node(test_node_id(1)),
                 QuorumSetMember::Node(test_node_id(0)),
                 QuorumSetMember::InnerSet(QuorumSet::new(
                     2,
