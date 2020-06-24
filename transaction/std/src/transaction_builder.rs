@@ -5,14 +5,11 @@
 //! See https://cryptonote.org/img/cryptonote_transaction.png
 
 use crate::{InputCredentials, TxBuilderError};
-use blake2::digest::Input;
 use curve25519_dalek::scalar::Scalar;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
 use mc_transaction_core::{
     account_keys::PublicAddress,
-    blake2b_256::Blake2b256,
     constants::BASE_FEE,
-    domain_separators::TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG,
     encrypted_fog_hint::EncryptedFogHint,
     fog_hint::FogHint,
     onetime_keys::compute_shared_secret,
@@ -73,12 +70,7 @@ impl TransactionBuilder {
         self.outputs_and_shared_secrets
             .push((tx_out.clone(), shared_secret));
 
-        let mut hasher = Blake2b256::new();
-        hasher.input(&TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG);
-        hasher.input(&shared_secret.to_bytes());
-
-        let result: [u8; 32] = hasher.result().into();
-        let confirmation = TxOutConfirmationNumber::from(result);
+        let confirmation = TxOutConfirmationNumber::new(shared_secret);
 
         Ok((tx_out, confirmation))
     }
