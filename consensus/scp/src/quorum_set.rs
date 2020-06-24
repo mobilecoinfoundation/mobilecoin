@@ -101,7 +101,7 @@ impl<ID: GenericNodeId> QuorumSet<ID> {
         for member in self.members.iter_mut() {
             match member {
                 QuorumSetMember::InnerSet(qs) => qs.sort(),
-                _ => {},
+                _ => {}
             }
         }
         // sort the members after any internal reordering!
@@ -394,31 +394,24 @@ impl<ID: GenericNodeId + AsRef<ResponderId>> From<&QuorumSet<ID>> for QuorumSet<
 #[cfg(test)]
 mod quorum_set_tests {
     use super::*;
-    use crate::{
-        core_types::*,
-        msg::*, predicates::*,
-        test_utils::test_node_id,
-    };
+    use crate::{core_types::*, msg::*, predicates::*, test_utils::test_node_id};
     use mc_common::ResponderId;
 
     #[test]
     // quorum sets should sort recursively
     fn test_quorum_set_sorting() {
-        let mut qs = QuorumSet::new_with_node_ids(
-            2,
-            vec![test_node_id(1)],
-        );
-        let mut inner_qs = QuorumSet::new_with_node_ids(
-            2,
-            vec![test_node_id(3), test_node_id(2)],
-        );
+        let mut qs = QuorumSet::new_with_node_ids(2, vec![test_node_id(1)]);
+        let mut inner_qs = QuorumSet::new_with_node_ids(2, vec![test_node_id(3), test_node_id(2)]);
         let qs_2__5_7_6 = QuorumSet::new_with_node_ids(
             2,
             vec![test_node_id(5), test_node_id(7), test_node_id(6)],
         );
-        inner_qs.members.push(QuorumSetMember::<NodeID>::InnerSet(qs_2__5_7_6));
+        inner_qs
+            .members
+            .push(QuorumSetMember::<NodeID>::InnerSet(qs_2__5_7_6));
 
-        qs.members.push(QuorumSetMember::<NodeID>::InnerSet(inner_qs));
+        qs.members
+            .push(QuorumSetMember::<NodeID>::InnerSet(inner_qs));
 
         let node_0 = test_node_id(0);
         qs.members.push(QuorumSetMember::<NodeID>::Node(node_0));
@@ -434,11 +427,21 @@ mod quorum_set_tests {
     fn test_quorum_set_equality_1() {
         let quorum_set_1 = QuorumSet::new_with_node_ids(
             2,
-            vec![test_node_id(0), test_node_id(1), test_node_id(2), test_node_id(3)],
+            vec![
+                test_node_id(0),
+                test_node_id(1),
+                test_node_id(2),
+                test_node_id(3),
+            ],
         );
         let quorum_set_2 = QuorumSet::new_with_node_ids(
             2,
-            vec![test_node_id(3), test_node_id(1), test_node_id(2), test_node_id(0)],
+            vec![
+                test_node_id(3),
+                test_node_id(1),
+                test_node_id(2),
+                test_node_id(0),
+            ],
         );
 
         assert_eq!(quorum_set_1, quorum_set_2);
@@ -447,39 +450,38 @@ mod quorum_set_tests {
     #[test]
     // ordering of members should not matter wrt member Enum type
     fn test_quorum_set_equality_2() {
-        let mut quorum_set_1 = QuorumSet::new_with_node_ids(
-            2,
-            vec![test_node_id(0), test_node_id(1)],
-        );
-        let qs_2__3_4 = QuorumSet::new_with_node_ids(
-            2,
-            vec![test_node_id(3), test_node_id(4)],
-        );
-        quorum_set_1.members.push(QuorumSetMember::<NodeID>::InnerSet(qs_2__3_4));
+        let mut quorum_set_1 =
+            QuorumSet::new_with_node_ids(2, vec![test_node_id(0), test_node_id(1)]);
+        let qs_2__3_4 = QuorumSet::new_with_node_ids(2, vec![test_node_id(3), test_node_id(4)]);
+        quorum_set_1
+            .members
+            .push(QuorumSetMember::<NodeID>::InnerSet(qs_2__3_4));
         let qs_2__5_6_7 = QuorumSet::new_with_node_ids(
             2,
             vec![test_node_id(5), test_node_id(6), test_node_id(7)],
         );
-        quorum_set_1.members.push(QuorumSetMember::<NodeID>::InnerSet(qs_2__5_6_7));
+        quorum_set_1
+            .members
+            .push(QuorumSetMember::<NodeID>::InnerSet(qs_2__5_6_7));
 
-        let mut quorum_set_2 = QuorumSet::new_with_node_ids(
-            2,
-            vec![test_node_id(1)],
-        );
-        let qs_2__3_4 = QuorumSet::new_with_node_ids(
-            2,
-            vec![test_node_id(3), test_node_id(4)],
-        );
-        quorum_set_2.members.push(QuorumSetMember::<NodeID>::InnerSet(qs_2__3_4));
+        let mut quorum_set_2 = QuorumSet::new_with_node_ids(2, vec![test_node_id(1)]);
+        let qs_2__3_4 = QuorumSet::new_with_node_ids(2, vec![test_node_id(3), test_node_id(4)]);
+        quorum_set_2
+            .members
+            .push(QuorumSetMember::<NodeID>::InnerSet(qs_2__3_4));
 
         let node_0 = test_node_id(0);
-        quorum_set_2.members.push(QuorumSetMember::<NodeID>::Node(node_0));
+        quorum_set_2
+            .members
+            .push(QuorumSetMember::<NodeID>::Node(node_0));
 
         let qs_2__5_6_7 = QuorumSet::new_with_node_ids(
             2,
             vec![test_node_id(5), test_node_id(6), test_node_id(7)],
         );
-        quorum_set_2.members.push(QuorumSetMember::<NodeID>::InnerSet(qs_2__5_6_7));
+        quorum_set_2
+            .members
+            .push(QuorumSetMember::<NodeID>::InnerSet(qs_2__5_6_7));
 
         assert_eq!(quorum_set_1, quorum_set_2);
     }
@@ -487,35 +489,33 @@ mod quorum_set_tests {
     #[test]
     // ordering of members inside inner sets should not matter
     fn test_quorum_set_equality_3() {
-        let mut quorum_set_1 = QuorumSet::new_with_node_ids(
-            2,
-            vec![test_node_id(0), test_node_id(1)],
-        );
-        let qs_2__3_4 = QuorumSet::new_with_node_ids(
-            2,
-            vec![test_node_id(3), test_node_id(4)],
-        );
-        quorum_set_1.members.push(QuorumSetMember::<NodeID>::InnerSet(qs_2__3_4));
+        let mut quorum_set_1 =
+            QuorumSet::new_with_node_ids(2, vec![test_node_id(0), test_node_id(1)]);
+        let qs_2__3_4 = QuorumSet::new_with_node_ids(2, vec![test_node_id(3), test_node_id(4)]);
+        quorum_set_1
+            .members
+            .push(QuorumSetMember::<NodeID>::InnerSet(qs_2__3_4));
         let qs_2__5_6_7 = QuorumSet::new_with_node_ids(
             2,
             vec![test_node_id(5), test_node_id(6), test_node_id(7)],
         );
-        quorum_set_1.members.push(QuorumSetMember::<NodeID>::InnerSet(qs_2__5_6_7));
+        quorum_set_1
+            .members
+            .push(QuorumSetMember::<NodeID>::InnerSet(qs_2__5_6_7));
 
-        let mut quorum_set_2 = QuorumSet::new_with_node_ids(
-            2,
-            vec![test_node_id(1), test_node_id(0)],
-        );
-        let qs_2__4_3 = QuorumSet::new_with_node_ids(
-            2,
-            vec![test_node_id(4), test_node_id(3)],
-        );
-        quorum_set_2.members.push(QuorumSetMember::<NodeID>::InnerSet(qs_2__4_3));
+        let mut quorum_set_2 =
+            QuorumSet::new_with_node_ids(2, vec![test_node_id(1), test_node_id(0)]);
+        let qs_2__4_3 = QuorumSet::new_with_node_ids(2, vec![test_node_id(4), test_node_id(3)]);
+        quorum_set_2
+            .members
+            .push(QuorumSetMember::<NodeID>::InnerSet(qs_2__4_3));
         let qs_2__5_7_6 = QuorumSet::new_with_node_ids(
             2,
             vec![test_node_id(5), test_node_id(7), test_node_id(6)],
         );
-        quorum_set_2.members.push(QuorumSetMember::<NodeID>::InnerSet(qs_2__5_7_6));
+        quorum_set_2
+            .members
+            .push(QuorumSetMember::<NodeID>::InnerSet(qs_2__5_7_6));
 
         assert_eq!(quorum_set_1, quorum_set_2);
     }
