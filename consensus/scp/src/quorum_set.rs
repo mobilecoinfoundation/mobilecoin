@@ -397,14 +397,13 @@ mod quorum_set_tests {
     use crate::{
         core_types::*,
         msg::*, predicates::*,
-        test_utils::{quorum_set_to_string, test_node_id}
+        test_utils::test_node_id,
     };
     use mc_common::ResponderId;
 
     #[test]
     // quorum sets should sort recursively
     fn test_quorum_set_sorting() {
-        // let qs = quorum_set_from_str("([2], 1, ([2], 3, 2, [2],5,7,6))");
         let mut qs = QuorumSet::new_with_node_ids(
             2,
             vec![test_node_id(1)],
@@ -427,9 +426,6 @@ mod quorum_set_tests {
         let mut qs_sorted = qs.clone();
         qs_sorted.sort();
 
-        println!("unsorted: {}", quorum_set_to_string(&qs));
-        println!("  sorted: {}", quorum_set_to_string(&qs_sorted));
-
         assert_eq!(qs, qs_sorted);
     }
 
@@ -445,16 +441,12 @@ mod quorum_set_tests {
             vec![test_node_id(3), test_node_id(1), test_node_id(2), test_node_id(0)],
         );
 
-        println!("qs1: {}", quorum_set_to_string(&quorum_set_1));
-        println!("qs2: {}", quorum_set_to_string(&quorum_set_2));
-
         assert_eq!(quorum_set_1, quorum_set_2);
     }
 
     #[test]
     // ordering of members should not matter wrt member Enum type
     fn test_quorum_set_equality_2() {
-        // let quorum_set_1 = quorum_set_from_str("([2], 0, 1, ([2],3,4), ([2],5,6,7))");
         let mut quorum_set_1 = QuorumSet::new_with_node_ids(
             2,
             vec![test_node_id(0), test_node_id(1)],
@@ -470,7 +462,6 @@ mod quorum_set_tests {
         );
         quorum_set_1.members.push(QuorumSetMember::<NodeID>::InnerSet(qs_2__5_6_7));
 
-        // let quorum_set_2 = quorum_set_from_str("([2], 1, ([2],3,4), 0, ([2],5,6,7))");
         let mut quorum_set_2 = QuorumSet::new_with_node_ids(
             2,
             vec![test_node_id(1)],
@@ -490,16 +481,12 @@ mod quorum_set_tests {
         );
         quorum_set_2.members.push(QuorumSetMember::<NodeID>::InnerSet(qs_2__5_6_7));
 
-        println!("qs1: {}", quorum_set_to_string(&quorum_set_1));
-        println!("qs2: {}", quorum_set_to_string(&quorum_set_2));
-
         assert_eq!(quorum_set_1, quorum_set_2);
     }
 
     #[test]
     // ordering of members inside inner sets should not matter
     fn test_quorum_set_equality_3() {
-        // let quorum_set_1 = quorum_set_from_str("([2], 0, 1, ([2],3,4), ([2],5,6,7))");
         let mut quorum_set_1 = QuorumSet::new_with_node_ids(
             2,
             vec![test_node_id(0), test_node_id(1)],
@@ -515,7 +502,6 @@ mod quorum_set_tests {
         );
         quorum_set_1.members.push(QuorumSetMember::<NodeID>::InnerSet(qs_2__5_6_7));
 
-        // let quorum_set_2 = quorum_set_from_str("([2], 1, 0, ([2],4,3), ([2],5,7,6))");
         let mut quorum_set_2 = QuorumSet::new_with_node_ids(
             2,
             vec![test_node_id(1), test_node_id(0)],
@@ -530,9 +516,6 @@ mod quorum_set_tests {
             vec![test_node_id(5), test_node_id(7), test_node_id(6)],
         );
         quorum_set_2.members.push(QuorumSetMember::<NodeID>::InnerSet(qs_2__5_7_6));
-
-        println!("qs1: {}", quorum_set_to_string(&quorum_set_1));
-        println!("qs2: {}", quorum_set_to_string(&quorum_set_2));
 
         assert_eq!(quorum_set_1, quorum_set_2);
     }
