@@ -406,7 +406,11 @@ impl<ID: GenericNodeId + AsRef<ResponderId>> From<&QuorumSet<ID>> for QuorumSet<
 #[cfg(test)]
 mod quorum_set_tests {
     use super::*;
-    use crate::{core_types::*, msg::*, predicates::*, test_utils::test_node_id};
+    use crate::{
+        core_types::*,
+        msg::*, predicates::*,
+        test_utils::{quorum_set_to_string, test_node_id}
+    };
     use mc_common::ResponderId;
 
     #[test]
