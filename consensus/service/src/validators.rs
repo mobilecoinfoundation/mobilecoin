@@ -131,7 +131,7 @@ impl<L: Ledger> TxManagerUntrustedInterfaces for DefaultTxManagerUntrustedInterf
     ///
     /// Returns a bounded, deterministically-ordered list of transactions that are safe to append to the ledger.
     fn combine(&self, tx_contexts: &[&WellFormedTxContext], max_elements: usize) -> Vec<TxHash> {
-        // WellformedTxContext defines the sort oder of transactions within a block.
+        // WellFormedTxContext defines the sort order of transactions within a block.
         let mut candidates: Vec<&WellFormedTxContext> = tx_contexts.to_vec();
         candidates.sort();
 
@@ -1179,32 +1179,9 @@ mod combine_tests {
     #[test]
     // `combine` should return hashes in the order defined by WellformedTxContext.
     fn combine_sort_order() {
-        let a = WellFormedTxContext {
-            fee: 100,
-            tx_hash: TxHash([1u8; 32]),
-            tombstone_block: 0,
-            key_images: vec![],
-            highest_indices: vec![],
-            output_public_keys: vec![],
-        };
-
-        let b = WellFormedTxContext {
-            fee: 557,
-            tx_hash: TxHash([2u8; 32]),
-            tombstone_block: 0,
-            key_images: vec![],
-            highest_indices: vec![],
-            output_public_keys: vec![],
-        };
-
-        let c = WellFormedTxContext {
-            fee: 88,
-            tx_hash: TxHash([3u8; 32]),
-            tombstone_block: 0,
-            key_images: vec![],
-            highest_indices: vec![],
-            output_public_keys: vec![],
-        };
+        let a = WellFormedTxContext::new(100, TxHash([1u8; 32]), 0, vec![], vec![], vec![]);
+        let b = WellFormedTxContext::new(557, TxHash([2u8; 32]), 0, vec![], vec![], vec![]);
+        let c = WellFormedTxContext::new(88, TxHash([3u8; 32]), 0, vec![], vec![], vec![]);
 
         let tx_contexts = vec![a, b, c];
 
