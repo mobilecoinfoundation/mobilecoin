@@ -402,6 +402,37 @@ mod quorum_set_tests {
     use mc_common::ResponderId;
 
     #[test]
+    // quorum sets should sort recursively
+    fn test_quorum_set_sorting() {
+        // let qs = quorum_set_from_str("([2], 1, ([2], 3, 2, [2],5,7,6))");
+        let mut qs = QuorumSet::new_with_node_ids(
+            2,
+            vec![test_node_id(1)],
+        );
+        let mut inner_qs = QuorumSet::new_with_node_ids(
+            2,
+            vec![test_node_id(3), test_node_id(2)],
+        );
+        let qs_2__5_7_6 = QuorumSet::new_with_node_ids(
+            2,
+            vec![test_node_id(5), test_node_id(7), test_node_id(6)],
+        );
+        inner_qs.members.push(QuorumSetMember::<NodeID>::InnerSet(qs_2__5_7_6));
+
+        qs.members.push(QuorumSetMember::<NodeID>::InnerSet(inner_qs));
+
+        let node_0 = test_node_id(0);
+        qs.members.push(QuorumSetMember::<NodeID>::Node(node_0));
+
+        let qs_sorted = qs.clone().sort();
+
+        println!("unsorted: {}", quorum_set_to_string(&qs));
+        println!("  sorted: {}", quorum_set_to_string(&qs_sorted));
+
+        assert_eq!(qs, qs_sorted);
+    }
+
+    #[test]
     // ordering of members should not matter
     fn test_quorum_set_equality_1() {
         let quorum_set_1 = QuorumSet::new_with_node_ids(
