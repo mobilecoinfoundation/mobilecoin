@@ -746,6 +746,7 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
                     "sync_status": sync_status,
                     "blocks_behind": std::cmp::min(peer_block_height - block_height, 0),
                     "latest_block_hash": ledger_db.get_block(block_height - 1).map(|x| x.id).ok(),
+                    "latest_block_timestamp": ledger_db.get_block_signature(block_height - 1).map(|x| x.signed_at()).ok(),
                 },
             })
             .to_string())
