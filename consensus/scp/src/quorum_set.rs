@@ -98,14 +98,14 @@ impl<ID: GenericNodeId> QuorumSet<ID> {
 
     /// Recursively sort the qs and all inner sets
     pub fn sort(&mut self) {
-        self.members.sort();
         for member in self.members.iter_mut() {
             match member {
                 QuorumSetMember::InnerSet(qs) => qs.sort(),
                 _ => {},
             }
         }
-
+        // sort the members after any internal reordering!
+        self.members.sort();
     }
 
     /// Returns a flattened set of all nodes contained in q and its nested QSets.
