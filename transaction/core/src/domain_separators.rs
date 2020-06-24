@@ -41,3 +41,6 @@ pub const TXOUT_MERKLE_NIL_DOMAIN_TAG: &str = "mc_tx_out_merkle_nil";
 
 /// Domain separator for RingMLSAG's challenges.
 pub const RING_MLSAG_CHALLENGE_DOMAIN_TAG: &str = "mc_ring_mlsag_challenge";
+
+/// Domain separator for hashing the confirmation number
+pub const TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG: &str = "mc_tx_out_confirmation_number";

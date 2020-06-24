@@ -22,7 +22,7 @@ mod blockchain;
 mod commitment;
 mod compressed_commitment;
 pub mod constants;
-mod domain_separators;
+pub mod domain_separators;
 pub mod encrypted_fog_hint;
 pub mod fog_hint;
 pub mod membership_proofs;

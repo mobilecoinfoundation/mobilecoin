@@ -394,6 +394,53 @@ impl ReprBytes for TxOutMembershipHash {
 
 derive_prost_message_from_repr_bytes!(TxOutMembershipHash);
 
+/// A hash of the shared secret used to confirm tx was sent
+#[derive(
+    Clone, Deserialize, Default, Eq, Ord, PartialEq, PartialOrd, Serialize, Debug, Digestible,
+)]
+pub struct TxOutConfirmationNumber([u8; 32]);
+
+impl TxOutConfirmationNumber {
+    /// Copies self into a new Vec.
+    pub fn to_vec(&self) -> Vec<u8> {
+        self.0.to_vec()
+    }
+}
+
+impl core::convert::AsRef<[u8; 32]> for TxOutConfirmationNumber {
+    #[inline]
+    fn as_ref(&self) -> &[u8; 32] {
+        &self.0
+    }
+}
+
+impl core::convert::From<&[u8; 32]> for TxOutConfirmationNumber {
+    #[inline]
+    fn from(src: &[u8; 32]) -> Self {
+        Self(*src)
+    }
+}
+
+impl core::convert::From<[u8; 32]> for TxOutConfirmationNumber {
+    #[inline]
+    fn from(src: [u8; 32]) -> Self {
+        Self(src)
+    }
+}
+
+impl ReprBytes for TxOutConfirmationNumber {
+    type Error = &'static str;
+    type Size = U32;
+    fn from_bytes(src: &GenericArray<u8, U32>) -> Result<Self, &'static str> {
+        Ok(Self((*src).into()))
+    }
+    fn to_bytes(&self) -> GenericArray<u8, U32> {
+        self.0.into()
+    }
+}
+
+derive_prost_message_from_repr_bytes!(TxOutConfirmationNumber);
+
 #[cfg(test)]
 mod tests {
     use crate::{
