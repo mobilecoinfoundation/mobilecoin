@@ -58,6 +58,19 @@ pub fn test_node_id_and_signer(node_id: u32) -> (NodeID, Ed25519Pair) {
     )
 }
 
+/// Recovers the u32 node_id value for a NodeID created using test_node_id_and_signer
+pub fn recover_test_node_index(node_id: &NodeID) -> u32 {
+    node_id
+        .responder_id
+        .0
+        .split('.')
+        .fuse()
+        .next()
+        .expect("unexpected responder_id")[4..]
+        .parse::<u32>()
+        .expect("unable to parse node index")
+}
+
 /// Creates a new slot.
 pub fn get_slot(
     slot_index: SlotIndex,
@@ -152,4 +165,25 @@ pub fn three_node_dense_graph() -> (
         QuorumSet::new_with_node_ids(2, vec![test_node_id(1), test_node_id(2)]),
     );
     (node_1, node_2, node_3)
+}
+
+/// creates a easy-to-read string from a QuorumSet<NodeID>
+pub fn quorum_set_to_string(quorum_set: &QuorumSet<NodeID>) -> String {
+    let mut quorum_set_string = format!("([{}]", quorum_set.threshold);
+    for member in quorum_set.members.iter() {
+        match member {
+            QuorumSetMember::Node(node_id) => {
+                quorum_set_string.push_str(&format!(
+                    ",{}",
+                    recover_test_node_index(node_id)
+                ));
+            }
+            QuorumSetMember::InnerSet(inner_set) => {
+                quorum_set_string.push(',');
+                quorum_set_string.push_str(&quorum_set_to_string(inner_set));
+            }
+        }
+    }
+    quorum_set_string.push(')');
+    quorum_set_string
 }
