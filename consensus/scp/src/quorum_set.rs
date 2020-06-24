@@ -549,7 +549,7 @@ mod quorum_set_tests {
             ],
         );
         let quorum_set_2 = QuorumSet::new(
-           2,
+            2,
             vec![
                 QuorumSetMember::Node(test_node_id(1)),
                 QuorumSetMember::Node(test_node_id(0)),
