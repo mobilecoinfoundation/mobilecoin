@@ -424,7 +424,8 @@ mod quorum_set_tests {
         let node_0 = test_node_id(0);
         qs.members.push(QuorumSetMember::<NodeID>::Node(node_0));
 
-        let qs_sorted = qs.clone().sort();
+        let mut qs_sorted = qs.clone();
+        qs_sorted.sort();
 
         println!("unsorted: {}", quorum_set_to_string(&qs));
         println!("  sorted: {}", quorum_set_to_string(&qs_sorted));
