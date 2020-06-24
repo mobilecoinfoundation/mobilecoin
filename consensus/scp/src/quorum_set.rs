@@ -447,12 +447,16 @@ mod quorum_set_tests {
         assert_eq!(quorum_set_1, quorum_set_2);
 
         // qs1 == qs2 must imply hash(qs1)==hash(qs2)
-        let mut quorum_set_1_hash = DefaultHasher::new();
-        quorum_set_1.hash(&mut quorum_set_1_hash);
-        quorum_set_1_hash.finish();
-        let mut quorum_set_2_hash = DefaultHasher::new();
-        quorum_set_2.hash(&mut quorum_set_2_hash);
-        quorum_set_2_hash.finish();
+        let quorum_set_1_hash = {
+            let mut hasher = DefaultHasher::new();
+            quorum_set_1.hash(&mut hasher);
+            hasher.finish()
+        };
+        let quorum_set_2_hash = {
+            let mut hasher = DefaultHasher::new();
+            quorum_set_2.hash(&mut hasher);
+            hasher.finish()
+        };
         assert_eq!(quorum_set_1_hash, quorum_set_2_hash);
     }
 
@@ -506,12 +510,16 @@ mod quorum_set_tests {
         assert_eq!(quorum_set_1, quorum_set_2);
 
         // qs1 == qs2 must imply hash(qs1)==hash(qs2)
-        let mut quorum_set_1_hash = DefaultHasher::new();
-        quorum_set_1.hash(&mut quorum_set_1_hash);
-        quorum_set_1_hash.finish();
-        let mut quorum_set_2_hash = DefaultHasher::new();
-        quorum_set_2.hash(&mut quorum_set_2_hash);
-        quorum_set_2_hash.finish();
+        let quorum_set_1_hash = {
+            let mut hasher = DefaultHasher::new();
+            quorum_set_1.hash(&mut hasher);
+            hasher.finish()
+        };
+        let quorum_set_2_hash = {
+            let mut hasher = DefaultHasher::new();
+            quorum_set_2.hash(&mut hasher);
+            hasher.finish()
+        };
         assert_eq!(quorum_set_1_hash, quorum_set_2_hash);
     }
 
@@ -565,12 +573,16 @@ mod quorum_set_tests {
         assert_eq!(quorum_set_1, quorum_set_2);
 
         // qs1 == qs2 must imply hash(qs1)==hash(qs2)
-        let mut quorum_set_1_hash = DefaultHasher::new();
-        quorum_set_1.hash(&mut quorum_set_1_hash);
-        quorum_set_1_hash.finish();
-        let mut quorum_set_2_hash = DefaultHasher::new();
-        quorum_set_2.hash(&mut quorum_set_2_hash);
-        quorum_set_2_hash.finish();
+        let quorum_set_1_hash = {
+            let mut hasher = DefaultHasher::new();
+            quorum_set_1.hash(&mut hasher);
+            hasher.finish()
+        };
+        let quorum_set_2_hash = {
+            let mut hasher = DefaultHasher::new();
+            quorum_set_2.hash(&mut hasher);
+            hasher.finish()
+        };
         assert_eq!(quorum_set_1_hash, quorum_set_2_hash);
     }
 
