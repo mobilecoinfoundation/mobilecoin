@@ -43,11 +43,11 @@ impl<ID: GenericNodeId> PartialEq for QuorumSet<ID> {
     fn eq(&self, other: &QuorumSet<ID>) -> bool {
         if self.threshold == other.threshold && self.members.len() == other.members.len() {
             // sort before comparing
-            let mut self_members: Vec<QuorumSetMember<ID>> = self.members.clone();
-            let mut other_members: Vec<QuorumSetMember<ID>> = other.members.clone();
-            self_members.sort();
-            other_members.sort();
-            return self_members == other_members;
+            let mut self_clone = self.clone();
+            let mut other_clone = other.clone();
+            self_clone.sort();
+            other_clone.sort();
+            return self_clone.members == other_clone.members;
         }
         false
     }
