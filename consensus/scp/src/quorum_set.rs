@@ -99,10 +99,7 @@ impl<ID: GenericNodeId> QuorumSet<ID> {
     /// Recursively sort the qs and all inner sets
     pub fn sort(&mut self) {
         for member in self.members.iter_mut() {
-            match member {
-                QuorumSetMember::InnerSet(qs) => qs.sort(),
-                _ => {}
-            }
+            if let QuorumSetMember::InnerSet(qs) = member { qs.sort() };
         }
         // sort the members after any internal reordering!
         self.members.sort();
