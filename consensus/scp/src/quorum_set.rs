@@ -504,8 +504,8 @@ mod quorum_set_tests {
         );
         quorum_set_2.members.push(QuorumSetMember::<NodeID>::InnerSet(qs_2__5_7_6));
 
-        println!("qs1: {}", quorum_set_to_string(quorum_set_1));
-        println!("qs2: {}", quorum_set_to_string(quorum_set_2));
+        println!("qs1: {}", quorum_set_to_string(&quorum_set_1));
+        println!("qs2: {}", quorum_set_to_string(&quorum_set_2));
 
         assert_eq!(quorum_set_1, quorum_set_2);
     }
