@@ -12,7 +12,7 @@ use mc_transaction_core::{
     account_keys::PublicAddress,
     blake2b_256::Blake2b256,
     constants::BASE_FEE,
-    domain_separators::{TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG},
+    domain_separators::TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG,
     encrypted_fog_hint::EncryptedFogHint,
     fog_hint::FogHint,
     onetime_keys::compute_shared_secret,
@@ -79,7 +79,7 @@ impl TransactionBuilder {
 
         let result: [u8; 32] = hasher.result().into();
         let confirmation = TxOutConfirmationNumber::from(result);
-        
+
         Ok((tx_out, confirmation))
     }
 
