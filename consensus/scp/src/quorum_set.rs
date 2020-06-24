@@ -393,6 +393,7 @@ mod quorum_set_tests {
     use super::*;
     use crate::{core_types::*, msg::*, predicates::*, test_utils::test_node_id};
     use mc_common::ResponderId;
+    use std::collections::hash_map::DefaultHasher;
 
     #[test]
     // quorum sets should sort recursively
