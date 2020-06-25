@@ -70,7 +70,7 @@ impl TransactionBuilder {
         self.outputs_and_shared_secrets
             .push((tx_out.clone(), shared_secret));
 
-        let confirmation = TxOutConfirmationNumber::new(shared_secret);
+        let confirmation = TxOutConfirmationNumber::from(&shared_secret);
 
         Ok((tx_out, confirmation))
     }
@@ -379,8 +379,9 @@ pub mod transaction_builder_tests {
         .unwrap();
 
         let mut transaction_builder = TransactionBuilder::new();
+
         transaction_builder.add_input(input_credentials);
-        transaction_builder
+        let (_txout, confirmation) = transaction_builder
             .add_output(
                 value - BASE_FEE,
                 &recipient.default_subaddress(),
@@ -413,12 +414,15 @@ pub mod transaction_builder_tests {
             ));
         }
 
-        // The output should have the correct value.
+        // The output should have the correct value and confirmation number
         {
             let public_key = RistrettoPublic::try_from(&output.public_key).unwrap();
             let shared_secret = get_tx_out_shared_secret(recipient.view_private_key(), &public_key);
             let (output_value, _blinding) = output.amount.get_value(&shared_secret).unwrap();
             assert_eq!(output_value, value - BASE_FEE);
+            let calculated_confirmation = TxOutConfirmationNumber::from(&shared_secret);
+
+            assert_eq!(confirmation, calculated_confirmation);
         }
 
         // The transaction should have a valid signature.

@@ -403,14 +403,6 @@ derive_prost_message_from_repr_bytes!(TxOutMembershipHash);
 pub struct TxOutConfirmationNumber([u8; 32]);
 
 impl TxOutConfirmationNumber {
-    pub fn new(shared_secret: RistrettoPublic) -> Self {
-        let mut hasher = Blake2b256::new();
-        hasher.input(&TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG);
-        hasher.input(&shared_secret.to_bytes());
-
-        let result: [u8; 32] = hasher.result().into();
-        Self(result)
-    }
     /// Copies self into a new Vec.
     pub fn to_vec(&self) -> Vec<u8> {
         self.0.to_vec()
@@ -435,6 +427,17 @@ impl core::convert::From<[u8; 32]> for TxOutConfirmationNumber {
     #[inline]
     fn from(src: [u8; 32]) -> Self {
         Self(src)
+    }
+}
+
+impl core::convert::From<&RistrettoPublic> for TxOutConfirmationNumber {
+    fn from(shared_secret: &RistrettoPublic) -> Self {
+        let mut hasher = Blake2b256::new();
+        hasher.input(&TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG);
+        hasher.input(shared_secret.to_bytes());
+
+        let result: [u8; 32] = hasher.result().into();
+        Self(result)
     }
 }
 
