@@ -70,7 +70,7 @@ impl TransactionBuilder {
         self.outputs_and_shared_secrets
             .push((tx_out.clone(), shared_secret));
 
-        let confirmation = TxOutConfirmationNumber::from(shared_secret);
+        let confirmation = TxOutConfirmationNumber::from(&shared_secret);
 
         Ok((tx_out, confirmation))
     }
@@ -420,7 +420,7 @@ pub mod transaction_builder_tests {
             let shared_secret = get_tx_out_shared_secret(recipient.view_private_key(), &public_key);
             let (output_value, _blinding) = output.amount.get_value(&shared_secret).unwrap();
             assert_eq!(output_value, value - BASE_FEE);
-            let calculated_confirmation = TxOutConfirmationNumber::from(shared_secret);
+            let calculated_confirmation = TxOutConfirmationNumber::from(&shared_secret);
 
             assert_eq!(confirmation, calculated_confirmation);
         }

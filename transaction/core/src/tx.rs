@@ -430,12 +430,11 @@ impl core::convert::From<[u8; 32]> for TxOutConfirmationNumber {
     }
 }
 
-impl core::convert::From<RistrettoPublic> for TxOutConfirmationNumber {
-    #[inline]
-    fn from(shared_secret: RistrettoPublic) -> Self {
+impl core::convert::From<&RistrettoPublic> for TxOutConfirmationNumber {
+    fn from(shared_secret: &RistrettoPublic) -> Self {
         let mut hasher = Blake2b256::new();
         hasher.input(&TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG);
-        hasher.input(&shared_secret.to_bytes());
+        hasher.input(shared_secret.to_bytes());
 
         let result: [u8; 32] = hasher.result().into();
         Self(result)
