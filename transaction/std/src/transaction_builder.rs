@@ -14,7 +14,7 @@ use mc_transaction_core::{
     fog_hint::FogHint,
     onetime_keys::compute_shared_secret,
     ring_signature::SignatureRctBulletproofs,
-    tx::{Tx, TxIn, TxOut, TxPrefix},
+    tx::{Tx, TxIn, TxOut, TxOutConfirmationNumber, TxPrefix},
     CompressedCommitment,
 };
 use mc_util_from_random::FromRandom;
@@ -63,13 +63,16 @@ impl TransactionBuilder {
         recipient: &PublicAddress,
         recipient_fog_ingest_key: Option<&RistrettoPublic>,
         rng: &mut RNG,
-    ) -> Result<TxOut, TxBuilderError> {
+    ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
         let (tx_out, shared_secret) =
             create_output(value, recipient, recipient_fog_ingest_key, rng)?;
 
         self.outputs_and_shared_secrets
             .push((tx_out.clone(), shared_secret));
-        Ok(tx_out)
+
+        let confirmation = TxOutConfirmationNumber::new(shared_secret);
+
+        Ok((tx_out, confirmation))
     }
 
     /// Sets the tombstone block.

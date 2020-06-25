@@ -658,7 +658,7 @@ impl<T: UserTxConnection + 'static> TransactionsManager<T> {
         let mut total_value = 0;
         let mut tx_out_to_outlay_index = HashMap::default();
         for (i, outlay) in destinations.iter().enumerate() {
-            let tx_out = tx_builder
+            let (tx_out, _) = tx_builder
                 .add_output(outlay.value, &outlay.receiver, None, rng)
                 .map_err(|err| Error::TxBuildError(format!("failed adding output: {}", err)))?;
 
