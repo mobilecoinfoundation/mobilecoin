@@ -711,8 +711,8 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
         let ledger_db = self.ledger_db.clone();
         let byzantine_ledger = self.byzantine_ledger.clone();
         let config = self.config.clone();
+        let logger = self.logger.clone();
         Arc::new(move || {
-            let block_height = ledger_db.num_blocks().unwrap_or(0);
             let mut sync_status = "synced";
             let mut peer_block_height: u64 = 0;
             let byzantine_ledger = byzantine_ledger
@@ -724,6 +724,41 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
                 };
                 peer_block_height = byzantine_ledger.highest_peer_block();
             }
+            let block_height;
+            let latest_block_hash;
+            let latest_block_timestamp;
+            let blocks_behind;
+            // If we do not get a num_blocks, several status points will be null
+            match ledger_db.num_blocks() {
+                Ok(b) => {
+                    block_height = Some(b);
+                    latest_block_hash = ledger_db
+                        .get_block(b - 1)
+                        .map(|x| format!("{:?}", x.id))
+                        .map_err(|e| log::error!(logger, "Error getting block {} {:?}", b - 1, e))
+                        .ok();
+                    latest_block_timestamp = ledger_db
+                        .get_block_signature(b - 1)
+                        .map(|x| x.signed_at())
+                        .map_err(|e| {
+                            log::error!(
+                                logger,
+                                "Error getting block signature for block {} {:?}",
+                                b - 1,
+                                e
+                            )
+                        })
+                        .ok();
+                    blocks_behind = Some(std::cmp::min(peer_block_height - b, 0));
+                }
+                Err(e) => {
+                    log::error!(logger, "Error getting block height {:?}", e);
+                    block_height = None;
+                    latest_block_hash = None;
+                    latest_block_timestamp = None;
+                    blocks_behind = None;
+                }
+            };
             Ok(json!({
                 "config": {
                     "public_key": config.node_id().public_key,
@@ -742,11 +777,11 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
                     "block_height": block_height,
                     "version": VERSION,
                     "broadcast_peer_count": config.network().broadcast_peers.len(),
-                    "known_peer_count": config.network().known_peers.map(|x| x.len()),
+                    "known_peer_count": config.network().known_peers.map_or(0, |x| x.len()),
                     "sync_status": sync_status,
-                    "blocks_behind": std::cmp::min(peer_block_height - block_height, 0),
-                    "latest_block_hash": ledger_db.get_block(block_height - 1).map(|x| x.id).ok(),
-                    "latest_block_timestamp": ledger_db.get_block_signature(block_height - 1).map(|x| x.signed_at()).ok(),
+                    "blocks_behind": blocks_behind,
+                    "latest_block_hash": latest_block_hash,
+                    "latest_block_timestamp": latest_block_timestamp,
                 },
             })
             .to_string())
