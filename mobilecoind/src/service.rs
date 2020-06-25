@@ -376,12 +376,13 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
 
         let view_key = receiver.view_public_key().to_bytes();
         let spend_key = receiver.spend_public_key().to_bytes();
-        let fog_url = receiver.fog_url().unwrap_or("");
 
         let payload = RequestPayload::new_v3(
             &view_key,
             &spend_key,
-            fog_url,
+            receiver.version,
+            &receiver.fog_url,
+            &receiver.fog_authority_sig,
             request.get_value(),
             request.get_memo(),
         )

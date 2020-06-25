@@ -177,6 +177,15 @@ impl From<CompressedRistrettoPublic> for external::CompressedRistretto {
     }
 }
 
+/// Convert &RistrettoPublic --> external::CompressedRistretto
+impl From<&RistrettoPublic> for external::CompressedRistretto {
+    fn from(other: &RistrettoPublic) -> Self {
+        let mut key = external::CompressedRistretto::new();
+        key.set_data(other.to_bytes().to_vec());
+        key
+    }
+}
+
 /// Convert external::CompressedRistretto --> CompressedRistrettoPublic.
 impl TryFrom<&external::CompressedRistretto> for CompressedRistrettoPublic {
     type Error = ConversionError;
@@ -798,6 +807,7 @@ impl From<&AccountKey> for external::AccountKey {
 
         if let Some(fqdn) = src.fog_url() {
             dst.set_fog_url(fqdn.to_string());
+            dst.set_fog_authority_key_fingerprint(src.fog_authority_key_fingerprint.clone())
         }
 
         dst
@@ -821,12 +831,18 @@ impl TryFrom<&external::AccountKey> for AccountKey {
             .and_then(|key| mc_crypto_keys::RistrettoPrivate::try_from(&key.data[..]))?;
 
         if src.fog_url.is_empty() {
-            Ok(AccountKey::new(&spend_private_key, &view_private_key))
+            Ok(AccountKey::new(
+                &spend_private_key,
+                &view_private_key,
+                src.version,
+            ))
         } else {
             Ok(AccountKey::new_with_fog(
                 &spend_private_key,
                 &view_private_key,
                 &src.fog_url,
+                &src.fog_authority_key_fingerprint[..],
+                src.version,
             ))
         }
     }
@@ -836,11 +852,13 @@ impl From<&PublicAddress> for external::PublicAddress {
     fn from(src: &PublicAddress) -> Self {
         let mut dst = external::PublicAddress::new();
 
-        dst.set_view_public_key(external::RistrettoPublic::from(src.view_public_key()));
-        dst.set_spend_public_key(external::RistrettoPublic::from(src.spend_public_key()));
+        dst.set_view_public_key(external::CompressedRistretto::from(src.view_public_key()));
+        dst.set_spend_public_key(external::CompressedRistretto::from(src.spend_public_key()));
+        dst.version = src.version;
 
         if let Some(fqdn) = src.fog_url() {
             dst.set_fog_url(fqdn.to_string());
+            dst.set_fog_authority_sig(src.fog_authority_sig.to_vec())
         }
 
         dst
@@ -864,12 +882,18 @@ impl TryFrom<&external::PublicAddress> for PublicAddress {
             .and_then(|key| mc_crypto_keys::RistrettoPublic::try_from(&key.data[..]))?;
 
         if src.fog_url.is_empty() {
-            Ok(PublicAddress::new(&spend_public_key, &view_public_key))
+            Ok(PublicAddress::new(
+                &spend_public_key,
+                &view_public_key,
+                src.version,
+            ))
         } else {
             Ok(PublicAddress::new_with_fog(
                 &spend_public_key,
                 &view_public_key,
                 &src.fog_url,
+                src.fog_authority_sig.clone(),
+                src.version,
             ))
         }
     }
@@ -1374,6 +1398,10 @@ mod conversion_tests {
             );
             assert_eq!(proto_credentials.fog_url, String::from(""));
 
+            assert_eq!(proto_credentials.fog_authority_key_fingerprint.len(), 0);
+
+            assert_eq!(proto_credentials.version, 0);
+
             // external -> account_keys
             let account_key2 = AccountKey::try_from(&proto_credentials).unwrap();
             assert_eq!(account_key, account_key2);
@@ -1387,6 +1415,8 @@ mod conversion_tests {
                 tmp_account_key.spend_private_key(),
                 tmp_account_key.view_private_key(),
                 "test.mobilecoin.com".to_string(),
+                vec![9, 9, 9, 9],
+                0,
             );
 
             let proto_credentials = external::AccountKey::from(&account_key);
@@ -1402,6 +1432,13 @@ mod conversion_tests {
                 proto_credentials.fog_url,
                 String::from("test.mobilecoin.com")
             );
+
+            assert_eq!(
+                proto_credentials.fog_authority_key_fingerprint,
+                vec![9, 9, 9, 9],
+            );
+
+            assert_eq!(proto_credentials.version, 0,);
 
             // external -> account_keys
             let account_key2 = AccountKey::try_from(&proto_credentials).unwrap();
@@ -1421,13 +1458,17 @@ mod conversion_tests {
             let proto_credentials = external::PublicAddress::from(&public_address);
             assert_eq!(
                 *proto_credentials.get_view_public_key(),
-                external::RistrettoPublic::from(public_address.view_public_key())
+                external::CompressedRistretto::from(public_address.view_public_key())
             );
             assert_eq!(
                 *proto_credentials.get_spend_public_key(),
-                external::RistrettoPublic::from(public_address.spend_public_key())
+                external::CompressedRistretto::from(public_address.spend_public_key())
             );
             assert_eq!(proto_credentials.fog_url, String::from(""));
+
+            assert_eq!(proto_credentials.fog_authority_sig.len(), 0);
+
+            assert_eq!(proto_credentials.version, 0);
 
             // external -> public_addresss
             let public_address2 = PublicAddress::try_from(&proto_credentials).unwrap();
@@ -1442,21 +1483,27 @@ mod conversion_tests {
                 tmp_public_address.spend_public_key(),
                 tmp_public_address.view_public_key(),
                 "test.mobilecoin.com".to_string(),
+                vec![9, 9, 9, 9],
+                0,
             );
 
             let proto_credentials = external::PublicAddress::from(&public_address);
             assert_eq!(
                 *proto_credentials.get_view_public_key(),
-                external::RistrettoPublic::from(public_address.view_public_key())
+                external::CompressedRistretto::from(public_address.view_public_key())
             );
             assert_eq!(
                 *proto_credentials.get_spend_public_key(),
-                external::RistrettoPublic::from(public_address.spend_public_key())
+                external::CompressedRistretto::from(public_address.spend_public_key())
             );
             assert_eq!(
                 proto_credentials.fog_url,
                 String::from("test.mobilecoin.com")
             );
+
+            assert_eq!(proto_credentials.fog_authority_sig, vec![9, 9, 9, 9],);
+
+            assert_eq!(proto_credentials.version, 0);
 
             // external -> public_addresss
             let public_address2 = PublicAddress::try_from(&proto_credentials).unwrap();

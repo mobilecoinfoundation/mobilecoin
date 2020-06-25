@@ -11,10 +11,15 @@ use core::hash::Hash;
 use curve25519_dalek::scalar::Scalar;
 use hkdf::Hkdf;
 use mc_crypto_keys::RistrettoPrivate;
-use mc_transaction_core::{account_keys::AccountKey, blake2b_256::Blake2b256};
+use mc_transaction_core::{
+    account_keys::{AccountKey, CURRENT_ACCOUNT_KEY_VERSION},
+    blake2b_256::Blake2b256,
+};
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 use std::convert::From;
+
+pub const TEST_FOG_AUTHORITY_FINGERPRINT: [u8; 4] = [9, 9, 9, 9];
 
 /// A RootIdentity is used to quickly derive an AccountKey from 32 bytes of entropy
 /// for testing purposes. It should not be used to derive AccountKeys outside of a
@@ -48,10 +53,18 @@ impl From<&RootIdentity> for AccountKey {
         let view_private_key =
             RistrettoPrivate::from(root_identity_hkdf_helper(&src.root_entropy, b"view"));
         match src.fog_url {
-            Some(ref fqdn) => {
-                AccountKey::new_with_fog(&spend_private_key, &view_private_key, fqdn.clone())
-            }
-            None => AccountKey::new(&spend_private_key, &view_private_key),
+            Some(ref url) => AccountKey::new_with_fog(
+                &spend_private_key,
+                &view_private_key,
+                url.clone(),
+                TEST_FOG_AUTHORITY_FINGERPRINT,
+                CURRENT_ACCOUNT_KEY_VERSION,
+            ),
+            None => AccountKey::new(
+                &spend_private_key,
+                &view_private_key,
+                CURRENT_ACCOUNT_KEY_VERSION,
+            ),
         }
     }
 }

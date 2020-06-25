@@ -2,7 +2,7 @@
 
 //! This module provides a consistent set of AccountKeys for use in testing
 
-use crate::{AccountKey, PublicAddress};
+use mc_transaction_core::account_keys::{AccountKey, PublicAddress, CURRENT_ACCOUNT_KEY_VERSION};
 use mc_transaction_std::identity::RootIdentity;
 use rand::rngs::StdRng;
 use rand_core::SeedableRng;
@@ -79,6 +79,7 @@ macro_rules! build_derived_account_keys {
                     keys.push(AccountKey::new(
                         acct.spend_private_key(),
                         acct.view_private_key(),
+                        CURRENT_ACCOUNT_KEY_VERSION,
                     ));
                 )+
                 keys

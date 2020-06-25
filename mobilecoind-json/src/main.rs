@@ -3,7 +3,7 @@
 use grpcio::{ChannelBuilder, ChannelCredentialsBuilder};
 use protobuf::RepeatedField;
 
-use mc_api::external::{KeyImage, PublicAddress, RistrettoPublic};
+use mc_api::external::{CompressedRistretto, KeyImage, PublicAddress};
 use mc_common::logger::{create_app_logger, log, o};
 use mc_mobilecoind_api::mobilecoind_api_grpc::MobilecoindApiClient;
 use rocket::{get, post, routes};
@@ -312,12 +312,12 @@ fn transfer(
         hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
 
     // Decode the keys
-    let mut view_public_key = RistrettoPublic::new();
+    let mut view_public_key = CompressedRistretto::new();
     view_public_key.set_data(
         hex::decode(&transfer.receiver.view_public_key)
             .map_err(|err| format!("Failed to decode view key hex: {}", err))?,
     );
-    let mut spend_public_key = RistrettoPublic::new();
+    let mut spend_public_key = CompressedRistretto::new();
     spend_public_key.set_data(
         hex::decode(&transfer.receiver.spend_public_key)
             .map_err(|err| format!("Failed to decode spend key hex: {}", err))?,
