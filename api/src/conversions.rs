@@ -168,6 +168,25 @@ impl From<CompressedRistrettoPublic> for external::RistrettoPublic {
     }
 }
 
+/// Convert CompressedRistrettoPublic --> external::CompressedRistretto
+impl From<CompressedRistrettoPublic> for external::CompressedRistretto {
+    fn from(other: CompressedRistrettoPublic) -> Self {
+        let mut key = external::CompressedRistretto::new();
+        key.set_data(other.as_bytes().to_vec());
+        key
+    }
+}
+
+/// Convert external::CompressedRistretto --> CompressedRistrettoPublic.
+impl TryFrom<&external::CompressedRistretto> for CompressedRistrettoPublic {
+    type Error = ConversionError;
+
+    fn try_from(source: &external::CompressedRistretto) -> Result<Self, Self::Error> {
+        let bytes: &[u8] = source.get_data();
+        CompressedRistrettoPublic::try_from(bytes).map_err(|_| ConversionError::ArrayCastError)
+    }
+}
+
 /// Convert RistrettoPrivate --> external::RistrettoPrivate
 impl From<&RistrettoPrivate> for external::RistrettoPrivate {
     fn from(other: &RistrettoPrivate) -> Self {
