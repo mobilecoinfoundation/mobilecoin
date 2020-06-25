@@ -367,7 +367,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             .collect::<Result<Vec<(Tx, Vec<TxOutMembershipProof>)>>>()?;
 
         // root_elements contains the root hash of the Merkle tree of all TxOuts in the ledger
-        // that were used to validate the tranasctions.
+        // that were used to validate the transactions.
         let mut root_elements = Vec::new();
         let mut rng = McRng::default();
 

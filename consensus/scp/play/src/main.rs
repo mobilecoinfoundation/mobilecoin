@@ -5,6 +5,7 @@
 use mc_common::{logger::log, NodeID};
 use mc_consensus_scp::{
     scp_log::{LoggedMsg, ScpLogReader, StoredMsg},
+    test_utils::{get_bounded_combine_fn, trivial_validity_fn},
     Msg, Node, QuorumSet, ScpNode, SlotIndex,
 };
 use mc_transaction_core::{constants::MAX_TRANSACTIONS_PER_BLOCK, tx::TxHash};
@@ -53,25 +54,13 @@ impl fmt::Display for TransactionValidationError {
     }
 }
 
-fn trivial_validity_fn(_value: &TxHash) -> Result<(), TransactionValidationError> {
-    Ok(())
-}
-
-fn trivial_combine_fn(values: &[TxHash]) -> Vec<TxHash> {
-    let mut values: Vec<_> = values.to_vec();
-    values.sort();
-    values.dedup();
-    values.truncate(MAX_TRANSACTIONS_PER_BLOCK);
-    values
-}
-
 fn main() {
     let (logger, _global_logger_guard) =
         mc_common::logger::create_app_logger(mc_common::logger::o!());
     let config = Config::from_args();
 
     let validity_fn = Arc::new(trivial_validity_fn);
-    let combine_fn = Arc::new(trivial_combine_fn);
+    let combine_fn = Arc::new(get_bounded_combine_fn(MAX_TRANSACTIONS_PER_BLOCK));
 
     let mut scp_reader =
         ScpLogReader::<TxHash>::new(&config.scp_debug_dump).expect("failed creating ScpLogReader");
