@@ -332,8 +332,8 @@ impl TryFrom<&RequestPayload> for PublicAddress {
                 &spend_key,
                 &view_key,
                 &src.fog_report_url,
-                src.fog_authority_sig.clone(),
                 src.fog_report_key.clone(),
+                src.fog_authority_sig.clone(),
             )
         })
     }
@@ -610,8 +610,8 @@ mod testing {
             &RistrettoPublic::try_from(&alice_spend).unwrap(),
             &RistrettoPublic::try_from(&alice_view).unwrap(),
             alice_fog_url,
-            alice_fog_sig,
             "".to_string(),
+            alice_fog_sig,
         );
         let alice_request_payload = RequestPayload::try_from(&alice_public).unwrap();
         let alice_b58_str = alice_request_payload.encode();
@@ -636,8 +636,8 @@ mod testing {
             &RistrettoPublic::try_from(&bob_spend).unwrap(),
             &RistrettoPublic::try_from(&bob_view).unwrap(),
             bob_fog_url,
-            bob_fog_sig,
             99.to_string(),
+            bob_fog_sig,
         );
         let bob_request_payload = RequestPayload::try_from(&bob_public).unwrap();
         let bob_b58_str = bob_request_payload.encode();

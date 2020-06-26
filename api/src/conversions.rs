@@ -844,8 +844,8 @@ impl TryFrom<&external::AccountKey> for AccountKey {
                 &spend_private_key,
                 &view_private_key,
                 &src.fog_report_url,
-                &src.fog_authority_key_fingerprint[..],
                 src.fog_report_key.clone(),
+                &src.fog_authority_key_fingerprint[..],
             ))
         }
     }
@@ -897,8 +897,8 @@ impl TryFrom<&external::PublicAddress> for PublicAddress {
                 &spend_public_key,
                 &view_public_key,
                 &src.fog_report_url,
-                src.fog_authority_sig.clone(),
                 src.fog_report_key.clone(),
+                src.fog_authority_sig.clone(),
             ))
         }
     }
@@ -1420,8 +1420,8 @@ mod conversion_tests {
                 tmp_account_key.spend_private_key(),
                 tmp_account_key.view_private_key(),
                 "fog://test.mobilecoin.com".to_string(),
-                vec![9, 9, 9, 9],
                 "99".to_string(),
+                vec![9, 9, 9, 9],
             );
 
             let proto_credentials = external::AccountKey::from(&account_key);
@@ -1488,8 +1488,8 @@ mod conversion_tests {
                 tmp_public_address.spend_public_key(),
                 tmp_public_address.view_public_key(),
                 "fog://test.mobilecoin.com".to_string(),
-                vec![9, 9, 9, 9],
                 "99".to_string(),
+                vec![9, 9, 9, 9],
             );
 
             let proto_credentials = external::PublicAddress::from(&public_address);

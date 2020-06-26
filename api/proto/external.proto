@@ -69,14 +69,14 @@ message AccountKey {
     /// Empty string when not in use, i.e. for accounts that don't have fog service.
     string fog_report_url = 3;
 
-    /// Optional fingerprint of fog authority key.
-    /// Empty when not in use.
-    bytes fog_authority_key_fingerprint = 4;
-
     /// Optional fog report key.
     /// The fog report server may serve multiple reports, this key disambiguates
     /// which one to use when sending to this account.
-    string fog_report_key = 5;
+    string fog_report_key = 4;
+
+    /// Optional fingerprint of fog authority key.
+    /// Empty when not in use.
+    bytes fog_authority_key_fingerprint = 5;
 }
 
 /// A public address, used to identify recipients.
@@ -92,15 +92,15 @@ message PublicAddress {
     /// Indicates the place at which the fog report server should be contacted.
     string fog_report_url = 3;
 
-    /// Signature of fog authority fingerprint using private key which
-    /// corresponds to view_public_key.
-    /// This should be a Schnorrkel signature.
-    bytes fog_authority_sig = 4;
-
     /// Optional fog report key.
     /// The fog report server may serve multiple reports, this key disambiguates
     /// which one to use when sending to this account.
-    string fog_report_key = 5;
+    string fog_report_key = 4;
+
+    /// Signature of fog authority fingerprint using private key which
+    /// corresponds to view_public_key.
+    /// This should be a Schnorrkel signature.
+    bytes fog_authority_sig = 5;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -17,7 +17,6 @@ use serde::{Deserialize, Serialize};
 use std::convert::From;
 
 pub const TEST_FOG_AUTHORITY_FINGERPRINT: [u8; 4] = [9, 9, 9, 9];
-
 pub const TEST_FOG_REPORT_KEY: &str = "";
 
 /// A RootIdentity is used to quickly derive an AccountKey from 32 bytes of entropy
@@ -56,8 +55,8 @@ impl From<&RootIdentity> for AccountKey {
                 &spend_private_key,
                 &view_private_key,
                 url.clone(),
-                TEST_FOG_AUTHORITY_FINGERPRINT,
                 TEST_FOG_REPORT_KEY.to_string(),
+                TEST_FOG_AUTHORITY_FINGERPRINT,
             ),
             None => AccountKey::new(&spend_private_key, &view_private_key),
         }
