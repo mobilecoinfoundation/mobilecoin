@@ -5,12 +5,11 @@ use crate::error::Error;
 use core::{convert::TryFrom, fmt};
 use std::str::FromStr;
 
+use crc::crc32;
 use mc_crypto_keys::{KeyError, RistrettoPublic};
 use mc_transaction_core::account_keys::{AccountKey, PublicAddress};
 use mc_transaction_std::identity::RootIdentity;
 use mc_util_uri::FogUri;
-
-use crc::crc32;
 
 /// Type of payload standard encoding.
 #[repr(u8)] // we don't expect to ever need more than 255 payload types
