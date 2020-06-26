@@ -37,7 +37,7 @@ use mc_crypto_message_cipher::{AesMessageCipher, MessageCipher};
 use mc_crypto_rand::McRng;
 use mc_sgx_compat::sync::Mutex;
 use mc_transaction_core::{
-    account_keys::{PublicAddress, CURRENT_ACCOUNT_KEY_VERSION},
+    account_keys::PublicAddress,
     amount::Amount,
     blake2b_256::Blake2b256,
     constants::{FEE_SPEND_PUBLIC_KEY, FEE_VIEW_PUBLIC_KEY},
@@ -504,7 +504,6 @@ fn mint_aggregate_fee(tx_private_key: &RistrettoPrivate, total_fee: u64) -> Resu
     let fee_recipient = PublicAddress::new(
         &RistrettoPublic::try_from(&FEE_SPEND_PUBLIC_KEY).unwrap(),
         &RistrettoPublic::try_from(&FEE_VIEW_PUBLIC_KEY).unwrap(),
-        CURRENT_ACCOUNT_KEY_VERSION,
     );
 
     // Create a single TxOut
@@ -808,7 +807,6 @@ mod tests {
             let public_address = PublicAddress::new(
                 &RistrettoPublic::try_from(&FEE_SPEND_PUBLIC_KEY).unwrap(),
                 &RistrettoPublic::from(&view_secret_key),
-                CURRENT_ACCOUNT_KEY_VERSION,
             );
             ViewKey::new(view_secret_key, *public_address.spend_public_key())
         };

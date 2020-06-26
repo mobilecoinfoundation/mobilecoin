@@ -65,16 +65,18 @@ message AccountKey {
     /// Private key `b` used for spending.
     RistrettoPrivate spend_private_key = 2;
 
-    /// Optional url of fog server. Empty string when not in use.
+    /// Optional url of fog report server.
+    /// Empty string when not in use, i.e. for accounts that don't have fog service.
     string fog_url = 3;
 
     /// Optional fingerprint of fog authority key.
     /// Empty when not in use.
     bytes fog_authority_key_fingerprint = 4;
 
-    /// Version number used to indicate breaking changes, so that old clients
-    /// fail fast on data they cannot handle, and prompt the user to upgrade.
-    uint32 version = 5;
+    /// Optional fog report key.
+    /// The fog report server may serve multiple reports, this key disambiguates
+    /// which one to use when sending to this account.
+    string fog_report_key = 5;
 }
 
 /// A public address, used to identify recipients.
@@ -85,7 +87,8 @@ message PublicAddress {
     /// Spend public key
     CompressedRistretto spend_public_key = 2;
 
-    /// Optional url of fog server. Empty string when not in use.
+    /// Optional url of fog report server.
+    /// Empty string when not in use, i.e. for accounts that don't have fog service.
     /// Indicates the place at which the fog report server should be contacted.
     string fog_url = 3;
 
@@ -94,9 +97,10 @@ message PublicAddress {
     /// This should be a Schnorrkel signature.
     bytes fog_authority_sig = 4;
 
-    /// Version number used to indicate breaking changes, so that old clients
-    /// fail fast on data they cannot handle, and prompt the user to upgrade.
-    uint32 version = 5;
+    /// Optional fog report key.
+    /// The fog report server may serve multiple reports, this key disambiguates
+    /// which one to use when sending to this account.
+    string fog_report_key = 5;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

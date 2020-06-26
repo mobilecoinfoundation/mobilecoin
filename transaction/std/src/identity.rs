@@ -11,15 +11,14 @@ use core::hash::Hash;
 use curve25519_dalek::scalar::Scalar;
 use hkdf::Hkdf;
 use mc_crypto_keys::RistrettoPrivate;
-use mc_transaction_core::{
-    account_keys::{AccountKey, CURRENT_ACCOUNT_KEY_VERSION},
-    blake2b_256::Blake2b256,
-};
+use mc_transaction_core::{account_keys::AccountKey, blake2b_256::Blake2b256};
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 use std::convert::From;
 
 pub const TEST_FOG_AUTHORITY_FINGERPRINT: [u8; 4] = [9, 9, 9, 9];
+
+pub const TEST_FOG_REPORT_KEY: &str = "";
 
 /// A RootIdentity is used to quickly derive an AccountKey from 32 bytes of entropy
 /// for testing purposes. It should not be used to derive AccountKeys outside of a
@@ -58,13 +57,9 @@ impl From<&RootIdentity> for AccountKey {
                 &view_private_key,
                 url.clone(),
                 TEST_FOG_AUTHORITY_FINGERPRINT,
-                CURRENT_ACCOUNT_KEY_VERSION,
+                TEST_FOG_REPORT_KEY.to_string(),
             ),
-            None => AccountKey::new(
-                &spend_private_key,
-                &view_private_key,
-                CURRENT_ACCOUNT_KEY_VERSION,
-            ),
+            None => AccountKey::new(&spend_private_key, &view_private_key),
         }
     }
 }

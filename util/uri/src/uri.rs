@@ -9,7 +9,7 @@ use std::{
 };
 use url::Url;
 
-#[derive(Debug, Display)]
+#[derive(Clone, Eq, PartialEq, Debug, Display)]
 pub enum UriParseError {
     /// Url parse error: {0}
     UrlParse(url::ParseError),

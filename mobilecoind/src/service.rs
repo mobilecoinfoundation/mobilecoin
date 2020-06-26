@@ -380,9 +380,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         let payload = RequestPayload::new_v3(
             &view_key,
             &spend_key,
-            receiver.version,
             &receiver.fog_url,
             &receiver.fog_authority_sig,
+            &receiver.fog_report_key,
             request.get_value(),
             request.get_memo(),
         )
