@@ -9,7 +9,7 @@ use mc_mobilecoind_api::mobilecoind_api_grpc::MobilecoindApiClient;
 use rocket::{get, post, routes};
 use rocket_contrib::json::Json;
 use serde_derive::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::{convert::TryFrom, sync::Arc};
 use structopt::StructOpt;
 
 /// Command line config, set with defaults that will work with
@@ -244,9 +244,48 @@ fn request_code(
 
 #[derive(Deserialize, Serialize, Default)]
 struct JsonPublicAddress {
+    /// Hex encoded compressed ristretto bytes
     view_public_key: String,
+    /// Hex encoded compressed ristretto bytes
     spend_public_key: String,
-    fog_url: String,
+    /// Fog Report Server Url
+    fog_report_url: String,
+    /// Hex encoded signature bytes
+    fog_authority_sig: String,
+    /// String label for fog reports
+    fog_report_key: String,
+}
+
+// Helper conversion between json and protobuf
+impl TryFrom<&JsonPublicAddress> for PublicAddress {
+    type Error = String;
+
+    fn try_from(src: &JsonPublicAddress) -> Result<PublicAddress, String> {
+        // Decode the keys
+        let mut view_public_key = CompressedRistretto::new();
+        view_public_key.set_data(
+            hex::decode(&src.view_public_key)
+                .map_err(|err| format!("Failed to decode view key hex: {}", err))?,
+        );
+        let mut spend_public_key = CompressedRistretto::new();
+        spend_public_key.set_data(
+            hex::decode(&src.spend_public_key)
+                .map_err(|err| format!("Failed to decode spend key hex: {}", err))?,
+        );
+
+        // Reconstruct the public address as a protobuf
+        let mut public_address = PublicAddress::new();
+        public_address.set_view_public_key(view_public_key);
+        public_address.set_spend_public_key(spend_public_key);
+        public_address.set_fog_report_url(src.fog_report_url.clone());
+        public_address.set_fog_report_key(src.fog_report_key.clone());
+        public_address.set_fog_authority_sig(
+            hex::decode(&src.fog_authority_sig)
+                .map_err(|err| format!("Failed to decode fog authority sig hex: {}", err))?,
+        );
+
+        Ok(public_address)
+    }
 }
 
 #[derive(Deserialize, Serialize, Default)]
@@ -278,7 +317,9 @@ fn read_request(
         receiver: JsonPublicAddress {
             view_public_key: hex::encode(receiver.get_view_public_key().get_data().to_vec()),
             spend_public_key: hex::encode(receiver.get_spend_public_key().get_data().to_vec()),
-            fog_url: String::from(receiver.get_fog_url()),
+            fog_report_url: String::from(receiver.get_fog_report_url()),
+            fog_report_key: String::from(receiver.get_fog_report_key()),
+            fog_authority_sig: hex::encode(receiver.get_fog_authority_sig().to_vec()),
         },
         value: resp.get_value().to_string(),
         memo: resp.get_memo().to_string(),
@@ -311,23 +352,7 @@ fn transfer(
     let monitor_id =
         hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
 
-    // Decode the keys
-    let mut view_public_key = CompressedRistretto::new();
-    view_public_key.set_data(
-        hex::decode(&transfer.receiver.view_public_key)
-            .map_err(|err| format!("Failed to decode view key hex: {}", err))?,
-    );
-    let mut spend_public_key = CompressedRistretto::new();
-    spend_public_key.set_data(
-        hex::decode(&transfer.receiver.spend_public_key)
-            .map_err(|err| format!("Failed to decode spend key hex: {}", err))?,
-    );
-
-    // Reconstruct the public address as a protobuf
-    let mut public_address = PublicAddress::new();
-    public_address.set_view_public_key(view_public_key);
-    public_address.set_spend_public_key(spend_public_key);
-    public_address.set_fog_url(transfer.receiver.fog_url.clone());
+    let public_address = PublicAddress::try_from(&transfer.receiver)?;
 
     // Generate an outlay
     let mut outlay = mc_mobilecoind_api::Outlay::new();

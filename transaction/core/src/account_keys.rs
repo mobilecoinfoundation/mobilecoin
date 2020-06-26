@@ -52,7 +52,7 @@ pub struct PublicAddress {
     /// Empty if no fog for this public address
     /// Should be parseable as mc_util_uri::FogUri.
     #[prost(string, tag = "3")]
-    pub fog_url: String,
+    pub fog_report_url: String,
 
     /// A signature with the user's spend_private_key over the fog authority key fingerprint.
     /// Empty if no fog for this public address
@@ -77,8 +77,8 @@ impl fmt::Display for PublicAddress {
         {
             write!(f, "{:02X}", byte)?;
         }
-        if !self.fog_url.is_empty() {
-            write!(f, ":'{}'", self.fog_url)?;
+        if !self.fog_report_url.is_empty() {
+            write!(f, ":'{}'", self.fog_report_url)?;
         }
         if !self.fog_report_key.is_empty() {
             write!(f, ":{}", self.fog_report_key)?;
@@ -98,7 +98,7 @@ impl PublicAddress {
         Self {
             view_public_key: *view_public_key,
             spend_public_key: *spend_public_key,
-            fog_url: Default::default(),
+            fog_report_url: Default::default(),
             fog_authority_sig: Default::default(),
             fog_report_key: Default::default(),
         }
@@ -109,21 +109,21 @@ impl PublicAddress {
     /// # Arguments
     /// `spend_public_key` - The user's public subaddress spend key `D`,
     /// `view_public_key` - The user's public subaddress view key `C`,
-    /// `fog_url` - User's fog report server url
+    /// `fog_report_url` - User's fog report server url
     /// `fog_authority_sig` - A signature over the fog authority fingerprint using the subaddress_spend_private_key
     /// `fog_report_key` - The key labelling the report to use, from among the several reports which might be served by the fog report server.
     #[inline]
     pub fn new_with_fog(
         spend_public_key: &RistrettoPublic,
         view_public_key: &RistrettoPublic,
-        fog_url: impl ToString,
+        fog_report_url: impl ToString,
         fog_authority_sig: Vec<u8>,
         fog_report_key: String,
     ) -> Self {
         Self {
             view_public_key: *view_public_key,
             spend_public_key: *spend_public_key,
-            fog_url: fog_url.to_string(),
+            fog_report_url: fog_report_url.to_string(),
             fog_authority_sig,
             fog_report_key,
         }
@@ -139,12 +139,12 @@ impl PublicAddress {
         &self.spend_public_key
     }
 
-    /// Get the optional fog url (if it exists / is not empty).
-    pub fn fog_url(&self) -> Option<&str> {
-        if self.fog_url.is_empty() {
+    /// Get the optional fog report url (if it exists / is not empty).
+    pub fn fog_report_url(&self) -> Option<&str> {
+        if self.fog_report_url.is_empty() {
             None
         } else {
-            Some(&self.fog_url)
+            Some(&self.fog_report_url)
         }
     }
 
@@ -182,7 +182,7 @@ pub struct AccountKey {
 
     /// Fog Report server url (if user has Fog service), empty string otherwise
     #[prost(string, tag = "3")]
-    pub fog_url: String,
+    pub fog_report_url: String,
 
     /// Fog Authority Key Fingerprint (if user has Fog service), empty otherwise
     #[prost(bytes, tag = "4")]
@@ -235,7 +235,7 @@ impl AccountKey {
         Self {
             spend_private_key: *spend_private_key,
             view_private_key: *view_private_key,
-            fog_url: Default::default(),
+            fog_report_url: Default::default(),
             fog_authority_key_fingerprint: Default::default(),
             fog_report_key: Default::default(),
         }
@@ -246,7 +246,7 @@ impl AccountKey {
     /// # Arguments
     /// * `spend_private_key` - The user's private spend key `b`.
     /// * `view_private_key` - The user's private view key `a`.
-    /// * `fog_url` - Url of fog report service
+    /// * `fog_report_url` - Url of fog report service
     /// * `fog_authority` - The fingerprint of the public key of the fog authority,
     ///                     which is signed by the user for the public address.
     /// * `fog_report_key` - The key labelling the report to use, from among the
@@ -254,14 +254,14 @@ impl AccountKey {
     pub fn new_with_fog(
         spend_private_key: &RistrettoPrivate,
         view_private_key: &RistrettoPrivate,
-        fog_url: impl ToString,
+        fog_report_url: impl ToString,
         fog_authority: impl AsRef<[u8]>,
         fog_report_key: String,
     ) -> Self {
         Self {
             spend_private_key: *spend_private_key,
             view_private_key: *view_private_key,
-            fog_url: fog_url.to_string(),
+            fog_report_url: fog_report_url.to_string(),
             fog_authority_key_fingerprint: fog_authority.as_ref().to_vec(),
             fog_report_key,
         }
@@ -278,11 +278,11 @@ impl AccountKey {
     }
 
     /// Access the fog url (if it exists).
-    pub fn fog_url(&self) -> Option<&str> {
-        if self.fog_url.is_empty() {
+    pub fn fog_report_url(&self) -> Option<&str> {
+        if self.fog_report_url.is_empty() {
             None
         } else {
-            Some(&self.fog_url)
+            Some(&self.fog_report_url)
         }
     }
 
@@ -355,13 +355,13 @@ impl AccountKey {
         let mut result = PublicAddress {
             view_public_key: subaddress_view_public,
             spend_public_key: subaddress_spend_public,
-            fog_url: self.fog_url.clone(),
+            fog_report_url: self.fog_report_url.clone(),
             fog_authority_sig: Default::default(),
             fog_report_key: self.fog_report_key.clone(),
         };
 
         // Compute fog_authority_sig as a signature over self.fog_authority_key_fingerprint
-        if !self.fog_url.is_empty() {
+        if !self.fog_report_url.is_empty() {
             // FIXME: FOG-106 fog_authority_sig should be a Schnorrkel sig using subaddress_view_private
             result.fog_authority_sig.extend(&[9u8, 9u8, 9u8, 9u8]);
         }

@@ -67,7 +67,7 @@ message AccountKey {
 
     /// Optional url of fog report server.
     /// Empty string when not in use, i.e. for accounts that don't have fog service.
-    string fog_url = 3;
+    string fog_report_url = 3;
 
     /// Optional fingerprint of fog authority key.
     /// Empty when not in use.
@@ -90,7 +90,7 @@ message PublicAddress {
     /// Optional url of fog report server.
     /// Empty string when not in use, i.e. for accounts that don't have fog service.
     /// Indicates the place at which the fog report server should be contacted.
-    string fog_url = 3;
+    string fog_report_url = 3;
 
     /// Signature of fog authority fingerprint using private key which
     /// corresponds to view_public_key.
