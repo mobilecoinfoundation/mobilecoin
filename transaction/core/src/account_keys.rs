@@ -42,28 +42,28 @@ pub const DEFAULT_SUBADDRESS_INDEX: u64 = 0;
 pub struct PublicAddress {
     /// The user's public subaddress view key 'C'.
     #[prost(message, required, tag = "1")]
-    pub view_public_key: RistrettoPublic,
+    view_public_key: RistrettoPublic,
 
     /// The user's public subaddress spend key `D`.
     #[prost(message, required, tag = "2")]
-    pub spend_public_key: RistrettoPublic,
+    spend_public_key: RistrettoPublic,
 
     /// This is the URL to talk to the fog report server, if the user has a fog service
     /// Empty if no fog for this public address
     /// Should be parseable as mc_util_uri::FogUri.
     #[prost(string, tag = "3")]
-    pub fog_report_url: String,
+    fog_report_url: String,
 
     /// A signature with the user's spend_private_key over the fog authority key fingerprint.
     /// Empty if no fog for this public address
     #[prost(bytes, tag = "4")]
-    pub fog_authority_sig: Vec<u8>,
+    fog_authority_sig: Vec<u8>,
 
     /// The fog report server potentially returns multiple reports when queried.
     /// This value is the key that indicates which of the reports to use.
     /// Empty if no fog for this public address.
     #[prost(string, tag = "5")]
-    pub fog_report_key: String,
+    fog_report_key: String,
 }
 
 impl fmt::Display for PublicAddress {
@@ -174,25 +174,25 @@ impl PublicAddress {
 pub struct AccountKey {
     /// Private key 'a' used for view-key matching.
     #[prost(message, required, tag = "1")]
-    pub view_private_key: RistrettoPrivate,
+    view_private_key: RistrettoPrivate,
 
     /// Private key `b` used for spending.
     #[prost(message, required, tag = "2")]
-    pub spend_private_key: RistrettoPrivate,
+    spend_private_key: RistrettoPrivate,
 
     /// Fog Report server url (if user has Fog service), empty string otherwise
     #[prost(string, tag = "3")]
-    pub fog_report_url: String,
+    fog_report_url: String,
 
     /// Fog Authority Key Fingerprint (if user has Fog service), empty otherwise
     #[prost(bytes, tag = "4")]
-    pub fog_authority_key_fingerprint: Vec<u8>,
+    fog_authority_key_fingerprint: Vec<u8>,
 
     /// Fog Report Key (if user has Fog service), empty otherwise
     /// The key labelling the report to use, from among the several reports
     /// which might be served by the fog report server.
     #[prost(string, tag = "5")]
-    pub fog_report_key: String,
+    fog_report_key: String,
 }
 
 // Note: Hash, Ord is implemented in terms of default_subaddress() because

@@ -349,8 +349,12 @@ impl TryFrom<&PublicAddress> for RequestPayload {
         if let Some(fog_report_url_string) = src.fog_report_url() {
             payload.version = 1;
             payload.fog_report_url = fog_report_url_string.to_string();
-            payload.fog_authority_sig = src.fog_authority_sig.clone();
-            payload.fog_report_key = src.fog_report_key.clone();
+            if let Some(sig) = src.fog_authority_sig() {
+                payload.fog_authority_sig = sig.to_vec();
+            }
+            if let Some(key) = src.fog_report_key() {
+                payload.fog_report_key = key.to_string();
+            }
         }
         Ok(payload)
     }

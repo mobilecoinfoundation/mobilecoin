@@ -807,8 +807,14 @@ impl From<&AccountKey> for external::AccountKey {
 
         if let Some(url) = src.fog_report_url() {
             dst.set_fog_report_url(url.to_string());
-            dst.set_fog_authority_key_fingerprint(src.fog_authority_key_fingerprint.clone());
-            dst.set_fog_report_key(src.fog_report_key.clone());
+        }
+
+        if let Some(fingerprint) = src.fog_authority_key_fingerprint() {
+            dst.set_fog_authority_key_fingerprint(fingerprint.to_vec());
+        }
+
+        if let Some(key) = src.fog_report_key() {
+            dst.set_fog_report_key(key.to_string());
         }
 
         dst
@@ -854,8 +860,14 @@ impl From<&PublicAddress> for external::PublicAddress {
 
         if let Some(url) = src.fog_report_url() {
             dst.set_fog_report_url(url.to_string());
-            dst.set_fog_authority_sig(src.fog_authority_sig.to_vec());
-            dst.set_fog_report_key(src.fog_report_key.clone());
+        }
+
+        if let Some(sig) = src.fog_authority_sig() {
+            dst.set_fog_authority_sig(sig.to_vec());
+        }
+
+        if let Some(key) = src.fog_report_key() {
+            dst.set_fog_report_key(key.to_string());
         }
 
         dst
