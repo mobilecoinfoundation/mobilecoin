@@ -734,7 +734,7 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
                     block_height = Some(b);
                     latest_block_hash = ledger_db
                         .get_block(b - 1)
-                        .map(|x| format!("{:?}", x.id))
+                        .map(|x| x.id)
                         .map_err(|e| log::error!(logger, "Error getting block {} {:?}", b - 1, e))
                         .ok();
                     latest_block_timestamp = ledger_db
