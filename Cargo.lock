@@ -3249,6 +3249,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-util-url-encoding"
+version = "0.4.0"
+dependencies = [
+ "base64 0.11.0",
+ "displaydoc",
+ "hex 0.4.2",
+ "mc-common",
+ "mc-crypto-keys",
+ "mc-transaction-core",
+ "mc-transaction-std",
+ "mc-util-b58-payloads",
+ "mc-util-from-random",
+ "mc-util-test-helper",
+ "mc-util-uri",
+ "rand_hc 0.2.0",
+ "url 2.1.1",
+]
+
+[[package]]
 name = "mc-watcher"
 version = "0.4.0"
 dependencies = [

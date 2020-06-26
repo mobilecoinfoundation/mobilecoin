@@ -74,6 +74,7 @@ members = [
     "util/serial",
     "util/test-helper",
     "util/uri",
+    "util/url-encoding",
     "watcher",
 ]
 exclude = [
