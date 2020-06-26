@@ -19,7 +19,9 @@ use mc_consensus_scp::{
 };
 use mc_crypto_keys::Ed25519Pair;
 use mc_ledger_db::Ledger;
-use mc_ledger_sync::{LedgerSyncService, ReqwestTransactionsFetcher, SCPNetworkState};
+use mc_ledger_sync::{
+    LedgerSyncService, NetworkState, ReqwestTransactionsFetcher, SCPNetworkState,
+};
 use mc_peers::{
     ConsensusConnection, ConsensusMsg, RetryableConsensusConnection, ThreadedBroadcaster,
     VerifiedConsensusMsg,
@@ -34,7 +36,7 @@ use std::{
     iter::FromIterator,
     path::PathBuf,
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
         Arc, Mutex,
     },
     thread::{self, JoinHandle},
@@ -68,6 +70,7 @@ pub struct ByzantineLedger {
     sender: Sender<ByzantineLedgerTaskMessage>,
     thread_handle: Option<JoinHandle<()>>,
     is_behind: Arc<AtomicBool>,
+    highest_peer_block: Arc<AtomicU64>,
     highest_outgoing_consensus_msg: Arc<Mutex<Option<ConsensusMsg>>>,
 }
 
@@ -113,6 +116,7 @@ impl ByzantineLedger {
             sender,
             thread_handle: None,
             is_behind: Arc::new(AtomicBool::new(false)),
+            highest_peer_block: Arc::new(AtomicU64::new(0)),
             highest_outgoing_consensus_msg: highest_outgoing_consensus_msg.clone(),
         };
 
@@ -166,6 +170,7 @@ impl ByzantineLedger {
 
         // Start worker thread
         let thread_is_behind = node.is_behind.clone();
+        let thread_highest_peer_block = node.highest_peer_block.clone();
         let thread_handle = Some(
             thread::Builder::new()
                 .name(format!("ByzantineLedger{:?}", node_id))
@@ -176,6 +181,7 @@ impl ByzantineLedger {
                         receiver,
                         wrapped_scp_node,
                         thread_is_behind,
+                        thread_highest_peer_block,
                         send_scp_message,
                         ledger,
                         peer_manager,
@@ -236,6 +242,11 @@ impl ByzantineLedger {
             .expect("mutex poisoned")
             .clone()
     }
+
+    /// Get the highest block agreed upon by peers.
+    pub fn highest_peer_block(&self) -> u64 {
+        self.highest_peer_block.load(Ordering::SeqCst)
+    }
 }
 
 impl Drop for ByzantineLedger {
@@ -275,6 +286,7 @@ struct ByzantineLedgerThread<
     receiver: Receiver<ByzantineLedgerTaskMessage>,
     scp: Box<dyn ScpNode<TxHash>>,
     is_behind: Arc<AtomicBool>,
+    highest_peer_block: Arc<AtomicU64>,
     send_scp_message: F,
     ledger: L,
     peer_manager: ConnectionManager<PC>,
@@ -330,6 +342,7 @@ impl<
         receiver: Receiver<ByzantineLedgerTaskMessage>,
         scp: Box<dyn ScpNode<TxHash>>,
         is_behind: Arc<AtomicBool>,
+        highest_peer_block: Arc<AtomicU64>,
         send_scp_message: F,
         ledger: L,
         peer_manager: ConnectionManager<PC>,
@@ -357,6 +370,7 @@ impl<
             receiver,
             scp,
             is_behind,
+            highest_peer_block,
             send_scp_message,
             ledger,
             tx_manager,
@@ -398,6 +412,9 @@ impl<
         // See if network state thinks we're behind.
         let sync_service_is_behind = self.ledger_sync_service.is_behind(&self.network_state);
 
+        if let Some(peer_block) = self.network_state.highest_block_index_on_network() {
+            self.highest_peer_block.store(peer_block, Ordering::SeqCst);
+        }
         match (self.ledger_sync_state.clone(), sync_service_is_behind) {
             // Fully in sync, nothing to do.
             (LedgerSyncState::InSync, false) => {}

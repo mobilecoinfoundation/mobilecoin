@@ -26,7 +26,7 @@ use mc_common::{
 use mc_connection::{Connection, ConnectionManager, ConnectionUriGrpcioServer};
 use mc_consensus_api::{consensus_client_grpc, consensus_common_grpc, consensus_peer_grpc};
 use mc_consensus_enclave::{ConsensusEnclaveProxy, Error as EnclaveError};
-use mc_ledger_db::LedgerDB;
+use mc_ledger_db::{Ledger, LedgerDB};
 use mc_peers::{PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
 use mc_transaction_core::tx::TxHash;
 use mc_util_grpc::{
@@ -36,9 +36,13 @@ use mc_util_uri::{ConnectionUri, ConsensusPeerUriApi};
 use retry::{delay::Fibonacci, retry, Error as RetryError, OperationResult};
 use serde_json::json;
 use std::{
+    env,
     sync::{Arc, Mutex},
     time::Instant,
 };
+
+/// Crate version, used for admin info endpoint
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Debug, Fail)]
 pub enum ConsensusServiceError {
@@ -704,8 +708,57 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
 
     /// Helper method for creating the get config json function needed by the GRPC admin service.
     fn create_get_config_json_fn(&self) -> GetConfigJsonFn {
+        let ledger_db = self.ledger_db.clone();
+        let byzantine_ledger = self.byzantine_ledger.clone();
         let config = self.config.clone();
+        let logger = self.logger.clone();
         Arc::new(move || {
+            let mut sync_status = "synced";
+            let mut peer_block_height: u64 = 0;
+            let byzantine_ledger = byzantine_ledger
+                .lock()
+                .expect("Could not get byzantine ledger.");
+            if let Some(byzantine_ledger) = &*byzantine_ledger {
+                if byzantine_ledger.is_behind() {
+                    sync_status = "catchup";
+                };
+                peer_block_height = byzantine_ledger.highest_peer_block();
+            }
+            let block_height;
+            let latest_block_hash;
+            let latest_block_timestamp;
+            let blocks_behind;
+            // If we do not get a num_blocks, several status points will be null
+            match ledger_db.num_blocks() {
+                Ok(b) => {
+                    block_height = Some(b);
+                    latest_block_hash = ledger_db
+                        .get_block(b - 1)
+                        .map(|x| format!("{:X}", x.id.0))
+                        .map_err(|e| log::error!(logger, "Error getting block {} {:?}", b - 1, e))
+                        .ok();
+                    latest_block_timestamp = ledger_db
+                        .get_block_signature(b - 1)
+                        .map(|x| x.signed_at())
+                        .map_err(|e| {
+                            log::error!(
+                                logger,
+                                "Error getting block signature for block {} {:?}",
+                                b - 1,
+                                e
+                            )
+                        })
+                        .ok();
+                    blocks_behind = Some(std::cmp::min(peer_block_height - b, 0));
+                }
+                Err(e) => {
+                    log::error!(logger, "Error getting block height {:?}", e);
+                    block_height = None;
+                    latest_block_hash = None;
+                    latest_block_timestamp = None;
+                    blocks_behind = None;
+                }
+            };
             Ok(json!({
                 "config": {
                     "public_key": config.node_id().public_key,
@@ -713,8 +766,6 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
                     "client_responder_id": config.client_responder_id,
                     "message_pubkey": config.msg_signer_key.public_key(),
                     "network": config.network_path,
-                    "ias_api_key": config.ias_api_key,
-                    "ias_spid": config.ias_spid,
                     "peer_listen_uri": config.peer_listen_uri,
                     "client_listen_uri": config.client_listen_uri,
                     "admin_listen_uri": config.admin_listen_uri,
@@ -722,6 +773,16 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
                     "scp_debug_dump": config.scp_debug_dump,
                 },
                 "network": config.network(),
+                "status": {
+                    "block_height": block_height,
+                    "version": VERSION,
+                    "broadcast_peer_count": config.network().broadcast_peers.len(),
+                    "known_peer_count": config.network().known_peers.map_or(0, |x| x.len()),
+                    "sync_status": sync_status,
+                    "blocks_behind": blocks_behind,
+                    "latest_block_hash": latest_block_hash,
+                    "latest_block_timestamp": latest_block_timestamp,
+                },
             })
             .to_string())
         })
