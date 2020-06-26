@@ -92,6 +92,7 @@ impl PublicAddress {
     /// # Arguments
     /// `spend_public_key` - The user's public subaddress spend key `D`,
     /// `view_public_key` - The user's public subaddress view key  `C`,
+    /// `version` - The version number of this data
     #[inline]
     pub fn new(
         spend_public_key: &RistrettoPublic,
@@ -113,6 +114,8 @@ impl PublicAddress {
     /// `spend_public_key` - The user's public subaddress spend key `D`,
     /// `view_public_key` - The user's public subaddress view key `C`,
     /// `fog_url` - User's fog url
+    /// `fog_authority_sig` - A signature over the fog authority fingerprint using the view_private_key
+    /// `version` - The version number of this data
     /// `
     #[inline]
     pub fn new_with_fog(
@@ -149,6 +152,15 @@ impl PublicAddress {
             Some(&self.fog_url)
         }
     }
+
+    /// Get the optional fog authority sig
+    pub fn fog_authority_sig(&self) -> Option<&[u8]> {
+        if self.fog_authority_sig.is_empty() {
+            None
+        } else {
+            Some(&self.fog_authority_sig)
+        }
+    }
 }
 
 /// Complete AccountKey, containing the pair of secret keys, which can be used
@@ -164,11 +176,11 @@ pub struct AccountKey {
     #[prost(message, required, tag = "2")]
     pub spend_private_key: RistrettoPrivate,
 
-    /// Fog URL (if user has Fog service)
+    /// Fog URL (if user has Fog service), empty string otherwise
     #[prost(string, tag = "3")]
     pub fog_url: String,
 
-    /// Fog Authority Key Fingerprint (if user has Fog service)
+    /// Fog Authority Key Fingerprint (if user has Fog service), empty otherwise
     #[prost(bytes, tag = "4")]
     pub fog_authority_key_fingerprint: Vec<u8>,
 
@@ -210,6 +222,7 @@ impl AccountKey {
     /// # Arguments
     /// * `spend_private_key` - The user's private spend key `b`.
     /// * `view_private_key` - The user's private view key `a`.
+    /// * `version` - The version number of this data
     #[inline]
     pub fn new(
         spend_private_key: &RistrettoPrivate,
@@ -231,6 +244,9 @@ impl AccountKey {
     /// * `spend_private_key` - The user's private spend key `b`.
     /// * `view_private_key` - The user's private view key `a`.
     /// * `fog_url` - Url of fog service
+    /// * `fog_authority` - The fingerprint of the public key of the fog authority,
+    ///                     which is signed by the user for the public address.
+    /// * `version` - The version number of this data
     pub fn new_with_fog(
         spend_private_key: &RistrettoPrivate,
         view_private_key: &RistrettoPrivate,
@@ -257,8 +273,7 @@ impl AccountKey {
         &self.spend_private_key
     }
 
-    /// Access the acct server name (if it exists)
-    #[inline]
+    /// Access the fog url (if it exists)
     pub fn fog_url(&self) -> Option<&str> {
         if self.fog_url.is_empty() {
             None
@@ -267,8 +282,16 @@ impl AccountKey {
         }
     }
 
+    /// Access the fog authority key fingerprint (if it exists)
+    pub fn fog_authority_key_fingerprint(&self) -> Option<&[u8]> {
+        if self.fog_authority_key_fingerprint.is_empty() {
+            None
+        } else {
+            Some(&self.fog_authority_key_fingerprint)
+        }
+    }
+
     /// Returns the default subaddress view key (a, D).
-    #[inline]
     pub fn view_key(&self) -> ViewKey {
         ViewKey {
             spend_public_key: self.default_subaddress().spend_public_key,
@@ -278,7 +301,6 @@ impl AccountKey {
 
     /// Create an account key with random secret keys, and no fog service
     /// (intended for tests)
-    #[inline]
     pub fn random<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
         Self::new(
             &RistrettoPrivate::from_random(rng),
@@ -290,7 +312,6 @@ impl AccountKey {
     /// Create an account key with random secret keys, and the fog service
     /// FQDN "example.com"
     /// (intended for tests)
-    #[inline]
     pub fn random_with_fog<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
         Self::new_with_fog(
             &RistrettoPrivate::from_random(rng),
@@ -328,7 +349,7 @@ impl AccountKey {
         };
 
         if !self.fog_url.is_empty() {
-            // FIXME: fog_authority_sig should be a Schnorrkel sig using subaddress_view_private
+            // FIXME: FOG-100 fog_authority_sig should be a Schnorrkel sig using subaddress_view_private
             result.fog_authority_sig.extend(&[9u8, 9u8, 9u8, 9u8]);
         }
 
