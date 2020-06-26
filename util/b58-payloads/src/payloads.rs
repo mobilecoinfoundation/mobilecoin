@@ -210,8 +210,8 @@ impl RequestPayload {
             view_public_key: *view_key,
             spend_public_key: *spend_key,
             fog_report_url: "".to_owned(),
-            fog_authority_sig: Default::default(),
             fog_report_key: Default::default(),
+            fog_authority_sig: Default::default(),
             value: 0,
             memo: "".to_owned(),
         })
@@ -222,14 +222,14 @@ impl RequestPayload {
         view_key: &[u8; 32],
         spend_key: &[u8; 32],
         fog_report_url: &str,
-        fog_authority_sig: &[u8],
         fog_report_key: &str,
+        fog_authority_sig: &[u8],
     ) -> Result<Self, Error> {
         let mut result = RequestPayload::new_v0(view_key, spend_key)?;
         validate_fog_report_url(fog_report_url)?;
         result.fog_report_url = fog_report_url.to_owned();
-        result.fog_authority_sig = fog_authority_sig.to_vec();
         result.fog_report_key = fog_report_key.to_owned();
+        result.fog_authority_sig = fog_authority_sig.to_vec();
         result.version = 1;
         Ok(result)
     }
@@ -239,16 +239,16 @@ impl RequestPayload {
         view_key: &[u8; 32],
         spend_key: &[u8; 32],
         fog_report_url: &str,
-        fog_authority_sig: &[u8],
         fog_report_key: &str,
+        fog_authority_sig: &[u8],
         value: u64,
     ) -> Result<Self, Error> {
         let mut result = RequestPayload::new_v1(
             view_key,
             spend_key,
             fog_report_url,
-            fog_authority_sig,
             fog_report_key,
+            fog_authority_sig,
         )?;
         result.value = value;
         result.version = 2;
@@ -260,8 +260,8 @@ impl RequestPayload {
         view_key: &[u8; 32],
         spend_key: &[u8; 32],
         fog_report_url: &str,
-        fog_authority_sig: &[u8],
         fog_report_key: &str,
+        fog_authority_sig: &[u8],
         value: u64,
         memo: &str,
     ) -> Result<Self, Error> {
@@ -269,8 +269,8 @@ impl RequestPayload {
             view_key,
             spend_key,
             fog_report_url,
-            fog_authority_sig,
             fog_report_key,
+            fog_authority_sig,
             value,
         )?;
         validate_memo(memo)?;

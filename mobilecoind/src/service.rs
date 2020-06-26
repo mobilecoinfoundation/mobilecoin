@@ -381,8 +381,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             &view_key,
             &spend_key,
             receiver.fog_report_url().unwrap_or(&""),
-            receiver.fog_authority_sig().unwrap_or(&[]),
             receiver.fog_report_key().unwrap_or(&""),
+            receiver.fog_authority_sig().unwrap_or(&[]),
             request.get_value(),
             request.get_memo(),
         )
