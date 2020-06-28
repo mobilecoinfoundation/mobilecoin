@@ -943,7 +943,7 @@ mod conversion_tests {
     }
 
     #[test]
-    // blockchain::TxHash --> tx::TxHash
+    // external::TxHash --> tx::TxHash
     fn test_tx_hash_try_from() {
         let mut source = external::TxHash::new();
         source.set_hash(vec![7u8; 32]);
