@@ -104,6 +104,15 @@ message TxOutMembershipProof {
     repeated TxOutMembershipElement elements = 3;
 }
 
+// A hash of the shared secret of a transaction output.
+//
+// Can be used by the recipient of a transaction output to verify that the
+// bearer of this number knew the shared secret of the transaction output,
+// thereby providing evidence that they are the sender.
+message TxOutConfirmationNumber {
+    bytes hash = 1;
+}
+
 // Amount.
 message Amount {
     // A Pedersen commitment `v*G + s*H`
