@@ -3025,6 +3025,7 @@ dependencies = [
  "mc-transaction-std",
  "mc-util-serial",
  "mc-util-test-helper",
+ "mc-util-uri",
  "rand 0.7.3",
 ]
 

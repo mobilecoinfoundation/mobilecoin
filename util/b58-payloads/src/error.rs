@@ -2,6 +2,7 @@
 
 use failure::Fail;
 use mc_crypto_keys::KeyError;
+use mc_util_uri::UriParseError;
 use std::string::FromUtf8Error;
 
 #[derive(Clone, Debug, Eq, PartialEq, Fail)]
@@ -27,8 +28,8 @@ pub enum Error {
     Utf8ParsingError,
 
     /// Unable to convert string to a URL.
-    #[fail(display = "Invalid fog service URL")]
-    FogUrlParsingError,
+    #[fail(display = "Invalid fog service URL: {}", _0)]
+    FogUrlParsingError(UriParseError),
 
     /// A public key is not a valid Ristretto point.
     #[fail(display = "Invalid public key: {:?}", _0)]

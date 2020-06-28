@@ -221,13 +221,13 @@ fn create_fog_hint<RNG: CryptoRng + RngCore>(
 ) -> Result<EncryptedFogHint, TxBuilderError> {
     match maybe_ingest_pubkey {
         Some(ingest_pubkey) => {
-            if recipient.fog_url().is_none() {
+            if recipient.fog_report_url().is_none() {
                 return Err(TxBuilderError::IngestPubkeyUnexpectedlyProvided);
             }
             Ok(FogHint::from(recipient).encrypt(ingest_pubkey, rng))
         }
         None => {
-            if recipient.fog_url().is_some() {
+            if recipient.fog_report_url().is_some() {
                 return Err(TxBuilderError::IngestPubkeyNotProvided);
             }
             Ok(EncryptedFogHint::fake_onetime_hint(rng))

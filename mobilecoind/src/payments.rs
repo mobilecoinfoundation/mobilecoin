@@ -133,7 +133,7 @@ impl<T: UserTxConnection + 'static> TransactionsManager<T> {
         // TODO fog service is currently unsupported.
         assert!(!outlays
             .iter()
-            .any(|outlay| outlay.receiver.fog_url().is_some()));
+            .any(|outlay| outlay.receiver.fog_report_url().is_some()));
 
         // Must have at least one output
         if outlays.is_empty() {

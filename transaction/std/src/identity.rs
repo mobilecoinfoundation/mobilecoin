@@ -16,6 +16,9 @@ use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 use std::convert::From;
 
+pub const TEST_FOG_AUTHORITY_FINGERPRINT: [u8; 4] = [9, 9, 9, 9];
+pub const TEST_FOG_REPORT_KEY: &str = "";
+
 /// A RootIdentity is used to quickly derive an AccountKey from 32 bytes of entropy
 /// for testing purposes. It should not be used to derive AccountKeys outside of a
 /// development environment.
@@ -48,9 +51,13 @@ impl From<&RootIdentity> for AccountKey {
         let view_private_key =
             RistrettoPrivate::from(root_identity_hkdf_helper(&src.root_entropy, b"view"));
         match src.fog_url {
-            Some(ref fqdn) => {
-                AccountKey::new_with_fog(&spend_private_key, &view_private_key, fqdn.clone())
-            }
+            Some(ref url) => AccountKey::new_with_fog(
+                &spend_private_key,
+                &view_private_key,
+                url.clone(),
+                TEST_FOG_REPORT_KEY.to_string(),
+                TEST_FOG_AUTHORITY_FINGERPRINT,
+            ),
             None => AccountKey::new(&spend_private_key, &view_private_key),
         }
     }
