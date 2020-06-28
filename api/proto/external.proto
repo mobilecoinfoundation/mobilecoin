@@ -25,11 +25,7 @@ message CompressedRistretto {
 
 /// A 32-byte scalar associated to the ristretto group.
 /// This is the same as RistrettoPrivate, but they are used in different places.
-/// Many crates only need keys to perform key exchange operations, and strictly
-/// use the RistrettoPublic and RistrettoPrivate types.
-/// The transaction crate often uses CurveScalar and sometimes must perform
-/// raw elliptic curve operations etc.
-/// This type can possibly be factored out.
+/// TODO: MC-1605 Consider to factor out this type, or just this proto message.
 message CurveScalar {
     bytes data = 1;
 }
