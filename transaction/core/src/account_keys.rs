@@ -33,6 +33,7 @@ use blake2::{Blake2b, Digest};
 use curve25519_dalek::scalar::Scalar;
 use prost::Message;
 use rand_core::{CryptoRng, RngCore};
+use schnorrkel::{signing_context, ExpansionMode, MiniSecretKey, Signature};
 
 /// An account's "default address" is its zero^th subaddress.
 pub const DEFAULT_SUBADDRESS_INDEX: u64 = 0;
@@ -101,6 +102,7 @@ impl PublicAddress {
             fog_report_url: Default::default(),
             fog_report_id: Default::default(),
             fog_authority_sig: Default::default(),
+            fog_report_key: Default::default(),
         }
     }
 
@@ -362,8 +364,24 @@ impl AccountKey {
 
         // Compute fog_authority_sig as a signature over self.fog_authority_key_fingerprint
         if !self.fog_report_url.is_empty() {
-            // FIXME: FOG-106 fog_authority_sig should be a Schnorrkel sig using subaddress_view_private
-            result.fog_authority_sig.extend(&[9u8, 9u8, 9u8, 9u8]);
+            // Construct a MiniSecretKey from the bytes directly, then expand to SecretKey
+            let scalar_bytes = self.subaddress_view_private(index).to_bytes();
+            let mut bytes_slice = [0u8; 32];
+            bytes_slice[..32].copy_from_slice(&scalar_bytes);
+            let mini_secret = MiniSecretKey::from_bytes(&bytes_slice)
+                .expect("Could not construct MiniSecretKey from Scalar");
+            // FIXME: uniform expansion? Is Ed25519 not necessary
+            let secret_key = mini_secret.expand(ExpansionMode::Uniform);
+
+            // Create a KeyPair from the SecretKey and Sign
+            let keypair = secret_key.to_keypair();
+            let ctx = signing_context(b"Fog authority signature");
+
+            // FIXME: is this necessary?
+            // Create a hash digest object and feed it the message:
+            // let prehashed = Shake128::default().chain(message);
+            let sig: Signature = keypair.sign(ctx.bytes(&self.fog_authority_key_fingerprint)); // ctx.xof(prehashed)
+            result.fog_authority_sig.extend(sig.to_bytes().iter());
         }
 
         result
@@ -423,6 +441,7 @@ mod account_key_tests {
     use core::convert::{TryFrom, TryInto};
     use rand::prelude::StdRng;
     use rand_core::SeedableRng;
+    use schnorrkel::PublicKey;
     use yaml_rust::{Yaml, YamlLoader};
 
     #[test]
@@ -559,5 +578,35 @@ mod account_key_tests {
             .into_iter()
             .map(|elem| elem.as_i64().unwrap().try_into().unwrap())
             .collect::<Vec<_>>()
+    }
+
+    #[test]
+    // Subaddress fog authority signature should verify
+    fn test_fog_authority_signature() {
+        let mut rng: StdRng = SeedableRng::from_seed([42u8; 32]);
+        let view_private = RistrettoPrivate::from_random(&mut rng);
+        let spend_private = RistrettoPrivate::from_random(&mut rng);
+        let fog_url = "fog://example.com";
+        let fog_authority_key_fingerprint = [6u8; 32];
+        let fog_report_key = String::from("");
+
+        let account_key = AccountKey::new_with_fog(
+            &spend_private,
+            &view_private,
+            fog_url,
+            fog_report_key,
+            fog_authority_key_fingerprint,
+        );
+
+        let index = rng.next_u64();
+        let subaddress = account_key.subaddress(index);
+
+        let signature = Signature::from_bytes(&subaddress.fog_authority_sig)
+            .expect("Could not construct signature from fog authority sig bytes");
+        let public_key = PublicKey::from_point(subaddress.view_public_key.point());
+        let ctx = signing_context(b"Fog authority signature");
+        assert!(public_key
+            .verify(ctx.bytes(&fog_authority_key_fingerprint), &signature)
+            .is_ok());
     }
 }

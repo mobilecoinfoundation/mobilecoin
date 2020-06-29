@@ -233,6 +233,10 @@ impl RistrettoPublic {
     pub fn to_bytes(&self) -> [u8; 32] {
         self.0.compress().to_bytes()
     }
+
+    pub fn point(&self) -> RistrettoPoint {
+        self.0
+    }
 }
 
 impl PartialOrd for RistrettoPublic {
