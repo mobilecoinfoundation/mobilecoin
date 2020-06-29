@@ -55,6 +55,20 @@ impl<V: Value> PartialOrd for NominatePayload<V> {
     }
 }
 
+impl<V: Value> NominatePayload<V> {
+    /// Create a new NominatePayload.
+    ///
+    /// # Arguments
+    /// * `x` - Values voted nominated.
+    /// * `y` - Values accepted nominated.
+    pub fn new(x: &HashSet<V>, y: &HashSet<V>) -> Self {
+        Self {
+            X: x.iter().cloned().collect(),
+            Y: y.iter().cloned().collect(),
+        }
+    }
+}
+
 /// The contents of a Prepare Message.
 ///
 /// See [IETF Draft 0](https://tools.ietf.org/html/draft-mazieres-dinrg-scp-00#page-7)

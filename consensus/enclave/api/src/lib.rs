@@ -12,7 +12,7 @@ mod messages;
 pub use crate::{error::Error, messages::EnclaveCall};
 
 use alloc::vec::Vec;
-use core::{hash::Hash, result::Result as StdResult};
+use core::{cmp::Ordering, hash::Hash, result::Result as StdResult};
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, PeerAuthRequest,
@@ -35,18 +35,18 @@ pub type Result<T> = StdResult<T, Error>;
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct LocallyEncryptedTx(pub Vec<u8>);
 
-/// A `WellformedTx` encrypted for the current enclave.
+/// A `WellFormedTx` encrypted for the current enclave.
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct WellFormedEncryptedTx(pub Vec<u8>);
 
-/// Tx data we wish to expose to untrusted from well-formed Txs
-#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+/// Tx data we wish to expose to untrusted from well-formed Txs.
+#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct WellFormedTxContext {
-    /// Tx hash.
-    tx_hash: TxHash,
-
     /// Fee included in the tx.
     fee: u64,
+
+    /// Tx hash.
+    tx_hash: TxHash,
 
     /// Tombstone block.
     tombstone_block: u64,
@@ -62,6 +62,25 @@ pub struct WellFormedTxContext {
 }
 
 impl WellFormedTxContext {
+    /// Create a new WellFormedTxContext.
+    pub fn new(
+        fee: u64,
+        tx_hash: TxHash,
+        tombstone_block: u64,
+        key_images: Vec<KeyImage>,
+        highest_indices: Vec<u64>,
+        output_public_keys: Vec<CompressedRistrettoPublic>,
+    ) -> Self {
+        Self {
+            fee,
+            tx_hash,
+            tombstone_block,
+            key_images,
+            highest_indices,
+            output_public_keys,
+        }
+    }
+
     pub fn tx_hash(&self) -> &TxHash {
         &self.tx_hash
     }
@@ -90,13 +109,67 @@ impl WellFormedTxContext {
 impl From<&Tx> for WellFormedTxContext {
     fn from(tx: &Tx) -> Self {
         Self {
-            tx_hash: tx.tx_hash(),
             fee: tx.prefix.fee,
+            tx_hash: tx.tx_hash(),
             tombstone_block: tx.prefix.tombstone_block,
             key_images: tx.key_images(),
             highest_indices: tx.get_membership_proof_highest_indices(),
             output_public_keys: tx.output_public_keys(),
         }
+    }
+}
+
+/// Defines a sort order for transactions in a block.
+/// Transactions are sorted by fee (high to low), then by transaction hash and any other fields.
+impl Ord for WellFormedTxContext {
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self.fee != other.fee {
+            // Sort by fee, descending.
+            other.fee.cmp(&self.fee)
+        } else {
+            // Sort by remaining fields in lexicographic order.
+            (
+                &self.tx_hash,
+                &self.tombstone_block,
+                &self.key_images,
+                &self.highest_indices,
+                &self.output_public_keys,
+            )
+                .cmp(&(
+                    &other.tx_hash,
+                    &other.tombstone_block,
+                    &other.key_images,
+                    &other.highest_indices,
+                    &other.output_public_keys,
+                ))
+        }
+    }
+}
+
+impl PartialOrd for WellFormedTxContext {
+    fn partial_cmp(&self, other: &WellFormedTxContext) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+#[cfg(test)]
+mod well_formed_tx_context_tests {
+    use crate::WellFormedTxContext;
+    use alloc::{vec, vec::Vec};
+
+    #[test]
+    /// WellFormedTxContext should be sorted by fee, descending.
+    fn test_ordering() {
+        let a = WellFormedTxContext::new(100, Default::default(), 0, vec![], vec![], vec![]);
+        let b = WellFormedTxContext::new(557, Default::default(), 0, vec![], vec![], vec![]);
+        let c = WellFormedTxContext::new(88, Default::default(), 0, vec![], vec![], vec![]);
+
+        let mut contexts = vec![a, b, c];
+        contexts.sort();
+
+        let fees: Vec<_> = contexts.iter().map(|context| context.fee).collect();
+        let expected = vec![557, 100, 88];
+        assert_eq!(fees, expected);
     }
 }
 
