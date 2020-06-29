@@ -2591,7 +2591,6 @@ dependencies = [
 name = "mc-mobilecoind"
 version = "0.4.0"
 dependencies = [
- "byteorder",
  "crossbeam-channel 0.3.9",
  "failure",
  "futures",
@@ -2599,6 +2598,7 @@ dependencies = [
  "hex_fmt",
  "lmdb",
  "lru",
+ "mc-api",
  "mc-attest-core",
  "mc-common",
  "mc-connection",
@@ -2926,6 +2926,7 @@ dependencies = [
  "grpcio",
  "hex 0.4.2",
  "indicatif",
+ "mc-api",
  "mc-mobilecoind-api",
  "mc-util-b58-payloads",
  "mc-util-grpc",
@@ -2942,7 +2943,6 @@ dependencies = [
  "blake2",
  "bs58",
  "bulletproofs",
- "byteorder",
  "cfg-if",
  "crc",
  "criterion",
@@ -3025,6 +3025,7 @@ dependencies = [
  "mc-transaction-std",
  "mc-util-serial",
  "mc-util-test-helper",
+ "mc-util-uri",
  "rand 0.7.3",
 ]
 
