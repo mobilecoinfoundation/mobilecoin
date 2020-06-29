@@ -147,7 +147,7 @@ message ReceiverTxReceipt {
     external.PublicAddress recipient = 1;
 
     // The public key of the TxOut sent to this recipient.
-    external.RistrettoPublic tx_public_key = 2;
+    external.CompressedRistretto tx_public_key = 2;
 
     // The hash of the TxOut sent to this recipient.
     bytes tx_out_hash = 3;
@@ -298,14 +298,14 @@ message ReadTransferCodeRequest {
 }
 message ReadTransferCodeResponse {
     bytes entropy = 1;
-    external.RistrettoPublic tx_public_key = 2;
+    external.CompressedRistretto tx_public_key = 2;
     string memo = 3;
 }
 
 // Encode entropy/tx_public_key/memo into a base-58 "MobileCoin Transfer Code".
 message GetTransferCodeRequest {
     bytes entropy = 1;
-    external.RistrettoPublic tx_public_key = 2;
+    external.CompressedRistretto tx_public_key = 2;
     string memo = 3;
 }
 message GetTransferCodeResponse {

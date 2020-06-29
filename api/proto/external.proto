@@ -13,13 +13,6 @@ option java_outer_classname = "MobileCoinAPI";
 // `keys` crate
 ///////////////////////////////////////////////////////////////////////////////
 
-/// Note: This is used only in mobilecoind. It is not recommended to use
-/// uncompressed RistrettoPublic in protobuf types because the decompressions
-/// may be unnecessary and can cause significant performance hit.
-message RistrettoPublic {
-    bytes data = 1;
-}
-
 /// A Ristretto private key.
 message RistrettoPrivate {
     bytes data = 1;
@@ -31,9 +24,8 @@ message CompressedRistretto {
 }
 
 /// A 32-byte scalar associated to the ristretto group.
-/// This is the same as RistrettoPrivate, but they are used in different places,
-/// the transaction crate generally uses CurveScalar and higher-level crates use
-/// RistrettoPrivate.
+/// This is the same as RistrettoPrivate, but they are used in different places.
+/// TODO: MC-1605 Consider to factor out this type, or just this proto message.
 message CurveScalar {
     bytes data = 1;
 }
