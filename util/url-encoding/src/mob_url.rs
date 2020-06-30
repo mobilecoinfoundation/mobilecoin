@@ -15,6 +15,7 @@
 pub use mc_util_uri::UriParseError;
 
 use crate::error::Error;
+use alloc::collections::BTreeMap;
 use core::{
     convert::TryFrom,
     fmt::{Display, Formatter, Result as FmtResult},
@@ -60,9 +61,14 @@ impl MobUrl {
         })
     }
 
-    // TODO: We should test what happens when there are duplicated keys among the query pairs
     fn set_param(&mut self, name: &str, val: &str) {
-        self.url.query_pairs_mut().append_pair(name, val);
+        let mut query_params: BTreeMap<_, _> = self.url.query_pairs().into_owned().collect();
+        query_params.insert(name.into(), val.into());
+
+        self.url
+            .query_pairs_mut()
+            .clear()
+            .extend_pairs(query_params.iter());
     }
 
     pub fn get_amount(&self) -> Option<String> {
@@ -264,10 +270,6 @@ mod tests {
 
         mob_url.set_amount(70);
 
-        /*
-        Note: Failing at this revision with "50" and url =
-        mob://example.com/1234?a=50&a=70
-
         assert_eq!(mob_url.get_amount(), Some("70".to_string()));
         assert_eq!(mob_url.as_ref(), "mob://example.com/1234?a=70");
 
@@ -275,12 +277,11 @@ mod tests {
         mob_url.set_memo("beep boop");
 
         assert_eq!(mob_url.get_memo(), Some("beep boop".to_string()));
-        assert_eq!(mob_url.as_ref(), "mob://example.com/1234?a=70+m=beep+boop");
+        assert_eq!(mob_url.as_ref(), "mob://example.com/1234?a=70&m=beep+boop");
 
         mob_url.set_memo("foobar");
 
         assert_eq!(mob_url.get_memo(), Some("foobar".to_string()));
-        assert_eq!(mob_url.as_ref(), "mob://example.com/1234?a=70+m=foobar");
-        */
+        assert_eq!(mob_url.as_ref(), "mob://example.com/1234?a=70&m=foobar");
     }
 }

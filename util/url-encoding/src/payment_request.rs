@@ -147,7 +147,7 @@ mod tests {
             })
             .unwrap();
 
-        assert_eq!(mob_url.as_ref(), "mob://fog.mobilecoin.com/oGbA6juTWhUdfL6qNMocAGN96wNiZpZegP0TUjKXHEM-GYmM50bLJVeL6NgftIumjt8nwYw7MjEnQT7hCw9bVQ==?s=CQkJCQ%3D%3D&a=777&m=2+baby+goats#0");
+        assert_eq!(mob_url.as_ref(), "mob://fog.mobilecoin.com/oGbA6juTWhUdfL6qNMocAGN96wNiZpZegP0TUjKXHEM-GYmM50bLJVeL6NgftIumjt8nwYw7MjEnQT7hCw9bVQ==?a=777&m=2+baby+goats&s=CQkJCQ%3D%3D#0");
 
         let payload2 = PaymentRequest::try_from(&mob_url).unwrap();
 

@@ -4,6 +4,8 @@
 
 #[deny(missing_docs)]
 #[deny(unsafe_code)]
+extern crate alloc;
+
 mod error;
 mod mob_url;
 mod payment_request;
