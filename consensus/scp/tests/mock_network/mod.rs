@@ -393,7 +393,7 @@ impl SCPNode {
                         // Process incoming consensus message, which might be for a future slot
                         if let Some(msg) = incoming_msg_option {
                             let outgoing_msg: Option<Msg<String>> =
-                                thread_local_node.handle(msg).expect("handle_msg() failed");
+                                thread_local_node.handle(&msg).expect("handle_msg() failed");
 
                             if let Some(outgoing_msg) = outgoing_msg {
                                 (broadcast_msg_fn)(logger.clone(), outgoing_msg);
