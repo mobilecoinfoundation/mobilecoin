@@ -367,7 +367,8 @@ impl AccountKey {
         // NOTE: The fog_authority_sig is deterministic due to using the private key hash as the rng seed
         if !self.fog_report_url.is_empty() {
             // Construct the fog authority signature over the fingerprint using the view privkey
-            let scalar: Scalar = self.subaddress_view_private(index).scalar();
+            let view_private = self.subaddress_view_private(index);
+            let scalar: &Scalar = view_private.as_ref();
 
             // Create rng seed from hash of private key in order to create nonce and sign
             let seed: [u8; 32] = Sha256::digest(&scalar.to_bytes()).into();
@@ -451,7 +452,7 @@ mod account_key_tests {
     fn verify_signature(subaddress: &PublicAddress, fingerprint: &[u8]) {
         let signature = Signature::from_bytes(&subaddress.fog_authority_sig)
             .expect("Could not construct signature from fog authority sig bytes");
-        let public_key = PublicKey::from_point(subaddress.view_public_key.point());
+        let public_key = PublicKey::from_point(*subaddress.view_public_key.as_ref());
 
         let ctx = signing_context(b"Fog authority signature");
         let result = public_key.verify(ctx.bytes(&fingerprint), &signature);
