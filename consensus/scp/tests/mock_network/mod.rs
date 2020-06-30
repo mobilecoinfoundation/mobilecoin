@@ -318,7 +318,8 @@ impl SCPNode {
         let mut current_slot: usize = 0;
         let mut total_broadcasts: u32 = 0;
 
-        let join_handle = {
+        let join_handle =
+        {
             thread::Builder::new()
                 .name(node_config.id.to_string())
                 .spawn(move || {
@@ -454,7 +455,8 @@ impl SCPNode {
                     );
                 })
                 .expect("failed spawning SCPNode thread")
-        }
+        };
+
         (scp_node, join_handle)
     }
 
