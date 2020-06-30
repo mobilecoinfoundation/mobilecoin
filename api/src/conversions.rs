@@ -809,8 +809,8 @@ impl From<&AccountKey> for external::AccountKey {
             dst.set_fog_authority_key_fingerprint(fingerprint.to_vec());
         }
 
-        if let Some(key) = src.fog_report_key() {
-            dst.set_fog_report_key(key.to_string());
+        if let Some(key) = src.fog_report_id() {
+            dst.set_fog_report_id(key.to_string());
         }
 
         dst
@@ -840,7 +840,7 @@ impl TryFrom<&external::AccountKey> for AccountKey {
                 &spend_private_key,
                 &view_private_key,
                 &src.fog_report_url,
-                src.fog_report_key.clone(),
+                src.fog_report_id.clone(),
                 &src.fog_authority_key_fingerprint[..],
             ))
         }
@@ -862,8 +862,8 @@ impl From<&PublicAddress> for external::PublicAddress {
             dst.set_fog_authority_sig(sig.to_vec());
         }
 
-        if let Some(key) = src.fog_report_key() {
-            dst.set_fog_report_key(key.to_string());
+        if let Some(key) = src.fog_report_id() {
+            dst.set_fog_report_id(key.to_string());
         }
 
         dst
@@ -893,7 +893,7 @@ impl TryFrom<&external::PublicAddress> for PublicAddress {
                 &spend_public_key,
                 &view_public_key,
                 &src.fog_report_url,
-                src.fog_report_key.clone(),
+                src.fog_report_id.clone(),
                 src.fog_authority_sig.clone(),
             ))
         }
@@ -1434,7 +1434,7 @@ mod conversion_tests {
 
             assert_eq!(proto_credentials.fog_authority_key_fingerprint.len(), 0);
 
-            assert_eq!(proto_credentials.fog_report_key, String::from(""));
+            assert_eq!(proto_credentials.fog_report_id, String::from(""));
 
             // external -> account_keys
             let account_key2 = AccountKey::try_from(&proto_credentials).unwrap();
@@ -1472,7 +1472,7 @@ mod conversion_tests {
                 vec![9, 9, 9, 9],
             );
 
-            assert_eq!(proto_credentials.fog_report_key, String::from("99"));
+            assert_eq!(proto_credentials.fog_report_id, String::from("99"));
 
             // external -> account_keys
             let account_key2 = AccountKey::try_from(&proto_credentials).unwrap();
@@ -1502,7 +1502,7 @@ mod conversion_tests {
 
             assert_eq!(proto_credentials.fog_authority_sig.len(), 0);
 
-            assert_eq!(proto_credentials.fog_report_key, String::from(""));
+            assert_eq!(proto_credentials.fog_report_id, String::from(""));
 
             // external -> public_addresss
             let public_address2 = PublicAddress::try_from(&proto_credentials).unwrap();
@@ -1537,7 +1537,7 @@ mod conversion_tests {
 
             assert_eq!(proto_credentials.fog_authority_sig, vec![9, 9, 9, 9],);
 
-            assert_eq!(proto_credentials.fog_report_key, "99");
+            assert_eq!(proto_credentials.fog_report_id, "99");
 
             // external -> public_addresss
             let public_address2 = PublicAddress::try_from(&proto_credentials).unwrap();
