@@ -4502,14 +4502,12 @@ dependencies = [
 [[package]]
 name = "schnorrkel"
 version = "0.9.1"
-source = "git+https://github.com/sugargoat/schnorrkel?rev=fa76d8becb45c60a9a7872a9a80f6e0597017356#fa76d8becb45c60a9a7872a9a80f6e0597017356"
+source = "git+https://github.com/sugargoat/schnorrkel?rev=43c27285bcfd0d67e62fac39880857059f52ce8d#43c27285bcfd0d67e62fac39880857059f52ce8d"
 dependencies = [
  "arrayref",
  "arrayvec",
  "curve25519-dalek",
- "getrandom",
  "merlin",
- "rand 0.7.3",
  "rand_core 0.5.1",
  "sha2",
  "subtle 2.2.2",

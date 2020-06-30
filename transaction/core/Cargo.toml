@@ -43,7 +43,7 @@ mc-util-repr-bytes = { path = "../../util/repr-bytes" }
 mc-util-serial = { path = "../../util/serial" }
 
 # FIXME: Once no_std is supported in schnorrkel we can use main
-schnorrkel = { git = "https://github.com/sugargoat/schnorrkel", rev = "fa76d8becb45c60a9a7872a9a80f6e0597017356"} #, default-features = false, features = ["rand", "nightly"]}
+schnorrkel = { git = "https://github.com/sugargoat/schnorrkel", rev = "43c27285bcfd0d67e62fac39880857059f52ce8d", default-features = false}
 
 [target.'cfg(target_feature = "avx2")'.dependencies]
 bulletproofs = {version = "2.0", default-features = false, features = ["avx2_backend"]}

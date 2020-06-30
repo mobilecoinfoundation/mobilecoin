@@ -32,9 +32,9 @@ use mc_util_from_random::FromRandom;
 use blake2::{Blake2b, Digest};
 use curve25519_dalek::scalar::Scalar;
 use prost::Message;
-use rand_core::{CryptoRng, RngCore, SeedableRng};
-use rand_hc::Hc128Rng as FixedRng;
+use rand_core::{CryptoRng, RngCore};
 use schnorrkel::{signing_context, SecretKey, Signature};
+use sha2::Sha256;
 
 /// An account's "default address" is its zero^th subaddress.
 pub const DEFAULT_SUBADDRESS_INDEX: u64 = 0;
@@ -374,13 +374,18 @@ impl AccountKey {
         //       but then every public address would also need to include the public view key
         //       of the 0th index, in order to verify the signature.
         if !self.fog_report_url.is_empty() {
+            use rand_core::SeedableRng;
+            use rand_hc::Hc128Rng as FixedRng;
+
             // Construct the fog authority signature over the fingerprint using the view privkey
             let scalar: Scalar = self.subaddress_view_private(index).scalar();
-            // Create an rng - this is similar to the schnorrkel rand_hack that is used for signing below
-            // FIXME: We should pass rngs rather than using system randomness.
+
+            // Create rng seed from hash of private key in order to create nonce and sign
+            let seed: [u8; 32] = Sha256::digest(&scalar.to_bytes()).into();
+            let mut cspring: FixedRng = SeedableRng::from_seed(seed);
             let mut nonce = [0u8; 32];
-            let mut cspring = FixedRng::from_entropy();
             cspring.fill_bytes(&mut nonce);
+
             let mut secret_bytes = [0u8; 64];
             secret_bytes[0..32].copy_from_slice(&scalar.to_bytes());
             secret_bytes[32..64].copy_from_slice(&nonce);
@@ -389,7 +394,8 @@ impl AccountKey {
             let ctx = signing_context(b"Fog authority signature");
 
             // NOTE: requires system rand when signing, due to using witness_scalar
-            let sig: Signature = keypair.sign(ctx.bytes(&self.fog_authority_key_fingerprint));
+            let sig: Signature =
+                keypair.sign_rng(ctx.bytes(&self.fog_authority_key_fingerprint), &mut cspring);
             result.fog_authority_sig = sig.to_bytes().to_vec();
         }
 
