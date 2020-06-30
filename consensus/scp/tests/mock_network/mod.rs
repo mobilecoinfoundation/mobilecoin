@@ -328,7 +328,7 @@ impl SCPNode {
                     'main_loop: loop {
                         // Compare to byzantine_ledger::tick()
                         // nominate happens before consensus msg is handled
-                        let mut incoming_msgs = Vec::<Arc<Msg<String>>>::with_capacity(1);
+                        let mut incoming_msg_option: Option<Arc<Msg<String>>> = None;
 
                         // Collect one incoming message using a non-blocking channel read
                         match receiver.try_recv() {
@@ -340,7 +340,7 @@ impl SCPNode {
 
                                 // Process an incoming SCP message
                                 SCPNodeTaskMessage::Msg(msg) => {
-                                    incoming_msgs.push(msg);
+                                    incoming_msg_option = Some(msg);
                                 }
 
                                 // Stop the thread
@@ -390,7 +390,7 @@ impl SCPNode {
                         }
 
                         // Process incoming consensus message, which might be for a future slot
-                        for msg in incoming_msgs.iter() {
+                        if let Some(msg) = incoming_msg_option {
                             let outgoing_msg: Option<Msg<String>> =
                                 thread_local_node.handle(msg).expect("handle_msg() failed");
 
