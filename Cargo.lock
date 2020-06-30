@@ -609,7 +609,7 @@ dependencies = [
  "clap",
  "criterion-plot",
  "csv",
- "itertools 0.9.0",
+ "itertools",
  "lazy_static",
  "num-traits",
  "oorandom",
@@ -630,7 +630,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ddeaf7989f00f2e1d871a26a110f3ed713632feac17f65f03ca938c542618b60"
 dependencies = [
  "cast",
- "itertools 0.9.0",
+ "itertools",
 ]
 
 [[package]]
@@ -1673,15 +1673,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b2b3ea6ff95e175473f8ffe6a7eb7c00d054240321b84c57051175fe3c1e075e"
 dependencies = [
  "libc",
-]
-
-[[package]]
-name = "itertools"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f56a2d0bc861f9165be4eb3442afd3c236d8a98afd426f65d92324ae1091a484"
-dependencies = [
- "either",
 ]
 
 [[package]]
@@ -3226,7 +3217,7 @@ dependencies = [
 name = "mc-util-test-helper"
 version = "0.4.0"
 dependencies = [
- "itertools 0.9.0",
+ "itertools",
  "lazy_static",
  "mc-common",
  "mc-crypto-keys",
@@ -3812,7 +3803,7 @@ dependencies = [
 [[package]]
 name = "prost"
 version = "0.6.1"
-source = "git+https://github.com/mobilecoinofficial/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95#4e1905329369ca7a1cac3eda978ee9379167ee95"
+source = "git+https://github.com/danburkert/prost?rev=6113789f70b69709820becba4242824b4fb3ffec#6113789f70b69709820becba4242824b4fb3ffec"
 dependencies = [
  "bytes 0.5.4",
  "prost-derive",
@@ -3821,10 +3812,10 @@ dependencies = [
 [[package]]
 name = "prost-derive"
 version = "0.6.1"
-source = "git+https://github.com/mobilecoinofficial/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95#4e1905329369ca7a1cac3eda978ee9379167ee95"
+source = "git+https://github.com/danburkert/prost?rev=6113789f70b69709820becba4242824b4fb3ffec#6113789f70b69709820becba4242824b4fb3ffec"
 dependencies = [
  "anyhow",
- "itertools 0.8.2",
+ "itertools",
  "proc-macro2 1.0.12",
  "quote 1.0.4",
  "syn 1.0.18",
