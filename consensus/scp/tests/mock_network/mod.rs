@@ -133,6 +133,7 @@ impl SCPNetwork {
                 Arc::new(move |logger, msg| {
                     SCPNetwork::broadcast_msg(logger, &nodes_map_clone, &peers, msg)
                 }),
+                0,
                 logger.new(o!("mc.local_node_id" => node_id.to_string())),
             );
             network
@@ -262,6 +263,7 @@ impl SCPNode {
         quorum_set: QuorumSet,
         test_options: TestOptions,
         broadcast_msg_fn: Arc<dyn Fn(Logger, Msg<String>) + Sync + Send>,
+        current_slot_index: SlotIndex,
         logger: Logger,
     ) -> (Self, Option<JoinHandle<()>>) {
         let (sender, receiver) = crossbeam_channel::unbounded();
@@ -270,7 +272,7 @@ impl SCPNode {
             quorum_set,
             test_options.validity_fn.clone(),
             test_options.combine_fn.clone(),
-            0, // TODO: set current_slot_index correctly.
+            current_slot_index,
             logger.clone(),
         )));
 
