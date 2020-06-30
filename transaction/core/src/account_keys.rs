@@ -365,7 +365,7 @@ impl AccountKey {
         // Compute fog_authority_sig as a signature over self.fog_authority_key_fingerprint
         if !self.fog_report_url.is_empty() {
             let scalar: Scalar = self.subaddress_view_private(index).scalar();
-            // FIXME: Currently we are leaving the nonce (32..64) empty.
+            // FIXME: Need to use a cryptographically secure random number for the nonce
             let mut secret_bytes = [0u8; 64];
             secret_bytes[0..32].copy_from_slice(&scalar.to_bytes());
             let secret_key = SecretKey::from_bytes(&secret_bytes).unwrap();
@@ -445,20 +445,33 @@ mod account_key_tests {
                 let ser = mc_util_serial::encode(&acct.default_subaddress());
                 let result: PublicAddress = mc_util_serial::decode(&ser).unwrap();
                 assert_eq!(acct.default_subaddress(), result);
-                println!("\x1b[1;31m passed random without fog \x1b[0m");
             }
             {
                 let acct = AccountKey::random_with_fog(&mut rng);
 
-                println!(
-                    "\x1b[1;34m fog authority sig: {:?}\x1b[0m",
-                    acct.fog_authority_key_fingerprint
-                );
-
                 let ser = mc_util_serial::encode(&acct.default_subaddress());
                 let result: PublicAddress = mc_util_serial::decode(&ser).unwrap();
-                assert_eq!(acct.default_subaddress(), result);
-                println!("\x1b[1;32m passed random with fog \x1b[0m");
+                // Note: The fog fingerprint signature results in a different value for the
+                // signature on each call to default_subaddress. Therefore, it is not
+                // accurate to say that the default_subaddress will be deterministic after
+                // a round-trip serializatioin.
+                assert_eq!(
+                    acct.default_subaddress().spend_public_key,
+                    result.spend_public_key
+                );
+                assert_eq!(
+                    acct.default_subaddress().view_public_key,
+                    result.view_public_key
+                );
+                assert_eq!(
+                    acct.default_subaddress().fog_report_url,
+                    result.fog_report_url
+                );
+                assert_eq!(
+                    acct.default_subaddress().fog_report_key,
+                    result.fog_report_key
+                );
+                // The verification is tested below in test_fog_authority_signature
             }
         });
     }
