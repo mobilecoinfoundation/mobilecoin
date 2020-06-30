@@ -282,8 +282,8 @@ impl<V: Value, N: ScpNode<V>> ScpNode<V> for LoggingScpNode<V, N> {
         self.node.current_slot_index()
     }
 
-    fn get_slot_metrics(&mut self, slot_index: SlotIndex) -> Option<SlotMetrics> {
-        self.node.get_slot_metrics(slot_index)
+    fn get_slot_metrics(&mut self) -> SlotMetrics {
+        self.node.get_slot_metrics()
     }
 
     fn get_slot_debug_snapshot(&mut self, slot_index: SlotIndex) -> Option<String> {
