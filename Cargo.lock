@@ -4502,7 +4502,7 @@ dependencies = [
 [[package]]
 name = "schnorrkel"
 version = "0.9.1"
-source = "git+https://github.com/sugargoat/schnorrkel?rev=43c27285bcfd0d67e62fac39880857059f52ce8d#43c27285bcfd0d67e62fac39880857059f52ce8d"
+source = "git+https://github.com/sugargoat/schnorrkel?rev=60eedb2d3e005539052e1a2aef864bc78323c66c#60eedb2d3e005539052e1a2aef864bc78323c66c"
 dependencies = [
  "arrayref",
  "arrayvec",

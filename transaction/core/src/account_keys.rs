@@ -363,16 +363,7 @@ impl AccountKey {
             fog_authority_sig: Default::default(),
         };
 
-        // NOTE: The fog_authority_sig is non-deterministic because constructing the signature
-        //       requires randomness for two reasons, both in the construction of the SecretKey
-        //       which requires a secret random nonce, as well as in the construction of the
-        //       Signature, which requires system randomness for the call to witness_scalar
-        //       https://github.com/w3f/schnorrkel/blob/18061eab95b4c825a56b2573c36cc67210ae6a3a/src/context.rs#L97
-        //       It is difficult to cache the signature, since we wish to provide the signature
-        //       in the subaddress public address, which can be verified with the subaddress view public.
-        //       The alternative would be to cache the signature in the account key construction,
-        //       but then every public address would also need to include the public view key
-        //       of the 0th index, in order to verify the signature.
+        // NOTE: The fog_authority_sig is deterministic due to using the private key hash as the rng seed
         if !self.fog_report_url.is_empty() {
             use rand_core::SeedableRng;
             use rand_hc::Hc128Rng as FixedRng;
@@ -485,32 +476,7 @@ mod account_key_tests {
 
                 let ser = mc_util_serial::encode(&acct.default_subaddress());
                 let result: PublicAddress = mc_util_serial::decode(&ser).unwrap();
-                // NOTE: The signature is not deterministic on multiple calls to default_subaddress(),
-                //       so we check that the other fields are equal and that the signature verifies.
-                assert_eq!(
-                    acct.default_subaddress().view_public_key,
-                    result.view_public_key,
-                );
-                assert_eq!(
-                    acct.default_subaddress().spend_public_key,
-                    result.spend_public_key,
-                );
-                assert_eq!(
-                    acct.default_subaddress().fog_report_key,
-                    result.fog_report_key,
-                );
-                assert_eq!(
-                    acct.default_subaddress().fog_report_url,
-                    result.fog_report_url,
-                );
-                // NOTE: The fog_authority_key_fingerprint is not part of the subaddress, but is
-                //       known to the clients who are verifying the signature. Here we pass
-                //       the value created randomly from the acct out of convenience.
-                verify_signature(
-                    &acct.default_subaddress(),
-                    &acct.fog_authority_key_fingerprint,
-                );
-                verify_signature(&result, &acct.fog_authority_key_fingerprint);
+                assert_eq!(acct.default_subaddress(), result);
             }
         });
     }
@@ -653,6 +619,7 @@ mod account_key_tests {
         let index = rng.next_u64();
         let subaddress = account_key.subaddress(index);
 
+        // Note: The fog_authority_key_fingerprint is published, so it is known by the verifier.
         verify_signature(&subaddress, &fog_authority_key_fingerprint);
     }
 }
