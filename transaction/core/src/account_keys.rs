@@ -602,7 +602,8 @@ mod account_key_tests {
         let view_private = RistrettoPrivate::from_random(&mut rng);
         let spend_private = RistrettoPrivate::from_random(&mut rng);
         let fog_url = "fog://example.com";
-        let fog_authority_key_fingerprint = [6u8; 32]; // FIXME random
+        let mut fog_authority_key_fingerprint = [0u8; 32];
+        rng.fill_bytes(&mut fog_authority_key_fingerprint);
         let fog_report_key = String::from("");
 
         let account_key = AccountKey::new_with_fog(
