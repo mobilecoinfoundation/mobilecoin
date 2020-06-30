@@ -157,10 +157,9 @@ impl SCPNetwork {
                 }),
                 logger.clone(),
             );
-            scp_network.handle_map.insert(
-                node_config.id.clone(),
-                join_handle,
-            );
+            scp_network
+                .handle_map
+                .insert(node_config.id.clone(),join_handle);
             scp_network
                 .names_map
                 .insert(node_config.id.clone(), node_config.name.clone());
@@ -318,8 +317,7 @@ impl SCPNode {
         let mut current_slot: usize = 0;
         let mut total_broadcasts: u32 = 0;
 
-        let join_handle =
-        {
+        let join_handle = {
             thread::Builder::new()
                 .name(node_config.id.to_string())
                 .spawn(move || {
