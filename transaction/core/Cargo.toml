@@ -29,7 +29,6 @@ merlin = { version = "2.0", default-features = false }
 prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
 rand_core = { version = "0.5", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-schnorrkel = "0.9.1"
 sha2 = { version = "0.8", default-features = false }
 subtle = { version = "2.2", default-features = false, features = ["i128"] }
 
@@ -41,6 +40,9 @@ mc-crypto-rand = { path = "../../crypto/rand" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-repr-bytes = { path = "../../util/repr-bytes" }
 mc-util-serial = { path = "../../util/serial" }
+
+# FIXME: Once no_std is supported in schnorrkel we can use main
+schnorrkel = { git = "https://github.com/sugargoat/schnorrkel", rev = "fa76d8becb45c60a9a7872a9a80f6e0597017356", default-features = false}
 
 [target.'cfg(target_feature = "avx2")'.dependencies]
 bulletproofs = {version = "2.0", default-features = false, features = ["avx2_backend"]}
