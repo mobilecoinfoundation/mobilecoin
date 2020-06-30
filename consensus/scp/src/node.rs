@@ -150,9 +150,8 @@ pub trait ScpNode<V: Value>: Send {
     /// Additional debug info, e.g. a JSON representation of the Slot's state.
     fn get_slot_debug_snapshot(&mut self, slot_index: SlotIndex) -> Option<String>;
 
-    /// Clear the list of pending slots. This is useful if the user of this object realizes they
-    /// have fallen behind their peers, and as such they want to abort processing of current slots.
-    fn clear_pending_slots(&mut self);
+    /// Reset the current slot.
+    fn reset_slot_index(&mut self, slot_index: SlotIndex);
 }
 
 impl<V: Value, ValidationError: Display + 'static> ScpNode<V> for Node<V, ValidationError> {
@@ -274,11 +273,16 @@ impl<V: Value, ValidationError: Display + 'static> ScpNode<V> for Node<V, Valida
             .map(|slot| slot.get_debug_snapshot())
     }
 
-    /// Clear the list of pending slots. This is useful if the user of this object realizes they
-    /// have fallen behind their peers, and as such they want to abort processing of current slots.
-    fn clear_pending_slots(&mut self) {
-        // TODO: remove this method?
-        // self.pending.clear();
+    /// Reset the current slot.
+    fn reset_slot_index(&mut self, slot_index: SlotIndex) {
+        self.current_slot = Slot::new(
+            self.ID.clone(),
+            self.Q.clone(),
+            slot_index,
+            self.validity_fn.clone(),
+            self.combine_fn.clone(),
+            self.logger.clone(),
+        );
     }
 }
 

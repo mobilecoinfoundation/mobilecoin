@@ -290,8 +290,8 @@ impl<V: Value, N: ScpNode<V>> ScpNode<V> for LoggingScpNode<V, N> {
         self.node.get_slot_debug_snapshot(slot_index)
     }
 
-    fn clear_pending_slots(&mut self) {
-        self.node.clear_pending_slots()
+    fn reset_slot_index(&mut self, slot_index: SlotIndex) {
+        self.node.reset_slot_index(slot_index)
     }
 }
 
