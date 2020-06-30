@@ -463,7 +463,7 @@ fn group_by_block(
 
             let group: &mut HashSet<ResponderId> = block_id_to_group
                 .entry(block.id.clone())
-                .or_insert(HashSet::default());
+                .or_insert_with(HashMap::default);
 
             group.insert(responder_id.clone());
         }
