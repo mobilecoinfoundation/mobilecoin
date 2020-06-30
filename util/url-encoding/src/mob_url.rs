@@ -12,16 +12,16 @@
 //! and aren't required to actually have a hostname (fog-less mob url's don't),
 //! we don't really want to base this on the mc-util-uri type.
 
+pub use mc_util_uri::UriParseError;
+
+use crate::error::Error;
 use core::{
     convert::TryFrom,
     fmt::{Display, Formatter, Result as FmtResult},
     str::FromStr,
 };
-
-use crate::error::Error;
 use mc_crypto_keys::RistrettoPublic;
 use mc_transaction_core::account_keys::PublicAddress;
-pub use mc_util_uri::UriParseError;
 use mc_util_uri::{ConnectionUri, FogScheme, FogUri, UriScheme};
 use url::Url;
 

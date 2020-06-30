@@ -7,7 +7,7 @@ use base64::DecodeError as B64Error;
 use displaydoc::Display;
 
 /// An error that can occur when parsing one of the Url's defined here
-#[derive(Debug, Display)]
+#[derive(Clone, Eq, PartialEq, Debug, Display)]
 pub enum Error {
     /// Could not parse MobUrl: {0}
     MobUrl(UriParseError),
