@@ -6,7 +6,7 @@
 use crate::{network_state_trait::NetworkState, scp_network_state::SCPNetworkState};
 use mc_common::{
     logger::{log, Logger},
-    HashMap, HashSet, ResponderId,
+    ResponderId,
 };
 use mc_connection::{
     BlockchainConnection, Connection, ConnectionManager, RetryableBlockchainConnection,
@@ -18,6 +18,7 @@ use mc_transaction_core::BlockIndex;
 use mc_util_uri::ConnectionUri;
 use retry::delay::Fibonacci;
 use std::{
+    collections::{HashMap, HashSet},
     str::FromStr,
     sync::{Arc, Condvar, Mutex},
     thread,

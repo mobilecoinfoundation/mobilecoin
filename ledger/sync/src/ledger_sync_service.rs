@@ -10,7 +10,7 @@ use crate::{
 };
 use mc_common::{
     logger::{log, Logger},
-    HashMap, HashSet, ResponderId,
+    ResponderId,
 };
 use mc_connection::{
     BlockchainConnection, Connection, ConnectionManager, RetryableBlockchainConnection,
@@ -22,7 +22,7 @@ use mc_transaction_core::{
 use mc_util_uri::ConnectionUri;
 use retry::delay::Fibonacci;
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, HashMap, HashSet},
     iter::FromIterator,
     sync::{Arc, Condvar, Mutex},
     thread,
