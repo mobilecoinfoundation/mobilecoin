@@ -253,7 +253,7 @@ struct JsonPublicAddress {
     /// Hex encoded signature bytes
     fog_authority_sig: String,
     /// String label for fog reports
-    fog_report_key: String,
+    fog_report_id: String,
 }
 
 // Helper conversion between json and protobuf
@@ -278,7 +278,7 @@ impl TryFrom<&JsonPublicAddress> for PublicAddress {
         public_address.set_view_public_key(view_public_key);
         public_address.set_spend_public_key(spend_public_key);
         public_address.set_fog_report_url(src.fog_report_url.clone());
-        public_address.set_fog_report_key(src.fog_report_key.clone());
+        public_address.set_fog_report_id(src.fog_report_id.clone());
         public_address.set_fog_authority_sig(
             hex::decode(&src.fog_authority_sig)
                 .map_err(|err| format!("Failed to decode fog authority sig hex: {}", err))?,
@@ -318,7 +318,7 @@ fn read_request(
             view_public_key: hex::encode(receiver.get_view_public_key().get_data().to_vec()),
             spend_public_key: hex::encode(receiver.get_spend_public_key().get_data().to_vec()),
             fog_report_url: String::from(receiver.get_fog_report_url()),
-            fog_report_key: String::from(receiver.get_fog_report_key()),
+            fog_report_id: String::from(receiver.get_fog_report_id()),
             fog_authority_sig: hex::encode(receiver.get_fog_authority_sig().to_vec()),
         },
         value: resp.get_value().to_string(),
