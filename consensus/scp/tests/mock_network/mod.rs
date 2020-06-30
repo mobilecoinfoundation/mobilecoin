@@ -63,7 +63,7 @@ impl TestOptions {
             log_flush_delay: Duration::from_millis(50),
             scp_timebase: Duration::from_millis(1000),
             validity_fn: Arc::new(test_utils::trivial_validity_fn::<String>),
-            combine_fn: Arc::new(test_utils::trivial_combine_fn::<String>),
+            combine_fn: Arc::new(test_utils::get_bounded_combine_fn::<String>(100)),
         }
     }
 }
@@ -270,6 +270,7 @@ impl SCPNode {
             quorum_set,
             test_options.validity_fn.clone(),
             test_options.combine_fn.clone(),
+            0, // TODO: set current_slot_index correctly.
             logger.clone(),
         )));
 

@@ -84,6 +84,7 @@ fn main() {
         local_quorum_set,
         validity_fn,
         combine_fn,
+        0, // TODO: set current_slot_index correctly.
         logger.clone(),
     );
 
