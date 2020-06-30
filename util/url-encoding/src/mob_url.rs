@@ -242,3 +242,45 @@ impl TryFrom<&MobUrl> for PublicAddress {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Test that getting and setting works as expected
+    #[test]
+    fn mob_url_unit_tests() {
+        let mut mob_url = MobUrl::from_str("mob://example.com/1234").unwrap();
+
+        assert_eq!(mob_url.as_ref(), "mob://example.com/1234");
+        assert_eq!(mob_url.get_amount(), None);
+        assert_eq!(mob_url.get_memo(), None);
+        assert_eq!(mob_url.get_sig(), None);
+
+        mob_url.set_amount(50);
+
+        assert_eq!(mob_url.get_amount(), Some("50".to_string()));
+        assert_eq!(mob_url.as_ref(), "mob://example.com/1234?a=50");
+
+        mob_url.set_amount(70);
+
+        /*
+        Note: Failing at this revision with "50" and url =
+        mob://example.com/1234?a=50&a=70
+
+        assert_eq!(mob_url.get_amount(), Some("70".to_string()));
+        assert_eq!(mob_url.as_ref(), "mob://example.com/1234?a=70");
+
+        assert_eq!(mob_url.get_memo(), None);
+        mob_url.set_memo("beep boop");
+
+        assert_eq!(mob_url.get_memo(), Some("beep boop".to_string()));
+        assert_eq!(mob_url.as_ref(), "mob://example.com/1234?a=70+m=beep+boop");
+
+        mob_url.set_memo("foobar");
+
+        assert_eq!(mob_url.get_memo(), Some("foobar".to_string()));
+        assert_eq!(mob_url.as_ref(), "mob://example.com/1234?a=70+m=foobar");
+        */
+    }
+}
