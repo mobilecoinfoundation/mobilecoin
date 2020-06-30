@@ -3,7 +3,7 @@
 //! Predicates for use in trust decisions for SCP.
 use mc_common::NodeID;
 use std::{
-    collections::{BTreeSet, HashSet, HashMap},
+    collections::{BTreeSet, HashMap, HashSet},
     sync::Arc
 };
 

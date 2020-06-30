@@ -17,7 +17,7 @@ use mc_common::{
     NodeID,
 };
 use std::{
-    collections::{BTreeSet, HashSet, HashMap},
+    collections::{BTreeSet, HashMap, HashSet},
     fmt::Display,
     iter::FromIterator,
     sync::Arc,

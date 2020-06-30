@@ -7,7 +7,7 @@ use mc_common::{NodeID, ResponderId};
 use mc_crypto_digestible::Digestible;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{HashSet, HashMap},
+    collections::{HashMap, HashSet},
     fmt::Debug,
     hash::{Hash, Hasher},
     iter::FromIterator,
