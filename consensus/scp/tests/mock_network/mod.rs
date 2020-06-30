@@ -149,7 +149,7 @@ impl SCPNetwork {
             let nodes_map_clone = Arc::clone(&scp_network.nodes_map);
             let peers_clone = node_config.peers.clone();
 
-            let (node, join_handle_option) = SCPNode::new(
+            let (node, join_handle) = SCPNode::new(
                 node_config.clone(),
                 test_options,
                 Arc::new(move |logger, msg| {
@@ -159,7 +159,7 @@ impl SCPNetwork {
             );
             scp_network.handle_map.insert(
                 node_config.id.clone(),
-                join_handle_option.expect("thread failed to spawn"),
+                join_handle,
             );
             scp_network
                 .names_map
@@ -292,7 +292,7 @@ impl SCPNode {
         test_options: &TestOptions,
         broadcast_msg_fn: Arc<dyn Fn(Logger, Msg<String>) + Sync + Send>,
         logger: Logger,
-    ) -> (Self, Option<JoinHandle<()>>) {
+    ) -> (Self, JoinHandle<()>) {
         let (sender, receiver) = crossbeam_channel::unbounded();
 
         let scp_node = Self {
@@ -318,7 +318,7 @@ impl SCPNode {
         let mut current_slot: usize = 0;
         let mut total_broadcasts: u32 = 0;
 
-        let join_handle_option = Some(
+        let join_handle = {
             thread::Builder::new()
                 .name(node_config.id.to_string())
                 .spawn(move || {
@@ -453,9 +453,9 @@ impl SCPNode {
                     );
                 })
                 .expect("failed spawning SCPNode thread"),
-        );
-
-        (scp_node, join_handle_option)
+            );
+        }
+        (scp_node, join_handle)
     }
 
     /// Push value to this node's consensus task.
