@@ -32,7 +32,8 @@ use mc_util_from_random::FromRandom;
 use blake2::{Blake2b, Digest};
 use curve25519_dalek::scalar::Scalar;
 use prost::Message;
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, RngCore, SeedableRng};
+use rand_hc::Hc128Rng as FixedRng;
 use schnorrkel::{signing_context, SecretKey, Signature};
 use sha2::Sha256;
 
@@ -365,9 +366,6 @@ impl AccountKey {
 
         // NOTE: The fog_authority_sig is deterministic due to using the private key hash as the rng seed
         if !self.fog_report_url.is_empty() {
-            use rand_core::SeedableRng;
-            use rand_hc::Hc128Rng as FixedRng;
-
             // Construct the fog authority signature over the fingerprint using the view privkey
             let scalar: Scalar = self.subaddress_view_private(index).scalar();
 
@@ -380,11 +378,10 @@ impl AccountKey {
             let mut secret_bytes = [0u8; 64];
             secret_bytes[0..32].copy_from_slice(&scalar.to_bytes());
             secret_bytes[32..64].copy_from_slice(&nonce);
+
             let secret_key = SecretKey::from_bytes(&secret_bytes).unwrap();
             let keypair = secret_key.to_keypair();
             let ctx = signing_context(b"Fog authority signature");
-
-            // NOTE: requires system rand when signing, due to using witness_scalar
             let sig: Signature =
                 keypair.sign_rng(ctx.bytes(&self.fog_authority_key_fingerprint), &mut cspring);
             result.fog_authority_sig = sig.to_bytes().to_vec();

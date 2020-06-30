@@ -1035,7 +1035,7 @@ dependencies = [
  "prost 0.6.1 (git+https://github.com/cbeck88/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95)",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_hc 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "schnorrkel 0.9.1 (git+https://github.com/sugargoat/schnorrkel?rev=43c27285bcfd0d67e62fac39880857059f52ce8d)",
+ "schnorrkel 0.9.1 (git+https://github.com/sugargoat/schnorrkel?rev=60eedb2d3e005539052e1a2aef864bc78323c66c)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha2 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "subtle 2.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1299,7 +1299,7 @@ dependencies = [
 [[package]]
 name = "schnorrkel"
 version = "0.9.1"
-source = "git+https://github.com/sugargoat/schnorrkel?rev=43c27285bcfd0d67e62fac39880857059f52ce8d#43c27285bcfd0d67e62fac39880857059f52ce8d"
+source = "git+https://github.com/sugargoat/schnorrkel?rev=60eedb2d3e005539052e1a2aef864bc78323c66c#60eedb2d3e005539052e1a2aef864bc78323c66c"
 dependencies = [
  "arrayref 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "arrayvec 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1729,7 +1729,7 @@ dependencies = [
 "checksum rjson 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "5510dbde48c4c37bf69123b1f636b6dd5f8dffe1f4e358af03c46a4947dca219"
 "checksum rustc-hash 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 "checksum same-file 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)" = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
-"checksum schnorrkel 0.9.1 (git+https://github.com/sugargoat/schnorrkel?rev=43c27285bcfd0d67e62fac39880857059f52ce8d)" = "<none>"
+"checksum schnorrkel 0.9.1 (git+https://github.com/sugargoat/schnorrkel?rev=60eedb2d3e005539052e1a2aef864bc78323c66c)" = "<none>"
 "checksum secrecy 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "9eb052cf770a381fa9a6ee63038ff9a0b11d30abb53be970672e950649ff0bfb"
 "checksum serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)" = "414115f25f818d7dfccec8ee535d76949ae78584fc4f79a6f45a904bf8ab4449"
 "checksum serde_cbor 0.11.1 (registry+https://github.com/rust-lang/crates.io-index)" = "1e18acfa2f90e8b735b2836ab8d538de304cbb6729a7360729ea5a895d15a622"
