@@ -159,7 +159,7 @@ impl SCPNetwork {
             );
             scp_network
                 .handle_map
-                .insert(node_config.id.clone(),join_handle);
+                .insert(node_config.id.clone(), join_handle);
             scp_network
                 .names_map
                 .insert(node_config.id.clone(), node_config.name.clone());
