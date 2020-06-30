@@ -29,8 +29,6 @@ pub struct Node<V: Value, ValidationError: Display> {
     /// The current slot that this node is attempting to reach consensus on.
     pub current_slot: Slot<V, ValidationError>,
 
-    // /// Map of last few slot indexes -> slots.
-    // pub pending: LruCache<SlotIndex, Slot<V, ValidationError>>,
     /// Map of last few slot indexes -> externalized slots.
     pub externalized: LruCache<SlotIndex, ExternalizePayload<V>>,
 
@@ -79,6 +77,7 @@ impl<V: Value, ValidationError: Display + 'static> Node<V, ValidationError> {
         }
     }
 
+    // Record the values externalized by the current slot and advance the current slot.
     fn externalize(
         &mut self,
         slot_index: SlotIndex,
@@ -128,11 +127,7 @@ pub trait ScpNode<V: Value>: Send {
     fn quorum_set(&self) -> QuorumSet;
 
     /// Propose values for this node to nominate.
-    fn propose_values(
-        &mut self,
-        slot_index: SlotIndex,
-        values: BTreeSet<V>,
-    ) -> Result<Option<Msg<V>>, String>;
+    fn propose_values(&mut self, values: BTreeSet<V>) -> Result<Option<Msg<V>>, String>;
 
     /// Handle incoming message from the network.
     fn handle(&mut self, msg: &Msg<V>) -> Result<Option<Msg<V>>, String>;
@@ -145,6 +140,9 @@ pub trait ScpNode<V: Value>: Send {
 
     /// Process pending timeouts.
     fn process_timeouts(&mut self) -> Vec<Msg<V>>;
+
+    /// Get the current slot's index.
+    fn current_slot_index(&self) -> SlotIndex;
 
     /// Get metrics for a specific slot.
     fn get_slot_metrics(&mut self, slot_index: SlotIndex) -> Option<SlotMetrics>;
@@ -167,11 +165,7 @@ impl<V: Value, ValidationError: Display + 'static> ScpNode<V> for Node<V, Valida
     }
 
     /// Propose values for this node to nominate.
-    fn propose_values(
-        &mut self,
-        _slot_index: SlotIndex, // TODO: remove this
-        values: BTreeSet<V>,
-    ) -> Result<Option<Msg<V>>, String> {
+    fn propose_values(&mut self, values: BTreeSet<V>) -> Result<Option<Msg<V>>, String> {
         if values.is_empty() {
             log::error!(self.logger, "nominate() called with 0 values.");
             return Ok(None);
@@ -260,6 +254,11 @@ impl<V: Value, ValidationError: Display + 'static> ScpNode<V> for Node<V, Valida
     /// Process pending timeouts.
     fn process_timeouts(&mut self) -> Vec<Msg<V>> {
         self.current_slot.process_timeouts()
+    }
+
+    /// Get the current slot's index.
+    fn current_slot_index(&self) -> SlotIndex {
+        self.current_slot.get_index()
     }
 
     /// Get metrics for a specific slot.
@@ -372,7 +371,7 @@ mod node_tests {
         // Client(s) submits some values to node 2.
         let values = vec![1000, 2000];
         let msg = node2
-            .propose_values(slot_index, BTreeSet::from_iter(values.clone()))
+            .propose_values(BTreeSet::from_iter(values.clone()))
             .expect("error handling msg")
             .expect("no msg?");
 

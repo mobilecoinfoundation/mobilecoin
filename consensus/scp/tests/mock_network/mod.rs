@@ -354,10 +354,7 @@ impl SCPNode {
                                 thread_local_node
                                     .lock()
                                     .expect("lock failed on node nominating value")
-                                    .propose_values(
-                                        current_slot as SlotIndex,
-                                        BTreeSet::from_iter(vals),
-                                    )
+                                    .propose_values(BTreeSet::from_iter(vals))
                                     .expect("node.nominate() failed")
                             };
 
