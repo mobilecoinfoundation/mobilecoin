@@ -52,7 +52,7 @@ pub struct LoggingScpNode<V: Value, N: ScpNode<V>> {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum LoggedMsg<V: Value> {
     /// Specifies the settings for this node.
-    NodeSettings(NodeID, QuorumSet),
+    NodeSettings(NodeID, QuorumSet, SlotIndex),
 
     /// An incoming message to this node.
     IncomingMsg(Msg<V>),
@@ -164,8 +164,11 @@ impl<V: Value, N: ScpNode<V>> LoggingScpNode<V, N> {
             self.msg_count = 0;
             self.slot_start_time = Instant::now();
 
-            let n: NodeID = self.node.node_id();
-            self.write(LoggedMsg::NodeSettings(n, self.node.quorum_set()))?;
+            self.write(LoggedMsg::NodeSettings(
+                self.node.node_id(),
+                self.node.quorum_set(),
+                self.highest_slot_index,
+            ))?;
         }
 
         // If message if for a previous slot, ignore it.
