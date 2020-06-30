@@ -326,7 +326,7 @@ impl AccountKey {
     }
 
     /// Create an account key with random secret keys, and the fog service
-    /// url "fog://example.com", with a random fog authority
+    /// url "fog://example.com"
     /// (intended for tests).
     pub fn random_with_fog<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
         Self::new_with_fog(
@@ -334,7 +334,7 @@ impl AccountKey {
             &RistrettoPrivate::from_random(rng),
             "fog://example.com".to_string(),
             Default::default(),
-            [1u8; 32].to_vec(), // FIXME - experimenting for prost RT
+            <Vec<u8>>::default(),
         )
     }
 
@@ -471,7 +471,6 @@ mod account_key_tests {
             }
             {
                 let acct = AccountKey::random_with_fog(&mut rng);
-
                 let ser = mc_util_serial::encode(&acct.default_subaddress());
                 let result: PublicAddress = mc_util_serial::decode(&ser).unwrap();
                 assert_eq!(acct.default_subaddress(), result);
