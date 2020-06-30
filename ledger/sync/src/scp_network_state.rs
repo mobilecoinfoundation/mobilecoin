@@ -16,7 +16,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use std::{
     collections::{HashMap, HashSet},
     hash::Hash,
-    iter::FromIterator
+    iter::FromIterator,
 };
 
 pub struct SCPNetworkState<ID: GenericNodeId = NodeID> {

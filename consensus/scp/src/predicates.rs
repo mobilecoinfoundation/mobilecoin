@@ -4,7 +4,7 @@
 use mc_common::NodeID;
 use std::{
     collections::{BTreeSet, HashMap, HashSet},
-    sync::Arc
+    sync::Arc,
 };
 
 use crate::{

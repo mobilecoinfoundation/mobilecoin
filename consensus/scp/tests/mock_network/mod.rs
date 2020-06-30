@@ -12,7 +12,7 @@ use mc_consensus_scp::{
     test_utils,
 };
 use std::{
-    collections::{BTreeSet, HashSet, HashMap},
+    collections::{BTreeSet, HashMap, HashSet},
     iter::FromIterator,
     sync::{Arc, Mutex},
     thread,
