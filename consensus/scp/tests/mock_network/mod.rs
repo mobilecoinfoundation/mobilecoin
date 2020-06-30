@@ -453,8 +453,7 @@ impl SCPNode {
                         current_slot,
                     );
                 })
-                .expect("failed spawning SCPNode thread"),
-            );
+                .expect("failed spawning SCPNode thread")
         }
         (scp_node, join_handle)
     }
