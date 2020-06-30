@@ -32,7 +32,8 @@ use mc_util_from_random::FromRandom;
 use blake2::{Blake2b, Digest};
 use curve25519_dalek::scalar::Scalar;
 use prost::Message;
-use rand_core::{CryptoRng, RngCore};
+use rand_core::{CryptoRng, RngCore, SeedableRng};
+use rand_hc::Hc128Rng as FixedRng;
 use schnorrkel::{signing_context, SecretKey, Signature};
 
 /// An account's "default address" is its zero^th subaddress.
@@ -362,16 +363,32 @@ impl AccountKey {
             fog_authority_sig: Default::default(),
         };
 
-        // Compute fog_authority_sig as a signature over self.fog_authority_key_fingerprint
+        // NOTE: The fog_authority_sig is non-deterministic because constructing the signature
+        //       requires randomness for two reasons, both in the construction of the SecretKey
+        //       which requires a secret random nonce, as well as in the construction of the
+        //       Signature, which requires system randomness for the call to witness_scalar
+        //       https://github.com/w3f/schnorrkel/blob/18061eab95b4c825a56b2573c36cc67210ae6a3a/src/context.rs#L97
+        //       It is difficult to cache the signature, since we wish to provide the signature
+        //       in the subaddress public address, which can be verified with the subaddress view public.
+        //       The alternative would be to cache the signature in the account key construction,
+        //       but then every public address would also need to include the public view key
+        //       of the 0th index, in order to verify the signature.
         if !self.fog_report_url.is_empty() {
+            // Construct the fog authority signature over the fingerprint using the view privkey
             let scalar: Scalar = self.subaddress_view_private(index).scalar();
-            // FIXME: Need to use a cryptographically secure random number for the nonce
+            // Create an rng - this is similar to the schnorrkel rand_hack that is used for signing below
+            // FIXME: We should pass rngs rather than using system randomness.
+            let mut nonce = [0u8; 32];
+            let mut cspring = FixedRng::from_entropy();
+            cspring.fill_bytes(&mut nonce);
             let mut secret_bytes = [0u8; 64];
             secret_bytes[0..32].copy_from_slice(&scalar.to_bytes());
+            secret_bytes[32..64].copy_from_slice(&nonce);
             let secret_key = SecretKey::from_bytes(&secret_bytes).unwrap();
             let keypair = secret_key.to_keypair();
             let ctx = signing_context(b"Fog authority signature");
 
+            // NOTE: requires system rand when signing, due to using witness_scalar
             let sig: Signature = keypair.sign(ctx.bytes(&self.fog_authority_key_fingerprint));
             result.fog_authority_sig = sig.to_bytes().to_vec();
         }
@@ -436,6 +453,17 @@ mod account_key_tests {
     use schnorrkel::PublicKey;
     use yaml_rust::{Yaml, YamlLoader};
 
+    // Helper method to verify the signature of a public address
+    fn verify_signature(subaddress: &PublicAddress, fingerprint: &[u8]) {
+        let signature = Signature::from_bytes(&subaddress.fog_authority_sig)
+            .expect("Could not construct signature from fog authority sig bytes");
+        let public_key = PublicKey::from_point(subaddress.view_public_key.point());
+
+        let ctx = signing_context(b"Fog authority signature");
+        let result = public_key.verify(ctx.bytes(&fingerprint), &signature);
+        assert!(result.is_ok());
+    }
+
     #[test]
     // Deserializing should recover a serialized a PublicAddress.
     fn mc_util_serial_prost_roundtrip_public_address() {
@@ -451,27 +479,32 @@ mod account_key_tests {
 
                 let ser = mc_util_serial::encode(&acct.default_subaddress());
                 let result: PublicAddress = mc_util_serial::decode(&ser).unwrap();
-                // Note: The fog fingerprint signature results in a different value for the
-                // signature on each call to default_subaddress. Therefore, it is not
-                // accurate to say that the default_subaddress will be deterministic after
-                // a round-trip serializatioin.
-                assert_eq!(
-                    acct.default_subaddress().spend_public_key,
-                    result.spend_public_key
-                );
+                // NOTE: The signature is not deterministic on multiple calls to default_subaddress(),
+                //       so we check that the other fields are equal and that the signature verifies.
                 assert_eq!(
                     acct.default_subaddress().view_public_key,
-                    result.view_public_key
+                    result.view_public_key,
                 );
                 assert_eq!(
-                    acct.default_subaddress().fog_report_url,
-                    result.fog_report_url
+                    acct.default_subaddress().spend_public_key,
+                    result.spend_public_key,
                 );
                 assert_eq!(
                     acct.default_subaddress().fog_report_key,
-                    result.fog_report_key
+                    result.fog_report_key,
                 );
-                // The verification is tested below in test_fog_authority_signature
+                assert_eq!(
+                    acct.default_subaddress().fog_report_url,
+                    result.fog_report_url,
+                );
+                // NOTE: The fog_authority_key_fingerprint is not part of the subaddress, but is
+                //       known to the clients who are verifying the signature. Here we pass
+                //       the value created randomly from the acct out of convenience.
+                verify_signature(
+                    &acct.default_subaddress(),
+                    &acct.fog_authority_key_fingerprint,
+                );
+                verify_signature(&result, &acct.fog_authority_key_fingerprint);
             }
         });
     }
@@ -600,7 +633,7 @@ mod account_key_tests {
         let view_private = RistrettoPrivate::from_random(&mut rng);
         let spend_private = RistrettoPrivate::from_random(&mut rng);
         let fog_url = "fog://example.com";
-        let fog_authority_key_fingerprint = [6u8; 32];
+        let fog_authority_key_fingerprint = [6u8; 32]; // FIXME random
         let fog_report_key = String::from("");
 
         let account_key = AccountKey::new_with_fog(
@@ -614,12 +647,6 @@ mod account_key_tests {
         let index = rng.next_u64();
         let subaddress = account_key.subaddress(index);
 
-        let signature = Signature::from_bytes(&subaddress.fog_authority_sig)
-            .expect("Could not construct signature from fog authority sig bytes");
-        let public_key = PublicKey::from_point(subaddress.view_public_key.point());
-
-        let ctx = signing_context(b"Fog authority signature");
-        let result = public_key.verify(ctx.bytes(&fog_authority_key_fingerprint), &signature);
-        assert!(result.is_ok());
+        verify_signature(&subaddress, &fog_authority_key_fingerprint);
     }
 }
