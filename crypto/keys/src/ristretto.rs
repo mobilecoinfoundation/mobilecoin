@@ -75,6 +75,10 @@ impl RistrettoPrivate {
     pub fn to_bytes(&self) -> [u8; 32] {
         *self.0.as_bytes()
     }
+
+    pub fn scalar(&self) -> Scalar {
+        self.0
+    }
 }
 
 impl AsRef<Scalar> for RistrettoPrivate {
