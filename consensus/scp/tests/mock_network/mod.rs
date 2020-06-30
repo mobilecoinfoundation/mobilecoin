@@ -311,7 +311,7 @@ impl SCPNode {
 
         let thread_shared_data = Arc::clone(&scp_node.shared_data);
 
-        // See byzantine_ledger.rs#L626
+        // Compare to byzantine_ledger::nominate_pending_values()
         let max_pending_values_to_nominate: usize = test_options.max_pending_values_to_nominate;
         let mut slot_nominated_values: HashSet<String> = HashSet::default();
 
@@ -326,7 +326,8 @@ impl SCPNode {
                     let mut pending_values: HashSet<String> = HashSet::default();
 
                     'main_loop: loop {
-                        // See byzantine_ledger.rs#L546 - nominate before handling consensus msg
+                        // Compare to byzantine_ledger::tick()
+                        // nominate happens before consensus msg is handled
                         let mut incoming_msgs = Vec::<Arc<Msg<String>>>::with_capacity(1);
 
                         // Collect one incoming message using a non-blocking channel read
