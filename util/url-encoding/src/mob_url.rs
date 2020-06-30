@@ -114,7 +114,7 @@ impl FromStr for MobUrl {
     type Err = UriParseError;
 
     fn from_str(src: &str) -> Result<Self, Self::Err> {
-        let url = Url::parse(src).map_err(|err| UriParseError::UrlParse(err, src.to_string()))?;
+        let url = Url::parse(src).map_err(|err| UriParseError::UrlParse(src.to_string(), err))?;
 
         let use_tls = if url.scheme().starts_with(MOB_SCHEME_SECURE) {
             true

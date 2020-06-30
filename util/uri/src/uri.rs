@@ -11,8 +11,8 @@ use url::Url;
 
 #[derive(Clone, Eq, PartialEq, Debug, Display)]
 pub enum UriParseError {
-    /// Url parse error: "{1}", "{0}"
-    UrlParse(url::ParseError, String),
+    /// Url parse error: "{0}", "{1}"
+    UrlParse(String, url::ParseError),
     /// Missing host
     MissingHost,
     /// Unknown scheme: Valid possibilities are `{0}`, `{1}`
@@ -74,7 +74,7 @@ impl<Scheme: UriScheme> FromStr for Uri<Scheme> {
     type Err = UriParseError;
 
     fn from_str(src: &str) -> Result<Self, Self::Err> {
-        let url = Url::parse(src).map_err(|err| UriParseError::UrlParse(err, src.to_string()))?;
+        let url = Url::parse(src).map_err(|err| UriParseError::UrlParse(src.to_string(), err))?;
 
         let host = url
             .host_str()
