@@ -629,7 +629,7 @@ mod testing {
         );
         let alice_request_payload = RequestPayload::try_from(&alice_public).unwrap();
         let alice_b58_str = alice_request_payload.encode();
-        assert_eq!(alice_b58_str, "5F24DBwfEGBN18LevLEt3wZHknBk1tSC32QfMzSoiPcMrJyErBqBiNQpfFWboY1DHAjwjkBf2qfUbGvjvcdJ6Uhp6qcZ1NChFutR2MpiyTkrKm7NhCrT6KjtDkQBxr7rw74oFzvh7rkrK");
+        assert_eq!(alice_b58_str, "fixme");
         let alice_payload = RequestPayload::decode(&alice_b58_str).unwrap();
         let alice_decoded = PublicAddress::try_from(&alice_payload).unwrap();
         assert_eq!(alice_public, alice_decoded);
@@ -655,7 +655,7 @@ mod testing {
         );
         let bob_request_payload = RequestPayload::try_from(&bob_public).unwrap();
         let bob_b58_str = bob_request_payload.encode();
-        assert_eq!(bob_b58_str, "21BA6veypXUoUpzDWBQGUHfUcpVG1PjGsAJyng9Y5hdLFGvGbSVsyxfNuKJeYHpJKAXXksUUJrvjBn4UnXnPDhX7rMZ4RqYLidkkHkBf5Ah9adj7CXNB1sgaiqNfF7ftNgqe");
+        assert_eq!(bob_b58_str, "fixme");
         let bob_payload = RequestPayload::decode(&bob_b58_str).unwrap();
         let bob_decoded = PublicAddress::try_from(&bob_payload).unwrap();
         assert_eq!(bob_public, bob_decoded);
@@ -667,7 +667,7 @@ mod testing {
         );
         let bob_request_payload = RequestPayload::try_from(&bob_public).unwrap();
         let bob_b58_str = bob_request_payload.encode();
-        assert_eq!(bob_b58_str, "72wW29sWRpkXtzuMhrcr5zjM3wvWDQj2FGCZf4eswvAhFMtCxdQjEYYmJfXtdTa7fLxGyELd6TT62Zb6nw6Hk7TfaX8nBAid");
+        assert_eq!(bob_b58_str, "fixme");
         let bob_payload = RequestPayload::decode(&bob_b58_str).unwrap();
         let bob_decoded = PublicAddress::try_from(&bob_payload).unwrap();
         assert_eq!(bob_public, bob_decoded);
