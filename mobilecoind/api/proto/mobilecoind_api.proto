@@ -128,6 +128,9 @@ message TxProposal {
     /// This is needed to map recipients to their respective TxOuts.
     map<uint64, uint64> outlay_index_to_tx_out_index = 5;
 
+    /// A list of the confirmation numbers, in the same order
+    /// as the outlays.
+    repeated bytes outlay_confirmation_numbers = 6;
 }
 
 // Structure used to check transaction status as a Sender.
@@ -154,6 +157,9 @@ message ReceiverTxReceipt {
 
     // Tombstone block set in the transaction.
     uint64 tombstone = 4;
+
+    // Confirmation number for this TxOut
+    bytes confirmation_number = 5;
 }
 
 // Structure used to report monitor status

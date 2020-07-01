@@ -754,6 +754,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                 receiver_tx_receipt.set_tx_out_hash(tx_out.hash().to_vec());
                 receiver_tx_receipt.set_tombstone(tx_proposal.tx.prefix.tombstone_block);
 
+                if tx_proposal.outlay_confirmation_numbers.len() > outlay_index {
+                    receiver_tx_receipt.set_confirmation_number(
+                        tx_proposal.outlay_confirmation_numbers[outlay_index]
+                            .as_ref()
+                            .to_vec(),
+                    );
+                }
+
                 Ok(receiver_tx_receipt)
             })
             .collect::<Result<Vec<mc_mobilecoind_api::ReceiverTxReceipt>, RpcStatus>>()?;

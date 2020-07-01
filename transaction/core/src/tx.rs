@@ -452,6 +452,14 @@ impl ReprBytes for TxOutConfirmationNumber {
     }
 }
 
+impl From<&Vec<u8>> for TxOutConfirmationNumber {
+    fn from(src: &Vec<u8>) -> Self {
+        let mut bytes = [0u8; 32];
+        bytes.copy_from_slice(src);
+        Self {0: bytes}
+    }
+}
+
 derive_prost_message_from_repr_bytes!(TxOutConfirmationNumber);
 
 #[cfg(test)]
