@@ -456,7 +456,7 @@ impl From<&Vec<u8>> for TxOutConfirmationNumber {
     fn from(src: &Vec<u8>) -> Self {
         let mut bytes = [0u8; 32];
         bytes.copy_from_slice(src);
-        Self {0: bytes}
+        Self { 0: bytes }
     }
 }
 
