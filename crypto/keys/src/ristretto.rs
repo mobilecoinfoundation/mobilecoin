@@ -280,7 +280,6 @@ impl From<&RistrettoPrivate> for RistrettoPublic {
         bytes_slice[..32].copy_from_slice(&scalar.to_bytes());
 
         // We can construct the SecretKey directly from the Scalar
-        // FIXME: do we need to ensure that we include the Nonce?
         let secret = SecretKey::from_bytes(&bytes_slice).expect("Could not construct SecretKey from scalar bytes");
         Self(secret.to_public())
     }
@@ -292,7 +291,6 @@ impl From<&RistrettoEphemeralPrivate> for RistrettoPublic {
         bytes_slice[..32].copy_from_slice(&private.0.to_bytes());
 
         // We can construct the SecretKey directly from the Scalar
-        // FIXME: do we need to ensure that we include the Nonce?
         let secret = SecretKey::from_bytes(&bytes_slice).expect("Could not construct SecretKey from scalar bytes");
         Self(secret.to_public())
     }
