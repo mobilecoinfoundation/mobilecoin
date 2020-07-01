@@ -128,8 +128,7 @@ impl ToBase64 for EpidPseudonym {
 pub struct VerificationReportData {
     /// A unqiue ID of this report
     pub id: String,
-    /// The timestamp this report was generated, as the duration since time::SystemTime::UNIX_EPOCH
-    /// FIXME: It would be nice to parse this into something useful, but it's not really required
+    /// The timestamp this report was generated, as an ISO8601 string.
     pub timestamp: String,
     /// The version number of the API which generated this report.
     pub version: f64, // ugh.
@@ -233,6 +232,19 @@ impl VerificationReportData {
         )?;
 
         Ok(())
+    }
+
+    /// Try and parse the timestamp string into a chrono object.
+    #[cfg(feature = "std")]
+    pub fn parse_timestamp(&self) -> Result<chrono::DateTime<chrono::Utc>, VerifyError> {
+        // Intel provides the timestamp as ISO8601 (compatible with RFC3339) but without the
+        // Z specifier, which is required for chrono to be happy.
+        let timestamp =
+            chrono::DateTime::parse_from_rfc3339(&[self.timestamp.as_str(), "Z"].concat())
+                .map_err(|err| {
+                    VerifyError::TimestampParse(self.timestamp.clone(), err.to_string())
+                })?;
+        Ok(timestamp.into())
     }
 }
 
@@ -701,7 +713,9 @@ mod test {
             http_body: String::from(IAS_WITH_PIB),
         };
 
-        let _data = VerificationReportData::try_from(&report)
+        let data = VerificationReportData::try_from(&report)
             .expect("Could not parse IAS verification report");
+
+        let _timestamp = data.parse_timestamp().expect("failed parsing timestamp");
     }
 }

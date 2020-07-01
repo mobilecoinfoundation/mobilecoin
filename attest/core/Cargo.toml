@@ -19,6 +19,7 @@ std = [
     "failure/std",
     "mbedtls/std",
     "sha2/std",
+    "chrono",
 ]
 
 # This means "use the fake SGX stuff where required"
@@ -37,6 +38,7 @@ mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag 
 binascii = "0.1.2"
 bitflags = "1.2"
 cfg-if = "0.1"
+chrono = { version = "0.4.10", optional = true }
 digest = { version = "0.8", default-features = false }
 failure = { version = "0.1.5", default-features = false, features = ["derive"] }
 hex_fmt = "0.3"
