@@ -370,21 +370,25 @@ impl AccountKey {
             let view_private = self.subaddress_view_private(index);
             let scalar: &Scalar = view_private.as_ref();
 
-            // Create rng seed from hash of private key in order to create nonce and sign
-            let seed: [u8; 32] = Sha256::digest(&scalar.to_bytes()).into();
-            let mut cspring: FixedRng = SeedableRng::from_seed(seed);
-            let mut nonce = [0u8; 32];
-            cspring.fill_bytes(&mut nonce);
+            // Nonce is hash( private_key || message )
+            let nonce_digest: Vec<u8> = [
+                &scalar.to_bytes(),
+                self.fog_authority_key_fingerprint.as_slice(),
+            ]
+            .concat();
+            let nonce: [u8; 32] = Sha256::digest(&nonce_digest).into();
 
             let mut secret_bytes = [0u8; 64];
             secret_bytes[0..32].copy_from_slice(&scalar.to_bytes());
             secret_bytes[32..64].copy_from_slice(&nonce);
-
             let secret_key = SecretKey::from_bytes(&secret_bytes).unwrap();
             let keypair = secret_key.to_keypair();
+
+            // Context provides domain separation for signature
             let ctx = signing_context(b"Fog authority signature");
+            let mut csprng: FixedRng = SeedableRng::from_seed(nonce);
             let sig: Signature =
-                keypair.sign_rng(ctx.bytes(&self.fog_authority_key_fingerprint), &mut cspring);
+                keypair.sign_rng(ctx.bytes(&self.fog_authority_key_fingerprint), &mut csprng);
             result.fog_authority_sig = sig.to_bytes().to_vec();
         }
 
