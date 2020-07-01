@@ -1,0 +1,25 @@
+[package]
+name = "mc-util-url-encoding"
+version = "0.4.0"
+authors = ["MobileCoin"]
+edition = "2018"
+readme = "README.md"
+
+[dependencies]
+mc-common = { path = "../../common", default-features = false }
+mc-crypto-keys = { path = "../../crypto/keys" }
+mc-transaction-core = { path = "../../transaction/core" }
+mc-util-uri = { path = "../uri" }
+
+base64 = "0.11"
+crc = "1.8.1"
+displaydoc = { version = "0.1", default-features = false }
+hex = "0.4"
+url = "2.1"
+
+[dev-dependencies]
+mc-transaction-std = { path = "../../transaction/std" }
+mc-util-b58-payloads = { path = "../b58-payloads" }
+mc-util-from-random = { path = "../../util/from-random" }
+mc-util-test-helper = { path = "../../util/test-helper" }
+rand_hc = "0.2"
