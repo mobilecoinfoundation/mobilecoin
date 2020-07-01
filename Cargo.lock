@@ -609,7 +609,7 @@ dependencies = [
  "clap",
  "criterion-plot",
  "csv",
- "itertools 0.9.0",
+ "itertools",
  "lazy_static",
  "num-traits",
  "oorandom",
@@ -630,7 +630,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ddeaf7989f00f2e1d871a26a110f3ed713632feac17f65f03ca938c542618b60"
 dependencies = [
  "cast",
- "itertools 0.9.0",
+ "itertools",
 ]
 
 [[package]]
@@ -1677,15 +1677,6 @@ dependencies = [
 
 [[package]]
 name = "itertools"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f56a2d0bc861f9165be4eb3442afd3c236d8a98afd426f65d92324ae1091a484"
-dependencies = [
- "either",
-]
-
-[[package]]
-name = "itertools"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "284f18f85651fe11e8a991b2adb42cb078325c996ed026d994719efcfca1d54b"
@@ -1778,6 +1769,12 @@ dependencies = [
  "pkg-config",
  "vcpkg",
 ]
+
+[[package]]
+name = "linked-hash-map"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8dd5a6d5999d9907cda8ed67bbd137d3af8085216c2ac62de5be860bd41f304a"
 
 [[package]]
 name = "lmdb"
@@ -2976,6 +2973,7 @@ dependencies = [
  "subtle 2.2.2",
  "tempdir",
  "time",
+ "yaml-rust",
 ]
 
 [[package]]
@@ -3010,6 +3008,7 @@ dependencies = [
  "rand 0.7.3",
  "rand_core 0.5.1",
  "serde",
+ "yaml-rust",
 ]
 
 [[package]]
@@ -3227,7 +3226,7 @@ dependencies = [
 name = "mc-util-test-helper"
 version = "0.4.0"
 dependencies = [
- "itertools 0.9.0",
+ "itertools",
  "lazy_static",
  "mc-common",
  "mc-crypto-keys",
@@ -3255,6 +3254,26 @@ dependencies = [
  "rand 0.7.3",
  "rand_hc 0.2.0",
  "serde",
+ "url 2.1.1",
+]
+
+[[package]]
+name = "mc-util-url-encoding"
+version = "0.4.0"
+dependencies = [
+ "base64 0.11.0",
+ "crc",
+ "displaydoc",
+ "hex 0.4.2",
+ "mc-common",
+ "mc-crypto-keys",
+ "mc-transaction-core",
+ "mc-transaction-std",
+ "mc-util-b58-payloads",
+ "mc-util-from-random",
+ "mc-util-test-helper",
+ "mc-util-uri",
+ "rand_hc 0.2.0",
  "url 2.1.1",
 ]
 
@@ -3813,7 +3832,7 @@ dependencies = [
 [[package]]
 name = "prost"
 version = "0.6.1"
-source = "git+https://github.com/mobilecoinofficial/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95#4e1905329369ca7a1cac3eda978ee9379167ee95"
+source = "git+https://github.com/danburkert/prost?rev=6113789f70b69709820becba4242824b4fb3ffec#6113789f70b69709820becba4242824b4fb3ffec"
 dependencies = [
  "bytes 0.5.4",
  "prost-derive",
@@ -3822,10 +3841,10 @@ dependencies = [
 [[package]]
 name = "prost-derive"
 version = "0.6.1"
-source = "git+https://github.com/mobilecoinofficial/prost?rev=4e1905329369ca7a1cac3eda978ee9379167ee95#4e1905329369ca7a1cac3eda978ee9379167ee95"
+source = "git+https://github.com/danburkert/prost?rev=6113789f70b69709820becba4242824b4fb3ffec#6113789f70b69709820becba4242824b4fb3ffec"
 dependencies = [
  "anyhow",
- "itertools 0.8.2",
+ "itertools",
  "proc-macro2 1.0.12",
  "quote 1.0.4",
  "syn 1.0.18",
@@ -5882,6 +5901,15 @@ name = "xml-rs"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b07db065a5cf61a7e4ba64f29e67db906fb1787316516c4e6e5ff0fea1efcd8a"
+
+[[package]]
+name = "yaml-rust"
+version = "0.4.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "39f0c922f1a334134dc2f7a8b67dc5d25f0735263feec974345ff706bcf20b0d"
+dependencies = [
+ "linked-hash-map",
+]
 
 [[package]]
 name = "yansi"

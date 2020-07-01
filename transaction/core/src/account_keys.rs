@@ -126,7 +126,6 @@ impl PublicAddress {
             fog_report_url: Default::default(),
             fog_report_id: Default::default(),
             fog_authority_sig: Default::default(),
-            fog_report_key: Default::default(),
         }
     }
 
@@ -393,12 +392,10 @@ impl AccountKey {
             let scalar: &Scalar = view_private.as_ref();
 
             // Nonce is hash( private_key || message )
-            let nonce_digest: Vec<u8> = [
-                &scalar.to_bytes(),
-                self.fog_authority_key_fingerprint.as_slice(),
-            ]
-            .concat();
-            let nonce: [u8; 32] = Blake2b256::digest(&nonce_digest).into();
+            let mut hasher = Blake2b256::new();
+            hasher.input(scalar.to_bytes());
+            hasher.input(&self.fog_authority_key_fingerprint);
+            let nonce = hasher.result();
 
             let mut secret_bytes = [0u8; 64];
             secret_bytes[0..32].copy_from_slice(&scalar.to_bytes());
@@ -408,7 +405,7 @@ impl AccountKey {
 
             // Context provides domain separation for signature
             let ctx = signing_context(FOG_AUTHORITY_SIGNATURE_TAG);
-            let mut csprng: FixedRng = SeedableRng::from_seed(nonce);
+            let mut csprng: FixedRng = SeedableRng::from_seed(nonce.into());
             let sig: Signature =
                 keypair.sign_rng(ctx.bytes(&self.fog_authority_key_fingerprint), &mut csprng);
             result.fog_authority_sig = sig.to_bytes().to_vec();
