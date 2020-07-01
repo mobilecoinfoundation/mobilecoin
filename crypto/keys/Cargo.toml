@@ -23,6 +23,9 @@ sha2 = { version = "0.8", default-features = false }
 x25519-dalek = { version = "0.6", default-features = false, features = ["nightly", "u64_backend"] }
 zeroize = { version = "1", default-features = false }
 
+# NOTE: Introduces *_rng methods that take an rng to bypass rand_hack that fails no_std builds
+schnorrkel = { git = "https://github.com/sugargoat/schnorrkel", rev = "60eedb2d3e005539052e1a2aef864bc78323c66c", default-features = false}
+
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
 curve25519-dalek = { version = "2.0", default-features = false, features = ["simd_backend", "nightly"] }
 ed25519-dalek = { git = "https://github.com/cbeck88/ed25519-dalek", rev = "c0b0ab31d3572de6fb01d6b4a4f052784034b0b2", default-features = false, features = ["alloc", "nightly", "serde", "simd_backend"] }

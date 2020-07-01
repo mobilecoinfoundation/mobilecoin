@@ -11,7 +11,6 @@ use core::{
     hash::{Hash, Hasher},
 };
 use curve25519_dalek::{
-    constants::RISTRETTO_BASEPOINT_POINT,
     ristretto::{CompressedRistretto, RistrettoPoint},
     scalar::Scalar,
 };
@@ -26,6 +25,7 @@ use mc_util_repr_bytes::{
 };
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
+use schnorrkel::{PublicKey, MiniSecretKey, ExpansionMode};
 use zeroize::Zeroize;
 
 /// A Ristretto-format private scalar
@@ -114,7 +114,7 @@ impl KexEphemeralPrivate for RistrettoPrivate {
         self,
         their_public: &<Self as PrivateKey>::Public,
     ) -> <Self as KexPrivate>::Secret {
-        RistrettoSecret((self.0 * their_public.0).compress().to_bytes())
+        RistrettoSecret((self.0 * their_public.0.as_point()).compress().to_bytes())
     }
 }
 
@@ -123,7 +123,7 @@ impl KexReusablePrivate for RistrettoPrivate {
         &self,
         their_public: &<Self as PrivateKey>::Public,
     ) -> <Self as KexPrivate>::Secret {
-        RistrettoSecret((self.0 * their_public.0).compress().to_bytes())
+        RistrettoSecret((self.0 * their_public.0.as_point()).compress().to_bytes())
     }
 }
 
@@ -154,7 +154,7 @@ impl KexEphemeralPrivate for RistrettoEphemeralPrivate {
         self,
         their_public: &<Self as PrivateKey>::Public,
     ) -> <Self as KexPrivate>::Secret {
-        RistrettoSecret((self.0 * their_public.0).compress().to_bytes())
+        RistrettoSecret((self.0 * their_public.0.as_point()).compress().to_bytes())
     }
 }
 
@@ -174,25 +174,26 @@ impl Debug for RistrettoEphemeralPrivate {
     }
 }
 
-/// A Ristretto-format curve point for use as a public key
-#[derive(Clone, Copy, Default, Digestible)]
-pub struct RistrettoPublic(pub(crate) RistrettoPoint);
+/// A schnorrkel PublicKey derived from the RistrettoPrivate Scalar
+#[derive(Clone, Copy, Default)]
+pub struct RistrettoPublic(pub(crate) PublicKey);
 
 impl AsRef<RistrettoPoint> for RistrettoPublic {
     fn as_ref(&self) -> &RistrettoPoint {
-        &self.0
+        &self.0.as_point()
     }
 }
 
 impl FromRandom for RistrettoPublic {
     fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> RistrettoPublic {
-        Self(RistrettoPoint::random(csprng))
+        let mini_secret = MiniSecretKey::generate_with(csprng);
+        Self(mini_secret.expand_to_keypair(ExpansionMode::Uniform).public)
     }
 }
 
 impl From<RistrettoPoint> for RistrettoPublic {
     fn from(point: RistrettoPoint) -> Self {
-        Self(point)
+        Self(PublicKey::from_point(point))
     }
 }
 
@@ -201,15 +202,11 @@ impl ReprBytes for RistrettoPublic {
     type Error = KeyError;
 
     fn to_bytes(&self) -> GenericArray<u8, U32> {
-        self.0.compress().to_bytes().into()
+        self.0.as_compressed().to_bytes().into()
     }
 
     fn from_bytes(src: &GenericArray<u8, U32>) -> Result<Self, KeyError> {
-        Ok(Self(
-            CompressedRistretto::from_slice(src.as_slice())
-                .decompress()
-                .ok_or(KeyError::InvalidPublicKey)?,
-        ))
+        Ok(Self(PublicKey::from_compressed(CompressedRistretto::from_slice(src.as_slice()))?))
     }
 }
 
@@ -217,6 +214,12 @@ derive_serde_from_repr_bytes!(RistrettoPublic);
 derive_prost_message_from_repr_bytes!(RistrettoPublic);
 derive_into_vec_from_repr_bytes!(RistrettoPublic);
 derive_try_from_slice_from_repr_bytes!(RistrettoPublic);
+
+impl Digestible for RistrettoPublic {
+    fn digest<D: Digest>(&self, hasher: &mut D) {
+        self.0.as_point().digest(hasher)
+    }
+}
 
 // Many historical APIs assumed TryFrom<&[u8;32]> existed for RistrettoPublic
 // This will work fine in code that is not generic over the size of the key
@@ -231,7 +234,7 @@ impl RistrettoPublic {
     // Many historical APIs based on ReprBytes32 in mobilecoin use to_bytes() -> [u8;32].
     // This is okay in non-generic code
     pub fn to_bytes(&self) -> [u8; 32] {
-        self.0.compress().to_bytes()
+        self.0.as_compressed().to_bytes()
     }
 }
 
@@ -261,25 +264,24 @@ impl PartialEq for RistrettoPublic {
     }
 }
 
-impl PublicKey for RistrettoPublic {}
+impl crate::traits::PublicKey for RistrettoPublic {}
 
 impl From<&RistrettoPrivate> for RistrettoPublic {
     fn from(private: &RistrettoPrivate) -> Self {
-        let x = private.0;
-        let G = RISTRETTO_BASEPOINT_POINT;
-        let Y = x * G;
-
-        Self(Y)
+        let scalar: &Scalar = private.as_ref();
+        let mut bytes_slice = [0u8; 32];
+        bytes_slice[..32].copy_from_slice(&scalar.to_bytes());
+        let mini_secret = MiniSecretKey::from_bytes(&bytes_slice).expect("Could not create MiniSecretKey from bytes");
+        Self(mini_secret.expand_to_keypair(ExpansionMode::Uniform).public)
     }
 }
 
 impl From<&RistrettoEphemeralPrivate> for RistrettoPublic {
     fn from(private: &RistrettoEphemeralPrivate) -> Self {
-        let x = private.0;
-        let G = RISTRETTO_BASEPOINT_POINT;
-        let Y = x * G;
-
-        Self(Y)
+        let mut bytes_slice = [0u8; 32];
+        bytes_slice[..32].copy_from_slice(&private.0.to_bytes());
+        let mini_secret = MiniSecretKey::from_bytes(&bytes_slice).expect("Could not create MiniSecretKey from bytes");
+        Self(mini_secret.expand_to_keypair(ExpansionMode::Uniform).public)
     }
 }
 
@@ -309,7 +311,7 @@ impl KexPublic for RistrettoPublic {
 impl TryFrom<&CompressedRistrettoPublic> for RistrettoPublic {
     type Error = KeyError;
     fn try_from(src: &CompressedRistrettoPublic) -> Result<Self, KeyError> {
-        Ok(Self(src.0.decompress().ok_or(KeyError::InvalidPublicKey)?))
+        Ok(Self(PublicKey::from_compressed(src.0)?))
     }
 }
 
@@ -422,13 +424,13 @@ impl From<RistrettoPoint> for CompressedRistrettoPublic {
 
 impl From<&RistrettoPublic> for CompressedRistrettoPublic {
     fn from(src: &RistrettoPublic) -> Self {
-        Self(src.0.compress())
+        Self(src.0.into_compressed())
     }
 }
 
 impl From<RistrettoPublic> for CompressedRistrettoPublic {
     fn from(src: RistrettoPublic) -> Self {
-        Self(src.0.compress())
+        Self(src.0.into_compressed())
     }
 }
 
@@ -438,7 +440,7 @@ impl From<CompressedRistretto> for CompressedRistrettoPublic {
     }
 }
 
-impl PublicKey for CompressedRistrettoPublic {}
+impl crate::traits::PublicKey for CompressedRistrettoPublic {}
 
 /// A zero-width type used to identify the Ristretto key exchange system.
 pub struct Ristretto {}

@@ -2424,6 +2424,7 @@ dependencies = [
  "prost",
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
+ "schnorrkel",
  "semver",
  "serde",
  "serde_json",
@@ -4487,6 +4488,21 @@ checksum = "039c25b130bd8c1321ee2d7de7fde2659fa9c2744e4bb29711cfc852ea53cd19"
 dependencies = [
  "lazy_static",
  "winapi 0.3.8",
+]
+
+[[package]]
+name = "schnorrkel"
+version = "0.9.1"
+source = "git+https://github.com/sugargoat/schnorrkel?rev=60eedb2d3e005539052e1a2aef864bc78323c66c#60eedb2d3e005539052e1a2aef864bc78323c66c"
+dependencies = [
+ "arrayref",
+ "arrayvec",
+ "curve25519-dalek",
+ "merlin",
+ "rand_core 0.5.1",
+ "sha2",
+ "subtle 2.2.2",
+ "zeroize 1.1.0",
 ]
 
 [[package]]

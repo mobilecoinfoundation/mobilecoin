@@ -16,6 +16,7 @@ use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use schnorrkel::SignatureError;
 
 /// A collection of common errors for use by implementers
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Fail, Ord, PartialEq, PartialOrd, Serialize)]
@@ -35,12 +36,19 @@ pub enum KeyError {
     SignatureMismatch,
     #[fail(display = "There was an opaque error returned by another crate or library")]
     InternalError,
+    #[fail(display = "Schnorrkel signature error")]
+    SchnorrkelError,
 }
 
 impl From<LengthMismatch> for KeyError {
     fn from(src: LengthMismatch) -> Self {
         KeyError::LengthMismatch(src.found, src.expected)
     }
+}
+
+// FIXME: wrap the SignatureError, or match on it
+impl From<SignatureError> for KeyError {
+    fn from(_src: SignatureError) -> Self { KeyError::SchnorrkelError}
 }
 
 /// A trait indicating that a key can be read/written as ASN.1 using the
