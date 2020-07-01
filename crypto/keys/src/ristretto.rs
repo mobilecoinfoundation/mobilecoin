@@ -113,7 +113,6 @@ impl FromRandom for RistrettoPrivate {
         // The scalar is the first 32 bytes in canonical representation
         let mut scalar_bytes: [u8; 32] = [0u8; 32];
         scalar_bytes[0..32].copy_from_slice(&secret.to_bytes()[0..32]);
-        // FIXME: error handling
         let scalar = Scalar::from_canonical_bytes(scalar_bytes)
             .ok_or(KeyError::InvalidPrivateKey)
             .expect("Could not get scalar from RistrettoPrivate");
