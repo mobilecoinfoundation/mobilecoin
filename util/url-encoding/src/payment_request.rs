@@ -8,8 +8,11 @@ use mc_transaction_core::account_keys::PublicAddress;
 /// To add more optional fields, designate query parameters for them in MobUrl
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PaymentRequest {
+    /// The public address included in the request
     pub address: PublicAddress,
+    /// The amount included in the request, if any
     pub amount: Option<u64>,
+    /// The memo included in the request, if any
     pub memo: Option<String>,
 }
 

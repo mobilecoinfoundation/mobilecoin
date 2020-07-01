@@ -27,13 +27,16 @@ use mc_transaction_core::account_keys::PublicAddress;
 use mc_util_uri::{ConnectionUri, FogScheme, FogUri, UriScheme};
 use url::Url;
 
+/// The label used for secure version of mob url (using TLS)
 pub const MOB_SCHEME_SECURE: &str = "mob";
+/// The label used for secure version of mob url (not using TLS, for tests)
 pub const MOB_SCHEME_INSECURE: &str = "insecure-mob";
 
 const SIG_KEY: &str = "s";
 const AMOUNT_KEY: &str = "a";
 const MEMO_KEY: &str = "m";
 
+/// A url beginning with mob scheme and with structure matching the spec in README
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct MobUrl {
     /// The original Url object used to construct this object.
@@ -43,10 +46,12 @@ pub struct MobUrl {
 }
 
 impl MobUrl {
+    /// Get the underlying Url object
     pub fn url(&self) -> &Url {
         &self.url
     }
 
+    /// Whether we are using TLS (mob vs. insecure-mob)
     pub fn use_tls(&self) -> bool {
         self.use_tls
     }
@@ -72,34 +77,42 @@ impl MobUrl {
             .extend_pairs(query_params.iter());
     }
 
+    /// Get the amount, as a raw decimal string from the query parameters, if present
     pub fn get_amount(&self) -> Option<String> {
         self.get_param(AMOUNT_KEY)
     }
 
+    /// Get the report id, as a string, if present
     pub fn get_report_id(&self) -> Option<String> {
         self.url.fragment().map(|s| s.to_string())
     }
 
+    /// Get the memo, as a rust UTF-8 String, if present
     pub fn get_memo(&self) -> Option<String> {
         self.get_param(MEMO_KEY)
     }
 
+    /// Get the base64-encoded sig, if present
     pub fn get_sig(&self) -> Option<String> {
         self.get_param(SIG_KEY)
     }
 
+    /// Set the amount to a new value
     pub fn set_amount(&mut self, amt: u64) {
         self.set_param(AMOUNT_KEY, &amt.to_string());
     }
 
+    /// Set the report_id to a new value or clear it
     pub fn set_report_id(&mut self, id: Option<&str>) {
         self.url.set_fragment(id);
     }
 
+    /// Set the memo to a new value
     pub fn set_memo(&mut self, memo: &str) {
         self.set_param(MEMO_KEY, memo);
     }
 
+    /// Set the sig to a new base64 encoded value
     pub fn set_sig(&mut self, sig: &str) {
         self.set_param(SIG_KEY, sig);
     }
