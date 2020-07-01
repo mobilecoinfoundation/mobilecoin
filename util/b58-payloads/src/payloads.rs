@@ -235,7 +235,9 @@ impl RequestPayload {
         fog_report_url: &str,
         value: u64,
     ) -> Result<Self, Error> {
-        let mut result = RequestPayload::new_v1(view_key, spend_key, fog_report_url)?;
+        let mut result = RequestPayload::new_v0(view_key, spend_key)?;
+        validate_fog_report_url(fog_report_url)?;
+        result.fog_report_url = fog_report_url.to_owned();
         result.value = value;
         result.version = 2;
         Ok(result)
