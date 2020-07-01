@@ -756,9 +756,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
 
                 if tx_proposal.outlay_confirmation_numbers.len() > outlay_index {
                     receiver_tx_receipt.set_confirmation_number(
-                        tx_proposal.outlay_confirmation_numbers[outlay_index]
-                            .as_ref()
-                            .to_vec(),
+                        tx_proposal.outlay_confirmation_numbers[outlay_index].to_vec(),
                     );
                 }
 
@@ -2384,9 +2382,10 @@ mod test {
                 );
 
                 assert_eq!(receipt.tombstone, tx.prefix.tombstone_block);
+                let mut confirmation_bytes = [0u8; 32];
+                confirmation_bytes.copy_from_slice(&receipt.confirmation_number);
 
-                let confirmation_number =
-                    TxOutConfirmationNumber::from(&receipt.confirmation_number);
+                let confirmation_number = TxOutConfirmationNumber::from(confirmation_bytes);
                 assert!(outlay_confirmation_numbers.contains(&confirmation_number));
             }
 

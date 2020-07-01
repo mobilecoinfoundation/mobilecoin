@@ -96,7 +96,7 @@ impl From<&TxProposal> for mc_mobilecoind_api::TxProposal {
         dst.set_outlay_confirmation_numbers(
             src.outlay_confirmation_numbers
                 .iter()
-                .map(|val| val.as_ref().to_vec())
+                .map(|val| val.to_vec())
                 .collect(),
         );
 
@@ -146,8 +146,15 @@ impl TryFrom<&mc_mobilecoind_api::TxProposal> for TxProposal {
         let outlay_confirmation_numbers = src
             .get_outlay_confirmation_numbers()
             .iter()
-            .map(TxOutConfirmationNumber::from)
-            .collect();
+            .map(|src| match src.len() {
+                32 => {
+                    let mut bytes = [0u8; 32];
+                    bytes.copy_from_slice(src);
+                    Ok(TxOutConfirmationNumber::from(bytes))
+                }
+                _ => Err(ConversionError::IndexOutOfBounds),
+            })
+            .collect::<Result<Vec<TxOutConfirmationNumber>, ConversionError>>()?;
 
         Ok(Self {
             utxos,
