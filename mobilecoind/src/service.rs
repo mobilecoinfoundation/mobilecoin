@@ -377,14 +377,12 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         let view_key = receiver.view_public_key().to_bytes();
         let spend_key = receiver.spend_public_key().to_bytes();
 
-        let payload = RequestPayload::new_v4(
+        let payload = RequestPayload::new_v3(
             &view_key,
             &spend_key,
-            receiver.fog_report_url().unwrap_or(&""),
+            "", // mobilecoind does not support fog
             request.get_value(),
             request.get_memo(),
-            receiver.fog_report_id().unwrap_or(&""),
-            receiver.fog_authority_sig().unwrap_or(&[]),
         )
         .map_err(|err| rpc_internal_error("RequestPayload.new_v3", err, &self.logger))?;
         let b58_code = payload.encode();
