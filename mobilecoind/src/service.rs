@@ -754,6 +754,12 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                 receiver_tx_receipt.set_tx_out_hash(tx_out.hash().to_vec());
                 receiver_tx_receipt.set_tombstone(tx_proposal.tx.prefix.tombstone_block);
 
+                if tx_proposal.outlay_confirmation_numbers.len() > outlay_index {
+                    receiver_tx_receipt.set_confirmation_number(
+                        tx_proposal.outlay_confirmation_numbers[outlay_index].to_vec(),
+                    );
+                }
+
                 Ok(receiver_tx_receipt)
             })
             .collect::<Result<Vec<mc_mobilecoind_api::ReceiverTxReceipt>, RpcStatus>>()?;
@@ -1188,7 +1194,7 @@ mod test {
         constants::{BASE_FEE, MAX_INPUTS, RING_SIZE},
         get_tx_out_shared_secret,
         onetime_keys::recover_onetime_private_key,
-        tx::{Tx, TxOut},
+        tx::{Tx, TxOut, TxOutConfirmationNumber},
         Block, BlockContents, BLOCK_VERSION,
     };
     use mc_util_from_random::FromRandom;
@@ -1924,6 +1930,12 @@ mod test {
             // The transaction should contain an output for each outlay, and one for change.
             assert_eq!(tx.prefix.outputs.len(), outlays.len() + 1);
 
+            // The transaction should have a confirmation code for each outlay
+            assert_eq!(
+                outlays.len(),
+                tx_proposal.get_outlay_confirmation_numbers().len()
+            );
+
             let change_value = test_utils::PER_RECIPIENT_AMOUNT
                 - outlays.iter().map(|outlay| outlay.value).sum::<u64>()
                 - BASE_FEE;
@@ -2303,6 +2315,7 @@ mod test {
         let response = client.generate_tx(&request).unwrap();
         let tx_proposal = TxProposal::try_from(response.get_tx_proposal()).unwrap();
         let tx = tx_proposal.tx.clone();
+        let outlay_confirmation_numbers = tx_proposal.outlay_confirmation_numbers.clone();
 
         // Test the happy flow.
         {
@@ -2369,6 +2382,11 @@ mod test {
                 );
 
                 assert_eq!(receipt.tombstone, tx.prefix.tombstone_block);
+                let mut confirmation_bytes = [0u8; 32];
+                confirmation_bytes.copy_from_slice(&receipt.confirmation_number);
+
+                let confirmation_number = TxOutConfirmationNumber::from(confirmation_bytes);
+                assert!(outlay_confirmation_numbers.contains(&confirmation_number));
             }
 
             assert_eq!(

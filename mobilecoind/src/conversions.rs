@@ -12,7 +12,7 @@ use mc_mobilecoind_api::{self};
 use mc_transaction_core::{
     account_keys::PublicAddress,
     ring_signature::KeyImage,
-    tx::{Tx, TxOut},
+    tx::{Tx, TxOut, TxOutConfirmationNumber},
 };
 use protobuf::RepeatedField;
 use std::{convert::TryFrom, iter::FromIterator};
@@ -93,6 +93,12 @@ impl From<&TxProposal> for mc_mobilecoind_api::TxProposal {
                 .iter()
                 .map(|(key, val)| (*key as u64, *val as u64)),
         ));
+        dst.set_outlay_confirmation_numbers(
+            src.outlay_confirmation_numbers
+                .iter()
+                .map(|val| val.to_vec())
+                .collect(),
+        );
 
         dst
     }
@@ -137,11 +143,25 @@ impl TryFrom<&mc_mobilecoind_api::TxProposal> for TxProposal {
             }
         }
 
+        let outlay_confirmation_numbers = src
+            .get_outlay_confirmation_numbers()
+            .iter()
+            .map(|src| match src.len() {
+                32 => {
+                    let mut bytes = [0u8; 32];
+                    bytes.copy_from_slice(src);
+                    Ok(TxOutConfirmationNumber::from(bytes))
+                }
+                _ => Err(ConversionError::IndexOutOfBounds),
+            })
+            .collect::<Result<Vec<TxOutConfirmationNumber>, ConversionError>>()?;
+
         Ok(Self {
             utxos,
             outlays,
             tx,
             outlay_index_to_tx_out_index,
+            outlay_confirmation_numbers,
         })
     }
 }
@@ -277,6 +297,7 @@ mod test {
         };
 
         let outlay_index_to_tx_out_index = HashMap::from_iter(vec![(0, 0)]);
+        let outlay_confirmation_numbers = vec![TxOutConfirmationNumber::from([0u8; 32])];
 
         // Rust -> Proto
         let rust = TxProposal {
@@ -284,6 +305,7 @@ mod test {
             outlays: vec![outlay],
             tx,
             outlay_index_to_tx_out_index,
+            outlay_confirmation_numbers,
         };
 
         let proto = mc_mobilecoind_api::TxProposal::from(&rust);

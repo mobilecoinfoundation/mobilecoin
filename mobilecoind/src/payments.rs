@@ -17,7 +17,7 @@ use mc_transaction_core::{
     constants::{BASE_FEE, MAX_INPUTS, RING_SIZE},
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
-    tx::{Tx, TxOut, TxOutMembershipProof},
+    tx::{Tx, TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
     BlockIndex,
 };
 use mc_transaction_std::{InputCredentials, TransactionBuilder};
@@ -64,6 +64,10 @@ pub struct TxProposal {
     /// A map of outlay index -> TxOut index in the Tx object.
     /// This is needed to map recipients to their respective TxOuts.
     pub outlay_index_to_tx_out_index: HashMap<usize, usize>,
+
+    /// A list of the confirmation numbers, in the same order
+    /// as the outlays.
+    pub outlay_confirmation_numbers: Vec<TxOutConfirmationNumber>,
 }
 
 impl TxProposal {
@@ -657,12 +661,14 @@ impl<T: UserTxConnection + 'static> TransactionsManager<T> {
         // Add outputs to our destinations.
         let mut total_value = 0;
         let mut tx_out_to_outlay_index = HashMap::default();
+        let mut outlay_confirmation_numbers = Vec::default();
         for (i, outlay) in destinations.iter().enumerate() {
-            let (tx_out, _) = tx_builder
+            let (tx_out, confirmation_number) = tx_builder
                 .add_output(outlay.value, &outlay.receiver, None, rng)
                 .map_err(|err| Error::TxBuildError(format!("failed adding output: {}", err)))?;
 
             tx_out_to_outlay_index.insert(tx_out, i);
+            outlay_confirmation_numbers.push(confirmation_number);
 
             total_value += outlay.value;
         }
@@ -733,6 +739,7 @@ impl<T: UserTxConnection + 'static> TransactionsManager<T> {
             outlays: destinations.to_vec(),
             tx,
             outlay_index_to_tx_out_index,
+            outlay_confirmation_numbers,
         })
     }
 }
