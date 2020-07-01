@@ -667,7 +667,7 @@ mod testing {
         );
         let bob_request_payload = RequestPayload::try_from(&bob_public).unwrap();
         let bob_b58_str = bob_request_payload.encode();
-        assert_eq!(bob_b58_str, "fixme");
+        assert_eq!(bob_b58_str, "72wW29sWRpkXtzuMhrcr5zjM3wvWDQj2FGCZf4eswvAhFMtCxdQjEYYmJfXtdTa7fLxGyELd6TT62Zb6nw6Hk7TfaX8nBAid");
         let bob_payload = RequestPayload::decode(&bob_b58_str).unwrap();
         let bob_decoded = PublicAddress::try_from(&bob_payload).unwrap();
         assert_eq!(bob_public, bob_decoded);
