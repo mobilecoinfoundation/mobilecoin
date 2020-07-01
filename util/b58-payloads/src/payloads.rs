@@ -629,7 +629,7 @@ mod testing {
         );
         let alice_request_payload = RequestPayload::try_from(&alice_public).unwrap();
         let alice_b58_str = alice_request_payload.encode();
-        assert_eq!(alice_b58_str, "fixme");
+        assert_eq!(alice_b58_str, "5F24DBwfEGBN18LevLEt3wZHknBk1tSC32QfMzSoiPcMrJyErBqBiNQpfFWboY1DHAjwjkBf2qfUbGvjvcdJ6Uhp6qcZ1NChFutR2MpiyTkrKm7NhCrT6KjtDkQBxr7rw74oFzvh7rkrK");
         let alice_payload = RequestPayload::decode(&alice_b58_str).unwrap();
         let alice_decoded = PublicAddress::try_from(&alice_payload).unwrap();
         assert_eq!(alice_public, alice_decoded);
