@@ -214,7 +214,8 @@ impl RequestPayload {
         })
     }
 
-    /// Create a version 1 RequestPayload
+    /// Create a version 1 RequestPayload - this is deprecated becuause fog now requires a signature
+    #[deprecated]
     pub fn new_v1(
         view_key: &[u8; 32],
         spend_key: &[u8; 32],
