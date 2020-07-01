@@ -2973,6 +2973,7 @@ dependencies = [
  "schnorrkel",
  "serde",
  "sha2",
+ "sha3",
  "subtle 2.2.2",
  "tempdir",
  "time",

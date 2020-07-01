@@ -35,7 +35,7 @@ use prost::Message;
 use rand_core::{CryptoRng, RngCore, SeedableRng};
 use rand_hc::Hc128Rng as FixedRng;
 use schnorrkel::{signing_context, SecretKey, Signature};
-use sha2::Sha256;
+use sha3::Sha3_256;
 
 /// An account's "default address" is its zero^th subaddress.
 pub const DEFAULT_SUBADDRESS_INDEX: u64 = 0;
@@ -376,7 +376,7 @@ impl AccountKey {
                 self.fog_authority_key_fingerprint.as_slice(),
             ]
             .concat();
-            let nonce: [u8; 32] = Sha256::digest(&nonce_digest).into();
+            let nonce: [u8; 32] = Sha3_256::digest(&nonce_digest).into();
 
             let mut secret_bytes = [0u8; 64];
             secret_bytes[0..32].copy_from_slice(&scalar.to_bytes());
