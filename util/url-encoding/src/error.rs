@@ -19,10 +19,16 @@ pub enum Error {
     Amount(ParseIntError),
     /// Could not decode path as url-safe base64: {0}
     Path(B64Error),
-    /// Unexpected url path length, should decode to 64 bytes for cryptonote keys, found: {0}
+    /// Checksum failed in the path
+    PathChecksum,
+    /// Unexpected decoded url path length, should decode to 66 bytes for cryptonote keys + checksum, found: {0}
     UnexpectedUrlPathLength(usize),
     /// Could not decode fog-authority-sig as url-safe base64: {0}
     FogAuthoritySig(B64Error),
+    /// Unexpected decoded fog authority sig length, expected at least 2 bytes, found: {0}
+    UnexpectedFogAuthoritySigLength(usize),
+    /// Checksum failed in the fog authority sig
+    FogAuthoritySigChecksum,
     /// Could not decode elliptic curve point: {0}
     InvalidKey(KeyError),
 }

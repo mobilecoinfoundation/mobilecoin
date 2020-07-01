@@ -43,8 +43,8 @@ fn test_url_encoding() {
         let payload = PaymentRequest::from(addr);
         let encoded = MobUrl::try_from(&payload).unwrap();
         let encoded_str: &str = encoded.as_ref();
-        assert_eq!("mob:///eCwRQ1riR1LTp8rpOMcn_rc3EajKx1EZ3cXV17SPDn2UyDJYXMl9TdQZoo5H3MDzTz14WBFVAARfGrXbMv8hGw==?", encoded_str);
-        assert_eq!(96, encoded_str.len());
+        assert_eq!("mob:///eCwRQ1riR1LTp8rpOMcn_rc3EajKx1EZ3cXV17SPDn2UyDJYXMl9TdQZoo5H3MDzTz14WBFVAARfGrXbMv8hG3Da", encoded_str);
+        assert_eq!(95, encoded_str.len());
 
         let b58_payload = RequestPayload::new_v0(
             &addr.spend_public_key().to_bytes(),
@@ -61,8 +61,8 @@ fn test_url_encoding() {
         let payload = PaymentRequest::from(addr);
         let encoded = MobUrl::try_from(&payload).unwrap();
         let encoded_str: &str = encoded.as_ref();
-        assert_eq!("mob://fog.mobilecoin.signal.org/rmiEqq-34E3Fbm3hwxaYJtPZzu9THCBkQaqJDeZwuXG8mf2yOhmGoZmnKTu3--ZCj--5MdTwwCib2p7Dn3KTCg==?s=CQkJCQ%3D%3D", encoded_str);
-        assert_eq!(135, encoded_str.len());
+        assert_eq!("mob://fog.mobilecoin.signal.org/rmiEqq-34E3Fbm3hwxaYJtPZzu9THCBkQaqJDeZwuXG8mf2yOhmGoZmnKTu3--ZCj--5MdTwwCib2p7Dn3KTCl6E?s=CQkJCfSo", encoded_str);
+        assert_eq!(131, encoded_str.len());
 
         let b58_payload = RequestPayload::new_v1(
             &addr.spend_public_key().to_bytes(),
@@ -86,8 +86,8 @@ fn test_url_encoding() {
         };
         let encoded = MobUrl::try_from(&payload).unwrap();
         let encoded_str: &str = encoded.as_ref();
-        assert_eq!("mob://fog.mobilecoin.signal.org/rmiEqq-34E3Fbm3hwxaYJtPZzu9THCBkQaqJDeZwuXG8mf2yOhmGoZmnKTu3--ZCj--5MdTwwCib2p7Dn3KTCg==?a=666&m=2+baby+goats&s=CQkJCQ%3D%3D", encoded_str);
-        assert_eq!(156, encoded_str.len());
+        assert_eq!("mob://fog.mobilecoin.signal.org/rmiEqq-34E3Fbm3hwxaYJtPZzu9THCBkQaqJDeZwuXG8mf2yOhmGoZmnKTu3--ZCj--5MdTwwCib2p7Dn3KTCl6E?a=666&m=2+baby+goats&s=CQkJCfSo", encoded_str);
+        assert_eq!(152, encoded_str.len());
 
         let b58_payload = RequestPayload::new_v3(
             &addr.spend_public_key().to_bytes(),
@@ -109,7 +109,7 @@ fn test_url_encoding() {
         let payload = PaymentRequest::from(addr);
         let encoded = MobUrl::try_from(&payload).unwrap();
         let encoded_str: &str = encoded.as_ref();
-        assert_eq!("mob://fog.diogenes.mobilecoin.com/krmSAg7MnM0fn-yTIjV6tHtRA7Zj2JRZ4pJ-_PcweTkAu7afknATa5hFwtc_Zvi8R6d36cnpMA0-inMbZHiqMQ==?s=CQkJCQ%3D%3D", encoded_str);
+        assert_eq!("mob://fog.diogenes.mobilecoin.com/krmSAg7MnM0fn-yTIjV6tHtRA7Zj2JRZ4pJ-_PcweTkAu7afknATa5hFwtc_Zvi8R6d36cnpMA0-inMbZHiqMRqp?s=CQkJCfSo", encoded_str);
 
         let b58_payload = RequestPayload::new_v1(
             &addr.spend_public_key().to_bytes(),
@@ -134,8 +134,8 @@ fn test_url_encoding() {
         };
         let encoded = MobUrl::try_from(&payload).unwrap();
         let encoded_str: &str = encoded.as_ref();
-        assert_eq!("mob://fog.diogenes.mobilecoin.com/krmSAg7MnM0fn-yTIjV6tHtRA7Zj2JRZ4pJ-_PcweTkAu7afknATa5hFwtc_Zvi8R6d36cnpMA0-inMbZHiqMQ==?a=666&m=2+baby+goats&s=CQkJCQ%3D%3D", encoded_str);
-        assert_eq!(158, encoded_str.len());
+        assert_eq!("mob://fog.diogenes.mobilecoin.com/krmSAg7MnM0fn-yTIjV6tHtRA7Zj2JRZ4pJ-_PcweTkAu7afknATa5hFwtc_Zvi8R6d36cnpMA0-inMbZHiqMRqp?a=666&m=2+baby+goats&s=CQkJCfSo", encoded_str);
+        assert_eq!(154, encoded_str.len());
 
         let b58_payload = RequestPayload::new_v3(
             &addr.spend_public_key().to_bytes(),

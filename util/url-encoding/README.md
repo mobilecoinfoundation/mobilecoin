@@ -60,17 +60,28 @@ Hostname
 Path
 ----
 
-The *path* in the mob-url is `'/'` followed by the base64 encoding of the 64-byte sequence formed by concatenating
-the 32-byte spend-public-key and the 32-byte view-public key.
+The *path* in the mob-url is `'/'` followed by a base64 encoded string.
 
 The url-safe base-64 encoding is used, per RFC 3548, with `-`, `=`, and `_` characters.
 https://tools.ietf.org/html/rfc3548#section-4
+
+The encoded string is the 66-byte sequence formed by concatenating
+the 32-byte spend-public-key and the 32-byte view-public key, followed by 2 checksum checksum bytes.
+
+The two checksum bytes are the first two little-endian bytes of CRC-32-IEEE, and the checksum is
+computed over the 64 bytes consisting of the spend-public-key and view-public-key.
+
+(This checksum pads the payload up to 66 bytes, a multiple of 3, before base64 encoding, so that
+no base64 padding is required.)
 
 Query-parameters
 ----------------
 
 The `fog-authority-sig` is encoded as a query parameter using the key `'s'`, and the value is
-the base-64 encoding of the bytes of the signature. The url-safe base-64 encoding is used.
+the base-64 encoding of the bytes of the signature. The url-safe base-64 encoding is used, as
+with the path. The sig if present is a 64-byte digital signature, described in detail elsewhere.
+As with the path, before base64 encoding it, we pad it up to 66 bytes using two bytes of CRC-32-IEEE
+checksum.
 
 The `amount` of the payment request, if any, is encoded as a query parameter using the key `'a'`.
 The value is the decimal representation of the picomob request amount.

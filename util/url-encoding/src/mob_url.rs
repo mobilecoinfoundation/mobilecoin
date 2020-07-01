@@ -21,6 +21,7 @@ use core::{
     fmt::{Display, Formatter, Result as FmtResult},
     str::FromStr,
 };
+use crc::crc32;
 use mc_crypto_keys::RistrettoPublic;
 use mc_transaction_core::account_keys::PublicAddress;
 use mc_util_uri::{ConnectionUri, FogScheme, FogUri, UriScheme};
@@ -166,21 +167,25 @@ impl TryFrom<&PublicAddress> for MobUrl {
 
         // Compute path part (the encoding of A and B)
         let path = {
-            let mut buffer = [0u8; 64];
+            let mut buffer = [0u8; 66];
+            // Copy A and B
             (&mut buffer[0..32]).clone_from_slice(&src.spend_public_key().to_bytes()[..]);
             (&mut buffer[32..64]).clone_from_slice(&src.view_public_key().to_bytes()[..]);
+            // Checksum over A and B
+            let checksum = crc32::checksum_ieee(&buffer[0..64]).to_le_bytes();
+            // Put checksum in the extra 2 bytes
+            (&mut buffer[64..66]).clone_from_slice(&checksum[0..2]);
             "/".to_owned() + &base64::encode_config(&buffer[..], base64::URL_SAFE)
         };
         mob_url.set_path(&path);
+        mob_url.set_query(None);
 
-        // Query pairs
-        {
-            let mut query_pairs = mob_url.query_pairs_mut();
-
-            if let Some(sig) = src.fog_authority_sig() {
-                let encoded_sig = base64::encode_config(sig, base64::URL_SAFE);
-                query_pairs.append_pair(SIG_KEY, &encoded_sig);
-            }
+        if let Some(sig) = src.fog_authority_sig() {
+            let checksum = crc32::checksum_ieee(sig).to_le_bytes();
+            let mut buffer = sig.to_vec();
+            buffer.extend(&checksum[0..2]);
+            let sig_str = base64::encode_config(&buffer, base64::URL_SAFE);
+            mob_url.query_pairs_mut().append_pair(SIG_KEY, &sig_str);
         }
 
         if let Some(id) = src.fog_report_id() {
@@ -202,9 +207,14 @@ impl TryFrom<&MobUrl> for PublicAddress {
         }
 
         let decoded_path = base64::decode_config(path, base64::URL_SAFE).map_err(Error::Path)?;
-        if decoded_path.len() != 64 {
+        if decoded_path.len() != 66 {
             return Err(Error::UnexpectedUrlPathLength(decoded_path.len()));
         }
+        let checksum = crc32::checksum_ieee(&decoded_path[0..64]).to_le_bytes();
+        if checksum[0..2] != decoded_path[64..66] {
+            return Err(Error::PathChecksum);
+        }
+
         let spend_public = RistrettoPublic::try_from(&decoded_path[0..32])?;
         let view_public = RistrettoPublic::try_from(&decoded_path[32..64])?;
 
@@ -220,7 +230,6 @@ impl TryFrom<&MobUrl> for PublicAddress {
                     })
                     .expect("fog scheme was rejected");
                 fog_url.set_path("");
-                // TODO: Perhaps we should preserve query parameters that are not "known" keys? Such as tls-override etc.
                 fog_url.set_query(None);
                 fog_url.set_fragment(None);
                 let fog_url = fog_url.into_string();
@@ -236,7 +245,16 @@ impl TryFrom<&MobUrl> for PublicAddress {
 
             // Probably the mob-url also has fog_authority_sig
             let sig_vec = if let Some(sig_str) = src.get_sig() {
-                base64::decode_config(&sig_str, base64::URL_SAFE).map_err(Error::FogAuthoritySig)?
+                let buffer = base64::decode_config(&sig_str, base64::URL_SAFE)
+                    .map_err(Error::FogAuthoritySig)?;
+                if buffer.len() < 2 {
+                    return Err(Error::UnexpectedFogAuthoritySigLength(buffer.len()));
+                }
+                let checksum = crc32::checksum_ieee(&buffer[0..buffer.len() - 2]).to_le_bytes();
+                if buffer[buffer.len() - 2..] != checksum[0..2] {
+                    return Err(Error::FogAuthoritySigChecksum);
+                }
+                (&buffer[0..buffer.len() - 2]).to_vec()
             } else {
                 b"".to_vec()
             };
@@ -252,6 +270,7 @@ impl TryFrom<&MobUrl> for PublicAddress {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 
     // Test that getting and setting works as expected
     #[test]
@@ -283,5 +302,34 @@ mod tests {
 
         assert_eq!(mob_url.get_memo(), Some("foobar".to_string()));
         assert_eq!(mob_url.as_ref(), "mob://example.com/1234?a=70&m=foobar");
+
+        mob_url.set_amount(50);
+
+        assert_eq!(mob_url.get_amount(), Some("50".to_string()));
+        assert_eq!(mob_url.as_ref(), "mob://example.com/1234?a=50&m=foobar");
+
+        assert_eq!(mob_url.get_report_id(), None);
+        mob_url.set_report_id(Some("99"));
+
+        assert_eq!(mob_url.get_report_id(), Some("99".to_string()));
+        assert_eq!(mob_url.as_ref(), "mob://example.com/1234?a=50&m=foobar#99");
+    }
+
+    // Test that pre-existing query-parameters in fog-url are discarded
+    #[test]
+    fn mob_url_query_param_tests() {
+        let a = RistrettoPrivate::try_from(&[1u8; 32]).unwrap();
+        let b = RistrettoPrivate::try_from(&[2u8; 32]).unwrap();
+
+        let addr = PublicAddress::new_with_fog(
+            &RistrettoPublic::from(&a),
+            &RistrettoPublic::from(&b),
+            "fog://example.com?tls-hostname=evil",
+            Default::default(),
+            Default::default(),
+        );
+        let mob_url = MobUrl::try_from(&addr).unwrap();
+        let addr2 = PublicAddress::try_from(&mob_url).unwrap();
+        assert_eq!(addr2.fog_report_url().unwrap(), "fog://example.com");
     }
 }
