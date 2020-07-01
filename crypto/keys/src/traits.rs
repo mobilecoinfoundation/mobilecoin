@@ -15,8 +15,8 @@ use failure::Fail;
 use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use schnorrkel::SignatureError;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 /// A collection of common errors for use by implementers
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Fail, Ord, PartialEq, PartialOrd, Serialize)]
@@ -47,7 +47,9 @@ impl From<LengthMismatch> for KeyError {
 }
 
 impl From<SignatureError> for KeyError {
-    fn from(_src: SignatureError) -> Self { KeyError::SchnorrkelError}
+    fn from(_src: SignatureError) -> Self {
+        KeyError::SchnorrkelError
+    }
 }
 
 /// A trait indicating that a key can be read/written as ASN.1 using the

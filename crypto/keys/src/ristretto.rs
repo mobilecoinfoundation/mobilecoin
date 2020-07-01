@@ -24,8 +24,8 @@ use mc_util_repr_bytes::{
     derive_serde_from_repr_bytes, derive_try_from_slice_from_repr_bytes, ReprBytes,
 };
 use rand_core::{CryptoRng, RngCore};
+use schnorrkel::{ExpansionMode, MiniSecretKey, PublicKey, SecretKey};
 use serde::{Deserialize, Serialize};
-use schnorrkel::{PublicKey, MiniSecretKey, ExpansionMode, SecretKey};
 use zeroize::Zeroize;
 
 /// A Ristretto-format private scalar
@@ -106,12 +106,17 @@ impl PrivateKey for RistrettoPrivate {
 impl FromRandom for RistrettoPrivate {
     fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> RistrettoPrivate {
         let mini_secret = MiniSecretKey::generate_with(csprng);
-        let secret = mini_secret.expand_to_keypair(ExpansionMode::Uniform).secret.clone();
+        let secret = mini_secret
+            .expand_to_keypair(ExpansionMode::Uniform)
+            .secret
+            .clone();
         // The scalar is the first 32 bytes in canonical representation
         let mut scalar_bytes: [u8; 32] = [0u8; 32];
         scalar_bytes[0..32].copy_from_slice(&secret.to_bytes()[0..32]);
         // FIXME: error handling
-        let scalar = Scalar::from_canonical_bytes(scalar_bytes).ok_or(KeyError::InvalidPrivateKey).expect("Could not get scalar from RistrettoPrivate");
+        let scalar = Scalar::from_canonical_bytes(scalar_bytes)
+            .ok_or(KeyError::InvalidPrivateKey)
+            .expect("Could not get scalar from RistrettoPrivate");
         Self(scalar)
     }
 }
@@ -213,7 +218,9 @@ impl ReprBytes for RistrettoPublic {
     }
 
     fn from_bytes(src: &GenericArray<u8, U32>) -> Result<Self, KeyError> {
-        Ok(Self(PublicKey::from_compressed(CompressedRistretto::from_slice(src.as_slice()))?))
+        Ok(Self(PublicKey::from_compressed(
+            CompressedRistretto::from_slice(src.as_slice()),
+        )?))
     }
 }
 
@@ -280,7 +287,8 @@ impl From<&RistrettoPrivate> for RistrettoPublic {
         bytes_slice[..32].copy_from_slice(&scalar.to_bytes());
 
         // We can construct the SecretKey directly from the Scalar
-        let secret = SecretKey::from_bytes(&bytes_slice).expect("Could not construct SecretKey from scalar bytes");
+        let secret = SecretKey::from_bytes(&bytes_slice)
+            .expect("Could not construct SecretKey from scalar bytes");
         Self(secret.to_public())
     }
 }
@@ -291,7 +299,8 @@ impl From<&RistrettoEphemeralPrivate> for RistrettoPublic {
         bytes_slice[..32].copy_from_slice(&private.0.to_bytes());
 
         // We can construct the SecretKey directly from the Scalar
-        let secret = SecretKey::from_bytes(&bytes_slice).expect("Could not construct SecretKey from scalar bytes");
+        let secret = SecretKey::from_bytes(&bytes_slice)
+            .expect("Could not construct SecretKey from scalar bytes");
         Self(secret.to_public())
     }
 }
