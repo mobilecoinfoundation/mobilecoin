@@ -71,6 +71,16 @@ version = "1.0.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "arrayref"
+version = "0.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "arrayvec"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -826,6 +836,7 @@ dependencies = [
  "mc-util-serial 0.4.0",
  "prost 0.6.1 (git+https://github.com/danburkert/prost?rev=6113789f70b69709820becba4242824b4fb3ffec)",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "schnorrkel 0.9.1 (git+https://github.com/sugargoat/schnorrkel?rev=60eedb2d3e005539052e1a2aef864bc78323c66c)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha2 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "signature 1.0.0-pre.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1285,6 +1296,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "schnorrkel"
+version = "0.9.1"
+source = "git+https://github.com/sugargoat/schnorrkel?rev=60eedb2d3e005539052e1a2aef864bc78323c66c#60eedb2d3e005539052e1a2aef864bc78323c66c"
+dependencies = [
+ "arrayref 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "arrayvec 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "curve25519-dalek 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "merlin 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sha2 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "subtle 2.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "zeroize 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "secrecy"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1612,6 +1638,8 @@ dependencies = [
 "checksum aho-corasick 0.7.8 (registry+https://github.com/rust-lang/crates.io-index)" = "743ad5a418686aad3b87fd14c43badd828cf26e214a00f92a384291cf22e1811"
 "checksum ansi_term 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ee49baf6cb617b853aa8d93bf420db2383fab46d314482ca2803b40d5fde979b"
 "checksum anyhow 1.0.26 (registry+https://github.com/rust-lang/crates.io-index)" = "7825f6833612eb2414095684fcf6c635becf3ce97fe48cf6421321e93bfbd53c"
+"checksum arrayref 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)" = "a4c527152e37cf757a3f78aae5a06fbeefdb07ccc535c980a3208ee3060dd544"
+"checksum arrayvec 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "cff77d8686867eceff3105329d4698d96c2391c176d5d03adc90c7389162b5b8"
 "checksum atty 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)" = "d9b39be18770d11421cdb1b9947a45dd3f37e93092cbf377614828a319d5fee8"
 "checksum autocfg 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)" = "1d49d90015b3c36167a20fe2810c5cd875ad504b39cff3d4eae7977e6b7c1cb2"
 "checksum autocfg 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f8aac770f1885fd7e387acedd76065302551364496e46b3dd00860b2f8359b9d"
@@ -1700,6 +1728,7 @@ dependencies = [
 "checksum rjson 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "5510dbde48c4c37bf69123b1f636b6dd5f8dffe1f4e358af03c46a4947dca219"
 "checksum rustc-hash 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 "checksum same-file 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)" = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
+"checksum schnorrkel 0.9.1 (git+https://github.com/sugargoat/schnorrkel?rev=60eedb2d3e005539052e1a2aef864bc78323c66c)" = "<none>"
 "checksum secrecy 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "9eb052cf770a381fa9a6ee63038ff9a0b11d30abb53be970672e950649ff0bfb"
 "checksum serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)" = "414115f25f818d7dfccec8ee535d76949ae78584fc4f79a6f45a904bf8ab4449"
 "checksum serde_cbor 0.11.1 (registry+https://github.com/rust-lang/crates.io-index)" = "1e18acfa2f90e8b735b2836ab8d538de304cbb6729a7360729ea5a895d15a622"
