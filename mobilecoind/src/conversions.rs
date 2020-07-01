@@ -15,7 +15,7 @@ use mc_transaction_core::{
     tx::{Tx, TxOut, TxOutConfirmationNumber},
 };
 use protobuf::RepeatedField;
-use std::{convert::TryFrom, iter::FromIterator, vec::Vec};
+use std::{convert::TryFrom, iter::FromIterator};
 
 impl From<&UnspentTxOut> for mc_mobilecoind_api::UnspentTxOut {
     fn from(src: &UnspentTxOut) -> Self {
