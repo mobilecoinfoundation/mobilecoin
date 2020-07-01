@@ -420,8 +420,10 @@ impl AccountKey {
 #[cfg(test)]
 mod account_key_tests {
     use super::*;
+    use core::convert::{TryFrom, TryInto};
     use rand::prelude::StdRng;
     use rand_core::SeedableRng;
+    use yaml_rust::{Yaml, YamlLoader};
 
     #[test]
     // Deserializing should recover a serialized a PublicAddress.
@@ -465,5 +467,97 @@ mod account_key_tests {
             expected_subaddress_spend_public,
             subaddress.spend_public_key
         );
+    }
+
+    #[test]
+    fn test_default_subaddr_keys_from_acct_priv_keys() {
+        let yaml = YamlLoader::load_from_str(include_str!(
+            "../../../test-data/transaction/account_keys/default_subaddr_keys_from_acct_priv_keys.yaml"
+        ))
+        .unwrap();
+
+        for test in yaml[0].clone() {
+            let view_private_key = RistrettoPrivate::try_from(
+                yaml_as_byte_array(&test["view_private_key"]).as_slice(),
+            )
+            .unwrap();
+            let spend_private_key = RistrettoPrivate::try_from(
+                yaml_as_byte_array(&test["spend_private_key"]).as_slice(),
+            )
+            .unwrap();
+
+            let account_key = AccountKey::new(&spend_private_key, &view_private_key);
+            let public_address = account_key.default_subaddress();
+            assert_eq!(
+                account_key.default_subaddress_view_private().to_bytes(),
+                yaml_as_byte_array(&test["subaddress_view_private_key"]).as_slice()
+            );
+            assert_eq!(
+                account_key.default_subaddress_spend_private().to_bytes(),
+                yaml_as_byte_array(&test["subaddress_spend_private_key"]).as_slice()
+            );
+            assert_eq!(
+                public_address.view_public_key().to_bytes(),
+                yaml_as_byte_array(&test["subaddress_view_public_key"]).as_slice()
+            );
+            assert_eq!(
+                public_address.spend_public_key().to_bytes(),
+                yaml_as_byte_array(&test["subaddress_spend_public_key"]).as_slice()
+            );
+        }
+    }
+
+    #[test]
+    fn test_subaddr_keys_from_acct_priv_keys() {
+        let yaml = YamlLoader::load_from_str(include_str!(
+            "../../../test-data/transaction/account_keys/subaddr_keys_from_acct_priv_keys.yaml"
+        ))
+        .unwrap();
+
+        for test in yaml[0].clone() {
+            let view_private_key = RistrettoPrivate::try_from(
+                yaml_as_byte_array(&test["view_private_key"]).as_slice(),
+            )
+            .unwrap();
+            let spend_private_key = RistrettoPrivate::try_from(
+                yaml_as_byte_array(&test["spend_private_key"]).as_slice(),
+            )
+            .unwrap();
+            let subaddress_index = test["subaddress_index"]
+                .as_i64()
+                .unwrap()
+                .try_into()
+                .unwrap();
+
+            let account_key = AccountKey::new(&spend_private_key, &view_private_key);
+            let public_address = account_key.subaddress(subaddress_index);
+            assert_eq!(
+                account_key
+                    .subaddress_view_private(subaddress_index)
+                    .to_bytes(),
+                yaml_as_byte_array(&test["subaddress_view_private_key"]).as_slice()
+            );
+            assert_eq!(
+                account_key
+                    .subaddress_spend_private(subaddress_index)
+                    .to_bytes(),
+                yaml_as_byte_array(&test["subaddress_spend_private_key"]).as_slice()
+            );
+            assert_eq!(
+                public_address.view_public_key().to_bytes(),
+                yaml_as_byte_array(&test["subaddress_view_public_key"]).as_slice()
+            );
+            assert_eq!(
+                public_address.spend_public_key().to_bytes(),
+                yaml_as_byte_array(&test["subaddress_spend_public_key"]).as_slice()
+            );
+        }
+    }
+
+    fn yaml_as_byte_array(yaml: &Yaml) -> Vec<u8> {
+        yaml.clone()
+            .into_iter()
+            .map(|elem| elem.as_i64().unwrap().try_into().unwrap())
+            .collect::<Vec<_>>()
     }
 }

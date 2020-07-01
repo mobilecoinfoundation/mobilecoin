@@ -30,4 +30,6 @@ curve25519-dalek = { version = "2.0", default-features = false, features = ["nig
 blake2 = { version = "0.8.1", default-features = false }
 
 [dev-dependencies]
+yaml-rust = "0.4"
+
 mc-util-test-helper = { path = "../../util/test-helper" }
