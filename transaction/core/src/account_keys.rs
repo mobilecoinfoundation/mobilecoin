@@ -9,6 +9,25 @@
 //! keys (A,B) directly with senders, users generate and share "subaddresses"
 //! (C_i, D_i) that are derived from the private keys (a,b) and an index i.
 //! We refer to (C_0, D_0)* as the "default subaddress" for account (a,b).
+//!
+//! Note about the PublicAddress Fog Authority Signature choice of Hash function:
+//!
+//! Schnorr signatures are proved to be secure when the nonce is truly uniformly random, however
+//! in practice it can happen that there is a defect in a random number generator that causes them
+//! not to be random, causing some high profile breaks. This observation informed RFC 6979, ed25519
+//! and much subsequent work.
+//!
+//! In this code, the nonce for the Schnorr signature is derived as SHA3(ristretto_private, message).
+//! This has the advantage of being deterministic -- for a given signing key and message there is
+//! only one nonce that will ever be used. And the nonce the we choose for a given message, is the
+//! result of secret-prefix SHA3. Under the cryptographic assumption that secret-prefix SHA3 is
+//! indistinguishable from a PRF, this is as good as choosing perfectly uniformly random nonces.
+//! In particular, we can say that, for adversarially chosen messages, and a uniformly random private
+//! key, the hashes should be hard to distinguish from independently random values. Note that we use
+//! Blake2b, which was one of the Sha3 finalists and was also explicitly designed to model a PRF.
+//!
+//! Please see DJB's ed25519 paper at this version which has the relevant remarks:
+//! http://ed25519.cr.yp.to/ed25519-20110926.pdf
 
 #![allow(non_snake_case)]
 
@@ -39,6 +58,9 @@ use schnorrkel::{signing_context, SecretKey, Signature};
 
 /// An account's "default address" is its zero^th subaddress.
 pub const DEFAULT_SUBADDRESS_INDEX: u64 = 0;
+
+/// The tag for the signature context
+pub const FOG_AUTHORITY_SIGNATURE_TAG: &[u8; 23] = b"Fog authority signature";
 
 /// A MobileCoin user's public subaddress.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Message, Clone, Digestible)]
@@ -385,7 +407,7 @@ impl AccountKey {
             let keypair = secret_key.to_keypair();
 
             // Context provides domain separation for signature
-            let ctx = signing_context(b"Fog authority signature");
+            let ctx = signing_context(FOG_AUTHORITY_SIGNATURE_TAG);
             let mut csprng: FixedRng = SeedableRng::from_seed(nonce);
             let sig: Signature =
                 keypair.sign_rng(ctx.bytes(&self.fog_authority_key_fingerprint), &mut csprng);
