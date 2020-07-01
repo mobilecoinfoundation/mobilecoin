@@ -31,8 +31,8 @@ Contents
 
 A mob url represents:
 - A mobilecoin *public address* (see `mc-transaction-core` struct `PublicAddress`).
-- Optionally, *an amount* in picomob requested to be sent to this address
-- Optionally, *a memo* indicating the reason to send this amount
+- Optionally, *an amount* in picomob (u64) requested to be sent to this address
+- Optionally, *a memo* (utf-8 string) indicating the reason to send this amount
 
 Specification
 =============
@@ -108,13 +108,13 @@ Examples
 A public address for an account without fog support. This is base-64 encoded Ristretto curve points.
 
 ```
-mob:///eCwRQ1riR1LTp8rpOMcn_rc3EajKx1EZ3cXV17SPDn2UyDJYXMl9TdQZoo5H3MDzTz14WBFVAARfGrXbMv8hGw==
+mob:///9i_xwzoihbGu5hLthygfLGi7K1sPFDmhPkq3KPmO-2p4kBwRg06ELfa-mMEnlTUT4RYJXUEizCfYB7RRHLgeEWfP
 ```
 
 A public address for an account with fog support.
 
 ```
-mob://fog.mobilecoin.signal.org/rmiEqq-34E3Fbm3hwxaYJtPZzu9THCBkQaqJDeZwuXG8mf2yOhmGoZmnKTu3--ZCj--5MdTwwCib2p7Dn3KTCg==?s=CQkJCQ%3D%3D
+mob://fog.mobilecoin.com/oGbA6juTWhUdfL6qNMocAGN96wNiZpZegP0TUjKXHEM-GYmM50bLJVeL6NgftIumjt8nwYw7MjEnQT7hCw9bVUgh?s=CQkJCfSo
 ```
 
 The fog hostname here is `fog.mobilecoin.signal.org` which indicates where to contact the fog report server.
@@ -126,7 +126,7 @@ The query parameter `?s=...` encodes the user's signature over the fog authority
 A payment request for an account with fog support
 
 ```
-mob://fog.diogenes.mobilecoin.com/krmSAg7MnM0fn-yTIjV6tHtRA7Zj2JRZ4pJ-_PcweTkAu7afknATa5hFwtc_Zvi8R6d36cnpMA0-inMbZHiqMQ==?s=CQkJCQ%3D%3D&a=666&m=2+baby+goats
+mob://fog.diogenes.mobilecoin.com/krmSAg7MnM0fn-yTIjV6tHtRA7Zj2JRZ4pJ-_PcweTkAu7afknATa5hFwtc_Zvi8R6d36cnpMA0-inMbZHiqMRqp?a=666&m=2+baby+goats&s=CQkJCfSo
 ```
 
 The fog hostname here is `fog.diogenes.mobilecoin.com`.
