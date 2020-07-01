@@ -234,11 +234,7 @@ impl RequestPayload {
         fog_report_url: &str,
         value: u64,
     ) -> Result<Self, Error> {
-        let mut result = RequestPayload::new_v1(
-            view_key,
-            spend_key,
-            fog_report_url,
-        )?;
+        let mut result = RequestPayload::new_v1(view_key, spend_key, fog_report_url)?;
         result.value = value;
         result.version = 2;
         Ok(result)
@@ -252,12 +248,7 @@ impl RequestPayload {
         value: u64,
         memo: &str,
     ) -> Result<Self, Error> {
-        let mut result = RequestPayload::new_v2(
-            view_key,
-            spend_key,
-            fog_report_url,
-            value,
-        )?;
+        let mut result = RequestPayload::new_v2(view_key, spend_key, fog_report_url, value)?;
         validate_memo(memo)?;
         result.memo = memo.to_owned();
         result.version = 3;
@@ -274,13 +265,7 @@ impl RequestPayload {
         fog_report_id: &str,
         fog_authority_sig: &[u8],
     ) -> Result<Self, Error> {
-        let mut result = RequestPayload::new_v3(
-            view_key,
-            spend_key,
-            fog_report_url,
-            value,
-            memo,
-        )?;
+        let mut result = RequestPayload::new_v3(view_key, spend_key, fog_report_url, value, memo)?;
         result.fog_report_id = fog_report_id.to_owned();
         result.fog_authority_sig = fog_authority_sig.to_vec();
         result.version = 4;
