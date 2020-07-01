@@ -716,6 +716,27 @@ mod test {
         let data = VerificationReportData::try_from(&report)
             .expect("Could not parse IAS verification report");
 
+        let timestamp = data.parse_timestamp().expect("failed parsing timestamp");
+        assert_eq!(timestamp.to_rfc3339(), "2019-06-19T22:11:17.616333+00:00");
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "failed parsing timestamp: TimestampParse(\"invalid\", \"input contains invalid characters\")"
+    )]
+    fn test_parse_timestamp_with_invalid_timestamp() {
+        let report = VerificationReport {
+            sig: VerificationSignature::default(),
+            chain: Vec::default(),
+            http_body: String::from(IAS_WITH_PIB),
+        };
+
+        let mut data = VerificationReportData::try_from(&report)
+            .expect("Could not parse IAS verification report");
+
+        data.timestamp = "invalid".to_string();
+
+        // This is expected to fail.
         let _timestamp = data.parse_timestamp().expect("failed parsing timestamp");
     }
 }
