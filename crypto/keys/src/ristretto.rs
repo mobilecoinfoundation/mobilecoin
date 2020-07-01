@@ -109,7 +109,7 @@ impl FromRandom for RistrettoPrivate {
         let secret = mini_secret.expand_to_keypair(ExpansionMode::Uniform).secret.clone();
         // The scalar is the first 32 bytes in canonical representation
         let mut scalar_bytes: [u8; 32] = [0u8; 32];
-        scalar_bytes[..32].copy_from_slice(&secret.to_bytes()[..32]);
+        scalar_bytes[0..32].copy_from_slice(&secret.to_bytes()[0..32]);
         // FIXME: error handling
         let scalar = Scalar::from_canonical_bytes(scalar_bytes).ok_or(KeyError::InvalidPrivateKey).expect("Could not get scalar from RistrettoPrivate");
         Self(scalar)
@@ -277,7 +277,7 @@ impl From<&RistrettoPrivate> for RistrettoPublic {
     fn from(private: &RistrettoPrivate) -> Self {
         let scalar: &Scalar = private.as_ref();
         let mut bytes_slice = [0u8; 64];
-        bytes_slice[..64].copy_from_slice(&scalar.to_bytes());
+        bytes_slice[..32].copy_from_slice(&scalar.to_bytes());
 
         // We can construct the SecretKey directly from the Scalar
         // FIXME: do we need to ensure that we include the Nonce?
@@ -288,10 +288,13 @@ impl From<&RistrettoPrivate> for RistrettoPublic {
 
 impl From<&RistrettoEphemeralPrivate> for RistrettoPublic {
     fn from(private: &RistrettoEphemeralPrivate) -> Self {
-        let mut bytes_slice = [0u8; 32];
+        let mut bytes_slice = [0u8; 64];
         bytes_slice[..32].copy_from_slice(&private.0.to_bytes());
-        let mini_secret = MiniSecretKey::from_bytes(&bytes_slice).expect("Could not create MiniSecretKey from bytes");
-        Self(mini_secret.expand_to_keypair(ExpansionMode::Uniform).public)
+
+        // We can construct the SecretKey directly from the Scalar
+        // FIXME: do we need to ensure that we include the Nonce?
+        let secret = SecretKey::from_bytes(&bytes_slice).expect("Could not construct SecretKey from scalar bytes");
+        Self(secret.to_public())
     }
 }
 

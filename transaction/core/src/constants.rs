@@ -36,13 +36,13 @@ cfg_if::cfg_if! {
         ///
         ///   let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         ///   let foundation_account_key = AccountKey::random(&mut rng);
-        pub const FEE_SPEND_PUBLIC_KEY: [u8; 32] = [38, 181, 7, 198, 49, 36, 162, 245, 233, 64, 180, 251, 137, 228, 178, 187, 10, 32, 120, 237, 12, 142, 85, 26, 213, 146, 104, 185, 100, 110, 194, 65];
+        pub const FEE_SPEND_PUBLIC_KEY: [u8; 32] = [148, 59, 218, 190, 201, 192, 223, 42, 109, 112, 217, 83, 6, 121, 195, 4, 17, 136, 18, 30, 159, 4, 177, 12, 119, 238, 54, 220, 167, 212, 4, 117];
 
         /// Testnet fee recipient view public key.
-        pub const FEE_VIEW_PUBLIC_KEY: [u8; 32] = [82, 34, 161, 233, 174, 50, 210, 28, 35, 17, 74, 92, 230, 187, 57, 224, 203, 86, 174, 163, 80, 212, 97, 157, 67, 177, 32, 112, 97, 177, 3, 70];
+        pub const FEE_VIEW_PUBLIC_KEY: [u8; 32] = [150, 99, 44, 152, 218, 46, 166, 167, 51, 163, 9, 41, 171, 78, 145, 80, 231, 248, 163, 94, 17, 238, 231, 161, 238, 11, 105, 177, 104, 12, 236, 18];
 
         /// The private key is only used by tests. This does not need to be specified for main net.
-        pub const FEE_VIEW_PRIVATE_KEY: [u8; 32] = [21, 152, 99, 251, 140, 2, 50, 154, 2, 171, 188, 60, 163, 243, 204, 195, 241, 78, 204, 85, 202, 52, 250, 242, 215, 247, 175, 59, 121, 185, 111, 8];
+        pub const FEE_VIEW_PRIVATE_KEY: [u8; 32] = [202, 221, 141, 9, 53, 168, 1, 178, 106, 217, 81, 136, 44, 237, 27, 116, 156, 245, 154, 71, 174, 175, 0, 33, 84, 68, 77, 24, 214, 13, 92, 9];
 
     } else if #[cfg(feature="main-net-fee-keys")] {
         compile_error!("main net keys are not available yet");
