@@ -129,7 +129,7 @@ impl fmt::Debug for RequestPayload {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "version:{}, vpk:{}, spk:{}, fog:{}, fog-sig:{}, fog-report-key:{} value:{}, memo:{}",
+            "version:{}, vpk:{}, spk:{}, fog:{}, fog-sig:{}, fog-id:{} value:{}, memo:{}",
             self.version,
             hex_fmt::HexFmt(&self.view_public_key),
             hex_fmt::HexFmt(&self.spend_public_key),
@@ -281,7 +281,7 @@ impl RequestPayload {
             value,
             memo,
         )?;
-        result.fog_report_key = fog_report_key.to_owned();
+        result.fog_report_id = fog_report_id.to_owned();
         result.fog_authority_sig = fog_authority_sig.to_vec();
         result.version = 4;
         Ok(result)
@@ -300,8 +300,8 @@ impl RequestPayload {
     /// [F+9..M=(F+9+m)]  memo as utf-8 encoded string (< 256 bytes)
     /// [FIXME]           length of fog_authority_sig
     /// [FIXME]           fog_authority_sig bytes (< 256 bytes)
-    /// [FIXME]           length of fog_report_key
-    /// [FIXME]           fog_report_key bytes (< 256 bytes)
+    /// [FIXME]           length of fog_report_id
+    /// [FIXME]           fog_report_id bytes (< 256 bytes)
     /// [M..]             future version data (ignored)
     pub fn encode(&self) -> String {
         let mut bytes_vec = Vec::new();
