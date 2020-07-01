@@ -46,7 +46,6 @@ impl From<LengthMismatch> for KeyError {
     }
 }
 
-// FIXME: wrap the SignatureError, or match on it
 impl From<SignatureError> for KeyError {
     fn from(_src: SignatureError) -> Self { KeyError::SchnorrkelError}
 }
