@@ -2,8 +2,8 @@
 
 //! mob:// URL support.
 
-#[deny(missing_docs)]
-#[deny(unsafe_code)]
+#![deny(missing_docs)]
+#![deny(unsafe_code)]
 extern crate alloc;
 
 mod error;
