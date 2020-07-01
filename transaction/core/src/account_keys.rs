@@ -385,7 +385,7 @@ impl AccountKey {
             fog_authority_sig: Default::default(),
         };
 
-        // NOTE: The fog_authority_sig is deterministic due to using the private key hash as the rng seed
+        // FIXME: MC-1614 Pending cryptographer review
         if !self.fog_report_url.is_empty() {
             // Construct the fog authority signature over the fingerprint using the view privkey
             let view_private = self.subaddress_view_private(index);
@@ -405,6 +405,7 @@ impl AccountKey {
 
             // Context provides domain separation for signature
             let ctx = signing_context(FOG_AUTHORITY_SIGNATURE_TAG);
+            // NOTE: The fog_authority_sig is deterministic due to using the above hash as the rng seed
             let mut csprng: FixedRng = SeedableRng::from_seed(nonce.into());
             let sig: Signature =
                 keypair.sign_rng(ctx.bytes(&self.fog_authority_key_fingerprint), &mut csprng);

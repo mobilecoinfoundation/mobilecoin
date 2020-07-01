@@ -92,7 +92,7 @@ mod tests {
             })
             .unwrap();
 
-        assert_eq!(mob_url.as_ref(), "mob://example.com/9i_xwzoihbGu5hLthygfLGi7K1sPFDmhPkq3KPmO-2p4kBwRg06ELfa-mMEnlTUT4RYJXUEizCfYB7RRHLgeEWfP?s=CQkJCfSo");
+        assert_eq!(mob_url.as_ref(), "mob://example.com/9i_xwzoihbGu5hLthygfLGi7K1sPFDmhPkq3KPmO-2p4kBwRg06ELfa-mMEnlTUT4RYJXUEizCfYB7RRHLgeEWfP?s=mJucc0ECqL7xidtMmocgsH3Ebu4nyMGnB6C5cHM62naVg7X1o8OtvgCVb7jxhZB2-_vM4ZSDIVrV4QmuXNbUhSbl");
 
         let payload2 = PaymentRequest::try_from(&mob_url).unwrap();
 
@@ -150,7 +150,7 @@ mod tests {
             })
             .unwrap();
 
-        assert_eq!(mob_url.as_ref(), "mob://fog.mobilecoin.com/oGbA6juTWhUdfL6qNMocAGN96wNiZpZegP0TUjKXHEM-GYmM50bLJVeL6NgftIumjt8nwYw7MjEnQT7hCw9bVUgh?a=777&m=2+baby+goats&s=CQkJCfSo#0");
+        assert_eq!(mob_url.as_ref(), "mob://fog.mobilecoin.com/oGbA6juTWhUdfL6qNMocAGN96wNiZpZegP0TUjKXHEM-GYmM50bLJVeL6NgftIumjt8nwYw7MjEnQT7hCw9bVUgh?a=777&m=2+baby+goats&s=-ry4OlNUCMW1o8tZ188x4I8ppwTPik7t5jRxALmGDhB6hbitNs5Wx5W9go-BPkyieM_NbFVAlP848faDVXEFjAm1#0");
 
         let payload2 = PaymentRequest::try_from(&mob_url).unwrap();
 
@@ -181,7 +181,7 @@ mod tests {
             })
             .unwrap();
 
-        assert_eq!(mob_url.as_ref(), "mob://fog.mobilecoin.com/oGbA6juTWhUdfL6qNMocAGN96wNiZpZegP0TUjKXHEM-GYmM50bLJVeL6NgftIumjt8nwYw7MjEnQT7hCw9bVUgh?a=777&m=%D9%84%D8%B3%D9%84%D8%A7%D9%85+%D8%B9%D9%84%D9%8A%D9%83%D9%85&s=CQkJCfSo#0");
+        assert_eq!(mob_url.as_ref(), "mob://fog.mobilecoin.com/oGbA6juTWhUdfL6qNMocAGN96wNiZpZegP0TUjKXHEM-GYmM50bLJVeL6NgftIumjt8nwYw7MjEnQT7hCw9bVUgh?a=777&m=%D9%84%D8%B3%D9%84%D8%A7%D9%85+%D8%B9%D9%84%D9%8A%D9%83%D9%85&s=-ry4OlNUCMW1o8tZ188x4I8ppwTPik7t5jRxALmGDhB6hbitNs5Wx5W9go-BPkyieM_NbFVAlP848faDVXEFjAm1#0");
 
         let payload2 = PaymentRequest::try_from(&mob_url).unwrap();
 

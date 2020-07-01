@@ -61,8 +61,8 @@ fn test_url_encoding() {
         let payload = PaymentRequest::from(addr);
         let encoded = MobUrl::try_from(&payload).unwrap();
         let encoded_str: &str = encoded.as_ref();
-        assert_eq!("mob://fog.mobilecoin.signal.org/rmiEqq-34E3Fbm3hwxaYJtPZzu9THCBkQaqJDeZwuXG8mf2yOhmGoZmnKTu3--ZCj--5MdTwwCib2p7Dn3KTCl6E?s=CQkJCfSo", encoded_str);
-        assert_eq!(131, encoded_str.len());
+        assert_eq!("mob://fog.mobilecoin.signal.org/rmiEqq-34E3Fbm3hwxaYJtPZzu9THCBkQaqJDeZwuXG8mf2yOhmGoZmnKTu3--ZCj--5MdTwwCib2p7Dn3KTCl6E?s=KovIno-JXUsQuTSmUj4MDowMENWBpAbrHcT61x72MWNc24hBmdiRlPtpuxSdju_eaMXKeSrLLHjP7VltAuI_hP1f", encoded_str);
+        assert_eq!(211, encoded_str.len());
 
         let b58_payload = RequestPayload::new_v1(
             &addr.spend_public_key().to_bytes(),
@@ -73,8 +73,8 @@ fn test_url_encoding() {
         )
         .unwrap();
         let b58_encoded = "mob:///".to_string() + &b58_payload.encode();
-        assert_eq!("mob:///5PFsXuSi9PUaJueuB4KxgWYiLXdL6EyvLmFGYiJ4Y5eGNJjHcZUraPTT1jTFd5QR7TXCTyYt5cLLxntmnvQnvr2Xq6czwZwGBMuhPEX6yoBFY2D1CeqGhQrmqcCGVm6y3abyVAL6rfrhbfe5SyBM", b58_encoded);
-        assert_eq!(155, b58_encoded.len());
+        assert_eq!("mob:///49XpEmD6GpoQtxBRMwuUd5LWqaMFd939QPAh4EPw9rndk637NwBYY9LRvAWAEafeRoPoQ9ZFSC44Epo547c4gtnb9V2ouXLGYGm8uVS5EjYrMaCpTeP2DLaxiJsxHd2qFTJi1qbftNXfKf4nQNy1CtaTPDytvR1cFT58WcVGpyUPX1Qw3qf5nznBjxZUE3fCQcmZXbqvfie8xAjXRHaP5RBn7s7CQBRqgTnmSX", b58_encoded);
+        assert_eq!(237, b58_encoded.len());
     }
 
     {
@@ -86,8 +86,8 @@ fn test_url_encoding() {
         };
         let encoded = MobUrl::try_from(&payload).unwrap();
         let encoded_str: &str = encoded.as_ref();
-        assert_eq!("mob://fog.mobilecoin.signal.org/rmiEqq-34E3Fbm3hwxaYJtPZzu9THCBkQaqJDeZwuXG8mf2yOhmGoZmnKTu3--ZCj--5MdTwwCib2p7Dn3KTCl6E?a=666&m=2+baby+goats&s=CQkJCfSo", encoded_str);
-        assert_eq!(152, encoded_str.len());
+        assert_eq!("mob://fog.mobilecoin.signal.org/rmiEqq-34E3Fbm3hwxaYJtPZzu9THCBkQaqJDeZwuXG8mf2yOhmGoZmnKTu3--ZCj--5MdTwwCib2p7Dn3KTCl6E?a=666&m=2+baby+goats&s=KovIno-JXUsQuTSmUj4MDowMENWBpAbrHcT61x72MWNc24hBmdiRlPtpuxSdju_eaMXKeSrLLHjP7VltAuI_hP1f", encoded_str);
+        assert_eq!(232, encoded_str.len());
 
         let b58_payload = RequestPayload::new_v3(
             &addr.spend_public_key().to_bytes(),
@@ -100,8 +100,8 @@ fn test_url_encoding() {
         )
         .unwrap();
         let b58_encoded = "mob:///".to_string() + &b58_payload.encode();
-        assert_eq!("mob:///2iXQ1GUJPLuKZvKhGeCMDQdM4VsMvGNK3tVm7Kf68Hohf7Yhz6zigcDrh9x43PudHp4y5L5djNSy4rKRJtmEV8mHYm7Nt6b8p1NuNjZqV72qtru1uDgVgzmSqXAYS8wgXteqQBqnvQwE71ZranhPcCL1of38Tgz4J3z8Hc8ckjBmH9cnN", b58_encoded);
-        assert_eq!(184, b58_encoded.len());
+        assert_eq!("mob:///2EdRJD64CAZ3T8QnbVT9fQe4BjmrKACEyzDmui5yWc2q3ZfjiCkusBn9kjFquJuDMJVJsYwqFGeXk8spmn33RFXyvGNTAZnTXA4AtjrYbx2kLkLySPi7tz17YSLtmpb5FGG9B3iGsA16SvKsiXj6dkvaHaddDKdHVrwo86uveUka36R2vaaTS4uzCxKnBPXwj7fB72dYY6yefjCZYGWAsqJbjNZ6tv8hvi8qB9tUYwKq21jHGyJQwaw63V1DWiXZCPk", b58_encoded);
+        assert_eq!(266, b58_encoded.len());
     }
 
     {
@@ -109,7 +109,7 @@ fn test_url_encoding() {
         let payload = PaymentRequest::from(addr);
         let encoded = MobUrl::try_from(&payload).unwrap();
         let encoded_str: &str = encoded.as_ref();
-        assert_eq!("mob://fog.diogenes.mobilecoin.com/krmSAg7MnM0fn-yTIjV6tHtRA7Zj2JRZ4pJ-_PcweTkAu7afknATa5hFwtc_Zvi8R6d36cnpMA0-inMbZHiqMRqp?s=CQkJCfSo", encoded_str);
+        assert_eq!("mob://fog.diogenes.mobilecoin.com/krmSAg7MnM0fn-yTIjV6tHtRA7Zj2JRZ4pJ-_PcweTkAu7afknATa5hFwtc_Zvi8R6d36cnpMA0-inMbZHiqMRqp?s=SC9cs96Ry9z4Js_VXkC35IMnTjpQCtEujN8D-R15qTsJloN2pZ75BbSzGtQJ99kBt8mM2YBhlTW9wuCfzHU3gJmx", encoded_str);
 
         let b58_payload = RequestPayload::new_v1(
             &addr.spend_public_key().to_bytes(),
@@ -120,7 +120,7 @@ fn test_url_encoding() {
         )
         .unwrap();
         let b58_encoded = "mob:///".to_string() + &b58_payload.encode();
-        assert_eq!("mob:///2M12NoHpvM5XMLtr4DYvdDvt9wUv1AsC2BbxCQD9ZsdanGbCA1V1wpXszfyYXh3Hr7f3RqzX3xZ1vtFJTkdinGYqJZCCbT8NqpEDk8S79ifZwgjjqZ63xzP4jH2rcgbLK9q1u2TdS1DyuwpH1857LHd", b58_encoded);
+        assert_eq!("mob:///B5bnf3HTWMZLpvVse4aKVr3UWqZdV1FwHaUcx9wTVk5FqtAwKGQswhnZj5nFz8UmVNY1RSHsgYrfKWyf37rvg4eSBobaBryzo32i7k3ksi4wwiFRbdLhM2yECpGLMqox7YhWdLyGTHozgB1udkccUmjURQhy4h8ZdedtXntyNAidgbhUetYdawrygn6Y9JnwafZU8jyoKZj3kUAAs7xqy45BeBd41nXaQguz9X6P", b58_encoded);
 
         assert!(encoded_str.len() < b58_encoded.len());
     }
@@ -134,8 +134,8 @@ fn test_url_encoding() {
         };
         let encoded = MobUrl::try_from(&payload).unwrap();
         let encoded_str: &str = encoded.as_ref();
-        assert_eq!("mob://fog.diogenes.mobilecoin.com/krmSAg7MnM0fn-yTIjV6tHtRA7Zj2JRZ4pJ-_PcweTkAu7afknATa5hFwtc_Zvi8R6d36cnpMA0-inMbZHiqMRqp?a=666&m=2+baby+goats&s=CQkJCfSo", encoded_str);
-        assert_eq!(154, encoded_str.len());
+        assert_eq!("mob://fog.diogenes.mobilecoin.com/krmSAg7MnM0fn-yTIjV6tHtRA7Zj2JRZ4pJ-_PcweTkAu7afknATa5hFwtc_Zvi8R6d36cnpMA0-inMbZHiqMRqp?a=666&m=2+baby+goats&s=SC9cs96Ry9z4Js_VXkC35IMnTjpQCtEujN8D-R15qTsJloN2pZ75BbSzGtQJ99kBt8mM2YBhlTW9wuCfzHU3gJmx", encoded_str);
+        assert_eq!(234, encoded_str.len());
 
         let b58_payload = RequestPayload::new_v3(
             &addr.spend_public_key().to_bytes(),
@@ -148,7 +148,7 @@ fn test_url_encoding() {
         )
         .unwrap();
         let b58_encoded = "mob:///".to_string() + &b58_payload.encode();
-        assert_eq!("mob:///SaxbkSaDTRXWa6r5Ccfpu5FpHp8JwHtvXbwyvNbGde4YioYMWAJnT3zJZVCxGYvjWdZmBv37EMVFuJjYycKwqyV9J7MjfzYDZgiMYzzBmM74pJZs7cDD92b3Dj613AkKVgsbRCJ1tcj7zLzwVtMoocra7evyxRVHJgwiasazJV5Jgxwan5G", b58_encoded);
-        assert_eq!(186, b58_encoded.len());
+        assert_eq!("mob:///GTzg6TLXXx2WiSWBkSwH9KC5qof4R7iMZZvjhTPcT52wWDcoqxZhVFzBjUKi8t6m7TwyLRJWjq2jaLv58QJB6dfhZe1FLwzaMKYi8ibXqvCG6DEJ7YJXGUsL7RNN8ife3otBVaUReYaTMjHGihCpfppKGmHy2yzetAmwgPkqHkLQaTjGN12U8RU4n6gkNpawX87wBP9UZxA1zphZdRpSZwDNZJqSgmf4kcanY7sf6dVaqdTuVgBUuDRx93Nog9PK16NJW", b58_encoded);
+        assert_eq!(268, b58_encoded.len());
     }
 }
