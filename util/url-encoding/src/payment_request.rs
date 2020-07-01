@@ -159,6 +159,37 @@ mod tests {
 
     // Test an example unicode request payload being parsed to mob url
     #[test]
+    fn example_unicode_fog_payload() {
+        let acct = AccountKey::new_with_fog(
+            &RistrettoPrivate::try_from(&[0u8; 32]).unwrap(),
+            &RistrettoPrivate::try_from(&[1u8; 32]).unwrap(),
+            "fog://fog.mobilecoin.com".to_string(),
+            0.to_string(),
+            b"deadbeef".to_vec(),
+        );
+
+        let addr = acct.default_subaddress();
+
+        let mut payload = PaymentRequest::from(&addr);
+
+        payload.amount = Some(777);
+        payload.memo = Some("لسلام عليكم".to_owned());
+
+        let mob_url = MobUrl::try_from(&payload)
+            .map_err(|err| {
+                panic!("Error when decoding payload {:?}: {}", payload, err);
+            })
+            .unwrap();
+
+        assert_eq!(mob_url.as_ref(), "mob://fog.mobilecoin.com/oGbA6juTWhUdfL6qNMocAGN96wNiZpZegP0TUjKXHEM-GYmM50bLJVeL6NgftIumjt8nwYw7MjEnQT7hCw9bVUgh?a=777&m=%D9%84%D8%B3%D9%84%D8%A7%D9%85+%D8%B9%D9%84%D9%8A%D9%83%D9%85&s=CQkJCfSo#0");
+
+        let payload2 = PaymentRequest::try_from(&mob_url).unwrap();
+
+        assert_eq!(payload, payload2);
+    }
+
+    // Test an example unicode request payload being parsed to mob url
+    #[test]
     fn roundtrip_example_fog_payload_unicode() {
         for memo in &[
             String::from("السلام عليكم"),
