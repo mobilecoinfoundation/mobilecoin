@@ -45,7 +45,9 @@ impl Watcher {
 
     /// The lowest next block we need to try and sync.
     pub fn lowest_next_block_to_sync(&self) -> Result<u64, WatcherError> {
-        let last_synced = self.watcher_db.last_synced_blocks()?;
+        let last_synced = self
+            .watcher_db
+            .last_synced_blocks(&self.transactions_fetcher.source_urls)?;
         Ok(last_synced
             .values()
             .map(|last_synced_block| match last_synced_block {
@@ -123,7 +125,9 @@ impl Watcher {
 
         loop {
             // Get the last synced block for each URL we are tracking.
-            let mut last_synced = self.watcher_db.last_synced_blocks()?;
+            let mut last_synced = self
+                .watcher_db
+                .last_synced_blocks(&self.transactions_fetcher.source_urls)?;
 
             // Filter the list to only contain URLs we still need to sync from.
             if let Some(max_block_height) = max_block_height {
