@@ -23,6 +23,7 @@ use crate::{
     blake2b_256::Blake2b256,
     domain_separators::TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG,
     encrypted_fog_hint::EncryptedFogHint,
+    get_tx_out_shared_secret,
     onetime_keys::{compute_shared_secret, compute_tx_pubkey, create_onetime_public_key},
     range::Range,
     ring_signature::{KeyImage, SignatureRctBulletproofs},
@@ -406,6 +407,16 @@ impl TxOutConfirmationNumber {
     /// Copies self into a new Vec.
     pub fn to_vec(&self) -> Vec<u8> {
         self.0.to_vec()
+    }
+
+    pub fn validate(
+        &self,
+        tx_pubkey: &RistrettoPublic,
+        view_private_key: &RistrettoPrivate,
+    ) -> bool {
+        let shared_secret = get_tx_out_shared_secret(view_private_key, tx_pubkey);
+        let calculated_confirmation = TxOutConfirmationNumber::from(&shared_secret);
+        calculated_confirmation == *self
     }
 }
 
