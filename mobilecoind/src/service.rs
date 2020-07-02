@@ -380,7 +380,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         let payload = RequestPayload::new_v3(
             &view_key,
             &spend_key,
-            "", // mobilecoind does not support fog
+            receiver.fog_report_url().unwrap_or(&""),
+            receiver.fog_report_id().unwrap_or(&""),
+            receiver.fog_authority_sig().unwrap_or(&[]),
             request.get_value(),
             request.get_memo(),
         )
