@@ -241,7 +241,6 @@ pub mod transaction_builder_tests {
     use mc_transaction_core::{
         account_keys::{AccountKey, DEFAULT_SUBADDRESS_INDEX},
         constants::{MAX_INPUTS, MAX_OUTPUTS},
-        get_tx_out_shared_secret,
         onetime_keys::*,
         ring_signature::KeyImage,
         tx::TxOutMembershipProof,
@@ -417,12 +416,7 @@ pub mod transaction_builder_tests {
         // The output should have the correct value and confirmation number
         {
             let public_key = RistrettoPublic::try_from(&output.public_key).unwrap();
-            let shared_secret = get_tx_out_shared_secret(recipient.view_private_key(), &public_key);
-            let (output_value, _blinding) = output.amount.get_value(&shared_secret).unwrap();
-            assert_eq!(output_value, value - BASE_FEE);
-            let calculated_confirmation = TxOutConfirmationNumber::from(&shared_secret);
-
-            assert_eq!(confirmation, calculated_confirmation);
+            assert!(confirmation.validate(&public_key, &recipient.view_private_key()));
         }
 
         // The transaction should have a valid signature.
