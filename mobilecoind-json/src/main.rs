@@ -423,6 +423,7 @@ fn check_transfer_status(
         mc_mobilecoind_api::TxStatus::Unknown => "unknown",
         mc_mobilecoind_api::TxStatus::Verified => "verified",
         mc_mobilecoind_api::TxStatus::TombstoneBlockExceeded => "failed",
+        mc_mobilecoind_api::TxStatus::InvalidConfirmationNumber => "invalid_confirmation",
     };
 
     Ok(Json(JsonStatusResponse {
