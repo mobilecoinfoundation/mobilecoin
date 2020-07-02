@@ -9,7 +9,9 @@ use crate::{
     epid_group_id::{EpidGroupId, EPID_GROUP_ID_SIZE},
     quote_sign::QuoteSign,
 };
-use alloc::{alloc::Layout, vec::Vec};
+use alloc::{alloc::Layout, string::ToString, vec::Vec};
+#[cfg(feature = "use_prost")]
+use bytes::{Buf, BufMut};
 use core::{
     convert::{TryFrom, TryInto},
     fmt::{Debug, Display, Formatter, Result as FmtResult},
@@ -26,6 +28,11 @@ use mc_util_encodings::{
     Error as EncodingError, FromX64, IntelLayout, ToX64, INTEL_U16_SIZE, INTEL_U32_SIZE,
 };
 use mc_util_repr_bytes::ReprBytes;
+#[cfg(feature = "use_prost")]
+use prost::{
+    encoding::{self, DecodeContext, WireType},
+    DecodeError, Message,
+};
 #[cfg(feature = "use_serde")]
 use serde::{
     de::{Error as DeserializeError, SeqAccess, Visitor},
@@ -404,6 +411,48 @@ impl IntelLayout for Quote {
 
     fn intel_size(&self) -> usize {
         QUOTE_MIN_SIZE + self.signature_len() as usize
+    }
+}
+
+/// A custom implementation of protobuf serialization as a message with a single opaque byte
+/// structure.
+///
+/// Unfortunately we can't just use the ReprBytes macros here, because our data is variable length.
+#[cfg(feature = "use_prost")]
+impl Message for Quote {
+    fn encode_raw<B>(&self, buf: &mut B)
+    where
+        B: BufMut,
+    {
+        encoding::bytes::encode(1, &self.to_x64_vec(), buf)
+    }
+
+    fn merge_field<B>(
+        &mut self,
+        tag: u32,
+        wire_type: WireType,
+        buf: &mut B,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError>
+    where
+        B: Buf,
+    {
+        if tag == 1 {
+            let mut vbuf = Vec::new();
+            encoding::bytes::merge(wire_type, &mut vbuf, buf, ctx)?;
+            *self = Self::from_x64(&vbuf[..]).map_err(|e| DecodeError::new(e.to_string()))?;
+            Ok(())
+        } else {
+            encoding::skip_field(wire_type, tag, buf, ctx)
+        }
+    }
+
+    fn encoded_len(&self) -> usize {
+        self.intel_size()
+    }
+
+    fn clear(&mut self) {
+        self.0.clear();
     }
 }
 

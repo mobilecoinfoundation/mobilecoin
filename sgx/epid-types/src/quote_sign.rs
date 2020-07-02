@@ -27,6 +27,12 @@ pub enum QuoteSign {
     Linkable = SGX_LINKABLE_SIGNATURE,
 }
 
+impl Default for QuoteSign {
+    fn default() -> QuoteSign {
+        QuoteSign::Unlinkable
+    }
+}
+
 macro_rules! _impl_conversions {
     ($($numeric:ty;)*) => {$(
         impl From<QuoteSign> for $numeric {

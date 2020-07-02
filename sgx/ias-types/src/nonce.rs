@@ -9,8 +9,12 @@ use core::{
 use hex::{FromHex, FromHexError};
 use hex_fmt::HexFmt;
 use mc_util_from_random::FromRandom;
+#[cfg(feature = "use_prost")]
+use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
+#[cfg(feature = "use_serde")]
+use mc_util_repr_bytes::derive_serde_from_repr_bytes;
+use mc_util_repr_bytes::{derive_repr_bytes_from_as_ref_and_try_from, typenum::U16};
 use rand_core::{CryptoRng, RngCore};
-use typenum::U16;
 
 const IAS_NONCE_SIZE: usize = 16;
 
@@ -23,10 +27,13 @@ const IAS_NONCE_SIZE: usize = 16;
 #[repr(transparent)]
 pub struct Nonce([u8; IAS_NONCE_SIZE]);
 
-mc_util_repr_bytes::derive_repr_bytes_from_as_ref_and_try_from!(Nonce, U16);
+derive_repr_bytes_from_as_ref_and_try_from!(Nonce, U16);
 
-#[cfg(feature = "serde")]
-mc_util_repr_bytes::derive_serde_from_repr_bytes!(Nonce);
+#[cfg(feature = "use_prost")]
+derive_prost_message_from_repr_bytes!(Nonce);
+
+#[cfg(feature = "use_serde")]
+derive_serde_from_repr_bytes!(Nonce);
 
 impl AsRef<[u8]> for Nonce {
     fn as_ref(&self) -> &[u8] {
