@@ -1,6 +1,5 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-use lazy_static;
 use mc_util_metrics::{Histogram, IntCounter, IntGauge, OpMetrics};
 use prometheus::{
     core::{Collector, Desc},

@@ -1,8 +1,5 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-#![feature(wait_timeout_until)]
-#![feature(wait_until)]
-
 mod counters;
 mod ledger_sync_error;
 mod ledger_sync_service;

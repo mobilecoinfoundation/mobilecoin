@@ -14,14 +14,12 @@ use crate::{
     sync::SyncThread,
     utxo_store::{UnspentTxOut, UtxoId},
 };
-
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
 use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
 use mc_connection::{BlockchainConnection, UserTxConnection};
-use mc_consensus_api;
 use mc_crypto_keys::RistrettoPublic;
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::{NetworkState, PollingNetworkState};

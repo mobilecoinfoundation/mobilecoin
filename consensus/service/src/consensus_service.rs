@@ -10,7 +10,7 @@ use crate::{
 };
 use failure::Fail;
 use futures::Future;
-use grpcio;
+use grpcio::{EnvBuilder, Environment, Server, ServerBuilder};
 use mc_attest_api::attest_grpc::create_attested_api;
 use mc_attest_core::{
     IasQuoteError, PibError, QuoteError, QuoteSignType, TargetInfoError, VerificationReport,
@@ -115,14 +115,14 @@ pub struct IncomingConsensusMsg {
 /// - The NodeID that notified us about this transaction.
 ///   (will be None for values submitted by clients and not relayed by other nodes)
 pub type ProposeTxCallback =
-    Arc<dyn Fn(TxHash, Option<&NodeID>, Option<&ResponderId>) -> () + Sync + Send>;
+    Arc<dyn Fn(TxHash, Option<&NodeID>, Option<&ResponderId>) + Sync + Send>;
 
 pub struct ConsensusService<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> {
     config: Config,
     local_node_id: NodeID,
     enclave: E,
     ledger_db: LedgerDB,
-    env: Arc<grpcio::Environment>,
+    env: Arc<Environment>,
     ra_client: R,
     logger: Logger,
 
@@ -134,8 +134,8 @@ pub struct ConsensusService<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync 
     peer_keepalive: Arc<Mutex<PeerKeepalive>>,
 
     admin_rpc_server: Option<AdminServer>,
-    consensus_rpc_server: Option<grpcio::Server>,
-    user_rpc_server: Option<grpcio::Server>,
+    consensus_rpc_server: Option<Server>,
+    user_rpc_server: Option<Server>,
     byzantine_ledger: Arc<Mutex<Option<ByzantineLedger>>>,
 }
 
@@ -149,7 +149,7 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
     ) -> Self {
         // gRPC environment.
         let env = Arc::new(
-            grpcio::EnvBuilder::new()
+            EnvBuilder::new()
                 .name_prefix("Main-RPC".to_string())
                 .build(),
         );
@@ -251,27 +251,23 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
         self.peer_keepalive.lock().expect("mutex poisoned").stop();
 
         if let Some(ref mut server) = self.user_rpc_server.take() {
-            server.shutdown().wait().or_else(|_| {
-                Err(ConsensusServiceError::RpcShutdown(
-                    "user_rpc_server".to_string(),
-                ))
-            })?
+            server
+                .shutdown()
+                .wait()
+                .map_err(|_| ConsensusServiceError::RpcShutdown("user_rpc_server".to_string()))?
         }
 
         if let Some(ref mut server) = self.consensus_rpc_server.take() {
-            server.shutdown().wait().or_else(|_| {
-                Err(ConsensusServiceError::RpcShutdown(
-                    "consensus_rpc_server".to_string(),
-                ))
+            server.shutdown().wait().map_err(|_| {
+                ConsensusServiceError::RpcShutdown("consensus_rpc_server".to_string())
             })?
         }
 
         if let Some(ref mut server) = self.admin_rpc_server.take() {
-            server.shutdown().wait().or_else(|_| {
-                Err(ConsensusServiceError::RpcShutdown(
-                    "admin_rpc_server".to_string(),
-                ))
-            })?
+            server
+                .shutdown()
+                .wait()
+                .map_err(|_| ConsensusServiceError::RpcShutdown("admin_rpc_server".to_string()))?
         }
 
         self.consensus_msgs_from_network.stop().map_err(|e| {
@@ -295,10 +291,8 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
             self.logger,
             "Waiting for consensus_msgs_from_network_receiver_thread..."
         );
-        self.consensus_msgs_from_network.join().or_else(|_| {
-            Err(ConsensusServiceError::ThreadJoin(
-                "consensus_msgs_from_network".to_string(),
-            ))
+        self.consensus_msgs_from_network.join().map_err(|_| {
+            ConsensusServiceError::ThreadJoin("consensus_msgs_from_network".to_string())
         })?;
 
         let mut byzantine_ledger = self.byzantine_ledger.lock().expect("lock poisoned");
@@ -455,13 +449,13 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
 
         // Start GRPC server.
         let env = Arc::new(
-            grpcio::EnvBuilder::new()
+            EnvBuilder::new()
                 .cq_count(1)
                 .name_prefix("User-RPC".to_string())
                 .build(),
         );
 
-        let server_builder = grpcio::ServerBuilder::new(env)
+        let server_builder = ServerBuilder::new(env)
             .register_service(client_service)
             .register_service(blockchain_service)
             .register_service(health_service)
@@ -544,7 +538,7 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
         let build_info_service = BuildInfoService::new(self.logger.clone()).into_service();
 
         // Start GRPC server.
-        let server_builder = grpcio::ServerBuilder::new(self.env.clone())
+        let server_builder = ServerBuilder::new(self.env.clone())
             .register_service(blockchain_service)
             .register_service(peer_service)
             .register_service(health_service)
@@ -605,10 +599,10 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
                     }
                 },
             )
-            .or_else(|_| {
-                Err(ConsensusServiceError::BackgroundWorkQueueStart(
+            .map_err(|_| {
+                ConsensusServiceError::BackgroundWorkQueueStart(
                     "consensus_msgs_from_network".to_string(),
-                ))
+                )
             })?;
 
         Ok(())

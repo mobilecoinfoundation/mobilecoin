@@ -2,11 +2,10 @@
 
 use crate::common::EnclaveLogMessage;
 use prost::Message;
-use slog;
-use slog_scope;
-use std;
+use slog::{Level, Record, RecordLocation, RecordStatic};
+use std::slice;
 
-static ENCLAVE_SLOG_LOCATION: slog::RecordLocation = slog::RecordLocation {
+static ENCLAVE_SLOG_LOCATION: RecordLocation = RecordLocation {
     file: "<enclave>",
     line: 0,
     column: 0,
@@ -19,7 +18,7 @@ static ENCLAVE_SLOG_LOCATION: slog::RecordLocation = slog::RecordLocation {
 /// This function is marked unsafe due to receiving a raw pointer from the caller.
 #[no_mangle]
 pub unsafe extern "C" fn enclave_log(msg: *const u8, msg_len: usize) {
-    let msg_bytes = std::slice::from_raw_parts(msg, msg_len);
+    let msg_bytes = slice::from_raw_parts(msg, msg_len);
     let msg = EnclaveLogMessage::decode(msg_bytes);
 
     match msg {
@@ -32,13 +31,13 @@ pub unsafe extern "C" fn enclave_log(msg: *const u8, msg_len: usize) {
                 logger = logger.new(slog::o!(k.clone() => v.clone()));
             }
 
-            let record_static = slog::RecordStatic {
+            let record_static = RecordStatic {
                 location: &ENCLAVE_SLOG_LOCATION,
                 tag: &msg.tag,
-                level: slog::Level::from_usize(msg.level as usize).unwrap_or(slog::Level::Critical),
+                level: Level::from_usize(msg.level as usize).unwrap_or(Level::Critical),
             };
 
-            logger.log(&slog::Record::new(
+            logger.log(&Record::new(
                 &record_static,
                 &format_args!("{}", msg.message),
                 slog::b!(),

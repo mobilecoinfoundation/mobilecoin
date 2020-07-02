@@ -148,7 +148,7 @@ pub unsafe fn try_closure<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + 
         }))
     };
 
-    fn do_call<F: FnOnce() -> R, R>(data: *mut u8) {
+    extern "C" fn do_call<F: FnOnce() -> R, R>(data: *mut u8) {
         unsafe {
             let data = data as *mut Data<F, R>;
             let data = &mut (*data);

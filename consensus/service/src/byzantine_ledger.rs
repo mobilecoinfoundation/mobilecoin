@@ -529,10 +529,7 @@ impl<
                 // Re-construct the BTreeMap with the remaining values, using the old timestamps.
                 let mut new_pending_values_map = BTreeMap::new();
                 for val in self.pending_values.iter() {
-                    new_pending_values_map.insert(
-                        val.clone(),
-                        self.pending_values_map.get(val).unwrap().clone(),
-                    );
+                    new_pending_values_map.insert(*val, *self.pending_values_map.get(val).unwrap());
                 }
                 self.pending_values_map = new_pending_values_map;
 
@@ -590,7 +587,7 @@ impl<
                     for value in new_values {
                         // IF we don't already know of this value, add it to the pending list and
                         // map.
-                        if let Vacant(entry) = self.pending_values_map.entry(value.clone()) {
+                        if let Vacant(entry) = self.pending_values_map.entry(value) {
                             entry.insert(timestamp);
                             self.pending_values.push(value);
                             self.need_nominate = true;
@@ -789,10 +786,7 @@ impl<
         // Re-construct the BTreeMap with the remaining values, using the old timestamps.
         let mut new_pending_values_map = BTreeMap::new();
         for val in self.pending_values.iter() {
-            new_pending_values_map.insert(
-                val.clone(),
-                self.pending_values_map.get(val).unwrap().clone(),
-            );
+            new_pending_values_map.insert(*val, *self.pending_values_map.get(val).unwrap());
         }
         self.pending_values_map = new_pending_values_map;
 

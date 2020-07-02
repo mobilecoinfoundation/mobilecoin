@@ -2,7 +2,6 @@
 
 //! Mock Peer test utilities
 
-use hex;
 use mc_common::{NodeID, ResponderId};
 use mc_connection::{
     BlockchainConnection, Connection, Error as ConnectionError, Result as ConnectionResult,

@@ -58,15 +58,14 @@ fn purge_expired_cert(path: &PathBuf) {
     // mbedtls says "Input must be NULL-terminated".
     bytes.push(0);
 
-    match Certificate::from_pem(&bytes).and_then(|cert| {
+    match Certificate::from_pem(&bytes).map(|cert| {
         // mbedtls doesn't expose a better way of getting the expiration time.
         let linked: &LinkedCertificate = cert.deref();
         let inner: *const x509_crt = linked.into();
         let ts = unsafe { (*inner).valid_to };
 
-        Ok(Utc
-            .ymd(ts.year as i32, ts.mon as u32, ts.day as u32)
-            .and_hms(ts.hour as u32, ts.min as u32, ts.sec as u32))
+        Utc.ymd(ts.year as i32, ts.mon as u32, ts.day as u32)
+            .and_hms(ts.hour as u32, ts.min as u32, ts.sec as u32)
     }) {
         Ok(not_after) => {
             let utc_now = Utc::now();

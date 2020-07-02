@@ -423,7 +423,7 @@ impl Environment {
 
     /// Get the string contents of this crate's `links` key
     pub fn links(&self) -> Option<&str> {
-        self.manifest_links.as_ref().map(String::as_str)
+        self.manifest_links.as_deref()
     }
 
     /// Get whether debug is enabled on this build

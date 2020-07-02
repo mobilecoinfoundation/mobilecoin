@@ -3,7 +3,6 @@
 //! Construct and submit transactions to the validator network.
 
 use crate::{database::Database, error::Error, monitor_store::MonitorId, utxo_store::UnspentTxOut};
-
 use mc_common::{
     logger::{log, o, Logger},
     HashMap, HashSet,
@@ -650,11 +649,7 @@ impl<T: UserTxConnection + 'static> TransactionsManager<T> {
                     onetime_private_key,
                     *from_account_key.view_private_key(),
                 )
-                .or_else(|_| {
-                    Err(Error::TxBuildError(
-                        "failed creating InputCredentials".into(),
-                    ))
-                })?,
+                .map_err(|_| Error::TxBuildError("failed creating InputCredentials".into()))?,
             );
         }
 

@@ -403,8 +403,8 @@ fn get_blocks<BC: BlockchainConnection + 'static>(
     // Wait until either we get all results, or a timeout happens.
     let &(ref lock, ref condvar) = &*results_and_condvar;
     let (worker_results, _wait_timeout_result) = condvar
-        .wait_timeout_until(lock.lock().unwrap(), timeout, |ref mut results| {
-            results.len() == manager.len()
+        .wait_timeout_while(lock.lock().unwrap(), timeout, |ref mut results| {
+            results.len() != manager.len()
         })
         .expect("waiting on condvar failed");
 
@@ -647,8 +647,8 @@ fn get_block_contents<TF: TransactionsFetcher + 'static>(
     log::trace!(logger, "Waiting on {} results", blocks.len());
     let &(ref lock, ref condvar) = &*results_and_condvar;
     let results = condvar
-        .wait_until(lock.lock().unwrap(), |ref mut results| {
-            results.len() == blocks.len()
+        .wait_while(lock.lock().unwrap(), |ref mut results| {
+            results.len() != blocks.len()
         })
         .expect("waiting on condvar failed");
 
@@ -778,7 +778,7 @@ fn identify_safe_blocks<L: Ledger>(
                 );
                 break 'block_loop;
             }
-            additional_key_images.insert(key_image.clone());
+            additional_key_images.insert(*key_image);
         }
 
         // This block is safe.
