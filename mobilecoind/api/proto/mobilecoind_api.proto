@@ -74,7 +74,7 @@ enum TxStatus {
     TombstoneBlockExceeded = 2;
 
     // The transaction was found in the ledger but the confirmation number is incorrect
-    InvalidConfirmationCode = 3;
+    InvalidConfirmationNumber = 3;
 }
 
 // Structure used in specifying the list of outputs when generating a transaction.

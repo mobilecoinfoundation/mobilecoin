@@ -1010,8 +1010,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                         if !confirmation_number.validate(&tx_public_key, &view_private_key) {
                             let mut response =
                                 mc_mobilecoind_api::GetTxStatusAsReceiverResponse::new();
-                            response
-                                .set_status(mc_mobilecoind_api::TxStatus::InvalidConfirmationCode);
+                            response.set_status(
+                                mc_mobilecoind_api::TxStatus::InvalidConfirmationNumber,
+                            );
                             return Ok(response);
                         }
                     }
