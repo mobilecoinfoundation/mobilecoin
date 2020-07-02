@@ -46,9 +46,6 @@ pub struct WatcherDB {
     /// LMDB Environment (database).
     env: Arc<Environment>,
 
-    /// List of tracked URLs.
-    src_urls: Vec<Url>,
-
     /// Signature store.
     block_signatures: Database,
 
@@ -61,7 +58,7 @@ pub struct WatcherDB {
 
 impl WatcherDB {
     /// Open an existing WatcherDB.
-    pub fn open(path: PathBuf, src_urls: &[Url], logger: Logger) -> Result<Self, WatcherDBError> {
+    pub fn open(path: PathBuf, logger: Logger) -> Result<Self, WatcherDBError> {
         let env = Arc::new(
             Environment::new()
                 .set_max_dbs(10)
@@ -73,7 +70,6 @@ impl WatcherDB {
 
         Ok(WatcherDB {
             env,
-            src_urls: src_urls.to_vec(),
             block_signatures,
             last_synced,
             logger,
@@ -168,11 +164,14 @@ impl WatcherDB {
     }
 
     /// Get the total number of Blocks in the watcher db.
-    pub fn last_synced_blocks(&self) -> Result<HashMap<Url, Option<u64>>, WatcherDBError> {
+    pub fn last_synced_blocks(
+        &self,
+        src_urls: &[Url],
+    ) -> Result<HashMap<Url, Option<u64>>, WatcherDBError> {
         let db_txn = self.env.begin_ro_txn()?;
         let mut results = HashMap::default();
 
-        for src_url in self.src_urls.iter() {
+        for src_url in src_urls.iter() {
             match db_txn.get(self.last_synced, &src_url.as_str().as_bytes()) {
                 Ok(block_index_bytes) => {
                     if block_index_bytes.len() == 8 {
@@ -229,8 +228,8 @@ pub fn create_or_open_watcher_db(
     }
 
     // Attempt to open the WatcherDB and see if it has anything in it.
-    if let Ok(watcher_db) = WatcherDB::open(watcher_db_path.clone(), src_urls, logger.clone()) {
-        if let Ok(last_synced) = watcher_db.last_synced_blocks() {
+    if let Ok(watcher_db) = WatcherDB::open(watcher_db_path.clone(), logger.clone()) {
+        if let Ok(last_synced) = watcher_db.last_synced_blocks(src_urls) {
             if last_synced.values().any(|val| val.is_some()) {
                 // Successfully opened a ledger that has blocks in it.
                 log::info!(
@@ -246,7 +245,7 @@ pub fn create_or_open_watcher_db(
 
     // WatcherDB does't exist, or is empty. Create a new WatcherDB, and open it.
     WatcherDB::create(watcher_db_path.clone())?;
-    WatcherDB::open(watcher_db_path, &src_urls, logger)
+    WatcherDB::open(watcher_db_path, logger)
 }
 
 #[cfg(test)]
@@ -261,10 +260,10 @@ mod test {
     use rand_hc::Hc128Rng;
     use tempdir::TempDir;
 
-    fn setup_watcher_db(urls: &Vec<Url>, logger: Logger) -> WatcherDB {
+    fn setup_watcher_db(logger: Logger) -> WatcherDB {
         let db_tmp = TempDir::new("wallet_db").expect("Could not make tempdir for wallet db");
         WatcherDB::create(db_tmp.path().to_path_buf()).unwrap();
-        WatcherDB::open(db_tmp.path().to_path_buf(), urls, logger).unwrap()
+        WatcherDB::open(db_tmp.path().to_path_buf(), logger).unwrap()
     }
 
     fn setup_blocks() -> Vec<(Block, BlockContents)> {
@@ -286,7 +285,7 @@ mod test {
         let url1 = Url::parse("http://www.my_url1.com").unwrap();
         let url2 = Url::parse("http://www.my_url2.com").unwrap();
         let urls = vec![url1, url2];
-        let watcher_db = setup_watcher_db(&urls, logger.clone());
+        let watcher_db = setup_watcher_db(logger.clone());
 
         let blocks = setup_blocks();
 
