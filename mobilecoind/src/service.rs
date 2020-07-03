@@ -958,13 +958,6 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             ));
         }
 
-        if request.get_receipt().get_confirmation_number().len() != 32 {
-            return Err(RpcStatus::new(
-                RpcStatusCode::INVALID_ARGUMENT,
-                Some("receipt.confirmation_number".to_string()),
-            ));
-        }
-
         // Check if the hash landed in the ledger.
         let mut hash_bytes = [0u8; 32];
         hash_bytes.copy_from_slice(&request.get_receipt().tx_out_hash);
@@ -1001,6 +994,13 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                                     )
                                 })?;
                         let view_private_key = monitor_data.account_key.view_private_key();
+
+                        if request.get_receipt().get_confirmation_number().len() != 32 {
+                            return Err(RpcStatus::new(
+                                RpcStatusCode::INVALID_ARGUMENT,
+                                Some("receipt.confirmation_number".to_string()),
+                            ));
+                        }
                         let confirmation_number = {
                             let mut confirmation_bytes = [0u8; 32];
                             confirmation_bytes
@@ -1833,7 +1833,6 @@ mod test {
         {
             let mut receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
             receipt.set_tombstone(1);
-            receipt.set_confirmation_number(vec![0u8; 32]);
 
             let mut request = mc_mobilecoind_api::GetTxStatusAsReceiverRequest::new();
             request.set_receipt(receipt);
@@ -1849,7 +1848,6 @@ mod test {
             let mut receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
             receipt.set_tx_out_hash(hash.to_vec());
             receipt.set_tombstone(1);
-            receipt.set_confirmation_number(vec![0u8; 32]);
 
             let mut request = mc_mobilecoind_api::GetTxStatusAsReceiverRequest::new();
             request.set_receipt(receipt);
@@ -1869,7 +1867,6 @@ mod test {
             let mut receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
             receipt.set_tx_out_hash(hash.to_vec());
             receipt.set_tombstone(ledger_db.num_blocks().unwrap() as u64 + 1);
-            receipt.set_confirmation_number(vec![0u8; 32]);
 
             let mut request = mc_mobilecoind_api::GetTxStatusAsReceiverRequest::new();
             request.set_receipt(receipt);
@@ -1886,7 +1883,6 @@ mod test {
             let mut receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
             receipt.set_tx_out_hash(hash.to_vec());
             receipt.set_tombstone(ledger_db.num_blocks().unwrap() as u64);
-            receipt.set_confirmation_number(vec![0u8; 32]);
 
             let mut request = mc_mobilecoind_api::GetTxStatusAsReceiverRequest::new();
             request.set_receipt(receipt);
