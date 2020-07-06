@@ -1001,6 +1001,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                                 Some("receipt.confirmation_number".to_string()),
                             ));
                         }
+
+                        // Test that the confirmation number is valid. Only the party constructing
+                        // the transaction could have created the correct confirmation number.
                         let confirmation_number = {
                             let mut confirmation_bytes = [0u8; 32];
                             confirmation_bytes
@@ -1008,6 +1011,10 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                             TxOutConfirmationNumber::from(confirmation_bytes)
                         };
                         if !confirmation_number.validate(&tx_public_key, &view_private_key) {
+                            // If the confirmation number is invalid, this means that the transaction did
+                            // get added to the ledger but the party constructing the receipt failed
+                            // to prove that they created it. This prevents a third-party observer from
+                            // taking credit for someone elses payment.
                             let mut response =
                                 mc_mobilecoind_api::GetTxStatusAsReceiverResponse::new();
                             response.set_status(
@@ -1244,8 +1251,8 @@ mod test {
     use crate::{
         payments::DEFAULT_NEW_TX_BLOCK_ATTEMPTS,
         test_utils::{
-            self, add_block_to_ledger_db, get_testing_environment, wait_for_monitors,
-            PER_RECIPIENT_AMOUNT,
+            self, add_block_to_ledger_db, add_txos_to_ledger_db, get_testing_environment,
+            wait_for_monitors, PER_RECIPIENT_AMOUNT,
         },
         utxo_store::UnspentTxOut,
     };
@@ -1259,6 +1266,7 @@ mod test {
         tx::{Tx, TxOut},
         Block, BlockContents, BLOCK_VERSION,
     };
+    use mc_transaction_std::TransactionBuilder;
     use mc_util_from_random::FromRandom;
     use mc_util_repr_bytes::{typenum::U32, GenericArray, ReprBytes};
     use rand::{rngs::StdRng, SeedableRng};
@@ -1826,7 +1834,7 @@ mod test {
         let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
 
         // no known recipient, 3 random recipients and no monitors.
-        let (ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+        let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
 
         // A call with an invalid hash should fail
@@ -1891,6 +1899,72 @@ mod test {
             assert_eq!(
                 response.get_status(),
                 mc_mobilecoind_api::TxStatus::TombstoneBlockExceeded
+            );
+        }
+
+        // Now create a monitor for the receiver to test confirmation numbers
+        let receiver = AccountKey::random(&mut rng);
+        let data = MonitorData::new(
+            receiver.clone(),
+            0,  // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        // Insert into database.
+        let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
+        let mut transaction_builder = TransactionBuilder::new();
+        let (tx_out, tx_confirmation) = transaction_builder
+            .add_output(10, &receiver.subaddress(0), None, &mut rng)
+            .unwrap();
+
+        add_txos_to_ledger_db(&mut ledger_db, &vec![tx_out.clone()], &mut rng);
+
+        // A request with a valid confirmation number and monitor ID should return Verified
+        {
+            let hash = tx_out.hash();
+
+            let mut receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
+            receipt.set_tx_public_key(mc_mobilecoind_api::external::CompressedRistretto::from(
+                tx_out.public_key,
+            ));
+            receipt.set_tx_out_hash(hash.to_vec());
+            receipt.set_tombstone(10);
+            receipt.set_confirmation_number(tx_confirmation.to_vec());
+
+            let mut request = mc_mobilecoind_api::GetTxStatusAsReceiverRequest::new();
+            request.set_receipt(receipt);
+            request.set_monitor_id(monitor_id.to_vec());
+
+            let response = client.get_tx_status_as_receiver(&request).unwrap();
+            assert_eq!(
+                response.get_status(),
+                mc_mobilecoind_api::TxStatus::Verified
+            );
+        }
+
+        // A request with an a bad confirmation number and a monitor ID should return InvalidConfirmationNumber
+        {
+            let hash = tx_out.hash();
+
+            let mut receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
+            receipt.set_tx_public_key(mc_mobilecoind_api::external::CompressedRistretto::from(
+                tx_out.public_key,
+            ));
+            receipt.set_tx_out_hash(hash.to_vec());
+            receipt.set_tombstone(10);
+            receipt.set_confirmation_number(vec![0u8; 32]);
+
+            let mut request = mc_mobilecoind_api::GetTxStatusAsReceiverRequest::new();
+            request.set_receipt(receipt);
+            request.set_monitor_id(monitor_id.to_vec());
+
+            let response = client.get_tx_status_as_receiver(&request).unwrap();
+            assert_eq!(
+                response.get_status(),
+                mc_mobilecoind_api::TxStatus::InvalidConfirmationNumber
             );
         }
     }
