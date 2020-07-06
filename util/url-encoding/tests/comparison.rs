@@ -80,7 +80,7 @@ fn test_url_encoding() {
         .unwrap();
         let b58_encoded = "mob:///".to_string() + &b58_payload.encode();
         assert_eq!("mob:///CzpFtx52f77AfogondLHGH4ZnhraB4igZKptek36H2mUPmj3qtLCV4UWB8QaDUqro3xBoKb4rXDSBm2nxV6GNz6pNfG5nwrdG17pPACnuh1NNFxyyUyEL6ckUfUhEYvPXLAy3JZhWCyi6g1S5MQd4NvaPXcptK14T5X2NP1yQei4paCBty8JxM4sc8mJa34NXYSySTnqAR53qC2WzmVKWtfuAAQXZU2jPR1kxZ2tJCdhBtERcfzsjKUAwZZMAYfgP9", b58_encoded);
-        assert_eq!(258, b58_encoded.len());
+        assert_eq!(265, b58_encoded.len());
     }
 
     {
