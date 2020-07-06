@@ -483,7 +483,7 @@ message GetTxStatusAsSenderResponse {
 message GetTxStatusAsReceiverRequest {
     ReceiverTxReceipt receipt = 1;
 
-    // Optionally pass in an monitor ID to validate confirmation number
+    // Optionally pass in a monitor ID to validate confirmation number
     bytes monitor_id = 2;
 }
 message GetTxStatusAsReceiverResponse {
