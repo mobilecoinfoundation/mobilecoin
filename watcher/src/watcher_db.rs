@@ -143,24 +143,26 @@ impl WatcherDB {
             block_index
         );
 
-        match cursor.iter_dup_of(&key_bytes) {
-            Ok(iter) => {
-                let mut results: Vec<BlockSignatureData> = Vec::new();
-                for (_key_bytes, value_bytes) in iter {
-                    let signature_data: BlockSignatureData = decode(value_bytes)?;
-                    log::trace!(
-                        self.logger,
-                        "Got block signatures for {:?} ({:?})",
-                        block_index,
-                        signature_data,
-                    );
-                    results.push(signature_data);
-                }
-                Ok(results)
-            }
-            Err(lmdb::Error::NotFound) => Ok(Vec::new()),
-            Err(err) => Err(err.into()),
-        }
+        Ok(cursor
+            .iter_dup_of(&key_bytes)
+            .map(|result| {
+                result
+                    .map_err(WatcherDBError::from)
+                    .and_then(|(key_bytes2, value_bytes)| {
+                        // Sanity check.
+                        assert_eq!(key_bytes, key_bytes2);
+
+                        let signature_data: BlockSignatureData = decode(value_bytes)?;
+                        log::trace!(
+                            self.logger,
+                            "Got block signatures for {:?} ({:?})",
+                            block_index,
+                            signature_data,
+                        );
+                        Ok(signature_data)
+                    })
+            })
+            .collect::<Result<Vec<_>, WatcherDBError>>()?)
     }
 
     /// Get the total number of Blocks in the watcher db.

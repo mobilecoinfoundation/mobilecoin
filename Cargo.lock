@@ -1777,21 +1777,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8dd5a6d5999d9907cda8ed67bbd137d3af8085216c2ac62de5be860bd41f304a"
 
 [[package]]
-name = "lmdb"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b0908efb5d6496aa977d96f91413da2635a902e5e31dbef0bfb88986c248539"
+name = "lmdb-rkv"
+version = "0.14.0"
+source = "git+https://github.com/mozilla/lmdb-rs?rev=df1c2f5#df1c2f56e3088f097c719c57b9925ab51e26f3f4"
 dependencies = [
  "bitflags",
+ "byteorder",
  "libc",
- "lmdb-sys",
+ "lmdb-rkv-sys",
 ]
 
 [[package]]
-name = "lmdb-sys"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d5b392838cfe8858e86fac37cf97a0e8c55cc60ba0a18365cadc33092f128ce9"
+name = "lmdb-rkv-sys"
+version = "0.11.0"
+source = "git+https://github.com/mozilla/lmdb-rs?rev=df1c2f5#df1c2f56e3088f097c719c57b9925ab51e26f3f4"
 dependencies = [
  "cc",
  "libc",
@@ -2504,7 +2503,7 @@ version = "0.4.0"
 dependencies = [
  "curve25519-dalek",
  "failure",
- "lmdb",
+ "lmdb-rkv",
  "mc-common",
  "mc-crypto-keys",
  "mc-crypto-rand",
@@ -2593,7 +2592,7 @@ dependencies = [
  "futures",
  "grpcio",
  "hex_fmt",
- "lmdb",
+ "lmdb-rkv",
  "lru",
  "mc-api",
  "mc-attest-core",
@@ -3282,7 +3281,7 @@ name = "mc-watcher"
 version = "0.4.0"
 dependencies = [
  "failure",
- "lmdb",
+ "lmdb-rkv",
  "mc-api",
  "mc-common",
  "mc-crypto-keys",
