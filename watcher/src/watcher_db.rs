@@ -163,7 +163,7 @@ impl WatcherDB {
         }
     }
 
-    /// Get the total number of Blocks in the watcher db.
+    /// Get the last synced block per url for a given set of urls
     pub fn last_synced_blocks(
         &self,
         src_urls: &[Url],
@@ -213,6 +213,34 @@ impl WatcherDB {
         )?;
         db_txn.commit()?;
         Ok(())
+    }
+
+    /// Get the highest block that all urls have synced.
+    /// Note: In the case where one watched consensus validator dies and is no longer
+    ///       reporting blocks to S3, this will cause the highest_synced_block to
+    ///       always remain at the lowest common denominator, so in the case where the
+    ///       the highest_synced_block is being used to determine if the watcher is
+    ///       behind, the watcher will need to be restarted with the dead node removed
+    ///       from the set of watched URLs.
+    pub fn highest_synced_block(&self) -> Result<u64, WatcherDBError> {
+        let db_txn = self.env.begin_ro_txn()?;
+        let mut cursor = db_txn.open_ro_cursor(self.last_synced)?;
+
+        // FIXME: do this in one db transaction
+        let all_urls: Vec<Url> = cursor
+            .iter()
+            .map(|(url_bytes, _block_index_bytes)| Url::from_str(std::str::from_utf8(url_bytes)?))
+            .collect();
+
+        let last_synced = self
+            .last_synced_blocks(&all_urls)?
+            .values()
+            .map(|opt_block_index| {
+                // If this URL has never added a signature, it is at 0
+                opt_block_index.unwrap_or(0)
+            });
+
+        Ok(last_synced.min().unwrap_or(0))
     }
 }
 
@@ -307,5 +335,36 @@ mod test {
             .unwrap();
 
         assert_eq!(watcher_db.get_block_signatures(1).unwrap().len(), 2);
+    }
+
+    // Highest synced block should return the minimum highest synced block for all URLs
+    #[test_with_logger]
+    fn test_highest_synced(logger: Logger) {
+        let mut rng: Hc128Rng = Hc128Rng::from_seed([8u8; 32]);
+        let url1 = Url::parse("http://www.my_url1.com").unwrap();
+        let url2 = Url::parse("http://www.my_url2.com").unwrap();
+        let urls = vec![url1, url2];
+        let watcher_db = setup_watcher_db(logger.clone());
+
+        let blocks = setup_blocks();
+
+        let signing_key_a = Ed25519Pair::from_random(&mut rng);
+        let signing_key_b = Ed25519Pair::from_random(&mut rng);
+
+        let filename = String::from("00/00");
+
+        let signed_block_a1 =
+            BlockSignature::from_block_and_keypair(&blocks[1].0, &signing_key_a).unwrap();
+        watcher_db
+            .add_block_signature(&urls[0], 1, signed_block_a1, filename.clone())
+            .unwrap();
+
+        let signed_block_b1 =
+            BlockSignature::from_block_and_keypair(&blocks[1].0, &signing_key_b).unwrap();
+        watcher_db
+            .add_block_signature(&urls[1], 1, signed_block_b1, filename)
+            .unwrap();
+
+        assert_eq!(watcher_db.highest_synced_block(), 1);
     }
 }
