@@ -106,27 +106,6 @@ fn test_url_encoding() {
 
     {
         let addr = &addrs[2];
-        let payload = PaymentRequest::from(addr);
-        let encoded = MobUrl::try_from(&payload).unwrap();
-        let encoded_str: &str = encoded.as_ref();
-        assert_eq!("mob://fog.diogenes.mobilecoin.com/krmSAg7MnM0fn-yTIjV6tHtRA7Zj2JRZ4pJ-_PcweTkAu7afknATa5hFwtc_Zvi8R6d36cnpMA0-inMbZHiqMRqp?s=SC9cs96Ry9z4Js_VXkC35IMnTjpQCtEujN8D-R15qTsJloN2pZ75BbSzGtQJ99kBt8mM2YBhlTW9wuCfzHU3gJmx", encoded_str);
-
-        let b58_payload = RequestPayload::new_v1(
-            &addr.spend_public_key().to_bytes(),
-            &addr.view_public_key().to_bytes(),
-            addr.fog_report_url().unwrap(),
-            "",
-            addr.fog_authority_sig().unwrap(),
-        )
-        .unwrap();
-        let b58_encoded = "mob:///".to_string() + &b58_payload.encode();
-        assert_eq!("mob:///B5bnf3HTWMZLpvVse4aKVr3UWqZdV1FwHaUcx9wTVk5FqtAwKGQswhnZj5nFz8UmVNY1RSHsgYrfKWyf37rvg4eSBobaBryzo32i7k3ksi4wwiFRbdLhM2yECpGLMqox7YhWdLyGTHozgB1udkccUmjURQhy4h8ZdedtXntyNAidgbhUetYdawrygn6Y9JnwafZU8jyoKZj3kUAAs7xqy45BeBd41nXaQguz9X6P", b58_encoded);
-
-        assert!(encoded_str.len() < b58_encoded.len());
-    }
-
-    {
-        let addr = &addrs[2];
         let payload = PaymentRequest {
             address: addr.clone(),
             amount: Some(666),
@@ -137,18 +116,18 @@ fn test_url_encoding() {
         assert_eq!("mob://fog.diogenes.mobilecoin.com/krmSAg7MnM0fn-yTIjV6tHtRA7Zj2JRZ4pJ-_PcweTkAu7afknATa5hFwtc_Zvi8R6d36cnpMA0-inMbZHiqMRqp?a=666&m=2+baby+goats&s=SC9cs96Ry9z4Js_VXkC35IMnTjpQCtEujN8D-R15qTsJloN2pZ75BbSzGtQJ99kBt8mM2YBhlTW9wuCfzHU3gJmx", encoded_str);
         assert_eq!(234, encoded_str.len());
 
-        let b58_payload = RequestPayload::new_v3(
+        let b58_payload = RequestPayload::new_v4(
             &addr.spend_public_key().to_bytes(),
             &addr.view_public_key().to_bytes(),
             addr.fog_report_url().unwrap(),
-            "",
-            addr.fog_authority_sig().unwrap(),
             666,
             "2 baby goats",
+            "",
+            addr.fog_authority_sig().unwrap(),
         )
         .unwrap();
         let b58_encoded = "mob:///".to_string() + &b58_payload.encode();
-        assert_eq!("mob:///GTzg6TLXXx2WiSWBkSwH9KC5qof4R7iMZZvjhTPcT52wWDcoqxZhVFzBjUKi8t6m7TwyLRJWjq2jaLv58QJB6dfhZe1FLwzaMKYi8ibXqvCG6DEJ7YJXGUsL7RNN8ife3otBVaUReYaTMjHGihCpfppKGmHy2yzetAmwgPkqHkLQaTjGN12U8RU4n6gkNpawX87wBP9UZxA1zphZdRpSZwDNZJqSgmf4kcanY7sf6dVaqdTuVgBUuDRx93Nog9PK16NJW", b58_encoded);
+        assert_eq!("fixme", b58_encoded);
         assert_eq!(268, b58_encoded.len());
     }
 }
