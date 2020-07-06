@@ -235,7 +235,6 @@ impl VerificationReportData {
     }
 
     /// Try and parse the timestamp string into a chrono object.
-    #[cfg(feature = "std")]
     pub fn parse_timestamp(&self) -> Result<chrono::DateTime<chrono::Utc>, VerifyError> {
         // Intel provides the timestamp as ISO8601 (compatible with RFC3339) but without the
         // Z specifier, which is required for chrono to be happy.
