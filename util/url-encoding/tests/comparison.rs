@@ -106,7 +106,7 @@ fn test_url_encoding() {
         )
         .unwrap();
         let b58_encoded = "mob:///".to_string() + &b58_payload.encode();
-        assert_eq!("fixme", b58_encoded);
+        assert_eq!("mob:///8dUCXPapoK52Zvhdfb3YHpKJRDPKvXAJmeKjkAxXv7o4QDftDV2JPybwQXzzuU5pqqS3QJkGFnFVWzxDNdd86vEDm3HDdHSgjjX2b2dxW9PDP9Ly3ziqLsLvy1d9xpdVUGAo6gniDHbjNypcVXwyU7hQUmbuHK8YsfJkKz2DPj8GxT5dgMhNzgbmzenpoexERAc1NehdHpwi6e6Tro63i6ny7akE2911sxb8Ar12Lgk44Zsfvf43oRtQVmGGpWR5idGb1", b58_encoded);
         assert_eq!(268, b58_encoded.len());
     }
 }
