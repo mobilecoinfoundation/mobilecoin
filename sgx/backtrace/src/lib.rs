@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 #![no_std]
-#![feature(asm)]
+#![feature(llvm_asm)]
 
 /// Provide support for getting backtraces in sgx, and sending them to untrusted
 /// as well as setting and getting the enclave path to aid symbolication
