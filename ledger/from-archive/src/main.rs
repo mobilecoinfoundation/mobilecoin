@@ -23,11 +23,7 @@ fn main() {
         ReqwestTransactionsFetcher::new(config.tx_source_urls.clone(), logger.clone())
             .expect("Failed creating ReqwestTransactionsFetcher");
 
-    log::debug!(
-        logger,
-        "Creating local ledger at {:?}",
-        config.ledger_db.clone()
-    );
+    log::debug!(logger, "Creating local ledger at {:?}", config.ledger_db);
     // Open LedgerDB
     LedgerDB::create(config.ledger_db.clone()).expect("Could not create ledger_db");
     let mut local_ledger = LedgerDB::open(config.ledger_db).expect("Failed creating LedgerDB");

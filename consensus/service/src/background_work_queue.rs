@@ -74,7 +74,7 @@ impl<T: Send + 'static> BackgroundWorkQueue<T> {
                     }
                 }
             })
-            .or_else(|e| Err(BackgroundWorkQueueError::ThreadSpawnFailed(e)))?;
+            .map_err(BackgroundWorkQueueError::ThreadSpawnFailed)?;
 
         self.join_handle = Some(join_handle);
 

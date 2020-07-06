@@ -110,8 +110,8 @@ impl<BC: BlockchainConnection + 'static> PollingNetworkState<BC> {
         let &(ref lock, ref condvar) = &*results_and_condvar;
         let num_peers = self.manager.len();
         let results = condvar //.wait(lock.lock().unwrap()).unwrap();
-            .wait_until(lock.lock().unwrap(), |ref mut results| {
-                results.len() >= num_peers
+            .wait_while(lock.lock().unwrap(), |ref mut results| {
+                results.len() < num_peers
             })
             .expect("waiting on condvar failed");
 

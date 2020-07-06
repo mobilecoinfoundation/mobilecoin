@@ -4,6 +4,8 @@
 
 extern crate alloc;
 
+mod errors;
+
 use crate::{
     blake2b_256::Blake2b256,
     domain_separators::{
@@ -19,8 +21,6 @@ use core::convert::TryInto;
 pub use errors::Error as MembershipProofError;
 use mc_common::HashMap;
 use mc_crypto_digestible::Digestible;
-
-mod errors;
 
 lazy_static! {
     pub static ref NIL_HASH: [u8; 32] = hash_nil();
@@ -223,7 +223,7 @@ pub fn derive_proof_at_index(
 
             TxOutMembershipHash::from(hash_nodes(&left_child_hash, &right_child_hash))
         };
-        derived_elements.insert(element.range.clone(), *hash.as_ref());
+        derived_elements.insert(element.range, *hash.as_ref());
     }
 
     Ok(TxOutMembershipProof::new(index, index, derived_elements))

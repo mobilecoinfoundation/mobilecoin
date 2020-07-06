@@ -177,7 +177,7 @@ impl<RP: RetryPolicy> ThreadedBroadcaster<RP> {
         }
 
         // Store message so it doesn't get processed again.
-        self.seen_tx_hashes.put(tx_hash.clone(), ());
+        self.seen_tx_hashes.put(*tx_hash, ());
 
         // Create arcs to prevent cloning of larger data structures.
         let arc_encrypted_tx = Arc::new(encrypted_tx);

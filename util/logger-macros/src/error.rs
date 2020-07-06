@@ -2,12 +2,12 @@
 
 use proc_macro::Diagnostic;
 use std::result;
-use syn;
+use syn::parse::Error as SynError;
 
 pub struct DiagnosticError {
     diagnostic: Diagnostic,
     #[allow(dead_code)]
-    syn_error: Option<syn::parse::Error>,
+    syn_error: Option<SynError>,
 }
 
 impl DiagnosticError {
@@ -18,10 +18,7 @@ impl DiagnosticError {
             syn_error: None,
         }
     }
-    pub fn new_with_syn_error(
-        diagnostic: Diagnostic,
-        syn_error: syn::parse::Error,
-    ) -> DiagnosticError {
+    pub fn new_with_syn_error(diagnostic: Diagnostic, syn_error: SynError) -> DiagnosticError {
         DiagnosticError {
             diagnostic,
             syn_error: Some(syn_error),
@@ -29,7 +26,7 @@ impl DiagnosticError {
     }
 
     #[allow(dead_code)]
-    pub fn source(&self) -> Option<&syn::parse::Error> {
+    pub fn source(&self) -> Option<&SynError> {
         self.syn_error.as_ref()
     }
 

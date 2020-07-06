@@ -159,7 +159,7 @@ impl<L: Ledger> TxManagerUntrustedInterfaces for DefaultTxManagerUntrustedInterf
             }
 
             // The transaction is allowed.
-            allowed_hashes.push(candidate.tx_hash().clone());
+            allowed_hashes.push(*candidate.tx_hash());
             used_key_images.extend(&key_images);
             used_output_public_keys.extend(&output_public_keys);
         }

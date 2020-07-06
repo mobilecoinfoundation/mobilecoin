@@ -15,7 +15,6 @@
 #![feature(raw)]
 #![feature(thread_local)]
 #![feature(unwind_attributes)]
-#![feature(manually_drop_take)]
 // Enable "untagged unions" when we have alloc feature, used in panicking::try
 #![cfg_attr(feature = "alloc", feature(untagged_unions))]
 

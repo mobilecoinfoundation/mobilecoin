@@ -155,7 +155,7 @@ impl SyncThread {
 
                             let mut queued_monitor_ids =
                                 queued_monitor_ids.lock().expect("mutex poisoned");
-                            if !queued_monitor_ids.insert(monitor_id.clone()) {
+                            if !queued_monitor_ids.insert(monitor_id) {
                                 // Already queued, no need to add again to queue at this point.
                                 log::trace!(logger, "{}: skipping, already queued", monitor_id);
                                 continue;

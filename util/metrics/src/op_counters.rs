@@ -32,7 +32,7 @@ impl OpMetrics {
             .unwrap(),
             gauges: IntGaugeVec::new(
                 Opts::new(
-                    format!("{}_gauge", name_str.clone()),
+                    format!("{}_gauge", name_str),
                     format!("Gauges for {}", name_str),
                 ),
                 &["op"],
@@ -40,7 +40,7 @@ impl OpMetrics {
             .unwrap(),
             peer_gauges: IntGaugeVec::new(
                 Opts::new(
-                    format!("{}_peer_gauge", name_str.clone()),
+                    format!("{}_peer_gauge", name_str),
                     format!("Gauges of each remote peer for {}", name_str),
                 ),
                 &["op", "remote_responder_id"],
@@ -48,7 +48,7 @@ impl OpMetrics {
             .unwrap(),
             histograms: HistogramVec::new(
                 HistogramOpts::new(
-                    format!("{}_duration", name_str.clone()),
+                    format!("{}_duration", name_str),
                     format!("Histogram values for {}", name_str),
                 ),
                 &["op"],

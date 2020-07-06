@@ -242,7 +242,7 @@ impl<E: ConsensusEnclaveProxy, L: Ledger, UI: UntrustedInterfaces> TxManager<E, 
         let cache = self.lock_cache();
         for tx_hash in tx_hashes {
             if !cache.contains_key(tx_hash) {
-                missing.push(tx_hash.clone());
+                missing.push(*tx_hash);
             }
         }
         missing

@@ -2,7 +2,6 @@
 
 //! Configuration parameters for the Consensus Service application.
 
-use base64;
 use mc_attest_core::ProviderId;
 use mc_common::{HashMap, HashSet, NodeID, ResponderId};
 use mc_consensus_scp::{QuorumSet, QuorumSetMember};

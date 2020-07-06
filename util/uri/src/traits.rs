@@ -1,20 +1,17 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-use base64;
-use displaydoc::Display;
-use ed25519::signature::Error as SignatureError;
-use hex;
-use mc_common::{NodeID, ResponderId, ResponderIdParseError};
-use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public, KeyError};
-use std::{path::PathBuf, str::FromStr};
-use url::Url;
-
 use core::{
     convert::TryFrom,
     fmt::{Debug, Display},
     hash::Hash,
     result::Result as StdResult,
 };
+use displaydoc::Display;
+use ed25519::signature::Error as SignatureError;
+use mc_common::{NodeID, ResponderId, ResponderIdParseError};
+use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public, KeyError};
+use std::{path::PathBuf, str::FromStr};
+use url::Url;
 
 #[derive(Debug, Display, Ord, PartialOrd, Eq, PartialEq, Clone)]
 pub enum UriConversionError {

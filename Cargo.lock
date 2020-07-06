@@ -35,7 +35,7 @@ dependencies = [
  "aead",
  "aes",
  "ghash",
- "subtle 2.2.2",
+ "subtle 2.2.3",
  "zeroize 1.1.0",
 ]
 
@@ -362,7 +362,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "sha3",
- "subtle 2.2.2",
+ "subtle 2.2.3",
 ]
 
 [[package]]
@@ -507,9 +507,9 @@ dependencies = [
 
 [[package]]
 name = "clear_on_drop"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97276801e127ffb46b66ce23f35cc96bd454fa311294bced4bbace7baa8b1d17"
+checksum = "c9cc5db465b294c3fa986d5bbb0f3017cd850bff6dd6c52f9ccff8b4d21b7b08"
 dependencies = [
  "cc",
 ]
@@ -556,12 +556,12 @@ checksum = "245097e9a4535ee1e3e3931fcfcd55a796a44c643e8596ff6566d68f09b87bbc"
 
 [[package]]
 name = "cookie"
-version = "0.11.2"
+version = "0.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9fac5e7bdefb6160fb181ee0eaa6f96704b625c70e6d61c465cb35750a4ea12"
+checksum = "5795cda0897252e34380a27baf884c53aa7ad9990329cdad96d4c5d027015d44"
 dependencies = [
+ "percent-encoding 2.1.0",
  "time",
- "url 1.7.2",
 ]
 
 [[package]]
@@ -800,7 +800,7 @@ dependencies = [
  "packed_simd",
  "rand_core 0.5.1",
  "serde",
- "subtle 2.2.2",
+ "subtle 2.2.3",
  "zeroize 1.1.0",
 ]
 
@@ -1985,7 +1985,7 @@ dependencies = [
  "rjson",
  "serde",
  "sha2",
- "subtle 2.2.2",
+ "subtle 2.2.3",
 ]
 
 [[package]]
@@ -2451,7 +2451,7 @@ dependencies = [
  "mc-util-test-helper",
  "rand_core 0.5.1",
  "serde",
- "subtle 2.2.2",
+ "subtle 2.2.3",
 ]
 
 [[package]]
@@ -2472,7 +2472,7 @@ dependencies = [
  "secrecy",
  "serde",
  "sha2",
- "subtle 2.2.2",
+ "subtle 2.2.3",
  "zeroize 0.10.1",
 ]
 
@@ -2751,7 +2751,7 @@ dependencies = [
  "mc-sgx-core-types-sys",
  "mc-util-encodings",
  "serde",
- "subtle 2.2.2",
+ "subtle 2.2.3",
 ]
 
 [[package]]
@@ -2819,7 +2819,7 @@ dependencies = [
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
  "serde",
- "subtle 2.2.2",
+ "subtle 2.2.3",
 ]
 
 [[package]]
@@ -2855,7 +2855,7 @@ dependencies = [
  "rand_hc 0.2.0",
  "rjson",
  "serde",
- "subtle 2.2.2",
+ "subtle 2.2.3",
  "typenum",
 ]
 
@@ -2970,7 +2970,7 @@ dependencies = [
  "schnorrkel",
  "serde",
  "sha2",
- "subtle 2.2.2",
+ "subtle 2.2.3",
  "tempdir",
  "time",
  "yaml-rust",
@@ -3611,24 +3611,24 @@ dependencies = [
 
 [[package]]
 name = "pear"
-version = "0.1.2"
+version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c26d2b92e47063ffce70d3e3b1bd097af121a9e0db07ca38a6cc1cf0cc85ff25"
+checksum = "5320f212db967792b67cfe12bd469d08afd6318a249bd917d5c19bc92200ab8a"
 dependencies = [
  "pear_codegen",
 ]
 
 [[package]]
 name = "pear_codegen"
-version = "0.1.2"
+version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "336db4a192cc7f54efeb0c4e11a9245394824cc3bcbd37ba3ff51240c35d7a6e"
+checksum = "bfc1c836fdc3d1ef87c348b237b5b5c4dff922156fb2d968f57734f9669768ca"
 dependencies = [
  "proc-macro2 0.4.30",
  "quote 0.6.13",
  "syn 0.15.44",
- "version_check 0.1.5",
- "yansi 0.4.0",
+ "version_check 0.9.1",
+ "yansi",
 ]
 
 [[package]]
@@ -4263,7 +4263,7 @@ dependencies = [
  "time",
  "toml 0.4.10",
  "version_check 0.9.1",
- "yansi 0.5.0",
+ "yansi",
 ]
 
 [[package]]
@@ -4278,7 +4278,7 @@ dependencies = [
  "quote 0.6.13",
  "rocket_http",
  "version_check 0.9.1",
- "yansi 0.5.0",
+ "yansi",
 ]
 
 [[package]]
@@ -4296,9 +4296,9 @@ dependencies = [
 
 [[package]]
 name = "rocket_http"
-version = "0.4.4"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ce8ca76247376ea21cf271af0f95e3f2014596e3e4c7cc04e44ee6242a40ff2"
+checksum = "1aff5a5480175f2f553a876b251e9350c74196128806d176da3a51c82aab5428"
 dependencies = [
  "cookie",
  "hyper 0.10.16",
@@ -4529,7 +4529,7 @@ dependencies = [
  "merlin",
  "rand_core 0.5.1",
  "sha2",
- "subtle 2.2.2",
+ "subtle 2.2.3",
  "zeroize 1.1.0",
 ]
 
@@ -5002,9 +5002,9 @@ checksum = "2d67a5a62ba6e01cb2192ff309324cb4875d0c451d55fe2319433abe7a05a8ee"
 
 [[package]]
 name = "subtle"
-version = "2.2.2"
+version = "2.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c65d530b10ccaeac294f349038a597e435b18fb456aadd0840a623f83b9e941"
+checksum = "502d53007c02d7605a05df1c1a73ee436952781653da5d0bf57ad608f66932c1"
 
 [[package]]
 name = "syn"
@@ -5580,7 +5580,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df0c900f2f9b4116803415878ff48b63da9edb268668e08cf9292d7503114a01"
 dependencies = [
  "generic-array 0.12.3",
- "subtle 2.2.2",
+ "subtle 2.2.3",
 ]
 
 [[package]]
@@ -5910,12 +5910,6 @@ checksum = "39f0c922f1a334134dc2f7a8b67dc5d25f0735263feec974345ff706bcf20b0d"
 dependencies = [
  "linked-hash-map",
 ]
-
-[[package]]
-name = "yansi"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d60c3b48c9cdec42fb06b3b84b5b087405e1fa1c644a1af3930e4dfafe93de48"
 
 [[package]]
 name = "yansi"

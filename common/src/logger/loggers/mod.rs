@@ -14,18 +14,17 @@ use super::*;
 mod sentry_logger;
 mod udp_writer;
 
-use chrono;
+use chrono::{Local, Utc};
 use lazy_static::lazy_static;
-use mc_util_build_info;
 use sentry_logger::SentryLogger;
 use slog::Drain;
-use slog_gelf;
-use slog_json;
+use slog_gelf::Gelf;
+use slog_json::Json;
 use std::{env, io, sync::Mutex};
 
 /// Custom timestamp function for use with slog-term
 fn custom_timestamp(io: &mut dyn io::Write) -> io::Result<()> {
-    write!(io, "{}", chrono::Utc::now())
+    write!(io, "{}", Utc::now())
 }
 
 /// Create a basic stdout logger.
@@ -50,7 +49,7 @@ fn create_gelf_logger() -> Option<slog::Fuse<slog_async::Async>> {
         let local_hostname = hostname::get_hostname().unwrap();
 
         let drain = slog_envlogger::new(
-            slog_gelf::Gelf::new(&local_hostname, &remote_host_port[..])
+            Gelf::new(&local_hostname, &remote_host_port[..])
                 .expect("failed creating Gelf logger for")
                 .fuse(),
         );
@@ -66,12 +65,12 @@ fn create_gelf_logger() -> Option<slog::Fuse<slog_async::Async>> {
 /// Create a UDP JSON logger.
 fn create_udp_json_logger() -> Option<slog::Fuse<slog_async::Async>> {
     env::var("MC_LOG_UDP_JSON").ok().map(|remote_host_port| {
-        let drain = slog_json::Json::new(udp_writer::UdpWriter::new(remote_host_port))
+        let drain = Json::new(udp_writer::UdpWriter::new(remote_host_port))
             .set_newlines(false)
             .set_flush(true)
             .add_key_value(o!(
                     "ts" => PushFnValue(move |_, ser| {
-                        ser.emit(chrono::Local::now().to_rfc3339())
+                        ser.emit(Local::now().to_rfc3339())
                     }),
                     "level_str" => FnValue(move |record| {
                         record.level().as_short_str()

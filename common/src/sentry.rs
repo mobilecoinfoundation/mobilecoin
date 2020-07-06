@@ -1,6 +1,5 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-use mc_util_build_info;
 use sentry as sentry_core;
 use std::env;
 

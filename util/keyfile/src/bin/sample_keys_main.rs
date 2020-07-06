@@ -35,7 +35,7 @@ fn main() {
     mc_util_keyfile::keygen::write_default_keyfiles(
         path,
         config.num,
-        config.acct.as_ref().map(|x| x.as_str()),
+        config.acct.as_deref(),
         config.seed.unwrap_or(mc_util_keyfile::keygen::DEFAULT_SEED),
     )
     .unwrap();
