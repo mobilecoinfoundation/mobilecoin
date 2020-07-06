@@ -1,8 +1,8 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 //! LedgerSyncService provides a mechanism for synchronizing a local ledger with the network.
-//! It uses consensus nodes as the source of truth for blocks, and then a pluggable object
-//! (`TransactionsFetcher`) for fetching actual transaction data.
+//! It uses consensus nodes as the source of truth for blocks, and then a pluggable
+//! [`TransactionsFetcher`] object for fetching actual transaction data.
 
 use crate::{
     counters, ledger_sync_error::LedgerSyncError, network_state_trait::NetworkState,
