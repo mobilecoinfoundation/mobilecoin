@@ -968,7 +968,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                 match request.get_monitor_id().len() {
                     0 => { /* no monitor ID given */ }
                     32 => {
-                        let sender_monitor_id =
+                        let monitor_id =
                             MonitorId::try_from(&request.monitor_id).map_err(|err| {
                                 rpc_internal_error("monitor_id.try_from.bytes", err, &self.logger)
                             })?;
@@ -976,7 +976,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                         // Get monitor data for this monitor.
                         let monitor_data = self
                             .mobilecoind_db
-                            .get_monitor_data(&sender_monitor_id)
+                            .get_monitor_data(&monitor_id)
                             .map_err(|err| {
                                 rpc_internal_error(
                                     "mobilecoind_db.get_monitor_data",
