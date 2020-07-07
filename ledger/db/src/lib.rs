@@ -609,7 +609,7 @@ impl LedgerDB {
             let bytes = db_txn.get(tx_outs_by_block_db, &u64_to_key_bytes(block_num))?;
             let tx_outs_by_block: TxOutsByBlockValue = decode(&bytes)?;
 
-            global_log::debug!(
+            global_log::trace!(
                 "Assigning tx outs #{} - #{} to block #{}",
                 tx_outs_by_block.first_tx_out_index,
                 tx_outs_by_block.first_tx_out_index + tx_outs_by_block.num_tx_outs,
