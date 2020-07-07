@@ -11,8 +11,8 @@ use mc_common::{
 use mc_transaction_core::BlockSignature;
 use mc_util_serial::{decode, encode, Message};
 
-use lmdb::{Cursor, Database, DatabaseFlags, Environment, Transaction, WriteFlags};
-use std::{convert::TryInto, path::PathBuf, sync::Arc};
+use lmdb::{Cursor, Database, DatabaseFlags, Environment, RoTransaction, Transaction, WriteFlags};
+use std::{convert::TryInto, path::PathBuf, str::FromStr, sync::Arc};
 use url::Url;
 
 /// LMDB Constant.
@@ -165,14 +165,72 @@ impl WatcherDB {
             .collect::<Result<Vec<_>, WatcherDBError>>()?)
     }
 
-    /// Get the total number of Blocks in the watcher db.
+    /// Get the last synced block per url for a given set of urls
     pub fn last_synced_blocks(
         &self,
         src_urls: &[Url],
     ) -> Result<HashMap<Url, Option<u64>>, WatcherDBError> {
         let db_txn = self.env.begin_ro_txn()?;
-        let mut results = HashMap::default();
+        self.get_url_to_last_synced(src_urls, &db_txn)
+    }
 
+    /// In the case where a synced block did not have a signature, update last synced.
+    pub fn update_last_synced(
+        &self,
+        src_url: &Url,
+        block_index: u64,
+    ) -> Result<(), WatcherDBError> {
+        let mut db_txn = self.env.begin_rw_txn()?;
+        db_txn.put(
+            self.last_synced,
+            &src_url.as_str().as_bytes(),
+            &block_index.to_be_bytes(),
+            WriteFlags::empty(),
+        )?;
+        db_txn.commit()?;
+        Ok(())
+    }
+
+    /// Get the highest block that all urls have synced.
+    /// Note: In the case where one watched consensus validator dies and is no longer
+    ///       reporting blocks to S3, this will cause the highest_synced_block to
+    ///       always remain at the lowest common denominator, so in the case where the
+    ///       the highest_synced_block is being used to determine if the watcher is
+    ///       behind, the watcher will need to be restarted with the dead node removed
+    ///       from the set of watched URLs.
+    pub fn highest_synced_block(&self) -> Result<u64, WatcherDBError> {
+        let db_txn = self.env.begin_ro_txn()?;
+        let mut cursor = db_txn.open_ro_cursor(self.last_synced)?;
+
+        // FIXME: do this in one db transaction
+        let all_urls: Vec<Url> = cursor
+            .iter()
+            .map(|(url_bytes, _block_index_bytes)| {
+                // These were all made from valid URLs, so this should not fail
+                Url::from_str(std::str::from_utf8(url_bytes).unwrap()).unwrap()
+            })
+            .collect();
+
+        let last_synced_map = self.get_url_to_last_synced(&all_urls, &db_txn)?;
+
+        let last_synced: Vec<u64> = last_synced_map
+            .values()
+            .map(|opt_block_index| {
+                // If this URL has never added a signature, it is at 0
+                opt_block_index.unwrap_or(0)
+            })
+            .collect();
+
+        Ok(*last_synced.iter().min().unwrap_or(&0))
+    }
+
+    // Helper method to get a map of Url -> Last Synced Block
+    fn get_url_to_last_synced(
+        &self,
+        src_urls: &[Url],
+        db_txn: &RoTransaction,
+    ) -> Result<HashMap<Url, Option<u64>>, WatcherDBError> {
+        let mut results = HashMap::default();
         for src_url in src_urls.iter() {
             match db_txn.get(self.last_synced, &src_url.as_str().as_bytes()) {
                 Ok(block_index_bytes) => {
@@ -196,25 +254,7 @@ impl WatcherDB {
                 }
             };
         }
-
         Ok(results)
-    }
-
-    /// In the case where a synced block did not have a signature, update last synced.
-    pub fn update_last_synced(
-        &self,
-        src_url: &Url,
-        block_index: u64,
-    ) -> Result<(), WatcherDBError> {
-        let mut db_txn = self.env.begin_rw_txn()?;
-        db_txn.put(
-            self.last_synced,
-            &src_url.as_str().as_bytes(),
-            &block_index.to_be_bytes(),
-            WriteFlags::empty(),
-        )?;
-        db_txn.commit()?;
-        Ok(())
     }
 }
 
@@ -258,6 +298,7 @@ mod test {
     use mc_transaction_core::{account_keys::AccountKey, Block, BlockContents};
     use mc_transaction_core_test_utils::get_blocks;
     use mc_util_from_random::FromRandom;
+    use mc_util_test_helper::run_with_one_seed;
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
     use tempdir::TempDir;
@@ -309,5 +350,55 @@ mod test {
             .unwrap();
 
         assert_eq!(watcher_db.get_block_signatures(1).unwrap().len(), 2);
+    }
+
+    // Highest synced block should return the minimum highest synced block for all URLs
+    #[test_with_logger]
+    fn test_highest_synced(logger: Logger) {
+        run_with_one_seed(|mut rng| {
+            let url1 = Url::parse("http://www.my_url1.com").unwrap();
+            let url2 = Url::parse("http://www.my_url2.com").unwrap();
+            let urls = vec![url1, url2];
+            let watcher_db = setup_watcher_db(logger.clone());
+
+            let blocks = setup_blocks();
+
+            let signing_key_a = Ed25519Pair::from_random(&mut rng);
+            let signing_key_b = Ed25519Pair::from_random(&mut rng);
+
+            let filename1 = String::from("00/01");
+
+            let signed_block_a1 =
+                BlockSignature::from_block_and_keypair(&blocks[1].0, &signing_key_a).unwrap();
+            watcher_db
+                .add_block_signature(&urls[0], 1, signed_block_a1, filename1.clone())
+                .unwrap();
+
+            let signed_block_b1 =
+                BlockSignature::from_block_and_keypair(&blocks[1].0, &signing_key_b).unwrap();
+            watcher_db
+                .add_block_signature(&urls[1], 1, signed_block_b1, filename1)
+                .unwrap();
+
+            assert_eq!(watcher_db.highest_synced_block().unwrap(), 1);
+
+            let filename2 = String::from("00/02");
+
+            let signed_block_a2 =
+                BlockSignature::from_block_and_keypair(&blocks[2].0, &signing_key_a).unwrap();
+            watcher_db
+                .add_block_signature(&urls[0], 2, signed_block_a2, filename2.clone())
+                .unwrap();
+
+            assert_eq!(watcher_db.highest_synced_block().unwrap(), 1);
+
+            let signed_block_b2 =
+                BlockSignature::from_block_and_keypair(&blocks[2].0, &signing_key_b).unwrap();
+            watcher_db
+                .add_block_signature(&urls[1], 2, signed_block_b2, filename2)
+                .unwrap();
+
+            assert_eq!(watcher_db.highest_synced_block().unwrap(), 2);
+        });
     }
 }
