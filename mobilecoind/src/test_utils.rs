@@ -185,6 +185,38 @@ pub fn add_block_to_ledger_db(
     ledger_db.num_blocks().expect("failed to get block height")
 }
 
+/// Adds a block containing the given TXOs.
+///
+/// # Arguments
+/// * `ledger_db`
+/// * `outputs` - TXOs to add to ledger.
+pub fn add_txos_to_ledger_db(
+    ledger_db: &mut LedgerDB,
+    outputs: &Vec<TxOut>,
+    rng: &mut (impl CryptoRng + RngCore),
+) -> u64 {
+    let block_contents = BlockContents::new(vec![KeyImage::from(rng.next_u64())], outputs.clone());
+
+    let num_blocks = ledger_db.num_blocks().expect("failed to get block height");
+
+    let new_block;
+    if num_blocks > 0 {
+        let parent = ledger_db
+            .get_block(num_blocks - 1)
+            .expect("failed to get parent block");
+        new_block =
+            Block::new_with_parent(BLOCK_VERSION, &parent, &Default::default(), &block_contents);
+    } else {
+        new_block = Block::new_origin_block(&outputs);
+    }
+
+    ledger_db
+        .append_block(&new_block, &block_contents, None)
+        .expect("failed writing initial transactions");
+
+    ledger_db.num_blocks().expect("failed to get block height")
+}
+
 fn get_free_port() -> u16 {
     static PORT_NR: AtomicUsize = AtomicUsize::new(0);
     PORT_NR.fetch_add(1, SeqCst) as u16 + 30100

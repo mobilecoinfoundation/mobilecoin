@@ -72,6 +72,9 @@ enum TxStatus {
 
     // Error: The transaction is not in the public ledger, and the tombstone block has been exceeded.
     TombstoneBlockExceeded = 2;
+
+    // The transaction was found in the ledger but the confirmation number is incorrect
+    InvalidConfirmationNumber = 3;
 }
 
 // Structure used in specifying the list of outputs when generating a transaction.
@@ -479,6 +482,9 @@ message GetTxStatusAsSenderResponse {
 // Get the status of a submitted transaction as the Recipient (using the tx public key).
 message GetTxStatusAsReceiverRequest {
     ReceiverTxReceipt receipt = 1;
+
+    // Optionally pass in a monitor ID to validate confirmation number
+    bytes monitor_id = 2;
 }
 message GetTxStatusAsReceiverResponse {
     TxStatus status = 1;

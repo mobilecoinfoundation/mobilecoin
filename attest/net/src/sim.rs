@@ -43,7 +43,7 @@ impl RaClient for SimClient {
                     json!({
                         "id": "0",
                         "version": 3,
-                        "timestamp": "FIXME",
+                        "timestamp": "2020-06-30T22:16:41.409742",
                         "isvEnclaveQuoteStatus": "OK",
                         "isvEnclaveQuoteBody": quote.to_base64_owned(),
                         "nonce": nonce.to_string(),
@@ -53,7 +53,7 @@ impl RaClient for SimClient {
                     json!({
                         "id": "0",
                         "version": 3,
-                        "timestamp": "FIXME",
+                        "timestamp": "2020-06-30T22:16:41.409742",
                         "isvEnclaveQuoteStatus": "OK",
                         "isvEnclaveQuoteBody": quote.to_base64_owned(),
                         "nonce": nonce.to_string()
@@ -65,7 +65,7 @@ impl RaClient for SimClient {
                     json!({
                         "id": "0",
                         "version": 3,
-                        "timestamp": "FIXME",
+                        "timestamp": "2020-06-30T22:16:41.409742",
                         "isvEnclaveQuoteStatus": "OK",
                         "isvEnclaveQuoteBody": quote.to_base64_owned(),
                         "epidPseudonym": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
@@ -74,7 +74,7 @@ impl RaClient for SimClient {
                     json!({
                         "id": "0",
                         "version": 3,
-                        "timestamp": "FIXME",
+                        "timestamp": "2020-06-30T22:16:41.409742",
                         "isvEnclaveQuoteStatus": "OK",
                         "isvEnclaveQuoteBody": quote.to_base64_owned()
                     })

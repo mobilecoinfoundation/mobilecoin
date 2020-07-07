@@ -1,4 +1,7 @@
+cargo-features = ["resolver"]
+
 [workspace]
+resolver = "2"
 members = [
     "admin-http-gateway",
     "api",
@@ -105,3 +108,6 @@ prost = { git = "https://github.com/danburkert/prost", rev = "6113789f70b6970982
 prost-derive = { git = "https://github.com/danburkert/prost", rev = "6113789f70b69709820becba4242824b4fb3ffec" }
 dialoguer = { git = "https://github.com/mitsuhiko/dialoguer", rev = "a0c6c1e" }
 console = { git = "https://github.com/mitsuhiko/console", rev = "1307823" }
+
+# Override lmdb-rkv for a necessary bugfix (see https://github.com/mozilla/lmdb-rs/pull/80)
+lmdb-rkv = { git = "https://github.com/mozilla/lmdb-rs", rev = "df1c2f5" }

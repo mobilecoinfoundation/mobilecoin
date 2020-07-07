@@ -1,6 +1,6 @@
 [package]
 name = "mc-mobilecoind"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["MobileCoin"]
 edition = "2018"
 
@@ -36,7 +36,7 @@ failure = "0.1.5"
 futures = "0.1"
 grpcio = "0.5.1"
 hex_fmt = "0.3"
-lmdb = "0.8.0"
+lmdb-rkv = "0.14.0"
 lru = { version = "0.1" }
 num_cpus = "1.12"
 prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }

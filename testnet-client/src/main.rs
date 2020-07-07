@@ -546,6 +546,13 @@ string that we send you. It should look something like:
                     println!();
                     break;
                 }
+                mc_mobilecoind_api::TxStatus::InvalidConfirmationNumber => {
+                    pb.finish_with_message(
+                        "Invalid Confirmation - transaction was successful, cannot confirm sender",
+                    );
+                    println!();
+                    break;
+                }
             }
         }
 

@@ -21,8 +21,7 @@ use mbedtls_sys::{
     },
     x509_crt,
 };
-use mc_crypto_rand::McRng;
-use rand_core::RngCore;
+use mc_crypto_rand::{McRng, RngCore};
 use std::{
     convert::TryFrom,
     env,
