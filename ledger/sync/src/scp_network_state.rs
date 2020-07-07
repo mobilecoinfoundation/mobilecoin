@@ -5,7 +5,7 @@
 use crate::network_state_trait::NetworkState;
 use mc_common::{
     logger::{log, Logger},
-    HashMap, HashSet, NodeID, ResponderId,
+    NodeID, ResponderId,
 };
 use mc_consensus_scp::{
     core_types::Ballot, msg::ExternalizePayload, predicates::FuncPredicate, GenericNodeId, Msg,
@@ -13,7 +13,11 @@ use mc_consensus_scp::{
 };
 use mc_transaction_core::BlockIndex;
 use serde::{de::DeserializeOwned, Serialize};
-use std::{hash::Hash, iter::FromIterator};
+use std::{
+    collections::{HashMap, HashSet},
+    hash::Hash,
+    iter::FromIterator,
+};
 
 pub struct SCPNetworkState<ID: GenericNodeId = NodeID> {
     // The local node ID.

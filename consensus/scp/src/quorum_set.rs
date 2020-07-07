@@ -3,10 +3,11 @@
 //! The quorum set is the essential unit of trust in SCP.
 //!
 //! A quorum set includes the members of the network, which a given node trusts and depends on.
-use mc_common::{HashMap, HashSet, NodeID, ResponderId};
+use mc_common::{NodeID, ResponderId};
 use mc_crypto_digestible::Digestible;
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::{HashMap, HashSet},
     fmt::Debug,
     hash::{Hash, Hasher},
     iter::FromIterator,

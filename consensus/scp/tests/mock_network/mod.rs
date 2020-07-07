@@ -2,7 +2,7 @@
 
 use mc_common::{
     logger::{log, o, Logger},
-    HashMap, HashSet, NodeID,
+    NodeID,
 };
 use mc_consensus_scp::{
     core_types::{CombineFn, SlotIndex, ValidityFn},
@@ -12,7 +12,7 @@ use mc_consensus_scp::{
     test_utils,
 };
 use std::{
-    collections::BTreeSet,
+    collections::{BTreeSet, HashMap, HashSet},
     iter::FromIterator,
     sync::{Arc, Mutex},
     thread,
