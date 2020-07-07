@@ -11,7 +11,7 @@ use mc_common::{
 use mc_transaction_core::BlockSignature;
 use mc_util_serial::{decode, encode, Message};
 
-use lmdb::{Cursor, Database, DatabaseFlags, Environment, Transaction, WriteFlags};
+use lmdb::{Cursor, Database, DatabaseFlags, Environment, RoTransaction, Transaction, WriteFlags};
 use std::{convert::TryInto, path::PathBuf, str::FromStr, sync::Arc};
 use url::Url;
 
@@ -169,33 +169,7 @@ impl WatcherDB {
         src_urls: &[Url],
     ) -> Result<HashMap<Url, Option<u64>>, WatcherDBError> {
         let db_txn = self.env.begin_ro_txn()?;
-        let mut results = HashMap::default();
-
-        for src_url in src_urls.iter() {
-            match db_txn.get(self.last_synced, &src_url.as_str().as_bytes()) {
-                Ok(block_index_bytes) => {
-                    if block_index_bytes.len() == 8 {
-                        let block_index = u64::from_be_bytes(block_index_bytes.try_into().unwrap());
-                        results.insert(src_url.clone(), Some(block_index));
-                    } else {
-                        log::error!(
-                            self.logger,
-                            "Got invalid block index bytes {:?} for {}",
-                            block_index_bytes,
-                            src_url,
-                        );
-                    }
-                }
-                Err(lmdb::Error::NotFound) => {
-                    results.insert(src_url.clone(), None);
-                }
-                Err(err) => {
-                    return Err(err.into());
-                }
-            };
-        }
-
-        Ok(results)
+        self.get_url_to_last_synced(src_urls, &db_txn)
     }
 
     /// In the case where a synced block did not have a signature, update last synced.
@@ -235,9 +209,27 @@ impl WatcherDB {
             })
             .collect();
 
-        let mut results = HashMap::default();
+        let last_synced_map = self.get_url_to_last_synced(&all_urls, &db_txn)?;
 
-        for src_url in all_urls.iter() {
+        let last_synced: Vec<u64> = last_synced_map
+            .values()
+            .map(|opt_block_index| {
+                // If this URL has never added a signature, it is at 0
+                opt_block_index.unwrap_or(0)
+            })
+            .collect();
+
+        Ok(*last_synced.iter().min().unwrap_or(&0))
+    }
+
+    // Helper method to get a map of Url -> Last Synced Block
+    fn get_url_to_last_synced(
+        &self,
+        src_urls: &[Url],
+        db_txn: &RoTransaction,
+    ) -> Result<HashMap<Url, Option<u64>>, WatcherDBError> {
+        let mut results = HashMap::default();
+        for src_url in src_urls.iter() {
             match db_txn.get(self.last_synced, &src_url.as_str().as_bytes()) {
                 Ok(block_index_bytes) => {
                     if block_index_bytes.len() == 8 {
@@ -260,16 +252,7 @@ impl WatcherDB {
                 }
             };
         }
-
-        let last_synced: Vec<u64> = results
-            .values()
-            .map(|opt_block_index| {
-                // If this URL has never added a signature, it is at 0
-                opt_block_index.unwrap_or(0)
-            })
-            .collect();
-
-        Ok(*last_synced.iter().min().unwrap_or(&0))
+        Ok(results)
     }
 }
 
