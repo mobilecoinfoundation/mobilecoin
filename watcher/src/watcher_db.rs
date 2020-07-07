@@ -296,6 +296,7 @@ mod test {
     use mc_transaction_core::{account_keys::AccountKey, Block, BlockContents};
     use mc_transaction_core_test_utils::get_blocks;
     use mc_util_from_random::FromRandom;
+    use mc_util_test_helper::run_with_one_seed;
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
     use tempdir::TempDir;
@@ -352,49 +353,50 @@ mod test {
     // Highest synced block should return the minimum highest synced block for all URLs
     #[test_with_logger]
     fn test_highest_synced(logger: Logger) {
-        let mut rng: Hc128Rng = Hc128Rng::from_seed([8u8; 32]);
-        let url1 = Url::parse("http://www.my_url1.com").unwrap();
-        let url2 = Url::parse("http://www.my_url2.com").unwrap();
-        let urls = vec![url1, url2];
-        let watcher_db = setup_watcher_db(logger.clone());
+        run_with_one_seed(|mut rng| {
+            let url1 = Url::parse("http://www.my_url1.com").unwrap();
+            let url2 = Url::parse("http://www.my_url2.com").unwrap();
+            let urls = vec![url1, url2];
+            let watcher_db = setup_watcher_db(logger.clone());
 
-        let blocks = setup_blocks();
+            let blocks = setup_blocks();
 
-        let signing_key_a = Ed25519Pair::from_random(&mut rng);
-        let signing_key_b = Ed25519Pair::from_random(&mut rng);
+            let signing_key_a = Ed25519Pair::from_random(&mut rng);
+            let signing_key_b = Ed25519Pair::from_random(&mut rng);
 
-        let filename1 = String::from("00/01");
+            let filename1 = String::from("00/01");
 
-        let signed_block_a1 =
-            BlockSignature::from_block_and_keypair(&blocks[1].0, &signing_key_a).unwrap();
-        watcher_db
-            .add_block_signature(&urls[0], 1, signed_block_a1, filename1.clone())
-            .unwrap();
+            let signed_block_a1 =
+                BlockSignature::from_block_and_keypair(&blocks[1].0, &signing_key_a).unwrap();
+            watcher_db
+                .add_block_signature(&urls[0], 1, signed_block_a1, filename1.clone())
+                .unwrap();
 
-        let signed_block_b1 =
-            BlockSignature::from_block_and_keypair(&blocks[1].0, &signing_key_b).unwrap();
-        watcher_db
-            .add_block_signature(&urls[1], 1, signed_block_b1, filename1)
-            .unwrap();
+            let signed_block_b1 =
+                BlockSignature::from_block_and_keypair(&blocks[1].0, &signing_key_b).unwrap();
+            watcher_db
+                .add_block_signature(&urls[1], 1, signed_block_b1, filename1)
+                .unwrap();
 
-        assert_eq!(watcher_db.highest_synced_block().unwrap(), 1);
+            assert_eq!(watcher_db.highest_synced_block().unwrap(), 1);
 
-        let filename2 = String::from("00/02");
+            let filename2 = String::from("00/02");
 
-        let signed_block_a2 =
-            BlockSignature::from_block_and_keypair(&blocks[2].0, &signing_key_a).unwrap();
-        watcher_db
-            .add_block_signature(&urls[0], 2, signed_block_a2, filename2.clone())
-            .unwrap();
+            let signed_block_a2 =
+                BlockSignature::from_block_and_keypair(&blocks[2].0, &signing_key_a).unwrap();
+            watcher_db
+                .add_block_signature(&urls[0], 2, signed_block_a2, filename2.clone())
+                .unwrap();
 
-        assert_eq!(watcher_db.highest_synced_block().unwrap(), 1);
+            assert_eq!(watcher_db.highest_synced_block().unwrap(), 1);
 
-        let signed_block_b2 =
-            BlockSignature::from_block_and_keypair(&blocks[2].0, &signing_key_b).unwrap();
-        watcher_db
-            .add_block_signature(&urls[1], 2, signed_block_b2, filename2)
-            .unwrap();
+            let signed_block_b2 =
+                BlockSignature::from_block_and_keypair(&blocks[2].0, &signing_key_b).unwrap();
+            watcher_db
+                .add_block_signature(&urls[1], 2, signed_block_b2, filename2)
+                .unwrap();
 
-        assert_eq!(watcher_db.highest_synced_block().unwrap(), 2);
+            assert_eq!(watcher_db.highest_synced_block().unwrap(), 2);
+        });
     }
 }
