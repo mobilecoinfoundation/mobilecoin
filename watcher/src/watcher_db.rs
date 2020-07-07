@@ -208,7 +208,13 @@ impl WatcherDB {
                 match res {
                     Ok((url_bytes, _block_index_bytes)) => {
                         // These were all made from valid URLs, so this should not fail
-                        Some(Url::from_str(std::str::from_utf8(url_bytes).unwrap()).unwrap())
+                        Some(
+                            Url::from_str(
+                                std::str::from_utf8(url_bytes)
+                                    .expect("Could not get str from utf8"),
+                            )
+                            .expect("Could not get URL from str"),
+                        )
                     }
                     Err(_e) => None,
                 }
