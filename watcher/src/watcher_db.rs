@@ -12,7 +12,7 @@ use mc_transaction_core::BlockSignature;
 use mc_util_serial::{decode, encode, Message};
 
 use lmdb::{Cursor, Database, DatabaseFlags, Environment, Transaction, WriteFlags};
-use std::{convert::TryInto, path::PathBuf, sync::Arc};
+use std::{convert::TryInto, path::PathBuf, str::FromStr, sync::Arc};
 use url::Url;
 
 /// LMDB Constant.
@@ -229,18 +229,47 @@ impl WatcherDB {
         // FIXME: do this in one db transaction
         let all_urls: Vec<Url> = cursor
             .iter()
-            .map(|(url_bytes, _block_index_bytes)| Url::from_str(std::str::from_utf8(url_bytes)?))
+            .map(|(url_bytes, _block_index_bytes)| {
+                // These were all made from valid URLs, so this should not fail
+                Url::from_str(std::str::from_utf8(url_bytes).unwrap()).unwrap()
+            })
             .collect();
 
-        let last_synced = self
-            .last_synced_blocks(&all_urls)?
+        let mut results = HashMap::default();
+
+        for src_url in all_urls.iter() {
+            match db_txn.get(self.last_synced, &src_url.as_str().as_bytes()) {
+                Ok(block_index_bytes) => {
+                    if block_index_bytes.len() == 8 {
+                        let block_index = u64::from_be_bytes(block_index_bytes.try_into().unwrap());
+                        results.insert(src_url.clone(), Some(block_index));
+                    } else {
+                        log::error!(
+                            self.logger,
+                            "Got invalid block index bytes {:?} for {}",
+                            block_index_bytes,
+                            src_url,
+                        );
+                    }
+                }
+                Err(lmdb::Error::NotFound) => {
+                    results.insert(src_url.clone(), None);
+                }
+                Err(err) => {
+                    return Err(err.into());
+                }
+            };
+        }
+
+        let last_synced: Vec<u64> = results
             .values()
             .map(|opt_block_index| {
                 // If this URL has never added a signature, it is at 0
                 opt_block_index.unwrap_or(0)
-            });
+            })
+            .collect();
 
-        Ok(last_synced.min().unwrap_or(0))
+        Ok(*last_synced.iter().min().unwrap_or(&0))
     }
 }
 
@@ -351,20 +380,38 @@ mod test {
         let signing_key_a = Ed25519Pair::from_random(&mut rng);
         let signing_key_b = Ed25519Pair::from_random(&mut rng);
 
-        let filename = String::from("00/00");
+        let filename1 = String::from("00/01");
 
         let signed_block_a1 =
             BlockSignature::from_block_and_keypair(&blocks[1].0, &signing_key_a).unwrap();
         watcher_db
-            .add_block_signature(&urls[0], 1, signed_block_a1, filename.clone())
+            .add_block_signature(&urls[0], 1, signed_block_a1, filename1.clone())
             .unwrap();
 
         let signed_block_b1 =
             BlockSignature::from_block_and_keypair(&blocks[1].0, &signing_key_b).unwrap();
         watcher_db
-            .add_block_signature(&urls[1], 1, signed_block_b1, filename)
+            .add_block_signature(&urls[1], 1, signed_block_b1, filename1)
             .unwrap();
 
-        assert_eq!(watcher_db.highest_synced_block(), 1);
+        assert_eq!(watcher_db.highest_synced_block().unwrap(), 1);
+
+        let filename2 = String::from("00/02");
+
+        let signed_block_a2 =
+            BlockSignature::from_block_and_keypair(&blocks[2].0, &signing_key_a).unwrap();
+        watcher_db
+            .add_block_signature(&urls[0], 2, signed_block_a2, filename2.clone())
+            .unwrap();
+
+        assert_eq!(watcher_db.highest_synced_block().unwrap(), 1);
+
+        let signed_block_b2 =
+            BlockSignature::from_block_and_keypair(&blocks[2].0, &signing_key_b).unwrap();
+        watcher_db
+            .add_block_signature(&urls[1], 2, signed_block_b2, filename2)
+            .unwrap();
+
+        assert_eq!(watcher_db.highest_synced_block().unwrap(), 2);
     }
 }
