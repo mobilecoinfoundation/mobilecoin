@@ -298,48 +298,54 @@ impl LedgerDB {
             .set_flags(EnvironmentFlags::NO_SYNC)
             .open(&path)?;
 
-        // Check if the database we opened is compatible with the current implementation.
         let metadata_store = MetadataStore::new(&env)?;
-        let db_txn = env.begin_ro_txn()?;
-        let version = metadata_store.get_version(&db_txn)?;
-        global_log::info!("Ledger db is currently at version: {:?}", version);
-        db_txn.commit()?;
 
-        match version.is_compatible_with_latest() {
-            Ok(_) => {}
-            // Version 20200610 introduced the TxOut public key -> index store.
-            Err(Error::VersionIncompatible(20200427, 20200610)) => {
-                global_log::info!("Ledger db migrating from version 20200427 to 20200610, this might take awhile...");
+        loop {
+            // Check if the database we opened is compatible with the current implementation.
+            let db_txn = env.begin_ro_txn()?;
+            let version = metadata_store.get_version(&db_txn)?;
+            global_log::info!("Ledger db is currently at version: {:?}", version);
+            db_txn.commit()?;
 
-                TxOutStore::construct_tx_out_index_by_public_key_from_existing_data(&env)?;
+            match version.is_compatible_with_latest() {
+                Ok(_) => {
+                    break;
+                }
+                // Version 20200610 introduced the TxOut public key -> index store.
+                Err(Error::VersionIncompatible(20200427, 20200610))
+                | Err(Error::VersionIncompatible(20200427, 20200707)) => {
+                    global_log::info!("Ledger db migrating from version 20200427 to 20200610, this might take awhile...");
 
-                let mut db_txn = env.begin_rw_txn()?;
-                metadata_store.set_version_to_latest(&mut db_txn)?;
-                global_log::info!(
-                    "Ledger db migration complete, now at version: {:?}",
-                    metadata_store.get_version(&db_txn),
-                );
-                db_txn.commit()?;
-            }
-            // Version 20200707 introduced the TxOut global index -> block index store.
-            Err(Error::VersionIncompatible(20200610, 20200707)) => {
-                global_log::info!("Ledger db migrating from version 20200610 to 20200707, this might take awhile...");
+                    TxOutStore::construct_tx_out_index_by_public_key_from_existing_data(&env)?;
 
-                Self::construct_block_number_by_tx_out_index_from_existing_data(&env)?;
+                    let mut db_txn = env.begin_rw_txn()?;
+                    metadata_store.set_version(&mut db_txn, 20200610)?;
+                    global_log::info!(
+                        "Ledger db migration complete, now at version: {:?}",
+                        metadata_store.get_version(&db_txn),
+                    );
+                    db_txn.commit()?;
+                }
+                // Version 20200707 introduced the TxOut global index -> block index store.
+                Err(Error::VersionIncompatible(20200610, 20200707)) => {
+                    global_log::info!("Ledger db migrating from version 20200610 to 20200707, this might take awhile...");
 
-                let mut db_txn = env.begin_rw_txn()?;
-                metadata_store.set_version_to_latest(&mut db_txn)?;
-                global_log::info!(
-                    "Ledger db migration complete, now at version: {:?}",
-                    metadata_store.get_version(&db_txn),
-                );
-                db_txn.commit()?;
-            }
-            // Don't know how to migrate.
-            Err(err) => {
-                return Err(err);
-            }
-        };
+                    Self::construct_block_number_by_tx_out_index_from_existing_data(&env)?;
+
+                    let mut db_txn = env.begin_rw_txn()?;
+                    metadata_store.set_version_to_latest(&mut db_txn)?;
+                    global_log::info!(
+                        "Ledger db migration complete, now at version: {:?}",
+                        metadata_store.get_version(&db_txn),
+                    );
+                    db_txn.commit()?;
+                }
+                // Don't know how to migrate.
+                Err(err) => {
+                    return Err(err);
+                }
+            };
+        }
 
         let counts = env.open_db(Some(COUNTS_DB_NAME))?;
         let blocks = env.open_db(Some(BLOCKS_DB_NAME))?;
