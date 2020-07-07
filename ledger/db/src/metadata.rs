@@ -7,7 +7,7 @@ use prost::Message;
 // If this is properly maintained, we could check during ledger db opening for any
 // incompatibilities, and either refuse to open or perform a migration.
 #[allow(clippy::unreadable_literal)]
-pub const LATEST_VERSION: u64 = 20200610;
+pub const LATEST_VERSION: u64 = 20200707;
 
 // Metadata information about the ledger databse.
 #[derive(Clone, Message)]

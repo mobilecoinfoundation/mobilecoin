@@ -321,6 +321,21 @@ impl LedgerDB {
                 );
                 db_txn.commit()?;
             }
+            // Version 20200707 introduced the TxOut global index -> block index store.
+            Err(Error::VersionIncompatible(20200610, 20200707)) => {
+                global_log::info!("Ledger db migrating from version 20200610 to 20200707, this might take awhile...");
+
+                Self::construct_block_number_by_tx_out_index_from_existing_data(&env)?;
+
+                let mut db_txn = env.begin_rw_txn()?;
+                metadata_store.set_version_to_latest(&mut db_txn)?;
+                global_log::info!(
+                    "Ledger db migration complete, now at version: {:?}",
+                    metadata_store.get_version(&db_txn),
+                );
+                db_txn.commit()?;
+            }
+            // Don't know how to migrate.
             Err(err) => {
                 return Err(err);
             }
@@ -479,7 +494,7 @@ impl LedgerDB {
         )?;
 
         // Write the actual TxOuts.
-        let block_index_bytes= u64_to_key_bytes(block_index);
+        let block_index_bytes = u64_to_key_bytes(block_index);
 
         for tx_out in tx_outs {
             if self.contains_tx_out_public_key(&tx_out.public_key)? {
@@ -562,6 +577,61 @@ impl LedgerDB {
 
         // All good
         Ok(())
+    }
+
+    /// A utility function for constructing the block_number_by_tx_out_index store using existing
+    /// data.
+    fn construct_block_number_by_tx_out_index_from_existing_data(
+        env: &Environment,
+    ) -> Result<(), Error> {
+        // When constructing the block index by tx out index database, we first need to create it.
+        let block_number_by_tx_out_index_db =
+            env.create_db(Some(BLOCK_NUMBER_BY_TX_OUT_INDEX), DatabaseFlags::empty())?;
+
+        // Open pre-existing databases that has data we need.
+        let tx_outs_by_block_db = env.open_db(Some(TX_OUTS_BY_BLOCK_DB_NAME))?;
+        let counts_db = env.open_db(Some(COUNTS_DB_NAME))?;
+
+        // After the database has been created, populate it with the existing data.
+        let mut db_txn = env.begin_rw_txn()?;
+
+        let num_blocks = key_bytes_to_u64(&db_txn.get(counts_db, &NUM_BLOCKS_KEY)?);
+
+        let mut percents: u64 = 0;
+        for block_num in 0..num_blocks {
+            // Get information about the TxOuts in the block.
+            let bytes = db_txn.get(tx_outs_by_block_db, &u64_to_key_bytes(block_num))?;
+            let tx_outs_by_block: TxOutsByBlockValue = decode(&bytes)?;
+
+            global_log::debug!(
+                "Assigning tx outs #{} - #{} to block #{}",
+                tx_outs_by_block.first_tx_out_index,
+                tx_outs_by_block.first_tx_out_index + tx_outs_by_block.num_tx_outs,
+                block_num,
+            );
+
+            for i in 0..tx_outs_by_block.num_tx_outs {
+                let tx_out_index = tx_outs_by_block.first_tx_out_index + i;
+
+                db_txn.put(
+                    block_number_by_tx_out_index_db,
+                    &u64_to_key_bytes(tx_out_index),
+                    &u64_to_key_bytes(block_num),
+                    WriteFlags::NO_OVERWRITE,
+                )?;
+            }
+
+            // Throttled logging.
+            let new_percents = block_num * 100 / num_blocks;
+            if new_percents != percents {
+                percents = new_percents;
+                global_log::info!(
+                    "Constructing block_number_by_tx_out_index: {}% complete",
+                    percents
+                );
+            }
+        }
+        Ok(db_txn.commit()?)
     }
 }
 
@@ -777,7 +847,9 @@ mod ledger_db_test {
             );
 
             // All tx outs are in the second block.
-            let block_index = ledger_db.get_block_index_by_tx_out_index((i + 1) as u64).unwrap();
+            let block_index = ledger_db
+                .get_block_index_by_tx_out_index((i + 1) as u64)
+                .unwrap();
             assert_eq!(block_index, 1);
         }
 
@@ -919,9 +991,13 @@ mod ledger_db_test {
 
         for (block_index, block_contents) in expected_block_contents.iter().enumerate() {
             for tx_out in block_contents.outputs.iter() {
-                let tx_out_index = ledger_db.get_tx_out_index_by_public_key(&tx_out.public_key).expect("Failed getting tx out index");
+                let tx_out_index = ledger_db
+                    .get_tx_out_index_by_public_key(&tx_out.public_key)
+                    .expect("Failed getting tx out index");
 
-                let block_index_by_tx_out = ledger_db.get_block_index_by_tx_out_index(tx_out_index).expect("Failed getting block index by tx out index");
+                let block_index_by_tx_out = ledger_db
+                    .get_block_index_by_tx_out_index(tx_out_index)
+                    .expect("Failed getting block index by tx out index");
                 assert_eq!(block_index as u64, block_index_by_tx_out);
             }
         }
