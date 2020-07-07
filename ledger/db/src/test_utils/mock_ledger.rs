@@ -17,10 +17,12 @@ use std::{
     sync::{Arc, Mutex, MutexGuard},
 };
 
+#[derive(Default)]
 pub struct MockLedgerInner {
     pub blocks_by_block_number: HashMap<u64, Block>,
     pub blocks_by_block_id: HashMap<BlockID, Block>,
     pub block_contents_by_block_number: HashMap<u64, BlockContents>,
+    pub block_number_by_tx_out_index: HashMap<u64, u64>,
     pub tx_outs: HashSet<TxOut>,
     pub membership_proofs: HashMap<u64, TxOutMembershipProof>,
     pub key_images_by_block_number: HashMap<u64, Vec<KeyImage>>,
@@ -35,15 +37,7 @@ pub struct MockLedger {
 impl Default for MockLedger {
     fn default() -> Self {
         Self {
-            inner: Arc::new(Mutex::new(MockLedgerInner {
-                blocks_by_block_number: HashMap::default(),
-                blocks_by_block_id: HashMap::default(),
-                block_contents_by_block_number: HashMap::default(),
-                tx_outs: HashSet::default(),
-                membership_proofs: HashMap::default(),
-                key_images_by_block_number: HashMap::default(),
-                key_images: HashMap::default(),
-            })),
+            inner: Arc::new(Mutex::new(MockLedgerInner::default())),
         }
     }
 }
@@ -73,7 +67,9 @@ impl MockLedger {
             .insert(block.index, block_contents.clone());
 
         for tx_out in &block_contents.outputs {
+            let tx_out_index = inner.tx_outs.len() as u64;
             inner.tx_outs.insert(tx_out.clone());
+            inner.block_number_by_tx_out_index.insert(tx_out_index, block.index);
         }
 
         let key_images = block_contents.key_images.clone();
@@ -123,6 +119,11 @@ impl Ledger for MockLedger {
 
     fn get_block_signature(&self, _block_number: u64) -> Result<BlockSignature, Error> {
         Err(Error::NotFound)
+    }
+
+    /// Gets block index by a TxOut global index.
+    fn get_block_index_by_tx_out_index(&self, tx_out_index: u64) -> Result<u64, Error> {
+        self.lock().block_number_by_tx_out_index.get(&tx_out_index).cloned().ok_or(Error::NotFound)
     }
 
     fn get_tx_out_index_by_hash(&self, _tx_out_hash: &[u8; 32]) -> Result<u64, Error> {

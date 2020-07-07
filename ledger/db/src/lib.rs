@@ -44,6 +44,7 @@ pub const BLOCK_SIGNATURES_DB_NAME: &str = "ledger_db:block_signatures";
 pub const KEY_IMAGES_DB_NAME: &str = "ledger_db:key_images";
 pub const KEY_IMAGES_BY_BLOCK_DB_NAME: &str = "ledger_db:key_images_by_block";
 pub const TX_OUTS_BY_BLOCK_DB_NAME: &str = "ledger_db:tx_outs_by_block";
+pub const BLOCK_NUMBER_BY_TX_OUT_INDEX: &str = "ledger_db:block_number_by_tx_out_index";
 
 // Keys used by the `counts` database.
 const NUM_BLOCKS_KEY: &str = "num_blocks";
@@ -98,6 +99,10 @@ pub struct LedgerDB {
     /// This map allows retrieval of all TxOuts that were included in a given block number by
     /// querying `tx_out_store`.
     tx_outs_by_block: Database,
+
+    /// TxOut global index -> block number.
+    /// This map allows retrieval of the block a given TxOut belongs to.
+    block_number_by_tx_out_index: Database,
 
     /// Location on filesystem.
     path: PathBuf,
@@ -195,6 +200,14 @@ impl Ledger for LedgerDB {
         Ok(signature)
     }
 
+    /// Gets block index by a TxOut global index.
+    fn get_block_index_by_tx_out_index(&self, tx_out_index: u64) -> Result<u64, Error> {
+        let db_transaction = self.env.begin_ro_txn()?;
+        let key = u64_to_key_bytes(tx_out_index);
+        let block_index_bytes = db_transaction.get(self.block_number_by_tx_out_index, &key)?;
+        Ok(key_bytes_to_u64(&block_index_bytes))
+    }
+
     /// Returns the index of the TxOut with the given hash.
     fn get_tx_out_index_by_hash(&self, tx_out_hash: &[u8; 32]) -> Result<u64, Error> {
         let db_transaction: RoTransaction = self.env.begin_ro_txn()?;
@@ -279,7 +292,7 @@ impl LedgerDB {
     #[allow(clippy::unreadable_literal)]
     pub fn open(path: PathBuf) -> Result<LedgerDB, Error> {
         let env = Environment::new()
-            .set_max_dbs(21)
+            .set_max_dbs(22)
             .set_map_size(MAX_LMDB_FILE_SIZE)
             // TODO - needed because currently our test cloud machines have slow disks.
             .set_flags(EnvironmentFlags::NO_SYNC)
@@ -319,6 +332,7 @@ impl LedgerDB {
         let key_images = env.open_db(Some(KEY_IMAGES_DB_NAME))?;
         let key_images_by_block = env.open_db(Some(KEY_IMAGES_BY_BLOCK_DB_NAME))?;
         let tx_outs_by_block = env.open_db(Some(TX_OUTS_BY_BLOCK_DB_NAME))?;
+        let block_number_by_tx_out_index = env.open_db(Some(BLOCK_NUMBER_BY_TX_OUT_INDEX))?;
 
         let tx_out_store = TxOutStore::new(&env)?;
 
@@ -331,6 +345,7 @@ impl LedgerDB {
             key_images,
             key_images_by_block,
             tx_outs_by_block,
+            block_number_by_tx_out_index,
             metadata_store,
             tx_out_store,
         })
@@ -339,7 +354,7 @@ impl LedgerDB {
     /// Creates a fresh Ledger Database in the given path.
     pub fn create(path: PathBuf) -> Result<(), Error> {
         let env = Environment::new()
-            .set_max_dbs(20)
+            .set_max_dbs(22)
             .set_map_size(MAX_LMDB_FILE_SIZE)
             .open(&path)
             .unwrap_or_else(|_| {
@@ -355,6 +370,7 @@ impl LedgerDB {
         env.create_db(Some(KEY_IMAGES_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(KEY_IMAGES_BY_BLOCK_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(TX_OUTS_BY_BLOCK_DB_NAME), DatabaseFlags::empty())?;
+        env.create_db(Some(BLOCK_NUMBER_BY_TX_OUT_INDEX), DatabaseFlags::empty())?;
 
         MetadataStore::create(&env)?;
         TxOutStore::create(&env)?;
@@ -463,12 +479,21 @@ impl LedgerDB {
         )?;
 
         // Write the actual TxOuts.
+        let block_index_bytes= u64_to_key_bytes(block_index);
+
         for tx_out in tx_outs {
             if self.contains_tx_out_public_key(&tx_out.public_key)? {
                 return Err(Error::DuplicateOutputPublicKey);
             }
 
-            self.tx_out_store.push(tx_out, db_transaction)?;
+            let tx_out_index = self.tx_out_store.push(tx_out, db_transaction)?;
+
+            db_transaction.put(
+                self.block_number_by_tx_out_index,
+                &u64_to_key_bytes(tx_out_index),
+                &block_index_bytes,
+                WriteFlags::NO_OVERWRITE,
+            )?;
         }
 
         // Done.
@@ -699,6 +724,9 @@ mod ledger_db_test {
         let key_images = ledger_db.get_key_images_by_block(0).unwrap();
         assert_eq!(key_images.len(), 0);
 
+        let block_index = ledger_db.get_block_index_by_tx_out_index(0).unwrap();
+        assert_eq!(block_index, 0);
+
         // === Create and append a non-origin block. ===
 
         let recipient_account_key = AccountKey::random(&mut rng);
@@ -747,6 +775,10 @@ mod ledger_db_test {
                 ledger_db.get_tx_out_by_index((i + 1) as u64).unwrap(),
                 *tx_out
             );
+
+            // All tx outs are in the second block.
+            let block_index = ledger_db.get_block_index_by_tx_out_index((i + 1) as u64).unwrap();
+            assert_eq!(block_index, 1);
         }
 
         assert!(ledger_db
@@ -871,6 +903,41 @@ mod ledger_db_test {
 
         match ledger_db.get_block(out_of_range) {
             Ok(_block) => panic!("Should not return a block."),
+            Err(Error::NotFound) => {
+                // This is expected.
+            }
+            Err(e) => panic!("Unexpected error {:?}", e),
+        }
+    }
+
+    #[test]
+    // Getting a block number by tx out index should return the correct block number, if it exists.
+    fn test_get_block_index_by_tx_out_index() {
+        let mut ledger_db = create_db();
+        let n_blocks = 43;
+        let (_expected_blocks, expected_block_contents) = populate_db(&mut ledger_db, n_blocks, 1);
+
+        for (block_index, block_contents) in expected_block_contents.iter().enumerate() {
+            for tx_out in block_contents.outputs.iter() {
+                let tx_out_index = ledger_db.get_tx_out_index_by_public_key(&tx_out.public_key).expect("Failed getting tx out index");
+
+                let block_index_by_tx_out = ledger_db.get_block_index_by_tx_out_index(tx_out_index).expect("Failed getting block index by tx out index");
+                assert_eq!(block_index as u64, block_index_by_tx_out);
+            }
+        }
+    }
+
+    #[test]
+    // Getting a block index by a tx out index return an error if the tx out index doesn't exist.
+    fn test_get_block_index_by_tx_out_index_doesnt_exist() {
+        let mut ledger_db = create_db();
+        let n_blocks = 43;
+        populate_db(&mut ledger_db, n_blocks, 1);
+
+        let out_of_range = 999;
+
+        match ledger_db.get_block_index_by_tx_out_index(out_of_range) {
+            Ok(_block_index) => panic!("Should not return a block index."),
             Err(Error::NotFound) => {
                 // This is expected.
             }
