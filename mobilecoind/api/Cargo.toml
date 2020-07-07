@@ -18,6 +18,7 @@ protobuf = "2.12"
 
 [dev-dependencies]
 mc-common = { path = "../../common", features = ["loggers"] }
+mc-transaction-std = { path = "../../transaction/std" }
 
 rand = "0.7"
 hex_fmt = "0.3"
