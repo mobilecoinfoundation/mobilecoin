@@ -69,7 +69,9 @@ impl MockLedger {
         for tx_out in &block_contents.outputs {
             let tx_out_index = inner.tx_outs.len() as u64;
             inner.tx_outs.insert(tx_out.clone());
-            inner.block_number_by_tx_out_index.insert(tx_out_index, block.index);
+            inner
+                .block_number_by_tx_out_index
+                .insert(tx_out_index, block.index);
         }
 
         let key_images = block_contents.key_images.clone();
@@ -123,7 +125,11 @@ impl Ledger for MockLedger {
 
     /// Gets block index by a TxOut global index.
     fn get_block_index_by_tx_out_index(&self, tx_out_index: u64) -> Result<u64, Error> {
-        self.lock().block_number_by_tx_out_index.get(&tx_out_index).cloned().ok_or(Error::NotFound)
+        self.lock()
+            .block_number_by_tx_out_index
+            .get(&tx_out_index)
+            .cloned()
+            .ok_or(Error::NotFound)
     }
 
     fn get_tx_out_index_by_hash(&self, _tx_out_hash: &[u8; 32]) -> Result<u64, Error> {
