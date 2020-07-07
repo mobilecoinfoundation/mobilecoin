@@ -112,24 +112,24 @@ pub struct RequestPayload {
     /// UTF-8 encoded fog report service URL. (Version 1+)
     pub fog_report_url: String,
 
-    /// Bytes of user's signature over fog authority key (Version 1+)
-    pub fog_authority_sig: Vec<u8>,
-
-    /// The key labelling fog reports for this public address (Version 1+)
-    pub fog_report_id: String,
-
     /// The requested value in picoMOB. (Version 2+)
     pub value: u64,
 
     /// UTF-8 encoded memo message. (Version 3+)
     pub memo: String,
+
+    /// Bytes of user's signature over fog authority key (Version 4+)
+    pub fog_authority_sig: Vec<u8>,
+
+    /// The key labeling fog reports for this public address (Version 4+)
+    pub fog_report_id: String,
 }
 
 impl fmt::Debug for RequestPayload {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "version:{}, vpk:{}, spk:{}, fog:{}, fog-sig:{}, fog-report-key:{} value:{}, memo:{}",
+            "version:{}, vpk:{}, spk:{}, fog:{}, fog-sig:{}, fog-id:{} value:{}, memo:{}",
             self.version,
             hex_fmt::HexFmt(&self.view_public_key),
             hex_fmt::HexFmt(&self.spend_public_key),
@@ -168,19 +168,6 @@ impl RequestPayload {
             )?;
             payload.fog_report_url = String::from_utf8(fog_report_url_bytes.to_vec())?;
             validate_fog_report_url(&payload.fog_report_url)?;
-
-            let fog_authority_sig_size_byte =
-                checked_split_off(&mut buffer_bytes, 1, "fog_sig_size_byte")?;
-            let fog_authority_sig_size = fog_authority_sig_size_byte[0] as usize;
-            payload.fog_authority_sig =
-                checked_split_off(&mut buffer_bytes, fog_authority_sig_size, "fog_sig_bytes")?;
-
-            let fog_report_id_size_byte =
-                checked_split_off(&mut buffer_bytes, 1, "fog_report_id_size_byte")?;
-            let fog_report_id_size = fog_report_id_size_byte[0] as usize;
-            let fog_report_id_bytes =
-                checked_split_off(&mut buffer_bytes, fog_report_id_size, "fog_report_id_bytes")?;
-            payload.fog_report_id = String::from_utf8(fog_report_id_bytes.to_vec())?;
         }
         if payload.version >= 2 {
             let value_bytes = checked_split_off(&mut buffer_bytes, 8, "value_bytes")?;
@@ -195,6 +182,20 @@ impl RequestPayload {
             payload.memo = String::from_utf8(memo_bytes.to_vec())?;
             validate_memo(&payload.memo)?;
         }
+        if payload.version >= 4 {
+            let fog_authority_sig_size_byte =
+                checked_split_off(&mut buffer_bytes, 1, "fog_sig_size_byte")?;
+            let fog_authority_sig_size = fog_authority_sig_size_byte[0] as usize;
+            payload.fog_authority_sig =
+                checked_split_off(&mut buffer_bytes, fog_authority_sig_size, "fog_sig_bytes")?;
+
+            let fog_report_id_size_byte =
+                checked_split_off(&mut buffer_bytes, 1, "fog_report_id_size_byte")?;
+            let fog_report_id_size = fog_report_id_size_byte[0] as usize;
+            let fog_report_id_bytes =
+                checked_split_off(&mut buffer_bytes, fog_report_id_size, "fog_report_id_bytes")?;
+            payload.fog_report_id = String::from_utf8(fog_report_id_bytes.to_vec())?;
+        }
         // ignore possible future bytes
         Ok(payload)
     }
@@ -206,26 +207,23 @@ impl RequestPayload {
             view_public_key: *view_key,
             spend_public_key: *spend_key,
             fog_report_url: "".to_owned(),
-            fog_report_id: Default::default(),
-            fog_authority_sig: Default::default(),
             value: 0,
             memo: "".to_owned(),
+            fog_report_id: Default::default(),
+            fog_authority_sig: Default::default(),
         })
     }
 
-    /// Create a version 1 RequestPayload
+    /// Create a version 1 RequestPayload - this is deprecated because fog now requires a signature
+    #[deprecated]
     pub fn new_v1(
         view_key: &[u8; 32],
         spend_key: &[u8; 32],
         fog_report_url: &str,
-        fog_report_id: &str,
-        fog_authority_sig: &[u8],
     ) -> Result<Self, Error> {
         let mut result = RequestPayload::new_v0(view_key, spend_key)?;
         validate_fog_report_url(fog_report_url)?;
         result.fog_report_url = fog_report_url.to_owned();
-        result.fog_report_id = fog_report_id.to_owned();
-        result.fog_authority_sig = fog_authority_sig.to_vec();
         result.version = 1;
         Ok(result)
     }
@@ -235,17 +233,11 @@ impl RequestPayload {
         view_key: &[u8; 32],
         spend_key: &[u8; 32],
         fog_report_url: &str,
-        fog_report_id: &str,
-        fog_authority_sig: &[u8],
         value: u64,
     ) -> Result<Self, Error> {
-        let mut result = RequestPayload::new_v1(
-            view_key,
-            spend_key,
-            fog_report_url,
-            fog_report_id,
-            fog_authority_sig,
-        )?;
+        let mut result = RequestPayload::new_v0(view_key, spend_key)?;
+        validate_fog_report_url(fog_report_url)?;
+        result.fog_report_url = fog_report_url.to_owned();
         result.value = value;
         result.version = 2;
         Ok(result)
@@ -256,22 +248,30 @@ impl RequestPayload {
         view_key: &[u8; 32],
         spend_key: &[u8; 32],
         fog_report_url: &str,
-        fog_report_id: &str,
-        fog_authority_sig: &[u8],
         value: u64,
         memo: &str,
     ) -> Result<Self, Error> {
-        let mut result = RequestPayload::new_v2(
-            view_key,
-            spend_key,
-            fog_report_url,
-            fog_report_id,
-            fog_authority_sig,
-            value,
-        )?;
+        let mut result = RequestPayload::new_v2(view_key, spend_key, fog_report_url, value)?;
         validate_memo(memo)?;
         result.memo = memo.to_owned();
         result.version = 3;
+        Ok(result)
+    }
+
+    /// Create a version 4 RequestPayload
+    pub fn new_v4(
+        view_key: &[u8; 32],
+        spend_key: &[u8; 32],
+        fog_report_url: &str,
+        value: u64,
+        memo: &str,
+        fog_report_id: &str,
+        fog_authority_sig: &[u8],
+    ) -> Result<Self, Error> {
+        let mut result = RequestPayload::new_v3(view_key, spend_key, fog_report_url, value, memo)?;
+        result.fog_report_id = fog_report_id.to_owned();
+        result.fog_authority_sig = fog_authority_sig.to_vec();
+        result.version = 4;
         Ok(result)
     }
 
@@ -281,11 +281,15 @@ impl RequestPayload {
     /// [5]               version (< 256)
     /// [6..38]           public view key bytes [0..32]
     /// [38..70]          public spend key bytes [0..32]
-    /// [70]              length of fog service URL (f < 256)
-    /// [71..F=(71+f)]    fog service URL as utf-8 encoded string (< 256 bytes)
+    /// [70]              length of fog_report_url (f < 256)
+    /// [71..F=(71+f)]    fog_report_url as utf-8 encoded string (< 256 bytes)
     /// [F..F+8]          u64 picoMOB value requested
     /// [F+8]             length of memo (m < 256)
     /// [F+9..M=(F+9+m)]  memo as utf-8 encoded string (< 256 bytes)
+    /// [FIXME]           length of fog_authority_sig
+    /// [FIXME]           fog_authority_sig bytes (< 256 bytes)
+    /// [FIXME]           length of fog_report_id
+    /// [FIXME]           fog_report_id bytes (< 256 bytes)
     /// [M..]             future version data (ignored)
     pub fn encode(&self) -> String {
         let mut bytes_vec = Vec::new();
@@ -298,10 +302,6 @@ impl RequestPayload {
         if self.version >= 1 {
             bytes_vec.push(self.fog_report_url.len() as u8);
             bytes_vec.extend_from_slice(&self.fog_report_url.as_bytes());
-            bytes_vec.push(self.fog_authority_sig.len() as u8);
-            bytes_vec.extend_from_slice(self.fog_authority_sig.as_ref());
-            bytes_vec.push(self.fog_report_id.len() as u8);
-            bytes_vec.extend_from_slice(self.fog_report_id.as_ref());
         }
         if self.version >= 2 {
             bytes_vec.extend_from_slice(&self.value.to_le_bytes());
@@ -309,6 +309,12 @@ impl RequestPayload {
         if self.version >= 3 {
             bytes_vec.push(self.memo.len() as u8);
             bytes_vec.extend_from_slice(&self.memo.as_bytes());
+        }
+        if self.version >= 4 {
+            bytes_vec.push(self.fog_authority_sig.len() as u8);
+            bytes_vec.extend_from_slice(self.fog_authority_sig.as_ref());
+            bytes_vec.push(self.fog_report_id.len() as u8);
+            bytes_vec.extend_from_slice(self.fog_report_id.as_ref());
         }
         encode_payload(bytes_vec)
     }
@@ -343,7 +349,7 @@ impl TryFrom<&PublicAddress> for RequestPayload {
         let spend_pub: [u8; 32] = src.spend_public_key().to_bytes();
         let mut payload = RequestPayload::new_v0(&view_pub, &spend_pub)?;
         if let Some(fog_report_url_string) = src.fog_report_url() {
-            payload.version = 1;
+            payload.version = 4;
             payload.fog_report_url = fog_report_url_string.to_string();
             if let Some(sig) = src.fog_authority_sig() {
                 payload.fog_authority_sig = sig.to_vec();
@@ -611,7 +617,7 @@ mod testing {
         );
         let alice_request_payload = RequestPayload::try_from(&alice_public).unwrap();
         let alice_b58_str = alice_request_payload.encode();
-        assert_eq!(alice_b58_str, "4kKfdpo1cuAGpMGXdbCEMgWuJJCLwrc8sJ6b82AELfS1JEXyBjcbM2cx1xoPmf3v6yb2ypAukn1CaDxsKCJvpWMrLn2KE8MsKSSkTwSzEcSh99ogR6eMqLePtMrQ1t647");
+        assert_eq!(alice_b58_str, "5F24DBwfEGBN18LevLEt3wZHknBk1tSC32QfMzSoiPcMrJyErBqBiNQpfFWboY1DHAjwjkBf2qfUbGvjvcdJ6Uhp6qcZ1NChFutR2MpiyTkrKm7NhCrT6KjtDkQBxr7rw74oFzvh7rkrK");
         let alice_payload = RequestPayload::decode(&alice_b58_str).unwrap();
         let alice_decoded = PublicAddress::try_from(&alice_payload).unwrap();
         assert_eq!(alice_public, alice_decoded);
@@ -637,7 +643,7 @@ mod testing {
         );
         let bob_request_payload = RequestPayload::try_from(&bob_public).unwrap();
         let bob_b58_str = bob_request_payload.encode();
-        assert_eq!(bob_b58_str, "21BA6veypXUoUpzDWBQGUHfUcpVG1PjGsAJyng9Y5hdLFGvGbSVsyxfNuKJeYHpJKAXXksUUJrvjBn4UnXnPDhX7rMZ4RqYLidkkHkBf5Ah9adj7CXNB1sgaiqNfF7ftNgqe");
+        assert_eq!(bob_b58_str, "22M3RU5KkQ5izkdPhjAmj6KWs2Md3AuJTfeg7NxoJRyMsmiwV2NpdkA9ABrQSrHZuiEyHMJ4zxVwAeFDbjAHwx42AoFoLbYRkv19nwWFPLihthriKxCmvYpgVrzUpSbz27U1ASRhspZcqavc");
         let bob_payload = RequestPayload::decode(&bob_b58_str).unwrap();
         let bob_decoded = PublicAddress::try_from(&bob_payload).unwrap();
         assert_eq!(bob_public, bob_decoded);
