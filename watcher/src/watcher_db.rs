@@ -202,12 +202,16 @@ impl WatcherDB {
         let db_txn = self.env.begin_ro_txn()?;
         let mut cursor = db_txn.open_ro_cursor(self.last_synced)?;
 
-        // FIXME: do this in one db transaction
         let all_urls: Vec<Url> = cursor
             .iter()
-            .map(|(url_bytes, _block_index_bytes)| {
-                // These were all made from valid URLs, so this should not fail
-                Url::from_str(std::str::from_utf8(url_bytes).unwrap()).unwrap()
+            .filter_map(|res| {
+                match res {
+                    Ok((url_bytes, _block_index_bytes)) => {
+                        // These were all made from valid URLs, so this should not fail
+                        Some(Url::from_str(std::str::from_utf8(url_bytes).unwrap()).unwrap())
+                    }
+                    Err(_e) => None,
+                }
             })
             .collect();
 
