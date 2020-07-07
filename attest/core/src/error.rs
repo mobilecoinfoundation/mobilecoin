@@ -614,6 +614,8 @@ pub enum VerifyError {
     EpidPseudonym(EpidPseudonymError),
     #[fail(display = "The quote in a verification report does not match the expected quote.")]
     IasQuoteMismatch,
+    #[fail(display = "There was an error parsing the timestamp {}: {}", _0, _1)]
+    TimestampParse(String, String),
     #[fail(display = "There was an unknown error")]
     Unknown,
 }
