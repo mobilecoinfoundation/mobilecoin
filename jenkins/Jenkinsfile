@@ -109,12 +109,16 @@ pipeline {
             }
             container('kaniko'){
               sh '''
-                /kaniko/executor -f $WORKSPACE/ops/Dockerfile-consensus -c $WORKSPACE/ops \
-                  --build-arg ORIGIN_DATA_DIR=sample_data \
-                  --build-arg GIT_COMMIT=${GIT_COMMIT} \
-                  --build-arg BRANCH=${NETWORK} \
-                  --destination=$DOCKER_OWNER/$CONSENSUS_NODE_DOCKER_REPO:${NETWORK}-${TAG_VERSION} \
-                  --destination=$DOCKER_OWNER/$CONSENSUS_NODE_DOCKER_REPO:${NETWORK}-latest
+                  for i in 1 2 3; do
+                    /kaniko/executor -f $WORKSPACE/ops/Dockerfile-consensus -c $WORKSPACE/ops \
+                      --build-arg ORIGIN_DATA_DIR=sample_data \
+                      --build-arg GIT_COMMIT=${GIT_COMMIT} \
+                      --build-arg BRANCH=${NETWORK} \
+                      --destination=$DOCKER_OWNER/$CONSENSUS_NODE_DOCKER_REPO:${NETWORK}-${TAG_VERSION} \
+                      --destination=$DOCKER_OWNER/$CONSENSUS_NODE_DOCKER_REPO:${NETWORK}-latest \
+                      --cleanup \
+                      && break || sleep 5;
+                  done
               '''
             }
           }
@@ -137,12 +141,16 @@ pipeline {
             }
             container('kaniko'){
               sh '''
-                /kaniko/executor -f $WORKSPACE/ops/Dockerfile-mobilecoind -c $WORKSPACE/ops \
-                  --build-arg ORIGIN_DATA_DIR=sample_data \
-                  --build-arg GIT_COMMIT=${GIT_COMMIT} \
-                  --build-arg BRANCH=${NETWORK} \
-                  --destination=$DOCKER_OWNER/$MOBILECOIND_DOCKER_REPO:${NETWORK}-${TAG_VERSION} \
-                  --destination=$DOCKER_OWNER/$MOBILECOIND_DOCKER_REPO:${NETWORK}-latest
+                  for i in 1 2 3; do              
+                    /kaniko/executor -f $WORKSPACE/ops/Dockerfile-mobilecoind -c $WORKSPACE/ops \
+                      --build-arg ORIGIN_DATA_DIR=sample_data \
+                      --build-arg GIT_COMMIT=${GIT_COMMIT} \
+                      --build-arg BRANCH=${NETWORK} \
+                      --destination=$DOCKER_OWNER/$MOBILECOIND_DOCKER_REPO:${NETWORK}-${TAG_VERSION} \
+                      --destination=$DOCKER_OWNER/$MOBILECOIND_DOCKER_REPO:${NETWORK}-latest \
+                      --cleanup \
+                      && break || sleep 5;
+                  done
               '''
             }
           }
@@ -232,7 +240,7 @@ pipeline {
   post {
     always {
       slackSend color: COLOR_MAP[currentBuild.currentResult],
-        message: "*${currentBuild.currentResult}:*\nJob: ${env.JOB_NAME}\nCommit: ${env.GIT_COMMIT}\nDocker Tag: ${env.NETWORK}-v${env.TAG_VERSION}\nBuild: ${env.BUILD_NUMBER}\nDuration: ${currentBuild.durationString}\nMore info at: ${env.BUILD_URL}"
+        message: "*${currentBuild.currentResult}:*\nJob: ${env.JOB_NAME}\nCommit: ${env.GIT_COMMIT}\nDocker Tag: ${env.NETWORK}-${env.TAG_VERSION}\nBuild: ${env.BUILD_NUMBER}\nDuration: ${currentBuild.durationString}\nMore info at: ${env.BUILD_URL}"
     }
   }
 }
