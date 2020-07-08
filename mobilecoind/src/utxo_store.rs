@@ -283,10 +283,17 @@ impl UtxoStore {
                 .collect::<Result<Vec<()>, Error>>()?;
         }
 
-        // Remove the actual UnspentTxOut data for every key image we successfully removed.
+        // Remove the actual UnspentTxOut data for every key image we successfully removed, as well
+        // as the key image -> subaddress association as that is no longer going to be needed.
         for key_image in removed_key_images.iter() {
             let utxo_id = UtxoId::from(key_image);
             match db_txn.del(self.utxo_id_to_utxo, &utxo_id, None) {
+                Ok(_) => Ok(()),
+                Err(lmdb::Error::NotFound) => Ok(()),
+                Err(err) => Err(Error::LMDB(err)),
+            }?;
+
+            match db_txn.del(self.key_image_to_subaddress_id, &key_image, None) {
                 Ok(_) => Ok(()),
                 Err(lmdb::Error::NotFound) => Ok(()),
                 Err(err) => Err(Error::LMDB(err)),
