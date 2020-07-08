@@ -88,7 +88,7 @@ Follow the steps below:
 
 1. Bootstrap the ledger.
 
-    In order to run consensus, you need to start with the correct "Origin Block." To obtain this, we recommend running our [bootstrap process](../../util/generate_sample_ledger/README.md).
+    In order to run consensus, you need to start with the correct "Origin Block." To obtain this, we recommend running our [bootstrap process](../../util/generate-sample-ledger/README.md).
 
 1. Set up logging and node management
 
