@@ -54,3 +54,6 @@ rand = "0.7"
 rand_hc = "0.2"
 mc-ledger-db = { path = "../../../ledger/db" }
 mc-transaction-core-test-utils = { path = "../../../transaction/core/test-utils" }
+
+[build-dependencies]
+mc-util-build-script = { path = "../../../util/build/script" }

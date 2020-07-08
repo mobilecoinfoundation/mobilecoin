@@ -63,8 +63,8 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         _self_peer_id: &ResponderId,
         _self_client_id: &ResponderId,
         _sealed_key: &Option<SealedBlockSigningKey>,
-    ) -> Result<SealedBlockSigningKey> {
-        Ok(vec![])
+    ) -> Result<(SealedBlockSigningKey, Vec<String>)> {
+        Ok((vec![], vec![]))
     }
 
     fn get_identity(&self) -> Result<X25519Public> {

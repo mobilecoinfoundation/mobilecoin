@@ -11,7 +11,7 @@ mod messages;
 
 pub use crate::{error::Error, messages::EnclaveCall};
 
-use alloc::vec::Vec;
+use alloc::{string::String, vec::Vec};
 use core::{cmp::Ordering, hash::Hash, result::Result as StdResult};
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
 use mc_attest_enclave_api::{
@@ -197,7 +197,7 @@ pub trait ConsensusEnclave {
         self_peer_id: &ResponderId,
         self_client_id: &ResponderId,
         sealed_key: &Option<SealedBlockSigningKey>,
-    ) -> Result<SealedBlockSigningKey>;
+    ) -> Result<(SealedBlockSigningKey, Vec<String>)>;
 
     /// Retrieve the public identity of the enclave.
     fn get_identity(&self) -> Result<X25519Public>;

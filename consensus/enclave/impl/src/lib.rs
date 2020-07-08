@@ -14,7 +14,7 @@ extern crate alloc;
 
 mod identity;
 
-use alloc::{collections::BTreeSet, format, vec::Vec};
+use alloc::{collections::BTreeSet, format, string::String, vec::Vec};
 use core::convert::{TryFrom, TryInto};
 use identity::Ed25519Identity;
 use mc_attest_core::{
@@ -51,6 +51,8 @@ use rand_core::{CryptoRng, RngCore};
 
 /// Domain seperator for unified fees transaction private key.
 pub const FEES_OUTPUT_PRIVATE_KEY_DOMAIN_TAG: &str = "mc_fees_output_private_key";
+
+include!(concat!(env!("OUT_DIR"), "/target_features.rs"));
 
 /// A well-formed transaction.
 #[derive(Clone, Eq, PartialEq, Message)]
@@ -138,7 +140,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         peer_self_id: &ResponderId,
         client_self_id: &ResponderId,
         sealed_key: &Option<SealedBlockSigningKey>,
-    ) -> Result<SealedBlockSigningKey> {
+    ) -> Result<(SealedBlockSigningKey, Vec<String>)> {
         self.ake
             .init(peer_self_id.clone(), client_self_id.clone())?;
 
@@ -159,7 +161,13 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let key = (*lock).private_key();
         let sealed = IntelSealed::seal_raw(key.as_ref(), &[]).unwrap();
 
-        Ok(sealed.as_ref().to_vec())
+        Ok((
+            sealed.as_ref().to_vec(),
+            TARGET_FEATURES
+                .iter()
+                .map(|feature| String::from(*feature))
+                .collect::<Vec<String>>(),
+        ))
     }
 
     fn get_identity(&self) -> Result<X25519Public> {

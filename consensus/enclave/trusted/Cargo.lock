@@ -721,6 +721,7 @@ dependencies = [
  "mc-sgx-compat 0.5.0",
  "mc-sgx-slog 0.5.0",
  "mc-transaction-core 0.5.0",
+ "mc-util-build-script 0.5.0",
  "mc-util-from-random 0.5.0",
  "mc-util-serial 0.5.0",
  "prost 0.6.1 (git+https://github.com/danburkert/prost?rev=6113789f70b69709820becba4242824b4fb3ffec)",
