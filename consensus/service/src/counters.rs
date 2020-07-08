@@ -116,6 +116,10 @@ lazy_static::lazy_static! {
 
     // Time it takes to perform append_block
     pub static ref APPEND_BLOCK_TIME: Histogram = OP_COUNTERS.histogram("append_block");
+
+    // Consensus enclave report timestamp, represented as seconds of UTC time since Unix epoch 1970-01-01T00:00:00Z.
+    pub static ref ENCLAVE_REPORT_TIMESTAMP: IntGauge = OP_COUNTERS.gauge("enclave_report_timestamp");
+
 }
 
 /// TxValidationErrorMetrics keeps track of tx validation errors upon ingress (with the add tx GRPC
