@@ -102,7 +102,7 @@ Follow the steps below:
 
 1. Start the SGX daemons.
 
->Note: Check your aesm location. It is either at `/opt/intel/libsgx-enclave-common/aesm` or `/opt/intel/sgx-aesm-service/aesm`. Update the commands below accordingly.
+    >Note: Check your aesm location. It is either at `/opt/intel/libsgx-enclave-common/aesm` or `/opt/intel/sgx-aesm-service/aesm`. Update the commands below accordingly.
 
     ```
     source /opt/intel/sgxsdk/environment
