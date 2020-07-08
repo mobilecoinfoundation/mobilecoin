@@ -667,6 +667,7 @@ fn main() {
                 read_request,
                 transfer,
                 check_transfer_status,
+                check_receiver_transfer_status,
                 ledger_info,
                 block_info,
                 block_details,
