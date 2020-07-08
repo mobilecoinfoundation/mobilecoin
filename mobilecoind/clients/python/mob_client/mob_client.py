@@ -255,3 +255,15 @@ class mob_client:
         request = api.GetTxStatusAsReceiverRequest(receipt=receiver_tx_receipt)
         response = self.stub.GetTxStatusAsReceiver(request)
         return response.status
+
+    #
+    # Blockchain and network info
+    # 
+
+    def get_network_status(self):
+        """ Returns the total network height and our current sync height
+        """
+        response = self.stub.GetNetworkStatus(empty_pb2.Empty())
+        return (response.network_highest_block_index,
+                response.local_block_index,
+                response.is_behind)
