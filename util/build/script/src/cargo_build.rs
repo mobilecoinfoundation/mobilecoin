@@ -46,6 +46,7 @@ fn strv_env(command: &mut Command, clean_env: bool, values: &[String], env: &str
         str_env(command, clean_env, None as Option<&String>, env);
     } else {
         let v = values.join(sep);
+        eprintln!("Setting {}=\"{}\"", env, &v);
         str_env(command, clean_env, Some(&v), env);
     }
 }
@@ -367,7 +368,7 @@ impl CargoBuilder {
             ENV_CARGO_TERM_COLOR,
         );
 
-        command.arg("build");
+        command.arg("build").arg("-vv");
 
         if self.profile == "release" {
             command.arg("--release");
@@ -422,9 +423,25 @@ impl CargoBuilder {
         self
     }
 
+    /// Add multiple items to the RUSTDOCFLAGS environment string
+    pub fn add_rustdoc_flags(&mut self, rustdoc_flags: &[&str]) -> &mut Self {
+        for flag in rustdoc_flags {
+            self.rustdocflags.push((*flag).to_owned());
+        }
+        self
+    }
+
     /// Add an item to the RUSTFLAGS environment string
     pub fn add_rust_flag(&mut self, rust_flag: &str) -> &mut Self {
         self.rustflags.push(rust_flag.to_owned());
+        self
+    }
+
+    /// Add multiple items to the RUSTFLAGS environment string
+    pub fn add_rust_flags(&mut self, rust_flags: &[&str]) -> &mut Self {
+        for flag in rust_flags {
+            self.rustflags.push((*flag).to_owned());
+        }
         self
     }
 
