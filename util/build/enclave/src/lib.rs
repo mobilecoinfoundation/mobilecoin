@@ -598,6 +598,7 @@ impl Builder {
         let mut static_archive_name = "lib".to_owned();
         // libnames are not kebab, crate names are
         static_archive_name.push_str(&staticlib_crate_name.replace("-", "_"));
+        // FIXME: need to add the cargo_builder's target value here, if it's set.
         let mut static_archive = staticlib_target_dir.join(&self.profile);
         static_archive.push(static_archive_name);
         static_archive.set_extension("a");
