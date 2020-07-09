@@ -218,9 +218,13 @@ impl Builder {
             .exec()?;
 
         let mut cargo_builder = CargoBuilder::new(&env, staticlib_dir, false);
-        cargo_builder.target(ENCLAVE_TARGET_TRIPLE);
-        cargo_builder.add_rust_flags(&["-C", "target-feature=+lvi-cfi,+lvi-load-hardening"]);
-        cargo_builder.add_rust_flags(&["-C", "llvm-args=--x86-experimental-lvi-inline-asm-hardening"])
+        cargo_builder
+            .target(ENCLAVE_TARGET_TRIPLE)
+            .add_rust_flags(&["-C", "target-feature=+lvi-cfi,+lvi-load-hardening"])
+            .add_rust_flags(&[
+                "-C",
+                "llvm-args=--x86-experimental-lvi-inline-asm-hardening",
+            ]);
 
         Ok(Self {
             cargo_builder,
