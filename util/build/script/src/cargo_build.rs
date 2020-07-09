@@ -46,7 +46,6 @@ fn strv_env(command: &mut Command, clean_env: bool, values: &[String], env: &str
         str_env(command, clean_env, None as Option<&String>, env);
     } else {
         let v = values.join(sep);
-        eprintln!("Setting {}=\"{}\"", env, &v);
         str_env(command, clean_env, Some(&v), env);
     }
 }
@@ -458,8 +457,8 @@ impl CargoBuilder {
     }
 
     /// Set the terminal environment variable.
-    pub fn term(&mut self, term: String) -> &mut Self {
-        self.term = Some(term);
+    pub fn term(&mut self, term: &str) -> &mut Self {
+        self.term = Some(term.to_owned());
         self
     }
 
@@ -470,14 +469,14 @@ impl CargoBuilder {
     }
 
     /// Override the `build.target` configuration option
-    pub fn target(&mut self, target: String) -> &mut Self {
-        self.target = Some(target);
+    pub fn target(&mut self, target: &str) -> &mut Self {
+        self.target = Some(target.to_owned());
         self
     }
 
     /// Override the `build.dep-info-basedir` configuration option
-    pub fn dep_info_basedir(&mut self, dep_info_basedir: PathBuf) -> &mut Self {
-        self.dep_info_basedir = Some(dep_info_basedir);
+    pub fn dep_info_basedir(&mut self, dep_info_basedir: &Path) -> &mut Self {
+        self.dep_info_basedir = Some(dep_info_basedir.to_owned());
         self
     }
 
@@ -494,8 +493,8 @@ impl CargoBuilder {
     }
 
     /// Override the `http.proxy` configuration option
-    pub fn http_proxy(&mut self, http_proxy: String) -> &mut Self {
-        self.http_proxy = Some(http_proxy);
+    pub fn http_proxy(&mut self, http_proxy: &str) -> &mut Self {
+        self.http_proxy = Some(http_proxy.to_owned());
         self
     }
 
@@ -506,8 +505,8 @@ impl CargoBuilder {
     }
 
     /// Override the `http.cainfo` file configuration option
-    pub fn http_cainfo(&mut self, http_cainfo: PathBuf) -> &mut Self {
-        self.http_cainfo = Some(http_cainfo);
+    pub fn http_cainfo(&mut self, http_cainfo: &Path) -> &mut Self {
+        self.http_cainfo = Some(http_cainfo.to_owned());
         self
     }
 
@@ -518,8 +517,8 @@ impl CargoBuilder {
     }
 
     /// Override the `http.ssl-version` configuration option
-    pub fn http_ssl_version(&mut self, http_ssl_version: String) -> &mut Self {
-        self.http_ssl_version = Some(http_ssl_version);
+    pub fn http_ssl_version(&mut self, http_ssl_version: &str) -> &mut Self {
+        self.http_ssl_version = Some(http_ssl_version.to_owned());
         self
     }
 

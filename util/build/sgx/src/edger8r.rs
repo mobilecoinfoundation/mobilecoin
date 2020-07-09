@@ -178,8 +178,6 @@ impl Edger8r {
         }
         command.arg(&self.out_dir.to_str().expect("Invalid UTF-8 in out dir"));
 
-        eprintln!("command: {:?}", &command);
-
         let output = command.output()?;
 
         if output.status.success() {

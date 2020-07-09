@@ -1,5 +1,0 @@
-[build]
-rustflags = ["-D", "warnings"]
-
-[target.x86_64-unknown-linux-gnu]
-rustflags = ["-D", "warnings", "-C", "target-cpu=skylake", "-C", "target-feature=+lvi-cfi,+lvi-load-hardening,+sha", "-C", "llvm-args=--x86-experimental-lvi-inline-asm-hardening"]
