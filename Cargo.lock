@@ -2198,6 +2198,7 @@ dependencies = [
  "mc-consensus-enclave-api",
  "mc-crypto-ake-enclave",
  "mc-crypto-digestible",
+ "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-crypto-message-cipher",
  "mc-crypto-rand",
@@ -2406,6 +2407,14 @@ dependencies = [
  "proc-macro2 1.0.12",
  "quote 1.0.4",
  "syn 1.0.18",
+]
+
+[[package]]
+name = "mc-crypto-hashes"
+version = "0.5.0"
+dependencies = [
+ "blake2",
+ "digest",
 ]
 
 [[package]]
@@ -2953,6 +2962,7 @@ dependencies = [
  "mc-common",
  "mc-crypto-box",
  "mc-crypto-digestible",
+ "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-crypto-rand",
  "mc-ledger-db",
@@ -2999,6 +3009,7 @@ dependencies = [
  "failure",
  "hkdf",
  "mc-common",
+ "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-transaction-core",
  "mc-util-from-random",

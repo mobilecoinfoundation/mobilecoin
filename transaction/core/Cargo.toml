@@ -15,7 +15,6 @@ test-net-fee-keys = []
 # External dependencies
 aead = "0.2"
 bs58 = { version = "0.3.0", default-features = false, features = ["alloc"] }
-blake2 = { version = "0.8.1", default-features = false, features = ["simd"] }
 crc = { version = "1.8.1", default-features = false }
 cfg-if = "0.1"
 digest = { version = "0.8.1", default-features = false }
@@ -36,6 +35,7 @@ subtle = { version = "2.2", default-features = false, features = ["i128"] }
 # MobileCoin dependencies
 mc-common = { path = "../../common", default-features = false }
 mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek"] }
+mc-crypto-hashes = { path = "../../crypto/hashes" }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-crypto-rand = { path = "../../crypto/rand" }
 mc-util-from-random = { path = "../../util/from-random" }

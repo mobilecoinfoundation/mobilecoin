@@ -17,6 +17,7 @@ serde = { version = "1.0", default-features = false, features = ["alloc", "deriv
 # MobileCoin dependencies
 mc-common = { path = "../../common", default-features = false }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
+mc-crypto-hashes = { path = "../../crypto/hashes", default-features = false }
 mc-util-serial = { path = "../../util/serial" }
 mc-transaction-core = { path = "../../transaction/core"}
 mc-util-from-random = { path = "../../util/from-random" }

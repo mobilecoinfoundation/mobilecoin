@@ -715,6 +715,7 @@ dependencies = [
  "mc-consensus-enclave-api 0.5.0",
  "mc-crypto-ake-enclave 0.5.0",
  "mc-crypto-digestible 0.5.0",
+ "mc-crypto-hashes 0.5.0",
  "mc-crypto-keys 0.5.0",
  "mc-crypto-message-cipher 0.5.0",
  "mc-crypto-rand 0.5.0",
@@ -816,6 +817,14 @@ dependencies = [
  "proc-macro2 1.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "quote 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "syn 1.0.14 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "mc-crypto-hashes"
+version = "0.5.0"
+dependencies = [
+ "blake2 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "digest 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1026,6 +1035,7 @@ dependencies = [
  "mc-common 0.5.0",
  "mc-crypto-box 0.5.0",
  "mc-crypto-digestible 0.5.0",
+ "mc-crypto-hashes 0.5.0",
  "mc-crypto-keys 0.5.0",
  "mc-crypto-rand 0.5.0",
  "mc-util-from-random 0.5.0",

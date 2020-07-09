@@ -45,10 +45,10 @@ use alloc::{
 };
 
 use mc_crypto_digestible::Digestible;
+use mc_crypto_hashes::Blake2b256;
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_util_from_random::FromRandom;
 
-use crate::blake2b_256::Blake2b256;
 use blake2::{Blake2b, Digest};
 use curve25519_dalek::scalar::Scalar;
 use prost::Message;
