@@ -381,38 +381,38 @@ impl CargoBuilder {
     }
 
     /// Set the path to the cargo executable
-    pub fn cargo_path(&mut self, cargo: PathBuf) -> &mut Self {
-        self.cargo_path = cargo;
+    pub fn cargo_path(&mut self, cargo: &Path) -> &mut Self {
+        self.cargo_path = cargo.to_owned();
         self
     }
 
     /// Set the CARGO_HOME variable for invoking cargo
-    pub fn home(&mut self, home: PathBuf) -> &mut Self {
-        self.home = Some(home);
+    pub fn home(&mut self, home: &Path) -> &mut Self {
+        self.home = Some(home.to_owned());
         self
     }
 
     /// Set the CARGO_TARGET_DIR variable for invoking cargo
-    pub fn target_dir(&mut self, target_dir: PathBuf) -> &mut Self {
-        self.target_dir = Some(target_dir);
+    pub fn target_dir(&mut self, target_dir: &Path) -> &mut Self {
+        self.target_dir = Some(target_dir.to_owned());
         self
     }
 
     /// Set the RUSTC variable for invoking cargo
-    pub fn rustc(&mut self, rustc: PathBuf) -> &mut Self {
-        self.rustc = Some(rustc);
+    pub fn rustc(&mut self, rustc: &Path) -> &mut Self {
+        self.rustc = Some(rustc.to_owned());
         self
     }
 
     /// Set the RUSTC_WRAPPER variable for invoking cargo
-    pub fn rustc_wrapper(&mut self, rustc_wrapper: PathBuf) -> &mut Self {
-        self.rustc_wrapper = Some(rustc_wrapper);
+    pub fn rustc_wrapper(&mut self, rustc_wrapper: &Path) -> &mut Self {
+        self.rustc_wrapper = Some(rustc_wrapper.to_owned());
         self
     }
 
     /// Set the RUSTDOC variable when invoking cargo
-    pub fn rustdoc(&mut self, rustdoc: PathBuf) -> &mut Self {
-        self.rustdoc = Some(rustdoc);
+    pub fn rustdoc(&mut self, rustdoc: &Path) -> &mut Self {
+        self.rustdoc = Some(rustdoc.to_owned());
         self
     }
 

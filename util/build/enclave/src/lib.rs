@@ -29,6 +29,7 @@ use std::{
 
 const SGX_LIBS: &[&str] = &["libsgx_urts"];
 const SGX_SIMULATION_LIBS: &[&str] = &["libsgx_urts_sim"];
+const ENCLAVE_TARGET_TRIPLE: &str = "x86_64-unknown-linux-gnu";
 
 struct ThreadRngForMbedTls;
 
@@ -126,7 +127,7 @@ impl From<SignatureError> for Error {
 #[derive(Clone, Debug)]
 pub struct Builder {
     /// The cargo command builder
-    pub cargo_builder: CargoBuilder,
+    cargo_builder: CargoBuilder,
 
     /// The SGX configuration XML builder
     pub config_builder: ConfigBuilder,
@@ -216,8 +217,12 @@ impl Builder {
             .features(CargoOpt::SomeFeatures(features_vec))
             .exec()?;
 
+        let mut cargo_builder = CargoBuilder::new(&env, staticlib_dir, false);
+        cargo_builder.target(ENCLAVE_TARGET_TRIPLE);
+        cargo_builder.add_rust_flags(&["-C", "target-feature=+lvi-cfi,+lvi-load-hardening"]);
+
         Ok(Self {
-            cargo_builder: CargoBuilder::new(&env, staticlib_dir, false),
+            cargo_builder,
             config_builder: ConfigBuilder::default(),
             name: enclave_name.to_owned(),
             staticlib,
@@ -240,6 +245,20 @@ impl Builder {
             signature: None,
             lds: None,
         })
+    }
+
+    /// Set a new "base" target dir to use when building an enclave
+    pub fn target_dir(&mut self, target_dir: &Path) -> &mut Self {
+        self.cargo_builder.target_dir(target_dir);
+        self
+    }
+
+    /// Add rust flags to use when building an enclave.
+    ///
+    /// Note that the target and required compiler mitigations will be set already.
+    pub fn add_rust_flags(&mut self, flags: &[&str]) -> &mut Self {
+        self.cargo_builder.add_rust_flags(flags);
+        self
     }
 
     /// Set the CSS file path explicitly.
@@ -598,8 +617,9 @@ impl Builder {
         let mut static_archive_name = "lib".to_owned();
         // libnames are not kebab, crate names are
         static_archive_name.push_str(&staticlib_crate_name.replace("-", "_"));
-        // FIXME: need to add the cargo_builder's target value here, if it's set.
-        let mut static_archive = staticlib_target_dir.join(&self.profile);
+
+        let mut static_archive = staticlib_target_dir.join(ENCLAVE_TARGET_TRIPLE);
+        static_archive.push(&self.profile);
         static_archive.push(static_archive_name);
         static_archive.set_extension("a");
         self.build_enclave()?;
