@@ -14,7 +14,7 @@ use grpcio::{EnvBuilder, Environment, Server, ServerBuilder};
 use mc_attest_api::attest_grpc::create_attested_api;
 use mc_attest_core::{
     IasQuoteError, PibError, QuoteError, QuoteSignType, TargetInfoError, VerificationReport,
-    VerifyError,
+    VerificationReportData, VerifyError,
 };
 use mc_attest_enclave_api::{ClientSession, Error as AttestEnclaveError, PeerSession};
 use mc_attest_net::{Error as RaError, RaClient};
@@ -36,6 +36,7 @@ use mc_util_uri::{ConnectionUri, ConsensusPeerUriApi};
 use retry::{delay::Fibonacci, retry, Error as RetryError, OperationResult};
 use serde_json::json;
 use std::{
+    convert::TryFrom,
     env,
     sync::{Arc, Mutex},
     time::Instant,
@@ -64,6 +65,8 @@ pub enum ConsensusServiceError {
     BackgroundWorkQueueStart(String),
     #[fail(display = "Failed to stop background work queue: {}", _0)]
     BackgroundWorkQueueStop(String),
+    #[fail(display = "Attest verify report error: {}", _0)]
+    Verify(VerifyError),
 }
 
 impl From<EnclaveError> for ConsensusServiceError {
@@ -93,6 +96,12 @@ impl From<RaError> for ConsensusServiceError {
 impl From<TargetInfoError> for ConsensusServiceError {
     fn from(src: TargetInfoError) -> Self {
         ConsensusServiceError::TargetInfo(src)
+    }
+}
+
+impl From<VerifyError> for ConsensusServiceError {
+    fn from(src: VerifyError) -> Self {
+        ConsensusServiceError::Verify(src)
     }
 }
 
@@ -366,9 +375,9 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
             self.logger,
             "Starting enclave report cache update process..."
         );
-        let ias_report = self.start_report_cache()?;
+        let mut ias_report = self.start_report_cache()?;
         log::debug!(self.logger, "Verifying IAS report with enclave...");
-        match self.enclave.verify_ias_report(ias_report) {
+        let retval = match self.enclave.verify_ias_report(ias_report.clone()) {
             Ok(()) => {
                 log::debug!(self.logger, "Enclave accepted report as valid...");
                 Ok(())
@@ -393,14 +402,29 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
                     self.logger,
                     "TCB update complete, restarting reporting process"
                 );
-                let ias_report = self.start_report_cache()?;
+                ias_report = self.start_report_cache()?;
                 log::debug!(self.logger, "Verifying IAS report with enclave (again)...");
-                self.enclave.verify_ias_report(ias_report)?;
+                self.enclave.verify_ias_report(ias_report.clone())?;
                 log::debug!(self.logger, "Enclave accepted new report as valid...");
                 Ok(())
             }
             Err(other) => Err(other.into()),
+        };
+
+        if retval.is_ok() {
+            let ias_report_data = VerificationReportData::try_from(&ias_report)?;
+            let timestamp = ias_report_data.parse_timestamp()?;
+
+            counters::ENCLAVE_REPORT_TIMESTAMP.set(timestamp.timestamp());
+
+            log::debug!(
+                self.logger,
+                "Enclave accepted report as valid, report generated at {:?}...",
+                timestamp
+            );
         }
+
+        retval
     }
 
     fn start_user_rpc_server(&mut self) -> Result<(), ConsensusServiceError> {
