@@ -15,10 +15,7 @@ extern crate alloc;
 mod identity;
 
 use alloc::{collections::BTreeSet, format, vec::Vec};
-use core::{
-    convert::{TryFrom, TryInto},
-    result::Result as StdResult,
-};
+use core::convert::{TryFrom, TryInto};
 use identity::Ed25519Identity;
 use mc_attest_core::{
     IasNonce, IntelSealed, Quote, QuoteNonce, Report, TargetInfo, VerificationReport,
@@ -26,7 +23,6 @@ use mc_attest_core::{
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage,
     Error as AttestEnclaveError, PeerAuthRequest, PeerAuthResponse, PeerSession,
-    Result as AttestResult,
 };
 use mc_attest_trusted::SealAlgo;
 use mc_common::ResponderId;

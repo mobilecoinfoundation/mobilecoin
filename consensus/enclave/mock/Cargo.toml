@@ -12,9 +12,10 @@ mc-consensus-enclave-api = { path = "../api" }
 mc-crypto-digestible = { path = "../../../crypto/digestible" }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-crypto-rand = { path = "../../../crypto/rand" }
+mc-sgx-report-cache-api = { path = "../../../sgx/report-cache/api" }
+mc-transaction-core = { path = "../../../transaction/core" }
 mc-util-from-random = { path = "../../../util/from-random" }
 mc-util-serial = { path = "../../../util/serial" }
-mc-transaction-core = { path = "../../../transaction/core" }
 
 rand_core = "0.5"
 rand_hc = "0.2"

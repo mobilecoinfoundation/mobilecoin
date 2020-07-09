@@ -2240,6 +2240,7 @@ dependencies = [
  "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-crypto-rand",
+ "mc-sgx-report-cache-api",
  "mc-transaction-core",
  "mc-util-from-random",
  "mc-util-serial",
