@@ -333,8 +333,18 @@ struct JsonSenderTxReceipt {
 }
 
 #[derive(Deserialize, Serialize)]
+struct JsonReceiverTxReceipt {
+    recipient: JsonPublicAddress,
+    tx_public_key: String,
+    tx_out_hash: String,
+    tombstone: u64,
+    confirmation_number: String,
+}
+
+#[derive(Deserialize, Serialize)]
 struct JsonTransferResponse {
     sender_tx_receipt: JsonSenderTxReceipt,
+    receiver_tx_receipt_list: Vec<JsonReceiverTxReceipt>,
 }
 
 /// Performs a transfer from a monitor and subaddress. The public keys and amount are in the POST data.
@@ -377,6 +387,7 @@ fn transfer(
 
     // The receipt from the payment request can be used by the status check below
     let receipt = resp.get_sender_tx_receipt();
+    let receiver_receipts = resp.get_receiver_tx_receipt_list();
     Ok(Json(JsonTransferResponse {
         sender_tx_receipt: JsonSenderTxReceipt {
             key_images: receipt
@@ -386,6 +397,36 @@ fn transfer(
                 .collect(),
             tombstone: receipt.get_tombstone(),
         },
+        receiver_tx_receipt_list: receiver_receipts
+            .iter()
+            .map(|receipt| JsonReceiverTxReceipt {
+                recipient: JsonPublicAddress {
+                    view_public_key: hex::encode(
+                        receipt
+                            .get_recipient()
+                            .get_view_public_key()
+                            .get_data()
+                            .to_vec(),
+                    ),
+                    spend_public_key: hex::encode(
+                        receipt
+                            .get_recipient()
+                            .get_spend_public_key()
+                            .get_data()
+                            .to_vec(),
+                    ),
+                    fog_report_url: String::from(receipt.get_recipient().get_fog_report_url()),
+                    fog_report_id: String::from(receipt.get_recipient().get_fog_report_id()),
+                    fog_authority_sig: hex::encode(
+                        receipt.get_recipient().get_fog_authority_sig().to_vec(),
+                    ),
+                },
+                tx_public_key: hex::encode(receipt.get_tx_public_key().get_data().to_vec()),
+                tx_out_hash: hex::encode(receipt.get_tx_out_hash().to_vec()),
+                tombstone: receipt.get_tombstone(),
+                confirmation_number: hex::encode(receipt.get_tx_out_hash().to_vec()),
+            })
+            .collect(),
     }))
 }
 
@@ -417,6 +458,46 @@ fn check_transfer_status(
     let resp = state
         .mobilecoind_api_client
         .get_tx_status_as_sender(&req)
+        .map_err(|err| format!("Failed getting status: {}", err))?;
+
+    let status_str = match resp.get_status() {
+        mc_mobilecoind_api::TxStatus::Unknown => "unknown",
+        mc_mobilecoind_api::TxStatus::Verified => "verified",
+        mc_mobilecoind_api::TxStatus::TombstoneBlockExceeded => "failed",
+        mc_mobilecoind_api::TxStatus::InvalidConfirmationNumber => "invalid_confirmation",
+    };
+
+    Ok(Json(JsonStatusResponse {
+        status: String::from(status_str),
+    }))
+}
+
+/// Checks the status of a transfer given data for a specific receiver
+/// The sender of the transaction will take specific receipt data from the /transfer call
+/// and distribute it to the recipient(s) so they can verify that a transaction has been
+/// processed and the the person supplying the receipt can prove they intiated it
+#[post("/check-receiver-transfer-status", format = "json", data = "<receipt>")]
+fn check_receiver_transfer_status(
+    state: rocket::State<State>,
+    receipt: Json<JsonReceiverTxReceipt>,
+) -> Result<Json<JsonStatusResponse>, String> {
+    let mut receiver_receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
+    let mut tx_public_key = CompressedRistretto::new();
+    tx_public_key.set_data(hex::decode(&receipt.tx_public_key).map_err(|err| format!("{}", err))?);
+    receiver_receipt.set_tx_public_key(tx_public_key);
+    receiver_receipt
+        .set_tx_out_hash(hex::decode(&receipt.tx_out_hash).map_err(|err| format!("{}", err))?);
+    receiver_receipt.set_tombstone(receipt.tombstone);
+    receiver_receipt.set_confirmation_number(
+        hex::decode(&receipt.confirmation_number).map_err(|err| format!("{}", err))?,
+    );
+
+    let mut req = mc_mobilecoind_api::GetTxStatusAsReceiverRequest::new();
+    req.set_receipt(receiver_receipt);
+
+    let resp = state
+        .mobilecoind_api_client
+        .get_tx_status_as_receiver(&req)
         .map_err(|err| format!("Failed getting status: {}", err))?;
 
     let status_str = match resp.get_status() {
@@ -586,6 +667,7 @@ fn main() {
                 read_request,
                 transfer,
                 check_transfer_status,
+                check_receiver_transfer_status,
                 ledger_info,
                 block_info,
                 block_details,

@@ -2986,4 +2986,105 @@ mod test {
             "4mppAGCtx4xn42C36Ck7gGnAoGbdJceYBH6k",
         );
     }
+
+    #[test_with_logger]
+    fn test_add_remove_add_monitor_with_spent_key_images(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        let sender = AccountKey::random(&mut rng);
+        let data = MonitorData::new(
+            sender.clone(),
+            0,  // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        // 1 known recipient, 3 random recipients and no monitors.
+        let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(
+                3,
+                &vec![sender.default_subaddress()],
+                &vec![],
+                logger.clone(),
+                &mut rng,
+            );
+
+        let mut request = mc_mobilecoind_api::AddMonitorRequest::new();
+        request.set_account_key(mc_api::external::AccountKey::from(&data.account_key));
+        request.set_first_subaddress(data.first_subaddress);
+        request.set_num_subaddresses(data.num_subaddresses);
+        request.set_first_block(data.first_block);
+
+        // Send request.
+        let response = client.add_monitor(&request).expect("failed to add monitor");
+        let monitor_id = response.get_monitor_id();
+
+        // Allow the new monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Verify we have the expected balance.
+        let mut request = mc_mobilecoind_api::GetBalanceRequest::new();
+        request.set_monitor_id(monitor_id.to_vec());
+        request.set_subaddress_index(0);
+
+        let response = client.get_balance(&request).unwrap();
+        assert_eq!(
+            response.balance,
+            test_utils::PER_RECIPIENT_AMOUNT * ledger_db.num_blocks().unwrap()
+        );
+        let orig_balance = response.balance;
+
+        // Get our UTXOs and force one of them to be spent, since we want to test the
+        // add-remove-add behavior with spent key images in the ledger.
+        let mut request = mc_mobilecoind_api::GetUnspentTxOutListRequest::new();
+        request.set_monitor_id(monitor_id.to_vec());
+        request.set_subaddress_index(0);
+
+        let response = client
+            .get_unspent_tx_out_list(&request)
+            .expect("failed to get unspent tx out list");
+
+        let first_utxo = response.output_list[0].clone();
+        let first_key_image = KeyImage::try_from(first_utxo.get_key_image())
+            .expect("failed covnerting proto keyimage");
+
+        let recipient = AccountKey::random(&mut rng).default_subaddress();
+        add_block_to_ledger_db(&mut ledger_db, &[recipient], &[first_key_image], &mut rng);
+
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Verify we have the expected balance.
+        let mut request = mc_mobilecoind_api::GetBalanceRequest::new();
+        request.set_monitor_id(monitor_id.to_vec());
+        request.set_subaddress_index(0);
+
+        let response = client.get_balance(&request).unwrap();
+        assert_eq!(response.balance, orig_balance - first_utxo.value);
+
+        // Remove the monitor.
+        let mut request = mc_mobilecoind_api::RemoveMonitorRequest::new();
+        request.set_monitor_id(monitor_id.to_vec());
+        client
+            .remove_monitor(&request)
+            .expect("failed to remove monitor");
+
+        // Check that no monitors remain.
+        let monitors_map = mobilecoind_db.get_monitor_map().unwrap();
+        assert_eq!(0, monitors_map.len());
+
+        // Re-add the monitor.
+        let mut request = mc_mobilecoind_api::AddMonitorRequest::new();
+        request.set_account_key(mc_api::external::AccountKey::from(&data.account_key));
+        request.set_first_subaddress(data.first_subaddress);
+        request.set_num_subaddresses(data.num_subaddresses);
+        request.set_first_block(data.first_block);
+
+        let response = client.add_monitor(&request).expect("failed to add monitor");
+        assert_eq!(monitor_id, response.get_monitor_id());
+
+        // Allow the new monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+    }
 }
