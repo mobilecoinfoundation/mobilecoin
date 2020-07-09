@@ -13,6 +13,7 @@ use mc_consensus_enclave_api::{ConsensusEnclave, EnclaveCall};
 use mc_consensus_enclave_impl::SgxConsensusEnclave;
 use mc_enclave_boundary::trusted::RetryBuffer;
 use mc_sgx_compat::panic::catch_unwind;
+use mc_sgx_report_cache_api::ReportableEnclave;
 use mc_sgx_types::{c_void, sgx_is_outside_enclave, sgx_status_t};
 use mc_util_serial::{deserialize, serialize};
 

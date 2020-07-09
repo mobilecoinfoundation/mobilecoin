@@ -12,30 +12,31 @@ name = "consensus-service"
 path = "src/bin/main.rs"
 
 [dependencies]
-mc-attest-core = { path = "../../attest/core" }
 mc-attest-api = { path = "../../attest/api" }
+mc-attest-core = { path = "../../attest/core" }
 mc-attest-enclave-api = { path = "../../attest/enclave-api" }
 mc-attest-net = { path = "../../attest/net" }
 mc-attest-untrusted = { path = "../../attest/untrusted" }
-mc-util-build-info = { path = "../../util/build/info" }
 mc-common = { path = "../../common", features = ["log"] }
+mc-connection = { path = "../../connection" }
+mc-consensus-api = { path = "../../consensus/api" }
 mc-consensus-enclave = { path = "../../consensus/enclave" }
-mc-util-grpc = { path = "../../util/grpc" }
+mc-consensus-scp = { path = "../../consensus/scp" }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-ledger-db = { path = "../../ledger/db" }
 mc-ledger-sync = { path = "../../ledger/sync" }
-mc-connection = { path = "../../connection" }
-mc-util-serial = { path = "../../util/serial" }
-mc-util-uri = { path = "../../util/uri" }
-mc-util-metered-channel = { path = "../../util/metered-channel" }
-mc-util-metrics = { path = "../../util/metrics" }
-mc-consensus-api = { path = "../../consensus/api" }
 mc-peers = { path = "../../peers" }
-mc-consensus-scp = { path = "../../consensus/scp" }
+mc-sgx-report-cache-untrusted = { path = "../../sgx/report-cache/untrusted" }
 mc-sgx-slog = { path = "../../sgx/slog", features = ["std"] }
 mc-sgx-urts = { path = "../../sgx/urts" }
 mc-transaction-core = { path = "../../transaction/core"}
 mc-transaction-std = { path = "../../transaction/std"}
+mc-util-build-info = { path = "../../util/build/info" }
+mc-util-grpc = { path = "../../util/grpc" }
+mc-util-metered-channel = { path = "../../util/metered-channel" }
+mc-util-metrics = { path = "../../util/metrics" }
+mc-util-serial = { path = "../../util/serial" }
+mc-util-uri = { path = "../../util/uri" }
 
 base64 = "0.11"
 cfg-if = "0.1"

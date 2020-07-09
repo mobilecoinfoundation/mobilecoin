@@ -688,6 +688,7 @@ dependencies = [
  "mc-crypto-message-cipher 0.5.0",
  "mc-crypto-noise 0.5.0",
  "mc-sgx-compat 0.5.0",
+ "mc-sgx-report-cache-api 0.5.0",
  "mc-transaction-core 0.5.0",
  "mc-util-serial 0.5.0",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -719,6 +720,7 @@ dependencies = [
  "mc-crypto-message-cipher 0.5.0",
  "mc-crypto-rand 0.5.0",
  "mc-sgx-compat 0.5.0",
+ "mc-sgx-report-cache-api 0.5.0",
  "mc-sgx-slog 0.5.0",
  "mc-transaction-core 0.5.0",
  "mc-util-from-random 0.5.0",
@@ -748,6 +750,7 @@ dependencies = [
  "mc-sgx-debug-edl 0.5.0",
  "mc-sgx-enclave-id 0.5.0",
  "mc-sgx-panic-edl 0.5.0",
+ "mc-sgx-report-cache-api 0.5.0",
  "mc-sgx-slog 0.5.0",
  "mc-sgx-slog-edl 0.5.0",
  "mc-sgx-types 0.5.0",
@@ -967,6 +970,14 @@ name = "mc-sgx-panic-edl"
 version = "0.5.0"
 dependencies = [
  "cargo-emit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "mc-sgx-report-cache-api"
+version = "0.5.0"
+dependencies = [
+ "mc-attest-core 0.5.0",
+ "mc-attest-enclave-api 0.5.0",
 ]
 
 [[package]]

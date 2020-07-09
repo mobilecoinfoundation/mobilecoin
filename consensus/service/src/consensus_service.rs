@@ -28,6 +28,7 @@ use mc_consensus_api::{consensus_client_grpc, consensus_common_grpc, consensus_p
 use mc_consensus_enclave::{ConsensusEnclaveProxy, Error as EnclaveError};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_peers::{PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
+use mc_sgx_report_cache_untrusted::Error as ReportCacheError;
 use mc_transaction_core::tx::TxHash;
 use mc_util_grpc::{
     AdminServer, BuildInfoService, GetConfigJsonFn, HealthCheckStatus, HealthService,
@@ -67,6 +68,8 @@ pub enum ConsensusServiceError {
     BackgroundWorkQueueStop(String),
     #[fail(display = "Attest verify report error: {}", _0)]
     Verify(VerifyError),
+    #[fail(display = "Report cache error: {}", _0)]
+    ReportCache(ReportCacheError),
 }
 
 impl From<EnclaveError> for ConsensusServiceError {
@@ -102,6 +105,12 @@ impl From<TargetInfoError> for ConsensusServiceError {
 impl From<VerifyError> for ConsensusServiceError {
     fn from(src: VerifyError) -> Self {
         ConsensusServiceError::Verify(src)
+    }
+}
+
+impl From<ReportCacheError> for ConsensusServiceError {
+    fn from(src: ReportCacheError) -> Self {
+        ConsensusServiceError::ReportCache(src)
     }
 }
 
@@ -314,6 +323,7 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
     }
 
     pub fn start_report_cache(&mut self) -> Result<VerificationReport, ConsensusServiceError> {
+        /*
         log::debug!(
             self.logger,
             "Starting remote attestation report process, getting QE enclave targeting info..."
@@ -367,10 +377,13 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
             "Quote verified by remote attestation service..."
         );
         Ok(retval)
+        */
+        todo!()
     }
 
     /// Update the IAS report cached within the enclave.
     pub fn update_enclave_report_cache(&mut self) -> Result<(), ConsensusServiceError> {
+        /*
         log::debug!(
             self.logger,
             "Starting enclave report cache update process..."
@@ -424,7 +437,8 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
             );
         }
 
-        retval
+        retval*/
+        todo!()
     }
 
     fn start_user_rpc_server(&mut self) -> Result<(), ConsensusServiceError> {

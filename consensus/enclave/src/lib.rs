@@ -17,6 +17,7 @@ use mc_attest_enclave_api::{
 use mc_common::ResponderId;
 use mc_crypto_keys::{Ed25519Public, X25519Public};
 use mc_enclave_boundary::untrusted::make_variable_length_ecall;
+use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_sgx_types::{sgx_enclave_id_t, sgx_status_t, *};
 use mc_sgx_urts::SgxEnclave;
 use mc_transaction_core::{tx::TxOutMembershipProof, Block, BlockContents, BlockSignature};
@@ -82,6 +83,32 @@ impl ConsensusServiceSgxEnclave {
 
 pub type SealedBlockSigningKey = Vec<u8>;
 
+impl ReportableEnclave for ConsensusServiceSgxEnclave {
+    fn new_ereport(&self, qe_info: TargetInfo) -> ReportableEnclaveResult<(Report, QuoteNonce)> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::NewEreport(qe_info))?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
+
+    fn verify_quote(&self, quote: Quote, qe_report: Report) -> ReportableEnclaveResult<IasNonce> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::VerifyQuote(quote, qe_report))?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
+
+    fn verify_ias_report(&self, ias_report: VerificationReport) -> ReportableEnclaveResult<()> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::VerifyReport(ias_report))?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
+
+    fn get_ias_report(&self) -> ReportableEnclaveResult<VerificationReport> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::GetReport)?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
+}
+
 /// Proxy API for talking to the corresponding implementation inside the enclave.
 impl ConsensusEnclave for ConsensusServiceSgxEnclave {
     fn enclave_init(
@@ -107,30 +134,6 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
 
     fn get_signer(&self) -> Result<Ed25519Public> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::GetSigner)?;
-        let outbuf = self.enclave_call(&inbuf)?;
-        mc_util_serial::deserialize(&outbuf[..])?
-    }
-
-    fn new_ereport(&self, qe_info: TargetInfo) -> Result<(Report, QuoteNonce)> {
-        let inbuf = mc_util_serial::serialize(&EnclaveCall::NewEreport(qe_info))?;
-        let outbuf = self.enclave_call(&inbuf)?;
-        mc_util_serial::deserialize(&outbuf[..])?
-    }
-
-    fn verify_quote(&self, quote: Quote, qe_report: Report) -> Result<IasNonce> {
-        let inbuf = mc_util_serial::serialize(&EnclaveCall::VerifyQuote(quote, qe_report))?;
-        let outbuf = self.enclave_call(&inbuf)?;
-        mc_util_serial::deserialize(&outbuf[..])?
-    }
-
-    fn verify_ias_report(&self, ias_report: VerificationReport) -> Result<()> {
-        let inbuf = mc_util_serial::serialize(&EnclaveCall::VerifyReport(ias_report))?;
-        let outbuf = self.enclave_call(&inbuf)?;
-        mc_util_serial::deserialize(&outbuf[..])?
-    }
-
-    fn get_ias_report(&self) -> Result<VerificationReport> {
-        let inbuf = mc_util_serial::serialize(&EnclaveCall::GetReport)?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }

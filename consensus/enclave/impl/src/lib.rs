@@ -15,7 +15,10 @@ extern crate alloc;
 mod identity;
 
 use alloc::{collections::BTreeSet, format, vec::Vec};
-use core::convert::{TryFrom, TryInto};
+use core::{
+    convert::{TryFrom, TryInto},
+    result::Result as StdResult,
+};
 use identity::Ed25519Identity;
 use mc_attest_core::{
     IasNonce, IntelSealed, Quote, QuoteNonce, Report, TargetInfo, VerificationReport,
@@ -23,6 +26,7 @@ use mc_attest_core::{
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage,
     Error as AttestEnclaveError, PeerAuthRequest, PeerAuthResponse, PeerSession,
+    Result as AttestResult,
 };
 use mc_attest_trusted::SealAlgo;
 use mc_common::ResponderId;
@@ -36,6 +40,7 @@ use mc_crypto_keys::{Ed25519Pair, Ed25519Public, RistrettoPrivate, RistrettoPubl
 use mc_crypto_message_cipher::{AesMessageCipher, MessageCipher};
 use mc_crypto_rand::McRng;
 use mc_sgx_compat::sync::Mutex;
+use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
     account_keys::PublicAddress,
     amount::Amount,
@@ -132,6 +137,25 @@ impl SgxConsensusEnclave {
     }
 }
 
+impl ReportableEnclave for SgxConsensusEnclave {
+    fn new_ereport(&self, qe_info: TargetInfo) -> ReportableEnclaveResult<(Report, QuoteNonce)> {
+        Ok(self.ake.new_ereport(qe_info)?)
+    }
+
+    fn verify_quote(&self, quote: Quote, qe_report: Report) -> ReportableEnclaveResult<IasNonce> {
+        Ok(self.ake.verify_quote(quote, qe_report)?)
+    }
+
+    fn verify_ias_report(&self, ias_report: VerificationReport) -> ReportableEnclaveResult<()> {
+        self.ake.verify_ias_report(ias_report)?;
+        Ok(())
+    }
+
+    fn get_ias_report(&self) -> ReportableEnclaveResult<VerificationReport> {
+        Ok(self.ake.get_ias_report()?)
+    }
+}
+
 impl ConsensusEnclave for SgxConsensusEnclave {
     fn enclave_init(
         &self,
@@ -168,23 +192,6 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 
     fn get_signer(&self) -> Result<Ed25519Public> {
         Ok(self.ake.get_identity().get_public_key())
-    }
-
-    fn new_ereport(&self, qe_info: TargetInfo) -> Result<(Report, QuoteNonce)> {
-        Ok(self.ake.new_ereport(qe_info)?)
-    }
-
-    fn verify_quote(&self, quote: Quote, qe_report: Report) -> Result<IasNonce> {
-        Ok(self.ake.verify_quote(quote, qe_report)?)
-    }
-
-    fn verify_ias_report(&self, ias_report: VerificationReport) -> Result<()> {
-        self.ake.verify_ias_report(ias_report)?;
-        Ok(())
-    }
-
-    fn get_ias_report(&self) -> Result<VerificationReport> {
-        Ok(self.ake.get_ias_report()?)
     }
 
     fn client_accept(&self, req: ClientAuthRequest) -> Result<(ClientAuthResponse, ClientSession)> {
