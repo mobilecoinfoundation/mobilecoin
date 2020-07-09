@@ -976,8 +976,11 @@ dependencies = [
 name = "mc-sgx-report-cache-api"
 version = "0.5.0"
 dependencies = [
+ "displaydoc 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "mc-attest-core 0.5.0",
  "mc-attest-enclave-api 0.5.0",
+ "mc-util-serial 0.5.0",
+ "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

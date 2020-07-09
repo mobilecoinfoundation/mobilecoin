@@ -69,7 +69,7 @@ pub type Result<T> = StdResult<T, Error>;
 /// A trait for generic remote attesation service clients.
 ///
 /// It is assumed this will be updated/changed for DCAP.
-pub trait RaClient: Send + Sized + Sync {
+pub trait RaClient: Clone + Send + Sized + Sync {
     fn new(credentials: &str) -> Result<Self>;
 
     /// Retrieve the SigRL for the given EPID Group ID.

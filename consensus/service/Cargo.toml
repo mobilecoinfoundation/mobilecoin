@@ -16,7 +16,6 @@ mc-attest-api = { path = "../../attest/api" }
 mc-attest-core = { path = "../../attest/core" }
 mc-attest-enclave-api = { path = "../../attest/enclave-api" }
 mc-attest-net = { path = "../../attest/net" }
-mc-attest-untrusted = { path = "../../attest/untrusted" }
 mc-common = { path = "../../common", features = ["log"] }
 mc-connection = { path = "../../connection" }
 mc-consensus-api = { path = "../../consensus/api" }

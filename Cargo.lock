@@ -2304,7 +2304,6 @@ dependencies = [
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-attest-net",
- "mc-attest-untrusted",
  "mc-common",
  "mc-connection",
  "mc-consensus-api",

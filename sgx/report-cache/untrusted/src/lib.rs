@@ -10,11 +10,24 @@ use mc_attest_core::{
 use mc_attest_enclave_api::Error as AttestEnclaveError;
 use mc_attest_net::{Error as RaError, RaClient};
 use mc_attest_untrusted::QuotingEnclave;
-use mc_common::logger::{log, Logger};
+use mc_common::logger::{log, o, Logger};
 use mc_sgx_report_cache_api::{Error as ReportableEnclaveError, ReportableEnclave};
 use retry::{delay::Fibonacci, retry, Error as RetryError, OperationResult};
-use std::convert::TryFrom;
+use std::{
+    convert::TryFrom,
+    io::Error as IOError,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    thread::{sleep, Builder as ThreadBuilder, JoinHandle},
+    time::{Duration, Instant},
+};
 
+/// How long to wait between report refreshes.
+pub const REPORT_REFRESH_INTERNAL: Duration = Duration::from_secs(18 * 60 * 60); // 18 hours.
+
+/// Possible errors.
 #[derive(Debug, Display)]
 pub enum Error {
     /// Error getting quoting enclave target info: {0}
@@ -34,6 +47,12 @@ pub enum Error {
 
     /// Reportable enclave error: {0}
     ReportableEnclave(ReportableEnclaveError),
+
+    /// IO error: {0}
+    IO(IOError),
+
+    /// Thread join error
+    ThreadJoin,
 }
 
 impl From<TargetInfoError> for Error {
@@ -72,6 +91,12 @@ impl From<ReportableEnclaveError> for Error {
     }
 }
 
+impl From<IOError> for Error {
+    fn from(src: IOError) -> Self {
+        Self::IO(src)
+    }
+}
+
 pub struct ReportCache<E: ReportableEnclave, R: RaClient /* + Send + Sync + 'static*/> {
     enclave: E,
     ra_client: R,
@@ -80,6 +105,15 @@ pub struct ReportCache<E: ReportableEnclave, R: RaClient /* + Send + Sync + 'sta
 }
 
 impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
+    pub fn new(enclave: E, ra_client: R, ias_spid: ProviderId, logger: Logger) -> Self {
+        Self {
+            enclave,
+            ra_client,
+            ias_spid,
+            logger,
+        }
+    }
+
     pub fn start_report_cache(&self) -> Result<VerificationReport, Error> {
         log::debug!(
             self.logger,
@@ -137,7 +171,7 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
     }
 
     /// Update the IAS report cached within the enclave.
-    pub fn update_enclave_report_cache(&mut self) -> Result<(), Error> {
+    pub fn update_enclave_report_cache(&self) -> Result<(), Error> {
         log::debug!(
             self.logger,
             "Starting enclave report cache update process..."
@@ -184,7 +218,7 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
 
             // counters::ENCLAVE_REPORT_TIMESTAMP.set(timestamp.timestamp());
 
-            log::debug!(
+            log::info!(
                 self.logger,
                 "Enclave accepted report as valid, report generated at {:?}...",
                 timestamp
@@ -192,5 +226,90 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
         }
 
         retval
+    }
+}
+
+pub struct ReportCacheThread {
+    /// Join handle used to wait for the thread to terminate.
+    join_handle: Option<JoinHandle<()>>,
+
+    /// Stop request trigger, used to signal the thread to stop.
+    stop_requested: Arc<AtomicBool>,
+}
+
+impl ReportCacheThread {
+    pub fn start<E: ReportableEnclave + Send + 'static, R: RaClient + 'static>(
+        enclave: E,
+        ra_client: R,
+        ias_spid: ProviderId,
+        logger: Logger,
+    ) -> Result<Self, Error> {
+        let logger = logger.new(o!("mc.enclave_type" => std::any::type_name::<E>()));
+
+        let report_cache = ReportCache::new(enclave, ra_client, ias_spid, logger.clone());
+        report_cache.update_enclave_report_cache()?;
+
+        let stop_requested = Arc::new(AtomicBool::new(false));
+        let thread_stop_requested = stop_requested.clone();
+
+        let join_handle = Some(
+            ThreadBuilder::new()
+                .name(format!("ReportCache-{}", std::any::type_name::<E>()))
+                .spawn(move || {
+                    Self::thread_entrypoint(report_cache, thread_stop_requested, logger)
+                })?,
+        );
+
+        Ok(Self {
+            join_handle,
+            stop_requested,
+        })
+    }
+
+    pub fn stop(&mut self) -> Result<(), Error> {
+        if let Some(join_handle) = self.join_handle.take() {
+            self.stop_requested.store(true, Ordering::SeqCst);
+            join_handle.join().map_err(|_| Error::ThreadJoin)?;
+        }
+
+        Ok(())
+    }
+
+    fn thread_entrypoint<E: ReportableEnclave, R: RaClient>(
+        report_cache: ReportCache<E, R>,
+        stop_requested: Arc<AtomicBool>,
+        logger: Logger,
+    ) {
+        log::debug!(logger, "Report cache thread started");
+
+        let mut last_refreshed_at = Instant::now();
+
+        loop {
+            if stop_requested.load(Ordering::SeqCst) {
+                log::debug!(logger, "Report cache thread stop requested.");
+                break;
+            }
+
+            let now = Instant::now();
+            if now - last_refreshed_at > REPORT_REFRESH_INTERNAL {
+                log::info!(logger, "Report refresh internal exceeded, refreshing...");
+                match report_cache.update_enclave_report_cache() {
+                    Ok(()) => {
+                        last_refreshed_at = now;
+                    }
+                    Err(err) => {
+                        log::error!(logger, "update_enclave_report_cache failed: {:?}", err);
+                    }
+                }
+            }
+
+            sleep(Duration::from_secs(1));
+        }
+    }
+}
+
+impl Drop for ReportCacheThread {
+    fn drop(&mut self) {
+        let _ = self.stop();
     }
 }
