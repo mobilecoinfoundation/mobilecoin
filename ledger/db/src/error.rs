@@ -1,7 +1,6 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use failure::Fail;
-use mc_common::logger::global_log;
 
 /// A Ledger error kind.
 #[derive(Debug, Eq, PartialEq, Copy, Clone, Fail)]
@@ -61,10 +60,7 @@ impl From<lmdb::Error> for Error {
         match lmdb_error {
             lmdb::Error::NotFound => Error::NotFound,
             lmdb::Error::BadRslot => Error::BadRslot,
-            err => {
-                global_log::error!("lmdb error: {:?} ", err);
-                Error::LmdbError(err)
-            }
+            err => Error::LmdbError(err),
         }
     }
 }
