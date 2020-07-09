@@ -2895,6 +2895,7 @@ dependencies = [
  "mc-attest-untrusted",
  "mc-common",
  "mc-sgx-report-cache-api",
+ "mc-util-metrics",
  "retry",
 ]
 

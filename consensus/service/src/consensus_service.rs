@@ -200,6 +200,7 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
                 self.enclave.clone(),
                 self.ra_client.clone(),
                 self.config.ias_spid.clone(),
+                &counters::ENCLAVE_REPORT_TIMESTAMP,
                 self.logger.clone(),
             )?);
             self.start_admin_rpc_server()?;

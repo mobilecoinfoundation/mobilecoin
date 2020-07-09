@@ -12,6 +12,7 @@ use mc_attest_net::{Error as RaError, RaClient};
 use mc_attest_untrusted::QuotingEnclave;
 use mc_common::logger::{log, o, Logger};
 use mc_sgx_report_cache_api::{Error as ReportableEnclaveError, ReportableEnclave};
+use mc_util_metrics::IntGauge;
 use retry::{delay::Fibonacci, retry, Error as RetryError, OperationResult};
 use std::{
     convert::TryFrom,
@@ -97,19 +98,28 @@ impl From<IOError> for Error {
     }
 }
 
-pub struct ReportCache<E: ReportableEnclave, R: RaClient /* + Send + Sync + 'static*/> {
+pub struct ReportCache<E: ReportableEnclave, R: RaClient> {
     enclave: E,
     ra_client: R,
     ias_spid: ProviderId,
+    report_timestamp_gauge: &'static IntGauge,
     logger: Logger,
 }
 
 impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
-    pub fn new(enclave: E, ra_client: R, ias_spid: ProviderId, logger: Logger) -> Self {
+    pub fn new(
+        enclave: E,
+        ra_client: R,
+        ias_spid: ProviderId,
+        report_timestamp_gauge: &'static IntGauge,
+
+        logger: Logger,
+    ) -> Self {
         Self {
             enclave,
             ra_client,
             ias_spid,
+            report_timestamp_gauge,
             logger,
         }
     }
@@ -216,7 +226,7 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
             let ias_report_data = VerificationReportData::try_from(&ias_report)?;
             let timestamp = ias_report_data.parse_timestamp()?;
 
-            // counters::ENCLAVE_REPORT_TIMESTAMP.set(timestamp.timestamp());
+            self.report_timestamp_gauge.set(timestamp.timestamp());
 
             log::info!(
                 self.logger,
@@ -242,11 +252,18 @@ impl ReportCacheThread {
         enclave: E,
         ra_client: R,
         ias_spid: ProviderId,
+        report_timestamp_gauge: &'static IntGauge,
         logger: Logger,
     ) -> Result<Self, Error> {
         let logger = logger.new(o!("mc.enclave_type" => std::any::type_name::<E>()));
 
-        let report_cache = ReportCache::new(enclave, ra_client, ias_spid, logger.clone());
+        let report_cache = ReportCache::new(
+            enclave,
+            ra_client,
+            ias_spid,
+            report_timestamp_gauge,
+            logger.clone(),
+        );
         report_cache.update_enclave_report_cache()?;
 
         let stop_requested = Arc::new(AtomicBool::new(false));

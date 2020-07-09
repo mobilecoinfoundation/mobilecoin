@@ -14,3 +14,4 @@ mc-attest-net = { path = "../../../attest/net" }
 mc-attest-untrusted = { path = "../../../attest/untrusted" }
 mc-common = { path = "../../../common", features = ["log"] }
 mc-sgx-report-cache-api = { path = "../api" }
+mc-util-metrics = { path = "../../../util/metrics" }
