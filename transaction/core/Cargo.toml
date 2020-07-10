@@ -42,9 +42,6 @@ mc-util-from-random = { path = "../../util/from-random" }
 mc-util-repr-bytes = { path = "../../util/repr-bytes" }
 mc-util-serial = { path = "../../util/serial" }
 
-# FIXME: Introduces *_rng methods that take an rng to bypass rand_hack that fails no_std builds
-schnorrkel = { git = "https://github.com/sugargoat/schnorrkel", rev = "60eedb2d3e005539052e1a2aef864bc78323c66c", default-features = false}
-
 [target.'cfg(target_feature = "avx2")'.dependencies]
 bulletproofs = {version = "2.0", default-features = false, features = ["avx2_backend"]}
 
