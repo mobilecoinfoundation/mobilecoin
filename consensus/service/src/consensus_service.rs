@@ -254,6 +254,10 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
             byzantine_ledger.stop();
         }
 
+        if let Some(ref mut report_cache_thread) = self.report_cache_thread.take() {
+            report_cache_thread.stop()?;
+        }
+
         Ok(())
     }
 
