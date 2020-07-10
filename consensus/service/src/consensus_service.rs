@@ -199,7 +199,7 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
             self.report_cache_thread = Some(ReportCacheThread::start(
                 self.enclave.clone(),
                 self.ra_client.clone(),
-                self.config.ias_spid.clone(),
+                self.config.ias_spid,
                 &counters::ENCLAVE_REPORT_TIMESTAMP,
                 self.logger.clone(),
             )?);
