@@ -341,7 +341,7 @@ impl TryFrom<&RequestPayload> for PublicAddress {
     }
 }
 
-/// We can create a v0 or v1 RequestPayload directly from a PublicAddress
+/// We can create a v0 or v4 RequestPayload directly from a PublicAddress
 impl TryFrom<&PublicAddress> for RequestPayload {
     type Error = Error;
     fn try_from(src: &PublicAddress) -> Result<Self, <Self as TryFrom<&PublicAddress>>::Error> {
