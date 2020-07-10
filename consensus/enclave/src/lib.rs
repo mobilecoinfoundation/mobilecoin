@@ -42,7 +42,11 @@ impl ConsensusServiceSgxEnclave {
         self_peer_id: &ResponderId,
         self_client_id: &ResponderId,
         sealed_key: &Option<SealedBlockSigningKey>,
-    ) -> (ConsensusServiceSgxEnclave, SealedBlockSigningKey) {
+    ) -> (
+        ConsensusServiceSgxEnclave,
+        SealedBlockSigningKey,
+        Vec<String>,
+    ) {
         let mut launch_token: sgx_launch_token_t = [0; 1024];
         let mut launch_token_updated: i32 = 0;
         // FIXME: this must be filled in from the build.rs
@@ -63,11 +67,11 @@ impl ConsensusServiceSgxEnclave {
             enclave: Arc::new(enclave),
         };
 
-        let sealed_key = sgx_enclave
+        let (sealed_key, features) = sgx_enclave
             .enclave_init(self_peer_id, self_client_id, &sealed_key)
             .expect("enclave_init failed");
 
-        (sgx_enclave, sealed_key)
+        (sgx_enclave, sealed_key, features)
     }
 
     /// Takes serialized data, and fires to the corresponding ECALL.
@@ -89,7 +93,7 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
         self_peer_id: &ResponderId,
         self_client_id: &ResponderId,
         sealed_key: &Option<SealedBlockSigningKey>,
-    ) -> Result<SealedBlockSigningKey> {
+    ) -> Result<(SealedBlockSigningKey, Vec<String>)> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::EnclaveInit(
             self_peer_id.clone(),
             self_client_id.clone(),
