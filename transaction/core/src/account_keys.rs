@@ -9,25 +9,6 @@
 //! keys (A,B) directly with senders, users generate and share "subaddresses"
 //! (C_i, D_i) that are derived from the private keys (a,b) and an index i.
 //! We refer to (C_0, D_0)* as the "default subaddress" for account (a,b).
-//!
-//! Note about the PublicAddress Fog Authority Signature choice of Hash function:
-//!
-//! Schnorr signatures are proved to be secure when the nonce is truly uniformly random, however
-//! in practice it can happen that there is a defect in a random number generator that causes them
-//! not to be random, causing some high profile breaks. This observation informed RFC 6979, ed25519
-//! and much subsequent work.
-//!
-//! In this code, the nonce for the Schnorr signature is derived as SHA3(ristretto_private, message).
-//! This has the advantage of being deterministic -- for a given signing key and message there is
-//! only one nonce that will ever be used. And the nonce the we choose for a given message, is the
-//! result of secret-prefix SHA3. Under the cryptographic assumption that secret-prefix SHA3 is
-//! indistinguishable from a PRF, this is as good as choosing perfectly uniformly random nonces.
-//! In particular, we can say that, for adversarially chosen messages, and a uniformly random private
-//! key, the hashes should be hard to distinguish from independently random values. Note that we use
-//! Blake2b, which was one of the Sha3 finalists and was also explicitly designed to model a PRF.
-//!
-//! Please see DJB's ed25519 paper at this version which has the relevant remarks:
-//! http://ed25519.cr.yp.to/ed25519-20110926.pdf
 
 #![allow(non_snake_case)]
 
@@ -45,16 +26,13 @@ use alloc::{
 };
 
 use mc_crypto_digestible::Digestible;
-use mc_crypto_hashes::Blake2b256;
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_util_from_random::FromRandom;
 
 use blake2::{Blake2b, Digest};
 use curve25519_dalek::scalar::Scalar;
 use prost::Message;
-use rand_core::{CryptoRng, RngCore, SeedableRng};
-use rand_hc::Hc128Rng as FixedRng;
-use schnorrkel::{signing_context, SecretKey, Signature};
+use rand_core::{CryptoRng, RngCore};
 
 /// An account's "default address" is its zero^th subaddress.
 pub const DEFAULT_SUBADDRESS_INDEX: u64 = 0;
@@ -389,26 +367,11 @@ impl AccountKey {
         if !self.fog_report_url.is_empty() {
             // Construct the fog authority signature over the fingerprint using the view privkey
             let view_private = self.subaddress_view_private(index);
-            let scalar: &Scalar = view_private.as_ref();
-
-            // Nonce is hash( private_key || message )
-            let mut hasher = Blake2b256::new();
-            hasher.input(scalar.to_bytes());
-            hasher.input(&self.fog_authority_key_fingerprint);
-            let nonce = hasher.result();
-
-            let mut secret_bytes = [0u8; 64];
-            secret_bytes[0..32].copy_from_slice(&scalar.to_bytes());
-            secret_bytes[32..64].copy_from_slice(&nonce);
-            let secret_key = SecretKey::from_bytes(&secret_bytes).unwrap();
-            let keypair = secret_key.to_keypair();
-
-            // Context provides domain separation for signature
-            let ctx = signing_context(FOG_AUTHORITY_SIGNATURE_TAG);
-            // NOTE: The fog_authority_sig is deterministic due to using the above hash as the rng seed
-            let mut csprng: FixedRng = SeedableRng::from_seed(nonce.into());
-            let sig: Signature =
-                keypair.sign_rng(ctx.bytes(&self.fog_authority_key_fingerprint), &mut csprng);
+            let sig = mc_crypto_sig::sign(
+                FOG_AUTHORITY_SIGNATURE_TAG,
+                &view_private,
+                &self.fog_authority_key_fingerprint,
+            );
             result.fog_authority_sig = sig.to_bytes().to_vec();
         }
 
@@ -469,17 +432,18 @@ mod account_key_tests {
     use core::convert::{TryFrom, TryInto};
     use rand::prelude::StdRng;
     use rand_core::SeedableRng;
-    use schnorrkel::PublicKey;
     use yaml_rust::{Yaml, YamlLoader};
 
     // Helper method to verify the signature of a public address
     fn verify_signature(subaddress: &PublicAddress, fingerprint: &[u8]) {
-        let signature = Signature::from_bytes(&subaddress.fog_authority_sig)
+        let signature = mc_crypto_sig::Signature::from_bytes(&subaddress.fog_authority_sig)
             .expect("Could not construct signature from fog authority sig bytes");
-        let public_key = PublicKey::from_point(*subaddress.view_public_key.as_ref());
-
-        let ctx = signing_context(b"Fog authority signature");
-        let result = public_key.verify(ctx.bytes(&fingerprint), &signature);
+        let result = mc_crypto_sig::verify(
+            FOG_AUTHORITY_SIGNATURE_TAG,
+            &subaddress.view_public_key,
+            fingerprint,
+            &signature,
+        );
         assert!(result.is_ok());
     }
 
