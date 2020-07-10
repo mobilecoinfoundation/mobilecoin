@@ -1,7 +1,11 @@
 #![no_std]
 
 //! Simplified API for using Schnorrkel in a deterministic manner, with simple
-//! ristretto public and ristretto private key-pairs.
+//! ristretto key pairs, where the public key is a RistretoPoint and the private key is a Scalar.
+//!
+//! mc-crypto-keys crate provides wrappers RistrettoPublic and RistrettoPrivate around these
+//! and implements many handy traits for performing high-level cryptography operations,
+//! and this crate provides a way to create signatures that is compatible with these key pairs.
 
 use digest::Input;
 use mc_crypto_hashes::Blake2b256;
