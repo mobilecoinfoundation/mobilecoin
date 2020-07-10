@@ -26,6 +26,7 @@ mc-crypto-noise = { path = "../../../crypto/noise", default-features = false }
 mc-util-serial = { path = "../../../util/serial", default-features = false }
 mc-crypto-message-cipher = { path = "../../../crypto/message-cipher" }
 mc-sgx-compat = { path = "../../../sgx/compat" }
+mc-sgx-report-cache-api = { path = "../../../sgx/report-cache/api" }
 mc-transaction-core = { path = "../../../transaction/core" }
 
 cfg-if = "0.1"

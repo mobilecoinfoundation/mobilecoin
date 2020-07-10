@@ -2146,6 +2146,7 @@ dependencies = [
  "mc-sgx-backtrace-edl",
  "mc-sgx-debug-edl",
  "mc-sgx-panic-edl",
+ "mc-sgx-report-cache-api",
  "mc-sgx-slog",
  "mc-sgx-slog-edl",
  "mc-sgx-types",
@@ -2171,6 +2172,7 @@ dependencies = [
  "mc-crypto-message-cipher",
  "mc-crypto-noise",
  "mc-sgx-compat",
+ "mc-sgx-report-cache-api",
  "mc-transaction-core",
  "mc-util-serial",
  "serde",
@@ -2203,6 +2205,7 @@ dependencies = [
  "mc-crypto-rand",
  "mc-ledger-db",
  "mc-sgx-compat",
+ "mc-sgx-report-cache-api",
  "mc-sgx-slog",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
@@ -2238,6 +2241,7 @@ dependencies = [
  "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-crypto-rand",
+ "mc-sgx-report-cache-api",
  "mc-transaction-core",
  "mc-util-from-random",
  "mc-util-serial",
@@ -2302,7 +2306,6 @@ dependencies = [
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-attest-net",
- "mc-attest-untrusted",
  "mc-common",
  "mc-connection",
  "mc-consensus-api",
@@ -2315,6 +2318,7 @@ dependencies = [
  "mc-peers",
  "mc-peers-test-utils",
  "mc-sgx-build",
+ "mc-sgx-report-cache-untrusted",
  "mc-sgx-slog",
  "mc-sgx-urts",
  "mc-transaction-core",
@@ -2869,6 +2873,32 @@ name = "mc-sgx-panic-edl"
 version = "0.5.0"
 dependencies = [
  "cargo-emit",
+]
+
+[[package]]
+name = "mc-sgx-report-cache-api"
+version = "0.5.0"
+dependencies = [
+ "displaydoc",
+ "mc-attest-core",
+ "mc-attest-enclave-api",
+ "mc-util-serial",
+ "serde",
+]
+
+[[package]]
+name = "mc-sgx-report-cache-untrusted"
+version = "0.5.0"
+dependencies = [
+ "displaydoc",
+ "mc-attest-core",
+ "mc-attest-enclave-api",
+ "mc-attest-net",
+ "mc-attest-untrusted",
+ "mc-common",
+ "mc-sgx-report-cache-api",
+ "mc-util-metrics",
+ "retry",
 ]
 
 [[package]]

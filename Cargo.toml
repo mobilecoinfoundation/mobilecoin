@@ -52,6 +52,8 @@ members = [
     "sgx/epid-types-sys",
     "sgx/ias-types",
     "sgx/panic-edl",
+    "sgx/report-cache/api",
+    "sgx/report-cache/untrusted",
     "sgx/slog-edl",
     "sgx/urts-sys",
     "testnet-client",

@@ -34,6 +34,7 @@ const IAS_SIGNATURE: &str = "x-iasreport-signature";
 const IAS_SIGNING_CERTS: &str = "x-iasreport-signing-certificate";
 
 /// A data type for communicating with the Intel Attestation Service
+#[derive(Clone)]
 pub struct IasClient {
     client: Client,
     api_key: String,

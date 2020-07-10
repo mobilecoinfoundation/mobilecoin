@@ -12,31 +12,25 @@ use failure::Fail;
 use futures::Future;
 use grpcio::{EnvBuilder, Environment, Server, ServerBuilder};
 use mc_attest_api::attest_grpc::create_attested_api;
-use mc_attest_core::{
-    IasQuoteError, PibError, QuoteError, QuoteSignType, TargetInfoError, VerificationReport,
-    VerificationReportData, VerifyError,
-};
-use mc_attest_enclave_api::{ClientSession, Error as AttestEnclaveError, PeerSession};
-use mc_attest_net::{Error as RaError, RaClient};
-use mc_attest_untrusted::QuotingEnclave;
+use mc_attest_enclave_api::{ClientSession, PeerSession};
+use mc_attest_net::RaClient;
 use mc_common::{
     logger::{log, Logger},
     NodeID, ResponderId,
 };
 use mc_connection::{Connection, ConnectionManager, ConnectionUriGrpcioServer};
 use mc_consensus_api::{consensus_client_grpc, consensus_common_grpc, consensus_peer_grpc};
-use mc_consensus_enclave::{ConsensusEnclaveProxy, Error as EnclaveError};
+use mc_consensus_enclave::ConsensusEnclaveProxy;
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_peers::{PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
+use mc_sgx_report_cache_untrusted::{Error as ReportCacheError, ReportCacheThread};
 use mc_transaction_core::tx::TxHash;
 use mc_util_grpc::{
     AdminServer, BuildInfoService, GetConfigJsonFn, HealthCheckStatus, HealthService,
 };
 use mc_util_uri::{ConnectionUri, ConsensusPeerUriApi};
-use retry::{delay::Fibonacci, retry, Error as RetryError, OperationResult};
 use serde_json::json;
 use std::{
-    convert::TryFrom,
     env,
     sync::{Arc, Mutex},
     time::Instant,
@@ -47,16 +41,6 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Debug, Fail)]
 pub enum ConsensusServiceError {
-    #[fail(display = "Error getting quoting enclave target info: {}", _0)]
-    TargetInfo(TargetInfoError),
-    #[fail(display = "Consensus enclave error: {}", _0)]
-    Enclave(EnclaveError),
-    #[fail(display = "Quoting enclave failure: {}", _0)]
-    Quote(QuoteError),
-    #[fail(display = "Failed to communicate with IAS: {}", _0)]
-    RaClient(RaError),
-    #[fail(display = "Failed to update TCB in response to a PIB: {}", _0)]
-    TcbUpdate(PibError),
     #[fail(display = "Failed to join thread: {}", _0)]
     ThreadJoin(String),
     #[fail(display = "RPC shutdown failure: {}", _0)]
@@ -65,43 +49,12 @@ pub enum ConsensusServiceError {
     BackgroundWorkQueueStart(String),
     #[fail(display = "Failed to stop background work queue: {}", _0)]
     BackgroundWorkQueueStop(String),
-    #[fail(display = "Attest verify report error: {}", _0)]
-    Verify(VerifyError),
+    #[fail(display = "Report cache error: {}", _0)]
+    ReportCache(ReportCacheError),
 }
-
-impl From<EnclaveError> for ConsensusServiceError {
-    fn from(src: EnclaveError) -> Self {
-        ConsensusServiceError::Enclave(src)
-    }
-}
-
-impl From<PibError> for ConsensusServiceError {
-    fn from(src: PibError) -> Self {
-        ConsensusServiceError::TcbUpdate(src)
-    }
-}
-
-impl From<QuoteError> for ConsensusServiceError {
-    fn from(src: QuoteError) -> Self {
-        ConsensusServiceError::Quote(src)
-    }
-}
-
-impl From<RaError> for ConsensusServiceError {
-    fn from(src: RaError) -> Self {
-        ConsensusServiceError::RaClient(src)
-    }
-}
-
-impl From<TargetInfoError> for ConsensusServiceError {
-    fn from(src: TargetInfoError) -> Self {
-        ConsensusServiceError::TargetInfo(src)
-    }
-}
-
-impl From<VerifyError> for ConsensusServiceError {
-    fn from(src: VerifyError) -> Self {
-        ConsensusServiceError::Verify(src)
+impl From<ReportCacheError> for ConsensusServiceError {
+    fn from(src: ReportCacheError) -> Self {
+        ConsensusServiceError::ReportCache(src)
     }
 }
 
@@ -134,6 +87,8 @@ pub struct ConsensusService<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync 
     env: Arc<Environment>,
     ra_client: R,
     logger: Logger,
+
+    report_cache_thread: Option<ReportCacheThread>,
 
     consensus_msgs_from_network: BackgroundWorkQueue<IncomingConsensusMsg>,
 
@@ -219,6 +174,8 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
             ra_client,
             logger,
 
+            report_cache_thread: None,
+
             consensus_msgs_from_network,
 
             peer_manager,
@@ -239,7 +196,13 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
 
     pub fn start(&mut self) -> Result<(), ConsensusServiceError> {
         let ret = {
-            self.update_enclave_report_cache()?;
+            self.report_cache_thread = Some(ReportCacheThread::start(
+                self.enclave.clone(),
+                self.ra_client.clone(),
+                self.config.ias_spid,
+                &counters::ENCLAVE_REPORT_TIMESTAMP,
+                self.logger.clone(),
+            )?);
             self.start_admin_rpc_server()?;
             self.start_consensus_rpc_server()?;
             self.start_user_rpc_server()?;
@@ -291,6 +254,10 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
             byzantine_ledger.stop();
         }
 
+        if let Some(ref mut report_cache_thread) = self.report_cache_thread.take() {
+            report_cache_thread.stop()?;
+        }
+
         Ok(())
     }
 
@@ -311,120 +278,6 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
         }
 
         Ok(())
-    }
-
-    pub fn start_report_cache(&mut self) -> Result<VerificationReport, ConsensusServiceError> {
-        log::debug!(
-            self.logger,
-            "Starting remote attestation report process, getting QE enclave targeting info..."
-        );
-        let (qe_info, gid) =
-            retry(
-                Fibonacci::from_millis(1000).take(7),
-                || match QuotingEnclave::target_info() {
-                    Ok((qe_info, gid)) => OperationResult::Ok((qe_info, gid)),
-                    Err(ti_err) => match ti_err {
-                        TargetInfoError::QeBusy => OperationResult::Retry(TargetInfoError::QeBusy),
-                        other => OperationResult::Err(other),
-                    },
-                },
-            )
-            .map_err(|e| match e {
-                RetryError::Operation {
-                    error,
-                    total_delay,
-                    tries,
-                } => match error {
-                    TargetInfoError::QeBusy => TargetInfoError::Retry(format!(
-                        "Attempted to retrieve TargetInfo {} times over {:?}, giving up...",
-                        tries, total_delay
-                    )),
-                    other_ti_err => other_ti_err,
-                },
-                RetryError::Internal(s) => TargetInfoError::Retry(s),
-            })?;
-        log::debug!(self.logger, "Getting EREPORT from node enclave...");
-        let (report, quote_nonce) = self.enclave.new_ereport(qe_info)?;
-        log::debug!(self.logger, "Downloading SigRL for GID '{}'...", &gid);
-        let sigrl = self.ra_client.get_sigrl(gid)?;
-        log::debug!(self.logger, "Quoting report...");
-        let (quote, qe_report) = QuotingEnclave::quote_report(
-            &report,
-            QuoteSignType::Linkable,
-            &self.config.ias_spid,
-            &quote_nonce,
-            &sigrl,
-        )?;
-        log::debug!(self.logger, "Double-checking quoted report with enclave...");
-        let ias_nonce = self.enclave.verify_quote(quote.clone(), qe_report)?;
-        log::debug!(
-            self.logger,
-            "Verifying quote with remote attestation service..."
-        );
-        let retval = self.ra_client.verify_quote(&quote, Some(ias_nonce))?;
-        log::debug!(
-            self.logger,
-            "Quote verified by remote attestation service..."
-        );
-        Ok(retval)
-    }
-
-    /// Update the IAS report cached within the enclave.
-    pub fn update_enclave_report_cache(&mut self) -> Result<(), ConsensusServiceError> {
-        log::debug!(
-            self.logger,
-            "Starting enclave report cache update process..."
-        );
-        let mut ias_report = self.start_report_cache()?;
-        log::debug!(self.logger, "Verifying IAS report with enclave...");
-        let retval = match self.enclave.verify_ias_report(ias_report.clone()) {
-            Ok(()) => {
-                log::debug!(self.logger, "Enclave accepted report as valid...");
-                Ok(())
-            }
-            Err(EnclaveError::Attest(AttestEnclaveError::Verify(VerifyError::IasQuote(
-                IasQuoteError::GroupRevoked(_, pib),
-            ))))
-            | Err(EnclaveError::Attest(AttestEnclaveError::Verify(VerifyError::IasQuote(
-                IasQuoteError::ConfigurationNeeded(_, pib),
-            ))))
-            | Err(EnclaveError::Attest(AttestEnclaveError::Verify(VerifyError::IasQuote(
-                IasQuoteError::GroupOutOfDate(_, pib),
-            )))) => {
-                // To get here, we've gotten an error back from the enclave telling us
-                // the TCB is out-of-date.
-                log::debug!(
-                    self.logger,
-                    "IAS requested TCB update, attempting to update..."
-                );
-                QuotingEnclave::update_tcb(&pib)?;
-                log::debug!(
-                    self.logger,
-                    "TCB update complete, restarting reporting process"
-                );
-                ias_report = self.start_report_cache()?;
-                log::debug!(self.logger, "Verifying IAS report with enclave (again)...");
-                self.enclave.verify_ias_report(ias_report.clone())?;
-                log::debug!(self.logger, "Enclave accepted new report as valid...");
-                Ok(())
-            }
-            Err(other) => Err(other.into()),
-        };
-
-        if retval.is_ok() {
-            let ias_report_data = VerificationReportData::try_from(&ias_report)?;
-            let timestamp = ias_report_data.parse_timestamp()?;
-
-            counters::ENCLAVE_REPORT_TIMESTAMP.set(timestamp.timestamp());
-
-            log::debug!(
-                self.logger,
-                "Enclave accepted report as valid, report generated at {:?}...",
-                timestamp
-            );
-        }
-
-        retval
     }
 
     fn start_user_rpc_server(&mut self) -> Result<(), ConsensusServiceError> {

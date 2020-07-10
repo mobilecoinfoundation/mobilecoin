@@ -17,6 +17,7 @@ use pem::parse_many;
 use serde_json::json;
 use sha2::{digest::Digest, Sha256};
 
+#[derive(Clone)]
 pub struct SimClient;
 
 /// The mock remote attestation client implementation
