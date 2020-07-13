@@ -26,6 +26,10 @@ pub use schnorrkel::{Signature, SignatureError};
 /// * A 64-byte Schnorrkel Signature object which can be converted to and from bytes using its API.
 pub fn sign(context_tag: &[u8], private_key: &RistrettoPrivate, message: &[u8]) -> Signature {
     // Nonce is hash( private_key || message )
+    // FIXME: We should probably hash the context_tag in as well.
+    // Or just use something like merlin instead of Blake2b256.
+    // In that case we make the assumption that Keccak, which underlies STROBE,
+    // is a strong Pseudorandom permutation.
     let mut hasher = Blake2b256::new();
     hasher.input(private_key.to_bytes());
     hasher.input(message);

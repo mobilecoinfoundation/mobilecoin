@@ -43,16 +43,24 @@ However, if a nonce is ever reused, the private signing key is immediately revea
 adversary. This caused many high profile security breaks, when the PRNG used for the nonces
 didn't produce truly random nonces.
 
-In RFC6979, ed25519, and much later work, the idea was that the signature should be deterministic,
-and the nonce should be pseudorandomly generated from the message, and entropy connected to the
-private key. This ensures that only one nonce is ever used in connection to a particular message.
+In [RFC6979](https://tools.ietf.org/html/rfc6979), [ed25519](http://ed25519.cr.yp.to/ed25519-20110926.pdf),
+and much later work, the idea was that the signature should be *deterministic*,
+and the nonce should be *pseudorandomly generated* from the message and the private key.
 If a PRF is used to compute the nonce, then the nonce is hard to distinguish from random even if
 the messages that are signed are adversarially chosen.
 
+For this generation, we can think of the private key
+as a source of entropy for a *secret seed* to the PRF.
+We note that when secret entropy like this is available,
+then PRFs exist under weak assumptions, and do not require the "random oracle model" for hash functions.
+(See for instance [Chapter 3.8 in Pass "A Course in Cryptography"](https://www.cs.cornell.edu/courses/cs4830/2010fa/lecnotes.pdf)
+It is known that PRFs of this form exist if cryptographic Pseudorandom Generators (PRGs) exist. [Hastad, Impagliazzo, Levin and Luby famously showed](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.185.988)
+that PRG's exist if and only if one-way functions exist. This is a necessary assumption for semantically-secure symmetric key cryptography.)
+
 In the `sign` function in this crate, we take as an assumption that secret-prefix-Blake2b is a PRF.
 
-The ed25519 manuscript from 2011-09-26 has remarks in the section "pseudorandom generation of r", where
-`r` is the nonce, which support this idea (http://ed25519.cr.yp.to/ed25519-20110926.pdf):
+The [ed25519 manuscript]((http://ed25519.cr.yp.to/ed25519-20110926.pdf)) from 2011-09-26 has remarks in the section "pseudorandom generation of r", where
+`r` is the nonce, which support this idea:
 
 > This idea of generating random signatures in a secretly deterministic way, in particular obtaining
 > pseudorandomness by hashing a long-term secret key together with the input message, was proposed by
@@ -81,5 +89,11 @@ Rng required by Schnorrkel
 --------------------------
 
 Schnorrkel API deviates from RFC6979 and ed25519 in requiring the signer to provide a CSPRNG, which they
-generally want to be the OS rng. Because it is a requirement for us to have actually deterministic signatures,
-we produce this RNG from a seed, using the nonce. We use rand_hc which is a cryptographic RNG.
+generally want to be the OS rng (although it can perhaps be a different RNG via the `attach_rng` API).
+Other Schnorr signature implementations do not require an RNG at all -- deterministic signatures generally means that all the entropy for the
+signature comes from the private key.
+
+Because it is a requirement for us to have actually deterministic signatures,
+we produce this RNG from a seed, using the nonce. We use `rand_hc` which is a cryptographic RNG,
+and so we can conceal this detail from the caller. Thus, the API that this crate provides is closer to
+RFC6979 and ed25519.
