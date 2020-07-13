@@ -23,7 +23,7 @@ The main differences are:
   does not take an RNG as it does in Schnorrkel. Instead, in order to use Schnorrkel without
   patching it, we create a seeded RNG using a seed derived in a manner similar to the nonce
   in RFC6979 and ed25519.
-  -  This is very important for mobilecoin because we want for the public address to be
+  -  This is very important for MobileCoin because we want for the public address to be
      completely deterministic from the private account key, so that we can detect malicious
      tampering easily.
 - We do not use the "minisecret key" or the "minisecret key expansion" from Schnorrkel.
