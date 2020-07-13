@@ -32,6 +32,7 @@ use mc_consensus_enclave_api::{
 };
 use mc_crypto_ake_enclave::AkeEnclaveState;
 use mc_crypto_digestible::Digestible;
+use mc_crypto_hashes::Blake2b256;
 use mc_crypto_keys::{Ed25519Pair, Ed25519Public, RistrettoPrivate, RistrettoPublic, X25519Public};
 use mc_crypto_message_cipher::{AesMessageCipher, MessageCipher};
 use mc_crypto_rand::McRng;
@@ -40,7 +41,6 @@ use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResu
 use mc_transaction_core::{
     account_keys::PublicAddress,
     amount::Amount,
-    blake2b_256::Blake2b256,
     constants::{FEE_SPEND_PUBLIC_KEY, FEE_VIEW_PUBLIC_KEY},
     onetime_keys::{compute_shared_secret, compute_tx_pubkey, create_onetime_public_key},
     ring_signature::{KeyImage, Scalar},

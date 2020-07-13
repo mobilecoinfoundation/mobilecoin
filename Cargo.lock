@@ -2200,6 +2200,7 @@ dependencies = [
  "mc-consensus-enclave-api",
  "mc-crypto-ake-enclave",
  "mc-crypto-digestible",
+ "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-crypto-message-cipher",
  "mc-crypto-rand",
@@ -2414,6 +2415,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-crypto-hashes"
+version = "0.5.0"
+dependencies = [
+ "blake2",
+ "digest",
+]
+
+[[package]]
 name = "mc-crypto-keys"
 version = "0.5.0"
 dependencies = [
@@ -2489,6 +2498,20 @@ dependencies = [
  "rand 0.7.3",
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
+]
+
+[[package]]
+name = "mc-crypto-sig"
+version = "0.5.0"
+dependencies = [
+ "digest",
+ "mc-crypto-hashes",
+ "mc-crypto-keys",
+ "mc-util-from-random",
+ "mc-util-test-helper",
+ "rand_core 0.5.1",
+ "rand_hc 0.2.0",
+ "schnorrkel",
 ]
 
 [[package]]
@@ -2984,8 +3007,10 @@ dependencies = [
  "mc-common",
  "mc-crypto-box",
  "mc-crypto-digestible",
+ "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-crypto-rand",
+ "mc-crypto-sig",
  "mc-ledger-db",
  "mc-transaction-core-test-utils",
  "mc-util-from-random",
@@ -2998,7 +3023,6 @@ dependencies = [
  "rand 0.7.3",
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
- "schnorrkel",
  "serde",
  "sha2",
  "subtle 2.2.3",
@@ -3030,6 +3054,7 @@ dependencies = [
  "failure",
  "hkdf",
  "mc-common",
+ "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-transaction-core",
  "mc-util-from-random",

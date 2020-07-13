@@ -716,6 +716,7 @@ dependencies = [
  "mc-consensus-enclave-api 0.5.0",
  "mc-crypto-ake-enclave 0.5.0",
  "mc-crypto-digestible 0.5.0",
+ "mc-crypto-hashes 0.5.0",
  "mc-crypto-keys 0.5.0",
  "mc-crypto-message-cipher 0.5.0",
  "mc-crypto-rand 0.5.0",
@@ -823,6 +824,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-crypto-hashes"
+version = "0.5.0"
+dependencies = [
+ "blake2 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "digest 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "mc-crypto-keys"
 version = "0.5.0"
 dependencies = [
@@ -890,6 +899,18 @@ dependencies = [
  "rand 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_hc 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "mc-crypto-sig"
+version = "0.5.0"
+dependencies = [
+ "digest 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mc-crypto-hashes 0.5.0",
+ "mc-crypto-keys 0.5.0",
+ "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand_hc 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "schnorrkel 0.9.1 (git+https://github.com/sugargoat/schnorrkel?rev=60eedb2d3e005539052e1a2aef864bc78323c66c)",
 ]
 
 [[package]]
@@ -1041,16 +1062,16 @@ dependencies = [
  "mc-common 0.5.0",
  "mc-crypto-box 0.5.0",
  "mc-crypto-digestible 0.5.0",
+ "mc-crypto-hashes 0.5.0",
  "mc-crypto-keys 0.5.0",
  "mc-crypto-rand 0.5.0",
+ "mc-crypto-sig 0.5.0",
  "mc-util-from-random 0.5.0",
  "mc-util-repr-bytes 0.1.0",
  "mc-util-serial 0.5.0",
  "merlin 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "prost 0.6.1 (git+https://github.com/danburkert/prost?rev=6113789f70b69709820becba4242824b4fb3ffec)",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "rand_hc 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "schnorrkel 0.9.1 (git+https://github.com/sugargoat/schnorrkel?rev=60eedb2d3e005539052e1a2aef864bc78323c66c)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha2 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "subtle 2.2.3 (registry+https://github.com/rust-lang/crates.io-index)",

@@ -7,7 +7,6 @@ extern crate alloc;
 mod errors;
 
 use crate::{
-    blake2b_256::Blake2b256,
     domain_separators::{
         TXOUT_MERKLE_LEAF_DOMAIN_TAG, TXOUT_MERKLE_NIL_DOMAIN_TAG, TXOUT_MERKLE_NODE_DOMAIN_TAG,
     },
@@ -21,6 +20,7 @@ use core::convert::TryInto;
 pub use errors::Error as MembershipProofError;
 use mc_common::HashMap;
 use mc_crypto_digestible::Digestible;
+use mc_crypto_hashes::Blake2b256;
 
 lazy_static! {
     pub static ref NIL_HASH: [u8; 32] = hash_nil();

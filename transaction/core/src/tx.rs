@@ -9,6 +9,7 @@ use core::{
 
 use mc_common::{Hash, HashMap};
 use mc_crypto_digestible::Digestible;
+use mc_crypto_hashes::Blake2b256;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
 use mc_util_repr_bytes::{
     derive_prost_message_from_repr_bytes, typenum::U32, GenericArray, ReprBytes,
@@ -20,7 +21,6 @@ use serde::{Deserialize, Serialize};
 use crate::{
     account_keys::PublicAddress,
     amount::{Amount, AmountError},
-    blake2b_256::Blake2b256,
     domain_separators::TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG,
     encrypted_fog_hint::EncryptedFogHint,
     get_tx_out_shared_secret,
