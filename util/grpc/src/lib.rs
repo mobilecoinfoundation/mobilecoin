@@ -39,21 +39,19 @@ pub fn send_result<T>(
     logger: &Logger,
 ) {
     let logger = logger.clone();
-    let mut success = true;
+    let success = resp.is_ok();
 
     match resp {
-        Ok(ok) => ctx.spawn(sink.success(ok).map_err(move |err| {
-            success = false;
-            log::error!(logger, "failed to reply: {:?}", err);
-        })),
-        Err(e) => {
-            success = false;
-            let f = sink
-                .fail(e)
-                .map_err(move |err| log::error!(logger, "failed to reply: {:?}", err));
-            ctx.spawn(f)
-        }
+        Ok(ok) => ctx.spawn(
+            sink.success(ok)
+                .map_err(move |err| log::error!(logger, "failed to reply: {:?}", err)),
+        ),
+        Err(e) => ctx.spawn(
+            sink.fail(e)
+                .map_err(move |err| log::error!(logger, "failed to reply: {:?}", err)),
+        ),
     }
+
     SVC_COUNTERS.resp(&ctx, success);
 }
 

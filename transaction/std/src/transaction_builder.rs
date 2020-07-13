@@ -14,7 +14,7 @@ use mc_transaction_core::{
     fog_hint::FogHint,
     onetime_keys::compute_shared_secret,
     ring_signature::SignatureRctBulletproofs,
-    tx::{Tx, TxIn, TxOut, TxPrefix},
+    tx::{Tx, TxIn, TxOut, TxOutConfirmationNumber, TxPrefix},
     CompressedCommitment,
 };
 use mc_util_from_random::FromRandom;
@@ -63,13 +63,16 @@ impl TransactionBuilder {
         recipient: &PublicAddress,
         recipient_fog_ingest_key: Option<&RistrettoPublic>,
         rng: &mut RNG,
-    ) -> Result<TxOut, TxBuilderError> {
+    ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
         let (tx_out, shared_secret) =
             create_output(value, recipient, recipient_fog_ingest_key, rng)?;
 
         self.outputs_and_shared_secrets
             .push((tx_out.clone(), shared_secret));
-        Ok(tx_out)
+
+        let confirmation = TxOutConfirmationNumber::from(&shared_secret);
+
+        Ok((tx_out, confirmation))
     }
 
     /// Sets the tombstone block.
@@ -218,13 +221,13 @@ fn create_fog_hint<RNG: CryptoRng + RngCore>(
 ) -> Result<EncryptedFogHint, TxBuilderError> {
     match maybe_ingest_pubkey {
         Some(ingest_pubkey) => {
-            if recipient.fog_url().is_none() {
+            if recipient.fog_report_url().is_none() {
                 return Err(TxBuilderError::IngestPubkeyUnexpectedlyProvided);
             }
             Ok(FogHint::from(recipient).encrypt(ingest_pubkey, rng))
         }
         None => {
-            if recipient.fog_url().is_some() {
+            if recipient.fog_report_url().is_some() {
                 return Err(TxBuilderError::IngestPubkeyNotProvided);
             }
             Ok(EncryptedFogHint::fake_onetime_hint(rng))
@@ -238,7 +241,6 @@ pub mod transaction_builder_tests {
     use mc_transaction_core::{
         account_keys::{AccountKey, DEFAULT_SUBADDRESS_INDEX},
         constants::{MAX_INPUTS, MAX_OUTPUTS},
-        get_tx_out_shared_secret,
         onetime_keys::*,
         ring_signature::KeyImage,
         tx::TxOutMembershipProof,
@@ -376,8 +378,9 @@ pub mod transaction_builder_tests {
         .unwrap();
 
         let mut transaction_builder = TransactionBuilder::new();
+
         transaction_builder.add_input(input_credentials);
-        transaction_builder
+        let (_txout, confirmation) = transaction_builder
             .add_output(
                 value - BASE_FEE,
                 &recipient.default_subaddress(),
@@ -410,12 +413,10 @@ pub mod transaction_builder_tests {
             ));
         }
 
-        // The output should have the correct value.
+        // The output should have the correct value and confirmation number
         {
             let public_key = RistrettoPublic::try_from(&output.public_key).unwrap();
-            let shared_secret = get_tx_out_shared_secret(recipient.view_private_key(), &public_key);
-            let (output_value, _blinding) = output.amount.get_value(&shared_secret).unwrap();
-            assert_eq!(output_value, value - BASE_FEE);
+            assert!(confirmation.validate(&public_key, &recipient.view_private_key()));
         }
 
         // The transaction should have a valid signature.

@@ -88,7 +88,7 @@ Follow the steps below:
 
 1. Bootstrap the ledger.
 
-    In order to run consensus, you need to start with the correct "Origin Block." To obtain this, we recommend running our [bootstrap process](../../util/generate_sample_ledger/README.md).
+    In order to run consensus, you need to start with the correct "Origin Block." To obtain this, we recommend running our [bootstrap process](../../util/generate-sample-ledger/README.md).
 
 1. Set up logging and node management
 
@@ -102,7 +102,7 @@ Follow the steps below:
 
 1. Start the SGX daemons.
 
->Note: Check your aesm location. It is either at `/opt/intel/libsgx-enclave-common/aesm` or `/opt/intel/sgx-aesm-service/aesm`. Update the commands below accordingly.
+    >Note: Check your aesm location. It is either at `/opt/intel/libsgx-enclave-common/aesm` or `/opt/intel/sgx-aesm-service/aesm`. Update the commands below accordingly.
 
     ```
     source /opt/intel/sgxsdk/environment

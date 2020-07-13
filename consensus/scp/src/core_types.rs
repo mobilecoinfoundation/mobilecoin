@@ -6,7 +6,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     clone::Clone,
     cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd},
-    collections::{hash_map::DefaultHasher, BTreeSet},
+    collections::hash_map::DefaultHasher,
     fmt,
     fmt::{Debug, Display},
     hash::{Hash, Hasher},
@@ -14,14 +14,27 @@ use std::{
 };
 
 /// A generic node identifier.
-pub trait GenericNodeId: Clone + Debug + Display + Eq + PartialEq + Hash + Digestible {}
+pub trait GenericNodeId:
+    Clone + Debug + Display + Eq + PartialEq + Ord + PartialOrd + Hash + Digestible
+{
+}
 impl<T> GenericNodeId for T where
-    T: Clone + Debug + Display + Serialize + DeserializeOwned + Eq + PartialEq + Hash + Digestible
+    T: Clone
+        + Debug
+        + Display
+        + Serialize
+        + DeserializeOwned
+        + Eq
+        + PartialEq
+        + Ord
+        + PartialOrd
+        + Hash
+        + Digestible
 {
 }
 
 /// Application-specific function for combining multiple values. Must be deterministic.
-pub type CombineFn<V> = Arc<(dyn Fn(BTreeSet<V>) -> BTreeSet<V> + Sync + Send)>;
+pub type CombineFn<V> = Arc<(dyn Fn(&[V]) -> Vec<V> + Sync + Send)>;
 
 /// Application-specific validation of value.
 pub type ValidityFn<V, E> = Arc<(dyn Fn(&V) -> Result<(), E> + Sync + Send)>;

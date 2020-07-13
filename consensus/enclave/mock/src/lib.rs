@@ -15,6 +15,7 @@ use mc_attest_enclave_api::{
 use mc_common::ResponderId;
 use mc_crypto_keys::{Ed25519Pair, Ed25519Public, X25519EphemeralPrivate, X25519Public};
 use mc_crypto_rand::McRng;
+use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{Tx, TxOut, TxOutMembershipProof},
@@ -57,14 +58,32 @@ impl ConsensusServiceMockEnclave {
     }
 }
 
+impl ReportableEnclave for ConsensusServiceMockEnclave {
+    fn new_ereport(&self, _qe_info: TargetInfo) -> ReportableEnclaveResult<(Report, QuoteNonce)> {
+        Ok((Report::default(), QuoteNonce::default()))
+    }
+
+    fn verify_quote(&self, _quote: Quote, _qe_report: Report) -> ReportableEnclaveResult<IasNonce> {
+        Ok(IasNonce::default())
+    }
+
+    fn verify_ias_report(&self, _ias_report: VerificationReport) -> ReportableEnclaveResult<()> {
+        Ok(())
+    }
+
+    fn get_ias_report(&self) -> ReportableEnclaveResult<VerificationReport> {
+        Ok(VerificationReport::default())
+    }
+}
+
 impl ConsensusEnclave for ConsensusServiceMockEnclave {
     fn enclave_init(
         &self,
         _self_peer_id: &ResponderId,
         _self_client_id: &ResponderId,
         _sealed_key: &Option<SealedBlockSigningKey>,
-    ) -> Result<SealedBlockSigningKey> {
-        Ok(vec![])
+    ) -> Result<(SealedBlockSigningKey, Vec<String>)> {
+        Ok((vec![], vec![]))
     }
 
     fn get_identity(&self) -> Result<X25519Public> {
@@ -75,22 +94,6 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
 
     fn get_signer(&self) -> Result<Ed25519Public> {
         Ok(self.signing_keypair.public_key())
-    }
-
-    fn new_ereport(&self, _qe_info: TargetInfo) -> Result<(Report, QuoteNonce)> {
-        Ok((Report::default(), QuoteNonce::default()))
-    }
-
-    fn verify_quote(&self, _quote: Quote, _qe_report: Report) -> Result<IasNonce> {
-        Ok(IasNonce::default())
-    }
-
-    fn verify_ias_report(&self, _ias_report: VerificationReport) -> Result<()> {
-        Ok(())
-    }
-
-    fn get_ias_report(&self) -> Result<VerificationReport> {
-        Ok(VerificationReport::default())
     }
 
     fn client_accept(

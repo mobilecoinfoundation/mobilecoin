@@ -6,7 +6,7 @@
 use crate::{network_state_trait::NetworkState, scp_network_state::SCPNetworkState};
 use mc_common::{
     logger::{log, Logger},
-    HashMap, HashSet, ResponderId,
+    ResponderId,
 };
 use mc_connection::{
     BlockchainConnection, Connection, ConnectionManager, RetryableBlockchainConnection,
@@ -18,6 +18,7 @@ use mc_transaction_core::BlockIndex;
 use mc_util_uri::ConnectionUri;
 use retry::delay::Fibonacci;
 use std::{
+    collections::{HashMap, HashSet},
     str::FromStr,
     sync::{Arc, Condvar, Mutex},
     thread,
@@ -110,8 +111,8 @@ impl<BC: BlockchainConnection + 'static> PollingNetworkState<BC> {
         let &(ref lock, ref condvar) = &*results_and_condvar;
         let num_peers = self.manager.len();
         let results = condvar //.wait(lock.lock().unwrap()).unwrap();
-            .wait_until(lock.lock().unwrap(), |ref mut results| {
-                results.len() >= num_peers
+            .wait_while(lock.lock().unwrap(), |ref mut results| {
+                results.len() < num_peers
             })
             .expect("waiting on condvar failed");
 

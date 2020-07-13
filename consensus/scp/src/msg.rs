@@ -6,13 +6,13 @@ use crate::{
     msg::Topic::*,
     quorum_set::QuorumSet,
 };
-use mc_common::{HashSet, NodeID};
+use mc_common::NodeID;
 use mc_crypto_digestible::Digestible;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     cmp,
     cmp::Ordering,
-    collections::{hash_map::DefaultHasher, BTreeSet},
+    collections::{hash_map::DefaultHasher, BTreeSet, HashSet},
     fmt::{Debug, Display},
     hash::{Hash, Hasher},
 };
@@ -52,6 +52,20 @@ impl<V: Value> Ord for NominatePayload<V> {
 impl<V: Value> PartialOrd for NominatePayload<V> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
+    }
+}
+
+impl<V: Value> NominatePayload<V> {
+    /// Create a new NominatePayload.
+    ///
+    /// # Arguments
+    /// * `x` - Values voted nominated.
+    /// * `y` - Values accepted nominated.
+    pub fn new(x: &HashSet<V>, y: &HashSet<V>) -> Self {
+        Self {
+            X: x.iter().cloned().collect(),
+            Y: y.iter().cloned().collect(),
+        }
     }
 }
 

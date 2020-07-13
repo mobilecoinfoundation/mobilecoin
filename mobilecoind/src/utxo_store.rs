@@ -257,33 +257,43 @@ impl UtxoStore {
             // match the list of key images. Keep track of which ones were successfully
             // removed so that we could clear their utxo data and return them to the caller.
             let mut cursor = db_txn.open_rw_cursor(self.subaddress_id_to_utxo_id)?;
-            match cursor.iter_dup_of(&subaddress_id.to_vec()) {
-                Ok(iterator) => {
-                    for (_subaddress_id_bytes, utxo_id_bytes) in iterator {
-                        // Remember: The utxo id bytes are equal to the KeyImage
-                        if key_images.contains(&utxo_id_bytes) {
-                            // utxo ids and key images are interchangeable so this is not expected to
-                            // fail.
-                            // Note that it is critical to read `utxo_id_bytes` BEFORE deleting due to
-                            // this bug: https://github.com/danburkert/lmdb-rs/issues/57
-                            removed_key_images.push(KeyImage::try_from(utxo_id_bytes).unwrap());
+            let _ = cursor
+                .iter_dup_of(&subaddress_id.to_vec())
+                .map(|result| {
+                    result
+                        .map_err(Error::from)
+                        .and_then(|(subaddress_id_bytes, utxo_id_bytes)| {
+                            // Sanity check.
+                            assert_eq!(subaddress_id_bytes, &subaddress_id.to_vec()[..]);
 
-                            cursor.del(WriteFlags::empty())?;
-                        }
-                    }
+                            // Remember: The utxo id bytes are equal to the KeyImage
+                            if key_images.contains(&utxo_id_bytes) {
+                                // utxo ids and key images are interchangeable so this is not expected to
+                                // fail.
+                                // Note that it is critical to read `utxo_id_bytes` BEFORE deleting due to
+                                // this bug: https://github.com/danburkert/lmdb-rs/issues/57
+                                removed_key_images.push(KeyImage::try_from(utxo_id_bytes).unwrap());
 
-                    Ok(())
-                }
-                Err(lmdb::Error::NotFound) => Ok(()),
-                Err(err) => Err(Error::LMDB(err)),
-            }?;
-            drop(cursor);
+                                cursor.del(WriteFlags::empty())?;
+                            }
+
+                            Ok(())
+                        })
+                })
+                .collect::<Result<Vec<()>, Error>>()?;
         }
 
-        // Remove the actual UnspentTxOut data for every key image we successfully removed.
+        // Remove the actual UnspentTxOut data for every key image we successfully removed, as well
+        // as the key image -> subaddress association as that is no longer going to be needed.
         for key_image in removed_key_images.iter() {
             let utxo_id = UtxoId::from(key_image);
             match db_txn.del(self.utxo_id_to_utxo, &utxo_id, None) {
+                Ok(_) => Ok(()),
+                Err(lmdb::Error::NotFound) => Ok(()),
+                Err(err) => Err(Error::LMDB(err)),
+            }?;
+
+            match db_txn.del(self.key_image_to_subaddress_id, &key_image, None) {
                 Ok(_) => Ok(()),
                 Err(lmdb::Error::NotFound) => Ok(()),
                 Err(err) => Err(Error::LMDB(err)),
@@ -369,18 +379,19 @@ impl UtxoStore {
         subaddress_id: &SubaddressId,
     ) -> Result<Vec<UtxoId>, Error> {
         let mut cursor = db_txn.open_ro_cursor(self.subaddress_id_to_utxo_id)?;
-        match cursor.iter_dup_of(&subaddress_id.to_vec()) {
-            Ok(iter) => {
-                let mut results = Vec::new();
-                for (_subaddress_id_bytes, utxo_id_bytes) in iter {
-                    let utxo_id = UtxoId::try_from(utxo_id_bytes)?;
-                    results.push(utxo_id);
-                }
-                Ok(results)
-            }
-            Err(lmdb::Error::NotFound) => Ok(vec![]),
-            Err(err) => Err(err.into()),
-        }
+        Ok(cursor
+            .iter_dup_of(&subaddress_id.to_vec())
+            .map(|result| {
+                result
+                    .map_err(Error::from)
+                    .and_then(|(subaddress_id_bytes, utxo_id_bytes)| {
+                        // Sanity check.
+                        assert_eq!(subaddress_id.to_vec(), subaddress_id_bytes);
+
+                        Ok(UtxoId::try_from(utxo_id_bytes)?)
+                    })
+            })
+            .collect::<Result<Vec<_>, Error>>()?)
     }
 
     /// Get a single UnspentTxOut by its id.

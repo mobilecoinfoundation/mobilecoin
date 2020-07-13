@@ -15,8 +15,7 @@ pub use uri::{Uri, UriParseError};
 pub type AdminUri = Uri<AdminScheme>;
 pub type ConsensusClientUri = Uri<ConsensusClientScheme>;
 pub type ConsensusPeerUri = Uri<ConsensusPeerScheme>;
-pub type FogClientUri = Uri<FogClientScheme>;
-pub type LedgerClientUri = Uri<LedgerClientScheme>;
+pub type FogUri = Uri<FogScheme>;
 
 // Conversions
 
@@ -82,11 +81,12 @@ impl UriScheme for AdminScheme {
     const DEFAULT_INSECURE_PORT: u16 = 9090;
 }
 
-/// Fog Client Uri Scheme
+/// Fog Uri Scheme
+/// Used in public addresses, and when talking to fog report server
 #[derive(Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Clone)]
-pub struct FogClientScheme {}
+pub struct FogScheme {}
 
-impl UriScheme for FogClientScheme {
+impl UriScheme for FogScheme {
     /// The part before the '://' of a URL.
     const SCHEME_SECURE: &'static str = "fog";
     const SCHEME_INSECURE: &'static str = "insecure-fog";
@@ -94,20 +94,6 @@ impl UriScheme for FogClientScheme {
     /// Default port numbers
     const DEFAULT_SECURE_PORT: u16 = 443;
     const DEFAULT_INSECURE_PORT: u16 = 3225;
-}
-
-/// Ledger Client Uri Scheme
-#[derive(Debug, Hash, Ord, PartialOrd, Eq, PartialEq, Clone)]
-pub struct LedgerClientScheme {}
-
-impl UriScheme for LedgerClientScheme {
-    /// The part before the '://' of a URL.
-    const SCHEME_SECURE: &'static str = "ledger";
-    const SCHEME_INSECURE: &'static str = "insecure-ledger";
-
-    /// Default port numbers
-    const DEFAULT_SECURE_PORT: u16 = 443;
-    const DEFAULT_INSECURE_PORT: u16 = 3223;
 }
 
 #[cfg(test)]
@@ -320,14 +306,14 @@ mod consensus_peer_uri_tests {
 }
 
 #[cfg(test)]
-mod ledger_uri_tests {
-    use super::{ConnectionUri, LedgerClientUri as ClientUri};
+mod fog_uri_tests {
+    use super::{ConnectionUri, FogUri};
     use core::str::FromStr;
     use mc_common::ResponderId;
 
     #[test]
     fn test_valid_client_uris() {
-        let uri = ClientUri::from_str("ledger://127.0.0.1/").unwrap();
+        let uri = FogUri::from_str("fog://127.0.0.1/").unwrap();
         assert_eq!(uri.addr(), "127.0.0.1:443");
         assert_eq!(
             uri.responder_id().unwrap(),
@@ -335,7 +321,7 @@ mod ledger_uri_tests {
         );
         assert_eq!(uri.use_tls(), true);
 
-        let uri = ClientUri::from_str("ledger://node1.test.mobilecoin.com/").unwrap();
+        let uri = FogUri::from_str("fog://node1.test.mobilecoin.com/").unwrap();
         assert_eq!(uri.addr(), "node1.test.mobilecoin.com:443");
         assert_eq!(
             uri.responder_id().unwrap(),
@@ -343,7 +329,7 @@ mod ledger_uri_tests {
         );
         assert_eq!(uri.use_tls(), true);
 
-        let uri = ClientUri::from_str("ledger://node1.test.mobilecoin.com:666/").unwrap();
+        let uri = FogUri::from_str("fog://node1.test.mobilecoin.com:666/").unwrap();
         assert_eq!(uri.addr(), "node1.test.mobilecoin.com:666");
         assert_eq!(
             uri.responder_id().unwrap(),
@@ -351,23 +337,23 @@ mod ledger_uri_tests {
         );
         assert_eq!(uri.use_tls(), true);
 
-        let uri = ClientUri::from_str("insecure-ledger://127.0.0.1/").unwrap();
-        assert_eq!(uri.addr(), "127.0.0.1:3223");
+        let uri = FogUri::from_str("insecure-fog://127.0.0.1/").unwrap();
+        assert_eq!(uri.addr(), "127.0.0.1:3225");
         assert_eq!(
             uri.responder_id().unwrap(),
-            ResponderId::from_str("127.0.0.1:3223").unwrap()
+            ResponderId::from_str("127.0.0.1:3225").unwrap()
         );
         assert_eq!(uri.use_tls(), false);
 
-        let uri = ClientUri::from_str("insecure-ledger://node1.test.mobilecoin.com/").unwrap();
-        assert_eq!(uri.addr(), "node1.test.mobilecoin.com:3223");
+        let uri = FogUri::from_str("insecure-fog://node1.test.mobilecoin.com/").unwrap();
+        assert_eq!(uri.addr(), "node1.test.mobilecoin.com:3225");
         assert_eq!(
             uri.responder_id().unwrap(),
-            ResponderId::from_str("node1.test.mobilecoin.com:3223").unwrap()
+            ResponderId::from_str("node1.test.mobilecoin.com:3225").unwrap()
         );
         assert_eq!(uri.use_tls(), false);
 
-        let uri = ClientUri::from_str("insecure-ledger://node1.test.mobilecoin.com:666/").unwrap();
+        let uri = FogUri::from_str("insecure-fog://node1.test.mobilecoin.com:666/").unwrap();
         assert_eq!(uri.addr(), "node1.test.mobilecoin.com:666");
         assert_eq!(
             uri.responder_id().unwrap(),
@@ -378,36 +364,36 @@ mod ledger_uri_tests {
 
     #[test]
     fn test_invalid_client_uris() {
-        assert!(ClientUri::from_str("http://127.0.0.1/").is_err());
-        assert!(ClientUri::from_str("127.0.0.1").is_err());
-        assert!(ClientUri::from_str("127.0.0.1:12345").is_err());
-        assert!(ClientUri::from_str("ledger://").is_err());
-        assert!(ClientUri::from_str("ledger:///").is_err());
-        assert!(ClientUri::from_str("ledger://    /").is_err());
+        assert!(FogUri::from_str("http://127.0.0.1/").is_err());
+        assert!(FogUri::from_str("127.0.0.1").is_err());
+        assert!(FogUri::from_str("127.0.0.1:12345").is_err());
+        assert!(FogUri::from_str("fog://").is_err());
+        assert!(FogUri::from_str("fog:///").is_err());
+        assert!(FogUri::from_str("fog://    /").is_err());
     }
 
     #[test]
     fn test_tls_override() {
         assert_eq!(
-            ClientUri::from_str("ledger://node.com/")
+            FogUri::from_str("fog://node.com/")
                 .unwrap()
                 .tls_hostname_override(),
             None
         );
         assert_eq!(
-            ClientUri::from_str("ledger://node.com/?")
+            FogUri::from_str("fog://node.com/?")
                 .unwrap()
                 .tls_hostname_override(),
             None
         );
         assert_eq!(
-            ClientUri::from_str("ledger://node.com/?tls-hostname=")
+            FogUri::from_str("fog://node.com/?tls-hostname=")
                 .unwrap()
                 .tls_hostname_override(),
             None
         );
         assert_eq!(
-            ClientUri::from_str("ledger://node.com/?tls-hostname=lol.com")
+            FogUri::from_str("fog://node.com/?tls-hostname=lol.com")
                 .unwrap()
                 .tls_hostname_override(),
             Some("lol.com".into())

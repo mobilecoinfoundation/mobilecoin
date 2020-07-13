@@ -3,7 +3,6 @@
 //! Construct and submit transactions to the validator network.
 
 use crate::{database::Database, error::Error, monitor_store::MonitorId, utxo_store::UnspentTxOut};
-
 use mc_common::{
     logger::{log, o, Logger},
     HashMap, HashSet,
@@ -17,7 +16,7 @@ use mc_transaction_core::{
     constants::{BASE_FEE, MAX_INPUTS, RING_SIZE},
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
-    tx::{Tx, TxOut, TxOutMembershipProof},
+    tx::{Tx, TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
     BlockIndex,
 };
 use mc_transaction_std::{InputCredentials, TransactionBuilder};
@@ -64,6 +63,10 @@ pub struct TxProposal {
     /// A map of outlay index -> TxOut index in the Tx object.
     /// This is needed to map recipients to their respective TxOuts.
     pub outlay_index_to_tx_out_index: HashMap<usize, usize>,
+
+    /// A list of the confirmation numbers, in the same order
+    /// as the outlays.
+    pub outlay_confirmation_numbers: Vec<TxOutConfirmationNumber>,
 }
 
 impl TxProposal {
@@ -133,7 +136,7 @@ impl<T: UserTxConnection + 'static> TransactionsManager<T> {
         // TODO fog service is currently unsupported.
         assert!(!outlays
             .iter()
-            .any(|outlay| outlay.receiver.fog_url().is_some()));
+            .any(|outlay| outlay.receiver.fog_report_url().is_some()));
 
         // Must have at least one output
         if outlays.is_empty() {
@@ -646,23 +649,21 @@ impl<T: UserTxConnection + 'static> TransactionsManager<T> {
                     onetime_private_key,
                     *from_account_key.view_private_key(),
                 )
-                .or_else(|_| {
-                    Err(Error::TxBuildError(
-                        "failed creating InputCredentials".into(),
-                    ))
-                })?,
+                .map_err(|_| Error::TxBuildError("failed creating InputCredentials".into()))?,
             );
         }
 
         // Add outputs to our destinations.
         let mut total_value = 0;
         let mut tx_out_to_outlay_index = HashMap::default();
+        let mut outlay_confirmation_numbers = Vec::default();
         for (i, outlay) in destinations.iter().enumerate() {
-            let tx_out = tx_builder
+            let (tx_out, confirmation_number) = tx_builder
                 .add_output(outlay.value, &outlay.receiver, None, rng)
                 .map_err(|err| Error::TxBuildError(format!("failed adding output: {}", err)))?;
 
             tx_out_to_outlay_index.insert(tx_out, i);
+            outlay_confirmation_numbers.push(confirmation_number);
 
             total_value += outlay.value;
         }
@@ -733,6 +734,7 @@ impl<T: UserTxConnection + 'static> TransactionsManager<T> {
             outlays: destinations.to_vec(),
             tx,
             outlay_index_to_tx_out_index,
+            outlay_confirmation_numbers,
         })
     }
 }

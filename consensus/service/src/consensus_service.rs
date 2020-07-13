@@ -10,48 +10,37 @@ use crate::{
 };
 use failure::Fail;
 use futures::Future;
-use grpcio;
+use grpcio::{EnvBuilder, Environment, Server, ServerBuilder};
 use mc_attest_api::attest_grpc::create_attested_api;
-use mc_attest_core::{
-    IasQuoteError, PibError, QuoteError, QuoteSignType, TargetInfoError, VerificationReport,
-    VerifyError,
-};
-use mc_attest_enclave_api::{ClientSession, Error as AttestEnclaveError, PeerSession};
-use mc_attest_net::{Error as RaError, RaClient};
-use mc_attest_untrusted::QuotingEnclave;
+use mc_attest_enclave_api::{ClientSession, PeerSession};
+use mc_attest_net::RaClient;
 use mc_common::{
     logger::{log, Logger},
     NodeID, ResponderId,
 };
 use mc_connection::{Connection, ConnectionManager, ConnectionUriGrpcioServer};
 use mc_consensus_api::{consensus_client_grpc, consensus_common_grpc, consensus_peer_grpc};
-use mc_consensus_enclave::{ConsensusEnclaveProxy, Error as EnclaveError};
-use mc_ledger_db::LedgerDB;
+use mc_consensus_enclave::ConsensusEnclaveProxy;
+use mc_ledger_db::{Ledger, LedgerDB};
 use mc_peers::{PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
+use mc_sgx_report_cache_untrusted::{Error as ReportCacheError, ReportCacheThread};
 use mc_transaction_core::tx::TxHash;
 use mc_util_grpc::{
     AdminServer, BuildInfoService, GetConfigJsonFn, HealthCheckStatus, HealthService,
 };
 use mc_util_uri::{ConnectionUri, ConsensusPeerUriApi};
-use retry::{delay::Fibonacci, retry, Error as RetryError, OperationResult};
 use serde_json::json;
 use std::{
+    env,
     sync::{Arc, Mutex},
     time::Instant,
 };
 
+/// Crate version, used for admin info endpoint
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 #[derive(Debug, Fail)]
 pub enum ConsensusServiceError {
-    #[fail(display = "Error getting quoting enclave target info: {}", _0)]
-    TargetInfo(TargetInfoError),
-    #[fail(display = "Consensus enclave error: {}", _0)]
-    Enclave(EnclaveError),
-    #[fail(display = "Quoting enclave failure: {}", _0)]
-    Quote(QuoteError),
-    #[fail(display = "Failed to communicate with IAS: {}", _0)]
-    RaClient(RaError),
-    #[fail(display = "Failed to update TCB in response to a PIB: {}", _0)]
-    TcbUpdate(PibError),
     #[fail(display = "Failed to join thread: {}", _0)]
     ThreadJoin(String),
     #[fail(display = "RPC shutdown failure: {}", _0)]
@@ -60,35 +49,12 @@ pub enum ConsensusServiceError {
     BackgroundWorkQueueStart(String),
     #[fail(display = "Failed to stop background work queue: {}", _0)]
     BackgroundWorkQueueStop(String),
+    #[fail(display = "Report cache error: {}", _0)]
+    ReportCache(ReportCacheError),
 }
-
-impl From<EnclaveError> for ConsensusServiceError {
-    fn from(src: EnclaveError) -> Self {
-        ConsensusServiceError::Enclave(src)
-    }
-}
-
-impl From<PibError> for ConsensusServiceError {
-    fn from(src: PibError) -> Self {
-        ConsensusServiceError::TcbUpdate(src)
-    }
-}
-
-impl From<QuoteError> for ConsensusServiceError {
-    fn from(src: QuoteError) -> Self {
-        ConsensusServiceError::Quote(src)
-    }
-}
-
-impl From<RaError> for ConsensusServiceError {
-    fn from(src: RaError) -> Self {
-        ConsensusServiceError::RaClient(src)
-    }
-}
-
-impl From<TargetInfoError> for ConsensusServiceError {
-    fn from(src: TargetInfoError) -> Self {
-        ConsensusServiceError::TargetInfo(src)
+impl From<ReportCacheError> for ConsensusServiceError {
+    fn from(src: ReportCacheError) -> Self {
+        ConsensusServiceError::ReportCache(src)
     }
 }
 
@@ -111,16 +77,18 @@ pub struct IncomingConsensusMsg {
 /// - The NodeID that notified us about this transaction.
 ///   (will be None for values submitted by clients and not relayed by other nodes)
 pub type ProposeTxCallback =
-    Arc<dyn Fn(TxHash, Option<&NodeID>, Option<&ResponderId>) -> () + Sync + Send>;
+    Arc<dyn Fn(TxHash, Option<&NodeID>, Option<&ResponderId>) + Sync + Send>;
 
 pub struct ConsensusService<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> {
     config: Config,
     local_node_id: NodeID,
     enclave: E,
     ledger_db: LedgerDB,
-    env: Arc<grpcio::Environment>,
+    env: Arc<Environment>,
     ra_client: R,
     logger: Logger,
+
+    report_cache_thread: Option<ReportCacheThread>,
 
     consensus_msgs_from_network: BackgroundWorkQueue<IncomingConsensusMsg>,
 
@@ -130,8 +98,8 @@ pub struct ConsensusService<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync 
     peer_keepalive: Arc<Mutex<PeerKeepalive>>,
 
     admin_rpc_server: Option<AdminServer>,
-    consensus_rpc_server: Option<grpcio::Server>,
-    user_rpc_server: Option<grpcio::Server>,
+    consensus_rpc_server: Option<Server>,
+    user_rpc_server: Option<Server>,
     byzantine_ledger: Arc<Mutex<Option<ByzantineLedger>>>,
 }
 
@@ -145,7 +113,7 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
     ) -> Self {
         // gRPC environment.
         let env = Arc::new(
-            grpcio::EnvBuilder::new()
+            EnvBuilder::new()
                 .name_prefix("Main-RPC".to_string())
                 .build(),
         );
@@ -206,6 +174,8 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
             ra_client,
             logger,
 
+            report_cache_thread: None,
+
             consensus_msgs_from_network,
 
             peer_manager,
@@ -226,7 +196,13 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
 
     pub fn start(&mut self) -> Result<(), ConsensusServiceError> {
         let ret = {
-            self.update_enclave_report_cache()?;
+            self.report_cache_thread = Some(ReportCacheThread::start(
+                self.enclave.clone(),
+                self.ra_client.clone(),
+                self.config.ias_spid,
+                &counters::ENCLAVE_REPORT_TIMESTAMP,
+                self.logger.clone(),
+            )?);
             self.start_admin_rpc_server()?;
             self.start_consensus_rpc_server()?;
             self.start_user_rpc_server()?;
@@ -247,27 +223,23 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
         self.peer_keepalive.lock().expect("mutex poisoned").stop();
 
         if let Some(ref mut server) = self.user_rpc_server.take() {
-            server.shutdown().wait().or_else(|_| {
-                Err(ConsensusServiceError::RpcShutdown(
-                    "user_rpc_server".to_string(),
-                ))
-            })?
+            server
+                .shutdown()
+                .wait()
+                .map_err(|_| ConsensusServiceError::RpcShutdown("user_rpc_server".to_string()))?
         }
 
         if let Some(ref mut server) = self.consensus_rpc_server.take() {
-            server.shutdown().wait().or_else(|_| {
-                Err(ConsensusServiceError::RpcShutdown(
-                    "consensus_rpc_server".to_string(),
-                ))
+            server.shutdown().wait().map_err(|_| {
+                ConsensusServiceError::RpcShutdown("consensus_rpc_server".to_string())
             })?
         }
 
         if let Some(ref mut server) = self.admin_rpc_server.take() {
-            server.shutdown().wait().or_else(|_| {
-                Err(ConsensusServiceError::RpcShutdown(
-                    "admin_rpc_server".to_string(),
-                ))
-            })?
+            server
+                .shutdown()
+                .wait()
+                .map_err(|_| ConsensusServiceError::RpcShutdown("admin_rpc_server".to_string()))?
         }
 
         self.consensus_msgs_from_network.stop().map_err(|e| {
@@ -282,6 +254,10 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
             byzantine_ledger.stop();
         }
 
+        if let Some(ref mut report_cache_thread) = self.report_cache_thread.take() {
+            report_cache_thread.stop()?;
+        }
+
         Ok(())
     }
 
@@ -291,10 +267,8 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
             self.logger,
             "Waiting for consensus_msgs_from_network_receiver_thread..."
         );
-        self.consensus_msgs_from_network.join().or_else(|_| {
-            Err(ConsensusServiceError::ThreadJoin(
-                "consensus_msgs_from_network".to_string(),
-            ))
+        self.consensus_msgs_from_network.join().map_err(|_| {
+            ConsensusServiceError::ThreadJoin("consensus_msgs_from_network".to_string())
         })?;
 
         let mut byzantine_ledger = self.byzantine_ledger.lock().expect("lock poisoned");
@@ -304,105 +278,6 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
         }
 
         Ok(())
-    }
-
-    pub fn start_report_cache(&mut self) -> Result<VerificationReport, ConsensusServiceError> {
-        log::debug!(
-            self.logger,
-            "Starting remote attestation report process, getting QE enclave targeting info..."
-        );
-        let (qe_info, gid) =
-            retry(
-                Fibonacci::from_millis(1000).take(7),
-                || match QuotingEnclave::target_info() {
-                    Ok((qe_info, gid)) => OperationResult::Ok((qe_info, gid)),
-                    Err(ti_err) => match ti_err {
-                        TargetInfoError::QeBusy => OperationResult::Retry(TargetInfoError::QeBusy),
-                        other => OperationResult::Err(other),
-                    },
-                },
-            )
-            .map_err(|e| match e {
-                RetryError::Operation {
-                    error,
-                    total_delay,
-                    tries,
-                } => match error {
-                    TargetInfoError::QeBusy => TargetInfoError::Retry(format!(
-                        "Attempted to retrieve TargetInfo {} times over {:?}, giving up...",
-                        tries, total_delay
-                    )),
-                    other_ti_err => other_ti_err,
-                },
-                RetryError::Internal(s) => TargetInfoError::Retry(s),
-            })?;
-        log::debug!(self.logger, "Getting EREPORT from node enclave...");
-        let (report, quote_nonce) = self.enclave.new_ereport(qe_info)?;
-        log::debug!(self.logger, "Downloading SigRL for GID '{}'...", &gid);
-        let sigrl = self.ra_client.get_sigrl(gid)?;
-        log::debug!(self.logger, "Quoting report...");
-        let (quote, qe_report) = QuotingEnclave::quote_report(
-            &report,
-            QuoteSignType::Linkable,
-            &self.config.ias_spid,
-            &quote_nonce,
-            &sigrl,
-        )?;
-        log::debug!(self.logger, "Double-checking quoted report with enclave...");
-        let ias_nonce = self.enclave.verify_quote(quote.clone(), qe_report)?;
-        log::debug!(
-            self.logger,
-            "Verifying quote with remote attestation service..."
-        );
-        let retval = self.ra_client.verify_quote(&quote, Some(ias_nonce))?;
-        log::debug!(
-            self.logger,
-            "Quote verified by remote attestation service..."
-        );
-        Ok(retval)
-    }
-
-    /// Update the IAS report cached within the enclave.
-    pub fn update_enclave_report_cache(&mut self) -> Result<(), ConsensusServiceError> {
-        log::debug!(
-            self.logger,
-            "Starting enclave report cache update process..."
-        );
-        let ias_report = self.start_report_cache()?;
-        log::debug!(self.logger, "Verifying IAS report with enclave...");
-        match self.enclave.verify_ias_report(ias_report) {
-            Ok(()) => {
-                log::debug!(self.logger, "Enclave accepted report as valid...");
-                Ok(())
-            }
-            Err(EnclaveError::Attest(AttestEnclaveError::Verify(VerifyError::IasQuote(
-                IasQuoteError::GroupRevoked(_, pib),
-            ))))
-            | Err(EnclaveError::Attest(AttestEnclaveError::Verify(VerifyError::IasQuote(
-                IasQuoteError::ConfigurationNeeded(_, pib),
-            ))))
-            | Err(EnclaveError::Attest(AttestEnclaveError::Verify(VerifyError::IasQuote(
-                IasQuoteError::GroupOutOfDate(_, pib),
-            )))) => {
-                // To get here, we've gotten an error back from the enclave telling us
-                // the TCB is out-of-date.
-                log::debug!(
-                    self.logger,
-                    "IAS requested TCB update, attempting to update..."
-                );
-                QuotingEnclave::update_tcb(&pib)?;
-                log::debug!(
-                    self.logger,
-                    "TCB update complete, restarting reporting process"
-                );
-                let ias_report = self.start_report_cache()?;
-                log::debug!(self.logger, "Verifying IAS report with enclave (again)...");
-                self.enclave.verify_ias_report(ias_report)?;
-                log::debug!(self.logger, "Enclave accepted new report as valid...");
-                Ok(())
-            }
-            Err(other) => Err(other.into()),
-        }
     }
 
     fn start_user_rpc_server(&mut self) -> Result<(), ConsensusServiceError> {
@@ -451,13 +326,13 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
 
         // Start GRPC server.
         let env = Arc::new(
-            grpcio::EnvBuilder::new()
+            EnvBuilder::new()
                 .cq_count(1)
                 .name_prefix("User-RPC".to_string())
                 .build(),
         );
 
-        let server_builder = grpcio::ServerBuilder::new(env)
+        let server_builder = ServerBuilder::new(env)
             .register_service(client_service)
             .register_service(blockchain_service)
             .register_service(health_service)
@@ -540,7 +415,7 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
         let build_info_service = BuildInfoService::new(self.logger.clone()).into_service();
 
         // Start GRPC server.
-        let server_builder = grpcio::ServerBuilder::new(self.env.clone())
+        let server_builder = ServerBuilder::new(self.env.clone())
             .register_service(blockchain_service)
             .register_service(peer_service)
             .register_service(health_service)
@@ -601,10 +476,10 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
                     }
                 },
             )
-            .or_else(|_| {
-                Err(ConsensusServiceError::BackgroundWorkQueueStart(
+            .map_err(|_| {
+                ConsensusServiceError::BackgroundWorkQueueStart(
                     "consensus_msgs_from_network".to_string(),
-                ))
+                )
             })?;
 
         Ok(())
@@ -704,8 +579,57 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
 
     /// Helper method for creating the get config json function needed by the GRPC admin service.
     fn create_get_config_json_fn(&self) -> GetConfigJsonFn {
+        let ledger_db = self.ledger_db.clone();
+        let byzantine_ledger = self.byzantine_ledger.clone();
         let config = self.config.clone();
+        let logger = self.logger.clone();
         Arc::new(move || {
+            let mut sync_status = "synced";
+            let mut peer_block_height: u64 = 0;
+            let byzantine_ledger = byzantine_ledger
+                .lock()
+                .expect("Could not get byzantine ledger.");
+            if let Some(byzantine_ledger) = &*byzantine_ledger {
+                if byzantine_ledger.is_behind() {
+                    sync_status = "catchup";
+                };
+                peer_block_height = byzantine_ledger.highest_peer_block();
+            }
+            let block_height;
+            let latest_block_hash;
+            let latest_block_timestamp;
+            let blocks_behind;
+            // If we do not get a num_blocks, several status points will be null
+            match ledger_db.num_blocks() {
+                Ok(b) => {
+                    block_height = Some(b);
+                    latest_block_hash = ledger_db
+                        .get_block(b - 1)
+                        .map(|x| format!("{:X}", x.id.0))
+                        .map_err(|e| log::error!(logger, "Error getting block {} {:?}", b - 1, e))
+                        .ok();
+                    latest_block_timestamp = ledger_db
+                        .get_block_signature(b - 1)
+                        .map(|x| x.signed_at())
+                        .map_err(|e| {
+                            log::error!(
+                                logger,
+                                "Error getting block signature for block {} {:?}",
+                                b - 1,
+                                e
+                            )
+                        })
+                        .ok();
+                    blocks_behind = Some(std::cmp::min(peer_block_height - b, 0));
+                }
+                Err(e) => {
+                    log::error!(logger, "Error getting block height {:?}", e);
+                    block_height = None;
+                    latest_block_hash = None;
+                    latest_block_timestamp = None;
+                    blocks_behind = None;
+                }
+            };
             Ok(json!({
                 "config": {
                     "public_key": config.node_id().public_key,
@@ -713,8 +637,6 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
                     "client_responder_id": config.client_responder_id,
                     "message_pubkey": config.msg_signer_key.public_key(),
                     "network": config.network_path,
-                    "ias_api_key": config.ias_api_key,
-                    "ias_spid": config.ias_spid,
                     "peer_listen_uri": config.peer_listen_uri,
                     "client_listen_uri": config.client_listen_uri,
                     "admin_listen_uri": config.admin_listen_uri,
@@ -722,6 +644,16 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
                     "scp_debug_dump": config.scp_debug_dump,
                 },
                 "network": config.network(),
+                "status": {
+                    "block_height": block_height,
+                    "version": VERSION,
+                    "broadcast_peer_count": config.network().broadcast_peers.len(),
+                    "known_peer_count": config.network().known_peers.map_or(0, |x| x.len()),
+                    "sync_status": sync_status,
+                    "blocks_behind": blocks_behind,
+                    "latest_block_hash": latest_block_hash,
+                    "latest_block_timestamp": latest_block_timestamp,
+                },
             })
             .to_string())
         })

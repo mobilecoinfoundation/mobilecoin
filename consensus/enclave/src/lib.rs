@@ -17,13 +17,15 @@ use mc_attest_enclave_api::{
 use mc_common::ResponderId;
 use mc_crypto_keys::{Ed25519Public, X25519Public};
 use mc_enclave_boundary::untrusted::make_variable_length_ecall;
+use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_sgx_types::{sgx_enclave_id_t, sgx_status_t, *};
 use mc_sgx_urts::SgxEnclave;
 use mc_transaction_core::{tx::TxOutMembershipProof, Block, BlockContents, BlockSignature};
 use std::{path, result::Result as StdResult, sync::Arc};
 
+// This is here to force linkage
 #[allow(unused_imports)]
-use mc_sgx_slog;
+use mc_sgx_slog::enclave_log;
 
 /// The default filename of the consensus service's SGX enclave binary.
 pub const ENCLAVE_FILE: &str = "libconsensus-enclave.signed.so";
@@ -41,7 +43,11 @@ impl ConsensusServiceSgxEnclave {
         self_peer_id: &ResponderId,
         self_client_id: &ResponderId,
         sealed_key: &Option<SealedBlockSigningKey>,
-    ) -> (ConsensusServiceSgxEnclave, SealedBlockSigningKey) {
+    ) -> (
+        ConsensusServiceSgxEnclave,
+        SealedBlockSigningKey,
+        Vec<String>,
+    ) {
         let mut launch_token: sgx_launch_token_t = [0; 1024];
         let mut launch_token_updated: i32 = 0;
         // FIXME: this must be filled in from the build.rs
@@ -62,11 +68,11 @@ impl ConsensusServiceSgxEnclave {
             enclave: Arc::new(enclave),
         };
 
-        let sealed_key = sgx_enclave
+        let (sealed_key, features) = sgx_enclave
             .enclave_init(self_peer_id, self_client_id, &sealed_key)
             .expect("enclave_init failed");
 
-        (sgx_enclave, sealed_key)
+        (sgx_enclave, sealed_key, features)
     }
 
     /// Takes serialized data, and fires to the corresponding ECALL.
@@ -81,6 +87,32 @@ impl ConsensusServiceSgxEnclave {
 
 pub type SealedBlockSigningKey = Vec<u8>;
 
+impl ReportableEnclave for ConsensusServiceSgxEnclave {
+    fn new_ereport(&self, qe_info: TargetInfo) -> ReportableEnclaveResult<(Report, QuoteNonce)> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::NewEreport(qe_info))?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
+
+    fn verify_quote(&self, quote: Quote, qe_report: Report) -> ReportableEnclaveResult<IasNonce> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::VerifyQuote(quote, qe_report))?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
+
+    fn verify_ias_report(&self, ias_report: VerificationReport) -> ReportableEnclaveResult<()> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::VerifyReport(ias_report))?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
+
+    fn get_ias_report(&self) -> ReportableEnclaveResult<VerificationReport> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::GetReport)?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
+}
+
 /// Proxy API for talking to the corresponding implementation inside the enclave.
 impl ConsensusEnclave for ConsensusServiceSgxEnclave {
     fn enclave_init(
@@ -88,7 +120,7 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
         self_peer_id: &ResponderId,
         self_client_id: &ResponderId,
         sealed_key: &Option<SealedBlockSigningKey>,
-    ) -> Result<SealedBlockSigningKey> {
+    ) -> Result<(SealedBlockSigningKey, Vec<String>)> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::EnclaveInit(
             self_peer_id.clone(),
             self_client_id.clone(),
@@ -106,30 +138,6 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
 
     fn get_signer(&self) -> Result<Ed25519Public> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::GetSigner)?;
-        let outbuf = self.enclave_call(&inbuf)?;
-        mc_util_serial::deserialize(&outbuf[..])?
-    }
-
-    fn new_ereport(&self, qe_info: TargetInfo) -> Result<(Report, QuoteNonce)> {
-        let inbuf = mc_util_serial::serialize(&EnclaveCall::NewEreport(qe_info))?;
-        let outbuf = self.enclave_call(&inbuf)?;
-        mc_util_serial::deserialize(&outbuf[..])?
-    }
-
-    fn verify_quote(&self, quote: Quote, qe_report: Report) -> Result<IasNonce> {
-        let inbuf = mc_util_serial::serialize(&EnclaveCall::VerifyQuote(quote, qe_report))?;
-        let outbuf = self.enclave_call(&inbuf)?;
-        mc_util_serial::deserialize(&outbuf[..])?
-    }
-
-    fn verify_ias_report(&self, ias_report: VerificationReport) -> Result<()> {
-        let inbuf = mc_util_serial::serialize(&EnclaveCall::VerifyReport(ias_report))?;
-        let outbuf = self.enclave_call(&inbuf)?;
-        mc_util_serial::deserialize(&outbuf[..])?
-    }
-
-    fn get_ias_report(&self) -> Result<VerificationReport> {
-        let inbuf = mc_util_serial::serialize(&EnclaveCall::GetReport)?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }

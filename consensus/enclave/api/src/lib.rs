@@ -11,15 +11,15 @@ mod messages;
 
 pub use crate::{error::Error, messages::EnclaveCall};
 
-use alloc::vec::Vec;
-use core::{hash::Hash, result::Result as StdResult};
-use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
+use alloc::{string::String, vec::Vec};
+use core::{cmp::Ordering, hash::Hash, result::Result as StdResult};
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, PeerAuthRequest,
     PeerAuthResponse, PeerSession,
 };
 use mc_common::ResponderId;
 use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Public, X25519Public};
+use mc_sgx_report_cache_api::ReportableEnclave;
 use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{Tx, TxHash, TxOutMembershipProof},
@@ -35,18 +35,18 @@ pub type Result<T> = StdResult<T, Error>;
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct LocallyEncryptedTx(pub Vec<u8>);
 
-/// A `WellformedTx` encrypted for the current enclave.
+/// A `WellFormedTx` encrypted for the current enclave.
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct WellFormedEncryptedTx(pub Vec<u8>);
 
-/// Tx data we wish to expose to untrusted from well-formed Txs
-#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+/// Tx data we wish to expose to untrusted from well-formed Txs.
+#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 pub struct WellFormedTxContext {
-    /// Tx hash.
-    tx_hash: TxHash,
-
     /// Fee included in the tx.
     fee: u64,
+
+    /// Tx hash.
+    tx_hash: TxHash,
 
     /// Tombstone block.
     tombstone_block: u64,
@@ -62,6 +62,25 @@ pub struct WellFormedTxContext {
 }
 
 impl WellFormedTxContext {
+    /// Create a new WellFormedTxContext.
+    pub fn new(
+        fee: u64,
+        tx_hash: TxHash,
+        tombstone_block: u64,
+        key_images: Vec<KeyImage>,
+        highest_indices: Vec<u64>,
+        output_public_keys: Vec<CompressedRistrettoPublic>,
+    ) -> Self {
+        Self {
+            fee,
+            tx_hash,
+            tombstone_block,
+            key_images,
+            highest_indices,
+            output_public_keys,
+        }
+    }
+
     pub fn tx_hash(&self) -> &TxHash {
         &self.tx_hash
     }
@@ -90,13 +109,67 @@ impl WellFormedTxContext {
 impl From<&Tx> for WellFormedTxContext {
     fn from(tx: &Tx) -> Self {
         Self {
-            tx_hash: tx.tx_hash(),
             fee: tx.prefix.fee,
+            tx_hash: tx.tx_hash(),
             tombstone_block: tx.prefix.tombstone_block,
             key_images: tx.key_images(),
             highest_indices: tx.get_membership_proof_highest_indices(),
             output_public_keys: tx.output_public_keys(),
         }
+    }
+}
+
+/// Defines a sort order for transactions in a block.
+/// Transactions are sorted by fee (high to low), then by transaction hash and any other fields.
+impl Ord for WellFormedTxContext {
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self.fee != other.fee {
+            // Sort by fee, descending.
+            other.fee.cmp(&self.fee)
+        } else {
+            // Sort by remaining fields in lexicographic order.
+            (
+                &self.tx_hash,
+                &self.tombstone_block,
+                &self.key_images,
+                &self.highest_indices,
+                &self.output_public_keys,
+            )
+                .cmp(&(
+                    &other.tx_hash,
+                    &other.tombstone_block,
+                    &other.key_images,
+                    &other.highest_indices,
+                    &other.output_public_keys,
+                ))
+        }
+    }
+}
+
+impl PartialOrd for WellFormedTxContext {
+    fn partial_cmp(&self, other: &WellFormedTxContext) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+#[cfg(test)]
+mod well_formed_tx_context_tests {
+    use crate::WellFormedTxContext;
+    use alloc::{vec, vec::Vec};
+
+    #[test]
+    /// WellFormedTxContext should be sorted by fee, descending.
+    fn test_ordering() {
+        let a = WellFormedTxContext::new(100, Default::default(), 0, vec![], vec![], vec![]);
+        let b = WellFormedTxContext::new(557, Default::default(), 0, vec![], vec![], vec![]);
+        let c = WellFormedTxContext::new(88, Default::default(), 0, vec![], vec![], vec![]);
+
+        let mut contexts = vec![a, b, c];
+        contexts.sort();
+
+        let fees: Vec<_> = contexts.iter().map(|context| context.fee).collect();
+        let expected = vec![557, 100, 88];
+        assert_eq!(fees, expected);
     }
 }
 
@@ -115,7 +188,7 @@ pub struct TxContext {
 pub type SealedBlockSigningKey = Vec<u8>;
 
 /// The API for interacting with a consensus node's enclave.
-pub trait ConsensusEnclave {
+pub trait ConsensusEnclave: ReportableEnclave {
     // UTILITY METHODS
 
     /// Perform one-time initialization upon enclave startup.
@@ -124,46 +197,13 @@ pub trait ConsensusEnclave {
         self_peer_id: &ResponderId,
         self_client_id: &ResponderId,
         sealed_key: &Option<SealedBlockSigningKey>,
-    ) -> Result<SealedBlockSigningKey>;
+    ) -> Result<(SealedBlockSigningKey, Vec<String>)>;
 
     /// Retrieve the public identity of the enclave.
     fn get_identity(&self) -> Result<X25519Public>;
 
     /// Retreive the block signing public key from the enclave.
     fn get_signer(&self) -> Result<Ed25519Public>;
-
-    /// Retrieve a new report for this enclave, targetted for the given
-    /// quoting enclave. Untrusted code should call this on startup as
-    /// part of the initialization process.
-    fn new_ereport(&self, qe_info: TargetInfo) -> Result<(Report, QuoteNonce)>;
-
-    /// Checks the quote and it's generating enclave for validity.
-    ///
-    /// Untrusted code should create a quote using the output of
-    /// `new_ereport()`, then pass the resulting quote here in order to
-    /// sanity-check the quoting enclave, advance the cache state machine.
-    ///
-    /// The implementing enclave will verify the quoted report matches
-    /// the one generated by the last call to `new_ereport()`, and cache
-    /// the results, which will be used to verify
-    fn verify_quote(&self, quote: Quote, qe_report: Report) -> Result<IasNonce>;
-
-    /// Cache the verification report for this enclave.
-    ///
-    /// Untrusted code should transmit the quote previously checked by
-    /// `check_quote()` to IAS, and construct the verification report structure
-    /// from the results. That result should be given back to the enclave
-    /// for future use.
-    ///
-    /// The enclave will verify the IAS report was signed by a trusted IAS
-    /// certifcate, and the contents match the previously checked quote.
-    /// After that check has been performed, the enclave will use the
-    /// verification report for all requests until another verfication report
-    /// has been successfully loaded in it's place.
-    fn verify_ias_report(&self, ias_report: VerificationReport) -> Result<()>;
-
-    /// Retrieve a copy of the cached verification report.
-    fn get_ias_report(&self) -> Result<VerificationReport>;
 
     // CLIENT-FACING METHODS
 

@@ -37,7 +37,7 @@ pub fn read_keyfile_data<R: std::io::Read>(buffer: &mut R) -> Result<RootIdentit
 
 /// Write user public address to disk
 pub fn write_pubfile<P: AsRef<Path>>(path: P, addr: &PublicAddress) -> Result<(), std::io::Error> {
-    File::create(path)?.write_all(&serde_json::to_vec(&addr)?)?;
+    File::create(path)?.write_all(&mc_util_serial::encode(addr))?;
     Ok(())
 }
 
@@ -55,7 +55,7 @@ pub fn read_pubfile_data<R: std::io::Read>(
         buffer.read_to_end(&mut data)?;
         data
     };
-    let result: PublicAddress = serde_json::from_slice(&data).map_err(to_io_error)?;
+    let result: PublicAddress = mc_util_serial::decode(&data).map_err(prost_to_io_error)?;
     Ok(result)
 }
 
@@ -65,29 +65,32 @@ pub fn to_io_error(err: serde_json::error::Error) -> std::io::Error {
     std::io::Error::new(std::io::ErrorKind::Other, Box::new(err))
 }
 
-// Helper boilerplate mapping mc_util_serial error to io::Error
+#[inline]
+pub fn prost_to_io_error(err: mc_util_serial::DecodeError) -> std::io::Error {
+    std::io::Error::new(std::io::ErrorKind::Other, Box::new(ProstError { err }))
+}
+
+// Helper boilerplate mapping prost::DecodeError to io::Error
 #[derive(Debug)]
-struct McserialError;
-impl std::fmt::Display for McserialError {
+struct ProstError {
+    pub err: mc_util_serial::DecodeError,
+}
+
+impl std::fmt::Display for ProstError {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
-        fmt.write_str("serialization failed")
+        write!(fmt, "prost deserialization failed: {}", self.err)
     }
 }
 
-impl std::error::Error for McserialError {
+impl std::error::Error for ProstError {
     fn description(&self) -> &str {
-        "serialization_failed"
+        "prost deserialization failed"
     }
 
     fn cause(&self) -> Option<&dyn std::error::Error> {
         // Generic error, underlying cause isn't tracked.
         None
     }
-}
-
-#[inline]
-pub fn mcserial_io_error() -> std::io::Error {
-    std::io::Error::new(std::io::ErrorKind::Other, Box::new(McserialError))
 }
 
 #[cfg(test)]

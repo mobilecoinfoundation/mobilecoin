@@ -17,7 +17,6 @@ use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 
 pub mod account_keys;
 pub mod amount;
-pub mod blake2b_256;
 mod blockchain;
 mod commitment;
 mod compressed_commitment;

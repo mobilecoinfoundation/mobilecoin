@@ -30,6 +30,9 @@ pub trait Ledger: Clone + Send {
     /// Gets a block signature by its index in the blockchain.
     fn get_block_signature(&self, block_number: u64) -> Result<BlockSignature, Error>;
 
+    /// Gets block index by a TxOut global index.
+    fn get_block_index_by_tx_out_index(&self, tx_out_index: u64) -> Result<u64, Error>;
+
     /// Get the total number of TxOuts in the ledger.
     fn num_txos(&self) -> Result<u64, Error>;
 

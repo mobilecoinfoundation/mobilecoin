@@ -3,12 +3,13 @@
 //! The quorum set is the essential unit of trust in SCP.
 //!
 //! A quorum set includes the members of the network, which a given node trusts and depends on.
-use mc_common::{HashMap, HashSet, NodeID, ResponderId};
+use mc_common::{NodeID, ResponderId};
 use mc_crypto_digestible::Digestible;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::{
-    fmt::{Debug, Display},
-    hash::Hash,
+    collections::{HashMap, HashSet},
+    fmt::Debug,
+    hash::{Hash, Hasher},
     iter::FromIterator,
 };
 
@@ -18,18 +19,8 @@ use crate::{
     predicates::Predicate,
 };
 
-/// The quorum set defining the trusted set of peers.
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Digestible)]
-pub struct QuorumSet<ID: GenericNodeId = NodeID> {
-    /// Threshold (how many members do we need to reach quorum).
-    pub threshold: u32,
-
-    /// Members.
-    pub members: Vec<QuorumSetMember<ID>>,
-}
-
 /// A member in a QuorumSet. Can be either a Node or another QuorumSet.
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Digestible)]
+#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize, Digestible)]
 #[serde(tag = "type", content = "args")]
 pub enum QuorumSetMember<ID: GenericNodeId> {
     /// A single trusted entity with an identity.
@@ -39,18 +30,42 @@ pub enum QuorumSetMember<ID: GenericNodeId> {
     InnerSet(QuorumSet<ID>),
 }
 
-impl<
-        ID: GenericNodeId
-            + Clone
-            + Debug
-            + Display
-            + Serialize
-            + DeserializeOwned
-            + Eq
-            + PartialEq
-            + Hash,
-    > QuorumSet<ID>
-{
+/// The quorum set defining the trusted set of peers.
+#[derive(Clone, Debug, Ord, PartialOrd, Serialize, Deserialize, Digestible)]
+pub struct QuorumSet<ID: GenericNodeId = NodeID> {
+    /// Threshold (how many members do we need to reach quorum).
+    pub threshold: u32,
+
+    /// Members.
+    pub members: Vec<QuorumSetMember<ID>>,
+}
+
+impl<ID: GenericNodeId> PartialEq for QuorumSet<ID> {
+    fn eq(&self, other: &QuorumSet<ID>) -> bool {
+        if self.threshold == other.threshold && self.members.len() == other.members.len() {
+            // sort before comparing
+            let mut self_clone = self.clone();
+            let mut other_clone = other.clone();
+            self_clone.sort();
+            other_clone.sort();
+            return self_clone.members == other_clone.members;
+        }
+        false
+    }
+}
+impl<ID: GenericNodeId> Eq for QuorumSet<ID> {}
+
+impl<ID: GenericNodeId> Hash for QuorumSet<ID> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // hash over a recursively sorted copy
+        let mut qs_clone = self.clone();
+        qs_clone.sort();
+        qs_clone.threshold.hash(state);
+        qs_clone.members.hash(state);
+    }
+}
+
+impl<ID: GenericNodeId> QuorumSet<ID> {
     /// Create a new quorum set.
     pub fn new(threshold: u32, members: Vec<QuorumSetMember<ID>>) -> Self {
         Self { threshold, members }
@@ -78,6 +93,17 @@ impl<
     /// A quorum set with no members and a threshold of 0.
     pub fn empty() -> Self {
         Self::new(0, vec![])
+    }
+
+    /// Recursively sort the qs and all inner sets
+    pub fn sort(&mut self) {
+        for member in self.members.iter_mut() {
+            if let QuorumSetMember::InnerSet(qs) = member {
+                qs.sort()
+            };
+        }
+        // sort the members after any internal reordering!
+        self.members.sort();
     }
 
     /// Returns a flattened set of all nodes contained in q and its nested QSets.
@@ -368,6 +394,198 @@ mod quorum_set_tests {
     use super::*;
     use crate::{core_types::*, msg::*, predicates::*, test_utils::test_node_id};
     use mc_common::ResponderId;
+    use std::collections::hash_map::DefaultHasher;
+
+    #[test]
+    // quorum sets should sort recursively
+    fn test_quorum_set_sorting() {
+        let qs = QuorumSet::new(
+            2,
+            vec![
+                QuorumSetMember::Node(test_node_id(1)),
+                QuorumSetMember::InnerSet(QuorumSet::new(
+                    2,
+                    vec![
+                        QuorumSetMember::Node(test_node_id(3)),
+                        QuorumSetMember::Node(test_node_id(2)),
+                        QuorumSetMember::InnerSet(QuorumSet::new_with_node_ids(
+                            2,
+                            vec![test_node_id(5), test_node_id(7), test_node_id(6)],
+                        )),
+                    ],
+                )),
+                QuorumSetMember::Node(test_node_id(0)),
+            ],
+        );
+        let mut qs_sorted = qs.clone();
+        qs_sorted.sort();
+
+        assert_eq!(qs, qs_sorted);
+    }
+
+    #[test]
+    // ordering of members should not matter
+    fn test_quorum_set_equality_1() {
+        let quorum_set_1 = QuorumSet::new(
+            2,
+            vec![
+                QuorumSetMember::Node(test_node_id(0)),
+                QuorumSetMember::Node(test_node_id(1)),
+                QuorumSetMember::Node(test_node_id(2)),
+                QuorumSetMember::Node(test_node_id(3)),
+            ],
+        );
+        let quorum_set_2 = QuorumSet::new(
+            2,
+            vec![
+                QuorumSetMember::Node(test_node_id(3)),
+                QuorumSetMember::Node(test_node_id(1)),
+                QuorumSetMember::Node(test_node_id(2)),
+                QuorumSetMember::Node(test_node_id(0)),
+            ],
+        );
+
+        assert_eq!(quorum_set_1, quorum_set_2);
+
+        // qs1 == qs2 must imply hash(qs1)==hash(qs2)
+        let quorum_set_1_hash = {
+            let mut hasher = DefaultHasher::new();
+            quorum_set_1.hash(&mut hasher);
+            hasher.finish()
+        };
+        let quorum_set_2_hash = {
+            let mut hasher = DefaultHasher::new();
+            quorum_set_2.hash(&mut hasher);
+            hasher.finish()
+        };
+        assert_eq!(quorum_set_1_hash, quorum_set_2_hash);
+    }
+
+    #[test]
+    // ordering of members should not matter wrt member Enum type
+    fn test_quorum_set_equality_2() {
+        let quorum_set_1 = QuorumSet::new(
+            2,
+            vec![
+                QuorumSetMember::Node(test_node_id(0)),
+                QuorumSetMember::Node(test_node_id(1)),
+                QuorumSetMember::InnerSet(QuorumSet::new(
+                    2,
+                    vec![
+                        QuorumSetMember::Node(test_node_id(3)),
+                        QuorumSetMember::Node(test_node_id(4)),
+                    ],
+                )),
+                QuorumSetMember::InnerSet(QuorumSet::new(
+                    2,
+                    vec![
+                        QuorumSetMember::Node(test_node_id(5)),
+                        QuorumSetMember::Node(test_node_id(6)),
+                        QuorumSetMember::Node(test_node_id(7)),
+                    ],
+                )),
+            ],
+        );
+        let quorum_set_2 = QuorumSet::new(
+            2,
+            vec![
+                QuorumSetMember::Node(test_node_id(1)),
+                QuorumSetMember::InnerSet(QuorumSet::new(
+                    2,
+                    vec![
+                        QuorumSetMember::Node(test_node_id(3)),
+                        QuorumSetMember::Node(test_node_id(4)),
+                    ],
+                )),
+                QuorumSetMember::Node(test_node_id(0)),
+                QuorumSetMember::InnerSet(QuorumSet::new(
+                    2,
+                    vec![
+                        QuorumSetMember::Node(test_node_id(5)),
+                        QuorumSetMember::Node(test_node_id(6)),
+                        QuorumSetMember::Node(test_node_id(7)),
+                    ],
+                )),
+            ],
+        );
+        assert_eq!(quorum_set_1, quorum_set_2);
+
+        // qs1 == qs2 must imply hash(qs1)==hash(qs2)
+        let quorum_set_1_hash = {
+            let mut hasher = DefaultHasher::new();
+            quorum_set_1.hash(&mut hasher);
+            hasher.finish()
+        };
+        let quorum_set_2_hash = {
+            let mut hasher = DefaultHasher::new();
+            quorum_set_2.hash(&mut hasher);
+            hasher.finish()
+        };
+        assert_eq!(quorum_set_1_hash, quorum_set_2_hash);
+    }
+
+    #[test]
+    // ordering of members inside inner sets should not matter
+    fn test_quorum_set_equality_3() {
+        let quorum_set_1 = QuorumSet::new(
+            2,
+            vec![
+                QuorumSetMember::Node(test_node_id(0)),
+                QuorumSetMember::Node(test_node_id(1)),
+                QuorumSetMember::InnerSet(QuorumSet::new(
+                    2,
+                    vec![
+                        QuorumSetMember::Node(test_node_id(3)),
+                        QuorumSetMember::Node(test_node_id(4)),
+                    ],
+                )),
+                QuorumSetMember::InnerSet(QuorumSet::new(
+                    2,
+                    vec![
+                        QuorumSetMember::Node(test_node_id(5)),
+                        QuorumSetMember::Node(test_node_id(6)),
+                        QuorumSetMember::Node(test_node_id(7)),
+                    ],
+                )),
+            ],
+        );
+        let quorum_set_2 = QuorumSet::new(
+            2,
+            vec![
+                QuorumSetMember::Node(test_node_id(1)),
+                QuorumSetMember::Node(test_node_id(0)),
+                QuorumSetMember::InnerSet(QuorumSet::new(
+                    2,
+                    vec![
+                        QuorumSetMember::Node(test_node_id(4)),
+                        QuorumSetMember::Node(test_node_id(3)),
+                    ],
+                )),
+                QuorumSetMember::InnerSet(QuorumSet::new(
+                    2,
+                    vec![
+                        QuorumSetMember::Node(test_node_id(5)),
+                        QuorumSetMember::Node(test_node_id(7)),
+                        QuorumSetMember::Node(test_node_id(6)),
+                    ],
+                )),
+            ],
+        );
+        assert_eq!(quorum_set_1, quorum_set_2);
+
+        // qs1 == qs2 must imply hash(qs1)==hash(qs2)
+        let quorum_set_1_hash = {
+            let mut hasher = DefaultHasher::new();
+            quorum_set_1.hash(&mut hasher);
+            hasher.finish()
+        };
+        let quorum_set_2_hash = {
+            let mut hasher = DefaultHasher::new();
+            quorum_set_2.hash(&mut hasher);
+            hasher.finish()
+        };
+        assert_eq!(quorum_set_1_hash, quorum_set_2_hash);
+    }
 
     #[test]
     // findBlockingSet returns an empty set when there is no blocking set

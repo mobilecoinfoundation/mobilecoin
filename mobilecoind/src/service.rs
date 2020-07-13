@@ -14,14 +14,12 @@ use crate::{
     sync::SyncThread,
     utxo_store::{UnspentTxOut, UtxoId},
 };
-
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
 use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
 use mc_connection::{BlockchainConnection, UserTxConnection};
-use mc_consensus_api;
 use mc_crypto_keys::RistrettoPublic;
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::{NetworkState, PollingNetworkState};
@@ -29,6 +27,7 @@ use mc_mobilecoind_api::mobilecoind_api_grpc::{create_mobilecoind_api, Mobilecoi
 use mc_transaction_core::{
     account_keys::{AccountKey, PublicAddress},
     ring_signature::KeyImage,
+    tx::TxOutConfirmationNumber,
 };
 use mc_transaction_std::identity::RootIdentity;
 use mc_util_b58_payloads::payloads::{AddressRequestPayload, RequestPayload, TransferPayload};
@@ -237,7 +236,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             })?;
 
         let mut status = mc_mobilecoind_api::MonitorStatus::new();
-        status.set_account_key(mc_mobilecoind_api::AccountKey::from(&data.account_key));
+        status.set_account_key(mc_api::external::AccountKey::from(&data.account_key));
         status.set_first_subaddress(data.first_subaddress);
         status.set_num_subaddresses(data.num_subaddresses);
         status.set_first_block(data.first_block);
@@ -358,7 +357,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             .map_err(|err| rpc_internal_error("RequestPayload.decode", err, &self.logger))?;
 
         let mut response = mc_mobilecoind_api::ReadRequestCodeResponse::new();
-        response.set_receiver(mc_mobilecoind_api::PublicAddress::from(
+        response.set_receiver(mc_api::external::PublicAddress::from(
             &(PublicAddress::try_from(&request_payload)
                 .map_err(|err| rpc_internal_error("PublicAddress.try_from", err, &self.logger))?),
         ));
@@ -376,12 +375,11 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
 
         let view_key = receiver.view_public_key().to_bytes();
         let spend_key = receiver.spend_public_key().to_bytes();
-        let fog_url = receiver.fog_url().unwrap_or("");
 
         let payload = RequestPayload::new_v3(
             &view_key,
             &spend_key,
-            fog_url,
+            "", // mobilecoind does not support fog
             request.get_value(),
             request.get_memo(),
         )
@@ -753,6 +751,12 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                 receiver_tx_receipt.set_tx_out_hash(tx_out.hash().to_vec());
                 receiver_tx_receipt.set_tombstone(tx_proposal.tx.prefix.tombstone_block);
 
+                if tx_proposal.outlay_confirmation_numbers.len() > outlay_index {
+                    receiver_tx_receipt.set_confirmation_number(
+                        tx_proposal.outlay_confirmation_numbers[outlay_index].to_vec(),
+                    );
+                }
+
                 Ok(receiver_tx_receipt)
             })
             .collect::<Result<Vec<mc_mobilecoind_api::ReceiverTxReceipt>, RpcStatus>>()?;
@@ -949,12 +953,80 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                 Some("receipt.tombstone".to_string()),
             ));
         }
+
         // Check if the hash landed in the ledger.
         let mut hash_bytes = [0u8; 32];
         hash_bytes.copy_from_slice(&request.get_receipt().tx_out_hash);
 
         match self.ledger_db.get_tx_out_index_by_hash(&hash_bytes) {
             Ok(_) => {
+                // If a monitor ID was given then validate the confirmation number
+                match request.get_monitor_id().len() {
+                    0 => { /* no monitor ID given */ }
+                    32 => {
+                        let monitor_id =
+                            MonitorId::try_from(&request.monitor_id).map_err(|err| {
+                                rpc_internal_error("monitor_id.try_from.bytes", err, &self.logger)
+                            })?;
+
+                        // Get monitor data for this monitor.
+                        let monitor_data = self
+                            .mobilecoind_db
+                            .get_monitor_data(&monitor_id)
+                            .map_err(|err| {
+                                rpc_internal_error(
+                                    "mobilecoind_db.get_monitor_data",
+                                    err,
+                                    &self.logger,
+                                )
+                            })?;
+                        let tx_public_key =
+                            RistrettoPublic::try_from(request.get_receipt().get_tx_public_key())
+                                .map_err(|err| {
+                                    rpc_internal_error(
+                                        "RistrettoPublic.try_from",
+                                        err,
+                                        &self.logger,
+                                    )
+                                })?;
+                        let view_private_key = monitor_data.account_key.view_private_key();
+
+                        if request.get_receipt().get_confirmation_number().len() != 32 {
+                            return Err(RpcStatus::new(
+                                RpcStatusCode::INVALID_ARGUMENT,
+                                Some("receipt.confirmation_number".to_string()),
+                            ));
+                        }
+
+                        // Test that the confirmation number is valid. Only the party constructing
+                        // the transaction could have created the correct confirmation number.
+                        let confirmation_number = {
+                            let mut confirmation_bytes = [0u8; 32];
+                            confirmation_bytes
+                                .copy_from_slice(request.get_receipt().get_confirmation_number());
+                            TxOutConfirmationNumber::from(confirmation_bytes)
+                        };
+                        if !confirmation_number.validate(&tx_public_key, &view_private_key) {
+                            // If the confirmation number is invalid, this means that the transaction did
+                            // get added to the ledger but the party constructing the receipt failed
+                            // to prove that they created it. This prevents a third-party observer from
+                            // taking credit for someone elses payment.
+                            let mut response =
+                                mc_mobilecoind_api::GetTxStatusAsReceiverResponse::new();
+                            response.set_status(
+                                mc_mobilecoind_api::TxStatus::InvalidConfirmationNumber,
+                            );
+                            return Ok(response);
+                        }
+                    }
+                    _ => {
+                        return Err(RpcStatus::new(
+                            RpcStatusCode::INVALID_ARGUMENT,
+                            Some("monitor_id".to_string()),
+                        ));
+                    }
+                }
+
                 // The hash found its way into the ledger, so the transaction succeeded.
                 let mut response = mc_mobilecoind_api::GetTxStatusAsReceiverResponse::new();
                 response.set_status(mc_mobilecoind_api::TxStatus::Verified);
@@ -1175,8 +1247,8 @@ mod test {
     use crate::{
         payments::DEFAULT_NEW_TX_BLOCK_ATTEMPTS,
         test_utils::{
-            self, add_block_to_ledger_db, get_testing_environment, wait_for_monitors,
-            PER_RECIPIENT_AMOUNT,
+            self, add_block_to_ledger_db, add_txos_to_ledger_db, get_testing_environment,
+            wait_for_monitors, PER_RECIPIENT_AMOUNT,
         },
         utxo_store::UnspentTxOut,
     };
@@ -1190,6 +1262,7 @@ mod test {
         tx::{Tx, TxOut},
         Block, BlockContents, BLOCK_VERSION,
     };
+    use mc_transaction_std::TransactionBuilder;
     use mc_util_from_random::FromRandom;
     use mc_util_repr_bytes::{typenum::U32, GenericArray, ReprBytes};
     use rand::{rngs::StdRng, SeedableRng};
@@ -1217,7 +1290,7 @@ mod test {
         .expect("failed to create data");
 
         let mut request = mc_mobilecoind_api::AddMonitorRequest::new();
-        request.set_account_key(mc_mobilecoind_api::AccountKey::from(&data.account_key));
+        request.set_account_key(mc_api::external::AccountKey::from(&data.account_key));
         request.set_first_subaddress(data.first_subaddress);
         request.set_num_subaddresses(data.num_subaddresses);
         request.set_first_block(data.first_block);
@@ -1757,7 +1830,7 @@ mod test {
         let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
 
         // no known recipient, 3 random recipients and no monitors.
-        let (ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+        let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
 
         // A call with an invalid hash should fail
@@ -1822,6 +1895,72 @@ mod test {
             assert_eq!(
                 response.get_status(),
                 mc_mobilecoind_api::TxStatus::TombstoneBlockExceeded
+            );
+        }
+
+        // Now create a monitor for the receiver to test confirmation numbers
+        let receiver = AccountKey::random(&mut rng);
+        let data = MonitorData::new(
+            receiver.clone(),
+            0,  // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        // Insert into database.
+        let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
+        let mut transaction_builder = TransactionBuilder::new();
+        let (tx_out, tx_confirmation) = transaction_builder
+            .add_output(10, &receiver.subaddress(0), None, &mut rng)
+            .unwrap();
+
+        add_txos_to_ledger_db(&mut ledger_db, &vec![tx_out.clone()], &mut rng);
+
+        // A request with a valid confirmation number and monitor ID should return Verified
+        {
+            let hash = tx_out.hash();
+
+            let mut receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
+            receipt.set_tx_public_key(mc_mobilecoind_api::external::CompressedRistretto::from(
+                tx_out.public_key,
+            ));
+            receipt.set_tx_out_hash(hash.to_vec());
+            receipt.set_tombstone(10);
+            receipt.set_confirmation_number(tx_confirmation.to_vec());
+
+            let mut request = mc_mobilecoind_api::GetTxStatusAsReceiverRequest::new();
+            request.set_receipt(receipt);
+            request.set_monitor_id(monitor_id.to_vec());
+
+            let response = client.get_tx_status_as_receiver(&request).unwrap();
+            assert_eq!(
+                response.get_status(),
+                mc_mobilecoind_api::TxStatus::Verified
+            );
+        }
+
+        // A request with an a bad confirmation number and a monitor ID should return InvalidConfirmationNumber
+        {
+            let hash = tx_out.hash();
+
+            let mut receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
+            receipt.set_tx_public_key(mc_mobilecoind_api::external::CompressedRistretto::from(
+                tx_out.public_key,
+            ));
+            receipt.set_tx_out_hash(hash.to_vec());
+            receipt.set_tombstone(10);
+            receipt.set_confirmation_number(vec![0u8; 32]);
+
+            let mut request = mc_mobilecoind_api::GetTxStatusAsReceiverRequest::new();
+            request.set_receipt(receipt);
+            request.set_monitor_id(monitor_id.to_vec());
+
+            let response = client.get_tx_status_as_receiver(&request).unwrap();
+            assert_eq!(
+                response.get_status(),
+                mc_mobilecoind_api::TxStatus::InvalidConfirmationNumber
             );
         }
     }
@@ -1922,6 +2061,12 @@ mod test {
 
             // The transaction should contain an output for each outlay, and one for change.
             assert_eq!(tx.prefix.outputs.len(), outlays.len() + 1);
+
+            // The transaction should have a confirmation code for each outlay
+            assert_eq!(
+                outlays.len(),
+                tx_proposal.get_outlay_confirmation_numbers().len()
+            );
 
             let change_value = test_utils::PER_RECIPIENT_AMOUNT
                 - outlays.iter().map(|outlay| outlay.value).sum::<u64>()
@@ -2302,6 +2447,7 @@ mod test {
         let response = client.generate_tx(&request).unwrap();
         let tx_proposal = TxProposal::try_from(response.get_tx_proposal()).unwrap();
         let tx = tx_proposal.tx.clone();
+        let outlay_confirmation_numbers = tx_proposal.outlay_confirmation_numbers.clone();
 
         // Test the happy flow.
         {
@@ -2368,6 +2514,11 @@ mod test {
                 );
 
                 assert_eq!(receipt.tombstone, tx.prefix.tombstone_block);
+                let mut confirmation_bytes = [0u8; 32];
+                confirmation_bytes.copy_from_slice(&receipt.confirmation_number);
+
+                let confirmation_number = TxOutConfirmationNumber::from(confirmation_bytes);
+                assert!(outlay_confirmation_numbers.contains(&confirmation_number));
             }
 
             assert_eq!(
@@ -2667,7 +2818,7 @@ mod test {
         {
             // Generate a request code
             let mut request = mc_mobilecoind_api::GetRequestCodeRequest::new();
-            request.set_receiver(mc_mobilecoind_api::PublicAddress::from(&receiver));
+            request.set_receiver(mc_api::external::PublicAddress::from(&receiver));
 
             let response = client.get_request_code(&request).unwrap();
             let b58_code = response.get_b58_code();
@@ -2690,7 +2841,7 @@ mod test {
         {
             // Generate a request code
             let mut request = mc_mobilecoind_api::GetRequestCodeRequest::new();
-            request.set_receiver(mc_mobilecoind_api::PublicAddress::from(&receiver));
+            request.set_receiver(mc_api::external::PublicAddress::from(&receiver));
             request.set_value(1234567890);
 
             let response = client.get_request_code(&request).unwrap();
@@ -2714,7 +2865,7 @@ mod test {
         {
             // Generate a request code
             let mut request = mc_mobilecoind_api::GetRequestCodeRequest::new();
-            request.set_receiver(mc_mobilecoind_api::PublicAddress::from(&receiver));
+            request.set_receiver(mc_api::external::PublicAddress::from(&receiver));
             request.set_value(1234567890);
             request.set_memo("hello there".to_owned());
 
@@ -2834,5 +2985,106 @@ mod test {
             address_b58.get_b58_code(),
             "4mppAGCtx4xn42C36Ck7gGnAoGbdJceYBH6k",
         );
+    }
+
+    #[test_with_logger]
+    fn test_add_remove_add_monitor_with_spent_key_images(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        let sender = AccountKey::random(&mut rng);
+        let data = MonitorData::new(
+            sender.clone(),
+            0,  // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        // 1 known recipient, 3 random recipients and no monitors.
+        let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(
+                3,
+                &vec![sender.default_subaddress()],
+                &vec![],
+                logger.clone(),
+                &mut rng,
+            );
+
+        let mut request = mc_mobilecoind_api::AddMonitorRequest::new();
+        request.set_account_key(mc_api::external::AccountKey::from(&data.account_key));
+        request.set_first_subaddress(data.first_subaddress);
+        request.set_num_subaddresses(data.num_subaddresses);
+        request.set_first_block(data.first_block);
+
+        // Send request.
+        let response = client.add_monitor(&request).expect("failed to add monitor");
+        let monitor_id = response.get_monitor_id();
+
+        // Allow the new monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Verify we have the expected balance.
+        let mut request = mc_mobilecoind_api::GetBalanceRequest::new();
+        request.set_monitor_id(monitor_id.to_vec());
+        request.set_subaddress_index(0);
+
+        let response = client.get_balance(&request).unwrap();
+        assert_eq!(
+            response.balance,
+            test_utils::PER_RECIPIENT_AMOUNT * ledger_db.num_blocks().unwrap()
+        );
+        let orig_balance = response.balance;
+
+        // Get our UTXOs and force one of them to be spent, since we want to test the
+        // add-remove-add behavior with spent key images in the ledger.
+        let mut request = mc_mobilecoind_api::GetUnspentTxOutListRequest::new();
+        request.set_monitor_id(monitor_id.to_vec());
+        request.set_subaddress_index(0);
+
+        let response = client
+            .get_unspent_tx_out_list(&request)
+            .expect("failed to get unspent tx out list");
+
+        let first_utxo = response.output_list[0].clone();
+        let first_key_image = KeyImage::try_from(first_utxo.get_key_image())
+            .expect("failed covnerting proto keyimage");
+
+        let recipient = AccountKey::random(&mut rng).default_subaddress();
+        add_block_to_ledger_db(&mut ledger_db, &[recipient], &[first_key_image], &mut rng);
+
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Verify we have the expected balance.
+        let mut request = mc_mobilecoind_api::GetBalanceRequest::new();
+        request.set_monitor_id(monitor_id.to_vec());
+        request.set_subaddress_index(0);
+
+        let response = client.get_balance(&request).unwrap();
+        assert_eq!(response.balance, orig_balance - first_utxo.value);
+
+        // Remove the monitor.
+        let mut request = mc_mobilecoind_api::RemoveMonitorRequest::new();
+        request.set_monitor_id(monitor_id.to_vec());
+        client
+            .remove_monitor(&request)
+            .expect("failed to remove monitor");
+
+        // Check that no monitors remain.
+        let monitors_map = mobilecoind_db.get_monitor_map().unwrap();
+        assert_eq!(0, monitors_map.len());
+
+        // Re-add the monitor.
+        let mut request = mc_mobilecoind_api::AddMonitorRequest::new();
+        request.set_account_key(mc_api::external::AccountKey::from(&data.account_key));
+        request.set_first_subaddress(data.first_subaddress);
+        request.set_num_subaddresses(data.num_subaddresses);
+        request.set_first_block(data.first_block);
+
+        let response = client.add_monitor(&request).expect("failed to add monitor");
+        assert_eq!(monitor_id, response.get_monitor_id());
+
+        // Allow the new monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
     }
 }

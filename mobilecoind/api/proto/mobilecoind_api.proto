@@ -72,34 +72,15 @@ enum TxStatus {
 
     // Error: The transaction is not in the public ledger, and the tombstone block has been exceeded.
     TombstoneBlockExceeded = 2;
-}
 
-// Complete AccountKey, containing the pair of secret keys, which can be used
-// for spending, and optionally some account-server related info
-// can be used for spending.
-// This matches the Rust `transaction::AccountKey` struct.
-message AccountKey {
-    // Private key 'a' used for view-key matching.
-    external.RistrettoPrivate view_private_key = 1;
-
-    // Private key `b` used for spending.
-    external.RistrettoPrivate spend_private_key = 2;
-
-    // Optional FQDN of fog server. Empty string when not in use.
-    string fog_fqdn = 3;
-}
-
-// A public address, used to identify recipients.
-message PublicAddress {
-    external.RistrettoPublic view_public_key = 1;
-    external.RistrettoPublic spend_public_key = 2;
-    string fog_fqdn = 3;
+    // The transaction was found in the ledger but the confirmation number is incorrect
+    InvalidConfirmationNumber = 3;
 }
 
 // Structure used in specifying the list of outputs when generating a transaction.
 message Outlay {
     uint64 value = 1;
-    PublicAddress receiver = 2;
+    external.PublicAddress receiver = 2;
 }
 
 // Structure used to refer to a TxOut in the ledger that is presumed to be spendable.
@@ -150,6 +131,9 @@ message TxProposal {
     /// This is needed to map recipients to their respective TxOuts.
     map<uint64, uint64> outlay_index_to_tx_out_index = 5;
 
+    /// A list of the confirmation numbers, in the same order
+    /// as the outlays.
+    repeated bytes outlay_confirmation_numbers = 6;
 }
 
 // Structure used to check transaction status as a Sender.
@@ -166,22 +150,25 @@ message SenderTxReceipt {
 // multiple ReceiverTxReceipts.
 message ReceiverTxReceipt {
     // The recipient this receipt refers to
-    PublicAddress recipient = 1;
+    external.PublicAddress recipient = 1;
 
     // The public key of the TxOut sent to this recipient.
-    external.RistrettoPublic tx_public_key = 2;
+    external.CompressedRistretto tx_public_key = 2;
 
     // The hash of the TxOut sent to this recipient.
     bytes tx_out_hash = 3;
 
     // Tombstone block set in the transaction.
     uint64 tombstone = 4;
+
+    // Confirmation number for this TxOut
+    bytes confirmation_number = 5;
 }
 
 // Structure used to report monitor status
 message MonitorStatus {
     // The account key the monitor is monitoring.
-    AccountKey account_key = 1;
+    external.AccountKey account_key = 1;
 
     // The first subaddress being monitored.
     uint64 first_subaddress = 2;
@@ -213,7 +200,7 @@ message MonitorStatus {
 // Add a new monitor.
 message AddMonitorRequest {
     // Account key to monitor.
-    AccountKey account_key = 1;
+    external.AccountKey account_key = 1;
 
     // The first subaddress being monitored.
     uint64 first_subaddress = 2;
@@ -276,7 +263,7 @@ message GetAccountKeyRequest {
     bytes entropy = 1;
 }
 message GetAccountKeyResponse {
-    AccountKey account_key = 1;
+    external.AccountKey account_key = 1;
 }
 
 // Get the public address for a given monitor and subadddress index.
@@ -285,7 +272,7 @@ message GetPublicAddressRequest {
     uint64 subaddress_index = 2;
 }
 message GetPublicAddressResponse {
-    PublicAddress public_address = 1;
+    external.PublicAddress public_address = 1;
 }
 
 //
@@ -298,14 +285,14 @@ message ReadRequestCodeRequest {
     string b58_code = 1;
 }
 message ReadRequestCodeResponse {
-    PublicAddress receiver = 1;
+    external.PublicAddress receiver = 1;
     uint64 value = 2;
     string memo = 3;
 }
 
 // Encode receiver/value/memo into a base-58 "MobileCoin Request Code".
 message GetRequestCodeRequest {
-    PublicAddress receiver = 1;
+    external.PublicAddress receiver = 1;
     uint64 value = 2;
     string memo = 3;
 }
@@ -320,14 +307,14 @@ message ReadTransferCodeRequest {
 }
 message ReadTransferCodeResponse {
     bytes entropy = 1;
-    external.RistrettoPublic tx_public_key = 2;
+    external.CompressedRistretto tx_public_key = 2;
     string memo = 3;
 }
 
 // Encode entropy/tx_public_key/memo into a base-58 "MobileCoin Transfer Code".
 message GetTransferCodeRequest {
     bytes entropy = 1;
-    external.RistrettoPublic tx_public_key = 2;
+    external.CompressedRistretto tx_public_key = 2;
     string memo = 3;
 }
 message GetTransferCodeResponse {
@@ -495,6 +482,9 @@ message GetTxStatusAsSenderResponse {
 // Get the status of a submitted transaction as the Recipient (using the tx public key).
 message GetTxStatusAsReceiverRequest {
     ReceiverTxReceipt receipt = 1;
+
+    // Optionally pass in a monitor ID to validate confirmation number
+    bytes monitor_id = 2;
 }
 message GetTxStatusAsReceiverResponse {
     TxStatus status = 1;

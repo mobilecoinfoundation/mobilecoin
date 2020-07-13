@@ -15,7 +15,6 @@
 //! it is actually the "Is well formed" check, and might be renamed in the future to match this.
 
 use crate::tx_manager::UntrustedInterfaces as TxManagerUntrustedInterfaces;
-use mc_common::HashSet;
 use mc_consensus_enclave::WellFormedTxContext;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_ledger_db::Ledger;
@@ -24,7 +23,7 @@ use mc_transaction_core::{
     tx::{TxHash, TxOutMembershipProof},
     validation::{validate_tombstone, TransactionValidationError, TransactionValidationResult},
 };
-use std::collections::BTreeSet;
+use std::{collections::HashSet, iter::FromIterator};
 
 #[derive(Clone)]
 pub struct DefaultTxManagerUntrustedInterfaces<L: Ledger> {
@@ -48,7 +47,6 @@ impl<L: Ledger> TxManagerUntrustedInterfaces for DefaultTxManagerUntrustedInterf
         output_public_keys: &[CompressedRistrettoPublic],
     ) -> TransactionValidationResult<(u64, Vec<TxOutMembershipProof>)> {
         // The `key_images` must not have already been spent.
-        // TODO: this should use proofs of non-membership.
         // Note that according to the definition at the top of this file, key image check is not part
         // of the well-formedness check, but we do it anyway to more quickly get rid of transactions
         // that are obviously unusable.
@@ -100,7 +98,6 @@ impl<L: Ledger> TxManagerUntrustedInterfaces for DefaultTxManagerUntrustedInterf
         validate_tombstone(current_block_index, context.tombstone_block())?;
 
         // The `key_images` must not have already been spent.
-        // TODO: this should use proofs of non-membership.
         let key_images = context.key_images();
         if key_images
             .iter()
@@ -125,61 +122,46 @@ impl<L: Ledger> TxManagerUntrustedInterfaces for DefaultTxManagerUntrustedInterf
         Ok(())
     }
 
-    /// Combines a set of "candidate values" into a "composite value". This assumes all values are well
-    /// formed and safe to append to the ledger individually.
-    /// ASSUMES VALUES ARE SORTED.
+    /// Combines a set of "candidate values" into a "composite value".
+    /// This assumes all values are well-formed and safe to append to the ledger individually.
     ///
     /// # Arguments
     /// * `tx_contexts` - "Candidate" transactions. Each is assumed to be individually valid.
     /// * `max_elements` - Maximum number of elements to return.
     ///
     /// Returns a bounded, deterministically-ordered list of transactions that are safe to append to the ledger.
-    fn combine(
-        &self,
-        tx_contexts: &[&WellFormedTxContext],
-        max_elements: usize,
-    ) -> BTreeSet<TxHash> {
-        // Allow transactions that do not introduce key image double-spends.
-        let mut allowed_hashes = BTreeSet::new();
-        let mut used_key_images = HashSet::default();
-        let mut seen_output_public_keys = HashSet::default();
+    fn combine(&self, tx_contexts: &[&WellFormedTxContext], max_elements: usize) -> Vec<TxHash> {
+        // WellFormedTxContext defines the sort order of transactions within a block.
+        let mut candidates: Vec<&WellFormedTxContext> = tx_contexts.to_vec();
+        candidates.sort();
 
-        for tx_context in tx_contexts.iter() {
+        // Allow transactions that do not cause duplicate key images or output public keys.
+        let mut allowed_hashes = Vec::new();
+        let mut used_key_images: HashSet<&KeyImage> = HashSet::default();
+        let mut used_output_public_keys: HashSet<&CompressedRistrettoPublic> = HashSet::default();
+
+        for candidate in candidates {
+            // Enforce maximum size.
             if allowed_hashes.len() >= max_elements {
-                // Enforce maximum size.
                 break;
             }
 
-            if allowed_hashes.contains(tx_context.tx_hash()) {
+            // Reject a transaction that includes a previously used key image.
+            let key_images: HashSet<&KeyImage> = HashSet::from_iter(candidate.key_images());
+            if !used_key_images.is_disjoint(&key_images) {
                 continue;
             }
 
-            let key_images: HashSet<KeyImage> = tx_context.key_images().iter().cloned().collect();
-            let duplicate_key_images = used_key_images.intersection(&key_images).next().is_some();
-
-            if duplicate_key_images {
-                // Omitting tx_context to avoid key image double-spend.
+            // Reject a transaction that includes a previously used output public key.
+            let output_public_keys = HashSet::from_iter(candidate.output_public_keys());
+            if !used_output_public_keys.is_disjoint(&output_public_keys) {
                 continue;
             }
 
-            let output_public_keys: HashSet<CompressedRistrettoPublic> =
-                tx_context.output_public_keys().iter().cloned().collect();
-            let duplicate_output_public_keys = seen_output_public_keys
-                .intersection(&output_public_keys)
-                .next()
-                .is_some();
-
-            if duplicate_output_public_keys {
-                // Omitting tx_context to avoid repeated output public keys.
-                continue;
-            }
-
-            used_key_images = used_key_images.union(&key_images).cloned().collect();
-            seen_output_public_keys = seen_output_public_keys
-                .union(&output_public_keys)
-                .cloned()
-                .collect();
-            allowed_hashes.insert(tx_context.tx_hash().clone());
+            // The transaction is allowed.
+            allowed_hashes.push(*candidate.tx_hash());
+            used_key_images.extend(&key_images);
+            used_output_public_keys.extend(&output_public_keys);
         }
 
         allowed_hashes
@@ -716,7 +698,7 @@ mod combine_tests {
     use rand_hc::Hc128Rng;
     use std::convert::TryFrom;
 
-    fn combine(tx_contexts: Vec<WellFormedTxContext>, max_elements: usize) -> BTreeSet<TxHash> {
+    fn combine(tx_contexts: Vec<WellFormedTxContext>, max_elements: usize) -> Vec<TxHash> {
         let ledger = get_mock_ledger(10);
         let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger);
         let ref_tx_contexts: Vec<&WellFormedTxContext> = tx_contexts.iter().collect();
@@ -1192,5 +1174,20 @@ mod combine_tests {
         // public key.
         assert_eq!(combined_transactions.len(), 2);
         assert!(combined_transactions.contains(third_client_tx.tx_hash()));
+    }
+
+    #[test]
+    // `combine` should return hashes in the order defined by WellformedTxContext.
+    fn combine_sort_order() {
+        let a = WellFormedTxContext::new(100, TxHash([1u8; 32]), 0, vec![], vec![], vec![]);
+        let b = WellFormedTxContext::new(557, TxHash([2u8; 32]), 0, vec![], vec![], vec![]);
+        let c = WellFormedTxContext::new(88, TxHash([3u8; 32]), 0, vec![], vec![], vec![]);
+
+        let tx_contexts = vec![a, b, c];
+
+        let hashes = combine(tx_contexts, 10);
+        // Transactions should be ordered from highest fee to lowest fee.
+        let expected_hashes = vec![TxHash([2u8; 32]), TxHash([1u8; 32]), TxHash([3u8; 32])];
+        assert_eq!(hashes, expected_hashes);
     }
 }

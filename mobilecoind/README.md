@@ -27,7 +27,7 @@ We use URIs to specify peers, such as:
 mc://node1.test.mobilecoin.com/
 ```
 
-You will need to specify a ledger location to which to sync the ledger. This directory can be empty (or non-existent), or can contain the origin block, created from [generate_sample_ledger](../generate_sample_ledger/README.md).
+You will need to specify a ledger location to which to sync the ledger. This directory can be empty (or non-existent), or can contain the origin block, created from [generate-sample-ledger](../util/generate-sample-ledger/README.md).
 You will also need to specify a directory for the MobileCoin Daemon database, where keys and transaction data would be stored.
 
 #### Verifying Block Signatures

@@ -112,6 +112,6 @@ extern "C" fn trace_fn(
 #[inline(always)]
 fn image_base_addr() -> uintptr_t {
     let base;
-    unsafe { asm!("lea __ImageBase(%rip),$0":"=r"(base)) };
+    unsafe { llvm_asm!("lea __ImageBase(%rip),$0":"=r"(base)) };
     base
 }

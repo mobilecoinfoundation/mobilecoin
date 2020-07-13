@@ -1,8 +1,11 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 //! Predicates for use in trust decisions for SCP.
-use mc_common::{HashMap, HashSet, NodeID};
-use std::{collections::BTreeSet, sync::Arc};
+use mc_common::NodeID;
+use std::{
+    collections::{BTreeSet, HashMap, HashSet},
+    sync::Arc,
+};
 
 use crate::{
     core_types::{Ballot, GenericNodeId, Value},
@@ -153,60 +156,6 @@ impl<V: Value> ValueSetPredicate<V> {
     }
 }
 
-/// A predicate for narrowing down (min, max) ranges. Works in conjunction with
-/// `Msg.accepts_commits()` and `Msg.votes_or_accepts_commits()`.
-#[derive(Clone)]
-pub struct MinMaxPredicate<V: Value> {
-    /// The min value which will be tested in this predicate.
-    pub min: u32,
-
-    /// The max value which will be tested in this predicate.
-    pub max: u32,
-
-    /// The values over which to apply this predicate.
-    pub values: Vec<V>,
-
-    /// The test function to use for narrowing down the values with this predicate.
-    pub test_fn: Arc<dyn Fn(&Msg<V>, &Vec<V>, u32, u32) -> Option<(u32, u32)>>,
-}
-
-impl<V: Value> Predicate<V> for MinMaxPredicate<V> {
-    // (min, max)
-    type Result = (u32, u32);
-
-    fn test(&self, msg: &Msg<V>) -> Option<Self> {
-        if self.min > self.max {
-            return None;
-        }
-        match (self.test_fn)(msg, &self.values, self.min, self.max) {
-            None => None,
-            Some((min, max)) => Some(Self {
-                min,
-                max,
-                values: self.values.clone(),
-                test_fn: self.test_fn.clone(),
-            }),
-        }
-    }
-    fn result(&self) -> Self::Result {
-        (self.min, self.max)
-    }
-}
-
-impl<V: Value> MinMaxPredicate<V> {
-    /// Given a list of (min, max) ranges, find the highest (min, max) range.
-    /// The logic behind what is the "highest" (min, max) is chosen arbitrarily.
-    /// In theory there could be multiple quorums with different (min, max)
-    /// accepted-committed values, and we need a way to pick one of the
-    /// possible ranges consistently between nodes.
-    pub fn get_highest_ballot(results: Vec<(HashSet<NodeID>, (u32, u32))>) -> Option<(u32, u32)> {
-        results
-            .into_iter()
-            .map(|(_node_ids, min_max)| min_max)
-            .max()
-    }
-}
-
 /// A predicate for determining whether a message matches a certain condition.
 #[derive(Clone)]
 pub struct FuncPredicate<'a, V: Value, ID: GenericNodeId = NodeID> {
@@ -232,7 +181,6 @@ impl<'a, V: Value, ID: GenericNodeId> Predicate<V, ID> for FuncPredicate<'a, V, 
 mod predicates_tests {
     use super::*;
     use crate::{core_types::*, msg::*, quorum_set::*, test_utils::test_node_id};
-    use mc_common::HashMap;
     use std::iter::FromIterator;
 
     #[test]
@@ -619,120 +567,5 @@ mod predicates_tests {
             HashSet::from_iter(vec![test_node_id(2), test_node_id(3)])
         );
         assert_eq!(pred.result(), values_1);
-    }
-
-    #[test]
-    // MinMaxPredicate can be used to narrow down min and max CN/HN values in a quorum.
-    pub fn test_quorum_min_max_predicate() {
-        let local_node_id = test_node_id(1);
-        let local_node_quorum_set = QuorumSet::new_with_node_ids(
-            2,
-            vec![
-                test_node_id(2),
-                test_node_id(3),
-                test_node_id(4),
-                test_node_id(5),
-            ],
-        );
-
-        let node_2_quorum_set = QuorumSet::new_with_node_ids(
-            1,
-            vec![
-                test_node_id(1),
-                test_node_id(3),
-                test_node_id(4),
-                test_node_id(5),
-            ],
-        );
-        let node_3_quorum_set = QuorumSet::new_with_node_ids(
-            1,
-            vec![
-                test_node_id(1),
-                test_node_id(2),
-                test_node_id(4),
-                test_node_id(5),
-            ],
-        );
-        let node_4_quorum_set = QuorumSet::new_with_node_ids(
-            1,
-            vec![
-                test_node_id(1),
-                test_node_id(2),
-                test_node_id(3),
-                test_node_id(5),
-            ],
-        );
-        let node_5_quorum_set = QuorumSet::new_with_node_ids(
-            1,
-            vec![
-                test_node_id(1),
-                test_node_id(2),
-                test_node_id(3),
-                test_node_id(4),
-            ],
-        );
-
-        let ballot_1 = Ballot::new(1, &["a".to_string(), "A".to_string()]);
-        let ballot_2 = Ballot::new(1, &["b".to_string(), "B".to_string()]);
-
-        let mut msgs = HashMap::<NodeID, Msg<String>>::default();
-
-        // Node 2 and 3 form a quorum, committing ballot_1
-        let topic = Topic::Commit(CommitPayload {
-            B: ballot_1.clone(),
-            PN: 0,
-            CN: 10,
-            HN: 20,
-        });
-        msgs.insert(
-            test_node_id(2),
-            Msg::new(test_node_id(2), node_2_quorum_set, 1, topic),
-        );
-
-        let topic = Topic::Commit(CommitPayload {
-            B: ballot_1.clone(),
-            PN: 0,
-            CN: 15,
-            HN: 25,
-        });
-        msgs.insert(
-            test_node_id(3),
-            Msg::new(test_node_id(3), node_3_quorum_set, 1, topic),
-        );
-
-        // Node 4 and 5 form a quorum, committing ballot_2
-        let topic = Topic::Commit(CommitPayload {
-            B: ballot_2,
-            PN: 0,
-            CN: 30,
-            HN: 40,
-        });
-        msgs.insert(
-            test_node_id(4),
-            Msg::new(test_node_id(4), node_4_quorum_set, 1, topic.clone()),
-        );
-        msgs.insert(
-            test_node_id(5),
-            Msg::new(test_node_id(5), node_5_quorum_set, 1, topic),
-        );
-
-        let (node_ids, pred) = local_node_quorum_set.findQuorum(
-            &local_node_id,
-            &msgs,
-            MinMaxPredicate {
-                min: 1,
-                max: <u32>::max_value(),
-                values: ballot_1.X,
-                test_fn: Arc::new(|msg, values, min, max| msg.accepts_commits(values, min, max)),
-            },
-        );
-        assert_eq!(
-            node_ids,
-            HashSet::from_iter(vec![test_node_id(1), test_node_id(2), test_node_id(3)])
-        );
-
-        // Our inputs are (1, max u32), (10, 20), (15, 25). (15, 20) is the intersection of
-        // those.
-        assert_eq!(pred.result(), (15, 20));
     }
 }

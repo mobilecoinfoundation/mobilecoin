@@ -1,6 +1,6 @@
 [package]
 name = "mc-testnet-client"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["MobileCoin"]
 edition = "2018"
 
@@ -14,6 +14,7 @@ protobuf = "2.12"
 rust_decimal = { version = "1.4", default-features = false }
 structopt = "0.3"
 
+mc-api = { path = "../api" }
 mc-util-grpc = { path = "../util/grpc" }
 mc-util-b58-payloads = { path = "../util/b58-payloads" }
 mc-mobilecoind-api = { path = "../mobilecoind/api" }

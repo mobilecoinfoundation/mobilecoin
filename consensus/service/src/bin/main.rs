@@ -49,12 +49,14 @@ fn main() -> Result<(), ConsensusServiceError> {
     let enclave_path = env::current_exe()
         .expect("Could not get the path of our executable")
         .with_file_name(ENCLAVE_FILE);
-    let (enclave, sealed_key) = ConsensusServiceSgxEnclave::new(
+    let (enclave, sealed_key, features) = ConsensusServiceSgxEnclave::new(
         enclave_path,
         &config.peer_responder_id,
         &config.client_responder_id,
         &cached_key,
     );
+
+    log::info!(logger, "Enclave target features: {}", features.join(", "));
 
     // write the sealed block signing key
     let mut sealed_key_file =

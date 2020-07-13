@@ -225,12 +225,14 @@ impl Environment {
         let out_dir = PathBuf::from(
             var(ENV_OUT_DIR).map_err(|e| EnvironmentError::Var(ENV_OUT_DIR.to_owned(), e))?,
         );
+        let target =
+            var(ENV_TARGET).map_err(|e| EnvironmentError::Var(ENV_TARGET.to_owned(), e))?;
         let profile =
             var(ENV_PROFILE).map_err(|e| EnvironmentError::Var(ENV_PROFILE.to_owned(), e))?;
         let profile_target_dir = out_dir
             .as_path()
             .ancestors()
-            .find(|path| path.ends_with(&profile))
+            .find(|path| path.ends_with(&target) || path.ends_with(&profile))
             .ok_or_else(|| EnvironmentError::OutDir(out_dir.clone()))?
             .to_owned();
         let target_dir = profile_target_dir
@@ -423,7 +425,7 @@ impl Environment {
 
     /// Get the string contents of this crate's `links` key
     pub fn links(&self) -> Option<&str> {
-        self.manifest_links.as_ref().map(String::as_str)
+        self.manifest_links.as_deref()
     }
 
     /// Get whether debug is enabled on this build

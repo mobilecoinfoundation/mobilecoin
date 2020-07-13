@@ -84,9 +84,7 @@ impl Digestible for usize {
 ///
 /// Adding the magic bytes / length padding is sort of the point of Digestible crate,
 /// and this marker trait somewhat subverts that.
-/// Because you should use this with care we are marking it "unsafe".
-/// It is not unsafe in the sense that it can cause undefined behavior etc.
-pub unsafe trait RawDigestible: AsRef<[u8]> + Sized {}
+pub trait RawDigestible: AsRef<[u8]> + Sized {}
 
 impl<T: RawDigestible> Digestible for T {
     #[inline]
@@ -96,40 +94,40 @@ impl<T: RawDigestible> Digestible for T {
 }
 
 // Built-in byte arrays
-unsafe impl RawDigestible for [u8; 1] {}
-unsafe impl RawDigestible for [u8; 2] {}
-unsafe impl RawDigestible for [u8; 3] {}
-unsafe impl RawDigestible for [u8; 4] {}
-unsafe impl RawDigestible for [u8; 5] {}
-unsafe impl RawDigestible for [u8; 6] {}
-unsafe impl RawDigestible for [u8; 7] {}
-unsafe impl RawDigestible for [u8; 8] {}
-unsafe impl RawDigestible for [u8; 9] {}
-unsafe impl RawDigestible for [u8; 10] {}
-unsafe impl RawDigestible for [u8; 11] {}
-unsafe impl RawDigestible for [u8; 12] {}
-unsafe impl RawDigestible for [u8; 13] {}
-unsafe impl RawDigestible for [u8; 14] {}
-unsafe impl RawDigestible for [u8; 15] {}
-unsafe impl RawDigestible for [u8; 16] {}
-unsafe impl RawDigestible for [u8; 17] {}
-unsafe impl RawDigestible for [u8; 18] {}
-unsafe impl RawDigestible for [u8; 19] {}
-unsafe impl RawDigestible for [u8; 20] {}
-unsafe impl RawDigestible for [u8; 21] {}
-unsafe impl RawDigestible for [u8; 22] {}
-unsafe impl RawDigestible for [u8; 23] {}
-unsafe impl RawDigestible for [u8; 24] {}
-unsafe impl RawDigestible for [u8; 25] {}
-unsafe impl RawDigestible for [u8; 26] {}
-unsafe impl RawDigestible for [u8; 27] {}
-unsafe impl RawDigestible for [u8; 28] {}
-unsafe impl RawDigestible for [u8; 29] {}
-unsafe impl RawDigestible for [u8; 30] {}
-unsafe impl RawDigestible for [u8; 31] {}
-unsafe impl RawDigestible for [u8; 32] {}
+impl RawDigestible for [u8; 1] {}
+impl RawDigestible for [u8; 2] {}
+impl RawDigestible for [u8; 3] {}
+impl RawDigestible for [u8; 4] {}
+impl RawDigestible for [u8; 5] {}
+impl RawDigestible for [u8; 6] {}
+impl RawDigestible for [u8; 7] {}
+impl RawDigestible for [u8; 8] {}
+impl RawDigestible for [u8; 9] {}
+impl RawDigestible for [u8; 10] {}
+impl RawDigestible for [u8; 11] {}
+impl RawDigestible for [u8; 12] {}
+impl RawDigestible for [u8; 13] {}
+impl RawDigestible for [u8; 14] {}
+impl RawDigestible for [u8; 15] {}
+impl RawDigestible for [u8; 16] {}
+impl RawDigestible for [u8; 17] {}
+impl RawDigestible for [u8; 18] {}
+impl RawDigestible for [u8; 19] {}
+impl RawDigestible for [u8; 20] {}
+impl RawDigestible for [u8; 21] {}
+impl RawDigestible for [u8; 22] {}
+impl RawDigestible for [u8; 23] {}
+impl RawDigestible for [u8; 24] {}
+impl RawDigestible for [u8; 25] {}
+impl RawDigestible for [u8; 26] {}
+impl RawDigestible for [u8; 27] {}
+impl RawDigestible for [u8; 28] {}
+impl RawDigestible for [u8; 29] {}
+impl RawDigestible for [u8; 30] {}
+impl RawDigestible for [u8; 31] {}
+impl RawDigestible for [u8; 32] {}
 
-unsafe impl<Length: generic_array::ArrayLength<u8>> RawDigestible
+impl<Length: generic_array::ArrayLength<u8>> RawDigestible
     for generic_array::GenericArray<u8, Length>
 {
 }

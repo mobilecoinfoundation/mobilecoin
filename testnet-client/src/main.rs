@@ -546,6 +546,13 @@ string that we send you. It should look something like:
                     println!();
                     break;
                 }
+                mc_mobilecoind_api::TxStatus::InvalidConfirmationNumber => {
+                    pb.finish_with_message(
+                        "Invalid Confirmation - transaction was successful, cannot confirm sender",
+                    );
+                    println!();
+                    break;
+                }
             }
         }
 
@@ -682,7 +689,7 @@ MobileCoin forums. Visit http://community.mobilecoin.com
         // Create the outlay
         let mut outlay = mc_mobilecoind_api::Outlay::new();
         outlay.set_value(request_payload.value);
-        outlay.set_receiver(mc_mobilecoind_api::PublicAddress::from(
+        outlay.set_receiver(mc_api::external::PublicAddress::from(
             &(request_payload
                 .try_into()
                 .map_err(|err| format!("Bad request payload: {}", err))?),

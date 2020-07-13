@@ -1,6 +1,6 @@
 [package]
 name = "mc-consensus-enclave-impl"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["MobileCoin"]
 edition = "2018"
 description = '''
@@ -32,10 +32,12 @@ mc-common = { path = "../../../common", default-features = false }
 mc-consensus-enclave-api = { path = "../api", default-features = false }
 mc-crypto-ake-enclave = { path = "../../../crypto/ake/enclave" }
 mc-crypto-digestible = { path = "../../../crypto/digestible" }
+mc-crypto-hashes = { path = "../../../crypto/hashes" }
 mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
 mc-crypto-rand = { path = "../../../crypto/rand" }
 mc-crypto-message-cipher = { path = "../../../crypto/message-cipher" }
 mc-sgx-compat = { path = "../../../sgx/compat" }
+mc-sgx-report-cache-api = { path = "../../../sgx/report-cache/api" }
 mc-sgx-slog = { path = "../../../sgx/slog" }
 mc-transaction-core = { path = "../../../transaction/core" }
 mc-util-from-random = { path = "../../../util/from-random" }
@@ -54,3 +56,6 @@ rand = "0.7"
 rand_hc = "0.2"
 mc-ledger-db = { path = "../../../ledger/db" }
 mc-transaction-core-test-utils = { path = "../../../transaction/core/test-utils" }
+
+[build-dependencies]
+mc-util-build-script = { path = "../../../util/build/script" }

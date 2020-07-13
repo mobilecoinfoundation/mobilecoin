@@ -194,25 +194,35 @@ impl MonitorStore {
     ) -> Result<HashMap<MonitorId, MonitorData>, Error> {
         let mut cursor = db_txn.open_ro_cursor(self.monitor_id_to_monitor_data)?;
 
-        let mut results = HashMap::<MonitorId, MonitorData>::default();
-        for (key_bytes, value_bytes) in cursor.iter() {
-            let monitor_id =
-                MonitorId::try_from(key_bytes).map_err(|_| Error::KeyDeserializationError)?;
-            let data: MonitorData = mc_util_serial::decode(value_bytes)?;
-            results.insert(monitor_id, data);
-        }
-        Ok(results)
+        Ok(cursor
+            .iter()
+            .map(|result| {
+                result
+                    .map_err(Error::from)
+                    .and_then(|(key_bytes, value_bytes)| {
+                        let monitor_id = MonitorId::try_from(key_bytes)
+                            .map_err(|_| Error::KeyDeserializationError)?;
+                        let data: MonitorData = mc_util_serial::decode(value_bytes)?;
+
+                        Ok((monitor_id, data))
+                    })
+            })
+            .collect::<Result<HashMap<_, _>, Error>>()?)
     }
 
     /// Get a list of all MonitorIds in database.
     pub fn get_ids(&self, db_txn: &impl Transaction) -> Result<Vec<MonitorId>, Error> {
         let mut cursor = db_txn.open_ro_cursor(self.monitor_id_to_monitor_data)?;
-        cursor
+        Ok(cursor
             .iter()
-            .map(|(key_bytes, _value_bytes)| {
-                MonitorId::try_from(key_bytes).map_err(|_| Error::KeyDeserializationError)
+            .map(|result| {
+                result
+                    .map_err(Error::from)
+                    .and_then(|(key_bytes, _value_bytes)| {
+                        MonitorId::try_from(key_bytes).map_err(|_| Error::KeyDeserializationError)
+                    })
             })
-            .collect()
+            .collect::<Result<Vec<_>, Error>>()?)
     }
 
     /// Set the MonitorData for an existing monitor

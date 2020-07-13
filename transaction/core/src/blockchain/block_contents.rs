@@ -1,10 +1,11 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-use crate::{blake2b_256::Blake2b256, ring_signature::KeyImage, tx::TxOut, ConvertError};
+use crate::{ring_signature::KeyImage, tx::TxOut, ConvertError};
 use alloc::{vec, vec::Vec};
 use core::{convert::TryFrom, fmt::Debug};
 use generic_array::{typenum::Unsigned, GenericArray};
 use mc_crypto_digestible::{Digest, Digestible};
+use mc_crypto_hashes::Blake2b256;
 use prost::{
     bytes::{Buf, BufMut},
     encoding::{bytes, skip_field, DecodeContext, WireType},

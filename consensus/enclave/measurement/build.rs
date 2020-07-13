@@ -70,8 +70,10 @@ fn main() {
     }
 
     builder
-        .cargo_builder
-        .target_dir(env.target_dir().join(CONSENSUS_ENCLAVE_NAME));
+        .target_dir(env.target_dir().join(CONSENSUS_ENCLAVE_NAME).as_path())
+        .add_rust_flags(&["-D", "warnings"])
+        .add_rust_flags(&["-C", "target-cpu=skylake"])
+        .add_rust_flags(&["-C", "target-feature=+sha"]);
 
     builder
         .config_builder
@@ -90,5 +92,5 @@ fn main() {
 
     let _sig = builder
         .build()
-        .expect("Failed to extract consensus-enclave signature");
+        .expect("Failed to get consensus-enclave sigstruct from build");
 }

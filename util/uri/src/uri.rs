@@ -9,10 +9,10 @@ use std::{
 };
 use url::Url;
 
-#[derive(Debug, Display)]
+#[derive(Clone, Eq, PartialEq, Debug, Display)]
 pub enum UriParseError {
-    /// Url parse error: {0}
-    UrlParse(url::ParseError),
+    /// Url parse error: "{0}", "{1}"
+    UrlParse(String, url::ParseError),
     /// Missing host
     MissingHost,
     /// Unknown scheme: Valid possibilities are `{0}`, `{1}`
@@ -74,7 +74,7 @@ impl<Scheme: UriScheme> FromStr for Uri<Scheme> {
     type Err = UriParseError;
 
     fn from_str(src: &str) -> Result<Self, Self::Err> {
-        let url = Url::parse(src).map_err(UriParseError::UrlParse)?;
+        let url = Url::parse(src).map_err(|err| UriParseError::UrlParse(src.to_string(), err))?;
 
         let host = url
             .host_str()
@@ -108,6 +108,12 @@ impl<Scheme: UriScheme> FromStr for Uri<Scheme> {
             use_tls,
             _scheme: Default::default(),
         })
+    }
+}
+
+impl<Scheme: UriScheme> AsRef<str> for Uri<Scheme> {
+    fn as_ref(&self) -> &str {
+        self.url.as_str()
     }
 }
 

@@ -6,7 +6,7 @@ use core::any::Any;
 // so we simply call the function we are passed.
 #[no_mangle]
 pub unsafe extern "C" fn __rust_maybe_catch_panic(
-    f: fn(*mut u8),
+    f: extern "C" fn(*mut u8),
     data: *mut u8,
     _data_ptr: *mut usize,
     _vtable_ptr: *mut usize,

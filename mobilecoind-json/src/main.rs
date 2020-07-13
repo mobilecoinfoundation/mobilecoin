@@ -3,13 +3,13 @@
 use grpcio::{ChannelBuilder, ChannelCredentialsBuilder};
 use protobuf::RepeatedField;
 
-use mc_api::external::{KeyImage, RistrettoPublic};
+use mc_api::external::{CompressedRistretto, KeyImage, PublicAddress};
 use mc_common::logger::{create_app_logger, log, o};
-use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, PublicAddress};
+use mc_mobilecoind_api::mobilecoind_api_grpc::MobilecoindApiClient;
 use rocket::{get, post, routes};
 use rocket_contrib::json::Json;
 use serde_derive::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::{convert::TryFrom, sync::Arc};
 use structopt::StructOpt;
 
 /// Command line config, set with defaults that will work with
@@ -244,9 +244,48 @@ fn request_code(
 
 #[derive(Deserialize, Serialize, Default)]
 struct JsonPublicAddress {
+    /// Hex encoded compressed ristretto bytes
     view_public_key: String,
+    /// Hex encoded compressed ristretto bytes
     spend_public_key: String,
-    fog_fqdn: String,
+    /// Fog Report Server Url
+    fog_report_url: String,
+    /// Hex encoded signature bytes
+    fog_authority_sig: String,
+    /// String label for fog reports
+    fog_report_id: String,
+}
+
+// Helper conversion between json and protobuf
+impl TryFrom<&JsonPublicAddress> for PublicAddress {
+    type Error = String;
+
+    fn try_from(src: &JsonPublicAddress) -> Result<PublicAddress, String> {
+        // Decode the keys
+        let mut view_public_key = CompressedRistretto::new();
+        view_public_key.set_data(
+            hex::decode(&src.view_public_key)
+                .map_err(|err| format!("Failed to decode view key hex: {}", err))?,
+        );
+        let mut spend_public_key = CompressedRistretto::new();
+        spend_public_key.set_data(
+            hex::decode(&src.spend_public_key)
+                .map_err(|err| format!("Failed to decode spend key hex: {}", err))?,
+        );
+
+        // Reconstruct the public address as a protobuf
+        let mut public_address = PublicAddress::new();
+        public_address.set_view_public_key(view_public_key);
+        public_address.set_spend_public_key(spend_public_key);
+        public_address.set_fog_report_url(src.fog_report_url.clone());
+        public_address.set_fog_report_id(src.fog_report_id.clone());
+        public_address.set_fog_authority_sig(
+            hex::decode(&src.fog_authority_sig)
+                .map_err(|err| format!("Failed to decode fog authority sig hex: {}", err))?,
+        );
+
+        Ok(public_address)
+    }
 }
 
 #[derive(Deserialize, Serialize, Default)]
@@ -278,7 +317,9 @@ fn read_request(
         receiver: JsonPublicAddress {
             view_public_key: hex::encode(receiver.get_view_public_key().get_data().to_vec()),
             spend_public_key: hex::encode(receiver.get_spend_public_key().get_data().to_vec()),
-            fog_fqdn: String::from(receiver.get_fog_fqdn()),
+            fog_report_url: String::from(receiver.get_fog_report_url()),
+            fog_report_id: String::from(receiver.get_fog_report_id()),
+            fog_authority_sig: hex::encode(receiver.get_fog_authority_sig().to_vec()),
         },
         value: resp.get_value().to_string(),
         memo: resp.get_memo().to_string(),
@@ -292,8 +333,18 @@ struct JsonSenderTxReceipt {
 }
 
 #[derive(Deserialize, Serialize)]
+struct JsonReceiverTxReceipt {
+    recipient: JsonPublicAddress,
+    tx_public_key: String,
+    tx_out_hash: String,
+    tombstone: u64,
+    confirmation_number: String,
+}
+
+#[derive(Deserialize, Serialize)]
 struct JsonTransferResponse {
     sender_tx_receipt: JsonSenderTxReceipt,
+    receiver_tx_receipt_list: Vec<JsonReceiverTxReceipt>,
 }
 
 /// Performs a transfer from a monitor and subaddress. The public keys and amount are in the POST data.
@@ -311,23 +362,7 @@ fn transfer(
     let monitor_id =
         hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
 
-    // Decode the keys
-    let mut view_public_key = RistrettoPublic::new();
-    view_public_key.set_data(
-        hex::decode(&transfer.receiver.view_public_key)
-            .map_err(|err| format!("Failed to decode view key hex: {}", err))?,
-    );
-    let mut spend_public_key = RistrettoPublic::new();
-    spend_public_key.set_data(
-        hex::decode(&transfer.receiver.spend_public_key)
-            .map_err(|err| format!("Failed to decode spend key hex: {}", err))?,
-    );
-
-    // Reconstruct the public address as a protobuf
-    let mut public_address = PublicAddress::new();
-    public_address.set_view_public_key(view_public_key);
-    public_address.set_spend_public_key(spend_public_key);
-    public_address.set_fog_fqdn(transfer.receiver.fog_fqdn.clone());
+    let public_address = PublicAddress::try_from(&transfer.receiver)?;
 
     // Generate an outlay
     let mut outlay = mc_mobilecoind_api::Outlay::new();
@@ -352,6 +387,7 @@ fn transfer(
 
     // The receipt from the payment request can be used by the status check below
     let receipt = resp.get_sender_tx_receipt();
+    let receiver_receipts = resp.get_receiver_tx_receipt_list();
     Ok(Json(JsonTransferResponse {
         sender_tx_receipt: JsonSenderTxReceipt {
             key_images: receipt
@@ -361,6 +397,36 @@ fn transfer(
                 .collect(),
             tombstone: receipt.get_tombstone(),
         },
+        receiver_tx_receipt_list: receiver_receipts
+            .iter()
+            .map(|receipt| JsonReceiverTxReceipt {
+                recipient: JsonPublicAddress {
+                    view_public_key: hex::encode(
+                        receipt
+                            .get_recipient()
+                            .get_view_public_key()
+                            .get_data()
+                            .to_vec(),
+                    ),
+                    spend_public_key: hex::encode(
+                        receipt
+                            .get_recipient()
+                            .get_spend_public_key()
+                            .get_data()
+                            .to_vec(),
+                    ),
+                    fog_report_url: String::from(receipt.get_recipient().get_fog_report_url()),
+                    fog_report_id: String::from(receipt.get_recipient().get_fog_report_id()),
+                    fog_authority_sig: hex::encode(
+                        receipt.get_recipient().get_fog_authority_sig().to_vec(),
+                    ),
+                },
+                tx_public_key: hex::encode(receipt.get_tx_public_key().get_data().to_vec()),
+                tx_out_hash: hex::encode(receipt.get_tx_out_hash().to_vec()),
+                tombstone: receipt.get_tombstone(),
+                confirmation_number: hex::encode(receipt.get_tx_out_hash().to_vec()),
+            })
+            .collect(),
     }))
 }
 
@@ -398,6 +464,47 @@ fn check_transfer_status(
         mc_mobilecoind_api::TxStatus::Unknown => "unknown",
         mc_mobilecoind_api::TxStatus::Verified => "verified",
         mc_mobilecoind_api::TxStatus::TombstoneBlockExceeded => "failed",
+        mc_mobilecoind_api::TxStatus::InvalidConfirmationNumber => "invalid_confirmation",
+    };
+
+    Ok(Json(JsonStatusResponse {
+        status: String::from(status_str),
+    }))
+}
+
+/// Checks the status of a transfer given data for a specific receiver
+/// The sender of the transaction will take specific receipt data from the /transfer call
+/// and distribute it to the recipient(s) so they can verify that a transaction has been
+/// processed and the the person supplying the receipt can prove they intiated it
+#[post("/check-receiver-transfer-status", format = "json", data = "<receipt>")]
+fn check_receiver_transfer_status(
+    state: rocket::State<State>,
+    receipt: Json<JsonReceiverTxReceipt>,
+) -> Result<Json<JsonStatusResponse>, String> {
+    let mut receiver_receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
+    let mut tx_public_key = CompressedRistretto::new();
+    tx_public_key.set_data(hex::decode(&receipt.tx_public_key).map_err(|err| format!("{}", err))?);
+    receiver_receipt.set_tx_public_key(tx_public_key);
+    receiver_receipt
+        .set_tx_out_hash(hex::decode(&receipt.tx_out_hash).map_err(|err| format!("{}", err))?);
+    receiver_receipt.set_tombstone(receipt.tombstone);
+    receiver_receipt.set_confirmation_number(
+        hex::decode(&receipt.confirmation_number).map_err(|err| format!("{}", err))?,
+    );
+
+    let mut req = mc_mobilecoind_api::GetTxStatusAsReceiverRequest::new();
+    req.set_receipt(receiver_receipt);
+
+    let resp = state
+        .mobilecoind_api_client
+        .get_tx_status_as_receiver(&req)
+        .map_err(|err| format!("Failed getting status: {}", err))?;
+
+    let status_str = match resp.get_status() {
+        mc_mobilecoind_api::TxStatus::Unknown => "unknown",
+        mc_mobilecoind_api::TxStatus::Verified => "verified",
+        mc_mobilecoind_api::TxStatus::TombstoneBlockExceeded => "failed",
+        mc_mobilecoind_api::TxStatus::InvalidConfirmationNumber => "invalid_confirmation",
     };
 
     Ok(Json(JsonStatusResponse {
@@ -560,6 +667,7 @@ fn main() {
                 read_request,
                 transfer,
                 check_transfer_status,
+                check_receiver_transfer_status,
                 ledger_info,
                 block_info,
                 block_details,

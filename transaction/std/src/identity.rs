@@ -10,11 +10,15 @@
 use core::hash::Hash;
 use curve25519_dalek::scalar::Scalar;
 use hkdf::Hkdf;
+use mc_crypto_hashes::Blake2b256;
 use mc_crypto_keys::RistrettoPrivate;
-use mc_transaction_core::{account_keys::AccountKey, blake2b_256::Blake2b256};
+use mc_transaction_core::account_keys::AccountKey;
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 use std::convert::From;
+
+pub const TEST_FOG_AUTHORITY_FINGERPRINT: [u8; 4] = [9, 9, 9, 9];
+pub const TEST_FOG_REPORT_KEY: &str = "";
 
 /// A RootIdentity is used to quickly derive an AccountKey from 32 bytes of entropy
 /// for testing purposes. It should not be used to derive AccountKeys outside of a
@@ -48,9 +52,13 @@ impl From<&RootIdentity> for AccountKey {
         let view_private_key =
             RistrettoPrivate::from(root_identity_hkdf_helper(&src.root_entropy, b"view"));
         match src.fog_url {
-            Some(ref fqdn) => {
-                AccountKey::new_with_fog(&spend_private_key, &view_private_key, fqdn.clone())
-            }
+            Some(ref url) => AccountKey::new_with_fog(
+                &spend_private_key,
+                &view_private_key,
+                url.clone(),
+                TEST_FOG_REPORT_KEY.to_string(),
+                TEST_FOG_AUTHORITY_FINGERPRINT,
+            ),
             None => AccountKey::new(&spend_private_key, &view_private_key),
         }
     }
@@ -76,6 +84,8 @@ fn root_identity_hkdf_helper(ikm: &[u8; 32], info: &[u8]) -> Scalar {
 #[cfg(test)]
 mod testing {
     use super::*;
+    use core::convert::TryInto;
+    use yaml_rust::{Yaml, YamlLoader};
 
     #[test]
     // Deserializing should recover a serialized RootIdentity.
@@ -91,5 +101,39 @@ mod testing {
             let result: RootIdentity = mc_util_serial::deserialize(&ser).unwrap();
             assert_eq!(root_id, result);
         })
+    }
+
+    #[test]
+    fn test_acct_priv_keys_from_root_entropy() {
+        let yaml = YamlLoader::load_from_str(include_str!(
+            "../../../test-data/transaction/identity/acct_priv_keys_from_root_entropy.yaml"
+        ))
+        .unwrap();
+
+        for test in yaml[0].clone() {
+            let root_entropy = yaml_as_byte_array(&test["root_entropy"]);
+            let view_private_key = yaml_as_byte_array(&test["view_private_key"]);
+            let spend_private_key = yaml_as_byte_array(&test["spend_private_key"]);
+
+            let account_key = AccountKey::from(&RootIdentity {
+                root_entropy: root_entropy.as_slice().try_into().unwrap(),
+                fog_url: None,
+            });
+            assert_eq!(
+                account_key.view_private_key().to_bytes(),
+                view_private_key.as_slice()
+            );
+            assert_eq!(
+                account_key.spend_private_key().to_bytes(),
+                spend_private_key.as_slice()
+            );
+        }
+    }
+
+    fn yaml_as_byte_array(yaml: &Yaml) -> Vec<u8> {
+        yaml.clone()
+            .into_iter()
+            .map(|elem| elem.as_i64().unwrap().try_into().unwrap())
+            .collect::<Vec<_>>()
     }
 }

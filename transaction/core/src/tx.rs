@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use alloc::vec::Vec;
+use blake2::digest::Input;
 use core::{
     convert::{TryFrom, TryInto},
     fmt,
@@ -8,7 +9,8 @@ use core::{
 
 use mc_common::{Hash, HashMap};
 use mc_crypto_digestible::Digestible;
-use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
+use mc_crypto_hashes::Blake2b256;
+use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
 use mc_util_repr_bytes::{
     derive_prost_message_from_repr_bytes, typenum::U32, GenericArray, ReprBytes,
 };
@@ -19,8 +21,9 @@ use serde::{Deserialize, Serialize};
 use crate::{
     account_keys::PublicAddress,
     amount::{Amount, AmountError},
-    blake2b_256::Blake2b256,
+    domain_separators::TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG,
     encrypted_fog_hint::EncryptedFogHint,
+    get_tx_out_shared_secret,
     onetime_keys::{compute_shared_secret, compute_tx_pubkey, create_onetime_public_key},
     range::Range,
     ring_signature::{KeyImage, SignatureRctBulletproofs},
@@ -393,6 +396,74 @@ impl ReprBytes for TxOutMembershipHash {
 }
 
 derive_prost_message_from_repr_bytes!(TxOutMembershipHash);
+
+/// A hash of the shared secret used to confirm tx was sent
+#[derive(
+    Clone, Deserialize, Default, Eq, Ord, PartialEq, PartialOrd, Serialize, Debug, Digestible,
+)]
+pub struct TxOutConfirmationNumber([u8; 32]);
+
+impl TxOutConfirmationNumber {
+    /// Copies self into a new Vec.
+    pub fn to_vec(&self) -> Vec<u8> {
+        self.0.to_vec()
+    }
+
+    pub fn validate(
+        &self,
+        tx_pubkey: &RistrettoPublic,
+        view_private_key: &RistrettoPrivate,
+    ) -> bool {
+        let shared_secret = get_tx_out_shared_secret(view_private_key, tx_pubkey);
+        let calculated_confirmation = TxOutConfirmationNumber::from(&shared_secret);
+        calculated_confirmation == *self
+    }
+}
+
+impl core::convert::AsRef<[u8; 32]> for TxOutConfirmationNumber {
+    #[inline]
+    fn as_ref(&self) -> &[u8; 32] {
+        &self.0
+    }
+}
+
+impl core::convert::From<&[u8; 32]> for TxOutConfirmationNumber {
+    #[inline]
+    fn from(src: &[u8; 32]) -> Self {
+        Self(*src)
+    }
+}
+
+impl core::convert::From<[u8; 32]> for TxOutConfirmationNumber {
+    #[inline]
+    fn from(src: [u8; 32]) -> Self {
+        Self(src)
+    }
+}
+
+impl core::convert::From<&RistrettoPublic> for TxOutConfirmationNumber {
+    fn from(shared_secret: &RistrettoPublic) -> Self {
+        let mut hasher = Blake2b256::new();
+        hasher.input(&TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG);
+        hasher.input(shared_secret.to_bytes());
+
+        let result: [u8; 32] = hasher.result().into();
+        Self(result)
+    }
+}
+
+impl ReprBytes for TxOutConfirmationNumber {
+    type Error = &'static str;
+    type Size = U32;
+    fn from_bytes(src: &GenericArray<u8, U32>) -> Result<Self, &'static str> {
+        Ok(Self((*src).into()))
+    }
+    fn to_bytes(&self) -> GenericArray<u8, U32> {
+        self.0.into()
+    }
+}
+
+derive_prost_message_from_repr_bytes!(TxOutConfirmationNumber);
 
 #[cfg(test)]
 mod tests {

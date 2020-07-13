@@ -7,7 +7,7 @@ use prost::Message;
 // If this is properly maintained, we could check during ledger db opening for any
 // incompatibilities, and either refuse to open or perform a migration.
 #[allow(clippy::unreadable_literal)]
-pub const LATEST_VERSION: u64 = 20200610;
+pub const LATEST_VERSION: u64 = 20200707;
 
 // Metadata information about the ledger databse.
 #[derive(Clone, Message)]
@@ -25,8 +25,13 @@ pub struct MetadataVersion {
 impl MetadataVersion {
     /// Construct a MetadataVersion instance with the most up to date versioning information.
     pub fn latest() -> Self {
+        Self::with_database_format_version(LATEST_VERSION)
+    }
+
+    /// Construct a MetadataVersion instance with a specific database_format_version.
+    pub fn with_database_format_version(database_format_version: u64) -> Self {
         Self {
-            database_format_version: LATEST_VERSION,
+            database_format_version,
             created_by_crate_version: env!("CARGO_PKG_VERSION").to_owned(),
         }
     }
@@ -92,6 +97,23 @@ impl MetadataStore {
             self.metadata,
             &METADATA_VERSION_KEY,
             &encode(&MetadataVersion::latest()),
+            WriteFlags::empty(),
+        )?)
+    }
+
+    // Set version to a specific version.
+    pub fn set_version(
+        &self,
+        db_txn: &mut RwTransaction,
+        database_format_version: u64,
+    ) -> Result<(), Error> {
+        let metadata_version =
+            MetadataVersion::with_database_format_version(database_format_version);
+
+        Ok(db_txn.put(
+            self.metadata,
+            &METADATA_VERSION_KEY,
+            &encode(&metadata_version),
             WriteFlags::empty(),
         )?)
     }

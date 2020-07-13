@@ -21,6 +21,3 @@ mod counters;
 mod grpc_error;
 mod peer_api_service;
 mod peer_keepalive;
-
-#[cfg(test)]
-mod test_utils;

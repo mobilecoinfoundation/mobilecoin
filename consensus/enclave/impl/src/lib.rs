@@ -14,7 +14,7 @@ extern crate alloc;
 
 mod identity;
 
-use alloc::{collections::BTreeSet, format, vec::Vec};
+use alloc::{collections::BTreeSet, format, string::String, vec::Vec};
 use core::convert::{TryFrom, TryInto};
 use identity::Ed25519Identity;
 use mc_attest_core::{
@@ -32,14 +32,15 @@ use mc_consensus_enclave_api::{
 };
 use mc_crypto_ake_enclave::AkeEnclaveState;
 use mc_crypto_digestible::Digestible;
+use mc_crypto_hashes::Blake2b256;
 use mc_crypto_keys::{Ed25519Pair, Ed25519Public, RistrettoPrivate, RistrettoPublic, X25519Public};
 use mc_crypto_message_cipher::{AesMessageCipher, MessageCipher};
 use mc_crypto_rand::McRng;
 use mc_sgx_compat::sync::Mutex;
+use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
     account_keys::PublicAddress,
     amount::Amount,
-    blake2b_256::Blake2b256,
     constants::{FEE_SPEND_PUBLIC_KEY, FEE_VIEW_PUBLIC_KEY},
     onetime_keys::{compute_shared_secret, compute_tx_pubkey, create_onetime_public_key},
     ring_signature::{KeyImage, Scalar},
@@ -51,6 +52,8 @@ use rand_core::{CryptoRng, RngCore};
 
 /// Domain seperator for unified fees transaction private key.
 pub const FEES_OUTPUT_PRIVATE_KEY_DOMAIN_TAG: &str = "mc_fees_output_private_key";
+
+include!(concat!(env!("OUT_DIR"), "/target_features.rs"));
 
 /// A well-formed transaction.
 #[derive(Clone, Eq, PartialEq, Message)]
@@ -132,13 +135,32 @@ impl SgxConsensusEnclave {
     }
 }
 
+impl ReportableEnclave for SgxConsensusEnclave {
+    fn new_ereport(&self, qe_info: TargetInfo) -> ReportableEnclaveResult<(Report, QuoteNonce)> {
+        Ok(self.ake.new_ereport(qe_info)?)
+    }
+
+    fn verify_quote(&self, quote: Quote, qe_report: Report) -> ReportableEnclaveResult<IasNonce> {
+        Ok(self.ake.verify_quote(quote, qe_report)?)
+    }
+
+    fn verify_ias_report(&self, ias_report: VerificationReport) -> ReportableEnclaveResult<()> {
+        self.ake.verify_ias_report(ias_report)?;
+        Ok(())
+    }
+
+    fn get_ias_report(&self) -> ReportableEnclaveResult<VerificationReport> {
+        Ok(self.ake.get_ias_report()?)
+    }
+}
+
 impl ConsensusEnclave for SgxConsensusEnclave {
     fn enclave_init(
         &self,
         peer_self_id: &ResponderId,
         client_self_id: &ResponderId,
         sealed_key: &Option<SealedBlockSigningKey>,
-    ) -> Result<SealedBlockSigningKey> {
+    ) -> Result<(SealedBlockSigningKey, Vec<String>)> {
         self.ake
             .init(peer_self_id.clone(), client_self_id.clone())?;
 
@@ -159,7 +181,13 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let key = (*lock).private_key();
         let sealed = IntelSealed::seal_raw(key.as_ref(), &[]).unwrap();
 
-        Ok(sealed.as_ref().to_vec())
+        Ok((
+            sealed.as_ref().to_vec(),
+            TARGET_FEATURES
+                .iter()
+                .map(|feature| String::from(*feature))
+                .collect::<Vec<String>>(),
+        ))
     }
 
     fn get_identity(&self) -> Result<X25519Public> {
@@ -168,23 +196,6 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 
     fn get_signer(&self) -> Result<Ed25519Public> {
         Ok(self.ake.get_identity().get_public_key())
-    }
-
-    fn new_ereport(&self, qe_info: TargetInfo) -> Result<(Report, QuoteNonce)> {
-        Ok(self.ake.new_ereport(qe_info)?)
-    }
-
-    fn verify_quote(&self, quote: Quote, qe_report: Report) -> Result<IasNonce> {
-        Ok(self.ake.verify_quote(quote, qe_report)?)
-    }
-
-    fn verify_ias_report(&self, ias_report: VerificationReport) -> Result<()> {
-        self.ake.verify_ias_report(ias_report)?;
-        Ok(())
-    }
-
-    fn get_ias_report(&self) -> Result<VerificationReport> {
-        Ok(self.ake.get_ias_report()?)
     }
 
     fn client_accept(&self, req: ClientAuthRequest) -> Result<(ClientAuthResponse, ClientSession)> {
@@ -367,7 +378,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             .collect::<Result<Vec<(Tx, Vec<TxOutMembershipProof>)>>>()?;
 
         // root_elements contains the root hash of the Merkle tree of all TxOuts in the ledger
-        // that were used to validate the tranasctions.
+        // that were used to validate the transactions.
         let mut root_elements = Vec::new();
         let mut rng = McRng::default();
 

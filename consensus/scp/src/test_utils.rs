@@ -7,7 +7,7 @@ use mc_crypto_keys::Ed25519Pair;
 use mc_util_from_random::FromRandom;
 use rand::SeedableRng;
 use rand_hc::Hc128Rng as FixedRng;
-use std::{collections::BTreeSet, fmt, str::FromStr, sync::Arc};
+use std::{fmt, str::FromStr, sync::Arc};
 
 /// Error for transaction validation
 pub struct TransactionValidationError;
@@ -22,17 +22,22 @@ pub fn trivial_validity_fn<T: Value>(_value: &T) -> Result<(), TransactionValida
     Ok(())
 }
 
-/// Returns `values`.
-pub fn trivial_combine_fn<T: Value>(values: BTreeSet<T>) -> BTreeSet<T> {
-    values
+/// Returns `values` in sorted order.
+pub fn trivial_combine_fn<V: Value>(values: &[V]) -> Vec<V> {
+    let mut values_as_vec: Vec<V> = values.to_vec();
+    values_as_vec.sort();
+    values_as_vec.dedup();
+    values_as_vec
 }
 
 /// Returns at most the first `n` values.
 #[allow(unused)]
-pub fn get_bounded_combine_fn<V: Value>(
-    max_elements: usize,
-) -> impl Fn(BTreeSet<V>) -> BTreeSet<V> {
-    move |values: BTreeSet<V>| -> BTreeSet<V> { values.into_iter().take(max_elements).collect() }
+pub fn get_bounded_combine_fn<V: Value>(max_elements: usize) -> impl Fn(&[V]) -> Vec<V> {
+    move |values: &[V]| -> Vec<V> {
+        let mut result = trivial_combine_fn(values);
+        result.truncate(max_elements);
+        result
+    }
 }
 
 /// Creates NodeID from integer for testing.
