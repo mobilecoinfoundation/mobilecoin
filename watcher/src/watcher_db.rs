@@ -11,6 +11,7 @@ use mc_common::{
 use mc_transaction_core::BlockSignature;
 use mc_util_serial::{decode, encode, Message};
 
+use displaydoc::Display;
 use lmdb::{Cursor, Database, DatabaseFlags, Environment, RoTransaction, Transaction, WriteFlags};
 use std::{convert::TryInto, path::PathBuf, str::FromStr, sync::Arc};
 use url::Url;
@@ -44,6 +45,19 @@ pub struct BlockSignatureData {
     /// The block index.
     #[prost(message, required, tag = "3")]
     pub block_signature: BlockSignature,
+}
+
+/// Result code communicates expectations about whether the watcher is up-to-date and the
+/// timestamp should be queried again later.
+#[derive(PartialEq, Eq, Debug, Display)]
+#[repr(u32)]
+pub enum WatcherTimestampResultCode {
+    /// A timestamp was found
+    TimestampFound = 1,
+    /// The timestamp was not found and the watcher is behind.
+    WatcherBehind,
+    /// The timestamp cannot be known unless restarted with a different set of watched nodes.
+    Unavailable,
 }
 
 #[derive(Clone)]
@@ -207,6 +221,37 @@ impl WatcherDB {
                     })
             })
             .collect::<Result<Vec<_>, WatcherDBError>>()?)
+    }
+
+    /// Get the earliest timestamp for a given block.
+    /// The earliest timestamp reflects the time closest to when the block passed consensus.
+    /// If no timestamp is present, return u64::MAX.
+    ///
+    /// Note: If there are no Signatures (and therefore no timestamps) for the given
+    ///       block, the result from get_signatures will be Ok(vec![]).
+    ///       A consensus validator only writes a signature for a block in which it
+    ///       participated in consensus. Therefore, if the watcher is only watching
+    ///       a subset of nodes, and those nodes happened to not participate in this
+    ///       block, the timestamp result will be unavailable for this block. It is
+    ///       also possible to be in a temporary state where there are no signatures
+    ///       for the given block if the watcher sync is behind the ledger sync.
+    pub fn get_block_timestamp(
+        &self,
+        block_index: u64,
+    ) -> Result<(u64, WatcherTimestampResultCode), WatcherDBError> {
+        let sigs = self.get_block_signatures(block_index)?;
+        match sigs.iter().map(|s| s.block_signature.signed_at()).min() {
+            Some(earliest) => Ok((earliest, WatcherTimestampResultCode::TimestampFound)),
+            None => {
+                // Check whether we are synced for all watched URLs
+                let highest_synced = self.highest_synced_block()?;
+                if highest_synced < block_index {
+                    Ok((u64::MAX, WatcherTimestampResultCode::WatcherBehind))
+                } else {
+                    Ok((u64::MAX, WatcherTimestampResultCode::Unavailable))
+                }
+            }
+        }
     }
 
     /// Get the last synced block per configured url.
@@ -527,5 +572,60 @@ mod test {
                 .get_config_urls()
                 .expect("get_config_urls failed")
         );
+    }
+
+    // Watcher should return timestamps based on watched nodes' signature.signed_at values
+    #[test_with_logger]
+    fn test_timestamps(logger: Logger) {
+        run_with_one_seed(|mut rng| {
+            let url1 = Url::parse("http://www.my_url1.com").unwrap();
+            let url2 = Url::parse("http://www.my_url2.com").unwrap();
+            let urls = vec![url1, url2];
+            let watcher_db = setup_watcher_db(logger.clone());
+
+            let blocks = setup_blocks();
+
+            let signing_key_a = Ed25519Pair::from_random(&mut rng);
+            let signing_key_b = Ed25519Pair::from_random(&mut rng);
+
+            let filename1 = String::from("00/01");
+
+            let mut signed_block_a1 =
+                BlockSignature::from_block_and_keypair(&blocks[1].0, &signing_key_a).unwrap();
+            signed_block_a1.set_signed_at(1594679718);
+            watcher_db
+                .add_block_signature(&urls[0], 1, signed_block_a1, filename1.clone())
+                .unwrap();
+
+            let mut signed_block_b1 =
+                BlockSignature::from_block_and_keypair(&blocks[1].0, &signing_key_b).unwrap();
+            signed_block_b1.set_signed_at(1594679727);
+            watcher_db
+                .add_block_signature(&urls[1], 1, signed_block_b1, filename1)
+                .unwrap();
+
+            // Timestamp for 1st block should be the minimum of the available timestamps
+            assert_eq!(
+                watcher_db.get_block_timestamp(1).unwrap(),
+                (1594679718, WatcherTimestampResultCode::TimestampFound)
+            );
+
+            assert_eq!(watcher_db.highest_synced_block().unwrap(), 1);
+            // Timestamp does not exist for block 2, but we are not yet fully synced
+            assert_eq!(
+                watcher_db.get_block_timestamp(2).unwrap(),
+                (u64::MAX, WatcherTimestampResultCode::WatcherBehind)
+            );
+
+            watcher_db.update_last_synced(&urls[0], 2).unwrap();
+            watcher_db.update_last_synced(&urls[1], 2).unwrap();
+
+            assert_eq!(watcher_db.highest_synced_block().unwrap(), 2);
+            // We are fully synced,
+            assert_eq!(
+                watcher_db.get_block_timestamp(2).unwrap(),
+                (u64::MAX, WatcherTimestampResultCode::Unavailable)
+            );
+        });
     }
 }

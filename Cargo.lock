@@ -3379,6 +3379,7 @@ dependencies = [
 name = "mc-watcher"
 version = "0.5.0"
 dependencies = [
+ "displaydoc",
  "failure",
  "lmdb-rkv",
  "mc-account-keys",
