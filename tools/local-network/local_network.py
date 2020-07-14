@@ -316,6 +316,11 @@ class Mobilecoind:
         self.process = subprocess.Popen(cmd, shell=True)
         print()
 
+        print('Waiting for watcher db to become available')
+        while not os.path.exists(os.path.join(self.watcher_db, 'data.mdb')):
+            print('Waiting for watcher db to become available')
+            time.sleep(1)
+
     def stop(self):
         if self.process:
             if self.process.poll() is None:
