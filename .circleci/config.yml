@@ -49,7 +49,7 @@ commands:
             echo '[net]' >> ~/.cargo/config
             echo 'git-fetch-with-cli = true' >> ~/.cargo/config
             if [ -f ~/.gitconfig ]; then
-              sed -i 's/github/git-non-exist-hub/g' ~/.gitconfig # https://github.com/rust-lang/cargo/issues/3900
+              sed -i -e 's/github/git-non-exist-hub/g' ~/.gitconfig # https://github.com/rust-lang/cargo/issues/3900
             fi
 
   enable_sccache:
