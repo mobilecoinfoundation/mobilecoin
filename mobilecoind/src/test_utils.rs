@@ -12,6 +12,7 @@ use crate::{
     service::Service,
 };
 use grpcio::{ChannelBuilder, EnvBuilder};
+use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
 use mc_common::logger::{log, Logger};
 use mc_connection::{Connection, ConnectionManager};
 use mc_connection_test_utils::{test_client_uri, MockBlockchainConnection};
@@ -22,10 +23,7 @@ use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::PollingNetworkState;
 use mc_mobilecoind_api::mobilecoind_api_grpc::MobilecoindApiClient;
 use mc_transaction_core::{
-    account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX},
-    ring_signature::KeyImage,
-    tx::TxOut,
-    Block, BlockContents, BLOCK_VERSION,
+    ring_signature::KeyImage, tx::TxOut, Block, BlockContents, BLOCK_VERSION,
 };
 use mc_util_from_random::FromRandom;
 use mc_util_uri::ConnectionUri;
@@ -64,9 +62,7 @@ pub fn get_test_databases(
     mut rng: &mut (impl CryptoRng + RngCore),
 ) -> (LedgerDB, Database) {
     let mut public_addresses: Vec<PublicAddress> = (0..num_random_recipients)
-        .map(|_i| {
-            mc_transaction_core::account_keys::AccountKey::random(&mut rng).default_subaddress()
-        })
+        .map(|_i| mc_account_keys::AccountKey::random(&mut rng).default_subaddress())
         .collect();
 
     public_addresses.extend(known_recipients.iter().cloned());

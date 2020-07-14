@@ -1,27 +1,24 @@
 [package]
-name = "mc-transaction-std"
+name = "mc-account-keys"
 version = "0.5.0"
 authors = ["MobileCoin"]
 edition = "2018"
+readme = "README.md"
 
 [dependencies]
 # External dependencies
-failure = "0.1.5"
+digest = { version = "0.8.1", default-features = false }
 prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
-rand = { version = "0.7", default-features = false }
 rand_core = { version = "0.5", default-features = false }
-blake2 = { version = "0.8.1", default-features = false, features = ["simd"] }
-hkdf = { version = "0.8.0", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 
 # MobileCoin dependencies
-mc-account-keys = { path = "../../account-keys" }
-mc-common = { path = "../../common", default-features = false }
-mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
-mc-crypto-hashes = { path = "../../crypto/hashes", default-features = false }
-mc-util-serial = { path = "../../util/serial" }
-mc-transaction-core = { path = "../../transaction/core"}
-mc-util-from-random = { path = "../../util/from-random" }
+mc-crypto-digestible = { path = "../crypto/digestible", features = ["dalek"] }
+mc-crypto-hashes = { path = "../crypto/hashes" }
+mc-crypto-sig = { path = "../crypto/sig" }
+mc-crypto-keys = { path = "../crypto/keys", default-features = false }
+mc-util-from-random = { path = "../util/from-random" }
+mc-util-serial = { path = "../util/serial" }
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
 curve25519-dalek = { version = "2.0", default-features = false, features = ["simd_backend", "nightly"] }
@@ -32,6 +29,14 @@ curve25519-dalek = { version = "2.0", default-features = false, features = ["nig
 blake2 = { version = "0.8.1", default-features = false }
 
 [dev-dependencies]
+criterion = "0.3"
+rand = "0.7"
+rand_hc = "0.2"
+tempdir = "0.3"
 yaml-rust = "0.4"
 
-mc-util-test-helper = { path = "../../util/test-helper" }
+mc-util-test-helper = { path = "../util/test-helper" }
+
+[[bench]]
+name = "account_keys_benchmarks"
+harness = false

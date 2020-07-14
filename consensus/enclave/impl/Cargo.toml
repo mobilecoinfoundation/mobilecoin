@@ -25,6 +25,7 @@ std = [
 ]
 
 [dependencies]
+mc-account-keys = { path = "../../../account-keys" }
 mc-attest-core = { path = "../../../attest/core", default-features = false }
 mc-attest-enclave-api = { path = "../../../attest/enclave-api", default-features = false }
 mc-attest-trusted = { path = "../../../attest/trusted", default-features = false }

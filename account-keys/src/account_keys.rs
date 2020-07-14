@@ -494,7 +494,7 @@ mod account_key_tests {
     #[test]
     fn test_default_subaddr_keys_from_acct_priv_keys() {
         let yaml = YamlLoader::load_from_str(include_str!(
-            "../../../test-data/transaction/account_keys/default_subaddr_keys_from_acct_priv_keys.yaml"
+            "../../test-data/transaction/account_keys/default_subaddr_keys_from_acct_priv_keys.yaml"
         ))
         .unwrap();
 
@@ -532,7 +532,7 @@ mod account_key_tests {
     #[test]
     fn test_subaddr_keys_from_acct_priv_keys() {
         let yaml = YamlLoader::load_from_str(include_str!(
-            "../../../test-data/transaction/account_keys/subaddr_keys_from_acct_priv_keys.yaml"
+            "../../test-data/transaction/account_keys/subaddr_keys_from_acct_priv_keys.yaml"
         ))
         .unwrap();
 

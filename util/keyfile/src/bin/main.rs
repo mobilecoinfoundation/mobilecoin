@@ -3,7 +3,7 @@
 //! A tool for inspecting binary keyfiles
 //! Reads .bin file on stdin, or a path to .bin file, emits description on stdout
 
-use mc_transaction_core::account_keys::AccountKey;
+use mc_account_keys::AccountKey;
 use mc_transaction_std::identity::RootIdentity;
 
 fn main() {

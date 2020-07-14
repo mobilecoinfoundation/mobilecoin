@@ -15,6 +15,7 @@ use crate::{
     utxo_store::{UnspentTxOut, UtxoId},
 };
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
+use mc_account_keys::{AccountKey, PublicAddress};
 use mc_common::{
     logger::{log, Logger},
     HashMap,
@@ -24,11 +25,7 @@ use mc_crypto_keys::RistrettoPublic;
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::{NetworkState, PollingNetworkState};
 use mc_mobilecoind_api::mobilecoind_api_grpc::{create_mobilecoind_api, MobilecoindApi};
-use mc_transaction_core::{
-    account_keys::{AccountKey, PublicAddress},
-    ring_signature::KeyImage,
-    tx::TxOutConfirmationNumber,
-};
+use mc_transaction_core::{ring_signature::KeyImage, tx::TxOutConfirmationNumber};
 use mc_transaction_std::identity::RootIdentity;
 use mc_util_b58_payloads::payloads::{AddressRequestPayload, RequestPayload, TransferPayload};
 use mc_util_grpc::{rpc_internal_error, rpc_logger, send_result, BuildInfoService};
@@ -1252,10 +1249,10 @@ mod test {
         },
         utxo_store::UnspentTxOut,
     };
+    use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
     use mc_common::{logger::test_with_logger, HashSet};
     use mc_crypto_rand::RngCore;
     use mc_transaction_core::{
-        account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX},
         constants::{BASE_FEE, MAX_INPUTS, RING_SIZE},
         get_tx_out_shared_secret,
         onetime_keys::recover_onetime_private_key,

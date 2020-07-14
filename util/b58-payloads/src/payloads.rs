@@ -6,8 +6,8 @@ use core::{convert::TryFrom, fmt};
 use std::str::FromStr;
 
 use crc::crc32;
+use mc_account_keys::{AccountKey, PublicAddress};
 use mc_crypto_keys::{KeyError, RistrettoPublic};
-use mc_transaction_core::account_keys::{AccountKey, PublicAddress};
 use mc_transaction_std::identity::RootIdentity;
 use mc_util_uri::FogUri;
 
@@ -528,8 +528,8 @@ impl fmt::Debug for AddressRequestPayload {
 #[cfg(test)]
 mod testing {
     use super::*;
+    use mc_account_keys::{AccountKey, PublicAddress};
     use mc_common::logger::{log, test_with_logger, Logger};
-    use mc_transaction_core::account_keys::{AccountKey, PublicAddress};
     use mc_util_test_helper::RngCore;
 
     /// Test that random account keys are recovered after encoding into a payload string

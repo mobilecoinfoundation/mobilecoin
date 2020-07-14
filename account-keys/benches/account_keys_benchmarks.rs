@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use criterion::{criterion_group, criterion_main, Criterion};
-use mc_transaction_core::account_keys::AccountKey;
+use mc_account_keys::AccountKey;
 use rand::{rngs::StdRng, SeedableRng};
 
 fn account_keys_benchmarks(c: &mut Criterion) {

@@ -1,4 +1,5 @@
-use mc_transaction_core::{account_keys::AccountKey, Block, BlockContents};
+use mc_account_keys::AccountKey;
+use mc_transaction_core::{Block, BlockContents};
 
 #[test]
 fn test_cumulative_txo_counts() {

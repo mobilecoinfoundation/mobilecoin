@@ -3,6 +3,7 @@
 //! Construct and submit transactions to the validator network.
 
 use crate::{database::Database, error::Error, monitor_store::MonitorId, utxo_store::UnspentTxOut};
+use mc_account_keys::{AccountKey, PublicAddress};
 use mc_common::{
     logger::{log, o, Logger},
     HashMap, HashSet,
@@ -12,7 +13,6 @@ use mc_crypto_keys::RistrettoPublic;
 use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
 use mc_transaction_core::{
-    account_keys::{AccountKey, PublicAddress},
     constants::{BASE_FEE, MAX_INPUTS, RING_SIZE},
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,

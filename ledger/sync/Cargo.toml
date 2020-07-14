@@ -9,6 +9,7 @@ name = "ledger-sync-test-app"
 path = "src/test_app/main.rs"
 
 [dependencies]
+mc-account-keys = { path = "../../account-keys" }
 mc-api = { path = "../../api" }
 mc-attest-core = { path = "../../attest/core" }
 mc-common = { path = "../../common", features = ["log"] }

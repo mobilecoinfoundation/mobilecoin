@@ -303,9 +303,10 @@ pub fn create_or_open_watcher_db(
 #[cfg(test)]
 mod test {
     use super::*;
+    use mc_account_keys::AccountKey;
     use mc_common::logger::{test_with_logger, Logger};
     use mc_crypto_keys::Ed25519Pair;
-    use mc_transaction_core::{account_keys::AccountKey, Block, BlockContents};
+    use mc_transaction_core::{Block, BlockContents};
     use mc_transaction_core_test_utils::get_blocks;
     use mc_util_from_random::FromRandom;
     use mc_util_test_helper::run_with_one_seed;

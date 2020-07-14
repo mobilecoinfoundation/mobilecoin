@@ -1877,6 +1877,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-account-keys"
+version = "0.5.0"
+dependencies = [
+ "blake2",
+ "criterion",
+ "curve25519-dalek",
+ "digest",
+ "mc-crypto-digestible",
+ "mc-crypto-hashes",
+ "mc-crypto-keys",
+ "mc-crypto-sig",
+ "mc-util-from-random",
+ "mc-util-serial",
+ "mc-util-test-helper",
+ "prost",
+ "rand 0.7.3",
+ "rand_core 0.5.1",
+ "rand_hc 0.2.0",
+ "serde",
+ "tempdir",
+ "yaml-rust",
+]
+
+[[package]]
 name = "mc-admin-http-gateway"
 version = "0.5.0"
 dependencies = [
@@ -1899,6 +1923,7 @@ version = "0.5.0"
 dependencies = [
  "cargo-emit",
  "curve25519-dalek",
+ "mc-account-keys",
  "mc-common",
  "mc-crypto-keys",
  "mc-transaction-core",
@@ -2193,6 +2218,7 @@ dependencies = [
  "cfg-if",
  "digest",
  "mbedtls",
+ "mc-account-keys",
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-attest-trusted",
@@ -2532,6 +2558,7 @@ dependencies = [
  "curve25519-dalek",
  "failure",
  "lmdb-rkv",
+ "mc-account-keys",
  "mc-common",
  "mc-crypto-keys",
  "mc-crypto-rand",
@@ -2587,6 +2614,7 @@ dependencies = [
  "failure",
  "grpcio",
  "lazy_static",
+ "mc-account-keys",
  "mc-api",
  "mc-attest-core",
  "mc-common",
@@ -2622,6 +2650,7 @@ dependencies = [
  "hex_fmt",
  "lmdb-rkv",
  "lru",
+ "mc-account-keys",
  "mc-api",
  "mc-attest-core",
  "mc-common",
@@ -2990,27 +3019,22 @@ dependencies = [
 name = "mc-transaction-core"
 version = "0.5.0"
 dependencies = [
- "aead",
  "blake2",
- "bs58",
  "bulletproofs",
  "cfg-if",
- "crc",
- "criterion",
  "curve25519-dalek",
  "digest",
  "failure",
  "generic-array 0.12.3",
  "hex_fmt",
- "hkdf",
  "lazy_static",
+ "mc-account-keys",
  "mc-common",
  "mc-crypto-box",
  "mc-crypto-digestible",
  "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-crypto-rand",
- "mc-crypto-sig",
  "mc-ledger-db",
  "mc-transaction-core-test-utils",
  "mc-util-from-random",
@@ -3028,13 +3052,13 @@ dependencies = [
  "subtle 2.2.3",
  "tempdir",
  "time",
- "yaml-rust",
 ]
 
 [[package]]
 name = "mc-transaction-core-test-utils"
 version = "0.5.0"
 dependencies = [
+ "mc-account-keys",
  "mc-crypto-keys",
  "mc-crypto-rand",
  "mc-ledger-db",
@@ -3053,6 +3077,7 @@ dependencies = [
  "curve25519-dalek",
  "failure",
  "hkdf",
+ "mc-account-keys",
  "mc-common",
  "mc-crypto-hashes",
  "mc-crypto-keys",
@@ -3075,9 +3100,9 @@ dependencies = [
  "crc",
  "failure",
  "hex_fmt",
+ "mc-account-keys",
  "mc-common",
  "mc-crypto-keys",
- "mc-transaction-core",
  "mc-transaction-std",
  "mc-util-serial",
  "mc-util-test-helper",
@@ -3165,6 +3190,7 @@ version = "0.5.0"
 dependencies = [
  "curve25519-dalek",
  "hex 0.3.2",
+ "mc-account-keys",
  "mc-crypto-keys",
  "mc-ledger-db",
  "mc-transaction-core",
@@ -3208,8 +3234,8 @@ name = "mc-util-keyfile"
 version = "0.5.0"
 dependencies = [
  "hex 0.3.2",
+ "mc-account-keys",
  "mc-crypto-rand",
- "mc-transaction-core",
  "mc-transaction-std",
  "mc-util-serial",
  "rand 0.7.3",
@@ -3284,6 +3310,7 @@ version = "0.5.0"
 dependencies = [
  "itertools",
  "lazy_static",
+ "mc-account-keys",
  "mc-common",
  "mc-crypto-keys",
  "mc-transaction-core",
@@ -3321,9 +3348,9 @@ dependencies = [
  "crc",
  "displaydoc",
  "hex 0.4.2",
+ "mc-account-keys",
  "mc-common",
  "mc-crypto-keys",
- "mc-transaction-core",
  "mc-transaction-std",
  "mc-util-b58-payloads",
  "mc-util-from-random",
@@ -3339,6 +3366,7 @@ version = "0.5.0"
 dependencies = [
  "failure",
  "lmdb-rkv",
+ "mc-account-keys",
  "mc-api",
  "mc-common",
  "mc-crypto-keys",

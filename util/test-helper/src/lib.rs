@@ -9,7 +9,7 @@ pub use rand_core::{CryptoRng, RngCore, SeedableRng};
 use rand_hc::Hc128Rng;
 
 // re-export AccountKey and PublicAddress to save an import elsewhere
-pub use mc_transaction_core::account_keys::{AccountKey, PublicAddress};
+pub use mc_account_keys::{AccountKey, PublicAddress};
 
 pub mod known_accounts;
 
