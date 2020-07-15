@@ -150,11 +150,12 @@ fn validate_ring_elements_are_sorted(tx_prefix: &TxPrefix) -> TransactionValidat
 
 /// Inputs must be sorted by the public key of the first ring element of each input.
 fn validate_inputs_are_sorted(tx_prefix: &TxPrefix) -> TransactionValidationResult<()> {
-    if !tx_prefix.inputs.windows(2).all(|w| {
+    let inputs_are_sorted = tx_prefix.inputs.windows(2).all(|w| {
         !w[0].ring.is_empty()
             && !w[1].ring.is_empty()
             && w[0].ring[0].public_key < w[1].ring[0].public_key
-    }) {
+    });
+    if !inputs_are_sorted {
         return Err(TransactionValidationError::UnsortedInputs);
     }
 
