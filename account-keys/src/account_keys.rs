@@ -12,7 +12,10 @@
 
 #![allow(non_snake_case)]
 
-use crate::{domain_separators::SUBADDRESS_DOMAIN_TAG, view_key::ViewKey};
+use crate::{
+    domain_separators::{FOG_AUTHORITY_SIGNATURE_TAG, SUBADDRESS_DOMAIN_TAG},
+    view_key::ViewKey,
+};
 
 use core::{
     cmp::Ordering,
@@ -36,9 +39,6 @@ use rand_core::{CryptoRng, RngCore};
 
 /// An account's "default address" is its zero^th subaddress.
 pub const DEFAULT_SUBADDRESS_INDEX: u64 = 0;
-
-/// The tag for the signature context
-pub const FOG_AUTHORITY_SIGNATURE_TAG: &[u8; 23] = b"Fog authority signature";
 
 /// A MobileCoin user's public subaddress.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Message, Clone, Digestible)]

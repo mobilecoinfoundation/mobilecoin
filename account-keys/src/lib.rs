@@ -12,4 +12,5 @@ mod domain_separators;
 mod view_key;
 
 pub use account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
+pub use domain_separators::FOG_AUTHORITY_SIGNATURE_TAG;
 pub use view_key::ViewKey;
