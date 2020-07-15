@@ -109,6 +109,12 @@ impl TransactionBuilder {
             }
         }
 
+        // Construct a list of sorted inputs.
+        // Inputs are sorted by the first ring element's public key. Note that each ring is also
+        // sorted.
+        self.input_credentials
+            .sort_by(|a, b| a.ring[0].public_key.cmp(&b.ring[0].public_key));
+
         let inputs: Vec<TxIn> = self
             .input_credentials
             .iter()
@@ -532,5 +538,21 @@ pub mod transaction_builder_tests {
         let mut expected_outputs = outputs.clone();
         expected_outputs.sort_by(|a, b| a.public_key.cmp(&b.public_key));
         assert_eq!(outputs, expected_outputs);
+    }
+
+    #[test]
+    // Transaction inputs should be sorted by the public key of the first ring element.
+    fn test_inputs_are_sorted() {
+        let mut rng: StdRng = SeedableRng::from_seed([92u8; 32]);
+        let sender = AccountKey::random(&mut rng);
+        let recipient = AccountKey::random(&mut rng);
+        let num_inputs = 3;
+        let num_outputs = 11;
+        let tx = get_transaction(num_inputs, num_outputs, &sender, &recipient, &mut rng).unwrap();
+
+        let inputs = tx.prefix.inputs;
+        let mut expected_inputs = inputs.clone();
+        expected_inputs.sort_by(|a, b| a.ring[0].public_key.cmp(&b.ring[0].public_key));
+        assert_eq!(inputs, expected_inputs);
     }
 }

@@ -66,6 +66,7 @@ enum ProposeTxResult {
     MembershipProofValidationError = 36;
     TxFeeError = 37;
     KeyError = 38;
+    UnsortedInputs = 39;
 }
 
 /// Response from TxPropose RPC call.
