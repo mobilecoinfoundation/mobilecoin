@@ -744,7 +744,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
 
                 let mut receiver_tx_receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
                 receiver_tx_receipt.set_recipient((&outlay.receiver).into());
-                receiver_tx_receipt.set_tx_public_key(tx_out.public_key.into());
+                receiver_tx_receipt.set_tx_public_key((&tx_out.public_key).into());
                 receiver_tx_receipt.set_tx_out_hash(tx_out.hash().to_vec());
                 receiver_tx_receipt.set_tombstone(tx_proposal.tx.prefix.tombstone_block);
 
@@ -1929,7 +1929,7 @@ mod test {
 
             let mut receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
             receipt.set_tx_public_key(mc_mobilecoind_api::external::CompressedRistretto::from(
-                tx_out.public_key,
+                &tx_out.public_key,
             ));
             receipt.set_tx_out_hash(hash.to_vec());
             receipt.set_tombstone(10);
@@ -1952,7 +1952,7 @@ mod test {
 
             let mut receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
             receipt.set_tx_public_key(mc_mobilecoind_api::external::CompressedRistretto::from(
-                tx_out.public_key,
+                &tx_out.public_key,
             ));
             receipt.set_tx_out_hash(hash.to_vec());
             receipt.set_tombstone(10);

@@ -141,8 +141,8 @@ impl TryFrom<&external::CompressedRistretto> for RistrettoPublic {
 }
 
 /// Convert CompressedRistrettoPublic --> external::CompressedRistretto
-impl From<CompressedRistrettoPublic> for external::CompressedRistretto {
-    fn from(other: CompressedRistrettoPublic) -> Self {
+impl From<&CompressedRistrettoPublic> for external::CompressedRistretto {
+    fn from(other: &CompressedRistrettoPublic) -> Self {
         let mut key = external::CompressedRistretto::new();
         key.set_data(other.as_bytes().to_vec());
         key
