@@ -1,6 +1,6 @@
 use crate::{Error, MobUrl};
 use core::convert::TryFrom;
-use mc_transaction_core::account_keys::PublicAddress;
+use mc_account_keys::PublicAddress;
 
 /// A payment request, containing a public address, and optionally an amount
 /// and memo.
@@ -67,8 +67,8 @@ mod tests {
 
     use core::{convert::TryFrom, str::FromStr};
 
+    use mc_account_keys::AccountKey;
     use mc_crypto_keys::RistrettoPrivate;
-    use mc_transaction_core::account_keys::AccountKey;
     use mc_transaction_std::identity::RootIdentity;
     use mc_util_test_helper::{run_with_several_seeds, RngCore};
 

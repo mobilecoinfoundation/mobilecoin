@@ -782,10 +782,10 @@ pub mod tx_out_store_tests {
     use super::{containing_range, containing_ranges, TxOutStore};
     use crate::Error;
     use lmdb::{Environment, RoTransaction, RwTransaction, Transaction};
+    use mc_account_keys::AccountKey;
     use mc_common::Hash;
     use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
     use mc_transaction_core::{
-        account_keys::AccountKey,
         amount::Amount,
         encrypted_fog_hint::EncryptedFogHint,
         membership_proofs::{hash_leaf, hash_nodes, NIL_HASH},

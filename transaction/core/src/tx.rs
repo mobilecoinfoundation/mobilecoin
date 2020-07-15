@@ -7,6 +7,7 @@ use core::{
     fmt,
 };
 
+use mc_account_keys::PublicAddress;
 use mc_common::{Hash, HashMap};
 use mc_crypto_digestible::Digestible;
 use mc_crypto_hashes::Blake2b256;
@@ -19,7 +20,6 @@ use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    account_keys::PublicAddress,
     amount::{Amount, AmountError},
     domain_separators::TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG,
     encrypted_fog_hint::EncryptedFogHint,

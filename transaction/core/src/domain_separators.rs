@@ -27,9 +27,6 @@ pub const HASH_TO_POINT_DOMAIN_TAG: &str = "mc_onetime_key_hash_to_point";
 /// Domain separator for onetime key "hash_to_scalar" function.
 pub const HASH_TO_SCALAR_DOMAIN_TAG: &str = "mc_onetime_key_hash_to_scalar";
 
-/// Domain separator for hashing a private view key and index into a subaddress.
-pub const SUBADDRESS_DOMAIN_TAG: &str = "mc_subaddress";
-
 /// Domain separator for hashing a TxOut leaf node in a Merkle tree.
 pub const TXOUT_MERKLE_LEAF_DOMAIN_TAG: &str = "mc_tx_out_merkle_leaf";
 

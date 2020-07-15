@@ -962,8 +962,9 @@ mod tests {
     use mc_crypto_keys::{DistinguishedEncoding, Ed25519Private};
     use mc_ledger_db::Ledger;
     use mc_peers_test_utils::MockPeerConnection;
-    use mc_transaction_core::account_keys::AccountKey;
-    use mc_transaction_core_test_utils::{create_ledger, create_transaction, initialize_ledger};
+    use mc_transaction_core_test_utils::{
+        create_ledger, create_transaction, initialize_ledger, AccountKey,
+    };
     use mc_util_from_random::FromRandom;
     use mc_util_uri::{ConnectionUri, ConsensusPeerUri as PeerUri};
     use rand::{rngs::StdRng, SeedableRng};

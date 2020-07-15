@@ -2,7 +2,7 @@
 
 //! This module provides a consistent set of AccountKeys for use in testing
 
-use mc_transaction_core::account_keys::{AccountKey, PublicAddress};
+use mc_account_keys::{AccountKey, PublicAddress};
 use mc_transaction_std::identity::RootIdentity;
 use rand::rngs::StdRng;
 use rand_core::SeedableRng;

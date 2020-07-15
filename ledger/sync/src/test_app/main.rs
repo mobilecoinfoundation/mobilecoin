@@ -2,6 +2,7 @@
 
 //! Ledger Sync test app
 
+use mc_account_keys::AccountKey;
 use mc_attest_core::{Measurement, MrSigner};
 use mc_common::{logger::log, ResponderId};
 use mc_connection::{ConnectionManager, ThickClient};
@@ -9,7 +10,7 @@ use mc_consensus_enclave_measurement::sigstruct;
 use mc_consensus_scp::{test_utils::test_node_id, QuorumSet};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::{LedgerSyncService, PollingNetworkState};
-use mc_transaction_core::{account_keys::AccountKey, Block, BlockContents};
+use mc_transaction_core::{Block, BlockContents};
 use mc_util_uri::ConsensusClientUri as ClientUri;
 use std::{convert::TryFrom, path::PathBuf, str::FromStr, sync::Arc};
 use tempdir::TempDir;

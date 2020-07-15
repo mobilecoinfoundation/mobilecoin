@@ -1,10 +1,10 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use crate::{Error, Ledger};
+use mc_account_keys::AccountKey;
 use mc_common::{HashMap, HashSet};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate};
 use mc_transaction_core::{
-    account_keys::AccountKey,
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
     Block, BlockContents, BlockID, BlockSignature, BLOCK_VERSION,

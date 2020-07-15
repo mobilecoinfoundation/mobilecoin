@@ -229,8 +229,8 @@ impl Database {
 mod test {
     use super::*;
     use crate::{error::Error, test_utils::get_test_databases};
+    use mc_account_keys::AccountKey;
     use mc_common::logger::{test_with_logger, Logger};
-    use mc_transaction_core::account_keys::AccountKey;
     use rand::{rngs::StdRng, SeedableRng};
 
     // Inserting a monitor that overlaps subaddresses of another monitor should result in an error.

@@ -6,9 +6,9 @@
 
 use crate::{InputCredentials, TxBuilderError};
 use curve25519_dalek::scalar::Scalar;
+use mc_account_keys::PublicAddress;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
 use mc_transaction_core::{
-    account_keys::PublicAddress,
     constants::BASE_FEE,
     encrypted_fog_hint::EncryptedFogHint,
     fog_hint::FogHint,
@@ -238,8 +238,8 @@ fn create_fog_hint<RNG: CryptoRng + RngCore>(
 #[cfg(test)]
 pub mod transaction_builder_tests {
     use super::*;
+    use mc_account_keys::{AccountKey, DEFAULT_SUBADDRESS_INDEX};
     use mc_transaction_core::{
-        account_keys::{AccountKey, DEFAULT_SUBADDRESS_INDEX},
         constants::{MAX_INPUTS, MAX_OUTPUTS},
         onetime_keys::*,
         ring_signature::KeyImage,

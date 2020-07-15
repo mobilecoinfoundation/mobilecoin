@@ -1,6 +1,6 @@
 use core::convert::TryFrom;
+use mc_account_keys::{AccountKey, PublicAddress};
 use mc_crypto_keys::RistrettoPrivate;
-use mc_transaction_core::account_keys::{AccountKey, PublicAddress};
 use mc_util_b58_payloads::payloads::RequestPayload;
 use mc_util_from_random::FromRandom;
 use mc_util_test_helper::SeedableRng;

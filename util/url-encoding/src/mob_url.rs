@@ -22,8 +22,8 @@ use core::{
     str::FromStr,
 };
 use crc::crc32;
+use mc_account_keys::PublicAddress;
 use mc_crypto_keys::RistrettoPublic;
-use mc_transaction_core::account_keys::PublicAddress;
 use mc_util_uri::{ConnectionUri, FogScheme, FogUri, UriScheme};
 use url::Url;
 

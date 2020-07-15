@@ -8,12 +8,12 @@
 
 use crate::{blockchain, external};
 use curve25519_dalek::ristretto::CompressedRistretto;
+use mc_account_keys::{AccountKey, PublicAddress};
 use mc_common::HashMap;
 use mc_crypto_keys::{
     CompressedRistrettoPublic, Ed25519Public, Ed25519Signature, RistrettoPrivate, RistrettoPublic,
 };
 use mc_transaction_core::{
-    account_keys::{AccountKey, PublicAddress},
     amount::Amount,
     encrypted_fog_hint::EncryptedFogHint,
     range::Range,
