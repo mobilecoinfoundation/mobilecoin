@@ -5,6 +5,7 @@
 use crate::{
     error::Error,
     monitor_store::{MonitorData, MonitorId, MonitorStore},
+    processed_block_store::ProcessedBlockStore,
     subaddress_store::{SubaddressId, SubaddressSPKId, SubaddressStore},
     utxo_store::{UtxoId, UtxoStore},
 };
@@ -36,6 +37,9 @@ pub struct Database {
     /// Utxo store.
     utxo_store: UtxoStore,
 
+    /// Processed block store.
+    processed_block_store: ProcessedBlockStore,
+
     /// Logger.
     logger: Logger,
 }
@@ -52,12 +56,14 @@ impl Database {
         let monitor_store = MonitorStore::new(env.clone(), logger.clone())?;
         let subaddress_store = SubaddressStore::new(env.clone(), logger.clone())?;
         let utxo_store = UtxoStore::new(env.clone(), logger.clone())?;
+        let processed_block_store = ProcessedBlockStore::new(env.clone(), logger.clone())?;
 
         Ok(Self {
             env,
             monitor_store,
             subaddress_store,
             utxo_store,
+            processed_block_store,
             logger,
         })
     }
@@ -197,6 +203,14 @@ impl Database {
         monitor_data.next_block += 1;
         self.monitor_store
             .set_data(&mut db_txn, monitor_id, &monitor_data)?;
+
+        // Update processed blocks store.
+        self.processed_block_store.block_processed(
+            &mut db_txn,
+            monitor_id,
+            block_num,
+            discovered_utxos,
+        )?;
 
         // Commit.
         db_txn.commit()?;
