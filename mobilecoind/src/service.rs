@@ -1057,6 +1057,13 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         Ok(response)
     }
 
+    fn get_processed_block_impl(
+        &mut self,
+        _request: mc_mobilecoind_api::GetProcessedBlockRequest,
+    ) -> Result<mc_mobilecoind_api::GetProcessedBlockResponse, RpcStatus> {
+        todo!();
+    }
+
     fn get_balance_impl(
         &mut self,
         request: mc_mobilecoind_api::GetBalanceRequest,
@@ -1233,6 +1240,7 @@ build_api! {
     get_block GetBlockRequest GetBlockResponse get_block_impl,
     get_tx_status_as_sender GetTxStatusAsSenderRequest GetTxStatusAsSenderResponse get_tx_status_as_sender_impl,
     get_tx_status_as_receiver GetTxStatusAsReceiverRequest GetTxStatusAsReceiverResponse get_tx_status_as_receiver_impl,
+    get_processed_block GetProcessedBlockRequest GetProcessedBlockResponse get_processed_block_impl,
     get_balance GetBalanceRequest GetBalanceResponse get_balance_impl,
     send_payment SendPaymentRequest SendPaymentResponse send_payment_impl,
     get_network_status Empty GetNetworkStatusResponse get_network_status_impl
@@ -1500,7 +1508,7 @@ mod test {
 
         assert_eq!(response.output_list.to_vec(), vec![]);
 
-        // Query wit hthe correct subaddress index.
+        // Query with the correct subaddress index.
         let mut request = mc_mobilecoind_api::GetUnspentTxOutListRequest::new();
         request.set_monitor_id(id.to_vec());
         request.set_subaddress_index(0);
@@ -1960,6 +1968,47 @@ mod test {
                 mc_mobilecoind_api::TxStatus::InvalidConfirmationNumber
             );
         }
+    }
+
+    #[test_with_logger]
+    fn test_get_processed_block(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        let account_key = AccountKey::random(&mut rng);
+        let data = MonitorData::new(
+            account_key.clone(),
+            0,  // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        // 1 known recipient, 3 random recipients and no monitors.
+        let (ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(
+                3,
+                &vec![account_key.default_subaddress()],
+                &vec![],
+                logger.clone(),
+                &mut rng,
+            );
+
+        // Insert into database.
+        let _id = mobilecoind_db.add_monitor(&data).unwrap();
+
+        // Allow the new monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Query the genesis block.
+        let mut request = mc_mobilecoind_api::GetProcessedBlockRequest::new();
+        request.set_block(0);
+
+        let response = client
+            .get_processed_block(&request)
+            .expect("failed to get processed block");
+
+        panic!("{:?}", response);
     }
 
     #[test_with_logger]
