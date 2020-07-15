@@ -45,7 +45,7 @@ impl InputCredentials {
     ) -> Result<Self, TxBuilderError> {
         debug_assert_eq!(ring.len(), membership_proofs.len());
 
-        if real_index > ring.len() {
+        if real_index > ring.len() || ring.is_empty() {
             return Err(TxBuilderError::InvalidRingSize);
         }
 
