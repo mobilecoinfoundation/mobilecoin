@@ -397,17 +397,13 @@ impl SCPNode {
                             total_broadcasts += 1;
                         }
 
-                        // See if we're done with the current slot
-                        let ext_vals: Vec<String> = {
-                            thread_local_node
-                                .lock()
-                                .expect("lock failed on node getting ext_vals in thread")
-                                .get_externalized_values(current_slot as SlotIndex)
-                        };
-
-                        if !ext_vals.is_empty() {
-                            // Stop proposing/nominating any values that we have externalized
-
+                        // See if we're done with the current slot.
+                        if let Some(ext_vals) = thread_local_node
+                            .lock()
+                            .expect("lock failed on node getting ext_vals in thread")
+                            .get_externalized_values(current_slot as SlotIndex)
+                        {
+                            // Stop proposing/nominating any values that we have externalized.
                             let externalized_values_as_set: HashSet<String> =
                                 ext_vals.iter().cloned().collect();
 

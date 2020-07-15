@@ -259,12 +259,8 @@ impl<V: Value, N: ScpNode<V>> ScpNode<V> for LoggingScpNode<V, N> {
         Ok(out_msg)
     }
 
-    fn get_externalized_values(&self, slot_index: SlotIndex) -> Vec<V> {
+    fn get_externalized_values(&self, slot_index: SlotIndex) -> Option<Vec<V>> {
         self.node.get_externalized_values(slot_index)
-    }
-
-    fn has_externalized_values(&self, slot_index: SlotIndex) -> bool {
-        self.node.has_externalized_values(slot_index)
     }
 
     fn process_timeouts(&mut self) -> Vec<Msg<V>> {

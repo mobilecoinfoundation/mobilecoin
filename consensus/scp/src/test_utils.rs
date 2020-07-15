@@ -10,6 +10,7 @@ use rand_hc::Hc128Rng as FixedRng;
 use std::{fmt, str::FromStr, sync::Arc};
 
 /// Error for transaction validation
+#[derive(Clone)]
 pub struct TransactionValidationError;
 impl fmt::Display for TransactionValidationError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

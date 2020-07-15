@@ -67,6 +67,7 @@ pub trait ScpSlot<V: Value>: Send {
 /// The SCP slot.
 // Note: The fields representing the state of the slot are marked with pub(crate) so that they
 // could be accessed by `SlotState`.
+#[derive(Clone)]
 pub struct Slot<V: Value, ValidationError: Display> {
     /// Current slot number.
     pub(crate) slot_index: SlotIndex,
