@@ -40,6 +40,8 @@ pub fn validate<R: RngCore + CryptoRng>(
 
     validate_ring_elements_are_sorted(&tx.prefix)?;
 
+    validate_inputs_are_sorted(&tx.prefix)?;
+
     validate_membership_proofs(&tx.prefix, &root_proofs)?;
 
     validate_signature(&tx, csprng)?;
@@ -132,7 +134,6 @@ fn validate_ring_elements_are_unique(tx_prefix: &TxPrefix) -> TransactionValidat
 }
 
 /// Elements in a ring must be sorted.
-#[allow(unused)]
 fn validate_ring_elements_are_sorted(tx_prefix: &TxPrefix) -> TransactionValidationResult<()> {
     for tx_in in &tx_prefix.inputs {
         if !tx_in
@@ -142,6 +143,19 @@ fn validate_ring_elements_are_sorted(tx_prefix: &TxPrefix) -> TransactionValidat
         {
             return Err(TransactionValidationError::UnsortedRingElements);
         }
+    }
+
+    Ok(())
+}
+
+/// Inputs must be sorted by the public key of the first ring element of each input.
+fn validate_inputs_are_sorted(tx_prefix: &TxPrefix) -> TransactionValidationResult<()> {
+    if !tx_prefix.inputs.windows(2).all(|w| {
+        !w[0].ring.is_empty()
+            && !w[1].ring.is_empty()
+            && w[0].ring[0].public_key < w[1].ring[0].public_key
+    }) {
+        return Err(TransactionValidationError::UnsortedInputs);
     }
 
     Ok(())
@@ -343,8 +357,8 @@ mod tests {
         validation::{
             error::TransactionValidationError,
             validate::{
-                validate_key_images_are_unique, validate_membership_proofs,
-                validate_number_of_inputs, validate_number_of_outputs,
+                validate_inputs_are_sorted, validate_key_images_are_unique,
+                validate_membership_proofs, validate_number_of_inputs, validate_number_of_outputs,
                 validate_outputs_public_keys_are_unique, validate_ring_elements_are_unique,
                 validate_ring_sizes, validate_signature, validate_tombstone,
                 validate_transaction_fee, MAX_TOMBSTONE_BLOCKS,
@@ -637,6 +651,29 @@ mod tests {
         assert_eq!(
             validate_ring_elements_are_sorted(&tx.prefix),
             Err(TransactionValidationError::UnsortedRingElements)
+        );
+    }
+
+    #[test]
+    /// validate_inputs_are_sorted should reject unsorted inputs.
+    fn test_validate_inputs_are_sorted() {
+        let (tx, _ledger) = create_test_tx();
+
+        // Add a second input to the transaction.
+        let mut tx_prefix = tx.prefix.clone();
+        tx_prefix.inputs.push(tx.prefix.inputs[0].clone());
+
+        // By removing the first ring element of the second input we ensure the inputs are
+        // different, but remain sorted (since the ring elements are sorted).
+        tx_prefix.inputs[1].ring.remove(0);
+
+        assert_eq!(validate_inputs_are_sorted(&tx_prefix), Ok(()));
+
+        // Change the ordering of inputs.
+        tx_prefix.inputs.swap(0, 1);
+        assert_eq!(
+            validate_inputs_are_sorted(&tx_prefix),
+            Err(TransactionValidationError::UnsortedInputs)
         );
     }
 
