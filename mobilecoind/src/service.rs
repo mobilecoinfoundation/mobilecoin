@@ -1059,9 +1059,46 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
 
     fn get_processed_block_impl(
         &mut self,
-        _request: mc_mobilecoind_api::GetProcessedBlockRequest,
+        request: mc_mobilecoind_api::GetProcessedBlockRequest,
     ) -> Result<mc_mobilecoind_api::GetProcessedBlockResponse, RpcStatus> {
-        todo!();
+        // Get MonitorId from from the GRPC request.
+        let monitor_id = MonitorId::try_from(&request.monitor_id)
+            .map_err(|err| rpc_internal_error("monitor_id.try_from.bytes", err, &self.logger))?;
+
+        // Get all processed block data for the requested block.
+        let processed_tx_outs = self
+            .mobilecoind_db
+            .get_processed_block(&monitor_id, request.block)
+            .map_err(|err| {
+                rpc_internal_error("mobilecoind_db.get_processed_block", err, &self.logger)
+            })?
+            .iter()
+            .map(|src| {
+                let mut dst = mc_mobilecoind_api::ProcessedTxOut::new();
+                dst.set_monitor_id(monitor_id.to_vec());
+                dst.set_subaddress_index(src.subaddress_index);
+                dst.set_public_key((&src.public_key).into());
+                dst.set_key_image((&src.key_image).into());
+                dst.set_value(src.value);
+                dst
+            })
+            .collect();
+
+        // Get all key images for the requested block.
+        let key_images = self
+            .ledger_db
+            .get_block_contents(request.block)
+            .map_err(|err| rpc_internal_error("ledger_db.get_block_contents", err, &self.logger))?
+            .key_images
+            .iter()
+            .map(mc_consensus_api::external::KeyImage::from)
+            .collect();
+
+        // Return response
+        let mut response = mc_mobilecoind_api::GetProcessedBlockResponse::new();
+        response.set_tx_outs(RepeatedField::from_vec(processed_tx_outs));
+        response.set_spent_key_images(RepeatedField::from_vec(key_images));
+        Ok(response)
     }
 
     fn get_balance_impl(
@@ -1995,13 +2032,14 @@ mod test {
             );
 
         // Insert into database.
-        let _id = mobilecoind_db.add_monitor(&data).unwrap();
+        let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
 
         // Allow the new monitor to process the ledger.
         wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
 
         // Query the genesis block.
         let mut request = mc_mobilecoind_api::GetProcessedBlockRequest::new();
+        request.set_monitor_id(monitor_id.to_vec());
         request.set_block(0);
 
         let response = client

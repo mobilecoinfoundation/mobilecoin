@@ -5,7 +5,7 @@
 //!   appeared in the given block number and belong to a given monitor id.
 
 use crate::{error::Error, monitor_store::MonitorId, utxo_store::UnspentTxOut};
-use lmdb::{Database, DatabaseFlags, Environment, RwTransaction, WriteFlags};
+use lmdb::{Cursor, Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
 use mc_common::logger::Logger;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::ring_signature::KeyImage;
@@ -128,6 +128,31 @@ impl ProcessedBlockStore {
             processed_block_key_to_processed_tx_outs,
             logger,
         })
+    }
+
+    /// Get processed block information for a given (monitor id, block number).
+    pub fn get_processed_block(
+        &self,
+        db_txn: &impl Transaction,
+        monitor_id: &MonitorId,
+        block_index: u64,
+    ) -> Result<Vec<ProcessedTxOut>, Error> {
+        let mut cursor = db_txn.open_ro_cursor(self.processed_block_key_to_processed_tx_outs)?;
+
+        let key = ProcessedBlockKey::new(monitor_id, block_index);
+        let key_bytes = key.to_vec();
+
+        Ok(cursor
+            .iter_dup_of(&key_bytes)
+            .map(|result| {
+                result.map_err(Error::from).and_then(|(db_key, db_value)| {
+                    // Sanity check.
+                    assert_eq!(key_bytes, db_key);
+
+                    Ok(mc_util_serial::decode(db_value)?)
+                })
+            })
+            .collect::<Result<Vec<_>, Error>>()?)
     }
 
     /// Feed data processed from a given block.

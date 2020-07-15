@@ -5,7 +5,7 @@
 use crate::{
     error::Error,
     monitor_store::{MonitorData, MonitorId, MonitorStore},
-    processed_block_store::ProcessedBlockStore,
+    processed_block_store::{ProcessedBlockStore, ProcessedTxOut},
     subaddress_store::{SubaddressId, SubaddressSPKId, SubaddressStore},
     utxo_store::{UtxoId, UtxoStore},
 };
@@ -236,6 +236,30 @@ impl Database {
             )
         };
         Ok(())
+    }
+
+    /// Get processed block information for a given (monitor id, block number).
+    pub fn get_processed_block(
+        &self,
+        monitor_id: &MonitorId,
+        block_num: u64,
+    ) -> Result<Vec<ProcessedTxOut>, Error> {
+        let db_txn = self.env.begin_ro_txn()?;
+
+        // Get monitor data to see if the monitor has synced this block.
+        let monitor_data = self.monitor_store.get_data(&db_txn, monitor_id)?;
+        if block_num < monitor_data.first_block {
+            return Err(Error::BlockIdTooSmall(block_num, monitor_data.first_block));
+        }
+        if block_num >= monitor_data.next_block {
+            return Err(Error::BlockNotYetProcessed(
+                block_num,
+                monitor_data.next_block,
+            ));
+        }
+
+        self.processed_block_store
+            .get_processed_block(&db_txn, monitor_id, block_num)
     }
 }
 

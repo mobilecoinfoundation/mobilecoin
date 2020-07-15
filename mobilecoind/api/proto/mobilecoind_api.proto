@@ -510,10 +510,17 @@ message GetTxStatusAsReceiverResponse {
 
 // Get the contents of a processed block.
 message GetProcessedBlockRequest {
-    uint64 block = 1;
+    // Monitor id to query data for.
+    bytes monitor_id = 1;
+
+    // Block number to query.
+    uint64 block = 2;
 }
 message GetProcessedBlockResponse {
+    // Processed tx output information that belongs to the requested monitor_id/block.
     repeated ProcessedTxOut tx_outs = 1;
+
+    // All key images in the requested block (not monitor_id-specific).
     repeated external.KeyImage spent_key_images = 2;
 }
 

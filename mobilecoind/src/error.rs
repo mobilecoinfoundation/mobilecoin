@@ -91,6 +91,18 @@ pub enum Error {
 
     #[fail(display = "The ledger does not contain enough tx outs for rings")]
     InsufficientTxOuts,
+
+    #[fail(
+        display = "Block index {} is lower than the monitor's first block {}",
+        _0, _1
+    )]
+    BlockIdTooSmall(u64, u64),
+
+    #[fail(
+        display = "Block index {} is equal or bigger than the monitor's next block {}",
+        _0, _1
+    )]
+    BlockNotYetProcessed(u64, u64),
 }
 
 impl From<RetryError<ConnectionError>> for Error {
