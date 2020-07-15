@@ -16,7 +16,7 @@ use mockall::*;
 use std::{collections::BTreeSet, fmt::Display, time::Duration};
 
 /// Max number of externalized slots to store.
-const MAX_EXTERNALIZED_SLOTS: usize = 10;
+pub const MAX_EXTERNALIZED_SLOTS: usize = 10;
 
 /// A node participates in federated voting.
 pub struct Node<V: Value, ValidationError: Clone + Display> {
@@ -225,18 +225,16 @@ impl<V: Value, ValidationError: Display + 'static> ScpNode<V> for Node<V, Valida
                     Ok(Some(msg))
                 }
             }
+        } else if let Some(slot) = self
+            .externalized_slots
+            .iter_mut()
+            .find(|slot| slot.get_index() == msg.slot_index)
+        {
+            // The message is for a previous, externalized slot.
+            slot.handle(msg)
         } else {
-            if let Some(slot) = self
-                .externalized_slots
-                .iter_mut()
-                .find(|slot| slot.get_index() == msg.slot_index)
-            {
-                // The message is for a previous, externalized slot.
-                return slot.handle(msg);
-            } else {
-                // This node is no longer maintaining a slot for the message.
-                Ok(None)
-            }
+            // This node is no longer maintaining a slot for the message.
+            Ok(None)
         }
     }
 
@@ -252,12 +250,12 @@ impl<V: Value, ValidationError: Display + 'static> ScpNode<V> for Node<V, Valida
                 .expect("Previous slots must have a message")
                 .topic
             {
-                return Some(payload.C.X.clone());
+                Some(payload.C.X)
             } else {
                 panic!("Previous slot has not externalized?");
             }
         } else {
-            return None;
+            None
         }
     }
 
