@@ -495,7 +495,7 @@ mod test {
 
             assert_eq!(vec![ProcessedTxOut::from(&utxos[0])], processed_tx_outs);
 
-            // Second block - origianl monitor id
+            // Second block - original monitor id
             let processed_tx_outs = store
                 .get_processed_block(&db_txn, &monitor_id, 1)
                 .expect("get_processed_block failed");
