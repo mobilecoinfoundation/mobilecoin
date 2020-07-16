@@ -3237,6 +3237,16 @@ mod test {
         let response = client.get_balance(&request).unwrap();
         assert_eq!(response.balance, orig_balance - first_utxo.value);
 
+        // Verify we have processed block information for this monitor.
+        let mut request = mc_mobilecoind_api::GetProcessedBlockRequest::new();
+        request.set_monitor_id(monitor_id.to_vec());
+        request.set_block(0);
+
+        let response = client
+            .get_processed_block(&request)
+            .expect("Failed getting processed block");
+        assert_eq!(response.get_tx_outs().len(), 1);
+
         // Remove the monitor.
         let mut request = mc_mobilecoind_api::RemoveMonitorRequest::new();
         request.set_monitor_id(monitor_id.to_vec());
@@ -3247,6 +3257,13 @@ mod test {
         // Check that no monitors remain.
         let monitors_map = mobilecoind_db.get_monitor_map().unwrap();
         assert_eq!(0, monitors_map.len());
+
+        // Verify we no longer have processed block information for this monitor.
+        let mut request = mc_mobilecoind_api::GetProcessedBlockRequest::new();
+        request.set_monitor_id(monitor_id.to_vec());
+        request.set_block(0);
+
+        assert!(client.get_processed_block(&request).is_err());
 
         // Re-add the monitor.
         let mut request = mc_mobilecoind_api::AddMonitorRequest::new();
@@ -3260,5 +3277,15 @@ mod test {
 
         // Allow the new monitor to process the ledger.
         wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Verify we have processed block information for this monitor.
+        let mut request = mc_mobilecoind_api::GetProcessedBlockRequest::new();
+        request.set_monitor_id(monitor_id.to_vec());
+        request.set_block(0);
+
+        let response = client
+            .get_processed_block(&request)
+            .expect("Failed getting processed block");
+        assert_eq!(response.get_tx_outs().len(), 1);
     }
 }

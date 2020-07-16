@@ -96,6 +96,8 @@ impl Database {
             self.utxo_store.remove_utxos(&mut db_txn, id, index)?;
         }
 
+        self.processed_block_store.remove(&mut db_txn, id)?;
+
         self.monitor_store.remove(&mut db_txn, id)?;
 
         db_txn.commit()?;

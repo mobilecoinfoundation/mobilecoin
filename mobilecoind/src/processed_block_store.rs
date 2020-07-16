@@ -155,6 +155,29 @@ impl ProcessedBlockStore {
             .collect::<Result<Vec<_>, Error>>()?)
     }
 
+    /// Remove the data associated with a given monitor id.
+    pub fn remove<'env>(
+        &self,
+        db_txn: &mut RwTransaction<'env>,
+        monitor_id: &MonitorId,
+    ) -> Result<(), Error> {
+        let start_key = ProcessedBlockKey::new(monitor_id, 0);
+        let start_key_bytes = start_key.to_vec();
+
+        let mut cursor = db_txn.open_rw_cursor(self.processed_block_key_to_processed_tx_outs)?;
+
+        for (db_key, _db_value) in cursor.iter_from(&start_key_bytes).filter_map(|r| r.ok()) {
+            let key = ProcessedBlockKey::try_from(db_key)?;
+            if key.monitor_id == *monitor_id {
+                cursor.del(WriteFlags::NO_DUP_DATA)?;
+            } else {
+                break;
+            }
+        }
+
+        Ok(())
+    }
+
     /// Feed data processed from a given block.
     pub fn block_processed<'env>(
         &self,
