@@ -11,12 +11,14 @@ use sha3::Digest;
 mod hasher_builder;
 mod node_id;
 mod responder_id;
+mod timestamp;
 
 pub mod lru;
 pub use lru::LruCache;
 
 pub use node_id::NodeID;
 pub use responder_id::{ResponderId, ResponderIdParseError};
+pub use timestamp::TimestampResultCode;
 
 // A HashMap that replaces the default hasher with an implementation that relies on mcrand for
 // randomess.

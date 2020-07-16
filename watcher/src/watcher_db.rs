@@ -6,12 +6,11 @@ use crate::error::WatcherDBError;
 
 use mc_common::{
     logger::{log, Logger},
-    HashMap,
+    HashMap, TimestampResultCode,
 };
 use mc_transaction_core::BlockSignature;
 use mc_util_serial::{decode, encode, Message};
 
-use displaydoc::Display;
 use lmdb::{Cursor, Database, DatabaseFlags, Environment, RoTransaction, Transaction, WriteFlags};
 use std::{convert::TryInto, path::PathBuf, str::FromStr, sync::Arc};
 use url::Url;
@@ -45,19 +44,6 @@ pub struct BlockSignatureData {
     /// The block index.
     #[prost(message, required, tag = "3")]
     pub block_signature: BlockSignature,
-}
-
-/// Result code communicates expectations about whether the watcher is up-to-date and the
-/// timestamp should be queried again later.
-#[derive(PartialEq, Eq, Debug, Display)]
-#[repr(u32)]
-pub enum WatcherTimestampResultCode {
-    /// A timestamp was found
-    TimestampFound = 1,
-    /// The timestamp was not found and the watcher is behind.
-    WatcherBehind,
-    /// The timestamp cannot be known unless restarted with a different set of watched nodes.
-    Unavailable,
 }
 
 #[derive(Clone)]
@@ -238,17 +224,17 @@ impl WatcherDB {
     pub fn get_block_timestamp(
         &self,
         block_index: u64,
-    ) -> Result<(u64, WatcherTimestampResultCode), WatcherDBError> {
+    ) -> Result<(u64, TimestampResultCode), WatcherDBError> {
         let sigs = self.get_block_signatures(block_index)?;
         match sigs.iter().map(|s| s.block_signature.signed_at()).min() {
-            Some(earliest) => Ok((earliest, WatcherTimestampResultCode::TimestampFound)),
+            Some(earliest) => Ok((earliest, TimestampResultCode::TimestampFound)),
             None => {
                 // Check whether we are synced for all watched URLs
                 let highest_synced = self.highest_synced_block()?;
                 if highest_synced < block_index {
-                    Ok((u64::MAX, WatcherTimestampResultCode::WatcherBehind))
+                    Ok((u64::MAX, TimestampResultCode::WatcherBehind))
                 } else {
-                    Ok((u64::MAX, WatcherTimestampResultCode::Unavailable))
+                    Ok((u64::MAX, TimestampResultCode::Unavailable))
                 }
             }
         }
@@ -607,14 +593,14 @@ mod test {
             // Timestamp for 1st block should be the minimum of the available timestamps
             assert_eq!(
                 watcher_db.get_block_timestamp(1).unwrap(),
-                (1594679718, WatcherTimestampResultCode::TimestampFound)
+                (1594679718, TimestampResultCode::TimestampFound)
             );
 
             assert_eq!(watcher_db.highest_synced_block().unwrap(), 1);
             // Timestamp does not exist for block 2, but we are not yet fully synced
             assert_eq!(
                 watcher_db.get_block_timestamp(2).unwrap(),
-                (u64::MAX, WatcherTimestampResultCode::WatcherBehind)
+                (u64::MAX, TimestampResultCode::WatcherBehind)
             );
 
             watcher_db.update_last_synced(&urls[0], 2).unwrap();
@@ -624,7 +610,7 @@ mod test {
             // We are fully synced,
             assert_eq!(
                 watcher_db.get_block_timestamp(2).unwrap(),
-                (u64::MAX, WatcherTimestampResultCode::Unavailable)
+                (u64::MAX, TimestampResultCode::Unavailable)
             );
         });
     }

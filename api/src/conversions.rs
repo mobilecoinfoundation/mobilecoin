@@ -900,6 +900,25 @@ impl TryFrom<&external::PublicAddress> for PublicAddress {
     }
 }
 
+impl TryFrom<u32> for external::TimestampResultCode {
+    type Error = ();
+    fn try_from(src: u32) -> Result<external::TimestampResultCode, ()> {
+        if src == external::TimestampResultCode::TimestampFound as u32 {
+            Ok(external::TimestampResultCode::TimestampFound)
+        } else if src == external::TimestampResultCode::WatcherBehind as u32 {
+            Ok(external::TimestampResultCode::WatcherBehind)
+        } else if src == external::TimestampResultCode::Unavailable as u32 {
+            Ok(external::TimestampResultCode::Unavailable)
+        } else if src == external::TimestampResultCode::WatcherDatabaseError as u32 {
+            Ok(external::TimestampResultCode::WatcherDatabaseError)
+        } else if src == external::TimestampResultCode::BlockIndexOutOfBounds as u32 {
+            Ok(external::TimestampResultCode::BlockIndexOutOfBounds)
+        } else {
+            Err(())
+        }
+    }
+}
+
 #[cfg(test)]
 mod conversion_tests {
     use super::*;

@@ -9,6 +9,4 @@ pub mod config;
 pub mod watcher;
 pub mod watcher_db;
 
-pub use watcher_db::WatcherTimestampResultCode;
-
 mod error;
