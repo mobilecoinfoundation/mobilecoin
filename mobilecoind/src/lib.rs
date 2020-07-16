@@ -13,6 +13,7 @@ mod conversions;
 mod database_key;
 mod error;
 mod monitor_store;
+mod processed_block_store;
 mod subaddress_store;
 mod sync;
 mod utxo_store;

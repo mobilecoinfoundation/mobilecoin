@@ -85,10 +85,7 @@ impl WatcherDB {
                 .open(path.as_ref())?,
         );
 
-        env.create_db(
-            Some(BLOCK_SIGNATURES_DB_NAME),
-            DatabaseFlags::DUP_SORT | DatabaseFlags::DUP_FIXED,
-        )?;
+        env.create_db(Some(BLOCK_SIGNATURES_DB_NAME), DatabaseFlags::DUP_SORT)?;
         env.create_db(Some(LAST_SYNCED_DB_NAME), DatabaseFlags::empty())?;
 
         Ok(())

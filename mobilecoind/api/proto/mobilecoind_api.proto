@@ -46,6 +46,7 @@ service MobilecoindAPI {
     rpc GetBlock (GetBlockRequest) returns (GetBlockResponse) {}
     rpc GetTxStatusAsSender (GetTxStatusAsSenderRequest) returns (GetTxStatusAsSenderResponse) {}
     rpc GetTxStatusAsReceiver (GetTxStatusAsReceiverRequest) returns (GetTxStatusAsReceiverResponse) {}
+    rpc GetProcessedBlock (GetProcessedBlockRequest) returns (GetProcessedBlockResponse) {}
 
     // Convenience calls
     rpc GetBalance (GetBalanceRequest) returns (GetBalanceResponse) {}
@@ -186,6 +187,23 @@ message MonitorStatus {
     string name = 6;
 }
 
+// Structure used to report tx outs received in a given processed block.
+message ProcessedTxOut {
+    // The monitor id that received the transaction.
+    bytes monitor_id = 1;
+
+    // The subaddress the transaction was sent to.
+    uint64 subaddress_index = 2;
+
+    // The public key of the received TxOut.
+    external.CompressedRistretto public_key = 3;
+
+    // The key image of the TxOut.
+    external.KeyImage key_image = 4;
+
+    // The value of the TxOut.
+    uint64 value = 5;
+}
 
 //*********************************
 //*
@@ -488,6 +506,22 @@ message GetTxStatusAsReceiverRequest {
 }
 message GetTxStatusAsReceiverResponse {
     TxStatus status = 1;
+}
+
+// Get the contents of a processed block.
+message GetProcessedBlockRequest {
+    // Monitor id to query data for.
+    bytes monitor_id = 1;
+
+    // Block number to query.
+    uint64 block = 2;
+}
+message GetProcessedBlockResponse {
+    // Processed tx output information that belongs to the requested monitor_id/block.
+    repeated ProcessedTxOut tx_outs = 1;
+
+    // All key images in the requested block (not monitor_id-specific).
+    repeated external.KeyImage spent_key_images = 2;
 }
 
 //

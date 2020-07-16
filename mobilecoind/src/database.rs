@@ -5,6 +5,7 @@
 use crate::{
     error::Error,
     monitor_store::{MonitorData, MonitorId, MonitorStore},
+    processed_block_store::{ProcessedBlockStore, ProcessedTxOut},
     subaddress_store::{SubaddressId, SubaddressSPKId, SubaddressStore},
     utxo_store::{UtxoId, UtxoStore},
 };
@@ -36,6 +37,9 @@ pub struct Database {
     /// Utxo store.
     utxo_store: UtxoStore,
 
+    /// Processed block store.
+    processed_block_store: ProcessedBlockStore,
+
     /// Logger.
     logger: Logger,
 }
@@ -52,12 +56,14 @@ impl Database {
         let monitor_store = MonitorStore::new(env.clone(), logger.clone())?;
         let subaddress_store = SubaddressStore::new(env.clone(), logger.clone())?;
         let utxo_store = UtxoStore::new(env.clone(), logger.clone())?;
+        let processed_block_store = ProcessedBlockStore::new(env.clone(), logger.clone())?;
 
         Ok(Self {
             env,
             monitor_store,
             subaddress_store,
             utxo_store,
+            processed_block_store,
             logger,
         })
     }
@@ -89,6 +95,8 @@ impl Database {
             self.subaddress_store.delete(&mut db_txn, &data, index)?;
             self.utxo_store.remove_utxos(&mut db_txn, id, index)?;
         }
+
+        self.processed_block_store.remove(&mut db_txn, id)?;
 
         self.monitor_store.remove(&mut db_txn, id)?;
 
@@ -198,6 +206,14 @@ impl Database {
         self.monitor_store
             .set_data(&mut db_txn, monitor_id, &monitor_data)?;
 
+        // Update processed blocks store.
+        self.processed_block_store.block_processed(
+            &mut db_txn,
+            monitor_id,
+            block_num,
+            discovered_utxos,
+        )?;
+
         // Commit.
         db_txn.commit()?;
 
@@ -222,6 +238,33 @@ impl Database {
             )
         };
         Ok(())
+    }
+
+    /// Get processed block information for a given (monitor id, block number).
+    pub fn get_processed_block(
+        &self,
+        monitor_id: &MonitorId,
+        block_num: u64,
+    ) -> Result<Vec<ProcessedTxOut>, Error> {
+        let db_txn = self.env.begin_ro_txn()?;
+
+        // Get monitor data to see if the monitor has synced this block.
+        let monitor_data = self.monitor_store.get_data(&db_txn, monitor_id)?;
+        if block_num < monitor_data.first_block {
+            return Err(Error::BlockIndexTooSmall(
+                block_num,
+                monitor_data.first_block,
+            ));
+        }
+        if block_num >= monitor_data.next_block {
+            return Err(Error::BlockNotYetProcessed(
+                block_num,
+                monitor_data.next_block,
+            ));
+        }
+
+        self.processed_block_store
+            .get_processed_block(&db_txn, monitor_id, block_num)
     }
 }
 
