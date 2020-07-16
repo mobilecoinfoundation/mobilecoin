@@ -40,9 +40,9 @@ commands:
       - run:
           name: Configure cargo to use git cli
           command: |
-            mkdir -p .cargo
-            echo '[net]' >> .cargo/config
-            echo 'git-fetch-with-cli = true' >> .cargo/config
+            mkdir -p ~/.cargo
+            echo '[net]' >> ~/.cargo/config
+            echo 'git-fetch-with-cli = true' >> ~/.cargo/config
             if [ -f ~/.gitconfig ]; then
               sed -i 's/github/git-non-exist-hub/g' ~/.gitconfig # https://github.com/rust-lang/cargo/issues/3900
             fi
@@ -116,9 +116,6 @@ commands:
       - run:
           name: Checking dirty git
           command: |
-            # We expect this file to be modified (we modified it in the `env_setup` step)
-            git update-index --assume-unchanged .cargo/config
-
             if [[ -n $(git status --porcelain) ]]; then
               echo "repo is dirty"
               git status
