@@ -11,6 +11,11 @@ defaults:
     SKIP_SLOW_TESTS: 1
     CARGO_INCREMENTAL: 0
 
+    # sccache config
+    SCCACHE_IDLE_TIMEOUT: 1200
+    SCCACHE_CACHE_SIZE: 1G
+    SCCACHE_ERROR_LOG: /tmp/sccache.log
+
 executors:
   build-executor:
     docker:
@@ -54,9 +59,6 @@ commands:
           name: Enable sccache
           command: |
             echo 'export RUSTC_WRAPPER=sccache' >> $BASH_ENV
-            echo 'export SCCACHE_IDLE_TIMEOUT=1200' >> $BASH_ENV
-            echo 'export SCCACHE_CACHE_SIZE=1G' >> $BASH_ENV
-            echo 'export SCCACHE_ERROR_LOG=/tmp/sccache.log' >> $BASH_ENV
 
 
   restore-sccache-cache:
