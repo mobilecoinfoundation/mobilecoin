@@ -2012,11 +2012,12 @@ mod test {
         let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
 
         let account_key = AccountKey::random(&mut rng);
+        // Note: we skip the first block to test what happens when we try and query a block that will never get processed.
         let data = MonitorData::new(
             account_key.clone(),
             0,  // first_subaddress
             20, // num_subaddresses
-            0,  // first_block
+            1,  // first_block
             "", // name
         )
         .unwrap();
@@ -2037,16 +2038,105 @@ mod test {
         // Allow the new monitor to process the ledger.
         wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
 
-        // Query the genesis block.
+        // Verify the data we got matches what we expected. This assumes knowledge about how the
+        // test ledger is constructed by the test utils.
+        let num_blocks = ledger_db.num_blocks().expect("failed getting num blocks");
+        let account_tx_outs: Vec<TxOut> = (0..num_blocks)
+            .map(|idx| {
+                let block_contents = ledger_db.get_block_contents(idx as u64).unwrap();
+                // We grab the 4th tx out in each block since the test ledger had 3 random
+                // recipients, followed by our known recipient.
+                // See the call to `get_testing_environment` at the beginning of the test.
+                block_contents.outputs[3].clone()
+            })
+            .collect();
+
+        let expected_utxos: Vec<UnspentTxOut> = account_tx_outs
+            .iter()
+            .map(|tx_out| {
+                // Calculate the key image for this tx out.
+                let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
+                let onetime_private_key = recover_onetime_private_key(
+                    &tx_public_key,
+                    account_key.view_private_key(),
+                    &account_key.subaddress_spend_private(0),
+                );
+                let key_image = KeyImage::from(&onetime_private_key);
+
+                // Craft the expected UnspentTxOut
+                UnspentTxOut {
+                    tx_out: tx_out.clone(),
+                    subaddress_index: 0,
+                    key_image,
+                    value: test_utils::PER_RECIPIENT_AMOUNT,
+                    attempted_spend_height: 0,
+                    attempted_spend_tombstone: 0,
+                }
+            })
+            .collect();
+
+        // Query a bunch of blocks and verify the data.
+        for block_index in 1..num_blocks {
+            let mut request = mc_mobilecoind_api::GetProcessedBlockRequest::new();
+            request.set_monitor_id(monitor_id.to_vec());
+            request.set_block(block_index);
+
+            let response = client
+                .get_processed_block(&request)
+                .expect("failed to get processed block");
+
+            // Key images should match.
+            let expected_key_images = ledger_db
+                .get_block_contents(request.block)
+                .expect("failed getting block contents")
+                .key_images;
+            let key_images: Vec<KeyImage> = response
+                .get_spent_key_images()
+                .iter()
+                .map(|ki| KeyImage::try_from(ki).expect("failed converting key image"))
+                .collect();
+            assert_eq!(expected_key_images, key_images);
+
+            // We expect one utxo per block for our monitor.
+            let tx_outs = response.get_tx_outs();
+            assert_eq!(tx_outs.len(), 1);
+            let tx_out = &tx_outs[0];
+
+            let expected_utxo = &expected_utxos[block_index as usize];
+
+            assert_eq!(tx_out.get_monitor_id().to_vec(), monitor_id.to_vec());
+            assert_eq!(
+                tx_out.get_subaddress_index(),
+                expected_utxo.subaddress_index
+            );
+            assert_eq!(
+                tx_out.get_public_key(),
+                &(&expected_utxo.tx_out.public_key).into(),
+            );
+            assert_eq!(tx_out.get_key_image(), &(&expected_utxo.key_image).into());
+            assert_eq!(tx_out.value, expected_utxo.value);
+        }
+
+        // Query a block that will never get processed since its before the monitor's first block.
         let mut request = mc_mobilecoind_api::GetProcessedBlockRequest::new();
         request.set_monitor_id(monitor_id.to_vec());
         request.set_block(0);
 
-        let response = client
-            .get_processed_block(&request)
-            .expect("failed to get processed block");
+        assert!(client.get_processed_block(&request).is_err());
 
-        panic!("{:?}", response);
+        // Query a block that hasn't been processed yet.
+        let mut request = mc_mobilecoind_api::GetProcessedBlockRequest::new();
+        request.set_monitor_id(monitor_id.to_vec());
+        request.set_block(num_blocks);
+
+        assert!(client.get_processed_block(&request).is_err());
+
+        // Query with an unknown monitor id.
+        let mut request = mc_mobilecoind_api::GetProcessedBlockRequest::new();
+        request.set_monitor_id(vec![1; 32]);
+        request.set_block(1);
+
+        assert!(client.get_processed_block(&request).is_err());
     }
 
     #[test_with_logger]
