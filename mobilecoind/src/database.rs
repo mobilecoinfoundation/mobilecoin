@@ -251,7 +251,10 @@ impl Database {
         // Get monitor data to see if the monitor has synced this block.
         let monitor_data = self.monitor_store.get_data(&db_txn, monitor_id)?;
         if block_num < monitor_data.first_block {
-            return Err(Error::BlockIdTooSmall(block_num, monitor_data.first_block));
+            return Err(Error::BlockIndexTooSmall(
+                block_num,
+                monitor_data.first_block,
+            ));
         }
         if block_num >= monitor_data.next_block {
             return Err(Error::BlockNotYetProcessed(

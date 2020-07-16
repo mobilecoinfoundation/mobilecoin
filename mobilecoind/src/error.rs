@@ -96,7 +96,7 @@ pub enum Error {
         display = "Block index {} is lower than the monitor's first block {}",
         _0, _1
     )]
-    BlockIdTooSmall(u64, u64),
+    BlockIndexTooSmall(u64, u64),
 
     #[fail(
         display = "Block index {} is equal or bigger than the monitor's next block {}",
