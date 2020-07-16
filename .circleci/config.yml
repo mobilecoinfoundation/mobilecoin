@@ -9,6 +9,7 @@ defaults:
     SGX_MODE: SW
     RUST_BACKTRACE: 1
     SKIP_SLOW_TESTS: 1
+    CARGO_INCREMENTAL: 0
 
 executors:
   build-executor:
