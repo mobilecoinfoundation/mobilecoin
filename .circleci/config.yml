@@ -59,6 +59,8 @@ commands:
           name: Enable sccache
           command: |
             echo 'export RUSTC_WRAPPER=sccache' >> $BASH_ENV
+            echo 'export CMAKE_C_COMPILER_LAUNCHER=sccache' >> $BASH_ENV
+            echo 'export CMAKE_CXX_COMPILER_LAUNCHER=sccache' >> $BASH_ENV
 
 
   restore-sccache-cache:
