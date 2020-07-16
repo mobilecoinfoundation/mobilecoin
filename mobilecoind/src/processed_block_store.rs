@@ -203,3 +203,318 @@ impl ProcessedBlockStore {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::{
+        monitor_store::MonitorData,
+        test_utils::{get_test_databases, PER_RECIPIENT_AMOUNT},
+    };
+    use mc_account_keys::AccountKey;
+    use mc_common::{
+        logger::{test_with_logger, Logger},
+        HashSet,
+    };
+    use mc_crypto_keys::RistrettoPublic;
+    use mc_crypto_rand::{CryptoRng, RngCore};
+    use mc_ledger_db::{Ledger, LedgerDB};
+    use mc_transaction_core::{onetime_keys::recover_onetime_private_key, tx::TxOut};
+    use rand::{rngs::StdRng, SeedableRng};
+    use std::iter::FromIterator;
+    use tempdir::TempDir;
+
+    const TEST_SUBADDRESS: u64 = 10;
+
+    fn setup_test_processed_block_store(
+        mut rng: &mut (impl CryptoRng + RngCore),
+        logger: &Logger,
+    ) -> (LedgerDB, ProcessedBlockStore, AccountKey, Vec<UnspentTxOut>) {
+        let account_key = AccountKey::random(&mut rng);
+
+        // Set up a db with a known recipient, 3 random recipients and 10 blocks.
+        let (ledger_db, _mobilecoind_db) = get_test_databases(
+            3,
+            &vec![account_key.subaddress(TEST_SUBADDRESS)],
+            10,
+            logger.clone(),
+            &mut rng,
+        );
+
+        // Get all utxos belonging to the test account. This assumes knowledge about how the test
+        // ledger is constructed by the test utils.
+        let num_blocks = ledger_db.num_blocks().expect("failed getting num blocks");
+        let account_tx_outs: Vec<TxOut> = (0..num_blocks)
+            .map(|idx| {
+                let block_contents = ledger_db.get_block_contents(idx as u64).unwrap();
+                // We grab the 4th tx out in each block since the test ledger had 3 random
+                // recipients, followed by our known recipient.
+                // See the call to `get_testing_environment` at the beginning of the test.
+                block_contents.outputs[3].clone()
+            })
+            .collect();
+
+        let account_utxos: Vec<UnspentTxOut> = account_tx_outs
+            .iter()
+            .map(|tx_out| {
+                // Calculate the key image for this tx out.
+                let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
+                let onetime_private_key = recover_onetime_private_key(
+                    &tx_public_key,
+                    account_key.view_private_key(),
+                    &account_key.subaddress_spend_private(TEST_SUBADDRESS),
+                );
+                let key_image = KeyImage::from(&onetime_private_key);
+
+                // Craft the expected UnspentTxOut
+                UnspentTxOut {
+                    tx_out: tx_out.clone(),
+                    subaddress_index: TEST_SUBADDRESS,
+                    key_image,
+                    value: PER_RECIPIENT_AMOUNT,
+                    attempted_spend_height: 0,
+                    attempted_spend_tombstone: 0,
+                }
+            })
+            .collect();
+
+        // The instance to test.
+        let db_tmp =
+            TempDir::new("utxo_store_db").expect("Could not make tempdir for utxo store db");
+        let db_path = db_tmp
+            .path()
+            .to_str()
+            .expect("Could not get path as string");
+
+        let env = Arc::new(
+            Environment::new()
+                .set_max_dbs(10)
+                .set_map_size(10000000)
+                .open(db_path.as_ref())
+                .unwrap(),
+        );
+
+        let processed_block_store = ProcessedBlockStore::new(env, logger.clone()).unwrap();
+
+        // Return
+        (ledger_db, processed_block_store, account_key, account_utxos)
+    }
+
+    // ProcessedBlockStore basic functionality tests
+    #[test_with_logger]
+    fn test_processed_block_store(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+        let (ledger_db, store, account, utxos) =
+            setup_test_processed_block_store(&mut rng, &logger);
+
+        let num_blocks = ledger_db
+            .num_blocks()
+            .expect("failed getting number of blocks in ledger");
+        assert_eq!(num_blocks, utxos.len() as u64);
+
+        // Create a monitor id for our account.
+        let monitor_data = MonitorData::new(
+            account.clone(),
+            0,  // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .expect("failed to create data");
+
+        let monitor_id = MonitorId::from(&monitor_data);
+
+        // Initially, we should have no data for any of our blocks.
+        {
+            let db_txn = store.env.begin_ro_txn().unwrap();
+            for block_index in 0..num_blocks + 10 {
+                let tx_outs = store
+                    .get_processed_block(&db_txn, &monitor_id, block_index)
+                    .expect("get_processed_block failed");
+                assert!(tx_outs.is_empty());
+            }
+        }
+
+        // Associate the first 3 utxos with the first block and the rest into the second block.
+        {
+            let mut db_txn = store.env.begin_rw_txn().unwrap();
+
+            // Add in two chunks
+            store
+                .block_processed(&mut db_txn, &monitor_id, 0, &utxos[..2])
+                .expect("block_processed failed");
+            store
+                .block_processed(&mut db_txn, &monitor_id, 0, &utxos[2..3])
+                .expect("block_processed failed");
+
+            store
+                .block_processed(&mut db_txn, &monitor_id, 1, &utxos[3..])
+                .expect("block_processed failed");
+
+            db_txn.commit().unwrap();
+        }
+
+        // Query the data to ensure it got properly stored.
+        {
+            let db_txn = store.env.begin_ro_txn().unwrap();
+
+            // First block
+            let processed_tx_outs = store
+                .get_processed_block(&db_txn, &monitor_id, 0)
+                .expect("get_processed_block failed");
+            assert_eq!(processed_tx_outs.len(), 3);
+
+            let expected_processed_tx_outs: HashSet<_> =
+                utxos.iter().take(3).map(ProcessedTxOut::from).collect();
+            assert_eq!(
+                expected_processed_tx_outs,
+                HashSet::from_iter(processed_tx_outs)
+            );
+
+            // Second block
+            let processed_tx_outs = store
+                .get_processed_block(&db_txn, &monitor_id, 1)
+                .expect("get_processed_block failed");
+            assert_eq!(processed_tx_outs.len(), utxos.len() - 3);
+
+            let expected_processed_tx_outs: HashSet<_> =
+                utxos.iter().skip(3).map(ProcessedTxOut::from).collect();
+            assert_eq!(
+                expected_processed_tx_outs,
+                HashSet::from_iter(processed_tx_outs)
+            );
+        }
+
+        // Querying with a different monitor id should return no results.
+        {
+            let monitor_data = MonitorData::new(
+                account.clone(),
+                30, // first_subaddress
+                20, // num_subaddresses
+                0,  // first_block
+                "", // name
+            )
+            .expect("failed to create data");
+
+            let monitor_id = MonitorId::from(&monitor_data);
+
+            let mut db_txn = store.env.begin_rw_txn().unwrap();
+
+            let processed_tx_outs = store
+                .get_processed_block(&db_txn, &monitor_id, 0)
+                .expect("get_processed_block failed");
+            assert!(processed_tx_outs.is_empty());
+
+            // Removing monitor id with no data should not result in an error.
+            store
+                .remove(&mut db_txn, &monitor_id)
+                .expect("remove failed");
+        }
+
+        // Remove the monitor id and ensure data has been removed
+        {
+            let mut db_txn = store.env.begin_rw_txn().unwrap();
+
+            let processed_tx_outs = store
+                .get_processed_block(&db_txn, &monitor_id, 0)
+                .expect("get_processed_block failed");
+            assert!(!processed_tx_outs.is_empty());
+
+            let processed_tx_outs = store
+                .get_processed_block(&db_txn, &monitor_id, 1)
+                .expect("get_processed_block failed");
+            assert!(!processed_tx_outs.is_empty());
+
+            store
+                .remove(&mut db_txn, &monitor_id)
+                .expect("remove failed");
+
+            let processed_tx_outs = store
+                .get_processed_block(&db_txn, &monitor_id, 0)
+                .expect("get_processed_block failed");
+            assert!(processed_tx_outs.is_empty());
+
+            let processed_tx_outs = store
+                .get_processed_block(&db_txn, &monitor_id, 1)
+                .expect("get_processed_block failed");
+            assert!(processed_tx_outs.is_empty());
+
+            db_txn.commit().unwrap();
+        }
+
+        // Re-add utxos and verify correct behavior.
+        {
+            let mut db_txn = store.env.begin_rw_txn().unwrap();
+
+            // Add in two chunks for the original monitor id and one chunk for a new monitor id.
+            store
+                .block_processed(&mut db_txn, &monitor_id, 0, &utxos[1..5])
+                .expect("block_processed failed");
+
+            store
+                .block_processed(&mut db_txn, &monitor_id, 1, &utxos[5..])
+                .expect("block_processed failed");
+
+            let monitor_data2 = MonitorData::new(
+                account.clone(),
+                30, // first_subaddress
+                20, // num_subaddresses
+                0,  // first_block
+                "", // name
+            )
+            .expect("failed to create data");
+
+            let monitor_id2 = MonitorId::from(&monitor_data2);
+
+            store
+                .block_processed(&mut db_txn, &monitor_id2, 0, &utxos[0..1])
+                .expect("block_processed failed");
+
+            // First block - original monitor id
+            let processed_tx_outs = store
+                .get_processed_block(&db_txn, &monitor_id, 0)
+                .expect("get_processed_block failed");
+            assert_eq!(processed_tx_outs.len(), 4);
+
+            let expected_processed_tx_outs: HashSet<_> = utxos
+                .iter()
+                .skip(1)
+                .take(4)
+                .map(ProcessedTxOut::from)
+                .collect();
+            assert_eq!(
+                expected_processed_tx_outs,
+                HashSet::from_iter(processed_tx_outs)
+            );
+
+            // First block - second monitor id
+            let processed_tx_outs = store
+                .get_processed_block(&db_txn, &monitor_id2, 0)
+                .expect("get_processed_block failed");
+            assert_eq!(processed_tx_outs.len(), 1);
+
+            assert_eq!(vec![ProcessedTxOut::from(&utxos[0])], processed_tx_outs);
+
+            // Second block - origianl monitor id
+            let processed_tx_outs = store
+                .get_processed_block(&db_txn, &monitor_id, 1)
+                .expect("get_processed_block failed");
+            assert_eq!(processed_tx_outs.len(), utxos.len() - 5);
+
+            let expected_processed_tx_outs: HashSet<_> =
+                utxos.iter().skip(5).map(ProcessedTxOut::from).collect();
+            assert_eq!(
+                expected_processed_tx_outs,
+                HashSet::from_iter(processed_tx_outs)
+            );
+
+            // Second block - second monitor id
+            let processed_tx_outs = store
+                .get_processed_block(&db_txn, &monitor_id2, 1)
+                .expect("get_processed_block failed");
+            assert!(processed_tx_outs.is_empty());
+
+            db_txn.commit().unwrap();
+        }
+    }
+}
