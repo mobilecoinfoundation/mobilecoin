@@ -1,7 +1,7 @@
 use core::convert::TryFrom;
 use displaydoc::Display;
 
-#[derive(PartialEq, Eq, Debug, Display)]
+#[derive(PartialEq, Eq, Debug, Display, Clone)]
 #[repr(u32)]
 pub enum TimestampResultCode {
     /// A timestamp was found
