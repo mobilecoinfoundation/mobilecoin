@@ -27,6 +27,14 @@ executors:
       - image: *builder-install
     resource_class: large
 
+  macos:
+    macos:
+      xcode: 11.6.0
+    environment:
+      HOMEBREW_NO_AUTO_UPDATE: 1
+      HOMEBREW_NO_INSTALL_CLEANUP: 1
+      HOMEBREW_BUNDLE_NO_LOCK: 1
+
 commands:
   print_versions:
     description: Version Info
@@ -62,6 +70,8 @@ commands:
             echo 'export CMAKE_C_COMPILER_LAUNCHER=sccache' >> $BASH_ENV
             echo 'export CMAKE_CXX_COMPILER_LAUNCHER=sccache' >> $BASH_ENV
 
+            # Set cache dir explicitly so that all platforms use the same location
+            echo 'export SCCACHE_DIR=$HOME/.cache/sccache' >> $BASH_ENV
 
   restore-sccache-cache:
     steps:
@@ -167,6 +177,7 @@ commands:
       - run:
           name: Install CI dependencies
           command: |
+            command -v sccache >/dev/null || cargo install sccache
             command -v cargo-cache >/dev/null || cargo install cargo-cache
             command -v cargo2junit >/dev/null || cargo install cargo2junit
 
@@ -391,6 +402,38 @@ jobs:
       - store_artifacts:
           path: /tmp/doc.tgz
 
+  # Build using macOS
+  build-all-macos:
+    executor: macos
+    environment:
+      <<: *default-environment
+      SCCACHE_CACHE_SIZE: 450M
+      RUSTFLAGS: -D warnings -C target-cpu=penryn
+      CONSENSUS_ENCLAVE_CSS: /Users/distiller/project/sgx/css/src/valid.css
+    steps:
+      - prepare-for-build
+      - run:
+          name: Cargo check (SW/IAS dev)
+          command: |
+            cargo check --workspace --frozen \
+              --exclude mc-attest-untrusted \
+              --exclude mc-consensus-enclave \
+              --exclude mc-consensus-service \
+              --exclude mc-sgx-core-types \
+              --exclude mc-sgx-core-types-sys \
+              --exclude mc-sgx-epid \
+              --exclude mc-sgx-epid-sys \
+              --exclude mc-sgx-epid-types \
+              --exclude mc-sgx-epid-types-sys \
+              --exclude mc-sgx-ias-types \
+              --exclude mc-sgx-report-cache-untrusted \
+              --exclude mc-sgx-urts-sys
+      - check-dirty-git
+      - when:
+          condition: { equal: [ << pipeline.git.branch >>, master ] }
+          steps: [ save-cargo-cache, save-sccache-cache ]
+      - post-build
+
 workflows:
   version: 2
   # Build and run tests on a single container
@@ -401,6 +444,9 @@ workflows:
 
       # Build everything in debug
       - build-all-and-lint-debug
+
+      # Build using macOS
+      - build-all-macos
 
   # Build and run tests in parallel - not needed at the moment since the test suite is fast enough.
   # build-and-run-tests:
