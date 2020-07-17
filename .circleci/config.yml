@@ -211,6 +211,30 @@ commands:
               | tee /tmp/test-results.json
             cat /tmp/test-results.json | cargo2junit > /tmp/test-results.xml || true
 
+  run-parallel-tests:
+    parameters:
+      test_command:
+        type: string
+        default: cargo test --frozen
+    steps:
+      - run:
+          name: Run parallel unit tests
+          command: |
+            # Generate list of test packages
+            all_packages="$(<< parameters.test_command >> --message-format json --no-run \
+              | jq -r 'select(.profile.test).package_id | split(" ")[0]' | sort -u)"
+
+            # Generate list of selected tests
+            selected_packages="$(echo "$all_packages" | circleci tests split --show-counts)"
+            selected_packages_params=$(echo "$selected_packages" | sed -e '/.*/i --package' | tr -s '\n' ' ')
+
+            # Run tests
+            << parameters.test_command >> $selected_packages_params \
+              -- -Z unstable-options --format json --report-time | tee -a /tmp/test-results.json
+
+            # Convert results to junit format
+            cat /tmp/test-results.json | cargo2junit > /tmp/test-results.xml || true
+
   post-test:
     steps:
       - store_test_results:
@@ -341,12 +365,12 @@ jobs:
   # Run all tests on a single container
   run-all-tests:
     executor: build-executor
-    parallelism: 1
+    parallelism: 4
     environment:
       <<: *default-environment
     steps:
       - prepare-for-build
-      - run-tests
+      - run-parallel-tests
       - check-dirty-git
       - when:
           condition: { equal: [ << pipeline.git.branch >>, master ] }
