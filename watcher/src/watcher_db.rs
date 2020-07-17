@@ -211,7 +211,7 @@ impl WatcherDB {
 
     /// Get the earliest timestamp for a given block.
     /// The earliest timestamp reflects the time closest to when the block passed consensus.
-    /// If no timestamp is present, return u64::MAX.
+    /// If no timestamp is present, return u64::MAX, and a status code.
     ///
     /// Note: If there are no Signatures (and therefore no timestamps) for the given
     ///       block, the result from get_signatures will be Ok(vec![]).
@@ -225,6 +225,9 @@ impl WatcherDB {
         &self,
         block_index: u64,
     ) -> Result<(u64, TimestampResultCode), WatcherDBError> {
+        if block_index == 0 {
+            return Ok((u64::MAX, TimestampResultCode::BlockIndexOutOfBounds));
+        }
         let sigs = self.get_block_signatures(block_index)?;
         match sigs.iter().map(|s| s.block_signature.signed_at()).min() {
             Some(earliest) => Ok((earliest, TimestampResultCode::TimestampFound)),
@@ -611,6 +614,12 @@ mod test {
             assert_eq!(
                 watcher_db.get_block_timestamp(2).unwrap(),
                 (u64::MAX, TimestampResultCode::Unavailable)
+            );
+
+            // Verify that block index 0 is out of bounds
+            assert_eq!(
+                watcher_db.get_block_timestamp(0).unwrap(),
+                (u64::MAX, TimestampResultCode::BlockIndexOutOfBounds)
             );
         });
     }
