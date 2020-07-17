@@ -162,6 +162,34 @@ commands:
             cargo cache
             cargo cache local
 
+  restore-homebrew-cache:
+    steps:
+      - restore_cache:
+          name: Restore Homebrew cache
+          key: v0-homebrew-{{ arch }}
+      - run:
+          name: Install Homebrew dependencies
+          command: brew bundle --no-upgrade
+
+  save-homebrew-cache:
+    steps:
+      - run:
+          name: Prepare Homebrew cache for saving
+          command: |
+            # Make sure latest versions are installed
+            time brew bundle
+
+            # Remove all dependencies except those in the Brewfile
+            time brew bundle cleanup --force
+
+            brew info
+      - save_cache:
+          name: Save Homebrew cache
+          # See https://discuss.circleci.com/t/add-mechanism-to-update-existing-cache-key/9014/13
+          key: v0-homebrew-{{ arch }}-{{ .Revision }}
+          paths:
+            - /usr/local/Cellar
+
   install-rust:
     steps:
       - run:
@@ -191,8 +219,16 @@ commands:
             (cd consensus/enclave/trusted && time cargo fetch --locked)
 
   prepare-for-build:
+    parameters:
+      os:
+        type: enum
+        enum: ["linux", "macos", "windows"]
+        default: linux
     steps:
       - checkout
+      - when:
+          condition: { equal: [ << parameters.os >>, macos ] }
+          steps: [ restore-homebrew-cache ]
       - install-rust
       - restore-cargo-cache
       - install-ci-deps
@@ -411,7 +447,8 @@ jobs:
       RUSTFLAGS: -D warnings -C target-cpu=penryn
       CONSENSUS_ENCLAVE_CSS: /Users/distiller/project/sgx/css/src/valid.css
     steps:
-      - prepare-for-build
+      - prepare-for-build:
+          os: macos
       - run:
           name: Cargo check (SW/IAS dev)
           command: |
@@ -433,6 +470,9 @@ jobs:
           condition: { equal: [ << pipeline.git.branch >>, master ] }
           steps: [ save-cargo-cache, save-sccache-cache ]
       - post-build
+      - when:
+          condition: { equal: [ << pipeline.git.branch >>, master ] }
+          steps: [ save-homebrew-cache ]
 
 workflows:
   version: 2
