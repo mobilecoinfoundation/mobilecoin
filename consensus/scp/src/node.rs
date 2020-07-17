@@ -16,7 +16,7 @@ use mockall::*;
 use std::{collections::BTreeSet, fmt::Display, time::Duration};
 
 /// Max number of externalized slots to store.
-pub const MAX_EXTERNALIZED_SLOTS: usize = 10;
+pub const MAX_EXTERNALIZED_SLOTS: usize = 1;
 
 /// A node participates in federated voting.
 pub struct Node<V: Value, ValidationError: Clone + Display> {
