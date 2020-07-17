@@ -1,7 +1,8 @@
 use core::convert::TryFrom;
 use displaydoc::Display;
+use serde::{Deserialize, Serialize};
 
-#[derive(PartialEq, Eq, Debug, Display, Clone)]
+#[derive(PartialEq, Eq, Debug, Display, Clone, Serialize, Deserialize)]
 #[repr(u32)]
 pub enum TimestampResultCode {
     /// A timestamp was found
