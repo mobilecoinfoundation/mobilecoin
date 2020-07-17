@@ -15,7 +15,7 @@ use crate::{
     utxo_store::{UnspentTxOut, UtxoId},
 };
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
-use mc_account_keys::{AccountKey, PublicAddress};
+use mc_account_keys::{AccountKey, PublicAddress, RootIdentity};
 use mc_common::{
     logger::{log, Logger},
     HashMap,
@@ -26,7 +26,6 @@ use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::{NetworkState, PollingNetworkState};
 use mc_mobilecoind_api::mobilecoind_api_grpc::{create_mobilecoind_api, MobilecoindApi};
 use mc_transaction_core::{ring_signature::KeyImage, tx::TxOutConfirmationNumber};
-use mc_transaction_std::identity::RootIdentity;
 use mc_util_b58_payloads::payloads::{AddressRequestPayload, RequestPayload, TransferPayload};
 use mc_util_grpc::{rpc_internal_error, rpc_logger, send_result, BuildInfoService};
 use mc_watcher::watcher_db::WatcherDB;
@@ -292,13 +291,12 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                 Some("entropy".to_string()),
             ));
         }
-        let mut root_entropy = [0u8; 32];
-        root_entropy.copy_from_slice(request.get_entropy());
-
         // Use root entropy to construct AccountKey.
         let root_id = RootIdentity {
-            root_entropy,
-            fog_url: None,
+            root_entropy: request.get_entropy().to_vec(),
+            fog_url: Default::default(),
+            fog_report_id: Default::default(),
+            fog_authority_fingerprint: Default::default(),
         };
 
         // TODO: change to production AccountKey derivation
@@ -1641,8 +1639,10 @@ mod test {
 
         // TODO: change to production AccountKey derivation
         let root_id = RootIdentity {
-            root_entropy,
-            fog_url: None,
+            root_entropy: root_entropy.to_vec(),
+            fog_url: Default::default(),
+            fog_report_id: Default::default(),
+            fog_authority_fingerprint: Default::default(),
         };
         assert_eq!(
             AccountKey::from(&root_id),
@@ -2409,11 +2409,11 @@ mod test {
                 .unwrap();
 
             // Add a monitor based on the entropy we received.
-            let mut root_entropy = [0; 32];
-            root_entropy.copy_from_slice(response.get_entropy());
             let root_id = RootIdentity {
-                root_entropy,
-                fog_url: None,
+                root_entropy: response.get_entropy().to_vec(),
+                fog_url: Default::default(),
+                fog_report_id: Default::default(),
+                fog_authority_fingerprint: Default::default(),
             };
 
             // TODO: change to production AccountKey derivation

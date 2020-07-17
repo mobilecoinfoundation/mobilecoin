@@ -18,7 +18,6 @@ hex = "0.4"
 url = "2.1"
 
 [dev-dependencies]
-mc-transaction-std = { path = "../../transaction/std" }
 mc-util-b58-payloads = { path = "../b58-payloads" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-test-helper = { path = "../../util/test-helper" }

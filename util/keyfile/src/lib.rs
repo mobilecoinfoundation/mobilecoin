@@ -3,8 +3,7 @@
 pub mod config;
 pub mod keygen;
 
-use mc_account_keys::PublicAddress;
-use mc_transaction_std::identity::RootIdentity;
+use mc_account_keys::{PublicAddress, RootIdentity};
 use std::{fs::File, io::prelude::*, path::Path};
 
 /// Write user root identity to disk
