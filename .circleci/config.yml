@@ -168,6 +168,7 @@ commands:
           name: Install CI dependencies
           command: |
             command -v cargo-cache >/dev/null || cargo install cargo-cache
+            command -v cargo2junit >/dev/null || cargo install cargo2junit
 
   prefetch-cargo-deps:
     steps:
@@ -196,6 +197,26 @@ commands:
   post-build:
     steps:
       - record-sccache-cache-stats
+
+  run-tests:
+    parameters:
+      test_command:
+        type: string
+        default: cargo test --frozen
+    steps:
+      - run:
+          name: Run all tests
+          command: |
+            << parameters.test_command >> -- -Z unstable-options --format json --report-time \
+              | tee /tmp/test-results.json
+            cat /tmp/test-results.json | cargo2junit > /tmp/test-results.xml || true
+
+  post-test:
+    steps:
+      - store_test_results:
+          path: /tmp/test-results.xml
+      - store_artifacts:
+          path: /tmp/test-results.xml
 
   check-dirty-git:
     steps:
@@ -325,14 +346,13 @@ jobs:
       <<: *default-environment
     steps:
       - prepare-for-build
-      - run:
-          name: Run all unit tests
-          command: cargo test --frozen
+      - run-tests
       - check-dirty-git
       - when:
           condition: { equal: [ << pipeline.git.branch >>, master ] }
           steps: [ save-sccache-cache ]
       - post-build
+      - post-test
 
   # Build and lint in debug mode
   build-all-and-lint-debug:
