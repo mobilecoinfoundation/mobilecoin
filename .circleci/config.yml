@@ -95,13 +95,53 @@ commands:
 
   save-cargo-cache:
     steps:
+      - run:
+          name: Prepare Cargo cache for saving
+          command: |
+            set -x
+
+            command -v cargo-install-update >/dev/null || cargo install cargo-update
+            command -v cargo-trim >/dev/null || cargo install cargo-trim
+
+            cargo install-update --all
+
+            # Configure cargo-trim with the project's Cargo.lock files
+            mkdir -p ~/.config
+            cargo trim --directory "$(pwd)"
+            cargo trim --directory "$(pwd)/consensus/enclave/trusted"
+
+            # Clean dependencies not in the Cargo.lock
+            time cargo trim --orphan-clean
+
+            # Make sure all dependencies are downloaded, since there appears to be
+            # a bug where cargo trim erroneously removes certain git repos.
+            time cargo fetch --locked
+            (cd consensus/enclave/trusted && time cargo fetch --locked)
+
+            # Remove the registry src dir since it's the largest dir and it's
+            # recreatable from the archives in ~/.cargo/cache
+            time cargo trim --wipe src
+
+            # Run git compress on cached repos
+            time cargo trim --gc all
+
+            # Display Cargo cache stats
+            cargo trim --query
+
+            # Uninstall binary cargo crates that don't need to be cached
+            time cargo uninstall cargo-trim cargo-update
       - save_cache:
           name: Save Cargo cache
           # See https://discuss.circleci.com/t/add-mechanism-to-update-existing-cache-key/9014/13
           key: v0-cargo-{{ arch }}-{{ .Revision }}
           # https://doc.rust-lang.org/cargo/guide/cargo-home.html#caching-the-cargo-home-in-ci
           paths:
-            - "~/.cargo"
+            - ~/.cargo/.crates.toml
+            - ~/.cargo/bin
+            - ~/.cargo/git/checkout
+            - ~/.cargo/git/db
+            - ~/.cargo/registry/cache
+            - ~/.cargo/registry/index
       - record-cargo-cache-stats
 
   record-cargo-cache-stats:
