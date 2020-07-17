@@ -6,7 +6,7 @@
 //! at least enough entropy as the length of any one of the derived keys.
 //!
 //! The RootIdentity object contains 32 bytes of "root entropy", used with HKDF
-//! to produce the other mobilecoin private keys. This is useful an AccountKey
+//! to produce the other MobileCoin private keys. This is useful because an AccountKey
 //! derived this way can be represented with a smaller amount of information.
 //!
 //! The other (fog-related) fields of RootIdentity are analogous to AccountKey.
