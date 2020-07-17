@@ -159,6 +159,15 @@ commands:
           command: |
             command -v cargo-cache >/dev/null || cargo install cargo-cache
 
+  prefetch-cargo-deps:
+    steps:
+      - run:
+          name: Fetch project Cargo dependencies
+          command: |
+            set -x
+            time cargo fetch --locked
+            (cd consensus/enclave/trusted && time cargo fetch --locked)
+
   prepare-for-build:
     steps:
       - checkout
@@ -168,6 +177,7 @@ commands:
       - enable_sccache
       - restore-cargo-cache
       - restore-sccache-cache
+      - prefetch-cargo-deps
 
   post-build:
     steps:
