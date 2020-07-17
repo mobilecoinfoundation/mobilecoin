@@ -182,12 +182,15 @@ commands:
     steps:
       - checkout
       - install-rust
-      - print_versions
+      - restore-cargo-cache
       - install-ci-deps
       - env_setup
       - enable_sccache
-      - restore-cargo-cache
-      - restore-sccache-cache
+      # Cache is only saved when building from master. We don't restore sccache on
+      # master so that the cache is clean when saved.
+      - unless:
+          condition: { equal: [ << pipeline.git.branch >>, master ] }
+          steps: [ restore-sccache-cache ]
       - prefetch-cargo-deps
 
   post-build:
@@ -326,6 +329,9 @@ jobs:
           name: Run all unit tests
           command: cargo test --frozen
       - check-dirty-git
+      - when:
+          condition: { equal: [ << pipeline.git.branch >>, master ] }
+          steps: [ save-sccache-cache ]
       - post-build
 
   # Build and lint in debug mode
@@ -358,8 +364,9 @@ jobs:
           command: |
             cargo doc --no-deps
             tar -C target -czvf /tmp/doc.tgz doc/
-      - save-cargo-cache
-      - save-sccache-cache
+      - when:
+          condition: { equal: [ << pipeline.git.branch >>, master ] }
+          steps: [ save-cargo-cache, save-sccache-cache ]
       - post-build
       - store_artifacts:
           path: /tmp/doc.tgz
