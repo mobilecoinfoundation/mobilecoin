@@ -147,7 +147,7 @@ commands:
   record-cargo-cache-stats:
     steps:
       - run:
-          name: Print Cargo cache statistic
+          name: Print Cargo cache statistics
           command: |
             cargo cache
             cargo cache local
