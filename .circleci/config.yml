@@ -4,6 +4,17 @@ version: 2.1
 
 defaults:
   builder-install: &builder-install gcr.io/mobilenode-211420/builder-install:1_11
+  default-environment: &default-environment
+    IAS_MODE: DEV
+    SGX_MODE: SW
+    RUST_BACKTRACE: 1
+    SKIP_SLOW_TESTS: 1
+    CARGO_INCREMENTAL: 0
+
+    # sccache config
+    SCCACHE_IDLE_TIMEOUT: 1200
+    SCCACHE_CACHE_SIZE: 1G
+    SCCACHE_ERROR_LOG: /tmp/sccache.log
 
 executors:
   build-executor:
@@ -32,18 +43,11 @@ commands:
     description: Environment Setup
     steps:
       - run:
-          name: Setup Env
+          name: Configure Cargo to use git cli
           command: |
-            echo 'export IAS_MODE=DEV' >> $BASH_ENV
-            echo 'export SGX_MODE=SW' >> $BASH_ENV
-            echo 'export RUST_BACKTRACE=1' >> $BASH_ENV
-            echo 'export SKIP_SLOW_TESTS=1' >> $BASH_ENV
-      - run:
-          name: Configure cargo to use git cli
-          command: |
-            mkdir -p .cargo
-            echo '[net]' >> .cargo/config
-            echo 'git-fetch-with-cli = true' >> .cargo/config
+            mkdir -p ~/.cargo
+            echo '[net]' >> ~/.cargo/config
+            echo 'git-fetch-with-cli = true' >> ~/.cargo/config
             if [ -f ~/.gitconfig ]; then
               sed -i 's/github/git-non-exist-hub/g' ~/.gitconfig # https://github.com/rust-lang/cargo/issues/3900
             fi
@@ -55,32 +59,30 @@ commands:
           name: Enable sccache
           command: |
             echo 'export RUSTC_WRAPPER=sccache' >> $BASH_ENV
-            echo 'export SCCACHE_IDLE_TIMEOUT=1200' >> $BASH_ENV
-            echo 'export SCCACHE_CACHE_SIZE=1G' >> $BASH_ENV
-            echo 'export SCCACHE_ERROR_LOG=/tmp/sccache.log' >> $BASH_ENV
+            echo 'export CMAKE_C_COMPILER_LAUNCHER=sccache' >> $BASH_ENV
+            echo 'export CMAKE_CXX_COMPILER_LAUNCHER=sccache' >> $BASH_ENV
 
 
   restore-sccache-cache:
     steps:
       - restore_cache:
           name: Restore sccache cache
-          key: sccache-cache-stable-{{ arch }}
+          key: v0-sccache-{{ arch }}-{{ .Environment.CIRCLE_JOB }}.
 
   save-sccache-cache:
     steps:
       - save_cache:
           name: Save sccache cache
-          # We use {{ epoch }} to always upload a fresh cache:
-          # Of course, restore_cache will not find this exact key,
-          # but it will fall back to the closest key (aka the most recent).
           # See https://discuss.circleci.com/t/add-mechanism-to-update-existing-cache-key/9014/13
-          key: sccache-cache-stable-{{ arch }}-{{ epoch }}
+          key: v0-sccache-{{ arch }}-{{ .Environment.CIRCLE_JOB }}.{{ .Revision }}
           paths:
-            - "~/.cache/sccache"
-      - store-sccache-logs
+            - ~/.cache/sccache
 
-  store-sccache-logs:
+  record-sccache-cache-stats:
     steps:
+      - run:
+          name: Print sccache statistics
+          command: sccache --show-stats
       - store_artifacts:
           path: /tmp/sccache.log
           destination: logs/sccache.log
@@ -88,38 +90,139 @@ commands:
   restore-cargo-cache:
     steps:
       - restore_cache:
-          name: Restore cargo cache
-          key: cargo-cache-stable-{{ arch }}
+          name: Restore Cargo cache
+          key: v0-cargo-{{ arch }}
 
   save-cargo-cache:
     steps:
+      - run:
+          name: Prepare Cargo cache for saving
+          command: |
+            set -x
+
+            command -v cargo-install-update >/dev/null || cargo install cargo-update
+            command -v cargo-trim >/dev/null || cargo install cargo-trim
+
+            cargo install-update --all
+
+            # Configure cargo-trim with the project's Cargo.lock files
+            mkdir -p ~/.config
+            cargo trim --directory "$(pwd)"
+            cargo trim --directory "$(pwd)/consensus/enclave/trusted"
+
+            # Clean dependencies not in the Cargo.lock
+            time cargo trim --orphan-clean
+
+            # Make sure all dependencies are downloaded, since there appears to be
+            # a bug where cargo trim erroneously removes certain git repos.
+            time cargo fetch --locked
+            (cd consensus/enclave/trusted && time cargo fetch --locked)
+
+            # Remove the registry src dir since it's the largest dir and it's
+            # recreatable from the archives in ~/.cargo/cache
+            time cargo trim --wipe src
+
+            # Run git compress on cached repos
+            time cargo trim --gc all
+
+            # Display Cargo cache stats
+            cargo trim --query
+
+            # Uninstall binary cargo crates that don't need to be cached
+            time cargo uninstall cargo-trim cargo-update
       - save_cache:
-          name: Save cargo cache
-          # We use {{ epoch }} to always upload a fresh cache:
-          # Of course, restore_cache will not find this exact key,
-          # but it will fall back to the closest key (aka the most recent).
+          name: Save Cargo cache
           # See https://discuss.circleci.com/t/add-mechanism-to-update-existing-cache-key/9014/13
-          key: cargo-cache-stable-{{ arch }}-{{ epoch }}
+          key: v0-cargo-{{ arch }}-{{ .Revision }}
+          # https://doc.rust-lang.org/cargo/guide/cargo-home.html#caching-the-cargo-home-in-ci
           paths:
-            - "~/.cargo"
+            - ~/.cargo/.crates.toml
+            - ~/.cargo/bin
+            - ~/.cargo/git/checkout
+            - ~/.cargo/git/db
+            - ~/.cargo/registry/cache
+            - ~/.cargo/registry/index
+      - record-cargo-cache-stats
+
+  record-cargo-cache-stats:
+    steps:
+      - run:
+          name: Print Cargo cache statistics
+          command: |
+            cargo cache
+            cargo cache local
+
+  install-rust:
+    steps:
+      - run:
+          name: Install Rust
+          command: |
+            command -v rustup >/dev/null || \
+              curl https://sh.rustup.rs --tlsv1.2 -sSf | sh -s -- -y --default-toolchain none
+            # Installs the toolchain specified in `rust-toolchain`
+            "$HOME/.cargo/bin/rustup" show active-toolchain
+
+  install-ci-deps:
+    steps:
+      - run:
+          name: Install CI dependencies
+          command: |
+            command -v cargo-cache >/dev/null || cargo install cargo-cache
+            command -v cargo2junit >/dev/null || cargo install cargo2junit
+
+  prefetch-cargo-deps:
+    steps:
+      - run:
+          name: Fetch project Cargo dependencies
+          command: |
+            set -x
+            time cargo fetch --locked
+            (cd consensus/enclave/trusted && time cargo fetch --locked)
 
   prepare-for-build:
     steps:
       - checkout
-      - print_versions
+      - install-rust
+      - restore-cargo-cache
+      - install-ci-deps
       - env_setup
       - enable_sccache
-      - restore-cargo-cache
-      - restore-sccache-cache
+      # Cache is only saved when building from master. We don't restore sccache on
+      # master so that the cache is clean when saved.
+      - unless:
+          condition: { equal: [ << pipeline.git.branch >>, master ] }
+          steps: [ restore-sccache-cache ]
+      - prefetch-cargo-deps
+
+  post-build:
+    steps:
+      - record-sccache-cache-stats
+
+  run-tests:
+    parameters:
+      test_command:
+        type: string
+        default: cargo test --frozen
+    steps:
+      - run:
+          name: Run all tests
+          command: |
+            << parameters.test_command >> -- -Z unstable-options --format json --report-time \
+              | tee /tmp/test-results.json
+            cat /tmp/test-results.json | cargo2junit > /tmp/test-results.xml || true
+
+  post-test:
+    steps:
+      - store_test_results:
+          path: /tmp/test-results.xml
+      - store_artifacts:
+          path: /tmp/test-results.xml
 
   check-dirty-git:
     steps:
       - run:
           name: Checking dirty git
           command: |
-            # We expect this file to be modified (we modified it in the `env_setup` step)
-            git update-index --assume-unchanged .cargo/config
-
             if [[ -n $(git status --porcelain) ]]; then
               echo "repo is dirty"
               git status
@@ -132,6 +235,8 @@ jobs:
   # by the run-tests jobs
   build-parallel-tests:
     executor: build-executor
+    environment:
+      <<: *default-environment
     steps:
       - prepare-for-build
       - run:
@@ -145,7 +250,7 @@ jobs:
             rm -rf test-bins && mkdir test-bins && mkdir test-bins/bins-per-pkg
 
             echo "Discovering tests..."
-            cargo test --locked --no-run --message-format=json | jq -r "select(.profile.test == true) | (.package_id | split(\" \")[0]) + \" \" + .filenames[]" | sort | uniq | tee test-list
+            cargo test --frozen --no-run --message-format=json | jq -r "select(.profile.test == true) | (.package_id | split(\" \")[0]) + \" \" + .filenames[]" | sort | uniq | tee test-list
 
             while read line; do
               PKG=$(echo $line | cut -f 1 -d ' ')
@@ -184,11 +289,14 @@ jobs:
             - .
       - save-cargo-cache
       - save-sccache-cache
+      - post-build
 
   # Runs tests from a test-bin directory previously generated by the build-tests job
   run-tests:
     executor: test-executor
     parallelism: 2
+    environment:
+      <<: *default-environment
     steps:
       - restore-cargo-cache
       - env_setup
@@ -223,6 +331,7 @@ jobs:
 
       - check-dirty-git
 
+      - post-build
       - store_test_results:
           path: test-results
       - store_artifacts:
@@ -233,28 +342,35 @@ jobs:
   run-all-tests:
     executor: build-executor
     parallelism: 1
+    environment:
+      <<: *default-environment
     steps:
       - prepare-for-build
-      - run:
-          name: Run all unit tests
-          command: |
-            cargo test
+      - run-tests
       - check-dirty-git
+      - when:
+          condition: { equal: [ << pipeline.git.branch >>, master ] }
+          steps: [ save-sccache-cache ]
+      - post-build
+      - post-test
 
   # Build and lint in debug mode
   build-all-and-lint-debug:
     executor: build-executor
+    environment:
+      << : *default-environment
     steps:
       - prepare-for-build
       - run:
-          name: Cargo build (SW/IAS dev)
-          command: |
-            cargo build
+          name: Cargo check (SW/IAS dev)
+          command: cargo check --frozen
       - check-dirty-git
       - run:
-          name: Cargo build (HW/IAS prod)
-          command: |
-            SGX_MODE=HW IAS_MODE=PROD cargo build
+          name: Cargo check (HW/IAS prod)
+          environment:
+            SGX_MODE: HW
+            IAS_MODE: PROD
+          command: cargo check --frozen
       - check-dirty-git
 
       # The lint and saving of caches happens here since this job is faster than the run-all-tests job.
@@ -268,8 +384,10 @@ jobs:
           command: |
             cargo doc --no-deps
             tar -C target -czvf /tmp/doc.tgz doc/
-      - save-cargo-cache
-      - save-sccache-cache
+      - when:
+          condition: { equal: [ << pipeline.git.branch >>, master ] }
+          steps: [ save-cargo-cache, save-sccache-cache ]
+      - post-build
       - store_artifacts:
           path: /tmp/doc.tgz
 
