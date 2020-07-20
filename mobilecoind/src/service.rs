@@ -1084,20 +1084,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             })
             .collect();
 
-        // Get all key images for the requested block.
-        let key_images = self
-            .ledger_db
-            .get_block_contents(request.block)
-            .map_err(|err| rpc_internal_error("ledger_db.get_block_contents", err, &self.logger))?
-            .key_images
-            .iter()
-            .map(mc_consensus_api::external::KeyImage::from)
-            .collect();
-
         // Return response
         let mut response = mc_mobilecoind_api::GetProcessedBlockResponse::new();
         response.set_tx_outs(RepeatedField::from_vec(processed_tx_outs));
-        response.set_spent_key_images(RepeatedField::from_vec(key_images));
         Ok(response)
     }
 
@@ -2084,18 +2073,6 @@ mod test {
             let response = client
                 .get_processed_block(&request)
                 .expect("failed to get processed block");
-
-            // Key images should match.
-            let expected_key_images = ledger_db
-                .get_block_contents(request.block)
-                .expect("failed getting block contents")
-                .key_images;
-            let key_images: Vec<KeyImage> = response
-                .get_spent_key_images()
-                .iter()
-                .map(|ki| KeyImage::try_from(ki).expect("failed converting key image"))
-                .collect();
-            assert_eq!(expected_key_images, key_images);
 
             // We expect one utxo per block for our monitor.
             let tx_outs = response.get_tx_outs();
