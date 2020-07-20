@@ -195,7 +195,7 @@ impl Database {
         }
 
         // Remove spent utxos
-        let removed_key_images = self.utxo_store.remove_utxos_by_key_images(
+        let removed_utxos = self.utxo_store.remove_utxos_by_key_images(
             &mut db_txn,
             monitor_id,
             spent_key_images,
@@ -218,12 +218,12 @@ impl Database {
         db_txn.commit()?;
 
         // Success.
-        if discovered_utxos.is_empty() && removed_key_images.is_empty() {
+        if discovered_utxos.is_empty() && removed_utxos.is_empty() {
             log::debug!(
                 self.logger,
                 "Processed {} utxos and {} key images in block {} for monitor id {}",
                 discovered_utxos.len(),
-                removed_key_images.len(),
+                removed_utxos.len(),
                 block_num,
                 monitor_id
             )
@@ -232,7 +232,7 @@ impl Database {
                 self.logger,
                 "Processed {} utxos and {} key images in block {} for monitor id {}",
                 discovered_utxos.len(),
-                removed_key_images.len(),
+                removed_utxos.len(),
                 block_num,
                 monitor_id
             )

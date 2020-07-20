@@ -217,13 +217,13 @@ impl UtxoStore {
 
     /// Removes utxos based on a list of key images.
     /// This method silently ignores key images that were not found in the database.
-    /// It returns the list of key images that were removed.
+    /// It returns the list of utxos that were removed.
     pub fn remove_utxos_by_key_images<'env>(
         &self,
         db_txn: &mut RwTransaction<'env>,
         monitor_id: &MonitorId,
         key_images: &[KeyImage],
-    ) -> Result<Vec<KeyImage>, Error> {
+    ) -> Result<Vec<UnspentTxOut>, Error> {
         // Break down the key images by SubaddressId. We need key images bytes, so the mapping as
         // to the actual byte array.
         let mut subaddress_id_to_key_images = HashMap::<SubaddressId, Vec<&[u8]>>::default();
@@ -283,25 +283,21 @@ impl UtxoStore {
                 .collect::<Result<Vec<()>, Error>>()?;
         }
 
-        // Remove the actual UnspentTxOut data for every key image we successfully removed, as well
+        // Collect and remove the actual UnspentTxOut data for every key image we successfully removed, as well
         // as the key image -> subaddress association as that is no longer going to be needed.
+        let mut removed_utxos = Vec::new();
+
         for key_image in removed_key_images.iter() {
             let utxo_id = UtxoId::from(key_image);
-            match db_txn.del(self.utxo_id_to_utxo, &utxo_id, None) {
-                Ok(_) => Ok(()),
-                Err(lmdb::Error::NotFound) => Ok(()),
-                Err(err) => Err(Error::LMDB(err)),
-            }?;
 
-            match db_txn.del(self.key_image_to_subaddress_id, &key_image, None) {
-                Ok(_) => Ok(()),
-                Err(lmdb::Error::NotFound) => Ok(()),
-                Err(err) => Err(Error::LMDB(err)),
-            }?;
+            removed_utxos.push(self.get_utxo_by_id(db_txn, &utxo_id)?);
+
+            db_txn.del(self.utxo_id_to_utxo, &utxo_id, None)?;
+            db_txn.del(self.key_image_to_subaddress_id, &key_image, None)?;
         }
 
         // Success.
-        Ok(removed_key_images)
+        Ok(removed_utxos)
     }
 
     /// Get all UnspentTxOuts for a given address.
@@ -702,15 +698,15 @@ mod test {
         {
             let mut db_txn = utxo_store.env.begin_rw_txn().unwrap();
 
-            let removed_key_images = utxo_store
+            let removed_utxos = utxo_store
                 .remove_utxos_by_key_images(&mut db_txn, &monitor_id0, &[])
                 .unwrap();
-            assert_eq!(removed_key_images, vec![]);
+            assert_eq!(removed_utxos, vec![]);
 
-            let removed_key_images = utxo_store
+            let removed_utxos = utxo_store
                 .remove_utxos_by_key_images(&mut db_txn, &monitor_id0, &key_images)
                 .unwrap();
-            assert_eq!(removed_key_images, vec![]);
+            assert_eq!(removed_utxos, vec![]);
         }
 
         // Add a few utxos to monitor_id0.
@@ -777,10 +773,10 @@ mod test {
             let mut db_txn = utxo_store.env.begin_rw_txn().unwrap();
 
             // The first key images are associated with monitor_id0.
-            let removed_key_images = utxo_store
+            let removed_utxos = utxo_store
                 .remove_utxos_by_key_images(&mut db_txn, &monitor_id1, &key_images[0..2])
                 .unwrap();
-            assert_eq!(removed_key_images, vec![]);
+            assert_eq!(removed_utxos, vec![]);
 
             db_txn.commit().unwrap();
         }
@@ -814,16 +810,21 @@ mod test {
         {
             let mut db_txn = utxo_store.env.begin_rw_txn().unwrap();
 
-            let removed_key_images = utxo_store
+            let removed_utxos = utxo_store
                 .remove_utxos_by_key_images(&mut db_txn, &monitor_id0, &key_images)
                 .unwrap();
             assert_eq!(
-                HashSet::from_iter(removed_key_images),
+                HashSet::from_iter(removed_utxos.iter().map(|utxo| utxo.key_image.clone())),
                 HashSet::from_iter(vec![
                     key_images[0].clone(),
                     key_images[1].clone(),
                     key_images[2].clone()
                 ])
+            );
+
+            assert_eq!(
+                HashSet::from_iter(removed_utxos),
+                HashSet::from_iter(vec![utxos[0].clone(), utxos[1].clone(), utxos[2].clone()])
             );
 
             assert_eq!(
@@ -853,10 +854,10 @@ mod test {
         {
             let mut db_txn = utxo_store.env.begin_rw_txn().unwrap();
 
-            let removed_key_images = utxo_store
+            let removed_utxos = utxo_store
                 .remove_utxos_by_key_images(&mut db_txn, &monitor_id0, &key_images)
                 .unwrap();
-            assert_eq!(removed_key_images, vec![]);
+            assert_eq!(removed_utxos, vec![]);
 
             assert_eq!(
                 utxo_store.get_utxos(&db_txn, &monitor_id0, 123).unwrap(),
