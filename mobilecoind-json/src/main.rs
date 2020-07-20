@@ -590,6 +590,60 @@ fn block_details(
     }))
 }
 
+#[derive(Serialize, Default)]
+struct JsonProcessedTxOut {
+    monitor_id: String,
+    subaddress_index: u64,
+    public_key: String,
+    key_image: String,
+    value: String, // Needs to be String since Javascript ints are not 64 bit.
+}
+
+#[derive(Serialize, Default)]
+struct JsonProcessedBlockResponse {
+    tx_outs: Vec<JsonProcessedTxOut>,
+    key_images: Vec<String>,
+}
+
+/// Retreives processed block information.
+#[get("/processed-block/<monitor_hex>/<block_num>")]
+fn processed_block(
+    state: rocket::State<State>,
+    monitor_hex: String,
+    block_num: u64,
+) -> Result<Json<JsonProcessedBlockResponse>, String> {
+    let monitor_id =
+        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
+
+    let mut req = mc_mobilecoind_api::GetProcessedBlockRequest::new();
+    req.set_monitor_id(monitor_id);
+    req.set_block(block_num);
+
+    let resp = state
+        .mobilecoind_api_client
+        .get_processed_block(&req)
+        .map_err(|err| format!("Failed getting processed block: {}", err))?;
+
+    Ok(Json(JsonProcessedBlockResponse {
+        tx_outs: resp
+            .get_tx_outs()
+            .iter()
+            .map(|tx_out| JsonProcessedTxOut {
+                monitor_id: hex::encode(tx_out.get_monitor_id()),
+                subaddress_index: tx_out.subaddress_index,
+                public_key: hex::encode(tx_out.get_public_key().get_data()),
+                key_image: hex::encode(tx_out.get_key_image().get_data()),
+                value: tx_out.value.to_string(),
+            })
+            .collect(),
+        key_images: resp
+            .get_spent_key_images()
+            .iter()
+            .map(|key_image| hex::encode(key_image.get_data()))
+            .collect(),
+    }))
+}
+
 #[derive(Deserialize)]
 struct JsonAddressRequestCodeRequest {
     url: String,
@@ -671,6 +725,7 @@ fn main() {
                 ledger_info,
                 block_info,
                 block_details,
+                processed_block,
                 address_request_code,
             ],
         )

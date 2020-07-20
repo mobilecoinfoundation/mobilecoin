@@ -21,6 +21,7 @@ BASE_CLIENT_PORT = 3200
 BASE_PEER_PORT = 3300
 BASE_ADMIN_PORT = 3400
 BASE_ADMIN_HTTP_GATEWAY_PORT = 3500
+MOBILECOIND_PORT = 4444
 
 # TODO make these command line arguments
 LEDGER_BASE = os.path.abspath(os.getenv('LEDGER_BASE'))
@@ -285,6 +286,48 @@ class Node:
         print(f'Stopped node {self}!')
 
 
+class Mobilecoind:
+    def __init__(self, client_port):
+        self.client_port = client_port
+        self.ledger_db = os.path.join(WORK_DIR, 'mobilecoind-ledger-db')
+        self.mobilecoind_db = os.path.join(WORK_DIR, 'mobilecoind-db')
+        self.watcher_db = os.path.join(WORK_DIR, 'watcher-db')
+        self.process = None
+
+    def start(self, network):
+        assert not self.process
+
+        peers = [f'--peer "insecure-mc://localhost:{node.client_port}/"' for node in network.nodes]
+        tx_srcs = [f'--tx-source-url "file://{node.ledger_distribution_dir}"' for node in network.nodes]
+
+        cmd = ' '.join([
+            f'cd {PROJECT_DIR} && exec {TARGET_DIR}/mobilecoind',
+            f'--ledger-db {self.ledger_db}',
+            f'--poll-interval 1',
+            f'--tx-source-url "file:///tmp/mc-local-network/node-ledger-distribution-0/"',
+            f'--mobilecoind-db {self.mobilecoind_db}',
+            f'--service-port {self.client_port}',
+            f'--watcher-db {self.watcher_db}',
+        ] + peers + tx_srcs)
+
+        print('Starting mobilecoind:', cmd)
+        print()
+
+        self.process = subprocess.Popen(cmd, shell=True)
+        print()
+
+        print('Waiting for watcher db to become available')
+        while not os.path.exists(os.path.join(self.watcher_db, 'data.mdb')):
+            print('Waiting for watcher db to become available')
+            time.sleep(1)
+
+    def stop(self):
+        if self.process:
+            if self.process.poll() is None:
+                self.process.terminate()
+            self.process = None
+
+
 class NetworkCLI(threading.Thread):
     """Network command line interface (over TCP)"""
     def __init__(self, network):
@@ -368,7 +411,7 @@ class Network:
             )
 
         subprocess.run(
-            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p mc-consensus-service -p mc-ledger-distribution -p mc-admin-http-gateway {CARGO_FLAGS}',
+            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p mc-consensus-service -p mc-ledger-distribution -p mc-admin-http-gateway -p mc-mobilecoind {CARGO_FLAGS}',
             shell=True,
             check=True,
         )
@@ -394,7 +437,7 @@ class Network:
     def start(self):
         print("Killing any existing processes")
         try:
-            subprocess.check_output("killall -9 consensus-service filebeat ledger-distribution prometheus mc-admin-http-gateway 2>/dev/null", shell=True)
+            subprocess.check_output("killall -9 consensus-service filebeat ledger-distribution prometheus mc-admin-http-gateway mobilecoind 2>/dev/null", shell=True)
         except subprocess.CalledProcessError as exc:
             if exc.returncode != 1:
                 raise
@@ -408,6 +451,9 @@ class Network:
 
         self.cli = NetworkCLI(self)
         self.cli.start()
+
+        self.mobilecoind = Mobilecoind(MOBILECOIND_PORT)
+        self.mobilecoind.start(self)
 
     def wait(self):
         """Block until one of our processes dies."""

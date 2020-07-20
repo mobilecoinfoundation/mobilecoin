@@ -411,11 +411,10 @@ mod test {
         monitor_store::MonitorData,
         test_utils::{self, add_block_to_ledger_db, get_test_databases},
     };
+    use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
+
     use mc_common::logger::{test_with_logger, Logger};
-    use mc_transaction_core::{
-        account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX},
-        tx::TxOut,
-    };
+    use mc_transaction_core::tx::TxOut;
     use rand::{rngs::StdRng, SeedableRng};
     use std::iter::FromIterator;
 

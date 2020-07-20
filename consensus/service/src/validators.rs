@@ -174,10 +174,12 @@ pub mod well_formed_tests {
     use mc_common::logger::{bench_with_logger, test_with_logger, Logger};
     use mc_ledger_db::LedgerDB;
     use mc_transaction_core::{
-        account_keys::AccountKey, constants::MAX_TOMBSTONE_BLOCKS, ring_signature::KeyImage,
-        tx::Tx, validation::TransactionValidationError,
+        constants::MAX_TOMBSTONE_BLOCKS, ring_signature::KeyImage, tx::Tx,
+        validation::TransactionValidationError,
     };
-    use mc_transaction_core_test_utils::{create_ledger, create_transaction, initialize_ledger};
+    use mc_transaction_core_test_utils::{
+        create_ledger, create_transaction, initialize_ledger, AccountKey,
+    };
     use rand::SeedableRng;
     use rand_hc::Hc128Rng;
     use test::Bencher;
@@ -548,10 +550,10 @@ pub mod well_formed_tests {
 mod is_valid_tests {
     use super::*;
     use mc_ledger_db::LedgerDB;
-    use mc_transaction_core::{
-        account_keys::AccountKey, tx::Tx, validation::TransactionValidationError,
+    use mc_transaction_core::{tx::Tx, validation::TransactionValidationError};
+    use mc_transaction_core_test_utils::{
+        create_ledger, create_transaction, initialize_ledger, AccountKey,
     };
-    use mc_transaction_core_test_utils::{create_ledger, create_transaction, initialize_ledger};
     use rand::SeedableRng;
     use rand_hc::Hc128Rng;
 
@@ -688,10 +690,10 @@ mod combine_tests {
     use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
     use mc_ledger_db::test_utils::get_mock_ledger;
     use mc_transaction_core::{
-        account_keys::AccountKey,
         onetime_keys::recover_onetime_private_key,
         tx::{TxOut, TxOutMembershipProof},
     };
+    use mc_transaction_core_test_utils::AccountKey;
     use mc_transaction_std::{InputCredentials, TransactionBuilder};
     use mc_util_from_random::FromRandom;
     use rand::SeedableRng;

@@ -142,8 +142,7 @@ impl<L: Ledger + Clone> BlockchainApi for BlockchainApiService<L> {
 mod tests {
     use super::*;
     use mc_common::logger::test_with_logger;
-    use mc_transaction_core::account_keys::AccountKey;
-    use mc_transaction_core_test_utils::{create_ledger, initialize_ledger};
+    use mc_transaction_core_test_utils::{create_ledger, initialize_ledger, AccountKey};
     use rand::{rngs::StdRng, SeedableRng};
 
     #[test_with_logger]

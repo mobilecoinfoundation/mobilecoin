@@ -192,7 +192,6 @@ pub fn compute_block_id<D: Digest>(
 #[cfg(test)]
 mod block_tests {
     use crate::{
-        account_keys::AccountKey,
         range::Range,
         tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash},
         Block, BlockContents, BlockContentsHash, BlockID, BLOCK_VERSION,
@@ -200,6 +199,7 @@ mod block_tests {
     use alloc::vec::Vec;
     use core::convert::TryFrom;
     use generic_array::GenericArray;
+    use mc_account_keys::AccountKey;
     use mc_crypto_keys::RistrettoPrivate;
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, CryptoRng, RngCore, SeedableRng};

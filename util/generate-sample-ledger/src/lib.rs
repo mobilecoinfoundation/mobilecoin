@@ -1,10 +1,11 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
+use mc_account_keys::PublicAddress;
 use mc_crypto_keys::RistrettoPrivate;
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::{
-    account_keys::PublicAddress, constants::TOTAL_MOB, encrypted_fog_hint::EncryptedFogHint,
-    ring_signature::KeyImage, tx::TxOut, Block, BlockContents, BLOCK_VERSION,
+    constants::TOTAL_MOB, encrypted_fog_hint::EncryptedFogHint, ring_signature::KeyImage,
+    tx::TxOut, Block, BlockContents, BLOCK_VERSION,
 };
 use mc_util_from_random::FromRandom;
 use rand::{RngCore, SeedableRng};

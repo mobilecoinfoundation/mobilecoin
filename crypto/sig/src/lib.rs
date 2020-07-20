@@ -13,7 +13,7 @@ use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use rand_core::SeedableRng;
 use rand_hc::Hc128Rng as FixedRng;
 use schnorrkel::{signing_context, SecretKey};
-pub use schnorrkel::{Signature, SignatureError};
+pub use schnorrkel::{Signature, SignatureError, SIGNATURE_LENGTH};
 
 /// Create a deterministic Schnorrkel signature
 ///
@@ -29,7 +29,8 @@ pub fn sign(context_tag: &[u8], private_key: &RistrettoPrivate, message: &[u8]) 
     // FIXME: We should probably hash the context_tag in as well.
     // Or just use something like merlin instead of Blake2b256.
     // In that case we make the assumption that Keccak, which underlies STROBE,
-    // is a strong Pseudorandom permutation.
+    // is a strong Pseudorandom permutation, and that consequently Merlin with
+    // a partially secret input is a PRF.
     let mut hasher = Blake2b256::new();
     hasher.input(private_key.to_bytes());
     hasher.input(message);

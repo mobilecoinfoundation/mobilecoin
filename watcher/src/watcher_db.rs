@@ -85,10 +85,7 @@ impl WatcherDB {
                 .open(path.as_ref())?,
         );
 
-        env.create_db(
-            Some(BLOCK_SIGNATURES_DB_NAME),
-            DatabaseFlags::DUP_SORT | DatabaseFlags::DUP_FIXED,
-        )?;
+        env.create_db(Some(BLOCK_SIGNATURES_DB_NAME), DatabaseFlags::DUP_SORT)?;
         env.create_db(Some(LAST_SYNCED_DB_NAME), DatabaseFlags::empty())?;
 
         Ok(())
@@ -303,9 +300,10 @@ pub fn create_or_open_watcher_db(
 #[cfg(test)]
 mod test {
     use super::*;
+    use mc_account_keys::AccountKey;
     use mc_common::logger::{test_with_logger, Logger};
     use mc_crypto_keys::Ed25519Pair;
-    use mc_transaction_core::{account_keys::AccountKey, Block, BlockContents};
+    use mc_transaction_core::{Block, BlockContents};
     use mc_transaction_core_test_utils::get_blocks;
     use mc_util_from_random::FromRandom;
     use mc_util_test_helper::run_with_one_seed;

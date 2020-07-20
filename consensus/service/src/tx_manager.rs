@@ -372,8 +372,9 @@ mod tests {
     use crate::validators::DefaultTxManagerUntrustedInterfaces;
     use mc_common::logger::test_with_logger;
     use mc_consensus_enclave_mock::ConsensusServiceMockEnclave;
-    use mc_transaction_core::account_keys::AccountKey;
-    use mc_transaction_core_test_utils::{create_ledger, create_transaction, initialize_ledger};
+    use mc_transaction_core_test_utils::{
+        create_ledger, create_transaction, initialize_ledger, AccountKey,
+    };
     use rand::{rngs::StdRng, SeedableRng};
 
     #[test_with_logger]

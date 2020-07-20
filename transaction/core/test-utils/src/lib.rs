@@ -1,11 +1,11 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use core::convert::TryFrom;
+pub use mc_account_keys::{AccountKey, PublicAddress, ViewKey, DEFAULT_SUBADDRESS_INDEX};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_ledger_db::{Ledger, LedgerDB};
 pub use mc_transaction_core::{
-    account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX},
     constants::BASE_FEE,
     get_tx_out_shared_secret,
     onetime_keys::recover_onetime_private_key,

@@ -75,6 +75,10 @@ pub enum TransactionValidationError {
     #[fail(display = "UnequalRingSizes")]
     UnequalRingSizes,
 
+    /// Inputs must be sorted by the public key of the first ring element of each input.
+    #[fail(display = "UnsortedInputs")]
+    UnsortedInputs,
+
     /// Key Images must be sorted.
     #[fail(display = "UnsortedKeyImages")]
     UnsortedKeyImages,

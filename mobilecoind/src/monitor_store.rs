@@ -7,12 +7,12 @@
 use crate::{database_key::DatabaseByteArrayKey, error::Error};
 
 use lmdb::{Cursor, Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
+use mc_account_keys::{AccountKey, PublicAddress};
 use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
 use mc_crypto_digestible::Digestible;
-use mc_transaction_core::account_keys::{AccountKey, PublicAddress};
 use mc_util_serial::Message;
 use sha3::Sha3_256;
 use std::{convert::TryFrom, ops::Range, sync::Arc};

@@ -45,7 +45,7 @@ impl SubaddressId {
     pub fn to_bytes(&self) -> [u8; 40] {
         let mut buf = [0u8; 40];
         buf[0..32].copy_from_slice(self.monitor_id.as_bytes());
-        buf[32..40].copy_from_slice(&self.index.to_le_bytes());
+        buf[32..40].copy_from_slice(&self.index.to_be_bytes());
         buf
     }
 
@@ -69,7 +69,7 @@ impl TryFrom<&[u8]> for SubaddressId {
 
         let mut index_bytes = [0u8; 8];
         index_bytes.copy_from_slice(&src[32..40]);
-        let index = u64::from_le_bytes(index_bytes);
+        let index = u64::from_be_bytes(index_bytes);
 
         Ok(Self { monitor_id, index })
     }

@@ -10,9 +10,9 @@
 use core::hash::Hash;
 use curve25519_dalek::scalar::Scalar;
 use hkdf::Hkdf;
+use mc_account_keys::AccountKey;
 use mc_crypto_hashes::Blake2b256;
 use mc_crypto_keys::RistrettoPrivate;
-use mc_transaction_core::account_keys::AccountKey;
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 use std::convert::From;

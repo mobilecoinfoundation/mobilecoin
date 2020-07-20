@@ -6,9 +6,9 @@
 
 use crate::{InputCredentials, TxBuilderError};
 use curve25519_dalek::scalar::Scalar;
+use mc_account_keys::PublicAddress;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
 use mc_transaction_core::{
-    account_keys::PublicAddress,
     constants::BASE_FEE,
     encrypted_fog_hint::EncryptedFogHint,
     fog_hint::FogHint,
@@ -108,6 +108,12 @@ impl TransactionBuilder {
                 return Err(TxBuilderError::InvalidRingSize);
             }
         }
+
+        // Construct a list of sorted inputs.
+        // Inputs are sorted by the first ring element's public key. Note that each ring is also
+        // sorted.
+        self.input_credentials
+            .sort_by(|a, b| a.ring[0].public_key.cmp(&b.ring[0].public_key));
 
         let inputs: Vec<TxIn> = self
             .input_credentials
@@ -238,8 +244,8 @@ fn create_fog_hint<RNG: CryptoRng + RngCore>(
 #[cfg(test)]
 pub mod transaction_builder_tests {
     use super::*;
+    use mc_account_keys::{AccountKey, DEFAULT_SUBADDRESS_INDEX};
     use mc_transaction_core::{
-        account_keys::{AccountKey, DEFAULT_SUBADDRESS_INDEX},
         constants::{MAX_INPUTS, MAX_OUTPUTS},
         onetime_keys::*,
         ring_signature::KeyImage,
@@ -532,5 +538,21 @@ pub mod transaction_builder_tests {
         let mut expected_outputs = outputs.clone();
         expected_outputs.sort_by(|a, b| a.public_key.cmp(&b.public_key));
         assert_eq!(outputs, expected_outputs);
+    }
+
+    #[test]
+    // Transaction inputs should be sorted by the public key of the first ring element.
+    fn test_inputs_are_sorted() {
+        let mut rng: StdRng = SeedableRng::from_seed([92u8; 32]);
+        let sender = AccountKey::random(&mut rng);
+        let recipient = AccountKey::random(&mut rng);
+        let num_inputs = 3;
+        let num_outputs = 11;
+        let tx = get_transaction(num_inputs, num_outputs, &sender, &recipient, &mut rng).unwrap();
+
+        let inputs = tx.prefix.inputs;
+        let mut expected_inputs = inputs.clone();
+        expected_inputs.sort_by(|a, b| a.ring[0].public_key.cmp(&b.ring[0].public_key));
+        assert_eq!(inputs, expected_inputs);
     }
 }

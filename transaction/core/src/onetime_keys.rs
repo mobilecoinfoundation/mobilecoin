@@ -7,15 +7,12 @@
 
 #![allow(non_snake_case)]
 
-use crate::{
-    account_keys::PublicAddress,
-    domain_separators::{HASH_TO_POINT_DOMAIN_TAG, HASH_TO_SCALAR_DOMAIN_TAG},
-    view_key::ViewKey,
-};
+use crate::domain_separators::{HASH_TO_POINT_DOMAIN_TAG, HASH_TO_SCALAR_DOMAIN_TAG};
 use blake2::{Blake2b, Digest};
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_POINT, ristretto::RistrettoPoint, scalar::Scalar,
 };
+use mc_account_keys::{PublicAddress, ViewKey};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
@@ -177,7 +174,7 @@ pub fn generate_tx_keypair<T: CryptoRng + RngCore>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::account_keys::AccountKey;
+    use mc_account_keys::AccountKey;
     use mc_crypto_rand::McRng;
     use mc_util_from_random::FromRandom;
 

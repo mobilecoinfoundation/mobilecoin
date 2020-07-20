@@ -1,12 +1,9 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-// TODO: Would be nice to use serde_json instead of mc_util_serial but it doesn't
-// work with Ristretto keys at time of writing
-
 pub mod config;
 pub mod keygen;
 
-use mc_transaction_core::account_keys::PublicAddress;
+use mc_account_keys::PublicAddress;
 use mc_transaction_std::identity::RootIdentity;
 use std::{fs::File, io::prelude::*, path::Path};
 
@@ -97,7 +94,7 @@ impl std::error::Error for ProstError {
 mod testing {
     use super::*;
 
-    use mc_transaction_core::account_keys::AccountKey;
+    use mc_account_keys::AccountKey;
     use rand::{rngs::StdRng, SeedableRng};
     use tempdir::TempDir;
 

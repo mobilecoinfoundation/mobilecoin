@@ -6,11 +6,11 @@ use crate::{
     payments::{Outlay, TxProposal},
     utxo_store::UnspentTxOut,
 };
+use mc_account_keys::PublicAddress;
 use mc_api::ConversionError;
 use mc_common::HashMap;
 use mc_mobilecoind_api::{self};
 use mc_transaction_core::{
-    account_keys::PublicAddress,
     ring_signature::KeyImage,
     tx::{Tx, TxOut, TxOutConfirmationNumber},
 };
@@ -171,8 +171,10 @@ mod test {
     use super::*;
     use mc_crypto_keys::RistrettoPublic;
     use mc_ledger_db::Ledger;
-    use mc_transaction_core::{account_keys::AccountKey, amount::Amount};
-    use mc_transaction_core_test_utils::{create_ledger, create_transaction, initialize_ledger};
+    use mc_transaction_core::amount::Amount;
+    use mc_transaction_core_test_utils::{
+        create_ledger, create_transaction, initialize_ledger, AccountKey,
+    };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
 

@@ -17,6 +17,7 @@ mod identity;
 use alloc::{collections::BTreeSet, format, string::String, vec::Vec};
 use core::convert::{TryFrom, TryInto};
 use identity::Ed25519Identity;
+use mc_account_keys::PublicAddress;
 use mc_attest_core::{
     IasNonce, IntelSealed, Quote, QuoteNonce, Report, TargetInfo, VerificationReport,
 };
@@ -39,7 +40,6 @@ use mc_crypto_rand::McRng;
 use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
-    account_keys::PublicAddress,
     amount::Amount,
     constants::{FEE_SPEND_PUBLIC_KEY, FEE_VIEW_PUBLIC_KEY},
     onetime_keys::{compute_shared_secret, compute_tx_pubkey, create_onetime_public_key},
@@ -547,11 +547,12 @@ mod tests {
     use super::*;
     use mc_ledger_db::Ledger;
     use mc_transaction_core::{
-        account_keys::AccountKey, constants::FEE_VIEW_PRIVATE_KEY,
-        onetime_keys::view_key_matches_output, tx::TxOutMembershipHash,
-        validation::TransactionValidationError, view_key::ViewKey,
+        constants::FEE_VIEW_PRIVATE_KEY, onetime_keys::view_key_matches_output,
+        tx::TxOutMembershipHash, validation::TransactionValidationError,
     };
-    use mc_transaction_core_test_utils::{create_ledger, create_transaction, initialize_ledger};
+    use mc_transaction_core_test_utils::{
+        create_ledger, create_transaction, initialize_ledger, AccountKey, ViewKey,
+    };
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
 

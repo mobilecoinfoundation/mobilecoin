@@ -1877,6 +1877,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-account-keys"
+version = "0.5.0"
+dependencies = [
+ "blake2",
+ "criterion",
+ "curve25519-dalek",
+ "digest",
+ "mc-crypto-digestible",
+ "mc-crypto-hashes",
+ "mc-crypto-keys",
+ "mc-crypto-sig",
+ "mc-util-from-random",
+ "mc-util-serial",
+ "mc-util-test-helper",
+ "prost",
+ "rand 0.7.3",
+ "rand_core 0.5.1",
+ "rand_hc 0.2.0",
+ "serde",
+ "tempdir",
+ "yaml-rust",
+]
+
+[[package]]
 name = "mc-admin-http-gateway"
 version = "0.5.0"
 dependencies = [
@@ -1899,6 +1923,7 @@ version = "0.5.0"
 dependencies = [
  "cargo-emit",
  "curve25519-dalek",
+ "mc-account-keys",
  "mc-common",
  "mc-crypto-keys",
  "mc-transaction-core",
@@ -2193,6 +2218,7 @@ dependencies = [
  "cfg-if",
  "digest",
  "mbedtls",
+ "mc-account-keys",
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-attest-trusted",
@@ -2532,6 +2558,7 @@ dependencies = [
  "curve25519-dalek",
  "failure",
  "lmdb-rkv",
+ "mc-account-keys",
  "mc-common",
  "mc-crypto-keys",
  "mc-crypto-rand",
@@ -2587,6 +2614,7 @@ dependencies = [
  "failure",
  "grpcio",
  "lazy_static",
+ "mc-account-keys",
  "mc-api",
  "mc-attest-core",
  "mc-common",
@@ -2622,6 +2650,7 @@ dependencies = [
  "hex_fmt",
  "lmdb-rkv",
  "lru",
+ "mc-account-keys",
  "mc-api",
  "mc-attest-core",
  "mc-common",
@@ -2771,16 +2800,13 @@ dependencies = [
 name = "mc-sgx-core-types"
 version = "0.5.0"
 dependencies = [
- "base64 0.12.1",
+ "binascii",
  "bincode",
  "bitflags",
  "displaydoc",
- "hex 0.4.2",
  "hex_fmt",
  "mc-sgx-core-types-sys",
  "mc-util-encodings",
- "mc-util-repr-bytes",
- "prost",
  "serde",
  "subtle 2.2.3",
 ]
@@ -2839,18 +2865,14 @@ dependencies = [
 name = "mc-sgx-epid-types"
 version = "0.5.0"
 dependencies = [
- "base64 0.12.1",
+ "binascii",
  "bincode",
- "bytes 0.5.4",
- "hex 0.4.2",
  "hex_fmt",
  "mc-sgx-core-types",
  "mc-sgx-core-types-sys",
  "mc-sgx-epid-types-sys",
  "mc-util-encodings",
  "mc-util-from-random",
- "mc-util-repr-bytes",
- "prost",
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
  "serde",
@@ -2875,7 +2897,6 @@ version = "0.5.0"
 dependencies = [
  "base64 0.12.1",
  "bitflags",
- "bytes 0.5.4",
  "chrono",
  "displaydoc",
  "hex 0.4.2",
@@ -2887,11 +2908,10 @@ dependencies = [
  "mc-util-encodings",
  "mc-util-from-random",
  "mc-util-repr-bytes",
- "prost",
- "prost-types",
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
  "rjson",
+ "serde",
  "subtle 2.2.3",
  "typenum",
 ]
@@ -2999,27 +3019,22 @@ dependencies = [
 name = "mc-transaction-core"
 version = "0.5.0"
 dependencies = [
- "aead",
  "blake2",
- "bs58",
  "bulletproofs",
  "cfg-if",
- "crc",
- "criterion",
  "curve25519-dalek",
  "digest",
  "failure",
  "generic-array 0.12.3",
  "hex_fmt",
- "hkdf",
  "lazy_static",
+ "mc-account-keys",
  "mc-common",
  "mc-crypto-box",
  "mc-crypto-digestible",
  "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-crypto-rand",
- "mc-crypto-sig",
  "mc-ledger-db",
  "mc-transaction-core-test-utils",
  "mc-util-from-random",
@@ -3037,13 +3052,13 @@ dependencies = [
  "subtle 2.2.3",
  "tempdir",
  "time",
- "yaml-rust",
 ]
 
 [[package]]
 name = "mc-transaction-core-test-utils"
 version = "0.5.0"
 dependencies = [
+ "mc-account-keys",
  "mc-crypto-keys",
  "mc-crypto-rand",
  "mc-ledger-db",
@@ -3062,6 +3077,7 @@ dependencies = [
  "curve25519-dalek",
  "failure",
  "hkdf",
+ "mc-account-keys",
  "mc-common",
  "mc-crypto-hashes",
  "mc-crypto-keys",
@@ -3084,9 +3100,9 @@ dependencies = [
  "crc",
  "failure",
  "hex_fmt",
+ "mc-account-keys",
  "mc-common",
  "mc-crypto-keys",
- "mc-transaction-core",
  "mc-transaction-std",
  "mc-util-serial",
  "mc-util-test-helper",
@@ -3156,11 +3172,8 @@ dependencies = [
 name = "mc-util-encodings"
 version = "0.5.0"
 dependencies = [
- "base64 0.12.1",
  "binascii",
- "displaydoc",
- "hex 0.4.2",
- "mc-util-repr-bytes",
+ "failure",
  "serde",
 ]
 
@@ -3177,6 +3190,7 @@ version = "0.5.0"
 dependencies = [
  "curve25519-dalek",
  "hex 0.3.2",
+ "mc-account-keys",
  "mc-crypto-keys",
  "mc-ledger-db",
  "mc-transaction-core",
@@ -3220,8 +3234,8 @@ name = "mc-util-keyfile"
 version = "0.5.0"
 dependencies = [
  "hex 0.3.2",
+ "mc-account-keys",
  "mc-crypto-rand",
- "mc-transaction-core",
  "mc-transaction-std",
  "mc-util-serial",
  "rand 0.7.3",
@@ -3296,6 +3310,7 @@ version = "0.5.0"
 dependencies = [
  "itertools",
  "lazy_static",
+ "mc-account-keys",
  "mc-common",
  "mc-crypto-keys",
  "mc-transaction-core",
@@ -3333,9 +3348,9 @@ dependencies = [
  "crc",
  "displaydoc",
  "hex 0.4.2",
+ "mc-account-keys",
  "mc-common",
  "mc-crypto-keys",
- "mc-transaction-core",
  "mc-transaction-std",
  "mc-util-b58-payloads",
  "mc-util-from-random",
@@ -3351,6 +3366,7 @@ version = "0.5.0"
 dependencies = [
  "failure",
  "lmdb-rkv",
+ "mc-account-keys",
  "mc-api",
  "mc-common",
  "mc-crypto-keys",
@@ -3521,7 +3537,6 @@ dependencies = [
  "mc-api",
  "mc-common",
  "mc-mobilecoind-api",
- "mc-util-grpc",
  "protobuf",
  "rocket",
  "rocket_contrib",
@@ -3917,16 +3932,6 @@ dependencies = [
  "proc-macro2 1.0.12",
  "quote 1.0.4",
  "syn 1.0.18",
-]
-
-[[package]]
-name = "prost-types"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1834f67c0697c001304b75be76f67add9c89742eda3a085ad8ee0bb38c3417aa"
-dependencies = [
- "bytes 0.5.4",
- "prost",
 ]
 
 [[package]]
@@ -4326,12 +4331,12 @@ checksum = "5510dbde48c4c37bf69123b1f636b6dd5f8dffe1f4e358af03c46a4947dca219"
 
 [[package]]
 name = "rocket"
-version = "0.4.4"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e20afbad214b001cabbe31dd270b48b3be980a7153ee2ed8392e241f856d651b"
+checksum = "6130967b369cfb8411b0b73e96fcba1229c32a9cc6f295d144f879bfced13c6e"
 dependencies = [
  "atty",
- "base64 0.10.1",
+ "base64 0.12.1",
  "log 0.4.8",
  "memchr",
  "num_cpus",
@@ -4347,9 +4352,9 @@ dependencies = [
 
 [[package]]
 name = "rocket_codegen"
-version = "0.4.4"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2108b35e2c3a35759d3f16cc3002ece05523191d884d3ad6523693fd43324dde"
+checksum = "cb852e6da168fb948a8f2b798ba2e2f0e4fc860eae0efa9cf2bf0f5466bb0425"
 dependencies = [
  "devise",
  "glob 0.3.0",
@@ -4362,9 +4367,9 @@ dependencies = [
 
 [[package]]
 name = "rocket_contrib"
-version = "0.4.4"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a10e7471279bc2d4a21b6fddd9589016bb119e6fbb547b216dd54ef237f28341"
+checksum = "e3946ca815127041d8f64455561031d058c22ae1b135251502c5ea523cf9e14b"
 dependencies = [
  "log 0.4.8",
  "notify",

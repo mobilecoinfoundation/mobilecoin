@@ -657,8 +657,9 @@ pub fn key_bytes_to_u64(bytes: &[u8]) -> u64 {
 mod ledger_db_test {
     use super::*;
     use core::convert::TryFrom;
+    use mc_account_keys::AccountKey;
     use mc_crypto_keys::RistrettoPrivate;
-    use mc_transaction_core::{account_keys::AccountKey, compute_block_id};
+    use mc_transaction_core::compute_block_id;
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
     use rand_core::RngCore;

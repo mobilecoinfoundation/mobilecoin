@@ -8,12 +8,12 @@
 
 use crate::{blockchain, external};
 use curve25519_dalek::ristretto::CompressedRistretto;
+use mc_account_keys::{AccountKey, PublicAddress};
 use mc_common::HashMap;
 use mc_crypto_keys::{
     CompressedRistrettoPublic, Ed25519Public, Ed25519Signature, RistrettoPrivate, RistrettoPublic,
 };
 use mc_transaction_core::{
-    account_keys::{AccountKey, PublicAddress},
     amount::Amount,
     encrypted_fog_hint::EncryptedFogHint,
     range::Range,
@@ -141,8 +141,8 @@ impl TryFrom<&external::CompressedRistretto> for RistrettoPublic {
 }
 
 /// Convert CompressedRistrettoPublic --> external::CompressedRistretto
-impl From<CompressedRistrettoPublic> for external::CompressedRistretto {
-    fn from(other: CompressedRistrettoPublic) -> Self {
+impl From<&CompressedRistrettoPublic> for external::CompressedRistretto {
+    fn from(other: &CompressedRistrettoPublic) -> Self {
         let mut key = external::CompressedRistretto::new();
         key.set_data(other.as_bytes().to_vec());
         key
