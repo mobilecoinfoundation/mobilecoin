@@ -67,7 +67,7 @@ mod tests {
 
     use core::{convert::TryFrom, str::FromStr};
 
-    use mc_account_keys::{AccountKey, RootIdentity};
+    use mc_account_keys::{AccountKey, RootEntropy, RootIdentity};
     use mc_crypto_keys::RistrettoPrivate;
     use mc_util_test_helper::{run_with_several_seeds, RngCore};
 
@@ -75,8 +75,8 @@ mod tests {
     #[test]
     fn example_fog_public_address() {
         let identity = RootIdentity {
-            root_entropy: [0u8; 32].to_vec(),
-            fog_url: "fog://example.com".to_owned(),
+            root_entropy: RootEntropy::from(&[0u8; 32]),
+            fog_report_url: "fog://example.com".to_owned(),
             fog_report_id: Default::default(),
             fog_authority_fingerprint: Default::default(),
         };
@@ -103,12 +103,7 @@ mod tests {
     // Test an example fogless public address being parsed to mob url
     #[test]
     fn example_fogless_public_address() {
-        let identity = RootIdentity {
-            root_entropy: [0u8; 32].to_vec(),
-            fog_url: Default::default(),
-            fog_report_id: Default::default(),
-            fog_authority_fingerprint: Default::default(),
-        };
+        let identity = RootIdentity::from(&RootEntropy::from(&[0u8; 32]));
 
         let acct = AccountKey::from(&identity);
 

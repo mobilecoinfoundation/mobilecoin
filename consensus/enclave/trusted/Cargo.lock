@@ -582,10 +582,11 @@ dependencies = [
  "mc-crypto-keys 0.5.0",
  "mc-crypto-sig 0.5.0",
  "mc-util-from-random 0.5.0",
+ "mc-util-repr-bytes 0.1.0",
  "mc-util-serial 0.5.0",
  "prost 0.6.1 (git+https://github.com/danburkert/prost?rev=6113789f70b69709820becba4242824b4fb3ffec)",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
+ "zeroize 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

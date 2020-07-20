@@ -1891,15 +1891,16 @@ dependencies = [
  "mc-crypto-keys",
  "mc-crypto-sig",
  "mc-util-from-random",
+ "mc-util-repr-bytes",
  "mc-util-serial",
  "mc-util-test-helper",
  "prost",
  "rand 0.7.3",
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
- "serde",
  "tempdir",
  "yaml-rust",
+ "zeroize 1.1.0",
 ]
 
 [[package]]
@@ -1936,6 +1937,8 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-repr-bytes",
  "mc-util-serial",
+ "mc-util-test-helper",
+ "prost",
  "protobuf",
  "rand 0.7.3",
 ]
@@ -3236,10 +3239,10 @@ dependencies = [
  "hex 0.3.2",
  "mc-account-keys",
  "mc-crypto-rand",
+ "mc-util-from-random",
  "mc-util-serial",
  "rand 0.7.3",
  "rand_hc 0.2.0",
- "serde_json",
  "structopt",
  "tempdir",
 ]

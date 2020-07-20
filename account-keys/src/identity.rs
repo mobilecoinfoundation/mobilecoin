@@ -11,33 +11,83 @@
 //!
 //! The other (fog-related) fields of RootIdentity are analogous to AccountKey.
 
-use crate::{AccountKey, RootEntropyProblem};
-use alloc::{
-    string::{String, ToString},
-    vec::Vec,
+use crate::AccountKey;
+use alloc::{borrow::ToOwned, string::String, vec::Vec};
+use core::{
+    convert::{From, TryFrom},
+    hash::Hash,
 };
-use core::{convert::From, hash::Hash};
 use curve25519_dalek::scalar::Scalar;
 use hkdf::Hkdf;
 use mc_crypto_hashes::Blake2b256;
 use mc_crypto_keys::RistrettoPrivate;
+use mc_util_from_random::FromRandom;
+use mc_util_repr_bytes::{
+    derive_prost_message_from_repr_bytes, derive_repr_bytes_from_as_ref_and_try_from, typenum::U32,
+    LengthMismatch,
+};
 use prost::Message;
 use rand_core::{CryptoRng, RngCore};
-use serde::{Deserialize, Serialize};
+use zeroize::Zeroize;
 
-pub const TEST_FOG_AUTHORITY_FINGERPRINT: [u8; 4] = [9, 9, 9, 9];
-pub const TEST_FOG_REPORT_KEY: &str = "";
+/// A secret value used as input key material to derive private keys.
+#[derive(Clone, Default, Debug, PartialEq, Eq, Hash, Zeroize)]
+pub struct RootEntropy {
+    /// 32 bytes of input key material.
+    /// Should be e.g. RDRAND, /dev/random/, or from properly seeded CSPRNG.
+    pub bytes: [u8; 32],
+}
+
+impl AsRef<[u8]> for RootEntropy {
+    fn as_ref(&self) -> &[u8] {
+        &self.bytes[..]
+    }
+}
+
+impl From<&[u8; 32]> for RootEntropy {
+    fn from(src: &[u8; 32]) -> Self {
+        Self { bytes: *src }
+    }
+}
+
+impl TryFrom<&[u8]> for RootEntropy {
+    type Error = LengthMismatch;
+
+    fn try_from(src: &[u8]) -> Result<RootEntropy, LengthMismatch> {
+        if src.len() == 32 {
+            let mut result = Self { bytes: [0u8; 32] };
+            result.bytes.copy_from_slice(src);
+            Ok(result)
+        } else {
+            Err(LengthMismatch {
+                expected: 32,
+                found: src.len(),
+            })
+        }
+    }
+}
+
+impl FromRandom for RootEntropy {
+    fn from_random<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
+        let mut result = Self { bytes: [0u8; 32] };
+        rng.fill_bytes(&mut result.bytes);
+        result
+    }
+}
+
+derive_repr_bytes_from_as_ref_and_try_from!(RootEntropy, U32);
+derive_prost_message_from_repr_bytes!(RootEntropy);
 
 /// A RootIdentity contains 32 bytes of root entropy (for deriving private keys
 /// using a KDF), together with any fog data for the account.
-#[derive(Clone, PartialEq, Eq, Hash, Message, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Hash, Message)]
 pub struct RootIdentity {
     /// Root entropy used to derive a user's private keys.
-    #[prost(bytes, tag = 1)]
-    pub root_entropy: Vec<u8>,
+    #[prost(message, required, tag = 1)]
+    pub root_entropy: RootEntropy,
     /// Fog report url
     #[prost(string, tag = 2)]
-    pub fog_url: String,
+    pub fog_report_url: String,
     /// Fog report id
     #[prost(string, tag = 3)]
     pub fog_report_id: String,
@@ -47,65 +97,58 @@ pub struct RootIdentity {
 }
 
 impl RootIdentity {
-    /// Generate a random root identity with a specific fog url configured
-    pub fn random<T: RngCore + CryptoRng>(rng: &mut T, fog_url: Option<&str>) -> Self {
-        let mut root_entropy = [0u8; 32];
-        // Filter out bad root entropies
-        // TODO: Break after 100 tries and fail?
-        loop {
-            rng.fill_bytes(&mut root_entropy);
-            if crate::check_root_entropy(&root_entropy[..]).is_ok() {
-                break;
-            }
-        }
+    /// Generate a random root identity with a specific fog_report_url configured
+    pub fn random_with_fog<T: RngCore + CryptoRng>(
+        rng: &mut T,
+        fog_report_url: &str,
+        fog_report_id: &str,
+        fog_authority_fingerprint: &[u8],
+    ) -> Self {
+        let mut result = Self::from_random(rng);
 
-        let mut result = Self {
-            root_entropy: root_entropy.to_vec(),
-            fog_url: Default::default(),
-            fog_report_id: Default::default(),
-            fog_authority_fingerprint: Default::default(),
-        };
-
-        if let Some(fog_url) = fog_url {
-            result.fog_url = fog_url.to_string();
-            // FIXME: Require explicit args here as well?
-            result.fog_report_id = TEST_FOG_REPORT_KEY.to_string();
-            result.fog_authority_fingerprint = TEST_FOG_AUTHORITY_FINGERPRINT.to_vec();
+        if !fog_report_url.is_empty() {
+            result.fog_report_url = fog_report_url.to_owned();
+            result.fog_report_id = fog_report_id.to_owned();
+            result.fog_authority_fingerprint = fog_authority_fingerprint.to_owned();
         }
 
         result
     }
+}
 
-    /// Check root entropy for "obvious" statistical problems or blacklisted values.
-    ///
-    /// This function SHOULD be called before turning RootIdentity into AccountKey.
-    ///
-    /// Root entropy that does not return Ok from this check SHOULD be rejected,
-    /// *during account creation*.
-    /// During *loading of a pre-existing account*, which may already have money on it,
-    /// the root entropy CANNOT be rejected -- we must still generate the account key
-    /// so that the user can access funds. But we should perhaps show a warning so that
-    /// they can learn to change their private keys.
-    ///
-    /// This policy allows that new, more restrictive, tests and blacklist values can be added
-    /// to the logic of this function, as a non-breaking change.
-    pub fn check_root_entropy(&self) -> Result<(), RootEntropyProblem> {
-        crate::check_root_entropy(&self.root_entropy)
+impl From<&RootEntropy> for RootIdentity {
+    fn from(src: &RootEntropy) -> Self {
+        Self {
+            root_entropy: src.clone(),
+            fog_report_url: Default::default(),
+            fog_report_id: Default::default(),
+            fog_authority_fingerprint: Default::default(),
+        }
+    }
+}
+
+/// Generate a random root identity without fog configured
+impl FromRandom for RootIdentity {
+    fn from_random<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
+        Self::from(&RootEntropy::from_random(rng))
     }
 }
 
 /// Derive an AccountKey from RootIdentity
 impl From<&RootIdentity> for AccountKey {
     fn from(src: &RootIdentity) -> Self {
-        assert!(src.root_entropy.len() >= 32, "Root identity with less than 32 bytes of entropy is invalid and cannot be used to create AccountKey");
-        let spend_private_key =
-            RistrettoPrivate::from(root_identity_hkdf_helper(&src.root_entropy, b"spend"));
-        let view_private_key =
-            RistrettoPrivate::from(root_identity_hkdf_helper(&src.root_entropy, b"view"));
+        let spend_private_key = RistrettoPrivate::from(root_identity_hkdf_helper(
+            src.root_entropy.as_ref(),
+            b"spend",
+        ));
+        let view_private_key = RistrettoPrivate::from(root_identity_hkdf_helper(
+            src.root_entropy.as_ref(),
+            b"view",
+        ));
         AccountKey::new_with_fog(
             &spend_private_key,
             &view_private_key,
-            src.fog_url.clone(),
+            src.fog_report_url.clone(),
             src.fog_report_id.clone(),
             src.fog_authority_fingerprint.clone(),
         )
@@ -116,8 +159,8 @@ impl From<&RootIdentity> for AccountKey {
 impl From<&[u8; 32]> for RootIdentity {
     fn from(src: &[u8; 32]) -> Self {
         Self {
-            root_entropy: src.to_vec(),
-            fog_url: Default::default(),
+            root_entropy: RootEntropy::from(src),
+            fog_report_url: Default::default(),
             fog_report_id: Default::default(),
             fog_authority_fingerprint: Default::default(),
         }
@@ -150,16 +193,17 @@ mod testing {
 
     #[test]
     // Deserializing should recover a serialized RootIdentity.
-    fn mc_util_serial_roundtrip_root_identity() {
+    fn prost_roundtrip_root_identity() {
         mc_util_test_helper::run_with_several_seeds(|mut rng| {
-            let root_id = RootIdentity::random(&mut rng, None);
-            let ser = mc_util_serial::serialize(&root_id).unwrap();
-            let result: RootIdentity = mc_util_serial::deserialize(&ser).unwrap();
+            let root_id = RootIdentity::from_random(&mut rng);
+            let ser = mc_util_serial::encode(&root_id);
+            let result: RootIdentity = mc_util_serial::decode(&ser).unwrap();
             assert_eq!(root_id, result);
 
-            let root_id = RootIdentity::random(&mut rng, Some("example.com"));
-            let ser = mc_util_serial::serialize(&root_id).unwrap();
-            let result: RootIdentity = mc_util_serial::deserialize(&ser).unwrap();
+            let root_id =
+                RootIdentity::random_with_fog(&mut rng, "fog://example.com", "1", &[7u8, 7u8]);
+            let ser = mc_util_serial::encode(&root_id);
+            let result: RootIdentity = mc_util_serial::decode(&ser).unwrap();
             assert_eq!(root_id, result);
         })
     }
