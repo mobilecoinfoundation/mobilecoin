@@ -2,10 +2,11 @@
 
 //! IAS Quote Structure
 //!
-//! This is the "special" version of sgx_quote_t that's returned by IAS (it does not contain the
-//! signature_len unsigned or variable-length signature fields) but not actually provided anywhere
-//! in the SGX headers. We skip the byte representation because this is never used during FFI, in
-//! favor of parsing it directly into the rusty types that sit above FFI types.
+//! This is the "special" version of sgx_quote_t that's returned by IAS (it does
+//! not contain the signature_len unsigned or variable-length signature fields)
+//! but not actually provided anywhere in the SGX headers. We skip the byte
+//! representation because this is never used during FFI, in favor of parsing it
+//! directly into the rusty types that sit above FFI types.
 
 #[cfg(feature = "use_prost")]
 use bytes::{Buf, BufMut};
@@ -21,8 +22,6 @@ use prost::{
     encoding::{self, message, uint32, DecodeContext, WireType},
     DecodeError, Message,
 };
-#[cfg(feature = "use_serde")]
-use serde::{Deserialize, Serialize};
 
 const VERSION_START: usize = 0;
 const VERSION_SIZE: usize = INTEL_U16_SIZE;
@@ -53,9 +52,9 @@ const REPORT_BODY_END: usize = REPORT_BODY_START + REPORT_BODY_SIZE;
 
 /// The quote structure returned by IAS.
 ///
-/// This structure is nearly identical to the [`Quote`](mc_sgx_epid_types::Quote)
-/// structure, but does not contain the variable-length signature and it's length.
-#[cfg_attr(feature = "use_serde", derive(Deserialize, Serialize))]
+/// This structure is nearly identical to the
+/// [`Quote`](mc_sgx_epid_types::Quote) structure, but does not contain the
+/// variable-length signature and it's length.
 #[derive(Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Quote {
     /// The quote version
@@ -95,7 +94,8 @@ impl FromBase64 for Quote {
     type Error = EncodingError;
 
     fn from_base64(src: &str) -> Result<Self, Self::Error> {
-        // We decode base64 into this buffer, then FromX64 the contents into our components.
+        // We decode base64 into this buffer, then FromX64 the contents into our
+        // components.
         let mut buffer = GenericArray::default();
         base64::decode_config_slice(src, base64::STANDARD, buffer.as_mut_slice())?;
 

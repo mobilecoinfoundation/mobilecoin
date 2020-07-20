@@ -9,16 +9,13 @@ use core::{
 use hex::{FromHex, FromHexError};
 use hex_fmt::HexFmt;
 use mc_util_from_random::FromRandom;
-#[cfg(feature = "use_prost")]
-use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
-#[cfg(feature = "use_serde")]
-use mc_util_repr_bytes::derive_serde_from_repr_bytes;
-use mc_util_repr_bytes::{derive_repr_bytes_from_as_ref_and_try_from, typenum::U16};
+use mc_util_repr_bytes::typenum::U16;
 use rand_core::{CryptoRng, RngCore};
 
 const IAS_NONCE_SIZE: usize = 16;
 
-/// The Nonce is provided with the JSON request payload to Intel Attestation Services.
+/// The Nonce is provided with the JSON request payload to Intel Attestation
+/// Services.
 ///
 /// (IAS Spec Documentation)[https://software.intel.com/sites/default/files/managed/7e/3b/ias-api-spec.pdf]
 /// The documentation is slightly unclear as to what encoding should be used, so
@@ -27,13 +24,10 @@ const IAS_NONCE_SIZE: usize = 16;
 #[repr(transparent)]
 pub struct Nonce([u8; IAS_NONCE_SIZE]);
 
-derive_repr_bytes_from_as_ref_and_try_from!(Nonce, U16);
+mc_util_repr_bytes::derive_repr_bytes_from_as_ref_and_try_from!(Nonce, U16);
 
 #[cfg(feature = "use_prost")]
-derive_prost_message_from_repr_bytes!(Nonce);
-
-#[cfg(feature = "use_serde")]
-derive_serde_from_repr_bytes!(Nonce);
+mc_util_repr_bytes::derive_prost_message_from_repr_bytes!(Nonce);
 
 impl AsRef<[u8]> for Nonce {
     fn as_ref(&self) -> &[u8] {
@@ -88,7 +82,8 @@ mod test {
     use rand_hc::Hc128Rng;
 
     #[test]
-    /// Test hex encoding using data explicitly, and that it matches our to_string hex
+    /// Test hex encoding using data explicitly, and that it matches our
+    /// to_string hex
     fn test_to_string_and_hex_encoding() {
         let mut seeded_rng = Hc128Rng::from_seed([1u8; 32]);
         let ias_nonce = Nonce::from_random(&mut seeded_rng);

@@ -11,14 +11,11 @@ use crate::{
 };
 use alloc::{
     borrow::ToOwned,
-    collections::BTreeSet,
     string::{String, ToString},
     vec::Vec,
 };
 use bitflags::bitflags;
-#[cfg(feature = "use_prost")]
-use bytes::{Buf, BufMut};
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{format::ParseError, DateTime, NaiveDateTime, Utc};
 use core::{
     convert::{TryFrom, TryInto},
     fmt::{Debug, Display, Formatter, Result as FmtResult},
@@ -27,214 +24,152 @@ use displaydoc::Display;
 use hex::FromHex;
 use mc_sgx_epid_types::PlatformInfo;
 use mc_util_encodings::{Error as EncodingError, FromBase64};
-use mc_util_repr_bytes::ReprBytes;
 #[cfg(feature = "use_prost")]
-use prost::{
-    encoding::{message, string, uint64, DecodeContext, WireType},
-    DecodeError, Message,
-};
+use prost::Message;
+#[cfg(feature = "use_prost")]
 use prost_types::Timestamp;
-#[cfg(feature = "use_serde")]
-use serde::{Deserialize, Serialize};
-
-/// The protobuf tag number of the ID field
-const TAG_ID: u32 = 1;
-/// The protobuf tag number of the timestamp field
-const TAG_TIMESTAMP: u32 = 2;
-/// The protobuf tag number of the version field
-const TAG_VERSION: u32 = 3;
-/// The protobuf tag number of the platform info field
-const TAG_PLATFORM_INFO: u32 = 4;
-/// The protobuf tag number of the revocation cause field
-const TAG_REVOCATION_REASON: u32 = 5;
-/// The protobuf tag number of the manifest status field
-const TAG_PSE_MANIFEST_STATUS: u32 = 6;
-/// The protobuf tag number of the enclave quote status field
-const TAG_ISV_ENCLAVE_QUOTE_STATUS: u32 = 7;
-/// The protobuf tag number of the enclave quote body field
-const TAG_ISV_ENCLAVE_QUOTE_BODY: u32 = 8;
-/// The protobuf tag number of the PSE manifest hash field
-const TAG_PSE_MANIFEST_HASH: u32 = 9;
-/// The protobuf tag number of the nonce field
-const TAG_NONCE: u32 = 10;
-/// The protobuf tag number of the EPID pseudonym field
-const TAG_EPID_PSEUDONYM: u32 = 11;
-/// The protobuf tag number of the advisory URL field
-const TAG_ADVISORY_URL: u32 = 12;
-/// The protobuf tag number of the advisory IDs array field
-const TAG_ADVISORY_IDS: u32 = 13;
-
-/// A private trait used to encode our complex option/result stuff as IAS-JSON-compatible protobuf.
-trait EncodeProtobuf {
-    fn encode(&self, buf: &mut B);
-}
 
 /// An enumeration of Platform Services Enclave manifest errors returned by IAS
 /// as part of the signed quote.
 ///
 /// This is defined in the [IAS API v4, S4.2.1](https://api.trustedservices.intel.com/documents/sgx-attestation-api-spec.pdf).
-#[cfg_attr(feature = "use_serde", derive(Deserialize, Serialize))]
 #[derive(Clone, Debug, Display, Hash, Eq, Ord, PartialEq, PartialOrd)]
-pub enum PseError {
-    /// The PSE manifest provided was invalid
+pub enum PseError<'report> {
+    /// Security properties of the SGX Platform Service cannot be verified due
+    /// to unrecognized PSE Manifest.
+    Unknown,
+
+    /// Security properties of the SGX Platform Service are invalid.
+    ///
+    /// SP should assume the SGX Platform Service utilized by the ISV enclave is
+    /// invalid.
     Invalid,
-    /// The PSE manifest is out of date
-    OutOfDate(PlatformInfo),
-    /// The PSE manifest signing key has been revoked, and must be updated
-    Revoked(PlatformInfo),
-    /// The PSE is using an out-of-date revocation list and must be updated
-    RlVersionMismatch(PlatformInfo),
+
+    /// TCB level of SGX Platform Service is outdated but the Service has not
+    /// been identified as compromised and thus it is not revoked.
+    ///
+    /// It is up to the SP to decide whether or not to assume the SGX Platform
+    /// Service utilized by the ISV enclave is valid.
+    OutOfDate,
+
+    /// The hardware/firmware component involved in the SGX Platform Service has
+    /// been revoked.
+    ///
+    /// SP should assume the SGX Platform Service utilized by the ISV enclave is
+    /// invalid.
+    Revoked,
+
+    /// A specific type of Revocation List used to verify the hardware/firmware
+    /// component involved in the SGX Platform Service during the SGX
+    /// Platform Service initialization process is out of date.
+    ///
+    /// If the SP rejects the remote attestation and forwards the Platform Info
+    /// Blob to the SGX Platform SW through the ISV SGX Application, the SGX
+    /// Platform SW will attempt to refresh the SGX Platform Service.
+    RlVersionMismatch,
+
     /// The IAS server returned an unknown value: {0}
-    Unknown(String),
+    Other(&'report str),
 }
 
-/// The PSE manifest status
-#[cfg_attr(feature = "use_serde", derive(Deserialize, Serialize))]
-#[derive(Clone, Debug, Hash, Eq, Ord, PartialEq, PartialOrd)]
-pub struct PseStatus {
-    /// The PSE manifest hash
-    pub hash: Vec<u8>,
-    /// Any PSE manifest errors which occurred
-    pub error: Option<PseError>,
+/// A flyweight structure repesenting a PSE Status
+type PseResult<'report> = Result<&'report [u8], PseError<'report>>;
+
+/// An enumeration of errors returned by IAS as part of the signed quote.
+///
+/// This is defined in the [IAS API v6, S4.2.1](https://software.intel.com/sites/default/files/managed/7e/3b/ias-api-spec.pdf).
+#[derive(Clone, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum QuoteError<'report> {
+    /// EPID signature of the ISV enclave QUOTE was invalid.
+    ///
+    /// The content of the QUOTE is not trustworthy.
+    SignatureInvalid,
+
+    /// The EPID group has been revoked.
+    ///
+    /// When this value is returned, [`ReportBody::revocation_reason`] will
+    /// contain the revocation reason code for this EPID group as reported
+    /// in the EPID Group CRL. The content of the QUOTE is not trustworthy.
+    GroupRevoked(RevocationReason),
+
+    /// The EPID private key used to sign the QUOTE has been revoked by
+    /// signature.
+    ///
+    /// The content of the QUOTE is not trustworthy.
+    SignatureRevoked,
+
+    /// The EPID private key used to sign the QUOTE has been directly revoked
+    /// (not by signature).
+    ///
+    /// The content of the QUOTE is not trustworthy.
+    KeyRevoked,
+
+    /// SigRL version in ISV enclave QUOTE does not match the most recent
+    /// version of the SigRL.
+    ///
+    /// In rare situations, after SP retrieved the SigRL from IAS and provided
+    /// it to the platform, a newer version of the SigRL is made available.
+    /// As a result, the Attestation Verification Report will indicate
+    /// SIGRL_VERSION_MISMATCH. SP can retrieve the most recent version of
+    /// SigRL from the IAS and request the platform to perform remote
+    /// attestation again with the most recent version of SigRL. If the
+    /// platform keeps failing to provide a valid QUOTE matching with the
+    /// most recent version of the SigRL, the content of the QUOTE is not
+    /// trustworthy.
+    SigrlVersionMismatch,
+
+    /// The EPID signature of the ISV enclave QUOTE has been verified correctly,
+    /// but the TCB level of SGX platform is outdated (for further details
+    /// see Advisory IDs).
+    ///
+    /// The platform has not been identified as compromised and thus it is not
+    /// revoked. It is up to the Service Provider to decide whether or not
+    /// to trust the content of the QUOTE, and whether or not to trust the
+    /// platform performing the attestation to protect specific
+    /// sensitive information.
+    GroupOutOfDate(QuoteErrorData<'report>),
+
+    /// The EPID signature of the ISV enclave QUOTE has been verified correctly,
+    /// but additional configuration of SGX platform may be needed (for further
+    /// details see Advisory IDs).
+    ///
+    /// The platform has not been identified as compromised and thus it is not
+    /// revoked. It is up to the Service Provider to decide whether or not to
+    /// trust the content of the QUOTE, and whether or not to trust the platform
+    /// performing the attestation to protect specific sensitive information.
+    ConfigurationNeeded(QuoteErrorData<'report>),
+
+    /// The enclave requires software mitigation
+    SwHardeningNeeded {
+        pse_result: Option<PseResult<'report>>,
+        advisory_url: &'report str,
+        advisory_ids: &'report [String],
+    },
+
+    /// The enclave requires configuration changes and software mitigation
+    ConfigurationAndSwHardeningNeeded(QuoteErrorData<'report>),
+
+    /// Unknown error: {0}
+    Other(&'report str),
 }
 
-impl PseStatus {
-    pub fn from_ok(hash: Vec<u8>) -> Self {
-        Self { hash, error: None }
-    }
-
-    pub fn from_err(hash: Vec<u8>, error: PseError) -> Self {
-        Self {
-            hash,
-            error: Some(error),
-        }
-    }
-
-    pub fn from_str<S: AsRef<str>>(
-        value: &S,
-        hash: Vec<u8>,
-        platform_info: Option<&PlatformInfo>,
-    ) -> Result<Self, ()> {
-        match value.as_ref() {
-            "OK" => Ok(PseStatus::from_ok(hash)),
-            "INVALID" => Ok(PseStatus::from_err(hash, PseError::Invalid)),
-            "OUT_OF_DATE" => {
-                if let Some(pib) = platform_info {
-                    Ok(PseStatus::from_err(
-                        hash,
-                        PseError::OutOfDate((*pib).clone()),
-                    ))
-                } else {
-                    Err(())
-                }
-            }
-            "REVOKED" => {
-                if let Some(pib) = platform_info {
-                    Ok(PseStatus::from_err(hash, PseError::Revoked((*pib).clone())))
-                } else {
-                    Err(())
-                }
-            }
-            "RL_VERSION_MISMATCH" => {
-                if let Some(pib) = platform_info {
-                    Ok(PseStatus::from_err(
-                        hash,
-                        PseError::RlVersionMismatch((*pib).clone()),
-                    ))
-                } else {
-                    Err(())
-                }
-            }
-            other => Ok(PseStatus::from_err(
-                hash,
-                PseError::Unknown(other.to_owned()),
-            )),
-        }
-    }
-}
-
-impl EncodeProtobuf for PlatformInfo {
-    fn encode<B: BufMut>(&self, buf: &mut B) {
-        string::encode(TAG_PLATFORM_INFO, &hex::encode(self.as_ref()), buf);
-    }
-}
-
-impl EncodeProtobuf for Option<PseStatus> {
-    fn encode<B: BufMut>(&self, buf: &mut B) {
-        if let Some(status) = self {
-            let strval = match status.error.as_ref() {
-                None => "OK",
-                Some(PseError::Invalid) => "INVALID",
-                Some(PseError::OutOfDate(pib)) => {
-                    pib.encode(buf);
-                    "OUT_OF_DATE"
-                },
-                Some(PseError::Revoked(pib)) => {
-                    pib.encode(buf);
-                    "REVOKED"
-                },
-                Some(PseError::RlVersionMismatch(pib)) => {
-                    pib.encode(buf);
-                    "RL_VERSION_MISMATCH"
-                },
-                Some(PseError::Unknown(value)) => value.as_str(),
-            };
-            string::encode(TAG_PSE_MANIFEST_STATUS, &strval.to_owned(), buf);
-            string::encode(TAG_PSE_MANIFEST_HASH, &hex::encode(&status.hash), buf);
-        }
-    }
-}
-
-/// The rust-friendly version of the IAS QuoteStatus field.
-pub type QuoteResult = Result<Option<PseStatus>, QuoteError>;
-
-impl EncodeProtobuf for QuoteResult {
-    fn encode<B: BufMut>(&self, buf: &mut B) {
-        if let Ok(pse_status) = &self {
-            pse_status.encode_protobuf(mut);
-        } else if let Err(quote_err) = &self {
-
-        }
-        if let Some(status) = self {
-            let strval = match status.error.as_ref() {
-                None => "OK",
-                Some(PseError::Invalid) => "INVALID",
-                Some(PseError::OutOfDate(_pib)) => "OUT_OF_DATE",
-                Some(PseError::Revoked(_pib)) => "REVOKED",
-                Some(PseError::RlVersionMismatch(_pib)) => "RL_VERSION_MISMATCH",
-                Some(PseError::Unknown(value)) => value.as_str(),
-            };
-            string::encode(TAG_PSE_MANIFEST_STATUS, &strval.to_owned(), buf);
-            string::encode(TAG_PSE_MANIFEST_HASH, &hex::encode(&status.hash), buf);
-        }
-    }
-}
-
-impl AsIasStr for QuoteResult {
-    fn as_ias_str(&self) -> &str {
-        match self {
-            Ok(_pse_status) => "OK",
-            Err(QuoteError::SignatureInvalid) => "SIGNATURE_INVALID",
-            Err(QuoteError::GroupRevoked { .. }) => "GROUP_REVOKED",
-            Err(QuoteError::SignatureRevoked(_cause)) => "SIGNATURE_REVOKED",
-            Err(QuoteError::KeyRevoked(_cause)) => "KEY_REVOKED",
-            Err(QuoteError::SigrlVersionMismatch) => "SIGRL_VERSION_MISMATCH",
-            Err(QuoteError::GroupOutOfDate { .. }) => "GROUP_OUT_OF_DATE",
-            Err(QuoteError::ConfigurationNeeded { .. }) => "CONFIGURATION_NEEDED",
-            Err(QuoteError::SwHardeningNeeded { .. }) => "SW_HARDENING_NEEDED",
-            Err(QuoteError::ConfigurationAndSwHardeningNeeded { .. }) => {
-                "CONFIGURATION_AND_SW_HARDENING_NEEDED"
-            }
-            Err(QuoteError::Other(value)) => value.as_str(),
-        }
-    }
+/// A view of additional data supplied by IAS when an error is returned.
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct QuoteErrorData<'report> {
+    /// An optional PSE result, if [`Evidence::pse_manifest`] was provided.
+    pub pse_result: Option<PseResult<'report>>,
+    /// An optional platform info blob.
+    pub platform_info_blob: &'report PlatformInfo,
+    /// The advisory URL string.
+    pub advisory_url: &'report str,
+    /// A slice of advisory ID strings
+    pub advisory_ids: &'report [String],
 }
 
 bitflags! {
     /// Revocation cause flags
-    #[cfg_attr(feature = "use_serde", derive(Deserialize, Serialize))]
-    pub struct RevocationCause: u64 {
-        /// Cause reason was not given (but still revoked)
+    pub struct RevocationReason: u64 {
+        /// Reason was not given (but still revoked)
         const UNSPECIFIED = 0;
         /// The private key for the EPID was compromised
         const KEY_COMPROMISE = 1;
@@ -268,37 +203,37 @@ bitflags! {
     }
 }
 
-impl Display for RevocationCause {
+impl Display for RevocationReason {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         let mut strings = Vec::new();
-        if self.contains(RevocationCause::UNSPECIFIED) {
+        if self.contains(RevocationReason::UNSPECIFIED) {
             strings.push("Unspecified");
         }
-        if self.contains(RevocationCause::KEY_COMPROMISE) {
+        if self.contains(RevocationReason::KEY_COMPROMISE) {
             strings.push("Key compromise");
         }
-        if self.contains(RevocationCause::CERT_AUTHORITY_COMPROMISE) {
+        if self.contains(RevocationReason::CERT_AUTHORITY_COMPROMISE) {
             strings.push("Certificate authority compromise");
         }
-        if self.contains(RevocationCause::AFFILIATION_CHANGED) {
+        if self.contains(RevocationReason::AFFILIATION_CHANGED) {
             strings.push("Affiliation changed");
         }
-        if self.contains(RevocationCause::SUPERSEDED) {
+        if self.contains(RevocationReason::SUPERSEDED) {
             strings.push("Superseded");
         }
-        if self.contains(RevocationCause::CESSATION_OF_OPERATION) {
+        if self.contains(RevocationReason::CESSATION_OF_OPERATION) {
             strings.push("Cessation of operation")
         }
-        if self.contains(RevocationCause::CERTIFICATE_HOLD) {
+        if self.contains(RevocationReason::CERTIFICATE_HOLD) {
             strings.push("Certificate hold");
         }
-        if self.contains(RevocationCause::REMOVE_FROM_CRL) {
+        if self.contains(RevocationReason::REMOVE_FROM_CRL) {
             strings.push("Removed from revocation list");
         }
-        if self.contains(RevocationCause::PRIVILEGE_WITHDRAWN) {
+        if self.contains(RevocationReason::PRIVILEGE_WITHDRAWN) {
             strings.push("Privilege withdrawn");
         }
-        if self.contains(RevocationCause::ATTRIBUTE_AUTHORITY_COMPROMISE) {
+        if self.contains(RevocationReason::ATTRIBUTE_AUTHORITY_COMPROMISE) {
             strings.push("Attribute authority compromise");
         }
 
@@ -306,82 +241,7 @@ impl Display for RevocationCause {
     }
 }
 
-/// An enumeration of errors returned by IAS as part of the signed quote.
-///
-/// This is defined in the [IAS API v6, S4.2.1](https://software.intel.com/sites/default/files/managed/7e/3b/ias-api-spec.pdf).
-#[cfg_attr(feature = "use_serde", derive(Deserialize, Serialize))]
-#[derive(Clone, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub enum QuoteError {
-    /// EPID signature of the ISV enclave QUOTE was invalid
-    SignatureInvalid,
-
-    /// The SigRL used for the quote is out of date
-    SigrlVersionMismatch,
-
-    /// The EPID group has been revoked: {cause}
-    GroupRevoked {
-        cause: RevocationCause,
-        platform_info: PlatformInfo,
-    },
-
-    /// The EPID private key used to sign the QUOTE has been revoked by signature: {0}
-    SignatureRevoked(RevocationCause),
-
-    /// The EPID private key used to sign the QUOTE has been directly revoked (not by signature): {0}
-    KeyRevoked(RevocationCause),
-
-    /// The TCB level of the SGX platform must be updated to mitigate {", ".join(advisory_ids)}, see {advisory_url}
-    GroupOutOfDate {
-        /// The PSE status
-        pse_status: Option<PseStatus>,
-        /// The platform info blob which can bring the group into compliance
-        platform_info: PlatformInfo,
-        /// The string URL of the advisory website
-        url: String,
-        /// A set of string IDs for advisories affecting this platform
-        ids: BTreeSet<String>,
-    },
-
-    /// The enclave requires configuration changes to mitigate {", ".join(ids)}, see {url}
-    ConfigurationNeeded {
-        /// The PSE status
-        pse_status: Option<PseStatus>,
-        /// The platform info blob indicating the presence of updates
-        platform_info: PlatformInfo,
-        /// The string URL of the advisory website
-        url: String,
-        /// A set of string IDs for advisories affecting this platform
-        ids: BTreeSet<String>,
-    },
-
-    /// The enclave requires software mitigation for {", ".join(ids)}, see {url}
-    SwHardeningNeeded {
-        /// The PSE status
-        pse_status: Option<PseStatus>,
-        /// The string URL of the advisory website
-        url: String,
-        /// A set of string IDs for advisories affecting this platform
-        ids: BTreeSet<String>,
-    },
-
-    /// The enclave requires configuration changes and software mitigation for {", ".join(advisory_ids)}, see {advisory_url}
-    ConfigurationAndSwHardeningNeeded {
-        /// The PSE status
-        pse_status: Option<PseStatus>,
-        /// The platform info blob indicating the presence of updates
-        platform_info: PlatformInfo,
-        /// The string URL of the advisory website
-        url: String,
-        /// A set of string IDs for advisories affecting this platform
-        ids: BTreeSet<String>,
-    },
-
-    /// Unknown error: {0}
-    Other(String),
-}
-
 /// An enumeration of report parsing errors
-#[cfg_attr(feature = "use_serde", derive(Deserialize, Serialize))]
 #[derive(Clone, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Error {
     /// The JSON data could not be parsed: {0}
@@ -406,105 +266,257 @@ impl From<JsonError> for Error {
     }
 }
 
-/// The parsed Attestation Verification Report Data.
+impl From<ParseError> for Error {
+    fn from(src: ParseError) -> Error {
+        Error::Timestamp(src.to_string())
+    }
+}
+
+/// The parsed Attestation Verification Report returned by IAS.
 ///
-/// This is parsed from the [`Report`] after signature and cert validation has succeeded.
-#[cfg_attr(feature = "use_serde", derive(Deserialize, Serialize))]
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+/// This should be parsed from the [`Report`] after signature and cert
+/// validation has succeeded, and is defined in the [IAS API v4, S4.2.1](https://api.trustedservices.intel.com/documents/sgx-attestation-api-spec.pdf).
+#[cfg_attr(feature = "use_prost", derive(Message))]
+#[derive(Clone, PartialEq)]
 pub struct ReportBody {
-    /// A unqiue ID of this report.
-    pub id: String,
+    /// Representation of unique identifier of the Attestation Verification
+    /// Report.
+    #[cfg_attr(feature = "use_prost", prost(string, required))]
+    id: String,
 
-    /// The timestamp this report was generated.
-    pub timestamp: DateTime<Utc>,
+    /// Representation of date and time the Attestation Verification Report was
+    /// created.
+    ///
+    /// In JSON, the time shall be in UTC and the encoding shall be compliant to
+    /// ISO 8601 standard. In this structure, it's the number of seconds since
+    /// EPOCH.
+    #[cfg_attr(feature = "use_prost", prost(message, required))]
+    timestamp: Timestamp,
 
-    /// The version number of the API which generated this report.
-    pub version: u64,
+    /// Integer that denotes the version of the Verification Attestation
+    /// Evidence API that has been used to generate the report (currently
+    /// set to 4).
+    ///
+    /// Service Providers should verify this field to confirm that the report
+    /// was generated by the intended API version, instead of a different
+    /// API version with potentially different security properties.
+    #[cfg_attr(feature = "use_prost", prost(uint64, required))]
+    version: u64,
 
     /// The quote status.
-    pub quote_result: QuoteResult,
+    #[cfg_attr(feature = "use_prost", prost(string, required))]
+    quote_status: String,
 
-    /// The quote body minus the signature.
-    pub quote: Quote,
+    /// Base 64-encoded BODY of QUOTE structure (i.e., QUOTE structure without
+    /// signature related fields: SIG_LEN and SIG) as received in
+    /// Attestation Evidence Payload.
+    #[cfg_attr(feature = "use_prost", prost(message, required))]
+    quote_body: Quote,
 
-    /// The IAS request nonce.
-    pub nonce: Option<Nonce>,
+    /// Integer corresponding to revocation reason code for a revoked EPID group
+    /// listed in EPID Group CRL.
+    ///
+    /// Allowed values are described in RFC 5280. This field is optional, it
+    /// will only be present if value of [`ReportBody::quote_status`] is
+    /// equal to [`QuoteError::GroupRevoked`].
+    #[cfg_attr(feature = "use_prost", prost(uint64, optional))]
+    revocation_reason: Option<u64>,
 
-    /// A unique hardware ID returned when a linkable quote is requested.
-    pub epid_pseudonym: Option<EpidPseudonym>,
+    /// The status of the platform service.
+    ///
+    /// This field is optional, it will only be present if
+    /// [`Evidence::pse_manifest`] is provided and [`ReportBody::
+    /// quote_status`] is one of to Ok, [`QuoteError::GroupOutOfDate`],
+    /// [`QuoteError::ConfigurationNeeded`], [`QuoteError::SwHardeningNeeded`],
+    /// or [`QuoteError::ConfigurationAndSwHardeningNeeded`].
+    #[cfg_attr(feature = "use_prost", prost(string, optional))]
+    pse_manifest_status: Option<String>,
+
+    /// SHA-256 calculated over [`Evidence::pse_manifest`].
+    ///
+    /// In JSON, this field is encoded using Base 16 encoding scheme. This field
+    /// is optional, it will only be present if the pseManifest field was
+    /// provided in Attestation Evidence Payload.
+    #[cfg_attr(feature = "use_prost", prost(bytes, optional))]
+    pse_manifest_hash: Option<Vec<u8>>,
+
+    /// A TLV containing an opaque binary blob that the Service Provider and the
+    /// ISV SGX Application are supposed to forward to SGX Platform SW.
+    ///
+    /// This field is optional, it will only be present if one the following
+    /// conditions is met:
+    ///  * [`ReportBody::quote_status`] is equal to
+    ///    [`QuoteError::GroupRevoked`], [`QuoteError::GroupOutOfDate`],
+    ///    [`QuoteError::ConfigurationNeeded`],
+    ///    [`QuoteError::SwHardeningNeeded`], or
+    ///    [`QuoteError::ConfigurationAndSwHardeningNeeded`]
+    ///  * [`ReportBody::pse_manifest_status`] is equal to one of the following
+    ///    values: [`PseError::OutOfDate`], [`PseError::Revoked`], or
+    ///    [`PseError::RlVersionMismatch`].
+    #[cfg_attr(feature = "use_prost", prost(message, optional))]
+    platform_info_blob: Option<PlatformInfo>,
+
+    /// The nonce value provided by SP in [`Evidence::nonce`].
+    ///
+    /// This field is optional, it will only be present if nonce field is
+    /// provided in Attestation Evidence Payload.
+    #[cfg_attr(feature = "use_prost", prost(message, optional))]
+    nonce: Option<Nonce>,
+
+    /// Byte array representing EPID Pseudonym that consists of the
+    /// concatenation of EPID B (64 bytes) & EPID K (64 bytes) components of
+    /// EPID signature.
+    ///
+    /// If two linkable EPID signatures for an EPID Group have the same EPID
+    /// Pseudonym, the two signatures were generated using the same EPID
+    /// private key. This field is encoded using Base 64 encoding scheme.
+    ///
+    /// This field is optional, it will only be present if Attestation
+    /// Evidence Payload contains Quote with linkable EPID signature.
+    #[cfg_attr(feature = "use_prost", prost(message, optional))]
+    epid_pseudonym: Option<EpidPseudonym>,
+
+    /// URL to Intel® Product Security Center Advisories page that provides
+    /// additional information on SGX-related security issues.
+    ///
+    /// IDs of advisories for specific issues that may affect the attested
+    /// platform are conveyed in advisoryIDs field. This field is optional,
+    /// it will only be present if HTTP status code is 200 and
+    /// [`ReportBody::quote_status`] is equal to [`QuoteError::GroupOutOfDate`],
+    /// [`QuoteError::ConfigurationNeeded`], [`QuoteError::SwHardeningNeeded`],
+    /// or [`QuoteError::ConfigurationAndSwHardeningNeeded`].
+    #[cfg_attr(feature = "use_prost", prost(string, optional))]
+    advisory_url: Option<String>,
+
+    /// Array of Advisory IDs that can be searched on a page indicated by URL
+    /// included in [`ReportBody::advisory_url`] field.
+    ///
+    /// Advisory IDs refer to articles providing insight into SGX-related
+    /// security issues that may affect attested platform. This field is
+    /// optional, it will only be present if HTTP status code is 200 and
+    /// [`ReportBody::quote_status`] is equal to [`QuoteError::GroupOutOfDate`],
+    /// [`QuoteError::ConfigurationNeeded`], [`QuoteError::SwHardeningNeeded`],
+    /// or [`QuoteError::ConfigurationAndSwHardeningNeeded`].
+    #[cfg_attr(feature = "use_prost", prost(string, repeated))]
+    advisory_ids: Vec<String>,
 }
 
 impl ReportBody {
-    fn unwrap_opt<T: Sized>(src: Option<T>, name: &str) -> Result<T, JsonError> {
-        src.ok_or_else(|| JsonError::FieldMissing(name.to_owned()))
+    /// Retrieve the string ID
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
+    /// Retrieve the timestamp
+    pub fn timestamp(&self) -> DateTime<Utc> {
+        DateTime::from_utc(
+            NaiveDateTime::from_timestamp(self.timestamp.seconds, self.timestamp.nanos as u32),
+            Utc,
+        )
+    }
+
+    /// Retrieve the version
+    pub fn version(&self) -> u64 {
+        self.version
+    }
+
+    /// Retrieve the quote body
+    pub fn quote_body(&self) -> &Quote {
+        &self.quote_body
+    }
+
+    /// Helper method, constructs a result from the hash and status.
+    fn status_hash_to_result(&self) -> Result<Option<PseResult>, QuoteError> {
+        let hash = self
+            .pse_manifest_hash
+            .as_ref()
+            .ok_or(QuoteError::Other(
+                "IAS did not provide both our hash and our status",
+            ))?
+            .as_slice();
+        match self
+            .pse_manifest_status
+            .as_ref()
+            .expect("PSE manifest status is both Some and None")
+            .as_str()
+        {
+            "OK" => Ok(Some(Ok(hash))),
+            "UNKNOWN" => Ok(Some(Err(PseError::Unknown))),
+            "INVALID" => Ok(Some(Err(PseError::Invalid))),
+            "OUT_OF_DATE" => Ok(Some(Err(PseError::OutOfDate))),
+            "REVOKED" => Ok(Some(Err(PseError::Revoked))),
+            "RL_VERSION_MISMATCH" => Ok(Some(Err(PseError::RlVersionMismatch))),
+            other => Ok(Some(Err(PseError::Other(other)))),
+        }
+    }
+
+    /// Helper method to unwrap or do a quote error based on a string.
+    #[inline]
+    fn unwrap_option<'report, T>(
+        value: &'report Option<T>,
+        err_msg: &'report str,
+    ) -> Result<&'report T, QuoteError<'report>> {
+        value.as_ref().ok_or(QuoteError::Other(err_msg))
+    }
+
+    fn quote_error_data(&self) -> Result<QuoteErrorData, QuoteError> {
+        Ok(QuoteErrorData {
+            pse_result: self.status_hash_to_result()?,
+            platform_info_blob: Self::unwrap_option(
+                &self.platform_info_blob,
+                "Platform Info Blob missing",
+            )?,
+            advisory_url: Self::unwrap_option(&self.advisory_url, "Advisory URL missing")?,
+            advisory_ids: self.advisory_ids.as_slice(),
+        })
+    }
+
+    /// Retrieve the IAS evaluation results from IAS
+    pub fn result(&self) -> Result<Option<PseResult>, QuoteError> {
+        match self.quote_status.as_str() {
+            "OK" => self.status_hash_to_result(),
+            "SIGNATURE_INVALID" => Err(QuoteError::SignatureInvalid),
+            "GROUP_REVOKED" => Err(QuoteError::GroupRevoked(
+                RevocationReason::from_bits(
+                    self.revocation_reason
+                        .ok_or(QuoteError::Other("Revocation reason missing"))?,
+                )
+                .ok_or(QuoteError::Other("Unknown revocation reason"))?,
+            )),
+            "KEY_REVOKED" => Err(QuoteError::KeyRevoked),
+            "SIGRL_VERSION_MISMATCH" => Err(QuoteError::SigrlVersionMismatch),
+            "GROUP_OUT_OF_DATE" => Err(QuoteError::GroupOutOfDate(self.quote_error_data()?)),
+            "CONFIGURATION_NEEDED" => {
+                Err(QuoteError::ConfigurationNeeded(self.quote_error_data()?))
+            }
+            "SW_HARDENING_NEEDED" => Err(QuoteError::SwHardeningNeeded {
+                pse_result: self.status_hash_to_result()?,
+                advisory_url: Self::unwrap_option(&self.advisory_url, "Advisory URL missing")?,
+                advisory_ids: self.advisory_ids.as_slice(),
+            }),
+            "CONFIGURATION_AND_SW_HARDENING_NEEDED" => Err(
+                QuoteError::ConfigurationAndSwHardeningNeeded(self.quote_error_data()?),
+            ),
+            other => Err(QuoteError::Other(other)),
+        }
+    }
+
+    /// Retrieve the EPID pseudonym of the enclave's current hardware
+    pub fn pseudonym(&self) -> Option<&EpidPseudonym> {
+        self.epid_pseudonym.as_ref()
+    }
+
+    /// Retrieve the nonce provided to IAS.
+    pub fn nonce(&self) -> Option<&Nonce> {
+        self.nonce.as_ref()
     }
 }
 
-#[cfg(feature = "use_prost")]
-impl Message for ReportBody {
-    fn encode_raw<B>(&self, buf: &mut B)
-    where
-        B: BufMut,
-        Self: Sized,
-    {
-        string::encode(TAG_ID, &self.id, buf);
-
-        let naive = self.timestamp.naive_utc();
-        let timestamp = Timestamp {
-            seconds: naive.timestamp(),
-            nanos: naive.timestamp_subsec_nanos() as i32,
-        };
-        message::encode(TAG_TIMESTAMP, &timestamp, buf);
-
-        uint64::encode(TAG_VERSION, &self.version, buf);
-
-        self.quote_result.encode(buf);
-
-        let quote_bytes = self.quote.to_bytes();
-        let quote_base64 = base64::encode_config(&quote_bytes, base64::STANDARD);
-        string::encode(TAG_ISV_ENCLAVE_QUOTE_BODY, &quote_base64, buf);
-
-        if let Some(nonce) = &self.nonce {
-            string::encode(TAG_NONCE, &hex::encode(nonce), buf);
-        }
-
-        if let Some(epid_pseudonym) = &self.epid_pseudonym {
-            string::encode(
-                TAG_EPID_PSEUDONYM,
-                &base64::encode_config(epid_pseudonym.as_ref(), base64::STANDARD),
-                buf,
-            );
-        }
-    }
-
-    fn merge_field<B>(
-        &mut self,
-        tag: u32,
-        wire_type: WireType,
-        buf: &mut B,
-        ctx: DecodeContext,
-    ) -> Result<(), DecodeError>
-    where
-        B: Buf,
-        Self: Sized,
-    {
-        unimplemented!()
-    }
-
-    fn encoded_len(&self) -> usize {
-        unimplemented!()
-    }
-
-    fn clear(&mut self) {
-        unimplemented!()
-    }
-}
-
+/// Parse the JSON contents of a VerificationReport into a
+/// VerificationReportData object
 impl<'src> TryFrom<&'src Report> for ReportBody {
     type Error = Error;
 
-    /// Parse the JSON contents of a VerificationReport into a
-    /// VerificationReportData object
     fn try_from(src: &'src Report) -> Result<Self, Error> {
         // Parse the JSON into a hashmap
         let (chars_parsed, data) = parse(&src.http_body);
@@ -516,30 +528,39 @@ impl<'src> TryFrom<&'src Report> for ReportBody {
             return Err(JsonError::IncompleteParse(chars_parsed).into());
         }
 
+        // Parse the JSON into a DOM object
         let mut data = match data.unwrap() {
             Value::Object(o) => o,
             _ => return Err(JsonError::RootNotObject.into()),
         };
 
-        // Actually parse the JSON into real fields
         let id = data
             .remove("id")
             .ok_or_else(|| JsonError::FieldMissing("id".to_owned()))?
             .try_into()?;
-        let string_timestamp: String = data
+
+        let timestamp = data
             .remove("timestamp")
-            .ok_or_else(|| JsonError::FieldMissing("timestamp".to_owned()))?
-            .try_into()?;
-        let naive_timestamp = NaiveDateTime::parse_from_str(&string_timestamp, "%Y-%m-%d %H:%M:%S")
-            .map_err(|e| Error::Timestamp(e.to_string()))?;
-        let timestamp = DateTime::from_utc(naive_timestamp, Utc);
+            .map(TryInto::<String>::try_into)
+            .transpose()?
+            .map(|value| {
+                NaiveDateTime::parse_from_str(&value, "%Y-%m-%d %H:%M:%S").map(|ndt| Timestamp {
+                    seconds: ndt.timestamp(),
+                    nanos: ndt.timestamp_subsec_nanos() as i32,
+                })
+            })
+            .transpose()?
+            .ok_or_else(|| JsonError::FieldMissing("timestamp".to_owned()))?;
+
         let version = data
             .remove("version")
-            .ok_or_else(|| JsonError::FieldMissing("version".to_owned()))?
-            .try_into()?;
+            .map(TryInto::<f64>::try_into)
+            .transpose()?
+            .map(|version| version as u64)
+            .ok_or_else(|| JsonError::FieldMissing("version".to_owned()))?;
 
         // Get the PIB, used in QuoteError, PseManifestError
-        let platform_info: Option<PlatformInfo> = data
+        let platform_info_blob: Option<PlatformInfo> = data
             .remove("platformInfoBlob")
             .map(TryInto::<String>::try_into)
             .transpose()?
@@ -547,15 +568,14 @@ impl<'src> TryFrom<&'src Report> for ReportBody {
             .transpose()?;
 
         // Get the (optional) revocation reason, used in QuoteError
-        let cause = data
+        let revocation_reason = data
             .remove("revocationReason")
-            .map(TryInto::<u64>::try_into)
+            .map(TryInto::<f64>::try_into)
             .transpose()?
-            .map(|v| RevocationCause::from_bits(v as u64))
-            .flatten();
+            .map(|reason| reason as u64);
 
         // PSW manifest hash
-        let pse_hash = data
+        let pse_manifest_hash = data
             .remove("pseManifestHash")
             .map(TryInto::<String>::try_into)
             .transpose()?
@@ -568,98 +588,27 @@ impl<'src> TryFrom<&'src Report> for ReportBody {
         // 2. TryInto<String> -> Option<Result<String, JsonError>>
         // 3. transpose() -> Result<Option<String>, JsonError>
         // 4. ? operator -> Option<String>
-        // 5. map() -> Option<Result<PseStatus, JsonError>
-        // 6. transpose -> Result<Option<PseStatus>, JsonError>
-        // 7. ? operator() - Option<PseStatus>
-        let pse_status = data
+        let pse_manifest_status = data
             .remove("pseManifestStatus")
             .map(TryInto::<String>::try_into)
-            .transpose()?
-            .map(|value| {
-                if let Some(pse_hash) = pse_hash {
-                    PseStatus::from_str(&value, pse_hash, platform_info.as_ref())
-                        .map_err(|_e| JsonError::FieldMissing("platformInfoBlob".to_owned()))
-                } else {
-                    Err(JsonError::FieldMissing("pseManifestHash".to_owned()))
-                }
-            })
             .transpose()?;
-
-        let url = data
-            .remove("advisoryURL")
-            .map(TryInto::<String>::try_into)
-            .transpose()?;
-
-        let ids = data
-            .remove("advisoryIDs")
-            .map(TryInto::<Vec<Value>>::try_into)
-            .transpose()?
-            .map(|ids| {
-                ids.into_iter()
-                    .map(TryInto::<String>::try_into)
-                    .collect::<Result<BTreeSet<String>, JsonError>>()
-            })
-            .transpose()?
-            .unwrap_or_default();
 
         // 1. Start with Option<Value>
         // 2. TryInto<String> -> Option<Result<String, JsonError>>
         // 3. transpose() -> Result<Option<String>, JsonError>
         // 4. ? operator -> Option<String>
         // 4. ok_or_else() -> Result<String, Error>
-        // 5. and_then() -> Result<Result<Option<PseStatus>, QuoteError>, Error>
-        // 6. ? operator -> Result<Option<PseStatus>, QuoteError> (aka QuoteResult)
-        let quote_result = data
+        // 5. ? operator -> String
+        let quote_status = data
             .remove("isvEnclaveQuoteStatus")
             .map(TryInto::<String>::try_into)
             .transpose()?
-            .ok_or_else(|| Error::Json(JsonError::FieldMissing("isvEnclaveQuoteStatus".to_owned())))
-            .and_then(|quote_status_str| match quote_status_str.as_ref() {
-                "OK" => Ok(Ok(pse_status.clone())),
-                "SIGNATURE_INVALID" => Ok(Err(QuoteError::SignatureInvalid)),
-                "GROUP_REVOKED" => Ok(Err(QuoteError::GroupRevoked {
-                    cause: Self::unwrap_opt(cause, "revocationReason")?,
-                    platform_info: Self::unwrap_opt(platform_info, "platformInfoBlob")?,
-                })),
-                "SIGNATURE_REVOKED" => Ok(Err(QuoteError::SignatureRevoked(Self::unwrap_opt(
-                    cause,
-                    "revocationReason",
-                )?))),
-                "KEY_REVOKED" => Ok(Err(QuoteError::KeyRevoked(Self::unwrap_opt(
-                    cause,
-                    "revocationReason",
-                )?))),
-                "SIGRL_VERSION_MISMATCH" => Ok(Err(QuoteError::SigrlVersionMismatch)),
-                "GROUP_OUT_OF_DATE" => Ok(Err(QuoteError::GroupOutOfDate {
-                    pse_status,
-                    platform_info: Self::unwrap_opt(platform_info, "platformInfoBlob")?,
-                    url: Self::unwrap_opt(url, "advisoryURL")?,
-                    ids,
-                })),
-                "CONFIGURATION_NEEDED" => Ok(Err(QuoteError::ConfigurationNeeded {
-                    pse_status,
-                    platform_info: Self::unwrap_opt(platform_info, "platformInfoBlob")?,
-                    url: Self::unwrap_opt(url, "advisoryURL")?,
-                    ids,
-                })),
-                "SW_HARDENING_NEEDED" => Ok(Err(QuoteError::SwHardeningNeeded {
-                    pse_status,
-                    url: Self::unwrap_opt(url, "advisoryURL")?,
-                    ids,
-                })),
-                "CONFIGURATION_AND_SW_HARDENING_NEEDED" => {
-                    Ok(Err(QuoteError::ConfigurationAndSwHardeningNeeded {
-                        pse_status,
-                        platform_info: Self::unwrap_opt(platform_info, "platformInfoBlob")?,
-                        url: Self::unwrap_opt(url, "advisoryURL")?,
-                        ids,
-                    }))
-                }
-                s => Ok(Err(QuoteError::Other(s.to_owned()))),
+            .ok_or_else(|| {
+                Error::Json(JsonError::FieldMissing("isvEnclaveQuoteStatus".to_owned()))
             })?;
 
         // Parse the quote body
-        let quote = data
+        let quote_body = data
             .remove("isvEnclaveQuoteBody")
             .map(TryInto::<String>::try_into)
             .transpose()?
@@ -686,14 +635,38 @@ impl<'src> TryFrom<&'src Report> for ReportBody {
             })
             .transpose()?;
 
+        let advisory_url = data
+            .remove("advisoryURL")
+            .map(TryInto::<String>::try_into)
+            .transpose()?;
+
+        let advisory_ids = data
+            .remove("advisoryIDs")
+            .map(TryInto::<Vec<Value>>::try_into)
+            .transpose()?
+            .map(|values| {
+                values
+                    .into_iter()
+                    .map(TryInto::<String>::try_into)
+                    .collect::<Result<Vec<String>, JsonError>>()
+            })
+            .transpose()?
+            .unwrap_or_default();
+
         Ok(Self {
             id,
             timestamp,
             version,
-            quote_result,
-            quote,
+            quote_status,
+            quote_body,
+            revocation_reason,
+            pse_manifest_status,
+            pse_manifest_hash,
+            platform_info_blob,
             nonce,
             epid_pseudonym,
+            advisory_url,
+            advisory_ids,
         })
     }
 }
