@@ -7,7 +7,8 @@ use rjson::{Array as RJsonArray, Null as RJsonNull, Object as RJsonObject, Value
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-/// An enumeration of errors which can occur while parsing the JSON of a verification report
+/// An enumeration of errors which can occur while parsing the JSON of a
+/// verification report
 #[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
 #[derive(Clone, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Error {
@@ -76,7 +77,8 @@ impl TryInto<String> for Value {
     }
 }
 
-// We can't legitimately do Vec<T> because JSON allows "arrays" of heterogeneous types.
+// We can't legitimately do Vec<T> because JSON allows "arrays" of heterogeneous
+// types.
 impl TryInto<Vec<Value>> for Value {
     type Error = Error;
 
