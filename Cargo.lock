@@ -2800,13 +2800,16 @@ dependencies = [
 name = "mc-sgx-core-types"
 version = "0.5.0"
 dependencies = [
- "binascii",
+ "base64 0.12.1",
  "bincode",
  "bitflags",
  "displaydoc",
+ "hex 0.4.2",
  "hex_fmt",
  "mc-sgx-core-types-sys",
  "mc-util-encodings",
+ "mc-util-repr-bytes",
+ "prost",
  "serde",
  "subtle 2.2.3",
 ]
@@ -2865,14 +2868,18 @@ dependencies = [
 name = "mc-sgx-epid-types"
 version = "0.5.0"
 dependencies = [
- "binascii",
+ "base64 0.12.1",
  "bincode",
+ "bytes 0.5.4",
+ "hex 0.4.2",
  "hex_fmt",
  "mc-sgx-core-types",
  "mc-sgx-core-types-sys",
  "mc-sgx-epid-types-sys",
  "mc-util-encodings",
  "mc-util-from-random",
+ "mc-util-repr-bytes",
+ "prost",
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
  "serde",
@@ -2897,6 +2904,7 @@ version = "0.5.0"
 dependencies = [
  "base64 0.12.1",
  "bitflags",
+ "bytes 0.5.4",
  "chrono",
  "displaydoc",
  "hex 0.4.2",
@@ -2908,10 +2916,11 @@ dependencies = [
  "mc-util-encodings",
  "mc-util-from-random",
  "mc-util-repr-bytes",
+ "prost",
+ "prost-types",
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
  "rjson",
- "serde",
  "subtle 2.2.3",
  "typenum",
 ]
@@ -3172,8 +3181,11 @@ dependencies = [
 name = "mc-util-encodings"
 version = "0.5.0"
 dependencies = [
+ "base64 0.12.1",
  "binascii",
- "failure",
+ "displaydoc",
+ "hex 0.4.2",
+ "mc-util-repr-bytes",
  "serde",
 ]
 
@@ -3932,6 +3944,16 @@ dependencies = [
  "proc-macro2 1.0.12",
  "quote 1.0.4",
  "syn 1.0.18",
+]
+
+[[package]]
+name = "prost-types"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1834f67c0697c001304b75be76f67add9c89742eda3a085ad8ee0bb38c3417aa"
+dependencies = [
+ "bytes 0.5.4",
+ "prost",
 ]
 
 [[package]]

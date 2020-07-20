@@ -200,7 +200,7 @@ impl ReprBytes for Quote {
 
         retval[VERSION_START..VERSION_END].copy_from_slice(&self.version.to_le_bytes());
         retval[SIGN_TYPE_START..SIGN_TYPE_END]
-            .copy_from_slice(self.sign_type.to_bytes().as_slice());
+            .copy_from_slice(self.sign_type.to_le_bytes().as_slice());
         retval[EPID_GROUP_ID_START..EPID_GROUP_ID_END].copy_from_slice(self.epid_group_id.as_ref());
         retval[QE_SVN_START..QE_SVN_END].copy_from_slice(&self.qe_svn.to_le_bytes());
         retval[PCE_SVN_START..PCE_SVN_END].copy_from_slice(&self.pce_svn.to_le_bytes());
