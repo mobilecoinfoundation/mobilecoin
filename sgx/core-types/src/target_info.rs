@@ -286,25 +286,6 @@ mod test {
         reserved3: [0u8; SGX_TARGET_INFO_RESERVED3_BYTES],
     };
 
-    #[test]
-    fn test_bad_ffi_write_len() {
-        let ti = TargetInfo::try_from(&TARGET_INFO_SAMPLE).expect("Could not read target info");
-        let mut outbuf = [0u8; TARGET_INFO_SIZE - 1];
-
-        assert_eq!(ti.to_x64(&mut outbuf[..]), Err(TARGET_INFO_SIZE));
-    }
-
-    #[test]
-    fn test_bad_ffi_read_len() {
-        let ti = TargetInfo::try_from(&TARGET_INFO_SAMPLE).expect("Could not read target info");
-        let outbuf = ti.to_x64_vec();
-
-        assert_eq!(
-            TargetInfo::from_x64(&outbuf[..TARGET_INFO_SIZE - 1]),
-            Err(EncodingError::InvalidInputLength)
-        );
-    }
-
     #[cfg(feature = "use_serde")]
     #[test]
     fn test_target_info_serde() {
