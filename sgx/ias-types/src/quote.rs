@@ -109,7 +109,7 @@ impl Quote {
 
     /// Retrieve the XEID
     pub fn xeid(&self) -> u32 {
-        self.xeid,
+        self.xeid
     }
 
     /// Retrieve the basename.
