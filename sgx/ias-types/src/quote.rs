@@ -8,8 +8,6 @@
 //! representation because this is never used during FFI, in favor of parsing it
 //! directly into the rusty types that sit above FFI types.
 
-#[cfg(feature = "use_prost")]
-use bytes::{Buf, BufMut};
 use core::convert::{TryFrom, TryInto};
 use mc_sgx_core_types::{ReportBody, SecurityVersion, REPORT_BODY_SIZE, SECURITY_VERSION_SIZE};
 use mc_sgx_epid_types::{
@@ -18,10 +16,7 @@ use mc_sgx_epid_types::{
 use mc_util_encodings::{Error as EncodingError, FromBase64, INTEL_U16_SIZE, INTEL_U32_SIZE};
 use mc_util_repr_bytes::{typenum::U432, GenericArray, ReprBytes};
 #[cfg(feature = "use_prost")]
-use prost::{
-    encoding::{self, message, uint32, DecodeContext, WireType},
-    DecodeError, Message,
-};
+use prost::Message;
 
 const VERSION_START: usize = 0;
 const VERSION_SIZE: usize = INTEL_U16_SIZE;
@@ -53,41 +48,79 @@ const REPORT_BODY_END: usize = REPORT_BODY_START + REPORT_BODY_SIZE;
 /// The quote structure returned by IAS.
 ///
 /// This structure is nearly identical to the
-/// [`Quote`](mc_sgx_epid_types::Quote) structure, but does not contain the
+/// EPID [`Quote`](mc_sgx_epid_types::Quote) structure, but does not contain the
 /// variable-length signature and it's length.
-#[derive(Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "use_prost", derive(Message))]
+#[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Quote {
     /// The quote version
-    // prost(uint32, required, tag = "1")
-    pub version: u16,
+    #[cfg_attr(feature = "use_prost", prost(uint32, required))]
+    version: u32,
 
     /// The quote signature type (linkable vs. unlinkable).
-    // prost(enumeration = "QuoteSign", required, tag = "2")
-    pub sign_type: QuoteSign,
+    #[cfg_attr(feature = "use_prost", prost(enumeration = "QuoteSign", required))]
+    sign_type: i32,
 
     /// The EPID Group ID of the platform.
-    // prost(message, required, tag = "3")
-    pub epid_group_id: EpidGroupId,
+    #[cfg_attr(feature = "use_prost", prost(message, required))]
+    epid_group_id: EpidGroupId,
 
     /// The security version of the original quoting enclave.
-    // prost(uint32, required, tag = "4")
-    pub qe_svn: SecurityVersion,
+    #[cfg_attr(feature = "use_prost", prost(uint32, required))]
+    qe_svn: u32,
 
     /// The security version of the provisioning certificate enclave.
-    // prost(uint32, required, tag = "5")
-    pub pce_svn: SecurityVersion,
+    #[cfg_attr(feature = "use_prost", prost(uint32, required))]
+    pce_svn: u32,
 
     /// The XEID
-    // prost(uint32, required, tag = "6")
-    pub xeid: u32,
+    #[cfg_attr(feature = "use_prost", prost(uint32, required))]
+    xeid: u32,
 
     /// The basename
-    // prost(message, required, tag = "7")
-    pub basename: Basename,
+    #[cfg_attr(feature = "use_prost", prost(message, required))]
+    basename: Basename,
 
     /// The quoted report body
-    // prost(message, required, tag = "8")
-    pub report_body: ReportBody,
+    #[cfg_attr(feature = "use_prost", prost(message, required))]
+    report_body: ReportBody,
+}
+
+impl Quote {
+    /// Retrieve the quote version
+    pub fn version(&self) -> u16 {
+        u16::try_from(self.version).unwrap_or(0)
+    }
+
+    /// Retrieve the EPID Group ID from.
+    pub fn epid_group_id(&self) -> &EpidGroupId {
+        &self.epid_group_id
+    }
+
+    /// Retrieve the quoting enclave's security version
+    pub fn qe_security_version(&self) -> SecurityVersion {
+        u16::try_from(self.qe_svn).unwrap_or(0)
+    }
+
+    /// Retrieve the sealing enclave's security version
+    pub fn pce_security_version(&self) -> SecurityVersion {
+        u16::try_from(self.pce_svn).unwrap_or(0)
+    }
+
+    /// Retrieve the XEID
+    pub fn xeid(&self) -> u32 {
+        self.xeid,
+    }
+
+    /// Retrieve the basename.
+    pub fn basename(&self) -> &Basename {
+        &self.basename
+    }
+
+    /// Retrieve the quoted EPID report body
+    pub fn report_body(&self) -> &ReportBody {
+        &self.report_body
+    }
 }
 
 impl FromBase64 for Quote {
@@ -103,106 +136,13 @@ impl FromBase64 for Quote {
     }
 }
 
-const TAG_VERSION: u32 = 1;
-const TAG_SIGN_TYPE: u32 = 2;
-const TAG_EPID_GROUP_ID: u32 = 3;
-const TAG_QE_SVN: u32 = 4;
-const TAG_PCE_SVN: u32 = 5;
-const TAG_XEID: u32 = 6;
-const TAG_BASENAME: u32 = 7;
-const TAG_REPORT_BODY: u32 = 8;
-
-/// An implementation of Message for IAS Quote structures
-#[cfg(feature = "use_prost")]
-impl Message for Quote {
-    fn encode_raw<B>(&self, buf: &mut B)
-    where
-        B: BufMut,
-        Self: Sized,
-    {
-        uint32::encode(TAG_VERSION, &(self.version as u32), buf);
-
-        encoding::encode_key(TAG_SIGN_TYPE, WireType::Varint, buf);
-        encoding::encode_varint(self.sign_type as u64, buf);
-
-        message::encode(TAG_EPID_GROUP_ID, &self.epid_group_id, buf);
-        uint32::encode(TAG_QE_SVN, &(self.qe_svn as u32), buf);
-        uint32::encode(TAG_PCE_SVN, &(self.pce_svn as u32), buf);
-        uint32::encode(TAG_XEID, &self.xeid, buf);
-        message::encode(TAG_BASENAME, &self.basename, buf);
-        message::encode(TAG_REPORT_BODY, &self.report_body, buf);
-    }
-
-    fn merge_field<B>(
-        &mut self,
-        tag: u32,
-        wire_type: WireType,
-        buf: &mut B,
-        ctx: DecodeContext,
-    ) -> Result<(), DecodeError>
-    where
-        B: Buf,
-        Self: Sized,
-    {
-        match tag {
-            TAG_VERSION => {
-                self.version = {
-                    let mut value = 0u32;
-                    uint32::merge(wire_type, &mut value, buf, ctx)?;
-                    u16::try_from(value).map_err(|_e| DecodeError::new("version not u16"))?
-                }
-            }
-            TAG_SIGN_TYPE => {
-                self.sign_type = QuoteSign::try_from(encoding::decode_varint(buf)?)
-                    .map_err(|_e| DecodeError::new("quote_sign not a valid enum value"))?
-            }
-            TAG_EPID_GROUP_ID => message::merge(wire_type, &mut self.epid_group_id, buf, ctx)?,
-            TAG_QE_SVN => {
-                self.qe_svn = {
-                    let mut value = 0u32;
-                    uint32::merge(wire_type, &mut value, buf, ctx)?;
-                    u16::try_from(value).map_err(|_e| DecodeError::new("qe_svn not u16"))?
-                }
-            }
-            TAG_PCE_SVN => {
-                self.pce_svn = {
-                    let mut value = 0u32;
-                    uint32::merge(wire_type, &mut value, buf, ctx)?;
-                    u16::try_from(value).map_err(|_e| DecodeError::new("pce_svn not u16"))?
-                }
-            }
-            TAG_XEID => uint32::merge(wire_type, &mut self.xeid, buf, ctx)?,
-            TAG_BASENAME => message::merge(wire_type, &mut self.basename, buf, ctx)?,
-            TAG_REPORT_BODY => message::merge(wire_type, &mut self.report_body, buf, ctx)?,
-            other => encoding::skip_field(wire_type, other, buf, ctx)?,
-        }
-        Ok(())
-    }
-
-    fn encoded_len(&self) -> usize {
-        uint32::encoded_len(TAG_VERSION, &(self.version as u32))
-            + encoding::key_len(TAG_SIGN_TYPE)
-            + encoding::encoded_len_varint(self.sign_type as u64)
-            + message::encoded_len(TAG_EPID_GROUP_ID, &self.epid_group_id)
-            + uint32::encoded_len(TAG_QE_SVN, &(self.qe_svn as u32))
-            + uint32::encoded_len(TAG_PCE_SVN, &(self.pce_svn as u32))
-            + uint32::encoded_len(TAG_XEID, &self.xeid)
-            + message::encoded_len(TAG_BASENAME, &self.basename)
-            + message::encoded_len(TAG_REPORT_BODY, &self.report_body)
-    }
-
-    fn clear(&mut self) {
-        *self = Self::default();
-    }
-}
-
 impl PartialEq<SgxQuote> for Quote {
     fn eq(&self, other: &SgxQuote) -> bool {
-        other.version() == self.version
-            && other.sign_type() == self.sign_type
+        other.version() as u32 == self.version
+            && other.sign_type() == self.sign_type()
             && other.epid_group_id() == self.epid_group_id
-            && other.qe_security_version() == self.qe_svn
-            && other.pce_security_version() == self.pce_svn
+            && other.qe_security_version() as u32 == self.qe_svn
+            && other.pce_security_version() as u32 == self.pce_svn
             && other.xeid() == self.xeid
             && other.basename() == self.basename
             && other.report_body() == self.report_body
@@ -218,23 +158,23 @@ impl ReprBytes for Quote {
             src[VERSION_START..VERSION_END]
                 .try_into()
                 .expect("Invalid size of version field"),
-        );
+        ) as u32;
         let sign_type = QuoteSign::try_from(u16::from_le_bytes(
             src[SIGN_TYPE_START..SIGN_TYPE_END]
                 .try_into()
                 .expect("Invalid size of sign type field"),
-        ))?;
+        ))? as i32;
         let epid_group_id = EpidGroupId::try_from(&src[EPID_GROUP_ID_START..EPID_GROUP_ID_END])?;
         let qe_svn = SecurityVersion::from_le_bytes(
             src[QE_SVN_START..QE_SVN_END]
                 .try_into()
                 .expect("Invalid size of QE SVN field"),
-        );
+        ) as u32;
         let pce_svn = SecurityVersion::from_le_bytes(
             src[PCE_SVN_START..PCE_SVN_END]
                 .try_into()
                 .expect("Invalid size of PCE SVN field"),
-        );
+        ) as u32;
         let xeid = u32::from_le_bytes(
             src[XEID_START..XEID_END]
                 .try_into()
