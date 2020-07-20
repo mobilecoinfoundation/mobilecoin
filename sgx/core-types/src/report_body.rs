@@ -235,34 +235,37 @@ impl Ord for ReportBody {
     /// We sort by Family ID, ProdID, Extended ProdID, SVN, MrSigner, MrEnclave, Attributes,
     /// Misc Select, ConfigId, ConfigSVN, CPU SVN, and ReportData, in that order
     fn cmp(&self, other: &Self) -> Ordering {
-        (&self.0.isv_family_id[..])
-            .cmp(&other.0.isv_family_id[..])
-            .then(
-                self.0.isv_prod_id.cmp(&other.0.isv_prod_id).then(
-                    self.0.isv_ext_prod_id.cmp(&other.0.isv_ext_prod_id).then(
-                        self.0.isv_svn.cmp(&other.0.isv_svn).then(
-                            self.mr_signer().cmp(&other.mr_signer()).then(
-                                self.mr_enclave().cmp(&other.mr_enclave()).then(
-                                    self.attributes().cmp(&other.attributes()).then(
-                                        self.0.misc_select.cmp(&other.0.misc_select).then(
-                                            self.config_id().cmp(&other.config_id()).then(
-                                                self.0.config_svn.cmp(&other.0.config_svn).then(
-                                                    self.cpu_security_version()
-                                                        .cmp(&other.cpu_security_version())
-                                                        .then(
-                                                            self.report_data()
-                                                                .cmp(&other.report_data()),
-                                                        ),
-                                                ),
-                                            ),
-                                        ),
-                                    ),
-                                ),
-                            ),
-                        ),
-                    ),
-                ),
+        fn to_tuple(
+            report_body: &ReportBody,
+        ) -> (
+            FamilyId,
+            ProductId,
+            SecurityVersion,
+            MrSigner,
+            MrEnclave,
+            Attributes,
+            MiscSelect,
+            ConfigId,
+            ConfigSecurityVersion,
+            CpuSecurityVersion,
+            ReportData,
+        ) {
+            (
+                report_body.family_id(),
+                report_body.product_id(),
+                report_body.security_version(),
+                report_body.mr_signer(),
+                report_body.mr_enclave(),
+                report_body.attributes(),
+                report_body.misc_select(),
+                report_body.config_id(),
+                report_body.config_security_version(),
+                report_body.cpu_security_version(),
+                report_body.report_data(),
             )
+        }
+
+        to_tuple(self).cmp(&to_tuple(other))
     }
 }
 
@@ -270,6 +273,15 @@ impl PartialEq for ReportBody {
     fn eq(&self, other: &Self) -> bool {
         self.cpu_security_version() == other.cpu_security_version()
             && self.misc_select() == other.misc_select()
+            && self.attributes() == other.attributes()
+            && self.config_security_version() == other.config_security_version()
+            && self.extended_product_id() == other.extended_product_id()
+            && self.family_id() == other.family_id()
+            && self.mr_enclave() == other.mr_enclave()
+            && self.mr_signer() == other.mr_signer()
+            && self.product_id() == other.product_id()
+            && self.report_data() == other.report_data()
+            && self.security_version() == other.security_version()
     }
 }
 
