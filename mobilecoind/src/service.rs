@@ -30,7 +30,7 @@ use mc_transaction_std::identity::RootIdentity;
 use mc_util_b58_payloads::payloads::{AddressRequestPayload, RequestPayload, TransferPayload};
 use mc_util_grpc::{rpc_internal_error, rpc_logger, send_result, BuildInfoService};
 use mc_watcher::watcher_db::WatcherDB;
-use protobuf::RepeatedField;
+use protobuf::{ProtobufEnum, RepeatedField};
 use std::{
     convert::TryFrom,
     sync::{Arc, Mutex},
@@ -1080,6 +1080,10 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                 dst.set_public_key((&src.public_key).into());
                 dst.set_key_image((&src.key_image).into());
                 dst.set_value(src.value);
+                dst.set_direction(
+                    mc_mobilecoind_api::ProcessedTxOutDirection::from_i32(src.direction)
+                        .unwrap_or(mc_mobilecoind_api::ProcessedTxOutDirection::Invalid),
+                );
                 dst
             })
             .collect();
@@ -2092,6 +2096,10 @@ mod test {
             );
             assert_eq!(tx_out.get_key_image(), &(&expected_utxo.key_image).into());
             assert_eq!(tx_out.value, expected_utxo.value);
+            assert_eq!(
+                tx_out.get_direction(),
+                mc_mobilecoind_api::ProcessedTxOutDirection::Received,
+            );
         }
 
         // Query a block that will never get processed since its before the monitor's first block.

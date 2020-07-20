@@ -9,7 +9,7 @@ use lmdb::{Cursor, Database, DatabaseFlags, Environment, RwTransaction, Transact
 use mc_common::logger::Logger;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::ring_signature::KeyImage;
-use prost::Message;
+use prost::{Enumeration, Message};
 use std::{convert::TryFrom, sync::Arc};
 
 // LMDB Database Names
@@ -70,6 +70,14 @@ impl TryFrom<&[u8]> for ProcessedBlockKey {
     }
 }
 
+/// Direction of a ProcessedTxOut
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, Enumeration)]
+pub enum ProcessedTxOutDirection {
+    Invalid = 0,
+    Received = 1,
+    Spent = 2,
+}
+
 /// Type used as the stored data in the processed_block_id_to_processed_tx_outs database.
 /// Note that this is different than `mobilecoind_api::ProcessedTxOut`, as that one contains some
 /// extra data that can be derived upon construction.
@@ -90,15 +98,30 @@ pub struct ProcessedTxOut {
     /// Value of this TxOut.
     #[prost(uint64, tag = "4")]
     pub value: u64,
+
+    /// Direction.
+    #[prost(enumeration = "ProcessedTxOutDirection", tag = "5")]
+    pub direction: i32,
 }
 
-impl From<&UnspentTxOut> for ProcessedTxOut {
-    fn from(src: &UnspentTxOut) -> Self {
+impl ProcessedTxOut {
+    pub fn from_received_utxo(src: &UnspentTxOut) -> Self {
         Self {
             subaddress_index: src.subaddress_index,
             public_key: src.tx_out.public_key,
             key_image: src.key_image,
             value: src.value,
+            direction: ProcessedTxOutDirection::Received as i32,
+        }
+    }
+
+    pub fn from_spent_utxo(src: &UnspentTxOut) -> Self {
+        Self {
+            subaddress_index: src.subaddress_index,
+            public_key: src.tx_out.public_key,
+            key_image: src.key_image,
+            value: src.value,
+            direction: ProcessedTxOutDirection::Spent as i32,
         }
     }
 }
@@ -190,7 +213,7 @@ impl ProcessedBlockStore {
         let key_bytes = key.to_vec();
 
         for utxo in discovered_utxos.iter() {
-            let processed_tx_out = ProcessedTxOut::from(utxo);
+            let processed_tx_out = ProcessedTxOut::from_received_utxo(utxo);
             let processed_tx_out_bytes = mc_util_serial::encode(&processed_tx_out);
             db_txn.put(
                 self.processed_block_key_to_processed_tx_outs,
@@ -364,8 +387,11 @@ mod test {
                 .expect("get_processed_block failed");
             assert_eq!(processed_tx_outs.len(), 3);
 
-            let expected_processed_tx_outs: HashSet<_> =
-                utxos.iter().take(3).map(ProcessedTxOut::from).collect();
+            let expected_processed_tx_outs: HashSet<_> = utxos
+                .iter()
+                .take(3)
+                .map(ProcessedTxOut::from_received_utxo)
+                .collect();
             assert_eq!(
                 expected_processed_tx_outs,
                 HashSet::from_iter(processed_tx_outs)
@@ -377,8 +403,11 @@ mod test {
                 .expect("get_processed_block failed");
             assert_eq!(processed_tx_outs.len(), utxos.len() - 3);
 
-            let expected_processed_tx_outs: HashSet<_> =
-                utxos.iter().skip(3).map(ProcessedTxOut::from).collect();
+            let expected_processed_tx_outs: HashSet<_> = utxos
+                .iter()
+                .skip(3)
+                .map(ProcessedTxOut::from_received_utxo)
+                .collect();
             assert_eq!(
                 expected_processed_tx_outs,
                 HashSet::from_iter(processed_tx_outs)
@@ -480,7 +509,7 @@ mod test {
                 .iter()
                 .skip(1)
                 .take(4)
-                .map(ProcessedTxOut::from)
+                .map(ProcessedTxOut::from_received_utxo)
                 .collect();
             assert_eq!(
                 expected_processed_tx_outs,
@@ -493,7 +522,10 @@ mod test {
                 .expect("get_processed_block failed");
             assert_eq!(processed_tx_outs.len(), 1);
 
-            assert_eq!(vec![ProcessedTxOut::from(&utxos[0])], processed_tx_outs);
+            assert_eq!(
+                vec![ProcessedTxOut::from_received_utxo(&utxos[0])],
+                processed_tx_outs
+            );
 
             // Second block - original monitor id
             let processed_tx_outs = store
@@ -501,8 +533,11 @@ mod test {
                 .expect("get_processed_block failed");
             assert_eq!(processed_tx_outs.len(), utxos.len() - 5);
 
-            let expected_processed_tx_outs: HashSet<_> =
-                utxos.iter().skip(5).map(ProcessedTxOut::from).collect();
+            let expected_processed_tx_outs: HashSet<_> = utxos
+                .iter()
+                .skip(5)
+                .map(ProcessedTxOut::from_received_utxo)
+                .collect();
             assert_eq!(
                 expected_processed_tx_outs,
                 HashSet::from_iter(processed_tx_outs)
