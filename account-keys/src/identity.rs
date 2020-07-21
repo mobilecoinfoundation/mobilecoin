@@ -116,6 +116,7 @@ impl RootIdentity {
     }
 }
 
+// Make RootIdentity from RootEntropy by defaulting all fog-related fields.
 impl From<&RootEntropy> for RootIdentity {
     fn from(src: &RootEntropy) -> Self {
         Self {
@@ -158,17 +159,11 @@ impl From<&RootIdentity> for AccountKey {
 /// Construct fogless RootIdentity from [u8;32]
 impl From<&[u8; 32]> for RootIdentity {
     fn from(src: &[u8; 32]) -> Self {
-        Self {
-            root_entropy: RootEntropy::from(src),
-            fog_report_url: Default::default(),
-            fog_report_id: Default::default(),
-            fog_authority_fingerprint: Default::default(),
-        }
+        Self::from(&RootEntropy::from(src))
     }
 }
 
 // Helper function for using hkdf to derive a key
-#[inline]
 fn root_identity_hkdf_helper(ikm: &[u8], info: &[u8]) -> Scalar {
     let mut result = [0u8; 32];
     let (_, hk) = Hkdf::<Blake2b256>::extract(None, ikm);
