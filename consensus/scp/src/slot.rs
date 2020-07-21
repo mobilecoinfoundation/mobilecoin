@@ -327,21 +327,20 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
             return Err("Message is not for the current slot.".to_string());
         }
 
+        // Ignore the message if it not higher than a previous message from the same peer.
+        if let Some(existing_msg) = self.M.get(&msg.sender_id) {
+            if msg.topic <= existing_msg.topic {
+                return Ok(self.out_msg());
+            }
+        }
+
+        // TODO: Reject messages with incorrectly ordered values.
         // Reject malformed messages.
         msg.validate()?;
 
         // Reject messages with invalid values.
         for value in msg.values() {
             self.is_valid(&value)?;
-        }
-
-        // TODO: Reject messages with incorrectly ordered values.
-
-        // Ignore the message if it not higher than a previous message from the same peer.
-        if let Some(existing_msg) = self.M.get(&msg.sender_id) {
-            if msg.topic <= existing_msg.topic {
-                return Ok(self.out_msg());
-            }
         }
 
         self.M.insert(msg.sender_id.clone(), msg.clone());
