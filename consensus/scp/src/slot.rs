@@ -303,12 +303,14 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
             return Ok(self.out_msg());
         }
 
-        // Reject invalid values.
-        for value in values {
-            self.is_valid(value)?;
-        }
+        // Omit any invalid values.
+        let valid_values: Vec<V> = values
+            .iter()
+            .filter(|value| self.is_valid(value).is_ok())
+            .cloned()
+            .collect();
 
-        self.W.extend(values.iter().cloned());
+        self.W.extend(valid_values.into_iter());
         self.do_nominate_phase();
         self.do_ballot_protocol();
         Ok(self.out_msg())
