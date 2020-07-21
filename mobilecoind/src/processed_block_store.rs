@@ -227,7 +227,6 @@ impl ProcessedBlockStore {
         for utxo in spent_utxos.iter() {
             let processed_tx_out = ProcessedTxOut::from_spent_utxo(utxo);
             let processed_tx_out_bytes = mc_util_serial::encode(&processed_tx_out);
-            println!("store {:?}", utxo.key_image);
             db_txn.put(
                 self.processed_block_key_to_processed_tx_outs,
                 &key_bytes,
