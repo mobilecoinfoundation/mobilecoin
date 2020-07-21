@@ -143,14 +143,14 @@ impl<V: Value, N: ScpNode<V>> ScpNode<V> for LoggingScpNode<V, N> {
         self.node.quorum_set()
     }
 
-    fn nominate(
+    fn propose_values(
         &mut self,
         slot_index: SlotIndex,
         values: BTreeSet<V>,
     ) -> Result<Option<Msg<V>>, String> {
         self.write(LoggedMsg::Nominate(slot_index, values.clone()))?;
 
-        let out_msg = self.node.nominate(slot_index, values)?;
+        let out_msg = self.node.propose_values(slot_index, values)?;
 
         if let Some(ref msg) = out_msg {
             self.write(LoggedMsg::OutgoingMsg(msg.clone()))?;

@@ -138,8 +138,8 @@ pub trait ScpNode<V: Value>: Send {
     /// Get local node quorum set.
     fn quorum_set(&self) -> QuorumSet;
 
-    /// Submit a list of values of nomination.
-    fn nominate(
+    /// Propose values for this node to nominate.
+    fn propose_values(
         &mut self,
         slot_index: SlotIndex,
         values: BTreeSet<V>,
@@ -175,7 +175,7 @@ impl<V: Value, ValidationError: Display> ScpNode<V> for Node<V, ValidationError>
     }
 
     /// Submit a list of values of nomination.
-    fn nominate(
+    fn propose_values(
         &mut self,
         slot_index: SlotIndex,
         values: BTreeSet<V>,
@@ -336,7 +336,7 @@ mod tests {
         let slot_index = 1;
         let values = vec![1000, 2000];
         let msg = node2
-            .nominate(slot_index, BTreeSet::from_iter(values.clone()))
+            .propose_values(slot_index, BTreeSet::from_iter(values.clone()))
             .expect("error handling msg")
             .expect("no msg?");
 
