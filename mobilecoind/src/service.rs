@@ -15,7 +15,7 @@ use crate::{
     utxo_store::{UnspentTxOut, UtxoId},
 };
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
-use mc_account_keys::{AccountKey, PublicAddress};
+use mc_account_keys::{AccountKey, PublicAddress, RootIdentity};
 use mc_common::{
     logger::{log, Logger},
     HashMap,
@@ -26,8 +26,8 @@ use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::{NetworkState, PollingNetworkState};
 use mc_mobilecoind_api::mobilecoind_api_grpc::{create_mobilecoind_api, MobilecoindApi};
 use mc_transaction_core::{ring_signature::KeyImage, tx::TxOutConfirmationNumber};
-use mc_transaction_std::identity::RootIdentity;
 use mc_util_b58_payloads::payloads::{AddressRequestPayload, RequestPayload, TransferPayload};
+use mc_util_from_random::FromRandom;
 use mc_util_grpc::{rpc_internal_error, rpc_logger, send_result, BuildInfoService};
 use mc_watcher::watcher_db::WatcherDB;
 use protobuf::RepeatedField;
@@ -275,9 +275,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         _request: mc_mobilecoind_api::Empty,
     ) -> Result<mc_mobilecoind_api::GenerateEntropyResponse, RpcStatus> {
         let mut rng = rand::thread_rng();
-        let root_id = RootIdentity::random(&mut rng, None);
+        let root_id = RootIdentity::from_random(&mut rng);
         let mut response = mc_mobilecoind_api::GenerateEntropyResponse::new();
-        response.set_entropy(root_id.root_entropy.to_vec());
+        response.set_entropy(root_id.root_entropy.as_ref().to_vec());
         Ok(response)
     }
 
@@ -292,14 +292,12 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                 Some("entropy".to_string()),
             ));
         }
+
         let mut root_entropy = [0u8; 32];
         root_entropy.copy_from_slice(request.get_entropy());
 
         // Use root entropy to construct AccountKey.
-        let root_id = RootIdentity {
-            root_entropy,
-            fog_url: None,
-        };
+        let root_id = RootIdentity::from(&root_entropy);
 
         // TODO: change to production AccountKey derivation
         let account_key = AccountKey::from(&root_id);
@@ -1640,10 +1638,8 @@ mod test {
         let response = client.get_account_key(&request).unwrap();
 
         // TODO: change to production AccountKey derivation
-        let root_id = RootIdentity {
-            root_entropy,
-            fog_url: None,
-        };
+        let root_id = RootIdentity::from(&root_entropy);
+
         assert_eq!(
             AccountKey::from(&root_id),
             AccountKey::try_from(response.get_account_key()).unwrap(),
@@ -2408,13 +2404,11 @@ mod test {
                 .append_block(&new_block, &block_contents, None)
                 .unwrap();
 
-            // Add a monitor based on the entropy we received.
-            let mut root_entropy = [0; 32];
+            let mut root_entropy = [0u8; 32];
             root_entropy.copy_from_slice(response.get_entropy());
-            let root_id = RootIdentity {
-                root_entropy,
-                fog_url: None,
-            };
+
+            // Add a monitor based on the entropy we received.
+            let root_id = RootIdentity::from(&root_entropy);
 
             // TODO: change to production AccountKey derivation
             let account_key = AccountKey::from(&root_id);

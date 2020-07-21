@@ -7,14 +7,16 @@
 
 use core::hash::{Hash, Hasher};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
-use serde::{Deserialize, Serialize};
+use prost::Message;
 
 /// The user's (a,B) keys.
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Message)]
 pub struct ViewKey {
     /// The user's private key `a`.
+    #[prost(message, required, tag = 1)]
     pub view_private_key: RistrettoPrivate,
     /// The user's public key `B`
+    #[prost(message, required, tag = 2)]
     pub spend_public_key: RistrettoPublic,
 }
 

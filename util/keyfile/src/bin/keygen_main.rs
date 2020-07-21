@@ -2,7 +2,7 @@
 
 //! A CLI tool for generating individual MobileCoin identities
 
-use mc_transaction_std::identity::RootIdentity;
+use mc_account_keys::{RootEntropy, RootIdentity};
 use mc_util_keyfile::config::Config;
 use structopt::StructOpt;
 
@@ -18,8 +18,10 @@ fn main() {
     let root_entropy = config.get_root_entropy();
 
     let id = RootIdentity {
-        root_entropy,
-        fog_url,
+        root_entropy: RootEntropy::from(&root_entropy),
+        fog_report_url: fog_url.unwrap_or_default(),
+        fog_report_id: Default::default(),
+        fog_authority_fingerprint: Default::default(),
     };
 
     println!("Writing to {:?}", path);

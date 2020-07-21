@@ -2,8 +2,7 @@
 
 //! This module provides a consistent set of AccountKeys for use in testing
 
-use mc_account_keys::{AccountKey, PublicAddress};
-use mc_transaction_std::identity::RootIdentity;
+use mc_account_keys::{AccountKey, PublicAddress, RootIdentity};
 use rand::rngs::StdRng;
 use rand_core::SeedableRng;
 use std::cmp;
@@ -60,10 +59,7 @@ const E9: [u8; 32] = [
 
 // TODO: consider updating this to AccountIdentity, or concatenating keys of both types
 fn derive_account_key(entropy: [u8; 32]) -> AccountKey {
-    AccountKey::from(&RootIdentity {
-        root_entropy: entropy,
-        fog_url: None,
-    })
+    AccountKey::from(&RootIdentity::from(&entropy))
 }
 
 // This macro saves boilerplate in the creation of the lazy_static KNOWN_ACCOUNT_KEYS_0_10

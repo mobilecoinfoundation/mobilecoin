@@ -6,9 +6,8 @@ use core::{convert::TryFrom, fmt};
 use std::str::FromStr;
 
 use crc::crc32;
-use mc_account_keys::{AccountKey, PublicAddress};
+use mc_account_keys::{AccountKey, PublicAddress, RootIdentity};
 use mc_crypto_keys::{KeyError, RistrettoPublic};
-use mc_transaction_std::identity::RootIdentity;
 use mc_util_uri::FogUri;
 
 /// Type of payload standard encoding.
@@ -464,10 +463,7 @@ impl fmt::Debug for TransferPayload {
 impl From<&TransferPayload> for AccountKey {
     fn from(src: &TransferPayload) -> Self {
         // TODO: change algorithm to AccountIdentity when available
-        let id = RootIdentity {
-            root_entropy: src.entropy,
-            fog_url: None,
-        };
+        let id = RootIdentity::from(&src.entropy);
         AccountKey::from(&id)
     }
 }

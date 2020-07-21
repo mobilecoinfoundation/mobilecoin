@@ -3,8 +3,7 @@
 //! A tool for inspecting binary keyfiles
 //! Reads .bin file on stdin, or a path to .bin file, emits description on stdout
 
-use mc_account_keys::AccountKey;
-use mc_transaction_std::identity::RootIdentity;
+use mc_account_keys::{AccountKey, RootIdentity};
 
 fn main() {
     let root_id: RootIdentity = {

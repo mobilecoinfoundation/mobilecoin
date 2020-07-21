@@ -1,10 +1,11 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 pub mod config;
+mod json_format;
 pub mod keygen;
 
-use mc_account_keys::PublicAddress;
-use mc_transaction_std::identity::RootIdentity;
+use json_format::RootIdentityJson;
+use mc_account_keys::{PublicAddress, RootIdentity};
 use std::{fs::File, io::prelude::*, path::Path};
 
 /// Write user root identity to disk
@@ -12,7 +13,8 @@ pub fn write_keyfile<P: AsRef<Path>>(
     path: P,
     root_id: &RootIdentity,
 ) -> Result<(), std::io::Error> {
-    File::create(path)?.write_all(&serde_json::to_vec(root_id).map_err(to_io_error)?)?;
+    let json = RootIdentityJson::from(root_id);
+    File::create(path)?.write_all(&serde_json::to_vec(&json).map_err(to_io_error)?)?;
     Ok(())
 }
 
@@ -28,8 +30,8 @@ pub fn read_keyfile_data<R: std::io::Read>(buffer: &mut R) -> Result<RootIdentit
         buffer.read_to_end(&mut data)?;
         data
     };
-    let result: RootIdentity = serde_json::from_slice(&data).map_err(to_io_error)?;
-    Ok(result)
+    let result: RootIdentityJson = serde_json::from_slice(&data).map_err(to_io_error)?;
+    Ok(RootIdentity::from(result))
 }
 
 /// Write user public address to disk
@@ -56,14 +58,11 @@ pub fn read_pubfile_data<R: std::io::Read>(
     Ok(result)
 }
 
-// Helper function maps serde_json::error to io::Error
-#[inline]
-pub fn to_io_error(err: serde_json::error::Error) -> std::io::Error {
+fn to_io_error(err: serde_json::error::Error) -> std::io::Error {
     std::io::Error::new(std::io::ErrorKind::Other, Box::new(err))
 }
 
-#[inline]
-pub fn prost_to_io_error(err: mc_util_serial::DecodeError) -> std::io::Error {
+fn prost_to_io_error(err: mc_util_serial::DecodeError) -> std::io::Error {
     std::io::Error::new(std::io::ErrorKind::Other, Box::new(ProstError { err }))
 }
 
@@ -95,6 +94,7 @@ mod testing {
     use super::*;
 
     use mc_account_keys::AccountKey;
+    use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
     use tempdir::TempDir;
 
@@ -104,8 +104,21 @@ mod testing {
         let dir = TempDir::new("test").unwrap();
 
         {
-            let entropy = RootIdentity::random(&mut rng, None);
+            let entropy = RootIdentity::from_random(&mut rng);
             let f1 = dir.path().join("f1");
+            write_keyfile(&f1, &entropy).unwrap();
+            let result = read_keyfile(&f1).unwrap();
+            assert_eq!(entropy, result);
+        }
+
+        {
+            let entropy = RootIdentity::random_with_fog(
+                &mut rng,
+                "fog://foobar.com",
+                "",
+                &[9u8, 9u8, 9u8, 9u8],
+            );
+            let f1 = dir.path().join("f0");
             write_keyfile(&f1, &entropy).unwrap();
             let result = read_keyfile(&f1).unwrap();
             assert_eq!(entropy, result);

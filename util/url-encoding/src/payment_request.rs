@@ -67,17 +67,18 @@ mod tests {
 
     use core::{convert::TryFrom, str::FromStr};
 
-    use mc_account_keys::AccountKey;
+    use mc_account_keys::{AccountKey, RootEntropy, RootIdentity};
     use mc_crypto_keys::RistrettoPrivate;
-    use mc_transaction_std::identity::RootIdentity;
     use mc_util_test_helper::{run_with_several_seeds, RngCore};
 
     // Test an example public address being parsed to mob url
     #[test]
     fn example_fog_public_address() {
         let identity = RootIdentity {
-            root_entropy: [0u8; 32],
-            fog_url: Some("fog://example.com".to_owned()),
+            root_entropy: RootEntropy::from(&[0u8; 32]),
+            fog_report_url: "fog://example.com".to_owned(),
+            fog_report_id: Default::default(),
+            fog_authority_fingerprint: Default::default(),
         };
 
         let acct = AccountKey::from(&identity);
@@ -92,7 +93,7 @@ mod tests {
             })
             .unwrap();
 
-        assert_eq!(mob_url.as_ref(), "mob://example.com/9i_xwzoihbGu5hLthygfLGi7K1sPFDmhPkq3KPmO-2p4kBwRg06ELfa-mMEnlTUT4RYJXUEizCfYB7RRHLgeEWfP?s=mJucc0ECqL7xidtMmocgsH3Ebu4nyMGnB6C5cHM62naVg7X1o8OtvgCVb7jxhZB2-_vM4ZSDIVrV4QmuXNbUhSbl");
+        assert_eq!(mob_url.as_ref(), "mob://example.com/9i_xwzoihbGu5hLthygfLGi7K1sPFDmhPkq3KPmO-2p4kBwRg06ELfa-mMEnlTUT4RYJXUEizCfYB7RRHLgeEWfP?s=QqLfvkgCM29apl9PBGhIag-XlF-qy_CF2_qb7znsWhFViPW0f5v-ggZnCm0vkK5aaWAfP4uxWb5lWUa8zBpNjT9A");
 
         let payload2 = PaymentRequest::try_from(&mob_url).unwrap();
 
@@ -102,10 +103,7 @@ mod tests {
     // Test an example fogless public address being parsed to mob url
     #[test]
     fn example_fogless_public_address() {
-        let identity = RootIdentity {
-            root_entropy: [0u8; 32],
-            fog_url: None,
-        };
+        let identity = RootIdentity::from(&RootEntropy::from(&[0u8; 32]));
 
         let acct = AccountKey::from(&identity);
 
