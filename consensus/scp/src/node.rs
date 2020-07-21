@@ -174,7 +174,7 @@ impl<V: Value, ValidationError: Display> ScpNode<V> for Node<V, ValidationError>
         self.Q.clone()
     }
 
-    /// Submit a list of values of nomination.
+    /// Propose values for this node to nominate.
     fn propose_values(
         &mut self,
         slot_index: SlotIndex,
