@@ -597,12 +597,12 @@ struct JsonProcessedTxOut {
     public_key: String,
     key_image: String,
     value: String, // Needs to be String since Javascript ints are not 64 bit.
+    direction: String,
 }
 
 #[derive(Serialize, Default)]
 struct JsonProcessedBlockResponse {
     tx_outs: Vec<JsonProcessedTxOut>,
-    key_images: Vec<String>,
 }
 
 /// Retreives processed block information.
@@ -624,6 +624,14 @@ fn processed_block(
         .get_processed_block(&req)
         .map_err(|err| format!("Failed getting processed block: {}", err))?;
 
+    fn direction_enum_to_str(dir: &mc_mobilecoind_api::ProcessedTxOutDirection) -> &str {
+        match dir {
+            mc_mobilecoind_api::ProcessedTxOutDirection::Invalid => "invalid",
+            mc_mobilecoind_api::ProcessedTxOutDirection::Received => "received",
+            mc_mobilecoind_api::ProcessedTxOutDirection::Spent => "spent",
+        }
+    }
+
     Ok(Json(JsonProcessedBlockResponse {
         tx_outs: resp
             .get_tx_outs()
@@ -634,12 +642,8 @@ fn processed_block(
                 public_key: hex::encode(tx_out.get_public_key().get_data()),
                 key_image: hex::encode(tx_out.get_key_image().get_data()),
                 value: tx_out.value.to_string(),
+                direction: direction_enum_to_str(&tx_out.get_direction()).to_owned(),
             })
-            .collect(),
-        key_images: resp
-            .get_spent_key_images()
-            .iter()
-            .map(|key_image| hex::encode(key_image.get_data()))
             .collect(),
     }))
 }

@@ -187,6 +187,21 @@ message MonitorStatus {
     string name = 6;
 }
 
+// Enum used to indicate whether a ProcessedTxOut is a sent one or a received one.
+enum ProcessedTxOutDirection {
+    // This should never happen, but is available here as an option to catch uninitialized data.
+    // The name "Unknown" cannot be used because, quoting the protobuf compiler:
+    // Note that enum values use C++ scoping rules, meaning that enum values are siblings of their type, not children of it.  Therefore, "Unknown" must be unique within "mobilecoind_api", not just within "ProcessedTxOutDirection".
+    Invalid = 0;
+
+    // The ProcessedTxOut has been received at the block queried for.
+    Received = 1;
+
+    // The ProcessedTxOut has been spent at the block queried for.
+    Spent = 2;
+}
+
+
 // Structure used to report tx outs received in a given processed block.
 message ProcessedTxOut {
     // The monitor id that received the transaction.
@@ -203,6 +218,9 @@ message ProcessedTxOut {
 
     // The value of the TxOut.
     uint64 value = 5;
+
+    // Whether this ProcessedTxOut was received at this block or spent at this block.
+    ProcessedTxOutDirection direction = 6;
 }
 
 //*********************************
@@ -519,9 +537,6 @@ message GetProcessedBlockRequest {
 message GetProcessedBlockResponse {
     // Processed tx output information that belongs to the requested monitor_id/block.
     repeated ProcessedTxOut tx_outs = 1;
-
-    // All key images in the requested block (not monitor_id-specific).
-    repeated external.KeyImage spent_key_images = 2;
 }
 
 //
