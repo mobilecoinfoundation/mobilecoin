@@ -9,10 +9,8 @@ use crate::{
 };
 use mc_common::{
     logger::{log, Logger},
-    Hash, LruCache, NodeID,
+    LruCache, NodeID,
 };
-use mc_crypto_digestible::Digestible;
-use sha3::Sha3_256;
 use std::{collections::BTreeSet, fmt::Display, time::Duration};
 
 /// Max number of pending slots to store.
@@ -20,9 +18,6 @@ const MAX_PENDING_SLOTS: usize = 10;
 
 /// Max number of externalized slots to store.
 const MAX_EXTERNALIZED_SLOTS: usize = 10;
-
-/// Number of last seen messages to keep track of.
-const LAST_SEEN_HISTORY_SIZE: usize = 1000;
 
 /// A node participates in federated voting.
 pub struct Node<V: Value, ValidationError: Display> {
@@ -43,10 +38,6 @@ pub struct Node<V: Value, ValidationError: Display> {
 
     /// Application-specific function for combining multiple values. Must be deterministic.
     combine_fn: CombineFn<V>,
-
-    /// Hashes of messages we've already processed.
-    /// (We store hashes instead of message content to reduce memory footprint.)
-    pub seen_msg_hashes: LruCache<Hash, ()>,
 
     /// Logger.
     logger: Logger,
@@ -72,7 +63,6 @@ impl<V: Value, ValidationError: Display> Node<V, ValidationError> {
             externalized: LruCache::new(MAX_EXTERNALIZED_SLOTS),
             validity_fn,
             combine_fn,
-            seen_msg_hashes: LruCache::new(LAST_SEEN_HISTORY_SIZE),
             logger,
             scp_timebase: Duration::from_millis(1000),
         }
@@ -229,18 +219,6 @@ impl<V: Value, ValidationError: Display> ScpNode<V> for Node<V, ValidationError>
                 }
             }
         }
-
-        // Calculate message hash.
-        let msg_hash = msg.digest_with::<Sha3_256>().into();
-
-        // If we've already seen this message, we don't need to do anything.
-        // We use `get()` instead of `contains()` to update LRU state.
-        if self.seen_msg_hashes.get(&msg_hash).is_some() {
-            return Ok(None);
-        }
-
-        // Store message so it doesn't get processed again.
-        self.seen_msg_hashes.put(msg_hash, ());
 
         // Process message using the Slot.
         let slot = self.get_or_create_pending_slot(msg.slot_index);
