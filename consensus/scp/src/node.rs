@@ -185,21 +185,8 @@ impl<V: Value, ValidationError: Display> ScpNode<V> for Node<V, ValidationError>
             return Ok(None);
         }
 
-        let valid_values: BTreeSet<V> = values
-            .into_iter()
-            .filter(|value| (self.validity_fn)(&value).is_ok())
-            .collect();
-
-        if valid_values.is_empty() {
-            log::error!(
-                self.logger,
-                "nominate() called with only invalid values. Ignoring."
-            );
-            return Ok(None);
-        }
-
         let slot = self.get_or_create_pending_slot(slot_index);
-        let outbound = slot.propose_values(&valid_values)?;
+        let outbound = slot.propose_values(&values)?;
 
         match &outbound {
             None => Ok(None),
