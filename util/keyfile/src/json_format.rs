@@ -1,7 +1,7 @@
 //! We mostly try to serialize our types using protobuf,
 //! but early in the project we were using a json-based representation of
-//! account key root entropy. There is now some mobilecoind strategies
-//! code based on this format, so we maintain it here.
+//! account key root entropy. As part of our CD, we maintain the
+//! strategies/test_client code based on this format.
 //!
 //! It is NOT RECOMMENDED to use this for new code, please use protobuf RootIdentity
 //! This is only being used in the .json files.
