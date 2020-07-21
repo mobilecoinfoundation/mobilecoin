@@ -36,6 +36,15 @@ impl Watcher {
         transactions_fetcher: ReqwestTransactionsFetcher,
         logger: Logger,
     ) -> Self {
+        // Sanity check that the watcher db and transaction fetcher were initialized with the same
+        // set of URLs.
+        assert_eq!(
+            transactions_fetcher.source_urls,
+            watcher_db
+                .get_config_urls()
+                .expect("get_config_urls failed")
+        );
+
         Self {
             transactions_fetcher: Arc::new(transactions_fetcher),
             watcher_db,
@@ -45,9 +54,7 @@ impl Watcher {
 
     /// The lowest next block we need to try and sync.
     pub fn lowest_next_block_to_sync(&self) -> Result<u64, WatcherError> {
-        let last_synced = self
-            .watcher_db
-            .last_synced_blocks(&self.transactions_fetcher.source_urls)?;
+        let last_synced = self.watcher_db.last_synced_blocks()?;
         Ok(last_synced
             .values()
             .map(|last_synced_block| match last_synced_block {
@@ -125,9 +132,7 @@ impl Watcher {
 
         loop {
             // Get the last synced block for each URL we are tracking.
-            let mut last_synced = self
-                .watcher_db
-                .last_synced_blocks(&self.transactions_fetcher.source_urls)?;
+            let mut last_synced = self.watcher_db.last_synced_blocks()?;
 
             // Filter the list to only contain URLs we still need to sync from.
             if let Some(max_block_height) = max_block_height {

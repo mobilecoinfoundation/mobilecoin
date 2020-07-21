@@ -47,6 +47,9 @@ pub enum WatcherDBError {
 
     #[fail(display = "Error managing IO")]
     IO,
+
+    #[fail(display = "Database was opened in read-only mode")]
+    ReadOnly,
 }
 
 impl From<lmdb::Error> for WatcherDBError {
