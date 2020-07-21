@@ -2006,7 +2006,7 @@ mod test {
 
         let account_key = AccountKey::random(&mut rng);
         // Note: we skip the first block to test what happens when we try and query a block that will never get processed.
-        let data = MonitorData::new(
+        let monitor_data = MonitorData::new(
             account_key.clone(),
             0,  // first_subaddress
             20, // num_subaddresses
@@ -2016,7 +2016,7 @@ mod test {
         .unwrap();
 
         // 1 known recipient, 3 random recipients and no monitors.
-        let (ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+        let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(
                 3,
                 &vec![account_key.default_subaddress()],
@@ -2026,7 +2026,7 @@ mod test {
             );
 
         // Insert into database.
-        let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
+        let monitor_id = mobilecoind_db.add_monitor(&monitor_data).unwrap();
 
         // Allow the new monitor to process the ledger.
         wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
@@ -2102,6 +2102,67 @@ mod test {
             );
         }
 
+        // Add a block with a key images that spend the first two utxos and see that we get the
+        // data we expect.
+        {
+            let recipient = AccountKey::random(&mut rng).default_subaddress();
+            add_block_to_ledger_db(
+                &mut ledger_db,
+                &[recipient],
+                &[
+                    expected_utxos[monitor_data.first_block as usize].key_image,
+                    expected_utxos[monitor_data.first_block as usize + 1].key_image,
+                ],
+                &mut rng,
+            );
+
+            wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+            let mut request = mc_mobilecoind_api::GetProcessedBlockRequest::new();
+            request.set_monitor_id(monitor_id.to_vec());
+            request.set_block(num_blocks);
+
+            let response = client
+                .get_processed_block(&request)
+                .expect("failed to get processed block");
+
+            let tx_outs = response.get_tx_outs();
+            assert_eq!(tx_outs.len(), 2);
+
+            let expected_utxos_by_key_image = HashMap::from_iter(
+                expected_utxos
+                    .iter()
+                    .skip(monitor_data.first_block as usize)
+                    .take(2)
+                    .map(|utxo| (utxo.key_image, utxo.clone())),
+            );
+
+            for tx_out in tx_outs.iter() {
+                let expected_utxo = expected_utxos_by_key_image
+                    .get(
+                        &KeyImage::try_from(tx_out.get_key_image().get_data())
+                            .expect("failed constructing key image"),
+                    )
+                    .expect("failed getting expected utxo");
+
+                assert_eq!(tx_out.get_monitor_id().to_vec(), monitor_id.to_vec());
+                assert_eq!(
+                    tx_out.get_subaddress_index(),
+                    expected_utxo.subaddress_index
+                );
+                assert_eq!(
+                    tx_out.get_public_key(),
+                    &(&expected_utxo.tx_out.public_key).into(),
+                );
+                assert_eq!(tx_out.get_key_image(), &(&expected_utxo.key_image).into());
+                assert_eq!(tx_out.value, expected_utxo.value);
+                assert_eq!(
+                    tx_out.get_direction(),
+                    mc_mobilecoind_api::ProcessedTxOutDirection::Spent,
+                );
+            }
+        }
+
         // Query a block that will never get processed since its before the monitor's first block.
         let mut request = mc_mobilecoind_api::GetProcessedBlockRequest::new();
         request.set_monitor_id(monitor_id.to_vec());
@@ -2112,7 +2173,7 @@ mod test {
         // Query a block that hasn't been processed yet.
         let mut request = mc_mobilecoind_api::GetProcessedBlockRequest::new();
         request.set_monitor_id(monitor_id.to_vec());
-        request.set_block(num_blocks);
+        request.set_block(num_blocks + 1);
 
         assert!(client.get_processed_block(&request).is_err());
 

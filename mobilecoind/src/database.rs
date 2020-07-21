@@ -212,6 +212,7 @@ impl Database {
             monitor_id,
             block_num,
             discovered_utxos,
+            &removed_utxos,
         )?;
 
         // Commit.

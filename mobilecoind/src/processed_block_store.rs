@@ -208,6 +208,7 @@ impl ProcessedBlockStore {
         monitor_id: &MonitorId,
         block_index: u64,
         discovered_utxos: &[UnspentTxOut],
+        spent_utxos: &[UnspentTxOut],
     ) -> Result<(), Error> {
         let key = ProcessedBlockKey::new(monitor_id, block_index);
         let key_bytes = key.to_vec();
@@ -215,6 +216,18 @@ impl ProcessedBlockStore {
         for utxo in discovered_utxos.iter() {
             let processed_tx_out = ProcessedTxOut::from_received_utxo(utxo);
             let processed_tx_out_bytes = mc_util_serial::encode(&processed_tx_out);
+            db_txn.put(
+                self.processed_block_key_to_processed_tx_outs,
+                &key_bytes,
+                &processed_tx_out_bytes,
+                WriteFlags::empty(),
+            )?;
+        }
+
+        for utxo in spent_utxos.iter() {
+            let processed_tx_out = ProcessedTxOut::from_spent_utxo(utxo);
+            let processed_tx_out_bytes = mc_util_serial::encode(&processed_tx_out);
+            println!("store {:?}", utxo.key_image);
             db_txn.put(
                 self.processed_block_key_to_processed_tx_outs,
                 &key_bytes,
@@ -364,14 +377,14 @@ mod test {
 
             // Add in two chunks
             store
-                .block_processed(&mut db_txn, &monitor_id, 0, &utxos[..2])
+                .block_processed(&mut db_txn, &monitor_id, 0, &utxos[..2], &[])
                 .expect("block_processed failed");
             store
-                .block_processed(&mut db_txn, &monitor_id, 0, &utxos[2..3])
+                .block_processed(&mut db_txn, &monitor_id, 0, &utxos[2..3], &[])
                 .expect("block_processed failed");
 
             store
-                .block_processed(&mut db_txn, &monitor_id, 1, &utxos[3..])
+                .block_processed(&mut db_txn, &monitor_id, 1, &utxos[3..], &[])
                 .expect("block_processed failed");
 
             db_txn.commit().unwrap();
@@ -477,11 +490,11 @@ mod test {
 
             // Add in two chunks for the original monitor id and one chunk for a new monitor id.
             store
-                .block_processed(&mut db_txn, &monitor_id, 0, &utxos[1..5])
+                .block_processed(&mut db_txn, &monitor_id, 0, &utxos[1..5], &[])
                 .expect("block_processed failed");
 
             store
-                .block_processed(&mut db_txn, &monitor_id, 1, &utxos[5..])
+                .block_processed(&mut db_txn, &monitor_id, 1, &utxos[5..], &[])
                 .expect("block_processed failed");
 
             let monitor_data2 = MonitorData::new(
@@ -496,7 +509,7 @@ mod test {
             let monitor_id2 = MonitorId::from(&monitor_data2);
 
             store
-                .block_processed(&mut db_txn, &monitor_id2, 0, &utxos[0..1])
+                .block_processed(&mut db_txn, &monitor_id2, 0, &utxos[0..1], &utxos[1..2])
                 .expect("block_processed failed");
 
             // First block - original monitor id
@@ -520,11 +533,14 @@ mod test {
             let processed_tx_outs = store
                 .get_processed_block(&db_txn, &monitor_id2, 0)
                 .expect("get_processed_block failed");
-            assert_eq!(processed_tx_outs.len(), 1);
+            assert_eq!(processed_tx_outs.len(), 2);
 
             assert_eq!(
-                vec![ProcessedTxOut::from_received_utxo(&utxos[0])],
-                processed_tx_outs
+                HashSet::from_iter(vec![
+                    ProcessedTxOut::from_received_utxo(&utxos[0]),
+                    ProcessedTxOut::from_spent_utxo(&utxos[1])
+                ]),
+                HashSet::from_iter(processed_tx_outs),
             );
 
             // Second block - original monitor id
