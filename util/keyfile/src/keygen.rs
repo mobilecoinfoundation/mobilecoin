@@ -1,8 +1,8 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-//! A tool for writing .json file and .pub file to disk, corresponding to
-//! `mc_taccount_keys::AccountKey` root entropy, and `mc_transaction_core::account_keys::PublicAddress`
-//! respectively.
+//! A tool for writing private and public key files to disk,
+//! corresponding to `mc_account_keys::RootIdentity`, and
+//! `mc_account_keys::PublicAddress` respectively.
 
 use crate::{read_keyfile, read_pubfile, write_keyfile, write_pubfile};
 use mc_account_keys::{AccountKey, PublicAddress, RootIdentity};
@@ -22,7 +22,7 @@ pub fn write_keyfiles<P: AsRef<Path>>(
 
     fs::create_dir_all(&path)?;
 
-    write_keyfile(path.as_ref().join(name).with_extension("root"), &root_id)?;
+    write_keyfile(path.as_ref().join(name).with_extension("json"), &root_id)?;
     write_pubfile(
         path.as_ref().join(name).with_extension("pub"),
         &acct_key.default_subaddress(),
@@ -86,7 +86,7 @@ pub fn read_default_root_entropies<P: AsRef<Path>>(
     let mut entries = Vec::new();
     for entry in fs::read_dir(path)? {
         let filename = entry?.path();
-        if let Some("root") = filename.extension().and_then(OsStr::to_str) {
+        if let Some("json") = filename.extension().and_then(OsStr::to_str) {
             entries.push(filename);
         }
     }

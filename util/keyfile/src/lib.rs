@@ -11,7 +11,7 @@ pub fn write_keyfile<P: AsRef<Path>>(
     path: P,
     root_id: &RootIdentity,
 ) -> Result<(), std::io::Error> {
-    File::create(path)?.write_all(&mc_util_serial::encode(root_id))?;
+    File::create(path)?.write_all(&serde_json::to_vec(root_id).map_err(to_io_error)?)?;
     Ok(())
 }
 
@@ -27,7 +27,7 @@ pub fn read_keyfile_data<R: std::io::Read>(buffer: &mut R) -> Result<RootIdentit
         buffer.read_to_end(&mut data)?;
         data
     };
-    let result: RootIdentity = mc_util_serial::decode(&data).map_err(prost_to_io_error)?;
+    let result: RootIdentity = serde_json::from_slice(&data).map_err(to_io_error)?;
     Ok(result)
 }
 
@@ -55,7 +55,11 @@ pub fn read_pubfile_data<R: std::io::Read>(
     Ok(result)
 }
 
-pub fn prost_to_io_error(err: mc_util_serial::DecodeError) -> std::io::Error {
+fn to_io_error(err: serde_json::error::Error) -> std::io::Error {
+    std::io::Error::new(std::io::ErrorKind::Other, Box::new(err))
+}
+
+fn prost_to_io_error(err: mc_util_serial::DecodeError) -> std::io::Error {
     std::io::Error::new(std::io::ErrorKind::Other, Box::new(ProstError { err }))
 }
 

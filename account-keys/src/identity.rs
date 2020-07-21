@@ -30,7 +30,11 @@ use prost::Message;
 use rand_core::{CryptoRng, RngCore};
 use zeroize::Zeroize;
 
+#[cfg(feature = "use_serde")]
+use serde::{Deserialize, Serialize};
+
 /// A secret value used as input key material to derive private keys.
+#[cfg_attr(feature = "use_serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Default, Debug, PartialEq, Eq, Hash, Zeroize)]
 pub struct RootEntropy {
     /// 32 bytes of input key material.
@@ -80,6 +84,7 @@ derive_prost_message_from_repr_bytes!(RootEntropy);
 
 /// A RootIdentity contains 32 bytes of root entropy (for deriving private keys
 /// using a KDF), together with any fog data for the account.
+#[cfg_attr(feature = "use_serde", derive(Serialize, Deserialize))]
 #[derive(Clone, PartialEq, Eq, Hash, Message)]
 pub struct RootIdentity {
     /// Root entropy used to derive a user's private keys.
@@ -186,8 +191,26 @@ mod testing {
     use core::convert::TryInto;
     use yaml_rust::{Yaml, YamlLoader};
 
+    // Serde deserializing should recover a serialized RootIdentity.
+    #[cfg(feature = "use_serde")]
     #[test]
-    // Deserializing should recover a serialized RootIdentity.
+    fn serde_roundtrip_root_identity() {
+        mc_util_test_helper::run_with_several_seeds(|mut rng| {
+            let root_id = RootIdentity::from_random(&mut rng);
+            let ser = mc_util_serial::serialize(&root_id).unwrap();
+            let result: RootIdentity = mc_util_serial::deserialize(&ser).unwrap();
+            assert_eq!(root_id, result);
+
+            let root_id =
+                RootIdentity::random_with_fog(&mut rng, "fog://example.com", "1", &[7u8, 7u8]);
+            let ser = mc_util_serial::serialize(&root_id).unwrap();
+            let result: RootIdentity = mc_util_serial::deserialize(&ser).unwrap();
+            assert_eq!(root_id, result);
+        })
+    }
+
+    // Protobuf deserialization should recover a serialized RootIdentity.
+    #[test]
     fn prost_roundtrip_root_identity() {
         mc_util_test_helper::run_with_several_seeds(|mut rng| {
             let root_id = RootIdentity::from_random(&mut rng);

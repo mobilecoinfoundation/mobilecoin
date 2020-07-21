@@ -20,7 +20,7 @@ name = "sample-keys"
 path = "src/bin/sample_keys_main.rs"
 
 [dependencies]
-mc-account-keys = { path = "../../account-keys" }
+mc-account-keys = { path = "../../account-keys", features = ["use_serde"] }
 mc-crypto-rand = { path = "../../crypto/rand" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-serial = { path = "../../util/serial", features = ["std"] }
@@ -28,6 +28,7 @@ mc-util-serial = { path = "../../util/serial", features = ["std"] }
 hex = "0.3"
 rand = "0.7"
 rand_hc = "0.2.0"
+serde_json = "1.0"
 structopt = "0.3"
 
 [dev-dependencies]
