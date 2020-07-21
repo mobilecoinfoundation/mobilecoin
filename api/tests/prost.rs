@@ -1,4 +1,4 @@
-//! Tests that prosty versions of things in external.proto roundtrip with protobuf versions
+//! Tests that prost-versions of structures round-trip with the versions generated from external.proto
 
 use mc_account_keys::{AccountKey, PublicAddress, RootIdentity, ViewKey};
 use mc_api::external;
