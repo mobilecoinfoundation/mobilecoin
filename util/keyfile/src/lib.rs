@@ -1,8 +1,10 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 pub mod config;
+mod json_format;
 pub mod keygen;
 
+use json_format::RootIdentityJson;
 use mc_account_keys::{PublicAddress, RootIdentity};
 use std::{fs::File, io::prelude::*, path::Path};
 
@@ -11,7 +13,8 @@ pub fn write_keyfile<P: AsRef<Path>>(
     path: P,
     root_id: &RootIdentity,
 ) -> Result<(), std::io::Error> {
-    File::create(path)?.write_all(&serde_json::to_vec(root_id).map_err(to_io_error)?)?;
+    let json = RootIdentityJson::from(root_id);
+    File::create(path)?.write_all(&serde_json::to_vec(&json).map_err(to_io_error)?)?;
     Ok(())
 }
 
@@ -27,8 +30,8 @@ pub fn read_keyfile_data<R: std::io::Read>(buffer: &mut R) -> Result<RootIdentit
         buffer.read_to_end(&mut data)?;
         data
     };
-    let result: RootIdentity = serde_json::from_slice(&data).map_err(to_io_error)?;
-    Ok(result)
+    let result: RootIdentityJson = serde_json::from_slice(&data).map_err(to_io_error)?;
+    Ok(RootIdentity::from(result))
 }
 
 /// Write user public address to disk
