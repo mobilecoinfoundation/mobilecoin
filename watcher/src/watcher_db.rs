@@ -2,7 +2,7 @@
 
 //! The watcher database
 
-use crate::error::WatcherDBError;
+use crate::{config::WatcherConfig, error::WatcherDBError};
 
 use mc_common::{
     logger::{log, Logger},
@@ -23,6 +23,12 @@ pub const BLOCK_SIGNATURES_DB_NAME: &str = "watcher_db:block_signatures";
 
 /// Last synced archive blocks database name.
 pub const LAST_SYNCED_DB_NAME: &str = "watcher_db:last_synced";
+
+/// Last known config database name.
+pub const CONFIG_DB_NAME: &str = "watcher_db:config";
+
+/// Keys used by the `config` database.
+pub const CONFIG_DB_KEY_TX_SOURCE_URLS: &str = "tx_source_urls";
 
 /// Block Signature Data for Signature Store.
 #[derive(Message, Eq, PartialEq)]
@@ -52,6 +58,11 @@ pub struct WatcherDB {
     /// Last synced archive block.
     last_synced: Database,
 
+    /// Config database - stores the settings the watcher was started with.
+    /// This allows the code that reads data from the database to only look at the set of URLs
+    /// currently being polled.
+    config: Database,
+
     /// Logger.
     logger: Logger,
 }
@@ -67,11 +78,13 @@ impl WatcherDB {
         );
         let block_signatures = env.open_db(Some(BLOCK_SIGNATURES_DB_NAME))?;
         let last_synced = env.open_db(Some(LAST_SYNCED_DB_NAME))?;
+        let config = env.open_db(Some(CONFIG_DB_NAME))?;
 
         Ok(WatcherDB {
             env,
             block_signatures,
             last_synced,
+            config,
             logger,
         })
     }
@@ -87,8 +100,45 @@ impl WatcherDB {
 
         env.create_db(Some(BLOCK_SIGNATURES_DB_NAME), DatabaseFlags::DUP_SORT)?;
         env.create_db(Some(LAST_SYNCED_DB_NAME), DatabaseFlags::empty())?;
+        env.create_db(Some(CONFIG_DB_NAME), DatabaseFlags::DUP_SORT)?;
 
         Ok(())
+    }
+
+    /// Store the current configuration into the database.
+    pub fn store_config(&self, config: &WatcherConfig) -> Result<(), WatcherDBError> {
+        let mut db_txn = self.env.begin_rw_txn()?;
+
+        match db_txn.del(self.config, &CONFIG_DB_KEY_TX_SOURCE_URLS, None) {
+            Ok(_) | Err(lmdb::Error::NotFound) => {}
+            Err(err) => return Err(WatcherDBError::LmdbError(err)),
+        };
+        for url in config.tx_source_urls.iter() {
+            db_txn.put(
+                self.config,
+                &CONFIG_DB_KEY_TX_SOURCE_URLS,
+                url,
+                WriteFlags::empty(),
+            )?;
+        }
+
+        db_txn.commit()?;
+
+        Ok(())
+    }
+
+    /// Get the current set of configured URLs.
+    pub fn get_config_urls(&self) -> Result<Vec<String>, WatcherDBError> {
+        let db_txn = self.env.begin_ro_txn()?;
+        let mut cursor = db_txn.open_ro_cursor(self.config)?;
+
+        Ok(cursor
+            .iter_dup_of(&CONFIG_DB_KEY_TX_SOURCE_URLS)
+            .filter_map(|r| r.ok())
+            .map(|(_db_key, db_value)| {
+                String::from_utf8(db_value.to_vec()).expect("corrupted config db")
+            })
+            .collect())
     }
 
     /// Add a block signature for a URL at a given block index.
@@ -408,5 +458,60 @@ mod test {
 
             assert_eq!(watcher_db.highest_synced_block().unwrap(), 2);
         });
+    }
+
+    // Config URL storage should behave as expected.
+    #[test_with_logger]
+    fn test_config_urls(logger: Logger) {
+        let watcher_db = setup_watcher_db(logger.clone());
+
+        // Initially, the configuration is empty.
+        assert!(watcher_db
+            .get_config_urls()
+            .expect("get_config_urls failed")
+            .is_empty());
+
+        // Store 2 URLs and make sure they can be retreived successfully.
+        let config = WatcherConfig {
+            tx_source_urls: vec![
+                "http://www.url1.com".to_owned(),
+                "http://www.url2.com".to_owned(),
+            ],
+            watcher_db: Default::default(),
+            max_block_height: None,
+        };
+
+        watcher_db
+            .store_config(&config)
+            .expect("store_config failed");
+
+        assert_eq!(
+            config.tx_source_urls,
+            watcher_db
+                .get_config_urls()
+                .expect("get_config_urls failed")
+        );
+
+        // Store a different set of URLs and verify they replace the previous set.
+        let config = WatcherConfig {
+            tx_source_urls: vec![
+                "http://www.url3.com".to_owned(),
+                "http://www.url4.com".to_owned(),
+                "http://www.url5.com".to_owned(),
+            ],
+            watcher_db: Default::default(),
+            max_block_height: None,
+        };
+
+        watcher_db
+            .store_config(&config)
+            .expect("store_config failed");
+
+        assert_eq!(
+            config.tx_source_urls,
+            watcher_db
+                .get_config_urls()
+                .expect("get_config_urls failed")
+        );
     }
 }
