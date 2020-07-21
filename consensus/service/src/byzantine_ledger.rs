@@ -126,13 +126,7 @@ impl ByzantineLedger {
         let send_scp_message_ledger = ledger.clone();
         let send_scp_message_broadcaster = broadcaster.clone();
         let send_scp_message_node_id = node_id.clone();
-        let send_scp_message = move |scp_msg: Option<Msg<TxHash>>| {
-            if scp_msg.is_none() {
-                return;
-            }
-
-            let scp_msg = scp_msg.unwrap();
-
+        let send_scp_message = move |scp_msg: Msg<TxHash>| {
             // We do not expect failure to happen here since if we are attempting to send a
             // consensus message for a given slot, we expect the previous block to exist (block not
             // found is currently the only possible failure scenario for `from_scp_msg`).
@@ -278,7 +272,7 @@ enum LedgerSyncState {
 
 struct ByzantineLedgerThread<
     E: ConsensusEnclaveProxy,
-    F: Fn(Option<Msg<TxHash>>),
+    F: Fn(Msg<TxHash>),
     L: Ledger + 'static,
     PC: BlockchainConnection + ConsensusConnection + 'static,
     UI: UntrustedInterfaces = crate::validators::DefaultTxManagerUntrustedInterfaces<L>,
@@ -330,7 +324,7 @@ struct ByzantineLedgerThread<
 
 impl<
         E: ConsensusEnclaveProxy,
-        F: Fn(Option<Msg<TxHash>>),
+        F: Fn(Msg<TxHash>),
         L: Ledger + 'static,
         PC: BlockchainConnection + ConsensusConnection + 'static,
         UI: UntrustedInterfaces + Send + 'static,
@@ -565,7 +559,7 @@ impl<
 
         // Process SCP timeouts.
         for outgoing_msg in self.scp.process_timeouts().into_iter() {
-            (self.send_scp_message)(Some(outgoing_msg));
+            (self.send_scp_message)(outgoing_msg);
         }
 
         // See if we're done with the current slot.
@@ -585,7 +579,7 @@ impl<
                 ByzantineLedgerTaskMessage::Values(timestamp, new_values) => {
                     // Collect.
                     for value in new_values {
-                        // IF we don't already know of this value, add it to the pending list and
+                        // If we don't already know of this value, add it to the pending list and
                         // map.
                         if let Vacant(entry) = self.pending_values_map.entry(value) {
                             entry.insert(timestamp);
@@ -630,7 +624,7 @@ impl<
 
         assert!(!self.pending_values.is_empty());
 
-        let outgoing_msg = self
+        let msg_opt = self
             .scp
             .nominate(
                 self.cur_slot,
@@ -642,7 +636,10 @@ impl<
                 ),
             )
             .expect("nominate failed");
-        (self.send_scp_message)(outgoing_msg);
+
+        if let Some(msg) = msg_opt {
+            (self.send_scp_message)(msg)
+        }
 
         self.need_nominate = false;
     }
@@ -691,8 +688,10 @@ impl<
 
                 // Pass message to the scp layer.
                 match self.scp.handle(scp_msg) {
-                    Ok(outgoing_msg) => {
-                        (self.send_scp_message)(outgoing_msg);
+                    Ok(msg_opt) => {
+                        if let Some(msg) = msg_opt {
+                            (self.send_scp_message)(msg);
+                        }
                     }
                     Err(err) => {
                         log::error!(
