@@ -12,6 +12,7 @@ use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPubli
 use prost::Message;
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroizing;
 
 use crate::{
     commitment::Commitment,
@@ -89,7 +90,7 @@ impl RingMLSAG {
     // * `value` - Value of the real input.
     // * `blinding` - Blinding of the real input.
     // * `output_blinding` - The output amount's blinding factor.
-    ///* `check_value_is_preserved` - If true, check that the value of inputs equals value of outputs.
+    // * `check_value_is_preserved` - If true, check that the value of inputs equals value of outputs.
     // * `rng` - Randomness.
     fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
         message: &[u8],
@@ -136,8 +137,8 @@ impl RingMLSAG {
             r[2 * i + 1] = Scalar::random(rng);
         }
 
-        let alpha_0 = Scalar::random(rng);
-        let alpha_1 = Scalar::random(rng);
+        let alpha_0 = Zeroizing::new(Scalar::random(rng));
+        let alpha_1 = Zeroizing::new(Scalar::random(rng));
 
         for n in 0..ring_size {
             // Iterate around the ring, starting at real_index.
@@ -151,9 +152,9 @@ impl RingMLSAG {
                 // where P_i is the i^th onetime public key.
                 // There is no R1 term because no key image is needed for the commitment to zero.
 
-                let L0 = alpha_0 * G;
-                let R0 = alpha_0 * hash_to_point(&P_i);
-                let L1 = alpha_1 * H;
+                let L0 = *alpha_0 * G;
+                let R0 = *alpha_0 * hash_to_point(&P_i);
+                let L1 = *alpha_1 * H;
                 (L0, R0, L1)
             } else {
                 // c_{i+1} = Hn( m | key_image | r_{i,0} * G + c_i * P_i | r_{i,0} * Hp(P_i) + c_i * I | r_{i,1} * G + c_i * Z_i )
@@ -188,10 +189,10 @@ impl RingMLSAG {
         // "Close the loop" by computing responses for the real index.
 
         let s: Scalar = *onetime_private_key.as_ref();
-        r[2 * real_index] = alpha_0 - c[real_index] * s;
+        r[2 * real_index] = *alpha_0 - c[real_index] * s;
 
         let z: Scalar = output_blinding - blinding;
-        r[2 * real_index + 1] = alpha_1 - c[real_index] * z;
+        r[2 * real_index + 1] = *alpha_1 - c[real_index] * z;
 
         if check_value_is_preserved {
             let (_, input_commitment) = decompressed_ring[real_index];

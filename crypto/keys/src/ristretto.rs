@@ -29,7 +29,7 @@ use serde::{Deserialize, Serialize};
 use zeroize::Zeroize;
 
 /// A Ristretto-format private scalar
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Default, Zeroize)]
 pub struct RistrettoPrivate(pub(crate) Scalar);
 
 impl AsRef<[u8; 32]> for RistrettoPrivate {
@@ -133,13 +133,9 @@ impl KexPrivate for RistrettoPrivate {
 
 /// A private ristretto key which is ephemeral, should never be copied,
 /// and should be zeroized
+#[derive(Zeroize)]
+#[zeroize(drop)]
 pub struct RistrettoEphemeralPrivate(Scalar);
-
-impl Drop for RistrettoEphemeralPrivate {
-    fn drop(&mut self) {
-        self.0.zeroize();
-    }
-}
 
 impl PrivateKey for RistrettoEphemeralPrivate {
     type Public = RistrettoPublic;
