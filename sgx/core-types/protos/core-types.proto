@@ -1,0 +1,214 @@
+// Protobuf definitions for the types provided by mc-sgx-core-types
+
+syntax = "proto3";
+
+package mobilecoin.sgx.core.types;
+
+enum AttributeFlags {
+    NONE = 0;
+    INITIALIZED = 0x0000000000000001;
+    DEBUG = 0x0000000000000002;
+    MODE_64_BIT = 0x0000000000000004;
+    PROVISION_KEY = 0x0000000000000010;
+    ENCLAVE_INIT_TOKEN = 0x0000000000000020;
+    KSS = 0x0000000000000080;
+}
+
+enum AttributeXfeatures {
+    NONE = 0;
+    LEGACY = 0x0000000000000003;
+    AVX = 0x0000000000000006;
+}
+
+// TODO: use this once we have a better prost::Message story
+//
+//message Attributes {
+//    fixed64 flags = 1;
+//    fixed64 xfrm = 2;
+//}
+
+message Attributes {
+    bytes data = 1;
+}
+
+message ConfigId {
+    bytes data = 1;
+}
+
+message CpuSecurityVersion {
+    bytes data = 1;
+}
+
+enum Error {
+    UNKNOWN = 0;
+    UNEXPECTED = 1;
+    INVALID_PARAMETER = 2;
+    OUT_OF_MEMORY = 3;
+    ENCLAVE_LOST = 4;
+    INVALID_STATE = 5;
+    FEATURE_NOT_SUPPORTED = 8;
+    SGX_PTHREAD_EXIT = 9;
+    INVALID_FUNCTION = 4097;
+    OUT_OF_TCS = 4099;
+    ENCLAVE_CRASHED = 4102;
+    ECALL_NOT_ALLOWED = 4103;
+    OCALL_NOT_ALLOWED = 4104;
+    STACK_OVERRUN = 4105;
+    UNDEFINED_SYMBOL = 8192;
+    INVALID_ENCLAVE = 8193;
+    INVALID_ENCLAVE_ID = 8194;
+    INVALID_SIGNATURE = 8195;
+    NDEBUG_ENCLAVE = 8196;
+    OUT_OF_EPC = 8197;
+    NO_DEVICE = 8198;
+    MEMORY_MAP_CONFLICT = 8199;
+    INVALID_METADATA = 8201;
+    DEVICE_BUSY = 8204;
+    INVALID_VERSION = 8205;
+    MODE_INCOMPATIBLE = 8206;
+    ENCLAVE_FILE_ACCESS = 8207;
+    INVALID_MISC = 8208;
+    INVALID_LAUNCH_TOKEN = 8209;
+    MAC_MISMATCH = 12289;
+    INVALID_ATTRIBUTE = 12290;
+    INVALID_CPUSVN = 12291;
+    INVALID_ISVSVN = 12292;
+    INVALID_KEYNAME = 12293;
+    SERVICE_UNAVAILABLE = 16385;
+    SERVICE_TIMEOUT = 16386;
+    AE_INVALID_EPIDBLOB = 16387;
+    SERVICE_INVALID_PRIVILEGE = 16388;
+    EPID_MEMBER_REVOKED = 16389;
+    UPDATE_NEEDED = 16390;
+    NETWORK_FAILURE = 16391;
+    AE_SESSION_INVALID = 16392;
+    BUSY = 16394;
+    MC_NOT_FOUND = 16396;
+    MC_NO_ACCESS_RIGHT = 16397;
+    MC_USED_UP = 16398;
+    MC_OVER_QUOTA = 16399;
+    KDF_MISMATCH = 16401;
+    UNRECOGNIZED_PLATFORM = 16402;
+    UNSUPPORTED_CONFIG = 16403;
+    NO_PRIVILEGE = 20482;
+    PCL_ENCRYPTED = 24577;
+    PCL_NOT_ENCRYPTED = 24578;
+    PCL_MAC_MISMATCH = 24579;
+    PCL_SHA_MISMATCH = 24580;
+    PCL_GUID_MISMATCH = 24581;
+    FILE_BAD_STATUS = 28673;
+    FILE_NO_KEY_ID = 28674;
+    FILE_NAME_MISMATCH = 28675;
+    FILE_NOT_SGX_FILE = 28676;
+    FILE_CANT_OPEN_RECOVERY_FILE = 28677;
+    FILE_CANT_WRITE_RECOVERY_FILE = 28678;
+    FILE_RECOVERY_NEEDED = 28679;
+    FILE_FLUSH_FAILED = 28680;
+    FILE_CLOSE_FAILED = 28681;
+    UNSUPPORTED_ATT_KEY_ID = 32769;
+    ATT_KEY_CERTIFICATION_FAILURE = 32770;
+    ATT_KEY_UNINITIALIZED = 32771;
+    INVALID_ATT_KEY_CERT_DATA = 32772;
+    PLATFORM_CERT_UNAVAILABLE = 32773;
+    INTERNAL_ERROR_ENCLAVE_CREATE_INTERRUPTED = 61441;
+}
+
+message ExtendedProductId {
+    bytes data = 1;
+}
+
+message FamilyId {
+    bytes data = 1;
+}
+
+message Key128 {
+    bytes data = 1;
+}
+
+message KeyId {
+    bytes data = 1;
+}
+
+message Mac {
+    bytes data = 1;
+}
+
+// TODO: use this once we have a better prost::Message story
+//
+//message MiscAttribute {
+//    Attributes attributes = 1;
+//    fixed32 select = 2;
+//}
+
+message MiscAttribute {
+    bytes data = 1;
+}
+
+message MrEnclave {
+    bytes data = 1;
+}
+
+message MrSigner {
+    bytes data = 1;
+}
+
+enum KeyName {
+    ENCLAVE_INIT_TOKEN = 0;
+    PROVISION = 1;
+    PROVISION_SEAL = 2;
+    REPORT = 3;
+    SEAL = 4;
+}
+
+enum KeyPolicy {
+    NONE = 0;
+    MR_ENCLAVE = 1;
+    MR_SIGNER = 2;
+    SKIP_PRODUCT_ID = 4;
+    CONFIG_ID = 8;
+    FAMILY_ID = 16;
+    EXTENDED_PRODUCT_ID = 32;
+}
+
+// TODO: use this once we have a better prost::Message story
+//
+//message KeyRequest {
+//    KeyName key_name = 1;
+//    KeyPolicy key_policy  = 2;
+//    int32 security_version = 3;
+//    CpuSecurityVersion cpu_security_version = 4;
+//    Attributes attribute_mask = 5;
+//    KeyId key_id = 6;
+//    fixed32 misc_select = 7;
+//    int32 config_security_version = 8;
+//}
+
+message KeyRequest {
+    bytes data = 1;
+}
+
+message Report {
+    bytes data = 1;
+}
+
+message ReportBody {
+    bytes data = 1;
+}
+
+message ReportData {
+    bytes data = 1;
+}
+
+// TODO: use this once we have a better prost::Message story
+//
+//message TargetInfo {
+//    Attributes attributes = 1;
+//    ConfigId config_id = 2;
+//    int32 config_svn = 3;
+//    fixed32 misc_select = 4;
+//    MrEnclave mr_enclave = 5;
+//}
+
+message TargetInfo {
+    bytes data = 1;
+}

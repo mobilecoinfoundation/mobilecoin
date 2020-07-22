@@ -2,7 +2,7 @@
 
 //! The wrapper type for an sgx_attributes_t
 
-use crate::{_macros::FfiWrapper, impl_ffi_wrapper_base, impl_serialize_to_x64};
+use crate::{_macros::FfiWrapper, impl_ffi_wrapper_base, impl_hex_base64_with_repr_bytes};
 use bitflags::bitflags;
 use core::{
     cmp::Ordering,
@@ -11,10 +11,20 @@ use core::{
     hash::{Hash, Hasher},
 };
 use mc_sgx_core_types_sys::sgx_attributes_t;
-use mc_util_encodings::{Error as EncodingError, FromX64, ToX64, INTEL_U64_SIZE};
+use mc_util_encodings::{Error as EncodingError, INTEL_U64_SIZE};
+#[cfg(feature = "use_prost")]
+use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
+#[cfg(feature = "use_serde")]
+use mc_util_repr_bytes::derive_serde_from_repr_bytes;
+use mc_util_repr_bytes::{
+    derive_into_vec_from_repr_bytes, derive_try_from_slice_from_repr_bytes,
+    typenum::{U16, U8},
+    GenericArray, ReprBytes,
+};
 
 bitflags! {
     /// A set of bitflags which can be set on an attributes structure.
+    #[derive(Default)]
     pub struct AttributeFlags: u64 {
         /// The enclave has been initialized.
         const INITIALIZED = 0x0000_0000_0000_0001;
@@ -30,6 +40,13 @@ bitflags! {
         const KSS = 0x0000_0000_0000_0080;
     }
 }
+
+impl_hex_base64_with_repr_bytes!(AttributeFlags);
+derive_try_from_slice_from_repr_bytes!(AttributeFlags);
+derive_into_vec_from_repr_bytes!(AttributeFlags);
+
+#[cfg(feature = "use_serde")]
+derive_serde_from_repr_bytes!(AttributeFlags);
 
 impl Display for AttributeFlags {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
@@ -89,8 +106,24 @@ impl Display for AttributeFlags {
     }
 }
 
+impl ReprBytes for AttributeFlags {
+    type Size = U8;
+    type Error = EncodingError;
+
+    fn from_bytes(src: &GenericArray<u8, Self::Size>) -> Result<Self, Self::Error> {
+        let mut bytes = [0u8; INTEL_U64_SIZE];
+        bytes.copy_from_slice(src.as_slice());
+        AttributeFlags::from_bits(u64::from_le_bytes(bytes)).ok_or(EncodingError::InvalidInput)
+    }
+
+    fn to_bytes(&self) -> GenericArray<u8, Self::Size> {
+        GenericArray::from(self.bits.to_le_bytes())
+    }
+}
+
 bitflags! {
     /// The flags which can be set on an X-Feature Request Mask.
+    #[derive(Default)]
     pub struct AttributeXfeatures: u64 {
         /// The enclave uses legacy XSAVE features
         const LEGACY = 0x0000_0000_0000_0003;
@@ -98,6 +131,13 @@ bitflags! {
         const AVX = 0x0000_0000_0000_0006;
     }
 }
+
+impl_hex_base64_with_repr_bytes!(AttributeXfeatures);
+derive_try_from_slice_from_repr_bytes!(AttributeXfeatures);
+derive_into_vec_from_repr_bytes!(AttributeXfeatures);
+
+#[cfg(feature = "use_serde")]
+derive_serde_from_repr_bytes!(AttributeXfeatures);
 
 impl Display for AttributeXfeatures {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
@@ -116,6 +156,21 @@ impl Display for AttributeXfeatures {
         }
 
         Ok(())
+    }
+}
+
+impl ReprBytes for AttributeXfeatures {
+    type Size = U8;
+    type Error = EncodingError;
+
+    fn from_bytes(src: &GenericArray<u8, Self::Size>) -> Result<Self, Self::Error> {
+        let mut bytes = [0u8; INTEL_U64_SIZE];
+        bytes.copy_from_slice(src.as_slice());
+        AttributeXfeatures::from_bits(u64::from_le_bytes(bytes)).ok_or(EncodingError::InvalidInput)
+    }
+
+    fn to_bytes(&self) -> GenericArray<u8, Self::Size> {
+        GenericArray::from(self.bits.to_le_bytes())
     }
 }
 
@@ -145,12 +200,18 @@ impl Attributes {
 }
 
 impl_ffi_wrapper_base! {
-    Attributes, sgx_attributes_t, ATTRIBUTES_SIZE;
+    Attributes, sgx_attributes_t;
 }
 
-impl_serialize_to_x64! {
-    Attributes, ATTRIBUTES_SIZE;
-}
+impl_hex_base64_with_repr_bytes!(Attributes);
+derive_try_from_slice_from_repr_bytes!(Attributes);
+derive_into_vec_from_repr_bytes!(Attributes);
+
+#[cfg(feature = "use_prost")]
+derive_prost_message_from_repr_bytes!(Attributes);
+
+#[cfg(feature = "use_serde")]
+derive_serde_from_repr_bytes!(Attributes);
 
 impl Debug for Attributes {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
@@ -168,38 +229,7 @@ impl Display for Attributes {
     }
 }
 
-impl TryFrom<&sgx_attributes_t> for Attributes {
-    type Error = EncodingError;
-
-    fn try_from(src: &sgx_attributes_t) -> Result<Attributes, Self::Error> {
-        Ok(Self(sgx_attributes_t {
-            flags: AttributeFlags::from_bits(src.flags)
-                .ok_or(EncodingError::InvalidInput)?
-                .bits,
-            xfrm: AttributeXfeatures::from_bits(src.xfrm)
-                .ok_or(EncodingError::InvalidInput)?
-                .bits,
-        }))
-    }
-}
-
-impl FromX64 for Attributes {
-    type Error = EncodingError;
-
-    fn from_x64(src: &[u8]) -> Result<Self, EncodingError> {
-        if src.len() < ATTRIBUTES_SIZE {
-            return Err(EncodingError::InvalidInputLength);
-        }
-
-        let flags = u64::from_le_bytes((&src[FLAGS_START..FLAGS_END]).try_into().unwrap());
-        AttributeFlags::from_bits(flags).ok_or(EncodingError::InvalidInput)?;
-
-        let xfrm = u64::from_le_bytes((&src[XFRM_START..XFRM_END]).try_into().unwrap());
-        AttributeXfeatures::from_bits(xfrm).ok_or(EncodingError::InvalidInput)?;
-
-        Ok(Self(sgx_attributes_t { flags, xfrm }))
-    }
-}
+impl FfiWrapper<sgx_attributes_t> for Attributes {}
 
 impl Hash for Attributes {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -224,23 +254,53 @@ impl PartialEq for Attributes {
     }
 }
 
-impl ToX64 for Attributes {
-    fn to_x64(&self, dest: &mut [u8]) -> Result<usize, usize> {
-        if dest.len() < ATTRIBUTES_SIZE {
-            return Err(ATTRIBUTES_SIZE);
-        }
-
-        dest[FLAGS_START..FLAGS_END].copy_from_slice(&self.0.flags.to_le_bytes());
-        dest[XFRM_START..XFRM_END].copy_from_slice(&self.0.xfrm.to_le_bytes());
-        Ok(ATTRIBUTES_SIZE)
+impl PartialOrd for Attributes {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
-impl FfiWrapper<sgx_attributes_t> for Attributes {}
+impl ReprBytes for Attributes {
+    type Size = U16;
+    type Error = EncodingError;
+
+    fn from_bytes(src: &GenericArray<u8, U16>) -> Result<Self, Self::Error> {
+        let flags = u64::from_le_bytes((&src[FLAGS_START..FLAGS_END]).try_into().unwrap());
+        AttributeFlags::from_bits(flags).ok_or(EncodingError::InvalidInput)?;
+
+        let xfrm = u64::from_le_bytes((&src[XFRM_START..XFRM_END]).try_into().unwrap());
+        AttributeXfeatures::from_bits(xfrm).ok_or(EncodingError::InvalidInput)?;
+
+        Ok(Self(sgx_attributes_t { flags, xfrm }))
+    }
+
+    fn to_bytes(&self) -> GenericArray<u8, Self::Size> {
+        let mut dest = GenericArray::default();
+        dest[FLAGS_START..FLAGS_END].copy_from_slice(&self.0.flags.to_le_bytes());
+        dest[XFRM_START..XFRM_END].copy_from_slice(&self.0.xfrm.to_le_bytes());
+        dest
+    }
+}
+
+impl TryFrom<&sgx_attributes_t> for Attributes {
+    type Error = EncodingError;
+
+    fn try_from(src: &sgx_attributes_t) -> Result<Attributes, Self::Error> {
+        Ok(Self(sgx_attributes_t {
+            flags: AttributeFlags::from_bits(src.flags)
+                .ok_or(EncodingError::InvalidInput)?
+                .bits,
+            xfrm: AttributeXfeatures::from_bits(src.xfrm)
+                .ok_or(EncodingError::InvalidInput)?
+                .bits,
+        }))
+    }
+}
 
 #[cfg(test)]
 mod test {
     use super::*;
+    #[cfg(feature = "use_serde")]
     use bincode::{deserialize, serialize};
 
     #[test]
@@ -250,7 +310,7 @@ mod test {
             0x02, 0x01,
         ];
 
-        assert!(Attributes::from_x64(&src[..]).is_err());
+        assert!(Attributes::try_from(&src[..]).is_err());
     }
 
     #[test]
@@ -260,9 +320,10 @@ mod test {
             0x02, 0x01,
         ];
 
-        assert!(Attributes::from_x64(&src[..]).is_err());
+        assert!(Attributes::try_from(&src[..]).is_err());
     }
 
+    #[cfg(feature = "use_serde")]
     #[test]
     fn good_serde() {
         let src = sgx_attributes_t {

@@ -4,14 +4,19 @@
 //!
 //! Different types are used for MrSigner and MrEnclave to prevent misuse.
 
-use crate::impl_ffi_wrapper;
-use mc_sgx_core_types_sys::{sgx_measurement_t, SGX_HASH_SIZE};
-
 /// The size of a MrEnclave's x64 representation, in bytes.
 pub use mc_sgx_core_types_sys::SGX_HASH_SIZE as MRENCLAVE_SIZE;
 
 /// The size of a MrSigner's x64 representation, in bytes.
 pub use mc_sgx_core_types_sys::SGX_HASH_SIZE as MRSIGNER_SIZE;
+
+use crate::impl_ffi_wrapper;
+use mc_sgx_core_types_sys::sgx_measurement_t;
+#[cfg(feature = "use_prost")]
+use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
+#[cfg(feature = "use_serde")]
+use mc_util_repr_bytes::derive_serde_from_repr_bytes;
+use mc_util_repr_bytes::typenum::U32;
 
 /// An opaque type for MRENCLAVE values.
 ///
@@ -29,15 +34,29 @@ pub struct MrEnclave(sgx_measurement_t);
 pub struct MrSigner(sgx_measurement_t);
 
 impl_ffi_wrapper! {
-    MrEnclave, sgx_measurement_t, SGX_HASH_SIZE, m;
-    MrSigner, sgx_measurement_t, SGX_HASH_SIZE, m;
+    MrEnclave, sgx_measurement_t, U32, m;
+    MrSigner, sgx_measurement_t, U32, m;
 }
+
+#[cfg(feature = "use_prost")]
+derive_prost_message_from_repr_bytes!(MrEnclave);
+
+#[cfg(feature = "use_serde")]
+derive_serde_from_repr_bytes!(MrEnclave);
+
+#[cfg(feature = "use_prost")]
+derive_prost_message_from_repr_bytes!(MrSigner);
+
+#[cfg(feature = "use_serde")]
+derive_serde_from_repr_bytes!(MrSigner);
 
 #[cfg(test)]
 mod test {
     use super::*;
+    #[cfg(feature = "use_serde")]
     use bincode::{deserialize, serialize};
 
+    #[cfg(feature = "use_serde")]
     #[test]
     fn test_mrenclave_serde() {
         let mr_value = sgx_measurement_t {
@@ -52,6 +71,7 @@ mod test {
         assert_eq!(mrenclave, mrdeser);
     }
 
+    #[cfg(feature = "use_serde")]
     #[test]
     fn test_mrsigner_serde() {
         let mr_value = sgx_measurement_t {

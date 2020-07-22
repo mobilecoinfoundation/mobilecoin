@@ -2,27 +2,20 @@
 
 //! Macros and re-exports to support a common interface across all FFI-wrapping SGX types.
 
-// Re-export macros our macros are using
-pub use alloc::format as _alloc_format;
-
-// Re-export types our macros are using
+// Re-export stuff our macros are using
 pub use alloc::vec::Vec;
-pub use binascii::{b64decode, b64encode, bin2hex, hex2bin};
-pub use core::convert::TryFrom;
+pub use base64;
+pub use hex;
 pub use hex_fmt::HexFmt;
-pub use mc_util_encodings::{
-    base64_buffer_size, base64_size, Error as EncodingError, FromBase64, FromHex, FromX64,
-    IntelLayout, ToBase64, ToHex, ToX64,
-};
-pub use serde::{
-    de::{
-        Deserialize, DeserializeOwned, Deserializer, Error as DeserializeError, SeqAccess, Visitor,
-    },
-    ser::{Error as SerializeError, Serialize, Serializer},
+pub use mc_util_encodings::{base64_size, Error as EncodingError, FromBase64, ToBase64};
+pub use mc_util_repr_bytes::{
+    derive_core_cmp_from_as_ref, derive_into_vec_from_repr_bytes,
+    derive_repr_bytes_from_as_ref_and_try_from, typenum::Unsigned, GenericArray, ReprBytes,
 };
 pub use subtle::{Choice, ConstantTimeEq};
 
-use core::{
+use ::core::{
+    convert::TryFrom,
     fmt::{Debug, Display},
     hash::Hash,
 };
@@ -37,19 +30,20 @@ pub trait FfiWrapper<FFI>:
     + Clone
     + Debug
     + Default
-    + DeserializeOwned
     + Display
     + Eq
-    + FromX64
+    + FromBase64
+    + hex::FromHex
+    + ReprBytes
     + Hash
     + Into<FFI>
+    + Into<Vec<u8>>
     + Ord
     + PartialEq
     + PartialOrd
-    + Serialize
-    + ToX64
     + TryFrom<FFI>
     + for<'any> TryFrom<&'any FFI>
+    + for<'any> TryFrom<&'any [u8]>
 {
 }
 
@@ -57,7 +51,7 @@ pub trait FfiWrapper<FFI>:
 /// FfiWrapper trait.
 #[macro_export]
 macro_rules! impl_ffi_wrapper_base {
-    ($($wrapper:ident, $inner:ty, $size:ident;)*) => {$(
+    ($($wrapper:ty, $inner:ty;)*) => {$(
         impl AsMut<$inner> for $wrapper {
             fn as_mut(&mut self) -> &mut $inner {
                 &mut self.0
@@ -72,110 +66,9 @@ macro_rules! impl_ffi_wrapper_base {
 
         impl Clone for $wrapper {
             fn clone(&self) -> Self {
-                use $crate::_macros::TryFrom;
+                use ::core::convert::TryFrom;
 
                 Self::try_from(&self.0).expect("Invalid data, cannot clone")
-            }
-        }
-
-        impl<'de> $crate::_macros::Deserialize<'de> for $wrapper {
-            fn deserialize<D: $crate::_macros::Deserializer<'de>>(deserializer: D) -> core::result::Result<Self, D::Error> {
-                struct ByteVisitor;
-
-                impl<'de> $crate::_macros::Visitor<'de> for ByteVisitor {
-                    type Value = $wrapper;
-
-                    fn expecting(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-                        write!(f, "byte contents of {}", stringify!($wrapper))
-                    }
-
-                    fn visit_borrowed_bytes<E: $crate::_macros::DeserializeError>(
-                        self,
-                        value: &'de [u8],
-                    ) -> core::result::Result<Self::Value, E> {
-                        use $crate::_macros::FromX64;
-                        Self::Value::from_x64(value)
-                            .map_err(|convert_error| {
-                                E::custom(
-                                    $crate::_macros::_alloc_format!(
-                                        "Could not parse {}/{} bytes: {}",
-                                        value.len(),
-                                        <Self::Value as $crate::_macros::IntelLayout>::X86_64_CSIZE,
-                                        convert_error
-                                    )
-                                )
-                            })
-                    }
-
-                    fn visit_bytes<E: $crate::_macros::DeserializeError>(
-                        self,
-                        value: &[u8],
-                    ) -> core::result::Result<Self::Value, E> {
-                        use $crate::_macros::FromX64;
-
-                        Self::Value::from_x64(value)
-                            .map_err(|convert_error| {
-                                E::custom(
-                                    $crate::_macros::_alloc_format!(
-                                        "Could not parse {}/{} bytes: {}",
-                                        value.len(),
-                                        <Self::Value as $crate::_macros::IntelLayout>::X86_64_CSIZE,
-                                        convert_error
-                                    )
-                                )
-                            })
-                    }
-
-                    fn visit_seq<A: $crate::_macros::SeqAccess<'de>>(
-                        self,
-                        mut seq: A,
-                    ) -> core::result::Result<Self::Value, A::Error>
-                    where
-                        A::Error: $crate::_macros::DeserializeError
-                    {
-                        use $crate::_macros::FromX64;
-
-                        let mut bytes =
-                            $crate::_macros::Vec::<u8>::with_capacity(seq.size_hint().unwrap_or(1024usize));
-                        while let Some(byte) = seq.next_element()? {
-                            bytes.push(byte)
-                        }
-
-                        let bytelen = bytes.len();
-                        Self::Value::from_x64(bytes.as_slice())
-                            .map_err(|convert_error| {
-                                use $crate::_macros::DeserializeError;
-
-                                A::Error::custom(
-                                    $crate::_macros::_alloc_format!(
-                                        "Could not parse {}/{} bytes: {}",
-                                        bytelen,
-                                        <Self::Value as $crate::_macros::IntelLayout>::X86_64_CSIZE,
-                                        convert_error
-                                    )
-                                )
-                            })
-                    }
-                }
-
-                struct NewtypeVisitor;
-
-                impl<'de> $crate::_macros::Visitor<'de> for NewtypeVisitor {
-                    type Value = $wrapper;
-
-                    fn expecting(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-                        write!(f, "struct {}", stringify!($wrapper))
-                    }
-
-                    fn visit_newtype_struct<D: $crate::_macros::Deserializer<'de>>(
-                        self,
-                        deserializer: D,
-                    ) -> core::result::Result<Self::Value, D::Error> {
-                        deserializer.deserialize_bytes(ByteVisitor)
-                    }
-                }
-
-                deserializer.deserialize_newtype_struct(stringify!($wrapper), NewtypeVisitor)
             }
         }
 
@@ -187,43 +80,9 @@ macro_rules! impl_ffi_wrapper_base {
             }
         }
 
-        impl $crate::_macros::IntelLayout for $wrapper {
-            const X86_64_CSIZE: usize = $size as usize;
-        }
-
         impl Into<$inner> for $wrapper {
             fn into(self) -> $inner {
                 self.0
-            }
-        }
-
-        impl PartialOrd for $wrapper {
-            fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
-                Some(self.cmp(other))
-            }
-        }
-    )*}
-}
-
-/// A boilerplate macro which implements Serde's Serialize trait for a type which implements the
-/// ToX64 trait already.
-#[macro_export]
-macro_rules! impl_serialize_to_x64 {
-    ($($wrapper:ident, $size:ident;)*) => {$(
-        impl $crate::_macros::Serialize for $wrapper {
-            fn serialize<S>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error>
-            where
-                S: $crate::_macros::Serializer
-            {
-                use $crate::_macros::ToX64;
-
-                let mut bytes = [0u8; $size as usize];
-                self.to_x64(&mut bytes[..])
-                    .map_err(|_e| {
-                        use $crate::_macros::SerializeError;
-                        S::Error::custom("Invalid size given to impl_serialize_for_x64 macro")
-                    })?;
-                serializer.serialize_newtype_struct(stringify!($wrapper), &bytes[..])
             }
         }
     )*}
@@ -233,10 +92,15 @@ macro_rules! impl_serialize_to_x64 {
 /// structure which wraps an FFI type.
 #[macro_export]
 macro_rules! impl_ffi_wrapper {
-    ($($wrapper:ident, $inner:ty, $size:ident;)*) => {$(
+    ($($wrapper:ty, $inner:ty, $size:ty;)*) => {$(
         $crate::impl_ffi_wrapper_base! {
-            $wrapper, $inner, $size;
+            $wrapper, $inner;
         }
+
+
+        $crate::_macros::derive_core_cmp_from_as_ref!($wrapper, [u8]);
+        $crate::_macros::derive_repr_bytes_from_as_ref_and_try_from!($wrapper, $size);
+        $crate::_macros::derive_into_vec_from_repr_bytes!($wrapper);
 
         impl AsRef<[u8]> for $wrapper {
             fn as_ref(&self) -> &[u8] {
@@ -256,21 +120,21 @@ macro_rules! impl_ffi_wrapper {
             }
         }
 
-        impl core::fmt::Debug for $wrapper {
-            fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
+        impl ::core::fmt::Debug for $wrapper {
+            fn fmt(&self, formatter: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
                 write!(formatter, "{}: {}", stringify!($wrapper), $crate::_macros::HexFmt(&self))
             }
         }
 
-        impl core::fmt::Display for $wrapper {
-            fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
+        impl ::core::fmt::Display for $wrapper {
+            fn fmt(&self, formatter: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
                 write!(formatter, "{}", $crate::_macros::HexFmt(&self))
             }
         }
 
         impl From<&$inner> for $wrapper {
             fn from(src: &$inner) -> Self {
-                let mut new_inner = [0u8; $size];
+                let mut new_inner = [0u8; <$size as $crate::_macros::Unsigned>::USIZE];
                 new_inner.copy_from_slice(&src[..]);
                 Self::from(new_inner)
             }
@@ -279,120 +143,60 @@ macro_rules! impl_ffi_wrapper {
         impl $crate::_macros::FromBase64 for $wrapper {
             type Error = $crate::_macros::EncodingError;
 
-            fn from_base64(s: &str) -> core::result::Result<Self, $crate::_macros::EncodingError> {
-                if s.len() % 4 != 0 {
+            fn from_base64(s: &str) -> ::core::result::Result<Self, $crate::_macros::EncodingError> {
+                if (s.len() + 3) / 4 * 3 > <$size as $crate::_macros::Unsigned>::USIZE {
                     return Err($crate::_macros::EncodingError::InvalidInputLength);
                 }
 
-                // Don't try to decode any base64 string that's larger than our size limits or smaller
-                // than our minimum size
-                if s.len() != $crate::_macros::base64_size($size) {
-                    return Err($crate::_macros::EncodingError::InvalidInputLength);
-                }
-
-                // Create an output buffer of at least MINSIZE bytes
                 let mut retval = Self::default();
-                $crate::_macros::b64decode(s.as_bytes(), &mut retval.0[..])?;
+                let len = $crate::_macros::base64::decode_config_slice(
+                    s,
+                    $crate::_macros::base64::STANDARD,
+                    &mut retval.0[..],
+                )?;
+                if len != <$size as $crate::_macros::Unsigned>::USIZE {
+                    return Err($crate::_macros::EncodingError::InvalidInputLength);
+                }
+
                 Ok(retval)
             }
         }
 
-        impl $crate::_macros::FromHex for $wrapper {
+        impl $crate::_macros::hex::FromHex for $wrapper {
             type Error = $crate::_macros::EncodingError;
 
-            fn from_hex(s: &str) -> core::result::Result<Self, $crate::_macros::EncodingError> {
-                if s.len() % 2 != 0 {
-                    return Err($crate::_macros::EncodingError::InvalidInputLength);
-                }
-
-                if s.len() / 2 != $size {
+            fn from_hex<S: AsRef<[u8]>>(s: S) -> ::core::result::Result<Self, Self::Error> {
+                if s.as_ref().len() / 2 != <$size as $crate::_macros::Unsigned>::USIZE {
                     return Err($crate::_macros::EncodingError::InvalidInputLength);
                 }
 
                 let mut retval = Self::default();
-                $crate::_macros::hex2bin(s.as_bytes(), &mut retval.0[..])?;
+                $crate::_macros::hex::decode_to_slice(s, &mut retval.0[..])?;
                 Ok(retval)
             }
         }
 
-        impl<'src> $crate::_macros::FromX64 for $wrapper {
+        impl<'src> ::core::convert::TryFrom<&'src [u8]> for $wrapper {
             type Error = $crate::_macros::EncodingError;
 
-            fn from_x64(src: &[u8]) -> core::result::Result<Self, $crate::_macros::EncodingError> {
-                if src.len() < $size {
+            fn try_from(src: &[u8]) -> ::core::result::Result<Self, $crate::_macros::EncodingError> {
+                if src.len() < <$size as $crate::_macros::Unsigned>::USIZE {
                     return Err($crate::_macros::EncodingError::InvalidInputLength);
                 }
                 let mut retval = Self::default();
-                retval.0[..].copy_from_slice(&src[..$size]);
+                retval.0[..].copy_from_slice(&src[..<$size as $crate::_macros::Unsigned>::USIZE]);
                 Ok(retval)
-            }
-        }
-
-        impl core::hash::Hash for $wrapper {
-            fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
-                stringify!($wrapper).hash(state);
-                (&self.0[..]).hash(state)
-            }
-        }
-
-        impl Ord for $wrapper {
-            fn cmp(&self, other: &Self) -> core::cmp::Ordering {
-                (&self.0[..]).cmp(&other.0[..])
-            }
-        }
-
-        impl PartialEq for $wrapper {
-            fn eq(&self, other: &Self) -> bool {
-                &self.0[..] == &other.0[..]
-            }
-        }
-
-        impl $crate::_macros::Serialize for $wrapper {
-            fn serialize<S>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error>
-            where
-                S: $crate::_macros::Serializer
-            {
-                serializer.serialize_newtype_struct(stringify!($wrapper), &self.0[..])
-            }
-        }
-
-        impl $crate::_macros::ToBase64 for $wrapper {
-            fn to_base64(&self, dest: &mut [u8]) -> core::result::Result<usize, usize> {
-                let required_buffer_len = $crate::_macros::base64_buffer_size($size);
-                if dest.len() < required_buffer_len {
-                    Err(required_buffer_len)
-                } else {
-                    match $crate::_macros::b64encode(&self.0[..], dest) {
-                        Ok(buffer) => Ok(buffer.len()),
-                        Err(_convert) => Err(required_buffer_len)
-                    }
-                }
-            }
-        }
-
-        impl $crate::_macros::ToHex for $wrapper {
-            fn to_hex(&self, dest: &mut [u8]) -> core::result::Result<usize, usize> {
-                match $crate::_macros::bin2hex(&self.0[..], dest) {
-                    Ok(buffer) => Ok(buffer.len()),
-                    Err(_e) => Err($size * 2),
-                }
-            }
-        }
-
-        impl $crate::_macros::ToX64 for $wrapper {
-            fn to_x64(&self, dest: &mut [u8]) -> core::result::Result<usize, usize> {
-                if dest.len() < $size {
-                    return Err($size);
-                }
-                dest[..$size].copy_from_slice(&self.0[..$size]);
-                Ok($size)
             }
         }
     )*};
-    ($($wrapper:ident, $inner:ty, $size:ident, $fieldname:ident;)*) => {$(
+    ($($wrapper:ty, $inner:ty, $size:ty, $fieldname:ident;)*) => {$(
         $crate::impl_ffi_wrapper_base! {
-            $wrapper, $inner, $size;
+            $wrapper, $inner;
         }
+
+        $crate::_macros::derive_core_cmp_from_as_ref!($wrapper, [u8]);
+        $crate::_macros::derive_repr_bytes_from_as_ref_and_try_from!($wrapper, $size);
+        $crate::_macros::derive_into_vec_from_repr_bytes!($wrapper);
 
         impl AsRef<[u8]> for $wrapper {
             fn as_ref(&self) -> &[u8] {
@@ -406,14 +210,14 @@ macro_rules! impl_ffi_wrapper {
             }
         }
 
-        impl core::fmt::Debug for $wrapper {
-            fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
+        impl ::core::fmt::Debug for $wrapper {
+            fn fmt(&self, formatter: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
                 write!(formatter, "{}: {}", stringify!($wrapper), $crate::_macros::HexFmt(&self))
             }
         }
 
-        impl core::fmt::Display for $wrapper {
-            fn fmt(&self, formatter: &mut core::fmt::Formatter) -> core::fmt::Result {
+        impl ::core::fmt::Display for $wrapper {
+            fn fmt(&self, formatter: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
                 write!(formatter, "{}", $crate::_macros::HexFmt(&self))
             }
         }
@@ -435,115 +239,93 @@ macro_rules! impl_ffi_wrapper {
         impl $crate::_macros::FromBase64 for $wrapper {
             type Error = $crate::_macros::EncodingError;
 
-            fn from_base64(s: &str) -> core::result::Result<Self, $crate::_macros::EncodingError> {
-                if s.len() % 4 != 0 {
-                    return Err($crate::_macros::EncodingError::InvalidInputLength);
-                }
-
-                // Don't try to decode any base64 string that's smaller than our minimum size
-                if s.len() < $crate::_macros::base64_size($size) {
-                    return Err($crate::_macros::EncodingError::InvalidInputLength);
-                }
-
-                // Create an output buffer of at least MINSIZE bytes
-                let mut retval = Self::default();
-                $crate::_macros::b64decode(s.as_bytes(), &mut (retval.0).$fieldname[..])?;
-                Ok(retval)
-            }
-        }
-
-        impl $crate::_macros::FromHex for $wrapper {
-            type Error = $crate::_macros::EncodingError;
-
-            fn from_hex(s: &str) -> core::result::Result<Self, $crate::_macros::EncodingError> {
-                if s.len() % 2 != 0 {
-                    return Err($crate::_macros::EncodingError::InvalidInputLength);
-                }
-
-                if s.len() / 2 != $size {
+            fn from_base64(s: &str) -> ::core::result::Result<Self, $crate::_macros::EncodingError> {
+                if (s.len() + 3) / 4 * 3 > <$size as $crate::_macros::Unsigned>::USIZE {
                     return Err($crate::_macros::EncodingError::InvalidInputLength);
                 }
 
                 let mut retval = Self::default();
-                $crate::_macros::hex2bin(s.as_bytes(), &mut (retval.0).$fieldname[..])?;
-                Ok(retval)
-            }
-        }
-
-        impl $crate::_macros::FromX64 for $wrapper {
-            type Error = $crate::_macros::EncodingError;
-
-            fn from_x64(src: &[u8]) -> core::result::Result<Self, Self::Error> {
-                if src.len() < $size {
+                let len = $crate::_macros::base64::decode_config_slice(
+                    s,
+                    $crate::_macros::base64::STANDARD,
+                    &mut (retval.0).$fieldname[..],
+                )?;
+                if len != <$size as $crate::_macros::Unsigned>::USIZE {
                     return Err($crate::_macros::EncodingError::InvalidInputLength);
                 }
 
-                let mut retval = $wrapper::default();
-                &(retval.0).$fieldname[..].copy_from_slice(&src[..$size]);
                 Ok(retval)
             }
         }
 
-        impl core::hash::Hash for $wrapper {
-            fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
-                stringify!($wrapper).hash(state);
-                (self.0).$fieldname[..].hash(state)
-            }
-        }
+        impl $crate::_macros::hex::FromHex for $wrapper {
+            type Error = $crate::_macros::EncodingError;
 
-        impl Ord for $wrapper {
-            fn cmp(&self, other: &Self) -> core::cmp::Ordering {
-                (self.0).$fieldname[..].cmp(&(other.0).$fieldname[..])
-            }
-        }
-
-        impl PartialEq for $wrapper {
-            fn eq(&self, other: &Self) -> bool {
-                (self.0).$fieldname[..] == (other.0).$fieldname[..]
-            }
-        }
-
-        impl $crate::_macros::Serialize for $wrapper {
-            fn serialize<S>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error>
-            where
-                S: $crate::_macros::Serializer
-            {
-                serializer.serialize_newtype_struct(stringify!($wrapper), &(self.0).$fieldname[..])
-            }
-        }
-
-        impl $crate::_macros::ToBase64 for $wrapper {
-            fn to_base64(&self, dest: &mut [u8]) -> core::result::Result<usize, usize> {
-                let required_buffer_len = $crate::_macros::base64_buffer_size($size);
-                if dest.len() < required_buffer_len {
-                    Err(required_buffer_len)
-                } else {
-                    match $crate::_macros::b64encode(&(self.0).$fieldname[..], dest) {
-                        Ok(buffer) => Ok(buffer.len()),
-                        Err(_convert) => Err(required_buffer_len)
-                    }
-                }
-            }
-        }
-
-        impl $crate::_macros::ToHex for $wrapper {
-            fn to_hex(&self, dest: &mut [u8]) -> core::result::Result<usize, usize> {
-                match $crate::_macros::bin2hex(&(self.0).$fieldname[..], dest) {
-                    Ok(buffer) => Ok(buffer.len()),
-                    Err(_e) => Err($size * 2),
-                }
-            }
-        }
-
-        impl $crate::_macros::ToX64 for $wrapper {
-            fn to_x64(&self, dest: &mut [u8]) -> core::result::Result<usize, usize> {
-                if dest.len() < $size {
-                    return Err($size);
+            fn from_hex<S: AsRef<[u8]>>(s: S) -> ::core::result::Result<Self, Self::Error> {
+                if s.as_ref().len() / 2 != <$size as $crate::_macros::Unsigned>::USIZE {
+                    return Err($crate::_macros::EncodingError::InvalidInputLength);
                 }
 
-                &dest[..$size].copy_from_slice(&(self.0).$fieldname[..]);
-                Ok($size)
+                let mut retval = Self::default();
+                $crate::_macros::hex::decode_to_slice(s, &mut (retval.0).$fieldname[..])?;
+                Ok(retval)
+            }
+        }
+
+        impl<'src> ::core::convert::TryFrom<&'src [u8]> for $wrapper {
+            type Error = $crate::_macros::EncodingError;
+
+            fn try_from(src: &[u8]) -> ::core::result::Result<Self, Self::Error> {
+                if src.len() < <$size as $crate::_macros::Unsigned>::USIZE {
+                    return Err($crate::_macros::EncodingError::InvalidInputLength);
+                }
+
+                let mut retval = Self::default();
+                &(retval.0).$fieldname[..].copy_from_slice(
+                    &src[..<$size as $crate::_macros::Unsigned>::USIZE]
+                );
+                Ok(retval)
             }
         }
     )*}
+}
+
+/// A boilerplate macro which implements the [`hex::FromHex`] and [`mc_util_encodings::FromBase64`]
+/// traits for a type which implements ReprBytes.
+#[macro_export]
+macro_rules! impl_hex_base64_with_repr_bytes {
+    ($wrapper:ty) => {
+        impl $crate::_macros::FromBase64 for $wrapper {
+            type Error = $crate::_macros::EncodingError;
+
+            fn from_base64(
+                input: &str,
+            ) -> ::core::result::Result<Self, $crate::_macros::EncodingError> {
+                use $crate::_macros::ReprBytes;
+
+                let mut output = $crate::_macros::GenericArray::default();
+                if $crate::_macros::base64::decode_config_slice(
+                    input,
+                    $crate::_macros::base64::STANDARD,
+                    output.as_mut_slice(),
+                )? != <<$wrapper as $crate::_macros::ReprBytes>::Size as $crate::_macros::Unsigned>::USIZE
+                {
+                    return Err($crate::_macros::EncodingError::InvalidInputLength);
+                }
+                Self::from_bytes(&output)
+            }
+        }
+
+        impl $crate::_macros::hex::FromHex for $wrapper {
+            type Error = $crate::_macros::EncodingError;
+
+            fn from_hex<S: AsRef<[u8]>>(data: S) -> ::core::result::Result<Self, Self::Error> {
+                use $crate::_macros::ReprBytes;
+
+                let mut out = $crate::_macros::GenericArray::default();
+                $crate::_macros::hex::decode_to_slice(data, out.as_mut_slice())?;
+                Self::from_bytes(&out)
+            }
+        }
+    };
 }

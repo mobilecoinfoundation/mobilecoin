@@ -156,7 +156,7 @@ macro_rules! derive_repr_bytes_from_as_ref_and_try_from {
 macro_rules! derive_into_vec_from_repr_bytes {
     ($mytype:ty) => {
         impl Into<$crate::_exports::alloc::vec::Vec<u8>> for $mytype {
-            fn into(self) -> Vec<u8> {
+            fn into(self) -> $crate::_exports::alloc::vec::Vec<u8> {
                 <$mytype as $crate::ReprBytes>::map_bytes(&self, |slice| slice.to_vec())
             }
         }

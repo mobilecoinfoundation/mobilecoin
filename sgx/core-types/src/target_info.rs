@@ -6,7 +6,7 @@ use crate::{
     _macros::FfiWrapper,
     attributes::{Attributes, ATTRIBUTES_SIZE},
     config_id::{ConfigId, CONFIG_ID_SIZE},
-    impl_ffi_wrapper_base, impl_serialize_to_x64,
+    impl_ffi_wrapper_base, impl_hex_base64_with_repr_bytes,
     measurement::{MrEnclave, MRENCLAVE_SIZE},
     ConfigSecurityVersion, MiscSelect, CONFIG_SECURITY_VERSION_SIZE, MISC_SELECT_SIZE,
 };
@@ -20,7 +20,15 @@ use mc_sgx_core_types_sys::{
     sgx_target_info_t, SGX_TARGET_INFO_RESERVED1_BYTES, SGX_TARGET_INFO_RESERVED2_BYTES,
     SGX_TARGET_INFO_RESERVED3_BYTES,
 };
-use mc_util_encodings::{Error as EncodingError, FromX64, ToX64};
+use mc_util_encodings::Error as EncodingError;
+#[cfg(feature = "use_prost")]
+use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
+#[cfg(feature = "use_serde")]
+use mc_util_repr_bytes::derive_serde_from_repr_bytes;
+use mc_util_repr_bytes::{
+    derive_into_vec_from_repr_bytes, derive_try_from_slice_from_repr_bytes, typenum::U512,
+    GenericArray, ReprBytes,
+};
 
 // byte positions for each field in an x86_64 representation
 const MR_ENCLAVE_START: usize = 0;
@@ -43,6 +51,8 @@ const RESERVED3_END: usize = RESERVED3_START + SGX_TARGET_INFO_RESERVED3_BYTES;
 /// The size of a [TargetInfo] structure's x64 representation, in bytes.
 pub const TARGET_INFO_SIZE: usize = RESERVED3_END;
 
+const RESERVED: [u8; TARGET_INFO_SIZE] = [0u8; TARGET_INFO_SIZE];
+
 /// An opaque structure used to address an enclave for local attestation.
 ///
 /// In remote attestation, the untrusted code retrieves this from the Intel
@@ -50,6 +60,20 @@ pub const TARGET_INFO_SIZE: usize = RESERVED3_END;
 #[derive(Default)]
 #[repr(transparent)]
 pub struct TargetInfo(sgx_target_info_t);
+
+impl_ffi_wrapper_base! {
+    TargetInfo, sgx_target_info_t;
+}
+
+impl_hex_base64_with_repr_bytes!(TargetInfo);
+derive_try_from_slice_from_repr_bytes!(TargetInfo);
+derive_into_vec_from_repr_bytes!(TargetInfo);
+
+#[cfg(feature = "use_prost")]
+derive_prost_message_from_repr_bytes!(TargetInfo);
+
+#[cfg(feature = "use_serde")]
+derive_serde_from_repr_bytes!(TargetInfo);
 
 impl TargetInfo {
     /// Retrieve the target enclave's attributes
@@ -78,14 +102,6 @@ impl TargetInfo {
     }
 }
 
-impl_ffi_wrapper_base! {
-    TargetInfo, sgx_target_info_t, TARGET_INFO_SIZE;
-}
-
-impl_serialize_to_x64! {
-    TargetInfo, TARGET_INFO_SIZE;
-}
-
 impl Debug for TargetInfo {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         write!(f, "TargetInfo {{ mr_enclave: {:?}, attributes: {:?}, config_security_version: {:?}, misc_select: {:?}, config_id: {:?} }}", self.mr_enclave(), self.attributes(), self.config_security_version(), self.misc_select(), self.config_id())
@@ -99,6 +115,73 @@ impl Display for TargetInfo {
 }
 
 impl FfiWrapper<sgx_target_info_t> for TargetInfo {}
+
+impl ReprBytes for TargetInfo {
+    type Size = U512;
+    type Error = EncodingError;
+
+    fn from_bytes(src: &GenericArray<u8, Self::Size>) -> Result<Self, Self::Error> {
+        let reserved1 = [0u8; SGX_TARGET_INFO_RESERVED1_BYTES];
+        if src[RESERVED1_START..RESERVED1_END] != reserved1[..] {
+            return Err(EncodingError::InvalidInput);
+        }
+
+        let reserved2 = [0u8; SGX_TARGET_INFO_RESERVED2_BYTES];
+        if src[RESERVED2_START..RESERVED2_END] != reserved2[..] {
+            return Err(EncodingError::InvalidInput);
+        }
+
+        let reserved3 = [0u8; SGX_TARGET_INFO_RESERVED3_BYTES];
+        if src[RESERVED3_START..RESERVED3_END] != reserved3[..] {
+            return Err(EncodingError::InvalidInput);
+        }
+
+        Ok(Self(sgx_target_info_t {
+            mr_enclave: MrEnclave::try_from(&src[MR_ENCLAVE_START..MR_ENCLAVE_END])?.into(),
+            attributes: Attributes::try_from(&src[ATTRIBUTES_START..ATTRIBUTES_END])?.into(),
+            reserved1,
+            config_svn: u16::from_le_bytes(
+                (&src[CONFIG_SVN_START..CONFIG_SVN_END])
+                    .try_into()
+                    .expect("CONFIG_SVN slice range incorrect"),
+            ),
+            misc_select: u32::from_le_bytes(
+                (&src[SELECT_START..SELECT_END])
+                    .try_into()
+                    .expect("MiscSelect range incorrectc"),
+            ),
+            reserved2,
+            config_id: ConfigId::try_from(&src[CONFIG_ID_START..CONFIG_ID_END])?.into(),
+            reserved3,
+        }))
+    }
+
+    fn to_bytes(&self) -> GenericArray<u8, Self::Size> {
+        let mut retval = GenericArray::default();
+
+        retval[MR_ENCLAVE_START..MR_ENCLAVE_END]
+            .copy_from_slice(self.mr_enclave().to_bytes().as_slice());
+        retval[ATTRIBUTES_START..ATTRIBUTES_END]
+            .copy_from_slice(self.attributes().to_bytes().as_slice());
+
+        retval[RESERVED1_START..RESERVED1_END]
+            .copy_from_slice(&RESERVED[0..SGX_TARGET_INFO_RESERVED1_BYTES]);
+
+        retval[CONFIG_SVN_START..CONFIG_SVN_END]
+            .copy_from_slice(&self.config_security_version().to_le_bytes());
+        retval[SELECT_START..SELECT_END].copy_from_slice(&self.misc_select().to_le_bytes());
+
+        retval[RESERVED2_START..RESERVED2_END]
+            .copy_from_slice(&RESERVED[..SGX_TARGET_INFO_RESERVED2_BYTES]);
+
+        retval[CONFIG_ID_START..CONFIG_ID_END].copy_from_slice(&self.0.config_id[..]);
+
+        retval[RESERVED3_START..RESERVED3_END]
+            .copy_from_slice(&RESERVED[..SGX_TARGET_INFO_RESERVED3_BYTES]);
+
+        retval
+    }
+}
 
 impl TryFrom<&sgx_target_info_t> for TargetInfo {
     type Error = EncodingError;
@@ -128,46 +211,6 @@ impl TryFrom<&sgx_target_info_t> for TargetInfo {
     }
 }
 
-impl FromX64 for TargetInfo {
-    type Error = EncodingError;
-
-    fn from_x64(src: &[u8]) -> Result<Self, EncodingError> {
-        if src.len() < TARGET_INFO_SIZE {
-            return Err(EncodingError::InvalidInputLength);
-        }
-
-        let reserved1 = [0u8; SGX_TARGET_INFO_RESERVED1_BYTES];
-        if src[RESERVED1_START..RESERVED1_END] != reserved1[..] {
-            return Err(EncodingError::InvalidInput);
-        }
-
-        let reserved2 = [0u8; SGX_TARGET_INFO_RESERVED2_BYTES];
-        if src[RESERVED2_START..RESERVED2_END] != reserved2[..] {
-            return Err(EncodingError::InvalidInput);
-        }
-
-        let reserved3 = [0u8; SGX_TARGET_INFO_RESERVED3_BYTES];
-        if src[RESERVED3_START..RESERVED3_END] != reserved3[..] {
-            return Err(EncodingError::InvalidInput);
-        }
-
-        Ok(Self(sgx_target_info_t {
-            mr_enclave: MrEnclave::from_x64(&src[MR_ENCLAVE_START..MR_ENCLAVE_END])?.into(),
-            attributes: Attributes::from_x64(&src[ATTRIBUTES_START..ATTRIBUTES_END])?.into(),
-            reserved1,
-            config_svn: u16::from_le_bytes(
-                (&src[CONFIG_SVN_START..CONFIG_SVN_END])
-                    .try_into()
-                    .expect("Could not read config_svn bytes."),
-            ),
-            misc_select: u32::from_le_bytes((&src[SELECT_START..SELECT_END]).try_into().unwrap()),
-            reserved2,
-            config_id: ConfigId::from_x64(&src[CONFIG_ID_START..CONFIG_ID_END])?.into(),
-            reserved3,
-        }))
-    }
-}
-
 impl Hash for TargetInfo {
     fn hash<H: Hasher>(&self, state: &mut H) {
         "TargetInfo".hash(state);
@@ -181,22 +224,15 @@ impl Hash for TargetInfo {
 
 impl Ord for TargetInfo {
     fn cmp(&self, other: &Self) -> Ordering {
-        match self.mr_enclave().cmp(&other.mr_enclave()) {
-            Ordering::Equal => match self.attributes().cmp(&other.attributes()) {
-                Ordering::Equal => match self.config_id().cmp(&other.config_id()) {
-                    Ordering::Equal => match self
-                        .config_security_version()
+        self.mr_enclave().cmp(&other.mr_enclave()).then(
+            self.attributes().cmp(&other.attributes()).then(
+                self.config_id().cmp(&other.config_id()).then(
+                    self.config_security_version()
                         .cmp(&other.config_security_version())
-                    {
-                        Ordering::Equal => self.misc_select().cmp(&other.misc_select()),
-                        ordering => ordering,
-                    },
-                    ordering => ordering,
-                },
-                ordering => ordering,
-            },
-            ordering => ordering,
-        }
+                        .then(self.misc_select().cmp(&other.misc_select())),
+                ),
+            ),
+        )
     }
 }
 
@@ -211,42 +247,16 @@ impl PartialEq for TargetInfo {
     }
 }
 
-/// Serialization into the x86_64 struct representation
-impl ToX64 for TargetInfo {
-    fn to_x64(&self, dest: &mut [u8]) -> Result<usize, usize> {
-        if dest.len() < TARGET_INFO_SIZE {
-            return Err(TARGET_INFO_SIZE);
-        }
-
-        self.mr_enclave()
-            .to_x64(&mut dest[MR_ENCLAVE_START..MR_ENCLAVE_END])
-            .or(Err(TARGET_INFO_SIZE))?;
-        self.attributes()
-            .to_x64(&mut dest[ATTRIBUTES_START..ATTRIBUTES_END])
-            .or(Err(TARGET_INFO_SIZE))?;
-
-        dest[RESERVED1_START..RESERVED1_END]
-            .copy_from_slice(&[0u8; SGX_TARGET_INFO_RESERVED1_BYTES]);
-
-        dest[CONFIG_SVN_START..CONFIG_SVN_END]
-            .copy_from_slice(&self.config_security_version().to_le_bytes());
-        dest[SELECT_START..SELECT_END].copy_from_slice(&self.misc_select().to_le_bytes());
-
-        dest[RESERVED2_START..RESERVED2_END]
-            .copy_from_slice(&[0u8; SGX_TARGET_INFO_RESERVED2_BYTES]);
-
-        dest[CONFIG_ID_START..CONFIG_ID_END].copy_from_slice(&self.0.config_id[..]);
-
-        dest[RESERVED3_START..RESERVED3_END]
-            .copy_from_slice(&[0u8; SGX_TARGET_INFO_RESERVED3_BYTES]);
-
-        Ok(TARGET_INFO_SIZE)
+impl PartialOrd for TargetInfo {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+    #[cfg(feature = "use_serde")]
     use bincode::{deserialize, serialize};
     use mc_sgx_core_types_sys::{
         sgx_attributes_t, sgx_measurement_t, sgx_target_info_t, SGX_TARGET_INFO_RESERVED1_BYTES,
@@ -276,25 +286,7 @@ mod test {
         reserved3: [0u8; SGX_TARGET_INFO_RESERVED3_BYTES],
     };
 
-    #[test]
-    fn test_bad_ffi_write_len() {
-        let ti = TargetInfo::try_from(&TARGET_INFO_SAMPLE).expect("Could not read target info");
-        let mut outbuf = [0u8; TARGET_INFO_SIZE - 1];
-
-        assert_eq!(ti.to_x64(&mut outbuf[..]), Err(TARGET_INFO_SIZE));
-    }
-
-    #[test]
-    fn test_bad_ffi_read_len() {
-        let ti = TargetInfo::try_from(&TARGET_INFO_SAMPLE).expect("Could not read target info");
-        let outbuf = ti.to_x64_vec();
-
-        assert_eq!(
-            TargetInfo::from_x64(&outbuf[..TARGET_INFO_SIZE - 1]),
-            Err(EncodingError::InvalidInputLength)
-        );
-    }
-
+    #[cfg(feature = "use_serde")]
     #[test]
     fn test_target_info_serde() {
         let ti1 = TargetInfo::try_from(&TARGET_INFO_SAMPLE).expect("Could not read target info");

@@ -6,17 +6,35 @@ description = "EPID FFI types for Intel SGX SDK."
 readme = "README.md"
 edition = "2018"
 
+[features]
+default = ["use_serde", "use_prost"]
+use_serde = [
+    "serde",
+    "mc-sgx-core-types/use_serde",
+    "mc-util-repr-bytes/serde"
+]
+use_prost = [
+    "bytes",
+    "prost",
+    "mc-sgx-core-types/use_prost",
+    "mc-util-repr-bytes/prost"
+]
+
 [dependencies]
-mc-sgx-core-types = { path = "../core-types" }
-mc-sgx-core-types-sys = { path = "../core-types-sys" }
-mc-sgx-epid-types-sys = { path = "../epid-types-sys" }
 mc-util-encodings = { path = "../../util/encodings" }
 mc-util-from-random = { path = "../../util/from-random" }
+mc-util-repr-bytes = { path = "../../util/repr-bytes", default-features = false, features = ["alloc"] }
+mc-sgx-core-types = { path = "../core-types", default-features = false }
+mc-sgx-core-types-sys = { path = "../core-types-sys" }
+mc-sgx-epid-types-sys = { path = "../epid-types-sys" }
 
-binascii = "0.1.4"
+base64 = "0.12"
+bytes = { version = "0.5", optional = true , default-features = false}
+hex = "0.4"
 hex_fmt = "0.3"
+prost = { version = "0.6.1", optional = true, default-features = false }
 rand_core = "0.5"
-serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+serde = { version = "1.0", optional = true, default-features = false, features = ["alloc", "derive"] }
 subtle = { version = "2.2", default-features = false, features = ["i128"] }
 
 [dev-dependencies]

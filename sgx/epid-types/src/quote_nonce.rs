@@ -5,6 +5,11 @@
 use mc_sgx_core_types::impl_ffi_wrapper;
 use mc_sgx_epid_types_sys::sgx_quote_nonce_t;
 use mc_util_from_random::FromRandom;
+#[cfg(feature = "use_prost")]
+use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
+#[cfg(feature = "use_serde")]
+use mc_util_repr_bytes::derive_serde_from_repr_bytes;
+use mc_util_repr_bytes::typenum::U16;
 use rand_core::{CryptoRng, RngCore};
 
 /// The size of a [QuoteNonce] structure's x64 representation, in bytes.
@@ -32,8 +37,14 @@ pub const QUOTE_NONCE_SIZE: usize = 16;
 pub struct QuoteNonce(sgx_quote_nonce_t);
 
 impl_ffi_wrapper! {
-    QuoteNonce, sgx_quote_nonce_t, QUOTE_NONCE_SIZE, rand;
+    QuoteNonce, sgx_quote_nonce_t, U16, rand;
 }
+
+#[cfg(feature = "use_prost")]
+derive_prost_message_from_repr_bytes!(QuoteNonce);
+
+#[cfg(feature = "use_serde")]
+derive_serde_from_repr_bytes!(QuoteNonce);
 
 impl FromRandom for QuoteNonce {
     fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> Self {
@@ -46,10 +57,12 @@ impl FromRandom for QuoteNonce {
 #[cfg(test)]
 mod test {
     use super::*;
+    #[cfg(feature = "use_serde")]
     use bincode::{deserialize, serialize};
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
 
+    #[cfg(feature = "use_serde")]
     #[test]
     fn serde() {
         let mut csprng = Hc128Rng::seed_from_u64(0);

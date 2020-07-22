@@ -31,6 +31,7 @@ use mc_sgx_core_types_sys::{
     SGX_ERROR_UNSUPPORTED_ATT_KEY_ID, SGX_ERROR_UNSUPPORTED_CONFIG, SGX_ERROR_UPDATE_NEEDED,
     SGX_INTERNAL_ERROR_ENCLAVE_CREATE_INTERRUPTED, SGX_PTHREAD_EXIT, SGX_SUCCESS,
 };
+#[cfg(feature = "use_serde")]
 use serde::{Deserialize, Serialize};
 
 /// A type alias for an SGX result.
@@ -55,11 +56,12 @@ impl<T> SgxStatusToResult<T> for sgx_status_t {
 
 /// A enumeration of SGX errors.
 ///
-/// Those listed here are the ones which are identified in the `sgx_status_t` enum, in order of
-/// the actual value. Note that values are grouped (numerically) into the following general
-/// sections:
+/// Those listed here are the ones which are identified in the
+/// [`sgx_status_t`](mc_sgx_core_types_sys::sgx_status_t) enum, in order of the actual value. Note
+/// that values are grouped (numerically) into the following general sections:
 ///
-///  1. `0x0000-0x0fff`: Generic errors.
+///  1. `0x0000`: Unknown (Success in `sgx_status_t`)
+///  1. `0x0001-0x0fff`: Generic errors.
 ///  2. `0x1000-0x1fff`: Fatal runtime errors.
 ///  3. `0x2000-0x2fff`: Enclave creation errors.
 ///  4. `0x3000-0x3fff`: Local attestation/report verification errors.
@@ -69,11 +71,13 @@ impl<T> SgxStatusToResult<T> for sgx_status_t {
 ///  8. `0x7000-0x7fff`: Errors with the "SGX Encrypted FS" utility.
 ///  9. `0x8000-0x8fff`: Attestation key errors.
 /// 10. `0xf000-0xffff`: Internal (to SGX) errors.
-#[derive(
-    Copy, Clone, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize,
-)]
+#[cfg_attr(feature = "use_serde", derive(Deserialize, Serialize))]
+#[derive(Copy, Clone, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(u32)]
 pub enum Error {
+    /// A catch-all for unknown error messages
+    Unknown = 0,
+
     // 0x0001 - 0x0fff: Generic errors
     /// An unexpected error (`0x0001`)
     Unexpected = SGX_ERROR_UNEXPECTED,
@@ -243,11 +247,47 @@ pub enum Error {
     EnclaveCreateInterrupted = SGX_INTERNAL_ERROR_ENCLAVE_CREATE_INTERRUPTED,
 }
 
+impl Error {
+    /// Check if the given i32 value is a valid value.
+    ///
+    /// This is a little convoluted, because zero in `sgx_status_t` is a the success value (i.e. not
+    /// an error), whereas zero in this type is the catch-all unknown error.
+    //
+    // This method is normally implemented by prost via derive(Enumeration), but clang is
+    // determined to represent the [`sgx_status_t`](mc_sgx_core_types_sys::sgx_status_t)
+    // enumeration as a `u32`, standards be damned.
+    pub fn is_valid(value: i32) -> bool {
+        Self::from_i32(value).is_some()
+    }
+
+    /// Create a new Error from the given i32 value.
+    ///
+    /// This is a little convoluted, because zero in `sgx_status_t` is a the success value (i.e. not
+    /// an error), whereas zero in this type is the catch-all unknown error.
+    //
+    // This method is normally implemented by prost via derive(Enumeration), but clang is
+    // determined to represent the [`sgx_status_t`](mc_sgx_core_types_sys::sgx_status_t)
+    // enumeration as a `u32`, standards be damned.
+    pub fn from_i32(value: i32) -> Option<Error> {
+        match value {
+            0 => Some(Error::Unknown),
+            other => Self::try_from(other as sgx_status_t).ok(),
+        }
+    }
+}
+
+impl Default for Error {
+    fn default() -> Self {
+        Error::Unknown
+    }
+}
+
 impl TryFrom<sgx_status_t> for Error {
     type Error = ();
 
     fn try_from(src: sgx_status_t) -> StdResult<Error, ()> {
         match src {
+            0 => Err(()),
             0x0001 => Ok(Error::Unexpected),
             0x0002 => Ok(Error::InvalidParameter),
             0x0003 => Ok(Error::OutOfMemory),
@@ -328,7 +368,7 @@ impl TryFrom<sgx_status_t> for Error {
 
             0xF001 => Ok(Error::EnclaveCreateInterrupted),
 
-            _ => Err(()),
+            _ => Ok(Error::Unknown),
         }
     }
 }

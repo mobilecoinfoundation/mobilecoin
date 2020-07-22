@@ -278,6 +278,15 @@ impl PartialEq for ReportBody {
     fn eq(&self, other: &Self) -> bool {
         self.cpu_security_version() == other.cpu_security_version()
             && self.misc_select() == other.misc_select()
+            && self.attributes() == other.attributes()
+            && self.config_security_version() == other.config_security_version()
+            && self.extended_product_id() == other.extended_product_id()
+            && self.family_id() == other.family_id()
+            && self.mr_enclave() == other.mr_enclave()
+            && self.mr_signer() == other.mr_signer()
+            && self.product_id() == other.product_id()
+            && self.report_data() == other.report_data()
+            && self.security_version() == other.security_version()
     }
 }
 

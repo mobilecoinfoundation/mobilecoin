@@ -40,15 +40,14 @@ pub const EPID_PSEUDONYM_SIZE: usize = EPID_PSEUDONYM_B_SIZE + EPID_PSEUDONYM_K_
 // > have the same EPID Pseudonym, the two signatures were generated
 // > using the same EPID private key. This field is encoded using Base 64
 // > encoding scheme.
-//
 #[derive(Clone)]
 #[repr(transparent)]
 pub struct EpidPseudonym([u8; EPID_PSEUDONYM_SIZE]);
 
 mc_util_repr_bytes::derive_repr_bytes_from_as_ref_and_try_from!(EpidPseudonym, U128);
 
-#[cfg(feature = "serde")]
-mc_util_repr_bytes::derive_serde_from_repr_bytes!(EpidPseudonym);
+#[cfg(feature = "use_prost")]
+mc_util_repr_bytes::derive_prost_message_from_repr_bytes!(EpidPseudonym);
 
 impl EpidPseudonym {
     /// Retrieve the "B" value for the pseudonym.

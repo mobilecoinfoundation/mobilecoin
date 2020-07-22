@@ -2,9 +2,12 @@
 
 //! SGX Report Structures
 
+/// The size of the SGX report structure's x64 representation, in bytes.
+pub const REPORT_SIZE: usize = MAC_END;
+
 use crate::{
     _macros::FfiWrapper,
-    impl_ffi_wrapper_base, impl_serialize_to_x64,
+    impl_ffi_wrapper_base, impl_hex_base64_with_repr_bytes,
     key_id::{KeyId, KEY_ID_SIZE},
     mac::{Mac, MAC_SIZE},
     report_body::{ReportBody, REPORT_BODY_SIZE},
@@ -16,7 +19,15 @@ use core::{
     hash::{Hash, Hasher},
 };
 use mc_sgx_core_types_sys::sgx_report_t;
-use mc_util_encodings::{Error as EncodingError, FromX64, ToX64};
+use mc_util_encodings::Error as EncodingError;
+#[cfg(feature = "use_prost")]
+use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
+#[cfg(feature = "use_serde")]
+use mc_util_repr_bytes::derive_serde_from_repr_bytes;
+use mc_util_repr_bytes::{
+    derive_into_vec_from_repr_bytes, derive_try_from_slice_from_repr_bytes, typenum::U432,
+    GenericArray, ReprBytes,
+};
 
 const BODY_START: usize = 0;
 const BODY_END: usize = REPORT_BODY_SIZE;
@@ -24,9 +35,6 @@ const KEY_ID_START: usize = BODY_END;
 const KEY_ID_END: usize = KEY_ID_START + KEY_ID_SIZE;
 const MAC_START: usize = KEY_ID_END;
 const MAC_END: usize = MAC_START + MAC_SIZE;
-
-/// The size of the SGX report structure's x64 representation, in bytes.
-pub const REPORT_SIZE: usize = MAC_END;
 
 /// The results of an EREPORT called from within SGX
 ///
@@ -37,12 +45,18 @@ pub const REPORT_SIZE: usize = MAC_END;
 pub struct Report(sgx_report_t);
 
 impl_ffi_wrapper_base! {
-    Report, sgx_report_t, REPORT_SIZE;
+    Report, sgx_report_t;
 }
 
-impl_serialize_to_x64! {
-    Report, REPORT_SIZE;
-}
+impl_hex_base64_with_repr_bytes!(Report);
+derive_try_from_slice_from_repr_bytes!(Report);
+derive_into_vec_from_repr_bytes!(Report);
+
+#[cfg(feature = "use_prost")]
+derive_prost_message_from_repr_bytes!(Report);
+
+#[cfg(feature = "use_serde")]
+derive_serde_from_repr_bytes!(Report);
 
 impl Report {
     /// Retrieve the report body structure
@@ -87,6 +101,60 @@ impl Display for Report {
 
 impl FfiWrapper<sgx_report_t> for Report {}
 
+impl Hash for Report {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        "Report".hash(state);
+        self.body().hash(state);
+        self.key_id().hash(state);
+        self.mac().hash(state);
+    }
+}
+
+// Note, we skip comparison of the mac here, per NCC audit.
+impl Ord for Report {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.body()
+            .cmp(&other.body())
+            .then(self.key_id().cmp(&other.key_id()))
+    }
+}
+
+impl PartialEq for Report {
+    fn eq(&self, other: &Self) -> bool {
+        use subtle::ConstantTimeEq;
+        self.0.mac[..].ct_eq(&other.0.mac[..]).into()
+    }
+}
+
+impl PartialOrd for Report {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl ReprBytes for Report {
+    type Size = U432;
+    type Error = EncodingError;
+
+    fn from_bytes(src: &GenericArray<u8, Self::Size>) -> Result<Self, Self::Error> {
+        Ok(Self(sgx_report_t {
+            body: ReportBody::try_from(&src[BODY_START..BODY_END])?.into(),
+            mac: Mac::try_from(&src[MAC_START..MAC_END])?.into(),
+            key_id: KeyId::try_from(&src[KEY_ID_START..KEY_ID_END])?.into(),
+        }))
+    }
+
+    fn to_bytes(&self) -> GenericArray<u8, Self::Size> {
+        let mut retval = GenericArray::default();
+
+        retval[BODY_START..BODY_END].copy_from_slice(&self.body().to_bytes());
+        retval[KEY_ID_START..KEY_ID_END].copy_from_slice(self.key_id().as_ref());
+        retval[MAC_START..MAC_END].copy_from_slice(self.mac().as_ref());
+
+        retval
+    }
+}
+
 impl TryFrom<&sgx_report_t> for Report {
     type Error = EncodingError;
 
@@ -99,71 +167,10 @@ impl TryFrom<&sgx_report_t> for Report {
     }
 }
 
-impl FromX64 for Report {
-    type Error = EncodingError;
-
-    fn from_x64(src: &[u8]) -> Result<Self, EncodingError> {
-        if src.len() < REPORT_SIZE {
-            Err(EncodingError::InvalidInputLength)
-        } else {
-            Ok(Self(sgx_report_t {
-                body: ReportBody::from_x64(&src[BODY_START..BODY_END])?.into(),
-                mac: Mac::from_x64(&src[MAC_START..MAC_END])?.into(),
-                key_id: KeyId::from_x64(&src[KEY_ID_START..KEY_ID_END])?.into(),
-            }))
-        }
-    }
-}
-
-impl Hash for Report {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        "Report".hash(state);
-        self.body().hash(state);
-        self.key_id().hash(state);
-        self.mac().hash(state);
-    }
-}
-
-// Note, intentionally skipping comparison of mac here, per NCC audit, to avoid
-// side-channel leakage of the mac value
-impl Ord for Report {
-    fn cmp(&self, other: &Self) -> Ordering {
-        match self.body().cmp(&other.body()) {
-            Ordering::Equal => self.key_id().cmp(&other.key_id()),
-            other => other,
-        }
-    }
-}
-
-impl PartialEq for Report {
-    fn eq(&self, other: &Self) -> bool {
-        use subtle::ConstantTimeEq;
-        self.0.mac[..].ct_eq(&other.0.mac[..]).into()
-    }
-}
-
-impl ToX64 for Report {
-    fn to_x64(&self, dest: &mut [u8]) -> Result<usize, usize> {
-        if dest.len() < REPORT_SIZE {
-            Err(REPORT_SIZE)
-        } else {
-            self.body()
-                .to_x64(&mut dest[BODY_START..BODY_END])
-                .or(Err(REPORT_SIZE))?;
-            self.key_id()
-                .to_x64(&mut dest[KEY_ID_START..KEY_ID_END])
-                .or(Err(REPORT_SIZE))?;
-            self.mac()
-                .to_x64(&mut dest[MAC_START..MAC_END])
-                .or(Err(REPORT_SIZE))?;
-            Ok(REPORT_SIZE)
-        }
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
+    #[cfg(feature = "use_serde")]
     use bincode::{deserialize, serialize};
     use mc_sgx_core_types_sys::{
         sgx_attributes_t, sgx_cpu_svn_t, sgx_key_id_t, sgx_measurement_t, sgx_report_body_t,
@@ -227,6 +234,7 @@ mod test {
         },
     };
 
+    #[cfg(feature = "use_serde")]
     #[test]
     fn test_serde() {
         let report = Report::try_from(&TEST_REPORT1).expect("Could not read report");
@@ -255,7 +263,7 @@ mod test {
     // than REPORT_SIZE bytes.
     fn test_report_try_from_insufficient_length() {
         let sparkle_heart = [240u8, 159, 146, 150];
-        match Report::from_x64(&sparkle_heart[..]) {
+        match Report::try_from(&sparkle_heart[..]) {
             Ok(_) => panic!(),
             Err(EncodingError::InvalidInputLength) => {} // Expected.
             Err(e) => panic!("Unexpected error {:?}", e),

@@ -7,6 +7,9 @@
 
 extern crate alloc;
 
+#[doc(hidden)]
+pub mod _macros;
+
 mod attributes;
 mod config_id;
 mod cpu_svn;
@@ -24,8 +27,6 @@ mod report_body;
 mod report_data;
 mod target_info;
 
-pub mod _macros;
-
 pub use crate::{
     _macros::FfiWrapper,
     attributes::{AttributeFlags, AttributeXfeatures, Attributes, ATTRIBUTES_SIZE},
@@ -36,7 +37,7 @@ pub use crate::{
     family_id::{FamilyId, FAMILY_ID_SIZE},
     key_128bit::{Key128, KEY128_SIZE},
     key_id::{KeyId, KEY_ID_SIZE},
-    key_request::{KeyRequest, KEY_REQUEST_SIZE},
+    key_request::{KeyName, KeyPolicy, KeyRequest, KEY_REQUEST_SIZE},
     mac::{Mac, MAC_SIZE},
     measurement::{MrEnclave, MrSigner, MRENCLAVE_SIZE, MRSIGNER_SIZE},
     misc_attribute::{MiscAttribute, MISC_ATTRIBUTE_SIZE},

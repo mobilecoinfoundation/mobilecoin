@@ -2,11 +2,16 @@
 
 //! Enclave CONFIGID.
 
-use crate::impl_ffi_wrapper;
-use mc_sgx_core_types_sys::sgx_config_id_t;
-
 /// The size of the x64 representation of[ConfigId], in bytes.
 pub use mc_sgx_core_types_sys::SGX_CONFIGID_SIZE as CONFIG_ID_SIZE;
+
+use crate::impl_ffi_wrapper;
+use mc_sgx_core_types_sys::sgx_config_id_t;
+#[cfg(feature = "use_prost")]
+use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
+#[cfg(feature = "use_serde")]
+use mc_util_repr_bytes::derive_serde_from_repr_bytes;
+use mc_util_repr_bytes::typenum::U64;
 
 /// The SGX configuration ID data type.
 ///
@@ -16,8 +21,14 @@ pub use mc_sgx_core_types_sys::SGX_CONFIGID_SIZE as CONFIG_ID_SIZE;
 pub struct ConfigId(sgx_config_id_t);
 
 impl_ffi_wrapper! {
-    ConfigId, sgx_config_id_t, CONFIG_ID_SIZE;
+    ConfigId, sgx_config_id_t, U64;
 }
+
+#[cfg(feature = "use_prost")]
+derive_prost_message_from_repr_bytes!(ConfigId);
+
+#[cfg(feature = "use_serde")]
+derive_serde_from_repr_bytes!(ConfigId);
 
 impl Default for ConfigId {
     fn default() -> Self {
@@ -28,8 +39,10 @@ impl Default for ConfigId {
 #[cfg(test)]
 mod test {
     use super::*;
+    #[cfg(feature = "use_serde")]
     use bincode::{deserialize, serialize};
 
+    #[cfg(feature = "use_serde")]
     #[test]
     fn test_serde() {
         let src = [

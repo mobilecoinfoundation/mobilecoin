@@ -16,6 +16,6 @@ mod quote;
 mod report;
 
 pub use crate::{
-    nonce::Nonce, parsed::Report as ParsedReport, pseudonym::EpidPseudonym, quote::Quote,
+    nonce::Nonce, parsed::ReportBody as ParsedReport, pseudonym::EpidPseudonym, quote::Quote,
     report::Report,
 };

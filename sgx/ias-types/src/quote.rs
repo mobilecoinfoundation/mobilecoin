@@ -2,24 +2,21 @@
 
 //! IAS Quote Structure
 //!
-//! This is the "special" version of sgx_quote_t that's returned by IAS (it does not contain the
-//! signature_len unsigned or variable-length signature fields) but not actually provided anywhere
-//! in the SGX headers. We skip the byte representation, as it's never used during FFI, in favor of
-//! parsing it directly into the rusty types that sit above the FFI types.
+//! This is the "special" version of sgx_quote_t that's returned by IAS (it does
+//! not contain the signature_len unsigned or variable-length signature fields)
+//! but not actually provided anywhere in the SGX headers. We skip the byte
+//! representation because this is never used during FFI, in favor of parsing it
+//! directly into the rusty types that sit above FFI types.
 
-use base64::DecodeError;
 use core::convert::{TryFrom, TryInto};
-use displaydoc::Display;
 use mc_sgx_core_types::{ReportBody, SecurityVersion, REPORT_BODY_SIZE, SECURITY_VERSION_SIZE};
 use mc_sgx_epid_types::{
     Basename, EpidGroupId, Quote as SgxQuote, QuoteSign, BASENAME_SIZE, EPID_GROUP_ID_SIZE,
-    QUOTE_MIN_SIZE,
 };
-use mc_util_encodings::{
-    Error as EncodingError, FromBase64, FromX64, INTEL_U16_SIZE, INTEL_U32_SIZE,
-};
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
+use mc_util_encodings::{Error as EncodingError, FromBase64, INTEL_U16_SIZE, INTEL_U32_SIZE};
+use mc_util_repr_bytes::{typenum::U432, GenericArray, ReprBytes};
+#[cfg(feature = "use_prost")]
+use prost::Message;
 
 const VERSION_START: usize = 0;
 const VERSION_SIZE: usize = INTEL_U16_SIZE;
@@ -48,95 +45,143 @@ const BASENAME_END: usize = BASENAME_START + BASENAME_SIZE;
 const REPORT_BODY_START: usize = BASENAME_END;
 const REPORT_BODY_END: usize = REPORT_BODY_START + REPORT_BODY_SIZE;
 
-/// An enumeration of errors which can occur when parsing base64 into a quote.
-#[derive(Clone, Debug, Display, Eq, PartialEq)]
-pub enum Error {
-    /// There was an error decoding the Base64: {0}
-    Base64(DecodeError),
-    /// One (or more) of the fields contained invalid data: {0}
-    Encoding(EncodingError),
-}
-
-impl From<DecodeError> for Error {
-    fn from(src: DecodeError) -> Self {
-        Error::Base64(src)
-    }
-}
-
-impl From<EncodingError> for Error {
-    fn from(src: EncodingError) -> Self {
-        Error::Encoding(src)
-    }
-}
-
 /// The quote structure returned by IAS.
 ///
-/// This structure is nearly identical to the [`Quote`](mc_sgx_epid_types::Quote)
-/// structure, but does not contain the variable-length signature and it's length.
-#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+/// This structure is nearly identical to the
+/// EPID [`Quote`](mc_sgx_epid_types::Quote) structure, but does not contain the
+/// variable-length signature and it's length.
+#[cfg_attr(feature = "use_prost", derive(Message))]
+#[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Quote {
     /// The quote version
-    pub version: u16,
+    #[cfg_attr(feature = "use_prost", prost(uint32, required))]
+    version: u32,
 
     /// The quote signature type (linkable vs. unlinkable).
-    pub sign_type: QuoteSign,
+    #[cfg_attr(feature = "use_prost", prost(enumeration = "QuoteSign", required))]
+    sign_type: i32,
 
     /// The EPID Group ID of the platform.
-    pub epid_group_id: EpidGroupId,
+    #[cfg_attr(feature = "use_prost", prost(message, required))]
+    epid_group_id: EpidGroupId,
 
     /// The security version of the original quoting enclave.
-    pub qe_svn: SecurityVersion,
+    #[cfg_attr(feature = "use_prost", prost(uint32, required))]
+    qe_svn: u32,
 
     /// The security version of the provisioning certificate enclave.
-    pub pce_svn: SecurityVersion,
+    #[cfg_attr(feature = "use_prost", prost(uint32, required))]
+    pce_svn: u32,
 
     /// The XEID
-    pub xeid: u32,
+    #[cfg_attr(feature = "use_prost", prost(uint32, required))]
+    xeid: u32,
 
     /// The basename
-    pub basename: Basename,
+    #[cfg_attr(feature = "use_prost", prost(message, required))]
+    basename: Basename,
 
     /// The quoted report body
-    pub report_body: ReportBody,
+    #[cfg_attr(feature = "use_prost", prost(message, required))]
+    report_body: ReportBody,
+}
+
+impl Quote {
+    /// Retrieve the quote version
+    pub fn version(&self) -> u16 {
+        u16::try_from(self.version).unwrap_or(0)
+    }
+
+    /// Retrieve the EPID Group ID from.
+    pub fn epid_group_id(&self) -> &EpidGroupId {
+        &self.epid_group_id
+    }
+
+    /// Retrieve the quoting enclave's security version
+    pub fn qe_security_version(&self) -> SecurityVersion {
+        u16::try_from(self.qe_svn).unwrap_or(0)
+    }
+
+    /// Retrieve the sealing enclave's security version
+    pub fn pce_security_version(&self) -> SecurityVersion {
+        u16::try_from(self.pce_svn).unwrap_or(0)
+    }
+
+    /// Retrieve the XEID
+    pub fn xeid(&self) -> u32 {
+        self.xeid
+    }
+
+    /// Retrieve the basename.
+    pub fn basename(&self) -> &Basename {
+        &self.basename
+    }
+
+    /// Retrieve the quoted EPID report body
+    pub fn report_body(&self) -> &ReportBody {
+        &self.report_body
+    }
 }
 
 impl FromBase64 for Quote {
-    type Error = Error;
+    type Error = EncodingError;
 
     fn from_base64(src: &str) -> Result<Self, Self::Error> {
-        // We decode base64 into this buffer, then FromX64 the contents into our components.
-        let mut buffer = [0u8; QUOTE_MIN_SIZE - INTEL_U32_SIZE];
-        base64::decode_config_slice(src, base64::STANDARD, &mut buffer)?;
+        // We decode base64 into this buffer, then FromX64 the contents into our
+        // components.
+        let mut buffer = GenericArray::default();
+        base64::decode_config_slice(src, base64::STANDARD, buffer.as_mut_slice())?;
 
+        Self::from_bytes(&buffer)
+    }
+}
+
+impl PartialEq<SgxQuote> for Quote {
+    fn eq(&self, other: &SgxQuote) -> bool {
+        other.version() as u32 == self.version
+            && other.sign_type() == self.sign_type()
+            && other.epid_group_id() == self.epid_group_id
+            && other.qe_security_version() as u32 == self.qe_svn
+            && other.pce_security_version() as u32 == self.pce_svn
+            && other.xeid() == self.xeid
+            && other.basename() == self.basename
+            && other.report_body() == self.report_body
+    }
+}
+
+impl ReprBytes for Quote {
+    type Size = U432;
+    type Error = EncodingError;
+
+    fn from_bytes(src: &GenericArray<u8, Self::Size>) -> Result<Self, Self::Error> {
         let version = u16::from_le_bytes(
-            buffer[VERSION_START..VERSION_END]
+            src[VERSION_START..VERSION_END]
                 .try_into()
                 .expect("Invalid size of version field"),
-        );
+        ) as u32;
         let sign_type = QuoteSign::try_from(u16::from_le_bytes(
-            buffer[SIGN_TYPE_START..SIGN_TYPE_END]
+            src[SIGN_TYPE_START..SIGN_TYPE_END]
                 .try_into()
                 .expect("Invalid size of sign type field"),
-        ))?;
-        let epid_group_id = EpidGroupId::from_x64(&buffer[EPID_GROUP_ID_START..EPID_GROUP_ID_END])?;
+        ))? as i32;
+        let epid_group_id = EpidGroupId::try_from(&src[EPID_GROUP_ID_START..EPID_GROUP_ID_END])?;
         let qe_svn = SecurityVersion::from_le_bytes(
-            buffer[QE_SVN_START..QE_SVN_END]
+            src[QE_SVN_START..QE_SVN_END]
                 .try_into()
                 .expect("Invalid size of QE SVN field"),
-        );
+        ) as u32;
         let pce_svn = SecurityVersion::from_le_bytes(
-            buffer[PCE_SVN_START..PCE_SVN_END]
+            src[PCE_SVN_START..PCE_SVN_END]
                 .try_into()
                 .expect("Invalid size of PCE SVN field"),
-        );
+        ) as u32;
         let xeid = u32::from_le_bytes(
-            buffer[XEID_START..XEID_END]
+            src[XEID_START..XEID_END]
                 .try_into()
                 .expect("Invalid size of XEID field"),
         );
-        let basename = Basename::from_x64(&buffer[BASENAME_START..BASENAME_END])?;
-        let report_body = ReportBody::from_x64(&buffer[REPORT_BODY_START..REPORT_BODY_END])?;
+        let basename = Basename::try_from(&src[BASENAME_START..BASENAME_END])?;
+        let report_body = ReportBody::try_from(&src[REPORT_BODY_START..REPORT_BODY_END])?;
 
         Ok(Self {
             version,
@@ -149,17 +194,20 @@ impl FromBase64 for Quote {
             report_body,
         })
     }
-}
 
-impl PartialEq<SgxQuote> for Quote {
-    fn eq(&self, other: &SgxQuote) -> bool {
-        other.version() == self.version
-            && other.sign_type() == self.sign_type
-            && other.epid_group_id() == self.epid_group_id
-            && other.qe_security_version() == self.qe_svn
-            && other.pce_security_version() == self.pce_svn
-            && other.xeid() == self.xeid
-            && other.basename() == self.basename
-            && other.report_body() == self.report_body
+    fn to_bytes(&self) -> GenericArray<u8, Self::Size> {
+        let mut retval = GenericArray::default();
+
+        retval[VERSION_START..VERSION_END].copy_from_slice(&self.version.to_le_bytes());
+        retval[SIGN_TYPE_START..SIGN_TYPE_END].copy_from_slice(&self.sign_type.to_le_bytes());
+        retval[EPID_GROUP_ID_START..EPID_GROUP_ID_END].copy_from_slice(self.epid_group_id.as_ref());
+        retval[QE_SVN_START..QE_SVN_END].copy_from_slice(&self.qe_svn.to_le_bytes());
+        retval[PCE_SVN_START..PCE_SVN_END].copy_from_slice(&self.pce_svn.to_le_bytes());
+        retval[XEID_START..XEID_END].copy_from_slice(&self.xeid.to_le_bytes());
+        retval[BASENAME_START..BASENAME_END].copy_from_slice(self.basename.as_ref());
+        retval[REPORT_BODY_START..REPORT_BODY_END]
+            .copy_from_slice(self.report_body.to_bytes().as_slice());
+
+        retval
     }
 }

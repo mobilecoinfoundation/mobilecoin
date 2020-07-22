@@ -9,7 +9,9 @@ use crate::{
     epid_group_id::{EpidGroupId, EPID_GROUP_ID_SIZE},
     quote_sign::QuoteSign,
 };
-use alloc::{alloc::Layout, vec::Vec};
+use alloc::{alloc::Layout, string::ToString, vec::Vec};
+#[cfg(feature = "use_prost")]
+use bytes::{Buf, BufMut};
 use core::{
     convert::{TryFrom, TryInto},
     fmt::{Debug, Display, Formatter, Result as FmtResult},
@@ -25,6 +27,13 @@ use mc_sgx_epid_types_sys::sgx_quote_t;
 use mc_util_encodings::{
     Error as EncodingError, FromX64, IntelLayout, ToX64, INTEL_U16_SIZE, INTEL_U32_SIZE,
 };
+use mc_util_repr_bytes::ReprBytes;
+#[cfg(feature = "use_prost")]
+use prost::{
+    encoding::{self, DecodeContext, WireType},
+    DecodeError, Message,
+};
+#[cfg(feature = "use_serde")]
 use serde::{
     de::{Error as DeserializeError, SeqAccess, Visitor},
     Deserialize, Deserializer, Serialize, Serializer,
@@ -209,10 +218,22 @@ impl Quote {
     }
 }
 
+impl AsRef<[u8]> for Quote {
+    fn as_ref(&self) -> &[u8] {
+        self.aligned_slice(0, QUOTE_MIN_SIZE + self.signature_len() as usize)
+    }
+}
+
 impl AsRef<sgx_quote_t> for Quote {
     fn as_ref(&self) -> &sgx_quote_t {
         let (_head, body, _tail) = unsafe { self.0.align_to::<sgx_quote_t>() };
         &body[0]
+    }
+}
+
+impl AsMut<[u8]> for Quote {
+    fn as_mut(&mut self) -> &mut [u8] {
+        self.aligned_mut(0, QUOTE_MIN_SIZE + self.signature_len() as usize)
     }
 }
 
@@ -235,6 +256,7 @@ impl Debug for Quote {
     }
 }
 
+#[cfg(feature = "use_serde")]
 impl<'de> Deserialize<'de> for Quote {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         struct ByteVisitor;
@@ -337,13 +359,13 @@ impl FromX64 for Quote {
         ))
         .map_err(|_e| EncodingError::InvalidInput)?;
 
-        let epid_group_id = EpidGroupId::from_x64(&src[EPID_GROUP_ID_START..EPID_GROUP_ID_END])
+        let epid_group_id = EpidGroupId::try_from(&src[EPID_GROUP_ID_START..EPID_GROUP_ID_END])
             .map_err(|_e| EncodingError::InvalidInput)?;
 
-        let basename = Basename::from_x64(&src[BASENAME_START..BASENAME_END])
+        let basename = Basename::try_from(&src[BASENAME_START..BASENAME_END])
             .map_err(|_e| EncodingError::InvalidInput)?;
 
-        let report_body = ReportBody::from_x64(&src[REPORT_BODY_START..REPORT_BODY_END])
+        let report_body = ReportBody::try_from(&src[REPORT_BODY_START..REPORT_BODY_END])
             .map_err(|_e| EncodingError::InvalidInput)?;
 
         let mut retval =
@@ -392,6 +414,49 @@ impl IntelLayout for Quote {
     }
 }
 
+/// A custom implementation of protobuf serialization as a message with a single opaque byte
+/// structure.
+///
+/// Unfortunately we can't just use the ReprBytes macros here, because our data is variable length.
+#[cfg(feature = "use_prost")]
+impl Message for Quote {
+    fn encode_raw<B>(&self, buf: &mut B)
+    where
+        B: BufMut,
+    {
+        encoding::bytes::encode(1, &self.to_x64_vec(), buf)
+    }
+
+    fn merge_field<B>(
+        &mut self,
+        tag: u32,
+        wire_type: WireType,
+        buf: &mut B,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError>
+    where
+        B: Buf,
+    {
+        if tag == 1 {
+            let mut vbuf = Vec::new();
+            encoding::bytes::merge(wire_type, &mut vbuf, buf, ctx)?;
+            *self = Self::from_x64(&vbuf[..]).map_err(|e| DecodeError::new(e.to_string()))?;
+            Ok(())
+        } else {
+            encoding::skip_field(wire_type, tag, buf, ctx)
+        }
+    }
+
+    fn encoded_len(&self) -> usize {
+        self.intel_size()
+    }
+
+    fn clear(&mut self) {
+        self.0.clear();
+    }
+}
+
+#[cfg(feature = "use_serde")]
 impl Serialize for Quote {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let bytes = self.to_x64_vec();
@@ -412,21 +477,16 @@ impl ToX64 for Quote {
         let value: u16 = self.sign_type().into();
         dest[SIGN_TYPE_START..SIGN_TYPE_END].copy_from_slice(&value.to_le_bytes());
 
-        self.epid_group_id()
-            .to_x64(&mut dest[EPID_GROUP_ID_START..EPID_GROUP_ID_END])
-            .map_err(|_e| required_len)?;
+        dest[EPID_GROUP_ID_START..EPID_GROUP_ID_END].copy_from_slice(self.epid_group_id().as_ref());
 
         dest[QE_SVN_START..QE_SVN_END].copy_from_slice(&self.qe_security_version().to_le_bytes());
         dest[PCE_SVN_START..PCE_SVN_END]
             .copy_from_slice(&self.pce_security_version().to_le_bytes());
         dest[XEID_START..XEID_END].copy_from_slice(&self.xeid().to_le_bytes());
 
-        self.basename()
-            .to_x64(&mut dest[BASENAME_START..BASENAME_END])
-            .map_err(|_e| required_len)?;
-        self.report_body()
-            .to_x64(&mut dest[REPORT_BODY_START..REPORT_BODY_END])
-            .map_err(|_e| required_len)?;
+        dest[BASENAME_START..BASENAME_END].copy_from_slice(self.basename().as_ref());
+        dest[REPORT_BODY_START..REPORT_BODY_END]
+            .copy_from_slice(self.report_body().to_bytes().as_slice());
         dest[SIGLEN_START..SIGLEN_END].copy_from_slice(&signature_len.to_le_bytes());
 
         if let Some(sigslice) = self.signature() {
@@ -440,10 +500,12 @@ impl ToX64 for Quote {
 #[cfg(test)]
 mod test {
     use super::*;
+    #[cfg(feature = "use_serde")]
     use bincode::{deserialize, serialize};
 
     const QUOTE: &[u8] = include_bytes!("test/quote_ok.bin");
 
+    #[cfg(feature = "use_serde")]
     #[test]
     fn serde() {
         let quote = Quote::from_x64(QUOTE).expect("Could not create quote from x64.");

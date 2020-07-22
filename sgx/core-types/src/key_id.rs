@@ -2,11 +2,16 @@
 
 //! The key ID used in requests.
 
-use crate::impl_ffi_wrapper;
-use mc_sgx_core_types_sys::sgx_key_id_t;
-
 /// The size of the [KeyId] structure's x64 representation, in bytes.
 pub use mc_sgx_core_types_sys::SGX_KEYID_SIZE as KEY_ID_SIZE;
+
+use crate::impl_ffi_wrapper;
+use mc_sgx_core_types_sys::sgx_key_id_t;
+#[cfg(feature = "use_prost")]
+use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
+#[cfg(feature = "use_serde")]
+use mc_util_repr_bytes::derive_serde_from_repr_bytes;
+use mc_util_repr_bytes::typenum::U32;
 
 /// An SGX Key ID
 #[derive(Default)]
@@ -14,14 +19,22 @@ pub use mc_sgx_core_types_sys::SGX_KEYID_SIZE as KEY_ID_SIZE;
 pub struct KeyId(sgx_key_id_t);
 
 impl_ffi_wrapper! {
-    KeyId, sgx_key_id_t, KEY_ID_SIZE, id;
+    KeyId, sgx_key_id_t, U32, id;
 }
+
+#[cfg(feature = "use_prost")]
+derive_prost_message_from_repr_bytes!(KeyId);
+
+#[cfg(feature = "use_serde")]
+derive_serde_from_repr_bytes!(KeyId);
 
 #[cfg(test)]
 mod test {
     use super::*;
+    #[cfg(feature = "use_serde")]
     use bincode::{deserialize, serialize};
 
+    #[cfg(feature = "use_serde")]
     #[test]
     fn test_serde() {
         let src = sgx_key_id_t {

@@ -9,7 +9,7 @@ use crate::{
     cpu_svn::{CpuSecurityVersion, CPU_SECURITY_VERSION_SIZE},
     ext_prod_id::{ExtendedProductId, EXTENDED_PRODUCT_ID_SIZE},
     family_id::{FamilyId, FAMILY_ID_SIZE},
-    impl_ffi_wrapper_base, impl_serialize_to_x64,
+    impl_ffi_wrapper_base, impl_hex_base64_with_repr_bytes,
     measurement::{MrEnclave, MrSigner, MRENCLAVE_SIZE, MRSIGNER_SIZE},
     report_data::{ReportData, REPORT_DATA_SIZE},
     ConfigSecurityVersion, MiscSelect, ProductId, SecurityVersion, CONFIG_SECURITY_VERSION_SIZE,
@@ -25,7 +25,12 @@ use mc_sgx_core_types_sys::{
     sgx_report_body_t, SGX_REPORT_BODY_RESERVED1_BYTES, SGX_REPORT_BODY_RESERVED2_BYTES,
     SGX_REPORT_BODY_RESERVED3_BYTES, SGX_REPORT_BODY_RESERVED4_BYTES,
 };
-use mc_util_encodings::{Error as EncodingError, FromX64, ToX64};
+use mc_util_encodings::Error as EncodingError;
+#[cfg(feature = "use_prost")]
+use mc_util_repr_bytes::derive_prost_message_from_repr_bytes;
+#[cfg(feature = "use_serde")]
+use mc_util_repr_bytes::derive_serde_from_repr_bytes;
+use mc_util_repr_bytes::{derive_into_vec_from_repr_bytes, typenum::U384, GenericArray, ReprBytes};
 
 // Offsets of various fields in a sgx_report_body_t with x86_64 layout
 const CPU_SVN_START: usize = 0;
@@ -61,9 +66,6 @@ const FAMILY_ID_END: usize = FAMILY_ID_START + FAMILY_ID_SIZE;
 const REPORT_DATA_START: usize = FAMILY_ID_END;
 const REPORT_DATA_END: usize = REPORT_DATA_START + REPORT_DATA_SIZE;
 
-// Used in the absence of something like core::slice::fill()
-const ZEROES: [u8; SGX_REPORT_BODY_RESERVED4_BYTES] = [0u8; SGX_REPORT_BODY_RESERVED4_BYTES];
-
 /// The size of a [ReportBody]'s x64 representation, in bytes.
 pub const REPORT_BODY_SIZE: usize = REPORT_DATA_END;
 
@@ -73,12 +75,17 @@ pub const REPORT_BODY_SIZE: usize = REPORT_DATA_END;
 pub struct ReportBody(sgx_report_body_t);
 
 impl_ffi_wrapper_base! {
-    ReportBody, sgx_report_body_t, REPORT_BODY_SIZE;
+    ReportBody, sgx_report_body_t;
 }
 
-impl_serialize_to_x64! {
-    ReportBody, REPORT_BODY_SIZE;
-}
+impl_hex_base64_with_repr_bytes!(ReportBody);
+derive_into_vec_from_repr_bytes!(ReportBody);
+
+#[cfg(feature = "use_prost")]
+derive_prost_message_from_repr_bytes!(ReportBody);
+
+#[cfg(feature = "use_serde")]
+derive_serde_from_repr_bytes!(ReportBody);
 
 impl ReportBody {
     /// Retrieve the attributes of an enclave's report.
@@ -205,10 +212,123 @@ impl TryFrom<&sgx_report_body_t> for ReportBody {
     }
 }
 
-impl FromX64 for ReportBody {
+impl Hash for ReportBody {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        "ReportBody".hash(state);
+        self.cpu_security_version().hash(state);
+        self.misc_select().hash(state);
+        self.extended_product_id().hash(state);
+        self.attributes().hash(state);
+        self.mr_enclave().hash(state);
+        self.mr_signer().hash(state);
+        self.config_id().hash(state);
+        self.product_id().hash(state);
+        self.security_version().hash(state);
+        self.config_security_version().hash(state);
+        self.family_id().hash(state);
+    }
+}
+
+impl Ord for ReportBody {
+    /// Create an arbitrary sort order for report body types
+    ///
+    /// We sort by Family ID, ProdID, Extended ProdID, SVN, MrSigner, MrEnclave, Attributes,
+    /// Misc Select, ConfigId, ConfigSVN, CPU SVN, and ReportData, in that order
+    fn cmp(&self, other: &Self) -> Ordering {
+        fn to_tuple(
+            report_body: &ReportBody,
+        ) -> (
+            FamilyId,
+            ProductId,
+            SecurityVersion,
+            ExtendedProductId,
+            MrSigner,
+            MrEnclave,
+            Attributes,
+            MiscSelect,
+            ConfigId,
+            ConfigSecurityVersion,
+            CpuSecurityVersion,
+            ReportData,
+        ) {
+            (
+                report_body.family_id(),
+                report_body.product_id(),
+                report_body.security_version(),
+                report_body.extended_product_id(),
+                report_body.mr_signer(),
+                report_body.mr_enclave(),
+                report_body.attributes(),
+                report_body.misc_select(),
+                report_body.config_id(),
+                report_body.config_security_version(),
+                report_body.cpu_security_version(),
+                report_body.report_data(),
+            )
+        }
+
+        to_tuple(self).cmp(&to_tuple(other))
+    }
+}
+
+impl PartialEq for ReportBody {
+    fn eq(&self, other: &Self) -> bool {
+        self.cpu_security_version() == other.cpu_security_version()
+            && self.misc_select() == other.misc_select()
+            && self.attributes() == other.attributes()
+            && self.config_security_version() == other.config_security_version()
+            && self.extended_product_id() == other.extended_product_id()
+            && self.family_id() == other.family_id()
+            && self.mr_enclave() == other.mr_enclave()
+            && self.mr_signer() == other.mr_signer()
+            && self.product_id() == other.product_id()
+            && self.report_data() == other.report_data()
+            && self.security_version() == other.security_version()
+    }
+}
+
+impl PartialOrd for ReportBody {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl ReprBytes for ReportBody {
+    type Size = U384;
     type Error = EncodingError;
 
-    fn from_x64(src: &[u8]) -> Result<Self, EncodingError> {
+    fn from_bytes(src: &GenericArray<u8, Self::Size>) -> Result<Self, Self::Error> {
+        Self::try_from(src.as_slice())
+    }
+
+    fn to_bytes(&self) -> GenericArray<u8, Self::Size> {
+        let mut retval = GenericArray::default();
+
+        retval[CPU_SVN_START..CPU_SVN_END].copy_from_slice(self.cpu_security_version().as_ref());
+        retval[MISC_SELECT_START..MISC_SELECT_END]
+            .copy_from_slice(&self.misc_select().to_le_bytes());
+        retval[EXT_PROD_ID_START..EXT_PROD_ID_END]
+            .copy_from_slice(self.extended_product_id().as_ref());
+        retval[ATTRIBUTES_START..ATTRIBUTES_END].copy_from_slice(&self.attributes().to_bytes());
+        retval[MRENCLAVE_START..MRENCLAVE_END].copy_from_slice(self.mr_enclave().as_ref());
+        retval[MRSIGNER_START..MRSIGNER_END].copy_from_slice(self.mr_signer().as_ref());
+        retval[CONFIG_ID_START..CONFIG_ID_END].copy_from_slice(self.config_id().as_ref());
+        retval[ISV_PROD_ID_START..ISV_PROD_ID_END]
+            .copy_from_slice(&self.product_id().to_le_bytes());
+        retval[ISV_SVN_START..ISV_SVN_END].copy_from_slice(&self.security_version().to_le_bytes());
+        retval[CONFIG_SVN_START..CONFIG_SVN_END]
+            .copy_from_slice(&self.config_security_version().to_le_bytes());
+        retval[FAMILY_ID_START..FAMILY_ID_END].copy_from_slice(self.family_id().as_ref());
+        retval[REPORT_DATA_START..REPORT_DATA_END].copy_from_slice(self.report_data().as_ref());
+
+        retval
+    }
+}
+
+impl TryFrom<&[u8]> for ReportBody {
+    type Error = EncodingError;
+
+    fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
         if src.len() < REPORT_BODY_SIZE {
             return Err(EncodingError::InvalidInputLength);
         }
@@ -234,179 +354,41 @@ impl FromX64 for ReportBody {
         }
 
         Ok(Self(sgx_report_body_t {
-            cpu_svn: CpuSecurityVersion::from_x64(&src[CPU_SVN_START..CPU_SVN_END])?.into(),
+            cpu_svn: CpuSecurityVersion::try_from(&src[CPU_SVN_START..CPU_SVN_END])?.into(),
             misc_select: u32::from_le_bytes(
                 (&src[MISC_SELECT_START..MISC_SELECT_END])
                     .try_into()
-                    .expect("Could not parse u32 from the source bytes?"),
+                    .expect("Invalid misc_select size"),
             ),
             reserved1,
-            isv_ext_prod_id: ExtendedProductId::from_x64(&src[EXT_PROD_ID_START..EXT_PROD_ID_END])?
+            isv_ext_prod_id: ExtendedProductId::try_from(&src[EXT_PROD_ID_START..EXT_PROD_ID_END])?
                 .into(),
-            attributes: Attributes::from_x64(&src[ATTRIBUTES_START..ATTRIBUTES_END])?.into(),
-            mr_enclave: MrEnclave::from_x64(&src[MRENCLAVE_START..MRENCLAVE_END])?.into(),
+            attributes: Attributes::try_from(&src[ATTRIBUTES_START..ATTRIBUTES_END])?.into(),
+            mr_enclave: MrEnclave::try_from(&src[MRENCLAVE_START..MRENCLAVE_END])?.into(),
             reserved2,
-            mr_signer: MrSigner::from_x64(&src[MRSIGNER_START..MRSIGNER_END])?.into(),
+            mr_signer: MrSigner::try_from(&src[MRSIGNER_START..MRSIGNER_END])?.into(),
             reserved3,
-            config_id: ConfigId::from_x64(&src[CONFIG_ID_START..CONFIG_ID_END])?.into(),
+            config_id: ConfigId::try_from(&src[CONFIG_ID_START..CONFIG_ID_END])?.into(),
             isv_prod_id: u16::from_le_bytes(
                 (&src[ISV_PROD_ID_START..ISV_PROD_ID_END])
                     .try_into()
-                    .unwrap(),
+                    .expect("Invalid isv_prod_id size"),
             ),
             isv_svn: u16::from_le_bytes((&src[ISV_SVN_START..ISV_SVN_END]).try_into().unwrap()),
             config_svn: u16::from_le_bytes(
                 (&src[CONFIG_SVN_START..CONFIG_SVN_END]).try_into().unwrap(),
             ),
             reserved4,
-            isv_family_id: FamilyId::from_x64(&src[FAMILY_ID_START..FAMILY_ID_END])?.into(),
-            report_data: ReportData::from_x64(&src[REPORT_DATA_START..REPORT_DATA_END])?.into(),
+            isv_family_id: FamilyId::try_from(&src[FAMILY_ID_START..FAMILY_ID_END])?.into(),
+            report_data: ReportData::try_from(&src[REPORT_DATA_START..REPORT_DATA_END])?.into(),
         }))
-    }
-}
-
-impl Hash for ReportBody {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        "ReportBody".hash(state);
-        self.cpu_security_version().hash(state);
-        self.misc_select().hash(state);
-        self.extended_product_id().hash(state);
-        self.attributes().hash(state);
-        self.mr_enclave().hash(state);
-        self.mr_signer().hash(state);
-        self.config_id().hash(state);
-        self.product_id().hash(state);
-        self.security_version().hash(state);
-        self.config_security_version().hash(state);
-        self.family_id().hash(state);
-    }
-}
-
-impl Ord for ReportBody {
-    /// Create an arbitrary sort order for report body types
-    ///
-    /// We sort by Family ID, ProdID, Extended ProdID, SVN, MrSigner, MrEnclave, Attributes,
-    /// Misc Select, ConfigId, ConfigSVN, CPU SVN, and ReportData, in that order
-    fn cmp(&self, other: &Self) -> Ordering {
-        match (&self.0.isv_family_id[..]).cmp(&other.0.isv_family_id[..]) {
-            Ordering::Equal => match self.0.isv_prod_id.cmp(&other.0.isv_prod_id) {
-                Ordering::Equal => match self.0.isv_ext_prod_id.cmp(&other.0.isv_ext_prod_id) {
-                    Ordering::Equal => match self.0.isv_svn.cmp(&other.0.isv_svn) {
-                        Ordering::Equal => match self.mr_signer().cmp(&other.mr_signer()) {
-                            Ordering::Equal => match self.mr_enclave().cmp(&other.mr_enclave()) {
-                                Ordering::Equal => match self.attributes().cmp(&other.attributes())
-                                {
-                                    Ordering::Equal => {
-                                        match self.0.misc_select.cmp(&other.0.misc_select) {
-                                            Ordering::Equal => {
-                                                match self.config_id().cmp(&other.config_id()) {
-                                                    Ordering::Equal => match self
-                                                        .0
-                                                        .config_svn
-                                                        .cmp(&other.0.config_svn)
-                                                    {
-                                                        Ordering::Equal => match self
-                                                            .cpu_security_version()
-                                                            .cmp(&other.cpu_security_version())
-                                                        {
-                                                            Ordering::Equal => self
-                                                                .report_data()
-                                                                .cmp(&other.report_data()),
-                                                            ordering => ordering,
-                                                        },
-                                                        ordering => ordering,
-                                                    },
-                                                    ordering => ordering,
-                                                }
-                                            }
-                                            ordering => ordering,
-                                        }
-                                    }
-                                    ordering => ordering,
-                                },
-                                ordering => ordering,
-                            },
-                            ordering => ordering,
-                        },
-                        ordering => ordering,
-                    },
-                    ordering => ordering,
-                },
-                ordering => ordering,
-            },
-            ordering => ordering,
-        }
-    }
-}
-
-impl PartialEq for ReportBody {
-    fn eq(&self, other: &Self) -> bool {
-        self.cpu_security_version() == other.cpu_security_version()
-            && self.misc_select() == other.misc_select()
-    }
-}
-
-impl ToX64 for ReportBody {
-    fn to_x64(&self, dest: &mut [u8]) -> Result<usize, usize> {
-        if dest.len() < REPORT_BODY_SIZE {
-            return Err(REPORT_BODY_SIZE);
-        }
-
-        self.cpu_security_version()
-            .to_x64(&mut dest[CPU_SVN_START..CPU_SVN_END])
-            .or(Err(REPORT_BODY_SIZE))?;
-
-        dest[MISC_SELECT_START..MISC_SELECT_END].copy_from_slice(&self.misc_select().to_le_bytes());
-
-        dest[RESERVED1_START..RESERVED1_END]
-            .copy_from_slice(&ZEROES[..SGX_REPORT_BODY_RESERVED1_BYTES]);
-
-        self.extended_product_id()
-            .to_x64(&mut dest[EXT_PROD_ID_START..EXT_PROD_ID_END])
-            .or(Err(REPORT_BODY_SIZE))?;
-        self.attributes()
-            .to_x64(&mut dest[ATTRIBUTES_START..ATTRIBUTES_END])
-            .or(Err(REPORT_BODY_SIZE))?;
-        self.mr_enclave()
-            .to_x64(&mut dest[MRENCLAVE_START..MRENCLAVE_END])
-            .or(Err(REPORT_BODY_SIZE))?;
-
-        dest[RESERVED2_START..RESERVED2_END]
-            .copy_from_slice(&ZEROES[..SGX_REPORT_BODY_RESERVED2_BYTES]);
-
-        self.mr_signer()
-            .to_x64(&mut dest[MRSIGNER_START..MRSIGNER_END])
-            .or(Err(REPORT_BODY_SIZE))?;
-
-        dest[RESERVED3_START..RESERVED3_END]
-            .copy_from_slice(&ZEROES[..SGX_REPORT_BODY_RESERVED3_BYTES]);
-
-        self.config_id()
-            .to_x64(&mut dest[CONFIG_ID_START..CONFIG_ID_END])
-            .or(Err(REPORT_BODY_SIZE))?;
-
-        dest[ISV_PROD_ID_START..ISV_PROD_ID_END].copy_from_slice(&self.product_id().to_le_bytes());
-        dest[ISV_SVN_START..ISV_SVN_END].copy_from_slice(&self.security_version().to_le_bytes());
-        dest[CONFIG_SVN_START..CONFIG_SVN_END]
-            .copy_from_slice(&self.config_security_version().to_le_bytes());
-
-        dest[RESERVED4_START..RESERVED4_END]
-            .copy_from_slice(&ZEROES[..SGX_REPORT_BODY_RESERVED4_BYTES]);
-
-        self.family_id()
-            .to_x64(&mut dest[FAMILY_ID_START..FAMILY_ID_END])
-            .or(Err(REPORT_BODY_SIZE))?;
-        self.report_data()
-            .to_x64(&mut dest[REPORT_DATA_START..REPORT_DATA_END])
-            .or(Err(REPORT_BODY_SIZE))?;
-
-        Ok(REPORT_BODY_SIZE)
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+    #[cfg(feature = "use_serde")]
     use bincode::{deserialize, serialize};
     use core::mem::size_of;
     use mc_sgx_core_types_sys::{
@@ -546,6 +528,7 @@ mod test {
         assert_eq!(body1, body2);
     }
 
+    #[cfg(feature = "use_serde")]
     #[test]
     fn test_serde() {
         assert_eq!(REPORT_BODY_SIZE, size_of::<sgx_report_body_t>());
