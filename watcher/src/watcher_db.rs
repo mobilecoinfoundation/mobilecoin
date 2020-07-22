@@ -238,12 +238,12 @@ impl WatcherDB {
 
     /// Get the highest block that all currently-configured urls have synced.
     /// Note: In the case where one watched consensus validator dies and is no longer
-    ///       reporting blocks to S3, this will cause the highest_synced_block to
+    ///       reporting blocks to S3, this will cause the highest_common_block to
     ///       always remain at the lowest common denominator, so in the case where the
-    ///       the highest_synced_block is being used to determine if the watcher is
+    ///       the highest_common_block is being used to determine if the watcher is
     ///       behind, the watcher will need to be restarted with the dead node removed
     ///       from the set of watched URLs.
-    pub fn highest_synced_block(&self) -> Result<u64, WatcherDBError> {
+    pub fn highest_common_block(&self) -> Result<u64, WatcherDBError> {
         let db_txn = self.env.begin_ro_txn()?;
 
         let last_synced_map = self.get_url_to_last_synced(&db_txn)?;
@@ -461,7 +461,7 @@ mod test {
                 .add_block_signature(&urls[1], 1, signed_block_b1, filename1)
                 .unwrap();
 
-            assert_eq!(watcher_db.highest_synced_block().unwrap(), 1);
+            assert_eq!(watcher_db.highest_common_block().unwrap(), 1);
 
             let filename2 = String::from("00/02");
 
@@ -471,7 +471,7 @@ mod test {
                 .add_block_signature(&urls[0], 2, signed_block_a2, filename2.clone())
                 .unwrap();
 
-            assert_eq!(watcher_db.highest_synced_block().unwrap(), 1);
+            assert_eq!(watcher_db.highest_common_block().unwrap(), 1);
 
             let signed_block_b2 =
                 BlockSignature::from_block_and_keypair(&blocks[2].0, &signing_key_b).unwrap();
@@ -479,7 +479,7 @@ mod test {
                 .add_block_signature(&urls[1], 2, signed_block_b2, filename2)
                 .unwrap();
 
-            assert_eq!(watcher_db.highest_synced_block().unwrap(), 2);
+            assert_eq!(watcher_db.highest_common_block().unwrap(), 2);
         });
     }
 
