@@ -88,7 +88,6 @@ impl InputCredentials {
 
 impl Zeroize for InputCredentials {
     fn zeroize(&mut self) {
-        self.real_index.zeroize();
         self.onetime_private_key.zeroize();
         self.view_private_key.zeroize();
     }
