@@ -98,7 +98,7 @@ To learn how MobileCoin uses Intel SGX to provide integrity in Byzantine Fault T
 
 *Full validator nodes* additionally use the `ledger-distribution` target binary to publish a copy of their computed blockchain to content delivery networks (currently to Amazon S3 only). The public blockchain is a zero-knowledge data structure that consists only of *utxos*, *key images* and block metadata used to ensure consistency and to construct Merkle proofs. To build and run ledger distribution, see the [ledger/distribution](./ledger/distribution) crate.
 
-    *Watcher nodes* perform an essential role in the MobileCoin network by verifying the signatures that the *full validator nodes* attach to each block. In this way the *watcher nodes* continuously monitor the integrity of the decentralized MobileCoin network. A *watcher node* also maintains a complete local copy of the blockchain and provides an API for wallet or exchange clients.
+*Watcher nodes* perform an essential role in the MobileCoin network by verifying the signatures that the *full validator nodes* attach to each block. In this way the *watcher nodes* continuously monitor the integrity of the decentralized MobileCoin network. A *watcher node* also maintains a complete local copy of the blockchain and provides an API for wallet or exchange clients.
 
 To run a *watcher node*, build and run the [`mobilecoind`](./mobilecoind) daemon.
 
