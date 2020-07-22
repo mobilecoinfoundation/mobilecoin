@@ -32,6 +32,7 @@ use zeroize::Zeroize;
 
 /// A secret value used as input key material to derive private keys.
 #[derive(Clone, Default, Debug, PartialEq, Eq, Hash, Zeroize)]
+#[zeroize(drop)]
 pub struct RootEntropy {
     /// 32 bytes of input key material.
     /// Should be e.g. RDRAND, /dev/random/, or from properly seeded CSPRNG.

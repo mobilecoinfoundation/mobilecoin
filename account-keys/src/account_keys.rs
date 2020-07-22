@@ -36,6 +36,7 @@ use blake2::{Blake2b, Digest};
 use curve25519_dalek::scalar::Scalar;
 use prost::Message;
 use rand_core::{CryptoRng, RngCore};
+use zeroize::Zeroize;
 
 /// An account's "default address" is its zero^th subaddress.
 pub const DEFAULT_SUBADDRESS_INDEX: u64 = 0;
@@ -173,7 +174,8 @@ impl PublicAddress {
 /// Complete AccountKey, containing the pair of secret keys, which can be used
 /// for spending, and optionally some fog-related info,
 /// can be used for spending. This should only ever be present in client code.
-#[derive(Clone, Message)]
+#[derive(Clone, Message, Zeroize)]
+#[zeroize(drop)]
 pub struct AccountKey {
     /// Private key 'a' used for view-key matching.
     #[prost(message, required, tag = "1")]
