@@ -355,22 +355,29 @@ impl Hash for KeyRequest {
 
 impl Ord for KeyRequest {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.key_name().cmp(&other.key_name()).then(
-            self.key_policy().cmp(&other.key_policy()).then(
-                self.security_version().cmp(&other.security_version()).then(
-                    self.cpu_security_version()
-                        .cmp(&other.cpu_security_version())
-                        .then(
-                            self.key_id().cmp(&other.key_id()).then(
-                                self.misc_mask().cmp(&other.misc_mask()).then(
-                                    self.config_security_version()
-                                        .cmp(&other.config_security_version()),
-                                ),
-                            ),
-                        ),
-                ),
-            ),
-        )
+        fn to_tuple(
+            key_request: &KeyRequest,
+        ) -> (
+            KeyName,
+            KeyPolicy,
+            SecurityVersion,
+            CpuSecurityVersion,
+            KeyId,
+            MiscSelect,
+            ConfigSecurityVersion,
+        ) {
+            (
+                key_request.key_name(),
+                key_request.key_policy(),
+                key_request.security_version(),
+                key_request.cpu_security_version(),
+                key_request.key_id(),
+                key_request.misc_mask(),
+                key_request.config_security_version(),
+            )
+        }
+
+        to_tuple(self).cmp(&to_tuple(other))
     }
 }
 
