@@ -3406,7 +3406,6 @@ name = "mc-watcher-api"
 version = "0.5.0"
 dependencies = [
  "displaydoc",
- "mc-util-serial",
  "serde",
 ]
 
