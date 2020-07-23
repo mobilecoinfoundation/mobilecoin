@@ -1,9 +1,10 @@
 //! A standardized admin GRPC server
 
-use crate::{AdminService, BuildInfoService, GetConfigJsonFn, HealthService};
+use crate::{
+    AdminService, BuildInfoService, ConnectionUriGrpcioServer, GetConfigJsonFn, HealthService,
+};
 use grpcio::{Environment, ShutdownFuture};
 use mc_common::logger::{log, Logger};
-use mc_connection::ConnectionUriGrpcioServer;
 use mc_util_uri::{AdminUri, ConnectionUri};
 use std::sync::Arc;
 

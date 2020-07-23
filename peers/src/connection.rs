@@ -16,8 +16,8 @@ use mc_common::{
     trace_time, NodeID, ResponderId,
 };
 use mc_connection::{
-    AttestedConnection, BlockchainConnection, Connection, ConnectionUriGrpcioChannel,
-    Error as ConnectionError, Result as ConnectionResult,
+    AttestedConnection, BlockchainConnection, Connection, Error as ConnectionError,
+    Result as ConnectionResult,
 };
 use mc_consensus_api::{
     consensus_common::BlocksRequest,
@@ -31,6 +31,7 @@ use mc_consensus_api::{
 };
 use mc_consensus_enclave_api::{ConsensusEnclaveProxy, TxContext, WellFormedEncryptedTx};
 use mc_transaction_core::{tx::TxHash, Block, BlockID, BlockIndex};
+use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_serial::{deserialize, serialize};
 use mc_util_uri::{ConnectionUri, ConsensusPeerUri as PeerUri};
 use protobuf::RepeatedField;

@@ -14,6 +14,7 @@ mc-crypto-keys = { path = "../crypto/keys" }
 mc-crypto-noise = { path = "../crypto/noise" }
 mc-crypto-rand = { path = "../crypto/rand" }
 mc-transaction-core = { path = "../transaction/core" }
+mc-util-grpc = { path = "../util/grpc" }
 mc-util-host-cert = { path = "../util/host-cert" }
 mc-util-serial = { path = "../util/serial" }
 mc-util-uri = { path = "../util/uri" }

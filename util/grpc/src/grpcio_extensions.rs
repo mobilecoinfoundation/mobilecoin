@@ -1,5 +1,7 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
+//! Extension traits that make it easier to start GRPC servers and connect to them using URIs.
+
 use grpcio::{
     Channel, ChannelBuilder, ChannelCredentialsBuilder, Environment, ServerBuilder,
     ServerCredentialsBuilder,
