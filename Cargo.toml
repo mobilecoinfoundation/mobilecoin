@@ -37,6 +37,7 @@ members = [
     "ledger/sync",
     "mobilecoind",
     "mobilecoind-json",
+    "mobilecoind-mirror",
     "mobilecoind/api",
     "peers",
     "peers/test-utils",

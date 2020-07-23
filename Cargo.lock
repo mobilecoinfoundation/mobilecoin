@@ -2729,6 +2729,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-mobilecoind-mirror"
+version = "0.1.0"
+dependencies = [
+ "cargo-emit",
+ "futures",
+ "grpcio",
+ "hex 0.4.2",
+ "mc-api",
+ "mc-common",
+ "mc-mobilecoind-api",
+ "mc-mobilecoind-json",
+ "mc-util-build-grpc",
+ "mc-util-build-script",
+ "mc-util-uri",
+ "protobuf",
+ "rocket",
+ "rocket_contrib",
+ "serde",
+ "serde_derive",
+ "structopt",
+]
+
+[[package]]
 name = "mc-peers"
 version = "0.5.0"
 dependencies = [
