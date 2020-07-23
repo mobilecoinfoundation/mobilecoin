@@ -6,11 +6,11 @@ use core::convert::TryFrom;
 use displaydoc::Display;
 use serde::{Deserialize, Serialize};
 
-/// Enumerates result codes when obtaining a block timstamp from the watcher
+/// Enumerates result codes when obtaining a block timstamp from the watcher.
 #[derive(PartialEq, Eq, Debug, Display, Clone, Serialize, Deserialize)]
 #[repr(u32)]
 pub enum TimestampResultCode {
-    /// A timestamp was found
+    /// A timestamp was found.
     TimestampFound = 1,
     /// The timestamp was not found and the watcher is behind.
     WatcherBehind,
