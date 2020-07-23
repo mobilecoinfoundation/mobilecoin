@@ -1,14 +1,17 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
+//! JSON wrapper for the mobilecoind API.
+
 #![feature(proc_macro_hygiene, decl_macro)]
 
 use grpcio::{ChannelBuilder, ChannelCredentialsBuilder};
-use protobuf::RepeatedField;
-
 use mc_api::external::{CompressedRistretto, KeyImage, PublicAddress};
 use mc_common::logger::{create_app_logger, log, o};
 use mc_mobilecoind_api::mobilecoind_api_grpc::MobilecoindApiClient;
+use mc_mobilecoind_json::data_types::*;
+use protobuf::RepeatedField;
 use rocket::{get, post, routes};
 use rocket_contrib::json::Json;
-use serde_derive::{Deserialize, Serialize};
 use std::{convert::TryFrom, sync::Arc};
 use structopt::StructOpt;
 
@@ -39,11 +42,6 @@ struct State {
     pub mobilecoind_api_client: MobilecoindApiClient,
 }
 
-#[derive(Serialize, Default)]
-struct JsonEntropyResponse {
-    entropy: String,
-}
-
 /// Requests a new root entropy from mobilecoind
 #[get("/entropy")]
 fn entropy(state: rocket::State<State>) -> Result<Json<JsonEntropyResponse>, String> {
@@ -54,18 +52,6 @@ fn entropy(state: rocket::State<State>) -> Result<Json<JsonEntropyResponse>, Str
     Ok(Json(JsonEntropyResponse {
         entropy: hex::encode(resp.entropy),
     }))
-}
-
-#[derive(Deserialize, Default)]
-struct JsonMonitorRequest {
-    entropy: String,
-    first_subaddress: u64,
-    num_subaddresses: u64,
-}
-
-#[derive(Serialize, Default)]
-struct JsonMonitorResponse {
-    monitor_id: String,
 }
 
 /// Creates a monitor. Data for the key and range is POSTed using the struct above.
@@ -103,11 +89,6 @@ fn create_monitor(
     }))
 }
 
-#[derive(Serialize, Default)]
-struct JsonMonitorListResponse {
-    monitor_id: Vec<String>,
-}
-
 /// Gets a list of existing monitors
 #[get("/monitors")]
 fn monitors(state: rocket::State<State>) -> Result<Json<JsonMonitorListResponse>, String> {
@@ -118,14 +99,6 @@ fn monitors(state: rocket::State<State>) -> Result<Json<JsonMonitorListResponse>
     Ok(Json(JsonMonitorListResponse {
         monitor_id: resp.get_monitor_id_list().iter().map(hex::encode).collect(),
     }))
-}
-
-#[derive(Serialize, Default)]
-struct JsonMonitorStatusResponse {
-    first_subaddress: u64,
-    num_subaddresses: u64,
-    first_block: u64,
-    next_block: u64,
 }
 
 /// Get the current status of a created monitor
@@ -155,11 +128,6 @@ fn monitor_status(
     }))
 }
 
-#[derive(Serialize, Default)]
-struct JsonBalanceResponse {
-    balance: String,
-}
-
 /// Balance check using a created monitor and subaddress index
 #[get("/monitors/<monitor_hex>/<subaddress_index>/balance")]
 fn balance(
@@ -182,17 +150,6 @@ fn balance(
     Ok(Json(JsonBalanceResponse {
         balance: balance.to_string(),
     }))
-}
-
-#[derive(Deserialize)]
-struct JsonRequestCodeRequest {
-    value: Option<u64>,
-    memo: Option<String>,
-}
-
-#[derive(Serialize, Default)]
-struct JsonRequestCodeResponse {
-    request_code: String,
 }
 
 /// Generates a request code with an optional value and memo
@@ -242,59 +199,6 @@ fn request_code(
     }))
 }
 
-#[derive(Deserialize, Serialize, Default)]
-struct JsonPublicAddress {
-    /// Hex encoded compressed ristretto bytes
-    view_public_key: String,
-    /// Hex encoded compressed ristretto bytes
-    spend_public_key: String,
-    /// Fog Report Server Url
-    fog_report_url: String,
-    /// Hex encoded signature bytes
-    fog_authority_sig: String,
-    /// String label for fog reports
-    fog_report_id: String,
-}
-
-// Helper conversion between json and protobuf
-impl TryFrom<&JsonPublicAddress> for PublicAddress {
-    type Error = String;
-
-    fn try_from(src: &JsonPublicAddress) -> Result<PublicAddress, String> {
-        // Decode the keys
-        let mut view_public_key = CompressedRistretto::new();
-        view_public_key.set_data(
-            hex::decode(&src.view_public_key)
-                .map_err(|err| format!("Failed to decode view key hex: {}", err))?,
-        );
-        let mut spend_public_key = CompressedRistretto::new();
-        spend_public_key.set_data(
-            hex::decode(&src.spend_public_key)
-                .map_err(|err| format!("Failed to decode spend key hex: {}", err))?,
-        );
-
-        // Reconstruct the public address as a protobuf
-        let mut public_address = PublicAddress::new();
-        public_address.set_view_public_key(view_public_key);
-        public_address.set_spend_public_key(spend_public_key);
-        public_address.set_fog_report_url(src.fog_report_url.clone());
-        public_address.set_fog_report_id(src.fog_report_id.clone());
-        public_address.set_fog_authority_sig(
-            hex::decode(&src.fog_authority_sig)
-                .map_err(|err| format!("Failed to decode fog authority sig hex: {}", err))?,
-        );
-
-        Ok(public_address)
-    }
-}
-
-#[derive(Deserialize, Serialize, Default)]
-struct JsonReadRequestResponse {
-    receiver: JsonPublicAddress,
-    value: String,
-    memo: String,
-}
-
 /// Retrieves the data in a request code
 #[get("/read-request/<request_code>")]
 fn read_request(
@@ -324,27 +228,6 @@ fn read_request(
         value: resp.get_value().to_string(),
         memo: resp.get_memo().to_string(),
     }))
-}
-
-#[derive(Deserialize, Serialize)]
-struct JsonSenderTxReceipt {
-    key_images: Vec<String>,
-    tombstone: u64,
-}
-
-#[derive(Deserialize, Serialize)]
-struct JsonReceiverTxReceipt {
-    recipient: JsonPublicAddress,
-    tx_public_key: String,
-    tx_out_hash: String,
-    tombstone: u64,
-    confirmation_number: String,
-}
-
-#[derive(Deserialize, Serialize)]
-struct JsonTransferResponse {
-    sender_tx_receipt: JsonSenderTxReceipt,
-    receiver_tx_receipt_list: Vec<JsonReceiverTxReceipt>,
 }
 
 /// Performs a transfer from a monitor and subaddress. The public keys and amount are in the POST data.
@@ -430,11 +313,6 @@ fn transfer(
     }))
 }
 
-#[derive(Serialize, Default)]
-struct JsonStatusResponse {
-    status: String,
-}
-
 /// Checks the status of a transfer given a key image and tombstone block
 #[post("/check-transfer-status", format = "json", data = "<receipt>")]
 fn check_transfer_status(
@@ -511,13 +389,6 @@ fn check_receiver_transfer_status(
         status: String::from(status_str),
     }))
 }
-
-#[derive(Serialize, Default)]
-struct JsonLedgerInfoResponse {
-    block_count: String,
-    txo_count: String,
-}
-
 /// Gets information about the entire ledger
 #[get("/ledger-info")]
 fn ledger_info(state: rocket::State<State>) -> Result<Json<JsonLedgerInfoResponse>, String> {
@@ -529,12 +400,6 @@ fn ledger_info(state: rocket::State<State>) -> Result<Json<JsonLedgerInfoRespons
         block_count: resp.block_count.to_string(),
         txo_count: resp.txo_count.to_string(),
     }))
-}
-
-#[derive(Serialize, Default)]
-struct JsonBlockInfoResponse {
-    key_image_count: String,
-    txo_count: String,
 }
 
 /// Retrieves the data in a request code
@@ -554,16 +419,6 @@ fn block_info(
         key_image_count: resp.key_image_count.to_string(),
         txo_count: resp.txo_count.to_string(),
     }))
-}
-
-#[derive(Serialize, Default)]
-struct JsonBlockDetailsResponse {
-    block_id: String,
-    version: u32,
-    parent_id: String,
-    index: String,
-    cumulative_txo_count: String,
-    contents_hash: String,
 }
 
 /// Retrieves the details for a given block.
@@ -589,22 +444,6 @@ fn block_details(
         contents_hash: hex::encode(&block.get_contents_hash().get_data()),
     }))
 }
-
-#[derive(Serialize, Default)]
-struct JsonProcessedTxOut {
-    monitor_id: String,
-    subaddress_index: u64,
-    public_key: String,
-    key_image: String,
-    value: String, // Needs to be String since Javascript ints are not 64 bit.
-    direction: String,
-}
-
-#[derive(Serialize, Default)]
-struct JsonProcessedBlockResponse {
-    tx_outs: Vec<JsonProcessedTxOut>,
-}
-
 /// Retreives processed block information.
 #[get("/processed-block/<monitor_hex>/<block_num>")]
 fn processed_block(
@@ -646,16 +485,6 @@ fn processed_block(
             })
             .collect(),
     }))
-}
-
-#[derive(Deserialize)]
-struct JsonAddressRequestCodeRequest {
-    url: String,
-}
-
-#[derive(Serialize, Default)]
-struct JsonAddressRequestCodeResponse {
-    request_code: String,
 }
 
 /// Generates an AddressRequest code with a URL for the client to POST payment instructions

@@ -1,8 +1,12 @@
 [package]
-name = "mobilecoind-json"
+name = "mc-mobilecoind-json"
 version = "0.1.0"
 authors = ["MobileCoin"]
 edition = "2018"
+
+[[bin]]
+name = "mobilecoind-json"
+path = "src/bin/main.rs"
 
 [dependencies]
 mc-api = { path = "../api" }
