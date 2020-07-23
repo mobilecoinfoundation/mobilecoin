@@ -6,10 +6,11 @@ use crate::error::WatcherDBError;
 
 use mc_common::{
     logger::{log, Logger},
-    HashMap, TimestampResultCode,
+    HashMap,
 };
 use mc_transaction_core::BlockSignature;
 use mc_util_serial::{decode, encode, Message};
+use mc_watcher_api::TimestampResultCode;
 
 use lmdb::{Cursor, Database, DatabaseFlags, Environment, RoTransaction, Transaction, WriteFlags};
 use std::{convert::TryInto, path::PathBuf, str::FromStr, sync::Arc};
@@ -233,8 +234,8 @@ impl WatcherDB {
             Some(earliest) => Ok((earliest, TimestampResultCode::TimestampFound)),
             None => {
                 // Check whether we are synced for all watched URLs
-                let highest_synced = self.highest_synced_block()?;
-                if highest_synced < block_index {
+                let highest_common = self.highest_common_block()?;
+                if highest_common < block_index {
                     Ok((u64::MAX, TimestampResultCode::WatcherBehind))
                 } else {
                     Ok((u64::MAX, TimestampResultCode::Unavailable))
@@ -570,7 +571,7 @@ mod test {
             let url1 = Url::parse("http://www.my_url1.com").unwrap();
             let url2 = Url::parse("http://www.my_url2.com").unwrap();
             let urls = vec![url1, url2];
-            let watcher_db = setup_watcher_db(logger.clone());
+            let watcher_db = setup_watcher_db(&urls, logger.clone());
 
             let blocks = setup_blocks();
 
@@ -599,7 +600,7 @@ mod test {
                 (1594679718, TimestampResultCode::TimestampFound)
             );
 
-            assert_eq!(watcher_db.highest_synced_block().unwrap(), 1);
+            assert_eq!(watcher_db.highest_common_block().unwrap(), 1);
             // Timestamp does not exist for block 2, but we are not yet fully synced
             assert_eq!(
                 watcher_db.get_block_timestamp(2).unwrap(),
@@ -609,7 +610,7 @@ mod test {
             watcher_db.update_last_synced(&urls[0], 2).unwrap();
             watcher_db.update_last_synced(&urls[1], 2).unwrap();
 
-            assert_eq!(watcher_db.highest_synced_block().unwrap(), 2);
+            assert_eq!(watcher_db.highest_common_block().unwrap(), 2);
             // We are fully synced,
             assert_eq!(
                 watcher_db.get_block_timestamp(2).unwrap(),
