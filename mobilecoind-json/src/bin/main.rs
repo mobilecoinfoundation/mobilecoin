@@ -49,9 +49,7 @@ fn entropy(state: rocket::State<State>) -> Result<Json<JsonEntropyResponse>, Str
         .mobilecoind_api_client
         .generate_entropy(&mc_mobilecoind_api::Empty::new())
         .map_err(|err| format!("Failed getting entropy: {}", err))?;
-    Ok(Json(JsonEntropyResponse {
-        entropy: hex::encode(resp.entropy),
-    }))
+    Ok(Json(JsonEntropyResponse::from(&resp)))
 }
 
 /// Creates a monitor. Data for the key and range is POSTed using the struct above.
@@ -84,9 +82,7 @@ fn create_monitor(
         .add_monitor(&req)
         .map_err(|err| format!("Failed adding monitor: {}", err))?;
 
-    Ok(Json(JsonMonitorResponse {
-        monitor_id: hex::encode(monitor_response.monitor_id),
-    }))
+    Ok(Json(JsonMonitorResponse::from(&monitor_response)))
 }
 
 /// Gets a list of existing monitors
@@ -96,9 +92,7 @@ fn monitors(state: rocket::State<State>) -> Result<Json<JsonMonitorListResponse>
         .mobilecoind_api_client
         .get_monitor_list(&mc_mobilecoind_api::Empty::new())
         .map_err(|err| format!("Failed getting monitor list: {}", err))?;
-    Ok(Json(JsonMonitorListResponse {
-        monitor_id: resp.get_monitor_id_list().iter().map(hex::encode).collect(),
-    }))
+    Ok(Json(JsonMonitorListResponse::from(&resp)))
 }
 
 /// Get the current status of a created monitor
@@ -118,14 +112,7 @@ fn monitor_status(
         .get_monitor_status(&req)
         .map_err(|err| format!("Failed getting monitor status: {}", err))?;
 
-    let status = resp.get_status();
-
-    Ok(Json(JsonMonitorStatusResponse {
-        first_subaddress: status.get_first_subaddress(),
-        num_subaddresses: status.get_num_subaddresses(),
-        first_block: status.get_first_block(),
-        next_block: status.get_next_block(),
-    }))
+    Ok(Json(JsonMonitorStatusResponse::from(&resp)))
 }
 
 /// Balance check using a created monitor and subaddress index
@@ -146,10 +133,8 @@ fn balance(
         .mobilecoind_api_client
         .get_balance(&req)
         .map_err(|err| format!("Failed getting balance: {}", err))?;
-    let balance = resp.get_balance();
-    Ok(Json(JsonBalanceResponse {
-        balance: balance.to_string(),
-    }))
+
+    Ok(Json(JsonBalanceResponse::from(&resp)))
 }
 
 /// Generates a request code with an optional value and memo
@@ -194,9 +179,7 @@ fn request_code(
         .get_request_code(&req)
         .map_err(|err| format!("Failed getting request code: {}", err))?;
 
-    Ok(Json(JsonRequestCodeResponse {
-        request_code: String::from(resp.get_b58_code()),
-    }))
+    Ok(Json(JsonRequestCodeResponse::from(&resp)))
 }
 
 /// Retrieves the data in a request code
@@ -212,22 +195,10 @@ fn read_request(
         .read_request_code(&req)
         .map_err(|err| format!("Failed reading request code: {}", err))?;
 
-    let receiver = resp.get_receiver();
-
     // The response contains the public keys encoded in the read request, as well as a memo and
     // requested value. This can be used as-is in the transfer call below, or the value can be
     // modified.
-    Ok(Json(JsonReadRequestResponse {
-        receiver: JsonPublicAddress {
-            view_public_key: hex::encode(receiver.get_view_public_key().get_data().to_vec()),
-            spend_public_key: hex::encode(receiver.get_spend_public_key().get_data().to_vec()),
-            fog_report_url: String::from(receiver.get_fog_report_url()),
-            fog_report_id: String::from(receiver.get_fog_report_id()),
-            fog_authority_sig: hex::encode(receiver.get_fog_authority_sig().to_vec()),
-        },
-        value: resp.get_value().to_string(),
-        memo: resp.get_memo().to_string(),
-    }))
+    Ok(Json(JsonReadRequestResponse::from(&resp)))
 }
 
 /// Performs a transfer from a monitor and subaddress. The public keys and amount are in the POST data.
@@ -269,48 +240,7 @@ fn transfer(
         .map_err(|err| format!("Failed to send payment: {}", err))?;
 
     // The receipt from the payment request can be used by the status check below
-    let receipt = resp.get_sender_tx_receipt();
-    let receiver_receipts = resp.get_receiver_tx_receipt_list();
-    Ok(Json(JsonTransferResponse {
-        sender_tx_receipt: JsonSenderTxReceipt {
-            key_images: receipt
-                .get_key_image_list()
-                .iter()
-                .map(|key_image| hex::encode(key_image.get_data()))
-                .collect(),
-            tombstone: receipt.get_tombstone(),
-        },
-        receiver_tx_receipt_list: receiver_receipts
-            .iter()
-            .map(|receipt| JsonReceiverTxReceipt {
-                recipient: JsonPublicAddress {
-                    view_public_key: hex::encode(
-                        receipt
-                            .get_recipient()
-                            .get_view_public_key()
-                            .get_data()
-                            .to_vec(),
-                    ),
-                    spend_public_key: hex::encode(
-                        receipt
-                            .get_recipient()
-                            .get_spend_public_key()
-                            .get_data()
-                            .to_vec(),
-                    ),
-                    fog_report_url: String::from(receipt.get_recipient().get_fog_report_url()),
-                    fog_report_id: String::from(receipt.get_recipient().get_fog_report_id()),
-                    fog_authority_sig: hex::encode(
-                        receipt.get_recipient().get_fog_authority_sig().to_vec(),
-                    ),
-                },
-                tx_public_key: hex::encode(receipt.get_tx_public_key().get_data().to_vec()),
-                tx_out_hash: hex::encode(receipt.get_tx_out_hash().to_vec()),
-                tombstone: receipt.get_tombstone(),
-                confirmation_number: hex::encode(receipt.get_tx_out_hash().to_vec()),
-            })
-            .collect(),
-    }))
+    Ok(Json(JsonTransferResponse::from(&resp)))
 }
 
 /// Checks the status of a transfer given a key image and tombstone block
@@ -338,16 +268,7 @@ fn check_transfer_status(
         .get_tx_status_as_sender(&req)
         .map_err(|err| format!("Failed getting status: {}", err))?;
 
-    let status_str = match resp.get_status() {
-        mc_mobilecoind_api::TxStatus::Unknown => "unknown",
-        mc_mobilecoind_api::TxStatus::Verified => "verified",
-        mc_mobilecoind_api::TxStatus::TombstoneBlockExceeded => "failed",
-        mc_mobilecoind_api::TxStatus::InvalidConfirmationNumber => "invalid_confirmation",
-    };
-
-    Ok(Json(JsonStatusResponse {
-        status: String::from(status_str),
-    }))
+    Ok(Json(JsonStatusResponse::from(&resp)))
 }
 
 /// Checks the status of a transfer given data for a specific receiver
@@ -378,17 +299,9 @@ fn check_receiver_transfer_status(
         .get_tx_status_as_receiver(&req)
         .map_err(|err| format!("Failed getting status: {}", err))?;
 
-    let status_str = match resp.get_status() {
-        mc_mobilecoind_api::TxStatus::Unknown => "unknown",
-        mc_mobilecoind_api::TxStatus::Verified => "verified",
-        mc_mobilecoind_api::TxStatus::TombstoneBlockExceeded => "failed",
-        mc_mobilecoind_api::TxStatus::InvalidConfirmationNumber => "invalid_confirmation",
-    };
-
-    Ok(Json(JsonStatusResponse {
-        status: String::from(status_str),
-    }))
+    Ok(Json(JsonStatusResponse::from(&resp)))
 }
+
 /// Gets information about the entire ledger
 #[get("/ledger-info")]
 fn ledger_info(state: rocket::State<State>) -> Result<Json<JsonLedgerInfoResponse>, String> {
@@ -396,10 +309,8 @@ fn ledger_info(state: rocket::State<State>) -> Result<Json<JsonLedgerInfoRespons
         .mobilecoind_api_client
         .get_ledger_info(&mc_mobilecoind_api::Empty::new())
         .map_err(|err| format!("Failed getting ledger info: {}", err))?;
-    Ok(Json(JsonLedgerInfoResponse {
-        block_count: resp.block_count.to_string(),
-        txo_count: resp.txo_count.to_string(),
-    }))
+
+    Ok(Json(JsonLedgerInfoResponse::from(&resp)))
 }
 
 /// Retrieves the data in a request code
@@ -415,10 +326,8 @@ fn block_info(
         .mobilecoind_api_client
         .get_block_info(&req)
         .map_err(|err| format!("Failed getting ledger info: {}", err))?;
-    Ok(Json(JsonBlockInfoResponse {
-        key_image_count: resp.key_image_count.to_string(),
-        txo_count: resp.txo_count.to_string(),
-    }))
+
+    Ok(Json(JsonBlockInfoResponse::from(&resp)))
 }
 
 /// Retrieves the details for a given block.
@@ -434,15 +343,8 @@ fn block_details(
         .mobilecoind_api_client
         .get_block(&req)
         .map_err(|err| format!("Failed getting block details: {}", err))?;
-    let block = resp.get_block();
-    Ok(Json(JsonBlockDetailsResponse {
-        block_id: hex::encode(&block.get_id().get_data()),
-        version: block.get_version(),
-        parent_id: hex::encode(&block.get_parent_id().get_data()),
-        index: block.get_index().to_string(),
-        cumulative_txo_count: block.get_cumulative_txo_count().to_string(),
-        contents_hash: hex::encode(&block.get_contents_hash().get_data()),
-    }))
+
+    Ok(Json(JsonBlockDetailsResponse::from(&resp)))
 }
 /// Retreives processed block information.
 #[get("/processed-block/<monitor_hex>/<block_num>")]
@@ -463,28 +365,7 @@ fn processed_block(
         .get_processed_block(&req)
         .map_err(|err| format!("Failed getting processed block: {}", err))?;
 
-    fn direction_enum_to_str(dir: &mc_mobilecoind_api::ProcessedTxOutDirection) -> &str {
-        match dir {
-            mc_mobilecoind_api::ProcessedTxOutDirection::Invalid => "invalid",
-            mc_mobilecoind_api::ProcessedTxOutDirection::Received => "received",
-            mc_mobilecoind_api::ProcessedTxOutDirection::Spent => "spent",
-        }
-    }
-
-    Ok(Json(JsonProcessedBlockResponse {
-        tx_outs: resp
-            .get_tx_outs()
-            .iter()
-            .map(|tx_out| JsonProcessedTxOut {
-                monitor_id: hex::encode(tx_out.get_monitor_id()),
-                subaddress_index: tx_out.subaddress_index,
-                public_key: hex::encode(tx_out.get_public_key().get_data()),
-                key_image: hex::encode(tx_out.get_key_image().get_data()),
-                value: tx_out.value.to_string(),
-                direction: direction_enum_to_str(&tx_out.get_direction()).to_owned(),
-            })
-            .collect(),
-    }))
+    Ok(Json(JsonProcessedBlockResponse::from(&resp)))
 }
 
 /// Generates an AddressRequest code with a URL for the client to POST payment instructions
@@ -501,9 +382,7 @@ fn address_request_code(
         .get_address_request_code(&req)
         .map_err(|err| format!("Failed address code: {}", err))?;
 
-    Ok(Json(JsonAddressRequestCodeResponse {
-        request_code: String::from(resp.get_b58_code()),
-    }))
+    Ok(Json(JsonAddressRequestCodeResponse::from(&resp)))
 }
 
 fn main() {
