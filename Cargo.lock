@@ -3065,6 +3065,7 @@ dependencies = [
  "subtle 2.2.3",
  "tempdir",
  "time",
+ "zeroize 1.1.0",
 ]
 
 [[package]]
@@ -3103,6 +3104,7 @@ dependencies = [
  "rand_core 0.5.1",
  "serde",
  "yaml-rust",
+ "zeroize 1.1.0",
 ]
 
 [[package]]

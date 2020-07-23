@@ -4,6 +4,7 @@ use crate::TxBuilderError;
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_transaction_core::tx::{TxOut, TxOutMembershipProof};
 use std::convert::TryFrom;
+use zeroize::Zeroize;
 
 /// Credentials required to construct a ring signature for an input.
 #[derive(Clone, Debug)]
@@ -82,5 +83,18 @@ impl InputCredentials {
             real_output_public_key,
             view_private_key,
         })
+    }
+}
+
+impl Zeroize for InputCredentials {
+    fn zeroize(&mut self) {
+        self.onetime_private_key.zeroize();
+        self.view_private_key.zeroize();
+    }
+}
+
+impl Drop for InputCredentials {
+    fn drop(&mut self) {
+        self.zeroize();
     }
 }
