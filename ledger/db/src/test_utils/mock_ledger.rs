@@ -206,7 +206,8 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
 
     let mut block_ids: Vec<BlockID> = Vec::with_capacity(n_blocks);
     let mut blocks_and_contents: Vec<(Block, BlockContents)> = Vec::with_capacity(n_blocks);
-
+    let mut global_txo_count: u64 = 0;
+    
     for block_index in 0..n_blocks {
         if block_index == 0 {
             // Create the origin block.
@@ -221,7 +222,8 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
 
             let outputs = vec![tx_out];
             let origin_block = Block::new_origin_block(&outputs);
-            let block_contents = BlockContents::new(vec![], outputs);
+            global_txo_count += outputs.len() as u64;
+            let block_contents = BlockContents::new(vec![], outputs, global_txo_count);
             block_ids.push(origin_block.id.clone());
             blocks_and_contents.push((origin_block, block_contents));
         } else {
@@ -237,7 +239,8 @@ pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
 
             let outputs = vec![tx_out];
             let key_images = vec![KeyImage::from(rng.next_u64())];
-            let block_contents = BlockContents::new(key_images, outputs);
+            global_txo_count += outputs.len() as u64;
+            let block_contents = BlockContents::new(key_images, outputs, global_txo_count);
 
             let block = Block::new_with_parent(
                 BLOCK_VERSION,

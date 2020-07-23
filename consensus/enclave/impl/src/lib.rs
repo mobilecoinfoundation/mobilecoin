@@ -488,7 +488,8 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         // infer the per-transaction relationships among outputs and/or key images.
         outputs.sort_by(|a, b| a.public_key.cmp(&b.public_key));
         key_images.sort();
-        let block_contents = BlockContents::new(key_images, outputs);
+        let global_txo_count: u64 = parent_block.cumulative_txo_count + outputs.len() as u64;
+        let block_contents = BlockContents::new(key_images, outputs, global_txo_count);
 
         // Form the block.
         let block = Block::new_with_parent(

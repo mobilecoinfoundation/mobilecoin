@@ -742,7 +742,7 @@ impl TryFrom<&blockchain::BlockContents> for mc_transaction_core::BlockContents 
         for output in source.get_outputs() {
             outputs.push(tx::TxOut::try_from(output)?);
         }
-        Ok(BlockContents::new(key_images, outputs))
+        Ok(BlockContents::new(key_images, outputs, source.global_txo_count))
     }
 }
 

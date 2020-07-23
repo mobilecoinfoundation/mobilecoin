@@ -61,7 +61,7 @@ impl Block {
         let root_element = TxOutMembershipElement::default();
         // The origin block does not contain any key images.
         let key_images = Vec::new();
-        let block_contents = BlockContents::new(key_images, outputs.to_vec());
+        let block_contents = BlockContents::new(key_images, outputs.to_vec(), cumulative_txo_count);
         let contents_hash = block_contents.hash();
         let id = compute_block_id(
             version,

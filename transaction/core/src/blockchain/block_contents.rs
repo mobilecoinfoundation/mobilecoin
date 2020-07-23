@@ -23,13 +23,18 @@ pub struct BlockContents {
     /// Outputs minted by this block.
     #[prost(message, repeated, tag = "2")]
     pub outputs: Vec<TxOut>,
+
+    /// Global txout index
+    #[prost(uint64, tag = "3")]
+    pub global_txo_count: u64,
 }
 
 impl BlockContents {
-    pub fn new(key_images: Vec<KeyImage>, outputs: Vec<TxOut>) -> Self {
+    pub fn new(key_images: Vec<KeyImage>, outputs: Vec<TxOut>, global_txo_count: u64) -> Self {
         Self {
             key_images,
             outputs,
+            global_txo_count,
         }
     }
 

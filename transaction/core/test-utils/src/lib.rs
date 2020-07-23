@@ -183,8 +183,9 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
 
                 let key_images = tx.key_images();
                 let outputs = tx.prefix.outputs.clone();
-
-                let block_contents = BlockContents::new(key_images, outputs);
+                let global_txo_count = parent.as_ref().unwrap().cumulative_txo_count + outputs.len() as u64;
+                
+                let block_contents = BlockContents::new(key_images, outputs, global_txo_count);
 
                 let block = Block::new(
                     BLOCK_VERSION,
@@ -212,8 +213,9 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
                     })
                     .collect();
 
+                let len = outputs.len() as u64;
                 let block = Block::new_origin_block(&outputs);
-                let block_contents = BlockContents::new(Vec::new(), outputs);
+                let block_contents = BlockContents::new(Vec::new(), outputs, len);
                 (block, block_contents)
             }
         };
@@ -263,8 +265,9 @@ pub fn get_blocks<T: Rng + RngCore + CryptoRng>(
 
         // Non-origin blocks must have at least one key image.
         let key_images = vec![KeyImage::from(block_index as u64)];
+        let global_txo_count = last_block.cumulative_txo_count + outputs.len() as u64;
 
-        let block_contents = BlockContents::new(key_images, outputs);
+        let block_contents = BlockContents::new(key_images, outputs, global_txo_count);
 
         // Fake proofs
         let root_element = TxOutMembershipElement {

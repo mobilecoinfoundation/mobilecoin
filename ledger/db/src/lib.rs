@@ -188,6 +188,7 @@ impl Ledger for LedgerDB {
         Ok(BlockContents {
             key_images: key_image_list.key_images,
             outputs,
+            global_txo_count: self.tx_out_store.num_tx_outs(&db_transaction).unwrap(),
         })
     }
 

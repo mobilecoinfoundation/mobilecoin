@@ -48,6 +48,9 @@ message BlockContents {
 
     // Outputs created in this block.
     repeated external.TxOut outputs = 2;
+
+    // Global TXO count
+    uint64 global_txo_count = 3;
 }
 
 message BlockSignature {
