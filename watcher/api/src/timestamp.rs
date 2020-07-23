@@ -1,7 +1,12 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
+//! Types for processing timestamps in the watcher API.
+
 use core::convert::TryFrom;
 use displaydoc::Display;
 use serde::{Deserialize, Serialize};
 
+/// Enumerates result codes when obtaining a block timstamp from the watcher
 #[derive(PartialEq, Eq, Debug, Display, Clone, Serialize, Deserialize)]
 #[repr(u32)]
 pub enum TimestampResultCode {
