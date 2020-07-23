@@ -5,7 +5,6 @@
 
 use crate::{
     error::{Error, Result},
-    grpcio_utils::ConnectionUriGrpcioChannel,
     traits::{
         AttestationError, AttestedConnection, BlockchainConnection, Connection, UserTxConnection,
     },
@@ -30,6 +29,7 @@ use mc_crypto_keys::X25519;
 use mc_crypto_noise::CipherError;
 use mc_crypto_rand::McRng;
 use mc_transaction_core::{tx::Tx, Block, BlockID, BlockIndex};
+use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_serial::encode;
 use mc_util_uri::{ConnectionUri, ConsensusClientUri as ClientUri, UriConversionError};
 use secrecy::{ExposeSecret, SecretVec};

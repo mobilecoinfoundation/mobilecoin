@@ -18,7 +18,7 @@ use mc_common::{
     logger::{log, Logger},
     NodeID, ResponderId,
 };
-use mc_connection::{Connection, ConnectionManager, ConnectionUriGrpcioServer};
+use mc_connection::{Connection, ConnectionManager};
 use mc_consensus_api::{consensus_client_grpc, consensus_common_grpc, consensus_peer_grpc};
 use mc_consensus_enclave::ConsensusEnclaveProxy;
 use mc_ledger_db::{Ledger, LedgerDB};
@@ -26,7 +26,8 @@ use mc_peers::{PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
 use mc_sgx_report_cache_untrusted::{Error as ReportCacheError, ReportCacheThread};
 use mc_transaction_core::tx::TxHash;
 use mc_util_grpc::{
-    AdminServer, BuildInfoService, GetConfigJsonFn, HealthCheckStatus, HealthService,
+    AdminServer, BuildInfoService, ConnectionUriGrpcioServer, GetConfigJsonFn, HealthCheckStatus,
+    HealthService,
 };
 use mc_util_uri::{ConnectionUri, ConsensusPeerUriApi};
 use serde_json::json;

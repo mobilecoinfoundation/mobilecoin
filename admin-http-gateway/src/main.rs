@@ -6,8 +6,7 @@
 
 use grpcio::ChannelBuilder;
 use mc_common::logger::{create_app_logger, log, o};
-use mc_connection::ConnectionUriGrpcioChannel;
-use mc_util_grpc::{admin, admin_grpc::AdminApiClient, Empty};
+use mc_util_grpc::{admin, admin_grpc::AdminApiClient, ConnectionUriGrpcioChannel, Empty};
 use mc_util_uri::AdminUri;
 use rocket::{
     get, post,
