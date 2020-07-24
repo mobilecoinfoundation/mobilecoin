@@ -907,9 +907,9 @@ dependencies = [
 
 [[package]]
 name = "displaydoc"
-version = "0.1.6"
+version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6269d127174b18c665e683e23c2c55d3735fadbec4181c7c70b0450b764bfa5"
+checksum = "adc2ab4d5a16117f9029e9a6b5e4e79f4c67f6519bc134210d4d4a04ba31f41b"
 dependencies = [
  "proc-macro2 1.0.12",
  "quote 1.0.4",
@@ -1994,6 +1994,7 @@ dependencies = [
  "cfg-if",
  "chrono",
  "digest",
+ "displaydoc",
  "failure",
  "generic-array 0.12.3",
  "hex 0.3.2",
