@@ -6,18 +6,27 @@
 //! 2) An http(s) server for receiving client requests which will then be forwarded to the
 //!    mobilecoind instance sitting behind the private part of the mirror.
 
+#![feature(decl_macro)]
+
 mod mirror_service;
+mod query;
 
 use grpcio::{EnvBuilder, ServerBuilder};
 use mc_common::logger::{create_app_logger, log, o};
-use mc_mobilecoind_mirror::uri::MobilecoindMirrorUri;
+use mc_mobilecoind_json::data_types::JsonProcessedBlockResponse;
+use mc_mobilecoind_mirror::{
+    mobilecoind_mirror_api::{GetProcessedBlockRequest, QueryRequest},
+    uri::MobilecoindMirrorUri,
+};
 use mc_util_grpc::{BuildInfoService, ConnectionUriGrpcioServer, HealthService};
 use mc_util_uri::{ConnectionUri, Uri, UriScheme};
 use mirror_service::MirrorService;
+use query::QueryManager;
 use rocket::{
     config::{Config as RocketConfig, Environment as RocketEnvironment},
-    routes,
+    get, routes,
 };
+use rocket_contrib::json::Json;
 use std::sync::Arc;
 use structopt::StructOpt;
 
@@ -57,6 +66,39 @@ pub struct Config {
     pub num_workers: Option<u16>,
 }
 
+/// State that is accessible by all rocket requests
+struct State {
+    query_manager: QueryManager,
+}
+
+/// Retreives processed block information.
+#[get("/processed-block/<block_num>")]
+fn processed_block(
+    state: rocket::State<State>,
+    block_num: u64,
+) -> Result<Json<JsonProcessedBlockResponse>, String> {
+    let mut get_processed_block = GetProcessedBlockRequest::new();
+    get_processed_block.set_block(block_num);
+
+    let mut query_request = QueryRequest::new();
+    query_request.set_get_processed_block(get_processed_block);
+
+    let query = state
+        .query_manager
+        .enqueue_query("TODO".into(), query_request)?;
+    let query_response = query.wait()?;
+
+    if query_response.has_error() {
+        return Err(query_response.get_error().into());
+    }
+    if !query_response.has_get_processed_block() {
+        return Err("Incorrect response type received".into());
+    }
+
+    let response = query_response.get_get_processed_block();
+    Ok(Json(JsonProcessedBlockResponse::from(response)))
+}
+
 fn main() {
     mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
@@ -71,12 +113,15 @@ fn main() {
         config.client_listen_uri.addr(),
     );
 
+    // Common state.
+    let query_manager = QueryManager::new();
+
     // Start the mirror-facing GRPC server.
     log::info!(logger, "Starting mirror GRPC server");
 
     let build_info_service = BuildInfoService::new(logger.clone()).into_service();
     let health_service = HealthService::new(None, logger.clone()).into_service();
-    let mirror_service = MirrorService::new(logger.clone()).into_service();
+    let mirror_service = MirrorService::new(query_manager.clone(), logger.clone()).into_service();
 
     let env = Arc::new(
         EnvBuilder::new()
@@ -119,5 +164,8 @@ fn main() {
         .expect("Failed creating client http server config");
 
     log::info!(logger, "Starting client web server");
-    rocket::custom(rocket_config).mount("/", routes![]).launch();
+    rocket::custom(rocket_config)
+        .mount("/", routes![processed_block,])
+        .manage(State { query_manager })
+        .launch();
 }
