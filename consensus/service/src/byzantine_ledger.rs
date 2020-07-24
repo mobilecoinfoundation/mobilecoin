@@ -626,7 +626,7 @@ impl<
 
         let msg_opt = self
             .scp
-            .nominate(
+            .propose_values(
                 self.cur_slot,
                 BTreeSet::from_iter(
                     self.pending_values
