@@ -259,12 +259,12 @@ impl<'src> TryFrom<&'src VerificationReport> for VerificationReportData {
     /// VerificationReportData object
     fn try_from(src: &'src VerificationReport) -> Result<Self, VerifyError> {
         // Parse the JSON into a hashmap
-        let (chars_parsed, data) = super::json::parse(&src.http_body);
+        let (chars_parsed, data) = super::json::parse(src.http_body.trim());
         if data.is_none() {
             return Err(JsonError::NoData.into());
         }
 
-        if chars_parsed < src.http_body.len() {
+        if chars_parsed < src.http_body.trim().len() {
             return Err(JsonError::IncompleteParse(chars_parsed).into());
         }
 
@@ -746,7 +746,7 @@ mod test {
         let report = VerificationReport {
             sig: VerificationSignature::default(),
             chain: Vec::default(),
-            http_body: String::from(IAS_WITH_PIB),
+            http_body: String::from(IAS_WITH_PIB.trim()),
         };
 
         let data = VerificationReportData::try_from(&report)
