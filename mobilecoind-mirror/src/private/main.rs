@@ -18,6 +18,20 @@ use mc_util_grpc::ConnectionUriGrpcioChannel;
 use std::{collections::HashMap, str::FromStr, sync::Arc, thread::sleep, time::Duration};
 use structopt::StructOpt;
 
+#[derive(Clone, Debug)]
+pub struct MonitorId(pub Vec<u8>);
+impl FromStr for MonitorId {
+    type Err = String;
+    fn from_str(src: &str) -> Result<Self, Self::Err> {
+        let bytes =
+            hex::decode(src).map_err(|err| format!("Error decoding monitor id: {:?}", err))?;
+        if bytes.len() != 32 {
+            return Err("monitor id needs to be exactly 32 bytes".into());
+        }
+        Ok(Self(bytes))
+    }
+}
+
 /// Command line config
 #[derive(Clone, Debug, StructOpt)]
 #[structopt(
@@ -40,6 +54,11 @@ pub struct Config {
     /// How many seconds to wait between polling.
     #[structopt(long, default_value = "1", parse(try_from_str=parse_duration_in_seconds))]
     pub poll_interval: Duration,
+
+    /// Monitor id to operate with. If not provided, mobilecoind will be queried and if it has only
+    /// one monitor id that one would be automatically chosen.
+    #[structopt(long)]
+    pub monitor_id: Option<MonitorId>,
 }
 
 fn main() {
@@ -84,6 +103,19 @@ fn main() {
         MobilecoindMirrorClient::new(ch)
     };
 
+    // Figure out which monitor id we are working with.
+    let monitor_id = config.monitor_id.map(|m| m.0.clone()).unwrap_or_else(|| {
+        let response = mobilecoind_api_client.get_monitor_list(&mc_mobilecoind_api::Empty::new()).expect("Failed querying mobilecoind for list of configured monitors");
+        match response.monitor_id_list.len() {
+            0 => panic!("Mobilecoind has no monitors configured"),
+            1 => response.monitor_id_list[0].to_vec(),
+            _ => {
+                let monitor_ids = response.get_monitor_id_list().iter().map(hex::encode).collect::<Vec<_>>();
+                panic!("Mobilecoind has more than one configured monitor, use --monitor-id to select which one to use. The following monitor ids were reported: {:?}", monitor_ids);
+            }
+    }});
+    log::info!(logger, "Monitor id: {}", hex::encode(&monitor_id));
+
     // Main polling loop.
     log::debug!(logger, "Entering main loop");
 
@@ -116,14 +148,19 @@ fn main() {
 
                     pending_responses.insert(
                         query_id.clone(),
-                        process_request(&mobilecoind_api_client, query_request, &query_logger)
-                            .unwrap_or_else(|err| {
-                                log::error!(query_logger, "process_request failed: {:?}", err);
+                        process_request(
+                            &mobilecoind_api_client,
+                            &monitor_id,
+                            query_request,
+                            &query_logger,
+                        )
+                        .unwrap_or_else(|err| {
+                            log::error!(query_logger, "process_request failed: {:?}", err);
 
-                                let mut err_query_response = QueryResponse::new();
-                                err_query_response.set_error(err.to_string());
-                                err_query_response
-                            }),
+                            let mut err_query_response = QueryResponse::new();
+                            err_query_response.set_error(err.to_string());
+                            err_query_response
+                        }),
                     );
                 }
             }
@@ -143,6 +180,7 @@ fn main() {
 
 fn process_request(
     mobilecoind_api_client: &MobilecoindApiClient,
+    monitor_id: &Vec<u8>,
     query_request: &QueryRequest,
     logger: &Logger,
 ) -> grpcio::Result<QueryResponse> {
@@ -152,7 +190,7 @@ fn process_request(
     if query_request.has_get_processed_block() {
         let mirror_request = query_request.get_get_processed_block();
         let mut mobilecoind_request = mc_mobilecoind_api::GetProcessedBlockRequest::new();
-        // TODO monitor!
+        mobilecoind_request.set_monitor_id(monitor_id.clone());
         mobilecoind_request.set_block(mirror_request.block);
 
         log::info!(
