@@ -67,7 +67,7 @@ pub struct PublicAddress {
     /// A signature with the user's spend_private_key over the fog authority key fingerprint.
     /// Empty if no fog for this public address
     #[prost(bytes, tag = "5")]
-    fog_authority_sig: Vec<u8>,
+    fog_authority_fingerprint_sig: Vec<u8>,
 }
 
 impl fmt::Display for PublicAddress {
@@ -104,7 +104,7 @@ impl PublicAddress {
             spend_public_key: *spend_public_key,
             fog_report_url: Default::default(),
             fog_report_id: Default::default(),
-            fog_authority_sig: Default::default(),
+            fog_authority_fingerprint_sig: Default::default(),
         }
     }
 
@@ -115,21 +115,21 @@ impl PublicAddress {
     /// `view_public_key` - The user's public subaddress view key `C`,
     /// `fog_report_url` - User's fog report server url
     /// `fog_report_id` - The id labelling the report to use, from among the several reports which might be served by the fog report server.
-    /// `fog_authority_sig` - A signature over the fog authority fingerprint using the subaddress_spend_private_key
+    /// `fog_authority_fingerprint_sig` - A signature over the fog authority fingerprint using the subaddress_spend_private_key
     #[inline]
     pub fn new_with_fog(
         spend_public_key: &RistrettoPublic,
         view_public_key: &RistrettoPublic,
         fog_report_url: impl ToString,
         fog_report_id: String,
-        fog_authority_sig: Vec<u8>,
+        fog_authority_fingerprint_sig: Vec<u8>,
     ) -> Self {
         Self {
             view_public_key: *view_public_key,
             spend_public_key: *spend_public_key,
             fog_report_url: fog_report_url.to_string(),
             fog_report_id,
-            fog_authority_sig,
+            fog_authority_fingerprint_sig,
         }
     }
 
@@ -153,11 +153,11 @@ impl PublicAddress {
     }
 
     /// Get the optional fog authority sig (if it exists / is not empty).
-    pub fn fog_authority_sig(&self) -> Option<&[u8]> {
-        if self.fog_authority_sig.is_empty() {
+    pub fn fog_authority_fingerprint_sig(&self) -> Option<&[u8]> {
+        if self.fog_authority_fingerprint_sig.is_empty() {
             None
         } else {
-            Some(&self.fog_authority_sig)
+            Some(&self.fog_authority_fingerprint_sig)
         }
     }
 
@@ -197,7 +197,7 @@ pub struct AccountKey {
 
     /// Fog Authority Key Fingerprint (if user has Fog service), empty otherwise
     #[prost(bytes, tag = "5")]
-    fog_authority_key_fingerprint: Vec<u8>,
+    fog_authority_fingerprint: Vec<u8>,
 }
 
 // Note: Hash, Ord is implemented in terms of default_subaddress() because
@@ -242,7 +242,7 @@ impl AccountKey {
             view_private_key: *view_private_key,
             fog_report_url: Default::default(),
             fog_report_id: Default::default(),
-            fog_authority_key_fingerprint: Default::default(),
+            fog_authority_fingerprint: Default::default(),
         }
     }
 
@@ -268,7 +268,7 @@ impl AccountKey {
             view_private_key: *view_private_key,
             fog_report_url: fog_report_url.to_string(),
             fog_report_id,
-            fog_authority_key_fingerprint: fog_authority.as_ref().to_vec(),
+            fog_authority_fingerprint: fog_authority.as_ref().to_vec(),
         }
     }
 
@@ -292,11 +292,11 @@ impl AccountKey {
     }
 
     /// Access the fog authority key fingerprint (if it exists).
-    pub fn fog_authority_key_fingerprint(&self) -> Option<&[u8]> {
-        if self.fog_authority_key_fingerprint.is_empty() {
+    pub fn fog_authority_fingerprint(&self) -> Option<&[u8]> {
+        if self.fog_authority_fingerprint.is_empty() {
             None
         } else {
-            Some(&self.fog_authority_key_fingerprint)
+            Some(&self.fog_authority_fingerprint)
         }
     }
 
@@ -362,7 +362,7 @@ impl AccountKey {
             spend_public_key: subaddress_spend_public,
             fog_report_url: self.fog_report_url.clone(),
             fog_report_id: self.fog_report_id.clone(),
-            fog_authority_sig: Default::default(),
+            fog_authority_fingerprint_sig: Default::default(),
         };
 
         // FIXME: MC-1614 Pending cryptographer review
@@ -372,9 +372,9 @@ impl AccountKey {
             let sig = mc_crypto_sig::sign(
                 FOG_AUTHORITY_SIGNATURE_TAG,
                 &view_private,
-                &self.fog_authority_key_fingerprint,
+                &self.fog_authority_fingerprint,
             );
-            result.fog_authority_sig = sig.to_bytes().to_vec();
+            result.fog_authority_fingerprint_sig = sig.to_bytes().to_vec();
         }
 
         result
@@ -438,8 +438,9 @@ mod account_key_tests {
 
     // Helper method to verify the signature of a public address
     fn verify_signature(subaddress: &PublicAddress, fingerprint: &[u8]) {
-        let signature = mc_crypto_sig::Signature::from_bytes(&subaddress.fog_authority_sig)
-            .expect("Could not construct signature from fog authority sig bytes");
+        let signature =
+            mc_crypto_sig::Signature::from_bytes(&subaddress.fog_authority_fingerprint_sig)
+                .expect("Could not construct signature from fog authority sig bytes");
         let result = mc_crypto_sig::verify(
             FOG_AUTHORITY_SIGNATURE_TAG,
             &subaddress.view_public_key,
@@ -587,13 +588,13 @@ mod account_key_tests {
 
     #[test]
     // Subaddress fog authority signature should verify
-    fn test_fog_authority_signature() {
+    fn test_fog_authority_fingerprint_signature() {
         let mut rng: StdRng = SeedableRng::from_seed([42u8; 32]);
         let view_private = RistrettoPrivate::from_random(&mut rng);
         let spend_private = RistrettoPrivate::from_random(&mut rng);
         let fog_url = "fog://example.com";
-        let mut fog_authority_key_fingerprint = [0u8; 32];
-        rng.fill_bytes(&mut fog_authority_key_fingerprint);
+        let mut fog_authority_fingerprint = [0u8; 32];
+        rng.fill_bytes(&mut fog_authority_fingerprint);
         let fog_report_key = String::from("");
 
         let account_key = AccountKey::new_with_fog(
@@ -601,13 +602,13 @@ mod account_key_tests {
             &view_private,
             fog_url,
             fog_report_key,
-            fog_authority_key_fingerprint,
+            fog_authority_fingerprint,
         );
 
         let index = rng.next_u64();
         let subaddress = account_key.subaddress(index);
 
-        // Note: The fog_authority_key_fingerprint is published, so it is known by the verifier.
-        verify_signature(&subaddress, &fog_authority_key_fingerprint);
+        // Note: The fog_authority_fingerprint is published, so it is known by the verifier.
+        verify_signature(&subaddress, &fog_authority_fingerprint);
     }
 }

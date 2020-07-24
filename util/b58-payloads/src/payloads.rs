@@ -118,7 +118,7 @@ pub struct RequestPayload {
     pub memo: String,
 
     /// Bytes of user's signature over fog authority key (Version 4+)
-    pub fog_authority_sig: Vec<u8>,
+    pub fog_authority_fingerprint_sig: Vec<u8>,
 
     /// The key labeling fog reports for this public address (Version 4+)
     pub fog_report_id: String,
@@ -133,7 +133,7 @@ impl fmt::Debug for RequestPayload {
             hex_fmt::HexFmt(&self.view_public_key),
             hex_fmt::HexFmt(&self.spend_public_key),
             self.fog_report_url,
-            hex_fmt::HexFmt(&self.fog_authority_sig),
+            hex_fmt::HexFmt(&self.fog_authority_fingerprint_sig),
             self.fog_report_id,
             self.value,
             self.memo
@@ -182,11 +182,15 @@ impl RequestPayload {
             validate_memo(&payload.memo)?;
         }
         if payload.version >= 4 {
-            let fog_authority_sig_size_byte =
+            let fog_authority_fingerprint_sig_size_byte =
                 checked_split_off(&mut buffer_bytes, 1, "fog_sig_size_byte")?;
-            let fog_authority_sig_size = fog_authority_sig_size_byte[0] as usize;
-            payload.fog_authority_sig =
-                checked_split_off(&mut buffer_bytes, fog_authority_sig_size, "fog_sig_bytes")?;
+            let fog_authority_fingerprint_sig_size =
+                fog_authority_fingerprint_sig_size_byte[0] as usize;
+            payload.fog_authority_fingerprint_sig = checked_split_off(
+                &mut buffer_bytes,
+                fog_authority_fingerprint_sig_size,
+                "fog_sig_bytes",
+            )?;
 
             let fog_report_id_size_byte =
                 checked_split_off(&mut buffer_bytes, 1, "fog_report_id_size_byte")?;
@@ -209,7 +213,7 @@ impl RequestPayload {
             value: 0,
             memo: "".to_owned(),
             fog_report_id: Default::default(),
-            fog_authority_sig: Default::default(),
+            fog_authority_fingerprint_sig: Default::default(),
         })
     }
 
@@ -265,11 +269,11 @@ impl RequestPayload {
         value: u64,
         memo: &str,
         fog_report_id: &str,
-        fog_authority_sig: &[u8],
+        fog_authority_fingerprint_sig: &[u8],
     ) -> Result<Self, Error> {
         let mut result = RequestPayload::new_v3(view_key, spend_key, fog_report_url, value, memo)?;
         result.fog_report_id = fog_report_id.to_owned();
-        result.fog_authority_sig = fog_authority_sig.to_vec();
+        result.fog_authority_fingerprint_sig = fog_authority_fingerprint_sig.to_vec();
         result.version = 4;
         Ok(result)
     }
@@ -285,8 +289,8 @@ impl RequestPayload {
     /// [F..F+8]          u64 picoMOB value requested
     /// [F+8]             length of memo (m < 256)
     /// [F+9..M=(F+9+m)]  memo as utf-8 encoded string (< 256 bytes)
-    /// [FIXME]           length of fog_authority_sig
-    /// [FIXME]           fog_authority_sig bytes (< 256 bytes)
+    /// [FIXME]           length of fog_authority_fingerprint_sig
+    /// [FIXME]           fog_authority_fingerprint_sig bytes (< 256 bytes)
     /// [FIXME]           length of fog_report_id
     /// [FIXME]           fog_report_id bytes (< 256 bytes)
     /// [M..]             future version data (ignored)
@@ -310,8 +314,8 @@ impl RequestPayload {
             bytes_vec.extend_from_slice(&self.memo.as_bytes());
         }
         if self.version >= 4 {
-            bytes_vec.push(self.fog_authority_sig.len() as u8);
-            bytes_vec.extend_from_slice(self.fog_authority_sig.as_ref());
+            bytes_vec.push(self.fog_authority_fingerprint_sig.len() as u8);
+            bytes_vec.extend_from_slice(self.fog_authority_fingerprint_sig.as_ref());
             bytes_vec.push(self.fog_report_id.len() as u8);
             bytes_vec.extend_from_slice(self.fog_report_id.as_ref());
         }
@@ -334,7 +338,7 @@ impl TryFrom<&RequestPayload> for PublicAddress {
                 &view_key,
                 &src.fog_report_url,
                 src.fog_report_id.clone(),
-                src.fog_authority_sig.clone(),
+                src.fog_authority_fingerprint_sig.clone(),
             )
         })
     }
@@ -350,8 +354,8 @@ impl TryFrom<&PublicAddress> for RequestPayload {
         if let Some(fog_report_url_string) = src.fog_report_url() {
             payload.version = 4;
             payload.fog_report_url = fog_report_url_string.to_string();
-            if let Some(sig) = src.fog_authority_sig() {
-                payload.fog_authority_sig = sig.to_vec();
+            if let Some(sig) = src.fog_authority_fingerprint_sig() {
+                payload.fog_authority_fingerprint_sig = sig.to_vec();
             }
             if let Some(id) = src.fog_report_id() {
                 payload.fog_report_id = id.to_string();

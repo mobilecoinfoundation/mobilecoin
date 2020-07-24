@@ -117,7 +117,7 @@ pub struct JsonPublicAddress {
     pub fog_report_url: String,
 
     /// Hex encoded signature bytes
-    pub fog_authority_sig: String,
+    pub fog_authority_fingerprint_sig: String,
 
     /// String label for fog reports
     pub fog_report_id: String,
@@ -130,7 +130,7 @@ impl From<&PublicAddress> for JsonPublicAddress {
             spend_public_key: hex::encode(&src.get_spend_public_key().get_data()),
             fog_report_url: String::from(src.get_fog_report_url()),
             fog_report_id: String::from(src.get_fog_report_id()),
-            fog_authority_sig: hex::encode(&src.get_fog_authority_sig()),
+            fog_authority_fingerprint_sig: hex::encode(&src.get_fog_authority_fingerprint_sig()),
         }
     }
 }
@@ -158,8 +158,8 @@ impl TryFrom<&JsonPublicAddress> for PublicAddress {
         public_address.set_spend_public_key(spend_public_key);
         public_address.set_fog_report_url(src.fog_report_url.clone());
         public_address.set_fog_report_id(src.fog_report_id.clone());
-        public_address.set_fog_authority_sig(
-            hex::decode(&src.fog_authority_sig)
+        public_address.set_fog_authority_fingerprint_sig(
+            hex::decode(&src.fog_authority_fingerprint_sig)
                 .map_err(|err| format!("Failed to decode fog authority sig hex: {}", err))?,
         );
 
