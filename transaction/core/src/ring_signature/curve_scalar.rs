@@ -16,8 +16,9 @@ use mc_util_repr_bytes::{
 };
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroize;
 
-#[derive(Copy, Clone, Default, Eq, Serialize, Deserialize, Digestible)]
+#[derive(Copy, Clone, Default, Eq, Serialize, Deserialize, Digestible, Zeroize)]
 pub struct CurveScalar {
     pub scalar: Scalar,
 }

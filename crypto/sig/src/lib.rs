@@ -45,7 +45,7 @@ pub fn sign(context_tag: &[u8], private_key: &RistrettoPrivate, message: &[u8]) 
 
     // Context provides domain separation for signature
     let ctx = signing_context(context_tag);
-    // NOTE: The fog_authority_sig is deterministic due to using the above hash as the rng seed
+    // NOTE: The fog_authority_fingerprint_sig is deterministic due to using the above hash as the rng seed
     let mut csprng: FixedRng = SeedableRng::from_seed(nonce.into());
     keypair.sign_rng(ctx.bytes(message), &mut csprng)
 }

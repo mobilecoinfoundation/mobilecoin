@@ -907,9 +907,9 @@ dependencies = [
 
 [[package]]
 name = "displaydoc"
-version = "0.1.7"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "adc2ab4d5a16117f9029e9a6b5e4e79f4c67f6519bc134210d4d4a04ba31f41b"
+checksum = "e6269d127174b18c665e683e23c2c55d3735fadbec4181c7c70b0450b764bfa5"
 dependencies = [
  "proc-macro2 1.0.12",
  "quote 1.0.4",
@@ -1909,7 +1909,6 @@ version = "0.5.0"
 dependencies = [
  "grpcio",
  "mc-common",
- "mc-connection",
  "mc-util-grpc",
  "mc-util-uri",
  "rocket",
@@ -1994,7 +1993,6 @@ dependencies = [
  "cfg-if",
  "chrono",
  "digest",
- "displaydoc",
  "failure",
  "generic-array 0.12.3",
  "hex 0.3.2",
@@ -2124,6 +2122,7 @@ dependencies = [
  "mc-crypto-noise",
  "mc-crypto-rand",
  "mc-transaction-core",
+ "mc-util-grpc",
  "mc-util-host-cert",
  "mc-util-serial",
  "mc-util-uri",
@@ -2713,6 +2712,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-mobilecoind-json"
+version = "0.1.0"
+dependencies = [
+ "grpcio",
+ "hex 0.4.2",
+ "mc-api",
+ "mc-common",
+ "mc-mobilecoind-api",
+ "protobuf",
+ "rocket",
+ "rocket_contrib",
+ "serde",
+ "serde_derive",
+ "structopt",
+]
+
+[[package]]
 name = "mc-peers"
 version = "0.5.0"
 dependencies = [
@@ -2733,6 +2749,7 @@ dependencies = [
  "mc-ledger-db",
  "mc-peers-test-utils",
  "mc-transaction-core",
+ "mc-util-grpc",
  "mc-util-serial",
  "mc-util-uri",
  "protobuf",
@@ -3066,6 +3083,7 @@ dependencies = [
  "subtle 2.2.3",
  "tempdir",
  "time",
+ "zeroize 1.1.0",
 ]
 
 [[package]]
@@ -3104,6 +3122,7 @@ dependencies = [
  "rand_core 0.5.1",
  "serde",
  "yaml-rust",
+ "zeroize 1.1.0",
 ]
 
 [[package]]
@@ -3229,7 +3248,6 @@ dependencies = [
  "hex_fmt",
  "lazy_static",
  "mc-common",
- "mc-connection",
  "mc-util-build-grpc",
  "mc-util-build-info",
  "mc-util-metrics",
@@ -3391,12 +3409,21 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-serial",
  "mc-util-test-helper",
+ "mc-watcher-api",
  "prost",
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
  "structopt",
  "tempdir",
  "url 2.1.1",
+]
+
+[[package]]
+name = "mc-watcher-api"
+version = "0.5.0"
+dependencies = [
+ "displaydoc",
+ "serde",
 ]
 
 [[package]]
@@ -3540,23 +3567,6 @@ checksum = "396aa0f2003d7df8395cb93e09871561ccc3e785f0acb369170e8cc74ddf9226"
 dependencies = [
  "socket2",
  "winapi 0.3.8",
-]
-
-[[package]]
-name = "mobilecoind-json"
-version = "0.1.0"
-dependencies = [
- "grpcio",
- "hex 0.4.2",
- "mc-api",
- "mc-common",
- "mc-mobilecoind-api",
- "protobuf",
- "rocket",
- "rocket_contrib",
- "serde",
- "serde_derive",
- "structopt",
 ]
 
 [[package]]

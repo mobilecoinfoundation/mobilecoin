@@ -1,14 +1,17 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
+//! JSON wrapper for the mobilecoind API.
+
 #![feature(proc_macro_hygiene, decl_macro)]
 
 use grpcio::{ChannelBuilder, ChannelCredentialsBuilder};
-use protobuf::RepeatedField;
-
 use mc_api::external::{CompressedRistretto, KeyImage, PublicAddress};
 use mc_common::logger::{create_app_logger, log, o};
 use mc_mobilecoind_api::mobilecoind_api_grpc::MobilecoindApiClient;
+use mc_mobilecoind_json::data_types::*;
+use protobuf::RepeatedField;
 use rocket::{get, post, routes};
 use rocket_contrib::json::Json;
-use serde_derive::{Deserialize, Serialize};
 use std::{convert::TryFrom, sync::Arc};
 use structopt::StructOpt;
 
@@ -39,11 +42,6 @@ struct State {
     pub mobilecoind_api_client: MobilecoindApiClient,
 }
 
-#[derive(Serialize, Default)]
-struct JsonEntropyResponse {
-    entropy: String,
-}
-
 /// Requests a new root entropy from mobilecoind
 #[get("/entropy")]
 fn entropy(state: rocket::State<State>) -> Result<Json<JsonEntropyResponse>, String> {
@@ -51,21 +49,7 @@ fn entropy(state: rocket::State<State>) -> Result<Json<JsonEntropyResponse>, Str
         .mobilecoind_api_client
         .generate_entropy(&mc_mobilecoind_api::Empty::new())
         .map_err(|err| format!("Failed getting entropy: {}", err))?;
-    Ok(Json(JsonEntropyResponse {
-        entropy: hex::encode(resp.entropy),
-    }))
-}
-
-#[derive(Deserialize, Default)]
-struct JsonMonitorRequest {
-    entropy: String,
-    first_subaddress: u64,
-    num_subaddresses: u64,
-}
-
-#[derive(Serialize, Default)]
-struct JsonMonitorResponse {
-    monitor_id: String,
+    Ok(Json(JsonEntropyResponse::from(&resp)))
 }
 
 /// Creates a monitor. Data for the key and range is POSTed using the struct above.
@@ -98,14 +82,7 @@ fn create_monitor(
         .add_monitor(&req)
         .map_err(|err| format!("Failed adding monitor: {}", err))?;
 
-    Ok(Json(JsonMonitorResponse {
-        monitor_id: hex::encode(monitor_response.monitor_id),
-    }))
-}
-
-#[derive(Serialize, Default)]
-struct JsonMonitorListResponse {
-    monitor_id: Vec<String>,
+    Ok(Json(JsonMonitorResponse::from(&monitor_response)))
 }
 
 /// Gets a list of existing monitors
@@ -115,17 +92,7 @@ fn monitors(state: rocket::State<State>) -> Result<Json<JsonMonitorListResponse>
         .mobilecoind_api_client
         .get_monitor_list(&mc_mobilecoind_api::Empty::new())
         .map_err(|err| format!("Failed getting monitor list: {}", err))?;
-    Ok(Json(JsonMonitorListResponse {
-        monitor_id: resp.get_monitor_id_list().iter().map(hex::encode).collect(),
-    }))
-}
-
-#[derive(Serialize, Default)]
-struct JsonMonitorStatusResponse {
-    first_subaddress: u64,
-    num_subaddresses: u64,
-    first_block: u64,
-    next_block: u64,
+    Ok(Json(JsonMonitorListResponse::from(&resp)))
 }
 
 /// Get the current status of a created monitor
@@ -145,19 +112,7 @@ fn monitor_status(
         .get_monitor_status(&req)
         .map_err(|err| format!("Failed getting monitor status: {}", err))?;
 
-    let status = resp.get_status();
-
-    Ok(Json(JsonMonitorStatusResponse {
-        first_subaddress: status.get_first_subaddress(),
-        num_subaddresses: status.get_num_subaddresses(),
-        first_block: status.get_first_block(),
-        next_block: status.get_next_block(),
-    }))
-}
-
-#[derive(Serialize, Default)]
-struct JsonBalanceResponse {
-    balance: String,
+    Ok(Json(JsonMonitorStatusResponse::from(&resp)))
 }
 
 /// Balance check using a created monitor and subaddress index
@@ -178,21 +133,8 @@ fn balance(
         .mobilecoind_api_client
         .get_balance(&req)
         .map_err(|err| format!("Failed getting balance: {}", err))?;
-    let balance = resp.get_balance();
-    Ok(Json(JsonBalanceResponse {
-        balance: balance.to_string(),
-    }))
-}
 
-#[derive(Deserialize)]
-struct JsonRequestCodeRequest {
-    value: Option<u64>,
-    memo: Option<String>,
-}
-
-#[derive(Serialize, Default)]
-struct JsonRequestCodeResponse {
-    request_code: String,
+    Ok(Json(JsonBalanceResponse::from(&resp)))
 }
 
 /// Generates a request code with an optional value and memo
@@ -237,62 +179,7 @@ fn request_code(
         .get_request_code(&req)
         .map_err(|err| format!("Failed getting request code: {}", err))?;
 
-    Ok(Json(JsonRequestCodeResponse {
-        request_code: String::from(resp.get_b58_code()),
-    }))
-}
-
-#[derive(Deserialize, Serialize, Default)]
-struct JsonPublicAddress {
-    /// Hex encoded compressed ristretto bytes
-    view_public_key: String,
-    /// Hex encoded compressed ristretto bytes
-    spend_public_key: String,
-    /// Fog Report Server Url
-    fog_report_url: String,
-    /// Hex encoded signature bytes
-    fog_authority_sig: String,
-    /// String label for fog reports
-    fog_report_id: String,
-}
-
-// Helper conversion between json and protobuf
-impl TryFrom<&JsonPublicAddress> for PublicAddress {
-    type Error = String;
-
-    fn try_from(src: &JsonPublicAddress) -> Result<PublicAddress, String> {
-        // Decode the keys
-        let mut view_public_key = CompressedRistretto::new();
-        view_public_key.set_data(
-            hex::decode(&src.view_public_key)
-                .map_err(|err| format!("Failed to decode view key hex: {}", err))?,
-        );
-        let mut spend_public_key = CompressedRistretto::new();
-        spend_public_key.set_data(
-            hex::decode(&src.spend_public_key)
-                .map_err(|err| format!("Failed to decode spend key hex: {}", err))?,
-        );
-
-        // Reconstruct the public address as a protobuf
-        let mut public_address = PublicAddress::new();
-        public_address.set_view_public_key(view_public_key);
-        public_address.set_spend_public_key(spend_public_key);
-        public_address.set_fog_report_url(src.fog_report_url.clone());
-        public_address.set_fog_report_id(src.fog_report_id.clone());
-        public_address.set_fog_authority_sig(
-            hex::decode(&src.fog_authority_sig)
-                .map_err(|err| format!("Failed to decode fog authority sig hex: {}", err))?,
-        );
-
-        Ok(public_address)
-    }
-}
-
-#[derive(Deserialize, Serialize, Default)]
-struct JsonReadRequestResponse {
-    receiver: JsonPublicAddress,
-    value: String,
-    memo: String,
+    Ok(Json(JsonRequestCodeResponse::from(&resp)))
 }
 
 /// Retrieves the data in a request code
@@ -308,43 +195,10 @@ fn read_request(
         .read_request_code(&req)
         .map_err(|err| format!("Failed reading request code: {}", err))?;
 
-    let receiver = resp.get_receiver();
-
     // The response contains the public keys encoded in the read request, as well as a memo and
     // requested value. This can be used as-is in the transfer call below, or the value can be
     // modified.
-    Ok(Json(JsonReadRequestResponse {
-        receiver: JsonPublicAddress {
-            view_public_key: hex::encode(receiver.get_view_public_key().get_data().to_vec()),
-            spend_public_key: hex::encode(receiver.get_spend_public_key().get_data().to_vec()),
-            fog_report_url: String::from(receiver.get_fog_report_url()),
-            fog_report_id: String::from(receiver.get_fog_report_id()),
-            fog_authority_sig: hex::encode(receiver.get_fog_authority_sig().to_vec()),
-        },
-        value: resp.get_value().to_string(),
-        memo: resp.get_memo().to_string(),
-    }))
-}
-
-#[derive(Deserialize, Serialize)]
-struct JsonSenderTxReceipt {
-    key_images: Vec<String>,
-    tombstone: u64,
-}
-
-#[derive(Deserialize, Serialize)]
-struct JsonReceiverTxReceipt {
-    recipient: JsonPublicAddress,
-    tx_public_key: String,
-    tx_out_hash: String,
-    tombstone: u64,
-    confirmation_number: String,
-}
-
-#[derive(Deserialize, Serialize)]
-struct JsonTransferResponse {
-    sender_tx_receipt: JsonSenderTxReceipt,
-    receiver_tx_receipt_list: Vec<JsonReceiverTxReceipt>,
+    Ok(Json(JsonReadRequestResponse::from(&resp)))
 }
 
 /// Performs a transfer from a monitor and subaddress. The public keys and amount are in the POST data.
@@ -386,53 +240,7 @@ fn transfer(
         .map_err(|err| format!("Failed to send payment: {}", err))?;
 
     // The receipt from the payment request can be used by the status check below
-    let receipt = resp.get_sender_tx_receipt();
-    let receiver_receipts = resp.get_receiver_tx_receipt_list();
-    Ok(Json(JsonTransferResponse {
-        sender_tx_receipt: JsonSenderTxReceipt {
-            key_images: receipt
-                .get_key_image_list()
-                .iter()
-                .map(|key_image| hex::encode(key_image.get_data()))
-                .collect(),
-            tombstone: receipt.get_tombstone(),
-        },
-        receiver_tx_receipt_list: receiver_receipts
-            .iter()
-            .map(|receipt| JsonReceiverTxReceipt {
-                recipient: JsonPublicAddress {
-                    view_public_key: hex::encode(
-                        receipt
-                            .get_recipient()
-                            .get_view_public_key()
-                            .get_data()
-                            .to_vec(),
-                    ),
-                    spend_public_key: hex::encode(
-                        receipt
-                            .get_recipient()
-                            .get_spend_public_key()
-                            .get_data()
-                            .to_vec(),
-                    ),
-                    fog_report_url: String::from(receipt.get_recipient().get_fog_report_url()),
-                    fog_report_id: String::from(receipt.get_recipient().get_fog_report_id()),
-                    fog_authority_sig: hex::encode(
-                        receipt.get_recipient().get_fog_authority_sig().to_vec(),
-                    ),
-                },
-                tx_public_key: hex::encode(receipt.get_tx_public_key().get_data().to_vec()),
-                tx_out_hash: hex::encode(receipt.get_tx_out_hash().to_vec()),
-                tombstone: receipt.get_tombstone(),
-                confirmation_number: hex::encode(receipt.get_tx_out_hash().to_vec()),
-            })
-            .collect(),
-    }))
-}
-
-#[derive(Serialize, Default)]
-struct JsonStatusResponse {
-    status: String,
+    Ok(Json(JsonTransferResponse::from(&resp)))
 }
 
 /// Checks the status of a transfer given a key image and tombstone block
@@ -460,16 +268,7 @@ fn check_transfer_status(
         .get_tx_status_as_sender(&req)
         .map_err(|err| format!("Failed getting status: {}", err))?;
 
-    let status_str = match resp.get_status() {
-        mc_mobilecoind_api::TxStatus::Unknown => "unknown",
-        mc_mobilecoind_api::TxStatus::Verified => "verified",
-        mc_mobilecoind_api::TxStatus::TombstoneBlockExceeded => "failed",
-        mc_mobilecoind_api::TxStatus::InvalidConfirmationNumber => "invalid_confirmation",
-    };
-
-    Ok(Json(JsonStatusResponse {
-        status: String::from(status_str),
-    }))
+    Ok(Json(JsonStatusResponse::from(&resp)))
 }
 
 /// Checks the status of a transfer given data for a specific receiver
@@ -500,22 +299,7 @@ fn check_receiver_transfer_status(
         .get_tx_status_as_receiver(&req)
         .map_err(|err| format!("Failed getting status: {}", err))?;
 
-    let status_str = match resp.get_status() {
-        mc_mobilecoind_api::TxStatus::Unknown => "unknown",
-        mc_mobilecoind_api::TxStatus::Verified => "verified",
-        mc_mobilecoind_api::TxStatus::TombstoneBlockExceeded => "failed",
-        mc_mobilecoind_api::TxStatus::InvalidConfirmationNumber => "invalid_confirmation",
-    };
-
-    Ok(Json(JsonStatusResponse {
-        status: String::from(status_str),
-    }))
-}
-
-#[derive(Serialize, Default)]
-struct JsonLedgerInfoResponse {
-    block_count: String,
-    txo_count: String,
+    Ok(Json(JsonStatusResponse::from(&resp)))
 }
 
 /// Gets information about the entire ledger
@@ -525,16 +309,8 @@ fn ledger_info(state: rocket::State<State>) -> Result<Json<JsonLedgerInfoRespons
         .mobilecoind_api_client
         .get_ledger_info(&mc_mobilecoind_api::Empty::new())
         .map_err(|err| format!("Failed getting ledger info: {}", err))?;
-    Ok(Json(JsonLedgerInfoResponse {
-        block_count: resp.block_count.to_string(),
-        txo_count: resp.txo_count.to_string(),
-    }))
-}
 
-#[derive(Serialize, Default)]
-struct JsonBlockInfoResponse {
-    key_image_count: String,
-    txo_count: String,
+    Ok(Json(JsonLedgerInfoResponse::from(&resp)))
 }
 
 /// Retrieves the data in a request code
@@ -550,20 +326,8 @@ fn block_info(
         .mobilecoind_api_client
         .get_block_info(&req)
         .map_err(|err| format!("Failed getting ledger info: {}", err))?;
-    Ok(Json(JsonBlockInfoResponse {
-        key_image_count: resp.key_image_count.to_string(),
-        txo_count: resp.txo_count.to_string(),
-    }))
-}
 
-#[derive(Serialize, Default)]
-struct JsonBlockDetailsResponse {
-    block_id: String,
-    version: u32,
-    parent_id: String,
-    index: String,
-    cumulative_txo_count: String,
-    contents_hash: String,
+    Ok(Json(JsonBlockInfoResponse::from(&resp)))
 }
 
 /// Retrieves the details for a given block.
@@ -579,32 +343,9 @@ fn block_details(
         .mobilecoind_api_client
         .get_block(&req)
         .map_err(|err| format!("Failed getting block details: {}", err))?;
-    let block = resp.get_block();
-    Ok(Json(JsonBlockDetailsResponse {
-        block_id: hex::encode(&block.get_id().get_data()),
-        version: block.get_version(),
-        parent_id: hex::encode(&block.get_parent_id().get_data()),
-        index: block.get_index().to_string(),
-        cumulative_txo_count: block.get_cumulative_txo_count().to_string(),
-        contents_hash: hex::encode(&block.get_contents_hash().get_data()),
-    }))
-}
 
-#[derive(Serialize, Default)]
-struct JsonProcessedTxOut {
-    monitor_id: String,
-    subaddress_index: u64,
-    public_key: String,
-    key_image: String,
-    value: String, // Needs to be String since Javascript ints are not 64 bit.
-    direction: String,
+    Ok(Json(JsonBlockDetailsResponse::from(&resp)))
 }
-
-#[derive(Serialize, Default)]
-struct JsonProcessedBlockResponse {
-    tx_outs: Vec<JsonProcessedTxOut>,
-}
-
 /// Retreives processed block information.
 #[get("/processed-block/<monitor_hex>/<block_num>")]
 fn processed_block(
@@ -624,38 +365,7 @@ fn processed_block(
         .get_processed_block(&req)
         .map_err(|err| format!("Failed getting processed block: {}", err))?;
 
-    fn direction_enum_to_str(dir: &mc_mobilecoind_api::ProcessedTxOutDirection) -> &str {
-        match dir {
-            mc_mobilecoind_api::ProcessedTxOutDirection::Invalid => "invalid",
-            mc_mobilecoind_api::ProcessedTxOutDirection::Received => "received",
-            mc_mobilecoind_api::ProcessedTxOutDirection::Spent => "spent",
-        }
-    }
-
-    Ok(Json(JsonProcessedBlockResponse {
-        tx_outs: resp
-            .get_tx_outs()
-            .iter()
-            .map(|tx_out| JsonProcessedTxOut {
-                monitor_id: hex::encode(tx_out.get_monitor_id()),
-                subaddress_index: tx_out.subaddress_index,
-                public_key: hex::encode(tx_out.get_public_key().get_data()),
-                key_image: hex::encode(tx_out.get_key_image().get_data()),
-                value: tx_out.value.to_string(),
-                direction: direction_enum_to_str(&tx_out.get_direction()).to_owned(),
-            })
-            .collect(),
-    }))
-}
-
-#[derive(Deserialize)]
-struct JsonAddressRequestCodeRequest {
-    url: String,
-}
-
-#[derive(Serialize, Default)]
-struct JsonAddressRequestCodeResponse {
-    request_code: String,
+    Ok(Json(JsonProcessedBlockResponse::from(&resp)))
 }
 
 /// Generates an AddressRequest code with a URL for the client to POST payment instructions
@@ -672,9 +382,7 @@ fn address_request_code(
         .get_address_request_code(&req)
         .map_err(|err| format!("Failed address code: {}", err))?;
 
-    Ok(Json(JsonAddressRequestCodeResponse {
-        request_code: String::from(resp.get_b58_code()),
-    }))
+    Ok(Json(JsonAddressRequestCodeResponse::from(&resp)))
 }
 
 fn main() {

@@ -6,7 +6,6 @@ edition = "2018"
 
 [dependencies]
 mc-common = { path = "../common", features = ["loggers"] }
-mc-connection = { path = "../connection" }
 mc-util-grpc = { path = "../util/grpc" }
 mc-util-uri = { path = "../util/uri" }
 

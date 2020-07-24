@@ -3,7 +3,6 @@
 //! Connection support
 
 mod error;
-mod grpcio_utils;
 mod manager;
 mod sync;
 mod thick;
@@ -11,7 +10,6 @@ mod traits;
 
 pub use self::{
     error::{Error, Result, RetryError, RetryResult},
-    grpcio_utils::{ConnectionUriGrpcioChannel, ConnectionUriGrpcioServer},
     manager::ConnectionManager,
     sync::SyncConnection,
     thick::{ThickClient, ThickClientAttestationError},

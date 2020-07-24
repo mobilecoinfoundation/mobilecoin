@@ -81,6 +81,7 @@ members = [
     "util/uri",
     "util/url-encoding",
     "watcher",
+    "watcher/api",
 ]
 exclude = [
     # mc-util-serial should only be accessed via the `common` crate.

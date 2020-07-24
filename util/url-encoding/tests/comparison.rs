@@ -75,7 +75,7 @@ fn test_url_encoding() {
             666,
             "2 baby goats",
             "",
-            addr.fog_authority_sig().unwrap(),
+            addr.fog_authority_fingerprint_sig().unwrap(),
         )
         .unwrap();
         let b58_encoded = "mob:///".to_string() + &b58_payload.encode();
@@ -102,7 +102,7 @@ fn test_url_encoding() {
             666,
             "2 baby goats",
             "",
-            addr.fog_authority_sig().unwrap(),
+            addr.fog_authority_fingerprint_sig().unwrap(),
         )
         .unwrap();
         let b58_encoded = "mob:///".to_string() + &b58_payload.encode();
