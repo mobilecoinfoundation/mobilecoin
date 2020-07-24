@@ -193,7 +193,7 @@ impl TryFrom<&PublicAddress> for MobUrl {
         mob_url.set_path(&path);
         mob_url.set_query(None);
 
-        if let Some(sig) = src.fog_authority_sig() {
+        if let Some(sig) = src.fog_authority_fingerprint_sig() {
             let checksum = crc32::checksum_ieee(sig).to_le_bytes();
             let mut buffer = sig.to_vec();
             buffer.extend(&checksum[0..2]);
@@ -256,7 +256,7 @@ impl TryFrom<&MobUrl> for PublicAddress {
             // May have report_key
             let report_id = src.get_report_id().unwrap_or_default();
 
-            // Probably the mob-url also has fog_authority_sig
+            // Probably the mob-url also has fog_authority_fingerprint_sig
             let sig_vec = if let Some(sig_str) = src.get_sig() {
                 let buffer = base64::decode_config(&sig_str, base64::URL_SAFE)
                     .map_err(Error::FogAuthoritySig)?;
@@ -274,7 +274,7 @@ impl TryFrom<&MobUrl> for PublicAddress {
 
             PublicAddress::new_with_fog(&spend_public, &view_public, fog_url, report_id, sig_vec)
         } else {
-            // TODO: Could return an error if e.g. fog_authority_sig is present but host is missing?
+            // TODO: Could return an error if e.g. fog_authority_fingerprint_sig is present but host is missing?
             PublicAddress::new(&spend_public, &view_public)
         })
     }

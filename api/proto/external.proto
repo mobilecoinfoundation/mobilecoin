@@ -60,7 +60,7 @@ message AccountKey {
 
     /// Optional fingerprint of fog authority key.
     /// Empty when not in use.
-    bytes fog_authority_key_fingerprint = 5;
+    bytes fog_authority_fingerprint = 5;
 }
 
 /// A public address, used to identify recipients.
@@ -84,7 +84,7 @@ message PublicAddress {
     /// Signature of fog authority fingerprint using private key which
     /// corresponds to view_public_key.
     /// This should be a Schnorrkel signature.
-    bytes fog_authority_sig = 5;
+    bytes fog_authority_fingerprint_sig = 5;
 }
 
 /// A KDF can be used to stretch a 32 byte secret into multiple secret private keys.
@@ -99,7 +99,7 @@ message RootIdentity {
     string fog_report_id = 3;
     /// Optional fingerprint of fog authority key.
     /// Empty when not in use.
-    bytes fog_authority_key_fingerprint = 5;
+    bytes fog_authority_fingerprint = 5;
 }
 
 /// A 32 byte secret used as input key material to derive private keys
