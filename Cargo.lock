@@ -3409,12 +3409,21 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-serial",
  "mc-util-test-helper",
+ "mc-watcher-api",
  "prost",
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
  "structopt",
  "tempdir",
  "url 2.1.1",
+]
+
+[[package]]
+name = "mc-watcher-api"
+version = "0.5.0"
+dependencies = [
+ "displaydoc",
+ "serde",
 ]
 
 [[package]]
