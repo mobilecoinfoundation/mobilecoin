@@ -18,8 +18,7 @@ use mc_util_grpc::ConnectionUriGrpcioChannel;
 use std::{collections::HashMap, str::FromStr, sync::Arc, thread::sleep, time::Duration};
 use structopt::StructOpt;
 
-/// Command line config, set with defaults that will work with
-/// a standard mobilecoind instance
+/// Command line config
 #[derive(Clone, Debug, StructOpt)]
 #[structopt(
     name = "mobilecoind-mirror-private",

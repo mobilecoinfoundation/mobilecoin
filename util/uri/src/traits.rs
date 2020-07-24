@@ -149,20 +149,30 @@ pub trait ConnectionUri:
         )
     }
 
+    /// Retreieve the TLS chain file path to use for this connection.
+    fn tls_chain_path(&self) -> StdResult<String, String> {
+        Ok(self
+            .get_param("tls-chain")
+            .ok_or_else(|| format!("Missing tls-chain query parameter for {}", self.url()))?)
+    }
+
     /// Retrieve the TLS chain to use for this connection.
     fn tls_chain(&self) -> StdResult<Vec<u8>, String> {
-        let path = self
-            .get_param("tls-chain")
-            .ok_or_else(|| format!("Missing tls-chain query parameter for {}", self.url()))?;
+        let path = self.tls_chain_path()?;
         std::fs::read(path.clone())
             .map_err(|e| format!("Failed reading TLS chain from {}: {:?}", path, e))
     }
 
+    /// Retrieve the TLS key file path to use for this connection.
+    fn tls_key_path(&self) -> StdResult<String, String> {
+        Ok(self
+            .get_param("tls-key")
+            .ok_or_else(|| format!("Missing tls-key query parameter for {}", self.url()))?)
+    }
+
     /// Retrieve the TLS key to use for this connection.
     fn tls_key(&self) -> StdResult<Vec<u8>, String> {
-        let path = self
-            .get_param("tls-key")
-            .ok_or_else(|| format!("Missing tls-key query parameter for {}", self.url()))?;
+        let path = self.tls_key_path()?;
         std::fs::read(path.clone())
             .map_err(|e| format!("Failed reading TLS key from {}: {:?}", path, e))
     }

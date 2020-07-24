@@ -65,9 +65,9 @@ impl ConnectionUriGrpcioServer for ServerBuilder {
             let server_credentials = ServerCredentialsBuilder::new()
                 .add_cert(
                     uri.tls_chain()
-                        .expect("Must have tls-chain in peer-listen-uri when using TLS"),
+                        .expect("Uri must have tls-chain when using TLS"),
                     uri.tls_key()
-                        .expect("Must have tls-key  in peer-listen-uri when using TLS"),
+                        .expect("Uri must have tls-key in when using TLS"),
                 )
                 .build();
 
