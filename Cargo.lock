@@ -2742,6 +2742,7 @@ dependencies = [
  "mc-mobilecoind-json",
  "mc-util-build-grpc",
  "mc-util-build-script",
+ "mc-util-grpc",
  "mc-util-uri",
  "protobuf",
  "rocket",

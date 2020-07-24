@@ -17,15 +17,16 @@ service MobilecoindMirrorAPI {
 message QueryRequest {
     oneof request {
         GetProcessedBlockRequest get_processed_block = 1;
-        mobilecoind_api.GetBlockRequest get_block_request = 2;
+        mobilecoind_api.GetBlockRequest get_block = 2;
     }
 }
 
 // A single query response.
 message QueryResponse {
     oneof response {
-        mobilecoind_api.GetProcessedBlockResponse get_processed_block = 1;
-        mobilecoind_api.GetBlockResponse get_block_response = 2;
+        string error = 1;
+        mobilecoind_api.GetProcessedBlockResponse get_processed_block = 2;
+        mobilecoind_api.GetBlockResponse get_block  = 3;
     }
 }
 

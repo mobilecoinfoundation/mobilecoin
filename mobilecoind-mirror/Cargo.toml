@@ -17,6 +17,7 @@ mc-api = { path = "../api" }
 mc-common = { path = "../common", features = ["loggers"] }
 mc-mobilecoind-api = { path = "../mobilecoind/api" }
 mc-mobilecoind-json = { path = "../mobilecoind-json" }
+mc-util-grpc = { path = "../util/grpc" }
 mc-util-uri = { path = "../util/uri" }
 
 futures = "0.1"
