@@ -7,7 +7,7 @@ import "mobilecoind_api.proto";
 
 package mobilecoind_mirror_api;
 
-service MobilecoindMirrorAPI {
+service MobilecoindMirror {
     // The periodic poll method that queries for requests and returns replies.
     // This is sent from the private host to the public host.
     rpc Poll (PollRequest) returns (PollResponse) {}

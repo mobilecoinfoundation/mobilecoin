@@ -6,11 +6,14 @@
 //! 2) An http(s) server for receiving client requests which will then be forwarded to the
 //!    mobilecoind instance sitting behind the private part of the mirror.
 
+mod mirror_service;
+
 use grpcio::{EnvBuilder, ServerBuilder};
 use mc_common::logger::{create_app_logger, log, o};
 use mc_mobilecoind_mirror::uri::MobilecoindMirrorUri;
 use mc_util_grpc::{BuildInfoService, ConnectionUriGrpcioServer, HealthService};
 use mc_util_uri::{ConnectionUri, Uri, UriScheme};
+use mirror_service::MirrorService;
 use rocket::{
     config::{Config as RocketConfig, Environment as RocketEnvironment},
     routes,
@@ -73,6 +76,7 @@ fn main() {
 
     let build_info_service = BuildInfoService::new(logger.clone()).into_service();
     let health_service = HealthService::new(None, logger.clone()).into_service();
+    let mirror_service = MirrorService::new(logger.clone()).into_service();
 
     let env = Arc::new(
         EnvBuilder::new()
@@ -83,6 +87,7 @@ fn main() {
     let server_builder = ServerBuilder::new(env)
         .register_service(build_info_service)
         .register_service(health_service)
+        .register_service(mirror_service)
         .bind_using_uri(&config.mirror_listen_uri);
 
     let mut server = server_builder.build().unwrap();

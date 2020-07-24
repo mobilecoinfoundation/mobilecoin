@@ -11,7 +11,7 @@ use mc_common::logger::{create_app_logger, log, o, Logger};
 use mc_mobilecoind_api::mobilecoind_api_grpc::MobilecoindApiClient;
 use mc_mobilecoind_mirror::{
     mobilecoind_mirror_api::{PollRequest, QueryRequest, QueryResponse},
-    mobilecoind_mirror_api_grpc::MobilecoindMirrorApiClient,
+    mobilecoind_mirror_api_grpc::MobilecoindMirrorClient,
     uri::MobilecoindMirrorUri,
 };
 use mc_util_grpc::ConnectionUriGrpcioChannel;
@@ -81,7 +81,7 @@ fn main() {
             .max_send_message_len(std::i32::MAX)
             .connect_to_uri(&config.mirror_public_uri, &logger);
 
-        MobilecoindMirrorApiClient::new(ch)
+        MobilecoindMirrorClient::new(ch)
     };
 
     // Main polling loop.
