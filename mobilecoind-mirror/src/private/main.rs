@@ -18,6 +18,7 @@ use mc_util_grpc::ConnectionUriGrpcioChannel;
 use std::{collections::HashMap, str::FromStr, sync::Arc, thread::sleep, time::Duration};
 use structopt::StructOpt;
 
+/// A wrapper to ease monitor id parsing from a hex string when using `StructOpt`.
 #[derive(Clone, Debug)]
 pub struct MonitorId(pub Vec<u8>);
 impl FromStr for MonitorId {
@@ -51,8 +52,8 @@ pub struct Config {
     #[structopt(long)]
     pub mirror_public_uri: MobilecoindMirrorUri,
 
-    /// How many seconds to wait between polling.
-    #[structopt(long, default_value = "1", parse(try_from_str=parse_duration_in_seconds))]
+    /// How many milliseconds to wait between polling.
+    #[structopt(long, default_value = "100", parse(try_from_str=parse_duration_in_milliseconds))]
     pub poll_interval: Duration,
 
     /// Monitor id to operate with. If not provided, mobilecoind will be queried and if it has only
@@ -226,6 +227,6 @@ fn process_request(
     )))
 }
 
-fn parse_duration_in_seconds(src: &str) -> Result<Duration, std::num::ParseIntError> {
-    Ok(Duration::from_secs(u64::from_str(src)?))
+fn parse_duration_in_milliseconds(src: &str) -> Result<Duration, std::num::ParseIntError> {
+    Ok(Duration::from_millis(u64::from_str(src)?))
 }
