@@ -18,7 +18,7 @@ In the examples below we assume that mobilecoind, and both the public and privat
 The first step in running the mobilecoind mirror is to have a mobilecoind instance running, and accessible from where the private side of the mirror would be running. The mobilecoind instance should have a single monitor configured before proceeding further. The reason for this is that the mirror only supports a single monitor. Upon startup of the private side, it would query mobilecoind for a list of monitors and select the one available. If none, or if multiple monitors are available it would error. When multiple monitors are in use, a specific one can be chosen via a command line argument.
 
 
-Once mobilecoind is running and set up start the private side of the mirror:
+Once mobilecoind is running and set up, start the private side of the mirror:
 
 ```
 cargo run -p mc-mobilecoind-mirror --bin mobilecoind-mirror-private -- --mirror-public-uri insecure-mobilecoind-mirror://127.0.0.1/ --mobilecoind-host localhost:4444`
