@@ -226,7 +226,7 @@ impl WatcherDB {
         &self,
         block_index: u64,
     ) -> Result<(u64, TimestampResultCode), WatcherDBError> {
-        if block_index == 0 {
+        if block_index == 0 || block_index == u64::MAX {
             return Ok((u64::MAX, TimestampResultCode::BlockIndexOutOfBounds));
         }
         let sigs = self.get_block_signatures(block_index)?;
@@ -620,6 +620,12 @@ mod test {
             // Verify that block index 0 is out of bounds
             assert_eq!(
                 watcher_db.get_block_timestamp(0).unwrap(),
+                (u64::MAX, TimestampResultCode::BlockIndexOutOfBounds)
+            );
+
+            // Verify that u64::MAX is out of bounds
+            assert_eq!(
+                watcher_db.get_block_timestamp(u64::MAX).unwrap(),
                 (u64::MAX, TimestampResultCode::BlockIndexOutOfBounds)
             );
         });
