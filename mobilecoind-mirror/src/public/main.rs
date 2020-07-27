@@ -13,7 +13,8 @@ mod query;
 
 use grpcio::{EnvBuilder, ServerBuilder};
 use mc_common::logger::{create_app_logger, log, o};
-use mc_mobilecoind_json::data_types::JsonProcessedBlockResponse;
+use mc_mobilecoind_api::GetBlockRequest;
+use mc_mobilecoind_json::data_types::{JsonBlockDetailsResponse, JsonProcessedBlockResponse};
 use mc_mobilecoind_mirror::{
     mobilecoind_mirror_api::{GetProcessedBlockRequest, QueryRequest},
     uri::MobilecoindMirrorUri,
@@ -71,7 +72,7 @@ struct State {
     query_manager: QueryManager,
 }
 
-/// Retreives processed block information.
+/// Retreive processed block information.
 #[get("/processed-block/<block_num>")]
 fn processed_block(
     state: rocket::State<State>,
@@ -95,6 +96,32 @@ fn processed_block(
 
     let response = query_response.get_get_processed_block();
     Ok(Json(JsonProcessedBlockResponse::from(response)))
+}
+
+/// Retreive a single block.
+#[get("/block/<block_num>")]
+fn block(
+    state: rocket::State<State>,
+    block_num: u64,
+) -> Result<Json<JsonBlockDetailsResponse>, String> {
+    let mut get_block = GetBlockRequest::new();
+    get_block.set_block(block_num);
+
+    let mut query_request = QueryRequest::new();
+    query_request.set_get_block(get_block);
+
+    let query = state.query_manager.enqueue_query(query_request);
+    let query_response = query.wait()?;
+
+    if query_response.has_error() {
+        return Err(query_response.get_error().into());
+    }
+    if !query_response.has_get_block() {
+        return Err("Incorrect response type received".into());
+    }
+
+    let response = query_response.get_get_block();
+    Ok(Json(JsonBlockDetailsResponse::from(response)))
 }
 
 fn main() {
@@ -163,7 +190,7 @@ fn main() {
 
     log::info!(logger, "Starting client web server");
     rocket::custom(rocket_config)
-        .mount("/", routes![processed_block,])
+        .mount("/", routes![processed_block, block])
         .manage(State { query_manager })
         .launch();
 }
