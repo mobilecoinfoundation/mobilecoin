@@ -133,11 +133,16 @@ Follow the steps below:
 
     quorum_set = { threshold = 2, members = [
         # Node 1
-        { type = "Node", args = "peer2.test.mobilecoin.com:443" },
+        { type = "Node", args = "peer1.test.mobilecoin.com:443" },
 
         # Node 2
         { type = "Node", args = "peer2.test.mobilecoin.com:443" },
     ] }
+
+    tx_source_urls = [
+        "https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node1.test.mobilecoin.com/",
+        "https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node2.test.mobilecoin.com/",
+    ]
     ```
 
 #### Run
