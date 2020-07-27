@@ -195,7 +195,8 @@ fn process_request(
 
         log::info!(
             logger,
-            "get_processed_block(TODO, {})",
+            "get_processed_block({}, {})",
+            hex::encode(monitor_id),
             mirror_request.block
         );
         let mobilecoind_response =

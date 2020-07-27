@@ -2745,6 +2745,7 @@ dependencies = [
  "mc-util-grpc",
  "mc-util-uri",
  "protobuf",
+ "rand 0.7.3",
  "rocket",
  "rocket_contrib",
  "serde",

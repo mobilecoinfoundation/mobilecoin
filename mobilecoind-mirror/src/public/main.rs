@@ -83,9 +83,7 @@ fn processed_block(
     let mut query_request = QueryRequest::new();
     query_request.set_get_processed_block(get_processed_block);
 
-    let query = state
-        .query_manager
-        .enqueue_query("TODO".into(), query_request)?;
+    let query = state.query_manager.enqueue_query(query_request);
     let query_response = query.wait()?;
 
     if query_response.has_error() {

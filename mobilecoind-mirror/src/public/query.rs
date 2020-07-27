@@ -1,14 +1,30 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
+//! Utility entity for managing queries submitted over our rocket endpoint and resolved by the GRPC
+//! polling mechanism.
+
 use mc_mobilecoind_mirror::mobilecoind_mirror_api::{QueryRequest, QueryResponse};
+use rand::RngCore;
 use std::{
     collections::HashMap,
     sync::{Arc, Condvar, Mutex},
+    time::Duration,
 };
 
+/// The length of the randomly generated query id that is used to tie requests and responses
+/// together.
+const QUERY_ID_LEN: usize = 8;
+
+/// The maximum amount of time to wait for a query to complete.
+const QUERY_MAX_DURATION: Duration = Duration::from_secs(30);
+
+/// The state held by each individual query.
 struct QueryInner {
     request: QueryRequest,
     response: Option<QueryResponse>,
 }
 
+/// An individual query that can be asynchronously resolved and waited on.
 #[derive(Clone)]
 pub struct Query {
     inner: Arc<Mutex<QueryInner>>,
@@ -37,10 +53,21 @@ impl Query {
     }
 
     pub fn wait(self) -> Result<QueryResponse, String> {
-        let mut inner = self.inner.lock().map_err(|err| err.to_string())?;
-        while inner.response.is_none() {
-            inner = self.condvar.wait(inner).map_err(|err| err.to_string())?;
+        let (mut inner, wait_result) = self
+            .condvar
+            .wait_timeout_while(
+                self.inner.lock().expect("muted poisoned"),
+                QUERY_MAX_DURATION,
+                |inner| inner.response.is_none(),
+            )
+            .expect("waiting on condvar failed");
+
+        if wait_result.timed_out() {
+            return Err("timeout".into());
         }
+
+        assert!(inner.response.is_some());
+
         Ok(inner
             .response
             .take()
@@ -55,6 +82,31 @@ struct QueryManagerInner {
 
     /// Map of query id -> query of queries that were resolved by the mirror.
     pending_responses: HashMap<String, Query>,
+}
+
+impl QueryManagerInner {
+    pub fn generate_query_id(&self) -> String {
+        let mut rng = rand::thread_rng();
+
+        const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
+                            abcdefghijklmnopqrstuvwxyz\
+                            0123456789";
+
+        loop {
+            let query_id: String = (0..QUERY_ID_LEN)
+                .map(|_| {
+                    let idx = (rng.next_u64() % CHARSET.len() as u64) as usize;
+                    char::from(CHARSET[idx])
+                })
+                .collect();
+
+            if !self.pending_requests.contains_key(&query_id)
+                && !self.pending_responses.contains_key(&query_id)
+            {
+                return query_id;
+            }
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -72,14 +124,12 @@ impl QueryManager {
         }
     }
 
-    pub fn enqueue_query(&self, query_id: String, request: QueryRequest) -> Result<Query, String> {
-        let query = Query::new(request);
+    pub fn enqueue_query(&self, request: QueryRequest) -> Query {
         let mut inner = self.inner.lock().expect("mutex poisoned");
-        if inner.pending_requests.contains_key(&query_id) {
-            return Err(format!("Query id {} already in pending queue", query_id));
-        }
+        let query_id = inner.generate_query_id();
+        let query = Query::new(request);
         inner.pending_requests.insert(query_id, query.clone());
-        Ok(query)
+        query
     }
 
     pub fn get_pending_requests(&self) -> HashMap<String, QueryRequest> {
