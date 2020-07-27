@@ -5,7 +5,7 @@ The `mobilecoind-mirror` crate consists of two standalone executables, that when
 The mirror consists of two sides:
    1) A private side. The private side of the mirror runs alongside `mobilecoind` and forms outgoing connections to both `mobilecoind` and the public side of the mirror. It then proceeds to poll the public side for any requests that should be forwarded to `mobilecoind`, forwards them, and at the next poll opportunity returns any replies. The set of available requests is defined in the [proto API specifications](proto/mobilecoind_mirror_api.proto).
    Note how the private side only forms outgoing connections and does not open any listening ports.
-   2) A public side. The public side of the mirror accepts incoming HTTP(S) connections from clients, and poll requests from the private side over GRPC. The client requests are then forwarded over the GRPC channel to the private side, which in turn forwards them to mobilecoind and returns the responses.
+   2) A public side. The public side of the mirror accepts incoming HTTP connections from clients, and poll requests from the private side over GRPC. The client requests are then forwarded over the GRPC channel to the private side, which in turn forwards them to mobilecoind and returns the responses.
 
 
 ### Example usage
@@ -52,7 +52,7 @@ $ curl http://localhost:8001/processed-block/33826/
 For supported requests, the response types are identical to the ones used by [mobilecoind-json](../mobilecoind-json).
 
 
-### TLS
+### TLS between the mirror sides
 
 The GRPC connection between the public and private side of the mirror can optionally be TLS-encrypted. If you wish to use TLS for that, you'll a certificate file and the matching private key for it. For testing purposes you can generate your own self-signed certificate:
 
@@ -95,3 +95,8 @@ cargo run -p mc-mobilecoind-mirror --bin mobilecoind-mirror-private -- --mirror-
 ```
 
 Notice that the `mirror-public-uri` parameter has changed to reflect the TLS certificate chain.
+
+
+### TLS between the public side of the mirror and its HTTP clients.
+
+Currently, due to `ring` crate version conflicts, it is is not possible to enable the `tls` feature on `rocket` (the HTTP serer used by `mc-mobilecoind-mirror-public`). If you want to provide TLS encryption for clients, you would need to put `mc-mobilecoind-mirror-public` behind a reverse proxy such as `nginx` and have that take care of your TLS needs.
