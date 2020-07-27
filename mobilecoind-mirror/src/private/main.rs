@@ -194,14 +194,20 @@ fn process_request(
         mobilecoind_request.set_monitor_id(monitor_id.clone());
         mobilecoind_request.set_block(mirror_request.block);
 
-        log::info!(
+        log::debug!(
             logger,
-            "get_processed_block({}, {})",
+            "Incoming get_processed_block({}, {}), forwarding to mobilecoind",
             hex::encode(monitor_id),
             mirror_request.block
         );
         let mobilecoind_response =
             mobilecoind_api_client.get_processed_block(&mobilecoind_request)?;
+        log::info!(
+            logger,
+            "get_processed_block({}, {}) succeeded",
+            hex::encode(monitor_id),
+            mirror_request.block,
+        );
 
         mirror_response.set_get_processed_block(mobilecoind_response);
         return Ok(mirror_response);
@@ -213,8 +219,13 @@ fn process_request(
         let mut mobilecoind_request = mc_mobilecoind_api::GetBlockRequest::new();
         mobilecoind_request.set_block(mirror_request.block);
 
-        log::info!(logger, "get_block({})", mirror_request.block);
+        log::debug!(
+            logger,
+            "Incoming get_block({}), forwarding to mobilecoind",
+            mirror_request.block
+        );
         let mobilecoind_response = mobilecoind_api_client.get_block(&mobilecoind_request)?;
+        log::info!(logger, "get_block({}) succeeded", mirror_request.block,);
 
         mirror_response.set_get_block(mobilecoind_response);
         return Ok(mirror_response);

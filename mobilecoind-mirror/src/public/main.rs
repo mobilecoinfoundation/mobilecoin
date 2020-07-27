@@ -12,7 +12,7 @@ mod mirror_service;
 mod query;
 
 use grpcio::{EnvBuilder, ServerBuilder};
-use mc_common::logger::{create_app_logger, log, o};
+use mc_common::logger::{create_app_logger, log, o, Logger};
 use mc_mobilecoind_api::GetBlockRequest;
 use mc_mobilecoind_json::data_types::{JsonBlockDetailsResponse, JsonProcessedBlockResponse};
 use mc_mobilecoind_mirror::{
@@ -70,6 +70,7 @@ pub struct Config {
 /// State that is accessible by all rocket requests
 struct State {
     query_manager: QueryManager,
+    logger: Logger,
 }
 
 /// Retreive processed block information.
@@ -84,13 +85,29 @@ fn processed_block(
     let mut query_request = QueryRequest::new();
     query_request.set_get_processed_block(get_processed_block);
 
+    log::debug!(
+        state.logger,
+        "Enqueueing GetProcessedBlockRequest({})",
+        block_num
+    );
     let query = state.query_manager.enqueue_query(query_request);
     let query_response = query.wait()?;
 
     if query_response.has_error() {
+        log::error!(
+            state.logger,
+            "GetProcessedBlockRequest({}) failed: {}",
+            block_num,
+            query_response.get_error()
+        );
         return Err(query_response.get_error().into());
     }
     if !query_response.has_get_processed_block() {
+        log::error!(
+            state.logger,
+            "GetProcessedBlockRequest({}) returned incorrect response type",
+            block_num
+        );
         return Err("Incorrect response type received".into());
     }
 
@@ -110,15 +127,33 @@ fn block(
     let mut query_request = QueryRequest::new();
     query_request.set_get_block(get_block);
 
+    log::debug!(state.logger, "Enqueueing GetBlockRequest({})", block_num);
     let query = state.query_manager.enqueue_query(query_request);
     let query_response = query.wait()?;
 
     if query_response.has_error() {
+        log::error!(
+            state.logger,
+            "GetBlockRequest({}) failed: {}",
+            block_num,
+            query_response.get_error()
+        );
         return Err(query_response.get_error().into());
     }
     if !query_response.has_get_block() {
+        log::error!(
+            state.logger,
+            "GetBlockRequest({}) returned incorrect response type",
+            block_num
+        );
         return Err("Incorrect response type received".into());
     }
+
+    log::info!(
+        state.logger,
+        "GetBlockRequest({}) completed successfully",
+        block_num
+    );
 
     let response = query_response.get_get_block();
     Ok(Json(JsonBlockDetailsResponse::from(response)))
@@ -191,6 +226,9 @@ fn main() {
     log::info!(logger, "Starting client web server");
     rocket::custom(rocket_config)
         .mount("/", routes![processed_block, block])
-        .manage(State { query_manager })
+        .manage(State {
+            query_manager,
+            logger,
+        })
         .launch();
 }
