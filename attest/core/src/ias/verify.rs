@@ -26,18 +26,18 @@ use binascii::{b64decode, b64encode, hex2bin};
 use core::{
     convert::{TryFrom, TryInto},
     f64::EPSILON,
-    fmt::{Debug, Formatter, Result as FmtResult},
+    fmt::Debug,
     intrinsics::fabsf64,
     result::Result,
     str,
 };
 use digest::Digest;
-use hex_fmt::HexFmt;
 use mbedtls::{
     hash, pk,
     x509::{Certificate, Profile},
 };
 use mc_util_encodings::{Error as EncodingError, FromBase64, FromHex, ToBase64};
+use prost::Message;
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 
@@ -148,6 +148,10 @@ pub struct VerificationReportData {
     pub nonce: Option<IasNonce>,
     /// A unique hardware ID returned when a linkable quote is requested
     pub epid_pseudonym: Option<EpidPseudonym>,
+    /// The advisory URL, if any
+    pub advisory_url: Option<String>,
+    /// The ID strings of the advisories which caused a non-OK status.
+    pub advisory_ids: Vec<String>,
 }
 
 impl VerificationReportData {
@@ -187,16 +191,17 @@ impl VerificationReportData {
 
         // Result<Option<Result<(), PseManifestError>>, IasQuoteError>
         match &self.quote_status {
-            Ok(optional_pse_result)
-            | Err(IasQuoteError::SwHardeningNeeded(optional_pse_result)) => {
-                match optional_pse_result {
-                    Some(pse_result) => match pse_result {
-                        Ok(()) => Ok(()),
-                        Err(e) => Err(e.clone().into()),
-                    },
-                    None => Ok(()),
-                }
-            }
+            Ok(pse_manifest_status)
+            | Err(IasQuoteError::SwHardeningNeeded {
+                pse_manifest_status,
+                ..
+            }) => match pse_manifest_status {
+                Some(pse_result) => match pse_result {
+                    Ok(()) => Ok(()),
+                    Err(e) => Err(e.clone().into()),
+                },
+                None => Ok(()),
+            },
             Err(e) => Err(e.clone().into()),
         }
     }
@@ -254,12 +259,12 @@ impl<'src> TryFrom<&'src VerificationReport> for VerificationReportData {
     /// VerificationReportData object
     fn try_from(src: &'src VerificationReport) -> Result<Self, VerifyError> {
         // Parse the JSON into a hashmap
-        let (chars_parsed, data) = super::json::parse(&src.http_body);
+        let (chars_parsed, data) = super::json::parse(src.http_body.trim());
         if data.is_none() {
             return Err(JsonError::NoData.into());
         }
 
-        if chars_parsed < src.http_body.len() {
+        if chars_parsed < src.http_body.trim().len() {
             return Err(JsonError::IncompleteParse(chars_parsed).into());
         }
 
@@ -298,6 +303,20 @@ impl<'src> TryFrom<&'src VerificationReport> for VerificationReportData {
             }
             None => None,
         };
+
+        let advisory_url = data
+            .remove("advisoryURL")
+            .map(TryInto::<String>::try_into)
+            .transpose()?;
+
+        let advisory_ids = data
+            .remove("advisoryIDs")
+            .map(TryInto::<Vec<JsonValue>>::try_into)
+            .transpose()?
+            .unwrap_or_default()
+            .into_iter()
+            .map(TryInto::<String>::try_into)
+            .collect::<Result<Vec<String>, JsonError>>()?;
 
         // Get the PSE manifest status (parsed here since it may be used by IasQuoteError)
         let pse_manifest_status = match data.remove("pseManifestStatus") {
@@ -342,25 +361,41 @@ impl<'src> TryFrom<&'src VerificationReport> for VerificationReportData {
             "SIGNATURE_REVOKED" => Err(IasQuoteError::SignatureRevoked),
             "KEY_REVOKED" => Err(IasQuoteError::KeyRevoked),
             "SIGRL_VERSION_MISMATCH" => Err(IasQuoteError::SigrlVersionMismatch),
-            "GROUP_OUT_OF_DATE" => Err(IasQuoteError::GroupOutOfDate(
-                pse_manifest_status.clone(),
-                platform_info_blob
+            "GROUP_OUT_OF_DATE" => Err(IasQuoteError::GroupOutOfDate {
+                pse_manifest_status: pse_manifest_status.clone(),
+                platform_info_blob: platform_info_blob
                     .ok_or_else(|| JsonError::FieldMissing("platformInfoBlob".to_string()))?,
-            )),
-            "CONFIGURATION_NEEDED" => Err(IasQuoteError::ConfigurationNeeded(
-                pse_manifest_status.clone(),
-                platform_info_blob
+                advisory_url: advisory_url
+                    .clone()
+                    .ok_or_else(|| JsonError::FieldMissing("advisoryURL".to_string()))?,
+                advisory_ids: advisory_ids.clone(),
+            }),
+            "CONFIGURATION_NEEDED" => Err(IasQuoteError::ConfigurationNeeded {
+                pse_manifest_status: pse_manifest_status.clone(),
+                platform_info_blob: platform_info_blob
                     .ok_or_else(|| JsonError::FieldMissing("platformInfoBlob".to_string()))?,
-            )),
-            "SW_HARDENING_NEEDED" => Err(IasQuoteError::SwHardeningNeeded(
-                pse_manifest_status.clone(),
-            )),
+                advisory_url: advisory_url
+                    .clone()
+                    .ok_or_else(|| JsonError::FieldMissing("advisoryURL".to_string()))?,
+                advisory_ids: advisory_ids.clone(),
+            }),
+            "SW_HARDENING_NEEDED" => Err(IasQuoteError::SwHardeningNeeded {
+                pse_manifest_status: pse_manifest_status.clone(),
+                advisory_url: advisory_url
+                    .clone()
+                    .ok_or_else(|| JsonError::FieldMissing("advisoryURL".to_string()))?,
+                advisory_ids: advisory_ids.clone(),
+            }),
             "CONFIGURATION_AND_SW_HARDENING_NEEDED" => {
-                Err(IasQuoteError::ConfigurationAndSwHardeningNeeded(
-                    pse_manifest_status.clone(),
-                    platform_info_blob
+                Err(IasQuoteError::ConfigurationAndSwHardeningNeeded {
+                    pse_manifest_status: pse_manifest_status.clone(),
+                    platform_info_blob: platform_info_blob
                         .ok_or_else(|| JsonError::FieldMissing("platformInfoBlob".to_string()))?,
-                ))
+                    advisory_url: advisory_url
+                        .clone()
+                        .ok_or_else(|| JsonError::FieldMissing("advisoryURL".to_string()))?,
+                    advisory_ids: advisory_ids.clone(),
+                })
             }
             s => Err(IasQuoteError::Other(s.to_string())),
         };
@@ -417,30 +452,29 @@ impl<'src> TryFrom<&'src VerificationReport> for VerificationReportData {
             platform_info_blob,
             nonce,
             epid_pseudonym,
+            advisory_url,
+            advisory_ids,
         })
     }
 }
 
 /// A type containing the bytes of the VerificationReport signature
-#[derive(Clone, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Deserialize, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize)]
 #[repr(transparent)]
-pub struct VerificationSignature(Vec<u8>);
+pub struct VerificationSignature {
+    #[prost(bytes, required)]
+    sig: Vec<u8>,
+}
 
-impl Debug for VerificationSignature {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(f, "VerificationSignature: \"{}\"", HexFmt(&self.0))
+impl AsRef<[u8]> for VerificationSignature {
+    fn as_ref(&self) -> &[u8] {
+        self.sig.as_ref()
     }
 }
 
 impl From<Vec<u8>> for VerificationSignature {
     fn from(src: Vec<u8>) -> Self {
-        Self(src)
-    }
-}
-
-impl AsRef<[u8]> for VerificationSignature {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
+        Self { sig: src }
     }
 }
 
@@ -470,15 +504,18 @@ const MAX_CHAIN_DEPTH: usize = 5;
 /// This structure is supposed to be filled in from the results of an IAS
 /// web request and then validated directly or serialized into an enclave for
 /// validation.
-#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Deserialize, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct VerificationReport {
     /// Report Signature bytes, from the X-IASReport-Signature HTTP header.
+    #[prost(message, required)]
     pub sig: VerificationSignature,
     /// Attestation Report Signing Certificate Chain, as an array of
     /// DER-formatted bytes, from the X-IASReport-Signing-Certificate HTTP
     /// header.
+    #[prost(bytes, repeated)]
     pub chain: Vec<Vec<u8>>,
     /// The raw report body JSON, as a byte sequence
+    #[prost(string, required)]
     pub http_body: String,
 }
 
@@ -709,7 +746,7 @@ mod test {
         let report = VerificationReport {
             sig: VerificationSignature::default(),
             chain: Vec::default(),
-            http_body: String::from(IAS_WITH_PIB),
+            http_body: String::from(IAS_WITH_PIB.trim()),
         };
 
         let data = VerificationReportData::try_from(&report)

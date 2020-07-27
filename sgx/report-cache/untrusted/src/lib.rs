@@ -194,13 +194,18 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
                 Ok(())
             }
             Err(ReportableEnclaveError::AttestEnclave(AttestEnclaveError::Verify(
-                VerifyError::IasQuote(IasQuoteError::GroupRevoked(_, pib)),
+                VerifyError::IasQuote(IasQuoteError::GroupRevoked(_, platform_info_blob)),
             )))
             | Err(ReportableEnclaveError::AttestEnclave(AttestEnclaveError::Verify(
-                VerifyError::IasQuote(IasQuoteError::ConfigurationNeeded(_, pib)),
+                VerifyError::IasQuote(IasQuoteError::ConfigurationNeeded {
+                    platform_info_blob,
+                    ..
+                }),
             )))
             | Err(ReportableEnclaveError::AttestEnclave(AttestEnclaveError::Verify(
-                VerifyError::IasQuote(IasQuoteError::GroupOutOfDate(_, pib)),
+                VerifyError::IasQuote(IasQuoteError::GroupOutOfDate {
+                    platform_info_blob, ..
+                }),
             ))) => {
                 // To get here, we've gotten an error back from the enclave telling us
                 // the TCB is out-of-date.
@@ -208,7 +213,7 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
                     self.logger,
                     "IAS requested TCB update, attempting to update..."
                 );
-                QuotingEnclave::update_tcb(&pib)?;
+                QuotingEnclave::update_tcb(&platform_info_blob)?;
                 log::debug!(
                     self.logger,
                     "TCB update complete, restarting reporting process"
