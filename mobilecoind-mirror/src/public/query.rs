@@ -114,8 +114,8 @@ pub struct QueryManager {
     inner: Arc<Mutex<QueryManagerInner>>,
 }
 
-impl QueryManager {
-    pub fn new() -> Self {
+impl Default for QueryManager {
+    fn default() -> Self {
         Self {
             inner: Arc::new(Mutex::new(QueryManagerInner {
                 pending_requests: HashMap::new(),
@@ -123,7 +123,9 @@ impl QueryManager {
             })),
         }
     }
+}
 
+impl QueryManager {
     pub fn enqueue_query(&self, request: QueryRequest) -> Query {
         let mut inner = self.inner.lock().expect("mutex poisoned");
         let query_id = inner.generate_query_id();
@@ -151,9 +153,11 @@ impl QueryManager {
 
     pub fn resolve_query(&self, query_id: &str, response: &QueryResponse) -> Result<(), String> {
         let mut inner = self.inner.lock().expect("mutex poisoned");
-        match inner.pending_responses.remove(query_id) {
-            Some(query) => Ok(query.resolve(response.clone())),
-            None => Err(format!("Unknown query id {}", query_id)),
-        }
+        let query = inner
+            .pending_responses
+            .remove(query_id)
+            .ok_or_else(|| format!("Unknown query id {}", query_id))?;
+        query.resolve(response.clone());
+        Ok(())
     }
 }

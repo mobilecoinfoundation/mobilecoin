@@ -105,7 +105,7 @@ fn main() {
     };
 
     // Figure out which monitor id we are working with.
-    let monitor_id = config.monitor_id.map(|m| m.0.clone()).unwrap_or_else(|| {
+    let monitor_id = config.monitor_id.map(|m| m.0).unwrap_or_else(|| {
         let response = mobilecoind_api_client.get_monitor_list(&mc_mobilecoind_api::Empty::new()).expect("Failed querying mobilecoind for list of configured monitors");
         match response.monitor_id_list.len() {
             0 => panic!("Mobilecoind has no monitors configured"),
@@ -181,7 +181,7 @@ fn main() {
 
 fn process_request(
     mobilecoind_api_client: &MobilecoindApiClient,
-    monitor_id: &Vec<u8>,
+    monitor_id: &[u8],
     query_request: &QueryRequest,
     logger: &Logger,
 ) -> grpcio::Result<QueryResponse> {
@@ -191,7 +191,7 @@ fn process_request(
     if query_request.has_get_processed_block() {
         let mirror_request = query_request.get_get_processed_block();
         let mut mobilecoind_request = mc_mobilecoind_api::GetProcessedBlockRequest::new();
-        mobilecoind_request.set_monitor_id(monitor_id.clone());
+        mobilecoind_request.set_monitor_id(monitor_id.to_vec());
         mobilecoind_request.set_block(mirror_request.block);
 
         log::debug!(

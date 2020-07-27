@@ -174,7 +174,7 @@ fn main() {
     );
 
     // Common state.
-    let query_manager = QueryManager::new();
+    let query_manager = QueryManager::default();
 
     // Start the mirror-facing GRPC server.
     log::info!(logger, "Starting mirror GRPC server");
