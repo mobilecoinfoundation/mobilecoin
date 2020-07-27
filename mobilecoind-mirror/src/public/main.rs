@@ -199,6 +199,10 @@ fn main() {
     server.start();
 
     // Start the client-facing webserver.
+    if config.client_listen_uri.use_tls() {
+        panic!("Client-listening using TLS is currently not supported due to `ring` crate version compatibility issues.");
+    }
+
     let mut rocket_config = RocketConfig::build(
         RocketEnvironment::active().expect("Failed getitng rocket environment"),
     )

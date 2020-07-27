@@ -53,3 +53,45 @@ For supported requests, the response types are identical to the ones used by [mo
 
 
 ### TLS
+
+The GRPC connection between the public and private side of the mirror can optionally be TLS-encrypted. If you wish to use TLS for that, you'll a certificate file and the matching private key for it. For testing purposes you can generate your own self-signed certificate:
+
+```
+$ openssl req -x509 -sha256 -nodes -newkey rsa:2048 -days 365 -keyout server.key -out server.crt
+
+Generating a 2048 bit RSA private key
+....................+++
+.............+++
+writing new private key to 'server.key'
+-----
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) []:US
+State or Province Name (full name) []:California
+Locality Name (eg, city) []:San Francisco
+Organization Name (eg, company) []:My Test Company
+Organizational Unit Name (eg, section) []:Test Unit
+Common Name (eg, fully qualified host name) []:localhost
+Email Address []:test@test.com
+```
+
+Note that the `Common Name` needs to match the hostname which you would be using to connect to the public side (that has the GRPC listening port).
+
+After the certificate has been geneerated, you can start the public side of the mirror and instruct it to listen using TLS:
+```
+cargo run -p mc-mobilecoind-mirror --bin mobilecoind-mirror-public -- --client-listen-uri http://0.0.0.0:8001/ --mirror-listen-uri 'mobilecoind-mirror://127.0.0.1/?tls-chain=server.crt&tls-key=server.key'
+```
+
+Notice that the `mirror-listen-uri` has been changed from `insecure-mobilecoind-mirror` to `mobilecoind-mirror`, and that it now contains a `tls-chain` and `tls-key` parameters pointing at the certificate chain file and the matching private key file. The default port for the `mobilecoind-mirror` scheme is 10043.
+
+The private side of the bridge also needs to be aware that TLS is now used:
+```
+cargo run -p mc-mobilecoind-mirror --bin mobilecoind-mirror-private -- --mirror-public-uri 'mobilecoind-mirror://localhost/?ca-bundle=server.crt' --mobilecoind-host localhost:4444
+```
+
+Notice that the `mirror-public-uri` parameter has changed to reflect the TLS certificate chain.
