@@ -3,7 +3,7 @@
 version: 2.1
 
 defaults:
-  builder-install: &builder-install gcr.io/mobilenode-211420/builder-install:1_11
+  builder-install: &builder-install gcr.io/mobilenode-211420/builder-install:1_12
   default-environment: &default-environment
     IAS_MODE: DEV
     SGX_MODE: SW
