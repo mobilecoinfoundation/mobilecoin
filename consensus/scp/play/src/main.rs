@@ -122,7 +122,7 @@ fn main() {
                 cur_slot_index = Some(slot_index);
 
                 if let Some(out_msg) = scp_node
-                    .propose_values(slot_index, values)
+                    .propose_values(values)
                     .expect("scp nominate failed")
                 {
                     sent_msgs.push_back(out_msg);

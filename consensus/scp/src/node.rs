@@ -9,7 +9,7 @@ use crate::{
 };
 use mc_common::{
     logger::{log, Logger},
-    LruCache, NodeID,
+    NodeID,
 };
 #[cfg(test)]
 use mockall::*;
