@@ -268,9 +268,27 @@ commands:
       - run:
           name: Run all tests
           command: |
-            << parameters.test_command >> -- -Z unstable-options --format json --report-time \
-              | tee /tmp/test-results.json
-            cat /tmp/test-results.json | cargo2junit > /tmp/test-results.xml || true
+            mkdir -p /tmp/test-results
+
+            # Run tests, then convert the cargo json results into junit xml format.
+            #
+            # Note: Using curly braces ensures that the conversion is run even if the tests fail,
+            # while still allowing the exit code from the tests to be propagated. Using `tee` to
+            # pipe the output to a file before converting ensures that the tests are not
+            # interrupted if conversion fails. The last statement in the curly braces is `true` so
+            # that if the conversion can fails, the step as a whole does not fail. This is
+            # necessary because the conversion tool must parse all test output, including log
+            # output, in order to parse the test results, and unfortunately Cargo does not always
+            # output the test results in such a way that is cleanly parsable.
+            << parameters.test_command >> -- \
+                -Z unstable-options --format json --report-time \
+              | {
+                  tee /tmp/test-results/output.log
+                  cat /tmp/test-results/output.log \
+                    | cargo2junit \
+                    > /tmp/test-results/results.xml
+                  true
+                }
 
   post-build:
     steps:
@@ -279,9 +297,9 @@ commands:
   post-test:
     steps:
       - store_test_results:
-          path: /tmp/test-results.xml
+          path: /tmp/test-results
       - store_artifacts:
-          path: /tmp/test-results.xml
+          path: /tmp/test-results
 
   check-dirty-git:
     steps:
