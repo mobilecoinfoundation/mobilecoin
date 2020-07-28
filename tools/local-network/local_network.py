@@ -304,7 +304,6 @@ class Mobilecoind:
             f'cd {PROJECT_DIR} && exec {TARGET_DIR}/mobilecoind',
             f'--ledger-db {self.ledger_db}',
             f'--poll-interval 1',
-            f'--tx-source-url "file:///tmp/mc-local-network/node-ledger-distribution-0/"',
             f'--mobilecoind-db {self.mobilecoind_db}',
             f'--service-port {self.client_port}',
             f'--watcher-db {self.watcher_db}',
