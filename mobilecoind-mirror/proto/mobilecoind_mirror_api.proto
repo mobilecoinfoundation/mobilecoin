@@ -1,0 +1,55 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
+// mobilecoind mirror data types and service descriptors.
+
+syntax = "proto3";
+import "mobilecoind_api.proto";
+
+package mobilecoind_mirror_api;
+
+service MobilecoindMirror {
+    // The periodic poll method that queries for requests and returns replies.
+    // This is sent from the private host to the public host.
+    rpc Poll (PollRequest) returns (PollResponse) {}
+}
+
+// A single query request.
+message QueryRequest {
+    oneof request {
+        GetProcessedBlockRequest get_processed_block = 1;
+        mobilecoind_api.GetBlockRequest get_block = 2;
+    }
+}
+
+// A single query response.
+message QueryResponse {
+    oneof response {
+        string error = 1;
+        mobilecoind_api.GetProcessedBlockResponse get_processed_block = 2;
+        mobilecoind_api.GetBlockResponse get_block  = 3;
+    }
+}
+
+// A polling request (sent from the private side to the public side) includes responses to queries.
+message PollRequest {
+    // Map of query id -> response.
+    map<string, QueryResponse> query_responses = 1;
+}
+
+// A polling response (sent from the public side to the private side) includes queries the public side wants
+// the private side to execute.
+message PollResponse {
+    // Map of query id -> request.
+    map<string, QueryRequest> query_requests = 1;
+}
+
+//
+// Requests that do not align 1:1 with the mobilecoind_api
+//
+
+// GetProcessedBlockRequest - similar to mobilecoind's, but (without the monitor_id parameter.
+// The mirror operates automatically on all known monitor ids.
+message GetProcessedBlockRequest {
+    // Block number to query.
+    uint64 block = 1;
+}
