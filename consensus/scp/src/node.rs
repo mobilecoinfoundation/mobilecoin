@@ -5,7 +5,7 @@ use crate::{
     core_types::{CombineFn, SlotIndex, ValidityFn, Value},
     msg::{ExternalizePayload, Msg, Topic},
     quorum_set::QuorumSet,
-    slot::{Slot, SlotMetrics},
+    slot::{Slot, SlotMetrics, SlotState},
 };
 use mc_common::{
     logger::{log, Logger},
@@ -150,6 +150,9 @@ pub trait ScpNode<V: Value>: Send {
     /// Get metrics for a specific slot.
     fn get_slot_metrics(&mut self, slot_index: SlotIndex) -> Option<SlotMetrics>;
 
+    /// Get the slot internal state (for debug purposes).
+    fn get_slot_state(&mut self, slot_index: SlotIndex) -> Option<SlotState<V>>;
+
     /// Clear the list of pending slots. This is useful if the user of this object realizes they
     /// have fallen behind their peers, and as such they want to abort processing of current slots.
     fn clear_pending_slots(&mut self);
@@ -262,6 +265,13 @@ impl<V: Value, ValidationError: Display> ScpNode<V> for Node<V, ValidationError>
     /// Get metrics for a specific slot.
     fn get_slot_metrics(&mut self, slot_index: SlotIndex) -> Option<SlotMetrics> {
         self.pending.get(&slot_index).map(|slot| slot.get_metrics())
+    }
+
+    /// Get the slot internal state (for debug purposes).
+    fn get_slot_state(&mut self, slot_index: SlotIndex) -> Option<SlotState<V>> {
+        self.pending
+            .get(&slot_index)
+            .map(|slot| SlotState::from(slot))
     }
 
     /// Clear the list of pending slots. This is useful if the user of this object realizes they
