@@ -269,9 +269,7 @@ impl<V: Value, ValidationError: Display> ScpNode<V> for Node<V, ValidationError>
 
     /// Get the slot internal state (for debug purposes).
     fn get_slot_state(&mut self, slot_index: SlotIndex) -> Option<SlotState<V>> {
-        self.pending
-            .get(&slot_index)
-            .map(|slot| SlotState::from(slot))
+        self.pending.get(&slot_index).map(SlotState::from)
     }
 
     /// Clear the list of pending slots. This is useful if the user of this object realizes they

@@ -84,7 +84,7 @@ impl<V: Value, N: ScpNode<V>> LoggingScpNode<V, N> {
         create_dir_all(cur_slot_out_path.clone())
             .map_err(|e| format!("Failed creating directory {:?}: {:?}", cur_slot_out_path, e))?;
 
-        let mut slot_states_out_path = out_path.clone();
+        let mut slot_states_out_path = out_path;
         slot_states_out_path.push("slot-states");
         create_dir_all(slot_states_out_path.clone()).map_err(|e| {
             format!(

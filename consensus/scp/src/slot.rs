@@ -227,7 +227,7 @@ impl<V: Value, ValidationError: Display> From<&Slot<V, ValidationError>> for Slo
             PP: src.PP.clone(),
             H: src.H.clone(),
             C: src.C.clone(),
-            phase: src.phase.clone(),
+            phase: src.phase,
             last_sent_msg: src.last_sent_msg.clone(),
             max_priority_peers: src.max_priority_peers.clone(),
             nominate_round: src.nominate_round,
