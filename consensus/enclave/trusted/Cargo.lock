@@ -321,7 +321,7 @@ dependencies = [
 
 [[package]]
 name = "displaydoc"
-version = "0.1.7"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "proc-macro2 1.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -585,7 +585,7 @@ dependencies = [
  "blake2 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "curve25519-dalek 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "displaydoc 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "displaydoc 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "hkdf 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mc-crypto-digestible 0.5.0",
  "mc-crypto-hashes 0.5.0",
@@ -625,7 +625,6 @@ dependencies = [
  "cfg-if 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "chrono 0.4.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "displaydoc 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "generic-array 0.12.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex_fmt 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1013,7 +1012,7 @@ dependencies = [
 name = "mc-sgx-report-cache-api"
 version = "0.5.0"
 dependencies = [
- "displaydoc 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "displaydoc 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "mc-attest-core 0.5.0",
  "mc-attest-enclave-api 0.5.0",
  "mc-util-serial 0.5.0",
@@ -1106,7 +1105,7 @@ version = "0.5.0"
 dependencies = [
  "cargo-emit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "cc 1.0.50 (registry+https://github.com/rust-lang/crates.io-index)",
- "displaydoc 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "displaydoc 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mc-util-build-script 0.5.0",
  "pkg-config 0.3.17 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1118,7 +1117,7 @@ version = "0.5.0"
 dependencies = [
  "base64 0.12.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "binascii 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "displaydoc 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "displaydoc 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "mc-util-repr-bytes 0.1.0",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1720,7 +1719,7 @@ dependencies = [
 "checksum crypto-mac 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "4434400df11d95d556bac068ddfedd482915eb18fe8bea89bc80b6e4b1c179e5"
 "checksum curve25519-dalek 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "26778518a7f6cffa1d25a44b602b62b979bd88adb9e99ffec546998cf3404839"
 "checksum digest 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)" = "f3d0c8c8752312f9713efd397ff63acb9f85585afbf179282e720e7704954dd5"
-"checksum displaydoc 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)" = "adc2ab4d5a16117f9029e9a6b5e4e79f4c67f6519bc134210d4d4a04ba31f41b"
+"checksum displaydoc 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "e6269d127174b18c665e683e23c2c55d3735fadbec4181c7c70b0450b764bfa5"
 "checksum ed25519 1.0.0-pre.4 (registry+https://github.com/rust-lang/crates.io-index)" = "01a416ad364359365b649fb28d7a6fab7f998d13282182241134beb014a9a378"
 "checksum ed25519-dalek 1.0.0-pre.3 (git+https://github.com/cbeck88/ed25519-dalek?rev=c0b0ab31d3572de6fb01d6b4a4f052784034b0b2)" = "<none>"
 "checksum either 1.5.3 (registry+https://github.com/rust-lang/crates.io-index)" = "bb1f6b1ce1c140482ea30ddd3335fc0024ac7ee112895426e0a629a6c20adfe3"

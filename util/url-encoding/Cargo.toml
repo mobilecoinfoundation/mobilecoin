@@ -13,7 +13,7 @@ mc-util-uri = { path = "../uri" }
 
 base64 = "0.11"
 crc = "1.8.1"
-displaydoc = { version = "0.1.7", default-features = false }
+displaydoc = { version = "0.1", default-features = false }
 hex = "0.4"
 url = "2.1"
 

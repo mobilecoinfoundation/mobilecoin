@@ -5,7 +5,7 @@ authors = ["MobileCoin"]
 edition = "2018"
 
 [dependencies]
-displaydoc = { version = "0.1.7", default-features = false }
+displaydoc = { version = "0.1", default-features = false }
 retry = "0.5"
 
 mc-attest-core = { path = "../../../attest/core" }

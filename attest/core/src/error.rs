@@ -18,7 +18,6 @@ use core::{
     fmt::{Display, Error as FmtError, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
-use displaydoc::Display;
 use failure::Fail;
 use mc_sgx_types::sgx_status_t;
 use mc_util_encodings::Error as EncodingError;
@@ -51,46 +50,29 @@ pub type IasQuoteResult = Result<Option<PseManifestResult>, IasQuoteError>;
 /// An enumeration of errors returned by IAS as part of the signed quote
 ///
 /// This is defined in the [IAS API v3, S4.2.1](https://software.intel.com/sites/default/files/managed/7e/3b/ias-api-spec.pdf).
-#[derive(Clone, Debug, Deserialize, Display, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Fail, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum IasQuoteError {
-    /// EPID signature of the ISV enclave QUOTE was invalid
+    #[fail(display = "EPID signature of the ISV enclave QUOTE was invalid")]
     SignatureInvalid,
-    /// The EPID group has been revoked. See RevocationCause
+    #[fail(display = "The EPID group has been revoked. See RevocationCause")]
     GroupRevoked(RevocationCause, PlatformInfoBlob),
-    /// The EPID private key used to sign the QUOTE has been revoked by signature
+    #[fail(display = "The EPID private key used to sign the QUOTE has been revoked by signature")]
     SignatureRevoked,
-    /// The EPID private key used to sign the QUOTE has been directly revoked (not by signature)
+    #[fail(
+        display = "The EPID private key used to sign the QUOTE has been directly revoked (not by signature)"
+    )]
     KeyRevoked,
-    /// The SigRL used for the quote is out of date
+    #[fail(display = "The SigRL used for the quote is out of date")]
     SigrlVersionMismatch,
-    /// The EPID group must be updated to mitigate {advisory_ids:?}, see {advisory_url}
-    GroupOutOfDate {
-        pse_manifest_status: Option<PseManifestResult>,
-        platform_info_blob: PlatformInfoBlob,
-        advisory_url: String,
-        advisory_ids: Vec<String>,
-    },
-    /// The enclave requires additional BIOS configuration to mitigate {advisory_ids:?}, see {advisory_url}
-    ConfigurationNeeded {
-        pse_manifest_status: Option<PseManifestResult>,
-        platform_info_blob: PlatformInfoBlob,
-        advisory_url: String,
-        advisory_ids: Vec<String>,
-    },
-    /// The enclave requires software mitigation for {advisory_ids:?}, see {advisory_url}
-    SwHardeningNeeded {
-        pse_manifest_status: Option<PseManifestResult>,
-        advisory_url: String,
-        advisory_ids: Vec<String>,
-    },
-    /// The enclave requires additional BIOS configuration and software mitigation for {advisory_ids:?}, see {advisory_url}
-    ConfigurationAndSwHardeningNeeded {
-        pse_manifest_status: Option<PseManifestResult>,
-        platform_info_blob: PlatformInfoBlob,
-        advisory_url: String,
-        advisory_ids: Vec<String>,
-    },
-    /// Unknown error: {0}
+    #[fail(display = "The TCB level of the SGX platform is out of date")]
+    GroupOutOfDate(Option<PseManifestResult>, PlatformInfoBlob),
+    #[fail(display = "The enclave requires additional BIOS configuration")]
+    ConfigurationNeeded(Option<PseManifestResult>, PlatformInfoBlob),
+    #[fail(display = "The enclave requires software mitigation")]
+    SwHardeningNeeded(Option<PseManifestResult>),
+    #[fail(display = "The enclave requires additional BIOS configuration and software mitigation")]
+    ConfigurationAndSwHardeningNeeded(Option<PseManifestResult>, PlatformInfoBlob),
+    #[fail(display = "Unknown error: {}", _0)]
     Other(String),
 }
 
