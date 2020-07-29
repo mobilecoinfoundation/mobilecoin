@@ -156,6 +156,9 @@ pub struct SlotState<V: Value> {
     /// Current slot number.
     slot_index: SlotIndex,
 
+    /// Local node ID.
+    node_id: NodeID,
+
     /// List of highest messages from each node.
     /// This is not stored as a HashMap since it simplifies serialization. The node id is part of
     /// the message so that can be derived.
@@ -213,6 +216,7 @@ impl<V: Value, ValidationError: Display> From<&Slot<V, ValidationError>> for Slo
     fn from(src: &Slot<V, ValidationError>) -> Self {
         Self {
             slot_index: src.slot_index,
+            node_id: src.node_id.clone(),
             M: src.M.values().cloned().collect(),
             W: src.W.clone(),
             X: src.X.clone(),
