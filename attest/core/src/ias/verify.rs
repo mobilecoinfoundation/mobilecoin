@@ -37,7 +37,11 @@ use mbedtls::{
     x509::{Certificate, Profile},
 };
 use mc_util_encodings::{Error as EncodingError, FromBase64, FromHex, ToBase64};
-use prost::Message;
+use prost::{
+    bytes::{Buf, BufMut},
+    encoding::{self, DecodeContext, WireType},
+    DecodeError, Message,
+};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 
@@ -68,7 +72,6 @@ const EPID_PSEUDONYM_LEN: usize = EPID_PSEUDONYM_B_LEN + EPID_PSEUDONYM_K_LEN;
 // > have the same EPID Pseudonym, the two signatures were generated
 // > using the same EPID private key. This field is encoded using Base 64
 // > encoding scheme.
-//
 #[derive(Clone, Debug, Deserialize, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct EpidPseudonym {
     b: Vec<u8>,
@@ -122,8 +125,8 @@ impl ToBase64 for EpidPseudonym {
     }
 }
 
-/// The parsed Attestation Verification Report Data, parsed from VerificationReport.http_body JSON
-/// after signature and chain validation.
+/// The parsed Attestation Verification Report Data, parsed from
+/// VerificationReport.http_body JSON after signature and chain validation.
 #[derive(Clone, Debug, Deserialize, PartialEq, PartialOrd, Serialize)]
 pub struct VerificationReportData {
     /// A unqiue ID of this report
@@ -136,9 +139,11 @@ pub struct VerificationReportData {
     pub quote_status: IasQuoteResult,
     /// The quote body minus the signature
     pub quote: Quote,
-    /// An optional string explaining the quote revocation, if quote_error is GroupRevoked
+    /// An optional string explaining the quote revocation, if quote_error is
+    /// GroupRevoked
     pub revocation_reason: Option<RevocationCause>,
-    /// An optional error used to indicate the results of IAS checking the PSE manifest
+    /// An optional error used to indicate the results of IAS checking the PSE
+    /// manifest
     pub pse_manifest_status: Option<PseManifestResult>,
     /// The hash of the PSE manifest, if provided.
     pub pse_manifest_hash: Option<Vec<u8>>,
@@ -241,8 +246,8 @@ impl VerificationReportData {
 
     /// Try and parse the timestamp string into a chrono object.
     pub fn parse_timestamp(&self) -> Result<chrono::DateTime<chrono::Utc>, VerifyError> {
-        // Intel provides the timestamp as ISO8601 (compatible with RFC3339) but without the
-        // Z specifier, which is required for chrono to be happy.
+        // Intel provides the timestamp as ISO8601 (compatible with RFC3339) but without
+        // the Z specifier, which is required for chrono to be happy.
         let timestamp =
             chrono::DateTime::parse_from_rfc3339(&[self.timestamp.as_str(), "Z"].concat())
                 .map_err(|err| {
@@ -318,7 +323,8 @@ impl<'src> TryFrom<&'src VerificationReport> for VerificationReportData {
             .map(TryInto::<String>::try_into)
             .collect::<Result<Vec<String>, JsonError>>()?;
 
-        // Get the PSE manifest status (parsed here since it may be used by IasQuoteError)
+        // Get the PSE manifest status (parsed here since it may be used by
+        // IasQuoteError)
         let pse_manifest_status = match data.remove("pseManifestStatus") {
             Some(v) => {
                 let value: String = v.try_into()?;
@@ -459,22 +465,19 @@ impl<'src> TryFrom<&'src VerificationReport> for VerificationReportData {
 }
 
 /// A type containing the bytes of the VerificationReport signature
-#[derive(Clone, Deserialize, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 #[repr(transparent)]
-pub struct VerificationSignature {
-    #[prost(bytes, required)]
-    sig: Vec<u8>,
-}
+pub struct VerificationSignature(Vec<u8>);
 
 impl AsRef<[u8]> for VerificationSignature {
     fn as_ref(&self) -> &[u8] {
-        self.sig.as_ref()
+        self.0.as_ref()
     }
 }
 
 impl From<Vec<u8>> for VerificationSignature {
     fn from(src: Vec<u8>) -> Self {
-        Self { sig: src }
+        Self(src)
     }
 }
 
@@ -490,6 +493,44 @@ impl FromHex for VerificationSignature {
         };
         data.truncate(buflen);
         Ok(VerificationSignature::from(data))
+    }
+}
+
+const TAG_SIGNATURE_CONTENTS: u32 = 1;
+
+impl Message for VerificationSignature {
+    fn encode_raw<B>(&self, buf: &mut B)
+    where
+        B: BufMut,
+        Self: Sized,
+    {
+        encoding::bytes::encode(TAG_SIGNATURE_CONTENTS, &self.0, buf);
+    }
+
+    fn merge_field<B>(
+        &mut self,
+        tag: u32,
+        wire_type: WireType,
+        buf: &mut B,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError>
+    where
+        B: Buf,
+        Self: Sized,
+    {
+        if tag == TAG_SIGNATURE_CONTENTS {
+            encoding::bytes::merge(wire_type, &mut self.0, buf, ctx)
+        } else {
+            encoding::skip_field(wire_type, tag, buf, ctx)
+        }
+    }
+
+    fn encoded_len(&self) -> usize {
+        encoding::bytes::encoded_len(TAG_SIGNATURE_CONTENTS, &self.0)
+    }
+
+    fn clear(&mut self) {
+        self.0.clear()
     }
 }
 
