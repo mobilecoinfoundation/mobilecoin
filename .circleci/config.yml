@@ -11,6 +11,7 @@ version: 2.1
 
 defaults:
   builder-install: &builder-install gcr.io/mobilenode-211420/builder-install:1_12
+
   default-environment: &default-environment
     IAS_MODE: DEV
     SGX_MODE: SW
@@ -258,10 +259,6 @@ commands:
           steps: [ restore-sccache-cache ]
       - prefetch-cargo-deps
 
-  post-build:
-    steps:
-      - record-sccache-cache-stats
-
   run-tests:
     parameters:
       test_command:
@@ -274,6 +271,10 @@ commands:
             << parameters.test_command >> -- -Z unstable-options --format json --report-time \
               | tee /tmp/test-results.json
             cat /tmp/test-results.json | cargo2junit > /tmp/test-results.xml || true
+
+  post-build:
+    steps:
+      - record-sccache-cache-stats
 
   post-test:
     steps:
@@ -467,7 +468,7 @@ jobs:
       - prepare-for-build:
           os: macos
       - run:
-          name: Cargo check (SW/IAS dev)
+          name: Cargo check
           command: |
             cargo check --frozen --target "$HOST_TARGET_TRIPLE" --workspace \
               --exclude mc-attest-untrusted \
