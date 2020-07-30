@@ -77,7 +77,8 @@ fn purge_expired_cert(path: &PathBuf) {
             }
         }
         Err(_) => {
-            // Failed getting expiration date from certificate, delete it so it gets regenerated.
+            // Failed getting expiration date from certificate, delete it so it gets
+            // regenerated.
             remove_file(path.clone()).unwrap_or_else(|e| {
                 panic!("failed deleting non-parseable cert {:?}: {:?}", path, e)
             });

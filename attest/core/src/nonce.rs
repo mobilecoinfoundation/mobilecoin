@@ -17,10 +17,16 @@ use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_sgx_types::sgx_quote_nonce_t;
 use mc_util_encodings::{Error as EncodingError, FromHex, ToHex};
 use serde::{Deserialize, Serialize};
+use subtle::{Choice, ConstantTimeEq};
 
 /// A trait used to define common operations on nonce values
 pub trait Nonce:
-    AsRef<[u8]> + PartialEq + Sized + for<'bytes> TryFrom<&'bytes [u8]> + TryFrom<Vec<u8>>
+    AsRef<[u8]>
+    + PartialEq
+    + Sized
+    + for<'bytes> TryFrom<&'bytes [u8]>
+    + TryFrom<Vec<u8>>
+    + ConstantTimeEq
 {
     /// Generate a new nonce from random data
     fn new<R: RngCore + CryptoRng>(csprng: &mut R) -> Result<Self, NonceError>
@@ -97,7 +103,8 @@ impl Nonce for QuoteNonce {
 const IAS_NONCE_LENGTH: usize = 16;
 const IAS_NONCE_STR_LENGTH: usize = 2 * IAS_NONCE_LENGTH;
 
-/// The IasNonce is provided with the json request payload to Intel Attestation Services.
+/// The IasNonce is provided with the json request payload to Intel Attestation
+/// Services.
 ///
 /// (IAS Spec Documentation)[https://software.intel.com/sites/default/files/managed/7e/3b/ias-api-spec.pdf]
 /// The documentation is slightly unclear as to what encoding should be used, so
@@ -109,6 +116,12 @@ pub struct IasNonce([u8; IAS_NONCE_LENGTH]);
 impl AsRef<[u8]> for IasNonce {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
+    }
+}
+
+impl ConstantTimeEq for IasNonce {
+    fn ct_eq(&self, other: &Self) -> Choice {
+        self.0.ct_eq(&other.0)
     }
 }
 
@@ -177,7 +190,8 @@ mod test {
     use rand_hc::Hc128Rng as FixedRng;
 
     #[test]
-    /// Test the output of the IasNonce to make sure it is a string compatible with IAS
+    /// Test the output of the IasNonce to make sure it is a string compatible
+    /// with IAS
     fn test_ias_nonce_len() {
         let mut seeded_rng: FixedRng = SeedableRng::from_seed([1u8; 32]);
         let ias_nonce = IasNonce::new(&mut seeded_rng).unwrap();
@@ -188,7 +202,8 @@ mod test {
     }
 
     #[test]
-    /// Test hex encoding using data explicitly, and that it matches our to_string hex
+    /// Test hex encoding using data explicitly, and that it matches our
+    /// to_string hex
     fn test_to_string_and_hex_encoding() {
         let mut seeded_rng: FixedRng = SeedableRng::from_seed([1u8; 32]);
         let ias_nonce = IasNonce::new(&mut seeded_rng).unwrap();

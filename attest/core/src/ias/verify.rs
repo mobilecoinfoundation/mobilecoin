@@ -68,7 +68,6 @@ const EPID_PSEUDONYM_LEN: usize = EPID_PSEUDONYM_B_LEN + EPID_PSEUDONYM_K_LEN;
 // > have the same EPID Pseudonym, the two signatures were generated
 // > using the same EPID private key. This field is encoded using Base 64
 // > encoding scheme.
-//
 #[derive(Clone, Debug, Deserialize, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct EpidPseudonym {
     b: Vec<u8>,
@@ -122,8 +121,8 @@ impl ToBase64 for EpidPseudonym {
     }
 }
 
-/// The parsed Attestation Verification Report Data, parsed from VerificationReport.http_body JSON
-/// after signature and chain validation.
+/// The parsed Attestation Verification Report Data, parsed from
+/// VerificationReport.http_body JSON after signature and chain validation.
 #[derive(Clone, Debug, Deserialize, PartialEq, PartialOrd, Serialize)]
 pub struct VerificationReportData {
     /// A unqiue ID of this report
@@ -136,9 +135,11 @@ pub struct VerificationReportData {
     pub quote_status: IasQuoteResult,
     /// The quote body minus the signature
     pub quote: Quote,
-    /// An optional string explaining the quote revocation, if quote_error is GroupRevoked
+    /// An optional string explaining the quote revocation, if quote_error is
+    /// GroupRevoked
     pub revocation_reason: Option<RevocationCause>,
-    /// An optional error used to indicate the results of IAS checking the PSE manifest
+    /// An optional error used to indicate the results of IAS checking the PSE
+    /// manifest
     pub pse_manifest_status: Option<PseManifestResult>,
     /// The hash of the PSE manifest, if provided.
     pub pse_manifest_hash: Option<Vec<u8>>,
@@ -241,8 +242,8 @@ impl VerificationReportData {
 
     /// Try and parse the timestamp string into a chrono object.
     pub fn parse_timestamp(&self) -> Result<chrono::DateTime<chrono::Utc>, VerifyError> {
-        // Intel provides the timestamp as ISO8601 (compatible with RFC3339) but without the
-        // Z specifier, which is required for chrono to be happy.
+        // Intel provides the timestamp as ISO8601 (compatible with RFC3339) but without
+        // the Z specifier, which is required for chrono to be happy.
         let timestamp =
             chrono::DateTime::parse_from_rfc3339(&[self.timestamp.as_str(), "Z"].concat())
                 .map_err(|err| {
@@ -318,7 +319,8 @@ impl<'src> TryFrom<&'src VerificationReport> for VerificationReportData {
             .map(TryInto::<String>::try_into)
             .collect::<Result<Vec<String>, JsonError>>()?;
 
-        // Get the PSE manifest status (parsed here since it may be used by IasQuoteError)
+        // Get the PSE manifest status (parsed here since it may be used by
+        // IasQuoteError)
         let pse_manifest_status = match data.remove("pseManifestStatus") {
             Some(v) => {
                 let value: String = v.try_into()?;

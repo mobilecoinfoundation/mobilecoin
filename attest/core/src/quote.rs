@@ -49,14 +49,17 @@ const QUOTE_SIGLEN_START: usize = QUOTE_REPORTBODY_END;
 const QUOTE_SIGLEN_END: usize = QUOTE_SIGLEN_START + INTEL_U32_SIZE;
 const QUOTE_SIGNATURE_START: usize = QUOTE_SIGLEN_END;
 
-// When we consume a quote from the Quoting Engine, the minimum size includes the quote len.
+// When we consume a quote from the Quoting Engine, the minimum size includes
+// the quote len.
 const QUOTE_MINSIZE: usize = QUOTE_SIGLEN_END;
 
-// When we get a quote back from IAS, they strip both the signature and the signature len, which
-// changes the structure's size and makes sgx_quote_t unusable directly.
+// When we get a quote back from IAS, they strip both the signature and the
+// signature len, which changes the structure's size and makes sgx_quote_t
+// unusable directly.
 const QUOTE_IAS_SIZE: usize = QUOTE_REPORTBODY_END;
 
-// Arbitrary maximum length for signatures, 4x larger than any reasonable cryptographic signature.
+// Arbitrary maximum length for signatures, 4x larger than any reasonable
+// cryptographic signature.
 const QUOTE_SIGLEN_MAX: usize = 16384;
 
 /// An enumeration of viable quote signature types
@@ -118,7 +121,7 @@ impl Into<sgx_quote_sign_type_t> for QuoteSignType {
 ///
 /// The actual implementation of this is super squirelly, because the
 /// structure that lives in C-land is variable-length in the usual way.
-/// This would ordinarily mean that the rust FFI struct equivilent would
+/// This would ordinarily mean that the rust FFI struct equivalent would
 /// be a dynamically-sized type, which would prevent it from being
 /// initialized safely (i.e. you always need to start with bytes, and cast
 /// to what you want). However, since access to padding bytes is clearly
@@ -160,7 +163,8 @@ impl Quote {
         self.0.as_mut_ptr() as *mut sgx_quote_t
     }
 
-    /// Read the size of the internal buffer containing the quote (may be larger than the quote itself)
+    /// Read the size of the internal buffer containing the quote (may be larger
+    /// than the quote itself)
     pub fn capacity(&self) -> usize {
         self.0.len()
     }
@@ -347,7 +351,8 @@ impl Debug for Quote {
 impl FromBase64 for Quote {
     type Error = QuoteError;
 
-    /// Parse a base64-encoded string containing a quote with optional signature.
+    /// Parse a base64-encoded string containing a quote with optional
+    /// signature.
     ///
     /// In addition to parsing the general case with a variable-length signature
     ///
@@ -360,8 +365,8 @@ impl FromBase64 for Quote {
         }
 
         let expected_len = s.len() / 4 * 3;
-        // Don't try to decode any base64 string that's larger than our size limits or smaller
-        // than our minimum size
+        // Don't try to decode any base64 string that's larger than our size limits or
+        // smaller than our minimum size
         if expected_len > QUOTE_MINSIZE + QUOTE_SIGLEN_MAX || expected_len < QUOTE_IAS_SIZE {
             return Err(EncodingError::InvalidInputLength.into());
         }
