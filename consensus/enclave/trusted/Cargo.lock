@@ -592,7 +592,7 @@ dependencies = [
  "mc-crypto-keys 0.5.0",
  "mc-crypto-sig 0.5.0",
  "mc-util-from-random 0.5.0",
- "mc-util-repr-bytes 0.1.0",
+ "mc-util-repr-bytes 0.5.0",
  "mc-util-serial 0.5.0",
  "prost 0.6.1 (git+https://github.com/danburkert/prost?rev=6113789f70b69709820becba4242824b4fb3ffec)",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -860,7 +860,7 @@ dependencies = [
  "hex_fmt 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mc-crypto-digestible 0.5.0",
  "mc-util-from-random 0.5.0",
- "mc-util-repr-bytes 0.1.0",
+ "mc-util-repr-bytes 0.5.0",
  "mc-util-serial 0.5.0",
  "prost 0.6.1 (git+https://github.com/danburkert/prost?rev=6113789f70b69709820becba4242824b4fb3ffec)",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -896,7 +896,7 @@ dependencies = [
  "hkdf 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mc-crypto-keys 0.5.0",
  "mc-util-from-random 0.5.0",
- "mc-util-repr-bytes 0.1.0",
+ "mc-util-repr-bytes 0.5.0",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "secrecy 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1078,7 +1078,7 @@ dependencies = [
  "mc-crypto-keys 0.5.0",
  "mc-crypto-rand 0.5.0",
  "mc-util-from-random 0.5.0",
- "mc-util-repr-bytes 0.1.0",
+ "mc-util-repr-bytes 0.5.0",
  "mc-util-serial 0.5.0",
  "merlin 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "prost 0.6.1 (git+https://github.com/danburkert/prost?rev=6113789f70b69709820becba4242824b4fb3ffec)",
@@ -1120,7 +1120,7 @@ dependencies = [
  "binascii 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "displaydoc 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "mc-util-repr-bytes 0.1.0",
+ "mc-util-repr-bytes 0.5.0",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -1133,7 +1133,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-repr-bytes"
-version = "0.1.0"
+version = "0.5.0"
 dependencies = [
  "generic-array 0.13.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "prost 0.6.1 (git+https://github.com/danburkert/prost?rev=6113789f70b69709820becba4242824b4fb3ffec)",

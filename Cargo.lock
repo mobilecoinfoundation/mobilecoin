@@ -2309,7 +2309,7 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-scp-play"
-version = "0.0.1"
+version = "0.5.0"
 dependencies = [
  "mc-common",
  "mc-consensus-scp",
@@ -2602,7 +2602,7 @@ dependencies = [
 
 [[package]]
 name = "mc-ledger-from-archive"
-version = "0.1.0"
+version = "0.5.0"
 dependencies = [
  "mc-api",
  "mc-common",
@@ -2714,7 +2714,7 @@ dependencies = [
 
 [[package]]
 name = "mc-mobilecoind-json"
-version = "0.1.0"
+version = "0.5.0"
 dependencies = [
  "grpcio",
  "hex 0.4.2",
@@ -2731,7 +2731,7 @@ dependencies = [
 
 [[package]]
 name = "mc-mobilecoind-mirror"
-version = "0.1.0"
+version = "0.5.0"
 dependencies = [
  "cargo-emit",
  "futures",
@@ -3348,7 +3348,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-repr-bytes"
-version = "0.1.0"
+version = "0.5.0"
 dependencies = [
  "generic-array 0.13.2",
  "prost",
