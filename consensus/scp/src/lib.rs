@@ -12,6 +12,7 @@ pub mod predicates;
 pub mod quorum_set;
 pub mod scp_log;
 pub mod slot;
+pub mod slot_state;
 pub mod test_utils;
 mod utils;
 
