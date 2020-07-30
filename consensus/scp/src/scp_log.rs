@@ -1,10 +1,7 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 //! This crate provides a logging framework for recording and replaying SCP messages.
-use crate::{
-    slot::{SlotMetrics, SlotState},
-    Msg, QuorumSet, ScpNode, SlotIndex, Value,
-};
+use crate::{slot::SlotMetrics, slot_state::SlotState, Msg, QuorumSet, ScpNode, SlotIndex, Value};
 use mc_common::NodeID;
 use serde::{Deserialize, Serialize};
 use std::{

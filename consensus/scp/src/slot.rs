@@ -44,68 +44,70 @@ pub enum Phase {
 }
 
 /// The SCP slot.
+// Note: The fields representing the state of the slot are marked with pub(crate) so that they
+// could be accessed by `SlotState`.
 pub struct Slot<V: Value, ValidationError: Display> {
     /// Current slot number.
-    slot_index: SlotIndex,
+    pub(crate) slot_index: SlotIndex,
 
     /// Local node ID.
-    node_id: NodeID,
+    pub(crate) node_id: NodeID,
 
     /// Local node quorum set.
-    quorum_set: QuorumSet,
+    pub(crate) quorum_set: QuorumSet,
 
     /// Map of Node ID -> highest message from each node, including the local node.
-    M: HashMap<NodeID, Msg<V>>,
+    pub(crate) M: HashMap<NodeID, Msg<V>>,
 
     /// Set of values that have been proposed, but not yet voted for.
-    W: HashSet<V>,
+    pub(crate) W: HashSet<V>,
 
     /// Set of values we have voted to nominate.
-    X: HashSet<V>,
+    pub(crate) X: HashSet<V>,
 
     /// Set of values we have accepted as nominated.
-    Y: HashSet<V>,
+    pub(crate) Y: HashSet<V>,
 
     /// Set of values we have confirmed as nominated.
-    Z: HashSet<V>,
+    pub(crate) Z: HashSet<V>,
 
     /// Current ballot we are trying to pass.
-    B: Ballot<V>,
+    pub(crate) B: Ballot<V>,
 
     /// The highest accepted prepared ballot, if any.
-    P: Option<Ballot<V>>,
+    pub(crate) P: Option<Ballot<V>>,
 
     /// The highest accepted prepared ballot that is less-than-and-incompatible with P.
-    PP: Option<Ballot<V>>,
+    pub(crate) PP: Option<Ballot<V>>,
 
     /// In Prepare: the highest ballot that this node confirms prepared, if any.
     /// In Commit: the highest ballot that this node accepts committed, if any.
     /// In Externalize: The highest ballot that this node confirms committed.
-    H: Option<Ballot<V>>,
+    pub(crate) H: Option<Ballot<V>>,
 
     /// In Prepare: The lowest ballot that this node votes to commit, if any.
     /// In Commit: The lowest ballot that this node accepts committed, if any.
     /// In Externalize: The lowest ballot that this node confirms committed.
     /// Invariant: if C is Some, C \lesssim H \lesssim B
-    C: Option<Ballot<V>>,
+    pub(crate) C: Option<Ballot<V>>,
 
     /// Current phase of the protocol.
-    phase: Phase,
+    pub(crate) phase: Phase,
 
     /// Last message sent by us.
-    last_sent_msg: Option<Msg<V>>,
+    pub(crate) last_sent_msg: Option<Msg<V>>,
 
     /// Max priority peers - nodes from which we listen to value nominations.
-    max_priority_peers: HashSet<NodeID>,
+    pub(crate) max_priority_peers: HashSet<NodeID>,
 
     /// Current nomination round number.
-    nominate_round: u32,
+    pub(crate) nominate_round: u32,
 
     /// Timer for the next nomination round.
-    next_nominate_round_at: Option<Instant>,
+    pub(crate) next_nominate_round_at: Option<Instant>,
 
     /// Timer for the next balloting round.
-    next_ballot_at: Option<Instant>,
+    pub(crate) next_ballot_at: Option<Instant>,
 
     /// Application-specific validation of value.
     validity_fn: ValidityFn<V, ValidationError>,
@@ -115,7 +117,7 @@ pub struct Slot<V: Value, ValidationError: Display> {
 
     /// List of values that have been checked to be valid for the current slot.
     /// We can cache this and save on validation calls since the ledger doesn't change during a slot.
-    valid_values: BTreeSet<V>,
+    pub(crate) valid_values: BTreeSet<V>,
 
     /// Logger.
     logger: Logger,
@@ -148,92 +150,6 @@ pub struct SlotMetrics {
 
     /// The highest ballot counter.
     pub bN: u32,
-}
-
-/// Serializable slot state used for debugging purposes.
-#[derive(Clone, Serialize, Deserialize)]
-pub struct SlotState<V: Value> {
-    /// Current slot number.
-    slot_index: SlotIndex,
-
-    /// Local node ID.
-    node_id: NodeID,
-
-    /// List of highest messages from each node.
-    /// This is not stored as a HashMap since it simplifies serialization. The node id is part of
-    /// the message so that can be derived.
-    M: Vec<Msg<V>>,
-
-    /// Set of values that have been proposed, but not yet voted for.
-    W: HashSet<V>,
-
-    /// Set of values we have voted to nominate.
-    X: HashSet<V>,
-
-    /// Set of values we have accepted as nominated.
-    Y: HashSet<V>,
-
-    /// Set of values we have confirmed as nominated.
-    Z: HashSet<V>,
-
-    /// Current ballot we are trying to pass.
-    B: Ballot<V>,
-
-    /// The highest accepted prepared ballot, if any.
-    P: Option<Ballot<V>>,
-
-    /// The highest accepted prepared ballot that is less-than-and-incompatible with P.
-    PP: Option<Ballot<V>>,
-
-    /// In Prepare: the highest ballot that this node confirms prepared, if any.
-    /// In Commit: the highest ballot that this node accepts committed, if any.
-    /// In Externalize: The highest ballot that this node confirms committed.
-    H: Option<Ballot<V>>,
-
-    /// In Prepare: The lowest ballot that this node votes to commit, if any.
-    /// In Commit: The lowest ballot that this node accepts committed, if any.
-    /// In Externalize: The lowest ballot that this node confirms committed.
-    /// Invariant: if C is Some, C \lesssim H \lesssim B
-    C: Option<Ballot<V>>,
-
-    /// Current phase of the protocol.
-    phase: Phase,
-
-    /// Last message sent by us.
-    last_sent_msg: Option<Msg<V>>,
-
-    /// Max priority peers - nodes from which we listen to value nominations.
-    max_priority_peers: HashSet<NodeID>,
-
-    /// Current nomination round number.
-    nominate_round: u32,
-
-    /// List of values that have been checked to be valid for the current slot.
-    /// We can cache this and save on validation calls since the ledger doesn't change during a slot.
-    valid_values: BTreeSet<V>,
-}
-impl<V: Value, ValidationError: Display> From<&Slot<V, ValidationError>> for SlotState<V> {
-    fn from(src: &Slot<V, ValidationError>) -> Self {
-        Self {
-            slot_index: src.slot_index,
-            node_id: src.node_id.clone(),
-            M: src.M.values().cloned().collect(),
-            W: src.W.clone(),
-            X: src.X.clone(),
-            Y: src.Y.clone(),
-            Z: src.Z.clone(),
-            B: src.B.clone(),
-            P: src.P.clone(),
-            PP: src.PP.clone(),
-            H: src.H.clone(),
-            C: src.C.clone(),
-            phase: src.phase,
-            last_sent_msg: src.last_sent_msg.clone(),
-            max_priority_peers: src.max_priority_peers.clone(),
-            nominate_round: src.nominate_round,
-            valid_values: src.valid_values.clone(),
-        }
-    }
 }
 
 impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
