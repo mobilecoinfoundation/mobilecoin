@@ -54,6 +54,7 @@ commands:
             cargo --version
             rustup --version
             sccache --version
+            command -v jq >/dev/null && jq --version
 
   env_setup:
     description: Environment Setup
@@ -251,6 +252,7 @@ commands:
       - restore-cargo-cache
       - install-ci-deps
       - env_setup
+      - print_versions
       - enable_sccache
       # Cache is only saved when building from master. We don't restore sccache on
       # master so that the cache is clean when saved.
