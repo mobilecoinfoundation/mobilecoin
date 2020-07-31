@@ -265,7 +265,7 @@ commands:
     parameters:
       test_command:
         type: string
-        default: cargo test --frozen --target "$HOST_TARGET_TRIPLE" --tests
+        default: cargo test --frozen --target "$HOST_TARGET_TRIPLE" --no-fail-fast --tests
     steps:
       - run:
           name: Run all tests
