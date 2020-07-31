@@ -20,7 +20,7 @@ spec:
           topologyKey: "kubernetes.io/hostname"
   containers:
     - name: rust-builder-default
-      image: gcr.io/mobilenode-211420/builder-install:1_11
+      image: gcr.io/mobilenode-211420/builder-install:1_12
       env:
         - name: PATH
           value: "/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/intel/sgxsdk/bin:/opt/intel/sgxsdk/bin/x64"

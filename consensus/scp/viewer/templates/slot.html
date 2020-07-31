@@ -1,0 +1,215 @@
+<html>
+    <head>
+        <style>
+            .values-list {
+                white-space: nowrap;
+                width: 100%;
+                padding: 0 0 0 15px;
+                margin: 0;
+            }
+            .values-list li {
+                display: inline;
+                padding-right: 5px;
+            }
+        </style>
+        <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+        <script>
+            let slot = {{ slot|tojson }};
+            let available_nodes = {{ available_nodes|tojson }};
+
+            $(function() {
+                let nodes_nav = $('<ul class="values-list"></ul>');
+                $.each(available_nodes, function(idx, node_id) {
+                    console.log(node_id, slot.node_id.responder_id)
+                    if (node_id == slot.node_id.responder_id) {
+                        nodes_nav.append($('<li style="font-weight: bold"></li>').text(node_id));
+                    } else {
+                        nodes_nav.append($('<li><a href="/slot/' + slot.slot_index + '/' + node_id + '">' + node_id + '</a></li>'))
+                    }
+                });
+                $('#nodes-nav').html(nodes_nav);
+
+
+                $('#node-id').text(slot.node_id.responder_id);
+                $('#slot-index').text(slot.slot_index);
+                $('#phase').text(slot.phase);
+                $('#nominate-round').text(slot.nominate_round);
+                if (slot.last_sent_msg) {
+                    $('#last-sent-msg').html(format_msg(slot.last_sent_msg));
+                }
+
+                var max_priority_peers = $('<ul class="values-list"></ul>');
+                $.each(slot.max_priority_peers, function(idx, val) {
+                    $(max_priority_peers).append($('<li></li>').text(val.responder_id));
+                });
+                $('#max-priority-peers').html(max_priority_peers);
+
+                slot.M.sort(function(a, b) { return a.sender_id.responder_id > b.sender_id.responder_id; });
+                $.each(slot.M, function(idx, msg) {
+                    $('#M').append(format_msg(msg));
+                    $('#M').append($('<hr>'));
+                });
+
+                $('#nominate > #W').html(format_values(slot.W));
+                $('#nominate > #X').html(format_values(slot.X));
+                $('#nominate > #Y').html(format_values(slot.Y));
+                $('#nominate > #Z').html(format_values(slot.Z));
+
+                $('#prepare-commit > #B').html(format_ballot(slot.B));
+                $('#prepare-commit > #P').html(format_ballot(slot.P));
+                $('#prepare-commit > #PP').html(format_ballot(slot.PP));
+                $('#prepare-commit > #H').html(format_ballot(slot.H));
+                $('#prepare-commit > #C').html(format_ballot(slot.C));
+            });
+
+            function format_msg(msg) {
+                console.log(msg);
+
+                var template = $($('script[data-template="msg"]').text());
+                $('#sender', template).text(msg.sender_id.responder_id);
+                $('#slot-index', template).text(msg.slot_index);
+
+                if (msg.topic.Externalize) {
+                    $('#topic', template).text("Externalize");
+
+                    var t = msg.topic.Externalize;
+                    $('#C', template).html(format_ballot(t.C)).parent().show();
+                    $('#HN', template).text(t.HN).parent().show();
+                } else if (msg.topic.Commit) {
+                    $('#topic', template).text("Commit");
+
+                    var t = msg.topic.Commit;
+                    $('#B', template).html(format_ballot(t.B)).parent().show();
+                    $('#PN', template).text(t.PN).parent().show();
+                    $('#CN', template).text(t.CN).parent().show();
+                    $('#HN', template).text(t.HN).parent().show();
+                } else if (msg.topic.Prepare && msg.topic.Nominate) {
+                    $('#topic', template).text("Prepare/Nominate");
+
+                    var t = msg.topic.Nominate;
+                    $('#X', template).html(format_values(t.X)).parent().show();
+                    $('#Y', template).html(format_values(t.Y)).parent().show();
+
+                    var t = msg.topic.Prepare;
+                    $('#B', template).html(format_ballot(t.B)).parent().show();
+                    $('#P', template).html(format_ballot(t.P)).parent().show();
+                    $('#PP', template).html(format_ballot(t.PP)).parent().show();
+                    $('#CN', template).text(t.CN).parent().show();
+                    $('#HN', template).text(t.HN).parent().show();
+                } else if (msg.topic.Prepare) {
+                    $('#topic', template).text("Prepare");
+
+                    var t = msg.topic.Prepare;
+                    $('#B', template).html(format_ballot(t.B)).parent().show();
+                    $('#P', template).html(format_ballot(t.P)).parent().show();
+                    $('#PP', template).html(format_ballot(t.PP)).parent().show();
+                    $('#CN', template).text(t.CN).parent().show();
+                    $('#HN', template).text(t.HN).parent().show();
+                } else if (msg.topic.Nominate) {
+                    $('#topic', template).text("Nominate");
+
+                    var t = msg.topic.Nominate;
+                    $('#X', template).html(format_values(t.X)).parent().show();
+                    $('#Y', template).html(format_values(t.Y)).parent().show();
+                } else {
+                    $('#topic', template).html('<span style="color: red">Unknown</span>');
+                }
+
+                return template;
+            }
+
+            function format_ballot(b) {
+                if (!b) {
+                    return $('<span>None</span><br>');
+                }
+                var template = $($('script[data-template="ballot"]').text());
+                $('#N', template).text(b.N);
+                $('#count', template).text(b.X.length);
+                $.each(b.X, function(idx, val) {
+                    $('#values', template).append($('<li></li>').text(to_hex_str(val).substr(0, 12)));
+                })
+                return template;
+            }
+
+            function format_values(list) {
+                var template = $($('script[data-template="values"]').text());
+                $('#count', template).text(list.length);
+                $.each(list, function(idx, val) {
+                    $('#values', template).append($('<li></li>').text(to_hex_str(val).substr(0, 12)));
+                })
+                return template;
+            }
+
+            function to_hex_str(byteArray) {
+                return Array.from(byteArray, function(byte) {
+                    return ('0' + (byte & 0xFF).toString(16)).slice(-2);
+                }).join('');
+            }
+        </script>
+
+        <script type="text/template" data-template="msg">
+            <div>
+                Sender: <span id="sender"></span><br>
+                Slot index: <span id="slot-index"></span><br>
+                Topic: <span id="topic"></span><br>
+                <div style="display: none">X: <span id="X"></span></div>
+                <div style="display: none">Y: <span id="Y"></span></div>
+                <div style="display: none">B: <span id="B"></span></div>
+                <div style="display: none">P: <span id="P"></span></div>
+                <div style="display: none">PP: <span id="PP"></span></div>
+                <div style="display: none">C: <span id="C"></span></div>
+                <div style="display: none">PN: <span id="PN"></span></div>
+                <div style="display: none">CN: <span id="CN"></span></div>
+                <div style="display: none">HN: <span id="HN"></span></div>
+            </div>
+        </script>
+
+        <script type="text/template" data-template="ballot">
+            <span>
+                Ballot #<span id="N"></span> with <span id="count"></span> values.
+                <ul id="values" class="values-list"></ul>
+            </span>
+        </script>
+
+        <script type="text/template" data-template="values">
+            <span>
+                <span id="count"></span> values:
+                <ul id="values" class="values-list"></ul>
+            </span>
+        </script>
+
+    </head>
+    <body>
+        <div id="nodes-nav"></div>
+        <hr>
+        <h1>General Information</h1>
+        Node: <span id="node-id"></span><br>
+        Slot index: <span id="slot-index"></span><br>
+        Phase: <span id="phase"></span><br>
+        Nominate round: <span id="nominate-round"></span><br>
+        Max priority peers: <span id="max-priority-peers"></span><br>
+
+        <h1>M (message map)</h1>
+        <div id="M"></div>
+
+        <h1>Last issued message</h1>
+        <div id="last-sent-msg">None</div>
+
+        <h1>Nominate-related</h1>
+        <div id="nominate">
+            W: <span id="W"></span>
+            X: <span id="X"></span>
+            Y: <span id="Y"></span>
+            Z: <span id="Z"></span>
+        </div>
+
+        <h1>Prepare and/or Commit related</h1>
+        <div id="prepare-commit">
+            B: <span id="B"></span>
+            P: <span id="P"></span>
+            PP: <span id="PP"></span>
+            H: <span id="H"></span>
+            C: <span id="C"></span>
+        </div>
+    </body>
+</html>

@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 //! This crate provides a logging framework for recording and replaying SCP messages.
-use crate::{slot::SlotMetrics, Msg, QuorumSet, ScpNode, SlotIndex, Value};
+use crate::{slot::SlotMetrics, slot_state::SlotState, Msg, QuorumSet, ScpNode, SlotIndex, Value};
 use mc_common::NodeID;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -16,8 +16,11 @@ use std::time::Instant;
 
 /// A node specifically for logging SCP messages.
 pub struct LoggingScpNode<V: Value, N: ScpNode<V>> {
-    /// Output path.
-    out_path: PathBuf,
+    /// Output path for current slot log files.
+    cur_slot_out_path: PathBuf,
+
+    /// Output path for slot state files.
+    slot_states_out_path: PathBuf,
 
     /// Highest slot number we've encountered so far.
     highest_slot_index: SlotIndex,
@@ -73,12 +76,24 @@ impl<V: Value, N: ScpNode<V>> LoggingScpNode<V, N> {
             return Err(format!("{:?} already exists, refusing to re-use", out_path));
         }
 
-        create_dir_all(out_path.clone())
-            .map_err(|e| format!("Failed creating directory {:?}: {:?}", out_path, e))?;
+        let mut cur_slot_out_path = out_path.clone();
+        cur_slot_out_path.push("cur-slot");
+        create_dir_all(cur_slot_out_path.clone())
+            .map_err(|e| format!("Failed creating directory {:?}: {:?}", cur_slot_out_path, e))?;
+
+        let mut slot_states_out_path = out_path;
+        slot_states_out_path.push("slot-states");
+        create_dir_all(slot_states_out_path.clone()).map_err(|e| {
+            format!(
+                "Failed creating directory {:?}: {:?}",
+                slot_states_out_path, e
+            )
+        })?;
 
         Ok(Self {
             node,
-            out_path,
+            cur_slot_out_path,
+            slot_states_out_path,
             highest_slot_index: 0,
             msg_count: 0,
             slot_start_time: Instant::now(),
@@ -95,10 +110,14 @@ impl<V: Value, N: ScpNode<V>> LoggingScpNode<V, N> {
 
         if msg_slot_index > self.highest_slot_index {
             // Switched to a newer slot, clean the output directory.
-            remove_dir_all(&self.out_path)
-                .map_err(|e| format!("failed emptying {:?}: {:?}", self.out_path, e))?;
-            create_dir_all(&self.out_path)
-                .map_err(|e| format!("Failed creating directory {:?}: {:?}", self.out_path, e))?;
+            remove_dir_all(&self.cur_slot_out_path)
+                .map_err(|e| format!("failed emptying {:?}: {:?}", self.cur_slot_out_path, e))?;
+            create_dir_all(&self.cur_slot_out_path).map_err(|e| {
+                format!(
+                    "Failed creating directory {:?}: {:?}",
+                    self.cur_slot_out_path, e
+                )
+            })?;
 
             self.highest_slot_index = msg_slot_index;
             self.msg_count = 0;
@@ -121,7 +140,7 @@ impl<V: Value, N: ScpNode<V>> LoggingScpNode<V, N> {
         let bytes =
             mc_util_serial::serialize(&data).map_err(|e| format!("failed serialize: {:?}", e))?;
 
-        let mut file_path = self.out_path.clone();
+        let mut file_path = self.cur_slot_out_path.clone();
         file_path.push(format!("{:08}", self.msg_count));
         self.msg_count += 1;
 
@@ -129,6 +148,20 @@ impl<V: Value, N: ScpNode<V>> LoggingScpNode<V, N> {
             .map_err(|e| format!("failed creating {:?}: {:?}", file_path, e))?;
         file.write_all(&bytes)
             .map_err(|e| format!("failed writing {:?}: {:?}", file_path, e))?;
+
+        // Write slot state into a file.
+        if let Some(slot_state) = self.get_slot_state(msg_slot_index) {
+            let slot_as_json = serde_json::to_vec(&slot_state)
+                .map_err(|e| format!("failed serializing slot state: {:?}", e))?;
+
+            let mut file_path = self.slot_states_out_path.clone();
+            file_path.push(format!("{:08}.json", msg_slot_index));
+
+            let mut file = File::create(&file_path)
+                .map_err(|e| format!("failed creating {:?}: {:?}", file_path, e))?;
+            file.write_all(&slot_as_json)
+                .map_err(|e| format!("failed writing {:?}: {:?}", file_path, e))?;
+        }
 
         Ok(())
     }
@@ -192,6 +225,10 @@ impl<V: Value, N: ScpNode<V>> ScpNode<V> for LoggingScpNode<V, N> {
 
     fn get_slot_metrics(&mut self, slot_index: SlotIndex) -> Option<SlotMetrics> {
         self.node.get_slot_metrics(slot_index)
+    }
+
+    fn get_slot_state(&mut self, slot_index: SlotIndex) -> Option<SlotState<V>> {
+        self.node.get_slot_state(slot_index)
     }
 
     fn clear_pending_slots(&mut self) {

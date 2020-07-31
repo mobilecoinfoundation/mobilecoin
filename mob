@@ -303,7 +303,6 @@ if args.action == "image" or not have_tag(tag):
     verbose_chdir(docker_dir)
     docker_build = ["docker",
                             "build",
-                            "--file", docker_file,
                             # build context is dir of Dockerfile
                             ".",
                             "--target", mobconf['image']['target'],
