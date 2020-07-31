@@ -372,7 +372,7 @@ impl SCPNode {
                                 thread_local_node
                                     .lock()
                                     .expect("lock failed on node nominating value")
-                                    .handle(msg)
+                                    .handle_message(msg)
                                     .expect("node.handle_msg() failed")
                             };
 

@@ -13,7 +13,11 @@ use mc_common::{
 };
 #[cfg(test)]
 use mockall::*;
-use std::{collections::BTreeSet, fmt::Display, time::Duration};
+use std::{
+    collections::{BTreeSet, HashMap},
+    fmt::Display,
+    time::Duration,
+};
 
 /// Max number of externalized slots to store.
 pub const MAX_EXTERNALIZED_SLOTS: usize = 1;
@@ -129,7 +133,10 @@ pub trait ScpNode<V: Value>: Send {
     fn propose_values(&mut self, values: BTreeSet<V>) -> Result<Option<Msg<V>>, String>;
 
     /// Handle incoming message from the network.
-    fn handle(&mut self, msg: &Msg<V>) -> Result<Option<Msg<V>>, String>;
+    fn handle_message(&mut self, msg: &Msg<V>) -> Result<Option<Msg<V>>, String>;
+
+    /// Handle incoming messages from the network.
+    fn handle_messages(&mut self, msgs: Vec<Msg<V>>) -> Result<Vec<Msg<V>>, String>;
 
     /// Get externalized values (or an empty vector) for a given slot index.
     fn get_externalized_values(&self, slot_index: SlotIndex) -> Option<Vec<V>>;
@@ -162,7 +169,7 @@ impl<V: Value, ValidationError: Display + 'static> ScpNode<V> for Node<V, Valida
     /// Propose values for this node to nominate.
     fn propose_values(&mut self, values: BTreeSet<V>) -> Result<Option<Msg<V>>, String> {
         if values.is_empty() {
-            log::error!(self.logger, "nominate() called with 0 values.");
+            log::error!(self.logger, "propose_values called with 0 values.");
             return Ok(None);
         }
 
@@ -177,65 +184,73 @@ impl<V: Value, ValidationError: Display + 'static> ScpNode<V> for Node<V, Valida
         }
     }
 
+    /// Handle an incoming message from the network.
+    fn handle_message(&mut self, msg: &Msg<V>) -> Result<Option<Msg<V>>, String> {
+        let outgoing_messages = self.handle_messages(vec![msg.clone()])?;
+        Ok(outgoing_messages.get(0).cloned())
+    }
+
     /// Handle incoming message from the network.
-    ///
-    /// Messages for future slots are ignored.
-    fn handle(&mut self, msg: &Msg<V>) -> Result<Option<Msg<V>>, String> {
-        if msg.sender_id == self.ID {
+    fn handle_messages(&mut self, msgs: Vec<Msg<V>>) -> Result<Vec<Msg<V>>, String> {
+        // Omit messages from self.
+        let (msgs_from_peers, msgs_from_self): (Vec<_>, Vec<_>) =
+            msgs.into_iter().partition(|msg| msg.sender_id != self.ID);
+
+        if !msgs_from_self.is_empty() {
             log::error!(
                 self.logger,
-                "node.handle received message from self: {:?}",
-                msg
+                "Received {} messages from self.",
+                msgs_from_self.len()
             );
-            return Ok(None);
         }
 
-        // Ignore messages for future slots.
-        if msg.slot_index > self.current_slot.get_index() {
-            // TODO: return an error?
-            return Ok(None);
+        // Omit messages for future slots.
+        let (msgs_to_process, future_msgs): (Vec<_>, Vec<_>) = msgs_from_peers
+            .into_iter()
+            .partition(|msg| msg.slot_index <= self.current_slot.get_index());
+
+        if !future_msgs.is_empty() {
+            log::error!(
+                self.logger,
+                "Received {} messages for future slots.",
+                future_msgs.len()
+            );
         }
 
-        // // Log an error if another node Externalizes different values.
-        // if let Topic::Externalize(received_externalized_payload) = &msg.topic {
-        //     if let Some(our_values) = self.get_externalized_values(msg.slot_index) {
-        //         if our_values != received_externalized_payload.C.X {
-        //             // Another node has externalized a different value for this slot.
-        //             // This could be consensus problem, or a message from a Byzantine node.
-        //             log::error!(
-        //                 self.logger,
-        //                 "Node {:?} externalized different values. Ours:{:#?} Theirs:{:#?}",
-        //                 msg.sender_id,
-        //                 our_values,
-        //                 received_externalized_payload.C.X
-        //             );
-        //             return Ok(None);
-        //         }
-        //     }
-        // }
+        // Group messages by slot index.
+        let mut slot_index_to_msgs: HashMap<SlotIndex, Vec<Msg<V>>> = Default::default();
+        for msg in msgs_to_process {
+            slot_index_to_msgs
+                .entry(msg.slot_index)
+                .or_insert_with(Vec::new)
+                .push(msg);
+        }
 
-        if msg.slot_index == self.current_slot.get_index() {
-            // The message is for the current slot.
-            match self.current_slot.handle(msg)? {
-                None => Ok(None),
-                Some(msg) => {
-                    if let Topic::Externalize(ext_payload) = &msg.topic {
-                        self.externalize(msg.slot_index, ext_payload)?;
-                    }
-                    Ok(Some(msg))
+        // Messages emitted by this node that should be sent to the network.
+        let mut outbound_msgs: Vec<_> = Vec::new();
+
+        // Handle messages for current slot.
+        if let Some(msgs) = slot_index_to_msgs.get(&self.current_slot.get_index()) {
+            if let Some(response) = self.current_slot.handle_messages(msgs)? {
+                if let Topic::Externalize(ext_payload) = &response.topic {
+                    self.externalize(response.slot_index, &ext_payload)?;
+                }
+                outbound_msgs.push(response);
+            }
+        }
+
+        // Handle messages for previous slots.
+        for slot in self.externalized_slots.iter_mut() {
+            if let Some(msgs) = slot_index_to_msgs.get(&slot.get_index()) {
+                if let Some(response) = slot.handle_messages(msgs)? {
+                    outbound_msgs.push(response);
                 }
             }
-        } else if let Some(slot) = self
-            .externalized_slots
-            .iter_mut()
-            .find(|slot| slot.get_index() == msg.slot_index)
-        {
-            // The message is for a previous, externalized slot.
-            slot.handle(msg)
-        } else {
-            // This node is no longer maintaining a slot for the message.
-            Ok(None)
         }
+
+        // Note: messages for older slots are ignored.
+
+        Ok(outbound_msgs)
     }
 
     /// Get externalized values for a given slot index, if any.
@@ -403,7 +418,7 @@ mod node_tests {
 
         // Node 1 handles Node 2's message. It may accept nominate [1000, 2000]
         let msg = node1
-            .handle(&msg)
+            .handle_message(&msg)
             .expect("error handling msg")
             .expect("no msg?");
 
@@ -422,7 +437,7 @@ mod node_tests {
 
         // Node 2 may "confirm nominate", and issue "vote prepare(<1, [1000,2000]>)
         let msg = node2
-            .handle(&msg)
+            .handle_message(&msg)
             .expect("error handling msg")
             .expect("no msg?");
 
@@ -450,7 +465,7 @@ mod node_tests {
 
         // Node 1 issues "accept prepare(<1, [1000,2000])
         let msg = node1
-            .handle(&msg)
+            .handle_message(&msg)
             .expect("error handling msg")
             .expect("no msg?");
 
@@ -478,7 +493,7 @@ mod node_tests {
 
         // Node 2 issues "vote commit"
         let msg = node2
-            .handle(&msg)
+            .handle_message(&msg)
             .expect("error handling msg")
             .expect("no msg?");
 
@@ -500,7 +515,7 @@ mod node_tests {
 
         // Node 1 issues "accept commit".
         let msg = node1
-            .handle(&msg)
+            .handle_message(&msg)
             .expect("error handling msg")
             .expect("no msg?");
 
@@ -521,7 +536,7 @@ mod node_tests {
 
         // Node 2 externalizes.
         let msg = node2
-            .handle(&msg)
+            .handle_message(&msg)
             .expect("error handling msg")
             .expect("no msg?");
 
@@ -540,7 +555,7 @@ mod node_tests {
 
         // Node 1 externalizes.
         let msg = node1
-            .handle(&msg)
+            .handle_message(&msg)
             .expect("error handling msg")
             .expect("no msg?");
 

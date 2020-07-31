@@ -247,16 +247,29 @@ impl<V: Value, N: ScpNode<V>> ScpNode<V> for LoggingScpNode<V, N> {
         Ok(out_msg)
     }
 
-    fn handle(&mut self, msg: &Msg<V>) -> Result<Option<Msg<V>>, String> {
+    fn handle_message(&mut self, msg: &Msg<V>) -> Result<Option<Msg<V>>, String> {
         self.write(LoggedMsg::IncomingMsg(msg.clone()))?;
 
-        let out_msg = self.node.handle(msg)?;
+        let response_opt = self.node.handle_message(msg)?;
 
-        if let Some(ref msg) = out_msg {
-            self.write(LoggedMsg::OutgoingMsg(msg.clone()))?;
+        if let Some(ref response) = response_opt {
+            self.write(LoggedMsg::OutgoingMsg(response.clone()))?;
         }
 
-        Ok(out_msg)
+        Ok(response_opt)
+    }
+
+    fn handle_messages(
+        &mut self,
+        msgs: Vec<Msg<V, NodeID>>,
+    ) -> Result<Vec<Msg<V, NodeID>>, String> {
+        let mut responses = Vec::new();
+        for msg in msgs {
+            if let Some(response) = self.handle_message(&msg)? {
+                responses.push(response)
+            }
+        }
+        Ok(responses)
     }
 
     fn get_externalized_values(&self, slot_index: SlotIndex) -> Option<Vec<V>> {

@@ -112,7 +112,7 @@ fn main() {
                 assert_eq!(msg.slot_index, cur_slot_index.unwrap_or(msg.slot_index));
                 cur_slot_index = Some(msg.slot_index);
 
-                if let Some(out_msg) = scp_node.handle(&msg).expect("scp handle failed") {
+                if let Some(out_msg) = scp_node.handle_message(&msg).expect("scp handle failed") {
                     sent_msgs.push_back(out_msg);
                 }
             }
