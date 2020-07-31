@@ -3,7 +3,8 @@
 # Notes:
 # * The new resolver has a bug that causes packages to select features non-deterministically under
 #   certain circumstances. To work around this, `--target` must be specified when using cargo. This
-#   can be removed once the bug is fixed.
+#   can be removed once the bug is fixed. Similarly, `--tests` must be specified when using
+#   `cargo test` so that non-test profile builds don't bleed over.
 #   See: [MC-1731] and https://github.com/rust-lang/cargo/issues/8549
 
 version: 2.1
@@ -265,7 +266,7 @@ commands:
     parameters:
       test_command:
         type: string
-        default: cargo test --frozen --target "$HOST_TARGET_TRIPLE"
+        default: cargo test --frozen --target "$HOST_TARGET_TRIPLE" --tests
     steps:
       - run:
           name: Run all tests
