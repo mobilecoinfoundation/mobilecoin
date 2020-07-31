@@ -2920,14 +2920,21 @@ dependencies = [
 
 [[package]]
 name = "mc-mobilecoind-json"
+<<<<<<< HEAD
 version = "1.0.0"
+=======
+version = "0.5.0"
+>>>>>>> Rebases
 dependencies = [
  "grpcio",
  "hex 0.4.2",
  "mc-api",
  "mc-common",
  "mc-mobilecoind-api",
+<<<<<<< HEAD
  "mc-util-grpc",
+=======
+>>>>>>> Rebases
  "protobuf",
  "rocket",
  "rocket_contrib",

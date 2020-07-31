@@ -290,10 +290,15 @@ impl<V: Value, ValidationError: Display + 'static> ScpNode<V> for Node<V, Valida
     }
 
     /// Get the slot internal state (for debug purposes).
-    fn get_slot_debug_snapshot(&mut self, slot_index: SlotIndex) -> Option<String> {
-        self.pending
-            .get(&slot_index)
-            .map(|slot| slot.get_debug_snapshot())
+    fn get_slot_state(&mut self, slot_index: SlotIndex) -> Option<SlotState<V>> {
+        if slot_index == self.current_slot.slot_index {
+            Some(SlotState::from(&self.current_slot))
+        } else {
+            self.externalized_slots
+                .iter()
+                .find(|slot| slot.slot_index == slot_index)
+                .map(SlotState::from)
+        }
     }
 
     /// Reset the current slot.
