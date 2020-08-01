@@ -36,7 +36,7 @@ struct Config {
 
 fn parse_hex_to_vec(src: &str) -> Result<VecBytes, String> {
     let v: Vec<u8> = Vec::from_hex(src)
-        .map_err(|e| format!("Could not get Vec from hex {}: {:?}", src))
+        .map_err(|e| format!("Could not get Vec from hex {}: {:?}", src, e))
         .into_iter()
         .flatten()
         .collect();

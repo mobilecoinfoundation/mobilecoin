@@ -112,14 +112,14 @@ mod testing {
         let dir2 = TempDir::new("test").unwrap();
 
         let fqdn = "example.com".to_string();
-        let fog_report_id = ""; // FIXME
-        let fog_authority_fingerprint = "test"; // FIXME
+        let fog_report_id = "1";
+        let fog_authority_fingerprint = [18, 52, 18, 52];
         write_default_keyfiles(
             &dir1,
             10,
             Some(&fqdn),
-            fog_report_id,
-            fog_authority_fingerprint,
+            Some(fog_report_id),
+            Some(&fog_authority_fingerprint),
             DEFAULT_SEED,
         )
         .unwrap();
@@ -127,8 +127,8 @@ mod testing {
             &dir2,
             10,
             Some(&fqdn),
-            fog_report_id,
-            fog_authority_fingerprint,
+            Some(fog_report_id),
+            Some(&fog_authority_fingerprint),
             DEFAULT_SEED,
         )
         .unwrap();
