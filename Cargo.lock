@@ -3293,7 +3293,7 @@ version = "0.5.0"
 name = "mc-util-keyfile"
 version = "0.5.0"
 dependencies = [
- "hex 0.3.2",
+ "hex 0.4.2",
  "mc-account-keys",
  "mc-crypto-rand",
  "mc-util-from-random",

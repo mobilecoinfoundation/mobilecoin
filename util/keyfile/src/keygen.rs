@@ -42,6 +42,8 @@ pub fn write_default_keyfiles<P: AsRef<Path>>(
     path: P,
     num_accounts: usize,
     fog_url: Option<&str>,
+    fog_report_id: Option<&str>,
+    fog_authority_fingerprint: Option<&[u8]>,
     seed: [u8; 32],
 ) -> Result<(), std::io::Error> {
     let mut keys_rng: FixedRng = SeedableRng::from_seed(seed);
@@ -51,8 +53,8 @@ pub fn write_default_keyfiles<P: AsRef<Path>>(
         let root_id = RootIdentity::random_with_fog(
             &mut keys_rng,
             fog_url.unwrap_or(&""),
-            Default::default(),
-            Default::default(),
+            fog_report_id.unwrap_or(Default::default()),
+            fog_authority_fingerprint.unwrap_or(Default::default()),
         );
 
         write_keyfiles(path.as_ref(), &keyfile_name(i), &root_id)?;
@@ -110,8 +112,26 @@ mod testing {
         let dir2 = TempDir::new("test").unwrap();
 
         let fqdn = "example.com".to_string();
-        write_default_keyfiles(&dir1, 10, Some(&fqdn), DEFAULT_SEED).unwrap();
-        write_default_keyfiles(&dir2, 10, Some(&fqdn), DEFAULT_SEED).unwrap();
+        let fog_report_id = ""; // FIXME
+        let fog_authority_fingerprint = "test"; // FIXME
+        write_default_keyfiles(
+            &dir1,
+            10,
+            Some(&fqdn),
+            fog_report_id,
+            fog_authority_fingerprint,
+            DEFAULT_SEED,
+        )
+        .unwrap();
+        write_default_keyfiles(
+            &dir2,
+            10,
+            Some(&fqdn),
+            fog_report_id,
+            fog_authority_fingerprint,
+            DEFAULT_SEED,
+        )
+        .unwrap();
 
         {
             let pub1 = read_default_pubfiles(&dir1).unwrap();
@@ -132,12 +152,12 @@ mod testing {
     }
 
     #[test]
-    fn test_default_generation_no_acct() {
+    fn test_default_generation_no_fog_url() {
         let dir1 = TempDir::new("test").unwrap();
         let dir2 = TempDir::new("test").unwrap();
 
-        write_default_keyfiles(&dir1, 10, None, DEFAULT_SEED).unwrap();
-        write_default_keyfiles(&dir2, 10, None, DEFAULT_SEED).unwrap();
+        write_default_keyfiles(&dir1, 10, None, None, None, DEFAULT_SEED).unwrap();
+        write_default_keyfiles(&dir2, 10, None, None, None, DEFAULT_SEED).unwrap();
 
         {
             let pub1 = read_default_pubfiles(&dir1).unwrap();
@@ -161,7 +181,7 @@ mod testing {
     fn test_hard_coded_root_entropy() {
         let dir1 = TempDir::new("test").unwrap();
 
-        write_default_keyfiles(&dir1, 10, None, DEFAULT_SEED).unwrap();
+        write_default_keyfiles(&dir1, 10, None, None, None, DEFAULT_SEED).unwrap();
 
         {
             let bin1 = read_default_root_entropies(&dir1).unwrap();
