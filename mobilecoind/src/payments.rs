@@ -13,7 +13,7 @@ use mc_crypto_keys::RistrettoPublic;
 use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
 use mc_transaction_core::{
-    constants::{MAX_INPUTS, MILLIMOB, MINIMUM_FEE, RING_SIZE},
+    constants::{MAX_INPUTS, MINIMUM_FEE, RING_SIZE},
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
     tx::{Tx, TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
@@ -744,6 +744,7 @@ mod test {
     use super::*;
     use mc_connection::ThickClient;
     use mc_crypto_keys::RistrettoPrivate;
+    use mc_transaction_core::constants::MILLIMOB;
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
 

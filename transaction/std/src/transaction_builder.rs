@@ -9,7 +9,7 @@ use curve25519_dalek::scalar::Scalar;
 use mc_account_keys::PublicAddress;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
 use mc_transaction_core::{
-    constants::{MILLIMOB, MINIMUM_FEE},
+    constants::MINIMUM_FEE,
     encrypted_fog_hint::EncryptedFogHint,
     fog_hint::FogHint,
     onetime_keys::compute_shared_secret,
@@ -246,7 +246,7 @@ pub mod transaction_builder_tests {
     use super::*;
     use mc_account_keys::{AccountKey, DEFAULT_SUBADDRESS_INDEX};
     use mc_transaction_core::{
-        constants::{MAX_INPUTS, MAX_OUTPUTS},
+        constants::{MAX_INPUTS, MAX_OUTPUTS, MILLIMOB},
         onetime_keys::*,
         ring_signature::KeyImage,
         tx::TxOutMembershipProof,
