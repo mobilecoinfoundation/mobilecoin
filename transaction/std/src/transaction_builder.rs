@@ -351,7 +351,7 @@ pub mod transaction_builder_tests {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let sender = AccountKey::random(&mut rng);
         let recipient = AccountKey::random(&mut rng);
-        let value = 1475;
+        let value = 1475 * 1_000_000_000; // 1475 milliMOB
 
         // Mint an initial collection of outputs, including one belonging to Alice.
         let (ring, real_index) = get_ring(3, &sender, value, &mut rng);

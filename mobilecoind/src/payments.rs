@@ -838,12 +838,12 @@ mod test {
         {
             let mut utxos = generate_utxos(6);
 
-            utxos[0].value = 100;
-            utxos[1].value = 200;
-            utxos[2].value = 150;
-            utxos[3].value = 300;
-            utxos[4].value = 2000;
-            utxos[5].value = 1000;
+            utxos[0].value = 100 * 1_000_000_000;
+            utxos[1].value = 200 * 1_000_000_000;
+            utxos[2].value = 150 * 1_000_000_000;
+            utxos[3].value = 300 * 1_000_000_000;
+            utxos[4].value = 2000 * 1_000_000_000;
+            utxos[5].value = 1000 * 1_000_000_000;
 
             let (selected_utxos, fee) =
                 TransactionsManager::<ThickClient>::select_utxos_for_optimization(1000, &utxos, 2)
@@ -857,12 +857,12 @@ mod test {
         {
             let mut utxos = generate_utxos(6);
 
-            utxos[0].value = 100;
-            utxos[1].value = 200;
-            utxos[2].value = 150;
-            utxos[3].value = 300;
-            utxos[4].value = 2000;
-            utxos[5].value = 1000;
+            utxos[0].value = 100 * 1_000_000_000;
+            utxos[1].value = 200 * 1_000_000_000;
+            utxos[2].value = 150 * 1_000_000_000;
+            utxos[3].value = 300 * 1_000_000_000;
+            utxos[4].value = 2000 * 1_000_000_000;
+            utxos[5].value = 1000 * 1_000_000_000;
 
             let (selected_utxos, fee) =
                 TransactionsManager::<ThickClient>::select_utxos_for_optimization(1000, &utxos, 3)
@@ -883,12 +883,12 @@ mod test {
         {
             let mut utxos = generate_utxos(6);
 
-            utxos[0].value = 1;
-            utxos[1].value = 1;
-            utxos[2].value = 1;
-            utxos[3].value = 1;
-            utxos[4].value = 2000;
-            utxos[5].value = 1;
+            utxos[0].value = 1 * 1_000_000_000;
+            utxos[1].value = 1 * 1_000_000_000;
+            utxos[2].value = 1 * 1_000_000_000;
+            utxos[3].value = 1 * 1_000_000_000;
+            utxos[4].value = 2000 * 1_000_000_000;
+            utxos[5].value = 1 * 1_000_000_000;
 
             assert!(
                 utxos[0].value + utxos[1].value + utxos[2].value + utxos[3].value + utxos[5].value
@@ -906,7 +906,7 @@ mod test {
             let mut utxos = generate_utxos(2);
 
             utxos[0].value = MINIMUM_FEE;
-            utxos[1].value = 2000;
+            utxos[1].value = 2000 * 1_000_000_000;
 
             let result = TransactionsManager::<ThickClient>::select_utxos_for_optimization(
                 1000, &utxos, 100,
@@ -919,9 +919,9 @@ mod test {
             let mut utxos = generate_utxos(4);
 
             utxos[0].value = MINIMUM_FEE;
-            utxos[1].value = 2000;
-            utxos[2].value = 1;
-            utxos[3].value = 2;
+            utxos[1].value = 2000 * 1_000_000_000;
+            utxos[2].value = 1 * 1_000_000_000;
+            utxos[3].value = 2 * 1_000_000_000;
 
             let (selected_utxos, fee) =
                 TransactionsManager::<ThickClient>::select_utxos_for_optimization(1000, &utxos, 3)
@@ -940,8 +940,8 @@ mod test {
     fn test_select_utxos_for_optimizations_errors_on_less_than_2_utxos() {
         let mut utxos = generate_utxos(2);
 
-        utxos[0].value = 2000;
-        utxos[1].value = 2000;
+        utxos[0].value = 2000 * 1_000_000_000; // 2000 milliMOB
+        utxos[1].value = 2000 * 1_000_000_000; // 2000 milliMOB
 
         let result =
             TransactionsManager::<ThickClient>::select_utxos_for_optimization(1000, &[], 100);
