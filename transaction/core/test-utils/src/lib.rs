@@ -20,8 +20,8 @@ use mc_util_from_random::FromRandom;
 use rand::{seq::SliceRandom, Rng};
 use tempdir::TempDir;
 
-/// The amount minted by `initialize_ledger`.
-pub const INITIALIZE_LEDGER_AMOUNT: u64 = 1_000_000;
+/// The amount minted by `initialize_ledger`, 1 million milliMOB.
+pub const INITIALIZE_LEDGER_AMOUNT: u64 = 1_000_000 * 1_000_000_000;
 
 /// Creates a LedgerDB instance.
 pub fn create_ledger() -> LedgerDB {
