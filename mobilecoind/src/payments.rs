@@ -13,7 +13,7 @@ use mc_crypto_keys::RistrettoPublic;
 use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
 use mc_transaction_core::{
-    constants::{MAX_INPUTS, MINIMUM_FEE, RING_SIZE},
+    constants::{MAX_INPUTS, MILLIMOB, MINIMUM_FEE, RING_SIZE},
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
     tx::{Tx, TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
@@ -838,12 +838,12 @@ mod test {
         {
             let mut utxos = generate_utxos(6);
 
-            utxos[0].value = 100 * 1_000_000_000;
-            utxos[1].value = 200 * 1_000_000_000;
-            utxos[2].value = 150 * 1_000_000_000;
-            utxos[3].value = 300 * 1_000_000_000;
-            utxos[4].value = 2000 * 1_000_000_000;
-            utxos[5].value = 1000 * 1_000_000_000;
+            utxos[0].value = 100 * MILLIMOB;
+            utxos[1].value = 200 * MILLIMOB;
+            utxos[2].value = 150 * MILLIMOB;
+            utxos[3].value = 300 * MILLIMOB;
+            utxos[4].value = 2000 * MILLIMOB;
+            utxos[5].value = 1000 * MILLIMOB;
 
             let (selected_utxos, fee) =
                 TransactionsManager::<ThickClient>::select_utxos_for_optimization(1000, &utxos, 2)
@@ -857,12 +857,12 @@ mod test {
         {
             let mut utxos = generate_utxos(6);
 
-            utxos[0].value = 100 * 1_000_000_000;
-            utxos[1].value = 200 * 1_000_000_000;
-            utxos[2].value = 150 * 1_000_000_000;
-            utxos[3].value = 300 * 1_000_000_000;
-            utxos[4].value = 2000 * 1_000_000_000;
-            utxos[5].value = 1000 * 1_000_000_000;
+            utxos[0].value = 100 * MILLIMOB;
+            utxos[1].value = 200 * MILLIMOB;
+            utxos[2].value = 150 * MILLIMOB;
+            utxos[3].value = 300 * MILLIMOB;
+            utxos[4].value = 2000 * MILLIMOB;
+            utxos[5].value = 1000 * MILLIMOB;
 
             let (selected_utxos, fee) =
                 TransactionsManager::<ThickClient>::select_utxos_for_optimization(1000, &utxos, 3)
@@ -883,12 +883,12 @@ mod test {
         {
             let mut utxos = generate_utxos(6);
 
-            utxos[0].value = 1 * 1_000_000_000;
-            utxos[1].value = 1 * 1_000_000_000;
-            utxos[2].value = 1 * 1_000_000_000;
-            utxos[3].value = 1 * 1_000_000_000;
-            utxos[4].value = 2000 * 1_000_000_000;
-            utxos[5].value = 1 * 1_000_000_000;
+            utxos[0].value = 1 * MILLIMOB;
+            utxos[1].value = 1 * MILLIMOB;
+            utxos[2].value = 1 * MILLIMOB;
+            utxos[3].value = 1 * MILLIMOB;
+            utxos[4].value = 2000 * MILLIMOB;
+            utxos[5].value = 1 * MILLIMOB;
 
             assert!(
                 utxos[0].value + utxos[1].value + utxos[2].value + utxos[3].value + utxos[5].value
@@ -906,7 +906,7 @@ mod test {
             let mut utxos = generate_utxos(2);
 
             utxos[0].value = MINIMUM_FEE;
-            utxos[1].value = 2000 * 1_000_000_000;
+            utxos[1].value = 2000 * MILLIMOB;
 
             let result = TransactionsManager::<ThickClient>::select_utxos_for_optimization(
                 1000, &utxos, 100,
@@ -919,9 +919,9 @@ mod test {
             let mut utxos = generate_utxos(4);
 
             utxos[0].value = MINIMUM_FEE;
-            utxos[1].value = 2000 * 1_000_000_000;
-            utxos[2].value = 1 * 1_000_000_000;
-            utxos[3].value = 2 * 1_000_000_000;
+            utxos[1].value = 2000 * MILLIMOB;
+            utxos[2].value = 1 * MILLIMOB;
+            utxos[3].value = 2 * MILLIMOB;
 
             let (selected_utxos, fee) =
                 TransactionsManager::<ThickClient>::select_utxos_for_optimization(1000, &utxos, 3)
@@ -940,8 +940,8 @@ mod test {
     fn test_select_utxos_for_optimizations_errors_on_less_than_2_utxos() {
         let mut utxos = generate_utxos(2);
 
-        utxos[0].value = 2000 * 1_000_000_000; // 2000 milliMOB
-        utxos[1].value = 2000 * 1_000_000_000; // 2000 milliMOB
+        utxos[0].value = 2000 * MILLIMOB;
+        utxos[1].value = 2000 * MILLIMOB;
 
         let result =
             TransactionsManager::<ThickClient>::select_utxos_for_optimization(1000, &[], 100);
