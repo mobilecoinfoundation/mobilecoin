@@ -22,6 +22,9 @@ pub const MAX_TOMBSTONE_BLOCKS: u64 = 100;
 /// The MobileCoin network will contain a fixed supply of 250 million mobilecoins (MOB).
 pub const TOTAL_MOB: u64 = 250_000_000;
 
+/// one milliMOB = 1e9 picoMOB
+const MILLIMOB = 1_000_000_000;
+
 /// Minimum allowed fee, denominated in milliMOB (Note, base unit is picoMOB).
 pub const MINIMUM_FEE: u64 = 10 * 1_000_000_000;
 
