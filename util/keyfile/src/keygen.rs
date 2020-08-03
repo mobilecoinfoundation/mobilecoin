@@ -53,8 +53,8 @@ pub fn write_default_keyfiles<P: AsRef<Path>>(
         let root_id = RootIdentity::random_with_fog(
             &mut keys_rng,
             fog_url.unwrap_or(&""),
-            fog_report_id.unwrap_or(Default::default()),
-            fog_authority_fingerprint.unwrap_or(Default::default()),
+            fog_report_id.unwrap_or_default(),
+            fog_authority_fingerprint.unwrap_or_default(),
         );
 
         write_keyfiles(path.as_ref(), &keyfile_name(i), &root_id)?;
