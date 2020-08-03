@@ -13,7 +13,7 @@ use mc_crypto_keys::RistrettoPublic;
 use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
 use mc_transaction_core::{
-    constants::{BASE_FEE, MAX_INPUTS, RING_SIZE},
+    constants::{MAX_INPUTS, MINIMUM_FEE, RING_SIZE},
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
     tx::{Tx, TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
@@ -157,7 +157,7 @@ impl<T: UserTxConnection + 'static> TransactionsManager<T> {
         );
 
         // Figure out the fee.
-        let fee = if opt_fee > 0 { opt_fee } else { BASE_FEE };
+        let fee = if opt_fee > 0 { opt_fee } else { MINIMUM_FEE };
 
         // Select the UTXOs to be used for this transaction.
         let selected_utxos =
@@ -446,7 +446,7 @@ impl<T: UserTxConnection + 'static> TransactionsManager<T> {
             }
 
             // Calculate the fee - right now this is constant.
-            let fee = BASE_FEE;
+            let fee = MINIMUM_FEE;
 
             // See if the total amount we are trying to merge into our biggest UTXO is bigger than the fee.
             // If it's smaller, the merge would just lose us money.
@@ -850,7 +850,7 @@ mod test {
                     .unwrap();
 
             assert_eq!(selected_utxos, vec![utxos[0].clone(), utxos[4].clone()]);
-            assert_eq!(fee, BASE_FEE);
+            assert_eq!(fee, MINIMUM_FEE);
         }
 
         // Optimizing with max_inputs=3 should select 100, 150, 2000;
@@ -872,7 +872,7 @@ mod test {
                 selected_utxos,
                 vec![utxos[0].clone(), utxos[2].clone(), utxos[4].clone()]
             );
-            assert_eq!(fee, BASE_FEE);
+            assert_eq!(fee, MINIMUM_FEE);
         }
     }
 
@@ -892,7 +892,7 @@ mod test {
 
             assert!(
                 utxos[0].value + utxos[1].value + utxos[2].value + utxos[3].value + utxos[5].value
-                    < BASE_FEE
+                    < MINIMUM_FEE
             );
 
             let result = TransactionsManager::<ThickClient>::select_utxos_for_optimization(
@@ -905,7 +905,7 @@ mod test {
         {
             let mut utxos = generate_utxos(2);
 
-            utxos[0].value = BASE_FEE;
+            utxos[0].value = MINIMUM_FEE;
             utxos[1].value = 2000;
 
             let result = TransactionsManager::<ThickClient>::select_utxos_for_optimization(
@@ -918,7 +918,7 @@ mod test {
         {
             let mut utxos = generate_utxos(4);
 
-            utxos[0].value = BASE_FEE;
+            utxos[0].value = MINIMUM_FEE;
             utxos[1].value = 2000;
             utxos[2].value = 1;
             utxos[3].value = 2;
@@ -931,7 +931,7 @@ mod test {
                 selected_utxos,
                 vec![utxos[3].clone(), utxos[0].clone(), utxos[1].clone()]
             );
-            assert_eq!(fee, BASE_FEE);
+            assert_eq!(fee, MINIMUM_FEE);
         }
     }
 

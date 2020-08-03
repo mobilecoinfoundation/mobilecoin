@@ -6,7 +6,7 @@ use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_ledger_db::{Ledger, LedgerDB};
 pub use mc_transaction_core::{
-    constants::BASE_FEE,
+    constants::MINIMUM_FEE,
     get_tx_out_shared_secret,
     onetime_keys::recover_onetime_private_key,
     range::Range,
@@ -53,14 +53,14 @@ pub fn create_transaction<L: Ledger, R: RngCore + CryptoRng>(
     let shared_secret = get_tx_out_shared_secret(sender.view_private_key(), &tx_out_public_key);
     let (value, _blinding) = tx_out.amount.get_value(&shared_secret).unwrap();
 
-    assert!(value >= BASE_FEE);
+    assert!(value >= MINIMUM_FEE);
     create_transaction_with_amount(
         ledger,
         tx_out,
         sender,
         recipient,
-        value - BASE_FEE,
-        BASE_FEE,
+        value - MINIMUM_FEE,
+        MINIMUM_FEE,
         tombstone_block,
         rng,
     )

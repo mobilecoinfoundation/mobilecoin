@@ -9,7 +9,7 @@ use curve25519_dalek::scalar::Scalar;
 use mc_account_keys::PublicAddress;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
 use mc_transaction_core::{
-    constants::BASE_FEE,
+    constants::MINIMUM_FEE,
     encrypted_fog_hint::EncryptedFogHint,
     fog_hint::FogHint,
     onetime_keys::compute_shared_secret,
@@ -37,7 +37,7 @@ impl TransactionBuilder {
             input_credentials: Vec::new(),
             outputs_and_shared_secrets: Vec::new(),
             tombstone_block: u64::max_value(),
-            fee: BASE_FEE,
+            fee: MINIMUM_FEE,
         }
     }
 
@@ -388,7 +388,7 @@ pub mod transaction_builder_tests {
         transaction_builder.add_input(input_credentials);
         let (_txout, confirmation) = transaction_builder
             .add_output(
-                value - BASE_FEE,
+                value - MINIMUM_FEE,
                 &recipient.default_subaddress(),
                 None,
                 &mut rng,
