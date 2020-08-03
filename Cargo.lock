@@ -16,6 +16,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "aead"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7fc95d1bdb8e6666b2b217308eeeb09f2d6728d104be3e31916cc74d15420331"
+dependencies = [
+ "generic-array 0.14.3",
+]
+
+[[package]]
 name = "aes"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -32,11 +41,23 @@ version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "54e6fb62c3640759142eb73015f57eece23832fde0a7ccd8be17d7ccbd01f21c"
 dependencies = [
- "aead",
+ "aead 0.2.0",
  "aes",
- "ghash",
+ "ghash 0.2.3",
  "subtle 2.2.3",
  "zeroize 1.1.0",
+]
+
+[[package]]
+name = "aes-gcm"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "86f5007801316299f922a6198d1d09a0bae95786815d066d5880d13f7c45ead1"
+dependencies = [
+ "aead 0.3.2",
+ "block-cipher",
+ "ghash 0.3.0",
+ "subtle 2.2.3",
 ]
 
 [[package]]
@@ -303,6 +324,15 @@ dependencies = [
  "byte-tools",
  "byteorder",
  "generic-array 0.12.3",
+]
+
+[[package]]
+name = "block-cipher"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fa136449e765dc7faa244561ccae839c394048667929af599b5d931ebe7b7f10"
+dependencies = [
+ "generic-array 0.14.3",
 ]
 
 [[package]]
@@ -1202,6 +1232,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "generic-array"
+version = "0.14.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "60fb4bb6bba52f78a471264d9a3b7d026cc0af47b22cd2cffbc0b787ca003e63"
+dependencies = [
+ "typenum",
+ "version_check 0.9.1",
+]
+
+[[package]]
 name = "genio"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1227,7 +1267,16 @@ version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f0930ed19a7184089ea46d2fedead2f6dc2b674c5db4276b7da336c7cd83252"
 dependencies = [
- "polyval",
+ "polyval 0.3.3",
+]
+
+[[package]]
+name = "ghash"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6e27f0689a6e15944bdce7e45425efb87eaa8ab0c6e87f11d0987a9133e2531"
+dependencies = [
+ "polyval 0.4.0",
 ]
 
 [[package]]
@@ -1946,8 +1995,8 @@ dependencies = [
 name = "mc-attest-ake"
 version = "0.5.0"
 dependencies = [
- "aead",
- "aes-gcm",
+ "aead 0.2.0",
+ "aes-gcm 0.3.2",
  "digest",
  "failure",
  "mc-attest-core",
@@ -1969,7 +2018,7 @@ dependencies = [
 name = "mc-attest-api"
 version = "0.5.0"
 dependencies = [
- "aead",
+ "aead 0.2.0",
  "cargo-emit",
  "digest",
  "futures",
@@ -2111,7 +2160,7 @@ dependencies = [
 name = "mc-connection"
 version = "0.5.0"
 dependencies = [
- "aes-gcm",
+ "aes-gcm 0.3.2",
  "failure",
  "grpcio",
  "mc-attest-ake",
@@ -2384,8 +2433,8 @@ dependencies = [
 name = "mc-crypto-ake-enclave"
 version = "0.5.0"
 dependencies = [
- "aead",
- "aes-gcm",
+ "aead 0.2.0",
+ "aes-gcm 0.3.2",
  "digest",
  "failure",
  "mc-attest-ake",
@@ -2409,16 +2458,26 @@ dependencies = [
 name = "mc-crypto-box"
 version = "0.5.0"
 dependencies = [
- "aead",
- "aes-gcm",
+ "aead 0.2.0",
+ "aes-gcm 0.3.2",
  "blake2",
  "digest",
  "failure",
  "hkdf",
+ "mc-crypto-ct-aead",
  "mc-crypto-keys",
  "mc-util-from-random",
  "mc-util-test-helper",
  "rand_core 0.5.1",
+]
+
+[[package]]
+name = "mc-crypto-ct-aead"
+version = "0.5.0"
+dependencies = [
+ "aes-gcm 0.6.0",
+ "block-cipher",
+ "subtle 2.2.3",
 ]
 
 [[package]]
@@ -2489,7 +2548,7 @@ dependencies = [
 name = "mc-crypto-message-cipher"
 version = "0.5.0"
 dependencies = [
- "aes-gcm",
+ "aes-gcm 0.3.2",
  "failure",
  "generic-array 0.12.3",
  "mc-util-serial",
@@ -2503,8 +2562,8 @@ dependencies = [
 name = "mc-crypto-noise"
 version = "0.5.0"
 dependencies = [
- "aead",
- "aes-gcm",
+ "aead 0.2.0",
+ "aes-gcm 0.3.2",
  "digest",
  "failure",
  "generic-array 0.12.3",
@@ -2722,31 +2781,6 @@ dependencies = [
  "mc-common",
  "mc-mobilecoind-api",
  "protobuf",
- "rocket",
- "rocket_contrib",
- "serde",
- "serde_derive",
- "structopt",
-]
-
-[[package]]
-name = "mc-mobilecoind-mirror"
-version = "0.5.0"
-dependencies = [
- "cargo-emit",
- "futures",
- "grpcio",
- "hex 0.4.2",
- "mc-api",
- "mc-common",
- "mc-mobilecoind-api",
- "mc-mobilecoind-json",
- "mc-util-build-grpc",
- "mc-util-build-script",
- "mc-util-grpc",
- "mc-util-uri",
- "protobuf",
- "rand 0.7.3",
  "rocket",
  "rocket_contrib",
  "serde",
@@ -3852,7 +3886,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ec3341498978de3bfd12d1b22f1af1de22818f5473a11e8a6ef997989e3a212"
 dependencies = [
  "cfg-if",
- "universal-hash",
+ "universal-hash 0.3.0",
+]
+
+[[package]]
+name = "polyval"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d9a50142b55ab3ed0e9f68dfb3709f1d90d29da24e91033f28b96330643107dc"
+dependencies = [
+ "cfg-if",
+ "universal-hash 0.4.0",
 ]
 
 [[package]]
@@ -5724,6 +5768,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df0c900f2f9b4116803415878ff48b63da9edb268668e08cf9292d7503114a01"
 dependencies = [
  "generic-array 0.12.3",
+ "subtle 2.2.3",
+]
+
+[[package]]
+name = "universal-hash"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8326b2c654932e3e4f9196e69d08fdf7cfd718e1dc6f66b347e6024a0c961402"
+dependencies = [
+ "generic-array 0.14.3",
  "subtle 2.2.3",
 ]
 

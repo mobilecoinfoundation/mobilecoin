@@ -25,6 +25,7 @@ members = [
     "consensus/scp/play",
     "consensus/service",
     "crypto/box",
+    "crypto/ct-aead",
     "crypto/digestible",
     "crypto/keys",
     "crypto/noise",

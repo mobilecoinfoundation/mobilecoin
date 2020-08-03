@@ -15,6 +15,7 @@ use core::{
 };
 use digest::{BlockInput, Digest, FixedOutput, Input, Reset};
 use hkdf::Hkdf;
+use mc_crypto_ct_aead::AeadDecryptCt;
 use mc_crypto_keys::{Kex, ReprBytes};
 use rand_core::{CryptoRng, RngCore};
 
@@ -31,7 +32,7 @@ where
     KexAlgo: Kex,
     for<'privkey> <KexAlgo as Kex>::Public: From<&'privkey <KexAlgo as Kex>::EphemeralPrivate>,
     DigestAlgo: Digest + Input + FixedOutput + Default + Clone + BlockInput + Reset,
-    AeadAlgo: Aead + NewAead,
+    AeadAlgo: Aead + NewAead + AeadDecryptCt,
 {
     _kex: PhantomData<fn() -> KexAlgo>,
     _digest: PhantomData<fn() -> DigestAlgo>,
@@ -43,7 +44,7 @@ where
     KexAlgo: Kex,
     for<'privkey> <KexAlgo as Kex>::Public: From<&'privkey <KexAlgo as Kex>::EphemeralPrivate>,
     DigestAlgo: Digest + Input + FixedOutput + Default + Clone + BlockInput + Reset,
-    AeadAlgo: Aead + NewAead,
+    AeadAlgo: Aead + NewAead + AeadDecryptCt,
     // Note: I think all of these bounds should go away after RFC 2089 is implemented
     // https://github.com/rust-lang/rfcs/blob/master/text/2089-implied-bounds.md
     <<KexAlgo as Kex>::Public as ReprBytes>::Size:
@@ -112,10 +113,7 @@ where
             &tag[<KexAlgo::Public as ReprBytes>::Size::USIZE..],
         );
         let aead = AeadAlgo::new(aes_key);
-        aead.decrypt_in_place_detached(&aes_nonce, &[], buffer, mac_ref)
-            .map_err(|_| Error::MacFailed)?;
-
-        Ok(())
+        Ok(aead.ct_decrypt_in_place_detached(&aes_nonce, &[], buffer, mac_ref))
     }
 }
 
@@ -124,7 +122,7 @@ where
     KexAlgo: Kex,
     for<'privkey> <KexAlgo as Kex>::Public: From<&'privkey <KexAlgo as Kex>::EphemeralPrivate>,
     DigestAlgo: Digest + Input + FixedOutput + Default + Clone + BlockInput + Reset,
-    AeadAlgo: Aead + NewAead,
+    AeadAlgo: Aead + NewAead + AeadDecryptCt,
     AeadAlgo::KeySize: Add<AeadAlgo::NonceSize>,
     Sum<AeadAlgo::KeySize, AeadAlgo::NonceSize>:
         ArrayLength<u8> + Sub<AeadAlgo::KeySize, Output = AeadAlgo::NonceSize>,
@@ -152,7 +150,7 @@ where
     KexAlgo: Kex,
     for<'privkey> <KexAlgo as Kex>::Public: From<&'privkey <KexAlgo as Kex>::EphemeralPrivate>,
     DigestAlgo: Digest + Input + FixedOutput + Default + Clone + BlockInput + Reset,
-    AeadAlgo: Aead + NewAead,
+    AeadAlgo: Aead + NewAead + AeadDecryptCt,
 {
     fn default() -> Self {
         Self {
