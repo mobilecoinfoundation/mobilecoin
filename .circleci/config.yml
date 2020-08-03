@@ -277,19 +277,18 @@ commands:
             # Note: Using curly braces ensures that the conversion is run even if the tests fail,
             # while still allowing the exit code from the tests to be propagated. Using `tee` to
             # pipe the output to a file before converting ensures that the tests are not
-            # interrupted if conversion fails. The last statement in the curly braces is `true` so
-            # that if the conversion can fails, the step as a whole does not fail. This is
-            # necessary because the conversion tool must parse all test output, including log
-            # output, in order to parse the test results, and unfortunately Cargo does not always
-            # output the test results in such a way that is cleanly parsable.
+            # interrupted if conversion fails. `|| true` is added so that the test as a whole does
+            # not fail even if conversion fails. This is especially necessary because the
+            # conversion tool must parse all test output, including log output, in order to parse
+            # the test results, and unfortunately Cargo does not always output the test results in
+            # such a way that is cleanly parsable.
             << parameters.test_command >> -- \
                 -Z unstable-options --format json --report-time \
               | {
                   tee /tmp/test-results/output.log
                   cat /tmp/test-results/output.log \
-                    | cargo2junit \
-                    > /tmp/test-results/results.xml
-                  true
+                    | cargo2junit > /tmp/test-results/results.xml \
+                    || true
                 }
 
   post-build:
