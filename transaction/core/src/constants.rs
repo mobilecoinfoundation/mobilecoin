@@ -26,7 +26,7 @@ pub const TOTAL_MOB: u64 = 250_000_000;
 const MILLIMOB = 1_000_000_000;
 
 /// Minimum allowed fee, denominated in milliMOB (Note, base unit is picoMOB).
-pub const MINIMUM_FEE: u64 = 10 * 1_000_000_000;
+pub const MINIMUM_FEE: u64 = 10 * MILLIMOB;
 
 lazy_static! {
     // Blinding for the implicit fee outputs.
