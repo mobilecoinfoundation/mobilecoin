@@ -11,8 +11,8 @@ mc-api = { path = "../../api" }
 mc-attest-api = { path = "../../attest/api" }
 mc-transaction-core = { path = "../../transaction/core" }
 
-futures = "0.1.16"
-grpcio = "0.5.1"
+futures = "0.3"
+grpcio = "0.6.0"
 protobuf = "2.12"
 
 

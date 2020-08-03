@@ -24,7 +24,7 @@ pub fn compile_protos_and_generate_mod_rs(proto_dirs: &[&str], proto_files: &[&s
     fs::create_dir_all(&output_destination).expect("failed creating output destination");
 
     // Generate code.
-    protoc_grpcio::compile_grpc_protos(proto_files, proto_dirs, &output_destination)
+    protoc_grpcio::compile_grpc_protos(proto_files, proto_dirs, &output_destination, None)
         .expect("Failed to compile gRPC definitions!");
 
     // Generate the mod.rs file that includes all the auto-generated code.
