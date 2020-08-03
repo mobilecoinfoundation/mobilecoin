@@ -487,7 +487,7 @@ impl<
                     .ledger_sync_service
                     .attempt_ledger_sync(&self.network_state, blocks_per_attempt)
                 {
-                    log::error!(self.logger, "Could not sync ledger: {:?}", err);
+                    log::warn!(self.logger, "Could not sync ledger: {:?}", err);
 
                     // The next time we attempt to sync is a linear back-off based on how many
                     // attempts we've done so far, capped at 60 seconds.
