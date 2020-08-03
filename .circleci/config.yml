@@ -1,5 +1,12 @@
 # vim: tabstop=2 softtabstop=2 shiftwidth=2 expandtab:
 
+# Notes:
+# * The new resolver has a bug that causes packages to select features non-deterministically under
+#   certain circumstances. To work around this, `--target` must be specified when using cargo. This
+#   can be removed once the bug is fixed. Similarly, `--tests` must be specified when using
+#   `cargo test` so that non-test profile builds don't bleed over.
+#   See: [MC-1731] and https://github.com/rust-lang/cargo/issues/8549
+
 version: 2.1
 
 defaults:
@@ -59,6 +66,10 @@ commands:
             if [ -f ~/.gitconfig ]; then
               sed -i -e 's/github/git-non-exist-hub/g' ~/.gitconfig # https://github.com/rust-lang/cargo/issues/3900
             fi
+      - run:
+          name: Set utility environment variables
+          command: |
+            echo "export HOST_TARGET_TRIPLE=\"$(rustc -Vv | sed -n 's/^host: //p')\"" >> $BASH_ENV
 
   enable_sccache:
     description: Enabling sccache
@@ -255,7 +266,7 @@ commands:
     parameters:
       test_command:
         type: string
-        default: cargo test --frozen
+        default: cargo test --frozen --target "$HOST_TARGET_TRIPLE" --tests
     steps:
       - run:
           name: Run all tests
@@ -416,14 +427,14 @@ jobs:
       - prepare-for-build
       - run:
           name: Cargo check (SW/IAS dev)
-          command: cargo check --frozen
+          command: cargo check --frozen --target "$HOST_TARGET_TRIPLE"
       - check-dirty-git
       - run:
           name: Cargo check (HW/IAS prod)
           environment:
             SGX_MODE: HW
             IAS_MODE: PROD
-          command: cargo check --frozen
+          command: cargo check --frozen --target "$HOST_TARGET_TRIPLE"
       - check-dirty-git
 
       # The lint and saving of caches happens here since this job is faster than the run-all-tests job.
@@ -458,7 +469,7 @@ jobs:
       - run:
           name: Cargo check (SW/IAS dev)
           command: |
-            cargo check --workspace --frozen \
+            cargo check --frozen --target "$HOST_TARGET_TRIPLE" --workspace \
               --exclude mc-attest-untrusted \
               --exclude mc-consensus-enclave \
               --exclude mc-consensus-service \
