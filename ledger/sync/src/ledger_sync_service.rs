@@ -609,7 +609,7 @@ fn get_block_contents<TF: TransactionsFetcher + 'static>(
 
                                 Err(err) => {
                                     // Log
-                                    log::error!(
+                                    log::info!(
                                         thread_logger,
                                         "Worker {} failed getting transactions for block {}: {}",
                                         worker_num,
