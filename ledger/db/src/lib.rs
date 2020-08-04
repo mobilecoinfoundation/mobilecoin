@@ -150,6 +150,15 @@ impl Ledger for LedgerDB {
 
         // Update metrics.
         self.metrics.blocks_written_count.inc();
+        self.metrics.num_blocks.inc();
+
+        self.metrics
+            .txo_written_count
+            .inc_by(block_contents.outputs.len() as i64);
+        self.metrics
+            .num_txos
+            .add(block_contents.outputs.len() as i64);
+
         self.metrics.observe_append_block_time(start_time);
 
         Ok(())
@@ -372,7 +381,7 @@ impl LedgerDB {
 
         let metrics = LedgerMetrics::new(&path);
 
-        Ok(LedgerDB {
+        let ledger_db = LedgerDB {
             env: Arc::new(env),
             path,
             counts,
@@ -385,7 +394,16 @@ impl LedgerDB {
             metadata_store,
             tx_out_store,
             metrics,
-        })
+        };
+
+        // Get initial values for gauges.
+        let num_blocks = ledger_db.num_blocks()?;
+        ledger_db.metrics.num_blocks.set(num_blocks as i64);
+
+        let num_txos = ledger_db.num_txos()?;
+        ledger_db.metrics.num_txos.set(num_txos as i64);
+
+        Ok(ledger_db)
     }
 
     /// Creates a fresh Ledger Database in the given path.

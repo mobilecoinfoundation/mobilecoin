@@ -8,7 +8,7 @@
 
 use mc_util_metrics::{
     register, Collector, Desc, Histogram, HistogramOpts, HistogramVec, IntCounter, IntCounterVec,
-    IntGaugeVec, MetricFamily, Opts,
+    IntGauge, IntGaugeVec, MetricFamily, Opts,
 };
 use std::{
     path::PathBuf,
@@ -83,6 +83,15 @@ pub struct LedgerMetrics {
     /// Blocks written through ledger sync since this node started.
     pub blocks_written_count: IntCounter,
 
+    /// Transaction outputs written through ledger sync since this node started.
+    pub txo_written_count: IntCounter,
+
+    /// Number of blocks written to the ledger (by querying ledger).
+    pub num_blocks: IntGauge,
+
+    /// Number of txouts in the ledger (by querying ledger).
+    pub num_txos: IntGauge,
+
     /// Time it takes to perform append_block.
     append_block_time: Histogram,
 }
@@ -97,6 +106,18 @@ impl LedgerMetrics {
             blocks_written_count: COLLECTOR
                 .counters
                 .with_label_values(&["blocks_written_count", db_path_str]),
+
+            txo_written_count: COLLECTOR
+                .counters
+                .with_label_values(&["txo_written_count", db_path_str]),
+
+            num_blocks: COLLECTOR
+                .gauges
+                .with_label_values(&["num_blocks", db_path_str]),
+
+            num_txos: COLLECTOR
+                .gauges
+                .with_label_values(&["num_txos", db_path_str]),
 
             append_block_time: COLLECTOR
                 .duration
