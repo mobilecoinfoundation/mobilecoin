@@ -92,6 +92,9 @@ pub struct LedgerMetrics {
     /// Number of txouts in the ledger (by querying ledger).
     pub num_txos: IntGauge,
 
+    /// The size (in bytes) of the ledger database.
+    pub db_file_size: IntGauge,
+
     /// Time it takes to perform append_block.
     append_block_time: Histogram,
 }
@@ -118,6 +121,10 @@ impl LedgerMetrics {
             num_txos: COLLECTOR
                 .gauges
                 .with_label_values(&["num_txos", db_path_str]),
+
+            db_file_size: COLLECTOR
+                .gauges
+                .with_label_values(&["db_file_size", db_path_str]),
 
             append_block_time: COLLECTOR
                 .duration

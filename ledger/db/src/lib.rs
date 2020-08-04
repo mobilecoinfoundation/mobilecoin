@@ -31,7 +31,7 @@ use mc_transaction_core::{
 };
 use mc_util_serial::{decode, encode, Message};
 use metrics::LedgerMetrics;
-use std::{path::PathBuf, sync::Arc, time::Instant};
+use std::{fs, path::PathBuf, sync::Arc, time::Instant};
 use tx_out_store::TxOutStore;
 
 pub use error::Error;
@@ -160,6 +160,9 @@ impl Ledger for LedgerDB {
             .add(block_contents.outputs.len() as i64);
 
         self.metrics.observe_append_block_time(start_time);
+
+        let file_size = self.db_file_size().unwrap_or(0);
+        self.metrics.db_file_size.set(file_size as i64);
 
         Ok(())
     }
@@ -403,6 +406,9 @@ impl LedgerDB {
         let num_txos = ledger_db.num_txos()?;
         ledger_db.metrics.num_txos.set(num_txos as i64);
 
+        let file_size = ledger_db.db_file_size().unwrap_or(0);
+        ledger_db.metrics.db_file_size.set(file_size as i64);
+
         Ok(ledger_db)
     }
 
@@ -617,6 +623,15 @@ impl LedgerDB {
 
         // All good
         Ok(())
+    }
+
+    /// Get the database file size, in bytes.
+    fn db_file_size(&self) -> std::io::Result<u64> {
+        let mut filename = self.path.clone();
+        filename.push("data.mdb");
+
+        let metadata = fs::metadata(filename)?;
+        Ok(metadata.len())
     }
 
     /// A utility function for constructing the block_number_by_tx_out_index store using existing
