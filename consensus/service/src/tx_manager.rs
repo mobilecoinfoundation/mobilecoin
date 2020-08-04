@@ -125,8 +125,7 @@ pub struct TxManager<
     /// Ledger.
     ledger: L,
 
-    /// Application-specific custom interfaces for the untrusted part of validation/combining of
-    /// values.
+    /// Application-specific interfaces for the untrusted part of validation/combining of values.
     untrusted: UI,
 
     /// Logger.
@@ -153,8 +152,6 @@ impl<E: ConsensusEnclaveProxy, L: Ledger, UI: UntrustedInterfaces> TxManager<E, 
     pub fn insert_proposed_tx(
         &self,
         tx_context: TxContext,
-        // _origin_node: Option<NodeID>
-        // _relayed_to: Option<NodeID>,
     ) -> TxManagerResult<WellFormedTxContext> {
         // If already in cache then we're done.
         {
@@ -376,6 +373,27 @@ mod tests {
         create_ledger, create_transaction, initialize_ledger, AccountKey,
     };
     use rand::{rngs::StdRng, SeedableRng};
+
+    #[test]
+    #[ignore]
+    // Should return Ok when a well-formed Tx is inserted.
+    fn test_insert_proposed_tx_ok() {
+        unimplemented!()
+    }
+
+    #[test]
+    #[ignore]
+    // Should return Ok when a well-formed Tx is re-inserted.
+    fn test_insert_proposed_tx_reinsert_ok() {
+        unimplemented!()
+    }
+
+    #[test]
+    #[ignore]
+    // Should return return an error when a not well-formed Tx is inserted.
+    fn test_insert_proposed_tx_error() {
+        unimplemented!()
+    }
 
     #[test_with_logger]
     fn test_hashes_to_block(logger: Logger) {
