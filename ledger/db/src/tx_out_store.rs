@@ -67,7 +67,7 @@ pub struct TxOutStore {
 impl TxOutStore {
     #[cfg(feature = "migration_support")]
     pub fn get_tx_out_index_by_public_key_database(&self) -> Database {
-        self.tx_out_index_by_public_key.clone()
+        self.tx_out_index_by_public_key
     }
 
     /// Opens an existing TxOutStore.
