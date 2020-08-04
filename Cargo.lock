@@ -3079,6 +3079,7 @@ dependencies = [
  "mc-util-grpc",
  "protobuf",
  "rust_decimal",
+ "serde",
  "structopt",
 ]
 
