@@ -23,10 +23,10 @@ pub const MAX_TOMBSTONE_BLOCKS: u64 = 100;
 pub const TOTAL_MOB: u64 = 250_000_000;
 
 /// one milliMOB = 1e9 picoMOB
-pub const MILLIMOB: u64 = 1_000_000_000;
+pub const MILLIMOB_TO_PICOMOB: u64 = 1_000_000_000;
 
 /// Minimum allowed fee, denominated in picoMOB.
-pub const MINIMUM_FEE: u64 = 10 * MILLIMOB;
+pub const MINIMUM_FEE: u64 = 10 * MILLIMOB_TO_PICOMOB;
 
 lazy_static! {
     // Blinding for the implicit fee outputs.

@@ -246,7 +246,7 @@ pub mod transaction_builder_tests {
     use super::*;
     use mc_account_keys::{AccountKey, DEFAULT_SUBADDRESS_INDEX};
     use mc_transaction_core::{
-        constants::{MAX_INPUTS, MAX_OUTPUTS, MILLIMOB},
+        constants::{MAX_INPUTS, MAX_OUTPUTS, MILLIMOB_TO_PICOMOB},
         onetime_keys::*,
         ring_signature::KeyImage,
         tx::TxOutMembershipProof,
@@ -351,7 +351,7 @@ pub mod transaction_builder_tests {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let sender = AccountKey::random(&mut rng);
         let recipient = AccountKey::random(&mut rng);
-        let value = 1475 * MILLIMOB;
+        let value = 1475 * MILLIMOB_TO_PICOMOB;
 
         // Mint an initial collection of outputs, including one belonging to Alice.
         let (ring, real_index) = get_ring(3, &sender, value, &mut rng);
