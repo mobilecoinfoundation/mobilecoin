@@ -7,6 +7,16 @@
 #[cfg(test)]
 extern crate test;
 
+mod error;
+mod ledger_trait;
+mod metrics;
+
+pub mod metadata;
+pub mod tx_out_store;
+
+#[cfg(any(test, feature = "test_utils"))]
+pub mod test_utils;
+
 use core::convert::TryInto;
 use lmdb::{
     Database, DatabaseFlags, Environment, EnvironmentFlags, RoTransaction, RwTransaction,
@@ -20,16 +30,9 @@ use mc_transaction_core::{
     Block, BlockContents, BlockID, BlockSignature, BLOCK_VERSION,
 };
 use mc_util_serial::{decode, encode, Message};
-use std::{path::PathBuf, sync::Arc};
+use metrics::LedgerMetrics;
+use std::{path::PathBuf, sync::Arc, time::Instant};
 use tx_out_store::TxOutStore;
-
-mod error;
-mod ledger_trait;
-pub mod metadata;
-pub mod tx_out_store;
-
-#[cfg(any(test, feature = "test_utils"))]
-pub mod test_utils;
 
 pub use error::Error;
 pub use ledger_trait::Ledger;
@@ -106,6 +109,9 @@ pub struct LedgerDB {
 
     /// Location on filesystem.
     path: PathBuf,
+
+    /// Metrics.
+    metrics: LedgerMetrics,
 }
 
 /// LedgerDB is an append-only log (or chain) of blocks of transactions.
@@ -122,6 +128,8 @@ impl Ledger for LedgerDB {
         block_contents: &BlockContents,
         signature: Option<&BlockSignature>,
     ) -> Result<(), Error> {
+        let start_time = Instant::now();
+
         // Note: This function must update every LMDB database managed by LedgerDB.
         let mut db_transaction = self.env.begin_rw_txn()?;
 
@@ -139,6 +147,11 @@ impl Ledger for LedgerDB {
 
         // Commit.
         db_transaction.commit()?;
+
+        // Update metrics.
+        self.metrics.blocks_written_count.inc();
+        self.metrics.observe_append_block_time(start_time);
+
         Ok(())
     }
 
@@ -357,6 +370,8 @@ impl LedgerDB {
 
         let tx_out_store = TxOutStore::new(&env)?;
 
+        let metrics = LedgerMetrics::new(&path);
+
         Ok(LedgerDB {
             env: Arc::new(env),
             path,
@@ -369,6 +384,7 @@ impl LedgerDB {
             block_number_by_tx_out_index,
             metadata_store,
             tx_out_store,
+            metrics,
         })
     }
 
