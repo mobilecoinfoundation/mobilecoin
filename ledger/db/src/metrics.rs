@@ -107,7 +107,7 @@ impl LedgerMetrics {
             .to_str()
             .expect("failed converting ledger path to string");
 
-        let metrics = Self {
+        Self {
             blocks_written_count: COLLECTOR
                 .counters
                 .with_label_values(&["blocks_written_count", db_path_str]),
@@ -131,9 +131,7 @@ impl LedgerMetrics {
             append_block_time: COLLECTOR
                 .duration
                 .with_label_values(&["append_block", db_path_str]),
-        };
-
-        metrics
+        }
     }
 
     pub fn observe_append_block_time(&self, start_time: Instant) {
