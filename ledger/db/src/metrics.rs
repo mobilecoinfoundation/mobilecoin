@@ -15,6 +15,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+/// Metrics collector - used internally to report metrics into the Prometheus crate.
 #[derive(Clone)]
 struct LedgerMetricsCollector {
     /// Counters collection to be reported to Prometheus.
@@ -78,6 +79,7 @@ impl Collector for LedgerMetricsCollector {
     }
 }
 
+/// The collection of metrics tracked for each LedgerDB instance.
 #[derive(Clone)]
 pub struct LedgerMetrics {
     /// Blocks written through ledger sync since this node started.
