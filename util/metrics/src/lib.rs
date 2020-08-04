@@ -17,8 +17,8 @@ pub use op_counters::OpMetrics;
 pub use prometheus::{
     core::{Collector, Desc},
     proto::MetricFamily,
-    register, Histogram, HistogramOpts, HistogramVec, IntCounter, IntCounterVec, IntGauge,
-    IntGaugeVec, Opts,
+    register, register_histogram, Histogram, HistogramOpts, HistogramVec, IntCounter,
+    IntCounterVec, IntGauge, IntGaugeVec, Opts,
 };
 pub use service_metrics::ServiceMetrics;
 
