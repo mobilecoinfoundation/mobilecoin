@@ -1289,7 +1289,7 @@ mod test {
     use mc_common::{logger::test_with_logger, HashSet};
     use mc_crypto_rand::RngCore;
     use mc_transaction_core::{
-        constants::{BASE_FEE, MAX_INPUTS, RING_SIZE},
+        constants::{MAX_INPUTS, MINIMUM_FEE, RING_SIZE},
         get_tx_out_shared_secret,
         onetime_keys::recover_onetime_private_key,
         tx::{Tx, TxOut},
@@ -2286,7 +2286,7 @@ mod test {
 
             let change_value = test_utils::PER_RECIPIENT_AMOUNT
                 - outlays.iter().map(|outlay| outlay.value).sum::<u64>()
-                - BASE_FEE;
+                - MINIMUM_FEE;
 
             for (account_key, expected_value) in &[
                 (&receiver1, outlays[0].value),
@@ -2314,8 +2314,8 @@ mod test {
             }
 
             // Santity test fee
-            assert_eq!(tx_proposal.get_fee(), BASE_FEE);
-            assert_eq!(tx_proposal.get_tx().get_prefix().fee, BASE_FEE);
+            assert_eq!(tx_proposal.get_fee(), MINIMUM_FEE);
+            assert_eq!(tx_proposal.get_tx().get_prefix().fee, MINIMUM_FEE);
 
             // Sanity test tombstone block
             let num_blocks = ledger_db.num_blocks().unwrap();
@@ -2563,7 +2563,7 @@ mod test {
             tx_proposal.outlays[0].value,
             // Each UTXO we have has PER_RECIPIENT_AMOUNT coins. We will be merging MAX_INPUTS of those
             // into a single output, minus the fee.
-            (PER_RECIPIENT_AMOUNT * MAX_INPUTS as u64) - BASE_FEE,
+            (PER_RECIPIENT_AMOUNT * MAX_INPUTS as u64) - MINIMUM_FEE,
         );
 
         assert_eq!(tx_proposal.outlay_index_to_tx_out_index.len(), 1);
@@ -2578,8 +2578,8 @@ mod test {
         assert_eq!(value, tx_proposal.outlays[0].value);
 
         // Santity test fee
-        assert_eq!(tx_proposal.fee(), BASE_FEE);
-        assert_eq!(tx_proposal.tx.prefix.fee, BASE_FEE);
+        assert_eq!(tx_proposal.fee(), MINIMUM_FEE);
+        assert_eq!(tx_proposal.tx.prefix.fee, MINIMUM_FEE);
 
         // Sanity test tombstone block
         let num_blocks = ledger_db.num_blocks().unwrap();

@@ -469,7 +469,7 @@ derive_prost_message_from_repr_bytes!(TxOutConfirmationNumber);
 mod tests {
     use crate::{
         amount::Amount,
-        constants::BASE_FEE,
+        constants::MINIMUM_FEE,
         encrypted_fog_hint::EncryptedFogHint,
         ring_signature::SignatureRctBulletproofs,
         tx::{Tx, TxIn, TxOut, TxPrefix},
@@ -515,7 +515,7 @@ mod tests {
         let prefix = TxPrefix {
             inputs: vec![tx_in],
             outputs: vec![tx_out],
-            fee: BASE_FEE,
+            fee: MINIMUM_FEE,
             tombstone_block: 23,
         };
 
