@@ -105,7 +105,10 @@ impl ByzantineLedger {
         );
         let wrapped_scp_node: Box<dyn ScpNode<TxHash>> = if let Some(path) = opt_scp_debug_dump_dir
         {
-            Box::new(LoggingScpNode::new(scp_node, path).expect("Failed creating LoggingScpNode"))
+            Box::new(
+                LoggingScpNode::new(scp_node, path, logger.clone())
+                    .expect("Failed creating LoggingScpNode"),
+            )
         } else {
             Box::new(scp_node)
         };
