@@ -10,7 +10,7 @@ mc-util-metrics = { path = "../../util/metrics" }
 
 chrono = "0.4"
 crossbeam-channel = "0.3"
-grpcio = "0.5.1"
+grpcio = "0.6.0"
 lazy_static = "1.4"
 prometheus = "0.7"
 protobuf = "2.12"

@@ -9,7 +9,7 @@ use crate::{
     validators::DefaultTxManagerUntrustedInterfaces,
 };
 use failure::Fail;
-use futures::Future;
+use futures::executor::block_on;
 use grpcio::{EnvBuilder, Environment, Server, ServerBuilder};
 use mc_attest_api::attest_grpc::create_attested_api;
 use mc_attest_enclave_api::{ClientSession, PeerSession};
@@ -224,22 +224,18 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
         self.peer_keepalive.lock().expect("mutex poisoned").stop();
 
         if let Some(ref mut server) = self.user_rpc_server.take() {
-            server
-                .shutdown()
-                .wait()
+            block_on(server.shutdown())
                 .map_err(|_| ConsensusServiceError::RpcShutdown("user_rpc_server".to_string()))?
         }
 
         if let Some(ref mut server) = self.consensus_rpc_server.take() {
-            server.shutdown().wait().map_err(|_| {
+            block_on(server.shutdown()).map_err(|_| {
                 ConsensusServiceError::RpcShutdown("consensus_rpc_server".to_string())
             })?
         }
 
         if let Some(ref mut server) = self.admin_rpc_server.take() {
-            server
-                .shutdown()
-                .wait()
+            block_on(server.shutdown())
                 .map_err(|_| ConsensusServiceError::RpcShutdown("admin_rpc_server".to_string()))?
         }
 

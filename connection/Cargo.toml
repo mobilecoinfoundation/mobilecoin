@@ -21,7 +21,7 @@ mc-util-uri = { path = "../util/uri" }
 
 aes-gcm = "0.3"
 failure = "0.1.5"
-grpcio = "0.5.1"
+grpcio = "0.6.0"
 retry = "0.5"
 secrecy = "0.4"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }

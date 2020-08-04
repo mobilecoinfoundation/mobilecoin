@@ -19,7 +19,7 @@ mod build_info_service;
 mod grpcio_extensions;
 mod health_service;
 
-use futures::Future;
+use futures::prelude::*;
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
 use mc_common::logger::{log, o, Logger};
 use mc_util_metrics::SVC_COUNTERS;
@@ -46,11 +46,13 @@ pub fn send_result<T>(
     match resp {
         Ok(ok) => ctx.spawn(
             sink.success(ok)
-                .map_err(move |err| log::error!(logger, "failed to reply: {:?}", err)),
+                .map_err(move |err| log::error!(logger, "failed to reply: {:?}", err))
+                .map(|_| ()),
         ),
         Err(e) => ctx.spawn(
             sink.fail(e)
-                .map_err(move |err| log::error!(logger, "failed to reply: {:?}", err)),
+                .map_err(move |err| log::error!(logger, "failed to reply: {:?}", err))
+                .map(|_| ()),
         ),
     }
 
