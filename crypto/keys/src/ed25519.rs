@@ -208,7 +208,7 @@ impl Verifier<Ed25519Signature> for Ed25519Public {
 }
 
 /// An Ed25519 private key
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Ed25519Private(SecretKey);
 
 impl AsRef<[u8]> for Ed25519Private {
@@ -299,7 +299,7 @@ impl Ed25519Pair {
 
 impl<D: Digest<OutputSize = U64>> DigestSigner<D, Ed25519Signature> for Ed25519Pair {
     fn try_sign_digest(&self, digest: D) -> Result<Ed25519Signature, SignatureError> {
-        let sig = self.0.sign_prehashed(digest, None);
+        let sig = self.0.sign_prehashed(digest, None)?;
         Ok(Ed25519Signature::new(sig.to_bytes()))
     }
 }
