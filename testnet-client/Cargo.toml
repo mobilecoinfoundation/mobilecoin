@@ -18,3 +18,6 @@ mc-api = { path = "../api" }
 mc-util-grpc = { path = "../util/grpc" }
 mc-util-b58-payloads = { path = "../util/b58-payloads" }
 mc-mobilecoind-api = { path = "../mobilecoind/api" }
+
+[build-dependencies]
+serde = { version = "1", default-features = false, features = ["alloc", "derive"] }
