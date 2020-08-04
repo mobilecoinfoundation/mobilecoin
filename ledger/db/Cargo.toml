@@ -7,6 +7,9 @@ edition = "2018"
 [features]
 test_utils = ["rand"]
 
+# The migration_support feature exposes some internals that should only be used by the `mc-ledger-migration` tool.
+migration_support = []
+
 [dependencies]
 mc-account-keys = { path = "../../account-keys" }
 mc-common = { path = "../../common", features = ["log"] }

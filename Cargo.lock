@@ -2648,6 +2648,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-ledger-migration"
+version = "0.5.0"
+dependencies = [
+ "lmdb-rkv",
+ "mc-common",
+ "mc-ledger-db",
+ "mc-util-serial",
+ "serde",
+ "structopt",
+]
+
+[[package]]
 name = "mc-ledger-sync"
 version = "0.5.0"
 dependencies = [
