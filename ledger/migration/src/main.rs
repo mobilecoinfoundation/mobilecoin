@@ -6,9 +6,10 @@ use lmdb::{DatabaseFlags, Environment, Transaction, WriteFlags};
 use mc_common::logger::{create_app_logger, log, o, Logger};
 use mc_ledger_db::{
     key_bytes_to_u64, tx_out_store::TX_OUT_INDEX_BY_PUBLIC_KEY_DB_NAME, u64_to_key_bytes, Error,
-    MetadataStore, TxOutStore, TxOutsByBlockValue, BLOCK_NUMBER_BY_TX_OUT_INDEX, COUNTS_DB_NAME,
-    NUM_BLOCKS_KEY, TX_OUTS_BY_BLOCK_DB_NAME,
+    LedgerDbMetadataStoreSettings, MetadataStore, TxOutStore, TxOutsByBlockValue,
+    BLOCK_NUMBER_BY_TX_OUT_INDEX, COUNTS_DB_NAME, NUM_BLOCKS_KEY, TX_OUTS_BY_BLOCK_DB_NAME,
 };
+use mc_util_lmdb::MetadataStoreError;
 use mc_util_serial::decode;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -38,7 +39,8 @@ fn main() {
         .expect("Failed opening ledger db");
 
     // Create metadata store.
-    let metadata_store = MetadataStore::new(&env).expect("Failed creating MetadataStore");
+    let metadata_store = MetadataStore::<LedgerDbMetadataStoreSettings>::new(&env)
+        .expect("Failed creating MetadataStore");
 
     // Incrementally perform upgrades until we reach the current version.
     loop {
@@ -55,8 +57,8 @@ fn main() {
                 break;
             }
             // Version 20200610 introduced the TxOut public key -> index store.
-            Err(Error::VersionIncompatible(20200427, 20200610))
-            | Err(Error::VersionIncompatible(20200427, 20200707)) => {
+            Err(MetadataStoreError::VersionIncompatible(20200427, 20200610))
+            | Err(MetadataStoreError::VersionIncompatible(20200427, 20200707)) => {
                 log::info!(logger, "Ledger db migrating from version 20200427 to 20200610, this might take awhile...");
 
                 construct_tx_out_index_by_public_key_from_existing_data(&env, &logger)
@@ -74,7 +76,7 @@ fn main() {
                 db_txn.commit().expect("Failed committing transaction");
             }
             // Version 20200707 introduced the TxOut global index -> block index store.
-            Err(Error::VersionIncompatible(20200610, 20200707)) => {
+            Err(MetadataStoreError::VersionIncompatible(20200610, 20200707)) => {
                 log::info!(logger, "Ledger db migrating from version 20200610 to 20200707, this might take awhile...");
 
                 construct_block_number_by_tx_out_index_from_existing_data(&env, &logger)

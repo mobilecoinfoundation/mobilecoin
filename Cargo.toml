@@ -73,6 +73,7 @@ members = [
     "util/grpc",
     "util/host-cert",
     "util/keyfile",
+    "util/lmdb",
     "util/logger-macros",
     "util/metered-channel",
     "util/metrics",
