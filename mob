@@ -296,13 +296,13 @@ if args.action == "image" or not have_tag(tag):
     # Please don't factor out the chdir without testing that this caching is still working
     verbose_chdir(docker_dir)
     docker_build = ["docker",
-                            "build",
-                            # build context is dir of Dockerfile
-                            ".",
-                            "--target", mobconf['image']['target'],
-                            "--tag", tag,
-                            "--cache-from", tag,
-                            "--cache-from", default_tag]
+                    "build",
+                    # build context is dir of Dockerfile
+                    ".",
+                    "--target", mobconf['image']['target'],
+                    "--tag", tag,
+                    "--cache-from", tag,
+                    "--cache-from", default_tag]
     # N.B. --cache-from order on the line establishes priority:
     # https://stackoverflow.com/questions/54574821/docker-build-not-using-cache-when-copying-gemfile-while-using-cache-from/56024061#56024061
     if parent_tag is not None:
@@ -330,11 +330,11 @@ mount_from = top_level
 
 # docker-run parameters:
 docker_run = ["docker",
-                "run",
-                # container doesn't know mount_point so we have to set this
-                "--env", "CARGO_HOME=" + mount_point + "/cargo",
-                "--volume", mount_from + ":" + mount_point,
-                "--workdir", workdir,]
+              "run",
+              # container doesn't know mount_point so we have to set this
+              "--env", "CARGO_HOME=" + mount_point + "/cargo",
+              "--volume", mount_from + ":" + mount_point,
+              "--workdir", workdir]
 
 # Add /dev/isgx if HW mode, and it is available
 # Mimicking bash checks `if [ -c /dev/isgx ]`
