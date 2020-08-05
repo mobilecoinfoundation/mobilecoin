@@ -160,10 +160,7 @@ impl FogHint {
             }
         }
 
-        let default_fog_hint = FogHint::from_slice(
-            &default_plaintext.as_ref()[0..RISTRETTO_PUBLIC_LEN],
-        )
-        .expect("default plaintext should always contain a valid RistrettoPublic at the beginning");
+        let default_fog_hint = FogHint::new(default_pubkey);
 
         match FogHint::from_slice(&plaintext.as_ref()[0..RISTRETTO_PUBLIC_LEN]) {
             Ok(fog_hint) => (fog_hint, success),
