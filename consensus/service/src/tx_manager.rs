@@ -144,8 +144,10 @@ pub trait TxManager: Send {
         peer: &PeerSession,
     ) -> TxManagerResult<EnclaveMessage<PeerSession>>;
 
+    /// Get the encrypted transaction corresponding to the given hash.
     fn get_encrypted_tx_by_hash(&self, tx_hash: &TxHash) -> Option<WellFormedEncryptedTx>;
 
+    /// The number of cached entries.
     fn num_entries(&self) -> usize;
 }
 
@@ -369,6 +371,7 @@ impl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> TxManager for TxManagerI
             .map(|entry| entry.encrypted_tx().clone())
     }
 
+    /// The number of cached entries.
     fn num_entries(&self) -> usize {
         self.cache.len()
     }
@@ -390,6 +393,7 @@ mod tx_manager_tests {
     // Should return Ok when a well-formed Tx is inserted.
     fn test_insert_proposed_tx_ok(logger: Logger) {
         let tx_context = TxContext::default();
+        // let tx_hash = tx_context.tx_hash;
 
         let mut mock_untrusted = MockUntrustedInterfaces::new();
         // Untrusted's well-formed check should be called once each time insert_propose_tx is called.
@@ -402,8 +406,13 @@ mod tx_manager_tests {
         let mock_enclave = ConsensusServiceMockEnclave::default();
 
         let mut tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
+        assert_eq!(tx_manager.cache.len(), 0);
+
         assert!(tx_manager.insert_proposed_tx(tx_context.clone()).is_ok());
         assert_eq!(tx_manager.cache.len(), 1);
+
+        // TODO
+        // assert!(tx_manager.cache.contains_key(&tx_hash));
     }
 
     #[test_with_logger]
