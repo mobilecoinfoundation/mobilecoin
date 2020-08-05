@@ -10,7 +10,7 @@ use mc_common::{
     HashMap, HashSet,
 };
 use mc_consensus_enclave::{
-    ConsensusEnclaveProxy, Error as ConsensusEnclaveError, TxContext, WellFormedEncryptedTx,
+    ConsensusEnclave, Error as ConsensusEnclaveError, TxContext, WellFormedEncryptedTx,
     WellFormedTxContext,
 };
 use mc_crypto_keys::CompressedRistrettoPublic;
@@ -151,7 +151,7 @@ pub trait TxManager: Send {
     fn num_entries(&self) -> usize;
 }
 
-pub struct TxManagerImpl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> {
+pub struct TxManagerImpl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces> {
     /// Validate and combine functionality provided by an enclave.
     enclave: E,
 
@@ -165,7 +165,7 @@ pub struct TxManagerImpl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> {
     cache: HashMap<TxHash, CacheEntry>,
 }
 
-impl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> TxManagerImpl<E, UI> {
+impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces> TxManagerImpl<E, UI> {
     /// Construct a new TxManager instance.
     pub fn new(enclave: E, untrusted: UI, logger: Logger) -> Self {
         Self {
@@ -177,7 +177,7 @@ impl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> TxManagerImpl<E, UI> {
     }
 }
 
-impl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> TxManager for TxManagerImpl<E, UI> {
+impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces> TxManager for TxManagerImpl<E, UI> {
     /// Insert a new transaction into the cache.
     /// This enforces that the transaction is well-formed.
     fn insert_proposed_tx(
