@@ -64,6 +64,9 @@ impl MetadataStoreSettings for LedgerDbMetadataStoreSettings {
 
     /// The current crate version that manages the database.
     const CRATE_VERSION: &'static str = env!("CARGO_PKG_VERSION");
+
+    /// LMDB Database name to use for storing the metadata information.
+    const DB_NAME: &'static str = "ledger_db_metadata";
 }
 
 /// The value stored for each entry in the `tx_outs_by_block` database.

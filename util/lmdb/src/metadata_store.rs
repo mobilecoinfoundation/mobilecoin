@@ -56,7 +56,7 @@ pub trait MetadataStoreSettings: Default {
     const CRATE_VERSION: &'static str;
 
     /// LMDB Database name to use for storing the metadata information.
-    const DB_NAME: &'static str = "mc-util-lmdb-metadata";
+    const DB_NAME: &'static str;
 
     /// Check if a given version is compatible with the latest version.
     /// The default implementation assumes only the latest version is compatible.
