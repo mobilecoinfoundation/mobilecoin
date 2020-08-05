@@ -207,7 +207,7 @@ mod testing {
     #[test]
     fn test_acct_priv_keys_from_root_entropy() {
         let yaml = YamlLoader::load_from_str(include_str!(
-            "../../test-data/transaction/identity/acct_priv_keys_from_root_entropy.yaml"
+            "../../test-vectors/transaction/identity/acct_priv_keys_from_root_entropy.yaml"
         ))
         .unwrap();
 
