@@ -82,8 +82,7 @@ impl CacheEntry {
     }
 }
 
-/// A trait for representing the untrusted part of validation/combining. This is presented as a
-/// trait to make testing easier.
+/// Transaction checks performed outside the enclave.
 pub trait UntrustedInterfaces: Send {
     /// Performs the untrusted part of the well-formed check.
     /// Returns current block index and membership proofs to be used by
@@ -114,6 +113,7 @@ pub trait TxManager: Send {
     fn insert_proposed_tx(&mut self, tx_context: TxContext)
         -> TxManagerResult<WellFormedTxContext>;
 
+    /// Remove expired transactions from the cache and return their hashes.
     fn evacuate_expired(&mut self, cur_block: u64) -> HashSet<TxHash>;
 
     /// Returns the list of hashes inside `tx_hashes` that are not inside the cache.
@@ -123,15 +123,17 @@ pub trait TxManager: Send {
     /// append to the ledger.
     fn validate_tx_by_hash(&self, tx_hash: &TxHash) -> TxManagerResult<()>;
 
+    /// Combines the transactions that correspond to the given hashes.
     fn combine_txs_by_hash(&self, tx_hashes: &[TxHash]) -> Vec<TxHash>;
 
+    /// Forms a Block containing the transactions that correspond to the given hashes.
     fn tx_hashes_to_block(
         &self,
         tx_hashes: &[TxHash],
         parent_block: &Block,
     ) -> TxManagerResult<(Block, BlockContents, BlockSignature)>;
 
-    /// Create a message sending a set of encrypted transactions to a particular peer.
+    /// Creates a message containing a set of transactions that are encrypted for a peer.
     fn txs_for_peer(
         &self,
         tx_hashes: &[TxHash],
@@ -223,8 +225,7 @@ impl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> TxManager for TxManagerI
         Ok(well_formed_tx_context)
     }
 
-    /// Evacuate expired transactions from the cache.
-    /// Returns the hashes that were removed.
+    /// Remove expired transactions from the cache and return their hashes.
     fn evacuate_expired(&mut self, cur_block: u64) -> HashSet<TxHash> {
         let hashes_before_purge = HashSet::from_iter(self.cache.keys().cloned());
 
@@ -261,8 +262,7 @@ impl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> TxManager for TxManagerI
         missing
     }
 
-    /// Validate a transaction by it's hash. This checks if by itself this transaction is safe to
-    /// append to the ledger.
+    /// Validate the transaction corresponding to the given hash.
     fn validate_tx_by_hash(&self, tx_hash: &TxHash) -> TxManagerResult<()> {
         match self.cache.get(tx_hash) {
             None => {
@@ -304,7 +304,7 @@ impl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> TxManager for TxManagerI
             .combine(&tx_contexts, MAX_TRANSACTIONS_PER_BLOCK)
     }
 
-    /// A "shim" that converts the output of consensus into something that can be written to the ledger.
+    /// Forms a Block containing the transactions that correspond to the given hashes.
     fn tx_hashes_to_block(
         &self,
         tx_hashes: &[TxHash],
@@ -337,8 +337,7 @@ impl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> TxManager for TxManagerI
         Ok((block, block_contents, signature))
     }
 
-    /// For a given list of TxHashes and a peer session, return a message to send to that peer
-    /// containing the transaction contents.
+    /// Creates a message containing a set of transactions that are encrypted for a peer.
     fn txs_for_peer(
         &self,
         tx_hashes: &[TxHash],
@@ -360,6 +359,7 @@ impl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> TxManager for TxManagerI
         Ok(self.enclave.txs_for_peer(&encrypted_txs?, aad, peer)?)
     }
 
+    /// Get the encrypted transaction corresponding to the given hash.
     fn get_encrypted_tx_by_hash(&self, tx_hash: &TxHash) -> Option<WellFormedEncryptedTx> {
         self.cache
             .get(tx_hash)
@@ -382,6 +382,31 @@ mod tests {
         create_ledger, create_transaction, initialize_ledger, AccountKey,
     };
     use rand::{rngs::StdRng, SeedableRng};
+
+    struct MockUntrustedInterfaces {}
+
+    impl UntrustedInterfaces for MockUntrustedInterfaces {
+        fn well_formed_check(
+            &self,
+            highest_indices: &[u64],
+            key_images: &[KeyImage],
+            output_public_keys: &[CompressedRistrettoPublic],
+        ) -> TransactionValidationResult<(u64, Vec<TxOutMembershipProof>)> {
+            unimplemented!()
+        }
+
+        fn is_valid(&self, context: &WellFormedTxContext) -> TransactionValidationResult<()> {
+            unimplemented!()
+        }
+
+        fn combine(
+            &self,
+            tx_contexts: &[&WellFormedTxContext],
+            max_elements: usize,
+        ) -> Vec<TxHash> {
+            unimplemented!()
+        }
+    }
 
     #[test]
     #[ignore]
