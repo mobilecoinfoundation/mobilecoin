@@ -130,8 +130,6 @@ impl<E: ConsensusEnclaveProxy, L: Ledger> PeerApiService<E, L> {
                     );
                 }
 
-                Err(TxManagerError::AlreadyInCache) => {}
-
                 Err(TxManagerError::TransactionValidation(err)) => {
                     log::debug!(
                         logger,

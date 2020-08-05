@@ -33,9 +33,6 @@ pub enum TxManagerError {
     #[fail(display = "Transaction validation error: {}", _0)]
     TransactionValidation(TransactionValidationError),
 
-    #[fail(display = "Tx already in cache")]
-    AlreadyInCache,
-
     #[fail(display = "Tx not in cache ({})", _0)]
     NotInCache(TxHash),
 
@@ -329,8 +326,6 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces> TxManager for TxManage
             })
             .collect::<Result<Vec<(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)>, TxManagerError>>()?;
 
-        // let num_blocks = self.ledger.num_blocks()?;
-        // let parent_block = self.ledger.get_block(num_blocks - 1)?;
         let (block, block_contents, mut signature) = self
             .enclave
             .form_block(&parent_block, &encrypted_txs_with_proofs)?;

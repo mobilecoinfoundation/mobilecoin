@@ -4,10 +4,7 @@
 //!
 //! Orchestrates running single-slot consensus, or performing ledger sync with peers.
 
-use crate::{
-    counters,
-    tx_manager::{TxManager, TxManagerError},
-};
+use crate::{counters, tx_manager::TxManager};
 use mc_common::{
     logger::{log, Logger},
     HashMap, NodeID, ResponderId,
@@ -915,7 +912,7 @@ impl<
                                 .expect("Lock poisoned")
                                 .insert_proposed_tx(tx_context)
                             {
-                                Ok(_) | Err(TxManagerError::AlreadyInCache) => {}
+                                Ok(_) => {}
                                 Err(err) => {
                                     // Not currently logging the malformed transaction to save a
                                     // `.clone()`. We'll see if this ever happens.
