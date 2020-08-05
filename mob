@@ -254,10 +254,7 @@ build_env = [
             "IAS_MODE=PROD" if args.ias_prod else "IAS_MODE=DEV",
             ]
 
-# Calculate bash commands
-if args.action == "prompt" or args.action == "image":
-    bash_commands = None
-else:
+if not (args.action == "prompt" or args.action == "image"):
     raise Exception('Unknown action: ' + args.action)
 
 ###
@@ -436,11 +433,7 @@ if args.container_name is not None:
 # Add image name and command
 docker_run.extend([tag])
 
-command = ["/bin/bash"]
-if bash_commands is not None:
-    command.extend(["-e", "-c"])
-    command.extend(["; ".join(bash_commands)])
-docker_run.extend(command)
+docker_run.extend(["/bin/bash"])
 
 try:
     maybe_run(docker_run)
