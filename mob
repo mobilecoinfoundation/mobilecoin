@@ -183,7 +183,7 @@ if not args.dry_run:
         if retcode != 0:
             if not args.verbose:
                 eprint(cmd)
-            eprint("docker not found: retcode =", retcode)
+            eprint("docker not found: retcode = ", retcode)
             eprint("Docker is required to use the mob tool.")
             eprint("It is recommended to install from https://docs.docker.com/get-docker/")
             sys.exit(1)
@@ -244,16 +244,6 @@ if args.action == "default-tag":
     print(default_tag, end = '')
     sys.exit(0)
 
-###
-# Calculate command
-###
-
-build_env = [
-            "RUST_BACKTRACE=full",
-            "SGX_MODE=HW" if args.hw else "SGX_MODE=SW",
-            "IAS_MODE=PROD" if args.ias_prod else "IAS_MODE=DEV",
-            ]
-
 if not (args.action == "prompt" or args.action == "image"):
     raise Exception('Unknown action: ' + args.action)
 
@@ -280,6 +270,12 @@ if 'repository' in mobconf['image']:
                     eprint("Warning: Could not pull from: ", parent_tag)
 else:
     vprint('No repository found in .mobconf to pull from')
+
+build_env = [
+    "RUST_BACKTRACE=full",
+    "SGX_MODE=HW" if args.hw else "SGX_MODE=SW",
+    "IAS_MODE=PROD" if args.ias_prod else "IAS_MODE=DEV",
+]
 
 # Don't build the image if we already have it, unless
 # image action was specified (user requested the image)
