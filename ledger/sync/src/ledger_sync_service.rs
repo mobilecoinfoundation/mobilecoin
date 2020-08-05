@@ -5,7 +5,7 @@
 //! [`TransactionsFetcher`] object for fetching actual transaction data.
 
 use crate::{
-    counters, ledger_sync_error::LedgerSyncError, network_state_trait::NetworkState,
+    ledger_sync_error::LedgerSyncError, network_state_trait::NetworkState,
     transactions_fetcher_trait::TransactionsFetcher,
 };
 use mc_common::{
@@ -307,18 +307,7 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
         );
 
         for (block, contents) in blocks_and_contents {
-            {
-                let _timer = counters::APPEND_BLOCK_TIME.start_timer();
-                self.ledger.append_block(block, contents, None)?;
-            }
-
-            // FIXME: MC-365 Move ledger counters into ledger_db
-            counters::BLOCKS_WRITTEN_COUNT.inc();
-            counters::BLOCKS_IN_LEDGER.set(self.ledger.num_blocks()? as i64);
-            for _output in &contents.outputs {
-                counters::TXO_WRITTEN_COUNT.inc();
-            }
-            counters::TXO_IN_LEDGER.set(self.ledger.num_txos()? as i64);
+            self.ledger.append_block(block, contents, None)?;
         }
 
         Ok(())
