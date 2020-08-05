@@ -19,18 +19,6 @@ lazy_static::lazy_static! {
     // consensus_msgs_from_network queue size.
     pub static ref CONSENSUS_MSGS_FROM_NETWORK_QUEUE_SIZE: IntGauge = OP_COUNTERS.gauge("consensus_msgs_from_network_queue_size");
 
-    // Blocks written through byzantine ledger service since this node started.
-    pub static ref BLOCKS_WRITTEN_COUNT: IntCounter = OP_COUNTERS.counter("blocks_written_count");
-
-    // Number of blocks written to the ledger (by querying ledger)
-    pub static ref BLOCKS_IN_LEDGER: IntGauge = OP_COUNTERS.gauge("num_blocks");
-
-    // Blocks written through byzantine ledger service since this node started.
-    pub static ref TXO_WRITTEN_COUNT: IntCounter = OP_COUNTERS.counter("txo_written_count");
-
-    // Number of txouts in the ledger (by querying ledger)
-    pub static ref TXO_IN_LEDGER: IntGauge = OP_COUNTERS.gauge("num_txos");
-
     // Transactions externalized through byzantine ledger service since this node started.
     pub static ref TX_EXTERNALIZED_COUNT: IntCounter = OP_COUNTERS.counter("tx_externalized_count");
 
@@ -110,9 +98,6 @@ lazy_static::lazy_static! {
 
     // Time it takes to validate a transaction
     pub static ref VALIDATE_TX_TIME: Histogram = OP_COUNTERS.histogram("validate_tx_time");
-
-    // Time it takes to perform append_block
-    pub static ref APPEND_BLOCK_TIME: Histogram = OP_COUNTERS.histogram("append_block");
 
     // Consensus enclave report timestamp, represented as seconds of UTC time since Unix epoch 1970-01-01T00:00:00Z.
     pub static ref ENCLAVE_REPORT_TIMESTAMP: IntGauge = OP_COUNTERS.gauge("enclave_report_timestamp");
