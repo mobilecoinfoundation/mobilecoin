@@ -11,6 +11,7 @@ path = "src/main.rs"
 [dependencies]
 mc-common = { path = "../../common", features = ["loggers"] }
 mc-ledger-db = { path = "../../ledger/db", features = ["migration_support"] }
+mc-util-lmdb = { path = "../../util/lmdb" }
 mc-util-serial = { path = "../../util/serial" }
 
 lmdb-rkv = "0.14.0"

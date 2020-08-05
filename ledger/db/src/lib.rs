@@ -11,7 +11,6 @@ mod error;
 mod ledger_trait;
 mod metrics;
 
-pub mod metadata;
 pub mod tx_out_store;
 
 #[cfg(any(test, feature = "test_utils"))]
@@ -29,13 +28,14 @@ use mc_transaction_core::{
     tx::{TxOut, TxOutMembershipProof},
     Block, BlockContents, BlockID, BlockSignature, BLOCK_VERSION,
 };
+use mc_util_lmdb::MetadataStoreSettings;
 use mc_util_serial::{decode, encode, Message};
 use metrics::LedgerMetrics;
 use std::{fs, path::PathBuf, sync::Arc, time::Instant};
 
 pub use error::Error;
 pub use ledger_trait::Ledger;
-pub use metadata::MetadataStore;
+pub use mc_util_lmdb::MetadataStore;
 pub use tx_out_store::TxOutStore;
 
 const MAX_LMDB_FILE_SIZE: usize = 1_099_511_627_776; // 1 TB
@@ -49,10 +49,27 @@ pub const KEY_IMAGES_BY_BLOCK_DB_NAME: &str = "ledger_db:key_images_by_block";
 pub const TX_OUTS_BY_BLOCK_DB_NAME: &str = "ledger_db:tx_outs_by_block";
 pub const BLOCK_NUMBER_BY_TX_OUT_INDEX: &str = "ledger_db:block_number_by_tx_out_index";
 
-// Keys used by the `counts` database.
+/// Keys used by the `counts` database.
 pub const NUM_BLOCKS_KEY: &str = "num_blocks";
 
-// The value stored for each entry in the `tx_outs_by_block` database.
+/// Metadata store settings that are used for version control.
+#[derive(Clone, Default, Debug)]
+pub struct LedgerDbMetadataStoreSettings;
+impl MetadataStoreSettings for LedgerDbMetadataStoreSettings {
+    // Default database version. This should be bumped when breaking changes are introduced.
+    // If this is properly maintained, we could check during ledger db opening for any
+    // incompatibilities, and either refuse to open or perform a migration.
+    #[allow(clippy::unreadable_literal)]
+    const LATEST_VERSION: u64 = 20200707;
+
+    /// The current crate version that manages the database.
+    const CRATE_VERSION: &'static str = env!("CARGO_PKG_VERSION");
+
+    /// LMDB Database name to use for storing the metadata information.
+    const DB_NAME: &'static str = "ledger_db_metadata";
+}
+
+/// The value stored for each entry in the `tx_outs_by_block` database.
 #[derive(Clone, Message)]
 pub struct TxOutsByBlockValue {
     /// The first TxOut index for the block.
@@ -64,8 +81,8 @@ pub struct TxOutsByBlockValue {
     pub num_tx_outs: u64,
 }
 
-// A list of key images that can be prost-encoded. This is needed since that's the only way to
-// encode a Vec<KeyImage>.
+/// A list of key images that can be prost-encoded. This is needed since that's the only way to
+/// encode a Vec<KeyImage>.
 #[derive(Clone, Message)]
 pub struct KeyImageList {
     #[prost(message, repeated, tag = "1")]
@@ -93,7 +110,7 @@ pub struct LedgerDB {
     key_images_by_block: Database,
 
     /// Metadata - stores metadata information about the database.
-    metadata_store: MetadataStore,
+    metadata_store: MetadataStore<LedgerDbMetadataStoreSettings>,
 
     /// Storage abstraction for TxOuts.
     tx_out_store: TxOutStore,
@@ -323,7 +340,7 @@ impl LedgerDB {
             .set_flags(EnvironmentFlags::NO_SYNC)
             .open(&path)?;
 
-        let metadata_store = MetadataStore::new(&env)?;
+        let metadata_store = MetadataStore::<LedgerDbMetadataStoreSettings>::new(&env)?;
         let db_txn = env.begin_ro_txn()?;
         let version = metadata_store.get_version(&db_txn)?;
         global_log::info!("Ledger db is currently at version: {:?}", version);
@@ -392,7 +409,7 @@ impl LedgerDB {
         env.create_db(Some(TX_OUTS_BY_BLOCK_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(BLOCK_NUMBER_BY_TX_OUT_INDEX), DatabaseFlags::empty())?;
 
-        MetadataStore::create(&env)?;
+        MetadataStore::<LedgerDbMetadataStoreSettings>::create(&env)?;
         TxOutStore::create(&env)?;
 
         let mut db_transaction = env.begin_rw_txn()?;

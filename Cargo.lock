@@ -2606,6 +2606,7 @@ dependencies = [
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
  "mc-util-from-random",
+ "mc-util-lmdb",
  "mc-util-metrics",
  "mc-util-serial",
  "prost",
@@ -2654,6 +2655,7 @@ dependencies = [
  "lmdb-rkv",
  "mc-common",
  "mc-ledger-db",
+ "mc-util-lmdb",
  "mc-util-serial",
  "serde",
  "structopt",
@@ -3328,6 +3330,16 @@ dependencies = [
  "serde_json",
  "structopt",
  "tempdir",
+]
+
+[[package]]
+name = "mc-util-lmdb"
+version = "0.5.0"
+dependencies = [
+ "displaydoc",
+ "lmdb-rkv",
+ "mc-util-serial",
+ "prost",
 ]
 
 [[package]]
