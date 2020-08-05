@@ -367,7 +367,7 @@ if git_commit is not None:
 # https://github.com/mozilla/sccache/blob/master/docs/Jenkins.md
 #
 # This tool is not used in jenkins anymore so we don't do that
-host_sccache_dir = os.path.expanduser("~/.cache/sccache") # per docs this is the default for sccache
+host_sccache_dir = os.path.expanduser("~/.cache/sccache")  # per docs this is the default for sccache
 if "SCCACHE_DIR" in os.environ:
     host_sccache_dir = os.environ["SCCACHE_DIR"]
 if os.path.isdir(host_sccache_dir):
@@ -437,7 +437,7 @@ except subprocess.CalledProcessError as exception:
     if args.action == 'prompt' and exception.returncode == 130:
         # This is normal exit of prompt
         sys.exit(0)
-    raise # rethrow
+    raise  # rethrow
 finally:
     # cleanup named container on exit
     if args.container_name is not None:
