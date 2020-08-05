@@ -34,6 +34,7 @@ members = [
     "ledger/db",
     "ledger/distribution",
     "ledger/from-archive",
+    "ledger/migration",
     "ledger/sync",
     "mobilecoind",
     "mobilecoind-json",

@@ -32,11 +32,11 @@ use mc_transaction_core::{
 use mc_util_serial::{decode, encode, Message};
 use metrics::LedgerMetrics;
 use std::{fs, path::PathBuf, sync::Arc, time::Instant};
-use tx_out_store::TxOutStore;
 
 pub use error::Error;
 pub use ledger_trait::Ledger;
 pub use metadata::MetadataStore;
+pub use tx_out_store::TxOutStore;
 
 const MAX_LMDB_FILE_SIZE: usize = 1_099_511_627_776; // 1 TB
 
@@ -50,7 +50,7 @@ pub const TX_OUTS_BY_BLOCK_DB_NAME: &str = "ledger_db:tx_outs_by_block";
 pub const BLOCK_NUMBER_BY_TX_OUT_INDEX: &str = "ledger_db:block_number_by_tx_out_index";
 
 // Keys used by the `counts` database.
-const NUM_BLOCKS_KEY: &str = "num_blocks";
+pub const NUM_BLOCKS_KEY: &str = "num_blocks";
 
 // The value stored for each entry in the `tx_outs_by_block` database.
 #[derive(Clone, Message)]
@@ -324,53 +324,12 @@ impl LedgerDB {
             .open(&path)?;
 
         let metadata_store = MetadataStore::new(&env)?;
+        let db_txn = env.begin_ro_txn()?;
+        let version = metadata_store.get_version(&db_txn)?;
+        global_log::info!("Ledger db is currently at version: {:?}", version);
+        db_txn.commit()?;
 
-        loop {
-            // Check if the database we opened is compatible with the current implementation.
-            let db_txn = env.begin_ro_txn()?;
-            let version = metadata_store.get_version(&db_txn)?;
-            global_log::info!("Ledger db is currently at version: {:?}", version);
-            db_txn.commit()?;
-
-            match version.is_compatible_with_latest() {
-                Ok(_) => {
-                    break;
-                }
-                // Version 20200610 introduced the TxOut public key -> index store.
-                Err(Error::VersionIncompatible(20200427, 20200610))
-                | Err(Error::VersionIncompatible(20200427, 20200707)) => {
-                    global_log::info!("Ledger db migrating from version 20200427 to 20200610, this might take awhile...");
-
-                    TxOutStore::construct_tx_out_index_by_public_key_from_existing_data(&env)?;
-
-                    let mut db_txn = env.begin_rw_txn()?;
-                    metadata_store.set_version(&mut db_txn, 20200610)?;
-                    global_log::info!(
-                        "Ledger db migration complete, now at version: {:?}",
-                        metadata_store.get_version(&db_txn),
-                    );
-                    db_txn.commit()?;
-                }
-                // Version 20200707 introduced the TxOut global index -> block index store.
-                Err(Error::VersionIncompatible(20200610, 20200707)) => {
-                    global_log::info!("Ledger db migrating from version 20200610 to 20200707, this might take awhile...");
-
-                    Self::construct_block_number_by_tx_out_index_from_existing_data(&env)?;
-
-                    let mut db_txn = env.begin_rw_txn()?;
-                    metadata_store.set_version_to_latest(&mut db_txn)?;
-                    global_log::info!(
-                        "Ledger db migration complete, now at version: {:?}",
-                        metadata_store.get_version(&db_txn),
-                    );
-                    db_txn.commit()?;
-                }
-                // Don't know how to migrate.
-                Err(err) => {
-                    return Err(err);
-                }
-            };
-        }
+        version.is_compatible_with_latest()?;
 
         let counts = env.open_db(Some(COUNTS_DB_NAME))?;
         let blocks = env.open_db(Some(BLOCKS_DB_NAME))?;
@@ -632,61 +591,6 @@ impl LedgerDB {
 
         let metadata = fs::metadata(filename)?;
         Ok(metadata.len())
-    }
-
-    /// A utility function for constructing the block_number_by_tx_out_index store using existing
-    /// data.
-    fn construct_block_number_by_tx_out_index_from_existing_data(
-        env: &Environment,
-    ) -> Result<(), Error> {
-        // When constructing the block index by tx out index database, we first need to create it.
-        let block_number_by_tx_out_index_db =
-            env.create_db(Some(BLOCK_NUMBER_BY_TX_OUT_INDEX), DatabaseFlags::empty())?;
-
-        // Open pre-existing databases that has data we need.
-        let tx_outs_by_block_db = env.open_db(Some(TX_OUTS_BY_BLOCK_DB_NAME))?;
-        let counts_db = env.open_db(Some(COUNTS_DB_NAME))?;
-
-        // After the database has been created, populate it with the existing data.
-        let mut db_txn = env.begin_rw_txn()?;
-
-        let num_blocks = key_bytes_to_u64(&db_txn.get(counts_db, &NUM_BLOCKS_KEY)?);
-
-        let mut percents: u64 = 0;
-        for block_num in 0..num_blocks {
-            // Get information about the TxOuts in the block.
-            let bytes = db_txn.get(tx_outs_by_block_db, &u64_to_key_bytes(block_num))?;
-            let tx_outs_by_block: TxOutsByBlockValue = decode(&bytes)?;
-
-            global_log::trace!(
-                "Assigning tx outs #{} - #{} to block #{}",
-                tx_outs_by_block.first_tx_out_index,
-                tx_outs_by_block.first_tx_out_index + tx_outs_by_block.num_tx_outs,
-                block_num,
-            );
-
-            for i in 0..tx_outs_by_block.num_tx_outs {
-                let tx_out_index = tx_outs_by_block.first_tx_out_index + i;
-
-                db_txn.put(
-                    block_number_by_tx_out_index_db,
-                    &u64_to_key_bytes(tx_out_index),
-                    &u64_to_key_bytes(block_num),
-                    WriteFlags::NO_OVERWRITE,
-                )?;
-            }
-
-            // Throttled logging.
-            let new_percents = block_num * 100 / num_blocks;
-            if new_percents != percents {
-                percents = new_percents;
-                global_log::info!(
-                    "Constructing block_number_by_tx_out_index: {}% complete",
-                    percents
-                );
-            }
-        }
-        Ok(db_txn.commit()?)
     }
 }
 
