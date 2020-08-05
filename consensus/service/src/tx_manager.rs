@@ -144,12 +144,12 @@ pub trait TxManager: Send {
     fn num_entries(&self) -> usize;
 }
 
-pub struct TxManagerImpl<E: ConsensusEnclaveProxy> {
-    /// Enclave.
+pub struct TxManagerImpl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> {
+    /// Validate and combine functionality provided by an enclave.
     enclave: E,
 
-    /// Application-specific interfaces for the untrusted part of validation/combining of values.
-    untrusted: Box<dyn UntrustedInterfaces>,
+    /// Validate and combine functionality provided by the untrusted system.
+    untrusted: UI,
 
     /// Logger.
     logger: Logger,
@@ -158,9 +158,9 @@ pub struct TxManagerImpl<E: ConsensusEnclaveProxy> {
     cache: HashMap<TxHash, CacheEntry>,
 }
 
-impl<E: ConsensusEnclaveProxy> TxManagerImpl<E> {
+impl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> TxManagerImpl<E, UI> {
     /// Construct a new TxManager instance.
-    pub fn new(enclave: E, untrusted: Box<dyn UntrustedInterfaces>, logger: Logger) -> Self {
+    pub fn new(enclave: E, untrusted: UI, logger: Logger) -> Self {
         Self {
             enclave,
             untrusted,
@@ -170,7 +170,7 @@ impl<E: ConsensusEnclaveProxy> TxManagerImpl<E> {
     }
 }
 
-impl<E: ConsensusEnclaveProxy> TxManager for TxManagerImpl<E> {
+impl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> TxManager for TxManagerImpl<E, UI> {
     /// Insert a new transaction into the cache.
     /// This enforces that the transaction is well-formed.
     fn insert_proposed_tx(
@@ -415,7 +415,7 @@ mod tests {
         let parent_block = ledger.get_block(num_blocks - 1).unwrap();
         let mut tx_manager = TxManagerImpl::new(
             ConsensusServiceMockEnclave::default(),
-            Box::new(DefaultTxManagerUntrustedInterfaces::new(ledger)),
+            DefaultTxManagerUntrustedInterfaces::new(ledger),
             logger.clone(),
         );
 

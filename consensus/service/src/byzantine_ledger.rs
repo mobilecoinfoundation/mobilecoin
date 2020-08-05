@@ -1102,7 +1102,7 @@ mod tests {
         let tx_manager: Arc<Mutex<Box<dyn TxManager>>> =
             Arc::new(Mutex::new(Box::new(TxManagerImpl::new(
                 enclave.clone(),
-                Box::new(DefaultTxManagerUntrustedInterfaces::new(ledger.clone())),
+                DefaultTxManagerUntrustedInterfaces::new(ledger.clone()),
                 logger.clone(),
             ))));
 

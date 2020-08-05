@@ -159,7 +159,7 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
         // Tx Manager
         let tx_manager = Box::new(TxManagerImpl::new(
             enclave.clone(),
-            Box::new(DefaultTxManagerUntrustedInterfaces::new(ledger_db.clone())),
+            DefaultTxManagerUntrustedInterfaces::new(ledger_db.clone()),
             logger.clone(),
         ));
 
