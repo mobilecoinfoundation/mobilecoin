@@ -88,7 +88,7 @@ impl<E: ConsensusEnclaveProxy, L: Ledger + Clone> ClientApiService<E, L> {
             .tx_manager
             .lock()
             .expect("Lock poisoned")
-            .insert_proposed_tx(tx_context)
+            .insert(tx_context)
         {
             Ok(tx_context) => {
                 // Submit for consideration in next SCP slot.

@@ -119,7 +119,7 @@ impl<E: ConsensusEnclaveProxy, L: Ledger> PeerApiService<E, L> {
                 .tx_manager
                 .lock()
                 .expect("Lock poisoned")
-                .insert_proposed_tx(tx_context)
+                .insert(tx_context)
             {
                 Ok(tx_context) => {
                     // Submit for consideration in next SCP slot.
@@ -169,11 +169,15 @@ impl<E: ConsensusEnclaveProxy, L: Ledger> PeerApiService<E, L> {
             })
             .collect::<Result<Vec<TxHash>, ConsensusGrpcError>>()?;
 
-        match self.tx_manager.lock().expect("Lock poisoned").txs_for_peer(
-            &tx_hashes,
-            &[],
-            &PeerSession::from(request.get_channel_id()),
-        ) {
+        match self
+            .tx_manager
+            .lock()
+            .expect("Lock poisoned")
+            .encrypt_for_peer(
+                &tx_hashes,
+                &[],
+                &PeerSession::from(request.get_channel_id()),
+            ) {
             Ok(enclave_message) => Ok(enclave_message.into()),
             Err(err) => {
                 log::warn!(

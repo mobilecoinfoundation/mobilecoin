@@ -97,13 +97,13 @@ impl ByzantineLedger {
                 tx_manager_validate
                     .lock()
                     .expect("Lock poisoned")
-                    .validate_tx_by_hash(tx_hash)
+                    .validate(tx_hash)
             }),
             Arc::new(move |tx_hashes| {
                 tx_manager_combine
                     .lock()
                     .expect("Lock poisoned")
-                    .combine_txs_by_hash(tx_hashes)
+                    .combine(tx_hashes)
             }),
             logger.clone(),
         );
@@ -524,7 +524,7 @@ impl<
                     tx_manager
                         .lock()
                         .expect("Lock poisoned")
-                        .validate_tx_by_hash(tx_hash)
+                        .validate(tx_hash)
                         .is_ok()
                 });
 
@@ -791,7 +791,7 @@ impl<
             .tx_manager
             .lock()
             .expect("Lock poisoned")
-            .evacuate_expired(cur_slot);
+            .remove_expired(cur_slot);
 
         counters::TX_CACHE_NUM_ENTRIES
             .set(self.tx_manager.lock().expect("Lock poisoned").num_entries() as i64);
@@ -803,7 +803,7 @@ impl<
                 && tx_manager
                     .lock()
                     .expect("Lock poisoned")
-                    .validate_tx_by_hash(tx_hash)
+                    .validate(tx_hash)
                     .is_ok()
         });
 
@@ -907,11 +907,7 @@ impl<
                     tx_contexts.into_par_iter().for_each_with(
                         (self.tx_manager.clone(), self.logger.clone()),
                         move |(tx_manager, logger), tx_context| {
-                            match tx_manager
-                                .lock()
-                                .expect("Lock poisoned")
-                                .insert_proposed_tx(tx_context)
-                            {
+                            match tx_manager.lock().expect("Lock poisoned").insert(tx_context) {
                                 Ok(_) => {}
                                 Err(err) => {
                                     // Not currently logging the malformed transaction to save a
@@ -1172,7 +1168,7 @@ mod tests {
         let hash_tx_zero = *tx_manager
             .lock()
             .expect("Lock poisoned")
-            .insert_proposed_tx(ConsensusServiceMockEnclave::tx_to_tx_context(
+            .insert(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_zero,
             ))
             .unwrap()
@@ -1181,7 +1177,7 @@ mod tests {
         let hash_tx_one = *tx_manager
             .lock()
             .expect("Lock poisoned")
-            .insert_proposed_tx(ConsensusServiceMockEnclave::tx_to_tx_context(
+            .insert(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_one,
             ))
             .unwrap()
@@ -1190,7 +1186,7 @@ mod tests {
         let hash_tx_two = *tx_manager
             .lock()
             .expect("Lock poisoned")
-            .insert_proposed_tx(ConsensusServiceMockEnclave::tx_to_tx_context(
+            .insert(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_two,
             ))
             .unwrap()

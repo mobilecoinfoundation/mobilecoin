@@ -551,7 +551,7 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
                 if let Some(encrypted_tx) = tx_manager
                     .lock()
                     .expect("Lock poisoned")
-                    .get_encrypted_tx_by_hash(&tx_hash)
+                    .get_encrypted_tx(&tx_hash)
                 {
                     broadcaster
                         .lock()

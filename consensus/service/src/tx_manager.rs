@@ -110,21 +110,20 @@ pub trait UntrustedInterfaces: Send {
 #[automock]
 pub trait TxManager: Send {
     /// Insert a well-formed transaction into the cache.
-    fn insert_proposed_tx(&mut self, tx_context: TxContext)
-        -> TxManagerResult<WellFormedTxContext>;
+    fn insert(&mut self, tx_context: TxContext) -> TxManagerResult<WellFormedTxContext>;
 
     /// Remove expired transactions from the cache and return their hashes.
-    fn evacuate_expired(&mut self, cur_block: u64) -> HashSet<TxHash>;
+    fn remove_expired(&mut self, cur_block: u64) -> HashSet<TxHash>;
 
     /// Returns the list of hashes inside `tx_hashes` that are not inside the cache.
     fn missing_hashes(&self, tx_hashes: &BTreeSet<TxHash>) -> Vec<TxHash>;
 
     /// Validate a transaction by it's hash. This checks if by itself this transaction is safe to
     /// append to the ledger.
-    fn validate_tx_by_hash(&self, tx_hash: &TxHash) -> TxManagerResult<()>;
+    fn validate(&self, tx_hash: &TxHash) -> TxManagerResult<()>;
 
     /// Combines the transactions that correspond to the given hashes.
-    fn combine_txs_by_hash(&self, tx_hashes: &[TxHash]) -> Vec<TxHash>;
+    fn combine(&self, tx_hashes: &[TxHash]) -> Vec<TxHash>;
 
     /// Forms a Block containing the transactions that correspond to the given hashes.
     fn tx_hashes_to_block(
@@ -134,15 +133,15 @@ pub trait TxManager: Send {
     ) -> TxManagerResult<(Block, BlockContents, BlockSignature)>;
 
     /// Creates a message containing a set of transactions that are encrypted for a peer.
-    fn txs_for_peer(
+    fn encrypt_for_peer(
         &self,
         tx_hashes: &[TxHash],
         aad: &[u8],
         peer: &PeerSession,
     ) -> TxManagerResult<EnclaveMessage<PeerSession>>;
 
-    /// Get the encrypted transaction corresponding to the given hash.
-    fn get_encrypted_tx_by_hash(&self, tx_hash: &TxHash) -> Option<WellFormedEncryptedTx>;
+    /// Get the locally encrypted transaction corresponding to the given hash.
+    fn get_encrypted_tx(&self, tx_hash: &TxHash) -> Option<WellFormedEncryptedTx>;
 
     /// The number of cached entries.
     fn num_entries(&self) -> usize;
@@ -177,10 +176,7 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces> TxManagerImpl<E, UI> {
 impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces> TxManager for TxManagerImpl<E, UI> {
     /// Insert a new transaction into the cache.
     /// This enforces that the transaction is well-formed.
-    fn insert_proposed_tx(
-        &mut self,
-        tx_context: TxContext,
-    ) -> TxManagerResult<WellFormedTxContext> {
+    fn insert(&mut self, tx_context: TxContext) -> TxManagerResult<WellFormedTxContext> {
         // If already in cache then we're done.
         if let Some(entry) = self.cache.get(&tx_context.tx_hash) {
             self.untrusted.is_valid(entry.context())?;
@@ -227,7 +223,7 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces> TxManager for TxManage
     }
 
     /// Remove expired transactions from the cache and return their hashes.
-    fn evacuate_expired(&mut self, cur_block: u64) -> HashSet<TxHash> {
+    fn remove_expired(&mut self, cur_block: u64) -> HashSet<TxHash> {
         let hashes_before_purge = HashSet::from_iter(self.cache.keys().cloned());
 
         self.cache
@@ -264,7 +260,7 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces> TxManager for TxManage
     }
 
     /// Validate the transaction corresponding to the given hash.
-    fn validate_tx_by_hash(&self, tx_hash: &TxHash) -> TxManagerResult<()> {
+    fn validate(&self, tx_hash: &TxHash) -> TxManagerResult<()> {
         match self.cache.get(tx_hash) {
             None => {
                 log::error!(
@@ -288,7 +284,7 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces> TxManager for TxManage
     /// This will silently ignore non-existent hashes. Our combine methods are allowed to filter
     /// out transactions, so while non-existent hashes should not be fed into this method, they are
     /// not treated as an error.
-    fn combine_txs_by_hash(&self, tx_hashes: &[TxHash]) -> Vec<TxHash> {
+    fn combine(&self, tx_hashes: &[TxHash]) -> Vec<TxHash> {
         let mut tx_contexts = Vec::new();
 
         // Dedup
@@ -337,7 +333,7 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces> TxManager for TxManage
     }
 
     /// Creates a message containing a set of transactions that are encrypted for a peer.
-    fn txs_for_peer(
+    fn encrypt_for_peer(
         &self,
         tx_hashes: &[TxHash],
         aad: &[u8],
@@ -359,7 +355,7 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces> TxManager for TxManage
     }
 
     /// Get the encrypted transaction corresponding to the given hash.
-    fn get_encrypted_tx_by_hash(&self, tx_hash: &TxHash) -> Option<WellFormedEncryptedTx> {
+    fn get_encrypted_tx(&self, tx_hash: &TxHash) -> Option<WellFormedEncryptedTx> {
         self.cache
             .get(tx_hash)
             .map(|entry| entry.encrypted_tx().clone())
@@ -497,12 +493,12 @@ mod tx_manager_tests {
         let mut tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
         assert_eq!(tx_manager.cache.len(), 0);
 
-        assert!(tx_manager.insert_proposed_tx(tx_context.clone()).is_ok());
+        assert!(tx_manager.insert(tx_context.clone()).is_ok());
         assert_eq!(tx_manager.cache.len(), 1);
         assert!(tx_manager.cache.contains_key(&tx_hash));
 
         // Re-inserting should also be Ok.
-        assert!(tx_manager.insert_proposed_tx(tx_context.clone()).is_ok());
+        assert!(tx_manager.insert(tx_context.clone()).is_ok());
         assert_eq!(tx_manager.cache.len(), 1);
         assert!(tx_manager.cache.contains_key(&tx_hash));
     }
@@ -524,7 +520,7 @@ mod tx_manager_tests {
         let mock_enclave = MockEnclave::new();
 
         let mut tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
-        assert!(tx_manager.insert_proposed_tx(tx_context.clone()).is_err());
+        assert!(tx_manager.insert(tx_context.clone()).is_err());
         assert_eq!(tx_manager.cache.len(), 0);
     }
 
@@ -549,7 +545,7 @@ mod tx_manager_tests {
             .return_const(Err(EnclaveError::Signature));
 
         let mut tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
-        assert!(tx_manager.insert_proposed_tx(tx_context.clone()).is_err());
+        assert!(tx_manager.insert(tx_context.clone()).is_err());
         assert_eq!(tx_manager.cache.len(), 0);
     }
 
@@ -628,21 +624,21 @@ mod tx_manager_tests {
         let client_tx_three = transactions.pop().unwrap();
 
         let hash_tx_zero = *tx_manager
-            .insert_proposed_tx(ConsensusServiceMockEnclave::tx_to_tx_context(
+            .insert(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_zero,
             ))
             .unwrap()
             .tx_hash();
 
         let hash_tx_one = *tx_manager
-            .insert_proposed_tx(ConsensusServiceMockEnclave::tx_to_tx_context(
+            .insert(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_one,
             ))
             .unwrap()
             .tx_hash();
 
         let hash_tx_two = *tx_manager
-            .insert_proposed_tx(ConsensusServiceMockEnclave::tx_to_tx_context(
+            .insert(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_two,
             ))
             .unwrap()
