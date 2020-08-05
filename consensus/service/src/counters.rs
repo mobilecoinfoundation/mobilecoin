@@ -1,11 +1,8 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-use mc_util_metrics::{Histogram, IntCounter, IntGauge, OpMetrics};
-use prometheus::{
-    core::{Collector, Desc},
-    histogram_opts,
-    proto::MetricFamily,
-    register_histogram, IntCounterVec, Opts,
+use mc_util_metrics::{
+    register, register_histogram, Collector, Desc, Histogram, IntCounter, IntCounterVec, IntGauge,
+    MetricFamily, OpMetrics, Opts,
 };
 
 lazy_static::lazy_static! {
@@ -147,7 +144,7 @@ impl TxValidationErrorMetrics {
 
     pub fn new_and_registered() -> Self {
         let metrics = Self::new();
-        prometheus::register(Box::new(metrics.clone()))
+        register(Box::new(metrics.clone()))
             .expect("TxValidationErrorMetrics registration on Prometheus failed.");
 
         metrics

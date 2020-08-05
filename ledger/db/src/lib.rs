@@ -7,6 +7,16 @@
 #[cfg(test)]
 extern crate test;
 
+mod error;
+mod ledger_trait;
+mod metrics;
+
+pub mod metadata;
+pub mod tx_out_store;
+
+#[cfg(any(test, feature = "test_utils"))]
+pub mod test_utils;
+
 use core::convert::TryInto;
 use lmdb::{
     Database, DatabaseFlags, Environment, EnvironmentFlags, RoTransaction, RwTransaction,
@@ -20,16 +30,9 @@ use mc_transaction_core::{
     Block, BlockContents, BlockID, BlockSignature, BLOCK_VERSION,
 };
 use mc_util_serial::{decode, encode, Message};
-use std::{path::PathBuf, sync::Arc};
+use metrics::LedgerMetrics;
+use std::{fs, path::PathBuf, sync::Arc, time::Instant};
 use tx_out_store::TxOutStore;
-
-mod error;
-mod ledger_trait;
-pub mod metadata;
-pub mod tx_out_store;
-
-#[cfg(any(test, feature = "test_utils"))]
-pub mod test_utils;
 
 pub use error::Error;
 pub use ledger_trait::Ledger;
@@ -106,6 +109,9 @@ pub struct LedgerDB {
 
     /// Location on filesystem.
     path: PathBuf,
+
+    /// Metrics.
+    metrics: LedgerMetrics,
 }
 
 /// LedgerDB is an append-only log (or chain) of blocks of transactions.
@@ -122,6 +128,8 @@ impl Ledger for LedgerDB {
         block_contents: &BlockContents,
         signature: Option<&BlockSignature>,
     ) -> Result<(), Error> {
+        let start_time = Instant::now();
+
         // Note: This function must update every LMDB database managed by LedgerDB.
         let mut db_transaction = self.env.begin_rw_txn()?;
 
@@ -139,6 +147,23 @@ impl Ledger for LedgerDB {
 
         // Commit.
         db_transaction.commit()?;
+
+        // Update metrics.
+        self.metrics.blocks_written_count.inc();
+        self.metrics.num_blocks.inc();
+
+        self.metrics
+            .txo_written_count
+            .inc_by(block_contents.outputs.len() as i64);
+        self.metrics
+            .num_txos
+            .add(block_contents.outputs.len() as i64);
+
+        self.metrics.observe_append_block_time(start_time);
+
+        let file_size = self.db_file_size().unwrap_or(0);
+        self.metrics.db_file_size.set(file_size as i64);
+
         Ok(())
     }
 
@@ -357,7 +382,9 @@ impl LedgerDB {
 
         let tx_out_store = TxOutStore::new(&env)?;
 
-        Ok(LedgerDB {
+        let metrics = LedgerMetrics::new(&path);
+
+        let ledger_db = LedgerDB {
             env: Arc::new(env),
             path,
             counts,
@@ -369,7 +396,20 @@ impl LedgerDB {
             block_number_by_tx_out_index,
             metadata_store,
             tx_out_store,
-        })
+            metrics,
+        };
+
+        // Get initial values for gauges.
+        let num_blocks = ledger_db.num_blocks()?;
+        ledger_db.metrics.num_blocks.set(num_blocks as i64);
+
+        let num_txos = ledger_db.num_txos()?;
+        ledger_db.metrics.num_txos.set(num_txos as i64);
+
+        let file_size = ledger_db.db_file_size().unwrap_or(0);
+        ledger_db.metrics.db_file_size.set(file_size as i64);
+
+        Ok(ledger_db)
     }
 
     /// Creates a fresh Ledger Database in the given path.
@@ -583,6 +623,15 @@ impl LedgerDB {
 
         // All good
         Ok(())
+    }
+
+    /// Get the database file size, in bytes.
+    fn db_file_size(&self) -> std::io::Result<u64> {
+        let mut filename = self.path.clone();
+        filename.push("data.mdb");
+
+        let metadata = fs::metadata(filename)?;
+        Ok(metadata.len())
     }
 
     /// A utility function for constructing the block_number_by_tx_out_index store using existing

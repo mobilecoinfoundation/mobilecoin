@@ -14,7 +14,12 @@ mod service_metrics;
 
 pub use json_encoder::JsonEncoder as MetricsJsonEncoder;
 pub use op_counters::OpMetrics;
-pub use prometheus::{Histogram, IntCounter, IntCounterVec, IntGauge, IntGaugeVec};
+pub use prometheus::{
+    core::{Collector, Desc},
+    proto::MetricFamily,
+    register, register_histogram, Histogram, HistogramOpts, HistogramVec, IntCounter,
+    IntCounterVec, IntGauge, IntGaugeVec, Opts,
+};
 pub use service_metrics::ServiceMetrics;
 
 lazy_static! {
