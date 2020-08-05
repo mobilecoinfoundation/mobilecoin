@@ -13,7 +13,6 @@ use mc_common::{
     HashMap, NodeID, ResponderId,
 };
 use mc_connection::{BlockchainConnection, ConnectionManager};
-use mc_consensus_enclave::ConsensusEnclaveProxy;
 use mc_consensus_scp::{
     scp_log::LoggingScpNode, slot::Phase, Msg, Node, QuorumSet, ScpNode, SlotIndex,
 };
@@ -76,7 +75,6 @@ pub struct ByzantineLedger {
 
 impl ByzantineLedger {
     pub fn new<
-        E: ConsensusEnclaveProxy,
         PC: BlockchainConnection + ConsensusConnection + 'static,
         L: Ledger + Sync + 'static,
     >(
@@ -84,7 +82,7 @@ impl ByzantineLedger {
         quorum_set: QuorumSet,
         peer_manager: ConnectionManager<PC>,
         ledger: L,
-        tx_manager: Arc<Mutex<TxManager<E>>>,
+        tx_manager: Arc<Mutex<Box<dyn TxManager>>>,
         broadcaster: Arc<Mutex<ThreadedBroadcaster>>,
         msg_signer_key: Arc<Ed25519Pair>,
         tx_source_urls: Vec<String>,
@@ -283,7 +281,6 @@ enum LedgerSyncState {
 }
 
 struct ByzantineLedgerThread<
-    E: ConsensusEnclaveProxy,
     F: Fn(Msg<TxHash>),
     L: Ledger + 'static,
     PC: BlockchainConnection + ConsensusConnection + 'static,
@@ -295,7 +292,7 @@ struct ByzantineLedgerThread<
     send_scp_message: F,
     ledger: L,
     peer_manager: ConnectionManager<PC>,
-    tx_manager: Arc<Mutex<TxManager<E>>>,
+    tx_manager: Arc<Mutex<Box<dyn TxManager>>>,
     broadcaster: Arc<Mutex<ThreadedBroadcaster>>,
     logger: Logger,
 
@@ -334,11 +331,10 @@ struct ByzantineLedgerThread<
 }
 
 impl<
-        E: ConsensusEnclaveProxy,
         F: Fn(Msg<TxHash>),
         L: Ledger + 'static,
         PC: BlockchainConnection + ConsensusConnection + 'static,
-    > ByzantineLedgerThread<E, F, L, PC>
+    > ByzantineLedgerThread<F, L, PC>
 {
     pub fn start(
         node_id: NodeID,
@@ -350,7 +346,7 @@ impl<
         send_scp_message: F,
         ledger: L,
         peer_manager: ConnectionManager<PC>,
-        tx_manager: Arc<Mutex<TxManager<E>>>,
+        tx_manager: Arc<Mutex<Box<dyn TxManager>>>,
         broadcaster: Arc<Mutex<ThreadedBroadcaster>>,
         tx_source_urls: Vec<String>,
         logger: Logger,
@@ -993,7 +989,7 @@ impl<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::validators::DefaultTxManagerUntrustedInterfaces;
+    use crate::{tx_manager::TxManagerImpl, validators::DefaultTxManagerUntrustedInterfaces};
     use hex;
     use mc_common::logger::test_with_logger;
     use mc_consensus_enclave_mock::ConsensusServiceMockEnclave;
@@ -1103,11 +1099,12 @@ mod tests {
         )));
 
         let enclave = ConsensusServiceMockEnclave::default();
-        let tx_manager = Arc::new(Mutex::new(TxManager::new(
-            enclave.clone(),
-            Box::new(DefaultTxManagerUntrustedInterfaces::new(ledger.clone())),
-            logger.clone(),
-        )));
+        let tx_manager: Arc<Mutex<Box<dyn TxManager>>> =
+            Arc::new(Mutex::new(Box::new(TxManagerImpl::new(
+                enclave.clone(),
+                Box::new(DefaultTxManagerUntrustedInterfaces::new(ledger.clone())),
+                logger.clone(),
+            ))));
 
         let byzantine_ledger = ByzantineLedger::new(
             local_node_id.clone(),

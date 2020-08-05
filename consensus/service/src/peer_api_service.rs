@@ -57,7 +57,7 @@ pub struct PeerApiService<E: ConsensusEnclaveProxy, L: Ledger> {
     ledger: L,
 
     /// Transactions Manager instance.
-    tx_manager: Arc<Mutex<TxManager<E>>>,
+    tx_manager: Arc<Mutex<Box<dyn TxManager>>>,
 
     /// Callback function for getting the latest SCP statement the local node has issued.
     fetch_latest_msg_fn: FetchLatestMsgFn,
@@ -78,7 +78,7 @@ impl<E: ConsensusEnclaveProxy, L: Ledger> PeerApiService<E, L> {
         incoming_consensus_msgs_sender: BackgroundWorkQueueSenderFn<IncomingConsensusMsg>,
         scp_client_value_sender: ProposeTxCallback,
         ledger: L,
-        tx_manager: Arc<Mutex<TxManager<E>>>,
+        tx_manager: Arc<Mutex<Box<dyn TxManager>>>,
         fetch_latest_msg_fn: FetchLatestMsgFn,
         known_responder_ids: Vec<ResponderId>,
         logger: Logger,

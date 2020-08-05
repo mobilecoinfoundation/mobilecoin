@@ -3,9 +3,15 @@
 //! The MobileCoin consensus service.
 
 use crate::{
-    attested_api_service::AttestedApiService, background_work_queue::BackgroundWorkQueue,
-    blockchain_api_service, byzantine_ledger::ByzantineLedger, client_api_service, config::Config,
-    counters, peer_api_service, peer_keepalive::PeerKeepalive, tx_manager::TxManager,
+    attested_api_service::AttestedApiService,
+    background_work_queue::BackgroundWorkQueue,
+    blockchain_api_service,
+    byzantine_ledger::ByzantineLedger,
+    client_api_service,
+    config::Config,
+    counters, peer_api_service,
+    peer_keepalive::PeerKeepalive,
+    tx_manager::{TxManager, TxManagerImpl},
     validators::DefaultTxManagerUntrustedInterfaces,
 };
 use failure::Fail;
@@ -95,7 +101,7 @@ pub struct ConsensusService<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync 
 
     peer_manager: ConnectionManager<PeerConnection<E>>,
     broadcaster: Arc<Mutex<ThreadedBroadcaster>>,
-    tx_manager: Arc<Mutex<TxManager<E>>>,
+    tx_manager: Arc<Mutex<Box<dyn TxManager>>>,
     peer_keepalive: Arc<Mutex<PeerKeepalive>>,
 
     admin_rpc_server: Option<AdminServer>,
@@ -151,11 +157,11 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
         )));
 
         // Tx Manager
-        let tx_manager = TxManager::new(
+        let tx_manager = Box::new(TxManagerImpl::new(
             enclave.clone(),
             Box::new(DefaultTxManagerUntrustedInterfaces::new(ledger_db.clone())),
             logger.clone(),
-        );
+        ));
 
         // Peer Keepalive
         let peer_keepalive = Arc::new(Mutex::new(PeerKeepalive::start(

@@ -29,7 +29,7 @@ pub struct ClientApiService<E: ConsensusEnclaveProxy, L: Ledger + Clone> {
     enclave: E,
     scp_client_value_sender: ProposeTxCallback,
     ledger: L,
-    tx_manager: Arc<Mutex<TxManager<E>>>,
+    tx_manager: Arc<Mutex<Box<dyn TxManager>>>,
     is_serving_fn: Arc<(dyn Fn() -> bool + Sync + Send)>,
     logger: Logger,
 }
@@ -39,7 +39,7 @@ impl<E: ConsensusEnclaveProxy, L: Ledger + Clone> ClientApiService<E, L> {
         enclave: E,
         scp_client_value_sender: ProposeTxCallback,
         ledger: L,
-        tx_manager: Arc<Mutex<TxManager<E>>>,
+        tx_manager: Arc<Mutex<Box<dyn TxManager>>>,
         is_serving_fn: Arc<(dyn Fn() -> bool + Sync + Send)>,
         logger: Logger,
     ) -> Self {
