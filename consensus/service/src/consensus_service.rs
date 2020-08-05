@@ -95,7 +95,7 @@ pub struct ConsensusService<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync 
 
     peer_manager: ConnectionManager<PeerConnection<E>>,
     broadcaster: Arc<Mutex<ThreadedBroadcaster>>,
-    tx_manager: TxManager<E, LedgerDB>,
+    tx_manager: Arc<Mutex<TxManager<E>>>,
     peer_keepalive: Arc<Mutex<PeerKeepalive>>,
 
     admin_rpc_server: Option<AdminServer>,
@@ -153,8 +153,7 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
         // Tx Manager
         let tx_manager = TxManager::new(
             enclave.clone(),
-            ledger_db.clone(),
-            DefaultTxManagerUntrustedInterfaces::new(ledger_db.clone()),
+            Box::new(DefaultTxManagerUntrustedInterfaces::new(ledger_db.clone())),
             logger.clone(),
         );
 
@@ -181,7 +180,7 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
 
             peer_manager,
             broadcaster,
-            tx_manager,
+            tx_manager: Arc::new(Mutex::new(tx_manager)),
             peer_keepalive,
 
             admin_rpc_server: None,
@@ -543,7 +542,11 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
             // consensus time.
             if origin_node == &local_node_id || relay_from_nodes.contains(&origin_node.responder_id)
             {
-                if let Some(encrypted_tx) = tx_manager.get_encrypted_tx_by_hash(&tx_hash) {
+                if let Some(encrypted_tx) = tx_manager
+                    .lock()
+                    .expect("Lock poisoned")
+                    .get_encrypted_tx_by_hash(&tx_hash)
+                {
                     broadcaster
                         .lock()
                         .expect("lock poisoned")
