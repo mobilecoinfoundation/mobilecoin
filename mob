@@ -219,6 +219,7 @@ if 'dockerfile' in mobconf['image']:
     with open(os.path.join(top_level, docker_ver_file), 'r') as file:
         version_data = file.read().strip()
 elif 'Dockerfile-version' in mobconf['image']:
+    docker_dir = None
     version_data = mobconf['image']['Dockerfile-version']
 else:
     raise Exception("Neither 'dockerfile' nor 'Dockerfile-version' was found in .mobconf")
@@ -226,11 +227,11 @@ else:
 # Parse what version data we found
 ver_segments = version_data.split('_')
 if len(ver_segments) != 2:
-    raise Exception("Expected form A_B for Dockerfile-version, found '" + data + "' which parsed as: " + str(ver_segments))
+    raise Exception("Expected form A_B for Dockerfile-version, found '" + version_data + "' which parsed as: " + str(ver_segments))
 major_ver = ver_segments[0]
 minor_ver = int(ver_segments[1])
 if minor_ver < 0:
-    raise Exception("Invalid minor ver: " + minor_ver)
+    raise Exception("Invalid minor ver: " + str(minor_ver))
 
 # Calculate default tag.
 repo = mobconf['image']['repository'] if 'repository' in mobconf['image'] else ""
