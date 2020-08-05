@@ -46,6 +46,7 @@ futures = "0.3"
 grpcio = "0.6.0"
 hex = "0.4"
 lazy_static = "1.4"
+mockall = "0.7.2"
 prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
 protobuf = "2.12"
 rand = "0.7"

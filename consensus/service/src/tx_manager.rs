@@ -22,6 +22,7 @@ use mc_transaction_core::{
     validation::{TransactionValidationError, TransactionValidationResult},
     Block, BlockContents, BlockSignature,
 };
+use mockall::*;
 use std::{collections::BTreeSet, iter::FromIterator};
 
 #[derive(Clone, Debug, Fail)]
@@ -83,6 +84,7 @@ impl CacheEntry {
 }
 
 /// Transaction checks performed outside the enclave.
+#[automock]
 pub trait UntrustedInterfaces: Send {
     /// Performs the untrusted part of the well-formed check.
     /// Returns current block index and membership proofs to be used by
@@ -105,9 +107,10 @@ pub trait UntrustedInterfaces: Send {
     /// * `max_elements` - Maximal number of elements to output.
     ///
     /// Returns a bounded, deterministically-ordered list of transactions that are safe to append to the ledger.
-    fn combine(&self, tx_contexts: &[&WellFormedTxContext], max_elements: usize) -> Vec<TxHash>;
+    fn combine(&self, tx_contexts: &[WellFormedTxContext], max_elements: usize) -> Vec<TxHash>;
 }
 
+#[automock]
 pub trait TxManager: Send {
     /// Insert a well-formed transaction into the cache.
     fn insert_proposed_tx(&mut self, tx_context: TxContext)
@@ -294,7 +297,7 @@ impl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> TxManager for TxManagerI
         let tx_hashes: HashSet<&TxHash> = tx_hashes.iter().clone().collect();
         for tx_hash in tx_hashes {
             if let Some(entry) = self.cache.get(&tx_hash) {
-                tx_contexts.push(entry.context());
+                tx_contexts.push(entry.context().clone());
             } else {
                 log::error!(self.logger, "Ignoring non-existent TxHash {:?}", tx_hash);
             }
@@ -372,7 +375,7 @@ impl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> TxManager for TxManagerI
 }
 
 #[cfg(test)]
-mod tests {
+mod tx_manager_tests {
     use super::*;
     use crate::validators::DefaultTxManagerUntrustedInterfaces;
     use mc_common::logger::test_with_logger;
@@ -383,50 +386,51 @@ mod tests {
     };
     use rand::{rngs::StdRng, SeedableRng};
 
-    struct MockUntrustedInterfaces {}
-
-    impl UntrustedInterfaces for MockUntrustedInterfaces {
-        fn well_formed_check(
-            &self,
-            highest_indices: &[u64],
-            key_images: &[KeyImage],
-            output_public_keys: &[CompressedRistrettoPublic],
-        ) -> TransactionValidationResult<(u64, Vec<TxOutMembershipProof>)> {
-            unimplemented!()
-        }
-
-        fn is_valid(&self, context: &WellFormedTxContext) -> TransactionValidationResult<()> {
-            unimplemented!()
-        }
-
-        fn combine(
-            &self,
-            tx_contexts: &[&WellFormedTxContext],
-            max_elements: usize,
-        ) -> Vec<TxHash> {
-            unimplemented!()
-        }
-    }
-
-    #[test]
-    #[ignore]
+    #[test_with_logger]
     // Should return Ok when a well-formed Tx is inserted.
-    fn test_insert_proposed_tx_ok() {
-        unimplemented!()
+    fn test_insert_proposed_tx_ok(logger: Logger) {
+        let tx_context = TxContext::default();
+
+        let mut mock_untrusted = MockUntrustedInterfaces::new();
+        // Untrusted's well-formed check should be called once each time insert_propose_tx is called.
+        mock_untrusted
+            .expect_well_formed_check()
+            .times(1)
+            .return_const(Ok((0, vec![])));
+
+        // The enclave's well-formed check also ought to be called, and should return Ok.
+        let mock_enclave = ConsensusServiceMockEnclave::default();
+
+        let mut tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
+        assert!(tx_manager.insert_proposed_tx(tx_context.clone()).is_ok());
+        assert_eq!(tx_manager.cache.len(), 1);
     }
 
-    #[test]
+    #[test_with_logger]
     #[ignore]
     // Should return Ok when a well-formed Tx is re-inserted.
-    fn test_insert_proposed_tx_reinsert_ok() {
+    fn test_insert_proposed_tx_reinsert_ok(_logger: Logger) {
         unimplemented!()
     }
 
-    #[test]
-    #[ignore]
+    #[test_with_logger]
     // Should return return an error when a not well-formed Tx is inserted.
-    fn test_insert_proposed_tx_error() {
-        unimplemented!()
+    fn test_insert_proposed_tx_error(logger: Logger) {
+        let tx_context = TxContext::default();
+
+        let mut mock_untrusted = MockUntrustedInterfaces::new();
+        // Untrusted's well-formed check should be called once each time insert_propose_tx is called.
+        mock_untrusted
+            .expect_well_formed_check()
+            .times(1)
+            .return_const(Err(TransactionValidationError::ContainsSpentKeyImage));
+
+        // This should not be called.
+        let mock_enclave = ConsensusServiceMockEnclave::default();
+
+        let mut tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
+        assert!(tx_manager.insert_proposed_tx(tx_context.clone()).is_err());
+        assert_eq!(tx_manager.cache.len(), 0);
     }
 
     #[test_with_logger]
@@ -547,7 +551,6 @@ mod tests {
 
         // Attempting to assemble a block without duplicates or missing transactions should
         // succeed.
-        // TODO: Right now this relies on ConsensusServiceMockEnclave::form_block
         let (block, block_contents, _signature) = tx_manager
             .tx_hashes_to_block(&[hash_tx_zero, hash_tx_one], &parent_block)
             .expect("failed assembling block");
