@@ -126,11 +126,11 @@ impl FogHint {
     /// Fails if decryption fails, or the magic number is wrong.
     ///
     /// # Arguments
-    /// * acct_server_private_key
+    /// * ingest_server_private_key
     /// * 128 byte encrypted payload
     ///
     /// # Returns
-    /// * Fog hint on success, cryptobox error otherwise
+    /// * (Fog hint, true) on success (Default Fog hint, false) otherwise
     pub fn ct_decrypt(
         ingest_server_private_key: &RistrettoPrivate,
         ciphertext: &EncryptedFogHint,
