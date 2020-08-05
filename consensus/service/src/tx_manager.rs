@@ -187,7 +187,7 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces> TxManager for TxManage
         // If already in cache then we're done.
         if let Some(entry) = self.cache.get(&tx_context.tx_hash) {
             self.untrusted.is_valid(entry.context())?;
-            return Err(TxManagerError::AlreadyInCache);
+            return Ok(entry.context.clone());
         }
 
         // Start timer for metrics.
@@ -216,7 +216,6 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces> TxManager for TxManage
         );
 
         // Store in our cache.
-
         self.cache.insert(
             *well_formed_tx_context.tx_hash(),
             CacheEntry {
@@ -381,19 +380,93 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces> TxManager for TxManage
 mod tx_manager_tests {
     use super::*;
     use crate::validators::DefaultTxManagerUntrustedInterfaces;
-    use mc_common::logger::test_with_logger;
+    use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
+    use mc_attest_enclave_api::{
+        ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, PeerAuthRequest,
+        PeerAuthResponse, PeerSession,
+    };
+    use mc_common::{logger::test_with_logger, ResponderId};
+    use mc_consensus_enclave::{Error as EnclaveError, LocallyEncryptedTx, SealedBlockSigningKey};
     use mc_consensus_enclave_mock::ConsensusServiceMockEnclave;
+    use mc_crypto_keys::{Ed25519Public, X25519Public};
     use mc_ledger_db::Ledger;
+    use mc_sgx_report_cache_api::{Error as SgxReportError, ReportableEnclave};
     use mc_transaction_core_test_utils::{
         create_ledger, create_transaction, initialize_ledger, AccountKey,
     };
     use rand::{rngs::StdRng, SeedableRng};
 
+    // ConsensusEnclave inherits from ReportableEnclave, so the traits have o be re-typed here.
+    // Splitting the traits apart might help because TxManager only uses a few of these functions.
+    mock! {
+        Enclave {}
+        trait ConsensusEnclave {
+            fn enclave_init(
+                &self,
+                self_peer_id: &ResponderId,
+                self_client_id: &ResponderId,
+                sealed_key: &Option<SealedBlockSigningKey>,
+            ) -> Result<(SealedBlockSigningKey, Vec<String>), EnclaveError>;
+
+            fn get_identity(&self) -> Result<X25519Public, EnclaveError>;
+
+            fn get_signer(&self) -> Result<Ed25519Public, EnclaveError>;
+
+            fn client_accept(&self, req: ClientAuthRequest) -> Result<(ClientAuthResponse, ClientSession), EnclaveError>;
+
+            fn client_close(&self, channel_id: ClientSession) -> Result<(), EnclaveError>;
+
+            fn client_discard_message(&self, msg: EnclaveMessage<ClientSession>) -> Result<(), EnclaveError>;
+
+            fn peer_init(&self, peer_id: &ResponderId) -> Result<PeerAuthRequest, EnclaveError>;
+
+            fn peer_accept(&self, req: PeerAuthRequest) -> Result<(PeerAuthResponse, PeerSession), EnclaveError>;
+
+            fn peer_connect(&self, peer_id: &ResponderId, res: PeerAuthResponse) -> Result<PeerSession, EnclaveError>;
+
+            fn peer_close(&self, channel_id: &PeerSession) -> Result<(), EnclaveError>;
+
+            fn client_tx_propose(&self, msg: EnclaveMessage<ClientSession>) -> Result<TxContext, EnclaveError>;
+
+            fn peer_tx_propose(&self, msg: EnclaveMessage<PeerSession>) -> Result<Vec<TxContext>, EnclaveError>;
+
+            fn tx_is_well_formed(
+                &self,
+                locally_encrypted_tx: LocallyEncryptedTx,
+                block_index: u64,
+                proofs: Vec<TxOutMembershipProof>,
+            ) -> Result<(WellFormedEncryptedTx, WellFormedTxContext), EnclaveError>;
+
+            fn txs_for_peer(
+                &self,
+                encrypted_txs: &[WellFormedEncryptedTx],
+                aad: &[u8],
+                peer: &PeerSession,
+            ) -> Result<EnclaveMessage<PeerSession>, EnclaveError>;
+
+            fn form_block(
+                &self,
+                parent_block: &Block,
+                txs: &[(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)],
+            ) -> Result<(Block, BlockContents, BlockSignature), EnclaveError>;
+        }
+
+        trait ReportableEnclave {
+            fn new_ereport(&self, qe_info: TargetInfo) -> Result<(Report, QuoteNonce), SgxReportError>;
+
+            fn verify_quote(&self, quote: Quote, qe_report: Report) -> Result<IasNonce, SgxReportError>;
+
+            fn verify_ias_report(&self, ias_report: VerificationReport) -> Result<(), SgxReportError>;
+
+            fn get_ias_report(&self) -> Result<VerificationReport, SgxReportError>;
+        }
+    }
+
     #[test_with_logger]
-    // Should return Ok when a well-formed Tx is inserted.
+    // Should return Ok when a well-formed Tx is (re)-inserted.
     fn test_insert_proposed_tx_ok(logger: Logger) {
         let tx_context = TxContext::default();
-        // let tx_hash = tx_context.tx_hash;
+        let tx_hash = tx_context.tx_hash;
 
         let mut mock_untrusted = MockUntrustedInterfaces::new();
         // Untrusted's well-formed check should be called once each time insert_propose_tx is called.
@@ -402,29 +475,47 @@ mod tx_manager_tests {
             .times(1)
             .return_const(Ok((0, vec![])));
 
+        // This is fishy... why does this only happen when re-inserting?
+        mock_untrusted
+            .expect_is_valid()
+            .times(1)
+            .return_const(Ok(()));
+
         // The enclave's well-formed check also ought to be called, and should return Ok.
-        let mock_enclave = ConsensusServiceMockEnclave::default();
+        let mut mock_enclave = MockEnclave::new();
+
+        let well_formed_encrypted_tx = WellFormedEncryptedTx::default();
+        let well_formed_tx_context = WellFormedTxContext::new(
+            0,
+            tx_hash.clone(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+        );
+
+        mock_enclave
+            .expect_tx_is_well_formed()
+            .times(1)
+            .return_const(Ok((well_formed_encrypted_tx, well_formed_tx_context)));
 
         let mut tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
         assert_eq!(tx_manager.cache.len(), 0);
 
         assert!(tx_manager.insert_proposed_tx(tx_context.clone()).is_ok());
         assert_eq!(tx_manager.cache.len(), 1);
+        assert!(tx_manager.cache.contains_key(&tx_hash));
 
-        // TODO
-        // assert!(tx_manager.cache.contains_key(&tx_hash));
-    }
-
-    #[test_with_logger]
-    #[ignore]
-    // Should return Ok when a well-formed Tx is re-inserted.
-    fn test_insert_proposed_tx_reinsert_ok(_logger: Logger) {
-        unimplemented!()
+        // Re-inserting should also be Ok.
+        assert!(tx_manager.insert_proposed_tx(tx_context.clone()).is_ok());
+        assert_eq!(tx_manager.cache.len(), 1);
+        assert!(tx_manager.cache.contains_key(&tx_hash));
     }
 
     #[test_with_logger]
     // Should return return an error when a not well-formed Tx is inserted.
-    fn test_insert_proposed_tx_error(logger: Logger) {
+    // Here, the untrusted system says the Tx is not well-formed.
+    fn test_insert_proposed_tx_error_untrusted(logger: Logger) {
         let tx_context = TxContext::default();
 
         let mut mock_untrusted = MockUntrustedInterfaces::new();
@@ -435,7 +526,32 @@ mod tx_manager_tests {
             .return_const(Err(TransactionValidationError::ContainsSpentKeyImage));
 
         // This should not be called.
-        let mock_enclave = ConsensusServiceMockEnclave::default();
+        let mock_enclave = MockEnclave::new();
+
+        let mut tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
+        assert!(tx_manager.insert_proposed_tx(tx_context.clone()).is_err());
+        assert_eq!(tx_manager.cache.len(), 0);
+    }
+
+    #[test_with_logger]
+    // Should return return an error when a not well-formed Tx is inserted.
+    // Here, the enclave says the Tx is not well-formed.
+    fn test_insert_proposed_tx_error_trusted(logger: Logger) {
+        let tx_context = TxContext::default();
+
+        let mut mock_untrusted = MockUntrustedInterfaces::new();
+        // Untrusted's well-formed check should be called once each time insert_propose_tx is called.
+        mock_untrusted
+            .expect_well_formed_check()
+            .times(1)
+            .return_const(Ok((0, vec![])));
+
+        // This should be called, and return an error.
+        let mut mock_enclave = MockEnclave::new();
+        mock_enclave
+            .expect_tx_is_well_formed()
+            .times(1)
+            .return_const(Err(EnclaveError::Signature));
 
         let mut tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
         assert!(tx_manager.insert_proposed_tx(tx_context.clone()).is_err());
