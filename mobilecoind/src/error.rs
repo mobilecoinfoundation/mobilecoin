@@ -8,6 +8,7 @@ use mc_connection::Error as ConnectionError;
 use mc_consensus_api::ConversionError;
 use mc_crypto_keys::KeyError;
 use mc_ledger_db::Error as LedgerDbError;
+use mc_util_lmdb::MetadataStoreError;
 use mc_util_serial::{decode::Error as DecodeError, encode::Error as EncodeError};
 use prost::DecodeError as ProstDecodeError;
 use retry::Error as RetryError;
@@ -103,64 +104,73 @@ pub enum Error {
         _0, _1
     )]
     BlockNotYetProcessed(u64, u64),
+
+    #[fail(display = "Metadata store error: {}", _0)]
+    MetadataStore(MetadataStoreError),
 }
 
 impl From<RetryError<ConnectionError>> for Error {
     fn from(e: RetryError<ConnectionError>) -> Self {
-        Error::Connection(e)
+        Self::Connection(e)
     }
 }
 
 impl From<LmdbError> for Error {
     fn from(e: LmdbError) -> Self {
-        Error::LMDB(e)
+        Self::LMDB(e)
     }
 }
 
 impl From<LedgerDbError> for Error {
     fn from(e: LedgerDbError) -> Self {
-        Error::LedgerDB(e)
+        Self::LedgerDB(e)
     }
 }
 
 impl From<EncodeError> for Error {
     fn from(e: EncodeError) -> Self {
-        Error::Serialization(e)
+        Self::Serialization(e)
     }
 }
 
 impl From<DecodeError> for Error {
     fn from(e: DecodeError) -> Self {
-        Error::Deserialization(e)
+        Self::Deserialization(e)
     }
 }
 
 impl From<ProstDecodeError> for Error {
     fn from(e: ProstDecodeError) -> Self {
-        Error::ProstDecode(e)
+        Self::ProstDecode(e)
     }
 }
 
 impl From<std::io::Error> for Error {
     fn from(e: std::io::Error) -> Self {
-        Error::IO(e)
+        Self::IO(e)
     }
 }
 
 impl<M> From<crossbeam_channel::SendError<M>> for Error {
     fn from(_e: crossbeam_channel::SendError<M>) -> Self {
-        Error::ChannelSend
+        Self::ChannelSend
     }
 }
 
 impl From<ConversionError> for Error {
     fn from(e: ConversionError) -> Self {
-        Error::ApiConversion(e)
+        Self::ApiConversion(e)
     }
 }
 
 impl From<KeyError> for Error {
     fn from(e: KeyError) -> Self {
-        Error::Key(e)
+        Self::Key(e)
+    }
+}
+
+impl From<MetadataStoreError> for Error {
+    fn from(e: MetadataStoreError) -> Self {
+        Self::MetadataStore(e)
     }
 }

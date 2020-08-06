@@ -9,6 +9,7 @@ use mc_common::{
     HashMap,
 };
 use mc_transaction_core::BlockSignature;
+use mc_util_lmdb::{MetadataStore, MetadataStoreSettings};
 use mc_util_serial::{decode, encode, Message};
 use mc_watcher_api::TimestampResultCode;
 
@@ -18,6 +19,23 @@ use url::Url;
 
 /// LMDB Constant.
 const MAX_LMDB_FILE_SIZE: usize = 1_099_511_627_776; // 1 TB
+
+/// Metadata store settings that are used for version control.
+#[derive(Clone, Default, Debug)]
+pub struct WatcherDbMetadataStoreSettings;
+impl MetadataStoreSettings for WatcherDbMetadataStoreSettings {
+    // Default database version. This should be bumped when breaking changes are introduced.
+    // If this is properly maintained, we could check during ledger db opening for any
+    // incompatibilities, and either refuse to open or perform a migration.
+    #[allow(clippy::unreadable_literal)]
+    const LATEST_VERSION: u64 = 20200805;
+
+    /// The current crate version that manages the database.
+    const CRATE_VERSION: &'static str = env!("CARGO_PKG_VERSION");
+
+    /// LMDB Database name to use for storing the metadata information.
+    const DB_NAME: &'static str = "watcher_db_metadata";
+}
 
 /// Block signatures database name.
 pub const BLOCK_SIGNATURES_DB_NAME: &str = "watcher_db:block_signatures";
@@ -67,6 +85,9 @@ pub struct WatcherDB {
     /// Were we opened in write mode?
     write_allowed: bool,
 
+    /// Metadata store.
+    metadata_store: MetadataStore<WatcherDbMetadataStoreSettings>,
+
     /// Logger.
     logger: Logger,
 }
@@ -80,6 +101,16 @@ impl WatcherDB {
                 .set_map_size(MAX_LMDB_FILE_SIZE)
                 .open(path.as_ref())?,
         );
+
+        let metadata_store = MetadataStore::<WatcherDbMetadataStoreSettings>::new(&env)?;
+
+        let db_txn = env.begin_ro_txn()?;
+        let version = metadata_store.get_version(&db_txn)?;
+        log::info!(logger, "Watcher db is currently at version: {:?}", version);
+        db_txn.commit()?;
+
+        version.is_compatible_with_latest()?;
+
         let block_signatures = env.open_db(Some(BLOCK_SIGNATURES_DB_NAME))?;
         let last_synced = env.open_db(Some(LAST_SYNCED_DB_NAME))?;
         let config = env.open_db(Some(CONFIG_DB_NAME))?;
@@ -90,6 +121,7 @@ impl WatcherDB {
             last_synced,
             config,
             write_allowed: false,
+            metadata_store,
             logger,
         })
     }
@@ -114,6 +146,8 @@ impl WatcherDB {
                 .set_map_size(MAX_LMDB_FILE_SIZE)
                 .open(path.as_ref())?,
         );
+
+        MetadataStore::<WatcherDbMetadataStoreSettings>::create(&env)?;
 
         env.create_db(Some(BLOCK_SIGNATURES_DB_NAME), DatabaseFlags::DUP_SORT)?;
         env.create_db(Some(LAST_SYNCED_DB_NAME), DatabaseFlags::empty())?;
