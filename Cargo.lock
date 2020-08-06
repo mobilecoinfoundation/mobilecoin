@@ -2759,6 +2759,7 @@ dependencies = [
  "mc-transaction-std",
  "mc-util-build-grpc",
  "mc-util-build-script",
+ "mc-util-uri",
  "protobuf",
  "rand 0.7.3",
 ]

@@ -85,8 +85,8 @@ fn main() {
     };
 
     // Potentially launch API server
-    match (&config.mobilecoind_db, &config.service_port) {
-        (Some(mobilecoind_db), Some(service_port)) => {
+    match (&config.mobilecoind_db, &config.listen_uri) {
+        (Some(mobilecoind_db), Some(listen_uri)) => {
             log::info!(logger, "Launching mobilecoind API services");
 
             let _ = std::fs::create_dir_all(mobilecoind_db);
@@ -107,7 +107,7 @@ fn main() {
                 watcher_db,
                 transactions_manager,
                 network_state,
-                *service_port,
+                listen_uri,
                 config.num_workers,
                 logger,
             );
