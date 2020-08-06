@@ -83,7 +83,7 @@ SGX_MODE=HW IAS_MODE=PROD CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css \
     --tx-source-url https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node1.test.mobilecoin.com/ \
     --tx-source-url https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node2.test.mobilecoin.com/ \
     --mobilecoind-db /path/to/mobilecoind-db \
-    --service-port 4444
+    --listen-uri insecure-mobilecoind://127.0.0.1:4444/
 ```
 
 For more details about the various command line arguments supported by the MobileCoin Daemon, use the `--help` argument:

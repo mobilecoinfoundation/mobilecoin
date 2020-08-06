@@ -43,4 +43,4 @@ cargo run -p mc-mobilecoind $CARGO_FLAGS -- \
     --peer insecure-mc://$NODES_HOST:3233/ \
     --tx-source-url "$LEDGER_SYNC_URL" \
     --mobilecoind-db $WORK_DIR/mobilecoind-tx-db \
-    --service-port 4444
+    --insecure-mobilecoind://0.0.0.0:4444/

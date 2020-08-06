@@ -13,10 +13,9 @@ cargo run
 
 Options are:
 
-- `--listen_host` - hostname for webserver, default `127.0.0.1`
-- `--listen_port` - port for webserver, default `9090`
-- `--mobilecoind_host` - hostname:port for mobilecoind gRPC, default `127.0.0.1:4444`
-- `--use_ssl` - connect to mobilecoind using SSL, default is false
+- `--listen-host` - hostname for webserver, default `127.0.0.1`
+- `--listen-port` - port for webserver, default `9090`
+- `--mobilecoind-uri` - URI for connecting to mobilecoind gRPC, default `insecure-mobilecoind://127.0.0.1:4444/`
 
 ### Usage with cURL
 

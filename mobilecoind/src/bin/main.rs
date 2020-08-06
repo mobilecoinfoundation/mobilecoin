@@ -126,7 +126,7 @@ fn main() {
 
         _ => {
             panic!(
-                "Please provide both --db and --service-port if you want to enable the API server"
+                "Please provide both --db and --listen-uri if you want to enable the API server"
             );
         }
     }
