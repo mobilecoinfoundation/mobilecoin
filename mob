@@ -244,9 +244,6 @@ if args.action == "default-tag":
     print(default_tag, end='')
     sys.exit(0)
 
-if not (args.action == "prompt" or args.action == "image"):
-    raise Exception('Unknown action: ' + args.action)
-
 ###
 # docker build
 ###
