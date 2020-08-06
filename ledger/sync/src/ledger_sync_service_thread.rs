@@ -17,7 +17,7 @@ use std::{
 };
 
 /// Maximal number of blocks to attempt to sync at each loop iteration.
-const MAX_BLOCKS_PER_SYNC_ITERATION: u32 = 10;
+const MAX_BLOCKS_PER_SYNC_ITERATION: u32 = 100;
 
 pub struct LedgerSyncServiceThread {
     join_handle: Option<thread::JoinHandle<()>>,
