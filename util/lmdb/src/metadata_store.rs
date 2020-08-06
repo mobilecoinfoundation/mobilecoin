@@ -157,7 +157,7 @@ impl<S: MetadataStoreSettings> MetadataStore<S> {
         })
     }
 
-    // Creates a fresh MetadataStore on disk.
+    /// Creates a fresh MetadataStore on disk.
     pub fn create(env: &Environment) -> Result<(), MetadataStoreError> {
         let metadata = env.create_db(Some(S::DB_NAME), DatabaseFlags::empty())?;
 
@@ -174,7 +174,19 @@ impl<S: MetadataStoreSettings> MetadataStore<S> {
         Ok(())
     }
 
-    // Get version data from the database.
+    /// Open an existing MetadadataStore, or create a default one if it does not exist.
+    pub fn open_or_create(env: &Environment) -> Result<Self, MetadataStoreError> {
+        Self::new(&env).or_else(|err| {
+            if err == MetadataStoreError::Lmdb(lmdb::Error::NotFound) {
+                Self::create(&env)?;
+                Self::new(&env)
+            } else {
+                Err(err)
+            }
+        })
+    }
+
+    /// Get version data from the database.
     pub fn get_version(
         &self,
         db_txn: &impl Transaction,
@@ -184,7 +196,7 @@ impl<S: MetadataStoreSettings> MetadataStore<S> {
         Ok(MetadataVersion::from(&stored))
     }
 
-    // Set version to latest.
+    /// Set version to latest.
     pub fn set_version_to_latest(
         &self,
         db_txn: &mut RwTransaction,
@@ -197,7 +209,7 @@ impl<S: MetadataStoreSettings> MetadataStore<S> {
         )?)
     }
 
-    // Set version to a specific version.
+    /// Set version to a specific version.
     pub fn set_version(
         &self,
         db_txn: &mut RwTransaction,
