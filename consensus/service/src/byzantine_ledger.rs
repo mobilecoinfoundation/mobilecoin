@@ -852,11 +852,13 @@ impl<
         // an enclave call, since the message is going to be encrypted (MC-74).
         let tx_hashes = scp_msg.values();
 
-        let mut all_missing_hashes = self
-            .tx_manager
-            .lock()
-            .expect("Lock poisoned")
-            .missing_hashes(&tx_hashes);
+        let mut all_missing_hashes: Vec<TxHash> = {
+            let tx_manager = self.tx_manager.lock().expect("Lock poisoned");
+            tx_hashes
+                .into_iter()
+                .filter(|tx_hash| !tx_manager.contains(tx_hash))
+                .collect()
+        };
 
         // Get the connection we'll be working with
         let conn = match self.peer_manager.conn(from_responder_id) {
