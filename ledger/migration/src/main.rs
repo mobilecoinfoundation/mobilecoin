@@ -11,7 +11,7 @@ use mc_ledger_db::{
 };
 use mc_util_lmdb::MetadataStoreError;
 use mc_util_serial::decode;
-use std::path::PathBuf;
+use std::{path::PathBuf, thread::sleep, time::Duration};
 use structopt::StructOpt;
 
 const MAX_LMDB_FILE_SIZE: usize = 1_099_511_627_776; // 1 TB
@@ -99,6 +99,9 @@ fn main() {
             }
         };
     }
+
+    // Give logger a moment to flush.
+    sleep(Duration::from_secs(1));
 }
 
 /// A utility function for constructing the tx_out_index_by_public_key store using existing
