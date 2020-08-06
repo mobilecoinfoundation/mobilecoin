@@ -113,7 +113,7 @@ pub trait TxManager: Send {
     fn insert(&mut self, tx_context: TxContext) -> TxManagerResult<WellFormedTxContext>;
 
     /// Remove expired transactions from the cache and return their hashes.
-    fn remove_expired(&mut self, cur_block: u64) -> HashSet<TxHash>;
+    fn remove_expired(&mut self, block_index: u64) -> HashSet<TxHash>;
 
     /// Returns the list of hashes inside `tx_hashes` that are not inside the cache.
     fn missing_hashes(&self, tx_hashes: &BTreeSet<TxHash>) -> Vec<TxHash>;
@@ -621,7 +621,7 @@ mod tx_manager_tests {
         let mock_enclave = MockEnclave::new();
 
         let tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
-        // TODO: check type of error.
+        // TODO: should be a not in cache error.
         assert!(tx_manager.validate(&tx_context.tx_hash).is_err());
     }
 
@@ -653,11 +653,58 @@ mod tx_manager_tests {
             .well_formed_cache
             .insert(tx_context.tx_hash.clone(), cache_entry);
 
-        // TODO: check type of error.
+        // TODO: should be a transaction validation error.
         assert!(tx_manager.validate(&tx_context.tx_hash).is_err());
     }
 
-    // TODO: combine
+    #[test_with_logger]
+    // Should return Ok if the transactions are in the cache.
+    fn test_combine_ok(logger: Logger) {
+        let tx_hashes: Vec<_> = (0..10).map(|i| TxHash([i as u8; 32])).collect();
+
+        let mut mock_untrusted = MockUntrustedInterfaces::new();
+        let expected: Vec<_> = tx_hashes.iter().take(5).cloned().collect();
+        mock_untrusted
+            .expect_combine()
+            .times(1)
+            .return_const(expected.clone());
+
+        let mock_enclave = MockEnclave::new();
+        let mut tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
+
+        // Add transactions to the cache.
+        for tx_hash in &tx_hashes {
+            let context = WellFormedTxContext::new(
+                Default::default(),
+                tx_hash.clone(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+            );
+
+            let cache_entry = CacheEntry {
+                encrypted_tx: Default::default(),
+                context: context.clone(),
+            };
+
+            tx_manager
+                .well_formed_cache
+                .insert(context.tx_hash().clone(), cache_entry);
+        }
+        assert_eq!(tx_manager.well_formed_cache.len(), tx_hashes.len());
+
+        // TODO: combine should return a Result.
+        assert_eq!(tx_manager.combine(&tx_hashes), expected);
+    }
+
+    #[test_with_logger]
+    #[ignore]
+    // Should return Err if any transaction is not in the cache.
+    fn test_combine_err_not_in_cache(_logger: Logger) {
+        // TODO: combine should return a Result.
+        unimplemented!()
+    }
 
     #[test_with_logger]
     fn test_hashes_to_block(logger: Logger) {
