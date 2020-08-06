@@ -183,7 +183,7 @@ if not args.dry_run:
         if retcode != 0:
             if not args.verbose:
                 eprint(cmd)
-            eprint("docker not found: retcode = ", retcode)
+            eprint("docker not found: retcode =", retcode)
             eprint("Docker is required to use the mob tool.")
             eprint("It is recommended to install from https://docs.docker.com/get-docker/")
             sys.exit(1)
