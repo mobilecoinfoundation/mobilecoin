@@ -431,10 +431,12 @@ impl AccountKey {
 #[cfg(test)]
 mod account_key_tests {
     use super::*;
-    use core::convert::{TryFrom, TryInto};
+    use alloc::boxed::Box;
+    use datatest::data;
+    use mc_account_keys_test_vectors::*;
+    use mc_util_test_vectors::TestVectorReader;
     use rand::prelude::StdRng;
     use rand_core::SeedableRng;
-    use yaml_rust::{Yaml, YamlLoader};
 
     // Helper method to verify the signature of a public address
     fn verify_signature(subaddress: &PublicAddress, fingerprint: &[u8]) {
@@ -494,96 +496,55 @@ mod account_key_tests {
         );
     }
 
+    #[data(DefaultSubaddrKeysFromAcctPrivKeys::from_json("test-vectors/vectors"))]
     #[test]
-    fn test_default_subaddr_keys_from_acct_priv_keys() {
-        let yaml = YamlLoader::load_from_str(include_str!(
-            "../../test-vectors/transaction/account_keys/default_subaddr_keys_from_acct_priv_keys.yaml"
-        ))
-        .unwrap();
+    fn default_subaddr_keys_from_acct_priv_keys(case: DefaultSubaddrKeysFromAcctPrivKeys) {
+        let account_key = AccountKey::new(&case.spend_private_key, &case.view_private_key);
+        let public_address = account_key.default_subaddress();
+        assert_eq!(
+            account_key.default_subaddress_view_private().to_bytes(),
+            case.subaddress_view_private_key.to_bytes()
+        );
+        assert_eq!(
+            account_key.default_subaddress_spend_private().to_bytes(),
+            case.subaddress_spend_private_key.to_bytes()
+        );
+        assert_eq!(
+            public_address.view_public_key(),
+            &case.subaddress_view_public_key
+        );
 
-        for test in yaml[0].clone() {
-            let view_private_key = RistrettoPrivate::try_from(
-                yaml_as_byte_array(&test["view_private_key"]).as_slice(),
-            )
-            .unwrap();
-            let spend_private_key = RistrettoPrivate::try_from(
-                yaml_as_byte_array(&test["spend_private_key"]).as_slice(),
-            )
-            .unwrap();
-
-            let account_key = AccountKey::new(&spend_private_key, &view_private_key);
-            let public_address = account_key.default_subaddress();
-            assert_eq!(
-                account_key.default_subaddress_view_private().to_bytes(),
-                yaml_as_byte_array(&test["subaddress_view_private_key"]).as_slice()
-            );
-            assert_eq!(
-                account_key.default_subaddress_spend_private().to_bytes(),
-                yaml_as_byte_array(&test["subaddress_spend_private_key"]).as_slice()
-            );
-            assert_eq!(
-                public_address.view_public_key().to_bytes(),
-                yaml_as_byte_array(&test["subaddress_view_public_key"]).as_slice()
-            );
-            assert_eq!(
-                public_address.spend_public_key().to_bytes(),
-                yaml_as_byte_array(&test["subaddress_spend_public_key"]).as_slice()
-            );
-        }
+        assert_eq!(
+            public_address.spend_public_key(),
+            &case.subaddress_spend_public_key
+        );
     }
 
+    #[data(SubaddrKeysFromAcctPrivKeys::from_json("test-vectors/vectors"))]
     #[test]
-    fn test_subaddr_keys_from_acct_priv_keys() {
-        let yaml = YamlLoader::load_from_str(include_str!(
-            "../../test-vectors/transaction/account_keys/subaddr_keys_from_acct_priv_keys.yaml"
-        ))
-        .unwrap();
-
-        for test in yaml[0].clone() {
-            let view_private_key = RistrettoPrivate::try_from(
-                yaml_as_byte_array(&test["view_private_key"]).as_slice(),
-            )
-            .unwrap();
-            let spend_private_key = RistrettoPrivate::try_from(
-                yaml_as_byte_array(&test["spend_private_key"]).as_slice(),
-            )
-            .unwrap();
-            let subaddress_index = test["subaddress_index"]
-                .as_i64()
-                .unwrap()
-                .try_into()
-                .unwrap();
-
-            let account_key = AccountKey::new(&spend_private_key, &view_private_key);
-            let public_address = account_key.subaddress(subaddress_index);
-            assert_eq!(
-                account_key
-                    .subaddress_view_private(subaddress_index)
-                    .to_bytes(),
-                yaml_as_byte_array(&test["subaddress_view_private_key"]).as_slice()
-            );
-            assert_eq!(
-                account_key
-                    .subaddress_spend_private(subaddress_index)
-                    .to_bytes(),
-                yaml_as_byte_array(&test["subaddress_spend_private_key"]).as_slice()
-            );
-            assert_eq!(
-                public_address.view_public_key().to_bytes(),
-                yaml_as_byte_array(&test["subaddress_view_public_key"]).as_slice()
-            );
-            assert_eq!(
-                public_address.spend_public_key().to_bytes(),
-                yaml_as_byte_array(&test["subaddress_spend_public_key"]).as_slice()
-            );
-        }
-    }
-
-    fn yaml_as_byte_array(yaml: &Yaml) -> Vec<u8> {
-        yaml.clone()
-            .into_iter()
-            .map(|elem| elem.as_i64().unwrap().try_into().unwrap())
-            .collect::<Vec<_>>()
+    fn subaddr_keys_from_acct_priv_keys(case: SubaddrKeysFromAcctPrivKeys) {
+        let account_key = AccountKey::new(&case.spend_private_key, &case.view_private_key);
+        let public_address = account_key.subaddress(case.subaddress_index);
+        assert_eq!(
+            account_key
+                .subaddress_view_private(case.subaddress_index)
+                .to_bytes(),
+            case.subaddress_view_private_key.to_bytes()
+        );
+        assert_eq!(
+            account_key
+                .subaddress_spend_private(case.subaddress_index)
+                .to_bytes(),
+            case.subaddress_spend_private_key.to_bytes()
+        );
+        assert_eq!(
+            public_address.view_public_key(),
+            &case.subaddress_view_public_key
+        );
+        assert_eq!(
+            public_address.spend_public_key(),
+            &case.subaddress_spend_public_key
+        );
     }
 
     #[test]

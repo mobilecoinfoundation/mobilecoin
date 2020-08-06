@@ -1971,6 +1971,7 @@ dependencies = [
  "blake2",
  "criterion",
  "curve25519-dalek",
+ "datatest",
  "digest",
  "displaydoc",
  "hkdf",
@@ -1983,12 +1984,13 @@ dependencies = [
  "mc-util-repr-bytes",
  "mc-util-serial",
  "mc-util-test-helper",
+ "mc-util-test-vectors",
  "prost",
  "rand 0.7.3",
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
+ "serde_cbor",
  "tempdir",
- "yaml-rust",
  "zeroize 1.1.0",
 ]
 
