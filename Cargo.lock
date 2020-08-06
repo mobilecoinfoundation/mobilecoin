@@ -805,6 +805,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "datatest"
+version = "0.6.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8f692fd1a1d2e19fe7e88ff0e7c3c7dd74d86a7d6ff3daa08c796ac2e26a100"
+dependencies = [
+ "ctor",
+ "datatest-derive",
+ "regex",
+ "serde",
+ "serde_yaml",
+ "walkdir",
+ "yaml-rust",
+]
+
+[[package]]
+name = "datatest-derive"
+version = "0.6.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f7f6869fa6dc3d62b5bde5011ba43cdb760336269b3f87a94b9865983b037292"
+dependencies = [
+ "proc-macro2 1.0.12",
+ "quote 1.0.4",
+ "syn 1.0.18",
+]
+
+[[package]]
 name = "debugid"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1948,6 +1974,7 @@ dependencies = [
  "digest",
  "displaydoc",
  "hkdf",
+ "mc-account-keys-test-vectors",
  "mc-crypto-digestible",
  "mc-crypto-hashes",
  "mc-crypto-keys",
@@ -1963,6 +1990,24 @@ dependencies = [
  "tempdir",
  "yaml-rust",
  "zeroize 1.1.0",
+]
+
+[[package]]
+name = "mc-account-keys-test-vectors"
+version = "0.5.0"
+dependencies = [
+ "mc-account-keys-test-vectors-structs",
+ "mc-util-test-vectors",
+]
+
+[[package]]
+name = "mc-account-keys-test-vectors-structs"
+version = "0.5.0"
+dependencies = [
+ "mc-account-keys",
+ "mc-crypto-keys",
+ "mc-util-test-vectors",
+ "serde",
 ]
 
 [[package]]
@@ -3448,6 +3493,16 @@ dependencies = [
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
  "structopt",
+]
+
+[[package]]
+name = "mc-util-test-vectors"
+version = "0.5.0"
+dependencies = [
+ "datatest",
+ "serde",
+ "serde_cbor",
+ "serde_json",
 ]
 
 [[package]]
@@ -4990,6 +5045,18 @@ dependencies = [
  "itoa",
  "serde",
  "url 2.1.1",
+]
+
+[[package]]
+name = "serde_yaml"
+version = "0.8.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae3e2dd40a7cdc18ca80db804b7f461a39bb721160a85c9a1fa30134bf3c02a5"
+dependencies = [
+ "dtoa",
+ "linked-hash-map",
+ "serde",
+ "yaml-rust",
 ]
 
 [[package]]

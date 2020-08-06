@@ -38,6 +38,7 @@ rand_hc = "0.2"
 tempdir = "0.3"
 yaml-rust = "0.4"
 
+mc-account-keys-test-vectors = { path = "test-vectors" }
 mc-util-test-helper = { path = "../util/test-helper" }
 
 [[bench]]
