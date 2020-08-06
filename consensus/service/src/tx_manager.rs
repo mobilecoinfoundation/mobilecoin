@@ -23,7 +23,7 @@ use mc_transaction_core::{
     Block, BlockContents, BlockSignature,
 };
 use mockall::*;
-use std::{collections::BTreeSet, iter::FromIterator};
+use std::collections::BTreeSet;
 
 #[derive(Clone, Debug, Fail)]
 pub enum TxManagerError {
@@ -216,30 +216,25 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces> TxManager for TxManage
         Ok(well_formed_tx_context)
     }
 
-    /// Remove expired transactions from the cache and return their hashes.
-    fn remove_expired(&mut self, cur_block: u64) -> HashSet<TxHash> {
-        let hashes_before_purge = HashSet::from_iter(self.well_formed_cache.keys().cloned());
+    /// Remove expired transactions.
+    fn remove_expired(&mut self, block_index: u64) -> HashSet<TxHash> {
+        let (expired, retained): (HashMap<_, _>, HashMap<_, _>) = self
+            .well_formed_cache
+            .drain()
+            .partition(|(_, entry)| entry.context().tombstone_block() < block_index);
 
-        self.well_formed_cache
-            .retain(|_k, entry| entry.context().tombstone_block() >= cur_block);
+        self.well_formed_cache = retained;
 
-        let hashes_after_purge = HashSet::from_iter(self.well_formed_cache.keys().cloned());
-        let purged_hashes = hashes_before_purge
-            .difference(&hashes_after_purge)
-            .cloned()
-            .collect::<HashSet<_>>();
         log::debug!(
             self.logger,
-            "cleared {} ({:?}) expired txs, left with {} ({:?})",
-            purged_hashes.len(),
-            purged_hashes,
-            hashes_after_purge.len(),
-            hashes_after_purge,
+            "Removed {} expired transactions, left with {}",
+            expired.len(),
+            self.well_formed_cache.len(),
         );
 
         counters::TX_CACHE_NUM_ENTRIES.set(self.well_formed_cache.len() as i64);
 
-        purged_hashes
+        expired.into_iter().map(|(tx_hash, _)| tx_hash).collect()
     }
 
     /// Returns the list of hashes inside `tx_hashes` that are not inside the cache.
@@ -374,7 +369,7 @@ mod tx_manager_tests {
     };
     use rand::{rngs::StdRng, SeedableRng};
 
-    // ConsensusEnclave inherits from ReportableEnclave, so the traits have o be re-typed here.
+    // ConsensusEnclave inherits from ReportableEnclave, so the traits have to be re-typed here.
     // Splitting the traits apart might help because TxManager only uses a few of these functions.
     mock! {
         Enclave {}
@@ -442,7 +437,7 @@ mod tx_manager_tests {
 
     #[test_with_logger]
     // Should return Ok when a well-formed Tx is (re)-inserted.
-    fn test_insert_proposed_tx_ok(logger: Logger) {
+    fn test_insert_ok(logger: Logger) {
         let tx_context = TxContext::default();
         let tx_hash = tx_context.tx_hash;
 
@@ -487,7 +482,7 @@ mod tx_manager_tests {
     #[test_with_logger]
     // Should return return an error when a not well-formed Tx is inserted.
     // Here, the untrusted system says the Tx is not well-formed.
-    fn test_insert_proposed_tx_error_untrusted(logger: Logger) {
+    fn test_insert_error_untrusted(logger: Logger) {
         let tx_context = TxContext::default();
 
         let mut mock_untrusted = MockUntrustedInterfaces::new();
@@ -508,7 +503,7 @@ mod tx_manager_tests {
     #[test_with_logger]
     // Should return return an error when a not well-formed Tx is inserted.
     // Here, the enclave says the Tx is not well-formed.
-    fn test_insert_proposed_tx_error_trusted(logger: Logger) {
+    fn test_insert_error_trusted(logger: Logger) {
         let tx_context = TxContext::default();
 
         let mut mock_untrusted = MockUntrustedInterfaces::new();
@@ -530,7 +525,57 @@ mod tx_manager_tests {
         assert_eq!(tx_manager.well_formed_cache.len(), 0);
     }
 
-    // TODO: remove_expired
+    #[test_with_logger]
+    // Should remove all transactions that have expired by the given slot.
+    fn test_remove_expired(logger: Logger) {
+        let mock_untrusted = MockUntrustedInterfaces::new();
+        let mock_enclave = MockEnclave::new();
+        let mut tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
+
+        // Fill the cache with entries that have different tombstone blocks.
+        for tombstone_block in 10..24 {
+            let context = WellFormedTxContext::new(
+                Default::default(),
+                TxHash([tombstone_block as u8; 32]),
+                tombstone_block,
+                Default::default(),
+                Default::default(),
+                Default::default(),
+            );
+
+            let cache_entry = CacheEntry {
+                encrypted_tx: Default::default(),
+                context: context.clone(),
+            };
+
+            tx_manager
+                .well_formed_cache
+                .insert(context.tx_hash().clone(), cache_entry);
+        }
+
+        assert_eq!(tx_manager.well_formed_cache.len(), 14);
+
+        {
+            // By block index 10, none have expired.
+            let removed = tx_manager.remove_expired(10);
+            assert_eq!(removed.len(), 0);
+            assert_eq!(tx_manager.well_formed_cache.len(), 14);
+        }
+
+        {
+            // By block index 15, some have expired.
+            let removed = tx_manager.remove_expired(15);
+            assert_eq!(removed.len(), 5);
+            assert_eq!(tx_manager.well_formed_cache.len(), 9);
+        }
+
+        {
+            // By block index 24, all have expired.
+            let removed = tx_manager.remove_expired(24);
+            assert_eq!(removed.len(), 9);
+            assert_eq!(tx_manager.well_formed_cache.len(), 0);
+        }
+    }
 
     // TODO: missing_hashes
 
