@@ -256,19 +256,12 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces> TxManager for TxManage
     /// Validate the transaction corresponding to the given hash.
     fn validate(&self, tx_hash: &TxHash) -> TxManagerResult<()> {
         match self.well_formed_cache.get(tx_hash) {
-            None => {
-                log::error!(
-                    self.logger,
-                    "attempting to validate non-existent tx hash {:?}",
-                    tx_hash
-                );
-                Err(TxManagerError::NotInCache(*tx_hash))
-            }
             Some(entry) => {
                 let _timer = counters::VALIDATE_TX_TIME.start_timer();
                 self.untrusted.is_valid(entry.context())?;
                 Ok(())
             }
+            None => Err(TxManagerError::NotInCache(*tx_hash)),
         }
     }
 
@@ -537,6 +530,90 @@ mod tx_manager_tests {
         assert_eq!(tx_manager.well_formed_cache.len(), 0);
     }
 
+    // TODO: remove_expired
+
+    // TODO: missing_hashes
+
+    #[test_with_logger]
+    // Should return Ok if the transaction is in the cache and is valid.
+    fn test_validate_ok(logger: Logger) {
+        let tx_context = TxContext::default();
+
+        let mut mock_untrusted = MockUntrustedInterfaces::new();
+
+        // Untrusted's validate check should be called and return Ok.
+        mock_untrusted
+            .expect_is_valid()
+            .times(1)
+            .return_const(Ok(()));
+
+        // The enclave is not called because its checks are "well-formed-ness" checks.
+        let mock_enclave = MockEnclave::new();
+
+        let mut tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
+
+        // Add this transaction to the cache.
+        let cache_entry = CacheEntry {
+            encrypted_tx: Default::default(),
+            context: Default::default(),
+        };
+        tx_manager
+            .well_formed_cache
+            .insert(tx_context.tx_hash.clone(), cache_entry);
+
+        assert!(tx_manager.validate(&tx_context.tx_hash).is_ok());
+    }
+
+    #[test_with_logger]
+    // Should return Err if the transaction is not in the cache.
+    fn test_validate_err_not_in_cache(logger: Logger) {
+        let tx_context = TxContext::default();
+
+        // The method should return before calling untrusted.
+        let mock_untrusted = MockUntrustedInterfaces::new();
+
+        // The enclave is not called because its checks are "well-formed-ness" checks.
+        let mock_enclave = MockEnclave::new();
+
+        let tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
+        // TODO: check type of error.
+        assert!(tx_manager.validate(&tx_context.tx_hash).is_err());
+    }
+
+    #[test_with_logger]
+    // Should return Err if the transaction is in the cache (i.e., well-formed) but not valid.
+    fn test_validate_err_not_valid(logger: Logger) {
+        let tx_context = TxContext::default();
+
+        // The method should return before calling untrusted.
+        let mut mock_untrusted = MockUntrustedInterfaces::new();
+
+        // Untrusted's validate check should be called and return Err.
+        mock_untrusted
+            .expect_is_valid()
+            .times(1)
+            .return_const(Err(TransactionValidationError::ContainsSpentKeyImage));
+
+        // The enclave is not called because its checks are "well-formed-ness" checks.
+        let mock_enclave = MockEnclave::new();
+
+        let mut tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
+
+        // Add this transaction to the cache.
+        let cache_entry = CacheEntry {
+            encrypted_tx: Default::default(),
+            context: Default::default(),
+        };
+        tx_manager
+            .well_formed_cache
+            .insert(tx_context.tx_hash.clone(), cache_entry);
+
+        // TODO: check type of error.
+        assert!(tx_manager.validate(&tx_context.tx_hash).is_err());
+    }
+
+    // TODO: combine
+
     #[test_with_logger]
     fn test_hashes_to_block(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
@@ -670,4 +747,10 @@ mod tx_manager_tests {
         // The ledger was previously initialized with 3 blocks.
         assert_eq!(block.index, 3);
     }
+
+    // TODO: encrypt_for_peer
+
+    // TODO: get_encrypted_tx
+
+    // TODO: num_entries
 }
