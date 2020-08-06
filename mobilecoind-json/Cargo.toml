@@ -12,6 +12,7 @@ path = "src/bin/main.rs"
 mc-api = { path = "../api" }
 mc-common = { path = "../common", features = ["loggers"] }
 mc-mobilecoind-api = { path = "../mobilecoind/api" }
+mc-util-grpc = { path = "../util/grpc" }
 
 grpcio = "0.6.0"
 hex = "0.4"
