@@ -944,10 +944,31 @@ mod tx_manager_tests {
     }
 
     #[test_with_logger]
-    #[ignore]
     // Should return cache_entry.encrypted_tx if it is in the cache.
-    fn test_get_encrypted_tx(_logger: Logger) {
-        unimplemented!()
+    fn test_get_encrypted_tx(logger: Logger) {
+        let mock_untrusted = MockUntrustedInterfaces::new();
+        let mock_enclave = MockEnclave::new();
+        let mut tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
+
+        // Add a transaction to the cache.
+        let cache_entry = CacheEntry {
+            encrypted_tx: WellFormedEncryptedTx(vec![1, 2, 3]),
+            context: Default::default(),
+        };
+
+        let tx_hash = TxHash([1u8; 32]);
+        tx_manager
+            .well_formed_cache
+            .insert(tx_hash.clone(), cache_entry);
+
+        // Get something that is in the cache.
+        assert_eq!(
+            tx_manager.get_encrypted_tx(&tx_hash),
+            Some(WellFormedEncryptedTx(vec![1, 2, 3]))
+        );
+
+        // Get something that is not in the cache.
+        assert_eq!(tx_manager.get_encrypted_tx(&TxHash([88u8; 32])), None);
     }
 
     #[test_with_logger]
