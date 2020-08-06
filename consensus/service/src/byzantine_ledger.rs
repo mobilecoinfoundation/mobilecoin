@@ -519,14 +519,11 @@ impl<
                 self.scp.clear_pending_slots();
 
                 // Clear any pending values that might no longer be valid.
-                let tx_manager = self.tx_manager.clone();
-                self.pending_values.retain(|tx_hash| {
-                    tx_manager
-                        .lock()
-                        .expect("Lock poisoned")
-                        .validate(tx_hash)
-                        .is_ok()
-                });
+                {
+                    let tx_manager = self.tx_manager.lock().expect("Lock poisoned");
+                    self.pending_values
+                        .retain(|tx_hash| tx_manager.validate(tx_hash).is_ok());
+                }
 
                 // Re-construct the BTreeMap with the remaining values, using the old timestamps.
                 let mut new_pending_values_map = BTreeMap::new();

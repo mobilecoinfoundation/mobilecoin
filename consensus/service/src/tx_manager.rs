@@ -838,7 +838,6 @@ mod tx_manager_tests {
     }
 
     #[test_with_logger]
-    #[ignore]
     // Should call enclave.txs_for_peer
     fn test_encrypt_for_peer_ok(logger: Logger) {
         let mock_untrusted = MockUntrustedInterfaces::new();
