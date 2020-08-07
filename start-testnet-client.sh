@@ -39,7 +39,7 @@ ${TARGETDIR}/mobilecoind \
         --tx-source-url https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node1.test.mobilecoin.com/ \
         --tx-source-url https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node2.test.mobilecoin.com/ \
         --mobilecoind-db /tmp/transaction-db \
-        --service-port 4444 &> $(pwd)/mobilecoind.log &
+        --listen-uri insecure-mobilecoind://127.0.0.1:4444/ &> $(pwd)/mobilecoind.log &
 
 pid=$!
 

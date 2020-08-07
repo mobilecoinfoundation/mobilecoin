@@ -2759,6 +2759,7 @@ dependencies = [
  "mc-transaction-std",
  "mc-util-build-grpc",
  "mc-util-build-script",
+ "mc-util-uri",
  "protobuf",
  "rand 0.7.3",
 ]
@@ -2772,6 +2773,7 @@ dependencies = [
  "mc-api",
  "mc-common",
  "mc-mobilecoind-api",
+ "mc-util-grpc",
  "protobuf",
  "rocket",
  "rocket_contrib",
@@ -3090,6 +3092,7 @@ dependencies = [
  "hex 0.4.2",
  "indicatif",
  "mc-api",
+ "mc-common",
  "mc-mobilecoind-api",
  "mc-util-b58-payloads",
  "mc-util-grpc",

@@ -17,7 +17,7 @@ data:
       --ledger-db /ledger
       --poll-interval 1
       --mobilecoind-db /mobilecoind
-      --service-port 3229
+      --listen-uri insecure-mobilecoind://0.0.0.0:3229/
 
     stdout_logfile=/dev/fd/1
     stdout_logfile_maxbytes=0

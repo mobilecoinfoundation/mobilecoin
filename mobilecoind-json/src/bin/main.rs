@@ -4,11 +4,12 @@
 
 #![feature(proc_macro_hygiene, decl_macro)]
 
-use grpcio::{ChannelBuilder, ChannelCredentialsBuilder};
+use grpcio::ChannelBuilder;
 use mc_api::external::{CompressedRistretto, KeyImage, PublicAddress};
 use mc_common::logger::{create_app_logger, log, o};
-use mc_mobilecoind_api::mobilecoind_api_grpc::MobilecoindApiClient;
+use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri};
 use mc_mobilecoind_json::data_types::*;
+use mc_util_grpc::ConnectionUriGrpcioChannel;
 use protobuf::RepeatedField;
 use rocket::{get, post, routes};
 use rocket_contrib::json::Json;
@@ -29,12 +30,8 @@ pub struct Config {
     pub listen_port: u16,
 
     /// MobileCoinD URI.
-    #[structopt(long, default_value = "127.0.0.1:4444")]
-    pub mobilecoind_host: String,
-
-    /// SSL
-    #[structopt(long)]
-    pub use_ssl: bool,
+    #[structopt(long, default_value = "insecure-mobilecoind://127.0.0.1/")]
+    pub mobilecoind_uri: MobilecoindUri,
 }
 
 /// Connection to the mobilecoind client
@@ -397,21 +394,15 @@ fn main() {
         "Starting mobilecoind HTTP gateway on {}:{}, connecting to {}",
         config.listen_host,
         config.listen_port,
-        config.mobilecoind_host
+        config.mobilecoind_uri,
     );
 
     // Set up the gRPC connection to the mobilecoind client
     let env = Arc::new(grpcio::EnvBuilder::new().build());
-    let ch_builder = ChannelBuilder::new(env)
+    let ch = ChannelBuilder::new(env)
         .max_receive_message_len(std::i32::MAX)
-        .max_send_message_len(std::i32::MAX);
-
-    let ch = if config.use_ssl {
-        let creds = ChannelCredentialsBuilder::new().build();
-        ch_builder.secure_connect(&config.mobilecoind_host, creds)
-    } else {
-        ch_builder.connect(&config.mobilecoind_host)
-    };
+        .max_send_message_len(std::i32::MAX)
+        .connect_to_uri(&config.mobilecoind_uri, &logger);
 
     let mobilecoind_api_client = MobilecoindApiClient::new(ch);
 

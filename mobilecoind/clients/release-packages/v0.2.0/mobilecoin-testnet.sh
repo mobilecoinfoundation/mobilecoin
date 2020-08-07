@@ -8,7 +8,7 @@ export RUST_LOG=INFO
       --peer mc://node2.test.mobilecoin.com/ \
       --tx-source-url https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node1.test.mobilecoin.com/ \
       --mobilecoind-db /tmp/mobilecoin/0.2.0/wallet \
-      --service-port 4444 > /tmp/mobilecoind.log 2>&1 &
+      --listen-uri insecure-mobilecoind://127.0.0.1:4444/ > /tmp/mobilecoind.log 2>&1 &
 echo Daemon is starting up
 sleep 5
 

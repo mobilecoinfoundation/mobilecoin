@@ -305,7 +305,7 @@ class Mobilecoind:
             f'--ledger-db {self.ledger_db}',
             f'--poll-interval 1',
             f'--mobilecoind-db {self.mobilecoind_db}',
-            f'--service-port {self.client_port}',
+            f'--listen-uri insecure-mobilecoind://0.0.0.0:{self.client_port}/',
             f'--watcher-db {self.watcher_db}',
         ] + peers + tx_srcs)
 

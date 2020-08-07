@@ -21,15 +21,17 @@ use mc_crypto_keys::RistrettoPrivate;
 use mc_crypto_rand::{CryptoRng, RngCore};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::PollingNetworkState;
-use mc_mobilecoind_api::mobilecoind_api_grpc::MobilecoindApiClient;
+use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri};
 use mc_transaction_core::{
     ring_signature::KeyImage, tx::TxOut, Block, BlockContents, BLOCK_VERSION,
 };
 use mc_util_from_random::FromRandom;
+use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_uri::ConnectionUri;
 use mc_watcher::watcher_db::WatcherDB;
 use std::{
     path::PathBuf,
+    str::FromStr,
     sync::{
         atomic::{AtomicUsize, Ordering::SeqCst},
         Arc, Mutex,
@@ -223,7 +225,7 @@ fn setup_server(
     ledger_db: LedgerDB,
     mobilecoind_db: Database,
     watcher_db: Option<WatcherDB>,
-    test_port: u16,
+    uri: &MobilecoindUri,
 ) -> (
     Service,
     ConnectionManager<MockBlockchainConnection<LedgerDB>>,
@@ -265,7 +267,7 @@ fn setup_server(
         watcher_db,
         transactions_manager,
         network_state,
-        test_port,
+        uri,
         None,
         logger,
     );
@@ -273,14 +275,13 @@ fn setup_server(
     (service, conn_manager)
 }
 
-fn setup_client(test_port: u16) -> MobilecoindApiClient {
-    let address = format!("127.0.0.1:{}", test_port);
+fn setup_client(uri: &MobilecoindUri, logger: &Logger) -> MobilecoindApiClient {
     let env = Arc::new(
         EnvBuilder::new()
-            .name_prefix(format!("gRPC-{}", address))
+            .name_prefix("gRPC-mobilecoind-tests")
             .build(),
     );
-    let ch = ChannelBuilder::new(env).connect(&address);
+    let ch = ChannelBuilder::new(env).connect_to_uri(uri, logger);
     MobilecoindApiClient::new(ch)
 }
 
@@ -318,16 +319,20 @@ pub fn get_testing_environment(
         &mut rng,
     );
     let port = get_free_port();
+
+    let uri =
+        MobilecoindUri::from_str(&format!("insecure-mobilecoind://127.0.0.1:{}/", port)).unwrap();
+
     log::debug!(logger, "Setting up server {:?}", port);
     let (server, server_conn_manager) = setup_server(
         logger.clone(),
         ledger_db.clone(),
         mobilecoind_db.clone(),
         None,
-        port,
+        &uri,
     );
     log::debug!(logger, "Setting up client {:?}", port);
-    let client = setup_client(port);
+    let client = setup_client(&uri, &logger);
 
     for data in monitors {
         mobilecoind_db

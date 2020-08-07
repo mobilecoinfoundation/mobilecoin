@@ -28,7 +28,7 @@ ps -ef | grep mobilecoind | grep -v grep | awk '{print $2}' | xargs kill
         --tx-source-url https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node1.test.mobilecoin.com/ \
         --tx-source-url https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node2.test.mobilecoin.com/ \
         --mobilecoind-db /tmp/transaction-db \
-        --service-port 4444 \
+        --listen-uri insecure-mobilecoind://0.0.0.0:4444/ \
         --watcher-db /tmp/watcher-db &
 
 # run the blockchain explorer flask site
