@@ -188,6 +188,9 @@ pipeline {
                   // Delete the consensus nodes, and {discovery, mobilecoind, ledger} nodes if any
                   sh(script: 'for i in 03* 04*; do kubectl delete --ignore-not-found -n ${NETWORK} -f ${i}; done')
 
+                  // Update the 01* configs
+                  sh(script: 'for i in 01*yaml; do kubectl apply -n ${NETWORK} -f ${i}; done')
+                  
                   // Launch the consensus node deployments
                   sh(script: 'for i in 03*yaml; do kubectl apply -n ${NETWORK} -f ${i}; done')
 
