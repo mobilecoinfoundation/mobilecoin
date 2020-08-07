@@ -7,14 +7,14 @@ use std::{
 };
 
 pub trait TestVectorReader: Sized {
-    fn from_json(dir: &str) -> Vec<DataTestCaseDesc<Self>>;
+    fn from_jsonl(dir: &str) -> Vec<DataTestCaseDesc<Self>>;
 }
 
 impl<T: TestVector> TestVectorReader for T
 where
     for<'a> Self: de::Deserialize<'a>,
 {
-    fn from_json(dir: &str) -> Vec<DataTestCaseDesc<Self>> {
+    fn from_jsonl(dir: &str) -> Vec<DataTestCaseDesc<Self>> {
         let filename = format!("{}/{}/{}.jsonl", dir, Self::MODULE_SUBDIR, Self::FILE_NAME);
         let file = File::open(filename.clone())
             .unwrap_or_else(|_| panic!("cannot read file '{}'", filename));

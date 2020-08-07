@@ -496,7 +496,7 @@ mod account_key_tests {
         );
     }
 
-    #[data(DefaultSubaddrKeysFromAcctPrivKeys::from_json("test-vectors/vectors"))]
+    #[data(DefaultSubaddrKeysFromAcctPrivKeys::from_jsonl("test-vectors/vectors"))]
     #[test]
     fn default_subaddr_keys_from_acct_priv_keys(case: DefaultSubaddrKeysFromAcctPrivKeys) {
         let account_key = AccountKey::new(&case.spend_private_key, &case.view_private_key);
@@ -520,7 +520,7 @@ mod account_key_tests {
         );
     }
 
-    #[data(SubaddrKeysFromAcctPrivKeys::from_json("test-vectors/vectors"))]
+    #[data(SubaddrKeysFromAcctPrivKeys::from_jsonl("test-vectors/vectors"))]
     #[test]
     fn subaddr_keys_from_acct_priv_keys(case: SubaddrKeysFromAcctPrivKeys) {
         let account_key = AccountKey::new(&case.spend_private_key, &case.view_private_key);

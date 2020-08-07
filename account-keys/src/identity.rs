@@ -206,7 +206,7 @@ mod testing {
         })
     }
 
-    #[data(AcctPrivKeysFromRootEntropy::from_json("test-vectors/vectors"))]
+    #[data(AcctPrivKeysFromRootEntropy::from_jsonl("test-vectors/vectors"))]
     #[test]
     fn acct_priv_keys_from_root_entropy(case: AcctPrivKeysFromRootEntropy) {
         let account_key = AccountKey::from(&RootIdentity::from(&case.root_entropy));

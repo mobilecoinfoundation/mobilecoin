@@ -30,7 +30,7 @@ pub struct TestVectorWriter<T: TestVector> {
 }
 
 impl<T: TestVector + ser::Serialize> TestVectorWriter<T> {
-    pub fn write_json(dir: &str) -> Result<(), Error> {
+    pub fn write_jsonl(dir: &str) -> Result<(), Error> {
         let filepath = format!("{}/{}/{}.jsonl", dir, T::MODULE_SUBDIR, T::FILE_NAME);
 
         if let Some(dir) = Path::new(&filepath).parent() {
