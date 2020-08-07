@@ -25,7 +25,12 @@ fn sample_keys_determinism() {
     let tempdir = TempDir::new("keys").unwrap();
     env::set_current_dir(&tempdir).unwrap();
     assert!(Command::new(sample_keys_bin.clone())
-        .args(&["--num", "10", "--acct", "discovery.example.mobilecoin.com"])
+        .args(&[
+            "--num",
+            "10",
+            "--fog-report-url",
+            "discovery.example.mobilecoin.com"
+        ])
         .status()
         .expect("sample_keys failed")
         .success());
@@ -33,7 +38,12 @@ fn sample_keys_determinism() {
     let tempdir2 = TempDir::new("keys").unwrap();
     env::set_current_dir(&tempdir2).unwrap();
     assert!(Command::new(sample_keys_bin)
-        .args(&["--num", "10", "--acct", "discovery.example.mobilecoin.com"])
+        .args(&[
+            "--num",
+            "10",
+            "--fog-report-url",
+            "discovery.example.mobilecoin.com"
+        ])
         .status()
         .expect("sample_keys failed")
         .success());
@@ -63,7 +73,12 @@ fn sample_keys_determinism2() {
     let tempdir = TempDir::new("keys").unwrap();
     env::set_current_dir(&tempdir).unwrap();
     assert!(Command::new(sample_keys_bin.clone())
-        .args(&["--num", "10", "--acct", "discovery.example.mobilecoin.com"])
+        .args(&[
+            "--num",
+            "10",
+            "--fog-report-url",
+            "discovery.example.mobilecoin.com"
+        ])
         .status()
         .expect("sample_keys failed")
         .success());
@@ -71,7 +86,12 @@ fn sample_keys_determinism2() {
     let tempdir2 = TempDir::new("keys").unwrap();
     env::set_current_dir(&tempdir2).unwrap();
     assert!(Command::new(sample_keys_bin)
-        .args(&["--num", "20", "--acct", "discovery.example.mobilecoin.com"])
+        .args(&[
+            "--num",
+            "20",
+            "--fog-report-url",
+            "discovery.example.mobilecoin.com"
+        ])
         .status()
         .expect("sample_keys failed")
         .success());
