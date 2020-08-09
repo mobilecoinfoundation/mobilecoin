@@ -2,6 +2,7 @@
 
 //! Code that is common to both enclave and untrusted.
 
+use mc_common::logger::slog;
 use slog::KV;
 
 use alloc::string::{String, ToString};

@@ -26,7 +26,6 @@ mc-ledger-db = { path = "../../ledger/db" }
 mc-ledger-sync = { path = "../../ledger/sync" }
 mc-peers = { path = "../../peers" }
 mc-sgx-report-cache-untrusted = { path = "../../sgx/report-cache/untrusted" }
-mc-sgx-slog = { path = "../../sgx/slog", features = ["std"] }
 mc-sgx-urts = { path = "../../sgx/urts" }
 mc-transaction-core = { path = "../../transaction/core"}
 mc-transaction-std = { path = "../../transaction/std"}

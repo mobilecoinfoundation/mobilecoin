@@ -111,6 +111,7 @@ rpath = true
 [patch.crates-io]
 prost = { git = "https://github.com/danburkert/prost", rev = "6113789f70b69709820becba4242824b4fb3ffec" }
 prost-derive = { git = "https://github.com/danburkert/prost", rev = "6113789f70b69709820becba4242824b4fb3ffec" }
+slog = { git = "https://github.com/garbageslam/slog", rev = "cc1562258b81353426d17a55b7447256fa6eabbf" }
 dialoguer = { git = "https://github.com/mitsuhiko/dialoguer", rev = "a0c6c1e" }
 console = { git = "https://github.com/mitsuhiko/console", rev = "1307823" }
 

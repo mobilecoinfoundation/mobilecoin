@@ -2213,7 +2213,6 @@ dependencies = [
  "mc-sgx-debug-edl",
  "mc-sgx-panic-edl",
  "mc-sgx-report-cache-api",
- "mc-sgx-slog",
  "mc-sgx-slog-edl",
  "mc-sgx-types",
  "mc-sgx-urts",
@@ -2387,7 +2386,6 @@ dependencies = [
  "mc-peers-test-utils",
  "mc-sgx-build",
  "mc-sgx-report-cache-untrusted",
- "mc-sgx-slog",
  "mc-sgx-urts",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
@@ -3041,9 +3039,9 @@ name = "mc-sgx-slog"
 version = "0.5.0"
 dependencies = [
  "cfg-if",
+ "mc-common",
+ "mc-sgx-build",
  "prost",
- "slog",
- "slog-scope",
 ]
 
 [[package]]
@@ -3062,9 +3060,12 @@ name = "mc-sgx-urts"
 version = "0.5.0"
 dependencies = [
  "lazy_static",
+ "mc-common",
  "mc-sgx-build",
  "mc-sgx-libc-types",
+ "mc-sgx-slog",
  "mc-sgx-types",
+ "prost",
  "rustc-demangle",
 ]
 
@@ -5017,9 +5018,8 @@ checksum = "c111b5bd5695e56cffe5129854aa230b39c93a305372fdbb2668ca2394eea9f8"
 
 [[package]]
 name = "slog"
-version = "2.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1cc9c640a4adbfbcc11ffb95efe5aa7af7309e002adab54b185507dbf2377b99"
+version = "2.6.0"
+source = "git+https://github.com/garbageslam/slog?rev=cc1562258b81353426d17a55b7447256fa6eabbf#cc1562258b81353426d17a55b7447256fa6eabbf"
 
 [[package]]
 name = "slog-async"
