@@ -10,6 +10,7 @@ mod error;
 mod messages;
 
 pub use crate::{error::Error, messages::EnclaveCall};
+pub use mc_sgx_report_cache_api::ReportableEnclave;
 
 use alloc::{string::String, vec::Vec};
 use core::{cmp::Ordering, hash::Hash, result::Result as StdResult};
@@ -19,7 +20,6 @@ use mc_attest_enclave_api::{
 };
 use mc_common::ResponderId;
 use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Public, X25519Public};
-pub use mc_sgx_report_cache_api::ReportableEnclave;
 use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{Tx, TxHash, TxOutMembershipProof},
