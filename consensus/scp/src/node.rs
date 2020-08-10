@@ -28,7 +28,7 @@ pub struct Node<V: Value, ValidationError: Display> {
     pub Q: QuorumSet,
 
     /// Map of last few slot indexes -> slots.
-    pub pending: LruCache<SlotIndex, Slot<V, ValidationError>>,
+    pub pending: LruCache<SlotIndex, Box<dyn ScpSlot<V>>>,
 
     /// Map of last few slot indexes -> externalized slots.
     pub externalized: LruCache<SlotIndex, ExternalizePayload<V>>,
@@ -47,7 +47,7 @@ pub struct Node<V: Value, ValidationError: Display> {
     pub scp_timebase: Duration,
 }
 
-impl<V: Value, ValidationError: Display> Node<V, ValidationError> {
+impl<V: Value, ValidationError: Display + 'static> Node<V, ValidationError> {
     /// Creates a new Node.
     pub fn new(
         ID: NodeID,
@@ -69,10 +69,7 @@ impl<V: Value, ValidationError: Display> Node<V, ValidationError> {
     }
 
     /// Get or crate a pending slot.
-    fn get_or_create_pending_slot(
-        &mut self,
-        slot_index: SlotIndex,
-    ) -> &mut Slot<V, ValidationError> {
+    fn get_or_create_pending_slot(&mut self, slot_index: SlotIndex) -> &mut Box<dyn ScpSlot<V>> {
         // Create new Slot if necessary.
         if !self.pending.contains(&slot_index) {
             let mut slot = Slot::new(
@@ -85,7 +82,7 @@ impl<V: Value, ValidationError: Display> Node<V, ValidationError> {
             );
             slot.base_round_interval = self.scp_timebase;
             slot.base_ballot_interval = self.scp_timebase;
-            self.pending.put(slot_index, slot);
+            self.pending.put(slot_index, Box::new(slot));
         }
 
         // Return slot.
@@ -158,7 +155,7 @@ pub trait ScpNode<V: Value>: Send {
     fn clear_pending_slots(&mut self);
 }
 
-impl<V: Value, ValidationError: Display> ScpNode<V> for Node<V, ValidationError> {
+impl<V: Value, ValidationError: Display + 'static> ScpNode<V> for Node<V, ValidationError> {
     fn node_id(&self) -> NodeID {
         self.ID.clone()
     }
