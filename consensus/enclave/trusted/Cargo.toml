@@ -61,8 +61,13 @@ debug-assertions = false
 overflow-checks = false
 
 [patch.crates-io]
+# prost is patched with no_std support (https://github.com/danburkert/prost/pull/319)
+# current revision is from jun 13 2020, waiting for a new prost release
+# https://github.com/danburkert/prost/issues/329
 prost = { git = "https://github.com/danburkert/prost", rev = "6113789f70b69709820becba4242824b4fb3ffec" }
 prost-derive = { git = "https://github.com/danburkert/prost", rev = "6113789f70b69709820becba4242824b4fb3ffec" }
+# slog is patched in order to build in no_std config with dynamic_keys feature on
+# https://github.com/slog-rs/slog/pull/268
 slog = { git = "https://github.com/garbageslam/slog", rev = "cc1562258b81353426d17a55b7447256fa6eabbf" }
 
 [workspace]
