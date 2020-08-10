@@ -27,6 +27,7 @@ use core::cmp;
 use maplit::{btreeset, hashset};
 use serde::{Deserialize, Serialize};
 
+use crate::slot_state::SlotState;
 #[cfg(test)]
 use mockall::*;
 
@@ -48,7 +49,7 @@ pub enum Phase {
 
 /// A Single slot of the SCP protocol.
 #[cfg_attr(test, automock)]
-pub trait ScpSlot<V: Value> {
+pub trait ScpSlot<V: Value>: Send {
     /// Get metrics about the slot.
     fn get_metrics(&self) -> SlotMetrics;
 
@@ -60,6 +61,9 @@ pub trait ScpSlot<V: Value> {
 
     /// Handles an incoming message from a peer.
     fn handle(&mut self, msg: &Msg<V>) -> Result<Option<Msg<V>>, String>;
+
+    /// Additional debug info, e.g. a JSON representation of the Slot's state.
+    fn get_debug_snapshot(&self) -> String;
 }
 
 /// The SCP slot.
@@ -326,6 +330,10 @@ impl<V: Value, ValidationError: Display> ScpSlot<V> for Slot<V, ValidationError>
         self.do_ballot_protocol();
 
         Ok(self.out_msg())
+    }
+
+    fn get_debug_snapshot(&self) -> String {
+        serde_json::to_string(&SlotState::from(self)).expect("SlotState should yield JSON")
     }
 }
 

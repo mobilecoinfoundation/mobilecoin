@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 //! This crate provides a logging framework for recording and replaying SCP messages.
-use crate::{slot::SlotMetrics, slot_state::SlotState, Msg, QuorumSet, ScpNode, SlotIndex, Value};
+use crate::{slot::SlotMetrics, Msg, QuorumSet, ScpNode, SlotIndex, Value};
 use mc_common::{
     logger::{log, Logger},
     NodeID,
@@ -257,7 +257,7 @@ impl<V: Value, N: ScpNode<V>> ScpNode<V> for LoggingScpNode<V, N> {
         self.node.get_slot_metrics(slot_index)
     }
 
-    fn get_slot_state(&mut self, slot_index: SlotIndex) -> Option<SlotState<V>> {
+    fn get_slot_state(&mut self, slot_index: SlotIndex) -> Option<String> {
         self.node.get_slot_state(slot_index)
     }
 
