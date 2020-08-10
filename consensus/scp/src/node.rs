@@ -5,7 +5,7 @@ use crate::{
     core_types::{CombineFn, SlotIndex, ValidityFn, Value},
     msg::{ExternalizePayload, Msg, Topic},
     quorum_set::QuorumSet,
-    slot::{Slot, SlotMetrics},
+    slot::{ScpSlot, Slot, SlotMetrics},
     slot_state::SlotState,
 };
 use mc_common::{
