@@ -34,6 +34,7 @@ members = [
     "ledger/db",
     "ledger/distribution",
     "ledger/from-archive",
+    "ledger/migration",
     "ledger/sync",
     "mobilecoind",
     "mobilecoind-json",
@@ -72,6 +73,7 @@ members = [
     "util/grpc",
     "util/host-cert",
     "util/keyfile",
+    "util/lmdb",
     "util/logger-macros",
     "util/metered-channel",
     "util/metrics",
@@ -114,3 +116,8 @@ console = { git = "https://github.com/mitsuhiko/console", rev = "1307823" }
 
 # Override lmdb-rkv for a necessary bugfix (see https://github.com/mozilla/lmdb-rs/pull/80)
 lmdb-rkv = { git = "https://github.com/mozilla/lmdb-rs", rev = "df1c2f5" }
+
+# Fixes the following:
+# * Allow enabling `serde/std` without also requiring `serde_cbor/std` to be enabled.
+#   See: https://github.com/pyfisch/cbor/pull/198
+serde_cbor = { git = "https://github.com/mobilecoinofficial/cbor", rev = "4c886a7c1d523aae1ec4aa7386f402cb2f4341b5" }

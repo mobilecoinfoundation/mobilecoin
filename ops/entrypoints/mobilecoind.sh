@@ -20,4 +20,4 @@ mobilecoind \
     --ledger-db "${NODE_LEDGER_DIR}" \
     --poll-interval 1 \
     --mobilecoind-db "${MOBILECOIND_DB_DIR}" \
-    --service-port "${MOBILECOIND_SERVICE_PORT}"
+    --listen-uri "insecure-mobilecoind://0.0.0.0:${MOBILECOIND_SERVICE_PORT}/"

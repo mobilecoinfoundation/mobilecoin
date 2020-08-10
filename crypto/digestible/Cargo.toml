@@ -12,7 +12,7 @@ digest = { version = "0.8", default-features = false }
 mc-crypto-digestible-derive = { path = "./derive", optional = true }
 
 # Built-in support for dalek primitives
-ed25519-dalek = { git = "https://github.com/cbeck88/ed25519-dalek", rev = "c0b0ab31d3572de6fb01d6b4a4f052784034b0b2", default-features = false, optional = true }
+ed25519-dalek = { version = "1.0.0-pre.4", default-features = false, optional = true }
 x25519-dalek = { version = "0.6", default-features = false, optional = true }
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]

@@ -9,7 +9,7 @@ use curve25519_dalek::scalar::Scalar;
 use mc_account_keys::PublicAddress;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
 use mc_transaction_core::{
-    constants::BASE_FEE,
+    constants::MINIMUM_FEE,
     encrypted_fog_hint::EncryptedFogHint,
     fog_hint::FogHint,
     onetime_keys::compute_shared_secret,
@@ -37,7 +37,7 @@ impl TransactionBuilder {
             input_credentials: Vec::new(),
             outputs_and_shared_secrets: Vec::new(),
             tombstone_block: u64::max_value(),
-            fee: BASE_FEE,
+            fee: MINIMUM_FEE,
         }
     }
 
@@ -246,7 +246,7 @@ pub mod transaction_builder_tests {
     use super::*;
     use mc_account_keys::{AccountKey, DEFAULT_SUBADDRESS_INDEX};
     use mc_transaction_core::{
-        constants::{MAX_INPUTS, MAX_OUTPUTS},
+        constants::{MAX_INPUTS, MAX_OUTPUTS, MILLIMOB_TO_PICOMOB},
         onetime_keys::*,
         ring_signature::KeyImage,
         tx::TxOutMembershipProof,
@@ -351,7 +351,7 @@ pub mod transaction_builder_tests {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let sender = AccountKey::random(&mut rng);
         let recipient = AccountKey::random(&mut rng);
-        let value = 1475;
+        let value = 1475 * MILLIMOB_TO_PICOMOB;
 
         // Mint an initial collection of outputs, including one belonging to Alice.
         let (ring, real_index) = get_ring(3, &sender, value, &mut rng);
@@ -388,7 +388,7 @@ pub mod transaction_builder_tests {
         transaction_builder.add_input(input_credentials);
         let (_txout, confirmation) = transaction_builder
             .add_output(
-                value - BASE_FEE,
+                value - MINIMUM_FEE,
                 &recipient.default_subaddress(),
                 None,
                 &mut rng,

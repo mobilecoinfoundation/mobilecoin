@@ -2,17 +2,23 @@
 
 //! This crate provides a logging framework for recording and replaying SCP messages.
 use crate::{slot::SlotMetrics, slot_state::SlotState, Msg, QuorumSet, ScpNode, SlotIndex, Value};
-use mc_common::NodeID;
+use mc_common::{
+    logger::{log, Logger},
+    NodeID,
+};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeSet, VecDeque},
-    fs::{create_dir_all, read, read_dir, remove_dir_all, File},
+    fs::{create_dir_all, read, read_dir, remove_dir_all, remove_file, File},
     io::Write,
     marker::PhantomData,
     path::PathBuf,
 };
 
 use std::time::Instant;
+
+/// Maximum number of slot state files to keep.
+const MAX_SLOT_STATE_FILES: usize = 10;
 
 /// A node specifically for logging SCP messages.
 pub struct LoggingScpNode<V: Value, N: ScpNode<V>> {
@@ -33,6 +39,12 @@ pub struct LoggingScpNode<V: Value, N: ScpNode<V>> {
 
     /// Underlying node implementation.
     node: N,
+
+    /// List of slot state filenames that make it easy to maintain `MAX_SLOT_STATE_FILES` on disk.
+    slot_state_filenames: Vec<PathBuf>,
+
+    /// Logger
+    logger: Logger,
 
     _v: PhantomData<V>,
 }
@@ -71,7 +83,7 @@ pub struct StoredMsg<V: Value> {
 
 impl<V: Value, N: ScpNode<V>> LoggingScpNode<V, N> {
     /// Create a new LoggingScpNode.
-    pub fn new(node: N, out_path: PathBuf) -> Result<Self, String> {
+    pub fn new(node: N, out_path: PathBuf, logger: Logger) -> Result<Self, String> {
         if out_path.exists() {
             return Err(format!("{:?} already exists, refusing to re-use", out_path));
         }
@@ -97,6 +109,8 @@ impl<V: Value, N: ScpNode<V>> LoggingScpNode<V, N> {
             highest_slot_index: 0,
             msg_count: 0,
             slot_start_time: Instant::now(),
+            slot_state_filenames: Vec::new(),
+            logger,
             _v: Default::default(),
         })
     }
@@ -161,6 +175,22 @@ impl<V: Value, N: ScpNode<V>> LoggingScpNode<V, N> {
                 .map_err(|e| format!("failed creating {:?}: {:?}", file_path, e))?;
             file.write_all(&slot_as_json)
                 .map_err(|e| format!("failed writing {:?}: {:?}", file_path, e))?;
+
+            if !self.slot_state_filenames.contains(&file_path) {
+                self.slot_state_filenames.push(file_path);
+            }
+
+            if self.slot_state_filenames.len() > MAX_SLOT_STATE_FILES {
+                let file_path_to_remove = self.slot_state_filenames.remove(0);
+                if let Err(err) = remove_file(&file_path_to_remove) {
+                    log::warn!(
+                        self.logger,
+                        "Failed removing scp debug slot state file {:?}: {:?}",
+                        file_path_to_remove,
+                        err
+                    );
+                }
+            }
         }
 
         Ok(())

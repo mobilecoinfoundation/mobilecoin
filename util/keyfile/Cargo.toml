@@ -25,7 +25,7 @@ mc-crypto-rand = { path = "../../crypto/rand" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-serial = { path = "../../util/serial", features = ["std"] }
 
-hex = "0.3"
+hex = "0.4"
 rand = "0.7"
 rand_hc = "0.2.0"
 serde = "1.0"

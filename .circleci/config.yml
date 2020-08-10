@@ -1,9 +1,17 @@
 # vim: tabstop=2 softtabstop=2 shiftwidth=2 expandtab:
 
+# Notes:
+# * The new resolver has a bug that causes packages to select features non-deterministically under
+#   certain circumstances. To work around this, `--target` must be specified when using cargo. This
+#   can be removed once the bug is fixed. Similarly, `--tests` must be specified when using
+#   `cargo test` so that non-test profile builds don't bleed over.
+#   See: [MC-1731] and https://github.com/rust-lang/cargo/issues/8549
+
 version: 2.1
 
 defaults:
   builder-install: &builder-install gcr.io/mobilenode-211420/builder-install:1_12
+
   default-environment: &default-environment
     IAS_MODE: DEV
     SGX_MODE: SW
@@ -46,6 +54,7 @@ commands:
             cargo --version
             rustup --version
             sccache --version
+            command -v jq >/dev/null && jq --version
 
   env_setup:
     description: Environment Setup
@@ -59,6 +68,10 @@ commands:
             if [ -f ~/.gitconfig ]; then
               sed -i -e 's/github/git-non-exist-hub/g' ~/.gitconfig # https://github.com/rust-lang/cargo/issues/3900
             fi
+      - run:
+          name: Set utility environment variables
+          command: |
+            echo "export HOST_TARGET_TRIPLE=\"$(rustc -Vv | sed -n 's/^host: //p')\"" >> $BASH_ENV
 
   enable_sccache:
     description: Enabling sccache
@@ -239,6 +252,7 @@ commands:
       - restore-cargo-cache
       - install-ci-deps
       - env_setup
+      - print_versions
       - enable_sccache
       # Cache is only saved when building from master. We don't restore sccache on
       # master so that the cache is clean when saved.
@@ -247,29 +261,46 @@ commands:
           steps: [ restore-sccache-cache ]
       - prefetch-cargo-deps
 
-  post-build:
-    steps:
-      - record-sccache-cache-stats
-
   run-tests:
     parameters:
       test_command:
         type: string
-        default: cargo test --frozen
+        default: cargo test --frozen --target "$HOST_TARGET_TRIPLE" --no-fail-fast --tests
     steps:
       - run:
           name: Run all tests
           command: |
-            << parameters.test_command >> -- -Z unstable-options --format json --report-time \
-              | tee /tmp/test-results.json
-            cat /tmp/test-results.json | cargo2junit > /tmp/test-results.xml || true
+            mkdir -p /tmp/test-results
+
+            # Run tests, then convert the cargo json results into junit xml format.
+            #
+            # Note: Using curly braces ensures that the conversion is run even if the tests fail,
+            # while still allowing the exit code from the tests to be propagated. Using `tee` to
+            # pipe the output to a file before converting ensures that the tests are not
+            # interrupted if conversion fails. `|| true` is added so that the test as a whole does
+            # not fail even if conversion fails. This is especially necessary because the
+            # conversion tool must parse all test output, including log output, in order to parse
+            # the test results, and unfortunately Cargo does not always output the test results in
+            # such a way that is cleanly parsable.
+            << parameters.test_command >> -- \
+                -Z unstable-options --format json --report-time \
+              | {
+                  tee /tmp/test-results/output.log
+                  cat /tmp/test-results/output.log \
+                    | cargo2junit > /tmp/test-results/results.xml \
+                    || true
+                }
+
+  post-build:
+    steps:
+      - record-sccache-cache-stats
 
   post-test:
     steps:
       - store_test_results:
-          path: /tmp/test-results.xml
+          path: /tmp/test-results
       - store_artifacts:
-          path: /tmp/test-results.xml
+          path: /tmp/test-results
 
   check-dirty-git:
     steps:
@@ -416,14 +447,14 @@ jobs:
       - prepare-for-build
       - run:
           name: Cargo check (SW/IAS dev)
-          command: cargo check --frozen
+          command: cargo check --frozen --target "$HOST_TARGET_TRIPLE"
       - check-dirty-git
       - run:
           name: Cargo check (HW/IAS prod)
           environment:
             SGX_MODE: HW
             IAS_MODE: PROD
-          command: cargo check --frozen
+          command: cargo check --frozen --target "$HOST_TARGET_TRIPLE"
       - check-dirty-git
 
       # The lint and saving of caches happens here since this job is faster than the run-all-tests job.
@@ -456,9 +487,9 @@ jobs:
       - prepare-for-build:
           os: macos
       - run:
-          name: Cargo check (SW/IAS dev)
+          name: Cargo check
           command: |
-            cargo check --workspace --frozen \
+            cargo check --frozen --target "$HOST_TARGET_TRIPLE" --workspace \
               --exclude mc-attest-untrusted \
               --exclude mc-consensus-enclave \
               --exclude mc-consensus-service \

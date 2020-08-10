@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 chrono = "0.4"
 dialoguer = "0.6"
-grpcio = "0.5.1"
+grpcio = "0.6.0"
 hex = "0.4"
 indicatif = "0.14"
 protobuf = "2.12"
@@ -15,6 +15,10 @@ rust_decimal = { version = "1.4", default-features = false }
 structopt = "0.3"
 
 mc-api = { path = "../api" }
-mc-util-grpc = { path = "../util/grpc" }
-mc-util-b58-payloads = { path = "../util/b58-payloads" }
+mc-common = { path = "../common", features = ["loggers"] }
 mc-mobilecoind-api = { path = "../mobilecoind/api" }
+mc-util-b58-payloads = { path = "../util/b58-payloads" }
+mc-util-grpc = { path = "../util/grpc" }
+
+[build-dependencies]
+serde = { version = "1", default-features = false, features = ["alloc", "derive"] }

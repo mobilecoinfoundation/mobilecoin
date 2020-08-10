@@ -7,6 +7,15 @@
 #[cfg(test)]
 extern crate test;
 
+mod error;
+mod ledger_trait;
+mod metrics;
+
+pub mod tx_out_store;
+
+#[cfg(any(test, feature = "test_utils"))]
+pub mod test_utils;
+
 use core::convert::TryInto;
 use lmdb::{
     Database, DatabaseFlags, Environment, EnvironmentFlags, RoTransaction, RwTransaction,
@@ -19,21 +28,15 @@ use mc_transaction_core::{
     tx::{TxOut, TxOutMembershipProof},
     Block, BlockContents, BlockID, BlockSignature, BLOCK_VERSION,
 };
+use mc_util_lmdb::MetadataStoreSettings;
 use mc_util_serial::{decode, encode, Message};
-use std::{path::PathBuf, sync::Arc};
-use tx_out_store::TxOutStore;
-
-mod error;
-mod ledger_trait;
-pub mod metadata;
-pub mod tx_out_store;
-
-#[cfg(any(test, feature = "test_utils"))]
-pub mod test_utils;
+use metrics::LedgerMetrics;
+use std::{fs, path::PathBuf, sync::Arc, time::Instant};
 
 pub use error::Error;
 pub use ledger_trait::Ledger;
-pub use metadata::MetadataStore;
+pub use mc_util_lmdb::MetadataStore;
+pub use tx_out_store::TxOutStore;
 
 const MAX_LMDB_FILE_SIZE: usize = 1_099_511_627_776; // 1 TB
 
@@ -46,10 +49,27 @@ pub const KEY_IMAGES_BY_BLOCK_DB_NAME: &str = "ledger_db:key_images_by_block";
 pub const TX_OUTS_BY_BLOCK_DB_NAME: &str = "ledger_db:tx_outs_by_block";
 pub const BLOCK_NUMBER_BY_TX_OUT_INDEX: &str = "ledger_db:block_number_by_tx_out_index";
 
-// Keys used by the `counts` database.
-const NUM_BLOCKS_KEY: &str = "num_blocks";
+/// Keys used by the `counts` database.
+pub const NUM_BLOCKS_KEY: &str = "num_blocks";
 
-// The value stored for each entry in the `tx_outs_by_block` database.
+/// Metadata store settings that are used for version control.
+#[derive(Clone, Default, Debug)]
+pub struct LedgerDbMetadataStoreSettings;
+impl MetadataStoreSettings for LedgerDbMetadataStoreSettings {
+    // Default database version. This should be bumped when breaking changes are introduced.
+    // If this is properly maintained, we could check during ledger db opening for any
+    // incompatibilities, and either refuse to open or perform a migration.
+    #[allow(clippy::unreadable_literal)]
+    const LATEST_VERSION: u64 = 20200707;
+
+    /// The current crate version that manages the database.
+    const CRATE_VERSION: &'static str = env!("CARGO_PKG_VERSION");
+
+    /// LMDB Database name to use for storing the metadata information.
+    const DB_NAME: &'static str = "ledger_db_metadata";
+}
+
+/// The value stored for each entry in the `tx_outs_by_block` database.
 #[derive(Clone, Message)]
 pub struct TxOutsByBlockValue {
     /// The first TxOut index for the block.
@@ -61,8 +81,8 @@ pub struct TxOutsByBlockValue {
     pub num_tx_outs: u64,
 }
 
-// A list of key images that can be prost-encoded. This is needed since that's the only way to
-// encode a Vec<KeyImage>.
+/// A list of key images that can be prost-encoded. This is needed since that's the only way to
+/// encode a Vec<KeyImage>.
 #[derive(Clone, Message)]
 pub struct KeyImageList {
     #[prost(message, repeated, tag = "1")]
@@ -90,7 +110,7 @@ pub struct LedgerDB {
     key_images_by_block: Database,
 
     /// Metadata - stores metadata information about the database.
-    metadata_store: MetadataStore,
+    metadata_store: MetadataStore<LedgerDbMetadataStoreSettings>,
 
     /// Storage abstraction for TxOuts.
     tx_out_store: TxOutStore,
@@ -106,6 +126,9 @@ pub struct LedgerDB {
 
     /// Location on filesystem.
     path: PathBuf,
+
+    /// Metrics.
+    metrics: LedgerMetrics,
 }
 
 /// LedgerDB is an append-only log (or chain) of blocks of transactions.
@@ -122,6 +145,8 @@ impl Ledger for LedgerDB {
         block_contents: &BlockContents,
         signature: Option<&BlockSignature>,
     ) -> Result<(), Error> {
+        let start_time = Instant::now();
+
         // Note: This function must update every LMDB database managed by LedgerDB.
         let mut db_transaction = self.env.begin_rw_txn()?;
 
@@ -139,6 +164,23 @@ impl Ledger for LedgerDB {
 
         // Commit.
         db_transaction.commit()?;
+
+        // Update metrics.
+        self.metrics.blocks_written_count.inc();
+        self.metrics.num_blocks.inc();
+
+        self.metrics
+            .txo_written_count
+            .inc_by(block_contents.outputs.len() as i64);
+        self.metrics
+            .num_txos
+            .add(block_contents.outputs.len() as i64);
+
+        self.metrics.observe_append_block_time(start_time);
+
+        let file_size = self.db_file_size().unwrap_or(0);
+        self.metrics.db_file_size.set(file_size as i64);
+
         Ok(())
     }
 
@@ -298,54 +340,13 @@ impl LedgerDB {
             .set_flags(EnvironmentFlags::NO_SYNC)
             .open(&path)?;
 
-        let metadata_store = MetadataStore::new(&env)?;
+        let metadata_store = MetadataStore::<LedgerDbMetadataStoreSettings>::new(&env)?;
+        let db_txn = env.begin_ro_txn()?;
+        let version = metadata_store.get_version(&db_txn)?;
+        global_log::info!("Ledger db is currently at version: {:?}", version);
+        db_txn.commit()?;
 
-        loop {
-            // Check if the database we opened is compatible with the current implementation.
-            let db_txn = env.begin_ro_txn()?;
-            let version = metadata_store.get_version(&db_txn)?;
-            global_log::info!("Ledger db is currently at version: {:?}", version);
-            db_txn.commit()?;
-
-            match version.is_compatible_with_latest() {
-                Ok(_) => {
-                    break;
-                }
-                // Version 20200610 introduced the TxOut public key -> index store.
-                Err(Error::VersionIncompatible(20200427, 20200610))
-                | Err(Error::VersionIncompatible(20200427, 20200707)) => {
-                    global_log::info!("Ledger db migrating from version 20200427 to 20200610, this might take awhile...");
-
-                    TxOutStore::construct_tx_out_index_by_public_key_from_existing_data(&env)?;
-
-                    let mut db_txn = env.begin_rw_txn()?;
-                    metadata_store.set_version(&mut db_txn, 20200610)?;
-                    global_log::info!(
-                        "Ledger db migration complete, now at version: {:?}",
-                        metadata_store.get_version(&db_txn),
-                    );
-                    db_txn.commit()?;
-                }
-                // Version 20200707 introduced the TxOut global index -> block index store.
-                Err(Error::VersionIncompatible(20200610, 20200707)) => {
-                    global_log::info!("Ledger db migrating from version 20200610 to 20200707, this might take awhile...");
-
-                    Self::construct_block_number_by_tx_out_index_from_existing_data(&env)?;
-
-                    let mut db_txn = env.begin_rw_txn()?;
-                    metadata_store.set_version_to_latest(&mut db_txn)?;
-                    global_log::info!(
-                        "Ledger db migration complete, now at version: {:?}",
-                        metadata_store.get_version(&db_txn),
-                    );
-                    db_txn.commit()?;
-                }
-                // Don't know how to migrate.
-                Err(err) => {
-                    return Err(err);
-                }
-            };
-        }
+        version.is_compatible_with_latest()?;
 
         let counts = env.open_db(Some(COUNTS_DB_NAME))?;
         let blocks = env.open_db(Some(BLOCKS_DB_NAME))?;
@@ -357,7 +358,9 @@ impl LedgerDB {
 
         let tx_out_store = TxOutStore::new(&env)?;
 
-        Ok(LedgerDB {
+        let metrics = LedgerMetrics::new(&path);
+
+        let ledger_db = LedgerDB {
             env: Arc::new(env),
             path,
             counts,
@@ -369,7 +372,20 @@ impl LedgerDB {
             block_number_by_tx_out_index,
             metadata_store,
             tx_out_store,
-        })
+            metrics,
+        };
+
+        // Get initial values for gauges.
+        let num_blocks = ledger_db.num_blocks()?;
+        ledger_db.metrics.num_blocks.set(num_blocks as i64);
+
+        let num_txos = ledger_db.num_txos()?;
+        ledger_db.metrics.num_txos.set(num_txos as i64);
+
+        let file_size = ledger_db.db_file_size().unwrap_or(0);
+        ledger_db.metrics.db_file_size.set(file_size as i64);
+
+        Ok(ledger_db)
     }
 
     /// Creates a fresh Ledger Database in the given path.
@@ -393,7 +409,7 @@ impl LedgerDB {
         env.create_db(Some(TX_OUTS_BY_BLOCK_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(BLOCK_NUMBER_BY_TX_OUT_INDEX), DatabaseFlags::empty())?;
 
-        MetadataStore::create(&env)?;
+        MetadataStore::<LedgerDbMetadataStoreSettings>::create(&env)?;
         TxOutStore::create(&env)?;
 
         let mut db_transaction = env.begin_rw_txn()?;
@@ -585,59 +601,13 @@ impl LedgerDB {
         Ok(())
     }
 
-    /// A utility function for constructing the block_number_by_tx_out_index store using existing
-    /// data.
-    fn construct_block_number_by_tx_out_index_from_existing_data(
-        env: &Environment,
-    ) -> Result<(), Error> {
-        // When constructing the block index by tx out index database, we first need to create it.
-        let block_number_by_tx_out_index_db =
-            env.create_db(Some(BLOCK_NUMBER_BY_TX_OUT_INDEX), DatabaseFlags::empty())?;
+    /// Get the database file size, in bytes.
+    fn db_file_size(&self) -> std::io::Result<u64> {
+        let mut filename = self.path.clone();
+        filename.push("data.mdb");
 
-        // Open pre-existing databases that has data we need.
-        let tx_outs_by_block_db = env.open_db(Some(TX_OUTS_BY_BLOCK_DB_NAME))?;
-        let counts_db = env.open_db(Some(COUNTS_DB_NAME))?;
-
-        // After the database has been created, populate it with the existing data.
-        let mut db_txn = env.begin_rw_txn()?;
-
-        let num_blocks = key_bytes_to_u64(&db_txn.get(counts_db, &NUM_BLOCKS_KEY)?);
-
-        let mut percents: u64 = 0;
-        for block_num in 0..num_blocks {
-            // Get information about the TxOuts in the block.
-            let bytes = db_txn.get(tx_outs_by_block_db, &u64_to_key_bytes(block_num))?;
-            let tx_outs_by_block: TxOutsByBlockValue = decode(&bytes)?;
-
-            global_log::trace!(
-                "Assigning tx outs #{} - #{} to block #{}",
-                tx_outs_by_block.first_tx_out_index,
-                tx_outs_by_block.first_tx_out_index + tx_outs_by_block.num_tx_outs,
-                block_num,
-            );
-
-            for i in 0..tx_outs_by_block.num_tx_outs {
-                let tx_out_index = tx_outs_by_block.first_tx_out_index + i;
-
-                db_txn.put(
-                    block_number_by_tx_out_index_db,
-                    &u64_to_key_bytes(tx_out_index),
-                    &u64_to_key_bytes(block_num),
-                    WriteFlags::NO_OVERWRITE,
-                )?;
-            }
-
-            // Throttled logging.
-            let new_percents = block_num * 100 / num_blocks;
-            if new_percents != percents {
-                percents = new_percents;
-                global_log::info!(
-                    "Constructing block_number_by_tx_out_index: {}% complete",
-                    percents
-                );
-            }
-        }
-        Ok(db_txn.commit()?)
+        let metadata = fs::metadata(filename)?;
+        Ok(metadata.len())
     }
 }
 

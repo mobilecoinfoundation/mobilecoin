@@ -218,9 +218,9 @@ pub fn validate_signature<R: RngCore + CryptoRng>(
         .map_err(TransactionValidationError::InvalidTransactionSignature)
 }
 
-/// The fee amount must be greater than or equal to `BASE_FEE`.
+/// The fee amount must be greater than or equal to `MINIMUM_FEE`.
 fn validate_transaction_fee(tx: &Tx) -> TransactionValidationResult<()> {
-    if tx.prefix.fee < BASE_FEE {
+    if tx.prefix.fee < MINIMUM_FEE {
         Err(TransactionValidationError::TxFeeError)
     } else {
         Ok(())
@@ -353,7 +353,7 @@ mod tests {
     use alloc::vec::Vec;
 
     use crate::{
-        constants::{BASE_FEE, RING_SIZE},
+        constants::{MINIMUM_FEE, RING_SIZE},
         tx::{Tx, TxOutMembershipHash, TxOutMembershipProof},
         validation::{
             error::TransactionValidationError,
@@ -797,7 +797,7 @@ mod tests {
 
         {
             // Off by one fee gets rejected
-            let fee = BASE_FEE - 1;
+            let fee = MINIMUM_FEE - 1;
             let (tx, _ledger) = create_test_tx_with_amount(INITIALIZE_LEDGER_AMOUNT - fee, fee);
             assert_eq!(
                 validate_transaction_fee(&tx),
@@ -808,13 +808,13 @@ mod tests {
         {
             // Exact fee amount is okay
             let (tx, _ledger) =
-                create_test_tx_with_amount(INITIALIZE_LEDGER_AMOUNT - BASE_FEE, BASE_FEE);
+                create_test_tx_with_amount(INITIALIZE_LEDGER_AMOUNT - MINIMUM_FEE, MINIMUM_FEE);
             assert_eq!(validate_transaction_fee(&tx), Ok(()));
         }
 
         {
             // Overpaying fees is okay
-            let fee = BASE_FEE + 1;
+            let fee = MINIMUM_FEE + 1;
             let (tx, _ledger) = create_test_tx_with_amount(INITIALIZE_LEDGER_AMOUNT - fee, fee);
             assert_eq!(validate_transaction_fee(&tx), Ok(()));
         }

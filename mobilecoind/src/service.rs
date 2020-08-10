@@ -14,7 +14,7 @@ use crate::{
     sync::SyncThread,
     utxo_store::{UnspentTxOut, UtxoId},
 };
-use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
+use grpcio::{EnvBuilder, RpcContext, RpcStatus, RpcStatusCode, ServerBuilder, UnarySink};
 use mc_account_keys::{AccountKey, PublicAddress, RootIdentity};
 use mc_common::{
     logger::{log, Logger},
@@ -24,11 +24,16 @@ use mc_connection::{BlockchainConnection, UserTxConnection};
 use mc_crypto_keys::RistrettoPublic;
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::{NetworkState, PollingNetworkState};
-use mc_mobilecoind_api::mobilecoind_api_grpc::{create_mobilecoind_api, MobilecoindApi};
+use mc_mobilecoind_api::{
+    mobilecoind_api_grpc::{create_mobilecoind_api, MobilecoindApi},
+    MobilecoindUri,
+};
 use mc_transaction_core::{ring_signature::KeyImage, tx::TxOutConfirmationNumber};
 use mc_util_b58_payloads::payloads::{AddressRequestPayload, RequestPayload, TransferPayload};
 use mc_util_from_random::FromRandom;
-use mc_util_grpc::{rpc_internal_error, rpc_logger, send_result, BuildInfoService};
+use mc_util_grpc::{
+    rpc_internal_error, rpc_logger, send_result, BuildInfoService, ConnectionUriGrpcioServer,
+};
 use mc_watcher::watcher_db::WatcherDB;
 use protobuf::{ProtobufEnum, RepeatedField};
 use std::{
@@ -51,16 +56,10 @@ impl Service {
         watcher_db: Option<WatcherDB>,
         transactions_manager: TransactionsManager<T>,
         network_state: Arc<Mutex<PollingNetworkState<T>>>,
-        port: u16,
+        listen_uri: &MobilecoindUri,
         num_workers: Option<usize>,
         logger: Logger,
     ) -> Self {
-        let env = Arc::new(
-            grpcio::EnvBuilder::new()
-                .name_prefix("Mobilecoind-RPC".to_string())
-                .build(),
-        );
-
         log::info!(logger, "Starting mobilecoind sync task thread");
         let sync_thread = SyncThread::start(
             ledger_db.clone(),
@@ -88,13 +87,21 @@ impl Service {
         let health_service = mc_util_grpc::HealthService::new(None, logger.clone()).into_service();
 
         // Package service into grpc server.
-        log::info!(logger, "Starting mobilecoind API Service on port {}", port);
-        let server = mc_util_grpc::run_server(
-            env,
-            vec![mobilecoind_service, health_service, build_info_service],
-            port,
-            &logger,
+        log::info!(logger, "Starting mobilecoind API Service on {}", listen_uri);
+        let env = Arc::new(
+            EnvBuilder::new()
+                .name_prefix("Mobilecoind-RPC".to_string())
+                .build(),
         );
+
+        let server_builder = ServerBuilder::new(env)
+            .register_service(build_info_service)
+            .register_service(health_service)
+            .register_service(mobilecoind_service)
+            .bind_using_uri(listen_uri);
+
+        let mut server = server_builder.build().unwrap();
+        server.start();
 
         Self {
             _server: server,
@@ -1289,7 +1296,7 @@ mod test {
     use mc_common::{logger::test_with_logger, HashSet};
     use mc_crypto_rand::RngCore;
     use mc_transaction_core::{
-        constants::{BASE_FEE, MAX_INPUTS, RING_SIZE},
+        constants::{MAX_INPUTS, MINIMUM_FEE, RING_SIZE},
         get_tx_out_shared_secret,
         onetime_keys::recover_onetime_private_key,
         tx::{Tx, TxOut},
@@ -2286,7 +2293,7 @@ mod test {
 
             let change_value = test_utils::PER_RECIPIENT_AMOUNT
                 - outlays.iter().map(|outlay| outlay.value).sum::<u64>()
-                - BASE_FEE;
+                - MINIMUM_FEE;
 
             for (account_key, expected_value) in &[
                 (&receiver1, outlays[0].value),
@@ -2314,8 +2321,8 @@ mod test {
             }
 
             // Santity test fee
-            assert_eq!(tx_proposal.get_fee(), BASE_FEE);
-            assert_eq!(tx_proposal.get_tx().get_prefix().fee, BASE_FEE);
+            assert_eq!(tx_proposal.get_fee(), MINIMUM_FEE);
+            assert_eq!(tx_proposal.get_tx().get_prefix().fee, MINIMUM_FEE);
 
             // Sanity test tombstone block
             let num_blocks = ledger_db.num_blocks().unwrap();
@@ -2563,7 +2570,7 @@ mod test {
             tx_proposal.outlays[0].value,
             // Each UTXO we have has PER_RECIPIENT_AMOUNT coins. We will be merging MAX_INPUTS of those
             // into a single output, minus the fee.
-            (PER_RECIPIENT_AMOUNT * MAX_INPUTS as u64) - BASE_FEE,
+            (PER_RECIPIENT_AMOUNT * MAX_INPUTS as u64) - MINIMUM_FEE,
         );
 
         assert_eq!(tx_proposal.outlay_index_to_tx_out_index.len(), 1);
@@ -2578,8 +2585,8 @@ mod test {
         assert_eq!(value, tx_proposal.outlays[0].value);
 
         // Santity test fee
-        assert_eq!(tx_proposal.fee(), BASE_FEE);
-        assert_eq!(tx_proposal.tx.prefix.fee, BASE_FEE);
+        assert_eq!(tx_proposal.fee(), MINIMUM_FEE);
+        assert_eq!(tx_proposal.tx.prefix.fee, MINIMUM_FEE);
 
         // Sanity test tombstone block
         let num_blocks = ledger_db.num_blocks().unwrap();

@@ -347,8 +347,10 @@ impl Builder {
     ///
     /// If an unsigned enclave does not exist, it will build it.
     pub fn build(&mut self) -> Result<Signature, Error> {
+        let mut packages = self.staticlib.packages.clone();
+        packages.sort_by_cached_key(|p| p.name.clone());
         // Emit correct "rerun-if-changed" diagnostics for cargo
-        for package in self.staticlib.packages.iter() {
+        for package in packages.iter() {
             // source.is_none implies a local package not from crates.io
             if package.source.is_none() {
                 // package.manifest_path has form foo/Cargo.toml, we want to take parent

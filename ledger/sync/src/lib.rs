@@ -1,6 +1,5 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-mod counters;
 mod ledger_sync_error;
 mod ledger_sync_service;
 mod ledger_sync_service_thread;

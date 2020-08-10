@@ -15,6 +15,8 @@ use mc_crypto_box::{
 use mc_crypto_keys::{
     CompressedRistrettoPublic, ReprBytes, Ristretto, RistrettoPrivate, RistrettoPublic,
 };
+use mc_crypto_rand::McRng;
+use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -116,6 +118,54 @@ impl FogHint {
             }
         }
         FogHint::from_slice(&plaintext.as_ref()[0..RISTRETTO_PUBLIC_LEN])
+    }
+
+    /// ct_decrypt
+    ///
+    /// Try to decrypt an encrypted payload onto this FogHint object in constant time.
+    /// Fails if decryption fails, or the magic number is wrong.
+    ///
+    /// # Arguments
+    /// * ingest_server_private_key
+    /// * 128 byte encrypted payload
+    ///
+    /// # Returns
+    /// * (Fog hint, true) on success (Default Fog hint, false) otherwise
+    pub fn ct_decrypt(
+        ingest_server_private_key: &RistrettoPrivate,
+        ciphertext: &EncryptedFogHint,
+    ) -> (Self, bool) {
+        let mut default_plaintext = GenericArray::<
+            u8,
+            Diff<EncryptedFogHintSize, <VersionedCryptoBox as CryptoBox<Ristretto>>::FooterSize>,
+        >::default();
+
+        let mut rng = McRng::default();
+        let default_pubkey = RistrettoPublic::from_random(&mut rng);
+
+        default_plaintext.as_mut()[..RISTRETTO_PUBLIC_LEN]
+            .copy_from_slice(&default_pubkey.to_bytes());
+
+        let (plaintext, mut success) = match VersionedCryptoBox::default()
+            .decrypt_fixed_length(ingest_server_private_key, ciphertext.as_ref())
+        {
+            Ok(real_plaintext) => (real_plaintext, true),
+            Err(_) => (default_plaintext, false),
+        };
+
+        // Check magic numbers
+        for byte in &plaintext[RISTRETTO_PUBLIC_LEN..] {
+            if *byte != MAGIC_NUMBER {
+                success = false;
+            }
+        }
+
+        let default_fog_hint = FogHint::new(default_pubkey);
+
+        match FogHint::from_slice(&plaintext.as_ref()[0..RISTRETTO_PUBLIC_LEN]) {
+            Ok(fog_hint) => (fog_hint, success),
+            Err(_) => (default_fog_hint, false),
+        }
     }
 }
 

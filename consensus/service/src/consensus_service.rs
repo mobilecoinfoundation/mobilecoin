@@ -3,13 +3,19 @@
 //! The MobileCoin consensus service.
 
 use crate::{
-    attested_api_service::AttestedApiService, background_work_queue::BackgroundWorkQueue,
-    blockchain_api_service, byzantine_ledger::ByzantineLedger, client_api_service, config::Config,
-    counters, peer_api_service, peer_keepalive::PeerKeepalive, tx_manager::TxManager,
+    attested_api_service::AttestedApiService,
+    background_work_queue::BackgroundWorkQueue,
+    blockchain_api_service,
+    byzantine_ledger::ByzantineLedger,
+    client_api_service,
+    config::Config,
+    counters, peer_api_service,
+    peer_keepalive::PeerKeepalive,
+    tx_manager::{TxManager, TxManagerImpl},
     validators::DefaultTxManagerUntrustedInterfaces,
 };
 use failure::Fail;
-use futures::Future;
+use futures::executor::block_on;
 use grpcio::{EnvBuilder, Environment, Server, ServerBuilder};
 use mc_attest_api::attest_grpc::create_attested_api;
 use mc_attest_enclave_api::{ClientSession, PeerSession};
@@ -95,7 +101,7 @@ pub struct ConsensusService<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync 
 
     peer_manager: ConnectionManager<PeerConnection<E>>,
     broadcaster: Arc<Mutex<ThreadedBroadcaster>>,
-    tx_manager: TxManager<E, LedgerDB>,
+    tx_manager: Arc<Mutex<Box<dyn TxManager>>>,
     peer_keepalive: Arc<Mutex<PeerKeepalive>>,
 
     admin_rpc_server: Option<AdminServer>,
@@ -151,12 +157,11 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
         )));
 
         // Tx Manager
-        let tx_manager = TxManager::new(
+        let tx_manager = Box::new(TxManagerImpl::new(
             enclave.clone(),
-            ledger_db.clone(),
             DefaultTxManagerUntrustedInterfaces::new(ledger_db.clone()),
             logger.clone(),
-        );
+        ));
 
         // Peer Keepalive
         let peer_keepalive = Arc::new(Mutex::new(PeerKeepalive::start(
@@ -181,7 +186,7 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
 
             peer_manager,
             broadcaster,
-            tx_manager,
+            tx_manager: Arc::new(Mutex::new(tx_manager)),
             peer_keepalive,
 
             admin_rpc_server: None,
@@ -224,22 +229,18 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
         self.peer_keepalive.lock().expect("mutex poisoned").stop();
 
         if let Some(ref mut server) = self.user_rpc_server.take() {
-            server
-                .shutdown()
-                .wait()
+            block_on(server.shutdown())
                 .map_err(|_| ConsensusServiceError::RpcShutdown("user_rpc_server".to_string()))?
         }
 
         if let Some(ref mut server) = self.consensus_rpc_server.take() {
-            server.shutdown().wait().map_err(|_| {
+            block_on(server.shutdown()).map_err(|_| {
                 ConsensusServiceError::RpcShutdown("consensus_rpc_server".to_string())
             })?
         }
 
         if let Some(ref mut server) = self.admin_rpc_server.take() {
-            server
-                .shutdown()
-                .wait()
+            block_on(server.shutdown())
                 .map_err(|_| ConsensusServiceError::RpcShutdown("admin_rpc_server".to_string()))?
         }
 
@@ -547,7 +548,11 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
             // consensus time.
             if origin_node == &local_node_id || relay_from_nodes.contains(&origin_node.responder_id)
             {
-                if let Some(encrypted_tx) = tx_manager.get_encrypted_tx_by_hash(&tx_hash) {
+                if let Some(encrypted_tx) = tx_manager
+                    .lock()
+                    .expect("Lock poisoned")
+                    .get_encrypted_tx(&tx_hash)
+                {
                     broadcaster
                         .lock()
                         .expect("lock poisoned")
