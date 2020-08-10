@@ -24,7 +24,7 @@ impl_sgx_newtype_for_bytestruct! {
 /// anywhere else.
 //
 // FIXME: move the IAS-provided PIB+4 format into it's own type, and provide
-// conversion to/from it        instead.
+//        conversion to/from it instead.
 impl FromBase64 for PlatformInfoBlob {
     type Error = EncodingError;
 
