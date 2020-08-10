@@ -30,8 +30,9 @@ impl SigRL {
 
     /// SigRL ptr should be the null pointer if size is 0.
     ///
-    /// This is an annoying requirement of `sgx_calc_quote_size` and `sgx_get_quote`.
-    /// Failure to satisfy this requirement results in `SGX_ERROR_INVALID_PARAMETER`.
+    /// This is an annoying requirement of `sgx_calc_quote_size` and
+    /// `sgx_get_quote`. Failure to satisfy this requirement results in
+    /// `SGX_ERROR_INVALID_PARAMETER`.
     pub fn as_ptr(&self) -> *const u8 {
         if !self.data.is_empty() {
             self.data.as_ptr()

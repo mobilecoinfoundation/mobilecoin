@@ -1,8 +1,9 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-//! This module defines `Sealable` trait, `IntelSealed` object, and `ParseSealedError`
-//! These objects are portable and can be used without reference to any attestation
-//! or sgx crates, however the tests confirm some offsets on x86_64 arch using sgx_types crate.
+//! This module defines `Sealable` trait, `IntelSealed` object, and
+//! `ParseSealedError` These objects are portable and can be used without
+//! reference to any attestation or sgx crates, however the tests confirm some
+//! offsets on x86_64 arch using sgx_types crate.
 
 use crate::SgxError;
 use alloc::vec::Vec;
@@ -12,10 +13,11 @@ use prost::Message;
 
 /// A `Sealed<T>` is a Sealed representation of a T, with some additional
 /// mac text which has been computed from T and whcih is visible.
+///
 /// Implementors of Sealed<T> are expected to be newtypes around IntelSealed,
-/// and to provide structured access to the mac text.
-/// By implementing compute_mac_txt they determine the format of the mac which
-/// they will later read.
+/// and to provide structured access to the mac text. By implementing
+/// compute_mac_txt they determine the format of the mac which they will later
+/// read.
 pub trait Sealed: AsRef<IntelSealed> + Into<IntelSealed> {
     /// The un-encrypted payload type
     type Source: Message + Default;
@@ -33,22 +35,26 @@ pub trait Sealed: AsRef<IntelSealed> + Into<IntelSealed> {
     /// but `associated type bounds are unstable` so we avoid
     fn validate_mac_txt(blob: IntelSealed) -> Result<Self, Self::Error>;
 
-    /// Rust does not let us implement TryFrom<&[u8]> for all Sealed because of coherence issues
+    /// Rust does not let us implement TryFrom<&[u8]> for all Sealed because of
+    /// coherence issues
     fn try_from_slice(arg: &[u8]) -> Result<Self, Self::Error> {
         Self::validate_mac_txt(IntelSealed::try_from(arg)?)
     }
 
-    /// Rust does not let us implement TryFrom<&[u8]> for all Sealed because of coherence issues
+    /// Rust does not let us implement TryFrom<&[u8]> for all Sealed because of
+    /// coherence issues
     fn try_from_vec(arg: Vec<u8>) -> Result<Self, Self::Error> {
         Self::validate_mac_txt(IntelSealed::try_from(arg)?)
     }
 
-    /// Rust does not let us implement AsRef<[u8]> for all Sealed because of coherence issues
+    /// Rust does not let us implement AsRef<[u8]> for all Sealed because of
+    /// coherence issues
     fn as_bytes(&self) -> &[u8] {
         <Self as AsRef<IntelSealed>>::as_ref(self).as_ref()
     }
 
-    /// Rust does not let us implement Into<Vec<u8>> for all Sealed because of coherence issues
+    /// Rust does not let us implement Into<Vec<u8>> for all Sealed because of
+    /// coherence issues
     fn to_bytes(self) -> Vec<u8> {
         <Self as Into<IntelSealed>>::into(self).into()
     }
@@ -62,7 +68,8 @@ pub trait Sealed: AsRef<IntelSealed> + Into<IntelSealed> {
 ///
 /// by pulling from the default impls given above
 ///
-/// This should be done in the crate where Sealed is implemented on a given type.
+/// This should be done in the crate where Sealed is implemented on a given
+/// type.
 #[macro_export]
 macro_rules! impl_sealed_traits {
     ($sealed:ty) => {
@@ -93,17 +100,17 @@ macro_rules! impl_sealed_traits {
     };
 }
 
-/// Intel provides an API for doing AEAD using an identity derived from MRENCLAVE
-/// and the EPID key, which they call "sealing".
+/// Intel provides an API for doing AEAD using an identity derived from
+/// MRENCLAVE and the EPID key, which they call "sealing".
 ///
 /// This portable API allows to access a sealed blob in order to get the
-/// "additional mac text" without unsealing the data. For e.g. sealed transactions,
-/// this allows that the hash of the transaction can be additional mac text,
-/// and used in the tx-cache, while still being covered by the mac.
+/// "additional mac text" without unsealing the data. For e.g. sealed
+/// transactions, this allows that the hash of the transaction can be additional
+/// mac text, and used in the tx-cache, while still being covered by the mac.
 ///
 /// We also provide a IntelSealed wrapper object that owns a Vec containing
-/// the sealed data, and uses the additional mac text to implement Eq, Hash, etc.
-/// This makes it easy to implement the planned Sealed Tx Cache object.
+/// the sealed data, and uses the additional mac text to implement Eq, Hash,
+/// etc. This makes it easy to implement the planned Sealed Tx Cache object.
 #[derive(Clone, Debug)]
 pub struct IntelSealed {
     payload: Vec<u8>,
@@ -245,7 +252,8 @@ impl<'de> ::serde::de::Deserialize<'de> for IntelSealed {
     }
 }
 
-// This should match the size_of sgx_sealed_data_t in x86_64 arch, as in the enclave
+// This should match the size_of sgx_sealed_data_t in x86_64 arch, as in the
+// enclave
 const SGX_SEALED_DATA_T_SIZE: usize = 560;
 
 // This should match the offset of sgx_sealed_data_t::plain_text_offset in
@@ -268,7 +276,8 @@ mod conformance_tests {
     }
 
     /// Validates MAC_TEXT_OFFSET
-    /// Check that MAC_TEXT_OFFSET is the offset of plain_text_offset in x86-64 arch
+    /// Check that MAC_TEXT_OFFSET is the offset of plain_text_offset in x86-64
+    /// arch
     #[test]
     fn offset_test() {
         let st = sgx_sealed_data_t::default();

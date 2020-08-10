@@ -238,8 +238,8 @@ mod test {
     }
 
     #[test]
-    // Report::try_from should return EncodingError::InvalidInputLength if the input contains fewer
-    // than REPORT_SIZE bytes.
+    // Report::try_from should return EncodingError::InvalidInputLength if the input
+    // contains fewer than REPORT_SIZE bytes.
     fn test_report_try_from_insufficient_length() {
         let sparkle_heart = vec![240, 159, 146, 150];
         match Report::try_from(&sparkle_heart[..]) {
