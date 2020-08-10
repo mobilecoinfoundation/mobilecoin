@@ -22,7 +22,7 @@ lazy_static! {
     static ref RETRY_BUFFER: RetryBuffer = RetryBuffer::new(&ecall_dispatcher);
 
     /// Storage for the business logic / implementation state
-    static ref ENCLAVE: SgxConsensusEnclave = Default::default();
+    static ref ENCLAVE: SgxConsensusEnclave = SgxConsensusEnclave::new(mc_sgx_slog::default_logger());
 }
 
 /// Dispatch ecalls with the unified signature
