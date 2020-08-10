@@ -14,9 +14,11 @@ use mc_common::logger::global_log;
 use std::str;
 
 #[no_mangle]
-pub extern "C" fn eprintln_message(msg: *const u8, msg_len: usize) {
-    let msg_bytes = unsafe { std::slice::from_raw_parts(msg, msg_len) };
+pub unsafe extern "C" fn eprintln_message(msg: *const u8, msg_len: usize) {
+    eprintln_message_impl(std::slice::from_raw_parts(msg, msg_len))
+}
 
+fn eprintln_message_impl(msg_bytes: &[u8]) {
     match str::from_utf8(msg_bytes) {
         Ok(v) => global_log::info!("Enclave eprintln: {}", v),
         Err(e) => global_log::info!(
