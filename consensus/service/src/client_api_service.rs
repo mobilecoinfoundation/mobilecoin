@@ -19,7 +19,7 @@ use mc_ledger_db::Ledger;
 use mc_transaction_core::validation::TransactionValidationError;
 use mc_util_grpc::{rpc_logger, send_result};
 use mc_util_metrics::{self, SVC_COUNTERS};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 /// Maximum number of pending values for consensus service before rejecting add_transaction requests.
 const PENDING_LIMIT: i64 = 500;
@@ -29,7 +29,7 @@ pub struct ClientApiService<E: ConsensusEnclaveProxy, L: Ledger + Clone> {
     enclave: E,
     scp_client_value_sender: ProposeTxCallback,
     ledger: L,
-    tx_manager: TxManager<E, L>,
+    tx_manager: Arc<Mutex<Box<dyn TxManager>>>,
     is_serving_fn: Arc<(dyn Fn() -> bool + Sync + Send)>,
     logger: Logger,
 }
@@ -39,7 +39,7 @@ impl<E: ConsensusEnclaveProxy, L: Ledger + Clone> ClientApiService<E, L> {
         enclave: E,
         scp_client_value_sender: ProposeTxCallback,
         ledger: L,
-        tx_manager: TxManager<E, L>,
+        tx_manager: Arc<Mutex<Box<dyn TxManager>>>,
         is_serving_fn: Arc<(dyn Fn() -> bool + Sync + Send)>,
         logger: Logger,
     ) -> Self {
@@ -84,7 +84,12 @@ impl<E: ConsensusEnclaveProxy, L: Ledger + Clone> ClientApiService<E, L> {
         let tx_context = self.enclave.client_tx_propose(request.into())?;
         let tx_hash = tx_context.tx_hash;
 
-        match self.tx_manager.insert_proposed_tx(tx_context) {
+        match self
+            .tx_manager
+            .lock()
+            .expect("Lock poisoned")
+            .insert(tx_context)
+        {
             Ok(tx_context) => {
                 // Submit for consideration in next SCP slot.
                 (*self.scp_client_value_sender)(*tx_context.tx_hash(), None, None);

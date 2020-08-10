@@ -35,7 +35,7 @@ use mc_util_serial::deserialize;
 use std::{
     convert::{TryFrom, TryInto},
     str::FromStr,
-    sync::Arc,
+    sync::{Arc, Mutex},
 };
 
 // Callback method for returning the latest SCP message issued by the local node, used to
@@ -57,7 +57,7 @@ pub struct PeerApiService<E: ConsensusEnclaveProxy, L: Ledger> {
     ledger: L,
 
     /// Transactions Manager instance.
-    tx_manager: TxManager<E, L>,
+    tx_manager: Arc<Mutex<Box<dyn TxManager>>>,
 
     /// Callback function for getting the latest SCP statement the local node has issued.
     fetch_latest_msg_fn: FetchLatestMsgFn,
@@ -78,7 +78,7 @@ impl<E: ConsensusEnclaveProxy, L: Ledger> PeerApiService<E, L> {
         incoming_consensus_msgs_sender: BackgroundWorkQueueSenderFn<IncomingConsensusMsg>,
         scp_client_value_sender: ProposeTxCallback,
         ledger: L,
-        tx_manager: TxManager<E, L>,
+        tx_manager: Arc<Mutex<Box<dyn TxManager>>>,
         fetch_latest_msg_fn: FetchLatestMsgFn,
         known_responder_ids: Vec<ResponderId>,
         logger: Logger,
@@ -115,7 +115,12 @@ impl<E: ConsensusEnclaveProxy, L: Ledger> PeerApiService<E, L> {
         for tx_context in tx_contexts {
             let tx_hash = tx_context.tx_hash;
 
-            match self.tx_manager.insert_proposed_tx(tx_context) {
+            match self
+                .tx_manager
+                .lock()
+                .expect("Lock poisoned")
+                .insert(tx_context)
+            {
                 Ok(tx_context) => {
                     // Submit for consideration in next SCP slot.
                     (*self.scp_client_value_sender)(
@@ -124,8 +129,6 @@ impl<E: ConsensusEnclaveProxy, L: Ledger> PeerApiService<E, L> {
                         relayed_by.as_ref(),
                     );
                 }
-
-                Err(TxManagerError::AlreadyInCache) => {}
 
                 Err(TxManagerError::TransactionValidation(err)) => {
                     log::debug!(
@@ -166,11 +169,15 @@ impl<E: ConsensusEnclaveProxy, L: Ledger> PeerApiService<E, L> {
             })
             .collect::<Result<Vec<TxHash>, ConsensusGrpcError>>()?;
 
-        match self.tx_manager.txs_for_peer(
-            &tx_hashes,
-            &[],
-            &PeerSession::from(request.get_channel_id()),
-        ) {
+        match self
+            .tx_manager
+            .lock()
+            .expect("Lock poisoned")
+            .encrypt_for_peer(
+                &tx_hashes,
+                &[],
+                &PeerSession::from(request.get_channel_id()),
+            ) {
             Ok(enclave_message) => Ok(enclave_message.into()),
             Err(err) => {
                 log::warn!(
