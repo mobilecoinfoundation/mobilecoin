@@ -281,13 +281,13 @@ impl<V: Value, ValidationError: Display + 'static> ScpNode<V> for Node<V, Valida
 #[cfg(test)]
 mod node_tests {
     use super::*;
-    use crate::{core_types::Ballot, msg::*, test_utils::*};
+    use crate::{core_types::Ballot, msg::*, slot::MockScpSlot, test_utils::*};
+    use maplit::btreeset;
     use mc_common::logger::test_with_logger;
     use std::{iter::FromIterator, sync::Arc};
 
-    // use crate::slot::MockScpSlot;
-
     #[test_with_logger]
+    // Initially, `pending` and `externalized` should be empty.
     fn test_initialization(logger: Logger) {
         let node = Node::<u32, TransactionValidationError>::new(
             test_node_id(1),
@@ -302,11 +302,11 @@ mod node_tests {
     }
 
     #[test_with_logger]
-    #[ignore]
+    // Should create a slot if one is not yet available.
     fn test_propose_values_create_new_slot(logger: Logger) {
         type V = &'static str;
 
-        let mut _node = Node::<V, TransactionValidationError>::new(
+        let mut node = Node::<V, TransactionValidationError>::new(
             test_node_id(1),
             QuorumSet::new_with_node_ids(1, vec![test_node_id(2)]),
             Arc::new(trivial_validity_fn),
@@ -314,13 +314,31 @@ mod node_tests {
             logger.clone(),
         );
 
-        // // mock the current slot
-        // let slot = MockScpSlot::<V>::new();
-        // node.pending.put(1, Box::new(slot));
-        // node.propose_values()
+        let values = btreeset!["a", "b", "c"];
+        let _res = node.propose_values(7, values);
 
-        // TODO:
-        unimplemented!()
+        assert!(node.pending.contains(&7));
+    }
+
+    #[test_with_logger]
+    // Should pass values to the appropriate slot.
+    fn test_propose_values(logger: Logger) {
+        type V = &'static str;
+
+        let mut node = Node::<V, TransactionValidationError>::new(
+            test_node_id(1),
+            QuorumSet::new_with_node_ids(1, vec![test_node_id(2)]),
+            Arc::new(trivial_validity_fn),
+            Arc::new(trivial_combine_fn),
+            logger.clone(),
+        );
+
+        let mut slot = MockScpSlot::<V>::new();
+        slot.expect_propose_values().times(1).return_const(Ok(None));
+        node.pending.put(7, Box::new(slot));
+
+        let values = btreeset!["a", "b", "c"];
+        let _res = node.propose_values(7, values);
     }
 
     #[test_with_logger]
