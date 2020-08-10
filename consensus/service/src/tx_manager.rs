@@ -22,6 +22,7 @@ use mc_transaction_core::{
     validation::{TransactionValidationError, TransactionValidationResult},
     Block, BlockContents, BlockSignature,
 };
+#[cfg(test)]
 use mockall::*;
 
 #[derive(Clone, Debug, Fail)]
@@ -80,7 +81,7 @@ impl CacheEntry {
 }
 
 /// Transaction checks performed outside the enclave.
-#[automock]
+#[cfg_attr(test, automock)]
 pub trait UntrustedInterfaces: Send {
     /// Performs the untrusted part of the well-formed check.
     /// Returns current block index and membership proofs to be used by
@@ -106,7 +107,7 @@ pub trait UntrustedInterfaces: Send {
     fn combine(&self, tx_contexts: &[WellFormedTxContext], max_elements: usize) -> Vec<TxHash>;
 }
 
-#[automock]
+#[cfg_attr(test, automock)]
 pub trait TxManager: Send {
     /// Insert a transaction into the cache. The transaction must be well-formed.
     fn insert(&mut self, tx_context: TxContext) -> TxManagerResult<WellFormedTxContext>;
