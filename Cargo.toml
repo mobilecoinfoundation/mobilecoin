@@ -116,7 +116,7 @@ prost = { git = "https://github.com/danburkert/prost", rev = "6113789f70b6970982
 prost-derive = { git = "https://github.com/danburkert/prost", rev = "6113789f70b69709820becba4242824b4fb3ffec" }
 # slog is patched in order to build in no_std config with dynamic_keys feature on
 # https://github.com/slog-rs/slog/pull/268
-slog = { git = "https://github.com/garbageslam/slog", rev = "cc1562258b81353426d17a55b7447256fa6eabbf" }
+slog = { git = "https://github.com/mobilecoinofficial/slog", rev = "cc1562258b81353426d17a55b7447256fa6eabbf" }
 dialoguer = { git = "https://github.com/mitsuhiko/dialoguer", rev = "a0c6c1e" }
 console = { git = "https://github.com/mitsuhiko/console", rev = "1307823" }
 

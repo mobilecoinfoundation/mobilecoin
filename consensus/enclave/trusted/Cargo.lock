@@ -687,7 +687,7 @@ dependencies = [
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha3 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "siphasher 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "slog 2.6.0 (git+https://github.com/garbageslam/slog?rev=cc1562258b81353426d17a55b7447256fa6eabbf)",
+ "slog 2.6.0 (git+https://github.com/mobilecoinofficial/slog?rev=cc1562258b81353426d17a55b7447256fa6eabbf)",
 ]
 
 [[package]]
@@ -1453,7 +1453,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "slog"
 version = "2.6.0"
-source = "git+https://github.com/garbageslam/slog?rev=cc1562258b81353426d17a55b7447256fa6eabbf#cc1562258b81353426d17a55b7447256fa6eabbf"
+source = "git+https://github.com/mobilecoinofficial/slog?rev=cc1562258b81353426d17a55b7447256fa6eabbf#cc1562258b81353426d17a55b7447256fa6eabbf"
 
 [[package]]
 name = "smallvec"
@@ -1793,7 +1793,7 @@ dependencies = [
 "checksum shlex 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "7fdf1b9db47230893d76faad238fd6097fd6d6a9245cd7a4d90dbd639536bbd2"
 "checksum signature 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "685e1c5b65c6cc6fd0eb9ba63c6cfb8431f7f9c7e078c626f23f50e13fa378d7"
 "checksum siphasher 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "83da420ee8d1a89e640d0948c646c1c088758d3a3c538f943bfa97bdac17929d"
-"checksum slog 2.6.0 (git+https://github.com/garbageslam/slog?rev=cc1562258b81353426d17a55b7447256fa6eabbf)" = "<none>"
+"checksum slog 2.6.0 (git+https://github.com/mobilecoinofficial/slog?rev=cc1562258b81353426d17a55b7447256fa6eabbf)" = "<none>"
 "checksum smallvec 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5c2fb2ec9bcd216a5b0d0ccf31ab17b5ed1d627960edff65bbe95d3ce221cefc"
 "checksum spin 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)" = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 "checksum strsim 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "8ea5119cdb4c55b55d432abb513a0429384878c15dde60cc77b1c99de1a95a6a"
