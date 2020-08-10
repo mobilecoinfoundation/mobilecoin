@@ -220,8 +220,9 @@ impl Hash for ReportBody {
 impl Ord for ReportBody {
     /// Create an arbitrary sort order for report body types
     ///
-    /// We sort by Family ID, ProdID, Extended ProdID, SVN, MrSigner, MrEnclave, Attributes,
-    /// Misc Select, ConfigId, ConfigSVN, CPU SVN, and ReportData, in that order
+    /// We sort by Family ID, ProdID, Extended ProdID, SVN, MrSigner, MrEnclave,
+    /// Attributes, Misc Select, ConfigId, ConfigSVN, CPU SVN, and
+    /// ReportData, in that order
     fn cmp(&self, other: &Self) -> Ordering {
         match (&self.0.isv_family_id[..]).cmp(&other.0.isv_family_id[..]) {
             Ordering::Equal => match self.0.isv_prod_id.cmp(&other.0.isv_prod_id) {
