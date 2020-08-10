@@ -279,11 +279,49 @@ impl<V: Value, ValidationError: Display + 'static> ScpNode<V> for Node<V, Valida
 }
 
 #[cfg(test)]
-mod tests {
+mod node_tests {
     use super::*;
     use crate::{core_types::Ballot, msg::*, test_utils::*};
     use mc_common::logger::test_with_logger;
     use std::{iter::FromIterator, sync::Arc};
+
+    // use crate::slot::MockScpSlot;
+
+    #[test_with_logger]
+    fn test_initialization(logger: Logger) {
+        let node = Node::<u32, TransactionValidationError>::new(
+            test_node_id(1),
+            QuorumSet::new_with_node_ids(1, vec![test_node_id(2)]),
+            Arc::new(trivial_validity_fn),
+            Arc::new(trivial_combine_fn),
+            logger.clone(),
+        );
+
+        assert!(node.pending.is_empty());
+        assert!(node.externalized.is_empty());
+    }
+
+    #[test_with_logger]
+    #[ignore]
+    fn test_propose_values_create_new_slot(logger: Logger) {
+        type V = &'static str;
+
+        let mut _node = Node::<V, TransactionValidationError>::new(
+            test_node_id(1),
+            QuorumSet::new_with_node_ids(1, vec![test_node_id(2)]),
+            Arc::new(trivial_validity_fn),
+            Arc::new(trivial_combine_fn),
+            logger.clone(),
+        );
+
+        // // mock the current slot
+        // let slot = MockScpSlot::<V>::new();
+        // node.pending.put(1, Box::new(slot));
+        // node.propose_values()
+
+        // TODO:
+        unimplemented!()
+    }
 
     #[test_with_logger]
     /// Steps through a sequence of messages that allow a two-node network to reach consensus.
