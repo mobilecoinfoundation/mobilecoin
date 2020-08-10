@@ -27,6 +27,9 @@ use core::cmp;
 use maplit::{btreeset, hashset};
 use serde::{Deserialize, Serialize};
 
+#[cfg(test)]
+use mockall::*;
+
 /// The various phases of the SCP protocol.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Phase {
@@ -44,6 +47,7 @@ pub enum Phase {
 }
 
 /// A Single slot of the SCP protocol.
+#[cfg_attr(test, automock)]
 pub trait ScpSlot<V: Value> {
     /// Get metrics about the slot.
     fn get_metrics(&self) -> SlotMetrics;
