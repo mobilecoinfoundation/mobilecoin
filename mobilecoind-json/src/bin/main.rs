@@ -5,7 +5,7 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 
 use grpcio::ChannelBuilder;
-use mc_api::external::{CompressedRistretto, KeyImage, PublicAddress};
+use mc_api::external::{CompressedRistretto, KeyImage, PublicAddress, RistrettoPrivate};
 use mc_common::logger::{create_app_logger, log, o};
 use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri};
 use mc_mobilecoind_json::data_types::*;
@@ -40,7 +40,7 @@ struct State {
 }
 
 /// Requests a new root entropy from mobilecoind
-#[get("/entropy")]
+#[post("/entropy")]
 fn entropy(state: rocket::State<State>) -> Result<Json<JsonEntropyResponse>, String> {
     let resp = state
         .mobilecoind_api_client
@@ -49,24 +49,45 @@ fn entropy(state: rocket::State<State>) -> Result<Json<JsonEntropyResponse>, Str
     Ok(Json(JsonEntropyResponse::from(&resp)))
 }
 
+#[get("/entropy/<entropy>")]
+fn account_key(
+    state: rocket::State<State>,
+    entropy: String,
+) -> Result<Json<JsonAccountKeyResponse>, String> {
+    let entropy =
+        hex::decode(entropy).map_err(|err| format!("Failed to decode hex key: {}", err))?;
+
+    let mut req = mc_mobilecoind_api::GetAccountKeyRequest::new();
+    req.set_entropy(entropy.to_vec());
+
+    let resp = state
+        .mobilecoind_api_client
+        .get_account_key(&req)
+        .map_err(|err| format!("Failed getting account key for entropy: {}", err))?;
+
+    Ok(Json(JsonAccountKeyResponse::from(&resp)))
+}
+
 /// Creates a monitor. Data for the key and range is POSTed using the struct above.
 #[post("/monitors", format = "json", data = "<monitor>")]
 fn create_monitor(
     state: rocket::State<State>,
     monitor: Json<JsonMonitorRequest>,
 ) -> Result<Json<JsonMonitorResponse>, String> {
-    let entropy = hex::decode(&monitor.entropy)
-        .map_err(|err| format!("Failed to decode hex key: {}", err))?;
 
-    let mut req = mc_mobilecoind_api::GetAccountKeyRequest::new();
-    req.set_entropy(entropy.to_vec());
-
-    let mut resp = state
-        .mobilecoind_api_client
-        .get_account_key(&req)
-        .map_err(|err| format!("Failed getting account key for entropy: {}", err))?;
-
-    let account_key = resp.take_account_key();
+    let mut account_key = mc_mobilecoind_api::external::AccountKey::new();
+    let mut view_private_key = RistrettoPrivate::new();
+    view_private_key.set_data(
+        hex::decode(&monitor.account_key.view_private_key)
+            .map_err(|err| format!("Failed to decode hex key: {}", err))?,
+    );
+    let mut spend_private_key = RistrettoPrivate::new();
+    spend_private_key.set_data(
+        hex::decode(&monitor.account_key.spend_private_key)
+            .map_err(|err| format!("Failed to decode hex key: {}", err))?,
+    );
+    account_key.set_view_private_key(view_private_key);
+    account_key.set_spend_private_key(spend_private_key);
 
     let mut req = mc_mobilecoind_api::AddMonitorRequest::new();
     req.set_account_key(account_key);
@@ -113,7 +134,7 @@ fn monitor_status(
 }
 
 /// Balance check using a created monitor and subaddress index
-#[get("/monitors/<monitor_hex>/<subaddress_index>/balance")]
+#[get("/monitors/<monitor_hex>/subaddresses/<subaddress_index>/balance")]
 fn balance(
     state: rocket::State<State>,
     monitor_hex: String,
@@ -134,9 +155,33 @@ fn balance(
     Ok(Json(JsonBalanceResponse::from(&resp)))
 }
 
+/// Balance check using a created monitor and subaddress index
+#[get("/monitors/<monitor_hex>/subaddresses/<subaddress_index>/public-address")]
+fn public_address(
+    state: rocket::State<State>,
+    monitor_hex: String,
+    subaddress_index: u64,
+) -> Result<Json<JsonPublicAddress>, String> {
+    let monitor_id =
+        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
+
+    // Get our public address.
+    let mut req = mc_mobilecoind_api::GetPublicAddressRequest::new();
+    req.set_monitor_id(monitor_id);
+    req.set_subaddress_index(subaddress_index);
+
+    let resp = state
+        .mobilecoind_api_client
+        .get_public_address(&req)
+        .map_err(|err| format!("Failed getting public address: {}", err))?;
+
+    let public_address = resp.get_public_address();
+    Ok(Json(JsonPublicAddress::from(public_address)))
+}
+
 /// Generates a request code with an optional value and memo
 #[post(
-    "/monitors/<monitor_hex>/<subaddress_index>/request-code",
+    "/monitors/<monitor_hex>/subaddresses/<subaddress_index>/request-code",
     format = "json",
     data = "<extra>"
 )]
@@ -180,7 +225,7 @@ fn request_code(
 }
 
 /// Retrieves the data in a request code
-#[get("/read-request/<request_code>")]
+#[get("/codes/request/<request_code>")]
 fn read_request(
     state: rocket::State<State>,
     request_code: String,
@@ -200,7 +245,7 @@ fn read_request(
 
 /// Performs a transfer from a monitor and subaddress. The public keys and amount are in the POST data.
 #[post(
-    "/monitors/<monitor_hex>/<subaddress_index>/transfer",
+    "/monitors/<monitor_hex>/subaddresses/<subaddress_index>/build-and-submit",
     format = "json",
     data = "<transfer>"
 )]
@@ -241,7 +286,7 @@ fn transfer(
 }
 
 /// Checks the status of a transfer given a key image and tombstone block
-#[post("/check-transfer-status", format = "json", data = "<receipt>")]
+#[post("/tx/status-as-sender", format = "json", data = "<receipt>")]
 fn check_transfer_status(
     state: rocket::State<State>,
     receipt: Json<JsonTransferResponse>,
@@ -272,7 +317,7 @@ fn check_transfer_status(
 /// The sender of the transaction will take specific receipt data from the /transfer call
 /// and distribute it to the recipient(s) so they can verify that a transaction has been
 /// processed and the the person supplying the receipt can prove they intiated it
-#[post("/check-receiver-transfer-status", format = "json", data = "<receipt>")]
+#[post("/tx/status-as-receiver", format = "json", data = "<receipt>")]
 fn check_receiver_transfer_status(
     state: rocket::State<State>,
     receipt: Json<JsonReceiverTxReceipt>,
@@ -300,7 +345,7 @@ fn check_receiver_transfer_status(
 }
 
 /// Gets information about the entire ledger
-#[get("/ledger-info")]
+#[get("/ledger/local")]
 fn ledger_info(state: rocket::State<State>) -> Result<Json<JsonLedgerInfoResponse>, String> {
     let resp = state
         .mobilecoind_api_client
@@ -311,7 +356,7 @@ fn ledger_info(state: rocket::State<State>) -> Result<Json<JsonLedgerInfoRespons
 }
 
 /// Retrieves the data in a request code
-#[get("/block-info/<block_num>")]
+#[get("/ledger/blocks/<block_num>/header")]
 fn block_info(
     state: rocket::State<State>,
     block_num: u64,
@@ -328,7 +373,7 @@ fn block_info(
 }
 
 /// Retrieves the details for a given block.
-#[get("/block-details/<block_num>")]
+#[get("/ledger/blocks/<block_num>")]
 fn block_details(
     state: rocket::State<State>,
     block_num: u64,
@@ -344,7 +389,7 @@ fn block_details(
     Ok(Json(JsonBlockDetailsResponse::from(&resp)))
 }
 /// Retreives processed block information.
-#[get("/processed-block/<monitor_hex>/<block_num>")]
+#[get("/monitors/<monitor_hex>/processed-blocks/<block_num>")]
 fn processed_block(
     state: rocket::State<State>,
     monitor_hex: String,
@@ -366,7 +411,7 @@ fn processed_block(
 }
 
 /// Generates an AddressRequest code with a URL for the client to POST payment instructions
-#[post("/address-request", format = "json", data = "<address_request>")]
+#[post("/codes/address-request", format = "json", data = "<address_request>")]
 fn address_request_code(
     state: rocket::State<State>,
     address_request: Json<JsonAddressRequestCodeRequest>,
@@ -416,10 +461,12 @@ fn main() {
             "/",
             routes![
                 entropy,
+                account_key,
                 create_monitor,
                 monitors,
                 monitor_status,
                 balance,
+                public_address,
                 request_code,
                 read_request,
                 transfer,
