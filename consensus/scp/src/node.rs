@@ -147,8 +147,8 @@ pub trait ScpNode<V: Value>: Send {
     /// Get metrics for a specific slot.
     fn get_slot_metrics(&mut self, slot_index: SlotIndex) -> Option<SlotMetrics>;
 
-    /// Get the slot internal state (for debug purposes).
-    fn get_slot_state(&mut self, slot_index: SlotIndex) -> Option<String>;
+    /// Additional debug info, e.g. a JSON representation of the Slot's state.
+    fn get_slot_debug_snapshot(&mut self, slot_index: SlotIndex) -> Option<String>;
 
     /// Clear the list of pending slots. This is useful if the user of this object realizes they
     /// have fallen behind their peers, and as such they want to abort processing of current slots.
@@ -265,7 +265,7 @@ impl<V: Value, ValidationError: Display + 'static> ScpNode<V> for Node<V, Valida
     }
 
     /// Get the slot internal state (for debug purposes).
-    fn get_slot_state(&mut self, slot_index: SlotIndex) -> Option<String> {
+    fn get_slot_debug_snapshot(&mut self, slot_index: SlotIndex) -> Option<String> {
         self.pending
             .get(&slot_index)
             .map(|slot| slot.get_debug_snapshot())

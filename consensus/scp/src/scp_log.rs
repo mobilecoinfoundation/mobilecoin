@@ -164,7 +164,7 @@ impl<V: Value, N: ScpNode<V>> LoggingScpNode<V, N> {
             .map_err(|e| format!("failed writing {:?}: {:?}", file_path, e))?;
 
         // Write slot state into a file.
-        if let Some(slot_state) = self.get_slot_state(msg_slot_index) {
+        if let Some(slot_state) = self.get_slot_debug_snapshot(msg_slot_index) {
             let slot_as_json = serde_json::to_vec(&slot_state)
                 .map_err(|e| format!("failed serializing slot state: {:?}", e))?;
 
@@ -257,8 +257,8 @@ impl<V: Value, N: ScpNode<V>> ScpNode<V> for LoggingScpNode<V, N> {
         self.node.get_slot_metrics(slot_index)
     }
 
-    fn get_slot_state(&mut self, slot_index: SlotIndex) -> Option<String> {
-        self.node.get_slot_state(slot_index)
+    fn get_slot_debug_snapshot(&mut self, slot_index: SlotIndex) -> Option<String> {
+        self.node.get_slot_debug_snapshot(slot_index)
     }
 
     fn clear_pending_slots(&mut self) {
