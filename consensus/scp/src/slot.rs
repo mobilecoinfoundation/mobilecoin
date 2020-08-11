@@ -27,6 +27,10 @@ use core::cmp;
 use maplit::{btreeset, hashset};
 use serde::{Deserialize, Serialize};
 
+use crate::slot_state::SlotState;
+#[cfg(test)]
+use mockall::*;
+
 /// The various phases of the SCP protocol.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Phase {
@@ -41,6 +45,25 @@ pub enum Phase {
 
     /// Begins when some ballot is confirmed committed. Ends whenever...
     Externalize,
+}
+
+/// A Single slot of the SCP protocol.
+#[cfg_attr(test, automock)]
+pub trait ScpSlot<V: Value>: Send {
+    /// Get metrics about the slot.
+    fn get_metrics(&self) -> SlotMetrics;
+
+    /// Processes any timeouts that may have occurred.
+    fn process_timeouts(&mut self) -> Vec<Msg<V>>;
+
+    /// Propose values for this node to nominate.
+    fn propose_values(&mut self, values: &BTreeSet<V>) -> Result<Option<Msg<V>>, String>;
+
+    /// Handles an incoming message from a peer.
+    fn handle(&mut self, msg: &Msg<V>) -> Result<Option<Msg<V>>, String>;
+
+    /// Additional debug info, e.g. a JSON representation of the Slot's state.
+    fn get_debug_snapshot(&self) -> String;
 }
 
 /// The SCP slot.
@@ -152,56 +175,9 @@ pub struct SlotMetrics {
     pub bN: u32,
 }
 
-impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
-    ///////////////////////////////////////////////////////////////////////////
-    // Public methods (how the Slot interfaces with the Node)
-    ///////////////////////////////////////////////////////////////////////////
-
-    /// Create a new slot.
-    pub fn new(
-        node_id: NodeID,
-        quorum_set: QuorumSet,
-        slot_index: SlotIndex,
-        validity_fn: ValidityFn<V, ValidationError>,
-        combine_fn: CombineFn<V>,
-        logger: Logger,
-    ) -> Self {
-        let mut slot = Slot {
-            slot_index,
-            node_id,
-            quorum_set,
-            M: HashMap::default(),
-            W: HashSet::default(),
-            X: HashSet::default(),
-            Y: HashSet::default(),
-            Z: HashSet::default(),
-            B: Ballot::new(0, &Vec::new()),
-            P: None,
-            PP: None,
-            C: None,
-            H: None,
-            phase: Phase::NominatePrepare,
-            last_sent_msg: None,
-            max_priority_peers: HashSet::default(),
-            nominate_round: 1,
-            next_nominate_round_at: None,
-            next_ballot_at: None,
-            validity_fn,
-            combine_fn,
-            valid_values: BTreeSet::default(),
-            logger: logger.new(o!("mc.scp.slot" => slot_index)),
-            base_round_interval: Duration::from_millis(1000),
-            base_ballot_interval: Duration::from_millis(1000),
-        };
-
-        let max_priority_peer = slot.find_max_priority_peer(slot.nominate_round);
-        slot.max_priority_peers.insert(max_priority_peer);
-
-        slot
-    }
-
+impl<V: Value, ValidationError: Display> ScpSlot<V> for Slot<V, ValidationError> {
     /// Get some metrics/information about the slot for debugging purposes.
-    pub fn get_metrics(&self) -> SlotMetrics {
+    fn get_metrics(&self) -> SlotMetrics {
         SlotMetrics {
             phase: self.phase,
             num_voted_nominated: self.X.len(),
@@ -214,7 +190,7 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
 
     /// Processes any timeouts that may have occurred.
     /// Returns list of messages to broadcast to network.
-    pub fn process_timeouts(&mut self) -> Vec<Msg<V>> {
+    fn process_timeouts(&mut self) -> Vec<Msg<V>> {
         let mut msgs = Vec::<Msg<V>>::new();
 
         let mut timeout_occurred = false;
@@ -299,7 +275,7 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
     }
 
     /// Propose values for this node to nominate.
-    pub fn propose_values(&mut self, values: &BTreeSet<V>) -> Result<Option<Msg<V>>, String> {
+    fn propose_values(&mut self, values: &BTreeSet<V>) -> Result<Option<Msg<V>>, String> {
         // Only accept values during the Nominate phase and if no other values have been confirmed nominated.
         if !(self.phase == Phase::NominatePrepare && self.Z.is_empty()) {
             return Ok(self.out_msg());
@@ -323,7 +299,7 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
     /// Returns:
     /// * Ok(out_msg) - `out_msg` is an outgoing message from this node, if any.
     /// * Err(e) - Something went wrong while processing `msg`.
-    pub fn handle(&mut self, msg: &Msg<V>) -> Result<Option<Msg<V>>, String> {
+    fn handle(&mut self, msg: &Msg<V>) -> Result<Option<Msg<V>>, String> {
         // Reject messages for other slots.
         if self.slot_index != msg.slot_index {
             return Err("Message is not for the current slot.".to_string());
@@ -354,6 +330,59 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
         self.do_ballot_protocol();
 
         Ok(self.out_msg())
+    }
+
+    fn get_debug_snapshot(&self) -> String {
+        serde_json::to_string(&SlotState::from(self)).expect("SlotState should yield JSON")
+    }
+}
+
+impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
+    ///////////////////////////////////////////////////////////////////////////
+    // Public methods (how the Slot interfaces with the Node)
+    ///////////////////////////////////////////////////////////////////////////
+
+    /// Create a new slot.
+    pub fn new(
+        node_id: NodeID,
+        quorum_set: QuorumSet,
+        slot_index: SlotIndex,
+        validity_fn: ValidityFn<V, ValidationError>,
+        combine_fn: CombineFn<V>,
+        logger: Logger,
+    ) -> Self {
+        let mut slot = Slot {
+            slot_index,
+            node_id,
+            quorum_set,
+            M: HashMap::default(),
+            W: HashSet::default(),
+            X: HashSet::default(),
+            Y: HashSet::default(),
+            Z: HashSet::default(),
+            B: Ballot::new(0, &Vec::new()),
+            P: None,
+            PP: None,
+            C: None,
+            H: None,
+            phase: Phase::NominatePrepare,
+            last_sent_msg: None,
+            max_priority_peers: HashSet::default(),
+            nominate_round: 1,
+            next_nominate_round_at: None,
+            next_ballot_at: None,
+            validity_fn,
+            combine_fn,
+            valid_values: BTreeSet::default(),
+            logger: logger.new(o!("mc.scp.slot" => slot_index)),
+            base_round_interval: Duration::from_millis(1000),
+            base_ballot_interval: Duration::from_millis(1000),
+        };
+
+        let max_priority_peer = slot.find_max_priority_peer(slot.nominate_round);
+        slot.max_priority_peers.insert(max_priority_peer);
+
+        slot
     }
 
     fn is_valid(&mut self, value: &V) -> Result<(), String> {

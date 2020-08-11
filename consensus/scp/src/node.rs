@@ -5,8 +5,7 @@ use crate::{
     core_types::{CombineFn, SlotIndex, ValidityFn, Value},
     msg::{ExternalizePayload, Msg, Topic},
     quorum_set::QuorumSet,
-    slot::{Slot, SlotMetrics},
-    slot_state::SlotState,
+    slot::{ScpSlot, Slot, SlotMetrics},
 };
 use mc_common::{
     logger::{log, Logger},
@@ -29,7 +28,7 @@ pub struct Node<V: Value, ValidationError: Display> {
     pub Q: QuorumSet,
 
     /// Map of last few slot indexes -> slots.
-    pub pending: LruCache<SlotIndex, Slot<V, ValidationError>>,
+    pub pending: LruCache<SlotIndex, Box<dyn ScpSlot<V>>>,
 
     /// Map of last few slot indexes -> externalized slots.
     pub externalized: LruCache<SlotIndex, ExternalizePayload<V>>,
@@ -48,7 +47,7 @@ pub struct Node<V: Value, ValidationError: Display> {
     pub scp_timebase: Duration,
 }
 
-impl<V: Value, ValidationError: Display> Node<V, ValidationError> {
+impl<V: Value, ValidationError: Display + 'static> Node<V, ValidationError> {
     /// Creates a new Node.
     pub fn new(
         ID: NodeID,
@@ -70,10 +69,7 @@ impl<V: Value, ValidationError: Display> Node<V, ValidationError> {
     }
 
     /// Get or crate a pending slot.
-    fn get_or_create_pending_slot(
-        &mut self,
-        slot_index: SlotIndex,
-    ) -> &mut Slot<V, ValidationError> {
+    fn get_or_create_pending_slot(&mut self, slot_index: SlotIndex) -> &mut Box<dyn ScpSlot<V>> {
         // Create new Slot if necessary.
         if !self.pending.contains(&slot_index) {
             let mut slot = Slot::new(
@@ -86,7 +82,7 @@ impl<V: Value, ValidationError: Display> Node<V, ValidationError> {
             );
             slot.base_round_interval = self.scp_timebase;
             slot.base_ballot_interval = self.scp_timebase;
-            self.pending.put(slot_index, slot);
+            self.pending.put(slot_index, Box::new(slot));
         }
 
         // Return slot.
@@ -151,15 +147,15 @@ pub trait ScpNode<V: Value>: Send {
     /// Get metrics for a specific slot.
     fn get_slot_metrics(&mut self, slot_index: SlotIndex) -> Option<SlotMetrics>;
 
-    /// Get the slot internal state (for debug purposes).
-    fn get_slot_state(&mut self, slot_index: SlotIndex) -> Option<SlotState<V>>;
+    /// Additional debug info, e.g. a JSON representation of the Slot's state.
+    fn get_slot_debug_snapshot(&mut self, slot_index: SlotIndex) -> Option<String>;
 
     /// Clear the list of pending slots. This is useful if the user of this object realizes they
     /// have fallen behind their peers, and as such they want to abort processing of current slots.
     fn clear_pending_slots(&mut self);
 }
 
-impl<V: Value, ValidationError: Display> ScpNode<V> for Node<V, ValidationError> {
+impl<V: Value, ValidationError: Display + 'static> ScpNode<V> for Node<V, ValidationError> {
     fn node_id(&self) -> NodeID {
         self.ID.clone()
     }
@@ -269,8 +265,10 @@ impl<V: Value, ValidationError: Display> ScpNode<V> for Node<V, ValidationError>
     }
 
     /// Get the slot internal state (for debug purposes).
-    fn get_slot_state(&mut self, slot_index: SlotIndex) -> Option<SlotState<V>> {
-        self.pending.get(&slot_index).map(SlotState::from)
+    fn get_slot_debug_snapshot(&mut self, slot_index: SlotIndex) -> Option<String> {
+        self.pending
+            .get(&slot_index)
+            .map(|slot| slot.get_debug_snapshot())
     }
 
     /// Clear the list of pending slots. This is useful if the user of this object realizes they
@@ -281,11 +279,67 @@ impl<V: Value, ValidationError: Display> ScpNode<V> for Node<V, ValidationError>
 }
 
 #[cfg(test)]
-mod tests {
+mod node_tests {
     use super::*;
-    use crate::{core_types::Ballot, msg::*, test_utils::*};
+    use crate::{core_types::Ballot, msg::*, slot::MockScpSlot, test_utils::*};
+    use maplit::btreeset;
     use mc_common::logger::test_with_logger;
     use std::{iter::FromIterator, sync::Arc};
+
+    #[test_with_logger]
+    // Initially, `pending` and `externalized` should be empty.
+    fn test_initialization(logger: Logger) {
+        let node = Node::<u32, TransactionValidationError>::new(
+            test_node_id(1),
+            QuorumSet::new_with_node_ids(1, vec![test_node_id(2)]),
+            Arc::new(trivial_validity_fn),
+            Arc::new(trivial_combine_fn),
+            logger.clone(),
+        );
+
+        assert!(node.pending.is_empty());
+        assert!(node.externalized.is_empty());
+    }
+
+    #[test_with_logger]
+    // Should create a slot if one is not yet available.
+    fn test_propose_values_create_new_slot(logger: Logger) {
+        type V = &'static str;
+
+        let mut node = Node::<V, TransactionValidationError>::new(
+            test_node_id(1),
+            QuorumSet::new_with_node_ids(1, vec![test_node_id(2)]),
+            Arc::new(trivial_validity_fn),
+            Arc::new(trivial_combine_fn),
+            logger.clone(),
+        );
+
+        let values = btreeset!["a", "b", "c"];
+        let _res = node.propose_values(7, values);
+
+        assert!(node.pending.contains(&7));
+    }
+
+    #[test_with_logger]
+    // Should pass values to the appropriate slot.
+    fn test_propose_values(logger: Logger) {
+        type V = &'static str;
+
+        let mut node = Node::<V, TransactionValidationError>::new(
+            test_node_id(1),
+            QuorumSet::new_with_node_ids(1, vec![test_node_id(2)]),
+            Arc::new(trivial_validity_fn),
+            Arc::new(trivial_combine_fn),
+            logger.clone(),
+        );
+
+        let mut slot = MockScpSlot::<V>::new();
+        slot.expect_propose_values().times(1).return_const(Ok(None));
+        node.pending.put(7, Box::new(slot));
+
+        let values = btreeset!["a", "b", "c"];
+        let _res = node.propose_values(7, values);
+    }
 
     #[test_with_logger]
     /// Steps through a sequence of messages that allow a two-node network to reach consensus.

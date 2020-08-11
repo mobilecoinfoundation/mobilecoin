@@ -54,12 +54,22 @@ pub type SlotIndex = u64;
 
 /// The value on which to consense.
 pub trait Value:
-    Hash + Eq + PartialEq + Debug + Clone + PartialOrd + Ord + Send + Serialize + Digestible
+    Hash + Eq + PartialEq + Debug + Clone + PartialOrd + Ord + Send + Serialize + Digestible + 'static
 {
 }
 
 impl<T> Value for T where
-    T: Hash + Eq + PartialEq + Debug + Clone + PartialOrd + Ord + Send + Serialize + Digestible
+    T: Hash
+        + Eq
+        + PartialEq
+        + Debug
+        + Clone
+        + PartialOrd
+        + Ord
+        + Send
+        + Serialize
+        + Digestible
+        + 'static
 {
 }
 
