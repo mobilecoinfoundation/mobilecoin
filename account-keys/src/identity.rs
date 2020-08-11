@@ -184,8 +184,10 @@ fn root_identity_hkdf_helper(ikm: &[u8], info: &[u8]) -> Scalar {
 #[cfg(test)]
 mod testing {
     use super::*;
-    use core::convert::TryInto;
-    use yaml_rust::{Yaml, YamlLoader};
+    use alloc::boxed::Box;
+    use datatest::data;
+    use mc_account_keys_test_vectors::*;
+    use mc_util_test_vectors::TestVectorReader;
 
     // Protobuf deserialization should recover a serialized RootIdentity.
     #[test]
@@ -204,35 +206,17 @@ mod testing {
         })
     }
 
+    #[data(AcctPrivKeysFromRootEntropy::from_jsonl("test-vectors/vectors"))]
     #[test]
-    fn test_acct_priv_keys_from_root_entropy() {
-        let yaml = YamlLoader::load_from_str(include_str!(
-            "../../test-vectors/transaction/identity/acct_priv_keys_from_root_entropy.yaml"
-        ))
-        .unwrap();
-
-        for test in yaml[0].clone() {
-            let root_entropy = yaml_as_byte_array(&test["root_entropy"]);
-            let view_private_key = yaml_as_byte_array(&test["view_private_key"]);
-            let spend_private_key = yaml_as_byte_array(&test["spend_private_key"]);
-
-            let root32: [u8; 32] = root_entropy.as_slice().try_into().unwrap();
-            let account_key = AccountKey::from(&RootIdentity::from(&root32));
-            assert_eq!(
-                account_key.view_private_key().to_bytes(),
-                view_private_key.as_slice()
-            );
-            assert_eq!(
-                account_key.spend_private_key().to_bytes(),
-                spend_private_key.as_slice()
-            );
-        }
-    }
-
-    fn yaml_as_byte_array(yaml: &Yaml) -> Vec<u8> {
-        yaml.clone()
-            .into_iter()
-            .map(|elem| elem.as_i64().unwrap().try_into().unwrap())
-            .collect::<Vec<_>>()
+    fn acct_priv_keys_from_root_entropy(case: AcctPrivKeysFromRootEntropy) {
+        let account_key = AccountKey::from(&RootIdentity::from(&case.root_entropy));
+        assert_eq!(
+            account_key.view_private_key().to_bytes(),
+            case.view_private_key.to_bytes()
+        );
+        assert_eq!(
+            account_key.spend_private_key().to_bytes(),
+            case.spend_private_key.to_bytes()
+        );
     }
 }
