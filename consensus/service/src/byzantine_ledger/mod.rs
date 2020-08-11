@@ -4,11 +4,12 @@
 //!
 //! Orchestrates running single-slot consensus, or performing ledger sync with peers.
 
+mod ledger_sync_state;
 mod task_message;
 mod worker;
 
 use crate::{
-    byzantine_ledger::{task_message::TaskMessage, worker::ByzantineLedgerThread},
+    byzantine_ledger::{task_message::TaskMessage, worker::ByzantineLedgerWorker},
     counters,
     tx_manager::TxManager,
 };
@@ -153,7 +154,7 @@ impl ByzantineLedger {
             thread::Builder::new()
                 .name(format!("ByzantineLedger{:?}", node_id))
                 .spawn(move || {
-                    ByzantineLedgerThread::start(
+                    ByzantineLedgerWorker::start(
                         node_id,
                         quorum_set,
                         receiver,
@@ -228,27 +229,6 @@ impl Drop for ByzantineLedger {
     fn drop(&mut self) {
         self.stop()
     }
-}
-
-#[derive(Clone, Eq, PartialEq)]
-enum LedgerSyncState {
-    /// Local ledger is in sync with the network.
-    InSync,
-
-    /// Local ledger is behind the network, but we're allowing for some time before starting catch
-    /// up in case we are just about to receive SCP messages that would bring us back in sync.
-    /// The `Instant` argument is when we entered this state, and is used to check when this grace
-    /// period has been exceeded.
-    MaybeBehind(Instant),
-
-    /// We are behind the network and need to perform catchup.
-    IsBehind {
-        // Time when we should attempt to sync.
-        attempt_sync_at: Instant,
-
-        // Number of attempts made so far,
-        num_sync_attempts: u64,
-    },
 }
 
 #[cfg(test)]
