@@ -130,9 +130,9 @@ impl<L: Ledger> TxManagerUntrustedInterfaces for DefaultTxManagerUntrustedInterf
     /// * `max_elements` - Maximum number of elements to return.
     ///
     /// Returns a bounded, deterministically-ordered list of transactions that are safe to append to the ledger.
-    fn combine(&self, tx_contexts: &[WellFormedTxContext], max_elements: usize) -> Vec<TxHash> {
+    fn combine(&self, tx_contexts: &[&WellFormedTxContext], max_elements: usize) -> Vec<TxHash> {
         // WellFormedTxContext defines the sort order of transactions within a block.
-        let mut candidates: Vec<&WellFormedTxContext> = tx_contexts.iter().collect();
+        let mut candidates: Vec<&WellFormedTxContext> = tx_contexts.to_vec();
         candidates.sort();
 
         // Allow transactions that do not cause duplicate key images or output public keys.
@@ -703,7 +703,8 @@ mod combine_tests {
     fn combine(tx_contexts: Vec<WellFormedTxContext>, max_elements: usize) -> Vec<TxHash> {
         let ledger = get_mock_ledger(10);
         let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger);
-        untrusted.combine(&tx_contexts, max_elements)
+        let ref_tx_contexts: Vec<&WellFormedTxContext> = tx_contexts.iter().collect();
+        untrusted.combine(&ref_tx_contexts[..], max_elements)
     }
 
     #[test]
