@@ -74,7 +74,6 @@ fn create_monitor(
     state: rocket::State<State>,
     monitor: Json<JsonMonitorRequest>,
 ) -> Result<Json<JsonMonitorResponse>, String> {
-
     let mut account_key = mc_mobilecoind_api::external::AccountKey::new();
     let mut view_private_key = RistrettoPrivate::new();
     view_private_key.set_data(
@@ -180,39 +179,22 @@ fn public_address(
 }
 
 /// Generates a request code with an optional value and memo
-#[post(
-    "/monitors/<monitor_hex>/subaddresses/<subaddress_index>/request-code",
-    format = "json",
-    data = "<extra>"
-)]
+#[post("/codes/request", format = "json", data = "<code_request>")]
 fn request_code(
     state: rocket::State<State>,
-    monitor_hex: String,
-    subaddress_index: u64,
-    extra: Json<JsonRequestCodeRequest>,
+    code_request: Json<JsonRequestCodeRequest>,
 ) -> Result<Json<JsonRequestCodeResponse>, String> {
-    let monitor_id =
-        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
-
-    // Get our public address.
-    let mut req = mc_mobilecoind_api::GetPublicAddressRequest::new();
-    req.set_monitor_id(monitor_id);
-    req.set_subaddress_index(subaddress_index);
-
-    let resp = state
-        .mobilecoind_api_client
-        .get_public_address(&req)
-        .map_err(|err| format!("Failed getting public address: {}", err))?;
-
-    let public_address = resp.get_public_address().clone();
+    let public_address =
+        mc_mobilecoind_api::external::PublicAddress::try_from(&code_request.public_address)
+            .map_err(|err| format!("Failed to parse public address: {}", err))?;
 
     // Generate b58 code
     let mut req = mc_mobilecoind_api::GetRequestCodeRequest::new();
     req.set_receiver(public_address);
-    if let Some(value) = extra.value {
+    if let Some(value) = code_request.value {
         req.set_value(value);
     }
-    if let Some(memo) = extra.memo.clone() {
+    if let Some(memo) = code_request.memo.clone() {
         req.set_memo(memo);
     }
 

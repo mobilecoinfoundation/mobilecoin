@@ -106,6 +106,7 @@ impl From<&mc_mobilecoind_api::GetBalanceResponse> for JsonBalanceResponse {
 
 #[derive(Deserialize)]
 pub struct JsonRequestCodeRequest {
+    pub public_address: JsonPublicAddress,
     pub value: Option<u64>,
     pub memo: Option<String>,
 }
