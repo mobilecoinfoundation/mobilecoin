@@ -366,7 +366,7 @@ impl<
                         let entry = self
                             .pending_consensus_msgs
                             .entry(consensus_msg.scp_msg().slot_index)
-                            .or_insert(Vec::new());
+                            .or_insert_with(Vec::new);
                         entry.push((consensus_msg, from_responder_id));
                     }
                 }
