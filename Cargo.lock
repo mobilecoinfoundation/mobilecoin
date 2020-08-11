@@ -1989,7 +1989,6 @@ dependencies = [
  "rand 0.7.3",
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
- "serde_cbor",
  "tempdir",
  "zeroize 1.1.0",
 ]
@@ -3503,7 +3502,6 @@ version = "0.5.0"
 dependencies = [
  "datatest",
  "serde",
- "serde_cbor",
  "serde_json",
 ]
 

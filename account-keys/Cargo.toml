@@ -38,9 +38,6 @@ rand = "0.7"
 rand_hc = "0.2"
 tempdir = "0.3"
 
-# Even though serde_cbor isn't used, serde_cbor/std must be enabled since datatest enables serde/std
-serde_cbor = { version = "0.11", features = ["std"] }
-
 mc-account-keys-test-vectors = { path = "test-vectors" }
 mc-util-test-helper = { path = "../util/test-helper" }
 mc-util-test-vectors = { path = "../util/test-vectors" }
