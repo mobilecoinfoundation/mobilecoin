@@ -22,8 +22,11 @@ static ENCLAVE_SLOG_LOCATION: RecordLocation = RecordLocation {
 
 // This function is unsafe, if the caller misuses the API it can cause undefined behavior
 #[no_mangle]
-pub extern "C" fn enclave_log(msg: *const u8, msg_len: usize) {
-    let msg_bytes = unsafe { slice::from_raw_parts(msg, msg_len) };
+pub unsafe extern "C" fn enclave_log(msg: *const u8, msg_len: usize) {
+    enclave_log_impl(slice::from_raw_parts(msg, msg_len));
+}
+
+fn enclave_log_impl(msg_bytes: &[u8]) {
     let msg = EnclaveLogMessage::decode(msg_bytes);
 
     match msg {
