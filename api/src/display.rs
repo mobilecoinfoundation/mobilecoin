@@ -11,13 +11,13 @@ use protobuf::{parse_from_bytes, Message};
 /// Decoding / encoding errors
 #[derive(Clone, Debug, Eq, PartialEq, Display)]
 pub enum Error {
-    /// Protocol buffer could not be serialized
+    /// Protobuf serialization error: {0}
     Serialization(String),
 
-    /// The b58 string cannot be converted into bytes
+    /// B58 Decoding error: {0}
     B58(String),
 
-    /// Protocol buffer could not be deserialized
+    /// Protobuf deserialization error: {0}
     Deserialization(String),
 
     /// Checksum does not match
