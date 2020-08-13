@@ -5,30 +5,31 @@
 
 use crate::printable;
 use crc::crc32;
-use failure::Fail;
+use displaydoc::Display;
 use protobuf::{parse_from_bytes, Message};
 
 /// Decoding / encoding errors
-#[derive(Clone, Debug, Eq, PartialEq, Fail)]
+#[derive(Clone, Debug, Eq, PartialEq, Display)]
 pub enum Error {
     /// Protocol buffer could not be serialized
-    #[fail(display = "Could not serialize protocol buffer: {:?}", _0)]
-    SerializationFailure(String),
+    Serialization(String),
 
     /// The b58 string cannot be converted into bytes
-    #[fail(display = "Could not decode b58: {:?}", _0)]
-    B58Error(String),
+    B58(String),
 
     /// Protocol buffer could not be deserialized
-    #[fail(display = "Could not deserialize protocol buffer: {:?}", _0)]
-    DeserializationFailure(String),
+    Deserialization(String),
 
     /// Checksum does not match
-    #[fail(display = "Checksum does not match payload")]
-    ChecksumFailure(),
+    ChecksumMismatch,
+
+    /// Not enough bytes in the decoded vector
+    InsufficientBytes(usize),
 }
 
 /// A little-endian IEEE CRC32 checksum is prepended to payloads.
+/// Since this is public information with a possibility of transcription failure,
+/// a checksum is more appropriate than a hash function
 fn calculate_checksum(data: &[u8]) -> [u8; 4] {
     crc32::checksum_ieee(data).to_le_bytes()
 }
@@ -40,7 +41,7 @@ impl printable::PrintableWrapper {
     pub fn b58_encode(&self) -> Result<String, Error> {
         let wrapper_bytes = self
             .write_to_bytes()
-            .map_err(|err| Error::SerializationFailure(err.to_string()))?;
+            .map_err(|err| Error::Serialization(err.to_string()))?;
         let mut bytes_vec = Vec::new();
         bytes_vec.extend_from_slice(&calculate_checksum(&wrapper_bytes));
         bytes_vec.extend_from_slice(&wrapper_bytes);
@@ -51,20 +52,24 @@ impl printable::PrintableWrapper {
     pub fn b58_decode(encoded: String) -> Result<Self, Error> {
         let mut decoded_bytes = bs58::decode(encoded)
             .into_vec()
-            .map_err(|err| Error::B58Error(err.to_string()))?;
+            .map_err(|err| Error::B58(err.to_string()))?;
+        if decoded_bytes.len() < 5 {
+            return Err(Error::InsufficientBytes(decoded_bytes.len()));
+        }
         let wrapper_bytes = decoded_bytes.split_off(4);
         let expected_checksum = calculate_checksum(&wrapper_bytes);
         if expected_checksum.to_vec() != decoded_bytes {
-            return Err(Error::ChecksumFailure());
+            return Err(Error::ChecksumMismatch);
         }
         let wrapper = parse_from_bytes(&wrapper_bytes)
-            .map_err(|err| Error::DeserializationFailure(err.to_string()))?;
+            .map_err(|err| Error::Deserialization(err.to_string()))?;
         Ok(wrapper)
     }
 }
 
 #[cfg(test)]
 mod display_tests {
+    use super::Error;
     use crate::{
         external,
         printable::{PaymentRequest, PrintableWrapper},
@@ -126,6 +131,15 @@ mod display_tests {
         let reencoded = bs58::encode(vec_encoded).into_string();
 
         let decoded = PrintableWrapper::b58_decode(reencoded);
-        assert!(decoded.is_err());
+        assert_eq!(decoded.err(), Some(Error::ChecksumMismatch));
+    }
+
+    #[test]
+    fn test_insufficent_bytes() {
+        let encoded = "2g".to_string();
+        assert_eq!(
+            PrintableWrapper::b58_decode(encoded).err(),
+            Some(Error::InsufficientBytes(1))
+        );
     }
 }

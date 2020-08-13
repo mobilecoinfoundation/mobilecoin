@@ -2035,7 +2035,7 @@ dependencies = [
  "cargo-emit",
  "crc",
  "curve25519-dalek",
- "failure",
+ "displaydoc",
  "mc-account-keys",
  "mc-common",
  "mc-crypto-keys",
