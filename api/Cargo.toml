@@ -16,7 +16,7 @@ mc-transaction-core = { path = "../transaction/core" }
 
 bs58 = "0.3.0"
 crc = "1.8.1"
-displaydoc = "0.1.7"
+displaydoc = { version = "0.1.7", default-features = false }
 protobuf = "2.12"
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
