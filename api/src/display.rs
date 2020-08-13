@@ -23,7 +23,7 @@ pub enum Error {
     /// Checksum does not match
     ChecksumMismatch,
 
-    /// Not enough bytes in the decoded vector
+    /// Not enough bytes in the decoded vector {0}
     InsufficientBytes(usize),
 }
 
