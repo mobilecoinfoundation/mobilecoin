@@ -9,10 +9,10 @@ mc-crypto-hashes = { path = "../hashes" }
 mc-crypto-keys = { path = "../keys", default-features = false }
 
 digest = { version = "0.8.1", default-features = false }
+merlin = "2.0"
 rand_core = { version = "0.5", default-features = false }
 rand_hc = "0.2"
-# FIXME: Introduces *_rng methods that take an rng to bypass rand_hack that fails no_std builds
-schnorrkel = { git = "https://github.com/sugargoat/schnorrkel", rev = "60eedb2d3e005539052e1a2aef864bc78323c66c", default-features = false}
+schnorrkel = "0.9"
 
 [dev-dependencies]
 mc-util-from-random = { path = "../../util/from-random" }

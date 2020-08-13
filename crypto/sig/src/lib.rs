@@ -10,9 +10,10 @@
 use digest::Input;
 use mc_crypto_hashes::Blake2b256;
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
+use merlin::Transcript;
 use rand_core::SeedableRng;
 use rand_hc::Hc128Rng as FixedRng;
-use schnorrkel::{signing_context, SecretKey};
+use schnorrkel::{context::attach_rng, signing_context, SecretKey};
 pub use schnorrkel::{Signature, SignatureError, SIGNATURE_LENGTH};
 
 /// Create a deterministic Schnorrkel signature
@@ -44,10 +45,13 @@ pub fn sign(context_tag: &[u8], private_key: &RistrettoPrivate, message: &[u8]) 
     let keypair = secret_key.to_keypair();
 
     // Context provides domain separation for signature
-    let ctx = signing_context(context_tag);
+    let mut t = Transcript::new(b"SigningContext");
+    t.append_message(b"", context_tag);
+    t.append_message(b"sign-bytes", message);
     // NOTE: The fog_authority_fingerprint_sig is deterministic due to using the above hash as the rng seed
-    let mut csprng: FixedRng = SeedableRng::from_seed(nonce.into());
-    keypair.sign_rng(ctx.bytes(message), &mut csprng)
+    let csprng: FixedRng = SeedableRng::from_seed(nonce.into());
+    let transcript = attach_rng(t, csprng);
+    keypair.sign(transcript)
 }
 
 /// Verify a Schnorrkel signature
