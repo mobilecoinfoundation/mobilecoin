@@ -14,6 +14,9 @@ mc-util-repr-bytes = { path = "../util/repr-bytes" }
 mc-util-serial = { path = "../util/serial" }
 mc-transaction-core = { path = "../transaction/core" }
 
+bs58 = "0.3.0"
+crc = "1.8.1"
+displaydoc = { version = "0.1.7", default-features = false }
 protobuf = "2.12"
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]

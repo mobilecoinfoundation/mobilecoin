@@ -1,0 +1,22 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
+/// Protos to be used for displaying encoded strings to users
+
+syntax = "proto3";
+import "external.proto";
+
+package printable;
+
+option java_package = "com.mobilecoin.api";
+option java_outer_classname = "MobileCoinAPI";
+
+message PaymentRequest {
+    external.PublicAddress public_address = 1;
+    uint64 amount = 2;
+    string memo = 3;
+}
+
+message PrintableWrapper { oneof wrapper { 
+    external.PublicAddress public_address = 1; 
+    PaymentRequest payment_request = 2; 
+}}

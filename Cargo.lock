@@ -2031,8 +2031,11 @@ dependencies = [
 name = "mc-api"
 version = "0.6.0"
 dependencies = [
+ "bs58",
  "cargo-emit",
+ "crc",
  "curve25519-dalek",
+ "displaydoc",
  "mc-account-keys",
  "mc-common",
  "mc-crypto-keys",

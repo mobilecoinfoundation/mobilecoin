@@ -14,6 +14,6 @@ fn main() {
 
     mc_util_build_grpc::compile_protos_and_generate_mod_rs(
         &[proto_str],
-        &["blockchain.proto", "external.proto"],
+        &["blockchain.proto", "external.proto", "printable.proto"],
     );
 }
