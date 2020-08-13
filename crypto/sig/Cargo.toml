@@ -9,7 +9,7 @@ mc-crypto-hashes = { path = "../hashes" }
 mc-crypto-keys = { path = "../keys", default-features = false }
 
 digest = { version = "0.8.1", default-features = false }
-merlin = "2.0"
+merlin = { version = "2.0", default-features = false }
 rand_core = { version = "0.5", default-features = false }
 rand_hc = "0.2"
 schnorrkel = { version = "0.9", default-features = false }
