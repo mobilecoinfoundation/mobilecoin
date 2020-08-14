@@ -32,6 +32,9 @@ if [ ! -r "${NODE_LEDGER_DIR}/data.mdb" ]; then
     rsync -a --delete /var/lib/mobilecoin/origin_data/* ${NODE_LEDGER_DIR}/
 fi
 
+# Update the ledger to the current version if necessary
+/usr/bin/mc-ledger-migration --ledger-db ${NODE_LEDGER_DIR}
+
 if [[ -z "${AWS_PATH}" ]] || [[ -z "${AWS_SECRET_ACCESS_KEY}" ]] || [[ -z "${AWS_ACCESS_KEY_ID}" ]]; then
   echo "Warning: Must provide AWS_PATH, AWS_SECRET_ACCESS_KEY, and AWS_ACCESS_KEY_ID to start ledger distribution";
 else
