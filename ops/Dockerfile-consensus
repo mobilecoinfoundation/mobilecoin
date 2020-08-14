@@ -71,6 +71,7 @@ COPY bin/libconsensus-enclave.signed.so /usr/bin/
 COPY bin/consensus-service /usr/bin/
 COPY bin/ledger-distribution /usr/bin/
 COPY bin/mc-admin-http-gateway /usr/bin/
+COPY bin/mc-ledger-migration /usr/bin/
 
 # Q: Why not use NODE_LEDGER_DIR here?
 # A: The ENV dictates where the app actually looks, and the ARG sets
