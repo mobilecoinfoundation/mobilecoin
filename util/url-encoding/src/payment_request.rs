@@ -67,6 +67,7 @@ mod tests {
 
     use core::{convert::TryFrom, str::FromStr};
 
+    use hex::FromHex;
     use mc_account_keys::{AccountKey, RootEntropy, RootIdentity};
     use mc_crypto_keys::RistrettoPrivate;
     use mc_util_test_helper::{run_with_several_seeds, RngCore};
@@ -78,7 +79,8 @@ mod tests {
             root_entropy: RootEntropy::from(&[0u8; 32]),
             fog_report_url: "fog://example.com".to_owned(),
             fog_report_id: Default::default(),
-            fog_authority_fingerprint: Default::default(),
+            fog_authority_fingerprint: Vec::from_hex("23e9dfabdaf74c69428ec0dfac15784eedc7466e")
+                .unwrap(),
         };
 
         let acct = AccountKey::from(&identity);
@@ -93,7 +95,7 @@ mod tests {
             })
             .unwrap();
 
-        assert_eq!(mob_url.as_ref(), "mob://example.com/9i_xwzoihbGu5hLthygfLGi7K1sPFDmhPkq3KPmO-2p4kBwRg06ELfa-mMEnlTUT4RYJXUEizCfYB7RRHLgeEWfP?s=QqLfvkgCM29apl9PBGhIag-XlF-qy_CF2_qb7znsWhFViPW0f5v-ggZnCm0vkK5aaWAfP4uxWb5lWUa8zBpNjT9A");
+        assert_eq!(mob_url.as_ref(), "mob://example.com/9i_xwzoihbGu5hLthygfLGi7K1sPFDmhPkq3KPmO-2p4kBwRg06ELfa-mMEnlTUT4RYJXUEizCfYB7RRHLgeEWfP?s=HFZv2Edntt6Q4y5bSYdHHPh78NFHTx_7lH9ImnLt4T3xHXjOnZaR4ObQsyv-PopMCLIIqX6TpGhq7tnopzg6jpFt");
 
         let payload2 = PaymentRequest::try_from(&mob_url).unwrap();
 
@@ -132,7 +134,7 @@ mod tests {
             &RistrettoPrivate::try_from(&[1u8; 32]).unwrap(),
             "fog://fog.mobilecoin.com".to_string(),
             0.to_string(),
-            b"deadbeef".to_vec(),
+            Vec::from_hex("23e9dfabdaf74c69428ec0dfac15784eedc7466e").unwrap(),
         );
 
         let addr = acct.default_subaddress();
@@ -148,8 +150,7 @@ mod tests {
             })
             .unwrap();
 
-        assert_eq!(mob_url.as_ref(), "mob://fog.mobilecoin.com/oGbA6juTWhUdfL6qNMocAGN96wNiZpZegP0TUjKXHEM-GYmM50bLJVeL6NgftIumjt8nwYw7MjEnQT7hCw9bVUgh?a=777&m=2+baby+goats&s=-ry4OlNUCMW1o8tZ188x4I8ppwTPik7t5jRxALmGDhB6hbitNs5Wx5W9go-BPkyieM_NbFVAlP848faDVXEFjAm1#0");
-
+        assert_eq!(mob_url.as_ref(), "mob://fog.mobilecoin.com/oGbA6juTWhUdfL6qNMocAGN96wNiZpZegP0TUjKXHEM-GYmM50bLJVeL6NgftIumjt8nwYw7MjEnQT7hCw9bVUgh?a=777&m=2+baby+goats&s=ArdJFqaDdDveqoiL_iUerG8LQIl09OLyjyGXnGddknzmCSlQanEBQTg6SClF3drMTAOQyzRRdd-tR_Rj74RZgHO2#0");
         let payload2 = PaymentRequest::try_from(&mob_url).unwrap();
 
         assert_eq!(payload, payload2);
@@ -163,7 +164,7 @@ mod tests {
             &RistrettoPrivate::try_from(&[1u8; 32]).unwrap(),
             "fog://fog.mobilecoin.com".to_string(),
             0.to_string(),
-            b"deadbeef".to_vec(),
+            Vec::from_hex("23e9dfabdaf74c69428ec0dfac15784eedc7466e").unwrap(),
         );
 
         let addr = acct.default_subaddress();
@@ -179,7 +180,7 @@ mod tests {
             })
             .unwrap();
 
-        assert_eq!(mob_url.as_ref(), "mob://fog.mobilecoin.com/oGbA6juTWhUdfL6qNMocAGN96wNiZpZegP0TUjKXHEM-GYmM50bLJVeL6NgftIumjt8nwYw7MjEnQT7hCw9bVUgh?a=777&m=%D9%84%D8%B3%D9%84%D8%A7%D9%85+%D8%B9%D9%84%D9%8A%D9%83%D9%85&s=-ry4OlNUCMW1o8tZ188x4I8ppwTPik7t5jRxALmGDhB6hbitNs5Wx5W9go-BPkyieM_NbFVAlP848faDVXEFjAm1#0");
+        assert_eq!(mob_url.as_ref(), "mob://fog.mobilecoin.com/oGbA6juTWhUdfL6qNMocAGN96wNiZpZegP0TUjKXHEM-GYmM50bLJVeL6NgftIumjt8nwYw7MjEnQT7hCw9bVUgh?a=777&m=%D9%84%D8%B3%D9%84%D8%A7%D9%85+%D8%B9%D9%84%D9%8A%D9%83%D9%85&s=ArdJFqaDdDveqoiL_iUerG8LQIl09OLyjyGXnGddknzmCSlQanEBQTg6SClF3drMTAOQyzRRdd-tR_Rj74RZgHO2#0");
 
         let payload2 = PaymentRequest::try_from(&mob_url).unwrap();
 
@@ -207,7 +208,7 @@ mod tests {
                 &RistrettoPrivate::try_from(&[1u8; 32]).unwrap(),
                 "fog://fog.mobilecoin.com".to_string(),
                 0.to_string(),
-                b"deadbeef".to_vec(),
+                Vec::from_hex("23e9dfabdaf74c69428ec0dfac15784eedc7466e").unwrap(),
             );
 
             let addr = acct.default_subaddress();
