@@ -16,7 +16,14 @@ message PaymentRequest {
     string memo = 3;
 }
 
+message TransferPayload {
+    bytes entropy = 1;
+    bytes utxo = 2;
+    string memo = 3;
+}
+
 message PrintableWrapper { oneof wrapper { 
     external.PublicAddress public_address = 1; 
-    PaymentRequest payment_request = 2; 
+    PaymentRequest payment_request = 2;
+    TransferPayload transfer_payload = 3; 
 }}

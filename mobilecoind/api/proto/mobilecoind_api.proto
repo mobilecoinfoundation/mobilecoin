@@ -32,7 +32,6 @@ service MobilecoindAPI {
     rpc GetRequestCode (GetRequestCodeRequest) returns (GetRequestCodeResponse) {}
     rpc ReadTransferCode (ReadTransferCodeRequest) returns (ReadTransferCodeResponse) {}
     rpc GetTransferCode (GetTransferCodeRequest) returns (GetTransferCodeResponse) {}
-    rpc GetAddressRequestCode (GetAddressRequestCodeRequest) returns (GetAddressRequestCodeResponse) {}
 
     // Txs
     rpc GenerateTx (GenerateTxRequest) returns (GenerateTxResponse) {}

@@ -7,8 +7,11 @@ use dialoguer::{theme::ColorfulTheme, Input, Select, Validator};
 use grpcio::ChannelBuilder;
 use indicatif::{ProgressBar, ProgressStyle};
 use mc_common::logger::{create_app_logger, o, Logger};
-use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri};
-use mc_util_b58_payloads::payloads::RequestPayload;
+use mc_mobilecoind_api::{
+    mobilecoind_api_grpc::MobilecoindApiClient,
+    printable::{PaymentRequest, PrintableWrapper},
+    MobilecoindUri,
+};
 use mc_util_grpc::{build_info_grpc::BuildInfoApiClient, ConnectionUriGrpcioChannel};
 use protobuf::RepeatedField;
 use rust_decimal::{prelude::ToPrimitive, Decimal};
@@ -358,23 +361,24 @@ string that we send you. It should look something like:
 
         // Read and parse B58 request code.
         #[derive(Clone)]
-        struct WrappedRequestPayload(pub Option<RequestPayload>);
+        struct WrappedRequestPayload(pub Option<PaymentRequest>);
         impl FromStr for WrappedRequestPayload {
             type Err = String;
             fn from_str(src: &str) -> Result<Self, Self::Err> {
                 if src.is_empty() {
                     return Ok(Self(None));
                 }
-
-                Ok(Self(Some(RequestPayload::decode(src).map_err(|err| {
-                    format!("Invalid request code: {}", err)
-                })?)))
+                let request_wrapper = PrintableWrapper::b58_decode(src.to_string())
+                    .map_err(|err| format!("Invalid request code: {}", err))?;
+                Ok(Self(Some(request_wrapper.get_payment_request().clone())))
             }
         }
         impl fmt::Display for WrappedRequestPayload {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 if let Some(inner) = &self.0 {
-                    write!(f, "{}", inner.encode())?;
+                    let mut wrapper = PrintableWrapper::new();
+                    wrapper.set_payment_request(inner.clone());
+                    write!(f, "{:?}", wrapper.b58_encode())?;
                 }
                 Ok(())
             }
@@ -397,12 +401,12 @@ string that we send you. It should look something like:
             if request_code.memo.is_empty() {
                 println!(
                     "This is a payment request for {}.",
-                    u64_to_mob_display(request_code.value),
+                    u64_to_mob_display(request_code.amount),
                 );
             } else {
                 println!(
                     "This is a payment request for {}. It includes a memo:",
-                    u64_to_mob_display(request_code.value),
+                    u64_to_mob_display(request_code.amount),
                 );
                 println!();
                 println!("{}", request_code.memo);
@@ -413,7 +417,7 @@ string that we send you. It should look something like:
             let tx_proposal = match self.generate_tx(&request_code) {
                 Ok((tx_proposal, balance)) => {
                     let fee = tx_proposal.get_fee();
-                    let remaining_balance = balance - fee - request_code.value;
+                    let remaining_balance = balance - fee - request_code.amount;
                     println!(
                         "You will be charged a fee of {} to send this payment. Your remaining",
                         u64_to_mob_display(fee),
@@ -446,9 +450,9 @@ string that we send you. It should look something like:
                         .unwrap();
                     match selection {
                         0 => {
-                            request_code.value = Self::input_mob(
+                            request_code.amount = Self::input_mob(
                                 "Enter new amount in MOB, or leave blank to cancel",
-                                request_code.value,
+                                request_code.amount,
                             );
                             continue;
                         }
@@ -464,7 +468,10 @@ string that we send you. It should look something like:
             let selection = Select::with_theme(&ColorfulTheme::default())
                 .default(0)
                 .items(&[
-                    format!("Send payment of {}", u64_to_mob_display(request_code.value)),
+                    format!(
+                        "Send payment of {}",
+                        u64_to_mob_display(request_code.amount)
+                    ),
                     "Change payment amount".to_owned(),
                     "Cancel payment".to_owned(),
                 ])
@@ -475,9 +482,9 @@ string that we send you. It should look something like:
                     break tx_proposal;
                 }
                 1 => {
-                    request_code.value = Self::input_mob(
+                    request_code.amount = Self::input_mob(
                         "Enter new amount in MOB, or leave blank to cancel",
-                        request_code.value,
+                        request_code.amount,
                     );
                 }
                 2 => {
@@ -661,7 +668,7 @@ MobileCoin forums. Visit http://community.mobilecoin.com
     /// Helper method for generating a transaction from a B58 request code.
     fn generate_tx(
         &self,
-        request_payload: &RequestPayload,
+        request_payload: &PaymentRequest,
     ) -> Result<(mc_mobilecoind_api::TxProposal, u64), String> {
         let pb = ProgressBar::new_spinner();
         pb.enable_steady_tick(120);
@@ -681,9 +688,10 @@ MobileCoin forums. Visit http://community.mobilecoin.com
 
         // Create the outlay
         let mut outlay = mc_mobilecoind_api::Outlay::new();
-        outlay.set_value(request_payload.value);
+        outlay.set_value(request_payload.amount);
         outlay.set_receiver(mc_api::external::PublicAddress::from(
             &(request_payload
+                .get_public_address()
                 .try_into()
                 .map_err(|err| format!("Bad request payload: {}", err))?),
         ));
