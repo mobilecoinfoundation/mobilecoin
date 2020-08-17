@@ -30,9 +30,9 @@ message TransferPayload {
     /// The root entropy, allowing the recipient to spend the money
     bytes entropy = 1;
 
-    /// The specific UTXO to spend. This is an optimization, meaning
+    /// The public key of the UTXO to spend. This is an optimization, meaning
     /// the recipient need to scan the entire ledger.
-    bytes utxo = 2;
+    bytes tx_public_key = 2;
 
     /// Any addition text explaining the gift
     string memo = 3;

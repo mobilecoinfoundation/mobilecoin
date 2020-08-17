@@ -413,7 +413,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             ));
         }
         let transfer_payload = request_wrapper.get_transfer_payload();
-        let tx_public_key = RistrettoPublic::try_from(transfer_payload.get_utxo())
+        let tx_public_key = RistrettoPublic::try_from(transfer_payload.get_tx_public_key())
             .map_err(|err| rpc_internal_error("RistrettoPublic.try_from", err, &self.logger))?;
 
         let mut response = mc_mobilecoind_api::ReadTransferCodeResponse::new();
@@ -443,7 +443,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
 
         let mut transfer_payload = mc_mobilecoind_api::printable::TransferPayload::new();
         transfer_payload.set_entropy(request.get_entropy().to_vec());
-        transfer_payload.set_utxo(request.get_tx_public_key().get_data().to_vec());
+        transfer_payload.set_tx_public_key(request.get_tx_public_key().get_data().to_vec());
         transfer_payload.set_memo(request.get_memo().to_string());
 
         let mut transfer_wrapper = mc_mobilecoind_api::printable::PrintableWrapper::new();
@@ -666,7 +666,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
 
         let mut transfer_payload = mc_mobilecoind_api::printable::TransferPayload::new();
         transfer_payload.set_entropy(entropy_bytes.to_vec());
-        transfer_payload.set_utxo(tx_public_key.to_bytes().to_vec());
+        transfer_payload.set_tx_public_key(tx_public_key.to_bytes().to_vec());
         transfer_payload.set_memo(request.get_memo().to_string());
 
         let mut transfer_wrapper = mc_mobilecoind_api::printable::PrintableWrapper::new();
