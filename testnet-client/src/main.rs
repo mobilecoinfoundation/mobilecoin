@@ -370,6 +370,9 @@ string that we send you. It should look something like:
                 }
                 let request_wrapper = PrintableWrapper::b58_decode(src.to_string())
                     .map_err(|err| format!("Invalid request code: {}", err))?;
+                if !request_wrapper.has_payment_request() {
+                    return Err("Not a payment request code".to_string());
+                }
                 Ok(Self(Some(request_wrapper.get_payment_request().clone())))
             }
         }
@@ -378,7 +381,7 @@ string that we send you. It should look something like:
                 if let Some(inner) = &self.0 {
                     let mut wrapper = PrintableWrapper::new();
                     wrapper.set_payment_request(inner.clone());
-                    write!(f, "{:?}", wrapper.b58_encode())?;
+                    write!(f, "{}", wrapper.b58_encode().map_err(|_e| fmt::Error)?)?;
                 }
                 Ok(())
             }
