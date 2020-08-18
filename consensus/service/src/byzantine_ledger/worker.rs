@@ -2,8 +2,8 @@
 
 use crate::{
     byzantine_ledger::{
-        ledger_sync_state::LedgerSyncState, task_message::ByzantineLedgerTaskMessage,
-        IS_BEHIND_GRACE_PERIOD, MAX_PENDING_VALUES_TO_NOMINATE,
+        ledger_sync_state::LedgerSyncState, task_message::TaskMessage, IS_BEHIND_GRACE_PERIOD,
+        MAX_PENDING_VALUES_TO_NOMINATE,
     },
     counters,
     tx_manager::{TxManager, TxManagerError, UntrustedInterfaces},
@@ -44,7 +44,7 @@ pub struct ByzantineLedgerThread<
     PC: BlockchainConnection + ConsensusConnection + 'static,
     UI: UntrustedInterfaces = crate::validators::DefaultTxManagerUntrustedInterfaces<L>,
 > {
-    receiver: Receiver<ByzantineLedgerTaskMessage>,
+    receiver: Receiver<TaskMessage>,
     scp: Box<dyn ScpNode<TxHash>>,
     is_behind: Arc<AtomicBool>,
     highest_peer_block: Arc<AtomicU64>,
@@ -100,7 +100,7 @@ impl<
     pub fn start(
         node_id: NodeID,
         quorum_set: QuorumSet,
-        receiver: Receiver<ByzantineLedgerTaskMessage>,
+        receiver: Receiver<TaskMessage>,
         scp: Box<dyn ScpNode<TxHash>>,
         is_behind: Arc<AtomicBool>,
         highest_peer_block: Arc<AtomicU64>,
@@ -343,7 +343,7 @@ impl<
             // Handle message based on it's type
             match task_msg {
                 // Values submitted by a client
-                ByzantineLedgerTaskMessage::Values(timestamp, new_values) => {
+                TaskMessage::Values(timestamp, new_values) => {
                     // Collect.
                     for value in new_values {
                         // If we don't already know of this value, add it to the pending list and
@@ -357,7 +357,7 @@ impl<
                 }
 
                 // SCP Statement
-                ByzantineLedgerTaskMessage::ConsensusMsg(consensus_msg, from_responder_id) => {
+                TaskMessage::ConsensusMsg(consensus_msg, from_responder_id) => {
                     // Only look at messages that are not for past slots.
                     if consensus_msg.scp_msg().slot_index >= self.cur_slot {
                         // Feed network state. The sync service needs this
@@ -376,7 +376,7 @@ impl<
                 }
 
                 // Request to stop thread
-                ByzantineLedgerTaskMessage::StopTrigger => {
+                TaskMessage::StopTrigger => {
                     return false;
                 }
             };

@@ -9,7 +9,7 @@ mod task_message;
 mod worker;
 
 use crate::{
-    byzantine_ledger::{task_message::ByzantineLedgerTaskMessage, worker::ByzantineLedgerThread},
+    byzantine_ledger::{task_message::TaskMessage, worker::ByzantineLedgerThread},
     counters,
     tx_manager::{TxManager, UntrustedInterfaces},
 };
@@ -43,7 +43,7 @@ pub const IS_BEHIND_GRACE_PERIOD: Duration = Duration::from_secs(10);
 pub const MAX_PENDING_VALUES_TO_NOMINATE: usize = 100;
 
 pub struct ByzantineLedger {
-    sender: Sender<ByzantineLedgerTaskMessage>,
+    sender: Sender<TaskMessage>,
     thread_handle: Option<JoinHandle<()>>,
     is_behind: Arc<AtomicBool>,
     highest_peer_block: Arc<AtomicU64>,
@@ -174,7 +174,7 @@ impl ByzantineLedger {
     /// Push value to this node's consensus task.
     pub fn push_values(&self, values: Vec<TxHash>, received_at: Option<Instant>) {
         self.sender
-            .send(ByzantineLedgerTaskMessage::Values(received_at, values))
+            .send(TaskMessage::Values(received_at, values))
             .expect("Could not send values");
     }
 
@@ -185,15 +185,12 @@ impl ByzantineLedger {
         from_responder_id: ResponderId,
     ) {
         self.sender
-            .send(ByzantineLedgerTaskMessage::ConsensusMsg(
-                consensus_msg,
-                from_responder_id,
-            ))
+            .send(TaskMessage::ConsensusMsg(consensus_msg, from_responder_id))
             .expect("Could not send consensus msg");
     }
 
     pub fn stop(&mut self) {
-        let _ = self.sender.send(ByzantineLedgerTaskMessage::StopTrigger);
+        let _ = self.sender.send(TaskMessage::StopTrigger);
         self.join();
     }
 

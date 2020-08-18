@@ -6,7 +6,7 @@ use mc_transaction_core::tx::TxHash;
 use std::time::Instant;
 
 #[derive(Debug)]
-pub enum ByzantineLedgerTaskMessage {
+pub enum TaskMessage {
     /// A tuple of (timestamp, list of client-submitted values). The timestamp refers to when the
     /// list was added to the queue, and is used to tracking how long it takes to process each
     /// value.
