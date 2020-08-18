@@ -9,7 +9,7 @@ mod task_message;
 mod worker;
 
 use crate::{
-    byzantine_ledger::{task_message::TaskMessage, worker::ByzantineLedgerThread},
+    byzantine_ledger::{task_message::TaskMessage, worker::ByzantineLedgerWorker},
     counters,
     tx_manager::{TxManager, UntrustedInterfaces},
 };
@@ -148,7 +148,7 @@ impl ByzantineLedger {
             thread::Builder::new()
                 .name(format!("ByzantineLedger{:?}", node_id))
                 .spawn(move || {
-                    ByzantineLedgerThread::start(
+                    ByzantineLedgerWorker::start(
                         node_id,
                         quorum_set,
                         receiver,

@@ -37,7 +37,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-pub struct ByzantineLedgerThread<
+pub struct ByzantineLedgerWorker<
     E: ConsensusEnclaveProxy,
     F: Fn(Msg<TxHash>),
     L: Ledger + 'static,
@@ -95,7 +95,7 @@ impl<
         L: Ledger + 'static,
         PC: BlockchainConnection + ConsensusConnection + 'static,
         UI: UntrustedInterfaces + Send + 'static,
-    > ByzantineLedgerThread<E, F, L, PC, UI>
+    > ByzantineLedgerWorker<E, F, L, PC, UI>
 {
     pub fn start(
         node_id: NodeID,
