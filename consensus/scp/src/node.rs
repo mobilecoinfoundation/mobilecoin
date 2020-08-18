@@ -11,6 +11,8 @@ use mc_common::{
     logger::{log, Logger},
     LruCache, NodeID,
 };
+#[cfg(test)]
+use mockall::*;
 use std::{collections::BTreeSet, fmt::Display, time::Duration};
 
 /// Max number of pending slots to store.
@@ -118,6 +120,7 @@ impl<V: Value, ValidationError: Display + 'static> Node<V, ValidationError> {
 }
 
 /// A node capable of participating in SCP.
+#[cfg_attr(test, automock)]
 pub trait ScpNode<V: Value>: Send {
     /// Get local node ID.
     fn node_id(&self) -> NodeID;
