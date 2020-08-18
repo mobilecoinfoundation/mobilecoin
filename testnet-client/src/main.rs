@@ -477,10 +477,7 @@ string that we send you. It should look something like:
             let selection = Select::with_theme(&ColorfulTheme::default())
                 .default(0)
                 .items(&[
-                    format!(
-                        "Send payment of {}",
-                        u64_to_mob_display(request_code.value)
-                    ),
+                    format!("Send payment of {}", u64_to_mob_display(request_code.value)),
                     "Change payment amount".to_owned(),
                     "Cancel payment".to_owned(),
                 ])
