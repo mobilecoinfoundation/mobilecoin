@@ -19,9 +19,7 @@ use mc_consensus_enclave::ConsensusEnclaveProxy;
 use mc_consensus_scp::{scp_log::LoggingScpNode, Msg, Node, QuorumSet, ScpNode};
 use mc_crypto_keys::Ed25519Pair;
 use mc_ledger_db::Ledger;
-use mc_peers::{
-    Broadcast, ConsensusConnection, ConsensusMsg, ThreadedBroadcaster, VerifiedConsensusMsg,
-};
+use mc_peers::{Broadcast, ConsensusConnection, ConsensusMsg, VerifiedConsensusMsg};
 use mc_transaction_core::tx::TxHash;
 use mc_util_metered_channel::Sender;
 use std::{
@@ -64,7 +62,7 @@ impl ByzantineLedger {
         peer_manager: ConnectionManager<PC>,
         ledger: L,
         tx_manager: TxManager<E, UI>,
-        broadcaster: Arc<Mutex<ThreadedBroadcaster>>,
+        broadcaster: Arc<Mutex<dyn Broadcast>>,
         msg_signer_key: Arc<Ed25519Pair>,
         tx_source_urls: Vec<String>,
         opt_scp_debug_dump_dir: Option<PathBuf>,
@@ -146,6 +144,7 @@ impl ByzantineLedger {
         // Start worker thread
         let thread_is_behind = node.is_behind.clone();
         let thread_highest_peer_block = node.highest_peer_block.clone();
+        let thread_broadcaster = broadcaster.clone();
         let thread_handle = Some(
             thread::Builder::new()
                 .name(format!("ByzantineLedger{:?}", node_id))
@@ -161,7 +160,7 @@ impl ByzantineLedger {
                         ledger,
                         peer_manager,
                         tx_manager,
-                        broadcaster,
+                        thread_broadcaster,
                         tx_source_urls,
                         logger,
                     );
@@ -237,6 +236,7 @@ mod tests {
     use mc_consensus_scp::{core_types::Ballot, msg::*, SlotIndex};
     use mc_crypto_keys::{DistinguishedEncoding, Ed25519Private};
     use mc_ledger_db::Ledger;
+    use mc_peers::ThreadedBroadcaster;
     use mc_peers_test_utils::MockPeerConnection;
     use mc_transaction_core_test_utils::{
         create_ledger, create_transaction, initialize_ledger, AccountKey,

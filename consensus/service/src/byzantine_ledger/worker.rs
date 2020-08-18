@@ -20,8 +20,7 @@ use mc_ledger_sync::{
     LedgerSyncService, NetworkState, ReqwestTransactionsFetcher, SCPNetworkState,
 };
 use mc_peers::{
-    Broadcast, ConsensusConnection, RetryableConsensusConnection, ThreadedBroadcaster,
-    VerifiedConsensusMsg,
+    Broadcast, ConsensusConnection, RetryableConsensusConnection, VerifiedConsensusMsg,
 };
 use mc_transaction_core::{tx::TxHash, BlockID};
 use mc_util_metered_channel::Receiver;
@@ -53,7 +52,7 @@ pub struct ByzantineLedgerWorker<
     ledger: L,
     peer_manager: ConnectionManager<PC>,
     tx_manager: TxManager<E, UI>,
-    broadcaster: Arc<Mutex<ThreadedBroadcaster>>,
+    broadcaster: Arc<Mutex<dyn Broadcast>>,
     logger: Logger,
 
     // Current slot (the one that is not yet in the ledger / the one currently being worked on).
@@ -109,7 +108,7 @@ impl<
         ledger: L,
         peer_manager: ConnectionManager<PC>,
         tx_manager: TxManager<E, UI>,
-        broadcaster: Arc<Mutex<ThreadedBroadcaster>>,
+        broadcaster: Arc<Mutex<dyn Broadcast>>,
         tx_source_urls: Vec<String>,
         logger: Logger,
     ) {
