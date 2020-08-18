@@ -107,7 +107,7 @@ mod display_tests {
 
         let mut payment_request = PaymentRequest::new();
         payment_request.set_public_address(public_address);
-        payment_request.set_amount(10);
+        payment_request.set_value(10);
         payment_request.set_memo("Please me pay!".to_string());
 
         let mut wrapper = PrintableWrapper::new();

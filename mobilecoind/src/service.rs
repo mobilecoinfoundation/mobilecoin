@@ -367,7 +367,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         let payment_request = request_wrapper.get_payment_request();
         let mut response = mc_mobilecoind_api::ReadRequestCodeResponse::new();
         response.set_receiver(payment_request.get_public_address().clone());
-        response.set_value(payment_request.get_amount());
+        response.set_value(payment_request.get_value());
         response.set_memo(payment_request.get_memo().to_string());
 
         Ok(response)
@@ -382,7 +382,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
 
         let mut payment_request = mc_mobilecoind_api::printable::PaymentRequest::new();
         payment_request.set_public_address((&receiver).into());
-        payment_request.set_amount(request.get_value());
+        payment_request.set_value(request.get_value());
         payment_request.set_memo(request.get_memo().to_string());
 
         let mut request_wrapper = mc_mobilecoind_api::printable::PrintableWrapper::new();

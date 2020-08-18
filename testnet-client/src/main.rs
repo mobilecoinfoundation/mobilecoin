@@ -410,12 +410,12 @@ string that we send you. It should look something like:
             if request_code.memo.is_empty() {
                 println!(
                     "This is a payment request for {}.",
-                    u64_to_mob_display(request_code.amount),
+                    u64_to_mob_display(request_code.value),
                 );
             } else {
                 println!(
                     "This is a payment request for {}. It includes a memo:",
-                    u64_to_mob_display(request_code.amount),
+                    u64_to_mob_display(request_code.value),
                 );
                 println!();
                 println!("{}", request_code.memo);
@@ -426,7 +426,7 @@ string that we send you. It should look something like:
             let tx_proposal = match self.generate_tx(&request_code) {
                 Ok((tx_proposal, balance)) => {
                     let fee = tx_proposal.get_fee();
-                    let remaining_balance = balance - fee - request_code.amount;
+                    let remaining_balance = balance - fee - request_code.value;
                     println!(
                         "You will be charged a fee of {} to send this payment. Your remaining",
                         u64_to_mob_display(fee),
@@ -459,9 +459,9 @@ string that we send you. It should look something like:
                         .unwrap();
                     match selection {
                         0 => {
-                            request_code.amount = Self::input_mob(
+                            request_code.value = Self::input_mob(
                                 "Enter new amount in MOB, or leave blank to cancel",
-                                request_code.amount,
+                                request_code.value,
                             );
                             continue;
                         }
@@ -479,7 +479,7 @@ string that we send you. It should look something like:
                 .items(&[
                     format!(
                         "Send payment of {}",
-                        u64_to_mob_display(request_code.amount)
+                        u64_to_mob_display(request_code.value)
                     ),
                     "Change payment amount".to_owned(),
                     "Cancel payment".to_owned(),
@@ -491,9 +491,9 @@ string that we send you. It should look something like:
                     break tx_proposal;
                 }
                 1 => {
-                    request_code.amount = Self::input_mob(
+                    request_code.value = Self::input_mob(
                         "Enter new amount in MOB, or leave blank to cancel",
-                        request_code.amount,
+                        request_code.value,
                     );
                 }
                 2 => {
@@ -697,7 +697,7 @@ MobileCoin forums. Visit http://community.mobilecoin.com
 
         // Create the outlay
         let mut outlay = mc_mobilecoind_api::Outlay::new();
-        outlay.set_value(request_payload.amount);
+        outlay.set_value(request_payload.value);
         outlay.set_receiver(mc_api::external::PublicAddress::from(
             &(request_payload
                 .get_public_address()
