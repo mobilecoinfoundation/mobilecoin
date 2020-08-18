@@ -356,15 +356,6 @@ message GetTransferCodeResponse {
     string b58_code = 1;
 }
 
-// Encode a URL into a base-58 "MobileCoin Address Request Code".
-message GetAddressRequestCodeRequest {
-    string url = 1;
-}
-
-message GetAddressRequestCodeResponse {
-    string b58_code = 1;
-}
-
 //
 // Transactions
 //

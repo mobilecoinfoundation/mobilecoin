@@ -10,8 +10,8 @@ package printable;
 option java_package = "com.mobilecoin.api";
 option java_outer_classname = "MobileCoinAPI";
 
-/// Message for a payment request, which amends a public address
-/// with an option requested amount and memo field
+/// Message for a payment request, which combines a public address
+/// with an a requested payment amount and memo field
 message PaymentRequest {
     /// The public address of the user requesting a payment
     external.PublicAddress public_address = 1;
@@ -31,10 +31,10 @@ message TransferPayload {
     bytes entropy = 1;
 
     /// The public key of the UTXO to spend. This is an optimization, meaning
-    /// the recipient need to scan the entire ledger.
+    /// the recipient does not need to scan the entire ledger.
     bytes tx_public_key = 2;
 
-    /// Any addition text explaining the gift
+    /// Any additional text explaining the gift
     string memo = 3;
 }
 
