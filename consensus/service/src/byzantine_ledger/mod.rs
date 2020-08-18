@@ -19,7 +19,7 @@ use mc_consensus_enclave::ConsensusEnclaveProxy;
 use mc_consensus_scp::{scp_log::LoggingScpNode, Msg, Node, QuorumSet, ScpNode};
 use mc_crypto_keys::Ed25519Pair;
 use mc_ledger_db::Ledger;
-use mc_peers::{ConsensusConnection, ConsensusMsg, ThreadedBroadcaster, VerifiedConsensusMsg};
+use mc_peers::{Broadcast, ConsensusConnection, ConsensusMsg, VerifiedConsensusMsg};
 use mc_transaction_core::tx::TxHash;
 use mc_util_metered_channel::Sender;
 use std::{
@@ -62,7 +62,7 @@ impl ByzantineLedger {
         peer_manager: ConnectionManager<PC>,
         ledger: L,
         tx_manager: TxManager<E, UI>,
-        broadcaster: Arc<Mutex<ThreadedBroadcaster>>,
+        broadcaster: Arc<Mutex<dyn Broadcast>>,
         msg_signer_key: Arc<Ed25519Pair>,
         tx_source_urls: Vec<String>,
         opt_scp_debug_dump_dir: Option<PathBuf>,
@@ -70,15 +70,19 @@ impl ByzantineLedger {
     ) -> Self {
         let (sender, receiver) =
             mc_util_metered_channel::unbounded(&counters::BYZANTINE_LEDGER_MESSAGE_QUEUE_SIZE);
-        let tx_manager_validate = tx_manager.clone();
-        let tx_manager_combine = tx_manager.clone();
-        let scp_node = Node::new(
-            node_id.clone(),
-            quorum_set.clone(),
-            Arc::new(move |tx_hash| tx_manager_validate.validate_tx_by_hash(tx_hash)),
-            Arc::new(move |tx_hashes| tx_manager_combine.combine_txs_by_hash(tx_hashes)),
-            logger.clone(),
-        );
+
+        let scp_node = {
+            let tx_manager_validate = tx_manager.clone();
+            let tx_manager_combine = tx_manager.clone();
+            Node::new(
+                node_id.clone(),
+                quorum_set.clone(),
+                Arc::new(move |tx_hash| tx_manager_validate.validate_tx_by_hash(tx_hash)),
+                Arc::new(move |tx_hashes| tx_manager_combine.combine_txs_by_hash(tx_hashes)),
+                logger.clone(),
+            )
+        };
+
         let wrapped_scp_node: Box<dyn ScpNode<TxHash>> = if let Some(path) = opt_scp_debug_dump_dir
         {
             Box::new(
@@ -91,7 +95,7 @@ impl ByzantineLedger {
 
         let highest_outgoing_consensus_msg = Arc::new(Mutex::new(None));
 
-        let mut node = Self {
+        let mut byzantine_ledger = Self {
             sender,
             thread_handle: None,
             is_behind: Arc::new(AtomicBool::new(false)),
@@ -102,73 +106,75 @@ impl ByzantineLedger {
         // Helper function to broadcast an SCP message, as well as keep track of the highest
         // message we issued. This is necessary for the implementation of the
         // `get_highest_scp_message`.
-        let send_scp_message_ledger = ledger.clone();
-        let send_scp_message_broadcaster = broadcaster.clone();
-        let send_scp_message_node_id = node_id.clone();
-        let send_scp_message = move |scp_msg: Msg<TxHash>| {
-            // We do not expect failure to happen here since if we are attempting to send a
-            // consensus message for a given slot, we expect the previous block to exist (block not
-            // found is currently the only possible failure scenario for `from_scp_msg`).
-            let consensus_msg = ConsensusMsg::from_scp_msg(
-                &send_scp_message_ledger,
-                scp_msg.clone(),
-                msg_signer_key.as_ref(),
-            )
-            .unwrap_or_else(|_| panic!("failed creating consensus msg from {:?}", scp_msg));
 
-            // Broadcast the message to our peers.
-            {
-                let mut broadcaster = send_scp_message_broadcaster.lock().expect("mutex poisoned");
-                broadcaster.broadcast_consensus_msg(
-                    &send_scp_message_node_id.responder_id,
-                    &consensus_msg,
-                );
-            }
+        let send_scp_message = {
+            let ledger = ledger.clone();
+            let broadcaster = broadcaster.clone();
+            let node_id = node_id.clone();
+            move |scp_msg: Msg<TxHash>| {
+                // We do not expect failure to happen here since if we are attempting to send a
+                // consensus message for a given slot, we expect the previous block to exist (block not
+                // found is currently the only possible failure scenario for `from_scp_msg`).
+                let consensus_msg =
+                    ConsensusMsg::from_scp_msg(&ledger, scp_msg.clone(), msg_signer_key.as_ref())
+                        .unwrap_or_else(|_| {
+                            panic!("failed creating consensus msg from {:?}", scp_msg)
+                        });
 
-            let mut inner = highest_outgoing_consensus_msg
-                .lock()
-                .expect("lock poisoned");
-            if let Some(highest_msg) = &*inner {
-                // Store message if it's for a newer slot, or newer topic.
-                // Node id (our local node) and quorum set (our local quorum set) are constant.
-                if consensus_msg.scp_msg.slot_index > highest_msg.scp_msg.slot_index
-                    || consensus_msg.scp_msg.topic > highest_msg.scp_msg.topic
+                // Broadcast the message to our peers.
                 {
+                    let mut broadcaster = broadcaster.lock().expect("mutex poisoned");
+                    broadcaster.broadcast_consensus_msg(&consensus_msg, &node_id.responder_id);
+                }
+
+                let mut inner = highest_outgoing_consensus_msg
+                    .lock()
+                    .expect("lock poisoned");
+                if let Some(highest_msg) = &*inner {
+                    // Store message if it's for a newer slot, or newer topic.
+                    // Node id (our local node) and quorum set (our local quorum set) are constant.
+                    if consensus_msg.scp_msg.slot_index > highest_msg.scp_msg.slot_index
+                        || consensus_msg.scp_msg.topic > highest_msg.scp_msg.topic
+                    {
+                        *inner = Some(consensus_msg);
+                    }
+                } else {
                     *inner = Some(consensus_msg);
                 }
-            } else {
-                *inner = Some(consensus_msg);
             }
         };
 
         // Start worker thread
-        let thread_is_behind = node.is_behind.clone();
-        let thread_highest_peer_block = node.highest_peer_block.clone();
-        let thread_handle = Some(
-            thread::Builder::new()
-                .name(format!("ByzantineLedger{:?}", node_id))
-                .spawn(move || {
-                    ByzantineLedgerWorker::start(
-                        node_id,
-                        quorum_set,
-                        receiver,
-                        wrapped_scp_node,
-                        thread_is_behind,
-                        thread_highest_peer_block,
-                        send_scp_message,
-                        ledger,
-                        peer_manager,
-                        tx_manager,
-                        broadcaster,
-                        tx_source_urls,
-                        logger,
-                    );
-                })
-                .expect("failed spawning ByzantineLedger"),
-        );
+        let thread_handle = {
+            let is_behind = byzantine_ledger.is_behind.clone();
+            let highest_peer_block = byzantine_ledger.highest_peer_block.clone();
+            let broadcaster = broadcaster.clone();
+            Some(
+                thread::Builder::new()
+                    .name(format!("ByzantineLedger{:?}", node_id))
+                    .spawn(move || {
+                        ByzantineLedgerWorker::start(
+                            node_id,
+                            quorum_set,
+                            receiver,
+                            wrapped_scp_node,
+                            is_behind,
+                            highest_peer_block,
+                            send_scp_message,
+                            ledger,
+                            peer_manager,
+                            tx_manager,
+                            broadcaster,
+                            tx_source_urls,
+                            logger,
+                        );
+                    })
+                    .expect("failed spawning ByzantineLedger"),
+            )
+        };
 
-        node.thread_handle = thread_handle;
-        node
+        byzantine_ledger.thread_handle = thread_handle;
+        byzantine_ledger
     }
 
     /// Push value to this node's consensus task.
@@ -235,6 +241,7 @@ mod tests {
     use mc_consensus_scp::{core_types::Ballot, msg::*, SlotIndex};
     use mc_crypto_keys::{DistinguishedEncoding, Ed25519Private};
     use mc_ledger_db::Ledger;
+    use mc_peers::ThreadedBroadcaster;
     use mc_peers_test_utils::MockPeerConnection;
     use mc_transaction_core_test_utils::{
         create_ledger, create_transaction, initialize_ledger, AccountKey,
