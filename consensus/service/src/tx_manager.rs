@@ -14,7 +14,7 @@ use mc_consensus_enclave::{
     WellFormedTxContext,
 };
 use mc_crypto_keys::CompressedRistrettoPublic;
-use mc_ledger_db::{Error as LedgerDbError, Ledger};
+use mc_ledger_db::Error as LedgerDbError;
 use mc_transaction_core::{
     constants::MAX_TRANSACTIONS_PER_BLOCK,
     ring_signature::KeyImage,
@@ -114,16 +114,9 @@ pub trait UntrustedInterfaces: Clone {
 }
 
 #[derive(Clone)]
-pub struct TxManager<
-    E: ConsensusEnclaveProxy,
-    L: Ledger,
-    UI: UntrustedInterfaces = crate::validators::DefaultTxManagerUntrustedInterfaces<L>,
-> {
+pub struct TxManager<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> {
     /// Enclave.
     enclave: E,
-
-    /// Ledger.
-    ledger: L,
 
     /// Application-specific custom interfaces for the untrusted part of validation/combining of
     /// values.
@@ -136,12 +129,11 @@ pub struct TxManager<
     cache: Arc<Mutex<HashMap<TxHash, CacheEntry>>>,
 }
 
-impl<E: ConsensusEnclaveProxy, L: Ledger, UI: UntrustedInterfaces> TxManager<E, L, UI> {
+impl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> TxManager<E, UI> {
     /// Construct a new TxManager instance.
-    pub fn new(enclave: E, ledger: L, untrusted: UI, logger: Logger) -> Self {
+    pub fn new(enclave: E, untrusted: UI, logger: Logger) -> Self {
         Self {
             enclave,
-            ledger,
             untrusted,
             logger,
             cache: Arc::new(Mutex::new(HashMap::default())),
@@ -153,8 +145,6 @@ impl<E: ConsensusEnclaveProxy, L: Ledger, UI: UntrustedInterfaces> TxManager<E, 
     pub fn insert_proposed_tx(
         &self,
         tx_context: TxContext,
-        // _origin_node: Option<NodeID>
-        // _relayed_to: Option<NodeID>,
     ) -> TxManagerResult<WellFormedTxContext> {
         // If already in cache then we're done.
         {
@@ -297,9 +287,9 @@ impl<E: ConsensusEnclaveProxy, L: Ledger, UI: UntrustedInterfaces> TxManager<E, 
     pub fn tx_hashes_to_block(
         &self,
         tx_hashes: &[TxHash],
+        parent_block: &Block,
     ) -> TxManagerResult<(Block, BlockContents, BlockSignature)> {
         let cache = self.lock_cache();
-
         let encrypted_txs_with_proofs = tx_hashes
             .iter()
             .map(|tx_hash| {
@@ -315,8 +305,6 @@ impl<E: ConsensusEnclaveProxy, L: Ledger, UI: UntrustedInterfaces> TxManager<E, 
             })
             .collect::<Result<Vec<(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)>, TxManagerError>>()?;
 
-        let num_blocks = self.ledger.num_blocks()?;
-        let parent_block = self.ledger.get_block(num_blocks - 1)?;
         let (block, block_contents, mut signature) = self
             .enclave
             .form_block(&parent_block, &encrypted_txs_with_proofs)?;
@@ -372,6 +360,7 @@ mod tests {
     use crate::validators::DefaultTxManagerUntrustedInterfaces;
     use mc_common::logger::test_with_logger;
     use mc_consensus_enclave_mock::ConsensusServiceMockEnclave;
+    use mc_ledger_db::Ledger;
     use mc_transaction_core_test_utils::{
         create_ledger, create_transaction, initialize_ledger, AccountKey,
     };
@@ -384,9 +373,12 @@ mod tests {
         let mut ledger = create_ledger();
         let n_blocks = 3;
         initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
+
+        let num_blocks = ledger.num_blocks().expect("Ledger must contain a block.");
+        let parent_block = ledger.get_block(num_blocks - 1).unwrap();
+
         let tx_manager = TxManager::new(
             ConsensusServiceMockEnclave::default(),
-            ledger.clone(),
             DefaultTxManagerUntrustedInterfaces::new(ledger.clone()),
             logger.clone(),
         );
@@ -475,7 +467,7 @@ mod tests {
 
         // Attempting to assemble a block with a non-existent hash should fail
         assert!(tx_manager
-            .tx_hashes_to_block(&[hash_tx_two, hash_tx_three])
+            .tx_hashes_to_block(&[hash_tx_two, hash_tx_three], &parent_block)
             .is_err());
 
         // Attempting to assemble a block with a duplicate transaction should fail.
@@ -496,7 +488,7 @@ mod tests {
         // succeed.
         // TODO: Right now this relies on ConsensusServiceMockEnclave::form_block
         let (block, block_contents, _signature) = tx_manager
-            .tx_hashes_to_block(&[hash_tx_zero, hash_tx_one])
+            .tx_hashes_to_block(&[hash_tx_zero, hash_tx_one], &parent_block)
             .expect("failed assembling block");
         assert_eq!(
             client_tx_zero.prefix.outputs[0].public_key,

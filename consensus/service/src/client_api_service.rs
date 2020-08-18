@@ -7,6 +7,7 @@ use crate::{
     counters,
     grpc_error::ConsensusGrpcError,
     tx_manager::{TxManager, TxManagerError},
+    validators::DefaultTxManagerUntrustedInterfaces,
 };
 use grpcio::{RpcContext, UnarySink};
 use mc_attest_api::attest::Message;
@@ -15,7 +16,7 @@ use mc_consensus_api::{
     consensus_client_grpc::ConsensusClientApi, consensus_common::ProposeTxResponse,
 };
 use mc_consensus_enclave::ConsensusEnclaveProxy;
-use mc_ledger_db::Ledger;
+use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::validation::TransactionValidationError;
 use mc_util_grpc::{rpc_logger, send_result};
 use mc_util_metrics::{self, SVC_COUNTERS};
@@ -29,7 +30,7 @@ pub struct ClientApiService<E: ConsensusEnclaveProxy, L: Ledger + Clone> {
     enclave: E,
     scp_client_value_sender: ProposeTxCallback,
     ledger: L,
-    tx_manager: TxManager<E, L>,
+    tx_manager: TxManager<E, DefaultTxManagerUntrustedInterfaces<LedgerDB>>,
     is_serving_fn: Arc<(dyn Fn() -> bool + Sync + Send)>,
     logger: Logger,
 }
@@ -39,7 +40,7 @@ impl<E: ConsensusEnclaveProxy, L: Ledger + Clone> ClientApiService<E, L> {
         enclave: E,
         scp_client_value_sender: ProposeTxCallback,
         ledger: L,
-        tx_manager: TxManager<E, L>,
+        tx_manager: TxManager<E, DefaultTxManagerUntrustedInterfaces<LedgerDB>>,
         is_serving_fn: Arc<(dyn Fn() -> bool + Sync + Send)>,
         logger: Logger,
     ) -> Self {

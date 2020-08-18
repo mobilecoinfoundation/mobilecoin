@@ -95,7 +95,7 @@ pub struct ConsensusService<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync 
 
     peer_manager: ConnectionManager<PeerConnection<E>>,
     broadcaster: Arc<Mutex<ThreadedBroadcaster>>,
-    tx_manager: TxManager<E, LedgerDB>,
+    tx_manager: TxManager<E, DefaultTxManagerUntrustedInterfaces<LedgerDB>>,
     peer_keepalive: Arc<Mutex<PeerKeepalive>>,
 
     admin_rpc_server: Option<AdminServer>,
@@ -153,7 +153,6 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
         // Tx Manager
         let tx_manager = TxManager::new(
             enclave.clone(),
-            ledger_db.clone(),
             DefaultTxManagerUntrustedInterfaces::new(ledger_db.clone()),
             logger.clone(),
         );

@@ -61,7 +61,7 @@ impl ByzantineLedger {
         quorum_set: QuorumSet,
         peer_manager: ConnectionManager<PC>,
         ledger: L,
-        tx_manager: TxManager<E, L, UI>,
+        tx_manager: TxManager<E, UI>,
         broadcaster: Arc<Mutex<ThreadedBroadcaster>>,
         msg_signer_key: Arc<Ed25519Pair>,
         tx_source_urls: Vec<String>,
@@ -340,7 +340,6 @@ mod tests {
         let enclave = ConsensusServiceMockEnclave::default();
         let tx_manager = TxManager::new(
             enclave.clone(),
-            ledger.clone(),
             DefaultTxManagerUntrustedInterfaces::new(ledger.clone()),
             logger.clone(),
         );
