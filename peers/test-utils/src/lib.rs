@@ -396,7 +396,8 @@ mod threaded_broadcaster_tests {
     use mc_consensus_scp::QuorumSet;
     use mc_ledger_db::test_utils::get_mock_ledger;
     use mc_peers::{
-        ThreadedBroadcaster, ThreadedBroadcasterFibonacciRetryPolicy as FibonacciRetryPolicy,
+        Broadcast, ThreadedBroadcaster,
+        ThreadedBroadcasterFibonacciRetryPolicy as FibonacciRetryPolicy,
         DEFAULT_RETRY_MAX_ATTEMPTS,
     };
 
@@ -443,9 +444,9 @@ mod threaded_broadcaster_tests {
                 &local_signer_key,
             );
 
-            broadcaster.broadcast_consensus_msg(&msg1.issuer_responder_id(), &msg1);
-            broadcaster.broadcast_consensus_msg(&msg1.issuer_responder_id(), &msg1);
-            broadcaster.broadcast_consensus_msg(&msg1.issuer_responder_id(), &msg1);
+            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
 
             broadcaster.barrier();
 
@@ -468,9 +469,9 @@ mod threaded_broadcaster_tests {
                 &local_signer_key,
             );
 
-            broadcaster.broadcast_consensus_msg(&msg2.issuer_responder_id(), &msg2);
-            broadcaster.broadcast_consensus_msg(&msg2.issuer_responder_id(), &msg2);
-            broadcaster.broadcast_consensus_msg(&msg2.issuer_responder_id(), &msg2);
+            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
 
             broadcaster.barrier();
 
@@ -534,9 +535,9 @@ mod threaded_broadcaster_tests {
                 &node2_signer_key,
             );
 
-            broadcaster.broadcast_consensus_msg(&msg1.issuer_responder_id(), &msg1);
-            broadcaster.broadcast_consensus_msg(&msg1.issuer_responder_id(), &msg1);
-            broadcaster.broadcast_consensus_msg(&msg1.issuer_responder_id(), &msg1);
+            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
 
             broadcaster.barrier();
 
@@ -554,9 +555,9 @@ mod threaded_broadcaster_tests {
             let msg2 =
                 create_consensus_msg(&ledger, node2, quorum_set, 1, "msg2", &node2_signer_key);
 
-            broadcaster.broadcast_consensus_msg(&msg2.issuer_responder_id(), &msg2);
-            broadcaster.broadcast_consensus_msg(&msg2.issuer_responder_id(), &msg2);
-            broadcaster.broadcast_consensus_msg(&msg2.issuer_responder_id(), &msg2);
+            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
 
             broadcaster.barrier();
 
@@ -619,9 +620,9 @@ mod threaded_broadcaster_tests {
                 &local_signer_key,
             );
 
-            broadcaster.broadcast_consensus_msg(&msg1.issuer_responder_id(), &msg1);
-            broadcaster.broadcast_consensus_msg(&msg1.issuer_responder_id(), &msg1);
-            broadcaster.broadcast_consensus_msg(&msg1.issuer_responder_id(), &msg1);
+            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg1, &msg1.issuer_responder_id());
 
             broadcaster.barrier();
 
@@ -653,9 +654,9 @@ mod threaded_broadcaster_tests {
                 &local_signer_key,
             );
 
-            broadcaster.broadcast_consensus_msg(&msg2.issuer_responder_id(), &msg2);
-            broadcaster.broadcast_consensus_msg(&msg2.issuer_responder_id(), &msg2);
-            broadcaster.broadcast_consensus_msg(&msg2.issuer_responder_id(), &msg2);
+            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
+            broadcaster.broadcast_consensus_msg(&msg2, &msg2.issuer_responder_id());
 
             broadcaster.barrier();
 

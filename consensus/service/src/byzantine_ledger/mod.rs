@@ -19,7 +19,9 @@ use mc_consensus_enclave::ConsensusEnclaveProxy;
 use mc_consensus_scp::{scp_log::LoggingScpNode, Msg, Node, QuorumSet, ScpNode};
 use mc_crypto_keys::Ed25519Pair;
 use mc_ledger_db::Ledger;
-use mc_peers::{ConsensusConnection, ConsensusMsg, ThreadedBroadcaster, VerifiedConsensusMsg};
+use mc_peers::{
+    Broadcast, ConsensusConnection, ConsensusMsg, ThreadedBroadcaster, VerifiedConsensusMsg,
+};
 use mc_transaction_core::tx::TxHash;
 use mc_util_metered_channel::Sender;
 use std::{
@@ -120,8 +122,8 @@ impl ByzantineLedger {
             {
                 let mut broadcaster = send_scp_message_broadcaster.lock().expect("mutex poisoned");
                 broadcaster.broadcast_consensus_msg(
-                    &send_scp_message_node_id.responder_id,
                     &consensus_msg,
+                    &send_scp_message_node_id.responder_id,
                 );
             }
 

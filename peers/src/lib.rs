@@ -4,6 +4,7 @@
 
 extern crate alloc;
 
+mod broadcast;
 mod connection;
 mod consensus_msg;
 mod error;
@@ -13,6 +14,7 @@ mod threaded_broadcaster_retry;
 mod traits;
 
 pub use crate::{
+    broadcast::Broadcast,
     connection::PeerConnection,
     consensus_msg::{ConsensusMsg, ConsensusMsgError, TxProposeAAD, VerifiedConsensusMsg},
     error::{Error, Result},

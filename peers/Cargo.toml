@@ -37,5 +37,6 @@ url = "2.1"
 mc-connection-test-utils = { path = "../connection/test-utils" }
 mc-peers-test-utils = { path = "./test-utils" }
 
+mockall = "0.7.2"
 rand_hc = "0.2"
 rand = "0.7"

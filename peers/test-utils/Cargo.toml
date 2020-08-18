@@ -26,3 +26,4 @@ sha2 = { version = "0.8", features = ["asm"] }
 
 [dev-dependencies]
 mc-common = { path = "../../common", features = ["loggers"] }
+

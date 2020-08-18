@@ -20,7 +20,8 @@ use mc_ledger_sync::{
     LedgerSyncService, NetworkState, ReqwestTransactionsFetcher, SCPNetworkState,
 };
 use mc_peers::{
-    ConsensusConnection, RetryableConsensusConnection, ThreadedBroadcaster, VerifiedConsensusMsg,
+    Broadcast, ConsensusConnection, RetryableConsensusConnection, ThreadedBroadcaster,
+    VerifiedConsensusMsg,
 };
 use mc_transaction_core::{tx::TxHash, BlockID};
 use mc_util_metered_channel::Receiver;
@@ -430,7 +431,7 @@ impl<
                 self.broadcaster
                     .lock()
                     .expect("mutex poisoned")
-                    .broadcast_consensus_msg(&from_responder_id, consensus_msg.as_ref());
+                    .broadcast_consensus_msg(consensus_msg.as_ref(), &from_responder_id);
 
                 // Unclear if this helps with anything, so it is disabled for now.
                 /*
