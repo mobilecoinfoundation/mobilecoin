@@ -2,6 +2,9 @@
 
 //! Mock enclave, used for tests
 
+#[cfg(test)]
+mod mock_consensus_enclave;
+
 pub use mc_consensus_enclave_api::{
     ConsensusEnclave, ConsensusEnclaveProxy, Error, LocallyEncryptedTx, Result,
     SealedBlockSigningKey, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
