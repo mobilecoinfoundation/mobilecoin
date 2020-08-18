@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
 //! Mocks the ConsensusEnclave for testing.
 
 use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, VerificationReport};
@@ -16,7 +18,7 @@ use mockall::*;
 // ConsensusEnclave inherits from ReportableEnclave, so the traits have o be re-typed here.
 // Splitting the traits apart might help because TxManager only uses a few of these functions.
 mock! {
-    Enclave {}
+    pub ConsensusEnclave {} // This is used to generate a MockConsensusEnclave struct.
     trait ConsensusEnclave {
         fn enclave_init(
             &self,
@@ -76,5 +78,29 @@ mock! {
         fn verify_ias_report(&self, ias_report: VerificationReport) -> SgxReportResult<()>;
 
         fn get_ias_report(&self) -> SgxReportResult<VerificationReport>;
+    }
+}
+
+#[cfg(test)]
+mod mock_consensus_enclave_tests {
+    use super::MockConsensusEnclave;
+    use mc_consensus_enclave_api::ConsensusEnclave;
+    use mc_crypto_keys::X25519Public;
+    use std::convert::TryFrom;
+
+    #[test]
+    // Calling methods on the mock should return the specified values.
+    fn test_with_mock() {
+        let key = [0x55u8; 32];
+        let identity = X25519Public::try_from(&key as &[u8]).unwrap();
+
+        let mut mock_consensus_enclave = MockConsensusEnclave::new();
+        mock_consensus_enclave
+            .expect_get_identity()
+            .times(1)
+            .return_const(Ok(identity.clone()));
+
+        let res = mock_consensus_enclave.get_identity();
+        assert_eq!(res, Ok(identity));
     }
 }
