@@ -39,8 +39,8 @@ pub struct Config {
     /// URLs to use for transaction data.
     ///
     /// For example: https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node1.test.mobilecoin.com/
-    #[structopt(long = "tx-source-url", required = true, min_values = 1)]
-    pub tx_source_urls: Vec<String>,
+    #[structopt(long = "tx-source-url", required_unless = "offline")]
+    pub tx_source_urls: Option<Vec<String>>,
 
     /// How many seconds to wait between polling.
     #[structopt(long, default_value = "5", parse(try_from_str=parse_duration_in_seconds))]
@@ -59,6 +59,10 @@ pub struct Config {
     /// Defaults to number of logical CPU cores.
     #[structopt(long)]
     pub num_workers: Option<usize>,
+
+    /// Offline mode.
+    #[structopt(long)]
+    pub offline: bool,
 }
 
 fn parse_duration_in_seconds(src: &str) -> Result<Duration, std::num::ParseIntError> {
@@ -81,6 +85,8 @@ impl Config {
         let node_ids = self
             .peers_config
             .peers
+            .clone()
+            .unwrap_or_default()
             .iter()
             .map(|p| {
                 p.responder_id().unwrap_or_else(|e| {
@@ -100,13 +106,15 @@ impl Config {
 #[structopt()]
 pub struct PeersConfig {
     /// validator nodes to connect to.
-    #[structopt(long = "peer", required = true, min_values = 1)]
-    pub peers: Vec<ConsensusClientUri>,
+    #[structopt(long = "peer", required_unless = "offline")]
+    pub peers: Option<Vec<ConsensusClientUri>>,
 }
 
 impl PeersConfig {
     pub fn responder_ids(&self) -> Vec<ResponderId> {
         self.peers
+            .clone()
+            .unwrap_or_default()
             .iter()
             .map(|peer| {
                 peer.responder_id()
@@ -122,6 +130,8 @@ impl PeersConfig {
         logger: Logger,
     ) -> Vec<ThickClient> {
         self.peers
+            .clone()
+            .unwrap_or_default()
             .iter()
             .map(|client_uri| {
                 ThickClient::new(

@@ -315,8 +315,12 @@ impl<T: UserTxConnection + 'static> TransactionsManager<T> {
     /// Submit a previously built tx proposal to the network.
     pub fn submit_tx_proposal(&self, tx_proposal: &TxProposal) -> Result<u64, Error> {
         // Pick a peer to submit to.
-        let idx = self.submit_node_offset.fetch_add(1, Ordering::SeqCst);
         let responder_ids = self.peer_manager.responder_ids();
+        if responder_ids.is_empty() {
+            return Err(Error::NoPeersConfigured);
+        }
+
+        let idx = self.submit_node_offset.fetch_add(1, Ordering::SeqCst);
         let responder_id = &responder_ids[idx % responder_ids.len()];
 
         // Try and submit.
