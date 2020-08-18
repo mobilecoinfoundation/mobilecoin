@@ -51,7 +51,7 @@ pub struct ByzantineLedgerWorker<
     send_scp_message: F,
     ledger: L,
     peer_manager: ConnectionManager<PC>,
-    tx_manager: TxManager<E, L, UI>,
+    tx_manager: TxManager<E, UI>,
     broadcaster: Arc<Mutex<ThreadedBroadcaster>>,
     logger: Logger,
 
@@ -107,7 +107,7 @@ impl<
         send_scp_message: F,
         ledger: L,
         peer_manager: ConnectionManager<PC>,
-        tx_manager: TxManager<E, L, UI>,
+        tx_manager: TxManager<E, UI>,
         broadcaster: Arc<Mutex<ThreadedBroadcaster>>,
         tx_source_urls: Vec<String>,
         logger: Logger,
@@ -502,9 +502,17 @@ impl<
 
         // Write to ledger.
         {
+            let num_blocks = self
+                .ledger
+                .num_blocks()
+                .expect("Ledger must contain a block.");
+            let parent_block = self
+                .ledger
+                .get_block(num_blocks - 1)
+                .expect("Ledger must contain a block.");
             let (block, block_contents, signature) = self
                 .tx_manager
-                .tx_hashes_to_block(&ext_vals)
+                .tx_hashes_to_block(&ext_vals, &parent_block)
                 .unwrap_or_else(|e| panic!("Failed to build block from {:?}: {:?}", ext_vals, e));
 
             log::info!(
