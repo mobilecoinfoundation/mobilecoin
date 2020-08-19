@@ -7,12 +7,11 @@
 //! and implements many handy traits for performing high-level cryptography operations,
 //! and this crate provides a way to create signatures that is compatible with these key pairs.
 
-use digest::Input;
-use mc_crypto_hashes::Blake2b256;
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
+use merlin::Transcript;
 use rand_core::SeedableRng;
 use rand_hc::Hc128Rng as FixedRng;
-use schnorrkel::{signing_context, SecretKey};
+use schnorrkel::{context::attach_rng, signing_context, SecretKey};
 pub use schnorrkel::{Signature, SignatureError, SIGNATURE_LENGTH};
 
 /// Create a deterministic Schnorrkel signature
@@ -25,16 +24,17 @@ pub use schnorrkel::{Signature, SignatureError, SIGNATURE_LENGTH};
 /// Returns:
 /// * A 64-byte Schnorrkel Signature object which can be converted to and from bytes using its API.
 pub fn sign(context_tag: &[u8], private_key: &RistrettoPrivate, message: &[u8]) -> Signature {
-    // Nonce is hash( private_key || message )
-    // FIXME: We should probably hash the context_tag in as well.
-    // Or just use something like merlin instead of Blake2b256.
-    // In that case we make the assumption that Keccak, which underlies STROBE,
-    // is a strong Pseudorandom permutation, and that consequently Merlin with
-    // a partially secret input is a PRF.
-    let mut hasher = Blake2b256::new();
-    hasher.input(private_key.to_bytes());
-    hasher.input(message);
-    let nonce = hasher.result();
+    // Create a deterministic nonce using a merlin transcript. See this crate's README
+    // for a security statement.
+    let nonce = {
+        let mut transcript = Transcript::new(b"SigningNonce");
+        transcript.append_message(b"context", &context_tag);
+        transcript.append_message(b"private", &private_key.to_bytes());
+        transcript.append_message(b"message", &message);
+        let mut nonce = [0u8; 32];
+        transcript.challenge_bytes(b"nonce", &mut nonce);
+        nonce
+    };
 
     // Construct a Schnorrkel SecretKey object from private_key and our nonce value
     let mut secret_bytes = [0u8; 64];
@@ -43,11 +43,14 @@ pub fn sign(context_tag: &[u8], private_key: &RistrettoPrivate, message: &[u8]) 
     let secret_key = SecretKey::from_bytes(&secret_bytes).unwrap();
     let keypair = secret_key.to_keypair();
 
-    // Context provides domain separation for signature
-    let ctx = signing_context(context_tag);
-    // NOTE: The fog_authority_fingerprint_sig is deterministic due to using the above hash as the rng seed
-    let mut csprng: FixedRng = SeedableRng::from_seed(nonce.into());
-    keypair.sign_rng(ctx.bytes(message), &mut csprng)
+    // SigningContext provides domain separation for signature
+    let mut t = Transcript::new(b"SigningContext");
+    t.append_message(b"", context_tag);
+    t.append_message(b"sign-bytes", message);
+    // NOTE: The fog_authority_fingerprint_sig is deterministic due to using the above nonce as the rng seed
+    let csprng: FixedRng = SeedableRng::from_seed(nonce);
+    let transcript = attach_rng(t, csprng);
+    keypair.sign(transcript)
 }
 
 /// Verify a Schnorrkel signature

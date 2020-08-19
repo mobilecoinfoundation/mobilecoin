@@ -2638,11 +2638,11 @@ dependencies = [
 name = "mc-crypto-sig"
 version = "0.6.0"
 dependencies = [
- "digest",
  "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-util-from-random",
  "mc-util-test-helper",
+ "merlin",
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
  "schnorrkel",
@@ -4872,7 +4872,8 @@ dependencies = [
 [[package]]
 name = "schnorrkel"
 version = "0.9.1"
-source = "git+https://github.com/sugargoat/schnorrkel?rev=60eedb2d3e005539052e1a2aef864bc78323c66c#60eedb2d3e005539052e1a2aef864bc78323c66c"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "021b403afe70d81eea68f6ea12f6b3c9588e5d536a94c3bf80f15e7faa267862"
 dependencies = [
  "arrayref",
  "arrayvec",

@@ -65,7 +65,7 @@ fn test_url_encoding() {
         };
         let encoded = MobUrl::try_from(&payload).unwrap();
         let encoded_str: &str = encoded.as_ref();
-        assert_eq!("mob://fog.mobilecoin.signal.org/rmiEqq-34E3Fbm3hwxaYJtPZzu9THCBkQaqJDeZwuXG8mf2yOhmGoZmnKTu3--ZCj--5MdTwwCib2p7Dn3KTCl6E?a=666&m=2+baby+goats&s=KovIno-JXUsQuTSmUj4MDowMENWBpAbrHcT61x72MWNc24hBmdiRlPtpuxSdju_eaMXKeSrLLHjP7VltAuI_hP1f", encoded_str);
+        assert_eq!("mob://fog.mobilecoin.signal.org/rmiEqq-34E3Fbm3hwxaYJtPZzu9THCBkQaqJDeZwuXG8mf2yOhmGoZmnKTu3--ZCj--5MdTwwCib2p7Dn3KTCl6E?a=666&m=2+baby+goats&s=kjgEUqPUmd_pDqy6bJZwb3HcbzIfJva1pEV7SqPkmzBMz_k7lvGNnvN6QZh6O6_qFdDQTKYSdrr3biJWP4vkgYHq", encoded_str);
         assert_eq!(232, encoded_str.len());
 
         let b58_payload = RequestPayload::new_v4(
@@ -79,7 +79,7 @@ fn test_url_encoding() {
         )
         .unwrap();
         let b58_encoded = "mob:///".to_string() + &b58_payload.encode();
-        assert_eq!("mob:///CzpFtx52f77AfogondLHGH4ZnhraB4igZKptek36H2mUPmj3qtLCV4UWB8QaDUqro3xBoKb4rXDSBm2nxV6GNz6pNfG5nwrdG17pPACnuh1NNFxyyUyEL6ckUfUhEYvPXLAy3JZhWCyi6g1S5MQd4NvaPXcptK14T5X2NP1yQei4paCBty8JxM4sc8mJa34NXYSySTnqAR53qC2WzmVKWtfuAAQXZU2jPR1kxZ2tJCdhBtERcfzsjKUAwZZMAYfgP9", b58_encoded);
+        assert_eq!("mob:///oSVfMupaCebhsoAJAY3uDqk6zBSV19PpavGTHxt29tubB9YiG8aFXSj9h3f9DS9VBxnSGjy77cSWZPF6o2J6HojmAc7SpvSvzCLxwnHmFwXUXkc8PhtDyTZ749znMXGAfd2zvFVaidC6GoiWDCN1DnQBStF8JVBsXP6UChTnjfuEVmY3J1f742uWpAU6LChyff78uvLZNAEsRNKFj6pkVW5ZRLVJK7GhhRru83CxaLnuCNqriNDdQfZUuWpK4Xrtib", b58_encoded);
         assert_eq!(265, b58_encoded.len());
     }
 
@@ -92,7 +92,7 @@ fn test_url_encoding() {
         };
         let encoded = MobUrl::try_from(&payload).unwrap();
         let encoded_str: &str = encoded.as_ref();
-        assert_eq!("mob://fog.diogenes.mobilecoin.com/krmSAg7MnM0fn-yTIjV6tHtRA7Zj2JRZ4pJ-_PcweTkAu7afknATa5hFwtc_Zvi8R6d36cnpMA0-inMbZHiqMRqp?a=666&m=2+baby+goats&s=SC9cs96Ry9z4Js_VXkC35IMnTjpQCtEujN8D-R15qTsJloN2pZ75BbSzGtQJ99kBt8mM2YBhlTW9wuCfzHU3gJmx", encoded_str);
+        assert_eq!("mob://fog.diogenes.mobilecoin.com/krmSAg7MnM0fn-yTIjV6tHtRA7Zj2JRZ4pJ-_PcweTkAu7afknATa5hFwtc_Zvi8R6d36cnpMA0-inMbZHiqMRqp?a=666&m=2+baby+goats&s=HJ9SIosiJMmcDi9OBap9L5SY6Bzasr9CIAGmSIq2rgdR4MMpwAgKVdUPc1YrEwDIQzqsa03e6Z5fPjJRrxWJjwM5", encoded_str);
         assert_eq!(234, encoded_str.len());
 
         let b58_payload = RequestPayload::new_v4(
@@ -106,7 +106,7 @@ fn test_url_encoding() {
         )
         .unwrap();
         let b58_encoded = "mob:///".to_string() + &b58_payload.encode();
-        assert_eq!("mob:///8dUCXPapoK52Zvhdfb3YHpKJRDPKvXAJmeKjkAxXv7o4QDftDV2JPybwQXzzuU5pqqS3QJkGFnFVWzxDNdd86vEDm3HDdHSgjjX2b2dxW9PDP9Ly3ziqLsLvy1d9xpdVUGAo6gniDHbjNypcVXwyU7hQUmbuHK8YsfJkKz2DPj8GxT5dgMhNzgbmzenpoexERAc1NehdHpwi6e6Tro63i6ny7akE2911sxb8Ar12Lgk44Zsfvf43oRtQVmGGpWR5idGb1", b58_encoded);
+        assert_eq!("mob:///JQPG3B9e4BXi7FB5Y2BRBBvykBMRYG6JCBop8bzsrqh29Wq7Z9wqxaACrdpqrRuUPd2Wrj1RwuZnA29njmEZE3BMsuCuBqFHyTLzhKZCJL7R4obo5Kzvht5F6YaVKcVzx8sbGdsVwS1Ty7jCopiVsyQBeTLZ8tCHWn83YJVHeoFUqkRp9Pvk65fxzVjSRDT8VcMTDYQsccR8KVV9w1qwTTYqsifwFWga8kCHvHRc4qwcqvjNj3aFQxQUTbrHf6fAR9tZu", b58_encoded);
         assert_eq!(268, b58_encoded.len());
     }
 }
