@@ -46,7 +46,7 @@ pub struct BlockContentsHash<D: Digest = Blake2b256>(pub GenericArray<u8, D::Out
 
 impl<D: Digest> Digestible for BlockContentsHash<D> {
     fn digest<DD: Digest>(&self, hasher: &mut DD) {
-        hasher.input(&self.0)
+        hasher.update(&self.0)
     }
 }
 

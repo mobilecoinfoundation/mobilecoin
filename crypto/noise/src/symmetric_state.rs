@@ -13,7 +13,7 @@ use crate::{
 use aead::{AeadMut, NewAead};
 use alloc::vec::Vec;
 use core::{convert::TryInto, marker::PhantomData};
-use digest::{BlockInput, FixedOutput, Input, Reset};
+use digest::{BlockInput, FixedOutput, Reset, Update};
 use failure::Fail;
 use generic_array::typenum::Unsigned;
 use hkdf::{Hkdf, InvalidLength};
@@ -48,7 +48,7 @@ pub struct SymmetricState<KexAlgo, Cipher, DigestType>
 where
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + FixedOutput + Input + Reset,
+    DigestType: BlockInput + Clone + Default + FixedOutput + Update + Reset,
 {
     hash: HandshakeHash<DigestType>,
     chaining_key: SecretVec<u8>,
@@ -63,7 +63,7 @@ where
     Handshake: HandshakePattern,
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + FixedOutput + Input + Reset,
+    DigestType: BlockInput + Clone + Default + FixedOutput + Update + Reset,
     ProtocolName<Handshake, KexAlgo, Cipher, DigestType>: AsRef<str>,
 {
     /// The noise protocol `InitializeSymmetric()` operation.
@@ -88,7 +88,7 @@ impl<KexAlgo, Cipher, DigestType> SymmetricState<KexAlgo, Cipher, DigestType>
 where
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + FixedOutput + Input + Reset,
+    DigestType: BlockInput + Clone + Default + FixedOutput + Update + Reset,
 {
     /// Retrieve the expected size (in bytes) of a public key to read.
     ///
@@ -279,7 +279,7 @@ impl<KexAlgo, Cipher, DigestType> TryInto<SymmetricOutput<Cipher, KexAlgo::Publi
 where
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + FixedOutput + Input + Reset,
+    DigestType: BlockInput + Clone + Default + FixedOutput + Update + Reset,
 {
     type Error = SymmetricError;
 

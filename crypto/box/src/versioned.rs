@@ -23,7 +23,7 @@ use crate::{
 
 use aead::{
     generic_array::{
-        arr, arr_impl,
+        arr,
         sequence::Concat,
         typenum::{Unsigned, U50},
         GenericArray,

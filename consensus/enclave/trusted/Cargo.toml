@@ -42,7 +42,7 @@ mc-sgx-types = { path = "../../../sgx/types" }
 mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.3", default-features = false, features = ["aesni","force_aesni_support","rdrand"] }
 
 lazy_static = { version = "1.4", features = ["spin_no_std"] }
-sha2 = { version = "0.8", default-features = false, features = ["asm"] }
+sha2 = { version = "0.9", default-features = false, features = ["asm"] }
 
 [build-dependencies]
 mc-util-build-script = { path = "../../../util/build/script" }

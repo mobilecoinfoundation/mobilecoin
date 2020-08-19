@@ -21,7 +21,7 @@ pub trait Digestible {
     ) -> generic_array::GenericArray<u8, <D as Digest>::OutputSize> {
         let mut hasher = D::default();
         self.digest(&mut hasher);
-        hasher.result()
+        hasher.finalize()
     }
 }
 
@@ -43,28 +43,28 @@ pub trait Digestible {
 // impl Digestible for u8 {
 //    #[inline]
 //    fn digest<D: Digest>(&self, hasher: &mut D) {
-//        hasher.input(core::slice::from_ref(self))
+//        hasher.update(core::slice::from_ref(self))
 //    }
 // }
 
 impl Digestible for u16 {
     #[inline]
     fn digest<D: Digest>(&self, hasher: &mut D) {
-        hasher.input(&self.to_le_bytes())
+        hasher.update(&self.to_le_bytes())
     }
 }
 
 impl Digestible for u32 {
     #[inline]
     fn digest<D: Digest>(&self, hasher: &mut D) {
-        hasher.input(&self.to_le_bytes())
+        hasher.update(&self.to_le_bytes())
     }
 }
 
 impl Digestible for u64 {
     #[inline]
     fn digest<D: Digest>(&self, hasher: &mut D) {
-        hasher.input(&self.to_le_bytes())
+        hasher.update(&self.to_le_bytes())
     }
 }
 
@@ -89,7 +89,7 @@ pub trait RawDigestible: AsRef<[u8]> + Sized {}
 impl<T: RawDigestible> Digestible for T {
     #[inline]
     fn digest<D: Digest>(&self, hasher: &mut D) {
-        hasher.input(self)
+        hasher.update(self)
     }
 }
 
@@ -153,7 +153,7 @@ impl Digestible for &[u8] {
     #[inline]
     fn digest<D: Digest>(&self, hasher: &mut D) {
         self.len().digest(hasher);
-        hasher.input(self);
+        hasher.update(self);
     }
 }
 
@@ -163,11 +163,11 @@ impl<T: Digestible> Digestible for Option<T> {
     fn digest<D: Digest>(&self, hasher: &mut D) {
         match self {
             Some(ref val) => {
-                hasher.input(&[1u8]);
+                hasher.update(&[1u8]);
                 val.digest(hasher);
             }
             None => {
-                hasher.input(&[0u8]);
+                hasher.update(&[0u8]);
             }
         }
     }
@@ -245,28 +245,28 @@ cfg_if! {
         impl Digestible for CompressedRistretto {
             #[inline]
             fn digest<D: Digest>(&self, hasher: &mut D) {
-                hasher.input(&self.as_bytes());
+                hasher.update(&self.as_bytes());
             }
         }
 
         impl Digestible for Scalar {
             #[inline]
             fn digest<D: Digest>(&self, hasher: &mut D) {
-                hasher.input(self.as_bytes())
+                hasher.update(self.as_bytes())
             }
         }
 
         impl Digestible for ed25519_dalek::PublicKey {
             #[inline]
             fn digest<D: Digest>(&self, hasher: &mut D) {
-                hasher.input(self)
+                hasher.update(self)
             }
         }
 
         impl Digestible for x25519_dalek::PublicKey {
             #[inline]
             fn digest<D: Digest>(&self, hasher: &mut D) {
-                hasher.input(self.as_bytes())
+                hasher.update(self.as_bytes())
             }
         }
     }

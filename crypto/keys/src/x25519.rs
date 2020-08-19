@@ -52,8 +52,8 @@ impl AsRef<[u8]> for X25519Secret {
 impl Debug for X25519Secret {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         let mut hasher = Sha256::new();
-        hasher.input(self.as_ref());
-        let hash_results = hasher.result();
+        hasher.update(self.as_ref());
+        let hash_results = hasher.finalize();
         let mut hash_strbuf: Vec<u8> = Vec::with_capacity(hash_results.len() * 2);
         let hash_len = {
             let hash_strslice =
@@ -177,8 +177,8 @@ impl AsRef<[u8]> for X25519Public {
     /// let key = [0x55u8; 32];
     /// let pubkey = X25519Public::try_from(&key as &[u8]).expect("Could not create key.");
     /// let mut hasher = Sha256::new();
-    /// hasher.input(pubkey);
-    /// let hash = hasher.result();
+    /// hasher.update(pubkey);
+    /// let hash = hasher.finalize();
     /// let expected : [u8; 32] = [
     ///     132, 18, 109, 13, 216, 80, 25, 155, 226, 144, 33, 170, 219, 174, 230, 140,
     ///     185, 25, 144, 71, 177, 203, 126, 201, 137, 77, 219, 30, 53, 98, 120, 60

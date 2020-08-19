@@ -17,13 +17,13 @@ mc-util-from-random = { path = "../../../util/from-random" }
 mc-util-serial = { path = "../../../util/serial", default-features = false }
 mc-sgx-compat = { path = "../../../sgx/compat", default-features = false }
 
-aead = "0.2"
-aes-gcm = "0.3"
-digest = { version = "0.8", default-features = false }
+aead = "0.3"
+aes-gcm = "0.6"
+digest = { version = "0.9", default-features = false }
 failure = { version = "0.1.5", default-features = false, features = ["derive"] }
 rand_core = { version = "0.5", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["alloc"] }
-sha2 = { version = "0.8", default-features = false }
+sha2 = { version = "0.9", default-features = false }
 
 [build-dependencies]
 mc-sgx-build = { path = "../../../sgx/build" }

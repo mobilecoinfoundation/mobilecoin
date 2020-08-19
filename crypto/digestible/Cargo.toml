@@ -6,23 +6,23 @@ edition = "2018"
 
 [dependencies]
 cfg-if = "0.1"
-digest = { version = "0.8", default-features = false }
+digest = { version = "0.9", default-features = false }
 
 # For derive support
 mc-crypto-digestible-derive = { path = "./derive", optional = true }
 
 # Built-in support for dalek primitives
 ed25519-dalek = { version = "1.0.0-pre.4", default-features = false, optional = true }
-x25519-dalek = { version = "0.6", default-features = false, optional = true }
+x25519-dalek = { version = "1.0.1", default-features = false, optional = true }
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
-curve25519-dalek = { version = "2.0", default-features = false, features = ["simd_backend", "nightly"], optional = true }
+curve25519-dalek = { version = "3.0", default-features = false, features = ["simd_backend", "nightly"], optional = true }
 
 [target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
-curve25519-dalek = { version = "2.0", default-features = false, features = ["nightly", "u64_backend"], optional = true }
+curve25519-dalek = { version = "3.0", default-features = false, features = ["nightly", "u64_backend"], optional = true }
 
 [dev-dependencies]
-sha3 = "0.8"
+sha3 = "0.9"
 
 [features]
 default=["alloc", "derive"]
