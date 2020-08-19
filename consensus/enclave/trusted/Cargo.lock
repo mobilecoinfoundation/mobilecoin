@@ -342,7 +342,7 @@ dependencies = [
 [[package]]
 name = "ed25519-dalek"
 version = "1.0.0-pre.4"
-source = "git+https://github.com/eranrund/ed25519-dalek?rev=006d9d387f2c780a8f6f2c934668ddfcb1a6f3e2#006d9d387f2c780a8f6f2c934668ddfcb1a6f3e2"
+source = "git+https://github.com/eranrund/ed25519-dalek?rev=ffb1db5edf1fcb5aaebfb3a54dbba98072dbafbb#ffb1db5edf1fcb5aaebfb3a54dbba98072dbafbb"
 dependencies = [
  "curve25519-dalek 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ed25519 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -815,7 +815,7 @@ dependencies = [
  "cfg-if 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "curve25519-dalek 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "ed25519-dalek 1.0.0-pre.4 (git+https://github.com/eranrund/ed25519-dalek?rev=006d9d387f2c780a8f6f2c934668ddfcb1a6f3e2)",
+ "ed25519-dalek 1.0.0-pre.4 (git+https://github.com/eranrund/ed25519-dalek?rev=ffb1db5edf1fcb5aaebfb3a54dbba98072dbafbb)",
  "mc-crypto-digestible-derive 0.6.0",
  "x25519-dalek 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -846,7 +846,7 @@ dependencies = [
  "curve25519-dalek 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ed25519 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "ed25519-dalek 1.0.0-pre.4 (git+https://github.com/eranrund/ed25519-dalek?rev=006d9d387f2c780a8f6f2c934668ddfcb1a6f3e2)",
+ "ed25519-dalek 1.0.0-pre.4 (git+https://github.com/eranrund/ed25519-dalek?rev=ffb1db5edf1fcb5aaebfb3a54dbba98072dbafbb)",
  "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex_fmt 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mc-crypto-digestible 0.6.0",
@@ -1721,7 +1721,7 @@ dependencies = [
 "checksum digest 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d3dd60d1080a57a05ab032377049e0591415d2b31afd7028356dbf3cc6dcb066"
 "checksum displaydoc 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)" = "adc2ab4d5a16117f9029e9a6b5e4e79f4c67f6519bc134210d4d4a04ba31f41b"
 "checksum ed25519 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "bf038a7b6fd7ef78ad3348b63f3a17550877b0e28f8d68bcc94894d1412158bc"
-"checksum ed25519-dalek 1.0.0-pre.4 (git+https://github.com/eranrund/ed25519-dalek?rev=006d9d387f2c780a8f6f2c934668ddfcb1a6f3e2)" = "<none>"
+"checksum ed25519-dalek 1.0.0-pre.4 (git+https://github.com/eranrund/ed25519-dalek?rev=ffb1db5edf1fcb5aaebfb3a54dbba98072dbafbb)" = "<none>"
 "checksum either 1.5.3 (registry+https://github.com/rust-lang/crates.io-index)" = "bb1f6b1ce1c140482ea30ddd3335fc0024ac7ee112895426e0a629a6c20adfe3"
 "checksum env_logger 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "aafcde04e90a5226a6443b7aabdb016ba2f8307c847d524724bd9b346dd1a2d3"
 "checksum failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "f8273f13c977665c5db7eb2b99ae520952fe5ac831ae4cd09d80c4c7042b5ed9"
