@@ -1132,7 +1132,7 @@ mod conversion_tests {
         );
         assert_eq!(
             block_signature.get_signer().get_data(),
-            source_block_signature.signer().to_bytes().as_ref(),
+            source_block_signature.signer().to_bytes().as_slice(),
         );
         assert_eq!(
             block_signature.get_signed_at(),
