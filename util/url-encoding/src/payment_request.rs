@@ -95,7 +95,7 @@ mod tests {
             })
             .unwrap();
 
-        assert_eq!(mob_url.as_ref(), "mob://example.com/9i_xwzoihbGu5hLthygfLGi7K1sPFDmhPkq3KPmO-2p4kBwRg06ELfa-mMEnlTUT4RYJXUEizCfYB7RRHLgeEWfP?s=HFZv2Edntt6Q4y5bSYdHHPh78NFHTx_7lH9ImnLt4T3xHXjOnZaR4ObQsyv-PopMCLIIqX6TpGhq7tnopzg6jpFt");
+        assert_eq!(mob_url.as_ref(), "mob://example.com/9i_xwzoihbGu5hLthygfLGi7K1sPFDmhPkq3KPmO-2p4kBwRg06ELfa-mMEnlTUT4RYJXUEizCfYB7RRHLgeEWfP?s=gg1381eECt9C0_0DMLgXuNgKWmNokd5LL9y8ylFkuzCKnF2p2znWQTGIjfq1ePaKxxRpPlmRQ3lPAY93JrOchCyk");
 
         let payload2 = PaymentRequest::try_from(&mob_url).unwrap();
 
@@ -150,7 +150,7 @@ mod tests {
             })
             .unwrap();
 
-        assert_eq!(mob_url.as_ref(), "mob://fog.mobilecoin.com/oGbA6juTWhUdfL6qNMocAGN96wNiZpZegP0TUjKXHEM-GYmM50bLJVeL6NgftIumjt8nwYw7MjEnQT7hCw9bVUgh?a=777&m=2+baby+goats&s=ArdJFqaDdDveqoiL_iUerG8LQIl09OLyjyGXnGddknzmCSlQanEBQTg6SClF3drMTAOQyzRRdd-tR_Rj74RZgHO2#0");
+        assert_eq!(mob_url.as_ref(), "mob://fog.mobilecoin.com/oGbA6juTWhUdfL6qNMocAGN96wNiZpZegP0TUjKXHEM-GYmM50bLJVeL6NgftIumjt8nwYw7MjEnQT7hCw9bVUgh?a=777&m=2+baby+goats&s=ruXXc2snZySyUAlvbLuzbaTQB-ZathDvUo73-50U7i_nnbOIZ31UivYz9gaokRaiYB2JZfOQVY2tFl9ntPtwhFvg#0");
         let payload2 = PaymentRequest::try_from(&mob_url).unwrap();
 
         assert_eq!(payload, payload2);
@@ -180,7 +180,7 @@ mod tests {
             })
             .unwrap();
 
-        assert_eq!(mob_url.as_ref(), "mob://fog.mobilecoin.com/oGbA6juTWhUdfL6qNMocAGN96wNiZpZegP0TUjKXHEM-GYmM50bLJVeL6NgftIumjt8nwYw7MjEnQT7hCw9bVUgh?a=777&m=%D9%84%D8%B3%D9%84%D8%A7%D9%85+%D8%B9%D9%84%D9%8A%D9%83%D9%85&s=ArdJFqaDdDveqoiL_iUerG8LQIl09OLyjyGXnGddknzmCSlQanEBQTg6SClF3drMTAOQyzRRdd-tR_Rj74RZgHO2#0");
+        assert_eq!(mob_url.as_ref(), "mob://fog.mobilecoin.com/oGbA6juTWhUdfL6qNMocAGN96wNiZpZegP0TUjKXHEM-GYmM50bLJVeL6NgftIumjt8nwYw7MjEnQT7hCw9bVUgh?a=777&m=%D9%84%D8%B3%D9%84%D8%A7%D9%85+%D8%B9%D9%84%D9%8A%D9%83%D9%85&s=ruXXc2snZySyUAlvbLuzbaTQB-ZathDvUo73-50U7i_nnbOIZ31UivYz9gaokRaiYB2JZfOQVY2tFl9ntPtwhFvg#0");
 
         let payload2 = PaymentRequest::try_from(&mob_url).unwrap();
 
