@@ -50,7 +50,7 @@ binascii = "0.1.2"
 hex_fmt = "0.3"
 rand_core = { version = "0.5", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-sha3 = { version = "0.8", default-features = false }
+sha3 = { version = "0.9", default-features = false }
 siphasher = "0.3"
 
 # log- and loggers-only dependencies
