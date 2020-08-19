@@ -11,7 +11,7 @@ use crate::{
         TXOUT_MERKLE_LEAF_DOMAIN_TAG, TXOUT_MERKLE_NIL_DOMAIN_TAG, TXOUT_MERKLE_NODE_DOMAIN_TAG,
     },
     membership_proofs::errors::Error,
-    range::Range,
+    range::{Range, RangeError},
     tx::{TxOut, TxOutMembershipHash, TxOutMembershipProof},
 };
 use alloc::vec::Vec;
@@ -67,6 +67,11 @@ pub fn is_membership_proof_valid(
 ) -> Result<bool, Error> {
     if proof.index > proof.highest_index {
         return Ok(false);
+    }
+    // All Ranges contained in the proof must be valid. An invalid Range could be created
+    // by deserializing invalid bytes.
+    if proof.elements.iter().any(|e| e.range.from > e.range.to) {
+        return Err(Error::RangeError(RangeError {}));
     }
 
     // * The proof must contain the correct leaf hash for the specified index.
