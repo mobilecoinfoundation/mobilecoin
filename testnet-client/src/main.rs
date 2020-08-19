@@ -371,14 +371,14 @@ string that we send you. It should look something like:
                 let request_wrapper = PrintableWrapper::b58_decode(src.to_string())
                     .map_err(|err| format!("Invalid request code: {}", err))?;
                 if request_wrapper.has_payment_request() {
-                    return Ok(Self(Some(request_wrapper.get_payment_request().clone())));
+                    Ok(Self(Some(request_wrapper.get_payment_request().clone())))
                 } else if request_wrapper.has_public_address() {
                     let mut payment_request = PaymentRequest::new();
                     payment_request
                         .set_public_address(request_wrapper.get_public_address().clone());
-                    return Ok(Self(Some(payment_request)));
+                    Ok(Self(Some(payment_request)))
                 } else {
-                    return Err("Not a payment request code or a public address".to_string());
+                    Err("Not a payment request code or a public address".to_string())
                 }
             }
         }
