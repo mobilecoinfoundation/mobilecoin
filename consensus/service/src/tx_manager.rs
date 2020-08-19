@@ -25,7 +25,7 @@ use mc_transaction_core::{
 use std::{
     collections::BTreeSet,
     iter::FromIterator,
-    sync::{Arc, Mutex, MutexGuard},
+    sync::{Arc, RwLock},
 };
 
 #[derive(Clone, Debug, Fail)]
@@ -110,7 +110,7 @@ pub trait UntrustedInterfaces: Clone {
     /// * `max_elements` - Maximal number of elements to output.
     ///
     /// Returns a bounded, deterministically-ordered list of transactions that are safe to append to the ledger.
-    fn combine(&self, tx_contexts: &[&WellFormedTxContext], max_elements: usize) -> Vec<TxHash>;
+    fn combine(&self, tx_contexts: &[WellFormedTxContext], max_elements: usize) -> Vec<TxHash>;
 }
 
 #[derive(Clone)]
@@ -122,11 +122,11 @@ pub struct TxManager<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> {
     /// values.
     untrusted: UI,
 
+    /// Well-formed transactions, keyed by transaction hash.
+    cache: Arc<RwLock<HashMap<TxHash, CacheEntry>>>,
+
     /// Logger.
     logger: Logger,
-
-    /// Map of tx hashes to data we hold for each tx.
-    cache: Arc<Mutex<HashMap<TxHash, CacheEntry>>>,
 }
 
 impl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> TxManager<E, UI> {
@@ -136,7 +136,7 @@ impl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> TxManager<E, UI> {
             enclave,
             untrusted,
             logger,
-            cache: Arc::new(Mutex::new(HashMap::default())),
+            cache: Arc::new(RwLock::new(HashMap::default())),
         }
     }
 
@@ -146,12 +146,11 @@ impl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> TxManager<E, UI> {
         &self,
         tx_context: TxContext,
     ) -> TxManagerResult<WellFormedTxContext> {
-        // If already in cache then we're done.
         {
-            let cache = self.lock_cache();
+            let cache = self.cache.read().expect("lock poisoned");
             if let Some(entry) = cache.get(&tx_context.tx_hash) {
-                self.untrusted.is_valid(entry.context())?;
-                return Err(TxManagerError::AlreadyInCache);
+                // The transaction has already been checked to be well-formed and is in the cache.
+                return Ok(entry.context.clone());
             }
         }
 
@@ -183,7 +182,7 @@ impl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> TxManager<E, UI> {
 
         // Store in our cache.
         {
-            let mut cache = self.lock_cache();
+            let mut cache = self.cache.write().expect("lock poisoned");
             cache.insert(
                 *well_formed_tx_context.tx_hash(),
                 CacheEntry {
@@ -201,12 +200,10 @@ impl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> TxManager<E, UI> {
     /// Evacuate expired transactions from the cache.
     /// Returns the hashes that were removed.
     pub fn evacuate_expired(&self, cur_block: u64) -> HashSet<TxHash> {
-        let mut cache = self.lock_cache();
+        let mut cache = self.cache.write().expect("lock poisoned");
 
         let hashes_before_purge = HashSet::from_iter(cache.keys().cloned());
-
         cache.retain(|_k, entry| entry.context().tombstone_block() >= cur_block);
-
         let hashes_after_purge = HashSet::from_iter(cache.keys().cloned());
         let purged_hashes = hashes_before_purge
             .difference(&hashes_after_purge)
@@ -229,7 +226,7 @@ impl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> TxManager<E, UI> {
     /// Returns the list of hashes inside `tx_hashes` that are not inside the cache.
     pub fn missing_hashes(&self, tx_hashes: &BTreeSet<TxHash>) -> Vec<TxHash> {
         let mut missing = Vec::new();
-        let cache = self.lock_cache();
+        let cache = self.cache.read().expect("lock poisoned");
         for tx_hash in tx_hashes {
             if !cache.contains_key(tx_hash) {
                 missing.push(*tx_hash);
@@ -241,7 +238,7 @@ impl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> TxManager<E, UI> {
     /// Validate a transaction by it's hash. This checks if by itself this transaction is safe to
     /// append to the ledger.
     pub fn validate_tx_by_hash(&self, tx_hash: &TxHash) -> TxManagerResult<()> {
-        let cache = self.lock_cache();
+        let cache = self.cache.read().expect("lock poisoned");
         match cache.get(tx_hash) {
             None => {
                 log::error!(
@@ -266,16 +263,17 @@ impl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> TxManager<E, UI> {
     /// out transactions, so while non-existent hashes should not be fed into this method, they are
     /// not treated as an error.
     pub fn combine_txs_by_hash(&self, tx_hashes: &[TxHash]) -> Vec<TxHash> {
-        let cache = self.lock_cache();
         let mut tx_contexts = Vec::new();
-
-        // Dedup
-        let tx_hashes: HashSet<&TxHash> = tx_hashes.iter().clone().collect();
-        for tx_hash in tx_hashes {
-            if let Some(entry) = cache.get(&tx_hash) {
-                tx_contexts.push(entry.context());
-            } else {
-                log::error!(self.logger, "Ignoring non-existent TxHash {:?}", tx_hash);
+        {
+            let cache = self.cache.read().expect("lock poisoned");
+            // Dedup
+            let tx_hashes: HashSet<&TxHash> = tx_hashes.iter().clone().collect();
+            for tx_hash in tx_hashes {
+                if let Some(entry) = cache.get(&tx_hash) {
+                    tx_contexts.push(entry.context().clone());
+                } else {
+                    log::error!(self.logger, "Ignoring non-existent TxHash {:?}", tx_hash);
+                }
             }
         }
 
@@ -289,21 +287,22 @@ impl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> TxManager<E, UI> {
         tx_hashes: &[TxHash],
         parent_block: &Block,
     ) -> TxManagerResult<(Block, BlockContents, BlockSignature)> {
-        let cache = self.lock_cache();
-        let encrypted_txs_with_proofs = tx_hashes
-            .iter()
-            .map(|tx_hash| {
-                let entry = cache.get(tx_hash).ok_or_else(|| TxManagerError::NotInCache(*tx_hash))?;
+        let encrypted_txs_with_proofs = {
+            let cache = self.cache.read().expect("lock poisoned");
+            tx_hashes
+                .iter()
+                .map(|tx_hash| {
+                    let entry = cache.get(tx_hash).ok_or_else(|| TxManagerError::NotInCache(*tx_hash))?;
+                    let (_current_block_index, membership_proofs) = self.untrusted.well_formed_check(
+                        entry.context().highest_indices(),
+                        entry.context().key_images(),
+                        entry.context().output_public_keys(),
+                    )?;
 
-                let (_current_block_index, membership_proofs) = self.untrusted.well_formed_check(
-                    entry.context().highest_indices(),
-                    entry.context().key_images(),
-                    entry.context().output_public_keys(),
-                )?;
-
-                Ok((entry.encrypted_tx().clone(), membership_proofs))
-            })
-            .collect::<Result<Vec<(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)>, TxManagerError>>()?;
+                    Ok((entry.encrypted_tx().clone(), membership_proofs))
+                })
+                .collect::<Result<Vec<(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)>, TxManagerError>>()?
+        };
 
         let (block, block_contents, mut signature) = self
             .enclave
@@ -324,7 +323,7 @@ impl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> TxManager<E, UI> {
         peer: &PeerSession,
     ) -> TxManagerResult<EnclaveMessage<PeerSession>> {
         let encrypted_txs: Result<Vec<WellFormedEncryptedTx>, TxManagerError> = {
-            let cache = self.lock_cache();
+            let cache = self.cache.read().expect("lock poisoned");
             tx_hashes
                 .iter()
                 .map(|tx_hash| {
@@ -340,17 +339,15 @@ impl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> TxManager<E, UI> {
     }
 
     pub fn get_encrypted_tx_by_hash(&self, tx_hash: &TxHash) -> Option<WellFormedEncryptedTx> {
-        self.lock_cache()
+        self.cache
+            .read()
+            .expect("lock poisoned")
             .get(tx_hash)
             .map(|entry| entry.encrypted_tx().clone())
     }
 
     pub fn num_entries(&self) -> usize {
-        self.lock_cache().len()
-    }
-
-    fn lock_cache(&self) -> MutexGuard<HashMap<TxHash, CacheEntry>> {
-        self.cache.lock().expect("lock poisoned")
+        self.cache.read().expect("lock poisoned").len()
     }
 }
 
