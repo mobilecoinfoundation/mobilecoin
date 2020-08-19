@@ -7,6 +7,7 @@ use crate::{
     error::Error,
     threaded_broadcaster_retry::{FibonacciRetryPolicy, IteratorWithDeadlineExt, RetryPolicy},
     traits::{ConsensusConnection, RetryableConsensusConnection},
+    Broadcast,
 };
 use mc_common::{
     logger::{log, o, Logger},
@@ -99,55 +100,6 @@ impl<RP: RetryPolicy> ThreadedBroadcaster<RP> {
         }
     }
 
-    /// Broadcasts a consensus message.
-    ///
-    /// # Arguments
-    ///
-    /// * `from_peer` - The peer the message was received from. This allows us to not echo the
-    /// message back to the peer that handed it to us. Note that due to message relaying, this can
-    /// be a different peer than the one that created the message.
-    ///
-    /// * `msg` - The message to be broadcasted.
-    ///
-    pub fn broadcast_consensus_msg(&mut self, from_peer: &ResponderId, msg: &ConsensusMsg) {
-        let msg_hash = msg.digest_with::<Sha256>().into();
-
-        // If we've already seen this message, we don't need to do anything.
-        // We use `get()` instead of `contains()` to update LRU state.
-        if self.seen_msg_hashes.get(&msg_hash).is_some() {
-            return;
-        }
-
-        // Store message so it doesn't get processed again.
-        self.seen_msg_hashes.put(msg_hash, ());
-
-        // Broadcast to all peers except the originating one.
-        let arc_msg = Arc::new(msg.clone());
-        let deadline = Instant::now() + self.retry_policy.get_max_message_age();
-
-        for peer_thread in self.peer_threads.iter() {
-            // Do not broadcast to the originating node or the sender node.
-            if peer_thread.responder_id() == msg.issuer_responder_id()
-                || peer_thread.responder_id() == from_peer
-            {
-                log::trace!(self.logger, "Not broadcasting to issuer {:?} ", from_peer);
-                continue;
-            }
-
-            if let Err(err) = peer_thread.send_consensus_msg(arc_msg.clone(), deadline) {
-                log::error!(
-                    self.logger,
-                    "failed broadcasting consensus msg to {}: {:?}",
-                    peer_thread.responder_id(),
-                    err
-                );
-            }
-        }
-
-        // Some debug logging
-        log::trace!(self.logger, "broadcasted: {:?} ({:?})", msg, msg_hash);
-    }
-
     /// Broadcasts a propose transaction message.
     ///
     /// # Arguments
@@ -220,6 +172,58 @@ impl<RP: RetryPolicy> ThreadedBroadcaster<RP> {
 impl<RP: RetryPolicy> Drop for ThreadedBroadcaster<RP> {
     fn drop(&mut self) {
         self.stop();
+    }
+}
+
+impl<RP: RetryPolicy> Broadcast for ThreadedBroadcaster<RP> {
+    /// Broadcasts a consensus message.
+    ///
+    /// # Arguments
+    /// * `msg` - The message to be broadcast.
+    /// * `received_from` - The peer the message was received from. This allows us to not echo the
+    ///     message back to the peer that handed it to us. Note that due to message relaying, this can
+    ///     be a different peer than the one that created the message.    
+    fn broadcast_consensus_msg(&mut self, msg: &ConsensusMsg, received_from: &ResponderId) {
+        let msg_hash = msg.digest_with::<Sha256>().into();
+
+        // If we've already seen this message, we don't need to do anything.
+        // We use `get()` instead of `contains()` to update LRU state.
+        if self.seen_msg_hashes.get(&msg_hash).is_some() {
+            return;
+        }
+
+        // Store message so it doesn't get processed again.
+        self.seen_msg_hashes.put(msg_hash, ());
+
+        // Broadcast to all peers except the originating one.
+        let arc_msg = Arc::new(msg.clone());
+        let deadline = Instant::now() + self.retry_policy.get_max_message_age();
+
+        for peer_thread in self.peer_threads.iter() {
+            // Do not broadcast to the originating node or the sender node.
+            if peer_thread.responder_id() == msg.issuer_responder_id()
+                || peer_thread.responder_id() == received_from
+            {
+                log::trace!(
+                    self.logger,
+                    "Not broadcasting to issuer {:?} ",
+                    received_from
+                );
+                continue;
+            }
+
+            if let Err(err) = peer_thread.send_consensus_msg(arc_msg.clone(), deadline) {
+                log::error!(
+                    self.logger,
+                    "failed broadcasting consensus msg to {}: {:?}",
+                    peer_thread.responder_id(),
+                    err
+                );
+            }
+        }
+
+        // Some debug logging
+        log::trace!(self.logger, "broadcasted: {:?} ({:?})", msg, msg_hash);
     }
 }
 

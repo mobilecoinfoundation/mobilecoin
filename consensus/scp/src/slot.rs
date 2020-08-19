@@ -10,26 +10,24 @@ use crate::{
         BallotRangePredicate, BallotSetPredicate, FuncPredicate, Predicate, ValueSetPredicate,
     },
     quorum_set::QuorumSet,
+    slot_state::SlotState,
     utils,
 };
+use core::cmp;
+use maplit::{btreeset, hashset};
 use mc_common::{
     logger::{log, o, Logger},
     NodeID,
 };
+#[cfg(test)]
+use mockall::*;
+use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeSet, HashMap, HashSet},
     fmt::Display,
     sync::Arc,
     time::{Duration, Instant},
 };
-
-use core::cmp;
-use maplit::{btreeset, hashset};
-use serde::{Deserialize, Serialize};
-
-use crate::slot_state::SlotState;
-#[cfg(test)]
-use mockall::*;
 
 /// The various phases of the SCP protocol.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]

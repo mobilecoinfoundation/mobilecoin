@@ -20,7 +20,7 @@ use mc_ledger_sync::{
     LedgerSyncService, NetworkState, ReqwestTransactionsFetcher, SCPNetworkState,
 };
 use mc_peers::{
-    ConsensusConnection, RetryableConsensusConnection, ThreadedBroadcaster, VerifiedConsensusMsg,
+    Broadcast, ConsensusConnection, RetryableConsensusConnection, VerifiedConsensusMsg,
 };
 use mc_transaction_core::{tx::TxHash, BlockID};
 use mc_util_metered_channel::Receiver;
@@ -51,8 +51,8 @@ pub struct ByzantineLedgerWorker<
     send_scp_message: F,
     ledger: L,
     peer_manager: ConnectionManager<PC>,
-    tx_manager: TxManager<E, L, UI>,
-    broadcaster: Arc<Mutex<ThreadedBroadcaster>>,
+    tx_manager: TxManager<E, UI>,
+    broadcaster: Arc<Mutex<dyn Broadcast>>,
     logger: Logger,
 
     // Current slot (the one that is not yet in the ledger / the one currently being worked on).
@@ -107,8 +107,8 @@ impl<
         send_scp_message: F,
         ledger: L,
         peer_manager: ConnectionManager<PC>,
-        tx_manager: TxManager<E, L, UI>,
-        broadcaster: Arc<Mutex<ThreadedBroadcaster>>,
+        tx_manager: TxManager<E, UI>,
+        broadcaster: Arc<Mutex<dyn Broadcast>>,
         tx_source_urls: Vec<String>,
         logger: Logger,
     ) {
@@ -430,7 +430,7 @@ impl<
                 self.broadcaster
                     .lock()
                     .expect("mutex poisoned")
-                    .broadcast_consensus_msg(&from_responder_id, consensus_msg.as_ref());
+                    .broadcast_consensus_msg(consensus_msg.as_ref(), &from_responder_id);
 
                 // Unclear if this helps with anything, so it is disabled for now.
                 /*
@@ -502,9 +502,17 @@ impl<
 
         // Write to ledger.
         {
+            let num_blocks = self
+                .ledger
+                .num_blocks()
+                .expect("Ledger must contain a block.");
+            let parent_block = self
+                .ledger
+                .get_block(num_blocks - 1)
+                .expect("Ledger must contain a block.");
             let (block, block_contents, signature) = self
                 .tx_manager
-                .tx_hashes_to_block(&ext_vals)
+                .tx_hashes_to_block(&ext_vals, &parent_block)
                 .unwrap_or_else(|e| panic!("Failed to build block from {:?}: {:?}", ext_vals, e));
 
             log::info!(
