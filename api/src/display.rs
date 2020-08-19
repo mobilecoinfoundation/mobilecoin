@@ -72,7 +72,7 @@ mod display_tests {
     use super::Error;
     use crate::{
         external,
-        printable::{PaymentRequest, PrintableWrapper},
+        printable::{PaymentRequest, PrintableWrapper, TransferPayload},
     };
 
     fn sample_public_address() -> external::PublicAddress {
@@ -107,11 +107,24 @@ mod display_tests {
 
         let mut payment_request = PaymentRequest::new();
         payment_request.set_public_address(public_address);
-        payment_request.set_amount(10);
+        payment_request.set_value(10);
         payment_request.set_memo("Please me pay!".to_string());
 
         let mut wrapper = PrintableWrapper::new();
         wrapper.set_payment_request(payment_request);
+        let encoded = wrapper.b58_encode().unwrap();
+        let decoded = PrintableWrapper::b58_decode(encoded).unwrap();
+        assert_eq!(wrapper, decoded);
+    }
+
+    #[test]
+    fn test_transfer_payload_roundtrip() {
+        let mut transfer_payload = TransferPayload::new();
+        transfer_payload.set_entropy(vec![1u8; 32]);
+        transfer_payload.set_tx_public_key(vec![2u8; 32]);
+
+        let mut wrapper = PrintableWrapper::new();
+        wrapper.set_transfer_payload(transfer_payload);
         let encoded = wrapper.b58_encode().unwrap();
         let decoded = PrintableWrapper::b58_decode(encoded).unwrap();
         assert_eq!(wrapper, decoded);

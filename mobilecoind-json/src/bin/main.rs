@@ -392,23 +392,6 @@ fn processed_block(
     Ok(Json(JsonProcessedBlockResponse::from(&resp)))
 }
 
-/// Generates an AddressRequest code with a URL for the client to POST payment instructions
-#[post("/codes/address-request", format = "json", data = "<address_request>")]
-fn address_request_code(
-    state: rocket::State<State>,
-    address_request: Json<JsonAddressRequestCodeRequest>,
-) -> Result<Json<JsonAddressRequestCodeResponse>, String> {
-    let mut req = mc_mobilecoind_api::GetAddressRequestCodeRequest::new();
-    req.set_url(address_request.url.clone());
-
-    let resp = state
-        .mobilecoind_api_client
-        .get_address_request_code(&req)
-        .map_err(|err| format!("Failed address code: {}", err))?;
-
-    Ok(Json(JsonAddressRequestCodeResponse::from(&resp)))
-}
-
 fn main() {
     mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
@@ -458,7 +441,6 @@ fn main() {
                 block_info,
                 block_details,
                 processed_block,
-                address_request_code,
             ],
         )
         .manage(State {

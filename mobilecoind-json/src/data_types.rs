@@ -396,21 +396,3 @@ impl From<&mc_mobilecoind_api::GetProcessedBlockResponse> for JsonProcessedBlock
         }
     }
 }
-
-#[derive(Deserialize)]
-pub struct JsonAddressRequestCodeRequest {
-    pub url: String,
-}
-
-#[derive(Serialize, Default)]
-pub struct JsonAddressRequestCodeResponse {
-    pub request_code: String,
-}
-
-impl From<&mc_mobilecoind_api::GetAddressRequestCodeResponse> for JsonAddressRequestCodeResponse {
-    fn from(src: &mc_mobilecoind_api::GetAddressRequestCodeResponse) -> Self {
-        Self {
-            request_code: String::from(src.get_b58_code()),
-        }
-    }
-}
