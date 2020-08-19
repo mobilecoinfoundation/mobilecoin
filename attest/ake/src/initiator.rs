@@ -11,7 +11,7 @@ use crate::{
 use aead::{AeadMut, NewAead};
 use alloc::{string::String, vec::Vec};
 use core::convert::TryFrom;
-use digest::{BlockInput, Digest, FixedOutput, Input, Reset};
+use digest::{BlockInput, Digest, FixedOutput, Reset, Update};
 use mc_attest_core::{Measurement, QuoteSignType, ReportDataMask, VerificationReport};
 use mc_crypto_keys::{Kex, ReprBytes};
 use mc_crypto_noise::{
@@ -40,7 +40,7 @@ where
     Handshake: HandshakePattern,
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Input + Reset,
+    DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Update + Reset,
 {
     match output.status {
         HandshakeStatus::InProgress(state) => Ok((
@@ -68,7 +68,7 @@ impl<KexAlgo, Cipher, DigestType>
 where
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Input + Reset,
+    DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Update + Reset,
     ProtocolName<HandshakeNX, KexAlgo, Cipher, DigestType>: AsRef<str>,
 {
     type Error = Error;
@@ -118,7 +118,7 @@ impl<KexAlgo, Cipher, DigestType>
 where
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Input + Reset,
+    DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Update + Reset,
     ProtocolName<HandshakeIX, KexAlgo, Cipher, DigestType>: AsRef<str>,
 {
     type Error = Error;
@@ -168,7 +168,7 @@ impl<KexAlgo, Cipher, DigestType> Transition<Ready<Cipher>, AuthResponse, AuthSu
 where
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Input + Reset,
+    DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Update + Reset,
 {
     type Error = Error;
 
