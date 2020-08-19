@@ -2379,6 +2379,7 @@ dependencies = [
  "mc-transaction-core",
  "mc-util-from-random",
  "mc-util-serial",
+ "mockall",
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
  "sha2",
