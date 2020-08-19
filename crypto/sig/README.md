@@ -79,12 +79,23 @@ We point out that Merlin Transcripts implement a subset of the STROBE protocol, 
 
 >  Strobe is based on SHA-3, or rather Keccak-f and cSHAKE (draft NIST SP 800-185).
 
-We prefer using Merlin Transcripts here for simplicity, as we are constructing two transcripts in the course of constructing the signature, and because it reduces the number of different hash functions in our system overall.
+We prefer using Merlin transcripts to produce the nonce here, instead of a cryptographic hash function. Schnorrkel already relies on Merlin -- it has several benefits, like automatic domain separation and framing. By using this here instead of a hash function like SHA3, we can reduce the total number of cryptographic assumptions underpinning this signature scheme.
 
-Assuming the Merlin `challenge_bytes` has the secret-prefix-PRF property, we can say that the signatures created this way
-are hard to distinguish from signatures created where the nonce is truly uniformly random, even if the messages
-that are signed are adversarially chosen. So, if Schnorrkel is secure when the nonces are truly random and
-the RNG is the OS-RNG, or, when the nonce is created using the mini-secret-key expansion, then this should also be secure.
+When using Merlin for this, instead of assuming that a hash function has the secret-prefix-PRF property, we assume that the following pseudo-rust function does, for any particular merlin transcript, where the private_key argument is identified with the secret prefix:
+
+```
+fn produce_nonce(transcript, private_key, message) -> [u8; 32]
+    transcript.append_message("private", private_key);
+    transcript.append_message("message", message);
+    let mut nonce = [0u8; 32];
+    transcript.challenge_bytes("nonce", &mut nonce);
+    nonce
+}
+```
+
+This assumption can be justified if we believe that the STROBE "PRF" operation functions as a PRF once STROBE has been keyed. We refer the reader to https://strobe.sourceforge.io/papers/strobe-20170130.pdf for a discussion of the usage and security properties of STROBE. For more discussion, see also the documentation around Merlin: https://merlin.cool/transcript/ops.html.
+
+With this assumption in hand, we can say that signatures created this way are hard to distinguish from signatures created where the nonce is truly uniformly random, even if the messages that are signed are adversarially chosen. So, if Schnorrkel is secure when the nonces are truly random and the RNG is the OS-RNG, or, when the nonce is created using the mini-secret-key expansion, then this should also be secure.
 
 Rng required by Schnorrkel
 --------------------------
