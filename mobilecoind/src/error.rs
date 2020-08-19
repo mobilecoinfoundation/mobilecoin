@@ -107,6 +107,9 @@ pub enum Error {
 
     #[fail(display = "Metadata store error: {}", _0)]
     MetadataStore(MetadataStoreError),
+
+    #[fail(display = "No peers configured - running in offline mode")]
+    NoPeersConfigured,
 }
 
 impl From<RetryError<ConnectionError>> for Error {
