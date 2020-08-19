@@ -29,7 +29,7 @@ failure = "0.1.5"
 grpcio = "0.6.0"
 protobuf = "2.12"
 retry = "0.5"
-sha2 = { version = "0.8", default-features = false }
+sha2 = { version = "0.9", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 url = "2.1"
 

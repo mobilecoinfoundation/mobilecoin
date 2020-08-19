@@ -55,7 +55,7 @@ pub trait NoiseCipher: AeadMut + NewAead + Sized {
             },
         )?);
         let keyslice = key.expose_secret().as_slice();
-        Ok(Self::new(GenericArray::clone_from_slice(
+        Ok(Self::new(&GenericArray::clone_from_slice(
             &keyslice[..Self::KeySize::to_usize()],
         )))
     }
@@ -135,7 +135,7 @@ impl<Cipher: AeadMut + NewAead + Sized + NoiseCipher> CipherState<Cipher> {
                 if key_slice.len() != Cipher::KeySize::to_usize() {
                     return Err(CipherError::KeyLength);
                 }
-                self.cipher = Some(Cipher::new(GenericArray::clone_from_slice(key_slice)));
+                self.cipher = Some(Cipher::new(&GenericArray::clone_from_slice(key_slice)));
             }
             None => {
                 self.cipher = None;

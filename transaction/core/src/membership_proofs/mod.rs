@@ -15,7 +15,7 @@ use crate::{
     tx::{TxOut, TxOutMembershipHash, TxOutMembershipProof},
 };
 use alloc::vec::Vec;
-use blake2::digest::Input;
+use blake2::digest::Update;
 use core::convert::TryInto;
 pub use errors::Error as MembershipProofError;
 use mc_common::HashMap;
@@ -29,7 +29,7 @@ lazy_static! {
 /// Merkle tree hash function for a leaf node.
 pub fn hash_leaf(tx_out: &TxOut) -> [u8; 32] {
     let mut hasher = Blake2b256::new();
-    hasher.input(&TXOUT_MERKLE_LEAF_DOMAIN_TAG);
+    hasher.update(&TXOUT_MERKLE_LEAF_DOMAIN_TAG);
     tx_out.digest(&mut hasher);
     hasher.result().try_into().unwrap()
 }
@@ -37,16 +37,16 @@ pub fn hash_leaf(tx_out: &TxOut) -> [u8; 32] {
 /// Merkle tree hash function for an internal node.
 pub fn hash_nodes(left: &[u8; 32], right: &[u8; 32]) -> [u8; 32] {
     let mut hasher = Blake2b256::new();
-    hasher.input(&TXOUT_MERKLE_NODE_DOMAIN_TAG);
-    hasher.input(left);
-    hasher.input(right);
+    hasher.update(&TXOUT_MERKLE_NODE_DOMAIN_TAG);
+    hasher.update(left);
+    hasher.update(right);
     hasher.result().try_into().unwrap()
 }
 
 /// Merkle tree Hash function for hashing a "nil" value.
 fn hash_nil() -> [u8; 32] {
     let mut hasher = Blake2b256::new();
-    hasher.input(&TXOUT_MERKLE_NIL_DOMAIN_TAG);
+    hasher.update(&TXOUT_MERKLE_NIL_DOMAIN_TAG);
     hasher.result().try_into().unwrap()
 }
 

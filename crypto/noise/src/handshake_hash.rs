@@ -9,7 +9,7 @@ use core::{
     marker::PhantomData,
     ops::{Add, AddAssign},
 };
-use digest::{FixedOutput, Input};
+use digest::{FixedOutput, Update};
 use generic_array::{typenum::Unsigned, GenericArray};
 use mc_crypto_keys::Kex;
 use secrecy::{ExposeSecret, SecretVec};
@@ -21,7 +21,7 @@ use zeroize::Zeroize;
 /// This type is not specifically defined by the noise framework, but the
 /// `h = HASH(h || data)` construction happens in a lot of places. This type,
 /// therefore, is the `h`.
-pub struct HandshakeHash<DigestType: Default + FixedOutput + Input> {
+pub struct HandshakeHash<DigestType: Default + FixedOutput + Update> {
     hash: SecretVec<u8>,
     _digest: PhantomData<fn() -> DigestType>,
 }
@@ -33,23 +33,23 @@ pub struct HandshakeHash<DigestType: Default + FixedOutput + Input> {
 /// `SymmetricState::InitializedSymmetric`, defined at
 /// [section 5.2](http://noiseprotocol.org/noise.html#the-symmetricstate-object)
 /// of the specification.
-impl<DigestType: Default + FixedOutput + Input> AsRef<[u8]> for HandshakeHash<DigestType> {
+impl<DigestType: Default + FixedOutput + Update> AsRef<[u8]> for HandshakeHash<DigestType> {
     fn as_ref(&self) -> &[u8] {
         self.hash.expose_secret().as_slice()
     }
 }
 
 /// New data can be mixed with the handshake hash via addition.
-impl<'data, DigestType: Default + FixedOutput + Input> Add<&'data [u8]>
+impl<'data, DigestType: Default + FixedOutput + Update> Add<&'data [u8]>
     for HandshakeHash<DigestType>
 {
     type Output = Self;
 
     fn add(self, data: &[u8]) -> Self {
         let mut hasher = DigestType::default();
-        hasher.input(self.hash.expose_secret().as_slice());
-        hasher.input(data);
-        let mut result = hasher.fixed_result();
+        hasher.update(self.hash.expose_secret().as_slice());
+        hasher.update(data);
+        let mut result = hasher.finalize_fixed();
         let mut target = self;
         target.hash = SecretVec::new(result.to_vec());
         result.zeroize();
@@ -58,14 +58,14 @@ impl<'data, DigestType: Default + FixedOutput + Input> Add<&'data [u8]>
 }
 
 /// New data can be mixed with the handshake hash via add-assignment.
-impl<'data, DigestType: Default + FixedOutput + Input> AddAssign<&'data [u8]>
+impl<'data, DigestType: Default + FixedOutput + Update> AddAssign<&'data [u8]>
     for HandshakeHash<DigestType>
 {
     fn add_assign(&mut self, data: &[u8]) {
         let mut hasher = DigestType::default();
-        hasher.input(self.hash.expose_secret().as_slice());
-        hasher.input(data);
-        let mut result = hasher.fixed_result();
+        hasher.update(self.hash.expose_secret().as_slice());
+        hasher.update(data);
+        let mut result = hasher.finalize_fixed();
         self.hash = SecretVec::new(result.to_vec());
         result.zeroize();
     }
@@ -83,7 +83,7 @@ where
     Handshake: HandshakePattern,
     KexAlgo: Kex,
     Cipher: AeadMut,
-    DigestType: Default + FixedOutput + Input,
+    DigestType: Default + FixedOutput + Update,
     ProtocolName<Handshake, KexAlgo, Cipher, DigestType>: AsRef<str>,
 {
     fn from(
@@ -97,8 +97,8 @@ where
             result
         } else {
             let mut hasher = DigestType::default();
-            hasher.input(proto);
-            hasher.fixed_result()
+            hasher.update(proto);
+            hasher.finalize_fixed()
         };
         let hash = SecretVec::new(result.to_vec());
         result.zeroize();
@@ -111,7 +111,7 @@ where
 }
 
 /// A HandshakeHash may be consumed to reveal the result.
-impl<DigestType: Default + FixedOutput + Input> Into<Vec<u8>> for HandshakeHash<DigestType> {
+impl<DigestType: Default + FixedOutput + Update> Into<Vec<u8>> for HandshakeHash<DigestType> {
     fn into(self) -> Vec<u8> {
         self.hash.expose_secret().clone()
     }

@@ -6,7 +6,7 @@ use crate::patterns::{HandshakeIX, HandshakeNX, HandshakePattern};
 use aead::AeadMut;
 use aes_gcm::Aes256Gcm;
 use core::marker::PhantomData;
-use digest::{FixedOutput, Input};
+use digest::{FixedOutput, Update};
 use failure::Fail;
 use mc_crypto_keys::{Kex, X25519};
 use serde::{Deserialize, Serialize};
@@ -33,7 +33,7 @@ where
     Handshake: HandshakePattern,
     KexAlgo: Kex,
     Cipher: AeadMut,
-    DigestType: Default + Input + FixedOutput,
+    DigestType: Default + Update + FixedOutput,
 {
     _pattern: PhantomData<fn() -> Handshake>,
     _kex: PhantomData<fn() -> KexAlgo>,
@@ -47,7 +47,7 @@ where
     Handshake: HandshakePattern,
     KexAlgo: Kex,
     Cipher: AeadMut,
-    DigestType: Default + Input + FixedOutput,
+    DigestType: Default + Update + FixedOutput,
 {
     fn clone(&self) -> Self {
         Self {
@@ -65,7 +65,7 @@ where
     Handshake: HandshakePattern,
     KexAlgo: Kex,
     Cipher: AeadMut,
-    DigestType: Default + Input + FixedOutput,
+    DigestType: Default + Update + FixedOutput,
 {
     fn default() -> Self {
         Self {
