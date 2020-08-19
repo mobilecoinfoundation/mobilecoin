@@ -24,12 +24,17 @@ pub use schnorrkel::{Signature, SignatureError, SIGNATURE_LENGTH};
 /// Returns:
 /// * A 64-byte Schnorrkel Signature object which can be converted to and from bytes using its API.
 pub fn sign(context_tag: &[u8], private_key: &RistrettoPrivate, message: &[u8]) -> Signature {
-    let mut transcript = Transcript::new(b"SigningNonce");
-    transcript.append_message(b"context", &context_tag);
-    transcript.append_message(b"private", &private_key.to_bytes());
-    transcript.append_message(b"message", &message);
-    let mut nonce = [0u8; 32];
-    transcript.challenge_bytes(b"nonce", &mut nonce);
+    // Create a deterministic nonce using a merlin transcript. See this crate's README
+    // for a security statement.
+    let nonce = {
+        let mut transcript = Transcript::new(b"SigningNonce");
+        transcript.append_message(b"context", &context_tag);
+        transcript.append_message(b"private", &private_key.to_bytes());
+        transcript.append_message(b"message", &message);
+        let mut nonce = [0u8; 32];
+        transcript.challenge_bytes(b"nonce", &mut nonce);
+        nonce
+    };
 
     // Construct a Schnorrkel SecretKey object from private_key and our nonce value
     let mut secret_bytes = [0u8; 64];
