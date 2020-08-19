@@ -218,9 +218,27 @@ impl Builder {
             .exec()?;
 
         let mut cargo_builder = CargoBuilder::new(&env, staticlib_dir, false);
+
+        // copy our target features to the enclave's build
+        let features = env.target_features();
+        let mut feature_buf = String::with_capacity(features.len() * 32);
+        feature_buf.push_str("target-feature=+lvi-cfi,+lvi-load-hardening");
+        for feature in features {
+            feature_buf.push(',');
+            feature_buf.push('+');
+            // Cleanup cargo's nonsense.
+            match feature.as_str() {
+                "cmpxchg16b" => feature_buf.push_str("cx16"),
+                "pclmulqdq" => feature_buf.push_str("pclmul"),
+                "rdrand" => feature_buf.push_str("rdrnd"),
+                "bmi1" => feature_buf.push_str("bmi"),
+                other => feature_buf.push_str(other),
+            }
+        }
+
         cargo_builder
             .target(ENCLAVE_TARGET_TRIPLE)
-            .add_rust_flags(&["-C", "target-feature=+lvi-cfi,+lvi-load-hardening"]);
+            .add_rust_flags(&["-D", "warnings", "-C", &feature_buf]);
 
         Ok(Self {
             cargo_builder,
