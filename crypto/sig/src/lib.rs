@@ -48,7 +48,7 @@ pub fn sign(context_tag: &[u8], private_key: &RistrettoPrivate, message: &[u8]) 
     t.append_message(b"", context_tag);
     t.append_message(b"sign-bytes", message);
     // NOTE: The fog_authority_fingerprint_sig is deterministic due to using the above nonce as the rng seed
-    let csprng: FixedRng = SeedableRng::from_seed(nonce.into());
+    let csprng: FixedRng = SeedableRng::from_seed(nonce);
     let transcript = attach_rng(t, csprng);
     keypair.sign(transcript)
 }
