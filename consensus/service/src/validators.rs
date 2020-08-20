@@ -30,13 +30,13 @@ pub struct DefaultTxManagerUntrustedInterfaces<L: Ledger> {
     ledger: L,
 }
 
-impl<L: Ledger> DefaultTxManagerUntrustedInterfaces<L> {
+impl<L: Ledger + Sync> DefaultTxManagerUntrustedInterfaces<L> {
     pub fn new(ledger: L) -> Self {
         Self { ledger }
     }
 }
 
-impl<L: Ledger> TxManagerUntrustedInterfaces for DefaultTxManagerUntrustedInterfaces<L> {
+impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntrustedInterfaces<L> {
     /// Performs the untrusted part of the well-formed check.
     /// Returns current block index and membership proofs to be used by
     /// the in-enclave well-formed check on success.

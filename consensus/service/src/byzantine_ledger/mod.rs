@@ -71,6 +71,8 @@ impl ByzantineLedger {
         let (sender, receiver) =
             mc_util_metered_channel::unbounded(&counters::BYZANTINE_LEDGER_MESSAGE_QUEUE_SIZE);
 
+        let tx_manager = Arc::new(tx_manager);
+
         let scp_node = {
             let tx_manager_validate = tx_manager.clone();
             let tx_manager_combine = tx_manager.clone();

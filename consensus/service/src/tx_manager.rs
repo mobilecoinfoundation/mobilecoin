@@ -10,7 +10,7 @@ use mc_common::{
     HashMap, HashSet,
 };
 use mc_consensus_enclave::{
-    ConsensusEnclaveProxy, Error as ConsensusEnclaveError, TxContext, WellFormedEncryptedTx,
+    ConsensusEnclave, Error as ConsensusEnclaveError, TxContext, WellFormedEncryptedTx,
     WellFormedTxContext,
 };
 use mc_crypto_keys::CompressedRistrettoPublic;
@@ -88,7 +88,7 @@ impl CacheEntry {
 
 /// A trait for representing the untrusted part of validation/combining. This is presented as a
 /// trait to make testing easier.
-pub trait UntrustedInterfaces: Clone {
+pub trait UntrustedInterfaces: Send + Sync {
     /// Performs the untrusted part of the well-formed check.
     /// Returns current block index and membership proofs to be used by
     /// the in-enclave well-formed check on success.
@@ -114,13 +114,13 @@ pub trait UntrustedInterfaces: Clone {
 }
 
 #[derive(Clone)]
-pub struct TxManager<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> {
+pub struct TxManager<E: ConsensusEnclave, UI: UntrustedInterfaces> {
     /// Enclave.
-    enclave: E,
+    enclave: Arc<E>,
 
     /// Application-specific custom interfaces for the untrusted part of validation/combining of
     /// values.
-    untrusted: UI,
+    untrusted: Arc<UI>,
 
     /// Logger.
     logger: Logger,
@@ -129,12 +129,12 @@ pub struct TxManager<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> {
     cache: Arc<Mutex<HashMap<TxHash, CacheEntry>>>,
 }
 
-impl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> TxManager<E, UI> {
+impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
     /// Construct a new TxManager instance.
     pub fn new(enclave: E, untrusted: UI, logger: Logger) -> Self {
         Self {
-            enclave,
-            untrusted,
+            enclave: Arc::new(enclave),
+            untrusted: Arc::new(untrusted),
             logger,
             cache: Arc::new(Mutex::new(HashMap::default())),
         }

@@ -51,7 +51,7 @@ pub struct ByzantineLedgerWorker<
     send_scp_message: F,
     ledger: L,
     peer_manager: ConnectionManager<PC>,
-    tx_manager: TxManager<E, UI>,
+    tx_manager: Arc<TxManager<E, UI>>,
     broadcaster: Arc<Mutex<dyn Broadcast>>,
     logger: Logger,
 
@@ -107,7 +107,7 @@ impl<
         send_scp_message: F,
         ledger: L,
         peer_manager: ConnectionManager<PC>,
-        tx_manager: TxManager<E, UI>,
+        tx_manager: Arc<TxManager<E, UI>>,
         broadcaster: Arc<Mutex<dyn Broadcast>>,
         tx_source_urls: Vec<String>,
         logger: Logger,
