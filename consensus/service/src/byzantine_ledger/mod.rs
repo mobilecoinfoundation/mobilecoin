@@ -61,7 +61,7 @@ impl ByzantineLedger {
         quorum_set: QuorumSet,
         peer_manager: ConnectionManager<PC>,
         ledger: L,
-        tx_manager: TxManager<E, UI>,
+        tx_manager: Arc<TxManager<E, UI>>,
         broadcaster: Arc<Mutex<dyn Broadcast>>,
         msg_signer_key: Arc<Ed25519Pair>,
         tx_source_urls: Vec<String>,
@@ -70,8 +70,6 @@ impl ByzantineLedger {
     ) -> Self {
         let (sender, receiver) =
             mc_util_metered_channel::unbounded(&counters::BYZANTINE_LEDGER_MESSAGE_QUEUE_SIZE);
-
-        let tx_manager = Arc::new(tx_manager);
 
         let scp_node = {
             let tx_manager_validate = tx_manager.clone();
@@ -347,11 +345,11 @@ mod tests {
         )));
 
         let enclave = ConsensusServiceMockEnclave::default();
-        let tx_manager = TxManager::new(
+        let tx_manager = Arc::new(TxManager::new(
             enclave.clone(),
             DefaultTxManagerUntrustedInterfaces::new(ledger.clone()),
             logger.clone(),
-        );
+        ));
 
         let byzantine_ledger = ByzantineLedger::new(
             local_node_id.clone(),

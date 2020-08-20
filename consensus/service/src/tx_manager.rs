@@ -116,7 +116,7 @@ pub trait UntrustedInterfaces: Send + Sync {
     fn combine(&self, tx_contexts: &[WellFormedTxContext], max_elements: usize) -> Vec<TxHash>;
 }
 
-#[derive(Clone)]
+// #[derive(Clone)]
 pub struct TxManager<E: ConsensusEnclave, UI: UntrustedInterfaces> {
     /// Enclave.
     enclave: Arc<E>,

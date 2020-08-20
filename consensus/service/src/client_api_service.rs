@@ -30,7 +30,7 @@ pub struct ClientApiService<E: ConsensusEnclaveProxy, L: Ledger + Clone> {
     enclave: E,
     scp_client_value_sender: ProposeTxCallback,
     ledger: L,
-    tx_manager: TxManager<E, DefaultTxManagerUntrustedInterfaces<LedgerDB>>,
+    tx_manager: Arc<TxManager<E, DefaultTxManagerUntrustedInterfaces<LedgerDB>>>,
     is_serving_fn: Arc<(dyn Fn() -> bool + Sync + Send)>,
     logger: Logger,
 }
@@ -40,7 +40,7 @@ impl<E: ConsensusEnclaveProxy, L: Ledger + Clone> ClientApiService<E, L> {
         enclave: E,
         scp_client_value_sender: ProposeTxCallback,
         ledger: L,
-        tx_manager: TxManager<E, DefaultTxManagerUntrustedInterfaces<LedgerDB>>,
+        tx_manager: Arc<TxManager<E, DefaultTxManagerUntrustedInterfaces<LedgerDB>>>,
         is_serving_fn: Arc<(dyn Fn() -> bool + Sync + Send)>,
         logger: Logger,
     ) -> Self {
