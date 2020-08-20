@@ -26,6 +26,7 @@ members = [
     "consensus/service",
     "crypto/box",
     "crypto/digestible",
+    "crypto/digestible/derive/test",
     "crypto/keys",
     "crypto/noise",
     "crypto/rand",

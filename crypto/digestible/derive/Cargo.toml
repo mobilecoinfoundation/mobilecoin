@@ -11,8 +11,3 @@ proc_macro = true
 proc-macro2 = "1.0.8"
 quote = "1.0.2"
 syn = { version = "1.0.14", features = [ "extra-traits" ] }
-
-[dev-dependencies]
-mc-crypto-digestible = { path = "../../digestible" }
-generic-array = "0.12"
-digest = { version = "0.8", default-features = false }
