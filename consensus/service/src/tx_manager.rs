@@ -28,6 +28,9 @@ use std::{
     sync::{Arc, Mutex, MutexGuard},
 };
 
+#[cfg(test)]
+use mockall::*;
+
 #[derive(Clone, Debug, Fail)]
 pub enum TxManagerError {
     #[fail(display = "Enclave error: {}", _0)]
@@ -86,8 +89,8 @@ impl CacheEntry {
     }
 }
 
-/// A trait for representing the untrusted part of validation/combining. This is presented as a
-/// trait to make testing easier.
+/// The untrusted (i.e. non-enclave) part of validating and combining transactions.
+#[cfg_attr(test, automock)]
 pub trait UntrustedInterfaces: Send + Sync {
     /// Performs the untrusted part of the well-formed check.
     /// Returns current block index and membership proofs to be used by
@@ -110,7 +113,7 @@ pub trait UntrustedInterfaces: Send + Sync {
     /// * `max_elements` - Maximal number of elements to output.
     ///
     /// Returns a bounded, deterministically-ordered list of transactions that are safe to append to the ledger.
-    fn combine(&self, tx_contexts: &[&WellFormedTxContext], max_elements: usize) -> Vec<TxHash>;
+    fn combine(&self, tx_contexts: &[WellFormedTxContext], max_elements: usize) -> Vec<TxHash>;
 }
 
 #[derive(Clone)]
@@ -273,7 +276,7 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
         let tx_hashes: HashSet<&TxHash> = tx_hashes.iter().clone().collect();
         for tx_hash in tx_hashes {
             if let Some(entry) = cache.get(&tx_hash) {
-                tx_contexts.push(entry.context());
+                tx_contexts.push(entry.context().clone());
             } else {
                 log::error!(self.logger, "Ignoring non-existent TxHash {:?}", tx_hash);
             }
