@@ -116,14 +116,13 @@ pub trait UntrustedInterfaces: Send + Sync {
     fn combine(&self, tx_contexts: &[WellFormedTxContext], max_elements: usize) -> Vec<TxHash>;
 }
 
-// #[derive(Clone)]
 pub struct TxManager<E: ConsensusEnclave, UI: UntrustedInterfaces> {
     /// Enclave.
-    enclave: Arc<E>,
+    enclave: E,
 
     /// Application-specific custom interfaces for the untrusted part of validation/combining of
     /// values.
-    untrusted: Arc<UI>,
+    untrusted: UI,
 
     /// Logger.
     logger: Logger,
@@ -136,8 +135,8 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
     /// Construct a new TxManager instance.
     pub fn new(enclave: E, untrusted: UI, logger: Logger) -> Self {
         Self {
-            enclave: Arc::new(enclave),
-            untrusted: Arc::new(untrusted),
+            enclave: enclave,
+            untrusted: untrusted,
             logger,
             cache: Arc::new(Mutex::new(HashMap::default())),
         }
