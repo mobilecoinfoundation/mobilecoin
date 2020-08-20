@@ -25,7 +25,7 @@ use mc_transaction_core::{
 use std::{
     collections::BTreeSet,
     iter::FromIterator,
-    sync::{Arc, Mutex, MutexGuard},
+    sync::{Mutex, MutexGuard},
 };
 
 #[cfg(test)]
@@ -124,11 +124,11 @@ pub struct TxManager<E: ConsensusEnclave, UI: UntrustedInterfaces> {
     /// values.
     untrusted: UI,
 
+    /// Well-formed transactions, keyed by hash.
+    cache: Mutex<HashMap<TxHash, CacheEntry>>,
+
     /// Logger.
     logger: Logger,
-
-    /// Map of tx hashes to data we hold for each tx.
-    cache: Arc<Mutex<HashMap<TxHash, CacheEntry>>>,
 }
 
 impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
@@ -138,7 +138,7 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
             enclave,
             untrusted,
             logger,
-            cache: Arc::new(Mutex::new(HashMap::default())),
+            cache: Mutex::new(HashMap::default()),
         }
     }
 
