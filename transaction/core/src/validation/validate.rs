@@ -262,6 +262,7 @@ fn validate_membership_proofs(
     }
 
     // Each root proof must contain valid ranges.
+    // (Ranges in the transaction's membership proofs are checked in `is_membership_proof_valid`).
     for root_proof in root_proofs {
         if root_proof
             .elements
