@@ -8,7 +8,7 @@ rustflags = ["-D", "warnings"]
 # ...so instead we list all target triples (Tier 1 64-bit platforms)
 
 [target.x86_64-unknown-linux-gnu]
-rustflags = ["-D", "warnings", "-C", "target-cpu=skylake", "-C", "target-feature=+sha"]
+rustflags = ["-D", "warnings", "-C", "target-cpu=skylake"]
 
 [target.x86_64-pc-windows-gnu]
 rustflags = ["-D", "warnings", "-C", "target-cpu=skylake"]

@@ -71,11 +71,6 @@ fn main() {
 
     builder
         .target_dir(env.target_dir().join(CONSENSUS_ENCLAVE_NAME).as_path())
-        .add_rust_flags(&["-D", "warnings"])
-        .add_rust_flags(&["-C", "target-cpu=skylake"])
-        .add_rust_flags(&["-C", "target-feature=+sha"]);
-
-    builder
         .config_builder
         .debug(
             sgx.sgx_mode() == SgxMode::Simulation
