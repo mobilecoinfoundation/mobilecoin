@@ -135,8 +135,8 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
     /// Construct a new TxManager instance.
     pub fn new(enclave: E, untrusted: UI, logger: Logger) -> Self {
         Self {
-            enclave: enclave,
-            untrusted: untrusted,
+            enclave,
+            untrusted,
             logger,
             cache: Arc::new(Mutex::new(HashMap::default())),
         }
