@@ -43,8 +43,8 @@ pub enum TxManagerError {
     #[fail(display = "Tx already in cache")]
     AlreadyInCache,
 
-    #[fail(display = "Tx not in cache ({})", _0)]
-    NotInCache(TxHash),
+    #[fail(display = "Tx(s) not in cache ({:?})", _0)]
+    NotInCache(Vec<TxHash>),
 
     #[fail(display = "Ledger error: {}", _0)]
     LedgerDb(LedgerDbError),
@@ -290,10 +290,25 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
         parent_block: &Block,
     ) -> TxManagerResult<(Block, BlockContents, BlockSignature)> {
         let cache = self.lock_cache();
-        let encrypted_txs_with_proofs = tx_hashes
+
+        let (entries, not_found) = tx_hashes
             .iter()
             .map(|tx_hash| {
-                let entry = cache.get(tx_hash).ok_or_else(|| TxManagerError::NotInCache(*tx_hash))?;
+                cache
+                    .get(tx_hash)
+                    .map_or_else(|| (*tx_hash, None), |entry| (*tx_hash, Some(entry)))
+            })
+            .partition::<Vec<_>, _>(|(_tx_hash, result)| result.is_some());
+
+        if !not_found.is_empty() {
+            let not_found_tx_hashes = not_found.into_iter().map(|(tx_hash, _)| tx_hash).collect();
+            return Err(TxManagerError::NotInCache(not_found_tx_hashes));
+        }
+
+        let encrypted_txs_with_proofs = entries
+            .into_iter()
+            .map(|(_tx_hash, entry)| {
+                let entry = entry.unwrap();
 
                 let (_current_block_index, membership_proofs) = self.untrusted.well_formed_check(
                     entry.context().highest_indices(),
@@ -327,20 +342,30 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
         aad: &[u8],
         peer: &PeerSession,
     ) -> TxManagerResult<EnclaveMessage<PeerSession>> {
-        let encrypted_txs: Result<Vec<WellFormedEncryptedTx>, TxManagerError> = {
+        let (encrypted_txs, not_found) = {
             let cache = self.lock_cache();
             tx_hashes
                 .iter()
                 .map(|tx_hash| {
-                    cache
-                        .get(tx_hash)
-                        .map(|entry| entry.encrypted_tx().clone())
-                        .ok_or_else(|| TxManagerError::NotInCache(*tx_hash))
+                    cache.get(tx_hash).map_or_else(
+                        || (*tx_hash, None),
+                        |entry| (*tx_hash, Some(entry.encrypted_tx().clone())),
+                    )
                 })
-                .collect()
+                .partition::<Vec<_>, _>(|(_tx_hash, result)| result.is_some())
         };
 
-        Ok(self.enclave.txs_for_peer(&encrypted_txs?, aad, peer)?)
+        if !not_found.is_empty() {
+            let not_found_tx_hashes = not_found.into_iter().map(|(tx_hash, _)| tx_hash).collect();
+            return Err(TxManagerError::NotInCache(not_found_tx_hashes));
+        }
+
+        let encrypted_txs: Vec<_> = encrypted_txs
+            .into_iter()
+            .map(|(_, result)| result.unwrap())
+            .collect();
+
+        Ok(self.enclave.txs_for_peer(&encrypted_txs, aad, peer)?)
     }
 
     /// Get the encrypted transaction corresponding to the given hash.
