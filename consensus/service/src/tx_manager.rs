@@ -359,7 +359,9 @@ mod tx_manager_tests {
     use super::*;
     use crate::validators::DefaultTxManagerUntrustedInterfaces;
     use mc_common::logger::test_with_logger;
-    use mc_consensus_enclave_mock::{ConsensusServiceMockEnclave, MockConsensusEnclave};
+    use mc_consensus_enclave_mock::{
+        ConsensusServiceMockEnclave, Error as EnclaveError, MockConsensusEnclave,
+    };
     use mc_ledger_db::Ledger;
     use mc_transaction_core_test_utils::{
         create_ledger, create_transaction, initialize_ledger, AccountKey,
@@ -408,6 +410,52 @@ mod tx_manager_tests {
         assert!(tx_manager.insert(tx_context.clone()).is_ok());
         assert_eq!(tx_manager.num_entries(), 1);
         assert!(tx_manager.contains(&tx_hash));
+    }
+
+    #[test_with_logger]
+    // Should return return an error when a not well-formed Tx is inserted.
+    // Here, the untrusted system says the Tx is not well-formed.
+    fn test_insert_error_untrusted(logger: Logger) {
+        let tx_context = TxContext::default();
+
+        let mut mock_untrusted = MockUntrustedInterfaces::new();
+        // Untrusted's well-formed check should be called once each time insert_propose_tx is called.
+        mock_untrusted
+            .expect_well_formed_check()
+            .times(1)
+            .return_const(Err(TransactionValidationError::ContainsSpentKeyImage));
+
+        // This should not be called.
+        let mock_enclave = MockConsensusEnclave::new();
+
+        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+        assert!(tx_manager.insert(tx_context.clone()).is_err());
+        assert_eq!(tx_manager.num_entries(), 0);
+    }
+
+    #[test_with_logger]
+    // Should return return an error when a not well-formed Tx is inserted.
+    // Here, the enclave says the Tx is not well-formed.
+    fn test_insert_error_trusted(logger: Logger) {
+        let tx_context = TxContext::default();
+
+        let mut mock_untrusted = MockUntrustedInterfaces::new();
+        // Untrusted's well-formed check should be called once each time insert_propose_tx is called.
+        mock_untrusted
+            .expect_well_formed_check()
+            .times(1)
+            .return_const(Ok((0, vec![])));
+
+        // This should be called, and return an error.
+        let mut mock_enclave = MockConsensusEnclave::new();
+        mock_enclave
+            .expect_tx_is_well_formed()
+            .times(1)
+            .return_const(Err(EnclaveError::Signature));
+
+        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+        assert!(tx_manager.insert(tx_context.clone()).is_err());
+        assert_eq!(tx_manager.num_entries(), 0);
     }
 
     #[test_with_logger]
