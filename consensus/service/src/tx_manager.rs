@@ -513,6 +513,94 @@ mod tests {
     }
 
     #[test_with_logger]
+    // Should return Ok if the transaction is in the cache and is valid.
+    fn test_validate_ok(logger: Logger) {
+        let tx_context = TxContext::default();
+
+        let mut mock_untrusted = MockUntrustedInterfaces::new();
+
+        // Untrusted's validate check should be called and return Ok.
+        mock_untrusted
+            .expect_is_valid()
+            .times(1)
+            .return_const(Ok(()));
+
+        // The enclave is not called because its checks are "well-formed-ness" checks.
+        let mock_enclave = MockConsensusEnclave::new();
+
+        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+
+        // Add this transaction to the cache.
+        let cache_entry = CacheEntry {
+            encrypted_tx: Default::default(),
+            context: Arc::new(Default::default()),
+        };
+        tx_manager
+            .cache
+            .lock()
+            .unwrap()
+            .insert(tx_context.tx_hash.clone(), cache_entry);
+
+        assert!(tx_manager.validate(&tx_context.tx_hash).is_ok());
+    }
+
+    #[test_with_logger]
+    // Should return Err if the transaction is not in the cache.
+    fn test_validate_err_not_in_cache(logger: Logger) {
+        let tx_context = TxContext::default();
+
+        // The method should return before calling untrusted.
+        let mock_untrusted = MockUntrustedInterfaces::new();
+
+        // The enclave is not called because its checks are "well-formed-ness" checks.
+        let mock_enclave = MockConsensusEnclave::new();
+
+        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+        match tx_manager.validate(&tx_context.tx_hash) {
+            Err(TxManagerError::NotInCache(_)) => {} // This is expected.
+            _ => panic!(),
+        }
+    }
+
+    #[test_with_logger]
+    // Should return Err if the transaction is in the cache (i.e., well-formed) but not valid.
+    fn test_validate_err_not_valid(logger: Logger) {
+        let tx_context = TxContext::default();
+
+        // The method should return before calling untrusted.
+        let mut mock_untrusted = MockUntrustedInterfaces::new();
+
+        // Untrusted's validate check should be called and return Err.
+        mock_untrusted
+            .expect_is_valid()
+            .times(1)
+            .return_const(Err(TransactionValidationError::ContainsSpentKeyImage));
+
+        // The enclave is not called because its checks are "well-formed-ness" checks.
+        let mock_enclave = MockConsensusEnclave::new();
+
+        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+
+        // Add this transaction to the cache.
+        let cache_entry = CacheEntry {
+            encrypted_tx: Default::default(),
+            context: Arc::new(Default::default()),
+        };
+        tx_manager
+            .cache
+            .lock()
+            .unwrap()
+            .insert(tx_context.tx_hash.clone(), cache_entry);
+
+        match tx_manager.validate(&tx_context.tx_hash) {
+            Err(TxManagerError::TransactionValidation(
+                TransactionValidationError::ContainsSpentKeyImage,
+            )) => {} // This is expected.
+            _ => panic!(),
+        }
+    }
+
+    #[test_with_logger]
     fn test_hashes_to_block(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
         let sender = AccountKey::random(&mut rng);
