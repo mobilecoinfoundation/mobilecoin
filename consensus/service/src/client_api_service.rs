@@ -86,9 +86,9 @@ impl<E: ConsensusEnclaveProxy, L: Ledger + Clone> ClientApiService<E, L> {
         let tx_hash = tx_context.tx_hash;
 
         match self.tx_manager.insert_proposed_tx(tx_context) {
-            Ok(tx_context) => {
+            Ok(tx_hash) => {
                 // Submit for consideration in next SCP slot.
-                (*self.scp_client_value_sender)(*tx_context.tx_hash(), None, None);
+                (*self.scp_client_value_sender)(tx_hash, None, None);
 
                 counters::ADD_TX.inc();
 

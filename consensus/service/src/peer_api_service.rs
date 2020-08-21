@@ -117,10 +117,10 @@ impl<E: ConsensusEnclaveProxy, L: Ledger> PeerApiService<E, L> {
             let tx_hash = tx_context.tx_hash;
 
             match self.tx_manager.insert_proposed_tx(tx_context) {
-                Ok(tx_context) => {
+                Ok(tx_hash) => {
                     // Submit for consideration in next SCP slot.
                     (*self.scp_client_value_sender)(
-                        *tx_context.tx_hash(),
+                        tx_hash,
                         origin_node.as_ref(),
                         relayed_by.as_ref(),
                     );

@@ -417,26 +417,23 @@ mod tests {
         let client_tx_one = transactions.pop().unwrap();
         let client_tx_two = transactions.pop().unwrap();
 
-        let hash_tx_zero = *tx_manager
+        let hash_tx_zero = tx_manager
             .insert_proposed_tx(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_zero,
             ))
-            .unwrap()
-            .tx_hash();
+            .unwrap();
 
-        let hash_tx_one = *tx_manager
+        let hash_tx_one = tx_manager
             .insert_proposed_tx(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_one,
             ))
-            .unwrap()
-            .tx_hash();
+            .unwrap();
 
-        let hash_tx_two = *tx_manager
+        let hash_tx_two = tx_manager
             .insert_proposed_tx(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_two,
             ))
-            .unwrap()
-            .tx_hash();
+            .unwrap();
 
         byzantine_ledger.push_values(
             vec![hash_tx_zero, hash_tx_one, hash_tx_two],
