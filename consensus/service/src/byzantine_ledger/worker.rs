@@ -285,7 +285,7 @@ impl<
                 // Clear any pending values that might no longer be valid.
                 let tx_manager = self.tx_manager.clone();
                 self.pending_values
-                    .retain(|tx_hash| tx_manager.validate_tx_by_hash(tx_hash).is_ok());
+                    .retain(|tx_hash| tx_manager.validate(tx_hash).is_ok());
 
                 // Re-construct the BTreeMap with the remaining values, using the old timestamps.
                 let mut new_pending_values_map = BTreeMap::new();
@@ -540,14 +540,14 @@ impl<
 
         // Evacuate transactions that are no longer valid based on their
         // tombstone block.
-        let purged_hashes = self.tx_manager.evacuate_expired(cur_slot);
+        let purged_hashes = self.tx_manager.remove_expired(cur_slot);
 
         counters::TX_CACHE_NUM_ENTRIES.set(self.tx_manager.num_entries() as i64);
 
         // Drop pending values that are no longer considered valid.
         let tx_manager = self.tx_manager.clone();
         self.pending_values.retain(|tx_hash| {
-            !purged_hashes.contains(tx_hash) && tx_manager.validate_tx_by_hash(tx_hash).is_ok()
+            !purged_hashes.contains(tx_hash) && tx_manager.validate(tx_hash).is_ok()
         });
 
         // Re-construct the BTreeMap with the remaining values, using the old timestamps.
@@ -646,7 +646,7 @@ impl<
                     tx_contexts.into_par_iter().for_each_with(
                         (self.tx_manager.clone(), self.logger.clone()),
                         move |(tx_manager, logger), tx_context| {
-                            match tx_manager.insert_proposed_tx(tx_context) {
+                            match tx_manager.insert(tx_context) {
                                 Ok(_) | Err(TxManagerError::AlreadyInCache) => {}
                                 Err(err) => {
                                     // Not currently logging the malformed transaction to save a

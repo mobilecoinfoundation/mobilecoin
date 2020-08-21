@@ -116,7 +116,7 @@ impl<E: ConsensusEnclaveProxy, L: Ledger> PeerApiService<E, L> {
         for tx_context in tx_contexts {
             let tx_hash = tx_context.tx_hash;
 
-            match self.tx_manager.insert_proposed_tx(tx_context) {
+            match self.tx_manager.insert(tx_context) {
                 Ok(tx_hash) => {
                     // Submit for consideration in next SCP slot.
                     (*self.scp_client_value_sender)(
@@ -167,7 +167,7 @@ impl<E: ConsensusEnclaveProxy, L: Ledger> PeerApiService<E, L> {
             })
             .collect::<Result<Vec<TxHash>, ConsensusGrpcError>>()?;
 
-        match self.tx_manager.txs_for_peer(
+        match self.tx_manager.encrypt_for_peer(
             &tx_hashes,
             &[],
             &PeerSession::from(request.get_channel_id()),

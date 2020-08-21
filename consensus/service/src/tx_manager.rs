@@ -144,9 +144,8 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
         }
     }
 
-    /// Insert a new transaction into the cache.
-    /// This enforces that the transaction is well-formed.
-    pub fn insert_proposed_tx(&self, tx_context: TxContext) -> TxManagerResult<TxHash> {
+    /// Insert a transaction into the cache. The transaction must be well-formed.
+    pub fn insert(&self, tx_context: TxContext) -> TxManagerResult<TxHash> {
         // If already in cache then we're done.
         {
             let cache = self.lock_cache();
@@ -200,9 +199,8 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
         Ok(tx_hash)
     }
 
-    /// Evacuate expired transactions from the cache.
-    /// Returns the hashes that were removed.
-    pub fn evacuate_expired(&self, cur_block: u64) -> HashSet<TxHash> {
+    /// Remove expired transactions from the cache and return their hashes.
+    pub fn remove_expired(&self, cur_block: u64) -> HashSet<TxHash> {
         let mut cache = self.lock_cache();
 
         let hashes_before_purge = HashSet::from_iter(cache.keys().cloned());
@@ -228,6 +226,8 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
         purged_hashes
     }
 
+    // TODO: contains
+
     /// Returns the list of hashes inside `tx_hashes` that are not inside the cache.
     pub fn missing_hashes(&self, tx_hashes: &BTreeSet<TxHash>) -> Vec<TxHash> {
         let mut missing = Vec::new();
@@ -240,9 +240,12 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
         missing
     }
 
-    /// Validate a transaction by it's hash. This checks if by itself this transaction is safe to
-    /// append to the ledger.
-    pub fn validate_tx_by_hash(&self, tx_hash: &TxHash) -> TxManagerResult<()> {
+    pub fn num_entries(&self) -> usize {
+        self.lock_cache().len()
+    }
+
+    /// Check if a transaction, by itself, is safe to append to the current ledger.
+    pub fn validate(&self, tx_hash: &TxHash) -> TxManagerResult<()> {
         let cache = self.lock_cache();
         match cache.get(tx_hash) {
             None => {
@@ -261,13 +264,8 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
         }
     }
 
-    /// Combine a list of transactions by their hashes and return the list of hashes of
-    /// the combined transaction set.
-    ///
-    /// This will silently ignore non-existent hashes. Our combine methods are allowed to filter
-    /// out transactions, so while non-existent hashes should not be fed into this method, they are
-    /// not treated as an error.
-    pub fn combine_txs_by_hash(&self, tx_hashes: &[TxHash]) -> Vec<TxHash> {
+    /// Combines the transactions that correspond to the given hashes.
+    pub fn combine(&self, tx_hashes: &[TxHash]) -> Vec<TxHash> {
         // Dedup
         let tx_hashes: HashSet<&TxHash> = tx_hashes.iter().clone().collect();
         let mut tx_contexts = Vec::new();
@@ -285,7 +283,7 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
             .combine(&tx_contexts, MAX_TRANSACTIONS_PER_BLOCK)
     }
 
-    /// A "shim" that converts the output of consensus into something that can be written to the ledger.
+    /// Forms a Block containing the transactions that correspond to the given hashes.
     pub fn tx_hashes_to_block(
         &self,
         tx_hashes: &[TxHash],
@@ -317,9 +315,8 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
         Ok((block, block_contents, signature))
     }
 
-    /// For a given list of TxHashes and a peer session, return a message to send to that peer
-    /// containing the transaction contents.
-    pub fn txs_for_peer(
+    /// Creates a message containing a set of transactions that are encrypted for a peer.
+    pub fn encrypt_for_peer(
         &self,
         tx_hashes: &[TxHash],
         aad: &[u8],
@@ -345,10 +342,6 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
         self.lock_cache()
             .get(tx_hash)
             .map(|entry| entry.encrypted_tx().clone())
-    }
-
-    pub fn num_entries(&self) -> usize {
-        self.lock_cache().len()
     }
 
     fn lock_cache(&self) -> MutexGuard<HashMap<TxHash, CacheEntry>> {
@@ -445,19 +438,19 @@ mod tests {
         let client_tx_three = transactions.pop().unwrap();
 
         let hash_tx_zero = tx_manager
-            .insert_proposed_tx(ConsensusServiceMockEnclave::tx_to_tx_context(
+            .insert(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_zero,
             ))
             .unwrap();
 
         let hash_tx_one = tx_manager
-            .insert_proposed_tx(ConsensusServiceMockEnclave::tx_to_tx_context(
+            .insert(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_one,
             ))
             .unwrap();
 
         let hash_tx_two = tx_manager
-            .insert_proposed_tx(ConsensusServiceMockEnclave::tx_to_tx_context(
+            .insert(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_two,
             ))
             .unwrap();

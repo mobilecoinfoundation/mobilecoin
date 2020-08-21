@@ -77,8 +77,8 @@ impl ByzantineLedger {
             Node::new(
                 node_id.clone(),
                 quorum_set.clone(),
-                Arc::new(move |tx_hash| tx_manager_validate.validate_tx_by_hash(tx_hash)),
-                Arc::new(move |tx_hashes| tx_manager_combine.combine_txs_by_hash(tx_hashes)),
+                Arc::new(move |tx_hash| tx_manager_validate.validate(tx_hash)),
+                Arc::new(move |tx_hashes| tx_manager_combine.combine(tx_hashes)),
                 logger.clone(),
             )
         };
@@ -418,19 +418,19 @@ mod tests {
         let client_tx_two = transactions.pop().unwrap();
 
         let hash_tx_zero = tx_manager
-            .insert_proposed_tx(ConsensusServiceMockEnclave::tx_to_tx_context(
+            .insert(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_zero,
             ))
             .unwrap();
 
         let hash_tx_one = tx_manager
-            .insert_proposed_tx(ConsensusServiceMockEnclave::tx_to_tx_context(
+            .insert(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_one,
             ))
             .unwrap();
 
         let hash_tx_two = tx_manager
-            .insert_proposed_tx(ConsensusServiceMockEnclave::tx_to_tx_context(
+            .insert(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_two,
             ))
             .unwrap();
