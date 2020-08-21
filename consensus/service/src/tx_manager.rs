@@ -146,12 +146,11 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
 
     /// Insert a transaction into the cache. The transaction must be well-formed.
     pub fn insert(&self, tx_context: TxContext) -> TxManagerResult<TxHash> {
-        // If already in cache then we're done.
         {
             let cache = self.lock_cache();
             if let Some(entry) = cache.get(&tx_context.tx_hash) {
-                self.untrusted.is_valid(entry.context())?;
-                return Err(TxManagerError::AlreadyInCache);
+                // The transaction has already been checked and is in the cache.
+                return Ok(entry.context.tx_hash().clone());
             }
         }
 
@@ -226,9 +225,15 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
         purged_hashes
     }
 
-    // TODO: contains
+    /// Returns true if the cache contains the transaction.
+    #[allow(dead_code)]
+    fn contains(&self, tx_hash: &TxHash) -> bool {
+        let cache = self.lock_cache();
+        cache.contains_key(tx_hash)
+    }
 
     /// Returns the list of hashes inside `tx_hashes` that are not inside the cache.
+    /// TODO: remove this.
     pub fn missing_hashes(&self, tx_hashes: &BTreeSet<TxHash>) -> Vec<TxHash> {
         let mut missing = Vec::new();
         let cache = self.lock_cache();
@@ -350,16 +355,60 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
 }
 
 #[cfg(test)]
-mod tests {
+mod tx_manager_tests {
     use super::*;
     use crate::validators::DefaultTxManagerUntrustedInterfaces;
     use mc_common::logger::test_with_logger;
-    use mc_consensus_enclave_mock::ConsensusServiceMockEnclave;
+    use mc_consensus_enclave_mock::{ConsensusServiceMockEnclave, MockConsensusEnclave};
     use mc_ledger_db::Ledger;
     use mc_transaction_core_test_utils::{
         create_ledger, create_transaction, initialize_ledger, AccountKey,
     };
     use rand::{rngs::StdRng, SeedableRng};
+
+    #[test_with_logger]
+    // Should return Ok when a well-formed Tx is (re)-inserted.
+    fn test_insert_ok(logger: Logger) {
+        let tx_context = TxContext::default();
+        let tx_hash = tx_context.tx_hash;
+
+        let mut mock_untrusted = MockUntrustedInterfaces::new();
+        // Untrusted's well-formed check should be called once each time insert_propose_tx is called.
+        mock_untrusted
+            .expect_well_formed_check()
+            .times(1)
+            .return_const(Ok((0, vec![])));
+
+        // The enclave's well-formed check also ought to be called, and should return Ok.
+        let mut mock_enclave = MockConsensusEnclave::new();
+
+        let well_formed_encrypted_tx = WellFormedEncryptedTx::default();
+        let well_formed_tx_context = WellFormedTxContext::new(
+            0,
+            tx_hash.clone(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+        );
+
+        mock_enclave
+            .expect_tx_is_well_formed()
+            .times(1)
+            .return_const(Ok((well_formed_encrypted_tx, well_formed_tx_context)));
+
+        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+        assert_eq!(tx_manager.num_entries(), 0);
+
+        assert!(tx_manager.insert(tx_context.clone()).is_ok());
+        assert_eq!(tx_manager.num_entries(), 1);
+        assert!(tx_manager.contains(&tx_hash));
+
+        // Re-inserting should also be Ok.
+        assert!(tx_manager.insert(tx_context.clone()).is_ok());
+        assert_eq!(tx_manager.num_entries(), 1);
+        assert!(tx_manager.contains(&tx_hash));
+    }
 
     #[test_with_logger]
     fn test_hashes_to_block(logger: Logger) {

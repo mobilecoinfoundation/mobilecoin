@@ -2,10 +2,10 @@
 
 //! Mock enclave, used for tests
 
-#[cfg(test)]
+// #[cfg(test)]
 mod mock_consensus_enclave;
 
-#[cfg(test)]
+// #[cfg(test)]
 pub use mock_consensus_enclave::MockConsensusEnclave;
 
 pub use mc_consensus_enclave_api::{

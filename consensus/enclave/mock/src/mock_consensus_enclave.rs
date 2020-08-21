@@ -19,7 +19,7 @@ use mockall::*;
 // Splitting the traits apart might help because TxManager only uses a few of these functions.
 mock! {
     pub ConsensusEnclave {} // This is used to generate a MockConsensusEnclave struct.
-    trait ConsensusEnclave {
+    pub trait ConsensusEnclave {
         fn enclave_init(
             &self,
             self_peer_id: &ResponderId,
