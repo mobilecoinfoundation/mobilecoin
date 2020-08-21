@@ -5,7 +5,7 @@
 use alloc::string::FromUtf8Error;
 use base64::DecodeError;
 use binascii::ConvertError;
-use core::{array::TryFromSliceError, str::Utf8Error};
+use core::{array::TryFromSliceError, fmt::Error as FmtError, str::Utf8Error};
 use displaydoc::Display;
 use hex::FromHexError;
 use mc_util_repr_bytes::LengthMismatch;
@@ -77,5 +77,11 @@ impl From<Utf8Error> for Error {
 impl From<LengthMismatch> for Error {
     fn from(_src: LengthMismatch) -> Self {
         Error::InvalidInputLength
+    }
+}
+
+impl From<Error> for FmtError {
+    fn from(_src: Error) -> FmtError {
+        FmtError
     }
 }

@@ -264,17 +264,25 @@ impl From<sgx_status_t> for QuoteError {
 }
 
 /// An enumeration of failure conditions when converting a foreign value into a QuoteSignType
-#[derive(Clone, Debug, Deserialize, Fail, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum QuoteSignTypeError {
-    #[fail(display = "Expected quote signature type {}, got {}", _0, _1)]
+    /// Expected quote signature type {0}, got {1}
     Mismatch(QuoteSignType, QuoteSignType),
-    #[fail(display = "Unknown value: {}", _0)]
+    /// Unknown quote sign type: {0}
     Unknown(u64),
+    /// There was an encoding error: {0}
+    Encoding(EncodingError),
 }
 
 impl From<QuoteSignTypeError> for FmtError {
     fn from(_src: QuoteSignTypeError) -> FmtError {
         FmtError
+    }
+}
+
+impl From<EncodingError> for QuoteSignTypeError {
+    fn from(src: EncodingError) -> QuoteSignTypeError {
+        QuoteSignTypeError::Encoding(src)
     }
 }
 
