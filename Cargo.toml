@@ -130,5 +130,7 @@ lmdb-rkv = { git = "https://github.com/mozilla/lmdb-rs", rev = "df1c2f5" }
 serde_cbor = { git = "https://github.com/mobilecoinofficial/cbor", rev = "4c886a7c1d523aae1ec4aa7386f402cb2f4341b5" }
 
 # Patched to depend on crates that depend on digest 0.9
-ed25519-dalek = { git = "https://github.com/eranrund/ed25519-dalek", rev = "ffb1db5edf1fcb5aaebfb3a54dbba98072dbafbb" }
 bulletproofs = { git = "https://github.com/eranrund/bulletproofs", rev = "e8e8ef45ecc6d31f1a9525140edc977351d0f780" }
+
+# Patched to disable the cpuid instruction because that is incompatible with our sgx builds.
+cpuid-bool = { git = "https://github.com/eranrund/RustCrypto-utils", rev = "e00f5f16e395349c2c2395aac9287da0ac843a73" }

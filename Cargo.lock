@@ -599,8 +599,7 @@ checksum = "b3a71ab494c0b5b860bdc8407ae08978052417070c2ced38573a9157ad75b8ac"
 [[package]]
 name = "cpuid-bool"
 version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8aebca1129a03dc6dc2b127edd729435bbc4a37e1d5f4d7513165089ceb02634"
+source = "git+https://github.com/eranrund/RustCrypto-utils?rev=e00f5f16e395349c2c2395aac9287da0ac843a73#e00f5f16e395349c2c2395aac9287da0ac843a73"
 
 [[package]]
 name = "crc"
@@ -1018,8 +1017,9 @@ dependencies = [
 
 [[package]]
 name = "ed25519-dalek"
-version = "1.0.0-pre.4"
-source = "git+https://github.com/eranrund/ed25519-dalek?rev=ffb1db5edf1fcb5aaebfb3a54dbba98072dbafbb#ffb1db5edf1fcb5aaebfb3a54dbba98072dbafbb"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "53d2e93f837d749c16d118e7ddf7a4dfd0ac8f452cf51e46e9348824e5ef6851"
 dependencies = [
  "curve25519-dalek",
  "ed25519",
