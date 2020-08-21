@@ -355,7 +355,7 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
 }
 
 #[cfg(test)]
-mod tx_manager_tests {
+mod tests {
     use super::*;
     use crate::validators::DefaultTxManagerUntrustedInterfaces;
     use mc_common::logger::test_with_logger;
@@ -456,6 +456,60 @@ mod tx_manager_tests {
         let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
         assert!(tx_manager.insert(tx_context.clone()).is_err());
         assert_eq!(tx_manager.num_entries(), 0);
+    }
+
+    #[test_with_logger]
+    // Should remove all transactions that have expired by the given slot.
+    fn test_remove_expired(logger: Logger) {
+        let mock_untrusted = MockUntrustedInterfaces::new();
+        let mock_enclave = MockConsensusEnclave::new();
+        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+
+        // Fill the cache with entries that have different tombstone blocks.
+        for tombstone_block in 10..24 {
+            let context = WellFormedTxContext::new(
+                Default::default(),
+                TxHash([tombstone_block as u8; 32]),
+                tombstone_block,
+                Default::default(),
+                Default::default(),
+                Default::default(),
+            );
+
+            let cache_entry = CacheEntry {
+                encrypted_tx: Default::default(),
+                context: Arc::new(context.clone()),
+            };
+
+            tx_manager
+                .cache
+                .lock()
+                .unwrap()
+                .insert(context.tx_hash().clone(), cache_entry);
+        }
+
+        assert_eq!(tx_manager.num_entries(), 14);
+
+        {
+            // By block index 10, none have expired.
+            let removed = tx_manager.remove_expired(10);
+            assert_eq!(removed.len(), 0);
+            assert_eq!(tx_manager.num_entries(), 14);
+        }
+
+        {
+            // By block index 15, some have expired.
+            let removed = tx_manager.remove_expired(15);
+            assert_eq!(removed.len(), 5);
+            assert_eq!(tx_manager.num_entries(), 9);
+        }
+
+        {
+            // By block index 24, all have expired.
+            let removed = tx_manager.remove_expired(24);
+            assert_eq!(removed.len(), 9);
+            assert_eq!(tx_manager.num_entries(), 0);
+        }
     }
 
     #[test_with_logger]
