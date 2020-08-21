@@ -23,7 +23,7 @@ service ConsensusPeerAPI {
 
     /// Fetch transaction contents from a list of Tx Hashes.
     /// The hashes are sent in the AAD data.
-    rpc FetchTxs(FetchTxsRequest) returns (attest.Message);
+    rpc FetchTxs(FetchTxsRequest) returns (FetchTxsResponse);
 }
 
 message ConsensusMsg {
@@ -58,4 +58,18 @@ message FetchTxsRequest {
 
     /// List of tx hashes to fetch.
     repeated bytes tx_hashes = 2;
+}
+
+/// Response from a FetchTxs call.
+message FetchTxsResponse { oneof payload {
+    /// Call succeeded, encrypted Tx data was returned.
+    attest.Message success = 1;
+
+    /// Failed due to tx hashes not in cache.
+    /// (protobuf prohibits using the `repeated` marker inside `oneof`)
+    TxHashesNotInCache tx_hashes_not_in_cache = 2;
+} }
+
+message TxHashesNotInCache {
+    repeated bytes tx_hashes = 1;
 }

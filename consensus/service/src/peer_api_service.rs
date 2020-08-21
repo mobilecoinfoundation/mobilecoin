@@ -21,7 +21,7 @@ use mc_consensus_api::{
     consensus_common::ProposeTxResponse,
     consensus_peer::{
         ConsensusMsg as GrpcConsensusMsg, ConsensusMsgResponse, ConsensusMsgResult,
-        FetchLatestMsgResponse, FetchTxsRequest,
+        FetchLatestMsgResponse, FetchTxsRequest, FetchTxsResponse, TxHashesNotInCache,
     },
     consensus_peer_grpc::ConsensusPeerApi,
     empty::Empty,
@@ -157,7 +157,7 @@ impl<E: ConsensusEnclaveProxy, L: Ledger> PeerApiService<E, L> {
         &mut self,
         request: FetchTxsRequest,
         logger: &Logger,
-    ) -> Result<Message, ConsensusGrpcError> {
+    ) -> Result<FetchTxsResponse, ConsensusGrpcError> {
         let tx_hashes: Vec<TxHash> = request
             .get_tx_hashes()
             .iter()
@@ -172,7 +172,21 @@ impl<E: ConsensusEnclaveProxy, L: Ledger> PeerApiService<E, L> {
             &[],
             &PeerSession::from(request.get_channel_id()),
         ) {
-            Ok(enclave_message) => Ok(enclave_message.into()),
+            Ok(enclave_message) => {
+                let mut response = FetchTxsResponse::new();
+                response.set_success(enclave_message.into());
+                Ok(response)
+            }
+            Err(TxManagerError::NotInCache(tx_hashes)) => {
+                let mut tx_hashes_not_in_cache = TxHashesNotInCache::new();
+                tx_hashes_not_in_cache
+                    .set_tx_hashes(tx_hashes.iter().map(|tx_hash| tx_hash.to_vec()).collect());
+
+                let mut response = FetchTxsResponse::new();
+                response.set_tx_hashes_not_in_cache(tx_hashes_not_in_cache);
+
+                Ok(response)
+            }
             Err(err) => {
                 log::warn!(
                     logger,
@@ -332,7 +346,12 @@ impl<E: ConsensusEnclaveProxy, L: Ledger> ConsensusPeerApi for PeerApiService<E,
         });
     }
 
-    fn fetch_txs(&mut self, ctx: RpcContext, request: FetchTxsRequest, sink: UnarySink<Message>) {
+    fn fetch_txs(
+        &mut self,
+        ctx: RpcContext,
+        request: FetchTxsRequest,
+        sink: UnarySink<FetchTxsResponse>,
+    ) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             send_result(

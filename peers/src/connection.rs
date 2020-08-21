@@ -4,7 +4,7 @@
 
 use crate::{
     consensus_msg::{ConsensusMsg, TxProposeAAD},
-    error::{PeerAttestationError, Result},
+    error::{Error, PeerAttestationError, Result},
     traits::ConsensusConnection,
 };
 use core::fmt::{Display, Formatter, Result as FmtResult};
@@ -28,6 +28,7 @@ use mc_consensus_api::{
     },
     consensus_peer_grpc::ConsensusPeerApiClient,
     empty::Empty,
+    ConversionError,
 };
 use mc_consensus_enclave_api::{ConsensusEnclaveProxy, TxContext, WellFormedEncryptedTx};
 use mc_transaction_core::{tx::TxHash, Block, BlockID, BlockIndex};
@@ -281,8 +282,24 @@ impl<Enclave: ConsensusEnclaveProxy> ConsensusConnection for PeerConnection<Encl
             hashes.iter().map(|tx| tx.to_vec()).collect(),
         ));
 
-        let response = self.attested_call(|this| this.consensus_api_client.fetch_txs(&request))?;
-        let tx_contexts = self.enclave.peer_tx_propose(response.into())?;
+        let mut response =
+            self.attested_call(|this| this.consensus_api_client.fetch_txs(&request))?;
+        if response.has_tx_hashes_not_in_cache() {
+            let tx_hashes = response
+                .get_tx_hashes_not_in_cache()
+                .get_tx_hashes()
+                .iter()
+                .map(|tx_hash_bytes| {
+                    TxHash::try_from(&tx_hash_bytes[..])
+                        .map_err(|_| Error::Conversion(ConversionError::ArrayCastError))
+                })
+                .collect::<StdResult<Vec<TxHash>, _>>()?;
+            return Err(Error::TxHashesNotInCache(tx_hashes));
+        }
+
+        let tx_contexts = self
+            .enclave
+            .peer_tx_propose(response.take_success().into())?;
 
         Ok(tx_contexts)
     }
