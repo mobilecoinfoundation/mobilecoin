@@ -2469,6 +2469,7 @@ dependencies = [
  "mc-util-metrics",
  "mc-util-serial",
  "mc-util-uri",
+ "mockall",
  "prost",
  "protobuf",
  "rand 0.7.3",

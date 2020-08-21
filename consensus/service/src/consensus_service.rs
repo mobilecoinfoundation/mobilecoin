@@ -95,7 +95,7 @@ pub struct ConsensusService<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync 
 
     peer_manager: ConnectionManager<PeerConnection<E>>,
     broadcaster: Arc<Mutex<ThreadedBroadcaster>>,
-    tx_manager: TxManager<E, DefaultTxManagerUntrustedInterfaces<LedgerDB>>,
+    tx_manager: Arc<TxManager<E, DefaultTxManagerUntrustedInterfaces<LedgerDB>>>,
     peer_keepalive: Arc<Mutex<PeerKeepalive>>,
 
     admin_rpc_server: Option<AdminServer>,
@@ -180,7 +180,7 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
 
             peer_manager,
             broadcaster,
-            tx_manager,
+            tx_manager: Arc::new(tx_manager),
             peer_keepalive,
 
             admin_rpc_server: None,

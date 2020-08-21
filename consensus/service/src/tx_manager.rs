@@ -10,7 +10,7 @@ use mc_common::{
     HashMap, HashSet,
 };
 use mc_consensus_enclave::{
-    ConsensusEnclaveProxy, Error as ConsensusEnclaveError, TxContext, WellFormedEncryptedTx,
+    ConsensusEnclave, Error as ConsensusEnclaveError, TxContext, WellFormedEncryptedTx,
     WellFormedTxContext,
 };
 use mc_crypto_keys::CompressedRistrettoPublic;
@@ -25,8 +25,12 @@ use mc_transaction_core::{
 use std::{
     collections::BTreeSet,
     iter::FromIterator,
-    sync::{Arc, Mutex, MutexGuard},
+    sync::{Mutex, MutexGuard},
 };
+
+#[cfg(test)]
+use mockall::*;
+use std::sync::Arc;
 
 #[derive(Clone, Debug, Fail)]
 pub enum TxManagerError {
@@ -73,7 +77,7 @@ pub type TxManagerResult<T> = Result<T, TxManagerError>;
 struct CacheEntry {
     encrypted_tx: WellFormedEncryptedTx,
 
-    context: WellFormedTxContext,
+    context: Arc<WellFormedTxContext>,
 }
 
 impl CacheEntry {
@@ -81,14 +85,14 @@ impl CacheEntry {
         &self.encrypted_tx
     }
 
-    pub fn context(&self) -> &WellFormedTxContext {
+    pub fn context(&self) -> &Arc<WellFormedTxContext> {
         &self.context
     }
 }
 
-/// A trait for representing the untrusted part of validation/combining. This is presented as a
-/// trait to make testing easier.
-pub trait UntrustedInterfaces: Clone {
+/// The untrusted (i.e. non-enclave) part of validating and combining transactions.
+#[cfg_attr(test, automock)]
+pub trait UntrustedInterfaces: Send + Sync {
     /// Performs the untrusted part of the well-formed check.
     /// Returns current block index and membership proofs to be used by
     /// the in-enclave well-formed check on success.
@@ -110,11 +114,11 @@ pub trait UntrustedInterfaces: Clone {
     /// * `max_elements` - Maximal number of elements to output.
     ///
     /// Returns a bounded, deterministically-ordered list of transactions that are safe to append to the ledger.
-    fn combine(&self, tx_contexts: &[&WellFormedTxContext], max_elements: usize) -> Vec<TxHash>;
+    fn combine(&self, tx_contexts: &[Arc<WellFormedTxContext>], max_elements: usize)
+        -> Vec<TxHash>;
 }
 
-#[derive(Clone)]
-pub struct TxManager<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> {
+pub struct TxManager<E: ConsensusEnclave, UI: UntrustedInterfaces> {
     /// Enclave.
     enclave: E,
 
@@ -122,30 +126,27 @@ pub struct TxManager<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> {
     /// values.
     untrusted: UI,
 
+    /// Well-formed transactions, keyed by hash.
+    cache: Mutex<HashMap<TxHash, CacheEntry>>,
+
     /// Logger.
     logger: Logger,
-
-    /// Map of tx hashes to data we hold for each tx.
-    cache: Arc<Mutex<HashMap<TxHash, CacheEntry>>>,
 }
 
-impl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> TxManager<E, UI> {
+impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
     /// Construct a new TxManager instance.
     pub fn new(enclave: E, untrusted: UI, logger: Logger) -> Self {
         Self {
             enclave,
             untrusted,
             logger,
-            cache: Arc::new(Mutex::new(HashMap::default())),
+            cache: Mutex::new(HashMap::default()),
         }
     }
 
     /// Insert a new transaction into the cache.
     /// This enforces that the transaction is well-formed.
-    pub fn insert_proposed_tx(
-        &self,
-        tx_context: TxContext,
-    ) -> TxManagerResult<WellFormedTxContext> {
+    pub fn insert_proposed_tx(&self, tx_context: TxContext) -> TxManagerResult<TxHash> {
         // If already in cache then we're done.
         {
             let cache = self.lock_cache();
@@ -181,21 +182,22 @@ impl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> TxManager<E, UI> {
             hash = well_formed_tx_context.tx_hash().to_string(),
         );
 
+        let tx_hash = *well_formed_tx_context.tx_hash();
+
+        let entry = CacheEntry {
+            encrypted_tx: well_formed_encrypted_tx,
+            context: Arc::new(well_formed_tx_context),
+        };
+
         // Store in our cache.
         {
             let mut cache = self.lock_cache();
-            cache.insert(
-                *well_formed_tx_context.tx_hash(),
-                CacheEntry {
-                    encrypted_tx: well_formed_encrypted_tx,
-                    context: well_formed_tx_context.clone(),
-                },
-            );
+            cache.insert(tx_hash, entry);
             counters::TX_CACHE_NUM_ENTRIES.set(cache.len() as i64);
         }
 
         // Success!
-        Ok(well_formed_tx_context)
+        Ok(tx_hash)
     }
 
     /// Evacuate expired transactions from the cache.
@@ -266,14 +268,14 @@ impl<E: ConsensusEnclaveProxy, UI: UntrustedInterfaces> TxManager<E, UI> {
     /// out transactions, so while non-existent hashes should not be fed into this method, they are
     /// not treated as an error.
     pub fn combine_txs_by_hash(&self, tx_hashes: &[TxHash]) -> Vec<TxHash> {
-        let cache = self.lock_cache();
-        let mut tx_contexts = Vec::new();
-
         // Dedup
         let tx_hashes: HashSet<&TxHash> = tx_hashes.iter().clone().collect();
+        let mut tx_contexts = Vec::new();
+
+        let cache = self.lock_cache();
         for tx_hash in tx_hashes {
             if let Some(entry) = cache.get(&tx_hash) {
-                tx_contexts.push(entry.context());
+                tx_contexts.push(entry.context().clone());
             } else {
                 log::error!(self.logger, "Ignoring non-existent TxHash {:?}", tx_hash);
             }
@@ -442,26 +444,23 @@ mod tests {
         let client_tx_two = transactions.pop().unwrap();
         let client_tx_three = transactions.pop().unwrap();
 
-        let hash_tx_zero = *tx_manager
+        let hash_tx_zero = tx_manager
             .insert_proposed_tx(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_zero,
             ))
-            .unwrap()
-            .tx_hash();
+            .unwrap();
 
-        let hash_tx_one = *tx_manager
+        let hash_tx_one = tx_manager
             .insert_proposed_tx(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_one,
             ))
-            .unwrap()
-            .tx_hash();
+            .unwrap();
 
-        let hash_tx_two = *tx_manager
+        let hash_tx_two = tx_manager
             .insert_proposed_tx(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_two,
             ))
-            .unwrap()
-            .tx_hash();
+            .unwrap();
 
         let hash_tx_three = client_tx_three.tx_hash();
 

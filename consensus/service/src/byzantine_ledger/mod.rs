@@ -61,7 +61,7 @@ impl ByzantineLedger {
         quorum_set: QuorumSet,
         peer_manager: ConnectionManager<PC>,
         ledger: L,
-        tx_manager: TxManager<E, UI>,
+        tx_manager: Arc<TxManager<E, UI>>,
         broadcaster: Arc<Mutex<dyn Broadcast>>,
         msg_signer_key: Arc<Ed25519Pair>,
         tx_source_urls: Vec<String>,
@@ -345,11 +345,11 @@ mod tests {
         )));
 
         let enclave = ConsensusServiceMockEnclave::default();
-        let tx_manager = TxManager::new(
+        let tx_manager = Arc::new(TxManager::new(
             enclave.clone(),
             DefaultTxManagerUntrustedInterfaces::new(ledger.clone()),
             logger.clone(),
-        );
+        ));
 
         let byzantine_ledger = ByzantineLedger::new(
             local_node_id.clone(),
@@ -417,26 +417,23 @@ mod tests {
         let client_tx_one = transactions.pop().unwrap();
         let client_tx_two = transactions.pop().unwrap();
 
-        let hash_tx_zero = *tx_manager
+        let hash_tx_zero = tx_manager
             .insert_proposed_tx(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_zero,
             ))
-            .unwrap()
-            .tx_hash();
+            .unwrap();
 
-        let hash_tx_one = *tx_manager
+        let hash_tx_one = tx_manager
             .insert_proposed_tx(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_one,
             ))
-            .unwrap()
-            .tx_hash();
+            .unwrap();
 
-        let hash_tx_two = *tx_manager
+        let hash_tx_two = tx_manager
             .insert_proposed_tx(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_two,
             ))
-            .unwrap()
-            .tx_hash();
+            .unwrap();
 
         byzantine_ledger.push_values(
             vec![hash_tx_zero, hash_tx_one, hash_tx_two],
