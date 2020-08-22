@@ -1,6 +1,10 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-//! The entity that manages cached transactions on the untrusted side.
+//! TxManager maps operations on transaction hashes to in-enclave operations on the corresponding transactions.
+//!
+//! Internally, TxManager maintains a collection of (encrypted) transactions that have been found
+//! to be well-formed. These can be thought of as the "working set" of transactions that the consensus service
+//! may operate on.  
 
 use crate::counters;
 use failure::Fail;
@@ -75,8 +79,10 @@ impl From<LedgerDbError> for TxManagerError {
 pub type TxManagerResult<T> = Result<T, TxManagerError>;
 
 struct CacheEntry {
+    /// An encrypted transaction that has been found to be well-formed.
     encrypted_tx: WellFormedEncryptedTx,
 
+    /// Context exposed by the enclave about this transaction.
     context: Arc<WellFormedTxContext>,
 }
 
@@ -321,6 +327,11 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
     }
 
     /// Creates a message containing a set of transactions that are encrypted for a peer.
+    ///
+    /// # Arguments
+    /// * `tx_hashes` - transaction hashes.
+    /// * `aad` - Additional authenticated data.
+    /// * `peer` - Recipient of the encrypted message.
     pub fn encrypt_for_peer(
         &self,
         tx_hashes: &[TxHash],
@@ -825,9 +836,11 @@ mod tests {
         }
         assert_eq!(tx_manager.num_entries(), tx_hashes.len());
 
-        let aad = vec![];
+        let aad = "Additional authenticated data";
         let peer = PeerSession::default();
-        assert!(tx_manager.encrypt_for_peer(&tx_hashes, &aad, &peer).is_ok());
+        assert!(tx_manager
+            .encrypt_for_peer(&tx_hashes, aad.as_bytes(), &peer)
+            .is_ok());
     }
 
     #[test_with_logger]
@@ -840,9 +853,9 @@ mod tests {
         assert_eq!(tx_manager.num_entries(), 0);
 
         let tx_hashes: Vec<_> = (0..10).map(|i| TxHash([i as u8; 32])).collect();
-        let aad = vec![];
+        let aad = "Additional authenticated data";
         let peer = PeerSession::default();
-        match tx_manager.encrypt_for_peer(&tx_hashes, &aad, &peer) {
+        match tx_manager.encrypt_for_peer(&tx_hashes, aad.as_bytes(), &peer) {
             Err(TxManagerError::NotInCache(_)) => {} // This is expected.
             _ => panic!(),
         }
@@ -887,10 +900,10 @@ mod tests {
         }
         assert_eq!(tx_manager.num_entries(), tx_hashes.len());
 
-        let aad = vec![];
+        let aad = "Additional authenticated data";
         let peer = PeerSession::default();
 
-        match tx_manager.encrypt_for_peer(&tx_hashes, &aad, &peer) {
+        match tx_manager.encrypt_for_peer(&tx_hashes, aad.as_bytes(), &peer) {
             Err(TxManagerError::Enclave(EnclaveError::Signature)) => {} // This is expected.
             _ => panic!(),
         }
