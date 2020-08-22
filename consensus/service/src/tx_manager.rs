@@ -4,7 +4,7 @@
 //!
 //! Internally, TxManager maintains a collection of (encrypted) transactions that have been found
 //! to be well-formed. These can be thought of as the "working set" of transactions that the consensus service
-//! may operate on.  
+//! may operate on.
 
 use crate::counters;
 use failure::Fail;
