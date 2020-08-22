@@ -2,14 +2,12 @@
 
 use crate::Block;
 use core::fmt::{Display, Formatter, Result as FmtResult};
-use mc_crypto_digestible::Digestible;
+use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_keys::{
-    DigestSigner, DigestVerifier, Ed25519Pair, Ed25519Public, Ed25519Signature,
-    Ed25519SignatureError,
+    Ed25519Pair, Ed25519Public, Ed25519Signature, Ed25519SignatureError, Signer, Verifier,
 };
 use prost::Message;
 use serde::{Deserialize, Serialize};
-use sha2::Sha512;
 
 /// A block signature.
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Message)]
@@ -51,10 +49,8 @@ impl BlockSignature {
         block: &Block,
         keypair: &Ed25519Pair,
     ) -> Result<Self, Ed25519SignatureError> {
-        // SHA512 is used for compatibility with Ed25519ph.
-        let mut hasher = Sha512::default();
-        block.digest(&mut hasher);
-        let signature = keypair.try_sign_digest(hasher)?;
+        let digest = block.digest32::<MerlinTranscript>(b"block-sig");
+        let signature = keypair.try_sign(&digest)?;
 
         let signer = keypair.public_key();
 
@@ -87,10 +83,9 @@ impl BlockSignature {
 
     /// Verify that this signature is over a given block.
     pub fn verify(&self, block: &Block) -> Result<(), Ed25519SignatureError> {
-        let mut hasher = Sha512::default();
-        block.digest(&mut hasher);
+        let digest = block.digest32::<MerlinTranscript>(b"block-sig");
 
-        self.signer.verify_digest(hasher, &self.signature)
+        self.signer.verify(&digest, &self.signature)
     }
 }
 

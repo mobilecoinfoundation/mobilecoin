@@ -6,13 +6,15 @@ edition = "2018"
 
 [dependencies]
 cfg-if = "0.1"
-digest = { version = "0.9", default-features = false }
+merlin = { version = "2.0", default-features = false }
+generic-array = { version = "0.14", default-features = false }
 
 # For derive support
 mc-crypto-digestible-derive = { path = "./derive", optional = true }
 
 # Built-in support for dalek primitives
-ed25519-dalek = { version = "1.0.0", default-features = false, optional = true }
+# ed25519-dalek doesn't build without rand feature
+ed25519-dalek = { version = "1.0.0", default-features = false, features = ["rand"], optional = true }
 x25519-dalek = { version = "1.0.1", default-features = false, optional = true }
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
@@ -21,11 +23,8 @@ curve25519-dalek = { version = "3.0", default-features = false, features = ["sim
 [target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
 curve25519-dalek = { version = "3.0", default-features = false, features = ["nightly", "u64_backend"], optional = true }
 
-[dev-dependencies]
-sha3 = "0.9"
-
 [features]
-default=["alloc", "derive"]
+default=["alloc", "derive", "dalek"]
 # Enables support for types in alloc crate
 alloc=[]
 # Enables re-export of derive(Digestible) macro

@@ -6,12 +6,11 @@ use ed25519::signature::Error as SignatureError;
 use failure::Fail;
 use mc_common::{NodeID, ResponderId};
 use mc_consensus_scp::Msg;
-use mc_crypto_digestible::Digestible;
+use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
 use mc_crypto_keys::{Ed25519Pair, Ed25519Signature, KeyError, Signer, Verifier};
 use mc_ledger_db::Ledger;
 use mc_transaction_core::{tx::TxHash, BlockID};
 use serde::{Deserialize, Serialize};
-use sha2::{digest::Digest, Sha256};
 use std::{convert::TryFrom, result::Result as StdResult};
 
 /// A consensus message holds the data that is exchanged by consensus service nodes as part of the
@@ -127,10 +126,15 @@ impl ConsensusMsg {
 
         let prev_block = ledger.get_block(scp_msg.slot_index - 1)?;
 
-        let mut contents_hasher = Sha256::new();
-        scp_msg.digest(&mut contents_hasher);
-        prev_block.id.digest(&mut contents_hasher);
-        let contents_hash = contents_hasher.finalize();
+        let mut contents_hash = [0u8; 32];
+        {
+            let mut transcript = MerlinTranscript::new(b"peer-message");
+            scp_msg.append_to_transcript(b"scp_msg", &mut transcript);
+            prev_block
+                .id
+                .append_to_transcript(b"prev_block_id", &mut transcript);
+            transcript.extract_digest(&mut contents_hash);
+        }
 
         let signature = signer_key.try_sign(&contents_hash)?;
 
@@ -152,10 +156,15 @@ impl ConsensusMsg {
     }
 
     pub fn verify_signature(&self) -> StdResult<(), ConsensusMsgError> {
-        let mut contents_hasher = Sha256::new();
-        self.scp_msg.digest(&mut contents_hasher);
-        self.prev_block_id.digest(&mut contents_hasher);
-        let contents_hash = contents_hasher.finalize();
+        let mut contents_hash = [0u8; 32];
+        {
+            let mut transcript = MerlinTranscript::new(b"peer-message");
+            self.scp_msg
+                .append_to_transcript(b"scp_msg", &mut transcript);
+            self.prev_block_id
+                .append_to_transcript(b"prev_block_id", &mut transcript);
+            transcript.extract_digest(&mut contents_hash);
+        }
 
         Ok(self
             .scp_msg

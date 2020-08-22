@@ -55,6 +55,7 @@ curve25519-dalek = { version = "3.0", default-features = false, features = ["nig
 blake2 = { version = "0.9", default-features = false }
 
 [dev-dependencies]
+hex-literal = "0.3"
 rand = "0.7"
 rand_hc = "0.2"
 tempdir = "0.3"
@@ -63,6 +64,7 @@ time = "0.1"
 mc-ledger-db = { path = "../../ledger/db" }
 mc-util-serial = { path = "../../util/serial", features = ["std"] }
 mc-util-test-helper = { path = "../../util/test-helper" }
+mc-crypto-digestible-test-utils = { path = "../../crypto/digestible/test-utils" }
 mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
 
 [dev-dependencies.proptest]

@@ -2,14 +2,8 @@
 
 use crate::ConvertError;
 use alloc::{vec, vec::Vec};
-use core::{
-    convert::TryFrom,
-    fmt::Debug,
-    hash::{Hash, Hasher},
-};
-use generic_array::{typenum::Unsigned, GenericArray};
-use mc_crypto_digestible::{Digest, Digestible};
-use mc_crypto_hashes::Blake2b256;
+use core::{convert::TryFrom, fmt::Debug, hash::Hash};
+use mc_crypto_digestible::Digestible;
 use prost::{
     bytes::{Buf, BufMut},
     encoding::{bytes, skip_field, DecodeContext, WireType},
@@ -18,56 +12,28 @@ use prost::{
 use serde::{Deserialize, Serialize};
 
 #[repr(transparent)]
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug, Digestible, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[digestible(transparent)]
 /// Identifies a block with its hash.
-pub struct BlockID<D: Digest = Blake2b256>(pub GenericArray<u8, D::OutputSize>);
+pub struct BlockID(pub [u8; 32]);
 
-impl<D: Digest> Digestible for BlockID<D> {
-    fn digest<DD: Digest>(&self, hasher: &mut DD) {
-        hasher.update(&self.0)
-    }
-}
-
-impl<D: Digest> PartialEq for BlockID<D> {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-
-impl<D: Digest> Eq for BlockID<D> {}
-
-impl<D: Digest> TryFrom<&[u8]> for BlockID<D> {
+impl TryFrom<&[u8]> for BlockID {
     type Error = ConvertError;
 
     fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
-        if src.len() != D::OutputSize::to_usize() {
-            Err(ConvertError::LengthMismatch(
-                D::OutputSize::to_usize(),
-                src.len(),
-            ))
-        } else {
-            Ok(Self(GenericArray::clone_from_slice(src)))
-        }
+        Ok(Self(<[u8; 32] as TryFrom<&[u8]>>::try_from(src).map_err(
+            |_| ConvertError::LengthMismatch(core::mem::size_of::<Self>(), src.len()),
+        )?))
     }
 }
 
-impl<D: Digest> AsRef<[u8]> for BlockID<D> {
+impl AsRef<[u8]> for BlockID {
     fn as_ref(&self) -> &[u8] {
         &self.0
     }
 }
 
-impl<D: Digest> Hash for BlockID<D> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.hash(state);
-    }
-}
-
-impl<D: Digest + Debug> Message for BlockID<D>
-where
-    <D as Digest>::OutputSize: Debug,
-    Self: Default,
-{
+impl Message for BlockID {
     fn encode_raw<B>(&self, buf: &mut B)
     where
         B: BufMut,
@@ -88,14 +54,13 @@ where
         if tag == 1 {
             let mut vbuf = Vec::new();
             bytes::merge(wire_type, &mut vbuf, buf, ctx)?;
-            if vbuf.len() != D::OutputSize::to_usize() {
-                return Err(DecodeError::new(alloc::format!(
+            *self = Self::try_from(&vbuf[..]).map_err(|_| {
+                DecodeError::new(alloc::format!(
                     "BlockID: expected {} bytes, got {}",
-                    D::OutputSize::to_usize(),
+                    core::mem::size_of::<Self>(),
                     vbuf.len()
-                )));
-            }
-            *self = Self(GenericArray::clone_from_slice(&vbuf[..]));
+                ))
+            })?;
             Ok(())
         } else {
             skip_field(wire_type, tag, buf, ctx)
@@ -103,7 +68,7 @@ where
     }
 
     fn encoded_len(&self) -> usize {
-        bytes::encoded_len(1, &vec![0u8; D::OutputSize::to_usize()])
+        bytes::encoded_len(1, &vec![0u8; core::mem::size_of::<Self>()])
     }
 
     fn clear(&mut self) {
