@@ -26,10 +26,7 @@ use mc_transaction_core::{
     validation::{TransactionValidationError, TransactionValidationResult},
     Block, BlockContents, BlockSignature,
 };
-use std::{
-    collections::BTreeSet,
-    sync::{Mutex, MutexGuard},
-};
+use std::sync::{Mutex, MutexGuard};
 
 #[cfg(test)]
 use mockall::*;
@@ -228,24 +225,17 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
         expired.into_iter().map(|(tx_hash, _)| tx_hash).collect()
     }
 
-    /// Returns true if the cache contains the transaction.
-    #[allow(dead_code)]
-    fn contains(&self, tx_hash: &TxHash) -> bool {
-        let cache = self.lock_cache();
-        cache.contains_key(tx_hash)
-    }
-
     /// Returns the list of hashes inside `tx_hashes` that are not inside the cache.
-    /// TODO: remove this.
-    pub fn missing_hashes(&self, tx_hashes: &BTreeSet<TxHash>) -> Vec<TxHash> {
-        let mut missing = Vec::new();
+    pub fn missing_hashes<T>(&self, tx_hashes: &T) -> Vec<TxHash>
+    where
+        for<'a> &'a T: IntoIterator<Item = &'a TxHash>,
+    {
         let cache = self.lock_cache();
-        for tx_hash in tx_hashes {
-            if !cache.contains_key(tx_hash) {
-                missing.push(*tx_hash);
-            }
-        }
-        missing
+        tx_hashes
+            .into_iter()
+            .filter(|tx_hash| !cache.contains_key(tx_hash))
+            .cloned()
+            .collect()
     }
 
     pub fn num_entries(&self) -> usize {
@@ -414,12 +404,12 @@ mod tests {
 
         assert!(tx_manager.insert(tx_context.clone()).is_ok());
         assert_eq!(tx_manager.num_entries(), 1);
-        assert!(tx_manager.contains(&tx_hash));
+        assert!(tx_manager.lock_cache().contains_key(&tx_hash));
 
         // Re-inserting should also be Ok.
         assert!(tx_manager.insert(tx_context.clone()).is_ok());
         assert_eq!(tx_manager.num_entries(), 1);
-        assert!(tx_manager.contains(&tx_hash));
+        assert!(tx_manager.lock_cache().contains_key(&tx_hash));
     }
 
     #[test_with_logger]
