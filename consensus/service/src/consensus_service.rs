@@ -542,7 +542,7 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
             // consensus time.
             if origin_node == &local_node_id || relay_from_nodes.contains(&origin_node.responder_id)
             {
-                if let Some(encrypted_tx) = tx_manager.get_encrypted_tx_by_hash(&tx_hash) {
+                if let Some(encrypted_tx) = tx_manager.get_encrypted_tx(&tx_hash) {
                     broadcaster
                         .lock()
                         .expect("lock poisoned")

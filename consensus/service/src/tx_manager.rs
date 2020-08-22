@@ -343,7 +343,8 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
         Ok(self.enclave.txs_for_peer(&encrypted_txs?, aad, peer)?)
     }
 
-    pub fn get_encrypted_tx_by_hash(&self, tx_hash: &TxHash) -> Option<WellFormedEncryptedTx> {
+    /// Get the encrypted transaction corresponding to the given hash.
+    pub fn get_encrypted_tx(&self, tx_hash: &TxHash) -> Option<WellFormedEncryptedTx> {
         self.lock_cache()
             .get(tx_hash)
             .map(|entry| entry.encrypted_tx().clone())
@@ -783,5 +784,181 @@ mod tests {
 
         // The ledger was previously initialized with 3 blocks.
         assert_eq!(block.index, 3);
+    }
+
+    #[test_with_logger]
+    // Should call enclave.txs_for_peer
+    fn test_encrypt_for_peer_ok(logger: Logger) {
+        let mock_untrusted = MockUntrustedInterfaces::new();
+        let mut mock_enclave = MockConsensusEnclave::new();
+
+        // This should be called to perform the encryption.
+        mock_enclave
+            .expect_txs_for_peer()
+            .times(1)
+            .return_const(Ok(EnclaveMessage::default()));
+
+        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+
+        // Add transactions to the cache.
+        let tx_hashes: Vec<_> = (0..10).map(|i| TxHash([i as u8; 32])).collect();
+        for tx_hash in &tx_hashes {
+            let context = WellFormedTxContext::new(
+                Default::default(),
+                tx_hash.clone(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+            );
+
+            let cache_entry = CacheEntry {
+                encrypted_tx: Default::default(),
+                context: Arc::new(context.clone()),
+            };
+
+            tx_manager
+                .cache
+                .lock()
+                .unwrap()
+                .insert(context.tx_hash().clone(), cache_entry);
+        }
+        assert_eq!(tx_manager.num_entries(), tx_hashes.len());
+
+        let aad = vec![];
+        let peer = PeerSession::default();
+        assert!(tx_manager.encrypt_for_peer(&tx_hashes, &aad, &peer).is_ok());
+    }
+
+    #[test_with_logger]
+    // Should return an error if any transaction is not in the cache.
+    fn test_encrypt_for_peer_err_not_in_cache(logger: Logger) {
+        let mock_untrusted = MockUntrustedInterfaces::new();
+        let mock_enclave = MockConsensusEnclave::new();
+
+        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+        assert_eq!(tx_manager.num_entries(), 0);
+
+        let tx_hashes: Vec<_> = (0..10).map(|i| TxHash([i as u8; 32])).collect();
+        let aad = vec![];
+        let peer = PeerSession::default();
+        match tx_manager.encrypt_for_peer(&tx_hashes, &aad, &peer) {
+            Err(TxManagerError::NotInCache(_)) => {} // This is expected.
+            _ => panic!(),
+        }
+    }
+
+    #[test_with_logger]
+    // Should return an error if enclave.txs_for_peer returns an error.
+    fn test_encrypt_for_peer_err_enclave_error(logger: Logger) {
+        let mock_untrusted = MockUntrustedInterfaces::new();
+        let mut mock_enclave = MockConsensusEnclave::new();
+
+        // This should be called and should return an error.
+        mock_enclave
+            .expect_txs_for_peer()
+            .times(1)
+            .return_const(Err(EnclaveError::Signature));
+
+        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+
+        // Add transactions to the cache.
+        let tx_hashes: Vec<_> = (0..10).map(|i| TxHash([i as u8; 32])).collect();
+        for tx_hash in &tx_hashes {
+            let context = WellFormedTxContext::new(
+                Default::default(),
+                tx_hash.clone(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+            );
+
+            let cache_entry = CacheEntry {
+                encrypted_tx: Default::default(),
+                context: Arc::new(context.clone()),
+            };
+
+            tx_manager
+                .cache
+                .lock()
+                .unwrap()
+                .insert(context.tx_hash().clone(), cache_entry);
+        }
+        assert_eq!(tx_manager.num_entries(), tx_hashes.len());
+
+        let aad = vec![];
+        let peer = PeerSession::default();
+
+        match tx_manager.encrypt_for_peer(&tx_hashes, &aad, &peer) {
+            Err(TxManagerError::Enclave(EnclaveError::Signature)) => {} // This is expected.
+            _ => panic!(),
+        }
+    }
+
+    #[test_with_logger]
+    // Should return cache_entry.encrypted_tx if it is in the cache.
+    fn test_get_encrypted_tx(logger: Logger) {
+        let mock_untrusted = MockUntrustedInterfaces::new();
+        let mock_enclave = MockConsensusEnclave::new();
+        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+
+        // Add a transaction to the cache.
+        let cache_entry = CacheEntry {
+            encrypted_tx: WellFormedEncryptedTx(vec![1, 2, 3]),
+            context: Default::default(),
+        };
+
+        let tx_hash = TxHash([1u8; 32]);
+        tx_manager
+            .cache
+            .lock()
+            .unwrap()
+            .insert(tx_hash.clone(), cache_entry);
+
+        // Get something that is in the cache.
+        assert_eq!(
+            tx_manager.get_encrypted_tx(&tx_hash),
+            Some(WellFormedEncryptedTx(vec![1, 2, 3]))
+        );
+
+        // Get something that is not in the cache.
+        assert_eq!(tx_manager.get_encrypted_tx(&TxHash([88u8; 32])), None);
+    }
+
+    #[test_with_logger]
+    // Should return the number of elements in the cache.
+    fn test_get_num_entries(logger: Logger) {
+        let mock_untrusted = MockUntrustedInterfaces::new();
+        let mock_enclave = MockConsensusEnclave::new();
+        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+
+        // Initially, the cache is empty.
+        assert_eq!(tx_manager.num_entries(), 0);
+
+        // Add transactions to the cache.
+        let tx_hashes: Vec<_> = (0..10).map(|i| TxHash([i as u8; 32])).collect();
+        for tx_hash in &tx_hashes {
+            let context = WellFormedTxContext::new(
+                Default::default(),
+                tx_hash.clone(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+            );
+
+            let cache_entry = CacheEntry {
+                encrypted_tx: Default::default(),
+                context: Arc::new(context.clone()),
+            };
+
+            tx_manager
+                .cache
+                .lock()
+                .unwrap()
+                .insert(context.tx_hash().clone(), cache_entry);
+        }
+        assert_eq!(tx_manager.num_entries(), tx_hashes.len());
     }
 }
