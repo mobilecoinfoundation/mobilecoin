@@ -109,7 +109,7 @@ pub trait UntrustedInterfaces: Send + Sync {
     ) -> TransactionValidationResult<(u64, Vec<TxOutMembershipProof>)>;
 
     /// Checks if a transaction is valid (see definition in validators.rs).
-    fn is_valid(&self, context: &WellFormedTxContext) -> TransactionValidationResult<()>;
+    fn is_valid(&self, context: Arc<WellFormedTxContext>) -> TransactionValidationResult<()>;
 
     /// Combines a set of "candidate values" into a "composite value".
     /// This assumes all values are well-formed and safe to append to the ledger individually.
@@ -252,23 +252,24 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
         self.lock_cache().len()
     }
 
-    /// Check if a transaction, by itself, is safe to append to the current ledger.
+    /// Validate the transaction corresponding to the given hash against the current ledger.
     pub fn validate(&self, tx_hash: &TxHash) -> TxManagerResult<()> {
-        let cache = self.lock_cache();
-        match cache.get(tx_hash) {
-            None => {
-                log::error!(
-                    self.logger,
-                    "attempting to validate non-existent tx hash {:?}",
-                    tx_hash
-                );
-                Err(TxManagerError::NotInCache(*tx_hash))
-            }
-            Some(entry) => {
-                let _timer = counters::VALIDATE_TX_TIME.start_timer();
-                self.untrusted.is_valid(entry.context())?;
-                Ok(())
-            }
+        let context_opt = {
+            let cache = self.lock_cache();
+            cache.get(tx_hash).map(|entry| entry.context.clone())
+        };
+
+        if let Some(context) = context_opt {
+            let _timer = counters::VALIDATE_TX_TIME.start_timer();
+            self.untrusted.is_valid(context)?;
+            Ok(())
+        } else {
+            log::error!(
+                self.logger,
+                "attempting to validate non-existent tx hash {:?}",
+                tx_hash
+            );
+            Err(TxManagerError::NotInCache(*tx_hash))
         }
     }
 
