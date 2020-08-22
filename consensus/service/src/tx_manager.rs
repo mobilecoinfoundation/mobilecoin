@@ -601,6 +601,57 @@ mod tests {
     }
 
     #[test_with_logger]
+    // Should return Ok if the transactions are in the cache.
+    fn test_combine_ok(logger: Logger) {
+        let tx_hashes: Vec<_> = (0..10).map(|i| TxHash([i as u8; 32])).collect();
+
+        let mut mock_untrusted = MockUntrustedInterfaces::new();
+        let expected: Vec<_> = tx_hashes.iter().take(5).cloned().collect();
+        mock_untrusted
+            .expect_combine()
+            .times(1)
+            .return_const(expected.clone());
+
+        let mock_enclave = MockConsensusEnclave::new();
+        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+
+        // Add transactions to the cache.
+        for tx_hash in &tx_hashes {
+            let context = WellFormedTxContext::new(
+                Default::default(),
+                tx_hash.clone(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+            );
+
+            let cache_entry = CacheEntry {
+                encrypted_tx: Default::default(),
+                context: Arc::new(context.clone()),
+            };
+
+            tx_manager
+                .cache
+                .lock()
+                .unwrap()
+                .insert(context.tx_hash().clone(), cache_entry);
+        }
+        assert_eq!(tx_manager.num_entries(), tx_hashes.len());
+
+        // TODO: combine should return a Result.
+        assert_eq!(tx_manager.combine(&tx_hashes), expected);
+    }
+
+    #[test_with_logger]
+    #[ignore]
+    // Should return Err if any transaction is not in the cache.
+    fn test_combine_err_not_in_cache(_logger: Logger) {
+        // TODO: combine should return a Result.
+        unimplemented!()
+    }
+
+    #[test_with_logger]
     fn test_hashes_to_block(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
         let sender = AccountKey::random(&mut rng);
