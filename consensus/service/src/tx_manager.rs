@@ -28,7 +28,6 @@ use mc_transaction_core::{
 };
 use std::{
     collections::BTreeSet,
-    iter::FromIterator,
     sync::{Mutex, MutexGuard},
 };
 
@@ -205,30 +204,28 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
     }
 
     /// Remove expired transactions from the cache and return their hashes.
-    pub fn remove_expired(&self, cur_block: u64) -> HashSet<TxHash> {
+    ///
+    /// # Arguments
+    /// * `block_index` - Current block index.
+    pub fn remove_expired(&self, block_index: u64) -> HashSet<TxHash> {
         let mut cache = self.lock_cache();
 
-        let hashes_before_purge = HashSet::from_iter(cache.keys().cloned());
+        let (expired, retained): (HashMap<_, _>, HashMap<_, _>) = cache
+            .drain()
+            .partition(|(_, entry)| entry.context().tombstone_block() < block_index);
 
-        cache.retain(|_k, entry| entry.context().tombstone_block() >= cur_block);
+        cache.extend(retained.into_iter());
 
-        let hashes_after_purge = HashSet::from_iter(cache.keys().cloned());
-        let purged_hashes = hashes_before_purge
-            .difference(&hashes_after_purge)
-            .cloned()
-            .collect::<HashSet<_>>();
         log::debug!(
             self.logger,
-            "cleared {} ({:?}) expired txs, left with {} ({:?})",
-            purged_hashes.len(),
-            purged_hashes,
-            hashes_after_purge.len(),
-            hashes_after_purge,
+            "Removed {} expired transactions, retained {}",
+            expired.len(),
+            cache.len(),
         );
 
         counters::TX_CACHE_NUM_ENTRIES.set(cache.len() as i64);
 
-        purged_hashes
+        expired.into_iter().map(|(tx_hash, _)| tx_hash).collect()
     }
 
     /// Returns true if the cache contains the transaction.
