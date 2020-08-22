@@ -134,7 +134,7 @@ pub struct Slot<V: Value, ValidationError: Display> {
     validity_fn: ValidityFn<V, ValidationError>,
 
     /// Application-specific function for combining multiple values. Must be deterministic.
-    combine_fn: CombineFn<V>,
+    combine_fn: CombineFn<V, ValidationError>,
 
     /// List of values that have been checked to be valid for the current slot.
     /// We can cache this and save on validation calls since the ledger doesn't change during a slot.
@@ -346,7 +346,7 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
         quorum_set: QuorumSet,
         slot_index: SlotIndex,
         validity_fn: ValidityFn<V, ValidationError>,
-        combine_fn: CombineFn<V>,
+        combine_fn: CombineFn<V, ValidationError>,
         logger: Logger,
     ) -> Self {
         let mut slot = Slot {
@@ -543,8 +543,10 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
 
         if !self.Z.is_empty() && self.B.is_zero() {
             let z_as_vec: Vec<V> = self.Z.iter().cloned().collect();
-            let values: Vec<V> = (self.combine_fn)(&z_as_vec);
-            self.B = Ballot::new(1, &values);
+            match (self.combine_fn)(&z_as_vec) {
+                Ok(values) => self.B = Ballot::new(1, &values),
+                Err(_e) => log::error!(self.logger, "Failed to combine Z: {:?}", &z_as_vec),
+            }
         }
     }
 
@@ -1144,8 +1146,10 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
         // applied to all confirmed nominated values."
         if !self.Z.is_empty() {
             let z_as_vec: Vec<V> = self.Z.iter().cloned().collect();
-            let values: Vec<V> = (self.combine_fn)(&z_as_vec);
-            return Some(values);
+            match (self.combine_fn)(&z_as_vec) {
+                Ok(values) => return Some(values),
+                Err(_e) => log::error!(self.logger, "Failed to combine Z: {:?}", &z_as_vec),
+            }
         }
 
         // "Otherwise, if no ballot is confirmed prepared and no value is confirmed nominated,

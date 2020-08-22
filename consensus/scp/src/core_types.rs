@@ -34,7 +34,7 @@ impl<T> GenericNodeId for T where
 }
 
 /// Application-specific function for combining multiple values. Must be deterministic.
-pub type CombineFn<V> = Arc<(dyn Fn(&[V]) -> Vec<V> + Sync + Send)>;
+pub type CombineFn<V, E> = Arc<(dyn Fn(&[V]) -> Result<Vec<V>, E> + Sync + Send)>;
 
 /// Application-specific validation of value.
 pub type ValidityFn<V, E> = Arc<(dyn Fn(&V) -> Result<(), E> + Sync + Send)>;

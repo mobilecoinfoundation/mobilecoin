@@ -39,7 +39,7 @@ pub struct Node<V: Value, ValidationError: Display> {
     validity_fn: ValidityFn<V, ValidationError>,
 
     /// Application-specific function for combining multiple values. Must be deterministic.
-    combine_fn: CombineFn<V>,
+    combine_fn: CombineFn<V, ValidationError>,
 
     /// Logger.
     logger: Logger,
@@ -55,7 +55,7 @@ impl<V: Value, ValidationError: Display + 'static> Node<V, ValidationError> {
         ID: NodeID,
         Q: QuorumSet,
         validity_fn: ValidityFn<V, ValidationError>,
-        combine_fn: CombineFn<V>,
+        combine_fn: CombineFn<V, ValidationError>,
         logger: Logger,
     ) -> Self {
         Self {

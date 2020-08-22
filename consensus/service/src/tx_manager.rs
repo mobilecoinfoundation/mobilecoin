@@ -264,22 +264,24 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
     }
 
     /// Combines the transactions that correspond to the given hashes.
-    pub fn combine(&self, tx_hashes: &[TxHash]) -> Vec<TxHash> {
-        // Dedup
-        let tx_hashes: HashSet<&TxHash> = tx_hashes.iter().clone().collect();
-        let mut tx_contexts = Vec::new();
+    pub fn combine(&self, tx_hashes: &[TxHash]) -> TxManagerResult<Vec<TxHash>> {
+        let tx_contexts: Vec<Arc<WellFormedTxContext>> = {
+            let cache = self.lock_cache();
+            let res: TxManagerResult<Vec<_>> = tx_hashes
+                .iter()
+                .map(|tx_hash| {
+                    cache
+                        .get(tx_hash)
+                        .map(|entry| entry.context().clone())
+                        .ok_or(TxManagerError::NotInCache(*tx_hash))
+                })
+                .collect();
+            res?
+        };
 
-        let cache = self.lock_cache();
-        for tx_hash in tx_hashes {
-            if let Some(entry) = cache.get(&tx_hash) {
-                tx_contexts.push(entry.context().clone());
-            } else {
-                log::error!(self.logger, "Ignoring non-existent TxHash {:?}", tx_hash);
-            }
-        }
-
-        self.untrusted
-            .combine(&tx_contexts, MAX_TRANSACTIONS_PER_BLOCK)
+        Ok(self
+            .untrusted
+            .combine(&tx_contexts, MAX_TRANSACTIONS_PER_BLOCK))
     }
 
     /// Forms a Block containing the transactions that correspond to the given hashes.
@@ -639,8 +641,13 @@ mod tests {
         }
         assert_eq!(tx_manager.num_entries(), tx_hashes.len());
 
-        // TODO: combine should return a Result.
-        assert_eq!(tx_manager.combine(&tx_hashes), expected);
+        // // TODO: combine should return a Result.
+        // assert_eq!(tx_manager.combine(&tx_hashes), expected);
+        //
+        match tx_manager.combine(&tx_hashes) {
+            Ok(combined) => assert_eq!(combined, expected),
+            _ => panic!(),
+        }
     }
 
     #[test_with_logger]

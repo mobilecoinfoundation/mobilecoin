@@ -49,7 +49,7 @@ pub struct TestOptions {
     pub validity_fn: ValidityFn<String, test_utils::TransactionValidationError>,
 
     /// The values combine function to use (typically trivial)
-    pub combine_fn: CombineFn<String>,
+    pub combine_fn: CombineFn<String, test_utils::TransactionValidationError>,
 }
 
 impl TestOptions {
