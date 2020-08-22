@@ -150,7 +150,7 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
             let cache = self.lock_cache();
             if let Some(entry) = cache.get(&tx_context.tx_hash) {
                 // The transaction has already been checked and is in the cache.
-                return Ok(entry.context.tx_hash().clone());
+                return Ok(*entry.context.tx_hash());
             }
         }
 
