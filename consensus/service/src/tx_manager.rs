@@ -370,7 +370,7 @@ mod tests {
     use rand::{rngs::StdRng, SeedableRng};
 
     #[test_with_logger]
-    // Should return Ok when a well-formed Tx is (re)-inserted.
+    // Should return Ok when a well-formed Tx is inserted.
     fn test_insert_ok(logger: Logger) {
         let tx_context = TxContext::default();
         let tx_hash = tx_context.tx_hash;
@@ -381,6 +381,51 @@ mod tests {
             .expect_well_formed_check()
             .times(1)
             .return_const(Ok((0, vec![])));
+
+        // The enclave's well-formed check also ought to be called, and should return Ok.
+        let mut mock_enclave = MockConsensusEnclave::new();
+
+        let well_formed_encrypted_tx = WellFormedEncryptedTx::default();
+        let well_formed_tx_context = WellFormedTxContext::new(
+            0,
+            tx_hash.clone(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+        );
+
+        mock_enclave
+            .expect_tx_is_well_formed()
+            .times(1)
+            .return_const(Ok((well_formed_encrypted_tx, well_formed_tx_context)));
+
+        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+        assert_eq!(tx_manager.num_entries(), 0);
+
+        assert!(tx_manager.insert(tx_context.clone()).is_ok());
+        assert_eq!(tx_manager.num_entries(), 1);
+        assert!(tx_manager.lock_cache().contains_key(&tx_hash));
+    }
+
+    #[test_with_logger]
+    // Should return Ok when a well-formed Tx is re-inserted.
+    fn test_reinsert_ok(logger: Logger) {
+        let tx_context = TxContext::default();
+        let tx_hash = tx_context.tx_hash;
+
+        let mut mock_untrusted = MockUntrustedInterfaces::new();
+        // Untrusted's well-formed check should be called once each time insert_propose_tx is called.
+        mock_untrusted
+            .expect_well_formed_check()
+            .times(1)
+            .return_const(Ok((0, vec![])));
+
+        // Not sure that this should happen...
+        mock_untrusted
+            .expect_is_valid()
+            .times(1)
+            .return_const(Ok(()));
 
         // The enclave's well-formed check also ought to be called, and should return Ok.
         let mut mock_enclave = MockConsensusEnclave::new();
