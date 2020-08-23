@@ -151,7 +151,8 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
         {
             let cache = self.lock_cache();
             if let Some(entry) = cache.get(&tx_context.tx_hash) {
-                // The transaction has already been checked and is in the cache.
+                self.untrusted.is_valid(entry.context().clone())?;
+                // The transaction is well-formed and is in the cache.
                 return Ok(*entry.context.tx_hash());
             }
         }
@@ -159,15 +160,14 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
         // Start timer for metrics.
         let timer = counters::WELL_FORMED_CHECK_TIME.start_timer();
 
-        // Perform the untrusted part of the well-formed check.
+        // The untrusted part of the well-formed check.
         let (current_block_index, membership_proofs) = self.untrusted.well_formed_check(
             &tx_context.highest_indices,
             &tx_context.key_images,
             &tx_context.output_public_keys,
         )?;
 
-        // Check if tx is well-formed, and if it is get the encrypted copy and context for us
-        // to store.
+        // The enclave part of the well-formed check.
         let (well_formed_encrypted_tx, well_formed_tx_context) = self.enclave.tx_is_well_formed(
             tx_context.locally_encrypted_tx,
             current_block_index,
@@ -178,7 +178,7 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
 
         log::trace!(
             self.logger,
-            "Inserted well-formed transaction request {hash} into cache",
+            "Cached well-formed transaction {hash}",
             hash = well_formed_tx_context.tx_hash().to_string(),
         );
 
@@ -189,14 +189,12 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
             context: Arc::new(well_formed_tx_context),
         };
 
-        // Store in our cache.
         {
             let mut cache = self.lock_cache();
             cache.insert(tx_hash, entry);
             counters::TX_CACHE_NUM_ENTRIES.set(cache.len() as i64);
         }
 
-        // Success!
         Ok(tx_hash)
     }
 
@@ -225,7 +223,7 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
         expired.keys().cloned().collect()
     }
 
-    /// Returns the list of hashes inside `tx_hashes` that are not inside the cache.
+    /// Returns elements of `tx_hashes` that are not inside the cache.
     pub fn missing_hashes<T>(&self, tx_hashes: &T) -> Vec<TxHash>
     where
         for<'a> &'a T: IntoIterator<Item = &'a TxHash>,
