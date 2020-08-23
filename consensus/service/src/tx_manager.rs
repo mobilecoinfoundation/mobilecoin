@@ -211,7 +211,9 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
             .drain()
             .partition(|(_, entry)| entry.context().tombstone_block() < block_index);
 
-        cache.extend(retained.into_iter());
+        *cache = retained;
+
+        counters::TX_CACHE_NUM_ENTRIES.set(cache.len() as i64);
 
         log::debug!(
             self.logger,
@@ -220,9 +222,7 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
             cache.len(),
         );
 
-        counters::TX_CACHE_NUM_ENTRIES.set(cache.len() as i64);
-
-        expired.into_iter().map(|(tx_hash, _)| tx_hash).collect()
+        expired.keys().cloned().collect()
     }
 
     /// Returns the list of hashes inside `tx_hashes` that are not inside the cache.
@@ -352,7 +352,7 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
     }
 
     fn lock_cache(&self) -> MutexGuard<HashMap<TxHash, CacheEntry>> {
-        self.cache.lock().expect("lock poisoned")
+        self.cache.lock().expect("Lock poisoned")
     }
 }
 
@@ -641,9 +641,6 @@ mod tests {
         }
         assert_eq!(tx_manager.num_entries(), tx_hashes.len());
 
-        // // TODO: combine should return a Result.
-        // assert_eq!(tx_manager.combine(&tx_hashes), expected);
-        //
         match tx_manager.combine(&tx_hashes) {
             Ok(combined) => assert_eq!(combined, expected),
             _ => panic!(),
@@ -651,11 +648,45 @@ mod tests {
     }
 
     #[test_with_logger]
-    #[ignore]
     // Should return Err if any transaction is not in the cache.
-    fn test_combine_err_not_in_cache(_logger: Logger) {
-        // TODO: combine should return a Result.
-        unimplemented!()
+    fn test_combine_err_not_in_cache(logger: Logger) {
+        let n_transactions = 10;
+        let tx_hashes: Vec<_> = (0..n_transactions).map(|i| TxHash([i as u8; 32])).collect();
+
+        // UntrustedInterfaces should not be called.
+        let mock_untrusted = MockUntrustedInterfaces::new();
+
+        // ConsensusEnclave should not be called.
+        let mock_enclave = MockConsensusEnclave::new();
+        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+
+        // Add some transactions, but not all, to the cache.
+        for tx_hash in &tx_hashes[2..] {
+            let context = WellFormedTxContext::new(
+                Default::default(),
+                tx_hash.clone(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+            );
+
+            let cache_entry = CacheEntry {
+                encrypted_tx: Default::default(),
+                context: Arc::new(context.clone()),
+            };
+
+            tx_manager
+                .cache
+                .lock()
+                .unwrap()
+                .insert(context.tx_hash().clone(), cache_entry);
+        }
+
+        match tx_manager.combine(&tx_hashes) {
+            Ok(_combined) => panic!(),
+            _ => {} // This is expected.
+        }
     }
 
     #[test_with_logger]
