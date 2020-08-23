@@ -38,6 +38,13 @@ impl Range {
 }
 
 /// Ranges are ordered by `len`, then lexicographically by (from,to).
+///
+/// This is a total ordering of (u64, u64) tuples. Additionally, when a node of a binary tree
+/// (i.e. Merkle tree) is identified with the range of indices below that node, the len of a
+/// range is equal to 2^h, where h is the height of the node in the tree. This means that traversing
+/// a list of ranges sorted in ascending order corresponds to a bottom-up traversal of the tree
+/// (which is handy for computing Merkle hashes). Ordering ranges of equal len lexicographically
+/// makes it a bottom-up and left-to-right traversal of the tree.
 impl Ord for Range {
     fn cmp(&self, other: &Range) -> Ordering {
         if self.len() != other.len() {
