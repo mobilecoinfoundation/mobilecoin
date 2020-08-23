@@ -265,10 +265,11 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
 
     /// Combines the transactions that correspond to the given hashes.
     pub fn combine(&self, tx_hashes: &[TxHash]) -> TxManagerResult<Vec<TxHash>> {
+        let tx_hashes: HashSet<&TxHash> = tx_hashes.iter().clone().collect(); // Dedup
         let tx_contexts: Vec<Arc<WellFormedTxContext>> = {
             let cache = self.lock_cache();
             let res: TxManagerResult<Vec<_>> = tx_hashes
-                .iter()
+                .into_iter()
                 .map(|tx_hash| {
                     cache
                         .get(tx_hash)
