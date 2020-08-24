@@ -39,7 +39,7 @@ pub struct Amount {
     pub commitment: CompressedCommitment,
 
     /// `masked_value = value XOR_8 Blake2B(value_mask | shared_secret)`
-    #[prost(uint64, required, tag = "2")]
+    #[prost(fixed64, required, tag = "2")]
     pub masked_value: u64,
 }
 
