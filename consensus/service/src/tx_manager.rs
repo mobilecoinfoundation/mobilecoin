@@ -1,6 +1,10 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-//! The entity that manages cached transactions on the untrusted side.
+//! TxManager maps operations on transaction hashes to in-enclave operations on the corresponding transactions.
+//!
+//! Internally, TxManager maintains a collection of (encrypted) transactions that have been found
+//! to be well-formed. These can be thought of as the "working set" of transactions that the consensus service
+//! may operate on.
 
 use crate::counters;
 use failure::Fail;
@@ -22,11 +26,7 @@ use mc_transaction_core::{
     validation::{TransactionValidationError, TransactionValidationResult},
     Block, BlockContents, BlockSignature,
 };
-use std::{
-    collections::BTreeSet,
-    iter::FromIterator,
-    sync::{Mutex, MutexGuard},
-};
+use std::sync::{Mutex, MutexGuard};
 
 #[cfg(test)]
 use mockall::*;
@@ -75,8 +75,10 @@ impl From<LedgerDbError> for TxManagerError {
 pub type TxManagerResult<T> = Result<T, TxManagerError>;
 
 struct CacheEntry {
+    /// An encrypted transaction that has been found to be well-formed.
     encrypted_tx: WellFormedEncryptedTx,
 
+    /// Context exposed by the enclave about this transaction.
     context: Arc<WellFormedTxContext>,
 }
 
@@ -104,7 +106,7 @@ pub trait UntrustedInterfaces: Send + Sync {
     ) -> TransactionValidationResult<(u64, Vec<TxOutMembershipProof>)>;
 
     /// Checks if a transaction is valid (see definition in validators.rs).
-    fn is_valid(&self, context: &WellFormedTxContext) -> TransactionValidationResult<()>;
+    fn is_valid(&self, context: Arc<WellFormedTxContext>) -> TransactionValidationResult<()>;
 
     /// Combines a set of "candidate values" into a "composite value".
     /// This assumes all values are well-formed and safe to append to the ledger individually.
@@ -144,30 +146,28 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
         }
     }
 
-    /// Insert a new transaction into the cache.
-    /// This enforces that the transaction is well-formed.
-    pub fn insert_proposed_tx(&self, tx_context: TxContext) -> TxManagerResult<TxHash> {
-        // If already in cache then we're done.
+    /// Insert a transaction into the cache. The transaction must be well-formed.
+    pub fn insert(&self, tx_context: TxContext) -> TxManagerResult<TxHash> {
         {
             let cache = self.lock_cache();
             if let Some(entry) = cache.get(&tx_context.tx_hash) {
-                self.untrusted.is_valid(entry.context())?;
-                return Err(TxManagerError::AlreadyInCache);
+                self.untrusted.is_valid(entry.context().clone())?;
+                // The transaction is well-formed and is in the cache.
+                return Ok(*entry.context.tx_hash());
             }
         }
 
         // Start timer for metrics.
         let timer = counters::WELL_FORMED_CHECK_TIME.start_timer();
 
-        // Perform the untrusted part of the well-formed check.
+        // The untrusted part of the well-formed check.
         let (current_block_index, membership_proofs) = self.untrusted.well_formed_check(
             &tx_context.highest_indices,
             &tx_context.key_images,
             &tx_context.output_public_keys,
         )?;
 
-        // Check if tx is well-formed, and if it is get the encrypted copy and context for us
-        // to store.
+        // The enclave part of the well-formed check.
         let (well_formed_encrypted_tx, well_formed_tx_context) = self.enclave.tx_is_well_formed(
             tx_context.locally_encrypted_tx,
             current_block_index,
@@ -178,7 +178,7 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
 
         log::trace!(
             self.logger,
-            "Inserted well-formed transaction request {hash} into cache",
+            "Cached well-formed transaction {hash}",
             hash = well_formed_tx_context.tx_hash().to_string(),
         );
 
@@ -189,103 +189,101 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
             context: Arc::new(well_formed_tx_context),
         };
 
-        // Store in our cache.
         {
             let mut cache = self.lock_cache();
             cache.insert(tx_hash, entry);
             counters::TX_CACHE_NUM_ENTRIES.set(cache.len() as i64);
         }
 
-        // Success!
         Ok(tx_hash)
     }
 
-    /// Evacuate expired transactions from the cache.
-    /// Returns the hashes that were removed.
-    pub fn evacuate_expired(&self, cur_block: u64) -> HashSet<TxHash> {
+    /// Remove expired transactions from the cache and return their hashes.
+    ///
+    /// # Arguments
+    /// * `block_index` - Current block index.
+    pub fn remove_expired(&self, block_index: u64) -> HashSet<TxHash> {
         let mut cache = self.lock_cache();
 
-        let hashes_before_purge = HashSet::from_iter(cache.keys().cloned());
+        let (expired, retained): (HashMap<_, _>, HashMap<_, _>) = cache
+            .drain()
+            .partition(|(_, entry)| entry.context().tombstone_block() < block_index);
 
-        cache.retain(|_k, entry| entry.context().tombstone_block() >= cur_block);
-
-        let hashes_after_purge = HashSet::from_iter(cache.keys().cloned());
-        let purged_hashes = hashes_before_purge
-            .difference(&hashes_after_purge)
-            .cloned()
-            .collect::<HashSet<_>>();
-        log::debug!(
-            self.logger,
-            "cleared {} ({:?}) expired txs, left with {} ({:?})",
-            purged_hashes.len(),
-            purged_hashes,
-            hashes_after_purge.len(),
-            hashes_after_purge,
-        );
+        *cache = retained;
 
         counters::TX_CACHE_NUM_ENTRIES.set(cache.len() as i64);
 
-        purged_hashes
+        log::debug!(
+            self.logger,
+            "Removed {} expired transactions, retained {}",
+            expired.len(),
+            cache.len(),
+        );
+
+        expired.keys().cloned().collect()
     }
 
-    /// Returns the list of hashes inside `tx_hashes` that are not inside the cache.
-    pub fn missing_hashes(&self, tx_hashes: &BTreeSet<TxHash>) -> Vec<TxHash> {
-        let mut missing = Vec::new();
+    /// Returns elements of `tx_hashes` that are not inside the cache.
+    pub fn missing_hashes<T>(&self, tx_hashes: &T) -> Vec<TxHash>
+    where
+        for<'a> &'a T: IntoIterator<Item = &'a TxHash>,
+    {
         let cache = self.lock_cache();
-        for tx_hash in tx_hashes {
-            if !cache.contains_key(tx_hash) {
-                missing.push(*tx_hash);
-            }
-        }
-        missing
+        tx_hashes
+            .into_iter()
+            .filter(|tx_hash| !cache.contains_key(tx_hash))
+            .cloned()
+            .collect()
     }
 
-    /// Validate a transaction by it's hash. This checks if by itself this transaction is safe to
-    /// append to the ledger.
-    pub fn validate_tx_by_hash(&self, tx_hash: &TxHash) -> TxManagerResult<()> {
-        let cache = self.lock_cache();
-        match cache.get(tx_hash) {
-            None => {
-                log::error!(
-                    self.logger,
-                    "attempting to validate non-existent tx hash {:?}",
-                    tx_hash
-                );
-                Err(TxManagerError::NotInCache(*tx_hash))
-            }
-            Some(entry) => {
-                let _timer = counters::VALIDATE_TX_TIME.start_timer();
-                self.untrusted.is_valid(entry.context())?;
-                Ok(())
-            }
+    pub fn num_entries(&self) -> usize {
+        self.lock_cache().len()
+    }
+
+    /// Validate the transaction corresponding to the given hash against the current ledger.
+    pub fn validate(&self, tx_hash: &TxHash) -> TxManagerResult<()> {
+        let context_opt = {
+            let cache = self.lock_cache();
+            cache.get(tx_hash).map(|entry| entry.context.clone())
+        };
+
+        if let Some(context) = context_opt {
+            let _timer = counters::VALIDATE_TX_TIME.start_timer();
+            self.untrusted.is_valid(context)?;
+            Ok(())
+        } else {
+            log::error!(
+                self.logger,
+                "attempting to validate non-existent tx hash {:?}",
+                tx_hash
+            );
+            Err(TxManagerError::NotInCache(*tx_hash))
         }
     }
 
-    /// Combine a list of transactions by their hashes and return the list of hashes of
-    /// the combined transaction set.
-    ///
-    /// This will silently ignore non-existent hashes. Our combine methods are allowed to filter
-    /// out transactions, so while non-existent hashes should not be fed into this method, they are
-    /// not treated as an error.
-    pub fn combine_txs_by_hash(&self, tx_hashes: &[TxHash]) -> Vec<TxHash> {
-        // Dedup
-        let tx_hashes: HashSet<&TxHash> = tx_hashes.iter().clone().collect();
-        let mut tx_contexts = Vec::new();
+    /// Combines the transactions that correspond to the given hashes.
+    pub fn combine(&self, tx_hashes: &[TxHash]) -> TxManagerResult<Vec<TxHash>> {
+        let tx_hashes: HashSet<&TxHash> = tx_hashes.iter().clone().collect(); // Dedup
+        let tx_contexts: Vec<Arc<WellFormedTxContext>> = {
+            let cache = self.lock_cache();
+            let res: TxManagerResult<Vec<_>> = tx_hashes
+                .into_iter()
+                .map(|tx_hash| {
+                    cache
+                        .get(tx_hash)
+                        .map(|entry| entry.context().clone())
+                        .ok_or(TxManagerError::NotInCache(*tx_hash))
+                })
+                .collect();
+            res?
+        };
 
-        let cache = self.lock_cache();
-        for tx_hash in tx_hashes {
-            if let Some(entry) = cache.get(&tx_hash) {
-                tx_contexts.push(entry.context().clone());
-            } else {
-                log::error!(self.logger, "Ignoring non-existent TxHash {:?}", tx_hash);
-            }
-        }
-
-        self.untrusted
-            .combine(&tx_contexts, MAX_TRANSACTIONS_PER_BLOCK)
+        Ok(self
+            .untrusted
+            .combine(&tx_contexts, MAX_TRANSACTIONS_PER_BLOCK))
     }
 
-    /// A "shim" that converts the output of consensus into something that can be written to the ledger.
+    /// Forms a Block containing the transactions that correspond to the given hashes.
     pub fn tx_hashes_to_block(
         &self,
         tx_hashes: &[TxHash],
@@ -317,9 +315,13 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
         Ok((block, block_contents, signature))
     }
 
-    /// For a given list of TxHashes and a peer session, return a message to send to that peer
-    /// containing the transaction contents.
-    pub fn txs_for_peer(
+    /// Creates a message containing a set of transactions that are encrypted for a peer.
+    ///
+    /// # Arguments
+    /// * `tx_hashes` - transaction hashes.
+    /// * `aad` - Additional authenticated data.
+    /// * `peer` - Recipient of the encrypted message.
+    pub fn encrypt_for_peer(
         &self,
         tx_hashes: &[TxHash],
         aad: &[u8],
@@ -341,18 +343,15 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
         Ok(self.enclave.txs_for_peer(&encrypted_txs?, aad, peer)?)
     }
 
-    pub fn get_encrypted_tx_by_hash(&self, tx_hash: &TxHash) -> Option<WellFormedEncryptedTx> {
+    /// Get the encrypted transaction corresponding to the given hash.
+    pub fn get_encrypted_tx(&self, tx_hash: &TxHash) -> Option<WellFormedEncryptedTx> {
         self.lock_cache()
             .get(tx_hash)
             .map(|entry| entry.encrypted_tx().clone())
     }
 
-    pub fn num_entries(&self) -> usize {
-        self.lock_cache().len()
-    }
-
     fn lock_cache(&self) -> MutexGuard<HashMap<TxHash, CacheEntry>> {
-        self.cache.lock().expect("lock poisoned")
+        self.cache.lock().expect("Lock poisoned")
     }
 }
 
@@ -361,12 +360,378 @@ mod tests {
     use super::*;
     use crate::validators::DefaultTxManagerUntrustedInterfaces;
     use mc_common::logger::test_with_logger;
-    use mc_consensus_enclave_mock::ConsensusServiceMockEnclave;
+    use mc_consensus_enclave_mock::{
+        ConsensusServiceMockEnclave, Error as EnclaveError, MockConsensusEnclave,
+    };
     use mc_ledger_db::Ledger;
     use mc_transaction_core_test_utils::{
         create_ledger, create_transaction, initialize_ledger, AccountKey,
     };
     use rand::{rngs::StdRng, SeedableRng};
+
+    #[test_with_logger]
+    // Should return Ok when a well-formed Tx is inserted.
+    fn test_insert_ok(logger: Logger) {
+        let tx_context = TxContext::default();
+        let tx_hash = tx_context.tx_hash;
+
+        let mut mock_untrusted = MockUntrustedInterfaces::new();
+        // Untrusted's well-formed check should be called once each time insert_propose_tx is called.
+        mock_untrusted
+            .expect_well_formed_check()
+            .times(1)
+            .return_const(Ok((0, vec![])));
+
+        // The enclave's well-formed check also ought to be called, and should return Ok.
+        let mut mock_enclave = MockConsensusEnclave::new();
+
+        let well_formed_encrypted_tx = WellFormedEncryptedTx::default();
+        let well_formed_tx_context = WellFormedTxContext::new(
+            0,
+            tx_hash.clone(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+        );
+
+        mock_enclave
+            .expect_tx_is_well_formed()
+            .times(1)
+            .return_const(Ok((well_formed_encrypted_tx, well_formed_tx_context)));
+
+        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+        assert_eq!(tx_manager.num_entries(), 0);
+
+        assert!(tx_manager.insert(tx_context.clone()).is_ok());
+        assert_eq!(tx_manager.num_entries(), 1);
+        assert!(tx_manager.lock_cache().contains_key(&tx_hash));
+    }
+
+    #[test_with_logger]
+    // Should return Ok when a well-formed Tx is re-inserted.
+    fn test_reinsert_ok(logger: Logger) {
+        let tx_context = TxContext::default();
+        let tx_hash = tx_context.tx_hash;
+
+        let mut mock_untrusted = MockUntrustedInterfaces::new();
+        // Untrusted's well-formed check should be called once each time insert_propose_tx is called.
+        mock_untrusted
+            .expect_well_formed_check()
+            .times(1)
+            .return_const(Ok((0, vec![])));
+
+        // Not sure that this should happen...
+        mock_untrusted
+            .expect_is_valid()
+            .times(1)
+            .return_const(Ok(()));
+
+        // The enclave's well-formed check also ought to be called, and should return Ok.
+        let mut mock_enclave = MockConsensusEnclave::new();
+
+        let well_formed_encrypted_tx = WellFormedEncryptedTx::default();
+        let well_formed_tx_context = WellFormedTxContext::new(
+            0,
+            tx_hash.clone(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+            Default::default(),
+        );
+
+        mock_enclave
+            .expect_tx_is_well_formed()
+            .times(1)
+            .return_const(Ok((well_formed_encrypted_tx, well_formed_tx_context)));
+
+        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+        assert_eq!(tx_manager.num_entries(), 0);
+
+        assert!(tx_manager.insert(tx_context.clone()).is_ok());
+        assert_eq!(tx_manager.num_entries(), 1);
+        assert!(tx_manager.lock_cache().contains_key(&tx_hash));
+
+        // Re-inserting should also be Ok.
+        assert!(tx_manager.insert(tx_context.clone()).is_ok());
+        assert_eq!(tx_manager.num_entries(), 1);
+        assert!(tx_manager.lock_cache().contains_key(&tx_hash));
+    }
+
+    #[test_with_logger]
+    // Should return return an error when a not well-formed Tx is inserted.
+    // Here, the untrusted system says the Tx is not well-formed.
+    fn test_insert_error_untrusted(logger: Logger) {
+        let tx_context = TxContext::default();
+
+        let mut mock_untrusted = MockUntrustedInterfaces::new();
+        // Untrusted's well-formed check should be called once each time insert_propose_tx is called.
+        mock_untrusted
+            .expect_well_formed_check()
+            .times(1)
+            .return_const(Err(TransactionValidationError::ContainsSpentKeyImage));
+
+        // This should not be called.
+        let mock_enclave = MockConsensusEnclave::new();
+
+        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+        assert!(tx_manager.insert(tx_context.clone()).is_err());
+        assert_eq!(tx_manager.num_entries(), 0);
+    }
+
+    #[test_with_logger]
+    // Should return return an error when a not well-formed Tx is inserted.
+    // Here, the enclave says the Tx is not well-formed.
+    fn test_insert_error_trusted(logger: Logger) {
+        let tx_context = TxContext::default();
+
+        let mut mock_untrusted = MockUntrustedInterfaces::new();
+        // Untrusted's well-formed check should be called once each time insert_propose_tx is called.
+        mock_untrusted
+            .expect_well_formed_check()
+            .times(1)
+            .return_const(Ok((0, vec![])));
+
+        // This should be called, and return an error.
+        let mut mock_enclave = MockConsensusEnclave::new();
+        mock_enclave
+            .expect_tx_is_well_formed()
+            .times(1)
+            .return_const(Err(EnclaveError::Signature));
+
+        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+        assert!(tx_manager.insert(tx_context.clone()).is_err());
+        assert_eq!(tx_manager.num_entries(), 0);
+    }
+
+    #[test_with_logger]
+    // Should remove all transactions that have expired by the given slot.
+    fn test_remove_expired(logger: Logger) {
+        let mock_untrusted = MockUntrustedInterfaces::new();
+        let mock_enclave = MockConsensusEnclave::new();
+        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+
+        // Fill the cache with entries that have different tombstone blocks.
+        for tombstone_block in 10..24 {
+            let context = WellFormedTxContext::new(
+                Default::default(),
+                TxHash([tombstone_block as u8; 32]),
+                tombstone_block,
+                Default::default(),
+                Default::default(),
+                Default::default(),
+            );
+
+            let cache_entry = CacheEntry {
+                encrypted_tx: Default::default(),
+                context: Arc::new(context.clone()),
+            };
+
+            tx_manager
+                .cache
+                .lock()
+                .unwrap()
+                .insert(context.tx_hash().clone(), cache_entry);
+        }
+
+        assert_eq!(tx_manager.num_entries(), 14);
+
+        {
+            // By block index 10, none have expired.
+            let removed = tx_manager.remove_expired(10);
+            assert_eq!(removed.len(), 0);
+            assert_eq!(tx_manager.num_entries(), 14);
+        }
+
+        {
+            // By block index 15, some have expired.
+            let removed = tx_manager.remove_expired(15);
+            assert_eq!(removed.len(), 5);
+            assert_eq!(tx_manager.num_entries(), 9);
+        }
+
+        {
+            // By block index 24, all have expired.
+            let removed = tx_manager.remove_expired(24);
+            assert_eq!(removed.len(), 9);
+            assert_eq!(tx_manager.num_entries(), 0);
+        }
+    }
+
+    #[test_with_logger]
+    // Should return Ok if the transaction is in the cache and is valid.
+    fn test_validate_ok(logger: Logger) {
+        let tx_context = TxContext::default();
+
+        let mut mock_untrusted = MockUntrustedInterfaces::new();
+
+        // Untrusted's validate check should be called and return Ok.
+        mock_untrusted
+            .expect_is_valid()
+            .times(1)
+            .return_const(Ok(()));
+
+        // The enclave is not called because its checks are "well-formed-ness" checks.
+        let mock_enclave = MockConsensusEnclave::new();
+
+        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+
+        // Add this transaction to the cache.
+        let cache_entry = CacheEntry {
+            encrypted_tx: Default::default(),
+            context: Arc::new(Default::default()),
+        };
+        tx_manager
+            .cache
+            .lock()
+            .unwrap()
+            .insert(tx_context.tx_hash.clone(), cache_entry);
+
+        assert!(tx_manager.validate(&tx_context.tx_hash).is_ok());
+    }
+
+    #[test_with_logger]
+    // Should return Err if the transaction is not in the cache.
+    fn test_validate_err_not_in_cache(logger: Logger) {
+        let tx_context = TxContext::default();
+
+        // The method should return before calling untrusted.
+        let mock_untrusted = MockUntrustedInterfaces::new();
+
+        // The enclave is not called because its checks are "well-formed-ness" checks.
+        let mock_enclave = MockConsensusEnclave::new();
+
+        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+        match tx_manager.validate(&tx_context.tx_hash) {
+            Err(TxManagerError::NotInCache(_)) => {} // This is expected.
+            _ => panic!(),
+        }
+    }
+
+    #[test_with_logger]
+    // Should return Err if the transaction is in the cache (i.e., well-formed) but not valid.
+    fn test_validate_err_not_valid(logger: Logger) {
+        let tx_context = TxContext::default();
+
+        // The method should return before calling untrusted.
+        let mut mock_untrusted = MockUntrustedInterfaces::new();
+
+        // Untrusted's validate check should be called and return Err.
+        mock_untrusted
+            .expect_is_valid()
+            .times(1)
+            .return_const(Err(TransactionValidationError::ContainsSpentKeyImage));
+
+        // The enclave is not called because its checks are "well-formed-ness" checks.
+        let mock_enclave = MockConsensusEnclave::new();
+
+        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+
+        // Add this transaction to the cache.
+        let cache_entry = CacheEntry {
+            encrypted_tx: Default::default(),
+            context: Arc::new(Default::default()),
+        };
+        tx_manager
+            .cache
+            .lock()
+            .unwrap()
+            .insert(tx_context.tx_hash.clone(), cache_entry);
+
+        match tx_manager.validate(&tx_context.tx_hash) {
+            Err(TxManagerError::TransactionValidation(
+                TransactionValidationError::ContainsSpentKeyImage,
+            )) => {} // This is expected.
+            _ => panic!(),
+        }
+    }
+
+    #[test_with_logger]
+    // Should return Ok if the transactions are in the cache.
+    fn test_combine_ok(logger: Logger) {
+        let tx_hashes: Vec<_> = (0..10).map(|i| TxHash([i as u8; 32])).collect();
+
+        let mut mock_untrusted = MockUntrustedInterfaces::new();
+        let expected: Vec<_> = tx_hashes.iter().take(5).cloned().collect();
+        mock_untrusted
+            .expect_combine()
+            .times(1)
+            .return_const(expected.clone());
+
+        let mock_enclave = MockConsensusEnclave::new();
+        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+
+        // Add transactions to the cache.
+        for tx_hash in &tx_hashes {
+            let context = WellFormedTxContext::new(
+                Default::default(),
+                tx_hash.clone(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+            );
+
+            let cache_entry = CacheEntry {
+                encrypted_tx: Default::default(),
+                context: Arc::new(context.clone()),
+            };
+
+            tx_manager
+                .cache
+                .lock()
+                .unwrap()
+                .insert(context.tx_hash().clone(), cache_entry);
+        }
+        assert_eq!(tx_manager.num_entries(), tx_hashes.len());
+
+        match tx_manager.combine(&tx_hashes) {
+            Ok(combined) => assert_eq!(combined, expected),
+            _ => panic!(),
+        }
+    }
+
+    #[test_with_logger]
+    // Should return Err if any transaction is not in the cache.
+    fn test_combine_err_not_in_cache(logger: Logger) {
+        let n_transactions = 10;
+        let tx_hashes: Vec<_> = (0..n_transactions).map(|i| TxHash([i as u8; 32])).collect();
+
+        // UntrustedInterfaces should not be called.
+        let mock_untrusted = MockUntrustedInterfaces::new();
+
+        // ConsensusEnclave should not be called.
+        let mock_enclave = MockConsensusEnclave::new();
+        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+
+        // Add some transactions, but not all, to the cache.
+        for tx_hash in &tx_hashes[2..] {
+            let context = WellFormedTxContext::new(
+                Default::default(),
+                tx_hash.clone(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+            );
+
+            let cache_entry = CacheEntry {
+                encrypted_tx: Default::default(),
+                context: Arc::new(context.clone()),
+            };
+
+            tx_manager
+                .cache
+                .lock()
+                .unwrap()
+                .insert(context.tx_hash().clone(), cache_entry);
+        }
+
+        match tx_manager.combine(&tx_hashes) {
+            Ok(_combined) => panic!(),
+            _ => {} // This is expected.
+        }
+    }
 
     #[test_with_logger]
     fn test_hashes_to_block(logger: Logger) {
@@ -445,19 +810,19 @@ mod tests {
         let client_tx_three = transactions.pop().unwrap();
 
         let hash_tx_zero = tx_manager
-            .insert_proposed_tx(ConsensusServiceMockEnclave::tx_to_tx_context(
+            .insert(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_zero,
             ))
             .unwrap();
 
         let hash_tx_one = tx_manager
-            .insert_proposed_tx(ConsensusServiceMockEnclave::tx_to_tx_context(
+            .insert(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_one,
             ))
             .unwrap();
 
         let hash_tx_two = tx_manager
-            .insert_proposed_tx(ConsensusServiceMockEnclave::tx_to_tx_context(
+            .insert(ConsensusServiceMockEnclave::tx_to_tx_context(
                 &client_tx_two,
             ))
             .unwrap();
@@ -500,5 +865,183 @@ mod tests {
 
         // The ledger was previously initialized with 3 blocks.
         assert_eq!(block.index, 3);
+    }
+
+    #[test_with_logger]
+    // Should call enclave.txs_for_peer
+    fn test_encrypt_for_peer_ok(logger: Logger) {
+        let mock_untrusted = MockUntrustedInterfaces::new();
+        let mut mock_enclave = MockConsensusEnclave::new();
+
+        // This should be called to perform the encryption.
+        mock_enclave
+            .expect_txs_for_peer()
+            .times(1)
+            .return_const(Ok(EnclaveMessage::default()));
+
+        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+
+        // Add transactions to the cache.
+        let tx_hashes: Vec<_> = (0..10).map(|i| TxHash([i as u8; 32])).collect();
+        for tx_hash in &tx_hashes {
+            let context = WellFormedTxContext::new(
+                Default::default(),
+                tx_hash.clone(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+            );
+
+            let cache_entry = CacheEntry {
+                encrypted_tx: Default::default(),
+                context: Arc::new(context.clone()),
+            };
+
+            tx_manager
+                .cache
+                .lock()
+                .unwrap()
+                .insert(context.tx_hash().clone(), cache_entry);
+        }
+        assert_eq!(tx_manager.num_entries(), tx_hashes.len());
+
+        let aad = "Additional authenticated data";
+        let peer = PeerSession::default();
+        assert!(tx_manager
+            .encrypt_for_peer(&tx_hashes, aad.as_bytes(), &peer)
+            .is_ok());
+    }
+
+    #[test_with_logger]
+    // Should return an error if any transaction is not in the cache.
+    fn test_encrypt_for_peer_err_not_in_cache(logger: Logger) {
+        let mock_untrusted = MockUntrustedInterfaces::new();
+        let mock_enclave = MockConsensusEnclave::new();
+
+        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+        assert_eq!(tx_manager.num_entries(), 0);
+
+        let tx_hashes: Vec<_> = (0..10).map(|i| TxHash([i as u8; 32])).collect();
+        let aad = "Additional authenticated data";
+        let peer = PeerSession::default();
+        match tx_manager.encrypt_for_peer(&tx_hashes, aad.as_bytes(), &peer) {
+            Err(TxManagerError::NotInCache(_)) => {} // This is expected.
+            _ => panic!(),
+        }
+    }
+
+    #[test_with_logger]
+    // Should return an error if enclave.txs_for_peer returns an error.
+    fn test_encrypt_for_peer_err_enclave_error(logger: Logger) {
+        let mock_untrusted = MockUntrustedInterfaces::new();
+        let mut mock_enclave = MockConsensusEnclave::new();
+
+        // This should be called and should return an error.
+        mock_enclave
+            .expect_txs_for_peer()
+            .times(1)
+            .return_const(Err(EnclaveError::Signature));
+
+        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+
+        // Add transactions to the cache.
+        let tx_hashes: Vec<_> = (0..10).map(|i| TxHash([i as u8; 32])).collect();
+        for tx_hash in &tx_hashes {
+            let context = WellFormedTxContext::new(
+                Default::default(),
+                tx_hash.clone(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+            );
+
+            let cache_entry = CacheEntry {
+                encrypted_tx: Default::default(),
+                context: Arc::new(context.clone()),
+            };
+
+            tx_manager
+                .cache
+                .lock()
+                .unwrap()
+                .insert(context.tx_hash().clone(), cache_entry);
+        }
+        assert_eq!(tx_manager.num_entries(), tx_hashes.len());
+
+        let aad = "Additional authenticated data";
+        let peer = PeerSession::default();
+
+        match tx_manager.encrypt_for_peer(&tx_hashes, aad.as_bytes(), &peer) {
+            Err(TxManagerError::Enclave(EnclaveError::Signature)) => {} // This is expected.
+            _ => panic!(),
+        }
+    }
+
+    #[test_with_logger]
+    // Should return cache_entry.encrypted_tx if it is in the cache.
+    fn test_get_encrypted_tx(logger: Logger) {
+        let mock_untrusted = MockUntrustedInterfaces::new();
+        let mock_enclave = MockConsensusEnclave::new();
+        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+
+        // Add a transaction to the cache.
+        let cache_entry = CacheEntry {
+            encrypted_tx: WellFormedEncryptedTx(vec![1, 2, 3]),
+            context: Default::default(),
+        };
+
+        let tx_hash = TxHash([1u8; 32]);
+        tx_manager
+            .cache
+            .lock()
+            .unwrap()
+            .insert(tx_hash.clone(), cache_entry);
+
+        // Get something that is in the cache.
+        assert_eq!(
+            tx_manager.get_encrypted_tx(&tx_hash),
+            Some(WellFormedEncryptedTx(vec![1, 2, 3]))
+        );
+
+        // Get something that is not in the cache.
+        assert_eq!(tx_manager.get_encrypted_tx(&TxHash([88u8; 32])), None);
+    }
+
+    #[test_with_logger]
+    // Should return the number of elements in the cache.
+    fn test_get_num_entries(logger: Logger) {
+        let mock_untrusted = MockUntrustedInterfaces::new();
+        let mock_enclave = MockConsensusEnclave::new();
+        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+
+        // Initially, the cache is empty.
+        assert_eq!(tx_manager.num_entries(), 0);
+
+        // Add transactions to the cache.
+        let tx_hashes: Vec<_> = (0..10).map(|i| TxHash([i as u8; 32])).collect();
+        for tx_hash in &tx_hashes {
+            let context = WellFormedTxContext::new(
+                Default::default(),
+                tx_hash.clone(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+                Default::default(),
+            );
+
+            let cache_entry = CacheEntry {
+                encrypted_tx: Default::default(),
+                context: Arc::new(context.clone()),
+            };
+
+            tx_manager
+                .cache
+                .lock()
+                .unwrap()
+                .insert(context.tx_hash().clone(), cache_entry);
+        }
+        assert_eq!(tx_manager.num_entries(), tx_hashes.len());
     }
 }

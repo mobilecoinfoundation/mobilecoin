@@ -87,7 +87,7 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
     }
 
     /// Checks if a transaction is valid (see definition at top of this file).
-    fn is_valid(&self, context: &WellFormedTxContext) -> TransactionValidationResult<()> {
+    fn is_valid(&self, context: Arc<WellFormedTxContext>) -> TransactionValidationResult<()> {
         // If the tombstone block has been exceeded, this tx is no longer valid to append to the
         // ledger.
         let current_block_index = self
@@ -563,7 +563,7 @@ mod is_valid_tests {
 
     fn is_valid(tx: &Tx, ledger: &LedgerDB) -> TransactionValidationResult<()> {
         let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger.clone());
-        untrusted.is_valid(&WellFormedTxContext::from(tx))
+        untrusted.is_valid(Arc::new(WellFormedTxContext::from(tx)))
     }
 
     #[test]
