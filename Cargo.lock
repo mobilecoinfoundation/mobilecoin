@@ -2611,8 +2611,8 @@ dependencies = [
 name = "mc-crypto-digestible-derive-test"
 version = "0.6.0"
 dependencies = [
- "digest 0.8.1",
- "generic-array 0.12.3",
+ "digest 0.9.0",
+ "generic-array 0.14.4",
  "mc-crypto-digestible",
  "mc-crypto-digestible-derive",
 ]
