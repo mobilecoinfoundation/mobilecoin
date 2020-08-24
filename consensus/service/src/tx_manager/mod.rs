@@ -7,23 +7,21 @@
 //! may operate on.
 
 use crate::counters;
-use failure::Fail;
+
 use mc_attest_enclave_api::{EnclaveMessage, PeerSession};
 use mc_common::{
     logger::{log, Logger},
     HashMap, HashSet,
 };
 use mc_consensus_enclave::{
-    ConsensusEnclave, Error as ConsensusEnclaveError, TxContext, WellFormedEncryptedTx,
-    WellFormedTxContext,
+    ConsensusEnclave, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
 };
 use mc_crypto_keys::CompressedRistrettoPublic;
-use mc_ledger_db::Error as LedgerDbError;
 use mc_transaction_core::{
     constants::MAX_TRANSACTIONS_PER_BLOCK,
     ring_signature::KeyImage,
     tx::{TxHash, TxOutMembershipProof},
-    validation::{TransactionValidationError, TransactionValidationResult},
+    validation::TransactionValidationResult,
     Block, BlockContents, BlockSignature,
 };
 use std::sync::{Mutex, MutexGuard};
@@ -32,47 +30,9 @@ use std::sync::{Mutex, MutexGuard};
 use mockall::*;
 use std::sync::Arc;
 
-#[derive(Clone, Debug, Fail)]
-pub enum TxManagerError {
-    #[fail(display = "Enclave error: {}", _0)]
-    Enclave(ConsensusEnclaveError),
+mod error;
 
-    #[fail(display = "Transaction validation error: {}", _0)]
-    TransactionValidation(TransactionValidationError),
-
-    #[fail(display = "Tx already in cache")]
-    AlreadyInCache,
-
-    #[fail(display = "Tx(s) not in cache ({:?})", _0)]
-    NotInCache(Vec<TxHash>),
-
-    #[fail(display = "Ledger error: {}", _0)]
-    LedgerDb(LedgerDbError),
-}
-
-impl From<ConsensusEnclaveError> for TxManagerError {
-    fn from(err: ConsensusEnclaveError) -> Self {
-        if let ConsensusEnclaveError::MalformedTx(transaction_validation_error) = err {
-            Self::TransactionValidation(transaction_validation_error)
-        } else {
-            Self::Enclave(err)
-        }
-    }
-}
-
-impl From<TransactionValidationError> for TxManagerError {
-    fn from(err: TransactionValidationError) -> Self {
-        Self::TransactionValidation(err)
-    }
-}
-
-impl From<LedgerDbError> for TxManagerError {
-    fn from(err: LedgerDbError) -> Self {
-        Self::LedgerDb(err)
-    }
-}
-
-pub type TxManagerResult<T> = Result<T, TxManagerError>;
+pub use error::{TxManagerError, TxManagerResult};
 
 struct CacheEntry {
     /// An encrypted transaction that has been found to be well-formed.
@@ -413,6 +373,7 @@ mod tests {
         ConsensusServiceMockEnclave, Error as EnclaveError, MockConsensusEnclave,
     };
     use mc_ledger_db::Ledger;
+    use mc_transaction_core::validation::TransactionValidationError;
     use mc_transaction_core_test_utils::{
         create_ledger, create_transaction, initialize_ledger, AccountKey,
     };
