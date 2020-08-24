@@ -916,7 +916,7 @@ dependencies = [
  "merlin 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_hc 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "schnorrkel 0.9.1 (git+https://github.com/eranrund/schnorrkel?rev=9fe3a3c840f3eaa348f55428c40f150bf09aa608)",
+ "schnorrkel 0.9.1 (git+https://github.com/w3f/schnorrkel?rev=cfdbe9ae865a4d3ffa2566d896d4dbedf5107028)",
 ]
 
 [[package]]
@@ -1347,7 +1347,7 @@ dependencies = [
 [[package]]
 name = "schnorrkel"
 version = "0.9.1"
-source = "git+https://github.com/eranrund/schnorrkel?rev=9fe3a3c840f3eaa348f55428c40f150bf09aa608#9fe3a3c840f3eaa348f55428c40f150bf09aa608"
+source = "git+https://github.com/w3f/schnorrkel?rev=cfdbe9ae865a4d3ffa2566d896d4dbedf5107028#cfdbe9ae865a4d3ffa2566d896d4dbedf5107028"
 dependencies = [
  "arrayref 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "arrayvec 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1777,7 +1777,7 @@ dependencies = [
 "checksum rjson 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "5510dbde48c4c37bf69123b1f636b6dd5f8dffe1f4e358af03c46a4947dca219"
 "checksum rustc-hash 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 "checksum same-file 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)" = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
-"checksum schnorrkel 0.9.1 (git+https://github.com/eranrund/schnorrkel?rev=9fe3a3c840f3eaa348f55428c40f150bf09aa608)" = "<none>"
+"checksum schnorrkel 0.9.1 (git+https://github.com/w3f/schnorrkel?rev=cfdbe9ae865a4d3ffa2566d896d4dbedf5107028)" = "<none>"
 "checksum secrecy 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "9eb052cf770a381fa9a6ee63038ff9a0b11d30abb53be970672e950649ff0bfb"
 "checksum serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)" = "414115f25f818d7dfccec8ee535d76949ae78584fc4f79a6f45a904bf8ab4449"
 "checksum serde_cbor 0.11.1 (git+https://github.com/mobilecoinofficial/cbor?rev=4c886a7c1d523aae1ec4aa7386f402cb2f4341b5)" = "<none>"
