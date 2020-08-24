@@ -6,7 +6,7 @@ use crate::{
         MAX_PENDING_VALUES_TO_NOMINATE,
     },
     counters,
-    tx_manager::{TxManager, TxManagerError, UntrustedInterfaces},
+    tx_manager::{TxManager, TxManagerError, TxManagerTrait, UntrustedInterfaces},
 };
 use mc_common::{
     logger::{log, Logger},

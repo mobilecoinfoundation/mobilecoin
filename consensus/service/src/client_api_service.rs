@@ -6,7 +6,7 @@ use crate::{
     consensus_service::ProposeTxCallback,
     counters,
     grpc_error::ConsensusGrpcError,
-    tx_manager::{TxManager, TxManagerError},
+    tx_manager::{TxManager, TxManagerError, TxManagerTrait},
     validators::DefaultTxManagerUntrustedInterfaces,
 };
 use grpcio::{RpcContext, UnarySink};
