@@ -1,0 +1,12 @@
+[package]
+name = "mc-account-keys-test-vectors-structs"
+version = "0.6.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[dependencies]
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+
+mc-account-keys = { path = "../.." }
+mc-crypto-keys = { path = "../../../crypto/keys" }
+mc-util-test-vectors = { path = "../../../util/test-vectors" }

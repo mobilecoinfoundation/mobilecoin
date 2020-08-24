@@ -19,9 +19,26 @@ impl From<&mc_mobilecoind_api::GenerateEntropyResponse> for JsonEntropyResponse 
     }
 }
 
+#[derive(Deserialize, Serialize, Default)]
+pub struct JsonAccountKeyResponse {
+    pub view_private_key: String,
+    pub spend_private_key: String,
+}
+
+impl From<&mc_mobilecoind_api::GetAccountKeyResponse> for JsonAccountKeyResponse {
+    fn from(src: &mc_mobilecoind_api::GetAccountKeyResponse) -> Self {
+        Self {
+            view_private_key: hex::encode(&src.get_account_key().get_view_private_key().get_data()),
+            spend_private_key: hex::encode(
+                &src.get_account_key().get_spend_private_key().get_data(),
+            ),
+        }
+    }
+}
+
 #[derive(Deserialize, Default)]
 pub struct JsonMonitorRequest {
-    pub entropy: String,
+    pub account_key: JsonAccountKeyResponse,
     pub first_subaddress: u64,
     pub num_subaddresses: u64,
 }
@@ -88,6 +105,7 @@ impl From<&mc_mobilecoind_api::GetBalanceResponse> for JsonBalanceResponse {
 
 #[derive(Deserialize)]
 pub struct JsonRequestCodeRequest {
+    pub public_address: JsonPublicAddress,
     pub value: Option<u64>,
     pub memo: Option<String>,
 }
@@ -375,24 +393,6 @@ impl From<&mc_mobilecoind_api::GetProcessedBlockResponse> for JsonProcessedBlock
                 .iter()
                 .map(JsonProcessedTxOut::from)
                 .collect(),
-        }
-    }
-}
-
-#[derive(Deserialize)]
-pub struct JsonAddressRequestCodeRequest {
-    pub url: String,
-}
-
-#[derive(Serialize, Default)]
-pub struct JsonAddressRequestCodeResponse {
-    pub request_code: String,
-}
-
-impl From<&mc_mobilecoind_api::GetAddressRequestCodeResponse> for JsonAddressRequestCodeResponse {
-    fn from(src: &mc_mobilecoind_api::GetAddressRequestCodeResponse) -> Self {
-        Self {
-            request_code: String::from(src.get_b58_code()),
         }
     }
 }

@@ -7,8 +7,11 @@ use dialoguer::{theme::ColorfulTheme, Input, Select, Validator};
 use grpcio::ChannelBuilder;
 use indicatif::{ProgressBar, ProgressStyle};
 use mc_common::logger::{create_app_logger, o, Logger};
-use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri};
-use mc_util_b58_payloads::payloads::RequestPayload;
+use mc_mobilecoind_api::{
+    mobilecoind_api_grpc::MobilecoindApiClient,
+    printable::{PaymentRequest, PrintableWrapper},
+    MobilecoindUri,
+};
 use mc_util_grpc::{build_info_grpc::BuildInfoApiClient, ConnectionUriGrpcioChannel};
 use protobuf::RepeatedField;
 use rust_decimal::{prelude::ToPrimitive, Decimal};
@@ -358,23 +361,33 @@ string that we send you. It should look something like:
 
         // Read and parse B58 request code.
         #[derive(Clone)]
-        struct WrappedRequestPayload(pub Option<RequestPayload>);
+        struct WrappedRequestPayload(pub Option<PaymentRequest>);
         impl FromStr for WrappedRequestPayload {
             type Err = String;
             fn from_str(src: &str) -> Result<Self, Self::Err> {
                 if src.is_empty() {
                     return Ok(Self(None));
                 }
-
-                Ok(Self(Some(RequestPayload::decode(src).map_err(|err| {
-                    format!("Invalid request code: {}", err)
-                })?)))
+                let request_wrapper = PrintableWrapper::b58_decode(src.to_string())
+                    .map_err(|err| format!("Invalid request code: {}", err))?;
+                if request_wrapper.has_payment_request() {
+                    Ok(Self(Some(request_wrapper.get_payment_request().clone())))
+                } else if request_wrapper.has_public_address() {
+                    let mut payment_request = PaymentRequest::new();
+                    payment_request
+                        .set_public_address(request_wrapper.get_public_address().clone());
+                    Ok(Self(Some(payment_request)))
+                } else {
+                    Err("Not a payment request code or a public address".to_string())
+                }
             }
         }
         impl fmt::Display for WrappedRequestPayload {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 if let Some(inner) = &self.0 {
-                    write!(f, "{}", inner.encode())?;
+                    let mut wrapper = PrintableWrapper::new();
+                    wrapper.set_payment_request(inner.clone());
+                    write!(f, "{}", wrapper.b58_encode().map_err(|_e| fmt::Error)?)?;
                 }
                 Ok(())
             }
@@ -661,7 +674,7 @@ MobileCoin forums. Visit http://community.mobilecoin.com
     /// Helper method for generating a transaction from a B58 request code.
     fn generate_tx(
         &self,
-        request_payload: &RequestPayload,
+        request_payload: &PaymentRequest,
     ) -> Result<(mc_mobilecoind_api::TxProposal, u64), String> {
         let pb = ProgressBar::new_spinner();
         pb.enable_steady_tick(120);
@@ -684,6 +697,7 @@ MobileCoin forums. Visit http://community.mobilecoin.com
         outlay.set_value(request_payload.value);
         outlay.set_receiver(mc_api::external::PublicAddress::from(
             &(request_payload
+                .get_public_address()
                 .try_into()
                 .map_err(|err| format!("Bad request payload: {}", err))?),
         ));

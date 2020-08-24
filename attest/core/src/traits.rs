@@ -124,13 +124,20 @@ macro_rules! impl_sgx_wrapper_reqs {
                         use $crate::traits::TryFrom;
                         use $crate::traits::DeserializeError;
 
-                        let mut bytes =
-                            $crate::traits::Vec::<u8>::with_capacity(seq.size_hint().unwrap_or(1024usize));
+                        let mut bytes = $crate::traits::Vec::<u8>::with_capacity(<Self::Value as $crate::traits::IntelLayout>::X86_64_CSIZE);
+                        let mut position = 0;
                         loop {
+                            // Clamp the maximum number of bytes read to the CSIZE
+                            if position > <Self::Value as $crate::traits::IntelLayout>::X86_64_CSIZE {
+                                return Err(A::Error::invalid_length(position, &"fewer bytes than were given"));
+                            }
+
                             match seq.next_element()? {
                                 Some(byte) => bytes.push(byte),
                                 None => break,
                             }
+
+                            position += 1;
                         }
 
                         let bytelen = bytes.len();

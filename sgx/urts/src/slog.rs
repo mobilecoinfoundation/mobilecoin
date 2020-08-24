@@ -1,8 +1,15 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-use crate::common::EnclaveLogMessage;
+//! Backend which forwards EnclaveLogMessages to slog with appropriate source
+//! information
+
+use mc_common::logger::{
+    global_log, slog,
+    slog::{Level, Record, RecordLocation, RecordStatic},
+    slog_scope,
+};
+use mc_sgx_slog::EnclaveLogMessage;
 use prost::Message;
-use slog::{Level, Record, RecordLocation, RecordStatic};
 use std::slice;
 
 static ENCLAVE_SLOG_LOCATION: RecordLocation = RecordLocation {
@@ -13,12 +20,13 @@ static ENCLAVE_SLOG_LOCATION: RecordLocation = RecordLocation {
     module: "<enclave>",
 };
 
-/// # Safety
-///
-/// This function is marked unsafe due to receiving a raw pointer from the caller.
+// This function is unsafe, if the caller misuses the API it can cause undefined behavior
 #[no_mangle]
 pub unsafe extern "C" fn enclave_log(msg: *const u8, msg_len: usize) {
-    let msg_bytes = slice::from_raw_parts(msg, msg_len);
+    enclave_log_impl(slice::from_raw_parts(msg, msg_len));
+}
+
+fn enclave_log_impl(msg_bytes: &[u8]) {
     let msg = EnclaveLogMessage::decode(msg_bytes);
 
     match msg {
@@ -43,9 +51,10 @@ pub unsafe extern "C" fn enclave_log(msg: *const u8, msg_len: usize) {
                 slog::b!(),
             ));
         }
-        Err(e) => eprintln!(
+        Err(e) => global_log::error!(
             "Enclave log message contained invalid message:\n{}\n{:?}",
-            e, msg_bytes
+            e,
+            msg_bytes
         ),
     }
 }

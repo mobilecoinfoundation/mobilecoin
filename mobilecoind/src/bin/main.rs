@@ -40,46 +40,56 @@ fn main() {
         logger.clone(),
     )));
 
-    let transactions_fetcher =
-        ReqwestTransactionsFetcher::new(config.tx_source_urls.clone(), logger.clone())
-            .expect("Failed creating ReqwestTransactionsFetcher");
+    let transactions_fetcher = ReqwestTransactionsFetcher::new(
+        config.tx_source_urls.clone().unwrap_or_default(),
+        logger.clone(),
+    )
+    .expect("Failed creating ReqwestTransactionsFetcher");
 
     // Create the ledger_db.
     let ledger_db = create_or_open_ledger_db(&config, &logger, &transactions_fetcher);
 
-    let _ledger_sync_service_thread = LedgerSyncServiceThread::new(
-        ledger_db.clone(),
-        peer_manager.clone(),
-        network_state.clone(),
-        transactions_fetcher,
-        config.poll_interval,
-        logger.clone(),
-    );
+    // Start ledger sync thread unless running in offline mode.
+    let _ledger_sync_service_thread = if config.offline {
+        None
+    } else {
+        Some(LedgerSyncServiceThread::new(
+            ledger_db.clone(),
+            peer_manager.clone(),
+            network_state.clone(),
+            transactions_fetcher.clone(),
+            config.poll_interval,
+            logger.clone(),
+        ))
+    };
 
-    // Optionally Instantiate the watcher sync thread and get the watcher_db handle
+    // Optionally instantiate the watcher sync thread and get the watcher_db handle.
     let (watcher_db, _watcher_sync_thread) = match config.watcher_db {
         Some(watcher_db_path) => {
             log::info!(logger, "Launching watcher.");
-            let watcher_transactions_fetcher =
-                ReqwestTransactionsFetcher::new(config.tx_source_urls.clone(), logger.clone())
-                    .expect("Failed creating ReqwestTransactionsFetcher");
 
             log::info!(logger, "Opening watcher db at {:?}.", watcher_db_path);
             let watcher_db = create_or_open_rw_watcher_db(
                 watcher_db_path,
-                &watcher_transactions_fetcher.source_urls,
+                &transactions_fetcher.source_urls,
                 logger.clone(),
             )
             .expect("Could not create or open WatcherDB");
+
+            // Start watcher db sync thread, unless running in offline mode.
             log::info!(logger, "Starting watcher sync thread from mobilecoind.");
-            let watcher_sync_thread = WatcherSyncThread::new(
-                watcher_db.clone(),
-                watcher_transactions_fetcher,
-                ledger_db.clone(),
-                config.poll_interval,
-                logger.clone(),
-            );
-            (Some(watcher_db), Some(watcher_sync_thread))
+            let watcher_sync_thread = if config.offline {
+                None
+            } else {
+                Some(WatcherSyncThread::new(
+                    watcher_db.clone(),
+                    transactions_fetcher,
+                    ledger_db.clone(),
+                    config.poll_interval,
+                    logger.clone(),
+                ))
+            };
+            (Some(watcher_db), watcher_sync_thread)
         }
         None => (None, None),
     };
@@ -126,7 +136,7 @@ fn main() {
 
         _ => {
             panic!(
-                "Please provide both --db and --listen-uri if you want to enable the API server"
+                "Please provide both --mobilecoind-db and --listen-uri if you want to enable the API server"
             );
         }
     }

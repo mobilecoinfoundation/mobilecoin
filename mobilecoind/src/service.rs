@@ -29,7 +29,6 @@ use mc_mobilecoind_api::{
     MobilecoindUri,
 };
 use mc_transaction_core::{ring_signature::KeyImage, tx::TxOutConfirmationNumber};
-use mc_util_b58_payloads::payloads::{AddressRequestPayload, RequestPayload, TransferPayload};
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::{
     rpc_internal_error, rpc_logger, send_result, BuildInfoService, ConnectionUriGrpcioServer,
@@ -355,16 +354,22 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         &mut self,
         request: mc_mobilecoind_api::ReadRequestCodeRequest,
     ) -> Result<mc_mobilecoind_api::ReadRequestCodeResponse, RpcStatus> {
-        let request_payload = RequestPayload::decode(request.get_b58_code())
-            .map_err(|err| rpc_internal_error("RequestPayload.decode", err, &self.logger))?;
-
+        let request_wrapper = mc_mobilecoind_api::printable::PrintableWrapper::b58_decode(
+            request.get_b58_code().to_string(),
+        )
+        .map_err(|err| rpc_internal_error("PrintableWrapper_b58_decode", err, &self.logger))?;
+        if !request_wrapper.has_payment_request() {
+            return Err(RpcStatus::new(
+                RpcStatusCode::INVALID_ARGUMENT,
+                Some("has_payment_request".to_string()),
+            ));
+        }
+        let payment_request = request_wrapper.get_payment_request();
         let mut response = mc_mobilecoind_api::ReadRequestCodeResponse::new();
-        response.set_receiver(mc_api::external::PublicAddress::from(
-            &(PublicAddress::try_from(&request_payload)
-                .map_err(|err| rpc_internal_error("PublicAddress.try_from", err, &self.logger))?),
-        ));
-        response.set_value(request_payload.value);
-        response.set_memo(request_payload.memo);
+        response.set_receiver(payment_request.get_public_address().clone());
+        response.set_value(payment_request.get_value());
+        response.set_memo(payment_request.get_memo().to_string());
+
         Ok(response)
     }
 
@@ -375,21 +380,20 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         let receiver = PublicAddress::try_from(request.get_receiver())
             .map_err(|err| rpc_internal_error("PublicAddress.try_from", err, &self.logger))?;
 
-        let view_key = receiver.view_public_key().to_bytes();
-        let spend_key = receiver.spend_public_key().to_bytes();
+        let mut payment_request = mc_mobilecoind_api::printable::PaymentRequest::new();
+        payment_request.set_public_address((&receiver).into());
+        payment_request.set_value(request.get_value());
+        payment_request.set_memo(request.get_memo().to_string());
 
-        let payload = RequestPayload::new_v3(
-            &view_key,
-            &spend_key,
-            "", // mobilecoind does not support fog
-            request.get_value(),
-            request.get_memo(),
-        )
-        .map_err(|err| rpc_internal_error("RequestPayload.new_v3", err, &self.logger))?;
-        let b58_code = payload.encode();
+        let mut request_wrapper = mc_mobilecoind_api::printable::PrintableWrapper::new();
+        request_wrapper.set_payment_request(payment_request);
+
+        let encoded = request_wrapper
+            .b58_encode()
+            .map_err(|err| rpc_internal_error("b58_encode", err, &self.logger))?;
 
         let mut response = mc_mobilecoind_api::GetRequestCodeResponse::new();
-        response.set_b58_code(b58_code);
+        response.set_b58_code(encoded);
         Ok(response)
     }
 
@@ -397,16 +401,26 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         &mut self,
         request: mc_mobilecoind_api::ReadTransferCodeRequest,
     ) -> Result<mc_mobilecoind_api::ReadTransferCodeResponse, RpcStatus> {
-        let transfer_payload = TransferPayload::decode(request.get_b58_code())
-            .map_err(|err| rpc_internal_error("TransferPayload.decode", err, &self.logger))?;
+        let request_wrapper = mc_mobilecoind_api::printable::PrintableWrapper::b58_decode(
+            request.get_b58_code().to_string(),
+        )
+        .map_err(|err| rpc_internal_error("PrintableWrapper.b58_decode", err, &self.logger))?;
 
-        let tx_public_key = RistrettoPublic::try_from(&transfer_payload.utxo)
+        if !request_wrapper.has_transfer_payload() {
+            return Err(RpcStatus::new(
+                RpcStatusCode::INVALID_ARGUMENT,
+                Some("has_transfer_payload".to_string()),
+            ));
+        }
+        let transfer_payload = request_wrapper.get_transfer_payload();
+        let tx_public_key = RistrettoPublic::try_from(transfer_payload.get_tx_public_key())
             .map_err(|err| rpc_internal_error("RistrettoPublic.try_from", err, &self.logger))?;
 
         let mut response = mc_mobilecoind_api::ReadTransferCodeResponse::new();
-        response.set_entropy(transfer_payload.entropy.to_vec());
+        response.set_entropy(transfer_payload.get_entropy().to_vec());
         response.set_tx_public_key((&tx_public_key).into());
-        response.set_memo(transfer_payload.memo);
+        response.set_memo(transfer_payload.get_memo().to_string());
+
         Ok(response)
     }
 
@@ -414,38 +428,33 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         &mut self,
         request: mc_mobilecoind_api::GetTransferCodeRequest,
     ) -> Result<mc_mobilecoind_api::GetTransferCodeResponse, RpcStatus> {
-        let mut entropy: [u8; 32] = [0; 32];
-        if request.entropy.len() != entropy.len() {
+        if request.entropy.len() != 32 {
             return Err(RpcStatus::new(
                 RpcStatusCode::INVALID_ARGUMENT,
                 Some("entropy".to_string()),
             ));
         }
-        entropy.copy_from_slice(request.get_entropy());
+        if request.get_tx_public_key().get_data().len() != 32 {
+            return Err(RpcStatus::new(
+                RpcStatusCode::INVALID_ARGUMENT,
+                Some("tx_public_key".to_string()),
+            ));
+        }
 
-        let tx_public_key = RistrettoPublic::try_from(request.get_tx_public_key())
-            .map_err(|err| rpc_internal_error("RistrettoPublic.try_from", err, &self.logger))?;
+        let mut transfer_payload = mc_mobilecoind_api::printable::TransferPayload::new();
+        transfer_payload.set_entropy(request.get_entropy().to_vec());
+        transfer_payload.set_tx_public_key(request.get_tx_public_key().get_data().to_vec());
+        transfer_payload.set_memo(request.get_memo().to_string());
 
-        let payload =
-            TransferPayload::new_v1(&entropy, &tx_public_key.to_bytes(), request.get_memo())
-                .map_err(|err| rpc_internal_error("TransferPayload.new_v1", err, &self.logger))?;
+        let mut transfer_wrapper = mc_mobilecoind_api::printable::PrintableWrapper::new();
+        transfer_wrapper.set_transfer_payload(transfer_payload);
 
-        let b58_code = payload.encode();
+        let encoded = transfer_wrapper
+            .b58_encode()
+            .map_err(|err| rpc_internal_error("b58_encode", err, &self.logger))?;
 
         let mut response = mc_mobilecoind_api::GetTransferCodeResponse::new();
-        response.set_b58_code(b58_code);
-        Ok(response)
-    }
-
-    fn get_address_request_code_impl(
-        &mut self,
-        request: mc_mobilecoind_api::GetAddressRequestCodeRequest,
-    ) -> Result<mc_mobilecoind_api::GetAddressRequestCodeResponse, RpcStatus> {
-        let payload = AddressRequestPayload::new_v0(request.get_url().to_string())
-            .map_err(|err| rpc_internal_error("AddressRequestPayload.new_v0", err, &self.logger))?;
-        let b58_code = payload.encode();
-        let mut response = mc_mobilecoind_api::GetAddressRequestCodeResponse::new();
-        response.set_b58_code(b58_code);
+        response.set_b58_code(encoded);
         Ok(response)
     }
 
@@ -655,14 +664,17 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         let tx_public_key = RistrettoPublic::try_from(&proto_tx_public_key)
             .map_err(|err| rpc_internal_error("ristretto_public.try_from", err, &self.logger))?;
 
-        // Generate b58 code.
-        let transfer_payload = TransferPayload::new_v1(
-            &entropy_bytes,
-            &tx_public_key.to_bytes(),
-            request.get_memo(),
-        )
-        .map_err(|err| rpc_internal_error("transfer_payload.new_v1", err, &self.logger))?;
-        let b58_code = transfer_payload.encode();
+        let mut transfer_payload = mc_mobilecoind_api::printable::TransferPayload::new();
+        transfer_payload.set_entropy(entropy_bytes.to_vec());
+        transfer_payload.set_tx_public_key(tx_public_key.to_bytes().to_vec());
+        transfer_payload.set_memo(request.get_memo().to_string());
+
+        let mut transfer_wrapper = mc_mobilecoind_api::printable::PrintableWrapper::new();
+        transfer_wrapper.set_transfer_payload(transfer_payload);
+
+        let b58_code = transfer_wrapper
+            .b58_encode()
+            .map_err(|err| rpc_internal_error("b58_encode", err, &self.logger))?;
 
         // Construct response.
         let mut response = mc_mobilecoind_api::GenerateTransferCodeTxResponse::new();
@@ -1265,7 +1277,6 @@ build_api! {
     get_request_code GetRequestCodeRequest GetRequestCodeResponse get_request_code_impl,
     read_transfer_code ReadTransferCodeRequest ReadTransferCodeResponse read_transfer_code_impl,
     get_transfer_code GetTransferCodeRequest GetTransferCodeResponse get_transfer_code_impl,
-    get_address_request_code GetAddressRequestCodeRequest GetAddressRequestCodeResponse get_address_request_code_impl,
     generate_tx GenerateTxRequest GenerateTxResponse generate_tx_impl,
     generate_optimization_tx GenerateOptimizationTxRequest GenerateOptimizationTxResponse generate_optimization_tx_impl,
     generate_transfer_code_tx GenerateTransferCodeTxRequest GenerateTransferCodeTxResponse generate_transfer_code_tx_impl,
@@ -3187,24 +3198,6 @@ mod test {
         assert_eq!(
             network_status.local_block_index,
             ledger_db.num_blocks().unwrap() - 1
-        );
-    }
-
-    #[test_with_logger]
-    fn test_address_request_code(logger: Logger) {
-        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
-
-        let (_ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
-            get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
-
-        let mut request = mc_mobilecoind_api::GetAddressRequestCodeRequest::new();
-        request.set_url("https://example.com".to_string());
-
-        let address_b58 = client.get_address_request_code(&request).unwrap();
-
-        assert_eq!(
-            address_b58.get_b58_code(),
-            "4mppAGCtx4xn42C36Ck7gGnAoGbdJceYBH6k",
         );
     }
 

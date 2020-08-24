@@ -23,20 +23,20 @@ use mc_transaction_core::{
     tx::{TxHash, TxOutMembershipProof},
     validation::{validate_tombstone, TransactionValidationError, TransactionValidationResult},
 };
-use std::{collections::HashSet, iter::FromIterator};
+use std::{collections::HashSet, iter::FromIterator, sync::Arc};
 
 #[derive(Clone)]
 pub struct DefaultTxManagerUntrustedInterfaces<L: Ledger> {
     ledger: L,
 }
 
-impl<L: Ledger> DefaultTxManagerUntrustedInterfaces<L> {
+impl<L: Ledger + Sync> DefaultTxManagerUntrustedInterfaces<L> {
     pub fn new(ledger: L) -> Self {
         Self { ledger }
     }
 }
 
-impl<L: Ledger> TxManagerUntrustedInterfaces for DefaultTxManagerUntrustedInterfaces<L> {
+impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntrustedInterfaces<L> {
     /// Performs the untrusted part of the well-formed check.
     /// Returns current block index and membership proofs to be used by
     /// the in-enclave well-formed check on success.
@@ -87,7 +87,7 @@ impl<L: Ledger> TxManagerUntrustedInterfaces for DefaultTxManagerUntrustedInterf
     }
 
     /// Checks if a transaction is valid (see definition at top of this file).
-    fn is_valid(&self, context: &WellFormedTxContext) -> TransactionValidationResult<()> {
+    fn is_valid(&self, context: Arc<WellFormedTxContext>) -> TransactionValidationResult<()> {
         // If the tombstone block has been exceeded, this tx is no longer valid to append to the
         // ledger.
         let current_block_index = self
@@ -130,9 +130,13 @@ impl<L: Ledger> TxManagerUntrustedInterfaces for DefaultTxManagerUntrustedInterf
     /// * `max_elements` - Maximum number of elements to return.
     ///
     /// Returns a bounded, deterministically-ordered list of transactions that are safe to append to the ledger.
-    fn combine(&self, tx_contexts: &[WellFormedTxContext], max_elements: usize) -> Vec<TxHash> {
+    fn combine(
+        &self,
+        tx_contexts: &[Arc<WellFormedTxContext>],
+        max_elements: usize,
+    ) -> Vec<TxHash> {
         // WellFormedTxContext defines the sort order of transactions within a block.
-        let mut candidates: Vec<&WellFormedTxContext> = tx_contexts.iter().collect();
+        let mut candidates: Vec<_> = tx_contexts.to_vec();
         candidates.sort();
 
         // Allow transactions that do not cause duplicate key images or output public keys.
@@ -140,7 +144,7 @@ impl<L: Ledger> TxManagerUntrustedInterfaces for DefaultTxManagerUntrustedInterf
         let mut used_key_images: HashSet<&KeyImage> = HashSet::default();
         let mut used_output_public_keys: HashSet<&CompressedRistrettoPublic> = HashSet::default();
 
-        for candidate in candidates {
+        for candidate in &candidates {
             // Enforce maximum size.
             if allowed_hashes.len() >= max_elements {
                 break;
@@ -559,7 +563,7 @@ mod is_valid_tests {
 
     fn is_valid(tx: &Tx, ledger: &LedgerDB) -> TransactionValidationResult<()> {
         let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger.clone());
-        untrusted.is_valid(&WellFormedTxContext::from(tx))
+        untrusted.is_valid(Arc::new(WellFormedTxContext::from(tx)))
     }
 
     #[test]
@@ -703,6 +707,7 @@ mod combine_tests {
     fn combine(tx_contexts: Vec<WellFormedTxContext>, max_elements: usize) -> Vec<TxHash> {
         let ledger = get_mock_ledger(10);
         let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger);
+        let tx_contexts: Vec<_> = tx_contexts.into_iter().map(Arc::new).collect();
         untrusted.combine(&tx_contexts, max_elements)
     }
 

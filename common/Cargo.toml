@@ -1,6 +1,6 @@
 [package]
 name = "mc-common"
-version = "0.5.0"
+version = "0.6.0"
 authors = ["MobileCoin"]
 edition = "2018"
 
@@ -14,7 +14,6 @@ log = [
     "backtrace",
     "chrono",
     "mc-util-logger-macros",
-    "slog",
     "slog-scope",
 ]
 loggers = [
@@ -58,7 +57,7 @@ siphasher = "0.3"
 backtrace = { version = "0.3", optional = true }
 chrono = { version = "0.4", optional = true }
 mc-util-logger-macros = { path = "../util/logger-macros", optional = true }
-slog = { version = "2.5", features = ["dynamic-keys", "max_level_trace", "release_max_level_trace"], optional = true }
+slog = { version = "2.6", default-features = false, features = ["dynamic-keys", "max_level_trace", "release_max_level_trace"] }
 slog-scope = { version = "4.1.2", optional = true }
 
 # loggers-only dependencies

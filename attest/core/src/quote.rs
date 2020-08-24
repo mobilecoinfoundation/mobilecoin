@@ -20,6 +20,7 @@ use core::{
     cmp::{max, min},
     convert::{TryFrom, TryInto},
     fmt::{Debug, Display, Formatter, Result as FmtResult},
+    ops::Range,
 };
 use mc_sgx_types::{sgx_quote_sign_type_t, sgx_quote_t};
 use mc_util_encodings::{
@@ -169,76 +170,77 @@ impl Quote {
         self.0.len()
     }
 
+    fn try_get_slice(&self, range: Range<usize>) -> Result<&[u8], EncodingError> {
+        if self.capacity() < range.end {
+            Err(EncodingError::InvalidInputLength)
+        } else {
+            Ok(&self.0[range])
+        }
+    }
+
     /// Read the quote version
-    pub fn version(&self) -> u16 {
-        u16::from_le_bytes(
-            (&self.0[QUOTE_VERSION_START..QUOTE_VERSION_END])
-                .try_into()
-                .unwrap(),
-        )
+    pub fn version(&self) -> Result<u16, EncodingError> {
+        self.try_get_slice(QUOTE_VERSION_START..QUOTE_VERSION_END)
+            .map(|bytes| u16::from_le_bytes(bytes.try_into().unwrap()))
     }
 
     /// Read the signature type
     pub fn sign_type(&self) -> Result<QuoteSignType, QuoteSignTypeError> {
-        u16::from_le_bytes(
-            (&self.0[QUOTE_SIGNTYPE_START..QUOTE_SIGNTYPE_END])
-                .try_into()
-                .unwrap(),
-        )
-        .try_into()
+        self.try_get_slice(QUOTE_SIGNTYPE_START..QUOTE_SIGNTYPE_END)
+            .map(|bytes| u16::from_le_bytes(bytes.try_into().unwrap()))
+            .map_err(QuoteSignTypeError::from)
+            .and_then(QuoteSignType::try_from)
     }
 
     /// Read the EPID Group ID
-    pub fn epid_group_id(&self) -> EpidGroupId {
-        EpidGroupId::try_from(&self.0[QUOTE_EPIDGID_START..QUOTE_EPIDGID_END])
-            .expect("Could not create EpidGroupId from quote")
+    pub fn epid_group_id(&self) -> Result<EpidGroupId, EncodingError> {
+        self.try_get_slice(QUOTE_EPIDGID_START..QUOTE_EPIDGID_END)
+            .and_then(EpidGroupId::try_from)
     }
 
     /// Read the SVN of the enclave which generated the quote
-    pub fn qe_security_version(&self) -> SecurityVersion {
-        u16::from_le_bytes(
-            (&self.0[QUOTE_QESVN_START..QUOTE_QESVN_END])
-                .try_into()
-                .unwrap(),
-        )
+    pub fn qe_security_version(&self) -> Result<SecurityVersion, EncodingError> {
+        self.try_get_slice(QUOTE_QESVN_START..QUOTE_QESVN_END)
+            .map(|bytes| SecurityVersion::from_le_bytes(bytes.try_into().unwrap()))
     }
 
     /// Read the SVN of the provisioning certificate enclave
-    pub fn pce_security_version(&self) -> SecurityVersion {
-        u16::from_le_bytes(
-            (&self.0[QUOTE_PCESVN_START..QUOTE_PCESVN_END])
-                .try_into()
-                .unwrap(),
-        )
+    pub fn pce_security_version(&self) -> Result<SecurityVersion, EncodingError> {
+        self.try_get_slice(QUOTE_PCESVN_START..QUOTE_PCESVN_END)
+            .map(|bytes| SecurityVersion::from_le_bytes(bytes.try_into().unwrap()))
     }
 
     /// Read the extended EPID Group ID
-    pub fn xeid(&self) -> u32 {
-        u32::from_le_bytes(
-            (&self.0[QUOTE_XEID_START..QUOTE_XEID_END])
-                .try_into()
-                .unwrap(),
-        )
+    pub fn xeid(&self) -> Result<u32, EncodingError> {
+        self.try_get_slice(QUOTE_XEID_START..QUOTE_XEID_END)
+            .map(|bytes| u32::from_le_bytes(bytes.try_into().unwrap()))
     }
 
     /// Read the basename from the quote
-    pub fn basename(&self) -> Basename {
-        Basename::try_from(&self.0[QUOTE_BASENAME_START..QUOTE_BASENAME_END])
-            .expect("Programming error while reading basename, check offsets.")
+    pub fn basename(&self) -> Result<Basename, EncodingError> {
+        self.try_get_slice(QUOTE_BASENAME_START..QUOTE_BASENAME_END)
+            .and_then(Basename::try_from)
     }
 
     /// Read the report body from the quote
     pub fn report_body(&self) -> Result<ReportBody, EncodingError> {
-        ReportBody::try_from(&self.0[QUOTE_REPORTBODY_START..QUOTE_REPORTBODY_END])
+        self.try_get_slice(QUOTE_REPORTBODY_START..QUOTE_REPORTBODY_END)
+            .and_then(ReportBody::try_from)
     }
 
     /// Read the signature length from the quote (may be zero)
-    pub fn signature_len(&self) -> u32 {
-        u32::from_le_bytes(
-            (&self.0[QUOTE_SIGLEN_START..QUOTE_SIGLEN_END])
-                .try_into()
-                .unwrap(),
-        )
+    pub fn signature_len(&self) -> Result<u32, EncodingError> {
+        if self.0.len() < QUOTE_IAS_SIZE {
+            Err(EncodingError::InvalidInputLength)
+        } else if self.0.len() < QUOTE_SIGLEN_END {
+            Ok(0)
+        } else {
+            Ok(u32::from_le_bytes(
+                (&self.0[QUOTE_SIGLEN_START..QUOTE_SIGLEN_END])
+                    .try_into()
+                    .unwrap(),
+            ))
+        }
     }
 
     /// Read the signature from the quote.
@@ -248,26 +250,30 @@ impl Quote {
     /// (meaning the length at `signature_len()` actually indicates more
     /// data than exists), this will also return `None` anyways.
     pub fn signature(&self) -> Option<Vec<u8>> {
-        let siglen = self.signature_len() as usize;
-
-        if siglen > 0 {
-            let sig_end = QUOTE_SIGNATURE_START + siglen;
-            if sig_end > self.capacity() {
-                // Our structure is invalid, we have more signature claimed
-                // than can exist... return None.
-                None
-            } else {
-                Some(Vec::from(&self.0[QUOTE_SIGNATURE_START..sig_end]))
+        match self.signature_len() {
+            Ok(0) => None,
+            Ok(siglen) => {
+                let sig_end = QUOTE_SIGNATURE_START + siglen as usize;
+                if sig_end > self.capacity() {
+                    // Our structure is invalid, we have more signature claimed
+                    // than can exist... return None.
+                    None
+                } else {
+                    Some(Vec::from(&self.0[QUOTE_SIGNATURE_START..sig_end]))
+                }
             }
-        } else {
-            None
+            Err(_) => None,
         }
     }
 
     /// This operation is used to verify the contents of two quotes are
     /// equal, without regard to the signature
     pub fn contents_eq(&self, other: &Self) -> bool {
-        self.0[..QUOTE_IAS_SIZE] == other.0[..QUOTE_IAS_SIZE]
+        if self.0.len() < QUOTE_IAS_SIZE || other.0.len() < QUOTE_IAS_SIZE {
+            false
+        } else {
+            self.0[..QUOTE_IAS_SIZE] == other.0[..QUOTE_IAS_SIZE]
+        }
     }
 
     /// Verify the contents of the quote against existing data.
@@ -281,11 +287,11 @@ impl Quote {
         quoted_report: &Report,
     ) -> Result<(), QuoteError> {
         let qe_body = qe_report.body();
-        if self.qe_security_version() != qe_body.security_version() {
+        if self.qe_security_version()? != qe_body.security_version() {
             return Err(QuoteVerifyError::QeVersionMismatch.into());
         }
 
-        if self.report_body() != Ok(quoted_report.body()) {
+        if self.report_body()? != quoted_report.body() {
             return Err(QuoteVerifyError::QuotedReportMismatch.into());
         }
 
@@ -304,7 +310,7 @@ impl Quote {
         expected_data: &ReportDataMask,
     ) -> Result<(), QuoteError> {
         if let Some(expected) = expected_gid {
-            let current = self.epid_group_id();
+            let current = self.epid_group_id()?;
             if current != expected {
                 return Err(QuoteVerifyError::GidMismatch(current, expected).into());
             }
@@ -341,9 +347,9 @@ impl Debug for Quote {
         write!(
             f,
             "Quote: {{ version: {}, sign_type: {}, epid_group_id: {}, qe_svn: {}, pce_svn: {}, xeid: {}, basename: {:?}, report_body: {:?}, signature_len: {}, signature: {:?} }}",
-            self.version(), self.sign_type()?, self.epid_group_id(), self.qe_security_version(),
-            self.pce_security_version(), self.xeid(), self.basename(), self.report_body(),
-            self.signature_len(), self. signature()
+            self.version()?, self.sign_type()?, self.epid_group_id()?, self.qe_security_version()?,
+            self.pce_security_version()?, self.xeid()?, self.basename()?, self.report_body()?,
+            self.signature_len()?, self. signature()
         )
     }
 }
@@ -404,7 +410,7 @@ impl IntelLayout for Quote {
 
     /// Retrieve the size of a byte buffer required to hold our data
     fn intel_size(&self) -> usize {
-        Self::X86_64_CSIZE + (self.signature_len() as usize)
+        Self::X86_64_CSIZE + (self.signature_len().unwrap_or(0) as usize)
     }
 }
 
@@ -480,10 +486,8 @@ impl TryFrom<Vec<u8>> for Quote {
 mod test {
     extern crate std;
 
-    use std::format;
-
     use super::*;
-    use mc_util_serial::*;
+    use std::format;
 
     const QUOTE_OK: &str = include_str!("../data/test/quote_ok.txt");
     const QUOTE_OK_STR: &str = include_str!("../data/test/quote_ok_str.txt");
@@ -491,8 +495,10 @@ mod test {
     const CONTENTS_EQ_TO_IAS: &str = include_str!("../data/test/contents_eq/to_ias.txt");
     const CONTENTS_EQ_FROM_IAS: &str = include_str!("../data/test/contents_eq/from_ias.txt");
 
+    /// Test that the contents_eq method can properly compare full quote
+    /// contents with IAS-truncated contents.
     #[test]
-    fn test_contents_eq() {
+    fn contents_eq() {
         let to_ias = Quote::from_base64(CONTENTS_EQ_TO_IAS)
             .expect("Could not create quote from base64 string.");
         let from_ias = Quote::from_base64(CONTENTS_EQ_FROM_IAS)
@@ -500,8 +506,9 @@ mod test {
         assert!(to_ias.contents_eq(&from_ias));
     }
 
+    /// Test the base64 decoding fails on truncated input
     #[test]
-    fn test_bad_base64() {
+    fn bad_base64() {
         let short_quote = &QUOTE_OK[..(QUOTE_OK.len() - 1)];
         assert_eq!(
             Quote::from_base64(short_quote),
@@ -509,27 +516,125 @@ mod test {
         );
     }
 
+    /// Round-trip test through serde
     #[test]
-    fn test_quote_parse_with_serde() {
+    fn serde_round_trip() {
         let quote =
             Quote::from_base64(QUOTE_OK).expect("Could not create quote from base64 string");
-        let serialized = serialize(&quote).expect("Could not serialize quote.");
-        let quote2: Quote = deserialize(&serialized).expect("Could not deserialize quote.");
+        let serialized = bincode::serialize(&quote).expect("Could not serialize quote.");
+        let quote2: Quote =
+            bincode::deserialize(&serialized).expect("Could not deserialize quote.");
         assert_eq!(quote, quote2);
     }
 
+    /// Test that trying to create an undersize quote fails
     #[test]
-    fn test_bad_capacity() {
+    fn bad_capacity() {
         let len =
             u32::try_from(QUOTE_MINSIZE - 1).expect("Could not downcast QUOTE_MINSIZE to u32");
         assert_eq!(Quote::with_capacity(len), Err(QuoteError::InvalidSize(len)));
     }
 
+    /// Test that the debug format is unchanged.
+    ///
+    /// This also ensures our offsets are still in the right place.
     #[test]
-    fn test_quote_debug_fmt() {
+    fn debug_fmt() {
         let quote =
             Quote::from_base64(QUOTE_OK).expect("Could not create quote from base64 string");
         let debug_str = format!("{:?}", &quote);
-        assert_eq!(QUOTE_OK_STR, debug_str);
+        assert_eq!(QUOTE_OK_STR.trim(), debug_str.trim());
+    }
+
+    /// Test that the version method fails when the vector contents are too
+    /// short.
+    #[test]
+    fn version_err() {
+        assert_eq!(
+            Err(EncodingError::InvalidInputLength),
+            Quote(Vec::default()).version()
+        );
+    }
+
+    /// Test that the sign_type method fails when the vector contents are too
+    /// short.
+    #[test]
+    fn sign_type_err_len() {
+        assert_eq!(
+            Err(QuoteSignTypeError::Encoding(
+                EncodingError::InvalidInputLength
+            )),
+            Quote(Vec::default()).sign_type()
+        );
+    }
+
+    /// Test that the epid_group_id() method fails when the vector contents are
+    /// too short.
+    #[test]
+    fn epid_group_id_err() {
+        assert_eq!(
+            Err(EncodingError::InvalidInputLength),
+            Quote(Vec::default()).epid_group_id()
+        );
+    }
+
+    /// Test that the qe_security_version() method fails when the vector
+    /// contents are too short.
+    #[test]
+    fn qe_security_version_err() {
+        assert_eq!(
+            Err(EncodingError::InvalidInputLength),
+            Quote(Vec::default()).qe_security_version()
+        );
+    }
+
+    /// Test that the pce_security_version() method fails when the vector
+    /// contents are too short.
+    #[test]
+    fn pce_security_version_err() {
+        assert_eq!(
+            Err(EncodingError::InvalidInputLength),
+            Quote(Vec::default()).pce_security_version()
+        );
+    }
+
+    /// Test that the xeid() method fails when the vector contents are too
+    /// short.
+    #[test]
+    fn xeid_err() {
+        assert_eq!(
+            Err(EncodingError::InvalidInputLength),
+            Quote(Vec::default()).xeid()
+        );
+    }
+
+    /// Test that the basename() method fails when the vector contents are too
+    /// short.
+    #[test]
+    fn basename_err() {
+        assert_eq!(
+            Err(EncodingError::InvalidInputLength),
+            Quote(Vec::default()).basename()
+        );
+    }
+
+    /// Test that the report_body() method fails when the vector contents are
+    /// too short.
+    #[test]
+    fn report_body_err() {
+        assert_eq!(
+            Err(EncodingError::InvalidInputLength),
+            Quote(Vec::default()).report_body()
+        );
+    }
+
+    /// Test that the signature_len() method fails when the vector contents are
+    /// too short.
+    #[test]
+    fn signature_len_err() {
+        assert_eq!(
+            Err(EncodingError::InvalidInputLength),
+            Quote(Vec::default()).signature_len()
+        );
     }
 }

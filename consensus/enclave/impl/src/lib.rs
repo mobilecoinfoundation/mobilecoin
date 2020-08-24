@@ -26,7 +26,10 @@ use mc_attest_enclave_api::{
     Error as AttestEnclaveError, PeerAuthRequest, PeerAuthResponse, PeerSession,
 };
 use mc_attest_trusted::SealAlgo;
-use mc_common::ResponderId;
+use mc_common::{
+    logger::{log, Logger},
+    ResponderId,
+};
 use mc_consensus_enclave_api::{
     ConsensusEnclave, Error, LocallyEncryptedTx, Result, SealedBlockSigningKey, TxContext,
     WellFormedEncryptedTx, WellFormedTxContext,
@@ -98,21 +101,23 @@ pub struct SgxConsensusEnclave {
 
     /// Cipher used to encrypt well-formed-encrypted transactions.
     well_formed_encrypted_tx_cipher: Mutex<AesMessageCipher>,
+
+    /// Logger
+    logger: Logger,
 }
 
-impl core::default::Default for SgxConsensusEnclave {
-    fn default() -> Self {
+impl SgxConsensusEnclave {
+    pub fn new(logger: Logger) -> Self {
         Self {
             ake: Default::default(),
             locally_encrypted_tx_cipher: Mutex::new(AesMessageCipher::new(&mut McRng::default())),
             well_formed_encrypted_tx_cipher: Mutex::new(AesMessageCipher::new(
                 &mut McRng::default(),
             )),
+            logger,
         }
     }
-}
 
-impl SgxConsensusEnclave {
     fn encrypt_well_formed_tx<R: RngCore + CryptoRng>(
         &self,
         well_formed_tx: &WellFormedTx,
@@ -168,6 +173,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 
         match sealed_key {
             Some(sealed) => {
+                log::trace!(self.logger, "trying to unseal key");
                 let cached = IntelSealed::try_from(sealed.clone()).unwrap();
                 let (key, _mac) = cached.unseal_raw()?;
                 let mut lock = self.ake.get_identity().signing_keypair.lock().unwrap();
@@ -543,8 +549,8 @@ fn mint_aggregate_fee(tx_private_key: &RistrettoPrivate, total_fee: u64) -> Resu
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
+    use mc_common::logger::test_with_logger;
     use mc_ledger_db::Ledger;
     use mc_transaction_core::{
         constants::FEE_VIEW_PRIVATE_KEY, onetime_keys::view_key_matches_output,
@@ -556,9 +562,9 @@ mod tests {
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
 
-    #[test]
-    fn test_tx_is_well_formed_works() {
-        let enclave = SgxConsensusEnclave::default();
+    #[test_with_logger]
+    fn test_tx_is_well_formed_works(logger: Logger) {
+        let enclave = SgxConsensusEnclave::new(logger);
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
 
         // Create a valid test transaction.
@@ -623,9 +629,9 @@ mod tests {
         assert_eq!(tx, well_formed_tx.tx);
     }
 
-    #[test]
-    fn test_tx_is_well_formed_works_errors_on_bad_inputs() {
-        let enclave = SgxConsensusEnclave::default();
+    #[test_with_logger]
+    fn test_tx_is_well_formed_works_errors_on_bad_inputs(logger: Logger) {
+        let enclave = SgxConsensusEnclave::new(logger);
         let mut rng = Hc128Rng::from_seed([77u8; 32]);
 
         // Create a valid test transaction.
@@ -700,9 +706,10 @@ mod tests {
         );
     }
 
-    #[test]
+    #[test_with_logger]
     // tx_is_well_formed rejects inconsistent root elements.
-    fn test_tx_is_well_form_rejects_inconsistent_root_elements() {
+    fn test_tx_is_well_form_rejects_inconsistent_root_elements(logger: Logger) {
+        let enclave = SgxConsensusEnclave::new(logger);
         // Construct TxOutMembershipProofs.
         let mut ledger = create_ledger();
         let n_blocks = 16;
@@ -722,19 +729,16 @@ mod tests {
         // validated, so it can just be contstructed from an empty vector of bytes.
         let locally_encrypted_tx = LocallyEncryptedTx(Vec::new());
         let block_index = 77;
-        let result = SgxConsensusEnclave::default().tx_is_well_formed(
-            locally_encrypted_tx,
-            block_index,
-            membership_proofs,
-        );
+        let result =
+            enclave.tx_is_well_formed(locally_encrypted_tx, block_index, membership_proofs);
         let expected = Err(Error::InvalidLocalMembershipProof);
         assert_eq!(result, expected);
     }
 
-    #[test]
-    fn test_form_block_works() {
+    #[test_with_logger]
+    fn test_form_block_works(logger: Logger) {
+        let enclave = SgxConsensusEnclave::new(logger);
         let mut rng = Hc128Rng::from_seed([77u8; 32]);
-        let enclave = SgxConsensusEnclave::default();
 
         // Create a valid test transaction.
         let sender = AccountKey::random(&mut rng);
@@ -841,10 +845,10 @@ mod tests {
         assert_eq!(value, total_fee);
     }
 
-    #[test]
+    #[test_with_logger]
     /// form_block should return an error if the input transactions contain a double-spend.
-    fn test_form_block_prevents_duplicate_spend() {
-        let enclave = SgxConsensusEnclave::default();
+    fn test_form_block_prevents_duplicate_spend(logger: Logger) {
+        let enclave = SgxConsensusEnclave::new(logger);
         let mut rng = Hc128Rng::from_seed([77u8; 32]);
 
         // Initialize a ledger. `sender` is the owner of all outputs in the initial ledger.
@@ -923,11 +927,11 @@ mod tests {
         assert_eq!(form_block_result, expected);
     }
 
-    #[test]
+    #[test_with_logger]
     /// form_block should return an error if the input transactions contain a duplicate output
     /// public key.
-    fn test_form_block_prevents_duplicate_output_public_key() {
-        let enclave = SgxConsensusEnclave::default();
+    fn test_form_block_prevents_duplicate_output_public_key(logger: Logger) {
+        let enclave = SgxConsensusEnclave::new(logger);
         let mut rng = Hc128Rng::from_seed([77u8; 32]);
 
         // Initialize a ledger. `sender` is the owner of all outputs in the initial ledger.
@@ -1015,9 +1019,9 @@ mod tests {
         assert_eq!(form_block_result, expected);
     }
 
-    #[test]
-    fn form_block_refuses_duplicate_root_elements() {
-        let enclave = SgxConsensusEnclave::default();
+    #[test_with_logger]
+    fn form_block_refuses_duplicate_root_elements(logger: Logger) {
+        let enclave = SgxConsensusEnclave::new(logger);
         let mut rng = Hc128Rng::from_seed([77u8; 32]);
 
         // Initialize a ledger. `sender` is the owner of all outputs in the initial ledger.

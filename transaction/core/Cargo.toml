@@ -1,6 +1,6 @@
 [package]
 name = "mc-transaction-core"
-version = "0.5.0"
+version = "0.6.0"
 authors = ["MobileCoin"]
 edition = "2018"
 
@@ -31,7 +31,7 @@ zeroize = { version = "1", default-features = false }
 mc-account-keys = { path = "../../account-keys" }
 mc-common = { path = "../../common", default-features = false }
 mc-crypto-box = { path = "../../crypto/box" }
-mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek"] }
+mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek", "derive"] }
 mc-crypto-hashes = { path = "../../crypto/hashes" }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-crypto-rand = { path = "../../crypto/rand" }

@@ -402,14 +402,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "generic-array"
-version = "0.13.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "typenum 1.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "genio"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -581,20 +573,20 @@ dependencies = [
 
 [[package]]
 name = "mc-account-keys"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "blake2 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "curve25519-dalek 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "displaydoc 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "hkdf 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "mc-crypto-digestible 0.5.0",
- "mc-crypto-hashes 0.5.0",
- "mc-crypto-keys 0.5.0",
- "mc-crypto-sig 0.5.0",
- "mc-util-from-random 0.5.0",
- "mc-util-repr-bytes 0.5.0",
- "mc-util-serial 0.5.0",
+ "mc-crypto-digestible 0.6.0",
+ "mc-crypto-hashes 0.6.0",
+ "mc-crypto-keys 0.6.0",
+ "mc-crypto-sig 0.6.0",
+ "mc-util-from-random 0.6.0",
+ "mc-util-repr-bytes 0.6.0",
+ "mc-util-serial 0.6.0",
  "prost 0.6.1 (git+https://github.com/danburkert/prost?rev=6113789f70b69709820becba4242824b4fb3ffec)",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "zeroize 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -602,24 +594,24 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-ake"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "aead 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "mc-attest-core 0.5.0",
- "mc-common 0.5.0",
- "mc-crypto-keys 0.5.0",
- "mc-crypto-noise 0.5.0",
- "mc-sgx-build 0.5.0",
- "mc-util-serial 0.5.0",
+ "mc-attest-core 0.6.0",
+ "mc-common 0.6.0",
+ "mc-crypto-keys 0.6.0",
+ "mc-crypto-noise 0.6.0",
+ "mc-sgx-build 0.6.0",
+ "mc-util-serial 0.6.0",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "mc-attest-core"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "binascii 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitflags 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -632,11 +624,11 @@ dependencies = [
  "hex_fmt 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mbedtls 0.5.1 (git+https://github.com/mobilecoinofficial/rust-mbedtls.git?tag=mc-0.3)",
  "mbedtls-sys-auto 2.18.1 (git+https://github.com/mobilecoinofficial/rust-mbedtls.git?tag=mc-0.3)",
- "mc-common 0.5.0",
- "mc-crypto-rand 0.5.0",
- "mc-sgx-build 0.5.0",
- "mc-sgx-types 0.5.0",
- "mc-util-encodings 0.5.0",
+ "mc-common 0.6.0",
+ "mc-crypto-rand 0.6.0",
+ "mc-sgx-build 0.6.0",
+ "mc-sgx-types 0.6.0",
+ "mc-util-encodings 0.6.0",
  "prost 0.6.1 (git+https://github.com/danburkert/prost?rev=6113789f70b69709820becba4242824b4fb3ffec)",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rjson 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -647,31 +639,31 @@ dependencies = [
 
 [[package]]
 name = "mc-attest-enclave-api"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "mc-attest-ake 0.5.0",
- "mc-attest-core 0.5.0",
- "mc-crypto-noise 0.5.0",
- "mc-sgx-compat 0.5.0",
+ "mc-attest-ake 0.6.0",
+ "mc-attest-core 0.6.0",
+ "mc-crypto-noise 0.6.0",
+ "mc-sgx-compat 0.6.0",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "mc-attest-trusted"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "mc-attest-core 0.5.0",
- "mc-common 0.5.0",
- "mc-sgx-compat 0.5.0",
- "mc-sgx-types 0.5.0",
+ "mc-attest-core 0.6.0",
+ "mc-common 0.6.0",
+ "mc-sgx-compat 0.6.0",
+ "mc-sgx-types 0.6.0",
  "prost 0.6.1 (git+https://github.com/danburkert/prost?rev=6113789f70b69709820becba4242824b4fb3ffec)",
 ]
 
 [[package]]
 name = "mc-common"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "binascii 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "cfg-if 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -679,70 +671,71 @@ dependencies = [
  "generic-array 0.12.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "hashbrown 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex_fmt 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "mc-crypto-digestible 0.5.0",
- "mc-crypto-keys 0.5.0",
- "mc-crypto-rand 0.5.0",
- "mc-util-serial 0.5.0",
+ "mc-crypto-digestible 0.6.0",
+ "mc-crypto-keys 0.6.0",
+ "mc-crypto-rand 0.6.0",
+ "mc-util-serial 0.6.0",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha3 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "siphasher 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "slog 2.6.0 (git+https://github.com/mobilecoinofficial/slog?rev=cc1562258b81353426d17a55b7447256fa6eabbf)",
 ]
 
 [[package]]
 name = "mc-consensus-enclave-api"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "cfg-if 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "mc-attest-ake 0.5.0",
- "mc-attest-core 0.5.0",
- "mc-attest-enclave-api 0.5.0",
- "mc-common 0.5.0",
- "mc-crypto-keys 0.5.0",
- "mc-crypto-message-cipher 0.5.0",
- "mc-crypto-noise 0.5.0",
- "mc-sgx-compat 0.5.0",
- "mc-sgx-report-cache-api 0.5.0",
- "mc-transaction-core 0.5.0",
- "mc-util-serial 0.5.0",
+ "mc-attest-ake 0.6.0",
+ "mc-attest-core 0.6.0",
+ "mc-attest-enclave-api 0.6.0",
+ "mc-common 0.6.0",
+ "mc-crypto-keys 0.6.0",
+ "mc-crypto-message-cipher 0.6.0",
+ "mc-crypto-noise 0.6.0",
+ "mc-sgx-compat 0.6.0",
+ "mc-sgx-report-cache-api 0.6.0",
+ "mc-transaction-core 0.6.0",
+ "mc-util-serial 0.6.0",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "mc-consensus-enclave-edl"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "cargo-emit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "mc-util-build-script 0.5.0",
+ "mc-util-build-script 0.6.0",
 ]
 
 [[package]]
 name = "mc-consensus-enclave-impl"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "cfg-if 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "mbedtls 0.5.1 (git+https://github.com/mobilecoinofficial/rust-mbedtls.git?tag=mc-0.3)",
- "mc-account-keys 0.5.0",
- "mc-attest-core 0.5.0",
- "mc-attest-enclave-api 0.5.0",
- "mc-attest-trusted 0.5.0",
- "mc-common 0.5.0",
- "mc-consensus-enclave-api 0.5.0",
- "mc-crypto-ake-enclave 0.5.0",
- "mc-crypto-digestible 0.5.0",
- "mc-crypto-hashes 0.5.0",
- "mc-crypto-keys 0.5.0",
- "mc-crypto-message-cipher 0.5.0",
- "mc-crypto-rand 0.5.0",
- "mc-sgx-compat 0.5.0",
- "mc-sgx-report-cache-api 0.5.0",
- "mc-sgx-slog 0.5.0",
- "mc-transaction-core 0.5.0",
- "mc-util-build-script 0.5.0",
- "mc-util-from-random 0.5.0",
- "mc-util-serial 0.5.0",
+ "mc-account-keys 0.6.0",
+ "mc-attest-core 0.6.0",
+ "mc-attest-enclave-api 0.6.0",
+ "mc-attest-trusted 0.6.0",
+ "mc-common 0.6.0",
+ "mc-consensus-enclave-api 0.6.0",
+ "mc-crypto-ake-enclave 0.6.0",
+ "mc-crypto-digestible 0.6.0",
+ "mc-crypto-hashes 0.6.0",
+ "mc-crypto-keys 0.6.0",
+ "mc-crypto-message-cipher 0.6.0",
+ "mc-crypto-rand 0.6.0",
+ "mc-sgx-compat 0.6.0",
+ "mc-sgx-report-cache-api 0.6.0",
+ "mc-sgx-slog 0.6.0",
+ "mc-transaction-core 0.6.0",
+ "mc-util-build-script 0.6.0",
+ "mc-util-from-random 0.6.0",
+ "mc-util-serial 0.6.0",
  "prost 0.6.1 (git+https://github.com/danburkert/prost?rev=6113789f70b69709820becba4242824b4fb3ffec)",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha2 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -750,55 +743,55 @@ dependencies = [
 
 [[package]]
 name = "mc-consensus-enclave-trusted"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "cargo-emit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mbedtls 0.5.1 (git+https://github.com/mobilecoinofficial/rust-mbedtls.git?tag=mc-0.3)",
- "mc-attest-core 0.5.0",
- "mc-attest-trusted 0.5.0",
- "mc-common 0.5.0",
- "mc-consensus-enclave-api 0.5.0",
- "mc-consensus-enclave-edl 0.5.0",
- "mc-consensus-enclave-impl 0.5.0",
- "mc-crypto-keys 0.5.0",
- "mc-enclave-boundary 0.5.0",
- "mc-sgx-backtrace-edl 0.5.0",
- "mc-sgx-compat 0.5.0",
- "mc-sgx-debug-edl 0.5.0",
- "mc-sgx-enclave-id 0.5.0",
- "mc-sgx-panic-edl 0.5.0",
- "mc-sgx-report-cache-api 0.5.0",
- "mc-sgx-slog 0.5.0",
- "mc-sgx-slog-edl 0.5.0",
- "mc-sgx-types 0.5.0",
- "mc-util-build-script 0.5.0",
- "mc-util-build-sgx 0.5.0",
- "mc-util-serial 0.5.0",
+ "mc-attest-core 0.6.0",
+ "mc-attest-trusted 0.6.0",
+ "mc-common 0.6.0",
+ "mc-consensus-enclave-api 0.6.0",
+ "mc-consensus-enclave-edl 0.6.0",
+ "mc-consensus-enclave-impl 0.6.0",
+ "mc-crypto-keys 0.6.0",
+ "mc-enclave-boundary 0.6.0",
+ "mc-sgx-backtrace-edl 0.6.0",
+ "mc-sgx-compat 0.6.0",
+ "mc-sgx-debug-edl 0.6.0",
+ "mc-sgx-enclave-id 0.6.0",
+ "mc-sgx-panic-edl 0.6.0",
+ "mc-sgx-report-cache-api 0.6.0",
+ "mc-sgx-slog 0.6.0",
+ "mc-sgx-slog-edl 0.6.0",
+ "mc-sgx-types 0.6.0",
+ "mc-util-build-script 0.6.0",
+ "mc-util-build-sgx 0.6.0",
+ "mc-util-serial 0.6.0",
  "pkg-config 0.3.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha2 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "mc-crypto-ake-enclave"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "aead 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "aes-gcm 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "mc-attest-ake 0.5.0",
- "mc-attest-core 0.5.0",
- "mc-attest-enclave-api 0.5.0",
- "mc-attest-trusted 0.5.0",
- "mc-common 0.5.0",
- "mc-crypto-keys 0.5.0",
- "mc-crypto-noise 0.5.0",
- "mc-crypto-rand 0.5.0",
- "mc-sgx-build 0.5.0",
- "mc-sgx-compat 0.5.0",
- "mc-util-from-random 0.5.0",
- "mc-util-serial 0.5.0",
+ "mc-attest-ake 0.6.0",
+ "mc-attest-core 0.6.0",
+ "mc-attest-enclave-api 0.6.0",
+ "mc-attest-trusted 0.6.0",
+ "mc-common 0.6.0",
+ "mc-crypto-keys 0.6.0",
+ "mc-crypto-noise 0.6.0",
+ "mc-crypto-rand 0.6.0",
+ "mc-sgx-build 0.6.0",
+ "mc-sgx-compat 0.6.0",
+ "mc-util-from-random 0.6.0",
+ "mc-util-serial 0.6.0",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha2 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -806,7 +799,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-box"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "aead 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "aes-gcm 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -814,25 +807,25 @@ dependencies = [
  "digest 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "hkdf 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "mc-crypto-keys 0.5.0",
+ "mc-crypto-keys 0.6.0",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "mc-crypto-digestible"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "cfg-if 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "curve25519-dalek 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "ed25519-dalek 1.0.0-pre.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "mc-crypto-digestible-derive 0.5.0",
+ "mc-crypto-digestible-derive 0.6.0",
  "x25519-dalek 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "mc-crypto-digestible-derive"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "proc-macro2 1.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "quote 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -841,7 +834,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-hashes"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "blake2 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -849,7 +842,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-keys"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "binascii 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "cfg-if 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -859,10 +852,10 @@ dependencies = [
  "ed25519-dalek 1.0.0-pre.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex_fmt 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "mc-crypto-digestible 0.5.0",
- "mc-util-from-random 0.5.0",
- "mc-util-repr-bytes 0.5.0",
- "mc-util-serial 0.5.0",
+ "mc-crypto-digestible 0.6.0",
+ "mc-util-from-random 0.6.0",
+ "mc-util-repr-bytes 0.6.0",
+ "mc-util-serial 0.6.0",
  "prost 0.6.1 (git+https://github.com/danburkert/prost?rev=6113789f70b69709820becba4242824b4fb3ffec)",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -874,12 +867,12 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-message-cipher"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "aes-gcm 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "generic-array 0.12.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "mc-util-serial 0.5.0",
+ "mc-util-serial 0.6.0",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
  "subtle 2.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -887,7 +880,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-noise"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "aead 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "aes-gcm 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -895,9 +888,9 @@ dependencies = [
  "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "generic-array 0.12.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "hkdf 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "mc-crypto-keys 0.5.0",
- "mc-util-from-random 0.5.0",
- "mc-util-repr-bytes 0.5.0",
+ "mc-crypto-keys 0.6.0",
+ "mc-util-from-random 0.6.0",
+ "mc-util-repr-bytes 0.6.0",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "secrecy 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -908,7 +901,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-rand"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "cfg-if 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "getrandom 0.1.14 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -919,41 +912,41 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-sig"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
- "digest 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "mc-crypto-hashes 0.5.0",
- "mc-crypto-keys 0.5.0",
+ "mc-crypto-hashes 0.6.0",
+ "mc-crypto-keys 0.6.0",
+ "merlin 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_hc 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "schnorrkel 0.9.1 (git+https://github.com/sugargoat/schnorrkel?rev=60eedb2d3e005539052e1a2aef864bc78323c66c)",
+ "schnorrkel 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "mc-enclave-boundary"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
- "mc-common 0.5.0",
- "mc-crypto-rand 0.5.0",
- "mc-sgx-compat 0.5.0",
- "mc-sgx-types 0.5.0",
+ "mc-common 0.6.0",
+ "mc-crypto-rand 0.6.0",
+ "mc-sgx-compat 0.6.0",
+ "mc-sgx-types 0.6.0",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "mc-sgx-alloc"
-version = "0.5.0"
+version = "0.6.0"
 
 [[package]]
 name = "mc-sgx-backtrace-edl"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "cargo-emit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "mc-sgx-build"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "cc 1.0.50 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -963,104 +956,105 @@ dependencies = [
 
 [[package]]
 name = "mc-sgx-compat"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "cfg-if 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
- "mc-sgx-alloc 0.5.0",
- "mc-sgx-debug 0.5.0",
- "mc-sgx-panic 0.5.0",
- "mc-sgx-service 0.5.0",
- "mc-sgx-sync 0.5.0",
- "mc-sgx-types 0.5.0",
+ "mc-sgx-alloc 0.6.0",
+ "mc-sgx-debug 0.6.0",
+ "mc-sgx-panic 0.6.0",
+ "mc-sgx-service 0.6.0",
+ "mc-sgx-sync 0.6.0",
+ "mc-sgx-types 0.6.0",
 ]
 
 [[package]]
 name = "mc-sgx-debug"
-version = "0.5.0"
+version = "0.6.0"
 
 [[package]]
 name = "mc-sgx-debug-edl"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "cargo-emit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "mc-sgx-enclave-id"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
- "mc-sgx-types 0.5.0",
+ "mc-sgx-types 0.6.0",
 ]
 
 [[package]]
 name = "mc-sgx-libc-types"
-version = "0.5.0"
+version = "0.6.0"
 
 [[package]]
 name = "mc-sgx-panic"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
- "mc-sgx-libc-types 0.5.0",
+ "mc-sgx-libc-types 0.6.0",
 ]
 
 [[package]]
 name = "mc-sgx-panic-edl"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "cargo-emit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "mc-sgx-report-cache-api"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "displaydoc 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "mc-attest-core 0.5.0",
- "mc-attest-enclave-api 0.5.0",
- "mc-util-serial 0.5.0",
+ "mc-attest-core 0.6.0",
+ "mc-attest-enclave-api 0.6.0",
+ "mc-util-serial 0.6.0",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "mc-sgx-service"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
- "mc-sgx-build 0.5.0",
- "mc-sgx-types 0.5.0",
+ "mc-sgx-build 0.6.0",
+ "mc-sgx-types 0.6.0",
 ]
 
 [[package]]
 name = "mc-sgx-slog"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "cfg-if 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "mc-common 0.6.0",
+ "mc-sgx-build 0.6.0",
  "prost 0.6.1 (git+https://github.com/danburkert/prost?rev=6113789f70b69709820becba4242824b4fb3ffec)",
- "slog 2.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "mc-sgx-slog-edl"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "cargo-emit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "mc-sgx-sync"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
- "mc-sgx-libc-types 0.5.0",
- "mc-sgx-panic 0.5.0",
- "mc-sgx-types 0.5.0",
+ "mc-sgx-libc-types 0.6.0",
+ "mc-sgx-panic 0.6.0",
+ "mc-sgx-types 0.6.0",
 ]
 
 [[package]]
 name = "mc-sgx-types"
-version = "0.5.0"
+version = "0.6.0"
 
 [[package]]
 name = "mc-transaction-core"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "blake2 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "bulletproofs 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1071,16 +1065,16 @@ dependencies = [
  "generic-array 0.12.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex_fmt 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "mc-account-keys 0.5.0",
- "mc-common 0.5.0",
- "mc-crypto-box 0.5.0",
- "mc-crypto-digestible 0.5.0",
- "mc-crypto-hashes 0.5.0",
- "mc-crypto-keys 0.5.0",
- "mc-crypto-rand 0.5.0",
- "mc-util-from-random 0.5.0",
- "mc-util-repr-bytes 0.5.0",
- "mc-util-serial 0.5.0",
+ "mc-account-keys 0.6.0",
+ "mc-common 0.6.0",
+ "mc-crypto-box 0.6.0",
+ "mc-crypto-digestible 0.6.0",
+ "mc-crypto-hashes 0.6.0",
+ "mc-crypto-keys 0.6.0",
+ "mc-crypto-rand 0.6.0",
+ "mc-util-from-random 0.6.0",
+ "mc-util-repr-bytes 0.6.0",
+ "mc-util-serial 0.6.0",
  "merlin 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "prost 0.6.1 (git+https://github.com/danburkert/prost?rev=6113789f70b69709820becba4242824b4fb3ffec)",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1092,7 +1086,7 @@ dependencies = [
 
 [[package]]
 name = "mc-util-build-script"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "cargo-emit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1103,47 +1097,47 @@ dependencies = [
 
 [[package]]
 name = "mc-util-build-sgx"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "cargo-emit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "cc 1.0.50 (registry+https://github.com/rust-lang/crates.io-index)",
  "displaydoc 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "mc-util-build-script 0.5.0",
+ "mc-util-build-script 0.6.0",
  "pkg-config 0.3.17 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "mc-util-encodings"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "base64 0.12.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "binascii 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "displaydoc 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "mc-util-repr-bytes 0.5.0",
+ "mc-util-repr-bytes 0.6.0",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "mc-util-from-random"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "mc-util-repr-bytes"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
- "generic-array 0.13.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "generic-array 0.12.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "prost 0.6.1 (git+https://github.com/danburkert/prost?rev=6113789f70b69709820becba4242824b4fb3ffec)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "mc-util-serial"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "prost 0.6.1 (git+https://github.com/danburkert/prost?rev=6113789f70b69709820becba4242824b4fb3ffec)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1351,7 +1345,7 @@ dependencies = [
 [[package]]
 name = "schnorrkel"
 version = "0.9.1"
-source = "git+https://github.com/sugargoat/schnorrkel?rev=60eedb2d3e005539052e1a2aef864bc78323c66c#60eedb2d3e005539052e1a2aef864bc78323c66c"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "arrayref 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "arrayvec 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1450,8 +1444,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "slog"
-version = "2.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+version = "2.6.0"
+source = "git+https://github.com/mobilecoinofficial/slog?rev=cc1562258b81353426d17a55b7447256fa6eabbf#cc1562258b81353426d17a55b7447256fa6eabbf"
 
 [[package]]
 name = "smallvec"
@@ -1730,7 +1724,6 @@ dependencies = [
 "checksum failure_derive 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "0bc225b78e0391e4b8683440bf2e63c2deeeb2ce5189eab46e2b68c6d3725d08"
 "checksum fake-simd 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "e88a8acf291dafb59c2d96e8f59828f3838bb1a70398823ade51a84de6a6deed"
 "checksum generic-array 0.12.3 (registry+https://github.com/rust-lang/crates.io-index)" = "c68f0274ae0e023facc3c97b2e00f076be70e254bc851d972503b328db79b2ec"
-"checksum generic-array 0.13.2 (registry+https://github.com/rust-lang/crates.io-index)" = "0ed1e761351b56f54eb9dcd0cfaca9fd0daecf93918e1cfc01c8a3d26ee7adcd"
 "checksum genio 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "f4e26859a808ffa83a83f20c7e3c9366afea91edae637a6ac203051885882dc8"
 "checksum getrandom 0.1.14 (registry+https://github.com/rust-lang/crates.io-index)" = "7abc8dd8451921606d809ba32e95b6111925cd2906060d2dcc29c070220503eb"
 "checksum ghash 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "9f0930ed19a7184089ea46d2fedead2f6dc2b674c5db4276b7da336c7cd83252"
@@ -1780,7 +1773,7 @@ dependencies = [
 "checksum rjson 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "5510dbde48c4c37bf69123b1f636b6dd5f8dffe1f4e358af03c46a4947dca219"
 "checksum rustc-hash 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 "checksum same-file 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)" = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
-"checksum schnorrkel 0.9.1 (git+https://github.com/sugargoat/schnorrkel?rev=60eedb2d3e005539052e1a2aef864bc78323c66c)" = "<none>"
+"checksum schnorrkel 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)" = "021b403afe70d81eea68f6ea12f6b3c9588e5d536a94c3bf80f15e7faa267862"
 "checksum secrecy 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "9eb052cf770a381fa9a6ee63038ff9a0b11d30abb53be970672e950649ff0bfb"
 "checksum serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)" = "414115f25f818d7dfccec8ee535d76949ae78584fc4f79a6f45a904bf8ab4449"
 "checksum serde_cbor 0.11.1 (git+https://github.com/mobilecoinofficial/cbor?rev=4c886a7c1d523aae1ec4aa7386f402cb2f4341b5)" = "<none>"
@@ -1791,7 +1784,7 @@ dependencies = [
 "checksum shlex 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "7fdf1b9db47230893d76faad238fd6097fd6d6a9245cd7a4d90dbd639536bbd2"
 "checksum signature 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "685e1c5b65c6cc6fd0eb9ba63c6cfb8431f7f9c7e078c626f23f50e13fa378d7"
 "checksum siphasher 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "83da420ee8d1a89e640d0948c646c1c088758d3a3c538f943bfa97bdac17929d"
-"checksum slog 2.5.2 (registry+https://github.com/rust-lang/crates.io-index)" = "1cc9c640a4adbfbcc11ffb95efe5aa7af7309e002adab54b185507dbf2377b99"
+"checksum slog 2.6.0 (git+https://github.com/mobilecoinofficial/slog?rev=cc1562258b81353426d17a55b7447256fa6eabbf)" = "<none>"
 "checksum smallvec 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5c2fb2ec9bcd216a5b0d0ccf31ab17b5ed1d627960edff65bbe95d3ce221cefc"
 "checksum spin 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)" = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 "checksum strsim 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "8ea5119cdb4c55b55d432abb513a0429384878c15dde60cc77b1c99de1a95a6a"

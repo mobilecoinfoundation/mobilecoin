@@ -1,6 +1,6 @@
 [package]
 name = "mc-sgx-urts"
-version = "0.5.0"
+version = "0.6.0"
 authors = ["MobileCoin"]
 
 [features]
@@ -8,11 +8,15 @@ default = [ "backtrace" ]
 backtrace = [ "rustc-demangle", "lazy_static" ]
 
 [dependencies]
+mc-common = { path = "../../common", features = ["log"] }
+mc-sgx-slog = { path = "../slog" }
 mc-sgx-libc-types = { path = "../libc-types" }
 mc-sgx-types = { path = "../types" }
+
 lazy_static = { version = "1.4", optional = true }
 rustc-demangle = { version = "0.1.10", optional = true }
 #backtrace-sys = { version = "0.1.24", optional = true }
+prost = { version = "0.6.1", default-features = false }
 
 [build-dependencies]
 mc-sgx-build = { path = "../build" }

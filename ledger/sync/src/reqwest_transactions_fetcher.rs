@@ -16,7 +16,10 @@ use serde::{Deserialize, Serialize};
 use std::{
     convert::TryFrom,
     fs,
-    sync::atomic::{AtomicU64, Ordering},
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
 };
 use url::Url;
 
@@ -33,6 +36,9 @@ pub enum ReqwestTransactionsFetcherError {
 
     #[fail(display = "Received an invalid block from {}: {}", _0, _1)]
     InvalidBlockReceived(String, String),
+
+    #[fail(display = "No URLs configured.")]
+    NoUrlsConfigured,
 }
 
 impl From<ReqwestError> for ReqwestTransactionsFetcherError {
@@ -53,11 +59,12 @@ pub struct ArchiveBlockData {
     pub signature: Option<BlockSignature>,
 }
 
+#[derive(Clone)]
 pub struct ReqwestTransactionsFetcher {
     pub source_urls: Vec<Url>,
     client: reqwest::blocking::Client,
     logger: Logger,
-    source_index_counter: AtomicU64,
+    source_index_counter: Arc<AtomicU64>,
 }
 
 impl ReqwestTransactionsFetcher {
@@ -93,7 +100,7 @@ impl ReqwestTransactionsFetcher {
             source_urls: source_urls?,
             client,
             logger,
-            source_index_counter: AtomicU64::new(0),
+            source_index_counter: Arc::new(AtomicU64::new(0)),
         })
     }
 
@@ -190,7 +197,10 @@ impl ReqwestTransactionsFetcher {
     pub fn get_origin_block_and_transactions(
         &self,
     ) -> Result<(Block, BlockContents), ReqwestTransactionsFetcherError> {
-        let source_url = &self.source_urls[0];
+        let source_url = &self
+            .source_urls
+            .get(0)
+            .ok_or(ReqwestTransactionsFetcherError::NoUrlsConfigured)?;
         let filename = block_num_to_s3block_path(0)
             .into_os_string()
             .into_string()

@@ -23,10 +23,6 @@ use mc_sgx_urts::SgxEnclave;
 use mc_transaction_core::{tx::TxOutMembershipProof, Block, BlockContents, BlockSignature};
 use std::{path, result::Result as StdResult, sync::Arc};
 
-// This is here to force linkage
-#[allow(unused_imports)]
-use mc_sgx_slog::enclave_log;
-
 /// The default filename of the consensus service's SGX enclave binary.
 pub const ENCLAVE_FILE: &str = "libconsensus-enclave.signed.so";
 

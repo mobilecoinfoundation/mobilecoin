@@ -1,0 +1,48 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
+/// Protos to be used for displaying encoded strings to users
+
+syntax = "proto3";
+import "external.proto";
+
+package printable;
+
+option java_package = "com.mobilecoin.api";
+option java_outer_classname = "MobileCoinAPI";
+
+/// Message for a payment request, which combines a public address
+/// with an a requested payment amount and memo field
+message PaymentRequest {
+    /// The public address of the user requesting a payment
+    external.PublicAddress public_address = 1;
+
+    /// The requested value of the payment
+    uint64 value = 2;
+
+    /// Any additional text explaining the request
+    string memo = 3;
+}
+
+/// Message encoding a private key and a UTXO, for the purpose of
+/// giving someone access to an output. This would most likely be
+/// used for gift cards.
+message TransferPayload {
+    /// The root entropy, allowing the recipient to spend the money
+    bytes entropy = 1;
+
+    /// The public key of the UTXO to spend. This is an optimization, meaning
+    /// the recipient does not need to scan the entire ledger.
+    bytes tx_public_key = 2;
+
+    /// Any additional text explaining the gift
+    string memo = 3;
+}
+
+/// This wraps all of the above messages using "oneof", allowing us to
+/// have a single encoding scheme and extend as necessary simply by adding
+/// new messages without breaking backwards compatibility
+message PrintableWrapper { oneof wrapper {
+    external.PublicAddress public_address = 1;
+    PaymentRequest payment_request = 2;
+    TransferPayload transfer_payload = 3;
+}}

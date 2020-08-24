@@ -1,17 +1,18 @@
 [package]
 name = "mc-sgx-slog"
-version = "0.5.0"
+version = "0.6.0"
 authors = ["MobileCoin"]
 edition = "2018"
 
 [features]
 default = []
-std = [
-    "slog-scope",
-]
+sgx = []
 
 [dependencies]
 cfg-if = "0.1"
 prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
-slog = { version = "2.5", features = ["max_level_trace", "release_max_level_trace"], default-features = false }
-slog-scope = { version = "4.1.2", optional = true }
+
+mc-common = { path = "../../common", default-features = false }
+
+[build-dependencies]
+mc-sgx-build = { path = "../build" }

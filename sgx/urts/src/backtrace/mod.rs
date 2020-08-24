@@ -43,13 +43,15 @@ lazy_static! {
 }
 
 #[no_mangle]
-pub extern "C" fn report_backtrace(
+pub unsafe extern "C" fn report_backtrace(
     eid: sgx_enclave_id_t,
     frames_ptr: *const Frame,
     num_frames: usize,
 ) {
-    let frames: &[Frame] = unsafe { slice::from_raw_parts(frames_ptr, num_frames) };
+    report_backtrace_impl(eid, slice::from_raw_parts(frames_ptr, num_frames));
+}
 
+fn report_backtrace_impl(eid: sgx_enclave_id_t, frames: &[Frame]) {
     symbolicate_and_print_backtrace(eid, frames);
 }
 

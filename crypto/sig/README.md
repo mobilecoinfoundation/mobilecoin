@@ -49,15 +49,13 @@ and the nonce should be *pseudorandomly generated* from the message and the priv
 If a PRF is used to compute the nonce, then the nonce is hard to distinguish from random even if
 the messages that are signed are adversarially chosen.
 
-For this generation, we can think of the private key
-as a source of entropy for a *secret seed* to the PRF.
-We note that when secret entropy like this is available,
-then PRFs exist under weak assumptions, and do not require the "random oracle model" for hash functions.
+For this generation, we can think of the private key as a source of entropy for a *secret seed* to the PRF.
+We note that when secret entropy like this is available, then PRFs exist under weak assumptions, and do not require the "random oracle model" for hash functions.
 (See for instance [Chapter 3.8 in Pass "A Course in Cryptography"](https://www.cs.cornell.edu/courses/cs4830/2010fa/lecnotes.pdf)
 It is known that PRFs of this form exist if cryptographic Pseudorandom Generators (PRGs) exist. [Hastad, Impagliazzo, Levin and Luby famously showed](http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.185.988)
 that PRG's exist if and only if one-way functions exist. This is a necessary assumption for semantically-secure symmetric key cryptography.)
 
-In the `sign` function in this crate, we take as an assumption that secret-prefix-Blake2b is a PRF.
+In the `sign` function in this crate, we take as an assumption that a Merlin Transcript's [`challenge_bytes`](https://docs.rs/merlin/1.0.3/merlin/struct.Transcript.html#method.challenge_bytes) method is a PRF.
 
 The [ed25519 manuscript]((http://ed25519.cr.yp.to/ed25519-20110926.pdf)) from 2011-09-26 has remarks in the section "pseudorandom generation of r", where
 `r` is the nonce, which support this idea:
@@ -77,13 +75,27 @@ The [ed25519 manuscript]((http://ed25519.cr.yp.to/ed25519-20110926.pdf)) from 20
 > a cipher such as AES, combined with standard PRF-stretching mechanisms to support a long input;
 > but we prefer to reuse `H` to save area in hardware implementations.
 
-We point out that Blake was one of the SHA-3 finalists, and was also explicitly designed to model a PRF.
-We prefer Blake2b here because it reduces the number of different hash functions in our system overall.
+We point out that Merlin Transcripts implement a subset of the STROBE protocol, which states in [STROBE Protocol Framework](https://strobe.sourceforge.io/),
 
-Assuming the Blake2b has the secret-prefix-PRF property, we can say that the signatures created this way
-are hard to distinguish from signatures created where the nonce is truly uniformly random, even if the messages
-that are signed are adversarially chosen. So, if Schnorrkel is secure when the nonces are truly random and
-the RNG is the OS-RNG, or, when the nonce is created using the mini-secret-key expansion, then this should also be secure.
+>  Strobe is based on SHA-3, or rather Keccak-f and cSHAKE (draft NIST SP 800-185).
+
+We prefer using Merlin transcripts to produce the nonce here, instead of a cryptographic hash function. Schnorrkel already relies on Merlin -- it has several benefits, like automatic domain separation and framing. By using this here instead of a hash function like SHA3, we can reduce the total number of cryptographic assumptions underpinning this signature scheme.
+
+When using Merlin for this, instead of assuming that a hash function has the secret-prefix-PRF property, we assume that the following pseudo-rust function does, for any particular merlin transcript, where the private_key argument is identified with the secret prefix:
+
+```
+fn produce_nonce(transcript, private_key, message) -> [u8; 32]
+    transcript.append_message("private", private_key);
+    transcript.append_message("message", message);
+    let mut nonce = [0u8; 32];
+    transcript.challenge_bytes("nonce", &mut nonce);
+    nonce
+}
+```
+
+This assumption can be justified if we believe that the STROBE "PRF" operation functions as a PRF once STROBE has been keyed. We refer the reader to https://strobe.sourceforge.io/papers/strobe-20170130.pdf for a discussion of the usage and security properties of STROBE. For more discussion, see also the documentation around Merlin: https://merlin.cool/transcript/ops.html.
+
+With this assumption in hand, we can say that signatures created this way are hard to distinguish from signatures created where the nonce is truly uniformly random, even if the messages that are signed are adversarially chosen. So, if Schnorrkel is secure when the nonces are truly random and the RNG is the OS-RNG, or, when the nonce is created using the mini-secret-key expansion, then this should also be secure.
 
 Rng required by Schnorrkel
 --------------------------
