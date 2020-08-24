@@ -16,23 +16,18 @@ use mc_common::{
 use mc_consensus_enclave::{
     ConsensusEnclave, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
 };
-use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{
     constants::MAX_TRANSACTIONS_PER_BLOCK,
-    ring_signature::KeyImage,
     tx::{TxHash, TxOutMembershipProof},
-    validation::TransactionValidationResult,
     Block, BlockContents, BlockSignature,
 };
-use std::sync::{Mutex, MutexGuard};
-
-#[cfg(test)]
-use mockall::*;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, MutexGuard};
 
 mod error;
+mod untrusted_interfaces;
 
 pub use error::{TxManagerError, TxManagerResult};
+pub use untrusted_interfaces::UntrustedInterfaces;
 
 struct CacheEntry {
     /// An encrypted transaction that has been found to be well-formed.
@@ -50,34 +45,6 @@ impl CacheEntry {
     pub fn context(&self) -> &Arc<WellFormedTxContext> {
         &self.context
     }
-}
-
-/// The untrusted (i.e. non-enclave) part of validating and combining transactions.
-#[cfg_attr(test, automock)]
-pub trait UntrustedInterfaces: Send + Sync {
-    /// Performs the untrusted part of the well-formed check.
-    /// Returns current block index and membership proofs to be used by
-    /// the in-enclave well-formed check on success.
-    fn well_formed_check(
-        &self,
-        highest_indices: &[u64],
-        key_images: &[KeyImage],
-        output_public_keys: &[CompressedRistrettoPublic],
-    ) -> TransactionValidationResult<(u64, Vec<TxOutMembershipProof>)>;
-
-    /// Checks if a transaction is valid (see definition in validators.rs).
-    fn is_valid(&self, context: Arc<WellFormedTxContext>) -> TransactionValidationResult<()>;
-
-    /// Combines a set of "candidate values" into a "composite value".
-    /// This assumes all values are well-formed and safe to append to the ledger individually.
-    ///
-    /// # Arguments
-    /// * `tx_contexts` - "Candidate" transactions. Each is assumed to be individually valid.
-    /// * `max_elements` - Maximal number of elements to output.
-    ///
-    /// Returns a bounded, deterministically-ordered list of transactions that are safe to append to the ledger.
-    fn combine(&self, tx_contexts: &[Arc<WellFormedTxContext>], max_elements: usize)
-        -> Vec<TxHash>;
 }
 
 pub struct TxManager<E: ConsensusEnclave, UI: UntrustedInterfaces> {
@@ -367,7 +334,10 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::validators::DefaultTxManagerUntrustedInterfaces;
+    use crate::{
+        tx_manager::untrusted_interfaces::MockUntrustedInterfaces,
+        validators::DefaultTxManagerUntrustedInterfaces,
+    };
     use mc_common::logger::test_with_logger;
     use mc_consensus_enclave_mock::{
         ConsensusServiceMockEnclave, Error as EnclaveError, MockConsensusEnclave,
