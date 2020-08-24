@@ -158,17 +158,9 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManagerTrait for TxManager<
         expired.keys().cloned().collect()
     }
 
-    /// Returns elements of `tx_hashes` that are not inside the cache.
-    fn missing_hashes<T>(&self, tx_hashes: &T) -> Vec<TxHash>
-    where
-        for<'a> &'a T: IntoIterator<Item = &'a TxHash>,
-    {
-        let cache = self.lock_cache();
-        tx_hashes
-            .into_iter()
-            .filter(|tx_hash| !cache.contains_key(tx_hash))
-            .cloned()
-            .collect()
+    /// Returns true if the cache contains the corresponding transaction.
+    fn contains(&self, tx_hash: &TxHash) -> bool {
+        self.lock_cache().contains_key(tx_hash)
     }
 
     /// Number of cached entries.

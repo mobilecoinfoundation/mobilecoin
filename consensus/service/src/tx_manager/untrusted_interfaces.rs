@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
 use mc_consensus_enclave::WellFormedTxContext;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{

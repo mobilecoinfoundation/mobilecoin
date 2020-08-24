@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
 use failure::Fail;
 use mc_consensus_enclave::Error as ConsensusEnclaveError;
 use mc_ledger_db::Error as LedgerDbError;
