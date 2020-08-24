@@ -121,7 +121,7 @@ pub fn view_key_matches_output(
 /// * `tx_public_key` - The transaction public key `R`.
 /// * `view_private_key` - A private view key `a`.
 /// * `subaddress_spend_private_key` - A private spend key `d = Hs(a || i) + b`.
-///69
+///
 pub fn recover_onetime_private_key(
     tx_public_key: &RistrettoPublic,
     view_private_key: &RistrettoPrivate,
