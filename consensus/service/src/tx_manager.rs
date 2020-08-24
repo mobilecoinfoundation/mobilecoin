@@ -257,30 +257,46 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
                 "attempting to validate non-existent tx hash {:?}",
                 tx_hash
             );
-            Err(TxManagerError::NotInCache(*tx_hash))
+            Err(TxManagerError::NotInCache(vec![*tx_hash]))
         }
     }
 
     /// Combines the transactions that correspond to the given hashes.
     pub fn combine(&self, tx_hashes: &[TxHash]) -> TxManagerResult<Vec<TxHash>> {
         let tx_hashes: HashSet<&TxHash> = tx_hashes.iter().clone().collect(); // Dedup
-        let tx_contexts: Vec<Arc<WellFormedTxContext>> = {
+
+        let tx_contexts: TxManagerResult<Vec<Arc<WellFormedTxContext>>> = {
             let cache = self.lock_cache();
-            let res: TxManagerResult<Vec<_>> = tx_hashes
-                .into_iter()
+
+            // Split `tx_hashes` into a list of found hashes and missing ones. This allows us to return
+            // an error with the entire list of missing hashes.
+            let (entries, not_found) = tx_hashes
+                .iter()
                 .map(|tx_hash| {
                     cache
                         .get(tx_hash)
-                        .map(|entry| entry.context().clone())
-                        .ok_or(TxManagerError::NotInCache(*tx_hash))
+                        .map_or_else(|| (*tx_hash, None), |entry| (*tx_hash, Some(entry)))
                 })
-                .collect();
-            res?
+                .partition::<Vec<_>, _>(|(_tx_hash, result)| result.is_some());
+
+            // If we are missing any hashes, return error.
+            if !not_found.is_empty() {
+                let not_found_tx_hashes =
+                    not_found.into_iter().map(|(tx_hash, _)| *tx_hash).collect();
+                return Err(TxManagerError::NotInCache(not_found_tx_hashes));
+            }
+
+            // Collect tx contexts.
+            Ok(entries
+                .into_iter()
+                .map(|(_tx_hash, entry)| entry.unwrap().context().clone())
+                .collect())
         };
 
+        // Perform the combine operation.
         Ok(self
             .untrusted
-            .combine(&tx_contexts, MAX_TRANSACTIONS_PER_BLOCK))
+            .combine(&tx_contexts?, MAX_TRANSACTIONS_PER_BLOCK))
     }
 
     /// Forms a Block containing the transactions that correspond to the given hashes.
@@ -291,6 +307,8 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
     ) -> TxManagerResult<(Block, BlockContents, BlockSignature)> {
         let cache = self.lock_cache();
 
+        // Split `tx_hashes` into a list of found hashes and missing ones. This allows us to return
+        // an error with the entire list of missing hashes.
         let (entries, not_found) = tx_hashes
             .iter()
             .map(|tx_hash| {
@@ -300,11 +318,13 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
             })
             .partition::<Vec<_>, _>(|(_tx_hash, result)| result.is_some());
 
+        // If we are missing any hashes, return error.
         if !not_found.is_empty() {
             let not_found_tx_hashes = not_found.into_iter().map(|(tx_hash, _)| tx_hash).collect();
             return Err(TxManagerError::NotInCache(not_found_tx_hashes));
         }
 
+        // Proceed with forming the block.
         let encrypted_txs_with_proofs = entries
             .into_iter()
             .map(|(_tx_hash, entry)| {
@@ -342,6 +362,8 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
         aad: &[u8],
         peer: &PeerSession,
     ) -> TxManagerResult<EnclaveMessage<PeerSession>> {
+        // Split `tx_hashes` into a list of found hashes and missing ones. This allows us to return
+        // an error with the entire list of missing hashes.
         let (encrypted_txs, not_found) = {
             let cache = self.lock_cache();
             tx_hashes
@@ -355,11 +377,13 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
                 .partition::<Vec<_>, _>(|(_tx_hash, result)| result.is_some())
         };
 
+        // If we are missing any hashes, return error.
         if !not_found.is_empty() {
             let not_found_tx_hashes = not_found.into_iter().map(|(tx_hash, _)| tx_hash).collect();
             return Err(TxManagerError::NotInCache(not_found_tx_hashes));
         }
 
+        // Proceed with producing encrypted txs for the given peer.
         let encrypted_txs: Vec<_> = encrypted_txs
             .into_iter()
             .map(|(_, result)| result.unwrap())
