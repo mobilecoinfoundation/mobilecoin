@@ -173,7 +173,7 @@ message Amount {
     CompressedRistretto commitment = 1;
 
     // `masked_value = value XOR_8 Blake2B("value_mask" || shared_secret)`
-    uint64 masked_value = 2;
+    fixed64 masked_value = 2;
 }
 
 message EncryptedFogHint {
