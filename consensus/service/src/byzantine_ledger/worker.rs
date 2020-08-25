@@ -95,7 +95,7 @@ pub struct ByzantineLedgerWorker<
     // A map of responder id to a list of tx hashes that it is unable to provide. This allows us to
     // skip attemping to fetch txs that are bound to fail. A BTreeSet is used to speed up lookups
     // as expect to be doing more lookups than inserts.
-    missing_tx_hashes: HashMap<ResponderId, BTreeSet<TxHash>>,
+    unavailable_tx_hashes: HashMap<ResponderId, BTreeSet<TxHash>>,
 }
 
 impl<
@@ -157,7 +157,7 @@ impl<
             network_state,
             ledger_sync_service,
             ledger_sync_state: LedgerSyncState::InSync,
-            missing_tx_hashes: HashMap::default(),
+            unavailable_tx_hashes: HashMap::default(),
         };
 
         loop {
@@ -597,7 +597,7 @@ impl<
 
         // Clear the missing tx hashes map. If we encounter the same tx hash again in a different
         // slot, it is possible we might be able to fetch it.
-        self.missing_tx_hashes.clear();
+        self.unavailable_tx_hashes.clear();
     }
 
     fn fetch_missing_txs(
@@ -613,7 +613,7 @@ impl<
             .collect();
 
         // Don't attempt to issue any RPC calls if we know we're going to fail.
-        if let Some(previously_missed_hashes) = self.missing_tx_hashes.get(from_responder_id) {
+        if let Some(previously_missed_hashes) = self.unavailable_tx_hashes.get(from_responder_id) {
             let previously_encountered_missing_hashes = missing_hashes
                 .iter()
                 .any(|tx_hash| previously_missed_hashes.contains(tx_hash));
@@ -675,7 +675,7 @@ impl<
                     ..
                 }) => {
                     let entry = self
-                        .missing_tx_hashes
+                        .unavailable_tx_hashes
                         .entry(from_responder_id.clone())
                         .or_insert_with(BTreeSet::default);
                     entry.extend(tx_hashes);
