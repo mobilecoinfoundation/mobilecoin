@@ -250,7 +250,6 @@ mod tests {
     use mc_util_from_random::FromRandom;
     use mc_util_uri::{ConnectionUri, ConsensusPeerUri as PeerUri, ConsensusPeerUri};
     use rand::{rngs::StdRng, SeedableRng};
-    use rand_hc::Hc128Rng as FixedRng;
     use std::{
         collections::BTreeSet,
         convert::TryInto,
@@ -276,7 +275,7 @@ mod tests {
     }
 
     // Get the local node's NodeID and message signer key.
-    fn get_local_node_config(node_id: u32) -> (NodeID, ConsensusPeerUri, Ed25519Pair) {
+    fn get_local_node_config(node_id: u32) -> (NodeID, ConsensusPeerUri, Arc<Ed25519Pair>) {
         let secret_key = Ed25519Private::try_from_der(
             &base64::decode("MC4CAQAwBQYDK2VwBCIEIC50QXQll2Y9qxztvmsUgcBBIxkmk7EQjxzQTa926bKo")
                 .unwrap()
@@ -287,11 +286,35 @@ mod tests {
         let node_uri = test_peer_uri(node_id, hex::encode(&signer_key.public_key()));
         let node_id = node_uri.node_id().unwrap();
 
-        (node_id, node_uri, signer_key)
+        (node_id, node_uri, Arc::new(signer_key))
     }
 
-    // Get the peers' NodeIDs and QuorumSets.
-    fn get_peers(peer_ids: &[u32], rng: &mut StdRng) -> Vec<(NodeID, ConsensusPeerUri, QuorumSet)> {
+    #[derive(Clone)]
+    struct PeerConfig {
+        id: NodeID,
+        uri: ConsensusPeerUri,
+        quorum_set: QuorumSet,
+        signer_key: Arc<Ed25519Pair>,
+    }
+
+    impl PeerConfig {
+        fn new(
+            id: NodeID,
+            uri: ConsensusPeerUri,
+            quorum_set: QuorumSet,
+            signer_key: Ed25519Pair,
+        ) -> Self {
+            Self {
+                id,
+                uri,
+                quorum_set,
+                signer_key: Arc::new(signer_key),
+            }
+        }
+    }
+
+    // Get the peers' configurations.
+    fn get_peers(peer_ids: &[u32], rng: &mut StdRng) -> Vec<PeerConfig> {
         peer_ids
             .iter()
             .map(|peer_id| {
@@ -299,7 +322,7 @@ mod tests {
                 let uri = test_peer_uri(*peer_id, hex::encode(&signer_key.public_key()));
                 let node_id = test_node_id(uri.clone(), &signer_key);
                 let quorum_set = QuorumSet::empty();
-                (node_id, uri, quorum_set)
+                PeerConfig::new(node_id, uri, quorum_set, signer_key)
             })
             .collect()
     }
@@ -309,16 +332,14 @@ mod tests {
         let mut rng: StdRng = SeedableRng::from_seed([216u8; 32]);
 
         // Other nodes.
-        let peers: Vec<(NodeID, ConsensusPeerUri, QuorumSet)> = get_peers(&[11, 22, 33], &mut rng);
-        let peer_uris: Vec<_> = peers.iter().map(|(_id, uri, _qs)| uri.clone()).collect();
+        let peers = get_peers(&[11, 22, 33], &mut rng);
 
         // Local node.
         let (local_node_id, _local_node_uri, msg_signer_key) = get_local_node_config(11);
-        let msg_signer_key = Arc::new(msg_signer_key); // Why Arc?
 
         // Local node's quorum set.
         let local_quorum_set =
-            QuorumSet::new_with_node_ids(2, vec![peers[0].0.clone(), peers[1].0.clone()]);
+            QuorumSet::new_with_node_ids(2, vec![peers[0].id.clone(), peers[1].id.clone()]);
 
         // Local node's Ledger.
         let mut ledger = create_ledger();
@@ -330,13 +351,13 @@ mod tests {
         let peer_manager = ConnectionManager::new(
             vec![
                 MockPeerConnection::new(
-                    peer_uris[0].clone(),
+                    peers[0].uri.clone(),
                     local_node_id.clone(),
                     ledger.clone(),
                     10,
                 ),
                 MockPeerConnection::new(
-                    peer_uris[1].clone(),
+                    peers[1].uri.clone(),
                     local_node_id.clone(),
                     ledger.clone(),
                     10,
@@ -371,54 +392,34 @@ mod tests {
     // Initially, ByzantineLedger should emit the normal SCPStatements from single-slot consensus.
     #[test_with_logger]
     fn test_single_slot_consensus(logger: Logger) {
-        // Set up `local_node`.
-        let trivial_quorum_set = QuorumSet::empty();
+        let mut rng: StdRng = SeedableRng::from_seed([209u8; 32]);
 
-        let mut seeded_rng: FixedRng = SeedableRng::from_seed([0u8; 32]);
+        // Other nodes.
+        let peers = get_peers(&[22, 33, 44], &mut rng);
 
-        let node_a_signer_key = Ed25519Pair::from_random(&mut seeded_rng);
-        let node_a_uri = test_peer_uri(22, hex::encode(&node_a_signer_key.public_key()));
-        let node_a = (
-            test_node_id(node_a_uri.clone(), &node_a_signer_key),
-            trivial_quorum_set.clone(),
-        );
+        let node_a = peers[0].clone();
+        let node_b = peers[1].clone();
 
-        let node_b_signer_key = Ed25519Pair::from_random(&mut seeded_rng);
-        let node_b_uri = test_peer_uri(33, hex::encode(&node_b_signer_key.public_key()));
-        let node_b = (
-            test_node_id(node_b_uri.clone(), &node_b_signer_key),
-            trivial_quorum_set.clone(),
-        );
+        // Local node.
+        let (local_node_id, _, local_signer_key) = get_local_node_config(11);
 
-        let node_c_signer_key = Ed25519Pair::from_random(&mut seeded_rng);
-        let node_c_uri = test_peer_uri(44, hex::encode(&node_c_signer_key.public_key()));
-        let _node_c = (
-            test_node_id(node_c_uri.clone(), &node_c_signer_key),
-            trivial_quorum_set,
-        );
-
-        let local_secret_key = Ed25519Private::try_from_der(
-            &base64::decode("MC4CAQAwBQYDK2VwBCIEIC50QXQll2Y9qxztvmsUgcBBIxkmk7EQjxzQTa926bKo")
-                .unwrap()
-                .as_slice(),
-        )
-        .unwrap();
-        let local_signer_key = Arc::new(Ed25519Pair::from(local_secret_key));
-
-        let local_node_uri = test_peer_uri(11, hex::encode(&local_signer_key.public_key()));
-        let local_node_id = local_node_uri.node_id().unwrap();
+        // Local node's quorum set.
         let local_quorum_set =
-            QuorumSet::new_with_node_ids(2, vec![node_a.0.clone(), node_b.0.clone()]);
+            QuorumSet::new_with_node_ids(2, vec![node_a.id.clone(), node_b.id.clone()]);
 
-        let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
+        // Local node's Ledger.
         let mut ledger = create_ledger();
         let sender = AccountKey::random(&mut rng);
         let num_blocks = 1;
         initialize_ledger(&mut ledger, num_blocks, &sender, &mut rng);
 
-        // A mock peer that collects messages sent to it.
-        let mock_peer =
-            MockPeerConnection::new(node_a_uri, local_node_id.clone(), ledger.clone(), 10);
+        // Mock peer_manager
+        let mock_peer = MockPeerConnection::new(
+            node_a.uri.clone(),
+            local_node_id.clone(),
+            ledger.clone(),
+            10,
+        );
 
         // We use this later to examine the messages received by this peer.
         let mock_peer_state = mock_peer.state.clone();
@@ -427,7 +428,12 @@ mod tests {
         let peer_manager = ConnectionManager::new(
             vec![
                 mock_peer,
-                MockPeerConnection::new(node_b_uri, local_node_id.clone(), ledger.clone(), 10),
+                MockPeerConnection::new(
+                    node_b.uri.clone(),
+                    local_node_id.clone(),
+                    ledger.clone(),
+                    10,
+                ),
             ],
             logger.clone(),
         );
@@ -585,8 +591,8 @@ mod tests {
             ConsensusMsg::from_scp_msg(
                 &ledger,
                 Msg::new(
-                    node_a.0.clone(),
-                    node_a.1.clone(),
+                    node_a.id.clone(),
+                    node_a.quorum_set.clone(),
                     slot_index,
                     Topic::Commit(CommitPayload {
                         B: Ballot::new(100, &[hash_tx_zero, hash_tx_one, hash_tx_two]),
@@ -595,20 +601,20 @@ mod tests {
                         HN: 66,
                     }),
                 ),
-                &node_a_signer_key,
+                &node_a.signer_key,
             )
             .unwrap()
             .try_into()
             .unwrap(),
-            node_a.0.responder_id.clone(),
+            node_a.id.responder_id.clone(),
         );
 
         byzantine_ledger.handle_consensus_msg(
             ConsensusMsg::from_scp_msg(
                 &ledger,
                 Msg::new(
-                    node_b.0.clone(),
-                    node_b.1,
+                    node_b.id.clone(),
+                    node_b.quorum_set.clone(),
                     slot_index,
                     Topic::Commit(CommitPayload {
                         B: Ballot::new(100, &[hash_tx_zero, hash_tx_one, hash_tx_two]),
@@ -617,12 +623,12 @@ mod tests {
                         HN: 66,
                     }),
                 ),
-                &node_b_signer_key,
+                &node_b.signer_key,
             )
             .unwrap()
             .try_into()
             .unwrap(),
-            node_a.0.responder_id,
+            node_a.id.responder_id,
         );
 
         // TODO MC-1055 write a test for this
