@@ -358,19 +358,28 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             request.get_b58_code().to_string(),
         )
         .map_err(|err| rpc_internal_error("PrintableWrapper_b58_decode", err, &self.logger))?;
-        if !request_wrapper.has_payment_request() {
-            return Err(RpcStatus::new(
+
+        // A request code could be a public address or a payment request
+        if request_wrapper.has_payment_request() {
+            let payment_request = request_wrapper.get_payment_request();
+            let mut response = mc_mobilecoind_api::ReadRequestCodeResponse::new();
+            response.set_receiver(payment_request.get_public_address().clone());
+            response.set_value(payment_request.get_value());
+            response.set_memo(payment_request.get_memo().to_string());
+            Ok(response)    
+        } else if request_wrapper.has_public_address() {
+            let public_address = request_wrapper.get_public_address();
+            let mut response = mc_mobilecoind_api::ReadRequestCodeResponse::new();
+            response.set_receiver(public_address.clone());
+            response.set_value(0);
+            response.set_memo(String::new());
+            Ok(response)    
+        } else {
+            Err(RpcStatus::new(
                 RpcStatusCode::INVALID_ARGUMENT,
                 Some("has_payment_request".to_string()),
-            ));
+            ))
         }
-        let payment_request = request_wrapper.get_payment_request();
-        let mut response = mc_mobilecoind_api::ReadRequestCodeResponse::new();
-        response.set_receiver(payment_request.get_public_address().clone());
-        response.set_value(payment_request.get_value());
-        response.set_memo(payment_request.get_memo().to_string());
-
-        Ok(response)
     }
 
     fn get_request_code_impl(
