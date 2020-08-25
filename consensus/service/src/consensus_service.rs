@@ -11,7 +11,7 @@ use crate::{
     config::Config,
     counters, peer_api_service,
     peer_keepalive::PeerKeepalive,
-    tx_manager::{TxManager, TxManagerTrait},
+    tx_manager::{TxManager, TxManagerImpl},
     validators::DefaultTxManagerUntrustedInterfaces,
 };
 use failure::Fail;
@@ -101,7 +101,7 @@ pub struct ConsensusService<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync 
 
     peer_manager: ConnectionManager<PeerConnection<E>>,
     broadcaster: Arc<Mutex<ThreadedBroadcaster>>,
-    tx_manager: Arc<TxManager<E, DefaultTxManagerUntrustedInterfaces<LedgerDB>>>,
+    tx_manager: Arc<TxManagerImpl<E, DefaultTxManagerUntrustedInterfaces<LedgerDB>>>,
     peer_keepalive: Arc<Mutex<PeerKeepalive>>,
 
     admin_rpc_server: Option<AdminServer>,
@@ -157,7 +157,7 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
         )));
 
         // Tx Manager
-        let tx_manager = TxManager::new(
+        let tx_manager = TxManagerImpl::new(
             enclave.clone(),
             DefaultTxManagerUntrustedInterfaces::new(ledger_db.clone()),
             logger.clone(),

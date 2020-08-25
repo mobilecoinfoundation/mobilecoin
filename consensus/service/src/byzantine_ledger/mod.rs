@@ -11,7 +11,7 @@ mod worker;
 use crate::{
     byzantine_ledger::{task_message::TaskMessage, worker::ByzantineLedgerWorker},
     counters,
-    tx_manager::TxManagerTrait,
+    tx_manager::TxManager,
 };
 use mc_common::{logger::Logger, NodeID, ResponderId};
 use mc_connection::{BlockchainConnection, ConnectionManager};
@@ -53,7 +53,7 @@ impl ByzantineLedger {
     pub fn new<
         PC: BlockchainConnection + ConsensusConnection + 'static,
         L: Ledger + Sync + 'static,
-        TXM: TxManagerTrait + Send + Sync + 'static,
+        TXM: TxManager + Send + Sync + 'static,
     >(
         node_id: NodeID,
         quorum_set: QuorumSet,
@@ -233,7 +233,7 @@ impl Drop for ByzantineLedger {
 mod tests {
     use super::*;
     use crate::{
-        tx_manager::{MockTxManagerTrait, TxManager},
+        tx_manager::{MockTxManager, TxManagerImpl},
         validators::DefaultTxManagerUntrustedInterfaces,
     };
     use hex;
@@ -367,7 +367,7 @@ mod tests {
         );
 
         // Mock tx_manager
-        let tx_manager = Arc::new(MockTxManagerTrait::new());
+        let tx_manager = Arc::new(MockTxManager::new());
 
         // Mock broadcaster
         let broadcaster = Arc::new(Mutex::new(MockBroadcast::new()));
@@ -445,7 +445,7 @@ mod tests {
         )));
 
         let enclave = ConsensusServiceMockEnclave::default();
-        let tx_manager = Arc::new(TxManager::new(
+        let tx_manager = Arc::new(TxManagerImpl::new(
             enclave.clone(),
             DefaultTxManagerUntrustedInterfaces::new(ledger.clone()),
             logger.clone(),

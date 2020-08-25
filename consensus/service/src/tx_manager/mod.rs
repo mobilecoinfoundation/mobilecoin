@@ -27,11 +27,11 @@ mod tx_manager_trait;
 mod untrusted_interfaces;
 
 pub use error::{TxManagerError, TxManagerResult};
-pub use tx_manager_trait::TxManagerTrait;
+pub use tx_manager_trait::TxManager;
 pub use untrusted_interfaces::UntrustedInterfaces;
 
 #[cfg(test)]
-pub use tx_manager_trait::MockTxManagerTrait;
+pub use tx_manager_trait::MockTxManager;
 
 struct CacheEntry {
     /// An encrypted transaction that has been found to be well-formed.
@@ -51,7 +51,7 @@ impl CacheEntry {
     }
 }
 
-pub struct TxManager<E: ConsensusEnclave, UI: UntrustedInterfaces> {
+pub struct TxManagerImpl<E: ConsensusEnclave, UI: UntrustedInterfaces> {
     /// Enclave.
     enclave: E,
 
@@ -66,7 +66,7 @@ pub struct TxManager<E: ConsensusEnclave, UI: UntrustedInterfaces> {
     logger: Logger,
 }
 
-impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
+impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManagerImpl<E, UI> {
     /// Construct a new TxManager instance.
     pub fn new(enclave: E, untrusted: UI, logger: Logger) -> Self {
         Self {
@@ -82,7 +82,7 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
     }
 }
 
-impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManagerTrait for TxManager<E, UI> {
+impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager for TxManagerImpl<E, UI> {
     /// Insert a transaction into the cache. The transaction must be well-formed.
     fn insert(&self, tx_context: TxContext) -> TxManagerResult<TxHash> {
         {
@@ -379,7 +379,7 @@ mod tests {
             .times(1)
             .return_const(Ok((well_formed_encrypted_tx, well_formed_tx_context)));
 
-        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+        let tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
         assert_eq!(tx_manager.num_entries(), 0);
 
         assert!(tx_manager.insert(tx_context.clone()).is_ok());
@@ -424,7 +424,7 @@ mod tests {
             .times(1)
             .return_const(Ok((well_formed_encrypted_tx, well_formed_tx_context)));
 
-        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+        let tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
         assert_eq!(tx_manager.num_entries(), 0);
 
         assert!(tx_manager.insert(tx_context.clone()).is_ok());
@@ -453,7 +453,7 @@ mod tests {
         // This should not be called.
         let mock_enclave = MockConsensusEnclave::new();
 
-        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+        let tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
         assert!(tx_manager.insert(tx_context.clone()).is_err());
         assert_eq!(tx_manager.num_entries(), 0);
     }
@@ -478,7 +478,7 @@ mod tests {
             .times(1)
             .return_const(Err(EnclaveError::Signature));
 
-        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+        let tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
         assert!(tx_manager.insert(tx_context.clone()).is_err());
         assert_eq!(tx_manager.num_entries(), 0);
     }
@@ -488,7 +488,7 @@ mod tests {
     fn test_remove_expired(logger: Logger) {
         let mock_untrusted = MockUntrustedInterfaces::new();
         let mock_enclave = MockConsensusEnclave::new();
-        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+        let tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
 
         // Fill the cache with entries that have different tombstone blocks.
         for tombstone_block in 10..24 {
@@ -553,7 +553,7 @@ mod tests {
         // The enclave is not called because its checks are "well-formed-ness" checks.
         let mock_enclave = MockConsensusEnclave::new();
 
-        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+        let tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
 
         // Add this transaction to the cache.
         let cache_entry = CacheEntry {
@@ -580,7 +580,7 @@ mod tests {
         // The enclave is not called because its checks are "well-formed-ness" checks.
         let mock_enclave = MockConsensusEnclave::new();
 
-        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+        let tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
         match tx_manager.validate(&tx_context.tx_hash) {
             Err(TxManagerError::NotInCache(_)) => {} // This is expected.
             _ => panic!(),
@@ -604,7 +604,7 @@ mod tests {
         // The enclave is not called because its checks are "well-formed-ness" checks.
         let mock_enclave = MockConsensusEnclave::new();
 
-        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+        let tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
 
         // Add this transaction to the cache.
         let cache_entry = CacheEntry {
@@ -638,7 +638,7 @@ mod tests {
             .return_const(expected.clone());
 
         let mock_enclave = MockConsensusEnclave::new();
-        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+        let tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
 
         // Add transactions to the cache.
         for tx_hash in &tx_hashes {
@@ -681,7 +681,7 @@ mod tests {
 
         // ConsensusEnclave should not be called.
         let mock_enclave = MockConsensusEnclave::new();
-        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+        let tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
 
         // Add some transactions, but not all, to the cache.
         for tx_hash in &tx_hashes[2..] {
@@ -723,7 +723,7 @@ mod tests {
         let num_blocks = ledger.num_blocks().expect("Ledger must contain a block.");
         let parent_block = ledger.get_block(num_blocks - 1).unwrap();
 
-        let tx_manager = TxManager::new(
+        let tx_manager = TxManagerImpl::new(
             ConsensusServiceMockEnclave::default(),
             DefaultTxManagerUntrustedInterfaces::new(ledger.clone()),
             logger.clone(),
@@ -858,7 +858,7 @@ mod tests {
             .times(1)
             .return_const(Ok(EnclaveMessage::default()));
 
-        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+        let tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
 
         // Add transactions to the cache.
         let tx_hashes: Vec<_> = (0..10).map(|i| TxHash([i as u8; 32])).collect();
@@ -898,7 +898,7 @@ mod tests {
         let mock_untrusted = MockUntrustedInterfaces::new();
         let mock_enclave = MockConsensusEnclave::new();
 
-        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+        let tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
         assert_eq!(tx_manager.num_entries(), 0);
 
         let tx_hashes: Vec<_> = (0..10).map(|i| TxHash([i as u8; 32])).collect();
@@ -922,7 +922,7 @@ mod tests {
             .times(1)
             .return_const(Err(EnclaveError::Signature));
 
-        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+        let tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
 
         // Add transactions to the cache.
         let tx_hashes: Vec<_> = (0..10).map(|i| TxHash([i as u8; 32])).collect();
@@ -963,7 +963,7 @@ mod tests {
     fn test_get_encrypted_tx(logger: Logger) {
         let mock_untrusted = MockUntrustedInterfaces::new();
         let mock_enclave = MockConsensusEnclave::new();
-        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+        let tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
 
         // Add a transaction to the cache.
         let cache_entry = CacheEntry {
@@ -993,7 +993,7 @@ mod tests {
     fn test_get_num_entries(logger: Logger) {
         let mock_untrusted = MockUntrustedInterfaces::new();
         let mock_enclave = MockConsensusEnclave::new();
-        let tx_manager = TxManager::new(mock_enclave, mock_untrusted, logger.clone());
+        let tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger.clone());
 
         // Initially, the cache is empty.
         assert_eq!(tx_manager.num_entries(), 0);

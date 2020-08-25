@@ -6,7 +6,7 @@ use crate::{
         MAX_PENDING_VALUES_TO_NOMINATE,
     },
     counters,
-    tx_manager::{TxManagerError, TxManagerTrait},
+    tx_manager::{TxManager, TxManagerError},
 };
 use mc_common::{
     logger::{log, Logger},
@@ -40,7 +40,7 @@ pub struct ByzantineLedgerWorker<
     F: Fn(Msg<TxHash>),
     L: Ledger + 'static,
     PC: BlockchainConnection + ConsensusConnection + 'static,
-    TXM: TxManagerTrait,
+    TXM: TxManager,
 > {
     receiver: Receiver<TaskMessage>,
     scp: Box<dyn ScpNode<TxHash>>,
@@ -93,7 +93,7 @@ impl<
         L: Ledger + 'static,
         PC: BlockchainConnection + ConsensusConnection + 'static,
         // UI: UntrustedInterfaces + Send + 'static,
-        TXM: TxManagerTrait + Send + Sync,
+        TXM: TxManager + Send + Sync,
     > ByzantineLedgerWorker<F, L, PC, TXM>
 {
     pub fn start(

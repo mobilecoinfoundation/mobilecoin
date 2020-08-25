@@ -6,7 +6,7 @@ use crate::{
     consensus_service::ProposeTxCallback,
     counters,
     grpc_error::ConsensusGrpcError,
-    tx_manager::{TxManager, TxManagerError, TxManagerTrait},
+    tx_manager::{TxManager, TxManagerError, TxManagerImpl},
     validators::DefaultTxManagerUntrustedInterfaces,
 };
 use grpcio::{RpcContext, UnarySink};
@@ -30,7 +30,7 @@ pub struct ClientApiService<E: ConsensusEnclaveProxy, L: Ledger + Clone> {
     enclave: E,
     scp_client_value_sender: ProposeTxCallback,
     ledger: L,
-    tx_manager: Arc<TxManager<E, DefaultTxManagerUntrustedInterfaces<LedgerDB>>>,
+    tx_manager: Arc<TxManagerImpl<E, DefaultTxManagerUntrustedInterfaces<LedgerDB>>>,
     is_serving_fn: Arc<(dyn Fn() -> bool + Sync + Send)>,
     logger: Logger,
 }
@@ -40,7 +40,7 @@ impl<E: ConsensusEnclaveProxy, L: Ledger + Clone> ClientApiService<E, L> {
         enclave: E,
         scp_client_value_sender: ProposeTxCallback,
         ledger: L,
-        tx_manager: Arc<TxManager<E, DefaultTxManagerUntrustedInterfaces<LedgerDB>>>,
+        tx_manager: Arc<TxManagerImpl<E, DefaultTxManagerUntrustedInterfaces<LedgerDB>>>,
         is_serving_fn: Arc<(dyn Fn() -> bool + Sync + Send)>,
         logger: Logger,
     ) -> Self {
