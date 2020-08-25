@@ -386,7 +386,7 @@ impl TryFrom<&external::HsmParams> for tx::HsmParams {
     }
 }
 
-/// Convert mc_transaction_core::tx::Tx --> external::Tx.
+/// Convert mc_transaction_core::tx::HsmParams --> external::HsmParams.
 impl From<&tx::Tx> for external::Tx {
     fn from(source: &tx::Tx) -> Self {
         let mut tx = external::Tx::new();
