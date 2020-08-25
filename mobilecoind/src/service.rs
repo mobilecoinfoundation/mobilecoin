@@ -377,7 +377,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         } else {
             Err(RpcStatus::new(
                 RpcStatusCode::INVALID_ARGUMENT,
-                Some("has_payment_request".to_string()),
+                Some("Neither payment request nor public address".to_string()),
             ))
         }
     }
