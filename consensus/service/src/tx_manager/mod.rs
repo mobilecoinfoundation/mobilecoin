@@ -7,72 +7,28 @@
 //! may operate on.
 
 use crate::counters;
-use failure::Fail;
 use mc_attest_enclave_api::{EnclaveMessage, PeerSession};
 use mc_common::{
     logger::{log, Logger},
     HashMap, HashSet,
 };
 use mc_consensus_enclave::{
-    ConsensusEnclave, Error as ConsensusEnclaveError, TxContext, WellFormedEncryptedTx,
-    WellFormedTxContext,
+    ConsensusEnclave, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
 };
-use mc_crypto_keys::CompressedRistrettoPublic;
-use mc_ledger_db::Error as LedgerDbError;
 use mc_transaction_core::{
     constants::MAX_TRANSACTIONS_PER_BLOCK,
-    ring_signature::KeyImage,
     tx::{TxHash, TxOutMembershipProof},
-    validation::{TransactionValidationError, TransactionValidationResult},
     Block, BlockContents, BlockSignature,
 };
-use std::sync::{Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard};
 
-#[cfg(test)]
-use mockall::*;
-use std::sync::Arc;
+mod error;
+mod tx_manager_trait;
+mod untrusted_interfaces;
 
-#[derive(Clone, Debug, Fail)]
-pub enum TxManagerError {
-    #[fail(display = "Enclave error: {}", _0)]
-    Enclave(ConsensusEnclaveError),
-
-    #[fail(display = "Transaction validation error: {}", _0)]
-    TransactionValidation(TransactionValidationError),
-
-    #[fail(display = "Tx already in cache")]
-    AlreadyInCache,
-
-    #[fail(display = "Tx(s) not in cache ({:?})", _0)]
-    NotInCache(Vec<TxHash>),
-
-    #[fail(display = "Ledger error: {}", _0)]
-    LedgerDb(LedgerDbError),
-}
-
-impl From<ConsensusEnclaveError> for TxManagerError {
-    fn from(err: ConsensusEnclaveError) -> Self {
-        if let ConsensusEnclaveError::MalformedTx(transaction_validation_error) = err {
-            Self::TransactionValidation(transaction_validation_error)
-        } else {
-            Self::Enclave(err)
-        }
-    }
-}
-
-impl From<TransactionValidationError> for TxManagerError {
-    fn from(err: TransactionValidationError) -> Self {
-        Self::TransactionValidation(err)
-    }
-}
-
-impl From<LedgerDbError> for TxManagerError {
-    fn from(err: LedgerDbError) -> Self {
-        Self::LedgerDb(err)
-    }
-}
-
-pub type TxManagerResult<T> = Result<T, TxManagerError>;
+pub use error::{TxManagerError, TxManagerResult};
+pub use tx_manager_trait::TxManagerTrait;
+pub use untrusted_interfaces::UntrustedInterfaces;
 
 struct CacheEntry {
     /// An encrypted transaction that has been found to be well-formed.
@@ -90,34 +46,6 @@ impl CacheEntry {
     pub fn context(&self) -> &Arc<WellFormedTxContext> {
         &self.context
     }
-}
-
-/// The untrusted (i.e. non-enclave) part of validating and combining transactions.
-#[cfg_attr(test, automock)]
-pub trait UntrustedInterfaces: Send + Sync {
-    /// Performs the untrusted part of the well-formed check.
-    /// Returns current block index and membership proofs to be used by
-    /// the in-enclave well-formed check on success.
-    fn well_formed_check(
-        &self,
-        highest_indices: &[u64],
-        key_images: &[KeyImage],
-        output_public_keys: &[CompressedRistrettoPublic],
-    ) -> TransactionValidationResult<(u64, Vec<TxOutMembershipProof>)>;
-
-    /// Checks if a transaction is valid (see definition in validators.rs).
-    fn is_valid(&self, context: Arc<WellFormedTxContext>) -> TransactionValidationResult<()>;
-
-    /// Combines a set of "candidate values" into a "composite value".
-    /// This assumes all values are well-formed and safe to append to the ledger individually.
-    ///
-    /// # Arguments
-    /// * `tx_contexts` - "Candidate" transactions. Each is assumed to be individually valid.
-    /// * `max_elements` - Maximal number of elements to output.
-    ///
-    /// Returns a bounded, deterministically-ordered list of transactions that are safe to append to the ledger.
-    fn combine(&self, tx_contexts: &[Arc<WellFormedTxContext>], max_elements: usize)
-        -> Vec<TxHash>;
 }
 
 pub struct TxManager<E: ConsensusEnclave, UI: UntrustedInterfaces> {
@@ -146,8 +74,14 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
         }
     }
 
+    fn lock_cache(&self) -> MutexGuard<HashMap<TxHash, CacheEntry>> {
+        self.cache.lock().expect("Lock poisoned")
+    }
+}
+
+impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManagerTrait for TxManager<E, UI> {
     /// Insert a transaction into the cache. The transaction must be well-formed.
-    pub fn insert(&self, tx_context: TxContext) -> TxManagerResult<TxHash> {
+    fn insert(&self, tx_context: TxContext) -> TxManagerResult<TxHash> {
         {
             let cache = self.lock_cache();
             if let Some(entry) = cache.get(&tx_context.tx_hash) {
@@ -202,7 +136,7 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
     ///
     /// # Arguments
     /// * `block_index` - Current block index.
-    pub fn remove_expired(&self, block_index: u64) -> HashSet<TxHash> {
+    fn remove_expired(&self, block_index: u64) -> HashSet<TxHash> {
         let mut cache = self.lock_cache();
 
         let (expired, retained): (HashMap<_, _>, HashMap<_, _>) = cache
@@ -223,25 +157,18 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
         expired.keys().cloned().collect()
     }
 
-    /// Returns elements of `tx_hashes` that are not inside the cache.
-    pub fn missing_hashes<T>(&self, tx_hashes: &T) -> Vec<TxHash>
-    where
-        for<'a> &'a T: IntoIterator<Item = &'a TxHash>,
-    {
-        let cache = self.lock_cache();
-        tx_hashes
-            .into_iter()
-            .filter(|tx_hash| !cache.contains_key(tx_hash))
-            .cloned()
-            .collect()
+    /// Returns true if the cache contains the corresponding transaction.
+    fn contains(&self, tx_hash: &TxHash) -> bool {
+        self.lock_cache().contains_key(tx_hash)
     }
 
-    pub fn num_entries(&self) -> usize {
+    /// Number of cached entries.
+    fn num_entries(&self) -> usize {
         self.lock_cache().len()
     }
 
     /// Validate the transaction corresponding to the given hash against the current ledger.
-    pub fn validate(&self, tx_hash: &TxHash) -> TxManagerResult<()> {
+    fn validate(&self, tx_hash: &TxHash) -> TxManagerResult<()> {
         let context_opt = {
             let cache = self.lock_cache();
             cache.get(tx_hash).map(|entry| entry.context.clone())
@@ -262,7 +189,7 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
     }
 
     /// Combines the transactions that correspond to the given hashes.
-    pub fn combine(&self, tx_hashes: &[TxHash]) -> TxManagerResult<Vec<TxHash>> {
+    fn combine(&self, tx_hashes: &[TxHash]) -> TxManagerResult<Vec<TxHash>> {
         let tx_hashes: HashSet<&TxHash> = tx_hashes.iter().clone().collect(); // Dedup
 
         let tx_contexts: TxManagerResult<Vec<Arc<WellFormedTxContext>>> = {
@@ -300,7 +227,7 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
     }
 
     /// Forms a Block containing the transactions that correspond to the given hashes.
-    pub fn tx_hashes_to_block(
+    fn tx_hashes_to_block(
         &self,
         tx_hashes: &[TxHash],
         parent_block: &Block,
@@ -356,7 +283,7 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
     /// * `tx_hashes` - transaction hashes.
     /// * `aad` - Additional authenticated data.
     /// * `peer` - Recipient of the encrypted message.
-    pub fn encrypt_for_peer(
+    fn encrypt_for_peer(
         &self,
         tx_hashes: &[TxHash],
         aad: &[u8],
@@ -393,26 +320,26 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager<E, UI> {
     }
 
     /// Get the encrypted transaction corresponding to the given hash.
-    pub fn get_encrypted_tx(&self, tx_hash: &TxHash) -> Option<WellFormedEncryptedTx> {
+    fn get_encrypted_tx(&self, tx_hash: &TxHash) -> Option<WellFormedEncryptedTx> {
         self.lock_cache()
             .get(tx_hash)
             .map(|entry| entry.encrypted_tx().clone())
-    }
-
-    fn lock_cache(&self) -> MutexGuard<HashMap<TxHash, CacheEntry>> {
-        self.cache.lock().expect("Lock poisoned")
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::validators::DefaultTxManagerUntrustedInterfaces;
+    use crate::{
+        tx_manager::untrusted_interfaces::MockUntrustedInterfaces,
+        validators::DefaultTxManagerUntrustedInterfaces,
+    };
     use mc_common::logger::test_with_logger;
     use mc_consensus_enclave_mock::{
         ConsensusServiceMockEnclave, Error as EnclaveError, MockConsensusEnclave,
     };
     use mc_ledger_db::Ledger;
+    use mc_transaction_core::validation::TransactionValidationError;
     use mc_transaction_core_test_utils::{
         create_ledger, create_transaction, initialize_ledger, AccountKey,
     };
