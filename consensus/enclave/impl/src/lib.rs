@@ -327,6 +327,8 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let mut csprng = McRng::default();
         mc_transaction_core::validation::validate(&tx, block_index, &proofs, &mut csprng)?;
 
+        // XXX TODO: check ECDSA signature on HsmParams
+        
         // Convert into a well formed encrypted transaction + context.
         let well_formed_tx_context = WellFormedTxContext::from(&tx);
         let well_formed_tx = WellFormedTx::from(tx);
@@ -396,6 +398,8 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                 &mut rng,
             )?;
 
+            // XXX TODO: check ECDSA signature on HsmParams
+            
             for proof in proofs {
                 let root_element = proof
                     .elements
@@ -460,6 +464,9 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             }
         }
 
+        // XXX TODO: alter TxOuts for HSM transactions
+        
+        
         // Create an aggregate fee output.
         let fee_tx_private_key = {
             let hash_value: [u8; 32] = {
@@ -490,6 +497,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         }
         outputs.push(fee_output);
 
+        
         // Sort outputs and key images. This removes ordering information which could be used to
         // infer the per-transaction relationships among outputs and/or key images.
         outputs.sort_by(|a, b| a.public_key.cmp(&b.public_key));
