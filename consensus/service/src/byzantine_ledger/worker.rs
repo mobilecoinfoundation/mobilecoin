@@ -12,7 +12,10 @@ use mc_common::{
     logger::{log, Logger},
     NodeID, ResponderId,
 };
-use mc_connection::{BlockchainConnection, ConnectionManager, _retry::delay::Fibonacci};
+use mc_connection::{
+    BlockchainConnection, ConnectionManager,
+    _retry::{delay::Fibonacci, Error as RetryError},
+};
 use mc_consensus_enclave::ConsensusEnclaveProxy;
 use mc_consensus_scp::{slot::Phase, Msg, QuorumSet, ScpNode, SlotIndex};
 use mc_ledger_db::Ledger;
@@ -20,7 +23,8 @@ use mc_ledger_sync::{
     LedgerSyncService, NetworkState, ReqwestTransactionsFetcher, SCPNetworkState,
 };
 use mc_peers::{
-    Broadcast, ConsensusConnection, RetryableConsensusConnection, VerifiedConsensusMsg,
+    Broadcast, ConsensusConnection, Error as PeerError, RetryableConsensusConnection,
+    VerifiedConsensusMsg,
 };
 use mc_transaction_core::{tx::TxHash, BlockID};
 use mc_util_metered_channel::Receiver;
@@ -87,6 +91,11 @@ pub struct ByzantineLedgerWorker<
 
     // Ledger sync state.
     ledger_sync_state: LedgerSyncState,
+
+    // A map of responder id to a list of tx hashes that it is unable to provide. This allows us to
+    // skip attemping to fetch txs that are bound to fail. A BTreeSet is used to speed up lookups
+    // as expect to be doing more lookups than inserts.
+    missing_tx_hashes: HashMap<ResponderId, BTreeSet<TxHash>>,
 }
 
 impl<
@@ -148,6 +157,7 @@ impl<
             network_state,
             ledger_sync_service,
             ledger_sync_state: LedgerSyncState::InSync,
+            missing_tx_hashes: HashMap::default(),
         };
 
         loop {
@@ -584,6 +594,10 @@ impl<
             log::info!(self.logger, "sync_service reported we're behind, but we just externalized a slot. resetting to InSync");
             self.ledger_sync_state = LedgerSyncState::InSync;
         }
+
+        // Clear the missing tx hashes map. If we encounter the same tx hash again in a different
+        // slot, it is possible we might be able to fetch it.
+        self.missing_tx_hashes.clear();
     }
 
     fn fetch_missing_txs(
@@ -598,6 +612,20 @@ impl<
             .filter(|tx_hash| !self.tx_manager.contains(tx_hash))
             .collect();
 
+        // Don't attempt to issue any RPC calls if we know we're going to fail.
+        if let Some(previously_missed_hashes) = self.missing_tx_hashes.get(from_responder_id) {
+            let previously_encountered_missing_hashes = missing_hashes
+                .iter()
+                .any(|tx_hash| previously_missed_hashes.contains(tx_hash));
+            if previously_encountered_missing_hashes {
+                log::debug!(
+                    self.logger,
+                    "Not attempting to resolve missing tx hashes {:?}: contains tx hashes known to not be available", missing_hashes);
+                return false;
+            }
+        }
+
+        // Get the connection we'll be working with
         let conn = match self.peer_manager.conn(from_responder_id) {
             Some(conn) => conn,
             None => {
@@ -641,6 +669,17 @@ impl<
                             }
                         },
                     );
+                }
+                Err(RetryError::Operation {
+                    error: PeerError::TxHashesNotInCache(tx_hashes),
+                    ..
+                }) => {
+                    let entry = self
+                        .missing_tx_hashes
+                        .entry(from_responder_id.clone())
+                        .or_insert_with(BTreeSet::default);
+                    entry.extend(tx_hashes);
+                    return false;
                 }
                 Err(err) => {
                     log::error!(
