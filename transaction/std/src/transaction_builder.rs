@@ -188,6 +188,7 @@ impl TransactionBuilder {
         Ok(Tx {
             prefix: tx_prefix,
             signature,
+            hsm_params: None,
         })
     }
 }

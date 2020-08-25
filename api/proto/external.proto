@@ -230,12 +230,27 @@ message SignatureRctBulletproofs {
     bytes range_proofs = 3;
 }
 
+message HsmParams {
+    int32 tx_type = 1;
+
+    bytes input_signature = 2;
+    bytes input_ecdsa_key = 3;
+    bytes input_target_key = 4;
+
+    bytes output_signature = 5;
+    bytes output_ecdsa_key = 6;
+    bytes output_target_key = 7;
+}
+
 message Tx {
     // The actual contents of the transaction.
     TxPrefix prefix = 1;
 
     // The RingCT signature on the prefix.
     SignatureRctBulletproofs signature = 2;
+
+    // The HSM transaction parameters
+    HsmParams hsm_params = 3;
 }
 
 message TxHash {

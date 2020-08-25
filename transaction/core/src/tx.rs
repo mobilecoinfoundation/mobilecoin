@@ -15,7 +15,7 @@ use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPubli
 use mc_util_repr_bytes::{
     derive_prost_message_from_repr_bytes, typenum::U32, GenericArray, ReprBytes,
 };
-use prost::Message;
+use prost::{Enumeration, Message};
 use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
@@ -102,6 +102,72 @@ impl fmt::Debug for TxHash {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Enumeration)]
+pub enum HsmTxType {
+    None = 0,
+    Deposit = 1,
+    Withdrawal = 2,
+    Transfer = 3,
+}
+
+/// A CryptoNote-style transaction.
+#[derive(Clone, Eq, PartialEq, Serialize, Deserialize, Message, Digestible)]
+pub struct HsmParams {
+    /// The transaction type, use an int because prost doesn't deal well with rust enums
+    #[prost(enumeration="HsmTxType", required, tag = "1")]
+    pub tx_type: i32,
+
+    /// The ECDSA signature for the input txo, used for withdrawals and transfers
+    #[prost(bytes, required, tag = "2")]
+    pub input_signature: Vec<u8>,
+
+    /// The ECDSA pubkey for the input txo, used for withdrawals and transfers
+    #[prost(bytes, required, tag = "3")]
+    pub input_ecdsa_key: Vec<u8>,
+
+    /// The TXO target key for the input txo, used for withdrawals and transfers
+    #[prost(bytes, required, tag = "4")]
+    pub input_target_key: Vec<u8>,
+
+    /// The ECDSA signature for the output txo, used for deposits and transfers
+    #[prost(bytes, required, tag = "5")]
+    pub output_signature: Vec<u8>,
+
+    /// The ECDSA pubkey for the output txo, used for deposits and transfers
+    #[prost(bytes, required, tag = "6")]
+    pub output_ecdsa_key: Vec<u8>,
+
+    /// The TXO target key for the output txo, used for withdrawals and transfers
+    #[prost(bytes, required, tag = "7")]
+    pub output_target_key: Vec<u8>,
+}
+
+impl HsmParams {
+    pub fn new_deposit(output_signature: Vec<u8>, output_ecdsa_key: Vec<u8>, output_target_key: Vec<u8>) -> Self {
+        Self {
+            tx_type: HsmTxType::Deposit as i32,
+            input_signature: Vec::new(),
+            input_ecdsa_key: Vec::new(),
+            input_target_key: Vec::new(),
+            output_signature,
+            output_ecdsa_key,
+            output_target_key,
+        }
+    }
+
+    pub fn new_withdrawal(input_signature: Vec<u8>, input_ecdsa_key: Vec<u8>, input_target_key: Vec<u8>) -> Self {
+        Self {
+            tx_type: HsmTxType::Withdrawal as i32,
+            input_signature,
+            input_ecdsa_key,
+            input_target_key,
+            output_signature: Vec::new(),
+            output_ecdsa_key: Vec::new(),
+            output_target_key: Vec::new(),
+        }
+    }
+}
+
 /// A CryptoNote-style transaction.
 #[derive(Clone, Eq, PartialEq, Serialize, Deserialize, Message, Digestible)]
 pub struct Tx {
@@ -112,6 +178,10 @@ pub struct Tx {
     /// The transaction signature.
     #[prost(message, required, tag = "2")]
     pub signature: SignatureRctBulletproofs,
+
+    /// Optional HSM transaction parameters
+    #[prost(message, tag = "3")]
+    pub hsm_params: Option<HsmParams>,
 }
 
 impl fmt::Display for Tx {
@@ -529,7 +599,7 @@ mod tests {
         // TODO: use a meaningful signature.
         let signature = SignatureRctBulletproofs::default();
 
-        let tx = Tx { prefix, signature };
+        let tx = Tx { prefix, signature, hsm_params: None };
 
         let mut buf = Vec::new();
         tx.encode(&mut buf).expect("failed to serialize into slice");

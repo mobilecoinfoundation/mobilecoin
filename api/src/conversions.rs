@@ -369,7 +369,19 @@ impl TryFrom<&external::Tx> for tx::Tx {
     fn try_from(source: &external::Tx) -> Result<Self, Self::Error> {
         let prefix = tx::TxPrefix::try_from(source.get_prefix())?;
         let signature = SignatureRctBulletproofs::try_from(source.get_signature())?;
-        Ok(tx::Tx { prefix, signature })
+        let mut hsm_params: Option<tx::HsmParams> = None;
+        if source.get_hsm_params().get_tx_type() != tx::HsmTxType::None as i32 {
+            hsm_params = Some(tx::HsmParams{
+                tx_type: source.get_hsm_params().get_tx_type(),
+                input_signature: source.get_hsm_params().get_input_signature().to_vec(),
+                input_ecdsa_key: source.get_hsm_params().get_input_ecdsa_key().to_vec(),
+                input_target_key: source.get_hsm_params().get_input_target_key().to_vec(),
+                output_signature: source.get_hsm_params().get_output_signature().to_vec(),
+                output_ecdsa_key: source.get_hsm_params().get_output_ecdsa_key().to_vec(),
+                output_target_key: source.get_hsm_params().get_output_target_key().to_vec(),
+            });
+        }
+        Ok(tx::Tx { prefix, signature, hsm_params })
     }
 }
 
