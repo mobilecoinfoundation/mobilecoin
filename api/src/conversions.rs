@@ -353,11 +353,63 @@ impl TryFrom<&external::TxPrefix> for tx::TxPrefix {
 }
 
 /// Convert mc_transaction_core::tx::Tx --> external::Tx.
+impl From<&tx::HsmParams> for external::HsmParams {
+    fn from(source: &tx::HsmParams) -> Self {
+        let mut params = external::HsmParams::new();
+
+        params.set_tx_type(source.tx_type);
+        params.set_input_signature(source.input_signature.clone());
+        params.set_input_ecdsa_key(source.input_ecdsa_key.clone());
+        params.set_input_target_key(source.input_ecdsa_key.clone());
+        params.set_output_signature(source.output_signature.clone());
+        params.set_output_ecdsa_key(source.output_ecdsa_key.clone());
+        params.set_output_target_key(source.output_ecdsa_key.clone());
+
+        params
+    }
+}
+
+/// Convert external::HsmParams --> mc_transaction_core::tx::HsmParams.
+impl TryFrom<&external::HsmParams> for tx::HsmParams {
+    type Error = ConversionError;
+
+    fn try_from(source: &external::HsmParams) -> Result<Self, Self::Error> {
+        Ok(Self {
+            tx_type: source.get_tx_type(),
+            input_signature: source.get_input_signature().to_vec(),
+            input_ecdsa_key: source.get_input_ecdsa_key().to_vec(),
+            input_target_key: source.get_input_target_key().to_vec(),
+            output_signature: source.get_output_signature().to_vec(),
+            output_ecdsa_key: source.get_output_ecdsa_key().to_vec(),
+            output_target_key: source.get_output_target_key().to_vec(),
+        })
+    }
+}
+
+/// Convert mc_transaction_core::tx::Tx --> external::Tx.
 impl From<&tx::Tx> for external::Tx {
     fn from(source: &tx::Tx) -> Self {
         let mut tx = external::Tx::new();
         tx.set_prefix(external::TxPrefix::from(&source.prefix));
         tx.set_signature(external::SignatureRctBulletproofs::from(&source.signature));
+
+        match &source.hsm_params {
+            Some(hsm_params) => tx.set_hsm_params(external::HsmParams::from(hsm_params)),
+            None => {
+                let mut params = external::HsmParams::new();
+                params.set_tx_type(tx::HsmTxType::None as i32);
+                params.set_input_signature(Vec::new());
+                params.set_input_ecdsa_key(Vec::new());
+                params.set_input_target_key(Vec::new());
+
+                params.set_output_signature(Vec::new());
+                params.set_output_ecdsa_key(Vec::new());
+                params.set_output_target_key(Vec::new());
+
+                tx.set_hsm_params(params);
+            }
+        }
+
         tx
     }
 }
@@ -371,15 +423,7 @@ impl TryFrom<&external::Tx> for tx::Tx {
         let signature = SignatureRctBulletproofs::try_from(source.get_signature())?;
         let mut hsm_params: Option<tx::HsmParams> = None;
         if source.get_hsm_params().get_tx_type() != tx::HsmTxType::None as i32 {
-            hsm_params = Some(tx::HsmParams {
-                tx_type: source.get_hsm_params().get_tx_type(),
-                input_signature: source.get_hsm_params().get_input_signature().to_vec(),
-                input_ecdsa_key: source.get_hsm_params().get_input_ecdsa_key().to_vec(),
-                input_target_key: source.get_hsm_params().get_input_target_key().to_vec(),
-                output_signature: source.get_hsm_params().get_output_signature().to_vec(),
-                output_ecdsa_key: source.get_hsm_params().get_output_ecdsa_key().to_vec(),
-                output_target_key: source.get_hsm_params().get_output_target_key().to_vec(),
-            });
+            hsm_params = Some(tx::HsmParams::try_from(source.get_hsm_params())?);
         }
         Ok(tx::Tx {
             prefix,
