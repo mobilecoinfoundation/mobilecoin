@@ -6,14 +6,13 @@ use crate::{
         MAX_PENDING_VALUES_TO_NOMINATE,
     },
     counters,
-    tx_manager::{TxManager, TxManagerError, TxManagerTrait, UntrustedInterfaces},
+    tx_manager::{TxManagerError, TxManagerTrait},
 };
 use mc_common::{
     logger::{log, Logger},
     NodeID, ResponderId,
 };
 use mc_connection::{BlockchainConnection, ConnectionManager, _retry::delay::Fibonacci};
-use mc_consensus_enclave::ConsensusEnclaveProxy;
 use mc_consensus_scp::{slot::Phase, Msg, QuorumSet, ScpNode, SlotIndex};
 use mc_ledger_db::Ledger;
 use mc_ledger_sync::{
@@ -38,11 +37,10 @@ use std::{
 };
 
 pub struct ByzantineLedgerWorker<
-    E: ConsensusEnclaveProxy,
     F: Fn(Msg<TxHash>),
     L: Ledger + 'static,
     PC: BlockchainConnection + ConsensusConnection + 'static,
-    UI: UntrustedInterfaces = crate::validators::DefaultTxManagerUntrustedInterfaces<L>,
+    TXM: TxManagerTrait,
 > {
     receiver: Receiver<TaskMessage>,
     scp: Box<dyn ScpNode<TxHash>>,
@@ -51,7 +49,7 @@ pub struct ByzantineLedgerWorker<
     send_scp_message: F,
     ledger: L,
     peer_manager: ConnectionManager<PC>,
-    tx_manager: Arc<TxManager<E, UI>>,
+    tx_manager: Arc<TXM>,
     broadcaster: Arc<Mutex<dyn Broadcast>>,
     logger: Logger,
 
@@ -90,12 +88,13 @@ pub struct ByzantineLedgerWorker<
 }
 
 impl<
-        E: ConsensusEnclaveProxy,
+        // E: ConsensusEnclaveProxy,
         F: Fn(Msg<TxHash>),
         L: Ledger + 'static,
         PC: BlockchainConnection + ConsensusConnection + 'static,
-        UI: UntrustedInterfaces + Send + 'static,
-    > ByzantineLedgerWorker<E, F, L, PC, UI>
+        // UI: UntrustedInterfaces + Send + 'static,
+        TXM: TxManagerTrait + Send + Sync,
+    > ByzantineLedgerWorker<F, L, PC, TXM>
 {
     pub fn start(
         node_id: NodeID,
@@ -107,7 +106,7 @@ impl<
         send_scp_message: F,
         ledger: L,
         peer_manager: ConnectionManager<PC>,
-        tx_manager: Arc<TxManager<E, UI>>,
+        tx_manager: Arc<TXM>,
         broadcaster: Arc<Mutex<dyn Broadcast>>,
         tx_source_urls: Vec<String>,
         logger: Logger,

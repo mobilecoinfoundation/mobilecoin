@@ -11,11 +11,10 @@ mod worker;
 use crate::{
     byzantine_ledger::{task_message::TaskMessage, worker::ByzantineLedgerWorker},
     counters,
-    tx_manager::{TxManager, TxManagerTrait, UntrustedInterfaces},
+    tx_manager::TxManagerTrait,
 };
 use mc_common::{logger::Logger, NodeID, ResponderId};
 use mc_connection::{BlockchainConnection, ConnectionManager};
-use mc_consensus_enclave::ConsensusEnclaveProxy;
 use mc_consensus_scp::{scp_log::LoggingScpNode, Msg, Node, QuorumSet, ScpNode};
 use mc_crypto_keys::Ed25519Pair;
 use mc_ledger_db::Ledger;
@@ -52,16 +51,15 @@ pub struct ByzantineLedger {
 
 impl ByzantineLedger {
     pub fn new<
-        E: ConsensusEnclaveProxy,
         PC: BlockchainConnection + ConsensusConnection + 'static,
         L: Ledger + Sync + 'static,
-        UI: UntrustedInterfaces + Send + Sync + 'static,
+        TXM: TxManagerTrait + Send + Sync + 'static,
     >(
         node_id: NodeID,
         quorum_set: QuorumSet,
         peer_manager: ConnectionManager<PC>,
         ledger: L,
-        tx_manager: Arc<TxManager<E, UI>>,
+        tx_manager: Arc<TXM>,
         broadcaster: Arc<Mutex<dyn Broadcast>>,
         msg_signer_key: Arc<Ed25519Pair>,
         tx_source_urls: Vec<String>,
@@ -234,7 +232,7 @@ impl Drop for ByzantineLedger {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::validators::DefaultTxManagerUntrustedInterfaces;
+    use crate::{tx_manager::TxManager, validators::DefaultTxManagerUntrustedInterfaces};
     use hex;
     use mc_common::logger::test_with_logger;
     use mc_consensus_enclave_mock::ConsensusServiceMockEnclave;
