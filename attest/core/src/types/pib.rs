@@ -19,11 +19,12 @@ impl_sgx_newtype_for_bytestruct! {
     PlatformInfoBlob, sgx_platform_info_t, SGX_PLATFORM_INFO_SIZE, platform_info;
 }
 
-/// The base64 encoding of a PIB provided by Intel has a peculiar format---it encodes an additional
-/// 4-byte prefix to the blob, which is not actually used anywhere else.
+/// The base64 encoding of a PIB provided by Intel has a peculiar format---it
+/// encodes an additional 4-byte prefix to the blob, which is not actually used
+/// anywhere else.
 //
-// FIXME: move the IAS-provided PIB+4 format into it's own type, and provide conversion to/from it
-//        instead.
+// FIXME: move the IAS-provided PIB+4 format into it's own type, and provide
+//        conversion to/from it instead.
 impl FromBase64 for PlatformInfoBlob {
     type Error = EncodingError;
 
@@ -50,11 +51,12 @@ impl FromBase64 for PlatformInfoBlob {
     }
 }
 
-/// The hexadecimal encoding of a PIB provided by Intel has a peculiar format---it encodes an
-/// additional 4-byte prefix to the blob, which is not actually used anywhere else.
+/// The hexadecimal encoding of a PIB provided by Intel has a peculiar
+/// format---it encodes an additional 4-byte prefix to the blob, which is not
+/// actually used anywhere else.
 //
-// FIXME: move the IAS-provided PIB+4 format into it's own type, and provide conversion to/from it
-//        instead.
+// FIXME: move the IAS-provided PIB+4 format into it's own type, and provide
+//        conversion to/from it instead.
 impl FromHex for PlatformInfoBlob {
     type Error = EncodingError;
 

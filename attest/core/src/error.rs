@@ -57,33 +57,39 @@ pub enum IasQuoteError {
     SignatureInvalid,
     /// The EPID group has been revoked. See RevocationCause
     GroupRevoked(RevocationCause, PlatformInfoBlob),
-    /// The EPID private key used to sign the QUOTE has been revoked by signature
+    /// The EPID private key used to sign the QUOTE has been revoked by
+    /// signature
     SignatureRevoked,
-    /// The EPID private key used to sign the QUOTE has been directly revoked (not by signature)
+    /// The EPID private key used to sign the QUOTE has been directly revoked
+    /// (not by signature)
     KeyRevoked,
     /// The SigRL used for the quote is out of date
     SigrlVersionMismatch,
-    /// The EPID group must be updated to mitigate {advisory_ids:?}, see {advisory_url}
+    /// The EPID group must be updated to mitigate {advisory_ids:?}, see
+    /// {advisory_url}
     GroupOutOfDate {
         pse_manifest_status: Option<PseManifestResult>,
         platform_info_blob: PlatformInfoBlob,
         advisory_url: String,
         advisory_ids: Vec<String>,
     },
-    /// The enclave requires additional BIOS configuration to mitigate {advisory_ids:?}, see {advisory_url}
+    /// The enclave requires additional BIOS configuration to mitigate
+    /// {advisory_ids:?}, see {advisory_url}
     ConfigurationNeeded {
         pse_manifest_status: Option<PseManifestResult>,
         platform_info_blob: PlatformInfoBlob,
         advisory_url: String,
         advisory_ids: Vec<String>,
     },
-    /// The enclave requires software mitigation for {advisory_ids:?}, see {advisory_url}
+    /// The enclave requires software mitigation for {advisory_ids:?}, see
+    /// {advisory_url}
     SwHardeningNeeded {
         pse_manifest_status: Option<PseManifestResult>,
         advisory_url: String,
         advisory_ids: Vec<String>,
     },
-    /// The enclave requires additional BIOS configuration and software mitigation for {advisory_ids:?}, see {advisory_url}
+    /// The enclave requires additional BIOS configuration and software
+    /// mitigation for {advisory_ids:?}, see {advisory_url}
     ConfigurationAndSwHardeningNeeded {
         pse_manifest_status: Option<PseManifestResult>,
         platform_info_blob: PlatformInfoBlob,
@@ -94,7 +100,8 @@ pub enum IasQuoteError {
     Other(String),
 }
 
-/// An enumeration of errors which can occur while parsing the JSON of a verification report
+/// An enumeration of errors which can occur while parsing the JSON of a
+/// verification report
 #[derive(Clone, Debug, Deserialize, Eq, Fail, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum JsonError {
     #[fail(display = "There was no non-whitespace data to parse.")]
@@ -129,7 +136,8 @@ impl From<EncodingError> for NonceError {
     }
 }
 
-/// An enumeration of possible errors while working with a PlatformInfoBase object
+/// An enumeration of possible errors while working with a PlatformInfoBase
+/// object
 #[derive(Clone, Debug, Deserialize, Eq, Fail, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum PibError {
     #[fail(display = "There was an SGX error while updating the TCB: {}", _0)]
@@ -263,7 +271,8 @@ impl From<sgx_status_t> for QuoteError {
     }
 }
 
-/// An enumeration of failure conditions when converting a foreign value into a QuoteSignType
+/// An enumeration of failure conditions when converting a foreign value into a
+/// QuoteSignType
 #[derive(Clone, Debug, Deserialize, Display, Hash, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum QuoteSignTypeError {
     /// Expected quote signature type {0}, got {1}
@@ -345,7 +354,8 @@ pub enum ReportBodyVerifyError {
     DataMismatch,
 }
 
-/// An enumeration of possible errors related to handling a ReportDetails structure
+/// An enumeration of possible errors related to handling a ReportDetails
+/// structure
 ///
 /// This is soon-to-be-deprecated.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Fail, Hash, Ord, PartialEq, PartialOrd, Serialize)]
@@ -494,14 +504,15 @@ mod sgx_status_t_serde {
 
                     0x0000_5002 => Ok(sgx_status_t::SGX_ERROR_NO_PRIVILEGE),
 
-                    /* SGX Protected Code Loader Error codes*/
+                    /* SGX Protected Code Loader Error codes */
                     0x0000_6001 => Ok(sgx_status_t::SGX_ERROR_PCL_ENCRYPTED),
                     0x0000_6002 => Ok(sgx_status_t::SGX_ERROR_PCL_NOT_ENCRYPTED),
                     0x0000_6003 => Ok(sgx_status_t::SGX_ERROR_PCL_MAC_MISMATCH),
                     0x0000_6004 => Ok(sgx_status_t::SGX_ERROR_PCL_SHA_MISMATCH),
                     0x0000_6005 => Ok(sgx_status_t::SGX_ERROR_PCL_GUID_MISMATCH),
 
-                    /* SGX errors are only used in the file API when there is no appropriate EXXX (EINVAL, EIO etc.) error code */
+                    /* SGX errors are only used in the file API when there is no appropriate EXXX
+                     * (EINVAL, EIO etc.) error code */
                     0x0000_7001 => Ok(sgx_status_t::SGX_ERROR_FILE_BAD_STATUS),
                     0x0000_7002 => Ok(sgx_status_t::SGX_ERROR_FILE_NO_KEY_ID),
                     0x0000_7003 => Ok(sgx_status_t::SGX_ERROR_FILE_NAME_MISMATCH),
@@ -615,7 +626,8 @@ impl From<sgx_status_t> for TargetInfoError {
     }
 }
 
-/// An enumeration of errors while parsing or verifying contents of a verification report
+/// An enumeration of errors while parsing or verifying contents of a
+/// verification report
 #[derive(Clone, Debug, Deserialize, Fail, PartialEq, PartialOrd, Serialize)]
 pub enum VerifyError {
     #[fail(display = "There was an error verifying the signature: {}", _0)]

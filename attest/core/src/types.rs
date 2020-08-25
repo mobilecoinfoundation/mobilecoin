@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-//! This module contains FFI wrapper types which are used for multiple purposes, or in multiple
-//! places.
+//! This module contains FFI wrapper types which are used for multiple purposes,
+//! or in multiple places.
 
 pub mod attributes;
 pub mod basename;

@@ -41,8 +41,8 @@ message TransferPayload {
 /// This wraps all of the above messages using "oneof", allowing us to
 /// have a single encoding scheme and extend as necessary simply by adding
 /// new messages without breaking backwards compatibility
-message PrintableWrapper { oneof wrapper { 
-    external.PublicAddress public_address = 1; 
+message PrintableWrapper { oneof wrapper {
+    external.PublicAddress public_address = 1;
     PaymentRequest payment_request = 2;
-    TransferPayload transfer_payload = 3; 
+    TransferPayload transfer_payload = 3;
 }}

@@ -287,7 +287,7 @@ macro_rules! impl_sgx_newtype_for_bytestruct {
             }
         }
 
-        impl subtle::ConstantTimeEq for $wrapper {
+        impl $crate::traits::ConstantTimeEq for $wrapper {
             fn ct_eq(&self, other: &Self) -> subtle::Choice {
                 (self.0).$fieldname[..].ct_eq(&(other.0).$fieldname[..])
             }

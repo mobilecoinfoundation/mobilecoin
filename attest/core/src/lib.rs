@@ -28,8 +28,11 @@ pub use crate::{
         QuoteVerifyError, ReportBodyVerifyError, ReportDetailsError, RevocationCause, SgxError,
         SgxResult, SignatureError, TargetInfoError, VerifyError,
     },
-    ias::verify::{
-        EpidPseudonym, VerificationReport, VerificationReportData, VerificationSignature,
+    ias::{
+        verifier::{Builder as VerifierBuilder, IasReportVerifier as Verifier},
+        verify::{
+            EpidPseudonym, VerificationReport, VerificationReportData, VerificationSignature,
+        },
     },
     nonce::{IasNonce, Nonce, QuoteNonce},
     quote::{Quote, QuoteSignType},
