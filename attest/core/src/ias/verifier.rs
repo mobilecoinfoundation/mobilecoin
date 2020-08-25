@@ -1151,7 +1151,15 @@ mod test {
     };
     use mc_util_encodings::FromBase64;
 
-    // Report body verifiers
+    extern crate std;
+
+    const BASE64_QUOTE: &str = include_str!("../../data/test/quote_ok.txt");
+    const BASE64_QUOTE2: &str = include_str!("../../data/test/quote_configuration_needed.txt");
+    const IAS_OK: &str = include_str!("../../data/test/ias_ok.json");
+    const IAS_CONFIG: &str = include_str!("../../data/test/ias_config.json");
+    const IAS_SW: &str = include_str!("../../data/test/ias_sw.json");
+    const IAS_CONFIG_SW: &str = include_str!("../../data/test/ias_config_sw.json");
+    const ONES: [u8; 64] = [0xffu8; 64];
     const REPORT_BODY_SRC: sgx_report_body_t = sgx_report_body_t {
         cpu_svn: sgx_cpu_svn_t {
             svn: [1u8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
@@ -1199,9 +1207,441 @@ mod test {
             ],
         },
     };
-    const ONES: [u8; 64] = [0xffu8; 64];
-    const BASE64_QUOTE: &str = include_str!("../../data/test/quote_ok.txt");
-    const BASE64_QUOTE2: &str = include_str!("../../data/test/quote_configuration_needed.txt");
+    const MR_ENCLAVE: sgx_measurement_t = sgx_measurement_t {
+        m: [
+            247, 180, 107, 31, 41, 201, 41, 41, 32, 42, 25, 79, 7, 29, 232, 138, 9, 180, 143, 195,
+            110, 244, 197, 245, 247, 21, 202, 61, 246, 188, 124, 234,
+        ],
+    };
+    const MR_SIGNER: sgx_measurement_t = sgx_measurement_t {
+        m: [
+            126, 229, 226, 157, 116, 98, 63, 219, 198, 251, 241, 69, 75, 230, 243, 187, 11, 134,
+            193, 35, 102, 183, 180, 120, 173, 19, 53, 62, 68, 222, 132, 17,
+        ],
+    };
+
+    /// Ensure an OK result with the expected MRENCLAVE value succeeds.
+    #[test]
+    fn mrenclave_ok() {
+        let verifier = MrEnclaveVerifier {
+            mr_enclave: MrEnclave::from(&MR_ENCLAVE),
+            config_ids: vec![],
+            sw_ids: vec![],
+        };
+
+        let report = VerificationReport {
+            sig: Default::default(),
+            chain: vec![],
+            http_body: IAS_OK.trim().to_owned(),
+        };
+
+        let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
+        assert!(verifier.verify(&data))
+    }
+
+    /// Ensure an OK result with the wrong MRENCLAVE value fails.
+    #[test]
+    fn mrenclave_fail() {
+        let verifier = MrEnclaveVerifier {
+            mr_enclave: MrEnclave::from(&MR_SIGNER),
+            config_ids: vec![],
+            sw_ids: vec![],
+        };
+
+        let report = VerificationReport {
+            sig: Default::default(),
+            chain: vec![],
+            http_body: IAS_OK.trim().to_owned(),
+        };
+
+        let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
+        assert!(!verifier.verify(&data))
+    }
+
+    /// Ensure a CONFIGURATION_NEEDED result with the expected MRENCLAVE and
+    /// allowed advisory passes.
+    #[test]
+    fn mrenclave_config_pass() {
+        let verifier = MrEnclaveVerifier {
+            mr_enclave: MrEnclave::from(&MR_ENCLAVE),
+            config_ids: vec!["INTEL-SA-00239".to_owned()],
+            sw_ids: vec!["INTEL-SA-00123".to_owned()],
+        };
+
+        let report = VerificationReport {
+            sig: Default::default(),
+            chain: vec![],
+            http_body: IAS_CONFIG.trim().to_owned(),
+        };
+
+        let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
+        assert!(verifier.verify(&data))
+    }
+
+    /// Ensure a CONFIGURATION_NEEDED result with the expected MRENCLAVE but
+    /// unexpected advisory fails.
+    #[test]
+    fn mrenclave_config_fail() {
+        let verifier = MrEnclaveVerifier {
+            mr_enclave: MrEnclave::from(&MR_ENCLAVE),
+            config_ids: vec!["INTEL-SA-00123".to_owned()],
+            sw_ids: vec!["INTEL-SA-00239".to_owned()],
+        };
+
+        let report = VerificationReport {
+            sig: Default::default(),
+            chain: vec![],
+            http_body: IAS_CONFIG.trim().to_owned(),
+        };
+
+        let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
+        assert!(!verifier.verify(&data))
+    }
+
+    /// Ensure a SW_HARDENING_NEEDED result with the expected MRENCLAVE and
+    /// advisory passes.
+    #[test]
+    fn mrenclave_sw_pass() {
+        let verifier = MrEnclaveVerifier {
+            mr_enclave: MrEnclave::from(&MR_ENCLAVE),
+            config_ids: vec!["INTEL-SA-00123".to_owned()],
+            sw_ids: vec!["INTEL-SA-00239".to_owned()],
+        };
+
+        let report = VerificationReport {
+            sig: Default::default(),
+            chain: vec![],
+            http_body: IAS_SW.trim().to_owned(),
+        };
+
+        let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
+        assert!(verifier.verify(&data))
+    }
+
+    /// Ensure a SW_HARDENING_NEEDED result with the expected MRENCLAVE but
+    /// unexpected advisory fails.
+    #[test]
+    fn mrenclave_sw_fail() {
+        let verifier = MrEnclaveVerifier {
+            mr_enclave: MrEnclave::from(&MR_ENCLAVE),
+            config_ids: vec!["INTEL-SA-00239".to_owned()],
+            sw_ids: vec!["INTEL-SA-00123".to_owned()],
+        };
+
+        let report = VerificationReport {
+            sig: Default::default(),
+            chain: vec![],
+            http_body: IAS_SW.trim().to_owned(),
+        };
+
+        let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
+        assert!(!verifier.verify(&data))
+    }
+
+    /// Ensure a CONFIGURATION_AND_SW_HARDENING_NEEDED result with the expected
+    /// MRENCLAVE and config advisory passes.
+    #[test]
+    fn mrenclave_config_sw_pass_config() {
+        let verifier = MrEnclaveVerifier {
+            mr_enclave: MrEnclave::from(&MR_ENCLAVE),
+            config_ids: vec!["INTEL-SA-00239".to_owned()],
+            sw_ids: vec!["INTEL-SA-00123".to_owned()],
+        };
+
+        let report = VerificationReport {
+            sig: Default::default(),
+            chain: vec![],
+            http_body: IAS_CONFIG_SW.trim().to_owned(),
+        };
+
+        let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
+        assert!(verifier.verify(&data))
+    }
+
+    /// Ensure a CONFIGURATION_AND_SW_HARDENING_NEEDED result with the expected
+    /// MRENCLAVE and hardening advisory passes.
+    #[test]
+    fn mrenclave_config_sw_pass_sw() {
+        let verifier = MrEnclaveVerifier {
+            mr_enclave: MrEnclave::from(&MR_ENCLAVE),
+            config_ids: vec!["INTEL-SA-00123".to_owned()],
+            sw_ids: vec!["INTEL-SA-00239".to_owned()],
+        };
+
+        let report = VerificationReport {
+            sig: Default::default(),
+            chain: vec![],
+            http_body: IAS_CONFIG_SW.trim().to_owned(),
+        };
+
+        let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
+        assert!(verifier.verify(&data))
+    }
+
+    /// Ensure a CONFIGURATION_AND_SW_HARDENING_NEEDED result with the expected
+    /// MRENCLAVE but an unexpected advisory fails.
+    #[test]
+    fn mrenclave_config_sw_fail() {
+        let verifier = MrEnclaveVerifier {
+            mr_enclave: MrEnclave::from(&MR_ENCLAVE),
+            config_ids: vec!["INTEL-SA-00123".to_owned()],
+            sw_ids: vec!["INTEL-SA-00123".to_owned()],
+        };
+
+        let report = VerificationReport {
+            sig: Default::default(),
+            chain: vec![],
+            http_body: IAS_CONFIG_SW.trim().to_owned(),
+        };
+
+        let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
+        assert!(!verifier.verify(&data))
+    }
+
+    /// Ensure an OK result with the expected MRSIGNER, product, and minimum
+    /// version passes.
+    #[test]
+    fn mrsigner_ok() {
+        let verifier = MrSignerVerifier {
+            mr_signer: MrSigner::from(&MR_SIGNER),
+            product_id: 0,
+            minimum_svn: 0,
+            config_ids: vec![],
+            sw_ids: vec![],
+        };
+
+        let report = VerificationReport {
+            sig: Default::default(),
+            chain: vec![],
+            http_body: IAS_OK.trim().to_owned(),
+        };
+
+        let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
+        assert!(verifier.verify(&data))
+    }
+
+    /// Ensure an OK result with the expected MRSIGNER, product, and minimum
+    /// version passes.
+    #[test]
+    fn mrsigner_fail_notok() {
+        let verifier = MrSignerVerifier {
+            mr_signer: MrSigner::from(&MR_SIGNER),
+            product_id: 0,
+            minimum_svn: 0,
+            config_ids: vec![],
+            sw_ids: vec![],
+        };
+
+        let report = VerificationReport {
+            sig: Default::default(),
+            chain: vec![],
+            http_body: IAS_CONFIG.trim().to_owned(),
+        };
+
+        let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
+        assert!(!verifier.verify(&data))
+    }
+
+    /// Ensure an OK result with an unexpected MRSIGNER fails.
+    #[test]
+    fn mrsigner_fail_mrsigner() {
+        let verifier = MrSignerVerifier {
+            mr_signer: MrSigner::from(&MR_ENCLAVE),
+            product_id: 0,
+            minimum_svn: 0,
+            config_ids: vec![],
+            sw_ids: vec![],
+        };
+
+        let report = VerificationReport {
+            sig: Default::default(),
+            chain: vec![],
+            http_body: IAS_OK.trim().to_owned(),
+        };
+
+        let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
+        assert!(!verifier.verify(&data))
+    }
+
+    /// Ensure an OK result with an unexpected product ID fails
+    #[test]
+    fn mrsigner_fail_product_id() {
+        let verifier = MrSignerVerifier {
+            mr_signer: MrSigner::from(&MR_SIGNER),
+            product_id: 1,
+            minimum_svn: 0,
+            config_ids: vec![],
+            sw_ids: vec![],
+        };
+
+        let report = VerificationReport {
+            sig: Default::default(),
+            chain: vec![],
+            http_body: IAS_OK.trim().to_owned(),
+        };
+
+        let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
+        assert!(!verifier.verify(&data))
+    }
+
+    /// Ensure an OK result with a greater version fails
+    #[test]
+    fn mrsigner_fail_version() {
+        let verifier = MrSignerVerifier {
+            mr_signer: MrSigner::from(&MR_SIGNER),
+            product_id: 0,
+            minimum_svn: 1,
+            config_ids: vec![],
+            sw_ids: vec![],
+        };
+
+        let report = VerificationReport {
+            sig: Default::default(),
+            chain: vec![],
+            http_body: IAS_OK.trim().to_owned(),
+        };
+
+        let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
+        assert!(!verifier.verify(&data))
+    }
+
+    /// Ensure a CONFIGURATION_NEEDED result with the expected MRSIGNER,
+    /// product, and minimum version passes, as long as the advisory is
+    /// accounted for
+    #[test]
+    fn mrsigner_pass_config() {
+        let verifier = MrSignerVerifier {
+            mr_signer: MrSigner::from(&MR_SIGNER),
+            product_id: 0,
+            minimum_svn: 0,
+            config_ids: vec!["INTEL-SA-00239".to_owned()],
+            sw_ids: vec![],
+        };
+
+        let report = VerificationReport {
+            sig: Default::default(),
+            chain: vec![],
+            http_body: IAS_CONFIG.trim().to_owned(),
+        };
+
+        let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
+        assert!(verifier.verify(&data))
+    }
+
+    /// Ensure a SW_HARDENING_NEEDED result with the expected MRSIGNER,
+    /// product, and minimum version passes, as long as the advisory is
+    /// accounted for
+    #[test]
+    fn mrsigner_pass_sw() {
+        let verifier = MrSignerVerifier {
+            mr_signer: MrSigner::from(&MR_SIGNER),
+            product_id: 0,
+            minimum_svn: 0,
+            config_ids: vec![],
+            sw_ids: vec!["INTEL-SA-00239".to_owned()],
+        };
+
+        let report = VerificationReport {
+            sig: Default::default(),
+            chain: vec![],
+            http_body: IAS_SW.trim().to_owned(),
+        };
+
+        let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
+        assert!(verifier.verify(&data))
+    }
+
+    /// Ensure a CONFIGURATION_AND_SW_HARDENING_NEEDED result with the expected
+    /// MRSIGNER, product, and minimum version passes, as long as the
+    /// advisory is accounted for.
+    #[test]
+    fn mrsigner_pass_sw_config_via_sw() {
+        let verifier = MrSignerVerifier {
+            mr_signer: MrSigner::from(&MR_SIGNER),
+            product_id: 0,
+            minimum_svn: 0,
+            config_ids: vec![],
+            sw_ids: vec!["INTEL-SA-00239".to_owned()],
+        };
+
+        let report = VerificationReport {
+            sig: Default::default(),
+            chain: vec![],
+            http_body: IAS_CONFIG_SW.trim().to_owned(),
+        };
+
+        let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
+        assert!(verifier.verify(&data))
+    }
+
+    /// Ensure a CONFIGURATION_AND_SW_HARDENING_NEEDED result with the expected
+    /// MRSIGNER, product, and minimum version passes, as long as the
+    /// advisory is accounted for.
+    #[test]
+    fn mrsigner_pass_sw_config_via_config() {
+        let verifier = MrSignerVerifier {
+            mr_signer: MrSigner::from(&MR_SIGNER),
+            product_id: 0,
+            minimum_svn: 0,
+            config_ids: vec![],
+            sw_ids: vec!["INTEL-SA-00239".to_owned()],
+        };
+
+        let report = VerificationReport {
+            sig: Default::default(),
+            chain: vec![],
+            http_body: IAS_CONFIG_SW.trim().to_owned(),
+        };
+
+        let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
+        assert!(verifier.verify(&data))
+    }
+
+    /// Ensure a CONFIGURATION_AND_SW_HARDENING_NEEDED result with the expected
+    /// MRSIGNER, and minimum version, but the wrong product fails, even if
+    /// the advisory is accounted for.
+    #[test]
+    fn mrsigner_fail_sw_config_for_product() {
+        let verifier = MrSignerVerifier {
+            mr_signer: MrSigner::from(&MR_SIGNER),
+            product_id: 1,
+            minimum_svn: 0,
+            config_ids: vec![],
+            sw_ids: vec!["INTEL-SA-00239".to_owned()],
+        };
+
+        let report = VerificationReport {
+            sig: Default::default(),
+            chain: vec![],
+            http_body: IAS_CONFIG_SW.trim().to_owned(),
+        };
+
+        let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
+        assert!(!verifier.verify(&data))
+    }
+
+    /// Ensure a CONFIGURATION_AND_SW_HARDENING_NEEDED result with the expected
+    /// MRSIGNER and product, but an earlier version, fails, even if the
+    /// advisory is accounted for.
+    #[test]
+    fn mrsigner_fail_sw_config_for_version() {
+        let verifier = MrSignerVerifier {
+            mr_signer: MrSigner::from(&MR_SIGNER),
+            product_id: 0,
+            minimum_svn: 1,
+            config_ids: vec![],
+            sw_ids: vec!["INTEL-SA-00239".to_owned()],
+        };
+
+        let report = VerificationReport {
+            sig: Default::default(),
+            chain: vec![],
+            http_body: IAS_CONFIG_SW.trim().to_owned(),
+        };
+
+        let data = VerificationReportData::try_from(&report).expect("Could not parse IAS result");
+        assert!(!verifier.verify(&data))
+    }
 
     /// When the quote contains the basename we're expecting
     #[test]
@@ -1209,7 +1649,7 @@ mod test {
         let quote =
             Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
         let verifier = BasenameVerifier {
-            basename: Basename::from(quote.basename()),
+            basename: Basename::from(quote.basename().expect("Could not read basename")),
         };
 
         assert!(verifier.verify(&quote));
@@ -1259,7 +1699,9 @@ mod test {
         let quote =
             Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
         let verifier = EpidGroupIdVerifier {
-            epid_group_id: EpidGroupId::from(quote.epid_group_id()),
+            epid_group_id: EpidGroupId::from(
+                quote.epid_group_id().expect("Could not read EPID Group ID"),
+            ),
         };
 
         assert!(verifier.verify(&quote));
@@ -1410,7 +1852,7 @@ mod test {
         let quote =
             Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
         let verifier = XeidVerifier {
-            xeid: quote.xeid() + 1,
+            xeid: quote.xeid().expect("Xeid could not be read") + 1,
         };
 
         assert!(!verifier.verify(&quote));
