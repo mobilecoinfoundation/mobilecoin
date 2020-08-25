@@ -10,7 +10,7 @@ use mc_transaction_core::{tx::TxHash, Block, BlockContents, BlockSignature};
 use mockall::*;
 
 #[cfg_attr(test, automock)]
-pub trait TxManagerTrait {
+pub trait TxManager {
     /// Insert a transaction into the cache. The transaction must be well-formed.
     fn insert(&self, tx_context: TxContext) -> TxManagerResult<TxHash>;
 
@@ -20,11 +20,7 @@ pub trait TxManagerTrait {
     /// * `block_index` - Current block index.
     fn remove_expired(&self, block_index: u64) -> HashSet<TxHash>;
 
-    // /// Returns elements of `tx_hashes` that are not inside the cache.
-    // fn missing_hashes<T>(&self, tx_hashes: &T) -> Vec<TxHash>
-    // where
-    //     for<'a> &'a T: IntoIterator<Item = &'a TxHash>;
-
+    /// Returns true if the cache contains the corresponding transaction.
     fn contains(&self, tx_hash: &TxHash) -> bool;
 
     /// Number of cached entries.
