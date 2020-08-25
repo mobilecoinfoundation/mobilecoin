@@ -20,9 +20,9 @@ use serde_json::json;
 
 cfg_if! {
     if #[cfg(feature = "ias-dev")] {
-        const IAS_BASEURI: &str = "https://api.trustedservices.intel.com/sgx/dev/attestation/v3";
+        const IAS_BASEURI: &str = "https://api.trustedservices.intel.com/sgx/dev/attestation/v4";
     } else {
-        const IAS_BASEURI: &str = "https://api.trustedservices.intel.com/sgx/attestation/v3";
+        const IAS_BASEURI: &str = "https://api.trustedservices.intel.com/sgx/attestation/v4";
     }
 }
 

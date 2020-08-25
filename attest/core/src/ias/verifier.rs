@@ -832,7 +832,10 @@ struct BasenameVerifier {
 
 impl Verify<Quote> for BasenameVerifier {
     fn verify(&self, quote: &Quote) -> bool {
-        self.basename == quote.basename()
+        quote
+            .basename()
+            .map(|basename| basename == self.basename)
+            .unwrap_or(false)
     }
 }
 
@@ -861,7 +864,10 @@ struct EpidGroupIdVerifier {
 
 impl Verify<Quote> for EpidGroupIdVerifier {
     fn verify(&self, quote: &Quote) -> bool {
-        self.epid_group_id == quote.epid_group_id()
+        quote
+            .epid_group_id()
+            .map(|epid_group_id| epid_group_id == self.epid_group_id)
+            .unwrap_or(false)
     }
 }
 
@@ -874,7 +880,10 @@ struct PceSecurityVersionVerifier {
 
 impl Verify<Quote> for PceSecurityVersionVerifier {
     fn verify(&self, quote: &Quote) -> bool {
-        quote.pce_security_version() >= self.pce_svn
+        quote
+            .pce_security_version()
+            .map(|pce_svn| pce_svn >= self.pce_svn)
+            .unwrap_or(false)
     }
 }
 
@@ -887,7 +896,10 @@ struct QeSecurityVersionVerifier {
 
 impl Verify<Quote> for QeSecurityVersionVerifier {
     fn verify(&self, quote: &Quote) -> bool {
-        quote.qe_security_version() >= self.qe_svn
+        quote
+            .qe_security_version()
+            .map(|qe_svn| qe_svn >= self.qe_svn)
+            .unwrap_or(false)
     }
 }
 
@@ -938,7 +950,7 @@ struct XeidVerifier {
 
 impl Verify<Quote> for XeidVerifier {
     fn verify(&self, quote: &Quote) -> bool {
-        self.xeid == quote.xeid()
+        quote.xeid().map(|xeid| xeid == self.xeid).unwrap_or(false)
     }
 }
 
@@ -1272,7 +1284,9 @@ mod test {
         let quote =
             Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
         let verifier = PceSecurityVersionVerifier {
-            pce_svn: quote.pce_security_version(),
+            pce_svn: quote
+                .pce_security_version()
+                .expect("PCE SVN could not be read"),
         };
 
         assert!(verifier.verify(&quote));
@@ -1285,7 +1299,10 @@ mod test {
         let quote =
             Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
         let verifier = PceSecurityVersionVerifier {
-            pce_svn: quote.pce_security_version() - 1,
+            pce_svn: quote
+                .pce_security_version()
+                .expect("PCE SVN could not be read")
+                - 1,
         };
 
         assert!(verifier.verify(&quote));
@@ -1298,7 +1315,10 @@ mod test {
         let quote =
             Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
         let verifier = PceSecurityVersionVerifier {
-            pce_svn: quote.pce_security_version() + 1,
+            pce_svn: quote
+                .pce_security_version()
+                .expect("PCE SVN could not be read")
+                + 1,
         };
 
         assert!(!verifier.verify(&quote));
@@ -1310,7 +1330,9 @@ mod test {
         let quote =
             Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
         let verifier = QeSecurityVersionVerifier {
-            qe_svn: quote.qe_security_version(),
+            qe_svn: quote
+                .qe_security_version()
+                .expect("QE SVN could not be read"),
         };
 
         assert!(verifier.verify(&quote));
@@ -1322,7 +1344,10 @@ mod test {
         let quote =
             Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
         let verifier = QeSecurityVersionVerifier {
-            qe_svn: quote.qe_security_version() - 1,
+            qe_svn: quote
+                .qe_security_version()
+                .expect("QE SVN could not be read")
+                - 1,
         };
 
         assert!(verifier.verify(&quote));
@@ -1334,7 +1359,10 @@ mod test {
         let quote =
             Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
         let verifier = QeSecurityVersionVerifier {
-            qe_svn: quote.qe_security_version() + 1,
+            qe_svn: quote
+                .qe_security_version()
+                .expect("QE SVN could not be read")
+                + 1,
         };
 
         assert!(!verifier.verify(&quote));
@@ -1369,7 +1397,9 @@ mod test {
     fn xeid_success() {
         let quote =
             Quote::from_base64(BASE64_QUOTE).expect("Could not parse quote from base64 file");
-        let verifier = XeidVerifier { xeid: quote.xeid() };
+        let verifier = XeidVerifier {
+            xeid: quote.xeid().expect("Xeid could not be read"),
+        };
 
         assert!(verifier.verify(&quote));
     }
