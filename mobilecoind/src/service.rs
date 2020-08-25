@@ -366,14 +366,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             response.set_receiver(payment_request.get_public_address().clone());
             response.set_value(payment_request.get_value());
             response.set_memo(payment_request.get_memo().to_string());
-            Ok(response)    
+            Ok(response)
         } else if request_wrapper.has_public_address() {
             let public_address = request_wrapper.get_public_address();
             let mut response = mc_mobilecoind_api::ReadRequestCodeResponse::new();
             response.set_receiver(public_address.clone());
             response.set_value(0);
             response.set_memo(String::new());
-            Ok(response)    
+            Ok(response)
         } else {
             Err(RpcStatus::new(
                 RpcStatusCode::INVALID_ARGUMENT,
