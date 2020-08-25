@@ -261,6 +261,18 @@ fn validate_membership_proofs(
         return Err(TransactionValidationError::InvalidLedgerContext);
     }
 
+    // Each root proof must contain valid ranges.
+    // (Ranges in the transaction's membership proofs are checked in `is_membership_proof_valid`).
+    for root_proof in root_proofs {
+        if root_proof
+            .elements
+            .iter()
+            .any(|element| element.range.from > element.range.to)
+        {
+            return Err(TransactionValidationError::MembershipProofValidationError);
+        }
+    }
+
     struct TxOutWithProofs<'a> {
         /// A TxOut used as an input ring element.
         tx_out: &'a TxOut,
@@ -367,7 +379,7 @@ mod tests {
         },
     };
 
-    use crate::validation::validate::validate_ring_elements_are_sorted;
+    use crate::{range::Range, validation::validate::validate_ring_elements_are_sorted};
     use mc_crypto_keys::{CompressedRistrettoPublic, ReprBytes};
     use mc_ledger_db::{Ledger, LedgerDB};
     use mc_transaction_core_test_utils::{
@@ -472,6 +484,56 @@ mod tests {
             );
             assert_eq!(validate_membership_proofs(&tx.prefix, &root_proofs), Ok(()));
         }
+    }
+
+    #[test]
+    // Should return InvalidRangeProof if a membership proof containing an invalid Range.
+    fn test_validate_membership_proofs_invalid_range_in_tx() {
+        let (mut tx, ledger) = create_test_tx();
+
+        let highest_indices = tx.get_membership_proof_highest_indices();
+        let root_proofs: Vec<TxOutMembershipProof> = adapt_hack(
+            &ledger
+                .get_tx_out_proof_of_memberships(&highest_indices)
+                .expect("failed getting proofs"),
+        );
+
+        // Modify tx to include an invalid Range.
+        let mut proof = tx.prefix.inputs[0].proofs[0].clone();
+        let mut first_element = proof.elements[0].clone();
+        first_element.range = Range { from: 7, to: 3 };
+        proof.elements[0] = first_element;
+        tx.prefix.inputs[0].proofs[0] = proof;
+
+        assert_eq!(
+            validate_membership_proofs(&tx.prefix, &root_proofs),
+            Err(TransactionValidationError::MembershipProofValidationError)
+        );
+    }
+
+    #[test]
+    // Should return InvalidRangeProof if a root proof containing an invalid Range.
+    fn test_validate_membership_proofs_invalid_range_in_root_proof() {
+        let (tx, ledger) = create_test_tx();
+
+        let highest_indices = tx.get_membership_proof_highest_indices();
+        let mut root_proofs: Vec<TxOutMembershipProof> = adapt_hack(
+            &ledger
+                .get_tx_out_proof_of_memberships(&highest_indices)
+                .expect("failed getting proofs"),
+        );
+
+        // Modify a root proof to include an invalid Range.
+        let mut proof = root_proofs[0].clone();
+        let mut first_element = proof.elements[0].clone();
+        first_element.range = Range { from: 7, to: 3 };
+        proof.elements[0] = first_element;
+        root_proofs[0] = proof;
+
+        assert_eq!(
+            validate_membership_proofs(&tx.prefix, &root_proofs),
+            Err(TransactionValidationError::MembershipProofValidationError)
+        );
     }
 
     #[test]

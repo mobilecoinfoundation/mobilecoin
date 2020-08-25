@@ -11,7 +11,7 @@ use crate::{
 use aead::{AeadMut, NewAead};
 use alloc::vec::Vec;
 use core::convert::{TryFrom, TryInto};
-use digest::{BlockInput, Digest, FixedOutput, Input, Reset};
+use digest::{BlockInput, Digest, FixedOutput, Reset, Update};
 use failure::Fail;
 use generic_array::typenum::Unsigned;
 use mc_crypto_keys::{Kex, KexReusablePrivate, ReprBytes};
@@ -102,7 +102,7 @@ pub struct HandshakeOutput<KexAlgo, Cipher, DigestType>
 where
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Input + Reset,
+    DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Update + Reset,
 {
     /// The payload is the read plaintext or written ciphertext
     pub payload: Vec<u8>,
@@ -116,7 +116,7 @@ pub enum HandshakeStatus<KexAlgo, Cipher, DigestType>
 where
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Input + Reset,
+    DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Update + Reset,
 {
     InProgress(HandshakeState<KexAlgo, Cipher, DigestType>),
     Complete(SymmetricOutput<Cipher, KexAlgo::Public>),
@@ -129,7 +129,7 @@ pub struct HandshakeState<KexAlgo, Cipher, DigestType>
 where
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Input + Reset,
+    DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Update + Reset,
 {
     /// Whether this state machine is an initiator (true) or a responder (false)
     is_initiator: bool,
@@ -161,7 +161,7 @@ impl<KexAlgo, Cipher, DigestType> HandshakeState<KexAlgo, Cipher, DigestType>
 where
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Input + Reset,
+    DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Update + Reset,
 {
     /// Static method, dispatched from new(), used to perform step 4 of
     /// `HandshakeState::Initialize()`.

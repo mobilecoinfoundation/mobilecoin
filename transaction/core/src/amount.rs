@@ -39,7 +39,7 @@ pub struct Amount {
     pub commitment: CompressedCommitment,
 
     /// `masked_value = value XOR_8 Blake2B(value_mask | shared_secret)`
-    #[prost(uint64, required, tag = "2")]
+    #[prost(fixed64, required, tag = "2")]
     pub masked_value: u64,
 }
 
@@ -113,8 +113,8 @@ impl Amount {
 /// * `shared_secret` - The shared secret, e.g. `rB`.
 fn get_value_mask(shared_secret: &RistrettoPublic) -> Scalar {
     let mut hasher = Blake2b::new();
-    hasher.input(&AMOUNT_VALUE_DOMAIN_TAG);
-    hasher.input(&shared_secret.to_bytes());
+    hasher.update(&AMOUNT_VALUE_DOMAIN_TAG);
+    hasher.update(&shared_secret.to_bytes());
     Scalar::from_hash(hasher)
 }
 
@@ -124,8 +124,8 @@ fn get_value_mask(shared_secret: &RistrettoPublic) -> Scalar {
 /// * `shared_secret` - The shared secret, e.g. `rB`.
 fn get_blinding(shared_secret: &RistrettoPublic) -> Scalar {
     let mut hasher = Blake2b::new();
-    hasher.input(&AMOUNT_BLINDING_DOMAIN_TAG);
-    hasher.input(&shared_secret.to_bytes());
+    hasher.update(&AMOUNT_BLINDING_DOMAIN_TAG);
+    hasher.update(&shared_secret.to_bytes());
     Scalar::from_hash(hasher)
 }
 

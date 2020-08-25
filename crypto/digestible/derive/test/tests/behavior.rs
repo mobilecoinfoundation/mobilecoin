@@ -17,18 +17,18 @@ impl Digest for Tester {
         Default::default()
     }
 
-    fn input<B: AsRef<[u8]>>(&mut self, src: B) {
+    fn update(&mut self, src: impl AsRef<[u8]>) {
         self.args.push(src.as_ref().to_vec())
     }
 
     // Unused stuff
-    fn chain<B: AsRef<[u8]>>(self, _src: B) -> Self {
+    fn chain(self, _src: impl AsRef<[u8]>) -> Self {
         unimplemented!()
     }
-    fn result(self) -> GenericArray<u8, Self::OutputSize> {
+    fn finalize(self) -> GenericArray<u8, Self::OutputSize> {
         unimplemented!()
     }
-    fn result_reset(&mut self) -> GenericArray<u8, Self::OutputSize> {
+    fn finalize_reset(&mut self) -> GenericArray<u8, Self::OutputSize> {
         unimplemented!()
     }
     fn reset(&mut self) {}

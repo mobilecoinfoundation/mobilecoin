@@ -6,7 +6,7 @@ use crate::{
         MAX_PENDING_VALUES_TO_NOMINATE,
     },
     counters,
-    tx_manager::{TxManager, TxManagerError, UntrustedInterfaces},
+    tx_manager::{TxManager, TxManagerError, TxManagerTrait, UntrustedInterfaces},
 };
 use mc_common::{
     logger::{log, Logger},
@@ -591,13 +591,13 @@ impl<
         scp_msg: &Msg<TxHash>,
         from_responder_id: &ResponderId,
     ) -> bool {
-        // Get txs for all the hashes we are missing. This will eventually be replaced with
-        // an enclave call, since the message is going to be encrypted (MC-74).
-        let tx_hashes = scp_msg.values();
+        // Hashes of transactions that are not currently cached.
+        let missing_hashes: Vec<TxHash> = scp_msg
+            .values()
+            .into_iter()
+            .filter(|tx_hash| !self.tx_manager.contains(tx_hash))
+            .collect();
 
-        let mut all_missing_hashes: Vec<TxHash> = self.tx_manager.missing_hashes(&tx_hashes);
-
-        // Get the connection we'll be working with
         let conn = match self.peer_manager.conn(from_responder_id) {
             Some(conn) => conn,
             None => {
@@ -610,33 +610,16 @@ impl<
             }
         };
 
-        loop {
-            if all_missing_hashes.is_empty() {
-                break;
-            }
-
-            // Fetch up to 100 transactions (~1MB if each tx is 10k)
-            let missing_hashes: Vec<TxHash> = all_missing_hashes
-                .drain(0..std::cmp::min(100, all_missing_hashes.len()))
-                .collect();
-
-            log::debug!(
-                self.logger,
-                "attempting to resolve missing tx hashes ({}, left with {}): {:?}",
-                missing_hashes.len(),
-                all_missing_hashes.len(),
-                missing_hashes,
-            );
-
-            match conn.fetch_txs(&missing_hashes, Fibonacci::from_millis(100).take(10)) {
+        for chunk in missing_hashes[..].chunks(100) {
+            match conn.fetch_txs(&chunk, Fibonacci::from_millis(100).take(10)) {
                 Ok(tx_contexts) => {
-                    if tx_contexts.len() != missing_hashes.len() {
+                    if tx_contexts.len() != chunk.len() {
                         log::error!(
                             self.logger,
                             "Failed resolving transactions {:?} from {}: expected {}, got {}. local num blocks: {}. msg slot is {}",
-                            missing_hashes,
+                            chunk,
                             from_responder_id,
-                            missing_hashes.len(),
+                            chunk.len(),
                             tx_contexts.len(),
                             self.ledger.num_blocks().unwrap(),
                             scp_msg.slot_index,
@@ -645,19 +628,16 @@ impl<
                     }
                     tx_contexts.into_par_iter().for_each_with(
                         (self.tx_manager.clone(), self.logger.clone()),
-                        move |(tx_manager, logger), tx_context| {
-                            match tx_manager.insert(tx_context) {
-                                Ok(_) | Err(TxManagerError::AlreadyInCache) => {}
-                                Err(err) => {
-                                    // Not currently logging the malformed transaction to save a
-                                    // `.clone()`. We'll see if this ever happens.
-                                    log::crit!(
-                                        logger,
-                                        "Received malformed transaction from node {}: {:?}",
-                                        from_responder_id,
-                                        err,
-                                    );
-                                }
+                        move |(tx_manager, logger), tx_context| match tx_manager.insert(tx_context)
+                        {
+                            Ok(_) | Err(TxManagerError::AlreadyInCache) => {}
+                            Err(err) => {
+                                log::crit!(
+                                    logger,
+                                    "Received malformed transaction from node {}: {:?}",
+                                    from_responder_id,
+                                    err,
+                                );
                             }
                         },
                     );
@@ -666,7 +646,7 @@ impl<
                     log::error!(
                         self.logger,
                         "Failed resolving transactions {:?} from {}: {:?}",
-                        missing_hashes,
+                        chunk,
                         from_responder_id,
                         err
                     );

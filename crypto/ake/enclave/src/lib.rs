@@ -363,9 +363,9 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         // We iterate each nonce in our cache, and save the key of the one
         // we want to work on
         for (nonce, _) in quote_pending.iter() {
-            hasher.input(<QuoteNonce as AsRef<[u8]>>::as_ref(nonce));
-            hasher.input(quote.as_ref());
-            let output_arr = hasher.result_reset();
+            hasher.update(<QuoteNonce as AsRef<[u8]>>::as_ref(nonce));
+            hasher.update(quote.as_ref());
+            let output_arr = hasher.finalize_reset();
             let output = output_arr.as_slice();
             debug_assert!(output.len() < qe_report_bytes.len());
             if output == &qe_report_bytes[..output.len()] {

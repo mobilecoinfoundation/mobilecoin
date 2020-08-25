@@ -5,7 +5,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 use core::convert::TryInto;
 
-use aes_gcm::aead::{Aead, NewAead};
+use aes_gcm::aead::{AeadInPlace, NewAead};
 use generic_array::{typenum, ArrayLength, GenericArray};
 use rand_core::{CryptoRng, RngCore};
 use subtle::Choice;
@@ -13,19 +13,19 @@ use typenum::Unsigned;
 
 use crate::{CipherError, MessageCipher};
 
-pub struct AeadMessageCipher<C: Aead + NewAead> {
+pub struct AeadMessageCipher<C: NewAead + AeadInPlace> {
     // ciphers is a list of ciphers, and the keys we used to make them
     ciphers: Vec<(C, GenericArray<u8, C::KeySize>)>,
     // nonce is the current nonce, starts from 0 every time we re-key.
     nonce: Nonce<C::NonceSize>,
 }
 
-impl<C: Aead + NewAead> MessageCipher for AeadMessageCipher<C> {
+impl<C: AeadInPlace + NewAead> MessageCipher for AeadMessageCipher<C> {
     fn new<T: CryptoRng + RngCore>(rng: &mut T) -> Self {
         let mut key: GenericArray<u8, C::KeySize> = Default::default();
         rng.fill_bytes(key.as_mut_slice());
         Self {
-            ciphers: vec![(C::new(key.clone()), key)],
+            ciphers: vec![(C::new(&key), key)],
             nonce: Nonce::new(),
         }
     }
@@ -74,7 +74,7 @@ impl<C: Aead + NewAead> MessageCipher for AeadMessageCipher<C> {
 
                 key
             };
-            self.ciphers.push((C::new(key.clone()), key));
+            self.ciphers.push((C::new(&key), key));
             self.nonce = Nonce::new();
         }
 

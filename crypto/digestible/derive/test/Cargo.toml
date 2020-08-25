@@ -7,5 +7,5 @@ edition = "2018"
 [dependencies]
 mc-crypto-digestible = { path = "../.." }
 mc-crypto-digestible-derive = { path = ".." }
-generic-array = "0.12"
-digest = { version = "0.8", default-features = false }
+generic-array = "0.14"
+digest = { version = "0.9", default-features = false }

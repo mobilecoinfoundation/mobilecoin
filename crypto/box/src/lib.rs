@@ -32,7 +32,7 @@ pub use fixed_buffer::FixedBuffer;
 #[cfg(test)]
 mod test {
     use super::*;
-    use aead::generic_array::{arr, arr_impl};
+    use aead::generic_array::arr;
     use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
     use mc_util_from_random::FromRandom;
 

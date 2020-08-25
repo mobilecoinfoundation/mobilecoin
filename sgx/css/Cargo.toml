@@ -6,4 +6,4 @@ edition = "2018"
 
 [dependencies]
 failure = "0.1"
-sha2 = { version = "0.8", default-features = false }
+sha2 = { version = "0.9", default-features = false }

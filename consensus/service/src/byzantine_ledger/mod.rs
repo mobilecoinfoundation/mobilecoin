@@ -11,7 +11,7 @@ mod worker;
 use crate::{
     byzantine_ledger::{task_message::TaskMessage, worker::ByzantineLedgerWorker},
     counters,
-    tx_manager::{TxManager, UntrustedInterfaces},
+    tx_manager::{TxManager, TxManagerTrait, UntrustedInterfaces},
 };
 use mc_common::{logger::Logger, NodeID, ResponderId};
 use mc_connection::{BlockchainConnection, ConnectionManager};

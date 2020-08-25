@@ -7,7 +7,7 @@ struct Foo {}
 
 impl Digestible for Foo {
     fn digest<D: Digest>(&self, hasher: &mut D) {
-        hasher.input(b"Moose");
+        hasher.update(b"Moose");
     }
 }
 
