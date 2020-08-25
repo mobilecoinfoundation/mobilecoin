@@ -114,7 +114,7 @@ pub enum HsmTxType {
 #[derive(Clone, Eq, PartialEq, Serialize, Deserialize, Message, Digestible)]
 pub struct HsmParams {
     /// The transaction type, use an int because prost doesn't deal well with rust enums
-    #[prost(enumeration="HsmTxType", required, tag = "1")]
+    #[prost(enumeration = "HsmTxType", required, tag = "1")]
     pub tx_type: i32,
 
     /// The ECDSA signature for the input txo, used for withdrawals and transfers
@@ -143,7 +143,11 @@ pub struct HsmParams {
 }
 
 impl HsmParams {
-    pub fn new_deposit(output_signature: Vec<u8>, output_ecdsa_key: Vec<u8>, output_target_key: Vec<u8>) -> Self {
+    pub fn new_deposit(
+        output_signature: Vec<u8>,
+        output_ecdsa_key: Vec<u8>,
+        output_target_key: Vec<u8>,
+    ) -> Self {
         Self {
             tx_type: HsmTxType::Deposit as i32,
             input_signature: Vec::new(),
@@ -155,7 +159,11 @@ impl HsmParams {
         }
     }
 
-    pub fn new_withdrawal(input_signature: Vec<u8>, input_ecdsa_key: Vec<u8>, input_target_key: Vec<u8>) -> Self {
+    pub fn new_withdrawal(
+        input_signature: Vec<u8>,
+        input_ecdsa_key: Vec<u8>,
+        input_target_key: Vec<u8>,
+    ) -> Self {
         Self {
             tx_type: HsmTxType::Withdrawal as i32,
             input_signature,
@@ -599,7 +607,11 @@ mod tests {
         // TODO: use a meaningful signature.
         let signature = SignatureRctBulletproofs::default();
 
-        let tx = Tx { prefix, signature, hsm_params: None };
+        let tx = Tx {
+            prefix,
+            signature,
+            hsm_params: None,
+        };
 
         let mut buf = Vec::new();
         tx.encode(&mut buf).expect("failed to serialize into slice");
