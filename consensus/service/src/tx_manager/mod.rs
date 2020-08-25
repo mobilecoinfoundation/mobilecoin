@@ -30,6 +30,9 @@ pub use error::{TxManagerError, TxManagerResult};
 pub use tx_manager_trait::TxManagerTrait;
 pub use untrusted_interfaces::UntrustedInterfaces;
 
+#[cfg(test)]
+pub use tx_manager_trait::MockTxManagerTrait;
+
 struct CacheEntry {
     /// An encrypted transaction that has been found to be well-formed.
     encrypted_tx: WellFormedEncryptedTx,

@@ -14,7 +14,7 @@ mod threaded_broadcaster_retry;
 mod traits;
 
 pub use crate::{
-    broadcast::Broadcast,
+    broadcast::{Broadcast, MockBroadcast},
     connection::PeerConnection,
     consensus_msg::{ConsensusMsg, ConsensusMsgError, TxProposeAAD, VerifiedConsensusMsg},
     error::{Error, Result},

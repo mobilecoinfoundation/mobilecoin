@@ -232,20 +232,23 @@ impl Drop for ByzantineLedger {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{tx_manager::TxManager, validators::DefaultTxManagerUntrustedInterfaces};
+    use crate::{
+        tx_manager::{MockTxManagerTrait, TxManager},
+        validators::DefaultTxManagerUntrustedInterfaces,
+    };
     use hex;
     use mc_common::logger::test_with_logger;
     use mc_consensus_enclave_mock::ConsensusServiceMockEnclave;
     use mc_consensus_scp::{core_types::Ballot, msg::*, SlotIndex};
     use mc_crypto_keys::{DistinguishedEncoding, Ed25519Private};
     use mc_ledger_db::Ledger;
-    use mc_peers::ThreadedBroadcaster;
+    use mc_peers::{MockBroadcast, ThreadedBroadcaster};
     use mc_peers_test_utils::MockPeerConnection;
     use mc_transaction_core_test_utils::{
         create_ledger, create_transaction, initialize_ledger, AccountKey,
     };
     use mc_util_from_random::FromRandom;
-    use mc_util_uri::{ConnectionUri, ConsensusPeerUri as PeerUri};
+    use mc_util_uri::{ConnectionUri, ConsensusPeerUri as PeerUri, ConsensusPeerUri};
     use rand::{rngs::StdRng, SeedableRng};
     use rand_hc::Hc128Rng as FixedRng;
     use std::{
@@ -270,6 +273,99 @@ mod tests {
             responder_id: uri.responder_id().unwrap(),
             public_key: msg_signer_key.public_key(),
         }
+    }
+
+    // Get the local node's NodeID and message signer key.
+    fn get_local_node_config(node_id: u32) -> (NodeID, ConsensusPeerUri, Ed25519Pair) {
+        let secret_key = Ed25519Private::try_from_der(
+            &base64::decode("MC4CAQAwBQYDK2VwBCIEIC50QXQll2Y9qxztvmsUgcBBIxkmk7EQjxzQTa926bKo")
+                .unwrap()
+                .as_slice(),
+        )
+        .unwrap();
+        let signer_key = Ed25519Pair::from(secret_key);
+        let node_uri = test_peer_uri(node_id, hex::encode(&signer_key.public_key()));
+        let node_id = node_uri.node_id().unwrap();
+
+        (node_id, node_uri, signer_key)
+    }
+
+    // Get the peers' NodeIDs and QuorumSets.
+    fn get_peers(peer_ids: &[u32], rng: &mut StdRng) -> Vec<(NodeID, ConsensusPeerUri, QuorumSet)> {
+        peer_ids
+            .iter()
+            .map(|peer_id| {
+                let signer_key = Ed25519Pair::from_random(rng);
+                let uri = test_peer_uri(*peer_id, hex::encode(&signer_key.public_key()));
+                let node_id = test_node_id(uri.clone(), &signer_key);
+                let quorum_set = QuorumSet::empty();
+                (node_id, uri, quorum_set)
+            })
+            .collect()
+    }
+
+    #[test_with_logger]
+    fn test_is_behind(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([216u8; 32]);
+
+        // Other nodes.
+        let peers: Vec<(NodeID, ConsensusPeerUri, QuorumSet)> = get_peers(&[11, 22, 33], &mut rng);
+        let peer_uris: Vec<_> = peers.iter().map(|(_id, uri, _qs)| uri.clone()).collect();
+
+        // Local node.
+        let (local_node_id, _local_node_uri, msg_signer_key) = get_local_node_config(11);
+        let msg_signer_key = Arc::new(msg_signer_key); // Why Arc?
+
+        // Local node's quorum set.
+        let local_quorum_set =
+            QuorumSet::new_with_node_ids(2, vec![peers[0].0.clone(), peers[1].0.clone()]);
+
+        // Local node's Ledger.
+        let mut ledger = create_ledger();
+        let sender = AccountKey::random(&mut rng);
+        let num_blocks = 1;
+        initialize_ledger(&mut ledger, num_blocks, &sender, &mut rng);
+
+        // Mock peer_manager
+        let peer_manager = ConnectionManager::new(
+            vec![
+                MockPeerConnection::new(
+                    peer_uris[0].clone(),
+                    local_node_id.clone(),
+                    ledger.clone(),
+                    10,
+                ),
+                MockPeerConnection::new(
+                    peer_uris[1].clone(),
+                    local_node_id.clone(),
+                    ledger.clone(),
+                    10,
+                ),
+            ],
+            logger.clone(),
+        );
+
+        // Mock tx_manager
+        let tx_manager = Arc::new(MockTxManagerTrait::new());
+
+        // Mock broadcaster
+        let broadcaster = Arc::new(Mutex::new(MockBroadcast::new()));
+
+        let byzantine_ledger = ByzantineLedger::new(
+            local_node_id.clone(),
+            local_quorum_set.clone(),
+            peer_manager,
+            ledger.clone(),
+            tx_manager.clone(),
+            broadcaster,
+            msg_signer_key.clone(),
+            Vec::new(),
+            None,
+            logger.clone(),
+        );
+
+        // Initially, byzantine_ledger is not behind.
+        assert_eq!(byzantine_ledger.is_behind(), false);
     }
 
     // Initially, ByzantineLedger should emit the normal SCPStatements from single-slot consensus.
