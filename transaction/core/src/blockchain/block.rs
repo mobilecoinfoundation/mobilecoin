@@ -186,7 +186,7 @@ pub fn compute_block_id<D: Digest>(
     root_element.digest(&mut hasher);
     contents_hash.digest(&mut hasher);
 
-    BlockID(hasher.result())
+    BlockID(hasher.finalize())
 }
 
 #[cfg(test)]

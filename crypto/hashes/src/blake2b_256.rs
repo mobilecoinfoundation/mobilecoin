@@ -15,7 +15,7 @@ use digest::{
         typenum::{U128, U32},
         GenericArray,
     },
-    FixedOutput, Input, Reset, VariableOutput,
+    FixedOutput, FixedOutputDirty, Reset, Update, VariableOutput,
 };
 
 #[derive(Clone, Debug)]
@@ -34,7 +34,7 @@ impl Blake2b256 {
 
     /// Returns the hash of inputted data.
     pub fn result(self) -> GenericArray<u8, U32> {
-        self.fixed_result()
+        self.finalize_fixed()
     }
 }
 
@@ -44,21 +44,21 @@ impl Default for Blake2b256 {
     }
 }
 
-impl Input for Blake2b256 {
-    fn input<B: AsRef<[u8]>>(&mut self, data: B) {
-        self.hasher.input(data);
+impl Update for Blake2b256 {
+    fn update(&mut self, data: impl AsRef<[u8]>) {
+        self.hasher.update(data);
     }
 }
 
-impl FixedOutput for Blake2b256 {
+impl FixedOutputDirty for Blake2b256 {
     type OutputSize = U32;
 
-    fn fixed_result(self) -> GenericArray<u8, U32> {
+    fn finalize_into_dirty(&mut self, out: &mut GenericArray<u8, Self::OutputSize>) {
         let mut result_opt: Option<GenericArray<u8, U32>> = None;
-        self.hasher.variable_result(|res| {
+        self.hasher.finalize_variable_reset(|res| {
             result_opt = GenericArray::from_exact_iter(res.iter().cloned());
         });
-        result_opt.unwrap()
+        *out = result_opt.unwrap()
     }
 }
 

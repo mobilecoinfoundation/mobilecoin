@@ -393,9 +393,9 @@ impl AccountKey {
         let Hs: Scalar = {
             let n = Scalar::from(index);
             let mut digest = Blake2b::new();
-            digest.input(SUBADDRESS_DOMAIN_TAG);
-            digest.input(a.as_bytes());
-            digest.input(n.as_bytes());
+            digest.update(SUBADDRESS_DOMAIN_TAG);
+            digest.update(a.as_bytes());
+            digest.update(n.as_bytes());
             Scalar::from_hash::<Blake2b>(digest)
         };
 
@@ -416,9 +416,9 @@ impl AccountKey {
         let Hs: Scalar = {
             let n = Scalar::from(index);
             let mut digest = Blake2b::new();
-            digest.input(SUBADDRESS_DOMAIN_TAG);
-            digest.input(a.as_bytes());
-            digest.input(n.as_bytes());
+            digest.update(SUBADDRESS_DOMAIN_TAG);
+            digest.update(a.as_bytes());
+            digest.update(n.as_bytes());
             Scalar::from_hash::<Blake2b>(digest)
         };
 

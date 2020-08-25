@@ -48,7 +48,7 @@ fn try_digestible_struct(
                 // this is a regular struct
                 Some(field_ident) => {
                     quote! {
-                        hasher.input(stringify!(#field_ident).as_bytes());
+                        hasher.update(stringify!(#field_ident).as_bytes());
                         self.#field_ident.digest(hasher);
                     }
                 }
@@ -56,7 +56,7 @@ fn try_digestible_struct(
                 None => {
                     let index = syn::Index::from(idx);
                     quote! {
-                        hasher.input(stringify!(#index).as_bytes());
+                        hasher.update(stringify!(#index).as_bytes());
                         self.#index.digest(hasher);
                     }
                 }
@@ -73,7 +73,7 @@ fn try_digestible_struct(
         .map(|type_param| {
             let ident = &type_param.ident;
             quote! {
-                hasher.input(std::any::type_name::<#ident>().as_bytes());
+                hasher.update(std::any::type_name::<#ident>().as_bytes());
             }
         })
         .collect::<Vec<_>>();
@@ -81,8 +81,8 @@ fn try_digestible_struct(
     let expanded = quote! {
         impl #impl_generics mc_crypto_digestible::Digestible for #ident #ty_generics #where_clause {
             fn digest<D: mc_crypto_digestible::Digest>(&self, hasher: &mut D) {
-                hasher.input(stringify!(#ident).as_bytes());
-                hasher.input(stringify!(#impl_generics).as_bytes());
+                hasher.update(stringify!(#ident).as_bytes());
+                hasher.update(stringify!(#impl_generics).as_bytes());
                 #(#generic_type_digests)*
                 #(#call)*
             }
@@ -111,14 +111,14 @@ fn try_digestible_enum(
                 // For an enum variant that doesn't have associated data (e.g. SomeEnum::MyVariant)
                 // we generate code that looks like this:
                 // Self::MyVariant => {
-                //   hasher.input(&(0 as u64).to_le_bytes()); // This is the variant's index.
-                //   hasher.input("MyVariant").as_bytes());
+                //   hasher.update(&(0 as u64).to_le_bytes()); // This is the variant's index.
+                //   hasher.update("MyVariant").as_bytes());
                 // }
                 Fields::Unit => {
                     quote! {
                         Self::#variant_ident => {
-                            hasher.input(&(#idx as u64).to_le_bytes());
-                            hasher.input(stringify!(#variant_ident).as_bytes());
+                            hasher.update(&(#idx as u64).to_le_bytes());
+                            hasher.update(stringify!(#variant_ident).as_bytes());
                         },
                     }
                 }
@@ -126,11 +126,11 @@ fn try_digestible_enum(
                 // For an enum variant that has anonymous fields (e.g. SomeEnum::MyVariant(u32,
                 // u64)) we generate code that looks like this:
                 // Self::MyVariant(field_0, field_1) => {
-                //   hasher.input(&(0 as u64).to_le_bytes()); // This is the variant's index.
-                //   hasher.input("MyVariant").as_bytes());
-                //   hasher.input("0").as_bytes());
+                //   hasher.update(&(0 as u64).to_le_bytes()); // This is the variant's index.
+                //   hasher.update("MyVariant").as_bytes());
+                //   hasher.update("0").as_bytes());
                 //   field_0.digest(hasher);
-                //   hasher.input("1").as_bytes());
+                //   hasher.update("1").as_bytes());
                 //   field_1.digest(hasher);
                 // }
                 Fields::Unnamed(FieldsUnnamed {
@@ -149,7 +149,7 @@ fn try_digestible_enum(
                             let index = syn::Index::from(idx);
                             let field_ident = format_ident!("field_{}", idx);
                             quote! {
-                                hasher.input(stringify!(#index).as_bytes());
+                                hasher.update(stringify!(#index).as_bytes());
                                 #field_ident.digest(hasher);
                             }
                         })
@@ -157,8 +157,8 @@ fn try_digestible_enum(
 
                     quote! {
                         Self::#variant_ident(#(#field_idents),*) => {
-                            hasher.input(&(#idx as u64).to_le_bytes());
-                            hasher.input(stringify!(#variant_ident).as_bytes());
+                            hasher.update(&(#idx as u64).to_le_bytes());
+                            hasher.update(stringify!(#variant_ident).as_bytes());
                             #(#per_field_digest)*
                         }
                     }
@@ -167,11 +167,11 @@ fn try_digestible_enum(
                 // For an enum variant that has anonymous fields (e.g. SomeEnum::MyVariant { a: u64, b: u64 }
                 // we generate code that looks like this:
                 // Self::MyVariant { a, b } => {
-                //   hasher.input(&(0 as u64).to_le_bytes()); // This is the variant's index.
-                //   hasher.input("MyVariant").as_bytes());
-                //   hasher.input("a").as_bytes());
+                //   hasher.update(&(0 as u64).to_le_bytes()); // This is the variant's index.
+                //   hasher.update("MyVariant").as_bytes());
+                //   hasher.update("a").as_bytes());
                 //   a.digest(hasher);
-                //   hasher.input("b").as_bytes());
+                //   hasher.update("b").as_bytes());
                 //   b.digest(hasher);
                 // }
                 Fields::Named(FieldsNamed { named: fields, .. }) => {
@@ -182,7 +182,7 @@ fn try_digestible_enum(
                         .map(|field| {
                             let field_ident = &field.ident;
                             quote! {
-                                hasher.input(stringify!(#field_ident).as_bytes());
+                                hasher.update(stringify!(#field_ident).as_bytes());
                                 #field_ident.digest(hasher);
                             }
                         })
@@ -190,8 +190,8 @@ fn try_digestible_enum(
 
                     quote! {
                         Self::#variant_ident { #(#field_idents),* } => {
-                            hasher.input(&(#idx as u64).to_le_bytes());
-                            hasher.input(stringify!(#variant_ident).as_bytes());
+                            hasher.update(&(#idx as u64).to_le_bytes());
+                            hasher.update(stringify!(#variant_ident).as_bytes());
                             #(#per_field_digest)*
                         }
                     }
@@ -208,7 +208,7 @@ fn try_digestible_enum(
         .map(|type_param| {
             let ident = &type_param.ident;
             quote! {
-                hasher.input(std::any::type_name::<#ident>().as_bytes());
+                hasher.update(std::any::type_name::<#ident>().as_bytes());
             }
         })
         .collect::<Vec<_>>();
@@ -217,8 +217,8 @@ fn try_digestible_enum(
         impl #impl_generics mc_crypto_digestible::Digestible for #ident #ty_generics #where_clause {
             fn digest<D: mc_crypto_digestible::Digest>(&self, hasher: &mut D) {
                 // Hash the name of the enum and generic specializations.
-                hasher.input(stringify!(#ident).as_bytes());
-                hasher.input(stringify!(#impl_generics).as_bytes());
+                hasher.update(stringify!(#ident).as_bytes());
+                hasher.update(stringify!(#impl_generics).as_bytes());
                 #(#generic_type_digests)*
 
                 // Per-variant hashing.

@@ -22,7 +22,7 @@ hex = "0.4"
 rand = "0.7"
 rand_hc = "0.2"
 retry = "0.5"
-sha2 = { version = "0.8", features = ["asm"] }
+sha2 = { version = "0.9", features = ["asm"] }
 
 [dev-dependencies]
 mc-common = { path = "../../common", features = ["loggers"] }

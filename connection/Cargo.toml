@@ -19,13 +19,13 @@ mc-util-host-cert = { path = "../util/host-cert" }
 mc-util-serial = { path = "../util/serial" }
 mc-util-uri = { path = "../util/uri" }
 
-aes-gcm = "0.3"
+aes-gcm = "0.6"
 failure = "0.1.5"
 grpcio = "0.6.0"
 retry = "0.5"
 secrecy = "0.4"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-sha2 = "0.8"
+sha2 = "0.9"
 
 [dev-dependencies]
 rand = "0.7"

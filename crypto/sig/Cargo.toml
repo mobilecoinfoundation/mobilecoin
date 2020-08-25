@@ -11,7 +11,9 @@ mc-crypto-keys = { path = "../keys", default-features = false }
 merlin = { version = "2.0", default-features = false }
 rand_core = { version = "0.5", default-features = false }
 rand_hc = "0.2"
-schnorrkel = { version = "0.9", default-features = false }
+
+# Overridden since we need a not-yet-released commit that uprevs a bunch of dependencies.
+schnorrkel = { git = "https://github.com/w3f/schnorrkel", rev = "cfdbe9ae865a4d3ffa2566d896d4dbedf5107028", default-features = false }
 
 [dev-dependencies]
 mc-util-from-random = { path = "../../util/from-random" }

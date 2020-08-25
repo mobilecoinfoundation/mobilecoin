@@ -24,7 +24,7 @@ pub struct BlockID<D: Digest = Blake2b256>(pub GenericArray<u8, D::OutputSize>);
 
 impl<D: Digest> Digestible for BlockID<D> {
     fn digest<DD: Digest>(&self, hasher: &mut DD) {
-        hasher.input(&self.0)
+        hasher.update(&self.0)
     }
 }
 

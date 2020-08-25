@@ -5,7 +5,7 @@
 use crate::mealy::State;
 use aead::{AeadMut, NewAead};
 use alloc::{string::String, vec::Vec};
-use digest::{BlockInput, FixedOutput, Input, Reset};
+use digest::{BlockInput, FixedOutput, Reset, Update};
 use mc_attest_core::Measurement;
 use mc_crypto_keys::Kex;
 use mc_crypto_noise::{CipherError, CipherState, HandshakeState, NoiseCipher};
@@ -61,7 +61,7 @@ pub struct AuthPending<KexAlgo, Cipher, DigestType>
 where
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + FixedOutput + Input + Reset,
+    DigestType: BlockInput + Clone + Default + FixedOutput + Update + Reset,
 {
     /// The handshake state
     pub(crate) state: HandshakeState<KexAlgo, Cipher, DigestType>,
@@ -82,7 +82,7 @@ impl<KexAlgo, Cipher, DigestType> State for AuthPending<KexAlgo, Cipher, DigestT
 where
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + FixedOutput + Input + Reset,
+    DigestType: BlockInput + Clone + Default + FixedOutput + Update + Reset,
 {
 }
 
@@ -90,7 +90,7 @@ impl<KexAlgo, Cipher, DigestType> AuthPending<KexAlgo, Cipher, DigestType>
 where
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + FixedOutput + Input + Reset,
+    DigestType: BlockInput + Clone + Default + FixedOutput + Update + Reset,
 {
     pub(crate) fn new(
         state: HandshakeState<KexAlgo, Cipher, DigestType>,

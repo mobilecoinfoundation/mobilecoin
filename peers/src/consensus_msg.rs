@@ -130,7 +130,7 @@ impl ConsensusMsg {
         let mut contents_hasher = Sha256::new();
         scp_msg.digest(&mut contents_hasher);
         prev_block.id.digest(&mut contents_hasher);
-        let contents_hash = contents_hasher.result();
+        let contents_hash = contents_hasher.finalize();
 
         let signature = signer_key.try_sign(&contents_hash)?;
 
@@ -155,7 +155,7 @@ impl ConsensusMsg {
         let mut contents_hasher = Sha256::new();
         self.scp_msg.digest(&mut contents_hasher);
         self.prev_block_id.digest(&mut contents_hasher);
-        let contents_hash = contents_hasher.result();
+        let contents_hash = contents_hasher.finalize();
 
         Ok(self
             .scp_msg

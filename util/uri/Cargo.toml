@@ -11,7 +11,7 @@ mc-crypto-keys = { path = "../../crypto/keys" }
 
 base64 = "0.11"
 displaydoc = { version = "0.1.7", default-features = false }
-ed25519 = { version = "1.0.0-pre.1", default-features = false, features = ["serde"] }
+ed25519 = { version = "1.0.1", default-features = false, features = ["serde"] }
 hex = "0.4"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 url = "2.1"

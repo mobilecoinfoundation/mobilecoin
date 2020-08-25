@@ -22,8 +22,8 @@ mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-crypto-noise = { path = "../../crypto/noise", default-features = false }
 mc-util-serial = { path = "../../util/serial", default-features = false }
 
-aead = "0.2"
-digest = { version = "0.8", default-features = false }
+aead = "0.3"
+digest = { version = "0.9", default-features = false }
 failure = { version = "0.1.5", default-features = false, features = ["derive"] }
 rand_core = "0.5"
 serde = { version = "1.0", default-features = false, features = ["alloc"] }
@@ -32,9 +32,9 @@ serde = { version = "1.0", default-features = false, features = ["alloc"] }
 mc-attest-net = { path = "../net" }
 mc-util-encodings = { path = "../../util/encodings" }
 mc-util-from-random = { path = "../../util/from-random" }
-aes-gcm = "0.3"
+aes-gcm = "0.6"
 rand_hc = "0.2"
-sha2 = "0.8"
+sha2 = "0.9"
 
 [build-dependencies]
 mc-sgx-build = { path = "../../sgx/build" }

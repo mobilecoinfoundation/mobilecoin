@@ -20,10 +20,10 @@ displaydoc = { version = "0.1.7", default-features = false }
 protobuf = "2.12"
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
-curve25519-dalek = { version = "2.0", default-features = false, features = ["simd_backend", "nightly"] }
+curve25519-dalek = { version = "3.0", default-features = false, features = ["simd_backend", "nightly"] }
 
 [target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
-curve25519-dalek = { version = "2.0", default-features = false, features = ["nightly", "u64_backend"] }
+curve25519-dalek = { version = "3.0", default-features = false, features = ["nightly", "u64_backend"] }
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../util/build/grpc" }

@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use alloc::vec::Vec;
-use blake2::digest::Input;
+use blake2::digest::Update;
 use core::{
     convert::{TryFrom, TryInto},
     fmt,
@@ -444,8 +444,8 @@ impl core::convert::From<[u8; 32]> for TxOutConfirmationNumber {
 impl core::convert::From<&RistrettoPublic> for TxOutConfirmationNumber {
     fn from(shared_secret: &RistrettoPublic) -> Self {
         let mut hasher = Blake2b256::new();
-        hasher.input(&TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG);
-        hasher.input(shared_secret.to_bytes());
+        hasher.update(&TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG);
+        hasher.update(shared_secret.to_bytes());
 
         let result: [u8; 32] = hasher.result().into();
         Self(result)

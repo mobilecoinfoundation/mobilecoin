@@ -10,7 +10,7 @@ use crate::{
 use aead::{AeadMut, NewAead};
 use alloc::vec::Vec;
 use core::convert::TryFrom;
-use digest::{BlockInput, Digest, FixedOutput, Input, Reset};
+use digest::{BlockInput, Digest, FixedOutput, Reset, Update};
 use mc_attest_core::{QuoteSignType, ReportDataMask, VerificationReport};
 use mc_crypto_keys::{Kex, ReprBytes};
 use mc_crypto_noise::{
@@ -32,7 +32,7 @@ trait ResponderTransitionMixin {
         Handshake: HandshakePattern,
         KexAlgo: Kex,
         Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-        DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Input + Reset,
+        DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Update + Reset,
         ProtocolName<Handshake, KexAlgo, Cipher, DigestType>: AsRef<str>;
 
     fn handle_response<KexAlgo, Cipher, DigestType>(
@@ -43,7 +43,7 @@ trait ResponderTransitionMixin {
     where
         KexAlgo: Kex,
         Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-        DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Input + Reset;
+        DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Update + Reset;
 }
 
 impl ResponderTransitionMixin for Start {
@@ -56,7 +56,7 @@ impl ResponderTransitionMixin for Start {
         Handshake: HandshakePattern,
         KexAlgo: Kex,
         Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-        DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Input + Reset,
+        DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Update + Reset,
         ProtocolName<Handshake, KexAlgo, Cipher, DigestType>: AsRef<str>,
     {
         let handshake_state = HandshakeState::new(
@@ -89,7 +89,7 @@ impl ResponderTransitionMixin for Start {
     where
         KexAlgo: Kex,
         Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-        DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Input + Reset,
+        DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Update + Reset,
     {
         // Encrypt the local report for output
         let local_report = serialize(&ias_report).map_err(|_e| Error::ReportSerialization)?;
@@ -125,7 +125,7 @@ impl<KexAlgo, Cipher, DigestType>
 where
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Input + Reset,
+    DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Update + Reset,
     ProtocolName<HandshakeIX, KexAlgo, Cipher, DigestType>: AsRef<str>,
 {
     type Error = Error;
@@ -177,7 +177,7 @@ impl<KexAlgo, Cipher, DigestType>
 where
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Input + Reset,
+    DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Update + Reset,
     ProtocolName<HandshakeNX, KexAlgo, Cipher, DigestType>: AsRef<str>,
 {
     type Error = Error;

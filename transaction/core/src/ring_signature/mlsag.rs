@@ -176,12 +176,12 @@ impl RingMLSAG {
 
             c[(i + 1) % ring_size] = {
                 let mut hasher = Blake2b::new();
-                hasher.input(&RING_MLSAG_CHALLENGE_DOMAIN_TAG);
-                hasher.input(message);
-                hasher.input(&key_image);
-                hasher.input(L0.compress().as_bytes());
-                hasher.input(R0.compress().as_bytes());
-                hasher.input(L1.compress().as_bytes());
+                hasher.update(&RING_MLSAG_CHALLENGE_DOMAIN_TAG);
+                hasher.update(message);
+                hasher.update(&key_image);
+                hasher.update(L0.compress().as_bytes());
+                hasher.update(R0.compress().as_bytes());
+                hasher.update(L1.compress().as_bytes());
                 Scalar::from_hash::<Blake2b>(hasher)
             };
         }
@@ -290,12 +290,12 @@ impl RingMLSAG {
 
             recomputed_c[(i + 1) % ring_size] = {
                 let mut hasher = Blake2b::new();
-                hasher.input(&RING_MLSAG_CHALLENGE_DOMAIN_TAG);
-                hasher.input(message);
-                hasher.input(&self.key_image);
-                hasher.input(L0.compress().as_bytes());
-                hasher.input(R0.compress().as_bytes());
-                hasher.input(L1.compress().as_bytes());
+                hasher.update(&RING_MLSAG_CHALLENGE_DOMAIN_TAG);
+                hasher.update(message);
+                hasher.update(&self.key_image);
+                hasher.update(L0.compress().as_bytes());
+                hasher.update(R0.compress().as_bytes());
+                hasher.update(L1.compress().as_bytes());
                 Scalar::from_hash::<Blake2b>(hasher)
             };
         }

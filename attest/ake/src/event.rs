@@ -6,7 +6,7 @@ use crate::mealy::{Input as MealyInput, Output as MealyOutput};
 use aead::{AeadMut, NewAead};
 use alloc::vec::Vec;
 use core::marker::PhantomData;
-use digest::{BlockInput, FixedOutput, Input, Reset};
+use digest::{BlockInput, FixedOutput, Reset, Update};
 use mc_attest_core::VerificationReport;
 use mc_crypto_keys::Kex;
 use mc_crypto_noise::{HandshakePattern, NoiseCipher, ProtocolName};
@@ -17,7 +17,7 @@ pub struct NodeInitiate<KexAlgo, Cipher, DigestType>
 where
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + FixedOutput + Input + Reset,
+    DigestType: BlockInput + Clone + Default + FixedOutput + Update + Reset,
 {
     /// This is the local node's identity key
     pub(crate) local_identity: KexAlgo::Private,
@@ -33,7 +33,7 @@ impl<KexAlgo, Cipher, DigestType> NodeInitiate<KexAlgo, Cipher, DigestType>
 where
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + FixedOutput + Input + Reset,
+    DigestType: BlockInput + Clone + Default + FixedOutput + Update + Reset,
 {
     /// Create a new input event to initiate a node-to-node channel.
     pub fn new(local_identity: KexAlgo::Private, ias_report: VerificationReport) -> Self {
@@ -51,7 +51,7 @@ impl<KexAlgo, Cipher, DigestType> MealyInput for NodeInitiate<KexAlgo, Cipher, D
 where
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + FixedOutput + Input + Reset,
+    DigestType: BlockInput + Clone + Default + FixedOutput + Update + Reset,
 {
 }
 
@@ -61,7 +61,7 @@ pub struct ClientInitiate<KexAlgo, Cipher, DigestType>
 where
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + FixedOutput + Input + Reset,
+    DigestType: BlockInput + Clone + Default + FixedOutput + Update + Reset,
 {
     _kex: PhantomData<fn() -> KexAlgo>,
     _cipher: PhantomData<fn() -> Cipher>,
@@ -72,7 +72,7 @@ impl<KexAlgo, Cipher, DigestType> Default for ClientInitiate<KexAlgo, Cipher, Di
 where
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + FixedOutput + Input + Reset,
+    DigestType: BlockInput + Clone + Default + FixedOutput + Update + Reset,
 {
     fn default() -> Self {
         Self {
@@ -87,7 +87,7 @@ impl<KexAlgo, Cipher, DigestType> MealyInput for ClientInitiate<KexAlgo, Cipher,
 where
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + FixedOutput + Input + Reset,
+    DigestType: BlockInput + Clone + Default + FixedOutput + Update + Reset,
 {
 }
 
@@ -98,7 +98,7 @@ where
     Handshake: HandshakePattern,
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + FixedOutput + Input + Reset,
+    DigestType: BlockInput + Clone + Default + FixedOutput + Update + Reset,
 {
     /// The actual AuthRequest data
     pub(crate) data: Vec<u8>,
@@ -113,7 +113,7 @@ where
     Handshake: HandshakePattern,
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + FixedOutput + Input + Reset,
+    DigestType: BlockInput + Clone + Default + FixedOutput + Update + Reset,
 {
     fn from(data: Vec<u8>) -> Self {
         Self {
@@ -129,7 +129,7 @@ where
     Handshake: HandshakePattern,
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + FixedOutput + Input + Reset,
+    DigestType: BlockInput + Clone + Default + FixedOutput + Update + Reset,
 {
     fn into(self) -> Vec<u8> {
         self.data
@@ -142,7 +142,7 @@ where
     Handshake: HandshakePattern,
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + FixedOutput + Input + Reset,
+    DigestType: BlockInput + Clone + Default + FixedOutput + Update + Reset,
 {
     fn as_ref(&self) -> &[u8] {
         self.data.as_ref()
@@ -156,7 +156,7 @@ where
     Handshake: HandshakePattern,
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + FixedOutput + Input + Reset,
+    DigestType: BlockInput + Clone + Default + FixedOutput + Update + Reset,
 {
 }
 
@@ -169,7 +169,7 @@ where
     Handshake: HandshakePattern,
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + FixedOutput + Input + Reset,
+    DigestType: BlockInput + Clone + Default + FixedOutput + Update + Reset,
 {
     /// This is the local node's identity key
     pub(crate) local_identity: KexAlgo::Private,
@@ -186,7 +186,7 @@ where
     Handshake: HandshakePattern,
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + FixedOutput + Input + Reset,
+    DigestType: BlockInput + Clone + Default + FixedOutput + Update + Reset,
 {
 }
 
@@ -196,7 +196,7 @@ where
     Handshake: HandshakePattern,
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
-    DigestType: BlockInput + Clone + Default + FixedOutput + Input + Reset,
+    DigestType: BlockInput + Clone + Default + FixedOutput + Update + Reset,
 {
     pub fn new(
         data: AuthRequestOutput<Handshake, KexAlgo, Cipher, DigestType>,

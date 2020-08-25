@@ -383,7 +383,7 @@ impl Ed25519Signature {
 impl Digestible for Ed25519Signature {
     #[inline]
     fn digest<D: Digest>(&self, hasher: &mut D) {
-        hasher.input(&self.to_bytes()[..])
+        hasher.update(&self.to_bytes()[..])
     }
 }
 
