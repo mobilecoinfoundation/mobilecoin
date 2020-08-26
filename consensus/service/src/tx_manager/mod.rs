@@ -51,7 +51,7 @@ impl CacheEntry {
     }
 }
 
-pub struct TxManagerImpl<E: ConsensusEnclave, UI: UntrustedInterfaces> {
+pub struct TxManagerImpl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> {
     /// Enclave.
     enclave: E,
 
@@ -66,7 +66,7 @@ pub struct TxManagerImpl<E: ConsensusEnclave, UI: UntrustedInterfaces> {
     logger: Logger,
 }
 
-impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManagerImpl<E, UI> {
+impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManagerImpl<E, UI> {
     /// Construct a new TxManager instance.
     pub fn new(enclave: E, untrusted: UI, logger: Logger) -> Self {
         Self {
@@ -82,7 +82,9 @@ impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManagerImpl<E, UI> {
     }
 }
 
-impl<E: ConsensusEnclave, UI: UntrustedInterfaces> TxManager for TxManagerImpl<E, UI> {
+impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
+    for TxManagerImpl<E, UI>
+{
     /// Insert a transaction into the cache. The transaction must be well-formed.
     fn insert(&self, tx_context: TxContext) -> TxManagerResult<TxHash> {
         {
