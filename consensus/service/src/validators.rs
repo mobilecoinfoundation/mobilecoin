@@ -738,7 +738,6 @@ mod combine_tests {
             &alice.default_subaddress(),
             &tx_secret_key_for_txo,
             Default::default(),
-            &mut rng,
         )
         .unwrap();
 
@@ -808,7 +807,6 @@ mod combine_tests {
                     &alice.default_subaddress(),
                     &tx_secret_key_for_txo,
                     Default::default(),
-                    &mut rng,
                 )
                 .unwrap();
 
@@ -876,7 +874,6 @@ mod combine_tests {
             &alice.default_subaddress(),
             &RistrettoPrivate::from_random(&mut rng),
             Default::default(),
-            &mut rng,
         )
         .unwrap();
 
@@ -961,7 +958,6 @@ mod combine_tests {
                 &alice.default_subaddress(),
                 &tx_secret_key_for_txo,
                 Default::default(),
-                &mut rng,
             )
             .unwrap();
             let tx_public_key_for_txo = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
@@ -1027,7 +1023,6 @@ mod combine_tests {
             &alice.default_subaddress(),
             &RistrettoPrivate::from_random(&mut rng),
             Default::default(),
-            &mut rng,
         )
         .unwrap();
 
@@ -1036,7 +1031,6 @@ mod combine_tests {
             &alice.default_subaddress(),
             &RistrettoPrivate::from_random(&mut rng),
             Default::default(),
-            &mut rng,
         )
         .unwrap();
 
@@ -1129,7 +1123,6 @@ mod combine_tests {
                 &alice.default_subaddress(),
                 &tx_secret_key_for_txo,
                 Default::default(),
-                &mut rng,
             )
             .unwrap();
             let tx_public_key_for_txo = RistrettoPublic::try_from(&tx_out.public_key).unwrap();

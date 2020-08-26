@@ -16,7 +16,6 @@ use mc_util_repr_bytes::{
     derive_prost_message_from_repr_bytes, typenum::U32, GenericArray, ReprBytes,
 };
 use prost::Message;
-use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -257,14 +256,12 @@ impl TxOut {
     /// * `value` - Value of the output.
     /// * `recipient` - Recipient's address.
     /// * `tx_private_key` - The transaction's private key
-    /// * `hint` -
-    /// * `rng` - A cryptographic pseudorandom number generator.
-    pub fn new<RNG: CryptoRng + RngCore>(
+    /// * `hint` - Encrypted Fog hint.
+    pub fn new(
         value: u64,
         recipient: &PublicAddress,
         tx_private_key: &RistrettoPrivate,
         hint: EncryptedFogHint,
-        _rng: &mut RNG,
     ) -> Result<Self, AmountError> {
         let target_key = create_onetime_public_key(recipient, tx_private_key).into();
         let public_key = compute_tx_pubkey(tx_private_key, recipient.spend_public_key()).into();
