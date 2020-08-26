@@ -729,6 +729,7 @@ dependencies = [
  "mc-sgx-compat 0.6.0",
  "mc-sgx-report-cache-api 0.6.0",
  "mc-sgx-slog 0.6.0",
+ "mc-sgx-types 0.6.0",
  "mc-transaction-core 0.6.0",
  "mc-util-build-script 0.6.0",
  "mc-util-from-random 0.6.0",

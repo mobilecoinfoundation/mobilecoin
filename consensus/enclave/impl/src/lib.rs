@@ -42,12 +42,13 @@ use mc_crypto_message_cipher::{AesMessageCipher, MessageCipher};
 use mc_crypto_rand::McRng;
 use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
+use mc_sgx_types::{uint8_t, uint32_t, SGX_ECP256_KEY_SIZE, SGX_NISTP_ECP256_KEY_SIZE, sgx_ec256_public_t, sgx_ec256_signature_t};
 use mc_transaction_core::{
     amount::Amount,
     constants::{FEE_SPEND_PUBLIC_KEY, FEE_VIEW_PUBLIC_KEY},
     onetime_keys::{compute_shared_secret, compute_tx_pubkey, create_onetime_public_key},
     ring_signature::{KeyImage, Scalar},
-    tx::{Tx, TxOut, TxOutMembershipProof},
+    tx::{HsmTxType, Tx, TxOut, TxOutMembershipProof},
     Block, BlockContents, BlockSignature, BLOCK_VERSION,
 };
 use prost::Message;
@@ -327,8 +328,46 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         let mut csprng = McRng::default();
         mc_transaction_core::validation::validate(&tx, block_index, &proofs, &mut csprng)?;
 
-        // XXX TODO: check ECDSA signature on HsmParams
+        // check ECDSA signature(s) if HsmParams present
+        if tx.hsm_params.tx_type == HsmTxType::Deposit as i32 || tx.hsm_params.tx_type == HsmTxType::Transfer as i32 {
+            let mut gx: [uint8_t; SGX_ECP256_KEY_SIZE] = [0; SGX_ECP256_KEY_SIZE];
+            gx.copy_from_slice(&tx.hsm_params.input_ecdsa_key[0..SGX_ECP256_KEY_SIZE]);
+            
+            let mut gy: [uint8_t; SGX_ECP256_KEY_SIZE] = [0; SGX_ECP256_KEY_SIZE];
+            gy.copy_from_slice(&tx.hsm_params.input_ecdsa_key[SGX_ECP256_KEY_SIZE..]);
 
+            let _input_public_key = sgx_ec256_public_t {
+                gx,
+                gy,
+            };
+            let mut x: [uint32_t; SGX_NISTP_ECP256_KEY_SIZE] = [0; SGX_NISTP_ECP256_KEY_SIZE];
+            for i in 0..SGX_NISTP_ECP256_KEY_SIZE {
+                let first = 4*i;
+                let last = 4*(i + 1);
+                let mut hx: [u8; 4] = [0; 4];
+                hx.copy_from_slice(&tx.hsm_params.input_ecdsa_key[first..last]);
+                
+                x[i] = u32::from_le_bytes(hx);
+            }
+            let mut y: [uint32_t; SGX_NISTP_ECP256_KEY_SIZE] = [0; SGX_NISTP_ECP256_KEY_SIZE];
+            for i in 0..SGX_NISTP_ECP256_KEY_SIZE {
+                let first = 4*i;
+                let last = 4*(i + 1);
+                let mut hy: [u8; 4] = [0; 4];
+                hy.copy_from_slice(&tx.hsm_params.input_ecdsa_key[first..last]);
+                
+                y[i] = u32::from_le_bytes(hy);
+            }
+
+            let _input_signature = sgx_ec256_signature_t {
+                x,
+                y,
+            };            
+        }
+
+        if tx.hsm_params.tx_type == HsmTxType::Withdrawal as i32 || tx.hsm_params.tx_type == HsmTxType::Transfer as i32 {
+
+        }
         // Convert into a well formed encrypted transaction + context.
         let well_formed_tx_context = WellFormedTxContext::from(&tx);
         let well_formed_tx = WellFormedTx::from(tx);
