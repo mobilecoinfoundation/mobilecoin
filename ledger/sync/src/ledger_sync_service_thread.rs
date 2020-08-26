@@ -27,7 +27,7 @@ pub struct LedgerSyncServiceThread {
 
 impl LedgerSyncServiceThread {
     pub fn new<
-        L: Ledger + 'static,
+        L: Ledger + Clone + 'static,
         BC: BlockchainConnection + 'static,
         TF: TransactionsFetcher + 'static,
     >(
