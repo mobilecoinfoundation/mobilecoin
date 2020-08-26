@@ -68,6 +68,7 @@ impl Error {
         match self {
             Error::Grpc(_ge) => true,
             Error::Attestation(_ae) => true,
+            Error::Enclave(EnclaveError::Attest(_ae)) => true,
             _ => false,
         }
     }
