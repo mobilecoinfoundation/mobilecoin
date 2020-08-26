@@ -143,6 +143,18 @@ pub struct HsmParams {
 }
 
 impl HsmParams {
+    pub fn new() -> HsmParams {
+        HsmParams {
+            tx_type: HsmTxType::None as i32,
+            input_signature: Vec::new(),
+            input_ecdsa_key: Vec::new(),
+            input_target_key: Vec::new(),
+            output_signature: Vec::new(),
+            output_ecdsa_key: Vec::new(),
+            output_target_key: Vec::new(),
+        }
+    }
+
     pub fn new_deposit(
         output_signature: Vec<u8>,
         output_ecdsa_key: Vec<u8>,
@@ -187,9 +199,11 @@ pub struct Tx {
     #[prost(message, required, tag = "2")]
     pub signature: SignatureRctBulletproofs,
 
-    /// Optional HSM transaction parameters
-    #[prost(message, tag = "3")]
-    pub hsm_params: Option<HsmParams>,
+    /// Optional HSM transaction parameters; set as
+    /// HsmParams::default() if not needed
+    ///
+    #[prost(message, required, tag = "3")]
+    pub hsm_params: HsmParams,
 }
 
 impl fmt::Display for Tx {
@@ -550,7 +564,7 @@ mod tests {
         constants::MINIMUM_FEE,
         encrypted_fog_hint::EncryptedFogHint,
         ring_signature::SignatureRctBulletproofs,
-        tx::{Tx, TxIn, TxOut, TxPrefix},
+        tx::{HsmParams, Tx, TxIn, TxOut, TxPrefix},
     };
     use alloc::vec::Vec;
     use mc_crypto_keys::RistrettoPublic;
@@ -610,7 +624,7 @@ mod tests {
         let tx = Tx {
             prefix,
             signature,
-            hsm_params: None,
+            hsm_params: HsmParams::new(),
         };
 
         let mut buf = Vec::new();

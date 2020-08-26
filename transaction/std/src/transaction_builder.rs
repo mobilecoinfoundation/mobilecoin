@@ -14,7 +14,7 @@ use mc_transaction_core::{
     fog_hint::FogHint,
     onetime_keys::compute_shared_secret,
     ring_signature::SignatureRctBulletproofs,
-    tx::{Tx, TxIn, TxOut, TxOutConfirmationNumber, TxPrefix},
+    tx::{HsmParams, Tx, TxIn, TxOut, TxOutConfirmationNumber, TxPrefix},
     CompressedCommitment,
 };
 use mc_util_from_random::FromRandom;
@@ -188,7 +188,7 @@ impl TransactionBuilder {
         Ok(Tx {
             prefix: tx_prefix,
             signature,
-            hsm_params: None,
+            hsm_params: HsmParams::new(),
         })
     }
 }

@@ -392,23 +392,7 @@ impl From<&tx::Tx> for external::Tx {
         let mut tx = external::Tx::new();
         tx.set_prefix(external::TxPrefix::from(&source.prefix));
         tx.set_signature(external::SignatureRctBulletproofs::from(&source.signature));
-
-        match &source.hsm_params {
-            Some(hsm_params) => tx.set_hsm_params(external::HsmParams::from(hsm_params)),
-            None => {
-                let mut params = external::HsmParams::new();
-                params.set_tx_type(tx::HsmTxType::None as i32);
-                params.set_input_signature(Vec::new());
-                params.set_input_ecdsa_key(Vec::new());
-                params.set_input_target_key(Vec::new());
-
-                params.set_output_signature(Vec::new());
-                params.set_output_ecdsa_key(Vec::new());
-                params.set_output_target_key(Vec::new());
-
-                tx.set_hsm_params(params);
-            }
-        }
+        tx.set_hsm_params(external::HsmParams::from(&source.hsm_params));
 
         tx
     }
@@ -421,10 +405,8 @@ impl TryFrom<&external::Tx> for tx::Tx {
     fn try_from(source: &external::Tx) -> Result<Self, Self::Error> {
         let prefix = tx::TxPrefix::try_from(source.get_prefix())?;
         let signature = SignatureRctBulletproofs::try_from(source.get_signature())?;
-        let mut hsm_params: Option<tx::HsmParams> = None;
-        if source.get_hsm_params().get_tx_type() != tx::HsmTxType::None as i32 {
-            hsm_params = Some(tx::HsmParams::try_from(source.get_hsm_params())?);
-        }
+        let hsm_params = tx::HsmParams::try_from(source.get_hsm_params())?;
+
         Ok(tx::Tx {
             prefix,
             signature,
