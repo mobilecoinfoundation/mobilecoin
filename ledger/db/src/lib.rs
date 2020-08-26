@@ -674,7 +674,6 @@ mod ledger_db_test {
                         &account_key.default_subaddress(),
                         &RistrettoPrivate::from_random(&mut rng),
                         Default::default(),
-                        &mut rng,
                     )
                     .unwrap()
                 })
@@ -728,7 +727,6 @@ mod ledger_db_test {
             &account_key.default_subaddress(),
             &RistrettoPrivate::from_random(&mut rng),
             Default::default(),
-            &mut rng,
         )
         .unwrap();
 
@@ -784,7 +782,6 @@ mod ledger_db_test {
                     &recipient_account_key.default_subaddress(),
                     &RistrettoPrivate::from_random(&mut rng),
                     Default::default(),
-                    &mut rng,
                 )
                 .unwrap()
             })
@@ -865,7 +862,6 @@ mod ledger_db_test {
                     &recipient_account_key.default_subaddress(),
                     &RistrettoPrivate::from_random(&mut rng),
                     Default::default(),
-                    &mut rng,
                 )
                 .unwrap()
             })
@@ -1024,7 +1020,6 @@ mod ledger_db_test {
             &account_key.default_subaddress(),
             &RistrettoPrivate::from_random(&mut rng),
             Default::default(),
-            &mut rng,
         )
         .unwrap();
         let outputs = vec![tx_out];
@@ -1069,7 +1064,6 @@ mod ledger_db_test {
             &account_key.default_subaddress(),
             &RistrettoPrivate::from_random(&mut rng),
             Default::default(),
-            &mut rng,
         )
         .unwrap();
         let outputs = vec![tx_out];
@@ -1168,7 +1162,6 @@ mod ledger_db_test {
             &account_key.default_subaddress(),
             &RistrettoPrivate::from_random(&mut rng),
             Default::default(),
-            &mut rng,
         )
         .unwrap();
 
@@ -1225,7 +1218,6 @@ mod ledger_db_test {
                 &account_key.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
                 Default::default(),
-                &mut rng,
             )
             .unwrap();
             let outputs = vec![tx_out];
@@ -1250,7 +1242,6 @@ mod ledger_db_test {
                 &account_key.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
                 Default::default(),
-                &mut rng,
             )
             .unwrap();
             let outputs = vec![tx_out];
@@ -1294,7 +1285,6 @@ mod ledger_db_test {
                 &account_key.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
                 Default::default(),
-                &mut rng,
             )
             .unwrap();
             tx_out.public_key = existing_tx_out.public_key.clone();
@@ -1356,7 +1346,6 @@ mod ledger_db_test {
                 &account_key.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
                 Default::default(),
-                &mut rng,
             )
             .unwrap();
 

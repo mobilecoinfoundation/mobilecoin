@@ -97,5 +97,5 @@ pub fn bootstrap_ledger(
 fn create_output(recipient: &PublicAddress, value: u64, rng: &mut FixedRng) -> TxOut {
     let tx_private_key = RistrettoPrivate::from_random(rng);
     let hint = EncryptedFogHint::fake_onetime_hint(rng);
-    TxOut::new(value, recipient, &tx_private_key, hint, rng).unwrap()
+    TxOut::new(value, recipient, &tx_private_key, hint).unwrap()
 }

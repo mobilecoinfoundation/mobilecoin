@@ -214,7 +214,7 @@ fn create_output<RNG: CryptoRng + RngCore>(
 ) -> Result<(TxOut, RistrettoPublic), TxBuilderError> {
     let private_key = RistrettoPrivate::from_random(rng);
     let hint = create_fog_hint(recipient, ingest_pubkey, rng)?;
-    let tx_out = TxOut::new(value, recipient, &private_key, hint, rng)?;
+    let tx_out = TxOut::new(value, recipient, &private_key, hint)?;
     let shared_secret = compute_shared_secret(recipient.view_public_key(), &private_key);
     Ok((tx_out, shared_secret))
 }

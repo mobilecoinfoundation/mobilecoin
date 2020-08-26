@@ -206,7 +206,6 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
                             &account_key.default_subaddress(),
                             &RistrettoPrivate::from_random(rng),
                             Default::default(),
-                            rng,
                         )
                         .unwrap()
                     })
@@ -296,7 +295,6 @@ pub fn get_outputs<T: RngCore + CryptoRng>(
                 recipient,
                 &RistrettoPrivate::from_random(rng),
                 Default::default(),
-                rng,
             )
             .unwrap()
         })
