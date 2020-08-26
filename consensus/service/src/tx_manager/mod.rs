@@ -51,6 +51,7 @@ impl CacheEntry {
     }
 }
 
+#[derive(Clone)]
 pub struct TxManagerImpl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> {
     /// Enclave.
     enclave: E,
@@ -60,7 +61,7 @@ pub struct TxManagerImpl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + S
     untrusted: UI,
 
     /// Well-formed transactions, keyed by hash.
-    cache: Mutex<HashMap<TxHash, CacheEntry>>,
+    cache: Arc<Mutex<HashMap<TxHash, CacheEntry>>>,
 
     /// Logger.
     logger: Logger,
@@ -73,7 +74,7 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManagerImpl<E
             enclave,
             untrusted,
             logger,
-            cache: Mutex::new(HashMap::default()),
+            cache: Arc::new(Mutex::new(HashMap::default())),
         }
     }
 

@@ -9,19 +9,19 @@ use mc_common::{
     logger::{log, Logger},
     HashSet,
 };
-use mc_consensus_enclave::ConsensusEnclaveProxy;
+use mc_consensus_enclave::ConsensusEnclave;
 use mc_util_grpc::{rpc_logger, rpc_permissions_error, send_result};
 use mc_util_metrics::SVC_COUNTERS;
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
-pub struct AttestedApiService<E: ConsensusEnclaveProxy, S: Session> {
+pub struct AttestedApiService<E: ConsensusEnclave + Send, S: Session> {
     enclave: E,
     logger: Logger,
     sessions: Arc<Mutex<HashSet<S>>>,
 }
 
-impl<E: ConsensusEnclaveProxy, S: Session> AttestedApiService<E, S> {
+impl<E: ConsensusEnclave + Send, S: Session> AttestedApiService<E, S> {
     pub fn new(enclave: E, logger: Logger) -> Self {
         Self {
             enclave,
@@ -31,7 +31,7 @@ impl<E: ConsensusEnclaveProxy, S: Session> AttestedApiService<E, S> {
     }
 }
 
-impl<E: ConsensusEnclaveProxy> AttestedApi for AttestedApiService<E, PeerSession> {
+impl<E: ConsensusEnclave + Send> AttestedApi for AttestedApiService<E, PeerSession> {
     fn auth(&mut self, ctx: RpcContext, request: AuthMessage, sink: UnarySink<AuthMessage>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
@@ -70,7 +70,7 @@ impl<E: ConsensusEnclaveProxy> AttestedApi for AttestedApiService<E, PeerSession
     }
 }
 
-impl<E: ConsensusEnclaveProxy> AttestedApi for AttestedApiService<E, ClientSession> {
+impl<E: ConsensusEnclave + Send> AttestedApi for AttestedApiService<E, ClientSession> {
     fn auth(&mut self, ctx: RpcContext, request: AuthMessage, sink: UnarySink<AuthMessage>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {

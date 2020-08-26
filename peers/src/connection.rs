@@ -30,7 +30,7 @@ use mc_consensus_api::{
     empty::Empty,
     ConversionError,
 };
-use mc_consensus_enclave_api::{ConsensusEnclaveProxy, TxContext, WellFormedEncryptedTx};
+use mc_consensus_enclave_api::{ConsensusEnclave, TxContext, WellFormedEncryptedTx};
 use mc_transaction_core::{tx::TxHash, Block, BlockID, BlockIndex};
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_serial::{deserialize, serialize};
@@ -47,7 +47,7 @@ use std::{
 
 /// This is a PeerConnection implementation which ensures transparent attestation between the local
 /// and remote enclaves.
-pub struct PeerConnection<Enclave: ConsensusEnclaveProxy> {
+pub struct PeerConnection<Enclave: ConsensusEnclave + Clone + Send + Sync> {
     /// The local enclave, which the remote node will be peered with.
     enclave: Enclave,
 
@@ -73,7 +73,7 @@ pub struct PeerConnection<Enclave: ConsensusEnclaveProxy> {
     blockchain_api_client: BlockchainApiClient,
 }
 
-impl<Enclave: ConsensusEnclaveProxy> PeerConnection<Enclave> {
+impl<Enclave: ConsensusEnclave + Clone + Send + Sync> PeerConnection<Enclave> {
     /// Construct a new PeerConnection, optionally with TLS enabled.
     pub fn new(
         enclave: Enclave,
@@ -130,39 +130,39 @@ impl<Enclave: ConsensusEnclaveProxy> PeerConnection<Enclave> {
     }
 }
 
-impl<Enclave: ConsensusEnclaveProxy> Display for PeerConnection<Enclave> {
+impl<Enclave: ConsensusEnclave + Clone + Send + Sync> Display for PeerConnection<Enclave> {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         write!(f, "{}", self.uri)
     }
 }
 
-impl<Enclave: ConsensusEnclaveProxy> Eq for PeerConnection<Enclave> {}
+impl<Enclave: ConsensusEnclave + Clone + Send + Sync> Eq for PeerConnection<Enclave> {}
 
-impl<Enclave: ConsensusEnclaveProxy> Hash for PeerConnection<Enclave> {
+impl<Enclave: ConsensusEnclave + Clone + Send + Sync> Hash for PeerConnection<Enclave> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.uri.addr().hash(state);
     }
 }
 
-impl<Enclave: ConsensusEnclaveProxy> Ord for PeerConnection<Enclave> {
+impl<Enclave: ConsensusEnclave + Clone + Send + Sync> Ord for PeerConnection<Enclave> {
     fn cmp(&self, other: &Self) -> Ordering {
         self.uri.addr().cmp(&other.uri.addr())
     }
 }
 
-impl<Enclave: ConsensusEnclaveProxy> PartialEq for PeerConnection<Enclave> {
+impl<Enclave: ConsensusEnclave + Clone + Send + Sync> PartialEq for PeerConnection<Enclave> {
     fn eq(&self, other: &Self) -> bool {
         self.uri.addr() == other.uri.addr()
     }
 }
 
-impl<Enclave: ConsensusEnclaveProxy> PartialOrd for PeerConnection<Enclave> {
+impl<Enclave: ConsensusEnclave + Clone + Send + Sync> PartialOrd for PeerConnection<Enclave> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.uri.addr().partial_cmp(&other.uri.addr())
     }
 }
 
-impl<Enclave: ConsensusEnclaveProxy> Connection for PeerConnection<Enclave> {
+impl<Enclave: ConsensusEnclave + Clone + Send + Sync> Connection for PeerConnection<Enclave> {
     type Uri = PeerUri;
 
     fn uri(&self) -> Self::Uri {
@@ -170,7 +170,9 @@ impl<Enclave: ConsensusEnclaveProxy> Connection for PeerConnection<Enclave> {
     }
 }
 
-impl<Enclave: ConsensusEnclaveProxy> AttestedConnection for PeerConnection<Enclave> {
+impl<Enclave: ConsensusEnclave + Clone + Send + Sync> AttestedConnection
+    for PeerConnection<Enclave>
+{
     type Error = PeerAttestationError;
 
     fn is_attested(&self) -> bool {
@@ -198,7 +200,9 @@ impl<Enclave: ConsensusEnclaveProxy> AttestedConnection for PeerConnection<Encla
 }
 
 // FIXME: refactor into a common impl shared with mc_connection::ThickClient
-impl<Enclave: ConsensusEnclaveProxy> BlockchainConnection for PeerConnection<Enclave> {
+impl<Enclave: ConsensusEnclave + Clone + Send + Sync> BlockchainConnection
+    for PeerConnection<Enclave>
+{
     fn fetch_blocks(&mut self, range: Range<BlockIndex>) -> ConnectionResult<Vec<Block>> {
         trace_time!(self.logger, "PeerConnection::get_blocks");
 
@@ -247,7 +251,9 @@ impl<Enclave: ConsensusEnclaveProxy> BlockchainConnection for PeerConnection<Enc
     }
 }
 
-impl<Enclave: ConsensusEnclaveProxy> ConsensusConnection for PeerConnection<Enclave> {
+impl<Enclave: ConsensusEnclave + Clone + Send + Sync> ConsensusConnection
+    for PeerConnection<Enclave>
+{
     fn remote_responder_id(&self) -> ResponderId {
         self.remote_responder_id.clone()
     }

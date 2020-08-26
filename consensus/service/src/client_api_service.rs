@@ -6,8 +6,7 @@ use crate::{
     consensus_service::ProposeTxCallback,
     counters,
     grpc_error::ConsensusGrpcError,
-    tx_manager::{TxManager, TxManagerError, TxManagerImpl},
-    validators::DefaultTxManagerUntrustedInterfaces,
+    tx_manager::{TxManager, TxManagerError},
 };
 use grpcio::{RpcContext, UnarySink};
 use mc_attest_api::attest::Message;
@@ -15,8 +14,8 @@ use mc_common::logger::{log, Logger};
 use mc_consensus_api::{
     consensus_client_grpc::ConsensusClientApi, consensus_common::ProposeTxResponse,
 };
-use mc_consensus_enclave::ConsensusEnclaveProxy;
-use mc_ledger_db::{Ledger, LedgerDB};
+use mc_consensus_enclave::ConsensusEnclave;
+use mc_ledger_db::Ledger;
 use mc_transaction_core::validation::TransactionValidationError;
 use mc_util_grpc::{rpc_logger, send_result};
 use mc_util_metrics::{self, SVC_COUNTERS};
@@ -26,21 +25,21 @@ use std::sync::Arc;
 const PENDING_LIMIT: i64 = 500;
 
 #[derive(Clone)]
-pub struct ClientApiService<E: ConsensusEnclaveProxy, L: Ledger + Clone> {
-    enclave: E,
+pub struct ClientApiService<L: Ledger + Clone> {
+    enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
     scp_client_value_sender: ProposeTxCallback,
     ledger: L,
-    tx_manager: Arc<TxManagerImpl<E, DefaultTxManagerUntrustedInterfaces<LedgerDB>>>,
+    tx_manager: Arc<dyn TxManager + Send + Sync>,
     is_serving_fn: Arc<(dyn Fn() -> bool + Sync + Send)>,
     logger: Logger,
 }
 
-impl<E: ConsensusEnclaveProxy, L: Ledger + Clone> ClientApiService<E, L> {
+impl<L: Ledger + Clone> ClientApiService<L> {
     pub fn new(
-        enclave: E,
+        enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
         scp_client_value_sender: ProposeTxCallback,
         ledger: L,
-        tx_manager: Arc<TxManagerImpl<E, DefaultTxManagerUntrustedInterfaces<LedgerDB>>>,
+        tx_manager: Arc<dyn TxManager + Send + Sync>,
         is_serving_fn: Arc<(dyn Fn() -> bool + Sync + Send)>,
         logger: Logger,
     ) -> Self {
@@ -133,7 +132,7 @@ impl<E: ConsensusEnclaveProxy, L: Ledger + Clone> ClientApiService<E, L> {
     }
 }
 
-impl<E: ConsensusEnclaveProxy, L: Ledger + Clone> ConsensusClientApi for ClientApiService<E, L> {
+impl<L: Ledger + Clone> ConsensusClientApi for ClientApiService<L> {
     fn client_tx_propose(
         &mut self,
         ctx: RpcContext,
@@ -156,5 +155,98 @@ impl<E: ConsensusEnclaveProxy, L: Ledger + Clone> ConsensusClientApi for ClientA
                 &logger,
             )
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{client_api_service::ClientApiService, tx_manager::MockTxManager};
+    use grpcio::{ChannelBuilder, Environment, ServerBuilder};
+    use mc_attest_api::attest::Message;
+    use mc_common::{
+        logger::{test_with_logger, Logger},
+        NodeID, ResponderId,
+    };
+    use mc_consensus_api::{
+        consensus_client_grpc, consensus_client_grpc::ConsensusClientApiClient,
+        consensus_common::ProposeTxResult,
+    };
+    use mc_consensus_enclave::TxContext;
+    use mc_consensus_enclave_mock::MockConsensusEnclave;
+    use mc_transaction_core::tx::TxHash;
+    use mc_transaction_core_test_utils::{create_ledger, initialize_ledger, AccountKey};
+    use rand::{rngs::StdRng, SeedableRng};
+    use std::sync::Arc;
+
+    #[test_with_logger]
+    fn test_client_tx_propose_ok(logger: Logger) {
+        let mut consensus_enclave = MockConsensusEnclave::new();
+        consensus_enclave
+            .expect_client_tx_propose()
+            .times(1)
+            .return_const(Ok(TxContext::default()));
+
+        // Arc<dyn Fn(TxHash, Option<&NodeID>, Option<&ResponderId>) + Sync + Send>
+        let scp_client_value_sender = Arc::new(
+            |_tx_hash: TxHash, _node_id: Option<&NodeID>, _responder_id: Option<&ResponderId>| {
+                // TODO: store inputs for inspection.
+            },
+        );
+
+        // Local ledger
+        // TODO: mock this, because it's only used to get num_blocks.
+        let mut ledger = create_ledger();
+        let mut rng: StdRng = SeedableRng::from_seed([62u8; 32]);
+        let sender = AccountKey::random(&mut rng);
+        let num_blocks = 5;
+        initialize_ledger(&mut ledger, num_blocks, &sender, &mut rng);
+
+        let mut tx_manager = MockTxManager::new();
+        tx_manager
+            .expect_insert()
+            .times(1)
+            .return_const(Ok(TxHash::default()));
+
+        let is_serving_fn = Arc::new(|| -> bool { true });
+
+        let client_api_service = ClientApiService::new(
+            Arc::new(consensus_enclave),
+            scp_client_value_sender,
+            ledger,
+            Arc::new(tx_manager),
+            is_serving_fn,
+            logger,
+        );
+
+        let service = consensus_client_grpc::create_consensus_client_api(client_api_service);
+
+        let env = Arc::new(Environment::new(1));
+        let mut server = ServerBuilder::new(env.clone())
+            .register_service(service)
+            .bind("127.0.0.1", 0)
+            .build()
+            .unwrap();
+        server.start();
+        let (_, port) = server.bind_addrs().next().unwrap();
+
+        let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
+        let client = ConsensusClientApiClient::new(ch);
+
+        let message = Message::default();
+        match client.client_tx_propose(&message) {
+            Ok(propose_tx_response) => {
+                assert_eq!(propose_tx_response.get_result(), ProposeTxResult::Ok);
+                assert_eq!(propose_tx_response.get_num_blocks(), num_blocks);
+            }
+            Err(e) => panic!("unexpected error: {:?}", e),
+        }
+
+        // let mut req = HealthCheckRequest::default();
+        // req.set_service("not-exist".to_owned());
+        // let err = client.check(&req).unwrap_err();
+        // match err {
+        //     Error::RpcFailure(s) => assert_eq!(s.status, RpcStatusCode::NOT_FOUND),
+        //     e => panic!("unexpected error: {:?}", e),
+        // }
     }
 }

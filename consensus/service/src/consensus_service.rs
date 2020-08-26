@@ -3,16 +3,9 @@
 //! The MobileCoin consensus service.
 
 use crate::{
-    attested_api_service::AttestedApiService,
-    background_work_queue::BackgroundWorkQueue,
-    blockchain_api_service,
-    byzantine_ledger::ByzantineLedger,
-    client_api_service,
-    config::Config,
-    counters, peer_api_service,
-    peer_keepalive::PeerKeepalive,
-    tx_manager::{TxManager, TxManagerImpl},
-    validators::DefaultTxManagerUntrustedInterfaces,
+    attested_api_service::AttestedApiService, background_work_queue::BackgroundWorkQueue,
+    blockchain_api_service, byzantine_ledger::ByzantineLedger, client_api_service, config::Config,
+    counters, peer_api_service, peer_keepalive::PeerKeepalive, tx_manager::TxManager,
 };
 use failure::Fail;
 use futures::executor::block_on;
@@ -26,7 +19,7 @@ use mc_common::{
 };
 use mc_connection::{Connection, ConnectionManager};
 use mc_consensus_api::{consensus_client_grpc, consensus_common_grpc, consensus_peer_grpc};
-use mc_consensus_enclave::ConsensusEnclaveProxy;
+use mc_consensus_enclave::ConsensusEnclave;
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_peers::{PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
 use mc_sgx_report_cache_untrusted::{Error as ReportCacheError, ReportCacheThread};
@@ -86,7 +79,11 @@ pub struct IncomingConsensusMsg {
 pub type ProposeTxCallback =
     Arc<dyn Fn(TxHash, Option<&NodeID>, Option<&ResponderId>) + Sync + Send>;
 
-pub struct ConsensusService<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> {
+pub struct ConsensusService<
+    E: ConsensusEnclave + Clone + Send + Sync + 'static,
+    R: RaClient + Send + Sync + 'static,
+    TXM: TxManager + Clone + Send + Sync + 'static,
+> {
     config: Config,
     local_node_id: NodeID,
     enclave: E,
@@ -101,7 +98,7 @@ pub struct ConsensusService<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync 
 
     peer_manager: ConnectionManager<PeerConnection<E>>,
     broadcaster: Arc<Mutex<ThreadedBroadcaster>>,
-    tx_manager: Arc<TxManagerImpl<E, DefaultTxManagerUntrustedInterfaces<LedgerDB>>>,
+    tx_manager: Arc<TXM>,
     peer_keepalive: Arc<Mutex<PeerKeepalive>>,
 
     admin_rpc_server: Option<AdminServer>,
@@ -110,12 +107,18 @@ pub struct ConsensusService<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync 
     byzantine_ledger: Arc<Mutex<Option<ByzantineLedger>>>,
 }
 
-impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusService<E, R> {
+impl<
+        E: ConsensusEnclave + Clone + Send + Sync + 'static,
+        R: RaClient + Send + Sync + 'static,
+        TXM: TxManager + Clone + Send + Sync + 'static,
+    > ConsensusService<E, R, TXM>
+{
     pub fn new(
         config: Config,
         enclave: E,
         ledger_db: LedgerDB,
         ra_client: R,
+        tx_manager: Arc<TXM>,
         logger: Logger,
     ) -> Self {
         // gRPC environment.
@@ -156,13 +159,6 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
             logger.clone(),
         )));
 
-        // Tx Manager
-        let tx_manager = TxManagerImpl::new(
-            enclave.clone(),
-            DefaultTxManagerUntrustedInterfaces::new(ledger_db.clone()),
-            logger.clone(),
-        );
-
         // Peer Keepalive
         let peer_keepalive = Arc::new(Mutex::new(PeerKeepalive::start(
             peer_manager.clone(),
@@ -186,7 +182,7 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
 
             peer_manager,
             broadcaster,
-            tx_manager: Arc::new(tx_manager),
+            tx_manager,
             peer_keepalive,
 
             admin_rpc_server: None,
@@ -292,7 +288,7 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
         // Setup GRPC services.
         let client_service = consensus_client_grpc::create_consensus_client_api(
             client_api_service::ClientApiService::new(
-                self.enclave.clone(),
+                Arc::new(self.enclave.clone()),
                 self.create_scp_client_value_sender_fn(),
                 self.ledger_db.clone(),
                 self.tx_manager.clone(),
@@ -663,8 +659,11 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
     }
 }
 
-impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> Drop
-    for ConsensusService<E, R>
+impl<
+        E: ConsensusEnclave + Clone + Send + Sync + 'static,
+        R: RaClient + Send + Sync + 'static,
+        TXM: TxManager + Clone + Send + Sync + 'static,
+    > Drop for ConsensusService<E, R, TXM>
 {
     fn drop(&mut self) {
         let _ = self.stop();

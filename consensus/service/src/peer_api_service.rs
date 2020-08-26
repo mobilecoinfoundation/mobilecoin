@@ -7,8 +7,7 @@ use crate::{
     consensus_service::{IncomingConsensusMsg, ProposeTxCallback},
     counters,
     grpc_error::ConsensusGrpcError,
-    tx_manager::{TxManager, TxManagerError, TxManagerImpl},
-    validators::DefaultTxManagerUntrustedInterfaces,
+    tx_manager::{TxManager, TxManagerError},
 };
 use grpcio::{RpcContext, UnarySink};
 use mc_attest_api::attest::Message;
@@ -26,8 +25,8 @@ use mc_consensus_api::{
     consensus_peer_grpc::ConsensusPeerApi,
     empty::Empty,
 };
-use mc_consensus_enclave::ConsensusEnclaveProxy;
-use mc_ledger_db::{Ledger, LedgerDB};
+use mc_consensus_enclave::ConsensusEnclave;
+use mc_ledger_db::Ledger;
 use mc_peers::TxProposeAAD;
 use mc_transaction_core::tx::TxHash;
 use mc_util_grpc::{rpc_invalid_arg_error, rpc_logger, send_result};
@@ -44,7 +43,7 @@ use std::{
 type FetchLatestMsgFn = Arc<dyn Fn() -> Option<mc_peers::ConsensusMsg> + Sync + Send>;
 
 #[derive(Clone)]
-pub struct PeerApiService<E: ConsensusEnclaveProxy, L: Ledger> {
+pub struct PeerApiService<E: ConsensusEnclave, L: Ledger, TXM: TxManager> {
     /// Enclave instance.
     enclave: E,
 
@@ -58,7 +57,7 @@ pub struct PeerApiService<E: ConsensusEnclaveProxy, L: Ledger> {
     ledger: L,
 
     /// Transactions Manager instance.
-    tx_manager: Arc<TxManagerImpl<E, DefaultTxManagerUntrustedInterfaces<LedgerDB>>>,
+    tx_manager: Arc<TXM>,
 
     /// Callback function for getting the latest SCP statement the local node has issued.
     fetch_latest_msg_fn: FetchLatestMsgFn,
@@ -73,13 +72,13 @@ pub struct PeerApiService<E: ConsensusEnclaveProxy, L: Ledger> {
     logger: Logger,
 }
 
-impl<E: ConsensusEnclaveProxy, L: Ledger> PeerApiService<E, L> {
+impl<E: ConsensusEnclave, L: Ledger, TXM: TxManager + Clone> PeerApiService<E, L, TXM> {
     pub fn new(
         enclave: E,
         incoming_consensus_msgs_sender: BackgroundWorkQueueSenderFn<IncomingConsensusMsg>,
         scp_client_value_sender: ProposeTxCallback,
         ledger: L,
-        tx_manager: Arc<TxManagerImpl<E, DefaultTxManagerUntrustedInterfaces<LedgerDB>>>,
+        tx_manager: Arc<TXM>,
         fetch_latest_msg_fn: FetchLatestMsgFn,
         known_responder_ids: Vec<ResponderId>,
         logger: Logger,
@@ -200,7 +199,9 @@ impl<E: ConsensusEnclaveProxy, L: Ledger> PeerApiService<E, L> {
     }
 }
 
-impl<E: ConsensusEnclaveProxy, L: Ledger> ConsensusPeerApi for PeerApiService<E, L> {
+impl<E: ConsensusEnclave, L: Ledger, TXM: TxManager + Clone> ConsensusPeerApi
+    for PeerApiService<E, L, TXM>
+{
     fn peer_tx_propose(
         &mut self,
         ctx: RpcContext,
