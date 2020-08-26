@@ -194,7 +194,6 @@ mod tests {
         );
 
         // Local ledger
-        // TODO: mock this, because it's only used to get num_blocks.
         let mut ledger = create_ledger();
         let mut rng: StdRng = SeedableRng::from_seed([62u8; 32]);
         let sender = AccountKey::random(&mut rng);
@@ -240,13 +239,5 @@ mod tests {
             }
             Err(e) => panic!("unexpected error: {:?}", e),
         }
-
-        // let mut req = HealthCheckRequest::default();
-        // req.set_service("not-exist".to_owned());
-        // let err = client.check(&req).unwrap_err();
-        // match err {
-        //     Error::RpcFailure(s) => assert_eq!(s.status, RpcStatusCode::NOT_FOUND),
-        //     e => panic!("unexpected error: {:?}", e),
-        // }
     }
 }
