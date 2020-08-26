@@ -64,7 +64,7 @@ impl Digestible for u32 {
 impl Digestible for i32 {
     #[inline]
     fn digest<D: Digest>(&self, hasher: &mut D) {
-        hasher.input(&self.to_le_bytes())
+        hasher.update(&self.to_le_bytes())
     }
 }
 
