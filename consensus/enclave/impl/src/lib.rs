@@ -19,7 +19,7 @@ use core::convert::{TryFrom, TryInto};
 use identity::Ed25519Identity;
 use mc_account_keys::PublicAddress;
 use mc_attest_core::{
-    IasNonce, IntelSealed, Quote, QuoteNonce, Report, TargetInfo, VerificationReport,
+    IasNonce, IntelSealed, Quote, QuoteNonce, Report, SgxError, TargetInfo, VerificationReport,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage,
@@ -27,6 +27,7 @@ use mc_attest_enclave_api::{
 };
 use mc_attest_trusted::SealAlgo;
 use mc_common::{
+    Hash,
     logger::{log, Logger},
     ResponderId,
 };
@@ -37,12 +38,12 @@ use mc_consensus_enclave_api::{
 use mc_crypto_ake_enclave::AkeEnclaveState;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_hashes::Blake2b256;
-use mc_crypto_keys::{Ed25519Pair, Ed25519Public, RistrettoPrivate, RistrettoPublic, X25519Public};
+use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Pair, Ed25519Public, RistrettoPrivate, RistrettoPublic, X25519Public};
 use mc_crypto_message_cipher::{AesMessageCipher, MessageCipher};
 use mc_crypto_rand::McRng;
 use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
-use mc_sgx_types::{uint8_t, uint32_t, SGX_ECP256_KEY_SIZE, SGX_NISTP_ECP256_KEY_SIZE, sgx_ec256_public_t, sgx_ec256_signature_t};
+use mc_sgx_types::{uint8_t, uint32_t, SGX_ECP256_KEY_SIZE, SGX_NISTP_ECP256_KEY_SIZE, sgx_ec256_public_t, sgx_ec256_signature_t, sgx_ecc_state_handle_t, sgx_status_t, sgx_ecdsa_verify_hash};
 use mc_transaction_core::{
     amount::Amount,
     constants::{FEE_SPEND_PUBLIC_KEY, FEE_VIEW_PUBLIC_KEY},
@@ -336,7 +337,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             let mut gy: [uint8_t; SGX_ECP256_KEY_SIZE] = [0; SGX_ECP256_KEY_SIZE];
             gy.copy_from_slice(&tx.hsm_params.input_ecdsa_key[SGX_ECP256_KEY_SIZE..]);
 
-            let _input_public_key = sgx_ec256_public_t {
+            let input_public_key = sgx_ec256_public_t {
                 gx,
                 gy,
             };
@@ -359,12 +360,34 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                 y[i] = u32::from_le_bytes(hy);
             }
 
-            let _input_signature = sgx_ec256_signature_t {
+            let mut input_signature = sgx_ec256_signature_t {
                 x,
                 y,
-            };            
-        }
+            };
 
+            // iterate over the output TxOuts and find the one with the correct target key
+            let target_key = CompressedRistrettoPublic::try_from(&tx.hsm_params.input_target_key[..])?;
+            let mut hash = Hash::default();
+            for txo in &tx.prefix.outputs {
+                if txo.target_key == target_key {
+                    hash = txo.hash();
+                }
+            }
+
+            let mut result = 0u8;
+            let mut ecc_handle: sgx_ecc_state_handle_t;
+            let ret = sgx_ecdsa_verify_hash(
+                &hash,
+                &input_public_key,
+                &mut input_signature,
+                &mut result,
+                ecc_handle);
+
+            if ret != sgx_status_t::SGX_SUCCESS {
+                return Err(Error::Sgx(SgxError::from(ret)));
+            }
+        }
+        
         if tx.hsm_params.tx_type == HsmTxType::Withdrawal as i32 || tx.hsm_params.tx_type == HsmTxType::Transfer as i32 {
 
         }

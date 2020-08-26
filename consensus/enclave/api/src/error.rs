@@ -6,7 +6,7 @@ use alloc::string::String;
 use failure::Fail;
 use mc_attest_core::SgxError;
 use mc_attest_enclave_api::Error as AttestEnclaveError;
-use mc_crypto_keys::Ed25519SignatureError;
+use mc_crypto_keys::{Ed25519SignatureError, KeyError};
 use mc_crypto_message_cipher::CipherError as MessageCipherError;
 use mc_sgx_compat::sync::PoisonError;
 use mc_transaction_core::validation::TransactionValidationError;
@@ -54,6 +54,10 @@ pub enum Error {
     /// Signature error
     #[fail(display = "Signature error")]
     Signature,
+
+    /// Key error
+    #[fail(display = "Key error")]
+    Key(KeyError),
 }
 
 impl From<MessageCipherError> for Error {
@@ -115,3 +119,10 @@ impl From<Ed25519SignatureError> for Error {
         Error::Signature
     }
 }
+
+impl From<KeyError> for Error {
+    fn from(src: KeyError) -> Error {
+        Error::Key(src)
+    }
+}
+
