@@ -620,7 +620,10 @@ impl<
             if previously_encountered_missing_hashes {
                 log::debug!(
                     self.logger,
-                    "Not attempting to resolve missing tx hashes {:?}: contains tx hashes known to not be available", missing_hashes);
+                    "Not attempting to resolve missing tx hashes {:?} from {}: contains tx hashes known to not be available",
+                    missing_hashes,
+                    from_responder_id,
+                );
                 return false;
             }
         }
