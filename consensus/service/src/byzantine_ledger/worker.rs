@@ -88,11 +88,9 @@ pub struct ByzantineLedgerWorker<
 }
 
 impl<
-        // E: ConsensusEnclaveProxy,
         F: Fn(Msg<TxHash>),
-        L: Ledger + 'static,
+        L: Ledger + Clone + 'static,
         PC: BlockchainConnection + ConsensusConnection + 'static,
-        // UI: UntrustedInterfaces + Send + 'static,
         TXM: TxManager + Send + Sync,
     > ByzantineLedgerWorker<F, L, PC, TXM>
 {
@@ -523,7 +521,7 @@ impl<
             );
 
             self.ledger
-                .append_block(&block, &block_contents, Some(&signature))
+                .append_block(&block, &block_contents, Some(signature))
                 .expect("failed appending block");
 
             counters::TX_EXTERNALIZED_COUNT.inc_by(ext_vals.len() as i64);

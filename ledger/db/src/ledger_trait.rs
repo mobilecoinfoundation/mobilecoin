@@ -8,14 +8,16 @@ use mc_transaction_core::{
     tx::{TxOut, TxOutMembershipProof},
     Block, BlockContents, BlockSignature,
 };
+use mockall::*;
 
-pub trait Ledger: Clone + Send {
+#[automock]
+pub trait Ledger: Send {
     /// Appends a block along with transactions.
     fn append_block(
         &mut self,
         block: &Block,
         block_contents: &BlockContents,
-        signature: Option<&BlockSignature>,
+        signature: Option<BlockSignature>,
     ) -> Result<(), Error>;
 
     /// Get the total number of blocks in the ledger.

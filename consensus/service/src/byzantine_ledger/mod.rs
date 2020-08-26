@@ -52,7 +52,7 @@ pub struct ByzantineLedger {
 impl ByzantineLedger {
     pub fn new<
         PC: BlockchainConnection + ConsensusConnection + 'static,
-        L: Ledger + Sync + 'static,
+        L: Ledger + Clone + Sync + 'static,
         TXM: TxManager + Send + Sync + 'static,
     >(
         node_id: NodeID,

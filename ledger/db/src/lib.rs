@@ -34,7 +34,7 @@ use metrics::LedgerMetrics;
 use std::{fs, path::PathBuf, sync::Arc, time::Instant};
 
 pub use error::Error;
-pub use ledger_trait::Ledger;
+pub use ledger_trait::{Ledger, MockLedger};
 pub use mc_util_lmdb::MetadataStore;
 pub use tx_out_store::TxOutStore;
 
@@ -143,7 +143,7 @@ impl Ledger for LedgerDB {
         &mut self,
         block: &Block,
         block_contents: &BlockContents,
-        signature: Option<&BlockSignature>,
+        signature: Option<BlockSignature>,
     ) -> Result<(), Error> {
         let start_time = Instant::now();
 
@@ -160,7 +160,7 @@ impl Ledger for LedgerDB {
         self.write_tx_outs(block.index, &block_contents.outputs, &mut db_transaction)?;
 
         // Write block.
-        self.write_block(block, signature, &mut db_transaction)?;
+        self.write_block(block, signature.as_ref(), &mut db_transaction)?;
 
         // Commit.
         db_transaction.commit()?;
