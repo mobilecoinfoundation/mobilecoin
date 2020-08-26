@@ -521,7 +521,7 @@ impl<
             );
 
             self.ledger
-                .append_block(&block, &block_contents, Some(&signature))
+                .append_block(&block, &block_contents, Some(signature))
                 .expect("failed appending block");
 
             counters::TX_EXTERNALIZED_COUNT.inc_by(ext_vals.len() as i64);

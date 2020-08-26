@@ -88,7 +88,7 @@ impl Ledger for MockLedger {
         &mut self,
         block: &Block,
         block_contents: &BlockContents,
-        _signature: Option<&BlockSignature>,
+        _signature: Option<BlockSignature>,
     ) -> Result<(), Error> {
         assert_eq!(block.index, self.num_blocks().unwrap());
         self.set_block(block, block_contents);
