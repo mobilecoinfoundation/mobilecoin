@@ -48,7 +48,7 @@ impl<'a> Buffer for FixedBuffer<'a> {
     }
 
     fn extend_from_slice(&mut self, other: &[u8]) -> Result<(), Error> {
-        if self.length + other.len() > self.buf.len() {
+        if other.len() > self.buf.len() - self.length {
             return Err(Error);
         }
         self.buf[self.length..self.length + other.len()].copy_from_slice(other);

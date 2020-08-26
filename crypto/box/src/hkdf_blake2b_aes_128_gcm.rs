@@ -48,9 +48,18 @@ impl CryptoBox for RistrettoHkdfBlake2bAes128Gcm {
         // KDF
         let (aes_key, aes_nonce) = kdf_step(shared_secret.as_ref());
 
+        // AAD
+        // This is curve_point_bytes || recipient_curve_point_bytes,
+        // to avoid partial malleability of the ciphertexts
+        let compressed_recipient_public = CompressedRistrettoPublic::from(key);
+        let recipient_curve_point_bytes = GenericArray::<u8, RistrettoLen>::clone_from_slice(
+            compressed_recipient_public.as_ref(),
+        );
+        let aad = curve_point_bytes.concat(recipient_curve_point_bytes);
+
         // AES
         let aead = Aes128Gcm::new(aes_key);
-        let mac = aead.encrypt_in_place_detached(&aes_nonce, &[], buffer)?;
+        let mac = aead.encrypt_in_place_detached(&aes_nonce, &aad, buffer)?;
 
         // Tag is curve_point_bytes || aes_mac_bytes
         Ok(curve_point_bytes.concat(mac))
@@ -64,17 +73,28 @@ impl CryptoBox for RistrettoHkdfBlake2bAes128Gcm {
     ) -> Result<(), Error> {
         // ECDH
         use mc_crypto_keys::KexReusablePrivate;
+        let curve_point_bytes =
+            GenericArray::<u8, RistrettoLen>::clone_from_slice(&tag[..RISTRETTO_PUBLIC_LEN]);
         let public_key =
-            RistrettoPublic::try_from(&tag[..RISTRETTO_PUBLIC_LEN]).map_err(Error::Key)?;
+            RistrettoPublic::try_from(&curve_point_bytes.as_slice()).map_err(Error::Key)?;
         let shared_secret = key.key_exchange(&public_key);
 
         // KDF
         let (aes_key, aes_nonce) = kdf_step(shared_secret.as_ref());
 
+        // AAD
+        // This is curve_point_bytes || recipient_curve_point_bytes,
+        // to avoid partial malleability of the ciphertexts
+        let compressed_recipient_public = CompressedRistrettoPublic::from(key);
+        let recipient_curve_point_bytes = GenericArray::<u8, RistrettoLen>::clone_from_slice(
+            compressed_recipient_public.as_ref(),
+        );
+        let aad = curve_point_bytes.concat(recipient_curve_point_bytes);
+
         // AES
         let mac_ref = <&GenericArray<u8, AesMacLen>>::from(&tag[RISTRETTO_PUBLIC_LEN..]);
         let aead = Aes128Gcm::new(aes_key);
-        aead.decrypt_in_place_detached(&aes_nonce, &[], buffer, mac_ref)
+        aead.decrypt_in_place_detached(&aes_nonce, &aad, buffer, mac_ref)
             .map_err(|_| Error::MacFailed)?;
 
         Ok(())
@@ -83,13 +103,15 @@ impl CryptoBox for RistrettoHkdfBlake2bAes128Gcm {
 
 /// KDF part, factored out to avoid duplication
 /// This part must produce the key and IV/nonce for aes-gcm
-/// Blake2b produces 64 bytes of private key material which is more than we need,
-/// so we don't do the HKDF-EXPAND step.
 fn kdf_step(dh_shared_secret: &[u8; 32]) -> (GenericArray<u8, U16>, GenericArray<u8, U12>) {
     let (prk, _) = Hkdf::<Blake2b>::extract(Some(b"dei-salty-box"), dh_shared_secret);
-    // Split the prk into a 16 byte and a 12 byte piece
-    let (sixteen, remainder): (GenericArray<u8, U16>, _) = prk.split();
-    let (twelve, _): (GenericArray<u8, U12>, _) = remainder.split();
+    // Expand the prk into a 16 byte and a 12 byte piece
+    let mut sixteen = GenericArray::<u8, U16>::default();
+    prk.expand("aes-key", sixteen.as_mut_slice())
+        .expect("buffer length error");
+    let mut twelve = GenericArray::<u8, U12>::default();
+    prk.expand("iv-nonce", twelve.as_mut_slice())
+        .expect("buffer length error");
     (sixteen, twelve)
 }
 
