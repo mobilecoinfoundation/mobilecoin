@@ -155,7 +155,6 @@ pub fn add_block_to_ledger_db(
                 recipient,
                 &RistrettoPrivate::from_random(rng),
                 Default::default(),
-                rng,
             )
             .unwrap()
         })

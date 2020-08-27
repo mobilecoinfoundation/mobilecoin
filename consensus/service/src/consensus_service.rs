@@ -11,7 +11,7 @@ use crate::{
     config::Config,
     counters, peer_api_service,
     peer_keepalive::PeerKeepalive,
-    tx_manager::{TxManager, TxManagerTrait},
+    tx_manager::{TxManager, TxManagerImpl},
     validators::DefaultTxManagerUntrustedInterfaces,
 };
 use failure::Fail;
@@ -101,7 +101,7 @@ pub struct ConsensusService<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync 
 
     peer_manager: ConnectionManager<PeerConnection<E>>,
     broadcaster: Arc<Mutex<ThreadedBroadcaster>>,
-    tx_manager: Arc<TxManager<E, DefaultTxManagerUntrustedInterfaces<LedgerDB>>>,
+    tx_manager: Arc<TxManagerImpl<E, DefaultTxManagerUntrustedInterfaces<LedgerDB>>>,
     peer_keepalive: Arc<Mutex<PeerKeepalive>>,
 
     admin_rpc_server: Option<AdminServer>,
@@ -157,7 +157,7 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
         )));
 
         // Tx Manager
-        let tx_manager = TxManager::new(
+        let tx_manager = TxManagerImpl::new(
             enclave.clone(),
             DefaultTxManagerUntrustedInterfaces::new(ledger_db.clone()),
             logger.clone(),
@@ -622,7 +622,8 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
                             )
                         })
                         .ok();
-                    blocks_behind = Some(std::cmp::min(peer_block_height - b, 0));
+                    // peer_block_height - b, unless overflow, then 0
+                    blocks_behind = Some(peer_block_height.saturating_sub(b));
                 }
                 Err(e) => {
                     log::error!(logger, "Error getting block height {:?}", e);

@@ -71,7 +71,7 @@ fn main() {
                     .append_block(
                         &s3_block_data.block,
                         &s3_block_data.block_contents,
-                        s3_block_data.signature.as_ref(),
+                        s3_block_data.signature,
                     )
                     .unwrap_or_else(|_| panic!("Could not append block {:?}", block_index))
             }

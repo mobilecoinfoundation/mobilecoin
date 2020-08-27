@@ -16,7 +16,7 @@ use mc_crypto_noise::{
     HandshakeIX, HandshakeNX, HandshakePattern, HandshakeState, HandshakeStatus, NoiseCipher,
     ProtocolName,
 };
-use mc_util_serial::{deserialize, serialize};
+use prost::Message;
 use rand_core::{CryptoRng, RngCore};
 
 /// A trait containing default implementations, used to tack repeatable chunks
@@ -91,10 +91,13 @@ impl ResponderTransitionMixin for Start {
         DigestType: BlockInput + Clone + Default + Digest + FixedOutput + Update + Reset,
     {
         // Encrypt the local report for output
-        let local_report = serialize(&ias_report).map_err(|_e| Error::ReportSerialization)?;
+        let mut report_bytes = Vec::with_capacity(ias_report.encoded_len());
+        ias_report
+            .encode(&mut report_bytes)
+            .expect("Invariant failure, encoded_len insufficient to encode IAS report");
 
         let output = handshake_state
-            .write_message(csprng, &local_report)
+            .write_message(csprng, &report_bytes)
             .map_err(Error::HandshakeWrite)?;
 
         match output.status {
@@ -139,10 +142,8 @@ where
             )?;
 
         // Parse and verify the received IAS report
-        // FIXME: MCC-1702
-        let remote_report: VerificationReport =
-            deserialize(&payload).map_err(|_e| Error::ReportDeserialization)?;
-
+        let remote_report = VerificationReport::decode(payload.as_slice())
+            .map_err(|_| Error::ReportDeserialization)?;
         input
             .verifier
             .report_data(

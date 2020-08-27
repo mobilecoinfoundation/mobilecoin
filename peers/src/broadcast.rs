@@ -4,11 +4,9 @@
 
 use crate::ConsensusMsg;
 use mc_common::ResponderId;
-
-#[cfg(test)]
 use mockall::*;
 
-#[cfg_attr(test, automock)]
+#[automock]
 pub trait Broadcast: Send {
     /// Broadcasts a consensus message.
     ///

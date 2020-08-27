@@ -43,7 +43,7 @@ impl RaClient for SimClient {
                 if quote.sign_type() == Ok(QuoteSignType::Linkable) {
                     json!({
                         "id": "0",
-                        "version": 3,
+                        "version": 4,
                         "timestamp": "2020-06-30T22:16:41.409742",
                         "isvEnclaveQuoteStatus": "OK",
                         "isvEnclaveQuoteBody": quote.to_base64_owned(),
@@ -53,7 +53,7 @@ impl RaClient for SimClient {
                 } else {
                     json!({
                         "id": "0",
-                        "version": 3,
+                        "version": 4,
                         "timestamp": "2020-06-30T22:16:41.409742",
                         "isvEnclaveQuoteStatus": "OK",
                         "isvEnclaveQuoteBody": quote.to_base64_owned(),
@@ -65,7 +65,7 @@ impl RaClient for SimClient {
                 if quote.sign_type() == Ok(QuoteSignType::Linkable) {
                     json!({
                         "id": "0",
-                        "version": 3,
+                        "version": 4,
                         "timestamp": "2020-06-30T22:16:41.409742",
                         "isvEnclaveQuoteStatus": "OK",
                         "isvEnclaveQuoteBody": quote.to_base64_owned(),
@@ -74,7 +74,7 @@ impl RaClient for SimClient {
                 } else {
                     json!({
                         "id": "0",
-                        "version": 3,
+                        "version": 4,
                         "timestamp": "2020-06-30T22:16:41.409742",
                         "isvEnclaveQuoteStatus": "OK",
                         "isvEnclaveQuoteBody": quote.to_base64_owned()

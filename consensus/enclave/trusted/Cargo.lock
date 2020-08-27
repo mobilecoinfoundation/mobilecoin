@@ -603,7 +603,7 @@ dependencies = [
  "mc-crypto-noise 0.6.0",
  "mc-util-build-script 0.6.0",
  "mc-util-build-sgx 0.6.0",
- "mc-util-serial 0.6.0",
+ "prost 0.6.1 (git+https://github.com/danburkert/prost?rev=6113789f70b69709820becba4242824b4fb3ffec)",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",
 ]

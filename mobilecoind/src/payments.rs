@@ -762,7 +762,6 @@ mod test {
             &alice.default_subaddress(),
             &tx_secret_key_for_txo,
             Default::default(),
-            &mut rng,
         )
         .unwrap();
 

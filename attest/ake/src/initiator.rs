@@ -18,7 +18,7 @@ use mc_crypto_noise::{
     HandshakeIX, HandshakeNX, HandshakeOutput, HandshakePattern, HandshakeState, HandshakeStatus,
     NoiseCipher, ProtocolName,
 };
-use mc_util_serial::{deserialize, serialize};
+use prost::Message;
 use rand_core::{CryptoRng, RngCore};
 
 /// Helper function to create the output for an initiate
@@ -128,9 +128,11 @@ where
         )
         .map_err(Error::HandshakeInit)?;
 
-        // FIXME: MCC-1702
-        let serialized_report =
-            serialize(&input.ias_report).map_err(|_e| Error::ReportSerialization)?;
+        let mut serialized_report = Vec::with_capacity(input.ias_report.encoded_len());
+        input
+            .ias_report
+            .encode(&mut serialized_report)
+            .expect("Invariants failure, encoded_len insufficient to encode IAS report");
 
         parse_handshake_output(
             handshake_state
@@ -163,8 +165,8 @@ where
         match output.status {
             HandshakeStatus::InProgress(_state) => Err(Error::HandshakeNotComplete),
             HandshakeStatus::Complete(result) => {
-                let remote_report: VerificationReport =
-                    deserialize(&output.payload).map_err(|_e| Error::ReportDeserialization)?;
+                let remote_report = VerificationReport::decode(output.payload.as_slice())
+                    .map_err(|_e| Error::ReportDeserialization)?;
                 let report_data = input.verifier.verify(&remote_report)?;
                 Ok((
                     Ready {
