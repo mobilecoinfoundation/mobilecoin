@@ -690,7 +690,6 @@ mod is_valid_tests {
 #[cfg(test)]
 mod combine_tests {
     use super::*;
-    use mc_common::HashMap;
     use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
     use mc_ledger_db::test_utils::get_mock_ledger;
     use mc_transaction_core::{
@@ -757,7 +756,7 @@ mod combine_tests {
             .iter()
             .map(|_tx_out| {
                 // TODO: provide valid proofs for each tx_out.
-                TxOutMembershipProof::new(0, 0, HashMap::default())
+                TxOutMembershipProof::new(0, 0, Default::default())
             })
             .collect();
 
@@ -829,7 +828,7 @@ mod combine_tests {
                     .iter()
                     .map(|_tx_out| {
                         // TODO: provide valid proofs for each tx_out.
-                        TxOutMembershipProof::new(0, 0, HashMap::default())
+                        TxOutMembershipProof::new(0, 0, Default::default())
                     })
                     .collect();
 
@@ -891,7 +890,7 @@ mod combine_tests {
                 .iter()
                 .map(|_tx_out| {
                     // TODO: provide valid proofs for each tx_out.
-                    TxOutMembershipProof::new(0, 0, HashMap::default())
+                    TxOutMembershipProof::new(0, 0, Default::default())
                 })
                 .collect();
 
@@ -923,7 +922,7 @@ mod combine_tests {
                 .iter()
                 .map(|_tx_out| {
                     // TODO: provide valid proofs for each tx_out.
-                    TxOutMembershipProof::new(0, 0, HashMap::default())
+                    TxOutMembershipProof::new(0, 0, Default::default())
                 })
                 .collect();
 
@@ -976,7 +975,7 @@ mod combine_tests {
                 .iter()
                 .map(|_tx_out| {
                     // TODO: provide valid proofs for each tx_out.
-                    TxOutMembershipProof::new(0, 0, HashMap::default())
+                    TxOutMembershipProof::new(0, 0, Default::default())
                 })
                 .collect();
 
@@ -1054,7 +1053,7 @@ mod combine_tests {
                 .iter()
                 .map(|_tx_out| {
                     // TODO: provide valid proofs for each tx_out.
-                    TxOutMembershipProof::new(0, 0, HashMap::default())
+                    TxOutMembershipProof::new(0, 0, Default::default())
                 })
                 .collect();
 
@@ -1087,7 +1086,7 @@ mod combine_tests {
                 .iter()
                 .map(|_tx_out| {
                     // TODO: provide valid proofs for each tx_out.
-                    TxOutMembershipProof::new(0, 0, HashMap::default())
+                    TxOutMembershipProof::new(0, 0, Default::default())
                 })
                 .collect();
 
@@ -1141,7 +1140,7 @@ mod combine_tests {
                 .iter()
                 .map(|_tx_out| {
                     // TODO: provide valid proofs for each tx_out.
-                    TxOutMembershipProof::new(0, 0, HashMap::default())
+                    TxOutMembershipProof::new(0, 0, Default::default())
                 })
                 .collect();
 

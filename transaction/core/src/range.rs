@@ -9,6 +9,12 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct RangeError {}
 
+impl core::fmt::Display for RangeError {
+    fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
+        write!(fmt, "Invalid range")
+    }
+}
+
 /// A range [from,to] of indices.
 #[derive(Clone, Copy, Deserialize, Eq, Hash, PartialEq, Serialize, Message, Digestible)]
 pub struct Range {

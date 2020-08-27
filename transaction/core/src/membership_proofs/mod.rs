@@ -12,15 +12,15 @@ use crate::{
     },
     membership_proofs::errors::Error,
     range::{Range, RangeError},
-    tx::{TxOut, TxOutMembershipHash, TxOutMembershipProof},
+    tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash, TxOutMembershipProof},
 };
 use alloc::vec::Vec;
 use blake2::digest::Update;
 use core::convert::TryInto;
 pub use errors::Error as MembershipProofError;
-use mc_common::HashMap;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_hashes::Blake2b256;
+use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 lazy_static! {
     pub static ref NIL_HASH: [u8; 32] = hash_nil();
@@ -50,6 +50,139 @@ fn hash_nil() -> [u8; 32] {
     hasher.result().try_into().unwrap()
 }
 
+/// Compose two adjacent TxOutMembershipElements into a larger TxOutMembershipElement.
+/// Fails if they are not actually adjacent.
+///
+/// This function can be used to validate a Merkle proof from the bottom up
+/// in a side-channel resistant way. The elements lowest in the tree should be combined,
+/// then the result combined with the next highest element etc. finally getting a range
+/// and hash at the top. This is then checked against the expected hash of the root element.
+///
+/// This function MUST not branch except on erroring code paths
+///
+/// Precondition: a and b are well-formed ranges, a.from <= a.to, b.from <= b.to
+/// It is the callers job to check that.
+///
+/// Arguments:
+/// * a: TxOutMembershipElement to be combined
+/// * b: TxOutMembershipElement to be combined with a, and which should be its left or right sibling
+///
+/// Returns:
+/// * A TxOutMembershipElement for the parent of a and b, with the implied hash value.
+/// * An error if a and b were not adjacent, which implies that the merkle proof was badly structured.
+///   This error can be mapped to e.g. Error::UnexpectedMembershipElement and the caller can provide context.
+pub fn compose_adjacent_membership_elements(
+    a: &TxOutMembershipElement,
+    b: &TxOutMembershipElement,
+) -> Result<TxOutMembershipElement, ()> {
+    // a is to the left if a.to matches b.from
+    // a is to the right if a.from matches b.to
+    // Because these are inclusive [,] ranges and not half-open ranges [,)
+    // we have to add one when checking if they match.
+    // wrapping_add is used to avoid creating a branch in the generated assembly
+    let a_is_left = (a.range.to.wrapping_add(1)).ct_eq(&b.range.from);
+    let b_is_left = (b.range.to.wrapping_add(1)).ct_eq(&a.range.from);
+    // If neither is to the left according to above test, then the merkle proof isn't structured
+    // correctly and we can early return with an "unexpected merkle proof" element of some kind.
+    // The client can easily ensure that the merkle proof is well-structured.
+    // If both are to the left according to this test, then one of the ranges must be reversed,
+    // contrary to the precondition.
+    if !bool::from(a_is_left ^ b_is_left) {
+        return Err(());
+    }
+
+    // Initialize the result as if a is the left and b is right,
+    // then use conditional_assign to fix it if not.
+    // The point of this is to get conditional logic without branching,
+    // subtle::conditional_assign is assumed to be side-channel resistant
+    let mut result = TxOutMembershipElement {
+        range: Range {
+            from: a.range.from,
+            to: b.range.to,
+        },
+        hash: Default::default(),
+    };
+    result
+        .range
+        .from
+        .conditional_assign(&b.range.from, b_is_left);
+    result.range.to.conditional_assign(&a.range.to, b_is_left);
+
+    // Initialize left and right as if a is the left and b is the right,
+    // then use conditional_assign to fix it if not.
+    let mut left = a.hash.0;
+    let mut right = b.hash.0;
+    conditional_assign_32_bytes(&mut left, &b.hash.0, b_is_left);
+    conditional_assign_32_bytes(&mut right, &a.hash.0, b_is_left);
+
+    result.hash.0 = hash_nodes(&left, &right);
+    Ok(result)
+}
+
+// Helper: Conditionally assign to [u8; 32]
+//
+// It seems subtle doesn't implement ConditionallySelectable on [u8; 32], not sure why,
+// so we can't just use the conditional_assign function from that API.
+//
+// If this is slow then we can later used a faster implementation, but it probably won't be that slow.
+fn conditional_assign_32_bytes(target: &mut [u8; 32], src: &[u8; 32], cond: Choice) {
+    for idx in 0..32 {
+        target[idx].conditional_assign(&src[idx], cond);
+    }
+}
+
+/// Checks that a proof of membership is well-formed, and returns the hash that it implies for the root.
+/// This hash should then be checked against known root hash value.
+///
+/// Errors if:
+/// - Any proof elements have invalid ranges (from and to out of order)
+/// - The first element is missing or its range doesn't match proof.index
+/// - Any of the proof elements could not be combined with result of combining predecessors
+///
+/// Does not read the proof.highest_index value or compare it with the range
+/// that we compute by combining elements. But this should not be strictly necessary
+/// for secure merkle proof validation.
+///
+/// Note: This is pub in order to allow that it can be used in debugging assertions elsewhere.
+/// This could simply be a member function on TxOutMembershipProof, but that would require
+/// hash_nodes function to be in scope in that module, so for now we didn't do that.
+pub fn compute_implied_merkle_root(proof: &TxOutMembershipProof) -> Result<[u8; 32], Error> {
+    // All Ranges contained in the proof must be valid. An invalid Range could be created
+    // by deserializing invalid bytes.
+    if proof.elements.iter().any(|e| e.range.from > e.range.to) {
+        return Err(Error::RangeError(RangeError {}));
+    }
+
+    // The first element should correspond to proof.index in a well-formed proof
+    let first = proof
+        .elements
+        .first()
+        .ok_or_else(|| Error::MissingLeafHash(proof.index))?
+        .clone();
+    if first.range.from != proof.index || first.range.to != proof.index {
+        return Err(Error::MissingLeafHash(proof.index));
+    }
+
+    // Try to fold subsequent elements together with the first element,
+    // combining them using `combine_adjacent_membership_elements`.
+    // idx is used only to provide context for the error message
+    let implied_root = proof.elements[1..].iter().enumerate().try_fold(
+        first,
+        |prev, (idx, next)| -> Result<TxOutMembershipElement, Error> {
+            compose_adjacent_membership_elements(&prev, next)
+                .map_err(|_| Error::UnexpectedMembershipElement(idx + 1))
+        },
+    )?;
+
+    // At this point, we could check that implied_root.range.to = proof.highest_index, or that -1, or something,
+    // but I'm not sure at this moment what exactly the right test is, and I don't think we really need this,
+    // it would be mainly a debugging aid. For security we only need to check that the implied root hash
+    // matches what the enclave expects.
+    // We could similarly contemplate testing that implied_root.range.from == 0, but this is omitted for now.
+
+    Ok(implied_root.hash.0)
+}
+
 /// Validates a proof-of-membership.
 ///
 /// # Arguments
@@ -66,96 +199,29 @@ pub fn is_membership_proof_valid(
     known_root_hash: &[u8; 32],
 ) -> Result<bool, Error> {
     if proof.index > proof.highest_index {
-        return Ok(false);
-    }
-    // All Ranges contained in the proof must be valid. An invalid Range could be created
-    // by deserializing invalid bytes.
-    if proof.elements.iter().any(|e| e.range.from > e.range.to) {
-        return Err(Error::RangeError(RangeError {}));
+        return Err(Error::HighestIndexMismatch);
     }
 
-    // * The proof must contain the correct leaf hash for the specified index.
-    let leaf = Range::new(proof.index, proof.index)
-        .expect("A Range containing a single value is always well-formed.");
-
-    let range_to_hash: HashMap<Range, [u8; 32]> = proof
+    // The first element must be the leaf hash corresponding to the proof index
+    let first = proof
         .elements
-        .iter()
-        .map(|element| (element.range, *element.hash.as_ref()))
-        .collect();
-
-    if let Some(leaf_hash) = range_to_hash.get(&leaf) {
-        if *leaf_hash != hash_leaf(tx_out) {
-            // Proof contains incorrect leaf hash.
-            return Err(Error::IncorrectLeafHash(leaf.from));
-        }
-    } else {
-        // Proof does not contain a leaf hash for `tx_out`.
-        return Err(Error::MissingLeafHash(leaf.from));
+        .first()
+        .ok_or_else(|| Error::MissingLeafHash(proof.index))?;
+    if first.range.from != proof.index || first.range.to != proof.index {
+        return Err(Error::MissingLeafHash(proof.index));
+    }
+    // The first element hash must match the tx_out
+    if !bool::from(first.hash.as_ref().ct_eq(&hash_leaf(tx_out))) {
+        return Err(Error::IncorrectLeafHash(first.range.from));
     }
 
-    // * The root hash of the proof must match the known root_hash.
-    let mut ranges: Vec<&Range> = range_to_hash.keys().collect();
-    ranges.sort();
+    // Compute the implied root hash, or an error if this can't be done
+    // This should have fixed access patterns regardless of input, except on erroring code paths.
+    let implied_root_hash = compute_implied_merkle_root(proof)?;
 
-    let root_range = ranges.last().expect("`ranges` should be non-empty.");
-    let root_hash = range_to_hash
-        .get(root_range)
-        .expect("`root_range` should be a key.");
-
-    if *root_hash != *known_root_hash {
-        // Incorrect root hash.
-        return Ok(false);
-    }
-
-    if proof.highest_index > root_range.to {
-        return Ok(false);
-    }
-
-    // * All internal node's hashes between leaf and root must be recomputable from their children's hashes.
-    let ranges_containing_tx_out: Vec<&Range> = ranges
-        .iter()
-        .cloned()
-        .filter(|range| range.from <= proof.index && proof.index <= range.to)
-        .collect();
-
-    for range in &ranges_containing_tx_out {
-        let hash = range_to_hash
-            .get(range)
-            .expect("range_to_hash must contain range");
-        if range.from != range.to {
-            // Internal Node.
-            let mid: u64 = (range.from + range.to) / 2;
-
-            // Left child.
-            let left_child_range = Range::new(range.from, mid)?;
-            let left_child_hash = match range_to_hash.get(&left_child_range) {
-                Some(hash) => hash,
-                None => {
-                    // Proof does not contain a required hash.
-                    return Ok(false);
-                }
-            };
-
-            // Right child.
-            let right_child_range = Range::new(mid + 1, range.to)?;
-            let right_child_hash = match range_to_hash.get(&right_child_range) {
-                Some(hash) => hash,
-                None => {
-                    // Proof does not contain a required hash.
-                    return Ok(false);
-                }
-            };
-
-            let expected_hash = hash_nodes(left_child_hash, right_child_hash);
-            if *hash != expected_hash {
-                // Proof contains an incorrect hash value.
-                return Ok(false);
-            }
-        }
-    }
-
-    Ok(true)
+    // Check if the implied root hash matches the known root hash
+    // If it doesn't, we return false, but not a rust error.
+    Ok(bool::from(implied_root_hash.ct_eq(known_root_hash)))
 }
 
 /// Compute the root hash at the time the TxOut was added.
@@ -178,7 +244,7 @@ pub fn derive_proof_at_index(
     let derived_root_range: Range = {
         let num_leaves_full_tree_opt = (index + 1).checked_next_power_of_two();
         if num_leaves_full_tree_opt.is_none() {
-            return Err(Error::CapacityExceeded);
+            return Err(Error::NumericLimitsExceeded);
         }
 
         let num_leaves_full_tree = num_leaves_full_tree_opt.unwrap();
@@ -186,11 +252,10 @@ pub fn derive_proof_at_index(
     }?;
 
     // Elements of the derived proof.
-    let mut derived_elements: HashMap<Range, [u8; 32]> = HashMap::default();
+    let mut derived_elements = Vec::<TxOutMembershipElement>::default();
 
-    // This assumes that `elements` is sorted from smallest to largest, so that hashes are
-    // computed "bottom up".
-    for element in &initial_proof.elements {
+    // This assumes that `elements` is in the correct order to be combined.
+    for (element_idx, element) in initial_proof.elements.iter().enumerate() {
         if element.range > derived_root_range {
             // This range is not part of the derived proof.
             continue;
@@ -207,28 +272,13 @@ pub fn derive_proof_at_index(
             element.hash.clone()
         } else {
             // An internal node that contains `index`.
-            // Recompute its hash from its child ranges.
-            let mid: u64 = (element.range.from + element.range.to) / 2;
-
-            // Left child.
-            let left_child_hash = {
-                let left_child_range = Range::new(element.range.from, mid)?;
-                *derived_elements
-                    .get(&left_child_range)
-                    .expect("Child range should already exist.")
-            };
-
-            // Right child.
-            let right_child_hash = {
-                let right_child_range = Range::new(mid + 1, element.range.to)?;
-                *derived_elements
-                    .get(&right_child_range)
-                    .expect("Child range should already exist.")
-            };
-
-            TxOutMembershipHash::from(hash_nodes(&left_child_hash, &right_child_hash))
+            // This is unexpected, none of the proof elements should cover index.
+            return Err(Error::UnexpectedMembershipElement(element_idx));
         };
-        derived_elements.insert(element.range, *hash.as_ref());
+        derived_elements.push(TxOutMembershipElement {
+            range: element.range,
+            hash,
+        });
     }
 
     Ok(TxOutMembershipProof::new(index, index, derived_elements))

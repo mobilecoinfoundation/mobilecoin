@@ -25,12 +25,12 @@
 
 use crate::{key_bytes_to_u64, u64_to_key_bytes, Error};
 use lmdb::{Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
-use mc_common::{Hash, HashMap};
+use mc_common::Hash;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{
     membership_proofs::*,
     range::Range,
-    tx::{TxOut, TxOutMembershipProof},
+    tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
 };
 use mc_util_serial::{decode, encode};
 
@@ -307,25 +307,29 @@ impl TxOutStore {
             return Err(Error::IndexOutOfBounds(index));
         }
 
-        let ranges = containing_ranges(index, num_tx_outs)?;
+        // These pairs correspond to the ranges we will use for the proof elements
+        // The first element always corresponds to the index
+        let mut ranges_for_proof = vec![(index, index)];
 
-        // For each non-leaf node, compute the range of the "other" child.
-        let internal_ranges: Vec<(u64, u64)> = ranges.iter().skip(1).cloned().collect();
-        let mut other_ranges: Vec<(u64, u64)> = Vec::new();
-        for (low, high) in internal_ranges {
+        // Compute every internal range in the binary tree that contains
+        // our node, in increasing order.
+        // Then, break it in half, and talk the half that doesn't contain our index.
+        // We have to skip the first one because that's our (index, index) element
+        // which we already added.
+        for (low, high) in containing_ranges(index, num_tx_outs)?.iter().skip(1) {
             let mid: u64 = (low + high) / 2;
             if index <= mid {
                 // "other" child in the higher half-range.
-                other_ranges.push((mid + 1, high));
+                ranges_for_proof.push((mid + 1, *high));
             } else {
                 // "other" child in the lower half-range.
-                other_ranges.push((low, mid));
+                ranges_for_proof.push((*low, mid));
             }
         }
 
-        // Get Merkle hashes for containing ranges and "other" ranges.
-        let mut range_to_hash: HashMap<Range, [u8; 32]> = HashMap::default();
-        for &(low, high) in ranges.iter().chain(other_ranges.iter()) {
+        // Scan over the ranges_for_proof and get hashes from the database corresponding to these
+        let mut elements = Vec::<TxOutMembershipElement>::default();
+        for (low, high) in ranges_for_proof.iter().cloned() {
             let range = Range::new(low, high)?;
             let hash = if low >= num_tx_outs {
                 // Supply the nil hash if the range contains no data.
@@ -335,14 +339,13 @@ impl TxOutStore {
             } else {
                 self.get_merkle_hash(&range, db_transaction)?
             };
-            range_to_hash.insert(range, hash);
+            elements.push(TxOutMembershipElement {
+                range,
+                hash: hash.into(),
+            });
         }
 
-        Ok(TxOutMembershipProof::new(
-            index,
-            num_tx_outs - 1,
-            range_to_hash,
-        ))
+        Ok(TxOutMembershipProof::new(index, num_tx_outs - 1, elements))
     }
 }
 
@@ -416,9 +419,11 @@ mod membership_proof_tests {
         let tx_outs = get_tx_outs(1);
         let tx_out = tx_outs.get(0).unwrap();
         let hash = hash_leaf(&tx_out);
-        let mut hashes: HashMap<Range, [u8; 32]> = HashMap::default();
-        hashes.insert(Range::new(0, 0).unwrap(), hash.clone());
-        let proof = TxOutMembershipProof::new(0, 0, hashes);
+        let elems = vec![TxOutMembershipElement {
+            range: Range::new(0, 0).unwrap(),
+            hash: hash.into(),
+        }];
+        let proof = TxOutMembershipProof::new(0, 0, elems);
 
         assert!(is_membership_proof_valid(&tx_out, &proof, &hash).unwrap());
     }
@@ -635,15 +640,28 @@ mod membership_proof_tests {
         let db_transaction = env.begin_ro_txn().unwrap();
         let known_root_hash = tx_out_store.get_root_merkle_hash(&db_transaction).unwrap();
 
-        let mut proof = tx_out_store
+        let proof = tx_out_store
             .get_merkle_proof_of_membership(5, &db_transaction)
             .unwrap();
 
-        proof.elements.remove(0);
-
-        assert_eq!(
-            false,
+        assert!(
             is_membership_proof_valid(&tx_outs.get(5).unwrap(), &proof, &known_root_hash).unwrap()
+        );
+
+        let mut proof1 = proof.clone();
+        proof1.elements.remove(0);
+
+        assert!(
+            !is_membership_proof_valid(&tx_outs.get(5).unwrap(), &proof1, &known_root_hash)
+                .unwrap()
+        );
+
+        let mut proof2 = proof.clone();
+        proof2.elements.remove(1);
+
+        assert!(
+            !is_membership_proof_valid(&tx_outs.get(5).unwrap(), &proof2, &known_root_hash)
+                .unwrap()
         );
     }
 
