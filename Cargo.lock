@@ -2120,7 +2120,7 @@ dependencies = [
  "mc-sgx-build",
  "mc-util-encodings",
  "mc-util-from-random",
- "mc-util-serial",
+ "prost",
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
  "serde",
