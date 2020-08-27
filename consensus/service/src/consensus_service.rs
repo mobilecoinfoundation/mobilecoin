@@ -622,7 +622,8 @@ impl<E: ConsensusEnclaveProxy, R: RaClient + Send + Sync + 'static> ConsensusSer
                             )
                         })
                         .ok();
-                    blocks_behind = Some(std::cmp::min(peer_block_height - b, 0));
+                    // peer_block_height - b, unless overflow, then 0
+                    blocks_behind = Some(peer_block_height.saturating_sub(b));
                 }
                 Err(e) => {
                     log::error!(logger, "Error getting block height {:?}", e);
