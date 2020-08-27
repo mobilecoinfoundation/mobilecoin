@@ -373,8 +373,8 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
             combine_fn,
             valid_values: BTreeSet::default(),
             logger: logger.new(o!("mc.scp.slot" => slot_index)),
-            base_round_interval: Duration::from_millis(1000),
-            base_ballot_interval: Duration::from_millis(1000),
+            base_round_interval: Duration::from_millis(5000),
+            base_ballot_interval: Duration::from_millis(5000),
         };
 
         let max_priority_peer = slot.find_max_priority_peer(slot.nominate_round);
