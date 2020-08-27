@@ -594,13 +594,15 @@ name = "mc-attest-ake"
 version = "0.6.0"
 dependencies = [
  "aead 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cargo-emit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "displaydoc 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "mc-attest-core 0.6.0",
  "mc-common 0.6.0",
  "mc-crypto-keys 0.6.0",
  "mc-crypto-noise 0.6.0",
- "mc-sgx-build 0.6.0",
+ "mc-util-build-script 0.6.0",
+ "mc-util-build-sgx 0.6.0",
  "mc-util-serial 0.6.0",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.104 (registry+https://github.com/rust-lang/crates.io-index)",

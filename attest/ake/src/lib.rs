@@ -21,8 +21,8 @@ mod state;
 pub use self::{
     error::Error,
     event::{
-        AuthRequestInput, AuthRequestOutput, AuthResponse, AuthSuccess, Ciphertext, ClientInitiate,
-        NodeInitiate, Plaintext,
+        AuthRequestOutput, AuthResponseOutput, Ciphertext, ClientAuthRequestInput, ClientInitiate,
+        NodeAuthRequestInput, NodeInitiate, Plaintext,
     },
     mealy::Transition,
     state::{AuthPending, Ready, Start},
@@ -40,7 +40,7 @@ mod test {
     use aes_gcm::Aes256Gcm;
     use alloc::string::String;
     use core::convert::TryFrom;
-    use mc_attest_core::{Quote, IAS_SIM_ROOT_ANCHORS};
+    use mc_attest_core::{MrSignerVerifier, Quote, VerifierBuilder, IAS_SIM_ROOT_ANCHORS};
     use mc_attest_net::{Client, RaClient};
     use mc_crypto_keys::{X25519Private, X25519Public, X25519};
     use mc_util_encodings::{FromBase64, ToX64};
@@ -74,41 +74,38 @@ mod test {
         let quote = Quote::try_from(quote_data.as_ref())
             .expect("Could not parse quote from modified bytes");
 
-        std::println!("new quote = {:?}", &quote);
-
         // Sign the forged quote with the sim client
         let ra_client = Client::new("").expect("Could not create sim client");
         let ias_report = ra_client
             .verify_quote(&quote, None)
             .expect("Could not sign our bogus report");
 
-        let mr_signer = quote
+        let report_body = quote
             .report_body()
-            .expect("Could not retrieve report body from cached report")
-            .mr_signer();
+            .expect("Could not retrieve report body from cached report");
 
-        let mut initiator = Start::new(
-            RESPONDER_ID_STR.into(),
-            vec![mr_signer.into()],
-            PRODUCT_ID,
-            MIN_SVN,
-            true,
+        // Construct a report verifier that will check the MRSIGNER, product ID, and
+        // security version
+        let mr_signer = MrSignerVerifier::new(
+            report_body.mr_signer(),
+            report_body.product_id(),
+            report_body.security_version(),
         );
 
-        let mut responder = Start::new(
-            RESPONDER_ID_STR.into(),
-            vec![mr_signer.into()],
-            PRODUCT_ID,
-            MIN_SVN,
-            true,
+        let verifier = VerifierBuilder::new(&[IAS_SIM_ROOT_ANCHORS])
+            .expect("Could not construct verifier builder")
+            .mr_signer(mr_signer)
+            .debug(true)
+            .generate();
+
+        let mut initiator = Start::new(RESPONDER_ID_STR.into());
+        let mut responder = Start::new(RESPONDER_ID_STR.into());
+
+        let node_init = NodeInitiate::<X25519, Aes256Gcm, Sha512>::new(
+            identity.clone(),
+            ias_report.clone(),
+            verifier.clone(),
         );
-
-        let trust_anchors = Some(vec![String::from(IAS_SIM_ROOT_ANCHORS)]);
-        initiator.trust_anchors = trust_anchors.clone();
-        responder.trust_anchors = trust_anchors;
-
-        let node_init =
-            NodeInitiate::<X25519, Aes256Gcm, Sha512>::new(identity.clone(), ias_report.clone());
         let (initiator, auth_request_output) = initiator
             .try_next(&mut csprng, node_init)
             .expect("Initiator could not be initiated");

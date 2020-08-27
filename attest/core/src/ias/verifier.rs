@@ -38,25 +38,38 @@ use mbedtls::{
     Error as TlsError,
 };
 use mc_sgx_types::SGX_FLAGS_DEBUG;
+use serde::{Deserialize, Serialize};
 use sha2::{digest::Digest, Sha256};
 
-/// A trait which can be used to verify the JSON contents of an IAS verification
-/// report.
+/// A trait which can be used to verify an object using pre-configured data
 trait Verify<T>: Clone {
     /// Check the data against the verifier's contents, return true on success,
     /// false on failure.
     fn verify(&self, data: &T) -> bool;
 }
 
-/// Errors which can be
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub enum BuilderError {
+/// An enumeration of errors which a [`Verifier`] can produce.
+#[derive(Clone, Debug, Deserialize, Display, PartialEq, PartialOrd, Serialize)]
+pub enum Error {
+    /// The user-provided array of trust anchor PEM contains an invalid
+    /// certificate.
     InvalidTrustAnchor(String),
+    /// The IAS report does not contain a certificate chain.
+    NoChain,
+    /// The signature is invalid, or was produced by a public key we do not
+    /// trust.
+    BadSignature,
+    /// There was an error parsing the JSON contents: {0}
+    Parse(VerifyError),
+    /// The report was properly constructed, but did not meet security
+    /// requirements, report contents: {0}
+    Verification(VerificationReportData),
 }
 
 /// A builder structure used to construct a report verifier based on the
 /// criteria specified.
-pub struct Builder {
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct Verifier {
     trust_anchors: Vec<Certificate>,
     report_body_verifiers: Vec<VerifyReportBodyType>,
     quote_verifiers: Vec<VerifyQuoteType>,
@@ -65,16 +78,16 @@ pub struct Builder {
 }
 
 /// Construct a new builder using the baked-in IAS root certificates
-impl Default for Builder {
+impl Default for Verifier {
     fn default() -> Self {
         Self::new(IAS_SIGNING_ROOT_CERT_PEMS).expect("Invalid hard-coded certificates found")
     }
 }
 
-impl Builder {
+impl Verifier {
     /// Create a new builder object to generate an IAS report verifier using the
     /// given trust anchor.
-    pub fn new(pem_trust_anchors: &[&str]) -> Result<Self, BuilderError> {
+    pub fn new(pem_trust_anchors: &[&str]) -> Result<Self, Error> {
         let trust_anchors = pem_trust_anchors
             .iter()
             .map(|pem| {
@@ -87,7 +100,7 @@ impl Builder {
                 }
             })
             .collect::<Result<Vec<Certificate>, TlsError>>()
-            .map_err(|e| BuilderError::InvalidTrustAnchor(e.to_string()))?;
+            .map_err(|e| Error::InvalidTrustAnchor(e.to_string()))?;
 
         Ok(Self {
             trust_anchors,
@@ -302,7 +315,7 @@ impl Builder {
     }
 
     /// Compile the report verifier which a report will be given to
-    pub fn generate(&mut self) -> IasReportVerifier {
+    pub fn verify(&self, report: &VerificationReport) -> Result<VerificationReportData, Error> {
         // Build a list of quote verifiers
         let mut quote_verifiers = self.quote_verifiers.clone();
         quote_verifiers.push(VerifyQuoteType::ReportBody(ReportBodyVerifier {
@@ -322,11 +335,12 @@ impl Builder {
             trust_anchors: self.trust_anchors.clone(),
             verifiers,
         }
+        .verify(report)
     }
 }
 
 /// A structure which can verify a top-level report.
-pub struct IasReportVerifier {
+struct IasReportVerifier {
     /// A vector of trust anchor certificates to verify the report signature and
     /// chain against.
     trust_anchors: Vec<Certificate>,
@@ -335,23 +349,9 @@ pub struct IasReportVerifier {
     verifiers: Vec<VerifyIasReportDataType>,
 }
 
-/// An enumeration of errors which an [`IasReportVerifier`] can produce.
-#[derive(Clone, Debug, Display, PartialEq, PartialOrd)]
-pub enum VerifierError {
-    /// The IAS report does not contain a certificate chain.
-    NoChain,
-    /// The signature is invalid, or was produced by a public key we do not
-    /// trust.
-    BadSignature,
-    /// There was an error parsing the JSON contents
-    Parse(VerifyError),
-    /// The report was properly constructed did not meet security requirements.
-    Verification(VerificationReportData),
-}
-
-impl From<VerifyError> for VerifierError {
-    fn from(src: VerifyError) -> VerifierError {
-        VerifierError::Parse(src)
+impl From<VerifyError> for Error {
+    fn from(src: VerifyError) -> Error {
+        Error::Parse(src)
     }
 }
 
@@ -359,10 +359,7 @@ const MAX_CHAIN_DEPTH: usize = 5;
 
 impl IasReportVerifier {
     /// Verify the given IAS report using this verifier object.
-    pub fn verify(
-        &self,
-        report: &VerificationReport,
-    ) -> Result<VerificationReportData, VerifierError> {
+    pub fn verify(&self, report: &VerificationReport) -> Result<VerificationReportData, Error> {
         // Here's the background information for this code:
         //
         //  1. An X509 certificate can be signed by only one issuer.
@@ -413,7 +410,7 @@ impl IasReportVerifier {
         // a trust anchor.
 
         if report.chain.is_empty() {
-            return Err(VerifierError::NoChain);
+            return Err(Error::NoChain);
         }
 
         // Construct a verification profile for what kind of X509 chain we
@@ -514,13 +511,13 @@ impl IasReportVerifier {
                 }
                 None
             })
-            .ok_or(VerifierError::BadSignature)?;
+            .ok_or(Error::BadSignature)?;
 
         let report_data = VerificationReportData::try_from(report)?;
 
         for verifier in &self.verifiers {
             if !verifier.verify(&report_data) {
-                return Err(VerifierError::Verification(report_data));
+                return Err(Error::Verification(report_data));
             }
         }
 
@@ -529,7 +526,7 @@ impl IasReportVerifier {
 }
 
 /// An enumeration of possible report-data verifier
-#[derive(Debug, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 enum VerifyIasReportDataType {
     /// A verifier that checks the nonce of the IAS report
     Nonce(NonceVerifier),
@@ -559,7 +556,7 @@ impl Verify<VerificationReportData> for VerifyIasReportDataType {
 
 /// A [`VerifyIasReportData`] implementation that will check report data for the
 /// presence of the given IAS nonce.
-#[derive(Debug, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 struct NonceVerifier {
     /// The nonce to be checked for.
     pub nonce: IasNonce,
@@ -593,7 +590,7 @@ fn check_ids(quote_status: &IasQuoteResult, config_ids: &[String], sw_ids: &[Str
 
 /// A [`VerifyIasReportData`] implementation that will check if the enclave in
 /// question has the given MrEnclave, and has no other IAS report status issues.
-#[derive(Debug, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct MrEnclaveVerifier {
     mr_enclave: MrEnclave,
     config_ids: Vec<String>,
@@ -666,7 +663,7 @@ impl Verify<VerificationReportData> for MrEnclaveVerifier {
 /// A [`VerifyIasReportData`] implementation that will check if the enclave in
 /// question has the given MrSigner value, and has no other IAS report status
 /// issues.
-#[derive(Debug, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct MrSignerVerifier {
     mr_signer: MrSigner,
     product_id: ProductId,
@@ -748,7 +745,7 @@ impl Verify<VerificationReportData> for MrSignerVerifier {
 
 /// A [`VerifyIasReportData`] implementation which applies a list of verifiers
 /// against the quote structure.
-#[derive(Debug, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 struct QuoteVerifier {
     quote_verifiers: Vec<VerifyQuoteType>,
 }
@@ -767,7 +764,7 @@ impl Verify<VerificationReportData> for QuoteVerifier {
 
 /// A [`VerifyIasReportData`] implementation which checks the PSE result is
 /// acceptable and was made over a particular hash.
-#[derive(Debug, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 struct PseVerifier {
     hash: Vec<u8>,
 }
@@ -787,7 +784,7 @@ impl Verify<VerificationReportData> for PseVerifier {
 }
 
 /// An enumeration of quote content verifiers
-#[derive(Debug, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 enum VerifyQuoteType {
     Basename(BasenameVerifier),
     /// Verify the quote body with the report matches (exactly) the one
@@ -825,7 +822,7 @@ impl Verify<Quote> for VerifyQuoteType {
 
 /// A [`Verify<Quote>`] implementation that will check if the basename is as
 /// expected.
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 struct BasenameVerifier {
     basename: Basename,
 }
@@ -841,7 +838,7 @@ impl Verify<Quote> for BasenameVerifier {
 
 /// A [`Verify<Quote>`] implementation that will simply check that the quote
 /// contained in the IAS report matches the quote in this object.
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 struct QuoteContentsEqVerifier {
     quote: Quote,
 }
@@ -857,7 +854,7 @@ impl Verify<Quote> for QuoteContentsEqVerifier {
 ///
 /// This can form a very basic sanity check to verify that the SigRL provided
 /// for the quote is as expected.
-#[derive(Debug, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 struct EpidGroupIdVerifier {
     epid_group_id: EpidGroupId,
 }
@@ -873,7 +870,7 @@ impl Verify<Quote> for EpidGroupIdVerifier {
 
 /// A [`Verify<Quote>`] implementation that will simply check that the QE
 /// security version is at least the version given.
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 struct PceSecurityVersionVerifier {
     pce_svn: SecurityVersion,
 }
@@ -889,7 +886,7 @@ impl Verify<Quote> for PceSecurityVersionVerifier {
 
 /// A [`Verify<Quote>`] implementation that will simply check that the QE
 /// security version is at least the version given.
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 struct QeSecurityVersionVerifier {
     qe_svn: SecurityVersion,
 }
@@ -905,7 +902,7 @@ impl Verify<Quote> for QeSecurityVersionVerifier {
 
 /// A [`Verify<Quote>`] implementation that will collect the results of many
 /// independent [`Verify<ReportBody>`] implementations.
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 struct ReportBodyVerifier {
     body_verifiers: Vec<VerifyReportBodyType>,
 }
@@ -926,7 +923,7 @@ impl Verify<Quote> for ReportBodyVerifier {
 
 /// A [`Verify<Quote>`] implementation that will check if the EPID signature
 /// type is expected.
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 struct SignTypeVerifier {
     sign_type: QuoteSignType,
 }
@@ -943,7 +940,7 @@ impl Verify<Quote> for SignTypeVerifier {
 
 /// A [`Verify<Quote>`] implementation that will check if the XEID matches
 /// expectations.
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 struct XeidVerifier {
     xeid: u32,
 }
@@ -955,7 +952,7 @@ impl Verify<Quote> for XeidVerifier {
 }
 
 /// An enumeration of known report body verifier types.
-#[derive(Debug, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 enum VerifyReportBodyType {
     /// Verify the attributes matches the one specified.
     Attributes(AttributesVerifier),
@@ -1001,7 +998,7 @@ impl Verify<ReportBody> for VerifyReportBodyType {
 
 /// A [`Verify<ReportBody>`] implementation that will check if the enclave flags
 /// match the given attributes.
-#[derive(Debug, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 struct AttributesVerifier {
     attributes: Attributes,
 }
@@ -1014,7 +1011,7 @@ impl Verify<ReportBody> for AttributesVerifier {
 
 /// A [`Verify<ReportBody>`] implementation that will check if the enclave
 /// configuration ID matches the given value
-#[derive(Debug, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 struct ConfigIdVerifier {
     config_id: ConfigId,
 }
@@ -1027,7 +1024,7 @@ impl Verify<ReportBody> for ConfigIdVerifier {
 
 /// A [`Verify<ReportBody>`] implementation that will check if the enclave
 /// configuration version is at least the version specified.
-#[derive(Debug, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 struct ConfigVersionVerifier {
     config_svn: ConfigSecurityVersion,
 }
@@ -1040,7 +1037,7 @@ impl Verify<ReportBody> for ConfigVersionVerifier {
 
 /// A [`Verify<ReportBody>`] implementation that will check if the cpu version
 /// is at least the version specified.
-#[derive(Debug, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 struct CpuVersionVerifier {
     cpu_svn: CpuSecurityVersion,
 }
@@ -1053,7 +1050,7 @@ impl Verify<ReportBody> for CpuVersionVerifier {
 
 /// A [`Verify<ReportBody>`] implementation that will check if the enclave in
 /// question is allowed to run in debug mode.
-#[derive(Debug, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 struct DebugVerifier {
     allow_debug: bool,
 }
@@ -1066,7 +1063,7 @@ impl Verify<ReportBody> for DebugVerifier {
 
 /// A [`Verify<ReportBody>`] implementation that will check if the enclave's
 /// report data matches the mask given.
-#[derive(Debug, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 struct DataVerifier {
     data: ReportDataMask,
 }
@@ -1079,7 +1076,7 @@ impl Verify<ReportBody> for DataVerifier {
 
 /// A [`Verify<ReportBody>`] implementation that will check if the enclave's
 /// extended product ID matches the one given.
-#[derive(Debug, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 struct ExtendedProductIdVerifier {
     ext_prod_id: ExtendedProductId,
 }
@@ -1092,7 +1089,7 @@ impl Verify<ReportBody> for ExtendedProductIdVerifier {
 
 /// A [`Verify<ReportBody>`] implementation that will check if the enclave's
 /// family ID matches the one given.
-#[derive(Debug, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 struct FamilyIdVerifier {
     family_id: FamilyId,
 }
@@ -1105,7 +1102,7 @@ impl Verify<ReportBody> for FamilyIdVerifier {
 
 /// A [`Verify<ReportBody>`] implementation that will check if the enclave's
 /// misc select value matches the one given.
-#[derive(Debug, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 struct MiscSelectVerifier {
     misc_select: MiscSelect,
 }
@@ -1118,7 +1115,7 @@ impl Verify<ReportBody> for MiscSelectVerifier {
 
 /// A [`Verify<ReportBody>`] implementation that will check if the enclave's
 /// product ID matches the one given.
-#[derive(Debug, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 struct ProductIdVerifier {
     product_id: ProductId,
 }
@@ -1131,7 +1128,7 @@ impl Verify<ReportBody> for ProductIdVerifier {
 
 /// A [`Verify<ReportBody>`] implementation that will check if the enclave's
 /// security version is at least the one given.
-#[derive(Debug, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 struct VersionVerifier {
     version: SecurityVersion,
 }

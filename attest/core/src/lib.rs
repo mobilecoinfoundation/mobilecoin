@@ -29,7 +29,7 @@ pub use crate::{
         SgxResult, SignatureError, TargetInfoError, VerifyError,
     },
     ias::{
-        verifier::{Builder as VerifierBuilder, IasReportVerifier as Verifier},
+        verifier::{Error as VerifierError, MrEnclaveVerifier, MrSignerVerifier, Verifier},
         verify::{
             EpidPseudonym, VerificationReport, VerificationReportData, VerificationSignature,
         },

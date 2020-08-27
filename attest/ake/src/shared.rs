@@ -19,9 +19,9 @@ where
 {
     type Error = CipherError;
 
-    fn try_next(
+    fn try_next<R: CryptoRng + RngCore>(
         self,
-        _csprng: &mut (impl CryptoRng + RngCore),
+        _csprng: &mut R,
         input: Ciphertext,
     ) -> Result<(Ready<Cipher>, Vec<u8>), Self::Error> {
         let mut retval = self;
@@ -37,9 +37,9 @@ where
 {
     type Error = CipherError;
 
-    fn try_next(
+    fn try_next<R: CryptoRng + RngCore>(
         self,
-        _csprng: &mut (impl CryptoRng + RngCore),
+        _csprng: &mut R,
         input: Plaintext,
     ) -> Result<(Ready<Cipher>, Vec<u8>), Self::Error> {
         let mut retval = self;

@@ -3,15 +3,14 @@
 //! Responder-specific transition functions
 use crate::{
     error::Error,
-    event::{AuthRequestInput, AuthResponse},
+    event::{AuthResponseOutput, ClientAuthRequestInput, NodeAuthRequestInput},
     mealy::Transition,
     state::{Ready, Start},
 };
 use aead::{AeadMut, NewAead};
 use alloc::vec::Vec;
-use core::convert::TryFrom;
 use digest::{BlockInput, Digest, FixedOutput, Reset, Update};
-use mc_attest_core::{QuoteSignType, ReportDataMask, VerificationReport};
+use mc_attest_core::VerificationReport;
 use mc_crypto_keys::{Kex, ReprBytes};
 use mc_crypto_noise::{
     HandshakeIX, HandshakeNX, HandshakePattern, HandshakeState, HandshakeStatus, NoiseCipher,
@@ -39,7 +38,7 @@ trait ResponderTransitionMixin {
         csprng: &mut (impl CryptoRng + RngCore),
         handshake_state: HandshakeState<KexAlgo, Cipher, DigestType>,
         ias_report: VerificationReport,
-    ) -> Result<(Ready<Cipher>, AuthResponse), Error>
+    ) -> Result<(Ready<Cipher>, AuthResponseOutput), Error>
     where
         KexAlgo: Kex,
         Cipher: AeadMut + NewAead + NoiseCipher + Sized,
@@ -85,7 +84,7 @@ impl ResponderTransitionMixin for Start {
         csprng: &mut (impl CryptoRng + RngCore),
         handshake_state: HandshakeState<KexAlgo, Cipher, DigestType>,
         ias_report: VerificationReport,
-    ) -> Result<(Ready<Cipher>, AuthResponse), Error>
+    ) -> Result<(Ready<Cipher>, AuthResponseOutput), Error>
     where
         KexAlgo: Kex,
         Cipher: AeadMut + NewAead + NoiseCipher + Sized,
@@ -106,22 +105,19 @@ impl ResponderTransitionMixin for Start {
                     reader: result.initiator_cipher,
                     binding: result.channel_binding,
                 },
-                AuthResponse::from(output.payload),
+                AuthResponseOutput::from(output.payload),
             )),
         }
     }
 }
 
-/// Start + AuthRequestInput<IX> => Ready + AuthResponse
+/// Start + NodeAuthRequestInput => Ready + AuthResponseOutput
 ///
 /// This defines the responder's action when an AuthRequestInput for an IX
 /// exchange is provided.
 impl<KexAlgo, Cipher, DigestType>
-    Transition<
-        Ready<Cipher>,
-        AuthRequestInput<HandshakeIX, KexAlgo, Cipher, DigestType>,
-        AuthResponse,
-    > for Start
+    Transition<Ready<Cipher>, NodeAuthRequestInput<KexAlgo, Cipher, DigestType>, AuthResponseOutput>
+    for Start
 where
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
@@ -130,11 +126,11 @@ where
 {
     type Error = Error;
 
-    fn try_next(
+    fn try_next<R: CryptoRng + RngCore>(
         self,
-        csprng: &mut (impl CryptoRng + RngCore),
-        input: AuthRequestInput<HandshakeIX, KexAlgo, Cipher, DigestType>,
-    ) -> Result<(Ready<Cipher>, AuthResponse), Error> {
+        csprng: &mut R,
+        mut input: NodeAuthRequestInput<KexAlgo, Cipher, DigestType>,
+    ) -> Result<(Ready<Cipher>, AuthResponseOutput), Error> {
         // Read the request and return the payload and state
         let (handshake_state, payload) = self
             .handle_request::<HandshakeIX, KexAlgo, Cipher, DigestType>(
@@ -143,36 +139,32 @@ where
             )?;
 
         // Parse and verify the received IAS report
+        // FIXME: MCC-1702
         let remote_report: VerificationReport =
             deserialize(&payload).map_err(|_e| Error::ReportDeserialization)?;
-        remote_report.verify(
-            self.trust_anchors,
-            None,
-            None,
-            None,
-            QuoteSignType::Linkable,
-            self.allow_debug,
-            &self.expected_measurements,
-            self.expected_product_id,
-            self.expected_minimum_svn,
-            &handshake_state
-                .remote_identity()
-                .ok_or(Error::MissingRemoteIdentity)?
-                .map_bytes(|bytes| {
-                    ReportDataMask::try_from(bytes).map_err(|_| Error::BadRemoteIdentity)
-                })?,
-        )?;
+
+        input
+            .verifier
+            .report_data(
+                &handshake_state
+                    .remote_identity()
+                    .ok_or(Error::MissingRemoteIdentity)?
+                    .map_bytes(|bytes| {
+                        ReportDataMask::try_from(bytes).map_err(|_| Error::BadRemoteIdentity)
+                    })?,
+            )
+            .verify(&remote_report)?;
 
         Self::handle_response(csprng, handshake_state, input.ias_report)
     }
 }
 
-/// Start + AuthRequestInput<NX> => Ready + AuthResponse
+/// Start + ClientAuthRequestInput => Ready + AuthResponseOutput
 impl<KexAlgo, Cipher, DigestType>
     Transition<
         Ready<Cipher>,
-        AuthRequestInput<HandshakeNX, KexAlgo, Cipher, DigestType>,
-        AuthResponse,
+        ClientAuthRequestInput<KexAlgo, Cipher, DigestType>,
+        AuthResponseOutput,
     > for Start
 where
     KexAlgo: Kex,
@@ -182,11 +174,11 @@ where
 {
     type Error = Error;
 
-    fn try_next(
+    fn try_next<R: CryptoRng + RngCore>(
         self,
-        csprng: &mut (impl CryptoRng + RngCore),
-        input: AuthRequestInput<HandshakeNX, KexAlgo, Cipher, DigestType>,
-    ) -> Result<(Ready<Cipher>, AuthResponse), Error> {
+        csprng: &mut R,
+        input: ClientAuthRequestInput<KexAlgo, Cipher, DigestType>,
+    ) -> Result<(Ready<Cipher>, AuthResponseOutput), Error> {
         let (handshake_state, _payload) = self
             .handle_request::<HandshakeNX, KexAlgo, Cipher, DigestType>(
                 &input.data.data,

@@ -8,8 +8,8 @@ use alloc::{string::ToString, vec::Vec};
 use core::convert::TryFrom;
 use digest::Digest;
 use mc_attest_ake::{
-    AuthPending, AuthRequestInput, AuthRequestOutput, AuthResponse, NodeInitiate, Ready, Start,
-    Transition,
+    AuthPending, AuthRequestInput, AuthRequestOutput, AuthResponseOutput, NodeInitiate, Ready,
+    Start, Transition,
 };
 use mc_attest_core::{
     IasNonce, Measurement, Nonce, NonceError, Quote, QuoteNonce, Report, ReportData, TargetInfo,
@@ -211,7 +211,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             .ok_or(Error::NotFound)?;
 
         let msg: Vec<u8> = msg.into();
-        let auth_response_event = AuthResponse::from(msg);
+        let auth_response_event = AuthResponseOutput::from(msg);
 
         // Advance the state machine to ready (or failure)
         let mut csprng = McRng::default();
@@ -467,13 +467,13 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         Start: Transition<
             Ready<Aes256Gcm>,
             AuthRequestInput<S::Handshake, X25519, Aes256Gcm, Sha512>,
-            AuthResponse,
+            AuthResponseOutput,
         >,
         Error: From<
             <Start as Transition<
                 Ready<Aes256Gcm>,
                 AuthRequestInput<S::Handshake, X25519, Aes256Gcm, Sha512>,
-                AuthResponse,
+                AuthResponseOutput,
             >>::Error,
         >,
     {

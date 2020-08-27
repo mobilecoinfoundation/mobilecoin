@@ -1,6 +1,13 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
+use mc_util_build_script::Environment;
+use mc_util_build_sgx::{SgxEnvironment, SgxMode};
+
 fn main() {
-    // This is needed because there is a unit test that only works in sim mode
-    mc_sgx_build::handle_sgx_sim_feature();
+    let env = Environment::default();
+    let sgx = SgxEnvironment::new(&env).expect("Could not parse SGX environment");
+
+    if sgx.sgx_mode() == SgxMode::Simulation {
+        cargo_emit::rustc_cfg!("feature=\"sgx-sim\"");
+    }
 }

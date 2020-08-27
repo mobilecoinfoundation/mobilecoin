@@ -4,16 +4,16 @@
 
 use crate::{
     error::Error,
-    event::{AuthRequestOutput, AuthResponse, AuthSuccess, ClientInitiate, NodeInitiate},
+    event::{
+        AuthRequestOutput, AuthResponseInput, AuthResponseOutput, ClientInitiate, NodeInitiate,
+    },
     mealy::Transition,
     state::{AuthPending, Ready, Start},
 };
 use aead::{AeadMut, NewAead};
-use alloc::{string::String, vec::Vec};
-use core::convert::TryFrom;
 use digest::{BlockInput, Digest, FixedOutput, Reset, Update};
-use mc_attest_core::{Measurement, QuoteSignType, ReportDataMask, VerificationReport};
-use mc_crypto_keys::{Kex, ReprBytes};
+use mc_attest_core::{VerificationReport, VerificationReportData, Verifier};
+use mc_crypto_keys::Kex;
 use mc_crypto_noise::{
     HandshakeIX, HandshakeNX, HandshakeOutput, HandshakePattern, HandshakeState, HandshakeStatus,
     NoiseCipher, ProtocolName,
@@ -24,11 +24,6 @@ use rand_core::{CryptoRng, RngCore};
 /// Helper function to create the output for an initiate
 fn parse_handshake_output<Handshake, KexAlgo, Cipher, DigestType>(
     output: HandshakeOutput<KexAlgo, Cipher, DigestType>,
-    expected_measurements: Vec<Measurement>,
-    expected_product_id: u16,
-    expected_minimum_svn: u16,
-    allow_debug: bool,
-    trust_anchors: Option<Vec<String>>,
 ) -> Result<
     (
         AuthPending<KexAlgo, Cipher, DigestType>,
@@ -44,14 +39,7 @@ where
 {
     match output.status {
         HandshakeStatus::InProgress(state) => Ok((
-            AuthPending::new(
-                state,
-                expected_measurements,
-                expected_product_id,
-                expected_minimum_svn,
-                allow_debug,
-                trust_anchors,
-            ),
+            AuthPending::new(state),
             AuthRequestOutput::<Handshake, KexAlgo, Cipher, DigestType>::from(output.payload),
         )),
         HandshakeStatus::Complete(_output) => Err(Error::EarlyHandshakeComplete),
@@ -73,10 +61,10 @@ where
 {
     type Error = Error;
 
-    fn try_next(
+    fn try_next<R: CryptoRng + RngCore>(
         self,
-        csprng: &mut (impl CryptoRng + RngCore),
-        _input: ClientInitiate<KexAlgo, Cipher, DigestType>,
+        csprng: &mut R,
+        mut _input: ClientInitiate<KexAlgo, Cipher, DigestType>,
     ) -> Result<
         (
             AuthPending<KexAlgo, Cipher, DigestType>,
@@ -99,11 +87,6 @@ where
             handshake_state
                 .write_message(csprng, &[])
                 .map_err(Error::HandshakeWrite)?,
-            self.expected_measurements,
-            self.expected_product_id,
-            self.expected_minimum_svn,
-            self.allow_debug,
-            self.trust_anchors,
         )
     }
 }
@@ -123,10 +106,10 @@ where
 {
     type Error = Error;
 
-    fn try_next(
+    fn try_next<R: CryptoRng + RngCore>(
         self,
-        csprng: &mut (impl CryptoRng + RngCore),
-        input: NodeInitiate<KexAlgo, Cipher, DigestType>,
+        csprng: &mut R,
+        mut input: NodeInitiate<KexAlgo, Cipher, DigestType>,
     ) -> Result<
         (
             AuthPending<KexAlgo, Cipher, DigestType>,
@@ -145,7 +128,7 @@ where
         )
         .map_err(Error::HandshakeInit)?;
 
-        // FIXME: MC-72
+        // FIXME: MCC-1702
         let serialized_report =
             serialize(&input.ias_report).map_err(|_e| Error::ReportSerialization)?;
 
@@ -153,17 +136,13 @@ where
             handshake_state
                 .write_message(csprng, &serialized_report)
                 .map_err(Error::HandshakeWrite)?,
-            self.expected_measurements,
-            self.expected_product_id,
-            self.expected_minimum_svn,
-            self.allow_debug,
-            self.trust_anchors,
         )
     }
 }
 
-/// AuthPending + AuthResponseInput => Ready + AuthSuccess
-impl<KexAlgo, Cipher, DigestType> Transition<Ready<Cipher>, AuthResponse, AuthSuccess>
+/// AuthPending + AuthResponseInput => Ready + VerificationReportData
+impl<KexAlgo, Cipher, DigestType>
+    Transition<Ready<Cipher>, AuthResponseOutput, VerificationReportData>
     for AuthPending<KexAlgo, Cipher, DigestType>
 where
     KexAlgo: Kex,
@@ -172,11 +151,11 @@ where
 {
     type Error = Error;
 
-    fn try_next(
+    fn try_next<R: CryptoRng + RngCore>(
         self,
-        _csprng: &mut (impl CryptoRng + RngCore),
-        input: AuthResponse,
-    ) -> Result<(Ready<Cipher>, AuthSuccess), Self::Error> {
+        _csprng: &mut R,
+        mut input: AuthResponseInput,
+    ) -> Result<(Ready<Cipher>, VerificationReportData), Self::Error> {
         let output = self
             .state
             .read_message(input.as_ref())
@@ -186,31 +165,14 @@ where
             HandshakeStatus::Complete(result) => {
                 let remote_report: VerificationReport =
                     deserialize(&output.payload).map_err(|_e| Error::ReportDeserialization)?;
-                remote_report.verify(
-                    self.trust_anchors,
-                    None,
-                    None,
-                    None,
-                    QuoteSignType::Linkable,
-                    self.allow_debug,
-                    &self.expected_measurements,
-                    self.expected_product_id,
-                    self.expected_minimum_svn,
-                    &result
-                        .remote_identity
-                        .as_ref()
-                        .ok_or(Error::MissingRemoteIdentity)?
-                        .map_bytes(|bytes| {
-                            ReportDataMask::try_from(bytes).map_err(|_| Error::BadRemoteIdentity)
-                        })?,
-                )?;
+                let report_data = input.verifier.verify(&remote_report)?;
                 Ok((
                     Ready {
                         writer: result.initiator_cipher,
                         reader: result.responder_cipher,
                         binding: result.channel_binding,
                     },
-                    (),
+                    report_data,
                 ))
             }
         }
