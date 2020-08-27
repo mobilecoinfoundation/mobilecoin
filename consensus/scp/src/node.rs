@@ -45,7 +45,7 @@ pub struct Node<V: Value, ValidationError: Display> {
     logger: Logger,
 
     /// Sets the 'base round timeout' and the 'base ballot timeout' when creating a slot.
-    /// (Defaults to 1 second to match the SCP whitepaper specification.)
+    /// (Defaults to 50 seconds, higher than the SCP whitepaper specification of 1s.)
     pub scp_timebase: Duration,
 }
 
@@ -66,7 +66,7 @@ impl<V: Value, ValidationError: Display + 'static> Node<V, ValidationError> {
             validity_fn,
             combine_fn,
             logger,
-            scp_timebase: Duration::from_millis(1000),
+            scp_timebase: Duration::from_millis(50000),
         }
     }
 
