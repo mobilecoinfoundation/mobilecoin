@@ -25,29 +25,29 @@ use std::sync::Arc;
 const PENDING_LIMIT: i64 = 500;
 
 #[derive(Clone)]
-pub struct ClientApiService<L: Ledger + Clone> {
+pub struct ClientApiService {
     enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
-    scp_client_value_sender: ProposeTxCallback,
-    ledger: L,
     tx_manager: Arc<dyn TxManager + Send + Sync>,
+    ledger: Arc<dyn Ledger + Send + Sync>,
+    scp_client_value_sender: ProposeTxCallback,
     is_serving_fn: Arc<(dyn Fn() -> bool + Sync + Send)>,
     logger: Logger,
 }
 
-impl<L: Ledger + Clone> ClientApiService<L> {
+impl ClientApiService {
     pub fn new(
         enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
         scp_client_value_sender: ProposeTxCallback,
-        ledger: L,
+        ledger: Arc<dyn Ledger + Send + Sync>,
         tx_manager: Arc<dyn TxManager + Send + Sync>,
         is_serving_fn: Arc<(dyn Fn() -> bool + Sync + Send)>,
         logger: Logger,
     ) -> Self {
         Self {
             enclave,
-            scp_client_value_sender,
             tx_manager,
             ledger,
+            scp_client_value_sender,
             is_serving_fn,
             logger,
         }
@@ -132,7 +132,7 @@ impl<L: Ledger + Clone> ClientApiService<L> {
     }
 }
 
-impl<L: Ledger + Clone> ConsensusClientApi for ClientApiService<L> {
+impl ConsensusClientApi for ClientApiService {
     fn client_tx_propose(
         &mut self,
         ctx: RpcContext,
@@ -173,9 +173,10 @@ mod tests {
     };
     use mc_consensus_enclave::TxContext;
     use mc_consensus_enclave_mock::MockConsensusEnclave;
+    use mc_ledger_db::MockLedger;
     use mc_transaction_core::tx::TxHash;
-    use mc_transaction_core_test_utils::{create_ledger, initialize_ledger, AccountKey};
-    use rand::{rngs::StdRng, SeedableRng};
+    // use mc_transaction_core_test_utils::{create_ledger, initialize_ledger, AccountKey};
+    // use rand::{rngs::StdRng, SeedableRng};
     use std::sync::Arc;
 
     #[test_with_logger]
@@ -194,11 +195,12 @@ mod tests {
         );
 
         // Local ledger
-        let mut ledger = create_ledger();
-        let mut rng: StdRng = SeedableRng::from_seed([62u8; 32]);
-        let sender = AccountKey::random(&mut rng);
         let num_blocks = 5;
-        initialize_ledger(&mut ledger, num_blocks, &sender, &mut rng);
+        let mut ledger = MockLedger::new();
+        ledger
+            .expect_num_blocks()
+            .times(1)
+            .return_const(Ok(num_blocks));
 
         let mut tx_manager = MockTxManager::new();
         tx_manager
@@ -211,7 +213,7 @@ mod tests {
         let client_api_service = ClientApiService::new(
             Arc::new(consensus_enclave),
             scp_client_value_sender,
-            ledger,
+            Arc::new(ledger),
             Arc::new(tx_manager),
             is_serving_fn,
             logger,

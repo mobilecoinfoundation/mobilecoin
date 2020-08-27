@@ -290,7 +290,7 @@ impl<
             client_api_service::ClientApiService::new(
                 Arc::new(self.enclave.clone()),
                 self.create_scp_client_value_sender_fn(),
-                self.ledger_db.clone(),
+                Arc::new(self.ledger_db.clone()),
                 self.tx_manager.clone(),
                 self.create_is_serving_user_requests_fn(),
                 self.logger.clone(),
