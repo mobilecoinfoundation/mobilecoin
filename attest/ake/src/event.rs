@@ -292,7 +292,7 @@ pub struct AuthResponseInput {
 impl AuthResponseInput {
     pub fn new(data: AuthResponseOutput, verifier: Verifier) -> Self {
         Self {
-            data: data.data,
+            data: data.0,
             verifier,
         }
     }

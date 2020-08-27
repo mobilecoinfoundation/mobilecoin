@@ -9,8 +9,9 @@ use crate::{
 };
 use aead::{AeadMut, NewAead};
 use alloc::vec::Vec;
+use core::convert::TryFrom;
 use digest::{BlockInput, Digest, FixedOutput, Reset, Update};
-use mc_attest_core::VerificationReport;
+use mc_attest_core::{ReportDataMask, VerificationReport};
 use mc_crypto_keys::{Kex, ReprBytes};
 use mc_crypto_noise::{
     HandshakeIX, HandshakeNX, HandshakePattern, HandshakeState, HandshakeStatus, NoiseCipher,
@@ -132,7 +133,7 @@ where
     fn try_next<R: CryptoRng + RngCore>(
         self,
         csprng: &mut R,
-        mut input: NodeAuthRequestInput<KexAlgo, Cipher, DigestType>,
+        input: NodeAuthRequestInput<KexAlgo, Cipher, DigestType>,
     ) -> Result<(Ready<Cipher>, AuthResponseOutput), Error> {
         // Read the request and return the payload and state
         let (handshake_state, payload) = self
@@ -141,11 +142,14 @@ where
                 input.local_identity,
             )?;
 
-        // Parse and verify the received IAS report
+        let mut verifier = input.verifier;
+
+        // Parse the received IAS report
         let remote_report = VerificationReport::decode(payload.as_slice())
             .map_err(|_| Error::ReportDeserialization)?;
-        input
-            .verifier
+        // Verify using given verifier, and ensure the first 32B of the report data are
+        // the identity pubkey.
+        verifier
             .report_data(
                 &handshake_state
                     .remote_identity()

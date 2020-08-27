@@ -4,16 +4,16 @@
 
 use crate::{
     error::Error,
-    event::{
-        AuthRequestOutput, AuthResponseInput, AuthResponseOutput, ClientInitiate, NodeInitiate,
-    },
+    event::{AuthRequestOutput, AuthResponseInput, ClientInitiate, NodeInitiate},
     mealy::Transition,
     state::{AuthPending, Ready, Start},
 };
 use aead::{AeadMut, NewAead};
+use alloc::vec::Vec;
+use core::convert::TryFrom;
 use digest::{BlockInput, Digest, FixedOutput, Reset, Update};
-use mc_attest_core::{VerificationReport, VerificationReportData, Verifier};
-use mc_crypto_keys::Kex;
+use mc_attest_core::{ReportDataMask, VerificationReport, VerificationReportData};
+use mc_crypto_keys::{Kex, ReprBytes};
 use mc_crypto_noise::{
     HandshakeIX, HandshakeNX, HandshakeOutput, HandshakePattern, HandshakeState, HandshakeStatus,
     NoiseCipher, ProtocolName,
@@ -109,7 +109,7 @@ where
     fn try_next<R: CryptoRng + RngCore>(
         self,
         csprng: &mut R,
-        mut input: NodeInitiate<KexAlgo, Cipher, DigestType>,
+        input: NodeInitiate<KexAlgo, Cipher, DigestType>,
     ) -> Result<
         (
             AuthPending<KexAlgo, Cipher, DigestType>,
@@ -144,7 +144,7 @@ where
 
 /// AuthPending + AuthResponseInput => Ready + VerificationReportData
 impl<KexAlgo, Cipher, DigestType>
-    Transition<Ready<Cipher>, AuthResponseOutput, VerificationReportData>
+    Transition<Ready<Cipher>, AuthResponseInput, VerificationReportData>
     for AuthPending<KexAlgo, Cipher, DigestType>
 where
     KexAlgo: Kex,
@@ -156,7 +156,7 @@ where
     fn try_next<R: CryptoRng + RngCore>(
         self,
         _csprng: &mut R,
-        mut input: AuthResponseInput,
+        input: AuthResponseInput,
     ) -> Result<(Ready<Cipher>, VerificationReportData), Self::Error> {
         let output = self
             .state
@@ -167,7 +167,19 @@ where
             HandshakeStatus::Complete(result) => {
                 let remote_report = VerificationReport::decode(output.payload.as_slice())
                     .map_err(|_e| Error::ReportDeserialization)?;
-                let report_data = input.verifier.verify(&remote_report)?;
+
+                let mut verifier = input.verifier;
+                let report_data = verifier
+                    .report_data(
+                        &result
+                            .remote_identity
+                            .ok_or(Error::MissingRemoteIdentity)?
+                            .map_bytes(|bytes| {
+                                ReportDataMask::try_from(bytes)
+                                    .map_err(|_| Error::BadRemoteIdentity)
+                            })?,
+                    )
+                    .verify(&remote_report)?;
                 Ok((
                     Ready {
                         writer: result.initiator_cipher,

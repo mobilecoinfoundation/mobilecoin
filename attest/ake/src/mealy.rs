@@ -34,6 +34,6 @@ pub trait Transition<NextState: State, InputEvent: Input, OutputEvent: Output>: 
     fn try_next<R: CryptoRng + RngCore>(
         self,
         csprng: &mut R,
-        mut input: InputEvent,
+        input: InputEvent,
     ) -> Result<(NextState, OutputEvent), Self::Error>;
 }
