@@ -8,15 +8,15 @@ use crate::{
     grpc_error::ConsensusGrpcError,
     tx_manager::{TxManager, TxManagerError},
 };
-use grpcio::{RpcContext, UnarySink};
+use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_attest_api::attest::Message;
 use mc_common::logger::Logger;
 use mc_consensus_api::{
-    consensus_client_grpc::ConsensusClientApi, consensus_common::ProposeTxResponse,
+    consensus_client_grpc::ConsensusClientApi,
+    consensus_common::{ProposeTxResponse, ProposeTxResult},
 };
 use mc_consensus_enclave::{ConsensusEnclave, TxContext};
 use mc_ledger_db::Ledger;
-use mc_transaction_core::validation::TransactionValidationError;
 use mc_util_grpc::{rpc_logger, send_result};
 use mc_util_metrics::{self, SVC_COUNTERS};
 use std::sync::Arc;
@@ -81,31 +81,39 @@ impl ClientApiService {
         let tx_context = self.enclave.client_tx_propose(msg.into())?;
 
         let num_blocks = self.ledger.num_blocks().map_err(ConsensusGrpcError::from)?;
+        let mut response = ProposeTxResponse::new();
+        response.set_num_blocks(num_blocks);
+
+        // TODO: check if the transaction has already expired.
 
         // Reject the proposed transaction if it contains any key images that have already been spent.
         // This is done here as a courtesy to give clients immediate feedback about their transaction.
         if self.contains_spent_key_image(&tx_context)? {
-            return Err(ConsensusGrpcError::from(
-                TransactionValidationError::ContainsSpentKeyImage,
-            ));
+            response.set_result(ProposeTxResult::ContainsSpentKeyImage);
+            return Ok(response);
         }
 
-        self.tx_manager
-            .insert(tx_context)
-            .map(|tx_hash| {
+        match self.tx_manager.insert(tx_context) {
+            Ok(tx_hash) => {
                 // Submit for consideration in next SCP slot.
                 (*self.propose_tx_callback)(tx_hash, None, None);
                 counters::ADD_TX.inc();
-                let mut response = ProposeTxResponse::new();
-                response.set_num_blocks(num_blocks);
                 Ok(response)
-            })
-            .map_err(|err| {
-                if let TxManagerError::TransactionValidation(cause) = &err {
+            }
+            Err(err) => match err {
+                TxManagerError::TransactionValidation(cause) => {
                     counters::TX_VALIDATION_ERROR_COUNTER.inc(&format!("{:?}", cause));
+                    let result = ProposeTxResult::from(cause);
+                    response.set_result(result);
+                    Ok(response)
                 }
-                err
-            })?
+                TxManagerError::AlreadyInCache => {
+                    response.set_result(ProposeTxResult::Ok);
+                    Ok(response)
+                }
+                _ => Err(err.into()),
+            },
+        }
     }
 
     /// Returns true if the transaction contains a spent key image.
@@ -133,7 +141,7 @@ impl ConsensusClientApi for ClientApiService {
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
 
-        let resp = self
+        let resp: Result<ProposeTxResponse, RpcStatus> = self
             .handle_proposed_tx(request)
             .or_else(ConsensusGrpcError::into);
 
@@ -145,7 +153,10 @@ impl ConsensusClientApi for ClientApiService {
 
 #[cfg(test)]
 mod tests {
-    use crate::{client_api_service::ClientApiService, tx_manager::MockTxManager};
+    use crate::{
+        client_api_service::ClientApiService,
+        tx_manager::{MockTxManager, TxManagerError},
+    };
     use grpcio::{ChannelBuilder, Environment, Server, ServerBuilder};
     use mc_attest_api::attest::Message;
     use mc_common::{
@@ -159,7 +170,9 @@ mod tests {
     use mc_consensus_enclave::TxContext;
     use mc_consensus_enclave_mock::MockConsensusEnclave;
     use mc_ledger_db::MockLedger;
-    use mc_transaction_core::{ring_signature::KeyImage, tx::TxHash};
+    use mc_transaction_core::{
+        ring_signature::KeyImage, tx::TxHash, validation::TransactionValidationError,
+    };
     use std::sync::Arc;
 
     /// Starts the service on localhost and connects a client to it.
@@ -240,7 +253,147 @@ mod tests {
                 assert_eq!(propose_tx_response.get_result(), ProposeTxResult::Ok);
                 assert_eq!(propose_tx_response.get_num_blocks(), num_blocks);
             }
-            Err(e) => panic!("unexpected error: {:?}", e),
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        }
+    }
+
+    #[test_with_logger]
+    // Should return ProposeTxResult::ContainsSpentKeyImage if the tx contains a spent key image.
+    fn test_client_tx_propose_spent_key_image(logger: Logger) {
+        let mut consensus_enclave = MockConsensusEnclave::new();
+        {
+            // Return a TxContext that contains some KeyImages.
+            let mut tx_context = TxContext::default();
+            tx_context.key_images = vec![KeyImage::default(), KeyImage::default()];
+
+            consensus_enclave
+                .expect_client_tx_propose()
+                .times(1)
+                .return_const(Ok(tx_context));
+        }
+
+        // Arc<dyn Fn(TxHash, Option<&NodeID>, Option<&ResponderId>) + Sync + Send>
+        let scp_client_value_sender = Arc::new(
+            |_tx_hash: TxHash, _node_id: Option<&NodeID>, _responder_id: Option<&ResponderId>| {
+                // TODO: store inputs for inspection.
+            },
+        );
+
+        let mut ledger = MockLedger::new();
+        // The service should request num_blocks.
+        let num_blocks = 5;
+        ledger
+            .expect_num_blocks()
+            .times(1)
+            .return_const(Ok(num_blocks));
+
+        // The service should check if each key image is already in the ledger.
+        // Here, the first key image check succeeds, and the second fails.
+        ledger
+            .expect_contains_key_image()
+            .times(1)
+            .return_const(Ok(false));
+
+        ledger
+            .expect_contains_key_image()
+            .times(1)
+            .return_const(Ok(true));
+
+        // The service should return without calling tx_manager.
+        let tx_manager = MockTxManager::new();
+
+        let is_serving_fn = Arc::new(|| -> bool { true });
+
+        let instance = ClientApiService::new(
+            Arc::new(consensus_enclave),
+            scp_client_value_sender,
+            Arc::new(ledger),
+            Arc::new(tx_manager),
+            is_serving_fn,
+            logger,
+        );
+
+        // gRPC client and server.
+        let (client, _server) = get_client_server(instance);
+
+        let message = Message::default();
+        match client.client_tx_propose(&message) {
+            Ok(propose_tx_response) => {
+                assert_eq!(
+                    propose_tx_response.get_result(),
+                    ProposeTxResult::ContainsSpentKeyImage
+                );
+                assert_eq!(propose_tx_response.get_num_blocks(), num_blocks);
+            }
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        }
+    }
+
+    #[test_with_logger]
+    // Should return ProposeTxResult::<SomeError> if the tx is not well-formed.
+    fn test_client_tx_propose_tx_not_well_formed(logger: Logger) {
+        let mut consensus_enclave = MockConsensusEnclave::new();
+        {
+            // Return a TxContext that contains some KeyImages.
+            let mut tx_context = TxContext::default();
+            tx_context.key_images = vec![KeyImage::default(), KeyImage::default()];
+
+            consensus_enclave
+                .expect_client_tx_propose()
+                .times(1)
+                .return_const(Ok(tx_context));
+        }
+
+        // Arc<dyn Fn(TxHash, Option<&NodeID>, Option<&ResponderId>) + Sync + Send>
+        let scp_client_value_sender = Arc::new(
+            |_tx_hash: TxHash, _node_id: Option<&NodeID>, _responder_id: Option<&ResponderId>| {
+                // TODO: store inputs for inspection.
+            },
+        );
+
+        let num_blocks = 5;
+        let mut ledger = MockLedger::new();
+        // The service should request num_blocks.
+        ledger
+            .expect_num_blocks()
+            .times(1)
+            .return_const(Ok(num_blocks));
+
+        // The service should check if each key image is already in the ledger.
+        ledger
+            .expect_contains_key_image()
+            .times(2)
+            .return_const(Ok(false));
+
+        let mut tx_manager = MockTxManager::new();
+        tx_manager.expect_insert().times(1).return_const(Err(
+            TxManagerError::TransactionValidation(TransactionValidationError::InvalidRangeProof),
+        ));
+
+        let is_serving_fn = Arc::new(|| -> bool { true });
+
+        let instance = ClientApiService::new(
+            Arc::new(consensus_enclave),
+            scp_client_value_sender,
+            Arc::new(ledger),
+            Arc::new(tx_manager),
+            is_serving_fn,
+            logger,
+        );
+
+        // gRPC client and server.
+        let (client, _server) = get_client_server(instance);
+
+        let message = Message::default();
+        match client.client_tx_propose(&message) {
+            Ok(propose_tx_response) => {
+                assert_eq!(
+                    propose_tx_response.get_result(),
+                    ProposeTxResult::InvalidRangeProof
+                );
+                assert_eq!(propose_tx_response.get_num_blocks(), num_blocks);
+            }
+            Err(e) => panic!("Unexpected error: {:?}", e),
         }
     }
 }
