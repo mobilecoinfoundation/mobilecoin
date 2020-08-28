@@ -12,8 +12,8 @@
 //! recipient to use different subaddresses for different purposes and keep track of how much
 //! MobileCoin was sent to each subaddress.
 //!
-//! ## User address (a,b)
-//! To begin, a user generates a unique address `(a,b)`, where `a` is the private view key and
+//! ## User account keys (a,b)
+//! To begin, a user creates unique account keys `(a,b)`, where `a` is the private view key and
 //! `b` is the private spend key. The corresponding public keys are `A = a*G` and `B = b*G`, where
 //! `G` is the Ristretto base point. The keys `a`, `b`, `A`, and `B` "stay in the user's wallet":
 //! they are not shared with other users and they do not appear in the ledger.
@@ -25,8 +25,11 @@
 //!    `C_i = a * D`
 //!
 //! where `Hs` denotes an appropriately domain-separated hash function that returns a scalar.
+//! `C_i` is called the subaddress public view key; `D_i` is the public subadress spend key.
 //! The `subaddress index` `i` allows the user to generate many distinct subaddresses from a single
 //! address.
+//!
+//! See the `account_keys` crate for more about account keys and subaddresses.
 //!
 //! ## Sending MobileCoin to a subaddress (C,D)
 //! To send MobileCoin to a recipient's subaddress (C,D), the sender generates a unique random
@@ -67,45 +70,48 @@ use rand_core::{CryptoRng, RngCore};
 
 const G: RistrettoPoint = RISTRETTO_BASEPOINT_POINT;
 
-/// Applies a hash function and returns a Scalar.
-pub fn hash_to_scalar<B: AsRef<[u8]>>(data: B) -> Scalar {
+/// Hashes a curve point to a Scalar.
+fn hash_to_scalar(point: RistrettoPoint) -> Scalar {
     let mut hasher = Blake2b::new();
     hasher.update(&HASH_TO_SCALAR_DOMAIN_TAG);
-    hasher.update(data);
+    hasher.update(point.compress().as_bytes());
     Scalar::from_hash::<Blake2b>(hasher)
 }
 
-/// Generate a tx pubkey for a subaddress transaction
-pub fn compute_tx_pubkey(
-    tx_secret_key: &RistrettoPrivate,
-    recipient_spend_key: &RistrettoPublic,
-) -> RistrettoPublic {
-    let s: &Scalar = tx_secret_key.as_ref();
-    let D = recipient_spend_key.as_ref();
-    let R = s * D;
-    RistrettoPublic::from(R)
-}
-
-/// Creates the one-time public key `P = Hs(s*C)*G + D`.
+/// Creates the onetime public key `Hs( r * C ) * G + D`.
 ///
 /// # Arguments
 /// * `recipient` - The recipient's subaddress `(C,D)`.
-/// * `tx_private_key` - The transaction private key `s`. Assumed unique for each output.
+/// * `tx_private_key` - The transaction private key `r`. Must be unique for each output.
 ///
 pub fn create_onetime_public_key(
     recipient: &PublicAddress,
     tx_private_key: &RistrettoPrivate,
 ) -> RistrettoPublic {
-    // `Hs(s*C)`
+    // `Hs( r * C)`
     let Hs: Scalar = {
-        let s = tx_private_key.as_ref();
+        let r = tx_private_key.as_ref();
         let C = recipient.view_public_key().as_ref();
-        let sC = s * C;
-        hash_to_scalar(sC.compress().as_bytes())
+        let rC = r * C;
+        hash_to_scalar(rC)
     };
 
     let D = recipient.spend_public_key().as_ref();
     RistrettoPublic::from(Hs * G + D)
+}
+
+/// Returns the `tx_pub_key = r * D` for an output sent to subaddress (C, D).
+///
+/// # Arguments
+/// * `tx_secret_key` - A secret key `r` created by the transaction sender.
+/// * `recipient_spend_key` - The recipient's public subaddress spend key `D`.
+pub fn compute_tx_pubkey(
+    tx_secret_key: &RistrettoPrivate,
+    recipient_spend_key: &RistrettoPublic,
+) -> RistrettoPublic {
+    let r: &Scalar = tx_secret_key.as_ref();
+    let D = recipient_spend_key.as_ref();
+    RistrettoPublic::from(r * D)
 }
 
 /// Returns the subaddress for a given view key, output key and tx_pubkey
@@ -126,34 +132,34 @@ pub fn subaddress_for_key(
         let a = view_private_key.as_ref();
         let R = tx_public_key.as_ref();
         let aR = a * R;
-        hash_to_scalar(aR.compress().as_bytes())
+        hash_to_scalar(aR)
     };
 
     let P = output_public_key.as_ref();
     RistrettoPublic::from(P - Hs * G)
 }
 
-/// Convenience method, calls `subaddress_for_key` and returns true for a match
+/// Returns true if the output was sent to the subaddress.
 ///
 /// # Arguments
 /// * `subaddress_view_key` - The recipient's subaddress view key `(a, D)`.
-/// * `output_public_key` - Public key of the n^th output in the transaction (P).
-/// * `tx_public_key` - The transaction public key `R`.
+/// * `onetime_public_key` - The output's onetime_key
+/// * `tx_public_key` - The output's tx_public_key `R`.
 ///
 pub fn view_key_matches_output(
-    subaddress_view_key: &ViewKey,
-    output_public_key: &RistrettoPublic,
+    recipient: &ViewKey,
+    onetime_public_key: &RistrettoPublic,
     tx_public_key: &RistrettoPublic,
 ) -> bool {
     let D_prime = subaddress_for_key(
-        &subaddress_view_key.view_private_key,
-        output_public_key,
+        &recipient.view_private_key,
+        onetime_public_key,
         tx_public_key,
     );
-    subaddress_view_key.spend_public_key == D_prime
+    recipient.spend_public_key == D_prime
 }
 
-/// Computes the onetime private key `x = Hs(a*R) + d`.
+/// Computes the onetime private key `Hs(a*R) + d`.
 ///
 /// This assumes that the output belongs to the provided private keys.
 ///
@@ -167,12 +173,11 @@ pub fn recover_onetime_private_key(
     view_private_key: &RistrettoPrivate,
     subaddress_spend_private_key: &RistrettoPrivate,
 ) -> RistrettoPrivate {
-    // `Hs(a*R)`
+    // `Hs( a * R )`
     let Hs: Scalar = {
         let a = view_private_key.as_ref();
         let R = tx_public_key.as_ref();
-        let aR = a * R;
-        hash_to_scalar(aR.compress().as_bytes())
+        hash_to_scalar(a * R)
     };
 
     let d = subaddress_spend_private_key.as_ref();
