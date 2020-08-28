@@ -16,10 +16,10 @@ use mockall::*;
 use std::{collections::BTreeSet, fmt::Display, time::Duration};
 
 /// Max number of pending slots to store.
-const MAX_PENDING_SLOTS: usize = 10;
+const MAX_PENDING_SLOTS: usize = 100;
 
 /// Max number of externalized slots to store.
-const MAX_EXTERNALIZED_SLOTS: usize = 10;
+const MAX_EXTERNALIZED_SLOTS: usize = 100;
 
 /// A node participates in federated voting.
 pub struct Node<V: Value, ValidationError: Display> {
