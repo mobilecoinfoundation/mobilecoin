@@ -13,5 +13,5 @@ mc-attest-ake = { path = "../ake", default-features = false }
 mc-crypto-noise = { path = "../../crypto/noise", default-features = false }
 mc-sgx-compat = { path = "../../sgx/compat" }
 
-failure = { version = "0.1.5", default-features = false, features = ["derive"] }
+displaydoc = { version = "0.1.1", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }

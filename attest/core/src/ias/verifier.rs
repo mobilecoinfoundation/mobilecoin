@@ -29,7 +29,7 @@ use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
-use core::convert::TryFrom;
+use core::{convert::TryFrom, ops::Deref};
 use displaydoc::Display;
 use mbedtls::{
     hash::Type as HashType,
@@ -37,6 +37,7 @@ use mbedtls::{
     x509::{Certificate, Profile},
     Error as TlsError,
 };
+use mc_sgx_css::Signature;
 use mc_sgx_types::SGX_FLAGS_DEBUG;
 use serde::{Deserialize, Serialize};
 use sha2::{digest::Digest, Sha256};
@@ -70,14 +71,16 @@ pub enum Error {
 /// criteria specified.
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Verifier {
-    trust_anchors: Vec<Certificate>,
+    /// A list of DER-encoded trust anchor certificates.
+    trust_anchors: Vec<Vec<u8>>,
     report_body_verifiers: Vec<VerifyReportBodyType>,
     quote_verifiers: Vec<VerifyQuoteType>,
     ias_verifiers: Vec<VerifyIasReportDataType>,
     status_verifiers: Vec<VerifyIasReportDataType>,
 }
 
-/// Construct a new builder using the baked-in IAS root certificates
+/// Construct a new builder using the baked-in IAS root certificates and debug
+/// settings.
 impl Default for Verifier {
     fn default() -> Self {
         Self::new(IAS_SIGNING_ROOT_CERT_PEMS).expect("Invalid hard-coded certificates found")
@@ -88,6 +91,8 @@ impl Verifier {
     /// Create a new builder object to generate an IAS report verifier using the
     /// given trust anchor.
     pub fn new(pem_trust_anchors: &[&str]) -> Result<Self, Error> {
+        // We parse the PEM into certificates first, then back into the DER
+        // bytes.
         let trust_anchors = pem_trust_anchors
             .iter()
             .map(|pem| {
@@ -100,7 +105,10 @@ impl Verifier {
                 }
             })
             .collect::<Result<Vec<Certificate>, TlsError>>()
-            .map_err(|e| Error::InvalidTrustAnchor(e.to_string()))?;
+            .map_err(|e| Error::InvalidTrustAnchor(e.to_string()))?
+            .into_iter()
+            .map(|cert| cert.deref().as_der().to_owned())
+            .collect::<Vec<Vec<u8>>>();
 
         Ok(Self {
             trust_anchors,
@@ -330,9 +338,16 @@ impl Verifier {
         }));
         verifiers.extend_from_slice(&self.ias_verifiers);
 
+        let trust_anchors = self
+            .trust_anchors
+            .iter()
+            .map(|cert_der| Certificate::from_der(cert_der.as_slice()))
+            .collect::<Result<Vec<Certificate>, TlsError>>()
+            .expect("Trust anchors modified after Verifier creation");
+
         // Construct the top-level verifier.
         IasReportVerifier {
-            trust_anchors: self.trust_anchors.clone(),
+            trust_anchors,
             verifiers,
         }
         .verify(report)
@@ -612,7 +627,7 @@ impl MrEnclaveVerifier {
     /// BIOS configuration changes to address the provided advisory ID.
     ///
     /// This method should only be used when advised by an enclave author.
-    pub fn allow_config_advisory(mut self, id: &str) -> Self {
+    pub fn allow_config_advisory(&mut self, id: &str) -> &mut Self {
         self.config_ids.push(id.to_owned());
         self
     }
@@ -621,7 +636,7 @@ impl MrEnclaveVerifier {
     /// BIOS configuration changes to address the provided advisory IDs.
     ///
     /// This method should only be used when advised by an enclave author.
-    pub fn allow_config_advisories(mut self, ids: &[&str]) -> Self {
+    pub fn allow_config_advisories(&mut self, ids: &[&str]) -> &mut Self {
         for id in ids {
             self.config_ids.push((*id).to_owned());
         }
@@ -632,7 +647,7 @@ impl MrEnclaveVerifier {
     /// hardening for the given advisory ID.
     ///
     /// This method should only be used when advised by an enclave author.
-    pub fn allow_hardening_advisory(mut self, id: &str) -> Self {
+    pub fn allow_hardening_advisory(&mut self, id: &str) -> &mut Self {
         self.sw_ids.push(id.to_owned());
         self
     }
@@ -641,11 +656,17 @@ impl MrEnclaveVerifier {
     /// hardening for the given advisory IDs.
     ///
     /// This method should only be used when advised by an enclave author.
-    pub fn allow_hardening_advisories(mut self, ids: &[&str]) -> Self {
+    pub fn allow_hardening_advisories(&mut self, ids: &[&str]) -> &mut Self {
         for id in ids {
             self.sw_ids.push((*id).to_owned());
         }
         self
+    }
+}
+
+impl From<Signature> for MrEnclaveVerifier {
+    fn from(src: Signature) -> Self {
+        Self::new(src.mrenclave().clone().into())
     }
 }
 
@@ -693,7 +714,7 @@ impl MrSignerVerifier {
     /// BIOS configuration changes to address the provided advisory ID.
     ///
     /// This method should only be used when advised by an enclave author.
-    pub fn allow_config_advisory(mut self, id: &str) -> Self {
+    pub fn allow_config_advisory(&mut self, id: &str) -> &mut Self {
         self.config_ids.push(id.to_owned());
         self
     }
@@ -702,7 +723,7 @@ impl MrSignerVerifier {
     /// BIOS configuration changes to address the provided advisory IDs.
     ///
     /// This method should only be used when advised by an enclave author.
-    pub fn allow_config_advisories(mut self, ids: &[&str]) -> Self {
+    pub fn allow_config_advisories(&mut self, ids: &[&str]) -> &mut Self {
         for id in ids {
             self.config_ids.push((*id).to_owned());
         }
@@ -713,7 +734,7 @@ impl MrSignerVerifier {
     /// software/build-time hardening for the given advisory ID.
     ///
     /// This method should only be used when advised by an enclave author.
-    pub fn allow_hardening_advisory(mut self, id: &str) -> Self {
+    pub fn allow_hardening_advisory(&mut self, id: &str) -> &mut Self {
         self.sw_ids.push(id.to_owned());
         self
     }
@@ -722,11 +743,17 @@ impl MrSignerVerifier {
     /// software/build-time hardening for the given advisory IDs.
     ///
     /// This method should only be used when advised by an enclave author.
-    pub fn allow_hardening_advisories(mut self, ids: &[&str]) -> Self {
+    pub fn allow_hardening_advisories(&mut self, ids: &[&str]) -> &mut Self {
         for id in ids {
             self.sw_ids.push((*id).to_owned());
         }
         self
+    }
+}
+
+impl From<Signature> for MrSignerVerifier {
+    fn from(src: Signature) -> Self {
+        Self::new(src.mrsigner().into(), src.product_id(), src.version())
     }
 }
 

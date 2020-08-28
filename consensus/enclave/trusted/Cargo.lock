@@ -626,6 +626,7 @@ dependencies = [
  "mc-common 0.6.0",
  "mc-crypto-rand 0.6.0",
  "mc-sgx-build 0.6.0",
+ "mc-sgx-css 0.6.0",
  "mc-sgx-types 0.6.0",
  "mc-util-encodings 0.6.0",
  "prost 0.6.1 (git+https://github.com/danburkert/prost?rev=6113789f70b69709820becba4242824b4fb3ffec)",
@@ -640,7 +641,7 @@ dependencies = [
 name = "mc-attest-enclave-api"
 version = "0.6.0"
 dependencies = [
- "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "displaydoc 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "mc-attest-ake 0.6.0",
  "mc-attest-core 0.6.0",
  "mc-crypto-noise 0.6.0",
@@ -964,6 +965,14 @@ dependencies = [
  "mc-sgx-service 0.6.0",
  "mc-sgx-sync 0.6.0",
  "mc-sgx-types 0.6.0",
+]
+
+[[package]]
+name = "mc-sgx-css"
+version = "0.6.0"
+dependencies = [
+ "displaydoc 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sha2 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

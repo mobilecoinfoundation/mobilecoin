@@ -12,9 +12,11 @@ use crate::{
 use aes_gcm::Aes256Gcm;
 use failure::Fail;
 use grpcio::{ChannelBuilder, Environment, Error as GrpcError};
-use mc_attest_ake::{ClientInitiate, Error as AkeError, Ready, Start, Transition};
+use mc_attest_ake::{
+    AuthResponseInput, ClientInitiate, Error as AkeError, Ready, Start, Transition,
+};
 use mc_attest_api::{attest::Message, attest_grpc::AttestedApiClient};
-use mc_attest_core::Measurement;
+use mc_attest_core::Verifier;
 use mc_common::{
     logger::{log, o, Logger},
     trace_time,
@@ -43,10 +45,6 @@ use std::{
     result::Result as StdResult,
     sync::Arc,
 };
-
-// FIXME: MC-530 (better place to store MobileCoin-specific enclave details)
-const MC_NODE_PRODUCT_ID: u16 = 1;
-const MC_SECURITY_VERSION: u16 = 1;
 
 #[derive(Debug, Fail)]
 pub enum ThickClientAttestationError {
@@ -105,8 +103,8 @@ pub struct ThickClient {
     attested_api_client: AttestedApiClient,
     /// The gRPC API client we will use for legacy transaction submission.
     consensus_client_api_client: ConsensusClientApiClient,
-    /// The expected node enclave measurement value.
-    expected_measurements: Vec<Measurement>,
+    /// An object which can verify a consensus node's provided IAS report
+    verifier: Verifier,
     /// The AKE state machine object, if one is available.
     enclave_connection: Option<Ready<Aes256Gcm>>,
 }
@@ -115,7 +113,7 @@ impl ThickClient {
     /// Create a new attested connection to the given consensus node.
     pub fn new(
         uri: ClientUri,
-        expected_measurements: Vec<Measurement>,
+        verifier: Verifier,
         env: Arc<Environment>,
         logger: Logger,
     ) -> Result<Self> {
@@ -133,7 +131,7 @@ impl ThickClient {
             blockchain_api_client,
             consensus_client_api_client,
             attested_api_client,
-            expected_measurements,
+            verifier,
             enclave_connection: None,
         })
     }
@@ -161,20 +159,16 @@ impl AttestedConnection for ThickClient {
 
         let mut csprng = McRng::default();
 
-        let initiator = Start::new(
-            self.uri.responder_id()?.to_string(),
-            self.expected_measurements.clone(),
-            MC_NODE_PRODUCT_ID,
-            MC_SECURITY_VERSION,
-            mc_attest_core::DEBUG_ENCLAVE,
-        );
+        let initiator = Start::new(self.uri.responder_id()?.to_string());
 
         let init_input = ClientInitiate::<X25519, Aes256Gcm, Sha512>::default();
         let (initiator, auth_request_output) = initiator.try_next(&mut csprng, init_input)?;
 
-        let auth_response = self.attested_api_client.auth(&auth_request_output.into())?;
+        let auth_response_msg = self.attested_api_client.auth(&auth_request_output.into())?;
 
-        let (initiator, _) = initiator.try_next(&mut csprng, auth_response.into())?;
+        let auth_response_event =
+            AuthResponseInput::new(auth_response_msg.into(), self.verifier.clone());
+        let (initiator, _) = initiator.try_next(&mut csprng, auth_response_event)?;
 
         self.enclave_connection = Some(initiator);
 

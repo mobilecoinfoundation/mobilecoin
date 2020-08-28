@@ -21,8 +21,8 @@ mod state;
 pub use self::{
     error::Error,
     event::{
-        AuthRequestOutput, AuthResponseOutput, Ciphertext, ClientAuthRequestInput, ClientInitiate,
-        NodeAuthRequestInput, NodeInitiate, Plaintext,
+        AuthRequestOutput, AuthResponseInput, AuthResponseOutput, Ciphertext,
+        ClientAuthRequestInput, ClientInitiate, NodeAuthRequestInput, NodeInitiate, Plaintext,
     },
     mealy::Transition,
     state::{AuthPending, Ready, Start},
