@@ -372,29 +372,58 @@ mod tests {
     // TODO: test recover_onetime_private_key
 
     #[test]
-    // `recover_onetime_private_key` should return a valid Public/Private key pair.
+    // Returns the private key corresponding to `onetime_public_key`.
     fn test_recover_onetime_private_key_valid_keypair() {
         let mut rng = McRng::default();
         let account = AccountKey::random(&mut rng);
+        let (_c, d, recipient) = get_subaddress(&account, 787);
+
         let tx_private_key = RistrettoPrivate::from_random(&mut rng);
+        let (onetime_public_key, tx_public_key) =
+            get_output_public_keys(&tx_private_key, &recipient);
 
-        // Sender creates a one-time public key.
-        let onetime_public_key: RistrettoPublic =
-            create_onetime_public_key(&tx_private_key, &account.default_subaddress());
-        let tx_pub_key = create_tx_public_key(
-            &tx_private_key,
-            account.default_subaddress().spend_public_key(),
-        );
-
-        let onetime_private_key = recover_onetime_private_key(
-            &tx_pub_key,
-            account.view_private_key(),
-            &account.default_subaddress_spend_private(),
-        );
+        let onetime_private_key =
+            recover_onetime_private_key(&tx_public_key, account.view_private_key(), &d);
         assert_eq!(
             onetime_public_key,
             RistrettoPublic::from(&onetime_private_key)
         );
+    }
+
+    #[test]
+    // Returns meaningless data if the output contains the wrong onetime_public_key.
+    fn test_recover_onetime_private_key_wrong_onetime_public_key() {
+        let mut rng = McRng::default();
+        let account = AccountKey::random(&mut rng);
+        let (_c, d, recipient) = get_subaddress(&account, 787);
+
+        let tx_private_key = RistrettoPrivate::from_random(&mut rng);
+        let (_, tx_public_key) = get_output_public_keys(&tx_private_key, &recipient);
+
+        let wrong_onetime_public_key = RistrettoPublic::from_random(&mut rng);
+
+        let onetime_private_key =
+            recover_onetime_private_key(&tx_public_key, account.view_private_key(), &d);
+
+        assert!(wrong_onetime_public_key != RistrettoPublic::from(&onetime_private_key));
+    }
+
+    #[test]
+    // Returns meaningless data if the output contains the wrong tx_public_key.
+    fn test_recover_onetime_private_key_wrong_tx_public_key() {
+        let mut rng = McRng::default();
+        let account = AccountKey::random(&mut rng);
+        let (_c, d, recipient) = get_subaddress(&account, 787);
+
+        let tx_private_key = RistrettoPrivate::from_random(&mut rng);
+        let (onetime_public_key, _) = get_output_public_keys(&tx_private_key, &recipient);
+
+        let wrong_tx_public_key = RistrettoPublic::from_random(&mut rng);
+
+        let onetime_private_key =
+            recover_onetime_private_key(&wrong_tx_public_key, account.view_private_key(), &d);
+
+        assert!(onetime_public_key != RistrettoPublic::from(&onetime_private_key));
     }
 
     // TODO: test create_shared_secret
