@@ -191,7 +191,9 @@ message TxOut {
     // Public key.
     CompressedRistretto public_key = 3;
 
-    // 128 byte encrypted fog hint
+    // Encrypted fog hint payload.
+    // This is an mc-crypto-box cryptogram for the fog ingest server,
+    // or a random cryptogram indistinguishable from a real one.
     EncryptedFogHint e_account_hint = 4;
 }
 

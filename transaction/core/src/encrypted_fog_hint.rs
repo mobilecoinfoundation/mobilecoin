@@ -10,7 +10,7 @@
 use alloc::{vec, vec::Vec};
 use core::{convert::TryFrom, fmt};
 use generic_array::{
-    typenum::{Diff, Unsigned, U128},
+    typenum::{Diff, Unsigned, U90},
     GenericArray,
 };
 use mc_crypto_box::{CryptoBox, VersionedCryptoBox};
@@ -26,9 +26,9 @@ use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
 // The length of the encrypted fog hint field in the ledger.
-// Must be at least as large as McRistrettoBox::FooterSize, or it can't hold a
-// Ristretto-Box encryption.
-pub type EncryptedFogHintSize = U128;
+// Must be at least as large as mc_crypto_box::VersionedCryptoBox::FooterSize.
+// Footersize = 50, + 32 for one curve point, + 8 bytes of magic / padding space for future needs
+pub type EncryptedFogHintSize = U90;
 pub const ENCRYPTED_FOG_HINT_LEN: usize = EncryptedFogHintSize::USIZE;
 
 type Bytes = GenericArray<u8, EncryptedFogHintSize>;

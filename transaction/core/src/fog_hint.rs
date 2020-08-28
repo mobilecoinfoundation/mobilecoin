@@ -74,7 +74,7 @@ impl FogHint {
     /// * ingest_server_pubkey (to encrypt against)
     ///
     /// # Returns
-    /// * 128 byte payload, cannot fail
+    /// * Encrypted fog hint payload, cannot fail
     pub fn encrypt<T: RngCore + CryptoRng>(
         &self,
         ingest_server_pubkey: &RistrettoPublic,
@@ -101,7 +101,7 @@ impl FogHint {
     ///
     /// # Arguments
     /// * acct_server_private_key
-    /// * 128 byte encrypted payload
+    /// * EncryptedFogHint payload
     ///
     /// # Returns
     /// * Fog hint on success, cryptobox error otherwise
@@ -127,7 +127,7 @@ impl FogHint {
     ///
     /// # Arguments
     /// * ingest_server_private_key
-    /// * 128 byte encrypted payload
+    /// * encrypted fog hint payload
     ///
     /// # Returns
     /// * (Fog hint, true) on success (Default Fog hint, false) otherwise
