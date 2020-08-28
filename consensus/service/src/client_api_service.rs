@@ -146,7 +146,7 @@ impl ConsensusClientApi for ClientApiService {
 #[cfg(test)]
 mod tests {
     use crate::{client_api_service::ClientApiService, tx_manager::MockTxManager};
-    use grpcio::{ChannelBuilder, Environment, ServerBuilder};
+    use grpcio::{ChannelBuilder, Environment, Server, ServerBuilder};
     use mc_attest_api::attest::Message;
     use mc_common::{
         logger::{test_with_logger, Logger},
@@ -162,8 +162,24 @@ mod tests {
     use mc_transaction_core::{ring_signature::KeyImage, tx::TxHash};
     use std::sync::Arc;
 
-    #[test_with_logger]
+    /// Starts the service on localhost and connects a client to it.
+    fn get_client_server(instance: ClientApiService) -> (ConsensusClientApiClient, Server) {
+        let service = consensus_client_grpc::create_consensus_client_api(instance);
+        let env = Arc::new(Environment::new(1));
+        let mut server = ServerBuilder::new(env.clone())
+            .register_service(service)
+            .bind("127.0.0.1", 0)
+            .build()
+            .unwrap();
+        server.start();
+        let (_, port) = server.bind_addrs().next().unwrap();
 
+        let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
+        let client = ConsensusClientApiClient::new(ch);
+        (client, server)
+    }
+
+    #[test_with_logger]
     fn test_client_tx_propose_ok(logger: Logger) {
         let mut consensus_enclave = MockConsensusEnclave::new();
         {
@@ -206,7 +222,7 @@ mod tests {
 
         let is_serving_fn = Arc::new(|| -> bool { true });
 
-        let client_api_service = ClientApiService::new(
+        let instance = ClientApiService::new(
             Arc::new(consensus_enclave),
             scp_client_value_sender,
             Arc::new(ledger),
@@ -215,19 +231,8 @@ mod tests {
             logger,
         );
 
-        let service = consensus_client_grpc::create_consensus_client_api(client_api_service);
-
-        let env = Arc::new(Environment::new(1));
-        let mut server = ServerBuilder::new(env.clone())
-            .register_service(service)
-            .bind("127.0.0.1", 0)
-            .build()
-            .unwrap();
-        server.start();
-        let (_, port) = server.bind_addrs().next().unwrap();
-
-        let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
-        let client = ConsensusClientApiClient::new(ch);
+        // gRPC client and server.
+        let (client, _server) = get_client_server(instance);
 
         let message = Message::default();
         match client.client_tx_propose(&message) {
