@@ -239,17 +239,16 @@ mod tests {
         (c, d, subaddress)
     }
 
-    // hash_to_scalar should agree with test vectors
+    // TODO: test hash_to_scalar
 
     #[test]
     // `create_onetime_public_key` should produce a public key that agrees with the recipient's view key.
     fn test_create_onetime_public_key() {
         let mut rng = McRng::default();
-        let tx_private_key = RistrettoPrivate::from_random(&mut rng);
-
         let account: AccountKey = AccountKey::random(&mut rng);
         let recipient = account.default_subaddress();
 
+        let tx_private_key = RistrettoPrivate::from_random(&mut rng);
         let (onetime_public_key, tx_public_key) =
             get_output_public_keys(&tx_private_key, &recipient);
 
@@ -267,6 +266,8 @@ mod tests {
             "The one-time public key should not match other view keys."
         );
     }
+
+    // TODO: test_create_tx_public_key
 
     #[test]
     // Should recover the correct public subaddress spend key D_i when the output belongs to the recipient.
@@ -332,6 +333,10 @@ mod tests {
         assert!(D_prime != *recipient.spend_public_key());
     }
 
+    // TODO: test view_key_matches_output
+
+    // TODO: test recover_onetime_private_key
+
     #[test]
     // `recover_onetime_private_key` should return a valid Public/Private key pair.
     fn test_recover_onetime_private_key_valid_keypair() {
@@ -357,4 +362,6 @@ mod tests {
             RistrettoPublic::from(&onetime_private_key)
         );
     }
+
+    // TODO: test create_shared_secret
 }
