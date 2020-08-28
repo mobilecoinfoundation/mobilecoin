@@ -369,8 +369,6 @@ mod tests {
         ));
     }
 
-    // TODO: test recover_onetime_private_key
-
     #[test]
     // Returns the private key corresponding to `onetime_public_key`.
     fn test_recover_onetime_private_key_valid_keypair() {
@@ -426,5 +424,19 @@ mod tests {
         assert!(onetime_public_key != RistrettoPublic::from(&onetime_private_key));
     }
 
-    // TODO: test create_shared_secret
+    #[test]
+    // shared_secret(a,B) should equal shared_secret(b,A)
+    fn test_create_shared_secret_is_symmetric() {
+        let mut rng = McRng::default();
+        let a = RistrettoPrivate::from_random(&mut rng);
+        let A = RistrettoPublic::from(&a);
+
+        let b = RistrettoPrivate::from_random(&mut rng);
+        let B = RistrettoPublic::from(&b);
+
+        let aB = create_shared_secret(&B, &a);
+        let bA = create_shared_secret(&A, &b);
+
+        assert_eq!(aB, bA);
+    }
 }
