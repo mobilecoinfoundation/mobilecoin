@@ -210,34 +210,126 @@ mod tests {
     use mc_crypto_rand::McRng;
     use mc_util_from_random::FromRandom;
 
+    // Returns (onetime_public_key, tx_public_key)
+    fn get_output_public_keys(
+        tx_private_key: &RistrettoPrivate,
+        recipient: &PublicAddress,
+    ) -> (RistrettoPublic, RistrettoPublic) {
+        let onetime_public_key = create_onetime_public_key(&tx_private_key, recipient);
+        let tx_public_key = create_tx_public_key(&tx_private_key, recipient.spend_public_key());
+        (onetime_public_key, tx_public_key)
+    }
+
+    // Get the account's i^th subaddress.
+    fn get_subaddress(
+        account: &AccountKey,
+        index: u64,
+    ) -> (RistrettoPrivate, RistrettoPrivate, PublicAddress) {
+        // (view, spend)
+        let (c, d) = (
+            account.subaddress_view_private(index),
+            account.subaddress_spend_private(index),
+        );
+
+        // (View, Spend)
+        let (C, D) = (RistrettoPublic::from(&c), RistrettoPublic::from(&d));
+        // Look out! The argument ordering here ie weird.
+        let subaddress = PublicAddress::new(&D, &C);
+
+        (c, d, subaddress)
+    }
+
+    // hash_to_scalar should agree with test vectors
+
     #[test]
     // `create_onetime_public_key` should produce a public key that agrees with the recipient's view key.
     fn test_create_onetime_public_key() {
         let mut rng = McRng::default();
         let tx_private_key = RistrettoPrivate::from_random(&mut rng);
 
-        let recipient: AccountKey = AccountKey::random(&mut rng);
+        let account: AccountKey = AccountKey::random(&mut rng);
+        let recipient = account.default_subaddress();
 
-        let onetime_public_key =
-            create_onetime_public_key(&tx_private_key, &recipient.default_subaddress());
-        let tx_pub_key = create_tx_public_key(
-            &tx_private_key,
-            recipient.default_subaddress().spend_public_key(),
-        );
+        let (onetime_public_key, tx_public_key) =
+            get_output_public_keys(&tx_private_key, &recipient);
 
         assert!(view_key_matches_output(
-            &recipient.view_key(),
+            &account.view_key(), // (a, D_0)
             &onetime_public_key,
-            &tx_pub_key
+            &tx_public_key
         ));
 
         let other_account = AccountKey::random(&mut rng);
         let bad_view_key = other_account.view_key();
         assert_eq!(
-            view_key_matches_output(&bad_view_key, &onetime_public_key, &tx_pub_key),
+            view_key_matches_output(&bad_view_key, &onetime_public_key, &tx_public_key),
             false,
             "The one-time public key should not match other view keys."
         );
+    }
+
+    #[test]
+    // Should recover the correct public subaddress spend key D_i when the output belongs to the recipient.
+    fn test_recover_public_subaddress_spend_key_ok() {
+        let mut rng = McRng::default();
+        let account: AccountKey = AccountKey::random(&mut rng);
+        let (_c, _d, recipient) = get_subaddress(&account, 7);
+
+        let tx_private_key = RistrettoPrivate::from_random(&mut rng);
+        let (onetime_public_key, tx_public_key) =
+            get_output_public_keys(&tx_private_key, &recipient);
+
+        let D_prime = recover_public_subaddress_spend_key(
+            account.view_private_key(),
+            &onetime_public_key,
+            &tx_public_key,
+        );
+
+        assert_eq!(D_prime, *recipient.spend_public_key());
+    }
+
+    #[test]
+    // Should not panic if the output contains the wrong onetime_public_key.
+    fn test_recover_public_subaddress_spend_key_wrong_onetime_public_key() {
+        let mut rng = McRng::default();
+        let account: AccountKey = AccountKey::random(&mut rng);
+        let (_c, _d, recipient) = get_subaddress(&account, 7);
+
+        let tx_private_key = RistrettoPrivate::from_random(&mut rng);
+        let (_, tx_public_key) = get_output_public_keys(&tx_private_key, &recipient);
+        let wrong_onetime_public_key = RistrettoPublic::from_random(&mut rng);
+
+        // Should not panic.
+        let D_prime = recover_public_subaddress_spend_key(
+            account.view_private_key(),
+            &wrong_onetime_public_key,
+            &tx_public_key,
+        );
+
+        // Returns meaningless public key.
+        assert!(D_prime != *recipient.spend_public_key());
+    }
+
+    #[test]
+    // Should not panic if the output contains the wrong tx_public_key.
+    fn test_recover_public_subaddress_spend_key_wrong_tx_public_key() {
+        let mut rng = McRng::default();
+        let account: AccountKey = AccountKey::random(&mut rng);
+        let (_c, _d, recipient) = get_subaddress(&account, 7);
+
+        let tx_private_key = RistrettoPrivate::from_random(&mut rng);
+        let (onetime_public_key, _) = get_output_public_keys(&tx_private_key, &recipient);
+        let wrong_tx_public_key = RistrettoPublic::from_random(&mut rng);
+
+        // Should not panic.
+        let D_prime = recover_public_subaddress_spend_key(
+            account.view_private_key(),
+            &onetime_public_key,
+            &wrong_tx_public_key,
+        );
+
+        // Returns meaningless public key.
+        assert!(D_prime != *recipient.spend_public_key());
     }
 
     #[test]
