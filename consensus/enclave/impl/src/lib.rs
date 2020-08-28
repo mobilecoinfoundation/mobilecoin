@@ -15,7 +15,10 @@ extern crate alloc;
 mod identity;
 
 use alloc::{collections::BTreeSet, format, string::String, vec::Vec};
-use core::convert::{TryFrom, TryInto};
+use core::{
+    convert::{TryFrom, TryInto},
+    ptr::null_mut,
+};
 use identity::Ed25519Identity;
 use mc_account_keys::PublicAddress;
 use mc_attest_core::{
@@ -27,9 +30,8 @@ use mc_attest_enclave_api::{
 };
 use mc_attest_trusted::SealAlgo;
 use mc_common::{
-    Hash,
     logger::{log, Logger},
-    ResponderId,
+    Hash, ResponderId,
 };
 use mc_consensus_enclave_api::{
     ConsensusEnclave, Error, LocallyEncryptedTx, Result, SealedBlockSigningKey, TxContext,
@@ -38,12 +40,19 @@ use mc_consensus_enclave_api::{
 use mc_crypto_ake_enclave::AkeEnclaveState;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_hashes::Blake2b256;
-use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Pair, Ed25519Public, RistrettoPrivate, RistrettoPublic, X25519Public};
+use mc_crypto_keys::{
+    CompressedRistrettoPublic, Ed25519Pair, Ed25519Public, RistrettoPrivate, RistrettoPublic,
+    X25519Public,
+};
 use mc_crypto_message_cipher::{AesMessageCipher, MessageCipher};
 use mc_crypto_rand::McRng;
 use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
-use mc_sgx_types::{uint8_t, uint32_t, SGX_ECP256_KEY_SIZE, SGX_NISTP_ECP256_KEY_SIZE, sgx_ec256_public_t, sgx_ec256_signature_t, sgx_ecc_state_handle_t, sgx_status_t, sgx_ecdsa_verify_hash};
+use mc_sgx_types::{
+    sgx_ec256_public_t, sgx_ec256_signature_t, sgx_ecc256_open_context, sgx_ecc_state_handle_t,
+    sgx_ecdsa_verify_hash, sgx_status_t, uint32_t, uint8_t, SGX_ECP256_KEY_SIZE,
+    SGX_NISTP_ECP256_KEY_SIZE,
+};
 use mc_transaction_core::{
     amount::Amount,
     constants::{FEE_SPEND_PUBLIC_KEY, FEE_VIEW_PUBLIC_KEY},
@@ -330,67 +339,10 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         mc_transaction_core::validation::validate(&tx, block_index, &proofs, &mut csprng)?;
 
         // check ECDSA signature(s) if HsmParams present
-        if tx.hsm_params.tx_type == HsmTxType::Deposit as i32 || tx.hsm_params.tx_type == HsmTxType::Transfer as i32 {
-            let mut gx: [uint8_t; SGX_ECP256_KEY_SIZE] = [0; SGX_ECP256_KEY_SIZE];
-            gx.copy_from_slice(&tx.hsm_params.input_ecdsa_key[0..SGX_ECP256_KEY_SIZE]);
-            
-            let mut gy: [uint8_t; SGX_ECP256_KEY_SIZE] = [0; SGX_ECP256_KEY_SIZE];
-            gy.copy_from_slice(&tx.hsm_params.input_ecdsa_key[SGX_ECP256_KEY_SIZE..]);
-
-            let input_public_key = sgx_ec256_public_t {
-                gx,
-                gy,
-            };
-            let mut x: [uint32_t; SGX_NISTP_ECP256_KEY_SIZE] = [0; SGX_NISTP_ECP256_KEY_SIZE];
-            for i in 0..SGX_NISTP_ECP256_KEY_SIZE {
-                let first = 4*i;
-                let last = 4*(i + 1);
-                let mut hx: [u8; 4] = [0; 4];
-                hx.copy_from_slice(&tx.hsm_params.input_ecdsa_key[first..last]);
-                
-                x[i] = u32::from_le_bytes(hx);
-            }
-            let mut y: [uint32_t; SGX_NISTP_ECP256_KEY_SIZE] = [0; SGX_NISTP_ECP256_KEY_SIZE];
-            for i in 0..SGX_NISTP_ECP256_KEY_SIZE {
-                let first = 4*i;
-                let last = 4*(i + 1);
-                let mut hy: [u8; 4] = [0; 4];
-                hy.copy_from_slice(&tx.hsm_params.input_ecdsa_key[first..last]);
-                
-                y[i] = u32::from_le_bytes(hy);
-            }
-
-            let mut input_signature = sgx_ec256_signature_t {
-                x,
-                y,
-            };
-
-            // iterate over the output TxOuts and find the one with the correct target key
-            let target_key = CompressedRistrettoPublic::try_from(&tx.hsm_params.input_target_key[..])?;
-            let mut hash = Hash::default();
-            for txo in &tx.prefix.outputs {
-                if txo.target_key == target_key {
-                    hash = txo.hash();
-                }
-            }
-
-            let mut result = 0u8;
-            let mut ecc_handle: sgx_ecc_state_handle_t;
-            let ret = sgx_ecdsa_verify_hash(
-                &hash,
-                &input_public_key,
-                &mut input_signature,
-                &mut result,
-                ecc_handle);
-
-            if ret != sgx_status_t::SGX_SUCCESS {
-                return Err(Error::Sgx(SgxError::from(ret)));
-            }
+        if check_hsm_signatures(&tx)? == false {
+            return Err(Error::Hsm);
         }
-        
-        if tx.hsm_params.tx_type == HsmTxType::Withdrawal as i32 || tx.hsm_params.tx_type == HsmTxType::Transfer as i32 {
 
-        }
         // Convert into a well formed encrypted transaction + context.
         let well_formed_tx_context = WellFormedTxContext::from(&tx);
         let well_formed_tx = WellFormedTx::from(tx);
@@ -460,7 +412,10 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                 &mut rng,
             )?;
 
-            // XXX TODO: check ECDSA signature on HsmParams
+            // check ECDSA signature on HsmParams
+            if check_hsm_signatures(&tx)? == false {
+                return Err(Error::Hsm);
+            }
 
             for proof in proofs {
                 let root_element = proof
@@ -578,6 +533,81 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 
         Ok((block, block_contents, signature))
     }
+}
+
+fn check_hsm_signatures(tx: &Tx) -> Result<bool> {
+    if tx.hsm_params.tx_type == HsmTxType::Deposit as i32
+        || tx.hsm_params.tx_type == HsmTxType::Transfer as i32
+    {
+        let mut gx: [uint8_t; SGX_ECP256_KEY_SIZE] = [0; SGX_ECP256_KEY_SIZE];
+        gx.copy_from_slice(&tx.hsm_params.input_ecdsa_key[0..SGX_ECP256_KEY_SIZE]);
+
+        let mut gy: [uint8_t; SGX_ECP256_KEY_SIZE] = [0; SGX_ECP256_KEY_SIZE];
+        gy.copy_from_slice(&tx.hsm_params.input_ecdsa_key[SGX_ECP256_KEY_SIZE..]);
+
+        let input_public_key = sgx_ec256_public_t { gx, gy };
+        let mut x: [uint32_t; SGX_NISTP_ECP256_KEY_SIZE] = [0; SGX_NISTP_ECP256_KEY_SIZE];
+        for i in 0..SGX_NISTP_ECP256_KEY_SIZE {
+            let first = 4 * i;
+            let last = 4 * (i + 1);
+            let mut hx: [u8; 4] = [0; 4];
+            hx.copy_from_slice(&tx.hsm_params.input_ecdsa_key[first..last]);
+
+            x[i] = u32::from_le_bytes(hx);
+        }
+        let mut y: [uint32_t; SGX_NISTP_ECP256_KEY_SIZE] = [0; SGX_NISTP_ECP256_KEY_SIZE];
+        for i in 0..SGX_NISTP_ECP256_KEY_SIZE {
+            let first = 4 * i;
+            let last = 4 * (i + 1);
+            let mut hy: [u8; 4] = [0; 4];
+            hy.copy_from_slice(&tx.hsm_params.input_ecdsa_key[first..last]);
+
+            y[i] = u32::from_le_bytes(hy);
+        }
+
+        let mut input_signature = sgx_ec256_signature_t { x, y };
+
+        // iterate over the output TxOuts and find the one with the correct target key
+        let target_key = CompressedRistrettoPublic::try_from(&tx.hsm_params.input_target_key[..])?;
+        let mut hash = Hash::default();
+        for txo in &tx.prefix.outputs {
+            if txo.target_key == target_key {
+                hash = txo.hash();
+            }
+        }
+
+        let mut result = 0u8;
+        let mut ecc_handle: sgx_ecc_state_handle_t = null_mut() as *mut mc_sgx_types::c_void;
+        unsafe {
+            let ctx_ret = sgx_ecc256_open_context(&mut ecc_handle);
+
+            if ctx_ret != sgx_status_t::SGX_SUCCESS {
+                return Err(Error::Sgx(SgxError::from(ctx_ret)));
+            }
+
+            let ret = sgx_ecdsa_verify_hash(
+                hash.as_ptr(),
+                &input_public_key,
+                &mut input_signature,
+                &mut result,
+                ecc_handle,
+            );
+
+            if result != 0 {
+                return Ok(false);
+            }
+
+            if ret != sgx_status_t::SGX_SUCCESS {
+                return Err(Error::Sgx(SgxError::from(ret)));
+            }
+        }
+    }
+
+    if tx.hsm_params.tx_type == HsmTxType::Withdrawal as i32
+        || tx.hsm_params.tx_type == HsmTxType::Transfer as i32
+    {}
+
+    Ok(true)
 }
 
 /// Creates a single output belonging to the fee recipient account.

@@ -58,6 +58,10 @@ pub enum Error {
     /// Key error
     #[fail(display = "Key error")]
     Key(KeyError),
+
+    /// HSM error
+    #[fail(display = "HSM error")]
+    Hsm,
 }
 
 impl From<MessageCipherError> for Error {
@@ -125,4 +129,3 @@ impl From<KeyError> for Error {
         Error::Key(src)
     }
 }
-
