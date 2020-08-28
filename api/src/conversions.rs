@@ -494,8 +494,8 @@ impl From<&tx::TxOut> for external::TxOut {
         let public_key_bytes = source.public_key.as_bytes().to_vec();
         tx_out.mut_public_key().set_data(public_key_bytes);
 
-        let hint_bytes = source.e_account_hint.as_ref().to_vec();
-        tx_out.mut_e_account_hint().set_data(hint_bytes);
+        let hint_bytes = source.e_fog_hint.as_ref().to_vec();
+        tx_out.mut_e_fog_hint().set_data(hint_bytes);
 
         tx_out
     }
@@ -518,14 +518,14 @@ impl TryFrom<&external::TxOut> for tx::TxOut {
             .map_err(|_| ConversionError::KeyCastError)?
             .into();
 
-        let e_account_hint = EncryptedFogHint::try_from(source.get_e_account_hint().get_data())
+        let e_fog_hint = EncryptedFogHint::try_from(source.get_e_fog_hint().get_data())
             .map_err(|_| ConversionError::ArrayCastError)?;
 
         let tx_out = tx::TxOut {
             amount,
             target_key,
             public_key,
-            e_account_hint,
+            e_fog_hint,
         };
         Ok(tx_out)
     }
@@ -905,6 +905,7 @@ mod conversion_tests {
     use super::*;
     use mc_crypto_keys::Ed25519Private;
     use mc_transaction_core::{
+        encrypted_fog_hint::ENCRYPTED_FOG_HINT_LEN,
         onetime_keys::recover_onetime_private_key,
         tx::{Tx, TxOut, TxOutMembershipProof},
     };
@@ -1105,7 +1106,7 @@ mod conversion_tests {
             amount: Amount::new(1u64 << 13, &RistrettoPublic::from_random(&mut rng)).unwrap(),
             target_key: RistrettoPublic::from_random(&mut rng).into(),
             public_key: RistrettoPublic::from_random(&mut rng).into(),
-            e_account_hint: (&[0u8; 128]).into(),
+            e_fog_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),
         };
 
         let converted = external::TxOut::from(&source);

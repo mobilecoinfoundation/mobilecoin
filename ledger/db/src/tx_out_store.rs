@@ -752,7 +752,7 @@ pub mod tx_out_store_tests {
     use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
     use mc_transaction_core::{
         amount::Amount,
-        encrypted_fog_hint::EncryptedFogHint,
+        encrypted_fog_hint::{EncryptedFogHint, ENCRYPTED_FOG_HINT_LEN},
         membership_proofs::{hash_leaf, hash_nodes, NIL_HASH},
         onetime_keys::*,
         range::Range,
@@ -804,7 +804,7 @@ pub mod tx_out_store_tests {
                 amount,
                 target_key: target_key.into(),
                 public_key: public_key.into(),
-                e_account_hint: EncryptedFogHint::new(&[7u8; 128]),
+                e_fog_hint: EncryptedFogHint::new(&[7u8; ENCRYPTED_FOG_HINT_LEN]),
             };
             tx_outs.push(tx_out);
         }
