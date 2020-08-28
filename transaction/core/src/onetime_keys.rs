@@ -67,8 +67,6 @@ use curve25519_dalek::{
 };
 use mc_account_keys::{PublicAddress, ViewKey};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
-use mc_util_from_random::FromRandom;
-use rand_core::{CryptoRng, RngCore};
 
 const G: RistrettoPoint = RISTRETTO_BASEPOINT_POINT;
 
@@ -83,26 +81,25 @@ fn hash_to_scalar(point: RistrettoPoint) -> Scalar {
 /// Creates the onetime public key `Hs( r * C ) * G + D`.
 ///
 /// # Arguments
-/// * `recipient` - The recipient's subaddress `(C,D)`.
 /// * `tx_private_key` - The transaction private key `r`. Must be unique for each output.
+/// * `recipient` - The recipient subaddress `(C,D)`.
 ///
 pub fn create_onetime_public_key(
-    recipient: &PublicAddress,
     tx_private_key: &RistrettoPrivate,
+    recipient: &PublicAddress,
 ) -> RistrettoPublic {
     // `Hs( r * C)`
     let Hs: Scalar = {
         let r = tx_private_key.as_ref();
         let C = recipient.view_public_key().as_ref();
-        let rC = r * C;
-        hash_to_scalar(rC)
+        hash_to_scalar(r * C)
     };
 
     let D = recipient.spend_public_key().as_ref();
     RistrettoPublic::from(Hs * G + D)
 }
 
-/// Returns the `tx_public_key = r * D` for an output sent to subaddress (C, D).
+/// Creates the `tx_public_key = r * D` for an output sent to subaddress (C, D).
 ///
 /// # Arguments
 /// * `tx_private_key` - The transaction private key `r`. Must be unique for each output.
@@ -117,10 +114,11 @@ pub fn create_tx_public_key(
     RistrettoPublic::from(r * D)
 }
 
-/// Recovers the subaddress spend key D that an output was sent to.
+/// Recovers the subaddress spend key D_i that an output was sent to.
 ///
 /// This computes `P - Hs( a * R ) * G`. If the output was sent to this recipient, the returned
-/// value equals D_i for some subaddress index i.
+/// value equals D_i for some subaddress index i. This is helpful for checking an output against
+/// a set of subaddresses.
 ///
 /// If the output was sent to a different recipient, the returned value is meaningless.
 ///
@@ -148,7 +146,7 @@ pub fn recover_public_subaddress_spend_key(
 /// Returns true if the output was sent to the recipient's i^th subaddress.
 ///
 /// # Arguments
-/// * `subaddress_view_key` - The recipient's subaddress view key `(a, D_i)`.
+/// * `recipient` - The recipient's i^th subaddress view key `(a, D_i)`.
 /// * `onetime_public_key` - The output's onetime_key
 /// * `tx_public_key` - The output's tx_public_key `R`.
 ///
@@ -165,12 +163,12 @@ pub fn view_key_matches_output(
     recipient.spend_public_key == D_prime
 }
 
-/// Computes the onetime private key `Hs(a*R) + d`.
+/// Computes the onetime private key `Hs( a * R ) + d`.
 ///
 /// This assumes that the output belongs to the provided private keys.
 ///
 /// # Arguments
-/// * `tx_public_key` - The transaction public key `R`.
+/// * `tx_public_key` - The output's tx_public_key `R`.
 /// * `view_private_key` - A private view key `a`.
 /// * `subaddress_spend_private_key` - A private spend key `d = Hs(a || i) + b`.
 ///
@@ -205,21 +203,6 @@ pub fn create_shared_secret(
     RistrettoPublic::from(x * Y)
 }
 
-/// Generate a tx keypair for a subaddress transaction
-///
-/// # Arguments
-/// * `rng` - A RNG`.
-/// * `recipient_spend_key` - A recipient's public spend key `D`
-pub fn generate_tx_keypair<T: CryptoRng + RngCore>(
-    rng: &mut T,
-    recipient_spend_key: &RistrettoPublic,
-) -> (RistrettoPublic, RistrettoPrivate) {
-    let tx_secret_key = RistrettoPrivate::from_random(rng);
-    let tx_pubkey = create_tx_public_key(&tx_secret_key, &recipient_spend_key);
-
-    (tx_pubkey, tx_secret_key)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -231,14 +214,14 @@ mod tests {
     // `create_onetime_public_key` should produce a public key that agrees with the recipient's view key.
     fn test_create_onetime_public_key() {
         let mut rng = McRng::default();
-        let tx_secret_key = RistrettoPrivate::from_random(&mut rng);
+        let tx_private_key = RistrettoPrivate::from_random(&mut rng);
 
         let recipient: AccountKey = AccountKey::random(&mut rng);
 
         let onetime_public_key =
-            create_onetime_public_key(&recipient.default_subaddress(), &tx_secret_key);
+            create_onetime_public_key(&tx_private_key, &recipient.default_subaddress());
         let tx_pub_key = create_tx_public_key(
-            &tx_secret_key,
+            &tx_private_key,
             recipient.default_subaddress().spend_public_key(),
         );
 
@@ -266,7 +249,7 @@ mod tests {
 
         // Sender creates a one-time public key.
         let onetime_public_key: RistrettoPublic =
-            create_onetime_public_key(&account.default_subaddress(), &tx_private_key);
+            create_onetime_public_key(&tx_private_key, &account.default_subaddress());
         let tx_pub_key = create_tx_public_key(
             &tx_private_key,
             account.default_subaddress().spend_public_key(),

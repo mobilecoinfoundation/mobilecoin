@@ -263,7 +263,7 @@ impl TxOut {
         tx_private_key: &RistrettoPrivate,
         hint: EncryptedFogHint,
     ) -> Result<Self, AmountError> {
-        let target_key = create_onetime_public_key(recipient, tx_private_key).into();
+        let target_key = create_onetime_public_key(tx_private_key, recipient).into();
         let public_key = create_tx_public_key(tx_private_key, recipient.spend_public_key()).into();
 
         let amount = {

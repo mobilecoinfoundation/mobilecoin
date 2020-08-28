@@ -525,7 +525,7 @@ fn mint_aggregate_fee(tx_private_key: &RistrettoPrivate, total_fee: u64) -> Resu
 
     // Create a single TxOut
     let fee_output: TxOut = {
-        let target_key = create_onetime_public_key(&fee_recipient, tx_private_key).into();
+        let target_key = create_onetime_public_key(tx_private_key, &fee_recipient).into();
         let public_key =
             create_tx_public_key(&tx_private_key, fee_recipient.spend_public_key()).into();
         let amount = {
