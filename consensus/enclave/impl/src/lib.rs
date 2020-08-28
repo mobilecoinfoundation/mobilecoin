@@ -45,7 +45,7 @@ use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResu
 use mc_transaction_core::{
     amount::Amount,
     constants::{FEE_SPEND_PUBLIC_KEY, FEE_VIEW_PUBLIC_KEY},
-    onetime_keys::{compute_shared_secret, compute_tx_pubkey, create_onetime_public_key},
+    onetime_keys::{create_onetime_public_key, create_shared_secret, create_tx_public_key},
     ring_signature::{KeyImage, Scalar},
     tx::{Tx, TxOut, TxOutMembershipProof},
     Block, BlockContents, BlockSignature, BLOCK_VERSION,
@@ -527,10 +527,10 @@ fn mint_aggregate_fee(tx_private_key: &RistrettoPrivate, total_fee: u64) -> Resu
     let fee_output: TxOut = {
         let target_key = create_onetime_public_key(&fee_recipient, tx_private_key).into();
         let public_key =
-            compute_tx_pubkey(&tx_private_key, fee_recipient.spend_public_key()).into();
+            create_tx_public_key(&tx_private_key, fee_recipient.spend_public_key()).into();
         let amount = {
             let shared_secret =
-                compute_shared_secret(fee_recipient.view_public_key(), tx_private_key);
+                create_shared_secret(fee_recipient.view_public_key(), tx_private_key);
             // The fee view key is publicly known, so there is no need for a blinding.
             Amount::new(total_fee, &shared_secret)
                 .map_err(|e| Error::FormBlock(format!("AmountError: {:?}", e)))?
@@ -840,7 +840,7 @@ mod tests {
         let fee_output_public_key = RistrettoPublic::try_from(&fee_output.public_key).unwrap();
 
         // The value of the aggregate fee should equal the total value of fees in the input transaction.
-        let shared_secret = compute_shared_secret(&fee_output_public_key, &view_secret_key);
+        let shared_secret = create_shared_secret(&fee_output_public_key, &view_secret_key);
         let (value, _blinding) = fee_output.amount.get_value(&shared_secret).unwrap();
         assert_eq!(value, total_fee);
     }

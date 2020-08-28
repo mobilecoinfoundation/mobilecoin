@@ -35,23 +35,25 @@
 //! To send MobileCoin to a recipient's subaddress (C,D), the sender generates a unique random
 //! number `r`, and creates the following public keys and includes them in a transaction output:
 //!
-//!    `onetime_key = Hs( r * C ) * G + D`
+//!    `onetime_public_key = Hs( r * C ) * G + D`
 //!    `tx_public_key = r * D`
+//!
+//! The `onetime_public_key` is sometimes called `target_key`.
 //!
 //! ## Identifying an output sent to your subaddress (C_i, D_i).
 //! If you are the recipient of an output, even though you don’t know the random number `r`
 //! used in the output's tx_pub_key, you can use the fact that `a * rD_i = r * aD_i = rC_i` and
 //! compute the value
 //!
-//!    `Hs( a * tx_pub_key ) * G + D_i`.
+//!    `Hs( a * tx_public_key ) * G + D_i`.
 //!
 //! If this value equals the output's onetime_key, then the output was sent to your i^th subaddress.
 //!
 //! ## Spending MobileCoin sent to your subaddress (C_i, D_i)
 //! To spend an output sent to your i^th subaddress, compute the onetime private key:
 //!
-//!     `onetime_private_key = Hs(a * tx_pub_key) + d`
-//!                         `= Hs(a * tx_pub_key) + b + Hs( a | i )`
+//!     `onetime_private_key = Hs(a * tx_public_key) + d`
+//!                         `= Hs(a * tx_public_key) + b + Hs( a | i )`
 //!
 //! # References
 //! * [CryptoNote Whitepaper, Sections 4.3 and 4.4](https://cryptonote.org/whitepaper.pdf)
@@ -100,49 +102,53 @@ pub fn create_onetime_public_key(
     RistrettoPublic::from(Hs * G + D)
 }
 
-/// Returns the `tx_pub_key = r * D` for an output sent to subaddress (C, D).
+/// Returns the `tx_public_key = r * D` for an output sent to subaddress (C, D).
 ///
 /// # Arguments
-/// * `tx_secret_key` - A secret key `r` created by the transaction sender.
+/// * `tx_private_key` - The transaction private key `r`. Must be unique for each output.
 /// * `recipient_spend_key` - The recipient's public subaddress spend key `D`.
-pub fn compute_tx_pubkey(
-    tx_secret_key: &RistrettoPrivate,
+///
+pub fn create_tx_public_key(
+    tx_private_key: &RistrettoPrivate,
     recipient_spend_key: &RistrettoPublic,
 ) -> RistrettoPublic {
-    let r: &Scalar = tx_secret_key.as_ref();
+    let r: &Scalar = tx_private_key.as_ref();
     let D = recipient_spend_key.as_ref();
     RistrettoPublic::from(r * D)
 }
 
-/// Returns the subaddress for a given view key, output key and tx_pubkey
-/// D' = P - Hs(aR)G
+/// Recovers the subaddress spend key D that an output was sent to.
+///
+/// This computes `P - Hs( a * R ) * G`. If the output was sent to this recipient, the returned
+/// value equals D_i for some subaddress index i.
+///
+/// If the output was sent to a different recipient, the returned value is meaningless.
 ///
 /// # Arguments
 /// * `view_private_key` - The recipient's view private key `a`.
-/// * `output_public_key` - Public key of the n^th output in the transaction (P).
-/// * `tx_pub_key` - The transaction public key `R`.
+/// * `onetime_public_key` - The output's onetime public key.
+/// * `tx_public_key` - The output's tx_public_key.
 ///
-pub fn subaddress_for_key(
+pub fn recover_public_subaddress_spend_key(
     view_private_key: &RistrettoPrivate,
-    output_public_key: &RistrettoPublic,
+    onetime_public_key: &RistrettoPublic,
     tx_public_key: &RistrettoPublic,
 ) -> RistrettoPublic {
-    // `Hs(a*R)`
+    // `Hs( a * R )`
     let Hs: Scalar = {
         let a = view_private_key.as_ref();
         let R = tx_public_key.as_ref();
-        let aR = a * R;
-        hash_to_scalar(aR)
+        hash_to_scalar(a * R)
     };
 
-    let P = output_public_key.as_ref();
+    let P = onetime_public_key.as_ref();
     RistrettoPublic::from(P - Hs * G)
 }
 
-/// Returns true if the output was sent to the subaddress.
+/// Returns true if the output was sent to the recipient's i^th subaddress.
 ///
 /// # Arguments
-/// * `subaddress_view_key` - The recipient's subaddress view key `(a, D)`.
+/// * `subaddress_view_key` - The recipient's subaddress view key `(a, D_i)`.
 /// * `onetime_public_key` - The output's onetime_key
 /// * `tx_public_key` - The output's tx_public_key `R`.
 ///
@@ -151,7 +157,7 @@ pub fn view_key_matches_output(
     onetime_public_key: &RistrettoPublic,
     tx_public_key: &RistrettoPublic,
 ) -> bool {
-    let D_prime = subaddress_for_key(
+    let D_prime = recover_public_subaddress_spend_key(
         &recipient.view_private_key,
         onetime_public_key,
         tx_public_key,
@@ -185,19 +191,17 @@ pub fn recover_onetime_private_key(
     RistrettoPrivate::from(x)
 }
 
-/// Computes the shared secret `xY` from a private key `x` and a public key `Y`.
+/// Returns the shared secret `xY` from a private key `x` and a public key `Y`.
 ///
 /// # Arguments
 /// * `public_key` - A public key `Y`.
 /// * `private_key` - A private key `x`
-pub fn compute_shared_secret(
+pub fn create_shared_secret(
     public_key: &RistrettoPublic,
     private_key: &RistrettoPrivate,
 ) -> RistrettoPublic {
     let x = private_key.as_ref();
     let Y = public_key.as_ref();
-    // let xY = x * Y;
-
     RistrettoPublic::from(x * Y)
 }
 
@@ -211,7 +215,7 @@ pub fn generate_tx_keypair<T: CryptoRng + RngCore>(
     recipient_spend_key: &RistrettoPublic,
 ) -> (RistrettoPublic, RistrettoPrivate) {
     let tx_secret_key = RistrettoPrivate::from_random(rng);
-    let tx_pubkey = compute_tx_pubkey(&tx_secret_key, &recipient_spend_key);
+    let tx_pubkey = create_tx_public_key(&tx_secret_key, &recipient_spend_key);
 
     (tx_pubkey, tx_secret_key)
 }
@@ -233,7 +237,7 @@ mod tests {
 
         let onetime_public_key =
             create_onetime_public_key(&recipient.default_subaddress(), &tx_secret_key);
-        let tx_pub_key = compute_tx_pubkey(
+        let tx_pub_key = create_tx_public_key(
             &tx_secret_key,
             recipient.default_subaddress().spend_public_key(),
         );
@@ -263,7 +267,7 @@ mod tests {
         // Sender creates a one-time public key.
         let onetime_public_key: RistrettoPublic =
             create_onetime_public_key(&account.default_subaddress(), &tx_private_key);
-        let tx_pub_key = compute_tx_pubkey(
+        let tx_pub_key = create_tx_public_key(
             &tx_private_key,
             account.default_subaddress().spend_public_key(),
         );

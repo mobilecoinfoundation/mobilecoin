@@ -793,12 +793,11 @@ pub mod tx_out_store_tests {
             let tx_private_key = RistrettoPrivate::from_random(&mut rng);
             let target_key =
                 create_onetime_public_key(&recipient_account.default_subaddress(), &tx_private_key);
-            let public_key = compute_tx_pubkey(
+            let public_key = create_tx_public_key(
                 &tx_private_key,
                 recipient_account.default_subaddress().spend_public_key(),
             );
-            let shared_secret: RistrettoPublic =
-                compute_shared_secret(&target_key, &tx_private_key);
+            let shared_secret: RistrettoPublic = create_shared_secret(&target_key, &tx_private_key);
             let amount = Amount::new(value, &shared_secret).unwrap();
             let tx_out = TxOut {
                 amount,
