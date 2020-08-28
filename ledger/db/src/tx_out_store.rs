@@ -345,7 +345,12 @@ impl TxOutStore {
             });
         }
 
-        Ok(TxOutMembershipProof::new(index, num_tx_outs - 1, elements))
+        let result = TxOutMembershipProof::new(index, num_tx_outs - 1, elements);
+        debug_assert!(
+            mc_transaction_core::membership_proofs::compute_implied_merkle_root(&result).is_ok(),
+            "Freshly created membership proof was invalid"
+        );
+        Ok(result)
     }
 }
 
@@ -512,9 +517,8 @@ mod membership_proof_tests {
             // Tamper with proof after it is constructed. This bypasses checks in TxOutMembershipProof::new().
             proof.index = 6;
             assert_eq!(
-                false,
+                Err(MembershipProofError::HighestIndexMismatch),
                 is_membership_proof_valid(&tx_outs.get(5).unwrap(), &proof, &known_root_hash)
-                    .unwrap()
             );
         }
     }
@@ -554,9 +558,8 @@ mod membership_proof_tests {
             // `num_tx_outs` is less than the index of the `TxOut` referenced by the proof.
             proof.highest_index = 2;
             assert_eq!(
-                false,
+                Err(MembershipProofError::HighestIndexMismatch),
                 is_membership_proof_valid(&tx_outs.get(5).unwrap(), &proof, &known_root_hash)
-                    .unwrap()
             );
         }
 
@@ -570,9 +573,8 @@ mod membership_proof_tests {
             // ranges [8,15] and [0,15].
             proof.highest_index = 8;
             assert_eq!(
-                false,
+                Err(MembershipProofError::HighestIndexMismatch),
                 is_membership_proof_valid(&tx_outs.get(5).unwrap(), &proof, &known_root_hash)
-                    .unwrap()
             );
         }
     }
@@ -606,9 +608,8 @@ mod membership_proof_tests {
                 hash: TxOutMembershipHash::from([7u8; 32]),
             };
             assert_eq!(
-                false,
+                Err(MembershipProofError::UnexpectedMembershipElement(3)),
                 is_membership_proof_valid(&tx_outs.get(5).unwrap(), &proof, &known_root_hash)
-                    .unwrap()
             );
         }
     }
@@ -651,17 +652,17 @@ mod membership_proof_tests {
         let mut proof1 = proof.clone();
         proof1.elements.remove(0);
 
-        assert!(
-            !is_membership_proof_valid(&tx_outs.get(5).unwrap(), &proof1, &known_root_hash)
-                .unwrap()
+        assert_eq!(
+            Err(MembershipProofError::MissingLeafHash(5)),
+            is_membership_proof_valid(&tx_outs.get(5).unwrap(), &proof1, &known_root_hash)
         );
 
         let mut proof2 = proof.clone();
         proof2.elements.remove(1);
 
-        assert!(
-            !is_membership_proof_valid(&tx_outs.get(5).unwrap(), &proof2, &known_root_hash)
-                .unwrap()
+        assert_eq!(
+            Err(MembershipProofError::UnexpectedMembershipElement(2)),
+            is_membership_proof_valid(&tx_outs.get(5).unwrap(), &proof2, &known_root_hash)
         );
     }
 
@@ -1240,17 +1241,14 @@ pub mod tx_out_store_tests {
 
             */
 
-            assert_eq!(7, proof.elements.len());
+            assert_eq!(4, proof.elements.len());
 
             let ranges: Vec<Range> = proof.elements.iter().map(|e| e.range).collect();
 
             assert!(ranges.contains(&Range::new(3, 3).unwrap()));
             assert!(ranges.contains(&Range::new(2, 2).unwrap()));
-            assert!(ranges.contains(&Range::new(2, 3).unwrap()));
             assert!(ranges.contains(&Range::new(0, 1).unwrap()));
-            assert!(ranges.contains(&Range::new(0, 3).unwrap()));
             assert!(ranges.contains(&Range::new(4, 7).unwrap()));
-            assert!(ranges.contains(&Range::new(0, 7).unwrap()));
 
             for element in proof.elements {
                 let expected_hash = tx_out_store
@@ -1284,18 +1282,15 @@ pub mod tx_out_store_tests {
 
             */
 
-            assert_eq!(7, proof.elements.len());
+            assert_eq!(4, proof.elements.len());
 
             let ranges: Vec<Range> = proof.elements.iter().map(|e| e.range).collect();
 
             println!("{:?}", ranges);
             assert!(ranges.contains(&Range::new(4, 4).unwrap()));
             assert!(ranges.contains(&Range::new(5, 5).unwrap()));
-            assert!(ranges.contains(&Range::new(4, 5).unwrap()));
             assert!(ranges.contains(&Range::new(6, 7).unwrap()));
-            assert!(ranges.contains(&Range::new(4, 7).unwrap()));
             assert!(ranges.contains(&Range::new(0, 3).unwrap()));
-            assert!(ranges.contains(&Range::new(0, 7).unwrap()));
 
             for element in proof.elements {
                 let expected_hash = if element.range.from >= num_tx_outs as u64 {

@@ -146,7 +146,9 @@ fn conditional_assign_32_bytes(target: &mut [u8; 32], src: &[u8; 32], cond: Choi
 /// Note: This is pub in order to allow that it can be used in debugging assertions elsewhere.
 /// This could simply be a member function on TxOutMembershipProof, but that would require
 /// hash_nodes function to be in scope in that module, so for now we didn't do that.
-pub fn compute_implied_merkle_root(proof: &TxOutMembershipProof) -> Result<[u8; 32], Error> {
+pub fn compute_implied_merkle_root(
+    proof: &TxOutMembershipProof,
+) -> Result<TxOutMembershipElement, Error> {
     // All Ranges contained in the proof must be valid. An invalid Range could be created
     // by deserializing invalid bytes.
     if proof.elements.iter().any(|e| e.range.from > e.range.to) {
@@ -180,7 +182,7 @@ pub fn compute_implied_merkle_root(proof: &TxOutMembershipProof) -> Result<[u8; 
     // matches what the enclave expects.
     // We could similarly contemplate testing that implied_root.range.from == 0, but this is omitted for now.
 
-    Ok(implied_root.hash.0)
+    Ok(implied_root)
 }
 
 /// Validates a proof-of-membership.
@@ -217,11 +219,20 @@ pub fn is_membership_proof_valid(
 
     // Compute the implied root hash, or an error if this can't be done
     // This should have fixed access patterns regardless of input, except on erroring code paths.
-    let implied_root_hash = compute_implied_merkle_root(proof)?;
+    let implied_root = compute_implied_merkle_root(proof)?;
+
+    // This test is carried over from earlier revisions
+    // TODO: Should this be a test for equality?
+    // TODO: Should we also test that implied_root.range.from == 0?
+    if proof.highest_index > implied_root.range.to {
+        return Err(Error::HighestIndexMismatch);
+    }
 
     // Check if the implied root hash matches the known root hash
     // If it doesn't, we return false, but not a rust error.
-    Ok(bool::from(implied_root_hash.ct_eq(known_root_hash)))
+    Ok(bool::from(
+        implied_root.hash.as_ref().ct_eq(known_root_hash),
+    ))
 }
 
 /// Compute the root hash at the time the TxOut was added.
