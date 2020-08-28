@@ -145,22 +145,25 @@ pub fn recover_public_subaddress_spend_key(
 
 /// Returns true if the output was sent to the recipient's i^th subaddress.
 ///
+/// If you are checking an output against multiple subadresses, it is more efficient to use
+/// `recover_public_subaddress_spend_key` and compare the result against a table of D_i keys.
+///
 /// # Arguments
-/// * `recipient` - The recipient's i^th subaddress view key `(a, D_i)`.
+/// * `view_key` - The recipient's private view key and public subaddress spend key, `(a, D_i)`.
 /// * `onetime_public_key` - The output's onetime_public_key
 /// * `tx_public_key` - The output's tx_public_key `R`.
 ///
 pub fn view_key_matches_output(
-    recipient: &ViewKey,
+    view_key: &ViewKey,
     onetime_public_key: &RistrettoPublic,
     tx_public_key: &RistrettoPublic,
 ) -> bool {
     let D_prime = recover_public_subaddress_spend_key(
-        &recipient.view_private_key,
+        &view_key.view_private_key,
         onetime_public_key,
         tx_public_key,
     );
-    recipient.spend_public_key == D_prime
+    view_key.spend_public_key == D_prime
 }
 
 /// Computes the onetime private key `Hs( a * R ) + d`.
@@ -286,7 +289,18 @@ mod tests {
             &tx_public_key,
         );
 
-        assert_eq!(D_prime, *recipient.spend_public_key());
+        assert_eq!(D_prime, *recipient.spend_public_key()); // D_7
+
+        // view_key_matches_output should return true.
+        let view_key = ViewKey::new(
+            account.view_private_key().clone(),   //a
+            recipient.spend_public_key().clone(), // D_7
+        );
+        assert!(view_key_matches_output(
+            &view_key,
+            &onetime_public_key,
+            &tx_public_key
+        ));
     }
 
     #[test]
@@ -309,6 +323,17 @@ mod tests {
 
         // Returns meaningless public key.
         assert!(D_prime != *recipient.spend_public_key());
+
+        // view_key_matches_output should return false.
+        let view_key = ViewKey::new(
+            account.view_private_key().clone(),   // a
+            recipient.spend_public_key().clone(), // D_7
+        );
+        assert!(!view_key_matches_output(
+            &view_key,
+            &wrong_onetime_public_key,
+            &tx_public_key
+        ));
     }
 
     #[test]
@@ -331,9 +356,18 @@ mod tests {
 
         // Returns meaningless public key.
         assert!(D_prime != *recipient.spend_public_key());
-    }
 
-    // TODO: test view_key_matches_output
+        // view_key_matches_output should return false.
+        let view_key = ViewKey::new(
+            account.view_private_key().clone(),   // a
+            recipient.spend_public_key().clone(), // D_7
+        );
+        assert!(!view_key_matches_output(
+            &view_key,
+            &onetime_public_key,
+            &wrong_tx_public_key
+        ));
+    }
 
     // TODO: test recover_onetime_private_key
 
