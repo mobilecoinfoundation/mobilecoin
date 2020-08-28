@@ -236,7 +236,7 @@ mod tests {
 
         // (View, Spend)
         let (C, D) = (RistrettoPublic::from(&c), RistrettoPublic::from(&d));
-        // Look out! The argument ordering here ie weird.
+        // Look out! The argument ordering here is weird.
         let subaddress = PublicAddress::new(&D, &C);
 
         (c, d, subaddress)
