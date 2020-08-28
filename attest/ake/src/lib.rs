@@ -34,13 +34,10 @@ mod test {
     //! Unit tests for Attested Key Exchange
     extern crate std;
 
-    use alloc::vec;
-
     use super::*;
     use aes_gcm::Aes256Gcm;
-    use alloc::string::String;
     use core::convert::TryFrom;
-    use mc_attest_core::{MrSignerVerifier, Quote, VerifierBuilder, IAS_SIM_ROOT_ANCHORS};
+    use mc_attest_core::{MrSignerVerifier, Quote, Verifier, IAS_SIM_ROOT_ANCHORS};
     use mc_attest_net::{Client, RaClient};
     use mc_crypto_keys::{X25519Private, X25519Public, X25519};
     use mc_util_encodings::{FromBase64, ToX64};
@@ -50,8 +47,6 @@ mod test {
     use sha2::Sha512;
 
     const RESPONDER_ID_STR: &str = "node1.unittest.mobilenode.com";
-    const PRODUCT_ID: u16 = 0u16;
-    const MIN_SVN: u16 = 0u16;
 
     #[test]
     fn ix_handshake() {
@@ -92,35 +87,32 @@ mod test {
             report_body.security_version(),
         );
 
-        let verifier = VerifierBuilder::new(&[IAS_SIM_ROOT_ANCHORS])
-            .expect("Could not construct verifier builder")
-            .mr_signer(mr_signer)
-            .debug(true)
-            .generate();
+        let mut verifier = Verifier::new(&[IAS_SIM_ROOT_ANCHORS])
+            .expect("Could not construct verifier with sim root anchors");
+        verifier.mr_signer(mr_signer).debug(true);
 
-        let mut initiator = Start::new(RESPONDER_ID_STR.into());
-        let mut responder = Start::new(RESPONDER_ID_STR.into());
+        let initiator = Start::new(RESPONDER_ID_STR.into());
+        let responder = Start::new(RESPONDER_ID_STR.into());
 
-        let node_init = NodeInitiate::<X25519, Aes256Gcm, Sha512>::new(
-            identity.clone(),
-            ias_report.clone(),
-            verifier.clone(),
-        );
+        let node_init =
+            NodeInitiate::<X25519, Aes256Gcm, Sha512>::new(identity.clone(), ias_report.clone());
         let (initiator, auth_request_output) = initiator
             .try_next(&mut csprng, node_init)
             .expect("Initiator could not be initiated");
 
         // initiator = authpending, responder = start
 
-        let auth_request_input = AuthRequestInput::new(auth_request_output, identity, ias_report);
-        let (responder, auth_response) = responder
+        let auth_request_input =
+            NodeAuthRequestInput::new(auth_request_output, identity, ias_report, verifier.clone());
+        let (responder, auth_response_output) = responder
             .try_next(&mut csprng, auth_request_input)
             .expect("Responder could not process auth request");
 
         // initiator = authpending, responder = ready
 
+        let auth_response_input = AuthResponseInput::new(auth_response_output, verifier);
         let (initiator, _) = initiator
-            .try_next(&mut csprng, auth_response)
+            .try_next(&mut csprng, auth_response_input)
             .expect("Initiator not process auth response");
 
         // initiator = ready, responder = ready
