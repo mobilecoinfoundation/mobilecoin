@@ -111,7 +111,20 @@
                     var t = msg.topic.Nominate;
                     $('#X', template).html(format_values(t.X)).parent().show();
                     $('#Y', template).html(format_values(t.Y)).parent().show();
-                } else {
+                } else if (msg.topic.NominatePrepare) {
+                    $('#topic', template).text("NominatePrepare");
+
+                    var t = msg.topic.NominatePrepare[0];
+                    $('#X', template).html(format_values(t.X)).parent().show();
+                    $('#Y', template).html(format_values(t.Y)).parent().show();
+
+                    var t = msg.topic.NominatePrepare[1];
+                    $('#B', template).html(format_ballot(t.B)).parent().show();
+                    $('#P', template).html(format_ballot(t.P)).parent().show();
+                    $('#PP', template).html(format_ballot(t.PP)).parent().show();
+                    $('#CN', template).text(t.CN).parent().show();
+                    $('#HN', template).text(t.HN).parent().show();
+                }else {
                     $('#topic', template).html('<span style="color: red">Unknown</span>');
                 }
 

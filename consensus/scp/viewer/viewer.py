@@ -4,6 +4,10 @@ import os
 import sys
 from collections import defaultdict
 from flask import Flask, render_template, redirect, url_for
+from pprint import pprint
+
+# Note: jq to see similar query:
+# cat ca-node3/slot-states/00000043.json | sed -e 's/^"//' -e 's/"$//' -e 's/\\//g'  | jq '.M | . [] | .topic | . [] |= keys'
 
 app = Flask(__name__)
 
@@ -42,13 +46,16 @@ if __name__ == '__main__':
     slots_by_index = defaultdict(dict)
     num_slots = 0
     for filename in glob.glob(os.path.join(state_jsons_dir, '**/*.json'), recursive=True):
-        data = json.load(open(filename))
-        node_id = data['node_id']['responder_id']
-        slot_index = data['slot_index']
+        with open(filename) as file_data:
+            # Currently, data output is a string of json data
+            data_str = json.load(file_data)
+            data = json.loads(data_str)
+            node_id = data['node_id']['responder_id']
+            slot_index = data['slot_index']
 
-        slots_by_node_id[node_id][slot_index] = data
-        slots_by_index[slot_index][node_id] = data
-        num_slots += 1
+            slots_by_node_id[node_id][slot_index] = data
+            slots_by_index[slot_index][node_id] = data
+            num_slots += 1
 
     print(f'Loaded total of {num_slots} slot states from {len(slots_by_node_id)} nodes')
 
