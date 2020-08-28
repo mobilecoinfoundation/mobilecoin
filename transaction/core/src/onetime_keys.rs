@@ -78,10 +78,10 @@ fn hash_to_scalar(point: RistrettoPoint) -> Scalar {
     Scalar::from_hash::<Blake2b>(hasher)
 }
 
-/// Creates the onetime public key `Hs( r * C ) * G + D`.
+/// Creates onetime_public_key `Hs( r * C ) * G + D` for an output sent to subaddress (C, D).
 ///
 /// # Arguments
-/// * `tx_private_key` - The transaction private key `r`. Must be unique for each output.
+/// * `tx_private_key` - The output's tx_private_key `r`. Must be unique for each output.
 /// * `recipient` - The recipient subaddress `(C,D)`.
 ///
 pub fn create_onetime_public_key(
@@ -124,7 +124,7 @@ pub fn create_tx_public_key(
 ///
 /// # Arguments
 /// * `view_private_key` - The recipient's view private key `a`.
-/// * `onetime_public_key` - The output's onetime public key.
+/// * `onetime_public_key` - The output's onetime_public_key.
 /// * `tx_public_key` - The output's tx_public_key.
 ///
 pub fn recover_public_subaddress_spend_key(
@@ -147,7 +147,7 @@ pub fn recover_public_subaddress_spend_key(
 ///
 /// # Arguments
 /// * `recipient` - The recipient's i^th subaddress view key `(a, D_i)`.
-/// * `onetime_public_key` - The output's onetime_key
+/// * `onetime_public_key` - The output's onetime_public_key
 /// * `tx_public_key` - The output's tx_public_key `R`.
 ///
 pub fn view_key_matches_output(
@@ -265,71 +265,4 @@ mod tests {
             RistrettoPublic::from(&onetime_private_key)
         );
     }
-
-    //    #[bench]
-    //    // Microbenchmark `view_key_matches_output` with a non-matching view key.
-    //    fn bench_tx_target_miss(bencher: &mut Bencher) {
-    //        let mut rng = McRng::default();
-    //        let account_key = AccountKey::random(&mut rng);
-    //        let view_key = account_key.view_key();
-    //        let miss_key = AccountKey::random(&mut rng);
-    //        let tx_key = generate_keypair(&mut rng);
-    //        let output_key = create_onetime_public_key(&miss_key.address(), 0, &tx_key.1);
-    //
-    //        bencher.iter(|| {
-    //            let res = view_key_matches_output(&view_key, &output_key, 0, &tx_key.0);
-    //            assert_eq!(res, false);
-    //        });
-    //    }
-    //
-    //    #[bench]
-    //    // Microbenchmark `view_key_matches_output` with a matching a view key.
-    //    fn bench_tx_target_hit(bencher: &mut Bencher) {
-    //        let mut rng = McRng::default();
-    //        let account_key = AccountKey::random(&mut rng);
-    //        let view_key = account_key.view_key();
-    //        let tx_key = generate_keypair(&mut rng);
-    //        let output_key = create_onetime_public_key(&account_key.address(), 0, &tx_key.1);
-    //
-    //        bencher.iter(|| {
-    //            let res = view_key_matches_output(&view_key, &output_key, 0, &tx_key.0);
-    //            assert_eq!(res, true);
-    //        });
-    //    }
-    //
-    //    #[bench]
-    //    // Benchmark `view_key_matches_output` with non-matching view keys in a batch setting.
-    //    fn bench_tx_target_miss_batch(bencher: &mut Bencher) {
-    //        let mut rng = McRng::default();
-    //        let NUM_ACCTS = 2;
-    //        let NUM_OUTPUTS = 2;
-    //
-    //        let account_keys = (0..NUM_ACCTS).map(|_| AccountKey::random(&mut rng));
-    //        let view_keys: Vec<ViewKey> = account_keys.map(|acct| acct.view_key()).collect();
-    //        let miss_key = AccountKey::random(&mut rng);
-    //        let mut tx_pub_keys = vec![];
-    //        let mut tx_secret_keys = vec![];
-    //        (0..NUM_OUTPUTS).for_each(|_| {
-    //            let tx_key = generate_keypair(&mut rng);
-    //            tx_pub_keys.push(tx_key.0);
-    //            tx_secret_keys.push(tx_key.1);
-    //        });
-    //        let output_keys: Vec<RistrettoPublic> = (0..NUM_OUTPUTS)
-    //            .map(|i| create_onetime_public_key(&miss_key.address(), 0, &tx_secret_keys[i]))
-    //            .collect();
-    //
-    //        bencher.iter(|| {
-    //            for (output_index, output_key) in output_keys.iter().enumerate() {
-    //                for view_key in view_keys.iter() {
-    //                    let res = view_key_matches_output(
-    //                        &view_key,
-    //                        output_key,
-    //                        0,
-    //                        &tx_pub_keys[output_index],
-    //                    );
-    //                    assert_eq!(res, false);
-    //                }
-    //            }
-    //        });
-    //    }
 }
