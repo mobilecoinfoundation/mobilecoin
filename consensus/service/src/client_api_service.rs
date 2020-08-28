@@ -66,25 +66,11 @@ impl ClientApiService {
     ) -> Result<ProposeTxResponse, ConsensusGrpcError> {
         counters::ADD_TX_INITIATED.inc();
 
-        if counters::CUR_NUM_PENDING_VALUES.get() > PENDING_LIMIT {
-            // This node is over capacity, and is not accepting proposed transaction.
-            self.enclave.client_discard_message(msg.into())?;
-            return Err(ConsensusGrpcError::OverCapacity);
-        }
-
-        if !(self.is_serving_fn)() {
-            // This node is unable to process transactions (e.g. is syncing its ledger).
-            self.enclave.client_discard_message(msg.into())?;
-            return Err(ConsensusGrpcError::NotServing);
-        }
-
         let tx_context = self.enclave.client_tx_propose(msg.into())?;
 
         let num_blocks = self.ledger.num_blocks().map_err(ConsensusGrpcError::from)?;
         let mut response = ProposeTxResponse::new();
         response.set_num_blocks(num_blocks);
-
-        // TODO: check if the transaction has already expired.
 
         // Reject the proposed transaction if it contains any key images that have already been spent.
         // This is done here as a courtesy to give clients immediate feedback about their transaction.
@@ -136,14 +122,30 @@ impl ConsensusClientApi for ClientApiService {
     fn client_tx_propose(
         &mut self,
         ctx: RpcContext,
-        request: Message,
+        msg: Message,
         sink: UnarySink<ProposeTxResponse>,
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
 
-        let resp: Result<ProposeTxResponse, RpcStatus> = self
-            .handle_proposed_tx(request)
-            .or_else(ConsensusGrpcError::into);
+        let resp: Result<ProposeTxResponse, RpcStatus> =
+            if counters::CUR_NUM_PENDING_VALUES.get() > PENDING_LIMIT {
+                // This node is over capacity, and is not accepting proposed transaction.
+                if let Err(e) = self.enclave.client_discard_message(msg.into()) {
+                    ConsensusGrpcError::Enclave(e).into()
+                } else {
+                    ConsensusGrpcError::OverCapacity.into()
+                }
+            } else if !(self.is_serving_fn)() {
+                // This node is unable to process transactions (e.g. is syncing its ledger).
+                if let Err(e) = self.enclave.client_discard_message(msg.into()) {
+                    ConsensusGrpcError::Enclave(e).into()
+                } else {
+                    ConsensusGrpcError::NotServing.into()
+                }
+            } else {
+                self.handle_proposed_tx(msg)
+                    .or_else(ConsensusGrpcError::into)
+            };
 
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             send_result(ctx, sink, resp, &logger)
@@ -272,11 +274,8 @@ mod tests {
                 .return_const(Ok(tx_context));
         }
 
-        // Arc<dyn Fn(TxHash, Option<&NodeID>, Option<&ResponderId>) + Sync + Send>
         let scp_client_value_sender = Arc::new(
-            |_tx_hash: TxHash, _node_id: Option<&NodeID>, _responder_id: Option<&ResponderId>| {
-                // TODO: store inputs for inspection.
-            },
+            |_tx_hash: TxHash, _node_id: Option<&NodeID>, _responder_id: Option<&ResponderId>| {},
         );
 
         let mut ledger = MockLedger::new();
@@ -333,22 +332,18 @@ mod tests {
     // Should return ProposeTxResult::<SomeError> if the tx is not well-formed.
     fn test_client_tx_propose_tx_not_well_formed(logger: Logger) {
         let mut consensus_enclave = MockConsensusEnclave::new();
-        {
-            // Return a TxContext that contains some KeyImages.
-            let mut tx_context = TxContext::default();
-            tx_context.key_images = vec![KeyImage::default(), KeyImage::default()];
 
-            consensus_enclave
-                .expect_client_tx_propose()
-                .times(1)
-                .return_const(Ok(tx_context));
-        }
+        // Return a TxContext that contains some KeyImages.
+        let mut tx_context = TxContext::default();
+        tx_context.key_images = vec![KeyImage::default(), KeyImage::default()];
 
-        // Arc<dyn Fn(TxHash, Option<&NodeID>, Option<&ResponderId>) + Sync + Send>
+        consensus_enclave
+            .expect_client_tx_propose()
+            .times(1)
+            .return_const(Ok(tx_context));
+
         let scp_client_value_sender = Arc::new(
-            |_tx_hash: TxHash, _node_id: Option<&NodeID>, _responder_id: Option<&ResponderId>| {
-                // TODO: store inputs for inspection.
-            },
+            |_tx_hash: TxHash, _node_id: Option<&NodeID>, _responder_id: Option<&ResponderId>| {},
         );
 
         let num_blocks = 5;
@@ -396,4 +391,44 @@ mod tests {
             Err(e) => panic!("Unexpected error: {:?}", e),
         }
     }
+
+    #[test_with_logger]
+    // Should return RpcStatus Unavailable if the node is not serving.
+    fn test_client_tx_propose_tx_is_not_serving(logger: Logger) {
+        let mut enclave = MockConsensusEnclave::new();
+        enclave
+            .expect_client_discard_message()
+            .times(1)
+            .return_const(Ok(()));
+
+        let is_serving_fn = Arc::new(|| -> bool { false }); // Not serving
+
+        let scp_client_value_sender = Arc::new(
+            |_tx_hash: TxHash, _node_id: Option<&NodeID>, _responder_id: Option<&ResponderId>| {},
+        );
+
+        let instance = ClientApiService::new(
+            Arc::new(enclave),
+            scp_client_value_sender,
+            Arc::new(MockLedger::new()),
+            Arc::new(MockTxManager::new()),
+            is_serving_fn,
+            logger,
+        );
+
+        // gRPC client and server.
+        let (client, _server) = get_client_server(instance);
+
+        let message = Message::default();
+        match client.client_tx_propose(&message) {
+            Ok(propose_tx_response) => {
+                panic!("Unexpected response {:?}", propose_tx_response);
+            }
+            Err(_) => {
+                // Should be RpcFailure(RpcStatus { status: 14-UNAVAILABLE, details: Some("Temporarily not serving requests")
+            }
+        }
+    }
+
+    // TODO: over capacity
 }
