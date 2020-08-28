@@ -467,7 +467,7 @@ mod tests {
     use crate::{
         amount::Amount,
         constants::MINIMUM_FEE,
-        encrypted_fog_hint::EncryptedFogHint,
+        encrypted_fog_hint::{EncryptedFogHint, ENCRYPTED_FOG_HINT_LEN},
         ring_signature::SignatureRctBulletproofs,
         tx::{Tx, TxIn, TxOut, TxPrefix},
     };

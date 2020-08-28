@@ -905,6 +905,7 @@ mod conversion_tests {
     use super::*;
     use mc_crypto_keys::Ed25519Private;
     use mc_transaction_core::{
+        encrypted_fog_hint::ENCRYPTED_FOG_HINT_LEN,
         onetime_keys::recover_onetime_private_key,
         tx::{Tx, TxOut, TxOutMembershipProof},
     };
@@ -1105,7 +1106,7 @@ mod conversion_tests {
             amount: Amount::new(1u64 << 13, &RistrettoPublic::from_random(&mut rng)).unwrap(),
             target_key: RistrettoPublic::from_random(&mut rng).into(),
             public_key: RistrettoPublic::from_random(&mut rng).into(),
-            e_account_hint: (&[0u8; 128]).into(),
+            e_account_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),
         };
 
         let converted = external::TxOut::from(&source);
