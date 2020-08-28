@@ -490,7 +490,7 @@ mod tests {
                 amount,
                 target_key,
                 public_key,
-                e_account_hint: EncryptedFogHint::from(&[1u8; 128]),
+                e_account_hint: EncryptedFogHint::from(&[1u8; ENCRYPTED_FOG_HINT_LEN]),
             }
         };
 
