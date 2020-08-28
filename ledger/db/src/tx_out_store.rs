@@ -804,7 +804,7 @@ pub mod tx_out_store_tests {
                 amount,
                 target_key: target_key.into(),
                 public_key: public_key.into(),
-                e_account_hint: EncryptedFogHint::new(&[7u8; ENCRYPTED_FOG_HINT_LEN]),
+                e_fog_hint: EncryptedFogHint::new(&[7u8; ENCRYPTED_FOG_HINT_LEN]),
             };
             tx_outs.push(tx_out);
         }

@@ -540,7 +540,7 @@ fn mint_aggregate_fee(tx_private_key: &RistrettoPrivate, total_fee: u64) -> Resu
             amount,
             target_key,
             public_key,
-            e_account_hint: Default::default(),
+            e_fog_hint: Default::default(),
         }
     };
 

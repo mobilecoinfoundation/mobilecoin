@@ -187,7 +187,7 @@ mod test {
             amount: Amount::new(1u64 << 13, &RistrettoPublic::from_random(&mut rng)).unwrap(),
             target_key: RistrettoPublic::from_random(&mut rng).into(),
             public_key: RistrettoPublic::from_random(&mut rng).into(),
-            e_account_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),
+            e_fog_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),
         };
 
         let subaddress_index = 123;
@@ -271,7 +271,7 @@ mod test {
                 amount: Amount::new(1u64 << 13, &RistrettoPublic::from_random(&mut rng)).unwrap(),
                 target_key: RistrettoPublic::from_random(&mut rng).into(),
                 public_key: RistrettoPublic::from_random(&mut rng).into(),
-                e_account_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),
+                e_fog_hint: (&[0u8; ENCRYPTED_FOG_HINT_LEN]).into(),
             };
 
             let subaddress_index = 123;

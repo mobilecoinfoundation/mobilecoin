@@ -246,7 +246,7 @@ pub struct TxOut {
 
     /// The encrypted account hint for the account server.
     #[prost(message, required, tag = "4")]
-    pub e_account_hint: EncryptedFogHint,
+    pub e_fog_hint: EncryptedFogHint,
 }
 
 impl TxOut {
@@ -275,7 +275,7 @@ impl TxOut {
             amount,
             target_key,
             public_key,
-            e_account_hint: hint,
+            e_fog_hint: hint,
         })
     }
 
@@ -490,7 +490,7 @@ mod tests {
                 amount,
                 target_key,
                 public_key,
-                e_account_hint: EncryptedFogHint::from(&[1u8; ENCRYPTED_FOG_HINT_LEN]),
+                e_fog_hint: EncryptedFogHint::from(&[1u8; ENCRYPTED_FOG_HINT_LEN]),
             }
         };
 
