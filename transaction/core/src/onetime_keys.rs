@@ -55,7 +55,7 @@
 
 #![allow(non_snake_case)]
 
-use crate::domain_separators::{HASH_TO_POINT_DOMAIN_TAG, HASH_TO_SCALAR_DOMAIN_TAG};
+use crate::domain_separators::HASH_TO_SCALAR_DOMAIN_TAG;
 use blake2::{Blake2b, Digest};
 use curve25519_dalek::{
     constants::RISTRETTO_BASEPOINT_POINT, ristretto::RistrettoPoint, scalar::Scalar,
@@ -66,14 +66,6 @@ use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
 
 const G: RistrettoPoint = RISTRETTO_BASEPOINT_POINT;
-
-/// Applies a hash function and returns a RistrettoPoint.
-pub fn hash_to_point(ristretto_public: &RistrettoPublic) -> RistrettoPoint {
-    let mut hasher = Blake2b::new();
-    hasher.update(&HASH_TO_POINT_DOMAIN_TAG);
-    hasher.update(&ristretto_public.to_bytes());
-    RistrettoPoint::from_hash(hasher)
-}
 
 /// Applies a hash function and returns a Scalar.
 pub fn hash_to_scalar<B: AsRef<[u8]>>(data: B) -> Scalar {
