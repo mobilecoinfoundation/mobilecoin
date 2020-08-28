@@ -1,6 +1,54 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-//! CryptoNote-style onetime keys.
+//! # MobileCoin transactions use CryptoNote-style `onetime keys` to protect recipient privacy.
+//!
+//! When creating a transaction, the sender computes a onetime public key for each output in
+//! such a way that only the sender and the recipient know who the recipient is, and only the
+//! recipient is able to compute the corresponding onetime private key that is required to
+//! spend the output.
+//!
+//! To further protect recipient privacy, an output's onetime key is computed for a `subaddress`
+//! that the recipient generated from their CryptoNote-style address. This makes it easy for a
+//! recipient to use different subaddresses for different purposes and keep track of how much
+//! MobileCoin was sent to each subaddress.
+//!
+//! ## User address (a,b)
+//! To begin, a user generates a unique address `(a,b)`, where `a` is the private view key and
+//! `b` is the private spend key. The corresponding public keys are `A = a*G` and `B = b*G`, where
+//! `G` is the Ristretto base point. The keys `a`, `b`, `A`, and `B` "stay in the user's wallet":
+//! they are not shared with other users and they do not appear in the ledger.
+//!
+//! ## Creating the i^th subaddress (C_i, D_i)
+//! Instead, when a user wishes to receive MobileCoin, they compute a pair of public keys
+//!
+//!    `D_i = B + Hs( a | i ) * G`
+//!    `C_i = a * D`
+//!
+//! where `Hs` denotes an appropriately domain-separated hash function that returns a scalar.
+//! The `subaddress index` `i` allows the user to generate many distinct subaddresses from a single
+//! address.
+//!
+//! ## Sending MobileCoin to a subaddress (C,D)
+//! To send MobileCoin to a recipient's subaddress (C,D), the sender generates a unique random
+//! number `r`, and creates the following public keys and includes them in a transaction output:
+//!
+//!    `onetime_key = Hs( r * C ) * G + D`
+//!    `tx_public_key = r * D`
+//!
+//! ## Identifying an output sent to your subaddress (C_i, D_i).
+//! If you are the recipient of an output, even though you don’t know the random number `r`
+//! used in the output's tx_pub_key, you can use the fact that `a * rD_i = r * aD_i = rC_i` and
+//! compute the value
+//!
+//!    `Hs( a * tx_pub_key ) * G + D_i`.
+//!
+//! If this value equals the output's onetime_key, then the output was sent to your i^th subaddress.
+//!
+//! ## Spending MobileCoin sent to your subaddress (C_i, D_i)
+//! To spend an output sent to your i^th subaddress, compute the onetime private key:
+//!
+//!     `onetime_private_key = Hs(a * tx_pub_key) + d`
+//!                         `= Hs(a * tx_pub_key) + b + Hs( a | i )`
 //!
 //! # References
 //! * [CryptoNote Whitepaper, Sections 4.3 and 4.4](https://cryptonote.org/whitepaper.pdf)
