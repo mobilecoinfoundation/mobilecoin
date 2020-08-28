@@ -242,8 +242,6 @@ mod tests {
         (c, d, subaddress)
     }
 
-    // TODO: test hash_to_scalar
-
     #[test]
     // `create_onetime_public_key` should produce a public key that agrees with the recipient's view key.
     fn test_create_onetime_public_key() {
@@ -270,7 +268,22 @@ mod tests {
         );
     }
 
-    // TODO: test_create_tx_public_key
+    #[test]
+    // Should return `r * D`.
+    fn test_create_tx_public_key() {
+        let mut rng = McRng::default();
+        let r = Scalar::random(&mut rng);
+        let D = RistrettoPoint::random(&mut rng);
+
+        let expected = RistrettoPublic::from(r * D);
+
+        let tx_private_key = RistrettoPrivate::from(r);
+        let recipient_spend_key = RistrettoPublic::from(D);
+        assert_eq!(
+            expected,
+            create_tx_public_key(&tx_private_key, &recipient_spend_key)
+        );
+    }
 
     #[test]
     // Should recover the correct public subaddress spend key D_i when the output belongs to the recipient.
