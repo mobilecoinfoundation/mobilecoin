@@ -39,7 +39,9 @@ pub const IS_BEHIND_GRACE_PERIOD: Duration = Duration::from_secs(10);
 /// Maximum number of pending values to hand over to `scp` at each slot.
 /// This is currently capped due to pending values not being capped and an outstanding issue of
 /// `scp` performing more expensive and exhaustive validation than is sometimes required.
-pub const MAX_PENDING_VALUES_TO_NOMINATE: usize = 100;
+/// Note: The PENDING_LIMIT before nodes reject more tx_propose is 500. This allows us to
+///       reasonably drain the queue.
+pub const MAX_PENDING_VALUES_TO_NOMINATE: usize = 500;
 
 pub struct ByzantineLedger {
     sender: Sender<TaskMessage>,
