@@ -67,7 +67,7 @@ impl<V: Value, ValidationError: Display + 'static> Node<V, ValidationError> {
             validity_fn,
             combine_fn,
             logger,
-            scp_timebase: Duration::from_millis(50000),
+            scp_timebase: Duration::from_millis(5000),
         }
     }
 
