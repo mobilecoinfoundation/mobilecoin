@@ -14,8 +14,9 @@ use mc_common::logger::Logger;
 use mc_consensus_api::{
     consensus_client_grpc::ConsensusClientApi, consensus_common::ProposeTxResponse,
 };
-use mc_consensus_enclave::ConsensusEnclave;
+use mc_consensus_enclave::{ConsensusEnclave, TxContext};
 use mc_ledger_db::Ledger;
+use mc_transaction_core::validation::TransactionValidationError;
 use mc_util_grpc::{rpc_logger, send_result};
 use mc_util_metrics::{self, SVC_COUNTERS};
 use std::sync::Arc;
@@ -79,13 +80,25 @@ impl ClientApiService {
 
         let tx_context = self.enclave.client_tx_propose(msg.into())?;
 
+        let num_blocks = self.ledger.num_blocks().map_err(ConsensusGrpcError::from)?;
+
+        // Reject the proposed transaction if it contains any key images that have already been spent.
+        // This is done here as a courtesy to give clients immediate feedback about their transaction.
+        if self.contains_spent_key_image(&tx_context)? {
+            return Err(ConsensusGrpcError::from(
+                TransactionValidationError::ContainsSpentKeyImage,
+            ));
+        }
+
         self.tx_manager
             .insert(tx_context)
             .map(|tx_hash| {
                 // Submit for consideration in next SCP slot.
                 (*self.propose_tx_callback)(tx_hash, None, None);
                 counters::ADD_TX.inc();
-                Ok(ProposeTxResponse::new())
+                let mut response = ProposeTxResponse::new();
+                response.set_num_blocks(num_blocks);
+                Ok(response)
             })
             .map_err(|err| {
                 if let TxManagerError::TransactionValidation(cause) = &err {
@@ -93,6 +106,21 @@ impl ClientApiService {
                 }
                 err
             })?
+    }
+
+    /// Returns true if the transaction contains a spent key image.
+    ///
+    /// This is only a best-effort check, and may give inconsistent results if the ledger is
+    /// concurrently modified.
+    fn contains_spent_key_image(&self, tx_context: &TxContext) -> Result<bool, ConsensusGrpcError> {
+        let mut contains_spent_key_image = false;
+        for key_image in &tx_context.key_images {
+            if self.ledger.contains_key_image(key_image)? {
+                contains_spent_key_image = true;
+                break;
+            }
+        }
+        Ok(contains_spent_key_image)
     }
 }
 
@@ -105,16 +133,12 @@ impl ConsensusClientApi for ClientApiService {
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
 
-        let response = self
+        let resp = self
             .handle_proposed_tx(request)
-            .or_else(ConsensusGrpcError::into)
-            .and_then(|mut resp| {
-                resp.set_num_blocks(self.ledger.num_blocks().map_err(ConsensusGrpcError::from)?);
-                Ok(resp)
-            });
+            .or_else(ConsensusGrpcError::into);
 
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            send_result(ctx, sink, response, &logger)
+            send_result(ctx, sink, resp, &logger)
         });
     }
 }
@@ -135,19 +159,23 @@ mod tests {
     use mc_consensus_enclave::TxContext;
     use mc_consensus_enclave_mock::MockConsensusEnclave;
     use mc_ledger_db::MockLedger;
-    use mc_transaction_core::tx::TxHash;
-    // use mc_transaction_core_test_utils::{create_ledger, initialize_ledger, AccountKey};
-    // use rand::{rngs::StdRng, SeedableRng};
+    use mc_transaction_core::{ring_signature::KeyImage, tx::TxHash};
     use std::sync::Arc;
 
     #[test_with_logger]
 
     fn test_client_tx_propose_ok(logger: Logger) {
         let mut consensus_enclave = MockConsensusEnclave::new();
-        consensus_enclave
-            .expect_client_tx_propose()
-            .times(1)
-            .return_const(Ok(TxContext::default()));
+        {
+            // Return a TxContext that contains some KeyImages.
+            let mut tx_context = TxContext::default();
+            tx_context.key_images = vec![KeyImage::default(), KeyImage::default()];
+
+            consensus_enclave
+                .expect_client_tx_propose()
+                .times(1)
+                .return_const(Ok(tx_context));
+        }
 
         // Arc<dyn Fn(TxHash, Option<&NodeID>, Option<&ResponderId>) + Sync + Send>
         let scp_client_value_sender = Arc::new(
@@ -156,13 +184,19 @@ mod tests {
             },
         );
 
-        // Local ledger
         let num_blocks = 5;
         let mut ledger = MockLedger::new();
+        // The service should request num_blocks.
         ledger
             .expect_num_blocks()
             .times(1)
             .return_const(Ok(num_blocks));
+
+        // The service should check if each key image is already in the ledger.
+        ledger
+            .expect_contains_key_image()
+            .times(2)
+            .return_const(Ok(false));
 
         let mut tx_manager = MockTxManager::new();
         tx_manager
