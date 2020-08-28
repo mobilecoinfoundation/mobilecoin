@@ -40,8 +40,10 @@ pub const IS_BEHIND_GRACE_PERIOD: Duration = Duration::from_secs(10);
 /// This is currently capped due to pending values not being capped and an outstanding issue of
 /// `scp` performing more expensive and exhaustive validation than is sometimes required.
 /// Note: The PENDING_LIMIT before nodes reject more tx_propose is 500. This allows us to
-///       reasonably drain the queue.
-pub const MAX_PENDING_VALUES_TO_NOMINATE: usize = 500;
+///       reasonably drain the queue. We would like to keep the max block size < 4MB, and
+///       3K transactions per block should be reasonably below that threshold, assuming each
+///       transaction produces 3 txos.
+pub const MAX_PENDING_VALUES_TO_NOMINATE: usize = 3000;
 
 pub struct ByzantineLedger {
     sender: Sender<TaskMessage>,
