@@ -180,20 +180,20 @@ pub fn recover_onetime_private_key(
     RistrettoPrivate::from(x)
 }
 
-/// Computes the shared secret `aB` from a private key `a` and a public key `B`.
+/// Computes the shared secret `xY` from a private key `x` and a public key `Y`.
 ///
 /// # Arguments
-/// * `public_key` - A public key `B`.
-/// * `private_key` - A private key `a`
+/// * `public_key` - A public key `Y`.
+/// * `private_key` - A private key `x`
 pub fn compute_shared_secret(
     public_key: &RistrettoPublic,
     private_key: &RistrettoPrivate,
 ) -> RistrettoPublic {
-    let a = private_key.as_ref();
-    let B = public_key.as_ref();
-    let aB = a * B;
+    let x = private_key.as_ref();
+    let Y = public_key.as_ref();
+    // let xY = x * Y;
 
-    RistrettoPublic::from(aB)
+    RistrettoPublic::from(x * Y)
 }
 
 /// Generate a tx keypair for a subaddress transaction
