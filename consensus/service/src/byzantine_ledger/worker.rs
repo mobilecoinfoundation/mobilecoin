@@ -412,7 +412,7 @@ impl<
         let mut values_nominated = 0;
         let mut nom_index = 0;
         while values_nominated < MAX_PENDING_VALUES_TO_NOMINATE
-            && self.need_nominate.values().any(|v| *v == true)
+            && self.need_nominate.values().any(|v| *v)
         {
             for (responder_id, need_nominate) in self.need_nominate.iter_mut() {
                 if !*need_nominate {
@@ -461,11 +461,11 @@ impl<
         let mut remaining_pending: Vec<ResponderId> = self
             .pending_consensus_msgs
             .iter()
-            .filter(|(_k, v)| v.get(&self.cur_slot).unwrap().len() > 0)
+            .filter(|(_k, v)| !v.get(&self.cur_slot).unwrap().is_empty())
             .map(|(k, _v)| k.clone())
             .collect::<Vec<ResponderId>>();
         // Fully exhaust messages for current slot - FIXME: any early exits we would need if the slot moved?
-        while remaining_pending.len() > 0 {
+        while !remaining_pending.is_empty() {
             for from_responder_id in remaining_pending {
                 if let Some(consensus_msgs) = self
                     .pending_consensus_msgs
@@ -538,7 +538,7 @@ impl<
             remaining_pending = self
                 .pending_consensus_msgs
                 .iter()
-                .filter(|(_k, v)| v.get(&self.cur_slot).unwrap().len() > 0)
+                .filter(|(_k, v)| !v.get(&self.cur_slot).unwrap().is_empty())
                 .map(|(k, _v)| k.clone())
                 .collect::<Vec<ResponderId>>();
         }
