@@ -30,7 +30,7 @@ use mc_util_metered_channel::Receiver;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
     cmp::min,
-    collections::{btree_map::Entry::Vacant, BTreeMap, BTreeSet, HashMap},
+    collections::{btree_map::Entry::Vacant, BTreeMap, BTreeSet, HashMap, VecDeque},
     iter::FromIterator,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
@@ -54,7 +54,7 @@ pub struct ByzantineLedgerWorker<
     ledger: L,
     peer_manager: ConnectionManager<PC>,
     tx_manager: Arc<TXM>,
-    broadcaster: Arc<Mutex<dyn Broadcast>>,
+    _broadcaster: Arc<Mutex<dyn Broadcast>>, // FIXME: I don't think we need to broadcast from here
     logger: Logger,
 
     // Current slot (the one that is not yet in the ledger / the one currently being worked on).
@@ -63,10 +63,12 @@ pub struct ByzantineLedgerWorker<
     // Previous block id
     prev_block_id: BlockID,
 
-    // Map of slot index -> pending scp messages we need to process.
-    pending_consensus_msgs: HashMap<SlotIndex, Vec<(VerifiedConsensusMsg, ResponderId)>>,
+    // Map of slot index -> pending scp messages we need to process, per peer (including self).
+    pending_consensus_msgs:
+        HashMap<ResponderId, HashMap<SlotIndex, VecDeque<VerifiedConsensusMsg>>>,
 
-    // Pending values we're trying to push. We need to store them as a vec so we can process values
+    // Pending values we're trying to push, stored as a vec per peer, including self.
+    // We need to store them as a vec per peer so we can process values
     // on a first-come first-served basis. However, we want to be able to:
     // 1) Efficiently see if we already have a given value and ignore duplicates
     // 2) Track how long each value took to externalize.
@@ -75,11 +77,11 @@ pub struct ByzantineLedgerWorker<
     // timestamp for values that were handed to us directly from a client. We skip tracking
     // processing times for relayed values since we want to track the time from when the network
     // first saw a value, and not when a specific node saw it.
-    pending_values: Vec<TxHash>,
+    pending_values: HashMap<ResponderId, Vec<TxHash>>,
     pending_values_map: BTreeMap<TxHash, Option<Instant>>,
 
-    // Do we need to nominate anything?
-    need_nominate: bool,
+    // Do we need to nominate anything? Stored per peer, including self.
+    need_nominate: HashMap<ResponderId, bool>,
 
     // Network state, used to track if we've fallen behind.
     network_state: SCPNetworkState,
@@ -141,16 +143,16 @@ impl<
             send_scp_message,
             ledger,
             tx_manager,
-            broadcaster,
+            _broadcaster: broadcaster,
             peer_manager,
             logger,
 
             cur_slot,
             prev_block_id,
             pending_consensus_msgs: HashMap::default(),
-            pending_values: Vec::new(),
+            pending_values: HashMap::default(),
             pending_values_map: BTreeMap::default(),
-            need_nominate: false,
+            need_nominate: HashMap::default(),
             network_state,
             ledger_sync_service,
             ledger_sync_state: LedgerSyncState::InSync,
@@ -170,7 +172,11 @@ impl<
     // Returns true until stop is requested.
     fn tick(&mut self) -> bool {
         // Sanity check.
-        assert_eq!(self.pending_values.len(), self.pending_values_map.len());
+        let mut total_values = 0; // FIXME: something fancier?
+        for (_responder_id, pending_values) in self.pending_values.iter() {
+            total_values += pending_values.len();
+        }
+        assert_eq!(total_values, self.pending_values_map.len());
 
         // Process external requests sent to us through the interface channel.
         if !self.process_external_requests() {
@@ -289,22 +295,26 @@ impl<
                 // Reset scp state.
                 self.scp.clear_pending_slots();
 
-                // Clear any pending values that might no longer be valid.
                 let tx_manager = self.tx_manager.clone();
-                self.pending_values
-                    .retain(|tx_hash| tx_manager.validate(tx_hash).is_ok());
 
                 // Re-construct the BTreeMap with the remaining values, using the old timestamps.
                 let mut new_pending_values_map = BTreeMap::new();
-                for val in self.pending_values.iter() {
-                    new_pending_values_map.insert(*val, *self.pending_values_map.get(val).unwrap());
+
+                for (responder_id, pending_values) in self.pending_values.iter_mut() {
+                    // Clear any pending values that might no longer be valid.
+                    pending_values.retain(|tx_hash| tx_manager.validate(tx_hash).is_ok());
+
+                    for val in pending_values.iter_mut() {
+                        new_pending_values_map
+                            .insert(*val, *self.pending_values_map.get(val).unwrap());
+                    }
+
+                    // Nominate if needed.
+                    if !pending_values.is_empty() {
+                        self.need_nominate.insert(responder_id.clone(), true);
+                    }
                 }
                 self.pending_values_map = new_pending_values_map;
-
-                // Nominate if needed.
-                if !self.pending_values.is_empty() {
-                    self.need_nominate = true;
-                }
 
                 // Update state.
                 self.is_behind.store(false, Ordering::SeqCst);
@@ -314,8 +324,9 @@ impl<
 
                 // Clear old entries from pending_consensus_msgs
                 let cur_slot = self.cur_slot;
-                self.pending_consensus_msgs
-                    .retain(|&slot_index, _| slot_index >= cur_slot);
+                for pending_consensus_msgs in self.pending_consensus_msgs.values_mut() {
+                    pending_consensus_msgs.retain(|&slot_index, _| slot_index >= cur_slot);
+                }
             }
         };
 
@@ -357,8 +368,12 @@ impl<
                         // map.
                         if let Vacant(entry) = self.pending_values_map.entry(value) {
                             entry.insert(timestamp);
-                            self.pending_values.push(value);
-                            self.need_nominate = true;
+                            self.pending_values
+                                .entry(self.scp.node_id().responder_id)
+                                .or_default()
+                                .push(value);
+                            self.need_nominate
+                                .insert(self.scp.node_id().responder_id, true);
                         }
                     }
                 }
@@ -374,11 +389,12 @@ impl<
                         self.network_state.push(consensus_msg.scp_msg().clone());
 
                         // Collect.
-                        let entry = self
-                            .pending_consensus_msgs
+                        self.pending_consensus_msgs
+                            .entry(from_responder_id)
+                            .or_default()
                             .entry(consensus_msg.scp_msg().slot_index)
-                            .or_insert_with(Vec::new);
-                        entry.push((consensus_msg, from_responder_id));
+                            .or_default()
+                            .push_back(consensus_msg);
                     }
                 }
 
@@ -391,92 +407,140 @@ impl<
         true
     }
 
+    /// Nominate all pending values up to MAX_PENDING_VALUES_TO_NOMINATE in round-robin fashion.
     fn nominate_pending_values(&mut self) {
-        if !self.need_nominate {
-            return;
-        }
-
-        assert!(!self.pending_values.is_empty());
-
-        let msg_opt = self
-            .scp
-            .propose_values(
-                self.cur_slot,
-                BTreeSet::from_iter(
-                    self.pending_values
-                        .iter()
-                        .take(MAX_PENDING_VALUES_TO_NOMINATE)
-                        .cloned(),
-                ),
-            )
-            .expect("nominate failed");
-
-        if let Some(msg) = msg_opt {
-            (self.send_scp_message)(msg)
-        }
-
-        self.need_nominate = false;
-    }
-
-    fn process_consensus_msgs_for_cur_slot(&mut self) {
-        if let Some(consensus_msgs) = self.pending_consensus_msgs.remove(&self.cur_slot) {
-            for (consensus_msg, from_responder_id) in consensus_msgs {
-                let (scp_msg, their_prev_block_id) =
-                    (consensus_msg.scp_msg(), consensus_msg.prev_block_id());
-
-                if self.prev_block_id != *their_prev_block_id {
-                    log::warn!(self.logger, "Received message {:?} that refers to an invalid block id {:?} != {:?} (cur_slot = {})",
-                    scp_msg, their_prev_block_id, self.prev_block_id, self.cur_slot);
-                }
-
-                if !self.fetch_missing_txs(scp_msg, &from_responder_id) {
+        let mut values_nominated = 0;
+        let mut nom_index = 0;
+        while values_nominated < MAX_PENDING_VALUES_TO_NOMINATE
+            && self.need_nominate.values().any(|v| *v == true)
+        {
+            for (responder_id, need_nominate) in self.need_nominate.iter_mut() {
+                if !*need_nominate {
                     continue;
                 }
 
-                // Broadcast this message to the rest of the network.
-                self.broadcaster
-                    .lock()
-                    .expect("mutex poisoned")
-                    .broadcast_consensus_msg(consensus_msg.as_ref(), &from_responder_id);
+                let pending_values = self
+                    .pending_values
+                    .get(responder_id)
+                    .expect("Expected pending values for responder_id");
 
-                // Unclear if this helps with anything, so it is disabled for now.
-                /*
-                // See if this message has any values to incorporate into our pending
-                // values. This is safe since we only grab values we think are
-                // potentially valid.
-                let mut grabbed = 0;
-                if let Some(voted_or_accepted_nominated) = scp_msg.votes_or_accepts_nominated() {
-                    for value in voted_or_accepted_nominated {
-                        if !self.pending_values_map.contains(&value) && self.tx_cache.validate_tx_by_hash(&value).is_ok() {
-                            self.pending_values.insert(value.clone());
-                            self.pending_values_map.insert(value, Instant::now()? not sure if this is reasonable);
-                            grabbed += 1;
-                        }
-                    }
+                assert!(!pending_values.is_empty());
+
+                if pending_values.len() >= nom_index {
+                    // We've already nominated all the values for this responder_id
+                    //self.need_nominate.insert(responder_id.clone(), false);
+                    *need_nominate = false;
+                    continue;
                 }
 
-                if grabbed > 0 {
-                    log::debug!(self.logger, "Grabbed {} extra pending values from SCP traffic", grabbed);
-                }
-                */
+                let msg_opt = self
+                    .scp
+                    .propose_values(
+                        self.cur_slot,
+                        BTreeSet::from_iter(vec![pending_values[nom_index]]),
+                    )
+                    .expect("nominate failed");
 
-                // Pass message to the scp layer.
-                match self.scp.handle(scp_msg) {
-                    Ok(msg_opt) => {
-                        if let Some(msg) = msg_opt {
-                            (self.send_scp_message)(msg);
+                if let Some(msg) = msg_opt {
+                    (self.send_scp_message)(msg)
+                }
+
+                values_nominated += 1;
+            }
+            nom_index += 1;
+        }
+    }
+
+    /// Process the consensus messages for the current slot, in round robin fashion.
+    /// Note: In practice, the pending_consensus_msg queue does not often experience maximization,
+    /// however, we send to the consensus layer in round robin fashion between peers in order
+    /// to make sure that messages are processed fairly, and e.g. neighbors with lower latency
+    /// do not receive priority.
+    fn process_consensus_msgs_for_cur_slot(&mut self) {
+        // FIXME: handle unwraps
+        let mut remaining_pending: Vec<ResponderId> = self
+            .pending_consensus_msgs
+            .iter()
+            .filter(|(_k, v)| v.get(&self.cur_slot).unwrap().len() > 0)
+            .map(|(k, _v)| k.clone())
+            .collect::<Vec<ResponderId>>();
+        // Fully exhaust messages for current slot - FIXME: any early exits we would need if the slot moved?
+        while remaining_pending.len() > 0 {
+            for from_responder_id in remaining_pending {
+                if let Some(consensus_msgs) = self
+                    .pending_consensus_msgs
+                    .get_mut(&from_responder_id)
+                    .unwrap()
+                    .get_mut(&self.cur_slot)
+                {
+                    // Only process one consensus message per peer, each round
+                    let consensus_msg = consensus_msgs.pop_front().unwrap();
+                    let (scp_msg, their_prev_block_id) =
+                        (consensus_msg.scp_msg(), consensus_msg.prev_block_id());
+
+                    if self.prev_block_id != *their_prev_block_id {
+                        log::warn!(self.logger, "Received message {:?} that refers to an invalid block id {:?} != {:?} (cur_slot = {})",
+                scp_msg, their_prev_block_id, self.prev_block_id, self.cur_slot);
+                    }
+
+                    if !self.fetch_missing_txs(scp_msg, &from_responder_id) {
+                        continue;
+                    }
+
+                    // Broadcast this message to the rest of the network.
+                    // FIXME: I think we're broadcasting this message twice...because we also
+                    // broadcast it when we pass it to the scp layer, via the send_scp_message function
+                    // defined in byzantine_ledger which gets passed as self.send_scp_message
+                    //                    self.broadcaster
+                    //                        .lock()
+                    //                        .expect("mutex poisoned")
+                    //                        .broadcast_consensus_msg(consensus_msg.as_ref(), &from_responder_id);
+
+                    // Unclear if this helps with anything, so it is disabled for now.
+                    /*
+                    // See if this message has any values to incorporate into our pending
+                    // values. This is safe since we only grab values we think are
+                    // potentially valid.
+                    let mut grabbed = 0;
+                    if let Some(voted_or_accepted_nominated) = scp_msg.votes_or_accepts_nominated() {
+                        for value in voted_or_accepted_nominated {
+                            if !self.pending_values_map.contains(&value) && self.tx_cache.validate_tx_by_hash(&value).is_ok() {
+                                self.pending_values.insert(value.clone());
+                                self.pending_values_map.insert(value, Instant::now()? not sure if this is reasonable);
+                                grabbed += 1;
+                            }
                         }
                     }
-                    Err(err) => {
-                        log::error!(
-                            self.logger,
-                            "Failed handling message {:?}: {:?}",
-                            scp_msg,
-                            err
-                        );
+
+                    if grabbed > 0 {
+                        log::debug!(self.logger, "Grabbed {} extra pending values from SCP traffic", grabbed);
+                    }
+                    */
+
+                    // Pass message to the scp layer.
+                    match self.scp.handle(scp_msg) {
+                        Ok(msg_opt) => {
+                            if let Some(msg) = msg_opt {
+                                (self.send_scp_message)(msg);
+                            }
+                        }
+                        Err(err) => {
+                            log::error!(
+                                self.logger,
+                                "Failed handling message {:?}: {:?}",
+                                scp_msg,
+                                err
+                            );
+                        }
                     }
                 }
             }
+            remaining_pending = self
+                .pending_consensus_msgs
+                .iter()
+                .filter(|(_k, v)| v.get(&self.cur_slot).unwrap().len() > 0)
+                .map(|(k, _v)| k.clone())
+                .collect::<Vec<ResponderId>>();
         }
     }
 
@@ -496,15 +560,19 @@ impl<
         }
 
         // Maintain the invariant that pending_values only contains valid values that were not externalized.
-        self.pending_values
-            .retain(|tx_hash| !ext_vals.contains(tx_hash));
+        for pending_values in self.pending_values.values_mut() {
+            pending_values.retain(|tx_hash| !ext_vals.contains(tx_hash));
+        }
 
         log::info!(
             self.logger,
-            "Slot {} ended with {} externalized values and {} pending values.",
+            "Slot {} ended with {} externalized values and {:?} pending values.",
             self.cur_slot,
             ext_vals.len(),
-            self.pending_values.len(),
+            self.pending_values
+                .iter()
+                .map(|(k, v)| (k, v.len()))
+                .collect::<HashMap<&ResponderId, usize>>(),
         );
 
         // Write to ledger.
@@ -551,23 +619,30 @@ impl<
 
         counters::TX_CACHE_NUM_ENTRIES.set(self.tx_manager.num_entries() as i64);
 
-        // Drop pending values that are no longer considered valid.
-        let tx_manager = self.tx_manager.clone();
-        self.pending_values.retain(|tx_hash| {
-            !purged_hashes.contains(tx_hash) && tx_manager.validate(tx_hash).is_ok()
-        });
-
         // Re-construct the BTreeMap with the remaining values, using the old timestamps.
         let mut new_pending_values_map = BTreeMap::new();
-        for val in self.pending_values.iter() {
-            new_pending_values_map.insert(*val, *self.pending_values_map.get(val).unwrap());
+
+        let tx_manager = self.tx_manager.clone();
+        for pending_values in self.pending_values.values_mut() {
+            // Drop pending values that are no longer considered valid and
+            pending_values.retain(|tx_hash| {
+                !purged_hashes.contains(tx_hash) && tx_manager.validate(tx_hash).is_ok()
+            });
+
+            for val in pending_values.iter() {
+                new_pending_values_map.insert(*val, *self.pending_values_map.get(val).unwrap());
+            }
         }
+
         self.pending_values_map = new_pending_values_map;
 
         log::info!(
             self.logger,
-            "number of pending values post cleanup: {} ({} expired)",
-            self.pending_values.len(),
+            "number of pending values post cleanup: {:?} ({} expired)",
+            self.pending_values
+                .iter()
+                .map(|(k, v)| (k, v.len()))
+                .collect::<HashMap<&ResponderId, usize>>(),
             purged_hashes.len(),
         );
 
@@ -575,13 +650,17 @@ impl<
         counters::PREV_SLOT_NUMBER.set((cur_slot - 1) as i64);
         counters::PREV_SLOT_ENDED_AT.set(chrono::Utc::now().timestamp_millis());
         counters::PREV_SLOT_NUM_EXT_VALS.set(ext_vals.len() as i64);
-        counters::PREV_NUM_PENDING_VALUES.set(self.pending_values.len() as i64);
 
-        // If we have any pending values, we'd like to issue a nominate statement on the next
-        // tick.
-        if !self.pending_values.is_empty() {
-            self.need_nominate = true;
+        for (responder_id, pending_values) in self.pending_values.iter() {
+            // If we have any pending values, we'd like to issue a nominate statement on the next
+            // tick.
+            if !pending_values.is_empty() {
+                self.need_nominate.insert(responder_id.clone(), true);
+            }
         }
+
+        let num_pending: usize = self.pending_values.values().map(|v| v.len()).sum();
+        counters::PREV_NUM_PENDING_VALUES.set(num_pending as i64);
 
         // If we think we're behind, reset us back to InSync since we made progress. If we're still
         // behind this will result in restarting the grace period timer, which is the desired
@@ -699,7 +778,8 @@ impl<
 
     fn update_cur_metrics(&mut self) {
         let slot_metrics = self.scp.get_slot_metrics(self.cur_slot);
-        counters::CUR_NUM_PENDING_VALUES.set(self.pending_values.len() as i64);
+        let num_pending: usize = self.pending_values.values().map(|v| v.len()).sum();
+        counters::CUR_NUM_PENDING_VALUES.set(num_pending as i64);
         counters::CUR_SLOT_NUM.set(self.cur_slot as i64);
         counters::CUR_SLOT_PHASE.set(match slot_metrics.as_ref().map(|m| m.phase) {
             None => 0,
