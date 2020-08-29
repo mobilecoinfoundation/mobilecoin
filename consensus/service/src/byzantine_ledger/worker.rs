@@ -362,24 +362,34 @@ impl<
             match task_msg {
                 // Values submitted by a client
                 TaskMessage::Values(timestamp, new_values) => {
+                    //                    println!("\x1b[1;31m received nominate {:?}\x1b[0m", new_values);
                     // Collect.
                     for value in new_values {
                         // If we don't already know of this value, add it to the pending list and
                         // map.
                         if let Vacant(entry) = self.pending_values_map.entry(value) {
                             entry.insert(timestamp);
+                            //                            println!(
+                            //                                "\x1b[1;37m now adding to pending values and need nominate\x1b[0m"
+                            //                            );
                             self.pending_values
                                 .entry(self.scp.node_id().responder_id)
                                 .or_default()
                                 .push(value);
                             self.need_nominate
                                 .insert(self.scp.node_id().responder_id, true);
+                            //                            println!(
+                            //                                "\x1b[1;32m pending values = {:?} \n\n need_nominate = {:?}",
+                            //                                self.pending_values, self.need_nominate
+                            //                            );
                         }
                     }
                 }
 
                 // SCP Statement
                 TaskMessage::ConsensusMsg(consensus_msg, from_responder_id) => {
+                    //                    println!("\x1b[1;31m received network msg\x1b[0m");
+
                     // Only look at messages that are not for past slots.
                     if consensus_msg.scp_msg().slot_index >= self.cur_slot {
                         // Feed network state. The sync service needs this
@@ -414,7 +424,12 @@ impl<
         while values_nominated < MAX_PENDING_VALUES_TO_NOMINATE
             && self.need_nominate.values().any(|v| *v)
         {
+            //            println!("\x1b[1;31m Now nominating pending values\x1b[0m");
             for (responder_id, need_nominate) in self.need_nominate.iter_mut() {
+                //                println!(
+                //                    "\x1b[1;32m nominating for responder id {:?} which needs nominate? {:?}\x1b[0m",
+                //                    responder_id, need_nominate,
+                //                );
                 if !*need_nominate {
                     continue;
                 }
@@ -424,15 +439,25 @@ impl<
                     .get(responder_id)
                     .expect("Expected pending values for responder_id");
 
+                //                println!(
+                //                    "\x1b[1;33m Got pending values = {:?}\x1b[0m",
+                //                    pending_values
+                //                );
                 assert!(!pending_values.is_empty());
 
-                if pending_values.len() >= nom_index {
+                //                println!(
+                //                    "\x1b[1;31m len {:?} gotta be <= nom_index {}\x1b[0m",
+                //                    pending_values.len(),
+                //                    nom_index
+                //                );
+                if pending_values.len() <= nom_index {
                     // We've already nominated all the values for this responder_id
                     //self.need_nominate.insert(responder_id.clone(), false);
                     *need_nominate = false;
                     continue;
                 }
 
+                //                println!("\x1b[1;34m Sending to scp \x1b[0m");
                 let msg_opt = self
                     .scp
                     .propose_values(
@@ -461,7 +486,10 @@ impl<
         let mut remaining_pending: Vec<ResponderId> = self
             .pending_consensus_msgs
             .iter()
-            .filter(|(_k, v)| !v.get(&self.cur_slot).unwrap().is_empty())
+            .filter(|(_k, v)| match v.get(&self.cur_slot) {
+                Some(p) => !p.is_empty(),
+                None => false,
+            })
             .map(|(k, _v)| k.clone())
             .collect::<Vec<ResponderId>>();
         // Fully exhaust messages for current slot - FIXME: any early exits we would need if the slot moved?
@@ -491,7 +519,8 @@ impl<
                     // FIXME: I think we're broadcasting this message twice...because we also
                     // broadcast it when we pass it to the scp layer, via the send_scp_message function
                     // defined in byzantine_ledger which gets passed as self.send_scp_message
-                    //                    self.broadcaster
+                    // FIXME...this is only needed for tests?
+                    //                    self._broadcaster
                     //                        .lock()
                     //                        .expect("mutex poisoned")
                     //                        .broadcast_consensus_msg(consensus_msg.as_ref(), &from_responder_id);
@@ -538,7 +567,10 @@ impl<
             remaining_pending = self
                 .pending_consensus_msgs
                 .iter()
-                .filter(|(_k, v)| !v.get(&self.cur_slot).unwrap().is_empty())
+                .filter(|(_k, v)| match v.get(&self.cur_slot) {
+                    Some(p) => !p.is_empty(),
+                    None => false,
+                })
                 .map(|(k, _v)| k.clone())
                 .collect::<Vec<ResponderId>>();
         }
