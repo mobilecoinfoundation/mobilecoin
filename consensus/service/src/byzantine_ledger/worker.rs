@@ -72,11 +72,12 @@ pub struct ByzantineLedgerWorker<
     // on a first-come first-served basis. However, we want to be able to:
     // 1) Efficiently see if we already have a given value and ignore duplicates
     // 2) Track how long each value took to externalize.
-    // To accomplish both of this goals we store, in addition to the queue of pending values, a
+    // To accomplish both of these goals we store, in addition to the queue of pending values, a
     // BTreeMap that maps a value to when we first encountered it. Note that we only store a
     // timestamp for values that were handed to us directly from a client. We skip tracking
     // processing times for relayed values since we want to track the time from when the network
     // first saw a value, and not when a specific node saw it.
+    // FIXME: These are only pending values from self - does not need to be per responder_id
     pending_values: HashMap<ResponderId, Vec<TxHash>>,
     pending_values_map: BTreeMap<TxHash, Option<Instant>>,
 
@@ -392,6 +393,7 @@ impl<
 
                     // Only look at messages that are not for past slots.
                     if consensus_msg.scp_msg().slot_index >= self.cur_slot {
+                        // FIXME: feed in "fair" manner?
                         // Feed network state. The sync service needs this
                         // to be able to tell if we fell behind based on the slot values.
                         // Block ID checking is skipped here, since if we fell behind
@@ -418,6 +420,7 @@ impl<
     }
 
     /// Nominate all pending values up to MAX_PENDING_VALUES_TO_NOMINATE in round-robin fashion.
+    /// FIXME: does not need to be in round-robin fashion, we only nominate values from us
     fn nominate_pending_values(&mut self) {
         let mut values_nominated = 0;
         let mut nom_index = 0;
@@ -477,7 +480,7 @@ impl<
     }
 
     /// Process the consensus messages for the current slot, in round robin fashion.
-    /// Note: In practice, the pending_consensus_msg queue does not often experience maximization,
+    /// Note: In practice, the pending_consensus_msg queue does not often fill up,
     /// however, we send to the consensus layer in round robin fashion between peers in order
     /// to make sure that messages are processed fairly, and e.g. neighbors with lower latency
     /// do not receive priority.
@@ -519,11 +522,14 @@ impl<
                     // FIXME: I think we're broadcasting this message twice...because we also
                     // broadcast it when we pass it to the scp layer, via the send_scp_message function
                     // defined in byzantine_ledger which gets passed as self.send_scp_message
-                    // FIXME...this is only needed for tests?
-                    //                    self._broadcaster
-                    //                        .lock()
-                    //                        .expect("mutex poisoned")
-                    //                        .broadcast_consensus_msg(consensus_msg.as_ref(), &from_responder_id);
+                    // Note: The difference between the two is the "received_from" here is the from_responder_id,
+                    // but in send_scp_message, it's the local node id
+                    // FIXME: Bringing it back to see what happens - we may need to broadcast here
+                    //        so that we immediately send the message to peers to handle.
+                    self._broadcaster
+                        .lock()
+                        .expect("mutex poisoned")
+                        .broadcast_consensus_msg(consensus_msg.as_ref(), &from_responder_id);
 
                     // Unclear if this helps with anything, so it is disabled for now.
                     /*
@@ -546,11 +552,14 @@ impl<
                     }
                     */
 
-                    // Pass message to the scp layer.
+                    // Pass message to the scp layer. The slot will evaluate the message and possibly
+                    // produce a new message to send.
                     match self.scp.handle(scp_msg) {
                         Ok(msg_opt) => {
                             if let Some(msg) = msg_opt {
-                                (self.send_scp_message)(msg);
+                                log::debug!(self.logger, "Now sending scp message {:?}", msg);
+
+                                (self.send_scp_message,)(msg);
                             }
                         }
                         Err(err) => {
