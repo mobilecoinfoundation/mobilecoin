@@ -27,6 +27,12 @@ lazy_static::lazy_static! {
     // under a set limit.
     pub static ref CUR_NUM_PENDING_VALUES: IntGauge = OP_COUNTERS.gauge("cur_num_pending_values");
 
+    // Number of pending consensus values
+    pub static ref CUR_NUM_CONSENSUS_PENDING_VALUES: IntGauge = OP_COUNTERS.gauge("cur_num_consensus_pending_values");
+
+    // Number of pending slots
+    pub static ref PENDING_SLOTS: IntGauge = OP_COUNTERS.gauge("pending_slots");
+
     // Current slot number.
     pub static ref CUR_SLOT_NUM: IntGauge = OP_COUNTERS.gauge("cur_slot_num");
 

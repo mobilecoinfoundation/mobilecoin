@@ -157,6 +157,9 @@ pub trait ScpNode<V: Value>: Send {
     /// Clear the list of pending slots. This is useful if the user of this object realizes they
     /// have fallen behind their peers, and as such they want to abort processing of current slots.
     fn clear_pending_slots(&mut self);
+
+    /// The number of pending slots.
+    fn num_pending(&self) -> usize;
 }
 
 impl<V: Value, ValidationError: Display + 'static> ScpNode<V> for Node<V, ValidationError> {
@@ -279,6 +282,11 @@ impl<V: Value, ValidationError: Display + 'static> ScpNode<V> for Node<V, Valida
     /// have fallen behind their peers, and as such they want to abort processing of current slots.
     fn clear_pending_slots(&mut self) {
         self.pending.clear();
+    }
+
+    /// The number of pending slots.
+    fn num_pending(&self) -> usize {
+        self.pending.len()
     }
 }
 

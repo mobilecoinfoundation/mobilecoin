@@ -337,7 +337,7 @@ impl<
         // Nominate values for current slot.
         self.nominate_pending_values();
 
-        // Process any queues consensus messages.
+        // Process any queued consensus messages.
         self.process_consensus_msgs_for_cur_slot();
 
         // Process SCP timeouts.
@@ -354,11 +354,12 @@ impl<
         true
     }
 
+    /// Drain the incoming message queue (filled via ByzantineLedger::push_values and ByzantineLedger::handle_consensus_msg)
     fn process_external_requests(&mut self) -> bool {
         for task_msg in self.receiver.try_iter() {
             // Handle message based on it's type
             match task_msg {
-                // Values submitted by a client
+                // Values submitted by a client to this node
                 TaskMessage::Values(timestamp, new_values) => {
                     //                    println!("\x1b[1;31m received nominate {:?}\x1b[0m", new_values);
                     // Collect.
@@ -384,13 +385,12 @@ impl<
                     }
                 }
 
-                // SCP Statement
+                // SCP Statement from other nodes in the network
                 TaskMessage::ConsensusMsg(consensus_msg, from_responder_id) => {
                     //                    println!("\x1b[1;31m received network msg\x1b[0m");
 
                     // Only look at messages that are not for past slots.
                     if consensus_msg.scp_msg().slot_index >= self.cur_slot {
-                        // FIXME: feed in "fair" manner?
                         // Feed network state. The sync service needs this
                         // to be able to tell if we fell behind based on the slot values.
                         // Block ID checking is skipped here, since if we fell behind
@@ -404,6 +404,12 @@ impl<
                             .entry(consensus_msg.scp_msg().slot_index)
                             .or_default()
                             .push_back(consensus_msg);
+
+                        log::debug!(
+                            self.logger,
+                            "Pending consensus msgs = {:?}",
+                            self.pending_consensus_msgs
+                        );
                     }
                 }
 
@@ -478,7 +484,10 @@ impl<
     }
 
     /// Process the consensus messages for the current slot, in round robin fashion.
-    /// Note: In practice, the pending_consensus_msg queue does not often fill up,
+    ///
+    /// This queue can get backed up if nomination rounds are not progressing fast enough.
+    ///
+    /// Note: In practice, previously, the pending_consensus_msg queue does not often fill up,
     /// however, we send to the consensus layer in round robin fashion between peers in order
     /// to make sure that messages are processed fairly, and e.g. neighbors with lower latency
     /// do not receive priority.
@@ -813,6 +822,13 @@ impl<
         let slot_metrics = self.scp.get_slot_metrics(self.cur_slot);
         let num_pending: usize = self.pending_values.values().map(|v| v.len()).sum();
         counters::CUR_NUM_PENDING_VALUES.set(num_pending as i64);
+        let num_consensus_pending: usize = self
+            .pending_consensus_msgs
+            .values()
+            .map(|v| v.values().map(|f| f.len()).sum::<usize>())
+            .sum::<usize>();
+        counters::CUR_NUM_CONSENSUS_PENDING_VALUES.set(num_consensus_pending as i64);
+        counters::PENDING_SLOTS.set(self.scp.num_pending() as i64);
         counters::CUR_SLOT_NUM.set(self.cur_slot as i64);
         counters::CUR_SLOT_PHASE.set(match slot_metrics.as_ref().map(|m| m.phase) {
             None => 0,

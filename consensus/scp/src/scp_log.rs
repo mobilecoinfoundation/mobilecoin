@@ -264,6 +264,10 @@ impl<V: Value, N: ScpNode<V>> ScpNode<V> for LoggingScpNode<V, N> {
     fn clear_pending_slots(&mut self) {
         self.node.clear_pending_slots()
     }
+
+    fn num_pending(&self) -> usize {
+        self.node.num_pending()
+    }
 }
 
 /// An SCP log reader, to read a series of SCP messages.
