@@ -43,7 +43,7 @@ pub const IS_BEHIND_GRACE_PERIOD: Duration = Duration::from_secs(10);
 ///       reasonably drain the queue. We would like to keep the max block size < 4MB, and
 ///       3K transactions per block should be reasonably below that threshold, assuming each
 ///       transaction produces 3 txos.
-pub const MAX_PENDING_VALUES_TO_NOMINATE: usize = 3000;
+pub const MAX_PENDING_VALUES_TO_NOMINATE: usize = 100;
 
 pub struct ByzantineLedger {
     sender: Sender<TaskMessage>,

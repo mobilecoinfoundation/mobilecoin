@@ -17,7 +17,7 @@ use std::{collections::BTreeSet, fmt::Display, time::Duration};
 
 /// Max number of pending slots to store - since pending values is also 500, allow that every
 /// to-be-nominated message could potentially be considered for a pending slot.
-const MAX_PENDING_SLOTS: usize = 500;
+const MAX_PENDING_SLOTS: usize = 10;
 
 /// Max number of externalized slots to store.
 const MAX_EXTERNALIZED_SLOTS: usize = 10;
@@ -67,7 +67,7 @@ impl<V: Value, ValidationError: Display + 'static> Node<V, ValidationError> {
             validity_fn,
             combine_fn,
             logger,
-            scp_timebase: Duration::from_millis(5000),
+            scp_timebase: Duration::from_millis(1000),
         }
     }
 
