@@ -173,10 +173,7 @@ impl<
     // Returns true until stop is requested.
     fn tick(&mut self) -> bool {
         // Sanity check.
-        let mut total_values = 0; // FIXME: something fancier?
-        for (_responder_id, pending_values) in self.pending_values.iter() {
-            total_values += pending_values.len();
-        }
+        let total_values: usize = self.pending_values.values().map(|p| p.len()).sum();
         assert_eq!(total_values, self.pending_values_map.len());
 
         // Process external requests sent to us through the interface channel.
@@ -419,7 +416,8 @@ impl<
         true
     }
 
-    /// Nominate all pending values up to MAX_PENDING_VALUES_TO_NOMINATE in round-robin fashion.
+    /// Nominate all pending values up to MAX_PENDING_VALUES_TO_NOMINATE.
+    /// Note: We only nominate values that were submitted to this node.
     /// FIXME: does not need to be in round-robin fashion, we only nominate values from us
     fn nominate_pending_values(&mut self) {
         let mut values_nominated = 0;
@@ -518,14 +516,8 @@ impl<
                         continue;
                     }
 
-                    // Broadcast this message to the rest of the network.
-                    // FIXME: I think we're broadcasting this message twice...because we also
-                    // broadcast it when we pass it to the scp layer, via the send_scp_message function
-                    // defined in byzantine_ledger which gets passed as self.send_scp_message
-                    // Note: The difference between the two is the "received_from" here is the from_responder_id,
-                    // but in send_scp_message, it's the local node id
-                    // FIXME: Bringing it back to see what happens - we may need to broadcast here
-                    //        so that we immediately send the message to peers to handle.
+                    // Broadcast this message to the rest of the network. Do this immediately so that
+                    // other nodes' slots may also work on this message.
                     self._broadcaster
                         .lock()
                         .expect("mutex poisoned")
@@ -553,13 +545,13 @@ impl<
                     */
 
                     // Pass message to the scp layer. The slot will evaluate the message and possibly
-                    // produce a new message to send.
+                    // progress the state machine, producing a new message to send.
                     match self.scp.handle(scp_msg) {
                         Ok(msg_opt) => {
                             if let Some(msg) = msg_opt {
                                 log::debug!(self.logger, "Now sending scp message {:?}", msg);
 
-                                (self.send_scp_message,)(msg);
+                                (self.send_scp_message)(msg);
                             }
                         }
                         Err(err) => {

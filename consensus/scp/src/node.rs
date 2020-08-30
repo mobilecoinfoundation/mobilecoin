@@ -15,8 +15,8 @@ use mc_common::{
 use mockall::*;
 use std::{collections::BTreeSet, fmt::Display, time::Duration};
 
-/// Max number of pending slots to store - since pending queue is also 500, allow that every
-/// message could potentially be considered for a pending slot.
+/// Max number of pending slots to store - since pending values is also 500, allow that every
+/// to-be-nominated message could potentially be considered for a pending slot.
 const MAX_PENDING_SLOTS: usize = 500;
 
 /// Max number of externalized slots to store.

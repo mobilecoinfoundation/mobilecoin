@@ -373,7 +373,7 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
             combine_fn,
             valid_values: BTreeSet::default(),
             logger: logger.new(o!("mc.scp.slot" => slot_index)),
-            base_round_interval: Duration::from_millis(5000),
+            base_round_interval: Duration::from_millis(1000), // Nominates happen more frequently
             base_ballot_interval: Duration::from_millis(5000),
         };
 
@@ -447,10 +447,18 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
             }
         }
 
+        log::debug!(
+            self.logger,
+            "Nomination neighbors slot {:?}, round {} = {:?}",
+            slot_index,
+            nomination_round,
+            result
+        );
         result
     }
 
-    /// The max priority peer for a given nomination round.
+    /// The max priority peer for a given nomination round. This peer's values will be
+    /// merged into the values of this node, and echoed by this node.
     fn find_max_priority_peer(&self, round: u32) -> NodeID {
         let neighbors = self.neighbors(self.slot_index, round);
         let mut result = self.node_id.clone();
@@ -463,6 +471,9 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
                 continue;
             }
 
+            // Question: Is there any reason not to just random choice from peers, other
+            //           than adhering to the original spec, which, with our modification,
+            //           means we're essentially just implementing random choice?
             let node_priority = utils::slot_round_salted_keccak(
                 self.slot_index,
                 2,
