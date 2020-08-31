@@ -2,13 +2,9 @@
 
 // Thread-based simulation for consensus networks.
 
-// We allow dead code because not all integration tests use all of the common code.
-// https://github.com/rust-lang/rust/issues/46379
-#![allow(dead_code)]
-
 use mc_common::{
     logger::{log, Logger},
-    HashMap, HashSet, NodeID,
+    NodeID,
 };
 use mc_consensus_scp::{
     core_types::{CombineFn, SlotIndex, ValidityFn},
@@ -18,7 +14,7 @@ use mc_consensus_scp::{
     test_utils,
 };
 use std::{
-    collections::BTreeSet,
+    collections::{BTreeSet, HashMap, HashSet},
     iter::FromIterator,
     sync::{Arc, Mutex},
     thread,
@@ -375,11 +371,11 @@ impl SCPNode {
                                 }
 
                                 let outgoing_msg: Option<Msg<String>> = thread_local_node
-                                    .nominate(
+                                    .propose_values(
                                         current_slot as SlotIndex,
                                         BTreeSet::from_iter(values_to_nominate),
                                     )
-                                    .expect("nominate() failed");
+                                    .expect("propose_values() failed");
 
                                 if let Some(outgoing_msg) = outgoing_msg {
                                     (broadcast_msg_fn)(logger.clone(), outgoing_msg);
