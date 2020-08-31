@@ -32,7 +32,7 @@ use mc_crypto_keys::RistrettoPublic;
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::{
     get_tx_out_shared_secret,
-    onetime_keys::{recover_onetime_private_key, subaddress_for_key},
+    onetime_keys::{recover_onetime_private_key, recover_public_subaddress_spend_key},
     ring_signature::KeyImage,
     tx::TxOut,
 };
@@ -348,7 +348,7 @@ fn match_tx_outs_into_utxos(
         let tx_out_target_key = RistrettoPublic::try_from(&tx_out.target_key)?;
         let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key)?;
 
-        let subaddress_spk = SubaddressSPKId::from(&subaddress_for_key(
+        let subaddress_spk = SubaddressSPKId::from(&recover_public_subaddress_spend_key(
             &view_key.view_private_key,
             &tx_out_target_key,
             &tx_public_key,

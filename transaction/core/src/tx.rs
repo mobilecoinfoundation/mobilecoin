@@ -23,7 +23,7 @@ use crate::{
     domain_separators::TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG,
     encrypted_fog_hint::EncryptedFogHint,
     get_tx_out_shared_secret,
-    onetime_keys::{compute_shared_secret, compute_tx_pubkey, create_onetime_public_key},
+    onetime_keys::{create_onetime_public_key, create_shared_secret, create_tx_public_key},
     range::Range,
     ring_signature::{KeyImage, SignatureRctBulletproofs},
     CompressedCommitment,
@@ -263,11 +263,11 @@ impl TxOut {
         tx_private_key: &RistrettoPrivate,
         hint: EncryptedFogHint,
     ) -> Result<Self, AmountError> {
-        let target_key = create_onetime_public_key(recipient, tx_private_key).into();
-        let public_key = compute_tx_pubkey(tx_private_key, recipient.spend_public_key()).into();
+        let target_key = create_onetime_public_key(tx_private_key, recipient).into();
+        let public_key = create_tx_public_key(tx_private_key, recipient.spend_public_key()).into();
 
         let amount = {
-            let shared_secret = compute_shared_secret(recipient.view_public_key(), tx_private_key);
+            let shared_secret = create_shared_secret(recipient.view_public_key(), tx_private_key);
             Amount::new(value, &shared_secret)
         }?;
 

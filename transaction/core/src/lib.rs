@@ -12,7 +12,7 @@ extern crate std;
 #[macro_use]
 extern crate lazy_static;
 
-use crate::onetime_keys::compute_shared_secret;
+use crate::onetime_keys::create_shared_secret;
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 
 pub mod amount;
@@ -47,5 +47,5 @@ pub fn get_tx_out_shared_secret(
     view_key: &RistrettoPrivate,
     tx_public_key: &RistrettoPublic,
 ) -> RistrettoPublic {
-    compute_shared_secret(tx_public_key, view_key)
+    create_shared_secret(tx_public_key, view_key)
 }

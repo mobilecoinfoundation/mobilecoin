@@ -18,8 +18,7 @@ use crate::{
     commitment::Commitment,
     compressed_commitment::CompressedCommitment,
     domain_separators::RING_MLSAG_CHALLENGE_DOMAIN_TAG,
-    onetime_keys::hash_to_point,
-    ring_signature::{CurveScalar, Error, KeyImage, Scalar, GENERATORS},
+    ring_signature::{hash_to_point, CurveScalar, Error, KeyImage, Scalar, GENERATORS},
 };
 
 /// MLSAG for a ring of public keys and amount commitments.
