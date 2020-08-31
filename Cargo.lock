@@ -2383,6 +2383,7 @@ dependencies = [
 name = "mc-consensus-enclave-impl"
 version = "0.6.0"
 dependencies = [
+ "blake2",
  "cfg-if",
  "digest 0.9.0",
  "mbedtls",

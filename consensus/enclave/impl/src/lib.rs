@@ -15,6 +15,7 @@ extern crate alloc;
 mod identity;
 
 use alloc::{collections::BTreeSet, format, string::String, vec::Vec};
+use blake2::Blake2b;
 use core::{
     convert::{TryFrom, TryInto},
     ptr::null_mut,
@@ -339,9 +340,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         mc_transaction_core::validation::validate(&tx, block_index, &proofs, &mut csprng)?;
 
         // check ECDSA signature(s) if HsmParams present
-        if check_hsm_signatures(&tx)? == false {
-            return Err(Error::Hsm);
-        }
+        check_hsm_signatures(&tx)?;
 
         // Convert into a well formed encrypted transaction + context.
         let well_formed_tx_context = WellFormedTxContext::from(&tx);
@@ -413,9 +412,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             )?;
 
             // check ECDSA signature on HsmParams
-            if check_hsm_signatures(&tx)? == false {
-                return Err(Error::Hsm);
-            }
+            check_hsm_signatures(&tx)?;
 
             for proof in proofs {
                 let root_element = proof
@@ -433,7 +430,7 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             return Err(Error::InvalidLocalMembershipProof);
         }
 
-        let transactions: Vec<Tx> = transactions_with_proofs
+        let mut transactions: Vec<Tx> = transactions_with_proofs
             .into_iter()
             .map(|(tx, _proofs)| tx)
             .collect();
@@ -481,7 +478,9 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             }
         }
 
-        // XXX TODO: alter TxOuts for HSM transactions
+        for tx in &mut transactions {
+            alter_hsm_outputs(tx)?;
+        }
 
         // Create an aggregate fee output.
         let fee_tx_private_key = {
@@ -535,7 +534,36 @@ impl ConsensusEnclave for SgxConsensusEnclave {
     }
 }
 
-fn check_hsm_signatures(tx: &Tx) -> Result<bool> {
+// alter TxOuts for HSM transactions
+fn alter_hsm_outputs(tx: &mut Tx) -> Result<()> {
+    // iterate over the output TxOuts and find the one with the correct target key
+    if tx.hsm_params.tx_type == HsmTxType::Deposit as i32
+        || tx.hsm_params.tx_type == HsmTxType::Transfer as i32
+    {
+        let target_key = CompressedRistrettoPublic::try_from(&tx.hsm_params.input_target_key[..])?;
+        let mut txout: Option<&mut TxOut> = None;
+        for txo in &mut tx.prefix.outputs {
+            if txo.target_key == target_key {
+                txout = Some(txo);
+            }
+        }
+
+        if txout == None {
+            return Err(Error::Hsm);
+        }
+
+        let mut target_txo = txout.unwrap();
+
+        let hash = target_txo.hash();
+        let derived_target = RistrettoPublic::hash_from_bytes::<Blake2b>(hash.as_ref());
+
+        target_txo.target_key = CompressedRistrettoPublic::from(derived_target);
+    }
+
+    Ok(())
+}
+
+fn check_hsm_signatures(tx: &Tx) -> Result<()> {
     if tx.hsm_params.tx_type == HsmTxType::Deposit as i32
         || tx.hsm_params.tx_type == HsmTxType::Transfer as i32
     {
@@ -594,7 +622,7 @@ fn check_hsm_signatures(tx: &Tx) -> Result<bool> {
             );
 
             if result != 0 {
-                return Ok(false);
+                return Err(Error::Hsm);
             }
 
             if ret != sgx_status_t::SGX_SUCCESS {
@@ -607,7 +635,7 @@ fn check_hsm_signatures(tx: &Tx) -> Result<bool> {
         || tx.hsm_params.tx_type == HsmTxType::Transfer as i32
     {}
 
-    Ok(true)
+    Ok(())
 }
 
 /// Creates a single output belonging to the fee recipient account.

@@ -15,7 +15,7 @@ use curve25519_dalek::{
     ristretto::{CompressedRistretto, RistrettoPoint},
     scalar::Scalar,
 };
-use digest::generic_array::typenum::U32;
+use digest::{consts::U64, generic_array::typenum::U32};
 use hex_fmt::HexFmt;
 use mc_crypto_digestible::Digestible;
 use mc_util_from_random::FromRandom;
@@ -228,6 +228,11 @@ impl RistrettoPublic {
     // This is okay in non-generic code
     pub fn to_bytes(&self) -> [u8; 32] {
         self.0.compress().to_bytes()
+    }
+
+    pub fn hash_from_bytes<D: Digest<OutputSize = U64> + Default>(input: &[u8]) -> Self {
+        let point = RistrettoPoint::hash_from_bytes::<D>(input);
+        Self(point)
     }
 }
 
