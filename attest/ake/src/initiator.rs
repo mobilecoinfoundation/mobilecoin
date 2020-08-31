@@ -64,7 +64,7 @@ where
     fn try_next<R: CryptoRng + RngCore>(
         self,
         csprng: &mut R,
-        mut _input: ClientInitiate<KexAlgo, Cipher, DigestType>,
+        _input: ClientInitiate<KexAlgo, Cipher, DigestType>,
     ) -> Result<
         (
             AuthPending<KexAlgo, Cipher, DigestType>,
