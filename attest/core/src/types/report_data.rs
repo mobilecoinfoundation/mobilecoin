@@ -1,10 +1,12 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 //! The report data structure
+
 use crate::impl_sgx_newtype_for_bytestruct;
 use core::convert::TryFrom;
 use mc_sgx_types::{sgx_report_data_t, SGX_REPORT_DATA_SIZE};
 use mc_util_encodings::{Error as EncodingError, IntelLayout};
+use serde::{Deserialize, Serialize};
 use subtle::ConstantTimeEq;
 
 /// A data structure used for the user data in a report.
@@ -16,7 +18,9 @@ impl_sgx_newtype_for_bytestruct! {
     ReportData, sgx_report_data_t, SGX_REPORT_DATA_SIZE, d;
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(
+    Clone, Copy, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
+)]
 pub struct ReportDataMask {
     data: ReportData,
     mask: ReportData,

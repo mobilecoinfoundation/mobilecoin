@@ -2,7 +2,7 @@
 
 //! Configuration parameters for mobilecoind
 
-use mc_attest_core::Measurement;
+use mc_attest_core::Verifier;
 use mc_common::{logger::Logger, ResponderId};
 use mc_connection::{ConnectionManager, ThickClient};
 use mc_consensus_scp::QuorumSet;
@@ -125,7 +125,7 @@ impl PeersConfig {
 
     pub fn create_peers(
         &self,
-        expected_measurements: &[Measurement],
+        verifier: Verifier,
         grpc_env: Arc<grpcio::Environment>,
         logger: Logger,
     ) -> Vec<ThickClient> {
@@ -136,7 +136,7 @@ impl PeersConfig {
             .map(|client_uri| {
                 ThickClient::new(
                     client_uri.clone(),
-                    expected_measurements.to_vec(),
+                    verifier.clone(),
                     grpc_env.clone(),
                     logger.clone(),
                 )
@@ -147,7 +147,7 @@ impl PeersConfig {
 
     pub fn create_peer_manager(
         &self,
-        measurement: impl Into<Measurement>,
+        verifier: Verifier,
         logger: &Logger,
     ) -> ConnectionManager<ThickClient> {
         let grpc_env = Arc::new(
@@ -155,8 +155,7 @@ impl PeersConfig {
                 .name_prefix("RPC".to_string())
                 .build(),
         );
-        let measurements = [measurement.into()];
-        let peers = self.create_peers(&measurements, grpc_env, logger.clone());
+        let peers = self.create_peers(verifier, grpc_env, logger.clone());
 
         ConnectionManager::new(peers, logger.clone())
     }

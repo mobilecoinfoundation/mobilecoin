@@ -5,19 +5,18 @@ extern crate alloc;
 
 use aes_gcm::Aes256Gcm;
 use alloc::{string::ToString, vec::Vec};
-use core::convert::TryFrom;
 use digest::Digest;
 use mc_attest_ake::{
-    AuthPending, AuthRequestInput, AuthRequestOutput, AuthResponse, NodeInitiate, Ready, Start,
-    Transition,
+    AuthPending, AuthRequestOutput, AuthResponseInput, AuthResponseOutput, ClientAuthRequestInput,
+    NodeAuthRequestInput, NodeInitiate, Ready, Start, Transition,
 };
 use mc_attest_core::{
-    IasNonce, Measurement, Nonce, NonceError, Quote, QuoteNonce, Report, ReportData, TargetInfo,
-    VerificationReport, VerificationReportData, VerifyError, DEBUG_ENCLAVE, IAS_VERSION,
+    IasNonce, MrEnclaveVerifier, Nonce, NonceError, Quote, QuoteNonce, Report, ReportData,
+    TargetInfo, VerificationReport, Verifier, DEBUG_ENCLAVE,
 };
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, Error, PeerAuthRequest,
-    PeerAuthResponse, PeerSession, Result, Session,
+    PeerAuthResponse, PeerSession, Result,
 };
 use mc_attest_trusted::EnclaveReport;
 use mc_common::{LruCache, ResponderId};
@@ -120,6 +119,25 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
     // Kex related
     //
 
+    /// Construct a new verifier which ensures MRENCLAVE and debug settings
+    /// match.
+    fn get_verifier(&self) -> Result<Verifier> {
+        let mut verifier = Verifier::default();
+
+        let report_body = Report::new(None, None)?.body();
+
+        let mut mr_enclave_verifier = MrEnclaveVerifier::new(report_body.mr_enclave());
+        // INTEL-SA-00233: LVI hardening is handled via rustc arguments set in
+        // mc-util-build-enclave
+        mr_enclave_verifier.allow_hardening_advisory("INTEL-SA-00233");
+
+        verifier
+            .mr_enclave(mr_enclave_verifier)
+            .debug(DEBUG_ENCLAVE);
+
+        Ok(verifier)
+    }
+
     /// Get the peer ResponderId for ourself
     pub fn get_peer_self_id(&self) -> Result<ResponderId> {
         (self.peer_self_id.lock()?).clone().ok_or(Error::NotInit)
@@ -148,7 +166,34 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         &self,
         req: ClientAuthRequest,
     ) -> Result<(ClientAuthResponse, ClientSession)> {
-        self.accept(self.get_client_self_id()?, &self.clients, req)
+        let local_identity = self.kex_identity.clone();
+        let ias_report = self.get_ias_report()?;
+
+        // Create the state machine
+        let responder = Start::new(self.get_client_self_id()?.to_string());
+
+        // Massage the request message into state machine input
+        let auth_request = {
+            let req: Vec<u8> = req.into();
+            ClientAuthRequestInput::<X25519, Aes256Gcm, Sha512>::new(
+                AuthRequestOutput::from(req),
+                local_identity,
+                ias_report,
+            )
+        };
+
+        // Advance the state machine
+        let mut csprng = McRng::default();
+        let (responder, auth_response) = responder.try_next(&mut csprng, auth_request)?;
+        let session_id = ClientSession::from(responder.binding());
+
+        // This session is established as far as we are concerned.
+        self.clients.lock()?.put(session_id.clone(), responder);
+
+        // Massage the state machine output into the response message
+        let auth_response: Vec<u8> = auth_response.into();
+
+        Ok((ClientAuthResponse::from(auth_response), session_id))
     }
 
     /// Close a client session
@@ -164,16 +209,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
 
         // Fire up the state machine.
         let mut csprng = McRng::default();
-        // TODO: Cache expected values rather than creating a new report each time.
-        let report_body = Report::new(None, None)?.body();
-        let expected_measurements: [Measurement; 1] = [report_body.mr_enclave().into()];
-        let initiator = Start::new(
-            peer_id.to_string(),
-            expected_measurements.to_vec(),
-            report_body.product_id(),
-            report_body.security_version(),
-            DEBUG_ENCLAVE,
-        );
+        let initiator = Start::new(peer_id.to_string());
 
         // Construct the initializer input.
         let node_init =
@@ -194,10 +230,38 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
 
     /// Accept a peer connection
     pub fn peer_accept(&self, req: PeerAuthRequest) -> Result<(PeerAuthResponse, PeerSession)> {
-        self.accept(self.get_peer_self_id()?, &self.peer_inbound, req)
+        let local_identity = self.kex_identity.clone();
+        let ias_report = self.get_ias_report()?;
+
+        // Create the state machine
+        let responder = Start::new(self.get_peer_self_id()?.to_string());
+
+        // Massage the request message into state machine input
+        let auth_request = {
+            let req: Vec<u8> = req.into();
+            NodeAuthRequestInput::<X25519, Aes256Gcm, Sha512>::new(
+                AuthRequestOutput::from(req),
+                local_identity,
+                ias_report,
+                self.get_verifier()?,
+            )
+        };
+
+        // Advance the state machine
+        let mut csprng = McRng::default();
+        let (responder, auth_response) = responder.try_next(&mut csprng, auth_request)?;
+        let session_id = PeerSession::from(responder.binding());
+
+        // This session is established as far as we are concerned.
+        self.peer_inbound.lock()?.put(session_id.clone(), responder);
+
+        // Massage the state machine output into the response message
+        let auth_response: Vec<u8> = auth_response.into();
+
+        Ok((PeerAuthResponse::from(auth_response), session_id))
     }
 
-    /// Connect to a peer that our accepted our PeerAuthRequest
+    /// Complete the connection to a peer that our accepted our PeerAuthRequest
     pub fn peer_connect(
         &self,
         peer_id: &ResponderId,
@@ -211,11 +275,13 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             .ok_or(Error::NotFound)?;
 
         let msg: Vec<u8> = msg.into();
-        let auth_response_event = AuthResponse::from(msg);
+        let auth_response_output = AuthResponseOutput::from(msg);
+        let verifier = self.get_verifier()?;
+        let auth_response_input = AuthResponseInput::new(auth_response_output, verifier);
 
         // Advance the state machine to ready (or failure)
         let mut csprng = McRng::default();
-        let (initiator, _) = initiator.try_next(&mut csprng, auth_response_event)?;
+        let (initiator, _) = initiator.try_next(&mut csprng, auth_response_input)?;
 
         let retval = PeerSession::from(initiator.binding());
 
@@ -404,15 +470,16 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
 
     /// Verify an ias report
     pub fn verify_ias_report(&self, ias_report: VerificationReport) -> Result<()> {
-        // Check report signature first
-        ias_report.verify_signature(None)?;
+        let verifier = self.get_verifier()?;
 
-        // Parse the data, extract the nonce
-        let ias_data = VerificationReportData::try_from(&ias_report)?;
-        let nonce = ias_data
+        // Verify signature, MRENCLAVE, report value, etc.
+        let report_data = verifier.verify(&ias_report)?;
+
+        // Get the nonce from the IAS report
+        let nonce = report_data
             .nonce
             .as_ref()
-            .ok_or(Error::Verify(VerifyError::Nonce(NonceError::Missing)))?;
+            .ok_or(Error::Nonce(NonceError::Missing))?;
 
         // Find the quote we cached earlier, if any
         let cached_quote = self
@@ -421,13 +488,12 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
             .pop(nonce)
             .ok_or(Error::InvalidState)?;
 
-        // Double-check that what we cached matches what IAS signed
-        if !cached_quote.contents_eq(&ias_data.quote) {
-            return Err(Error::Verify(VerifyError::IasQuoteMismatch));
-        }
-
-        // Verify the report data.
-        ias_data.verify_data(IAS_VERSION, Some(nonce), None)?;
+        // And finally, verify that the quote IAS examined is the one we've
+        // sent, using the nonce we provided.
+        let _ = Verifier::default()
+            .quote_body(&cached_quote)
+            .nonce(nonce)
+            .verify(&ias_report)?;
 
         // Save the result
         *(self.current_ias_report.lock()?) = Some(ias_report);
@@ -454,61 +520,5 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         }
 
         Err(Error::NotFound)
-    }
-
-    /// Helper: Accept a session, which might be either a peer or client session
-    fn accept<S: Session>(
-        &self,
-        self_id: ResponderId,
-        session_db: &Mutex<LruCache<S, Ready<Aes256Gcm>>>,
-        req: S::Request,
-    ) -> Result<(S::Response, S)>
-    where
-        Start: Transition<
-            Ready<Aes256Gcm>,
-            AuthRequestInput<S::Handshake, X25519, Aes256Gcm, Sha512>,
-            AuthResponse,
-        >,
-        Error: From<
-            <Start as Transition<
-                Ready<Aes256Gcm>,
-                AuthRequestInput<S::Handshake, X25519, Aes256Gcm, Sha512>,
-                AuthResponse,
-            >>::Error,
-        >,
-    {
-        let local_identity = self.kex_identity.clone();
-        let ias_report = self.get_ias_report()?;
-
-        // Create the state machine
-        let mut csprng = McRng::default();
-        // TODO: Cache expected values rather than creating a new report each time.
-        let report_body = Report::new(None, None)?.body();
-        let expected_measurements: [Measurement; 1] = [report_body.mr_enclave().into()];
-        let responder = Start::new(
-            self_id.to_string(),
-            expected_measurements.to_vec(),
-            report_body.product_id(),
-            report_body.security_version(),
-            DEBUG_ENCLAVE,
-        );
-
-        // Massage our input into the state machine input
-        let auth_request = {
-            let req: Vec<u8> = req.into();
-            AuthRequestInput::<S::Handshake, X25519, Aes256Gcm, Sha512>::new(
-                AuthRequestOutput::from(req),
-                local_identity,
-                ias_report,
-            )
-        };
-
-        let (responder, auth_response) = responder.try_next(&mut csprng, auth_request)?;
-        let session_id = S::from(responder.binding());
-        // This session is established as far as we are concerned.
-        session_db.lock()?.put(session_id.clone(), responder);
-
-        let auth_response: Vec<u8> = auth_response.into();
-        Ok((S::Response::from(auth_response), session_id))
     }
 }

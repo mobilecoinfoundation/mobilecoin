@@ -31,6 +31,7 @@ ias-dev = []
 mc-common = { path = "../../common", default-features = false }
 mc-crypto-rand = { path = "../../crypto/rand" }
 mc-util-encodings = { path = "../../util/encodings" }
+mc-sgx-css = { path = "../../sgx/css" }
 mc-sgx-types = { path = "../../sgx/types" }
 
 mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.3", default-features = false }

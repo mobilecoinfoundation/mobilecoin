@@ -20,6 +20,12 @@ use serde::{Deserialize, Serialize};
 #[repr(transparent)]
 pub struct MrEnclave(sgx_measurement_t);
 
+impl From<[u8; SGX_HASH_SIZE]> for MrEnclave {
+    fn from(m: [u8; SGX_HASH_SIZE]) -> Self {
+        MrEnclave(sgx_measurement_t { m })
+    }
+}
+
 /// An opaque type for MRSIGNER values.
 ///
 /// A MRSIGNER value is a cryptographic hash of the public key an enclave
@@ -27,6 +33,12 @@ pub struct MrEnclave(sgx_measurement_t);
 #[derive(Clone, Copy, Default)]
 #[repr(transparent)]
 pub struct MrSigner(sgx_measurement_t);
+
+impl From<[u8; SGX_HASH_SIZE]> for MrSigner {
+    fn from(m: [u8; SGX_HASH_SIZE]) -> Self {
+        MrSigner(sgx_measurement_t { m })
+    }
+}
 
 impl_sgx_newtype_for_bytestruct! {
     MrEnclave, sgx_measurement_t, SGX_HASH_SIZE, m;

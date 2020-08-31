@@ -1,16 +1,20 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-//! A set of traits used to implement a rusty deterministic finite state transducer
+//! A set of traits used to implement a rusty deterministic finite state
+//! transducer
 
 use rand_core::{CryptoRng, RngCore};
 
-/// A marker trait indicating a particular structure is a valid input for a transducer
+/// A marker trait indicating a particular structure is a valid input for a
+/// transducer
 pub trait Input {}
 
-/// A marker trait indicating a particular structure is a valid output from a transducer
+/// A marker trait indicating a particular structure is a valid output from a
+/// transducer
 pub trait Output {}
 
-/// A marker trait indicating a particular structure is a valid state for a transducer
+/// A marker trait indicating a particular structure is a valid state for a
+/// transducer
 pub trait State {}
 
 /// A [Mealy Machine](https://en.wikipedia.org/wiki/Mealy_machine) is a
@@ -27,9 +31,9 @@ pub trait Transition<NextState: State, InputEvent: Input, OutputEvent: Output>: 
     /// Consume this state and an input to produce a new state and output.
     ///
     /// Resulting states may not have transitions defined for them.
-    fn try_next(
+    fn try_next<R: CryptoRng + RngCore>(
         self,
-        csprng: &mut (impl CryptoRng + RngCore),
+        csprng: &mut R,
         input: InputEvent,
     ) -> Result<(NextState, OutputEvent), Self::Error>;
 }

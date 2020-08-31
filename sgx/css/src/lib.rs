@@ -11,7 +11,7 @@ use core::{
     ptr::read_unaligned,
     result::Result as StdResult,
 };
-use failure::Fail;
+use displaydoc::Display;
 use sha2::{digest::Digest, Sha256};
 
 type Result = StdResult<Signature, Error>;
@@ -47,19 +47,19 @@ impl TryFrom<u32> for EnclaveVendor {
 }
 
 /// An enumeration of errors which can occur while parsing a Signature struct
-#[derive(Copy, Clone, Debug, Eq, Fail, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Copy, Clone, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Error {
-    #[fail(display = "Structure data has the wrong length")]
+    /// Structure data has the wrong length
     Length,
-    #[fail(display = "Invalid header value encountered")]
+    /// Invalid header value encountered
     BadHeader1,
-    #[fail(display = "Invalid header value encountered")]
+    /// Invalid header value encountered
     BadHeader2,
-    #[fail(display = "Unknown vendor encountered")]
+    /// Unknown vendor encountered
     UnknownVendor,
-    #[fail(display = "Enclave build date too old to be reasonable")]
+    /// Enclave build date too old to be reasonable
     BadDate,
-    #[fail(display = "Reserved bytes are not zero")]
+    /// Reserved bytes are not zero
     NonZeroReserved,
 }
 

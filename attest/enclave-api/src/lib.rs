@@ -1,17 +1,19 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-// no_std crate providing common structs used in enclave apis in connection to
-// attestation and attested key exchange
+//! Common structs used in enclave apis in connection to attestation and
+//! attested key exchange
+
 #![no_std]
+
 extern crate alloc;
 
 mod error;
+
 pub use error::{Error, Result};
 
 use alloc::vec::Vec;
 use core::hash::Hash;
 use mc_attest_core::{QuoteNonce, Report};
-use mc_crypto_noise::{HandshakeIX, HandshakeNX, HandshakePattern};
 use serde::{Deserialize, Serialize};
 
 /// The raw authentication request message, sent from an initiator to a responder
@@ -104,7 +106,6 @@ pub trait Session:
 {
     type Request: Into<Vec<u8>>;
     type Response: From<Vec<u8>>;
-    type Handshake: HandshakePattern;
 }
 
 /// An opaque bytestream used as a client session
@@ -138,7 +139,6 @@ impl Into<Vec<u8>> for ClientSession {
 impl Session for ClientSession {
     type Request = ClientAuthRequest;
     type Response = ClientAuthResponse;
-    type Handshake = HandshakeNX;
 }
 
 /// An opaque bytestream used as a peer session ID.
@@ -172,5 +172,4 @@ impl Into<Vec<u8>> for PeerSession {
 impl Session for PeerSession {
     type Request = PeerAuthRequest;
     type Response = PeerAuthResponse;
-    type Handshake = HandshakeIX;
 }

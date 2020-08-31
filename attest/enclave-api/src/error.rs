@@ -3,9 +3,9 @@
 //! Enclave API Errors
 
 use core::result::Result as StdResult;
-use failure::Fail;
+use displaydoc::Display;
 use mc_attest_ake::Error as AkeError;
-use mc_attest_core::{NonceError, QuoteError, SgxError, SignatureError, VerifyError};
+use mc_attest_core::{NonceError, QuoteError, SgxError, VerifierError};
 use mc_crypto_noise::CipherError;
 use mc_sgx_compat::sync::PoisonError;
 use serde::{Deserialize, Serialize};
@@ -14,65 +14,51 @@ use serde::{Deserialize, Serialize};
 pub type Result<T> = StdResult<T, Error>;
 
 /// An enumeration of errors which can occur inside an enclave, in connection to attestation or AKE
-#[derive(Clone, Debug, Deserialize, Fail, PartialEq, PartialOrd, Serialize)]
+#[derive(Clone, Debug, Deserialize, Display, PartialEq, PartialOrd, Serialize)]
 pub enum Error {
     /// Enclave not initialized
-    #[fail(display = "Enclave not initialized")]
     NotInit,
 
     /// Enclave already initialized
-    #[fail(display = "Enclave already initialized")]
     AlreadyInit,
 
-    /// A call to the SGX SDK has failed
-    #[fail(display = "Error communicating with SGX: {}", _0)]
+    /// Error communicating with SGX: {0}
     Sgx(SgxError),
 
-    /// There was an error while performing a peer handshake, encryption, or key exchange
-    #[fail(display = "Handshake error: {}", _0)]
+    /// Handshake error: {0}
     Kex(AkeError),
 
-    /// There was an error encrypting or decrypting data for a peer or client.
-    #[fail(display = "Encryption error after handshake: {}", _0)]
+    /// Encryption error after handshake: {0}
     Cipher(CipherError),
 
-    /// There was an error generating or verifying a nonce.
+    /// There was an error while handling a nonce: {0}
     ///
     /// This can represent a significant programming bug in the nonce
     /// generation or report parsing code, or a simple mismatch.
-    #[fail(display = "There was an error while handling a nonce: {}", _0)]
     Nonce(NonceError),
 
-    /// There was a problem with the quote or it's report.
-    #[fail(display = "The local quote could not be verified: {}", _0)]
+    /// The local quote could not be verified: {0}
     Quote(QuoteError),
 
-    /// There was an error validating the report, described by the newtype
-    /// inner.
-    #[fail(display = "The local report could not be verified: {}", _0)]
-    Verify(VerifyError),
+    /// The local report could not be verified: {0}
+    Verify(VerifierError),
 
-    /// An panic occurred on another thread
-    #[fail(display = "Another thread crashed while holding a lock")]
+    /// Another thread crashed while holding a lock
     Poison,
 
-    /// The method call was not valid for the state machine for the data.
+    /// Invalid state for call
     ///
     /// This indicates a bug in the calling code, typically attempting to
     /// re-submit an already-verified quote or IAS report.
-    #[fail(display = "Invalid state for call")]
     InvalidState,
 
-    /// No report has been cached yet.
-    #[fail(display = "No IAS report has been verified yet.")]
+    /// No IAS report has been verified yet
     NoReportAvailable,
 
-    /// Too many reports are currently outstanding.
-    #[fail(display = "Too many IAS reports are already in-flight.")]
+    /// Too many IAS reports are already in-flight
     TooManyPendingReports,
 
-    /// The connection could not be found by channel binding or node ID.
-    #[fail(display = "Connection not found by node ID or session")]
+    /// Connection not found by node ID or session
     NotFound,
 }
 
@@ -112,14 +98,8 @@ impl From<QuoteError> for Error {
     }
 }
 
-impl From<SignatureError> for Error {
-    fn from(src: SignatureError) -> Error {
-        Error::Verify(src.into())
-    }
-}
-
-impl From<VerifyError> for Error {
-    fn from(src: VerifyError) -> Error {
+impl From<VerifierError> for Error {
+    fn from(src: VerifierError) -> Error {
         Error::Verify(src)
     }
 }

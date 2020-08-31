@@ -2,18 +2,15 @@
 
 //! mobilecoind daemon entry point
 
-use mc_attest_core::MrSigner;
+use mc_attest_core::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::logger::{create_app_logger, log, o, Logger};
-use mc_consensus_enclave_measurement::sigstruct;
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::{LedgerSyncServiceThread, PollingNetworkState, ReqwestTransactionsFetcher};
 use mc_mobilecoind::{
     config::Config, database::Database, payments::TransactionsManager, service::Service,
 };
 use mc_watcher::{watcher::WatcherSyncThread, watcher_db::create_or_open_rw_watcher_db};
-
 use std::{
-    convert::TryFrom,
     path::Path,
     sync::{Arc, Mutex},
 };
@@ -26,12 +23,15 @@ fn main() {
     let _sentry_guard = mc_common::sentry::init();
     let (logger, _global_logger_guard) = create_app_logger(o!());
 
+    let mut mr_signer_verifier =
+        MrSignerVerifier::from(mc_consensus_enclave_measurement::sigstruct());
+    mr_signer_verifier.allow_config_advisory("INTEL-SA-00233");
+
+    let mut verifier = Verifier::default();
+    verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
+
     // Create peer manager.
-    let peer_manager = config.peers_config.create_peer_manager(
-        MrSigner::try_from(&sigstruct().mrsigner()[..])
-            .expect("Could not parse validator node MRSIGNER"),
-        &logger,
-    );
+    let peer_manager = config.peers_config.create_peer_manager(verifier, &logger);
 
     // Create network state, transactions fetcher and ledger sync.
     let network_state = Arc::new(Mutex::new(PollingNetworkState::new(

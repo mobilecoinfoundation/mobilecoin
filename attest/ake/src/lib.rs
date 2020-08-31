@@ -21,8 +21,8 @@ mod state;
 pub use self::{
     error::Error,
     event::{
-        AuthRequestInput, AuthRequestOutput, AuthResponse, AuthSuccess, Ciphertext, ClientInitiate,
-        NodeInitiate, Plaintext,
+        AuthRequestOutput, AuthResponseInput, AuthResponseOutput, Ciphertext,
+        ClientAuthRequestInput, ClientInitiate, NodeAuthRequestInput, NodeInitiate, Plaintext,
     },
     mealy::Transition,
     state::{AuthPending, Ready, Start},
@@ -34,13 +34,10 @@ mod test {
     //! Unit tests for Attested Key Exchange
     extern crate std;
 
-    use alloc::vec;
-
     use super::*;
     use aes_gcm::Aes256Gcm;
-    use alloc::string::String;
     use core::convert::TryFrom;
-    use mc_attest_core::{Quote, IAS_SIM_ROOT_ANCHORS};
+    use mc_attest_core::{MrSignerVerifier, Quote, Verifier, IAS_SIM_ROOT_ANCHORS};
     use mc_attest_net::{Client, RaClient};
     use mc_crypto_keys::{X25519Private, X25519Public, X25519};
     use mc_util_encodings::{FromBase64, ToX64};
@@ -50,8 +47,6 @@ mod test {
     use sha2::Sha512;
 
     const RESPONDER_ID_STR: &str = "node1.unittest.mobilenode.com";
-    const PRODUCT_ID: u16 = 0u16;
-    const MIN_SVN: u16 = 0u16;
 
     #[test]
     fn ix_handshake() {
@@ -74,38 +69,30 @@ mod test {
         let quote = Quote::try_from(quote_data.as_ref())
             .expect("Could not parse quote from modified bytes");
 
-        std::println!("new quote = {:?}", &quote);
-
         // Sign the forged quote with the sim client
         let ra_client = Client::new("").expect("Could not create sim client");
         let ias_report = ra_client
             .verify_quote(&quote, None)
             .expect("Could not sign our bogus report");
 
-        let mr_signer = quote
+        let report_body = quote
             .report_body()
-            .expect("Could not retrieve report body from cached report")
-            .mr_signer();
+            .expect("Could not retrieve report body from cached report");
 
-        let mut initiator = Start::new(
-            RESPONDER_ID_STR.into(),
-            vec![mr_signer.into()],
-            PRODUCT_ID,
-            MIN_SVN,
-            true,
+        // Construct a report verifier that will check the MRSIGNER, product ID, and
+        // security version
+        let mr_signer = MrSignerVerifier::new(
+            report_body.mr_signer(),
+            report_body.product_id(),
+            report_body.security_version(),
         );
 
-        let mut responder = Start::new(
-            RESPONDER_ID_STR.into(),
-            vec![mr_signer.into()],
-            PRODUCT_ID,
-            MIN_SVN,
-            true,
-        );
+        let mut verifier = Verifier::new(&[IAS_SIM_ROOT_ANCHORS])
+            .expect("Could not construct verifier with sim root anchors");
+        verifier.mr_signer(mr_signer).debug(true);
 
-        let trust_anchors = Some(vec![String::from(IAS_SIM_ROOT_ANCHORS)]);
-        initiator.trust_anchors = trust_anchors.clone();
-        responder.trust_anchors = trust_anchors;
+        let initiator = Start::new(RESPONDER_ID_STR.into());
+        let responder = Start::new(RESPONDER_ID_STR.into());
 
         let node_init =
             NodeInitiate::<X25519, Aes256Gcm, Sha512>::new(identity.clone(), ias_report.clone());
@@ -115,15 +102,17 @@ mod test {
 
         // initiator = authpending, responder = start
 
-        let auth_request_input = AuthRequestInput::new(auth_request_output, identity, ias_report);
-        let (responder, auth_response) = responder
+        let auth_request_input =
+            NodeAuthRequestInput::new(auth_request_output, identity, ias_report, verifier.clone());
+        let (responder, auth_response_output) = responder
             .try_next(&mut csprng, auth_request_input)
             .expect("Responder could not process auth request");
 
         // initiator = authpending, responder = ready
 
+        let auth_response_input = AuthResponseInput::new(auth_response_output, verifier);
         let (initiator, _) = initiator
-            .try_next(&mut csprng, auth_response)
+            .try_next(&mut csprng, auth_response_input)
             .expect("Initiator not process auth response");
 
         // initiator = ready, responder = ready
