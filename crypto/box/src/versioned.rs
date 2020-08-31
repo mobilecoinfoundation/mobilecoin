@@ -44,7 +44,7 @@ use rand_core::{CryptoRng, RngCore};
 pub type RistrettoHkdfBlake2bAes128Gcm = HkdfBox<Ristretto, Blake2b, Aes128Gcm>;
 
 /// A "magic byte" value checked during this process, but not interpretted.
-const MAJOR_VERSION: u8 = 0;
+const MAJOR_VERSION: u8 = 1;
 /// The "default" version that we would use for encryption lacking any version negotiation.
 const LATEST_MINOR_VERSION: u8 = 0;
 /// The versions that we would find "acceptable" during version negotiation.
