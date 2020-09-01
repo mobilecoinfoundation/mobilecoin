@@ -303,13 +303,10 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             ));
         }
 
+        // Use root entropy to construct AccountKey.
         let mut root_entropy = [0u8; 32];
         root_entropy.copy_from_slice(request.get_entropy());
-
-        // Use root entropy to construct AccountKey.
         let root_id = RootIdentity::from(&root_entropy);
-
-        // TODO: change to production AccountKey derivation
         let account_key = AccountKey::from(&root_id);
 
         // Return response.
@@ -449,13 +446,10 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             rpc_internal_error("ledger_db.get_tx_out_by_index", err, &self.logger)
         })?;
 
+        // Use root entropy to construct AccountKey.
         let mut root_entropy = [0u8; 32];
         root_entropy.copy_from_slice(transfer_payload.get_entropy());
-
-        // Use root entropy to construct AccountKey.
         let root_id = RootIdentity::from(&root_entropy);
-
-        // TODO: change to production AccountKey derivation
         let account_key = AccountKey::from(&root_id);
 
         let shared_secret =
@@ -1708,18 +1702,19 @@ mod test {
         let (_ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
 
-        // call get account key
-        let root_entropy = [123u8; 32];
+        // Use root entropy to construct AccountKey.
+        let mut root_entropy = [123u8; 32];
+        root_entropy.copy_from_slice(request.get_entropy());
+        let root_id = RootIdentity::from(&root_entropy);
+        let account_key = AccountKey::from(&root_id);
+
         let mut request = mc_mobilecoind_api::GetAccountKeyRequest::new();
         request.set_entropy(root_entropy.to_vec());
 
         let response = client.get_account_key(&request).unwrap();
 
-        // TODO: change to production AccountKey derivation
-        let root_id = RootIdentity::from(&root_entropy);
-
         assert_eq!(
-            AccountKey::from(&root_id),
+            account_key,
             AccountKey::try_from(response.get_account_key()).unwrap(),
         );
 
@@ -2535,14 +2530,13 @@ mod test {
                 .append_block(&new_block, &block_contents, None)
                 .unwrap();
 
+            // Use root entropy to construct AccountKey.
             let mut root_entropy = [0u8; 32];
-            root_entropy.copy_from_slice(response.get_entropy());
+            root_entropy.copy_from_slice(request.get_entropy());
+            let root_id = RootIdentity::from(&root_entropy);
+            let account_key = AccountKey::from(&root_id);
 
             // Add a monitor based on the entropy we received.
-            let root_id = RootIdentity::from(&root_entropy);
-
-            // TODO: change to production AccountKey derivation
-            let account_key = AccountKey::from(&root_id);
             let monitor_data = MonitorData::new(
                 account_key,
                 DEFAULT_SUBADDRESS_INDEX, // first_subaddress
@@ -3210,8 +3204,6 @@ mod test {
 
         // Use root entropy to construct AccountKey.
         let root_id = RootIdentity::from(&root_entropy);
-
-        // TODO: change to production AccountKey derivation
         let receiver = AccountKey::from(&root_id);
 
         let mut transaction_builder = TransactionBuilder::new();
