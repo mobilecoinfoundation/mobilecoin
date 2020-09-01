@@ -1389,6 +1389,8 @@ mod test {
         iter::FromIterator,
     };
 
+
+
     #[test_with_logger]
     fn test_add_monitor_impl(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([20u8; 32]);
@@ -3204,15 +3206,29 @@ mod test {
             get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
 
         // a valid transfer code must reference a tx_public_key that appears in the ledger
-        let tx_out = ledger_db.get_tx_out_by_index(0).unwrap();
+        // that is controlled by the root_entropy included in the code
 
-        // Text public key
+        let mut root_entropy = [3u8; 32];
+
+        // Use root entropy to construct AccountKey.
+        let root_id = RootIdentity::from(&root_entropy);
+
+        // TODO: change to production AccountKey derivation
+        let receiver = AccountKey::from(&root_id);
+
+        let mut transaction_builder = TransactionBuilder::new();
+        let (tx_out, tx_confirmation) = transaction_builder
+            .add_output(10, &receiver.subaddress(DEFAULT_SUBADDRESS_INDEX), None, &mut rng)
+            .unwrap();
+
+        add_txos_to_ledger_db(&mut ledger_db, &vec![tx_out.clone()], &mut rng);
+
         let tx_public_key = tx_out.public_key;
 
         // An invalid request should fail.
         {
             let mut request = mc_mobilecoind_api::GetTransferCodeRequest::new();
-            request.set_entropy(vec![3; 8]);
+            request.set_entropy(&root_entropy);
             request.set_tx_public_key((&tx_public_key).into());
             request.set_memo("memo".to_owned());
             assert!(client.get_transfer_code(&request).is_err());
@@ -3226,7 +3242,7 @@ mod test {
         {
             // Encode
             let mut request = mc_mobilecoind_api::GetTransferCodeRequest::new();
-            request.set_entropy(vec![3; 32]);
+            request.set_entropy(&root_entropy);
             request.set_tx_public_key((&tx_public_key).into());
             request.set_memo("test memo".to_owned());
 
@@ -3240,7 +3256,7 @@ mod test {
             let response = client.read_transfer_code(&request).unwrap();
 
             // Compare
-            assert_eq!(vec![3; 32], response.get_entropy());
+            assert_eq!(&root_entropy, response.get_entropy());
             assert_eq!(
                 tx_public_key,
                 CompressedRistrettoPublic::try_from(response.get_tx_public_key()).unwrap()
