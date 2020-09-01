@@ -428,8 +428,13 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             ));
         }
         let transfer_payload = request_wrapper.get_transfer_payload();
-        let tx_public_key = CompressedRistretto::try_from(transfer_payload.get_tx_public_key())
+
+        let compressed_tx_public_key = CompressedRistretto::try_from(transfer_payload.get_tx_public_key())
             .map_err(|err| rpc_internal_error("CompressedRistretto.try_from", err, &self.logger))?;
+
+
+        let tx_public_key = RistrettoPublic::try_from(&compressed_tx_public_key)
+            .map_err(|err| rpc_internal_error("RistrettoPublic.try_from", err, &self.logger))?;
 
         // build and include a UnspentTxOut that can be immediately spent
 
@@ -475,7 +480,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         };
 
         let mut response = mc_mobilecoind_api::ReadTransferCodeResponse::new();
-        response.set_entropy(root_entropy);
+        response.set_entropy(root_entropy.to_vec());
         response.set_tx_public_key((&tx_public_key).into());
         response.set_memo(transfer_payload.get_memo().to_string());
         response.set_utxo((&utxo).into());
