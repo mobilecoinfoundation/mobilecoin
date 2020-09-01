@@ -458,9 +458,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         let (value, _blinding) = tx_out
             .amount
             .get_value(&shared_secret)
-            .map_err(|err| {
-                rpc_internal_error("amount.get_value", err, &self.logger)
-            })?;
+            .map_err(|err| rpc_internal_error("amount.get_value", err, &self.logger))?;
 
         let onetime_private_key = recover_onetime_private_key(
             &tx_public_key,
