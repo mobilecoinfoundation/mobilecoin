@@ -3195,7 +3195,7 @@ mod test {
         let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
 
         // no known recipient, 3 random recipients and no monitors.
-        let (mut ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+        let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
 
         // a valid transfer code must reference a tx_public_key that appears in the ledger
@@ -3205,13 +3205,13 @@ mod test {
 
         // Use root entropy to construct AccountKey.
         let root_id = RootIdentity::from(&root_entropy);
-        let receiver = AccountKey::from(&root_id);
+        let account_key = AccountKey::from(&root_id);
 
         let mut transaction_builder = TransactionBuilder::new();
         let (tx_out, _tx_confirmation) = transaction_builder
             .add_output(
                 10,
-                &receiver.subaddress(DEFAULT_SUBADDRESS_INDEX),
+                &account_key.subaddress(DEFAULT_SUBADDRESS_INDEX),
                 None,
                 &mut rng,
             )
@@ -3259,6 +3259,39 @@ mod test {
                 CompressedRistrettoPublic::try_from(response.get_tx_public_key()).unwrap()
             );
             assert_eq!(response.get_memo(), "test memo");
+
+            // check that the utxo that comes back from the code matches the ledger data
+
+            // Add a monitor based on the entropy we received.
+            let monitor_data = MonitorData::new(
+                account_key,
+                DEFAULT_SUBADDRESS_INDEX, // first_subaddress
+                1,                        // num_subaddresses
+                0,                        // first_block
+                "",                       // name
+            )
+            .unwrap();
+
+            let monitor_id = mobilecoind_db.add_monitor(&monitor_data).unwrap();
+
+            // Wait for sync to complete.
+            wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+            // Get utxos for the account and verify a match utxo.
+            let utxos = mobilecoind_db
+                .get_utxos_for_subaddress(&monitor_id, DEFAULT_SUBADDRESS_INDEX)
+                .unwrap();
+            assert_eq!(utxos.len(), 1);
+
+            let utxo = &utxos[0];
+
+            assert_eq!(utxo, response.get_utxo());
+            assert_eq!(
+                utxo.tx_out.public_key,
+                RistrettoPublic::try_from(response.get_tx_public_key())
+                    .unwrap()
+                    .into()
+            );
         }
     }
 
