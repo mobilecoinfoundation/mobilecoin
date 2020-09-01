@@ -427,13 +427,13 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         }
         let transfer_payload = request_wrapper.get_transfer_payload();
 
-        let tx_public_key = RistrettoPublic::try_from(transfer_payload.get_tx_public_key())
-            .map_err(|err| rpc_internal_error("RistrettoPublic.try_from", err, &self.logger))?;
-
-        let compressed_tx_public_key = CompressedRistrettoPublic::try_from(&tx_public_key)
+        let compressed_tx_public_key = CompressedRistrettoPublic::try_from(&transfer_payload.get_tx_public_key())
             .map_err(|err| {
                 rpc_internal_error("CompressedRistrettoPublic.try_from", err, &self.logger)
             })?;
+
+        let tx_public_key = RistrettoPublic::try_from(&compressed_tx_public_key)
+            .map_err(|err| rpc_internal_error("RistrettoPublic.try_from", err, &self.logger))?;
 
         // build and include a UnspentTxOut that can be immediately spent
 
