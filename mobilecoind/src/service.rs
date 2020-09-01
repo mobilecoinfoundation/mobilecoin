@@ -3228,7 +3228,7 @@ mod test {
         // An invalid request should fail.
         {
             let mut request = mc_mobilecoind_api::GetTransferCodeRequest::new();
-            request.set_entropy(&root_entropy);
+            request.set_entropy(root_entropy.to_vec());
             request.set_tx_public_key((&tx_public_key).into());
             request.set_memo("memo".to_owned());
             assert!(client.get_transfer_code(&request).is_err());
@@ -3242,7 +3242,7 @@ mod test {
         {
             // Encode
             let mut request = mc_mobilecoind_api::GetTransferCodeRequest::new();
-            request.set_entropy(&root_entropy);
+            request.set_entropy(root_entropy.to_vec());
             request.set_tx_public_key((&tx_public_key).into());
             request.set_memo("test memo".to_owned());
 
