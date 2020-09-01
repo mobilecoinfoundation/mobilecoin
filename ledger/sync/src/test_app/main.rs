@@ -100,6 +100,8 @@ fn main() {
     let mut verifier = Verifier::default();
     verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
 
+    log::debug!(logger, "Verifier: {:?}", verifier);
+
     let peers = vec!["1", "2", "3", "4"]
         .into_iter()
         .map(|node_id| {
