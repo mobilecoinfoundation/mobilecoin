@@ -32,7 +32,7 @@ use mc_transaction_core::{
     get_tx_out_shared_secret,
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
-    tx::{TxOut, TxOutConfirmationNumber},
+    tx::TxOutConfirmationNumber,
 };
 
 use mc_util_from_random::FromRandom;
@@ -433,10 +433,10 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
 
         // build and include a UnspentTxOut that can be immediately spent
 
-        let tx_out = ledger_db.get_tx_out_index_by_public_key(tx_public_key)
+        let tx_out = self.ledger_db.get_tx_out_index_by_public_key(tx_public_key)
             .map_err(|err| rpc_internal_error("ledger_db.get_tx_out_index_by_public_key", err, &self.logger))?;
 
-        let entropy = transfer_payload.get_entropy().to_vec()
+        let root_entropy = transfer_payload.get_entropy().to_vec()
 
         // Use root entropy to construct AccountKey.
         let root_id = RootIdentity::from(&root_entropy);
@@ -471,7 +471,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         }
 
         let mut response = mc_mobilecoind_api::ReadTransferCodeResponse::new();
-        response.set_entropy(entropy);
+        response.set_entropy(root_entropy);
         response.set_tx_public_key((&tx_public_key).into());
         response.set_memo(transfer_payload.get_memo().to_string());
         response.set_utxo((&utxo).into());
