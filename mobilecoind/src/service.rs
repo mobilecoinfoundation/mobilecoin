@@ -1385,7 +1385,6 @@ mod test {
         Block, BlockContents, BLOCK_VERSION,
     };
     use mc_transaction_std::TransactionBuilder;
-    use mc_util_from_random::FromRandom;
     use mc_util_repr_bytes::{typenum::U32, GenericArray, ReprBytes};
     use rand::{rngs::StdRng, SeedableRng};
     use std::{
@@ -3211,7 +3210,7 @@ mod test {
         let tx_out = ledger_db.get_tx_out_by_index(0).unwrap();
 
         // Text public key
-        let tx_public_key = RistrettoPublic::from(&tx_out.public_key);
+        let tx_public_key = CompressedRistrettoPublic::try_from(&tx_out.public_key).unwrap();
 
         // An invalid request should fail.
         {
