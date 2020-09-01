@@ -431,7 +431,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             .map_err(|err| rpc_internal_error("RistrettoPublic.try_from", err, &self.logger))?;
 
         let compressed_tx_public_key = CompressedRistrettoPublic::try_from(&tx_public_key)
-            .map_err(|err| rpc_internal_error("CompressedRistrettoPublic.try_from", err, &self.logger))?;
+            .map_err(|err| {
+                  rpc_internal_error("CompressedRistrettoPublic.try_from", err, &self.logger)
+            })?;
 
         // build and include a UnspentTxOut that can be immediately spent
 
@@ -439,10 +441,10 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             .ledger_db
             .get_tx_out_index_by_public_key(&compressed_tx_public_key)
             .map_err(|err| {
-                  rpc_internal_error(
-                      "ledger_db.get_tx_out_index_by_public_key",
-                      err,
-                      &self.logger,
+                rpc_internal_error(
+                    "ledger_db.get_tx_out_index_by_public_key",
+                    err,
+                    &self.logger,
                 )
             })?;
 
@@ -3202,11 +3204,14 @@ mod test {
         let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
 
         // no known recipient, 3 random recipients and no monitors.
-        let (_ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+        let (ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
 
+        // a valid transfer code must reference a tx_public_key that appears in the ledger
+        let tx_out = ledger_db.get_tx_out_by_index(0).unwrap();
+
         // Text public key
-        let tx_public_key = RistrettoPublic::from_random(&mut rng);
+        let tx_public_key = RistrettoPublic::from(&tx_out.public_key);
 
         // An invalid request should fail.
         {
