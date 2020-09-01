@@ -1705,7 +1705,7 @@ mod test {
             get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
 
         // Use root entropy to construct AccountKey.
-        let mut root_entropy = [123u8; 32];
+        let root_entropy = [123u8; 32];
         let root_id = RootIdentity::from(&root_entropy);
         let account_key = AccountKey::from(&root_id);
 
@@ -2532,7 +2532,7 @@ mod test {
                 .unwrap();
 
             // Use root entropy to construct AccountKey.
-            let mut root_entropy = [0u8; 32];
+            let root_entropy = [0u8; 32];
             let root_id = RootIdentity::from(&root_entropy);
             let account_key = AccountKey::from(&root_id);
 
