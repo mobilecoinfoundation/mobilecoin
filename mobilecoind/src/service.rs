@@ -1706,7 +1706,6 @@ mod test {
 
         // Use root entropy to construct AccountKey.
         let mut root_entropy = [123u8; 32];
-        root_entropy.copy_from_slice(request.get_entropy());
         let root_id = RootIdentity::from(&root_entropy);
         let account_key = AccountKey::from(&root_id);
 
@@ -2534,7 +2533,6 @@ mod test {
 
             // Use root entropy to construct AccountKey.
             let mut root_entropy = [0u8; 32];
-            root_entropy.copy_from_slice(request.get_entropy());
             let root_id = RootIdentity::from(&root_entropy);
             let account_key = AccountKey::from(&root_id);
 
