@@ -344,6 +344,7 @@ message ReadTransferCodeResponse {
     bytes entropy = 1;
     external.CompressedRistretto tx_public_key = 2;
     string memo = 3;
+    UnspentTxOut utxo = 4;
 }
 
 // Encode entropy/tx_public_key/memo into a base-58 "MobileCoin Transfer Code".

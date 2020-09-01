@@ -15,20 +15,24 @@ use crate::{
     utxo_store::{UnspentTxOut, UtxoId},
 };
 use grpcio::{EnvBuilder, RpcContext, RpcStatus, RpcStatusCode, ServerBuilder, UnarySink};
-use mc_account_keys::{AccountKey, PublicAddress, RootIdentity};
+use mc_account_keys::{AccountKey, PublicAddress, RootIdentity, DEFAULT_SUBADDRESS_INDEX};
 use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
 use mc_connection::{BlockchainConnection, UserTxConnection};
-use mc_crypto_keys::RistrettoPublic;
+use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::{NetworkState, PollingNetworkState};
 use mc_mobilecoind_api::{
     mobilecoind_api_grpc::{create_mobilecoind_api, MobilecoindApi},
     MobilecoindUri,
 };
-use mc_transaction_core::{ring_signature::KeyImage, tx::TxOutConfirmationNumber};
+use mc_transaction_core::{
+    get_tx_out_shared_secret, onetime_keys::recover_onetime_private_key, ring_signature::KeyImage,
+    tx::TxOutConfirmationNumber,
+};
+
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::{
     rpc_internal_error, rpc_logger, send_result, BuildInfoService, ConnectionUriGrpcioServer,
@@ -299,13 +303,10 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             ));
         }
 
+        // Use root entropy to construct AccountKey.
         let mut root_entropy = [0u8; 32];
         root_entropy.copy_from_slice(request.get_entropy());
-
-        // Use root entropy to construct AccountKey.
         let root_id = RootIdentity::from(&root_entropy);
-
-        // TODO: change to production AccountKey derivation
         let account_key = AccountKey::from(&root_id);
 
         // Return response.
@@ -422,13 +423,65 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             ));
         }
         let transfer_payload = request_wrapper.get_transfer_payload();
+
         let tx_public_key = RistrettoPublic::try_from(transfer_payload.get_tx_public_key())
             .map_err(|err| rpc_internal_error("RistrettoPublic.try_from", err, &self.logger))?;
 
+        let compressed_tx_public_key = CompressedRistrettoPublic::from(&tx_public_key);
+
+        // build and include a UnspentTxOut that can be immediately spent
+
+        let index = self
+            .ledger_db
+            .get_tx_out_index_by_public_key(&compressed_tx_public_key)
+            .map_err(|err| {
+                rpc_internal_error(
+                    "ledger_db.get_tx_out_index_by_public_key",
+                    err,
+                    &self.logger,
+                )
+            })?;
+
+        let tx_out = self.ledger_db.get_tx_out_by_index(index).map_err(|err| {
+            rpc_internal_error("ledger_db.get_tx_out_by_index", err, &self.logger)
+        })?;
+
+        // Use root entropy to construct AccountKey.
+        let mut root_entropy = [0u8; 32];
+        root_entropy.copy_from_slice(transfer_payload.get_entropy());
+        let root_id = RootIdentity::from(&root_entropy);
+        let account_key = AccountKey::from(&root_id);
+
+        let shared_secret =
+            get_tx_out_shared_secret(account_key.view_private_key(), &tx_public_key);
+
+        let (value, _blinding) = tx_out
+            .amount
+            .get_value(&shared_secret)
+            .map_err(|err| rpc_internal_error("amount.get_value", err, &self.logger))?;
+
+        let onetime_private_key = recover_onetime_private_key(
+            &tx_public_key,
+            account_key.view_private_key(),
+            &account_key.subaddress_spend_private(DEFAULT_SUBADDRESS_INDEX),
+        );
+
+        let key_image = KeyImage::from(&onetime_private_key);
+
+        let utxo = UnspentTxOut {
+            tx_out,
+            subaddress_index: DEFAULT_SUBADDRESS_INDEX,
+            key_image,
+            value,
+            attempted_spend_height: 0,
+            attempted_spend_tombstone: 0,
+        };
+
         let mut response = mc_mobilecoind_api::ReadTransferCodeResponse::new();
-        response.set_entropy(transfer_payload.get_entropy().to_vec());
+        response.set_entropy(root_entropy.to_vec());
         response.set_tx_public_key((&tx_public_key).into());
         response.set_memo(transfer_payload.get_memo().to_string());
+        response.set_utxo((&utxo).into());
 
         Ok(response)
     }
@@ -1323,7 +1376,6 @@ mod test {
         Block, BlockContents, BLOCK_VERSION,
     };
     use mc_transaction_std::TransactionBuilder;
-    use mc_util_from_random::FromRandom;
     use mc_util_repr_bytes::{typenum::U32, GenericArray, ReprBytes};
     use rand::{rngs::StdRng, SeedableRng};
     use std::{
@@ -1650,18 +1702,18 @@ mod test {
         let (_ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
 
-        // call get account key
+        // Use root entropy to construct AccountKey.
         let root_entropy = [123u8; 32];
+        let root_id = RootIdentity::from(&root_entropy);
+        let account_key = AccountKey::from(&root_id);
+
         let mut request = mc_mobilecoind_api::GetAccountKeyRequest::new();
         request.set_entropy(root_entropy.to_vec());
 
         let response = client.get_account_key(&request).unwrap();
 
-        // TODO: change to production AccountKey derivation
-        let root_id = RootIdentity::from(&root_entropy);
-
         assert_eq!(
-            AccountKey::from(&root_id),
+            account_key,
             AccountKey::try_from(response.get_account_key()).unwrap(),
         );
 
@@ -2477,14 +2529,13 @@ mod test {
                 .append_block(&new_block, &block_contents, None)
                 .unwrap();
 
+            // Use root entropy to construct AccountKey.
             let mut root_entropy = [0u8; 32];
             root_entropy.copy_from_slice(response.get_entropy());
+            let root_id = RootIdentity::from(&root_entropy);
+            let account_key = AccountKey::from(&root_id);
 
             // Add a monitor based on the entropy we received.
-            let root_id = RootIdentity::from(&root_entropy);
-
-            // TODO: change to production AccountKey derivation
-            let account_key = AccountKey::from(&root_id);
             let monitor_data = MonitorData::new(
                 account_key,
                 DEFAULT_SUBADDRESS_INDEX, // first_subaddress
@@ -2499,9 +2550,9 @@ mod test {
             // Wait for sync to complete.
             wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
 
-            // Get utxos for the new account and verify we only have the one utxo we are looking forc.
+            // Get utxos for the new account and verify we only have one utxo.
             let utxos = mobilecoind_db
-                .get_utxos_for_subaddress(&monitor_id, 0)
+                .get_utxos_for_subaddress(&monitor_id, DEFAULT_SUBADDRESS_INDEX)
                 .unwrap();
             assert_eq!(utxos.len(), 1);
 
@@ -3142,22 +3193,43 @@ mod test {
         let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
 
         // no known recipient, 3 random recipients and no monitors.
-        let (_ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+        let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
 
-        // Text public key
-        let tx_public_key = RistrettoPublic::from_random(&mut rng);
+        // a valid transfer code must reference a tx_public_key that appears in the ledger
+        // that is controlled by the root_entropy included in the code
 
-        // An invalid request should fail.
+        let root_entropy = [3u8; 32];
+
+        // Use root entropy to construct AccountKey.
+        let root_id = RootIdentity::from(&root_entropy);
+        let account_key = AccountKey::from(&root_id);
+
+        let mut transaction_builder = TransactionBuilder::new();
+        let (tx_out, _tx_confirmation) = transaction_builder
+            .add_output(
+                10,
+                &account_key.subaddress(DEFAULT_SUBADDRESS_INDEX),
+                None,
+                &mut rng,
+            )
+            .unwrap();
+
+        add_txos_to_ledger_db(&mut ledger_db, &vec![tx_out.clone()], &mut rng);
+
+        let tx_public_key = tx_out.public_key;
+
+        // An invalid request should fail to encode.
         {
             let mut request = mc_mobilecoind_api::GetTransferCodeRequest::new();
-            request.set_entropy(vec![3; 8]);
+            request.set_entropy(vec![3u8; 8]); // key is wrong size
             request.set_tx_public_key((&tx_public_key).into());
             request.set_memo("memo".to_owned());
             assert!(client.get_transfer_code(&request).is_err());
 
             let mut request = mc_mobilecoind_api::GetTransferCodeRequest::new();
-            request.set_memo("memo".to_owned());
+            request.set_entropy(vec![4u8; 32]);
+            request.set_memo("memo".to_owned()); // forgot to set tx_public_key
             assert!(client.get_transfer_code(&request).is_err());
         }
 
@@ -3165,7 +3237,7 @@ mod test {
         {
             // Encode
             let mut request = mc_mobilecoind_api::GetTransferCodeRequest::new();
-            request.set_entropy(vec![3; 32]);
+            request.set_entropy(root_entropy.to_vec());
             request.set_tx_public_key((&tx_public_key).into());
             request.set_memo("test memo".to_owned());
 
@@ -3179,12 +3251,40 @@ mod test {
             let response = client.read_transfer_code(&request).unwrap();
 
             // Compare
-            assert_eq!(vec![3; 32], response.get_entropy());
+            assert_eq!(&root_entropy, response.get_entropy());
             assert_eq!(
                 tx_public_key,
-                RistrettoPublic::try_from(response.get_tx_public_key()).unwrap()
+                CompressedRistrettoPublic::try_from(response.get_tx_public_key()).unwrap()
             );
             assert_eq!(response.get_memo(), "test memo");
+
+            // check that the utxo that comes back from the code matches the ledger data
+
+            // Add a monitor based on the entropy we received.
+            let monitor_data = MonitorData::new(
+                account_key,
+                DEFAULT_SUBADDRESS_INDEX, // first_subaddress
+                1,                        // num_subaddresses
+                0,                        // first_block
+                "",                       // name
+            )
+            .unwrap();
+
+            let monitor_id = mobilecoind_db.add_monitor(&monitor_data).unwrap();
+
+            // Wait for sync to complete.
+            wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+            // Get utxos for the account and verify a match utxo.
+            let utxos = mobilecoind_db
+                .get_utxos_for_subaddress(&monitor_id, DEFAULT_SUBADDRESS_INDEX)
+                .unwrap();
+            assert_eq!(utxos.len(), 1);
+
+            // Convert to proto utxo.
+            let proto_utxo: mc_mobilecoind_api::UnspentTxOut = (&utxos[0]).into();
+
+            assert_eq!(&proto_utxo, response.get_utxo());
         }
     }
 
