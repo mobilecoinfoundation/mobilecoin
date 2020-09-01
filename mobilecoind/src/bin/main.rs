@@ -30,6 +30,8 @@ fn main() {
     let mut verifier = Verifier::default();
     verifier.mr_signer(mr_signer_verifier).debug(DEBUG_ENCLAVE);
 
+    log::debug!(logger, "Verifier: {:?}", verifier);
+
     // Create peer manager.
     let peer_manager = config.peers_config.create_peer_manager(verifier, &logger);
 
