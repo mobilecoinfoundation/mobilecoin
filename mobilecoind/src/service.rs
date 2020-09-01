@@ -2532,7 +2532,8 @@ mod test {
                 .unwrap();
 
             // Use root entropy to construct AccountKey.
-            let root_entropy = [0u8; 32];
+            let mut root_entropy = [0u8; 32];
+            root_entropy.copy_from_slice(response.get_entropy());
             let root_id = RootIdentity::from(&root_entropy);
             let account_key = AccountKey::from(&root_id);
 
@@ -2551,9 +2552,9 @@ mod test {
             // Wait for sync to complete.
             wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
 
-            // Get utxos for the new account and verify we only have the one utxo we are looking forc.
+            // Get utxos for the new account and verify we only have one utxo.
             let utxos = mobilecoind_db
-                .get_utxos_for_subaddress(&monitor_id, 0)
+                .get_utxos_for_subaddress(&monitor_id, DEFAULT_SUBADDRESS_INDEX)
                 .unwrap();
             assert_eq!(utxos.len(), 1);
 
