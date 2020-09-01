@@ -28,7 +28,13 @@ use mc_mobilecoind_api::{
     mobilecoind_api_grpc::{create_mobilecoind_api, MobilecoindApi},
     MobilecoindUri,
 };
-use mc_transaction_core::{ring_signature::KeyImage, tx::TxOutConfirmationNumber};
+use mc_transaction_core::{
+    get_tx_out_shared_secret,
+    onetime_keys::recover_onetime_private_key,
+    ring_signature::KeyImage,
+    tx::{TxOut, TxOutConfirmationNumber},
+};
+
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::{
     rpc_internal_error, rpc_logger, send_result, BuildInfoService, ConnectionUriGrpcioServer,
