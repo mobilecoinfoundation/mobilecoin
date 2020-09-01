@@ -21,6 +21,9 @@ pub enum Error {
     /// The value provided for proof.highest_index doesn't match the other data
     HighestIndexMismatch,
 
+    /// The implied merkle root's range doesn't cover 0
+    RootNotCoveringZero,
+
     /// Failed to serialize a TxOut.
     TxOutSerializationError,
 

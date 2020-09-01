@@ -1229,11 +1229,11 @@ pub mod tx_out_store_tests {
             /*
                 The proof-of-membership for TxOut 3 should include the following ranges/hashes:
 
-                               _____________H(0,7)_________
+                               _______________|____________
                                |                          |
-                         ____H(0,3)_____                H(4,7)
+                         ______|________               H(4,7)
                         |              |
-                     H(0,1)          H(2,3)
+                     H(0,1)          __.____
                                     |      |
                                  H(2,2)  H(3,3)
                                    |       |
@@ -1245,10 +1245,10 @@ pub mod tx_out_store_tests {
 
             let ranges: Vec<Range> = proof.elements.iter().map(|e| e.range).collect();
 
-            assert!(ranges.contains(&Range::new(3, 3).unwrap()));
-            assert!(ranges.contains(&Range::new(2, 2).unwrap()));
-            assert!(ranges.contains(&Range::new(0, 1).unwrap()));
-            assert!(ranges.contains(&Range::new(4, 7).unwrap()));
+            assert_eq!(ranges[0], Range::new(3, 3).unwrap());
+            assert_eq!(ranges[1], Range::new(2, 2).unwrap());
+            assert_eq!(ranges[2], Range::new(0, 1).unwrap());
+            assert_eq!(ranges[3], Range::new(4, 7).unwrap());
 
             for element in proof.elements {
                 let expected_hash = tx_out_store
@@ -1270,11 +1270,11 @@ pub mod tx_out_store_tests {
             /*
                 The proof-of-membership for TxOut 5 should include the following ranges/hashes:
 
-                               __________H(0,7)___________________
+                               _____________|_____________________
                                |                                  |
-                            H(0,3)                       ______ H(4,7)_____
+                            H(0,3)                       _________|________
                                                          |                |
-                                                   ___H(4,5)__          H(6,7) = H(Nil)
+                                                   ______|____          H(6,7) = H(Nil)
                                                    |         |
                                                  H(4,4)   H(5,5)
                                                    |        |
@@ -1287,10 +1287,10 @@ pub mod tx_out_store_tests {
             let ranges: Vec<Range> = proof.elements.iter().map(|e| e.range).collect();
 
             println!("{:?}", ranges);
-            assert!(ranges.contains(&Range::new(4, 4).unwrap()));
-            assert!(ranges.contains(&Range::new(5, 5).unwrap()));
-            assert!(ranges.contains(&Range::new(6, 7).unwrap()));
-            assert!(ranges.contains(&Range::new(0, 3).unwrap()));
+            assert_eq!(ranges[0], Range::new(5, 5).unwrap());
+            assert_eq!(ranges[1], Range::new(4, 4).unwrap());
+            assert_eq!(ranges[2], Range::new(6, 7).unwrap());
+            assert_eq!(ranges[3], Range::new(0, 3).unwrap());
 
             for element in proof.elements {
                 let expected_hash = if element.range.from >= num_tx_outs as u64 {

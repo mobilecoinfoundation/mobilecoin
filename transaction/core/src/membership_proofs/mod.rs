@@ -58,7 +58,7 @@ fn hash_nil() -> [u8; 32] {
 /// then the result combined with the next highest element etc. finally getting a range
 /// and hash at the top. This is then checked against the expected hash of the root element.
 ///
-/// This function MUST not branch except on erroring code paths
+/// This function MUST not branch except to immediately return an error
 ///
 /// Precondition: a and b are well-formed ranges, a.from <= a.to, b.from <= b.to
 /// It is the callers job to check that.
@@ -139,9 +139,7 @@ fn conditional_assign_32_bytes(target: &mut [u8; 32], src: &[u8; 32], cond: Choi
 /// - The first element is missing or its range doesn't match proof.index
 /// - Any of the proof elements could not be combined with result of combining predecessors
 ///
-/// Does not read the proof.highest_index value or compare it with the range
-/// that we compute by combining elements. But this should not be strictly necessary
-/// for secure merkle proof validation.
+/// This function MUST NOT branch except to immediately return an error
 ///
 /// Note: This is pub in order to allow that it can be used in debugging assertions elsewhere.
 /// This could simply be a member function on TxOutMembershipProof, but that would require
@@ -194,7 +192,9 @@ pub fn compute_implied_merkle_root(
 ///
 /// Returns a bool indicating if the proof is valid, or an Error if something went wrong
 /// while evaluating the proof.
-//
+///
+/// This function MUST NOT branch except to immediately return an error
+///
 pub fn is_membership_proof_valid(
     tx_out: &TxOut,
     proof: &TxOutMembershipProof,
@@ -218,12 +218,12 @@ pub fn is_membership_proof_valid(
     }
 
     // Compute the implied root hash, or an error if this can't be done
-    // This should have fixed access patterns regardless of input, except on erroring code paths.
     let implied_root = compute_implied_merkle_root(proof)?;
 
-    // This test is carried over from earlier revisions
-    // TODO: Should this be a test for equality?
-    // TODO: Should we also test that implied_root.range.from == 0?
+    if 0 != implied_root.range.from {
+        return Err(Error::RootNotCoveringZero);
+    }
+
     if proof.highest_index > implied_root.range.to {
         return Err(Error::HighestIndexMismatch);
     }
