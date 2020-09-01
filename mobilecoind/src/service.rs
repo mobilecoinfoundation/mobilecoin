@@ -428,18 +428,19 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             ));
         }
         let transfer_payload = request_wrapper.get_transfer_payload();
-        let tx_public_key = RistrettoPublic::try_from(transfer_payload.get_tx_public_key())
-            .map_err(|err| rpc_internal_error("RistrettoPublic.try_from", err, &self.logger))?;
+        let tx_public_key = CompressedRistretto::try_from(transfer_payload.get_tx_public_key())
+            .map_err(|err| rpc_internal_error("CompressedRistretto.try_from", err, &self.logger))?;
 
         // build and include a UnspentTxOut that can be immediately spent
 
-        let index = self.ledger_db.get_tx_out_index_by_public_key(tx_public_key)
+        let index = self.ledger_db.get_tx_out_index_by_public_key(&tx_public_key)
             .map_err(|err| rpc_internal_error("ledger_db.get_tx_out_index_by_public_key", err, &self.logger))?;
 
         let tx_out = self.ledger_db.get_tx_out_by_index(index)
             .map_err(|err| rpc_internal_error("ledger_db.get_tx_out_by_index", err, &self.logger))?;
 
-        let root_entropy = transfer_payload.get_entropy().to_vec()
+        let mut root_entropy = [0u8; 32];
+        root_entropy.copy_from_slice(transfer_payload.get_entropy());
 
         // Use root entropy to construct AccountKey.
         let root_id = RootIdentity::from(&root_entropy);
@@ -471,7 +472,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             value,
             attempted_spend_height: 0,
             attempted_spend_tombstone: 0,
-        }
+        };
 
         let mut response = mc_mobilecoind_api::ReadTransferCodeResponse::new();
         response.set_entropy(root_entropy);
