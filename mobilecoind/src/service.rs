@@ -3202,13 +3202,13 @@ mod test {
         let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
 
         // no known recipient, 3 random recipients and no monitors.
-        let (ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+        let (mut ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
 
         // a valid transfer code must reference a tx_public_key that appears in the ledger
         // that is controlled by the root_entropy included in the code
 
-        let mut root_entropy = [3u8; 32];
+        let root_entropy = [3u8; 32];
 
         // Use root entropy to construct AccountKey.
         let root_id = RootIdentity::from(&root_entropy);
@@ -3217,7 +3217,7 @@ mod test {
         let receiver = AccountKey::from(&root_id);
 
         let mut transaction_builder = TransactionBuilder::new();
-        let (tx_out, tx_confirmation) = transaction_builder
+        let (tx_out, _tx_confirmation) = transaction_builder
             .add_output(10, &receiver.subaddress(DEFAULT_SUBADDRESS_INDEX), None, &mut rng)
             .unwrap();
 
