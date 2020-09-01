@@ -427,7 +427,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         }
         let transfer_payload = request_wrapper.get_transfer_payload();
 
-        let compressed_tx_public_key = CompressedRistrettoPublic::try_from(&transfer_payload.get_tx_public_key())
+        let compressed_tx_public_key = CompressedRistrettoPublic::try_from(transfer_payload.get_tx_public_key())
             .map_err(|err| {
                 rpc_internal_error("CompressedRistrettoPublic.try_from", err, &self.logger)
             })?;
