@@ -3283,15 +3283,10 @@ mod test {
                 .unwrap();
             assert_eq!(utxos.len(), 1);
 
-            let utxo = &utxos[0];
+            // Convert to proto utxo.
+            let proto_utxo: mc_mobilecoind_api::UnspentTxOut = utxos[0].into();
 
-            assert_eq!(utxo, response.get_utxo());
-            assert_eq!(
-                utxo.tx_out.public_key,
-                RistrettoPublic::try_from(response.get_tx_public_key())
-                    .unwrap()
-                    .into()
-            );
+            assert_eq!(proto_utxo, response.get_utxo());
         }
     }
 
