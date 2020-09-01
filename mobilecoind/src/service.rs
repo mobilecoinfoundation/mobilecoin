@@ -3246,7 +3246,7 @@ mod test {
             assert_eq!(vec![3; 32], response.get_entropy());
             assert_eq!(
                 tx_public_key,
-                RistrettoPublic::try_from(response.get_tx_public_key()).unwrap()
+                CompressedRistrettoPublic::try_from(response.get_tx_public_key()).unwrap()
             );
             assert_eq!(response.get_memo(), "test memo");
         }
