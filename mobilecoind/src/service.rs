@@ -3210,7 +3210,7 @@ mod test {
         let tx_out = ledger_db.get_tx_out_by_index(0).unwrap();
 
         // Text public key
-        let tx_public_key = CompressedRistrettoPublic::try_from(&tx_out.public_key).unwrap();
+        let tx_public_key = tx_out.public_key;
 
         // An invalid request should fail.
         {
