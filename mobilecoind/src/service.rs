@@ -21,7 +21,7 @@ use mc_common::{
     HashMap,
 };
 use mc_connection::{BlockchainConnection, UserTxConnection};
-use mc_crypto_keys::RistrettoPublic;
+use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::{NetworkState, PollingNetworkState};
 use mc_mobilecoind_api::{
@@ -429,16 +429,17 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         }
         let transfer_payload = request_wrapper.get_transfer_payload();
 
-        let compressed_tx_public_key = CompressedRistretto::try_from(transfer_payload.get_tx_public_key())
-            .map_err(|err| rpc_internal_error("CompressedRistretto.try_from", err, &self.logger))?;
-
-
-        let tx_public_key = RistrettoPublic::try_from(&compressed_tx_public_key)
+        let tx_public_key = RistrettoPublic::try_from(transfer_payload.get_tx_public_key())
             .map_err(|err| rpc_internal_error("RistrettoPublic.try_from", err, &self.logger))?;
+
+
+        let compressed_tx_public_key = CompressedRistrettoPublic::try_from(&tx_public_key)
+            .map_err(|err| rpc_internal_error("CompressedRistrettoPublic.try_from", err, &self.logger))?;
+
 
         // build and include a UnspentTxOut that can be immediately spent
 
-        let index = self.ledger_db.get_tx_out_index_by_public_key(&tx_public_key)
+        let index = self.ledger_db.get_tx_out_index_by_public_key(&compressed_tx_public_key)
             .map_err(|err| rpc_internal_error("ledger_db.get_tx_out_index_by_public_key", err, &self.logger))?;
 
         let tx_out = self.ledger_db.get_tx_out_by_index(index)
