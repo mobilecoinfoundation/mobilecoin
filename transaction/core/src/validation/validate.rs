@@ -302,16 +302,16 @@ fn validate_membership_proofs(
                 return Err(TransactionValidationError::InvalidLedgerContext);
             }
             Ok(derived_proof) => {
-                match derived_proof.elements.last() {
-                    None => {
+                match crate::membership_proofs::compute_implied_merkle_root(&derived_proof) {
+                    Err(_) => {
                         return Err(TransactionValidationError::InvalidLedgerContext);
                     }
-                    Some(element) => {
+                    Ok(root_element) => {
                         // Check the tx_out's membership proof against this root hash.
                         match is_membership_proof_valid(
                             tx_out_with_proofs.tx_out,
                             tx_out_with_proofs.membership_proof,
-                            element.hash.as_ref(),
+                            root_element.hash.as_ref(),
                         ) {
                             Err(_e) => {
                                 return Err(

@@ -9,7 +9,6 @@
 use crate::{blockchain, external};
 use curve25519_dalek::ristretto::CompressedRistretto;
 use mc_account_keys::{AccountKey, PublicAddress};
-use mc_common::HashMap;
 use mc_crypto_keys::{
     CompressedRistrettoPublic, Ed25519Public, Ed25519Signature, RistrettoPrivate, RistrettoPublic,
 };
@@ -590,7 +589,7 @@ impl TryFrom<&external::TxOutMembershipProof> for TxOutMembershipProof {
         let index: u64 = membership_proof.get_index();
         let highest_index: u64 = membership_proof.get_highest_index();
 
-        let mut elements: HashMap<Range, [u8; 32]> = HashMap::default();
+        let mut elements = Vec::<TxOutMembershipElement>::default();
         for element in membership_proof.get_elements() {
             let range: Range =
                 Range::new(element.get_range().get_from(), element.get_range().get_to())
@@ -602,7 +601,7 @@ impl TryFrom<&external::TxOutMembershipProof> for TxOutMembershipProof {
                 return Err(ConversionError::ArrayCastError);
             }
             hash.copy_from_slice(bytes);
-            elements.insert(range, hash);
+            elements.push(TxOutMembershipElement::new(range, hash));
         }
         let tx_out_membership_proof = TxOutMembershipProof::new(index, highest_index, elements);
         Ok(tx_out_membership_proof)
@@ -1254,11 +1253,20 @@ mod conversion_tests {
     fn test_membership_proof_from() {
         let index: u64 = 128_465;
         let highest_index: u64 = 781_384_772_994;
-        let mut hashes: HashMap<Range, [u8; 32]> = HashMap::default();
+        let mut hashes = Vec::<TxOutMembershipElement>::default();
         // Add some arbitrary hashes.
-        hashes.insert(Range::new(0, 1).unwrap(), [2u8; 32]);
-        hashes.insert(Range::new(0, 3).unwrap(), [4u8; 32]);
-        hashes.insert(Range::new(0, 7).unwrap(), [8u8; 32]);
+        hashes.push(TxOutMembershipElement::new(
+            Range::new(0, 1).unwrap(),
+            [2u8; 32],
+        ));
+        hashes.push(TxOutMembershipElement::new(
+            Range::new(0, 3).unwrap(),
+            [4u8; 32],
+        ));
+        hashes.push(TxOutMembershipElement::new(
+            Range::new(0, 7).unwrap(),
+            [8u8; 32],
+        ));
         let tx_out_membership_proof =
             TxOutMembershipProof::new(index, highest_index, hashes.clone());
 
@@ -1269,13 +1277,14 @@ mod conversion_tests {
         let elements = membership_proof.get_elements();
         assert_eq!(elements.len(), hashes.len());
 
-        for element in elements {
+        for (idx, element) in elements.iter().enumerate() {
             let range =
                 Range::new(element.get_range().get_from(), element.get_range().get_to()).unwrap();
-            let expected_hash = hashes.get(&range).unwrap();
+            assert_eq!(range, hashes.get(idx).unwrap().range);
+            let expected_hash = &hashes.get(idx).unwrap().hash;
             let bytes = element.get_hash().get_data();
-            assert_eq!(bytes.len(), expected_hash.len());
-            assert_eq!(bytes, expected_hash);
+            assert_eq!(bytes.len(), expected_hash.as_ref().len());
+            assert_eq!(bytes, expected_hash.as_ref());
         }
     }
 
@@ -1349,7 +1358,7 @@ mod conversion_tests {
             .map(|_tx_out| {
                 // TransactionBuilder does not validate membership proofs, but does require one
                 // for each ring member.
-                TxOutMembershipProof::new(0, 0, HashMap::default())
+                TxOutMembershipProof::new(0, 0, Default::default())
             })
             .collect();
 

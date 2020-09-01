@@ -8,7 +8,7 @@ use core::{
 };
 
 use mc_account_keys::PublicAddress;
-use mc_common::{Hash, HashMap};
+use mc_common::Hash;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_hashes::Blake2b256;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
@@ -306,6 +306,8 @@ pub struct TxOutMembershipProof {
     pub highest_index: u64,
 
     /// All hashes needed to recompute the root hash.
+    /// These elements must be listed in the order in which they should be combined
+    /// for the proof to be valid.
     #[prost(message, repeated, tag = "3")]
     pub elements: Vec<TxOutMembershipElement>,
 }
@@ -316,21 +318,13 @@ impl TxOutMembershipProof {
     /// # Arguments
     /// * `index` - The index of the TxOut.
     /// * `highest_index` - The index of the last TxOut in the ledger, indicating the size of the tree that the proof refers to.
-    /// * `range_to_hash` - Mapping from a range of TxOut indices to the hash "over" those outputs.
-    pub fn new(index: u64, highest_index: u64, range_to_hash: HashMap<Range, [u8; 32]>) -> Self {
-        let mut hashes: Vec<TxOutMembershipElement> = range_to_hash
-            .into_iter()
-            .map(|(r, h)| TxOutMembershipElement {
-                range: r,
-                hash: TxOutMembershipHash(h),
-            })
-            .collect();
-        hashes.sort();
-
+    /// * `elements` - The tx out membership elements, containing ranges referring to subtrees in the tree, and hashes.
+    ///                These must be provided in the order in which they should be combined to validate the proof.
+    pub fn new(index: u64, highest_index: u64, elements: Vec<TxOutMembershipElement>) -> Self {
         Self {
             index,
             highest_index,
-            elements: hashes,
+            elements,
         }
     }
 }
@@ -347,11 +341,20 @@ pub struct TxOutMembershipElement {
     pub hash: TxOutMembershipHash,
 }
 
+impl TxOutMembershipElement {
+    pub fn new(range: Range, hash: [u8; 32]) -> Self {
+        Self {
+            range,
+            hash: hash.into(),
+        }
+    }
+}
+
 #[derive(
     Clone, Deserialize, Default, Eq, Ord, PartialEq, PartialOrd, Serialize, Debug, Digestible,
 )]
 /// A hash in a TxOut membership proof.
-pub struct TxOutMembershipHash([u8; 32]);
+pub struct TxOutMembershipHash(pub [u8; 32]);
 
 impl TxOutMembershipHash {
     /// Copies self into a new Vec.

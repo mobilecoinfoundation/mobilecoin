@@ -25,12 +25,12 @@
 
 use crate::{key_bytes_to_u64, u64_to_key_bytes, Error};
 use lmdb::{Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
-use mc_common::{Hash, HashMap};
+use mc_common::Hash;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{
     membership_proofs::*,
     range::Range,
-    tx::{TxOut, TxOutMembershipProof},
+    tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
 };
 use mc_util_serial::{decode, encode};
 
@@ -307,25 +307,29 @@ impl TxOutStore {
             return Err(Error::IndexOutOfBounds(index));
         }
 
-        let ranges = containing_ranges(index, num_tx_outs)?;
+        // These pairs correspond to the ranges we will use for the proof elements
+        // The first element always corresponds to the index
+        let mut ranges_for_proof = vec![(index, index)];
 
-        // For each non-leaf node, compute the range of the "other" child.
-        let internal_ranges: Vec<(u64, u64)> = ranges.iter().skip(1).cloned().collect();
-        let mut other_ranges: Vec<(u64, u64)> = Vec::new();
-        for (low, high) in internal_ranges {
+        // Compute every internal range in the binary tree that contains
+        // our node, in increasing order.
+        // Then, break it in half, and talk the half that doesn't contain our index.
+        // We have to skip the first one because that's our (index, index) element
+        // which we already added.
+        for (low, high) in containing_ranges(index, num_tx_outs)?.iter().skip(1) {
             let mid: u64 = (low + high) / 2;
             if index <= mid {
                 // "other" child in the higher half-range.
-                other_ranges.push((mid + 1, high));
+                ranges_for_proof.push((mid + 1, *high));
             } else {
                 // "other" child in the lower half-range.
-                other_ranges.push((low, mid));
+                ranges_for_proof.push((*low, mid));
             }
         }
 
-        // Get Merkle hashes for containing ranges and "other" ranges.
-        let mut range_to_hash: HashMap<Range, [u8; 32]> = HashMap::default();
-        for &(low, high) in ranges.iter().chain(other_ranges.iter()) {
+        // Scan over the ranges_for_proof and get hashes from the database corresponding to these
+        let mut elements = Vec::<TxOutMembershipElement>::default();
+        for (low, high) in ranges_for_proof.iter().cloned() {
             let range = Range::new(low, high)?;
             let hash = if low >= num_tx_outs {
                 // Supply the nil hash if the range contains no data.
@@ -335,14 +339,18 @@ impl TxOutStore {
             } else {
                 self.get_merkle_hash(&range, db_transaction)?
             };
-            range_to_hash.insert(range, hash);
+            elements.push(TxOutMembershipElement {
+                range,
+                hash: hash.into(),
+            });
         }
 
-        Ok(TxOutMembershipProof::new(
-            index,
-            num_tx_outs - 1,
-            range_to_hash,
-        ))
+        let result = TxOutMembershipProof::new(index, num_tx_outs - 1, elements);
+        debug_assert!(
+            mc_transaction_core::membership_proofs::compute_implied_merkle_root(&result).is_ok(),
+            "Freshly created membership proof was invalid"
+        );
+        Ok(result)
     }
 }
 
@@ -416,9 +424,11 @@ mod membership_proof_tests {
         let tx_outs = get_tx_outs(1);
         let tx_out = tx_outs.get(0).unwrap();
         let hash = hash_leaf(&tx_out);
-        let mut hashes: HashMap<Range, [u8; 32]> = HashMap::default();
-        hashes.insert(Range::new(0, 0).unwrap(), hash.clone());
-        let proof = TxOutMembershipProof::new(0, 0, hashes);
+        let elems = vec![TxOutMembershipElement {
+            range: Range::new(0, 0).unwrap(),
+            hash: hash.into(),
+        }];
+        let proof = TxOutMembershipProof::new(0, 0, elems);
 
         assert!(is_membership_proof_valid(&tx_out, &proof, &hash).unwrap());
     }
@@ -507,9 +517,8 @@ mod membership_proof_tests {
             // Tamper with proof after it is constructed. This bypasses checks in TxOutMembershipProof::new().
             proof.index = 6;
             assert_eq!(
-                false,
+                Err(MembershipProofError::HighestIndexMismatch),
                 is_membership_proof_valid(&tx_outs.get(5).unwrap(), &proof, &known_root_hash)
-                    .unwrap()
             );
         }
     }
@@ -549,9 +558,8 @@ mod membership_proof_tests {
             // `num_tx_outs` is less than the index of the `TxOut` referenced by the proof.
             proof.highest_index = 2;
             assert_eq!(
-                false,
+                Err(MembershipProofError::HighestIndexMismatch),
                 is_membership_proof_valid(&tx_outs.get(5).unwrap(), &proof, &known_root_hash)
-                    .unwrap()
             );
         }
 
@@ -565,9 +573,8 @@ mod membership_proof_tests {
             // ranges [8,15] and [0,15].
             proof.highest_index = 8;
             assert_eq!(
-                false,
+                Err(MembershipProofError::HighestIndexMismatch),
                 is_membership_proof_valid(&tx_outs.get(5).unwrap(), &proof, &known_root_hash)
-                    .unwrap()
             );
         }
     }
@@ -601,9 +608,8 @@ mod membership_proof_tests {
                 hash: TxOutMembershipHash::from([7u8; 32]),
             };
             assert_eq!(
-                false,
+                Err(MembershipProofError::UnexpectedMembershipElement(3)),
                 is_membership_proof_valid(&tx_outs.get(5).unwrap(), &proof, &known_root_hash)
-                    .unwrap()
             );
         }
     }
@@ -635,15 +641,28 @@ mod membership_proof_tests {
         let db_transaction = env.begin_ro_txn().unwrap();
         let known_root_hash = tx_out_store.get_root_merkle_hash(&db_transaction).unwrap();
 
-        let mut proof = tx_out_store
+        let proof = tx_out_store
             .get_merkle_proof_of_membership(5, &db_transaction)
             .unwrap();
 
-        proof.elements.remove(0);
+        assert!(
+            is_membership_proof_valid(&tx_outs.get(5).unwrap(), &proof, &known_root_hash).unwrap()
+        );
+
+        let mut proof1 = proof.clone();
+        proof1.elements.remove(0);
 
         assert_eq!(
-            false,
-            is_membership_proof_valid(&tx_outs.get(5).unwrap(), &proof, &known_root_hash).unwrap()
+            Err(MembershipProofError::MissingLeafHash(5)),
+            is_membership_proof_valid(&tx_outs.get(5).unwrap(), &proof1, &known_root_hash)
+        );
+
+        let mut proof2 = proof.clone();
+        proof2.elements.remove(1);
+
+        assert_eq!(
+            Err(MembershipProofError::UnexpectedMembershipElement(2)),
+            is_membership_proof_valid(&tx_outs.get(5).unwrap(), &proof2, &known_root_hash)
         );
     }
 
@@ -1209,11 +1228,11 @@ pub mod tx_out_store_tests {
             /*
                 The proof-of-membership for TxOut 3 should include the following ranges/hashes:
 
-                               _____________H(0,7)_________
+                               _______________|____________
                                |                          |
-                         ____H(0,3)_____                H(4,7)
+                         ______|________               H(4,7)
                         |              |
-                     H(0,1)          H(2,3)
+                     H(0,1)          __.____
                                     |      |
                                  H(2,2)  H(3,3)
                                    |       |
@@ -1221,17 +1240,14 @@ pub mod tx_out_store_tests {
 
             */
 
-            assert_eq!(7, proof.elements.len());
+            assert_eq!(4, proof.elements.len());
 
             let ranges: Vec<Range> = proof.elements.iter().map(|e| e.range).collect();
 
-            assert!(ranges.contains(&Range::new(3, 3).unwrap()));
-            assert!(ranges.contains(&Range::new(2, 2).unwrap()));
-            assert!(ranges.contains(&Range::new(2, 3).unwrap()));
-            assert!(ranges.contains(&Range::new(0, 1).unwrap()));
-            assert!(ranges.contains(&Range::new(0, 3).unwrap()));
-            assert!(ranges.contains(&Range::new(4, 7).unwrap()));
-            assert!(ranges.contains(&Range::new(0, 7).unwrap()));
+            assert_eq!(ranges[0], Range::new(3, 3).unwrap());
+            assert_eq!(ranges[1], Range::new(2, 2).unwrap());
+            assert_eq!(ranges[2], Range::new(0, 1).unwrap());
+            assert_eq!(ranges[3], Range::new(4, 7).unwrap());
 
             for element in proof.elements {
                 let expected_hash = tx_out_store
@@ -1253,11 +1269,11 @@ pub mod tx_out_store_tests {
             /*
                 The proof-of-membership for TxOut 5 should include the following ranges/hashes:
 
-                               __________H(0,7)___________________
+                               _____________|_____________________
                                |                                  |
-                            H(0,3)                       ______ H(4,7)_____
+                            H(0,3)                       _________|________
                                                          |                |
-                                                   ___H(4,5)__          H(6,7) = H(Nil)
+                                                   ______|____          H(6,7) = H(Nil)
                                                    |         |
                                                  H(4,4)   H(5,5)
                                                    |        |
@@ -1265,18 +1281,15 @@ pub mod tx_out_store_tests {
 
             */
 
-            assert_eq!(7, proof.elements.len());
+            assert_eq!(4, proof.elements.len());
 
             let ranges: Vec<Range> = proof.elements.iter().map(|e| e.range).collect();
 
             println!("{:?}", ranges);
-            assert!(ranges.contains(&Range::new(4, 4).unwrap()));
-            assert!(ranges.contains(&Range::new(5, 5).unwrap()));
-            assert!(ranges.contains(&Range::new(4, 5).unwrap()));
-            assert!(ranges.contains(&Range::new(6, 7).unwrap()));
-            assert!(ranges.contains(&Range::new(4, 7).unwrap()));
-            assert!(ranges.contains(&Range::new(0, 3).unwrap()));
-            assert!(ranges.contains(&Range::new(0, 7).unwrap()));
+            assert_eq!(ranges[0], Range::new(5, 5).unwrap());
+            assert_eq!(ranges[1], Range::new(4, 4).unwrap());
+            assert_eq!(ranges[2], Range::new(6, 7).unwrap());
+            assert_eq!(ranges[3], Range::new(0, 3).unwrap());
 
             for element in proof.elements {
                 let expected_hash = if element.range.from >= num_tx_outs as u64 {

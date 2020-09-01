@@ -1,29 +1,34 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use crate::range;
-use failure::Fail;
+use displaydoc::Display;
 
 /// Reasons why a creating or validating a proof of membership might fail.
-#[derive(Debug, Fail, PartialEq)]
+#[derive(Debug, Display, PartialEq)]
 pub enum Error {
-    /// Contains incorrect leaf hash.
-    #[fail(display = "Incorrect hash for leaf: {}", 0)]
+    /// Contains incorrect leaf hash: {0}
     IncorrectLeafHash(u64),
 
-    /// Missing hash for leaf.
-    #[fail(display = "Missing hash for leaf: {}", 0)]
+    /// Missing hash for leaf: {0}
     MissingLeafHash(u64),
 
-    /// Invalid Range.
-    #[fail(display = "Invalid range")]
+    /// Invalid Range: {0}
     RangeError(range::RangeError),
 
+    /// An unexpected tx out membership element was provided, which was not adjacent to the preceding elements, at index {0}
+    UnexpectedMembershipElement(usize),
+
+    /// The value provided for proof.highest_index doesn't match the other data
+    HighestIndexMismatch,
+
+    /// The implied merkle root's range doesn't cover 0
+    RootNotCoveringZero,
+
     /// Failed to serialize a TxOut.
-    #[fail(display = "TxOutSerializationError")]
     TxOutSerializationError,
 
-    #[fail(display = "CapacityExceeded")]
-    CapacityExceeded,
+    /// Numeric limits exceeded
+    NumericLimitsExceeded,
 }
 
 impl From<mc_util_serial::encode::Error> for Error {
