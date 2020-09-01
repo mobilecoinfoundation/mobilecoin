@@ -1389,8 +1389,6 @@ mod test {
         iter::FromIterator,
     };
 
-
-
     #[test_with_logger]
     fn test_add_monitor_impl(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([20u8; 32]);
@@ -3218,14 +3216,19 @@ mod test {
 
         let mut transaction_builder = TransactionBuilder::new();
         let (tx_out, _tx_confirmation) = transaction_builder
-            .add_output(10, &receiver.subaddress(DEFAULT_SUBADDRESS_INDEX), None, &mut rng)
+            .add_output(
+                10,
+                &receiver.subaddress(DEFAULT_SUBADDRESS_INDEX),
+                None,
+                &mut rng,
+            )
             .unwrap();
 
         add_txos_to_ledger_db(&mut ledger_db, &vec![tx_out.clone()], &mut rng);
 
         let tx_public_key = tx_out.public_key;
 
-        // An invalid request should fail.
+        // An invalid request should fail to encode.
         {
             let mut request = mc_mobilecoind_api::GetTransferCodeRequest::new();
             request.set_entropy(vec![3u8; 8]); // key is wrong size
@@ -3234,17 +3237,8 @@ mod test {
             assert!(client.get_transfer_code(&request).is_err());
 
             let mut request = mc_mobilecoind_api::GetTransferCodeRequest::new();
-            request.set_entropy(vec![4u8; 32]); // key doesn't match tx_public_key
-            request.set_tx_public_key((&tx_public_key).into());
-            request.set_memo("memo".to_owned());
-            assert!(client.get_transfer_code(&request).is_err());
-
-            let bad_tx_public_key = RistrettoPublic::from_random(&mut rng);
-
-            let mut request = mc_mobilecoind_api::GetTransferCodeRequest::new();
-            request.set_entropy(vec![4u8; 32]); // bad_tx_public_key doesn't exist in ledger
-            request.set_tx_public_key((&bad_tx_public_key).into());
-            request.set_memo("memo".to_owned());
+            request.set_entropy(vec![4u8; 32]);
+            request.set_memo("memo".to_owned()); // forgot to set tx_public_key
             assert!(client.get_transfer_code(&request).is_err());
         }
 
