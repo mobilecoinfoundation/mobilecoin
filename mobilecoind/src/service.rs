@@ -3284,9 +3284,9 @@ mod test {
             assert_eq!(utxos.len(), 1);
 
             // Convert to proto utxo.
-            let proto_utxo: mc_mobilecoind_api::UnspentTxOut = utxos[0].into();
+            let proto_utxo: mc_mobilecoind_api::UnspentTxOut = (&utxos[0]).into();
 
-            assert_eq!(proto_utxo, response.get_utxo());
+            assert_eq!(&proto_utxo, response.get_utxo());
         }
     }
 
