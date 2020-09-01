@@ -3228,12 +3228,22 @@ mod test {
         // An invalid request should fail.
         {
             let mut request = mc_mobilecoind_api::GetTransferCodeRequest::new();
-            request.set_entropy(root_entropy.to_vec());
+            request.set_entropy(vec![3u8; 8]); // key is wrong size
             request.set_tx_public_key((&tx_public_key).into());
             request.set_memo("memo".to_owned());
             assert!(client.get_transfer_code(&request).is_err());
 
             let mut request = mc_mobilecoind_api::GetTransferCodeRequest::new();
+            request.set_entropy(vec![4u8; 32]); // key doesn't match tx_public_key
+            request.set_tx_public_key((&tx_public_key).into());
+            request.set_memo("memo".to_owned());
+            assert!(client.get_transfer_code(&request).is_err());
+
+            let bad_tx_public_key = RistrettoPublic::from_random(&mut rng);
+
+            let mut request = mc_mobilecoind_api::GetTransferCodeRequest::new();
+            request.set_entropy(vec![4u8; 32]); // bad_tx_public_key doesn't exist in ledger
+            request.set_tx_public_key((&bad_tx_public_key).into());
             request.set_memo("memo".to_owned());
             assert!(client.get_transfer_code(&request).is_err());
         }
