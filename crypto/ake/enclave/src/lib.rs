@@ -127,9 +127,9 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         let report_body = Report::new(None, None)?.body();
 
         let mut mr_enclave_verifier = MrEnclaveVerifier::new(report_body.mr_enclave());
-        // INTEL-SA-00233: LVI hardening is handled via rustc arguments set in
+        // INTEL-SA-00334: LVI hardening is handled via rustc arguments set in
         // mc-util-build-enclave
-        mr_enclave_verifier.allow_hardening_advisory("INTEL-SA-00233");
+        mr_enclave_verifier.allow_hardening_advisory("INTEL-SA-00334");
 
         verifier
             .mr_enclave(mr_enclave_verifier)
