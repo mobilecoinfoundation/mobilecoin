@@ -29,9 +29,7 @@ use mc_mobilecoind_api::{
     MobilecoindUri,
 };
 use mc_transaction_core::{
-    get_tx_out_shared_secret,
-    onetime_keys::recover_onetime_private_key,
-    ring_signature::KeyImage,
+    get_tx_out_shared_secret, onetime_keys::recover_onetime_private_key, ring_signature::KeyImage,
     tx::TxOutConfirmationNumber,
 };
 
@@ -432,18 +430,25 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         let tx_public_key = RistrettoPublic::try_from(transfer_payload.get_tx_public_key())
             .map_err(|err| rpc_internal_error("RistrettoPublic.try_from", err, &self.logger))?;
 
-
         let compressed_tx_public_key = CompressedRistrettoPublic::try_from(&tx_public_key)
             .map_err(|err| rpc_internal_error("CompressedRistrettoPublic.try_from", err, &self.logger))?;
 
-
         // build and include a UnspentTxOut that can be immediately spent
 
-        let index = self.ledger_db.get_tx_out_index_by_public_key(&compressed_tx_public_key)
-            .map_err(|err| rpc_internal_error("ledger_db.get_tx_out_index_by_public_key", err, &self.logger))?;
+        let index = self
+            .ledger_db
+            .get_tx_out_index_by_public_key(&compressed_tx_public_key)
+            .map_err(|err| {
+                  rpc_internal_error(
+                      "ledger_db.get_tx_out_index_by_public_key",
+                      err,
+                      &self.logger,
+                )
+            })?;
 
-        let tx_out = self.ledger_db.get_tx_out_by_index(index)
-            .map_err(|err| rpc_internal_error("ledger_db.get_tx_out_by_index", err, &self.logger))?;
+        let tx_out = self.ledger_db.get_tx_out_by_index(index).map_err(|err| {
+            rpc_internal_error("ledger_db.get_tx_out_by_index", err, &self.logger)
+        })?;
 
         let mut root_entropy = [0u8; 32];
         root_entropy.copy_from_slice(transfer_payload.get_entropy());
@@ -469,7 +474,6 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         );
 
         let key_image = KeyImage::from(&onetime_private_key);
-
 
         let utxo = UnspentTxOut {
             tx_out,
