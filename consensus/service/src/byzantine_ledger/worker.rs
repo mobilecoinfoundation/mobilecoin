@@ -420,6 +420,8 @@ impl<
 
     fn process_consensus_msgs_for_cur_slot(&mut self) {
         if let Some(consensus_msgs) = self.pending_consensus_msgs.remove(&self.cur_slot) {
+            let mut out_msg = None;
+
             for (consensus_msg, from_responder_id) in consensus_msgs {
                 let (scp_msg, their_prev_block_id) =
                     (consensus_msg.scp_msg(), consensus_msg.prev_block_id());
@@ -462,11 +464,10 @@ impl<
 
                 // Pass message to the scp layer.
                 match self.scp.handle(scp_msg) {
-                    Ok(msg_opt) => {
-                        if let Some(msg) = msg_opt {
-                            (self.send_scp_message)(msg);
-                        }
+                    Ok(Some(msg_opt)) => {
+                        out_msg = Some(msg_opt);
                     }
+                    Ok(None) => {}
                     Err(err) => {
                         log::error!(
                             self.logger,
@@ -476,6 +477,10 @@ impl<
                         );
                     }
                 }
+            }
+
+            if let Some(msg) = out_msg {
+                (self.send_scp_message)(msg);
             }
         }
     }
