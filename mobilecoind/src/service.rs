@@ -15,7 +15,7 @@ use crate::{
     utxo_store::{UnspentTxOut, UtxoId},
 };
 use grpcio::{EnvBuilder, RpcContext, RpcStatus, RpcStatusCode, ServerBuilder, UnarySink};
-use mc_account_keys::{AccountKey, PublicAddress, RootIdentity};
+use mc_account_keys::{AccountKey, PublicAddress, RootIdentity, DEFAULT_SUBADDRESS_INDEX};
 use mc_common::{
     logger::{log, Logger},
     HashMap,
@@ -426,10 +426,10 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             .map_err(|err| rpc_internal_error("RistrettoPublic.try_from", err, &self.logger))?;
 
         // build and include a UnspentTxOut that can be immediately spent
-        
+
         let tx_out = ledger_db.get_tx_out_index_by_public_key(tx_public_key)
             .map_err(|err| rpc_internal_error("ledger_db.get_tx_out_index_by_public_key", err, &self.logger))?;
-        
+
         let entropy = transfer_payload.get_entropy().to_vec()
 
         // Use root entropy to construct AccountKey.
@@ -437,7 +437,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
 
         // TODO: change to production AccountKey derivation
         let account_key = AccountKey::from(&root_id);
-        
+
         let shared_secret =
             get_tx_out_shared_secret(account_key.view_private_key(), &tx_public_key);
 
@@ -454,7 +454,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
 
         let key_image = KeyImage::from(&onetime_private_key);
 
-        
+
         let utxo = UnspentTxOut {
             tx_out,
             subaddress_index: DEFAULT_SUBADDRESS_INDEX,
@@ -468,7 +468,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         response.set_entropy(entropy);
         response.set_tx_public_key((&tx_public_key).into());
         response.set_memo(transfer_payload.get_memo().to_string());
-        response.set_utxo(utxo);
+        response.set_utxo((&utxo).into());
 
         Ok(response)
     }
