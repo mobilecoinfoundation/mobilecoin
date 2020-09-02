@@ -16,15 +16,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "aead"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fc95d1bdb8e6666b2b217308eeeb09f2d6728d104be3e31916cc74d15420331"
-dependencies = [
- "generic-array 0.14.4",
-]
-
-[[package]]
 name = "aes"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -38,24 +29,12 @@ dependencies = [
 [[package]]
 name = "aes-gcm"
 version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86f5007801316299f922a6198d1d09a0bae95786815d066d5880d13f7c45ead1"
+source = "git+https://github.com/xoloki/AEADs?rev=d1a8517d3dd867ed9c5794002add67992a42f6aa#d1a8517d3dd867ed9c5794002add67992a42f6aa"
 dependencies = [
- "aead 0.2.0",
+ "aead",
  "aes",
  "block-cipher",
  "ghash",
- "subtle 2.2.3",
-]
-
-[[package]]
-name = "aes-gcm"
-version = "0.6.0"
-source = "git+https://github.com/xoloki/AEADs?rev=d1a8517d3dd867ed9c5794002add67992a42f6aa#d1a8517d3dd867ed9c5794002add67992a42f6aa"
-dependencies = [
- "aead 0.3.2",
- "block-cipher",
- "ghash 0.3.0",
  "subtle 2.2.3",
 ]
 
@@ -327,22 +306,8 @@ dependencies = [
 ]
 
 [[package]]
-<<<<<<< HEAD
 name = "block-buffer"
 version = "0.9.0"
-=======
-name = "block-cipher"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa136449e765dc7faa244561ccae839c394048667929af599b5d931ebe7b7f10"
-dependencies = [
- "generic-array 0.14.4",
-]
-
-[[package]]
-name = "block-cipher-trait"
-version = "0.6.2"
->>>>>>> integrate preliminary ct-aead code
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4152116fd6e9dadb291ae18fc1ec3575ed6d84c29642d97890f4b4a3417297e4"
 dependencies = [
@@ -1369,16 +1334,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "generic-array"
-version = "0.14.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "501466ecc8a30d1d3b7fc9229b122b2ce8ed6e9d9223f1138d4babb253e51817"
-dependencies = [
- "typenum",
- "version_check 0.9.1",
-]
-
-[[package]]
 name = "genio"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1404,16 +1359,7 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6e27f0689a6e15944bdce7e45425efb87eaa8ab0c6e87f11d0987a9133e2531"
 dependencies = [
- "polyval 0.3.3",
-]
-
-[[package]]
-name = "ghash"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6e27f0689a6e15944bdce7e45425efb87eaa8ab0c6e87f11d0987a9133e2531"
-dependencies = [
- "polyval 0.4.0",
+ "polyval",
 ]
 
 [[package]]
@@ -2166,18 +2112,11 @@ dependencies = [
 name = "mc-attest-ake"
 version = "1.0.0"
 dependencies = [
-<<<<<<< HEAD
  "aead",
  "aes-gcm",
  "cargo-emit",
  "digest 0.9.0",
  "displaydoc",
-=======
- "aead 0.2.0",
- "aes-gcm 0.3.2",
- "digest",
- "failure",
->>>>>>> integrate preliminary ct-aead code
  "mc-attest-core",
  "mc-attest-net",
  "mc-common",
@@ -2198,7 +2137,7 @@ dependencies = [
 name = "mc-attest-api"
 version = "1.0.0"
 dependencies = [
- "aead 0.2.0",
+ "aead",
  "cargo-emit",
  "digest 0.9.0",
  "futures 0.3.5",
@@ -2342,7 +2281,7 @@ dependencies = [
 name = "mc-connection"
 version = "1.0.0"
 dependencies = [
- "aes-gcm 0.3.2",
+ "aes-gcm",
  "failure",
  "grpcio",
  "mc-attest-ake",
@@ -2621,15 +2560,9 @@ dependencies = [
 name = "mc-crypto-ake-enclave"
 version = "1.0.0"
 dependencies = [
-<<<<<<< HEAD
  "aead",
  "aes-gcm",
  "digest 0.9.0",
-=======
- "aead 0.2.0",
- "aes-gcm 0.3.2",
- "digest",
->>>>>>> integrate preliminary ct-aead code
  "failure",
  "mc-attest-ake",
  "mc-attest-core",
@@ -2652,8 +2585,8 @@ dependencies = [
 name = "mc-crypto-box"
 version = "1.0.0"
 dependencies = [
- "aead 0.2.0",
- "aes-gcm 0.3.2",
+ "aead",
+ "aes-gcm",
  "blake2",
  "digest 0.9.0",
  "failure",
@@ -2669,7 +2602,7 @@ dependencies = [
 name = "mc-crypto-ct-aead"
 version = "0.5.0"
 dependencies = [
- "aes-gcm 0.6.0",
+ "aes-gcm",
  "block-cipher",
  "subtle 2.2.3",
 ]
@@ -2759,7 +2692,7 @@ dependencies = [
 name = "mc-crypto-message-cipher"
 version = "1.0.0"
 dependencies = [
- "aes-gcm 0.3.2",
+ "aes-gcm",
  "failure",
  "generic-array 0.14.4",
  "mc-util-serial",
@@ -2773,15 +2706,9 @@ dependencies = [
 name = "mc-crypto-noise"
 version = "1.0.0"
 dependencies = [
-<<<<<<< HEAD
  "aead",
  "aes-gcm",
  "digest 0.9.0",
-=======
- "aead 0.2.0",
- "aes-gcm 0.3.2",
- "digest",
->>>>>>> integrate preliminary ct-aead code
  "failure",
  "generic-array 0.14.4",
  "hkdf",
@@ -4222,17 +4149,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d9a50142b55ab3ed0e9f68dfb3709f1d90d29da24e91033f28b96330643107dc"
 dependencies = [
  "cfg-if",
- "universal-hash 0.3.0",
-]
-
-[[package]]
-name = "polyval"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9a50142b55ab3ed0e9f68dfb3709f1d90d29da24e91033f28b96330643107dc"
-dependencies = [
- "cfg-if",
- "universal-hash 0.4.0",
+ "universal-hash",
 ]
 
 [[package]]
@@ -6196,16 +6113,6 @@ name = "unicode-xid"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "826e7639553986605ec5979c7dd957c7895e93eabed50ab2ffa7f6128a75097c"
-
-[[package]]
-name = "universal-hash"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8326b2c654932e3e4f9196e69d08fdf7cfd718e1dc6f66b347e6024a0c961402"
-dependencies = [
- "generic-array 0.14.4",
- "subtle 2.2.3",
-]
 
 [[package]]
 name = "universal-hash"
