@@ -6,10 +6,13 @@
 //! 1) "Well formed"-ness - A transaction is considered "well formed" if all the data in it that is
 //!    not affected by future changes to the ledger is correct. This includes checks like
 //!    inputs/outputs counts, range proofs, signature validation, membership proofs, etc.
-//!    This check should only happen once per transaction since if it passes, it is expected to
-//!    always pass again (and if it doesn't, then the transaction should be discarded).
-//! 2) "Is valid [to add to the ledger]" - This checks whether a transaction can be safely appended
-//!    to a ledger in it's current state.
+//!    A transaction that is well-formed remains well-formed if additional transactions are
+//!    appended to the ledger. However, a transaction could transition from not well-formed to well-formed:
+//!    for example, the transaction may include inputs that are not yet in the local ledger because
+//!    the local ledger is out of sync with the consensus ledger.
+//!
+//! 2) "Is valid [to add to the ledger]" - This checks whether a **single** transaction can be safely
+//!  appended to a ledger in it's current state.
 //!
 //! This definition differs from what the `mc_transaction_core::validation` module - the check provided by
 //! it is actually the "Is well formed" check, and might be renamed in the future to match this.
@@ -43,32 +46,11 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
     fn well_formed_check(
         &self,
         highest_indices: &[u64],
-        key_images: &[KeyImage],
-        output_public_keys: &[CompressedRistrettoPublic],
+        _key_images: &[KeyImage],
+        _output_public_keys: &[CompressedRistrettoPublic],
     ) -> TransactionValidationResult<(u64, Vec<TxOutMembershipProof>)> {
-        // The `key_images` must not have already been spent.
-        // Note that according to the definition at the top of this file, key image check is not part
-        // of the well-formedness check, but we do it anyway to more quickly get rid of transactions
-        // that are obviously unusable.
-        if key_images
-            .iter()
-            .any(|key_image| self.ledger.contains_key_image(key_image).unwrap_or(true))
-        {
-            // At least one key image was spent, or the ledger returned an error.
-            return Err(TransactionValidationError::ContainsSpentKeyImage);
-        }
-
-        // Output public keys should not exist in the ledger.
-        let contains_existing_public_key = output_public_keys.iter().any(|public_key| {
-            self.ledger
-                .contains_tx_out_public_key(public_key)
-                .unwrap_or(true)
-        });
-        if contains_existing_public_key {
-            // At least one public key is already in the ledger, or the ledger returned an error.
-            return Err(TransactionValidationError::ContainsExistingOutputPublicKey);
-        }
-
+        // The transaction's membership proofs must reference data contained in the ledger.
+        // Note that this check could fail if the local ledger is behind the network's consensus ledger.
         let membership_proofs = self
             .ledger
             .get_tx_out_proof_of_memberships(highest_indices)
@@ -88,13 +70,12 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
 
     /// Checks if a transaction is valid (see definition at top of this file).
     fn is_valid(&self, context: Arc<WellFormedTxContext>) -> TransactionValidationResult<()> {
-        // If the tombstone block has been exceeded, this tx is no longer valid to append to the
-        // ledger.
         let current_block_index = self
             .ledger
             .num_blocks()
             .map_err(|e| TransactionValidationError::Ledger(e.to_string()))?;
 
+        // The transaction must not have expired.
         validate_tombstone(current_block_index, context.tombstone_block())?;
 
         // The `key_images` must not have already been spent.
@@ -278,70 +259,70 @@ pub mod well_formed_tests {
         }
     }
 
-    #[test_with_logger]
-    /// `is_well_formed` should reject a transaction that contains a key image that is in the ledger.
-    fn is_well_formed_rejects_double_spend(_logger: Logger) {
-        let mut rng = Hc128Rng::from_seed([79u8; 32]);
+    // #[test_with_logger]
+    // /// `is_well_formed` should reject a transaction that contains a key image that is in the ledger.
+    // fn is_well_formed_rejects_double_spend(_logger: Logger) {
+    //     let mut rng = Hc128Rng::from_seed([79u8; 32]);
+    //
+    //     let sender = AccountKey::random(&mut rng);
+    //     let recipient = AccountKey::random(&mut rng);
+    //
+    //     let mut ledger = create_ledger();
+    //     let n_blocks = 3;
+    //     initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
+    //
+    //     // Choose a TxOut to re-spend. All TxOuts except the output of the last block have been spent.
+    //     let block_contents = ledger.get_block_contents(n_blocks - 2).unwrap();
+    //     let tx_out = block_contents.outputs[0].clone();
+    //
+    //     let tx = create_transaction(
+    //         &mut ledger,
+    //         &tx_out,
+    //         &sender,
+    //         &recipient.default_subaddress(),
+    //         n_blocks + 1,
+    //         &mut rng,
+    //     );
+    //
+    //     assert_eq!(
+    //         Err(TransactionValidationError::ContainsSpentKeyImage),
+    //         is_well_formed(&tx, &ledger)
+    //     );
+    // }
 
-        let sender = AccountKey::random(&mut rng);
-        let recipient = AccountKey::random(&mut rng);
-
-        let mut ledger = create_ledger();
-        let n_blocks = 3;
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
-
-        // Choose a TxOut to re-spend. All TxOuts except the output of the last block have been spent.
-        let block_contents = ledger.get_block_contents(n_blocks - 2).unwrap();
-        let tx_out = block_contents.outputs[0].clone();
-
-        let tx = create_transaction(
-            &mut ledger,
-            &tx_out,
-            &sender,
-            &recipient.default_subaddress(),
-            n_blocks + 1,
-            &mut rng,
-        );
-
-        assert_eq!(
-            Err(TransactionValidationError::ContainsSpentKeyImage),
-            is_well_formed(&tx, &ledger)
-        );
-    }
-
-    #[test_with_logger]
-    /// `is_well_formed` should reject a transaction that contains an output public key that is in the ledger.
-    fn is_well_formed_rejects_duplicate_output_public_key(_logger: Logger) {
-        let mut rng = Hc128Rng::from_seed([79u8; 32]);
-
-        let sender = AccountKey::random(&mut rng);
-        let recipient = AccountKey::random(&mut rng);
-
-        let mut ledger = create_ledger();
-        let n_blocks = 3;
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
-
-        // Choose a TxOut to spend. Only the TxOut in the last block is unspent.
-        let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
-        let tx_out = block_contents.outputs[0].clone();
-
-        let mut tx = create_transaction(
-            &mut ledger,
-            &tx_out,
-            &sender,
-            &recipient.default_subaddress(),
-            n_blocks + 1,
-            &mut rng,
-        );
-
-        // Change the public key so that it is no longer unique.
-        tx.prefix.outputs[0].public_key = tx_out.public_key.clone();
-
-        assert_eq!(
-            Err(TransactionValidationError::ContainsExistingOutputPublicKey),
-            is_well_formed(&tx, &ledger)
-        );
-    }
+    // #[test_with_logger]
+    // /// `is_well_formed` should reject a transaction that contains an output public key that is in the ledger.
+    // fn is_well_formed_rejects_duplicate_output_public_key(_logger: Logger) {
+    //     let mut rng = Hc128Rng::from_seed([79u8; 32]);
+    //
+    //     let sender = AccountKey::random(&mut rng);
+    //     let recipient = AccountKey::random(&mut rng);
+    //
+    //     let mut ledger = create_ledger();
+    //     let n_blocks = 3;
+    //     initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
+    //
+    //     // Choose a TxOut to spend. Only the TxOut in the last block is unspent.
+    //     let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
+    //     let tx_out = block_contents.outputs[0].clone();
+    //
+    //     let mut tx = create_transaction(
+    //         &mut ledger,
+    //         &tx_out,
+    //         &sender,
+    //         &recipient.default_subaddress(),
+    //         n_blocks + 1,
+    //         &mut rng,
+    //     );
+    //
+    //     // Change the public key so that it is no longer unique.
+    //     tx.prefix.outputs[0].public_key = tx_out.public_key.clone();
+    //
+    //     assert_eq!(
+    //         Err(TransactionValidationError::ContainsExistingOutputPublicKey),
+    //         is_well_formed(&tx, &ledger)
+    //     );
+    // }
 
     #[test_with_logger]
     /// `is_well_formed` should reject a transaction that contains an invalid proof-of-membership.
