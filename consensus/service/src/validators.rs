@@ -40,8 +40,8 @@ impl<L: Ledger + Sync> DefaultTxManagerUntrustedInterfaces<L> {
 }
 
 impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntrustedInterfaces<L> {
-    /// Performs the untrusted part of the well-formed check.
-    /// Returns current block index and membership proofs to be used by
+    /// Performs **only** the non-enclave part of the well-formed check.
+    /// Returns the number of blocks in the local ledger and membership proofs to be used by
     /// the in-enclave well-formed check on success.
     fn well_formed_check(
         &self,
@@ -154,34 +154,12 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
 #[cfg(test)]
 pub mod well_formed_tests {
     use super::*;
-    use mc_common::logger::{bench_with_logger, test_with_logger, Logger};
-    use mc_ledger_db::LedgerDB;
-    use mc_transaction_core::{
-        constants::MAX_TOMBSTONE_BLOCKS, ring_signature::KeyImage, tx::Tx,
-        validation::TransactionValidationError,
-    };
+    use mc_common::logger::{test_with_logger, Logger};
     use mc_transaction_core_test_utils::{
         create_ledger, create_transaction, initialize_ledger, AccountKey,
     };
     use rand::SeedableRng;
     use rand_hc::Hc128Rng;
-    use test::Bencher;
-
-    fn is_well_formed(tx: &Tx, ledger: &LedgerDB) -> TransactionValidationResult<()> {
-        let mut rng = Hc128Rng::from_seed([77u8; 32]);
-
-        let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger.clone());
-        let membership_proof_highest_indices = tx.get_membership_proof_highest_indices();
-        let (cur_block_index, membership_proofs) =
-            untrusted.well_formed_check(&membership_proof_highest_indices[..])?;
-
-        mc_transaction_core::validation::validate(
-            &tx,
-            cur_block_index,
-            &membership_proofs,
-            &mut rng,
-        )
-    }
 
     #[test_with_logger]
     // `is_well_formed` should accept a well-formed transaction.
@@ -208,136 +186,41 @@ pub mod well_formed_tests {
             &mut rng,
         );
 
-        assert_eq!(is_well_formed(&tx, &ledger), Ok(()));
-    }
+        let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger.clone());
+        let membership_proof_highest_indices = tx.get_membership_proof_highest_indices();
 
-    #[test_with_logger]
-    /// `is_well_formed` should reject a transaction that contains an invalid signature.
-    fn is_well_formed_rejects_invalid_signature(_logger: Logger) {
-        let mut rng = Hc128Rng::from_seed([78u8; 32]);
-
-        let sender = AccountKey::random(&mut rng);
-        let recipient = AccountKey::random(&mut rng);
-
-        let mut ledger = create_ledger();
-        let n_blocks = 3;
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
-
-        // Choose a TxOut to spend. Only the output of the last block is unspent.
-        let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
-        let tx_out = block_contents.outputs[0].clone();
-
-        let mut tx = create_transaction(
-            &mut ledger,
-            &tx_out,
-            &sender,
-            &recipient.default_subaddress(),
-            n_blocks + 1,
-            &mut rng,
-        );
-
-        assert_eq!(is_well_formed(&tx, &ledger), Ok(()));
-
-        // Corrupt the signature.
-        tx.signature.ring_signatures[0].key_image = KeyImage::from(77);
-
-        match is_well_formed(&tx, &ledger) {
-            Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
-            Err(e) => {
-                panic!(format!("Unexpected error {}", e));
+        match untrusted.well_formed_check(&membership_proof_highest_indices[..]) {
+            Ok((cur_block_index, _membership_proofs)) => {
+                assert_eq!(cur_block_index, n_blocks);
             }
-            Ok(()) => panic!(),
+            Err(e) => panic!("Unexpected error {}", e),
         }
     }
 
-    // #[test_with_logger]
-    // /// `is_well_formed` should reject a transaction that contains a key image that is in the ledger.
-    // fn is_well_formed_rejects_double_spend(_logger: Logger) {
-    //     let mut rng = Hc128Rng::from_seed([79u8; 32]);
-    //
-    //     let sender = AccountKey::random(&mut rng);
-    //     let recipient = AccountKey::random(&mut rng);
-    //
-    //     let mut ledger = create_ledger();
-    //     let n_blocks = 3;
-    //     initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
-    //
-    //     // Choose a TxOut to re-spend. All TxOuts except the output of the last block have been spent.
-    //     let block_contents = ledger.get_block_contents(n_blocks - 2).unwrap();
-    //     let tx_out = block_contents.outputs[0].clone();
-    //
-    //     let tx = create_transaction(
-    //         &mut ledger,
-    //         &tx_out,
-    //         &sender,
-    //         &recipient.default_subaddress(),
-    //         n_blocks + 1,
-    //         &mut rng,
-    //     );
-    //
-    //     assert_eq!(
-    //         Err(TransactionValidationError::ContainsSpentKeyImage),
-    //         is_well_formed(&tx, &ledger)
-    //     );
-    // }
-
-    // #[test_with_logger]
-    // /// `is_well_formed` should reject a transaction that contains an output public key that is in the ledger.
-    // fn is_well_formed_rejects_duplicate_output_public_key(_logger: Logger) {
-    //     let mut rng = Hc128Rng::from_seed([79u8; 32]);
-    //
-    //     let sender = AccountKey::random(&mut rng);
-    //     let recipient = AccountKey::random(&mut rng);
-    //
-    //     let mut ledger = create_ledger();
-    //     let n_blocks = 3;
-    //     initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
-    //
-    //     // Choose a TxOut to spend. Only the TxOut in the last block is unspent.
-    //     let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
-    //     let tx_out = block_contents.outputs[0].clone();
-    //
-    //     let mut tx = create_transaction(
-    //         &mut ledger,
-    //         &tx_out,
-    //         &sender,
-    //         &recipient.default_subaddress(),
-    //         n_blocks + 1,
-    //         &mut rng,
-    //     );
-    //
-    //     // Change the public key so that it is no longer unique.
-    //     tx.prefix.outputs[0].public_key = tx_out.public_key.clone();
-    //
-    //     assert_eq!(
-    //         Err(TransactionValidationError::ContainsExistingOutputPublicKey),
-    //         is_well_formed(&tx, &ledger)
-    //     );
-    // }
-
     #[test_with_logger]
-    /// `is_well_formed` should reject a transaction that contains an invalid proof-of-membership.
-    fn is_well_formed_rejects_missing_input(_logger: Logger) {
+    /// `is_well_formed` should reject a transaction that contains a proof-of-membership with
+    /// highest index outside the ledger, i.e. a transaction "from the future".
+    fn is_well_formed_rejects_excessive_highest_index(_logger: Logger) {
         let mut rng = Hc128Rng::from_seed([77u8; 32]);
 
         let sender = AccountKey::random(&mut rng);
         let recipient = AccountKey::random(&mut rng);
 
-        // Create a TxOut that contains an invalid proof-of-membership for some TxOut.
+        // Create a TxOut that contains a proof-of-membership whose highest index is outside the ledger.
         //
-        // An easy way to do this is to initialize a second ledger with different contents, and
-        // create a transaction that is valid with respect to that ledger.
+        // An easy way to do this is to populate two ledgers of different lengths with the same randomness.
         let tx = {
-            let mut bizarro_ledger = create_ledger();
-            let n_blocks = 3;
-            initialize_ledger(&mut bizarro_ledger, n_blocks, &sender, &mut rng);
+            let mut rng = Hc128Rng::from_seed([142u8; 32]);
+            let mut future_ledger = create_ledger();
+            let n_blocks = 10;
+            initialize_ledger(&mut future_ledger, n_blocks, &sender, &mut rng);
 
             // Choose a TxOut to spend. Only the TxOut in the last block is unspent.
-            let block_contents = bizarro_ledger.get_block_contents(n_blocks - 1).unwrap();
+            let block_contents = future_ledger.get_block_contents(n_blocks - 1).unwrap();
             let tx_out = block_contents.outputs[0].clone();
 
             create_transaction(
-                &mut bizarro_ledger,
+                &mut future_ledger,
                 &tx_out,
                 &sender,
                 &recipient.default_subaddress(),
@@ -346,141 +229,107 @@ pub mod well_formed_tests {
             )
         };
 
-        // Create the "real" ledger.
+        // Create the local ledger. This should be a subset of `future_ledger` that was used to
+        // create the transaction.
+        let mut rng = Hc128Rng::from_seed([142u8; 32]);
         let mut ledger = create_ledger();
         let n_blocks = 3;
         initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
 
-        assert_eq!(
-            Err(TransactionValidationError::InvalidTxOutMembershipProof),
-            is_well_formed(&tx, &ledger)
-        );
+        let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger.clone());
+        let membership_proof_highest_indices = tx.get_membership_proof_highest_indices();
+
+        match untrusted.well_formed_check(&membership_proof_highest_indices[..]) {
+            Ok((_cur_block_index, _membership_proofs)) => {
+                panic!();
+            }
+            Err(_e) => {} // This is expected. TODO: check error type.
+        }
     }
 
-    #[test_with_logger]
-    /// `is_well_formed` should reject a transaction with a tombstone block that has been exceeded.
-    fn is_well_formed_rejects_past_tombstone_block(_logger: Logger) {
-        let mut rng = Hc128Rng::from_seed([79u8; 32]);
+    // #[test_with_logger]
+    // #[ignore]
+    // /// `is_well_formed` should reject a transaction with a tombstone block too far in the future.
+    // /// Unclear if this should actually be part of the untrusted is_well_formed check...
+    // fn is_well_formed_rejects_too_far_tombstone_block(_logger: Logger) {
+    //     let mut rng = Hc128Rng::from_seed([79u8; 32]);
+    //
+    //     let sender = AccountKey::random(&mut rng);
+    //     let recipient = AccountKey::random(&mut rng);
+    //
+    //     let mut ledger = create_ledger();
+    //     let n_blocks = 3;
+    //     initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
+    //
+    //     let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger.clone());
+    //
+    //     // Choose a TxOut to spend. Only the output of the last block is unspent.
+    //     let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
+    //     let tx_out = block_contents.outputs[0].clone();
+    //
+    //     // A well-formed transaction
+    //     {
+    //         let tx = create_transaction(
+    //             &mut ledger,
+    //             &tx_out,
+    //             &sender,
+    //             &recipient.default_subaddress(),
+    //             n_blocks + MAX_TOMBSTONE_BLOCKS,
+    //             &mut rng,
+    //         );
+    //
+    //         let membership_proof_highest_indices = tx.get_membership_proof_highest_indices();
+    //         assert!(untrusted
+    //             .well_formed_check(&membership_proof_highest_indices[..])
+    //             .is_ok());
+    //     }
+    //
+    //     // Tombstone block is too far in the future. This is not well-formed.
+    //     {
+    //         let bad_tx = create_transaction(
+    //             &mut ledger,
+    //             &tx_out,
+    //             &sender,
+    //             &recipient.default_subaddress(),
+    //             n_blocks + MAX_TOMBSTONE_BLOCKS + 1,
+    //             &mut rng,
+    //         );
+    //
+    //         let membership_proof_highest_indices = bad_tx.get_membership_proof_highest_indices();
+    //         assert!(untrusted
+    //             .well_formed_check(&membership_proof_highest_indices[..])
+    //             .is_err());
+    //     }
+    // }
 
-        let sender = AccountKey::random(&mut rng);
-        let recipient = AccountKey::random(&mut rng);
-
-        let mut ledger = create_ledger();
-        let n_blocks = 3;
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
-
-        // Choose a TxOut to spend. Only the output of the last block is unspent.
-        let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
-        let tx_out = block_contents.outputs[0].clone();
-
-        let tx = create_transaction(
-            &mut ledger,
-            &tx_out,
-            &sender,
-            &recipient.default_subaddress(),
-            n_blocks,
-            &mut rng,
-        );
-        assert_eq!(
-            Err(TransactionValidationError::TombstoneBlockExceeded),
-            is_well_formed(&tx, &ledger)
-        );
-
-        let tx = create_transaction(
-            &mut ledger,
-            &tx_out,
-            &sender,
-            &recipient.default_subaddress(),
-            n_blocks - 1,
-            &mut rng,
-        );
-        assert_eq!(
-            Err(TransactionValidationError::TombstoneBlockExceeded),
-            is_well_formed(&tx, &ledger)
-        );
-
-        let tx = create_transaction(
-            &mut ledger,
-            &tx_out,
-            &sender,
-            &recipient.default_subaddress(),
-            0,
-            &mut rng,
-        );
-        assert_eq!(
-            Err(TransactionValidationError::TombstoneBlockExceeded),
-            is_well_formed(&tx, &ledger)
-        );
-    }
-
-    #[test_with_logger]
-    /// `is_well_formed` should reject a transaction with a tombstone block too far in the future.
-    fn is_well_formed_rejects_too_far_tombstone_block(_logger: Logger) {
-        let mut rng = Hc128Rng::from_seed([79u8; 32]);
-
-        let sender = AccountKey::random(&mut rng);
-        let recipient = AccountKey::random(&mut rng);
-
-        let mut ledger = create_ledger();
-        let n_blocks = 3;
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
-
-        // Choose a TxOut to spend. Only the output of the last block is unspent.
-        let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
-        let tx_out = block_contents.outputs[0].clone();
-
-        let tx = create_transaction(
-            &mut ledger,
-            &tx_out,
-            &sender,
-            &recipient.default_subaddress(),
-            n_blocks + MAX_TOMBSTONE_BLOCKS + 1,
-            &mut rng,
-        );
-        assert_eq!(
-            Err(TransactionValidationError::TombstoneBlockTooFar),
-            is_well_formed(&tx, &ledger)
-        );
-
-        let tx = create_transaction(
-            &mut ledger,
-            &tx_out,
-            &sender,
-            &recipient.default_subaddress(),
-            n_blocks + MAX_TOMBSTONE_BLOCKS,
-            &mut rng,
-        );
-        assert_eq!(Ok(()), is_well_formed(&tx, &ledger));
-    }
-
-    #[allow(soft_unstable)]
-    #[bench_with_logger]
-    #[ignore]
-    fn bench_is_well_formed(_logger: Logger, b: &mut Bencher) {
-        let mut rng = Hc128Rng::from_seed([79u8; 32]);
-
-        let sender = AccountKey::random(&mut rng);
-        let recipient = AccountKey::random(&mut rng);
-
-        let mut ledger = create_ledger();
-        let n_blocks = 3;
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
-
-        // Choose a TxOut to spend. Only the output of the last block is unspent.
-        let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
-        let tx_out = block_contents.outputs[0].clone();
-
-        let tx = create_transaction(
-            &mut ledger,
-            &tx_out,
-            &sender,
-            &recipient.default_subaddress(),
-            n_blocks + 10,
-            &mut rng,
-        );
-
-        b.iter(|| is_well_formed(&tx, &ledger).unwrap())
-    }
+    // #[allow(soft_unstable)]
+    // #[bench_with_logger]
+    // #[ignore]
+    // fn bench_is_well_formed(_logger: Logger, b: &mut Bencher) {
+    //     let mut rng = Hc128Rng::from_seed([79u8; 32]);
+    //
+    //     let sender = AccountKey::random(&mut rng);
+    //     let recipient = AccountKey::random(&mut rng);
+    //
+    //     let mut ledger = create_ledger();
+    //     let n_blocks = 3;
+    //     initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
+    //
+    //     // Choose a TxOut to spend. Only the output of the last block is unspent.
+    //     let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
+    //     let tx_out = block_contents.outputs[0].clone();
+    //
+    //     let tx = create_transaction(
+    //         &mut ledger,
+    //         &tx_out,
+    //         &sender,
+    //         &recipient.default_subaddress(),
+    //         n_blocks + 10,
+    //         &mut rng,
+    //     );
+    //
+    //     b.iter(|| is_well_formed(&tx, &ledger).unwrap())
+    // }
 
     /*
     #[bench]
