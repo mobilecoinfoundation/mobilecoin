@@ -10,7 +10,7 @@ use mc_transaction_core::{tx::TxHash, Block, BlockContents, BlockSignature};
 use mockall::*;
 
 #[cfg_attr(test, automock)]
-pub trait TxManager {
+pub trait TxManager: Send {
     /// Insert a transaction into the cache. The transaction must be well-formed.
     fn insert(&self, tx_context: TxContext) -> TxManagerResult<TxHash>;
 

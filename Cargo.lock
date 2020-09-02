@@ -2470,8 +2470,8 @@ dependencies = [
  "rand_hc 0.2.0",
  "serde",
  "serde_json",
- "serial_test",
- "serial_test_derive",
+ "serial_test 0.1.0",
+ "serial_test_derive 0.1.0",
  "sha3",
 ]
 
@@ -2542,6 +2542,8 @@ dependencies = [
  "retry",
  "serde",
  "serde_json",
+ "serial_test 0.5.0",
+ "serial_test_derive 0.5.0",
  "structopt",
  "tempdir",
  "toml 0.5.6",
@@ -5145,6 +5147,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "serial_test"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b15f74add9a9d4a3eb2bf739c9a427d266d3895b53d992c3a7c234fec2ff1f1"
+dependencies = [
+ "lazy_static",
+ "parking_lot 0.10.2",
+ "serial_test_derive 0.5.0",
+]
+
+[[package]]
 name = "serial_test_derive"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5152,6 +5165,17 @@ checksum = "2cdabca97cecf57fa82170ca1689ead2933f38f106a5a91a947a0ca156c6d39d"
 dependencies = [
  "quote 0.6.13",
  "syn 0.15.44",
+]
+
+[[package]]
+name = "serial_test_derive"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "65f59259be9fc1bf677d06cc1456e97756004a1a5a577480f71430bd7c17ba33"
+dependencies = [
+ "proc-macro2 1.0.12",
+ "quote 1.0.4",
+ "syn 1.0.18",
 ]
 
 [[package]]
