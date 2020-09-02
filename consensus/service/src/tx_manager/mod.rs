@@ -101,11 +101,9 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
         let timer = counters::WELL_FORMED_CHECK_TIME.start_timer();
 
         // The untrusted part of the well-formed check.
-        let (current_block_index, membership_proofs) = self.untrusted.well_formed_check(
-            &tx_context.highest_indices,
-            &tx_context.key_images,
-            &tx_context.output_public_keys,
-        )?;
+        let (current_block_index, membership_proofs) = self
+            .untrusted
+            .well_formed_check(&tx_context.highest_indices)?;
 
         // The enclave part of the well-formed check.
         let (well_formed_encrypted_tx, well_formed_tx_context) = self.enclave.tx_is_well_formed(
@@ -233,6 +231,10 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
     }
 
     /// Forms a Block containing the transactions that correspond to the given hashes.
+    ///
+    /// # Arguments
+    /// * `tx_hashes` - Hashes of well-formed transactions that are valid w.r.t. te current ledger.
+    /// * `parent_block` - The last block written to the ledger.
     fn tx_hashes_to_block(
         &self,
         tx_hashes: &[TxHash],
@@ -263,10 +265,9 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
             .map(|(_tx_hash, entry)| {
                 let entry = entry.unwrap();
 
+                // This probably shouldn't be here.
                 let (_current_block_index, membership_proofs) = self.untrusted.well_formed_check(
                     entry.context().highest_indices(),
-                    entry.context().key_images(),
-                    entry.context().output_public_keys(),
                 )?;
 
                 Ok((entry.encrypted_tx().clone(), membership_proofs))

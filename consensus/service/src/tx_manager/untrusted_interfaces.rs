@@ -1,9 +1,7 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use mc_consensus_enclave::WellFormedTxContext;
-use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{
-    ring_signature::KeyImage,
     tx::{TxHash, TxOutMembershipProof},
     validation::TransactionValidationResult,
 };
@@ -21,8 +19,6 @@ pub trait UntrustedInterfaces: Send + Sync {
     fn well_formed_check(
         &self,
         highest_indices: &[u64],
-        key_images: &[KeyImage],
-        output_public_keys: &[CompressedRistrettoPublic],
     ) -> TransactionValidationResult<(u64, Vec<TxOutMembershipProof>)>;
 
     /// Checks if a transaction is valid (see definition in validators.rs).
