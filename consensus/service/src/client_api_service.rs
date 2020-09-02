@@ -128,7 +128,7 @@ impl ConsensusClientApi for ClientApiService {
         let _timer = SVC_COUNTERS.req(&ctx);
 
         let resp: Result<ProposeTxResponse, RpcStatus> =
-            if counters::CUR_NUM_PENDING_VALUES.get() > PENDING_LIMIT {
+            if counters::CUR_NUM_PENDING_VALUES.get() >= PENDING_LIMIT {
                 // This node is over capacity, and is not accepting proposed transaction.
                 if let Err(e) = self.enclave.client_discard_message(msg.into()) {
                     ConsensusGrpcError::Enclave(e).into()
@@ -156,7 +156,8 @@ impl ConsensusClientApi for ClientApiService {
 #[cfg(test)]
 mod tests {
     use crate::{
-        client_api_service::ClientApiService,
+        client_api_service::{ClientApiService, PENDING_LIMIT},
+        counters,
         tx_manager::{MockTxManager, TxManagerError},
     };
     use grpcio::{ChannelBuilder, Environment, Server, ServerBuilder};
@@ -175,7 +176,16 @@ mod tests {
     use mc_transaction_core::{
         ring_signature::KeyImage, tx::TxHash, validation::TransactionValidationError,
     };
-    use std::sync::Arc;
+    use serial_test_derive::serial;
+    use std::sync::{
+        atomic::{AtomicUsize, Ordering::SeqCst},
+        Arc,
+    };
+
+    fn get_free_port() -> u16 {
+        static PORT_NR: AtomicUsize = AtomicUsize::new(0);
+        PORT_NR.fetch_add(1, SeqCst) as u16 + 30100
+    }
 
     /// Starts the service on localhost and connects a client to it.
     fn get_client_server(instance: ClientApiService) -> (ConsensusClientApiClient, Server) {
@@ -183,18 +193,18 @@ mod tests {
         let env = Arc::new(Environment::new(1));
         let mut server = ServerBuilder::new(env.clone())
             .register_service(service)
-            .bind("127.0.0.1", 0)
+            .bind("127.0.0.1", get_free_port())
             .build()
             .unwrap();
         server.start();
         let (_, port) = server.bind_addrs().next().unwrap();
-
         let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
         let client = ConsensusClientApiClient::new(ch);
         (client, server)
     }
 
     #[test_with_logger]
+    #[serial(counters)]
     fn test_client_tx_propose_ok(logger: Logger) {
         let mut consensus_enclave = MockConsensusEnclave::new();
         {
@@ -248,7 +258,6 @@ mod tests {
 
         // gRPC client and server.
         let (client, _server) = get_client_server(instance);
-
         let message = Message::default();
         match client.client_tx_propose(&message) {
             Ok(propose_tx_response) => {
@@ -260,6 +269,7 @@ mod tests {
     }
 
     #[test_with_logger]
+    #[serial(counters)]
     // Should return ProposeTxResult::ContainsSpentKeyImage if the tx contains a spent key image.
     fn test_client_tx_propose_spent_key_image(logger: Logger) {
         let mut consensus_enclave = MockConsensusEnclave::new();
@@ -329,6 +339,7 @@ mod tests {
     }
 
     #[test_with_logger]
+    #[serial(counters)]
     // Should return ProposeTxResult::<SomeError> if the tx is not well-formed.
     fn test_client_tx_propose_tx_not_well_formed(logger: Logger) {
         let mut consensus_enclave = MockConsensusEnclave::new();
@@ -393,6 +404,7 @@ mod tests {
     }
 
     #[test_with_logger]
+    #[serial(counters)]
     // Should return RpcStatus Unavailable if the node is not serving.
     fn test_client_tx_propose_tx_is_not_serving(logger: Logger) {
         let mut enclave = MockConsensusEnclave::new();
@@ -430,5 +442,51 @@ mod tests {
         }
     }
 
-    // TODO: over capacity
+    #[test_with_logger]
+    #[serial(counters)]
+    // Should return RpcStatus Unavailable if the node is over capacity.
+    // This test modifies a the global variable `counters::CUR_NUM_PENDING_VALUES`, which means it
+    // cannot run in parallel with other tests that depend on that value (e.g. all tests in this module).
+    fn test_client_tx_propose_tx_over_capacity(logger: Logger) {
+        let mut enclave = MockConsensusEnclave::new();
+        enclave
+            .expect_client_discard_message()
+            .times(1)
+            .return_const(Ok(()));
+
+        let is_serving_fn = Arc::new(|| -> bool { true });
+
+        let scp_client_value_sender = Arc::new(
+            |_tx_hash: TxHash, _node_id: Option<&NodeID>, _responder_id: Option<&ResponderId>| {},
+        );
+
+        let instance = ClientApiService::new(
+            Arc::new(enclave),
+            scp_client_value_sender,
+            Arc::new(MockLedger::new()),
+            Arc::new(MockTxManager::new()),
+            is_serving_fn,
+            logger,
+        );
+
+        // gRPC client and server.
+        let (client, _server) = get_client_server(instance);
+
+        // Set the number of pending values to be above the PENDING_LIMIT
+        // This is a global variable, and so affects other unit tests. It must be reset afterwards :(
+        counters::CUR_NUM_PENDING_VALUES.set(PENDING_LIMIT);
+
+        let message = Message::default();
+        match client.client_tx_propose(&message) {
+            Ok(propose_tx_response) => {
+                panic!("Unexpected response {:?}", propose_tx_response);
+            }
+            Err(_) => {
+                // Should be RpcFailure(RpcStatus { status: 14-UNAVAILABLE, details: Some("Temporarily not serving requests")
+            }
+        }
+
+        // This is a global variable. It affects other unit tests, so must be reset :(
+        counters::CUR_NUM_PENDING_VALUES.set(0);
+    }
 }
