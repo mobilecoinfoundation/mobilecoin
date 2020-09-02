@@ -94,8 +94,10 @@ pub fn bootstrap_ledger(
     ).expect("File I/O");
 }
 
-fn create_output(recipient: &PublicAddress, value: u64, rng: &mut FixedRng) -> TxOut {
+/// Creates a TxOut that outputs `amount` to a single `recipient`.
+fn create_output(recipient: &PublicAddress, amount: u64, rng: &mut FixedRng) -> TxOut {
     let tx_private_key = RistrettoPrivate::from_random(rng);
-    let hint = EncryptedFogHint::fake_onetime_hint(rng);
-    TxOut::new(value, recipient, &tx_private_key, hint).unwrap()
+    let minting_ingest_pubkey = Default::default();
+    let hint = FogHint::from(recipient).encrypt(&minting_ingest_pubkey, rng);
+    TxOut::new(amount, recipient, &tx_private_key, hint).unwrap()
 }
