@@ -46,8 +46,6 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
     fn well_formed_check(
         &self,
         highest_indices: &[u64],
-        _key_images: &[KeyImage],
-        _output_public_keys: &[CompressedRistrettoPublic],
     ) -> TransactionValidationResult<(u64, Vec<TxOutMembershipProof>)> {
         // The transaction's membership proofs must reference data contained in the ledger.
         // Note that this check could fail if the local ledger is behind the network's consensus ledger.
@@ -173,16 +171,9 @@ pub mod well_formed_tests {
         let mut rng = Hc128Rng::from_seed([77u8; 32]);
 
         let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger.clone());
-
-        let key_images: Vec<KeyImage> = tx.key_images();
         let membership_proof_highest_indices = tx.get_membership_proof_highest_indices();
-        let output_public_keys = tx.output_public_keys();
-
-        let (cur_block_index, membership_proofs) = untrusted.well_formed_check(
-            &membership_proof_highest_indices[..],
-            &key_images[..],
-            &output_public_keys[..],
-        )?;
+        let (cur_block_index, membership_proofs) =
+            untrusted.well_formed_check(&membership_proof_highest_indices[..])?;
 
         mc_transaction_core::validation::validate(
             &tx,
