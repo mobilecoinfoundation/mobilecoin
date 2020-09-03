@@ -232,7 +232,7 @@ pub mod well_formed_tests {
 #[cfg(test)]
 mod is_valid_tests {
     use super::*;
-    use mc_ledger_db::LedgerDB;
+    use mc_ledger_db::{LedgerDB, MockLedger};
     use mc_transaction_core::{tx::Tx, validation::TransactionValidationError};
     use mc_transaction_core_test_utils::{
         create_ledger, create_transaction, initialize_ledger, AccountKey,
@@ -243,6 +243,60 @@ mod is_valid_tests {
     fn is_valid(tx: &Tx, ledger: &LedgerDB) -> TransactionValidationResult<()> {
         let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger.clone());
         untrusted.is_valid(Arc::new(WellFormedTxContext::from(tx)))
+    }
+
+    #[test]
+    /// `is_valid` should accept a valid transaction.
+    fn is_valid_ok() {
+        // Number of blocks in the local ledger.
+        let num_blocks = 53;
+
+        let well_formed_tx_context = {
+            let key_images = vec![
+                KeyImage::default(),
+                KeyImage::default(),
+                KeyImage::default(),
+            ];
+
+            let output_public_keys = vec![
+                CompressedRistrettoPublic::default(),
+                CompressedRistrettoPublic::default(),
+            ];
+
+            WellFormedTxContext::new(
+                Default::default(),
+                Default::default(),
+                num_blocks + 17,
+                key_images,
+                vec![9, 10, 8],
+                output_public_keys,
+            )
+        };
+
+        // Mock the local ledger.
+        let mut ledger = MockLedger::new();
+
+        // Untrusted should request num_blocks.
+        ledger
+            .expect_num_blocks()
+            .times(1)
+            .return_const(Ok(num_blocks));
+
+        // Key images must not be in the ledger.
+        ledger
+            .expect_contains_key_image()
+            .times(well_formed_tx_context.key_images().len())
+            .return_const(Ok(false));
+
+        // Output public keys must not be in the ledger.
+        ledger
+            .expect_contains_tx_out_public_key()
+            .times(well_formed_tx_context.output_public_keys().len())
+            .return_const(Ok(false));
+
+        let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger);
+
+        assert_eq!(untrusted.is_valid(Arc::new(well_formed_tx_context)), Ok(()));
     }
 
     #[test]
