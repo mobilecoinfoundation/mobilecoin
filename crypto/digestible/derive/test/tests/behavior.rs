@@ -13,6 +13,14 @@ struct ExampleStruct {
 }
 
 #[derive(Digestible)]
+#[digestible(name = "ExampleStruct")]
+struct ExampleStruct2 {
+    c: u16,
+    b: u16,
+    a: u16,
+}
+
+#[derive(Digestible)]
 struct Blob(Vec<u8>);
 
 // A structure equivalent to Blob that has been marked transparent
@@ -72,8 +80,155 @@ fn example_struct1() {
     assert_eq!(
         arg.digest32::<MerlinTranscript>(b"foo1"),
         [
-            44, 174, 200, 201, 207, 72, 151, 193, 63, 97, 49, 112, 135, 50, 252, 61, 211, 208, 41,
-            4, 241, 249, 90, 114, 181, 197, 177, 151, 39, 165, 76, 197
+            19, 53, 9, 198, 156, 34, 144, 43, 162, 78, 50, 32, 131, 61, 167, 17, 13, 139, 228, 70,
+            4, 145, 120, 36, 160, 118, 131, 86, 224, 154, 10, 110
+        ]
+    );
+}
+
+// Test that ExampleStruct2 has fields in given order and not alphabetical order
+#[test]
+fn example_struct2() {
+    let arg = ExampleStruct2 { a: 0, b: 1, c: 2 };
+    let expected_ast = ASTNode::from(ASTAggregate {
+        context: b"foo1",
+        name: b"ExampleStruct".to_vec(),
+        elems: vec![
+            ASTNode::from(ASTPrimitive {
+                context: b"c",
+                type_name: b"uint",
+                data: vec![2u8, 0u8],
+            }),
+            ASTNode::from(ASTPrimitive {
+                context: b"b",
+                type_name: b"uint",
+                data: vec![1u8, 0u8],
+            }),
+            ASTNode::from(ASTPrimitive {
+                context: b"a",
+                type_name: b"uint",
+                data: vec![0u8, 0u8],
+            }),
+        ],
+        is_completed: true,
+    });
+    digestible_test_case_ast("foo1", &arg, expected_ast);
+    assert_eq!(
+        arg.digest32::<MerlinTranscript>(b"foo1"),
+        [
+            72, 44, 56, 17, 86, 202, 143, 191, 204, 74, 217, 227, 133, 204, 8, 16, 47, 75, 178,
+            109, 202, 254, 222, 249, 89, 196, 247, 8, 140, 14, 167, 182
+        ]
+    );
+}
+
+// Test that ExampleStruct2 is not interchangeable with ExampleStruct
+#[test]
+fn example_struct_interchangeability() {
+    let arg = ExampleStruct2 { a: 7, b: 5, c: 19 };
+    let arg2 = ExampleStruct { a: 7, b: 5, c: 19 };
+    assert_ne!(
+        arg.digest32::<MerlinTranscript>(b"test"),
+        arg2.digest32::<MerlinTranscript>(b"test")
+    );
+}
+
+#[derive(Digestible)]
+struct Tricky {
+    field: Vec<i32>,
+    fi_eld: Vec<i32>,
+    _field: Vec<i32>,
+    prim: bool,
+    agg: String,
+    seq: Vec<ExampleStruct>,
+    var: Option<ExampleStruct2>,
+}
+
+// Test that a struct with tricky field names is being parsed and hashed as expected
+#[test]
+fn tricky_struct() {
+    let arg = Tricky {
+        field: vec![1],
+        fi_eld: vec![2],
+        _field: vec![3],
+        prim: false,
+        agg: "var".to_string(),
+        seq: Default::default(),
+        var: Some(ExampleStruct2 { a: 0, b: 1, c: 2 }),
+    };
+    let expected_var_ast = ASTNode::from(ASTAggregate {
+        context: b"var",
+        name: b"ExampleStruct".to_vec(),
+        elems: vec![
+            ASTNode::from(ASTPrimitive {
+                context: b"c",
+                type_name: b"uint",
+                data: vec![2u8, 0u8],
+            }),
+            ASTNode::from(ASTPrimitive {
+                context: b"b",
+                type_name: b"uint",
+                data: vec![1u8, 0u8],
+            }),
+            ASTNode::from(ASTPrimitive {
+                context: b"a",
+                type_name: b"uint",
+                data: vec![0u8, 0u8],
+            }),
+        ],
+        is_completed: true,
+    });
+    let expected_ast = ASTNode::from(ASTAggregate {
+        context: b"tricky",
+        name: b"Tricky".to_vec(),
+        elems: vec![
+            ASTNode::from(ASTSequence {
+                context: b"field",
+                len: 1,
+                elems: vec![ASTNode::from(ASTPrimitive {
+                    context: b"",
+                    type_name: b"int",
+                    data: vec![1u8, 0u8, 0u8, 0u8],
+                })],
+            }),
+            ASTNode::from(ASTSequence {
+                context: b"fi_eld",
+                len: 1,
+                elems: vec![ASTNode::from(ASTPrimitive {
+                    context: b"",
+                    type_name: b"int",
+                    data: vec![2u8, 0u8, 0u8, 0u8],
+                })],
+            }),
+            ASTNode::from(ASTSequence {
+                context: b"_field",
+                len: 1,
+                elems: vec![ASTNode::from(ASTPrimitive {
+                    context: b"",
+                    type_name: b"int",
+                    data: vec![3u8, 0u8, 0u8, 0u8],
+                })],
+            }),
+            ASTNode::from(ASTPrimitive {
+                context: b"prim",
+                type_name: b"bool",
+                data: vec![0u8],
+            }),
+            ASTNode::from(ASTPrimitive {
+                context: b"agg",
+                type_name: b"str",
+                data: b"var".to_vec(),
+            }),
+            expected_var_ast.clone(),
+        ],
+        is_completed: true,
+    });
+    digestible_test_case_ast("tricky", &arg, expected_ast);
+    assert_eq!(
+        arg.digest32::<MerlinTranscript>(b"tricky"),
+        [
+            7, 77, 36, 165, 11, 239, 19, 38, 44, 127, 117, 48, 130, 150, 9, 58, 103, 36, 174, 126,
+            78, 182, 101, 201, 194, 14, 47, 227, 220, 99, 6, 143
         ]
     );
 }
@@ -181,8 +336,8 @@ fn bar1() {
     assert_eq!(
         arg.digest32::<MerlinTranscript>(b"bar1"),
         [
-            237, 231, 204, 138, 55, 249, 219, 0, 154, 213, 236, 77, 123, 104, 185, 68, 165, 117,
-            179, 15, 85, 65, 13, 134, 163, 16, 206, 60, 249, 184, 194, 81
+            214, 103, 124, 244, 227, 71, 218, 40, 112, 211, 130, 16, 139, 166, 53, 222, 255, 143,
+            99, 32, 21, 17, 93, 118, 15, 237, 67, 161, 33, 130, 76, 65
         ]
     );
 }
@@ -238,15 +393,15 @@ fn bar2() {
     assert_eq!(
         arg.digest32::<MerlinTranscript>(b"bar2"),
         [
-            227, 207, 254, 59, 174, 133, 174, 192, 215, 106, 9, 247, 177, 243, 206, 25, 185, 103,
-            123, 66, 81, 133, 60, 234, 71, 175, 225, 143, 247, 195, 65, 250
+            191, 9, 66, 251, 105, 132, 21, 123, 90, 28, 40, 211, 231, 168, 150, 16, 148, 48, 82,
+            65, 4, 141, 187, 101, 72, 238, 241, 197, 85, 34, 142, 249
         ]
     );
 }
 
 // Test cases for GenericExampleStruct::<u32> and GenericExampleStruct::<Option<u32>>
 #[test]
-fn generic_foo1() {
+fn generic_example_struct1() {
     let arg = GenericExampleStruct {
         a: 123 as u32,
         b: 456 as u32,
@@ -273,8 +428,8 @@ fn generic_foo1() {
     assert_eq!(
         arg.digest32::<MerlinTranscript>(b"genfoo1"),
         [
-            194, 207, 55, 95, 52, 136, 167, 235, 136, 171, 231, 204, 239, 42, 41, 163, 56, 87, 130,
-            74, 1, 23, 20, 98, 33, 36, 3, 82, 31, 91, 104, 94
+            77, 201, 127, 225, 56, 107, 48, 148, 235, 56, 108, 130, 31, 185, 54, 31, 82, 211, 48,
+            94, 227, 85, 8, 161, 189, 241, 84, 171, 69, 0, 95, 109
         ]
     );
 
@@ -287,15 +442,15 @@ fn generic_foo1() {
     assert_eq!(
         arg2.digest32::<MerlinTranscript>(b"genfoo1"),
         [
-            194, 207, 55, 95, 52, 136, 167, 235, 136, 171, 231, 204, 239, 42, 41, 163, 56, 87, 130,
-            74, 1, 23, 20, 98, 33, 36, 3, 82, 31, 91, 104, 94
+            77, 201, 127, 225, 56, 107, 48, 148, 235, 56, 108, 130, 31, 185, 54, 31, 82, 211, 48,
+            94, 227, 85, 8, 161, 189, 241, 84, 171, 69, 0, 95, 109
         ]
     );
 }
 
 // Test cases for GenericExampleStruct::<i32> and GenericExampleStruct::<Option<i32>>
 #[test]
-fn generic_foo2() {
+fn generic_example_struct2() {
     let arg = GenericExampleStruct {
         a: 123 as i32,
         b: 456 as i32,
@@ -322,8 +477,8 @@ fn generic_foo2() {
     assert_eq!(
         arg.digest32::<MerlinTranscript>(b"genfoo2"),
         [
-            90, 161, 44, 125, 167, 199, 138, 29, 78, 51, 65, 96, 90, 232, 178, 183, 105, 117, 194,
-            127, 194, 17, 213, 218, 168, 146, 198, 211, 216, 161, 133, 86
+            27, 164, 2, 106, 152, 28, 209, 36, 245, 234, 252, 175, 99, 43, 159, 210, 187, 204, 78,
+            238, 220, 43, 143, 239, 232, 89, 245, 87, 170, 14, 217, 198
         ]
     );
 
@@ -336,15 +491,15 @@ fn generic_foo2() {
     assert_eq!(
         arg2.digest32::<MerlinTranscript>(b"genfoo2"),
         [
-            90, 161, 44, 125, 167, 199, 138, 29, 78, 51, 65, 96, 90, 232, 178, 183, 105, 117, 194,
-            127, 194, 17, 213, 218, 168, 146, 198, 211, 216, 161, 133, 86
+            27, 164, 2, 106, 152, 28, 209, 36, 245, 234, 252, 175, 99, 43, 159, 210, 187, 204, 78,
+            238, 220, 43, 143, 239, 232, 89, 245, 87, 170, 14, 217, 198
         ]
     );
 }
 
 // Test cases for GenericExampleStruct::<String> and GenericExampleStruct::<Option<String>>
 #[test]
-fn generic_foo3() {
+fn generic_example_struct3() {
     let arg = GenericExampleStruct {
         a: String::from("str1"),
         b: String::from("str2"),
@@ -371,8 +526,8 @@ fn generic_foo3() {
     assert_eq!(
         arg.digest32::<MerlinTranscript>(b"genfoo3"),
         [
-            28, 20, 69, 136, 101, 151, 13, 213, 236, 10, 150, 120, 14, 40, 33, 216, 35, 60, 209,
-            16, 98, 94, 21, 175, 244, 13, 7, 79, 58, 50, 116, 6
+            93, 6, 80, 35, 32, 166, 252, 185, 172, 99, 15, 69, 157, 45, 10, 1, 56, 227, 232, 229,
+            16, 90, 97, 138, 80, 139, 46, 11, 243, 66, 11, 169
         ]
     );
 
@@ -385,8 +540,8 @@ fn generic_foo3() {
     assert_eq!(
         arg2.digest32::<MerlinTranscript>(b"genfoo3"),
         [
-            28, 20, 69, 136, 101, 151, 13, 213, 236, 10, 150, 120, 14, 40, 33, 216, 35, 60, 209,
-            16, 98, 94, 21, 175, 244, 13, 7, 79, 58, 50, 116, 6
+            93, 6, 80, 35, 32, 166, 252, 185, 172, 99, 15, 69, 157, 45, 10, 1, 56, 227, 232, 229,
+            16, 90, 97, 138, 80, 139, 46, 11, 243, 66, 11, 169
         ]
     );
 }
