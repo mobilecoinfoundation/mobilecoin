@@ -19,6 +19,10 @@ path = "src/bin/keygen_main.rs"
 name = "sample-keys"
 path = "src/bin/sample_keys_main.rs"
 
+[[bin]]
+name = "read-pubfile"
+path = "src/bin/read_pubfile.rs"
+
 [dependencies]
 mc-account-keys = { path = "../../account-keys" }
 mc-crypto-rand = { path = "../../crypto/rand" }
