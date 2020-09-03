@@ -153,23 +153,12 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
 #[cfg(test)]
 pub mod well_formed_tests {
     use super::*;
-    use mc_common::logger::{test_with_logger, Logger};
-    use mc_ledger_db::MockLedger;
-    use mc_transaction_core_test_utils::{create_ledger, initialize_ledger, AccountKey};
-    use rand::SeedableRng;
-    use rand_hc::Hc128Rng;
+    use mc_ledger_db::{Error as LedgerError, MockLedger};
 
     #[test]
     // `is_well_formed` should accept a well-formed transaction.
     fn is_well_formed_accepts_well_formed_transaction() {
-        let num_blocks = 53;
-
         let mut ledger = MockLedger::new();
-        // Untrusted should request num_blocks.
-        ledger
-            .expect_num_blocks()
-            .times(1)
-            .return_const(Ok(num_blocks));
 
         // Untrusted should request a proof of membership for each highest index.
         let highest_index_proofs = vec![
@@ -181,6 +170,13 @@ pub mod well_formed_tests {
             .expect_get_tx_out_proof_of_memberships()
             .times(1)
             .return_const(Ok(highest_index_proofs));
+
+        // Untrusted should request num_blocks.
+        let num_blocks = 53;
+        ledger
+            .expect_num_blocks()
+            .times(1)
+            .return_const(Ok(num_blocks));
 
         let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger);
 
@@ -201,18 +197,18 @@ pub mod well_formed_tests {
         }
     }
 
-    #[test_with_logger]
+    #[test]
     /// `is_well_formed` should reject a transaction that contains a proof-of-membership with
     /// highest index outside the ledger, i.e. a transaction "from the future".
-    fn is_well_formed_rejects_excessive_highest_index(_logger: Logger) {
-        // The local ledger.
-        let mut rng = Hc128Rng::from_seed([77u8; 32]);
-        let mut ledger = create_ledger();
-        let n_blocks = 3;
-        let sender = AccountKey::random(&mut rng);
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
+    fn is_well_formed_rejects_excessive_highest_index() {
+        // The ledger cannot provide membership proofs for highest indices.
+        let mut ledger = MockLedger::new();
+        ledger
+            .expect_get_tx_out_proof_of_memberships()
+            .times(1)
+            .return_const(Err(LedgerError::CapacityExceeded));
 
-        let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger.clone());
+        let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger);
 
         // This tx_context contains highest_indices that exceed the number of TxOuts in the ledger.
         let mut tx_context = TxContext::default();
@@ -222,7 +218,13 @@ pub mod well_formed_tests {
             Ok((_cur_block_index, _membership_proofs)) => {
                 panic!();
             }
-            Err(_e) => {} // This is expected. TODO: check error type.
+            Err(e) => {
+                // This is expected.
+                assert_eq!(
+                    e,
+                    TransactionValidationError::Ledger("CapacityExceeded".to_string())
+                );
+            }
         }
     }
 }
