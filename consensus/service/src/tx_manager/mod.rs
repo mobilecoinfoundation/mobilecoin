@@ -39,6 +39,9 @@ struct CacheEntry {
 
     /// Context exposed by the enclave about this transaction.
     context: Arc<WellFormedTxContext>,
+
+    /// A proof of membership for each highest index.
+    highest_index_proofs: Arc<Vec<TxOutMembershipProof>>,
 }
 
 impl CacheEntry {
@@ -48,6 +51,10 @@ impl CacheEntry {
 
     pub fn context(&self) -> &Arc<WellFormedTxContext> {
         &self.context
+    }
+
+    pub fn highest_index_proofs(&self) -> &Arc<Vec<TxOutMembershipProof>> {
+        &self.highest_index_proofs
     }
 }
 
@@ -101,15 +108,14 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
         let timer = counters::WELL_FORMED_CHECK_TIME.start_timer();
 
         // The untrusted part of the well-formed check.
-        let (current_block_index, membership_proofs) = self
-            .untrusted
-            .well_formed_check(&tx_context.highest_indices)?;
+        let (current_block_index, highest_index_proofs) =
+            self.untrusted.well_formed_check(&tx_context)?;
 
         // The enclave part of the well-formed check.
         let (well_formed_encrypted_tx, well_formed_tx_context) = self.enclave.tx_is_well_formed(
             tx_context.locally_encrypted_tx,
             current_block_index,
-            membership_proofs,
+            highest_index_proofs.clone(),
         )?;
 
         drop(timer);
@@ -125,6 +131,7 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
         let entry = CacheEntry {
             encrypted_tx: well_formed_encrypted_tx,
             context: Arc::new(well_formed_tx_context),
+            highest_index_proofs: Arc::new(highest_index_proofs),
         };
 
         {
@@ -264,13 +271,8 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
             .into_iter()
             .map(|(_tx_hash, entry)| {
                 let entry = entry.unwrap();
-
-                // This probably shouldn't be here.
-                let (_current_block_index, membership_proofs) = self.untrusted.well_formed_check(
-                    entry.context().highest_indices(),
-                )?;
-
-                Ok((entry.encrypted_tx().clone(), membership_proofs))
+                let highest_index_proofs: Vec<_> = entry.highest_index_proofs().to_vec();
+                Ok((entry.encrypted_tx().clone(), highest_index_proofs))
             })
             .collect::<Result<Vec<(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)>, TxManagerError>>()?;
 
@@ -508,6 +510,7 @@ mod tests {
             let cache_entry = CacheEntry {
                 encrypted_tx: Default::default(),
                 context: Arc::new(context.clone()),
+                highest_index_proofs: Default::default(),
             };
 
             tx_manager
@@ -563,6 +566,7 @@ mod tests {
         let cache_entry = CacheEntry {
             encrypted_tx: Default::default(),
             context: Arc::new(Default::default()),
+            highest_index_proofs: Default::default(),
         };
         tx_manager
             .cache
@@ -614,6 +618,7 @@ mod tests {
         let cache_entry = CacheEntry {
             encrypted_tx: Default::default(),
             context: Arc::new(Default::default()),
+            highest_index_proofs: Default::default(),
         };
         tx_manager
             .cache
@@ -658,6 +663,7 @@ mod tests {
             let cache_entry = CacheEntry {
                 encrypted_tx: Default::default(),
                 context: Arc::new(context.clone()),
+                highest_index_proofs: Default::default(),
             };
 
             tx_manager
@@ -701,6 +707,7 @@ mod tests {
             let cache_entry = CacheEntry {
                 encrypted_tx: Default::default(),
                 context: Arc::new(context.clone()),
+                highest_index_proofs: Default::default(),
             };
 
             tx_manager
@@ -879,6 +886,7 @@ mod tests {
             let cache_entry = CacheEntry {
                 encrypted_tx: Default::default(),
                 context: Arc::new(context.clone()),
+                highest_index_proofs: Default::default(),
             };
 
             tx_manager
@@ -943,6 +951,7 @@ mod tests {
             let cache_entry = CacheEntry {
                 encrypted_tx: Default::default(),
                 context: Arc::new(context.clone()),
+                highest_index_proofs: Default::default(),
             };
 
             tx_manager
@@ -973,6 +982,7 @@ mod tests {
         let cache_entry = CacheEntry {
             encrypted_tx: WellFormedEncryptedTx(vec![1, 2, 3]),
             context: Default::default(),
+            highest_index_proofs: Default::default(),
         };
 
         let tx_hash = TxHash([1u8; 32]);
@@ -1017,6 +1027,7 @@ mod tests {
             let cache_entry = CacheEntry {
                 encrypted_tx: Default::default(),
                 context: Arc::new(context.clone()),
+                highest_index_proofs: Default::default(),
             };
 
             tx_manager

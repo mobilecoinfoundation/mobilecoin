@@ -18,7 +18,7 @@
 //! it is actually the "Is well formed" check, and might be renamed in the future to match this.
 
 use crate::tx_manager::UntrustedInterfaces as TxManagerUntrustedInterfaces;
-use mc_consensus_enclave::WellFormedTxContext;
+use mc_consensus_enclave::{TxContext, WellFormedTxContext};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_ledger_db::Ledger;
 use mc_transaction_core::{
@@ -41,29 +41,29 @@ impl<L: Ledger + Sync> DefaultTxManagerUntrustedInterfaces<L> {
 
 impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntrustedInterfaces<L> {
     /// Performs **only** the non-enclave part of the well-formed check.
-    /// Returns the number of blocks in the local ledger and membership proofs to be used by
-    /// the in-enclave well-formed check on success.
+    ///
+    /// Returns the local ledger's block index and membership proofs for each highest index.
     fn well_formed_check(
         &self,
-        highest_indices: &[u64],
+        tx_context: &TxContext,
     ) -> TransactionValidationResult<(u64, Vec<TxOutMembershipProof>)> {
         // The transaction's membership proofs must reference data contained in the ledger.
         // Note that this check could fail if the local ledger is behind the network's consensus ledger.
         let membership_proofs = self
             .ledger
-            .get_tx_out_proof_of_memberships(highest_indices)
+            .get_tx_out_proof_of_memberships(&tx_context.highest_indices)
             .map_err(|e| TransactionValidationError::Ledger(e.to_string()))?;
 
         // Note: It is possible that the proofs above are obtained for a different block index as a
         // new block could be written between getting the proofs and the call to num_blocks().
         // However, this has no effect on validation as the block index is only used for tombstone
         // checking.
-        let current_block_index = self
+        let num_blocks = self
             .ledger
             .num_blocks()
             .map_err(|e| TransactionValidationError::Ledger(e.to_string()))?;
 
-        Ok((current_block_index, membership_proofs))
+        Ok((num_blocks - 1, membership_proofs))
     }
 
     /// Checks if a transaction is valid (see definition at top of this file).
@@ -187,11 +187,20 @@ pub mod well_formed_tests {
         );
 
         let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger.clone());
-        let membership_proof_highest_indices = tx.get_membership_proof_highest_indices();
 
-        match untrusted.well_formed_check(&membership_proof_highest_indices[..]) {
-            Ok((cur_block_index, _membership_proofs)) => {
-                assert_eq!(cur_block_index, n_blocks);
+        // This tx_context contains highest_indices that exceed the number of TxOuts in the ledger.
+        let tx_context = TxContext {
+            locally_encrypted_tx: Default::default(),
+            tx_hash: tx.tx_hash(),
+            highest_indices: tx.get_membership_proof_highest_indices(),
+            key_images: tx.key_images(),
+            output_public_keys: tx.output_public_keys(),
+        };
+
+        match untrusted.well_formed_check(&tx_context) {
+            Ok((current_block_index, _highest_index_proofs)) => {
+                assert_eq!(current_block_index, n_blocks - 1);
+                // TODO: check returned membership proofs.
             }
             Err(e) => panic!("Unexpected error {}", e),
         }
@@ -204,42 +213,43 @@ pub mod well_formed_tests {
         let mut rng = Hc128Rng::from_seed([77u8; 32]);
 
         let sender = AccountKey::random(&mut rng);
-        let recipient = AccountKey::random(&mut rng);
+        // let recipient = AccountKey::random(&mut rng);
 
-        // Create a TxOut that contains a proof-of-membership whose highest index is outside the ledger.
+        // // Create a TxOut that contains a proof-of-membership whose highest index is outside the ledger.
+        // //
+        // // An easy way to do this is to populate two ledgers of different lengths with the same randomness.
+        // let tx = {
+        //     let mut rng = Hc128Rng::from_seed([142u8; 32]);
+        //     let mut future_ledger = create_ledger();
+        //     let n_blocks = 10;
+        //     initialize_ledger(&mut future_ledger, n_blocks, &sender, &mut rng);
         //
-        // An easy way to do this is to populate two ledgers of different lengths with the same randomness.
-        let tx = {
-            let mut rng = Hc128Rng::from_seed([142u8; 32]);
-            let mut future_ledger = create_ledger();
-            let n_blocks = 10;
-            initialize_ledger(&mut future_ledger, n_blocks, &sender, &mut rng);
+        //     // Choose a TxOut to spend. Only the TxOut in the last block is unspent.
+        //     let block_contents = future_ledger.get_block_contents(n_blocks - 1).unwrap();
+        //     let tx_out = block_contents.outputs[0].clone();
+        //
+        //     create_transaction(
+        //         &mut future_ledger,
+        //         &tx_out,
+        //         &sender,
+        //         &recipient.default_subaddress(),
+        //         n_blocks + 1,
+        //         &mut rng,
+        //     )
+        // };
 
-            // Choose a TxOut to spend. Only the TxOut in the last block is unspent.
-            let block_contents = future_ledger.get_block_contents(n_blocks - 1).unwrap();
-            let tx_out = block_contents.outputs[0].clone();
-
-            create_transaction(
-                &mut future_ledger,
-                &tx_out,
-                &sender,
-                &recipient.default_subaddress(),
-                n_blocks + 1,
-                &mut rng,
-            )
-        };
-
-        // Create the local ledger. This should be a subset of `future_ledger` that was used to
-        // create the transaction.
-        let mut rng = Hc128Rng::from_seed([142u8; 32]);
+        // The local ledger.
         let mut ledger = create_ledger();
         let n_blocks = 3;
         initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
 
         let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger.clone());
-        let membership_proof_highest_indices = tx.get_membership_proof_highest_indices();
 
-        match untrusted.well_formed_check(&membership_proof_highest_indices[..]) {
+        // This tx_context contains highest_indices that exceed the number of TxOuts in the ledger.
+        let mut tx_context = TxContext::default();
+        tx_context.highest_indices = vec![99, 10002, 445];
+
+        match untrusted.well_formed_check(&tx_context) {
             Ok((_cur_block_index, _membership_proofs)) => {
                 panic!();
             }
