@@ -21,13 +21,15 @@ Engineering goals:
   of e.g. a serialization library, which typically do not provide byte-for-byte stability.
 - The hash should be portable. It should be straightforward for an engineer with a schema
   for our blockchain and to write a C program, or a python program that loads our blockchain and
-  computes the hash successfully. (They might have to port STROBE to python, in
-  order to implement Merlin, but this is not viewed as onerous.)
+  computes the hash successfully. (They might have to call out to the C implementation of Merlin.)
   The hash should certainly not be dependent on details of the Rust programming language.
 - The hash scheme should support protobuf-style *schema evolution*. This means,
   it should be possible to add a new optional field to a transaction-related structure,
   without changing the hash of transactions that don't have the field. This gives us a way
-  to add new features without breaking ledger compatibility.
+  to add new features without breaking ledger compatibility. (We use the rust core `Option` type
+  for this, similarly to how `prost` uses `Option` for optional proto members.)
+  Similarly, it should be possible to add `repeated` elements to structs without breaking the hash.
+  (We use the rust core `Vec` type for this, similarly to how `prost` uses `Vec` for repeated proto members.)
   Simliarly, it must be possible to add new types to enums without changing the hashes of
   the old enum values.
 
@@ -125,14 +127,14 @@ Security assumptions around merlin
 The digestible crate requires only the following security assumption around merlin transcripts:
 
 For any merlin transcript (in any particular internal state), it is infeasible to find
-two distinct sequences of `append_bytes` calls such that a final call to "challenge_bytes"
-(producing challenge bytes of a particular length, with a particular context string), yields
+two distinct sequences of `append_message` calls such that a final call to `challenge_bytes`
+(producing at least 32 challenge bytes, with a particular context string), yields
 the same challenge bytes.
 
 We note that
 (1) This assumption underlies the use of Merlin for the Fiat-Shamir transform. If this
 property doesn't hold, then likely creates a source of malleability in any zero-knoweldge proof schemes based on it.
-That is, Merlin was specifically designed to do this.
+That is, Merlin was specifically designed to do something stronger than this.
 (2) A primitive that does this can be built from any collision resistant hash function.
 For instance, if we assume that SHA3 is collision resistant, then a valid implementation
 of `DigestTranscript` would be:
@@ -150,9 +152,12 @@ In fact, there are certain cases when we WANT to be able to use a traditional di
 with the `digestible` crate. For instance, if we need to create an ed25519ph signature, then the
 API requires us to provide a SHA512 hasher to which the message has already been marshalled. If you need to do this,
 you can use the `digestible` trait with the `PseudoMerlin` object in `mc-crypto-hashes`. `PseudoMerlin`
-implements basically the reduction described above -- it implements the `DigestTranscript` API in terms
-of an arbitrary cryptographic hash function. `append_bytes(context, message)` is implemented
-by inserting automatic framing and then feeding the context and message into the hasher.
+carefully emulates the API of merlin for appending bytes, on top of an arbitrary cryptographic hash function.
+If the chosen hash function is strongly collision resistant in the classical sense, then `PseudoMerlin` is suitable
+for use with the `Digestible` crate to create non-malleable hashes.
+
+It is recommended not to use `PseudoMerlin`, and to prefer `Merlin` unless something compels you
+to use `PseudoMerlin`.
 
 Specification:
 ===============
@@ -287,8 +292,8 @@ impl Digestible for MyVariant {
 
 Accessing the discriminant is different in different contexts -- in protobuf `.case()` is often
 the API for getting this number. In C++ `boost::variant` and similar libraries, `.which()` is used. Stable rust does not expose an API for
-getting this number directly, rust considers it an unspecified implementation detail for now. When `derive(Digestible)` is used with an
-enum, the generated code obtains this value.
+getting this number directly, rust considers it an unspecified implementation detail for now. When `derive(Digestible)` is used with a
+rust enum, the generated code obtains this value, by using the declaration order of the enumerators.
 
 Correctness:
 ------------
@@ -311,9 +316,10 @@ For this discussion, a *primitive* is a type which *has a canonical, portable re
 `Digestible` is implemented in this crate for *built-in integer types*, *byte slices and arrays*, and *strings*.
 
 For built-in integer types, we specify the use of little-endian byte encoding, as merlin uses internally
-for the encoding of buffer lengths. The type signifier is `"uint"`.
+for the encoding of buffer lengths. The type signifier is `"uint"` for unsigned and `"int"` for signed.
 For integer types like `size_t` which have different possible sizes on different platforms, we specify that
 they should be converted to 64-bit integers and then encoded, for portability.
+For `bool`, the type signifier is `"bool"` and the data is `[0u8]` in case of `false` and `[1u8]` in case of `true`.
 
 For buffers of bytes e.g. `Vec<u8>` the bytes themselves are the canonical representation. The type signifier is `"bytes"`.
 
@@ -325,6 +331,8 @@ For ed25519 curve points, the canonical byte representation is used, and the typ
 For x25519 curve points, the canonical byte representation is used, and the type signifier is `"x25519"`.
 
 You can add custom primitives by implementing `Digestible` and making `append_to_transcript` call `append_primitive`.
+You should choose a new type signifier if appropriate, and the data must be a portable, canonical representation of the
+value as bytes.
 
 Sequences:
 ----------
@@ -453,10 +461,15 @@ Together this means that:
 - New `Option` fields may be added to existing structures without breaking ledger compatibility.
 - Old fields that were not `Option` may be made optional without breaking ledger compatibility.
 
-Note that fields may not be re-ordered or renamed.
+Similarly, `Vec` is treated specially -- when `Vec` is a member of a struct and is empty, we treat
+it the same as we would an empty `Option`, and append nothing. This is analogous to how new
+`repeated` elements may be added to protobufs without breaking compatibility.
 
-However, in the future, we may support a proc-macro attribute in digestible-derive that allows
-the renaming of structs or fields, while preserving the old name "for purpose of compatibility".
+Note that struct fields may not be re-ordered or renamed.
+
+As a compatibility tool, we allow a proc-macro attribute to change the name of a struct or enum,
+for purpose of hashing.
+
 For example, this might look like
 
 ```

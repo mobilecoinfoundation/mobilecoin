@@ -99,14 +99,19 @@ impl TryFrom<&[Attribute]> for AttributeConfig {
     }
 }
 
+// This is the main entrypoint for `derive(Digestible)`
 fn try_digestible(input: TokenStream) -> Result<TokenStream, &'static str> {
     let input: DeriveInput = syn::parse(input).unwrap();
 
+    // The rust identifier for this struct or enum
     let ident = input.ident;
+    // The generics associated to this struct or enum
     let generics = &input.generics;
+    // Read any #[digestible(...)]` attributes on this struct or enum and parse them
     let attr_config = AttributeConfig::try_from(&input.attrs[..])?;
 
     if attr_config.transparent {
+        // Handle the `digestible(transparent)` option
         match input.data {
             Data::Struct(variant_data) => {
                 try_digestible_struct_transparent(&ident, generics, &variant_data)
@@ -115,7 +120,7 @@ fn try_digestible(input: TokenStream) -> Result<TokenStream, &'static str> {
             Data::Union(..) => Err("Digestible cannot be derived for a union"),
         }
     } else {
-        // If the user specified a name, that's the custom name, otherwise use the ident
+        // If the user specified a name, that's the custom name, otherwise use the rust ident
         let custom_name = if let Some(name) = attr_config.rename {
             Ident::new(name.as_ref(), Span::call_site())
         } else {
@@ -133,14 +138,18 @@ fn try_digestible(input: TokenStream) -> Result<TokenStream, &'static str> {
     }
 }
 
+// Implement digestible for a struct, by creating an agg node for it,
+// and making each struct field a child.
+// Children are appended to transcript using `append_to_transcript_allow_omit`,
+// because the allow omit is what permits schema evolution to occur.
 fn try_digestible_struct(
     ident: &Ident,
     custom_name: &Ident,
     generics: &Generics,
     variant_data: &DataStruct,
 ) -> Result<TokenStream, &'static str> {
-    // fields is a Vec<syn::Field> (I think)
-    let fields = match &variant_data.fields {
+    // Get the sequence of fields out of syn, as a Vec<&syn::Field>
+    let fields: Vec<&syn::Field> = match &variant_data.fields {
         Fields::Named(FieldsNamed { named: fields, .. })
         | Fields::Unnamed(FieldsUnnamed {
             unnamed: fields, ..
@@ -148,20 +157,20 @@ fn try_digestible_struct(
         Fields::Unit => Vec::new(),
     };
 
-    // call is a Vec<TokenStream> (I think)
-    // this is the tokens representing, bringing the transcript to each field
-    let call = fields
+    // This is the tokens representing, bringing the transcript to each field
+    let call : Vec<proc_macro2::TokenStream> = fields
         .into_iter()
         .enumerate()
         .map(|(idx, field)| {
             match &field.ident {
-                // this is a regular struct
+                // this is a regular struct, and the field has an identifier
                 Some(field_ident) => {
                     quote! {
                         self.#field_ident.append_to_transcript_allow_omit(stringify!(#field_ident).as_bytes(), transcript);
                     }
                 }
                 // this is a tuple struct, and the member doesn't have an identifier
+                // we have to make a syn object corresponding to the index, and use it in the quote! macro
                 None => {
                     let index = syn::Index::from(idx);
                     quote! {
@@ -175,6 +184,9 @@ fn try_digestible_struct(
     // Final expanded result
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
+    // We implement append_to_transcript for the struct by
+    // first creating an agg header, then appending each field,
+    // then creating a matching agg closer
     let expanded = quote! {
         impl #impl_generics mc_crypto_digestible::Digestible for #ident #ty_generics #where_clause {
             fn append_to_transcript<DT: mc_crypto_digestible::DigestTranscript>(&self, context: &'static [u8], transcript: &mut DT) {
@@ -188,11 +200,18 @@ fn try_digestible_struct(
     Ok(expanded.into())
 }
 
+// digestible(transparent) means that, this struct is a "wrapper" around a single
+// value, and when digesting it, we don't create an agg node.
+// Instead, we forward calls to `append_to_transcript`
+// and `append_to_transcript_allow_omit` directly to the inner value.
+//
+// This is only allowed when the struct has exactly one field
 fn try_digestible_struct_transparent(
     ident: &Ident,
     generics: &Generics,
     variant_data: &DataStruct,
 ) -> Result<TokenStream, &'static str> {
+    // Get the sequence of fields out of syn, as a Vec<syn::Field>
     let fields: Vec<&syn::Field> = match &variant_data.fields {
         Fields::Named(FieldsNamed { named: fields, .. })
         | Fields::Unnamed(FieldsUnnamed {
@@ -246,7 +265,7 @@ fn try_digestible_enum(
     generics: &Generics,
     variant_data: &DataEnum,
 ) -> Result<TokenStream, &'static str> {
-    let call = variant_data
+    let call : Vec<proc_macro2::TokenStream> = variant_data
         .variants
         .iter()
         .enumerate()
@@ -258,11 +277,8 @@ fn try_digestible_enum(
             // tuple data assocated with it).
             match &variant.fields {
                 // For an enum variant that doesn't have associated data (e.g. SomeEnum::MyVariant)
-                // we generate code that looks like this:
-                // Self::MyVariant => {
-                //   hasher.update(&(0 as u64).to_le_bytes()); // This is the variant's index.
-                //   hasher.update("MyVariant").as_bytes());
-                // }
+                // we append an appropriate variant header, then append a "none" node to be its child.
+                // There must be a child node, even if it is None, to prevent ambiguity
                 Fields::Unit => {
                     quote! {
                         Self::#variant_ident => {

@@ -1,16 +1,52 @@
+//! Tests and test vectors for digestible implementations of rust builtin and stdlib types.
+
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use curve25519_dalek::{constants::RISTRETTO_BASEPOINT_POINT, scalar::Scalar};
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 
 // Test merlin transcript hash values for various primitives
+//
+// Confirms that: digest of 1u16 != digest of 1u32 != digest of 1u64 != digest of 1i64, etc.
+// Confirms that: digest of string != digest of equivalent bytes
+// Puts various other types like ristretto types, Vec<u32>, etc. under test
 #[test]
 fn primitives_test_vectors() {
+    // u64
+    assert_eq!(
+        0u64.digest32::<MerlinTranscript>(b"test"),
+        [
+            3, 240, 99, 152, 14, 1, 149, 80, 250, 86, 180, 216, 110, 25, 51, 107, 30, 14, 87, 217,
+            133, 130, 167, 71, 103, 51, 29, 107, 225, 251, 61, 28
+        ]
+    );
+    assert_eq!(
+        1u64.digest32::<MerlinTranscript>(b"test"),
+        [
+            186, 128, 104, 76, 244, 56, 203, 3, 127, 123, 0, 222, 158, 227, 240, 30, 219, 188, 27,
+            39, 214, 51, 157, 82, 8, 136, 185, 253, 100, 4, 117, 110
+        ]
+    );
+    assert_eq!(
+        4u64.digest32::<MerlinTranscript>(b"test"),
+        [
+            139, 138, 232, 163, 141, 69, 48, 202, 229, 163, 252, 13, 185, 79, 205, 63, 22, 182, 64,
+            26, 3, 178, 190, 72, 220, 160, 210, 191, 92, 152, 159, 192
+        ]
+    );
     assert_eq!(
         u64::max_value().digest32::<MerlinTranscript>(b"test"),
         [
             199, 212, 113, 79, 91, 56, 22, 48, 131, 244, 165, 157, 170, 131, 255, 29, 59, 249, 175,
             89, 255, 57, 43, 50, 76, 217, 9, 219, 85, 103, 113, 88
+        ]
+    );
+    // u32
+    assert_eq!(
+        0u32.digest32::<MerlinTranscript>(b"test"),
+        [
+            215, 63, 255, 48, 149, 161, 208, 156, 163, 97, 37, 232, 58, 209, 53, 53, 87, 184, 188,
+            104, 99, 92, 231, 248, 9, 181, 131, 220, 85, 175, 77, 126
         ]
     );
     assert_eq!(
@@ -21,17 +57,92 @@ fn primitives_test_vectors() {
         ]
     );
     assert_eq!(
+        4u32.digest32::<MerlinTranscript>(b"test"),
+        [
+            218, 122, 37, 225, 130, 175, 190, 151, 120, 87, 222, 168, 127, 47, 73, 201, 25, 40,
+            226, 20, 74, 27, 254, 195, 163, 126, 64, 237, 139, 63, 95, 193
+        ]
+    );
+    // u16
+    assert_eq!(
+        0u16.digest32::<MerlinTranscript>(b"test"),
+        [
+            51, 186, 218, 160, 209, 112, 45, 219, 113, 141, 9, 63, 58, 40, 15, 65, 2, 229, 106,
+            199, 234, 109, 60, 191, 35, 62, 224, 197, 67, 168, 218, 151
+        ]
+    );
+    assert_eq!(
+        1u16.digest32::<MerlinTranscript>(b"test"),
+        [
+            205, 14, 25, 219, 37, 171, 77, 183, 204, 58, 27, 140, 62, 214, 253, 98, 114, 245, 30,
+            75, 155, 237, 219, 138, 220, 193, 54, 89, 165, 201, 98, 139
+        ]
+    );
+    assert_eq!(
         4u16.digest32::<MerlinTranscript>(b"test"),
         [
             162, 203, 81, 231, 249, 140, 154, 24, 65, 158, 148, 64, 96, 21, 48, 84, 126, 206, 225,
             124, 197, 61, 5, 150, 125, 45, 85, 113, 176, 112, 16, 74
         ]
     );
+    // i8
     assert_eq!(
         (-1i8).digest32::<MerlinTranscript>(b"test"),
         [
             228, 7, 115, 202, 168, 246, 222, 11, 56, 46, 232, 222, 2, 174, 19, 94, 172, 49, 183,
             58, 90, 36, 230, 25, 155, 70, 152, 91, 25, 32, 232, 134
+        ]
+    );
+
+    // i32
+    assert_eq!(
+        0i32.digest32::<MerlinTranscript>(b"test"),
+        [
+            83, 180, 58, 136, 30, 66, 121, 144, 143, 54, 193, 76, 181, 104, 238, 199, 129, 40, 217,
+            116, 187, 180, 193, 78, 254, 68, 41, 228, 211, 85, 252, 168
+        ]
+    );
+    assert_eq!(
+        1i32.digest32::<MerlinTranscript>(b"test"),
+        [
+            183, 179, 212, 189, 74, 235, 202, 152, 194, 250, 250, 106, 223, 223, 184, 93, 185, 78,
+            52, 211, 63, 23, 84, 244, 193, 96, 188, 232, 28, 67, 12, 93
+        ]
+    );
+    assert_eq!(
+        4i32.digest32::<MerlinTranscript>(b"test"),
+        [
+            222, 136, 225, 80, 134, 31, 53, 80, 32, 57, 73, 199, 48, 224, 179, 84, 100, 43, 111,
+            167, 149, 244, 52, 196, 106, 96, 33, 197, 30, 171, 74, 23
+        ]
+    );
+    // i64
+    assert_eq!(
+        0i64.digest32::<MerlinTranscript>(b"test"),
+        [
+            33, 111, 100, 122, 69, 9, 207, 55, 115, 125, 38, 21, 239, 29, 215, 172, 70, 38, 224,
+            218, 68, 97, 55, 18, 191, 61, 16, 30, 93, 141, 119, 254
+        ]
+    );
+    assert_eq!(
+        1i64.digest32::<MerlinTranscript>(b"test"),
+        [
+            191, 191, 24, 252, 91, 182, 141, 35, 28, 226, 187, 59, 58, 125, 207, 119, 28, 185, 140,
+            58, 153, 63, 125, 131, 54, 23, 8, 18, 238, 107, 108, 196
+        ]
+    );
+    assert_eq!(
+        4i64.digest32::<MerlinTranscript>(b"test"),
+        [
+            137, 49, 122, 33, 48, 21, 2, 233, 85, 172, 151, 109, 91, 236, 16, 154, 107, 158, 86,
+            128, 238, 89, 69, 148, 138, 95, 248, 145, 6, 48, 204, 92
+        ]
+    );
+    assert_eq!(
+        (-1i64).digest32::<MerlinTranscript>(b"test"),
+        [
+            236, 134, 28, 25, 151, 26, 225, 102, 165, 114, 255, 93, 165, 6, 107, 213, 193, 151, 67,
+            82, 207, 158, 40, 234, 212, 122, 119, 4, 104, 236, 172, 83
         ]
     );
     assert_eq!(
@@ -41,6 +152,7 @@ fn primitives_test_vectors() {
             147, 157, 178, 45, 2, 206, 64, 250, 109, 179, 41, 250, 207
         ]
     );
+    // bool
     assert_eq!(
         true.digest32::<MerlinTranscript>(b"test"),
         [
@@ -49,10 +161,33 @@ fn primitives_test_vectors() {
         ]
     );
     assert_eq!(
+        false.digest32::<MerlinTranscript>(b"test"),
+        [
+            179, 213, 201, 122, 159, 245, 126, 198, 143, 251, 194, 2, 65, 134, 95, 232, 199, 204,
+            253, 41, 158, 206, 125, 89, 184, 255, 83, 118, 116, 139, 15, 171
+        ]
+    );
+    // &[u8]
+    assert_eq!(
         (&b"Moose"[..]).digest32::<MerlinTranscript>(b"test"),
         [
             74, 2, 88, 165, 144, 53, 142, 180, 217, 188, 176, 227, 153, 178, 153, 12, 62, 157, 215,
             120, 135, 160, 117, 114, 95, 201, 169, 182, 238, 153, 17, 21
+        ]
+    );
+    assert_eq!(
+        (&b"boffin"[..]).digest32::<MerlinTranscript>(b"test"),
+        [
+            215, 19, 97, 46, 129, 37, 32, 16, 18, 101, 240, 115, 220, 60, 50, 114, 35, 121, 41,
+            210, 61, 83, 111, 145, 122, 142, 17, 139, 113, 24, 203, 211
+        ]
+    );
+    // String
+    assert_eq!(
+        ("Moose".to_string()).digest32::<MerlinTranscript>(b"test"),
+        [
+            249, 27, 225, 46, 77, 153, 89, 235, 98, 17, 218, 128, 114, 96, 244, 217, 150, 240, 195,
+            131, 181, 176, 181, 189, 249, 164, 14, 96, 213, 124, 5, 231
         ]
     );
     assert_eq!(
@@ -62,6 +197,7 @@ fn primitives_test_vectors() {
             246, 123, 235, 51, 39, 52, 101, 247, 160, 90, 1, 169, 175
         ]
     );
+    // Ristretto scalar
     assert_eq!(
         Scalar::from(10u32).digest32::<MerlinTranscript>(b"test"),
         [
@@ -69,6 +205,7 @@ fn primitives_test_vectors() {
             26, 152, 227, 191, 65, 98, 185, 116, 209, 84, 57, 190, 233, 197
         ]
     );
+    // RistrettoPoint
     assert_eq!(
         (Scalar::from(10u32) * RISTRETTO_BASEPOINT_POINT).digest32::<MerlinTranscript>(b"test"),
         [
@@ -76,6 +213,7 @@ fn primitives_test_vectors() {
             64, 245, 46, 118, 54, 118, 168, 115, 88, 160, 39, 243, 63
         ]
     );
+    // Vec of u32
     assert_eq!(
         vec![1u32, 2u32, 3u32].digest32::<MerlinTranscript>(b"test"),
         [
@@ -125,6 +263,8 @@ fn test_digest_vec() {
 }
 
 // Test digesting of Vec<Option>
+// Particularly, we want to know that vec![Some, None, Some] hashes differently
+// than vec![Some, Some, None] etc.
 #[test]
 fn test_digest_vec_option() {
     let temp: Vec<Option<String>> = Default::default();
@@ -231,6 +371,11 @@ fn test_digest_vec_option() {
 }
 
 // Test digesting of Option<Vec>
+//
+// We want to see, particularly, that when the option value is None, that is
+// hashing the same way as when the Vec is empty.
+// This is expected to happen, because in either case, the value is represented by appending a None node
+// to the transcript, and it is the same for empty vec and for empty option.
 #[test]
 fn test_digest_option_vec() {
     let temp: Option<Vec<String>> = Default::default();
@@ -320,6 +465,8 @@ fn test_btree_set() {
 }
 
 // Test digesting of Generic Array
+//
+// Particularly, check that it is hashing the same way as a regular array
 #[test]
 fn test_generic_array() {
     use generic_array::arr;

@@ -18,7 +18,6 @@ use alloc::vec::Vec;
 use blake2::digest::Update;
 use core::convert::TryInto;
 pub use errors::Error as MembershipProofError;
-use mc_crypto_digestible::Digestible;
 use mc_crypto_hashes::Blake2b256;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 

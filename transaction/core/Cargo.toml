@@ -55,7 +55,6 @@ curve25519-dalek = { version = "3.0", default-features = false, features = ["nig
 blake2 = { version = "0.9", default-features = false }
 
 [dev-dependencies]
-hex-literal = "0.3"
 rand = "0.7"
 rand_hc = "0.2"
 tempdir = "0.3"

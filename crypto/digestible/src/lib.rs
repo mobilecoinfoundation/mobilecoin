@@ -74,7 +74,7 @@ pub trait Digestible {
 /// to function. By having a trait, we can easily substitute mock objects for tests,
 /// etc.,
 pub trait DigestTranscript {
-    // These low-level calls are needed to implement digest32, digest64 etc.,
+    // These low-level calls are needed to implement digest32 etc.,
     // and correspond to raw calls on a MerlinTranscript
     fn new() -> Self;
     fn append_bytes(&mut self, context: &'static [u8], data: impl AsRef<[u8]>);
@@ -92,7 +92,7 @@ pub trait DigestTranscript {
     /// If the primitive is a struct member, this is its field name.
     /// If the primitive is an enum member, this is the variant name.
     /// If the primitive is the only thing being digested, the context string
-    /// comes from the call to digest32 / digest64.
+    /// comes from the call to digest32.
     ///
     /// The typename is an arbitrary string representing the type of the data,
     /// for example, `uint`, `bytes`, `string`, `ristretto`

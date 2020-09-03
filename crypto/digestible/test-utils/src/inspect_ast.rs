@@ -6,12 +6,32 @@ use std::{ops::Deref, vec::Vec};
 // Digestible AST node types
 
 /// Represents a node in the AST
+///
+/// Here "AST" means "abstract syntax tree", corresponding to the structure
+/// that we inferred from the way that DigestTranscript protocol was exercised.
+///
+/// There is an enumerator here for every call to `DigestTranscript` that a `Digestible`
+/// implementation is permitted to use.
+///
+/// An ASTNode represents a kind of "parse tree", because when InspectAST captures
+/// a call, it tries to attribute it to the parent, and fails if it cannot, in order
+/// to validate what the proc-macro is doing.
+/// Therefore, its possible that the AST is in an "incomplete state", e.g. when we
+/// have started, but not finished, digesting a complex value through InspectAST.
 #[derive(Clone, Eq, PartialEq)]
 pub enum ASTNode {
+    /// This node represents a call to append_primitive
     Primitive(ASTPrimitive),
+    /// This node represents a call to append_none
     None(ASTNone),
+    /// This node represents a call to append_seq_header, and any subsequent children
+    /// that we have captured, which are stored in its "elems" field.
     Sequence(ASTSequence),
+    /// This node represents a call to append_agg_header, and any subsequent children
+    /// that we have captured, which are stored in its "elems" field.
     Aggregate(ASTAggregate),
+    /// This node represents a call to append_agg_header, and the subsequent child
+    /// that we may have captured, which is stored in its "value" field.
     Variant(ASTVariant),
 }
 
@@ -20,16 +40,23 @@ pub enum ASTNode {
 /// and have a natural canonical representation as bytes
 #[derive(Default, Clone, Eq, PartialEq, Debug)]
 pub struct ASTPrimitive {
+    /// The context argument to `append_primitive`
     pub context: &'static [u8],
+    /// The type_name argument to `append_primitive`
     pub type_name: &'static [u8],
+    /// The data argument to `append_primitive`
     pub data: Vec<u8>,
 }
 
 /// Represents a call to DigestTranscript.append_none
 /// This is used in some rare cases -- for Option value which is None,
 /// and for a rust enum value which has no associated value.
+/// When those values are fields in an agg, they can be omitted completely.
+/// When they are children of seq or var, they cannot be omitted, and None must
+/// be appended instead.
 #[derive(Default, Clone, Eq, PartialEq, Debug)]
 pub struct ASTNone {
+    /// The context argument to `append_none`
     pub context: &'static [u8],
 }
 
@@ -37,8 +64,11 @@ pub struct ASTNone {
 /// and the subsequent child nodes that must be pushed.
 #[derive(Default, Clone, Eq, PartialEq, Debug)]
 pub struct ASTSequence {
+    /// The context argument to `append_seq_header`
     pub context: &'static [u8],
+    /// The len argument to `append_seq_header`
     pub len: u64,
+    /// The subsequent calls corresponding to children of the seq node
     pub elems: Vec<ASTNode>,
 }
 
@@ -47,9 +77,13 @@ pub struct ASTSequence {
 /// and the closing call to DigestTrancript.append_agg_closer,
 #[derive(Default, Clone, Eq, PartialEq, Debug)]
 pub struct ASTAggregate {
+    /// The context argument to `append_agg_header`
     pub context: &'static [u8],
+    /// The name argument to `append_agg_header`
     pub name: Vec<u8>,
+    /// The subsequent calls corresponding to children appended to the agg node
     pub elems: Vec<ASTNode>,
+    /// A flag indicating if we saw a matching `append_agg_closer` yet
     pub is_completed: bool,
 }
 
@@ -57,9 +91,23 @@ pub struct ASTAggregate {
 /// and the subsequent call to append a child node.
 #[derive(Default, Clone, Eq, PartialEq, Debug)]
 pub struct ASTVariant {
+    /// The context argument to `append_var_header`
     pub context: &'static [u8],
+    /// The name argument to `append_var_header`
     pub name: Vec<u8>,
+    /// The which argument to `append_var_header`
     pub which: u32,
+    /// The subsequent child, if encountered yet, of this variant node.
+    /// This option value is None if we did not yet encounter it.
+    ///
+    /// Box is required here to break the following cycle:
+    /// ASTNode is a rust enum containing ASTVariant as a possible value,
+    /// so sizeof(ASTNode>) > sizeof(ASTVariant).
+    /// But if Box is not used, then ASTVariant contains Option<ASTNode> as a member,
+    /// so sizeof(ASTVariant) > sizeof(ASTNode).
+    /// In otherwords the size of ASTNode on the stack could not be fixed at compile-time.
+    /// Using Box permits to break this cycle, so that ASTVariant has a small size
+    /// on the stack independent of the size of ASTNode.
     pub value: Option<Box<ASTNode>>,
 }
 
@@ -85,6 +133,24 @@ impl ASTNode {
     #[allow(clippy::transmute_ptr_to_ptr)]
     pub fn find_incomplete_child_mut(&mut self) -> Option<&mut ASTNode> {
         self.find_incomplete_child().map(|x| {
+            // Safety:
+            // At the time that this function is called, &mut self is the only
+            // possible reference to self in the entire program, per semantics of &mut being
+            // an exclusive reference.
+            //
+            // Necessarily, this excludes the existence of any reference elsewhere in the program
+            // to self or any of its children.
+            //
+            // When we call find_incomplete_child(), this call returns either &self,
+            // or a child of self.
+            //
+            // At the time that we then cast that reference back to &mut (unsafely),
+            // and then return it to caller,
+            // it is necessarily the case that there is no other reference in the program
+            // to that value. So we have upheld the semantics of `&mut`.
+            //
+            // inline(never) is used to try to discourage the compiler from peering into here
+            // and thinking too hard about it, since nomicon says this is undefined behavior.
             let ptr: *mut ASTNode = unsafe { core::mem::transmute(x as *const ASTNode) };
             unsafe { &mut *ptr }
         })
@@ -93,8 +159,12 @@ impl ASTNode {
     /// Implementation details of find incomplete child
     fn find_incomplete_child(&self) -> Option<&ASTNode> {
         match self {
+            // Primitives don't have any children
             Self::Primitive(_) => None,
+            // None doesn't have any children
             Self::None(_) => None,
+            // Otherwise, if our number of elements is equal to our promised length,
+            // then we are not incompletey
             Self::Sequence(seq) => {
                 let elems_len = seq.elems.len() as u64;
                 if let Some(child) = seq
@@ -102,10 +172,16 @@ impl ASTNode {
                     .last()
                     .and_then(|back| back.find_incomplete_child())
                 {
+                    // If the most recent child of the sequence node has
+                    // an incomplete child, then return that child (since it is deeper than us).
                     Some(child)
                 } else if seq.len == elems_len {
+                    // Otherwise, if our number of elements is equal to our promised length,
+                    // then we are complete, so return None.
                     None
                 } else {
+                    // Otherwise, we have less elements than promised, and should return ourself.
+                    // If we have more elements than promised, this is a bug in this file.
                     assert!(
                         seq.len > elems_len,
                         "more than expected number of sequence elements"
@@ -119,17 +195,25 @@ impl ASTNode {
                     .last()
                     .and_then(|back| back.find_incomplete_child())
                 {
+                    // If the most recent child of the aggregate node has
+                    // an incomplete child, then return that child (since it is deeper than us).
                     Some(child)
                 } else if agg.is_completed {
+                    // Otherwise, if we have been closed,
+                    // then we are complete, so return None.
                     None
                 } else {
+                    // Otherwise, return ourself, since we have not been completed.
                     Some(self)
                 }
             }
             Self::Variant(var) => {
                 if let Some(val) = var.value.as_ref() {
+                    // If the variant already has a child (which might be a compound child),
+                    // then call find_incomplete_child recursively on the child.
                     val.find_incomplete_child()
                 } else {
+                    // Otherwise, we don't have a child yet, so we are incomplete.
                     Some(self)
                 }
             }
@@ -145,12 +229,15 @@ pub struct InspectAST {
 }
 
 impl InspectAST {
+    // Given an ASTNode (corresponding to the most recent call to a function from DigestTranscript),
+    // find its parent in the tree, or make it the next root-level element in self.ast_nodes.
     fn push_ast_node(&mut self, new_node: ASTNode) {
         if let Some(incomplete_node) = self
             .ast_nodes
             .last_mut()
             .and_then(|x| x.find_incomplete_child_mut())
         {
+            // The result of find_incomplete_child_mut should be parent of the new node
             match incomplete_node {
                 ASTNode::Primitive(_) => panic!("Can't append children to primitive"),
                 ASTNode::None(_) => panic!("Can't append children to none"),
@@ -178,11 +265,14 @@ impl InspectAST {
                 }
             }
         } else {
+            // Either there are no root-level elements, or the most recent one is already complete.
             self.ast_nodes.push(new_node);
         }
     }
 }
 
+// Implement DigestTranscript for InspectAst by creating a new ASTNode corresponding to the call,
+// and calling self.push_ast_node to insert it into the structure at the appropriate point.
 impl DigestTranscript for InspectAST {
     fn new() -> Self {
         Default::default()
@@ -264,6 +354,9 @@ impl DigestTranscript for InspectAST {
 // This allows to create tests that the AST "explains the hash"
 // by making a digestible structure, getting its merlin digest, and its AST,
 // then computing the merlin digest from the AST, and checking that it matches.
+//
+// We don't simply implement Digestible for ASTNode, because ASTNode's carry their context,
+// but Digestible API requires to provide a context.
 impl ASTNode {
     pub fn append_to_transcript<DT: DigestTranscript>(&self, transcript: &mut DT) {
         match self {
