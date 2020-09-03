@@ -605,7 +605,7 @@ impl<
                     block_height = Some(b);
                     latest_block_hash = ledger_db
                         .get_block(b - 1)
-                        .map(|x| format!("{}", hex::encode(x.id.0)))
+                        .map(|x| hex::encode(x.id.0))
                         .map_err(|e| log::error!(logger, "Error getting block {} {:?}", b - 1, e))
                         .ok();
 
