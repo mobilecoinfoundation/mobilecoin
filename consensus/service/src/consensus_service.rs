@@ -21,6 +21,7 @@ use mc_common::{
 use mc_connection::{Connection, ConnectionManager};
 use mc_consensus_api::{consensus_client_grpc, consensus_common_grpc, consensus_peer_grpc};
 use mc_consensus_enclave::ConsensusEnclave;
+use mc_crypto_keys::DistinguishedEncoding;
 use mc_ledger_db::{Error as LedgerDbError, Ledger, LedgerDB};
 use mc_peers::{PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
 use mc_sgx_report_cache_untrusted::{Error as ReportCacheError, ReportCacheThread};
@@ -604,7 +605,7 @@ impl<
                     block_height = Some(b);
                     latest_block_hash = ledger_db
                         .get_block(b - 1)
-                        .map(|x| format!("{:X?}", x.id.0))
+                        .map(|x| format!("{}", hex::encode(x.id.0)))
                         .map_err(|e| log::error!(logger, "Error getting block {} {:?}", b - 1, e))
                         .ok();
 
@@ -645,7 +646,7 @@ impl<
                     "public_key": config.node_id().public_key,
                     "peer_responder_id": config.peer_responder_id,
                     "client_responder_id": config.client_responder_id,
-                    "message_pubkey": encode_config(&config.msg_signer_key.public_key(), URL_SAFE),
+                    "message_pubkey": encode_config(&config.msg_signer_key.public_key().to_der(), URL_SAFE),
                     "network": config.network_path,
                     "peer_listen_uri": config.peer_listen_uri,
                     "client_listen_uri": config.client_listen_uri,
