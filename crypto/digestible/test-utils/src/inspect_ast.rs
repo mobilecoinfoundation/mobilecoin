@@ -14,10 +14,25 @@ use std::{ops::Deref, vec::Vec};
 /// implementation is permitted to use.
 ///
 /// An ASTNode represents a kind of "parse tree", because when InspectAST captures
-/// a call, it tries to attribute it to the parent, and fails if it cannot, in order
+/// a call, it tries to match it to its parent, and fails if it cannot, in order
 /// to validate what the proc-macro is doing.
 /// Therefore, its possible that the AST is in an "incomplete state", e.g. when we
 /// have started, but not finished, digesting a complex value through InspectAST.
+///
+/// To recap:
+/// - A Primitive is a "simple" type (as opposed to a compound type),
+///   which has a direct representation as canonical bytes.
+/// - A Sequence is a variable length sequence of values of some other type.
+///   A Sequence has a length known at runtime.
+/// - An Aggregate is a fixed-length sequence of values ("fields"), of different types.
+///   Each field has a name.
+/// - A variant is a single value which may be one of several different types.
+///   Each possibility has an associated name, in the context of this variant.
+///   In the sequel we call this the "variant possibility name".
+/// - The None value is a sentinel used sometimes to indicate the absence of a value,
+///   inside of sequences or variants. Inside of aggregates, it is permitted to omit
+///   entirely a value that is absent, to facilitate schema evolution. Inside of
+///   sequences and variants, it is not, and could lead to problems. None is used instead.
 #[derive(Clone, Eq, PartialEq)]
 pub enum ASTNode {
     /// This node represents a call to append_primitive

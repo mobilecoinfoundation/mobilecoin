@@ -6,7 +6,7 @@ use mc_crypto_digestible_test_utils::*;
 
 // Test structs
 #[derive(Digestible)]
-struct Foo {
+struct ExampleStruct {
     a: u16,
     b: u16,
     c: u16,
@@ -24,7 +24,7 @@ struct TransBlob(Vec<u8>);
 struct Bar {
     d: Blob,
     e: u32,
-    f: Foo,
+    f: ExampleStruct,
 }
 
 // A Bar with a transparent field (but a different structure name)
@@ -32,22 +32,23 @@ struct Bar {
 struct BarWithTransparent {
     d: TransBlob,
     e: u32,
-    f: Foo,
+    f: ExampleStruct,
 }
 
 // A struct with a generic parameter and members
 #[derive(Digestible)]
-struct GenericFoo<X: Digestible> {
+struct GenericExampleStruct<X: Digestible> {
     a: X,
     b: X,
 }
 
+// Test that an instance of ExampleStruct is being mapped to AST and hashed as expected
 #[test]
-fn foo1() {
-    let arg = Foo { a: 0, b: 1, c: 2 };
+fn example_struct1() {
+    let arg = ExampleStruct { a: 0, b: 1, c: 2 };
     let expected_ast = ASTNode::from(ASTAggregate {
         context: b"foo1",
-        name: b"Foo".to_vec(),
+        name: b"ExampleStruct".to_vec(),
         elems: vec![
             ASTNode::from(ASTPrimitive {
                 context: b"a",
@@ -77,6 +78,7 @@ fn foo1() {
     );
 }
 
+// Test that an instance of Blob is being mapped to AST and hashed as expected
 #[test]
 fn blob1() {
     let arg = Blob(vec![1, 2, 3, 4]);
@@ -100,6 +102,7 @@ fn blob1() {
     );
 }
 
+// Test that an instance of TransBlob is being mapped to AST and hashed as expected
 #[test]
 fn blob2() {
     let arg = TransBlob(vec![1, 2, 3, 4]);
@@ -122,12 +125,13 @@ fn blob2() {
     );
 }
 
+// Test that an instance of Bar is being mapped to AST and hashed as expected
 #[test]
 fn bar1() {
     let arg = Bar {
         d: Blob(b"Koala".to_vec()),
         e: u32::max_value(),
-        f: Foo { a: 5, b: 6, c: 7 },
+        f: ExampleStruct { a: 5, b: 6, c: 7 },
     };
     let expected_ast = ASTNode::from(ASTAggregate {
         context: b"bar1",
@@ -150,7 +154,7 @@ fn bar1() {
             }),
             ASTNode::from(ASTAggregate {
                 context: b"f",
-                name: b"Foo".to_vec(),
+                name: b"ExampleStruct".to_vec(),
                 elems: vec![
                     ASTNode::from(ASTPrimitive {
                         context: b"a",
@@ -183,12 +187,13 @@ fn bar1() {
     );
 }
 
+// Test that an instance of BarWithTransparent is being mapped to AST and hashed as expected
 #[test]
 fn bar2() {
     let arg = BarWithTransparent {
         d: TransBlob(b"Koala".to_vec()),
         e: u32::max_value(),
-        f: Foo { a: 5, b: 6, c: 7 },
+        f: ExampleStruct { a: 5, b: 6, c: 7 },
     };
     let expected_ast = ASTNode::Aggregate(ASTAggregate {
         context: b"bar2",
@@ -206,7 +211,7 @@ fn bar2() {
             }),
             ASTNode::from(ASTAggregate {
                 context: b"f",
-                name: b"Foo".to_vec(),
+                name: b"ExampleStruct".to_vec(),
                 elems: vec![
                     ASTNode::from(ASTPrimitive {
                         context: b"a",
@@ -239,17 +244,17 @@ fn bar2() {
     );
 }
 
-// Test cases for GenericFoo::<u32> and GenericFoo::<Option<u32>>
+// Test cases for GenericExampleStruct::<u32> and GenericExampleStruct::<Option<u32>>
 #[test]
 fn generic_foo1() {
-    let arg = GenericFoo {
+    let arg = GenericExampleStruct {
         a: 123 as u32,
         b: 456 as u32,
     };
 
     let expected_ast = ASTNode::from(ASTAggregate {
         context: b"genfoo1",
-        name: b"GenericFoo".to_vec(),
+        name: b"GenericExampleStruct".to_vec(),
         elems: vec![
             ASTNode::from(ASTPrimitive {
                 context: b"a",
@@ -273,7 +278,7 @@ fn generic_foo1() {
         ]
     );
 
-    let arg2 = GenericFoo {
+    let arg2 = GenericExampleStruct {
         a: Some(123 as u32),
         b: Some(456 as u32),
     };
@@ -288,17 +293,17 @@ fn generic_foo1() {
     );
 }
 
-// Test cases for GenericFoo::<i32> and GenericFoo::<Option<i32>>
+// Test cases for GenericExampleStruct::<i32> and GenericExampleStruct::<Option<i32>>
 #[test]
 fn generic_foo2() {
-    let arg = GenericFoo {
+    let arg = GenericExampleStruct {
         a: 123 as i32,
         b: 456 as i32,
     };
 
     let expected_ast = ASTNode::from(ASTAggregate {
         context: b"genfoo2",
-        name: b"GenericFoo".to_vec(),
+        name: b"GenericExampleStruct".to_vec(),
         elems: vec![
             ASTNode::from(ASTPrimitive {
                 context: b"a",
@@ -322,7 +327,7 @@ fn generic_foo2() {
         ]
     );
 
-    let arg2 = GenericFoo {
+    let arg2 = GenericExampleStruct {
         a: Some(123 as i32),
         b: Some(456 as i32),
     };
@@ -337,17 +342,17 @@ fn generic_foo2() {
     );
 }
 
-// Test cases for GenericFoo::<String> and GenericFoo::<Option<String>>
+// Test cases for GenericExampleStruct::<String> and GenericExampleStruct::<Option<String>>
 #[test]
 fn generic_foo3() {
-    let arg = GenericFoo {
+    let arg = GenericExampleStruct {
         a: String::from("str1"),
         b: String::from("str2"),
     };
 
     let expected_ast = ASTNode::from(ASTAggregate {
         context: b"genfoo3",
-        name: b"GenericFoo".to_vec(),
+        name: b"GenericExampleStruct".to_vec(),
         elems: vec![
             ASTNode::from(ASTPrimitive {
                 context: b"a",
@@ -371,7 +376,7 @@ fn generic_foo3() {
         ]
     );
 
-    let arg2 = GenericFoo {
+    let arg2 = GenericExampleStruct {
         a: Some(String::from("str1")),
         b: Some(String::from("str2")),
     };

@@ -22,10 +22,19 @@ pub use merlin::Transcript as MerlinTranscript;
 /// is called "protocol composition".
 /// (We refer the reader to merlin docu for more discussion.)
 ///
-/// Implementations of this trait should be not produce results that depends on
-/// endianness of the target, and should protect from length extension attacks etc.
-/// Implementations may assume that the transcript provides the "automatic framing"
-/// features of merlin append_bytes.
+/// Implementations of this trait should generally just call `append_primitive`.
+/// The data that they pass should be a canonical representation of the value as bytes.
+/// Implementations should not produce results that depends on
+/// endianness of the target, should prefer little endian if relevant.
+/// Implementations may assume that when calling `append_primitive`, the data will
+/// be framed automatically, and need not frame it themselves.
+///
+/// Implementations of this trait for containers should usually work by calling
+/// `append_seq_header` and then iterating over their children and appending them.
+/// See `BTreeSet` as an example -- if needed, we could make a macro to reduce the
+/// amount of code duplication when doing this.
+///
+/// Implementations of this trait for structs and enums should generally use `derive(Digestible)`.
 ///
 /// One benefit of this version of Digestible is that it integrates well with
 /// Schnorrkel -- a Digestible object can be added directly to the signing transcript,
@@ -95,7 +104,7 @@ pub trait DigestTranscript {
     /// comes from the call to digest32.
     ///
     /// The typename is an arbitrary string representing the type of the data,
-    /// for example, `uint`, `bytes`, `string`, `ristretto`
+    /// for example, `uint`, `int`, `bool`, `bytes`, `str`, `ristretto`
     ///
     /// The data is the canonical bytes representing the primitive.
     /// If the primitive does not have a canonical representation as bytes then
@@ -360,6 +369,7 @@ impl<T: DigestibleAsBytes> Digestible for T {
 }
 
 // Built-in byte arrays
+// FIXME: When const-generics are stable, replace this
 impl DigestibleAsBytes for [u8; 1] {}
 impl DigestibleAsBytes for [u8; 2] {}
 impl DigestibleAsBytes for [u8; 3] {}
