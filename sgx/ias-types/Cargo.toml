@@ -1,6 +1,6 @@
 [package]
 name = "mc-sgx-ias-types"
-version = "0.6.0"
+version = "1.0.0"
 authors = ["MobileCoin"]
 description = "IAS types for Intel SGX SDK."
 readme = "README.md"

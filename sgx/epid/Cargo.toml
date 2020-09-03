@@ -1,6 +1,6 @@
 [package]
 name = "mc-sgx-epid"
-version = "0.6.0"
+version = "1.0.0"
 authors = ["James Cape <james@mobilecoin.com>"]
 description = "Rust APIS for the Intel SGX SDK's EPID support."
 readme = "README.md"

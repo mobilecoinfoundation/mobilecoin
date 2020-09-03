@@ -1,6 +1,6 @@
 [package]
 name = "mc-sgx-core-types"
-version = "0.6.0"
+version = "1.0.0"
 authors = ["James Cape <james@mobilecoin.com>"]
 description = "Core Rust types for Intel SGX SDK."
 readme = "README.md"
