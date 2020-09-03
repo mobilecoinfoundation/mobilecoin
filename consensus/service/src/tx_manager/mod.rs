@@ -85,27 +85,10 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManagerImpl<E
         }
     }
 
-    fn lock_cache(&self) -> MutexGuard<HashMap<TxHash, CacheEntry>> {
-        self.cache.lock().expect("Lock poisoned")
-    }
-}
-
-impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
-    for TxManagerImpl<E, UI>
-{
-    /// Insert a transaction into the cache. The transaction must be well-formed.
-    fn insert(&self, tx_context: TxContext) -> TxManagerResult<TxHash> {
-        {
-            let cache = self.lock_cache();
-            if let Some(entry) = cache.get(&tx_context.tx_hash) {
-                self.untrusted.is_valid(entry.context().clone())?;
-                // The transaction is well-formed and is in the cache.
-                return Ok(*entry.context.tx_hash());
-            }
-        }
-
-        // Start timer for metrics.
-        let timer = counters::WELL_FORMED_CHECK_TIME.start_timer();
+    /// Performs the untrusted and enclave parts of the well-formed checks.
+    /// If the transaction is well-formed, returns a new CacheEntry that may be added to the cache.
+    fn is_well_formed(&self, tx_context: TxContext) -> TxManagerResult<CacheEntry> {
+        let _metrics_timer = counters::WELL_FORMED_CHECK_TIME.start_timer();
 
         // The untrusted part of the well-formed check.
         let (current_block_index, highest_index_proofs) =
@@ -118,27 +101,47 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
             highest_index_proofs.clone(),
         )?;
 
-        drop(timer);
+        Ok(CacheEntry {
+            encrypted_tx: well_formed_encrypted_tx,
+            context: Arc::new(well_formed_tx_context),
+            highest_index_proofs: Arc::new(highest_index_proofs),
+        })
+    }
+
+    fn lock_cache(&self) -> MutexGuard<HashMap<TxHash, CacheEntry>> {
+        self.cache.lock().expect("Lock poisoned")
+    }
+}
+
+impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
+    for TxManagerImpl<E, UI>
+{
+    /// Insert a transaction into the cache. The transaction must be well-formed.
+    fn insert(&self, tx_context: TxContext) -> TxManagerResult<TxHash> {
+        let tx_hash = tx_context.tx_hash;
+
+        {
+            let cache = self.lock_cache();
+            if let Some(entry) = cache.get(&tx_context.tx_hash) {
+                self.untrusted.is_valid(entry.context().clone())?;
+                // The transaction is well-formed and is in the cache.
+                return Ok(*entry.context.tx_hash());
+            }
+        }
+
+        let new_entry = self.is_well_formed(tx_context)?;
+
+        {
+            let mut cache = self.lock_cache();
+            cache.insert(tx_hash, new_entry);
+            counters::TX_CACHE_NUM_ENTRIES.set(cache.len() as i64);
+        }
 
         log::trace!(
             self.logger,
             "Cached well-formed transaction {hash}",
-            hash = well_formed_tx_context.tx_hash().to_string(),
+            hash = tx_hash.to_string(),
         );
-
-        let tx_hash = *well_formed_tx_context.tx_hash();
-
-        let entry = CacheEntry {
-            encrypted_tx: well_formed_encrypted_tx,
-            context: Arc::new(well_formed_tx_context),
-            highest_index_proofs: Arc::new(highest_index_proofs),
-        };
-
-        {
-            let mut cache = self.lock_cache();
-            cache.insert(tx_hash, entry);
-            counters::TX_CACHE_NUM_ENTRIES.set(cache.len() as i64);
-        }
 
         Ok(tx_hash)
     }
