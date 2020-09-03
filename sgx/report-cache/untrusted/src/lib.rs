@@ -178,21 +178,16 @@ impl<E: ReportableEnclave, R: RaClient> ReportCache<E, R> {
             "Quote verified by remote attestation service {:?}...",
             retval,
         );
+        let report_body = VerificationReportData::try_from(&retval)
+            .expect("Could not get verification report data from verification report")
+            .quote
+            .report_body()
+            .expect("Could not get report_body from verification report data");
         log::info!(
             self.logger,
             "Measurements: MrEnclave: {} MrSigner: {}",
-            VerificationReportData::try_from(&retval)
-                .expect("Could not get verification report data from verification report")
-                .quote
-                .report_body()
-                .expect("Could not get report_body from verification report data")
-                .mr_enclave(),
-            VerificationReportData::try_from(&retval)
-                .expect("Could not get verification report data from verification report")
-                .quote
-                .report_body()
-                .expect("Could not get report_body from verification report data")
-                .mr_signer()
+            report_body.mr_enclave(),
+            report_body.mr_signer()
         );
         Ok(retval)
     }
