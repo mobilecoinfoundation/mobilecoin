@@ -12,7 +12,7 @@
 //!    the local ledger is out of sync with the consensus ledger.
 //!
 //! 2) "Is valid [to add to the ledger]" - This checks whether a **single** transaction can be safely
-//!  appended to a ledger in it's current state.
+//!  appended to a ledger in it's current state. A valid transaction must also be well-formed.
 //!
 //! This definition differs from what the `mc_transaction_core::validation` module - the check provided by
 //! it is actually the "Is well formed" check, and might be renamed in the future to match this.
@@ -48,7 +48,7 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
         tx_context: &TxContext,
     ) -> TransactionValidationResult<(u64, Vec<TxOutMembershipProof>)> {
         // The transaction's membership proofs must reference data contained in the ledger.
-        // Note that this check could fail if the local ledger is behind the network's consensus ledger.
+        // This check could fail if the local ledger is behind the network's consensus ledger.
         let membership_proofs = self
             .ledger
             .get_tx_out_proof_of_memberships(&tx_context.highest_indices)
@@ -56,8 +56,6 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
 
         // Note: It is possible that the proofs above are obtained for a different block index as a
         // new block could be written between getting the proofs and the call to num_blocks().
-        // However, this has no effect on validation as the block index is only used for tombstone
-        // checking.
         let num_blocks = self
             .ledger
             .num_blocks()
@@ -77,11 +75,12 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
         validate_tombstone(current_block_index, context.tombstone_block())?;
 
         // The `key_images` must not have already been spent.
-        let key_images = context.key_images();
-        if key_images
+        let contains_spent_key_image = context
+            .key_images()
             .iter()
-            .any(|key_image| self.ledger.contains_key_image(key_image).unwrap_or(true))
-        {
+            .any(|key_image| self.ledger.contains_key_image(key_image).unwrap_or(true));
+
+        if contains_spent_key_image {
             // At least one key image was spent, or the ledger returned an error.
             return Err(TransactionValidationError::ContainsSpentKeyImage);
         }
@@ -97,15 +96,15 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
             return Err(TransactionValidationError::ContainsExistingOutputPublicKey);
         }
 
-        // `tx` is safe to append.
+        // The transaction is valid w.r.t. the current ledger state.
         Ok(())
     }
 
     /// Combines a set of "candidate values" into a "composite value".
-    /// This assumes all values are well-formed and safe to append to the ledger individually.
+    /// This assumes all values are well-formed and valid w.r.t the current ledger.
     ///
     /// # Arguments
-    /// * `tx_contexts` - "Candidate" transactions. Each is assumed to be individually valid.
+    /// * `tx_contexts` - "Candidate" transactions. Each must be well-formed and valid.
     /// * `max_elements` - Maximum number of elements to return.
     ///
     /// Returns a bounded, deterministically-ordered list of transactions that are safe to append to the ledger.
