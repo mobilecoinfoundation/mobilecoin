@@ -2624,7 +2624,7 @@ dependencies = [
 
 [[package]]
 name = "mc-crypto-digestible-test-utils"
-version = "0.6.0"
+version = "1.0.0"
 dependencies = [
  "mc-crypto-digestible",
  "serde_json",
