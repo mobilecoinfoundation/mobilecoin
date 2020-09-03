@@ -7,6 +7,7 @@ use crate::{
     blockchain_api_service, byzantine_ledger::ByzantineLedger, client_api_service, config::Config,
     counters, peer_api_service, peer_keepalive::PeerKeepalive, tx_manager::TxManager,
 };
+use base64::{encode_config, URL_SAFE};
 use failure::Fail;
 use futures::executor::block_on;
 use grpcio::{EnvBuilder, Environment, Server, ServerBuilder};
@@ -20,7 +21,8 @@ use mc_common::{
 use mc_connection::{Connection, ConnectionManager};
 use mc_consensus_api::{consensus_client_grpc, consensus_common_grpc, consensus_peer_grpc};
 use mc_consensus_enclave::ConsensusEnclave;
-use mc_ledger_db::{Ledger, LedgerDB};
+use mc_crypto_keys::DistinguishedEncoding;
+use mc_ledger_db::{Error as LedgerDbError, Ledger, LedgerDB};
 use mc_peers::{PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
 use mc_sgx_report_cache_untrusted::{Error as ReportCacheError, ReportCacheThread};
 use mc_transaction_core::tx::TxHash;
@@ -603,21 +605,30 @@ impl<
                     block_height = Some(b);
                     latest_block_hash = ledger_db
                         .get_block(b - 1)
-                        .map(|x| format!("{:X?}", x.id.0))
+                        .map(|x| hex::encode(x.id.0))
                         .map_err(|e| log::error!(logger, "Error getting block {} {:?}", b - 1, e))
                         .ok();
-                    latest_block_timestamp = ledger_db
-                        .get_block_signature(b - 1)
-                        .map(|x| x.signed_at())
-                        .map_err(|e| {
+
+                    latest_block_timestamp = match ledger_db.get_block_signature(b - 1) {
+                        Ok(x) => Some(x.signed_at()),
+                        // Note, a block signature will be missing if the corresponding block was not
+                        // processed by an enclave participating in consensus. For example, unsigned
+                        // blocks can be created by a validator node that falls behind its peers and
+                        // enters into catchup.
+                        Err(LedgerDbError::NotFound) => {
+                            log::trace!(logger, "Block signature not found for block {}", b - 1);
+                            None
+                        }
+                        Err(e) => {
                             log::error!(
                                 logger,
                                 "Error getting block signature for block {} {:?}",
                                 b - 1,
                                 e
-                            )
-                        })
-                        .ok();
+                            );
+                            None
+                        }
+                    };
                     // peer_block_height - b, unless overflow, then 0
                     blocks_behind = Some(peer_block_height.saturating_sub(b));
                 }
@@ -634,7 +645,7 @@ impl<
                     "public_key": config.node_id().public_key,
                     "peer_responder_id": config.peer_responder_id,
                     "client_responder_id": config.client_responder_id,
-                    "message_pubkey": config.msg_signer_key.public_key(),
+                    "message_pubkey": encode_config(&config.msg_signer_key.public_key().to_der(), URL_SAFE),
                     "network": config.network_path,
                     "peer_listen_uri": config.peer_listen_uri,
                     "client_listen_uri": config.client_listen_uri,
@@ -651,7 +662,7 @@ impl<
                     "sync_status": sync_status,
                     "blocks_behind": blocks_behind,
                     "latest_block_hash": latest_block_hash,
-                    "latest_block_timestamp": latest_block_timestamp,
+                    "latest_block_timestamp": latest_block_timestamp.map_or("".to_string(), |u| u.to_string()),
                 },
             })
             .to_string())
