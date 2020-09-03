@@ -233,7 +233,9 @@ pub mod well_formed_tests {
 mod is_valid_tests {
     use super::*;
     use mc_ledger_db::{Error as LedgerError, MockLedger};
-    use mc_transaction_core::validation::TransactionValidationError;
+    use mc_transaction_core::{
+        constants::MAX_TOMBSTONE_BLOCKS, validation::TransactionValidationError,
+    };
 
     #[test]
     /// `is_valid` should accept a valid transaction.
@@ -290,8 +292,8 @@ mod is_valid_tests {
     }
 
     #[test]
-    /// `is_valid` should reject a transaction with a tombstone block that has been exceeded.
-    fn is_valid_rejects_past_tombstone_block() {
+    /// `is_valid` should reject a transaction if num_blocks > tombstone_block.
+    fn is_valid_rejects_expired_transaction() {
         // Number of blocks in the local ledger.
         let num_blocks = 53;
 
@@ -318,6 +320,38 @@ mod is_valid_tests {
         assert_eq!(
             untrusted.is_valid(Arc::new(well_formed_tx_context)),
             Err(TransactionValidationError::TombstoneBlockExceeded),
+        );
+    }
+
+    #[test]
+    /// `is_valid` should reject a transaction if tombstone_block is too far in the future.
+    fn is_valid_rejects_tombstone_too_far() {
+        // Number of blocks in the local ledger.
+        let num_blocks = 53;
+
+        let well_formed_tx_context = WellFormedTxContext::new(
+            Default::default(),
+            Default::default(),
+            num_blocks + MAX_TOMBSTONE_BLOCKS + 1,
+            Default::default(),
+            Default::default(),
+            Default::default(),
+        );
+
+        // Mock the local ledger.
+        let mut ledger = MockLedger::new();
+
+        // Untrusted should request num_blocks.
+        ledger
+            .expect_num_blocks()
+            .times(1)
+            .return_const(Ok(num_blocks));
+
+        let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger);
+
+        assert_eq!(
+            untrusted.is_valid(Arc::new(well_formed_tx_context)),
+            Err(TransactionValidationError::TombstoneBlockTooFar),
         );
     }
 
