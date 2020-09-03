@@ -84,7 +84,7 @@ impl RaClient for IasClient {
             None => json!({"isvEnclaveQuote": quote_base64,}),
         };
 
-        global_log::info!(
+        global_log::trace!(
             "Submitting JSON request for {:?} to IAS: '{}' at {}",
             quote,
             jsvalue.to_string(),
@@ -129,7 +129,7 @@ impl RaClient for IasClient {
             http_body,
         };
 
-        global_log::info!("Received report from IAS: {:?}", &retval);
+        global_log::trace!("Received report from IAS: {:?}", &retval);
 
         Ok(retval)
     }
