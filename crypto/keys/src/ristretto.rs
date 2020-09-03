@@ -172,6 +172,7 @@ impl Debug for RistrettoEphemeralPrivate {
 
 /// A Ristretto-format curve point for use as a public key
 #[derive(Clone, Copy, Default, Digestible)]
+#[digestible(transparent)]
 pub struct RistrettoPublic(pub(crate) RistrettoPoint);
 
 impl AsRef<RistrettoPoint> for RistrettoPublic {
@@ -347,6 +348,7 @@ impl KexSecret for RistrettoSecret {}
 /// As a result, this does not implement the `PublicKey` interface, nor is it
 /// usable in a key-exchange.
 #[derive(Clone, Copy, Default, Eq, Digestible)]
+#[digestible(transparent)]
 pub struct CompressedRistrettoPublic(pub(crate) CompressedRistretto);
 
 impl CompressedRistrettoPublic {

@@ -22,7 +22,7 @@ use ed25519_dalek::{
     Keypair, PublicKey as DalekPublicKey, SecretKey, Signature as DalekSignature,
     PUBLIC_KEY_LENGTH, SECRET_KEY_LENGTH,
 };
-use mc_crypto_digestible::Digestible;
+use mc_crypto_digestible::{DigestTranscript, Digestible};
 use mc_util_from_random::FromRandom;
 use mc_util_repr_bytes::{
     derive_core_cmp_from_as_ref, derive_into_vec_from_repr_bytes,
@@ -381,9 +381,12 @@ impl Ed25519Signature {
 }
 
 impl Digestible for Ed25519Signature {
-    #[inline]
-    fn digest<D: Digest>(&self, hasher: &mut D) {
-        hasher.update(&self.to_bytes()[..])
+    fn append_to_transcript<DT: DigestTranscript>(
+        &self,
+        context: &'static [u8],
+        transcript: &mut DT,
+    ) {
+        transcript.append_primitive(context, b"ed25519-sig", &self);
     }
 }
 
@@ -432,6 +435,7 @@ mod ed25519_tests {
     use super::*;
     use digest::generic_array::typenum::Unsigned;
     use mc_crypto_digestible::Digestible;
+    use mc_crypto_hashes::PseudoMerlin;
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
     use sha2::Sha512;
@@ -469,13 +473,15 @@ mod ed25519_tests {
             c: 54321,
         };
 
-        let mut hasher = Sha512::default();
-        data.digest(&mut hasher);
-        let sig = pair.try_sign_digest(hasher).expect("Failed to sign digest");
+        let mut hasher = PseudoMerlin(Sha512::default());
+        data.append_to_transcript(b"test", &mut hasher);
+        let sig = pair
+            .try_sign_digest(hasher.inner)
+            .expect("Failed to sign digest");
 
-        let mut hasher = Sha512::default();
-        data.digest(&mut hasher);
-        pair.verify_digest(hasher, &sig)
+        let mut hasher = PseudoMerlin(Sha512::default());
+        data.append_to_transcript(b"test", &mut hasher);
+        pair.verify_digest(hasher.inner, &sig)
             .expect("Failed to validate digest signature");
     }
 

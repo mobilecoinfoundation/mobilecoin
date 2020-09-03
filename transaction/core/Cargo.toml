@@ -63,6 +63,7 @@ time = "0.1"
 mc-ledger-db = { path = "../../ledger/db" }
 mc-util-serial = { path = "../../util/serial", features = ["std"] }
 mc-util-test-helper = { path = "../../util/test-helper" }
+mc-crypto-digestible-test-utils = { path = "../../crypto/digestible/test-utils" }
 mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
 
 [dev-dependencies.proptest]

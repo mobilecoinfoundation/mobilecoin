@@ -13,6 +13,7 @@ use mc_util_repr_bytes::{
 use serde::{Deserialize, Serialize};
 
 #[derive(Copy, Clone, Default, Eq, Serialize, Deserialize, Digestible)]
+#[digestible(transparent)]
 /// The "image" of a private key `x`: I = x * Hp(x * G) = x * Hp(P).
 pub struct KeyImage {
     pub point: CompressedRistretto,

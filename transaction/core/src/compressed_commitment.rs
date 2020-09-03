@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 
 /// A Pedersen commitment in compressed Ristretto format.
 #[derive(Copy, Clone, Default, Eq, Serialize, Deserialize, Digestible)]
+#[digestible(transparent)]
 pub struct CompressedCommitment {
     /// A Pedersen commitment `v*G + b*H` to a quantity `v` with blinding `b`,
     pub point: CompressedRistretto,

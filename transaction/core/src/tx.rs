@@ -2,14 +2,11 @@
 
 use alloc::vec::Vec;
 use blake2::digest::Update;
-use core::{
-    convert::{TryFrom, TryInto},
-    fmt,
-};
+use core::{convert::TryFrom, fmt};
 
 use mc_account_keys::PublicAddress;
 use mc_common::Hash;
-use mc_crypto_digestible::Digestible;
+use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_hashes::Blake2b256;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
 use mc_util_repr_bytes::{
@@ -122,9 +119,7 @@ impl fmt::Display for Tx {
 impl Tx {
     /// Compute a 32-byte hash from all of the contents of a Tx
     pub fn tx_hash(&self) -> TxHash {
-        let hash = self.digest_with::<Blake2b256>();
-        let output: [u8; TX_HASH_LEN] = hash.try_into().unwrap();
-        TxHash::from(output)
+        TxHash::from(self.digest32::<MerlinTranscript>(b"mobilecoin-tx"))
     }
 
     /// Key images "spent" by this transaction.
@@ -187,8 +182,7 @@ impl TxPrefix {
 
     /// Blake2b256 hash of `self`.
     pub fn hash(&self) -> TxHash {
-        let temp: [u8; 32] = self.digest_with::<Blake2b256>().try_into().unwrap();
-        TxHash::from(temp)
+        TxHash::from(self.digest32::<MerlinTranscript>(b"mobilecoin-tx-prefix"))
     }
 
     /// Return the `highest_index` for each tx_out membership proof in this transaction.
@@ -281,7 +275,7 @@ impl TxOut {
 
     /// Blake2B256 hash of his TxOut.
     pub fn hash(&self) -> Hash {
-        self.digest_with::<Blake2b256>().try_into().unwrap()
+        self.digest32::<MerlinTranscript>(b"mobilecoin-txout")
     }
 }
 
@@ -353,6 +347,7 @@ impl TxOutMembershipElement {
 #[derive(
     Clone, Deserialize, Default, Eq, Ord, PartialEq, PartialOrd, Serialize, Debug, Digestible,
 )]
+#[digestible(transparent)]
 /// A hash in a TxOut membership proof.
 pub struct TxOutMembershipHash(pub [u8; 32]);
 

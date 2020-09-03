@@ -15,7 +15,7 @@ extern crate alloc;
 mod identity;
 
 use alloc::{collections::BTreeSet, format, string::String, vec::Vec};
-use core::convert::{TryFrom, TryInto};
+use core::convert::TryFrom;
 use identity::Ed25519Identity;
 use mc_account_keys::PublicAddress;
 use mc_attest_core::{
@@ -35,8 +35,7 @@ use mc_consensus_enclave_api::{
     WellFormedEncryptedTx, WellFormedTxContext,
 };
 use mc_crypto_ake_enclave::AkeEnclaveState;
-use mc_crypto_digestible::Digestible;
-use mc_crypto_hashes::Blake2b256;
+use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
 use mc_crypto_keys::{Ed25519Pair, Ed25519Public, RistrettoPrivate, RistrettoPublic, X25519Public};
 use mc_crypto_message_cipher::{AesMessageCipher, MessageCipher};
 use mc_crypto_rand::McRng;
@@ -462,16 +461,15 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 
         // Create an aggregate fee output.
         let fee_tx_private_key = {
-            let hash_value: [u8; 32] = {
-                let mut hasher = Blake2b256::new();
-                FEES_OUTPUT_PRIVATE_KEY_DOMAIN_TAG.digest(&mut hasher);
-                parent_block.id.digest(&mut hasher);
-                transactions.digest(&mut hasher);
-                hasher
-                    .result()
-                    .as_slice()
-                    .try_into()
-                    .expect("Wrong length.")
+            let mut hash_value = [0u8; 32];
+            {
+                let mut transcript =
+                    MerlinTranscript::new(FEES_OUTPUT_PRIVATE_KEY_DOMAIN_TAG.as_bytes());
+                parent_block
+                    .id
+                    .append_to_transcript(b"parent_block_id", &mut transcript);
+                transactions.append_to_transcript(b"transactions", &mut transcript);
+                transcript.extract_digest(&mut hash_value);
             };
 
             // This private key is generated from the hash of all transactions in this block.

@@ -5,7 +5,7 @@ use crate::{
     BlockContents, BlockContentsHash, BlockID,
 };
 use alloc::vec::Vec;
-use mc_crypto_digestible::{Digest, Digestible};
+use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
 use prost::Message;
 use serde::{Deserialize, Serialize};
 
@@ -169,24 +169,27 @@ impl Block {
 ///
 /// The identifier of a block is the result of hashing everything inside a block except the `id`
 /// field.
-pub fn compute_block_id<D: Digest>(
+pub fn compute_block_id(
     version: u32,
-    parent_id: &BlockID<D>,
+    parent_id: &BlockID,
     index: BlockIndex,
     cumulative_txo_count: u64,
     root_element: &TxOutMembershipElement,
-    contents_hash: &BlockContentsHash<D>,
-) -> BlockID<D> {
-    let mut hasher = D::new();
+    contents_hash: &BlockContentsHash,
+) -> BlockID {
+    let mut transcript = MerlinTranscript::new(b"mobilecoin-block-id");
 
-    version.digest(&mut hasher);
-    parent_id.digest(&mut hasher);
-    index.digest(&mut hasher);
-    cumulative_txo_count.digest(&mut hasher);
-    root_element.digest(&mut hasher);
-    contents_hash.digest(&mut hasher);
+    version.append_to_transcript(b"version", &mut transcript);
+    parent_id.append_to_transcript(b"parent_id", &mut transcript);
+    index.append_to_transcript(b"index", &mut transcript);
+    cumulative_txo_count.append_to_transcript(b"cumulative_txo_count", &mut transcript);
+    root_element.append_to_transcript(b"root_element", &mut transcript);
+    contents_hash.append_to_transcript(b"contents_hash", &mut transcript);
 
-    BlockID(hasher.finalize())
+    let mut result = [0u8; 32];
+    transcript.extract_digest(&mut result);
+
+    BlockID(result)
 }
 
 #[cfg(test)]
@@ -198,7 +201,6 @@ mod block_tests {
     };
     use alloc::vec::Vec;
     use core::convert::TryFrom;
-    use generic_array::GenericArray;
     use mc_account_keys::AccountKey;
     use mc_crypto_keys::RistrettoPrivate;
     use mc_util_from_random::FromRandom;
@@ -264,7 +266,7 @@ mod block_tests {
 
         let mut bytes = [0u8; 32];
         rng.fill_bytes(&mut bytes);
-        let wrong_parent_id = BlockID(GenericArray::from_slice(&bytes).clone());
+        let wrong_parent_id = BlockID(bytes);
 
         block.parent_id = wrong_parent_id;
         assert!(!block.is_block_id_valid());
@@ -301,7 +303,7 @@ mod block_tests {
 
         let mut bytes = [0u8; 32];
         rng.fill_bytes(&mut bytes);
-        let wrong_content_hash = BlockContentsHash(GenericArray::from_slice(&bytes).clone());
+        let wrong_content_hash = BlockContentsHash(bytes);
 
         block.contents_hash = wrong_content_hash;
         assert!(!block.is_block_id_valid());

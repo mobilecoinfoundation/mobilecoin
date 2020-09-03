@@ -3,9 +3,7 @@
 use crate::{ring_signature::KeyImage, tx::TxOut, ConvertError};
 use alloc::{vec, vec::Vec};
 use core::{convert::TryFrom, fmt::Debug};
-use generic_array::{typenum::Unsigned, GenericArray};
-use mc_crypto_digestible::{Digest, Digestible};
-use mc_crypto_hashes::Blake2b256;
+use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use prost::{
     bytes::{Buf, BufMut},
     encoding::{bytes, skip_field, DecodeContext, WireType},
@@ -33,57 +31,35 @@ impl BlockContents {
         }
     }
 
-    /// The Blake2B256 digest of `self`.
+    /// The Merlin digest of `self`.
     pub fn hash(&self) -> BlockContentsHash {
-        BlockContentsHash(self.digest_with::<Blake2b256>())
+        BlockContentsHash(self.digest32::<MerlinTranscript>(b"block_contents"))
     }
 }
 
 #[repr(transparent)]
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Digestible, Serialize, Deserialize, PartialEq, Eq)]
+#[digestible(transparent)]
 /// Hash of contents (i.e. transactions) in a block.
-pub struct BlockContentsHash<D: Digest = Blake2b256>(pub GenericArray<u8, D::OutputSize>);
+pub struct BlockContentsHash(pub [u8; 32]);
 
-impl<D: Digest> Digestible for BlockContentsHash<D> {
-    fn digest<DD: Digest>(&self, hasher: &mut DD) {
-        hasher.update(&self.0)
-    }
-}
-
-impl<D: Digest> PartialEq for BlockContentsHash<D> {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-    }
-}
-
-impl<D: Digest> Eq for BlockContentsHash<D> {}
-
-impl<D: Digest> TryFrom<&[u8]> for BlockContentsHash<D> {
+impl TryFrom<&[u8]> for BlockContentsHash {
     type Error = ConvertError;
 
     fn try_from(src: &[u8]) -> Result<Self, Self::Error> {
-        if src.len() != D::OutputSize::to_usize() {
-            Err(ConvertError::LengthMismatch(
-                D::OutputSize::to_usize(),
-                src.len(),
-            ))
-        } else {
-            Ok(Self(GenericArray::clone_from_slice(src)))
-        }
+        Ok(Self(<[u8; 32] as TryFrom<&[u8]>>::try_from(src).map_err(
+            |_| ConvertError::LengthMismatch(core::mem::size_of::<Self>(), src.len()),
+        )?))
     }
 }
 
-impl<D: Digest> AsRef<[u8]> for BlockContentsHash<D> {
+impl AsRef<[u8]> for BlockContentsHash {
     fn as_ref(&self) -> &[u8] {
         &self.0
     }
 }
 
-impl<D: Digest + Debug> Message for BlockContentsHash<D>
-where
-    <D as Digest>::OutputSize: Debug,
-    Self: Default,
-{
+impl Message for BlockContentsHash {
     fn encode_raw<B>(&self, buf: &mut B)
     where
         B: BufMut,
@@ -104,14 +80,13 @@ where
         if tag == 1 {
             let mut vbuf = Vec::new();
             bytes::merge(wire_type, &mut vbuf, buf, ctx)?;
-            if vbuf.len() != D::OutputSize::to_usize() {
-                return Err(DecodeError::new(alloc::format!(
+            *self = Self::try_from(&vbuf[..]).map_err(|_| {
+                DecodeError::new(alloc::format!(
                     "BlockContentsHash: expected {} bytes, got {}",
-                    D::OutputSize::to_usize(),
+                    core::mem::size_of::<Self>(),
                     vbuf.len()
-                )));
-            }
-            *self = Self(GenericArray::clone_from_slice(&vbuf[..]));
+                ))
+            })?;
             Ok(())
         } else {
             skip_field(wire_type, tag, buf, ctx)
@@ -119,7 +94,7 @@ where
     }
 
     fn encoded_len(&self) -> usize {
-        bytes::encoded_len(1, &vec![0u8; D::OutputSize::to_usize()])
+        bytes::encoded_len(1, &vec![0u8; core::mem::size_of::<Self>()])
     }
 
     fn clear(&mut self) {

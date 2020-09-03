@@ -12,6 +12,7 @@ use mc_util_repr_bytes::{
 
 /// A Pedersen commitment in uncompressed Ristretto format.
 #[derive(Copy, Clone, Default, Digestible)]
+#[digestible(transparent)]
 pub struct Commitment {
     /// A Pedersen commitment `v*G + b*H` to a quantity `v` with blinding `b`,
     pub point: RistrettoPoint,

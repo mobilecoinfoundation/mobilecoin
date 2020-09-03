@@ -18,7 +18,6 @@ use alloc::vec::Vec;
 use blake2::digest::Update;
 use core::convert::TryInto;
 pub use errors::Error as MembershipProofError;
-use mc_crypto_digestible::Digestible;
 use mc_crypto_hashes::Blake2b256;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
@@ -30,7 +29,7 @@ lazy_static! {
 pub fn hash_leaf(tx_out: &TxOut) -> [u8; 32] {
     let mut hasher = Blake2b256::new();
     hasher.update(&TXOUT_MERKLE_LEAF_DOMAIN_TAG);
-    tx_out.digest(&mut hasher);
+    hasher.update(&tx_out.hash());
     hasher.result().try_into().unwrap()
 }
 

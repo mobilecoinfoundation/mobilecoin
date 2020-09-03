@@ -16,10 +16,9 @@ use mc_common::{
 use mc_connection::{Connection, ConnectionManager, SyncConnection};
 use mc_consensus_api::consensus_peer::ConsensusMsgResult;
 use mc_consensus_enclave_api::WellFormedEncryptedTx;
-use mc_crypto_digestible::Digestible;
+use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_transaction_core::tx::TxHash;
 use mc_util_uri::ConnectionUri;
-use sha2::Sha256;
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -184,7 +183,7 @@ impl<RP: RetryPolicy> Broadcast for ThreadedBroadcaster<RP> {
     ///     message back to the peer that handed it to us. Note that due to message relaying, this can
     ///     be a different peer than the one that created the message.
     fn broadcast_consensus_msg(&mut self, msg: &ConsensusMsg, received_from: &ResponderId) {
-        let msg_hash = msg.digest_with::<Sha256>().into();
+        let msg_hash = msg.digest32::<MerlinTranscript>(b"broadcast");
 
         // If we've already seen this message, we don't need to do anything.
         // We use `get()` instead of `contains()` to update LRU state.
