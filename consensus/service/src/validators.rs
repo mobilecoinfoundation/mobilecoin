@@ -200,7 +200,7 @@ pub mod well_formed_tests {
         match untrusted.well_formed_check(&tx_context) {
             Ok((current_block_index, _highest_index_proofs)) => {
                 assert_eq!(current_block_index, n_blocks - 1);
-                // TODO: check returned membership proofs.
+                // TODO: check highest_index_proofs
             }
             Err(e) => panic!("Unexpected error {}", e),
         }
@@ -210,37 +210,11 @@ pub mod well_formed_tests {
     /// `is_well_formed` should reject a transaction that contains a proof-of-membership with
     /// highest index outside the ledger, i.e. a transaction "from the future".
     fn is_well_formed_rejects_excessive_highest_index(_logger: Logger) {
-        let mut rng = Hc128Rng::from_seed([77u8; 32]);
-
-        let sender = AccountKey::random(&mut rng);
-        // let recipient = AccountKey::random(&mut rng);
-
-        // // Create a TxOut that contains a proof-of-membership whose highest index is outside the ledger.
-        // //
-        // // An easy way to do this is to populate two ledgers of different lengths with the same randomness.
-        // let tx = {
-        //     let mut rng = Hc128Rng::from_seed([142u8; 32]);
-        //     let mut future_ledger = create_ledger();
-        //     let n_blocks = 10;
-        //     initialize_ledger(&mut future_ledger, n_blocks, &sender, &mut rng);
-        //
-        //     // Choose a TxOut to spend. Only the TxOut in the last block is unspent.
-        //     let block_contents = future_ledger.get_block_contents(n_blocks - 1).unwrap();
-        //     let tx_out = block_contents.outputs[0].clone();
-        //
-        //     create_transaction(
-        //         &mut future_ledger,
-        //         &tx_out,
-        //         &sender,
-        //         &recipient.default_subaddress(),
-        //         n_blocks + 1,
-        //         &mut rng,
-        //     )
-        // };
-
         // The local ledger.
+        let mut rng = Hc128Rng::from_seed([77u8; 32]);
         let mut ledger = create_ledger();
         let n_blocks = 3;
+        let sender = AccountKey::random(&mut rng);
         initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
 
         let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger.clone());
@@ -256,129 +230,6 @@ pub mod well_formed_tests {
             Err(_e) => {} // This is expected. TODO: check error type.
         }
     }
-
-    // #[test_with_logger]
-    // #[ignore]
-    // /// `is_well_formed` should reject a transaction with a tombstone block too far in the future.
-    // /// Unclear if this should actually be part of the untrusted is_well_formed check...
-    // fn is_well_formed_rejects_too_far_tombstone_block(_logger: Logger) {
-    //     let mut rng = Hc128Rng::from_seed([79u8; 32]);
-    //
-    //     let sender = AccountKey::random(&mut rng);
-    //     let recipient = AccountKey::random(&mut rng);
-    //
-    //     let mut ledger = create_ledger();
-    //     let n_blocks = 3;
-    //     initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
-    //
-    //     let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger.clone());
-    //
-    //     // Choose a TxOut to spend. Only the output of the last block is unspent.
-    //     let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
-    //     let tx_out = block_contents.outputs[0].clone();
-    //
-    //     // A well-formed transaction
-    //     {
-    //         let tx = create_transaction(
-    //             &mut ledger,
-    //             &tx_out,
-    //             &sender,
-    //             &recipient.default_subaddress(),
-    //             n_blocks + MAX_TOMBSTONE_BLOCKS,
-    //             &mut rng,
-    //         );
-    //
-    //         let membership_proof_highest_indices = tx.get_membership_proof_highest_indices();
-    //         assert!(untrusted
-    //             .well_formed_check(&membership_proof_highest_indices[..])
-    //             .is_ok());
-    //     }
-    //
-    //     // Tombstone block is too far in the future. This is not well-formed.
-    //     {
-    //         let bad_tx = create_transaction(
-    //             &mut ledger,
-    //             &tx_out,
-    //             &sender,
-    //             &recipient.default_subaddress(),
-    //             n_blocks + MAX_TOMBSTONE_BLOCKS + 1,
-    //             &mut rng,
-    //         );
-    //
-    //         let membership_proof_highest_indices = bad_tx.get_membership_proof_highest_indices();
-    //         assert!(untrusted
-    //             .well_formed_check(&membership_proof_highest_indices[..])
-    //             .is_err());
-    //     }
-    // }
-
-    // #[allow(soft_unstable)]
-    // #[bench_with_logger]
-    // #[ignore]
-    // fn bench_is_well_formed(_logger: Logger, b: &mut Bencher) {
-    //     let mut rng = Hc128Rng::from_seed([79u8; 32]);
-    //
-    //     let sender = AccountKey::random(&mut rng);
-    //     let recipient = AccountKey::random(&mut rng);
-    //
-    //     let mut ledger = create_ledger();
-    //     let n_blocks = 3;
-    //     initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
-    //
-    //     // Choose a TxOut to spend. Only the output of the last block is unspent.
-    //     let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
-    //     let tx_out = block_contents.outputs[0].clone();
-    //
-    //     let tx = create_transaction(
-    //         &mut ledger,
-    //         &tx_out,
-    //         &sender,
-    //         &recipient.default_subaddress(),
-    //         n_blocks + 10,
-    //         &mut rng,
-    //     );
-    //
-    //     b.iter(|| is_well_formed(&tx, &ledger).unwrap())
-    // }
-
-    /*
-    #[bench]
-    #[ignore]
-    fn bench_is_well_formed_with_enclave(b: &mut Bencher) {
-        const ENCLAVE_FILE: &str = "../libconsensus-enclave.signed.so";
-        let enclave_path = env::current_exe()
-            .expect("Could not get the path of our executable")
-            .with_file_name(ENCLAVE_FILE);
-        let enclave = ConsensusServiceSgxEnclave::new(enclave_path);
-
-        let mut rng = Hc128Rng::from_seed([79u8; 32]);
-
-        let sender = AccountKey::random(&mut rng);
-        let recipient = AccountKey::random(&mut rng);
-
-        let mut ledger = create_ledger();
-        let n_blocks = 3;
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
-
-        // Choose a TxOut to spend. Only the output of the last block is unspent.
-        let mut transactions = ledger.get_transactions_by_block(n_blocks - 1).unwrap();
-        let tx_stored = transactions.pop().unwrap();
-        let tx_out = tx_stored.outputs[0].clone();
-
-        let tx = create_transaction(
-            &mut ledger,
-            &tx_out,
-            tx_stored.public_key,
-            0,
-            &sender,
-            recipient.default_subaddress(),
-            n_blocks + 10,
-            &mut rng,
-        );
-
-        b.iter(|| is_well_formed_with_enclave(&tx, &enclave, &ledger).unwrap())
-    }
-    */
 }
 
 #[cfg(test)]
