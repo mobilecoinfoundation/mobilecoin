@@ -20,7 +20,7 @@ use mc_common::{
 use mc_connection::{Connection, ConnectionManager};
 use mc_consensus_api::{consensus_client_grpc, consensus_common_grpc, consensus_peer_grpc};
 use mc_consensus_enclave::ConsensusEnclave;
-use mc_ledger_db::{Ledger, LedgerDB};
+use mc_ledger_db::{Error as LedgerDbError, Ledger, LedgerDB};
 use mc_peers::{PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
 use mc_sgx_report_cache_untrusted::{Error as ReportCacheError, ReportCacheThread};
 use mc_transaction_core::tx::TxHash;
@@ -606,18 +606,22 @@ impl<
                         .map(|x| format!("{:X?}", x.id.0))
                         .map_err(|e| log::error!(logger, "Error getting block {} {:?}", b - 1, e))
                         .ok();
-                    latest_block_timestamp = ledger_db
-                        .get_block_signature(b - 1)
-                        .map(|x| x.signed_at())
-                        .map_err(|e| {
-                            log::error!(
-                                logger,
-                                "Error getting block signature for block {} {:?}",
-                                b - 1,
-                                e
-                            )
-                        })
-                        .ok();
+
+                    latest_block_timestamp = match ledger_db.get_block_signature(b - 1) {
+                        Some(x) => x.signed_at().ok(),
+                        // Note, a node may not write a block signature for the case where it is not
+                        // trusted by any peers, so it does not participate in consensus, or if it
+                        // enters into catchup.
+                        Err(LedgerDbError::NotFound) => {
+                            log::debug!(logger, "Block signature not found for block {}", b - 1)
+                        }
+                        Err(e) => log::error!(
+                            logger,
+                            "Error getting block signature for block {} {:?}",
+                            b - 1,
+                            e
+                        ),
+                    };
                     // peer_block_height - b, unless overflow, then 0
                     blocks_behind = Some(peer_block_height.saturating_sub(b));
                 }
