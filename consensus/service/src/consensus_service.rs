@@ -7,6 +7,7 @@ use crate::{
     blockchain_api_service, byzantine_ledger::ByzantineLedger, client_api_service, config::Config,
     counters, peer_api_service, peer_keepalive::PeerKeepalive, tx_manager::TxManager,
 };
+use base64::{encode_config, URL_SAFE};
 use failure::Fail;
 use futures::executor::block_on;
 use grpcio::{EnvBuilder, Environment, Server, ServerBuilder};
@@ -644,7 +645,7 @@ impl<
                     "public_key": config.node_id().public_key,
                     "peer_responder_id": config.peer_responder_id,
                     "client_responder_id": config.client_responder_id,
-                    "message_pubkey": config.msg_signer_key.public_key(),
+                    "message_pubkey": encode_config(&config.msg_signer_key.public_key(), URL_SAFE),
                     "network": config.network_path,
                     "peer_listen_uri": config.peer_listen_uri,
                     "client_listen_uri": config.client_listen_uri,
