@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-use mc_consensus_enclave::WellFormedTxContext;
+use mc_consensus_enclave::{TxContext, WellFormedTxContext};
 use mc_transaction_core::{
     tx::{TxHash, TxOutMembershipProof},
     validation::TransactionValidationResult,
@@ -13,12 +13,12 @@ use mockall::*;
 /// The untrusted (i.e. non-enclave) part of validating and combining transactions.
 #[cfg_attr(test, automock)]
 pub trait UntrustedInterfaces: Send + Sync {
-    /// Performs the untrusted part of the well-formed check.
-    /// Returns current block index and membership proofs to be used by
-    /// the in-enclave well-formed check on success.
+    /// Performs **only** the untrusted part of the well-formed check.
+    ///
+    /// Returns the local ledger's block index and membership proofs for each highest index.
     fn well_formed_check(
         &self,
-        highest_indices: &[u64],
+        tx_context: &TxContext,
     ) -> TransactionValidationResult<(u64, Vec<TxOutMembershipProof>)>;
 
     /// Checks if a transaction is valid (see definition in validators.rs).
