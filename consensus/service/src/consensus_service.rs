@@ -614,10 +614,9 @@ impl<
                         // Note, a block signature will be missing if the corresponding block was not
                         // processed by an enclave participating in consensus. For example, unsigned
                         // blocks can be created by a validator node that falls behind its peers and
-                        // enters into catchup. Another scenario would be if a validator node is not
-                        // trusted by sufficient peers to participate in quorum.
+                        // enters into catchup.
                         Err(LedgerDbError::NotFound) => {
-                            log::debug!(logger, "Block signature not found for block {}", b - 1);
+                            log::trace!(logger, "Block signature not found for block {}", b - 1);
                             None
                         }
                         Err(e) => {
