@@ -169,7 +169,7 @@ fn try_digestible_struct(
                         self.#field_ident.append_to_transcript_allow_omit(stringify!(#field_ident).as_bytes(), transcript);
                     }
                 }
-                // this is a tuple struct, and the member doesn't have an identifier
+                // this is a tuple struct, and the field doesn't have an identifier
                 // we have to make a syn object corresponding to the index, and use it in the quote! macro
                 None => {
                     let index = syn::Index::from(idx);
@@ -223,10 +223,10 @@ fn try_digestible_struct_transparent(
     };
 
     if fields.is_empty() {
-        return Err("digestible cannot be derived transparently for a struct with no members");
+        return Err("digestible cannot be derived transparently for a struct with no fields");
     }
     if fields.len() > 1 {
-        return Err("digestible cannot be derived transparently for a struct or tuple with more than one member");
+        return Err("digestible cannot be derived transparently for a struct or tuple with more than one field");
     }
 
     // Final expanded result
@@ -288,15 +288,28 @@ fn try_digestible_enum(
                     }
                 }
 
-                // For an enum variant that has anonymous fields (e.g. SomeEnum::MyVariant(u32,
-                // u64)) we generate code that looks like this:
+                // For an enum variant with one nameless member, e.g. SomeEnum::Possibility(u32), which is the 3rd possibility
+                // we generate code like this, which appends a var_header, and then immediately the child value.
+                // The child value may not be omitted.
+                //
+                // Self::Possibility(val) => {
+                //   transcript.append_var_header(context, "SomeEnum".as_bytes(), 3 as u32);
+                //   val.append_to_transcript("Possibility".as_bytes(), transcript);
+                // }
+                //
+                // For an enum variant that multiple anonymous fields (e.g. SomeEnum::MyVariant(u32,
+                // u64)) we generate code that creates an anonymous aggregate as the child of the variant,
+                // and makes the fields children of that aggregate.
+                // This child node is the same as what we would get if handling a struct tuple, whose name
+                // was the empty string.
+                // For example:
+                //
                 // Self::MyVariant(field_0, field_1) => {
-                //   hasher.update(&(0 as u64).to_le_bytes()); // This is the variant's index.
-                //   hasher.update("MyVariant").as_bytes());
-                //   hasher.update("0").as_bytes());
-                //   field_0.digest(hasher);
-                //   hasher.update("1").as_bytes());
-                //   field_1.digest(hasher);
+                //   transcript.append_var_header(context, "SomeEnum".as_bytes(), 3 as u32);
+                //   transcript.append_agg_header("MyVariant".as_bytes(), b"");
+                //   field_0.append_to_transcript_allow_omit("0".as_bytes(), transcript);
+                //   field_1.append_to_transcript_allow_omit("1".as_bytes(), transcript);
+                //   transcript.append_agg_closer("MyVariant".as_bytes(), b"");
                 // }
                 Fields::Unnamed(FieldsUnnamed {
                     unnamed: fields, ..
@@ -341,14 +354,19 @@ fn try_digestible_enum(
                 }
 
                 // For an enum variant that has named fields (e.g. SomeEnum::MyVariant { a: u64, b: u64 }
-                // we generate code that looks like this:
+                // we generate code that creates an anonymous aggregate as the child of the variant,
+                // and makes the fields children of that aggregate.
+                // This child node is the same as what we would get if handling a struct, whose name
+                // was the empty string.
+                //
+                // For example:
+                //
                 // Self::MyVariant { a, b } => {
-                //   hasher.update(&(0 as u64).to_le_bytes()); // This is the variant's index.
-                //   hasher.update("MyVariant").as_bytes());
-                //   hasher.update("a").as_bytes());
-                //   a.digest(hasher);
-                //   hasher.update("b").as_bytes());
-                //   b.digest(hasher);
+                //   transcript.append_var_header(context, "SomeEnum".as_bytes(), 3 as u32);
+                //   transcript.append_agg_header("MyVariant".as_bytes(), b"");
+                //   a.append_to_transcript_allow_omit("a".as_bytes(), transcript);
+                //   b.append_to_transcript_allow_omit("b".as_bytes(), transcript);
+                //   transcript.append_agg_closer("MyVariant".as_bytes(), b"");
                 // }
                 Fields::Named(FieldsNamed { named: fields, .. }) => {
                     let field_idents = fields.iter().map(|field| &field.ident).collect::<Vec<_>>();
