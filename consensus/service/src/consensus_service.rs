@@ -608,19 +608,23 @@ impl<
                         .ok();
 
                     latest_block_timestamp = match ledger_db.get_block_signature(b - 1) {
-                        Some(x) => x.signed_at().ok(),
+                        Ok(x) => Some(x.signed_at()),
                         // Note, a node may not write a block signature for the case where it is not
                         // trusted by any peers, so it does not participate in consensus, or if it
                         // enters into catchup.
                         Err(LedgerDbError::NotFound) => {
-                            log::debug!(logger, "Block signature not found for block {}", b - 1)
+                            log::debug!(logger, "Block signature not found for block {}", b - 1);
+                            None
                         }
-                        Err(e) => log::error!(
-                            logger,
-                            "Error getting block signature for block {} {:?}",
-                            b - 1,
-                            e
-                        ),
+                        Err(e) => {
+                            log::error!(
+                                logger,
+                                "Error getting block signature for block {} {:?}",
+                                b - 1,
+                                e
+                            );
+                            None
+                        }
                     };
                     // peer_block_height - b, unless overflow, then 0
                     blocks_behind = Some(peer_block_height.saturating_sub(b));
@@ -655,7 +659,7 @@ impl<
                     "sync_status": sync_status,
                     "blocks_behind": blocks_behind,
                     "latest_block_hash": latest_block_hash,
-                    "latest_block_timestamp": latest_block_timestamp,
+                    "latest_block_timestamp": latest_block_timestamp.map_or("".to_string(), |u| u.to_string()),
                 },
             })
             .to_string())
