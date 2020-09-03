@@ -154,52 +154,48 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
 pub mod well_formed_tests {
     use super::*;
     use mc_common::logger::{test_with_logger, Logger};
-    use mc_transaction_core_test_utils::{
-        create_ledger, create_transaction, initialize_ledger, AccountKey,
-    };
+    use mc_ledger_db::MockLedger;
+    use mc_transaction_core_test_utils::{create_ledger, initialize_ledger, AccountKey};
     use rand::SeedableRng;
     use rand_hc::Hc128Rng;
 
-    #[test_with_logger]
+    #[test]
     // `is_well_formed` should accept a well-formed transaction.
-    fn is_well_formed_accepts_well_formed_transaction(_logger: Logger) {
-        let mut rng = Hc128Rng::from_seed([77u8; 32]);
+    fn is_well_formed_accepts_well_formed_transaction() {
+        let num_blocks = 53;
 
-        let sender = AccountKey::random(&mut rng);
-        let recipient = AccountKey::random(&mut rng);
+        let mut ledger = MockLedger::new();
+        // Untrusted should request num_blocks.
+        ledger
+            .expect_num_blocks()
+            .times(1)
+            .return_const(Ok(num_blocks));
 
-        let mut ledger = create_ledger();
-        let n_blocks = 3;
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
+        // Untrusted should request a proof of membership for each highest index.
+        let highest_index_proofs = vec![
+            TxOutMembershipProof::new(1, 1, vec![]),
+            TxOutMembershipProof::new(1, 1, vec![]),
+            TxOutMembershipProof::new(1, 1, vec![]),
+        ];
+        ledger
+            .expect_get_tx_out_proof_of_memberships()
+            .times(1)
+            .return_const(Ok(highest_index_proofs));
 
-        // Choose a TxOut to spend. Only the TxOut in the last block is unspent.
-        let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
-        let tx_out = block_contents.outputs[0].clone();
+        let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger);
 
-        let tx = create_transaction(
-            &mut ledger,
-            &tx_out,
-            &sender,
-            &recipient.default_subaddress(),
-            n_blocks + 1,
-            &mut rng,
-        );
-
-        let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger.clone());
-
-        // This tx_context contains highest_indices that exceed the number of TxOuts in the ledger.
         let tx_context = TxContext {
             locally_encrypted_tx: Default::default(),
-            tx_hash: tx.tx_hash(),
-            highest_indices: tx.get_membership_proof_highest_indices(),
-            key_images: tx.key_images(),
-            output_public_keys: tx.output_public_keys(),
+            tx_hash: Default::default(),
+            highest_indices: vec![33, 44, 33],
+            key_images: vec![KeyImage::default(), KeyImage::default()],
+            output_public_keys: vec![CompressedRistrettoPublic::default()],
         };
 
         match untrusted.well_formed_check(&tx_context) {
-            Ok((current_block_index, _highest_index_proofs)) => {
-                assert_eq!(current_block_index, n_blocks - 1);
-                // TODO: check highest_index_proofs
+            Ok((current_block_index, highest_index_proofs)) => {
+                assert_eq!(current_block_index, num_blocks - 1);
+                assert_eq!(highest_index_proofs.len(), 3)
             }
             Err(e) => panic!("Unexpected error {}", e),
         }
