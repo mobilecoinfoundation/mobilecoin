@@ -71,7 +71,7 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
             .num_blocks()
             .map_err(|e| TransactionValidationError::Ledger(e.to_string()))?;
 
-        // The transaction must not have expired.
+        // The transaction must not have expired, and the tombstone block must not be too far in the future.
         validate_tombstone(current_block_index, context.tombstone_block())?;
 
         // The `key_images` must not have already been spent.
