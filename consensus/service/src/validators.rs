@@ -49,10 +49,8 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
     ) -> TransactionValidationResult<(u64, Vec<TxOutMembershipProof>)> {
         // The transaction's membership proofs must reference data contained in the ledger.
         // This check could fail if the local ledger is behind the network's consensus ledger.
-        let membership_proofs = self
-            .ledger
-            .get_tx_out_proof_of_memberships(&tx_context.highest_indices)
-            .map_err(|e| TransactionValidationError::Ledger(e.to_string()))?;
+        let membership_proofs =
+            self.get_tx_out_proof_of_memberships(&tx_context.highest_indices)?;
 
         // Note: It is possible that the proofs above are obtained for a different block index as a
         // new block could be written between getting the proofs and the call to num_blocks().
@@ -147,6 +145,15 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
         }
 
         allowed_hashes
+    }
+
+    fn get_tx_out_proof_of_memberships(
+        &self,
+        indexes: &[u64],
+    ) -> TransactionValidationResult<Vec<TxOutMembershipProof>> {
+        self.ledger
+            .get_tx_out_proof_of_memberships(indexes)
+            .map_err(|e| TransactionValidationError::Ledger(e.to_string()))
     }
 }
 

@@ -274,7 +274,13 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
             .into_iter()
             .map(|(_tx_hash, entry)| {
                 let entry = entry.unwrap();
-                let highest_index_proofs: Vec<_> = entry.highest_index_proofs().to_vec();
+                // Highest indices proofs must be w.r.t. the current ledger.
+                // Recreating them here is a crude way to ensure that.
+                let highest_indices: Vec<_> = entry.highest_index_proofs().iter().map(|membership_proof| membership_proof.highest_index).collect();
+                let highest_index_proofs: Vec<_> = self
+                    .untrusted
+                    .get_tx_out_proof_of_memberships(&highest_indices)?;
+
                 Ok((entry.encrypted_tx().clone(), highest_index_proofs))
             })
             .collect::<Result<Vec<(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)>, TxManagerError>>()?;

@@ -34,4 +34,9 @@ pub trait UntrustedInterfaces: Send + Sync {
     /// Returns a bounded, deterministically-ordered list of transactions that are safe to append to the ledger.
     fn combine(&self, tx_contexts: &[Arc<WellFormedTxContext>], max_elements: usize)
         -> Vec<TxHash>;
+
+    fn get_tx_out_proof_of_memberships(
+        &self,
+        indexes: &[u64],
+    ) -> TransactionValidationResult<Vec<TxOutMembershipProof>>;
 }
