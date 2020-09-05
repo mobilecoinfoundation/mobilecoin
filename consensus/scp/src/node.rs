@@ -50,7 +50,7 @@ pub struct Node<V: Value, ValidationError: Clone + Display> {
     pub scp_timebase: Duration,
 }
 
-impl<V: Value, ValidationError: Display + 'static> Node<V, ValidationError> {
+impl<V: Value, ValidationError: Clone + Display + 'static> Node<V, ValidationError> {
     /// Creates a new Node.
     pub fn new(
         ID: NodeID,
@@ -157,7 +157,7 @@ pub trait ScpNode<V: Value>: Send {
     fn reset_slot_index(&mut self, slot_index: SlotIndex);
 }
 
-impl<V: Value, ValidationError: Display + 'static> ScpNode<V> for Node<V, ValidationError> {
+impl<V: Value, ValidationError: Clone + Display + 'static> ScpNode<V> for Node<V, ValidationError> {
     fn node_id(&self) -> NodeID {
         self.ID.clone()
     }
@@ -290,15 +290,9 @@ impl<V: Value, ValidationError: Display + 'static> ScpNode<V> for Node<V, Valida
     }
 
     /// Get the slot internal state (for debug purposes).
-    fn get_slot_state(&mut self, slot_index: SlotIndex) -> Option<SlotState<V>> {
-        if slot_index == self.current_slot.slot_index {
-            Some(SlotState::from(&self.current_slot))
-        } else {
-            self.externalized_slots
-                .iter()
-                .find(|slot| slot.slot_index == slot_index)
-                .map(SlotState::from)
-        }
+    fn get_slot_debug_snapshot(&mut self, _slot_index: SlotIndex) -> Option<String> {
+        // TODO: return debug snapshots for other slots?
+        Some(self.current_slot.get_debug_snapshot())
     }
 
     /// Reset the current slot.
@@ -317,65 +311,48 @@ impl<V: Value, ValidationError: Display + 'static> ScpNode<V> for Node<V, Valida
 #[cfg(test)]
 mod node_tests {
     use super::*;
-    use crate::{core_types::Ballot, msg::*, slot::MockScpSlot, test_utils::*};
-    use maplit::btreeset;
+    use crate::{core_types::Ballot, msg::*, test_utils::*};
+    // use maplit::btreeset;
     use mc_common::logger::test_with_logger;
     use std::{iter::FromIterator, sync::Arc};
 
     #[test_with_logger]
-    // Initially, `pending` and `externalized` should be empty.
+    // Initially, `externalized_slots` should be empty.
     fn test_initialization(logger: Logger) {
         let node = Node::<u32, TransactionValidationError>::new(
             test_node_id(1),
             QuorumSet::new_with_node_ids(1, vec![test_node_id(2)]),
             Arc::new(trivial_validity_fn),
             Arc::new(trivial_combine_fn),
+            0,
             logger.clone(),
         );
 
-        assert!(node.pending.is_empty());
-        assert!(node.externalized.is_empty());
+        assert!(node.externalized_slots.is_empty());
     }
 
-    #[test_with_logger]
-    // Should create a slot if one is not yet available.
-    fn test_propose_values_create_new_slot(logger: Logger) {
-        type V = &'static str;
-
-        let mut node = Node::<V, TransactionValidationError>::new(
-            test_node_id(1),
-            QuorumSet::new_with_node_ids(1, vec![test_node_id(2)]),
-            Arc::new(trivial_validity_fn),
-            Arc::new(trivial_combine_fn),
-            logger.clone(),
-        );
-
-        let values = btreeset!["a", "b", "c"];
-        let _res = node.propose_values(7, values);
-
-        assert!(node.pending.contains(&7));
-    }
-
-    #[test_with_logger]
-    // Should pass values to the appropriate slot.
-    fn test_propose_values(logger: Logger) {
-        type V = &'static str;
-
-        let mut node = Node::<V, TransactionValidationError>::new(
-            test_node_id(1),
-            QuorumSet::new_with_node_ids(1, vec![test_node_id(2)]),
-            Arc::new(trivial_validity_fn),
-            Arc::new(trivial_combine_fn),
-            logger.clone(),
-        );
-
-        let mut slot = MockScpSlot::<V>::new();
-        slot.expect_propose_values().times(1).return_const(Ok(None));
-        node.pending.put(7, Box::new(slot));
-
-        let values = btreeset!["a", "b", "c"];
-        let _res = node.propose_values(7, values);
-    }
+    // #[test_with_logger]
+    // // Should pass values to the appropriate slot.
+    // fn test_propose_values(logger: Logger) {
+    //     type V = &'static str;
+    //
+    //     let mut node = Node::<V, TransactionValidationError>::new(
+    //         test_node_id(1),
+    //         QuorumSet::new_with_node_ids(1, vec![test_node_id(2)]),
+    //         Arc::new(trivial_validity_fn),
+    //         Arc::new(trivial_combine_fn),
+    //         0,
+    //         logger.clone(),
+    //     );
+    //
+    //     let mut slot = MockScpSlot::<V>::new();
+    //     slot.expect_propose_values().times(1).return_const(Ok(None));
+    //     // TODO
+    //     node.current_slot = Box::new(slot);
+    //
+    //     let values = btreeset!["a", "b", "c"];
+    //     let _res = node.propose_values(values);
+    // }
 
     #[test_with_logger]
     /// Steps through a sequence of messages that allow a two-node network to reach consensus.

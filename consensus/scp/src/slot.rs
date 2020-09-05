@@ -51,6 +51,12 @@ pub trait ScpSlot<V: Value>: Send {
     /// Get metrics about the slot.
     fn get_metrics(&self) -> SlotMetrics;
 
+    /// The slot index.
+    fn get_index(&self) -> SlotIndex;
+
+    /// Last message sent by this node, if any.
+    fn get_last_message_sent(&self) -> Option<Msg<V>>;
+
     /// Processes any timeouts that may have occurred.
     fn process_timeouts(&mut self) -> Vec<Msg<V>>;
 
@@ -58,7 +64,10 @@ pub trait ScpSlot<V: Value>: Send {
     fn propose_values(&mut self, values: &BTreeSet<V>) -> Result<Option<Msg<V>>, String>;
 
     /// Handles an incoming message from a peer.
-    fn handle(&mut self, msg: &Msg<V>) -> Result<Option<Msg<V>>, String>;
+    fn handle_message(&mut self, msg: &Msg<V>) -> Result<Option<Msg<V>>, String>;
+
+    /// Handle incoming messages from peers. Messages for other slots are ignored.
+    fn handle_messages(&mut self, msgs: &[Msg<V>]) -> Result<Option<Msg<V>>, String>;
 
     /// Additional debug info, e.g. a JSON representation of the Slot's state.
     fn get_debug_snapshot(&self) -> String;
@@ -185,6 +194,15 @@ impl<V: Value, ValidationError: Display> ScpSlot<V> for Slot<V, ValidationError>
             cur_nomination_round: self.nominate_round,
             bN: self.B.N,
         }
+    }
+
+    fn get_index(&self) -> u64 {
+        self.slot_index
+    }
+
+    /// Last message sent by this node, if any.
+    fn get_last_message_sent(&self) -> Option<Msg<V>> {
+        self.last_sent_msg.clone()
     }
 
     /// Processes any timeouts that may have occurred.

@@ -69,6 +69,8 @@ impl ByzantineLedger {
         let (sender, receiver) =
             mc_util_metered_channel::unbounded(&counters::BYZANTINE_LEDGER_MESSAGE_QUEUE_SIZE);
 
+        let current_slot_index = ledger.num_blocks().unwrap();
+
         let scp_node = {
             let tx_manager_validate = tx_manager.clone();
             let tx_manager_combine = tx_manager.clone();
@@ -77,6 +79,7 @@ impl ByzantineLedger {
                 quorum_set.clone(),
                 Arc::new(move |tx_hash| tx_manager_validate.validate(tx_hash)),
                 Arc::new(move |tx_hashes| tx_manager_combine.combine(tx_hashes)),
+                current_slot_index,
                 logger.clone(),
             )
         };

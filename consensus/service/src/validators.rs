@@ -160,7 +160,6 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
 #[cfg(test)]
 pub mod well_formed_tests {
     use super::*;
-
     use mc_ledger_db::{Error as LedgerError, MockLedger};
 
     #[test]
