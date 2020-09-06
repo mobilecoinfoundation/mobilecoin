@@ -91,7 +91,7 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManagerImpl<E
         let (well_formed_encrypted_tx, well_formed_tx_context) = self.enclave.tx_is_well_formed(
             tx_context.locally_encrypted_tx,
             current_block_index,
-            highest_index_proofs.clone(),
+            highest_index_proofs,
         )?;
 
         Ok(CacheEntry {
