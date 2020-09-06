@@ -347,6 +347,7 @@ mod tests {
     use mc_consensus_enclave_mock::{
         ConsensusServiceMockEnclave, Error as EnclaveError, MockConsensusEnclave,
     };
+    use mc_crypto_keys::{Ed25519Public, Ed25519Signature};
     use mc_ledger_db::Ledger;
     use mc_transaction_core::validation::TransactionValidationError;
     use mc_transaction_core_test_utils::{
@@ -719,6 +720,96 @@ mod tests {
     }
 
     // TODO: tx_hashed_to_block should provide correct proofs for highest indices
+
+    #[test_with_logger]
+    // Should return correct block when all transactions are in the cache.
+    fn test_hashes_to_block_ok(logger: Logger) {
+        let tx_hashes = vec![TxHash([7u8; 32]), TxHash([44u8; 32]), TxHash([3u8; 32])];
+        let parent_block = Block::new_origin_block(&vec![]);
+
+        let mut mock_untrusted = MockUntrustedInterfaces::new();
+
+        let highest_index_proofs = vec![
+            TxOutMembershipProof::new(1, 2, vec![]),
+            TxOutMembershipProof::new(3, 4, vec![]),
+        ];
+        // Should get "highest index proofs" once per transaction.
+        mock_untrusted
+            .expect_get_tx_out_proof_of_memberships()
+            .times(tx_hashes.len())
+            .return_const(Ok(highest_index_proofs));
+
+        let mut mock_enclave = MockConsensusEnclave::new();
+        let expected_block = Block::new_origin_block(&vec![]);
+        let expected_block_contents = BlockContents::new(vec![], vec![]);
+        // The enclave does not set the signed_at field.
+        let expected_block_signature =
+            BlockSignature::new(Ed25519Signature::default(), Ed25519Public::default(), 0);
+
+        mock_enclave.expect_form_block().times(1).return_const(Ok((
+            expected_block.clone(),
+            expected_block_contents.clone(),
+            expected_block_signature.clone(),
+        )));
+
+        let tx_manager = TxManagerImpl::new(mock_enclave, mock_untrusted, logger);
+
+        // All transactions must be in the cache.
+        for tx_hash in &tx_hashes {
+            let cache_entry = CacheEntry {
+                encrypted_tx: Default::default(),
+                context: Arc::new(Default::default()),
+            };
+            tx_manager.lock_cache().insert(*tx_hash, cache_entry);
+        }
+
+        match tx_manager.tx_hashes_to_block(&tx_hashes, &parent_block) {
+            Ok((block, block_contents, block_signature)) => {
+                assert_eq!(block, expected_block);
+                assert_eq!(block_contents, expected_block_contents);
+                // The signed_at field of the signature should be non-zero.
+                assert!(block_signature.signed_at() > 0);
+            }
+            Err(e) => panic!("Unexpected error {:?}", e),
+        }
+    }
+
+    #[test_with_logger]
+    // Should return TxManagerError::NotInCache if any transactions are not in the cache.
+    fn test_hashes_to_block_missing_hashes(logger: Logger) {
+        let tx_manager = TxManagerImpl::new(
+            MockConsensusEnclave::new(),
+            MockUntrustedInterfaces::new(),
+            logger,
+        );
+
+        let mut tx_hashes = vec![TxHash([7u8; 32]), TxHash([44u8; 32]), TxHash([3u8; 32])];
+        let parent_block = Block::new_origin_block(&vec![]);
+
+        // Add three transactions to the cache.
+        for tx_hash in &tx_hashes {
+            let cache_entry = CacheEntry {
+                encrypted_tx: Default::default(),
+                context: Arc::new(Default::default()),
+            };
+            tx_manager.lock_cache().insert(*tx_hash, cache_entry);
+        }
+
+        // This transaction is not in the cache.
+        let not_in_cache = TxHash([66u8; 32]);
+        tx_hashes.insert(2, not_in_cache.clone());
+
+        match tx_manager.tx_hashes_to_block(&tx_hashes, &parent_block) {
+            Ok((_block, _block_contents, _block_signature)) => {
+                panic!();
+            }
+            Err(TxManagerError::NotInCache(hashes)) => {
+                // This is expected.
+                assert_eq!(hashes, vec![not_in_cache]);
+            }
+            Err(e) => panic!("Unexpected error {:?}", e),
+        }
+    }
 
     #[test_with_logger]
     fn test_hashes_to_block(logger: Logger) {
