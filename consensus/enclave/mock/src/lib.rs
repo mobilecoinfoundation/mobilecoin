@@ -21,8 +21,10 @@ use mc_crypto_keys::{Ed25519Pair, Ed25519Public, X25519EphemeralPrivate, X25519P
 use mc_crypto_rand::McRng;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
+    membership_proofs::compute_implied_merkle_root,
     ring_signature::KeyImage,
     tx::{Tx, TxOut, TxOutMembershipProof},
+    validation::TransactionValidationError,
     Block, BlockContents, BlockSignature, BLOCK_VERSION,
 };
 use mc_util_from_random::FromRandom;
@@ -191,10 +193,8 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
             )?;
 
             for proof in proofs {
-                let root_element = proof
-                    .elements
-                    .last() // The last element contains the root hash.
-                    .ok_or(Error::InvalidLocalMembershipProof)?;
+                let root_element = compute_implied_merkle_root(proof)
+                    .map_err(|_e| TransactionValidationError::InvalidLedgerContext)?;
                 root_elements.push(root_element.clone());
             }
         }
