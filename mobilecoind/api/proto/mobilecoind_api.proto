@@ -27,11 +27,13 @@ service MobilecoindAPI {
     rpc GetAccountKey (GetAccountKeyRequest) returns (GetAccountKeyResponse) {}
     rpc GetPublicAddress (GetPublicAddressRequest) returns (GetPublicAddressResponse) {}
 
-    // QR-code
+    // b58 Codes
     rpc ReadRequestCode (ReadRequestCodeRequest) returns (ReadRequestCodeResponse) {}
     rpc GetRequestCode (GetRequestCodeRequest) returns (GetRequestCodeResponse) {}
     rpc ReadTransferCode (ReadTransferCodeRequest) returns (ReadTransferCodeResponse) {}
     rpc GetTransferCode (GetTransferCodeRequest) returns (GetTransferCodeResponse) {}
+    rpc ReadAddressCode (ReadAddressCodeRequest) returns (ReadAddressCodeResponse) {}
+    rpc GetAddressCode (GetAddressCodeRequest) returns (GetAddressCodeResponse) {}
 
     // Txs
     rpc GenerateTx (GenerateTxRequest) returns (GenerateTxResponse) {}
@@ -311,11 +313,10 @@ message GetPublicAddressResponse {
 }
 
 //
-// QR-code
+// b58 Codes
 //
 
-// Decode a base-58 encoded "MobileCoin Request Code" into receiver/value/memo.
-// This code provides a mobile client with everything required to construct a payment, allowing funds to be deposited to an exchange or paid to a merchant by scanning a QR code.
+// Decode a base-58 encoded "MobileCoin Request Code" into receiver's public address, value, and memo.
 message ReadRequestCodeRequest {
     string b58_code = 1;
 }
@@ -325,7 +326,7 @@ message ReadRequestCodeResponse {
     string memo = 3;
 }
 
-// Encode receiver/value/memo into a base-58 "MobileCoin Request Code".
+// Encode receiver's public address, value, and memo into a base-58 "MobileCoin Request Code".
 message GetRequestCodeRequest {
     external.PublicAddress receiver = 1;
     uint64 value = 2;
@@ -336,7 +337,7 @@ message GetRequestCodeResponse {
 }
 
 // Decode a base-58 encoded "MobileCoin Transfer Code" into entropy/tx_public_key/memo.
-// This code provides a mobile client with everything required to construct a self-payment, allowing funds to be withdrawn from an exchange or ATM by scanning a QR code.
+// This code provides a mobile client with everything required to construct a self-payment, allowing funds to be withdrawn from a gift card.
 message ReadTransferCodeRequest {
     string b58_code = 1;
 }
@@ -354,6 +355,22 @@ message GetTransferCodeRequest {
     string memo = 3;
 }
 message GetTransferCodeResponse {
+    string b58_code = 1;
+}
+
+// Decode a base-58 encoded "MobileCoin Address Code" into the receiver's public address.
+message ReadAddressCodeRequest {
+    string b58_code = 1;
+}
+message ReadAddressCodeResponse {
+    external.PublicAddress receiver = 1;
+}
+
+// Encode receiver's public address into a base-58 "MobileCoin Address Code".
+message GetAddressCodeRequest {
+    external.PublicAddress receiver = 1;
+}
+message GetAddressCodeResponse {
     string b58_code = 1;
 }
 
@@ -407,7 +424,7 @@ message GenerateOptimizationTxResponse {
     TxProposal tx_proposal = 1;
 }
 
-// Generate a transaction that can be used for a "MobileCoin Transfer Code" QR.
+// Generate a transaction that can be used for a "MobileCoin Transfer Code"
 message GenerateTransferCodeTxRequest {
     bytes sender_monitor_id = 1;
     uint64 change_subaddress = 2;
