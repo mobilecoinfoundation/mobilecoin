@@ -529,7 +529,13 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         )
         .map_err(|err| rpc_internal_error("PrintableWrapper_b58_decode", err, &self.logger))?;
 
-        if request_wrapper.has_public_address() {
+        // An address code could be a public address or a payment request
+        if request_wrapper.has_payment_request() {
+            let payment_request = request_wrapper.get_payment_request();
+            let mut response = mc_mobilecoind_api::ReadAddressCodeResponse::new();
+            response.set_receiver(payment_request.get_public_address().clone());
+            Ok(response)
+        } else if request_wrapper.has_public_address() {
             let public_address = request_wrapper.get_public_address();
             let mut response = mc_mobilecoind_api::ReadAddressCodeResponse::new();
             response.set_receiver(public_address.clone());
@@ -537,7 +543,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         } else {
             Err(RpcStatus::new(
                 RpcStatusCode::INVALID_ARGUMENT,
-                Some("invalid address code".to_string()),
+                Some("Neither payment request nor public address".to_string()),
             ))
         }
     }
@@ -3339,15 +3345,42 @@ mod test {
         let (_ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
 
-        // Random receiver address.
-        let receiver = AccountKey::random(&mut rng).default_subaddress();
-
         {
+            // Random receiver address.
+            let receiver = AccountKey::random(&mut rng).default_subaddress();
+
             // Generate a request code
             let mut request = mc_mobilecoind_api::GetAddressCodeRequest::new();
             request.set_receiver(mc_api::external::PublicAddress::from(&receiver));
 
             let response = client.get_address_code(&request).unwrap();
+            let b58_code = response.get_b58_code();
+
+            // Attempt to decode it.
+            let mut request = mc_mobilecoind_api::ReadAddressCodeRequest::new();
+            request.set_b58_code(b58_code.to_owned());
+
+            let response = client.read_address_code(&request).unwrap();
+
+            // Check that input equals output.
+            assert_eq!(
+                PublicAddress::try_from(response.get_receiver()).unwrap(),
+                receiver
+            );
+        }
+
+        // Also accept a payment request code as an address code
+        {
+            // Random receiver address.
+            let receiver = AccountKey::random(&mut rng).default_subaddress();
+
+            // Generate a request code
+            let mut request = mc_mobilecoind_api::GetRequestCodeRequest::new();
+            request.set_receiver(mc_api::external::PublicAddress::from(&receiver));
+            request.set_value(1234567890);
+            request.set_memo("hello there".to_owned());
+
+            let response = client.get_request_code(&request).unwrap();
             let b58_code = response.get_b58_code();
 
             // Attempt to decode it.
