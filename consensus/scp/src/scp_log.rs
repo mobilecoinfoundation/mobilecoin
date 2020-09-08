@@ -335,3 +335,48 @@ impl<V: serde::de::DeserializeOwned + Value> Iterator for ScpLogReader<V> {
         Some(data)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{node::MockScpNode, scp_log::LoggingScpNode};
+    use mc_common::logger::{test_with_logger, Logger};
+    use std::fs::create_dir_all;
+    use tempdir::TempDir;
+
+    #[test_with_logger]
+    fn test_new(logger: Logger) {
+        // Should write output under test/debug_output.
+        let dir = TempDir::new("test").unwrap();
+        let out_path = dir.path().join("debug_output");
+
+        let node = MockScpNode::<&'static str>::new();
+        let _logging_scp_node = LoggingScpNode::new(node, out_path.clone(), logger).unwrap();
+
+        // test/debug_output/cur-slot directory should exist.
+        let cur_slot = out_path.join("cur-slot");
+        assert!(cur_slot.as_path().exists());
+
+        // test/debug_output/slot-states directory should exist.
+        let slot_states = out_path.join("slot-states");
+        assert!(slot_states.as_path().exists());
+    }
+
+    #[test_with_logger]
+    // Should not panic if `out_path` exists. This allows a node to restart.
+    fn test_new_outpath_exists(logger: Logger) {
+        // Should write output under test/debug_output.
+        let dir = TempDir::new("test").unwrap();
+        let out_path = dir.path().join("debug_output");
+
+        let cur_slot = out_path.clone().join("cur-slot");
+        create_dir_all(cur_slot.as_path()).unwrap();
+
+        let slot_states = out_path.clone().join("slot-states");
+        create_dir_all(slot_states.as_path()).unwrap();
+
+        assert!(out_path.exists());
+
+        let node = MockScpNode::<&'static str>::new();
+        let _logging_scp_node = LoggingScpNode::new(node, out_path.clone(), logger).unwrap();
+    }
+}
