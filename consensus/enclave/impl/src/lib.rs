@@ -44,9 +44,11 @@ use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResu
 use mc_transaction_core::{
     amount::Amount,
     constants::{FEE_SPEND_PUBLIC_KEY, FEE_VIEW_PUBLIC_KEY},
+    membership_proofs::compute_implied_merkle_root,
     onetime_keys::{create_onetime_public_key, create_shared_secret, create_tx_public_key},
     ring_signature::{KeyImage, Scalar},
     tx::{Tx, TxOut, TxOutMembershipProof},
+    validation::TransactionValidationError,
     Block, BlockContents, BlockSignature, BLOCK_VERSION,
 };
 use prost::Message;
@@ -305,10 +307,8 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         // came from the same ledger state. This can be checked by requiring all proofs to have the same root hash.
         let mut root_elements = BTreeSet::new();
         for proof in &proofs {
-            let root_element = proof
-                .elements
-                .last() // The last element contains the root hash.
-                .ok_or(Error::InvalidLocalMembershipProof)?;
+            let root_element = compute_implied_merkle_root(proof)
+                .map_err(|_e| TransactionValidationError::InvalidLedgerContext)?;
             root_elements.insert(root_element);
         }
         if root_elements.len() != 1 {
@@ -396,11 +396,9 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             )?;
 
             for proof in proofs {
-                let root_element = proof
-                    .elements
-                    .last() // The last element contains the root hash.
-                    .ok_or(Error::InvalidLocalMembershipProof)?;
-                root_elements.push(root_element.clone());
+                let root_element = compute_implied_merkle_root(proof)
+                    .map_err(|_e| TransactionValidationError::InvalidLedgerContext)?;
+                root_elements.push(root_element);
             }
         }
 
@@ -687,9 +685,7 @@ mod tests {
 
         assert_eq!(
             enclave.tx_is_well_formed(locally_encrypted_tx.clone(), block_index, bad_proofs,),
-            Err(Error::MalformedTx(
-                TransactionValidationError::InvalidTxOutMembershipProof
-            ))
+            Err(Error::InvalidLocalMembershipProof)
         );
 
         // Corrupt the encrypted data.
@@ -720,11 +716,12 @@ mod tests {
         let mut membership_proofs = ledger.get_tx_out_proof_of_memberships(&indexes).unwrap();
         // Modify one of the proofs to have a different root hash.
         let inconsistent_proof = &mut membership_proofs[7];
+        // TODO: check this
         let root_element = inconsistent_proof.elements.last_mut().unwrap();
         root_element.hash = TxOutMembershipHash::from([33u8; 32]);
 
         // The membership proofs supplied by the server are checked before this is decrypted and
-        // validated, so it can just be contstructed from an empty vector of bytes.
+        // validated, so it can just be constructed from an empty vector of bytes.
         let locally_encrypted_tx = LocallyEncryptedTx(Vec::new());
         let block_index = 77;
         let result =
