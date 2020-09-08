@@ -9,13 +9,12 @@ use mc_common::{
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeSet, VecDeque},
-    fs::{create_dir_all, read, read_dir, remove_dir_all, remove_file, File},
+    fs::{create_dir_all, read, read_dir, remove_dir_all, remove_file, rename, File},
     io::Write,
     marker::PhantomData,
     path::PathBuf,
+    time::{Instant, SystemTime},
 };
-
-use std::time::Instant;
 
 /// Maximum number of slot state files to keep.
 const MAX_SLOT_STATE_FILES: usize = 10;
@@ -85,7 +84,35 @@ impl<V: Value, N: ScpNode<V>> LoggingScpNode<V, N> {
     /// Create a new LoggingScpNode.
     pub fn new(node: N, out_path: PathBuf, logger: Logger) -> Result<Self, String> {
         if out_path.exists() {
-            return Err(format!("{:?} already exists, refusing to re-use", out_path));
+            let last_path_element = out_path
+                .file_name()
+                .and_then(|s| s.to_str())
+                .ok_or_else(|| format!("{:?} has no file name element", out_path))?;
+
+            let unix_timestamp = SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .map_err(|e| format!("Failed getting unix timestamp: {:?}", e))?;
+
+            let mut renamed_out_path = out_path.clone();
+            renamed_out_path.set_file_name(format!(
+                "{}.{}",
+                last_path_element,
+                unix_timestamp.as_secs()
+            ));
+
+            log::info!(
+                logger,
+                "{:?} already exists, renaming it to {:?}",
+                out_path,
+                renamed_out_path
+            );
+
+            rename(&out_path, &renamed_out_path).map_err(|e| {
+                format!(
+                    "Failed renaming {:?} to {:?}: {:?}",
+                    out_path, renamed_out_path, e
+                )
+            })?;
         }
 
         let mut cur_slot_out_path = out_path.clone();
