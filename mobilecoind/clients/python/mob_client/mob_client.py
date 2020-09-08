@@ -130,6 +130,19 @@ class mob_client:
             monitor_id=monitor_id, subaddress_index=int(subaddress_index))
         return self.stub.GetPublicAddress(request).public_address
 
+    def read_address_code(self, b58_code):
+        """ Read a b58 encoded public address
+        """
+        request = api.ReadAddressCodeRequest(b58_code=b58_code)
+        response = self.stub.ReadAddressCode(request)
+        return response.receiver
+
+    def get_address_code(self, receiver):
+        """ Create a b58 encoding for a public address
+        """
+        request = api.GetAddressCodeRequest(receiver=receiver)
+        return self.stub.GetAddressCode(request).b58_code
+
     def read_request_code(self, b58_code):
         """ Process a b58 request code to recover content.
         """
