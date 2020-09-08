@@ -6,16 +6,19 @@
 //! 1) "Well formed"-ness - A transaction is considered "well formed" if all the data in it that is
 //!    not affected by future changes to the ledger is correct. This includes checks like
 //!    inputs/outputs counts, range proofs, signature validation, membership proofs, etc.
-//!    This check should only happen once per transaction since if it passes, it is expected to
-//!    always pass again (and if it doesn't, then the transaction should be discarded).
-//! 2) "Is valid [to add to the ledger]" - This checks whether a transaction can be safely appended
-//!    to a ledger in it's current state.
+//!    A transaction that is well-formed remains well-formed if additional transactions are
+//!    appended to the ledger. However, a transaction could transition from not well-formed to well-formed:
+//!    for example, the transaction may include inputs that are not yet in the local ledger because
+//!    the local ledger is out of sync with the consensus ledger.
+//!
+//! 2) "Is valid [to add to the ledger]" - This checks whether a **single** transaction can be safely
+//!  appended to a ledger in it's current state. A valid transaction must also be well-formed.
 //!
 //! This definition differs from what the `mc_transaction_core::validation` module - the check provided by
 //! it is actually the "Is well formed" check, and might be renamed in the future to match this.
 
 use crate::tx_manager::UntrustedInterfaces as TxManagerUntrustedInterfaces;
-use mc_consensus_enclave::WellFormedTxContext;
+use mc_consensus_enclave::{TxContext, WellFormedTxContext};
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_ledger_db::Ledger;
 use mc_transaction_core::{
@@ -37,72 +40,45 @@ impl<L: Ledger + Sync> DefaultTxManagerUntrustedInterfaces<L> {
 }
 
 impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntrustedInterfaces<L> {
-    /// Performs the untrusted part of the well-formed check.
-    /// Returns current block index and membership proofs to be used by
-    /// the in-enclave well-formed check on success.
+    /// Performs **only** the non-enclave part of the well-formed check.
+    ///
+    /// Returns the local ledger's block index and membership proofs for each highest index.
     fn well_formed_check(
         &self,
-        highest_indices: &[u64],
-        key_images: &[KeyImage],
-        output_public_keys: &[CompressedRistrettoPublic],
+        tx_context: &TxContext,
     ) -> TransactionValidationResult<(u64, Vec<TxOutMembershipProof>)> {
-        // The `key_images` must not have already been spent.
-        // Note that according to the definition at the top of this file, key image check is not part
-        // of the well-formedness check, but we do it anyway to more quickly get rid of transactions
-        // that are obviously unusable.
-        if key_images
-            .iter()
-            .any(|key_image| self.ledger.contains_key_image(key_image).unwrap_or(true))
-        {
-            // At least one key image was spent, or the ledger returned an error.
-            return Err(TransactionValidationError::ContainsSpentKeyImage);
-        }
-
-        // Output public keys should not exist in the ledger.
-        let contains_existing_public_key = output_public_keys.iter().any(|public_key| {
-            self.ledger
-                .contains_tx_out_public_key(public_key)
-                .unwrap_or(true)
-        });
-        if contains_existing_public_key {
-            // At least one public key is already in the ledger, or the ledger returned an error.
-            return Err(TransactionValidationError::ContainsExistingOutputPublicKey);
-        }
-
-        let membership_proofs = self
-            .ledger
-            .get_tx_out_proof_of_memberships(highest_indices)
-            .map_err(|e| TransactionValidationError::Ledger(e.to_string()))?;
+        // The transaction's membership proofs must reference data contained in the ledger.
+        // This check could fail if the local ledger is behind the network's consensus ledger.
+        let membership_proofs =
+            self.get_tx_out_proof_of_memberships(&tx_context.highest_indices)?;
 
         // Note: It is possible that the proofs above are obtained for a different block index as a
         // new block could be written between getting the proofs and the call to num_blocks().
-        // However, this has no effect on validation as the block index is only used for tombstone
-        // checking.
-        let current_block_index = self
+        let num_blocks = self
             .ledger
             .num_blocks()
             .map_err(|e| TransactionValidationError::Ledger(e.to_string()))?;
 
-        Ok((current_block_index, membership_proofs))
+        Ok((num_blocks - 1, membership_proofs))
     }
 
     /// Checks if a transaction is valid (see definition at top of this file).
     fn is_valid(&self, context: Arc<WellFormedTxContext>) -> TransactionValidationResult<()> {
-        // If the tombstone block has been exceeded, this tx is no longer valid to append to the
-        // ledger.
         let current_block_index = self
             .ledger
             .num_blocks()
             .map_err(|e| TransactionValidationError::Ledger(e.to_string()))?;
 
+        // The transaction must not have expired, and the tombstone block must not be too far in the future.
         validate_tombstone(current_block_index, context.tombstone_block())?;
 
         // The `key_images` must not have already been spent.
-        let key_images = context.key_images();
-        if key_images
+        let contains_spent_key_image = context
+            .key_images()
             .iter()
-            .any(|key_image| self.ledger.contains_key_image(key_image).unwrap_or(true))
-        {
+            .any(|key_image| self.ledger.contains_key_image(key_image).unwrap_or(true));
+
+        if contains_spent_key_image {
             // At least one key image was spent, or the ledger returned an error.
             return Err(TransactionValidationError::ContainsSpentKeyImage);
         }
@@ -118,15 +94,15 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
             return Err(TransactionValidationError::ContainsExistingOutputPublicKey);
         }
 
-        // `tx` is safe to append.
+        // The transaction is valid w.r.t. the current ledger state.
         Ok(())
     }
 
     /// Combines a set of "candidate values" into a "composite value".
-    /// This assumes all values are well-formed and safe to append to the ledger individually.
+    /// This assumes all values are well-formed and valid w.r.t the current ledger.
     ///
     /// # Arguments
-    /// * `tx_contexts` - "Candidate" transactions. Each is assumed to be individually valid.
+    /// * `tx_contexts` - "Candidate" transactions. Each must be well-formed and valid.
     /// * `max_elements` - Maximum number of elements to return.
     ///
     /// Returns a bounded, deterministically-ordered list of transactions that are safe to append to the ledger.
@@ -170,519 +146,322 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
 
         allowed_hashes
     }
+
+    fn get_tx_out_proof_of_memberships(
+        &self,
+        indexes: &[u64],
+    ) -> TransactionValidationResult<Vec<TxOutMembershipProof>> {
+        self.ledger
+            .get_tx_out_proof_of_memberships(indexes)
+            .map_err(|e| TransactionValidationError::Ledger(e.to_string()))
+    }
 }
 
 #[cfg(test)]
 pub mod well_formed_tests {
     use super::*;
-    use mc_common::logger::{bench_with_logger, test_with_logger, Logger};
-    use mc_ledger_db::LedgerDB;
-    use mc_transaction_core::{
-        constants::MAX_TOMBSTONE_BLOCKS, ring_signature::KeyImage, tx::Tx,
-        validation::TransactionValidationError,
-    };
-    use mc_transaction_core_test_utils::{
-        create_ledger, create_transaction, initialize_ledger, AccountKey,
-    };
-    use rand::SeedableRng;
-    use rand_hc::Hc128Rng;
-    use test::Bencher;
+    use mc_ledger_db::{Error as LedgerError, MockLedger};
 
-    fn is_well_formed(tx: &Tx, ledger: &LedgerDB) -> TransactionValidationResult<()> {
-        let mut rng = Hc128Rng::from_seed([77u8; 32]);
-
-        let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger.clone());
-
-        let key_images: Vec<KeyImage> = tx.key_images();
-        let membership_proof_highest_indices = tx.get_membership_proof_highest_indices();
-        let output_public_keys = tx.output_public_keys();
-
-        let (cur_block_index, membership_proofs) = untrusted.well_formed_check(
-            &membership_proof_highest_indices[..],
-            &key_images[..],
-            &output_public_keys[..],
-        )?;
-
-        mc_transaction_core::validation::validate(
-            &tx,
-            cur_block_index,
-            &membership_proofs,
-            &mut rng,
-        )
-    }
-
-    #[test_with_logger]
+    #[test]
     // `is_well_formed` should accept a well-formed transaction.
-    fn is_well_formed_accepts_well_formed_transaction(_logger: Logger) {
-        let mut rng = Hc128Rng::from_seed([77u8; 32]);
+    fn is_well_formed_accepts_well_formed_transaction() {
+        let mut ledger = MockLedger::new();
 
-        let sender = AccountKey::random(&mut rng);
-        let recipient = AccountKey::random(&mut rng);
+        // Untrusted should request a proof of membership for each highest index.
+        let highest_index_proofs = vec![
+            TxOutMembershipProof::new(1, 1, vec![]),
+            TxOutMembershipProof::new(1, 1, vec![]),
+            TxOutMembershipProof::new(1, 1, vec![]),
+        ];
+        ledger
+            .expect_get_tx_out_proof_of_memberships()
+            .times(1)
+            .return_const(Ok(highest_index_proofs));
 
-        let mut ledger = create_ledger();
-        let n_blocks = 3;
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
+        // Untrusted should request num_blocks.
+        let num_blocks = 53;
+        ledger
+            .expect_num_blocks()
+            .times(1)
+            .return_const(Ok(num_blocks));
 
-        // Choose a TxOut to spend. Only the TxOut in the last block is unspent.
-        let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
-        let tx_out = block_contents.outputs[0].clone();
+        let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger);
 
-        let tx = create_transaction(
-            &mut ledger,
-            &tx_out,
-            &sender,
-            &recipient.default_subaddress(),
-            n_blocks + 1,
-            &mut rng,
-        );
+        let tx_context = TxContext {
+            locally_encrypted_tx: Default::default(),
+            tx_hash: Default::default(),
+            highest_indices: vec![33, 44, 33],
+            key_images: vec![KeyImage::default(), KeyImage::default()],
+            output_public_keys: vec![CompressedRistrettoPublic::default()],
+        };
 
-        assert_eq!(is_well_formed(&tx, &ledger), Ok(()));
-    }
-
-    #[test_with_logger]
-    /// `is_well_formed` should reject a transaction that contains an invalid signature.
-    fn is_well_formed_rejects_invalid_signature(_logger: Logger) {
-        let mut rng = Hc128Rng::from_seed([78u8; 32]);
-
-        let sender = AccountKey::random(&mut rng);
-        let recipient = AccountKey::random(&mut rng);
-
-        let mut ledger = create_ledger();
-        let n_blocks = 3;
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
-
-        // Choose a TxOut to spend. Only the output of the last block is unspent.
-        let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
-        let tx_out = block_contents.outputs[0].clone();
-
-        let mut tx = create_transaction(
-            &mut ledger,
-            &tx_out,
-            &sender,
-            &recipient.default_subaddress(),
-            n_blocks + 1,
-            &mut rng,
-        );
-
-        assert_eq!(is_well_formed(&tx, &ledger), Ok(()));
-
-        // Corrupt the signature.
-        tx.signature.ring_signatures[0].key_image = KeyImage::from(77);
-
-        match is_well_formed(&tx, &ledger) {
-            Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
-            Err(e) => {
-                panic!(format!("Unexpected error {}", e));
+        match untrusted.well_formed_check(&tx_context) {
+            Ok((current_block_index, highest_index_proofs)) => {
+                assert_eq!(current_block_index, num_blocks - 1);
+                assert_eq!(highest_index_proofs.len(), 3)
             }
-            Ok(()) => panic!(),
+            Err(e) => panic!("Unexpected error {}", e),
         }
     }
 
-    #[test_with_logger]
-    /// `is_well_formed` should reject a transaction that contains a key image that is in the ledger.
-    fn is_well_formed_rejects_double_spend(_logger: Logger) {
-        let mut rng = Hc128Rng::from_seed([79u8; 32]);
+    #[test]
+    /// `is_well_formed` should reject a transaction that contains a proof-of-membership with
+    /// highest index outside the ledger, i.e. a transaction "from the future".
+    fn is_well_formed_rejects_excessive_highest_index() {
+        // The ledger cannot provide membership proofs for highest indices.
+        let mut ledger = MockLedger::new();
+        ledger
+            .expect_get_tx_out_proof_of_memberships()
+            .times(1)
+            .return_const(Err(LedgerError::CapacityExceeded));
 
-        let sender = AccountKey::random(&mut rng);
-        let recipient = AccountKey::random(&mut rng);
+        let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger);
 
-        let mut ledger = create_ledger();
-        let n_blocks = 3;
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
+        // This tx_context contains highest_indices that exceed the number of TxOuts in the ledger.
+        let mut tx_context = TxContext::default();
+        tx_context.highest_indices = vec![99, 10002, 445];
 
-        // Choose a TxOut to re-spend. All TxOuts except the output of the last block have been spent.
-        let block_contents = ledger.get_block_contents(n_blocks - 2).unwrap();
-        let tx_out = block_contents.outputs[0].clone();
-
-        let tx = create_transaction(
-            &mut ledger,
-            &tx_out,
-            &sender,
-            &recipient.default_subaddress(),
-            n_blocks + 1,
-            &mut rng,
-        );
-
-        assert_eq!(
-            Err(TransactionValidationError::ContainsSpentKeyImage),
-            is_well_formed(&tx, &ledger)
-        );
+        match untrusted.well_formed_check(&tx_context) {
+            Ok((_cur_block_index, _membership_proofs)) => {
+                panic!();
+            }
+            Err(e) => {
+                // This is expected.
+                assert_eq!(
+                    e,
+                    TransactionValidationError::Ledger("CapacityExceeded".to_string())
+                );
+            }
+        }
     }
-
-    #[test_with_logger]
-    /// `is_well_formed` should reject a transaction that contains an output public key that is in the ledger.
-    fn is_well_formed_rejects_duplicate_output_public_key(_logger: Logger) {
-        let mut rng = Hc128Rng::from_seed([79u8; 32]);
-
-        let sender = AccountKey::random(&mut rng);
-        let recipient = AccountKey::random(&mut rng);
-
-        let mut ledger = create_ledger();
-        let n_blocks = 3;
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
-
-        // Choose a TxOut to spend. Only the TxOut in the last block is unspent.
-        let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
-        let tx_out = block_contents.outputs[0].clone();
-
-        let mut tx = create_transaction(
-            &mut ledger,
-            &tx_out,
-            &sender,
-            &recipient.default_subaddress(),
-            n_blocks + 1,
-            &mut rng,
-        );
-
-        // Change the public key so that it is no longer unique.
-        tx.prefix.outputs[0].public_key = tx_out.public_key.clone();
-
-        assert_eq!(
-            Err(TransactionValidationError::ContainsExistingOutputPublicKey),
-            is_well_formed(&tx, &ledger)
-        );
-    }
-
-    #[test_with_logger]
-    /// `is_well_formed` should reject a transaction that contains an invalid proof-of-membership.
-    fn is_well_formed_rejects_missing_input(_logger: Logger) {
-        let mut rng = Hc128Rng::from_seed([77u8; 32]);
-
-        let sender = AccountKey::random(&mut rng);
-        let recipient = AccountKey::random(&mut rng);
-
-        // Create a TxOut that contains an invalid proof-of-membership for some TxOut.
-        //
-        // An easy way to do this is to initialize a second ledger with different contents, and
-        // create a transaction that is valid with respect to that ledger.
-        let tx = {
-            let mut bizarro_ledger = create_ledger();
-            let n_blocks = 3;
-            initialize_ledger(&mut bizarro_ledger, n_blocks, &sender, &mut rng);
-
-            // Choose a TxOut to spend. Only the TxOut in the last block is unspent.
-            let block_contents = bizarro_ledger.get_block_contents(n_blocks - 1).unwrap();
-            let tx_out = block_contents.outputs[0].clone();
-
-            create_transaction(
-                &mut bizarro_ledger,
-                &tx_out,
-                &sender,
-                &recipient.default_subaddress(),
-                n_blocks + 1,
-                &mut rng,
-            )
-        };
-
-        // Create the "real" ledger.
-        let mut ledger = create_ledger();
-        let n_blocks = 3;
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
-
-        assert_eq!(
-            Err(TransactionValidationError::InvalidTxOutMembershipProof),
-            is_well_formed(&tx, &ledger)
-        );
-    }
-
-    #[test_with_logger]
-    /// `is_well_formed` should reject a transaction with a tombstone block that has been exceeded.
-    fn is_well_formed_rejects_past_tombstone_block(_logger: Logger) {
-        let mut rng = Hc128Rng::from_seed([79u8; 32]);
-
-        let sender = AccountKey::random(&mut rng);
-        let recipient = AccountKey::random(&mut rng);
-
-        let mut ledger = create_ledger();
-        let n_blocks = 3;
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
-
-        // Choose a TxOut to spend. Only the output of the last block is unspent.
-        let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
-        let tx_out = block_contents.outputs[0].clone();
-
-        let tx = create_transaction(
-            &mut ledger,
-            &tx_out,
-            &sender,
-            &recipient.default_subaddress(),
-            n_blocks,
-            &mut rng,
-        );
-        assert_eq!(
-            Err(TransactionValidationError::TombstoneBlockExceeded),
-            is_well_formed(&tx, &ledger)
-        );
-
-        let tx = create_transaction(
-            &mut ledger,
-            &tx_out,
-            &sender,
-            &recipient.default_subaddress(),
-            n_blocks - 1,
-            &mut rng,
-        );
-        assert_eq!(
-            Err(TransactionValidationError::TombstoneBlockExceeded),
-            is_well_formed(&tx, &ledger)
-        );
-
-        let tx = create_transaction(
-            &mut ledger,
-            &tx_out,
-            &sender,
-            &recipient.default_subaddress(),
-            0,
-            &mut rng,
-        );
-        assert_eq!(
-            Err(TransactionValidationError::TombstoneBlockExceeded),
-            is_well_formed(&tx, &ledger)
-        );
-    }
-
-    #[test_with_logger]
-    /// `is_well_formed` should reject a transaction with a tombstone block too far in the future.
-    fn is_well_formed_rejects_too_far_tombstone_block(_logger: Logger) {
-        let mut rng = Hc128Rng::from_seed([79u8; 32]);
-
-        let sender = AccountKey::random(&mut rng);
-        let recipient = AccountKey::random(&mut rng);
-
-        let mut ledger = create_ledger();
-        let n_blocks = 3;
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
-
-        // Choose a TxOut to spend. Only the output of the last block is unspent.
-        let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
-        let tx_out = block_contents.outputs[0].clone();
-
-        let tx = create_transaction(
-            &mut ledger,
-            &tx_out,
-            &sender,
-            &recipient.default_subaddress(),
-            n_blocks + MAX_TOMBSTONE_BLOCKS + 1,
-            &mut rng,
-        );
-        assert_eq!(
-            Err(TransactionValidationError::TombstoneBlockTooFar),
-            is_well_formed(&tx, &ledger)
-        );
-
-        let tx = create_transaction(
-            &mut ledger,
-            &tx_out,
-            &sender,
-            &recipient.default_subaddress(),
-            n_blocks + MAX_TOMBSTONE_BLOCKS,
-            &mut rng,
-        );
-        assert_eq!(Ok(()), is_well_formed(&tx, &ledger));
-    }
-
-    #[allow(soft_unstable)]
-    #[bench_with_logger]
-    #[ignore]
-    fn bench_is_well_formed(_logger: Logger, b: &mut Bencher) {
-        let mut rng = Hc128Rng::from_seed([79u8; 32]);
-
-        let sender = AccountKey::random(&mut rng);
-        let recipient = AccountKey::random(&mut rng);
-
-        let mut ledger = create_ledger();
-        let n_blocks = 3;
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
-
-        // Choose a TxOut to spend. Only the output of the last block is unspent.
-        let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
-        let tx_out = block_contents.outputs[0].clone();
-
-        let tx = create_transaction(
-            &mut ledger,
-            &tx_out,
-            &sender,
-            &recipient.default_subaddress(),
-            n_blocks + 10,
-            &mut rng,
-        );
-
-        b.iter(|| is_well_formed(&tx, &ledger).unwrap())
-    }
-
-    /*
-    #[bench]
-    #[ignore]
-    fn bench_is_well_formed_with_enclave(b: &mut Bencher) {
-        const ENCLAVE_FILE: &str = "../libconsensus-enclave.signed.so";
-        let enclave_path = env::current_exe()
-            .expect("Could not get the path of our executable")
-            .with_file_name(ENCLAVE_FILE);
-        let enclave = ConsensusServiceSgxEnclave::new(enclave_path);
-
-        let mut rng = Hc128Rng::from_seed([79u8; 32]);
-
-        let sender = AccountKey::random(&mut rng);
-        let recipient = AccountKey::random(&mut rng);
-
-        let mut ledger = create_ledger();
-        let n_blocks = 3;
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
-
-        // Choose a TxOut to spend. Only the output of the last block is unspent.
-        let mut transactions = ledger.get_transactions_by_block(n_blocks - 1).unwrap();
-        let tx_stored = transactions.pop().unwrap();
-        let tx_out = tx_stored.outputs[0].clone();
-
-        let tx = create_transaction(
-            &mut ledger,
-            &tx_out,
-            tx_stored.public_key,
-            0,
-            &sender,
-            recipient.default_subaddress(),
-            n_blocks + 10,
-            &mut rng,
-        );
-
-        b.iter(|| is_well_formed_with_enclave(&tx, &enclave, &ledger).unwrap())
-    }
-    */
 }
 
 #[cfg(test)]
 mod is_valid_tests {
     use super::*;
-    use mc_ledger_db::LedgerDB;
-    use mc_transaction_core::{tx::Tx, validation::TransactionValidationError};
-    use mc_transaction_core_test_utils::{
-        create_ledger, create_transaction, initialize_ledger, AccountKey,
+    use mc_ledger_db::{Error as LedgerError, MockLedger};
+    use mc_transaction_core::{
+        constants::MAX_TOMBSTONE_BLOCKS, validation::TransactionValidationError,
     };
-    use rand::SeedableRng;
-    use rand_hc::Hc128Rng;
 
-    fn is_valid(tx: &Tx, ledger: &LedgerDB) -> TransactionValidationResult<()> {
-        let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger.clone());
-        untrusted.is_valid(Arc::new(WellFormedTxContext::from(tx)))
+    #[test]
+    /// `is_valid` should accept a valid transaction.
+    fn is_valid_ok() {
+        // Number of blocks in the local ledger.
+        let num_blocks = 53;
+
+        let well_formed_tx_context = {
+            let key_images = vec![
+                KeyImage::default(),
+                KeyImage::default(),
+                KeyImage::default(),
+            ];
+
+            let output_public_keys = vec![
+                CompressedRistrettoPublic::default(),
+                CompressedRistrettoPublic::default(),
+            ];
+
+            WellFormedTxContext::new(
+                Default::default(),
+                Default::default(),
+                num_blocks + 17,
+                key_images,
+                vec![9, 10, 8],
+                output_public_keys,
+            )
+        };
+
+        // Mock the local ledger.
+        let mut ledger = MockLedger::new();
+
+        // Untrusted should request num_blocks.
+        ledger
+            .expect_num_blocks()
+            .times(1)
+            .return_const(Ok(num_blocks));
+
+        // Key images must not be in the ledger.
+        ledger
+            .expect_contains_key_image()
+            .times(well_formed_tx_context.key_images().len())
+            .return_const(Ok(false));
+
+        // Output public keys must not be in the ledger.
+        ledger
+            .expect_contains_tx_out_public_key()
+            .times(well_formed_tx_context.output_public_keys().len())
+            .return_const(Ok(false));
+
+        let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger);
+
+        assert_eq!(untrusted.is_valid(Arc::new(well_formed_tx_context)), Ok(()));
     }
 
     #[test]
-    /// `is_valid` should reject a transaction with a tombstone block that has been exceeded.
-    fn is_valid_rejects_past_tombstone_block() {
-        let mut rng = Hc128Rng::from_seed([79u8; 32]);
+    /// `is_valid` should reject a transaction if num_blocks > tombstone_block.
+    fn is_valid_rejects_expired_transaction() {
+        // Number of blocks in the local ledger.
+        let num_blocks = 53;
 
-        let sender = AccountKey::random(&mut rng);
-        let recipient = AccountKey::random(&mut rng);
-
-        let mut ledger = create_ledger();
-        let n_blocks = 3;
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
-
-        // Choose a TxOut to spend. Only the output of the last block is unspent.
-        let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
-        let tx_out = block_contents.outputs[0].clone();
-
-        let tx = create_transaction(
-            &mut ledger,
-            &tx_out,
-            &sender,
-            &recipient.default_subaddress(),
-            n_blocks,
-            &mut rng,
+        let well_formed_tx_context = WellFormedTxContext::new(
+            Default::default(),
+            Default::default(),
+            17, // The local ledger has advanced beyond the tombstone block.
+            Default::default(),
+            Default::default(),
+            Default::default(),
         );
+
+        // Mock the local ledger.
+        let mut ledger = MockLedger::new();
+
+        // Untrusted should request num_blocks.
+        ledger
+            .expect_num_blocks()
+            .times(1)
+            .return_const(Ok(num_blocks));
+
+        let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger);
+
         assert_eq!(
+            untrusted.is_valid(Arc::new(well_formed_tx_context)),
             Err(TransactionValidationError::TombstoneBlockExceeded),
-            is_valid(&tx, &ledger)
+        );
+    }
+
+    #[test]
+    /// `is_valid` should reject a transaction if tombstone_block is too far in the future.
+    fn is_valid_rejects_tombstone_too_far() {
+        // Number of blocks in the local ledger.
+        let num_blocks = 53;
+
+        let well_formed_tx_context = WellFormedTxContext::new(
+            Default::default(),
+            Default::default(),
+            num_blocks + MAX_TOMBSTONE_BLOCKS + 1,
+            Default::default(),
+            Default::default(),
+            Default::default(),
         );
 
-        let tx = create_transaction(
-            &mut ledger,
-            &tx_out,
-            &sender,
-            &recipient.default_subaddress(),
-            n_blocks - 1,
-            &mut rng,
-        );
-        assert_eq!(
-            Err(TransactionValidationError::TombstoneBlockExceeded),
-            is_valid(&tx, &ledger)
-        );
+        // Mock the local ledger.
+        let mut ledger = MockLedger::new();
 
-        let tx = create_transaction(
-            &mut ledger,
-            &tx_out,
-            &sender,
-            &recipient.default_subaddress(),
-            0,
-            &mut rng,
-        );
+        // Untrusted should request num_blocks.
+        ledger
+            .expect_num_blocks()
+            .times(1)
+            .return_const(Ok(num_blocks));
+
+        let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger);
+
         assert_eq!(
-            Err(TransactionValidationError::TombstoneBlockExceeded),
-            is_valid(&tx, &ledger)
+            untrusted.is_valid(Arc::new(well_formed_tx_context)),
+            Err(TransactionValidationError::TombstoneBlockTooFar),
         );
     }
 
     #[test]
     /// `is_valid` should reject a transaction with an already spent key image.
-    fn is_valid_rejects_spent_keyimage() {
-        let mut rng = Hc128Rng::from_seed([79u8; 32]);
+    fn is_valid_rejects_spent_key_image() {
+        // Number of blocks in the local ledger.
+        let num_blocks = 53;
 
-        let sender = AccountKey::random(&mut rng);
-        let recipient = AccountKey::random(&mut rng);
+        let well_formed_tx_context = {
+            let key_images = vec![
+                KeyImage::default(),
+                KeyImage::default(),
+                KeyImage::default(),
+            ];
 
-        let mut ledger = create_ledger();
-        let n_blocks = 3;
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
+            WellFormedTxContext::new(
+                Default::default(),
+                Default::default(),
+                num_blocks + 17,
+                key_images,
+                Default::default(),
+                Default::default(),
+            )
+        };
 
-        // Choose a TxOut to spend. Only the output of the last block is unspent.
-        let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
-        let tx_out = block_contents.outputs[0].clone();
+        // Mock the local ledger.
+        let mut ledger = MockLedger::new();
 
-        let mut tx = create_transaction(
-            &mut ledger,
-            &tx_out,
-            &sender,
-            &recipient.default_subaddress(),
-            n_blocks + 5,
-            &mut rng,
-        );
+        // Untrusted should request num_blocks.
+        ledger
+            .expect_num_blocks()
+            .times(1)
+            .return_const(Ok(num_blocks));
 
-        tx.signature.ring_signatures[0].key_image = block_contents.key_images[0].clone();
+        // A key image has been spent.
+        ledger
+            .expect_contains_key_image()
+            .times(1)
+            .return_const(Err(LedgerError::KeyImageAlreadySpent));
+
+        let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger);
+
         assert_eq!(
+            untrusted.is_valid(Arc::new(well_formed_tx_context)),
             Err(TransactionValidationError::ContainsSpentKeyImage),
-            is_valid(&tx, &ledger)
         );
     }
 
     #[test]
     /// `is_valid` should reject a transaction with an already used output public key.
     fn is_valid_rejects_non_unique_output_public_key() {
-        let mut rng = Hc128Rng::from_seed([79u8; 32]);
+        // Number of blocks in the local ledger.
+        let num_blocks = 53;
 
-        let sender = AccountKey::random(&mut rng);
-        let recipient = AccountKey::random(&mut rng);
+        let well_formed_tx_context = {
+            let key_images = vec![
+                KeyImage::default(),
+                KeyImage::default(),
+                KeyImage::default(),
+            ];
 
-        let mut ledger = create_ledger();
-        let n_blocks = 3;
-        initialize_ledger(&mut ledger, n_blocks, &sender, &mut rng);
+            let output_public_keys = vec![
+                CompressedRistrettoPublic::default(),
+                CompressedRistrettoPublic::default(),
+            ];
 
-        // Choose a TxOut to spend. Only the output of the last block is unspent.
-        let block_contents = ledger.get_block_contents(n_blocks - 1).unwrap();
-        let tx_out = block_contents.outputs[0].clone();
+            WellFormedTxContext::new(
+                Default::default(),
+                Default::default(),
+                num_blocks + 17,
+                key_images,
+                vec![9, 10, 8],
+                output_public_keys,
+            )
+        };
 
-        let mut tx = create_transaction(
-            &mut ledger,
-            &tx_out,
-            &sender,
-            &recipient.default_subaddress(),
-            n_blocks + 5,
-            &mut rng,
-        );
+        // Mock the local ledger.
+        let mut ledger = MockLedger::new();
 
-        tx.prefix.outputs[0].public_key = block_contents.outputs[0].public_key.clone();
+        // Untrusted should request num_blocks.
+        ledger
+            .expect_num_blocks()
+            .times(1)
+            .return_const(Ok(num_blocks));
+
+        // Key images must not be in the ledger.
+        ledger
+            .expect_contains_key_image()
+            .times(well_formed_tx_context.key_images().len())
+            .return_const(Ok(false));
+
+        // Output public keys must not be in the ledger.
+        ledger
+            .expect_contains_tx_out_public_key()
+            .times(1)
+            .return_const(Ok(true)); // The output public key is in the ledger.
+
+        let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger);
+
         assert_eq!(
+            untrusted.is_valid(Arc::new(well_formed_tx_context)),
             Err(TransactionValidationError::ContainsExistingOutputPublicKey),
-            is_valid(&tx, &ledger)
         );
     }
 }

@@ -1,9 +1,7 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-use mc_consensus_enclave::WellFormedTxContext;
-use mc_crypto_keys::CompressedRistrettoPublic;
+use mc_consensus_enclave::{TxContext, WellFormedTxContext};
 use mc_transaction_core::{
-    ring_signature::KeyImage,
     tx::{TxHash, TxOutMembershipProof},
     validation::TransactionValidationResult,
 };
@@ -15,14 +13,12 @@ use mockall::*;
 /// The untrusted (i.e. non-enclave) part of validating and combining transactions.
 #[cfg_attr(test, automock)]
 pub trait UntrustedInterfaces: Send + Sync {
-    /// Performs the untrusted part of the well-formed check.
-    /// Returns current block index and membership proofs to be used by
-    /// the in-enclave well-formed check on success.
+    /// Performs **only** the untrusted part of the well-formed check.
+    ///
+    /// Returns the local ledger's block index and membership proofs for each highest index.
     fn well_formed_check(
         &self,
-        highest_indices: &[u64],
-        key_images: &[KeyImage],
-        output_public_keys: &[CompressedRistrettoPublic],
+        tx_context: &TxContext,
     ) -> TransactionValidationResult<(u64, Vec<TxOutMembershipProof>)>;
 
     /// Checks if a transaction is valid (see definition in validators.rs).
@@ -38,4 +34,9 @@ pub trait UntrustedInterfaces: Send + Sync {
     /// Returns a bounded, deterministically-ordered list of transactions that are safe to append to the ledger.
     fn combine(&self, tx_contexts: &[Arc<WellFormedTxContext>], max_elements: usize)
         -> Vec<TxHash>;
+
+    fn get_tx_out_proof_of_memberships(
+        &self,
+        indexes: &[u64],
+    ) -> TransactionValidationResult<Vec<TxOutMembershipProof>>;
 }
