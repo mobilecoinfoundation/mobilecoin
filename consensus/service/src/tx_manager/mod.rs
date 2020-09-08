@@ -115,7 +115,6 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
         {
             let cache = self.lock_cache();
             if let Some(entry) = cache.get(&tx_context.tx_hash) {
-                self.untrusted.is_valid(entry.context().clone())?;
                 // The transaction is well-formed and is in the cache.
                 return Ok(*entry.context.tx_hash());
             }
@@ -406,12 +405,6 @@ mod tests {
             .expect_well_formed_check()
             .times(1)
             .return_const(Ok((0, vec![])));
-
-        // Not sure that this should happen...
-        mock_untrusted
-            .expect_is_valid()
-            .times(1)
-            .return_const(Ok(()));
 
         // The enclave's well-formed check also ought to be called, and should return Ok.
         let mut mock_enclave = MockConsensusEnclave::new();
