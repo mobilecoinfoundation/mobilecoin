@@ -3362,7 +3362,7 @@ mod test {
                 receiver
             );
         }
-        
+
         // Attempting to decode junk data should fail
         {
             let mut request = mc_mobilecoind_api::ReadAddressCodeRequest::new();
