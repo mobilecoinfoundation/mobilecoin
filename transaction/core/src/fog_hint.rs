@@ -109,7 +109,7 @@ impl FogHint {
         ingest_server_private_key: &RistrettoPrivate,
         ciphertext: &EncryptedFogHint,
     ) -> Result<Self, CryptoBoxError> {
-        let plaintext = VersionedCryptoBox::default()
+        let (_result, plaintext) = VersionedCryptoBox::default()
             .decrypt_fixed_length(ingest_server_private_key, ciphertext.as_ref())?;
         // Check magic numbers
         for byte in &plaintext[RISTRETTO_PUBLIC_LEN..] {
@@ -149,7 +149,7 @@ impl FogHint {
         let (plaintext, mut success) = match VersionedCryptoBox::default()
             .decrypt_fixed_length(ingest_server_private_key, ciphertext.as_ref())
         {
-            Ok(real_plaintext) => (real_plaintext, true),
+            Ok((result, real_plaintext)) => (real_plaintext, result),
             Err(_) => (default_plaintext, false),
         };
 
