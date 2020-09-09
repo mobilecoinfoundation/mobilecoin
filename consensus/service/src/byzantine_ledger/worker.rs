@@ -16,9 +16,7 @@ use mc_connection::{
     BlockchainConnection, ConnectionManager,
     _retry::{delay::Fibonacci, Error as RetryError},
 };
-use mc_consensus_scp::{
-    node::MAX_EXTERNALIZED_SLOTS, slot::Phase, Msg, QuorumSet, ScpNode, SlotIndex,
-};
+use mc_consensus_scp::{slot::Phase, Msg, QuorumSet, ScpNode, SlotIndex};
 use mc_ledger_db::Ledger;
 use mc_ledger_sync::{
     LedgerSyncService, NetworkState, ReqwestTransactionsFetcher, SCPNetworkState,
@@ -410,7 +408,8 @@ impl<
     fn process_consensus_msgs(&mut self) {
         // Process messages for slot indices in [oldest_slot, current_slot].
         let current_slot = self.current_slot_index;
-        let oldest_slot = current_slot.saturating_sub(MAX_EXTERNALIZED_SLOTS as u64);
+        let max_externalized_slots = self.scp.max_externalized_slots() as u64;
+        let oldest_slot = current_slot.saturating_sub(max_externalized_slots);
         let (consensus_msgs, future_msgs): (Vec<_>, Vec<_>) = self
             .pending_consensus_msgs
             .drain(..)
@@ -555,8 +554,9 @@ impl<
                 self.prev_block_id = block_id;
 
                 // Purge transactions that can no longer be processed based on their tombstone block.
+                let max_externalized_slots = self.scp.max_externalized_slots() as u64;
                 let purged_hashes = {
-                    let index = current_slot_index.saturating_sub(MAX_EXTERNALIZED_SLOTS as u64);
+                    let index = current_slot_index.saturating_sub(max_externalized_slots);
                     self.tx_manager.remove_expired(index)
                 };
 

@@ -19,8 +19,8 @@ use std::{
     time::Duration,
 };
 
-/// Max number of externalized slots to store.
-pub const MAX_EXTERNALIZED_SLOTS: usize = 1;
+/// Default limit on number of externalized slots to store.
+const MAX_EXTERNALIZED_SLOTS: usize = 1;
 
 /// A node participates in federated voting.
 pub struct Node<V: Value, ValidationError: Clone + Display> {
@@ -32,6 +32,9 @@ pub struct Node<V: Value, ValidationError: Clone + Display> {
 
     /// The current slot that this node is attempting to reach consensus on.
     current_slot: Box<dyn ScpSlot<V>>,
+
+    /// Maximum number of stored externalized slots.
+    max_externalized_slots: usize,
 
     /// A queue of externalized slots, ordered by increasing slot index.
     externalized_slots: Vec<Box<dyn ScpSlot<V>>>,
@@ -81,6 +84,7 @@ impl<V: Value, ValidationError: Clone + Display + 'static> Node<V, ValidationErr
             ID: node_id,
             Q: quorum_set,
             current_slot: Box::new(slot),
+            max_externalized_slots: MAX_EXTERNALIZED_SLOTS,
             externalized_slots: Vec::new(),
             validity_fn,
             combine_fn,
@@ -127,7 +131,7 @@ impl<V: Value, ValidationError: Clone + Display + 'static> Node<V, ValidationErr
     /// Push an externalized slot into the queue of externalized slots.
     fn push_externalized_slot(&mut self, slot: Box<dyn ScpSlot<V>>) {
         self.externalized_slots.push(slot);
-        while self.externalized_slots.len() > MAX_EXTERNALIZED_SLOTS {
+        while self.externalized_slots.len() > self.max_externalized_slots {
             // Remove the first slot, which is the oldest.
             self.externalized_slots.remove(0);
         }
@@ -159,6 +163,12 @@ pub trait ScpNode<V: Value>: Send {
 
     /// Handle incoming messages from the network.
     fn handle_messages(&mut self, msgs: Vec<Msg<V>>) -> Result<Vec<Msg<V>>, String>;
+
+    /// Maximum number of stored externalized slots.
+    fn max_externalized_slots(&self) -> usize;
+
+    /// Set the maximum number of stored externalized slots. Must be non-zero.
+    fn set_max_externalized_slots(&mut self, n: usize);
 
     /// Get externalized values (or an empty vector) for a given slot index.
     fn get_externalized_values(&self, slot_index: SlotIndex) -> Option<Vec<V>>;
@@ -273,6 +283,17 @@ impl<V: Value, ValidationError: Clone + Display + 'static> ScpNode<V> for Node<V
         // Note: messages for older slots are ignored.
 
         Ok(outbound_msgs)
+    }
+
+    /// Maximum number of stored externalized slots.
+    fn max_externalized_slots(&self) -> usize {
+        self.max_externalized_slots
+    }
+
+    /// Set the maximum number of stored externalized slots. Must be non-zero.
+    fn set_max_externalized_slots(&mut self, n: usize) {
+        debug_assert!(n > 0);
+        self.max_externalized_slots = n;
     }
 
     /// Get externalized values for a given slot index, if any.
@@ -475,6 +496,7 @@ mod tests {
             slot_index,
             logger,
         );
+        node.set_max_externalized_slots(2);
 
         // push externalized slots for 51, 52, ..., 55
         for i in 51..slot_index {
@@ -499,12 +521,14 @@ mod tests {
         }
 
         // These slots are too old, and are no longer maintained.
-        for i in 51..55 {
+        for i in 51..=53 {
             assert_eq!(node.get_externalized_values(i), None)
         }
 
-        // Slot 55 should still be maintained.
-        assert!(node.get_externalized_values(55).is_some());
+        // Slots 54 and 55 should still be maintained.
+        for i in 54..=55 {
+            assert!(node.get_externalized_values(i).is_some());
+        }
     }
 
     // TODO: process_timeouts

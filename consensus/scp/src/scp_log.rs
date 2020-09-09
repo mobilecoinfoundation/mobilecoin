@@ -272,6 +272,14 @@ impl<V: Value, N: ScpNode<V>> ScpNode<V> for LoggingScpNode<V, N> {
         Ok(responses)
     }
 
+    fn max_externalized_slots(&self) -> usize {
+        self.node.max_externalized_slots()
+    }
+
+    fn set_max_externalized_slots(&mut self, n: usize) {
+        self.node.set_max_externalized_slots(n)
+    }
+
     fn get_externalized_values(&self, slot_index: SlotIndex) -> Option<Vec<V>> {
         self.node.get_externalized_values(slot_index)
     }
