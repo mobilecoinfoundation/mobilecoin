@@ -185,7 +185,7 @@ pub trait ScpNode<V: Value>: Send {
     /// Additional debug info, e.g. a JSON representation of the Slot's state.
     fn get_slot_debug_snapshot(&mut self, slot_index: SlotIndex) -> Option<String>;
 
-    /// Reset the current slot.
+    /// Set the node's current slot index, abandoning any current and externalized slots.
     fn reset_slot_index(&mut self, slot_index: SlotIndex);
 }
 
@@ -336,8 +336,11 @@ impl<V: Value, ValidationError: Clone + Display + 'static> ScpNode<V> for Node<V
         }
     }
 
-    /// Reset the current slot.
+    /// Set the node's current slot index, abandoning any current and externalized slots.
     fn reset_slot_index(&mut self, slot_index: SlotIndex) {
+        // The slot index should only increase.
+        debug_assert!(slot_index > self.current_slot_index());
+
         self.current_slot = Box::new(Slot::new(
             self.ID.clone(),
             self.Q.clone(),
@@ -346,6 +349,8 @@ impl<V: Value, ValidationError: Clone + Display + 'static> ScpNode<V> for Node<V
             self.combine_fn.clone(),
             self.logger.clone(),
         ));
+
+        self.externalized_slots.clear();
     }
 }
 
@@ -481,7 +486,35 @@ mod tests {
         assert_eq!(node.externalized_slots[0].get_index(), slot_index)
     }
 
-    // TODO: handle_messages
+    #[test_with_logger]
+    // Should omit messages from self.
+    fn test_handle_messages_omit_from_self(_logger: Logger) {
+        // TODO
+    }
+
+    #[test_with_logger]
+    // Should omit messages for future slots.
+    fn test_handle_messages_omit_from_future(_logger: Logger) {
+        // TODO
+    }
+
+    #[test_with_logger]
+    // Should omit messages that are too old.
+    fn test_handle_messages_omit_old(_logger: Logger) {
+        // TODO
+    }
+
+    #[test_with_logger]
+    // Should pass messages to the current slot.
+    fn test_handle_messages_current_slot(_logger: Logger) {
+        // TODO
+    }
+
+    #[test_with_logger]
+    // Should pass messages to the correct externalized slot.
+    fn test_handle_messages_externalized_slots(_logger: Logger) {
+        // TODO
+    }
 
     #[test_with_logger]
     // Should get externalized values from the correct externalized slot.
@@ -558,7 +591,37 @@ mod tests {
         assert_eq!(node.process_timeouts(), messages);
     }
 
-    // TODO: reset_slot_index
+    #[test_with_logger]
+    // Should reset `current_slot` to a new Slot for the given index.
+    fn test_reset_slot_index(logger: Logger) {
+        type V = &'static str;
+        let slot_index = 14;
+        let mut node = Node::<V, TransactionValidationError>::new(
+            test_node_id(1),
+            QuorumSet::new_with_node_ids(1, vec![test_node_id(2)]),
+            Arc::new(trivial_validity_fn),
+            Arc::new(trivial_combine_fn),
+            slot_index,
+            logger,
+        );
+
+        node.set_max_externalized_slots(2);
+        for _i in 12..slot_index {
+            let externalized_slot = MockScpSlot::<V>::new();
+            node.push_externalized_slot(Box::new(externalized_slot));
+        }
+
+        assert_eq!(node.current_slot_index(), slot_index);
+        assert_eq!(node.externalized_slots.len(), 2);
+
+        let new_slot_index = 987;
+        node.reset_slot_index(new_slot_index);
+        assert_eq!(node.current_slot_index(), new_slot_index);
+        assert_eq!(node.current_slot.get_index(), new_slot_index);
+
+        // externalized_slots should be empty
+        assert_eq!(node.externalized_slots.len(), 0);
+    }
 
     #[test_with_logger]
     /// Steps through a sequence of messages that allow a two-node network to reach consensus.
