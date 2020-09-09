@@ -1227,7 +1227,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                     .b58_encode()
                     .map_err(|err| {
                         rpc_internal_error("wrapper.b58_encode", err, &self.logger)
-                    });
+                    })?;
                 dst.set_address_code(encoded);
                 Ok(dst)
             })
