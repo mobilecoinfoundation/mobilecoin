@@ -1198,7 +1198,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             .map_err(|err| {
                 rpc_internal_error("mobilecoind_db.get_monitor_data", err, &self.logger)
             })?
-            .account_key
+            .account_key;
 
         // Get all processed block data for the requested block.
         let processed_tx_outs = self
@@ -1225,9 +1225,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                 wrapper.set_public_address((&subaddress).into());
                 let encoded = wrapper
                     .b58_encode()
-                    .map_err(|err| rpc_internal_error("b58_encode", err, &self.logger))?;
-                dst.set_address_code(&encoded);
-
+                    .unwrap_or("invalid address encoding".to_owned())
+                dst.set_address_code(encoded);
                 dst
             })
             .collect();
@@ -2248,10 +2247,10 @@ mod test {
             request.set_monitor_id(monitor_id.to_vec());
             request.set_subaddress_index(expected_utxo.subaddress_index);
             let response = client.get_public_address(&request).unwrap();
-            let receiver = PublicAddress::try_from(response.get_public_address()).unwrap();
+            let public_address = PublicAddress::try_from(response.get_public_address()).unwrap();
 
             let mut request = mc_mobilecoind_api::GetAddressCodeRequest::new();
-            request.set_receiver(&receiver);
+            request.set_receiver(mc_api::external::PublicAddress::from(&public_address));
             let response = client.get_address_code(&request).unwrap();
             let b58_code = response.get_b58_code();
 
