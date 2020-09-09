@@ -1225,7 +1225,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                 wrapper.set_public_address((&subaddress).into());
                 let encoded = wrapper
                     .b58_encode()
-                    .unwrap_or("invalid address encoding".to_owned());
+                    .unwrap_or_else(|_| "invalid address encoding".to_owned());
                 dst.set_address_code(encoded);
                 dst
             })
