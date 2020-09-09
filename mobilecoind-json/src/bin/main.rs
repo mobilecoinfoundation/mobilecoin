@@ -114,7 +114,7 @@ fn remove_monitor(
     let mut req = mc_mobilecoind_api::RemoveMonitorRequest::new();
     req.set_monitor_id(monitor_id);
 
-    let resp = state
+    let _resp = state
         .mobilecoind_api_client
         .remove_monitor(&req)
         .map_err(|err| format!("Failed removing monitor: {}", err))?;
