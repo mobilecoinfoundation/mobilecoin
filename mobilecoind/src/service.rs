@@ -790,7 +790,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         response.set_tx_proposal(tx_proposal);
         response.set_entropy(entropy);
         response.set_tx_public_key(proto_tx_public_key);
-        response.set_memo(request.get_memo().to_owned());
+        response.set_memo(request.get_memo().to_string());
         response.set_b58_code(b58_code);
         Ok(response)
     }
@@ -1225,7 +1225,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                 wrapper.set_public_address((&subaddress).into());
                 let encoded = wrapper
                     .b58_encode()
-                    .unwrap_or("invalid address encoding".to_owned())
+                    .unwrap_or("invalid address encoding".to_owned());
                 dst.set_address_code(encoded);
                 dst
             })
@@ -3200,7 +3200,7 @@ mod test {
 
             // Attempt to decode it.
             let mut request = mc_mobilecoind_api::ReadRequestCodeRequest::new();
-            request.set_b58_code(b58_code.to_owned());
+            request.set_b58_code(b58_code.to_string());
 
             let response = client.read_request_code(&request).unwrap();
 
@@ -3224,7 +3224,7 @@ mod test {
 
             // Attempt to decode it.
             let mut request = mc_mobilecoind_api::ReadRequestCodeRequest::new();
-            request.set_b58_code(b58_code.to_owned());
+            request.set_b58_code(b58_code.to_string());
 
             let response = client.read_request_code(&request).unwrap();
 
@@ -3249,7 +3249,7 @@ mod test {
 
             // Attempt to decode it.
             let mut request = mc_mobilecoind_api::ReadRequestCodeRequest::new();
-            request.set_b58_code(b58_code.to_owned());
+            request.set_b58_code(b58_code.to_string());
 
             let response = client.read_request_code(&request).unwrap();
 
@@ -3329,7 +3329,7 @@ mod test {
 
             // Decode
             let mut request = mc_mobilecoind_api::ReadTransferCodeRequest::new();
-            request.set_b58_code(b58_code.to_owned());
+            request.set_b58_code(b58_code.to_string());
 
             let response = client.read_transfer_code(&request).unwrap();
 
@@ -3392,7 +3392,7 @@ mod test {
 
             // Attempt to decode it.
             let mut request = mc_mobilecoind_api::ReadAddressCodeRequest::new();
-            request.set_b58_code(b58_code.to_owned());
+            request.set_b58_code(b58_code.to_string());
 
             let response = client.read_address_code(&request).unwrap();
 
@@ -3419,7 +3419,7 @@ mod test {
 
             // Attempt to decode it.
             let mut request = mc_mobilecoind_api::ReadAddressCodeRequest::new();
-            request.set_b58_code(b58_code.to_owned());
+            request.set_b58_code(b58_code.to_string());
 
             let response = client.read_address_code(&request).unwrap();
 
