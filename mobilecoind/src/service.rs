@@ -686,6 +686,49 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         Ok(response)
     }
 
+    fn generate_tx_from_tx_out_list_impl(
+        &mut self,
+        request: mc_mobilecoind_api::GenerateTxFromTxOutListRequest,
+    ) -> Result<mc_mobilecoind_api::GenerateTxFromTxOutListResponse, RpcStatus> {
+        let proto_account_key = request.account_key.as_ref().ok_or_else(|| {
+            RpcStatus::new(
+                RpcStatusCode::INVALID_ARGUMENT,
+                Some("account_key".to_string()),
+            )
+        })?;
+
+        let account_key = AccountKey::try_from(proto_account_key)
+            .map_err(|err| rpc_internal_error("account_key.try_from", err, &self.logger))?;
+
+        let input_list: Vec<UnspentTxOut> = request
+            .get_input_list()
+            .iter()
+            .map(|proto_utxo| {
+                // Proto -> Rust struct conversion.
+                UnspentTxOut::try_from(proto_utxo)
+                    .map_err(|err| rpc_internal_error("unspent_tx_out.try_from", err, &self.logger))
+            })
+            .collect::<Result<Vec<UnspentTxOut>, RpcStatus>>()?;
+
+        let receiver = PublicAddress::try_from(request.get_receiver())
+            .map_err(|err| rpc_internal_error("PublicAddress.try_from", err, &self.logger))?;
+
+        let tx_proposal = self
+            .transactions_manager
+            .generate_tx_from_tx_list(&account_key, &input_list, &receiver)
+            .map_err(|err| {
+                rpc_internal_error(
+                    "transactions_manager.generate_tx_from_tx_list",
+                    err,
+                    &self.logger,
+                )
+            })?;
+
+        let mut response = mc_mobilecoind_api::GenerateTxFromTxOutListResponse::new();
+        response.set_tx_proposal((&tx_proposal).into());
+        Ok(response)
+    }
+
     fn generate_transfer_code_tx_impl(
         &mut self,
         request: mc_mobilecoind_api::GenerateTransferCodeTxRequest,
@@ -1391,6 +1434,7 @@ build_api! {
     generate_tx GenerateTxRequest GenerateTxResponse generate_tx_impl,
     generate_optimization_tx GenerateOptimizationTxRequest GenerateOptimizationTxResponse generate_optimization_tx_impl,
     generate_transfer_code_tx GenerateTransferCodeTxRequest GenerateTransferCodeTxResponse generate_transfer_code_tx_impl,
+    generate_tx_from_tx_out_list GenerateTxFromTxOutListRequest GenerateTxFromTxOutListResponse generate_tx_from_tx_out_list_impl,
     submit_tx SubmitTxRequest SubmitTxResponse submit_tx_impl,
     get_ledger_info Empty GetLedgerInfoResponse get_ledger_info_impl,
     get_block_info GetBlockInfoRequest GetBlockInfoResponse get_block_info_impl,

@@ -312,6 +312,77 @@ impl<T: UserTxConnection + 'static> TransactionsManager<T> {
         Ok(tx_proposal)
     }
 
+    pub fn generate_tx_from_tx_list(
+        &self,
+        account_key: &AccountKey,
+        input_list: &[UnspentTxOut],
+        receiver: &PublicAddress,
+    ) -> Result<TxProposal, Error> {
+        let fee = MINIMUM_FEE;
+
+        let logger = self.logger.new(o!("receiver" => receiver.to_string()));
+        log::trace!(logger, "Generating txo list transaction...");
+
+        // All inputs are to be spent
+        let total_value: u64 = input_list.iter().map(|utxo| utxo.value).sum();
+        log::trace!(
+            logger,
+            "Total transaction value excluding fees: {}",
+            total_value
+        );
+
+        // Get the proofs and the rings
+        let utxos_with_proofs = self.get_membership_proofs(input_list.to_vec())?;
+        log::trace!(logger, "Got membership proofs");
+
+        let excluded_tx_out_indices: Vec<u64> = input_list
+            .iter()
+            .map(|utxo| {
+                self.ledger_db
+                    .get_tx_out_index_by_hash(&utxo.tx_out.hash())
+                    .map_err(Error::LedgerDB)
+            })
+            .collect::<Result<Vec<u64>, Error>>()?;
+
+        let rings = self.get_rings(
+            DEFAULT_RING_SIZE,
+            utxos_with_proofs.len(),
+            &excluded_tx_out_indices,
+        )?;
+        log::trace!(logger, "Got {} rings", rings.len());
+
+        // Come up with tombstone block.
+        let tombstone_block = self.ledger_db.num_blocks()? + DEFAULT_NEW_TX_BLOCK_ATTEMPTS;
+        log::trace!(logger, "Tombstone block set to {}", tombstone_block);
+
+        // The entire value goes to receiver
+        let outlays = vec![Outlay {
+            receiver: receiver.clone(),
+            value: total_value - fee,
+        }];
+
+        // Build and return the TxProposal object
+        let mut rng = rand::thread_rng();
+        let tx_proposal = Self::build_tx_proposal(
+            &utxos_with_proofs,
+            rings,
+            fee,
+            &account_key,
+            0,
+            &outlays,
+            tombstone_block,
+            &mut rng,
+            &self.logger,
+        )?;
+        log::trace!(
+            logger,
+            "Tx list tx constructed, hash={}",
+            tx_proposal.tx.tx_hash()
+        );
+
+        Ok(tx_proposal)
+    }
+
     /// Submit a previously built tx proposal to the network.
     pub fn submit_tx_proposal(&self, tx_proposal: &TxProposal) -> Result<u64, Error> {
         // Pick a peer to submit to.
