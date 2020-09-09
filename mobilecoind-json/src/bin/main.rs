@@ -184,9 +184,8 @@ fn get_request_code(
     state: rocket::State<State>,
     request: Json<JsonGetRequestCodeRequest>,
 ) -> Result<Json<JsonGetRequestCodeResponse>, String> {
-    let receiver =
-        mc_mobilecoind_api::external::PublicAddress::try_from(&request.receiver)
-            .map_err(|err| format!("Failed to parse receiver's public address: {}", err))?;
+    let receiver = mc_mobilecoind_api::external::PublicAddress::try_from(&request.receiver)
+        .map_err(|err| format!("Failed to parse receiver's public address: {}", err))?;
 
     // Generate b58 code
     let mut req = mc_mobilecoind_api::GetRequestCodeRequest::new();
@@ -231,9 +230,8 @@ fn get_address_code(
     state: rocket::State<State>,
     request: Json<JsonGetAddressCodeRequest>,
 ) -> Result<Json<JsonGetAddressCodeResponse>, String> {
-    let receiver =
-        mc_mobilecoind_api::external::PublicAddress::try_from(&request.receiver)
-            .map_err(|err| format!("Failed to parse receiver's public address: {}", err))?;
+    let receiver = mc_mobilecoind_api::external::PublicAddress::try_from(&request.receiver)
+        .map_err(|err| format!("Failed to parse receiver's public address: {}", err))?;
 
     // Generate b58 code
     let mut req = mc_mobilecoind_api::GetAddressCodeRequest::new();
