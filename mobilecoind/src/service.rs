@@ -1231,7 +1231,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                 dst.set_address_code(encoded);
                 Ok(dst)
             })
-            .collect::<Result<Vec<_>, String>>()?;
+            .collect::<Result<Vec<_>, _>>()?;
 
         // Return response
         let mut response = mc_mobilecoind_api::GetProcessedBlockResponse::new();
