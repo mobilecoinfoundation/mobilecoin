@@ -362,6 +362,22 @@ mod tests {
     use mc_common::logger::test_with_logger;
     use std::{iter::FromIterator, sync::Arc};
 
+    fn get_node(
+        slot_index: SlotIndex,
+        logger: Logger,
+    ) -> Node<&'static str, TransactionValidationError> {
+        let node_id = test_node_id(1);
+        let quorum_set = QuorumSet::new_with_node_ids(1, vec![test_node_id(2)]);
+        Node::<&'static str, TransactionValidationError>::new(
+            node_id.clone(),
+            quorum_set.clone(),
+            Arc::new(trivial_validity_fn),
+            Arc::new(trivial_combine_fn),
+            slot_index,
+            logger,
+        )
+    }
+
     #[test_with_logger]
     // Node::new should correctly initialize current_slot and externalized_slots.
     fn test_initialization(logger: Logger) {
@@ -374,7 +390,7 @@ mod tests {
             Arc::new(trivial_validity_fn),
             Arc::new(trivial_combine_fn),
             slot_index,
-            logger.clone(),
+            logger,
         );
 
         assert_eq!(node.current_slot.get_index(), slot_index);
@@ -388,23 +404,16 @@ mod tests {
     #[test_with_logger]
     // Should pass values to the appropriate slot.
     fn test_propose_values_no_outgoing_message(logger: Logger) {
-        type V = &'static str;
-        let mut node = Node::<V, TransactionValidationError>::new(
-            test_node_id(1),
-            QuorumSet::new_with_node_ids(1, vec![test_node_id(2)]),
-            Arc::new(trivial_validity_fn),
-            Arc::new(trivial_combine_fn),
-            0,
-            logger,
-        );
+        // type V = &'static str;
+        let mut node = get_node(0, logger);
 
         // Should call `propose_values` on the current slot.
-        let mut slot = MockScpSlot::<V>::new();
+        let mut slot = MockScpSlot::new();
         slot.expect_propose_values().times(1).return_const(Ok(None)); // No outgoing Msg.
         node.current_slot = Box::new(slot);
 
         // Should not call anything on an externalized slot.
-        let externalized_slot = MockScpSlot::<V>::new();
+        let externalized_slot = MockScpSlot::new();
         node.push_externalized_slot(Box::new(externalized_slot));
 
         let values = btreeset!["a", "b", "c"];
@@ -414,16 +423,8 @@ mod tests {
     #[test_with_logger]
     // Should pass values to the appropriate slot and return the outgoing msg.
     fn test_propose_values_with_outgoing_message(logger: Logger) {
-        type V = &'static str;
         let slot_index = 1;
-        let mut node = Node::<V, TransactionValidationError>::new(
-            test_node_id(1),
-            QuorumSet::new_with_node_ids(1, vec![test_node_id(2)]),
-            Arc::new(trivial_validity_fn),
-            Arc::new(trivial_combine_fn),
-            slot_index,
-            logger,
-        );
+        let mut node = get_node(slot_index, logger);
 
         // Should call `propose_values` on the current slot, which returns a Msg.
         let msg = Msg::new(
@@ -435,7 +436,7 @@ mod tests {
                 Y: Default::default(),
             }),
         );
-        let mut slot = MockScpSlot::<V>::new();
+        let mut slot = MockScpSlot::new();
         slot.expect_propose_values()
             .times(1)
             .return_const(Ok(Some(msg.clone()))); //  Outgoing Msg, not an Externalize.
@@ -448,16 +449,8 @@ mod tests {
     #[test_with_logger]
     // Should pass values to the appropriate slot, externalize the slot,  and return the outgoing msg.
     fn test_propose_values_with_externalize(logger: Logger) {
-        type V = &'static str;
         let slot_index = 4;
-        let mut node = Node::<V, TransactionValidationError>::new(
-            test_node_id(1),
-            QuorumSet::new_with_node_ids(1, vec![test_node_id(2)]),
-            Arc::new(trivial_validity_fn),
-            Arc::new(trivial_combine_fn),
-            slot_index,
-            logger,
-        );
+        let mut node = get_node(slot_index, logger);
 
         // Should call `propose_values` on the current slot, which returns a Msg.
         let msg = Msg::new(
@@ -470,7 +463,7 @@ mod tests {
             }),
         );
 
-        let mut slot = MockScpSlot::<V>::new();
+        let mut slot = MockScpSlot::new();
         slot.expect_propose_values()
             .times(1)
             .return_const(Ok(Some(msg.clone()))); //  Outgoing Msg, not an Externalize.
@@ -519,21 +512,13 @@ mod tests {
     #[test_with_logger]
     // Should get externalized values from the correct externalized slot.
     fn test_get_externalized_values(logger: Logger) {
-        type V = &'static str;
         let slot_index = 56;
-        let mut node = Node::<V, TransactionValidationError>::new(
-            test_node_id(1),
-            QuorumSet::new_with_node_ids(1, vec![test_node_id(2)]),
-            Arc::new(trivial_validity_fn),
-            Arc::new(trivial_combine_fn),
-            slot_index,
-            logger,
-        );
+        let mut node = get_node(slot_index, logger);
         node.set_max_externalized_slots(2);
 
         // push externalized slots for 51, 52, ..., 55
         for i in 51..slot_index {
-            let mut externalized_slot = MockScpSlot::<V>::new();
+            let mut externalized_slot = MockScpSlot::new();
             externalized_slot.expect_get_index().return_const(i);
 
             let msg = Msg::new(
@@ -566,26 +551,18 @@ mod tests {
 
     #[test_with_logger]
     fn test_process_timeouts(logger: Logger) {
-        type V = &'static str;
-        let mut node = Node::<V, TransactionValidationError>::new(
-            test_node_id(1),
-            QuorumSet::new_with_node_ids(1, vec![test_node_id(2)]),
-            Arc::new(trivial_validity_fn),
-            Arc::new(trivial_combine_fn),
-            0,
-            logger,
-        );
+        let mut node = get_node(0, logger);
 
         // Should call `propose_values` on the current slot.
-        let mut slot = MockScpSlot::<V>::new();
-        let messages: Vec<Msg<V>> = vec![];
+        let mut slot = MockScpSlot::new();
+        let messages: Vec<Msg<&'static str>> = vec![];
         slot.expect_process_timeouts()
             .times(1)
             .return_const(messages.clone());
         node.current_slot = Box::new(slot);
 
         // Should not call anything on an externalized slot, which no longer have timeouts.
-        let externalized_slot = MockScpSlot::<V>::new();
+        let externalized_slot = MockScpSlot::new();
         node.push_externalized_slot(Box::new(externalized_slot));
 
         assert_eq!(node.process_timeouts(), messages);
@@ -594,20 +571,12 @@ mod tests {
     #[test_with_logger]
     // Should reset `current_slot` to a new Slot for the given index.
     fn test_reset_slot_index(logger: Logger) {
-        type V = &'static str;
         let slot_index = 14;
-        let mut node = Node::<V, TransactionValidationError>::new(
-            test_node_id(1),
-            QuorumSet::new_with_node_ids(1, vec![test_node_id(2)]),
-            Arc::new(trivial_validity_fn),
-            Arc::new(trivial_combine_fn),
-            slot_index,
-            logger,
-        );
+        let mut node = get_node(slot_index, logger);
 
         node.set_max_externalized_slots(2);
         for _i in 12..slot_index {
-            let externalized_slot = MockScpSlot::<V>::new();
+            let externalized_slot = MockScpSlot::new();
             node.push_externalized_slot(Box::new(externalized_slot));
         }
 
