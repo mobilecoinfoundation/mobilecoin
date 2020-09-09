@@ -274,7 +274,7 @@ fn transfer(
     state: rocket::State<State>,
     monitor_hex: String,
     subaddress_index: u64,
-    transfer: Json<JsonReadRequestResponse>,
+    transfer: Json<JsonReadRequestCodeResponse>,
 ) -> Result<Json<JsonTransferResponse>, String> {
     let monitor_id =
         hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
