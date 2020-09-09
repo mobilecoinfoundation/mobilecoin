@@ -48,7 +48,7 @@ $ curl localhost:9090/monitors/a0cf8b79c9f8d74eb935ab4eeeb771f3809a408ad47246be4
 
 #### Remove an existing monitor
 ```
-$ curl localhost:9090/monitors/a0cf8b79c9f8d74eb935ab4eeeb771f3809a408ad47246be47cf40315be9876e
+$ curl -X DELETE localhost:9090/monitors/a0cf8b79c9f8d74eb935ab4eeeb771f3809a408ad47246be47cf40315be9876e
 
 ```
 
