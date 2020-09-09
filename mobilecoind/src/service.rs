@@ -1219,7 +1219,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                     mc_mobilecoind_api::ProcessedTxOutDirection::from_i32(src.direction)
                         .unwrap_or(mc_mobilecoind_api::ProcessedTxOutDirection::Invalid),
                 );
-                
+
                 let subaddress = account_key.subaddress(src.subaddress_index);
                 let mut wrapper = mc_mobilecoind_api::printable::PrintableWrapper::new();
                 wrapper.set_public_address((&subaddress).into());
@@ -1227,7 +1227,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                     .b58_encode()
                     .map_err(|err| rpc_internal_error("b58_encode", err, &self.logger))?;
                 dst.set_address_code(&encoded);
-                
+
                 dst
             })
             .collect();
@@ -2241,6 +2241,23 @@ mod test {
             assert_eq!(
                 tx_out.get_direction(),
                 mc_mobilecoind_api::ProcessedTxOutDirection::Received,
+            );
+
+            // test address code
+            let mut request = mc_mobilecoind_api::GetPublicAddressRequest::new();
+            request.set_monitor_id(monitor_id.to_vec());
+            request.set_subaddress_index(expected_utxo.subaddress_index);
+            let response = client.get_public_address(&request).unwrap();
+            let receiver = PublicAddress::try_from(response.get_public_address()).unwrap();
+
+            let mut request = mc_mobilecoind_api::GetAddressCodeRequest::new();
+            request.set_receiver(&receiver);
+            let response = client.get_address_code(&request).unwrap();
+            let b58_code = response.get_b58_code();
+
+            assert_eq!(
+                tx_out.get_address_code(),
+                b58_code,
             );
         }
 
