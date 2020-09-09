@@ -531,7 +531,32 @@ mod tests {
         }
     }
 
-    // TODO: process_timeouts
+    #[test_with_logger]
+    fn test_process_timeouts(logger: Logger) {
+        type V = &'static str;
+        let mut node = Node::<V, TransactionValidationError>::new(
+            test_node_id(1),
+            QuorumSet::new_with_node_ids(1, vec![test_node_id(2)]),
+            Arc::new(trivial_validity_fn),
+            Arc::new(trivial_combine_fn),
+            0,
+            logger,
+        );
+
+        // Should call `propose_values` on the current slot.
+        let mut slot = MockScpSlot::<V>::new();
+        let messages: Vec<Msg<V>> = vec![];
+        slot.expect_process_timeouts()
+            .times(1)
+            .return_const(messages.clone());
+        node.current_slot = Box::new(slot);
+
+        // Should not call anything on an externalized slot, which no longer have timeouts.
+        let externalized_slot = MockScpSlot::<V>::new();
+        node.push_externalized_slot(Box::new(externalized_slot));
+
+        assert_eq!(node.process_timeouts(), messages);
+    }
 
     // TODO: reset_slot_index
 
