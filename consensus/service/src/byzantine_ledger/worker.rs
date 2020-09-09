@@ -191,7 +191,7 @@ impl<
 
             // Sync service reports we're behind and we are just finding out about it now.
             (LedgerSyncState::InSync, true) => {
-                log::info!(self.logger, "sync_service reported we are behind, we're at slot {} and network state is {:?}", self.cur_slot, self.network_state.peer_to_current_slot());
+                log::info!(self.logger, "sync_service reported we are behind, we're at slot {} and network state is {:?}", self.current_slot_index, self.network_state.peer_to_current_slot());
                 self.ledger_sync_state = LedgerSyncState::MaybeBehind(Instant::now());
             }
 
@@ -203,7 +203,7 @@ impl<
                     log::warn!(
                         self.logger,
                         "sync_service reports we are behind, and we are past the grace period on slot {}!",
-                        self.cur_slot,
+                        self.current_slot_index,
                     );
                     counters::CATCHUP_INITIATED.inc();
                     self.is_behind.store(true, Ordering::SeqCst);
@@ -506,7 +506,7 @@ impl<
                 log::info!(
                     self.logger,
                     "Slot {} ended with {} externalized values and {} pending values.",
-                    self.cur_slot,
+                    self.current_slot_index,
                     ext_vals.len(),
                     self.pending_values.len(),
                 );
