@@ -134,10 +134,11 @@ impl<V: Value, ValidationError: Clone + Display + 'static> Node<V, ValidationErr
     }
 
     /// Get the externalized slot, if any.
-    fn get_externalized_slot(&self, slot_index: SlotIndex) -> Option<&Box<dyn ScpSlot<V>>> {
+    fn get_externalized_slot(&self, slot_index: SlotIndex) -> Option<&dyn ScpSlot<V>> {
         self.externalized_slots
             .iter()
             .find(|slot| slot.get_index() == slot_index)
+            .map(|slot| slot.as_ref())
     }
 }
 
@@ -306,7 +307,7 @@ impl<V: Value, ValidationError: Clone + Display + 'static> ScpNode<V> for Node<V
 
     /// Get the slot internal state (for debug purposes).
     fn get_slot_debug_snapshot(&mut self, slot_index: SlotIndex) -> Option<String> {
-        if slot_index == self.current_slot.get_index() {
+        if slot_index == self.current_slot_index() {
             Some(self.current_slot.get_debug_snapshot())
         } else {
             self.get_externalized_slot(slot_index)
@@ -328,7 +329,7 @@ impl<V: Value, ValidationError: Clone + Display + 'static> ScpNode<V> for Node<V
 }
 
 #[cfg(test)]
-mod node_tests {
+mod tests {
     use super::*;
     use crate::{core_types::Ballot, msg::*, slot::MockScpSlot, test_utils::*};
     use maplit::btreeset;
@@ -368,7 +369,7 @@ mod node_tests {
             Arc::new(trivial_validity_fn),
             Arc::new(trivial_combine_fn),
             0,
-            logger.clone(),
+            logger,
         );
 
         // Should call `propose_values` on the current slot.
@@ -381,19 +382,82 @@ mod node_tests {
         node.push_externalized_slot(Box::new(externalized_slot));
 
         let values = btreeset!["a", "b", "c"];
-        let _res = node.propose_values(values);
+        assert_eq!(node.propose_values(values), Ok(None));
     }
 
     #[test_with_logger]
     // Should pass values to the appropriate slot and return the outgoing msg.
-    fn test_propose_values_with_outgoing_message(_logger: Logger) {
-        // TODO:
+    fn test_propose_values_with_outgoing_message(logger: Logger) {
+        type V = &'static str;
+        let slot_index = 1;
+        let mut node = Node::<V, TransactionValidationError>::new(
+            test_node_id(1),
+            QuorumSet::new_with_node_ids(1, vec![test_node_id(2)]),
+            Arc::new(trivial_validity_fn),
+            Arc::new(trivial_combine_fn),
+            slot_index,
+            logger,
+        );
+
+        // Should call `propose_values` on the current slot, which returns a Msg.
+        let msg = Msg::new(
+            test_node_id(2),
+            QuorumSet::new_with_node_ids(1, vec![test_node_id(3)]),
+            slot_index,
+            Topic::Nominate(NominatePayload {
+                X: Default::default(),
+                Y: Default::default(),
+            }),
+        );
+        let mut slot = MockScpSlot::<V>::new();
+        slot.expect_propose_values()
+            .times(1)
+            .return_const(Ok(Some(msg.clone()))); //  Outgoing Msg, not an Externalize.
+        node.current_slot = Box::new(slot);
+
+        let values = btreeset!["a", "b", "c"];
+        assert_eq!(node.propose_values(values), Ok(Some(msg)));
     }
 
     #[test_with_logger]
     // Should pass values to the appropriate slot, externalize the slot,  and return the outgoing msg.
-    fn test_propose_values_with_externalize(_logger: Logger) {
-        // TODO:
+    fn test_propose_values_with_externalize(logger: Logger) {
+        type V = &'static str;
+        let slot_index = 4;
+        let mut node = Node::<V, TransactionValidationError>::new(
+            test_node_id(1),
+            QuorumSet::new_with_node_ids(1, vec![test_node_id(2)]),
+            Arc::new(trivial_validity_fn),
+            Arc::new(trivial_combine_fn),
+            slot_index,
+            logger,
+        );
+
+        // Should call `propose_values` on the current slot, which returns a Msg.
+        let msg = Msg::new(
+            test_node_id(2),
+            QuorumSet::new_with_node_ids(1, vec![test_node_id(3)]),
+            slot_index,
+            Topic::Externalize(ExternalizePayload {
+                C: Ballot::new(4, &[]),
+                HN: 3,
+            }),
+        );
+
+        let mut slot = MockScpSlot::<V>::new();
+        slot.expect_propose_values()
+            .times(1)
+            .return_const(Ok(Some(msg.clone()))); //  Outgoing Msg, not an Externalize.
+        slot.expect_get_index().return_const(slot_index);
+        node.current_slot = Box::new(slot);
+
+        let values = btreeset!["a", "b", "c"];
+        assert_eq!(node.propose_values(values), Ok(Some(msg)));
+
+        // The `slot_index` slot should now be extnalized, and current_slot should be at `slot_index + 1`.
+        assert_eq!(node.current_slot.get_index(), slot_index + 1);
+        assert_eq!(node.externalized_slots.len(), 1);
+        assert_eq!(node.externalized_slots[0].get_index(), slot_index)
     }
 
     // TODO: handle_messages
