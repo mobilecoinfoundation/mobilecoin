@@ -1191,6 +1191,15 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         let monitor_id = MonitorId::try_from(&request.monitor_id)
             .map_err(|err| rpc_internal_error("monitor_id.try_from.bytes", err, &self.logger))?;
 
+        // We will use the AccountKey to compute the Address Code
+        let account_key = self
+            .mobilecoind_db
+            .get_monitor_data(&monitor_id)
+            .map_err(|err| {
+                rpc_internal_error("mobilecoind_db.get_monitor_data", err, &self.logger)
+            })?
+            .account_key
+
         // Get all processed block data for the requested block.
         let processed_tx_outs = self
             .mobilecoind_db
@@ -1210,6 +1219,15 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                     mc_mobilecoind_api::ProcessedTxOutDirection::from_i32(src.direction)
                         .unwrap_or(mc_mobilecoind_api::ProcessedTxOutDirection::Invalid),
                 );
+                
+                let subaddress = account_key.subaddress(src.subaddress_index);
+                let mut wrapper = mc_mobilecoind_api::printable::PrintableWrapper::new();
+                wrapper.set_public_address((&subaddress).into());
+                let encoded = wrapper
+                    .b58_encode()
+                    .map_err(|err| rpc_internal_error("b58_encode", err, &self.logger))?;
+                dst.set_address_code(&encoded);
+                
                 dst
             })
             .collect();
