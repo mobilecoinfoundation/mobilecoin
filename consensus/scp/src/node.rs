@@ -33,7 +33,7 @@ pub struct Node<V: Value, ValidationError: Clone + Display> {
     /// The current slot that this node is attempting to reach consensus on.
     pub current_slot: Slot<V, ValidationError>,
 
-    /// Previous, externalized slots, ordered by increasing slot index.
+    /// A queue of externalized slots, ordered by increasing slot index.
     pub externalized_slots: Vec<Slot<V, ValidationError>>,
 
     /// Application-specific validation of value.
@@ -52,17 +52,25 @@ pub struct Node<V: Value, ValidationError: Clone + Display> {
 
 impl<V: Value, ValidationError: Clone + Display + 'static> Node<V, ValidationError> {
     /// Creates a new Node.
+    ///
+    /// # Arguments
+    /// * `node_id` - This node's ID.
+    /// * `quorum_set` - This node's quorum set.
+    /// * `validity_fn` - Validates a value.
+    /// * `combine_fn` - Combines a set of values into a composite value (i.e. block).
+    /// * `current_slot_index` - Index of the slot to begin performing consensus on.
+    /// * `logger`
     pub fn new(
-        ID: NodeID,
-        Q: QuorumSet,
+        node_id: NodeID,
+        quorum_set: QuorumSet,
         validity_fn: ValidityFn<V, ValidationError>,
         combine_fn: CombineFn<V, ValidationError>,
         current_slot_index: SlotIndex,
         logger: Logger,
     ) -> Self {
         let slot = Slot::new(
-            ID.clone(),
-            Q.clone(),
+            node_id.clone(),
+            quorum_set.clone(),
             current_slot_index,
             validity_fn.clone(),
             combine_fn.clone(),
@@ -70,8 +78,8 @@ impl<V: Value, ValidationError: Clone + Display + 'static> Node<V, ValidationErr
         );
 
         Self {
-            ID,
-            Q,
+            ID: node_id,
+            Q: quorum_set,
             current_slot: slot,
             externalized_slots: Vec::new(),
             validity_fn,
@@ -101,10 +109,7 @@ impl<V: Value, ValidationError: Clone + Display + 'static> Node<V, ValidationErr
             }
         }
 
-        self.externalized_slots.push(self.current_slot.clone());
-        while self.externalized_slots.len() > MAX_EXTERNALIZED_SLOTS {
-            self.externalized_slots.remove(0);
-        }
+        self.push_externalized_slot(self.current_slot.clone());
 
         // Advance to the next slot.
         self.current_slot = Slot::new(
@@ -117,6 +122,15 @@ impl<V: Value, ValidationError: Clone + Display + 'static> Node<V, ValidationErr
         );
 
         Ok(())
+    }
+
+    /// Push an externalized slot into the queue of externalized slots.
+    fn push_externalized_slot(&mut self, slot: Slot<V, ValidationError>) {
+        self.externalized_slots.push(slot);
+        while self.externalized_slots.len() > MAX_EXTERNALIZED_SLOTS {
+            // Remove the first slot, which is the oldest.
+            self.externalized_slots.remove(0);
+        }
     }
 }
 
