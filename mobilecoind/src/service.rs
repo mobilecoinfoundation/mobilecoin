@@ -1225,9 +1225,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                 wrapper.set_public_address((&subaddress).into());
                 let encoded = wrapper
                     .b58_encode()
-                    .map_err(|err| {
-                        rpc_internal_error("wrapper.b58_encode", err, &self.logger)
-                    })?;
+                    .map_err(|err| rpc_internal_error("wrapper.b58_encode", err, &self.logger))?;
                 dst.set_address_code(encoded);
                 Ok(dst)
             })
