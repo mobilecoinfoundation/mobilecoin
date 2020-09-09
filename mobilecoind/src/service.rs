@@ -1225,11 +1225,13 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                 wrapper.set_public_address((&subaddress).into());
                 let encoded = wrapper
                     .b58_encode()
-                    .unwrap_or_else(|_| "invalid address encoding".to_owned());
+                    .map_err(|err| {
+                        rpc_internal_error("wrapper.b58_encode", err, &self.logger)
+                    })
                 dst.set_address_code(encoded);
-                dst
+                Ok(dst)
             })
-            .collect();
+            .collect::<Result<Vec<_>, String>>()?
 
         // Return response
         let mut response = mc_mobilecoind_api::GetProcessedBlockResponse::new();
