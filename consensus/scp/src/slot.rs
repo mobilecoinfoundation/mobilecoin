@@ -76,7 +76,6 @@ pub trait ScpSlot<V: Value>: Send {
 /// The SCP slot.
 // Note: The fields representing the state of the slot are marked with pub(crate) so that they
 // could be accessed by `SlotState`.
-#[derive(Clone)]
 pub struct Slot<V: Value, ValidationError: Display> {
     /// Current slot number.
     pub(crate) slot_index: SlotIndex,
@@ -322,9 +321,15 @@ impl<V: Value, ValidationError: Display> ScpSlot<V> for Slot<V, ValidationError>
 
     /// Handle incoming messages from peers. Messages for other slots are ignored.
     fn handle_messages(&mut self, msgs: &[Msg<V>]) -> Result<Option<Msg<V>>, String> {
+        // Ignore messages from self.
+        let msgs: Vec<&Msg<V>> = msgs
+            .iter()
+            .filter(|&msg| msg.sender_id != self.node_id)
+            .collect();
+
         // Omit messages for other slots.
         let (mut msgs_for_slot, msgs_for_other_slots): (Vec<_>, Vec<_>) = msgs
-            .iter()
+            .into_iter()
             .partition(|&msg| msg.slot_index == self.slot_index);
 
         if !msgs_for_other_slots.is_empty() {
@@ -334,8 +339,6 @@ impl<V: Value, ValidationError: Display> ScpSlot<V> for Slot<V, ValidationError>
                 msgs_for_other_slots.len(),
             );
         }
-
-        // TODO: ignore messages from self.
 
         // Set to true if any input message is higher than previous messages from the same sender.
         let mut has_higher_messages = false;
@@ -383,14 +386,6 @@ impl<V: Value, ValidationError: Display> ScpSlot<V> for Slot<V, ValidationError>
         } else {
             Ok(None)
         }
-
-        // let mut response_opt = None;
-        // for msg in msgs {
-        //     if let Some(response) = self.handle_message(msg)? {
-        //         response_opt = Some(response);
-        //     }
-        // }
-        // Ok(response_opt)
     }
 
     fn get_debug_snapshot(&self) -> String {
