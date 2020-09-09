@@ -355,21 +355,21 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         &mut self,
         request: mc_mobilecoind_api::ReadRequestCodeRequest,
     ) -> Result<mc_mobilecoind_api::ReadRequestCodeResponse, RpcStatus> {
-        let request_wrapper = mc_mobilecoind_api::printable::PrintableWrapper::b58_decode(
+        let wrapper = mc_mobilecoind_api::printable::PrintableWrapper::b58_decode(
             request.get_b58_code().to_string(),
         )
         .map_err(|err| rpc_internal_error("PrintableWrapper_b58_decode", err, &self.logger))?;
 
         // A request code could be a public address or a payment request
-        if request_wrapper.has_payment_request() {
-            let payment_request = request_wrapper.get_payment_request();
+        if wrapper.has_payment_request() {
+            let payment_request = wrapper.get_payment_request();
             let mut response = mc_mobilecoind_api::ReadRequestCodeResponse::new();
             response.set_receiver(payment_request.get_public_address().clone());
             response.set_value(payment_request.get_value());
             response.set_memo(payment_request.get_memo().to_string());
             Ok(response)
-        } else if request_wrapper.has_public_address() {
-            let public_address = request_wrapper.get_public_address();
+        } else if wrapper.has_public_address() {
+            let public_address = wrapper.get_public_address();
             let mut response = mc_mobilecoind_api::ReadRequestCodeResponse::new();
             response.set_receiver(public_address.clone());
             response.set_value(0);
@@ -395,10 +395,10 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         payment_request.set_value(request.get_value());
         payment_request.set_memo(request.get_memo().to_string());
 
-        let mut request_wrapper = mc_mobilecoind_api::printable::PrintableWrapper::new();
-        request_wrapper.set_payment_request(payment_request);
+        let mut wrapper = mc_mobilecoind_api::printable::PrintableWrapper::new();
+        wrapper.set_payment_request(payment_request);
 
-        let encoded = request_wrapper
+        let encoded = wrapper
             .b58_encode()
             .map_err(|err| rpc_internal_error("b58_encode", err, &self.logger))?;
 
@@ -411,18 +411,18 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         &mut self,
         request: mc_mobilecoind_api::ReadTransferCodeRequest,
     ) -> Result<mc_mobilecoind_api::ReadTransferCodeResponse, RpcStatus> {
-        let request_wrapper = mc_mobilecoind_api::printable::PrintableWrapper::b58_decode(
+        let wrapper = mc_mobilecoind_api::printable::PrintableWrapper::b58_decode(
             request.get_b58_code().to_string(),
         )
         .map_err(|err| rpc_internal_error("PrintableWrapper.b58_decode", err, &self.logger))?;
 
-        if !request_wrapper.has_transfer_payload() {
+        if !wrapper.has_transfer_payload() {
             return Err(RpcStatus::new(
                 RpcStatusCode::INVALID_ARGUMENT,
                 Some("has_transfer_payload".to_string()),
             ));
         }
-        let transfer_payload = request_wrapper.get_transfer_payload();
+        let transfer_payload = wrapper.get_transfer_payload();
 
         let tx_public_key = RistrettoPublic::try_from(transfer_payload.get_tx_public_key())
             .map_err(|err| rpc_internal_error("RistrettoPublic.try_from", err, &self.logger))?;
@@ -524,19 +524,19 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         &mut self,
         request: mc_mobilecoind_api::ReadAddressCodeRequest,
     ) -> Result<mc_mobilecoind_api::ReadAddressCodeResponse, RpcStatus> {
-        let request_wrapper = mc_mobilecoind_api::printable::PrintableWrapper::b58_decode(
+        let wrapper = mc_mobilecoind_api::printable::PrintableWrapper::b58_decode(
             request.get_b58_code().to_string(),
         )
         .map_err(|err| rpc_internal_error("PrintableWrapper_b58_decode", err, &self.logger))?;
 
         // An address code could be a public address or a payment request
-        if request_wrapper.has_payment_request() {
-            let payment_request = request_wrapper.get_payment_request();
+        if wrapper.has_payment_request() {
+            let payment_request = wrapper.get_payment_request();
             let mut response = mc_mobilecoind_api::ReadAddressCodeResponse::new();
             response.set_receiver(payment_request.get_public_address().clone());
             Ok(response)
-        } else if request_wrapper.has_public_address() {
-            let public_address = request_wrapper.get_public_address();
+        } else if wrapper.has_public_address() {
+            let public_address = wrapper.get_public_address();
             let mut response = mc_mobilecoind_api::ReadAddressCodeResponse::new();
             response.set_receiver(public_address.clone());
             Ok(response)
@@ -555,10 +555,10 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         let receiver = PublicAddress::try_from(request.get_receiver())
             .map_err(|err| rpc_internal_error("PublicAddress.try_from", err, &self.logger))?;
 
-        let mut request_wrapper = mc_mobilecoind_api::printable::PrintableWrapper::new();
-        request_wrapper.set_public_address((&receiver).into());
+        let mut wrapper = mc_mobilecoind_api::printable::PrintableWrapper::new();
+        wrapper.set_public_address((&receiver).into());
 
-        let encoded = request_wrapper
+        let encoded = wrapper
             .b58_encode()
             .map_err(|err| rpc_internal_error("b58_encode", err, &self.logger))?;
 
