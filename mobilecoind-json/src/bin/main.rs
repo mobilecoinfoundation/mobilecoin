@@ -104,10 +104,7 @@ fn add_monitor(
 
 /// Remove a monitor
 #[delete("/monitors/<monitor_hex>")]
-fn remove_monitor(
-    state: rocket::State<State>,
-    monitor_hex: String,
-) -> Result<(), String> {
+fn remove_monitor(state: rocket::State<State>, monitor_hex: String) -> Result<(), String> {
     let monitor_id =
         hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
 
