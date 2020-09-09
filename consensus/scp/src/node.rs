@@ -462,7 +462,50 @@ mod tests {
 
     // TODO: handle_messages
 
-    // TODO: get_externalized_values
+    #[test_with_logger]
+    // Should get externalized values from the correct externalized slot.
+    fn test_get_externalized_values(logger: Logger) {
+        type V = &'static str;
+        let slot_index = 56;
+        let mut node = Node::<V, TransactionValidationError>::new(
+            test_node_id(1),
+            QuorumSet::new_with_node_ids(1, vec![test_node_id(2)]),
+            Arc::new(trivial_validity_fn),
+            Arc::new(trivial_combine_fn),
+            slot_index,
+            logger,
+        );
+
+        // push externalized slots for 51, 52, ..., 55
+        for i in 51..slot_index {
+            let mut externalized_slot = MockScpSlot::<V>::new();
+            externalized_slot.expect_get_index().return_const(i);
+
+            let msg = Msg::new(
+                test_node_id(2),
+                QuorumSet::new_with_node_ids(1, vec![test_node_id(3)]),
+                i,
+                Topic::Externalize(ExternalizePayload {
+                    C: Ballot::new(4, &[]),
+                    HN: 3,
+                }),
+            );
+
+            externalized_slot
+                .expect_get_last_message_sent()
+                .return_const(Some(msg));
+
+            node.push_externalized_slot(Box::new(externalized_slot));
+        }
+
+        // These slots are too old, and are no longer maintained.
+        for i in 51..55 {
+            assert_eq!(node.get_externalized_values(i), None)
+        }
+
+        // Slot 55 should still be maintained.
+        assert!(node.get_externalized_values(55).is_some());
+    }
 
     // TODO: process_timeouts
 
