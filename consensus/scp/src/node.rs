@@ -90,11 +90,9 @@ impl<V: Value, ValidationError: Clone + Display + 'static> Node<V, ValidationErr
     }
 
     // Record the values externalized by the current slot and advance the current slot.
-    fn externalize(
-        &mut self,
-        slot_index: SlotIndex, // TODO: remove this
-        payload: &ExternalizePayload<V>,
-    ) -> Result<(), String> {
+    fn externalize(&mut self, payload: &ExternalizePayload<V>) -> Result<(), String> {
+        let slot_index = self.current_slot.get_index();
+
         // Log an error if any invalid values were externalized.
         // This is be redundant, but may be helpful during development.
         for value in &payload.C.X {
@@ -200,7 +198,7 @@ impl<V: Value, ValidationError: Clone + Display + 'static> ScpNode<V> for Node<V
             None => Ok(None),
             Some(msg) => {
                 if let Topic::Externalize(ext_payload) = &msg.topic {
-                    self.externalize(msg.slot_index, ext_payload)?;
+                    self.externalize(ext_payload)?;
                 }
                 Ok(Some(msg))
             }
@@ -256,7 +254,7 @@ impl<V: Value, ValidationError: Clone + Display + 'static> ScpNode<V> for Node<V
         if let Some(msgs) = slot_index_to_msgs.get(&self.current_slot.get_index()) {
             if let Some(response) = self.current_slot.handle_messages(msgs)? {
                 if let Topic::Externalize(ext_payload) = &response.topic {
-                    self.externalize(response.slot_index, &ext_payload)?;
+                    self.externalize(&ext_payload)?;
                 }
                 outbound_msgs.push(response);
             }
