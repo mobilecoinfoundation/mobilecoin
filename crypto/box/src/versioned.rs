@@ -141,7 +141,7 @@ impl CryptoBox<Ristretto> for VersionedCryptoBox {
         key: &<Ristretto as Kex>::Private,
         footer: &GenericArray<u8, Self::FooterSize>,
         buffer: &mut [u8],
-    ) -> Result<(), Error> {
+    ) -> Result<bool, Error> {
         // Note: When generic_array is upreved, this can be tidier using this:
         // https://docs.rs/generic-array/0.14.1/src/generic_array/sequence.rs.html#302-320
         // For now we have to split as a slice, then convert back to Generic Array.

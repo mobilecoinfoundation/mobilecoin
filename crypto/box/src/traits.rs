@@ -134,7 +134,7 @@ pub trait CryptoBox<KexAlgo: Kex>: Default {
         &self,
         key: &KexAlgo::Private,
         cryptogram: &mut impl aead::Buffer,
-    ) -> Result<(), Error> {
+    ) -> Result<bool, Error> {
         // Extract the footer from end of ciphertext, doing bounds checks
         if cryptogram.len() < Self::FooterSize::USIZE {
             return Err(Error::TooShort(cryptogram.len(), Self::FooterSize::USIZE));
