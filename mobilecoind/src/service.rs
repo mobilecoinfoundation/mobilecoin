@@ -2254,10 +2254,7 @@ mod test {
             let response = client.get_address_code(&request).unwrap();
             let b58_code = response.get_b58_code();
 
-            assert_eq!(
-                tx_out.get_address_code(),
-                b58_code,
-            );
+            assert_eq!(tx_out.get_address_code(), b58_code);
         }
 
         // Add a block with a key images that spend the first two utxos and see that we get the
