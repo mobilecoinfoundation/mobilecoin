@@ -132,6 +132,13 @@ impl<V: Value, ValidationError: Clone + Display + 'static> Node<V, ValidationErr
             self.externalized_slots.remove(0);
         }
     }
+
+    /// Get the externalized slot, if any.
+    fn get_externalized_slot(&self, slot_index: SlotIndex) -> Option<&Slot<V, ValidationError>> {
+        self.externalized_slots
+            .iter()
+            .find(|slot| slot.get_index() == slot_index)
+    }
 }
 
 /// A node capable of participating in SCP.
@@ -269,23 +276,17 @@ impl<V: Value, ValidationError: Clone + Display + 'static> ScpNode<V> for Node<V
 
     /// Get externalized values for a given slot index, if any.
     fn get_externalized_values(&self, slot_index: SlotIndex) -> Option<Vec<V>> {
-        if let Some(slot) = self
-            .externalized_slots
-            .iter()
-            .find(|slot| slot.get_index() == slot_index)
-        {
+        self.get_externalized_slot(slot_index).map(|slot| {
             if let Topic::Externalize(payload) = slot
                 .get_last_message_sent()
                 .expect("Previous slots must have a message")
                 .topic
             {
-                Some(payload.C.X)
+                payload.C.X
             } else {
                 panic!("Previous slot has not externalized?");
             }
-        } else {
-            None
-        }
+        })
     }
 
     /// Process pending timeouts.
@@ -304,9 +305,13 @@ impl<V: Value, ValidationError: Clone + Display + 'static> ScpNode<V> for Node<V
     }
 
     /// Get the slot internal state (for debug purposes).
-    fn get_slot_debug_snapshot(&mut self, _slot_index: SlotIndex) -> Option<String> {
-        // TODO: return debug snapshots for other slots?
-        Some(self.current_slot.get_debug_snapshot())
+    fn get_slot_debug_snapshot(&mut self, slot_index: SlotIndex) -> Option<String> {
+        if slot_index == self.current_slot.slot_index {
+            Some(self.current_slot.get_debug_snapshot())
+        } else {
+            self.get_externalized_slot(slot_index)
+                .map(|slot| slot.get_debug_snapshot())
+        }
     }
 
     /// Reset the current slot.
