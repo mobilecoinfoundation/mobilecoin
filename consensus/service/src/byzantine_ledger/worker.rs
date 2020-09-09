@@ -59,17 +59,14 @@ pub struct ByzantineLedgerWorker<
     broadcaster: Arc<Mutex<dyn Broadcast>>,
     logger: Logger,
 
-    // Current slot (the one that is not yet in the ledger / the one currently being worked on).
-    cur_slot: SlotIndex,
+    // Current slot index (the one that is not yet in the ledger / the one currently being worked on).
+    current_slot_index: SlotIndex,
 
     // Previous block id
     prev_block_id: BlockID,
 
     // Pending scp messages we need to process.
     pending_consensus_msgs: Vec<(VerifiedConsensusMsg, ResponderId)>,
-
-    // // Map of slot index -> pending scp messages we need to process.
-    // pending_consensus_msgs: HashMap<SlotIndex, Vec<(VerifiedConsensusMsg, ResponderId)>>,
 
     // Pending values we're trying to push. We need to store them as a vec so we can process values
     // on a first-come first-served basis. However, we want to be able to:
@@ -96,7 +93,7 @@ pub struct ByzantineLedgerWorker<
     ledger_sync_state: LedgerSyncState,
 
     // A map of responder id to a list of tx hashes that it is unable to provide. This allows us to
-    // skip attemping to fetch txs that are bound to fail. A BTreeSet is used to speed up lookups
+    // skip attempting to fetch txs that are bound to fail. A BTreeSet is used to speed up lookups
     // as expect to be doing more lookups than inserts.
     unavailable_tx_hashes: HashMap<ResponderId, BTreeSet<TxHash>>,
 }
@@ -150,7 +147,7 @@ impl<
             peer_manager,
             logger,
 
-            cur_slot,
+            current_slot_index: cur_slot,
             prev_block_id,
             pending_consensus_msgs: Default::default(),
             pending_values: Vec::new(),
@@ -311,11 +308,15 @@ impl<
                 // Update state.
                 self.is_behind.store(false, Ordering::SeqCst);
                 self.ledger_sync_state = LedgerSyncState::InSync;
-                self.cur_slot = self.ledger.num_blocks().unwrap();
-                self.prev_block_id = self.ledger.get_block(self.cur_slot - 1).unwrap().id;
+                self.current_slot_index = self.ledger.num_blocks().unwrap();
+                self.prev_block_id = self
+                    .ledger
+                    .get_block(self.current_slot_index - 1)
+                    .unwrap()
+                    .id;
 
                 // Reset scp state.
-                self.scp.reset_slot_index(self.cur_slot);
+                self.scp.reset_slot_index(self.current_slot_index);
             }
         };
 
@@ -363,7 +364,7 @@ impl<
                 // SCP Statement
                 TaskMessage::ConsensusMsg(consensus_msg, from_responder_id) => {
                     // Only look at messages that are not for past slots.
-                    if consensus_msg.scp_msg().slot_index >= self.cur_slot {
+                    if consensus_msg.scp_msg().slot_index >= self.current_slot_index {
                         // Used to detect when we are behind.
                         self.network_state.push(consensus_msg.scp_msg().clone());
 
@@ -408,7 +409,7 @@ impl<
     // Process messages for current slot and recent previous slots; retain messages for future slots.
     fn process_consensus_msgs(&mut self) {
         // Process messages for slot indices in [oldest_slot, current_slot].
-        let current_slot = self.cur_slot;
+        let current_slot = self.current_slot_index;
         let oldest_slot = current_slot.saturating_sub(MAX_EXTERNALIZED_SLOTS as u64);
         let (consensus_msgs, future_msgs): (Vec<_>, Vec<_>) = self
             .pending_consensus_msgs
@@ -485,71 +486,9 @@ impl<
         }
     }
 
-    // fn process_consensus_msgs_for_cur_slot(&mut self) {
-    //     if let Some(consensus_msgs) = self.pending_consensus_msgs.remove(&self.cur_slot) {
-    //         for (consensus_msg, from_responder_id) in consensus_msgs {
-    //             let (scp_msg, their_prev_block_id) =
-    //                 (consensus_msg.scp_msg(), consensus_msg.prev_block_id());
-    //
-    //             if self.prev_block_id != *their_prev_block_id {
-    //                 log::warn!(self.logger, "Received message {:?} that refers to an invalid block id {:?} != {:?} (cur_slot = {})",
-    //                 scp_msg, their_prev_block_id, self.prev_block_id, self.cur_slot);
-    //             }
-    //
-    //             if !self.fetch_missing_txs(scp_msg, &from_responder_id) {
-    //                 continue;
-    //             }
-    //
-    //             // Broadcast this message to the rest of the network.
-    //             self.broadcaster
-    //                 .lock()
-    //                 .expect("mutex poisoned")
-    //                 .broadcast_consensus_msg(consensus_msg.as_ref(), &from_responder_id);
-    //
-    //             // Unclear if this helps with anything, so it is disabled for now.
-    //             /*
-    //             // See if this message has any values to incorporate into our pending
-    //             // values. This is safe since we only grab values we think are
-    //             // potentially valid.
-    //             let mut grabbed = 0;
-    //             if let Some(voted_or_accepted_nominated) = scp_msg.votes_or_accepts_nominated() {
-    //                 for value in voted_or_accepted_nominated {
-    //                     if !self.pending_values_map.contains(&value) && self.tx_cache.validate_tx_by_hash(&value).is_ok() {
-    //                         self.pending_values.insert(value.clone());
-    //                         self.pending_values_map.insert(value, Instant::now()? not sure if this is reasonable);
-    //                         grabbed += 1;
-    //                     }
-    //                 }
-    //             }
-    //
-    //             if grabbed > 0 {
-    //                 log::debug!(self.logger, "Grabbed {} extra pending values from SCP traffic", grabbed);
-    //             }
-    //             */
-    //
-    //             // Pass message to the scp layer.
-    //             match self.scp.handle(scp_msg) {
-    //                 Ok(msg_opt) => {
-    //                     if let Some(msg) = msg_opt {
-    //                         (self.send_scp_message)(msg);
-    //                     }
-    //                 }
-    //                 Err(err) => {
-    //                     log::error!(
-    //                         self.logger,
-    //                         "Failed handling message {:?}: {:?}",
-    //                         scp_msg,
-    //                         err
-    //                     );
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-
     fn attempt_complete_cur_slot(&mut self) {
         // See if we have externalized values for the current slot.
-        match self.scp.get_externalized_values(self.cur_slot) {
+        match self.scp.get_externalized_values(self.current_slot_index) {
             None => {}
             Some(ext_vals) => {
                 // Update pending value processing time metrics.
@@ -607,17 +546,17 @@ impl<
                 };
 
                 // Sanity check + update current slot.
-                let current_slot =
+                let current_slot_index =
                     self.ledger.num_blocks().expect("num blocks failed") as SlotIndex;
 
-                assert_eq!(current_slot, self.cur_slot + 1);
+                assert_eq!(current_slot_index, self.current_slot_index + 1);
 
-                self.cur_slot = current_slot;
+                self.current_slot_index = current_slot_index;
                 self.prev_block_id = block_id;
 
                 // Purge transactions that can no longer be processed based on their tombstone block.
                 let purged_hashes = {
-                    let index = current_slot.saturating_sub(MAX_EXTERNALIZED_SLOTS as u64);
+                    let index = current_slot_index.saturating_sub(MAX_EXTERNALIZED_SLOTS as u64);
                     self.tx_manager.remove_expired(index)
                 };
 
@@ -643,16 +582,20 @@ impl<
                     purged_hashes.len(),
                 );
 
-                // Prev slot metrics.
-                counters::PREV_SLOT_NUMBER.set((current_slot - 1) as i64);
+                // Previous slot metrics.
+                counters::PREV_SLOT_NUMBER.set((current_slot_index - 1) as i64);
                 counters::PREV_SLOT_ENDED_AT.set(chrono::Utc::now().timestamp_millis());
                 counters::PREV_SLOT_NUM_EXT_VALS.set(ext_vals.len() as i64);
                 counters::PREV_NUM_PENDING_VALUES.set(self.pending_values.len() as i64);
 
                 if !self.pending_values.is_empty() {
-                    // We have pending values to nominate on the next ick.
+                    // We have pending values to nominate on the next tick.
                     self.need_nominate = true;
                 }
+
+                // Clear the missing tx hashes map. If we encounter the same tx hash again in a
+                // different slot, it is possible we might be able to fetch it.
+                self.unavailable_tx_hashes.clear();
 
                 // If we think we're behind, reset us back to InSync since we made progress. If we're still
                 // behind this will result in restarting the grace period timer, which is the desired
@@ -664,120 +607,6 @@ impl<
                 }
             }
         }
-
-        // let ext_vals = self.scp.get_externalized_values(self.cur_slot);
-        // if ext_vals.is_empty() {
-        //     return;
-        // }
-        //
-        // // Update pending value processing time metrics.
-        // for ext_val in ext_vals.iter() {
-        //     if let Some(Some(timestamp)) = self.pending_values_map.get(ext_val) {
-        //         let duration = Instant::now().saturating_duration_since(*timestamp);
-        //         counters::PENDING_VALUE_PROCESSING_TIME.observe(duration.as_secs_f64());
-        //     }
-        // }
-        //
-        // // Maintain the invariant that pending_values only contains valid values that were not externalized.
-        // self.pending_values
-        //     .retain(|tx_hash| !ext_vals.contains(tx_hash));
-        //
-        // log::info!(
-        //     self.logger,
-        //     "Slot {} ended with {} externalized values and {} pending values.",
-        //     self.cur_slot,
-        //     ext_vals.len(),
-        //     self.pending_values.len(),
-        // );
-        //
-        // // Write to ledger.
-        // {
-        //     let num_blocks = self
-        //         .ledger
-        //         .num_blocks()
-        //         .expect("Ledger must contain a block.");
-        //     let parent_block = self
-        //         .ledger
-        //         .get_block(num_blocks - 1)
-        //         .expect("Ledger must contain a block.");
-        //     let (block, block_contents, signature) = self
-        //         .tx_manager
-        //         .tx_hashes_to_block(&ext_vals, &parent_block)
-        //         .unwrap_or_else(|e| panic!("Failed to build block from {:?}: {:?}", ext_vals, e));
-        //
-        //     log::info!(
-        //         self.logger,
-        //         "Appending block {} to ledger (sig: {}, tx_hashes: {:?}).",
-        //         block.index,
-        //         signature,
-        //         ext_vals,
-        //     );
-        //
-        //     self.ledger
-        //         .append_block(&block, &block_contents, Some(signature))
-        //         .expect("failed appending block");
-        //
-        //     counters::TX_EXTERNALIZED_COUNT.inc_by(ext_vals.len() as i64);
-        // }
-        //
-        // // Sanity check + update current slot.
-        // let cur_slot = self.ledger.num_blocks().expect("num blocks failed") as SlotIndex;
-        //
-        // assert_eq!(cur_slot, self.cur_slot + 1);
-        //
-        // self.cur_slot = cur_slot;
-        // self.prev_block_id = self.ledger.get_block(cur_slot - 1).unwrap().id;
-        //
-        // // Evacuate transactions that are no longer valid based on their
-        // // tombstone block.
-        // let purged_hashes = self.tx_manager.remove_expired(cur_slot);
-        //
-        // counters::TX_CACHE_NUM_ENTRIES.set(self.tx_manager.num_entries() as i64);
-        //
-        // // Drop pending values that are no longer considered valid.
-        // let tx_manager = self.tx_manager.clone();
-        // self.pending_values.retain(|tx_hash| {
-        //     !purged_hashes.contains(tx_hash) && tx_manager.validate(tx_hash).is_ok()
-        // });
-        //
-        // // Re-construct the BTreeMap with the remaining values, using the old timestamps.
-        // let mut new_pending_values_map = BTreeMap::new();
-        // for val in self.pending_values.iter() {
-        //     new_pending_values_map.insert(*val, *self.pending_values_map.get(val).unwrap());
-        // }
-        // self.pending_values_map = new_pending_values_map;
-        //
-        // log::info!(
-        //     self.logger,
-        //     "number of pending values post cleanup: {} ({} expired)",
-        //     self.pending_values.len(),
-        //     purged_hashes.len(),
-        // );
-        //
-        // // Prev slot metrics.
-        // counters::PREV_SLOT_NUMBER.set((cur_slot - 1) as i64);
-        // counters::PREV_SLOT_ENDED_AT.set(chrono::Utc::now().timestamp_millis());
-        // counters::PREV_SLOT_NUM_EXT_VALS.set(ext_vals.len() as i64);
-        // counters::PREV_NUM_PENDING_VALUES.set(self.pending_values.len() as i64);
-        //
-        // // If we have any pending values, we'd like to issue a nominate statement on the next
-        // // tick.
-        // if !self.pending_values.is_empty() {
-        //     self.need_nominate = true;
-        // }
-        //
-        // // If we think we're behind, reset us back to InSync since we made progress. If we're still
-        // // behind this will result in restarting the grace period timer, which is the desired
-        // // behavior. This protects us from a node that is slightly behind it's peers but has queued
-        // // up all the SCP statements it needs to make progress and catch up.
-        // if self.ledger_sync_state != LedgerSyncState::InSync {
-        //     log::info!(self.logger, "sync_service reported we're behind, but we just externalized a slot. resetting to InSync");
-        //     self.ledger_sync_state = LedgerSyncState::InSync;
-        // }
-        //
-        // // Clear the missing tx hashes map. If we encounter the same tx hash again in a different
-        // // slot, it is possible we might be able to fetch it.
-        // self.unavailable_tx_hashes.clear();
     }
 
     fn fetch_missing_txs(
@@ -883,7 +712,7 @@ impl<
     fn update_cur_metrics(&mut self) {
         let slot_metrics = self.scp.get_slot_metrics();
         counters::CUR_NUM_PENDING_VALUES.set(self.pending_values.len() as i64);
-        counters::CUR_SLOT_NUM.set(self.cur_slot as i64);
+        counters::CUR_SLOT_NUM.set(self.current_slot_index as i64);
         counters::CUR_SLOT_PHASE.set(match &slot_metrics.phase {
             Phase::NominatePrepare => 2,
             Phase::Prepare => 3,
