@@ -47,7 +47,7 @@ fi
 # If the ledgerdir is not already populated, copy the origin block.
 if [ ! -r "${NODE_LEDGER_DIR}/data.mdb" ]; then
     mkdir -p "${NODE_LEDGER_DIR}"
-    rsync -a --delete /var/lib/mobilecoin/origin_data/* ${NODE_LEDGER_DIR}/
+    rsync -a /var/lib/mobilecoin/origin_data/* ${NODE_LEDGER_DIR}/
 fi
 
 # Update the ledger to the current version if necessary
@@ -66,4 +66,4 @@ rm -rf /scp-debug-dump/${LOCAL_NODE_ID}
 
 launch /usr/bin/mc-admin-http-gateway --listen-host 0.0.0.0 --listen-port ${NODE_MANAGEMENT_PORT} --admin-uri insecure-mca://127.0.0.1:9091/
 
-exec env consensus-service $@
+exec consensus-service $@
