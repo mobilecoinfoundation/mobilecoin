@@ -110,8 +110,9 @@ where
         // KDF
         let (aes_key, aes_nonce) = Self::kdf_step(&shared_secret);
 
-        let ct_aes_nonce =
-            <GenericArray<u8, <AeadAlgo as CtAeadDecrypt>::NonceSize>>::from(aes_nonce);
+        let ct_aes_nonce = <GenericArray<u8, <AeadAlgo as CtAeadDecrypt>::NonceSize>>::from_slice(
+            aes_nonce.as_slice(),
+        );
 
         // AES
         let mac_ref = <&GenericArray<u8, <AeadAlgo as CtAeadDecrypt>::TagSize>>::from(
