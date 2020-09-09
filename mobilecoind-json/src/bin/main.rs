@@ -11,7 +11,7 @@ use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, Mobilecoind
 use mc_mobilecoind_json::data_types::*;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use protobuf::RepeatedField;
-use rocket::{get, post, routes};
+use rocket::{delete, get, post, routes};
 use rocket_contrib::json::Json;
 use std::{convert::TryFrom, sync::Arc};
 use structopt::StructOpt;
@@ -119,7 +119,7 @@ fn remove_monitor(
         .remove_monitor(&req)
         .map_err(|err| format!("Failed removing monitor: {}", err))?;
 
-    Ok()
+    Ok(())
 }
 
 /// Gets a list of existing monitors
