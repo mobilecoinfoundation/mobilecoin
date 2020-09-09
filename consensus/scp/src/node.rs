@@ -31,10 +31,10 @@ pub struct Node<V: Value, ValidationError: Clone + Display> {
     pub Q: QuorumSet,
 
     /// The current slot that this node is attempting to reach consensus on.
-    pub current_slot: Slot<V, ValidationError>,
+    pub current_slot: Box<dyn ScpSlot<V>>,
 
     /// A queue of externalized slots, ordered by increasing slot index.
-    pub externalized_slots: Vec<Slot<V, ValidationError>>,
+    pub externalized_slots: Vec<Box<dyn ScpSlot<V>>>,
 
     /// Application-specific validation of value.
     validity_fn: ValidityFn<V, ValidationError>,
@@ -80,7 +80,7 @@ impl<V: Value, ValidationError: Clone + Display + 'static> Node<V, ValidationErr
         Self {
             ID: node_id,
             Q: quorum_set,
-            current_slot: slot,
+            current_slot: Box::new(slot),
             externalized_slots: Vec::new(),
             validity_fn,
             combine_fn,
@@ -92,7 +92,7 @@ impl<V: Value, ValidationError: Clone + Display + 'static> Node<V, ValidationErr
     // Record the values externalized by the current slot and advance the current slot.
     fn externalize(
         &mut self,
-        slot_index: SlotIndex,
+        slot_index: SlotIndex, // TODO: remove this
         payload: &ExternalizePayload<V>,
     ) -> Result<(), String> {
         // Log an error if any invalid values were externalized.
@@ -109,23 +109,25 @@ impl<V: Value, ValidationError: Clone + Display + 'static> Node<V, ValidationErr
             }
         }
 
-        self.push_externalized_slot(self.current_slot.clone());
-
-        // Advance to the next slot.
-        self.current_slot = Slot::new(
+        let next_slot = Box::new(Slot::new(
             self.ID.clone(),
             self.Q.clone(),
             slot_index + 1,
             self.validity_fn.clone(),
             self.combine_fn.clone(),
             self.logger.clone(),
-        );
+        ));
+
+        // Advance to the next slot.
+        let externalized_slot = std::mem::replace(&mut self.current_slot, next_slot);
+
+        self.push_externalized_slot(externalized_slot);
 
         Ok(())
     }
 
     /// Push an externalized slot into the queue of externalized slots.
-    fn push_externalized_slot(&mut self, slot: Slot<V, ValidationError>) {
+    fn push_externalized_slot(&mut self, slot: Box<dyn ScpSlot<V>>) {
         self.externalized_slots.push(slot);
         while self.externalized_slots.len() > MAX_EXTERNALIZED_SLOTS {
             // Remove the first slot, which is the oldest.
@@ -134,7 +136,7 @@ impl<V: Value, ValidationError: Clone + Display + 'static> Node<V, ValidationErr
     }
 
     /// Get the externalized slot, if any.
-    fn get_externalized_slot(&self, slot_index: SlotIndex) -> Option<&Slot<V, ValidationError>> {
+    fn get_externalized_slot(&self, slot_index: SlotIndex) -> Option<&Box<dyn ScpSlot<V>>> {
         self.externalized_slots
             .iter()
             .find(|slot| slot.get_index() == slot_index)
@@ -306,7 +308,7 @@ impl<V: Value, ValidationError: Clone + Display + 'static> ScpNode<V> for Node<V
 
     /// Get the slot internal state (for debug purposes).
     fn get_slot_debug_snapshot(&mut self, slot_index: SlotIndex) -> Option<String> {
-        if slot_index == self.current_slot.slot_index {
+        if slot_index == self.current_slot.get_index() {
             Some(self.current_slot.get_debug_snapshot())
         } else {
             self.get_externalized_slot(slot_index)
@@ -316,29 +318,53 @@ impl<V: Value, ValidationError: Clone + Display + 'static> ScpNode<V> for Node<V
 
     /// Reset the current slot.
     fn reset_slot_index(&mut self, slot_index: SlotIndex) {
-        self.current_slot = Slot::new(
+        self.current_slot = Box::new(Slot::new(
             self.ID.clone(),
             self.Q.clone(),
             slot_index,
             self.validity_fn.clone(),
             self.combine_fn.clone(),
             self.logger.clone(),
-        );
+        ));
     }
 }
 
 #[cfg(test)]
 mod node_tests {
     use super::*;
-    use crate::{core_types::Ballot, msg::*, test_utils::*};
-    // use maplit::btreeset;
+    use crate::{core_types::Ballot, msg::*, slot::MockScpSlot, test_utils::*};
+    use maplit::btreeset;
     use mc_common::logger::test_with_logger;
     use std::{iter::FromIterator, sync::Arc};
 
     #[test_with_logger]
-    // Initially, `externalized_slots` should be empty.
+    // Node::new should correctly initialize current_slot and externalized_slots.
     fn test_initialization(logger: Logger) {
+        let node_id = test_node_id(1);
+        let quorum_set = QuorumSet::new_with_node_ids(1, vec![test_node_id(2)]);
+        let slot_index = 6;
         let node = Node::<u32, TransactionValidationError>::new(
+            node_id.clone(),
+            quorum_set.clone(),
+            Arc::new(trivial_validity_fn),
+            Arc::new(trivial_combine_fn),
+            slot_index,
+            logger.clone(),
+        );
+
+        assert_eq!(node.current_slot.get_index(), slot_index);
+        assert_eq!(node.node_id(), node_id);
+        assert_eq!(node.quorum_set(), quorum_set);
+
+        // Initially, `externalized_slots` should be empty.
+        assert!(node.externalized_slots.is_empty());
+    }
+
+    #[test_with_logger]
+    // Should pass values to the appropriate slot.
+    fn test_propose_values_no_outgoing_message(logger: Logger) {
+        type V = &'static str;
+        let mut node = Node::<V, TransactionValidationError>::new(
             test_node_id(1),
             QuorumSet::new_with_node_ids(1, vec![test_node_id(2)]),
             Arc::new(trivial_validity_fn),
@@ -347,31 +373,38 @@ mod node_tests {
             logger.clone(),
         );
 
-        assert!(node.externalized_slots.is_empty());
+        // Should call `propose_values` on the current slot.
+        let mut slot = MockScpSlot::<V>::new();
+        slot.expect_propose_values().times(1).return_const(Ok(None)); // No outgoing Msg.
+        node.current_slot = Box::new(slot);
+
+        // Should not call anything on an externalized slot.
+        let externalized_slot = MockScpSlot::<V>::new();
+        node.push_externalized_slot(Box::new(externalized_slot));
+
+        let values = btreeset!["a", "b", "c"];
+        let _res = node.propose_values(values);
     }
 
-    // #[test_with_logger]
-    // // Should pass values to the appropriate slot.
-    // fn test_propose_values(logger: Logger) {
-    //     type V = &'static str;
-    //
-    //     let mut node = Node::<V, TransactionValidationError>::new(
-    //         test_node_id(1),
-    //         QuorumSet::new_with_node_ids(1, vec![test_node_id(2)]),
-    //         Arc::new(trivial_validity_fn),
-    //         Arc::new(trivial_combine_fn),
-    //         0,
-    //         logger.clone(),
-    //     );
-    //
-    //     let mut slot = MockScpSlot::<V>::new();
-    //     slot.expect_propose_values().times(1).return_const(Ok(None));
-    //     // TODO
-    //     node.current_slot = Box::new(slot);
-    //
-    //     let values = btreeset!["a", "b", "c"];
-    //     let _res = node.propose_values(values);
-    // }
+    #[test_with_logger]
+    // Should pass values to the appropriate slot and return the outgoing msg.
+    fn test_propose_values_with_outgoing_message(_logger: Logger) {
+        // TODO:
+    }
+
+    #[test_with_logger]
+    // Should pass values to the appropriate slot, externalize the slot,  and return the outgoing msg.
+    fn test_propose_values_with_externalize(_logger: Logger) {
+        // TODO:
+    }
+
+    // TODO: handle_messages
+
+    // TODO: get_externalized_values
+
+    // TODO: process_timeouts
+
+    // TODO: reset_slot_index
 
     #[test_with_logger]
     /// Steps through a sequence of messages that allow a two-node network to reach consensus.
