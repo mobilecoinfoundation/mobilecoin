@@ -179,22 +179,22 @@ fn public_address(
 }
 
 /// Generates a request code with an optional value and memo
-#[post("/codes/request", format = "json", data = "<code_request>")]
-fn request_code(
+#[post("/codes/request", format = "json", data = "<request>")]
+fn get_request_code(
     state: rocket::State<State>,
-    code_request: Json<JsonRequestCodeRequest>,
-) -> Result<Json<JsonRequestCodeResponse>, String> {
-    let public_address =
-        mc_mobilecoind_api::external::PublicAddress::try_from(&code_request.public_address)
-            .map_err(|err| format!("Failed to parse public address: {}", err))?;
+    request: Json<JsonGetRequestCodeRequest>,
+) -> Result<Json<JsonGetRequestCodeResponse>, String> {
+    let receiver =
+        mc_mobilecoind_api::external::PublicAddress::try_from(&request.receiver)
+            .map_err(|err| format!("Failed to parse receiver's public address: {}", err))?;
 
     // Generate b58 code
     let mut req = mc_mobilecoind_api::GetRequestCodeRequest::new();
-    req.set_receiver(public_address);
-    if let Some(value) = code_request.value {
+    req.set_receiver(receiver);
+    if let Some(value) = request.value {
         req.set_value(value);
     }
-    if let Some(memo) = code_request.memo.clone() {
+    if let Some(memo) = request.memo.clone() {
         req.set_memo(memo);
     }
 
@@ -203,17 +203,17 @@ fn request_code(
         .get_request_code(&req)
         .map_err(|err| format!("Failed getting request code: {}", err))?;
 
-    Ok(Json(JsonRequestCodeResponse::from(&resp)))
+    Ok(Json(JsonGetRequestCodeResponse::from(&resp)))
 }
 
-/// Retrieves the data in a request code
-#[get("/codes/request/<request_code>")]
-fn read_request(
+/// Retrieves the data in a request b58_code
+#[get("/codes/request/<b58_code>")]
+fn read_request_code(
     state: rocket::State<State>,
-    request_code: String,
-) -> Result<Json<JsonReadRequestResponse>, String> {
+    b58_code: String,
+) -> Result<Json<JsonReadRequestCodeResponse>, String> {
     let mut req = mc_mobilecoind_api::ReadRequestCodeRequest::new();
-    req.set_b58_code(request_code);
+    req.set_b58_code(b58_code);
     let resp = state
         .mobilecoind_api_client
         .read_request_code(&req)
@@ -222,7 +222,46 @@ fn read_request(
     // The response contains the public keys encoded in the read request, as well as a memo and
     // requested value. This can be used as-is in the transfer call below, or the value can be
     // modified.
-    Ok(Json(JsonReadRequestResponse::from(&resp)))
+    Ok(Json(JsonReadRequestCodeResponse::from(&resp)))
+}
+
+/// Generates an address code
+#[post("/codes/address", format = "json", data = "<request>")]
+fn get_address_code(
+    state: rocket::State<State>,
+    request: Json<JsonGetAddressCodeRequest>,
+) -> Result<Json<JsonGetAddressCodeResponse>, String> {
+    let receiver =
+        mc_mobilecoind_api::external::PublicAddress::try_from(&request.receiver)
+            .map_err(|err| format!("Failed to parse receiver's public address: {}", err))?;
+
+    // Generate b58 code
+    let mut req = mc_mobilecoind_api::GetAddressCodeRequest::new();
+    req.set_receiver(receiver);
+
+    let resp = state
+        .mobilecoind_api_client
+        .get_address_code(&req)
+        .map_err(|err| format!("Failed getting address code: {}", err))?;
+
+    Ok(Json(JsonGetAddressCodeResponse::from(&resp)))
+}
+
+/// Retrieves the data in an address b58_code
+#[get("/codes/address/<b58_code>")]
+fn read_address_code(
+    state: rocket::State<State>,
+    b58_code: String,
+) -> Result<Json<JsonReadAddressCodeResponse>, String> {
+    let mut req = mc_mobilecoind_api::ReadAddressCodeRequest::new();
+    req.set_b58_code(b58_code);
+    let resp = state
+        .mobilecoind_api_client
+        .read_address_code(&req)
+        .map_err(|err| format!("Failed reading address code: {}", err))?;
+
+    // The response contains the public keys encoded in the read request
+    Ok(Json(JsonReadAddressCodeResponse::from(&resp)))
 }
 
 /// Performs a transfer from a monitor and subaddress. The public keys and amount are in the POST data.
@@ -432,8 +471,10 @@ fn main() {
                 monitor_status,
                 balance,
                 public_address,
-                request_code,
-                read_request,
+                get_request_code,
+                read_request_code,
+                get_address_code,
+                read_address_code,
                 transfer,
                 check_transfer_status,
                 check_receiver_transfer_status,
