@@ -1,5 +1,6 @@
 # Copyright (c) 2018-2020 MobileCoin Inc.
 
+from requests.api import request
 import external_pb2
 import blockchain_pb2
 from google.protobuf import empty_pb2
@@ -223,6 +224,15 @@ class mob_client:
             memo=memo)
         response = self.stub.GenerateTransferCodeTx(request)
         return response.tx_proposal, response.entropy
+
+    def generate_tx_from_tx_out_list(self, account_key, input_list, receiver):
+        request = api.GenerateTxFromTxOutListRequest(
+            account_key=account_key,
+            input_list=input_list,
+            receiver=receiver,
+        )
+        response = self.stub.GenerateTxFromTxOutList(request)
+        return response.tx_proposal
 
     def submit_tx(self, tx_proposal):
         """ Submit a prepared transaction, optionall requesting a tombstone block.
