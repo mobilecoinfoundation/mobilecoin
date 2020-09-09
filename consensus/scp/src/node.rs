@@ -31,10 +31,10 @@ pub struct Node<V: Value, ValidationError: Clone + Display> {
     pub Q: QuorumSet,
 
     /// The current slot that this node is attempting to reach consensus on.
-    pub current_slot: Box<dyn ScpSlot<V>>,
+    current_slot: Box<dyn ScpSlot<V>>,
 
     /// A queue of externalized slots, ordered by increasing slot index.
-    pub externalized_slots: Vec<Box<dyn ScpSlot<V>>>,
+    externalized_slots: Vec<Box<dyn ScpSlot<V>>>,
 
     /// Application-specific validation of value.
     validity_fn: ValidityFn<V, ValidationError>,
