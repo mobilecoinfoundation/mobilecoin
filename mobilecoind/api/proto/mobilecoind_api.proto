@@ -203,15 +203,15 @@ enum ProcessedTxOutDirection {
 }
 
 
-// Structure used to report tx outs received in a given processed block.
+// Structure used to report processed information for TxOuts discovered in a given processed block.
 message ProcessedTxOut {
-    // The monitor id that received the transaction.
+    // The monitor id that owns the TxOut.
     bytes monitor_id = 1;
 
-    // The subaddress the transaction was sent to.
+    // The subaddress that owns the TxOut.
     uint64 subaddress_index = 2;
 
-    // The public key of the received TxOut.
+    // The public key of the TxOut.
     external.CompressedRistretto public_key = 3;
 
     // The key image of the TxOut.
@@ -220,8 +220,11 @@ message ProcessedTxOut {
     // The value of the TxOut.
     uint64 value = 5;
 
-    // Whether this ProcessedTxOut was received at this block or spent at this block.
+    // Whether the TxOut was received (deposit to subaddress) or spent (withdrawal from subaddress).
     ProcessedTxOutDirection direction = 6;
+    
+    // The b58-encoded Address Code for the subaddress that owns the TxOut.
+    string address_code = 7;
 }
 
 //*********************************
