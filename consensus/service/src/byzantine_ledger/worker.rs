@@ -483,125 +483,121 @@ impl<
     }
 
     fn attempt_complete_cur_slot(&mut self) {
-        // See if we have externalized values for the current slot.
-        match self.scp.get_externalized_values(self.current_slot_index) {
-            None => {}
-            Some(ext_vals) => {
-                // Update pending value processing time metrics.
-                for value in ext_vals.iter() {
-                    if let Some(Some(timestamp)) = self.pending_values_map.get(value) {
-                        let duration = Instant::now().saturating_duration_since(*timestamp);
-                        counters::PENDING_VALUE_PROCESSING_TIME.observe(duration.as_secs_f64());
-                    }
+        if let Some(ext_vals) = self.scp.get_externalized_values(self.current_slot_index) {
+            // Update pending value processing time metrics.
+            for value in ext_vals.iter() {
+                if let Some(Some(timestamp)) = self.pending_values_map.get(value) {
+                    let duration = Instant::now().saturating_duration_since(*timestamp);
+                    counters::PENDING_VALUE_PROCESSING_TIME.observe(duration.as_secs_f64());
                 }
+            }
 
-                // Invariant: pending_values only contains valid values that were not externalized.
-                self.pending_values
-                    .retain(|tx_hash| !ext_vals.contains(tx_hash));
+            // Invariant: pending_values only contains valid values that were not externalized.
+            self.pending_values
+                .retain(|tx_hash| !ext_vals.contains(tx_hash));
+
+            log::info!(
+                self.logger,
+                "Slot {} ended with {} externalized values and {} pending values.",
+                self.current_slot_index,
+                ext_vals.len(),
+                self.pending_values.len(),
+            );
+
+            // Write to ledger.
+            let block_id = {
+                let num_blocks = self
+                    .ledger
+                    .num_blocks()
+                    .expect("Ledger must contain a block.");
+                let parent_block = self
+                    .ledger
+                    .get_block(num_blocks - 1)
+                    .expect("Ledger must contain a block.");
+                let (block, block_contents, signature) = self
+                    .tx_manager
+                    .tx_hashes_to_block(&ext_vals, &parent_block)
+                    .unwrap_or_else(|e| {
+                        panic!("Failed to build block from {:?}: {:?}", ext_vals, e)
+                    });
 
                 log::info!(
                     self.logger,
-                    "Slot {} ended with {} externalized values and {} pending values.",
-                    self.current_slot_index,
-                    ext_vals.len(),
-                    self.pending_values.len(),
+                    "Appending block {} to ledger (sig: {}, tx_hashes: {:?}).",
+                    block.index,
+                    signature,
+                    ext_vals,
                 );
 
-                // Write to ledger.
-                let block_id = {
-                    let num_blocks = self
-                        .ledger
-                        .num_blocks()
-                        .expect("Ledger must contain a block.");
-                    let parent_block = self
-                        .ledger
-                        .get_block(num_blocks - 1)
-                        .expect("Ledger must contain a block.");
-                    let (block, block_contents, signature) = self
-                        .tx_manager
-                        .tx_hashes_to_block(&ext_vals, &parent_block)
-                        .unwrap_or_else(|e| {
-                            panic!("Failed to build block from {:?}: {:?}", ext_vals, e)
-                        });
+                self.ledger
+                    .append_block(&block, &block_contents, Some(signature))
+                    .expect("failed appending block");
 
-                    log::info!(
-                        self.logger,
-                        "Appending block {} to ledger (sig: {}, tx_hashes: {:?}).",
-                        block.index,
-                        signature,
-                        ext_vals,
-                    );
+                counters::TX_EXTERNALIZED_COUNT.inc_by(ext_vals.len() as i64);
 
-                    self.ledger
-                        .append_block(&block, &block_contents, Some(signature))
-                        .expect("failed appending block");
+                block.id
+            };
 
-                    counters::TX_EXTERNALIZED_COUNT.inc_by(ext_vals.len() as i64);
+            // Sanity check + update current slot.
+            let current_slot_index =
+                self.ledger.num_blocks().expect("num blocks failed") as SlotIndex;
 
-                    block.id
-                };
+            assert_eq!(current_slot_index, self.current_slot_index + 1);
 
-                // Sanity check + update current slot.
-                let current_slot_index =
-                    self.ledger.num_blocks().expect("num blocks failed") as SlotIndex;
+            self.current_slot_index = current_slot_index;
+            self.prev_block_id = block_id;
 
-                assert_eq!(current_slot_index, self.current_slot_index + 1);
+            // Purge transactions that can no longer be processed based on their tombstone block.
+            let max_externalized_slots = self.scp.max_externalized_slots() as u64;
+            let purged_hashes = {
+                let index = current_slot_index.saturating_sub(max_externalized_slots);
+                self.tx_manager.remove_expired(index)
+            };
 
-                self.current_slot_index = current_slot_index;
-                self.prev_block_id = block_id;
+            counters::TX_CACHE_NUM_ENTRIES.set(self.tx_manager.num_entries() as i64);
 
-                // Purge transactions that can no longer be processed based on their tombstone block.
-                let max_externalized_slots = self.scp.max_externalized_slots() as u64;
-                let purged_hashes = {
-                    let index = current_slot_index.saturating_sub(max_externalized_slots);
-                    self.tx_manager.remove_expired(index)
-                };
+            // Drop pending values that are no longer considered valid.
+            let tx_manager = self.tx_manager.clone();
+            self.pending_values.retain(|tx_hash| {
+                !purged_hashes.contains(tx_hash) && tx_manager.validate(tx_hash).is_ok()
+            });
 
-                counters::TX_CACHE_NUM_ENTRIES.set(self.tx_manager.num_entries() as i64);
+            // Re-construct the BTreeMap with the remaining values, using the old timestamps.
+            let mut new_pending_values_map = BTreeMap::new();
+            for val in self.pending_values.iter() {
+                new_pending_values_map.insert(*val, *self.pending_values_map.get(val).unwrap());
+            }
+            self.pending_values_map = new_pending_values_map;
 
-                // Drop pending values that are no longer considered valid.
-                let tx_manager = self.tx_manager.clone();
-                self.pending_values.retain(|tx_hash| {
-                    !purged_hashes.contains(tx_hash) && tx_manager.validate(tx_hash).is_ok()
-                });
+            log::info!(
+                self.logger,
+                "number of pending values post cleanup: {} ({} expired)",
+                self.pending_values.len(),
+                purged_hashes.len(),
+            );
 
-                // Re-construct the BTreeMap with the remaining values, using the old timestamps.
-                let mut new_pending_values_map = BTreeMap::new();
-                for val in self.pending_values.iter() {
-                    new_pending_values_map.insert(*val, *self.pending_values_map.get(val).unwrap());
-                }
-                self.pending_values_map = new_pending_values_map;
+            // Previous slot metrics.
+            counters::PREV_SLOT_NUMBER.set((current_slot_index - 1) as i64);
+            counters::PREV_SLOT_ENDED_AT.set(chrono::Utc::now().timestamp_millis());
+            counters::PREV_SLOT_NUM_EXT_VALS.set(ext_vals.len() as i64);
+            counters::PREV_NUM_PENDING_VALUES.set(self.pending_values.len() as i64);
 
-                log::info!(
-                    self.logger,
-                    "number of pending values post cleanup: {} ({} expired)",
-                    self.pending_values.len(),
-                    purged_hashes.len(),
-                );
+            if !self.pending_values.is_empty() {
+                // We have pending values to nominate on the next tick.
+                self.need_nominate = true;
+            }
 
-                // Previous slot metrics.
-                counters::PREV_SLOT_NUMBER.set((current_slot_index - 1) as i64);
-                counters::PREV_SLOT_ENDED_AT.set(chrono::Utc::now().timestamp_millis());
-                counters::PREV_SLOT_NUM_EXT_VALS.set(ext_vals.len() as i64);
-                counters::PREV_NUM_PENDING_VALUES.set(self.pending_values.len() as i64);
+            // Clear the missing tx hashes map. If we encounter the same tx hash again in a
+            // different slot, it is possible we might be able to fetch it.
+            self.unavailable_tx_hashes.clear();
 
-                if !self.pending_values.is_empty() {
-                    // We have pending values to nominate on the next tick.
-                    self.need_nominate = true;
-                }
-
-                // Clear the missing tx hashes map. If we encounter the same tx hash again in a
-                // different slot, it is possible we might be able to fetch it.
-                self.unavailable_tx_hashes.clear();
-
-                // If we think we're behind, reset us back to InSync since we made progress. If we're still
-                // behind this will result in restarting the grace period timer, which is the desired
-                // behavior. This protects us from a node that is slightly behind it's peers but has queued
-                // up all the SCP statements it needs to make progress and catch up.
-                if self.ledger_sync_state != LedgerSyncState::InSync {
-                    log::info!(self.logger, "sync_service reported we're behind, but we just externalized a slot. resetting to InSync");
-                    self.ledger_sync_state = LedgerSyncState::InSync;
-                }
+            // If we think we're behind, reset us back to InSync since we made progress. If we're still
+            // behind this will result in restarting the grace period timer, which is the desired
+            // behavior. This protects us from a node that is slightly behind it's peers but has queued
+            // up all the SCP statements it needs to make progress and catch up.
+            if self.ledger_sync_state != LedgerSyncState::InSync {
+                log::info!(self.logger, "sync_service reported we're behind, but we just externalized a slot. resetting to InSync");
+                self.ledger_sync_state = LedgerSyncState::InSync;
             }
         }
     }
