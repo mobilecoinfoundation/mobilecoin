@@ -55,8 +55,8 @@ pub enum Error {
     #[fail(display = "Signature error")]
     Signature,
 
-    /// Signature error
-    #[fail(display = "Fee public address error")]
+    /// Fee Public Address Error
+    #[fail(display = "Fee public address error: {}", _0)]
     FeePublicAddress(String),
 }
 

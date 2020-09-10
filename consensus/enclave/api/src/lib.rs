@@ -205,7 +205,7 @@ pub trait ConsensusEnclave: ReportableEnclave {
     /// Retrieve the block signing public key from the enclave.
     fn get_signer(&self) -> Result<Ed25519Public>;
 
-    /// Retrieve the fee public address from the enclave.
+    /// Retrieve the fee public address from the enclave, as (SpendPublic, ViewPublic)
     fn get_fee_recipient(&self) -> Result<(RistrettoPublic, RistrettoPublic)>;
 
     // CLIENT-FACING METHODS
