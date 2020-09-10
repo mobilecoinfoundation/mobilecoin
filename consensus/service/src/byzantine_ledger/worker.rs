@@ -40,6 +40,9 @@ use std::{
     time::{Duration, Instant},
 };
 
+/// Default number of consensus messages to process per batch.
+const CONSENSUS_MSG_BATCH_SIZE: usize = 5;
+
 pub struct ByzantineLedgerWorker<
     F: Fn(Msg<TxHash>),
     L: Ledger + 'static,
@@ -438,8 +441,7 @@ impl<
         }
 
         // Process compatible messages in batches.
-        let batch_size = 5;
-        for chunk in compatible_msgs.chunks(batch_size) {
+        for chunk in compatible_msgs.chunks(CONSENSUS_MSG_BATCH_SIZE) {
             // Omit a message if it references a transaction that cannot be obtained.
             let (resolved, failed): (Vec<_>, Vec<_>) =
                 chunk
