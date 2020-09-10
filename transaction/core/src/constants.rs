@@ -33,6 +33,7 @@ lazy_static! {
     pub static ref FEE_BLINDING: Scalar = Scalar::zero();
 }
 
+/*
 cfg_if::cfg_if! {
     if #[cfg(any(test, feature="test-net-fee-keys"))] {
         /// Internal TestNet fee recipient account, generated via
@@ -59,6 +60,7 @@ cfg_if::cfg_if! {
         compile_error!("must specify either main-net-fee-keys or test-net-fee-keys feature");
     }
 }
+*/
 
 #[cfg(test)]
 mod tests {
