@@ -186,7 +186,5 @@ And then you can build with:
 SGX_MODE=HW IAS_MODE=DEV \
     CONSENSUS_ENCLAVE_SIGNED=$(pwd)/libconsensus-enclave.signed.so \
     CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css \
-    FEE_SPEND_PUBLIC_KEY=26b507c63124a2f5e940b4fb89e4b2bb0a2078ed0c8e551ad59268b9646ec241 \
-    FEE_VIEW_PUBLIC_KEY=5222a1e9ae32d21c23114a5ce6bb39e0cb56aea350d4619d43b1207061b10346 \
     cargo build --release -p mc-consensus-service
 ```
