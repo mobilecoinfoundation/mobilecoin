@@ -12,9 +12,11 @@
 
 extern crate alloc;
 
+mod constants;
 mod identity;
 
 use alloc::{collections::BTreeSet, format, string::String, vec::Vec};
+use constants::{FEE_SPEND_PUBLIC_KEY, FEE_VIEW_PUBLIC_KEY};
 use core::convert::TryFrom;
 use identity::Ed25519Identity;
 use mc_account_keys::PublicAddress;
@@ -55,10 +57,6 @@ use rand_core::{CryptoRng, RngCore};
 
 /// Domain seperator for unified fees transaction private key.
 pub const FEES_OUTPUT_PRIVATE_KEY_DOMAIN_TAG: &str = "mc_fees_output_private_key";
-
-/// Injected during the build
-pub const FEE_SPEND_PUBLIC_KEY: &str = env!("FEE_SPEND_PUBLIC_KEY");
-pub const FEE_VIEW_PUBLIC_KEY: &str = env!("FEE_VIEW_PUBLIC_KEY");
 
 include!(concat!(env!("OUT_DIR"), "/target_features.rs"));
 
@@ -209,12 +207,8 @@ impl ConsensusEnclave for SgxConsensusEnclave {
     }
 
     fn get_fee_recipient(&self) -> Result<(RistrettoPublic, RistrettoPublic)> {
-        let mut fee_spend_public_key = [0u8; 32];
-        fee_spend_public_key[..32].copy_from_slice(&hex::decode(&FEE_SPEND_PUBLIC_KEY).unwrap());
-        let mut fee_view_public_key = [0u8; 32];
-        fee_view_public_key[..32].copy_from_slice(&hex::decode(&FEE_VIEW_PUBLIC_KEY).unwrap());
-        let fee_spend_ristretto = RistrettoPublic::try_from(&fee_spend_public_key).unwrap();
-        let fee_view_ristretto = RistrettoPublic::try_from(&fee_view_public_key).unwrap();
+        let fee_spend_ristretto = RistrettoPublic::try_from(&FEE_SPEND_PUBLIC_KEY).unwrap();
+        let fee_view_ristretto = RistrettoPublic::try_from(&FEE_VIEW_PUBLIC_KEY).unwrap();
         Ok((fee_spend_ristretto, fee_view_ristretto))
     }
 
@@ -575,10 +569,9 @@ mod tests {
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
 
-    /// The Fee View Private Key for testing. Associated with the following fee vars:
-    /// FEE_SPEND_PUBLIC_KEY=26b507c63124a2f5e940b4fb89e4b2bb0a2078ed0c8e551ad59268b9646ec241
-    /// FEE_VIEW_PUBLIC_KEY=5222a1e9ae32d21c23114a5ce6bb39e0cb56aea350d4619d43b1207061b10346
-    pub const FEE_VIEW_PRIVATE_KEY: [u8; 32] = [
+    // The private key is only used by tests. This does not need to be specified for main net.
+    // The public keys associated with this private key are the defaults in build.rs
+    const FEE_VIEW_PRIVATE_KEY: [u8; 32] = [
         21, 152, 99, 251, 140, 2, 50, 154, 2, 171, 188, 60, 163, 243, 204, 195, 241, 78, 204, 85,
         202, 52, 250, 242, 215, 247, 175, 59, 121, 185, 111, 8,
     ];
