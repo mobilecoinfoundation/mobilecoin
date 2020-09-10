@@ -361,14 +361,11 @@ impl<
 
                 // SCP Statement
                 TaskMessage::ConsensusMsg(consensus_msg, from_responder_id) => {
-                    // Only look at messages that are not for past slots.
-                    if consensus_msg.scp_msg().slot_index >= self.current_slot_index {
-                        // Used to detect when we are behind.
-                        self.network_state.push(consensus_msg.scp_msg().clone());
+                    // Used to detect when we are behind.
+                    self.network_state.push(consensus_msg.scp_msg().clone());
 
-                        self.pending_consensus_msgs
-                            .push((consensus_msg, from_responder_id));
-                    }
+                    self.pending_consensus_msgs
+                        .push((consensus_msg, from_responder_id));
                 }
 
                 // Request to stop thread
