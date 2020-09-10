@@ -261,6 +261,15 @@ impl<V: Value, ValidationError: Clone + Display + 'static> ScpNode<V> for Node<V
         // Messages emitted by this node that should be sent to the network.
         let mut outbound_msgs: Vec<_> = Vec::new();
 
+        // Handle messages for recent externalized slots. Messages for older slots are ignored.
+        for slot in self.externalized_slots.iter_mut() {
+            if let Some(msgs) = slot_index_to_msgs.get(&slot.get_index()) {
+                if let Some(response) = slot.handle_messages(msgs)? {
+                    outbound_msgs.push(response);
+                }
+            }
+        }
+
         // Handle messages for current slot.
         if let Some(msgs) = slot_index_to_msgs.get(&self.current_slot.get_index()) {
             if let Some(response) = self.current_slot.handle_messages(msgs)? {
@@ -270,17 +279,6 @@ impl<V: Value, ValidationError: Clone + Display + 'static> ScpNode<V> for Node<V
                 outbound_msgs.push(response);
             }
         }
-
-        // Handle messages for previous slots.
-        for slot in self.externalized_slots.iter_mut() {
-            if let Some(msgs) = slot_index_to_msgs.get(&slot.get_index()) {
-                if let Some(response) = slot.handle_messages(msgs)? {
-                    outbound_msgs.push(response);
-                }
-            }
-        }
-
-        // Note: messages for older slots are ignored.
 
         Ok(outbound_msgs)
     }
@@ -479,34 +477,277 @@ mod tests {
         assert_eq!(node.externalized_slots[0].get_index(), slot_index)
     }
 
+    // Messages for the "handle_messages" tests.
+    #[allow(unused)]
+    fn get_messages(node_id: NodeID) -> Vec<Msg<&'static str>> {
+        let current_slot_index = 1985;
+        let recent_externalized_slot_index = 1984;
+        let too_old_slot_index = 1885;
+        let future_slot_index = 2015;
+
+        let msg_from_self = Msg::new(
+            node_id,
+            QuorumSet::new_with_node_ids(1, vec![test_node_id(3)]),
+            current_slot_index,
+            Topic::Externalize(ExternalizePayload {
+                C: Ballot::new(4, &[]),
+                HN: 3,
+            }),
+        );
+
+        let msg_for_current_slot = Msg::new(
+            test_node_id(2),
+            QuorumSet::new_with_node_ids(1, vec![test_node_id(3)]),
+            current_slot_index,
+            Topic::Nominate(NominatePayload {
+                X: Default::default(),
+                Y: Default::default(),
+            }),
+        );
+
+        let msg_for_recent_slot = Msg::new(
+            test_node_id(2),
+            QuorumSet::new_with_node_ids(1, vec![test_node_id(3)]),
+            recent_externalized_slot_index,
+            Topic::Nominate(NominatePayload {
+                X: Default::default(),
+                Y: Default::default(),
+            }),
+        );
+
+        let msg_for_future_slot = Msg::new(
+            test_node_id(2),
+            QuorumSet::new_with_node_ids(1, vec![test_node_id(3)]),
+            future_slot_index,
+            Topic::Nominate(NominatePayload {
+                X: Default::default(),
+                Y: Default::default(),
+            }),
+        );
+
+        // A message from an old slot.
+        let msg_for_old_slot = Msg::new(
+            test_node_id(2),
+            QuorumSet::new_with_node_ids(1, vec![test_node_id(3)]),
+            too_old_slot_index,
+            Topic::Nominate(NominatePayload {
+                X: Default::default(),
+                Y: Default::default(),
+            }),
+        );
+
+        vec![
+            msg_for_old_slot,
+            msg_for_current_slot,
+            msg_from_self,
+            msg_for_future_slot,
+            msg_for_recent_slot,
+        ]
+    }
+
     #[test_with_logger]
     // Should omit messages from self.
-    fn test_handle_messages_omit_from_self(_logger: Logger) {
-        // TODO
+    fn test_handle_messages_omit_from_self(logger: Logger) {
+        let slot_index = 1985;
+        let mut node = get_node(slot_index, logger);
+
+        // The current slot should not be called.
+        let mut slot = MockScpSlot::new();
+        slot.expect_get_index().return_const(slot_index);
+        node.current_slot = Box::new(slot);
+
+        // The recent externalized slot should not be called.
+        let mut externalized_slot = MockScpSlot::new();
+        externalized_slot
+            .expect_get_index()
+            .return_const(slot_index - 1);
+        node.push_externalized_slot(Box::new(externalized_slot));
+
+        let msg_from_self = Msg::new(
+            node.ID.clone(),
+            node.quorum_set(),
+            slot_index,
+            Topic::Externalize(ExternalizePayload {
+                C: Ballot::new(4, &[]),
+                HN: 3,
+            }),
+        );
+
+        match node.handle_messages(vec![msg_from_self.clone(), msg_from_self.clone()]) {
+            Ok(outgoing_msgs) => assert_eq!(outgoing_msgs.len(), 0),
+            Err(e) => panic!("Unexpected error {:?}", e),
+        }
     }
 
     #[test_with_logger]
     // Should omit messages for future slots.
-    fn test_handle_messages_omit_from_future(_logger: Logger) {
-        // TODO
+    fn test_handle_messages_omit_from_future(logger: Logger) {
+        let slot_index = 1985;
+        let mut node = get_node(slot_index, logger);
+
+        // The current slot should not be called.
+        let mut slot = MockScpSlot::new();
+        slot.expect_get_index().return_const(slot_index);
+        node.current_slot = Box::new(slot);
+
+        // The recent externalized slot should not be called.
+        let mut externalized_slot = MockScpSlot::new();
+        externalized_slot
+            .expect_get_index()
+            .return_const(slot_index - 1);
+        node.push_externalized_slot(Box::new(externalized_slot));
+
+        // A message from a peer for a future slot index.
+        let msg_for_future_slot = Msg::new(
+            test_node_id(2),
+            QuorumSet::new_with_node_ids(1, vec![test_node_id(3)]),
+            2015, // Where we're going, we don't need roads.
+            Topic::Externalize(ExternalizePayload {
+                C: Ballot::new(4, &[]),
+                HN: 3,
+            }),
+        );
+
+        match node.handle_messages(vec![msg_for_future_slot]) {
+            Ok(outgoing_msgs) => assert_eq!(outgoing_msgs.len(), 0),
+            Err(e) => panic!("Unexpected error {:?}", e),
+        }
     }
 
     #[test_with_logger]
     // Should omit messages that are too old.
-    fn test_handle_messages_omit_old(_logger: Logger) {
-        // TODO
+    fn test_handle_messages_omit_old(logger: Logger) {
+        let slot_index = 1985;
+        let mut node = get_node(slot_index, logger);
+
+        // The current slot should not be called.
+        let mut slot = MockScpSlot::new();
+        slot.expect_get_index().return_const(slot_index);
+        node.current_slot = Box::new(slot);
+
+        // The recent externalized slot should not be called.
+        let mut externalized_slot = MockScpSlot::new();
+        externalized_slot
+            .expect_get_index()
+            .return_const(slot_index - 1);
+        node.push_externalized_slot(Box::new(externalized_slot));
+
+        // A message from an old slot.
+        let msg_for_old_slot = Msg::new(
+            test_node_id(2),
+            QuorumSet::new_with_node_ids(1, vec![test_node_id(3)]),
+            1885, // Too old
+            Topic::Nominate(NominatePayload {
+                X: Default::default(),
+                Y: Default::default(),
+            }),
+        );
+
+        match node.handle_messages(vec![msg_for_old_slot]) {
+            Ok(outgoing_msgs) => assert_eq!(outgoing_msgs.len(), 0),
+            Err(e) => panic!("Unexpected error {:?}", e),
+        }
     }
 
     #[test_with_logger]
     // Should pass messages to the current slot.
-    fn test_handle_messages_current_slot(_logger: Logger) {
-        // TODO
+    fn test_handle_messages_current_slot(logger: Logger) {
+        let slot_index = 1985;
+        let mut node = get_node(slot_index, logger);
+
+        // The current slot should be called, and should return a message.
+        let mut slot = MockScpSlot::new();
+        {
+            slot.expect_get_index().return_const(slot_index);
+
+            let msg = Msg::new(
+                node.ID.clone(),
+                node.quorum_set(),
+                slot_index,
+                Topic::Externalize(ExternalizePayload {
+                    C: Ballot::new(4, &[]),
+                    HN: 3,
+                }),
+            );
+
+            slot.expect_handle_messages()
+                .times(1)
+                .return_const(Ok(Some(msg)));
+        }
+        node.current_slot = Box::new(slot);
+
+        // The recent externalized slot should not be called.
+        let mut externalized_slot = MockScpSlot::new();
+        externalized_slot
+            .expect_get_index()
+            .return_const(slot_index - 1);
+        node.push_externalized_slot(Box::new(externalized_slot));
+
+        let msg_for_current_slot = Msg::new(
+            test_node_id(2),
+            QuorumSet::new_with_node_ids(1, vec![test_node_id(3)]),
+            slot_index,
+            Topic::Nominate(NominatePayload {
+                X: Default::default(),
+                Y: Default::default(),
+            }),
+        );
+
+        match node.handle_messages(vec![msg_for_current_slot]) {
+            Ok(outgoing_msgs) => assert_eq!(outgoing_msgs.len(), 1), // Should return a message.
+            Err(e) => panic!("Unexpected error {:?}", e),
+        }
     }
 
     #[test_with_logger]
     // Should pass messages to the correct externalized slot.
-    fn test_handle_messages_externalized_slots(_logger: Logger) {
-        // TODO
+    fn test_handle_messages_externalized_slots(logger: Logger) {
+        let slot_index = 1985;
+        let mut node = get_node(slot_index, logger);
+
+        // The current slot should not be called.
+        let mut slot = MockScpSlot::new();
+        slot.expect_get_index().return_const(slot_index);
+        node.current_slot = Box::new(slot);
+
+        // The recently externalized slot should be called.
+        let mut externalized_slot = MockScpSlot::new();
+        {
+            externalized_slot
+                .expect_get_index()
+                .return_const(slot_index - 1);
+
+            let msg = Msg::new(
+                node.ID.clone(),
+                node.quorum_set(),
+                slot_index - 1,
+                Topic::Externalize(ExternalizePayload {
+                    C: Ballot::new(4, &[]),
+                    HN: 3,
+                }),
+            );
+
+            externalized_slot
+                .expect_handle_messages()
+                .times(1)
+                .return_const(Ok(Some(msg)));
+        }
+        node.push_externalized_slot(Box::new(externalized_slot));
+
+        let msg_for_recent_slot = Msg::new(
+            test_node_id(2),
+            QuorumSet::new_with_node_ids(1, vec![test_node_id(3)]),
+            slot_index - 1,
+            Topic::Nominate(NominatePayload {
+                X: Default::default(),
+                Y: Default::default(),
+            }),
+        );
+
+        match node.handle_messages(vec![msg_for_recent_slot]) {
+            Ok(outgoing_msgs) => assert_eq!(outgoing_msgs.len(), 1), // Should return a message.
+            Err(e) => panic!("Unexpected error {:?}", e),
+        }
     }
 
     #[test_with_logger]
