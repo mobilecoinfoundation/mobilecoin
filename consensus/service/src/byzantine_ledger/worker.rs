@@ -710,7 +710,7 @@ impl<
     }
 
     fn update_cur_metrics(&mut self) {
-        let slot_metrics = self.scp.get_slot_metrics();
+        let slot_metrics = self.scp.get_current_slot_metrics();
         counters::CUR_NUM_PENDING_VALUES.set(self.pending_values.len() as i64);
         counters::CUR_SLOT_NUM.set(self.current_slot_index as i64);
         counters::CUR_SLOT_PHASE.set(match &slot_metrics.phase {

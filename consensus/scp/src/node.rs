@@ -180,7 +180,7 @@ pub trait ScpNode<V: Value>: Send {
     fn current_slot_index(&self) -> SlotIndex;
 
     /// Get metrics for the current slot.
-    fn get_slot_metrics(&mut self) -> SlotMetrics;
+    fn get_current_slot_metrics(&mut self) -> SlotMetrics;
 
     /// Additional debug info, e.g. a JSON representation of the Slot's state.
     fn get_slot_debug_snapshot(&mut self, slot_index: SlotIndex) -> Option<String>;
@@ -320,7 +320,7 @@ impl<V: Value, ValidationError: Clone + Display + 'static> ScpNode<V> for Node<V
     }
 
     /// Get metrics for the current slot.
-    fn get_slot_metrics(&mut self) -> SlotMetrics {
+    fn get_current_slot_metrics(&mut self) -> SlotMetrics {
         self.current_slot.get_metrics()
     }
 
