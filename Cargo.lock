@@ -2434,7 +2434,6 @@ dependencies = [
 name = "mc-consensus-enclave-mock"
 version = "1.0.0"
 dependencies = [
- "hex 0.4.2",
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-common",

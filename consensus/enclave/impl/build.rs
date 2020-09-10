@@ -43,11 +43,11 @@ fn main() {
     let default_fee_view_pub = "5222a1e9ae32d21c23114a5ce6bb39e0cb56aea350d4619d43b1207061b10346";
 
     // Check for env var and override
-    fee_spend_public_key[..32].copy_from_slice(
+    fee_spend_public_key[..].copy_from_slice(
         &hex::decode(&var("FEE_SPEND_PUBLIC_KEY").unwrap_or(default_fee_spend_pub.to_string()))
             .expect("Failed parsing public spend key."),
     );
-    fee_view_public_key[..32].copy_from_slice(
+    fee_view_public_key[..].copy_from_slice(
         &hex::decode(&var("FEE_VIEW_PUBLIC_KEY").unwrap_or(default_fee_view_pub.to_string()))
             .expect("Failed parsing public view key."),
     );
