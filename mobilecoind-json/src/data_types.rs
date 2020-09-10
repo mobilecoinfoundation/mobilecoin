@@ -104,21 +104,21 @@ impl From<&mc_mobilecoind_api::GetBalanceResponse> for JsonBalanceResponse {
 }
 
 #[derive(Deserialize)]
-pub struct JsonRequestCodeRequest {
-    pub public_address: JsonPublicAddress,
+pub struct JsonGetRequestCodeRequest {
+    pub receiver: JsonPublicAddress,
     pub value: Option<u64>,
     pub memo: Option<String>,
 }
 
 #[derive(Serialize, Default)]
-pub struct JsonRequestCodeResponse {
-    pub request_code: String,
+pub struct JsonGetRequestCodeResponse {
+    pub b58_code: String,
 }
 
-impl From<&mc_mobilecoind_api::GetRequestCodeResponse> for JsonRequestCodeResponse {
+impl From<&mc_mobilecoind_api::GetRequestCodeResponse> for JsonGetRequestCodeResponse {
     fn from(src: &mc_mobilecoind_api::GetRequestCodeResponse) -> Self {
         Self {
-            request_code: String::from(src.get_b58_code()),
+            b58_code: String::from(src.get_b58_code()),
         }
     }
 }
@@ -186,18 +186,49 @@ impl TryFrom<&JsonPublicAddress> for PublicAddress {
 }
 
 #[derive(Deserialize, Serialize, Default)]
-pub struct JsonReadRequestResponse {
+pub struct JsonReadRequestCodeResponse {
     pub receiver: JsonPublicAddress,
     pub value: String,
     pub memo: String,
 }
 
-impl From<&mc_mobilecoind_api::ReadRequestCodeResponse> for JsonReadRequestResponse {
+impl From<&mc_mobilecoind_api::ReadRequestCodeResponse> for JsonReadRequestCodeResponse {
     fn from(src: &mc_mobilecoind_api::ReadRequestCodeResponse) -> Self {
         Self {
             receiver: JsonPublicAddress::from(src.get_receiver()),
             value: src.get_value().to_string(),
             memo: src.get_memo().to_string(),
+        }
+    }
+}
+
+#[derive(Deserialize)]
+pub struct JsonGetAddressCodeRequest {
+    pub receiver: JsonPublicAddress,
+}
+
+#[derive(Serialize, Default)]
+pub struct JsonGetAddressCodeResponse {
+    pub b58_code: String,
+}
+
+impl From<&mc_mobilecoind_api::GetAddressCodeResponse> for JsonGetAddressCodeResponse {
+    fn from(src: &mc_mobilecoind_api::GetAddressCodeResponse) -> Self {
+        Self {
+            b58_code: String::from(src.get_b58_code()),
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Default)]
+pub struct JsonReadAddressCodeResponse {
+    pub receiver: JsonPublicAddress,
+}
+
+impl From<&mc_mobilecoind_api::ReadAddressCodeResponse> for JsonReadAddressCodeResponse {
+    fn from(src: &mc_mobilecoind_api::ReadAddressCodeResponse) -> Self {
+        Self {
+            receiver: JsonPublicAddress::from(src.get_receiver()),
         }
     }
 }

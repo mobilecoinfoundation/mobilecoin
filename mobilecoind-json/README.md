@@ -67,7 +67,7 @@ $ curl localhost:9090/monitors/a0cf8b79c9f8d74eb935ab4eeeb771f3809a408ad47246be4
 
 #### Generate a request code from a public address and optional other information
 ```
-$ curl localhost:9090/codes/request -d '{"public_address": {"view_public_key":"543b376e9d5b949dd8694f065d95a98a89e6f17a20c621621a808605d1904324","spend_public_key":"58dba855a885dd535dc5180af443abae67c790b860d5adadb4d6a2ecb71abd28","fog_report_url":"","fog_authority_fingerprint_sig":"","fog_report_id":""}, "amount": 10, "memo": "Please pay me"}'  -X POST -H 'Content-Type: application/json'
+$ curl localhost:9090/codes/request -d '{"receiver": {"view_public_key":"543b376e9d5b949dd8694f065d95a98a89e6f17a20c621621a808605d1904324","spend_public_key":"58dba855a885dd535dc5180af443abae67c790b860d5adadb4d6a2ecb71abd28","fog_report_url":"","fog_authority_fingerprint_sig":"","fog_report_id":""}, "amount": 10, "memo": "Please pay me"}'  -X POST -H 'Content-Type: application/json'
 
 {"request_code":"ufTwqVqF2rXmFVBZ1CWWS3ntdajVZGfZ5A2YZqAwhVnaVYrFpS9Z8iAg44CBGDeyjFDX8Hj4W7ZzArBn1xSp9wu8NriqQAogN8fUybKmoWgaz92kT4M7fbjRYKZmoY8"}
 ```
