@@ -15,7 +15,7 @@ use mc_consensus_api::{
     consensus_client_grpc::ConsensusClientApi,
     consensus_common::{ProposeTxResponse, ProposeTxResult},
 };
-use mc_consensus_enclave::{ConsensusEnclave, TxContext};
+use mc_consensus_enclave::ConsensusEnclave;
 use mc_ledger_db::Ledger;
 use mc_util_grpc::{rpc_logger, send_result};
 use mc_util_metrics::{self, SVC_COUNTERS};
@@ -65,56 +65,27 @@ impl ClientApiService {
         msg: Message,
     ) -> Result<ProposeTxResponse, ConsensusGrpcError> {
         counters::ADD_TX_INITIATED.inc();
-
         let tx_context = self.enclave.client_tx_propose(msg.into())?;
-
-        let num_blocks = self.ledger.num_blocks().map_err(ConsensusGrpcError::from)?;
         let mut response = ProposeTxResponse::new();
-        response.set_num_blocks(num_blocks);
 
-        // Reject the proposed transaction if it contains any key images that have already been spent.
-        // This is done here as a courtesy to give clients immediate feedback about their transaction.
-        if self.contains_spent_key_image(&tx_context)? {
-            response.set_result(ProposeTxResult::ContainsSpentKeyImage);
-            return Ok(response);
-        }
-
-        match self.tx_manager.insert(tx_context) {
-            Ok(tx_hash) => {
-                // Submit for consideration in next SCP slot.
-                (*self.propose_tx_callback)(tx_hash, None, None);
-                counters::ADD_TX.inc();
-                Ok(response)
+        // Cache the transaction. This performs the well-formedness checks.
+        let tx_hash = self.tx_manager.insert(tx_context).map_err(|err| {
+            if let TxManagerError::TransactionValidation(cause) = &err {
+                counters::TX_VALIDATION_ERROR_COUNTER.inc(&format!("{:?}", cause));
+                let result = ProposeTxResult::from(cause.clone());
+                response.set_result(result);
             }
-            Err(err) => match err {
-                TxManagerError::TransactionValidation(cause) => {
-                    counters::TX_VALIDATION_ERROR_COUNTER.inc(&format!("{:?}", cause));
-                    let result = ProposeTxResult::from(cause);
-                    response.set_result(result);
-                    Ok(response)
-                }
-                TxManagerError::AlreadyInCache => {
-                    response.set_result(ProposeTxResult::Ok);
-                    Ok(response)
-                }
-                _ => Err(err.into()),
-            },
-        }
-    }
+            err
+        })?;
 
-    /// Returns true if the transaction contains a spent key image.
-    ///
-    /// This is only a best-effort check, and may give inconsistent results if the ledger is
-    /// concurrently modified.
-    fn contains_spent_key_image(&self, tx_context: &TxContext) -> Result<bool, ConsensusGrpcError> {
-        let mut contains_spent_key_image = false;
-        for key_image in &tx_context.key_images {
-            if self.ledger.contains_key_image(key_image)? {
-                contains_spent_key_image = true;
-                break;
-            }
-        }
-        Ok(contains_spent_key_image)
+        // Validate the transaction.
+        // This is done here as a courtesy to give clients immediate feedback about the transaction.
+        self.tx_manager.validate(&tx_hash)?;
+
+        // The transaction can be considered by the network.
+        (*self.propose_tx_callback)(tx_hash, None, None);
+        counters::ADD_TX.inc();
+        Ok(response)
     }
 }
 
@@ -127,7 +98,7 @@ impl ConsensusClientApi for ClientApiService {
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
 
-        let resp: Result<ProposeTxResponse, RpcStatus> =
+        let mut result: Result<ProposeTxResponse, RpcStatus> =
             if counters::CUR_NUM_PENDING_VALUES.get() >= PENDING_LIMIT {
                 // This node is over capacity, and is not accepting proposed transaction.
                 if let Err(e) = self.enclave.client_discard_message(msg.into()) {
@@ -147,14 +118,20 @@ impl ConsensusClientApi for ClientApiService {
                     .or_else(ConsensusGrpcError::into)
             };
 
+        result = result.and_then(|mut response| {
+            let num_blocks = self.ledger.num_blocks().map_err(ConsensusGrpcError::from)?;
+            response.set_num_blocks(num_blocks);
+            Ok(response)
+        });
+
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            send_result(ctx, sink, resp, &logger)
+            send_result(ctx, sink, result, &logger)
         });
     }
 }
 
 #[cfg(test)]
-mod tests {
+mod client_api_tests {
     use crate::{
         client_api_service::{ClientApiService, PENDING_LIMIT},
         counters,
@@ -233,17 +210,12 @@ mod tests {
             .times(1)
             .return_const(Ok(num_blocks));
 
-        // The service should check if each key image is already in the ledger.
-        ledger
-            .expect_contains_key_image()
-            .times(2)
-            .return_const(Ok(false));
-
         let mut tx_manager = MockTxManager::new();
         tx_manager
             .expect_insert()
             .times(1)
             .return_const(Ok(TxHash::default()));
+        tx_manager.expect_validate().times(1).return_const(Ok(()));
 
         let is_serving_fn = Arc::new(|| -> bool { true });
 
@@ -296,20 +268,18 @@ mod tests {
             .times(1)
             .return_const(Ok(num_blocks));
 
-        // The service should check if each key image is already in the ledger.
-        // Here, the first key image check succeeds, and the second fails.
-        ledger
-            .expect_contains_key_image()
-            .times(1)
-            .return_const(Ok(false));
-
-        ledger
-            .expect_contains_key_image()
-            .times(1)
-            .return_const(Ok(true));
-
         // The service should return without calling tx_manager.
-        let tx_manager = MockTxManager::new();
+        let mut tx_manager = MockTxManager::new();
+        tx_manager
+            .expect_insert()
+            .times(1)
+            .return_const(Ok(TxHash::default()));
+
+        tx_manager.expect_validate().times(1).return_const(Err(
+            TxManagerError::TransactionValidation(
+                TransactionValidationError::ContainsSpentKeyImage,
+            ),
+        ));
 
         let is_serving_fn = Arc::new(|| -> bool { true });
 
@@ -364,12 +334,6 @@ mod tests {
             .expect_num_blocks()
             .times(1)
             .return_const(Ok(num_blocks));
-
-        // The service should check if each key image is already in the ledger.
-        ledger
-            .expect_contains_key_image()
-            .times(2)
-            .return_const(Ok(false));
 
         let mut tx_manager = MockTxManager::new();
         tx_manager.expect_insert().times(1).return_const(Err(
