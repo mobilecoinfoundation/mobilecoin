@@ -4,7 +4,7 @@
 
 use cargo_emit::rerun_if_env_changed;
 use mc_util_build_script::Environment;
-use std::{convert::TryFrom, env::var, fs, path::PathBuf};
+use std::{env::var, fs};
 
 fn main() {
     let env = Environment::default();
@@ -62,13 +62,7 @@ fn main() {
     ));
 
     // Output directory for generated constants.
-    let mut output_destination =
-        PathBuf::try_from(var("CARGO_MANIFEST_DIR").expect("Could not read CARGO_MANIFEST_DIR"))
-            .expect("Could not construct PathBuf from CARGO_MANIEFST_DIR")
-            .canonicalize()
-            .expect("Could not canonicalize CARGO_MANIFEST_DIR");
-    output_destination.push("src");
-    output_destination.push("constants.rs");
+    let output_destination = env.out_dir().join("constants.rs");
 
     // Only write if the contents would change.
     if fs::read_to_string(&output_destination).ok().as_ref() != Some(&constants) {
