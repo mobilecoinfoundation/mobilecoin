@@ -54,6 +54,10 @@ pub enum Error {
     /// Signature error
     #[fail(display = "Signature error")]
     Signature,
+
+    /// Signature error
+    #[fail(display = "Fee public address error")]
+    FeePublicAddress(String),
 }
 
 impl From<MessageCipherError> for Error {

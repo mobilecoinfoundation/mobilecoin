@@ -18,7 +18,7 @@ use mc_attest_enclave_api::{
     PeerAuthResponse, PeerSession,
 };
 use mc_common::ResponderId;
-use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Public, X25519Public};
+use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Public, RistrettoPublic, X25519Public};
 use mc_sgx_report_cache_api::ReportableEnclave;
 use mc_transaction_core::{
     ring_signature::KeyImage,
@@ -202,8 +202,11 @@ pub trait ConsensusEnclave: ReportableEnclave {
     /// Retrieve the public identity of the enclave.
     fn get_identity(&self) -> Result<X25519Public>;
 
-    /// Retreive the block signing public key from the enclave.
+    /// Retrieve the block signing public key from the enclave.
     fn get_signer(&self) -> Result<Ed25519Public>;
+
+    /// Retrieve the fee public address from the enclave.
+    fn get_fee_recipient(&self) -> Result<(RistrettoPublic, RistrettoPublic)>;
 
     // CLIENT-FACING METHODS
 

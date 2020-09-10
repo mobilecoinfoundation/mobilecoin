@@ -43,7 +43,6 @@ use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
     amount::Amount,
-    constants::{FEE_SPEND_PUBLIC_KEY, FEE_VIEW_PUBLIC_KEY},
     membership_proofs::compute_implied_merkle_root,
     onetime_keys::{create_onetime_public_key, create_shared_secret, create_tx_public_key},
     ring_signature::{KeyImage, Scalar},
@@ -56,6 +55,10 @@ use rand_core::{CryptoRng, RngCore};
 
 /// Domain seperator for unified fees transaction private key.
 pub const FEES_OUTPUT_PRIVATE_KEY_DOMAIN_TAG: &str = "mc_fees_output_private_key";
+
+/// Injected during the build
+pub const FEE_SPEND_PUBLIC_KEY: &str = env!("FEE_SPEND_PUBLIC_KEY");
+pub const FEE_VIEW_PUBLIC_KEY: &str = env!("FEE_VIEW_PUBLIC_KEY");
 
 include!(concat!(env!("OUT_DIR"), "/target_features.rs"));
 
@@ -203,6 +206,16 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 
     fn get_signer(&self) -> Result<Ed25519Public> {
         Ok(self.ake.get_identity().get_public_key())
+    }
+
+    fn get_fee_recipient(&self) -> Result<(RistrettoPublic, RistrettoPublic)> {
+        let mut fee_spend_public_key = [0u8; 32];
+        fee_spend_public_key[..32].copy_from_slice(&hex::decode(&FEE_SPEND_PUBLIC_KEY).unwrap());
+        let mut fee_view_public_key = [0u8; 32];
+        fee_view_public_key[..32].copy_from_slice(&hex::decode(&FEE_VIEW_PUBLIC_KEY).unwrap());
+        let fee_spend_ristretto = RistrettoPublic::try_from(&fee_spend_public_key).unwrap();
+        let fee_view_ristretto = RistrettoPublic::try_from(&fee_view_public_key).unwrap();
+        Ok((fee_spend_ristretto, fee_view_ristretto))
     }
 
     fn client_accept(&self, req: ClientAuthRequest) -> Result<(ClientAuthResponse, ClientSession)> {
@@ -476,7 +489,12 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         };
 
         let total_fee: u64 = transactions.iter().map(|tx| tx.prefix.fee).sum();
-        let fee_output = mint_aggregate_fee(&fee_tx_private_key, total_fee)?;
+        let fee_recipient_pubkeys = self.get_fee_recipient().map_err(|e| {
+            Error::FeePublicAddress(format!("Could not get fee public address: {:?}", e))
+        })?;
+        let fee_recipient = PublicAddress::new(&fee_recipient_pubkeys.0, &fee_recipient_pubkeys.1);
+
+        let fee_output = mint_aggregate_fee(&fee_recipient, &fee_tx_private_key, total_fee)?;
 
         let mut outputs: Vec<TxOut> = Vec::new();
         let mut key_images: Vec<KeyImage> = Vec::new();
@@ -513,12 +531,11 @@ impl ConsensusEnclave for SgxConsensusEnclave {
 /// # Arguments:
 /// * `tx_private_key` - Transaction key used to output the aggregate fee.
 /// * `total_fee` - The sum of all fees in the block.
-fn mint_aggregate_fee(tx_private_key: &RistrettoPrivate, total_fee: u64) -> Result<TxOut> {
-    let fee_recipient = PublicAddress::new(
-        &RistrettoPublic::try_from(&FEE_SPEND_PUBLIC_KEY).unwrap(),
-        &RistrettoPublic::try_from(&FEE_VIEW_PUBLIC_KEY).unwrap(),
-    );
-
+fn mint_aggregate_fee(
+    fee_recipient: &PublicAddress,
+    tx_private_key: &RistrettoPrivate,
+    total_fee: u64,
+) -> Result<TxOut> {
     // Create a single TxOut
     let fee_output: TxOut = {
         let target_key = create_onetime_public_key(tx_private_key, &fee_recipient).into();

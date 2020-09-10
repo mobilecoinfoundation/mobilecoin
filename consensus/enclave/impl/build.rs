@@ -2,6 +2,7 @@
 
 //! Bake the compile-time target features into the enclave.
 
+//use cargo_emit::rerun_if_env_changed;
 use mc_util_build_script::Environment;
 use std::fs;
 
@@ -25,4 +26,6 @@ fn main() {
 
     fs::write(&env.out_dir().join("target_features.rs"), &contents)
         .expect("Could not write target feature array");
+
+    // rerun_if_env_changed!("FEE_SPEND_PUBLIC_KEY");
 }

@@ -65,6 +65,9 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
         EnclaveCall::GetSigner => {
             serialize(&ENCLAVE.get_signer()).or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
         }
+        EnclaveCall::GetFeeRecipient => {
+            serialize(&ENCLAVE.get_fee_recipient()).or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
+        }
         EnclaveCall::NewEreport(qe_info) => {
             serialize(&ENCLAVE.new_ereport(qe_info)).or(Err(sgx_status_t::SGX_ERROR_UNEXPECTED))?
         }
