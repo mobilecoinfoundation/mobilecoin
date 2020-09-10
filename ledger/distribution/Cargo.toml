@@ -8,6 +8,16 @@ edition = "2018"
 name = "ledger-distribution"
 path = "src/main.rs"
 
+[features]
+test_utils = []
+# Specifies whether to use test net or main net fee output keys
+main-net-fee-keys = [
+    "mc-transaction-core/main-net-fee-keys"
+]
+test-net-fee-keys = [
+    "mc-transaction-core/test-net-fee-keys"
+]
+
 [dependencies]
 mc-api = { path = "../../api" }
 mc-common = { path = "../../common", features = ["loggers"] }
@@ -25,3 +35,8 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 structopt = "0.3"
 url = "2.1"
+
+[build-dependencies]
+# Even though this is also a dependency, it needs to be here otherwise Cargo brings in some weird mixture of packages/features that refuses to compile.
+# Go figure ¯\_(ツ)_/¯
+serde = { version = "1", default-features = false, features = ["alloc", "derive"] }

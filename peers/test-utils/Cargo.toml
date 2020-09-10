@@ -13,7 +13,7 @@ mc-consensus-scp = { path = "../../consensus/scp" }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
 mc-peers = { path = "../../peers" }
-mc-transaction-core = { path = "../../transaction/core" }
+mc-transaction-core = { path = "../../transaction/core", features = ["test-net-fee-keys"] }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-uri = { path = "../../util/uri" }
 

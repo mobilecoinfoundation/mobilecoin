@@ -11,7 +11,9 @@ default = ["test-net-fee-keys"]
 main-net-fee-keys = [
     "mc-transaction-core/main-net-fee-keys"
 ]
-test-net-fee-keys = []
+test-net-fee-keys = [
+    "mc-transaction-core/test-net-fee-keys"
+]
 
 [[bin]]
 name = "mobilecoind"

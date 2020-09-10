@@ -69,6 +69,9 @@ fn main() {
         }
     }
 
+    rustc_cfg!("feature=\"mc-transaction-core/main-net-fee-keys\"");
+    rustc_cfg!("feature=\"mc-consensus-enclave-impl/main-net-fee-keys\"");
+
     builder
         .target_dir(env.target_dir().join(CONSENSUS_ENCLAVE_NAME).as_path())
         .config_builder

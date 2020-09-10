@@ -8,4 +8,4 @@ edition = "2018"
 mc-ledger-db = { path = "../../ledger/db", features = ["test_utils"] }
 mc-connection = { path = "../../connection" }
 mc-util-uri = { path = "../../util/uri" }
-mc-transaction-core = { path = "../../transaction/core" }
+mc-transaction-core = { path = "../../transaction/core", features = ["test-net-fee-keys"] }

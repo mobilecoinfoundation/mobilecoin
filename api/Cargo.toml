@@ -6,6 +6,15 @@ build = "build.rs"
 edition = "2018"
 links = "mc-api"
 
+[features]
+# Specifies whether to use test net or main net fee output keys
+main-net-fee-keys = [
+    "mc-transaction-core/main-net-fee-keys"
+]
+test-net-fee-keys = [
+    "mc-transaction-core/test-net-fee-keys"
+]
+
 [dependencies]
 mc-account-keys = { path = "../account-keys" }
 mc-common = { path = "../common" }

@@ -7,6 +7,14 @@ edition = "2018"
 [features]
 test_utils = ["rand"]
 
+# Specifies whether to use test net or main net fee output keys
+main-net-fee-keys = [
+    "mc-transaction-core/main-net-fee-keys"
+]
+test-net-fee-keys = [
+    "mc-transaction-core/test-net-fee-keys"
+]
+
 # The migration_support feature exposes some internals that should only be used by the `mc-ledger-migration` tool.
 migration_support = []
 

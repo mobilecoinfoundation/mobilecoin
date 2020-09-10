@@ -18,6 +18,13 @@ sgx-sim = [
 ias-dev = [
     "mc-attest-core/ias-dev"
 ]
+# Specifies whether to use test net or main net fee output keys
+main-net-fee-keys = [
+    "mc-consensus-enclave-impl/main-net-fee-keys"
+]
+test-net-fee-keys = [
+    "mc-consensus-enclave-impl/test-net-fee-keys"
+]
 
 [dependencies]
 mc-attest-core = { path = "../../../attest/core", default-features = false }

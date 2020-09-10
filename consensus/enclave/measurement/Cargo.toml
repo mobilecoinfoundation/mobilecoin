@@ -9,6 +9,9 @@ links = "consensus_enclave_measurement"
 [features]
 # Whether the enclave should be built in simulation mode when it needs to be built
 sgx-sim = []
+# Specifies whether to use test net or main net fee output keys
+main-net-fee-keys = []
+test-net-fee-keys = []
 
 [dependencies]
 mc-sgx-css = { path = "../../../sgx/css" }

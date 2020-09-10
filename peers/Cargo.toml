@@ -6,6 +6,13 @@ edition = "2018"
 
 [features]
 test_utils = []
+# Specifies whether to use test net or main net fee output keys
+main-net-fee-keys = [
+    "mc-transaction-core/main-net-fee-keys"
+]
+test-net-fee-keys = [
+    "mc-transaction-core/test-net-fee-keys"
+]
 
 [dependencies]
 mc-attest-api = { path = "../attest/api" }

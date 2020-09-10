@@ -8,6 +8,16 @@ edition = "2018"
 name = "ledger-sync-test-app"
 path = "src/test_app/main.rs"
 
+[features]
+test_utils = []
+# Specifies whether to use test net or main net fee output keys
+main-net-fee-keys = [
+    "mc-transaction-core/main-net-fee-keys"
+]
+test-net-fee-keys = [
+    "mc-transaction-core/test-net-fee-keys"
+]
+
 [dependencies]
 mc-account-keys = { path = "../../account-keys" }
 mc-api = { path = "../../api" }

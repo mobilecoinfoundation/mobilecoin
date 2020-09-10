@@ -15,6 +15,13 @@ std = [
     "mc-util-serial/std",
     "serde/std"
 ]
+# Specifies whether to use test net or main net fee output keys
+main-net-fee-keys = [
+    "mc-transaction-core/main-net-fee-keys"
+]
+test-net-fee-keys = [
+    "mc-transaction-core/test-net-fee-keys"
+]
 
 [dependencies]
 mc-attest-core = { path = "../../../attest/core", default-features = false }

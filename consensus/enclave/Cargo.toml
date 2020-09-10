@@ -5,6 +5,17 @@ authors = ["MobileCoin"]
 edition = "2018"
 description = "MobileCoin Consensus Enclave - Application Code"
 
+[features]
+# Specifies whether to use test net or main net fee output keys
+main-net-fee-keys = [
+    "mc-transaction-core/main-net-fee-keys",
+    "mc-consensus-enclave-api/main-net-fee-keys",
+]
+test-net-fee-keys = [
+    "mc-transaction-core/test-net-fee-keys",
+    "mc-consensus-enclave-api/test-net-fee-keys"
+]
+
 [dependencies]
 mc-attest-core = { path = "../../attest/core" }
 mc-attest-enclave-api = { path = "../../attest/enclave-api" }

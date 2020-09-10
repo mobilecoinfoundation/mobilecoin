@@ -13,6 +13,6 @@ mc-account-keys = { path = "../../../account-keys" }
 mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
 mc-crypto-rand = { path = "../../../crypto/rand" }
 mc-ledger-db = { path = "../../../ledger/db" }
-mc-transaction-core = { path = "../../../transaction/core" }
-mc-transaction-std = { path = "../../../transaction/std" }
+mc-transaction-core = { path = "../../../transaction/core", features = [ "test-net-fee-keys" ] }
+mc-transaction-std = { path = "../../../transaction/std", features = [ "test-net-fee-keys" ] }
 mc-util-from-random = { path = "../../../util/from-random" }

@@ -5,13 +5,13 @@ authors = ["MobileCoin"]
 edition = "2018"
 
 [features]
-default = ["test-net-fee-keys"]
-
 # Specifies whether to use test net or main net fee output keys
 main-net-fee-keys = [
     "mc-transaction-core/main-net-fee-keys"
 ]
-test-net-fee-keys = []
+test-net-fee-keys = [
+    "mc-transaction-core/test-net-fee-keys"
+]
 
 [lib]
 path = "src/lib.rs"
