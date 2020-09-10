@@ -46,6 +46,12 @@ $ curl localhost:9090/monitors/a0cf8b79c9f8d74eb935ab4eeeb771f3809a408ad47246be4
 {"first_subaddress":0,"num_subaddresses":10,"first_block":0,"next_block":2068}
 ```
 
+#### Remove an existing monitor
+```
+$ curl -X DELETE localhost:9090/monitors/a0cf8b79c9f8d74eb935ab4eeeb771f3809a408ad47246be47cf40315be9876e
+
+```
+
 #### Check the balance for a monitor and subaddress index
 ```
 $ curl localhost:9090/monitors/a0cf8b79c9f8d74eb935ab4eeeb771f3809a408ad47246be47cf40315be9876e/subaddresses/0/balance

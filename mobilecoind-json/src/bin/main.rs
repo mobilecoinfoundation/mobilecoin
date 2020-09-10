@@ -11,7 +11,7 @@ use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, Mobilecoind
 use mc_mobilecoind_json::data_types::*;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use protobuf::RepeatedField;
-use rocket::{get, post, routes};
+use rocket::{delete, get, post, routes};
 use rocket_contrib::json::Json;
 use std::{convert::TryFrom, sync::Arc};
 use structopt::StructOpt;
@@ -70,7 +70,7 @@ fn account_key(
 
 /// Creates a monitor. Data for the key and range is POSTed using the struct above.
 #[post("/monitors", format = "json", data = "<monitor>")]
-fn create_monitor(
+fn add_monitor(
     state: rocket::State<State>,
     monitor: Json<JsonMonitorRequest>,
 ) -> Result<Json<JsonMonitorResponse>, String> {
@@ -100,6 +100,23 @@ fn create_monitor(
         .map_err(|err| format!("Failed adding monitor: {}", err))?;
 
     Ok(Json(JsonMonitorResponse::from(&monitor_response)))
+}
+
+/// Remove a monitor
+#[delete("/monitors/<monitor_hex>")]
+fn remove_monitor(state: rocket::State<State>, monitor_hex: String) -> Result<(), String> {
+    let monitor_id =
+        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
+
+    let mut req = mc_mobilecoind_api::RemoveMonitorRequest::new();
+    req.set_monitor_id(monitor_id);
+
+    let _resp = state
+        .mobilecoind_api_client
+        .remove_monitor(&req)
+        .map_err(|err| format!("Failed removing monitor: {}", err))?;
+
+    Ok(())
 }
 
 /// Gets a list of existing monitors
@@ -427,7 +444,8 @@ fn main() {
             routes![
                 entropy,
                 account_key,
-                create_monitor,
+                add_monitor,
+                remove_monitor,
                 monitors,
                 monitor_status,
                 balance,
