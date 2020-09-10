@@ -54,13 +54,6 @@ fn main() {
         "pub const FEE_VIEW_PUBLIC_KEY: [u8; 32] = {:?};",
         fee_view_public_key
     ));
-    /*
-    constants.push_str(&format!(
-        "pub const FEE_VIEW_PRIVATE_KEY: [u8; 32] = {:?};",
-        fee_view_private_key
-    ));
-
-     */
 
     let mut search_path =
         PathBuf::try_from(var("CARGO_MANIFEST_DIR").expect("Could not read CARGO_MANIFEST_DIR"))
