@@ -566,14 +566,22 @@ mod tests {
     use mc_common::logger::test_with_logger;
     use mc_ledger_db::Ledger;
     use mc_transaction_core::{
-        constants::FEE_VIEW_PRIVATE_KEY, onetime_keys::view_key_matches_output,
-        tx::TxOutMembershipHash, validation::TransactionValidationError,
+        onetime_keys::view_key_matches_output, tx::TxOutMembershipHash,
+        validation::TransactionValidationError,
     };
     use mc_transaction_core_test_utils::{
         create_ledger, create_transaction, initialize_ledger, AccountKey, ViewKey,
     };
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
+
+    /// The Fee View Private Key for testing. Associated with the following fee vars:
+    /// FEE_SPEND_PUBLIC_KEY=26b507c63124a2f5e940b4fb89e4b2bb0a2078ed0c8e551ad59268b9646ec241
+    /// FEE_VIEW_PUBLIC_KEY=5222a1e9ae32d21c23114a5ce6bb39e0cb56aea350d4619d43b1207061b10346
+    pub const FEE_VIEW_PRIVATE_KEY: [u8; 32] = [
+        21, 152, 99, 251, 140, 2, 50, 154, 2, 171, 188, 60, 163, 243, 204, 195, 241, 78, 204, 85,
+        202, 52, 250, 242, 215, 247, 175, 59, 121, 185, 111, 8,
+    ];
 
     #[test_with_logger]
     fn test_tx_is_well_formed_works(logger: Logger) {
@@ -832,8 +840,9 @@ mod tests {
         let view_secret_key = RistrettoPrivate::try_from(&FEE_VIEW_PRIVATE_KEY).unwrap();
 
         let fee_view_key = {
+            let fee_recipient_pubkeys = enclave.get_fee_recipient().unwrap();
             let public_address = PublicAddress::new(
-                &RistrettoPublic::try_from(&FEE_SPEND_PUBLIC_KEY).unwrap(),
+                &fee_recipient_pubkeys.0,
                 &RistrettoPublic::from(&view_secret_key),
             );
             ViewKey::new(view_secret_key, *public_address.spend_public_key())
