@@ -333,7 +333,7 @@ impl<V: Value, ValidationError: Display> ScpSlot<V> for Slot<V, ValidationError>
             .partition(|&msg| msg.slot_index == self.slot_index);
 
         if !msgs_for_other_slots.is_empty() {
-            log::warn!(
+            log::error!(
                 self.logger,
                 "Received {} messages for other slots.",
                 msgs_for_other_slots.len(),
