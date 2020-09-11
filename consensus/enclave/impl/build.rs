@@ -52,12 +52,14 @@ fn main() {
             .expect("Failed parsing public view key."),
     );
 
-    let mut constants = format!(
-        "pub const FEE_SPEND_PUBLIC_KEY: [u8; 32] = {:?};",
-        fee_spend_public_key
-    );
+    let mut constants =
+        format!("// Copyright (c) 2018-2020 MobileCoin Inc.\n\n// Auto-generated file\n\n");
     constants.push_str(&format!(
-        "pub const FEE_VIEW_PUBLIC_KEY: [u8; 32] = {:?};",
+        "pub const FEE_SPEND_PUBLIC_KEY: [u8; 32] = {:?};\n\n",
+        fee_spend_public_key
+    ));
+    constants.push_str(&format!(
+        "pub const FEE_VIEW_PUBLIC_KEY: [u8; 32] = {:?};\n",
         fee_view_public_key
     ));
 
