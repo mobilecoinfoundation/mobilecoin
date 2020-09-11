@@ -1,0 +1,18 @@
+[package]
+name = "mc-test-vectors-b58-encodings"
+version = "1.0.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[dependencies]
+mc-test-vectors-definitions = { path = "../definitions" }
+
+datatest = "0.6"
+serde = "1.0"
+serde_json = "1.0"
+
+[build-dependencies]
+mc-account-keys = { path = "../../account-keys" }
+mc-api = { path = "../../api" }
+mc-test-vectors-definitions = { path = "../definitions" }
+mc-util-test-vector = { path = "../../util/test-vector" }

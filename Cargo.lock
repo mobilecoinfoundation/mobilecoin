@@ -2068,10 +2068,12 @@ dependencies = [
  "cargo-emit",
  "crc",
  "curve25519-dalek",
+ "datatest",
  "displaydoc",
  "mc-account-keys",
  "mc-common",
  "mc-crypto-keys",
+ "mc-test-vectors-b58-encodings",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
  "mc-transaction-std",
@@ -2081,6 +2083,7 @@ dependencies = [
  "mc-util-repr-bytes",
  "mc-util-serial",
  "mc-util-test-helper",
+ "mc-util-test-vector",
  "prost",
  "protobuf",
  "rand 0.7.3",
@@ -3230,6 +3233,19 @@ version = "1.0.0"
 dependencies = [
  "datatest",
  "mc-account-keys",
+ "mc-test-vectors-definitions",
+ "mc-util-test-vector",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "mc-test-vectors-b58-encodings"
+version = "1.0.0"
+dependencies = [
+ "datatest",
+ "mc-account-keys",
+ "mc-api",
  "mc-test-vectors-definitions",
  "mc-util-test-vector",
  "serde",
