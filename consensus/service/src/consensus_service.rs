@@ -101,8 +101,9 @@ pub struct ConsensusService<
 
     peer_manager: ConnectionManager<PeerConnection<E>>,
     // This mutex is required because ThreadedBroadcaster API cannot be used concurrently,
-    // the LRU cache is not thread-safe among othter reasons.
-    // But there is only one ByzantineLedger worker thread anyways, so this should be uncontended.
+    // the LRU cache requires exclusive access, among other reasons.
+    // The contention for this is (at time of writing), (one) ByzantineLedger worker thread,
+    // and the client and peer api services, via the ProposeTxCallback
     broadcaster: Arc<Mutex<ThreadedBroadcaster>>,
     tx_manager: Arc<TXM>,
     // Option is only here because we need a way to drop the PeerKeepalive without mutex,
