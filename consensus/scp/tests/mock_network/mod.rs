@@ -75,7 +75,7 @@ impl TestOptions {
             log_flush_delay: Duration::from_millis(50),
             scp_timebase: Duration::from_millis(1000),
             validity_fn: Arc::new(test_utils::trivial_validity_fn::<String>),
-            combine_fn: Arc::new(test_utils::trivial_combine_fn::<String>),
+            combine_fn: Arc::new(test_utils::get_bounded_combine_fn::<String>(100)),
         }
     }
 }
@@ -151,6 +151,7 @@ impl SCPNetwork {
                 Arc::new(move |logger, msg| {
                     SCPNetwork::broadcast_msg(logger, &nodes_map_clone, &peers_clone, msg)
                 }),
+                0, // first slot index
                 logger.clone(),
             );
             scp_network
@@ -286,6 +287,7 @@ impl SCPNode {
         node_config: NodeConfig,
         test_options: &TestOptions,
         broadcast_msg_fn: Arc<dyn Fn(Logger, Msg<String>) + Sync + Send>,
+        current_slot_index: SlotIndex,
         logger: Logger,
     ) -> (Self, JoinHandle<()>) {
         let (sender, receiver) = crossbeam_channel::unbounded();
@@ -300,6 +302,7 @@ impl SCPNode {
             node_config.quorum_set.clone(),
             test_options.validity_fn.clone(),
             test_options.combine_fn.clone(),
+            current_slot_index,
             logger.clone(),
         );
         thread_local_node.scp_timebase = test_options.scp_timebase;
@@ -387,7 +390,7 @@ impl SCPNode {
                         // Process incoming consensus message, which might be for a future slot
                         if let Some(msg) = incoming_msg_option {
                             let outgoing_msg: Option<Msg<String>> =
-                                thread_local_node.handle(&msg).expect("handle_msg() failed");
+                                thread_local_node.handle_message(&msg).expect("handle_message() failed");
 
                             if let Some(outgoing_msg) = outgoing_msg {
                                 (broadcast_msg_fn)(logger.clone(), outgoing_msg);
