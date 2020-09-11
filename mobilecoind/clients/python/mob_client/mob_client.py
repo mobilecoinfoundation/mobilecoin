@@ -164,7 +164,7 @@ class mob_client:
         """
         request = api.ReadTransferCodeRequest(b58_code=b58_code)
         response = self.stub.ReadTransferCode(request)
-        return response.entropy, response.tx_public_key, response.memo, response.utxo
+        return response
 
     def get_transfer_code(self, entropy, tx_public_key, memo=""):
         """ Prepare a "transfer code" used to generate a QR code for wallet apps.

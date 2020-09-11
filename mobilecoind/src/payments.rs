@@ -322,12 +322,19 @@ impl<T: UserTxConnection + 'static> TransactionsManager<T> {
         let logger = self.logger.new(o!("receiver" => receiver.to_string()));
         log::trace!(logger, "Generating txo list transaction...");
 
+        let fee = if fee == 0 { MINIMUM_FEE } else { fee };
+
         // All inputs are to be spent
         let total_value: u64 = input_list.iter().map(|utxo| utxo.value).sum();
+
+        if total_value < fee {
+            return Err(Error::InsufficientFunds);
+        }
+
         log::trace!(
             logger,
             "Total transaction value excluding fees: {}",
-            total_value
+            total_value - fee
         );
 
         // Get the proofs and the rings
