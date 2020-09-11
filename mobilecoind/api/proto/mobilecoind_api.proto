@@ -39,6 +39,7 @@ service MobilecoindAPI {
     rpc GenerateTx (GenerateTxRequest) returns (GenerateTxResponse) {}
     rpc GenerateOptimizationTx (GenerateOptimizationTxRequest) returns (GenerateOptimizationTxResponse) {}
     rpc GenerateTransferCodeTx (GenerateTransferCodeTxRequest) returns (GenerateTransferCodeTxResponse) {}
+    rpc GenerateTxFromTxOutList (GenerateTxFromTxOutListRequest) returns (GenerateTxFromTxOutListResponse) {}
     rpc SubmitTx (SubmitTxRequest) returns (SubmitTxResponse) {}
 
     // Databases
@@ -452,6 +453,27 @@ message GenerateTransferCodeTxResponse {
 
     // The b58-encoded Transfer Code
     string b58_code = 5;
+}
+
+// Generate a transaction without a monitor, requires an account key and 
+// a list of UnspentTxOuts. All coins (minus the fee) are transferred to 
+// a single recipient. Used for temporary accounts like gift codes.
+message GenerateTxFromTxOutListRequest {
+    // Account key that owns the transactions
+    external.AccountKey account_key = 1;
+
+    // List of TxOuts to spend
+    repeated UnspentTxOut input_list = 2;
+
+    // Address to transfer coins to
+    external.PublicAddress receiver = 3;
+
+    // Fee
+    uint64 fee = 4;
+}
+
+message GenerateTxFromTxOutListResponse {
+    TxProposal tx_proposal = 1;
 }
 
 // Submits a transaction to the network.
