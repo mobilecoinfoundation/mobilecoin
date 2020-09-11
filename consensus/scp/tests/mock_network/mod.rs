@@ -406,8 +406,8 @@ impl SCPNode {
                         }
 
                         // Check if the current slot is done
-                        if let Some(new_block) = thread_local_node
-                            .get_externalized_values(current_slot as SlotIndex)
+                        if let Some(new_block) =
+                            thread_local_node.get_externalized_values(current_slot as SlotIndex)
                         {
                             // Stop proposing/nominating any values that we have externalized.
                             for v in &new_block {
