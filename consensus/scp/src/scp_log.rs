@@ -52,7 +52,7 @@ pub struct LoggingScpNode<V: Value, N: ScpNode<V>> {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum LoggedMsg<V: Value> {
     /// Specifies the settings for this node.
-    NodeSettings(NodeID, QuorumSet),
+    NodeSettings(NodeID, QuorumSet, SlotIndex),
 
     /// An incoming message to this node.
     IncomingMsg(Msg<V>),
@@ -164,8 +164,11 @@ impl<V: Value, N: ScpNode<V>> LoggingScpNode<V, N> {
             self.msg_count = 0;
             self.slot_start_time = Instant::now();
 
-            let n: NodeID = self.node.node_id();
-            self.write(LoggedMsg::NodeSettings(n, self.node.quorum_set()))?;
+            self.write(LoggedMsg::NodeSettings(
+                self.node.node_id(),
+                self.node.quorum_set(),
+                self.highest_slot_index,
+            ))?;
         }
 
         // If message if for a previous slot, ignore it.
@@ -233,15 +236,10 @@ impl<V: Value, N: ScpNode<V>> ScpNode<V> for LoggingScpNode<V, N> {
         self.node.quorum_set()
     }
 
-    fn propose_values(
-        &mut self,
-        slot_index: SlotIndex,
-        values: BTreeSet<V>,
-    ) -> Result<Option<Msg<V>>, String> {
+    fn propose_values(&mut self, values: BTreeSet<V>) -> Result<Option<Msg<V>>, String> {
+        let slot_index = self.node.current_slot_index();
         self.write(LoggedMsg::Nominate(slot_index, values.clone()))?;
-
-        let out_msg = self.node.propose_values(slot_index, values)?;
-
+        let out_msg = self.node.propose_values(values)?;
         if let Some(ref msg) = out_msg {
             self.write(LoggedMsg::OutgoingMsg(msg.clone()))?;
         }
@@ -249,24 +247,41 @@ impl<V: Value, N: ScpNode<V>> ScpNode<V> for LoggingScpNode<V, N> {
         Ok(out_msg)
     }
 
-    fn handle(&mut self, msg: &Msg<V>) -> Result<Option<Msg<V>>, String> {
+    fn handle_message(&mut self, msg: &Msg<V>) -> Result<Option<Msg<V>>, String> {
         self.write(LoggedMsg::IncomingMsg(msg.clone()))?;
 
-        let out_msg = self.node.handle(msg)?;
+        let response_opt = self.node.handle_message(msg)?;
 
-        if let Some(ref msg) = out_msg {
-            self.write(LoggedMsg::OutgoingMsg(msg.clone()))?;
+        if let Some(ref response) = response_opt {
+            self.write(LoggedMsg::OutgoingMsg(response.clone()))?;
         }
 
-        Ok(out_msg)
+        Ok(response_opt)
     }
 
-    fn get_externalized_values(&self, slot_index: SlotIndex) -> Vec<V> {
+    fn handle_messages(
+        &mut self,
+        msgs: Vec<Msg<V, NodeID>>,
+    ) -> Result<Vec<Msg<V, NodeID>>, String> {
+        let mut responses = Vec::new();
+        for msg in msgs {
+            if let Some(response) = self.handle_message(&msg)? {
+                responses.push(response)
+            }
+        }
+        Ok(responses)
+    }
+
+    fn max_externalized_slots(&self) -> usize {
+        self.node.max_externalized_slots()
+    }
+
+    fn set_max_externalized_slots(&mut self, n: usize) {
+        self.node.set_max_externalized_slots(n)
+    }
+
+    fn get_externalized_values(&self, slot_index: SlotIndex) -> Option<Vec<V>> {
         self.node.get_externalized_values(slot_index)
-    }
-
-    fn has_externalized_values(&self, slot_index: SlotIndex) -> bool {
-        self.node.has_externalized_values(slot_index)
     }
 
     fn process_timeouts(&mut self) -> Vec<Msg<V>> {
@@ -280,16 +295,20 @@ impl<V: Value, N: ScpNode<V>> ScpNode<V> for LoggingScpNode<V, N> {
         out_msgs
     }
 
-    fn get_slot_metrics(&mut self, slot_index: SlotIndex) -> Option<SlotMetrics> {
-        self.node.get_slot_metrics(slot_index)
+    fn current_slot_index(&self) -> u64 {
+        self.node.current_slot_index()
+    }
+
+    fn get_current_slot_metrics(&mut self) -> SlotMetrics {
+        self.node.get_current_slot_metrics()
     }
 
     fn get_slot_debug_snapshot(&mut self, slot_index: SlotIndex) -> Option<String> {
         self.node.get_slot_debug_snapshot(slot_index)
     }
 
-    fn clear_pending_slots(&mut self) {
-        self.node.clear_pending_slots()
+    fn reset_slot_index(&mut self, slot_index: SlotIndex) {
+        self.node.reset_slot_index(slot_index)
     }
 }
 

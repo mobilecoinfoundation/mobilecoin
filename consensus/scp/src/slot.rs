@@ -51,6 +51,12 @@ pub trait ScpSlot<V: Value>: Send {
     /// Get metrics about the slot.
     fn get_metrics(&self) -> SlotMetrics;
 
+    /// The slot index.
+    fn get_index(&self) -> SlotIndex;
+
+    /// Last message sent by this node, if any.
+    fn get_last_message_sent(&self) -> Option<Msg<V>>;
+
     /// Processes any timeouts that may have occurred.
     fn process_timeouts(&mut self) -> Vec<Msg<V>>;
 
@@ -58,7 +64,10 @@ pub trait ScpSlot<V: Value>: Send {
     fn propose_values(&mut self, values: &BTreeSet<V>) -> Result<Option<Msg<V>>, String>;
 
     /// Handles an incoming message from a peer.
-    fn handle(&mut self, msg: &Msg<V>) -> Result<Option<Msg<V>>, String>;
+    fn handle_message(&mut self, msg: &Msg<V>) -> Result<Option<Msg<V>>, String>;
+
+    /// Handle incoming messages from peers. Messages for other slots are ignored.
+    fn handle_messages(&mut self, msgs: &[Msg<V>]) -> Result<Option<Msg<V>>, String>;
 
     /// Additional debug info, e.g. a JSON representation of the Slot's state.
     fn get_debug_snapshot(&self) -> String;
@@ -186,6 +195,15 @@ impl<V: Value, ValidationError: Display> ScpSlot<V> for Slot<V, ValidationError>
         }
     }
 
+    fn get_index(&self) -> u64 {
+        self.slot_index
+    }
+
+    /// Last message sent by this node, if any.
+    fn get_last_message_sent(&self) -> Option<Msg<V>> {
+        self.last_sent_msg.clone()
+    }
+
     /// Processes any timeouts that may have occurred.
     /// Returns list of messages to broadcast to network.
     fn process_timeouts(&mut self) -> Vec<Msg<V>> {
@@ -286,48 +304,88 @@ impl<V: Value, ValidationError: Display> ScpSlot<V> for Slot<V, ValidationError>
             .cloned()
             .collect();
 
+        if valid_values.is_empty() {
+            return Ok(None);
+        }
+
         self.W.extend(valid_values.into_iter());
         self.do_nominate_phase();
         self.do_ballot_protocol();
         Ok(self.out_msg())
     }
 
-    /// Handles an incoming message from a peer.
-    ///
-    /// Returns:
-    /// * Ok(out_msg) - `out_msg` is an outgoing message from this node, if any.
-    /// * Err(e) - Something went wrong while processing `msg`.
-    fn handle(&mut self, msg: &Msg<V>) -> Result<Option<Msg<V>>, String> {
-        // Reject messages for other slots.
-        if self.slot_index != msg.slot_index {
-            return Err("Message is not for the current slot.".to_string());
+    /// Handle an incoming message from a peer.
+    fn handle_message(&mut self, msg: &Msg<V>) -> Result<Option<Msg<V>>, String> {
+        self.handle_messages(&[msg.clone()])
+    }
+
+    /// Handle incoming messages from peers. Messages for other slots are ignored.
+    fn handle_messages(&mut self, msgs: &[Msg<V>]) -> Result<Option<Msg<V>>, String> {
+        // Ignore messages from self.
+        let msgs: Vec<&Msg<V>> = msgs
+            .iter()
+            .filter(|&msg| msg.sender_id != self.node_id)
+            .collect();
+
+        // Omit messages for other slots.
+        let (mut msgs_for_slot, msgs_for_other_slots): (Vec<_>, Vec<_>) = msgs
+            .into_iter()
+            .partition(|&msg| msg.slot_index == self.slot_index);
+
+        if !msgs_for_other_slots.is_empty() {
+            log::error!(
+                self.logger,
+                "Received {} messages for other slots.",
+                msgs_for_other_slots.len(),
+            );
         }
 
-        // Ignore the message if it not higher than a previous message from the same peer.
-        if let Some(existing_msg) = self.M.get(&msg.sender_id) {
-            if msg.topic <= existing_msg.topic {
-                return Ok(self.out_msg());
+        // Set to true if any input message is higher than previous messages from the same sender.
+        let mut has_higher_messages = false;
+
+        // Sort messages in descending order by topic. This lets us process them greedily.
+        msgs_for_slot.sort_by(|a, b| b.topic.cmp(&a.topic));
+
+        'msg_loop: for msg in msgs_for_slot {
+            let is_higher = match self.M.get(&msg.sender_id) {
+                Some(existing_msg) => msg.topic > existing_msg.topic,
+                None => true,
+            };
+
+            if is_higher {
+                // This message is higher than previous messages from the same sender.
+                if msg.validate().is_ok() {
+                    // Reject messages with invalid values.
+                    // This Validation can be skipped during the Externalize phase
+                    // because this node no longer changes its ballot values.
+                    if self.phase != Phase::Externalize {
+                        for value in msg.values() {
+                            if self.is_valid(&value).is_err() {
+                                // Ignore this msg because it contains an invalid value.
+                                continue 'msg_loop;
+                            }
+                        }
+                    }
+
+                    // TODO: Reject messages with incorrectly ordered values.
+
+                    // The msg is valid and should be processed.
+                    self.M.insert(msg.sender_id.clone(), msg.clone());
+                    has_higher_messages = true;
+                }
             }
         }
 
-        // TODO: Reject messages with incorrectly ordered values.
-        // Reject malformed messages.
-        msg.validate()?;
+        if has_higher_messages {
+            if self.phase == Phase::NominatePrepare {
+                self.do_nominate_phase();
+            }
 
-        // Reject messages with invalid values.
-        for value in msg.values() {
-            self.is_valid(&value)?;
+            self.do_ballot_protocol();
+            Ok(self.out_msg())
+        } else {
+            Ok(None)
         }
-
-        self.M.insert(msg.sender_id.clone(), msg.clone());
-
-        if self.phase == Phase::NominatePrepare {
-            self.do_nominate_phase();
-        }
-
-        self.do_ballot_protocol();
-
-        Ok(self.out_msg())
     }
 
     fn get_debug_snapshot(&self) -> String {
@@ -2461,7 +2519,7 @@ mod ballot_protocol_tests {
                 }),
             );
             let emitted_msg = slot
-                .handle(&confirm_nominate_msg)
+                .handle_message(&confirm_nominate_msg)
                 .expect("failed handling msg")
                 .expect("no msg emitted");
 
@@ -2499,7 +2557,7 @@ mod ballot_protocol_tests {
                 }),
             );
             let emitted_msg = slot
-                .handle(&confirm_nominate_msg)
+                .handle_message(&confirm_nominate_msg)
                 .expect("failed handling msg")
                 .expect("no msg emitted");
             let expected_msg = Msg::new(
@@ -2613,7 +2671,7 @@ mod ballot_protocol_tests {
                 }),
             );
             let emitted_msg = slot
-                .handle(&accept_prepare_msg)
+                .handle_message(&accept_prepare_msg)
                 .expect("failed handling msg");
             assert_eq!(emitted_msg, None);
         }
@@ -2630,7 +2688,7 @@ mod ballot_protocol_tests {
                 }),
             );
             let emitted_msg = slot
-                .handle(&confirm_nominate_msg)
+                .handle_message(&confirm_nominate_msg)
                 .expect("failed handling msg")
                 .expect("no msg emitted");
             let expected_msg = Msg::new(
@@ -2760,7 +2818,7 @@ mod ballot_protocol_tests {
                 }),
             );
             let emitted_msg = slot
-                .handle(&confirm_nominate_msg)
+                .handle_message(&confirm_nominate_msg)
                 .expect("failed handling msg");
             assert_eq!(emitted_msg, None);
         }
@@ -2825,7 +2883,7 @@ mod ballot_protocol_tests {
                 }),
             );
 
-            let emitted_msg = slot.handle(&msg);
+            let emitted_msg = slot.handle_message(&msg);
             assert_eq!(emitted_msg.unwrap(), None);
         }
 
@@ -2870,7 +2928,7 @@ mod ballot_protocol_tests {
                 }),
             );
             let emitted_msg = slot
-                .handle(&msg)
+                .handle_message(&msg)
                 .expect("failed handling msg")
                 .expect("no msg emitted");
 
@@ -2945,7 +3003,7 @@ mod ballot_protocol_tests {
             );
 
             let emitted_msg = slot
-                .handle(&statement_from_node_2)
+                .handle_message(&statement_from_node_2)
                 .expect("failed handling msg");
             assert!(emitted_msg.is_none());
         }
@@ -2967,7 +3025,7 @@ mod ballot_protocol_tests {
 
         {
             let emitted_msg = slot
-                .handle(&statement_from_node_3)
+                .handle_message(&statement_from_node_3)
                 .expect("failed handling msg")
                 .expect("no msg emitted");
 
@@ -3070,7 +3128,7 @@ mod ballot_protocol_tests {
             );
 
             let emitted_msg = slot
-                .handle(&statement_from_node_2)
+                .handle_message(&statement_from_node_2)
                 .expect("failed handling msg");
             assert!(emitted_msg.is_none());
         }
@@ -3092,7 +3150,7 @@ mod ballot_protocol_tests {
 
         {
             let emitted_msg = slot
-                .handle(&statement_from_node_3)
+                .handle_message(&statement_from_node_3)
                 .expect("failed handling msg")
                 .expect("no msg emitted");
 
@@ -3160,7 +3218,7 @@ mod ballot_protocol_tests {
             );
 
             let emitted = slot
-                .handle(&msg)
+                .handle_message(&msg)
                 .expect("failed handling msg")
                 .expect("no msg emitted");
 
@@ -3220,7 +3278,7 @@ mod ballot_protocol_tests {
         );
 
         let emitted_msg = slot
-            .handle(&msg)
+            .handle_message(&msg)
             .expect("failed handling msg")
             .expect("no msg emitted");
 
@@ -3332,14 +3390,14 @@ mod ballot_protocol_tests {
 
         // Not quorum; the local node emits its initial statement.
         for msg in msgs.iter().take(3) {
-            let emitted_msg = slot.handle(&msg);
+            let emitted_msg = slot.handle_message(&msg);
             assert!(emitted_msg.unwrap().is_none());
         }
 
         // Quorum; the local node emits `accept prepare<1,C>.
         {
             let emitted_msg = slot
-                .handle(&msgs[3].clone())
+                .handle_message(&msgs[3].clone())
                 .expect("failed handling msg")
                 .expect("no msg emitted");
 
@@ -3423,7 +3481,7 @@ mod ballot_protocol_tests {
 
         // Node 1 issues "accept prepare(b)".
         let emitted_msg = slot
-            .handle(&msg)
+            .handle_message(&msg)
             .expect("failed handling msg")
             .expect("no msg emitted");
 
@@ -3515,7 +3573,7 @@ mod ballot_protocol_tests {
             );
 
             let emitted_msg = slot
-                .handle(&msg)
+                .handle_message(&msg)
                 .expect("failed handling msg")
                 .expect("no msg emitted");
 
@@ -3622,7 +3680,7 @@ mod ballot_protocol_tests {
 
         // A statement from only node_2 should not change the statement issued by the local node.
         {
-            let emitted_msg = slot.handle(&msgs[0].clone());
+            let emitted_msg = slot.handle_message(&msgs[0].clone());
             assert!(emitted_msg.unwrap().is_none());
         }
 
@@ -3630,7 +3688,7 @@ mod ballot_protocol_tests {
         // The local node should also emit `accept prepare(b)`.
         {
             let emitted_msg = slot
-                .handle(&msgs[1].clone())
+                .handle_message(&msgs[1].clone())
                 .expect("failed handling msg")
                 .expect("no msg emitted");
 
@@ -3693,7 +3751,7 @@ mod ballot_protocol_tests {
             );
 
             let emitted = slot
-                .handle(&msg)
+                .handle_message(&msg)
                 .expect("failed handling msg")
                 .expect("no msg emitted");
 
@@ -3742,7 +3800,7 @@ mod ballot_protocol_tests {
             );
 
             let emitted = slot
-                .handle(&msg)
+                .handle_message(&msg)
                 .expect("failed handling msg")
                 .expect("no msg emitted");
 
@@ -3846,14 +3904,14 @@ mod ballot_protocol_tests {
 
         // Not quorum; the local node does not emit anything.
         for msg in msgs.iter().take(2) {
-            let emitted_msg = slot.handle(msg);
+            let emitted_msg = slot.handle_message(msg);
             assert!(emitted_msg.unwrap().is_none());
         }
 
         // Quorum; the local node emits `confirm prepare <n,C> and vote commit <n,C>`
         {
             let emitted_msg = slot
-                .handle(&msgs[2].clone())
+                .handle_message(&msgs[2].clone())
                 .expect("failed handling msg")
                 .expect("no msg emitted");
 
@@ -3901,7 +3959,7 @@ mod ballot_protocol_tests {
 
         // Node 1 responds by issuing "accept commit <n,C>".
         let emitted = slot
-            .handle(&msg)
+            .handle_message(&msg)
             .expect("failed handling msg")
             .expect("no msg emitted");
 
@@ -3957,7 +4015,7 @@ mod ballot_protocol_tests {
             );
 
             // Node 1 emits nothing.
-            let emitted = slot.handle(&msg_2).expect("failed handling msg");
+            let emitted = slot.handle_message(&msg_2).expect("failed handling msg");
 
             assert_eq!(emitted, None);
         }
@@ -3980,7 +4038,7 @@ mod ballot_protocol_tests {
 
             // Node 1 responds by issuing "accept commit <n,C>".
             let emitted = slot
-                .handle(&msg_3)
+                .handle_message(&msg_3)
                 .expect("failed handling msg")
                 .expect("no msg emitted");
 
@@ -4028,7 +4086,7 @@ mod ballot_protocol_tests {
 
             // Node 1 responds by issuing "accept commit V".
             let emitted = slot
-                .handle(&msg)
+                .handle_message(&msg)
                 .expect("failed handling msg")
                 .expect("no msg emitted");
 
@@ -4065,7 +4123,7 @@ mod ballot_protocol_tests {
             );
 
             // Node 1 emits nothing.
-            let emitted = slot.handle(&msg).expect("failed handling msg");
+            let emitted = slot.handle_message(&msg).expect("failed handling msg");
             assert_eq!(emitted, None);
         }
     }
@@ -4099,7 +4157,7 @@ mod ballot_protocol_tests {
             );
 
             let emitted = slot
-                .handle(&msg)
+                .handle_message(&msg)
                 .expect("failed handling msg")
                 .expect("no msg emitted");
 
@@ -4134,7 +4192,7 @@ mod ballot_protocol_tests {
             );
 
             let emitted = slot
-                .handle(&msg)
+                .handle_message(&msg)
                 .expect("failed handling msg")
                 .expect("no msg emitted");
 
@@ -4168,7 +4226,9 @@ mod ballot_protocol_tests {
                 }),
             );
 
-            let emitted = slot.handle(&msg_from_node_2).expect("failed handling msg");
+            let emitted = slot
+                .handle_message(&msg_from_node_2)
+                .expect("failed handling msg");
             assert_eq!(emitted, None);
 
             let msg_from_node_3 = Msg::new(
@@ -4184,7 +4244,7 @@ mod ballot_protocol_tests {
             );
 
             let emitted = slot
-                .handle(&msg_from_node_3)
+                .handle_message(&msg_from_node_3)
                 .expect("failed handling msg")
                 .expect("no msg emitted");
 
@@ -4242,7 +4302,7 @@ mod ballot_protocol_tests {
 
         // Node 2 should issue "Externalize".
         let msg_2 = slot
-            .handle(&msg_1)
+            .handle_message(&msg_1)
             .expect("Error handling msg")
             .expect("No msg?");
 
@@ -4293,7 +4353,7 @@ mod ballot_protocol_tests {
                 }),
             );
 
-            let _emitted = slot.handle(&msg).expect("Failed handling msg");
+            let _emitted = slot.handle_message(&msg).expect("Failed handling msg");
 
             assert_eq!(slot.next_ballot_at, None);
         }
@@ -4313,7 +4373,7 @@ mod ballot_protocol_tests {
                 }),
             );
 
-            let _emitted = slot.handle(&msg).expect("Failed handling msg");
+            let _emitted = slot.handle_message(&msg).expect("Failed handling msg");
 
             // Node 1 has now seen messages from a quorum of nodes who
             // are on a ballot with counter greater than or equal to self.B.N.

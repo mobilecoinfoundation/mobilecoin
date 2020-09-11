@@ -63,7 +63,7 @@ impl TestOptions {
             log_flush_delay: Duration::from_millis(50),
             scp_timebase: Duration::from_millis(1000),
             validity_fn: Arc::new(test_utils::trivial_validity_fn::<String>),
-            combine_fn: Arc::new(test_utils::trivial_combine_fn::<String>),
+            combine_fn: Arc::new(test_utils::get_bounded_combine_fn::<String>(100)),
         }
     }
 }
@@ -133,6 +133,7 @@ impl SCPNetwork {
                 Arc::new(move |logger, msg| {
                     SCPNetwork::broadcast_msg(logger, &nodes_map_clone, &peers, msg)
                 }),
+                0,
                 logger.new(o!("mc.local_node_id" => node_id.to_string())),
             );
             network
@@ -262,6 +263,7 @@ impl SCPNode {
         quorum_set: QuorumSet,
         test_options: TestOptions,
         broadcast_msg_fn: Arc<dyn Fn(Logger, Msg<String>) + Sync + Send>,
+        current_slot_index: SlotIndex,
         logger: Logger,
     ) -> (Self, Option<JoinHandle<()>>) {
         let (sender, receiver) = crossbeam_channel::unbounded();
@@ -270,6 +272,7 @@ impl SCPNode {
             quorum_set,
             test_options.validity_fn.clone(),
             test_options.combine_fn.clone(),
+            current_slot_index,
             logger.clone(),
         )));
 
@@ -353,10 +356,7 @@ impl SCPNode {
                                 thread_local_node
                                     .lock()
                                     .expect("lock failed on node nominating value")
-                                    .propose_values(
-                                        current_slot as SlotIndex,
-                                        BTreeSet::from_iter(vals),
-                                    )
+                                    .propose_values(BTreeSet::from_iter(vals))
                                     .expect("node.nominate() failed")
                             };
 
@@ -372,7 +372,7 @@ impl SCPNode {
                                 thread_local_node
                                     .lock()
                                     .expect("lock failed on node nominating value")
-                                    .handle(msg)
+                                    .handle_message(msg)
                                     .expect("node.handle_msg() failed")
                             };
 
@@ -397,17 +397,13 @@ impl SCPNode {
                             total_broadcasts += 1;
                         }
 
-                        // See if we're done with the current slot
-                        let ext_vals: Vec<String> = {
-                            thread_local_node
-                                .lock()
-                                .expect("lock failed on node getting ext_vals in thread")
-                                .get_externalized_values(current_slot as SlotIndex)
-                        };
-
-                        if !ext_vals.is_empty() {
-                            // Stop proposing/nominating any values that we have externalized
-
+                        // See if we're done with the current slot.
+                        if let Some(ext_vals) = thread_local_node
+                            .lock()
+                            .expect("lock failed on node getting ext_vals in thread")
+                            .get_externalized_values(current_slot as SlotIndex)
+                        {
+                            // Stop proposing/nominating any values that we have externalized.
                             let externalized_values_as_set: HashSet<String> =
                                 ext_vals.iter().cloned().collect();
 

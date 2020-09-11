@@ -66,11 +66,11 @@ fn main() {
         ScpLogReader::<TxHash>::new(&config.scp_debug_dump).expect("failed creating ScpLogReader");
 
     // The first entry is expected to be a NodeSettings entry.
-    let (node_id, quorum_set) = match scp_reader.next() {
+    let (node_id, quorum_set, slot_index) = match scp_reader.next() {
         Some(StoredMsg {
-            msg: LoggedMsg::NodeSettings(node_id, quorum_set),
+            msg: LoggedMsg::NodeSettings(node_id, quorum_set, slot_index),
             ..
-        }) => (node_id, quorum_set),
+        }) => (node_id, quorum_set, slot_index),
         _ => panic!("failed getting NodeSettings entry"),
     };
 
@@ -84,6 +84,7 @@ fn main() {
         local_quorum_set,
         validity_fn,
         combine_fn,
+        slot_index,
         logger.clone(),
     );
 
@@ -111,7 +112,7 @@ fn main() {
                 assert_eq!(msg.slot_index, cur_slot_index.unwrap_or(msg.slot_index));
                 cur_slot_index = Some(msg.slot_index);
 
-                if let Some(out_msg) = scp_node.handle(&msg).expect("scp handle failed") {
+                if let Some(out_msg) = scp_node.handle_message(&msg).expect("scp handle failed") {
                     sent_msgs.push_back(out_msg);
                 }
             }
@@ -121,7 +122,7 @@ fn main() {
                 cur_slot_index = Some(slot_index);
 
                 if let Some(out_msg) = scp_node
-                    .propose_values(slot_index, values)
+                    .propose_values(values)
                     .expect("scp nominate failed")
                 {
                     sent_msgs.push_back(out_msg);
