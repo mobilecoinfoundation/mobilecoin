@@ -464,6 +464,9 @@ message GenerateTxFromTxOutListRequest {
 
     // Address to transfer coins to
     external.PublicAddress receiver = 3;
+
+    // Fee
+    uint64 fee = 4;
 }
 
 message GenerateTxFromTxOutListResponse {

@@ -715,7 +715,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
 
         let tx_proposal = self
             .transactions_manager
-            .generate_tx_from_tx_list(&account_key, &input_list, &receiver)
+            .generate_tx_from_tx_list(&account_key, &input_list, &receiver, request.fee)
             .map_err(|err| {
                 rpc_internal_error(
                     "transactions_manager.generate_tx_from_tx_list",
@@ -2758,6 +2758,73 @@ mod test {
             tx_proposal.tx.prefix.tombstone_block,
             num_blocks + DEFAULT_NEW_TX_BLOCK_ATTEMPTS
         );
+    }
+
+    #[test_with_logger]
+    fn test_generate_tx_from_tx_out_list(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        let sender = AccountKey::random(&mut rng);
+        let _sender_default_subaddress = sender.default_subaddress();
+        let data = MonitorData::new(
+            sender.clone(),
+            0,  // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        // 1 known recipient, 3 random recipients and no monitors.
+        let (ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(
+                3,
+                &vec![sender.default_subaddress()],
+                &vec![],
+                logger.clone(),
+                &mut rng,
+            );
+
+        // Insert into database.
+        let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
+
+        // Allow the new monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Get list of unspent tx outs
+        let utxos = mobilecoind_db
+            .get_utxos_for_subaddress(&monitor_id, 0)
+            .unwrap();
+        assert!(!utxos.is_empty());
+
+        // Build a request to transfer the first two TxOuts
+        let tx_utxos = utxos[0..2].to_vec();
+        let mut request = mc_mobilecoind_api::GenerateTxFromTxOutListRequest::new();
+        request.set_account_key((&sender).into());
+        request.set_input_list(RepeatedField::from_vec(
+            tx_utxos
+                .iter()
+                .map(mc_mobilecoind_api::UnspentTxOut::from)
+                .collect(),
+        ));
+        let receiver = AccountKey::random(&mut rng);
+        request.set_receiver((&receiver.default_subaddress()).into());
+        request.set_fee(MINIMUM_FEE);
+
+        let response = client.generate_tx_from_tx_out_list(&request).unwrap();
+        let tx_proposal = TxProposal::try_from(response.get_tx_proposal()).unwrap();
+
+        // We should end up with one output
+        assert_eq!(tx_proposal.tx.prefix.outputs.len(), 1);
+
+        // It should equal the sum of the inputs minus the fee
+        let expected_value = tx_utxos.iter().map(|utxo| utxo.value).sum::<u64>() - MINIMUM_FEE;
+
+        let tx_out = &tx_proposal.tx.prefix.outputs[0];
+        let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
+        let shared_secret = get_tx_out_shared_secret(receiver.view_private_key(), &tx_public_key);
+        let (value, _blinding) = tx_out.amount.get_value(&shared_secret).unwrap();
+        assert_eq!(value, expected_value);
     }
 
     #[test_with_logger]

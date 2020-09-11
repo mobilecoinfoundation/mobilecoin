@@ -317,9 +317,8 @@ impl<T: UserTxConnection + 'static> TransactionsManager<T> {
         account_key: &AccountKey,
         input_list: &[UnspentTxOut],
         receiver: &PublicAddress,
+        fee: u64,
     ) -> Result<TxProposal, Error> {
-        let fee = MINIMUM_FEE;
-
         let logger = self.logger.new(o!("receiver" => receiver.to_string()));
         log::trace!(logger, "Generating txo list transaction...");
 

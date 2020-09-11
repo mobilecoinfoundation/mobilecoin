@@ -225,11 +225,12 @@ class mob_client:
         response = self.stub.GenerateTransferCodeTx(request)
         return response.tx_proposal, response.entropy
 
-    def generate_tx_from_tx_out_list(self, account_key, input_list, receiver):
+    def generate_tx_from_tx_out_list(self, account_key, input_list, receiver, fee):
         request = api.GenerateTxFromTxOutListRequest(
             account_key=account_key,
             input_list=input_list,
             receiver=receiver,
+            fee=fee,
         )
         response = self.stub.GenerateTxFromTxOutList(request)
         return response.tx_proposal
