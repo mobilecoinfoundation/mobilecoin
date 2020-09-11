@@ -38,6 +38,8 @@ pub fn bootstrap_ledger(
     let mut db = LedgerDB::open(path.clone()).expect("Could not open ledger_db");
 
     let num_outputs: u64 = (recipients.len() * outputs_per_recipient_per_block * num_blocks) as u64;
+    assert!(num_outputs >= 16);
+
     let picomob_per_output: u64 = (TOTAL_MOB / num_outputs) * 1_000_000_000_000;
 
     println!("recipients: {}", recipients.len());
