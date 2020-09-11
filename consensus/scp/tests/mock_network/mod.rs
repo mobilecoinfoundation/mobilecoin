@@ -374,10 +374,7 @@ impl SCPNode {
                                 }
 
                                 let outgoing_msg: Option<Msg<String>> = thread_local_node
-                                    .propose_values(
-                                        current_slot as SlotIndex,
-                                        BTreeSet::from_iter(values_to_nominate),
-                                    )
+                                    .propose_values(BTreeSet::from_iter(values_to_nominate))
                                     .expect("propose_values() failed");
 
                                 if let Some(outgoing_msg) = outgoing_msg {
@@ -409,11 +406,10 @@ impl SCPNode {
                         }
 
                         // Check if the current slot is done
-                        let new_block: Vec<String> =
-                            thread_local_node.get_externalized_values(current_slot as SlotIndex);
-
-                        if !new_block.is_empty() {
-                            // stop nominating the values we've externalized
+                        if let Some(new_block) = thread_local_node
+                            .get_externalized_values(current_slot as SlotIndex)
+                        {
+                            // Stop proposing/nominating any values that we have externalized.
                             for v in &new_block {
                                 pending_values.remove(v);
                             }
