@@ -2026,40 +2026,22 @@ dependencies = [
  "digest 0.9.0",
  "displaydoc",
  "hkdf",
- "mc-account-keys-test-vectors",
  "mc-crypto-digestible",
  "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-crypto-sig",
+ "mc-test-vectors-account-keys",
  "mc-util-from-random",
  "mc-util-repr-bytes",
  "mc-util-serial",
  "mc-util-test-helper",
- "mc-util-test-vectors",
+ "mc-util-test-vector",
  "prost",
  "rand 0.7.3",
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
  "tempdir",
  "zeroize 1.1.0",
-]
-
-[[package]]
-name = "mc-account-keys-test-vectors"
-version = "1.0.0"
-dependencies = [
- "mc-account-keys-test-vectors-structs",
- "mc-util-test-vectors",
-]
-
-[[package]]
-name = "mc-account-keys-test-vectors-structs"
-version = "1.0.0"
-dependencies = [
- "mc-account-keys",
- "mc-crypto-keys",
- "mc-util-test-vectors",
- "serde",
 ]
 
 [[package]]
@@ -3243,6 +3225,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-test-vectors-account-keys"
+version = "1.0.0"
+dependencies = [
+ "datatest",
+ "mc-account-keys",
+ "mc-test-vectors-definitions",
+ "mc-util-test-vector",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "mc-test-vectors-definitions"
+version = "1.0.0"
+dependencies = [
+ "mc-util-test-vector",
+ "serde",
+]
+
+[[package]]
 name = "mc-testnet-client"
 version = "1.0.0"
 dependencies = [
@@ -3582,7 +3584,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "mc-util-test-vectors"
+name = "mc-util-test-vector"
 version = "1.0.0"
 dependencies = [
  "datatest",
