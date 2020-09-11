@@ -44,16 +44,20 @@ fn main() {
 
     // Check for env var and override
     fee_spend_public_key[..].copy_from_slice(
-        &hex::decode(&var("FEE_SPEND_PUBLIC_KEY").unwrap_or(default_fee_spend_pub.to_string()))
-            .expect("Failed parsing public spend key."),
+        &hex::decode(
+            &var("FEE_SPEND_PUBLIC_KEY").unwrap_or_else(|_| default_fee_spend_pub.to_string()),
+        )
+        .expect("Failed parsing public spend key."),
     );
     fee_view_public_key[..].copy_from_slice(
-        &hex::decode(&var("FEE_VIEW_PUBLIC_KEY").unwrap_or(default_fee_view_pub.to_string()))
-            .expect("Failed parsing public view key."),
+        &hex::decode(
+            &var("FEE_VIEW_PUBLIC_KEY").unwrap_or_else(|_| default_fee_view_pub.to_string()),
+        )
+        .expect("Failed parsing public view key."),
     );
 
     let mut constants =
-        format!("// Copyright (c) 2018-2020 MobileCoin Inc.\n\n// Auto-generated file\n\n");
+        "// Copyright (c) 2018-2020 MobileCoin Inc.\n\n// Auto-generated file\n\n".to_string();
     constants.push_str(&format!(
         "pub const FEE_SPEND_PUBLIC_KEY: [u8; 32] = {:?};\n\n",
         fee_spend_public_key
