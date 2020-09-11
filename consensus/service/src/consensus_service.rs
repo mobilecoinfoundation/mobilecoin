@@ -31,6 +31,7 @@ use mc_util_grpc::{
     HealthService,
 };
 use mc_util_uri::{ConnectionUri, ConsensusPeerUriApi};
+use once_cell::sync::OnceCell;
 use serde_json::json;
 use std::{
     env,
@@ -106,7 +107,8 @@ pub struct ConsensusService<
     admin_rpc_server: Option<AdminServer>,
     consensus_rpc_server: Option<Server>,
     user_rpc_server: Option<Server>,
-    byzantine_ledger: Arc<Mutex<Option<ByzantineLedger>>>,
+    // Option is only here because we need a way to drop the ByzantineLedger without mutex.
+    byzantine_ledger: Option<Arc<OnceCell<ByzantineLedger>>>,
 }
 
 impl<
@@ -190,7 +192,7 @@ impl<
             admin_rpc_server: None,
             consensus_rpc_server: None,
             user_rpc_server: None,
-            byzantine_ledger: Arc::new(Mutex::new(None)),
+            byzantine_ledger: Some(Arc::new(Default::default())),
         }
     }
 
@@ -249,10 +251,8 @@ impl<
             ))
         })?;
 
-        let mut byzantine_ledger = self.byzantine_ledger.lock().expect("lock poisoned");
-        if let Some(ref mut byzantine_ledger) = byzantine_ledger.take() {
-            byzantine_ledger.stop();
-        }
+        // This will join the byzantine ledger in drop if we are the last thread holding it
+        self.byzantine_ledger = None;
 
         if let Some(ref mut report_cache_thread) = self.report_cache_thread.take() {
             report_cache_thread.stop()?;
@@ -270,13 +270,6 @@ impl<
         self.consensus_msgs_from_network.join().map_err(|_| {
             ConsensusServiceError::ThreadJoin("consensus_msgs_from_network".to_string())
         })?;
-
-        let mut byzantine_ledger = self.byzantine_ledger.lock().expect("lock poisoned");
-        if let Some(mut byzantine_ledger) = byzantine_ledger.take() {
-            log::debug!(self.logger, "Waiting for byzantine_ledger...");
-            byzantine_ledger.join();
-        }
-
         Ok(())
     }
 
@@ -379,12 +372,17 @@ impl<
         );
 
         // Initialize services.
-        let byzantine_ledger = self.byzantine_ledger.clone();
-        let get_highest_scp_message_fn = Arc::new(move || {
-            let byzantine_ledger = byzantine_ledger.lock().expect("mutex poisoned");
-            byzantine_ledger
+        let byzantine_ledger = Arc::downgrade(
+            self.byzantine_ledger
                 .as_ref()
-                .and_then(|byzantine_ledger| byzantine_ledger.get_highest_scp_message())
+                .expect("Server was not initialized"),
+        );
+        let get_highest_scp_message_fn = Arc::new(move || {
+            byzantine_ledger.upgrade().and_then(|ledger| {
+                ledger
+                    .get()
+                    .and_then(|ledger| ledger.get_highest_scp_message())
+            })
         });
 
         let blockchain_service = consensus_common_grpc::create_blockchain_api(
@@ -438,22 +436,30 @@ impl<
     fn start_byzantine_ledger_service(&mut self) -> Result<(), ConsensusServiceError> {
         log::info!(self.logger, "Starting ByzantineLedger service.");
 
-        let mut byzantine_ledger = self.byzantine_ledger.lock().expect("lock poisoned");
-        byzantine_ledger.replace(ByzantineLedger::new(
-            self.local_node_id.clone(),
-            self.config.network().quorum_set(),
-            self.peer_manager.clone(),
-            self.ledger_db.clone(),
-            self.tx_manager.clone(),
-            self.broadcaster.clone(),
-            self.config.msg_signer_key.clone(),
-            self.config.network().tx_source_urls,
-            self.config.scp_debug_dump.clone(),
-            self.logger.clone(),
-        ));
+        let byzantine_ledger_arc = self
+            .byzantine_ledger
+            .as_mut()
+            .expect("Server not initialized");
+        if byzantine_ledger_arc
+            .set(ByzantineLedger::new(
+                self.local_node_id.clone(),
+                self.config.network().quorum_set(),
+                self.peer_manager.clone(),
+                self.ledger_db.clone(),
+                self.tx_manager.clone(),
+                self.broadcaster.clone(),
+                self.config.msg_signer_key.clone(),
+                self.config.network().tx_source_urls,
+                self.config.scp_debug_dump.clone(),
+                self.logger.clone(),
+            ))
+            .is_err()
+        {
+            panic!("ByzantineLedger was doubly initialized")
+        }
 
         // Handling of incoming SCP messages.
-        let byzantine_ledger_1 = self.byzantine_ledger.clone();
+        let byzantine_ledger_weak = Arc::downgrade(byzantine_ledger_arc);
         let peer_keepalive = self.peer_keepalive.clone();
         self.consensus_msgs_from_network
             .start(
@@ -470,10 +476,11 @@ impl<
                         peer_keepalive.heard_from_peer(from_responder_id.clone());
                     }
 
-                    // Feed into ByzantineLedger.
-                    if let Some(ref byzantine_ledger) = *(byzantine_ledger_1.lock().unwrap()) {
-                        byzantine_ledger.handle_consensus_msg(consensus_msg, from_responder_id);
-                    }
+                    byzantine_ledger_weak.upgrade().and_then(|ledger| {
+                        ledger.get().map(|ledger| {
+                            ledger.handle_consensus_msg(consensus_msg, from_responder_id)
+                        })
+                    });
                 },
             )
             .map_err(|_| {
@@ -487,13 +494,16 @@ impl<
 
     /// Creates a function that returns true if the node is currently serving user requests.
     fn create_is_serving_user_requests_fn(&self) -> Arc<dyn Fn() -> bool + Sync + Send> {
-        let byzantine_ledger = self.byzantine_ledger.clone();
+        let byzantine_ledger = self
+            .byzantine_ledger
+            .as_ref()
+            .map(Arc::downgrade)
+            .expect("Server was not initialized");
 
         Arc::new(move || {
-            let byzantine_ledger = byzantine_ledger.lock().expect("lock poisoned");
             byzantine_ledger
-                .as_ref()
-                .map(|byzantine_ledger| !byzantine_ledger.is_behind())
+                .upgrade()
+                .and_then(|ledger| ledger.get().map(|ledger| !ledger.is_behind()))
                 .unwrap_or(false)
         })
     }
@@ -501,7 +511,11 @@ impl<
     /// Creates a function that feeds client values into ByzantineLedger and broadcasts it to our
     /// peers.
     fn create_scp_client_value_sender_fn(&self) -> ProposeTxCallback {
-        let byzantine_ledger = self.byzantine_ledger.clone();
+        let byzantine_ledger = self
+            .byzantine_ledger
+            .as_ref()
+            .map(Arc::downgrade)
+            .expect("Server was not initialized");
         let tx_manager = self.tx_manager.clone();
         let local_node_id = self.local_node_id.clone();
         let broadcaster = self.broadcaster.clone();
@@ -565,36 +579,40 @@ impl<
             }
 
             // Feed into ByzantineLedger.
-            let byzantine_ledger = byzantine_ledger.lock().expect("lock poisoned");
             let timestamp = if origin_node == &local_node_id {
                 Some(Instant::now())
             } else {
                 None
             };
-            if let Some(byzantine_ledger) = &*byzantine_ledger {
-                byzantine_ledger.push_values(vec![tx_hash], timestamp);
-            }
+            byzantine_ledger.upgrade().and_then(|ledger| {
+                ledger
+                    .get()
+                    .map(|ledger| ledger.push_values(vec![tx_hash], timestamp))
+            });
         })
     }
 
     /// Helper method for creating the get config json function needed by the GRPC admin service.
     fn create_get_config_json_fn(&self) -> GetConfigJsonFn {
         let ledger_db = self.ledger_db.clone();
-        let byzantine_ledger = self.byzantine_ledger.clone();
+        let byzantine_ledger = self
+            .byzantine_ledger
+            .as_ref()
+            .map(Arc::downgrade)
+            .expect("Server was not initialized");
         let config = self.config.clone();
         let logger = self.logger.clone();
         Arc::new(move || {
             let mut sync_status = "synced";
             let mut peer_block_height: u64 = 0;
-            let byzantine_ledger = byzantine_ledger
-                .lock()
-                .expect("Could not get byzantine ledger.");
-            if let Some(byzantine_ledger) = &*byzantine_ledger {
-                if byzantine_ledger.is_behind() {
-                    sync_status = "catchup";
-                };
-                peer_block_height = byzantine_ledger.highest_peer_block();
-            }
+            byzantine_ledger.upgrade().map(|ledger| {
+                ledger.get().map(|ledger| {
+                    if ledger.is_behind() {
+                        sync_status = "catchup";
+                    };
+                    peer_block_height = ledger.highest_peer_block();
+                })
+            });
             let block_height;
             let latest_block_hash;
             let latest_block_timestamp;
