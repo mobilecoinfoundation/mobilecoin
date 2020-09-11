@@ -27,7 +27,17 @@ fn main() {
     );
 
     println!(
+        "View Public Bytes (hex): {:?}",
+        hex::encode(pubaddress.view_public_key().to_bytes())
+    );
+
+    println!(
         "Spend Public Bytes: {:?}",
         pubaddress.spend_public_key().to_bytes()
+    );
+
+    println!(
+        "Spend Public Bytes (hex): {:?}",
+        hex::encode(pubaddress.spend_public_key().to_bytes())
     );
 }

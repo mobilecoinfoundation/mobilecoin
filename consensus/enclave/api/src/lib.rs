@@ -18,7 +18,7 @@ use mc_attest_enclave_api::{
     PeerAuthResponse, PeerSession,
 };
 use mc_common::ResponderId;
-use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Public, X25519Public};
+use mc_crypto_keys::{CompressedRistrettoPublic, Ed25519Public, RistrettoPublic, X25519Public};
 use mc_sgx_report_cache_api::ReportableEnclave;
 use mc_transaction_core::{
     ring_signature::KeyImage,
@@ -187,6 +187,14 @@ pub struct TxContext {
 
 pub type SealedBlockSigningKey = Vec<u8>;
 
+/// PublicAddress is not serializable with serde currently, and rather than pollute
+/// dependencies, we simply pass the View and Spend public keys as RistrettoPublic.
+#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+pub struct FeePublicKey {
+    pub spend_public_key: RistrettoPublic,
+    pub view_public_key: RistrettoPublic,
+}
+
 /// The API for interacting with a consensus node's enclave.
 pub trait ConsensusEnclave: ReportableEnclave {
     // UTILITY METHODS
@@ -202,8 +210,11 @@ pub trait ConsensusEnclave: ReportableEnclave {
     /// Retrieve the public identity of the enclave.
     fn get_identity(&self) -> Result<X25519Public>;
 
-    /// Retreive the block signing public key from the enclave.
+    /// Retrieve the block signing public key from the enclave.
     fn get_signer(&self) -> Result<Ed25519Public>;
+
+    /// Retrieve the fee public key from the enclave
+    fn get_fee_recipient(&self) -> Result<FeePublicKey>;
 
     // CLIENT-FACING METHODS
 

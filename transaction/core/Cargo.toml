@@ -4,16 +4,8 @@ version = "1.0.0"
 authors = ["MobileCoin"]
 edition = "2018"
 
-[features]
-default = ["test-net-fee-keys"]
-
-# Specifies whether to use test net or main net fee output keys
-main-net-fee-keys = []
-test-net-fee-keys = []
-
 [dependencies]
 # External dependencies
-cfg-if = "0.1"
 digest = { version = "0.9", default-features = false }
 displaydoc = { version = "0.1", default-features = false }
 failure = { version = "0.1.5", default-features = false, features = ["derive"] }

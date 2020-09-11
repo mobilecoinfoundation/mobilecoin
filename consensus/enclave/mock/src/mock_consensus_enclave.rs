@@ -8,8 +8,8 @@ use mc_attest_core::{IasNonce, Quote, QuoteNonce, Report, TargetInfo, Verificati
 use mc_attest_enclave_api::*;
 use mc_common::ResponderId;
 use mc_consensus_enclave_api::{
-    ConsensusEnclave, LocallyEncryptedTx, Result as ConsensusEnclaveResult, SealedBlockSigningKey,
-    TxContext, WellFormedEncryptedTx, WellFormedTxContext,
+    ConsensusEnclave, FeePublicKey, LocallyEncryptedTx, Result as ConsensusEnclaveResult,
+    SealedBlockSigningKey, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
 };
 use mc_crypto_keys::{Ed25519Public, X25519Public};
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as SgxReportResult};
@@ -33,6 +33,8 @@ mock! {
         fn get_identity(&self) -> ConsensusEnclaveResult<X25519Public>;
 
         fn get_signer(&self) -> ConsensusEnclaveResult<Ed25519Public>;
+
+        fn get_fee_recipient(&self) -> ConsensusEnclaveResult<FeePublicKey>;
 
         fn client_accept(&self, req: ClientAuthRequest) -> ConsensusEnclaveResult<(ClientAuthResponse, ClientSession)>;
 

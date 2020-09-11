@@ -58,6 +58,11 @@ pub enum EnclaveCall {
     /// Retrieves the block signer (Ed25519 public key) of an enclave.
     GetSigner,
 
+    /// The [ConsensusEnclave::get_fee_recipient()] method.
+    ///
+    /// Retrieves the fee recipient (FeePublicKey) for the enclave.
+    GetFeeRecipient,
+
     /// The [ConsensusEnclave::new_ereport()] method.
     ///
     /// Creates a new report for the enclave with the provided target info.

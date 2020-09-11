@@ -3,8 +3,8 @@
 //! The Consensus Service SGX Enclave Proxy
 
 pub use mc_consensus_enclave_api::{
-    ConsensusEnclave, ConsensusEnclaveProxy, EnclaveCall, Error, LocallyEncryptedTx, Result,
-    TxContext, WellFormedEncryptedTx, WellFormedTxContext,
+    ConsensusEnclave, ConsensusEnclaveProxy, EnclaveCall, Error, FeePublicKey, LocallyEncryptedTx,
+    Result, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
 };
 
 use mc_attest_core::{
@@ -134,6 +134,12 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
 
     fn get_signer(&self) -> Result<Ed25519Public> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::GetSigner)?;
+        let outbuf = self.enclave_call(&inbuf)?;
+        mc_util_serial::deserialize(&outbuf[..])?
+    }
+
+    fn get_fee_recipient(&self) -> Result<FeePublicKey> {
+        let inbuf = mc_util_serial::serialize(&EnclaveCall::GetFeeRecipient)?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?
     }

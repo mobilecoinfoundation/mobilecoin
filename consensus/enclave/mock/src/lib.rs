@@ -7,7 +7,7 @@ mod mock_consensus_enclave;
 pub use mock_consensus_enclave::MockConsensusEnclave;
 
 pub use mc_consensus_enclave_api::{
-    ConsensusEnclave, ConsensusEnclaveProxy, Error, LocallyEncryptedTx, Result,
+    ConsensusEnclave, ConsensusEnclaveProxy, Error, FeePublicKey, LocallyEncryptedTx, Result,
     SealedBlockSigningKey, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
 };
 
@@ -17,7 +17,9 @@ use mc_attest_enclave_api::{
     PeerAuthResponse, PeerSession,
 };
 use mc_common::ResponderId;
-use mc_crypto_keys::{Ed25519Pair, Ed25519Public, X25519EphemeralPrivate, X25519Public};
+use mc_crypto_keys::{
+    Ed25519Pair, Ed25519Public, RistrettoPublic, X25519EphemeralPrivate, X25519Public,
+};
 use mc_crypto_rand::McRng;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
@@ -30,7 +32,7 @@ use mc_transaction_core::{
 use mc_util_from_random::FromRandom;
 use rand_core::SeedableRng;
 use rand_hc::Hc128Rng;
-use std::sync::Arc;
+use std::{convert::TryFrom, sync::Arc};
 
 #[derive(Clone)]
 pub struct ConsensusServiceMockEnclave {
@@ -100,6 +102,26 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
 
     fn get_signer(&self) -> Result<Ed25519Public> {
         Ok(self.signing_keypair.public_key())
+    }
+
+    // NOTE: We hardcode here because we don't need the mock enclave currently to be configurable
+    //       by env vars, and we also do not currently have any tests verifying with the private fee key
+    //       for the mock enclave, so only the public keys are listed here.
+    fn get_fee_recipient(&self) -> Result<FeePublicKey> {
+        let fee_spend_public_key = [
+            38, 181, 7, 198, 49, 36, 162, 245, 233, 64, 180, 251, 137, 228, 178, 187, 10, 32, 120,
+            237, 12, 142, 85, 26, 213, 146, 104, 185, 100, 110, 194, 65,
+        ];
+        let fee_view_public_key = [
+            82, 34, 161, 233, 174, 50, 210, 28, 35, 17, 74, 92, 230, 187, 57, 224, 203, 86, 174,
+            163, 80, 212, 97, 157, 67, 177, 32, 112, 97, 177, 3, 70,
+        ];
+        let spend_public_key = RistrettoPublic::try_from(&fee_spend_public_key).unwrap();
+        let view_public_key = RistrettoPublic::try_from(&fee_view_public_key).unwrap();
+        Ok(FeePublicKey {
+            spend_public_key,
+            view_public_key,
+        })
     }
 
     fn client_accept(

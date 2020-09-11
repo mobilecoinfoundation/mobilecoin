@@ -183,6 +183,8 @@ To build consensus, you will need to specify the following:
 And then you can build with:
 
 ```
-SGX_MODE=HW IAS_MODE=DEV CONSENSUS_ENCLAVE_SIGNED=$(pwd)/libconsensus-enclave.signed.so CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css \
+SGX_MODE=HW IAS_MODE=DEV \
+    CONSENSUS_ENCLAVE_SIGNED=$(pwd)/libconsensus-enclave.signed.so \
+    CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css \
     cargo build --release -p mc-consensus-service
 ```

@@ -61,3 +61,6 @@ mc-transaction-core-test-utils = { path = "../../../transaction/core/test-utils"
 
 [build-dependencies]
 mc-util-build-script = { path = "../../../util/build/script" }
+
+cargo-emit = "0.1"
+hex = "0.4"
