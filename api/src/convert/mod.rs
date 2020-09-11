@@ -51,7 +51,6 @@ pub use public_address::*;
 pub use ring_mlsag::*;
 pub use ristretto_private::*;
 pub use signature_rct_bulletproofs::*;
-use std::path::PathBuf;
 pub use tx::*;
 pub use tx_hash::*;
 pub use tx_in::*;
@@ -60,6 +59,8 @@ pub use tx_out_confirmation_number::*;
 pub use tx_out_membership_element::*;
 pub use tx_out_membership_proof::*;
 pub use tx_prefix::*;
+
+use std::path::PathBuf;
 
 /// Helper method for getting the suggested path/filename for a given block index.
 pub fn block_num_to_s3block_path(block_index: mc_transaction_core::BlockIndex) -> PathBuf {
