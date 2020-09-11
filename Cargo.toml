@@ -82,6 +82,7 @@ members = [
     "util/repr-bytes",
     "util/serial",
     "util/test-helper",
+    "util/test-vector",
     "util/uri",
     "util/url-encoding",
     "watcher",
