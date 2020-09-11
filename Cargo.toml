@@ -59,6 +59,7 @@ members = [
     "sgx/report-cache/untrusted",
     "sgx/slog-edl",
     "sgx/urts-sys",
+    "test-vectors/account-keys",
     "testnet-client",
     "transaction/core",
     "transaction/core/test-utils",

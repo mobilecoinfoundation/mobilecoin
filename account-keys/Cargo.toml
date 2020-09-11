@@ -38,9 +38,9 @@ rand = "0.7"
 rand_hc = "0.2"
 tempdir = "0.3"
 
-mc-account-keys-test-vectors = { path = "test-vectors" }
+mc-test-vectors-account-keys = { path = "../test-vectors/account-keys" }
 mc-util-test-helper = { path = "../util/test-helper" }
-mc-util-test-vectors = { path = "../util/test-vectors" }
+mc-util-test-vector = { path = "../util/test-vector" }
 
 [[bench]]
 name = "account_keys_benchmarks"

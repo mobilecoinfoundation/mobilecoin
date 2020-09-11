@@ -1,0 +1,10 @@
+[package]
+name = "mc-test-vectors-definitions"
+version = "1.0.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[dependencies]
+mc-util-test-vector = { path = "../../util/test-vector" }
+
+serde = { version = "1.0", default-features = false, features = ["derive"] }

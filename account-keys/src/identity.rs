@@ -186,8 +186,8 @@ mod testing {
     use super::*;
     use alloc::boxed::Box;
     use datatest::data;
-    use mc_account_keys_test_vectors::*;
-    use mc_util_test_vectors::TestVectorReader;
+    use mc_test_vectors_account_keys::*;
+    use mc_util_test_vector::TestVector;
 
     // Protobuf deserialization should recover a serialized RootIdentity.
     #[test]
@@ -206,17 +206,17 @@ mod testing {
         })
     }
 
-    #[data(AcctPrivKeysFromRootEntropy::from_jsonl("test-vectors/vectors"))]
+    #[data(AcctPrivKeysFromRootEntropy::from_jsonl("../test-vectors/vectors"))]
     #[test]
     fn acct_priv_keys_from_root_entropy(case: AcctPrivKeysFromRootEntropy) {
         let account_key = AccountKey::from(&RootIdentity::from(&case.root_entropy));
         assert_eq!(
             account_key.view_private_key().to_bytes(),
-            case.view_private_key.to_bytes()
+            case.view_private_key
         );
         assert_eq!(
             account_key.spend_private_key().to_bytes(),
-            case.spend_private_key.to_bytes()
+            case.spend_private_key
         );
     }
 }
