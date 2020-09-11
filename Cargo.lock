@@ -2521,6 +2521,7 @@ dependencies = [
  "mc-util-serial",
  "mc-util-uri",
  "mockall",
+ "once_cell",
  "prost",
  "protobuf",
  "rand 0.7.3",
@@ -3938,9 +3939,9 @@ checksum = "17b02fc0ff9a9e4b35b3342880f48e896ebf69f2967921fe8646bf5b7125956a"
 
 [[package]]
 name = "once_cell"
-version = "1.3.1"
+version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1c601810575c99596d4afc46f78a678c80105117c379eb3650cf99b8a21ce5b"
+checksum = "260e51e7efe62b592207e9e13a68e43692a7a279171d6ba57abd208bf23645ad"
 
 [[package]]
 name = "oorandom"
