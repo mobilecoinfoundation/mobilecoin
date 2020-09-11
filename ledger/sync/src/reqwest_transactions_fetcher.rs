@@ -5,7 +5,7 @@
 
 use crate::transactions_fetcher_trait::{TransactionFetcherError, TransactionsFetcher};
 use failure::Fail;
-use mc_api::{blockchain, conversions::block_num_to_s3block_path};
+use mc_api::{block_num_to_s3block_path, blockchain};
 use mc_common::{
     logger::{log, Logger},
     ResponderId,

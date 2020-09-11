@@ -4,7 +4,7 @@
 
 use crate::{error::WatcherError, watcher_db::WatcherDB};
 
-use mc_api::conversions::block_num_to_s3block_path;
+use mc_api::block_num_to_s3block_path;
 use mc_common::{
     logger::{log, Logger},
     HashMap,
