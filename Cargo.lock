@@ -3268,7 +3268,6 @@ version = "1.0.0"
 dependencies = [
  "blake2",
  "bulletproofs",
- "cfg-if",
  "curve25519-dalek",
  "digest 0.9.0",
  "displaydoc",

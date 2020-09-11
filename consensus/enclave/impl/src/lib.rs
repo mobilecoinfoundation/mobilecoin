@@ -841,7 +841,7 @@ mod tests {
         let fee_view_key = {
             let fee_recipient_pubkeys = enclave.get_fee_recipient().unwrap();
             let public_address = PublicAddress::new(
-                &fee_recipient_pubkeys.0,
+                &fee_recipient_pubkeys.fee_spend_public_key,
                 &RistrettoPublic::from(&view_secret_key),
             );
             ViewKey::new(view_secret_key, *public_address.spend_public_key())
