@@ -60,6 +60,7 @@ members = [
     "sgx/slog-edl",
     "sgx/urts-sys",
     "test-vectors/account-keys",
+    "test-vectors/b58-encodings",
     "testnet-client",
     "transaction/core",
     "transaction/core/test-utils",

@@ -32,10 +32,13 @@ mc-util-build-script = { path = "../util/build/script" }
 cargo-emit = "0.1.1"
 
 [dev-dependencies]
+mc-test-vectors-b58-encodings = { path = "../test-vectors/b58-encodings" }
 mc-transaction-core-test-utils = { path = "../transaction/core/test-utils" }
 mc-transaction-std = { path = "../transaction/std" }
 mc-util-from-random = { path = "../util/from-random" }
 mc-util-test-helper = { path = "../util/test-helper" }
+mc-util-test-vector = { path = "../util/test-vector" }
 
+datatest = "0.6"
 prost = { version = "0.6.1", default-features = false }
 rand = "0.7"
