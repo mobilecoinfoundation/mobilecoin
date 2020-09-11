@@ -100,14 +100,20 @@ pub struct ConsensusService<
     consensus_msgs_from_network: BackgroundWorkQueue<IncomingConsensusMsg>,
 
     peer_manager: ConnectionManager<PeerConnection<E>>,
+    // This mutex is required because ThreadedBroadcaster API cannot be used concurrently,
+    // the LRU cache is not thread-safe among othter reasons.
+    // But there is only one ByzantineLedger worker thread anyways, so this should be uncontended.
     broadcaster: Arc<Mutex<ThreadedBroadcaster>>,
     tx_manager: Arc<TXM>,
-    peer_keepalive: Arc<Mutex<PeerKeepalive>>,
+    // Option is only here because we need a way to drop the PeerKeepalive without mutex,
+    // if we want to implement Stop as currently concieved
+    peer_keepalive: Option<Arc<PeerKeepalive>>,
 
     admin_rpc_server: Option<AdminServer>,
     consensus_rpc_server: Option<Server>,
     user_rpc_server: Option<Server>,
-    // Option is only here because we need a way to drop the ByzantineLedger without mutex.
+    // Option is only here because we need a way to drop the ByzantineLedger without mutex,
+    // if we want to implement Stop as currently concieved
     byzantine_ledger: Option<Arc<OnceCell<ByzantineLedger>>>,
 }
 
@@ -164,7 +170,7 @@ impl<
         )));
 
         // Peer Keepalive
-        let peer_keepalive = Arc::new(Mutex::new(PeerKeepalive::start(
+        let peer_keepalive = Some(Arc::new(PeerKeepalive::start(
             peer_manager.clone(),
             consensus_msgs_from_network.get_sender_fn(),
             logger.clone(),
@@ -226,7 +232,8 @@ impl<
     pub fn stop(&mut self) -> Result<(), ConsensusServiceError> {
         log::debug!(self.logger, "Attempting to stop node...");
 
-        self.peer_keepalive.lock().expect("mutex poisoned").stop();
+        // This will join the peer_keepalive in drop if we are the last thread holding it
+        self.peer_keepalive = None;
 
         if let Some(ref mut server) = self.user_rpc_server.take() {
             block_on(server.shutdown())
@@ -460,7 +467,11 @@ impl<
 
         // Handling of incoming SCP messages.
         let byzantine_ledger_weak = Arc::downgrade(byzantine_ledger_arc);
-        let peer_keepalive = self.peer_keepalive.clone();
+        let peer_keepalive_weak = Arc::downgrade(
+            self.peer_keepalive
+                .as_ref()
+                .expect("Server not initialized"),
+        );
         self.consensus_msgs_from_network
             .start(
                 "MsgsFromNetRecv".to_string(),
@@ -471,8 +482,7 @@ impl<
                     );
 
                     // Keep track that we heard from the sender of this message.
-                    {
-                        let peer_keepalive = peer_keepalive.lock().expect("mutex poisoned");
+                    if let Some(peer_keepalive) = peer_keepalive_weak.upgrade() {
                         peer_keepalive.heard_from_peer(from_responder_id.clone());
                     }
 
