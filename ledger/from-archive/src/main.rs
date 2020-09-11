@@ -7,7 +7,7 @@
 mod config;
 
 use config::LedgerFromArchiveConfig;
-use mc_api::conversions::block_num_to_s3block_path;
+use mc_api::block_num_to_s3block_path;
 use mc_common::logger::{create_app_logger, log, o};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::ReqwestTransactionsFetcher;
