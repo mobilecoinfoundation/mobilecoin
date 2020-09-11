@@ -60,7 +60,7 @@ pub enum EnclaveCall {
 
     /// The [ConsensusEnclave::get_fee_recipient()] method.
     ///
-    /// Retrieves the fee recipient (RistrettoPublic, RistrettoPublic) for the enclave.
+    /// Retrieves the fee recipient (FeePublicKey) for the enclave.
     GetFeeRecipient,
 
     /// The [ConsensusEnclave::new_ereport()] method.

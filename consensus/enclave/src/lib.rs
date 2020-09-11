@@ -3,8 +3,8 @@
 //! The Consensus Service SGX Enclave Proxy
 
 pub use mc_consensus_enclave_api::{
-    ConsensusEnclave, ConsensusEnclaveProxy, EnclaveCall, Error, LocallyEncryptedTx, Result,
-    TxContext, WellFormedEncryptedTx, WellFormedTxContext,
+    ConsensusEnclave, ConsensusEnclaveProxy, EnclaveCall, Error, FeePublicKey, LocallyEncryptedTx,
+    Result, TxContext, WellFormedEncryptedTx, WellFormedTxContext,
 };
 
 use mc_attest_core::{
@@ -15,7 +15,7 @@ use mc_attest_enclave_api::{
     PeerAuthResponse, PeerSession,
 };
 use mc_common::ResponderId;
-use mc_crypto_keys::{Ed25519Public, RistrettoPublic, X25519Public};
+use mc_crypto_keys::{Ed25519Public, X25519Public};
 use mc_enclave_boundary::untrusted::make_variable_length_ecall;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_sgx_types::{sgx_enclave_id_t, sgx_status_t, *};
@@ -138,7 +138,7 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
-    fn get_fee_recipient(&self) -> Result<(RistrettoPublic, RistrettoPublic)> {
+    fn get_fee_recipient(&self) -> Result<FeePublicKey> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::GetFeeRecipient)?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?

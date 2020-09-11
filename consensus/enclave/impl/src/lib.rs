@@ -33,8 +33,8 @@ use mc_common::{
     ResponderId,
 };
 use mc_consensus_enclave_api::{
-    ConsensusEnclave, Error, LocallyEncryptedTx, Result, SealedBlockSigningKey, TxContext,
-    WellFormedEncryptedTx, WellFormedTxContext,
+    ConsensusEnclave, Error, FeePublicKey, LocallyEncryptedTx, Result, SealedBlockSigningKey,
+    TxContext, WellFormedEncryptedTx, WellFormedTxContext,
 };
 use mc_crypto_ake_enclave::AkeEnclaveState;
 use mc_crypto_digestible::{DigestTranscript, Digestible, MerlinTranscript};
@@ -206,10 +206,13 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         Ok(self.ake.get_identity().get_public_key())
     }
 
-    fn get_fee_recipient(&self) -> Result<(RistrettoPublic, RistrettoPublic)> {
-        let fee_spend_ristretto = RistrettoPublic::try_from(&FEE_SPEND_PUBLIC_KEY).unwrap();
-        let fee_view_ristretto = RistrettoPublic::try_from(&FEE_VIEW_PUBLIC_KEY).unwrap();
-        Ok((fee_spend_ristretto, fee_view_ristretto))
+    fn get_fee_recipient(&self) -> Result<FeePublicKey> {
+        let fee_spend_public_key = RistrettoPublic::try_from(&FEE_SPEND_PUBLIC_KEY).unwrap();
+        let fee_view_public_key = RistrettoPublic::try_from(&FEE_VIEW_PUBLIC_KEY).unwrap();
+        Ok(FeePublicKey {
+            fee_spend_public_key,
+            fee_view_public_key,
+        })
     }
 
     fn client_accept(&self, req: ClientAuthRequest) -> Result<(ClientAuthResponse, ClientSession)> {
@@ -483,10 +486,13 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         };
 
         let total_fee: u64 = transactions.iter().map(|tx| tx.prefix.fee).sum();
-        let fee_recipient_pubkeys = self.get_fee_recipient().map_err(|e| {
+        let fee_public_key = self.get_fee_recipient().map_err(|e| {
             Error::FeePublicAddress(format!("Could not get fee public address: {:?}", e))
         })?;
-        let fee_recipient = PublicAddress::new(&fee_recipient_pubkeys.0, &fee_recipient_pubkeys.1);
+        let fee_recipient = PublicAddress::new(
+            &fee_public_key.fee_spend_public_key,
+            &fee_public_key.fee_view_public_key,
+        );
 
         let fee_output = mint_aggregate_fee(&fee_recipient, &fee_tx_private_key, total_fee)?;
 

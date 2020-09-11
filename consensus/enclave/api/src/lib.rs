@@ -187,6 +187,14 @@ pub struct TxContext {
 
 pub type SealedBlockSigningKey = Vec<u8>;
 
+/// PublicAddress is not serializable with serde currently, and rather than pollute
+/// dependencies, we simply pass the View and Spend public keys as RistrettoPublic.
+#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+pub struct FeePublicKey {
+    pub fee_spend_public_key: RistrettoPublic,
+    pub fee_view_public_key: RistrettoPublic,
+}
+
 /// The API for interacting with a consensus node's enclave.
 pub trait ConsensusEnclave: ReportableEnclave {
     // UTILITY METHODS
@@ -206,7 +214,7 @@ pub trait ConsensusEnclave: ReportableEnclave {
     fn get_signer(&self) -> Result<Ed25519Public>;
 
     /// Retrieve the fee public address from the enclave, as (SpendPublic, ViewPublic)
-    fn get_fee_recipient(&self) -> Result<(RistrettoPublic, RistrettoPublic)>;
+    fn get_fee_recipient(&self) -> Result<FeePublicKey>;
 
     // CLIENT-FACING METHODS
 
