@@ -191,8 +191,8 @@ pub type SealedBlockSigningKey = Vec<u8>;
 /// dependencies, we simply pass the View and Spend public keys as RistrettoPublic.
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct FeePublicKey {
-    pub fee_spend_public_key: RistrettoPublic,
-    pub fee_view_public_key: RistrettoPublic,
+    pub spend_public_key: RistrettoPublic,
+    pub view_public_key: RistrettoPublic,
 }
 
 /// The API for interacting with a consensus node's enclave.
@@ -213,7 +213,7 @@ pub trait ConsensusEnclave: ReportableEnclave {
     /// Retrieve the block signing public key from the enclave.
     fn get_signer(&self) -> Result<Ed25519Public>;
 
-    /// Retrieve the fee public address from the enclave, as (SpendPublic, ViewPublic)
+    /// Retrieve the fee public key from the enclave
     fn get_fee_recipient(&self) -> Result<FeePublicKey>;
 
     // CLIENT-FACING METHODS

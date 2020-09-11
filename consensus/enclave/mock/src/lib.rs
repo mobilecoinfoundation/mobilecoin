@@ -116,11 +116,11 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
             82, 34, 161, 233, 174, 50, 210, 28, 35, 17, 74, 92, 230, 187, 57, 224, 203, 86, 174,
             163, 80, 212, 97, 157, 67, 177, 32, 112, 97, 177, 3, 70,
         ];
-        let fee_spend_public_key = RistrettoPublic::try_from(&fee_spend_public_key).unwrap();
-        let fee_view_public_key = RistrettoPublic::try_from(&fee_view_public_key).unwrap();
+        let spend_public_key = RistrettoPublic::try_from(&fee_spend_public_key).unwrap();
+        let view_public_key = RistrettoPublic::try_from(&fee_view_public_key).unwrap();
         Ok(FeePublicKey {
-            fee_spend_public_key,
-            fee_view_public_key,
+            spend_public_key,
+            view_public_key,
         })
     }
 

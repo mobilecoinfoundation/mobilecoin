@@ -208,11 +208,15 @@ impl ConsensusEnclave for SgxConsensusEnclave {
     }
 
     fn get_fee_recipient(&self) -> Result<FeePublicKey> {
-        let fee_spend_public_key = RistrettoPublic::try_from(&FEE_SPEND_PUBLIC_KEY).unwrap();
-        let fee_view_public_key = RistrettoPublic::try_from(&FEE_VIEW_PUBLIC_KEY).unwrap();
+        let spend_public_key = RistrettoPublic::try_from(&FEE_SPEND_PUBLIC_KEY).map_err(|e| {
+            Error::FeePublicAddress(format!("Could not get fee spend public: {:?}", e))
+        })?;
+        let view_public_key = RistrettoPublic::try_from(&FEE_VIEW_PUBLIC_KEY).map_err(|e| {
+            Error::FeePublicAddress(format!("Could not get fee view public: {:?}", e))
+        })?;
         Ok(FeePublicKey {
-            fee_spend_public_key,
-            fee_view_public_key,
+            spend_public_key,
+            view_public_key,
         })
     }
 
@@ -491,8 +495,8 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             Error::FeePublicAddress(format!("Could not get fee public address: {:?}", e))
         })?;
         let fee_recipient = PublicAddress::new(
-            &fee_public_key.fee_spend_public_key,
-            &fee_public_key.fee_view_public_key,
+            &fee_public_key.spend_public_key,
+            &fee_public_key.view_public_key,
         );
 
         let fee_output = mint_aggregate_fee(&fee_recipient, &fee_tx_private_key, total_fee)?;
