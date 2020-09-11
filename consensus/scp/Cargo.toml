@@ -1,6 +1,6 @@
 [package]
 name = "mc-consensus-scp"
-version = "0.6.0"
+version = "1.0.0"
 authors = ["MobileCoin"]
 edition = "2018"
 description = "Stellar Consensus Protocol"
@@ -36,3 +36,4 @@ mockall = "0.7.2"
 pretty_assertions = "0.6.1"
 serial_test = "0.1"
 serial_test_derive = "0.1"
+tempdir = "0.3"
