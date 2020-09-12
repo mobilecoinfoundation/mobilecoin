@@ -5,5 +5,5 @@
 mod node_impl;
 mod node_trait;
 
-pub use node_impl::*;
-pub use node_trait::*;
+pub use node_impl::Node;
+pub use node_trait::ScpNode;

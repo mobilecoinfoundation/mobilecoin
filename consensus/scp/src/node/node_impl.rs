@@ -12,7 +12,6 @@ use mc_common::{
     logger::{log, Logger},
     NodeID,
 };
-
 use std::{
     collections::{BTreeSet, HashMap},
     fmt::Display,
