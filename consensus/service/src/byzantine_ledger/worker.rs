@@ -556,8 +556,6 @@ impl<
                 self.tx_manager.remove_expired(index)
             };
 
-            counters::TX_CACHE_NUM_ENTRIES.set(self.tx_manager.num_entries() as i64);
-
             // Drop pending values that are no longer considered valid.
             let tx_manager = self.tx_manager.clone();
             self.pending_values.retain(|tx_hash| {
