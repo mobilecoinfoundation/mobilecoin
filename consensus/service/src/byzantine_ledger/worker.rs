@@ -6,7 +6,7 @@ use crate::{
         MAX_PENDING_VALUES_TO_NOMINATE,
     },
     counters,
-    tx_manager::{TxManager, TxManagerError},
+    tx_manager::TxManager,
 };
 use mc_common::{
     logger::{log, Logger},
@@ -665,7 +665,7 @@ impl<
                         (self.tx_manager.clone(), self.logger.clone()),
                         move |(tx_manager, logger), tx_context| match tx_manager.insert(tx_context)
                         {
-                            Ok(_) | Err(TxManagerError::AlreadyInCache) => {}
+                            Ok(_) => {}
                             Err(err) => {
                                 log::crit!(
                                     logger,

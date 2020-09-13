@@ -13,9 +13,6 @@ pub enum TxManagerError {
     #[fail(display = "Transaction validation error: {}", _0)]
     TransactionValidation(TransactionValidationError),
 
-    #[fail(display = "Tx already in cache")]
-    AlreadyInCache,
-
     #[fail(display = "Tx(s) not in cache ({:?})", _0)]
     NotInCache(Vec<TxHash>),
 
