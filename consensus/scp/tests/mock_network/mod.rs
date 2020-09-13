@@ -15,7 +15,6 @@ use mc_consensus_scp::{
 };
 use std::{
     collections::{BTreeSet, HashMap, HashSet},
-    iter::FromIterator,
     sync::{Arc, Mutex},
     thread,
     thread::JoinHandle,
@@ -356,14 +355,16 @@ impl SCPNode {
                         if (slot_nominated_values.len() < max_pending_values_to_nominate)
                             && !pending_values.is_empty()
                         {
-                            let mut values: Vec<String> = pending_values.iter().cloned().collect();
-                            values.sort();
-                            values.truncate(max_pending_values_to_nominate);
+                            let mut values_to_nominate: BTreeSet<String> = pending_values
+                                .iter()
+                                .cloned()
+                                .collect::<BTreeSet<String>>() // sorts values
+                                .iter()
+                                .take(max_pending_values_to_nominate)
+                                .cloned()
+                                .collect();
 
-                            // mc_common::HashSet does not support extend because of our enclave-safe HasherBuilder
-                            let mut values_to_nominate: HashSet<String> =
-                                values.iter().cloned().collect();
-
+                            // Avoid unnecessary proposed values - 5-10x speed up
                             for v in slot_nominated_values.iter() {
                                 values_to_nominate.remove(v);
                             }
@@ -374,7 +375,7 @@ impl SCPNode {
                                 }
 
                                 let outgoing_msg: Option<Msg<String>> = thread_local_node
-                                    .propose_values(BTreeSet::from_iter(values_to_nominate))
+                                    .propose_values(values_to_nominate)
                                     .expect("propose_values() failed");
 
                                 if let Some(outgoing_msg) = outgoing_msg {
