@@ -2485,6 +2485,7 @@ dependencies = [
  "cfg-if",
  "chrono",
  "curve25519-dalek",
+ "displaydoc",
  "failure",
  "fs_extra",
  "futures 0.3.5",
