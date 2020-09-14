@@ -353,7 +353,6 @@ impl SCPNode {
                         if (slot_proposed_values < max_slot_proposed_values)
                             && !pending_values.is_empty()
                         {
-
                             // compare to consensus/service/src/byzantine_ledger/worker.rs::nominate_pending_values
 
                             // let values_to_propose: BTreeSet<String> = pending_values
