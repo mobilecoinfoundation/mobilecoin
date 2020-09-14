@@ -391,10 +391,8 @@ impl SCPNode {
                         if let Some(new_block) =
                             thread_local_node.get_externalized_values(current_slot as SlotIndex)
                         {
-                            let externalized_values: HashSet<String> = new_block
-                                .iter()
-                                .cloned()
-                                .collect();
+                            let externalized_values: HashSet<String> =
+                                new_block.iter().cloned().collect();
 
                             // Continue proposing only values that were not externalized.
                             pending_values.retain(|v| !externalized_values.contains(v));
