@@ -353,14 +353,6 @@ impl SCPNode {
                         if (slot_proposed_values < max_slot_proposed_values)
                             && !pending_values.is_empty()
                         {
-                            // compare to consensus/service/src/byzantine_ledger/worker.rs::nominate_pending_values
-
-                            // let values_to_propose: BTreeSet<String> = pending_values
-                            //     .iter()
-                            //     .take(max_slot_proposed_values)
-                            //     .cloned()
-                            //     .collect::<BTreeSet<String>>();
-
                             let values_to_propose: BTreeSet<String> = pending_values
                                 .iter()
                                 .cloned()
@@ -370,17 +362,15 @@ impl SCPNode {
                                 .cloned()
                                 .collect();
 
-                            if !values_to_propose.is_empty() {
-                                slot_proposed_values += values_to_propose.len();
+                            slot_proposed_values = values_to_propose.len();
 
-                                let outgoing_msg: Option<Msg<String>> = thread_local_node
-                                    .propose_values(values_to_propose)
-                                    .expect("propose_values() failed");
+                            let outgoing_msg: Option<Msg<String>> = thread_local_node
+                                .propose_values(values_to_propose)
+                                .expect("propose_values() failed");
 
-                                if let Some(outgoing_msg) = outgoing_msg {
-                                    (broadcast_msg_fn)(logger.clone(), outgoing_msg);
-                                    total_broadcasts += 1;
-                                }
+                            if let Some(outgoing_msg) = outgoing_msg {
+                                (broadcast_msg_fn)(logger.clone(), outgoing_msg);
+                                total_broadcasts += 1;
                             }
                         }
 
