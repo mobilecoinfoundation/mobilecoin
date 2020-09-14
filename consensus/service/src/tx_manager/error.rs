@@ -1,25 +1,22 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-use failure::Fail;
+use displaydoc::Display;
 use mc_consensus_enclave::Error as ConsensusEnclaveError;
 use mc_ledger_db::Error as LedgerDbError;
 use mc_transaction_core::{tx::TxHash, validation::TransactionValidationError};
 
-#[derive(Clone, Debug, Fail)]
+#[derive(Clone, Debug, Display)]
 pub enum TxManagerError {
-    #[fail(display = "Enclave error: {}", _0)]
+    /// Enclave error: {0}
     Enclave(ConsensusEnclaveError),
 
-    #[fail(display = "Transaction validation error: {}", _0)]
+    /// Transaction validation error: {0}
     TransactionValidation(TransactionValidationError),
 
-    #[fail(display = "Tx already in cache")]
-    AlreadyInCache,
-
-    #[fail(display = "Tx(s) not in cache ({:?})", _0)]
+    /// Tx(s) not in cache {0:?}
     NotInCache(Vec<TxHash>),
 
-    #[fail(display = "Ledger error: {}", _0)]
+    /// Ledger error: {0}
     LedgerDb(LedgerDbError),
 }
 
