@@ -332,11 +332,10 @@ impl Verifier {
 
         // Build the list of IAS report data verifiers (including a quote
         // verifier)
-        let mut verifiers = self.status_verifiers.clone();
-        verifiers.push(VerifyIasReportDataType::Quote(QuoteVerifier {
+        let mut and_verifiers = self.ias_verifiers.clone();
+        and_verifiers.push(VerifyIasReportDataType::Quote(QuoteVerifier {
             quote_verifiers,
         }));
-        verifiers.extend_from_slice(&self.ias_verifiers);
 
         let trust_anchors = self
             .trust_anchors
@@ -348,7 +347,8 @@ impl Verifier {
         // Construct the top-level verifier.
         IasReportVerifier {
             trust_anchors,
-            verifiers,
+            or_verifiers: self.status_verifiers.clone(),
+            and_verifiers,
         }
         .verify(report)
     }
@@ -359,9 +359,10 @@ struct IasReportVerifier {
     /// A vector of trust anchor certificates to verify the report signature and
     /// chain against.
     trust_anchors: Vec<Certificate>,
-    /// A list of report data verifiers to be applied to the contents of the
-    /// JSON report.
-    verifiers: Vec<VerifyIasReportDataType>,
+    /// A vector of report verifiers, one of which must succeed.
+    or_verifiers: Vec<VerifyIasReportDataType>,
+    /// A vector of report verifiers, all of which must succeed.
+    and_verifiers: Vec<VerifyIasReportDataType>,
 }
 
 impl From<VerifyError> for Error {
@@ -530,13 +531,19 @@ impl IasReportVerifier {
 
         let report_data = VerificationReportData::try_from(report)?;
 
-        for verifier in &self.verifiers {
-            if !verifier.verify(&report_data) {
-                return Err(Error::Verification(report_data));
-            }
+        if self
+            .or_verifiers
+            .iter()
+            .any(|verifier| verifier.verify(&report_data))
+            && self
+                .and_verifiers
+                .iter()
+                .all(|verifier| verifier.verify(&report_data))
+        {
+            Ok(report_data)
+        } else {
+            Err(Error::Verification(report_data))
         }
-
-        Ok(report_data)
     }
 }
 
