@@ -10,13 +10,13 @@ use crate::{
 };
 use mc_common::{
     logger::{log, Logger},
-    NodeID, ResponderId,
+    ResponderId,
 };
 use mc_connection::{
     BlockchainConnection, ConnectionManager,
     _retry::{delay::Fibonacci, Error as RetryError},
 };
-use mc_consensus_scp::{slot::Phase, Msg, QuorumSet, ScpNode, SlotIndex};
+use mc_consensus_scp::{slot::Phase, Msg, ScpNode, SlotIndex};
 use mc_ledger_db::Ledger;
 use mc_ledger_sync::{
     LedgerSync, LedgerSyncService, NetworkState, ReqwestTransactionsFetcher, SCPNetworkState,
@@ -107,10 +107,25 @@ impl<
         TXM: TxManager + Send + Sync,
     > ByzantineLedgerWorker<F, L, PC, TXM>
 {
+    /// Create a new ByzantineLedgerWorker.
+    ///
+    /// # Arguments
+    /// * `network_state` -
+    /// * `receiver` - Receiver-end of a queue of task messages for this worker to process.
+    /// * `scp_node` - The local SCP Node.
+    /// * `is_behind` -
+    /// * `highest_peer_block` -
+    /// * `send_scp_message` - Callback for sending an SCP message issued by this node.
+    /// * `ledger` -
+    /// * `peer_manager` -
+    /// * `tx_manager` -
+    /// * `broadcaster` -
+    /// * `transactions_fetcher` -
+    /// * `logger`  
     pub fn new(
         network_state: SCPNetworkState,
         receiver: Receiver<TaskMessage>,
-        scp: Box<dyn ScpNode<TxHash>>,
+        scp_node: Box<dyn ScpNode<TxHash>>,
         is_behind: Arc<AtomicBool>,
         highest_peer_block: Arc<AtomicU64>,
         send_scp_message: F,
@@ -121,8 +136,8 @@ impl<
         transactions_fetcher: ReqwestTransactionsFetcher,
         logger: Logger,
     ) -> Self {
-        let cur_slot = ledger.num_blocks().unwrap();
-        let prev_block_id = ledger.get_block(cur_slot - 1).unwrap().id;
+        let current_slot_index = ledger.num_blocks().unwrap();
+        let prev_block_id = ledger.get_block(current_slot_index - 1).unwrap().id;
 
         let ledger_sync_service = Box::new(LedgerSyncService::new(
             ledger.clone(),
@@ -133,7 +148,7 @@ impl<
 
         Self {
             receiver,
-            scp,
+            scp: scp_node,
             is_behind,
             highest_peer_block,
             send_scp_message,
@@ -142,8 +157,7 @@ impl<
             broadcaster,
             peer_manager,
             logger,
-
-            current_slot_index: cur_slot,
+            current_slot_index,
             prev_block_id,
             pending_consensus_msgs: Default::default(),
             pending_values: Vec::new(),

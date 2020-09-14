@@ -72,27 +72,25 @@ impl ByzantineLedger {
 
         let current_slot_index = ledger.num_blocks().unwrap();
 
-        let scp_node = {
+        let scp_node: Box<dyn ScpNode<TxHash>> = {
             let tx_manager_validate = tx_manager.clone();
             let tx_manager_combine = tx_manager.clone();
-            Node::new(
+            let node = Node::new(
                 node_id.clone(),
                 quorum_set.clone(),
                 Arc::new(move |tx_hash| tx_manager_validate.validate(tx_hash)),
                 Arc::new(move |tx_hashes| tx_manager_combine.combine(tx_hashes)),
                 current_slot_index,
                 logger.clone(),
-            )
-        };
+            );
 
-        let wrapped_scp_node: Box<dyn ScpNode<TxHash>> = if let Some(path) = opt_scp_debug_dump_dir
-        {
-            Box::new(
-                LoggingScpNode::new(scp_node, path, logger.clone())
-                    .expect("Failed creating LoggingScpNode"),
-            )
-        } else {
-            Box::new(scp_node)
+            match opt_scp_debug_dump_dir {
+                None => Box::new(node),
+                Some(path) => Box::new(
+                    LoggingScpNode::new(node, path, logger.clone())
+                        .expect("Failed creating LoggingScpNode"),
+                ),
+            }
         };
 
         let highest_outgoing_consensus_msg = Arc::new(Mutex::new(None));
@@ -148,7 +146,7 @@ impl ByzantineLedger {
 
         // Start worker thread
         let thread_handle = {
-            let network_state = SCPNetworkState::new(node_id, quorum_set, logger.clone());
+            let network_state = SCPNetworkState::new(node_id.clone(), quorum_set, logger.clone());
 
             let transactions_fetcher =
                 ReqwestTransactionsFetcher::new(tx_source_urls, logger.clone())
@@ -157,7 +155,7 @@ impl ByzantineLedger {
             let mut worker = ByzantineLedgerWorker::new(
                 network_state,
                 receiver,
-                wrapped_scp_node,
+                scp_node,
                 byzantine_ledger.is_behind.clone(),
                 byzantine_ledger.highest_peer_block.clone(),
                 send_scp_message,
