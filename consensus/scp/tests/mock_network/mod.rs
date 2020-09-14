@@ -348,7 +348,7 @@ impl SCPNode {
                             }
                         };
 
-                        // Nominate pending values submitted to our node
+                        // Propose pending values submitted to our node
                         if !pending_values.is_empty() {
                             let values_to_propose: BTreeSet<String> = pending_values
                                 .iter()
