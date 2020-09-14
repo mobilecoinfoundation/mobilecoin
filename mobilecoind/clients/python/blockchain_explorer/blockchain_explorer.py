@@ -3,8 +3,7 @@
 import argparse, datetime, sys
 from flask import Flask, render_template
 
-sys.path.append('../mob_client')
-from mob_client import mob_client
+from mobilecoin import Client
 
 client = None  # client is initialized at the bottom of this file
 app = Flask(__name__)
@@ -115,6 +114,5 @@ def block(block_num):
 
 if __name__ == "__main__":
     args = command_args()
-    client = mob_client(
-        args.mobilecoind_host + ':' + str(args.mobilecoind_port), False)
+    client = Client(args.mobilecoind_host + ':' + str(args.mobilecoind_port), False)
     app.run(host='0.0.0.0', port=str(args.port))

@@ -7,14 +7,13 @@ import sys
 from flask import Flask, render_template, request
 from tinydb import TinyDB, Query
 
-sys.path.append('../mob_client')
-from mob_client import mob_client
+import mobilecoin
 
 MOB = 1_000_000_000_000
 WINNING_AMOUNT = 10_000 * MOB
 
 # Load defaults to make available to app. Override in __main__.
-client = mob_client('localhost:4444', False)
+mobilecoind = mobilecoin.Client('localhost:4444', False)
 db = TinyDB('/tmp/players.json')
 credentials = None
 app = Flask(__name__)
@@ -71,7 +70,7 @@ def add_user():
 
     monitor = get_or_add_monitor(subaddress)
     request_code = get_request_code(monitor, subaddress)
-    balance = client.get_balance(monitor, subaddress)
+    balance = mobilecoind.get_balance(monitor, subaddress)
 
     if new_player:
         players.insert({
@@ -106,15 +105,15 @@ def get_next_subaddress():
 # PizzaMOB Utility Methods for interacting with mob_client
 def get_or_add_monitor(subaddress):
     try:
-        monitor_id = client.get_monitor_id(credentials, index=subaddress)
+        monitor_id = mobilecoind.get_monitor_id(credentials, index=subaddress)
     except Exception as _e:
         # Always only add for the master credentials.
-        monitor_id = client.add_monitor(credentials)
+        monitor_id = mobilecoind.add_monitor(credentials)
     return monitor_id
 
 def get_request_code(monitor, subaddress):
-    public_address = client.get_public_address(monitor, subaddress)
-    return client.get_request_code(public_address)
+    public_address = mobilecoind.get_public_address(monitor, subaddress)
+    return mobilecoind.get_request_code(public_address)
 
 def get_leaderboard():
     player_table = db.table('Players')
@@ -122,7 +121,7 @@ def get_leaderboard():
     res = []
     for p in players:
         monitor = get_or_add_monitor(p['subaddress'])
-        balance = client.get_balance(monitor, p['subaddress'])
+        balance = mobilecoind.get_balance(monitor, p['subaddress'])
         res.append({'balance': balance / MOB, 'code': p['code']})
     res.sort(key=lambda player: player['balance'])
     res.reverse()
@@ -139,11 +138,10 @@ if __name__ == "__main__":
     players_table = db.table('Players')
 
     # Open connection to mobilecoind
-    client = mob_client(
-        args.mobilecoind_host + ':' + str(args.mobilecoind_port), False)
+    mobilecoind = mobilecoin.Client(args.mobilecoind_host + ':' + str(args.mobilecoind_port), False)
 
     # Load the credentials for the master account
-    credentials = client.get_account_key(bytes.fromhex(args.entropy))
+    credentials = mobilecoind.get_account_key(bytes.fromhex(args.entropy))
     get_or_add_monitor(0)
 
     app.run(host='0.0.0.0', port=int(args.port))
