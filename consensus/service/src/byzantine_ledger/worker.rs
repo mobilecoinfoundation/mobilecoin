@@ -119,14 +119,11 @@ impl<
         peer_manager: ConnectionManager<PC>,
         tx_manager: Arc<TXM>,
         broadcaster: Arc<Mutex<dyn Broadcast>>,
-        tx_source_urls: Vec<String>,
+        transactions_fetcher: ReqwestTransactionsFetcher,
         logger: Logger,
     ) -> Self {
         let cur_slot = ledger.num_blocks().unwrap();
         let prev_block_id = ledger.get_block(cur_slot - 1).unwrap().id;
-
-        let transactions_fetcher = ReqwestTransactionsFetcher::new(tx_source_urls, logger.clone())
-            .unwrap_or_else(|e| panic!("Failed creating transaction fetcher: {:?}", e));
 
         let ledger_sync_service = Box::new(LedgerSyncService::new(
             ledger.clone(),
