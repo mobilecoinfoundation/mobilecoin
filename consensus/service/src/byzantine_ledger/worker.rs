@@ -108,8 +108,7 @@ impl<
     > ByzantineLedgerWorker<F, L, PC, TXM>
 {
     pub fn new(
-        node_id: NodeID,
-        quorum_set: QuorumSet,
+        network_state: SCPNetworkState,
         receiver: Receiver<TaskMessage>,
         scp: Box<dyn ScpNode<TxHash>>,
         is_behind: Arc<AtomicBool>,
@@ -131,8 +130,6 @@ impl<
             transactions_fetcher,
             logger.clone(),
         ));
-
-        let network_state = SCPNetworkState::new(node_id, quorum_set, logger.clone());
 
         Self {
             receiver,
