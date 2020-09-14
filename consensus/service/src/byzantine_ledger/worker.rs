@@ -74,7 +74,7 @@ pub struct ByzantineLedgerWorker<
     // 1) Efficiently see if we already have a given value and ignore duplicates
     // 2) Track how long each value took to externalize.
     // To accomplish both of this goals we store, in addition to the queue of pending values, a
-    // BTreeMap that maps a value to when we first encountered it. Note that we only store a
+    // map that maps a value to when we first encountered it. Note that we only store a
     // timestamp for values that were handed to us directly from a client. We skip tracking
     // processing times for relayed values since we want to track the time from when the network
     // first saw a value, and not when a specific node saw it.
