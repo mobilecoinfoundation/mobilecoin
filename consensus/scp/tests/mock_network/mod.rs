@@ -355,7 +355,7 @@ impl SCPNode {
                         {
 
                             // compare to consensus/service/src/byzantine_ledger/worker.rs::nominate_pending_values
-                            
+
                             // let values_to_propose: BTreeSet<String> = pending_values
                             //     .iter()
                             //     .take(max_slot_proposed_values)
@@ -372,7 +372,7 @@ impl SCPNode {
                                 .collect();
 
                             if !values_to_propose.is_empty() {
-                                 slot_proposed_values += values_to_propose.len();
+                                slot_proposed_values += values_to_propose.len();
 
                                 let outgoing_msg: Option<Msg<String>> = thread_local_node
                                     .propose_values(values_to_propose)
