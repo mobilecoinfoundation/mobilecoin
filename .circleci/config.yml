@@ -180,15 +180,19 @@ commands:
       - restore_cache:
           name: Restore Homebrew cache
           key: v0-homebrew-{{ arch }}
+      - when:
+          condition: { equal: [ << pipeline.git.branch >>, master ] }
+          steps:
+            - run:
+                name: Update Homebrew
+                command: |
+                  brew --version
+                  brew update --preinstall
       - run:
           name: Install Homebrew dependencies
-          # Update Homebrew before running `brew bundle` to fix a bug in the
-          # version of Homebrew that comes preinstalled on CircleCI's macOS
-          # image. Once the CircleCI macOS image comes preinstalled with the
-          # updated version, then we should be able to remove `brew update`
-          # from this step.
-          # See: https://github.com/Homebrew/homebrew-bundle/issues/751
-          command: brew update --preinstall && brew bundle --no-upgrade
+          command: |
+            brew --version
+            brew bundle --no-upgrade
 
   save-homebrew-cache:
     steps:
