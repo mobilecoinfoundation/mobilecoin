@@ -43,8 +43,8 @@ pub struct TestOptions {
     /// is it better to set this quite high.
     pub submissions_per_sec: u64,
 
-    /// We nominate up to this many values from our pending set per slot.
-    pub max_pending_values_to_nominate: usize,
+    /// We propose up to this many values from our pending set per slot.
+    pub max_slot_proposed_values: usize,
 
     /// The total allowed testing time before forcing a panic
     pub allowed_test_time: Duration,
@@ -69,7 +69,7 @@ impl TestOptions {
             submit_in_parallel: true,
             values_to_submit: 5000,
             submissions_per_sec: 20000,
-            max_pending_values_to_nominate: 100,
+            max_slot_proposed_values: 100,
             allowed_test_time: Duration::from_secs(300),
             log_flush_delay: Duration::from_millis(50),
             scp_timebase: Duration::from_millis(1000),
@@ -307,11 +307,9 @@ impl SCPNode {
         thread_local_node.scp_timebase = test_options.scp_timebase;
 
         let thread_shared_data = Arc::clone(&scp_node.shared_data);
+        let max_slot_proposed_values: usize = test_options.max_slot_proposed_values;
 
-        // Compare to byzantine_ledger::nominate_pending_values()
-        let max_pending_values_to_nominate: usize = test_options.max_pending_values_to_nominate;
-        let mut slot_nominated_values: HashSet<String> = HashSet::default();
-
+        let mut slot_proposed_values: usize = 0;
         let mut current_slot: usize = 0;
         let mut total_broadcasts: u32 = 0;
 
@@ -324,7 +322,7 @@ impl SCPNode {
 
                     'main_loop: loop {
                         // Compare to byzantine_ledger::tick()
-                        // nominate happens before consensus msg is handled
+                        // there pending values are proposed before incoming msg is handled
                         let mut incoming_msg_option: Option<Arc<Msg<String>>> = None;
 
                         // Collect one incoming message using a non-blocking channel read
@@ -352,30 +350,32 @@ impl SCPNode {
                         };
 
                         // Nominate pending values submitted to our node
-                        if (slot_nominated_values.len() < max_pending_values_to_nominate)
+                        if (slot_proposed_values < max_slot_proposed_values)
                             && !pending_values.is_empty()
                         {
-                            let mut values_to_nominate: BTreeSet<String> = pending_values
+
+                            // compare to consensus/service/src/byzantine_ledger/worker.rs::nominate_pending_values
+                            
+                            // let values_to_propose: BTreeSet<String> = pending_values
+                            //     .iter()
+                            //     .take(max_slot_proposed_values)
+                            //     .cloned()
+                            //     .collect::<BTreeSet<String>>();
+
+                            let values_to_propose: BTreeSet<String> = pending_values
                                 .iter()
                                 .cloned()
                                 .collect::<BTreeSet<String>>() // sorts values
                                 .iter()
-                                .take(max_pending_values_to_nominate)
+                                .take(max_slot_proposed_values)
                                 .cloned()
                                 .collect();
 
-                            // Avoid unnecessary proposed values - 5-10x speed up
-                            for v in slot_nominated_values.iter() {
-                                values_to_nominate.remove(v);
-                            }
-
-                            if !values_to_nominate.is_empty() {
-                                for v in values_to_nominate.iter() {
-                                    slot_nominated_values.insert(v.clone());
-                                }
+                            if !values_to_propose.is_empty() {
+                                 slot_proposed_values += values_to_propose.len();
 
                                 let outgoing_msg: Option<Msg<String>> = thread_local_node
-                                    .propose_values(values_to_nominate)
+                                    .propose_values(values_to_propose)
                                     .expect("propose_values() failed");
 
                                 if let Some(outgoing_msg) = outgoing_msg {
@@ -438,7 +438,7 @@ impl SCPNode {
                             );
 
                             current_slot += 1;
-                            slot_nominated_values = HashSet::default();
+                            slot_proposed_values = 0;
                         }
                     }
                     log::info!(
@@ -730,7 +730,7 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
         start.elapsed().as_millis(),
         values.len(),
         test_options.submissions_per_sec,
-        test_options.max_pending_values_to_nominate,
+        test_options.max_slot_proposed_values,
         test_options.scp_timebase.as_millis(),
     );
 
