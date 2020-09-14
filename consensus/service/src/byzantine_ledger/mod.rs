@@ -147,28 +147,29 @@ impl ByzantineLedger {
 
         // Start worker thread
         let thread_handle = {
-            let is_behind = byzantine_ledger.is_behind.clone();
-            let highest_peer_block = byzantine_ledger.highest_peer_block.clone();
-            let broadcaster = broadcaster.clone();
+            let mut worker = ByzantineLedgerWorker::new(
+                node_id.clone(),
+                quorum_set,
+                receiver,
+                wrapped_scp_node,
+                byzantine_ledger.is_behind.clone(),
+                byzantine_ledger.highest_peer_block.clone(),
+                send_scp_message,
+                ledger,
+                peer_manager,
+                tx_manager,
+                broadcaster.clone(),
+                tx_source_urls,
+                logger,
+            );
             Some(
                 thread::Builder::new()
-                    .name(format!("ByzantineLedger{:?}", node_id))
-                    .spawn(move || {
-                        ByzantineLedgerWorker::start(
-                            node_id,
-                            quorum_set,
-                            receiver,
-                            wrapped_scp_node,
-                            is_behind,
-                            highest_peer_block,
-                            send_scp_message,
-                            ledger,
-                            peer_manager,
-                            tx_manager,
-                            broadcaster,
-                            tx_source_urls,
-                            logger,
-                        );
+                    .name(format!("ByzantineLedger{:?}", &node_id))
+                    .spawn(move || loop {
+                        if !worker.tick() {
+                            break;
+                        }
+                        thread::sleep(Duration::from_millis(10 as u64));
                     })
                     .expect("failed spawning ByzantineLedger"),
             )

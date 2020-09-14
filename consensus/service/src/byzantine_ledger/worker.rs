@@ -107,7 +107,7 @@ impl<
         TXM: TxManager + Send + Sync,
     > ByzantineLedgerWorker<F, L, PC, TXM>
 {
-    pub fn start(
+    pub fn new(
         node_id: NodeID,
         quorum_set: QuorumSet,
         receiver: Receiver<TaskMessage>,
@@ -121,7 +121,7 @@ impl<
         broadcaster: Arc<Mutex<dyn Broadcast>>,
         tx_source_urls: Vec<String>,
         logger: Logger,
-    ) {
+    ) -> Self {
         let cur_slot = ledger.num_blocks().unwrap();
         let prev_block_id = ledger.get_block(cur_slot - 1).unwrap().id;
 
@@ -137,7 +137,7 @@ impl<
 
         let network_state = SCPNetworkState::new(node_id, quorum_set, logger.clone());
 
-        let mut instance = Self {
+        Self {
             receiver,
             scp,
             is_behind,
@@ -159,20 +159,12 @@ impl<
             ledger_sync_service,
             ledger_sync_state: LedgerSyncState::InSync,
             unavailable_tx_hashes: HashMap::default(),
-        };
-
-        loop {
-            if !instance.tick() {
-                break;
-            }
-
-            thread::sleep(Duration::from_millis(10 as u64));
         }
     }
 
     // The place where all the consensus work is actually done.
     // Returns true until stop is requested.
-    fn tick(&mut self) -> bool {
+    pub fn tick(&mut self) -> bool {
         // Sanity check.
         assert_eq!(self.pending_values.len(), self.pending_values_map.len());
 
