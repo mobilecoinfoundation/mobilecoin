@@ -15,7 +15,7 @@ use crate::{
 };
 use mc_common::{logger::Logger, NodeID, ResponderId};
 use mc_connection::{BlockchainConnection, ConnectionManager};
-use mc_consensus_scp::{scp_log::LoggingScpNode, Msg, Node, QuorumSet, ScpNode};
+use mc_consensus_scp::{scp_log::LoggingScpNode, Node, QuorumSet, ScpNode};
 use mc_crypto_keys::Ed25519Pair;
 use mc_ledger_db::Ledger;
 use mc_ledger_sync::{LedgerSyncService, ReqwestTransactionsFetcher};
@@ -55,8 +55,8 @@ pub struct ByzantineLedger {
     // The highest block index that the network appears to agree on. (Set by the worker)
     highest_peer_block: Arc<AtomicU64>,
 
-    // Highest consensus message issued by this node.
-    highest_outgoing_consensus_msg: Arc<Mutex<Option<ConsensusMsg>>>,
+    // Highest consensus message issued by this node. (Set by the worker)
+    highest_issued_msg: Arc<Mutex<Option<ConsensusMsg>>>,
 }
 
 impl ByzantineLedger {
@@ -121,47 +121,6 @@ impl ByzantineLedger {
         let highest_peer_block = Arc::new(AtomicU64::new(0));
         let highest_outgoing_consensus_msg = Arc::new(Mutex::new(Option::<ConsensusMsg>::None));
 
-        // Helper function to broadcast an SCP message, as well as keep track of the highest
-        // message we issued. This is necessary for the implementation of the
-        // `get_highest_scp_message`.
-        let send_scp_message = {
-            let ledger = ledger.clone();
-            let broadcaster = broadcaster.clone();
-            let node_id = node_id.clone();
-            let highest_outgoing_consensus_msg = highest_outgoing_consensus_msg.clone();
-            move |scp_msg: Msg<TxHash>| {
-                // We do not expect failure to happen here since if we are attempting to send a
-                // consensus message for a given slot, we expect the previous block to exist (block not
-                // found is currently the only possible failure scenario for `from_scp_msg`).
-                let consensus_msg =
-                    ConsensusMsg::from_scp_msg(&ledger, scp_msg.clone(), msg_signer_key.as_ref())
-                        .unwrap_or_else(|_| {
-                            panic!("failed creating consensus msg from {:?}", scp_msg)
-                        });
-
-                // Broadcast the message to our peers.
-                {
-                    let mut broadcaster = broadcaster.lock().expect("mutex poisoned");
-                    broadcaster.broadcast_consensus_msg(&consensus_msg, &node_id.responder_id);
-                }
-
-                let mut inner = highest_outgoing_consensus_msg
-                    .lock()
-                    .expect("lock poisoned");
-                if let Some(highest_msg) = &*inner {
-                    // Store message if it's for a newer slot, or newer topic.
-                    // Node id (our local node) and quorum set (our local quorum set) are constant.
-                    if consensus_msg.scp_msg.slot_index > highest_msg.scp_msg.slot_index
-                        || consensus_msg.scp_msg.topic > highest_msg.scp_msg.topic
-                    {
-                        *inner = Some(consensus_msg);
-                    }
-                } else {
-                    *inner = Some(consensus_msg);
-                }
-            }
-        };
-
         // Start worker thread
         let worker_handle = {
             let ledger_sync_service = LedgerSyncService::new(
@@ -173,15 +132,16 @@ impl ByzantineLedger {
 
             let mut worker = ByzantineLedgerWorker::new(
                 scp_node,
+                msg_signer_key,
                 ledger,
                 ledger_sync_service,
                 peer_manager,
                 tx_manager,
                 broadcaster.clone(),
                 receiver,
-                send_scp_message,
                 is_behind.clone(),
                 highest_peer_block.clone(),
+                highest_outgoing_consensus_msg.clone(),
                 logger,
             );
 
@@ -203,7 +163,7 @@ impl ByzantineLedger {
             worker_handle,
             is_behind,
             highest_peer_block,
-            highest_outgoing_consensus_msg,
+            highest_issued_msg: highest_outgoing_consensus_msg,
         }
     }
 
@@ -243,7 +203,7 @@ impl ByzantineLedger {
 
     /// Get the highest scp message this node has issued.
     pub fn get_highest_scp_message(&self) -> Option<ConsensusMsg> {
-        self.highest_outgoing_consensus_msg
+        self.highest_issued_msg
             .lock()
             .expect("mutex poisoned")
             .clone()

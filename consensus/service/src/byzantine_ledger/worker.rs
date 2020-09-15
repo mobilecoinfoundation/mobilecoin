@@ -17,12 +17,13 @@ use mc_connection::{
     _retry::{delay::Fibonacci, Error as RetryError},
 };
 use mc_consensus_scp::{slot::Phase, Msg, ScpNode, SlotIndex};
+use mc_crypto_keys::Ed25519Pair;
 use mc_ledger_db::Ledger;
 use mc_ledger_sync::{
     LedgerSync, LedgerSyncService, NetworkState, ReqwestTransactionsFetcher, SCPNetworkState,
 };
 use mc_peers::{
-    Broadcast, ConsensusConnection, Error as PeerError, RetryableConsensusConnection,
+    Broadcast, ConsensusConnection, ConsensusMsg, Error as PeerError, RetryableConsensusConnection,
     VerifiedConsensusMsg,
 };
 use mc_transaction_core::tx::TxHash;
@@ -44,12 +45,13 @@ use std::{
 const CONSENSUS_MSG_BATCH_SIZE: usize = 5;
 
 pub struct ByzantineLedgerWorker<
-    F: Fn(Msg<TxHash>),
     L: Ledger + 'static,
     PC: BlockchainConnection + ConsensusConnection + 'static,
     TXM: TxManager,
 > {
     scp_node: Box<dyn ScpNode<TxHash>>,
+    msg_signer_key: Arc<Ed25519Pair>,
+
     peer_manager: ConnectionManager<PC>,
     broadcaster: Arc<Mutex<dyn Broadcast>>,
     tx_manager: Arc<TXM>,
@@ -69,6 +71,9 @@ pub struct ByzantineLedgerWorker<
 
     // The worker ses this to the highest block index that the network appears to agree on.
     highest_peer_block: Arc<AtomicU64>,
+
+    // Highest consensus message issued by this node.
+    highest_issued_msg: Arc<Mutex<Option<ConsensusMsg>>>,
 
     // Network state, used to track if we've fallen behind.
     network_state: SCPNetworkState,
@@ -95,23 +100,20 @@ pub struct ByzantineLedgerWorker<
     // Do we need to nominate anything?
     need_nominate: bool,
 
-    // Callback for sending a consensus message issued by this node.
-    send_scp_message: F,
-
     logger: Logger,
 }
 
 impl<
-        F: Fn(Msg<TxHash>),
         L: Ledger + Clone + 'static,
         PC: BlockchainConnection + ConsensusConnection + 'static,
         TXM: TxManager + Send + Sync,
-    > ByzantineLedgerWorker<F, L, PC, TXM>
+    > ByzantineLedgerWorker<L, PC, TXM>
 {
     /// Create a new ByzantineLedgerWorker.
     ///
     /// # Arguments
     /// * `scp_node` - The local SCP Node.
+    /// * `msg_signer_key` -
     /// * `ledger` - The local node's ledger.
     /// * `ledger_sync_service` -
     /// * `peer_manager` -
@@ -120,19 +122,20 @@ impl<
     /// * `tasks` - Receiver-end of a queue of task messages for this worker to process.
     /// * `is_behind` -
     /// * `highest_peer_block` -
-    /// * `send_scp_message` - Callback for sending an SCP message issued by this node.
+    /// * `highest_issued_msg` -
     /// * `logger`  
     pub fn new(
         scp_node: Box<dyn ScpNode<TxHash>>,
+        msg_signer_key: Arc<Ed25519Pair>,
         ledger: L,
         ledger_sync_service: LedgerSyncService<L, PC, ReqwestTransactionsFetcher>,
         peer_manager: ConnectionManager<PC>,
         tx_manager: Arc<TXM>,
         broadcaster: Arc<Mutex<dyn Broadcast>>,
         tasks: Receiver<TaskMessage>,
-        send_scp_message: F,
         is_behind: Arc<AtomicBool>,
         highest_peer_block: Arc<AtomicU64>,
+        highest_issued_msg: Arc<Mutex<Option<ConsensusMsg>>>,
         logger: Logger,
     ) -> Self {
         let current_slot_index = ledger.num_blocks().unwrap();
@@ -142,9 +145,10 @@ impl<
         Self {
             tasks,
             scp_node,
+            msg_signer_key,
             is_behind,
             highest_peer_block,
-            send_scp_message,
+            highest_issued_msg,
             ledger,
             tx_manager,
             broadcaster,
@@ -316,8 +320,8 @@ impl<
         self.process_consensus_msgs();
 
         // Process SCP timeouts.
-        for outgoing_msg in self.scp_node.process_timeouts().into_iter() {
-            (self.send_scp_message)(outgoing_msg);
+        for msg in self.scp_node.process_timeouts().into_iter() {
+            let _ = self.issue_consensus_message(msg);
         }
 
         if let Some(externalized_values) = self
@@ -393,7 +397,7 @@ impl<
             .expect("nominate failed");
 
         if let Some(msg) = msg_opt {
-            (self.send_scp_message)(msg)
+            let _ = self.issue_consensus_message(msg);
         }
 
         self.need_nominate = false;
@@ -469,7 +473,7 @@ impl<
             match self.scp_node.handle_messages(scp_msgs) {
                 Ok(outgoing_msgs) => {
                     for msg in outgoing_msgs {
-                        (self.send_scp_message)(msg);
+                        let _ = self.issue_consensus_message(msg);
                     }
                 }
                 Err(err) => {
@@ -685,6 +689,42 @@ impl<
         }
 
         true
+    }
+
+    /// Broadcast a consensus message issued by this node.
+    fn issue_consensus_message(&mut self, msg: Msg<TxHash>) -> Result<(), &'static str> {
+        let consensus_msg =
+            ConsensusMsg::from_scp_msg(&self.ledger, msg, self.msg_signer_key.as_ref())
+                .map_err(|_| "Failed creating ConsensusMsg")?;
+
+        // Broadcast the message to the network.
+        self.broadcaster
+            .lock()
+            .map(|mut broadcast| {
+                broadcast
+                    .broadcast_consensus_msg(&consensus_msg, &self.scp_node.node_id().responder_id)
+            })
+            .map_err(|_e| "Mutex poisoned: broadcaster")?;
+
+        // Update highest_consensus_msg.
+        let mut inner = self
+            .highest_issued_msg
+            .lock()
+            .map_err(|_e| "Mutex poisoned: highest_issued_msg")?;
+
+        match &*inner {
+            Some(highest_msg) => {
+                if consensus_msg.scp_msg.slot_index > highest_msg.scp_msg.slot_index
+                    || consensus_msg.scp_msg.topic > highest_msg.scp_msg.topic
+                {
+                    // New highest message.
+                    *inner = Some(consensus_msg);
+                }
+            }
+            None => *inner = Some(consensus_msg),
+        }
+
+        Ok(())
     }
 
     fn update_cur_metrics(&mut self) {
