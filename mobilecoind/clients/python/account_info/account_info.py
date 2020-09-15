@@ -100,4 +100,3 @@ if __name__ == '__main__':
 
     # print request code for this entropy
     print("\n\nAccount Information\n\n  Master Key:    {}\n  Address Code:  {}\n  Balance:       {} picoMOB\n\n".format(entropy, address_code, balance))
-

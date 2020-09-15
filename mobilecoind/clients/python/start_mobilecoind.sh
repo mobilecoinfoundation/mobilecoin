@@ -57,4 +57,3 @@ $TMP_DIR/mobilecoin-testnet-linux/bin/mobilecoind \
   --mobilecoind-db $TMP_DIR/transaction-db \
   --listen-uri insecure-mobilecoind://127.0.0.1:4444/ \
   --watcher-db $TMP_DIR/watcher-db 2>&1 > mobilecoind.log &
-

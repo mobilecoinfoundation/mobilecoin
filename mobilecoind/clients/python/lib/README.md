@@ -16,6 +16,3 @@ mobilecoind = Client(mobilecoind_address, use_ssl)
 print(mobilecoind.get_ledger_info())
 
 ```
-
-
-
