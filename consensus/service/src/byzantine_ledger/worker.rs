@@ -25,7 +25,7 @@ use mc_peers::{
     Broadcast, ConsensusConnection, Error as PeerError, RetryableConsensusConnection,
     VerifiedConsensusMsg,
 };
-use mc_transaction_core::{tx::TxHash, BlockID};
+use mc_transaction_core::tx::TxHash;
 use mc_util_metered_channel::Receiver;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
@@ -49,22 +49,23 @@ pub struct ByzantineLedgerWorker<
     PC: BlockchainConnection + ConsensusConnection + 'static,
     TXM: TxManager,
 > {
-    receiver: Receiver<TaskMessage>,
-    scp: Box<dyn ScpNode<TxHash>>,
-    is_behind: Arc<AtomicBool>,
-    highest_peer_block: Arc<AtomicU64>,
-    send_scp_message: F,
-    ledger: L,
+    scp_node: Box<dyn ScpNode<TxHash>>,
     peer_manager: ConnectionManager<PC>,
     tx_manager: Arc<TXM>,
     broadcaster: Arc<Mutex<dyn Broadcast>>,
-    logger: Logger,
 
     // Current slot index (the one that is not yet in the ledger / the one currently being worked on).
     current_slot_index: SlotIndex,
+    ledger: L,
+    ledger_sync_service: Box<dyn LedgerSync<SCPNetworkState>>,
+    ledger_sync_state: LedgerSyncState,
+    is_behind: Arc<AtomicBool>,
+    highest_peer_block: Arc<AtomicU64>,
+    // Network state, used to track if we've fallen behind.
+    network_state: SCPNetworkState,
 
-    // Previous block id
-    prev_block_id: BlockID,
+    // TaskMessages submitted to this worker.
+    receiver: Receiver<TaskMessage>,
 
     // Pending scp messages we need to process.
     pending_consensus_msgs: Vec<(VerifiedConsensusMsg, ResponderId)>,
@@ -84,20 +85,15 @@ pub struct ByzantineLedgerWorker<
     // Do we need to nominate anything?
     need_nominate: bool,
 
-    // Network state, used to track if we've fallen behind.
-    network_state: SCPNetworkState,
-
-    // Ledger sync service
-    // ledger_sync_service: LedgerSyncService<L, PC, ReqwestTransactionsFetcher>,
-    ledger_sync_service: Box<dyn LedgerSync<SCPNetworkState>>,
-
-    // Ledger sync state.
-    ledger_sync_state: LedgerSyncState,
+    // Callback for sending a consensus message issued by this node.
+    send_scp_message: F,
 
     // A map of responder id to a list of tx hashes that it is unable to provide. This allows us to
     // skip attempting to fetch txs that are bound to fail. A BTreeSet is used to speed up lookups
     // as expect to be doing more lookups than inserts.
     unavailable_tx_hashes: HashMap<ResponderId, BTreeSet<TxHash>>,
+
+    logger: Logger,
 }
 
 impl<
@@ -135,13 +131,12 @@ impl<
         logger: Logger,
     ) -> Self {
         let current_slot_index = ledger.num_blocks().unwrap();
-        let prev_block_id = ledger.get_block(current_slot_index - 1).unwrap().id;
 
         let network_state = SCPNetworkState::new(scp_node.node_id(), scp_node.quorum_set());
 
         Self {
             receiver,
-            scp: scp_node,
+            scp_node,
             is_behind,
             highest_peer_block,
             send_scp_message,
@@ -151,7 +146,6 @@ impl<
             peer_manager,
             logger,
             current_slot_index,
-            prev_block_id,
             pending_consensus_msgs: Default::default(),
             pending_values: Vec::new(),
             pending_values_map: Default::default(),
@@ -303,14 +297,9 @@ impl<
                 self.is_behind.store(false, Ordering::SeqCst);
                 self.ledger_sync_state = LedgerSyncState::InSync;
                 self.current_slot_index = self.ledger.num_blocks().unwrap();
-                self.prev_block_id = self
-                    .ledger
-                    .get_block(self.current_slot_index - 1)
-                    .unwrap()
-                    .id;
 
                 // Reset scp state.
-                self.scp.reset_slot_index(self.current_slot_index);
+                self.scp_node.reset_slot_index(self.current_slot_index);
             }
         };
 
@@ -327,7 +316,7 @@ impl<
         self.process_consensus_msgs();
 
         // Process SCP timeouts.
-        for outgoing_msg in self.scp.process_timeouts().into_iter() {
+        for outgoing_msg in self.scp_node.process_timeouts().into_iter() {
             (self.send_scp_message)(outgoing_msg);
         }
 
@@ -381,7 +370,7 @@ impl<
         assert!(!self.pending_values.is_empty());
 
         let msg_opt = self
-            .scp
+            .scp_node
             .propose_values(BTreeSet::from_iter(
                 self.pending_values
                     .iter()
@@ -401,7 +390,7 @@ impl<
     fn process_consensus_msgs(&mut self) {
         // Process messages for slot indices in [oldest_slot, current_slot].
         let current_slot = self.current_slot_index;
-        let max_externalized_slots = self.scp.max_externalized_slots() as u64;
+        let max_externalized_slots = self.scp_node.max_externalized_slots() as u64;
         let oldest_slot = current_slot.saturating_sub(max_externalized_slots);
         let (consensus_msgs, future_msgs): (Vec<_>, Vec<_>) = self
             .pending_consensus_msgs
@@ -464,7 +453,7 @@ impl<
                 .map(|(consensus_msg, _)| consensus_msg.scp_msg().clone())
                 .collect();
 
-            match self.scp.handle_messages(scp_msgs) {
+            match self.scp_node.handle_messages(scp_msgs) {
                 Ok(outgoing_msgs) => {
                     for msg in outgoing_msgs {
                         (self.send_scp_message)(msg);
@@ -478,7 +467,10 @@ impl<
     }
 
     fn attempt_complete_cur_slot(&mut self) {
-        if let Some(ext_vals) = self.scp.get_externalized_values(self.current_slot_index) {
+        if let Some(ext_vals) = self
+            .scp_node
+            .get_externalized_values(self.current_slot_index)
+        {
             // Update pending value processing time metrics.
             for value in ext_vals.iter() {
                 if let Some(Some(timestamp)) = self.pending_values_map.get(value) {
@@ -500,7 +492,7 @@ impl<
             );
 
             // Write to ledger.
-            let block_id = {
+            let _block_id = {
                 let num_blocks = self
                     .ledger
                     .num_blocks()
@@ -533,19 +525,19 @@ impl<
                 block.id
             };
 
-            // Sanity check + update current slot.
-            let current_slot_index =
-                self.ledger.num_blocks().expect("num blocks failed") as SlotIndex;
-
-            assert_eq!(current_slot_index, self.current_slot_index + 1);
-
-            self.current_slot_index = current_slot_index;
-            self.prev_block_id = block_id;
+            // Update current slot index.
+            self.current_slot_index = {
+                let current_slot_index: SlotIndex = self.ledger.num_blocks().unwrap();
+                assert_eq!(current_slot_index, self.current_slot_index + 1);
+                current_slot_index
+            };
 
             // Purge transactions that can no longer be processed based on their tombstone block.
-            let max_externalized_slots = self.scp.max_externalized_slots() as u64;
+            let max_externalized_slots = self.scp_node.max_externalized_slots() as u64;
             let purged_hashes = {
-                let index = current_slot_index.saturating_sub(max_externalized_slots);
+                let index = self
+                    .current_slot_index
+                    .saturating_sub(max_externalized_slots);
                 self.tx_manager.remove_expired(index)
             };
 
@@ -563,13 +555,13 @@ impl<
 
             log::info!(
                 self.logger,
-                "number of pending values post cleanup: {} ({} expired)",
+                "Number of pending values post cleanup: {} ({} expired)",
                 self.pending_values.len(),
                 purged_hashes.len(),
             );
 
             // Previous slot metrics.
-            counters::PREV_SLOT_NUMBER.set((current_slot_index - 1) as i64);
+            counters::PREV_SLOT_NUMBER.set((self.current_slot_index - 1) as i64);
             counters::PREV_SLOT_ENDED_AT.set(chrono::Utc::now().timestamp_millis());
             counters::PREV_SLOT_NUM_EXT_VALS.set(ext_vals.len() as i64);
             counters::PREV_NUM_PENDING_VALUES.set(self.pending_values.len() as i64);
@@ -695,7 +687,7 @@ impl<
     }
 
     fn update_cur_metrics(&mut self) {
-        let slot_metrics = self.scp.get_current_slot_metrics();
+        let slot_metrics = self.scp_node.get_current_slot_metrics();
         counters::CUR_NUM_PENDING_VALUES.set(self.pending_values.len() as i64);
         counters::CUR_SLOT_NUM.set(self.current_slot_index as i64);
         counters::CUR_SLOT_PHASE.set(match &slot_metrics.phase {
