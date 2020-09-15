@@ -110,41 +110,34 @@ impl<
     /// Create a new ByzantineLedgerWorker.
     ///
     /// # Arguments
-    /// * `receiver` - Receiver-end of a queue of task messages for this worker to process.
     /// * `scp_node` - The local SCP Node.
+    /// * `ledger` - The local node's ledger.
+    /// * `peer_manager` -
+    /// * `tx_manager` -
+    /// * `transactions_fetcher` -
+    /// * `broadcaster` -
+    /// * `receiver` - Receiver-end of a queue of task messages for this worker to process.
     /// * `is_behind` -
     /// * `highest_peer_block` -
     /// * `send_scp_message` - Callback for sending an SCP message issued by this node.
-    /// * `ledger` -
-    /// * `peer_manager` -
-    /// * `tx_manager` -
-    /// * `broadcaster` -
-    /// * `transactions_fetcher` -
     /// * `logger`  
     pub fn new(
-        receiver: Receiver<TaskMessage>,
         scp_node: Box<dyn ScpNode<TxHash>>,
-        is_behind: Arc<AtomicBool>,
-        highest_peer_block: Arc<AtomicU64>,
-        send_scp_message: F,
         ledger: L,
+        ledger_sync_service: LedgerSyncService<L, PC, ReqwestTransactionsFetcher>,
         peer_manager: ConnectionManager<PC>,
         tx_manager: Arc<TXM>,
         broadcaster: Arc<Mutex<dyn Broadcast>>,
-        transactions_fetcher: ReqwestTransactionsFetcher,
+        receiver: Receiver<TaskMessage>,
+        send_scp_message: F,
+        is_behind: Arc<AtomicBool>,
+        highest_peer_block: Arc<AtomicU64>,
         logger: Logger,
     ) -> Self {
         let current_slot_index = ledger.num_blocks().unwrap();
         let prev_block_id = ledger.get_block(current_slot_index - 1).unwrap().id;
 
         let network_state = SCPNetworkState::new(scp_node.node_id(), scp_node.quorum_set());
-
-        let ledger_sync_service = Box::new(LedgerSyncService::new(
-            ledger.clone(),
-            peer_manager.clone(),
-            transactions_fetcher,
-            logger.clone(),
-        ));
 
         Self {
             receiver,
@@ -164,7 +157,7 @@ impl<
             pending_values_map: Default::default(),
             need_nominate: false,
             network_state,
-            ledger_sync_service,
+            ledger_sync_service: Box::new(ledger_sync_service),
             ledger_sync_state: LedgerSyncState::InSync,
             unavailable_tx_hashes: HashMap::default(),
         }

@@ -18,7 +18,7 @@ use mc_connection::{BlockchainConnection, ConnectionManager};
 use mc_consensus_scp::{scp_log::LoggingScpNode, Msg, Node, QuorumSet, ScpNode};
 use mc_crypto_keys::Ed25519Pair;
 use mc_ledger_db::Ledger;
-use mc_ledger_sync::ReqwestTransactionsFetcher;
+use mc_ledger_sync::{LedgerSyncService, ReqwestTransactionsFetcher};
 use mc_peers::{Broadcast, ConsensusConnection, ConsensusMsg, VerifiedConsensusMsg};
 use mc_transaction_core::tx::TxHash;
 use mc_util_metered_channel::Sender;
@@ -146,21 +146,24 @@ impl ByzantineLedger {
 
         // Start worker thread
         let thread_handle = {
-            let transactions_fetcher =
-                ReqwestTransactionsFetcher::new(tx_source_urls, logger.clone())
-                    .unwrap_or_else(|e| panic!("Failed creating transaction fetcher: {:?}", e));
+            let ledger_sync_service = LedgerSyncService::new(
+                ledger.clone(),
+                peer_manager.clone(),
+                ReqwestTransactionsFetcher::new(tx_source_urls, logger.clone()).unwrap(), // Unwrap?
+                logger.clone(),
+            );
 
             let mut worker = ByzantineLedgerWorker::new(
-                receiver,
                 scp_node,
-                byzantine_ledger.is_behind.clone(),
-                byzantine_ledger.highest_peer_block.clone(),
-                send_scp_message,
                 ledger,
+                ledger_sync_service,
                 peer_manager,
                 tx_manager,
                 broadcaster.clone(),
-                transactions_fetcher,
+                receiver,
+                send_scp_message,
+                byzantine_ledger.is_behind.clone(),
+                byzantine_ledger.highest_peer_block.clone(),
                 logger,
             );
             Some(
