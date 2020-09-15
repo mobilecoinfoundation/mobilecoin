@@ -77,7 +77,7 @@ impl ByzantineLedger {
             let tx_manager_combine = tx_manager.clone();
             let node = Node::new(
                 node_id.clone(),
-                quorum_set.clone(),
+                quorum_set,
                 Arc::new(move |tx_hash| tx_manager_validate.validate(tx_hash)),
                 Arc::new(move |tx_hashes| tx_manager_combine.combine(tx_hashes)),
                 current_slot_index,

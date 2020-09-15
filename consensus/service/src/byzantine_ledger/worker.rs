@@ -51,8 +51,12 @@ pub struct ByzantineLedgerWorker<
 > {
     scp_node: Box<dyn ScpNode<TxHash>>,
     peer_manager: ConnectionManager<PC>,
-    tx_manager: Arc<TXM>,
     broadcaster: Arc<Mutex<dyn Broadcast>>,
+    tx_manager: Arc<TXM>,
+    // A map of responder id to a list of tx hashes that it is unable to provide. This allows us to
+    // skip attempting to fetch txs that are bound to fail. A BTreeSet is used to speed up lookups
+    // as expect to be doing more lookups than inserts.
+    unavailable_tx_hashes: HashMap<ResponderId, BTreeSet<TxHash>>,
 
     // Current slot index (the one that is not yet in the ledger / the one currently being worked on).
     current_slot_index: SlotIndex,
@@ -87,11 +91,6 @@ pub struct ByzantineLedgerWorker<
 
     // Callback for sending a consensus message issued by this node.
     send_scp_message: F,
-
-    // A map of responder id to a list of tx hashes that it is unable to provide. This allows us to
-    // skip attempting to fetch txs that are bound to fail. A BTreeSet is used to speed up lookups
-    // as expect to be doing more lookups than inserts.
-    unavailable_tx_hashes: HashMap<ResponderId, BTreeSet<TxHash>>,
 
     logger: Logger,
 }
