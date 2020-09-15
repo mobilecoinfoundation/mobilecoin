@@ -64,13 +64,13 @@ impl ByzantineLedger {
     ///
     /// # Arguments
     /// * `node_id` - The local node's ID.
-    /// * `quorum_set` - The local node's qurum set.
-    /// * `peer_manager` -
+    /// * `quorum_set` - The local node's quorum set.
+    /// * `peer_manager` - PeerManager
     /// * `ledger` - The local node's ledger.
-    /// * `tx_manager` -
-    /// * `broadcaster` -
-    /// * `msg_signer_key` -
-    /// * `tx_source_urls` -
+    /// * `tx_manager` - TxManager
+    /// * `broadcaster` - Broadcaster
+    /// * `msg_signer_key` - Signs consensus messages issued by this node.
+    /// * `tx_source_urls` - ???
     /// * `scp_debug_dir` - If Some, debugging info will be written in this directory.
     /// * `logger` -
     pub fn new<
@@ -202,7 +202,7 @@ impl ByzantineLedger {
     }
 
     /// Get the highest scp message this node has issued.
-    pub fn get_highest_scp_message(&self) -> Option<ConsensusMsg> {
+    pub fn get_highest_issued_message(&self) -> Option<ConsensusMsg> {
         self.highest_issued_msg
             .lock()
             .expect("mutex poisoned")

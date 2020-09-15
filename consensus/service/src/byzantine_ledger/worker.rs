@@ -66,10 +66,10 @@ pub struct ByzantineLedgerWorker<
     ledger_sync_service: Box<dyn LedgerSync<SCPNetworkState>>,
     ledger_sync_state: LedgerSyncState,
 
-    // The worker sets this to true when the local nde is behind its peers.
+    // The worker sets this to true when the local node is behind its peers.
     is_behind: Arc<AtomicBool>,
 
-    // The worker ses this to the highest block index that the network appears to agree on.
+    // The worker sets this to the highest block index that the network appears to agree on.
     highest_peer_block: Arc<AtomicU64>,
 
     // Highest consensus message issued by this node.
@@ -113,16 +113,16 @@ impl<
     ///
     /// # Arguments
     /// * `scp_node` - The local SCP Node.
-    /// * `msg_signer_key` -
-    /// * `ledger` - The local node's ledger.
-    /// * `ledger_sync_service` -
-    /// * `peer_manager` -
-    /// * `tx_manager` -
-    /// * `broadcaster` -
+    /// * `msg_signer_key` - Signs consensus messages issued by this node.
+    /// * `ledger` - This node's ledger.
+    /// * `ledger_sync_service` - LedgerSyncService
+    /// * `peer_manager` - PeerManager
+    /// * `tx_manager` - TxManager
+    /// * `broadcaster` - Broadcaster
     /// * `tasks` - Receiver-end of a queue of task messages for this worker to process.
-    /// * `is_behind` -
-    /// * `highest_peer_block` -
-    /// * `highest_issued_msg` -
+    /// * `is_behind` - Worker sets to true when the local node is behind its peers.
+    /// * `highest_peer_block` - Worker sets to highest block index that the network agrees on.
+    /// * `highest_issued_msg` - Worker sets to highest consensus message issued by this node.
     /// * `logger`  
     pub fn new(
         scp_node: Box<dyn ScpNode<TxHash>>,
@@ -333,7 +333,7 @@ impl<
         }
 
         // Update metrics.
-        self.update_cur_metrics();
+        self.update_metrics();
 
         true
     }
@@ -727,7 +727,7 @@ impl<
         Ok(())
     }
 
-    fn update_cur_metrics(&mut self) {
+    fn update_metrics(&mut self) {
         let slot_metrics = self.scp_node.get_current_slot_metrics();
         counters::CUR_NUM_PENDING_VALUES.set(self.pending_values.len() as i64);
         counters::CUR_SLOT_NUM.set(self.current_slot_index as i64);
