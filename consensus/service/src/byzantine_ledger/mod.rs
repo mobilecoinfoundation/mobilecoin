@@ -47,7 +47,7 @@ pub struct ByzantineLedger {
     worker_handle: Option<JoinHandle<()>>,
 
     // Sender-end of the worker's task queue.
-    sender: Sender<TaskMessage>,
+    task_sender: Sender<TaskMessage>,
 
     // True if this node is behind its peers. (Set by the worker)
     is_behind: Arc<AtomicBool>,
@@ -113,13 +113,14 @@ impl ByzantineLedger {
         };
 
         // The worker's task queue.
-        let (sender, receiver) =
+        // TODO: this should be a bounded channel.
+        let (task_sender, task_receiver) =
             mc_util_metered_channel::unbounded(&counters::BYZANTINE_LEDGER_MESSAGE_QUEUE_SIZE);
 
         // Mutable state shared with the worker thread.
         let is_behind = Arc::new(AtomicBool::new(false));
         let highest_peer_block = Arc::new(AtomicU64::new(0));
-        let highest_outgoing_consensus_msg = Arc::new(Mutex::new(Option::<ConsensusMsg>::None));
+        let highest_issued_msg = Arc::new(Mutex::new(Option::<ConsensusMsg>::None));
 
         // Start worker thread
         let worker_handle = {
@@ -138,10 +139,10 @@ impl ByzantineLedger {
                 peer_manager,
                 tx_manager,
                 broadcaster.clone(),
-                receiver,
+                task_receiver,
                 is_behind.clone(),
                 highest_peer_block.clone(),
-                highest_outgoing_consensus_msg.clone(),
+                highest_issued_msg.clone(),
                 logger,
             );
 
@@ -159,34 +160,34 @@ impl ByzantineLedger {
         };
 
         Self {
-            sender,
+            task_sender,
             worker_handle,
             is_behind,
             highest_peer_block,
-            highest_issued_msg: highest_outgoing_consensus_msg,
+            highest_issued_msg,
         }
     }
 
-    /// Push value to this node's consensus task.
+    /// Handle transactions submitted by clients.
     pub fn push_values(&self, values: Vec<TxHash>, received_at: Option<Instant>) {
-        self.sender
+        self.task_sender
             .send(TaskMessage::Values(received_at, values))
             .expect("Could not send values");
     }
 
-    /// Feed message from the network to this node's consensus task.
+    /// Handle consensus messages received from the network.
     pub fn handle_consensus_msg(
         &self,
         consensus_msg: VerifiedConsensusMsg,
         from_responder_id: ResponderId,
     ) {
-        self.sender
+        self.task_sender
             .send(TaskMessage::ConsensusMsg(consensus_msg, from_responder_id))
             .expect("Could not send consensus msg");
     }
 
     pub fn stop(&mut self) {
-        let _ = self.sender.send(TaskMessage::StopTrigger);
+        let _ = self.task_sender.send(TaskMessage::StopTrigger);
         self.join();
     }
 
