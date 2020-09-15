@@ -97,7 +97,7 @@ pub struct ByzantineLedgerWorker<
     pending_values: Vec<TxHash>,
     pending_values_map: HashMap<TxHash, Option<Instant>>,
 
-    // Do we need to nominate anything?
+    // Set to true when the worker has pending values that have not yet been proposed to the scp_node.
     need_nominate: bool,
 
     logger: Logger,
@@ -314,7 +314,9 @@ impl<
         }
 
         // Nominate values for current slot.
-        self.nominate_pending_values();
+        if self.need_nominate {
+            self.nominate_pending_values();
+        }
 
         // Process any queues consensus messages.
         self.process_consensus_msgs();
@@ -333,7 +335,7 @@ impl<
         }
 
         // Update metrics.
-        self.update_metrics();
+        self.update_current_slot_metrics();
 
         true
     }
@@ -380,10 +382,6 @@ impl<
     }
 
     fn nominate_pending_values(&mut self) {
-        if !self.need_nominate {
-            return;
-        }
-
         assert!(!self.pending_values.is_empty());
 
         let msg_opt = self
@@ -406,16 +404,18 @@ impl<
     // Process messages for current slot and recent previous slots; retain messages for future slots.
     fn process_consensus_msgs(&mut self) {
         // Process messages for slot indices in [oldest_slot, current_slot].
-        let current_slot = self.current_slot_index;
+        let current_slot_index = self.current_slot_index;
         let max_externalized_slots = self.scp_node.max_externalized_slots() as u64;
-        let oldest_slot = current_slot.saturating_sub(max_externalized_slots);
+        let oldest_slot_index = current_slot_index.saturating_sub(max_externalized_slots);
         let (consensus_msgs, future_msgs): (Vec<_>, Vec<_>) = self
             .pending_consensus_msgs
             .drain(..)
             // We do not perform consensus on the origin block.
             .filter(|(consensus_msg, _)| consensus_msg.scp_msg().slot_index != 0)
-            .filter(|(consensus_msg, _)| consensus_msg.scp_msg().slot_index >= oldest_slot)
-            .partition(|(consensus_msg, _)| consensus_msg.scp_msg().slot_index <= current_slot);
+            .filter(|(consensus_msg, _)| consensus_msg.scp_msg().slot_index >= oldest_slot_index)
+            .partition(|(consensus_msg, _)| {
+                consensus_msg.scp_msg().slot_index <= current_slot_index
+            });
 
         self.pending_consensus_msgs = future_msgs;
 
@@ -485,8 +485,8 @@ impl<
 
     fn complete_current_slot(&mut self, externalized: Vec<TxHash>) {
         // Update pending value processing time metrics.
-        for value in externalized.iter() {
-            if let Some(Some(timestamp)) = self.pending_values_map.get(value) {
+        for tx_hash in externalized.iter() {
+            if let Some(Some(timestamp)) = self.pending_values_map.get(tx_hash) {
                 let duration = Instant::now().saturating_duration_since(*timestamp);
                 counters::PENDING_VALUE_PROCESSING_TIME.observe(duration.as_secs_f64());
             }
@@ -706,7 +706,7 @@ impl<
             })
             .map_err(|_e| "Mutex poisoned: broadcaster")?;
 
-        // Update highest_consensus_msg.
+        // Update highest_issued_msg.
         let mut inner = self
             .highest_issued_msg
             .lock()
@@ -727,7 +727,7 @@ impl<
         Ok(())
     }
 
-    fn update_metrics(&mut self) {
+    fn update_current_slot_metrics(&mut self) {
         let slot_metrics = self.scp_node.get_current_slot_metrics();
         counters::CUR_NUM_PENDING_VALUES.set(self.pending_values.len() as i64);
         counters::CUR_SLOT_NUM.set(self.current_slot_index as i64);
