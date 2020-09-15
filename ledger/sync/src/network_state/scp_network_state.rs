@@ -3,10 +3,7 @@
 //! NetworkState implementation for the `scp` module.
 
 use crate::NetworkState;
-use mc_common::{
-    logger::{log, Logger},
-    NodeID, ResponderId,
-};
+use mc_common::{NodeID, ResponderId};
 use mc_consensus_scp::{
     core_types::Ballot, msg::ExternalizePayload, predicates::FuncPredicate, GenericNodeId, Msg,
     QuorumSet, SlotIndex, Topic, Value,
@@ -28,18 +25,14 @@ pub struct SCPNetworkState<ID: GenericNodeId = NodeID> {
 
     // Highest slot that a given node has externalized.
     id_to_current_slot: HashMap<ID, SlotIndex>,
-
-    // Logger.
-    logger: Logger,
 }
 
 impl<ID: GenericNodeId + Clone + Eq + PartialEq + Hash> SCPNetworkState<ID> {
-    pub fn new(local_node_id: ID, local_quorum_set: QuorumSet<ID>, logger: Logger) -> Self {
+    pub fn new(local_node_id: ID, local_quorum_set: QuorumSet<ID>) -> Self {
         Self {
             local_node_id,
             local_quorum_set,
             id_to_current_slot: HashMap::default(),
-            logger,
         }
     }
 
@@ -58,12 +51,6 @@ impl<ID: GenericNodeId + Clone + Eq + PartialEq + Hash> SCPNetworkState<ID> {
         let entry_exists = self.id_to_current_slot.contains_key(&sender_id);
         let entry_is_older = entry_exists && self.id_to_current_slot[&sender_id] < new_slot_index;
         if !entry_exists || entry_is_older {
-            log::trace!(
-                self.logger,
-                "Recording slot index {} from {}",
-                new_slot_index,
-                sender_id
-            );
             self.id_to_current_slot.insert(sender_id, new_slot_index);
         }
     }
@@ -176,36 +163,29 @@ impl<ID: GenericNodeId + Send + AsRef<ResponderId> + DeserializeOwned + Serializ
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mc_common::logger::test_with_logger;
     use mc_consensus_scp::{core_types::Ballot, msg::*};
     use mc_peers_test_utils::test_node_id;
     use std::collections::BTreeSet;
 
-    #[test_with_logger]
-    fn test_new(logger: Logger) {
+    #[test]
+    fn test_new() {
         let local_node_id = test_node_id(1);
         let local_node_quorum_set = QuorumSet::<ResponderId>::empty();
-        let network_state = SCPNetworkState::<ResponderId>::new(
-            local_node_id.responder_id,
-            local_node_quorum_set,
-            logger,
-        );
+        let network_state =
+            SCPNetworkState::<ResponderId>::new(local_node_id.responder_id, local_node_quorum_set);
         assert_eq!(network_state.peer_to_current_slot().len(), 0);
     }
 
-    #[test_with_logger]
+    #[test]
     // Nominate/Prepare/Commit(slot_index = 5) implies that slot_index 4 was externalized.
-    fn test_push_nominate_prepare_commit(logger: Logger) {
+    fn test_push_nominate_prepare_commit() {
         let sender_id = test_node_id(11).responder_id;
         let quorum_set = QuorumSet::<ResponderId>::empty();
 
         let local_node_id = test_node_id(1);
         let local_node_quorum_set = QuorumSet::<ResponderId>::empty();
-        let mut network_state = SCPNetworkState::<ResponderId>::new(
-            local_node_id.responder_id,
-            local_node_quorum_set,
-            logger,
-        );
+        let mut network_state =
+            SCPNetworkState::<ResponderId>::new(local_node_id.responder_id, local_node_quorum_set);
 
         let slot_index: SlotIndex = 5;
 
@@ -271,19 +251,16 @@ mod tests {
         }
     }
 
-    #[test_with_logger]
+    #[test]
     // Externalize(slot_index = 5) implies that slot_index 5 was externalized.
-    fn test_push_externalize(logger: Logger) {
+    fn test_push_externalize() {
         let sender_id = test_node_id(11).responder_id;
         let quorum_set = QuorumSet::<ResponderId>::empty();
 
         let local_node_id = test_node_id(1);
         let local_node_quorum_set = QuorumSet::<ResponderId>::empty();
-        let mut network_state = SCPNetworkState::<ResponderId>::new(
-            local_node_id.responder_id,
-            local_node_quorum_set,
-            logger,
-        );
+        let mut network_state =
+            SCPNetworkState::<ResponderId>::new(local_node_id.responder_id, local_node_quorum_set);
 
         let slot_index: SlotIndex = 5;
         // ExternalizeStatement
@@ -305,17 +282,14 @@ mod tests {
         }
     }
 
-    #[test_with_logger]
+    #[test]
     // Out-of-order (stale) messages should not change the NetworkState.
-    fn test_push_out_of_order_statement(logger: Logger) {
+    fn test_push_out_of_order_statement() {
         // Initially, the NetworkState knows that node 11 has externalized slot 8.
         let local_node_id = test_node_id(1);
         let local_node_quorum_set = QuorumSet::<ResponderId>::empty();
-        let mut network_state = SCPNetworkState::<ResponderId>::new(
-            local_node_id.responder_id,
-            local_node_quorum_set,
-            logger,
-        );
+        let mut network_state =
+            SCPNetworkState::<ResponderId>::new(local_node_id.responder_id, local_node_quorum_set);
 
         let sender_id = test_node_id(11).responder_id;
         network_state
@@ -346,16 +320,13 @@ mod tests {
         );
     }
 
-    #[test_with_logger]
+    #[test]
     // NetworkState should correctly track the state of multiple senders.
-    fn test_multiple_senders(logger: Logger) {
+    fn test_multiple_senders() {
         let local_node_id = test_node_id(1);
         let local_node_quorum_set = QuorumSet::<ResponderId>::empty();
-        let mut network_state = SCPNetworkState::<ResponderId>::new(
-            local_node_id.responder_id,
-            local_node_quorum_set,
-            logger,
-        );
+        let mut network_state =
+            SCPNetworkState::<ResponderId>::new(local_node_id.responder_id, local_node_quorum_set);
 
         let sender_a_id = test_node_id(11).responder_id;
         let sender_b_id = test_node_id(22).responder_id;
@@ -405,10 +376,10 @@ mod tests {
         );
     }
 
-    #[test_with_logger]
+    #[test]
     // NetworkState is_behind should only return true when `responder_ids` form
     // both a blocking set and a quorum.
-    fn test_is_behind(logger: Logger) {
+    fn test_is_behind() {
         let local_node_quorum_set: QuorumSet = {
             let inner_quorum_set_one: QuorumSet = QuorumSet::new_with_node_ids(
                 2,
@@ -421,7 +392,7 @@ mod tests {
             QuorumSet::new_with_inner_sets(2, vec![inner_quorum_set_one, inner_quorum_set_two])
         };
         let local_node_id = test_node_id(1);
-        let mut network_state = SCPNetworkState::new(local_node_id, local_node_quorum_set, logger);
+        let mut network_state = SCPNetworkState::new(local_node_id, local_node_quorum_set);
         let local_block = 5;
 
         // Nodes 2 and 3 are a blocking set.
@@ -494,12 +465,12 @@ mod tests {
     }
 
     // A quorum set with a single node is blocking and quorum when that node has issued a message.
-    #[test_with_logger]
-    fn test_single_node_quorum_set_is_blocking_and_quorum(logger: Logger) {
+    #[test]
+    fn test_single_node_quorum_set_is_blocking_and_quorum() {
         let local_node_id = test_node_id(1);
         let local_node_quorum_set: QuorumSet =
             QuorumSet::new_with_node_ids(1, vec![test_node_id(2)]);
-        let network_state = SCPNetworkState::new(local_node_id, local_node_quorum_set, logger);
+        let network_state = SCPNetworkState::new(local_node_id, local_node_quorum_set);
 
         assert_eq!(
             network_state
@@ -528,10 +499,10 @@ mod tests {
         );
     }
 
-    #[test_with_logger]
+    #[test]
     // NetworkState highest_block_index_on_network should only return the highest block index
     // a blocking set and quorum agrees on.
-    fn test_highest_block_index_on_network(logger: Logger) {
+    fn test_highest_block_index_on_network() {
         let local_node_quorum_set: QuorumSet = {
             let inner_quorum_set_one: QuorumSet = QuorumSet::new_with_node_ids(
                 2,
@@ -544,7 +515,7 @@ mod tests {
             QuorumSet::new_with_inner_sets(2, vec![inner_quorum_set_one, inner_quorum_set_two])
         };
         let local_node_id = test_node_id(1);
-        let mut network_state = SCPNetworkState::new(local_node_id, local_node_quorum_set, logger);
+        let mut network_state = SCPNetworkState::new(local_node_id, local_node_quorum_set);
         let local_block = 5;
 
         // Nodes 2 and 3 are a blocking set.

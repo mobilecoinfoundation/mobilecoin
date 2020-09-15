@@ -110,7 +110,6 @@ impl<
     /// Create a new ByzantineLedgerWorker.
     ///
     /// # Arguments
-    /// * `network_state` -
     /// * `receiver` - Receiver-end of a queue of task messages for this worker to process.
     /// * `scp_node` - The local SCP Node.
     /// * `is_behind` -
@@ -123,7 +122,6 @@ impl<
     /// * `transactions_fetcher` -
     /// * `logger`  
     pub fn new(
-        network_state: SCPNetworkState,
         receiver: Receiver<TaskMessage>,
         scp_node: Box<dyn ScpNode<TxHash>>,
         is_behind: Arc<AtomicBool>,
@@ -138,6 +136,8 @@ impl<
     ) -> Self {
         let current_slot_index = ledger.num_blocks().unwrap();
         let prev_block_id = ledger.get_block(current_slot_index - 1).unwrap().id;
+
+        let network_state = SCPNetworkState::new(scp_node.node_id(), scp_node.quorum_set());
 
         let ledger_sync_service = Box::new(LedgerSyncService::new(
             ledger.clone(),
@@ -173,20 +173,20 @@ impl<
     // The place where all the consensus work is actually done.
     // Returns true until stop is requested.
     pub fn tick(&mut self) -> bool {
-        // Sanity check.
-        assert_eq!(self.pending_values.len(), self.pending_values_map.len());
+        assert_eq!(self.pending_values.len(), self.pending_values_map.len()); // Invariant
 
         // Process external requests sent to us through the interface channel.
         if !self.process_external_requests() {
             return false;
         }
 
-        // See if network state thinks we're behind.
-        let sync_service_is_behind = self.ledger_sync_service.is_behind(&self.network_state);
-
+        // Update highest peer block.
         if let Some(peer_block) = self.network_state.highest_block_index_on_network() {
             self.highest_peer_block.store(peer_block, Ordering::SeqCst);
         }
+
+        // See if network state thinks we're behind.
+        let sync_service_is_behind = self.ledger_sync_service.is_behind(&self.network_state);
         match (self.ledger_sync_state.clone(), sync_service_is_behind) {
             // Fully in sync, nothing to do.
             (LedgerSyncState::InSync, false) => {}
@@ -197,7 +197,7 @@ impl<
                 self.ledger_sync_state = LedgerSyncState::MaybeBehind(Instant::now());
             }
 
-            // Sync wervice reports we're behind and we're maybe behind, see if enough time has
+            // Sync service reports we're behind and we're maybe behind, see if enough time has
             // passed to move to IsBehind.
             (LedgerSyncState::MaybeBehind(behind_since), true) => {
                 let is_behind_duration = Instant::now() - behind_since;

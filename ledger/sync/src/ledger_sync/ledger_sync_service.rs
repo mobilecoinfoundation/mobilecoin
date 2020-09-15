@@ -795,7 +795,7 @@ mod tests {
         let local_node_id = test_node_id(11);
         let quorum_set = QuorumSet::empty();
 
-        let network_state = SCPNetworkState::new(local_node_id, quorum_set, logger.clone());
+        let network_state = SCPNetworkState::new(local_node_id, quorum_set);
         let ledger = get_mock_ledger(25);
         let conn_manager = ConnectionManager::<MockPeerConnection>::new(vec![], logger.clone());
         let transactions_fetcher = MockTransactionsFetcher::new(ledger.clone());
@@ -820,8 +820,7 @@ mod tests {
         );
         let local_slot_index: SlotIndex = 5;
 
-        let mut network_state =
-            SCPNetworkState::new(local_node_id.responder_id, local_quorum_set, logger.clone());
+        let mut network_state = SCPNetworkState::new(local_node_id.responder_id, local_quorum_set);
         let ledger = get_mock_ledger(local_slot_index as usize);
         let conn_manager = ConnectionManager::<MockPeerConnection>::new(vec![], logger.clone());
         let transactions_fetcher = MockTransactionsFetcher::new(ledger.clone());
@@ -1088,7 +1087,6 @@ mod tests {
         let mut network_state = SCPNetworkState::<ResponderId>::new(
             local_node_id.responder_id.clone(),
             local_quorum_set,
-            logger.clone(),
         );
         let mut peer_conns = Vec::<MockPeerConnection>::new();
 
@@ -1162,7 +1160,6 @@ mod tests {
         let mut network_state = SCPNetworkState::<ResponderId>::new(
             local_node_id.responder_id.clone(),
             local_quorum_set,
-            logger.clone(),
         );
         let mut peer_conns = Vec::<MockPeerConnection>::new();
 
@@ -1240,7 +1237,6 @@ mod tests {
         let network_state = SCPNetworkState::<ResponderId>::new(
             local_node_id.responder_id.clone(),
             local_quorum_set,
-            logger.clone(),
         );
 
         // Peer A has externalized lots of blocks, but Peer B has not externalized any.
