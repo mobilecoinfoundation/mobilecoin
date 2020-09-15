@@ -6,7 +6,7 @@ use crate::{
         MAX_PENDING_VALUES_TO_NOMINATE,
     },
     counters,
-    tx_manager::{TxManager, TxManagerError},
+    tx_manager::TxManager,
 };
 use mc_common::{
     logger::{log, Logger},
@@ -30,7 +30,7 @@ use mc_util_metered_channel::Receiver;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
     cmp::min,
-    collections::{btree_map::Entry::Vacant, BTreeMap, BTreeSet, HashMap},
+    collections::{hash_map::Entry::Vacant, BTreeSet, HashMap},
     iter::FromIterator,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
@@ -74,12 +74,12 @@ pub struct ByzantineLedgerWorker<
     // 1) Efficiently see if we already have a given value and ignore duplicates
     // 2) Track how long each value took to externalize.
     // To accomplish both of this goals we store, in addition to the queue of pending values, a
-    // BTreeMap that maps a value to when we first encountered it. Note that we only store a
+    // map that maps a value to when we first encountered it. Note that we only store a
     // timestamp for values that were handed to us directly from a client. We skip tracking
     // processing times for relayed values since we want to track the time from when the network
     // first saw a value, and not when a specific node saw it.
     pending_values: Vec<TxHash>,
-    pending_values_map: BTreeMap<TxHash, Option<Instant>>,
+    pending_values_map: HashMap<TxHash, Option<Instant>>,
 
     // Do we need to nominate anything?
     need_nominate: bool,
@@ -152,7 +152,7 @@ impl<
             prev_block_id,
             pending_consensus_msgs: Default::default(),
             pending_values: Vec::new(),
-            pending_values_map: BTreeMap::default(),
+            pending_values_map: Default::default(),
             need_nominate: false,
             network_state,
             ledger_sync_service,
@@ -291,15 +291,14 @@ impl<
 
                 // Clear any pending values that might no longer be valid.
                 let tx_manager = self.tx_manager.clone();
+                self.pending_values_map
+                    .retain(|tx_hash, _| tx_manager.validate(tx_hash).is_ok());
+                // help the borrow checker
+                let self_pending_values_map = &self.pending_values_map;
                 self.pending_values
-                    .retain(|tx_hash| tx_manager.validate(tx_hash).is_ok());
+                    .retain(|tx_hash| self_pending_values_map.contains_key(tx_hash));
 
-                // Re-construct the BTreeMap with the remaining values, using the old timestamps.
-                let mut new_pending_values_map = BTreeMap::new();
-                for val in self.pending_values.iter() {
-                    new_pending_values_map.insert(*val, *self.pending_values_map.get(val).unwrap());
-                }
-                self.pending_values_map = new_pending_values_map;
+                debug_assert!(self.pending_values_map.len() == self.pending_values.len());
 
                 // Nominate if needed.
                 if !self.pending_values.is_empty() {
@@ -556,20 +555,17 @@ impl<
                 self.tx_manager.remove_expired(index)
             };
 
-            counters::TX_CACHE_NUM_ENTRIES.set(self.tx_manager.num_entries() as i64);
-
             // Drop pending values that are no longer considered valid.
             let tx_manager = self.tx_manager.clone();
-            self.pending_values.retain(|tx_hash| {
+            self.pending_values_map.retain(|tx_hash, _| {
                 !purged_hashes.contains(tx_hash) && tx_manager.validate(tx_hash).is_ok()
             });
+            // help the borrow checker
+            let self_pending_values_map = &self.pending_values_map;
+            self.pending_values
+                .retain(|tx_hash| self_pending_values_map.contains_key(tx_hash));
 
-            // Re-construct the BTreeMap with the remaining values, using the old timestamps.
-            let mut new_pending_values_map = BTreeMap::new();
-            for val in self.pending_values.iter() {
-                new_pending_values_map.insert(*val, *self.pending_values_map.get(val).unwrap());
-            }
-            self.pending_values_map = new_pending_values_map;
+            debug_assert!(self.pending_values_map.len() == self.pending_values.len());
 
             log::info!(
                 self.logger,
@@ -665,7 +661,7 @@ impl<
                         (self.tx_manager.clone(), self.logger.clone()),
                         move |(tx_manager, logger), tx_context| match tx_manager.insert(tx_context)
                         {
-                            Ok(_) | Err(TxManagerError::AlreadyInCache) => {}
+                            Ok(_) => {}
                             Err(err) => {
                                 log::crit!(
                                     logger,

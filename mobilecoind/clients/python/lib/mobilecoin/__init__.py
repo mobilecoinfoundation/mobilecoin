@@ -1,22 +1,19 @@
 # Copyright (c) 2018-2020 MobileCoin Inc.
 
-from requests.api import request
-import external_pb2
-import blockchain_pb2
-from google.protobuf import empty_pb2
 import grpc
-import mobilecoind_api_pb2 as api
-import mobilecoind_api_pb2_grpc as api_grpc
 
-from random import randint
-
+from google.protobuf import empty_pb2
+from .external_pb2 import *
+from .blockchain_pb2 import *
+from .mobilecoind_api_pb2 import *
+from .mobilecoind_api_pb2_grpc import *
 
 class MonitorNotFound(Exception):
     """ When a Monitor is not Found"""
     pass
 
 
-class mob_client:
+class Client(object):
     """ Manages the MobileCoin Wallet Client.
     """
     def __init__(self, daemon, ssl):
@@ -30,7 +27,7 @@ class mob_client:
             self.channel = grpc.secure_channel(daemon, credentials)
         else:
             self.channel = grpc.insecure_channel(daemon)
-        self.stub = api_grpc.MobilecoindAPIStub(self.channel)
+        self.stub = MobilecoindAPIStub(self.channel)
 
     def __del__(self):
         """ Close the gRPC connection upon deletion."""
@@ -47,7 +44,7 @@ class mob_client:
         """ Create a process that watches the ledger for tx outputs belonging to a
         set of subaddresses, each specified by account_key and an index.
         """
-        request = api.AddMonitorRequest(account_key=account_key,
+        request = AddMonitorRequest(account_key=account_key,
                                         first_subaddress=first_subaddress,
                                         num_subaddresses=num_subaddresses,
                                         first_block=first_block)
@@ -56,7 +53,7 @@ class mob_client:
     def remove_monitor(self, monitor_id):
         """ Remove an existing monitor and delete any data it has stored.
         """
-        request = api.RemoveMonitorRequest(monitor_id=monitor_id)
+        request = RemoveMonitorRequest(monitor_id=monitor_id)
         return self.stub.RemoveMonitor(request)
 
     def get_monitor_list(self):
@@ -67,14 +64,14 @@ class mob_client:
     def get_monitor_status(self, monitor_id):
         """ Returns a status report for a monitor process.
         """
-        request = api.GetMonitorStatusRequest(monitor_id=monitor_id)
+        request = GetMonitorStatusRequest(monitor_id=monitor_id)
         response = self.stub.GetMonitorStatus(request)
         return response.status
 
     def get_unspent_tx_output_list(self, monitor_id, index=0):
         """ Returns the list of tx outputs collected for a subaddress.
         """
-        request = api.GetUnspentTxOutListRequest(monitor_id=monitor_id,
+        request = GetUnspentTxOutListRequest(monitor_id=monitor_id,
                                                  subaddress_index=index)
         response = self.stub.GetUnspentTxOutList(request)
         return response.output_list
@@ -121,40 +118,40 @@ class mob_client:
     def get_account_key(self, entropy):
         """ Get the private keys from entropy.
         """
-        request = api.GetAccountKeyRequest(entropy=entropy)
+        request = GetAccountKeyRequest(entropy=entropy)
         return self.stub.GetAccountKey(request).account_key
 
     def get_public_address(self, monitor_id, subaddress_index):
         """ Returns the public address for a given monitor and index
         """
-        request = api.GetPublicAddressRequest(
+        request = GetPublicAddressRequest(
             monitor_id=monitor_id, subaddress_index=int(subaddress_index))
         return self.stub.GetPublicAddress(request).public_address
 
     def read_address_code(self, b58_code):
         """ Read a b58 encoded public address
         """
-        request = api.ReadAddressCodeRequest(b58_code=b58_code)
+        request = ReadAddressCodeRequest(b58_code=b58_code)
         response = self.stub.ReadAddressCode(request)
         return response.receiver
 
     def get_address_code(self, receiver):
         """ Create a b58 encoding for a public address
         """
-        request = api.GetAddressCodeRequest(receiver=receiver)
+        request = GetAddressCodeRequest(receiver=receiver)
         return self.stub.GetAddressCode(request).b58_code
 
     def read_request_code(self, b58_code):
         """ Process a b58 request code to recover content.
         """
-        request = api.ReadRequestCodeRequest(b58_code=b58_code)
+        request = ReadRequestCodeRequest(b58_code=b58_code)
         response = self.stub.ReadRequestCode(request)
         return response.receiver, response.value, response.memo
 
     def get_request_code(self, receiver, value=0, memo=""):
         """ Prepare a "request code" used to generate a QR code for wallet apps.
         """
-        request = api.GetRequestCodeRequest(receiver=receiver,
+        request = GetRequestCodeRequest(receiver=receiver,
                                             value=value,
                                             memo=memo)
         return self.stub.GetRequestCode(request).b58_code
@@ -162,14 +159,14 @@ class mob_client:
     def read_transfer_code(self, b58_code):
         """ Process a b58 transfer code to recover content.
         """
-        request = api.ReadTransferCodeRequest(b58_code=b58_code)
+        request = ReadTransferCodeRequest(b58_code=b58_code)
         response = self.stub.ReadTransferCode(request)
         return response
 
     def get_transfer_code(self, entropy, tx_public_key, memo=""):
         """ Prepare a "transfer code" used to generate a QR code for wallet apps.
         """
-        request = api.GetTransferCodeRequest(entropy=entropy,
+        request = GetTransferCodeRequest(entropy=entropy,
                                              tx_public_key=tx_public_key,
                                              memo=memo)
         return self.stub.GetTransferCode(request).b58_code
@@ -189,10 +186,10 @@ class mob_client:
         complexities of the MobileCoin protocol are handled automatically.
         """
         outlay_list = [
-            api.Outlay(value=r['value'], receiver=r['receiver'])
+            Outlay(value=r['value'], receiver=r['receiver'])
             for r in outlay_dict
         ]
-        request = api.GenerateTxRequest(sender_monitor_id=sender_monitor_id,
+        request = GenerateTxRequest(sender_monitor_id=sender_monitor_id,
                                         change_subaddress=change_subaddress,
                                         input_list=input_list,
                                         outlay_list=outlay_list,
@@ -205,7 +202,7 @@ class mob_client:
         more value than is spendable in a single transaction. This generates a self-payment
         that combines small value tx outputs together.
         """
-        request = api.GenerateOptimizationTxRequest(monitor_id=monitor_id,
+        request = GenerateOptimizationTxRequest(monitor_id=monitor_id,
                                                     subaddress=subaddress)
         return self.stub.GenerateOptimizationTx(request).tx_proposal
 
@@ -214,7 +211,7 @@ class mob_client:
         """ Prepares a transaction that can be submitted to fund a transfer code for a new
         one time account.
         """
-        request = api.GenerateTransferCodeTxRequest(
+        request = GenerateTransferCodeTxRequest(
             sender_monitor_id=sender_monitor_id,
             change_subaddress=change_subaddress,
             input_list=input_list,
@@ -238,7 +235,7 @@ class mob_client:
     def submit_tx(self, tx_proposal):
         """ Submit a prepared transaction, optionall requesting a tombstone block.
         """
-        request = api.SubmitTxRequest(tx_proposal=tx_proposal)
+        request = SubmitTxRequest(tx_proposal=tx_proposal)
         response = self.stub.SubmitTx(request)
         return response
 
@@ -255,34 +252,34 @@ class mob_client:
     def get_block_info(self, block):
         """ Returns a status report for a ledger block.
         """
-        request = api.GetBlockInfoRequest(block=block)
+        request = GetBlockInfoRequest(block=block)
         info = self.stub.GetBlockInfo(request)
         return info.key_image_count, info.txo_count
 
     def get_block(self, block):
         """ Returns detailed information for a ledger block.
         """
-        request = api.GetBlockRequest(block=block)
+        request = GetBlockRequest(block=block)
         block_contents = self.stub.GetBlock(request)
         return block_contents
 
     def get_tx_status_as_sender(self, sender_tx_receipt):
         """ Check if a key image appears in the ledger.
         """
-        request = api.GetTxStatusAsSenderRequest(receipt=sender_tx_receipt)
+        request = GetTxStatusAsSenderRequest(receipt=sender_tx_receipt)
         response = self.stub.GetTxStatusAsSender(request)
         return response.status
 
     def get_tx_status_as_receiver(self, receiver_tx_receipt):
         """ Check if a transaction public key appears in the ledger.
         """
-        request = api.GetTxStatusAsReceiverRequest(receipt=receiver_tx_receipt)
+        request = GetTxStatusAsReceiverRequest(receipt=receiver_tx_receipt)
         response = self.stub.GetTxStatusAsReceiver(request)
         return response.status
 
     #
     # Blockchain and network info
-    # 
+    #
 
     def get_network_status(self):
         """ Returns the total network height and our current sync height

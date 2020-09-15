@@ -532,13 +532,6 @@ impl IasReportVerifier {
 
         let report_data = VerificationReportData::try_from(report)?;
 
-        #[cfg(test)]
-        {
-            extern crate std;
-
-            std::eprintln!("{:?}", self);
-        }
-
         if (self.and_verifiers.is_empty()
             || self
                 .and_verifiers

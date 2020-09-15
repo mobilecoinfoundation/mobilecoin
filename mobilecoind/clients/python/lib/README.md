@@ -1,0 +1,18 @@
+## Python bindings for the `mobilecoind` API
+
+You must separately install and run `mobilecoind`. See https://github.com/mobilecoinofficial/mobilecoin/ for details.
+
+
+### Example
+
+``` python
+import mobilecoin
+
+mobilecoind_address = "localhost:4444"
+use_ssl = False
+
+mobilecoind = Client(mobilecoind_address, use_ssl)
+
+print(mobilecoind.get_ledger_info())
+
+```

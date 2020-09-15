@@ -142,13 +142,20 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
     /// # Arguments
     /// * `block_index` - Current block index.
     fn remove_expired(&self, block_index: u64) -> HashSet<TxHash> {
+        let mut expired = HashSet::<TxHash>::default();
+
         let mut cache = self.lock_cache();
 
-        let (expired, retained): (HashMap<_, _>, HashMap<_, _>) = cache
-            .drain()
-            .partition(|(_, entry)| entry.context().tombstone_block() < block_index);
-
-        *cache = retained;
+        // find the expired entries and remove them, storing their keys in expired,
+        // without destroying or re-allocating the cache
+        cache.retain(|key, entry| -> bool {
+            if entry.context().tombstone_block() < block_index {
+                expired.insert(*key);
+                false
+            } else {
+                true
+            }
+        });
 
         counters::TX_CACHE_NUM_ENTRIES.set(cache.len() as i64);
 
@@ -159,7 +166,7 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
             cache.len(),
         );
 
-        expired.keys().cloned().collect()
+        expired
     }
 
     /// Returns true if the cache contains the corresponding transaction.

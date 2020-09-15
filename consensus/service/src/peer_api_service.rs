@@ -125,8 +125,6 @@ impl<E: ConsensusEnclave, L: Ledger, TXM: TxManager + Clone> PeerApiService<E, L
                     );
                 }
 
-                Err(TxManagerError::AlreadyInCache) => {}
-
                 Err(TxManagerError::TransactionValidation(err)) => {
                     log::debug!(
                         logger,
