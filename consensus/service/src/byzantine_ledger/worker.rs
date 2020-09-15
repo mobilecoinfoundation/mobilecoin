@@ -69,7 +69,7 @@ pub struct ByzantineLedgerWorker<
     network_state: SCPNetworkState,
 
     // TaskMessages submitted to this worker.
-    receiver: Receiver<TaskMessage>,
+    tasks: Receiver<TaskMessage>,
 
     // Pending scp messages we need to process.
     pending_consensus_msgs: Vec<(VerifiedConsensusMsg, ResponderId)>,
@@ -111,7 +111,7 @@ impl<
     /// * `tx_manager` -
     /// * `transactions_fetcher` -
     /// * `broadcaster` -
-    /// * `receiver` - Receiver-end of a queue of task messages for this worker to process.
+    /// * `tasks` - Receiver-end of a queue of task messages for this worker to process.
     /// * `is_behind` -
     /// * `highest_peer_block` -
     /// * `send_scp_message` - Callback for sending an SCP message issued by this node.
@@ -123,7 +123,7 @@ impl<
         peer_manager: ConnectionManager<PC>,
         tx_manager: Arc<TXM>,
         broadcaster: Arc<Mutex<dyn Broadcast>>,
-        receiver: Receiver<TaskMessage>,
+        tasks: Receiver<TaskMessage>,
         send_scp_message: F,
         is_behind: Arc<AtomicBool>,
         highest_peer_block: Arc<AtomicU64>,
@@ -134,7 +134,7 @@ impl<
         let network_state = SCPNetworkState::new(scp_node.node_id(), scp_node.quorum_set());
 
         Self {
-            receiver,
+            tasks: tasks,
             scp_node,
             is_behind,
             highest_peer_block,
@@ -161,17 +161,17 @@ impl<
     pub fn tick(&mut self) -> bool {
         assert_eq!(self.pending_values.len(), self.pending_values_map.len()); // Invariant
 
-        // Process external requests sent to us through the interface channel.
-        if !self.process_external_requests() {
+        if !self.receive_tasks() {
+            // Stop requested
             return false;
         }
 
-        // Update highest peer block.
+        // Update highest_peer_block.
         if let Some(peer_block) = self.network_state.highest_block_index_on_network() {
             self.highest_peer_block.store(peer_block, Ordering::SeqCst);
         }
 
-        // See if network state thinks we're behind.
+        // Update ledger_sync_state.
         let sync_service_is_behind = self.ledger_sync_service.is_behind(&self.network_state);
         match (self.ledger_sync_state.clone(), sync_service_is_behind) {
             // Fully in sync, nothing to do.
@@ -328,8 +328,10 @@ impl<
         true
     }
 
-    fn process_external_requests(&mut self) -> bool {
-        for task_msg in self.receiver.try_iter() {
+    // Reads tasks from the task queue.
+    // Returns false if the worker has been asked to stop.
+    fn receive_tasks(&mut self) -> bool {
+        for task_msg in self.tasks.try_iter() {
             match task_msg {
                 // Values submitted by a client.
                 TaskMessage::Values(timestamp, new_values) => {
