@@ -43,14 +43,36 @@ pub const IS_BEHIND_GRACE_PERIOD: Duration = Duration::from_secs(10);
 pub const MAX_PENDING_VALUES_TO_NOMINATE: usize = 100;
 
 pub struct ByzantineLedger {
+    // Handle to a worker thread.
+    worker_handle: Option<JoinHandle<()>>,
+
+    // Sender-end of the worker's task queue.
     sender: Sender<TaskMessage>,
-    thread_handle: Option<JoinHandle<()>>,
+
+    // True if this node is behind its peers. (Set by the worker)
     is_behind: Arc<AtomicBool>,
+
+    // The highest block index that the network appears to agree on. (Set by the worker)
     highest_peer_block: Arc<AtomicU64>,
+
+    // Highest consensus message issued by this node.
     highest_outgoing_consensus_msg: Arc<Mutex<Option<ConsensusMsg>>>,
 }
 
 impl ByzantineLedger {
+    /// Create a new ByzantineLedger
+    ///
+    /// # Arguments
+    /// * `node_id` - The local node's ID.
+    /// * `quorum_set` - The local node's qurum set.
+    /// * `peer_manager` -
+    /// * `ledger` - The local node's ledger.
+    /// * `tx_manager` -
+    /// * `broadcaster` -
+    /// * `msg_signer_key` -
+    /// * `tx_source_urls` -
+    /// * `scp_debug_dir` - If Some, debugging info will be written in this directory.
+    /// * `logger` -
     pub fn new<
         PC: BlockchainConnection + ConsensusConnection + 'static,
         L: Ledger + Clone + Sync + 'static,
@@ -64,17 +86,14 @@ impl ByzantineLedger {
         broadcaster: Arc<Mutex<dyn Broadcast>>,
         msg_signer_key: Arc<Ed25519Pair>,
         tx_source_urls: Vec<String>,
-        opt_scp_debug_dump_dir: Option<PathBuf>,
+        scp_debug_dir: Option<PathBuf>,
         logger: Logger,
     ) -> Self {
-        let (sender, receiver) =
-            mc_util_metered_channel::unbounded(&counters::BYZANTINE_LEDGER_MESSAGE_QUEUE_SIZE);
-
-        let current_slot_index = ledger.num_blocks().unwrap();
-
+        // TODO: this should be passed in as an argument.
         let scp_node: Box<dyn ScpNode<TxHash>> = {
             let tx_manager_validate = tx_manager.clone();
             let tx_manager_combine = tx_manager.clone();
+            let current_slot_index = ledger.num_blocks().unwrap();
             let node = Node::new(
                 node_id.clone(),
                 quorum_set,
@@ -84,7 +103,7 @@ impl ByzantineLedger {
                 logger.clone(),
             );
 
-            match opt_scp_debug_dump_dir {
+            match scp_debug_dir {
                 None => Box::new(node),
                 Some(path) => Box::new(
                     LoggingScpNode::new(node, path, logger.clone())
@@ -93,24 +112,23 @@ impl ByzantineLedger {
             }
         };
 
-        let highest_outgoing_consensus_msg = Arc::new(Mutex::new(None));
+        // The worker's task queue.
+        let (sender, receiver) =
+            mc_util_metered_channel::unbounded(&counters::BYZANTINE_LEDGER_MESSAGE_QUEUE_SIZE);
 
-        let mut byzantine_ledger = Self {
-            sender,
-            thread_handle: None,
-            is_behind: Arc::new(AtomicBool::new(false)),
-            highest_peer_block: Arc::new(AtomicU64::new(0)),
-            highest_outgoing_consensus_msg: highest_outgoing_consensus_msg.clone(),
-        };
+        // Mutable state shared with the worker thread.
+        let is_behind = Arc::new(AtomicBool::new(false));
+        let highest_peer_block = Arc::new(AtomicU64::new(0));
+        let highest_outgoing_consensus_msg = Arc::new(Mutex::new(Option::<ConsensusMsg>::None));
 
         // Helper function to broadcast an SCP message, as well as keep track of the highest
         // message we issued. This is necessary for the implementation of the
         // `get_highest_scp_message`.
-
         let send_scp_message = {
             let ledger = ledger.clone();
             let broadcaster = broadcaster.clone();
             let node_id = node_id.clone();
+            let highest_outgoing_consensus_msg = highest_outgoing_consensus_msg.clone();
             move |scp_msg: Msg<TxHash>| {
                 // We do not expect failure to happen here since if we are attempting to send a
                 // consensus message for a given slot, we expect the previous block to exist (block not
@@ -145,7 +163,7 @@ impl ByzantineLedger {
         };
 
         // Start worker thread
-        let thread_handle = {
+        let worker_handle = {
             let ledger_sync_service = LedgerSyncService::new(
                 ledger.clone(),
                 peer_manager.clone(),
@@ -162,10 +180,11 @@ impl ByzantineLedger {
                 broadcaster.clone(),
                 receiver,
                 send_scp_message,
-                byzantine_ledger.is_behind.clone(),
-                byzantine_ledger.highest_peer_block.clone(),
+                is_behind.clone(),
+                highest_peer_block.clone(),
                 logger,
             );
+
             Some(
                 thread::Builder::new()
                     .name(format!("ByzantineLedger{:?}", &node_id))
@@ -179,8 +198,13 @@ impl ByzantineLedger {
             )
         };
 
-        byzantine_ledger.thread_handle = thread_handle;
-        byzantine_ledger
+        Self {
+            sender,
+            worker_handle,
+            is_behind,
+            highest_peer_block,
+            highest_outgoing_consensus_msg,
+        }
     }
 
     /// Push value to this node's consensus task.
@@ -207,7 +231,7 @@ impl ByzantineLedger {
     }
 
     pub fn join(&mut self) {
-        if let Some(thread) = self.thread_handle.take() {
+        if let Some(thread) = self.worker_handle.take() {
             thread.join().expect("ByzantineLedger join failed");
         }
     }
