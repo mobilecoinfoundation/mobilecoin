@@ -74,11 +74,12 @@ pub struct ByzantineLedgerWorker<
     // Pending scp messages we need to process.
     pending_consensus_msgs: Vec<(VerifiedConsensusMsg, ResponderId)>,
 
-    // Pending values we're trying to push. We need to store them as a vec so we can process values
+    // Pending transactions we're trying to push. We need to store them as a vec so we can process values
     // on a first-come first-served basis. However, we want to be able to:
-    // 1) Efficiently see if we already have a given value and ignore duplicates
-    // 2) Track how long each value took to externalize.
-    // To accomplish both of this goals we store, in addition to the queue of pending values, a
+    // 1) Efficiently see if we already have a given transaction and ignore duplicates
+    // 2) Track how long each transaction took to externalize.
+    //
+    // To accomplish these goals we store, in addition to the queue of pending values, a
     // map that maps a value to when we first encountered it. Note that we only store a
     // timestamp for values that were handed to us directly from a client. We skip tracking
     // processing times for relayed values since we want to track the time from when the network
@@ -134,7 +135,7 @@ impl<
         let network_state = SCPNetworkState::new(scp_node.node_id(), scp_node.quorum_set());
 
         Self {
-            tasks: tasks,
+            tasks,
             scp_node,
             is_behind,
             highest_peer_block,
@@ -338,13 +339,13 @@ impl<
     fn receive_tasks(&mut self) -> bool {
         for task_msg in self.tasks.try_iter() {
             match task_msg {
-                // Values submitted by a client.
+                // Transactions submitted by clients.
                 TaskMessage::Values(timestamp, new_values) => {
-                    for value in new_values {
-                        // A new value.
-                        if let Vacant(entry) = self.pending_values_map.entry(value) {
+                    for tx_hash in new_values {
+                        if let Vacant(entry) = self.pending_values_map.entry(tx_hash) {
+                            // A new value.
                             entry.insert(timestamp);
-                            self.pending_values.push(value);
+                            self.pending_values.push(tx_hash);
                             self.need_nominate = true;
                         }
                     }
