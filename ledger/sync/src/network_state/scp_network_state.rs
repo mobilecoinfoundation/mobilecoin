@@ -128,6 +128,8 @@ impl<ID: GenericNodeId + Send + AsRef<ResponderId> + DeserializeOwned + Serializ
         ))
     }
 
+    /// Returns the highest block index the network agrees on (the highest block index from a set
+    /// of peers that passes the "is blocking and quorum" test).
     fn highest_block_index_on_network(&self) -> Option<BlockIndex> {
         // Create a sorted list of unique slot indexes. These are potential candidates for the
         // highest slot index the network agrees on.

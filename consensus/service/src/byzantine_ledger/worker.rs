@@ -63,8 +63,13 @@ pub struct ByzantineLedgerWorker<
     ledger: L,
     ledger_sync_service: Box<dyn LedgerSync<SCPNetworkState>>,
     ledger_sync_state: LedgerSyncState,
+
+    // The worker sets this to true when the local nde is behind its peers.
     is_behind: Arc<AtomicBool>,
+
+    // The worker ses this to the highest block index that the network appears to agree on.
     highest_peer_block: Arc<AtomicU64>,
+
     // Network state, used to track if we've fallen behind.
     network_state: SCPNetworkState,
 
@@ -108,9 +113,9 @@ impl<
     /// # Arguments
     /// * `scp_node` - The local SCP Node.
     /// * `ledger` - The local node's ledger.
+    /// * `ledger_sync_service` -
     /// * `peer_manager` -
     /// * `tx_manager` -
-    /// * `transactions_fetcher` -
     /// * `broadcaster` -
     /// * `tasks` - Receiver-end of a queue of task messages for this worker to process.
     /// * `is_behind` -
@@ -165,11 +170,6 @@ impl<
         if !self.receive_tasks() {
             // Stop requested
             return false;
-        }
-
-        // Update highest_peer_block.
-        if let Some(peer_block) = self.network_state.highest_block_index_on_network() {
-            self.highest_peer_block.store(peer_block, Ordering::SeqCst);
         }
 
         // Update ledger_sync_state.
@@ -366,6 +366,12 @@ impl<
                 }
             };
         }
+
+        // Update highest_peer_block.
+        if let Some(peer_block) = self.network_state.highest_block_index_on_network() {
+            self.highest_peer_block.store(peer_block, Ordering::SeqCst);
+        }
+
         true
     }
 
