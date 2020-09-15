@@ -6,8 +6,7 @@
 
 import os.path
 import sys
-sys.path.append('../mob_client')
-from mob_client import mob_client
+import mobilecoin
 
 import argparse
 from mailchimp3 import MailChimp
@@ -24,13 +23,13 @@ default_subaddress_index = 0
 MOB = 1_000_000_000_000
 
 def wait_for_ledger():
-    last_remote_count, last_local_count, is_behind = mobilecoin.get_network_status()
+    last_remote_count, last_local_count, is_behind = mobilecoind.get_network_status()
     if is_behind:
         print("#\n# waiting for the ledger to download")
     start = datetime.datetime.now()
     total_blocks = 0
     while is_behind:
-        remote_count, local_count, is_behind = mobilecoin.get_network_status()
+        remote_count, local_count, is_behind = mobilecoind.get_network_status()
         print("# ledger has {} of {} blocks".format(local_count, remote_count))
         delta = datetime.datetime.now() - start
         total_seconds = delta.microseconds/1e6 + delta.seconds
@@ -52,7 +51,7 @@ def wait_for_ledger():
 
 def wait_for_monitor(monitor_id_hex):
     ledger_block_count = wait_for_ledger()
-    starting_next_block = mobilecoin.get_monitor_status(bytes.fromhex(monitor_id_hex)).next_block
+    starting_next_block = mobilecoind.get_monitor_status(bytes.fromhex(monitor_id_hex)).next_block
     if starting_next_block > ledger_block_count:
         return 0
     blocks_to_scan = ledger_block_count - starting_next_block
@@ -61,7 +60,7 @@ def wait_for_monitor(monitor_id_hex):
     next_block = 0
     while next_block < ledger_block_count:
         time.sleep(MONITOR_SYNC_INTERVAL_SECONDS)
-        next_block = mobilecoin.get_monitor_status(bytes.fromhex(monitor_id_hex)).next_block
+        next_block = mobilecoind.get_monitor_status(bytes.fromhex(monitor_id_hex)).next_block
         if next_block > ledger_block_count:
             break
         print("# monitor {} is now processing block {}".format(monitor_id_hex, next_block))
@@ -82,13 +81,13 @@ def wait_for_monitor(monitor_id_hex):
 # useful for testing
 def self_payment(monitor_id_hex, subaddress_index):
     wait_for_monitor(monitor_id_hex)
-    tx_list = mobilecoin.get_unspent_tx_output_list(bytes.fromhex(monitor_id_hex), subaddress_index)
-    public_address = mobilecoin.get_public_address(bytes.fromhex(monitor_id_hex), subaddress_index)
+    tx_list = mobilecoind.get_unspent_tx_output_list(bytes.fromhex(monitor_id_hex), subaddress_index)
+    public_address = mobilecoind.get_public_address(bytes.fromhex(monitor_id_hex), subaddress_index)
     outlays = [{'value': 1 * MOB, 'receiver': public_address}]
-    tx_proposal = mobilecoin.generate_tx(bytes.fromhex(monitor_id_hex), subaddress_index, tx_list, outlays)
-    sender_tx_receipt = mobilecoin.submit_tx(tx_proposal).sender_tx_receipt
+    tx_proposal = mobilecoind.generate_tx(bytes.fromhex(monitor_id_hex), subaddress_index, tx_list, outlays)
+    sender_tx_receipt = mobilecoind.submit_tx(tx_proposal).sender_tx_receipt
     # Wait for the transaction to clear
-    while not int(mobilecoin.get_tx_status_as_sender(sender_tx_receipt)) == TX_STATUS_VERIFIED:
+    while not int(mobilecoind.get_tx_status_as_sender(sender_tx_receipt)) == TX_STATUS_VERIFIED:
         time.sleep(TX_RECEIPT_CHECK_INTERVAL_SECONDS)
 
 # generates a new master key, allocates funds, stores data at Mailchimp and sends a welcome email
@@ -99,31 +98,31 @@ def allocate_MOB(mailchimp_member_record, amount_picoMOB):
     new_user_hash = mailchimp_member_record["id"]
 
     # create and fund a new MobileCoin TestNet account
-    recipient_entropy = mobilecoin.generate_entropy()
-    recipient_account_key = mobilecoin.get_account_key(recipient_entropy)
+    recipient_entropy = mobilecoind.generate_entropy()
+    recipient_account_key = mobilecoind.get_account_key(recipient_entropy)
     print("# assigning entropy {} to email {}".format(recipient_entropy.hex(), new_user_email))
 
     # no need to start the recipient from the origin block since we know we just created this account
-    recipient_monitor_id = mobilecoin.add_monitor(recipient_account_key, first_subaddress=0, num_subaddresses=1, first_block=block_count)
-    recipient_public_address = mobilecoin.get_public_address(recipient_monitor_id, default_subaddress_index)
+    recipient_monitor_id = mobilecoind.add_monitor(recipient_account_key, first_subaddress=0, num_subaddresses=1, first_block=block_count)
+    recipient_public_address = mobilecoind.get_public_address(recipient_monitor_id, default_subaddress_index)
     print("# added monitor {} for {}".format(recipient_monitor_id.hex(), new_user_email))
 
     # Construct and send the MOB allocation transaction
-    tx_list = mobilecoin.get_unspent_tx_output_list(sender_monitor_id, default_subaddress_index)
+    tx_list = mobilecoind.get_unspent_tx_output_list(sender_monitor_id, default_subaddress_index)
     outlays = [{'value': amount_picoMOB, 'receiver': recipient_public_address}]
 
-    tx_proposal = mobilecoin.generate_tx(sender_monitor_id, default_subaddress_index, tx_list, outlays)
+    tx_proposal = mobilecoind.generate_tx(sender_monitor_id, default_subaddress_index, tx_list, outlays)
     if args.verbose:
         input("About to transfer funds. Continue?")
-    sender_tx_receipt = mobilecoin.submit_tx(tx_proposal).sender_tx_receipt
+    sender_tx_receipt = mobilecoind.submit_tx(tx_proposal).sender_tx_receipt
 
     # Wait for the transaction to clear
-    while not int(mobilecoin.get_tx_status_as_sender(sender_tx_receipt)) == TX_STATUS_VERIFIED:
+    while not int(mobilecoind.get_tx_status_as_sender(sender_tx_receipt)) == TX_STATUS_VERIFIED:
         time.sleep(TX_RECEIPT_CHECK_INTERVAL_SECONDS)
 
     # Check balances
-    recipient_balance = mobilecoin.get_balance(recipient_monitor_id, default_subaddress_index)
-    sender_balance = mobilecoin.get_balance(sender_monitor_id, default_subaddress_index)
+    recipient_balance = mobilecoind.get_balance(recipient_monitor_id, default_subaddress_index)
+    sender_balance = mobilecoind.get_balance(sender_monitor_id, default_subaddress_index)
     print("# recipient balance = {} picoMOB, sender balance = {} picoMOB".format(recipient_balance, sender_balance))
 
     # If the recipient's balance is not as expected, complain and do not update Mailchimp
@@ -151,7 +150,7 @@ def allocate_MOB(mailchimp_member_record, amount_picoMOB):
         print("# sending welcome email to {} now!".format(new_user_email))
 
     # remove recipient monitor
-    mobilecoin.remove_monitor(recipient_monitor_id)
+    mobilecoind.remove_monitor(recipient_monitor_id)
     print("# removed monitor {} for {}".format(recipient_monitor_id.hex(), new_user_email))
 
     return email_sent
@@ -180,7 +179,6 @@ def process_records(fields, since_last_changed = ""):
     return emails_sent
 
 if __name__ == '__main__':
-    # Parse the arguments and generate the mob_client
     parser = argparse.ArgumentParser(description='provide secrets')
     parser.add_argument('-k', '--key', help='MailChimp API key', type=str)
     parser.add_argument('-s', '--sender', help='MobileCoin sender master key as hex', type=str)
@@ -195,8 +193,8 @@ if __name__ == '__main__':
     if args.verbose:
         input("Running in verbose mode. Continue?")
 
-    # Parse the arguments and generate a mob_client
-    mobilecoin = mob_client("localhost:4444", ssl=False)
+    # Parse the arguments and generate the mobilecoind client
+    mobilecoind = mobilecoin.Client("localhost:4444", ssl=False)
 
     # Set up our "bank"
     sender_entropy = args.sender
@@ -204,23 +202,23 @@ if __name__ == '__main__':
         print("You must provide entropy for the sender! (--sender)")
         sys.exit()
 
-    sender_account_key = mobilecoin.get_account_key(bytes.fromhex(sender_entropy))
-    sender_monitor_id = mobilecoin.add_monitor(sender_account_key, first_subaddress=0, num_subaddresses=1)
-    sender_public_address = mobilecoin.get_public_address(sender_monitor_id, default_subaddress_index)
+    sender_account_key = mobilecoind.get_account_key(bytes.fromhex(sender_entropy))
+    sender_monitor_id = mobilecoind.add_monitor(sender_account_key, first_subaddress=0, num_subaddresses=1)
+    sender_public_address = mobilecoind.get_public_address(sender_monitor_id, default_subaddress_index)
 
     # clean up all old monitors -- except for sender_monitor_id
     if args.clean:
-        for monitor_id in mobilecoin.get_monitor_list():
+        for monitor_id in mobilecoind.get_monitor_list():
             if monitor_id != sender_monitor_id:
                 print("# removing existing monitor_id {}.".format(monitor_id.hex()))
-                mobilecoin.remove_monitor(monitor_id)
+                mobilecoind.remove_monitor(monitor_id)
 
     # Wait for mobilecoind to sync ledger
     block_count = wait_for_ledger()
 
     # Wait for mobilecoind to get sender's current balance; abort if sender has less than 1000 MOB
     wait_for_monitor(sender_monitor_id.hex())
-    sender_balance_picoMOB = mobilecoin.get_balance(sender_monitor_id, default_subaddress_index)
+    sender_balance_picoMOB = mobilecoind.get_balance(sender_monitor_id, default_subaddress_index)
     if sender_balance_picoMOB < 1000*MOB:
         print("Sender's balance running low ({} MOB)... aborting!".format(sender_balance_picoMOB/MOB))
         sys.exit()
@@ -253,7 +251,7 @@ if __name__ == '__main__':
             wait_for_monitor(sender_monitor_id.hex())
 
             # abort if sender has less than 1000 MOB
-            sender_balance_picoMOB = mobilecoin.get_balance(sender_monitor_id, default_subaddress_index)
+            sender_balance_picoMOB = mobilecoind.get_balance(sender_monitor_id, default_subaddress_index)
             if sender_balance_picoMOB < 1000*MOB:
                 print("# sender's balance is running low ({} MOB)... aborting!".format(sender_balance_picoMOB/MOB))
                 sys.exit()

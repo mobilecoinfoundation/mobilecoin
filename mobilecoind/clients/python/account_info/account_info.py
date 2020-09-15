@@ -72,13 +72,12 @@ def wait_for_monitor(monitor_id_hex):
     return blocks_to_scan
 
 if __name__ == '__main__':
-    # Parse the arguments and generate the mob_client
     parser = argparse.ArgumentParser(description='provide secrets')
     parser.add_argument('-k', '--key', help='account master key', type=str)
     parser.add_argument('-b', '--balance', help='also check balance', action="store_true")
     args = parser.parse_args()
 
-    # Parse the arguments and generate a mob_client
+    # Parse the arguments and generate the mobilecoind client
     mobilecoind = mobilecoin.Client("localhost:4444", ssl=False)
 
     # Wait for mobilecoind to sync ledger

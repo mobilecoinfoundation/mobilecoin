@@ -6,15 +6,13 @@
 
 import os.path
 import sys
-sys.path.append('../mob_client')
-from mob_client import mob_client
+import mobilecoin
 
 import argparse
 from mailchimp3 import MailChimp
 import time
 
 import datetime
-import psutil
 
 MONITOR_SYNC_INTERVAL_SECONDS = 5
 
@@ -23,13 +21,13 @@ default_subaddress_index = 0
 MOB = 1_000_000_000_000
 
 def wait_for_ledger():
-    last_remote_count, last_local_count, is_behind = mobilecoin.get_network_status()
+    last_remote_count, last_local_count, is_behind = mobilecoind.get_network_status()
     if is_behind:
         print("#\n# waiting for the ledger to download")
     start = datetime.datetime.now()
     total_blocks = 0
     while is_behind:
-        remote_count, local_count, is_behind = mobilecoin.get_network_status()
+        remote_count, local_count, is_behind = mobilecoind.get_network_status()
         print("# ledger has {} of {} blocks".format(local_count, remote_count))
         delta = datetime.datetime.now() - start
         total_seconds = delta.microseconds/1e6 + delta.seconds
@@ -51,7 +49,7 @@ def wait_for_ledger():
 
 def wait_for_monitor(monitor_id_hex):
     ledger_block_count = wait_for_ledger()
-    starting_next_block = mobilecoin.get_monitor_status(bytes.fromhex(monitor_id_hex)).next_block
+    starting_next_block = mobilecoind.get_monitor_status(bytes.fromhex(monitor_id_hex)).next_block
     if starting_next_block > ledger_block_count:
         return 0
     blocks_to_scan = ledger_block_count - starting_next_block
@@ -60,7 +58,7 @@ def wait_for_monitor(monitor_id_hex):
     next_block = 0
     while next_block < ledger_block_count:
         time.sleep(MONITOR_SYNC_INTERVAL_SECONDS)
-        next_block = mobilecoin.get_monitor_status(bytes.fromhex(monitor_id_hex)).next_block
+        next_block = mobilecoind.get_monitor_status(bytes.fromhex(monitor_id_hex)).next_block
         if next_block > ledger_block_count:
             break
         print("# monitor {} is now processing block {}".format(monitor_id_hex, next_block))
@@ -79,7 +77,6 @@ def wait_for_monitor(monitor_id_hex):
     return blocks_to_scan
 
 if __name__ == '__main__':
-    # Parse the arguments and generate the mob_client
     parser = argparse.ArgumentParser(description='provide secrets')
     parser.add_argument('-k', '--key', help='MailChimp API key', type=str)
     parser.add_argument('--clean', help='remove all old monitors', action='store_true')
@@ -88,14 +85,14 @@ if __name__ == '__main__':
 
     print("\n# *\n# * Starting up member balance check script!\n# *\n#")
 
-    # Parse the arguments and generate a mob_client
-    mobilecoin = mob_client("localhost:4444", ssl=False)
+    # Parse the arguments and generate the mobilecoind client
+    mobilecoind = mobilecoin.Client("localhost:4444", ssl=False)
 
     # clean up all old monitors
     if args.clean:
-        for monitor_id in mobilecoin.get_monitor_list():
+        for monitor_id in mobilecoind.get_monitor_list():
             print("# removing existing monitor_id {}.".format(monitor_id.hex()))
-            mobilecoin.remove_monitor(monitor_id)
+            mobilecoind.remove_monitor(monitor_id)
 
     # Wait for mobilecoind to sync ledger
     ledger_block_count = wait_for_ledger()
@@ -136,8 +133,8 @@ if __name__ == '__main__':
             entropy = member_record["merge_fields"]["ENTROPY"]
             email = member_record["email_address"]
             try:
-                account_key = mobilecoin.get_account_key(bytes.fromhex(entropy))
-                monitor_ids[entropy] = mobilecoin.add_monitor(account_key, first_subaddress=0, num_subaddresses=1).hex()
+                account_key = mobilecoind.get_account_key(bytes.fromhex(entropy))
+                monitor_ids[entropy] = mobilecoind.add_monitor(account_key, first_subaddress=0, num_subaddresses=1).hex()
                 emails[entropy] = email
                 print("# adding monitor_id {} for {}".format(monitor_ids[entropy], emails[entropy]))
             except:
@@ -159,7 +156,7 @@ if __name__ == '__main__':
     print("# printing csv table of member balances")
     balances = dict()
     for entropy, monitor_id_hex in monitor_ids.items():
-        balances[entropy] = mobilecoin.get_balance(bytes.fromhex(monitor_id_hex), default_subaddress_index)
+        balances[entropy] = mobilecoind.get_balance(bytes.fromhex(monitor_id_hex), default_subaddress_index)
     print("")
     print("entropy, email, picoMOB, MOB")
     for entropy, email in emails.items():
