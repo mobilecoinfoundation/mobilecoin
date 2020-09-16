@@ -171,6 +171,27 @@ fn balance(
     Ok(Json(JsonBalanceResponse::from(&resp)))
 }
 
+#[get("/monitors/<monitor_hex>/subaddresses/<subaddress_index>/utxos")]
+fn utxos(
+    state: rocket::State<State>,
+    monitor_hex: String,
+    subaddress_index: u64,
+) -> Result<Json<JsonUtxosResponse>, String> {
+    let monitor_id =
+        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
+
+    let mut req = mc_mobilecoind_api::GetUnspentTxOutListRequest::new();
+    req.set_monitor_id(monitor_id);
+    req.set_subaddress_index(subaddress_index);
+
+    let resp = state
+        .mobilecoind_api_client
+        .get_unspent_tx_out_list(&req)
+        .map_err(|err| format!("Failed getting utxos: {}", err))?;
+
+    Ok(Json(JsonUtxosResponse::from(&resp)))
+}
+
 /// Balance check using a created monitor and subaddress index
 #[get("/monitors/<monitor_hex>/subaddresses/<subaddress_index>/public-address")]
 fn public_address(
@@ -319,6 +340,82 @@ fn transfer(
 
     // The receipt from the payment request can be used by the status check below
     Ok(Json(JsonTransferResponse::from(&resp)))
+}
+
+/// Creates a transaction proposal. This can be used in an offline transaction construction
+/// flow, where the proposal is created on the offline machine, and copied to the connected
+/// machine for submission, via submit-tx.
+#[post(
+    "/monitors/<monitor_hex>/subaddresses/<subaddress_index>/generate-request-code-transaction",
+    format = "json",
+    data = "<request>"
+)]
+fn generate_request_code_transaction(
+    state: rocket::State<State>,
+    monitor_hex: String,
+    subaddress_index: u64,
+    request: Json<JsonCreateTxProposalRequest>,
+) -> Result<Json<JsonCreateTxProposalResponse>, String> {
+    let monitor_id =
+        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
+
+    let public_address = PublicAddress::try_from(&request.transfer.receiver)?;
+
+    // Generate an outlay
+    let mut outlay = mc_mobilecoind_api::Outlay::new();
+    outlay.set_receiver(public_address);
+    outlay.set_value(
+        request
+            .transfer
+            .value
+            .parse::<u64>()
+            .map_err(|err| format!("Failed to parse amount: {}", err))?,
+    );
+
+    let inputs: Vec<mc_mobilecoind_api::UnspentTxOut> = request
+        .input_list
+        .iter()
+        .map(|input| {
+            mc_mobilecoind_api::UnspentTxOut::try_from(input)
+                .map_err(|err| format!("Failed to convert input: {}", err))
+        })
+        .collect::<Result<_, String>>()?;
+
+    // Get a tx proposal
+    let mut req = mc_mobilecoind_api::GenerateTxRequest::new();
+    req.set_sender_monitor_id(monitor_id);
+    req.set_change_subaddress(subaddress_index);
+    req.set_outlay_list(RepeatedField::from_vec(vec![outlay]));
+    req.set_input_list(RepeatedField::from_vec(inputs));
+
+    let resp = state
+        .mobilecoind_api_client
+        .generate_tx(&req)
+        .map_err(|err| format!("Failed to generate tx: {}", err))?;
+
+    Ok(Json(JsonCreateTxProposalResponse::from(&resp)))
+}
+
+/// Submit a prepared TxProposal
+#[post("/submit-tx", format = "json", data = "<proposal>")]
+fn submit_tx(
+    state: rocket::State<State>,
+    proposal: Json<JsonTxProposalRequest>,
+) -> Result<Json<JsonSubmitTxResponse>, String> {
+    // Send the payment request
+    let mut req = mc_mobilecoind_api::SubmitTxRequest::new();
+    req.set_tx_proposal(
+        mc_mobilecoind_api::TxProposal::try_from(&proposal.tx_proposal)
+            .map_err(|err| format!("Failed to convert tx proposal: {}", err))?,
+    );
+
+    let resp = state
+        .mobilecoind_api_client
+        .submit_tx(&req)
+        .map_err(|err| format!("Failed to send payment: {}", err))?;
+
+    // The receipt from the payment request can be used by the status check below
+    Ok(Json(JsonSubmitTxResponse::from(&resp)))
 }
 
 /// Checks the status of a transfer given a key image and tombstone block
@@ -486,12 +583,15 @@ fn main() {
                 monitors,
                 monitor_status,
                 balance,
+                utxos,
                 public_address,
                 get_request_code,
                 read_request_code,
                 get_address_code,
                 read_address_code,
                 transfer,
+                generate_request_code_transaction,
+                submit_tx,
                 check_transfer_status,
                 check_receiver_transfer_status,
                 ledger_info,

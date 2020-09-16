@@ -2915,9 +2915,15 @@ dependencies = [
  "hex 0.4.2",
  "mc-api",
  "mc-common",
+ "mc-crypto-keys",
+ "mc-ledger-db",
  "mc-mobilecoind-api",
+ "mc-transaction-core",
+ "mc-transaction-core-test-utils",
+ "mc-util-from-random",
  "mc-util-grpc",
  "protobuf",
+ "rand 0.7.3",
  "rocket",
  "rocket_contrib",
  "serde",
@@ -6424,9 +6430,9 @@ dependencies = [
 
 [[package]]
 name = "x25519-dalek"
-version = "1.1.0"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc614d95359fd7afc321b66d2107ede58b246b844cf5d8a0adcca413e439f088"
+checksum = "00ffb05621d7d051df0f020edf3e5db20797a4e522bf1f9c5dfa20603f1c85f6"
 dependencies = [
  "curve25519-dalek",
  "rand_core 0.5.1",
