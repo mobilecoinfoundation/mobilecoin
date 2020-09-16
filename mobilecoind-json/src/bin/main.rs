@@ -332,7 +332,7 @@ fn transfer(
     let max_input_utxo_value = transfer
         .max_input_utxo_value
         .clone()
-        .unwrap_or("0".to_owned()) // A value of 0 disables the max limit.
+        .unwrap_or_else(|| "0".to_owned()) // A value of 0 disables the max limit.
         .parse::<u64>()
         .map_err(|err| format!("Failed to parse max_input_utxo_value: {}", err))?;
 
