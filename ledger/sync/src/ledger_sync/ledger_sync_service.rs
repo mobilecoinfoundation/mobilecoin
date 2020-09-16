@@ -4,10 +4,7 @@
 //! It uses consensus nodes as the source of truth for blocks, and then a pluggable
 //! [`TransactionsFetcher`] object for fetching actual transaction data.
 
-use crate::{
-    ledger_sync_error::LedgerSyncError, transactions_fetcher_trait::TransactionsFetcher,
-    NetworkState,
-};
+use crate::{transactions_fetcher_trait::TransactionsFetcher, LedgerSyncError, NetworkState};
 use mc_common::{
     logger::{log, Logger},
     ResponderId,
