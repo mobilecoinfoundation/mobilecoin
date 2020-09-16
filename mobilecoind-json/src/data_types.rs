@@ -44,8 +44,8 @@ impl From<&mc_mobilecoind_api::GetAccountKeyResponse> for JsonAccountKeyResponse
 #[derive(Deserialize, Default)]
 pub struct JsonMonitorRequest {
     pub account_key: JsonAccountKeyResponse,
-    pub first_subaddress: String,
-    pub num_subaddresses: String,
+    pub first_subaddress: u64,
+    pub num_subaddresses: u64,
 }
 
 #[derive(Serialize, Default)]

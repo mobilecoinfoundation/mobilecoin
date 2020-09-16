@@ -90,18 +90,8 @@ fn add_monitor(
 
     let mut req = mc_mobilecoind_api::AddMonitorRequest::new();
     req.set_account_key(account_key);
-    req.set_first_subaddress(
-        monitor
-            .first_subaddress
-            .parse::<u64>()
-            .map_err(|err| format!("Failed to parse u64 from first subaddress: {}", err))?,
-    );
-    req.set_num_subaddresses(
-        monitor
-            .num_subaddresses
-            .parse::<u64>()
-            .map_err(|err| format!("Failed to parse u64 from num subaddresses: {}", err))?,
-    );
+    req.set_first_subaddress(monitor.first_subaddress);
+    req.set_num_subaddresses(monitor.num_subaddresses);
     req.set_first_block(0);
 
     let monitor_response = state
