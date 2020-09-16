@@ -6,7 +6,6 @@
 
 import argparse
 import os
-from signal import default_int_handler
 import requests
 import signal
 import subprocess
