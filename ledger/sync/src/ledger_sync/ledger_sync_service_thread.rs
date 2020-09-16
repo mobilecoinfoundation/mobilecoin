@@ -3,10 +3,7 @@
 //! An integration between `PollingNetworkState` and `LedgerSyncService` that performs the sync in
 //! a background thread.
 
-use crate::{
-    ledger_sync::ledger_sync_trait::LedgerSync, LedgerSyncService, PollingNetworkState,
-    TransactionsFetcher,
-};
+use crate::{LedgerSync, LedgerSyncService, PollingNetworkState, TransactionsFetcher};
 use mc_common::logger::{log, Logger};
 use mc_connection::{BlockchainConnection, ConnectionManager};
 use mc_ledger_db::Ledger;
