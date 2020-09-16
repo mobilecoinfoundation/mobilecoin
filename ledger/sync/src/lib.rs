@@ -5,7 +5,7 @@ mod network_state;
 mod reqwest_transactions_fetcher;
 mod transactions_fetcher_trait;
 
-pub use ledger_sync::{LedgerSyncError, LedgerSyncService, LedgerSyncServiceThread};
+pub use ledger_sync::{LedgerSync, LedgerSyncError, LedgerSyncService, LedgerSyncServiceThread};
 pub use network_state::{NetworkState, PollingNetworkState, SCPNetworkState};
 pub use reqwest_transactions_fetcher::ReqwestTransactionsFetcher;
 pub use transactions_fetcher_trait::{TransactionFetcherError, TransactionsFetcher};
