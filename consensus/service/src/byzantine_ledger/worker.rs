@@ -104,7 +104,7 @@ pub struct ByzantineLedgerWorker<
 }
 
 impl<
-        L: Ledger + Clone + 'static,
+        L: Ledger + 'static,
         PC: BlockchainConnection + ConsensusConnection + 'static,
         TXM: TxManager + Send + Sync,
     > ByzantineLedgerWorker<L, PC, TXM>
@@ -742,5 +742,63 @@ impl<
         counters::CUR_SLOT_NUM_CONFIRMED_NOMINATED.set(slot_metrics.num_confirmed_nominated as i64);
         counters::CUR_SLOT_NOMINATION_ROUND.set(slot_metrics.cur_nomination_round as i64);
         counters::CUR_SLOT_BALLOT_COUNTER.set(slot_metrics.bN as i64);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{byzantine_ledger::worker::ByzantineLedgerWorker, tx_manager::MockTxManager};
+    use mc_common::logger::{test_with_logger, Logger};
+    use mc_consensus_scp::MockScpNode;
+    use mc_crypto_keys::Ed25519Pair;
+    use mc_ledger_db::MockLedger;
+    use mc_ledger_sync::LedgerSyncService;
+    use mc_peers::{ConsensusMsg, MockBroadcast};
+    use mc_util_from_random::FromRandom;
+    use mc_util_metrics::OpMetrics;
+    use rand_core::SeedableRng;
+    use std::sync::{
+        atomic::{AtomicBool, AtomicU64},
+        Arc, Mutex,
+    };
+
+    #[test_with_logger]
+    fn test_new(logger: Logger) {
+        let scp_node = MockScpNode::new();
+
+        let msg_signer_key = {
+            let mut rng = SeedableRng::from_seed(&[7u8; 32]);
+            Arc::new(Ed25519Pair::from_random(&mut rng))
+        };
+
+        let ledger = MockLedger::new();
+
+        // TODO: let ledger_sync_service =
+        // TODO: peer_manager =
+
+        let tx_manager = MockTxManager::new();
+        let broadcaster = MockBroadcast::new();
+
+        let gauge = OpMetrics::new("test").gauge("byzantine_ledger_msg_queue_size");
+        let (task_sender, task_receiver) = mc_util_metered_channel::unbounded(&gauge);
+
+        let is_behind = Arc::new(AtomicBool::new(false));
+        let highest_peer_block = Arc::new(AtomicU64::new(0));
+        let highest_issued_msg = Arc::new(Mutex::new(Option::<ConsensusMsg>::None));
+
+        let worker = ByzantineLedgerWorker::new(
+            Box::new(scp_node),
+            msg_signer_key,
+            ledger,
+            ledger_sync_service,
+            peer_manager,
+            Arc::new(tx_manager),
+            Arc::new(Mutex::new(broadcaster)),
+            task_receiver,
+            is_behind,
+            highest_peer_block,
+            highest_issued_msg,
+            logger,
+        );
     }
 }
