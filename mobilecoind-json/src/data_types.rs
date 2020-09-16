@@ -356,12 +356,18 @@ impl From<&mc_mobilecoind_api::ReceiverTxReceipt> for JsonReceiverTxReceipt {
 }
 
 #[derive(Deserialize, Serialize)]
-pub struct JsonTransferResponse {
+pub struct JsonSendPaymentRequest {
+    pub request_code: JsonReadRequestCodeResponse,
+    pub max_input_utxo_value: Option<String>, // String due to u64 limitation.
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct JsonSendPaymentResponse {
     pub sender_tx_receipt: JsonSenderTxReceipt,
     pub receiver_tx_receipt_list: Vec<JsonReceiverTxReceipt>,
 }
 
-impl From<&mc_mobilecoind_api::SendPaymentResponse> for JsonTransferResponse {
+impl From<&mc_mobilecoind_api::SendPaymentResponse> for JsonSendPaymentResponse {
     fn from(src: &mc_mobilecoind_api::SendPaymentResponse) -> Self {
         Self {
             sender_tx_receipt: JsonSenderTxReceipt::from(src.get_sender_tx_receipt()),

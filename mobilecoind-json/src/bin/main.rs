@@ -310,28 +310,38 @@ fn transfer(
     state: rocket::State<State>,
     monitor_hex: String,
     subaddress_index: u64,
-    transfer: Json<JsonReadRequestCodeResponse>,
-) -> Result<Json<JsonTransferResponse>, String> {
+    transfer: Json<JsonSendPaymentRequest>,
+) -> Result<Json<JsonSendPaymentResponse>, String> {
     let monitor_id =
         hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
 
-    let public_address = PublicAddress::try_from(&transfer.receiver)?;
+    let public_address = PublicAddress::try_from(&transfer.request_code.receiver)?;
 
     // Generate an outlay
     let mut outlay = mc_mobilecoind_api::Outlay::new();
     outlay.set_receiver(public_address);
     outlay.set_value(
         transfer
+            .request_code
             .value
             .parse::<u64>()
-            .map_err(|err| format!("Failed to parse amount: {}", err))?,
+            .map_err(|err| format!("Failed to parse request_code.amount: {}", err))?,
     );
+
+    // Get max_input_utxo_value.
+    let max_input_utxo_value = transfer
+        .max_input_utxo_value
+        .clone()
+        .unwrap_or("0".to_owned()) // A value of 0 disables the max limit.
+        .parse::<u64>()
+        .map_err(|err| format!("Failed to parse max_input_utxo_value: {}", err))?;
 
     // Send the payment request
     let mut req = mc_mobilecoind_api::SendPaymentRequest::new();
     req.set_sender_monitor_id(monitor_id);
     req.set_sender_subaddress(subaddress_index);
     req.set_outlay_list(RepeatedField::from_vec(vec![outlay]));
+    req.set_max_input_utxo_value(max_input_utxo_value);
 
     let resp = state
         .mobilecoind_api_client
@@ -339,7 +349,7 @@ fn transfer(
         .map_err(|err| format!("Failed to send payment: {}", err))?;
 
     // The receipt from the payment request can be used by the status check below
-    Ok(Json(JsonTransferResponse::from(&resp)))
+    Ok(Json(JsonSendPaymentResponse::from(&resp)))
 }
 
 /// Creates a transaction proposal. This can be used in an offline transaction construction
@@ -422,7 +432,7 @@ fn submit_tx(
 #[post("/tx/status-as-sender", format = "json", data = "<receipt>")]
 fn check_transfer_status(
     state: rocket::State<State>,
-    receipt: Json<JsonTransferResponse>,
+    receipt: Json<JsonSendPaymentResponse>,
 ) -> Result<Json<JsonStatusResponse>, String> {
     let mut sender_receipt = mc_mobilecoind_api::SenderTxReceipt::new();
     let mut key_images = Vec::new();
