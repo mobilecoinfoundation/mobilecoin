@@ -429,6 +429,7 @@ impl<T: UserTxConnection + 'static> TransactionsManager<T> {
         // Sort the utxos in descending order by value.
         let mut sorted_utxos = utxos.to_vec();
         sorted_utxos.sort_by_key(|utxo| Reverse(utxo.value));
+        println!("AAA {:?}", sorted_utxos);
 
         // The maximum spendable is limited by the maximal number of inputs we can use.
         let max_spendable_amount = sorted_utxos

@@ -409,7 +409,9 @@ mod test {
     use super::*;
     use crate::{
         monitor_store::MonitorData,
-        test_utils::{self, add_block_to_ledger_db, get_test_databases},
+        test_utils::{
+            self, add_block_to_ledger_db, get_test_databases, DEFAULT_PER_RECIPIENT_AMOUNT,
+        },
     };
     use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
 
@@ -496,7 +498,7 @@ mod test {
         for utxo in utxos {
             assert!(account0_tx_outs.contains(&utxo.tx_out));
             assert_eq!(utxo.subaddress_index, 0);
-            assert_eq!(utxo.value, test_utils::PER_RECIPIENT_AMOUNT);
+            assert_eq!(utxo.value, test_utils::DEFAULT_PER_RECIPIENT_AMOUNT);
             assert_eq!(utxo.attempted_spend_height, 0);
         }
 
@@ -519,7 +521,7 @@ mod test {
         for utxo in utxos {
             assert!(account0_tx_outs.contains(&utxo.tx_out));
             assert_eq!(utxo.subaddress_index, 0);
-            assert_eq!(utxo.value, test_utils::PER_RECIPIENT_AMOUNT);
+            assert_eq!(utxo.value, test_utils::DEFAULT_PER_RECIPIENT_AMOUNT);
             assert_eq!(utxo.attempted_spend_height, 0);
         }
 
@@ -539,7 +541,7 @@ mod test {
         for utxo in utxos {
             assert!(account0_tx_outs.contains(&utxo.tx_out));
             assert_eq!(utxo.subaddress_index, 0);
-            assert_eq!(utxo.value, test_utils::PER_RECIPIENT_AMOUNT);
+            assert_eq!(utxo.value, test_utils::DEFAULT_PER_RECIPIENT_AMOUNT);
             assert_eq!(utxo.attempted_spend_height, 0);
         }
 
@@ -559,7 +561,7 @@ mod test {
         for utxo in utxos.iter() {
             assert!(account0_tx_outs.contains(&utxo.tx_out));
             assert_eq!(utxo.subaddress_index, 0);
-            assert_eq!(utxo.value, test_utils::PER_RECIPIENT_AMOUNT);
+            assert_eq!(utxo.value, test_utils::DEFAULT_PER_RECIPIENT_AMOUNT);
             assert_eq!(utxo.attempted_spend_height, 0);
         }
 
@@ -572,6 +574,7 @@ mod test {
         add_block_to_ledger_db(
             &mut ledger_db,
             &[recipients[1].clone()],
+            DEFAULT_PER_RECIPIENT_AMOUNT,
             &[utxos[0].key_image.clone()],
             &mut rng,
         );

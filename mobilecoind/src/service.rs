@@ -1325,12 +1325,17 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             .map_err(|err| rpc_internal_error("monitor_id.try_from.bytes", err, &self.logger))?;
 
         // Get all utxos for this monitor id.
-        let utxos = self
+        let mut utxos = self
             .mobilecoind_db
             .get_utxos_for_subaddress(&sender_monitor_id, request.sender_subaddress)
             .map_err(|err| {
                 rpc_internal_error("mobilecoind_db.get_utxos_for_subaddress", err, &self.logger)
             })?;
+
+        // Optionally filter for max value.
+        if request.max_input_utxo_value > 0 {
+            utxos.retain(|utxo| utxo.value <= request.max_input_utxo_value);
+        }
 
         // Get the list of outlays.
         let outlays: Vec<Outlay> = request
@@ -1471,10 +1476,11 @@ mod test {
         payments::DEFAULT_NEW_TX_BLOCK_ATTEMPTS,
         test_utils::{
             self, add_block_to_ledger_db, add_txos_to_ledger_db, get_testing_environment,
-            wait_for_monitors, PER_RECIPIENT_AMOUNT,
+            wait_for_monitors, DEFAULT_PER_RECIPIENT_AMOUNT,
         },
         utxo_store::UnspentTxOut,
     };
+    use grpcio::{Error as GrpcError, RpcStatus};
     use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
     use mc_common::{logger::test_with_logger, HashSet};
     use mc_crypto_rand::RngCore;
@@ -1772,7 +1778,7 @@ mod test {
                     tx_out: tx_out.clone(),
                     subaddress_index: 0,
                     key_image,
-                    value: test_utils::PER_RECIPIENT_AMOUNT,
+                    value: test_utils::DEFAULT_PER_RECIPIENT_AMOUNT,
                     attempted_spend_height: 0,
                     attempted_spend_tombstone: 0,
                 }
@@ -1962,6 +1968,7 @@ mod test {
         add_block_to_ledger_db(
             &mut ledger_db,
             &[recipient],
+            DEFAULT_PER_RECIPIENT_AMOUNT,
             &[KeyImage::from(1), KeyImage::from(2), KeyImage::from(3)],
             &mut rng,
         );
@@ -2246,7 +2253,7 @@ mod test {
                     tx_out: tx_out.clone(),
                     subaddress_index: 0,
                     key_image,
-                    value: test_utils::PER_RECIPIENT_AMOUNT,
+                    value: test_utils::DEFAULT_PER_RECIPIENT_AMOUNT,
                     attempted_spend_height: 0,
                     attempted_spend_tombstone: 0,
                 }
@@ -2308,6 +2315,7 @@ mod test {
             add_block_to_ledger_db(
                 &mut ledger_db,
                 &[recipient],
+                DEFAULT_PER_RECIPIENT_AMOUNT,
                 &[
                     expected_utxos[monitor_data.first_block as usize].key_image,
                     expected_utxos[monitor_data.first_block as usize + 1].key_image,
@@ -2460,7 +2468,7 @@ mod test {
             let tx_proposal = response.get_tx_proposal();
 
             let expected_num_inputs: u64 = (outlays.iter().map(|outlay| outlay.value).sum::<u64>()
-                / test_utils::PER_RECIPIENT_AMOUNT)
+                / test_utils::DEFAULT_PER_RECIPIENT_AMOUNT)
                 + 1;
             assert_eq!(
                 tx_proposal.get_input_list().len(),
@@ -2487,7 +2495,7 @@ mod test {
                 tx_proposal.get_outlay_confirmation_numbers().len()
             );
 
-            let change_value = test_utils::PER_RECIPIENT_AMOUNT
+            let change_value = test_utils::DEFAULT_PER_RECIPIENT_AMOUNT
                 - outlays.iter().map(|outlay| outlay.value).sum::<u64>()
                 - MINIMUM_FEE;
 
@@ -2576,7 +2584,7 @@ mod test {
             request.set_outlay_list(RepeatedField::from_vec(vec![
                 mc_mobilecoind_api::Outlay::from(&Outlay {
                     receiver: receiver1.default_subaddress(),
-                    value: test_utils::PER_RECIPIENT_AMOUNT * num_blocks,
+                    value: test_utils::DEFAULT_PER_RECIPIENT_AMOUNT * num_blocks,
                 }),
             ]));
             assert!(client.generate_tx(&request).is_err());
@@ -2725,6 +2733,7 @@ mod test {
             let _ = add_block_to_ledger_db(
                 &mut ledger_db,
                 &[sender_default_subaddress.clone()],
+                DEFAULT_PER_RECIPIENT_AMOUNT,
                 &[KeyImage::from(rng.next_u64())],
                 &mut rng,
             );
@@ -2765,7 +2774,7 @@ mod test {
             tx_proposal.outlays[0].value,
             // Each UTXO we have has PER_RECIPIENT_AMOUNT coins. We will be merging MAX_INPUTS of those
             // into a single output, minus the fee.
-            (PER_RECIPIENT_AMOUNT * MAX_INPUTS as u64) - MINIMUM_FEE,
+            (DEFAULT_PER_RECIPIENT_AMOUNT * MAX_INPUTS as u64) - MINIMUM_FEE,
         );
 
         assert_eq!(tx_proposal.outlay_index_to_tx_out_index.len(), 1);
@@ -3083,7 +3092,7 @@ mod test {
         let response = client.get_balance(&request).unwrap();
         assert_eq!(
             response.balance,
-            test_utils::PER_RECIPIENT_AMOUNT * ledger_db.num_blocks().unwrap()
+            test_utils::DEFAULT_PER_RECIPIENT_AMOUNT * ledger_db.num_blocks().unwrap()
         );
 
         // Get balance for subaddress with no utxos should return 0.
@@ -3284,6 +3293,129 @@ mod test {
             }
         }
         assert_eq!(matched_utxos, tx_proposal.utxos.len());
+    }
+
+    #[test_with_logger]
+    fn test_send_payment_with_max_input_utxo_value(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        let sender = AccountKey::random(&mut rng);
+        let data = MonitorData::new(
+            sender.clone(),
+            0,  // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        // 1 known recipient, 3 random recipients and no monitors.
+        let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(10, &vec![], &vec![], logger.clone(), &mut rng);
+
+        // Add a few utxos to our recipient, such that all of them are required to create the test
+        // transaction.
+        for amount in &[10, 20, MINIMUM_FEE] {
+            add_block_to_ledger_db(
+                &mut ledger_db,
+                &[sender.default_subaddress()],
+                *amount,
+                &[KeyImage::from(rng.next_u64())],
+                &mut rng,
+            );
+        }
+
+        // Insert into database.
+        let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
+
+        // Allow the new monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Get list of unspent tx outs
+        let utxos = mobilecoind_db
+            .get_utxos_for_subaddress(&monitor_id, 0)
+            .unwrap();
+        assert!(!utxos.is_empty());
+
+        let utxos_by_keyimage: HashMap<KeyImage, UnspentTxOut> = utxos
+            .iter()
+            .map(|utxo| (utxo.key_image.clone(), utxo.clone()))
+            .collect();
+
+        // Generate two random recipients.
+        let receiver1 = AccountKey::random(&mut rng);
+        let receiver2 = AccountKey::random(&mut rng);
+
+        let outlays = vec![
+            Outlay {
+                value: 10,
+                receiver: receiver1.default_subaddress(),
+            },
+            Outlay {
+                value: 20,
+                receiver: receiver2.default_subaddress(),
+            },
+        ];
+
+        // Call send payment without a limit on UTXOs - a single large UTXO should be selected.
+        let mut request = mc_mobilecoind_api::SendPaymentRequest::new();
+        request.set_sender_monitor_id(monitor_id.to_vec());
+        request.set_sender_subaddress(0);
+        request.set_outlay_list(RepeatedField::from_vec(
+            outlays
+                .iter()
+                .map(mc_mobilecoind_api::Outlay::from)
+                .collect(),
+        ));
+
+        let response = client.send_payment(&request).unwrap();
+
+        // Check which UTXOs were selected - it should be all of them.
+        let selected_utxos: Vec<UnspentTxOut> = response
+            .get_sender_tx_receipt()
+            .get_key_image_list()
+            .iter()
+            .map(|proto_key_image| {
+                let key_image = KeyImage::try_from(proto_key_image).unwrap();
+                utxos_by_keyimage.get(&key_image).unwrap().clone()
+            })
+            .collect();
+        assert_eq!(
+            HashSet::from_iter(selected_utxos),
+            HashSet::from_iter(utxos.clone())
+        );
+
+        // Try again, placing a cap at the max UTXO that can be selected. This should cause send
+        // payment to fail.
+        request.set_max_input_utxo_value(20);
+        match client.send_payment(&request) {
+            Ok(_) => panic!("Should've returned an error"),
+            Err(GrpcError::RpcFailure(RpcStatus { details, .. })) => {
+                assert_eq!(
+                    details,
+                    Some("transactions_manager.build_transaction: InsufficientFunds".to_owned())
+                );
+            }
+            Err(err) => panic!("Unexpected error: {:?}", err),
+        };
+
+        // Trying with a higher limit should work.
+        request.set_max_input_utxo_value(MINIMUM_FEE);
+        let response = client.send_payment(&request).unwrap();
+
+        let selected_utxos: Vec<UnspentTxOut> = response
+            .get_sender_tx_receipt()
+            .get_key_image_list()
+            .iter()
+            .map(|proto_key_image| {
+                let key_image = KeyImage::try_from(proto_key_image).unwrap();
+                utxos_by_keyimage.get(&key_image).unwrap().clone()
+            })
+            .collect();
+        assert_eq!(
+            HashSet::from_iter(selected_utxos),
+            HashSet::from_iter(utxos)
+        );
     }
 
     #[test_with_logger]
@@ -3614,7 +3746,7 @@ mod test {
         let response = client.get_balance(&request).unwrap();
         assert_eq!(
             response.balance,
-            test_utils::PER_RECIPIENT_AMOUNT * ledger_db.num_blocks().unwrap()
+            test_utils::DEFAULT_PER_RECIPIENT_AMOUNT * ledger_db.num_blocks().unwrap()
         );
         let orig_balance = response.balance;
 
@@ -3633,7 +3765,13 @@ mod test {
             .expect("failed covnerting proto keyimage");
 
         let recipient = AccountKey::random(&mut rng).default_subaddress();
-        add_block_to_ledger_db(&mut ledger_db, &[recipient], &[first_key_image], &mut rng);
+        add_block_to_ledger_db(
+            &mut ledger_db,
+            &[recipient],
+            DEFAULT_PER_RECIPIENT_AMOUNT,
+            &[first_key_image],
+            &mut rng,
+        );
 
         wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
 
