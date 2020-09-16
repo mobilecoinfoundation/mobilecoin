@@ -281,7 +281,7 @@ fn read_address_code(
 
 /// Performs a transfer from a monitor and subaddress. The public keys and amount are in the POST data.
 #[post(
-    "/monitors/<monitor_hex>/subaddresses/<subaddress_index>/build-and-submit",
+    "/monitors/<monitor_hex>/subaddresses/<subaddress_index>/build-tx-and-submit",
     format = "json",
     data = "<transfer>"
 )]
