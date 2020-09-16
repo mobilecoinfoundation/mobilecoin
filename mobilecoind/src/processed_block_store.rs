@@ -244,7 +244,7 @@ mod test {
     use super::*;
     use crate::{
         monitor_store::MonitorData,
-        test_utils::{get_test_databases, PER_RECIPIENT_AMOUNT},
+        test_utils::{get_test_databases, DEFAULT_PER_RECIPIENT_AMOUNT},
     };
     use mc_account_keys::AccountKey;
     use mc_common::{
@@ -306,7 +306,7 @@ mod test {
                     tx_out: tx_out.clone(),
                     subaddress_index: TEST_SUBADDRESS,
                     key_image,
-                    value: PER_RECIPIENT_AMOUNT,
+                    value: DEFAULT_PER_RECIPIENT_AMOUNT,
                     attempted_spend_height: 0,
                     attempted_spend_tombstone: 0,
                 }
