@@ -28,10 +28,11 @@ crossbeam-channel = "0.3"
 failure = "0.1.5"
 grpcio = "0.6.0"
 lazy_static = "1.4"
-reqwest = { version = "0.10" , features = ["rustls-tls"], default_features = false }
-retry = "0.5"
+mockall = "0.7.2"
 protobuf = "2.12"
 rand = "0.7"
+reqwest = { version = "0.10" , features = ["rustls-tls"], default_features = false }
+retry = "0.5"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 tempdir = "0.3"
 url = "2.1"

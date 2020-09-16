@@ -5,8 +5,8 @@
 //! [`TransactionsFetcher`] object for fetching actual transaction data.
 
 use crate::{
-    ledger_sync_error::LedgerSyncError, network_state_trait::NetworkState,
-    transactions_fetcher_trait::TransactionsFetcher,
+    ledger_sync_error::LedgerSyncError, transactions_fetcher_trait::TransactionsFetcher,
+    NetworkState,
 };
 use mc_common::{
     logger::{log, Logger},
