@@ -47,7 +47,7 @@ use std::{
 
 /// This is a PeerConnection implementation which ensures transparent attestation between the local
 /// and remote enclaves.
-pub struct PeerConnection<Enclave: ConsensusEnclave + Clone + Send + Sync> {
+pub struct PeerConnection<Enclave: ConsensusEnclave + Send + Sync> {
     /// The local enclave, which the remote node will be peered with.
     enclave: Enclave,
 

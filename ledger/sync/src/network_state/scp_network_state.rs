@@ -16,7 +16,7 @@ use std::{
     iter::FromIterator,
 };
 
-pub struct SCPNetworkState<ID: GenericNodeId = NodeID> {
+pub struct SCPNetworkState<ID: GenericNodeId + Send = NodeID> {
     // The local node ID.
     local_node_id: ID,
 
@@ -27,7 +27,7 @@ pub struct SCPNetworkState<ID: GenericNodeId = NodeID> {
     id_to_current_slot: HashMap<ID, SlotIndex>,
 }
 
-impl<ID: GenericNodeId + Clone + Eq + PartialEq + Hash> SCPNetworkState<ID> {
+impl<ID: GenericNodeId + Clone + Eq + PartialEq + Hash + Send> SCPNetworkState<ID> {
     pub fn new(local_node_id: ID, local_quorum_set: QuorumSet<ID>) -> Self {
         Self {
             local_node_id,

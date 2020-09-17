@@ -198,7 +198,7 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
 }
 
 impl<
-        NS: NetworkState + 'static,
+        NS: NetworkState + Send + Sync + 'static,
         L: Ledger,
         BC: BlockchainConnection + 'static,
         TF: TransactionsFetcher + 'static,

@@ -19,9 +19,7 @@ use mc_connection::{
 use mc_consensus_scp::{slot::Phase, Msg, ScpNode, SlotIndex};
 use mc_crypto_keys::Ed25519Pair;
 use mc_ledger_db::Ledger;
-use mc_ledger_sync::{
-    LedgerSync, LedgerSyncService, NetworkState, ReqwestTransactionsFetcher, SCPNetworkState,
-};
+use mc_ledger_sync::{LedgerSync, NetworkState, SCPNetworkState};
 use mc_peers::{
     Broadcast, ConsensusConnection, ConsensusMsg, Error as PeerError, RetryableConsensusConnection,
     VerifiedConsensusMsg,
@@ -46,13 +44,14 @@ const CONSENSUS_MSG_BATCH_SIZE: usize = 5;
 
 pub struct ByzantineLedgerWorker<
     L: Ledger + 'static,
+    LS: LedgerSync<SCPNetworkState> + Send + 'static,
     PC: BlockchainConnection + ConsensusConnection + 'static,
     TXM: TxManager,
 > {
     scp_node: Box<dyn ScpNode<TxHash>>,
     msg_signer_key: Arc<Ed25519Pair>,
 
-    peer_manager: ConnectionManager<PC>,
+    connection_manager: ConnectionManager<PC>,
     broadcaster: Arc<Mutex<dyn Broadcast>>,
     tx_manager: Arc<TXM>,
     // A map of responder id to a list of tx hashes that it is unable to provide. This allows us to
@@ -63,7 +62,7 @@ pub struct ByzantineLedgerWorker<
     // Current slot index (the one that is not yet in the ledger / the one currently being worked on).
     current_slot_index: SlotIndex,
     ledger: L,
-    ledger_sync_service: Box<dyn LedgerSync<SCPNetworkState>>,
+    ledger_sync_service: LS,
     ledger_sync_state: LedgerSyncState,
 
     // The worker sets this to true when the local node is behind its peers.
@@ -105,9 +104,10 @@ pub struct ByzantineLedgerWorker<
 
 impl<
         L: Ledger + 'static,
+        LS: LedgerSync<SCPNetworkState> + Send + 'static,
         PC: BlockchainConnection + ConsensusConnection + 'static,
         TXM: TxManager + Send + Sync,
-    > ByzantineLedgerWorker<L, PC, TXM>
+    > ByzantineLedgerWorker<L, LS, PC, TXM>
 {
     /// Create a new ByzantineLedgerWorker.
     ///
@@ -116,7 +116,7 @@ impl<
     /// * `msg_signer_key` - Signs consensus messages issued by this node.
     /// * `ledger` - This node's ledger.
     /// * `ledger_sync_service` - LedgerSyncService
-    /// * `peer_manager` - PeerManager
+    /// * `connection_manager` - Manages connections to peers.
     /// * `tx_manager` - TxManager
     /// * `broadcaster` - Broadcaster
     /// * `tasks` - Receiver-end of a queue of task messages for this worker to process.
@@ -128,8 +128,8 @@ impl<
         scp_node: Box<dyn ScpNode<TxHash>>,
         msg_signer_key: Arc<Ed25519Pair>,
         ledger: L,
-        ledger_sync_service: LedgerSyncService<L, PC, ReqwestTransactionsFetcher>,
-        peer_manager: ConnectionManager<PC>,
+        ledger_sync_service: LS,
+        connection_manager: ConnectionManager<PC>,
         tx_manager: Arc<TXM>,
         broadcaster: Arc<Mutex<dyn Broadcast>>,
         tasks: Receiver<TaskMessage>,
@@ -152,7 +152,7 @@ impl<
             ledger,
             tx_manager,
             broadcaster,
-            peer_manager,
+            connection_manager,
             logger,
             current_slot_index,
             pending_consensus_msgs: Default::default(),
@@ -160,7 +160,7 @@ impl<
             pending_values_map: Default::default(),
             need_nominate: false,
             network_state,
-            ledger_sync_service: Box::new(ledger_sync_service),
+            ledger_sync_service,
             ledger_sync_state: LedgerSyncState::InSync,
             unavailable_tx_hashes: HashMap::default(),
         }
@@ -620,7 +620,7 @@ impl<
         }
 
         // Get the connection we'll be working with
-        let conn = match self.peer_manager.conn(from_responder_id) {
+        let conn = match self.connection_manager.conn(from_responder_id) {
             Some(conn) => conn,
             None => {
                 log::error!(
@@ -747,15 +747,23 @@ impl<
 
 #[cfg(test)]
 mod tests {
-    use crate::{byzantine_ledger::worker::ByzantineLedgerWorker, tx_manager::MockTxManager};
+    use crate::{
+        byzantine_ledger::{
+            ledger_sync_state::LedgerSyncState,
+            tests::{get_local_node_config, get_peers},
+            worker::ByzantineLedgerWorker,
+        },
+        tx_manager::MockTxManager,
+    };
     use mc_common::logger::{test_with_logger, Logger};
-    use mc_consensus_scp::MockScpNode;
-    use mc_crypto_keys::Ed25519Pair;
+    use mc_connection::ConnectionManager;
+    use mc_consensus_scp::{MockScpNode, QuorumSet};
     use mc_ledger_db::MockLedger;
-    use mc_ledger_sync::LedgerSyncService;
+    use mc_ledger_sync::MockLedgerSync;
     use mc_peers::{ConsensusMsg, MockBroadcast};
-    use mc_util_from_random::FromRandom;
+    use mc_peers_test_utils::MockPeerConnection;
     use mc_util_metrics::OpMetrics;
+    use rand::rngs::StdRng;
     use rand_core::SeedableRng;
     use std::sync::{
         atomic::{AtomicBool, AtomicU64},
@@ -763,24 +771,46 @@ mod tests {
     };
 
     #[test_with_logger]
+    /// Test that `new` correctly initializes the instance.
     fn test_new(logger: Logger) {
-        let scp_node = MockScpNode::new();
+        let mut rng: StdRng = SeedableRng::from_seed([7u8; 32]);
+        let (local_node_id, _local_node_uri, msg_signer_key) = get_local_node_config(11);
 
-        let msg_signer_key = {
-            let mut rng = SeedableRng::from_seed(&[7u8; 32]);
-            Arc::new(Ed25519Pair::from_random(&mut rng))
+        // Local node's quorum set.
+        let peers = get_peers(&[22, 33], &mut rng);
+        let local_quorum_set =
+            QuorumSet::new_with_node_ids(2, vec![peers[0].id.clone(), peers[1].id.clone()]);
+
+        let mut scp_node = MockScpNode::new();
+        scp_node
+            .expect_node_id()
+            .return_const(local_node_id.clone());
+        scp_node.expect_quorum_set().return_const(local_quorum_set);
+
+        let mut ledger = MockLedger::new();
+        let num_blocks: u64 = 15;
+        ledger.expect_num_blocks().return_const(Ok(num_blocks));
+
+        let ledger_sync_service = MockLedgerSync::new();
+
+        let connection_manager = {
+            let ledger = MockLedger::new();
+            ConnectionManager::new(
+                vec![MockPeerConnection::new(
+                    peers[0].uri.clone(),
+                    local_node_id.clone(),
+                    ledger,
+                    10,
+                )],
+                logger.clone(),
+            )
         };
-
-        let ledger = MockLedger::new();
-
-        // TODO: let ledger_sync_service =
-        // TODO: peer_manager =
 
         let tx_manager = MockTxManager::new();
         let broadcaster = MockBroadcast::new();
 
         let gauge = OpMetrics::new("test").gauge("byzantine_ledger_msg_queue_size");
-        let (task_sender, task_receiver) = mc_util_metered_channel::unbounded(&gauge);
+        let (_task_sender, task_receiver) = mc_util_metered_channel::unbounded(&gauge);
 
         let is_behind = Arc::new(AtomicBool::new(false));
         let highest_peer_block = Arc::new(AtomicU64::new(0));
@@ -791,7 +821,7 @@ mod tests {
             msg_signer_key,
             ledger,
             ledger_sync_service,
-            peer_manager,
+            connection_manager,
             Arc::new(tx_manager),
             Arc::new(Mutex::new(broadcaster)),
             task_receiver,
@@ -800,5 +830,11 @@ mod tests {
             highest_issued_msg,
             logger,
         );
+
+        // current_slot_index should be initialized from the ledger.
+        assert_eq!(worker.current_slot_index, num_blocks);
+
+        // Initially, the worker should think that its ledger is in sync with the network.
+        assert_eq!(worker.ledger_sync_state, LedgerSyncState::InSync);
     }
 }

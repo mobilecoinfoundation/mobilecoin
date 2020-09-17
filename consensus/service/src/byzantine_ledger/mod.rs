@@ -268,7 +268,7 @@ mod tests {
     }
 
     // Get the local node's NodeID and message signer key.
-    fn get_local_node_config(node_id: u32) -> (NodeID, ConsensusPeerUri, Arc<Ed25519Pair>) {
+    pub fn get_local_node_config(node_id: u32) -> (NodeID, ConsensusPeerUri, Arc<Ed25519Pair>) {
         let secret_key = Ed25519Private::try_from_der(
             &base64::decode("MC4CAQAwBQYDK2VwBCIEIC50QXQll2Y9qxztvmsUgcBBIxkmk7EQjxzQTa926bKo")
                 .unwrap()
@@ -283,11 +283,11 @@ mod tests {
     }
 
     #[derive(Clone)]
-    struct PeerConfig {
-        id: NodeID,
-        uri: ConsensusPeerUri,
-        quorum_set: QuorumSet,
-        signer_key: Arc<Ed25519Pair>,
+    pub struct PeerConfig {
+        pub id: NodeID,
+        pub uri: ConsensusPeerUri,
+        pub quorum_set: QuorumSet,
+        pub signer_key: Arc<Ed25519Pair>,
     }
 
     impl PeerConfig {
@@ -307,7 +307,7 @@ mod tests {
     }
 
     // Get the peers' configurations.
-    fn get_peers(peer_ids: &[u32], rng: &mut StdRng) -> Vec<PeerConfig> {
+    pub fn get_peers(peer_ids: &[u32], rng: &mut StdRng) -> Vec<PeerConfig> {
         peer_ids
             .iter()
             .map(|peer_id| {

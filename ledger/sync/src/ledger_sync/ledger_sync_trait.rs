@@ -4,7 +4,7 @@ use crate::{LedgerSyncError, NetworkState};
 use mockall::*;
 
 #[automock]
-pub trait LedgerSync<NS: NetworkState + 'static> {
+pub trait LedgerSync<NS: NetworkState + Send + Sync + 'static> {
     /// Returns true if the local ledger is behind the network's consensus view of the ledger.
     fn is_behind(&self, network_state: &NS) -> bool;
 
