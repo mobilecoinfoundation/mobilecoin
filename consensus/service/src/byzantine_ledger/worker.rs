@@ -440,7 +440,7 @@ impl<
         }
 
         // XXX
-        let mut msg_per_slot = HashMap::<u64, Msg<TxHash>>::default();
+        // let mut msg_per_slot = HashMap::<u64, Msg<TxHash>>::default();
 
         // Process compatible messages in batches.
         for chunk in compatible_msgs.chunks(CONSENSUS_MSG_BATCH_SIZE) {
@@ -476,8 +476,8 @@ impl<
             match self.scp_node.handle_messages(scp_msgs) {
                 Ok(outgoing_msgs) => {
                     for msg in outgoing_msgs {
-                        // let _ = self.issue_consensus_message(msg);
-                        msg_per_slot.insert(msg.slot_index, msg);
+                        let _ = self.issue_consensus_message(msg);
+                        // msg_per_slot.insert(msg.slot_index, msg);
                     }
                 }
                 Err(err) => {
@@ -486,9 +486,9 @@ impl<
             }
         }
 
-        for (_slot_index, msg) in msg_per_slot.into_iter() {
+        /* for (_slot_index, msg) in msg_per_slot.into_iter() {
             let _ = self.issue_consensus_message(msg);
-        }
+        } */
     }
 
     fn complete_current_slot(&mut self, externalized: Vec<TxHash>) {
