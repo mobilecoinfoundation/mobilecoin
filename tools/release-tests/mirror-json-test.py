@@ -115,11 +115,11 @@ else:
     shutdown(1)
 
 # Generate a request code for the account
-# TODO: I believe the code has been updated with "receiver" rather than public address
-request_data = {"public_address": public_address, "amount": 1, "memo": "Please pay me"}
+# TODO: This call takes an integer for value, while the payment request takes a string
+request_data = {"receiver": public_address, "value": 1, "memo": "Please pay me"}
 response = requests.post("http://localhost:9090/codes/request", json=request_data)
 if response.status_code == 200:
-    request_code = response.json()['request_code']
+    request_code = response.json()['b58_code']
     print("Request code = %s" % str(request_code))
 else:
     print("Request code endpoint returned status code %d" % response.status_code)
@@ -156,14 +156,13 @@ if balance == 0:
 
 # Initiate a transfer, to the same account
 url = "http://localhost:9090/monitors/%s/subaddresses/0/build-and-submit" % monitor_id
-# TODO: Again this reveals an API mismatch between request code generation and payment generation
-payment_data = {"receiver": public_address, "value": "1", "memo": "Please pay me"}
+payment_data = {"request_code": {"receiver": public_address, "value": "1", "memo": "Please pay me"}}
 response = requests.post(url, json=payment_data)
 if response.status_code == 200:
     receipts = response.json()
     receiver_tx_receipt = response.json()['receiver_tx_receipt_list'][0]
 else:
-    print("build-tx-and-submit returned status code %d" % response.status_code)
+    print("build-and-submit returned status code %d" % response.status_code)
     shutdown(1)
 
 print("Polling for transaction status")
