@@ -53,7 +53,7 @@ impl<BC: BlockchainConnection + 'static> PollingNetworkState<BC> {
 
         Self {
             manager,
-            scp_network_state: SCPNetworkState::new(local_node_id, quorum_set, logger.clone()),
+            scp_network_state: SCPNetworkState::new(local_node_id, quorum_set),
             logger,
         }
     }

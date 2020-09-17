@@ -2,12 +2,11 @@
 
 use crate::{slot::SlotMetrics, Msg, QuorumSet, SlotIndex, Value};
 use mc_common::NodeID;
-#[cfg(test)]
 use mockall::*;
 use std::collections::BTreeSet;
 
 /// A node capable of participating in SCP.
-#[cfg_attr(test, automock)]
+#[automock]
 pub trait ScpNode<V: Value>: Send {
     /// Get local node ID.
     fn node_id(&self) -> NodeID;

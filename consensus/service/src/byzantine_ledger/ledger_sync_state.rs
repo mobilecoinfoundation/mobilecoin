@@ -2,7 +2,7 @@
 
 use std::time::Instant;
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum LedgerSyncState {
     /// Local ledger is in sync with the network.
     InSync,
