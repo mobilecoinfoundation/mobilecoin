@@ -340,6 +340,41 @@ impl<
         true
     }
 
+    #[allow(unused)]
+    fn next_sync_state(&self, now: Instant) -> LedgerSyncState {
+        if !self.ledger_sync_service.is_behind(&self.network_state) {
+            // SyncService reports that we are in sync.
+            return LedgerSyncState::InSync;
+        }
+
+        // Sync service reports that we are out of sync.
+        match &self.ledger_sync_state {
+            LedgerSyncState::InSync => LedgerSyncState::MaybeBehind(now),
+            LedgerSyncState::MaybeBehind(behind_since) => {
+                let is_behind_duration = now - *behind_since;
+                if is_behind_duration > IS_BEHIND_GRACE_PERIOD {
+                    LedgerSyncState::IsBehind {
+                        attempt_sync_at: now,
+                        num_sync_attempts: 0,
+                    }
+                } else {
+                    // No change, keep waiting.
+                    LedgerSyncState::MaybeBehind(*behind_since)
+                }
+            }
+            LedgerSyncState::IsBehind {
+                attempt_sync_at,
+                num_sync_attempts,
+            } => {
+                // No change, still behind.
+                LedgerSyncState::IsBehind {
+                    attempt_sync_at: *attempt_sync_at,
+                    num_sync_attempts: *num_sync_attempts,
+                }
+            }
+        }
+    }
+
     // Reads tasks from the task queue.
     // Returns false if the worker has been asked to stop.
     fn receive_tasks(&mut self) -> bool {
@@ -750,25 +785,74 @@ mod tests {
     use crate::{
         byzantine_ledger::{
             ledger_sync_state::LedgerSyncState,
+            task_message::TaskMessage,
             tests::{get_local_node_config, get_peers},
             worker::ByzantineLedgerWorker,
+            IS_BEHIND_GRACE_PERIOD,
         },
         tx_manager::MockTxManager,
     };
-    use mc_common::logger::{test_with_logger, Logger};
+    use failure::_core::time::Duration;
+    use mc_common::{
+        logger::{test_with_logger, Logger},
+        NodeID,
+    };
     use mc_connection::ConnectionManager;
     use mc_consensus_scp::{MockScpNode, QuorumSet};
     use mc_ledger_db::MockLedger;
-    use mc_ledger_sync::MockLedgerSync;
+    use mc_ledger_sync::{MockLedgerSync, SCPNetworkState};
     use mc_peers::{ConsensusMsg, MockBroadcast};
     use mc_peers_test_utils::MockPeerConnection;
+    use mc_transaction_core::tx::TxHash;
+    use mc_util_metered_channel::{Receiver, Sender};
     use mc_util_metrics::OpMetrics;
     use rand::rngs::StdRng;
     use rand_core::SeedableRng;
-    use std::sync::{
-        atomic::{AtomicBool, AtomicU64},
-        Arc, Mutex,
+    use std::{
+        ops::Add,
+        sync::{
+            atomic::{AtomicBool, AtomicU64},
+            Arc, Mutex,
+        },
+        time::Instant,
     };
+
+    /// Create test mocks with sensible defaults.
+    ///
+    /// # Arguments
+    ///
+    fn get_mocks(
+        node_id: &NodeID,
+        quorum_set: &QuorumSet,
+        num_blocks: u64,
+    ) -> (
+        MockScpNode<TxHash>,
+        MockLedger,
+        MockLedgerSync<SCPNetworkState>,
+        MockTxManager,
+        MockBroadcast,
+    ) {
+        let mut scp_node = MockScpNode::new();
+        scp_node.expect_node_id().return_const(node_id.clone());
+        scp_node
+            .expect_quorum_set()
+            .return_const(quorum_set.clone());
+
+        let mut ledger = MockLedger::new();
+        ledger.expect_num_blocks().return_const(Ok(num_blocks));
+        (
+            scp_node,
+            ledger,
+            MockLedgerSync::new(),
+            MockTxManager::new(),
+            MockBroadcast::new(),
+        )
+    }
+
+    fn get_channel() -> (Sender<TaskMessage>, Receiver<TaskMessage>) {
+        let gauge = OpMetrics::new("test").gauge("byzantine_ledger_msg_queue_size");
+        mc_util_metered_channel::unbounded(&gauge)
+    }
 
     #[test_with_logger]
     /// Test that `new` correctly initializes the instance.
@@ -778,20 +862,12 @@ mod tests {
 
         // Local node's quorum set.
         let peers = get_peers(&[22, 33], &mut rng);
-        let local_quorum_set =
+        let quorum_set =
             QuorumSet::new_with_node_ids(2, vec![peers[0].id.clone(), peers[1].id.clone()]);
 
-        let mut scp_node = MockScpNode::new();
-        scp_node
-            .expect_node_id()
-            .return_const(local_node_id.clone());
-        scp_node.expect_quorum_set().return_const(local_quorum_set);
-
-        let mut ledger = MockLedger::new();
-        let num_blocks: u64 = 15;
-        ledger.expect_num_blocks().return_const(Ok(num_blocks));
-
-        let ledger_sync_service = MockLedgerSync::new();
+        let num_blocks = 15;
+        let (scp_node, ledger, ledger_sync, tx_manager, broadcast) =
+            get_mocks(&local_node_id, &quorum_set, num_blocks);
 
         let connection_manager = {
             let ledger = MockLedger::new();
@@ -806,28 +882,20 @@ mod tests {
             )
         };
 
-        let tx_manager = MockTxManager::new();
-        let broadcaster = MockBroadcast::new();
-
-        let gauge = OpMetrics::new("test").gauge("byzantine_ledger_msg_queue_size");
-        let (_task_sender, task_receiver) = mc_util_metered_channel::unbounded(&gauge);
-
-        let is_behind = Arc::new(AtomicBool::new(false));
-        let highest_peer_block = Arc::new(AtomicU64::new(0));
-        let highest_issued_msg = Arc::new(Mutex::new(Option::<ConsensusMsg>::None));
+        let (_task_sender, task_receiver) = get_channel();
 
         let worker = ByzantineLedgerWorker::new(
             Box::new(scp_node),
             msg_signer_key,
             ledger,
-            ledger_sync_service,
+            ledger_sync,
             connection_manager,
             Arc::new(tx_manager),
-            Arc::new(Mutex::new(broadcaster)),
+            Arc::new(Mutex::new(broadcast)),
             task_receiver,
-            is_behind,
-            highest_peer_block,
-            highest_issued_msg,
+            Arc::new(AtomicBool::new(false)),
+            Arc::new(AtomicU64::new(0)),
+            Arc::new(Mutex::new(Option::<ConsensusMsg>::None)),
             logger,
         );
 
@@ -836,5 +904,136 @@ mod tests {
 
         // Initially, the worker should think that its ledger is in sync with the network.
         assert_eq!(worker.ledger_sync_state, LedgerSyncState::InSync);
+    }
+
+    /// Asserts that next_sync_state maps (initial_state, is_behind, now) --> expected_state
+    fn next_sync_state_helper(
+        initial_state: LedgerSyncState,
+        is_behind: bool,
+        now: Instant,
+        expected_state: LedgerSyncState,
+        logger: Logger,
+    ) {
+        let mut rng: StdRng = SeedableRng::from_seed([7u8; 32]);
+        let (node_id, _local_node_uri, msg_signer_key) = get_local_node_config(11);
+
+        let peers = get_peers(&[22, 33], &mut rng);
+        let quorum_set =
+            QuorumSet::new_with_node_ids(2, vec![peers[0].id.clone(), peers[1].id.clone()]);
+
+        let num_blocks = 12;
+        let (scp_node, ledger, mut ledger_sync, tx_manager, broadcast) =
+            get_mocks(&node_id, &quorum_set, num_blocks);
+
+        // Mock returns `is_behind`.
+        ledger_sync.expect_is_behind().return_const(is_behind);
+
+        let connection_manager = {
+            let ledger = MockLedger::new();
+            ConnectionManager::new(
+                vec![MockPeerConnection::new(
+                    peers[0].uri.clone(),
+                    node_id.clone(),
+                    ledger,
+                    10,
+                )],
+                logger.clone(),
+            )
+        };
+
+        let (_task_sender, task_receiver) = get_channel();
+
+        let mut worker = ByzantineLedgerWorker::new(
+            Box::new(scp_node),
+            msg_signer_key,
+            ledger,
+            ledger_sync,
+            connection_manager,
+            Arc::new(tx_manager),
+            Arc::new(Mutex::new(broadcast)),
+            task_receiver,
+            Arc::new(AtomicBool::new(false)),
+            Arc::new(AtomicU64::new(0)),
+            Arc::new(Mutex::new(Option::<ConsensusMsg>::None)),
+            logger,
+        );
+
+        // Set initial state.
+        worker.ledger_sync_state = initial_state;
+
+        let next_state = worker.next_sync_state(now);
+        assert_eq!(next_state, expected_state);
+    }
+
+    #[test_with_logger]
+    /// Test LedgerSyncState transitions.
+    fn test_next_sync_state(logger: Logger) {
+        // is_behind = false, InSync --> InSync
+        next_sync_state_helper(
+            LedgerSyncState::InSync,
+            false,
+            Instant::now(),
+            LedgerSyncState::InSync,
+            logger.clone(),
+        );
+
+        // is_behind = false, MaybeBehind --> InSync
+        next_sync_state_helper(
+            LedgerSyncState::MaybeBehind(Instant::now()), // TODO: when?
+            false,
+            Instant::now(),
+            LedgerSyncState::InSync,
+            logger.clone(),
+        );
+
+        // is_behind = false, IsBehind --> InSync
+        next_sync_state_helper(
+            LedgerSyncState::IsBehind {
+                attempt_sync_at: Instant::now(),
+                num_sync_attempts: 3,
+            }, // TODO: when?
+            false,
+            Instant::now(),
+            LedgerSyncState::InSync,
+            logger.clone(),
+        );
+
+        // is_behind = true, InSync -> MaybeBehind
+        let now = Instant::now();
+        next_sync_state_helper(
+            LedgerSyncState::InSync,
+            true,
+            now,
+            LedgerSyncState::MaybeBehind(now),
+            logger.clone(),
+        );
+
+        // is_behind = true, MaybeBehind -> MaybeBehind
+        // This happens when not enough time has elapsed since entering the MaybeBehind state.
+        let now = Instant::now();
+        next_sync_state_helper(
+            LedgerSyncState::MaybeBehind(now),
+            true,
+            now, // no time has passed
+            LedgerSyncState::MaybeBehind(now),
+            logger.clone(),
+        );
+
+        // is_behind = true, MaybeBehind -> IsBehind
+        // This happens when the grace period has elapsed since entering the MaybeBehind state.
+        let behind_since = Instant::now();
+        let now = behind_since
+            .add(IS_BEHIND_GRACE_PERIOD)
+            .add(Duration::from_secs(1));
+        next_sync_state_helper(
+            LedgerSyncState::MaybeBehind(behind_since),
+            true,
+            now, // no time has passed
+            LedgerSyncState::IsBehind {
+                attempt_sync_at: now,
+                num_sync_attempts: 0,
+            },
+            logger.clone(),
+        );
     }
 }
