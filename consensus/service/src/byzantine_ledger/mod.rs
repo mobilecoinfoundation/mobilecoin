@@ -70,7 +70,7 @@ impl ByzantineLedger {
     /// * `tx_manager` - TxManager
     /// * `broadcaster` - Broadcaster
     /// * `msg_signer_key` - Signs consensus messages issued by this node.
-    /// * `tx_source_urls` - ???
+    /// * `tx_source_urls` - Source URLs for fetching block contents.
     /// * `scp_debug_dir` - If Some, debugging info will be written in this directory.
     /// * `logger` -
     pub fn new<
@@ -113,7 +113,6 @@ impl ByzantineLedger {
         };
 
         // The worker's task queue.
-        // TODO: this should be a bounded channel.
         let (task_sender, task_receiver) =
             mc_util_metered_channel::unbounded(&counters::BYZANTINE_LEDGER_MESSAGE_QUEUE_SIZE);
 
