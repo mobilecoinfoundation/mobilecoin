@@ -1377,6 +1377,39 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         Ok(response)
     }
 
+    fn pay_address_code_impl(
+        &mut self,
+        request: mc_mobilecoind_api::PayAddressCodeRequest,
+    ) -> Result<mc_mobilecoind_api::SendPaymentResponse, RpcStatus> {
+        // Sanity check.
+        if request.get_amount() == 0 {
+            return Err(RpcStatus::new(
+                RpcStatusCode::INVALID_ARGUMENT,
+                Some("amount".to_string()),
+            ));
+        }
+
+        // Try and decode the address code.
+        let mut read_address_code_request = mc_mobilecoind_api::ReadAddressCodeRequest::new();
+        read_address_code_request.set_b58_code(request.get_receiver_b58_code().to_owned());
+        let read_address_code_response = self.read_address_code_impl(read_address_code_request)?;
+
+        // Forward to SendPayment
+        let mut outlay = mc_mobilecoind_api::Outlay::new();
+        outlay.set_value(request.get_amount());
+        outlay.set_receiver(read_address_code_response.get_receiver().clone());
+
+        let mut send_payment_request = mc_mobilecoind_api::SendPaymentRequest::new();
+        send_payment_request.set_sender_monitor_id(request.get_sender_monitor_id().to_vec());
+        send_payment_request.set_sender_subaddress(request.get_sender_subaddress());
+        send_payment_request.set_outlay_list(RepeatedField::from_vec(vec![outlay]));
+        send_payment_request.set_fee(request.get_fee());
+        send_payment_request.set_tombstone(request.get_tombstone());
+        send_payment_request.set_max_input_utxo_value(request.get_max_input_utxo_value());
+
+        self.send_payment_impl(send_payment_request)
+    }
+
     fn get_network_status_impl(
         &mut self,
         _request: mc_mobilecoind_api::Empty,
@@ -1466,6 +1499,7 @@ build_api! {
     get_processed_block GetProcessedBlockRequest GetProcessedBlockResponse get_processed_block_impl,
     get_balance GetBalanceRequest GetBalanceResponse get_balance_impl,
     send_payment SendPaymentRequest SendPaymentResponse send_payment_impl,
+    pay_address_code PayAddressCodeRequest SendPaymentResponse pay_address_code_impl,
     get_network_status Empty GetNetworkStatusResponse get_network_status_impl
 }
 
@@ -3415,6 +3449,70 @@ mod test {
         assert_eq!(
             HashSet::from_iter(selected_utxos),
             HashSet::from_iter(utxos)
+        );
+    }
+
+    #[test_with_logger]
+    fn test_pay_address_code(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        let sender = AccountKey::random(&mut rng);
+        let data = MonitorData::new(
+            sender.clone(),
+            0,  // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        // 1 known recipient, 3 random recipients and no monitors.
+        let (ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(
+                3,
+                &vec![sender.default_subaddress()],
+                &vec![],
+                logger.clone(),
+                &mut rng,
+            );
+
+        // Insert into database.
+        let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
+
+        // Allow the new monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Get list of unspent tx outs
+        let utxos = mobilecoind_db
+            .get_utxos_for_subaddress(&monitor_id, 0)
+            .unwrap();
+        assert!(!utxos.is_empty());
+
+        // Generate a random recipient.
+        let receiver = AccountKey::random(&mut rng);
+
+        // Generate b58 address code for this recipient.
+        let receiver_public_address = receiver.default_subaddress();
+        let mut wrapper = mc_mobilecoind_api::printable::PrintableWrapper::new();
+        wrapper.set_public_address((&receiver_public_address).into());
+        let b58_code = wrapper.b58_encode().unwrap();
+
+        // Call pay address code.
+        let mut request = mc_mobilecoind_api::PayAddressCodeRequest::new();
+        request.set_sender_monitor_id(monitor_id.to_vec());
+        request.set_sender_subaddress(0);
+        request.set_receiver_b58_code(b58_code);
+        request.set_amount(1234);
+
+        let response = client.pay_address_code(&request).unwrap();
+
+        // Sanity the receiver receipt.
+        assert_eq!(response.get_receiver_tx_receipt_list().len(), 1);
+
+        let receipt = &response.get_receiver_tx_receipt_list()[0];
+        assert_eq!(
+            receipt.get_recipient(),
+            &mc_mobilecoind_api::external::PublicAddress::from(&receiver_public_address)
         );
     }
 

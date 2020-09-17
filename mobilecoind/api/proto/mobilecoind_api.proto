@@ -53,6 +53,7 @@ service MobilecoindAPI {
     // Convenience calls
     rpc GetBalance (GetBalanceRequest) returns (GetBalanceResponse) {}
     rpc SendPayment (SendPaymentRequest) returns (SendPaymentResponse) {}
+    rpc PayAddressCode (PayAddressCodeRequest) returns (SendPaymentResponse) {}
 
     // Network status
     rpc GetNetworkStatus (google.protobuf.Empty) returns (GetNetworkStatusResponse) {}
@@ -622,6 +623,33 @@ message SendPaymentResponse {
     // The TxProposal that was submitted to the network. The fee that was paid can be checked at
     // tx_proposal.tx.prefix.fee
     TxProposal tx_proposal = 3;
+}
+
+// Build and submit a simple payment to an address provided by a b58 address code
+message PayAddressCodeRequest {
+    // Monitor id sending the funds.
+    bytes sender_monitor_id = 1;
+
+    // Subaddress the funds are coming from.
+    uint64 sender_subaddress = 2;
+
+    // Base-58 encoded "MobileCoin Address Code"
+    string receiver_b58_code = 3;
+
+    // Amount to pay
+    uint64 amount = 4;
+
+    // Fee in picoMOB (setting to 0 causes mobilecoind to choose a value).
+    // The value used can be checked (but not changed) in tx_proposal.tx.prefix.fee
+    uint64 fee = 5;
+
+    // Tombstone block (setting to 0 causes mobilecoind to choose a value).
+    // The value used can be checked (but not changed) in tx_proposal.tx.prefix.tombstone_block
+    uint64 tombstone = 6;
+
+    // Optional: When selecting input UTXOs for the transaction, limit selection only to UTXOs whose
+    // value is lower or equal to to this.
+    uint64 max_input_utxo_value = 7;
 }
 
 //
