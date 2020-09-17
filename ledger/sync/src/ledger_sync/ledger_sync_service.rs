@@ -5,8 +5,8 @@
 //! [`TransactionsFetcher`] object for fetching actual transaction data.
 
 use crate::{
-    ledger_sync_error::LedgerSyncError, network_state_trait::NetworkState,
-    transactions_fetcher_trait::TransactionsFetcher,
+    ledger_sync::LedgerSync, transactions_fetcher_trait::TransactionsFetcher, LedgerSyncError,
+    NetworkState,
 };
 use mc_common::{
     logger::{log, Logger},
@@ -34,27 +34,19 @@ const DEFAULT_GET_BLOCKS_TIMEOUT: Duration = Duration::from_secs(30);
 const DEFAULT_GET_TRANSACTIONS_TIMEOUT: Duration = Duration::from_secs(30);
 
 pub struct LedgerSyncService<L: Ledger, BC: BlockchainConnection, TF: TransactionsFetcher> {
-    /// Local ledger database.
     ledger: L,
-
-    /// Peer Manager.
     manager: ConnectionManager<BC>,
-
-    /// Transactions Fetcher.
     transactions_fetcher: Arc<TF>,
-
     /// Timeout for network requests.
     get_blocks_timeout: Duration,
     get_transactions_timeout: Duration,
-
-    /// Logger.
     logger: Logger,
 }
 
 impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 'static>
     LedgerSyncService<L, BC, TF>
 {
-    /// Creates a new SyncService.
+    /// Creates a new LdegerSyncService.
     pub fn new(
         ledger: L,
         manager: ConnectionManager<BC>,
@@ -76,115 +68,6 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
             get_transactions_timeout: DEFAULT_GET_TRANSACTIONS_TIMEOUT,
             logger,
         }
-    }
-
-    /// Check if our ledger is currently behind.
-    pub fn is_behind<NS: NetworkState>(&self, network_state: &NS) -> bool {
-        let num_blocks: u64 = self
-            .ledger
-            .num_blocks()
-            .expect("Failed getting number of blocks in ledger");
-
-        if num_blocks == 0 {
-            true
-        } else {
-            network_state.is_behind(num_blocks - 1)
-        }
-    }
-
-    /// Attempts to synchronize the local ledger with the consensus view of the network.
-    ///
-    /// 1. Get blocks from peers.
-    /// 2. Identify blocks that are “potentially safe”, and the peers who have them.
-    /// 3. Download transactions for “potentially safe” blocks.
-    /// 4. Identify “safe” blocks (and their transactions). Each block satisfies:
-    ///     * A sufficient set of peers have externalized the block,
-    ///     * The block is part of a blockchain of safe blocks, rooted at the highest block in the local node’s ledger,
-    ///     * The block’s ID agrees with the merkle hash of its transactions,
-    ///     * None of the key images in the block have appeared before.
-    /// 5. Append safe blocks to the ledger.
-    ///
-    /// # Arguments
-    /// * `network_state` - Current state of the network, used to determine if we're behind.
-    /// * `limit` - Maximum number of blocks to add to the ledger.
-    pub fn attempt_ledger_sync(
-        &mut self,
-        network_state: &impl NetworkState,
-        limit: u32,
-    ) -> Result<(), LedgerSyncError> {
-        let (responder_ids, _, potentially_safe_blocks) = self
-            .get_potentially_safe_blocks(network_state, limit)
-            .ok_or(LedgerSyncError::NoSafeBlocks)?;
-
-        if potentially_safe_blocks.is_empty() {
-            return Err(LedgerSyncError::EmptyBlockVec);
-        }
-
-        let num_potentially_safe_blocks = potentially_safe_blocks.len();
-
-        // Get transactions.
-        let block_index_to_opt_transactions: BTreeMap<BlockIndex, Option<BlockContents>> =
-            get_block_contents(
-                self.transactions_fetcher.clone(),
-                &responder_ids,
-                &potentially_safe_blocks,
-                self.get_transactions_timeout,
-                &self.logger,
-            );
-
-        let mut blocks_and_contents: Vec<(Block, BlockContents)> = Vec::new();
-
-        {
-            // Populate `blocks_with_transactions`. This just returns all (block, transactions) until
-            // it reaches a None.
-            let mut block_index_to_transactions: BTreeMap<BlockIndex, BlockContents> =
-                block_index_to_opt_transactions
-                    .into_iter()
-                    .take_while(|(_block_index, transactions_opt)| transactions_opt.is_some())
-                    .map(|(block_index, transactions_opt)| (block_index, transactions_opt.unwrap()))
-                    .collect();
-
-            let block_index_to_block: BTreeMap<BlockIndex, Block> = potentially_safe_blocks
-                .into_iter()
-                .map(|block| (block.index, block))
-                .collect();
-
-            // Join blocks and transactions, allowing for the possibility that transactions
-            // may not be available for some blocks due to failed network requests for transactions.
-            for (block_index, block) in block_index_to_block {
-                if let Some(block_contents) = block_index_to_transactions.remove(&block_index) {
-                    blocks_and_contents.push((block, block_contents));
-                } else {
-                    log::error!(self.logger, "No transactions for block {:?}", block);
-                    break;
-                }
-            }
-        }
-
-        if blocks_and_contents.is_empty() {
-            log::error!(
-                self.logger,
-                "Identified {} safe blocks but was unable to get block contents.",
-                num_potentially_safe_blocks,
-            );
-            return Err(LedgerSyncError::NoTransactionData);
-        }
-
-        // Process safe blocks.
-        log::trace!(
-            &self.logger,
-            "Identifying safe blocks out of {} blocks",
-            blocks_and_contents.len()
-        );
-        if let Ok(safe_blocks) =
-            identify_safe_blocks(&self.ledger, &blocks_and_contents, &self.logger)
-        {
-            self.append_safe_blocks(&safe_blocks)?;
-        } else {
-            log::info!(self.logger, "No safe blocks.");
-        }
-
-        Ok(())
     }
 
     /// Identifies Blocks that are potentially safe to append to the local ledger.
@@ -308,6 +191,123 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
 
         for (block, contents) in blocks_and_contents {
             self.ledger.append_block(block, contents, None)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl<
+        NS: NetworkState + 'static,
+        L: Ledger,
+        BC: BlockchainConnection + 'static,
+        TF: TransactionsFetcher + 'static,
+    > LedgerSync<NS> for LedgerSyncService<L, BC, TF>
+{
+    /// Returns true if the local ledger is behind the network's consensus view of the ledger.
+    fn is_behind(&self, network_state: &NS) -> bool {
+        let num_blocks: u64 = self
+            .ledger
+            .num_blocks()
+            .expect("Failed getting number of blocks in ledger");
+
+        if num_blocks == 0 {
+            true
+        } else {
+            network_state.is_behind(num_blocks - 1)
+        }
+    }
+
+    /// Attempts to synchronize the local ledger with the consensus view of the network.
+    ///
+    /// 1. Get blocks from peers.
+    /// 2. Identify blocks that are “potentially safe”, and the peers who have them.
+    /// 3. Download transactions for “potentially safe” blocks.
+    /// 4. Identify “safe” blocks (and their transactions). Each block satisfies:
+    ///     * A sufficient set of peers have externalized the block,
+    ///     * The block is part of a blockchain of safe blocks, rooted at the highest block in the local node’s ledger,
+    ///     * The block’s ID agrees with the merkle hash of its transactions,
+    ///     * None of the key images in the block have appeared before.
+    /// 5. Append safe blocks to the ledger.
+    ///
+    /// # Arguments
+    /// * `network_state` - Current state of the network, used to determine if we're behind.
+    /// * `limit` - Maximum number of blocks to add to the ledger.
+    fn attempt_ledger_sync(
+        &mut self,
+        network_state: &NS,
+        limit: u32,
+    ) -> Result<(), LedgerSyncError> {
+        let (responder_ids, _, potentially_safe_blocks) = self
+            .get_potentially_safe_blocks(network_state, limit)
+            .ok_or(LedgerSyncError::NoSafeBlocks)?;
+
+        if potentially_safe_blocks.is_empty() {
+            return Err(LedgerSyncError::EmptyBlockVec);
+        }
+
+        let num_potentially_safe_blocks = potentially_safe_blocks.len();
+
+        // Get transactions.
+        let block_index_to_opt_transactions: BTreeMap<BlockIndex, Option<BlockContents>> =
+            get_block_contents(
+                self.transactions_fetcher.clone(),
+                &responder_ids,
+                &potentially_safe_blocks,
+                self.get_transactions_timeout,
+                &self.logger,
+            );
+
+        let mut blocks_and_contents: Vec<(Block, BlockContents)> = Vec::new();
+
+        {
+            // Populate `blocks_with_transactions`. This just returns all (block, transactions) until
+            // it reaches a None.
+            let mut block_index_to_transactions: BTreeMap<BlockIndex, BlockContents> =
+                block_index_to_opt_transactions
+                    .into_iter()
+                    .take_while(|(_block_index, transactions_opt)| transactions_opt.is_some())
+                    .map(|(block_index, transactions_opt)| (block_index, transactions_opt.unwrap()))
+                    .collect();
+
+            let block_index_to_block: BTreeMap<BlockIndex, Block> = potentially_safe_blocks
+                .into_iter()
+                .map(|block| (block.index, block))
+                .collect();
+
+            // Join blocks and transactions, allowing for the possibility that transactions
+            // may not be available for some blocks due to failed network requests for transactions.
+            for (block_index, block) in block_index_to_block {
+                if let Some(block_contents) = block_index_to_transactions.remove(&block_index) {
+                    blocks_and_contents.push((block, block_contents));
+                } else {
+                    log::error!(self.logger, "No transactions for block {:?}", block);
+                    break;
+                }
+            }
+        }
+
+        if blocks_and_contents.is_empty() {
+            log::error!(
+                self.logger,
+                "Identified {} safe blocks but was unable to get block contents.",
+                num_potentially_safe_blocks,
+            );
+            return Err(LedgerSyncError::NoTransactionData);
+        }
+
+        // Process safe blocks.
+        log::trace!(
+            &self.logger,
+            "Identifying safe blocks out of {} blocks",
+            blocks_and_contents.len()
+        );
+        if let Ok(safe_blocks) =
+            identify_safe_blocks(&self.ledger, &blocks_and_contents, &self.logger)
+        {
+            self.append_safe_blocks(&safe_blocks)?;
+        } else {
+            log::info!(self.logger, "No safe blocks.");
         }
 
         Ok(())

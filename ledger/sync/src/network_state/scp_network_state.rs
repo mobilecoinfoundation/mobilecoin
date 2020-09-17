@@ -2,7 +2,7 @@
 
 //! NetworkState implementation for the `scp` module.
 
-use crate::network_state_trait::NetworkState;
+use crate::NetworkState;
 use mc_common::{
     logger::{log, Logger},
     NodeID, ResponderId,

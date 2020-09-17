@@ -3,7 +3,7 @@
 //! NetworkState implementation that polls nodes for their current state and is not part of
 //! consensus. This is currently implemented by faking SCP messages and utilizing SCPNetworkState.
 
-use crate::{network_state_trait::NetworkState, scp_network_state::SCPNetworkState};
+use crate::{NetworkState, SCPNetworkState};
 use mc_common::{
     logger::{log, Logger},
     ResponderId,

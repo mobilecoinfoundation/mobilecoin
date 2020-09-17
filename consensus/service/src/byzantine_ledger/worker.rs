@@ -19,7 +19,7 @@ use mc_connection::{
 use mc_consensus_scp::{slot::Phase, Msg, QuorumSet, ScpNode, SlotIndex};
 use mc_ledger_db::Ledger;
 use mc_ledger_sync::{
-    LedgerSyncService, NetworkState, ReqwestTransactionsFetcher, SCPNetworkState,
+    LedgerSync, LedgerSyncService, NetworkState, ReqwestTransactionsFetcher, SCPNetworkState,
 };
 use mc_peers::{
     Broadcast, ConsensusConnection, Error as PeerError, RetryableConsensusConnection,
@@ -88,7 +88,8 @@ pub struct ByzantineLedgerWorker<
     network_state: SCPNetworkState,
 
     // Ledger sync service
-    ledger_sync_service: LedgerSyncService<L, PC, ReqwestTransactionsFetcher>,
+    // ledger_sync_service: LedgerSyncService<L, PC, ReqwestTransactionsFetcher>,
+    ledger_sync_service: Box<dyn LedgerSync<SCPNetworkState>>,
 
     // Ledger sync state.
     ledger_sync_state: LedgerSyncState,
@@ -127,12 +128,12 @@ impl<
         let transactions_fetcher = ReqwestTransactionsFetcher::new(tx_source_urls, logger.clone())
             .unwrap_or_else(|e| panic!("Failed creating transaction fetcher: {:?}", e));
 
-        let ledger_sync_service = LedgerSyncService::new(
+        let ledger_sync_service = Box::new(LedgerSyncService::new(
             ledger.clone(),
             peer_manager.clone(),
             transactions_fetcher,
             logger.clone(),
-        );
+        ));
 
         let network_state = SCPNetworkState::new(node_id, quorum_set, logger.clone());
 
