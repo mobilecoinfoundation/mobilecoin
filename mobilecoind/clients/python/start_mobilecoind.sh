@@ -56,4 +56,4 @@ $TMP_DIR/mobilecoin-testnet-linux/bin/mobilecoind \
   --tx-source-url https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node2.test.mobilecoin.com/ \
   --mobilecoind-db $TMP_DIR/transaction-db \
   --listen-uri insecure-mobilecoind://127.0.0.1:4444/ \
-  --watcher-db $TMP_DIR/watcher-db 2>&1 > mobilecoind.log &
+  --watcher-db $TMP_DIR/watcher-db 2>&1 > $TMP_DIR/mobilecoind.log &
