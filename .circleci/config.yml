@@ -424,7 +424,6 @@ jobs:
 
       - check-dirty-git
 
-      - post-build
       - store_test_results:
           path: test-results
       - store_artifacts:
