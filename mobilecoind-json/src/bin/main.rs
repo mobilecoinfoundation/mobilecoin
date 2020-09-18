@@ -218,15 +218,15 @@ fn public_address(
 
 /// Generates a request code with an optional value and memo
 #[post("/codes/request", format = "json", data = "<request>")]
-fn get_request_code(
+fn create_request_code(
     state: rocket::State<State>,
-    request: Json<JsonGetRequestCodeRequest>,
-) -> Result<Json<JsonGetRequestCodeResponse>, String> {
+    request: Json<JsonCreateRequestCodeRequest>,
+) -> Result<Json<JsonCreateRequestCodeResponse>, String> {
     let receiver = mc_mobilecoind_api::external::PublicAddress::try_from(&request.receiver)
         .map_err(|err| format!("Failed to parse receiver's public address: {}", err))?;
 
     // Generate b58 code
-    let mut req = mc_mobilecoind_api::GetRequestCodeRequest::new();
+    let mut req = mc_mobilecoind_api::CreateRequestCodeRequest::new();
     req.set_receiver(receiver);
     if let Some(value) = request.value {
         req.set_value(value);
@@ -237,67 +237,67 @@ fn get_request_code(
 
     let resp = state
         .mobilecoind_api_client
-        .get_request_code(&req)
-        .map_err(|err| format!("Failed getting request code: {}", err))?;
+        .create_request_code(&req)
+        .map_err(|err| format!("Failed creating request code: {}", err))?;
 
-    Ok(Json(JsonGetRequestCodeResponse::from(&resp)))
+    Ok(Json(JsonCreateRequestCodeResponse::from(&resp)))
 }
 
 /// Retrieves the data in a request b58_code
 #[get("/codes/request/<b58_code>")]
-fn read_request_code(
+fn parse_request_code(
     state: rocket::State<State>,
     b58_code: String,
-) -> Result<Json<JsonReadRequestCodeResponse>, String> {
-    let mut req = mc_mobilecoind_api::ReadRequestCodeRequest::new();
+) -> Result<Json<JsonParseRequestCodeResponse>, String> {
+    let mut req = mc_mobilecoind_api::ParseRequestCodeRequest::new();
     req.set_b58_code(b58_code);
     let resp = state
         .mobilecoind_api_client
-        .read_request_code(&req)
-        .map_err(|err| format!("Failed reading request code: {}", err))?;
+        .parse_request_code(&req)
+        .map_err(|err| format!("Failed parsing request code: {}", err))?;
 
     // The response contains the public keys encoded in the read request, as well as a memo and
     // requested value. This can be used as-is in the transfer call below, or the value can be
     // modified.
-    Ok(Json(JsonReadRequestCodeResponse::from(&resp)))
+    Ok(Json(JsonParseRequestCodeResponse::from(&resp)))
 }
 
 /// Generates an address code
 #[post("/codes/address", format = "json", data = "<request>")]
-fn get_address_code(
+fn create_address_code(
     state: rocket::State<State>,
-    request: Json<JsonGetAddressCodeRequest>,
-) -> Result<Json<JsonGetAddressCodeResponse>, String> {
+    request: Json<JsonCreateAddressCodeRequest>,
+) -> Result<Json<JsonCreateAddressCodeResponse>, String> {
     let receiver = mc_mobilecoind_api::external::PublicAddress::try_from(&request.receiver)
         .map_err(|err| format!("Failed to parse receiver's public address: {}", err))?;
 
     // Generate b58 code
-    let mut req = mc_mobilecoind_api::GetAddressCodeRequest::new();
+    let mut req = mc_mobilecoind_api::CreateAddressCodeRequest::new();
     req.set_receiver(receiver);
 
     let resp = state
         .mobilecoind_api_client
-        .get_address_code(&req)
-        .map_err(|err| format!("Failed getting address code: {}", err))?;
+        .create_address_code(&req)
+        .map_err(|err| format!("Failed creating address code: {}", err))?;
 
-    Ok(Json(JsonGetAddressCodeResponse::from(&resp)))
+    Ok(Json(JsonCreateAddressCodeResponse::from(&resp)))
 }
 
 /// Retrieves the data in an address b58_code
 #[get("/codes/address/<b58_code>")]
-fn read_address_code(
+fn parse_address_code(
     state: rocket::State<State>,
     b58_code: String,
-) -> Result<Json<JsonReadAddressCodeResponse>, String> {
-    let mut req = mc_mobilecoind_api::ReadAddressCodeRequest::new();
+) -> Result<Json<JsonParseAddressCodeResponse>, String> {
+    let mut req = mc_mobilecoind_api::ParseAddressCodeRequest::new();
     req.set_b58_code(b58_code);
     let resp = state
         .mobilecoind_api_client
-        .read_address_code(&req)
-        .map_err(|err| format!("Failed reading address code: {}", err))?;
+        .parse_address_code(&req)
+        .map_err(|err| format!("Failed parding address code: {}", err))?;
 
     // The response contains the public keys encoded in the read request
-    Ok(Json(JsonReadAddressCodeResponse::from(&resp)))
+    Ok(Json(JsonParseAddressCodeResponse::from(&resp)))
 }
 
 /// Performs a transfer from a monitor and subaddress. The public keys and amount are in the POST data.
@@ -641,10 +641,10 @@ fn main() {
                 balance,
                 utxos,
                 public_address,
-                get_request_code,
-                read_request_code,
-                get_address_code,
-                read_address_code,
+                create_request_code,
+                parse_request_code,
+                create_address_code,
+                parse_address_code,
                 build_and_submit,
                 pay_address_code,
                 generate_request_code_transaction,

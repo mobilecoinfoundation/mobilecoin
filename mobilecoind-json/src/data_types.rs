@@ -186,19 +186,19 @@ impl From<&mc_mobilecoind_api::GetUnspentTxOutListResponse> for JsonUtxosRespons
 }
 
 #[derive(Deserialize)]
-pub struct JsonGetRequestCodeRequest {
+pub struct JsonCreateRequestCodeRequest {
     pub receiver: JsonPublicAddress,
     pub value: Option<u64>,
     pub memo: Option<String>,
 }
 
 #[derive(Serialize, Default)]
-pub struct JsonGetRequestCodeResponse {
+pub struct JsonCreateRequestCodeResponse {
     pub b58_code: String,
 }
 
-impl From<&mc_mobilecoind_api::GetRequestCodeResponse> for JsonGetRequestCodeResponse {
-    fn from(src: &mc_mobilecoind_api::GetRequestCodeResponse) -> Self {
+impl From<&mc_mobilecoind_api::CreateRequestCodeResponse> for JsonCreateRequestCodeResponse {
+    fn from(src: &mc_mobilecoind_api::CreateRequestCodeResponse) -> Self {
         Self {
             b58_code: String::from(src.get_b58_code()),
         }
@@ -268,14 +268,14 @@ impl TryFrom<&JsonPublicAddress> for PublicAddress {
 }
 
 #[derive(Deserialize, Serialize, Default)]
-pub struct JsonReadRequestCodeResponse {
+pub struct JsonParseRequestCodeResponse {
     pub receiver: JsonPublicAddress,
     pub value: String,
     pub memo: String,
 }
 
-impl From<&mc_mobilecoind_api::ReadRequestCodeResponse> for JsonReadRequestCodeResponse {
-    fn from(src: &mc_mobilecoind_api::ReadRequestCodeResponse) -> Self {
+impl From<&mc_mobilecoind_api::ParseRequestCodeResponse> for JsonParseRequestCodeResponse {
+    fn from(src: &mc_mobilecoind_api::ParseRequestCodeResponse) -> Self {
         Self {
             receiver: JsonPublicAddress::from(src.get_receiver()),
             value: src.get_value().to_string(),
@@ -285,17 +285,17 @@ impl From<&mc_mobilecoind_api::ReadRequestCodeResponse> for JsonReadRequestCodeR
 }
 
 #[derive(Deserialize)]
-pub struct JsonGetAddressCodeRequest {
+pub struct JsonCreateAddressCodeRequest {
     pub receiver: JsonPublicAddress,
 }
 
 #[derive(Serialize, Default)]
-pub struct JsonGetAddressCodeResponse {
+pub struct JsonCreateAddressCodeResponse {
     pub b58_code: String,
 }
 
-impl From<&mc_mobilecoind_api::GetAddressCodeResponse> for JsonGetAddressCodeResponse {
-    fn from(src: &mc_mobilecoind_api::GetAddressCodeResponse) -> Self {
+impl From<&mc_mobilecoind_api::CreateAddressCodeResponse> for JsonCreateAddressCodeResponse {
+    fn from(src: &mc_mobilecoind_api::CreateAddressCodeResponse) -> Self {
         Self {
             b58_code: String::from(src.get_b58_code()),
         }
@@ -303,12 +303,12 @@ impl From<&mc_mobilecoind_api::GetAddressCodeResponse> for JsonGetAddressCodeRes
 }
 
 #[derive(Deserialize, Serialize, Default)]
-pub struct JsonReadAddressCodeResponse {
+pub struct JsonParseAddressCodeResponse {
     pub receiver: JsonPublicAddress,
 }
 
-impl From<&mc_mobilecoind_api::ReadAddressCodeResponse> for JsonReadAddressCodeResponse {
-    fn from(src: &mc_mobilecoind_api::ReadAddressCodeResponse) -> Self {
+impl From<&mc_mobilecoind_api::ParseAddressCodeResponse> for JsonParseAddressCodeResponse {
+    fn from(src: &mc_mobilecoind_api::ParseAddressCodeResponse) -> Self {
         Self {
             receiver: JsonPublicAddress::from(src.get_receiver()),
         }
@@ -357,7 +357,7 @@ impl From<&mc_mobilecoind_api::ReceiverTxReceipt> for JsonReceiverTxReceipt {
 
 #[derive(Deserialize, Serialize)]
 pub struct JsonSendPaymentRequest {
-    pub request_code: JsonReadRequestCodeResponse,
+    pub request_code: JsonParseRequestCodeResponse,
     pub max_input_utxo_value: Option<String>, // String due to u64 limitation.
 }
 
@@ -901,7 +901,7 @@ impl TryFrom<&JsonTxProposal> for mc_mobilecoind_api::TxProposal {
 #[derive(Deserialize, Serialize)]
 pub struct JsonCreateTxProposalRequest {
     pub input_list: Vec<JsonUnspentTxOut>,
-    pub transfer: JsonReadRequestCodeResponse,
+    pub transfer: JsonParseRequestCodeResponse,
 }
 
 #[derive(Deserialize, Serialize)]

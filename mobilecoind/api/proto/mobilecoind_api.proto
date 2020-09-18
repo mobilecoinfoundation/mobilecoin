@@ -28,12 +28,12 @@ service MobilecoindAPI {
     rpc GetPublicAddress (GetPublicAddressRequest) returns (GetPublicAddressResponse) {}
 
     // b58 Codes
-    rpc ReadRequestCode (ReadRequestCodeRequest) returns (ReadRequestCodeResponse) {}
-    rpc GetRequestCode (GetRequestCodeRequest) returns (GetRequestCodeResponse) {}
-    rpc ReadTransferCode (ReadTransferCodeRequest) returns (ReadTransferCodeResponse) {}
-    rpc GetTransferCode (GetTransferCodeRequest) returns (GetTransferCodeResponse) {}
-    rpc ReadAddressCode (ReadAddressCodeRequest) returns (ReadAddressCodeResponse) {}
-    rpc GetAddressCode (GetAddressCodeRequest) returns (GetAddressCodeResponse) {}
+    rpc ParseRequestCode (ParseRequestCodeRequest) returns (ParseRequestCodeResponse) {}
+    rpc CreateRequestCode (CreateRequestCodeRequest) returns (CreateRequestCodeResponse) {}
+    rpc ParseTransferCode (ParseTransferCodeRequest) returns (ParseTransferCodeResponse) {}
+    rpc CreateTransferCode (CreateTransferCodeRequest) returns (CreateTransferCodeResponse) {}
+    rpc ParseAddressCode (ParseAddressCodeRequest) returns (ParseAddressCodeResponse) {}
+    rpc CreateAddressCode (CreateAddressCodeRequest) returns (CreateAddressCodeResponse) {}
 
     // Txs
     rpc GenerateTx (GenerateTxRequest) returns (GenerateTxResponse) {}
@@ -224,7 +224,7 @@ message ProcessedTxOut {
 
     // Whether the TxOut was received (deposit to subaddress) or spent (withdrawal from subaddress).
     ProcessedTxOutDirection direction = 6;
-    
+
     // The b58-encoded Address Code for the subaddress that owns the TxOut.
     string address_code = 7;
 }
@@ -322,31 +322,31 @@ message GetPublicAddressResponse {
 //
 
 // Decode a base-58 encoded "MobileCoin Request Code" into receiver's public address, value, and memo.
-message ReadRequestCodeRequest {
+message ParseRequestCodeRequest {
     string b58_code = 1;
 }
-message ReadRequestCodeResponse {
+message ParseRequestCodeResponse {
     external.PublicAddress receiver = 1;
     uint64 value = 2;
     string memo = 3;
 }
 
 // Encode receiver's public address, value, and memo into a base-58 "MobileCoin Request Code".
-message GetRequestCodeRequest {
+message CreateRequestCodeRequest {
     external.PublicAddress receiver = 1;
     uint64 value = 2;
     string memo = 3;
 }
-message GetRequestCodeResponse {
+message CreateRequestCodeResponse {
     string b58_code = 1;
 }
 
 // Decode a base-58 encoded "MobileCoin Transfer Code" into entropy/tx_public_key/memo.
 // This code provides a mobile client with everything required to construct a self-payment, allowing funds to be withdrawn from a gift card.
-message ReadTransferCodeRequest {
+message ParseTransferCodeRequest {
     string b58_code = 1;
 }
-message ReadTransferCodeResponse {
+message ParseTransferCodeResponse {
     bytes entropy = 1;
     external.CompressedRistretto tx_public_key = 2;
     string memo = 3;
@@ -354,28 +354,28 @@ message ReadTransferCodeResponse {
 }
 
 // Encode entropy/tx_public_key/memo into a base-58 "MobileCoin Transfer Code".
-message GetTransferCodeRequest {
+message CreateTransferCodeRequest {
     bytes entropy = 1;
     external.CompressedRistretto tx_public_key = 2;
     string memo = 3;
 }
-message GetTransferCodeResponse {
+message CreateTransferCodeResponse {
     string b58_code = 1;
 }
 
 // Decode a base-58 encoded "MobileCoin Address Code" into the receiver's public address.
-message ReadAddressCodeRequest {
+message ParseAddressCodeRequest {
     string b58_code = 1;
 }
-message ReadAddressCodeResponse {
+message ParseAddressCodeResponse {
     external.PublicAddress receiver = 1;
 }
 
 // Encode receiver's public address into a base-58 "MobileCoin Address Code".
-message GetAddressCodeRequest {
+message CreateAddressCodeRequest {
     external.PublicAddress receiver = 1;
 }
-message GetAddressCodeResponse {
+message CreateAddressCodeResponse {
     string b58_code = 1;
 }
 
