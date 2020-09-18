@@ -217,13 +217,7 @@ impl<
             }
 
             // (7) IsBehind --> InSync
-            (
-                LedgerSyncState::IsBehind {
-                    attempt_sync_at: _,
-                    num_sync_attempts: _,
-                },
-                LedgerSyncState::InSync,
-            ) => {
+            (LedgerSyncState::IsBehind { .. }, LedgerSyncState::InSync) => {
                 self.is_behind.store(false, Ordering::SeqCst);
                 self.current_slot_index = self.ledger.num_blocks().unwrap();
                 log::info!(
