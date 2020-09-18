@@ -306,7 +306,7 @@ fn read_address_code(
     format = "json",
     data = "<transfer>"
 )]
-fn transfer(
+fn build_and_submit(
     state: rocket::State<State>,
     monitor_hex: String,
     subaddress_index: u64,
@@ -346,6 +346,52 @@ fn transfer(
     let resp = state
         .mobilecoind_api_client
         .send_payment(&req)
+        .map_err(|err| format!("Failed to send payment: {}", err))?;
+
+    // The receipt from the payment request can be used by the status check below
+    Ok(Json(JsonSendPaymentResponse::from(&resp)))
+}
+
+/// Performs a transfer from a monitor and subaddress to a given address code/amount.
+#[post(
+    "/monitors/<monitor_hex>/subaddresses/<subaddress_index>/pay-address-code",
+    format = "json",
+    data = "<transfer>"
+)]
+fn pay_address_code(
+    state: rocket::State<State>,
+    monitor_hex: String,
+    subaddress_index: u64,
+    transfer: Json<JsonPayAddressCodeRequest>,
+) -> Result<Json<JsonSendPaymentResponse>, String> {
+    let monitor_id =
+        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
+
+    // Get amount.
+    let amount = transfer
+        .amount
+        .parse::<u64>()
+        .map_err(|err| format!("Failed parsing amount: {}", err))?;
+
+    // Get max_input_utxo_value.
+    let max_input_utxo_value = transfer
+        .max_input_utxo_value
+        .clone()
+        .unwrap_or_else(|| "0".to_owned()) // A value of 0 disables the max limit.
+        .parse::<u64>()
+        .map_err(|err| format!("Failed to parse max_input_utxo_value: {}", err))?;
+
+    // Send the pay address code request
+    let mut req = mc_mobilecoind_api::PayAddressCodeRequest::new();
+    req.set_sender_monitor_id(monitor_id);
+    req.set_sender_subaddress(subaddress_index);
+    req.set_receiver_b58_code(transfer.receiver_b58_code.clone());
+    req.set_amount(amount);
+    req.set_max_input_utxo_value(max_input_utxo_value);
+
+    let resp = state
+        .mobilecoind_api_client
+        .pay_address_code(&req)
         .map_err(|err| format!("Failed to send payment: {}", err))?;
 
     // The receipt from the payment request can be used by the status check below
@@ -599,7 +645,8 @@ fn main() {
                 read_request_code,
                 get_address_code,
                 read_address_code,
-                transfer,
+                build_and_submit,
+                pay_address_code,
                 generate_request_code_transaction,
                 submit_tx,
                 check_transfer_status,

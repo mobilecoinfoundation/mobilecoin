@@ -389,7 +389,7 @@ impl<
             byzantine_ledger.upgrade().and_then(|ledger| {
                 ledger
                     .get()
-                    .and_then(|ledger| ledger.get_highest_scp_message())
+                    .and_then(|ledger| ledger.get_highest_issued_message())
             })
         });
 

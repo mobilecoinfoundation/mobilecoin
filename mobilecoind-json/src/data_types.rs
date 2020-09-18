@@ -381,6 +381,13 @@ impl From<&mc_mobilecoind_api::SendPaymentResponse> for JsonSendPaymentResponse 
 }
 
 #[derive(Deserialize, Serialize)]
+pub struct JsonPayAddressCodeRequest {
+    pub receiver_b58_code: String,
+    pub amount: String,
+    pub max_input_utxo_value: Option<String>,
+}
+
+#[derive(Deserialize, Serialize)]
 pub struct JsonOutlay {
     pub value: String,
     pub receiver: JsonPublicAddress,
