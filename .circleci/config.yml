@@ -55,7 +55,7 @@ commands:
             cargo --version
             rustup --version
             sccache --version
-            command -v jq >/dev/null && jq --version
+            command -v jq >/dev/null && jq --version || true
 
   env_setup:
     description: Environment Setup
