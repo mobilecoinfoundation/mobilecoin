@@ -24,7 +24,6 @@ defaults:
     SGX_MODE: SW
     RUST_BACKTRACE: "1"
     SKIP_SLOW_TESTS: "1"
-    CARGO_INCREMENTAL: "0"
 
 executors:
   build-executor:
@@ -85,6 +84,9 @@ commands:
             echo 'export RUSTC_WRAPPER=sccache' >> $BASH_ENV
             echo 'export CMAKE_C_COMPILER_LAUNCHER=sccache' >> $BASH_ENV
             echo 'export CMAKE_CXX_COMPILER_LAUNCHER=sccache' >> $BASH_ENV
+
+            # Sccache doesn't support incremental building
+            echo 'export CARGO_INCREMENTAL=0' >> $BASH_ENV
 
             # Set cache dir explicitly so that all platforms use the same location
             echo 'export SCCACHE_DIR=$HOME/.cache/sccache' >> $BASH_ENV
