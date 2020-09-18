@@ -464,7 +464,6 @@ jobs:
             SGX_MODE: HW
             IAS_MODE: PROD
           command: cargo check --frozen --target "$HOST_TARGET_TRIPLE"
-      - check-dirty-git
 
       # The lint and saving of caches happens here since this job is faster than the run-tests job.
       # This results in shorter CI times.
@@ -477,6 +476,7 @@ jobs:
           command: |
             cargo doc --no-deps
             tar -C target -czvf /tmp/doc.tgz doc/
+      - check-dirty-git
       - when:
           condition: { equal: [ << pipeline.git.branch >>, master ] }
           steps: [ save-cargo-cache, save-sccache-cache ]
