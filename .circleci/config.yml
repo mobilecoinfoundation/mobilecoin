@@ -524,6 +524,12 @@ workflows:
   # Build and run tests on a single container
   build-and-run-tests:
     jobs:
+      # Build and run tests in parallel - not needed at the moment since the test suite is fast enough.
+      # - build-parallel-tests
+      # - run-parallel-tests:
+      #     requires:
+      #       - build-parallel-tests
+
       # Run tests on a single container
       - run-tests
 
@@ -532,11 +538,3 @@ workflows:
 
       # Build using macOS
       - build-all-macos
-
-  # Build and run tests in parallel - not needed at the moment since the test suite is fast enough.
-  # build-and-run-tests:
-  #   jobs:
-  #     - build-parallel-tests
-  #     - run-parallel-tests:
-  #         requires:
-  #           - build-parallel-tests
