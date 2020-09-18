@@ -223,7 +223,7 @@ class Client(object):
         return response.tx_proposal, response.entropy
 
     def generate_tx_from_tx_out_list(self, account_key, input_list, receiver, fee):
-        request = api.GenerateTxFromTxOutListRequest(
+        request = GenerateTxFromTxOutListRequest(
             account_key=account_key,
             input_list=input_list,
             receiver=receiver,
