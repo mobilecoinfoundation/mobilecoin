@@ -176,149 +176,139 @@ impl<
             return false;
         }
 
-        // Update ledger_sync_state.
-        let sync_service_is_behind = self.ledger_sync_service.is_behind(&self.network_state);
-        match (self.ledger_sync_state.clone(), sync_service_is_behind) {
-            // Fully in sync, nothing to do.
-            (LedgerSyncState::InSync, false) => {}
+        // Advance the "sync state" state machine.
+        let previous_sync_state = {
+            let next_state = self.next_sync_state(Instant::now());
+            std::mem::replace(&mut self.ledger_sync_state, next_state)
+        };
+        let mut should_sync = false;
+        match (previous_sync_state, &self.ledger_sync_state) {
+            // (1) InSync --> InSync
+            (LedgerSyncState::InSync, LedgerSyncState::InSync) => {} // Nothing to do.
 
-            // Sync service reports we're behind and we are just finding out about it now.
-            (LedgerSyncState::InSync, true) => {
-                log::info!(self.logger, "sync_service reported we are behind, we're at slot {} and network state is {:?}", self.current_slot_index, self.network_state.peer_to_current_slot());
-                self.ledger_sync_state = LedgerSyncState::MaybeBehind(Instant::now());
-            }
-
-            // Sync service reports we're behind and we're maybe behind, see if enough time has
-            // passed to move to IsBehind.
-            (LedgerSyncState::MaybeBehind(behind_since), true) => {
-                let is_behind_duration = Instant::now() - behind_since;
-                if is_behind_duration > IS_BEHIND_GRACE_PERIOD {
-                    log::warn!(
-                        self.logger,
-                        "sync_service reports we are behind, and we are past the grace period on slot {}!",
-                        self.current_slot_index,
-                    );
-                    counters::CATCHUP_INITIATED.inc();
-                    self.is_behind.store(true, Ordering::SeqCst);
-                    self.ledger_sync_state = LedgerSyncState::IsBehind {
-                        attempt_sync_at: Instant::now(),
-                        num_sync_attempts: 0,
-                    };
-
-                    // Continue on the next tick.
-                    return true;
-                }
-            }
-
-            // We think we might be behind but sync service reports we're good.
-            (LedgerSyncState::MaybeBehind(_), false) => {
-                self.ledger_sync_state = LedgerSyncState::InSync;
+            // (2) InSync --> MaybeBehind
+            (LedgerSyncState::InSync, LedgerSyncState::MaybeBehind(_)) => {
                 log::info!(
                     self.logger,
-                    "sync_service reported we're maybe behind but we caught up!"
+                    "InSync --> MaybeBehind. Slot: {}, network state: {:?}",
+                    self.current_slot_index,
+                    self.network_state.peer_to_current_slot()
                 );
             }
 
-            // We think we're behind and sync service confirms that, attempt to sync.
+            // (3) InSync --> IsBehind
+            (LedgerSyncState::InSync, LedgerSyncState::IsBehind { .. }) => {
+                panic!("InSync --> IsBehind transition is not allowed.")
+            }
+
+            // (4) MaybeBehind --> InSync
+            (LedgerSyncState::MaybeBehind(_), LedgerSyncState::InSync) => {
+                log::info!(self.logger, "MaybeBehind --> InSync");
+            }
+
+            // (5) MaybeBehind --> MaybeBehind
+            (LedgerSyncState::MaybeBehind(_), LedgerSyncState::MaybeBehind(_)) => {} // Nothing to do.
+
+            // (6) MaybeBehind --> IsBehind
+            (LedgerSyncState::MaybeBehind(_), LedgerSyncState::IsBehind { .. }) => {
+                log::info!(self.logger, "MaybeBehind --> IsBehind");
+                self.is_behind.store(true, Ordering::SeqCst);
+                should_sync = true;
+            }
+
+            // (7) IsBehind --> InSync
             (
                 LedgerSyncState::IsBehind {
-                    attempt_sync_at,
-                    num_sync_attempts,
+                    attempt_sync_at: _,
+                    num_sync_attempts: _,
                 },
-                true,
+                LedgerSyncState::InSync,
             ) => {
-                // See if it's time to attempt syncing.
-                let now = Instant::now();
-                if attempt_sync_at > now {
-                    // Not yet. Continue on to the next tick and then try again. We sleep here to
-                    // throttle the event loop as it won't be doing anything until we reach the next
-                    // attempt_sync_at milestone.
-                    log::trace!(
-                        self.logger,
-                        "sync_service reported we're behind, but deadline {:?} not reached yet (attempt {})!",
-                        attempt_sync_at,
-                        num_sync_attempts,
-                    );
-
-                    thread::sleep(Duration::from_secs(1));
-                    return true;
-                }
-
+                self.is_behind.store(false, Ordering::SeqCst);
+                self.current_slot_index = self.ledger.num_blocks().unwrap();
                 log::info!(
                     self.logger,
-                    "sync_service reported we're behind, attempting catchup (attempt {})!",
-                    num_sync_attempts,
+                    "IsBehind --> InSync. Slot {}",
+                    &self.current_slot_index
                 );
 
-                // Attempt incremental catch-up.
-                let blocks_per_attempt = 100;
-                if let Err(err) = self
-                    .ledger_sync_service
-                    .attempt_ledger_sync(&self.network_state, blocks_per_attempt)
-                {
-                    log::warn!(self.logger, "Could not sync ledger: {:?}", err);
-
-                    // The next time we attempt to sync is a linear back-off based on how many
-                    // attempts we've done so far, capped at 60 seconds.
-                    let next_sync_at = now + Duration::from_secs(min(num_sync_attempts + 1, 60));
-                    self.ledger_sync_state = LedgerSyncState::IsBehind {
-                        attempt_sync_at: next_sync_at,
-                        num_sync_attempts: num_sync_attempts + 1,
-                    };
-                } else {
-                    // We successfully synced a chunk of blocks, so reset our attempts to zero for the next chunk.
-                    self.ledger_sync_state = LedgerSyncState::IsBehind {
-                        attempt_sync_at,
-                        num_sync_attempts: 0,
-                    };
-                }
-
-                // Continue on the next tick.
-                return true;
-            }
-
-            // We think we're behind but sync service indicates we're back to being in sync.
-            (LedgerSyncState::IsBehind { .. }, false) => {
-                log::info!(self.logger, "sync_service reports we are no longer behind!");
-
+                self.scp_node.reset_slot_index(self.current_slot_index);
                 // Clear any pending values that might no longer be valid.
-                let tx_manager = self.tx_manager.clone();
-                self.pending_values_map
-                    .retain(|tx_hash, _| tx_manager.validate(tx_hash).is_ok());
-                // help the borrow checker
-                let self_pending_values_map = &self.pending_values_map;
-                self.pending_values
-                    .retain(|tx_hash| self_pending_values_map.contains_key(tx_hash));
-
-                debug_assert!(self.pending_values_map.len() == self.pending_values.len());
-
-                // Nominate if needed.
+                self.update_pending_values();
                 if !self.pending_values.is_empty() {
+                    // These values should be proposed for nomination.
                     self.need_nominate = true;
                 }
-
-                // Update state.
-                self.is_behind.store(false, Ordering::SeqCst);
-                self.ledger_sync_state = LedgerSyncState::InSync;
-                self.current_slot_index = self.ledger.num_blocks().unwrap();
-
-                // Reset scp state.
-                self.scp_node.reset_slot_index(self.current_slot_index);
             }
-        };
 
-        // Sanity - code here should never run if we're behind.
-        assert!(!self.is_behind.load(Ordering::SeqCst));
-        if let LedgerSyncState::IsBehind { .. } = &self.ledger_sync_state {
-            unreachable!();
+            // (8) IsBehind --> MaybeBehind
+            (LedgerSyncState::IsBehind { .. }, LedgerSyncState::MaybeBehind(_)) => {
+                panic!("IsBehind --> MaybeBehind transition is not allowed.")
+            }
+
+            // (9) IsBehind --> IsBehind
+            (
+                LedgerSyncState::IsBehind { .. },
+                LedgerSyncState::IsBehind {
+                    attempt_sync_at, ..
+                },
+            ) => {
+                let now = Instant::now();
+                if now >= *attempt_sync_at {
+                    should_sync = true;
+                } else {
+                    // Not yet time to attempt sync.
+                    thread::sleep(Duration::from_millis(100));
+                }
+            }
         }
+
+        if should_sync {
+            // Incrementally sync the ledger.
+            let blocks_per_attempt = 100;
+            let num_sync_attempts = if let LedgerSyncState::IsBehind {
+                num_sync_attempts, ..
+            } = &self.ledger_sync_state
+            {
+                *num_sync_attempts
+            } else {
+                panic!("Attempted to sync when not behind?");
+            };
+            let now = Instant::now();
+            if let Err(err) = self
+                .ledger_sync_service
+                .attempt_ledger_sync(&self.network_state, blocks_per_attempt)
+            {
+                log::warn!(self.logger, "Could not sync ledger: {:?}", err);
+                // Reattempt with capped linear backoff.
+                let next_sync_at = now + Duration::from_secs(min(num_sync_attempts + 1, 60));
+                self.ledger_sync_state = LedgerSyncState::IsBehind {
+                    attempt_sync_at: next_sync_at,
+                    num_sync_attempts: num_sync_attempts + 1,
+                };
+            } else {
+                // Synced a chunk of blocks. Reset our attempts to zero for the next chunk.
+                self.ledger_sync_state = LedgerSyncState::IsBehind {
+                    attempt_sync_at: now,
+                    num_sync_attempts: 0,
+                };
+            }
+            // Continue on the next tick
+            return true;
+        }
+
+        if let LedgerSyncState::IsBehind { .. } = &self.ledger_sync_state {
+            // Still behind. Stop here and continue on next tick.
+            return true;
+        }
+        assert!(!self.is_behind.load(Ordering::SeqCst));
 
         // Nominate values for current slot.
         if self.need_nominate {
             self.nominate_pending_values();
         }
 
-        // Process any queues consensus messages.
+        // Process any queued consensus messages.
         self.process_consensus_msgs();
 
         // Process SCP timeouts.
@@ -340,7 +330,7 @@ impl<
         true
     }
 
-    #[allow(unused)]
+    /// The next LedgerSyncState to transition to.
     fn next_sync_state(&self, now: Instant) -> LedgerSyncState {
         if !self.ledger_sync_service.is_behind(&self.network_state) {
             // SyncService reports that we are in sync.
@@ -373,6 +363,19 @@ impl<
                 }
             }
         }
+    }
+
+    /// Clear any pending values that might no longer be valid.
+    fn update_pending_values(&mut self) {
+        let tx_manager = self.tx_manager.clone();
+        self.pending_values_map
+            .retain(|tx_hash, _| tx_manager.validate(tx_hash).is_ok());
+        // (Help the borrow checker)
+        let self_pending_values_map = &self.pending_values_map;
+        self.pending_values
+            .retain(|tx_hash| self_pending_values_map.contains_key(tx_hash));
+
+        debug_assert!(self.pending_values_map.len() == self.pending_values.len());
     }
 
     // Reads tasks from the task queue.
