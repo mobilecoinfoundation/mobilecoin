@@ -128,48 +128,48 @@ class Client(object):
             monitor_id=monitor_id, subaddress_index=int(subaddress_index))
         return self.stub.GetPublicAddress(request).public_address
 
-    def read_address_code(self, b58_code):
-        """ Read a b58 encoded public address
+    def parse_address_code(self, b58_code):
+        """ Parse a b58 encoded public address
         """
-        request = ReadAddressCodeRequest(b58_code=b58_code)
-        response = self.stub.ReadAddressCode(request)
+        request = ParseAddressCodeRequest(b58_code=b58_code)
+        response = self.stub.ParseAddressCode(request)
         return response.receiver
 
-    def get_address_code(self, receiver):
+    def create_address_code(self, receiver):
         """ Create a b58 encoding for a public address
         """
-        request = GetAddressCodeRequest(receiver=receiver)
-        return self.stub.GetAddressCode(request).b58_code
+        request = CreateAddressCodeRequest(receiver=receiver)
+        return self.stub.CreateAddressCode(request).b58_code
 
-    def read_request_code(self, b58_code):
-        """ Process a b58 request code to recover content.
+    def parse_request_code(self, b58_code):
+        """ Parse a b58 request code to recover content.
         """
-        request = ReadRequestCodeRequest(b58_code=b58_code)
-        response = self.stub.ReadRequestCode(request)
+        request = ParseRequestCodeRequest(b58_code=b58_code)
+        response = self.stub.ParseRequestCode(request)
         return response.receiver, response.value, response.memo
 
-    def get_request_code(self, receiver, value=0, memo=""):
-        """ Prepare a "request code" used to generate a QR code for wallet apps.
+    def create_request_code(self, receiver, value=0, memo=""):
+        """ Create a "request code" used to generate a QR code for wallet apps.
         """
-        request = GetRequestCodeRequest(receiver=receiver,
-                                            value=value,
-                                            memo=memo)
-        return self.stub.GetRequestCode(request).b58_code
+        request = CreateRequestCodeRequest(receiver=receiver,
+                                           value=value,
+                                           memo=memo)
+        return self.stub.CreateRequestCode(request).b58_code
 
-    def read_transfer_code(self, b58_code):
-        """ Process a b58 transfer code to recover content.
+    def parse_transfer_code(self, b58_code):
+        """ Parse a b58 transfer code to recover content.
         """
-        request = ReadTransferCodeRequest(b58_code=b58_code)
-        response = self.stub.ReadTransferCode(request)
+        request = ParseTransferCodeRequest(b58_code=b58_code)
+        response = self.stub.ParseTransferCode(request)
         return response
 
-    def get_transfer_code(self, entropy, tx_public_key, memo=""):
-        """ Prepare a "transfer code" used to generate a QR code for wallet apps.
+    def crate_transfer_code(self, entropy, tx_public_key, memo=""):
+        """ Create a "transfer code" used to generate a QR code for wallet apps.
         """
-        request = GetTransferCodeRequest(entropy=entropy,
+        request = CreateTransferCodeRequest(entropy=entropy,
                                              tx_public_key=tx_public_key,
                                              memo=memo)
-        return self.stub.GetTransferCode(request).b58_code
+        return self.stub.CreateTransferCode(request).b58_code
 
     #
     # Transactions
