@@ -5,9 +5,9 @@
 [PyPi Tutorials](https://packaging.python.org/tutorials/)
 [Setup Tool Docs](https://setuptools.readthedocs.io/en/latest/setuptools.html#developer-s-guide)
 
-### API Key
+### Set the PyPi API key
 
-Create a the file `~/.pypirc`
+Create the file `~/.pypirc` with content:
 ```
 [distutils]
 index-servers =
@@ -17,10 +17,15 @@ index-servers =
   username = __token__
   password = << token created at pypi account page >>
 ```
+### Compile, package, and deploy
 
-### Package and deploy
+from `./lib/mobilecoin`
+
+1. run `compile_proto.sh`
+1. `sed -i -E 's/^import.*_pb2/from . \0/' *.py` or manually edit files, changing all `import *_pb2` to `from . import *_pb2`
 
 from `./lib`
 
+1. bump version in setup.py
 1. `python3 setup.py sdist bdist_wheel`
 1. `python3 -m twine upload --repository pypi dist/*`
