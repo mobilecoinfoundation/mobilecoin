@@ -6,8 +6,8 @@ pub mod anonymous_authenticator;
 pub mod token_authenticator;
 
 use displaydoc::Display;
-use grpcio::Metadata;
-use std::{ops::Deref, str};
+use grpcio::{Metadata, RpcContext, RpcStatus, RpcStatusCode};
+use std::str;
 
 /// Error values for authentication.
 #[derive(Display, Debug)]
@@ -21,8 +21,26 @@ pub enum AuthenticatorError {
     /// Expired user authorization token
     ExpiredAuthorizationToken,
 
+    /// Authorization header error: {0}
+    AuthorizationHeader(AuthorizationHeaderError),
+
     /// Other: {0}
     Other(String),
+}
+
+impl From<AuthorizationHeaderError> for AuthenticatorError {
+    fn from(src: AuthorizationHeaderError) -> Self {
+        Self::AuthorizationHeader(src)
+    }
+}
+
+impl<T> Into<Result<T, RpcStatus>> for AuthenticatorError {
+    fn into(self) -> Result<T, RpcStatus> {
+        Err(RpcStatus::new(
+            RpcStatusCode::UNAUTHENTICATED,
+            Some(self.to_string()),
+        ))
+    }
 }
 
 /// Interface for performing an authentication using `BasicCredentials`, resulting in a String
@@ -32,6 +50,26 @@ pub trait Authenticator {
         &self,
         maybe_credentials: Option<BasicCredentials>,
     ) -> Result<String, AuthenticatorError>;
+
+    fn authenticate_metadata(&self, metadata: &Metadata) -> Result<String, AuthenticatorError> {
+        let creds = metadata
+            .iter()
+            .find_map(|(key, value)| {
+                if key.to_lowercase() == "authorization" {
+                    Some(value)
+                } else {
+                    None
+                }
+            })
+            .map(BasicCredentials::try_from)
+            .transpose()?;
+
+        Ok(self.authenticate(creds)?)
+    }
+
+    fn authenticate_rpc(&self, context: &RpcContext) -> Result<String, AuthenticatorError> {
+        self.authenticate_metadata(context.request_headers())
+    }
 }
 
 /// Standard username/password credentials.
@@ -111,49 +149,6 @@ impl BasicCredentials {
     }
 }
 
-/// Error values for the `authorize` helper method.
-#[derive(Display, Debug)]
-pub enum AuthorizeError {
-    /// Authentication error: {0}
-    Authentication(AuthenticatorError),
-
-    /// Authorization header error: {0},
-    AuthorizationHeader(AuthorizationHeaderError),
-}
-
-impl From<AuthenticatorError> for AuthorizeError {
-    fn from(src: AuthenticatorError) -> Self {
-        Self::Authentication(src)
-    }
-}
-
-impl From<AuthorizationHeaderError> for AuthorizeError {
-    fn from(src: AuthorizationHeaderError) -> Self {
-        Self::AuthorizationHeader(src)
-    }
-}
-
-/// A utility method for performing authorization using the HTTP Authorization header in an
-/// `Metadata` object.
-pub fn authorize<Auth: Authenticator>(
-    authenticator: impl Deref<Target = Auth>,
-    metadata: &Metadata,
-) -> Result<String, AuthorizeError> {
-    let creds = metadata
-        .iter()
-        .find_map(|(key, value)| {
-            if key.to_lowercase() == "authorization" {
-                Some(value)
-            } else {
-                None
-            }
-        })
-        .map(BasicCredentials::try_from)
-        .transpose()?;
-
-    Ok(authenticator.authenticate(creds)?)
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -162,18 +157,22 @@ mod test {
     use token_authenticator::{TokenAuthenticator, TokenBasicCredentialsGenerator};
 
     #[test]
-    fn authorize_anonymous() {
+    fn authenticate_anonymous() {
         let authenticator = AnonymousAuthenticator::default();
 
         // Authorizing without any headers should work.
         let metadata = MetadataBuilder::new().build();
-        let user = authorize(&authenticator, &metadata).expect("authorize failed");
+        let user = authenticator
+            .authenticate_metadata(&metadata)
+            .expect("authenticate failed");
         assert_eq!(user, ANONYMOUS_USER);
 
         // Authorizing with an unrelated header should work.
         let mut metadata_builder = MetadataBuilder::new();
         metadata_builder.add_str("test", "header").unwrap();
-        let user = authorize(&authenticator, &metadata_builder.build()).expect("authorize failed");
+        let user = authenticator
+            .authenticate_metadata(&metadata_builder.build())
+            .expect("authenticate failed");
         assert_eq!(user, ANONYMOUS_USER);
 
         // Authorizing with an invalid Authorization header should fail.
@@ -188,7 +187,10 @@ mod test {
             metadata_builder
                 .add_str("Authorization", test_header_value)
                 .unwrap();
-            if authorize(&authenticator, &metadata_builder.build()).is_ok() {
+            if authenticator
+                .authenticate_metadata(&metadata_builder.build())
+                .is_ok()
+            {
                 panic!("Unexpected success with header {:?}", test_header_value);
             }
         }
@@ -198,19 +200,21 @@ mod test {
         metadata_builder
             .add_str("Authorization", "Basic YTpi")
             .unwrap();
-        let user = authorize(&authenticator, &metadata_builder.build()).expect("authorize failed");
+        let user = authenticator
+            .authenticate_metadata(&metadata_builder.build())
+            .expect("authenticate failed");
         assert_eq!(user, ANONYMOUS_USER);
     }
 
     #[test]
-    fn authorize_token() {
+    fn authenticate_token() {
         let shared_secret = [66; 32];
         let authenticator = TokenAuthenticator::new(shared_secret.clone());
         const TEST_USERNAME: &str = "user123";
 
         // Authorizing without any headers should fail.
         let metadata = MetadataBuilder::new().build();
-        assert!(authorize(&authenticator, &metadata).is_err());
+        assert!(authenticator.authenticate_metadata(&metadata).is_err());
 
         // Authorizing with an invalid Authorization header should fail.
         for test_header_value in &[
@@ -224,7 +228,10 @@ mod test {
             metadata_builder
                 .add_str("Authorization", test_header_value)
                 .unwrap();
-            if authorize(&authenticator, &metadata_builder.build()).is_ok() {
+            if authenticator
+                .authenticate_metadata(&metadata_builder.build())
+                .is_ok()
+            {
                 panic!("Unexpected success with header {:?}", test_header_value);
             }
         }
@@ -239,8 +246,9 @@ mod test {
         metadata_builder
             .add_str("Authorization", &creds.authorization_header())
             .unwrap();
-        let username =
-            authorize(&authenticator, &metadata_builder.build()).expect("authorize failed");
+        let username = authenticator
+            .authenticate_metadata(&metadata_builder.build())
+            .expect("authenticate failed");
         assert_eq!(username, TEST_USERNAME);
     }
 }

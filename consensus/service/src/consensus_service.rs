@@ -27,6 +27,7 @@ use mc_peers::{PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
 use mc_sgx_report_cache_untrusted::{Error as ReportCacheError, ReportCacheThread};
 use mc_transaction_core::tx::TxHash;
 use mc_util_grpc::{
+    auth::{anonymous_authenticator::AnonymousAuthenticator, Authenticator},
     AdminServer, BuildInfoService, ConnectionUriGrpcioServer, GetConfigJsonFn, HealthCheckStatus,
     HealthService,
 };
@@ -289,6 +290,9 @@ impl<
         );
 
         // Setup GRPC services.
+        let authenticator: Arc<dyn Authenticator + Send + Sync> =
+            Arc::new(AnonymousAuthenticator::default());
+
         let client_service = consensus_client_grpc::create_consensus_client_api(
             client_api_service::ClientApiService::new(
                 Arc::new(self.enclave.clone()),
@@ -296,6 +300,7 @@ impl<
                 Arc::new(self.ledger_db.clone()),
                 self.tx_manager.clone(),
                 self.create_is_serving_user_requests_fn(),
+                authenticator,
                 self.logger.clone(),
             ),
         );

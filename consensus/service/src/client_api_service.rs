@@ -17,7 +17,7 @@ use mc_consensus_api::{
 };
 use mc_consensus_enclave::ConsensusEnclave;
 use mc_ledger_db::Ledger;
-use mc_util_grpc::{rpc_logger, send_result};
+use mc_util_grpc::{auth::Authenticator, rpc_logger, send_result};
 use mc_util_metrics::{self, SVC_COUNTERS};
 use std::sync::Arc;
 
@@ -33,6 +33,7 @@ pub struct ClientApiService {
     propose_tx_callback: ProposeTxCallback,
     /// Returns true if this node is able to process proposed transactions.
     is_serving_fn: Arc<(dyn Fn() -> bool + Sync + Send)>,
+    authenticator: Arc<dyn Authenticator + Send + Sync>,
     logger: Logger,
 }
 
@@ -43,6 +44,7 @@ impl ClientApiService {
         ledger: Arc<dyn Ledger + Send + Sync>,
         tx_manager: Arc<dyn TxManager + Send + Sync>,
         is_serving_fn: Arc<(dyn Fn() -> bool + Sync + Send)>,
+        authenticator: Arc<dyn Authenticator + Send + Sync>,
         logger: Logger,
     ) -> Self {
         Self {
@@ -51,6 +53,7 @@ impl ClientApiService {
             ledger,
             propose_tx_callback: scp_client_value_sender,
             is_serving_fn,
+            authenticator,
             logger,
         }
     }
@@ -97,6 +100,10 @@ impl ConsensusClientApi for ClientApiService {
         sink: UnarySink<ProposeTxResponse>,
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
+
+        if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
+            return send_result(ctx, sink, err.into(), &self.logger);
+        }
 
         let mut result: Result<ProposeTxResponse, RpcStatus> =
             if counters::CUR_NUM_PENDING_VALUES.get() >= PENDING_LIMIT {
