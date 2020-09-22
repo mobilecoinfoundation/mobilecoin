@@ -235,6 +235,43 @@ impl From<&PublicAddress> for JsonPublicAddress {
     }
 }
 
+#[derive(Deserialize, Serialize, Default)]
+pub struct JsonPublicAddressResponse {
+    /// Hex encoded compressed ristretto bytes
+    pub view_public_key: String,
+
+    /// Hex encoded compressed ristretto bytes
+    pub spend_public_key: String,
+
+    /// Fog Report Server Url
+    pub fog_report_url: String,
+
+    /// Hex encoded signature bytes
+    pub fog_authority_fingerprint_sig: String,
+
+    /// String label for fog reports
+    pub fog_report_id: String,
+
+    /// b58-encoded public address
+    pub b58_address_code: String,
+}
+
+impl From<&mc_mobilecoind_api::GetPublicAddressResponse> for JsonPublicAddressResponse {
+    fn from(src: &mc_mobilecoind_api::GetPublicAddressResponse) -> Self {
+        let public_address = src.get_public_address();
+        Self {
+            view_public_key: hex::encode(&public_address.get_view_public_key().get_data()),
+            spend_public_key: hex::encode(&public_address.get_spend_public_key().get_data()),
+            fog_report_url: String::from(public_address.get_fog_report_url()),
+            fog_report_id: String::from(public_address.get_fog_report_id()),
+            fog_authority_fingerprint_sig: hex::encode(
+                &public_address.get_fog_authority_fingerprint_sig(),
+            ),
+            b58_address_code: src.get_b58_code().to_string(),
+        }
+    }
+}
+
 // Helper conversion between json and protobuf
 impl TryFrom<&JsonPublicAddress> for PublicAddress {
     type Error = String;
