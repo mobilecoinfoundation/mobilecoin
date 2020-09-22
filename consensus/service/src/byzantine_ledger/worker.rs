@@ -817,7 +817,9 @@ mod tests {
     /// Create test mocks with sensible defaults.
     ///
     /// # Arguments
-    ///
+    /// * `node_id` - The local node's ID.
+    /// * `quorum_set` - The local node's quorum set.
+    /// * `num_blocks` - Number of blocks in the ledger.
     fn get_mocks(
         node_id: &NodeID,
         quorum_set: &QuorumSet,
