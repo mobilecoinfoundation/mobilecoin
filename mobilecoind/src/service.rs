@@ -345,9 +345,19 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         // Get the subaddress.
         let subaddress = data.account_key.subaddress(request.subaddress_index);
 
+        // Also build the b58 wrapper
+        let mut wrapper = mc_mobilecoind_api::printable::PrintableWrapper::new();
+        wrapper.set_public_address((&subaddress).into());
+
         // Return response.
         let mut response = mc_mobilecoind_api::GetPublicAddressResponse::new();
         response.set_public_address((&subaddress).into());
+        response.set_b58_code(
+            wrapper
+                .b58_encode()
+                .map_err(|err| rpc_internal_error("b58_encode", err, &self.logger))?,
+        );
+
         Ok(response)
     }
 
@@ -1907,6 +1917,15 @@ mod test {
         assert_eq!(
             PublicAddress::try_from(response.get_public_address()).unwrap(),
             account_key.subaddress(10)
+        );
+
+        // Test that the b58 encoding is correct
+        let mut wrapper = mc_mobilecoind_api::printable::PrintableWrapper::new();
+        wrapper.set_public_address((&account_key.subaddress(10)).into());
+        let b58_code = wrapper.b58_encode().unwrap();
+        assert_eq!(
+            response.get_b58_code(),
+            b58_code,
         );
 
         // Subaddress that is out of index or an invalid monitor id should error.

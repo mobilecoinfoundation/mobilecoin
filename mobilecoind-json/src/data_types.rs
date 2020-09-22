@@ -7,6 +7,7 @@ use mc_api::external::{
     SignatureRctBulletproofs, Tx, TxIn, TxOutMembershipElement, TxOutMembershipHash,
     TxOutMembershipProof, TxPrefix,
 };
+use mc_api::printable::PrintableWrapper;
 use protobuf::RepeatedField;
 use serde_derive::{Deserialize, Serialize};
 use std::{collections::HashMap, convert::TryFrom, iter::FromIterator};
@@ -221,6 +222,9 @@ pub struct JsonPublicAddress {
 
     /// String label for fog reports
     pub fog_report_id: String,
+
+    /// b58-encoded public address
+    pub b58_address_code: String,
 }
 
 impl From<&PublicAddress> for JsonPublicAddress {
@@ -231,6 +235,7 @@ impl From<&PublicAddress> for JsonPublicAddress {
             fog_report_url: String::from(src.get_fog_report_url()),
             fog_report_id: String::from(src.get_fog_report_id()),
             fog_authority_fingerprint_sig: hex::encode(&src.get_fog_authority_fingerprint_sig()),
+            b58_address_code: (),
         }
     }
 }
