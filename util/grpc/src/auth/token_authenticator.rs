@@ -16,108 +16,73 @@ use zeroize::Zeroize;
 /// The maximum duration a token is valid for.
 pub const TOKEN_MAX_LIFETIME: Duration = Duration::from_secs(86400);
 
-/// User information derived from token authentication.
-#[derive(Clone, Debug)]
-pub struct TokenUser {
-    pub username: String,
-}
-
 /// Token-based authentication: An object that implements `Authenticator`, allowing to authenticate
 /// users using HMAC-generated tokens.
 #[derive(Zeroize)]
-pub struct TokenUserAuthenticator {
+pub struct TokenAuthenticator {
     shared_secret: [u8; 32],
 }
 
-/// Error values for token authentication.
-#[derive(Display, Debug, Eq, PartialEq)]
-pub enum TokenUserAuthenticationError {
-    /// Invalid HMAC key
-    InvalidHmacKey,
-
-    /// Unauthenticated
-    Unauthenticated,
-
-    /// Invalid user authorization token
-    InvalidAuthorizationToken,
-
-    /// Expired user authorization token
-    ExpiredAuthorizationToken,
-}
-
-impl Authenticator for TokenUserAuthenticator {
-    type User = TokenUser;
-    type Error = TokenUserAuthenticationError;
-
+impl Authenticator for TokenAuthenticator {
     fn authenticate(
         &self,
         maybe_credentials: Option<BasicCredentials>,
-    ) -> Result<Self::User, Self::Error> {
-        let credentials = maybe_credentials.ok_or(TokenUserAuthenticationError::Unauthenticated)?;
+    ) -> Result<String, AuthenticatorError> {
+        let credentials = maybe_credentials.ok_or(AuthenticatorError::Unauthenticated)?;
         let mut parts = credentials.password.split(":");
         let username = parts
             .next()
-            .ok_or(TokenUserAuthenticationError::InvalidAuthorizationToken)?;
+            .ok_or(AuthenticatorError::InvalidAuthorizationToken)?;
         let timestamp = parts
             .next()
-            .ok_or(TokenUserAuthenticationError::InvalidAuthorizationToken)?;
+            .ok_or(AuthenticatorError::InvalidAuthorizationToken)?;
         let signature = parts
             .next()
-            .ok_or(TokenUserAuthenticationError::InvalidAuthorizationToken)?;
+            .ok_or(AuthenticatorError::InvalidAuthorizationToken)?;
         if parts.next().is_some() {
-            return Err(TokenUserAuthenticationError::InvalidAuthorizationToken);
+            return Err(AuthenticatorError::InvalidAuthorizationToken);
         }
         if username != credentials.username {
-            return Err(TokenUserAuthenticationError::InvalidAuthorizationToken);
+            return Err(AuthenticatorError::InvalidAuthorizationToken);
         }
         if !self.is_valid_time(timestamp, SystemTime::now())? {
-            return Err(TokenUserAuthenticationError::ExpiredAuthorizationToken);
+            return Err(AuthenticatorError::ExpiredAuthorizationToken);
         }
         if !self.is_valid_signature(&format!("{}:{}", username, timestamp), signature)? {
-            return Err(TokenUserAuthenticationError::InvalidAuthorizationToken);
+            return Err(AuthenticatorError::InvalidAuthorizationToken);
         }
-        Ok(TokenUser {
-            username: credentials.username,
-        })
+        Ok(credentials.username)
     }
 }
 
-impl TokenUserAuthenticator {
+impl TokenAuthenticator {
     pub fn new(shared_secret: [u8; 32]) -> Self {
         Self { shared_secret }
     }
 
-    fn is_valid_time(
-        &self,
-        timestamp: &str,
-        now: SystemTime,
-    ) -> Result<bool, TokenUserAuthenticationError> {
+    fn is_valid_time(&self, timestamp: &str, now: SystemTime) -> Result<bool, AuthenticatorError> {
         let token_time: Duration = Duration::from_secs(
             timestamp
                 .parse()
-                .map_err(|_| TokenUserAuthenticationError::InvalidAuthorizationToken)?,
+                .map_err(|_| AuthenticatorError::InvalidAuthorizationToken)?,
         );
         let our_time: Duration = now
             .duration_since(SystemTime::UNIX_EPOCH)
-            .map_err(|_| TokenUserAuthenticationError::ExpiredAuthorizationToken)?;
+            .map_err(|_| AuthenticatorError::ExpiredAuthorizationToken)?;
         let distance: Duration = our_time
             .checked_sub(token_time)
             .unwrap_or_else(|| token_time - our_time);
         Ok(distance < TOKEN_MAX_LIFETIME)
     }
 
-    fn is_valid_signature(
-        &self,
-        data: &str,
-        signature: &str,
-    ) -> Result<bool, TokenUserAuthenticationError> {
+    fn is_valid_signature(&self, data: &str, signature: &str) -> Result<bool, AuthenticatorError> {
         let mut mac = Hmac::<sha2::Sha256>::new_varkey(&self.shared_secret)
-            .map_err(|_| TokenUserAuthenticationError::InvalidHmacKey)?;
+            .map_err(|_| AuthenticatorError::Other("Invalid HMAC key".to_owned()))?;
         mac.update(data.as_bytes());
         let our_signature = mac.finalize().into_bytes();
 
-        let their_suffix: Vec<u8> = hex::decode(signature)
-            .map_err(|_| TokenUserAuthenticationError::InvalidAuthorizationToken)?;
+        let their_suffix: Vec<u8> =
+            hex::decode(signature).map_err(|_| AuthenticatorError::InvalidAuthorizationToken)?;
         let our_suffix: &[u8] = &our_signature[..10];
         Ok(bool::from(our_suffix.ct_eq(&their_suffix)))
     }
@@ -181,20 +146,20 @@ mod tests {
         const TEST_USERNAME: &str = "test user";
 
         let generator = TokenBasicCredentialsGenerator::new(shared_secret.clone());
-        let authenticator = TokenUserAuthenticator::new(shared_secret);
+        let authenticator = TokenAuthenticator::new(shared_secret);
 
         let creds = generator.generate_for(TEST_USERNAME).unwrap();
         let user = authenticator
             .authenticate(Some(creds))
             .expect("authenticate failed");
-        assert_eq!(user.username, TEST_USERNAME);
+        assert_eq!(user, TEST_USERNAME);
     }
 
     #[test]
     #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: Unauthenticated")]
     fn missing_creds_fails_authentication() {
         let shared_secret = [3; 32];
-        let authenticator = TokenUserAuthenticator::new(shared_secret);
+        let authenticator = TokenAuthenticator::new(shared_secret);
 
         // We expect this to panic.
         let _ = authenticator.authenticate(None).unwrap();
@@ -211,7 +176,7 @@ mod tests {
         let generator = TokenBasicCredentialsGenerator::new(shared_secret.clone());
 
         // Signature will fail if authenticator uses a different shared secret.
-        let authenticator = TokenUserAuthenticator::new([4; 32]);
+        let authenticator = TokenAuthenticator::new([4; 32]);
 
         let creds = generator.generate_for(TEST_USERNAME).unwrap();
 
@@ -221,7 +186,7 @@ mod tests {
 
     #[test]
     fn is_valid_time_rejects_expired() {
-        let authenticator = TokenUserAuthenticator::new([4; 32]);
+        let authenticator = TokenAuthenticator::new([4; 32]);
 
         let now = SystemTime::now();
         let now_in_seconds = now
