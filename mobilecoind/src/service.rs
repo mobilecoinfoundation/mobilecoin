@@ -1923,10 +1923,7 @@ mod test {
         let mut wrapper = mc_mobilecoind_api::printable::PrintableWrapper::new();
         wrapper.set_public_address((&account_key.subaddress(10)).into());
         let b58_code = wrapper.b58_encode().unwrap();
-        assert_eq!(
-            response.get_b58_code(),
-            b58_code,
-        );
+        assert_eq!(response.get_b58_code(), b58_code,);
 
         // Subaddress that is out of index or an invalid monitor id should error.
         let request = mc_mobilecoind_api::GetPublicAddressRequest::new();

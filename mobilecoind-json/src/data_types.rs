@@ -264,7 +264,9 @@ impl From<&mc_mobilecoind_api::GetPublicAddressResponse> for JsonPublicAddressRe
             spend_public_key: hex::encode(&public_address.get_spend_public_key().get_data()),
             fog_report_url: String::from(public_address.get_fog_report_url()),
             fog_report_id: String::from(public_address.get_fog_report_id()),
-            fog_authority_fingerprint_sig: hex::encode(&public_address.get_fog_authority_fingerprint_sig()),
+            fog_authority_fingerprint_sig: hex::encode(
+                &public_address.get_fog_authority_fingerprint_sig(),
+            ),
             b58_address_code: src.get_b58_code().to_string(),
         }
     }
