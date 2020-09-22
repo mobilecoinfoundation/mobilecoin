@@ -160,6 +160,7 @@ mod client_api_tests {
     use mc_transaction_core::{
         ring_signature::KeyImage, tx::TxHash, validation::TransactionValidationError,
     };
+    use mc_util_grpc::auth::{AnonymousAuthenticator, TokenAuthenticator};
     use serial_test_derive::serial;
     use std::sync::{
         atomic::{AtomicUsize, Ordering::SeqCst},
@@ -226,12 +227,15 @@ mod client_api_tests {
 
         let is_serving_fn = Arc::new(|| -> bool { true });
 
+        let authenticator = AnonymousAuthenticator::default();
+
         let instance = ClientApiService::new(
             Arc::new(consensus_enclave),
             scp_client_value_sender,
             Arc::new(ledger),
             Arc::new(tx_manager),
             is_serving_fn,
+            Arc::new(authenticator),
             logger,
         );
 
@@ -290,12 +294,15 @@ mod client_api_tests {
 
         let is_serving_fn = Arc::new(|| -> bool { true });
 
+        let authenticator = AnonymousAuthenticator::default();
+
         let instance = ClientApiService::new(
             Arc::new(consensus_enclave),
             scp_client_value_sender,
             Arc::new(ledger),
             Arc::new(tx_manager),
             is_serving_fn,
+            Arc::new(authenticator),
             logger,
         );
 
@@ -349,12 +356,15 @@ mod client_api_tests {
 
         let is_serving_fn = Arc::new(|| -> bool { true });
 
+        let authenticator = AnonymousAuthenticator::default();
+
         let instance = ClientApiService::new(
             Arc::new(consensus_enclave),
             scp_client_value_sender,
             Arc::new(ledger),
             Arc::new(tx_manager),
             is_serving_fn,
+            Arc::new(authenticator),
             logger,
         );
 
@@ -390,12 +400,15 @@ mod client_api_tests {
             |_tx_hash: TxHash, _node_id: Option<&NodeID>, _responder_id: Option<&ResponderId>| {},
         );
 
+        let authenticator = AnonymousAuthenticator::default();
+
         let instance = ClientApiService::new(
             Arc::new(enclave),
             scp_client_value_sender,
             Arc::new(MockLedger::new()),
             Arc::new(MockTxManager::new()),
             is_serving_fn,
+            Arc::new(authenticator),
             logger,
         );
 
@@ -431,12 +444,15 @@ mod client_api_tests {
             |_tx_hash: TxHash, _node_id: Option<&NodeID>, _responder_id: Option<&ResponderId>| {},
         );
 
+        let authenticator = AnonymousAuthenticator::default();
+
         let instance = ClientApiService::new(
             Arc::new(enclave),
             scp_client_value_sender,
             Arc::new(MockLedger::new()),
             Arc::new(MockTxManager::new()),
             is_serving_fn,
+            Arc::new(authenticator),
             logger,
         );
 
@@ -459,5 +475,42 @@ mod client_api_tests {
 
         // This is a global variable. It affects other unit tests, so must be reset :(
         counters::CUR_NUM_PENDING_VALUES.set(0);
+    }
+
+    #[test_with_logger]
+    #[serial(counters)]
+    fn test_client_tx_propose_rejects_unauthenticated(logger: Logger) {
+        let enclave = MockConsensusEnclave::new();
+
+        let is_serving_fn = Arc::new(|| -> bool { true }); // Not serving
+
+        let scp_client_value_sender = Arc::new(
+            |_tx_hash: TxHash, _node_id: Option<&NodeID>, _responder_id: Option<&ResponderId>| {},
+        );
+
+        let authenticator = TokenAuthenticator::new([1; 32]);
+
+        let instance = ClientApiService::new(
+            Arc::new(enclave),
+            scp_client_value_sender,
+            Arc::new(MockLedger::new()),
+            Arc::new(MockTxManager::new()),
+            is_serving_fn,
+            Arc::new(authenticator),
+            logger,
+        );
+
+        // gRPC client and server.
+        let (client, _server) = get_client_server(instance);
+
+        let message = Message::default();
+        match client.client_tx_propose(&message) {
+            Ok(propose_tx_response) => {
+                panic!("Unexpected response {:?}", propose_tx_response);
+            }
+            Err(_) => {
+                // Should be  RpcFailure(RpcStatus { status: 16-UNAUTHENTICATED, details: Some("Unauthenticated") })
+            }
+        };
     }
 }

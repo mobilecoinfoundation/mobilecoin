@@ -5,6 +5,9 @@
 pub mod anonymous_authenticator;
 pub mod token_authenticator;
 
+pub use anonymous_authenticator::{AnonymousAuthenticator, ANONYMOUS_USER};
+pub use token_authenticator::TokenAuthenticator;
+
 use displaydoc::Display;
 use grpcio::{Metadata, RpcContext, RpcStatus, RpcStatusCode};
 use std::str;
