@@ -62,7 +62,7 @@ $ curl localhost:9090/monitors/a0cf8b79c9f8d74eb935ab4eeeb771f3809a408ad47246be4
 ```
 $ curl localhost:9090/monitors/a0cf8b79c9f8d74eb935ab4eeeb771f3809a408ad47246be47cf40315be9876e/subaddresses/0/public-address
 
-{"view_public_key":"543b376e9d5b949dd8694f065d95a98a89e6f17a20c621621a808605d1904324","spend_public_key":"58dba855a885dd535dc5180af443abae67c790b860d5adadb4d6a2ecb71abd28","fog_report_url":"","fog_authority_fingerprint_sig":"","fog_report_id":""}
+{"view_public_key":"543b376e9d5b949dd8694f065d95a98a89e6f17a20c621621a808605d1904324","spend_public_key":"58dba855a885dd535dc5180af443abae67c790b860d5adadb4d6a2ecb71abd28","fog_report_url":"","fog_authority_fingerprint_sig":"","fog_report_id":"", "b58_address_code": "7Q6gtA5EqSxkEsqsf5p2j7qEHkA8fBZYNsfuWTZTQaFAqo3FPo8PvhrrUobZfXagrLopzpxqxGBs7Hphwhsc56ryWriPWLCRadhRpnZW6AT"}
 ```
 
 #### Generate a request code from a public address and optional other information
