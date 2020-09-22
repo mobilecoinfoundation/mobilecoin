@@ -198,7 +198,7 @@ fn public_address(
     state: rocket::State<State>,
     monitor_hex: String,
     subaddress_index: u64,
-) -> Result<Json<JsonPublicAddress>, String> {
+) -> Result<Json<JsonPublicAddressResponse>, String> {
     let monitor_id =
         hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
 
@@ -212,8 +212,7 @@ fn public_address(
         .get_public_address(&req)
         .map_err(|err| format!("Failed getting public address: {}", err))?;
 
-    let public_address = resp.get_public_address();
-    Ok(Json(JsonPublicAddress::from(public_address)))
+    Ok(Json(JsonPublicAddressResponse::from(&resp)))
 }
 
 /// Generates a request code with an optional value and memo
