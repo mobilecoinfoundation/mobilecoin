@@ -79,6 +79,11 @@ pub struct Config {
     /// Path to the sealed block signing key
     #[structopt(long, parse(from_os_str))]
     pub sealed_block_signing_key: PathBuf,
+
+    /// Enables authenticating client requests using Authorization tokens using the provided
+    /// hex-encoded 32 bytes shared secret.
+    #[structopt(long, parse(try_from_str=from_hex_32))]
+    pub client_auth_token_secret: Option<[u8; 32]>,
 }
 
 /// Decodes an Ed25519 private key.
@@ -92,6 +97,21 @@ fn keypair_from_base64(private_key: &str) -> Result<Arc<Ed25519Pair>, String> {
     let secret_key = Ed25519Private::try_from_der(privkey_bytes.as_slice())
         .map_err(|err| format!("Could not get Ed25519Private from der {:?}", err))?;
     Ok(Arc::new(Ed25519Pair::from(secret_key)))
+}
+
+/// Converts a hex-encoded string into an array of 32 bytes.
+fn from_hex_32(src: &str) -> Result<[u8; 32], String> {
+    let bytes = hex::decode(src).map_err(|err| format!("Invalid input: {}", err))?;
+    if bytes.len() != 32 {
+        return Err(format!(
+            "Invalid input length, got {} bytes while expecting 32",
+            bytes.len()
+        ));
+    }
+
+    let mut output = [0; 32];
+    output.copy_from_slice(&bytes[..]);
+    Ok(output)
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
@@ -405,6 +425,7 @@ mod tests {
             scp_debug_dump: None,
             origin_block_path: None,
             sealed_block_signing_key: PathBuf::default(),
+            client_auth_token_secret: None,
         };
 
         assert_eq!(
@@ -458,6 +479,7 @@ mod tests {
             scp_debug_dump: None,
             origin_block_path: None,
             sealed_block_signing_key: PathBuf::default(),
+            client_auth_token_secret: None,
         };
 
         assert_eq!(
@@ -501,5 +523,14 @@ mod tests {
         let private_key = "MC4CAQAwBQYDK2VwBCIEIFMx+OdFIVsMAXNDuOFtxrl/CiQRIblFjaf4/mQetmrq";
 
         assert!(keypair_from_base64(private_key).is_ok());
+    }
+
+    #[test]
+    /// Should successfully decode a 32-byte array encoded as a hex string.
+    fn test_from_hex_32() {
+        assert!(from_hex_32("abcd").is_err());
+
+        let bytes = [3; 32];
+        assert_eq!(bytes, from_hex_32(&hex::encode(&bytes)).unwrap());
     }
 }
