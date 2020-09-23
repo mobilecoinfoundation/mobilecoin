@@ -94,9 +94,7 @@ if __name__ == '__main__':
         blocks_processed = wait_for_monitor(monitor_id)
     balance = mobilecoind.get_balance(bytes.fromhex(monitor_id), default_subaddress_index) if args.balance else "...Skipped"
 
-    # TODO: replace this with a call to get_address_code when the release is updated (Sept 11)
-    # address_code = mobilecoind.get_address_code(public_address)
-    address_code = mobilecoind.get_request_code(public_address)
+    address_code = mobilecoind.create_address_code(public_address)
 
     # print request code for this entropy
     print("\n\nAccount Information\n\n  Master Key:    {}\n  Address Code:  {}\n  Balance:       {} picoMOB\n\n".format(entropy, address_code, balance))
