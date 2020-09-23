@@ -2,6 +2,8 @@
 
 # location to store mobilecoind binary and databases
 TMP_DIR=/tmp/mobilecoind-testnet
+RELEASE_URL=mobilecoind-mirror-tls # or `mobilecoin-testnet-linux`
+RELEASE_DIR=mobilecoind-mirror # or `mobilecoin-testnet-linux`
 
 # optionally delete old data with "--clean"
 while test $# -gt 0
@@ -9,10 +11,7 @@ do
   case "$1" in
     --clean)
       echo "Removing old databases."
-      rm -rf $TMP_DIR/ledger-db
-      rm -rf $TMP_DIR/transaction-db
-      rm -rf $TMP_DIR/watcher-db
-      rm -rf $TMP_DIR/mobilecoin-testnet-linux
+      rm -rf $TMP_DIR
       ;;
     --*)
       echo "bad option $1"
@@ -25,14 +24,14 @@ do
 done
 
 # install mobilecoind from the current TestNet release
-echo "Downloading mobilecoind from releases..."
-if [ ! -d "$TMP_DIR/mobilecoin-testnet-linux" ]
+echo "Downloading mobilecoind from latest $RELEASE_URL..."
+if [ ! -d "$TMP_DIR/$RELEASE_DIR" ]
   then
     echo "Installing mobilecoind binary."
-    curl -L https://github.com/mobilecoinofficial/mobilecoin/releases/latest/download/mobilecoin-testnet-linux.tar.gz --output latest.tar.gz
+    curl -L https://github.com/mobilecoinofficial/mobilecoin/releases/latest/download/$RELEASE_URL.tar.gz --output latest.tar.gz
     tar -zxvf ./latest.tar.gz
     rm ./latest.tar.gz
-    mv ./mobilecoin-testnet-linux $TMP_DIR
+    mv ./$RELEASE_DIR $TMP_DIR
 fi
 
 # kill old mobilecoind processes
@@ -46,8 +45,9 @@ fi
 export RUST_LOG=debug
 
 # run mobilecoind
+# we are leaving the log file in the project directory rather than moving it to TMP_DIR on purpose
 echo "Starting mobilecoind"
-$TMP_DIR/mobilecoin-testnet-linux/bin/mobilecoind \
+$TMP_DIR/bin/mobilecoind \
   --ledger-db $TMP_DIR/ledger-db \
   --poll-interval 2 \
   --peer mc://node1.test.mobilecoin.com/ \
