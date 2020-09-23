@@ -175,9 +175,9 @@ def process_records(fields, since_last_changed = ""):
             print("# processed {} records found at MailChimp".format(offset))
         for member_record in members:
             if member_record["status"] == "subscribed" and not member_record["merge_fields"]["ENTROPY"]:
-                emails_sent += allocate_MOB(member_record, int(args.value*MOB))
+                emails_sent += allocate_MOB(member_record, args.value * MOB)
     if emails_sent > 0:
-        print("# sent {} MOB to each of {} new records found at MailChimp".format(int(args.value), emails_sent))
+        print("# sent {} MOB to each of {} new records found at MailChimp".format(args.value, emails_sent))
     else:
         print("# no new records found.")
 
@@ -221,11 +221,11 @@ if __name__ == '__main__':
     # Wait for mobilecoind to sync ledger
     block_count = wait_for_ledger()
 
-    # Wait for mobilecoind to get sender's current balance; abort if sender has less than 1000 MOB
+    # Wait for mobilecoind to get sender's current balance; abort if sender's balance is too low
     wait_for_monitor(sender_monitor_id.hex())
     sender_balance_picoMOB = mobilecoind.get_balance(sender_monitor_id, default_subaddress_index)
-    if sender_balance_picoMOB < 1000*MOB:
-        print("Sender's balance running low ({} MOB)... aborting!".format(sender_balance_picoMOB/MOB))
+    if sender_balance_picoMOB < args.value * MOB:
+        print("Sender's balance is too low ({} MOB)... aborting!".format(sender_balance_picoMOB/MOB))
         sys.exit()
 
     # generate the MailChimp client
@@ -255,9 +255,9 @@ if __name__ == '__main__':
 
             wait_for_monitor(sender_monitor_id.hex())
 
-            # abort if sender has less than 1000 MOB
+            # abort if sender's balance is too low
             sender_balance_picoMOB = mobilecoind.get_balance(sender_monitor_id, default_subaddress_index)
-            if sender_balance_picoMOB < 1000*MOB:
+            if sender_balance_picoMOB < args.value * MOB:
                 print("# sender's balance is running low ({} MOB)... aborting!".format(sender_balance_picoMOB/MOB))
                 sys.exit()
 
