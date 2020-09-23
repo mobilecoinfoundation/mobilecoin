@@ -75,6 +75,7 @@ if __name__ == '__main__':
     # Parse the arguments and generate the mob_client
     parser = argparse.ArgumentParser(description='provide secrets')
     parser.add_argument('-k', '--key', help='account master key', type=str)
+    parser.add_argument('--first_block', help='ledger block to begin scan', type=int, required=False)
     parser.add_argument('-b', '--balance', help='also check balance', action="store_true")
     args = parser.parse_args()
 
@@ -87,7 +88,11 @@ if __name__ == '__main__':
     # create monitor
     entropy = args.key
     account_key = mobilecoind.get_account_key(bytes.fromhex(entropy))
-    monitor_id = mobilecoind.add_monitor(account_key, first_subaddress=default_subaddress_index, num_subaddresses=1).hex()
+    if args.first_block:
+        monitor_id = mobilecoind.add_monitor(account_key, first_subaddress=default_subaddress_index, num_subaddresses=1, first_block=args.first_block).hex()
+    else:
+        monitor_id = mobilecoind.add_monitor(account_key, first_subaddress=default_subaddress_index, num_subaddresses=1).hex()
+    
     public_address = mobilecoind.get_public_address(bytes.fromhex(monitor_id), default_subaddress_index)
 
     if args.balance:
