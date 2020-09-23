@@ -12,6 +12,7 @@ path = "src/bin/main.rs"
 mc-util-grpc = { path = "../grpc" }
 
 hex = "0.4"
+percent-encoding = "2.1.0"
 structopt = "0.3"
 
 [build-dependencies]

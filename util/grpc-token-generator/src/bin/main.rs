@@ -3,6 +3,7 @@
 //! A utility for generating GRPC authentication tokens.
 
 use mc_util_grpc::auth::TokenBasicCredentialsGenerator;
+use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use structopt::StructOpt;
 
 #[derive(Clone, Debug, StructOpt)]
@@ -28,6 +29,10 @@ fn main() {
         .expect("Failed generating token");
     println!("Username: {}", creds.username());
     println!("Password: {}", creds.password());
+    println!(
+        "Password (percent-encoded): {}",
+        utf8_percent_encode(creds.password(), NON_ALPHANUMERIC).to_string()
+    );
 }
 
 /// Converts a hex-encoded string into an array of 32 bytes.
