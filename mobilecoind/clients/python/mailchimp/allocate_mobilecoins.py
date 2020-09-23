@@ -97,6 +97,9 @@ def allocate_MOB(mailchimp_member_record, amount_picoMOB):
     new_user_email = mailchimp_member_record["email_address"]
     new_user_hash = mailchimp_member_record["id"]
 
+    # Wait for mobilecoind to sync ledger
+    block_count = wait_for_ledger()
+
     # create and fund a new MobileCoin TestNet account
     recipient_entropy = mobilecoind.generate_entropy()
     recipient_account_key = mobilecoind.get_account_key(recipient_entropy)
@@ -105,7 +108,7 @@ def allocate_MOB(mailchimp_member_record, amount_picoMOB):
     # no need to start the recipient from the origin block since we know we just created this account
     recipient_monitor_id = mobilecoind.add_monitor(recipient_account_key, first_subaddress=0, num_subaddresses=1, first_block=block_count)
     recipient_public_address = mobilecoind.get_public_address(recipient_monitor_id, default_subaddress_index)
-    print("# added monitor {} for {}".format(recipient_monitor_id.hex(), new_user_email))
+    print("# added monitor {} for {} (first block = {})".format(recipient_monitor_id.hex(), new_user_email, block_count))
 
     # Construct and send the MOB allocation transaction
     tx_list = mobilecoind.get_unspent_tx_output_list(sender_monitor_id, default_subaddress_index)
@@ -119,6 +122,8 @@ def allocate_MOB(mailchimp_member_record, amount_picoMOB):
     # Wait for the transaction to clear
     while not int(mobilecoind.get_tx_status_as_sender(sender_tx_receipt)) == TX_STATUS_VERIFIED:
         time.sleep(TX_RECEIPT_CHECK_INTERVAL_SECONDS)
+
+    # TODO: fix after MCC-132
 
     # Check balances
     recipient_balance = mobilecoind.get_balance(recipient_monitor_id, default_subaddress_index)
