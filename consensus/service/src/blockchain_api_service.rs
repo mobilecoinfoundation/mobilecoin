@@ -11,15 +11,18 @@ use mc_consensus_api::{
     empty::Empty,
 };
 use mc_ledger_db::Ledger;
-use mc_util_grpc::{rpc_logger, send_result};
+use mc_util_grpc::{auth::Authenticator, rpc_logger, send_result};
 use mc_util_metrics::{self, SVC_COUNTERS};
 use protobuf::RepeatedField;
-use std::{cmp, convert::From};
+use std::{cmp, convert::From, sync::Arc};
 
 #[derive(Clone)]
 pub struct BlockchainApiService<L: Ledger + Clone> {
     /// Ledger Database.
     ledger: L,
+
+    /// GRPC request authenticator.
+    authenticator: Arc<dyn Authenticator + Send + Sync>,
 
     /// Maximal number of results to return in API calls that return multiple results.
     max_page_size: u16,
@@ -29,9 +32,14 @@ pub struct BlockchainApiService<L: Ledger + Clone> {
 }
 
 impl<L: Ledger + Clone> BlockchainApiService<L> {
-    pub fn new(ledger: L, logger: Logger) -> Self {
+    pub fn new(
+        ledger: L,
+        authenticator: Arc<dyn Authenticator + Send + Sync>,
+        logger: Logger,
+    ) -> Self {
         BlockchainApiService {
             ledger,
+            authenticator,
             max_page_size: 2000,
             logger,
         }
@@ -106,6 +114,10 @@ impl<L: Ledger + Clone> BlockchainApi for BlockchainApiService<L> {
         let _timer = SVC_COUNTERS.req(&ctx);
 
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
+                return send_result(ctx, sink, err.into(), &logger);
+            }
+
             let resp = self
                 .get_last_block_info_helper()
                 .map_err(|_| RpcStatus::new(RpcStatusCode::INTERNAL, None));
@@ -123,6 +135,10 @@ impl<L: Ledger + Clone> BlockchainApi for BlockchainApiService<L> {
         let _timer = SVC_COUNTERS.req(&ctx);
 
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
+                return send_result(ctx, sink, err.into(), &logger);
+            }
+
             log::trace!(
                 logger,
                 "Received BlocksRequest for offset {} and limit {})",
@@ -143,12 +159,14 @@ mod tests {
     use super::*;
     use mc_common::logger::test_with_logger;
     use mc_transaction_core_test_utils::{create_ledger, initialize_ledger, AccountKey};
+    use mc_util_grpc::auth::AnonymousAuthenticator;
     use rand::{rngs::StdRng, SeedableRng};
 
     #[test_with_logger]
     // `get_last_block_info` should returns the last block.
     fn test_get_last_block_info(logger: Logger) {
         let mut ledger_db = create_ledger();
+        let authenticator = Arc::new(AnonymousAuthenticator::default());
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let account_key = AccountKey::random(&mut rng);
         let block_entities = initialize_ledger(&mut ledger_db, 10, &account_key, &mut rng);
@@ -160,7 +178,8 @@ mod tests {
             ledger_db.num_blocks().unwrap() - 1
         );
 
-        let mut blockchain_api_service = BlockchainApiService::new(ledger_db, logger);
+        let mut blockchain_api_service =
+            BlockchainApiService::new(ledger_db, authenticator, logger);
 
         let block_response = blockchain_api_service.get_last_block_info_helper().unwrap();
         assert_eq!(block_response, expected_response);
@@ -170,6 +189,7 @@ mod tests {
     // `get_blocks` should returns the correct range of blocks.
     fn test_get_blocks_response_range(logger: Logger) {
         let mut ledger_db = create_ledger();
+        let authenticator = Arc::new(AnonymousAuthenticator::default());
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let account_key = AccountKey::random(&mut rng);
         let block_entities = initialize_ledger(&mut ledger_db, 10, &account_key, &mut rng);
@@ -179,7 +199,8 @@ mod tests {
             .map(|block_entity| blockchain::Block::from(&block_entity))
             .collect();
 
-        let mut blockchain_api_service = BlockchainApiService::new(ledger_db, logger);
+        let mut blockchain_api_service =
+            BlockchainApiService::new(ledger_db, authenticator, logger);
 
         {
             // The empty range [0,0) should return an empty collection of Blocks.
@@ -211,11 +232,13 @@ mod tests {
     // if a client requests data that does not exist.
     fn test_get_blocks_request_out_of_bounds(logger: Logger) {
         let mut ledger_db = create_ledger();
+        let authenticator = Arc::new(AnonymousAuthenticator::default());
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let account_key = AccountKey::random(&mut rng);
         let _blocks = initialize_ledger(&mut ledger_db, 10, &account_key, &mut rng);
 
-        let mut blockchain_api_service = BlockchainApiService::new(ledger_db, logger);
+        let mut blockchain_api_service =
+            BlockchainApiService::new(ledger_db, authenticator, logger);
 
         {
             // The range [0, 1000) requests values that don't exist. The response should contain [0,10).
@@ -228,6 +251,7 @@ mod tests {
     // `get_blocks` should only return the "maximum" number of items if the requested range is larger.
     fn test_get_blocks_max_size(logger: Logger) {
         let mut ledger_db = create_ledger();
+        let authenticator = Arc::new(AnonymousAuthenticator::default());
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let account_key = AccountKey::random(&mut rng);
         let block_entities = initialize_ledger(&mut ledger_db, 10, &account_key, &mut rng);
@@ -237,7 +261,8 @@ mod tests {
             .map(|block_entity| blockchain::Block::from(&block_entity))
             .collect();
 
-        let mut blockchain_api_service = BlockchainApiService::new(ledger_db, logger);
+        let mut blockchain_api_service =
+            BlockchainApiService::new(ledger_db, authenticator, logger);
         blockchain_api_service.set_max_page_size(5);
 
         // The request exceeds the max_page_size, so only max_page_size items should be returned.

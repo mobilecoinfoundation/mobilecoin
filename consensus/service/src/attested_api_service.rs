@@ -10,21 +10,27 @@ use mc_common::{
     HashSet,
 };
 use mc_consensus_enclave::ConsensusEnclave;
-use mc_util_grpc::{rpc_logger, rpc_permissions_error, send_result};
+use mc_util_grpc::{auth::Authenticator, rpc_logger, rpc_permissions_error, send_result};
 use mc_util_metrics::SVC_COUNTERS;
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub struct AttestedApiService<E: ConsensusEnclave + Send, S: Session> {
     enclave: E,
+    authenticator: Arc<dyn Authenticator + Send + Sync>,
     logger: Logger,
     sessions: Arc<Mutex<HashSet<S>>>,
 }
 
 impl<E: ConsensusEnclave + Send, S: Session> AttestedApiService<E, S> {
-    pub fn new(enclave: E, logger: Logger) -> Self {
+    pub fn new(
+        enclave: E,
+        authenticator: Arc<dyn Authenticator + Send + Sync>,
+        logger: Logger,
+    ) -> Self {
         Self {
             enclave,
+            authenticator,
             logger,
             sessions: Arc::new(Mutex::new(HashSet::default())),
         }
@@ -35,6 +41,10 @@ impl<E: ConsensusEnclave + Send> AttestedApi for AttestedApiService<E, PeerSessi
     fn auth(&mut self, ctx: RpcContext, request: AuthMessage, sink: UnarySink<AuthMessage>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
+                return send_result(ctx, sink, err.into(), &logger);
+            }
+
             // TODO: Use the prost message directly, once available
             match self.enclave.peer_accept(request.into()) {
                 Ok((response, session_id)) => {
@@ -74,6 +84,10 @@ impl<E: ConsensusEnclave + Send> AttestedApi for AttestedApiService<E, ClientSes
     fn auth(&mut self, ctx: RpcContext, request: AuthMessage, sink: UnarySink<AuthMessage>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
+                return send_result(ctx, sink, err.into(), &logger);
+            }
+
             // TODO: Use the prost message directly, once available
             match self.enclave.client_accept(request.into()) {
                 Ok((response, session_id)) => {
