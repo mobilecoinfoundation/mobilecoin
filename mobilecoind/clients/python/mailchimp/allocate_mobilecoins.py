@@ -100,6 +100,13 @@ def allocate_MOB(mailchimp_member_record, amount_picoMOB):
     # Wait for mobilecoind to sync ledger
     block_count = wait_for_ledger()
 
+    # abort if sender's balance is too low
+    wait_for_monitor(sender_monitor_id.hex())
+    sender_balance_picoMOB = mobilecoind.get_balance(sender_monitor_id, default_subaddress_index)
+    if sender_balance_picoMOB < args.value * MOB:
+        print("# sender's balance is running low ({} MOB)... aborting!".format(sender_balance_picoMOB/MOB))
+        sys.exit()
+
     # create and fund a new MobileCoin TestNet account
     recipient_entropy = mobilecoind.generate_entropy()
     recipient_account_key = mobilecoind.get_account_key(recipient_entropy)
@@ -221,12 +228,8 @@ if __name__ == '__main__':
     # Wait for mobilecoind to sync ledger
     block_count = wait_for_ledger()
 
-    # Wait for mobilecoind to get sender's current balance; abort if sender's balance is too low
+    # Wait for mobilecoind to get sender's current balance
     wait_for_monitor(sender_monitor_id.hex())
-    sender_balance_picoMOB = mobilecoind.get_balance(sender_monitor_id, default_subaddress_index)
-    if sender_balance_picoMOB < args.value * MOB:
-        print("Sender's balance is too low ({} MOB)... aborting!".format(sender_balance_picoMOB/MOB))
-        sys.exit()
 
     # generate the MailChimp client
     mailchimp = MailChimp(mc_api=args.key)
@@ -254,12 +257,6 @@ if __name__ == '__main__':
             time.sleep(monitor_interval_seconds);
 
             wait_for_monitor(sender_monitor_id.hex())
-
-            # abort if sender's balance is too low
-            sender_balance_picoMOB = mobilecoind.get_balance(sender_monitor_id, default_subaddress_index)
-            if sender_balance_picoMOB < args.value * MOB:
-                print("# sender's balance is running low ({} MOB)... aborting!".format(sender_balance_picoMOB/MOB))
-                sys.exit()
 
             fields="members.id,members.email_address,members.merge_fields,members.status" # important: no spaces!
             cutoff_time = datetime.datetime.utcnow() - datetime.timedelta(seconds=2*monitor_interval_seconds)
