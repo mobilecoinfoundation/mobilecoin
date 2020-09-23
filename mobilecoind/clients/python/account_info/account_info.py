@@ -113,8 +113,8 @@ if __name__ == '__main__':
 
     # print account information
     print("\n")
-    print("    {:<18} {}".format("Master Key:", entropy))
-    print("    {:<18} {}".format("Address Code:", address_code))
-    print("    {:<18} {} picoMOB".format("Balance:", balance_picoMOB))
-    print("    {:<18}({} MOB)".format(" ", display_in_MOB(balance_picoMOB)))
+    print("    {:<18}{}".format("Master Key:", entropy))
+    print("    {:<18}{}".format("Address Code:", address_code))
+    print("    {:<18}{} picoMOB".format("Balance:", balance_picoMOB))
+    print("    {:<18}{} MOB".format(" ", display_in_MOB(balance_picoMOB)))
     print("\n")
