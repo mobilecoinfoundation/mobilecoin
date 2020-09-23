@@ -216,6 +216,17 @@ mod consensus_client_uri_tests {
         assert_eq!(uri.use_tls(), false);
         assert_eq!(uri.username(), "abc");
         assert_eq!(uri.password(), "def");
+
+        let uri = ClientUri::from_str("insecure-mc://abc:def:1:2:3@node1.test.mobilecoin.com:666/")
+            .unwrap();
+        assert_eq!(uri.addr(), "node1.test.mobilecoin.com:666");
+        assert_eq!(
+            uri.responder_id().unwrap(),
+            ResponderId::from_str("node1.test.mobilecoin.com:666").unwrap()
+        );
+        assert_eq!(uri.use_tls(), false);
+        assert_eq!(uri.username(), "abc");
+        assert_eq!(uri.password(), "def:1:2:3");
     }
 
     #[test]
