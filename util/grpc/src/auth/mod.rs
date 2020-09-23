@@ -6,10 +6,12 @@ pub mod anonymous_authenticator;
 pub mod token_authenticator;
 
 pub use anonymous_authenticator::{AnonymousAuthenticator, ANONYMOUS_USER};
-pub use token_authenticator::TokenAuthenticator;
+pub use token_authenticator::{TokenAuthenticator, TokenBasicCredentialsGenerator};
 
 use displaydoc::Display;
-use grpcio::{Metadata, RpcContext, RpcStatus, RpcStatusCode};
+use grpcio::{
+    CallOption, Error as GrpcError, Metadata, MetadataBuilder, RpcContext, RpcStatus, RpcStatusCode,
+};
 use std::str;
 
 /// Error values for authentication.
@@ -94,6 +96,7 @@ pub enum AuthorizationHeaderError {
 }
 
 impl BasicCredentials {
+    /// Construct a new `BasicCredentials` using provided username and password.
     pub fn new(username: &str, password: &str) -> Self {
         Self {
             username: username.to_owned(),
@@ -136,19 +139,35 @@ impl BasicCredentials {
         })
     }
 
+    /// Get username.
     pub fn username(&self) -> &str {
         &self.username
     }
 
+    /// Get password.
     pub fn password(&self) -> &str {
         &self.password
     }
 
+    /// Convenience method for constructing an HTTP Authorization header based on the username and
+    /// password stored in this object.
     pub fn authorization_header(&self) -> String {
         format!(
             "Basic {}",
             base64::encode(format!("{}:{}", self.username, self.password))
         )
+    }
+
+    /// Convenience method for constructing a `grpcio::CallOption` object that passes an
+    /// Authorization header if this object contains non-empty username or password.
+    pub fn call_option(&self) -> Result<CallOption, GrpcError> {
+        let mut call_option = CallOption::default();
+        if !self.username.is_empty() || !self.password.is_empty() {
+            let mut metadata_builder = MetadataBuilder::new();
+            metadata_builder.add_str("Authorization", &self.authorization_header())?;
+            call_option = call_option.headers(metadata_builder.build());
+        }
+        Ok(call_option)
     }
 }
 

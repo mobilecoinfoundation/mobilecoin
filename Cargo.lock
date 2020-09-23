@@ -3517,6 +3517,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-util-grpc-token-generator"
+version = "1.0.0"
+dependencies = [
+ "hex 0.4.2",
+ "mc-util-grpc",
+ "serde",
+ "structopt",
+]
+
+[[package]]
 name = "mc-util-host-cert"
 version = "1.0.0"
 
@@ -3642,6 +3652,7 @@ dependencies = [
  "mc-crypto-keys",
  "mc-util-from-random",
  "mc-util-host-cert",
+ "percent-encoding 2.1.0",
  "rand 0.7.3",
  "rand_hc 0.2.0",
  "serde",
