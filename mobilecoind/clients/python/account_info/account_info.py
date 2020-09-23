@@ -71,6 +71,16 @@ def wait_for_monitor(monitor_id_hex):
     print("# monitor {} has processed all {} blocks\n#".format(monitor_id_hex, ledger_block_count))
     return blocks_to_scan
 
+def display_in_MOB(picoMOB: int) -> str:
+    if picoMOB == 0:
+        return "0.000000"
+    MOB = float(picoMOB) / 1e12
+    if MOB < 0.000001:
+        return "{:0.6f}e-6".format(float(picoMOB)/1e6)
+    if MOB > 1000000:
+        return "{:0.6f}e6".format(float(picoMOB)/1e18)
+    return "{:0.6f}".format(MOB)
+
 if __name__ == '__main__':
     # Parse the arguments and generate the mob_client
     parser = argparse.ArgumentParser(description='provide secrets')
@@ -92,14 +102,19 @@ if __name__ == '__main__':
         monitor_id = mobilecoind.add_monitor(account_key, first_subaddress=default_subaddress_index, num_subaddresses=1, first_block=args.first_block).hex()
     else:
         monitor_id = mobilecoind.add_monitor(account_key, first_subaddress=default_subaddress_index, num_subaddresses=1).hex()
-    
+
     public_address = mobilecoind.get_public_address(bytes.fromhex(monitor_id), default_subaddress_index)
 
     if args.balance:
         blocks_processed = wait_for_monitor(monitor_id)
-    balance = mobilecoind.get_balance(bytes.fromhex(monitor_id), default_subaddress_index) if args.balance else "...Skipped"
+    balance_picoMOB = mobilecoind.get_balance(bytes.fromhex(monitor_id), default_subaddress_index) if args.balance else "...Skipped"
 
     address_code = mobilecoind.create_address_code(public_address)
 
-    # print request code for this entropy
-    print("\n\nAccount Information\n\n  Master Key:    {}\n  Address Code:  {}\n  Balance:       {} picoMOB\n\n".format(entropy, address_code, balance))
+    # print account information
+    print("\n")
+    print("    {:<18} {}".format("Master Key:", entropy))
+    print("    {:<18} {}".format("Address Code:", address_code))
+    print("    {:<18} {} picoMOB".format("Balance:", balance_picoMOB))
+    print("    {:<18}({} MOB)".format(" ", display_in_MOB(balance_picoMOB)))
+    print("\n")
