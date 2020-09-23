@@ -99,10 +99,10 @@ impl From<ConsensusGrpcError> for RpcStatus {
                 Some("Temporarily not serving requests".into()),
             ),
             ConsensusGrpcError::Enclave(EnclaveError::Attest(err)) => {
-                global_log::error!("Unauthenticated: {}", err);
+                global_log::error!("Permission denied: {}", err);
                 RpcStatus::new(
-                    RpcStatusCode::UNAUTHENTICATED,
-                    Some("Unauthenticated".into()),
+                    RpcStatusCode::PERMISSION_DENIED,
+                    Some("Permission Denied (attestation)".into()),
                 )
             }
             ConsensusGrpcError::Other(err) => RpcStatus::new(RpcStatusCode::INTERNAL, Some(err)),
