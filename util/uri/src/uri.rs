@@ -33,6 +33,12 @@ pub struct Uri<Scheme: UriScheme> {
     /// Whether to use TLS when connecting.
     use_tls: bool,
 
+    /// Optional username.
+    username: String,
+
+    /// Optional password.
+    password: String,
+
     /// The uri scheme
     _scheme: PhantomData<fn() -> Scheme>,
 }
@@ -56,6 +62,14 @@ impl<Scheme: UriScheme> ConnectionUri for Uri<Scheme> {
 
     fn use_tls(&self) -> bool {
         self.use_tls
+    }
+
+    fn username(&self) -> String {
+        self.username.clone()
+    }
+
+    fn password(&self) -> String {
+        self.password.clone()
     }
 }
 
@@ -101,11 +115,19 @@ impl<Scheme: UriScheme> FromStr for Uri<Scheme> {
             (None, false) => Scheme::DEFAULT_INSECURE_PORT,
         };
 
+        let username = url.username().to_owned();
+        let password = url
+            .password()
+            .map(|s| s.to_owned())
+            .unwrap_or_else(|| "".to_owned());
+
         Ok(Self {
             url,
             host,
             port,
             use_tls,
+            username,
+            password,
             _scheme: Default::default(),
         })
     }
