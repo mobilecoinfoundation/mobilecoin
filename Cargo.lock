@@ -2325,7 +2325,6 @@ dependencies = [
  "mc-consensus-enclave-measurement",
  "mc-crypto-keys",
  "mc-enclave-boundary",
- "mc-sgx-backtrace-edl",
  "mc-sgx-debug-edl",
  "mc-sgx-panic-edl",
  "mc-sgx-report-cache-api",
@@ -2990,13 +2989,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mc-sgx-backtrace-edl"
-version = "1.0.0"
-dependencies = [
- "cargo-emit",
-]
-
-[[package]]
 name = "mc-sgx-build"
 version = "1.0.0"
 dependencies = [
@@ -3153,10 +3145,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mc-sgx-libc-types"
-version = "1.0.0"
-
-[[package]]
 name = "mc-sgx-panic-edl"
 version = "1.0.0"
 dependencies = [
@@ -3216,7 +3204,6 @@ version = "1.0.0"
 dependencies = [
  "mc-common",
  "mc-sgx-build",
- "mc-sgx-libc-types",
  "mc-sgx-slog",
  "mc-sgx-types",
  "prost",

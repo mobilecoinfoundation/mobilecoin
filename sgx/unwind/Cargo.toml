@@ -1,7 +1,0 @@
-[package]
-name = "mc-sgx-unwind"
-version = "1.0.0"
-authors = ["MobileCoin"]
-
-[dependencies]
-mc-sgx-libc-types = { path = "../libc-types" }

@@ -4,13 +4,10 @@ version = "1.0.0"
 authors = ["MobileCoin"]
 
 [features]
-default = ["alloc"]
+default = ["alloc", "panic_abort"]
 alloc = []
-# Note: One of these two must be selected
+# Note: If alternate modes besides `panic_abort` are implemented they should go here,
+# similar as std lib
 panic_abort = []
-panic_unwind = ["alloc", "mc-sgx-unwind"]
 
 [dependencies]
-mc-sgx-libc-types = { path = "../libc-types" }
-mc-sgx-backtrace = { path = "../backtrace", optional = true }
-mc-sgx-unwind = { path = "../unwind", optional = true }

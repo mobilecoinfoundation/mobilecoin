@@ -54,17 +54,14 @@ Enclave crates:
 | Crate       | Description | Rust Dependencies | Intel Dependencies |
 | ----------- | ----------- | ------------      | -----------        |
 | `mc-sgx-alloc` | Provides a rust allocator, supports use of unstable `alloc` crate. Calls out to intel `malloc` and `free`. | None, but relies on panicking for OOM support by default | Intel `sgx_tstdc`, plus `sgx_trts` in `oom_abort` configuration |
-| `mc-sgx-panic` | Supports use of core `panic!`, `assert!` macros, and optionally the `catch_unwind` APIs | None, but `unwind` support needs `alloc`, `mc-sgx-unwind`, `mc-sgx-libc-types`. Backtrace on panic also if `mc-sgx-backtrace` is available | Intel `sgx_trts` |
+| `mc-sgx-panic` | Supports use of core `panic!`, `assert!` macros, and the `catch_unwind` APIs | None, only `abort` supported | Intel `sgx_trts` |
 | `mc-sgx-sync`  | Provides Rust synchronization primitives similar to `std::Mutex` based on intel implementation. | `mc-sgx-panic` by default, `mc-sgx-types` | Intel `sgx_tstdc` |
 | `mc-sgx-debug` | Provides a macro equivalent to `eprintln!` for use in sgx | None | None |
 | `mc-sgx-enclave-id` | Provides a way to get the `enclave-id` from inside the enclave | None | None |
-| `mc-sgx-backtrace` | Provides support for collecting backtraces and sending them to untrusted | `mc-sgx-unwind`, `mc-sgx-enclave_id`. Optionally `mc-sgx-debug` for printing certain warnings |
 
-Additional enclave support crates:
-
-| Crate       | Description | Dependencies |
-| ----------- | ----------- | ------------ |
-| `mc-sgx-unwind` | A rust interface to C `libunwind` which is bundled with rustc, libgcc | `mc-sgx-libc-types` crate |
+Note: `mc-sgx-panic` only supports `panic=abort` configuration. It is likely very difficult to get traditional backtraces
+or unwinding in SGX without security concerns. This needs design work and research. For future-proofing, we provide a `catch_unwind` function
+analogous to the standard library `catch_unwind`, but in the `panic=abort` configuration (which is the only one now) it doesn't actually catch anything.
 
 Crates for outside the enclave:
 

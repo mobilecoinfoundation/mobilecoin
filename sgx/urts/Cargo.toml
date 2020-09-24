@@ -3,22 +3,12 @@ name = "mc-sgx-urts"
 version = "1.0.0"
 authors = ["MobileCoin"]
 
-[features]
-default = [ ]
-# enables the backtrace EDL definition and handler
-# This is not known to have actually worked in a real enclave
-# and should probably go away completely and be redesigned
-backtrace = [ "rustc-demangle", "lazy_static" ]
 
 [dependencies]
 mc-common = { path = "../../common", features = ["log"] }
 mc-sgx-slog = { path = "../slog" }
-mc-sgx-libc-types = { path = "../libc-types" }
 mc-sgx-types = { path = "../types" }
 
-lazy_static = { version = "1.4", optional = true }
-rustc-demangle = { version = "0.1.10", optional = true }
-#backtrace-sys = { version = "0.1.24", optional = true }
 prost = { version = "0.6.1", default-features = false }
 
 [build-dependencies]

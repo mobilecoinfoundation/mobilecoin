@@ -9,8 +9,6 @@
 //
 // Alloc feature must be enabled to get APIs associated to catching panics
 // and rethrowing them, because in Rust those APIs use the Box type.
-#![cfg_attr(feature = "panic_unwind", feature(core_intrinsics))] // for intrinsics::try
-#![cfg_attr(feature = "panic_unwind", feature(panic_info_message))]
 #![feature(lang_items)] // for eh_personality
 #![feature(raw)]
 #![feature(thread_local)]
@@ -22,14 +20,6 @@
 extern crate alloc;
 #[cfg(feature = "alloc")]
 use alloc::boxed::Box;
-
-#[cfg(feature = "sgx_backtrace")]
-extern crate mc_sgx_backtrace;
-
-#[cfg(feature = "panic_unwind")]
-extern crate mc_sgx_libc_types as libc;
-#[cfg(feature = "panic_unwind")]
-extern crate mc_sgx_unwind as unwind;
 
 use core::any::Any;
 
@@ -61,7 +51,6 @@ mod panicking;
 /// panic_strategy module must also provide `eh_personality` lang item
 ///
 #[cfg_attr(feature = "panic_abort", path = "panic_abort/mod.rs")]
-#[cfg_attr(feature = "panic_unwind", path = "panic_unwind/mod.rs")]
 mod panic_strategy;
 
 /// This function is meant to be equivalent to std::thread::panicking()
