@@ -816,7 +816,7 @@ mod tests {
     };
     use mc_crypto_keys::Ed25519Pair;
     use mc_ledger_db::{Ledger, MockLedger}; // Don't use test_utils::MockLedger.
-    use mc_ledger_sync::{MockLedgerSync, SCPNetworkState};
+    use mc_ledger_sync::{LedgerSyncError, MockLedgerSync, SCPNetworkState};
     use mc_peers::{ConsensusMsg, MockBroadcast, VerifiedConsensusMsg};
     use mc_peers_test_utils::MockPeerConnection;
     use mc_transaction_core::{tx::TxHash, validation::TransactionValidationError, Block};
@@ -1049,6 +1049,124 @@ mod tests {
             },
             logger.clone(),
         );
+    }
+
+    #[test_with_logger]
+    // Should correctly update `ledger_sync_state` if syncing blocks succeeds.
+    fn test_sync_next_blocks_success(logger: Logger) {
+        let (node_id, _local_node_uri, msg_signer_key) = get_local_node_config(11);
+        let mut rng: StdRng = SeedableRng::from_seed([97u8; 32]);
+        let peers = get_peers(&[22, 33], &mut rng);
+        let quorum_set =
+            QuorumSet::new_with_node_ids(2, vec![peers[0].id.clone(), peers[1].id.clone()]);
+
+        let num_blocks = 12;
+        let (scp_node, ledger, mut ledger_sync, tx_manager, broadcast) =
+            get_mocks(&node_id, &quorum_set, num_blocks);
+        let connection_manager = get_connection_manager(&node_id, &peers, &logger);
+        let (_task_sender, task_receiver) = get_channel();
+
+        // `attempt_ledger_sync` should succeed.
+        ledger_sync
+            .expect_attempt_ledger_sync()
+            .return_once(|_, _| Ok(())); // This is a hack because LedgerSyncError is not Clone.
+
+        let mut worker = ByzantineLedgerWorker::new(
+            Box::new(scp_node),
+            msg_signer_key,
+            ledger,
+            ledger_sync,
+            connection_manager,
+            Arc::new(tx_manager),
+            Arc::new(Mutex::new(broadcast)),
+            task_receiver,
+            Arc::new(AtomicBool::new(false)),
+            Arc::new(AtomicU64::new(0)),
+            Arc::new(Mutex::new(Option::<ConsensusMsg>::None)),
+            logger,
+        );
+
+        // The worker must be behind.
+        let first_sync_at = Instant::now();
+        worker.ledger_sync_state = LedgerSyncState::IsBehind {
+            attempt_sync_at: first_sync_at.clone(),
+            num_sync_attempts: 7,
+        };
+
+        let num_blocks = 58; // Arbitrary
+        worker.sync_next_blocks(num_blocks);
+
+        // Reset ledger_sync_state to IsBehind with zero sync attempts.
+        match &worker.ledger_sync_state {
+            LedgerSyncState::IsBehind {
+                attempt_sync_at,
+                num_sync_attempts,
+            } => {
+                assert!(*attempt_sync_at > first_sync_at);
+                assert_eq!(*num_sync_attempts, 0);
+            }
+
+            _ => panic!("Unexpected"),
+        }
+    }
+
+    #[test_with_logger]
+    // Should correctly update `ledger_sync_state` if syncing blocks fails.
+    fn test_sync_next_blocks_failure(logger: Logger) {
+        let (node_id, _local_node_uri, msg_signer_key) = get_local_node_config(11);
+        let mut rng: StdRng = SeedableRng::from_seed([97u8; 32]);
+        let peers = get_peers(&[22, 33], &mut rng);
+        let quorum_set =
+            QuorumSet::new_with_node_ids(2, vec![peers[0].id.clone(), peers[1].id.clone()]);
+
+        let num_blocks = 12;
+        let (scp_node, ledger, mut ledger_sync, tx_manager, broadcast) =
+            get_mocks(&node_id, &quorum_set, num_blocks);
+        let connection_manager = get_connection_manager(&node_id, &peers, &logger);
+        let (_task_sender, task_receiver) = get_channel();
+
+        // `attempt_ledger_sync` should succeed.
+        ledger_sync
+            .expect_attempt_ledger_sync()
+            .return_once(|_, _| Err(LedgerSyncError::NoSafeBlocks)); // This is a hack because LedgerSyncError is not Clone.
+
+        let mut worker = ByzantineLedgerWorker::new(
+            Box::new(scp_node),
+            msg_signer_key,
+            ledger,
+            ledger_sync,
+            connection_manager,
+            Arc::new(tx_manager),
+            Arc::new(Mutex::new(broadcast)),
+            task_receiver,
+            Arc::new(AtomicBool::new(false)),
+            Arc::new(AtomicU64::new(0)),
+            Arc::new(Mutex::new(Option::<ConsensusMsg>::None)),
+            logger,
+        );
+
+        // The worker must be behind.
+        let first_sync_at = Instant::now();
+        worker.ledger_sync_state = LedgerSyncState::IsBehind {
+            attempt_sync_at: first_sync_at.clone(),
+            num_sync_attempts: 7,
+        };
+
+        let num_blocks = 58; // Arbitrary
+        worker.sync_next_blocks(num_blocks);
+
+        // Increment the num_sync_atempts
+        match &worker.ledger_sync_state {
+            LedgerSyncState::IsBehind {
+                attempt_sync_at,
+                num_sync_attempts,
+            } => {
+                assert!(*attempt_sync_at > first_sync_at);
+                assert_eq!(*num_sync_attempts, 8);
+            }
+
+            _ => panic!("Unexpected"),
+        }
     }
 
     #[test_with_logger]
