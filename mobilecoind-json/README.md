@@ -65,9 +65,45 @@ $ curl localhost:9090/monitors/a0cf8b79c9f8d74eb935ab4eeeb771f3809a408ad47246be4
 {"view_public_key":"543b376e9d5b949dd8694f065d95a98a89e6f17a20c621621a808605d1904324","spend_public_key":"58dba855a885dd535dc5180af443abae67c790b860d5adadb4d6a2ecb71abd28","fog_report_url":"","fog_authority_fingerprint_sig":"","fog_report_id":"", "b58_address_code": "7Q6gtA5EqSxkEsqsf5p2j7qEHkA8fBZYNsfuWTZTQaFAqo3FPo8PvhrrUobZfXagrLopzpxqxGBs7Hphwhsc56ryWriPWLCRadhRpnZW6AT"}
 ```
 
+### Simple payment flow
+There are two possible ways to make a payment. The simplest option is to use the intended recipient's `b58_address_code`, which they can get
+using the call above. 
+
+#### Initiate a transaction to a b58 public address
+This call initiates a transfer to a public address encoded as a b58 string. If the call returns successfully, the transaction has been
+submitted to the network. It returns receipts which you can use in calls below to determine if the transaction succeeded.
+
+```
+$ curl http://localhost:9090/monitors/%s/subaddresses/0/pay-address-code" -d '{"receiver_b58_address_code": "7Q6gtA5EqSxkEsqsf5p2j7qEHkA8fBZYNsfuWTZTQaFAqo3FPo8PvhrrUobZfXagrLopzpxqxGBs7Hphwhsc56ryWriPWLCRadhRpnZW6AT", "value": "1"}' -X POST -H 'Content-Type: application/json'
+
+{"sender_tx_receipt":{"key_images":["dc8a91dbacad97b59e9709379c279a28b3c35262f6744226d15ee87be6bbf132","7e22679d8e3c14ba9c6c45256902e7af8e82644618e65a4589bab268bfde4b61"],"tombstone":2121}, ,"receiver_tx_receipt_list":[{"recipient":{"view_public_key":"f460626a6cefb0bdfc73bb0c3a9c1a303a858f0b1b4ea59b154a1aa8d927af71","spend_public_key":"6a74da2dc6ff116d9278a30a4f8584e9edf165a22faf04a3ac210f219641a92d","fog_report_url":"","fog_authority_fingerprint_sig":"","fog_report_id":""},"tx_public_key":"7060ad50195686ebba591ccfed18ff9536b729d07a00022a21eb21db7e9a266b","tx_out_hash":"190ec89253bf47a05385b24e5b289a3a31127462aad613da9484f77d03986112","tombstone":2329,"confirmation_number":"190ec89253bf47a05385b24e5b289a3a31127462aad613da9484f77d03986112"}]}
+```
+
+#### Check the status of a transaction with a key image and tombstone block
+The return value from `pay-address-code` (and `build-and-submit` below) can be passed directly directly to `status-as-sender`
+```
+$ curl localhost:9090/tx/status-as-sender -d '{"sender_tx_receipt":{"key_images":["dc8a91dbacad97b59e9709379c279a28b3c35262f6744226d15ee87be6bbf132","7e22679d8e3c14ba9c6c45256902e7af8e82644618e65a4589bab268bfde4b61"],"tombstone":2121}}'  -X POST -H 'Content-Type: application/json'
+
+{"status":"verified"}
+```
+
+#### Check the status of a transaction from the receiving side and verify confirmation number
+The return value from `pay-address-code` includes a list called `receiver_tx_receipt_list`. The appropriate item in 
+the list can be send to the recipient over a separate channel (e.g. a secure chat application) and they can use it to 
+verify that they were paid by the sender.
+```
+$ curl localhost:9090/tx/status-as-receiver -d '{"recipient":{"view_public_key":"f460626a6cefb0bdfc73bb0c3a9c1a303a858f0b1b4ea59b154a1aa8d927af71","spend_public_key":"6a74da2dc6ff116d9278a30a4f8584e9edf165a22faf04a3ac210f219641a92d","fog_report_url":"","fog_authority_fingerprint_sig":"","fog_report_id":""},"tx_public_key":"7060ad50195686ebba591ccfed18ff9536b729d07a00022a21eb21db7e9a266b","tx_out_hash":"190ec89253bf47a05385b24e5b289a3a31127462aad613da9484f77d03986112","tombstone":2329,"confirmation_number":"190ec89253bf47a05385b24e5b289a3a31127462aad613da9484f77d03986112"}' -X POST -H 'Content-Type: application/json'
+
+{"status":"verified"}
+```
+
+### Request code payment flow
+Request codes combine a public address with an requested payment value and a memo field. They can also be encoded in b58 and shared.
+A potential sender interpreting a b58 request code must first read the information which allows them to verify or modify the value.
+
 #### Generate a request code from a public address and optional other information
 ```
-$ curl localhost:9090/codes/request -d '{"receiver": {"view_public_key":"543b376e9d5b949dd8694f065d95a98a89e6f17a20c621621a808605d1904324","spend_public_key":"58dba855a885dd535dc5180af443abae67c790b860d5adadb4d6a2ecb71abd28","fog_report_url":"","fog_authority_fingerprint_sig":"","fog_report_id":""}, "amount": 10, "memo": "Please pay me"}'  -X POST -H 'Content-Type: application/json'
+$ curl localhost:9090/codes/request -d '{"receiver": {"view_public_key":"543b376e9d5b949dd8694f065d95a98a89e6f17a20c621621a808605d1904324","spend_public_key":"58dba855a885dd535dc5180af443abae67c790b860d5adadb4d6a2ecb71abd28","fog_report_url":"","fog_authority_fingerprint_sig":"","fog_report_id":""}, "value": "10", "memo": "Please pay me"}'  -X POST -H 'Content-Type: application/json'
 
 {"request_code":"ufTwqVqF2rXmFVBZ1CWWS3ntdajVZGfZ5A2YZqAwhVnaVYrFpS9Z8iAg44CBGDeyjFDX8Hj4W7ZzArBn1xSp9wu8NriqQAogN8fUybKmoWgaz92kT4M7fbjRYKZmoY8"}
 ```
@@ -89,24 +125,7 @@ $ curl localhost:9090/monitors/fca4ffa1a1b1faf8ad775d0cf020426ba7f161720403a7612
 ```
 
 This returns receipt information that can be used by the sender to verify their transaction went through and also receipts to give to the receivers
-proving that you initiated the transaction
-
-#### Check the status of a transfer with a key image and tombstone block
-The return value from `build-and-submit` can be passed directly directly to `status-as-sender`
-```
-$ curl localhost:9090/tx/status-as-sender -d '{"sender_tx_receipt":{"key_images":["dc8a91dbacad97b59e9709379c279a28b3c35262f6744226d15ee87be6bbf132","7e22679d8e3c14ba9c6c45256902e7af8e82644618e65a4589bab268bfde4b61"],"tombstone":2121}}'  -X POST -H 'Content-Type: application/json'
-
-{"status":"verified"}
-```
-
-#### Check the status of a transaction from the receiving side and verify confirmation number
-The return value from `transfer` includes a list called `receiver_tx_receipt_list`. The appropriate item in the list can be send to the recipient over
-a separate channel (e.g. a secure chat application) and they can use it to verify that they were paid by the sender.
-```
-$ curl localhost:9090/tx/status-as-receiver -d '{"recipient":{"view_public_key":"f460626a6cefb0bdfc73bb0c3a9c1a303a858f0b1b4ea59b154a1aa8d927af71","spend_public_key":"6a74da2dc6ff116d9278a30a4f8584e9edf165a22faf04a3ac210f219641a92d","fog_report_url":"","fog_authority_fingerprint_sig":"","fog_report_id":""},"tx_public_key":"7060ad50195686ebba591ccfed18ff9536b729d07a00022a21eb21db7e9a266b","tx_out_hash":"190ec89253bf47a05385b24e5b289a3a31127462aad613da9484f77d03986112","tombstone":2329,"confirmation_number":"190ec89253bf47a05385b24e5b289a3a31127462aad613da9484f77d03986112"}' -X POST -H 'Content-Type: application/json'
-
-{"status":"verified"}
-```
+proving that you initiated the transaction. See *Check the status of a transaction* above.
 
 ### Ledger status endpoints
 
