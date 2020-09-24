@@ -988,9 +988,6 @@ version = "1.0.0"
 [[package]]
 name = "mc-sgx-panic"
 version = "1.0.0"
-dependencies = [
- "mc-sgx-libc-types 1.0.0",
-]
 
 [[package]]
 name = "mc-sgx-panic-edl"

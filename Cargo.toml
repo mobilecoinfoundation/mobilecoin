@@ -43,7 +43,6 @@ members = [
     "mobilecoind/api",
     "peers",
     "peers/test-utils",
-    "sgx/backtrace-edl",
     "sgx/compat-edl",
     "sgx/core-types",
     "sgx/core-types-sys",
