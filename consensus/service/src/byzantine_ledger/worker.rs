@@ -378,7 +378,7 @@ impl<
         self.pending_values
             .retain(|tx_hash| self_pending_values_map.contains_key(tx_hash));
 
-        debug_assert!(self.pending_values_map.len() == self.pending_values.len());
+        assert_eq!(self.pending_values_map.len(), self.pending_values.len());
     }
 
     // Reads tasks from the task queue.
@@ -424,7 +424,7 @@ impl<
 
     // Propose pending values for nomination in the current slot.
     fn propose_pending_values(&mut self) {
-        debug_assert!(!self.pending_values.is_empty());
+        assert!(!self.pending_values.is_empty());
 
         // Fairness heuristics:
         // * Values are proposed in the order that they were received.
@@ -604,7 +604,7 @@ impl<
         self.pending_values
             .retain(|tx_hash| self_pending_values_map.contains_key(tx_hash));
 
-        debug_assert!(self.pending_values_map.len() == self.pending_values.len());
+        assert_eq!(self.pending_values_map.len(), self.pending_values.len());
 
         log::info!(
             self.logger,
