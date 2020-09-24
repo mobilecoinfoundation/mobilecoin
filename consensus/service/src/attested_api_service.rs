@@ -15,16 +15,16 @@ use mc_util_metrics::SVC_COUNTERS;
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
-pub struct AttestedApiService<E: ConsensusEnclave + Send, S: Session> {
-    enclave: E,
+pub struct AttestedApiService<S: Session> {
+    enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
     authenticator: Arc<dyn Authenticator + Send + Sync>,
     logger: Logger,
     sessions: Arc<Mutex<HashSet<S>>>,
 }
 
-impl<E: ConsensusEnclave + Send, S: Session> AttestedApiService<E, S> {
+impl<S: Session> AttestedApiService<S> {
     pub fn new(
-        enclave: E,
+        enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
         authenticator: Arc<dyn Authenticator + Send + Sync>,
         logger: Logger,
     ) -> Self {
@@ -37,7 +37,7 @@ impl<E: ConsensusEnclave + Send, S: Session> AttestedApiService<E, S> {
     }
 }
 
-impl<E: ConsensusEnclave + Send> AttestedApi for AttestedApiService<E, PeerSession> {
+impl AttestedApi for AttestedApiService<PeerSession> {
     fn auth(&mut self, ctx: RpcContext, request: AuthMessage, sink: UnarySink<AuthMessage>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
@@ -80,7 +80,7 @@ impl<E: ConsensusEnclave + Send> AttestedApi for AttestedApiService<E, PeerSessi
     }
 }
 
-impl<E: ConsensusEnclave + Send> AttestedApi for AttestedApiService<E, ClientSession> {
+impl AttestedApi for AttestedApiService<ClientSession> {
     fn auth(&mut self, ctx: RpcContext, request: AuthMessage, sink: UnarySink<AuthMessage>) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
@@ -120,5 +120,123 @@ impl<E: ConsensusEnclave + Send> AttestedApi for AttestedApiService<E, ClientSes
                 }
             }
         });
+    }
+}
+
+#[cfg(test)]
+mod peer_tests {
+    use super::*;
+    use grpcio::{
+        ChannelBuilder, Environment, Error as GrpcError, RpcStatusCode, Server, ServerBuilder,
+    };
+    use mc_attest_api::attest_grpc::{self, AttestedApiClient};
+    use mc_common::logger::test_with_logger;
+    use mc_consensus_enclave_mock::MockConsensusEnclave;
+    use mc_util_grpc::auth::TokenAuthenticator;
+    use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
+
+    fn get_free_port() -> u16 {
+        static PORT_NR: AtomicUsize = AtomicUsize::new(0);
+        PORT_NR.fetch_add(1, SeqCst) as u16 + 30300
+    }
+
+    /// Starts the service on localhost and connects a client to it.
+    fn get_client_server(instance: AttestedApiService<PeerSession>) -> (AttestedApiClient, Server) {
+        let service = attest_grpc::create_attested_api(instance);
+        let env = Arc::new(Environment::new(1));
+        let mut server = ServerBuilder::new(env.clone())
+            .register_service(service)
+            .bind("127.0.0.1", get_free_port())
+            .build()
+            .unwrap();
+        server.start();
+        let (_, port) = server.bind_addrs().next().unwrap();
+        let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
+        let client = AttestedApiClient::new(ch);
+        (client, server)
+    }
+
+    #[test_with_logger]
+    // `auth` should reject unauthenticated responses when configured with an authenticator.
+    fn test_peer_auth_unauthenticated(logger: Logger) {
+        let authenticator = Arc::new(TokenAuthenticator::new([1; 32]));
+        let enclave = Arc::new(MockConsensusEnclave::new());
+
+        let attested_api_service =
+            AttestedApiService::<PeerSession>::new(enclave, authenticator, logger);
+
+        let (client, _server) = get_client_server(attested_api_service);
+
+        match client.auth(&AuthMessage::default()) {
+            Ok(response) => {
+                panic!("Unexpected response {:?}", response);
+            }
+            Err(GrpcError::RpcFailure(rpc_status)) => {
+                assert_eq!(rpc_status.status, RpcStatusCode::UNAUTHENTICATED);
+            }
+            Err(err @ _) => {
+                panic!("Unexpected error {:?}", err);
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod client_tests {
+    use super::*;
+    use grpcio::{
+        ChannelBuilder, Environment, Error as GrpcError, RpcStatusCode, Server, ServerBuilder,
+    };
+    use mc_attest_api::attest_grpc::{self, AttestedApiClient};
+    use mc_common::logger::test_with_logger;
+    use mc_consensus_enclave_mock::MockConsensusEnclave;
+    use mc_util_grpc::auth::TokenAuthenticator;
+    use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
+
+    fn get_free_port() -> u16 {
+        static PORT_NR: AtomicUsize = AtomicUsize::new(0);
+        PORT_NR.fetch_add(1, SeqCst) as u16 + 30300
+    }
+
+    /// Starts the service on localhost and connects a client to it.
+    fn get_client_server(
+        instance: AttestedApiService<ClientSession>,
+    ) -> (AttestedApiClient, Server) {
+        let service = attest_grpc::create_attested_api(instance);
+        let env = Arc::new(Environment::new(1));
+        let mut server = ServerBuilder::new(env.clone())
+            .register_service(service)
+            .bind("127.0.0.1", get_free_port())
+            .build()
+            .unwrap();
+        server.start();
+        let (_, port) = server.bind_addrs().next().unwrap();
+        let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
+        let client = AttestedApiClient::new(ch);
+        (client, server)
+    }
+
+    #[test_with_logger]
+    // `auth` should reject unauthenticated responses when configured with an authenticator.
+    fn test_client_auth_unauthenticated(logger: Logger) {
+        let authenticator = Arc::new(TokenAuthenticator::new([1; 32]));
+        let enclave = Arc::new(MockConsensusEnclave::new());
+
+        let attested_api_service =
+            AttestedApiService::<ClientSession>::new(enclave, authenticator, logger);
+
+        let (client, _server) = get_client_server(attested_api_service);
+
+        match client.auth(&AuthMessage::default()) {
+            Ok(response) => {
+                panic!("Unexpected response {:?}", response);
+            }
+            Err(GrpcError::RpcFailure(rpc_status)) => {
+                assert_eq!(rpc_status.status, RpcStatusCode::UNAUTHENTICATED);
+            }
+            Err(err @ _) => {
+                panic!("Unexpected error {:?}", err);
+            }
+        }
     }
 }

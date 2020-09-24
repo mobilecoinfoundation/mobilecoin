@@ -144,7 +144,9 @@ mod client_api_tests {
         counters,
         tx_manager::{MockTxManager, TxManagerError},
     };
-    use grpcio::{ChannelBuilder, Environment, Server, ServerBuilder};
+    use grpcio::{
+        ChannelBuilder, Environment, Error as GrpcError, RpcStatusCode, Server, ServerBuilder,
+    };
     use mc_attest_api::attest::Message;
     use mc_common::{
         logger::{test_with_logger, Logger},
@@ -505,11 +507,14 @@ mod client_api_tests {
 
         let message = Message::default();
         match client.client_tx_propose(&message) {
-            Ok(propose_tx_response) => {
-                panic!("Unexpected response {:?}", propose_tx_response);
+            Ok(response) => {
+                panic!("Unexpected response {:?}", response);
             }
-            Err(_) => {
-                // Should be  RpcFailure(RpcStatus { status: 16-UNAUTHENTICATED, details: Some("Unauthenticated") })
+            Err(GrpcError::RpcFailure(rpc_status)) => {
+                assert_eq!(rpc_status.status, RpcStatusCode::UNAUTHENTICATED);
+            }
+            Err(err @ _) => {
+                panic!("Unexpected error {:?}", err);
             }
         };
     }

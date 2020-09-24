@@ -157,10 +157,36 @@ impl<L: Ledger + Clone> BlockchainApi for BlockchainApiService<L> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use grpcio::{ChannelBuilder, Environment, Error as GrpcError, Server, ServerBuilder};
     use mc_common::logger::test_with_logger;
+    use mc_consensus_api::consensus_common_grpc::{self, BlockchainApiClient};
     use mc_transaction_core_test_utils::{create_ledger, initialize_ledger, AccountKey};
-    use mc_util_grpc::auth::AnonymousAuthenticator;
+    use mc_util_grpc::auth::{AnonymousAuthenticator, TokenAuthenticator};
     use rand::{rngs::StdRng, SeedableRng};
+    use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
+
+    fn get_free_port() -> u16 {
+        static PORT_NR: AtomicUsize = AtomicUsize::new(0);
+        PORT_NR.fetch_add(1, SeqCst) as u16 + 30200
+    }
+
+    /// Starts the service on localhost and connects a client to it.
+    fn get_client_server<L: Ledger + Clone + 'static>(
+        instance: BlockchainApiService<L>,
+    ) -> (BlockchainApiClient, Server) {
+        let service = consensus_common_grpc::create_blockchain_api(instance);
+        let env = Arc::new(Environment::new(1));
+        let mut server = ServerBuilder::new(env.clone())
+            .register_service(service)
+            .bind("127.0.0.1", get_free_port())
+            .build()
+            .unwrap();
+        server.start();
+        let (_, port) = server.bind_addrs().next().unwrap();
+        let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
+        let client = BlockchainApiClient::new(ch);
+        (client, server)
+    }
 
     #[test_with_logger]
     // `get_last_block_info` should returns the last block.
@@ -183,6 +209,30 @@ mod tests {
 
         let block_response = blockchain_api_service.get_last_block_info_helper().unwrap();
         assert_eq!(block_response, expected_response);
+    }
+
+    #[test_with_logger]
+    // `get_last_block_info` should reject unauthenticated responses when configured with an
+    // authenticator.
+    fn test_get_last_block_info_rejects_unauthenticated(logger: Logger) {
+        let ledger_db = create_ledger();
+        let authenticator = Arc::new(TokenAuthenticator::new([1; 32]));
+
+        let blockchain_api_service = BlockchainApiService::new(ledger_db, authenticator, logger);
+
+        let (client, _server) = get_client_server(blockchain_api_service);
+
+        match client.get_last_block_info(&Empty::default()) {
+            Ok(response) => {
+                panic!("Unexpected response {:?}", response);
+            }
+            Err(GrpcError::RpcFailure(rpc_status)) => {
+                assert_eq!(rpc_status.status, RpcStatusCode::UNAUTHENTICATED);
+            }
+            Err(err @ _) => {
+                panic!("Unexpected error {:?}", err);
+            }
+        }
     }
 
     #[test_with_logger]
@@ -271,5 +321,29 @@ mod tests {
         assert_eq!(5, blocks.len());
         assert_eq!(expected_blocks.get(0).unwrap(), blocks.get(0).unwrap());
         assert_eq!(expected_blocks.get(4).unwrap(), blocks.get(4).unwrap());
+    }
+
+    #[test_with_logger]
+    // `get_blocks` should reject unauthenticated responses when configured with an
+    // authenticator.
+    fn test_get_blocks_rejects_unauthenticated(logger: Logger) {
+        let ledger_db = create_ledger();
+        let authenticator = Arc::new(TokenAuthenticator::new([1; 32]));
+
+        let blockchain_api_service = BlockchainApiService::new(ledger_db, authenticator, logger);
+
+        let (client, _server) = get_client_server(blockchain_api_service);
+
+        match client.get_blocks(&BlocksRequest::default()) {
+            Ok(response) => {
+                panic!("Unexpected response {:?}", response);
+            }
+            Err(GrpcError::RpcFailure(rpc_status)) => {
+                assert_eq!(rpc_status.status, RpcStatusCode::UNAUTHENTICATED);
+            }
+            Err(err @ _) => {
+                panic!("Unexpected error {:?}", err);
+            }
+        }
     }
 }

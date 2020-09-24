@@ -301,9 +301,11 @@ impl<
         );
 
         // Setup GRPC services.
+        let enclave = Arc::new(self.enclave.clone());
+
         let client_service = consensus_client_grpc::create_consensus_client_api(
             client_api_service::ClientApiService::new(
-                Arc::new(self.enclave.clone()),
+                enclave.clone(),
                 self.create_scp_client_value_sender_fn(),
                 Arc::new(self.ledger_db.clone()),
                 self.tx_manager.clone(),
@@ -313,8 +315,8 @@ impl<
             ),
         );
 
-        let attested_service = create_attested_api(AttestedApiService::<E, ClientSession>::new(
-            self.enclave.clone(),
+        let attested_service = create_attested_api(AttestedApiService::<ClientSession>::new(
+            enclave,
             self.client_authenticator.clone(),
             self.logger.clone(),
         ));
@@ -398,6 +400,8 @@ impl<
         let peer_authenticator = Arc::new(AnonymousAuthenticator::default());
 
         // Initialize services.
+        let enclave = Arc::new(self.enclave.clone());
+
         let byzantine_ledger = Arc::downgrade(
             self.byzantine_ledger
                 .as_ref()
@@ -421,7 +425,7 @@ impl<
 
         let peer_service =
             consensus_peer_grpc::create_consensus_peer_api(peer_api_service::PeerApiService::new(
-                self.enclave.clone(),
+                self.enclave.clone(), // TODO use Arc'ed enclave from above
                 self.consensus_msgs_from_network.get_sender_fn(),
                 self.create_scp_client_value_sender_fn(),
                 self.ledger_db.clone(),
@@ -431,8 +435,8 @@ impl<
                 self.logger.clone(),
             ));
 
-        let attested_service = create_attested_api(AttestedApiService::<E, PeerSession>::new(
-            self.enclave.clone(),
+        let attested_service = create_attested_api(AttestedApiService::<PeerSession>::new(
+            enclave,
             peer_authenticator,
             self.logger.clone(),
         ));
