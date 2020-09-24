@@ -37,6 +37,7 @@ use mc_util_from_random::FromRandom;
 use mc_util_grpc::{
     rpc_internal_error, rpc_logger, send_result, BuildInfoService, ConnectionUriGrpcioServer,
 };
+use mc_util_url_encoding::MobUrl;
 use mc_watcher::watcher_db::WatcherDB;
 use protobuf::{ProtobufEnum, RepeatedField};
 use std::{
@@ -412,8 +413,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             .b58_encode()
             .map_err(|err| rpc_internal_error("b58_encode", err, &self.logger))?;
 
+        let mut mob_url = MobUrl::try_from(&receiver)
+            .map_err(|err| rpc_internal_error("MobUrl.try_from", err, &self.logger))?;
+        mob_url.set_amount(request.get_value());
+        mob_url.set_memo(request.get_memo());
+
         let mut response = mc_mobilecoind_api::CreateRequestCodeResponse::new();
         response.set_b58_code(encoded);
+        response.set_mob_url(mob_url.as_ref().to_string());
         Ok(response)
     }
 

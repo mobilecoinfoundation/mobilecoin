@@ -341,6 +341,7 @@ message CreateRequestCodeRequest {
 }
 message CreateRequestCodeResponse {
     string b58_code = 1;
+    string mob_url = 2;
 }
 
 // Decode a base-58 encoded "MobileCoin Transfer Code" into entropy/tx_public_key/memo.
