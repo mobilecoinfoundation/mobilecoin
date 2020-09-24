@@ -806,17 +806,16 @@ mod tests {
         MockScpNode, Msg, QuorumSet,
     };
     use mc_crypto_keys::Ed25519Pair;
-    use mc_ledger_db::MockLedger; // Don't use test_utils::MockLedger.
+    use mc_ledger_db::{Ledger, MockLedger}; // Don't use test_utils::MockLedger.
     use mc_ledger_sync::{MockLedgerSync, SCPNetworkState};
     use mc_peers::{ConsensusMsg, MockBroadcast, VerifiedConsensusMsg};
     use mc_peers_test_utils::MockPeerConnection;
-    use mc_transaction_core::{tx::TxHash, validation::TransactionValidationError};
-    use mc_util_from_random::FromRandom;
+    use mc_transaction_core::{tx::TxHash, validation::TransactionValidationError, Block};
     use mc_util_metered_channel::{Receiver, Sender};
     use mc_util_metrics::OpMetrics;
     use mockall::predicate::eq;
     use rand::rngs::StdRng;
-    use rand_core::{CryptoRng, RngCore, SeedableRng};
+    use rand_core::SeedableRng;
     use std::{
         convert::TryFrom,
         ops::Add,
@@ -1118,10 +1117,19 @@ mod tests {
             QuorumSet::new_with_node_ids(2, vec![peers[0].id.clone(), peers[1].id.clone()]);
 
         let num_blocks = 12;
-        let (scp_node, ledger, ledger_sync, tx_manager, broadcast) =
+        let (scp_node, mut ledger, ledger_sync, tx_manager, broadcast) =
             get_mocks(&node_id, &quorum_set, num_blocks);
         let connection_manager = get_connection_manager(&node_id, &peers, &logger);
         let (task_sender, task_receiver) = get_channel();
+
+        let previous_block = Block::new_origin_block(&vec![]);
+        ledger
+            .expect_get_block()
+            .times(1)
+            .return_const(Ok(previous_block));
+
+        let verified_consensus_msg =
+            get_verified_consensus_msg(&peers[0].id, &peers[0].signer_key, &ledger);
 
         let mut worker = ByzantineLedgerWorker::new(
             Box::new(scp_node),
@@ -1159,7 +1167,6 @@ mod tests {
         assert_eq!(worker.pending_values.len(), tx_hashes.len());
         assert_eq!(worker.pending_values_map.len(), tx_hashes.len());
 
-        let verified_consensus_msg = get_verified_consensus_msg(&peers[0].id, &mut rng);
         let responder_id = ResponderId::default();
 
         task_sender
@@ -1176,15 +1183,20 @@ mod tests {
         assert_eq!(worker.pending_consensus_msgs.len(), 1);
     }
 
-    fn get_verified_consensus_msg<RNG: RngCore + CryptoRng>(
+    /// Constructs a VerifiedConsensusMsg.
+    ///
+    /// # Arguments
+    /// * `sender_id` - Sender of the message.
+    /// * `signer_key` - The sender's message signing keypair.
+    /// * `ledger` - The sender's local ledger.
+    fn get_verified_consensus_msg<L: Ledger>(
         sender_id: &NodeID,
-        rng: &mut RNG,
+        signer_key: &Ed25519Pair,
+        ledger: &L,
     ) -> VerifiedConsensusMsg {
-        let ledger = MockLedger::new();
-
         let msg: Msg<TxHash, NodeID> = Msg {
             sender_id: sender_id.clone(),
-            slot_index: 0,
+            slot_index: 1,
             quorum_set: QuorumSet {
                 threshold: 0,
                 members: vec![],
@@ -1195,8 +1207,7 @@ mod tests {
             }),
         };
 
-        let signer_key = Ed25519Pair::from_random(rng);
-        let consensus_msg = ConsensusMsg::from_scp_msg(&ledger, msg, &signer_key).unwrap();
+        let consensus_msg = ConsensusMsg::from_scp_msg(ledger, msg, signer_key).unwrap();
         VerifiedConsensusMsg::try_from(consensus_msg).unwrap()
     }
 
