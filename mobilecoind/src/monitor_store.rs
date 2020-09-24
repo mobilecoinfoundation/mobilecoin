@@ -90,7 +90,7 @@ impl From<&MonitorData> for MonitorId {
     fn from(src: &MonitorData) -> MonitorId {
         #[derive(Digestible)]
         struct ConstMonitorData {
-            // We use PublicAddress and not AccountKey because PublicAddress is Digestible.
+            // We use PublicAddress and not AccountKey so that the monitor_id is not sensitive.
             pub address: PublicAddress,
             pub first_subaddress: u64,
             pub num_subaddresses: u64,
