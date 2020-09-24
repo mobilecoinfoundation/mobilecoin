@@ -798,21 +798,27 @@ mod tests {
     use failure::_core::time::Duration;
     use mc_common::{
         logger::{test_with_logger, Logger},
-        NodeID,
+        NodeID, ResponderId,
     };
     use mc_connection::ConnectionManager;
-    use mc_consensus_scp::{MockScpNode, QuorumSet};
-    use mc_ledger_db::MockLedger;
+    use mc_consensus_scp::{
+        msg::{NominatePayload, Topic::Nominate},
+        MockScpNode, Msg, QuorumSet,
+    };
+    use mc_crypto_keys::Ed25519Pair;
+    use mc_ledger_db::MockLedger; // Don't use test_utils::MockLedger.
     use mc_ledger_sync::{MockLedgerSync, SCPNetworkState};
-    use mc_peers::{ConsensusMsg, MockBroadcast};
+    use mc_peers::{ConsensusMsg, MockBroadcast, VerifiedConsensusMsg};
     use mc_peers_test_utils::MockPeerConnection;
     use mc_transaction_core::{tx::TxHash, validation::TransactionValidationError};
+    use mc_util_from_random::FromRandom;
     use mc_util_metered_channel::{Receiver, Sender};
     use mc_util_metrics::OpMetrics;
     use mockall::predicate::eq;
     use rand::rngs::StdRng;
-    use rand_core::SeedableRng;
+    use rand_core::{CryptoRng, RngCore, SeedableRng};
     use std::{
+        convert::TryFrom,
         ops::Add,
         sync::{
             atomic::{AtomicBool, AtomicU64},
@@ -1040,8 +1046,6 @@ mod tests {
     #[test_with_logger]
     /// Should discard values that are no longer valid.
     fn test_update_pending_values_discards_invalid_values(logger: Logger) {
-        let pending_values = vec![TxHash([1u8; 32]), TxHash([2u8; 32]), TxHash([3u8; 32])];
-
         let (node_id, _local_node_uri, msg_signer_key) = get_local_node_config(11);
 
         let mut rng: StdRng = SeedableRng::from_seed([97u8; 32]);
@@ -1054,6 +1058,8 @@ mod tests {
             get_mocks(&node_id, &quorum_set, num_blocks);
         let connection_manager = get_connection_manager(&node_id, &peers, &logger);
         let (_task_sender, task_receiver) = get_channel();
+
+        let pending_values = vec![TxHash([1u8; 32]), TxHash([2u8; 32]), TxHash([3u8; 32])];
 
         // `validate` should be called one for each pending value.
         tx_manager
@@ -1103,7 +1109,96 @@ mod tests {
         assert_eq!(worker.pending_values.len(), worker.pending_values_map.len());
     }
 
-    // TODO: test receive_tasks
+    #[test_with_logger]
+    fn test_receive_tasks(logger: Logger) {
+        let (node_id, _local_node_uri, msg_signer_key) = get_local_node_config(11);
+        let mut rng: StdRng = SeedableRng::from_seed([97u8; 32]);
+        let peers = get_peers(&[22, 33], &mut rng);
+        let quorum_set =
+            QuorumSet::new_with_node_ids(2, vec![peers[0].id.clone(), peers[1].id.clone()]);
+
+        let num_blocks = 12;
+        let (scp_node, ledger, ledger_sync, tx_manager, broadcast) =
+            get_mocks(&node_id, &quorum_set, num_blocks);
+        let connection_manager = get_connection_manager(&node_id, &peers, &logger);
+        let (task_sender, task_receiver) = get_channel();
+
+        let mut worker = ByzantineLedgerWorker::new(
+            Box::new(scp_node),
+            msg_signer_key,
+            ledger,
+            ledger_sync,
+            connection_manager,
+            Arc::new(tx_manager),
+            Arc::new(Mutex::new(broadcast)),
+            task_receiver,
+            Arc::new(AtomicBool::new(false)),
+            Arc::new(AtomicU64::new(0)),
+            Arc::new(Mutex::new(Option::<ConsensusMsg>::None)),
+            logger,
+        );
+
+        // Should return true when the task queue is empty.
+        assert_eq!(worker.receive_tasks(), true);
+
+        // Should return false when a StopTrigger is consumed.
+        task_sender.send(TaskMessage::StopTrigger).unwrap();
+        assert_eq!(worker.receive_tasks(), false);
+
+        // Should update pending_values and pending_values_map when new values are received.
+        let tx_hashes: Vec<_> = (0..200).map(|i| TxHash([i as u8; 32])).collect();
+        for tx_hash in &tx_hashes {
+            task_sender
+                .send(TaskMessage::Values(Some(Instant::now()), vec![*tx_hash]))
+                .unwrap();
+        }
+        // Initially, pending_values should be empty.
+        assert_eq!(worker.pending_values, vec![]);
+        assert_eq!(worker.receive_tasks(), true);
+        // All task messages should have been consumed.
+        assert_eq!(worker.pending_values.len(), tx_hashes.len());
+        assert_eq!(worker.pending_values_map.len(), tx_hashes.len());
+
+        let verified_consensus_msg = get_verified_consensus_msg(&peers[0].id, &mut rng);
+        let responder_id = ResponderId::default();
+
+        task_sender
+            .send(TaskMessage::ConsensusMsg(
+                verified_consensus_msg,
+                responder_id,
+            ))
+            .unwrap();
+
+        // Initially, pending_consensus_msgs should be empty.
+        assert_eq!(worker.pending_consensus_msgs, vec![]);
+        assert_eq!(worker.receive_tasks(), true);
+        // The message from the task queue should now be pending.
+        assert_eq!(worker.pending_consensus_msgs.len(), 1);
+    }
+
+    fn get_verified_consensus_msg<RNG: RngCore + CryptoRng>(
+        sender_id: &NodeID,
+        rng: &mut RNG,
+    ) -> VerifiedConsensusMsg {
+        let ledger = MockLedger::new();
+
+        let msg: Msg<TxHash, NodeID> = Msg {
+            sender_id: sender_id.clone(),
+            slot_index: 0,
+            quorum_set: QuorumSet {
+                threshold: 0,
+                members: vec![],
+            },
+            topic: Nominate(NominatePayload {
+                X: Default::default(),
+                Y: Default::default(),
+            }),
+        };
+
+        let signer_key = Ed25519Pair::from_random(rng);
+        let consensus_msg = ConsensusMsg::from_scp_msg(&ledger, msg, &signer_key).unwrap();
+        VerifiedConsensusMsg::try_from(consensus_msg).unwrap()
+    }
 
     // TODO: test propose_pending_values
 
