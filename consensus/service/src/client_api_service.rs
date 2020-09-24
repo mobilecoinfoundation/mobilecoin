@@ -164,9 +164,12 @@ mod client_api_tests {
     };
     use mc_util_grpc::auth::{AnonymousAuthenticator, TokenAuthenticator};
     use serial_test_derive::serial;
-    use std::sync::{
-        atomic::{AtomicUsize, Ordering::SeqCst},
-        Arc,
+    use std::{
+        sync::{
+            atomic::{AtomicUsize, Ordering::SeqCst},
+            Arc,
+        },
+        time::Duration,
     };
 
     fn get_free_port() -> u16 {
@@ -490,7 +493,7 @@ mod client_api_tests {
             |_tx_hash: TxHash, _node_id: Option<&NodeID>, _responder_id: Option<&ResponderId>| {},
         );
 
-        let authenticator = TokenAuthenticator::new([1; 32]);
+        let authenticator = TokenAuthenticator::new([1; 32], Duration::from_secs(60));
 
         let instance = ClientApiService::new(
             Arc::new(enclave),

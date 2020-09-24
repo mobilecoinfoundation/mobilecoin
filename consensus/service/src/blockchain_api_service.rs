@@ -163,7 +163,10 @@ mod tests {
     use mc_transaction_core_test_utils::{create_ledger, initialize_ledger, AccountKey};
     use mc_util_grpc::auth::{AnonymousAuthenticator, TokenAuthenticator};
     use rand::{rngs::StdRng, SeedableRng};
-    use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
+    use std::{
+        sync::atomic::{AtomicUsize, Ordering::SeqCst},
+        time::Duration,
+    };
 
     fn get_free_port() -> u16 {
         static PORT_NR: AtomicUsize = AtomicUsize::new(0);
@@ -216,7 +219,7 @@ mod tests {
     // authenticator.
     fn test_get_last_block_info_rejects_unauthenticated(logger: Logger) {
         let ledger_db = create_ledger();
-        let authenticator = Arc::new(TokenAuthenticator::new([1; 32]));
+        let authenticator = Arc::new(TokenAuthenticator::new([1; 32], Duration::from_secs(60)));
 
         let blockchain_api_service = BlockchainApiService::new(ledger_db, authenticator, logger);
 
@@ -328,7 +331,7 @@ mod tests {
     // authenticator.
     fn test_get_blocks_rejects_unauthenticated(logger: Logger) {
         let ledger_db = create_ledger();
-        let authenticator = Arc::new(TokenAuthenticator::new([1; 32]));
+        let authenticator = Arc::new(TokenAuthenticator::new([1; 32], Duration::from_secs(60)));
 
         let blockchain_api_service = BlockchainApiService::new(ledger_db, authenticator, logger);
 

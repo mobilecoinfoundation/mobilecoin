@@ -133,7 +133,10 @@ mod peer_tests {
     use mc_common::logger::test_with_logger;
     use mc_consensus_enclave_mock::MockConsensusEnclave;
     use mc_util_grpc::auth::TokenAuthenticator;
-    use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
+    use std::{
+        sync::atomic::{AtomicUsize, Ordering::SeqCst},
+        time::Duration,
+    };
 
     fn get_free_port() -> u16 {
         static PORT_NR: AtomicUsize = AtomicUsize::new(0);
@@ -159,7 +162,7 @@ mod peer_tests {
     #[test_with_logger]
     // `auth` should reject unauthenticated responses when configured with an authenticator.
     fn test_peer_auth_unauthenticated(logger: Logger) {
-        let authenticator = Arc::new(TokenAuthenticator::new([1; 32]));
+        let authenticator = Arc::new(TokenAuthenticator::new([1; 32], Duration::from_secs(60)));
         let enclave = Arc::new(MockConsensusEnclave::new());
 
         let attested_api_service =
@@ -191,11 +194,14 @@ mod client_tests {
     use mc_common::logger::test_with_logger;
     use mc_consensus_enclave_mock::MockConsensusEnclave;
     use mc_util_grpc::auth::TokenAuthenticator;
-    use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
+    use std::{
+        sync::atomic::{AtomicUsize, Ordering::SeqCst},
+        time::Duration,
+    };
 
     fn get_free_port() -> u16 {
         static PORT_NR: AtomicUsize = AtomicUsize::new(0);
-        PORT_NR.fetch_add(1, SeqCst) as u16 + 30300
+        PORT_NR.fetch_add(1, SeqCst) as u16 + 30350
     }
 
     /// Starts the service on localhost and connects a client to it.
@@ -219,7 +225,7 @@ mod client_tests {
     #[test_with_logger]
     // `auth` should reject unauthenticated responses when configured with an authenticator.
     fn test_client_auth_unauthenticated(logger: Logger) {
-        let authenticator = Arc::new(TokenAuthenticator::new([1; 32]));
+        let authenticator = Arc::new(TokenAuthenticator::new([1; 32], Duration::from_secs(60)));
         let enclave = Arc::new(MockConsensusEnclave::new());
 
         let attested_api_service =

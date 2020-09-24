@@ -176,7 +176,10 @@ mod test {
     use super::*;
     use anonymous_authenticator::{AnonymousAuthenticator, ANONYMOUS_USER};
     use grpcio::MetadataBuilder;
+    use std::time::Duration;
     use token_authenticator::{TokenAuthenticator, TokenBasicCredentialsGenerator};
+
+    const TOKEN_MAX_LIFETIME: Duration = Duration::from_secs(60);
 
     #[test]
     fn authenticate_anonymous() {
@@ -231,7 +234,7 @@ mod test {
     #[test]
     fn authenticate_token() {
         let shared_secret = [66; 32];
-        let authenticator = TokenAuthenticator::new(shared_secret.clone());
+        let authenticator = TokenAuthenticator::new(shared_secret.clone(), TOKEN_MAX_LIFETIME);
         const TEST_USERNAME: &str = "user123";
 
         // Authorizing without any headers should fail.

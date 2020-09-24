@@ -10,7 +10,10 @@ use mc_util_uri::{
     AdminUri, ConnectionUri, ConsensusClientUri as ClientUri, ConsensusPeerUri as PeerUri,
 };
 use serde::{Deserialize, Serialize};
-use std::{fmt::Debug, fs, iter::FromIterator, path::PathBuf, string::String, sync::Arc};
+use std::{
+    fmt::Debug, fs, iter::FromIterator, path::PathBuf, str::FromStr, string::String, sync::Arc,
+    time::Duration,
+};
 use structopt::StructOpt;
 
 #[derive(Clone, Debug, StructOpt)]
@@ -84,6 +87,11 @@ pub struct Config {
     /// hex-encoded 32 bytes shared secret.
     #[structopt(long, parse(try_from_str=from_hex_32))]
     pub client_auth_token_secret: Option<[u8; 32]>,
+
+    /// Maximal client authentication token lifetime, in seconds (only relevant when
+    /// --client-auth-token-secret is used. Defaults to 86400 - 24 hours).
+    #[structopt(long, default_value = "86400", parse(try_from_str=parse_duration_in_seconds))]
+    pub client_auth_token_max_lifetime: Duration,
 }
 
 /// Decodes an Ed25519 private key.
@@ -112,6 +120,11 @@ fn from_hex_32(src: &str) -> Result<[u8; 32], String> {
     let mut output = [0; 32];
     output.copy_from_slice(&bytes[..]);
     Ok(output)
+}
+
+/// Converts a string containing number of seconds to a Duration object.
+fn parse_duration_in_seconds(src: &str) -> Result<Duration, std::num::ParseIntError> {
+    Ok(Duration::from_secs(u64::from_str(src)?))
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
@@ -426,6 +439,7 @@ mod tests {
             origin_block_path: None,
             sealed_block_signing_key: PathBuf::default(),
             client_auth_token_secret: None,
+            client_auth_token_max_lifetime: Duration::from_secs(60),
         };
 
         assert_eq!(
@@ -480,6 +494,7 @@ mod tests {
             origin_block_path: None,
             sealed_block_signing_key: PathBuf::default(),
             client_auth_token_secret: None,
+            client_auth_token_max_lifetime: Duration::from_secs(60),
         };
 
         assert_eq!(

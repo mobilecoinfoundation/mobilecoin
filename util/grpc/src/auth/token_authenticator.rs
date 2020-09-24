@@ -13,14 +13,21 @@ use std::{
 use subtle::ConstantTimeEq;
 use zeroize::Zeroize;
 
-/// The maximum duration a token is valid for.
-pub const TOKEN_MAX_LIFETIME: Duration = Duration::from_secs(86400);
-
 /// Token-based authentication: An object that implements `Authenticator`, allowing to authenticate
 /// users using HMAC-generated tokens.
-#[derive(Zeroize)]
 pub struct TokenAuthenticator {
+    /// Secret shared between the authenticator and then token generator, allowing for generated
+    /// tokens to be cryptographically-verified by the authenticator.
     shared_secret: [u8; 32],
+
+    /// The maximum duration a token is valid for.
+    max_token_lifetime: Duration,
+}
+
+impl Drop for TokenAuthenticator {
+    fn drop(&mut self) {
+        self.shared_secret.zeroize();
+    }
 }
 
 impl Authenticator for TokenAuthenticator {
@@ -56,8 +63,11 @@ impl Authenticator for TokenAuthenticator {
 }
 
 impl TokenAuthenticator {
-    pub fn new(shared_secret: [u8; 32]) -> Self {
-        Self { shared_secret }
+    pub fn new(shared_secret: [u8; 32], max_token_lifetime: Duration) -> Self {
+        Self {
+            shared_secret,
+            max_token_lifetime,
+        }
     }
 
     fn is_valid_time(&self, timestamp: &str, now: SystemTime) -> Result<bool, AuthenticatorError> {
@@ -72,7 +82,7 @@ impl TokenAuthenticator {
         let distance: Duration = our_time
             .checked_sub(token_time)
             .unwrap_or_else(|| token_time - our_time);
-        Ok(distance < TOKEN_MAX_LIFETIME)
+        Ok(distance < self.max_token_lifetime)
     }
 
     fn is_valid_signature(&self, data: &str, signature: &str) -> Result<bool, AuthenticatorError> {
@@ -139,6 +149,7 @@ impl TokenBasicCredentialsGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
+    const TOKEN_MAX_LIFETIME: Duration = Duration::from_secs(60);
 
     #[test]
     fn valid_token_authenticates_successfully() {
@@ -146,7 +157,7 @@ mod tests {
         const TEST_USERNAME: &str = "test user";
 
         let generator = TokenBasicCredentialsGenerator::new(shared_secret.clone());
-        let authenticator = TokenAuthenticator::new(shared_secret);
+        let authenticator = TokenAuthenticator::new(shared_secret, TOKEN_MAX_LIFETIME);
 
         let creds = generator.generate_for(TEST_USERNAME).unwrap();
         let user = authenticator
@@ -159,7 +170,7 @@ mod tests {
     #[should_panic(expected = "called `Result::unwrap()` on an `Err` value: Unauthenticated")]
     fn missing_creds_fails_authentication() {
         let shared_secret = [3; 32];
-        let authenticator = TokenAuthenticator::new(shared_secret);
+        let authenticator = TokenAuthenticator::new(shared_secret, TOKEN_MAX_LIFETIME);
 
         // We expect this to panic.
         let _ = authenticator.authenticate(None).unwrap();
@@ -176,7 +187,7 @@ mod tests {
         let generator = TokenBasicCredentialsGenerator::new(shared_secret.clone());
 
         // Signature will fail if authenticator uses a different shared secret.
-        let authenticator = TokenAuthenticator::new([4; 32]);
+        let authenticator = TokenAuthenticator::new([4; 32], TOKEN_MAX_LIFETIME);
 
         let creds = generator.generate_for(TEST_USERNAME).unwrap();
 
@@ -186,7 +197,7 @@ mod tests {
 
     #[test]
     fn is_valid_time_rejects_expired() {
-        let authenticator = TokenAuthenticator::new([4; 32]);
+        let authenticator = TokenAuthenticator::new([4; 32], TOKEN_MAX_LIFETIME);
 
         let now = SystemTime::now();
         let now_in_seconds = now
