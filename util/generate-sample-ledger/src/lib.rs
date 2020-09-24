@@ -92,7 +92,7 @@ pub fn bootstrap_ledger(
            outputs_per_recipient_per_block,
            num_blocks,
            key_images_per_block,
-           mc_util_build_info::GIT_COMMIT,
+           mc_util_build_info::git_commit(),
     ).expect("File I/O");
 }
 

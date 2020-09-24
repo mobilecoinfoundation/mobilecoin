@@ -32,7 +32,7 @@ pub fn init() -> Option<sentry_core::internals::ClientInitGuard> {
 
             sentry_core::configure_scope(|scope| {
                 // Add our GIT commit to each message.
-                scope.set_tag("git_commit", mc_util_build_info::GIT_COMMIT);
+                scope.set_tag("git_commit", mc_util_build_info::git_commit());
 
                 // Add current thread name to each message.
                 scope.add_event_processor(Box::new(move |mut event| {
