@@ -259,34 +259,8 @@ impl<
 
         if should_sync {
             // Incrementally sync the ledger.
-            let blocks_per_attempt = 100;
-            let num_sync_attempts = if let LedgerSyncState::IsBehind {
-                num_sync_attempts, ..
-            } = &self.ledger_sync_state
-            {
-                *num_sync_attempts
-            } else {
-                panic!("Attempted to sync when not behind?");
-            };
-            let now = Instant::now();
-            if let Err(err) = self
-                .ledger_sync_service
-                .attempt_ledger_sync(&self.network_state, blocks_per_attempt)
-            {
-                log::warn!(self.logger, "Could not sync ledger: {:?}", err);
-                // Reattempt with capped linear backoff.
-                let next_sync_at = now + Duration::from_secs(min(num_sync_attempts + 1, 60));
-                self.ledger_sync_state = LedgerSyncState::IsBehind {
-                    attempt_sync_at: next_sync_at,
-                    num_sync_attempts: num_sync_attempts + 1,
-                };
-            } else {
-                // Synced a chunk of blocks. Reset our attempts to zero for the next chunk.
-                self.ledger_sync_state = LedgerSyncState::IsBehind {
-                    attempt_sync_at: now,
-                    num_sync_attempts: 0,
-                };
-            }
+            let num_blocks = 100;
+            self.sync_next_blocks(num_blocks);
             // Continue on the next tick
             return true;
         }
@@ -357,6 +331,41 @@ impl<
                 }
             }
         }
+    }
+
+    // Incrementally sync the ledger.
+    fn sync_next_blocks(&mut self, num_blocks: u32) {
+        let num_sync_attempts = if let LedgerSyncState::IsBehind {
+            num_sync_attempts, ..
+        } = &self.ledger_sync_state
+        {
+            *num_sync_attempts
+        } else {
+            panic!("Attempted to sync when not behind?");
+        };
+
+        self.ledger_sync_state = match self
+            .ledger_sync_service
+            .attempt_ledger_sync(&self.network_state, num_blocks)
+        {
+            Ok(()) => {
+                // Synced a chunk of blocks, but may still be behind.
+                LedgerSyncState::IsBehind {
+                    attempt_sync_at: Instant::now(),
+                    num_sync_attempts: 0,
+                }
+            }
+            Err(err) => {
+                // Reattempt with capped linear backoff.
+                log::warn!(self.logger, "Could not sync ledger: {:?}", err);
+                let next_sync_at =
+                    Instant::now() + Duration::from_secs(min(num_sync_attempts + 1, 60));
+                LedgerSyncState::IsBehind {
+                    attempt_sync_at: next_sync_at,
+                    num_sync_attempts: num_sync_attempts + 1,
+                }
+            }
+        };
     }
 
     /// Clear any pending values that are no longer be valid.
