@@ -162,7 +162,13 @@ This JSON can be passed directly to `build-and-submit` or you can change the amo
 #### Build and submit a payment from a monitor/subaddress to a request code
 Using the information in the `read-request`, creates and submits a transaction. If this succeeds, funds will be transferred.
 ```
-$ curl localhost:9090/monitors/<monitor_id>/subaddresses/0/build-and-submit -d '{"request_data": {"receiver":{"view_public_key":"40f884563ff10fb1b37b589036db9abbf1ab7afcf88f17a4ea6ec0077e883263","spend_public_key":"ecf9f2fdb8714afd16446d530cf27f2775d9e356e17a6bba8ad395d16d1bbd45","fog_url":""},"value":"10","memo":"Please pay me"}}' -X POST -H 'Content-Type: application/json'
+$ curl localhost:9090/monitors/<monitor_id>/subaddresses/0/build-and-submit \
+  -d '{"request_data": 
+          {"receiver":{"view_public_key":"40f884563ff10fb1b37b589036db9abbf1ab7afcf88f17a4ea6ec0077e883263",
+                       "spend_public_key":"ecf9f2fdb8714afd16446d530cf27f2775d9e356e17a6bba8ad395d16d1bbd45",
+                       "fog_url":""},
+        "value":"10","memo":"Please pay me"}}' \
+  -X POST -H 'Content-Type: application/json'
 
 {"sender_tx_receipt":{"key_images":
                       ["dc8a91dbacad97b59e9709379c279a28b3c35262f6744226d15ee87be6bbf132",
