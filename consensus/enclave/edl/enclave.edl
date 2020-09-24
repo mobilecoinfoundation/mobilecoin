@@ -2,8 +2,6 @@
 
 enclave {
     from "sgx_tstdc.edl" import *;
-    from "sgx_backtrace.edl" import *;
-    from "sgx_debug.edl" import *;
     from "sgx_panic.edl" import *;
     from "sgx_slog.edl" import *;
 

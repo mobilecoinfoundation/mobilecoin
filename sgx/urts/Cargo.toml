@@ -4,7 +4,10 @@ version = "1.0.0"
 authors = ["MobileCoin"]
 
 [features]
-default = [ "backtrace" ]
+default = [ ]
+# enables the backtrace EDL definition and handler
+# This is not known to have actually worked in a real enclave
+# and should probably go away completely and be redesigned
 backtrace = [ "rustc-demangle", "lazy_static" ]
 
 [dependencies]
