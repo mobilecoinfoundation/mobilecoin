@@ -36,7 +36,7 @@ impl Authenticator for TokenAuthenticator {
         maybe_credentials: Option<BasicCredentials>,
     ) -> Result<String, AuthenticatorError> {
         let credentials = maybe_credentials.ok_or(AuthenticatorError::Unauthenticated)?;
-        let mut parts = credentials.password.split(":");
+        let mut parts = credentials.password.split(':');
         let username = parts
             .next()
             .ok_or(AuthenticatorError::InvalidAuthorizationToken)?;

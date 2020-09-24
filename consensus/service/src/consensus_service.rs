@@ -184,7 +184,7 @@ impl<
         let client_authenticator: Arc<dyn Authenticator + Sync + Send> =
             if let Some(shared_secret) = config.client_auth_token_secret.as_ref() {
                 Arc::new(TokenAuthenticator::new(
-                    shared_secret.clone(),
+                    *shared_secret,
                     config.client_auth_token_max_lifetime,
                 ))
             } else {

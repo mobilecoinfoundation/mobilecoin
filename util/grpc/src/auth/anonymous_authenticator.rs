@@ -11,7 +11,10 @@ pub const ANONYMOUS_USER: &str = "<anonymous>";
 pub struct AnonymousAuthenticator;
 
 impl Authenticator for AnonymousAuthenticator {
-    fn authenticate(&self, _maybe_credentials: Option<BasicCredentials>) -> Result<String, AuthenticatorError> {
-        Ok(ANONYMOUS_USER.to_owned()) 
+    fn authenticate(
+        &self,
+        _maybe_credentials: Option<BasicCredentials>,
+    ) -> Result<String, AuthenticatorError> {
+        Ok(ANONYMOUS_USER.to_owned())
     }
 }

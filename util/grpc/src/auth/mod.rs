@@ -108,7 +108,7 @@ impl BasicCredentials {
     pub fn try_from(header_value: &[u8]) -> Result<Self, AuthorizationHeaderError> {
         let header = str::from_utf8(header_value)
             .map_err(|_| AuthorizationHeaderError::InvalidAuthorizationHeader)?;
-        let mut header_parts = header.split(" ");
+        let mut header_parts = header.split(' ');
 
         if "Basic"
             != header_parts
@@ -125,7 +125,7 @@ impl BasicCredentials {
             .map_err(|_| AuthorizationHeaderError::InvalidAuthorizationHeader)?;
         let concatenated_values = str::from_utf8(&concatenated_values_bytes)
             .map_err(|_| AuthorizationHeaderError::InvalidCredentials)?;
-        let mut credential_parts = concatenated_values.splitn(2, ":");
+        let mut credential_parts = concatenated_values.splitn(2, ':');
 
         Ok(Self {
             username: credential_parts
