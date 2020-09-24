@@ -59,18 +59,17 @@ fn main() {
     let gen_contents = format!(
         r###"
 // This file is generated
-pub const GIT_COMMIT: &str = "{}";
-pub const PROFILE: &str = "{}";
-pub const DEBUG: &str = "{}";
-pub const OPT_LEVEL: &str = "{}";
-pub const DEBUG_ASSERTIONS: &str = "{}";
-pub const TARGET_ARCH: &str = "{}";
-pub const TARGET_OS: &str = "{}";
-pub const TARGET_FEATURE: &str = "{}";
-pub const RUSTFLAGS: &str = "{}";
-pub const SGX_MODE: &str = "{}";
-pub const IAS_MODE: &str = "{}";
-
+pub fn git_commit() -> &'static str {{ "{}" }}
+pub fn profile() -> &'static str {{ "{}" }}
+pub fn debug() -> &'static str {{ "{}" }}
+pub fn opt_level() -> &'static str {{ "{}" }}
+pub fn debug_assertions() -> &'static str {{ "{}" }}
+pub fn target_arch() -> &'static str {{ "{}" }}
+pub fn target_os() -> &'static str {{ "{}" }}
+pub fn target_feature() -> &'static str {{ "{}" }}
+pub fn rustflags() -> &'static str {{ "{}" }}
+pub fn sgx_mode() -> &'static str {{ "{}" }}
+pub fn ias_mode() -> &'static str {{ "{}" }}
 // Note: Please update `build-info/src/lib.rs` if you add more stuff
 "###,
         git_commit,
