@@ -3,8 +3,6 @@ name = "mc-sgx-urts"
 version = "1.0.0"
 authors = ["MobileCoin"]
 
-[features]
-default = [ ]
 
 [dependencies]
 mc-common = { path = "../../common", features = ["log"] }
