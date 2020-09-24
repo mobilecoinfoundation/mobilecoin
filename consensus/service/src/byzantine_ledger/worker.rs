@@ -791,7 +791,7 @@ mod tests {
             task_message::TaskMessage,
             tests::{get_local_node_config, get_peers, PeerConfig},
             worker::ByzantineLedgerWorker,
-            IS_BEHIND_GRACE_PERIOD,
+            IS_BEHIND_GRACE_PERIOD, MAX_PENDING_VALUES_TO_NOMINATE,
         },
         tx_manager::{MockTxManager, TxManagerError},
     };
@@ -1200,7 +1200,53 @@ mod tests {
         VerifiedConsensusMsg::try_from(consensus_msg).unwrap()
     }
 
-    // TODO: test propose_pending_values
+    #[test_with_logger]
+    fn test_propose_pending_values(logger: Logger) {
+        let (node_id, _local_node_uri, msg_signer_key) = get_local_node_config(11);
+        let mut rng: StdRng = SeedableRng::from_seed([97u8; 32]);
+        let peers = get_peers(&[22, 33], &mut rng);
+        let quorum_set =
+            QuorumSet::new_with_node_ids(2, vec![peers[0].id.clone(), peers[1].id.clone()]);
+
+        let num_blocks = 12;
+        let (mut scp_node, ledger, ledger_sync, tx_manager, broadcast) =
+            get_mocks(&node_id, &quorum_set, num_blocks);
+        let connection_manager = get_connection_manager(&node_id, &peers, &logger);
+        let (_task_sender, task_receiver) = get_channel();
+
+        // Up to MAX_PENDING_VALUES_TO_NOMINATE values should be proposed to the scp_node.
+        scp_node
+            .expect_propose_values()
+            .times(1)
+            .withf(|values| values.len() <= MAX_PENDING_VALUES_TO_NOMINATE)
+            .return_const(Ok(None));
+
+        let mut worker = ByzantineLedgerWorker::new(
+            Box::new(scp_node),
+            msg_signer_key,
+            ledger,
+            ledger_sync,
+            connection_manager,
+            Arc::new(tx_manager),
+            Arc::new(Mutex::new(broadcast)),
+            task_receiver,
+            Arc::new(AtomicBool::new(false)),
+            Arc::new(AtomicU64::new(0)),
+            Arc::new(Mutex::new(Option::<ConsensusMsg>::None)),
+            logger,
+        );
+
+        // Create more than MAX_PENDING_VALUES_TO_NOMINATE pending values.
+        let tx_hashes: Vec<_> = (0..200).map(|i| TxHash([i as u8; 32])).collect();
+        worker.pending_values = tx_hashes.clone();
+        worker.pending_values_map = tx_hashes
+            .iter()
+            .map(|tx_hash| (tx_hash.clone(), Some(Instant::now())))
+            .collect();
+        worker.need_nominate = true;
+
+        worker.propose_pending_values();
+    }
 
     // TODO: test process_consensus_msgs
 
