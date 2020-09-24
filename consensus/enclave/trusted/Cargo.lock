@@ -758,9 +758,7 @@ dependencies = [
  "mc-consensus-enclave-impl 1.0.0",
  "mc-crypto-keys 1.0.0",
  "mc-enclave-boundary 1.0.0",
- "mc-sgx-backtrace-edl 1.0.0",
  "mc-sgx-compat 1.0.0",
- "mc-sgx-debug-edl 1.0.0",
  "mc-sgx-enclave-id 1.0.0",
  "mc-sgx-panic-edl 1.0.0",
  "mc-sgx-report-cache-api 1.0.0",
@@ -942,13 +940,6 @@ name = "mc-sgx-alloc"
 version = "1.0.0"
 
 [[package]]
-name = "mc-sgx-backtrace-edl"
-version = "1.0.0"
-dependencies = [
- "cargo-emit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "mc-sgx-build"
 version = "1.0.0"
 dependencies = [
@@ -982,13 +973,6 @@ dependencies = [
 [[package]]
 name = "mc-sgx-debug"
 version = "1.0.0"
-
-[[package]]
-name = "mc-sgx-debug-edl"
-version = "1.0.0"
-dependencies = [
- "cargo-emit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
-]
 
 [[package]]
 name = "mc-sgx-enclave-id"

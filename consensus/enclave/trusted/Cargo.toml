@@ -29,9 +29,7 @@ mc-consensus-enclave-impl = { path = "../impl", default-features = false }
 mc-enclave-boundary = { path = "../../../enclave-boundary" }
 mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
 mc-util-serial = { path = "../../../util/serial"}
-mc-sgx-backtrace-edl = { path = "../../../sgx/backtrace-edl" }
 mc-sgx-compat = { path = "../../../sgx/compat", features = ["sgx"] }
-mc-sgx-debug-edl = { path = "../../../sgx/debug-edl" }
 mc-sgx-enclave-id = { path = "../../../sgx/enclave-id" }
 mc-sgx-panic-edl = { path = "../../../sgx/panic-edl" }
 mc-sgx-report-cache-api = { path = "../../../sgx/report-cache/api" }
