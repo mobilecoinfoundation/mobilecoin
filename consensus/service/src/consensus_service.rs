@@ -708,6 +708,8 @@ impl<
                     "admin_listen_uri": config.admin_listen_uri,
                     "ledger_path": config.ledger_path,
                     "scp_debug_dump": config.scp_debug_dump,
+                    "client_auth_token_enabled": config.client_auth_token_secret.map(|_| true).unwrap_or(false),
+                    "client_auth_token_max_lifetime": config.client_auth_token_max_lifetime.as_secs(),
                 },
                 "network": config.network(),
                 "status": {
