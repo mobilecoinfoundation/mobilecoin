@@ -3214,14 +3214,12 @@ version = "1.0.0"
 name = "mc-sgx-urts"
 version = "1.0.0"
 dependencies = [
- "lazy_static",
  "mc-common",
  "mc-sgx-build",
  "mc-sgx-libc-types",
  "mc-sgx-slog",
  "mc-sgx-types",
  "prost",
- "rustc-demangle",
 ]
 
 [[package]]

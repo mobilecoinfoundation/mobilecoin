@@ -39,14 +39,7 @@ fn main() {
 
     let mut edger8r = Edger8r::new(&env, libraries.as_slice()).expect("Could not create linkage");
 
-    for edl_data in [
-        "SGX_BACKTRACE_EDL_SEARCH_PATH",
-        "SGX_DEBUG_EDL_SEARCH_PATH",
-        "SGX_PANIC_EDL_SEARCH_PATH",
-        "SGX_SLOG_EDL_SEARCH_PATH",
-    ]
-    .iter()
-    {
+    for edl_data in ["SGX_PANIC_EDL_SEARCH_PATH", "SGX_SLOG_EDL_SEARCH_PATH"].iter() {
         for path_str in env
             .depvar(edl_data)
             .expect("Could not read EDL dep var")
