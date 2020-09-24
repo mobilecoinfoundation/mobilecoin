@@ -299,7 +299,7 @@ impl<
 
         // Nominate values for current slot.
         if self.need_nominate {
-            self.nominate_pending_values();
+            self.propose_pending_values();
         }
 
         // Process any queued consensus messages.
@@ -359,7 +359,7 @@ impl<
         }
     }
 
-    /// Clear any pending values that might no longer be valid.
+    /// Clear any pending values that are no longer be valid.
     fn update_pending_values(&mut self) {
         let tx_manager = self.tx_manager.clone();
         self.pending_values_map
@@ -413,17 +413,23 @@ impl<
         true
     }
 
-    fn nominate_pending_values(&mut self) {
-        assert!(!self.pending_values.is_empty());
+    // Propose pending values for nomination in the current slot.
+    fn propose_pending_values(&mut self) {
+        debug_assert!(!self.pending_values.is_empty());
+
+        // Fairness heuristics:
+        // * Values are proposed in the order that they were received.
+        // * Each node limits the total number of values it proposes per slot.
+        let values = BTreeSet::from_iter(
+            self.pending_values
+                .iter()
+                .take(MAX_PENDING_VALUES_TO_NOMINATE)
+                .cloned(),
+        );
 
         let msg_opt = self
             .scp_node
-            .propose_values(BTreeSet::from_iter(
-                self.pending_values
-                    .iter()
-                    .take(MAX_PENDING_VALUES_TO_NOMINATE)
-                    .cloned(),
-            ))
+            .propose_values(values)
             .expect("nominate failed");
 
         if let Some(msg) = msg_opt {
@@ -783,11 +789,11 @@ mod tests {
         byzantine_ledger::{
             ledger_sync_state::LedgerSyncState,
             task_message::TaskMessage,
-            tests::{get_local_node_config, get_peers},
+            tests::{get_local_node_config, get_peers, PeerConfig},
             worker::ByzantineLedgerWorker,
             IS_BEHIND_GRACE_PERIOD,
         },
-        tx_manager::MockTxManager,
+        tx_manager::{MockTxManager, TxManagerError},
     };
     use failure::_core::time::Duration;
     use mc_common::{
@@ -800,9 +806,10 @@ mod tests {
     use mc_ledger_sync::{MockLedgerSync, SCPNetworkState};
     use mc_peers::{ConsensusMsg, MockBroadcast};
     use mc_peers_test_utils::MockPeerConnection;
-    use mc_transaction_core::tx::TxHash;
+    use mc_transaction_core::{tx::TxHash, validation::TransactionValidationError};
     use mc_util_metered_channel::{Receiver, Sender};
     use mc_util_metrics::OpMetrics;
+    use mockall::predicate::eq;
     use rand::rngs::StdRng;
     use rand_core::SeedableRng;
     use std::{
@@ -853,6 +860,22 @@ mod tests {
         mc_util_metered_channel::unbounded(&gauge)
     }
 
+    fn get_connection_manager(
+        local_node_id: &NodeID,
+        peers: &[PeerConfig],
+        logger: &Logger,
+    ) -> ConnectionManager<MockPeerConnection<MockLedger>> {
+        let connections: Vec<_> = peers
+            .iter()
+            .map(|peer_config| {
+                let ledger = MockLedger::new();
+                MockPeerConnection::new(peer_config.uri.clone(), local_node_id.clone(), ledger, 10)
+            })
+            .collect();
+
+        ConnectionManager::new(connections, logger.clone())
+    }
+
     #[test_with_logger]
     /// Test that `new` correctly initializes the instance.
     fn test_new(logger: Logger) {
@@ -868,18 +891,7 @@ mod tests {
         let (scp_node, ledger, ledger_sync, tx_manager, broadcast) =
             get_mocks(&local_node_id, &quorum_set, num_blocks);
 
-        let connection_manager = {
-            let ledger = MockLedger::new();
-            ConnectionManager::new(
-                vec![MockPeerConnection::new(
-                    peers[0].uri.clone(),
-                    local_node_id.clone(),
-                    ledger,
-                    10,
-                )],
-                logger.clone(),
-            )
-        };
+        let connection_manager = get_connection_manager(&local_node_id, &peers, &logger);
 
         let (_task_sender, task_receiver) = get_channel();
 
@@ -913,9 +925,9 @@ mod tests {
         expected_state: LedgerSyncState,
         logger: Logger,
     ) {
-        let mut rng: StdRng = SeedableRng::from_seed([7u8; 32]);
         let (node_id, _local_node_uri, msg_signer_key) = get_local_node_config(11);
 
+        let mut rng: StdRng = SeedableRng::from_seed([7u8; 32]);
         let peers = get_peers(&[22, 33], &mut rng);
         let quorum_set =
             QuorumSet::new_with_node_ids(2, vec![peers[0].id.clone(), peers[1].id.clone()]);
@@ -927,18 +939,7 @@ mod tests {
         // Mock returns `is_behind`.
         ledger_sync.expect_is_behind().return_const(is_behind);
 
-        let connection_manager = {
-            let ledger = MockLedger::new();
-            ConnectionManager::new(
-                vec![MockPeerConnection::new(
-                    peers[0].uri.clone(),
-                    node_id.clone(),
-                    ledger,
-                    10,
-                )],
-                logger.clone(),
-            )
-        };
+        let connection_manager = get_connection_manager(&node_id, &peers, &logger);
 
         let (_task_sender, task_receiver) = get_channel();
 
@@ -1035,4 +1036,82 @@ mod tests {
             logger.clone(),
         );
     }
+
+    #[test_with_logger]
+    /// Should discard values that are no longer valid.
+    fn test_update_pending_values_discards_invalid_values(logger: Logger) {
+        let pending_values = vec![TxHash([1u8; 32]), TxHash([2u8; 32]), TxHash([3u8; 32])];
+
+        let (node_id, _local_node_uri, msg_signer_key) = get_local_node_config(11);
+
+        let mut rng: StdRng = SeedableRng::from_seed([97u8; 32]);
+        let peers = get_peers(&[22, 33], &mut rng);
+        let quorum_set =
+            QuorumSet::new_with_node_ids(2, vec![peers[0].id.clone(), peers[1].id.clone()]);
+
+        let num_blocks = 12;
+        let (scp_node, ledger, ledger_sync, mut tx_manager, broadcast) =
+            get_mocks(&node_id, &quorum_set, num_blocks);
+        let connection_manager = get_connection_manager(&node_id, &peers, &logger);
+        let (_task_sender, task_receiver) = get_channel();
+
+        // `validate` should be called one for each pending value.
+        tx_manager
+            .expect_validate()
+            .with(eq(pending_values[0].clone()))
+            .return_const(Ok(()));
+        // This transaction has expired.
+        tx_manager
+            .expect_validate()
+            .with(eq(pending_values[1].clone()))
+            .return_const(Err(TxManagerError::TransactionValidation(
+                TransactionValidationError::TombstoneBlockExceeded,
+            )));
+        tx_manager
+            .expect_validate()
+            .with(eq(pending_values[2].clone()))
+            .return_const(Ok(()));
+
+        let mut worker = ByzantineLedgerWorker::new(
+            Box::new(scp_node),
+            msg_signer_key,
+            ledger,
+            ledger_sync,
+            connection_manager,
+            Arc::new(tx_manager),
+            Arc::new(Mutex::new(broadcast)),
+            task_receiver,
+            Arc::new(AtomicBool::new(false)),
+            Arc::new(AtomicU64::new(0)),
+            Arc::new(Mutex::new(Option::<ConsensusMsg>::None)),
+            logger,
+        );
+
+        // Set up pending_values, pending_values_map
+        worker.pending_values = pending_values.clone();
+
+        worker.pending_values_map = pending_values
+            .iter()
+            .map(|tx_hash| (tx_hash.clone(), Some(Instant::now())))
+            .collect();
+
+        worker.update_pending_values();
+
+        // The second transaction is no longer valid and should be removed.
+        let expected_pending_values = vec![pending_values[0].clone(), pending_values[2].clone()];
+        assert_eq!(worker.pending_values, expected_pending_values);
+        assert_eq!(worker.pending_values.len(), worker.pending_values_map.len());
+    }
+
+    // TODO: test receive_tasks
+
+    // TODO: test propose_pending_values
+
+    // TODO: test process_consensus_msgs
+
+    // TODO: test complete_current_slot
+
+    // TODO: test fetch_missing_txs
+
+    // TODO: test issue_consensus_message
 }
