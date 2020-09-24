@@ -1125,7 +1125,7 @@ mod tests {
         let connection_manager = get_connection_manager(&node_id, &peers, &logger);
         let (_task_sender, task_receiver) = get_channel();
 
-        // `attempt_ledger_sync` should succeed.
+        // `attempt_ledger_sync` should fail.
         ledger_sync
             .expect_attempt_ledger_sync()
             .return_once(|_, _| Err(LedgerSyncError::NoSafeBlocks)); // This is a hack because LedgerSyncError is not Clone.
