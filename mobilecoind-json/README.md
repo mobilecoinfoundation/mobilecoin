@@ -82,7 +82,7 @@ This call initiates a transfer to a public address encoded as a b58 string. If t
 submitted to the network. It returns receipts which you can use in calls below to determine if the transaction succeeded.
 
 ```
-$ curl http://localhost:9090/monitors/<monitor_id>/subaddresses/<subaddress>/pay-address-code" \ 
+$ curl localhost:9090/monitors/<monitor_id>/subaddresses/<subaddress>/pay-address-code" \ 
   -d '{"receiver_b58_address_code": "7Q6gtA5EqSxkEsqsf5p2j7qEHkA8fBZYNsfuWTZTQaFAqo3FPo8PvhrrUobZfXagrLopzpxqxGBs7Hphwhsc56ryWriPWLCRadhRpnZW6AT",
        "value": "1"}' \
   -X POST -H 'Content-Type: application/json'
