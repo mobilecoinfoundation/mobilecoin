@@ -49,6 +49,7 @@ service MobilecoindAPI {
     rpc GetTxStatusAsSender (GetTxStatusAsSenderRequest) returns (GetTxStatusAsSenderResponse) {}
     rpc GetTxStatusAsReceiver (GetTxStatusAsReceiverRequest) returns (GetTxStatusAsReceiverResponse) {}
     rpc GetProcessedBlock (GetProcessedBlockRequest) returns (GetProcessedBlockResponse) {}
+    rpc GetBlockIndexByTxPubKey (GetBlockIndexByTxPubKeyRequest) returns (GetBlockIndexByTxPubKeyResponse) {}
 
     // Convenience calls
     rpc GetBalance (GetBalanceRequest) returns (GetBalanceResponse) {}
@@ -572,6 +573,16 @@ message GetProcessedBlockRequest {
 message GetProcessedBlockResponse {
     // Processed tx output information that belongs to the requested monitor_id/block.
     repeated ProcessedTxOut tx_outs = 1;
+}
+
+// Get the block index containing a given TxOut public key.
+message GetBlockIndexByTxPubKeyRequest {
+    // The TxOut public key to look for.
+    external.CompressedRistretto tx_public_key = 1;
+}
+message GetBlockIndexByTxPubKeyResponse {
+    // The block index.
+    uint64 block = 1;
 }
 
 //

@@ -1114,6 +1114,21 @@ impl From<&mc_mobilecoind_api::GetProcessedBlockResponse> for JsonProcessedBlock
     }
 }
 
+#[derive(Serialize, Default)]
+pub struct JsonBlockIndexByTxPubKeyResponse {
+    pub block_index: String,
+}
+
+impl From<&mc_mobilecoind_api::GetBlockIndexByTxPubKeyResponse>
+    for JsonBlockIndexByTxPubKeyResponse
+{
+    fn from(src: &mc_mobilecoind_api::GetBlockIndexByTxPubKeyResponse) -> Self {
+        Self {
+            block_index: src.block.to_string(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

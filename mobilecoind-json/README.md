@@ -82,7 +82,7 @@ This call initiates a transfer to a public address encoded as a b58 string. If t
 submitted to the network. It returns receipts which you can use in calls below to determine if the transaction succeeded.
 
 ```
-$ curl localhost:9090/monitors/<monitor_id>/subaddresses/<subaddress>/pay-address-code" \ 
+$ curl localhost:9090/monitors/<monitor_id>/subaddresses/<subaddress>/pay-address-code" \
   -d '{"receiver_b58_address_code": "7Q6gtA5EqSxkEsqsf5p2j7qEHkA8fBZYNsfuWTZTQaFAqo3FPo8PvhrrUobZfXagrLopzpxqxGBs7Hphwhsc56ryWriPWLCRadhRpnZW6AT",
        "value": "1"}' \
   -X POST -H 'Content-Type: application/json'
@@ -90,7 +90,7 @@ $ curl localhost:9090/monitors/<monitor_id>/subaddresses/<subaddress>/pay-addres
 {"sender_tx_receipt":{"key_images":
                       ["dc8a91dbacad97b59e9709379c279a28b3c35262f6744226d15ee87be6bbf132",
                       "7e22679d8e3c14ba9c6c45256902e7af8e82644618e65a4589bab268bfde4b61"],
-                      "tombstone":2121},                      
+                      "tombstone":2121},
  "receiver_tx_receipt_list":[
     {"recipient":{"view_public_key":"f460626a6cefb0bdfc73bb0c3a9c1a303a858f0b1b4ea59b154a1aa8d927af71",
                   "spend_public_key":"6a74da2dc6ff116d9278a30a4f8584e9edf165a22faf04a3ac210f219641a92d",
@@ -106,8 +106,8 @@ The return value from `pay-address-code` (and `build-and-submit` below) can be p
 ```
 $ curl localhost:9090/tx/status-as-sender \
   -d '{"sender_tx_receipt":{"key_images":
-        ["dc8a91dbacad97b59e9709379c279a28b3c35262f6744226d15ee87be6bbf132", 
-         "7e22679d8e3c14ba9c6c45256902e7af8e82644618e65a4589bab268bfde4b61"], 
+        ["dc8a91dbacad97b59e9709379c279a28b3c35262f6744226d15ee87be6bbf132",
+         "7e22679d8e3c14ba9c6c45256902e7af8e82644618e65a4589bab268bfde4b61"],
        "tombstone":2121}, "receiver_tx_receipt_list":[]}' \
   -X POST -H 'Content-Type: application/json'
 
@@ -115,8 +115,8 @@ $ curl localhost:9090/tx/status-as-sender \
 ```
 
 #### Check the status of a transaction from the receiving side and verify confirmation number
-The return value from `pay-address-code` includes a list called `receiver_tx_receipt_list`. The appropriate item in 
-the list can be send to the recipient over a separate channel (e.g. a secure chat application) and they can use it to 
+The return value from `pay-address-code` includes a list called `receiver_tx_receipt_list`. The appropriate item in
+the list can be send to the recipient over a separate channel (e.g. a secure chat application) and they can use it to
 verify that they were paid by the sender.
 ```
 $ curl localhost:9090/tx/status-as-receiver \
@@ -141,7 +141,7 @@ A potential sender interpreting a b58 request code must first read the informati
 $ curl localhost:9090/codes/request \
   -d '{"receiver": {"view_public_key":"543b376e9d5b949dd8694f065d95a98a89e6f17a20c621621a808605d1904324",
                     "spend_public_key":"58dba855a885dd535dc5180af443abae67c790b860d5adadb4d6a2ecb71abd28",
-                    "fog_report_url":"","fog_authority_fingerprint_sig":"","fog_report_id":""}, 
+                    "fog_report_url":"","fog_authority_fingerprint_sig":"","fog_report_id":""},
         "value": "10", "memo": "Please pay me"}' \
   -X POST -H 'Content-Type: application/json'
 
@@ -163,7 +163,7 @@ This JSON can be passed directly to `build-and-submit` or you can change the amo
 Using the information in the `read-request`, creates and submits a transaction. If this succeeds, funds will be transferred.
 ```
 $ curl localhost:9090/monitors/<monitor_id>/subaddresses/<subaddress>/build-and-submit \
-  -d '{"request_data": 
+  -d '{"request_data":
           {"receiver":{"view_public_key":"40f884563ff10fb1b37b589036db9abbf1ab7afcf88f17a4ea6ec0077e883263",
                        "spend_public_key":"ecf9f2fdb8714afd16446d530cf27f2775d9e356e17a6bba8ad395d16d1bbd45",
                        "fog_url":""},
@@ -173,7 +173,7 @@ $ curl localhost:9090/monitors/<monitor_id>/subaddresses/<subaddress>/build-and-
 {"sender_tx_receipt":{"key_images":
                       ["dc8a91dbacad97b59e9709379c279a28b3c35262f6744226d15ee87be6bbf132",
                       "7e22679d8e3c14ba9c6c45256902e7af8e82644618e65a4589bab268bfde4b61"],
-                      "tombstone":2121},                      
+                      "tombstone":2121},
  "receiver_tx_receipt_list":[
     {"recipient":{"view_public_key":"f460626a6cefb0bdfc73bb0c3a9c1a303a858f0b1b4ea59b154a1aa8d927af71",
                   "spend_public_key":"6a74da2dc6ff116d9278a30a4f8584e9edf165a22faf04a3ac210f219641a92d",
@@ -186,6 +186,12 @@ $ curl localhost:9090/monitors/<monitor_id>/subaddresses/<subaddress>/build-and-
 
 This returns receipt information that can be used by the sender to verify their transaction went through and also receipts to give to the receivers
 proving that you initiated the transaction. See *Check the status of a transaction* above.
+
+#### Get block index by a tx output public key.
+
+$ curl localhost:9090/tx-out/c853d6c33f5801941a312a5f876fa1e1379bb624a3acbdce5a64506522c6c223/block-index
+
+{"block_index":"1298"}
 
 ### Ledger status endpoints
 
