@@ -2873,6 +2873,7 @@ dependencies = [
  "mc-util-repr-bytes",
  "mc-util-serial",
  "mc-util-uri",
+ "mc-util-url-encoding",
  "mc-watcher",
  "more-asserts",
  "num_cpus",
