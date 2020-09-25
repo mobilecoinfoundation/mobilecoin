@@ -1586,6 +1586,7 @@ mod test {
     use std::{
         convert::{TryFrom, TryInto},
         iter::FromIterator,
+        str::FromStr,
     };
 
     #[test_with_logger]
@@ -3620,7 +3621,13 @@ mod test {
             let response = client.create_request_code(&request).unwrap();
             let b58_code = response.get_b58_code();
 
-            // Attempt to decode it.
+            // Check that the mob url is correct
+            let mob_url = MobUrl::from_str(response.get_mob_url()).unwrap();
+            assert_eq!(PublicAddress::try_from(&mob_url).unwrap(), receiver);
+            assert_eq!(mob_url.get_amount().unwrap(), "1234567890");
+            assert_eq!(mob_url.get_memo().unwrap(), "hello there");
+
+            // Attempt to decode the b58.
             let mut request = mc_mobilecoind_api::ParseRequestCodeRequest::new();
             request.set_b58_code(b58_code.to_string());
 
