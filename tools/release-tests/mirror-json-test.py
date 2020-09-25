@@ -60,7 +60,7 @@ time.sleep(10)
 
 # Check the block API
 print("Testing mirror block API")
-response = requests.get("http://localhost:8001/block/0")
+response = requests.get("http://localhost:8001/ledger/blocks/0")
 if response.status_code == 200:
     data = response.json()
     if data['index'] != '0': 
