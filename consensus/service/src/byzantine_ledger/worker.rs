@@ -368,7 +368,7 @@ impl<
         };
     }
 
-    /// Clear any pending values that are no longer be valid.
+    /// Clear any pending values that are no longer valid.
     fn update_pending_values(&mut self) {
         let tx_manager = self.tx_manager.clone();
         self.pending_values_map
@@ -1036,13 +1036,14 @@ mod tests {
         // is_behind = true, MaybeBehind -> IsBehind
         // This happens when the grace period has elapsed since entering the MaybeBehind state.
         let behind_since = Instant::now();
+        // IS_BEHIND_GRACE_PERIOD + 1 seconds has elapsed
         let now = behind_since
             .add(IS_BEHIND_GRACE_PERIOD)
             .add(Duration::from_secs(1));
         next_sync_state_helper(
             LedgerSyncState::MaybeBehind(behind_since),
             true,
-            now, // no time has passed
+            now,
             LedgerSyncState::IsBehind {
                 attempt_sync_at: now,
                 num_sync_attempts: 0,
@@ -1375,7 +1376,9 @@ mod tests {
         );
 
         // Create more than MAX_PENDING_VALUES_TO_NOMINATE pending values.
-        let tx_hashes: Vec<_> = (0..200).map(|i| TxHash([i as u8; 32])).collect();
+        let tx_hashes: Vec<_> = (0..MAX_PENDING_VALUES_TO_NOMINATE * 2)
+            .map(|i| TxHash([i as u8; 32]))
+            .collect();
         worker.pending_values = tx_hashes.clone();
         worker.pending_values_map = tx_hashes
             .iter()
