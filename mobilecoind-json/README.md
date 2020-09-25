@@ -145,7 +145,7 @@ $ curl localhost:9090/codes/request \
         "value": "10", "memo": "Please pay me"}' \
   -X POST -H 'Content-Type: application/json'
 
-{"request_code":"ufTwqVqF2rXmFVBZ1CWWS3ntdajVZGfZ5A2YZqAwhVnaVYrFpS9Z8iAg44CBGDeyjFDX8Hj4W7ZzArBn1xSp9wu8NriqQAogN8fUybKmoWgaz92kT4M7fbjRYKZmoY8"}
+{"b58_request_code":"ufTwqVqF2rXmFVBZ1CWWS3ntdajVZGfZ5A2YZqAwhVnaVYrFpS9Z8iAg44CBGDeyjFDX8Hj4W7ZzArBn1xSp9wu8NriqQAogN8fUybKmoWgaz92kT4M7fbjRYKZmoY8"}
 ```
 
 #### Read all the information in a request code

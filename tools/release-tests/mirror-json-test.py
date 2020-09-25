@@ -119,7 +119,7 @@ else:
 request_data = {"receiver": public_address, "value": "1", "memo": "Please pay me"}
 response = requests.post("http://localhost:9090/codes/request", json=request_data)
 if response.status_code == 200:
-    request_code = response.json()['b58_code']
+    request_code = response.json()['b58_request_code']
     print("Request code = %s" % str(request_code))
 else:
     print("Request code endpoint returned status code %d" % response.status_code)

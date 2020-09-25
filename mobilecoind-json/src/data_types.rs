@@ -194,13 +194,13 @@ pub struct JsonCreateRequestCodeRequest {
 
 #[derive(Serialize, Default)]
 pub struct JsonCreateRequestCodeResponse {
-    pub b58_code: String,
+    pub b58_request_code: String,
 }
 
 impl From<&mc_mobilecoind_api::CreateRequestCodeResponse> for JsonCreateRequestCodeResponse {
     fn from(src: &mc_mobilecoind_api::CreateRequestCodeResponse) -> Self {
         Self {
-            b58_code: String::from(src.get_b58_code()),
+            b58_request_code: String::from(src.get_b58_code()),
         }
     }
 }
