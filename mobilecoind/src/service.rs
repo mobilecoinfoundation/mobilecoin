@@ -1290,6 +1290,42 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         Ok(response)
     }
 
+    fn get_block_index_by_tx_pub_key_impl(
+        &mut self,
+        request: mc_mobilecoind_api::GetBlockIndexByTxPubKeyRequest,
+    ) -> Result<mc_mobilecoind_api::GetBlockIndexByTxPubKeyResponse, RpcStatus> {
+        let tx_public_key = RistrettoPublic::try_from(request.get_tx_public_key())
+            .map_err(|err| rpc_internal_error("RistrettoPublic.try_from", err, &self.logger))?;
+
+        let compressed_tx_public_key = CompressedRistrettoPublic::from(&tx_public_key);
+
+        let tx_out_index = self
+            .ledger_db
+            .get_tx_out_index_by_public_key(&compressed_tx_public_key)
+            .map_err(|err| {
+                rpc_internal_error(
+                    "ledger_db.get_tx_out_index_by_public_key",
+                    err,
+                    &self.logger,
+                )
+            })?;
+
+        let block_index = self
+            .ledger_db
+            .get_block_index_by_tx_out_index(tx_out_index)
+            .map_err(|err| {
+                rpc_internal_error(
+                    "ledger_db.get_block_index_by_tx_out_index",
+                    err,
+                    &self.logger,
+                )
+            })?;
+
+        let mut response = mc_mobilecoind_api::GetBlockIndexByTxPubKeyResponse::new();
+        response.set_block(block_index);
+        Ok(response)
+    }
+
     fn get_balance_impl(
         &mut self,
         request: mc_mobilecoind_api::GetBalanceRequest,
@@ -1508,6 +1544,7 @@ build_api! {
     get_tx_status_as_sender GetTxStatusAsSenderRequest GetTxStatusAsSenderResponse get_tx_status_as_sender_impl,
     get_tx_status_as_receiver GetTxStatusAsReceiverRequest GetTxStatusAsReceiverResponse get_tx_status_as_receiver_impl,
     get_processed_block GetProcessedBlockRequest GetProcessedBlockResponse get_processed_block_impl,
+    get_block_index_by_tx_pub_key GetBlockIndexByTxPubKeyRequest GetBlockIndexByTxPubKeyResponse get_block_index_by_tx_pub_key_impl,
     get_balance GetBalanceRequest GetBalanceResponse get_balance_impl,
     send_payment SendPaymentRequest SendPaymentResponse send_payment_impl,
     pay_address_code PayAddressCodeRequest SendPaymentResponse pay_address_code_impl,
@@ -2639,6 +2676,29 @@ mod test {
                 }),
             ]));
             assert!(client.generate_tx(&request).is_err());
+        }
+    }
+
+    #[test_with_logger]
+    fn test_get_block_index_by_tx_pub_key(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        // no known recipient, 3 random recipients and no monitors.
+        let (ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
+
+        // Grab the first TxOut of each block in the database and verify its index.
+        for block_index in 0..test_utils::GET_TESTING_ENVIRONMENT_NUM_BLOCKS as u64 {
+            let block_contents = ledger_db.get_block_contents(block_index).unwrap();
+            let tx_out_pub_key = mc_mobilecoind_api::external::CompressedRistretto::from(
+                &block_contents.outputs[0].public_key,
+            );
+
+            let mut request = mc_mobilecoind_api::GetBlockIndexByTxPubKeyRequest::new();
+            request.set_tx_public_key(tx_out_pub_key);
+
+            let response = client.get_block_index_by_tx_pub_key(&request).unwrap();
+            assert_eq!(block_index, response.block);
         }
     }
 
