@@ -187,6 +187,12 @@ $ curl localhost:9090/monitors/<monitor_id>/subaddresses/<subaddress>/build-and-
 This returns receipt information that can be used by the sender to verify their transaction went through and also receipts to give to the receivers
 proving that you initiated the transaction. See *Check the status of a transaction* above.
 
+#### Get block index by a tx output public key.
+
+$ curl localhost:9090/tx-out/c853d6c33f5801941a312a5f876fa1e1379bb624a3acbdce5a64506522c6c223/block-index
+
+{"block_index":"1298"}
+
 ### Ledger status endpoints
 
 #### Ledger totals

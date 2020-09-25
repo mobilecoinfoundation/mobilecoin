@@ -602,6 +602,29 @@ fn processed_block(
     Ok(Json(JsonProcessedBlockResponse::from(&resp)))
 }
 
+/// Get the block index of a given tx out, identified by its public key.
+#[get("/tx-out/<public_key_hex>/block-index")]
+fn tx_out_get_block_index_by_public_key(
+    state: rocket::State<State>,
+    public_key_hex: String,
+) -> Result<Json<JsonBlockIndexByTxPubKeyResponse>, String> {
+    let tx_out_public_key = hex::decode(public_key_hex)
+        .map_err(|err| format!("Failed to decode hex public key: {}", err))?;
+
+    let mut tx_out_public_key_proto = CompressedRistretto::new();
+    tx_out_public_key_proto.set_data(tx_out_public_key);
+
+    let mut req = mc_mobilecoind_api::GetBlockIndexByTxPubKeyRequest::new();
+    req.set_tx_public_key(tx_out_public_key_proto);
+
+    let resp = state
+        .mobilecoind_api_client
+        .get_block_index_by_tx_pub_key(&req)
+        .map_err(|err| format!("Failed getting block index: {}", err))?;
+
+    Ok(Json(JsonBlockIndexByTxPubKeyResponse::from(&resp)))
+}
+
 fn main() {
     mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
@@ -658,6 +681,7 @@ fn main() {
                 block_info,
                 block_details,
                 processed_block,
+                tx_out_get_block_index_by_public_key,
             ],
         )
         .manage(State {
