@@ -102,7 +102,7 @@ $ curl localhost:9090/monitors/<monitor_id>/subaddresses/<subaddress>/pay-addres
 ```
 
 #### Check the status of a transaction with a key image and tombstone block
-The return value from `pay-address-code` (and `build-and-submit` below) can be passed directly directly to `status-as-sender`
+The return value from `pay-address-code` (and `build-and-submit` below) can be passed directly to `status-as-sender`
 ```
 $ curl localhost:9090/tx/status-as-sender \
   -d '{"sender_tx_receipt":{"key_images":
