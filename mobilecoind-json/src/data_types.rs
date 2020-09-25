@@ -188,19 +188,19 @@ impl From<&mc_mobilecoind_api::GetUnspentTxOutListResponse> for JsonUtxosRespons
 #[derive(Deserialize)]
 pub struct JsonCreateRequestCodeRequest {
     pub receiver: JsonPublicAddress,
-    pub value: Option<u64>,
+    pub value: Option<String>,
     pub memo: Option<String>,
 }
 
 #[derive(Serialize, Default)]
 pub struct JsonCreateRequestCodeResponse {
-    pub b58_code: String,
+    pub b58_request_code: String,
 }
 
 impl From<&mc_mobilecoind_api::CreateRequestCodeResponse> for JsonCreateRequestCodeResponse {
     fn from(src: &mc_mobilecoind_api::CreateRequestCodeResponse) -> Self {
         Self {
-            b58_code: String::from(src.get_b58_code()),
+            b58_request_code: String::from(src.get_b58_code()),
         }
     }
 }
@@ -394,7 +394,7 @@ impl From<&mc_mobilecoind_api::ReceiverTxReceipt> for JsonReceiverTxReceipt {
 
 #[derive(Deserialize, Serialize)]
 pub struct JsonSendPaymentRequest {
-    pub request_code: JsonParseRequestCodeResponse,
+    pub request_data: JsonParseRequestCodeResponse,
     pub max_input_utxo_value: Option<String>, // String due to u64 limitation.
 }
 
@@ -419,8 +419,8 @@ impl From<&mc_mobilecoind_api::SendPaymentResponse> for JsonSendPaymentResponse 
 
 #[derive(Deserialize, Serialize)]
 pub struct JsonPayAddressCodeRequest {
-    pub receiver_b58_code: String,
-    pub amount: String,
+    pub receiver_b58_address_code: String,
+    pub value: String,
     pub max_input_utxo_value: Option<String>,
 }
 

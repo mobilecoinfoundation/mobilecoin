@@ -110,16 +110,16 @@ response = requests.get("http://localhost:9090/monitors/%s/subaddresses/0/public
 if response.status_code == 200:
     public_address = response.json()
     print("Public address = %s" % str(public_address))
+    b58_address_code = response.json()['b58_address_code']
 else:
     print("Public address endpoint returned status code %d" % response.status_code)
     shutdown(1)
 
 # Generate a request code for the account
-# TODO: This call takes an integer for value, while the payment request takes a string
-request_data = {"receiver": public_address, "value": 1, "memo": "Please pay me"}
+request_data = {"receiver": public_address, "value": "1", "memo": "Please pay me"}
 response = requests.post("http://localhost:9090/codes/request", json=request_data)
 if response.status_code == 200:
-    request_code = response.json()['b58_code']
+    request_code = response.json()['b58_request_code']
     print("Request code = %s" % str(request_code))
 else:
     print("Request code endpoint returned status code %d" % response.status_code)
@@ -156,13 +156,39 @@ if balance == 0:
 
 # Initiate a transfer, to the same account
 url = "http://localhost:9090/monitors/%s/subaddresses/0/build-and-submit" % monitor_id
-payment_data = {"request_code": {"receiver": public_address, "value": "1", "memo": "Please pay me"}}
+payment_data = {"request_data": {"receiver": public_address, "value": "1", "memo": "Please pay me"}}
 response = requests.post(url, json=payment_data)
 if response.status_code == 200:
     receipts = response.json()
     receiver_tx_receipt = response.json()['receiver_tx_receipt_list'][0]
 else:
     print("build-and-submit returned status code %d" % response.status_code)
+    shutdown(1)
+
+print("Polling for transaction status")
+while True:
+    response = requests.post("http://localhost:9090/tx/status-as-sender", json=receipts)
+    if response.status_code == 200:
+        status = response.json()['status']
+        print('status = %s' % status)
+        if status == 'verified': break
+        time.sleep(1)
+    else:
+        print("status-as-sender returned status code %d" % response.status_code)
+        shutdown(1)
+
+# Monitor must update to avoid a double-spend
+time.sleep(10)
+
+# Test pay address code also
+url = "http://localhost:9090/monitors/%s/subaddresses/0/pay-address-code" % monitor_id
+payment_data = {"receiver_b58_address_code": b58_address_code, "value": "1"}
+response = requests.post(url, json=payment_data)
+if response.status_code == 200:
+    receipts = response.json()
+    receiver_tx_receipt = response.json()['receiver_tx_receipt_list'][0]
+else:
+    print("pay-address-code returned status code %d" % response.status_code)
     shutdown(1)
 
 print("Polling for transaction status")

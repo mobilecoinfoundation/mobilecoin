@@ -227,8 +227,12 @@ fn create_request_code(
     // Generate b58 code
     let mut req = mc_mobilecoind_api::CreateRequestCodeRequest::new();
     req.set_receiver(receiver);
-    if let Some(value) = request.value {
-        req.set_value(value);
+    if let Some(value) = request.value.clone() {
+        req.set_value(
+            value
+                .parse::<u64>()
+                .map_err(|err| format!("Failed to parse value field: {}", err))?,
+        );
     }
     if let Some(memo) = request.memo.clone() {
         req.set_memo(memo);
@@ -314,14 +318,14 @@ fn build_and_submit(
     let monitor_id =
         hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
 
-    let public_address = PublicAddress::try_from(&transfer.request_code.receiver)?;
+    let public_address = PublicAddress::try_from(&transfer.request_data.receiver)?;
 
     // Generate an outlay
     let mut outlay = mc_mobilecoind_api::Outlay::new();
     outlay.set_receiver(public_address);
     outlay.set_value(
         transfer
-            .request_code
+            .request_data
             .value
             .parse::<u64>()
             .map_err(|err| format!("Failed to parse request_code.amount: {}", err))?,
@@ -368,7 +372,7 @@ fn pay_address_code(
 
     // Get amount.
     let amount = transfer
-        .amount
+        .value
         .parse::<u64>()
         .map_err(|err| format!("Failed parsing amount: {}", err))?;
 
@@ -384,7 +388,7 @@ fn pay_address_code(
     let mut req = mc_mobilecoind_api::PayAddressCodeRequest::new();
     req.set_sender_monitor_id(monitor_id);
     req.set_sender_subaddress(subaddress_index);
-    req.set_receiver_b58_code(transfer.receiver_b58_code.clone());
+    req.set_receiver_b58_code(transfer.receiver_b58_address_code.clone());
     req.set_amount(amount);
     req.set_max_input_utxo_value(max_input_utxo_value);
 
