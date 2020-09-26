@@ -19,7 +19,6 @@
 #![feature(negative_impls)]
 
 extern crate alloc;
-extern crate mc_sgx_libc_types;
 #[cfg(feature = "sgx_panic")]
 extern crate mc_sgx_panic;
 extern crate mc_sgx_types;
