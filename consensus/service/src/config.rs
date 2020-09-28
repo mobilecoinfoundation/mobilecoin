@@ -85,7 +85,7 @@ pub struct Config {
 
     /// Enables authenticating client requests using Authorization tokens using the provided
     /// hex-encoded 32 bytes shared secret.
-    #[structopt(long, parse(try_from_str=from_hex_32))]
+    #[structopt(long, parse(try_from_str=hex::FromHex::from_hex))]
     pub client_auth_token_secret: Option<[u8; 32]>,
 
     /// Maximal client authentication token lifetime, in seconds (only relevant when
@@ -105,20 +105,6 @@ fn keypair_from_base64(private_key: &str) -> Result<Arc<Ed25519Pair>, String> {
     let secret_key = Ed25519Private::try_from_der(privkey_bytes.as_slice())
         .map_err(|err| format!("Could not get Ed25519Private from der {:?}", err))?;
     Ok(Arc::new(Ed25519Pair::from(secret_key)))
-}
-
-/// Converts a hex-encoded string into an array of 32 bytes.
-fn from_hex_32(src: &str) -> Result<[u8; 32], String> {
-    if src.len() != 64 {
-        return Err(format!(
-            "Invalid length, got {} while expecting 64",
-            src.len()
-        ));
-    }
-
-    let mut retval = [0u8; 32];
-    hex::decode_to_slice(src, &mut retval).map_err(|err| format!("Invalid hex string: {}", err))?;
-    Ok(retval)
 }
 
 /// Converts a string containing number of seconds to a Duration object.

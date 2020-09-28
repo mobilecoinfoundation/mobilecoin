@@ -14,7 +14,7 @@ use structopt::StructOpt;
 )]
 pub struct Config {
     /// Secret shared between the token generator and the token validator.
-    #[structopt(long, parse(try_from_str=from_hex_32))]
+    #[structopt(long, parse(try_from_str=hex::FromHex::from_hex))]
     pub shared_secret: [u8; 32],
 
     /// Username to generator the token for
@@ -35,18 +35,4 @@ fn main() {
         "Password (percent-encoded): {}",
         utf8_percent_encode(creds.password(), NON_ALPHANUMERIC).to_string()
     );
-}
-
-/// Converts a hex-encoded string into an array of 32 bytes.
-fn from_hex_32(src: &str) -> Result<[u8; 32], String> {
-    if src.len() != 64 {
-        return Err(format!(
-            "Invalid length, got {} while expecting 64",
-            src.len()
-        ));
-    }
-
-    let mut retval = [0u8; 32];
-    hex::decode_to_slice(src, &mut retval).map_err(|err| format!("Invalid hex string: {}", err))?;
-    Ok(retval)
 }
