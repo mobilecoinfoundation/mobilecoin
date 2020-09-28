@@ -43,9 +43,9 @@ use std::{
 type FetchLatestMsgFn = Arc<dyn Fn() -> Option<mc_peers::ConsensusMsg> + Sync + Send>;
 
 #[derive(Clone)]
-pub struct PeerApiService<E: ConsensusEnclave, L: Ledger, TXM: TxManager> {
+pub struct PeerApiService<L: Ledger, TXM: TxManager> {
     /// Enclave instance.
-    enclave: E,
+    enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
 
     /// Callback function for feeding consensus messages into ByzantineLedger.
     incoming_consensus_msgs_sender: BackgroundWorkQueueSenderFn<IncomingConsensusMsg>,
@@ -72,9 +72,9 @@ pub struct PeerApiService<E: ConsensusEnclave, L: Ledger, TXM: TxManager> {
     logger: Logger,
 }
 
-impl<E: ConsensusEnclave, L: Ledger, TXM: TxManager + Clone> PeerApiService<E, L, TXM> {
+impl<L: Ledger, TXM: TxManager + Clone> PeerApiService<L, TXM> {
     pub fn new(
-        enclave: E,
+        enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
         incoming_consensus_msgs_sender: BackgroundWorkQueueSenderFn<IncomingConsensusMsg>,
         scp_client_value_sender: ProposeTxCallback,
         ledger: L,
@@ -197,9 +197,7 @@ impl<E: ConsensusEnclave, L: Ledger, TXM: TxManager + Clone> PeerApiService<E, L
     }
 }
 
-impl<E: ConsensusEnclave, L: Ledger, TXM: TxManager + Clone> ConsensusPeerApi
-    for PeerApiService<E, L, TXM>
-{
+impl<L: Ledger, TXM: TxManager + Clone> ConsensusPeerApi for PeerApiService<L, TXM> {
     fn peer_tx_propose(
         &mut self,
         ctx: RpcContext,
