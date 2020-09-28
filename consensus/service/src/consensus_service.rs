@@ -188,7 +188,7 @@ impl<
                 Arc::new(TokenAuthenticator::new(
                     *shared_secret,
                     config.client_auth_token_max_lifetime,
-                    time_provider.clone(),
+                    time_provider,
                 ))
             } else {
                 Arc::new(AnonymousAuthenticator::default())
