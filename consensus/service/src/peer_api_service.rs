@@ -73,6 +73,17 @@ pub struct PeerApiService {
 }
 
 impl PeerApiService {
+    /// Creates a PeerApiService.
+    ///
+    /// # Arguments:
+    /// * `enclave` - The local node's consensus enclave.
+    /// * `incoming_consensus_msgs_sender` - Callback for... adding to a queue of received consensus messages?
+    /// * `scp_client_value_sender` -
+    /// * `ledger` - The local node's ledger.
+    /// * `tx_manager` - The local node's TxManager.
+    /// * `fetch_latest_msg_fn` - Returns highest message emitted by this node.
+    /// * `known_responder_ids` - Whitelist. Messages from peers not on this list are ignored.
+    /// * `logger` -
     pub fn new(
         enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
         incoming_consensus_msgs_sender: BackgroundWorkQueueSenderFn<IncomingConsensusMsg>,
@@ -198,6 +209,7 @@ impl PeerApiService {
 }
 
 impl ConsensusPeerApi for PeerApiService {
+    /// Handle a transaction proposed by a client to a different node.
     fn peer_tx_propose(
         &mut self,
         ctx: RpcContext,
@@ -222,6 +234,7 @@ impl ConsensusPeerApi for PeerApiService {
         });
     }
 
+    /// Handle a consensus message from another peer.
     fn send_consensus_msg(
         &mut self,
         ctx: RpcContext,
@@ -325,6 +338,7 @@ impl ConsensusPeerApi for PeerApiService {
         });
     }
 
+    /// Returns the highest consensus message issued by this node.
     fn fetch_latest_msg(
         &mut self,
         ctx: RpcContext,
@@ -336,13 +350,14 @@ impl ConsensusPeerApi for PeerApiService {
             let mut response = FetchLatestMsgResponse::new();
             if let Some(latest_msg) = (self.fetch_latest_msg_fn)() {
                 let serialized_msg = mc_util_serial::serialize(&latest_msg)
-                    .expect("failed serializizng consensus msg");
+                    .expect("Failed serializing consensus msg");
                 response.set_payload(serialized_msg);
             }
             send_result(ctx, sink, Ok(response), &logger);
         });
     }
 
+    /// Returns the full, encrypted transactions corresponding to a list of transaction hashes.
     fn fetch_txs(
         &mut self,
         ctx: RpcContext,
