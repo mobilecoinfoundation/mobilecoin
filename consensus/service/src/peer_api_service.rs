@@ -43,7 +43,7 @@ use std::{
 type FetchLatestMsgFn = Arc<dyn Fn() -> Option<mc_peers::ConsensusMsg> + Sync + Send>;
 
 #[derive(Clone)]
-pub struct PeerApiService<L: Ledger> {
+pub struct PeerApiService {
     /// Enclave instance.
     enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
 
@@ -57,7 +57,7 @@ pub struct PeerApiService<L: Ledger> {
     scp_client_value_sender: ProposeTxCallback,
 
     /// Ledger database.
-    ledger: L,
+    ledger: Arc<dyn Ledger + Send + Sync>,
 
     /// Callback function for getting the latest SCP statement the local node has issued.
     fetch_latest_msg_fn: FetchLatestMsgFn,
@@ -72,12 +72,12 @@ pub struct PeerApiService<L: Ledger> {
     logger: Logger,
 }
 
-impl<L: Ledger> PeerApiService<L> {
+impl PeerApiService {
     pub fn new(
         enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
         incoming_consensus_msgs_sender: BackgroundWorkQueueSenderFn<IncomingConsensusMsg>,
         scp_client_value_sender: ProposeTxCallback,
-        ledger: L,
+        ledger: Arc<dyn Ledger + Send + Sync>,
         tx_manager: Arc<dyn TxManager + Send + Sync>,
         fetch_latest_msg_fn: FetchLatestMsgFn,
         known_responder_ids: Vec<ResponderId>,
@@ -197,7 +197,7 @@ impl<L: Ledger> PeerApiService<L> {
     }
 }
 
-impl<L: Ledger> ConsensusPeerApi for PeerApiService<L> {
+impl ConsensusPeerApi for PeerApiService {
     fn peer_tx_propose(
         &mut self,
         ctx: RpcContext,
