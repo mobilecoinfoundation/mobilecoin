@@ -368,14 +368,39 @@ mod tests {
         consensus_service::IncomingConsensusMsg, peer_api_service::PeerApiService,
         tx_manager::MockTxManager,
     };
+    use grpcio::{ChannelBuilder, Environment, Server, ServerBuilder};
     use mc_common::{
         logger::{test_with_logger, Logger},
         NodeID, ResponderId,
     };
+    use mc_consensus_api::{consensus_peer_grpc, consensus_peer_grpc::ConsensusPeerApiClient};
     use mc_consensus_enclave_mock::MockConsensusEnclave;
     use mc_ledger_db::MockLedger;
     use mc_transaction_core::tx::TxHash;
-    use std::sync::Arc;
+    use std::sync::{
+        atomic::{AtomicUsize, Ordering::SeqCst},
+        Arc,
+    };
+
+    fn get_free_port() -> u16 {
+        static PORT_NR: AtomicUsize = AtomicUsize::new(0);
+        PORT_NR.fetch_add(1, SeqCst) as u16 + 30100
+    }
+
+    fn get_client_server(instance: PeerApiService) -> (ConsensusPeerApiClient, Server) {
+        let service = consensus_peer_grpc::create_consensus_peer_api(instance);
+        let env = Arc::new(Environment::new(1));
+        let mut server = ServerBuilder::new(env.clone())
+            .register_service(service)
+            .bind("127.0.0.1", get_free_port())
+            .build()
+            .unwrap();
+        server.start();
+        let (_, port) = server.bind_addrs().next().unwrap();
+        let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
+        let client = ConsensusPeerApiClient::new(ch);
+        (client, server)
+    }
 
     #[test_with_logger]
     // Example setup for a unit test.
@@ -403,7 +428,7 @@ mod tests {
 
         let known_responder_ids = Vec::new();
 
-        let _instance = PeerApiService::new(
+        let instance = PeerApiService::new(
             Arc::new(consensus_enclave),
             incoming_consensus_msgs_sender,
             scp_client_value_sender,
@@ -414,6 +439,8 @@ mod tests {
             logger,
         );
 
-        // TODO: create gRPC client and server.
+        let (_client, _server) = get_client_server(instance);
+
+        // TODO: run a test.
     }
 }
