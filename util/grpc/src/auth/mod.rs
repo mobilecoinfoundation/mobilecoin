@@ -2,8 +2,8 @@
 
 //! GRPC authentication utilities.
 
-pub mod anonymous_authenticator;
-pub mod token_authenticator;
+mod anonymous_authenticator;
+mod token_authenticator;
 
 pub use anonymous_authenticator::{AnonymousAuthenticator, ANONYMOUS_USER};
 pub use token_authenticator::{TokenAuthenticator, TokenBasicCredentialsGenerator};
@@ -176,6 +176,7 @@ mod test {
     use super::*;
     use anonymous_authenticator::{AnonymousAuthenticator, ANONYMOUS_USER};
     use grpcio::MetadataBuilder;
+    use mc_common::time::SystemTimeProvider;
     use std::time::Duration;
     use token_authenticator::{TokenAuthenticator, TokenBasicCredentialsGenerator};
 
@@ -234,7 +235,11 @@ mod test {
     #[test]
     fn authenticate_token() {
         let shared_secret = [66; 32];
-        let authenticator = TokenAuthenticator::new(shared_secret.clone(), TOKEN_MAX_LIFETIME);
+        let authenticator = TokenAuthenticator::new(
+            shared_secret.clone(),
+            TOKEN_MAX_LIFETIME,
+            SystemTimeProvider::default(),
+        );
         const TEST_USERNAME: &str = "user123";
 
         // Authorizing without any headers should fail.
@@ -262,7 +267,10 @@ mod test {
         }
 
         // Authorizing with a valid Authorization header should succeed.
-        let generator = TokenBasicCredentialsGenerator::new(shared_secret.clone());
+        let generator = TokenBasicCredentialsGenerator::new(
+            shared_secret.clone(),
+            SystemTimeProvider::default(),
+        );
         let creds = generator
             .generate_for(TEST_USERNAME)
             .expect("failed generating token");

@@ -150,6 +150,7 @@ mod client_api_tests {
     use mc_attest_api::attest::Message;
     use mc_common::{
         logger::{test_with_logger, Logger},
+        time::SystemTimeProvider,
         NodeID, ResponderId,
     };
     use mc_consensus_api::{
@@ -493,7 +494,11 @@ mod client_api_tests {
             |_tx_hash: TxHash, _node_id: Option<&NodeID>, _responder_id: Option<&ResponderId>| {},
         );
 
-        let authenticator = TokenAuthenticator::new([1; 32], Duration::from_secs(60));
+        let authenticator = TokenAuthenticator::new(
+            [1; 32],
+            Duration::from_secs(60),
+            SystemTimeProvider::default(),
+        );
 
         let instance = ClientApiService::new(
             Arc::new(enclave),

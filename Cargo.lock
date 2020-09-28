@@ -3521,6 +3521,7 @@ name = "mc-util-grpc-token-generator"
 version = "1.0.0"
 dependencies = [
  "hex 0.4.2",
+ "mc-common",
  "mc-util-grpc",
  "percent-encoding 2.1.0",
  "serde",

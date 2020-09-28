@@ -130,7 +130,7 @@ mod peer_tests {
         ChannelBuilder, Environment, Error as GrpcError, RpcStatusCode, Server, ServerBuilder,
     };
     use mc_attest_api::attest_grpc::{self, AttestedApiClient};
-    use mc_common::logger::test_with_logger;
+    use mc_common::{logger::test_with_logger, time::SystemTimeProvider};
     use mc_consensus_enclave_mock::MockConsensusEnclave;
     use mc_util_grpc::auth::TokenAuthenticator;
     use std::{
@@ -162,7 +162,11 @@ mod peer_tests {
     #[test_with_logger]
     // `auth` should reject unauthenticated responses when configured with an authenticator.
     fn test_peer_auth_unauthenticated(logger: Logger) {
-        let authenticator = Arc::new(TokenAuthenticator::new([1; 32], Duration::from_secs(60)));
+        let authenticator = Arc::new(TokenAuthenticator::new(
+            [1; 32],
+            Duration::from_secs(60),
+            SystemTimeProvider::default(),
+        ));
         let enclave = Arc::new(MockConsensusEnclave::new());
 
         let attested_api_service =
@@ -191,7 +195,7 @@ mod client_tests {
         ChannelBuilder, Environment, Error as GrpcError, RpcStatusCode, Server, ServerBuilder,
     };
     use mc_attest_api::attest_grpc::{self, AttestedApiClient};
-    use mc_common::logger::test_with_logger;
+    use mc_common::{logger::test_with_logger, time::SystemTimeProvider};
     use mc_consensus_enclave_mock::MockConsensusEnclave;
     use mc_util_grpc::auth::TokenAuthenticator;
     use std::{
@@ -225,7 +229,11 @@ mod client_tests {
     #[test_with_logger]
     // `auth` should reject unauthenticated responses when configured with an authenticator.
     fn test_client_auth_unauthenticated(logger: Logger) {
-        let authenticator = Arc::new(TokenAuthenticator::new([1; 32], Duration::from_secs(60)));
+        let authenticator = Arc::new(TokenAuthenticator::new(
+            [1; 32],
+            Duration::from_secs(60),
+            SystemTimeProvider::default(),
+        ));
         let enclave = Arc::new(MockConsensusEnclave::new());
 
         let attested_api_service =

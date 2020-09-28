@@ -16,6 +16,7 @@ use mc_attest_enclave_api::{ClientSession, PeerSession};
 use mc_attest_net::RaClient;
 use mc_common::{
     logger::{log, Logger},
+    time::TimeProvider,
     NodeID, ResponderId,
 };
 use mc_connection::{Connection, ConnectionManager};
@@ -127,12 +128,13 @@ impl<
         TXM: TxManager + Clone + Send + Sync + 'static,
     > ConsensusService<E, R, TXM>
 {
-    pub fn new(
+    pub fn new<TP: TimeProvider + Send + Sync + 'static>(
         config: Config,
         enclave: E,
         ledger_db: LedgerDB,
         ra_client: R,
         tx_manager: Arc<TXM>,
+        time_provider: Arc<TP>,
         logger: Logger,
     ) -> Self {
         // gRPC environment.
@@ -186,6 +188,7 @@ impl<
                 Arc::new(TokenAuthenticator::new(
                     *shared_secret,
                     config.client_auth_token_max_lifetime,
+                    time_provider.clone(),
                 ))
             } else {
                 Arc::new(AnonymousAuthenticator::default())

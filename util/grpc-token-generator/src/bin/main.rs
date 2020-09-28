@@ -2,6 +2,7 @@
 
 //! A utility for generating GRPC authentication tokens.
 
+use mc_common::time::SystemTimeProvider;
 use mc_util_grpc::auth::TokenBasicCredentialsGenerator;
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use structopt::StructOpt;
@@ -23,7 +24,8 @@ pub struct Config {
 
 fn main() {
     let config = Config::from_args();
-    let token_generator = TokenBasicCredentialsGenerator::new(config.shared_secret);
+    let token_generator =
+        TokenBasicCredentialsGenerator::new(config.shared_secret, SystemTimeProvider::default());
     let creds = token_generator
         .generate_for(&config.username)
         .expect("Failed generating token");
@@ -37,15 +39,14 @@ fn main() {
 
 /// Converts a hex-encoded string into an array of 32 bytes.
 fn from_hex_32(src: &str) -> Result<[u8; 32], String> {
-    let bytes = hex::decode(src).map_err(|err| format!("Invalid input: {}", err))?;
-    if bytes.len() != 32 {
+    if src.len() != 64 {
         return Err(format!(
-            "Invalid input length, got {} bytes while expecting 32",
-            bytes.len()
+            "Invalid length, got {} while expecting 64",
+            src.len()
         ));
     }
 
-    let mut output = [0; 32];
-    output.copy_from_slice(&bytes[..]);
-    Ok(output)
+    let mut retval = [0u8; 32];
+    hex::decode_to_slice(src, &mut retval).map_err(|err| format!("Invalid hex string: {}", err))?;
+    Ok(retval)
 }
