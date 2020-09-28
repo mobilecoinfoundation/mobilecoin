@@ -524,13 +524,4 @@ mod tests {
 
         assert!(keypair_from_base64(private_key).is_ok());
     }
-
-    #[test]
-    /// Should successfully decode a 32-byte array encoded as a hex string.
-    fn test_from_hex_32() {
-        assert!(from_hex_32("abcd").is_err());
-
-        let bytes = [3; 32];
-        assert_eq!(bytes, from_hex_32(&hex::encode(&bytes)).unwrap());
-    }
 }
