@@ -350,6 +350,10 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         let mut wrapper = mc_mobilecoind_api::printable::PrintableWrapper::new();
         wrapper.set_public_address((&subaddress).into());
 
+        // Create the MobUrl for the response
+        let mob_url = MobUrl::try_from(&subaddress)
+        .map_err(|err| rpc_internal_error("MobUrl.try_from", err, &self.logger))?;
+
         // Return response.
         let mut response = mc_mobilecoind_api::GetPublicAddressResponse::new();
         response.set_public_address((&subaddress).into());
@@ -358,6 +362,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                 .b58_encode()
                 .map_err(|err| rpc_internal_error("b58_encode", err, &self.logger))?,
         );
+        response.set_mob_url(mob_url.as_ref().to_string());
 
         Ok(response)
     }
@@ -1969,6 +1974,10 @@ mod test {
         wrapper.set_public_address((&account_key.subaddress(10)).into());
         let b58_code = wrapper.b58_encode().unwrap();
         assert_eq!(response.get_b58_code(), b58_code,);
+
+        // Test the the mob_url encoding is correct
+        let mob_url = MobUrl::from_str(response.get_mob_url()).unwrap();
+        assert_eq!(PublicAddress::try_from(&mob_url).unwrap(), account_key.subaddress(10).into());
 
         // Subaddress that is out of index or an invalid monitor id should error.
         let request = mc_mobilecoind_api::GetPublicAddressRequest::new();

@@ -317,6 +317,7 @@ message GetPublicAddressRequest {
 message GetPublicAddressResponse {
     external.PublicAddress public_address = 1;
     string b58_code = 2;
+    string mob_url = 3;
 }
 
 //
