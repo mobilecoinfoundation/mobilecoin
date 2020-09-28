@@ -71,7 +71,7 @@ fn purge_expired_cert(path: &PathBuf) {
 
             // If certificate expired or expires in the next 24 hours, delete it so it gets
             // regenerated.
-            if utc_now > not_after - Duration::hours(24) {
+            if utc_now + Duration::hours(24) > not_after {
                 remove_file(path.clone())
                     .unwrap_or_else(|e| panic!("failed deleting expired cert {:?}: {:?}", path, e));
             }
