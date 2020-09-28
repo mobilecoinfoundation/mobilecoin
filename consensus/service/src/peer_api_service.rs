@@ -361,3 +361,59 @@ impl ConsensusPeerApi for PeerApiService {
         });
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        consensus_service::IncomingConsensusMsg, peer_api_service::PeerApiService,
+        tx_manager::MockTxManager,
+    };
+    use mc_common::{
+        logger::{test_with_logger, Logger},
+        NodeID, ResponderId,
+    };
+    use mc_consensus_enclave_mock::MockConsensusEnclave;
+    use mc_ledger_db::MockLedger;
+    use mc_transaction_core::tx::TxHash;
+    use std::sync::Arc;
+
+    #[test_with_logger]
+    // Example setup for a unit test.
+    fn test_example(logger: Logger) {
+        let consensus_enclave = MockConsensusEnclave::new();
+        let ledger = MockLedger::new();
+        let tx_manager = MockTxManager::new();
+
+        // BackgroundWorkQueueSenderFn<IncomingConsensusMsg>
+        // Arc<dyn Fn(T) -> Result<(), BackgroundWorkQueueError> + Sync + Send>;
+        let incoming_consensus_msgs_sender = Arc::new(|_msg: IncomingConsensusMsg| {
+            // TODO: store inputs for inspection.
+            Ok(())
+        });
+
+        // Arc<dyn Fn(TxHash, Option<&NodeID>, Option<&ResponderId>) + Sync + Send>
+        let scp_client_value_sender = Arc::new(
+            |_tx_hash: TxHash, _node_id: Option<&NodeID>, _responder_id: Option<&ResponderId>| {
+                // TODO: store inputs for inspection.
+            },
+        );
+
+        // type FetchLatestMsgFn = Arc<dyn Fn() -> Option<mc_peers::ConsensusMsg> + Sync + Send>;
+        let fetch_latest_msg_fn = Arc::new(|| None);
+
+        let known_responder_ids = Vec::new();
+
+        let _instance = PeerApiService::new(
+            Arc::new(consensus_enclave),
+            incoming_consensus_msgs_sender,
+            scp_client_value_sender,
+            Arc::new(ledger),
+            Arc::new(tx_manager),
+            fetch_latest_msg_fn,
+            known_responder_ids,
+            logger,
+        );
+
+        // TODO: create gRPC client and server.
+    }
+}
