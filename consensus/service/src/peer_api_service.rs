@@ -45,7 +45,7 @@ type FetchLatestMsgFn = Arc<dyn Fn() -> Option<mc_peers::ConsensusMsg> + Sync + 
 #[derive(Clone)]
 pub struct PeerApiService {
     /// Enclave instance.
-    enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
+    consensus_enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
 
     /// TxManager instance.
     tx_manager: Arc<dyn TxManager + Send + Sync>,
@@ -76,30 +76,30 @@ impl PeerApiService {
     /// Creates a PeerApiService.
     ///
     /// # Arguments:
-    /// * `enclave` - The local node's consensus enclave.
-    /// * `incoming_consensus_msgs_sender` - Callback for... adding to a queue of received consensus messages?
-    /// * `scp_client_value_sender` -
+    /// * `consensus_enclave` - The local node's consensus enclave.
     /// * `ledger` - The local node's ledger.
     /// * `tx_manager` - The local node's TxManager.
+    /// * `incoming_consensus_msgs_sender` - Callback for a new consensus message from a peer.
+    /// * `scp_client_value_sender` - Callback for proposed transactions.
     /// * `fetch_latest_msg_fn` - Returns highest message emitted by this node.
     /// * `known_responder_ids` - Whitelist. Messages from peers not on this list are ignored.
     /// * `logger` -
     pub fn new(
-        enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
-        incoming_consensus_msgs_sender: BackgroundWorkQueueSenderFn<IncomingConsensusMsg>,
-        scp_client_value_sender: ProposeTxCallback,
+        consensus_enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
         ledger: Arc<dyn Ledger + Send + Sync>,
         tx_manager: Arc<dyn TxManager + Send + Sync>,
+        incoming_consensus_msgs_sender: BackgroundWorkQueueSenderFn<IncomingConsensusMsg>,
+        scp_client_value_sender: ProposeTxCallback,
         fetch_latest_msg_fn: FetchLatestMsgFn,
         known_responder_ids: Vec<ResponderId>,
         logger: Logger,
     ) -> Self {
         Self {
-            enclave,
-            incoming_consensus_msgs_sender,
-            scp_client_value_sender,
+            consensus_enclave,
             ledger,
             tx_manager,
+            incoming_consensus_msgs_sender,
+            scp_client_value_sender,
             fetch_latest_msg_fn,
             known_responder_ids,
             logger,
@@ -115,7 +115,7 @@ impl PeerApiService {
         // TODO: Use the prost message directly when available, take a reference
         let enclave_msg: EnclaveMessage<PeerSession> = request.into();
         let aad = enclave_msg.aad.clone();
-        let tx_contexts = self.enclave.peer_tx_propose(enclave_msg)?;
+        let tx_contexts = self.consensus_enclave.peer_tx_propose(enclave_msg)?;
 
         // We fail silently here since the only effect of not having
         // origin_node/relayed_by node IDs is less efficient broadcasting.
@@ -446,10 +446,10 @@ mod tests {
 
         let instance = PeerApiService::new(
             Arc::new(consensus_enclave),
-            incoming_consensus_msgs_sender,
-            scp_client_value_sender,
             Arc::new(ledger),
             Arc::new(tx_manager),
+            incoming_consensus_msgs_sender,
+            scp_client_value_sender,
             fetch_latest_msg_fn,
             known_responder_ids,
             logger,
