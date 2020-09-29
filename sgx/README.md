@@ -67,7 +67,7 @@ Crates for outside the enclave:
 
 | Crate     | Description | Dependencies |
 | --------- |------------ | ------------ |
-| `mc-sgx-urts` | This crate suports untrusted code that creates an enclave. It also contains OCALL implementations. | rust `std`, `slog` for logging.
+| `mc-sgx-urts` | This crate suports untrusted code that creates an enclave. It also contains OCALL implementations. | rust `std`, `slog` for logging. | |
 | `mc-sgx-build` | Shared code for build.rs scripts that link to SGX, sign enclaves, etc. | |
 
 Cross-platform crates:
