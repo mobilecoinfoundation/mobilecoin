@@ -106,6 +106,7 @@ impl PeerApiService {
         }
     }
 
+    /// Handle transactions proposed by clients to a different node.
     fn real_peer_tx_propose(
         &mut self,
         request: Message,
@@ -160,7 +161,7 @@ impl PeerApiService {
         Ok(ProposeTxResponse::new())
     }
 
-    /// Get tx contents.
+    /// Returns the full, encrypted transactions corresponding to a list of transaction hashes.
     fn real_fetch_txs(
         &mut self,
         request: FetchTxsRequest,
@@ -209,7 +210,7 @@ impl PeerApiService {
 }
 
 impl ConsensusPeerApi for PeerApiService {
-    /// Handle a transaction proposed by a client to a different node.
+    /// Handle transactions proposed by clients to a different node.
     fn peer_tx_propose(
         &mut self,
         ctx: RpcContext,
