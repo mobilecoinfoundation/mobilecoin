@@ -12,14 +12,22 @@ mc-util-metrics = { path = "../metrics" }
 mc-util-serial = { path = "../serial", features = ["std"]}
 mc-util-uri = { path = "../uri" }
 
+base64 = "0.12"
+digest = "0.9"
+displaydoc = { version = "0.1.7", default-features = false }
 futures = "0.3"
 grpcio = "0.6.0"
+hex = "0.4"
 hex_fmt = "0.3"
+hmac = "0.9"
 lazy_static = "1.4"
 prometheus = "0.9"
 prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
 protobuf = "2.12"
 rand = "0.6.5"
+sha2 = "0.9"
+subtle = { version = "2.2", default-features = false, features = ["i128"] }
+zeroize = { version = "1", default-features = false }
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../build/grpc" }

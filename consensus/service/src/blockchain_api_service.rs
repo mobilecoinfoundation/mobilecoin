@@ -11,15 +11,18 @@ use mc_consensus_api::{
     empty::Empty,
 };
 use mc_ledger_db::Ledger;
-use mc_util_grpc::{rpc_logger, send_result};
+use mc_util_grpc::{auth::Authenticator, rpc_logger, send_result};
 use mc_util_metrics::{self, SVC_COUNTERS};
 use protobuf::RepeatedField;
-use std::{cmp, convert::From};
+use std::{cmp, convert::From, sync::Arc};
 
 #[derive(Clone)]
 pub struct BlockchainApiService<L: Ledger + Clone> {
     /// Ledger Database.
     ledger: L,
+
+    /// GRPC request authenticator.
+    authenticator: Arc<dyn Authenticator + Send + Sync>,
 
     /// Maximal number of results to return in API calls that return multiple results.
     max_page_size: u16,
@@ -29,9 +32,14 @@ pub struct BlockchainApiService<L: Ledger + Clone> {
 }
 
 impl<L: Ledger + Clone> BlockchainApiService<L> {
-    pub fn new(ledger: L, logger: Logger) -> Self {
+    pub fn new(
+        ledger: L,
+        authenticator: Arc<dyn Authenticator + Send + Sync>,
+        logger: Logger,
+    ) -> Self {
         BlockchainApiService {
             ledger,
+            authenticator,
             max_page_size: 2000,
             logger,
         }
@@ -106,6 +114,10 @@ impl<L: Ledger + Clone> BlockchainApi for BlockchainApiService<L> {
         let _timer = SVC_COUNTERS.req(&ctx);
 
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
+                return send_result(ctx, sink, err.into(), &logger);
+            }
+
             let resp = self
                 .get_last_block_info_helper()
                 .map_err(|_| RpcStatus::new(RpcStatusCode::INTERNAL, None));
@@ -123,6 +135,10 @@ impl<L: Ledger + Clone> BlockchainApi for BlockchainApiService<L> {
         let _timer = SVC_COUNTERS.req(&ctx);
 
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
+                return send_result(ctx, sink, err.into(), &logger);
+            }
+
             log::trace!(
                 logger,
                 "Received BlocksRequest for offset {} and limit {})",
@@ -141,14 +157,45 @@ impl<L: Ledger + Clone> BlockchainApi for BlockchainApiService<L> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mc_common::logger::test_with_logger;
+    use grpcio::{ChannelBuilder, Environment, Error as GrpcError, Server, ServerBuilder};
+    use mc_common::{logger::test_with_logger, time::SystemTimeProvider};
+    use mc_consensus_api::consensus_common_grpc::{self, BlockchainApiClient};
     use mc_transaction_core_test_utils::{create_ledger, initialize_ledger, AccountKey};
+    use mc_util_grpc::auth::{AnonymousAuthenticator, TokenAuthenticator};
     use rand::{rngs::StdRng, SeedableRng};
+    use std::{
+        sync::atomic::{AtomicUsize, Ordering::SeqCst},
+        time::Duration,
+    };
+
+    fn get_free_port() -> u16 {
+        static PORT_NR: AtomicUsize = AtomicUsize::new(0);
+        PORT_NR.fetch_add(1, SeqCst) as u16 + 30200
+    }
+
+    /// Starts the service on localhost and connects a client to it.
+    fn get_client_server<L: Ledger + Clone + 'static>(
+        instance: BlockchainApiService<L>,
+    ) -> (BlockchainApiClient, Server) {
+        let service = consensus_common_grpc::create_blockchain_api(instance);
+        let env = Arc::new(Environment::new(1));
+        let mut server = ServerBuilder::new(env.clone())
+            .register_service(service)
+            .bind("127.0.0.1", get_free_port())
+            .build()
+            .unwrap();
+        server.start();
+        let (_, port) = server.bind_addrs().next().unwrap();
+        let ch = ChannelBuilder::new(env).connect(&format!("127.0.0.1:{}", port));
+        let client = BlockchainApiClient::new(ch);
+        (client, server)
+    }
 
     #[test_with_logger]
     // `get_last_block_info` should returns the last block.
     fn test_get_last_block_info(logger: Logger) {
         let mut ledger_db = create_ledger();
+        let authenticator = Arc::new(AnonymousAuthenticator::default());
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let account_key = AccountKey::random(&mut rng);
         let block_entities = initialize_ledger(&mut ledger_db, 10, &account_key, &mut rng);
@@ -160,16 +207,46 @@ mod tests {
             ledger_db.num_blocks().unwrap() - 1
         );
 
-        let mut blockchain_api_service = BlockchainApiService::new(ledger_db, logger);
+        let mut blockchain_api_service =
+            BlockchainApiService::new(ledger_db, authenticator, logger);
 
         let block_response = blockchain_api_service.get_last_block_info_helper().unwrap();
         assert_eq!(block_response, expected_response);
     }
 
     #[test_with_logger]
+    // `get_last_block_info` should reject unauthenticated responses when configured with an
+    // authenticator.
+    fn test_get_last_block_info_rejects_unauthenticated(logger: Logger) {
+        let ledger_db = create_ledger();
+        let authenticator = Arc::new(TokenAuthenticator::new(
+            [1; 32],
+            Duration::from_secs(60),
+            SystemTimeProvider::default(),
+        ));
+
+        let blockchain_api_service = BlockchainApiService::new(ledger_db, authenticator, logger);
+
+        let (client, _server) = get_client_server(blockchain_api_service);
+
+        match client.get_last_block_info(&Empty::default()) {
+            Ok(response) => {
+                panic!("Unexpected response {:?}", response);
+            }
+            Err(GrpcError::RpcFailure(rpc_status)) => {
+                assert_eq!(rpc_status.status, RpcStatusCode::UNAUTHENTICATED);
+            }
+            Err(err @ _) => {
+                panic!("Unexpected error {:?}", err);
+            }
+        }
+    }
+
+    #[test_with_logger]
     // `get_blocks` should returns the correct range of blocks.
     fn test_get_blocks_response_range(logger: Logger) {
         let mut ledger_db = create_ledger();
+        let authenticator = Arc::new(AnonymousAuthenticator::default());
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let account_key = AccountKey::random(&mut rng);
         let block_entities = initialize_ledger(&mut ledger_db, 10, &account_key, &mut rng);
@@ -179,7 +256,8 @@ mod tests {
             .map(|block_entity| blockchain::Block::from(&block_entity))
             .collect();
 
-        let mut blockchain_api_service = BlockchainApiService::new(ledger_db, logger);
+        let mut blockchain_api_service =
+            BlockchainApiService::new(ledger_db, authenticator, logger);
 
         {
             // The empty range [0,0) should return an empty collection of Blocks.
@@ -211,11 +289,13 @@ mod tests {
     // if a client requests data that does not exist.
     fn test_get_blocks_request_out_of_bounds(logger: Logger) {
         let mut ledger_db = create_ledger();
+        let authenticator = Arc::new(AnonymousAuthenticator::default());
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let account_key = AccountKey::random(&mut rng);
         let _blocks = initialize_ledger(&mut ledger_db, 10, &account_key, &mut rng);
 
-        let mut blockchain_api_service = BlockchainApiService::new(ledger_db, logger);
+        let mut blockchain_api_service =
+            BlockchainApiService::new(ledger_db, authenticator, logger);
 
         {
             // The range [0, 1000) requests values that don't exist. The response should contain [0,10).
@@ -228,6 +308,7 @@ mod tests {
     // `get_blocks` should only return the "maximum" number of items if the requested range is larger.
     fn test_get_blocks_max_size(logger: Logger) {
         let mut ledger_db = create_ledger();
+        let authenticator = Arc::new(AnonymousAuthenticator::default());
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let account_key = AccountKey::random(&mut rng);
         let block_entities = initialize_ledger(&mut ledger_db, 10, &account_key, &mut rng);
@@ -237,7 +318,8 @@ mod tests {
             .map(|block_entity| blockchain::Block::from(&block_entity))
             .collect();
 
-        let mut blockchain_api_service = BlockchainApiService::new(ledger_db, logger);
+        let mut blockchain_api_service =
+            BlockchainApiService::new(ledger_db, authenticator, logger);
         blockchain_api_service.set_max_page_size(5);
 
         // The request exceeds the max_page_size, so only max_page_size items should be returned.
@@ -246,5 +328,33 @@ mod tests {
         assert_eq!(5, blocks.len());
         assert_eq!(expected_blocks.get(0).unwrap(), blocks.get(0).unwrap());
         assert_eq!(expected_blocks.get(4).unwrap(), blocks.get(4).unwrap());
+    }
+
+    #[test_with_logger]
+    // `get_blocks` should reject unauthenticated responses when configured with an
+    // authenticator.
+    fn test_get_blocks_rejects_unauthenticated(logger: Logger) {
+        let ledger_db = create_ledger();
+        let authenticator = Arc::new(TokenAuthenticator::new(
+            [1; 32],
+            Duration::from_secs(60),
+            SystemTimeProvider::default(),
+        ));
+
+        let blockchain_api_service = BlockchainApiService::new(ledger_db, authenticator, logger);
+
+        let (client, _server) = get_client_server(blockchain_api_service);
+
+        match client.get_blocks(&BlocksRequest::default()) {
+            Ok(response) => {
+                panic!("Unexpected response {:?}", response);
+            }
+            Err(GrpcError::RpcFailure(rpc_status)) => {
+                assert_eq!(rpc_status.status, RpcStatusCode::UNAUTHENTICATED);
+            }
+            Err(err @ _) => {
+                panic!("Unexpected error {:?}", err);
+            }
+        }
     }
 }

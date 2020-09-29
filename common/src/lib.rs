@@ -15,6 +15,8 @@ mod responder_id;
 pub mod lru;
 pub use lru::LruCache;
 
+pub mod time;
+
 pub use node_id::NodeID;
 pub use responder_id::{ResponderId, ResponderIdParseError};
 

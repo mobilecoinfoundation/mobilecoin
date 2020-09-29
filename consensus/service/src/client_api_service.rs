@@ -17,7 +17,7 @@ use mc_consensus_api::{
 };
 use mc_consensus_enclave::ConsensusEnclave;
 use mc_ledger_db::Ledger;
-use mc_util_grpc::{rpc_logger, send_result};
+use mc_util_grpc::{auth::Authenticator, rpc_logger, send_result};
 use mc_util_metrics::{self, SVC_COUNTERS};
 use std::sync::Arc;
 
@@ -33,6 +33,7 @@ pub struct ClientApiService {
     propose_tx_callback: ProposeTxCallback,
     /// Returns true if this node is able to process proposed transactions.
     is_serving_fn: Arc<(dyn Fn() -> bool + Sync + Send)>,
+    authenticator: Arc<dyn Authenticator + Send + Sync>,
     logger: Logger,
 }
 
@@ -43,6 +44,7 @@ impl ClientApiService {
         ledger: Arc<dyn Ledger + Send + Sync>,
         tx_manager: Arc<dyn TxManager + Send + Sync>,
         is_serving_fn: Arc<(dyn Fn() -> bool + Sync + Send)>,
+        authenticator: Arc<dyn Authenticator + Send + Sync>,
         logger: Logger,
     ) -> Self {
         Self {
@@ -51,6 +53,7 @@ impl ClientApiService {
             ledger,
             propose_tx_callback: scp_client_value_sender,
             is_serving_fn,
+            authenticator,
             logger,
         }
     }
@@ -98,6 +101,10 @@ impl ConsensusClientApi for ClientApiService {
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
 
+        if let Err(err) = self.authenticator.authenticate_rpc(&ctx) {
+            return send_result(ctx, sink, err.into(), &self.logger);
+        }
+
         let mut result: Result<ProposeTxResponse, RpcStatus> =
             if counters::CUR_NUM_PENDING_VALUES.get() >= PENDING_LIMIT {
                 // This node is over capacity, and is not accepting proposed transaction.
@@ -137,10 +144,13 @@ mod client_api_tests {
         counters,
         tx_manager::{MockTxManager, TxManagerError},
     };
-    use grpcio::{ChannelBuilder, Environment, Server, ServerBuilder};
+    use grpcio::{
+        ChannelBuilder, Environment, Error as GrpcError, RpcStatusCode, Server, ServerBuilder,
+    };
     use mc_attest_api::attest::Message;
     use mc_common::{
         logger::{test_with_logger, Logger},
+        time::SystemTimeProvider,
         NodeID, ResponderId,
     };
     use mc_consensus_api::{
@@ -153,10 +163,14 @@ mod client_api_tests {
     use mc_transaction_core::{
         ring_signature::KeyImage, tx::TxHash, validation::TransactionValidationError,
     };
+    use mc_util_grpc::auth::{AnonymousAuthenticator, TokenAuthenticator};
     use serial_test_derive::serial;
-    use std::sync::{
-        atomic::{AtomicUsize, Ordering::SeqCst},
-        Arc,
+    use std::{
+        sync::{
+            atomic::{AtomicUsize, Ordering::SeqCst},
+            Arc,
+        },
+        time::Duration,
     };
 
     fn get_free_port() -> u16 {
@@ -219,12 +233,15 @@ mod client_api_tests {
 
         let is_serving_fn = Arc::new(|| -> bool { true });
 
+        let authenticator = AnonymousAuthenticator::default();
+
         let instance = ClientApiService::new(
             Arc::new(consensus_enclave),
             scp_client_value_sender,
             Arc::new(ledger),
             Arc::new(tx_manager),
             is_serving_fn,
+            Arc::new(authenticator),
             logger,
         );
 
@@ -283,12 +300,15 @@ mod client_api_tests {
 
         let is_serving_fn = Arc::new(|| -> bool { true });
 
+        let authenticator = AnonymousAuthenticator::default();
+
         let instance = ClientApiService::new(
             Arc::new(consensus_enclave),
             scp_client_value_sender,
             Arc::new(ledger),
             Arc::new(tx_manager),
             is_serving_fn,
+            Arc::new(authenticator),
             logger,
         );
 
@@ -342,12 +362,15 @@ mod client_api_tests {
 
         let is_serving_fn = Arc::new(|| -> bool { true });
 
+        let authenticator = AnonymousAuthenticator::default();
+
         let instance = ClientApiService::new(
             Arc::new(consensus_enclave),
             scp_client_value_sender,
             Arc::new(ledger),
             Arc::new(tx_manager),
             is_serving_fn,
+            Arc::new(authenticator),
             logger,
         );
 
@@ -383,12 +406,15 @@ mod client_api_tests {
             |_tx_hash: TxHash, _node_id: Option<&NodeID>, _responder_id: Option<&ResponderId>| {},
         );
 
+        let authenticator = AnonymousAuthenticator::default();
+
         let instance = ClientApiService::new(
             Arc::new(enclave),
             scp_client_value_sender,
             Arc::new(MockLedger::new()),
             Arc::new(MockTxManager::new()),
             is_serving_fn,
+            Arc::new(authenticator),
             logger,
         );
 
@@ -424,12 +450,15 @@ mod client_api_tests {
             |_tx_hash: TxHash, _node_id: Option<&NodeID>, _responder_id: Option<&ResponderId>| {},
         );
 
+        let authenticator = AnonymousAuthenticator::default();
+
         let instance = ClientApiService::new(
             Arc::new(enclave),
             scp_client_value_sender,
             Arc::new(MockLedger::new()),
             Arc::new(MockTxManager::new()),
             is_serving_fn,
+            Arc::new(authenticator),
             logger,
         );
 
@@ -452,5 +481,49 @@ mod client_api_tests {
 
         // This is a global variable. It affects other unit tests, so must be reset :(
         counters::CUR_NUM_PENDING_VALUES.set(0);
+    }
+
+    #[test_with_logger]
+    #[serial(counters)]
+    fn test_client_tx_propose_rejects_unauthenticated(logger: Logger) {
+        let enclave = MockConsensusEnclave::new();
+
+        let is_serving_fn = Arc::new(|| -> bool { true }); // Not serving
+
+        let scp_client_value_sender = Arc::new(
+            |_tx_hash: TxHash, _node_id: Option<&NodeID>, _responder_id: Option<&ResponderId>| {},
+        );
+
+        let authenticator = TokenAuthenticator::new(
+            [1; 32],
+            Duration::from_secs(60),
+            SystemTimeProvider::default(),
+        );
+
+        let instance = ClientApiService::new(
+            Arc::new(enclave),
+            scp_client_value_sender,
+            Arc::new(MockLedger::new()),
+            Arc::new(MockTxManager::new()),
+            is_serving_fn,
+            Arc::new(authenticator),
+            logger,
+        );
+
+        // gRPC client and server.
+        let (client, _server) = get_client_server(instance);
+
+        let message = Message::default();
+        match client.client_tx_propose(&message) {
+            Ok(response) => {
+                panic!("Unexpected response {:?}", response);
+            }
+            Err(GrpcError::RpcFailure(rpc_status)) => {
+                assert_eq!(rpc_status.status, RpcStatusCode::UNAUTHENTICATED);
+            }
+            Err(err @ _) => {
+                panic!("Unexpected error {:?}", err);
+            }
+        };
     }
 }

@@ -2,6 +2,7 @@
 
 use crate::traits::{ConnectionUri, UriScheme};
 use displaydoc::Display;
+use percent_encoding::percent_decode_str;
 use std::{
     fmt::{Display, Formatter, Result as FmtResult},
     marker::PhantomData,
@@ -17,6 +18,8 @@ pub enum UriParseError {
     MissingHost,
     /// Unknown scheme: Valid possibilities are `{0}`, `{1}`
     UnknownScheme(&'static str, &'static str),
+    /// Percent decoding error: '{0}'
+    PercentDecoding(String),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -32,6 +35,12 @@ pub struct Uri<Scheme: UriScheme> {
 
     /// Whether to use TLS when connecting.
     use_tls: bool,
+
+    /// Optional username.
+    username: String,
+
+    /// Optional password.
+    password: String,
 
     /// The uri scheme
     _scheme: PhantomData<fn() -> Scheme>,
@@ -56,6 +65,14 @@ impl<Scheme: UriScheme> ConnectionUri for Uri<Scheme> {
 
     fn use_tls(&self) -> bool {
         self.use_tls
+    }
+
+    fn username(&self) -> String {
+        self.username.clone()
+    }
+
+    fn password(&self) -> String {
+        self.password.clone()
     }
 }
 
@@ -101,11 +118,28 @@ impl<Scheme: UriScheme> FromStr for Uri<Scheme> {
             (None, false) => Scheme::DEFAULT_INSECURE_PORT,
         };
 
+        let username_percent_encoded = url.username().to_owned();
+        let username = percent_decode_str(&username_percent_encoded)
+            .decode_utf8()
+            .map_err(|_| UriParseError::PercentDecoding(username_percent_encoded.clone()))?
+            .to_string();
+
+        let password_percent_encoded = url
+            .password()
+            .map(|s| s.to_owned())
+            .unwrap_or_else(|| "".to_owned());
+        let password = percent_decode_str(&password_percent_encoded)
+            .decode_utf8()
+            .map_err(|_| UriParseError::PercentDecoding(password_percent_encoded.clone()))?
+            .to_string();
+
         Ok(Self {
             url,
             host,
             port,
             use_tls,
+            username,
+            password,
             _scheme: Default::default(),
         })
     }

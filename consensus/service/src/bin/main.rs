@@ -4,7 +4,10 @@
 
 use mc_attest_core::DEBUG_ENCLAVE;
 use mc_attest_net::{Client, RaClient};
-use mc_common::logger::{create_app_logger, log, o};
+use mc_common::{
+    logger::{create_app_logger, log, o},
+    time::SystemTimeProvider,
+};
 use mc_consensus_enclave::{ConsensusServiceSgxEnclave, ENCLAVE_FILE};
 use mc_consensus_service::{
     config::Config,
@@ -96,6 +99,7 @@ fn main() -> Result<(), ConsensusServiceError> {
         local_ledger,
         ias_client,
         Arc::new(tx_manager),
+        Arc::new(SystemTimeProvider::default()),
         logger.clone(),
     );
     consensus_service

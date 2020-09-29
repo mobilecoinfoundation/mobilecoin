@@ -44,7 +44,7 @@ pub trait AttestedConnection: Connection {
         let result = func(self);
 
         if let Err(GrpcError::RpcFailure(rpc_status)) = &result {
-            if rpc_status.status == RpcStatusCode::UNAUTHENTICATED {
+            if rpc_status.status == RpcStatusCode::PERMISSION_DENIED {
                 self.deattest();
             }
         }

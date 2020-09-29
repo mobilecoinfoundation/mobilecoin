@@ -79,6 +79,12 @@ pub trait ConnectionUri:
     /// Whether TLS should be used for this connection.
     fn use_tls(&self) -> bool;
 
+    /// Retrieve the username part of the URI, or an empty string if one is not available.
+    fn username(&self) -> String;
+
+    /// Retrieve the password part of the URI, or an empty string if one is not available.
+    fn password(&self) -> String;
+
     /// Retrieve the responder id for this connection.
     fn responder_id(&self) -> StdResult<ResponderId, UriConversionError> {
         // .addr() is always expected to return a host:port, so from_str should not fail.

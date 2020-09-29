@@ -111,6 +111,8 @@ mod consensus_client_uri_tests {
             ResponderId::from_str("127.0.0.1:443").unwrap()
         );
         assert_eq!(uri.use_tls(), true);
+        assert_eq!(uri.username(), "");
+        assert_eq!(uri.password(), "");
 
         let uri = ClientUri::from_str("mc://node1.test.mobilecoin.com/").unwrap();
         assert_eq!(uri.addr(), "node1.test.mobilecoin.com:443");
@@ -119,6 +121,8 @@ mod consensus_client_uri_tests {
             ResponderId::from_str("node1.test.mobilecoin.com:443").unwrap()
         );
         assert_eq!(uri.use_tls(), true);
+        assert_eq!(uri.username(), "");
+        assert_eq!(uri.password(), "");
 
         let uri = ClientUri::from_str("mc://node1.test.mobilecoin.com:666/").unwrap();
         assert_eq!(uri.addr(), "node1.test.mobilecoin.com:666");
@@ -127,6 +131,8 @@ mod consensus_client_uri_tests {
             ResponderId::from_str("node1.test.mobilecoin.com:666").unwrap()
         );
         assert_eq!(uri.use_tls(), true);
+        assert_eq!(uri.username(), "");
+        assert_eq!(uri.password(), "");
 
         let uri = ClientUri::from_str("insecure-mc://127.0.0.1/").unwrap();
         assert_eq!(uri.addr(), "127.0.0.1:3223");
@@ -135,6 +141,8 @@ mod consensus_client_uri_tests {
             ResponderId::from_str("127.0.0.1:3223").unwrap()
         );
         assert_eq!(uri.use_tls(), false);
+        assert_eq!(uri.username(), "");
+        assert_eq!(uri.password(), "");
 
         let uri = ClientUri::from_str("insecure-mc://localhost:3223/").unwrap();
         assert_eq!(uri.addr(), "localhost:3223");
@@ -143,6 +151,8 @@ mod consensus_client_uri_tests {
             ResponderId::from_str("localhost:3223").unwrap()
         );
         assert_eq!(uri.use_tls(), false);
+        assert_eq!(uri.username(), "");
+        assert_eq!(uri.password(), "");
 
         let uri = ClientUri::from_str("insecure-mc://localhost:3223/?consensus-msg-key=MCowBQYDK2VwAyEAUBfht6884a45r0AjFRXgLlnw3yIDllTepWavLrT8Lfk=").unwrap();
         assert_eq!(uri.addr(), "localhost:3223");
@@ -151,6 +161,8 @@ mod consensus_client_uri_tests {
             ResponderId::from_str("localhost:3223").unwrap()
         );
         assert_eq!(uri.use_tls(), false);
+        assert_eq!(uri.username(), "");
+        assert_eq!(uri.password(), "");
 
         let uri = ClientUri::from_str("insecure-mc://node1.test.mobilecoin.com/").unwrap();
         assert_eq!(uri.addr(), "node1.test.mobilecoin.com:3223");
@@ -159,6 +171,8 @@ mod consensus_client_uri_tests {
             ResponderId::from_str("node1.test.mobilecoin.com:3223").unwrap()
         );
         assert_eq!(uri.use_tls(), false);
+        assert_eq!(uri.username(), "");
+        assert_eq!(uri.password(), "");
 
         let uri = ClientUri::from_str("insecure-mc://node1.test.mobilecoin.com:666/").unwrap();
         assert_eq!(uri.addr(), "node1.test.mobilecoin.com:666");
@@ -167,6 +181,52 @@ mod consensus_client_uri_tests {
             ResponderId::from_str("node1.test.mobilecoin.com:666").unwrap()
         );
         assert_eq!(uri.use_tls(), false);
+        assert_eq!(uri.username(), "");
+        assert_eq!(uri.password(), "");
+
+        let uri =
+            ClientUri::from_str("insecure-mc://coiner@node1.test.mobilecoin.com:666/").unwrap();
+        assert_eq!(uri.addr(), "node1.test.mobilecoin.com:666");
+        assert_eq!(
+            uri.responder_id().unwrap(),
+            ResponderId::from_str("node1.test.mobilecoin.com:666").unwrap()
+        );
+        assert_eq!(uri.use_tls(), false);
+        assert_eq!(uri.username(), "coiner");
+        assert_eq!(uri.password(), "");
+
+        let uri =
+            ClientUri::from_str("insecure-mc://:passw0rd@node1.test.mobilecoin.com:666/").unwrap();
+        assert_eq!(uri.addr(), "node1.test.mobilecoin.com:666");
+        assert_eq!(
+            uri.responder_id().unwrap(),
+            ResponderId::from_str("node1.test.mobilecoin.com:666").unwrap()
+        );
+        assert_eq!(uri.use_tls(), false);
+        assert_eq!(uri.username(), "");
+        assert_eq!(uri.password(), "passw0rd");
+
+        let uri =
+            ClientUri::from_str("insecure-mc://abc:def@node1.test.mobilecoin.com:666/").unwrap();
+        assert_eq!(uri.addr(), "node1.test.mobilecoin.com:666");
+        assert_eq!(
+            uri.responder_id().unwrap(),
+            ResponderId::from_str("node1.test.mobilecoin.com:666").unwrap()
+        );
+        assert_eq!(uri.use_tls(), false);
+        assert_eq!(uri.username(), "abc");
+        assert_eq!(uri.password(), "def");
+
+        let uri = ClientUri::from_str("insecure-mc://abc:def:1:2:3@node1.test.mobilecoin.com:666/")
+            .unwrap();
+        assert_eq!(uri.addr(), "node1.test.mobilecoin.com:666");
+        assert_eq!(
+            uri.responder_id().unwrap(),
+            ResponderId::from_str("node1.test.mobilecoin.com:666").unwrap()
+        );
+        assert_eq!(uri.use_tls(), false);
+        assert_eq!(uri.username(), "abc");
+        assert_eq!(uri.password(), "def:1:2:3");
     }
 
     #[test]

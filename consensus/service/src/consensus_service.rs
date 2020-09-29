@@ -16,6 +16,7 @@ use mc_attest_enclave_api::{ClientSession, PeerSession};
 use mc_attest_net::RaClient;
 use mc_common::{
     logger::{log, Logger},
+    time::TimeProvider,
     NodeID, ResponderId,
 };
 use mc_connection::{Connection, ConnectionManager};
@@ -27,6 +28,7 @@ use mc_peers::{PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
 use mc_sgx_report_cache_untrusted::{Error as ReportCacheError, ReportCacheThread};
 use mc_transaction_core::tx::TxHash;
 use mc_util_grpc::{
+    auth::{AnonymousAuthenticator, Authenticator, TokenAuthenticator},
     AdminServer, BuildInfoService, ConnectionUriGrpcioServer, GetConfigJsonFn, HealthCheckStatus,
     HealthService,
 };
@@ -109,6 +111,8 @@ pub struct ConsensusService<
     // Option is only here because we need a way to drop the PeerKeepalive without mutex,
     // if we want to implement Stop as currently concieved
     peer_keepalive: Option<Arc<PeerKeepalive>>,
+    // GRPC client requests authenticator
+    client_authenticator: Arc<dyn Authenticator + Send + Sync>,
 
     admin_rpc_server: Option<AdminServer>,
     consensus_rpc_server: Option<Server>,
@@ -124,12 +128,13 @@ impl<
         TXM: TxManager + Clone + Send + Sync + 'static,
     > ConsensusService<E, R, TXM>
 {
-    pub fn new(
+    pub fn new<TP: TimeProvider + 'static>(
         config: Config,
         enclave: E,
         ledger_db: LedgerDB,
         ra_client: R,
         tx_manager: Arc<TXM>,
+        time_provider: Arc<TP>,
         logger: Logger,
     ) -> Self {
         // gRPC environment.
@@ -177,6 +182,18 @@ impl<
             logger.clone(),
         )));
 
+        // Authenticator
+        let client_authenticator: Arc<dyn Authenticator + Sync + Send> =
+            if let Some(shared_secret) = config.client_auth_token_secret.as_ref() {
+                Arc::new(TokenAuthenticator::new(
+                    *shared_secret,
+                    config.client_auth_token_max_lifetime,
+                    time_provider,
+                ))
+            } else {
+                Arc::new(AnonymousAuthenticator::default())
+            };
+
         // Return
         Self {
             config,
@@ -195,6 +212,7 @@ impl<
             broadcaster,
             tx_manager,
             peer_keepalive,
+            client_authenticator,
 
             admin_rpc_server: None,
             consensus_rpc_server: None,
@@ -289,25 +307,30 @@ impl<
         );
 
         // Setup GRPC services.
+        let enclave = Arc::new(self.enclave.clone());
+
         let client_service = consensus_client_grpc::create_consensus_client_api(
             client_api_service::ClientApiService::new(
-                Arc::new(self.enclave.clone()),
+                enclave.clone(),
                 self.create_scp_client_value_sender_fn(),
                 Arc::new(self.ledger_db.clone()),
                 self.tx_manager.clone(),
                 self.create_is_serving_user_requests_fn(),
+                self.client_authenticator.clone(),
                 self.logger.clone(),
             ),
         );
 
-        let attested_service = create_attested_api(AttestedApiService::<E, ClientSession>::new(
-            self.enclave.clone(),
+        let attested_service = create_attested_api(AttestedApiService::<ClientSession>::new(
+            enclave,
+            self.client_authenticator.clone(),
             self.logger.clone(),
         ));
 
         let blockchain_service = consensus_common_grpc::create_blockchain_api(
             blockchain_api_service::BlockchainApiService::new(
                 self.ledger_db.clone(),
+                self.client_authenticator.clone(),
                 self.logger.clone(),
             ),
         );
@@ -379,7 +402,12 @@ impl<
             self.config.peer_listen_uri.addr(),
         );
 
+        // Peers currently do not support request authentication.
+        let peer_authenticator = Arc::new(AnonymousAuthenticator::default());
+
         // Initialize services.
+        let enclave = Arc::new(self.enclave.clone());
+
         let byzantine_ledger = Arc::downgrade(
             self.byzantine_ledger
                 .as_ref()
@@ -396,13 +424,14 @@ impl<
         let blockchain_service = consensus_common_grpc::create_blockchain_api(
             blockchain_api_service::BlockchainApiService::new(
                 self.ledger_db.clone(),
+                peer_authenticator.clone(),
                 self.logger.clone(),
             ),
         );
 
         let peer_service =
             consensus_peer_grpc::create_consensus_peer_api(peer_api_service::PeerApiService::new(
-                self.enclave.clone(),
+                self.enclave.clone(), // TODO use Arc'ed enclave from above
                 self.consensus_msgs_from_network.get_sender_fn(),
                 self.create_scp_client_value_sender_fn(),
                 self.ledger_db.clone(),
@@ -412,8 +441,9 @@ impl<
                 self.logger.clone(),
             ));
 
-        let attested_service = create_attested_api(AttestedApiService::<E, PeerSession>::new(
-            self.enclave.clone(),
+        let attested_service = create_attested_api(AttestedApiService::<PeerSession>::new(
+            enclave,
+            peer_authenticator,
             self.logger.clone(),
         ));
 
@@ -681,6 +711,8 @@ impl<
                     "admin_listen_uri": config.admin_listen_uri,
                     "ledger_path": config.ledger_path,
                     "scp_debug_dump": config.scp_debug_dump,
+                    "client_auth_token_enabled": config.client_auth_token_secret.map(|_| true).unwrap_or(false),
+                    "client_auth_token_max_lifetime": config.client_auth_token_max_lifetime.as_secs(),
                 },
                 "network": config.network(),
                 "status": {

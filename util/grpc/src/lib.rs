@@ -19,6 +19,8 @@ mod build_info_service;
 mod grpcio_extensions;
 mod health_service;
 
+pub mod auth;
+
 use futures::prelude::*;
 use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
 use mc_common::logger::{log, o, Logger};
