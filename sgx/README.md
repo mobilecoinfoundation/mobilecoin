@@ -20,7 +20,7 @@ Acknowledgements:
 -----------------
 
 Some of this code is indeed factored out of rust `std` and the Baidu [`rust-sgx-sdk`](https://github.com/baidu/rust-sgx-sdk).
-However, the goal of this project is different from Baidu `rust-sgx-sdk`.
+However, the goal of this project is different from Baidu `rust-sgx-sdk`, and the scope is greatly reduced.
 
 We are not trying to create a drop-in replacement for the entire rust standard library,
 and then patch third-party dependencies to compile against it.
@@ -67,20 +67,12 @@ Crates for outside the enclave:
 
 | Crate     | Description | Dependencies |
 | --------- |------------ | ------------ |
-| `mc-sgx-urts` | This crate suports untrusted code that creates an enclave. It also contains OCALL implementations. | rust `std`, `mc-sgx-libc-types`, and for backtraces, `rustc_demangle` and `backtrace_sys` |
-| `mc-sgx-build` | Shared code for build.rs scripts that link to SGX | |
+| `mc-sgx-urts` | This crate suports untrusted code that creates an enclave. It also contains OCALL implementations. | rust `std`, `slog` for logging. | |
+| `mc-sgx-build` | Shared code for build.rs scripts that link to SGX, sign enclaves, etc. | |
 
 Cross-platform crates:
 
 | Crate       | Description | Dependencies |
 | ----------- | ----------- | ------------ |
 | `mc-sgx-types` | Provides some useful structs and typedefs, used to interface with sgx in and out of enclave | None |
-| `mc-sgx-libc-types` | A small `no_std` replacement for ffi types in sgx | None |
 | `mc-sgx-compat` | A facade re-exporting the enclave-only crates, with a switch to export `std` versions instead. This makes it easy to use these crates while still being able to `cargo test` your code. | All of the above |
-
-`edl/`
----------------
-
-These `edl` files contain any enclave ECALLS and OCALLS required by the crates
-in `sgx/`.
-The matching implementations of such OCALLs should be in `mc-sgx-urts`.

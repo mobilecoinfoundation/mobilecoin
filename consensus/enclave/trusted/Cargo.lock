@@ -982,10 +982,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mc-sgx-libc-types"
-version = "1.0.0"
-
-[[package]]
 name = "mc-sgx-panic"
 version = "1.0.0"
 
@@ -1036,7 +1032,6 @@ dependencies = [
 name = "mc-sgx-sync"
 version = "1.0.0"
 dependencies = [
- "mc-sgx-libc-types 1.0.0",
  "mc-sgx-panic 1.0.0",
  "mc-sgx-types 1.0.0",
 ]
