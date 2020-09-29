@@ -2,62 +2,68 @@
 
 //! Utilities for handling time.
 
-use std::{
-    fmt::Debug,
-    sync::{Arc, Mutex},
-    time::{Duration, SystemTime, SystemTimeError},
-};
+use alloc::{boxed::Box, sync::Arc};
+use core::{fmt::Debug, time::Duration};
 
 /// Abstraction for getting the current time.
-pub trait TimeProvider {
+pub trait TimeProvider: Sync + Send {
     type Error: Clone + Debug;
 
     /// Get the duration of time passed since the unix epoch.
     fn from_epoch(&self) -> Result<Duration, Self::Error>;
 }
 
-/// An implementation of TimeProvider that relies on Rust's builtin `SystemTime`.
-#[derive(Clone, Debug, Default)]
-pub struct SystemTimeProvider;
+cfg_if::cfg_if! {
+    if #[cfg(feature = "std")] {
+        use std::{
+            time::{SystemTime, SystemTimeError},
+            sync::Mutex,
+        };
 
-impl TimeProvider for SystemTimeProvider {
-    type Error = SystemTimeError;
+        /// An implementation of TimeProvider that relies on Rust's builtin `SystemTime`.
+        #[derive(Clone, Debug, Default)]
+        pub struct SystemTimeProvider;
 
-    fn from_epoch(&self) -> Result<Duration, Self::Error> {
-        SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)
-    }
-}
+        impl TimeProvider for SystemTimeProvider {
+            type Error = SystemTimeError;
 
-/// A mock time provider that always returns the same value.
-#[derive(Clone, Debug)]
-pub struct MockTimeProvider {
-    cur_from_epoch: Arc<Mutex<Duration>>,
-}
-
-impl Default for MockTimeProvider {
-    fn default() -> Self {
-        Self {
-            cur_from_epoch: Arc::new(Mutex::new(
-                SystemTimeProvider::default()
-                    .from_epoch()
-                    .expect("failed getting initial value for cur_from_epoch"),
-            )),
+            fn from_epoch(&self) -> Result<Duration, Self::Error> {
+                SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)
+            }
         }
-    }
-}
 
-impl TimeProvider for MockTimeProvider {
-    type Error = ();
+        /// A mock time provider that always returns the same value.
+        #[derive(Clone, Debug)]
+        pub struct MockTimeProvider {
+            cur_from_epoch: Arc<Mutex<Duration>>,
+        }
 
-    fn from_epoch(&self) -> Result<Duration, Self::Error> {
-        Ok(*self.cur_from_epoch.lock().expect("mutex poisoned"))
-    }
-}
+        impl Default for MockTimeProvider {
+            fn default() -> Self {
+                Self {
+                    cur_from_epoch: Arc::new(Mutex::new(
+                        SystemTimeProvider::default()
+                            .from_epoch()
+                            .expect("failed getting initial value for cur_from_epoch"),
+                    )),
+                }
+            }
+        }
 
-impl MockTimeProvider {
-    pub fn set_cur_from_epoch(&self, new_cur_from_epoch: Duration) {
-        let mut inner = self.cur_from_epoch.lock().expect("mutex poisoned");
-        *inner = new_cur_from_epoch;
+        impl TimeProvider for MockTimeProvider {
+            type Error = ();
+
+            fn from_epoch(&self) -> Result<Duration, Self::Error> {
+                Ok(*self.cur_from_epoch.lock().expect("mutex poisoned"))
+            }
+        }
+
+        impl MockTimeProvider {
+            pub fn set_cur_from_epoch(&self, new_cur_from_epoch: Duration) {
+                let mut inner = self.cur_from_epoch.lock().expect("mutex poisoned");
+                *inner = new_cur_from_epoch;
+            }
+        }
     }
 }
 

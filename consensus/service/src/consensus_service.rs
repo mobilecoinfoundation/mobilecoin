@@ -128,7 +128,7 @@ impl<
         TXM: TxManager + Clone + Send + Sync + 'static,
     > ConsensusService<E, R, TXM>
 {
-    pub fn new<TP: TimeProvider + Send + Sync + 'static>(
+    pub fn new<TP: TimeProvider + 'static>(
         config: Config,
         enclave: E,
         ledger_db: LedgerDB,
