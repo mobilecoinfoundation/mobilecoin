@@ -52,10 +52,10 @@ class Client(object):
             pass
 
     def add_monitor(self,
-                    account_key,
-                    first_subaddress=DEFAULT_SUBADDRESS_INDEX,
-                    num_subaddresses=1,
-                    first_block=0):
+                    account_key: bytes,
+                    first_subaddress: int = DEFAULT_SUBADDRESS_INDEX,
+                    num_subaddresses: int = 1,
+                    first_block: int = 0):
         """ Create a process that watches the ledger for tx outputs belonging to a
         set of subaddresses, each specified by account_key and an index.
         """
@@ -65,7 +65,7 @@ class Client(object):
                                     first_block=first_block)
         return self.stub.AddMonitor(request).monitor_id
 
-    def remove_monitor(self, monitor_id):
+    def remove_monitor(self, monitor_id: bytes):
         """ Remove an existing monitor and delete any data it has stored.
         """
         request = RemoveMonitorRequest(monitor_id=monitor_id)
@@ -76,31 +76,37 @@ class Client(object):
         """
         return self.stub.GetMonitorList(empty_pb2.Empty()).monitor_id_list
 
-    def get_monitor_status(self, monitor_id):
+    def get_monitor_status(self, monitor_id: bytes):
         """ Returns a status report for a monitor process.
         """
         request = GetMonitorStatusRequest(monitor_id=monitor_id)
         response = self.stub.GetMonitorStatus(request)
         return response.status
 
-    def get_unspent_tx_output_list(self, monitor_id, index=DEFAULT_SUBADDRESS_INDEX):
+    def get_unspent_tx_output_list(self,
+                                   monitor_id: bytes,
+                                   subaddress_index: int = DEFAULT_SUBADDRESS_INDEX):
         """ Returns the list of tx outputs collected for a subaddress.
         """
         request = GetUnspentTxOutListRequest(monitor_id=monitor_id,
-                                             subaddress_index=index)
+                                             subaddress_index=subaddress_index)
         response = self.stub.GetUnspentTxOutList(request)
         return response.output_list
 
-    def get_balance(self, monitor_id, index=DEFAULT_SUBADDRESS_INDEX):
+    def get_balance(self,
+                    monitor_id: bytes,
+                    subaddress_index: int = DEFAULT_SUBADDRESS_INDEX):
         """ Returns the sum of unspent tx outputs collected for a subaddress.
         """
-        uoutput_list = self.get_unspent_tx_output_list(monitor_id, index)
+        uoutput_list = self.get_unspent_tx_output_list(monitor_id, subaddress_index)
         balance = 0
         for utxo in uoutput_list:
             balance += utxo.value
         return balance
 
-    def get_monitor_id(self, account_key, index=DEFAULT_SUBADDRESS_INDEX):
+    def get_monitor_id(self,
+                       account_key: bytes,
+                       subaddress_index: int = DEFAULT_SUBADDRESS_INDEX):
         """ Returns the monitor for a given subaddress, if one exists.
         """
         monitor_id_list = self.get_monitor_list()
@@ -112,7 +118,7 @@ class Client(object):
         for monitor_id in monitor_id_list:
             status = self.get_monitor_status(monitor_id)
             if target_vpk == status.account_key.view_private_key and target_spk == status.account_key.spend_private_key:
-                if index >= status.first_subaddress and index <= status.first_subaddress + status.num_subaddresses:
+                if subaddress_index >= status.first_subaddress and subaddress_index <= status.first_subaddress + status.num_subaddresses:
                     if status.next_block >= best_next_block:
                         best_next_block = status.next_block
                         best_monitor_id = monitor_id
@@ -130,20 +136,23 @@ class Client(object):
         """
         return self.stub.GenerateEntropy(empty_pb2.Empty()).entropy
 
-    def get_account_key(self, entropy):
+    def get_account_key(self, entropy: bytes):
         """ Get the private keys from entropy.
         """
         request = GetAccountKeyRequest(entropy=entropy)
         return self.stub.GetAccountKey(request).account_key
 
-    def get_public_address(self, monitor_id, subaddress_index=DEFAULT_SUBADDRESS_INDEX):
+    def get_public_address(self,
+                           monitor_id: bytes,
+                           subaddress_index: int = DEFAULT_SUBADDRESS_INDEX):
         """ Returns the public address for a given monitor and index
         """
         request = GetPublicAddressRequest(
-            monitor_id=monitor_id, subaddress_index=int(subaddress_index))
+            monitor_id=monitor_id, subaddress_index=subaddress_index)
         return self.stub.GetPublicAddress(request).public_address
 
-    def parse_address_code(self, b58_code):
+    def parse_address_code(self,
+                           b58_code: str):
         """ Parse a b58 encoded public address
         """
         request = ParseAddressCodeRequest(b58_code=b58_code)
@@ -156,14 +165,14 @@ class Client(object):
         request = CreateAddressCodeRequest(receiver=receiver)
         return self.stub.CreateAddressCode(request).b58_code
 
-    def parse_request_code(self, b58_code):
+    def parse_request_code(self, b58_code: str):
         """ Parse a b58 request code to recover content.
         """
         request = ParseRequestCodeRequest(b58_code=b58_code)
         response = self.stub.ParseRequestCode(request)
         return response.receiver, response.value, response.memo
 
-    def create_request_code(self, receiver, value=0, memo=""):
+    def create_request_code(self, receiver, value: int = 0, memo: str = ""):
         """ Create a "request code" used to generate a QR code for wallet apps.
         """
         request = CreateRequestCodeRequest(receiver=receiver,
@@ -171,14 +180,14 @@ class Client(object):
                                            memo=memo)
         return self.stub.CreateRequestCode(request).b58_code
 
-    def parse_transfer_code(self, b58_code):
+    def parse_transfer_code(self, b58_code: str):
         """ Parse a b58 transfer code to recover content.
         """
         request = ParseTransferCodeRequest(b58_code=b58_code)
         response = self.stub.ParseTransferCode(request)
         return response
 
-    def crate_transfer_code(self, entropy, tx_public_key, memo=""):
+    def crate_transfer_code(self, entropy: bytes, tx_public_key, memo: str = ""):
         """ Create a "transfer code" used to generate a QR code for wallet apps.
         """
         request = CreateTransferCodeRequest(entropy=entropy,
@@ -191,12 +200,12 @@ class Client(object):
     #
 
     def generate_tx(self,
-                    sender_monitor_id,
-                    change_subaddress,
+                    sender_monitor_id: bytes,
+                    change_subaddress: int,
                     input_list,
                     outlay_dict,
-                    fee=0,
-                    tombstone=0):
+                    fee: int = 0,
+                    tombstone: int = 0):
         """ Prepares a transaction. If the fee is zero, we use the default minimum fee. Mix-ins and other
         complexities of the MobileCoin protocol are handled automatically.
         """
@@ -212,7 +221,9 @@ class Client(object):
                                     tombstone=tombstone)
         return self.stub.GenerateTx(request).tx_proposal
 
-    def generate_optimization_tx(self, monitor_id, subaddress=DEFAULT_SUBADDRESS_INDEX):
+    def generate_optimization_tx(self,
+                                 monitor_id: bytes,
+                                 subaddress: int = DEFAULT_SUBADDRESS_INDEX):
         """ Due to limits on the number of inputs allowed for a transaction, a wallet can contain
         more value than is spendable in a single transaction. This generates a self-payment
         that combines small value tx outputs together.
@@ -221,8 +232,14 @@ class Client(object):
                                                 subaddress=subaddress)
         return self.stub.GenerateOptimizationTx(request).tx_proposal
 
-    def generate_transfer_code_tx(self, sender_monitor_id, change_subaddress,
-                                  input_list, value, fee, tombstone, memo):
+    def generate_transfer_code_tx(self,
+                                  sender_monitor_id: bytes,
+                                  change_subaddress: int,
+                                  input_list,
+                                  value: int,
+                                  fee: int,
+                                  tombstone: int,
+                                  memo: str):
         """ Prepares a transaction that can be submitted to fund a transfer code for a new
         one time account.
         """
@@ -237,7 +254,11 @@ class Client(object):
         response = self.stub.GenerateTransferCodeTx(request)
         return response.tx_proposal, response.entropy
 
-    def generate_tx_from_tx_out_list(self, account_key, input_list, receiver, fee):
+    def generate_tx_from_tx_out_list(self,
+                                     account_key: bytes,
+                                     input_list,
+                                     receiver,
+                                     fee: int):
         request = GenerateTxFromTxOutListRequest(
             account_key=account_key,
             input_list=input_list,
@@ -264,14 +285,14 @@ class Client(object):
         info = self.stub.GetLedgerInfo(empty_pb2.Empty())
         return info.block_count, info.txo_count
 
-    def get_block_info(self, block):
+    def get_block_info(self, block: int):
         """ Returns a status report for a ledger block.
         """
         request = GetBlockInfoRequest(block=block)
         info = self.stub.GetBlockInfo(request)
         return info.key_image_count, info.txo_count
 
-    def get_block(self, block):
+    def get_block(self, block: int):
         """ Returns detailed information for a ledger block.
         """
         request = GetBlockRequest(block=block)
@@ -308,7 +329,8 @@ class Client(object):
     # Convenience functions using the mobilecoind API
     #
 
-    def wait_for_ledger(max_blocks_to_sync: int = 100, timeout_seconds = 10) --> Tuple[bool, int, int, Optional[float]]:
+    def wait_for_ledger(max_blocks_to_sync: int = 100,
+                        timeout_seconds: int = 10) --> Tuple[bool, int, int, Optional[float]]:
         """ Check if the local copy of the ledger is in sync
 
         If we are behind, wait until the ledger downloads up to max_blocks_to_sync
@@ -337,7 +359,9 @@ class Client(object):
         blocks_per_second = total_blocks_synced / delta.total_seconds()
         return (is_behind, local_count, remote_count, blocks_per_second)
 
-    def wait_for_monitor(monitor_id, max_blocks_to_sync: int = 100, timeout_seconds = 10) --> Tuple[bool, Optional[float], int]:
+    def wait_for_monitor(monitor_id: bytes,
+                         max_blocks_to_sync: int = 100,
+                         timeout_seconds: int = 10) --> Tuple[bool, int, int, Optional[float]]:
         """ Check if a monitor is in sync
 
         If we are behind, wait until the monitor processes up to max_blocks_to_sync
