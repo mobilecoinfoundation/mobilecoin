@@ -12,6 +12,13 @@ from .mobilecoind_api_pb2_grpc import *
 
 import datetime
 
+# Transaction Status Codes
+
+TX_STATUS_UNKNOWN = TxStatus.Unknown
+TX_STATUS_VERIFIED = TxStatus.Verified
+TX_STATUS_TOMBSTONE_BLOCK_EXCEEDED = TxStatus.TombstoneBlockExceeded
+TX_STATUS_INVALID_CONFIRMATION_NUMBER = TxStatus.InvalidConfirmationNumber
+
 class MonitorNotFound(Exception):
     """ When a Monitor is not Found"""
     pass
