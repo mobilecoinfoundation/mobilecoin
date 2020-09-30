@@ -16,7 +16,7 @@ if __name__ == '__main__':
     mobilecoind = mobilecoin.Client("localhost:4444", ssl=False)
 
     parser = argparse.ArgumentParser(description='provide secrets')
-    parser.add_argument('-k', '--key', help='MailChimp API key', type=str, required=True)
+    parser.add_argument('-m', '--mailchimp', help='MailChimp API key', type=str, required=True)
     parser.add_argument('--clean', help='remove all old monitors', action='store_true')
     args = parser.parse_args()
 
@@ -29,7 +29,7 @@ if __name__ == '__main__':
             mobilecoind.remove_monitor(monitor_id)
 
     # generate the MailChimp client
-    mailchimp = MailChimp(mc_api=args.key)
+    mailchimp = MailChimp(mc_api=args.mailchimp)
 
     # figure out the id for the list of interest
     # print(mailchimp.lists.all(get_all=True, fields="lists.name,lists.id"))

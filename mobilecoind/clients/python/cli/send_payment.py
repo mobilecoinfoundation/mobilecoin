@@ -25,7 +25,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='You must provide sender and recipient details.')
     parser.add_argument('--sender', help='sender account master key', type=str, required=True))
     parser.add_argument('--recipient', help='recipient account master key or b58 address code', type=str, required=True))
-    parser.add_argument('--amount', help='optional amount in picoMOB (defaults to all funds)', type=int, required=False)
+    parser.add_argument('-v', '--value', help='optional value in picoMOB (defaults to all funds)', type=int, required=False)
     parser.add_argument('--sender-subaddress', help='(optional) sender subaddress', nargs='?', const=mobilecoin.DEFAULT_SUBADDRESS_INDEX, type=int, dest='sender_subaddress')
     parser.add_argument('--recipient-subaddress', help='(optional) recipient subaddress', nargs='?', const=mobilecoin.DEFAULT_SUBADDRESS_INDEX, type=int, dest='recipient_subaddress')
     args = parser.parse_args()
@@ -44,8 +44,8 @@ if __name__ == '__main__':
     else:
         recipient_address_code = args.recipient
 
-    # if no amount was provided, check the sender's balance
-    if not args.amount:
+    # if no value was provided, check the sender's balance
+    if not args.value:
         (monitor_is_behind, next_block, remote_count, blocks_per_second) = mobilecoind.wait_for_monitor(sender_monitor_id)
         if monitor_is_behind:
             print("#\n# waiting for the monitor to process {} blocks".format(remote_count - next_block))
@@ -62,16 +62,16 @@ if __name__ == '__main__':
         balance_picoMOB = mobilecoind.get_balance(sender_monitor_id, subaddress_index=args.sender_subaddress)
 
         # send as much as possible after accounting for the fee
-        amount_to_send_picoMOB = balance_picoMOB - mobilecoind.MINIMUM_FEE
+        value_to_send_picoMOB = balance_picoMOB - mobilecoind.MINIMUM_FEE
 
     else:
-        amount_to_send_picoMOB = args.amount
+        value_to_send_picoMOB = args.value
 
     # build and send the payment
 
     tx_list = mobilecoind.get_unspent_tx_output_list(sender_monitor_id, args.sender_subaddress)
     recipient_public_address = mobilecoind.parse_address_code(recipient_address_code)
-    outlays = [{'value': amount_to_send_picoMOB, 'receiver': recipient_public_address}]
+    outlays = [{'value': value_to_send_picoMOB, 'receiver': recipient_public_address}]
     tx_proposal = mobilecoind.generate_tx(sender_monitor_id, args.sender_subaddress, tx_list, outlays)
     sender_tx_receipt = mobilecoind.submit_tx(tx_proposal).sender_tx_receipt
     # Wait for the transaction to clear
@@ -93,8 +93,8 @@ if __name__ == '__main__':
     print("\n")
     print("    {:<18}{}".format("Sender:", args.sender))
     print("    {:<18}{}".format("Recipient:", args.recipient))
-    print("    {:<18}{} picoMOB".format("Amount:", amount_to_send_picoMOB))
-    print("    {:<18}{} MOB".format(" ", display_in_MOB(amount_to_send_picoMOB)))
+    print("    {:<18}{} picoMOB".format("Value:", value_to_send_picoMOB))
+    print("    {:<18}{} MOB".format(" ", display_in_MOB(value_to_send_picoMOB)))
     print("\n")
     print("    {:<18}{}".format("Final Status:", transaction_status)
     print("\n")
