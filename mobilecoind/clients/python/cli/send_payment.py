@@ -37,7 +37,7 @@ if __name__ == '__main__':
         recipient_entropy_bytes = bytes.fromhex(args.recipient)
         recipient_account_key = mobilecoind.get_account_key(recipient_entropy_bytes)
         recipient_monitor_id = mobilecoind.add_monitor(recipient_account_key, first_subaddress=args.recipient_subaddress)
-        recipient_address_code = mobilecoind.get_public_address(recipient_monitor_id, args.recipient_subaddress).b58_code
+        recipient_address_code = mobilecoind.get_public_address(recipient_monitor_id, subaddress_index=args.recipient_subaddress).b58_code
     else:
         recipient_address_code = args.recipient
 
@@ -56,7 +56,7 @@ if __name__ == '__main__':
                 (monitor_is_behind, next_block, remote_count, blocks_per_second) = mobilecoind.wait_for_monitor(sender_monitor_id)
             print("# monitor has processed all {} blocks\n#".format(local_count))
 
-        balance_picoMOB = mobilecoind.get_balance(sender_monitor_id, args.sender_subaddress)
+        balance_picoMOB = mobilecoind.get_balance(sender_monitor_id, subaddress_index=args.sender_subaddress)
 
         # send as much as possible after accounting for the fee
         amount_to_send_picoMOB = balance_picoMOB - mobilecoind.MINIMUM_FEE

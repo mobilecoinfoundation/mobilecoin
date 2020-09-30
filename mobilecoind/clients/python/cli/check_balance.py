@@ -38,7 +38,7 @@ if __name__ == '__main__':
         print("# monitor has processed all {} blocks\n#".format(local_count))
 
 
-    balance_picoMOB = mobilecoind.get_balance(monitor_id, args.subaddress)
+    balance_picoMOB = mobilecoind.get_balance(monitor_id, subaddress_index=args.subaddress)
 
     # print account information
     print("\n")

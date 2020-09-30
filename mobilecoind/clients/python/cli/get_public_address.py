@@ -21,7 +21,7 @@ if __name__ == '__main__':
     entropy_bytes = bytes.fromhex(args.key)
     account_key = mobilecoind.get_account_key(entropy_bytes)
     monitor_id = mobilecoind.add_monitor(account_key, first_subaddress=args.subaddress)
-    public_address = mobilecoind.get_public_address(monitor_id, args.subaddress)
+    public_address = mobilecoind.get_public_address(monitor_id, subaddress_index=args.subaddress)
 
     # print the public address information
     print("\n")
