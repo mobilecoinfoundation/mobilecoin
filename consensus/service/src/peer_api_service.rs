@@ -384,7 +384,7 @@ mod tests {
         background_work_queue::BackgroundWorkQueueError, consensus_service::IncomingConsensusMsg,
         peer_api_service::PeerApiService, tx_manager::MockTxManager,
     };
-    use grpcio::{ChannelBuilder, Environment, Server, ServerBuilder};
+    use grpcio::{ChannelBuilder, Environment, Error::RpcFailure, Server, ServerBuilder};
     use mc_common::{
         logger::{test_with_logger, Logger},
         NodeID, ResponderId,
@@ -399,7 +399,6 @@ mod tests {
         msg::{NominatePayload, Topic::Nominate},
         Msg, QuorumSet,
     };
-    // use mc_crypto_keys::Ed25519Signature;
     use mc_crypto_keys::{Ed25519Pair, Ed25519Private};
     use mc_ledger_db::MockLedger;
     use mc_peers;
@@ -574,5 +573,51 @@ mod tests {
             }
             Err(e) => panic!("Unexpected error: {:?}", e),
         }
+    }
+
+    #[test_with_logger]
+    // Should return an error if the message cannot be deserialized.
+    fn test_send_consensus_msg_deserialize_error(logger: Logger) {
+        let (consensus_enclave, ledger, tx_manager) = get_mocks();
+
+        // ResponderIds seem to be "host:port" strings.
+        let known_responder_ids = vec![
+            ResponderId("A:port".to_string()),
+            ResponderId("B:port".to_string()),
+        ];
+
+        let instance = PeerApiService::new(
+            Arc::new(consensus_enclave),
+            Arc::new(ledger),
+            Arc::new(tx_manager),
+            get_incoming_consensus_msgs_sender_ok(),
+            get_scp_client_value_sender(),
+            get_fetch_latest_msg_fn(),
+            known_responder_ids.clone(),
+            logger,
+        );
+
+        let (client, _server) = get_client_server(instance);
+
+        // A message from a known peer. The payload does not deserialize to a ConsensusMsg.
+        let mut message = ConsensusMsg::new();
+        let from = known_responder_ids[0].clone();
+        message.set_from_responder_id(from.to_string());
+        message.set_payload(vec![240, 159, 146, 150]); // UTF-8 "sparkle heart".
+
+        match client.send_consensus_msg(&message) {
+            Ok(response) => panic!("Unexpected response: {:?}", response),
+            Err(RpcFailure(_rpc_status)) => {
+                // This is expected.
+                // TODO: check status code.
+            }
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        }
+    }
+
+    #[test_with_logger]
+    // Should return an error if the message signature is wrong.
+    fn test_send_consensus_msg_signature_error(_logger: Logger) {
+        // TODO:
     }
 }
