@@ -95,7 +95,7 @@ if __name__ == '__main__':
     print("    {:<18}{}".format("Sender:", args.sender))
     print("    {:<18}{}".format("Recipient:", args.recipient))
     print("    {:<18}{} picoMOB".format("Value:", value_to_send_picoMOB))
-    print("    {:<18}{}".format(" ", mobilecoin.display_in_MOB(value_to_send_picoMOB)))
+    print("    {:<18}{}".format(" ", mobilecoin.display_as_MOB(value_to_send_picoMOB)))
     print("\n")
     print("    {:<18}{}".format("Final Status:", transaction_status))
     print("\n")
