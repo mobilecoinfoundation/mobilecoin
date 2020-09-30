@@ -24,7 +24,7 @@ if __name__ == '__main__':
     # clean up all old monitors
     if args.clean:
         for monitor_id in mobilecoind.get_monitor_list():
-            print("# removing existing monitor_id {}.".format(monitor_id.hex()))
+            print("# removing existing monitor_id {}".format(monitor_id.hex()))
             mobilecoind.remove_monitor(monitor_id)
 
     # generate the MailChimp client
