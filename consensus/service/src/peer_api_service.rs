@@ -405,10 +405,7 @@ mod tests {
     use mc_transaction_core::{tx::TxHash, Block};
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
-    use std::sync::{
-        atomic::{AtomicUsize, Ordering::SeqCst},
-        Arc,
-    };
+    use std::sync::Arc;
 
     // Get sensibly-initialized mocks.
     fn get_mocks() -> (MockConsensusEnclave, MockLedger, MockTxManager) {
@@ -444,17 +441,12 @@ mod tests {
         Arc::new(|| None)
     }
 
-    fn get_free_port() -> u16 {
-        static PORT_NR: AtomicUsize = AtomicUsize::new(0);
-        PORT_NR.fetch_add(1, SeqCst) as u16 + 30100
-    }
-
     fn get_client_server(instance: PeerApiService) -> (ConsensusPeerApiClient, Server) {
         let service = consensus_peer_grpc::create_consensus_peer_api(instance);
         let env = Arc::new(Environment::new(1));
         let mut server = ServerBuilder::new(env.clone())
             .register_service(service)
-            .bind("127.0.0.1", get_free_port())
+            .bind("127.0.0.1", 0)
             .build()
             .unwrap();
         server.start();
