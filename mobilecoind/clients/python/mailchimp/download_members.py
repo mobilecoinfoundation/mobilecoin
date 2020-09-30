@@ -10,14 +10,6 @@ import mobilecoin
 import argparse
 from mailchimp3 import MailChimp
 
-import signal
-
-def sigint_handler(signal, frame):
-    print('detected SIGINT')
-    sys.exit(0)
-
-signal.signal(signal.SIGINT, sigint_handler)
-
 if __name__ == '__main__':
     # Parse the arguments and generate the mobilecoind client
     mobilecoind = mobilecoin.Client("localhost:4444", ssl=False)
@@ -59,28 +51,24 @@ if __name__ == '__main__':
         if member_record["merge_fields"]["ENTROPY"]:
             entropy = member_record["merge_fields"]["ENTROPY"]
             email = member_record["email_address"]
-            try:
-                entropy_bytes = bytes.fromhex(entropy)
-                account_key = mobilecoind.get_account_key(entropy_bytes)
-                monitor_id = mobilecoind.add_monitor(account_key)
-                print("# adding monitor_id {} for {}".format(monitor_id.hex(), email))
 
-                (monitor_is_behind, next_block, remote_count, blocks_per_second) = mobilecoind.wait_for_monitor(monitor_id)
-                if monitor_is_behind:
-                    print("#\n# waiting for the monitor to process {} blocks".format(remote_count - next_block))
-                    while monitor_is_behind:
-                        blocks_remaining = (remote_count - next_block)
-                        if blocks_per_second > 0:
-                            time_remaining_seconds = blocks_remaining / blocks_per_second
-                            print("#    {} blocks remain ({} seconds)".format(blocks_remaining, round(time_remaining_seconds, 1)))
-                        else:
-                            print("#    {} blocks remain (? seconds)".format(blocks_remaining))
-                        (monitor_is_behind, next_block, remote_count, blocks_per_second) = mobilecoind.wait_for_monitor(monitor_id, max_blocks_to_sync=10000)
-                    print("# monitor has processed all {} blocks\n#".format(local_count))
+            entropy_bytes = bytes.fromhex(entropy)
+            account_key = mobilecoind.get_account_key(entropy_bytes)
+            monitor_id = mobilecoind.add_monitor(account_key)
+            print("# adding monitor_id {} for {}".format(monitor_id.hex(), email))
 
-                balance_picoMOB = mobilecoind.get_balance(monitor_id)
-                print("{}, {}, {}, {}MOB".format(entropy, email, balance_picoMOB, mobilecoin.display_as_MOB(balance_picoMOB)))
+            (monitor_is_behind, next_block, remote_count, blocks_per_second) = mobilecoind.wait_for_monitor(monitor_id)
+            if monitor_is_behind:
+                print("#\n# waiting for the monitor to process {} blocks".format(remote_count - next_block))
+                while monitor_is_behind:
+                    blocks_remaining = (remote_count - next_block)
+                    if blocks_per_second > 0:
+                        time_remaining_seconds = blocks_remaining / blocks_per_second
+                        print("#    {} blocks remain ({} seconds)".format(blocks_remaining, round(time_remaining_seconds, 1)))
+                    else:
+                        print("#    {} blocks remain (? seconds)".format(blocks_remaining))
+                    (monitor_is_behind, next_block, remote_count, blocks_per_second) = mobilecoind.wait_for_monitor(monitor_id, max_blocks_to_sync=10000, timeout_seconds=60)
+                print("# monitor has processed all {} blocks\n#".format(local_count))
 
-            except:
-                print("\n# ERROR: failed to get balance for {} ({})\n".format(entropy, email))
-
+            balance_picoMOB = mobilecoind.get_balance(monitor_id)
+            print("{}, {}, {}, {}MOB".format(entropy, email, balance_picoMOB, mobilecoin.display_as_MOB(balance_picoMOB)))
