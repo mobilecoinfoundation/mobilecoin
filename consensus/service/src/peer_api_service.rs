@@ -573,6 +573,8 @@ mod tests {
             }
             Err(e) => panic!("Unexpected error: {:?}", e),
         }
+
+        // TODO: Should pass the message to incoming_consensus_msgs_sender
     }
 
     #[test_with_logger]
@@ -617,7 +619,78 @@ mod tests {
 
     #[test_with_logger]
     // Should return an error if the message signature is wrong.
-    fn test_send_consensus_msg_signature_error(_logger: Logger) {
-        // TODO:
+    fn test_send_consensus_msg_signature_error(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
+        let (consensus_enclave, ledger, tx_manager) = get_mocks();
+
+        // Node A's private message signing keypair.
+        let node_a_signer_key = {
+            let private_key = Ed25519Private::from_random(&mut rng);
+            Ed25519Pair::from(private_key)
+        };
+
+        // ResponderIds seem to be "host:port" strings.
+        let known_responder_ids = vec![
+            ResponderId("A:port".to_string()),
+            ResponderId("B:port".to_string()),
+        ];
+
+        let instance = PeerApiService::new(
+            Arc::new(consensus_enclave),
+            Arc::new(ledger),
+            Arc::new(tx_manager),
+            get_incoming_consensus_msgs_sender_ok(),
+            get_scp_client_value_sender(),
+            get_fetch_latest_msg_fn(),
+            known_responder_ids.clone(),
+            logger,
+        );
+
+        let (client, _server) = get_client_server(instance);
+
+        // A message from a known peer.
+        let from = known_responder_ids[0].clone();
+
+        let scp_msg = Msg {
+            sender_id: NodeID {
+                responder_id: from.clone(),
+                public_key: node_a_signer_key.public_key(),
+            },
+            slot_index: 1,
+            quorum_set: QuorumSet {
+                threshold: 0,
+                members: vec![],
+            },
+            topic: Nominate(NominatePayload {
+                X: Default::default(),
+                Y: Default::default(),
+            }),
+        };
+
+        let payload = {
+            // Sign the message with a different signer key.
+            let wrong_signer_key = {
+                let private_key = Ed25519Private::from_random(&mut rng);
+                Ed25519Pair::from(private_key)
+            };
+            let mut ledger = MockLedger::new();
+            ledger
+                .expect_get_block()
+                .return_const(Ok(Block::new_origin_block(&vec![])));
+            mc_peers::ConsensusMsg::from_scp_msg(&ledger, scp_msg, &wrong_signer_key).unwrap()
+        };
+
+        let mut message = ConsensusMsg::new();
+        message.set_from_responder_id(from.to_string());
+        message.set_payload(mc_util_serial::serialize(&payload).unwrap());
+
+        match client.send_consensus_msg(&message) {
+            Ok(response) => panic!("Unexpected response: {:?}", response),
+            Err(RpcFailure(_rpc_status)) => {
+                // This is expected.
+                // TODO: check status code.
+            }
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        }
     }
 }
