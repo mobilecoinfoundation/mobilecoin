@@ -1,9 +1,6 @@
 # Copyright (c) 2018-2020 MobileCoin Inc.
 
 from typing import Tuple, Optional
-import datetime
-
-# Convenience functions
 
 DEFAULT_SUBADDRESS_INDEX = 0
 

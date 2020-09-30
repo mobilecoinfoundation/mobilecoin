@@ -10,6 +10,8 @@ from .blockchain_pb2 import *
 from .mobilecoind_api_pb2 import *
 from .mobilecoind_api_pb2_grpc import *
 
+import datetime
+
 class MonitorNotFound(Exception):
     """ When a Monitor is not Found"""
     pass
@@ -295,7 +297,7 @@ class Client(object):
     # Convenience functions using the mobilecoind API
     #
 
-    def wait_for_ledger(max_blocks_to_sync: int = 100) --> Tuple[bool, int, int, Optional[float]]:
+    def wait_for_ledger(max_blocks_to_sync: int = 100, timeout_seconds = 10) --> Tuple[bool, int, int, Optional[float]]:
         """ Check if the local copy of the ledger is in sync
 
         If we are behind, wait until the ledger downloads up to max_blocks_to_sync
@@ -317,16 +319,20 @@ class Client(object):
             if total_blocks_synced > max_blocks_to_sync:
                 break
 
-        delta = datetime.datetime.now() - start
+            delta = datetime.datetime.now() - start
+            if delta.total_seconds() > timeout_seconds:
+               break
+
         blocks_per_second = total_blocks_synced / delta.total_seconds()
         return (is_behind, local_count, remote_count, blocks_per_second)
 
-    def wait_for_monitor(monitor_id_hex, max_blocks_to_sync: int = 100) --> Tuple[bool, Optional[float], int]:
+    def wait_for_monitor(monitor_id_hex, max_blocks_to_sync: int = 100, timeout_seconds = 10) --> Tuple[bool, Optional[float], int]:
         """ Check if a monitor is in sync
 
         If we are behind, wait until the monitor processes up to max_blocks_to_sync
         If we are still behind, return (True, monitor next block, remote blocks, rate in blocks/sec)
         If we are in sync, return (False, monitor next block, remote blocks, None)
+
         """
 
         # check the ledger and monitor
@@ -348,6 +354,9 @@ class Client(object):
             if total_blocks_synced > max_blocks_to_sync:
                 break
 
-        delta = datetime.datetime.now() - start
+            delta = datetime.datetime.now() - start
+            if delta.total_seconds() > timeout_seconds:
+               break
+
         blocks_per_second = total_blocks_synced / delta.total_seconds()
         return (monitor_is_behind, next_block, remote_count, blocks_per_second)
