@@ -291,3 +291,63 @@ class Client(object):
                 response.local_block_index,
                 response.is_behind)
 
+    #
+    # Convenience functions using the mobilecoind API
+    #
+
+    def wait_for_ledger(max_blocks_to_sync: int = 100) --> Tuple[bool, int, int, Optional[float]]:
+        """ Check if the local copy of the ledger is in sync
+
+        If we are behind, wait until the ledger downloads up to max_blocks_to_sync
+        If we are still behind, return (True, local blocks, remote blocks, rate in blocks/sec)
+        If we are in sync, return (False, local blocks, remote blocks, None)
+
+        """
+        remote_count, local_count, is_behind = self.get_network_status()
+
+        if not is_behind:
+            return (is_behind, local_count, remote_count, None)
+
+        start = datetime.datetime.now()
+        initial_local_count = local_count
+        while is_behind:
+            remote_count, local_count, is_behind = self.get_network_status()
+
+            total_blocks_synced = local_count - initial_local_count
+            if total_blocks_synced > max_blocks_to_sync:
+                break
+
+        delta = datetime.datetime.now() - start
+        blocks_per_second = total_blocks_synced / delta.total_seconds()
+        return (is_behind, local_count, remote_count, blocks_per_second)
+
+    def wait_for_monitor(monitor_id_hex, max_blocks_to_sync: int = 100) --> Tuple[bool, Optional[float], int]:
+        """ Check if a monitor is in sync
+
+        If we are behind, wait until the monitor processes up to max_blocks_to_sync
+        If we are still behind, return (True, monitor next block, remote blocks, rate in blocks/sec)
+        If we are in sync, return (False, monitor next block, remote blocks, None)
+        """
+
+        # check the ledger and monitor
+        remote_count, local_count, ledger_is_behind = self.get_network_status()
+        next_block = self.get_monitor_status(bytes.fromhex(monitor_id_hex)).next_block
+        monitor_is_behind = ledger_is_behind or (next_block <= local_count)
+
+        if not monitor_is_behind:
+            return (monitor_is_behind, next_block, remote_count, None)
+
+        start = datetime.datetime.now()
+        initial_next_block = next_block
+        while monitor_is_behind:
+            remote_count, local_count, ledger_is_behind = self.get_network_status()
+            next_block = self.get_monitor_status(bytes.fromhex(monitor_id_hex)).next_block
+            monitor_is_behind = ledger_is_behind or (next_block <= local_count)
+
+            total_blocks_synced = next_block - initial_next_block
+            if total_blocks_synced > max_blocks_to_sync:
+                break
+
+        delta = datetime.datetime.now() - start
+        blocks_per_second = total_blocks_synced / delta.total_seconds()
+        return (monitor_is_behind, next_block, remote_count, blocks_per_second)
