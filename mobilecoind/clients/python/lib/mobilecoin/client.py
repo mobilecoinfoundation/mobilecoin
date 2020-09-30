@@ -330,7 +330,7 @@ class Client(object):
     #
 
     def wait_for_ledger(max_blocks_to_sync: int = 100,
-                        timeout_seconds: int = 10) --> Tuple[bool, int, int, Optional[float]]:
+                        timeout_seconds: int = 10) -> Tuple[bool, int, int, Optional[float]]:
         """ Check if the local copy of the ledger is in sync
 
         If we are behind, wait until the ledger downloads up to max_blocks_to_sync
@@ -361,7 +361,7 @@ class Client(object):
 
     def wait_for_monitor(monitor_id: bytes,
                          max_blocks_to_sync: int = 100,
-                         timeout_seconds: int = 10) --> Tuple[bool, int, int, Optional[float]]:
+                         timeout_seconds: int = 10) -> Tuple[bool, int, int, Optional[float]]:
         """ Check if a monitor is in sync
 
         If we are behind, wait until the monitor processes up to max_blocks_to_sync
