@@ -71,10 +71,21 @@ def wait_for_monitor(monitor_id_hex):
     print("# monitor {} has processed all {} blocks\n#".format(monitor_id_hex, ledger_block_count))
     return blocks_to_scan
 
+def display_in_MOB(picoMOB: int) -> str:
+    if picoMOB == 0:
+        return "0.000000"
+    MOB = float(picoMOB) / 1e12
+    if MOB < 0.000001:
+        return "{:0.6f}e-6".format(float(picoMOB)/1e6)
+    if MOB > 1000000:
+        return "{:0.6f}e6".format(float(picoMOB)/1e18)
+    return "{:0.6f}".format(MOB)
+
 if __name__ == '__main__':
     # Parse the arguments and generate the mob_client
     parser = argparse.ArgumentParser(description='provide secrets')
     parser.add_argument('-k', '--key', help='account master key', type=str)
+    parser.add_argument('--first_block', help='ledger block to begin scan', type=int, required=False)
     parser.add_argument('-b', '--balance', help='also check balance', action="store_true")
     args = parser.parse_args()
 
@@ -87,16 +98,23 @@ if __name__ == '__main__':
     # create monitor
     entropy = args.key
     account_key = mobilecoind.get_account_key(bytes.fromhex(entropy))
-    monitor_id = mobilecoind.add_monitor(account_key, first_subaddress=default_subaddress_index, num_subaddresses=1).hex()
+    if args.first_block:
+        monitor_id = mobilecoind.add_monitor(account_key, first_subaddress=default_subaddress_index, num_subaddresses=1, first_block=args.first_block).hex()
+    else:
+        monitor_id = mobilecoind.add_monitor(account_key, first_subaddress=default_subaddress_index, num_subaddresses=1).hex()
+
     public_address = mobilecoind.get_public_address(bytes.fromhex(monitor_id), default_subaddress_index)
 
     if args.balance:
         blocks_processed = wait_for_monitor(monitor_id)
-    balance = mobilecoind.get_balance(bytes.fromhex(monitor_id), default_subaddress_index) if args.balance else "...Skipped"
+    balance_picoMOB = mobilecoind.get_balance(bytes.fromhex(monitor_id), default_subaddress_index) if args.balance else "...Skipped"
 
-    # TODO: replace this with a call to get_address_code when the release is updated (Sept 11)
-    # address_code = mobilecoind.get_address_code(public_address)
-    address_code = mobilecoind.get_request_code(public_address)
+    address_code = mobilecoind.create_address_code(public_address)
 
-    # print request code for this entropy
-    print("\n\nAccount Information\n\n  Master Key:    {}\n  Address Code:  {}\n  Balance:       {} picoMOB\n\n".format(entropy, address_code, balance))
+    # print account information
+    print("\n")
+    print("    {:<18}{}".format("Master Key:", entropy))
+    print("    {:<18}{}".format("Address Code:", address_code))
+    print("    {:<18}{} picoMOB".format("Balance:", balance_picoMOB))
+    print("    {:<18}{} MOB".format(" ", display_in_MOB(balance_picoMOB)))
+    print("\n")

@@ -69,7 +69,7 @@ def add_user():
         subaddress = res[0]['subaddress']
 
     monitor = get_or_add_monitor(subaddress)
-    request_code = get_request_code(monitor, subaddress)
+    request_code = create_request_code(monitor, subaddress)
     balance = mobilecoind.get_balance(monitor, subaddress)
 
     if new_player:
@@ -111,9 +111,9 @@ def get_or_add_monitor(subaddress):
         monitor_id = mobilecoind.add_monitor(credentials)
     return monitor_id
 
-def get_request_code(monitor, subaddress):
+def create_request_code(monitor, subaddress):
     public_address = mobilecoind.get_public_address(monitor, subaddress)
-    return mobilecoind.get_request_code(public_address)
+    return mobilecoind.create_request_code(public_address)
 
 def get_leaderboard():
     player_table = db.table('Players')
