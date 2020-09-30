@@ -355,11 +355,12 @@ class Client(object):
 
             remote_count, local_count, is_behind = self.get_network_status()
 
+            delta = datetime.datetime.now() - start
             total_blocks_synced = local_count - initial_local_count
+
             if total_blocks_synced > max_blocks_to_sync:
                 break
 
-            delta = datetime.datetime.now() - start
             if delta.total_seconds() > timeout_seconds:
                 break
 
@@ -392,21 +393,19 @@ class Client(object):
         while monitor_is_behind:
             time.sleep(MONITOR_SYNC_INTERVAL_SECONDS)
 
-            print(self.get_monitor_status(monitor_id))
-
             remote_count, local_count, ledger_is_behind = self.get_network_status()
             next_block = self.get_monitor_status(monitor_id).next_block
             monitor_is_behind = ledger_is_behind or (next_block < local_count)
 
+            delta = datetime.datetime.now() - start
             total_blocks_synced = next_block - initial_next_block
+
             if total_blocks_synced > max_blocks_to_sync:
                 break
 
-            delta = datetime.datetime.now() - start
             if delta.total_seconds() > timeout_seconds:
                 break
 
-            print("# {},{},{},{},{}".format(remote_count, local_count, next_block, ledger_is_behind, monitor_is_behind))
-
+        delta = datetime.datetime.now() - start
         blocks_per_second = total_blocks_synced / delta.total_seconds()
         return (monitor_is_behind, next_block, remote_count, blocks_per_second)
