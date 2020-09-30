@@ -10,8 +10,11 @@ from .blockchain_pb2 import *
 from .mobilecoind_api_pb2 import *
 from .mobilecoind_api_pb2_grpc import *
 
-import datetime
+import time, datetime
 from typing import Tuple, Optional
+
+MONITOR_SYNC_INTERVAL_SECONDS = 0.5
+LEDGER_SYNC_INTERVAL_SECONDS = 0.5
 
 DEFAULT_SUBADDRESS_INDEX = 0
 
@@ -348,6 +351,8 @@ class Client(object):
         start = datetime.datetime.now()
         initial_local_count = local_count
         while is_behind:
+            time.sleep(LEDGER_SYNC_INTERVAL_SECONDS)
+
             remote_count, local_count, is_behind = self.get_network_status()
 
             total_blocks_synced = local_count - initial_local_count
@@ -385,6 +390,8 @@ class Client(object):
         start = datetime.datetime.now()
         initial_next_block = next_block
         while monitor_is_behind:
+            time.sleep(MONITOR_SYNC_INTERVAL_SECONDS)
+
             print(self.get_monitor_status(monitor_id))
 
             remote_count, local_count, ledger_is_behind = self.get_network_status()
