@@ -18,14 +18,14 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # create a monitor and use it to calculate the public address
-    entropy = args.key
-    account_key = mobilecoind.get_account_key(bytes.fromhex(entropy))
-    monitor_id = mobilecoind.add_monitor(account_key, first_subaddress=args.subaddress).hex()
-    public_address = mobilecoind.get_public_address(bytes.fromhex(monitor_id), args.subaddress)
+    entropy_bytes = bytes.fromhex(args.key)
+    account_key = mobilecoind.get_account_key(entropy_bytes)
+    monitor_id = mobilecoind.add_monitor(account_key, first_subaddress=args.subaddress)
+    public_address = mobilecoind.get_public_address(monitor_id, args.subaddress)
 
     # print the public address information
     print("\n")
-    print("    {:<18}{}".format("Master Key:", entropy))
+    print("    {:<18}{}".format("Master Key:", args.key))
     print("    {:<18}{}".format("Address Code:", public_address.b58_code))
     print("    {:<18}{}".format("Address URL:", public_address.mob_url))
     print("\n")

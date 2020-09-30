@@ -326,7 +326,7 @@ class Client(object):
         blocks_per_second = total_blocks_synced / delta.total_seconds()
         return (is_behind, local_count, remote_count, blocks_per_second)
 
-    def wait_for_monitor(monitor_id_hex, max_blocks_to_sync: int = 100, timeout_seconds = 10) --> Tuple[bool, Optional[float], int]:
+    def wait_for_monitor(monitor_id, max_blocks_to_sync: int = 100, timeout_seconds = 10) --> Tuple[bool, Optional[float], int]:
         """ Check if a monitor is in sync
 
         If we are behind, wait until the monitor processes up to max_blocks_to_sync
@@ -337,7 +337,7 @@ class Client(object):
 
         # check the ledger and monitor
         remote_count, local_count, ledger_is_behind = self.get_network_status()
-        next_block = self.get_monitor_status(bytes.fromhex(monitor_id_hex)).next_block
+        next_block = self.get_monitor_status(monitor_id).next_block
         monitor_is_behind = ledger_is_behind or (next_block <= local_count)
 
         if not monitor_is_behind:
@@ -347,7 +347,7 @@ class Client(object):
         initial_next_block = next_block
         while monitor_is_behind:
             remote_count, local_count, ledger_is_behind = self.get_network_status()
-            next_block = self.get_monitor_status(bytes.fromhex(monitor_id_hex)).next_block
+            next_block = self.get_monitor_status(monitor_id).next_block
             monitor_is_behind = ledger_is_behind or (next_block <= local_count)
 
             total_blocks_synced = next_block - initial_next_block
