@@ -356,7 +356,7 @@ class Client(object):
 
             delta = datetime.datetime.now() - start
             if delta.total_seconds() > timeout_seconds:
-               break
+                break
 
         blocks_per_second = total_blocks_synced / delta.total_seconds()
         return (is_behind, local_count, remote_count, blocks_per_second)
@@ -394,7 +394,9 @@ class Client(object):
 
             delta = datetime.datetime.now() - start
             if delta.total_seconds() > timeout_seconds:
-               break
+                break
+
+            print("# {},{},{},{},{}".format(remote_count, local_count, next_block, ledger_is_behind, monitor_is_behind))
 
         blocks_per_second = total_blocks_synced / delta.total_seconds()
         return (monitor_is_behind, next_block, remote_count, blocks_per_second)
