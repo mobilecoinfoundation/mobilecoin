@@ -5,6 +5,9 @@
 # display the b58 public address and URI that correspond to a master key
 
 import argparse
+
+import os,sys
+sys.path.insert(1, os.path.realpath(os.path.join(os.path.pardir, "lib")))
 import mobilecoin
 
 if __name__ == '__main__':
@@ -26,6 +29,7 @@ if __name__ == '__main__':
     # print the public address information
     print("\n")
     print("    {:<18}{}".format("Master Key:", args.key))
+    print("    {:<18}{}".format("Subaddress Index:", args.subaddress))
     print("    {:<18}{}".format("Address Code:", public_address.b58_code))
     print("    {:<18}{}".format("Address URL:", public_address.mob_url))
     print("\n")
