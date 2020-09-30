@@ -395,8 +395,17 @@ mod tests {
         consensus_peer_grpc::ConsensusPeerApiClient,
     };
     use mc_consensus_enclave_mock::MockConsensusEnclave;
+    use mc_consensus_scp::{
+        msg::{NominatePayload, Topic::Nominate},
+        Msg, QuorumSet,
+    };
+    // use mc_crypto_keys::Ed25519Signature;
+    use mc_crypto_keys::{Ed25519Pair, Ed25519Private};
     use mc_ledger_db::MockLedger;
-    use mc_transaction_core::tx::TxHash;
+    use mc_peers;
+    use mc_transaction_core::{tx::TxHash, Block};
+    use mc_util_from_random::FromRandom;
+    use rand::{rngs::StdRng, SeedableRng};
     use std::sync::{
         atomic::{AtomicUsize, Ordering::SeqCst},
         Arc,
@@ -491,6 +500,77 @@ mod tests {
                     consensus_msg_response.get_result(),
                     ConsensusMsgResult::UnknownPeer
                 );
+            }
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        }
+    }
+
+    #[test_with_logger]
+    // Should accept a message from a known peer.
+    fn test_send_consensus_msg_ok(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([77u8; 32]);
+        let (consensus_enclave, ledger, tx_manager) = get_mocks();
+
+        // Node A's private message signing keypair.
+        let node_a_signer_key = {
+            let private_key = Ed25519Private::from_random(&mut rng);
+            Ed25519Pair::from(private_key)
+        };
+
+        // ResponderIds seem to be "host:port" strings.
+        let known_responder_ids = vec![
+            ResponderId("A:port".to_string()),
+            ResponderId("B:port".to_string()),
+        ];
+
+        let instance = PeerApiService::new(
+            Arc::new(consensus_enclave),
+            Arc::new(ledger),
+            Arc::new(tx_manager),
+            get_incoming_consensus_msgs_sender_ok(),
+            get_scp_client_value_sender(),
+            get_fetch_latest_msg_fn(),
+            known_responder_ids.clone(),
+            logger,
+        );
+
+        let (client, _server) = get_client_server(instance);
+
+        // A message from a known peer.
+        let from = known_responder_ids[0].clone();
+
+        let scp_msg = Msg {
+            sender_id: NodeID {
+                responder_id: from.clone(),
+                public_key: node_a_signer_key.public_key(),
+            },
+            slot_index: 1,
+            quorum_set: QuorumSet {
+                threshold: 0,
+                members: vec![],
+            },
+            topic: Nominate(NominatePayload {
+                X: Default::default(),
+                Y: Default::default(),
+            }),
+        };
+
+        let payload = {
+            // Node A's ledger.
+            let mut ledger = MockLedger::new();
+            ledger
+                .expect_get_block()
+                .return_const(Ok(Block::new_origin_block(&vec![])));
+            mc_peers::ConsensusMsg::from_scp_msg(&ledger, scp_msg, &node_a_signer_key).unwrap()
+        };
+
+        let mut message = ConsensusMsg::new();
+        message.set_from_responder_id(from.to_string());
+        message.set_payload(mc_util_serial::serialize(&payload).unwrap());
+
+        match client.send_consensus_msg(&message) {
+            Ok(consensus_msg_response) => {
+                assert_eq!(consensus_msg_response.get_result(), ConsensusMsgResult::Ok);
             }
             Err(e) => panic!("Unexpected error: {:?}", e),
         }
