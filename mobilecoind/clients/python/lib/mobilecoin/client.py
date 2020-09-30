@@ -19,7 +19,7 @@ LEDGER_SYNC_INTERVAL_SECONDS = 0.5
 DEFAULT_SUBADDRESS_INDEX = 0
 
 # see transaction/core/src/constants.rs
-MINIMUM_FEE = 0.010 * 1_000_000_000_000
+MINIMUM_FEE = 10_000_000_000
 
 # Transaction Status Codes
 TX_STATUS_UNKNOWN = TxStatus.Unknown
