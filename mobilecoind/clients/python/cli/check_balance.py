@@ -37,7 +37,7 @@ if __name__ == '__main__':
                 print("#    {} blocks remain ({} seconds)".format(blocks_remaining, round(time_remaining_seconds,1)))
             else:
                 print("#    {} blocks remain (? seconds)".format(blocks_remaining))
-            (monitor_is_behind, next_block, remote_count, blocks_per_second) = mobilecoind.wait_for_monitor(monitor_id)
+            (monitor_is_behind, next_block, remote_count, blocks_per_second) = mobilecoind.wait_for_monitor(monitor_id, max_blocks_to_sync=2000, timeout_seconds=20))
         print("# monitor has processed all {} blocks\n#".format(local_count))
 
 
