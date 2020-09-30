@@ -42,10 +42,14 @@ if __name__ == '__main__':
 
 
     balance_picoMOB = mobilecoind.get_balance(monitor_id, subaddress_index=args.subaddress)
+    public_address = mobilecoind.get_public_address(monitor_id, subaddress_index=args.subaddress)
 
     # print account information
     print("\n")
     print("    {:<18}{}".format("Master Key:", args.key))
+    print("    {:<18}{}".format("Subaddress Index:", args.subaddress))
+    print("    {:<18}{}".format("Address Code:", public_address.b58_code))
+    print("    {:<18}{}".format("Address URL:", public_address.mob_url))
     print("    {:<18}{} pMOB".format("Balance:", balance_picoMOB))
     print("    {:<18}{}".format(" ", mobilecoin.display_as_MOB(balance_picoMOB)))
     print("\n")
