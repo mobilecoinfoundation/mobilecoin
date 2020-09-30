@@ -72,9 +72,10 @@ if __name__ == '__main__':
     tx_proposal = mobilecoind.generate_tx(sender_monitor_id, args.sender_subaddress, tx_list, outlays)
     sender_tx_receipt = mobilecoind.submit_tx(tx_proposal).sender_tx_receipt
     # Wait for the transaction to clear
-    tx_status = int(mobilecoind.get_tx_status_as_sender(sender_tx_receipt))
+    tx_status = mobilecoind.TX_STATUS_UNKNOWN
     while tx_status == mobilecoind.TX_STATUS_UNKNOWN:
         time.sleep(TX_RECEIPT_CHECK_INTERVAL_SECONDS)
+        tx_status = int(mobilecoind.get_tx_status_as_sender(sender_tx_receipt))
 
     if tx_status == mobilecoind.TX_STATUS_VERIFIED:
         transaction_status = "Verified"
