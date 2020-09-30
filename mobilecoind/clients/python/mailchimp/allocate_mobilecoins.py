@@ -55,7 +55,7 @@ def allocate_MOB(mailchimp_member_record, amount_picoMOB):
     tx_list = mobilecoind.get_unspent_tx_output_list(sender_monitor_id)
     outlays = [{'value': amount_picoMOB, 'receiver': recipient_public_address}]
 
-    tx_proposal = mobilecoind.generate_tx(sender_monitor_id, mobilecoind.DEFAULT_SUBADDRESS_INDEX, tx_list, outlays)
+    tx_proposal = mobilecoind.generate_tx(sender_monitor_id, DEFAULT_SUBADDRESS_INDEX, tx_list, outlays)
 
     sender_tx_receipt = mobilecoind.submit_tx(tx_proposal).sender_tx_receipt
 
