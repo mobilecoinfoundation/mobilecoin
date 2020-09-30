@@ -6,6 +6,7 @@
 
 import argparse
 import time
+import re
 
 import os,sys
 sys.path.insert(1, os.path.realpath(os.path.join(os.path.pardir, "lib")))
