@@ -114,16 +114,16 @@ if __name__ == '__main__':
     mobilecoind = mobilecoin.Client("localhost:4444", ssl=False)
 
     parser = argparse.ArgumentParser(description='provide secrets')
-    parser.add_argument('-k', '--key', help='MailChimp API key', type=str, required=True)
-    parser.add_argument('-s', '--sender', help='MobileCoin sender master key as hex', type=str, required=True)
-    parser.add_argument('-v', '--value', help='amount to allocate in MOB (default=100)', nargs='?', const=100, type=int)
+    parser.add_argument('-m', '--mailchimp', help='MailChimp API key', type=str, required=True)
+    parser.add_argument('-k', '--key', help='funding account master key as hex', type=str, required=True)
+    parser.add_argument('-v', '--value', help='amount to allocate in MOB (default=100)', nargs='?', const=100, type=int, default=100)
     parser.add_argument('--clean', help='remove all old monitors', action='store_true')
     args = parser.parse_args()
 
     print("\n# *\n# * Starting up TestNet token allocation script!\n# *\n#")
 
     # Set up our "bank"
-    sender_entropy_bytes = bytes.fromhex(args.sender)
+    sender_entropy_bytes = bytes.fromhex(args.key)
     sender_account_key = mobilecoind.get_account_key(sender_entropy_bytes)
     sender_monitor_id = mobilecoind.add_monitor(sender_account_key)
     sender_public_address = mobilecoind.get_public_address(sender_monitor_id)
@@ -139,7 +139,7 @@ if __name__ == '__main__':
     wait_for_monitor(sender_monitor_id)
 
     # generate the MailChimp client
-    mailchimp = MailChimp(mc_api=args.key)
+    mailchimp = MailChimp(mc_api=args.mailchimp)
 
     # figure out the id for the list of interest
     # print(mailchimp.lists.all(get_all=True, fields="lists.name,lists.id"))
