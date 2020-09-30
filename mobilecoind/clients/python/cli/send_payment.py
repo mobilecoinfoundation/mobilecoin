@@ -5,8 +5,11 @@
 # transfer funds from a master key to second account (specified by either a key or a b58 address code)
 
 import argparse
-import mobilecoin
 import time
+
+import os,sys
+sys.path.insert(1, os.path.realpath(os.path.join(os.path.pardir, "lib")))
+import mobilecoin
 
 TX_RECEIPT_CHECK_INTERVAL_SECONDS = 4
 
