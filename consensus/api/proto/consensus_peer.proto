@@ -27,7 +27,7 @@ service ConsensusPeerAPI {
 }
 
 message ConsensusMsg {
-    // ReponderId this message is coming from.
+    // ResponderId this message is coming from.
     string from_responder_id = 1;
 
     // Serialized peers::ConsensusMsg.

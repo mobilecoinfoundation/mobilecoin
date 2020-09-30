@@ -244,24 +244,6 @@ impl ConsensusPeerApi for PeerApiService {
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            let unverified_consensus_msg: mc_peers::ConsensusMsg =
-                match deserialize(request.get_payload()) {
-                    Ok(val) => val,
-                    Err(err) => {
-                        send_result(
-                            ctx,
-                            sink,
-                            Err(rpc_invalid_arg_error(
-                                "send_consensus_msg",
-                                format!("Message deserialize error: {}", err),
-                                &logger,
-                            )),
-                            &logger,
-                        );
-                        return;
-                    }
-                };
-
             // Get the peer who delivered this message to us.
             let from_responder_id = match ResponderId::from_str(request.get_from_responder_id()) {
                 Ok(val) => val,
@@ -280,7 +262,7 @@ impl ConsensusPeerApi for PeerApiService {
                 }
             };
 
-            // See if we recognize this peer.
+            // Ignore consensus messages from unknown peers.
             if !self.known_responder_ids.contains(&from_responder_id) {
                 let mut resp = ConsensusMsgResponse::new();
                 resp.set_result(ConsensusMsgResult::UnknownPeer);
@@ -292,6 +274,24 @@ impl ConsensusPeerApi for PeerApiService {
                 );
                 return;
             }
+
+            let unverified_consensus_msg: mc_peers::ConsensusMsg =
+                match deserialize(request.get_payload()) {
+                    Ok(val) => val,
+                    Err(err) => {
+                        send_result(
+                            ctx,
+                            sink,
+                            Err(rpc_invalid_arg_error(
+                                "send_consensus_msg",
+                                format!("Message deserialize error: {}", err),
+                                &logger,
+                            )),
+                            &logger,
+                        );
+                        return;
+                    }
+                };
 
             // Validate message signature
             let consensus_msg: mc_peers::VerifiedConsensusMsg = match unverified_consensus_msg
@@ -381,15 +381,19 @@ impl ConsensusPeerApi for PeerApiService {
 #[cfg(test)]
 mod tests {
     use crate::{
-        consensus_service::IncomingConsensusMsg, peer_api_service::PeerApiService,
-        tx_manager::MockTxManager,
+        background_work_queue::BackgroundWorkQueueError, consensus_service::IncomingConsensusMsg,
+        peer_api_service::PeerApiService, tx_manager::MockTxManager,
     };
     use grpcio::{ChannelBuilder, Environment, Server, ServerBuilder};
     use mc_common::{
         logger::{test_with_logger, Logger},
         NodeID, ResponderId,
     };
-    use mc_consensus_api::{consensus_peer_grpc, consensus_peer_grpc::ConsensusPeerApiClient};
+    use mc_consensus_api::{
+        consensus_peer::{ConsensusMsg, ConsensusMsgResult},
+        consensus_peer_grpc,
+        consensus_peer_grpc::ConsensusPeerApiClient,
+    };
     use mc_consensus_enclave_mock::MockConsensusEnclave;
     use mc_ledger_db::MockLedger;
     use mc_transaction_core::tx::TxHash;
@@ -397,6 +401,40 @@ mod tests {
         atomic::{AtomicUsize, Ordering::SeqCst},
         Arc,
     };
+
+    // Get sensibly-initialized mocks.
+    fn get_mocks() -> (MockConsensusEnclave, MockLedger, MockTxManager) {
+        let consensus_enclave = MockConsensusEnclave::new();
+        let ledger = MockLedger::new();
+        let tx_manager = MockTxManager::new();
+
+        (consensus_enclave, ledger, tx_manager)
+    }
+
+    /// Always returns OK.
+    fn get_incoming_consensus_msgs_sender_ok(
+    ) -> Arc<dyn Fn(IncomingConsensusMsg) -> Result<(), BackgroundWorkQueueError> + Sync + Send>
+    {
+        Arc::new(|_msg: IncomingConsensusMsg| {
+            // TODO: store inputs for inspection.
+            Ok(())
+        })
+    }
+
+    // Does nothing.
+    fn get_scp_client_value_sender(
+    ) -> Arc<dyn Fn(TxHash, Option<&NodeID>, Option<&ResponderId>) + Sync + Send> {
+        Arc::new(
+            |_tx_hash: TxHash, _node_id: Option<&NodeID>, _responder_id: Option<&ResponderId>| {
+                // Do nothing.
+            },
+        )
+    }
+
+    // Returns None.
+    fn get_fetch_latest_msg_fn() -> Arc<dyn Fn() -> Option<mc_peers::ConsensusMsg> + Sync + Send> {
+        Arc::new(|| None)
+    }
 
     fn get_free_port() -> u16 {
         static PORT_NR: AtomicUsize = AtomicUsize::new(0);
@@ -419,44 +457,42 @@ mod tests {
     }
 
     #[test_with_logger]
-    // Example setup for a unit test.
-    fn test_example(logger: Logger) {
-        let consensus_enclave = MockConsensusEnclave::new();
-        let ledger = MockLedger::new();
-        let tx_manager = MockTxManager::new();
+    // Should ignore a message from an unknown peer.
+    fn test_send_consensus_msg_ignore_unknown_peer(logger: Logger) {
+        let (consensus_enclave, ledger, tx_manager) = get_mocks();
 
-        // BackgroundWorkQueueSenderFn<IncomingConsensusMsg>
-        // Arc<dyn Fn(T) -> Result<(), BackgroundWorkQueueError> + Sync + Send>;
-        let incoming_consensus_msgs_sender = Arc::new(|_msg: IncomingConsensusMsg| {
-            // TODO: store inputs for inspection.
-            Ok(())
-        });
-
-        // Arc<dyn Fn(TxHash, Option<&NodeID>, Option<&ResponderId>) + Sync + Send>
-        let scp_client_value_sender = Arc::new(
-            |_tx_hash: TxHash, _node_id: Option<&NodeID>, _responder_id: Option<&ResponderId>| {
-                // TODO: store inputs for inspection.
-            },
-        );
-
-        // type FetchLatestMsgFn = Arc<dyn Fn() -> Option<mc_peers::ConsensusMsg> + Sync + Send>;
-        let fetch_latest_msg_fn = Arc::new(|| None);
-
-        let known_responder_ids = Vec::new();
+        // ResponderIds seem to be "host:port" strings.
+        let known_responder_ids = vec![
+            ResponderId("A:port".to_string()),
+            ResponderId("B:port".to_string()),
+        ];
 
         let instance = PeerApiService::new(
             Arc::new(consensus_enclave),
             Arc::new(ledger),
             Arc::new(tx_manager),
-            incoming_consensus_msgs_sender,
-            scp_client_value_sender,
-            fetch_latest_msg_fn,
-            known_responder_ids,
+            get_incoming_consensus_msgs_sender_ok(),
+            get_scp_client_value_sender(),
+            get_fetch_latest_msg_fn(),
+            known_responder_ids.clone(),
             logger,
         );
 
-        let (_client, _server) = get_client_server(instance);
+        let (client, _server) = get_client_server(instance);
 
-        // TODO: run a test.
+        // A message from an unknown peer.
+        // The payload can be empty because the message should be ignored before the payload is read.
+        let mut message = ConsensusMsg::new();
+        message.set_from_responder_id("X:port".to_string());
+
+        match client.send_consensus_msg(&message) {
+            Ok(consensus_msg_response) => {
+                assert_eq!(
+                    consensus_msg_response.get_result(),
+                    ConsensusMsgResult::UnknownPeer
+                );
+            }
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        }
     }
 }
