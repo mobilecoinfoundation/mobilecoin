@@ -17,11 +17,9 @@ if __name__ == '__main__':
     # Parse the arguments
     parser = argparse.ArgumentParser(description='You must provide your master key as a 32 byte hex string.')
     parser.add_argument('-k', '--key', help='account master key', type=str, required=True)
-    parser.add_argument('-s', '--subaddress', help='(optional) subaddress', nargs='?', const=mobilecoin.DEFAULT_SUBADDRESS_INDEX, type=int)
-    parser.add_argument('--first-block', help='(optional) first ledger block to scan', nargs='?', const=0, type=int, dest='first_block')
+    parser.add_argument('-s', '--subaddress', help='(optional) subaddress', nargs='?', const=mobilecoin.DEFAULT_SUBADDRESS_INDEX, type=int, default=mobilecoin.DEFAULT_SUBADDRESS_INDEX)
+    parser.add_argument('--first-block', help='(optional) first ledger block to scan', nargs='?', const=0, type=int, dest='first_block', default=0)
     args = parser.parse_args()
-
-    print(args.subaddress)
 
     # create a monitor
     entropy_bytes = bytes.fromhex(args.key)
