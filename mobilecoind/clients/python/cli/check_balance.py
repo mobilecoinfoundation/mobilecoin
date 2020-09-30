@@ -5,7 +5,7 @@
 # display the balance for a master key
 
 import argparse
-import mobilecoin
+from ../lib/mobilecoin import mobilecoin
 
 if __name__ == '__main__':
     # Connect to mobilecoind
