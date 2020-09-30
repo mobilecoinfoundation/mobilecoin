@@ -23,8 +23,8 @@ if __name__ == '__main__':
     parser.add_argument('--sender', help='sender account master key', type=str, required=True))
     parser.add_argument('--recipient', help='recipient account master key or b58 address code', type=str, required=True))
     parser.add_argument('--amount', help='optional amount in picoMOB (defaults to all funds)', type=int, required=False)
-    parser.add_argument('--sender-subaddress', help='(optional) sender subaddress', nargs='?', const=DEFAULT_SUBADDRESS_INDEX, type=int, dest='sender_subaddress')
-    parser.add_argument('--recipient-subaddress', help='(optional) recipient subaddress', nargs='?', const=DEFAULT_SUBADDRESS_INDEX, type=int, dest='recipient_subaddress')
+    parser.add_argument('--sender-subaddress', help='(optional) sender subaddress', nargs='?', const=mobilecoin.DEFAULT_SUBADDRESS_INDEX, type=int, dest='sender_subaddress')
+    parser.add_argument('--recipient-subaddress', help='(optional) recipient subaddress', nargs='?', const=mobilecoin.DEFAULT_SUBADDRESS_INDEX, type=int, dest='recipient_subaddress')
     args = parser.parse_args()
 
     # create a monitor for the sender
