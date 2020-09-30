@@ -16,13 +16,13 @@ import time
 parser = argparse.ArgumentParser(description='Download and test mobilecoind / mirror and json gateway')
 parser.add_argument('entropy', metavar='e', type=str, help='Root entropy of account for testing')
 parser.add_argument('--url', metavar='u', type=str, help='URL of release tarball', default='https://github.com/mobilecoinofficial/mobilecoin/releases/latest/download/mobilecoind-mirror-tls.tar.gz')
-parser.add_argument('--synced', action='store_true', help='Do not delete ledger-db and mobilecoind-db on start')
+parser.add_argument('--skip-clean', action='store_true', help='Do not delete ledger-db and mobilecoind-db on start')
 parser.add_argument('--services', action='store_true', help='Start services then sleep for 1000 seconds')
 args = parser.parse_args()
 
 target_path = 'mobilecoind-mirror-tls.tar.gz'
 
-if not args.synced:
+if not args.skip_clean:
     # Cleanup any previous runs and re-sync the ledger.
     subprocess.run("rm -r /tmp/mobilecoin", shell=True)
 subprocess.run("pkill -f mobilecoind", shell=True)
@@ -242,7 +242,7 @@ else:
 print("All tests succeeded!")
 
 if args.services:
-    # Leave services up for some amount of time for local testing
-    time.sleep(1000)
+    # Leave services up for local testing
+    sys.exit(0)
 else:
     shutdown(0)
