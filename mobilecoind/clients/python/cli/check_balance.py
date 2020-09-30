@@ -7,7 +7,6 @@
 import argparse
 
 import os,sys
-sys.path.insert(1, os.path.realpath(os.path.join(os.path.pardir, "lib")))
 import mobilecoin
 
 if __name__ == '__main__':

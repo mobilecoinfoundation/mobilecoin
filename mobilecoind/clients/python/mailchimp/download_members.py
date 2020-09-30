@@ -5,6 +5,7 @@
 # used to download our mailing list and output a table with all user balances
 
 import sys, os.path
+sys.path.insert(1, os.path.realpath(os.path.join(os.path.pardir, "lib")))
 import mobilecoin
 import argparse
 from mailchimp3 import MailChimp
