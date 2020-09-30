@@ -153,7 +153,7 @@ class Client(object):
         """
         request = GetPublicAddressRequest(
             monitor_id=monitor_id, subaddress_index=subaddress_index)
-        return self.stub.GetPublicAddress(request).public_address
+        return self.stub.GetPublicAddress(request)
 
     def parse_address_code(self,
                            b58_code: str):
