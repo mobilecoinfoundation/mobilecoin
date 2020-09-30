@@ -15,7 +15,7 @@ class TestDisplayAsMOB(TestCase):
             (-9999.05 * kMOB, "-9999.05 kMOB"),
             (-1, "-0.001 nMOB"),
             # zero
-            (0, "0.000"),
+            (0, "0.000 MOB"),
             # nano
             (0.001 * nMOB, "0.001 nMOB"),
             (0.012 * nMOB, "0.012 nMOB"),

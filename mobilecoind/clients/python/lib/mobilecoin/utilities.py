@@ -13,7 +13,7 @@ def display_as_MOB(x: int, scale = None) -> str:
         if x_MOB<0:
             return "-" + display_as_MOB(-x)
         elif x_MOB == 0:
-            return "0.000"
+            return "0.000 MOB"
         elif x_MOB < 0.9995e-9:
             return display_as_MOB(x, scale = "nano") # display as 0.XXXn
         elif x_MOB < 0.9995e-6:
