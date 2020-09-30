@@ -12,11 +12,11 @@ from mailchimp3 import MailChimp
 
 import signal
 
-def sigterm_handler(signal, frame):
-    print('detected SIGTERM')
+def sigint_handler(signal, frame):
+    print('detected SIGINT')
     sys.exit(0)
 
-signal.signal(signal.SIGTERM, sigterm_handler)
+signal.signal(signal.SIGINT, sigterm_handler)
 
 if __name__ == '__main__':
     # Parse the arguments and generate the mobilecoind client
