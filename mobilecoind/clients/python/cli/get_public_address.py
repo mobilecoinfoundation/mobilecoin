@@ -17,7 +17,7 @@ if __name__ == '__main__':
     # Parse the arguments
     parser = argparse.ArgumentParser(description='You must provide your master key as a 32 byte hex string.')
     parser.add_argument('-k', '--key', help='account master key', type=str)
-    parser.add_argument('-s', '--subaddress', help='(optional) subaddress', nargs='?', const=mobilecoind.DEFAULT_SUBADDRESS_INDEX, type=int)
+    parser.add_argument('-s', '--subaddress', help='(optional) subaddress', nargs='?', const=mobilecoin.DEFAULT_SUBADDRESS_INDEX, type=int)
     args = parser.parse_args()
 
     # create a monitor and use it to calculate the public address
