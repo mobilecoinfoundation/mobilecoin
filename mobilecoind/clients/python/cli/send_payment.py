@@ -63,7 +63,7 @@ if __name__ == '__main__':
         balance_picoMOB = mobilecoind.get_balance(sender_monitor_id, subaddress_index=args.sender_subaddress)
 
         # send as much as possible after accounting for the fee
-        value_to_send_picoMOB = balance_picoMOB - mobilecoind.MINIMUM_FEE
+        value_to_send_picoMOB = balance_picoMOB - mobilecoin.MINIMUM_FEE
 
     else:
         value_to_send_picoMOB = args.value
