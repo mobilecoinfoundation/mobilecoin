@@ -380,22 +380,29 @@ class Client(object):
         """
 
         # check the ledger and monitor
+        print(1)
         remote_count, local_count, ledger_is_behind = self.get_network_status()
 
+        print(2)
         next_block = self.get_monitor_status(monitor_id).next_block
         monitor_is_behind = ledger_is_behind or (next_block < local_count)
 
         if not monitor_is_behind:
             return (monitor_is_behind, next_block, remote_count, None)
 
+        print(3)
         start = datetime.datetime.now()
         initial_next_block = next_block
         while monitor_is_behind:
             time.sleep(MONITOR_SYNC_INTERVAL_SECONDS)
 
+            print(4)
             remote_count, local_count, ledger_is_behind = self.get_network_status()
+            print(5)
             next_block = self.get_monitor_status(monitor_id).next_block
+            print(6)
             monitor_is_behind = ledger_is_behind or (next_block < local_count)
+
 
             delta = datetime.datetime.now() - start
             total_blocks_synced = next_block - initial_next_block
