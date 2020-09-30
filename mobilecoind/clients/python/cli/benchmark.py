@@ -35,7 +35,7 @@ if __name__ == '__main__':
         account_key = mobilecoind.get_account_key(entropy_bytes)
         start = datetime.datetime.now()
         monitor_id = mobilecoind.add_monitor(account_key,
-                                             first_subaddress = mobilecoin.DEFAULT_SUBADDRESS_INDEX
+                                             first_subaddress = mobilecoin.DEFAULT_SUBADDRESS_INDEX,
                                              num_subaddresses = count,
                                              first_block = remote_count)
         finish = datetime.datetime.now()
