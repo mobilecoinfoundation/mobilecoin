@@ -21,6 +21,8 @@ if __name__ == '__main__':
     parser.add_argument('--first-block', help='(optional) first ledger block to scan', nargs='?', const=0, type=int, dest='first_block')
     args = parser.parse_args()
 
+    print(args.subaddress)
+
     # create a monitor
     entropy_bytes = bytes.fromhex(args.key)
     account_key = mobilecoind.get_account_key(entropy_bytes)
