@@ -330,7 +330,8 @@ class Client(object):
     # Convenience functions using the mobilecoind API
     #
 
-    def wait_for_ledger(max_blocks_to_sync: int = 100,
+    def wait_for_ledger(self,
+                        max_blocks_to_sync: int = 100,
                         timeout_seconds: int = 10) -> Tuple[bool, int, int, Optional[float]]:
         """ Check if the local copy of the ledger is in sync
 
@@ -360,7 +361,8 @@ class Client(object):
         blocks_per_second = total_blocks_synced / delta.total_seconds()
         return (is_behind, local_count, remote_count, blocks_per_second)
 
-    def wait_for_monitor(monitor_id: bytes,
+    def wait_for_monitor(self,
+                         monitor_id: bytes,
                          max_blocks_to_sync: int = 100,
                          timeout_seconds: int = 10) -> Tuple[bool, int, int, Optional[float]]:
         """ Check if a monitor is in sync
