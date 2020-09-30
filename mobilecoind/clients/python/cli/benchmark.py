@@ -29,7 +29,7 @@ if __name__ == '__main__':
 
     # Test how fast we can add a monitor with different numbers of subaddresses
     print("Testing `mobilecoind.add_monitor` time...")
-    subaddress_counts = [1,10,100,1000,10000,100000,1_000_000]
+    subaddress_counts = [1,10,100,1000,10_000,100_000,1_000_000]
     for count in subaddress_counts:
         entropy_bytes = mobilecoind.generate_entropy()
         account_key = mobilecoind.get_account_key(entropy_bytes)
@@ -39,6 +39,6 @@ if __name__ == '__main__':
                                              num_subaddresses = count,
                                              first_block = remote_count)
         finish = datetime.datetime.now()
-        print("{}, {}".format(count, (finish - start).total_seconds())
+        print("{}, {}".format(count, (finish - start).total_seconds()))
         mobilecoind.remove_monitor(monitor_id)
     print("\n")
