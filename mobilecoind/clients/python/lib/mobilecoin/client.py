@@ -12,8 +12,12 @@ from .mobilecoind_api_pb2_grpc import *
 
 import datetime
 
-# Transaction Status Codes
+DEFAULT_SUBADDRESS_INDEX = 0
 
+# see transaction/core/src/constants.rs
+MINIMUM_FEE = 0.010 * 1_000_000_000_000
+
+# Transaction Status Codes
 TX_STATUS_UNKNOWN = TxStatus.Unknown
 TX_STATUS_VERIFIED = TxStatus.Verified
 TX_STATUS_TOMBSTONE_BLOCK_EXCEEDED = TxStatus.TombstoneBlockExceeded
@@ -49,16 +53,16 @@ class Client(object):
 
     def add_monitor(self,
                     account_key,
-                    first_subaddress=0,
-                    num_subaddresses=100000,
+                    first_subaddress=DEFAULT_SUBADDRESS_INDEX,
+                    num_subaddresses=1,
                     first_block=0):
         """ Create a process that watches the ledger for tx outputs belonging to a
         set of subaddresses, each specified by account_key and an index.
         """
         request = AddMonitorRequest(account_key=account_key,
-                                        first_subaddress=first_subaddress,
-                                        num_subaddresses=num_subaddresses,
-                                        first_block=first_block)
+                                    first_subaddress=first_subaddress,
+                                    num_subaddresses=num_subaddresses,
+                                    first_block=first_block)
         return self.stub.AddMonitor(request).monitor_id
 
     def remove_monitor(self, monitor_id):
@@ -79,15 +83,15 @@ class Client(object):
         response = self.stub.GetMonitorStatus(request)
         return response.status
 
-    def get_unspent_tx_output_list(self, monitor_id, index=0):
+    def get_unspent_tx_output_list(self, monitor_id, index=DEFAULT_SUBADDRESS_INDEX):
         """ Returns the list of tx outputs collected for a subaddress.
         """
         request = GetUnspentTxOutListRequest(monitor_id=monitor_id,
-                                                 subaddress_index=index)
+                                             subaddress_index=index)
         response = self.stub.GetUnspentTxOutList(request)
         return response.output_list
 
-    def get_balance(self, monitor_id, index=0):
+    def get_balance(self, monitor_id, index=DEFAULT_SUBADDRESS_INDEX):
         """ Returns the sum of unspent tx outputs collected for a subaddress.
         """
         uoutput_list = self.get_unspent_tx_output_list(monitor_id, index)
@@ -96,7 +100,7 @@ class Client(object):
             balance += utxo.value
         return balance
 
-    def get_monitor_id(self, account_key, index=0):
+    def get_monitor_id(self, account_key, index=DEFAULT_SUBADDRESS_INDEX):
         """ Returns the monitor for a given subaddress, if one exists.
         """
         monitor_id_list = self.get_monitor_list()
@@ -132,7 +136,7 @@ class Client(object):
         request = GetAccountKeyRequest(entropy=entropy)
         return self.stub.GetAccountKey(request).account_key
 
-    def get_public_address(self, monitor_id, subaddress_index):
+    def get_public_address(self, monitor_id, subaddress_index=DEFAULT_SUBADDRESS_INDEX):
         """ Returns the public address for a given monitor and index
         """
         request = GetPublicAddressRequest(
@@ -178,8 +182,8 @@ class Client(object):
         """ Create a "transfer code" used to generate a QR code for wallet apps.
         """
         request = CreateTransferCodeRequest(entropy=entropy,
-                                             tx_public_key=tx_public_key,
-                                             memo=memo)
+                                            tx_public_key=tx_public_key,
+                                            memo=memo)
         return self.stub.CreateTransferCode(request).b58_code
 
     #
@@ -201,20 +205,20 @@ class Client(object):
             for r in outlay_dict
         ]
         request = GenerateTxRequest(sender_monitor_id=sender_monitor_id,
-                                        change_subaddress=change_subaddress,
-                                        input_list=input_list,
-                                        outlay_list=outlay_list,
-                                        fee=fee,
-                                        tombstone=tombstone)
+                                    change_subaddress=change_subaddress,
+                                    input_list=input_list,
+                                    outlay_list=outlay_list,
+                                    fee=fee,
+                                    tombstone=tombstone)
         return self.stub.GenerateTx(request).tx_proposal
 
-    def generate_optimization_tx(self, monitor_id, subaddress):
+    def generate_optimization_tx(self, monitor_id, subaddress=DEFAULT_SUBADDRESS_INDEX):
         """ Due to limits on the number of inputs allowed for a transaction, a wallet can contain
         more value than is spendable in a single transaction. This generates a self-payment
         that combines small value tx outputs together.
         """
         request = GenerateOptimizationTxRequest(monitor_id=monitor_id,
-                                                    subaddress=subaddress)
+                                                subaddress=subaddress)
         return self.stub.GenerateOptimizationTx(request).tx_proposal
 
     def generate_transfer_code_tx(self, sender_monitor_id, change_subaddress,

@@ -2,12 +2,7 @@
 
 from typing import Tuple, Optional
 
-DEFAULT_SUBADDRESS_INDEX = 0
-
 MOB_PER_PICOMOB = 1_000_000_000_000
-
-# see transaction/core/src/constants.rs
-MINIMUM_FEE = 0.010 * MOB_PER_PICOMOB
 
 '''
 Formats a picoMOB amount with user-friendly units and precision
