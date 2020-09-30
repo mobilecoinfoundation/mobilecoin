@@ -11,6 +11,7 @@ from .mobilecoind_api_pb2 import *
 from .mobilecoind_api_pb2_grpc import *
 
 import datetime
+from typing import Tuple, Optional
 
 DEFAULT_SUBADDRESS_INDEX = 0
 
