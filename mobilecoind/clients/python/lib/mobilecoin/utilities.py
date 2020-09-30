@@ -30,16 +30,16 @@ def display_as_MOB(x: int, scale = None) -> str:
             return "overflow" # The MobileCoin network has only 250M MOB
 
     elif scale == "nano":
-        return "{:0.3f}n".format(round(x / 1e3, 3)) # convert pico to nano
+        return "{:0.3f} nMOB".format(round(x / 1e3, 3)) # convert pico to nano
     elif scale == "micro":
-        return "{:0.3f}μ".format(round(x / 1e6, 3)) # convert pico to micro
+        return "{:0.3f} μMOB".format(round(x / 1e6, 3)) # convert pico to micro
     elif scale == "base_6":
-        return "{:0.6f}".format(round(x / 1e12, 6)) # convert pico to MOB with precision 6
+        return "{:0.6f} MOB".format(round(x / 1e12, 6)) # convert pico to MOB with precision 6
     elif scale == "base_3":
-        return "{:0.3f}".format(round(x / 1e12, 3)) # convert pico to MOB with precision 3
+        return "{:0.3f} MOB".format(round(x / 1e12, 3)) # convert pico to MOB with precision 3
     elif scale == "kilo":
-        return "{:0.2f}k".format(round(x / 1e15, 2)) # convert pico to kilo
+        return "{:0.2f} kMOB".format(round(x / 1e15, 2)) # convert pico to kilo
     elif scale == "mega":
-        return "{:0.2f}M".format(round(x / 1e18, 2)) # convert pico to mega
+        return "{:0.2f} MMOB".format(round(x / 1e18, 2)) # convert pico to mega
     else:
         return "error" # ?

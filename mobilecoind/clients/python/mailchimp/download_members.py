@@ -68,7 +68,7 @@ if __name__ == '__main__':
                     else:
                         print("#    {} blocks remain (? seconds)".format(blocks_remaining))
                     (monitor_is_behind, next_block, remote_count, blocks_per_second) = mobilecoind.wait_for_monitor(monitor_id, max_blocks_to_sync=10000, timeout_seconds=60)
-                print("# monitor has processed all {} blocks\n#".format(local_count))
+                print("# monitor has processed all {} blocks\n#".format(remote_count))
 
             balance_picoMOB = mobilecoind.get_balance(monitor_id)
-            print("{}, {}, {}, {}MOB".format(entropy, email, balance_picoMOB, mobilecoin.display_as_MOB(balance_picoMOB)))
+            print("{}, {}, {}, {}".format(entropy, email, balance_picoMOB, mobilecoin.display_as_MOB(balance_picoMOB)))

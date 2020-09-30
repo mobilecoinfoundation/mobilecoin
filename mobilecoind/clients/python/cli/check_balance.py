@@ -45,6 +45,6 @@ if __name__ == '__main__':
     # print account information
     print("\n")
     print("    {:<18}{}".format("Master Key:", args.key))
-    print("    {:<18}{}pMOB".format("Balance:", balance_picoMOB))
-    print("    {:<18}{}MOB".format(" ", mobilecoin.display_as_MOB(balance_picoMOB)))
+    print("    {:<18}{} pMOB".format("Balance:", balance_picoMOB))
+    print("    {:<18}{}".format(" ", mobilecoin.display_as_MOB(balance_picoMOB)))
     print("\n")
