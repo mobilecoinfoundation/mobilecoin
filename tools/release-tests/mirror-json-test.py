@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # This is an integration test that downloads the latest releases and attempts to run mobilecoind,
-# the mirror services and the JSON gateway in the exact manner that a user might run them, using the 
+# the mirror services and the JSON gateway in the exact manner that a user might run them, using the
 # provided shell scripts and compiled binaries.
 
 import argparse
@@ -16,12 +16,15 @@ import time
 parser = argparse.ArgumentParser(description='Download and test mobilecoind / mirror and json gateway')
 parser.add_argument('entropy', metavar='e', type=str, help='Root entropy of account for testing')
 parser.add_argument('--url', metavar='u', type=str, help='URL of release tarball', default='https://github.com/mobilecoinofficial/mobilecoin/releases/latest/download/mobilecoind-mirror-tls.tar.gz')
+parser.add_argument('--skip-clean', action='store_true', help='Do not delete ledger-db and mobilecoind-db on start')
+parser.add_argument('--services', action='store_true', help='Start services then sleep for 1000 seconds')
 args = parser.parse_args()
 
 target_path = 'mobilecoind-mirror-tls.tar.gz'
 
-# Cleanup any previous runs
-subprocess.run("rm -r /tmp/mobilecoin", shell=True)
+if not args.skip_clean:
+    # Cleanup any previous runs and re-sync the ledger.
+    subprocess.run("rm -r /tmp/mobilecoin", shell=True)
 subprocess.run("pkill -f mobilecoind", shell=True)
 
 os.chdir('/tmp')
@@ -63,7 +66,7 @@ print("Testing mirror block API")
 response = requests.get("http://localhost:8001/ledger/blocks/0")
 if response.status_code == 200:
     data = response.json()
-    if data['index'] != '0': 
+    if data['index'] != '0':
         print("Block API returned invalid data")
         shutdown(1)
     print("Block API call succeeded")
@@ -203,5 +206,43 @@ while True:
         print("status-as-sender returned status code %d" % response.status_code)
         shutdown(1)
 
+print("Testing mirror block API")
+response = requests.get("http://localhost:8001/ledger/blocks/0")
+if response.status_code == 200:
+    data = response.json()
+    if data['index'] != '0':
+        print("Block API returned invalid data")
+        shutdown(1)
+    print("Block API call succeeded")
+else:
+    print("Block API returned status code %d" % response.status_code)
+    shutdown(1)
+
+# Check the mirror to see the block height of the transaction
+tx_pubkey = receiver_tx_receipt['tx_public_key']
+url = f"http://localhost:8001/tx-out/{tx_pubkey}/block-index"
+response = requests.get(url)
+if response.status_code == 200:
+    block_index = response.json()["block_index"]
+    print(f"Got block_index = {block_index}")
+else:
+    print("tx-out/tx_public_key/block-index returned status code %d" % response.status_code)
+    shutdown(1)
+
+# Get the processed block for that block index
+url = f"http://localhost:8001/processed-block/{block_index}"
+response = requests.get(url)
+if response.status_code == 200:
+    processed_block = response.json()
+    print(f"Got processed_block = {processed_block}")
+else:
+    print("tx-out/tx_public_key/block-index returned status code %d" % response.status_code)
+    shutdown(1)
+
 print("All tests succeeded!")
-shutdown(0)
+
+if args.services:
+    # Leave services up for local testing
+    sys.exit(0)
+else:
+    shutdown(0)
