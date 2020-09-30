@@ -82,8 +82,8 @@ impl PeerApiService {
     /// * `incoming_consensus_msgs_sender` - Callback for a new consensus message from a peer.
     /// * `scp_client_value_sender` - Callback for proposed transactions.
     /// * `fetch_latest_msg_fn` - Returns highest message emitted by this node.
-    /// * `known_responder_ids` - Whitelist. Messages from peers not on this list are ignored.
-    /// * `logger` -
+    /// * `known_responder_ids` - Messages from peers not on this "whitelist" are ignored.
+    /// * `logger` - Logger.
     pub fn new(
         consensus_enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
         ledger: Arc<dyn Ledger + Send + Sync>,
@@ -172,7 +172,7 @@ impl PeerApiService {
             .iter()
             .map(|bytes| {
                 TxHash::try_from(&bytes[..])
-                    .map_err(|_| ConsensusGrpcError::InvalidArgument("invalid tx hash".to_string()))
+                    .map_err(|_| ConsensusGrpcError::InvalidArgument("Invalid TxHash".to_string()))
             })
             .collect::<Result<Vec<TxHash>, ConsensusGrpcError>>()?;
 
@@ -693,4 +693,10 @@ mod tests {
             Err(e) => panic!("Unexpected error: {:?}", e),
         }
     }
+
+    // TODO: fetch_latest_msg
+
+    // TODO: fetch_txs
+
+    // TODO: peer_tx_propose
 }
