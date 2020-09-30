@@ -26,6 +26,8 @@ if __name__ == '__main__':
     monitor_id = mobilecoind.add_monitor(account_key, first_subaddress=args.subaddress)
     public_address = mobilecoind.get_public_address(monitor_id, subaddress_index=args.subaddress)
 
+    print(public_address)
+
     # print the public address information
     print("\n")
     print("    {:<18}{}".format("Master Key:", args.key))
