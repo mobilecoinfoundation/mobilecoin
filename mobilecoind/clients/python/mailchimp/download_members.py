@@ -70,7 +70,7 @@ if __name__ == '__main__':
                     print("# monitor has processed all {} blocks\n#".format(local_count))
 
                 balance_picoMOB = mobilecoind.get_balance(monitor_id)
-                print("{}, {}, {}, {}MOB".format(entropy, email, balance_picoMOB, mobilecoind.display_as_MOB(balance_picoMOB)))
+                print("{}, {}, {}, {}MOB".format(entropy, email, balance_picoMOB, mobilecoin.display_as_MOB(balance_picoMOB)))
 
             except:
                 print("\n# ERROR: failed to get balance for {} ({})\n".format(entropy, email))
