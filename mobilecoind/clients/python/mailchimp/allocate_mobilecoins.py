@@ -67,20 +67,20 @@ def allocate_MOB(mailchimp_member_record, amount_picoMOB):
 
     if tx_status != mobilecoind.TX_STATUS_VERIFIED:
         print("ERROR... Transaction failed with status {}".format(tx_status))
-        
+
         # remove recipient monitor
         mobilecoind.remove_monitor(recipient_monitor_id)
         print("# removed monitor {} for {}".format(recipient_monitor_id.hex(), new_user_email))
-        
+
         return 0 # no email sent
 
     # Check that balances are as expected
     wait_for_monitor(sender_monitor_id)
     sender_balance = mobilecoind.get_balance(sender_monitor_id)
-    
+
     wait_for_monitor(recipient_monitor_id)
     recipient_balance = mobilecoind.get_balance(recipient_monitor_id)
-    
+
     print("# recipient balance = {} picoMOB, sender balance = {} picoMOB".format(recipient_balance, sender_balance))
 
     # If the recipient's balance is not as expected, complain and do not trigger the email in Mailchimp
@@ -99,7 +99,7 @@ def allocate_MOB(mailchimp_member_record, amount_picoMOB):
         # adding "send_key_now" tag triggers the welcome email automation!
         data = {"tags":[{"name":"has_entropy", "status":"active"},{"name":"send_key_now", "status":"active"}]}
         mailchimp.lists.members.tags.update(list_id, subscriber_hash=new_user_hash, data=data)
-        
+
         print("# setting welcome email trigger for {}!".format(new_user_email))
         email_sent = 1
 

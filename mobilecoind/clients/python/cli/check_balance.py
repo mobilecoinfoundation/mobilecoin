@@ -5,7 +5,10 @@
 # display the balance for a master key
 
 import argparse
-from ../lib/mobilecoin import mobilecoin
+
+import os,sys
+sys.path.insert(1, os.path.join(sys.path[0], '../lib'))
+from . import mobilecoin
 
 if __name__ == '__main__':
     # Connect to mobilecoind
@@ -13,7 +16,7 @@ if __name__ == '__main__':
 
     # Parse the arguments
     parser = argparse.ArgumentParser(description='You must provide your master key as a 32 byte hex string.')
-    parser.add_argument('-k', '--key', help='account master key', type=str)
+    parser.add_argument('-k', '--key', help='account master key', type=str, required=True))
     parser.add_argument('-s', '--subaddress', help='(optional) subaddress', nargs='?', const=mobilecoind.DEFAULT_SUBADDRESS_INDEX, type=int)
     parser.add_argument('--first-block', help='(optional) first ledger block to scan', nargs='?', const=0, type=int, dest='first_block')
     args = parser.parse_args()
