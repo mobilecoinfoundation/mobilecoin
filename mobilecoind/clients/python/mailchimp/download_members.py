@@ -55,11 +55,10 @@ if __name__ == '__main__':
             entropy_bytes = bytes.fromhex(entropy)
             account_key = mobilecoind.get_account_key(entropy_bytes)
             monitor_id = mobilecoind.add_monitor(account_key)
-            print("# adding monitor_id {} for {}".format(monitor_id.hex(), email))
 
             (monitor_is_behind, next_block, remote_count, blocks_per_second) = mobilecoind.wait_for_monitor(monitor_id)
             if monitor_is_behind:
-                print("#\n# waiting for the monitor to process {} blocks".format(remote_count - next_block))
+                print("#\n# waiting for the monitor {} to process {} blocks".format(monitor_id.hex(), remote_count - next_block))
                 while monitor_is_behind:
                     blocks_remaining = (remote_count - next_block)
                     if blocks_per_second > 0:
