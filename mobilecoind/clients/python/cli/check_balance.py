@@ -7,8 +7,8 @@
 import argparse
 
 import os,sys
-sys.path.insert(1, os.path.join(sys.path[0], '../lib'))
-from . import mobilecoin
+sys.path.insert(1, os.path.join(sys.path[0], '..'))
+import mobilecoin
 
 if __name__ == '__main__':
     # Connect to mobilecoind
