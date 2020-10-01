@@ -73,15 +73,13 @@ def allocate_MOB(mailchimp_member_record, amount_picoMOB):
     while tx_status == mobilecoin.TX_STATUS_UNKNOWN:
         time.sleep(TX_RECEIPT_CHECK_INTERVAL_SECONDS)
         tx_status = int(mobilecoind.get_tx_status_as_sender(sender_tx_receipt))
+        print("# transaction status is {}".format(tx_status))
 
     if tx_status != mobilecoin.TX_STATUS_VERIFIED:
         print("ERROR... Transaction failed with status {}".format(tx_status))
-
-        # remove recipient monitor
         mobilecoind.remove_monitor(recipient_monitor_id)
         print("# removed monitor {} for {}".format(recipient_monitor_id.hex(), new_user_email))
-
-        return 0 # no email sent
+        return 0 # no email was sent
 
     # Check that balances are as expected
     wait_for_monitor(sender_monitor_id)
