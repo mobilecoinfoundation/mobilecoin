@@ -119,7 +119,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='provide secrets')
     parser.add_argument('-m', '--mailchimp', help='MailChimp API key', type=str, required=True)
     parser.add_argument('-k', '--key', help='funding account master key as hex', type=str, required=True)
-    parser.add_argument('-v', '--value', help='amount to allocate in picoMOB (default=1e14)', nargs='?', const=1e14, type=int, default=1e14)
+    parser.add_argument('-v', '--value', help='amount to allocate in picoMOB (default=1e14)', nargs='?', const=int(1e14), type=int, default=int(1e14))
     parser.add_argument('--clean', help='remove all old monitors', action='store_true')
     args = parser.parse_args()
 
