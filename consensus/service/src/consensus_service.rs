@@ -431,11 +431,11 @@ impl<
 
         let peer_service =
             consensus_peer_grpc::create_consensus_peer_api(peer_api_service::PeerApiService::new(
-                self.enclave.clone(), // TODO use Arc'ed enclave from above
+                Arc::new(self.enclave.clone()),
+                Arc::new(self.ledger_db.clone()),
+                self.tx_manager.clone(),
                 self.consensus_msgs_from_network.get_sender_fn(),
                 self.create_scp_client_value_sender_fn(),
-                self.ledger_db.clone(),
-                self.tx_manager.clone(),
                 get_highest_scp_message_fn,
                 self.peer_manager.responder_ids(),
                 self.logger.clone(),
