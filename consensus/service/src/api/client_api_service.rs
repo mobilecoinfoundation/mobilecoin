@@ -3,9 +3,9 @@
 //! Serves client-to-node gRPC requests.
 
 use crate::{
+    api::grpc_error::ConsensusGrpcError,
     consensus_service::ProposeTxCallback,
     counters,
-    grpc_error::ConsensusGrpcError,
     tx_manager::{TxManager, TxManagerError},
 };
 use grpcio::{RpcContext, RpcStatus, UnarySink};
@@ -140,7 +140,7 @@ impl ConsensusClientApi for ClientApiService {
 #[cfg(test)]
 mod client_api_tests {
     use crate::{
-        client_api_service::{ClientApiService, PENDING_LIMIT},
+        api::client_api_service::{ClientApiService, PENDING_LIMIT},
         counters,
         tx_manager::{MockTxManager, TxManagerError},
     };

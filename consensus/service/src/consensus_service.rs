@@ -3,9 +3,16 @@
 //! The MobileCoin consensus service.
 
 use crate::{
-    attested_api_service::AttestedApiService, background_work_queue::BackgroundWorkQueue,
-    blockchain_api_service, byzantine_ledger::ByzantineLedger, client_api_service, config::Config,
-    counters, peer_api_service, peer_keepalive::PeerKeepalive, tx_manager::TxManager,
+    api::{
+        attested_api_service::AttestedApiService, blockchain_api_service, client_api_service,
+        peer_api_service,
+    },
+    background_work_queue::BackgroundWorkQueue,
+    byzantine_ledger::ByzantineLedger,
+    config::Config,
+    counters,
+    peer_keepalive::PeerKeepalive,
+    tx_manager::TxManager,
 };
 use base64::{encode_config, URL_SAFE};
 use failure::Fail;

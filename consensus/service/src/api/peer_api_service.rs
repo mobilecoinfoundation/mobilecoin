@@ -3,10 +3,10 @@
 //! Serves node-to-node gRPC requests.
 
 use crate::{
+    api::grpc_error::ConsensusGrpcError,
     background_work_queue::BackgroundWorkQueueSenderFn,
     consensus_service::{IncomingConsensusMsg, ProposeTxCallback},
     counters,
-    grpc_error::ConsensusGrpcError,
     tx_manager::{TxManager, TxManagerError},
 };
 use grpcio::{RpcContext, UnarySink};
@@ -381,8 +381,8 @@ impl ConsensusPeerApi for PeerApiService {
 #[cfg(test)]
 mod tests {
     use crate::{
-        background_work_queue::BackgroundWorkQueueError, consensus_service::IncomingConsensusMsg,
-        peer_api_service::PeerApiService, tx_manager::MockTxManager,
+        api::peer_api_service::PeerApiService, background_work_queue::BackgroundWorkQueueError,
+        consensus_service::IncomingConsensusMsg, tx_manager::MockTxManager,
     };
     use grpcio::{ChannelBuilder, Environment, Error::RpcFailure, Server, ServerBuilder};
     use mc_common::{
