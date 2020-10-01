@@ -27,11 +27,11 @@ if __name__ == '__main__':
             (ledger_is_behind, local_count, remote_count, blocks_per_second) = mobilecoind.wait_for_ledger(max_blocks_to_sync=10000, timeout_seconds=60)
         print("# ledger has downloaded {} blocks\n#".format(remote_count))
 
-    monitors = []
-    subaddress_counts = [1, 10, 100, 500, 1000, 5_000, 10_000, 50_000, 100_000, 200_000]
 
-    # Test how fast we can add a monitor with different numbers of subaddresses
-    print("...testing `mobilecoind.add_monitor` duration vs. num_subaddresses")
+    # Test how fast we can add and remove monitors with different numbers of subaddresses
+    monitors = []
+    subaddress_counts = [1, 10, 100, 500, 1000, 5_000, 10_000, 50_000, 100_000, 200_000, 400_000]
+    print("\n...testing `mobilecoind.add_monitor`")
     print("{:>18}, {:>18}".format("num_subaddresses", "duration (sec)"))
     for count in subaddress_counts:
         entropy_bytes = mobilecoind.generate_entropy()
@@ -44,10 +44,7 @@ if __name__ == '__main__':
         finish = datetime.datetime.now()
         print("{:>18}, {:>18}".format(count, (finish - start).total_seconds()))
         monitors.append(monitor_id)
-    print("\n")
-
-    # Test how fast we can remove a monitor with different numbers of subaddresses
-    print("...testing `mobilecoind.remove_monitor` duration vs. num_subaddresses")
+    print("\n...testing `mobilecoind.remove_monitor`")
     print("{:>18}, {:>18}".format("num_subaddresses", "duration (sec)"))
     for (i, count) in enumerate(subaddress_counts):
         start = datetime.datetime.now()
