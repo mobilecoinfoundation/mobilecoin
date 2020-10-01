@@ -3,7 +3,7 @@
 # Copyright (c) 2018-2020 MobileCoin Inc.
 
 # check the performance for mobilecoind
-import datetime
+import time, datetime
 
 import os,sys
 sys.path.insert(1, os.path.realpath(os.path.join(os.path.pardir, "lib")))
@@ -13,24 +13,19 @@ if __name__ == '__main__':
     # Connect to mobilecoind
     mobilecoind = mobilecoin.Client("localhost:4444", ssl=False)
 
-    # Make sure the ledger is current before we begin
+    # If the ledger db has been recently cleaned, we can get a sense for our average download rate
     (ledger_is_behind, local_count, remote_count, blocks_per_second) = mobilecoind.wait_for_ledger()
     if ledger_is_behind:
-        print("#\n# waiting for the ledger to download {} blocks".format(remote_count - local_count))
+        print("\n...testing ledger download rate while downloading {} blocks".format(remote_count - local_count))
+        prev_local_count = local_count
         while ledger_is_behind:
-            blocks_remaining = (remote_count - local_count)
-            if blocks_per_second > 0:
-                time_remaining_seconds = blocks_remaining / blocks_per_second
-                print("#    {} blocks remain ({} seconds)".format(blocks_remaining, round(time_remaining_seconds, 1)))
-            else:
-                print("#    {} blocks remain (? seconds)".format(blocks_remaining))
-            (ledger_is_behind, local_count, remote_count, blocks_per_second) = mobilecoind.wait_for_ledger(max_blocks_to_sync=10000, timeout_seconds=60)
-        print("# ledger has downloaded {} blocks\n#".format(remote_count))
-
+            (ledger_is_behind, local_count, remote_count, blocks_per_second) = mobilecoind.wait_for_ledger(max_blocks_to_sync=1000, timeout_seconds=10)
+            print("downloaded {} blocks at {} blocks per second".format(local_count - prev_local_count, blocks_per_second))
+            prev_local_count = local_count
 
     # Test how fast we can add and remove monitors with different numbers of subaddresses
     monitors = []
-    subaddress_counts = [1, 10, 100, 500, 1000, 5_000, 10_000, 50_000, 100_000, 200_000, 400_000]
+    subaddress_counts = [1, 10, 100, 500, 1000, 5_000, 10_000, 50_000, 100_000, 200_000]
     print("\n...testing `mobilecoind.add_monitor`")
     print("{:>18}, {:>18}".format("num_subaddresses", "duration (sec)"))
     for count in subaddress_counts:
@@ -53,3 +48,39 @@ if __name__ == '__main__':
         print("{:>18}, {:>18}".format(count, (finish - start).total_seconds()))
     print("\n")
 
+    def active_monitors():
+        count = 0
+        for monitor_id in mobilecoind.get_monitor_list():
+            (monitor_is_behind, next_block, remote_count, blocks_per_second) = mobilecoind.wait_for_monitor(monitor_id)
+            if monitor_is_behind:
+                count += 1
+        print("...there are {} monitors working")
+
+    # watch performance while the exiting monitors sync
+    print("\n...testing block processing rate with all active monitors")
+    monitors_are_behind = True
+    while monitors_are_behind:
+        monitors_are_behind = False
+        for monitor_id in mobilecoind.get_monitor_list():
+            (monitor_is_behind, prev_next_block, remote_count, blocks_per_second) = mobilecoind.wait_for_monitor(monitor_id)
+            if monitor_is_behind:
+                (monitor_is_behind, next_block, remote_count, blocks_per_second) = mobilecoind.wait_for_ledger(max_blocks_to_sync=1000, timeout_seconds=10)
+                print("{} processed {} blocks at {} blocks per second".format(monitor_id.hex(), next_block - prev_next_block, blocks_per_second))
+                if monitor_is_behind:
+                    monitors_are_behind = True
+
+    # watch performance for a new monitor
+    print("\n...testing block processing rate for a new monitor")
+    entropy_bytes = mobilecoind.generate_entropy()
+    account_key = mobilecoind.get_account_key(entropy_bytes)
+    monitor_id = mobilecoind.add_monitor(account_key,
+                                         first_subaddress = mobilecoin.DEFAULT_SUBADDRESS_INDEX,
+                                         num_subaddresses = 1,
+                                         first_block = 0)
+
+    (monitor_is_behind, prev_next_block, remote_count, blocks_per_second) = mobilecoind.wait_for_monitor(monitor_id)
+    while monitor_is_behind:
+        (monitor_is_behind, next_block, remote_count, blocks_per_second) = mobilecoind.wait_for_ledger(max_blocks_to_sync=1000, timeout_seconds=10)
+        print("{} processed {} blocks at {} blocks per second".format(monitor_id.hex(), next_block - prev_next_block, blocks_per_second))
+        prev_next_block = next_block
+    mobilecoind.remove_monitor(monitor_id)
