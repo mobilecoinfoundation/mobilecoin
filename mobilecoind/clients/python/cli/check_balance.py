@@ -29,7 +29,7 @@ if __name__ == '__main__':
     # Wait for the monitor to process the complete ledger (this also downloads the complete ledger)
     (monitor_is_behind, next_block, remote_count, blocks_per_second) = mobilecoind.wait_for_monitor(monitor_id)
     if monitor_is_behind:
-        print("#\n# waiting for the monitor to process {} blocks".format(remote_count - next_block))
+        print("\n# waiting for the monitor to process {} blocks".format(remote_count - next_block))
         while monitor_is_behind:
             blocks_remaining = (remote_count - next_block)
             if blocks_per_second > 0:
@@ -38,7 +38,7 @@ if __name__ == '__main__':
             else:
                 print("#    {} blocks remain (? seconds)".format(blocks_remaining))
             (monitor_is_behind, next_block, remote_count, blocks_per_second) = mobilecoind.wait_for_monitor(monitor_id, max_blocks_to_sync=2000, timeout_seconds=20)
-        print("# monitor has processed all {} blocks\n#".format(remote_count))
+        print("# monitor has processed all {} blocks\n".format(remote_count))
 
 
     balance_picoMOB = mobilecoind.get_balance(monitor_id, subaddress_index=args.subaddress)

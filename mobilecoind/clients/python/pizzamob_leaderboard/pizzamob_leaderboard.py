@@ -2,11 +2,12 @@
 
 import argparse
 import json
-import sys
 
 from flask import Flask, render_template, request
 from tinydb import TinyDB, Query
 
+import os,sys
+sys.path.insert(1, os.path.realpath(os.path.join(os.path.pardir, "lib")))
 import mobilecoin
 
 MOB = 1_000_000_000_000

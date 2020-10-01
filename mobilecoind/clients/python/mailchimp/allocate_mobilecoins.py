@@ -4,11 +4,13 @@
 
 # used to allocation TestNet mobilecoins to users who sign up for our mailing list
 
-import sys, os.path
-import mobilecoin
 import argparse
 from mailchimp3 import MailChimp
 import time
+
+import os,sys
+sys.path.insert(1, os.path.realpath(os.path.join(os.path.pardir, "lib")))
+import mobilecoin
 
 TX_RECEIPT_CHECK_INTERVAL_SECONDS = 2
 
