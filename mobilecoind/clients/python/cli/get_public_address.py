@@ -16,7 +16,8 @@ if __name__ == '__main__':
     mobilecoind = mobilecoin.Client("localhost:4444", ssl=False)
 
     # Parse the arguments
-    parser = argparse.ArgumentParser(description='You must provide your master key as a 32 byte hex string.')
+    parser = argparse.ArgumentParser(
+        description='Displays public address information for a provided master key, or for a random master key if no key is provided.')
     parser.add_argument('-k', '--key', help='account master key', type=str)
     parser.add_argument('-s', '--subaddress', help='(optional) subaddress', nargs='?', const=mobilecoin.DEFAULT_SUBADDRESS_INDEX, type=int, default=mobilecoin.DEFAULT_SUBADDRESS_INDEX)
     args = parser.parse_args()

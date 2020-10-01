@@ -24,7 +24,9 @@ if __name__ == '__main__':
     mobilecoind = mobilecoin.Client("localhost:4444", ssl=False)
 
     # Parse the arguments
-    parser = argparse.ArgumentParser(description='You must provide sender and recipient details.')
+    parser = argparse.ArgumentParser(
+        description='Send all available funds (default) or VALUE pMOB from a sender\'s Master Key to a recipient, specified by Master Key or Address Code.'
+    )
     parser.add_argument(
         '--sender',
         help='sender account master key',
@@ -33,14 +35,14 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         '--recipient',
-        help='recipient account master key or b58 address code',
+        help='recipient account master key, or recipient base-58 Address Code',
         type=str,
         required=True
     )
     parser.add_argument(
         '-v',
         '--value',
-        help='optional value in picoMOB (defaults to all funds)',
+        help='(optional) value to send in picoMOB',
         type=int,
         required=False
     )

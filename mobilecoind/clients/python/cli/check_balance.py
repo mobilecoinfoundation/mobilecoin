@@ -16,7 +16,9 @@ if __name__ == '__main__':
     mobilecoind = mobilecoin.Client("localhost:4444", ssl=False)
 
     # Parse the arguments
-    parser = argparse.ArgumentParser(description='You must provide your master key as a 32 byte hex string.')
+    parser = argparse.ArgumentParser(
+        description='Processes all downloaded blocks to display current balance information for a provided master key.'
+    )
     parser.add_argument('-k', '--key', help='account master key', type=str, required=True)
     parser.add_argument('-s', '--subaddress', help='(optional) subaddress', nargs='?', const=mobilecoin.DEFAULT_SUBADDRESS_INDEX, type=int, default=mobilecoin.DEFAULT_SUBADDRESS_INDEX)
     parser.add_argument('--first-block', help='(optional) first ledger block to scan', nargs='?', const=0, type=int, dest='first_block', default=0)
