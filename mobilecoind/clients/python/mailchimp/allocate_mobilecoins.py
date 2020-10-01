@@ -51,7 +51,7 @@ def allocate_MOB(mailchimp_member_record, amount_picoMOB):
 
     # no need to start the recipient from the origin block since we know we just created this account
     recipient_monitor_id = mobilecoind.add_monitor(recipient_account_key, first_block=block_count)
-    recipient_public_address = mobilecoind.get_public_address(recipient_monitor_id)
+    recipient_public_address = mobilecoind.get_public_address(recipient_monitor_id).public_address
     print("# adding monitor {} for {} (first block = {})".format(recipient_monitor_id.hex(), new_user_email, block_count))
 
     # Construct and send the token allocation transaction
