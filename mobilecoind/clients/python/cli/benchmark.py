@@ -28,11 +28,11 @@ if __name__ == '__main__':
         print("# ledger has downloaded {} blocks\n#".format(remote_count))
 
     monitors = []
+    subaddress_counts = [1, 10, 100, 1000, 10_000, 100_000, 500_000]
 
     # Test how fast we can add a monitor with different numbers of subaddresses
     print("...testing `mobilecoind.add_monitor` duration vs. num_subaddresses")
-    print("{:>18}, {:>18}".format("num_subaddresses", "duration (sec)")
-    subaddress_counts = [1, 10, 100, 1000, 10_000, 100_000, 500_000]
+    print("{:>18}, {:>18}".format("num_subaddresses", "duration (sec)"))
     for count in subaddress_counts:
         entropy_bytes = mobilecoind.generate_entropy()
         account_key = mobilecoind.get_account_key(entropy_bytes)
@@ -48,8 +48,7 @@ if __name__ == '__main__':
 
     # Test how fast we can remove a monitor with different numbers of subaddresses
     print("...testing `mobilecoind.remove_monitor` duration vs. num_subaddresses")
-    print("{:>18}, {:>18}".format("num_subaddresses", "duration (sec)")
-    subaddress_counts = [1, 10, 100, 1000, 10_000, 100_000, 500_000]
+    print("{:>18}, {:>18}".format("num_subaddresses", "duration (sec)"))
     for count in subaddress_counts:
         start = datetime.datetime.now()
         monitor_id = mobilecoind.remove_monitor(monitor_id)
