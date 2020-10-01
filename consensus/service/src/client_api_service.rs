@@ -165,18 +165,7 @@ mod client_api_tests {
     };
     use mc_util_grpc::auth::{AnonymousAuthenticator, TokenAuthenticator};
     use serial_test_derive::serial;
-    use std::{
-        sync::{
-            atomic::{AtomicUsize, Ordering::SeqCst},
-            Arc,
-        },
-        time::Duration,
-    };
-
-    fn get_free_port() -> u16 {
-        static PORT_NR: AtomicUsize = AtomicUsize::new(0);
-        PORT_NR.fetch_add(1, SeqCst) as u16 + 30100
-    }
+    use std::{sync::Arc, time::Duration};
 
     /// Starts the service on localhost and connects a client to it.
     fn get_client_server(instance: ClientApiService) -> (ConsensusClientApiClient, Server) {
@@ -184,7 +173,7 @@ mod client_api_tests {
         let env = Arc::new(Environment::new(1));
         let mut server = ServerBuilder::new(env.clone())
             .register_service(service)
-            .bind("127.0.0.1", get_free_port())
+            .bind("127.0.0.1", 0)
             .build()
             .unwrap();
         server.start();
