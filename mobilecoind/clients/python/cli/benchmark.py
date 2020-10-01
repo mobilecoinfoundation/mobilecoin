@@ -49,9 +49,9 @@ if __name__ == '__main__':
     # Test how fast we can remove a monitor with different numbers of subaddresses
     print("...testing `mobilecoind.remove_monitor` duration vs. num_subaddresses")
     print("{:>18}, {:>18}".format("num_subaddresses", "duration (sec)"))
-    for count in subaddress_counts:
+    for (i, count) in enumerate(subaddress_counts):
         start = datetime.datetime.now()
-        monitor_id = mobilecoind.remove_monitor(monitor_id)
+        monitor_id = mobilecoind.remove_monitor(monitors[i])
         finish = datetime.datetime.now()
         print("{:>18}, {:>18}".format(count, (finish - start).total_seconds()))
     print("\n")
