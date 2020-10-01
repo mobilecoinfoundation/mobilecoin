@@ -29,7 +29,7 @@ if __name__ == '__main__':
 
     # print the public address information
     print("\n")
-    print("    {:<18}{}".format("Master Key:", args.key))
+    print("    {:<18}{}".format("Master Key:", entropy_bytes.hex()))
     print("    {:<18}{}".format("Subaddress Index:", args.subaddress))
     print("    {:<18}{}".format("Address Code:", public_address.b58_code))
     print("    {:<18}{}".format("Address URL:", public_address.mob_url))
