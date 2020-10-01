@@ -40,8 +40,11 @@ def allocate_MOB(mailchimp_member_record, amount_picoMOB):
 
     # abort if sender's balance is too low
     sender_balance_picoMOB = mobilecoind.get_balance(sender_monitor_id)
-    if sender_balance_picoMOB < amount_picoMOB:
-        print("# sender's balance is running low ({})... aborting!".format(mobilecoin.display_as_MOB(sender_balance_picoMOB)))
+    if sender_balance_picoMOB < (amount_picoMOB + mobilecoin.MINIMUM_FEE):
+        print(
+            "# sender's balance is too low ({})... aborting!"
+            .format(mobilecoin.display_as_MOB(sender_balance_picoMOB))
+        )
         sys.exit()
 
     # create and fund a new MobileCoin TestNet account
@@ -52,7 +55,10 @@ def allocate_MOB(mailchimp_member_record, amount_picoMOB):
     # no need to start the recipient from the origin block since we know we just created this account
     recipient_monitor_id = mobilecoind.add_monitor(recipient_account_key, first_block=block_count)
     recipient_public_address = mobilecoind.get_public_address(recipient_monitor_id).public_address
-    print("# adding monitor {} for {} (first block = {})".format(recipient_monitor_id.hex(), new_user_email, block_count))
+    print(
+        "# adding monitor {} for {} (first block = {})"
+        .format(recipient_monitor_id.hex(), new_user_email, block_count)
+    )
 
     # Construct and send the token allocation transaction
     tx_list = mobilecoind.get_unspent_tx_output_list(sender_monitor_id)
@@ -84,13 +90,25 @@ def allocate_MOB(mailchimp_member_record, amount_picoMOB):
     wait_for_monitor(recipient_monitor_id)
     recipient_balance = mobilecoind.get_balance(recipient_monitor_id)
 
-    print("# recipient balance = {} picoMOB, sender balance = {} picoMOB".format(recipient_balance, sender_balance))
+    print(
+        "# recipient balance = {} picoMOB ({}), sender balance = {} picoMOB ({})"
+        .format(
+            recipient_balance,
+            mobilecoin.display_as_MOB(recipient_balance),
+            sender_balance,
+            mobilecoin.display_as_MOB(sender_balance)
+        )
+    )
 
     # If the recipient's balance is not as expected, complain and do not trigger the email in Mailchimp
     if recipient_balance != amount_picoMOB:
         print(
             "ERROR... recipient balance is not correct! Entropy {} has only {}. Expected {}."
-            .format(recipient_entropy.hex(), mobilecoin.display_as_MOB(recipient_balance), mobilecoin.display_as_MOB(amount_picoMOB))
+            .format(
+                recipient_entropy.hex(),
+                mobilecoin.display_as_MOB(recipient_balance),
+                mobilecoin.display_as_MOB(amount_picoMOB)
+            )
         )
         email_sent = 0
 

@@ -25,11 +25,42 @@ if __name__ == '__main__':
 
     # Parse the arguments
     parser = argparse.ArgumentParser(description='You must provide sender and recipient details.')
-    parser.add_argument('--sender', help='sender account master key', type=str, required=True)
-    parser.add_argument('--recipient', help='recipient account master key or b58 address code', type=str, required=True)
-    parser.add_argument('-v', '--value', help='optional value in picoMOB (defaults to all funds)', type=int, required=False)
-    parser.add_argument('--sender-subaddress', help='(optional) sender subaddress', nargs='?', const=mobilecoin.DEFAULT_SUBADDRESS_INDEX, type=int, dest='sender_subaddress', default=mobilecoin.DEFAULT_SUBADDRESS_INDEX)
-    parser.add_argument('--recipient-subaddress', help='(optional) recipient subaddress', nargs='?', const=mobilecoin.DEFAULT_SUBADDRESS_INDEX, type=int, dest='recipient_subaddress', default=mobilecoin.DEFAULT_SUBADDRESS_INDEX)
+    parser.add_argument(
+        '--sender',
+        help='sender account master key',
+        type=str,
+        required=True
+    )
+    parser.add_argument(
+        '--recipient',
+        help='recipient account master key or b58 address code',
+        type=str,
+        required=True
+    )
+    parser.add_argument(
+        '-v',
+        '--value',
+        help='optional value in picoMOB (defaults to all funds)',
+        type=int,
+        required=False
+    )
+    parser.add_argument(
+        '--sender-subaddress',
+        help='(optional) sender subaddress',
+        nargs='?',
+        const=mobilecoin.DEFAULT_SUBADDRESS_INDEX,
+        type=int,
+        dest='sender_subaddress',
+        default=mobilecoin.DEFAULT_SUBADDRESS_INDEX
+    )
+    parser.add_argument(
+        '--recipient-subaddress',
+        help='(optional) recipient subaddress',
+        nargs='?',
+        const=mobilecoin.DEFAULT_SUBADDRESS_INDEX,
+        type=int, dest='recipient_subaddress',
+        default=mobilecoin.DEFAULT_SUBADDRESS_INDEX
+    )
     args = parser.parse_args()
 
     # create a monitor for the sender
@@ -67,10 +98,13 @@ if __name__ == '__main__':
         value_to_send_picoMOB = balance_picoMOB - mobilecoin.MINIMUM_FEE
 
         if value_to_send_picoMOB <= 0:
-            print("\nSender's balance is too low to cover fee. ({} < {})\n".format(
-                      mobilecoin.display_as_MOB(balance_picoMOB),
-                      mobilecoin.display_as_MOB(mobilecoin.MINIMUM_FEE)
-                  ))
+            print(
+                "\nSender's balance is too low to cover fee. ({} < {})\n"
+                .format(
+                    mobilecoin.display_as_MOB(balance_picoMOB),
+                    mobilecoin.display_as_MOB(mobilecoin.MINIMUM_FEE)
+                )
+            )
             sys.exit(0)
 
     else:
