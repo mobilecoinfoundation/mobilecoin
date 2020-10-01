@@ -1,3 +1,7 @@
+// Copyright (c) 2018-2020 MobileCoin Inc.
+
+//! gRPC APIs
+
 mod attested_api_service;
 mod blockchain_api_service;
 mod client_api_service;
