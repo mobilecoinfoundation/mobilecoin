@@ -65,6 +65,10 @@ if __name__ == '__main__':
         # send as much as possible after accounting for the fee
         value_to_send_picoMOB = balance_picoMOB - mobilecoin.MINIMUM_FEE
 
+        if value_to_send_picoMOB <= 0:
+            print("\nSender's balance is too low to cover fee. ({}pMOB < {}pMOB)\n".format(balance_picoMOB, mobilecoin.MINIMUM_FEE)
+            sys.exit(0)
+
     else:
         value_to_send_picoMOB = args.value
 
