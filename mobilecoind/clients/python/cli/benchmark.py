@@ -17,11 +17,18 @@ if __name__ == '__main__':
     (ledger_is_behind, local_count, remote_count, blocks_per_second) = mobilecoind.wait_for_ledger()
     if ledger_is_behind:
         print("\n...testing ledger download rate while downloading {} blocks".format(remote_count - local_count))
+        accum_count = 0
+        accum_rate_times_count = 0
         prev_local_count = local_count
         while ledger_is_behind:
             (ledger_is_behind, local_count, remote_count, blocks_per_second) = mobilecoind.wait_for_ledger(max_blocks_to_sync=1000, timeout_seconds=10)
-            print("downloaded {} blocks at {} blocks per second".format(local_count - prev_local_count, blocks_per_second))
+            delta = local_count - prev_local_count
+            print("downloaded {} blocks at {} blocks per second".format(delta, blocks_per_second))
+            accum_count += delta
+            accum_rate_times_count += delta * blocks_per_second
             prev_local_count = local_count
+
+        print("downloaded at an average of {} blocks per second".format(accum_rate_times_count/accum_count))
     else:
         print("\n...can't test ledger download rate because ledger is in sync!")
 
@@ -73,6 +80,8 @@ if __name__ == '__main__':
     # watch performance for a new monitor
     for count in subaddress_counts:
         print("\n...testing block processing rate with new monitor with {} subaddresses".format(count))
+        accum_count = 0
+        accum_rate_times_count = 0
         entropy_bytes = mobilecoind.generate_entropy()
         account_key = mobilecoind.get_account_key(entropy_bytes)
         monitor_id = mobilecoind.add_monitor(account_key,
@@ -83,9 +92,13 @@ if __name__ == '__main__':
         (monitor_is_behind, prev_next_block, remote_count, blocks_per_second) = mobilecoind.wait_for_monitor(monitor_id)
         while monitor_is_behind:
             (monitor_is_behind, next_block, remote_count, blocks_per_second) = mobilecoind.wait_for_monitor(monitor_id, max_blocks_to_sync=1000, timeout_seconds=10)
-            print("{} processed {} blocks at {} blocks per second".format(monitor_id.hex(), next_block - prev_next_block, blocks_per_second))
+            delta = next_block - prev_next_block
+            print("{} processed {} blocks at {} blocks per second".format(monitor_id.hex(), delta, blocks_per_second))
+            accum_count += delta
+            accum_rate_times_count += delta * blocks_per_second
             prev_next_block = next_block
 
+        print("{} averaged {} blocks per second".format(monitor_id.hex(), accum_rate_times_count/accum_count))
         mobilecoind.remove_monitor(monitor_id)
 
     print("\n")
