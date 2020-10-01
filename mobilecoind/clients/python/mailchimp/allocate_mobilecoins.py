@@ -73,7 +73,7 @@ def allocate_MOB(mailchimp_member_record, amount_picoMOB):
     while tx_status == mobilecoin.TX_STATUS_UNKNOWN:
         time.sleep(TX_RECEIPT_CHECK_INTERVAL_SECONDS)
         tx_status = int(mobilecoind.get_tx_status_as_sender(sender_tx_receipt))
-        print("# transaction status is {}".format(tx_status))
+        print("# transaction status is {}".format(mobilecoin.parse_tx_status(tx_status)))
 
     if tx_status != mobilecoin.TX_STATUS_VERIFIED:
         print("ERROR... Transaction failed with status {}".format(tx_status))
@@ -185,5 +185,5 @@ if __name__ == '__main__':
     else:
         print("# no new records found.")
 
-    print("# * Finished processing all existing records")
+    print("# * Finished processing all existing records\n")
 

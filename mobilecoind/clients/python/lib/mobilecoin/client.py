@@ -30,6 +30,18 @@ TX_STATUS_VERIFIED = TxStatus.Verified
 TX_STATUS_TOMBSTONE_BLOCK_EXCEEDED = TxStatus.TombstoneBlockExceeded
 TX_STATUS_INVALID_CONFIRMATION_NUMBER = TxStatus.InvalidConfirmationNumber
 
+def parse_tx_status(status:int) -> str:
+    if status == TX_STATUS_UNKNOWN:
+        return "UNKNOWN"
+    elif status == TX_STATUS_VERIFIED:
+        return "VERIFIED"
+    elif status == TX_STATUS_TOMBSTONE_BLOCK_EXCEEDED:
+        return "TOMBSTONE_BLOCK_EXCEEDED"
+    elif status == TX_STATUS_INVALID_CONFIRMATION_NUMBER:
+        return "INVALID_CONFIRMATION_NUMBER"
+    else:
+        return "UNEXPECTED?"
+
 class MonitorNotFound(Exception):
     """ When a Monitor is not Found"""
     pass
