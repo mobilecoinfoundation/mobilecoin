@@ -122,6 +122,7 @@ if __name__ == '__main__':
     while tx_status == mobilecoin.TX_STATUS_UNKNOWN:
         time.sleep(TX_RECEIPT_CHECK_INTERVAL_SECONDS)
         tx_status = int(mobilecoind.get_tx_status_as_sender(sender_tx_receipt))
+        print("transaction status is: {}".format(mobilecoin.parse_tx_status(tx_status)))
 
     if tx_status == mobilecoin.TX_STATUS_VERIFIED:
         transaction_status = "Verified"
