@@ -208,12 +208,17 @@ mod test {
 
             let not_a = RistrettoPrivate::from_random(&mut rng);
 
+            assert_eq!(a.to_bytes(), not_a.to_bytes());
+
             for plaintext in &[&plaintext1[..], &plaintext2[..]] {
                 for _reps in 0..50 {
                     let ciphertext = algo.encrypt(&mut rng, &a_pub, plaintext).unwrap();
                     let decrypted = algo.decrypt(&not_a, &ciphertext);
-                    assert!(decrypted.is_err());
-                    assert_eq!(decrypted, Err(Error::MacFailed));
+                    if decrypted.is_err() {
+                        assert_eq!(decrypted, Err(Error::MacFailed));
+                    } else {
+                        assert_eq!(decrypted.unwrap().0, false);
+                    }
                 }
             }
         });
