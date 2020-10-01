@@ -207,7 +207,7 @@ mod testing {
             let not_z = RistrettoPrivate::from_random(&mut rng);
 
             let result = FogHint::decrypt(&not_z, &ciphertext);
-            assert_eq!(Err(CryptoBoxError::MacFailed), result);
+            assert_eq!(Err(CryptoBoxError::WrongMagicBytes), result);
         });
     }
 }
