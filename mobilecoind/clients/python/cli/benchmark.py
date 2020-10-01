@@ -22,6 +22,8 @@ if __name__ == '__main__':
             (ledger_is_behind, local_count, remote_count, blocks_per_second) = mobilecoind.wait_for_ledger(max_blocks_to_sync=1000, timeout_seconds=10)
             print("downloaded {} blocks at {} blocks per second".format(local_count - prev_local_count, blocks_per_second))
             prev_local_count = local_count
+    else:
+        print("\n...can't test ledger download rate because ledger is in sync!")
 
     # Test how fast we can add and remove monitors with different numbers of subaddresses
     monitors = []
@@ -46,7 +48,6 @@ if __name__ == '__main__':
         monitor_id = mobilecoind.remove_monitor(monitors[i])
         finish = datetime.datetime.now()
         print("{:>18}, {:>18}".format(count, (finish - start).total_seconds()))
-    print("\n")
 
     def active_monitors():
         count = 0
@@ -57,7 +58,7 @@ if __name__ == '__main__':
         print("...there are {} monitors working")
 
     # watch performance while the exiting monitors sync
-    print("\n...testing block processing rate with all active monitors")
+    print("\n...testing block processing rate using all active monitors")
     monitors_are_behind = True
     while monitors_are_behind:
         monitors_are_behind = False
@@ -70,7 +71,7 @@ if __name__ == '__main__':
                     monitors_are_behind = True
 
     # watch performance for a new monitor
-    print("\n...testing block processing rate for a new monitor")
+    print("\n...testing block processing rate with a new monitor")
     entropy_bytes = mobilecoind.generate_entropy()
     account_key = mobilecoind.get_account_key(entropy_bytes)
     monitor_id = mobilecoind.add_monitor(account_key,
@@ -83,4 +84,7 @@ if __name__ == '__main__':
         (monitor_is_behind, next_block, remote_count, blocks_per_second) = mobilecoind.wait_for_ledger(max_blocks_to_sync=1000, timeout_seconds=10)
         print("{} processed {} blocks at {} blocks per second".format(monitor_id.hex(), next_block - prev_next_block, blocks_per_second))
         prev_next_block = next_block
+
     mobilecoind.remove_monitor(monitor_id)
+
+    print("\n")
