@@ -51,9 +51,10 @@ mod test {
             for plaintext in &[&plaintext1[..], &plaintext2[..]] {
                 for _reps in 0..50 {
                     let ciphertext = algo.encrypt(&mut rng, &a_pub, plaintext).unwrap();
-                    let decrypted = algo.decrypt(&a, &ciphertext).expect("decryption failed!");
+                    let (success, decrypted) = algo.decrypt(&a, &ciphertext).expect("decryption failed!");
                     assert_eq!(plaintext.len(), decrypted.len());
                     assert_eq!(plaintext, &&decrypted[..]);
+                    assert_eq!(success, true);
                 }
             }
         });
@@ -97,10 +98,11 @@ mod test {
                     let ciphertext = algo
                         .encrypt_fixed_length(&mut rng, &a_pub, plaintext)
                         .unwrap();
-                    let decrypted = algo
+                    let (success, decrypted) = algo
                         .decrypt_fixed_length(&a, &ciphertext)
                         .expect("decryption failed!");
                     assert_eq!(plaintext, &decrypted);
+                    assert_eq!(success, true);
                 }
             }
         });
