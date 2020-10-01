@@ -172,7 +172,7 @@ impl PeerApiService {
             .iter()
             .map(|bytes| {
                 TxHash::try_from(&bytes[..])
-                    .map_err(|_| ConsensusGrpcError::InvalidArgument("Invalid TxHash".to_string()))
+                    .map_err(|_| ConsensusGrpcError::InvalidArgument("Invalid TxHash".to_owned()))
             })
             .collect::<Result<Vec<TxHash>, ConsensusGrpcError>>()?;
 
@@ -463,8 +463,8 @@ mod tests {
 
         // ResponderIds seem to be "host:port" strings.
         let known_responder_ids = vec![
-            ResponderId("A:port".to_string()),
-            ResponderId("B:port".to_string()),
+            ResponderId("A:port".to_owned()),
+            ResponderId("B:port".to_owned()),
         ];
 
         let instance = PeerApiService::new(
@@ -483,7 +483,7 @@ mod tests {
         // A message from an unknown peer.
         // The payload can be empty because the message should be ignored before the payload is read.
         let mut message = ConsensusMsg::new();
-        message.set_from_responder_id("X:port".to_string());
+        message.set_from_responder_id("X:port".to_owned());
 
         match client.send_consensus_msg(&message) {
             Ok(consensus_msg_response) => {
@@ -510,8 +510,8 @@ mod tests {
 
         // ResponderIds seem to be "host:port" strings.
         let known_responder_ids = vec![
-            ResponderId("A:port".to_string()),
-            ResponderId("B:port".to_string()),
+            ResponderId("A:port".to_owned()),
+            ResponderId("B:port".to_owned()),
         ];
 
         let instance = PeerApiService::new(
@@ -576,8 +576,8 @@ mod tests {
 
         // ResponderIds seem to be "host:port" strings.
         let known_responder_ids = vec![
-            ResponderId("A:port".to_string()),
-            ResponderId("B:port".to_string()),
+            ResponderId("A:port".to_owned()),
+            ResponderId("B:port".to_owned()),
         ];
 
         let instance = PeerApiService::new(
@@ -623,8 +623,8 @@ mod tests {
 
         // ResponderIds seem to be "host:port" strings.
         let known_responder_ids = vec![
-            ResponderId("A:port".to_string()),
-            ResponderId("B:port".to_string()),
+            ResponderId("A:port".to_owned()),
+            ResponderId("B:port".to_owned()),
         ];
 
         let instance = PeerApiService::new(

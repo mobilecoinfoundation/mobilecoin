@@ -3,10 +3,7 @@
 //! The MobileCoin consensus service.
 
 use crate::{
-    api::{
-        attested_api_service::AttestedApiService, blockchain_api_service, client_api_service,
-        peer_api_service,
-    },
+    api::{AttestedApiService, BlockchainApiService, ClientApiService, PeerApiService},
     background_work_queue::BackgroundWorkQueue,
     byzantine_ledger::ByzantineLedger,
     config::Config,
@@ -316,8 +313,8 @@ impl<
         // Setup GRPC services.
         let enclave = Arc::new(self.enclave.clone());
 
-        let client_service = consensus_client_grpc::create_consensus_client_api(
-            client_api_service::ClientApiService::new(
+        let client_service =
+            consensus_client_grpc::create_consensus_client_api(ClientApiService::new(
                 enclave.clone(),
                 self.create_scp_client_value_sender_fn(),
                 Arc::new(self.ledger_db.clone()),
@@ -325,8 +322,7 @@ impl<
                 self.create_is_serving_user_requests_fn(),
                 self.client_authenticator.clone(),
                 self.logger.clone(),
-            ),
-        );
+            ));
 
         let attested_service = create_attested_api(AttestedApiService::<ClientSession>::new(
             enclave,
@@ -334,13 +330,12 @@ impl<
             self.logger.clone(),
         ));
 
-        let blockchain_service = consensus_common_grpc::create_blockchain_api(
-            blockchain_api_service::BlockchainApiService::new(
+        let blockchain_service =
+            consensus_common_grpc::create_blockchain_api(BlockchainApiService::new(
                 self.ledger_db.clone(),
                 self.client_authenticator.clone(),
                 self.logger.clone(),
-            ),
-        );
+            ));
 
         let is_serving_user_requests = self.create_is_serving_user_requests_fn();
         let health_check_callback: Arc<dyn Fn(&str) -> HealthCheckStatus + Sync + Send> =
@@ -428,25 +423,23 @@ impl<
             })
         });
 
-        let blockchain_service = consensus_common_grpc::create_blockchain_api(
-            blockchain_api_service::BlockchainApiService::new(
+        let blockchain_service =
+            consensus_common_grpc::create_blockchain_api(BlockchainApiService::new(
                 self.ledger_db.clone(),
                 peer_authenticator.clone(),
                 self.logger.clone(),
-            ),
-        );
-
-        let peer_service =
-            consensus_peer_grpc::create_consensus_peer_api(peer_api_service::PeerApiService::new(
-                Arc::new(self.enclave.clone()),
-                Arc::new(self.ledger_db.clone()),
-                self.tx_manager.clone(),
-                self.consensus_msgs_from_network.get_sender_fn(),
-                self.create_scp_client_value_sender_fn(),
-                get_highest_scp_message_fn,
-                self.peer_manager.responder_ids(),
-                self.logger.clone(),
             ));
+
+        let peer_service = consensus_peer_grpc::create_consensus_peer_api(PeerApiService::new(
+            Arc::new(self.enclave.clone()),
+            Arc::new(self.ledger_db.clone()),
+            self.tx_manager.clone(),
+            self.consensus_msgs_from_network.get_sender_fn(),
+            self.create_scp_client_value_sender_fn(),
+            get_highest_scp_message_fn,
+            self.peer_manager.responder_ids(),
+            self.logger.clone(),
+        ));
 
         let attested_service = create_attested_api(AttestedApiService::<PeerSession>::new(
             enclave,
