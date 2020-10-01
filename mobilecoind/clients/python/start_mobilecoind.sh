@@ -23,17 +23,6 @@ do
   shift
 done
 
-# install mobilecoind from the current TestNet release
-echo "Downloading mobilecoind from latest $RELEASE_URL..."
-if [ ! -d "$TMP_DIR/$RELEASE_DIR" ]
-  then
-    echo "Installing mobilecoind binary."
-    curl -L https://github.com/mobilecoinofficial/mobilecoin/releases/latest/download/$RELEASE_URL.tar.gz --output latest.tar.gz
-    tar -zxvf ./latest.tar.gz
-    rm ./latest.tar.gz
-    mv ./$RELEASE_DIR $TMP_DIR
-fi
-
 # kill old mobilecoind processes
 mobilecoind_processes=$(ps -ef | grep mobilecoind | grep -v grep | grep -v start_mobilecoind) #no spaces!
 if [ ! -z "$mobilecoind_processes" -a "$mobilecoind_processes" != " " ];
@@ -41,6 +30,14 @@ if [ ! -z "$mobilecoind_processes" -a "$mobilecoind_processes" != " " ];
     echo "Killing old mobilecoind processes."
     ps -ef | grep mobilecoind | grep -v grep | grep -v start_mobilecoind | awk '{print $2}' | xargs kill
 fi
+
+# install mobilecoind from the current TestNet release
+echo "Installing mobilecoind from latest $RELEASE_URL..."
+rm -rf $TMP_DIR/$RELEASE_DIR
+curl -L https://github.com/mobilecoinofficial/mobilecoin/releases/latest/download/$RELEASE_URL.tar.gz --output latest.tar.gz
+tar -zxvf ./latest.tar.gz
+rm ./latest.tar.gz
+mv ./$RELEASE_DIR $TMP_DIR
 
 export RUST_LOG=debug
 
