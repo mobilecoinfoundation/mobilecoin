@@ -17,6 +17,8 @@ where
     type TagSize = U16;
     type CiphertextOverhead = U0;
 
+    /// A constant time version of the original
+    /// https://docs.rs/aes-gcm/0.6.0/src/aes_gcm/lib.rs.html#251
     fn ct_decrypt_in_place_detached(
         &self,
         nonce: &GenericArray<u8, NonceSize>,
