@@ -25,12 +25,12 @@ if __name__ == '__main__':
             (ledger_is_behind, local_count, remote_count, blocks_per_second) = mobilecoind.wait_for_ledger(max_blocks_to_sync=1000, timeout_seconds=10)
             delta = local_count - prev_local_count
             elapsed_time = (datetime.datetime.now() - start).total_seconds()
-            print("{:>8.3f}: downloaded {} blocks at {} blocks per second".format(elapsed_time, delta, blocks_per_second))
+            print("{:>10.3f}: downloaded {} blocks at {} blocks per second".format(elapsed_time, delta, blocks_per_second))
             accum_count += delta
             accum_rate_times_count += delta * blocks_per_second
             prev_local_count = local_count
 
-        print("downloaded at an average of {} blocks per second".format(accum_rate_times_count/accum_count))
+        print("ledger download averaged {} blocks per second".format(accum_rate_times_count/accum_count))
     else:
         print("\n...can't test ledger download rate because ledger is in sync!")
 
@@ -97,7 +97,7 @@ if __name__ == '__main__':
             (monitor_is_behind, next_block, remote_count, blocks_per_second) = mobilecoind.wait_for_monitor(monitor_id, max_blocks_to_sync=1000, timeout_seconds=10)
             delta = next_block - prev_next_block
             elapsed_time = (datetime.datetime.now() - start).total_seconds()
-            print("{:>8.3f}: {} processed {} blocks at {} blocks per second".format(elapsed_time, monitor_id.hex(), delta, blocks_per_second))
+            print("{:>10.3f}: {} processed {} blocks at {} blocks per second".format(elapsed_time, monitor_id.hex(), delta, blocks_per_second))
             accum_count += delta
             accum_rate_times_count += delta * blocks_per_second
             prev_next_block = next_block
