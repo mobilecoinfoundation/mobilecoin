@@ -40,8 +40,8 @@ def allocate_MOB(mailchimp_member_record, amount_picoMOB):
 
     # abort if sender's balance is too low
     sender_balance_picoMOB = mobilecoind.get_balance(sender_monitor_id)
-    if sender_balance_picoMOB < args.value * MOB:
-        print("# sender's balance is running low ({} MOB)... aborting!".format(sender_balance_picoMOB/MOB))
+    if sender_balance_picoMOB < amount_picoMOB:
+        print("# sender's balance is running low ({})... aborting!".format(mobilecoin.display_as_MOB(sender_balance_picoMOB)))
         sys.exit()
 
     # create and fund a new MobileCoin TestNet account
@@ -54,7 +54,7 @@ def allocate_MOB(mailchimp_member_record, amount_picoMOB):
     recipient_public_address = mobilecoind.get_public_address(recipient_monitor_id)
     print("# adding monitor {} for {} (first block = {})".format(recipient_monitor_id.hex(), new_user_email, block_count))
 
-    # Construct and send the MOB allocation transaction
+    # Construct and send the token allocation transaction
     tx_list = mobilecoind.get_unspent_tx_output_list(sender_monitor_id)
     outlays = [{'value': amount_picoMOB, 'receiver': recipient_public_address}]
 
@@ -89,8 +89,8 @@ def allocate_MOB(mailchimp_member_record, amount_picoMOB):
     # If the recipient's balance is not as expected, complain and do not trigger the email in Mailchimp
     if recipient_balance != amount_picoMOB:
         print(
-            "ERROR... recipient balance is not correct! Entropy {} has only {} MOB. Expected {} MOB."
-            .format(recipient_entropy.hex(), recipient_balance/MOB, amount_picoMOB/MOB)
+            "ERROR... recipient balance is not correct! Entropy {} has only {}. Expected {}."
+            .format(recipient_entropy.hex(), mobilecoin.display_as_MOB(recipient_balance), mobilecoin.display_as_MOB(amount_picoMOB))
         )
         email_sent = 0
 
@@ -119,7 +119,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='provide secrets')
     parser.add_argument('-m', '--mailchimp', help='MailChimp API key', type=str, required=True)
     parser.add_argument('-k', '--key', help='funding account master key as hex', type=str, required=True)
-    parser.add_argument('-v', '--value', help='amount to allocate in MOB (default=100)', nargs='?', const=100, type=int, default=100)
+    parser.add_argument('-v', '--value', help='amount to allocate in picoMOB (default=1e14)', nargs='?', const=1e14, type=int, default=1e14)
     parser.add_argument('--clean', help='remove all old monitors', action='store_true')
     args = parser.parse_args()
 
@@ -163,9 +163,9 @@ if __name__ == '__main__':
             print("# processed {} records found at MailChimp".format(offset))
         for member_record in members:
             if member_record["status"] == "subscribed" and not member_record["merge_fields"]["ENTROPY"]:
-                emails_sent += allocate_MOB(member_record, args.value * MOB)
+                emails_sent += allocate_MOB(member_record, args.value)
     if emails_sent > 0:
-        print("# sent {} MOB to each of {} new records found at MailChimp".format(args.value, emails_sent))
+        print("# sent {} to each of {} new records found at MailChimp".format(mobilecoin.display_as_MOB(args.value), emails_sent))
     else:
         print("# no new records found.")
 
