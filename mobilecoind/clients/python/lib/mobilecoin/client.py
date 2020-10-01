@@ -58,7 +58,7 @@ class Client(object):
     def add_monitor(self,
                     account_key: bytes,
                     first_subaddress: int = DEFAULT_SUBADDRESS_INDEX,
-                    num_subaddresses: int = 1,
+                    num_subaddresses: int = 10000, # requires ~ 1.5 seconds
                     first_block: int = 0):
         """ Create a process that watches the ledger for tx outputs belonging to a
         set of subaddresses, each specified by account_key and an index.
