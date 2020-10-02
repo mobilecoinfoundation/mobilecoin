@@ -8,20 +8,15 @@ Note that this command creates a monitor for the provided or generated Master Ke
 
 Help:
 ```
-usage: get_public_address.py [-h] [-k KEY] [-s [SUBADDRESS]]
 
-Displays public address information for a provided master key, or for a random master key if no key is provided.
+python3 get_public_address.py -h
 
-optional arguments:
-  -h, --help            show this help message and exit
-  -k KEY, --key KEY     account master key
-  -s [SUBADDRESS], --subaddress [SUBADDRESS]
-                        (optional) subaddress
 ```
 
 Example:
 ```
-mobilecoin@node1:~/mobilecoin/mobilecoind/clients/python/cli$ python3 get_public_address.py
+
+python3 get_public_address.py
 
     Master Key:       2a4976758b6d8d687ba6aea1e934d8b6511a264e6b979ed74c58534e7b575a5b
     Subaddress Index: 0
@@ -38,24 +33,15 @@ Note that this command creates a monitor for the provided Master Key that will r
 
 Help:
 ```
-usage: check_balance.py [-h] -k KEY [-s [SUBADDRESS]]
-                        [--first-block [FIRST_BLOCK]]
 
-Processes all downloaded blocks to display current balance information for a provided master key.
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -k KEY, --key KEY     account master key
-  -s [SUBADDRESS], --subaddress [SUBADDRESS]
-                        (optional) subaddress
-  --first-block [FIRST_BLOCK]
-                        (optional) first ledger block to scan
+python3 check_balance.py -h
 
 ```
 
 Example:
 ```
-mobilecoin@node1:~/mobilecoin/mobilecoind/clients/python/cli$ python3 check_balance.py -k=<master key (64 hex characters)>
+
+python3 check_balance.py -k=<master key (64 hex characters)>
 
     Master Key:       <master key (64 hex characters)>
     Subaddress Index: 0
@@ -72,30 +58,37 @@ Send a payment.
 
 Help:
 ```
-usage: send_payment.py [-h] --sender SENDER --recipient RECIPIENT [-v VALUE]
-                       [--sender-subaddress [SENDER_SUBADDRESS]]
-                       [--recipient-subaddress [RECIPIENT_SUBADDRESS]]
+python3 send_payment.py -h
 
-Send all available funds (default) or VALUE pMOB from a sender's Master Key to a recipient, specified by Master Key or Address Code.
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --sender SENDER       sender account master key
-  --recipient RECIPIENT
-                        recipient account master key, or recipient base-58 Address Code
-  -v VALUE, --value VALUE
-                        (optional) value to send in picoMOB
-  --sender-subaddress [SENDER_SUBADDRESS]
-                        (optional) sender subaddress
-  --recipient-subaddress [RECIPIENT_SUBADDRESS]
-                        (optional) recipient subaddress
 ```
+
+Example:
+```
+
+python3 send_payment.py -v 10 --sender=<master key (64 hex characters)> --recipient=7BeDc5jpZu72AuNavumc8qo8CRJijtQ7QJXyPo9dpnqULaPhe6GdaDNF7cjxkTrDfTcfMgWVgDzKzbvTTwp32KQ78qpx7bUnPYxAgy92caJ
+
+transaction status is: UNKNOWN
+transaction status is: UNKNOWN
+transaction status is: UNKNOWN
+transaction status is: VERIFIED
+
+
+    Sender:           <master key (64 hex characters)>
+    Recipient:        7BeDc5jpZu72AuNavumc8qo8CRJijtQ7QJXyPo9dpnqULaPhe6GdaDNF7cjxkTrDfTcfMgWVgDzKzbvTTwp32KQ78qpx7bUnPYxAgy92caJ
+    Value:            10 picoMOB
+                      0.010 nMOB
+
+
+    Final Status:     Verified
+
+```
+
 
 ### Cleaning up old monitors
 
 The performance of `mobilecoind` can decrease if there are a large number of active monitors. This tool helps you find and remove monitors that you no longer need but have left running in the background.
 
-Usage:
+Use:
 ```
 
 python3 cleanup_monitors.py
@@ -106,7 +99,7 @@ python3 cleanup_monitors.py
 
 This CLI tool measures the performance of the ledger and monitor background synchronization processes and other `mobilecoind` operations that may vary with the performance of your hardware and network connection.
 
-Usage:
+Use:
 ```
 
 python3 benchmark.py
