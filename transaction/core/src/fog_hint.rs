@@ -109,8 +109,13 @@ impl FogHint {
         ingest_server_private_key: &RistrettoPrivate,
         ciphertext: &EncryptedFogHint,
     ) -> Result<Self, CryptoBoxError> {
-        let (_result, plaintext) = VersionedCryptoBox::default()
+        let (result, plaintext) = VersionedCryptoBox::default()
             .decrypt_fixed_length(ingest_server_private_key, ciphertext.as_ref())?;
+
+        if result == false {
+            return Err(CryptoBoxError::MacFailed);
+        }
+
         // Check magic numbers
         for byte in &plaintext[RISTRETTO_PUBLIC_LEN..] {
             if *byte != MAGIC_NUMBER {
@@ -207,7 +212,7 @@ mod testing {
             let not_z = RistrettoPrivate::from_random(&mut rng);
 
             let result = FogHint::decrypt(&not_z, &ciphertext);
-            assert_eq!(Err(CryptoBoxError::WrongMagicBytes), result);
+            assert_eq!(Err(CryptoBoxError::MacFailed), result);
         });
     }
 }
