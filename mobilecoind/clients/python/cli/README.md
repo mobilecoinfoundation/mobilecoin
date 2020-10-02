@@ -91,6 +91,17 @@ optional arguments:
                         (optional) recipient subaddress
 ```
 
+### Cleaning up old monitors
+
+The performance of `mobilecoind` can decrease if there are a large number of active monitors. This tool helps you find and remove monitors that you no longer need but have left running in the background.
+
+Usage:
+```
+
+python3 cleanup_monitors.py
+
+```
+
 ### Running `mobilecoind` Benchmarks
 
 This CLI tool measures the performance of the ledger and monitor background synchronization processes and other `mobilecoind` operations that may vary with the performance of your hardware and network connection.

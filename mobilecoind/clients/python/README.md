@@ -23,6 +23,7 @@ This directory contains simple command line utilities for interacting with the M
  * `send_payment.py`
  * `get_public_address.py`
  * `benchmark.py`
+ * `cleanup_monitors.py`
 
 See the included README.md file for details.
 
