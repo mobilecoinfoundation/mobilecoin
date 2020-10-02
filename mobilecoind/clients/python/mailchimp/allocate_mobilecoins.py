@@ -27,7 +27,7 @@ def wait_for_monitor(monitor_id):
             else:
                 print("#    {} blocks remain (? seconds)".format(blocks_remaining))
             (monitor_is_behind, next_block, remote_count, blocks_per_second) = mobilecoind.wait_for_monitor(monitor_id)
-        print("# sender's  monitor has processed all {} blocks\n#".format(local_count))
+        print("# sender's  monitor has processed all {} blocks\n#".format(remote_count))
     return remote_count
 
 # generates a new master key, allocates funds, stores data at Mailchimp and triggers the welcome email
