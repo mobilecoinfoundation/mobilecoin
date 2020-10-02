@@ -24,7 +24,7 @@ use mc_consensus_api::{
     consensus_common_grpc::BlockchainApiClient,
     consensus_peer::{
         ConsensusMsg as GrpcConsensusMsg, ConsensusMsgResponse,
-        FetchTxsRequest as GrpcFetchTxsRequest,
+        GetTxsRequest as GrpcFetchTxsRequest,
     },
     consensus_peer_grpc::ConsensusPeerApiClient,
     empty::Empty,
@@ -311,8 +311,8 @@ impl<Enclave: ConsensusEnclave + Clone + Send + Sync> ConsensusConnection
             hashes.iter().map(|tx| tx.to_vec()).collect(),
         ));
 
-        let mut response = self.log_attested_call("fetch_txs", |this| {
-            this.consensus_api_client.fetch_txs(&request)
+        let mut response = self.log_attested_call("get_txs", |this| {
+            this.consensus_api_client.get_txs(&request)
         })?;
         if response.has_tx_hashes_not_in_cache() {
             let tx_hashes = response
@@ -335,8 +335,8 @@ impl<Enclave: ConsensusEnclave + Clone + Send + Sync> ConsensusConnection
     }
 
     fn fetch_latest_msg(&mut self) -> Result<Option<ConsensusMsg>> {
-        let response = self.log_attested_call("fetch_latest_msg", |this| {
-            this.consensus_api_client.fetch_latest_msg(&Empty::new())
+        let response = self.log_attested_call("gte_latest_msg", |this| {
+            this.consensus_api_client.get_latest_msg(&Empty::new())
         })?;
         if response.get_payload().is_empty() {
             Ok(None)

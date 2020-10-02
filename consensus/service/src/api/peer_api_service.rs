@@ -3,10 +3,10 @@
 //! Serves node-to-node gRPC requests.
 
 use crate::{
+    api::grpc_error::ConsensusGrpcError,
     background_work_queue::BackgroundWorkQueueSenderFn,
     consensus_service::{IncomingConsensusMsg, ProposeTxCallback},
     counters,
-    grpc_error::ConsensusGrpcError,
     tx_manager::{TxManager, TxManagerError},
 };
 use grpcio::{RpcContext, UnarySink};
@@ -20,7 +20,7 @@ use mc_consensus_api::{
     consensus_common::ProposeTxResponse,
     consensus_peer::{
         ConsensusMsg as GrpcConsensusMsg, ConsensusMsgResponse, ConsensusMsgResult,
-        FetchLatestMsgResponse, FetchTxsRequest, FetchTxsResponse, TxHashesNotInCache,
+        GetLatestMsgResponse, GetTxsRequest, GetTxsResponse, TxHashesNotInCache,
     },
     consensus_peer_grpc::ConsensusPeerApi,
     empty::Empty,
@@ -164,15 +164,15 @@ impl PeerApiService {
     /// Returns the full, encrypted transactions corresponding to a list of transaction hashes.
     fn real_fetch_txs(
         &mut self,
-        request: FetchTxsRequest,
+        request: GetTxsRequest,
         logger: &Logger,
-    ) -> Result<FetchTxsResponse, ConsensusGrpcError> {
+    ) -> Result<GetTxsResponse, ConsensusGrpcError> {
         let tx_hashes: Vec<TxHash> = request
             .get_tx_hashes()
             .iter()
             .map(|bytes| {
                 TxHash::try_from(&bytes[..])
-                    .map_err(|_| ConsensusGrpcError::InvalidArgument("Invalid TxHash".to_string()))
+                    .map_err(|_| ConsensusGrpcError::InvalidArgument("Invalid TxHash".to_owned()))
             })
             .collect::<Result<Vec<TxHash>, ConsensusGrpcError>>()?;
 
@@ -182,7 +182,7 @@ impl PeerApiService {
             &PeerSession::from(request.get_channel_id()),
         ) {
             Ok(enclave_message) => {
-                let mut response = FetchTxsResponse::new();
+                let mut response = GetTxsResponse::new();
                 response.set_success(enclave_message.into());
                 Ok(response)
             }
@@ -191,7 +191,7 @@ impl PeerApiService {
                 tx_hashes_not_in_cache
                     .set_tx_hashes(tx_hashes.iter().map(|tx_hash| tx_hash.to_vec()).collect());
 
-                let mut response = FetchTxsResponse::new();
+                let mut response = GetTxsResponse::new();
                 response.set_tx_hashes_not_in_cache(tx_hashes_not_in_cache);
 
                 Ok(response)
@@ -340,15 +340,15 @@ impl ConsensusPeerApi for PeerApiService {
     }
 
     /// Returns the highest consensus message issued by this node.
-    fn fetch_latest_msg(
+    fn get_latest_msg(
         &mut self,
         ctx: RpcContext,
         _request: Empty,
-        sink: UnarySink<FetchLatestMsgResponse>,
+        sink: UnarySink<GetLatestMsgResponse>,
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            let mut response = FetchLatestMsgResponse::new();
+            let mut response = GetLatestMsgResponse::new();
             if let Some(latest_msg) = (self.fetch_latest_msg_fn)() {
                 let serialized_msg = mc_util_serial::serialize(&latest_msg)
                     .expect("Failed serializing consensus msg");
@@ -359,11 +359,11 @@ impl ConsensusPeerApi for PeerApiService {
     }
 
     /// Returns the full, encrypted transactions corresponding to a list of transaction hashes.
-    fn fetch_txs(
+    fn get_txs(
         &mut self,
         ctx: RpcContext,
-        request: FetchTxsRequest,
-        sink: UnarySink<FetchTxsResponse>,
+        request: GetTxsRequest,
+        sink: UnarySink<GetTxsResponse>,
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
@@ -381,8 +381,8 @@ impl ConsensusPeerApi for PeerApiService {
 #[cfg(test)]
 mod tests {
     use crate::{
-        background_work_queue::BackgroundWorkQueueError, consensus_service::IncomingConsensusMsg,
-        peer_api_service::PeerApiService, tx_manager::MockTxManager,
+        api::peer_api_service::PeerApiService, background_work_queue::BackgroundWorkQueueError,
+        consensus_service::IncomingConsensusMsg, tx_manager::MockTxManager,
     };
     use grpcio::{ChannelBuilder, Environment, Error::RpcFailure, Server, ServerBuilder};
     use mc_common::{
@@ -463,8 +463,8 @@ mod tests {
 
         // ResponderIds seem to be "host:port" strings.
         let known_responder_ids = vec![
-            ResponderId("A:port".to_string()),
-            ResponderId("B:port".to_string()),
+            ResponderId("A:port".to_owned()),
+            ResponderId("B:port".to_owned()),
         ];
 
         let instance = PeerApiService::new(
@@ -483,7 +483,7 @@ mod tests {
         // A message from an unknown peer.
         // The payload can be empty because the message should be ignored before the payload is read.
         let mut message = ConsensusMsg::new();
-        message.set_from_responder_id("X:port".to_string());
+        message.set_from_responder_id("X:port".to_owned());
 
         match client.send_consensus_msg(&message) {
             Ok(consensus_msg_response) => {
@@ -510,8 +510,8 @@ mod tests {
 
         // ResponderIds seem to be "host:port" strings.
         let known_responder_ids = vec![
-            ResponderId("A:port".to_string()),
-            ResponderId("B:port".to_string()),
+            ResponderId("A:port".to_owned()),
+            ResponderId("B:port".to_owned()),
         ];
 
         let instance = PeerApiService::new(
@@ -576,8 +576,8 @@ mod tests {
 
         // ResponderIds seem to be "host:port" strings.
         let known_responder_ids = vec![
-            ResponderId("A:port".to_string()),
-            ResponderId("B:port".to_string()),
+            ResponderId("A:port".to_owned()),
+            ResponderId("B:port".to_owned()),
         ];
 
         let instance = PeerApiService::new(
@@ -623,8 +623,8 @@ mod tests {
 
         // ResponderIds seem to be "host:port" strings.
         let known_responder_ids = vec![
-            ResponderId("A:port".to_string()),
-            ResponderId("B:port".to_string()),
+            ResponderId("A:port".to_owned()),
+            ResponderId("B:port".to_owned()),
         ];
 
         let instance = PeerApiService::new(
