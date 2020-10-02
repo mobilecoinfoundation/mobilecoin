@@ -3,7 +3,7 @@
 
 # Copyright (c) 2018-2020 MobileCoin Inc.
 
-# display information about all active monitors and prompt the user to keep or remove each
+""" displays information about all active monitors and prompt the user to keep or remove each """
 
 import os,sys
 sys.path.insert(1, os.path.realpath(os.path.join(os.path.pardir, "lib")))

@@ -3,7 +3,7 @@
 
 # Copyright (c) 2018-2020 MobileCoin Inc.
 
-# display the b58 public address and URI that correspond to a master key
+""" displays the b58 public address and URI that correspond to a master key """
 
 import argparse
 

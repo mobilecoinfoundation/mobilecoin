@@ -3,7 +3,7 @@
 
 # Copyright (c) 2018-2020 MobileCoin Inc.
 
-# used to download our mailing list and output a table with all user balances
+""" used to download our mailing list and output a table with all user balances """
 
 import argparse
 from mailchimp3 import MailChimp

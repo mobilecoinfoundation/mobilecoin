@@ -3,7 +3,7 @@
 
 # Copyright (c) 2018-2020 MobileCoin Inc.
 
-# used to allocation TestNet mobilecoins to users who sign up for our mailing list
+""" used to allocation TestNet mobilecoins to users who sign up for our mailing list """
 
 import argparse
 from mailchimp3 import MailChimp
@@ -16,6 +16,7 @@ import mobilecoin
 TX_RECEIPT_CHECK_INTERVAL_SECONDS = 2
 
 def wait_for_monitor(monitor_id):
+    """displays update messages while waiting for the montior to process all blocks"""
     (monitor_is_behind, next_block, remote_count, blocks_per_second) = mobilecoind.wait_for_monitor(monitor_id)
     if monitor_is_behind:
         print("#\n# waiting for the sender's monitor to process {} blocks".format(remote_count - next_block))
@@ -30,8 +31,9 @@ def wait_for_monitor(monitor_id):
         print("# sender's  monitor has processed all {} blocks\n#".format(remote_count))
     return remote_count
 
-# generates a new master key, allocates funds, stores data at Mailchimp and triggers the welcome email
 def allocate_MOB(mailchimp_member_record, amount_picoMOB):
+    """generates a new master key, allocates funds, stores data at Mailchimp and triggers the welcome email"""
+
     new_user_email = mailchimp_member_record["email_address"]
     new_user_hash = mailchimp_member_record["id"]
 

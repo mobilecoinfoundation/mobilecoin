@@ -3,7 +3,8 @@
 
 # Copyright (c) 2018-2020 MobileCoin Inc.
 
-# check the performance for mobilecoind
+""" measure mobilecoind performance """
+
 import time, datetime
 
 import os,sys

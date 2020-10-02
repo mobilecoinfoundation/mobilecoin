@@ -3,7 +3,7 @@
 
 # Copyright (c) 2018-2020 MobileCoin Inc.
 
-# display the balance for a master key
+""" displays the balance for a provided master key """
 
 import argparse
 

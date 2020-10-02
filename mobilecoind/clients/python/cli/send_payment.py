@@ -3,7 +3,7 @@
 
 # Copyright (c) 2018-2020 MobileCoin Inc.
 
-# transfer funds from a master key to second account (specified by either a key or a b58 address code)
+""" transfer funds from a master key to second account (specified by either a key or a b58 address code) """
 
 import argparse
 import time
