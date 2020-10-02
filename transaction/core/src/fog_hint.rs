@@ -112,7 +112,7 @@ impl FogHint {
         let (result, plaintext) = VersionedCryptoBox::default()
             .decrypt_fixed_length(ingest_server_private_key, ciphertext.as_ref())?;
 
-        if result == false {
+        if !result {
             return Err(CryptoBoxError::MacFailed);
         }
 
