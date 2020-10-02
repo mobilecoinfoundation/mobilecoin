@@ -54,16 +54,9 @@ pub trait CryptoBox<KexAlgo: Kex>: Default {
     ///
     /// NOTE: Meant to run in constant-time even if the mac-check fails.
     ///
-    /// Fails if:
-    /// - Curvepoint cannot be decoded
-    /// - MAC check fails
-    /// - Anything is wrong with the footer (magic bytes? version code?)
-    ///
-    /// Returns:
-    /// - true if decryption succeeded, buffer contains plaintext
-    /// - false if mac check failed, buffer contains failed plaintext.
-    ///   Buffer SHOULD be zeroized to avoid attacks
-    /// - error if anything else is wrong
+    /// Returns
+    /// `Ok(true)` if decryption succeeds. `buffer` contains the plaintext and SHOULD be zeroized after use.
+    /// `Ok(false) if MAC check fails. `buffer` contains failed plaintext and SHOULD be zeroized after use.
     fn decrypt_in_place_detached(
         &self,
         key: &KexAlgo::Private,
