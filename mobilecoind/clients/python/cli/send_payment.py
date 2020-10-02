@@ -25,7 +25,7 @@ if __name__ == '__main__':
 
     # Parse the arguments
     parser = argparse.ArgumentParser(
-        description='Send all available funds (default) or VALUE pMOB from a sender\'s Master Key to a recipient, specified by Master Key or Address Code.'
+        description='Send all available funds (--all) or a value in pMOB (--value) from a sender\'s Master Key to a recipient, specified by the recipient\'s Master Key or Address Code.'
     )
     parser.add_argument(
         '--sender',
@@ -43,6 +43,13 @@ if __name__ == '__main__':
         '-v',
         '--value',
         help='(optional) value to send in picoMOB',
+        type=int,
+        required=False
+    )
+    parser.add_argument(
+        '-a',
+        '--all',
+        help='(optional) send all available funds',
         type=int,
         required=False
     )
@@ -79,8 +86,10 @@ if __name__ == '__main__':
     else:
         recipient_address_code = args.recipient
 
-    # if no value was provided, check the sender's balance
-    if not args.value:
+    if not args.value and not args.all:
+        print("You must provide either an amount to send in picoMOB (--value) or indicate that all available funds should be sent (--all)")
+        sys.exit(0)
+    elif not args.value:
         (monitor_is_behind, next_block, remote_count, blocks_per_second) = mobilecoind.wait_for_monitor(sender_monitor_id)
         if monitor_is_behind:
             print("#\n# waiting for the monitor to process {} blocks".format(remote_count - next_block))
@@ -108,7 +117,6 @@ if __name__ == '__main__':
                 )
             )
             sys.exit(0)
-
     else:
         value_to_send_picoMOB = args.value
 

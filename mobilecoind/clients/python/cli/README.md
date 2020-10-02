@@ -54,7 +54,7 @@ python3 check_balance.py -k=<master key (64 hex characters)>
 
 ### Sending a Payment
 
-Send a payment.
+Send a payment with value specified in pMOB (-v or --value) or all available funds (-a or --all).
 
 Help:
 ```
