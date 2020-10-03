@@ -1,7 +1,8 @@
 ## Python bindings for the `mobilecoind` API
 
-You must separately install and run `mobilecoind`. See https://github.com/mobilecoinofficial/mobilecoin/ for details.
+You must separately install and run `mobilecoind`.
 
+See https://github.com/mobilecoinofficial/mobilecoin/ for details.
 
 ### Example
 
@@ -14,5 +15,14 @@ use_ssl = False
 mobilecoind = Client(mobilecoind_address, use_ssl)
 
 print(mobilecoind.get_ledger_info())
+```
+
+### Running Package Tests
+
+From the package directory:
 
 ```
+pip3 install nose
+python3 -m nose
+```
+

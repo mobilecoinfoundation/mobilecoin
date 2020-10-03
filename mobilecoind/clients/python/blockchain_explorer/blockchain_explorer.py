@@ -1,9 +1,14 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 # Copyright (c) 2018-2020 MobileCoin Inc.
 
-import argparse, datetime, sys
+import argparse, datetime
 from flask import Flask, render_template
 
-from mobilecoin import Client
+import os,sys
+sys.path.insert(1, os.path.realpath(os.path.join(os.path.pardir, "lib")))
+import mobilecoin
 
 client = None  # client is initialized at the bottom of this file
 app = Flask(__name__)
@@ -114,5 +119,5 @@ def block(block_num):
 
 if __name__ == "__main__":
     args = command_args()
-    client = Client(args.mobilecoind_host + ':' + str(args.mobilecoind_port), False)
+    client = mobilecoin.Client(args.mobilecoind_host + ':' + str(args.mobilecoind_port), False)
     app.run(host='0.0.0.0', port=str(args.port))

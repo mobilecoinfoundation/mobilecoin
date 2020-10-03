@@ -1,12 +1,16 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 # Copyright (c) 2018-2020 MobileCoin Inc.
 
 import argparse
 import json
-import sys
 
 from flask import Flask, render_template, request
 from tinydb import TinyDB, Query
 
+import os,sys
+sys.path.insert(1, os.path.realpath(os.path.join(os.path.pardir, "lib")))
 import mobilecoin
 
 MOB = 1_000_000_000_000
@@ -69,7 +73,7 @@ def add_user():
         subaddress = res[0]['subaddress']
 
     monitor = get_or_add_monitor(subaddress)
-    request_code = get_request_code(monitor, subaddress)
+    request_code = create_request_code(monitor, subaddress)
     balance = mobilecoind.get_balance(monitor, subaddress)
 
     if new_player:
@@ -111,9 +115,9 @@ def get_or_add_monitor(subaddress):
         monitor_id = mobilecoind.add_monitor(credentials)
     return monitor_id
 
-def get_request_code(monitor, subaddress):
+def create_request_code(monitor, subaddress):
     public_address = mobilecoind.get_public_address(monitor, subaddress)
-    return mobilecoind.get_request_code(public_address)
+    return mobilecoind.create_request_code(public_address)
 
 def get_leaderboard():
     player_table = db.table('Players')

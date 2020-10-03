@@ -16,19 +16,16 @@ If you include the option `--clean` any previously downloaded release packages a
 ### Examples
 
 
-#### Account Info
+#### CLI tools
 
-This python script displays information for an account specified by a master key.
+This directory contains simple command line utilities for interacting with the MobileCoin network using python and `mobilecoind`:
+ * `check_balance.py`
+ * `send_payment.py`
+ * `get_public_address.py`
+ * `benchmark.py`
+ * `cleanup_monitors.py`
 
-Usage:
-```
-
-python3 account_info.py -b -k=<master key as a 64 character hexidecimal string>
-
-```
-
-The optional argument `-b` will perform a balance check for the account.
-
+See the included README.md file for details.
 
 #### Blockchain Explorer
 

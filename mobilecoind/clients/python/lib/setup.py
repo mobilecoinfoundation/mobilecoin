@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import setuptools
 
 with open("README.md", "r") as fh:
@@ -5,7 +8,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="mobilecoin",
-    version="0.2.0",
+    version="0.2.1",
     author="MobileCoin",
     author_email="support@mobilecoin.com",
     description="Python bindings for the MobileCoin daemon API.",
@@ -19,4 +22,6 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     python_requires='>=3.6',
+    test_suite='nose.collector',
+    tests_require=['nose'],
 )
