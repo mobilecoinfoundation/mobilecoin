@@ -2,5 +2,7 @@
 
 # install python dependencies here
 python3 -m pip install --upgrade pip
-pip install --upgrade mobilecoin
-pip install --upgrade mailchimp3
+pip3 install --upgrade grpcio-tools
+pip3 install --upgrade grpcio
+pip3 install --upgrade mobilecoin
+pip3 install --upgrade mailchimp3
