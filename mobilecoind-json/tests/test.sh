@@ -101,7 +101,11 @@ do
       echo "ERROR: unexpected UTXO subaddress! ($UTXO_SUBADDRESS)"
       exit 0
   fi
-  echo "UTXO[$INDEX]: public_key=$UTXO_PUBLIC_KEY, key_image=$UTXO_KEY_IMAGE"
+  # find each UTXO by its public key in the ledger
+  BLOCK=`curl -s localhost:9090/tx-out/${UTXO_PUBLIC_KEY}/block-index \
+    | jq -r '.block_index'`
+
+  echo "UTXO[$INDEX]: public_key=$UTXO_PUBLIC_KEY, key_image=$UTXO_KEY_IMAGE, block=$BLOCK"
   INDEX=$((INDEX+1))
 done
 UTXOS=`echo $UTXOS_RESPONSE | jq -r '.output_list'`
