@@ -50,8 +50,7 @@ if __name__ == '__main__':
         '-a',
         '--all',
         help='(optional) send all available funds',
-        type=int,
-        required=False
+        action='store_true'
     )
     parser.add_argument(
         '--sender-subaddress',
