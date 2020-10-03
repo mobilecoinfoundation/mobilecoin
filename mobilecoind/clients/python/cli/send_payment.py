@@ -84,7 +84,12 @@ if __name__ == '__main__':
         recipient_address_code = mobilecoind.get_public_address(recipient_monitor_id, subaddress_index=args.recipient_subaddress).b58_code
         # if the recipient was specified with a master key; we may want to remove it...
         mobilecoind.remove_monitor(recipient_monitor_id)
-        print(mobilecoind.get_monitor_status(recipient_monitor_id))
+        try:
+            mobilecoind.get_monitor_status(recipient_monitor_id))
+        except Exception as e:
+            print(e)
+            sys.exit(0)
+
     else:
         recipient_address_code = args.recipient
 
