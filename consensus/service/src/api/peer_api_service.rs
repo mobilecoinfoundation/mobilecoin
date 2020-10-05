@@ -161,11 +161,7 @@ impl PeerApiService {
     }
 
     /// Handle a consensus message from another node.
-    fn handle_consensus_msg(
-        &mut self,
-        request: &GrpcConsensusMsg,
-        logger: &Logger,
-    ) -> Result<(), PeerServiceError> {
+    fn handle_consensus_msg(&mut self, request: &GrpcConsensusMsg) -> Result<(), PeerServiceError> {
         // The peer who delivered this message to us.
         let from_responder_id = ResponderId::from_str(request.get_from_responder_id())
             .map_err(|_| PeerServiceError::InvalidArgument("from_responder_id".to_owned()))?;
@@ -275,7 +271,7 @@ impl ConsensusPeerApi for PeerApiService {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             let result: Result<ConsensusMsgResponse, RpcStatus> = match self
-                .handle_consensus_msg(&request, logger)
+                .handle_consensus_msg(&request)
             {
                 Ok(()) => {
                     let mut response = ConsensusMsgResponse::new();
