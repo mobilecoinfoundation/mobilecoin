@@ -3,7 +3,7 @@
 //! Serves node-to-node gRPC requests.
 
 use crate::{
-    api::grpc_error::ConsensusGrpcError,
+    api::{grpc_error::ConsensusGrpcError, peer_service_error::PeerServiceError},
     background_work_queue::BackgroundWorkQueueSenderFn,
     consensus_service::{IncomingConsensusMsg, ProposeTxCallback},
     counters,
@@ -107,12 +107,11 @@ impl PeerApiService {
     }
 
     /// Handle transactions proposed by clients to a different node.
-    fn real_peer_tx_propose(
+    fn handle_tx_propose(
         &mut self,
         request: Message,
         logger: &Logger,
     ) -> Result<ProposeTxResponse, ConsensusGrpcError> {
-        // TODO: Use the prost message directly when available, take a reference
         let enclave_msg: EnclaveMessage<PeerSession> = request.into();
         let aad = enclave_msg.aad.clone();
         let tx_contexts = self.consensus_enclave.peer_tx_propose(enclave_msg)?;
@@ -161,8 +160,40 @@ impl PeerApiService {
         Ok(ProposeTxResponse::new())
     }
 
+    /// Handle a consensus message from another node.
+    #[allow(unused)]
+    fn handle_consensus_msg(
+        &mut self,
+        request: &GrpcConsensusMsg,
+        logger: &Logger,
+    ) -> Result<(), PeerServiceError> {
+        // The peer who delivered this message to us.
+        let from_responder_id = ResponderId::from_str(request.get_from_responder_id())
+            .map_err(|_| PeerServiceError::InvalidArgument("from_responder_id".to_owned()))?;
+
+        // Ignore consensus messages from unknown peers.
+        if !self.known_responder_ids.contains(&from_responder_id) {
+            return Err(PeerServiceError::UnknownPeer(from_responder_id.to_string()));
+        }
+
+        // A consensus message with a valid signature.
+        let verified_consensus_msg: mc_peers::VerifiedConsensusMsg = {
+            let consensus_msg: mc_peers::ConsensusMsg = deserialize(request.get_payload())
+                .map_err(|_| PeerServiceError::InvalidArgument("payload".to_owned()))?;
+            consensus_msg
+                .try_into()
+                .map_err(|_| PeerServiceError::ConsensusMsgInvalidSignature)?
+        };
+
+        (self.incoming_consensus_msgs_sender)(IncomingConsensusMsg {
+            from_responder_id,
+            consensus_msg: verified_consensus_msg,
+        })
+        .map_err(|_| PeerServiceError::InternalError)
+    }
+
     /// Returns the full, encrypted transactions corresponding to a list of transaction hashes.
-    fn real_fetch_txs(
+    fn handle_get_txs(
         &mut self,
         request: GetTxsRequest,
         logger: &Logger,
@@ -222,7 +253,7 @@ impl ConsensusPeerApi for PeerApiService {
             send_result(
                 ctx,
                 sink,
-                self.real_peer_tx_propose(request, &logger)
+                self.handle_tx_propose(request, &logger)
                     .or_else(ConsensusGrpcError::into)
                     .and_then(|mut resp| {
                         resp.set_num_blocks(
@@ -370,7 +401,7 @@ impl ConsensusPeerApi for PeerApiService {
             send_result(
                 ctx,
                 sink,
-                self.real_fetch_txs(request, &logger)
+                self.handle_get_txs(request, &logger)
                     .map_err(ConsensusGrpcError::into),
                 &logger,
             )
