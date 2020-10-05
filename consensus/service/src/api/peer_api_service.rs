@@ -9,7 +9,7 @@ use crate::{
     counters,
     tx_manager::{TxManager, TxManagerError},
 };
-use grpcio::{RpcContext, UnarySink};
+use grpcio::{RpcContext, RpcStatus, UnarySink};
 use mc_attest_api::attest::Message;
 use mc_attest_enclave_api::{EnclaveMessage, PeerSession};
 use mc_common::{
@@ -29,7 +29,7 @@ use mc_consensus_enclave::ConsensusEnclave;
 use mc_ledger_db::Ledger;
 use mc_peers::TxProposeAAD;
 use mc_transaction_core::tx::TxHash;
-use mc_util_grpc::{rpc_invalid_arg_error, rpc_logger, send_result};
+use mc_util_grpc::{rpc_internal_error, rpc_invalid_arg_error, rpc_logger, send_result};
 use mc_util_metrics::SVC_COUNTERS;
 use mc_util_serial::deserialize;
 use std::{
@@ -161,7 +161,6 @@ impl PeerApiService {
     }
 
     /// Handle a consensus message from another node.
-    #[allow(unused)]
     fn handle_consensus_msg(
         &mut self,
         request: &GrpcConsensusMsg,
@@ -275,98 +274,37 @@ impl ConsensusPeerApi for PeerApiService {
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            // Get the peer who delivered this message to us.
-            let from_responder_id = match ResponderId::from_str(request.get_from_responder_id()) {
-                Ok(val) => val,
-                Err(err) => {
-                    send_result(
-                        ctx,
-                        sink,
-                        Err(rpc_invalid_arg_error(
-                            "send_consensus_msg",
-                            format!("From node ID deserialize error: {}", err),
-                            &logger,
-                        )),
-                        &logger,
-                    );
-                    return;
-                }
-            };
-
-            // Ignore consensus messages from unknown peers.
-            if !self.known_responder_ids.contains(&from_responder_id) {
-                let mut resp = ConsensusMsgResponse::new();
-                resp.set_result(ConsensusMsgResult::UnknownPeer);
-                send_result(ctx, sink, Ok(resp), &logger);
-                log::warn!(
-                    logger,
-                    "Rejecting consensus message from unrecognized responder id {}",
-                    from_responder_id
-                );
-                return;
-            }
-
-            let unverified_consensus_msg: mc_peers::ConsensusMsg =
-                match deserialize(request.get_payload()) {
-                    Ok(val) => val,
-                    Err(err) => {
-                        send_result(
-                            ctx,
-                            sink,
-                            Err(rpc_invalid_arg_error(
-                                "send_consensus_msg",
-                                format!("Message deserialize error: {}", err),
-                                &logger,
-                            )),
-                            &logger,
-                        );
-                        return;
-                    }
-                };
-
-            // Validate message signature
-            let consensus_msg: mc_peers::VerifiedConsensusMsg = match unverified_consensus_msg
-                .clone()
-                .try_into()
+            let result: Result<ConsensusMsgResponse, RpcStatus> = match self
+                .handle_consensus_msg(&request, logger)
             {
-                Ok(val) => val,
-                Err(err) => {
-                    log::error!(
-                        logger,
-                        "Signature verification failed for msg {:?} from node_id {:?}: {:?}, disregarding.",
-                        unverified_consensus_msg,
-                        from_responder_id,
-                        err
-                    );
-                    send_result(
-                        ctx,
-                        sink,
-                        Err(rpc_invalid_arg_error(
-                            "send_consensus_msg",
-                            format!("Signature verification failed: {}", err),
-                            &logger,
-                        )),
-                        &logger,
-                    );
-                    return;
+                Ok(()) => {
+                    let mut response = ConsensusMsgResponse::new();
+                    response.set_result(ConsensusMsgResult::Ok);
+                    Ok(response)
                 }
+                Err(peer_service_error) => match peer_service_error {
+                    PeerServiceError::UnknownPeer(_) => {
+                        let mut response = ConsensusMsgResponse::new();
+                        response.set_result(ConsensusMsgResult::UnknownPeer);
+                        Ok(response)
+                    }
+                    PeerServiceError::InvalidArgument(err) => {
+                        Err(rpc_invalid_arg_error("send_consensus_msg", err, &logger))
+                    }
+                    PeerServiceError::ConsensusMsgInvalidSignature => Err(rpc_invalid_arg_error(
+                        "send_consensus_msg",
+                        "InvalidConsensusMsgSignature",
+                        &logger,
+                    )),
+                    PeerServiceError::InternalError => Err(rpc_internal_error(
+                        "send_consensus_msg",
+                        "InternalError",
+                        &logger,
+                    )),
+                },
             };
 
-            log::trace!(
-                logger,
-                "received consensus message from {}: {:?}",
-                from_responder_id,
-                consensus_msg,
-            );
-
-            (self.incoming_consensus_msgs_sender)(IncomingConsensusMsg {
-                from_responder_id,
-                consensus_msg,
-            })
-            .expect("Could not send consensus input");
-            let mut resp = ConsensusMsgResponse::new();
-            resp.set_result(ConsensusMsgResult::Ok);
-            send_result(ctx, sink, Ok(resp), &logger);
+            send_result(ctx, sink, result, &logger);
         });
     }
 
