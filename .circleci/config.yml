@@ -491,7 +491,7 @@ jobs:
       - post-build
 
   # Build using macOS
-  build-all-macos:
+  build-macos:
     executor: macos
     environment:
       <<: *default-build-environment
@@ -550,4 +550,4 @@ workflows:
       - build-and-lint-debug
 
       # Build using macOS
-      - build-all-macos
+      - build-macos
