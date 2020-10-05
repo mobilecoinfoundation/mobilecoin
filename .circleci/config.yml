@@ -348,9 +348,6 @@ jobs:
       - run:
           name: Build/prepare unit tests
           command: |
-            # TODO where do put this?
-            cargo install -Z install-upgrade cargo2junit
-
             # Get a list of package names to test and the binaries that need to be executed in order to run them.
             # It's possible for a package to produce multiple test binaries. This also compiles the tests.
             rm -rf test-bins && mkdir test-bins && mkdir test-bins/bins-per-pkg
