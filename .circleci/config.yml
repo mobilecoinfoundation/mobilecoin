@@ -292,7 +292,7 @@ commands:
             # the test results, and unfortunately Cargo does not always output the test results in
             # such a way that is cleanly parsable.
             << parameters.test_command >> -- \
-                -Z unstable-options --format json --report-time \
+                -Zunstable-options --format json --report-time \
               | {
                   tee /tmp/test-results/output.log
                   cat /tmp/test-results/output.log \
@@ -451,7 +451,7 @@ jobs:
   build-and-lint-debug:
     executor: build-executor
     environment:
-      << : *default-build-environment
+      <<: *default-build-environment
     steps:
       - prepare-for-build
       - run:
