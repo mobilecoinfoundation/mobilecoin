@@ -31,15 +31,7 @@ See the included README.md file for details.
 
 The `blockchain_explorer` directory contains a simple webserver that displays the raw blockchain content that `mobilecoind` downloads.
 
-Usage:
-```
-
-python3 ./blockchain_explorer.py
-
-```
-
-You can then view the leaderboard website at http://localhost:5000
-
+See the [blockchain_explorer README](./blockchain_explorer/README.md) for more info.
 
 #### Jupyter Wallet
 
