@@ -517,6 +517,12 @@ jobs:
               --exclude mc-sgx-ias-types \
               --exclude mc-sgx-report-cache-untrusted \
               --exclude mc-sgx-urts-sys
+      - run:
+          name: Cargo check mobilecoind/testnet-client
+          command: |
+            cargo check --frozen --target "$HOST_TARGET_TRIPLE" \
+              -p mc-mobilecoind --bin mobilecoind \
+              -p mc-testnet-client --bin mc-testnet-client
       - check-dirty-git
       - when:
           condition: { equal: [ << pipeline.git.branch >>, master ] }
