@@ -311,6 +311,13 @@ commands:
       - store_artifacts:
           path: /tmp/test-results
 
+  lint:
+    steps:
+      - run:
+          name: Lint/fmt
+          command: |
+            ./tools/lint.sh
+
   generate-docs:
     steps:
       - run:
@@ -379,9 +386,7 @@ jobs:
             echo "inside all-pkgs.txt:"
             cat test-bins/all-pkgs.txt
 
-      - run:
-          name: Linting
-          command: ./tools/lint.sh
+      - lint
 
       - check-dirty-git
 
@@ -476,10 +481,7 @@ jobs:
 
       # The lint and saving of caches happens here since this job is faster than the run-tests job.
       # This results in shorter CI times.
-      - run:
-          name: Lint/fmt
-          command: |
-            ./tools/lint.sh
+      - lint
       - generate-docs
       - store-docs
       - check-dirty-git
