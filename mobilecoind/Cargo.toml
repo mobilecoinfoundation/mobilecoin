@@ -60,3 +60,6 @@ mc-transaction-core-test-utils = { path = "../transaction/core/test-utils" }
 mc-util-from-random = { path = "../util/from-random" }
 
 more-asserts = "0.2"
+
+[build-dependencies]
+libz-sys = "1.1.2"
