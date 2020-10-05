@@ -7,7 +7,6 @@ import argparse, datetime
 from flask import Flask, render_template
 
 import os,sys
-sys.path.insert(1, os.path.realpath(os.path.join(os.path.pardir, "lib")))
 import mobilecoin
 
 client = None  # client is initialized at the bottom of this file
