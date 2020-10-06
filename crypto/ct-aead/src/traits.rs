@@ -1,12 +1,9 @@
-use block_cipher::generic_array::{ArrayLength, GenericArray};
+use aead::AeadInPlace;
+use block_cipher::generic_array::GenericArray;
 
 /// API for Aead in-place decryption which is constant-time with respect to
 /// the mac check failing
-pub trait CtAeadDecrypt {
-    type NonceSize: ArrayLength<u8>;
-    type TagSize: ArrayLength<u8>;
-    type CiphertextOverhead: ArrayLength<u8>;
-
+pub trait CtAeadDecrypt: AeadInPlace {
     /// Decrypt a buffer using given aead nonce, validating associated data
     /// under the mac (tag).
     ///

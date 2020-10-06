@@ -2,7 +2,7 @@ use crate::CtAeadDecrypt;
 
 use aes_gcm::{AesGcm, Tag, A_MAX, C_MAX};
 use block_cipher::{
-    consts::{U0, U16},
+    consts::U16,
     generic_array::{ArrayLength, GenericArray},
     Block, BlockCipher,
 };
@@ -13,10 +13,6 @@ where
     Aes::ParBlocks: ArrayLength<Block<Aes>>,
     NonceSize: ArrayLength<u8>,
 {
-    type NonceSize = NonceSize;
-    type TagSize = U16;
-    type CiphertextOverhead = U0;
-
     /// A constant time version of the original
     /// https://docs.rs/aes-gcm/0.6.0/src/aes_gcm/lib.rs.html#251
     fn ct_decrypt_in_place_detached(

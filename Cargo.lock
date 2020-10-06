@@ -2602,6 +2602,7 @@ dependencies = [
 name = "mc-crypto-ct-aead"
 version = "0.5.0"
 dependencies = [
+ "aead",
  "aes-gcm",
  "block-cipher",
  "subtle 2.2.3",
