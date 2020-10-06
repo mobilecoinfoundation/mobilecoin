@@ -56,9 +56,7 @@ where
         Rest = GenericArray<u8, AeadAlgo::TagSize>,
         Output = GenericArray<
             u8,
-            <<<KexAlgo as Kex>::Public as ReprBytes>::Size as Add<
-                AeadAlgo::TagSize,
-            >>::Output,
+            <<<KexAlgo as Kex>::Public as ReprBytes>::Size as Add<AeadAlgo::TagSize>>::Output,
         >,
     >,
     AeadAlgo::KeySize: Add<AeadAlgo::NonceSize>,
@@ -110,9 +108,8 @@ where
         // KDF
         let (aes_key, aes_nonce) = Self::kdf_step(&shared_secret);
 
-        let ct_aes_nonce = <GenericArray<u8, AeadAlgo::NonceSize>>::from_slice(
-            aes_nonce.as_slice(),
-        );
+        let ct_aes_nonce =
+            <GenericArray<u8, AeadAlgo::NonceSize>>::from_slice(aes_nonce.as_slice());
 
         // AES
         let mac_ref = <&GenericArray<u8, AeadAlgo::TagSize>>::from(
@@ -142,10 +139,7 @@ where
         GenericArray<u8, AeadAlgo::NonceSize>,
     ) {
         let kdf = Hkdf::<DigestAlgo>::new(Some(b"dei-salty-box"), dh_secret.as_ref());
-        let mut okm = GenericArray::<
-            u8,
-            Sum<AeadAlgo::KeySize, AeadAlgo::NonceSize>,
-        >::default();
+        let mut okm = GenericArray::<u8, Sum<AeadAlgo::KeySize, AeadAlgo::NonceSize>>::default();
         kdf.expand(b"aead-key-iv", okm.as_mut_slice())
             .expect("Digest output size is insufficient");
 
