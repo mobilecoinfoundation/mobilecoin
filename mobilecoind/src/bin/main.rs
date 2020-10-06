@@ -12,7 +12,7 @@ use mc_mobilecoind::{
 use mc_watcher::{watcher::WatcherSyncThread, watcher_db::create_or_open_rw_watcher_db};
 use std::{
     path::Path,
-    sync::{Arc, Mutex},
+    sync::{Arc, RwLock},
 };
 use structopt::StructOpt;
 
@@ -36,7 +36,7 @@ fn main() {
     let peer_manager = config.peers_config.create_peer_manager(verifier, &logger);
 
     // Create network state, transactions fetcher and ledger sync.
-    let network_state = Arc::new(Mutex::new(PollingNetworkState::new(
+    let network_state = Arc::new(RwLock::new(PollingNetworkState::new(
         config.quorum_set(),
         peer_manager.clone(),
         logger.clone(),

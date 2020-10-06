@@ -10,7 +10,7 @@ use mc_ledger_db::Ledger;
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc, Mutex,
+        Arc, RwLock,
     },
     thread,
     time::Duration,
@@ -33,7 +33,7 @@ impl LedgerSyncServiceThread {
     >(
         ledger: L,
         manager: ConnectionManager<BC>,
-        network_state: Arc<Mutex<PollingNetworkState<BC>>>,
+        network_state: Arc<RwLock<PollingNetworkState<BC>>>,
         transactions_fetcher: TF,
         poll_interval: Duration,
         logger: Logger,
@@ -92,7 +92,7 @@ impl LedgerSyncServiceThread {
     >(
         ledger: L,
         mut ledger_sync_service: LedgerSyncService<L, BC, TF>,
-        network_state: Arc<Mutex<PollingNetworkState<BC>>>,
+        network_state: Arc<RwLock<PollingNetworkState<BC>>>,
         poll_interval: Duration,
         currently_behind: Arc<AtomicBool>,
         stop_requested: Arc<AtomicBool>,
@@ -108,7 +108,7 @@ impl LedgerSyncServiceThread {
 
             // See if we're currently behind. If we're not, poll to be sure.
             let is_behind = {
-                let mut network_state = network_state.lock().expect("mutex poisoned");
+                let mut network_state = network_state.write().expect("lock poisoned");
                 if ledger_sync_service.is_behind(&*network_state) {
                     true
                 } else {
@@ -130,7 +130,7 @@ impl LedgerSyncServiceThread {
 
             // Maybe sync, maybe wait and check again.
             if is_behind {
-                let network_state = network_state.lock().expect("mutex poisoned");
+                let network_state = network_state.read().expect("lock poisoned");
 
                 let _ = ledger_sync_service
                     .attempt_ledger_sync(&*network_state, MAX_BLOCKS_PER_SYNC_ITERATION);

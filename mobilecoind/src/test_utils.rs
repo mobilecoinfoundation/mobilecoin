@@ -34,7 +34,7 @@ use std::{
     str::FromStr,
     sync::{
         atomic::{AtomicUsize, Ordering::SeqCst},
-        Arc, Mutex,
+        Arc, RwLock,
     },
 };
 use tempdir::TempDir;
@@ -247,14 +247,14 @@ fn setup_server(
 
     let conn_manager = ConnectionManager::new(vec![peer1, peer2], logger.clone());
 
-    let network_state = Arc::new(Mutex::new(PollingNetworkState::new(
+    let network_state = Arc::new(RwLock::new(PollingNetworkState::new(
         quorum_set,
         conn_manager.clone(),
         logger.clone(),
     )));
 
     {
-        let mut network_state = network_state.lock().unwrap();
+        let mut network_state = network_state.write().unwrap();
         network_state.poll();
     }
 
