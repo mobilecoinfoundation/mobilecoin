@@ -33,6 +33,9 @@ use std::{
 const DEFAULT_GET_BLOCKS_TIMEOUT: Duration = Duration::from_secs(30);
 const DEFAULT_GET_TRANSACTIONS_TIMEOUT: Duration = Duration::from_secs(30);
 
+/// Maximal amount of concurrent get_block_contents calls to allow.
+const MAX_CONCURRENT_GET_BLOCK_CONTENTS_CALLS: usize = 500;
+
 pub struct LedgerSyncService<L: Ledger, BC: BlockchainConnection, TF: TransactionsFetcher> {
     ledger: L,
     manager: ConnectionManager<BC>,
@@ -514,8 +517,7 @@ fn get_block_contents<TF: TransactionsFetcher + 'static>(
     // Spawn worker threads.
     let mut thread_handles = Vec::new();
 
-    // TODO: hardcoded limit
-    let num_workers = std::cmp::min(5, blocks.len());
+    let num_workers = std::cmp::min(MAX_CONCURRENT_GET_BLOCK_CONTENTS_CALLS, blocks.len());
     for worker_num in 0..num_workers {
         let thread_results_and_condvar = results_and_condvar.clone();
         let thread_sender = sender.clone();
