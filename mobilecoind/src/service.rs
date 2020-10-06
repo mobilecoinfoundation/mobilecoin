@@ -42,7 +42,7 @@ use mc_watcher::watcher_db::WatcherDB;
 use protobuf::{ProtobufEnum, RepeatedField};
 use std::{
     convert::TryFrom,
-    sync::{Arc, Mutex},
+    sync::{Arc, RwLock},
 };
 
 pub struct Service {
@@ -59,7 +59,7 @@ impl Service {
         mobilecoind_db: Database,
         watcher_db: Option<WatcherDB>,
         transactions_manager: TransactionsManager<T>,
-        network_state: Arc<Mutex<PollingNetworkState<T>>>,
+        network_state: Arc<RwLock<PollingNetworkState<T>>>,
         listen_uri: &MobilecoindUri,
         num_workers: Option<usize>,
         logger: Logger,
@@ -119,7 +119,7 @@ pub struct ServiceApi<T: BlockchainConnection + UserTxConnection + 'static> {
     ledger_db: LedgerDB,
     mobilecoind_db: Database,
     watcher_db: Option<WatcherDB>,
-    network_state: Arc<Mutex<PollingNetworkState<T>>>,
+    network_state: Arc<RwLock<PollingNetworkState<T>>>,
     logger: Logger,
 }
 
@@ -142,7 +142,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         ledger_db: LedgerDB,
         mobilecoind_db: Database,
         watcher_db: Option<WatcherDB>,
-        network_state: Arc<Mutex<PollingNetworkState<T>>>,
+        network_state: Arc<RwLock<PollingNetworkState<T>>>,
         logger: Logger,
     ) -> Self {
         Self {
@@ -1473,7 +1473,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         &mut self,
         _request: mc_mobilecoind_api::Empty,
     ) -> Result<mc_mobilecoind_api::GetNetworkStatusResponse, RpcStatus> {
-        let network_state = self.network_state.lock().expect("mutex poisoned");
+        let network_state = self.network_state.read().expect("lock poisoned");
         let num_blocks = self
             .ledger_db
             .num_blocks()
