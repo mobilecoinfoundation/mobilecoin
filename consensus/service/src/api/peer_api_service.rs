@@ -185,17 +185,15 @@ impl PeerApiService {
         consensus_msg: mc_peers::ConsensusMsg,
         from_responder_id: ResponderId,
     ) -> Result<(), PeerServiceError> {
-        // Ignore consensus messages from unknown peers.
+        // Ignore a consensus message from an unknown peer.
         if !self.known_responder_ids.contains(&from_responder_id) {
             return Err(PeerServiceError::UnknownPeer(from_responder_id.to_string()));
         }
 
         // A consensus message with a valid signature.
-        let verified_consensus_msg: mc_peers::VerifiedConsensusMsg = {
-            consensus_msg
-                .try_into()
-                .map_err(|_| PeerServiceError::ConsensusMsgInvalidSignature)?
-        };
+        let verified_consensus_msg: mc_peers::VerifiedConsensusMsg = consensus_msg
+            .try_into()
+            .map_err(|_| PeerServiceError::ConsensusMsgInvalidSignature)?;
 
         (self.incoming_consensus_msgs_sender)(IncomingConsensusMsg {
             from_responder_id,
