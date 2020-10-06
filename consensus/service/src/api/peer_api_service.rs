@@ -3,7 +3,7 @@
 //! Serves node-to-node gRPC requests.
 
 use crate::{
-    api::{grpc_error::ConsensusGrpcError, peer_service_error::PeerServiceError},
+    api::peer_service_error::PeerServiceError,
     background_work_queue::BackgroundWorkQueueSenderFn,
     consensus_service::{IncomingConsensusMsg, ProposeTxCallback},
     counters,
@@ -29,7 +29,9 @@ use mc_consensus_enclave::ConsensusEnclave;
 use mc_ledger_db::Ledger;
 use mc_peers::TxProposeAAD;
 use mc_transaction_core::tx::TxHash;
-use mc_util_grpc::{rpc_internal_error, rpc_invalid_arg_error, rpc_logger, send_result};
+use mc_util_grpc::{
+    rpc_enclave_err, rpc_internal_error, rpc_invalid_arg_error, rpc_logger, send_result,
+};
 use mc_util_metrics::SVC_COUNTERS;
 use mc_util_serial::deserialize;
 use std::{
@@ -107,22 +109,39 @@ impl PeerApiService {
     }
 
     /// Handle transactions proposed by clients to a different node.
+    ///
+    /// # Arguments
+    /// * `enclave_msg` - A message encrypted for this node's consensus enclave.
+    /// * `logger` -
+    ///
+    /// # Returns
+    /// The number of blocks in the local ledger when the tx_propose request was handled.
     fn handle_tx_propose(
         &mut self,
-        request: Message,
+        enclave_msg: EnclaveMessage<PeerSession>,
         logger: &Logger,
-    ) -> Result<ProposeTxResponse, ConsensusGrpcError> {
-        let enclave_msg: EnclaveMessage<PeerSession> = request.into();
+    ) -> Result<u64, PeerServiceError> {
         let aad = enclave_msg.aad.clone();
-        let tx_contexts = self.consensus_enclave.peer_tx_propose(enclave_msg)?;
+        let tx_contexts = self
+            .consensus_enclave
+            .peer_tx_propose(enclave_msg)
+            .map_err(PeerServiceError::Enclave)?;
 
-        // We fail silently here since the only effect of not having
-        // origin_node/relayed_by node IDs is less efficient broadcasting.
-        let (origin_node, relayed_by) = mc_util_serial::deserialize::<TxProposeAAD>(&aad)
-            .map(|aad| (Some(aad.origin_node), Some(aad.relayed_by)))
-            .unwrap_or((None, None));
+        // The node the originally received the transaction from a client,
+        // and the node that forwarded the transaction if not the origin_node.
+        let (origin_node, relayed_by) = {
+            mc_util_serial::deserialize::<TxProposeAAD>(&aad)
+                .map(|aad| (Some(aad.origin_node), Some(aad.relayed_by)))
+                .unwrap_or((None, None))
+        };
 
-        // Feed to manager
+        // The number of blocks in the local ledger when the tx_propose request was handled.
+        let num_blocks = self.ledger.num_blocks().map_err(|e| {
+            log::warn!(logger, "{}", e);
+            PeerServiceError::InternalError
+        })?;
+
+        // Handle each transaction.
         for tx_context in tx_contexts {
             let tx_hash = tx_context.tx_hash;
 
@@ -157,15 +176,15 @@ impl PeerApiService {
             };
         }
 
-        Ok(ProposeTxResponse::new())
+        Ok(num_blocks)
     }
 
     /// Handle a consensus message from another node.
-    fn handle_consensus_msg(&mut self, request: &GrpcConsensusMsg) -> Result<(), PeerServiceError> {
-        // The peer who delivered this message to us.
-        let from_responder_id = ResponderId::from_str(request.get_from_responder_id())
-            .map_err(|_| PeerServiceError::InvalidArgument("from_responder_id".to_owned()))?;
-
+    fn handle_consensus_msg(
+        &mut self,
+        consensus_msg: mc_peers::ConsensusMsg,
+        from_responder_id: ResponderId,
+    ) -> Result<(), PeerServiceError> {
         // Ignore consensus messages from unknown peers.
         if !self.known_responder_ids.contains(&from_responder_id) {
             return Err(PeerServiceError::UnknownPeer(from_responder_id.to_string()));
@@ -173,8 +192,6 @@ impl PeerApiService {
 
         // A consensus message with a valid signature.
         let verified_consensus_msg: mc_peers::VerifiedConsensusMsg = {
-            let consensus_msg: mc_peers::ConsensusMsg = deserialize(request.get_payload())
-                .map_err(|_| PeerServiceError::InvalidArgument("payload".to_owned()))?;
             consensus_msg
                 .try_into()
                 .map_err(|_| PeerServiceError::ConsensusMsgInvalidSignature)?
@@ -190,48 +207,21 @@ impl PeerApiService {
     /// Returns the full, encrypted transactions corresponding to a list of transaction hashes.
     fn handle_get_txs(
         &mut self,
-        request: GetTxsRequest,
+        tx_hashes: Vec<TxHash>,
+        peer_session: PeerSession,
         logger: &Logger,
-    ) -> Result<GetTxsResponse, ConsensusGrpcError> {
-        let tx_hashes: Vec<TxHash> = request
-            .get_tx_hashes()
-            .iter()
-            .map(|bytes| {
-                TxHash::try_from(&bytes[..])
-                    .map_err(|_| ConsensusGrpcError::InvalidArgument("Invalid TxHash".to_owned()))
+    ) -> Result<EnclaveMessage<PeerSession>, PeerServiceError> {
+        self.tx_manager
+            .encrypt_for_peer(&tx_hashes, &[], &peer_session)
+            .map_err(|tx_manager_error| match tx_manager_error {
+                TxManagerError::NotInCache(tx_hashes) => {
+                    PeerServiceError::UnknownTransactions(tx_hashes)
+                }
+                err => {
+                    log::warn!(logger, "{}", err);
+                    PeerServiceError::InternalError
+                }
             })
-            .collect::<Result<Vec<TxHash>, ConsensusGrpcError>>()?;
-
-        match self.tx_manager.encrypt_for_peer(
-            &tx_hashes,
-            &[],
-            &PeerSession::from(request.get_channel_id()),
-        ) {
-            Ok(enclave_message) => {
-                let mut response = GetTxsResponse::new();
-                response.set_success(enclave_message.into());
-                Ok(response)
-            }
-            Err(TxManagerError::NotInCache(tx_hashes)) => {
-                let mut tx_hashes_not_in_cache = TxHashesNotInCache::new();
-                tx_hashes_not_in_cache
-                    .set_tx_hashes(tx_hashes.iter().map(|tx_hash| tx_hash.to_vec()).collect());
-
-                let mut response = GetTxsResponse::new();
-                response.set_tx_hashes_not_in_cache(tx_hashes_not_in_cache);
-
-                Ok(response)
-            }
-            Err(err) => {
-                log::warn!(
-                    logger,
-                    "txs_for_peer with hashes {:?} failed: {}",
-                    tx_hashes,
-                    err
-                );
-                Err(err.into())
-            }
-        }
     }
 }
 
@@ -244,20 +234,25 @@ impl ConsensusPeerApi for PeerApiService {
         sink: UnarySink<ProposeTxResponse>,
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
+
+        let enclave_msg: EnclaveMessage<PeerSession> = request.into();
+
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            send_result(
-                ctx,
-                sink,
-                self.handle_tx_propose(request, &logger)
-                    .or_else(ConsensusGrpcError::into)
-                    .and_then(|mut resp| {
-                        resp.set_num_blocks(
-                            self.ledger.num_blocks().map_err(ConsensusGrpcError::from)?,
-                        );
-                        Ok(resp)
-                    }),
-                &logger,
-            )
+            let result: Result<ProposeTxResponse, RpcStatus> =
+                match self.handle_tx_propose(enclave_msg, logger) {
+                    Ok(num_blocks) => {
+                        let mut response = ProposeTxResponse::new();
+                        response.set_num_blocks(num_blocks);
+                        Ok(response)
+                    }
+
+                    Err(peer_service_error) => match peer_service_error {
+                        PeerServiceError::Enclave(err) => Err(rpc_enclave_err(err, &logger)),
+                        err => Err(rpc_internal_error("peer_tx_propose", err, &logger)),
+                    },
+                };
+
+            send_result(ctx, sink, result, &logger)
         });
     }
 
@@ -270,8 +265,35 @@ impl ConsensusPeerApi for PeerApiService {
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
+            // The peer who delivered this message to us.
+            let from_responder_id = match ResponderId::from_str(request.get_from_responder_id()) {
+                Ok(responder_id) => responder_id,
+                Err(_) => {
+                    let result = Err(rpc_invalid_arg_error(
+                        "send_consensus_msg",
+                        "from_responder_id",
+                        &logger,
+                    ));
+                    send_result(ctx, sink, result, &logger);
+                    return;
+                }
+            };
+
+            let consensus_msg: mc_peers::ConsensusMsg = match deserialize(request.get_payload()) {
+                Ok(consensus_msg) => consensus_msg,
+                Err(_) => {
+                    let result = Err(rpc_invalid_arg_error(
+                        "send_consensus_msg",
+                        "consensus_msg",
+                        &logger,
+                    ));
+                    send_result(ctx, sink, result, &logger);
+                    return;
+                }
+            };
+
             let result: Result<ConsensusMsgResponse, RpcStatus> = match self
-                .handle_consensus_msg(&request)
+                .handle_consensus_msg(consensus_msg, from_responder_id)
             {
                 Ok(()) => {
                     let mut response = ConsensusMsgResponse::new();
@@ -284,15 +306,12 @@ impl ConsensusPeerApi for PeerApiService {
                         response.set_result(ConsensusMsgResult::UnknownPeer);
                         Ok(response)
                     }
-                    PeerServiceError::InvalidArgument(err) => {
-                        Err(rpc_invalid_arg_error("send_consensus_msg", err, &logger))
-                    }
                     PeerServiceError::ConsensusMsgInvalidSignature => Err(rpc_invalid_arg_error(
                         "send_consensus_msg",
                         "InvalidConsensusMsgSignature",
                         &logger,
                     )),
-                    PeerServiceError::InternalError => Err(rpc_internal_error(
+                    _ => Err(rpc_internal_error(
                         "send_consensus_msg",
                         "InternalError",
                         &logger,
@@ -332,13 +351,44 @@ impl ConsensusPeerApi for PeerApiService {
     ) {
         let _timer = SVC_COUNTERS.req(&ctx);
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
-            send_result(
-                ctx,
-                sink,
-                self.handle_get_txs(request, &logger)
-                    .map_err(ConsensusGrpcError::into),
-                &logger,
-            )
+            let mut tx_hashes: Vec<TxHash> = Vec::new();
+            for tx_hash_bytes in request.get_tx_hashes() {
+                match TxHash::try_from(&tx_hash_bytes[..]) {
+                    Ok(tx_hash) => tx_hashes.push(tx_hash),
+                    Err(_) => {
+                        let result = Err(rpc_invalid_arg_error("tx_hash", (), &logger));
+                        send_result(ctx, sink, result, &logger);
+                        return;
+                    }
+                }
+            }
+
+            let peer_session = PeerSession::from(request.get_channel_id());
+
+            let result: Result<GetTxsResponse, RpcStatus> =
+                match self.handle_get_txs(tx_hashes, peer_session, &logger) {
+                    Ok(enclave_message) => {
+                        let mut response = GetTxsResponse::new();
+                        response.set_success(enclave_message.into());
+                        Ok(response)
+                    }
+                    Err(peer_service_error) => match peer_service_error {
+                        PeerServiceError::UnknownTransactions(tx_hashes) => {
+                            let mut tx_hashes_not_in_cache = TxHashesNotInCache::new();
+                            tx_hashes_not_in_cache.set_tx_hashes(
+                                tx_hashes.iter().map(|tx_hash| tx_hash.to_vec()).collect(),
+                            );
+
+                            let mut response = GetTxsResponse::new();
+                            response.set_tx_hashes_not_in_cache(tx_hashes_not_in_cache);
+                            Ok(response)
+                        }
+                        // Unexpected errors:
+                        err => Err(rpc_internal_error("get_txs", err, &logger)),
+                    },
+                };
+
+            send_result(ctx, sink, result, &logger)
         });
     }
 }
@@ -424,6 +474,7 @@ mod tests {
     #[test_with_logger]
     // Should ignore a message from an unknown peer.
     fn test_send_consensus_msg_ignore_unknown_peer(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([67u8; 32]);
         let (consensus_enclave, ledger, tx_manager) = get_mocks();
 
         // ResponderIds seem to be "host:port" strings.
@@ -446,9 +497,36 @@ mod tests {
         let (client, _server) = get_client_server(instance);
 
         // A message from an unknown peer.
-        // The payload can be empty because the message should be ignored before the payload is read.
+        let from = ResponderId("X:port".to_owned());
+        let node_x_signer_key = Ed25519Pair::from_random(&mut rng);
+        let scp_msg = Msg {
+            sender_id: NodeID {
+                responder_id: from.clone(),
+                public_key: node_x_signer_key.public_key(),
+            },
+            slot_index: 1,
+            quorum_set: QuorumSet {
+                threshold: 0,
+                members: vec![],
+            },
+            topic: Nominate(NominatePayload {
+                X: Default::default(),
+                Y: Default::default(),
+            }),
+        };
+
+        let payload = {
+            // Node A's ledger.
+            let mut ledger = MockLedger::new();
+            ledger
+                .expect_get_block()
+                .return_const(Ok(Block::new_origin_block(&vec![])));
+            mc_peers::ConsensusMsg::from_scp_msg(&ledger, scp_msg, &node_x_signer_key).unwrap()
+        };
+
         let mut message = ConsensusMsg::new();
-        message.set_from_responder_id("X:port".to_owned());
+        message.set_from_responder_id(from.to_string());
+        message.set_payload(mc_util_serial::serialize(&payload).unwrap());
 
         match client.send_consensus_msg(&message) {
             Ok(consensus_msg_response) => {
