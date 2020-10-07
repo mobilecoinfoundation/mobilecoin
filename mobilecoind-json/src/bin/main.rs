@@ -483,7 +483,7 @@ fn check_transfer_status(
     state: rocket::State<State>,
     receipt: String,
 ) -> Result<Json<JsonStatusResponse>, String> {
-    // allow receipt to be submitted as either JsonSendPaymentResponse or JsonSenderTxReceipt
+    // allow receipt to be either JsonSendPaymentResponse or JsonSenderTxReceipt
     let receipt: JsonSenderTxReceipt = serde_json::from_str(&receipt)
         .or_else(
             |_| serde_json::from_str::<JsonSendPaymentResponse>(&receipt)
@@ -516,7 +516,7 @@ fn check_transfer_status(
 /// Checks the status of a transfer given data for a specific receiver
 /// The sender of the transaction will take specific receipt data from the /transfer call
 /// and distribute it to the recipient(s) so they can verify that a transaction has been
-/// processed and the the person supplying the receipt can prove they intiated it
+/// processed and the the person supplying the receipt can prove they initiated it
 #[post("/tx/status-as-receiver", format = "json", data = "<receipt>")]
 fn check_receiver_transfer_status(
     state: rocket::State<State>,
