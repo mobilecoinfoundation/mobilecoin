@@ -70,8 +70,14 @@ fn parse_duration_in_seconds(src: &str) -> Result<Duration, std::num::ParseIntEr
 }
 
 fn parse_quorum_set_from_json(src: &str) -> Result<QuorumSet<ResponderId>, String> {
-    Ok(serde_json::from_str(src)
-        .map_err(|err| format!("Error parsing quorum set {}: {:?}", src, err))?)
+    let quorum_set: QuorumSet<ResponderId> = serde_json::from_str(src)
+        .map_err(|err| format!("Error parsing quorum set {}: {:?}", src, err))?;
+
+    if !quorum_set.is_valid() {
+        return Err(format!("Invalid quorum set: {:?}", quorum_set));
+    }
+
+    Ok(quorum_set)
 }
 
 impl Config {

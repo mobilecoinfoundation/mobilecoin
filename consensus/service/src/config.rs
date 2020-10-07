@@ -129,6 +129,10 @@ pub struct NetworkConfig {
 
 impl NetworkConfig {
     pub fn quorum_set(&self) -> QuorumSet {
+        if !self.quorum_set.is_valid() {
+            panic!("invalid quorum set: {:?}", self.quorum_set);
+        }
+
         let mut peer_map: HashMap<ResponderId, NodeID> =
             HashMap::from_iter(self.broadcast_peers.iter().cloned().map(|uri| {
                 (
