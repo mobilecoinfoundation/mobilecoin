@@ -360,6 +360,10 @@ impl<
 
     /// Basic validation of Msg structure.
     pub fn validate(&self) -> Result<(), String> {
+        if !self.quorum_set.is_valid() {
+            return Err(format!("Invalid quorum set {:?}", self.quorum_set));
+        }
+
         let validate_nominate = |payload: &NominatePayload<V>| -> Result<(), String> {
             if payload.X.intersection(&payload.Y).next().is_some() {
                 Err(format!("X intersects Y, msg: {}", self.to_display()))
