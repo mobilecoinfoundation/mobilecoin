@@ -485,7 +485,7 @@ fn check_transfer_status(
 ) -> Result<Json<JsonStatusResponse>, String> {
     // allow receipt to be submitted as either JsonSendPaymentResponse or JsonSenderTxReceipt
     let receipt: JsonSenderTxReceipt = serde_json::from_str(&receipt)
-        .or_else(serde_json::from_str<JsonSendPaymentResponse>(&receipt))
+        .or_else(serde_json::from_str::<JsonSendPaymentResponse>(&receipt))
         .map(|response| response.sender_tx_receipt)
         .map_err(|err| format!("Failed to parse receipt: {}", err))?;
 
