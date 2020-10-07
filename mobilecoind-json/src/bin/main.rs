@@ -478,21 +478,30 @@ fn submit_tx(
 }
 
 /// Checks the status of a transfer given a key image and tombstone block
-#[post("/tx/status-as-sender", format = "json", data = "<receipt>")]
+#[post("/tx/status-as-sender", data = "<receipt>")]
 fn check_transfer_status(
     state: rocket::State<State>,
-    receipt: Json<JsonSendPaymentResponse>,
+    receipt: String,
 ) -> Result<Json<JsonStatusResponse>, String> {
+    // allow receipt to be submitted as either JsonSendPaymentResponse or JsonSenderTxReceipt
+    let receipt: JsonSenderTxReceipt = match serde_json::from_str(&receipt) {
+        Ok(x) => Ok(x),
+        Err(_) => match serde_json::from_str::<JsonSendPaymentResponse>(&receipt) {
+            Ok(x) => Ok(x.sender_tx_receipt),
+            Err(x) => Err(x),
+        },
+    }.map_err(|err| format!("Failed to parse receipt: {}", err))?;
+
     let mut sender_receipt = mc_mobilecoind_api::SenderTxReceipt::new();
     let mut key_images = Vec::new();
-    for key_image_hex in &receipt.sender_tx_receipt.key_images {
+    for key_image_hex in &receipt.key_images {
         key_images.push(KeyImage::from(
             hex::decode(&key_image_hex).map_err(|err| format!("{}", err))?,
         ))
     }
 
     sender_receipt.set_key_image_list(RepeatedField::from_vec(key_images));
-    sender_receipt.set_tombstone(receipt.sender_tx_receipt.tombstone);
+    sender_receipt.set_tombstone(receipt.tombstone);
 
     let mut req = mc_mobilecoind_api::GetTxStatusAsSenderRequest::new();
     req.set_receipt(sender_receipt);
