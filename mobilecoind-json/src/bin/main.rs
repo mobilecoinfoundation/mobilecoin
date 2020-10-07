@@ -484,13 +484,12 @@ fn check_transfer_status(
     receipt: String,
 ) -> Result<Json<JsonStatusResponse>, String> {
     // allow receipt to be submitted as either JsonSendPaymentResponse or JsonSenderTxReceipt
-    let receipt: JsonSenderTxReceipt = match serde_json::from_str(&receipt) {
-        Ok(x) => Ok(x),
-        Err(_) => match serde_json::from_str::<JsonSendPaymentResponse>(&receipt) {
-            Ok(x) => Ok(x.sender_tx_receipt),
-            Err(x) => Err(x),
-        },
-    }.map_err(|err| format!("Failed to parse receipt: {}", err))?;
+    let receipt: JsonSenderTxReceipt = serde_json::from_str(&receipt)
+        .or_else({
+            let receipt: JsonSendPaymentResponse = serde_json::from_str(&receipt)?;
+            receipt.sender_tx_receipt
+        })
+        .map_err(|err| format!("Failed to parse receipt: {}", err))?;
 
     let mut sender_receipt = mc_mobilecoind_api::SenderTxReceipt::new();
     let mut key_images = Vec::new();
