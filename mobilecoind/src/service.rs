@@ -1631,7 +1631,7 @@ mod test {
         assert_eq!(expected_monitor_id, monitor_id);
 
         // Check that the monitor is reported as new
-        assert!(&response.is_new)
+        assert!(&response.is_new);
 
         //  Add the same monitor again
         let repeated_response = client.add_monitor(&request).expect("failed to add monitor");
@@ -1643,7 +1643,7 @@ mod test {
         assert_eq!(expected_monitor_id, repeated_monitor_id);
 
         // Check that the monitor is reported as new
-        assert!(!&repeated_response.is_new)
+        assert!(!&repeated_response.is_new);
     }
 
     #[test_with_logger]
