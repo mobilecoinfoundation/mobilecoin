@@ -239,19 +239,18 @@ if response.status_code == 200:
     processed_block_pub = response.json()
     print(f"Got processed_block = {processed_block_pub}")
 else:
-    print("tx-out/tx_public_key/block-index returned status code %d" % response.status_code)
+    print("processed-block/block-index returned status code %d" % response.status_code)
     shutdown(1)
 
 # Get the processed block for that block index via mobilecoind-json
-# FIXME: Singular processed-block after release for MCC-1910
-url = f"http://localhost:9090/monitors/{monitor_id}/processed-blocks/{block_index}"
+url = f"http://localhost:9090/monitors/{monitor_id}/processed-block/{block_index}"
 response = requests.get(url)
 if response.status_code == 200:
     processed_block = response.json()
     print(f"Got processed_block = {processed_block}")
     assert processed_block == processed_block_pub, "Processed blocks do not match"
 else:
-    print("tx-out/tx_public_key/block-index returned status code %d" % response.status_code)
+    print("monitors/monitor-id/processed-block/block-index returned status code %d" % response.status_code)
     shutdown(1)
 
 print("All tests succeeded!")
