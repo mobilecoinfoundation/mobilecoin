@@ -41,7 +41,7 @@ def allocate_MOB(mailchimp_member_record, amount_picoMOB):
     block_count = wait_for_monitor(sender_monitor_id)
 
     # abort if sender's balance is too low
-    sender_balance_picoMOB = mobilecoind.get_balance(sender_monitor_id)
+    sender_balance_picoMOB = mobilecoind.get_balance(sender_monitor_id).balance
     if sender_balance_picoMOB < (amount_picoMOB + mobilecoin.MINIMUM_FEE):
         print(
             "# sender's balance is too low ({})... aborting!"
@@ -50,12 +50,12 @@ def allocate_MOB(mailchimp_member_record, amount_picoMOB):
         sys.exit()
 
     # create and fund a new MobileCoin TestNet account
-    recipient_entropy = mobilecoind.generate_entropy()
-    recipient_account_key = mobilecoind.get_account_key(recipient_entropy)
+    recipient_entropy = mobilecoind.generate_entropy().entropy
+    recipient_account_key = mobilecoind.get_account_key(recipient_entropy).account_key
     print("# generated entropy {} for email {}".format(recipient_entropy.hex(), new_user_email))
 
     # no need to start the recipient from the origin block since we know we just created this account
-    recipient_monitor_id = mobilecoind.add_monitor(recipient_account_key, first_block=block_count)
+    recipient_monitor_id = mobilecoind.add_monitor(recipient_account_key, first_block=block_count).monitor_id
     recipient_public_address = mobilecoind.get_public_address(recipient_monitor_id).public_address
     print(
         "# adding monitor {} for {} (first block = {})"
@@ -63,10 +63,10 @@ def allocate_MOB(mailchimp_member_record, amount_picoMOB):
     )
 
     # Construct and send the token allocation transaction
-    tx_list = mobilecoind.get_unspent_tx_output_list(sender_monitor_id)
+    tx_list = mobilecoind.get_unspent_tx_output_list(sender_monitor_id).output_list
     outlays = [{'value': amount_picoMOB, 'receiver': recipient_public_address}]
 
-    tx_proposal = mobilecoind.generate_tx(sender_monitor_id, mobilecoin.DEFAULT_SUBADDRESS_INDEX, tx_list, outlays)
+    tx_proposal = mobilecoind.generate_tx(sender_monitor_id, mobilecoin.DEFAULT_SUBADDRESS_INDEX, tx_list, outlays).tx_proposal
 
     sender_tx_receipt = mobilecoind.submit_tx(tx_proposal).sender_tx_receipt
 
@@ -74,7 +74,7 @@ def allocate_MOB(mailchimp_member_record, amount_picoMOB):
     tx_status = mobilecoin.TX_STATUS_UNKNOWN
     while tx_status == mobilecoin.TX_STATUS_UNKNOWN:
         time.sleep(TX_RECEIPT_CHECK_INTERVAL_SECONDS)
-        tx_status = int(mobilecoind.get_tx_status_as_sender(sender_tx_receipt))
+        tx_status = int(mobilecoind.get_tx_status_as_sender(sender_tx_receipt)).status
         print("# transaction status is {}".format(mobilecoin.parse_tx_status(tx_status)))
 
     if tx_status != mobilecoin.TX_STATUS_VERIFIED:
@@ -85,10 +85,10 @@ def allocate_MOB(mailchimp_member_record, amount_picoMOB):
 
     # Check that balances are as expected
     wait_for_monitor(sender_monitor_id)
-    sender_balance = mobilecoind.get_balance(sender_monitor_id)
+    sender_balance = mobilecoind.get_balance(sender_monitor_id).balance
 
     wait_for_monitor(recipient_monitor_id)
-    recipient_balance = mobilecoind.get_balance(recipient_monitor_id)
+    recipient_balance = mobilecoind.get_balance(recipient_monitor_id).balance
 
     print(
         "# recipient balance = {} picoMOB ({}), sender balance = {} picoMOB ({})"
@@ -145,13 +145,13 @@ if __name__ == '__main__':
 
     # Set up our "bank"
     sender_entropy_bytes = bytes.fromhex(args.key)
-    sender_account_key = mobilecoind.get_account_key(sender_entropy_bytes)
-    sender_monitor_id = mobilecoind.add_monitor(sender_account_key)
-    sender_public_address = mobilecoind.get_public_address(sender_monitor_id)
+    sender_account_key = mobilecoind.get_account_key(sender_entropy_bytes).account_key
+    sender_monitor_id = mobilecoind.add_monitor(sender_account_key).monitor_id
+    sender_public_address = mobilecoind.get_public_address(sender_monitor_id).public_address
 
     # clean up all old monitors -- except for sender_monitor_id
     if args.clean:
-        for monitor_id in mobilecoind.get_monitor_list():
+        for monitor_id in mobilecoind.get_monitor_list().monitor_id_list:
             if monitor_id != sender_monitor_id:
                 print("# removing existing monitor_id {}.".format(monitor_id.hex()))
                 mobilecoind.remove_monitor(monitor_id)
