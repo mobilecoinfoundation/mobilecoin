@@ -17,7 +17,7 @@ parser = argparse.ArgumentParser(description='Download and test mobilecoind / mi
 parser.add_argument('entropy', metavar='e', type=str, help='Root entropy of account for testing')
 parser.add_argument('--url', metavar='u', type=str, help='URL of release tarball', default='https://github.com/mobilecoinofficial/mobilecoin/releases/latest/download/mobilecoind-mirror-tls.tar.gz')
 parser.add_argument('--skip-clean', action='store_true', help='Do not delete ledger-db and mobilecoind-db on start')
-parser.add_argument('--services', action='store_true', help='Start services then sleep for 1000 seconds')
+parser.add_argument('--services', action='store_true', help='Leave services up after test run is complete')
 args = parser.parse_args()
 
 target_path = 'mobilecoind-mirror-tls.tar.gz'
@@ -229,12 +229,27 @@ else:
     print("tx-out/tx_public_key/block-index returned status code %d" % response.status_code)
     shutdown(1)
 
+# Allow block to get processed
+time.sleep(5)
+
 # Get the processed block for that block index
 url = f"http://localhost:8001/processed-block/{block_index}"
 response = requests.get(url)
 if response.status_code == 200:
+    processed_block_pub = response.json()
+    print(f"Got processed_block = {processed_block_pub}")
+else:
+    print("tx-out/tx_public_key/block-index returned status code %d" % response.status_code)
+    shutdown(1)
+
+# Get the processed block for that block index via mobilecoind-json
+# FIXME: Singular processed-block after release for MCC-1910
+url = f"http://localhost:9090/monitors/{monitor_id}/processed-blocks/{block_index}"
+response = requests.get(url)
+if response.status_code == 200:
     processed_block = response.json()
     print(f"Got processed_block = {processed_block}")
+    assert processed_block == processed_block_pub, "Processed blocks do not match"
 else:
     print("tx-out/tx_public_key/block-index returned status code %d" % response.status_code)
     shutdown(1)
