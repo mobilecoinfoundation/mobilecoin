@@ -108,15 +108,12 @@ where
         // KDF
         let (aes_key, aes_nonce) = Self::kdf_step(&shared_secret);
 
-        let ct_aes_nonce =
-            <GenericArray<u8, AeadAlgo::NonceSize>>::from_slice(aes_nonce.as_slice());
-
         // AES
         let mac_ref = <&GenericArray<u8, AeadAlgo::TagSize>>::from(
             &tag[<KexAlgo::Public as ReprBytes>::Size::USIZE..],
         );
         let aead = AeadAlgo::new(&aes_key);
-        Ok(aead.ct_decrypt_in_place_detached(&ct_aes_nonce, &[], buffer, mac_ref))
+        Ok(aead.ct_decrypt_in_place_detached(&aes_nonce, &[], buffer, mac_ref))
     }
 }
 

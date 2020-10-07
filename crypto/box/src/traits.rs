@@ -84,7 +84,7 @@ pub trait CryptoBox<KexAlgo: Kex>: Default {
     }
 
     /// Decrypt a slice pointing to the cryptogram, returning a status and a Vec<u8> plaintext.
-    /// If status is false then mac check failed and plaintext should be discarded.
+    /// If status is false then mac check failed and plaintext should be zeroed.
     ///
     /// Meant to mirror aead::decrypt
     fn decrypt(&self, key: &KexAlgo::Private, cryptogram: &[u8]) -> Result<(bool, Vec<u8>), Error> {
