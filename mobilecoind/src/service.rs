@@ -1642,7 +1642,7 @@ mod test {
 
         assert_eq!(expected_monitor_id, repeated_monitor_id);
 
-        // Check that the monitor is reported as new
+        // Check that the monitor is not reported as new
         assert!(!&repeated_response.is_new);
     }
 
