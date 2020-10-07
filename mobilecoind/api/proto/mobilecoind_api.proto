@@ -259,6 +259,7 @@ message AddMonitorRequest {
 }
 message AddMonitorResponse {
     bytes monitor_id = 1;
+    bool is_new = 2;
 }
 
 // Remove a monitor and all associated data.

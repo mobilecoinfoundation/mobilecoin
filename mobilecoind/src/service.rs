@@ -179,10 +179,10 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         )
         .map_err(|err| rpc_internal_error("monitor_data.new", err, &self.logger))?;
 
-        // Insert into database. If the monitor already exists, we will simply return its id.
-        let id = match self.mobilecoind_db.add_monitor(&data) {
-            Ok(id) => Ok(id),
-            Err(Error::MonitorIdExists) => Ok(MonitorId::from(&data)),
+        // Insert into database. Return the id and flag if the monitor already existed.
+        let (id, is_new) = match self.mobilecoind_db.add_monitor(&data) {
+            Ok(id) => Ok((id, true)),
+            Err(Error::MonitorIdExists) => Ok((MonitorId::from(&data), false)),
             Err(err) => Err(err),
         }
         .map_err(|err| rpc_internal_error("mobilecoind_db.add_monitor", err, &self.logger))?;
@@ -190,6 +190,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         // Return success response.
         let mut response = mc_mobilecoind_api::AddMonitorResponse::new();
         response.set_monitor_id(id.to_vec());
+        response.set_is_new(is_new);
         Ok(response)
     }
 
@@ -1628,6 +1629,21 @@ mod test {
         let expected_monitor_id = MonitorId::from(&data);
 
         assert_eq!(expected_monitor_id, monitor_id);
+
+        // Check that the monitor is reported as new
+        assert!(&response.is_new)
+
+        //  Add the same monitor again
+        let repeated_response = client.add_monitor(&request).expect("failed to add monitor");
+
+        // Compare the MonitorId we got back to the value we expected.
+        let repeated_monitor_id = MonitorId::try_from(&repeated_response.monitor_id)
+            .expect("failed to convert repeated_response to MonitorId");
+
+        assert_eq!(expected_monitor_id, repeated_monitor_id);
+
+        // Check that the monitor is reported as new
+        assert!(!&repeated_response.is_new)
     }
 
     #[test_with_logger]
