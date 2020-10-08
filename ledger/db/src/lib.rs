@@ -222,7 +222,6 @@ impl Ledger for LedgerDB {
 
         let block = self.get_block_impl(&db_transaction, block_number)?;
         let contents = self.get_block_contents_impl(&db_transaction, block_number)?;
-
         let signature = match self.get_block_signature_impl(&db_transaction, block_number) {
             Ok(sig) => Ok(Some(sig)),
             Err(Error::NotFound) => Ok(None),
