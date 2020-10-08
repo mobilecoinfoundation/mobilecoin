@@ -114,6 +114,9 @@ overflow-checks = false
 rpath = true
 
 [patch.crates-io]
+# grpcio patched with metadata
+grpcio = { git = "https://github.com/jcape/grpc-rs", rev = "74797d973f0e81555c3c01857ccdbb8092f21f67" }
+
 # prost is patched with no_std support (https://github.com/danburkert/prost/pull/319)
 # current revision is from jun 13 2020, waiting for a new prost release
 # https://github.com/danburkert/prost/issues/329
