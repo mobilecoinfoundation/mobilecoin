@@ -6,11 +6,13 @@ use failure::Fail;
 
 mod block;
 mod block_contents;
+mod block_data;
 mod block_id;
 mod block_signature;
 
 pub use block::*;
 pub use block_contents::*;
+pub use block_data::*;
 pub use block_id::*;
 pub use block_signature::*;
 
