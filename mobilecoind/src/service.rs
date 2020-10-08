@@ -1001,26 +1001,24 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
     ) -> Result<mc_mobilecoind_api::GetBlockResponse, RpcStatus> {
         let mut response = mc_mobilecoind_api::GetBlockResponse::new();
 
-        let block = self
+        let block_data = self
             .ledger_db
-            .get_block(request.block)
-            .map_err(|err| rpc_internal_error("ledger_db.get_block", err, &self.logger))?;
-        response.set_block(mc_consensus_api::blockchain::Block::from(&block));
+            .get_block_data(request.block)
+            .map_err(|err| rpc_internal_error("ledger_db.get_block_data", err, &self.logger))?;
 
-        let block_contents = self
-            .ledger_db
-            .get_block_contents(request.block)
-            .map_err(|err| rpc_internal_error("ledger_db.get_block_contents", err, &self.logger))?;
+        response.set_block(mc_consensus_api::blockchain::Block::from(
+            block_data.block(),
+        ));
 
-        for key_image in block_contents.key_images {
+        for key_image in &block_data.contents().key_images {
             response
                 .mut_key_images()
-                .push(mc_consensus_api::external::KeyImage::from(&key_image));
+                .push(mc_consensus_api::external::KeyImage::from(key_image));
         }
-        for output in block_contents.outputs {
+        for output in &block_data.contents().outputs {
             response
                 .mut_txos()
-                .push(mc_consensus_api::external::TxOut::from(&output));
+                .push(mc_consensus_api::external::TxOut::from(output));
         }
 
         if let Some(watcher_db) = self.watcher_db.as_ref() {
