@@ -9,6 +9,7 @@
 mod error;
 
 // blockchain
+mod archive_block;
 mod block;
 mod block_contents;
 mod block_contents_hash;
@@ -37,6 +38,7 @@ mod tx_prefix;
 
 pub use account_key::*;
 pub use amount::*;
+pub use archive_block::*;
 pub use block::*;
 pub use block_contents::*;
 pub use block_contents_hash::*;

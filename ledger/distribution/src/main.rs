@@ -144,20 +144,7 @@ impl BlockHandler for S3BlockWriter {
             block_data.block().index
         );
 
-        let bc_block = blockchain::Block::from(block_data.block());
-        let bc_block_contents = blockchain::BlockContents::from(block_data.contents());
-
-        let mut archive_block_v1 = blockchain::ArchiveBlockV1::new();
-        archive_block_v1.set_block(bc_block);
-        archive_block_v1.set_block_contents(bc_block_contents);
-
-        if let Some(signature) = block_data.signature() {
-            let bc_signature = blockchain::BlockSignature::from(signature);
-            archive_block_v1.set_signature(bc_signature);
-        }
-
-        let mut archive_block = blockchain::ArchiveBlock::new();
-        archive_block.set_v1(archive_block_v1);
+        let archive_block = blockchain::ArchiveBlock::from(block_data);
 
         let dest = self
             .path
@@ -199,20 +186,7 @@ impl BlockHandler for LocalBlockWriter {
             block_data.block().index
         );
 
-        let bc_block = blockchain::Block::from(block_data.block());
-        let bc_block_contents = blockchain::BlockContents::from(block_data.contents());
-
-        let mut archive_block_v1 = blockchain::ArchiveBlockV1::new();
-        archive_block_v1.set_block(bc_block);
-        archive_block_v1.set_block_contents(bc_block_contents);
-
-        if let Some(signature) = block_data.signature() {
-            let bc_signature = blockchain::BlockSignature::from(signature);
-            archive_block_v1.set_signature(bc_signature);
-        }
-
-        let mut archive_block = blockchain::ArchiveBlock::new();
-        archive_block.set_v1(archive_block_v1);
+        let archive_block = blockchain::ArchiveBlock::from(block_data);
 
         let bytes = archive_block
             .write_to_bytes()
