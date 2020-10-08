@@ -25,7 +25,7 @@ if __name__ == '__main__':
 
     # clean up all old monitors
     if args.clean:
-        for monitor_id in mobilecoind.get_monitor_list():
+        for monitor_id in mobilecoind.get_monitor_list().monitor_id_list:
             print("# removing existing monitor_id {}".format(monitor_id.hex()))
             mobilecoind.remove_monitor(monitor_id)
 
@@ -55,8 +55,8 @@ if __name__ == '__main__':
             email = member_record["email_address"]
 
             entropy_bytes = bytes.fromhex(entropy)
-            account_key = mobilecoind.get_account_key(entropy_bytes)
-            monitor_id = mobilecoind.add_monitor(account_key)
+            account_key = mobilecoind.get_account_key(entropy_bytes).account_key
+            monitor_id = mobilecoind.add_monitor(account_key).monitor_id
 
             (monitor_is_behind, next_block, remote_count, blocks_per_second) = mobilecoind.wait_for_monitor(monitor_id)
             if monitor_is_behind:
@@ -71,5 +71,5 @@ if __name__ == '__main__':
                     (monitor_is_behind, next_block, remote_count, blocks_per_second) = mobilecoind.wait_for_monitor(monitor_id, max_blocks_to_sync=10000, timeout_seconds=60)
                 print("# monitor has processed all {} blocks\n#".format(remote_count))
 
-            balance_picoMOB = mobilecoind.get_balance(monitor_id)
+            balance_picoMOB = mobilecoind.get_balance(monitor_id).balance
             print("{}, {}, {}, {}".format(entropy, email, balance_picoMOB, mobilecoin.display_as_MOB(balance_picoMOB)))

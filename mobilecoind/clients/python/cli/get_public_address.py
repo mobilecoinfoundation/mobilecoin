@@ -23,10 +23,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # create a monitor and use it to calculate the public address
-    entropy_bytes = bytes.fromhex(args.key) if args.key else mobilecoind.generate_entropy()
-    account_key = mobilecoind.get_account_key(entropy_bytes)
-    monitor_id = mobilecoind.add_monitor(account_key, first_subaddress=args.subaddress)
-    public_address = mobilecoind.get_public_address(monitor_id, subaddress_index=args.subaddress)
+    entropy_bytes = bytes.fromhex(args.key) if args.key else mobilecoind.generate_entropy().entropy
+    account_key = mobilecoind.get_account_key(entropy_bytes).account_key
+    monitor_id = mobilecoind.add_monitor(account_key, first_subaddress=args.subaddress).monitor_id
+    public_address = mobilecoind.get_public_address(monitor_id, subaddress_index=args.subaddress).public_address
 
     # print the public address information
     print("\n")
