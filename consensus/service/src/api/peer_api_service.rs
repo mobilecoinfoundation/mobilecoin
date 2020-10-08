@@ -298,23 +298,21 @@ impl ConsensusPeerApi for PeerApiService {
                     response.set_result(ConsensusMsgResult::Ok);
                     Ok(response)
                 }
-                Err(peer_service_error) => match peer_service_error {
-                    PeerServiceError::UnknownPeer(_) => {
-                        let mut response = ConsensusMsgResponse::new();
-                        response.set_result(ConsensusMsgResult::UnknownPeer);
-                        Ok(response)
-                    }
-                    PeerServiceError::ConsensusMsgInvalidSignature => Err(rpc_invalid_arg_error(
-                        "send_consensus_msg",
-                        "InvalidConsensusMsgSignature",
-                        &logger,
-                    )),
-                    _ => Err(rpc_internal_error(
-                        "send_consensus_msg",
-                        "InternalError",
-                        &logger,
-                    )),
-                },
+                Err(PeerServiceError::UnknownPeer(_)) => {
+                    let mut response = ConsensusMsgResponse::new();
+                    response.set_result(ConsensusMsgResult::UnknownPeer);
+                    Ok(response)
+                }
+                Err(PeerServiceError::ConsensusMsgInvalidSignature) => Err(rpc_invalid_arg_error(
+                    "send_consensus_msg",
+                    "InvalidConsensusMsgSignature",
+                    &logger,
+                )),
+                Err(_) => Err(rpc_internal_error(
+                    "send_consensus_msg",
+                    "InternalError",
+                    &logger,
+                )),
             };
 
             send_result(ctx, sink, result, &logger);
@@ -370,20 +368,18 @@ impl ConsensusPeerApi for PeerApiService {
                         response.set_success(enclave_message.into());
                         Ok(response)
                     }
-                    Err(peer_service_error) => match peer_service_error {
-                        PeerServiceError::UnknownTransactions(tx_hashes) => {
-                            let mut tx_hashes_not_in_cache = TxHashesNotInCache::new();
-                            tx_hashes_not_in_cache.set_tx_hashes(
-                                tx_hashes.iter().map(|tx_hash| tx_hash.to_vec()).collect(),
-                            );
+                    Err(PeerServiceError::UnknownTransactions(tx_hashes)) => {
+                        let mut tx_hashes_not_in_cache = TxHashesNotInCache::new();
+                        tx_hashes_not_in_cache.set_tx_hashes(
+                            tx_hashes.iter().map(|tx_hash| tx_hash.to_vec()).collect(),
+                        );
 
-                            let mut response = GetTxsResponse::new();
-                            response.set_tx_hashes_not_in_cache(tx_hashes_not_in_cache);
-                            Ok(response)
-                        }
-                        // Unexpected errors:
-                        err => Err(rpc_internal_error("get_txs", err, &logger)),
-                    },
+                        let mut response = GetTxsResponse::new();
+                        response.set_tx_hashes_not_in_cache(tx_hashes_not_in_cache);
+                        Ok(response)
+                    }
+                    // Unexpected errors:
+                    Err(err) => Err(rpc_internal_error("get_txs", err, &logger)),
                 };
 
             send_result(ctx, sink, result, &logger)
