@@ -201,13 +201,17 @@ fn create_or_open_ledger_db(
                 );
             std::fs::create_dir_all(config.ledger_db.clone()).expect("Could not create ledger dir");
             LedgerDB::create(config.ledger_db.clone()).expect("Could not create ledger_db");
-            let (block, transactions) = transactions_fetcher
+            let block_data = transactions_fetcher
                 .get_origin_block_and_transactions()
                 .expect("Failed to download initial transactions");
             let mut db =
                 LedgerDB::open(config.ledger_db.clone()).expect("Could not open ledger_db");
-            db.append_block(&block, &transactions, None)
-                .expect("Failed to appened initial transactions");
+            db.append_block(
+                block_data.block(),
+                block_data.contents(),
+                block_data.signature().clone(),
+            )
+            .expect("Failed to appened initial transactions");
             log::info!(logger, "Bootstrapping completed!");
         }
     }

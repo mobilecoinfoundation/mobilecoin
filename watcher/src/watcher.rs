@@ -83,18 +83,18 @@ impl Watcher {
             url
         );
         match self.transactions_fetcher.block_from_url(&url) {
-            Ok(archive_block) => {
+            Ok(block_data) => {
                 log::debug!(
                     self.logger,
                     "Archive block retrieved for {:?} {:?}",
                     src_url,
                     block_index
                 );
-                if let Some(signature) = archive_block.signature {
+                if let Some(signature) = block_data.signature() {
                     self.watcher_db.add_block_signature(
                         src_url,
                         block_index,
-                        signature,
+                        signature.clone(),
                         filename,
                     )?;
                 } else {

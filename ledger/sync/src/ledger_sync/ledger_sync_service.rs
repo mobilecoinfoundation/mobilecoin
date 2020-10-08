@@ -561,10 +561,20 @@ fn get_block_contents<TF: TransactionsFetcher + 'static>(
                             );
 
                             match thread_transactions_fetcher
-                                .get_block_contents(thread_safe_responder_ids.as_slice(), &block)
+                                .get_block_data(thread_safe_responder_ids.as_slice(), &block)
                                 .map_err(LedgerSyncError::from)
-                                .and_then(|block_contents| {
-                                    let contents_hash = block_contents.hash();
+                                .and_then(|block_data| {
+                                    if block != *block_data.block() {
+                                        log::debug!(
+                                            thread_logger,
+                                            "Block mismatch: {:02x?} vs {:02x?}",
+                                            block,
+                                            block_data.block(),
+                                        );
+                                        return Err(LedgerSyncError::TransactionsAndBlockMismatch);
+                                    }
+
+                                    let contents_hash = block_data.contents().hash();
                                     if contents_hash != block.contents_hash {
                                         log::debug!(
                                             thread_logger,
@@ -574,10 +584,10 @@ fn get_block_contents<TF: TransactionsFetcher + 'static>(
                                         );
                                         Err(LedgerSyncError::TransactionsAndBlockMismatch)
                                     } else {
-                                        Ok(block_contents)
+                                        Ok(block_data)
                                     }
                                 }) {
-                                Ok(block_contents) => {
+                                Ok(block_data) => {
                                     // Log
                                     log::trace!(
                                         thread_logger,
@@ -588,8 +598,8 @@ fn get_block_contents<TF: TransactionsFetcher + 'static>(
 
                                     // passing the actual block and not just a block index.
                                     let mut results = lock.lock().expect("mutex poisoned");
-                                    let old_result =
-                                        results.insert(block.index, Some(block_contents));
+                                    let old_result = results
+                                        .insert(block.index, Some(block_data.contents().clone()));
 
                                     // We should encounter each block index only once.
                                     assert!(old_result.is_none());
