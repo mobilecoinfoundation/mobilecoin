@@ -15,8 +15,6 @@ use mc_crypto_box::{
 use mc_crypto_keys::{
     CompressedRistrettoPublic, ReprBytes, Ristretto, RistrettoPrivate, RistrettoPublic,
 };
-use mc_crypto_rand::McRng;
-use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
 use subtle::Choice;
 
@@ -140,19 +138,12 @@ impl FogHint {
     pub fn ct_decrypt(
         ingest_server_private_key: &RistrettoPrivate,
         ciphertext: &EncryptedFogHint,
-        output: &mut Self,
-    ) -> Choice {
-        let mut default_plaintext = GenericArray::<
+        default_plaintext: GenericArray<
             u8,
             Diff<EncryptedFogHintSize, <VersionedCryptoBox as CryptoBox<Ristretto>>::FooterSize>,
-        >::default();
-
-        let mut rng = McRng::default();
-        let default_pubkey = RistrettoPublic::from_random(&mut rng);
-
-        default_plaintext.as_mut()[..RISTRETTO_PUBLIC_LEN]
-            .copy_from_slice(&default_pubkey.to_bytes());
-
+        >,
+        output: &mut Self,
+    ) -> Choice {
         let (plaintext, mut success) = match VersionedCryptoBox::default()
             .decrypt_fixed_length(ingest_server_private_key, ciphertext.as_ref())
         {
@@ -215,7 +206,21 @@ mod testing {
 
             let mut output_fog_hint = random_fog_hint(&mut rng);
 
-            let _choice = FogHint::ct_decrypt(&z, &ciphertext, &mut output_fog_hint);
+            let mut default_plaintext = GenericArray::<
+                u8,
+                Diff<
+                    EncryptedFogHintSize,
+                    <VersionedCryptoBox as CryptoBox<Ristretto>>::FooterSize,
+                >,
+            >::default();
+
+            let default_pubkey = RistrettoPublic::from_random(&mut rng);
+
+            default_plaintext.as_mut()[..RISTRETTO_PUBLIC_LEN]
+                .copy_from_slice(&default_pubkey.to_bytes());
+
+            let _choice =
+                FogHint::ct_decrypt(&z, &ciphertext, default_plaintext, &mut output_fog_hint);
             assert_eq!(fog_hint, output_fog_hint);
         });
     }
