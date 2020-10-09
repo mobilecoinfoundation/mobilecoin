@@ -6,7 +6,7 @@ use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipProof},
-    Block, BlockContents, BlockSignature,
+    Block, BlockContents, BlockData, BlockSignature,
 };
 use mockall::*;
 
@@ -31,6 +31,9 @@ pub trait Ledger: Send {
 
     /// Gets a block signature by its index in the blockchain.
     fn get_block_signature(&self, block_number: u64) -> Result<BlockSignature, Error>;
+
+    /// Gets a block and all of its associated data by its index in the blockchain.
+    fn get_block_data(&self, block_number: u64) -> Result<BlockData, Error>;
 
     /// Gets block index by a TxOut global index.
     fn get_block_index_by_tx_out_index(&self, tx_out_index: u64) -> Result<u64, Error>;

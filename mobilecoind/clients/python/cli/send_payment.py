@@ -73,14 +73,14 @@ if __name__ == '__main__':
 
     # create a monitor for the sender
     sender_entropy_bytes = bytes.fromhex(args.sender)
-    sender_account_key = mobilecoind.get_account_key(sender_entropy_bytes)
-    sender_monitor_id = mobilecoind.add_monitor(sender_account_key, first_subaddress=args.sender_subaddress)
+    sender_account_key = mobilecoind.get_account_key(sender_entropy_bytes).account_key
+    sender_monitor_id = mobilecoind.add_monitor(sender_account_key, first_subaddress=args.sender_subaddress).monitor_id
 
     # if the recipient was provided as a hex key, get the b58 address code
     if not is_b58_sequence(args.recipient):
         recipient_entropy_bytes = bytes.fromhex(args.recipient)
-        recipient_account_key = mobilecoind.get_account_key(recipient_entropy_bytes)
-        recipient_monitor_id = mobilecoind.add_monitor(recipient_account_key, first_subaddress=args.recipient_subaddress)
+        recipient_account_key = mobilecoind.get_account_key(recipient_entropy_bytes).account_key
+        recipient_monitor_id = mobilecoind.add_monitor(recipient_account_key, first_subaddress=args.recipient_subaddress).monitor_id
         recipient_address_code = mobilecoind.get_public_address(recipient_monitor_id, subaddress_index=args.recipient_subaddress).b58_code
         # if the recipient was specified with a master key; we may want to remove it afterwards; see MCC-1891 for details
     else:
@@ -103,7 +103,7 @@ if __name__ == '__main__':
                 (monitor_is_behind, next_block, remote_count, blocks_per_second) = mobilecoind.wait_for_monitor(sender_monitor_id)
             print("# monitor has processed all {} blocks\n#".format(local_count))
 
-        balance_picoMOB = mobilecoind.get_balance(sender_monitor_id, subaddress_index=args.sender_subaddress)
+        balance_picoMOB = mobilecoind.get_balance(sender_monitor_id, subaddress_index=args.sender_subaddress).balance
 
         # send as much as possible after accounting for the fee
         value_to_send_picoMOB = balance_picoMOB - mobilecoin.MINIMUM_FEE
@@ -122,16 +122,16 @@ if __name__ == '__main__':
 
     # build and send the payment
 
-    tx_list = mobilecoind.get_unspent_tx_output_list(sender_monitor_id, args.sender_subaddress)
-    recipient_public_address = mobilecoind.parse_address_code(recipient_address_code)
-    outlays = [{'value': value_to_send_picoMOB, 'receiver': recipient_public_address}]
-    tx_proposal = mobilecoind.generate_tx(sender_monitor_id, args.sender_subaddress, tx_list, outlays)
+    tx_list = mobilecoind.get_unspent_tx_output_list(sender_monitor_id, args.sender_subaddress).output_list
+    receiver = mobilecoind.parse_address_code(recipient_address_code).receiver
+    outlays = [{'value': value_to_send_picoMOB, 'receiver': receiver}]
+    tx_proposal = mobilecoind.generate_tx(sender_monitor_id, args.sender_subaddress, tx_list, outlays).tx_proposal
     sender_tx_receipt = mobilecoind.submit_tx(tx_proposal).sender_tx_receipt
     # Wait for the transaction to clear
     tx_status = mobilecoin.TX_STATUS_UNKNOWN
     while tx_status == mobilecoin.TX_STATUS_UNKNOWN:
         time.sleep(TX_RECEIPT_CHECK_INTERVAL_SECONDS)
-        tx_status = int(mobilecoind.get_tx_status_as_sender(sender_tx_receipt))
+        tx_status = int(mobilecoind.get_tx_status_as_sender(sender_tx_receipt)).status
         print("transaction status is: {}".format(mobilecoin.parse_tx_status(tx_status)))
 
     if tx_status == mobilecoin.TX_STATUS_VERIFIED:

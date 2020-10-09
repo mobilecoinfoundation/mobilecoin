@@ -82,7 +82,7 @@ class Client(object):
                                     first_subaddress=first_subaddress,
                                     num_subaddresses=num_subaddresses,
                                     first_block=first_block)
-        return self.stub.AddMonitor(request).monitor_id
+        return self.stub.AddMonitor(request)
 
     def remove_monitor(self, monitor_id: bytes):
         """ Remove an existing monitor and delete any data it has stored.
@@ -93,14 +93,13 @@ class Client(object):
     def get_monitor_list(self):
         """ Returns a list of all active monitors.
         """
-        return self.stub.GetMonitorList(empty_pb2.Empty()).monitor_id_list
+        return self.stub.GetMonitorList(empty_pb2.Empty())
 
     def get_monitor_status(self, monitor_id: bytes):
         """ Returns a status report for a monitor process.
         """
         request = GetMonitorStatusRequest(monitor_id=monitor_id)
-        response = self.stub.GetMonitorStatus(request)
-        return response.status
+        return self.stub.GetMonitorStatus(request)
 
     def get_unspent_tx_output_list(self,
                                    monitor_id: bytes,
@@ -109,33 +108,30 @@ class Client(object):
         """
         request = GetUnspentTxOutListRequest(monitor_id=monitor_id,
                                              subaddress_index=subaddress_index)
-        response = self.stub.GetUnspentTxOutList(request)
-        return response.output_list
+        return self.stub.GetUnspentTxOutList(request)
 
     def get_balance(self,
                     monitor_id: bytes,
                     subaddress_index: int = DEFAULT_SUBADDRESS_INDEX):
         """ Returns the sum of unspent tx outputs collected for a subaddress.
         """
-        uoutput_list = self.get_unspent_tx_output_list(monitor_id, subaddress_index)
-        balance = 0
-        for utxo in uoutput_list:
-            balance += utxo.value
-        return balance
+        request = GetBalanceRequest(monitor_id=monitor_id,
+                                    subaddress_index=subaddress_index)
+        return self.stub.GetBalance(request)
 
     def get_monitor_id(self,
                        account_key: bytes,
                        subaddress_index: int = DEFAULT_SUBADDRESS_INDEX):
         """ Returns the monitor for a given subaddress, if one exists.
         """
-        monitor_id_list = self.get_monitor_list()
+        monitor_id_list = self.get_monitor_list().monitor_id_list
         target_vpk = account_key.view_private_key
         target_spk = account_key.spend_private_key
 
         best_monitor_id = b''
         best_next_block = 0
         for monitor_id in monitor_id_list:
-            status = self.get_monitor_status(monitor_id)
+            status = self.get_monitor_status(monitor_id).status
             if target_vpk == status.account_key.view_private_key and target_spk == status.account_key.spend_private_key:
                 if subaddress_index >= status.first_subaddress and subaddress_index <= status.first_subaddress + status.num_subaddresses:
                     if status.next_block >= best_next_block:
@@ -153,13 +149,13 @@ class Client(object):
     def generate_entropy(self):
         """ Generate 32 bytes of entropy using a cryptographically secure RNG.
         """
-        return self.stub.GenerateEntropy(empty_pb2.Empty()).entropy
+        return self.stub.GenerateEntropy(empty_pb2.Empty())
 
     def get_account_key(self, entropy: bytes):
         """ Get the private keys from entropy.
         """
         request = GetAccountKeyRequest(entropy=entropy)
-        return self.stub.GetAccountKey(request).account_key
+        return self.stub.GetAccountKey(request)
 
     def get_public_address(self,
                            monitor_id: bytes,
@@ -170,26 +166,23 @@ class Client(object):
             monitor_id=monitor_id, subaddress_index=subaddress_index)
         return self.stub.GetPublicAddress(request)
 
-    def parse_address_code(self,
-                           b58_code: str):
+    def parse_address_code(self, b58_code: str):
         """ Parse a b58 encoded public address
         """
         request = ParseAddressCodeRequest(b58_code=b58_code)
-        response = self.stub.ParseAddressCode(request)
-        return response.receiver
+        return self.stub.ParseAddressCode(request)
 
     def create_address_code(self, receiver):
         """ Create a b58 encoding for a public address
         """
         request = CreateAddressCodeRequest(receiver=receiver)
-        return self.stub.CreateAddressCode(request).b58_code
+        return self.stub.CreateAddressCode(request)
 
     def parse_request_code(self, b58_code: str):
         """ Parse a b58 request code to recover content.
         """
         request = ParseRequestCodeRequest(b58_code=b58_code)
-        response = self.stub.ParseRequestCode(request)
-        return response.receiver, response.value, response.memo
+        return self.stub.ParseRequestCode(request)
 
     def create_request_code(self, receiver, value: int = 0, memo: str = ""):
         """ Create a "request code" used to generate a QR code for wallet apps.
@@ -197,14 +190,13 @@ class Client(object):
         request = CreateRequestCodeRequest(receiver=receiver,
                                            value=value,
                                            memo=memo)
-        return self.stub.CreateRequestCode(request).b58_code
+        return self.stub.CreateRequestCode(request)
 
     def parse_transfer_code(self, b58_code: str):
         """ Parse a b58 transfer code to recover content.
         """
         request = ParseTransferCodeRequest(b58_code=b58_code)
-        response = self.stub.ParseTransferCode(request)
-        return response
+        return self.stub.ParseTransferCode(request)
 
     def crate_transfer_code(self, entropy: bytes, tx_public_key, memo: str = ""):
         """ Create a "transfer code" used to generate a QR code for wallet apps.
@@ -212,7 +204,7 @@ class Client(object):
         request = CreateTransferCodeRequest(entropy=entropy,
                                             tx_public_key=tx_public_key,
                                             memo=memo)
-        return self.stub.CreateTransferCode(request).b58_code
+        return self.stub.CreateTransferCode(request)
 
     #
     # Transactions
@@ -238,7 +230,7 @@ class Client(object):
                                     outlay_list=outlay_list,
                                     fee=fee,
                                     tombstone=tombstone)
-        return self.stub.GenerateTx(request).tx_proposal
+        return self.stub.GenerateTx(request)
 
     def generate_optimization_tx(self,
                                  monitor_id: bytes,
@@ -249,7 +241,7 @@ class Client(object):
         """
         request = GenerateOptimizationTxRequest(monitor_id=monitor_id,
                                                 subaddress=subaddress)
-        return self.stub.GenerateOptimizationTx(request).tx_proposal
+        return self.stub.GenerateOptimizationTx(request)
 
     def generate_transfer_code_tx(self,
                                   sender_monitor_id: bytes,
@@ -270,8 +262,7 @@ class Client(object):
             fee=fee,
             tombstone=tombstone,
             memo=memo)
-        response = self.stub.GenerateTransferCodeTx(request)
-        return response.tx_proposal, response.entropy
+        return self.stub.GenerateTransferCodeTx(request)
 
     def generate_tx_from_tx_out_list(self,
                                      account_key: bytes,
@@ -284,15 +275,13 @@ class Client(object):
             receiver=receiver,
             fee=fee,
         )
-        response = self.stub.GenerateTxFromTxOutList(request)
-        return response.tx_proposal
+        return self.stub.GenerateTxFromTxOutList(request)
 
     def submit_tx(self, tx_proposal):
         """ Submit a prepared transaction, optionall requesting a tombstone block.
         """
         request = SubmitTxRequest(tx_proposal=tx_proposal)
-        response = self.stub.SubmitTx(request)
-        return response
+        return self.stub.SubmitTx(request)
 
     #
     # Databases
@@ -301,36 +290,31 @@ class Client(object):
     def get_ledger_info(self):
         """ Returns a status report for mobilecoind's ledger maintenance.
         """
-        info = self.stub.GetLedgerInfo(empty_pb2.Empty())
-        return info.block_count, info.txo_count
+        return self.stub.GetLedgerInfo(empty_pb2.Empty())
 
     def get_block_info(self, block: int):
         """ Returns a status report for a ledger block.
         """
         request = GetBlockInfoRequest(block=block)
-        info = self.stub.GetBlockInfo(request)
-        return info.key_image_count, info.txo_count
+        return self.stub.GetBlockInfo(request)
 
     def get_block(self, block: int):
         """ Returns detailed information for a ledger block.
         """
         request = GetBlockRequest(block=block)
-        block_contents = self.stub.GetBlock(request)
-        return block_contents
+        return self.stub.GetBlock(request)
 
     def get_tx_status_as_sender(self, sender_tx_receipt):
         """ Check if a key image appears in the ledger.
         """
         request = GetTxStatusAsSenderRequest(receipt=sender_tx_receipt)
-        response = self.stub.GetTxStatusAsSender(request)
-        return response.status
+        return self.stub.GetTxStatusAsSender(request)
 
     def get_tx_status_as_receiver(self, receiver_tx_receipt):
         """ Check if a transaction public key appears in the ledger.
         """
         request = GetTxStatusAsReceiverRequest(receipt=receiver_tx_receipt)
-        response = self.stub.GetTxStatusAsReceiver(request)
-        return response.status
+        return self.stub.GetTxStatusAsReceiver(request)
 
     #
     # Blockchain and network info
@@ -339,10 +323,7 @@ class Client(object):
     def get_network_status(self):
         """ Returns the total network height and our current sync height
         """
-        response = self.stub.GetNetworkStatus(empty_pb2.Empty())
-        return (response.network_highest_block_index,
-                response.local_block_index,
-                response.is_behind)
+        return self.stub.GetNetworkStatus(empty_pb2.Empty())
 
     #
     # Convenience functions using the mobilecoind API
@@ -358,17 +339,23 @@ class Client(object):
         If we are in sync, return (False, local blocks, remote blocks, None)
 
         """
-        remote_count, local_count, is_behind = self.get_network_status()
+        network_status_response = self.get_network_status()
+        remote_count = network_status_response.network_highest_block_index
+        local_count = network_status_response.local_block_index
+        ledger_is_behind = network_status_response.is_behind
 
-        if not is_behind:
-            return (is_behind, local_count, remote_count, None)
+        if not ledger_is_behind:
+            return (ledger_is_behind, local_count, remote_count, None)
 
         start = datetime.datetime.now()
         initial_local_count = local_count
-        while is_behind:
+        while ledger_is_behind:
             time.sleep(LEDGER_SYNC_INTERVAL_SECONDS)
 
-            remote_count, local_count, is_behind = self.get_network_status()
+            network_status_response = self.get_network_status()
+            remote_count = network_status_response.network_highest_block_index
+            local_count = network_status_response.local_block_index
+            ledger_is_behind = network_status_response.is_behind
 
             delta = datetime.datetime.now() - start
             total_blocks_synced = local_count - initial_local_count
@@ -380,7 +367,7 @@ class Client(object):
                 break
 
         blocks_per_second = total_blocks_synced / delta.total_seconds()
-        return (is_behind, local_count, remote_count, blocks_per_second)
+        return (ledger_is_behind, local_count, remote_count, blocks_per_second)
 
     def wait_for_monitor(self,
                          monitor_id: bytes,
@@ -395,8 +382,12 @@ class Client(object):
         """
 
         # check the ledger and monitor
-        remote_count, local_count, ledger_is_behind = self.get_network_status()
-        next_block = self.get_monitor_status(monitor_id).next_block
+        network_status_response = self.get_network_status()
+        remote_count = network_status_response.network_highest_block_index
+        local_count = network_status_response.local_block_index
+        ledger_is_behind = network_status_response.is_behind
+
+        next_block = self.get_monitor_status(monitor_id).status.next_block
         monitor_is_behind = ledger_is_behind or (next_block <= local_count)
 
         if not monitor_is_behind:
@@ -407,8 +398,12 @@ class Client(object):
         while monitor_is_behind:
             time.sleep(MONITOR_SYNC_INTERVAL_SECONDS)
 
-            remote_count, local_count, ledger_is_behind = self.get_network_status()
-            next_block = self.get_monitor_status(monitor_id).next_block
+            network_status_response = self.get_network_status()
+            remote_count = network_status_response.network_highest_block_index
+            local_count = network_status_response.local_block_index
+            ledger_is_behind = network_status_response.is_behind
+
+            next_block = self.get_monitor_status(monitor_id).status.next_block
             monitor_is_behind = ledger_is_behind or (next_block <= local_count)
 
             delta = datetime.datetime.now() - start

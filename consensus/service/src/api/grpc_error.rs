@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use crate::tx_manager::TxManagerError;
-use failure::Fail;
+use displaydoc::Display;
 use grpcio::{RpcStatus, RpcStatusCode};
 use mc_common::logger::global_log;
 use mc_consensus_api::consensus_common::{ProposeTxResponse, ProposeTxResult};
@@ -9,38 +9,30 @@ use mc_consensus_enclave::Error as EnclaveError;
 use mc_ledger_db::Error as LedgerError;
 use mc_transaction_core::validation::TransactionValidationError;
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Display)]
 pub enum ConsensusGrpcError {
-    /// Built-in grpc error
-    #[fail(display = "GRPC Error: {:?}", _0)]
+    /// GRPC Error: `{0:?}`
     RpcStatus(RpcStatus),
 
-    /// Ledger-related error
-    #[fail(display = "Ledger error: {}", _0)]
+    /// Ledger error: `{0}`
     Ledger(LedgerError),
 
-    /// Service is over capacity.
-    #[fail(display = "Over capacity")]
+    /// Service is over capacity
     OverCapacity,
 
-    /// Service is currently not serving requests.
-    #[fail(display = "Temporarily not serving requests")]
+    /// Service is currently not serving requests
     NotServing,
 
-    /// Enclave-related error.
-    #[fail(display = "Enclave error: {}", _0)]
+    /// Enclave error: `{0}`
     Enclave(EnclaveError),
 
-    /// Transaction validation error.
-    #[fail(display = "Transaction validation error: {}", _0)]
+    /// Transaction validation error `{0}`
     TransactionValidation(TransactionValidationError),
 
-    /// Invalid argument.
-    #[fail(display = "Invalid argument: {}", _0)]
+    /// Invalid argument `{0}`
     InvalidArgument(String),
 
-    /// Other errors.
-    #[fail(display = "Other error: {}", _0)]
+    /// Other error `{0}`
     Other(String),
 }
 

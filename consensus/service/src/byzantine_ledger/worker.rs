@@ -804,7 +804,6 @@ mod tests {
         },
         tx_manager::{MockTxManager, TxManagerError},
     };
-    use failure::_core::time::Duration;
     use mc_common::{
         logger::{test_with_logger, Logger},
         NodeID, ResponderId,
@@ -832,7 +831,7 @@ mod tests {
             atomic::{AtomicBool, AtomicU64},
             Arc, Mutex,
         },
-        time::Instant,
+        time::{Duration, Instant},
     };
 
     /// Create test mocks with sensible defaults.

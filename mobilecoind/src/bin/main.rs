@@ -12,7 +12,7 @@ use mc_mobilecoind::{
 use mc_watcher::{watcher::WatcherSyncThread, watcher_db::create_or_open_rw_watcher_db};
 use std::{
     path::Path,
-    sync::{Arc, Mutex},
+    sync::{Arc, RwLock},
 };
 use structopt::StructOpt;
 
@@ -36,7 +36,7 @@ fn main() {
     let peer_manager = config.peers_config.create_peer_manager(verifier, &logger);
 
     // Create network state, transactions fetcher and ledger sync.
-    let network_state = Arc::new(Mutex::new(PollingNetworkState::new(
+    let network_state = Arc::new(RwLock::new(PollingNetworkState::new(
         config.quorum_set(),
         peer_manager.clone(),
         logger.clone(),
@@ -201,13 +201,17 @@ fn create_or_open_ledger_db(
                 );
             std::fs::create_dir_all(config.ledger_db.clone()).expect("Could not create ledger dir");
             LedgerDB::create(config.ledger_db.clone()).expect("Could not create ledger_db");
-            let (block, transactions) = transactions_fetcher
+            let block_data = transactions_fetcher
                 .get_origin_block_and_transactions()
                 .expect("Failed to download initial transactions");
             let mut db =
                 LedgerDB::open(config.ledger_db.clone()).expect("Could not open ledger_db");
-            db.append_block(&block, &transactions, None)
-                .expect("Failed to appened initial transactions");
+            db.append_block(
+                block_data.block(),
+                block_data.contents(),
+                block_data.signature().clone(),
+            )
+            .expect("Failed to appened initial transactions");
             log::info!(logger, "Bootstrapping completed!");
         }
     }

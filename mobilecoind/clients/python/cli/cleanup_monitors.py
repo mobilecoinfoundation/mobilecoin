@@ -26,7 +26,7 @@ if __name__ == '__main__':
     # Connect to mobilecoind
     mobilecoind = mobilecoin.Client("localhost:4444", ssl=False)
 
-    monitor_list = mobilecoind.get_monitor_list()
+    monitor_list = mobilecoind.get_monitor_list().monitor_id_list
     # show a summary of all monitors
     if len(monitor_list) == 0:
         print("\n    There no active monitors.\n")
@@ -38,7 +38,7 @@ if __name__ == '__main__':
         print("    {:<18}{:<18}{:<18}".format("Monitor ID", "Subaddress Range", "Next Block"))
         for monitor_id in monitor_list:
             # check monitor status
-            status = mobilecoind.get_monitor_status(monitor_id)
+            status = mobilecoind.get_monitor_status(monitor_id).status
             first_subaddress: int = status.first_subaddress if hasattr(status, 'first_subaddress') else 0
             num_subaddresses: int = status.num_subaddresses if hasattr(status, 'num_subaddresses')  else 0
             last_subaddress:int = first_subaddress + num_subaddresses - 1
@@ -49,10 +49,13 @@ if __name__ == '__main__':
     # iterate over all active monitors
     for monitor_id in monitor_list:
         # check ledger status
-        remote_count, local_count, is_behind = mobilecoind.get_network_status()
+        network_status_response = self.get_network_status()
+        remote_count = network_status_response.network_highest_block_index
+        local_count = network_status_response.local_block_index
+        ledger_is_behind = network_status_response.is_behind
 
         # check monitor status
-        status = mobilecoind.get_monitor_status(monitor_id)
+        status = mobilecoind.get_monitor_status(monitor_id).status
 
         # get fields (protobuf omits fields with empty or zero values)
         account_key = status.account_key if hasattr(status, 'account_key') else None
@@ -74,7 +77,7 @@ if __name__ == '__main__':
         print("    {:<18}{:<20}".format("Address Code", "Balance (pMOB)", "Balance"))
         for subaddress_index in range(first_subaddress, first_subaddress + min(10, num_subaddresses)):
             address_code = mobilecoind.get_public_address(monitor_id, subaddress_index=subaddress_index).b58_code
-            balance_picoMOB = mobilecoind.get_balance(monitor_id, subaddress_index=subaddress_index)
+            balance_picoMOB = mobilecoind.get_balance(monitor_id, subaddress_index=subaddress_index).balance
             print("    {:<18}{:<20}{:<20}".format(address_code[0:10]+"...", balance_picoMOB, mobilecoin.display_as_MOB(balance_picoMOB)))
         print("\n")
 

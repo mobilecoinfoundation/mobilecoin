@@ -581,7 +581,7 @@ fn block_details(
     Ok(Json(JsonBlockDetailsResponse::from(&resp)))
 }
 /// Retreives processed block information.
-#[get("/monitors/<monitor_hex>/processed-blocks/<block_num>")]
+#[get("/monitors/<monitor_hex>/processed-block/<block_num>")]
 fn processed_block(
     state: rocket::State<State>,
     monitor_hex: String,

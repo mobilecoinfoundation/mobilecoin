@@ -12,7 +12,7 @@ use crate::{
     tx_manager::TxManager,
 };
 use base64::{encode_config, URL_SAFE};
-use failure::Fail;
+use displaydoc::Display;
 use futures::executor::block_on;
 use grpcio::{EnvBuilder, Environment, Server, ServerBuilder};
 use mc_attest_api::attest_grpc::create_attested_api;
@@ -48,17 +48,17 @@ use std::{
 /// Crate version, used for admin info endpoint
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-#[derive(Debug, Fail)]
+#[derive(Debug, Display)]
 pub enum ConsensusServiceError {
-    #[fail(display = "Failed to join thread: {}", _0)]
+    /// Failed to join thread: `{0}`
     ThreadJoin(String),
-    #[fail(display = "RPC shutdown failure: {}", _0)]
+    /// RPC shutdown failure: `{0}`
     RpcShutdown(String),
-    #[fail(display = "Failed to start background work queue: {}", _0)]
+    /// Failed to start background work queue: `{0}`
     BackgroundWorkQueueStart(String),
-    #[fail(display = "Failed to stop background work queue: {}", _0)]
+    /// Failed to stop background work queue: `{0}`
     BackgroundWorkQueueStop(String),
-    #[fail(display = "Report cache error: {}", _0)]
+    /// Report cache error: `{0}`
     ReportCache(ReportCacheError),
 }
 impl From<ReportCacheError> for ConsensusServiceError {

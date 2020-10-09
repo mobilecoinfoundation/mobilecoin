@@ -26,8 +26,8 @@ if __name__ == '__main__':
 
     # create a monitor
     entropy_bytes = bytes.fromhex(args.key)
-    account_key = mobilecoind.get_account_key(entropy_bytes)
-    monitor_id = mobilecoind.add_monitor(account_key, first_subaddress=args.subaddress, first_block=args.first_block)
+    account_key = mobilecoind.get_account_key(entropy_bytes).account_key
+    monitor_id = mobilecoind.add_monitor(account_key, first_subaddress=args.subaddress, first_block=args.first_block).monitor_id
 
     # Wait for the monitor to process the complete ledger (this also downloads the complete ledger)
     (monitor_is_behind, next_block, remote_count, blocks_per_second) = mobilecoind.wait_for_monitor(monitor_id)
@@ -44,8 +44,8 @@ if __name__ == '__main__':
         print("# monitor has processed all {} blocks\n".format(remote_count))
 
 
-    balance_picoMOB = mobilecoind.get_balance(monitor_id, subaddress_index=args.subaddress)
-    public_address = mobilecoind.get_public_address(monitor_id, subaddress_index=args.subaddress)
+    balance_picoMOB = mobilecoind.get_balance(monitor_id, subaddress_index=args.subaddress).balance
+    public_address = mobilecoind.get_public_address(monitor_id, subaddress_index=args.subaddress).public_address
 
     # print account information
     print("\n")

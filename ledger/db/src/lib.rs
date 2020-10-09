@@ -26,7 +26,7 @@ use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipProof},
-    Block, BlockContents, BlockID, BlockSignature, BLOCK_VERSION,
+    Block, BlockContents, BlockData, BlockID, BlockSignature, BLOCK_VERSION,
 };
 use mc_util_lmdb::MetadataStoreSettings;
 use mc_util_serial::{decode, encode, Message};
@@ -201,45 +201,34 @@ impl Ledger for LedgerDB {
     /// Gets a Block by its index in the blockchain.
     fn get_block(&self, block_number: u64) -> Result<Block, Error> {
         let db_transaction = self.env.begin_ro_txn()?;
-        let key = u64_to_key_bytes(block_number);
-        let block_bytes = db_transaction.get(self.blocks, &key)?;
-        let block = decode(&block_bytes)?;
-        Ok(block)
+        self.get_block_impl(&db_transaction, block_number)
     }
 
     /// Get the contents of a block.
     fn get_block_contents(&self, block_number: u64) -> Result<BlockContents, Error> {
         let db_transaction = self.env.begin_ro_txn()?;
-
-        // Get all TxOuts in block.
-        let bytes = db_transaction.get(self.tx_outs_by_block, &u64_to_key_bytes(block_number))?;
-        let value: TxOutsByBlockValue = decode(&bytes)?;
-
-        let outputs = (value.first_tx_out_index..(value.first_tx_out_index + value.num_tx_outs))
-            .map(|tx_out_index| {
-                self.tx_out_store
-                    .get_tx_out_by_index(tx_out_index, &db_transaction)
-            })
-            .collect::<Result<Vec<TxOut>, Error>>()?;
-
-        // Get all KeyImages in block.
-        let key_image_list: KeyImageList =
-            decode(db_transaction.get(self.key_images_by_block, &u64_to_key_bytes(block_number))?)?;
-
-        // Returns block contents.
-        Ok(BlockContents {
-            key_images: key_image_list.key_images,
-            outputs,
-        })
+        self.get_block_contents_impl(&db_transaction, block_number)
     }
 
     /// Gets a block signature by its index in the blockchain.
     fn get_block_signature(&self, block_number: u64) -> Result<BlockSignature, Error> {
         let db_transaction = self.env.begin_ro_txn()?;
-        let key = u64_to_key_bytes(block_number);
-        let signature_bytes = db_transaction.get(self.block_signatures, &key)?;
-        let signature = decode(&signature_bytes)?;
-        Ok(signature)
+        self.get_block_signature_impl(&db_transaction, block_number)
+    }
+
+    /// Gets a block and all of its associated data by its index in the blockchain.
+    fn get_block_data(&self, block_number: u64) -> Result<BlockData, Error> {
+        let db_transaction = self.env.begin_ro_txn()?;
+
+        let block = self.get_block_impl(&db_transaction, block_number)?;
+        let contents = self.get_block_contents_impl(&db_transaction, block_number)?;
+        let signature = match self.get_block_signature_impl(&db_transaction, block_number) {
+            Ok(sig) => Ok(Some(sig)),
+            Err(Error::NotFound) => Ok(None),
+            Err(err) => Err(err),
+        }?;
+
+        Ok(BlockData::new(block, contents, signature))
     }
 
     /// Gets block index by a TxOut global index.
@@ -608,6 +597,58 @@ impl LedgerDB {
 
         let metadata = fs::metadata(filename)?;
         Ok(metadata.len())
+    }
+
+    /// Implementatation of the `get_block` method that operates inside a given transaction.
+    fn get_block_impl(
+        &self,
+        db_transaction: &impl Transaction,
+        block_number: u64,
+    ) -> Result<Block, Error> {
+        let key = u64_to_key_bytes(block_number);
+        let block_bytes = db_transaction.get(self.blocks, &key)?;
+        let block = decode(&block_bytes)?;
+        Ok(block)
+    }
+
+    /// Implementation of the `get_block_contents` method that operates inside a given transaction.
+    fn get_block_contents_impl(
+        &self,
+        db_transaction: &impl Transaction,
+        block_number: u64,
+    ) -> Result<BlockContents, Error> {
+        // Get all TxOuts in block.
+        let bytes = db_transaction.get(self.tx_outs_by_block, &u64_to_key_bytes(block_number))?;
+        let value: TxOutsByBlockValue = decode(&bytes)?;
+
+        let outputs = (value.first_tx_out_index..(value.first_tx_out_index + value.num_tx_outs))
+            .map(|tx_out_index| {
+                self.tx_out_store
+                    .get_tx_out_by_index(tx_out_index, db_transaction)
+            })
+            .collect::<Result<Vec<TxOut>, Error>>()?;
+
+        // Get all KeyImages in block.
+        let key_image_list: KeyImageList =
+            decode(db_transaction.get(self.key_images_by_block, &u64_to_key_bytes(block_number))?)?;
+
+        // Returns block contents.
+        Ok(BlockContents {
+            key_images: key_image_list.key_images,
+            outputs,
+        })
+    }
+
+    /// Implementation of the `get_block_signature` method that operates inside a given transaction.
+    fn get_block_signature_impl(
+        &self,
+        db_transaction: &impl Transaction,
+        block_number: u64,
+    ) -> Result<BlockSignature, Error> {
+        let key = u64_to_key_bytes(block_number);
+        let signature_bytes = db_transaction.get(self.block_signatures, &key)?;
+        let signature = decode(&signature_bytes)?;
+        Ok(signature)
     }
 }
 
