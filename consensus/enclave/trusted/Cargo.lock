@@ -1670,6 +1670,11 @@ dependencies = [
  "synstructure 0.12.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
+[[patch.unused]]
+name = "grpcio"
+version = "0.6.0"
+source = "git+https://github.com/jcape/grpc-rs?rev=74797d973f0e81555c3c01857ccdbb8092f21f67#74797d973f0e81555c3c01857ccdbb8092f21f67"
+
 [metadata]
 "checksum aead 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7fc95d1bdb8e6666b2b217308eeeb09f2d6728d104be3e31916cc74d15420331"
 "checksum aes 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f7001367fde4c768a19d1029f0a8be5abd9308e1119846d5bd9ad26297b8faf5"

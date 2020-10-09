@@ -1378,8 +1378,7 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 [[package]]
 name = "grpcio"
 version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "63fac32f9f74fa1fd78215d04b47f134c1ee5a535c237a54d52bf18cf65ac983"
+source = "git+https://github.com/jcape/grpc-rs?rev=74797d973f0e81555c3c01857ccdbb8092f21f67#74797d973f0e81555c3c01857ccdbb8092f21f67"
 dependencies = [
  "futures 0.3.5",
  "grpcio-sys",
@@ -1401,8 +1400,7 @@ dependencies = [
 [[package]]
 name = "grpcio-sys"
 version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12d4e9309f1151c9ebcd07622858c4a504b6ea6cd2821524fe74ccde8ea830d7"
+source = "git+https://github.com/jcape/grpc-rs?rev=74797d973f0e81555c3c01857ccdbb8092f21f67#74797d973f0e81555c3c01857ccdbb8092f21f67"
 dependencies = [
  "bindgen",
  "cc",
