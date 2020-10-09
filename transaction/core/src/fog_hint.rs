@@ -93,37 +93,6 @@ impl FogHint {
         EncryptedFogHint::from(bytes)
     }
 
-    /// decrypt
-    ///
-    /// Try to decrypt an encrypted payload onto this FogHint object.
-    /// Fails if decryption fails, or the magic number is wrong.
-    ///
-    /// # Arguments
-    /// * acct_server_private_key
-    /// * EncryptedFogHint payload
-    ///
-    /// # Returns
-    /// * Fog hint on success, cryptobox error otherwise
-    pub fn decrypt(
-        ingest_server_private_key: &RistrettoPrivate,
-        ciphertext: &EncryptedFogHint,
-    ) -> Result<Self, CryptoBoxError> {
-        let (result, plaintext) = VersionedCryptoBox::default()
-            .decrypt_fixed_length(ingest_server_private_key, ciphertext.as_ref())?;
-
-        if !result {
-            return Err(CryptoBoxError::MacFailed);
-        }
-
-        // Check magic numbers
-        for byte in &plaintext[RISTRETTO_PUBLIC_LEN..] {
-            if *byte != MAGIC_NUMBER {
-                return Err(CryptoBoxError::WrongMagicBytes);
-            }
-        }
-        FogHint::from_slice(&plaintext.as_ref()[0..RISTRETTO_PUBLIC_LEN])
-    }
-
     /// ct_decrypt
     ///
     /// Try to decrypt an encrypted payload onto this FogHint object in constant time.
@@ -132,9 +101,12 @@ impl FogHint {
     /// # Arguments
     /// * ingest_server_private_key
     /// * encrypted fog hint payload
+    /// * default plaintext
+    /// * initialized output FogHint
     ///
     /// # Returns
-    /// * (Fog hint, true) on success (Default Fog hint, false) otherwise
+    /// * Choice(1) on success Choice(0) otherwise
+    #[inline(never)]
     pub fn ct_decrypt(
         ingest_server_private_key: &RistrettoPrivate,
         ciphertext: &EncryptedFogHint,
@@ -190,16 +162,34 @@ mod testing {
             let fog_hint = random_fog_hint(&mut rng);
             let ciphertext = fog_hint.encrypt(&zpub, &mut rng);
 
-            let result = FogHint::decrypt(&z, &ciphertext);
-            assert_eq!(Ok(fog_hint), result);
+            let mut output_fog_hint = random_fog_hint(&mut rng);
+
+            let mut default_plaintext = GenericArray::<
+                u8,
+                Diff<
+                    EncryptedFogHintSize,
+                    <VersionedCryptoBox as CryptoBox<Ristretto>>::FooterSize,
+                >,
+            >::default();
+
+            let default_pubkey = RistrettoPublic::from_random(&mut rng);
+
+            default_plaintext.as_mut()[..RISTRETTO_PUBLIC_LEN]
+                .copy_from_slice(&default_pubkey.to_bytes());
+
+            let choice =
+                FogHint::ct_decrypt(&z, &ciphertext, default_plaintext, &mut output_fog_hint);
+            assert_eq!(fog_hint, output_fog_hint);
+            assert!(bool::from(choice));
         });
     }
 
     #[test]
-    fn test_ct_round_trip() {
+    fn test_expected_failure() {
         mc_util_test_helper::run_with_several_seeds(|mut rng| {
             let z = RistrettoPrivate::from_random(&mut rng);
             let zpub = RistrettoPublic::from(&z);
+            let not_z = RistrettoPrivate::from_random(&mut rng);
 
             let fog_hint = random_fog_hint(&mut rng);
             let ciphertext = fog_hint.encrypt(&zpub, &mut rng);
@@ -219,25 +209,10 @@ mod testing {
             default_plaintext.as_mut()[..RISTRETTO_PUBLIC_LEN]
                 .copy_from_slice(&default_pubkey.to_bytes());
 
-            let _choice =
-                FogHint::ct_decrypt(&z, &ciphertext, default_plaintext, &mut output_fog_hint);
-            assert_eq!(fog_hint, output_fog_hint);
-        });
-    }
-
-    #[test]
-    fn test_expected_failure() {
-        mc_util_test_helper::run_with_several_seeds(|mut rng| {
-            let z = RistrettoPrivate::from_random(&mut rng);
-            let zpub = RistrettoPublic::from(&z);
-
-            let fog_hint = random_fog_hint(&mut rng);
-            let ciphertext = fog_hint.encrypt(&zpub, &mut rng);
-
-            let not_z = RistrettoPrivate::from_random(&mut rng);
-
-            let result = FogHint::decrypt(&not_z, &ciphertext);
-            assert_eq!(Err(CryptoBoxError::MacFailed), result);
+            let choice =
+                FogHint::ct_decrypt(&not_z, &ciphertext, default_plaintext, &mut output_fog_hint);
+            assert!(fog_hint != output_fog_hint);
+            assert!(!bool::from(choice));
         });
     }
 }
