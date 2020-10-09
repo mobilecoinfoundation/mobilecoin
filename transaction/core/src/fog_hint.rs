@@ -18,6 +18,7 @@ use mc_crypto_keys::{
 use mc_crypto_rand::McRng;
 use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
+use subtle::Choice;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct FogHint {
@@ -139,7 +140,8 @@ impl FogHint {
     pub fn ct_decrypt(
         ingest_server_private_key: &RistrettoPrivate,
         ciphertext: &EncryptedFogHint,
-    ) -> (Self, bool) {
+        output: &mut Self,
+    ) -> Choice {
         let mut default_plaintext = GenericArray::<
             u8,
             Diff<EncryptedFogHintSize, <VersionedCryptoBox as CryptoBox<Ristretto>>::FooterSize>,
@@ -165,11 +167,13 @@ impl FogHint {
             }
         }
 
-        let default_fog_hint = FogHint::new(default_pubkey);
-
-        match FogHint::from_slice(&plaintext.as_ref()[0..RISTRETTO_PUBLIC_LEN]) {
-            Ok(fog_hint) => (fog_hint, success),
-            Err(_) => (default_fog_hint, false),
+        let bytes = &plaintext.as_ref()[0..RISTRETTO_PUBLIC_LEN];
+        match CompressedRistrettoPublic::try_from(bytes) {
+            Ok(key) => {
+                output.view_pubkey = key;
+                Choice::from(success as u8)
+            }
+            Err(_) => Choice::from(0),
         }
     }
 }
@@ -197,6 +201,22 @@ mod testing {
 
             let result = FogHint::decrypt(&z, &ciphertext);
             assert_eq!(Ok(fog_hint), result);
+        });
+    }
+
+    #[test]
+    fn test_ct_round_trip() {
+        mc_util_test_helper::run_with_several_seeds(|mut rng| {
+            let z = RistrettoPrivate::from_random(&mut rng);
+            let zpub = RistrettoPublic::from(&z);
+
+            let fog_hint = random_fog_hint(&mut rng);
+            let ciphertext = fog_hint.encrypt(&zpub, &mut rng);
+
+            let mut output_fog_hint = random_fog_hint(&mut rng);
+
+            let _choice = FogHint::ct_decrypt(&z, &ciphertext, &mut output_fog_hint);
+            assert_eq!(fog_hint, output_fog_hint);
         });
     }
 
