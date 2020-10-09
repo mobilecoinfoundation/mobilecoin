@@ -4,7 +4,7 @@
 //! fetching transaction data.
 
 use mc_common::ResponderId;
-use mc_transaction_core::{Block, BlockContents};
+use mc_transaction_core::{Block, BlockData};
 use std::fmt::Debug;
 
 pub trait TransactionFetcherError: Debug + Send + Sync {}
@@ -19,9 +19,9 @@ pub trait TransactionsFetcher: Sized + Sync + Send {
     /// * `safe_responder_ids` - List of responder IDs that have been identified as being able to provide a
     /// consistent copy of the blockchain.
     /// * `block` - The block we want to fetch contents for.
-    fn get_block_contents(
+    fn get_block_data(
         &self,
         safe_responder_ids: &[ResponderId],
         block: &Block,
-    ) -> Result<BlockContents, Self::Error>;
+    ) -> Result<BlockData, Self::Error>;
 }

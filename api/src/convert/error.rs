@@ -15,6 +15,9 @@ pub enum ConversionError {
     Key(mc_crypto_keys::KeyError),
     FeeMismatch,
     IndexOutOfBounds,
+    ObjectMissing,
+    InvalidSignature,
+    InvalidContents,
     Other,
 }
 

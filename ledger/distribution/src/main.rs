@@ -8,8 +8,8 @@ pub mod uri;
 use crate::uri::{Destination, Uri};
 use mc_api::{block_num_to_s3block_path, blockchain};
 use mc_common::logger::{create_app_logger, log, o, Logger};
-use mc_ledger_db::{Error as LedgerDbError, Ledger, LedgerDB};
-use mc_transaction_core::{Block, BlockContents, BlockIndex, BlockSignature};
+use mc_ledger_db::{Ledger, LedgerDB};
+use mc_transaction_core::{BlockData, BlockIndex};
 use protobuf::Message;
 use rusoto_core::{Region, RusotoError};
 use rusoto_s3::{PutObjectError, PutObjectRequest, S3Client, S3};
@@ -18,12 +18,7 @@ use std::{fs, path::PathBuf, str::FromStr};
 use structopt::StructOpt;
 
 pub trait BlockHandler {
-    fn handle_block(
-        &mut self,
-        block: &Block,
-        block_contents: &BlockContents,
-        signature: &Option<BlockSignature>,
-    );
+    fn handle_block(&mut self, block_data: &BlockData);
 }
 
 /// Block to start syncing from.
@@ -142,33 +137,19 @@ impl S3BlockWriter {
 }
 
 impl BlockHandler for S3BlockWriter {
-    fn handle_block(
-        &mut self,
-        block: &Block,
-        block_contents: &BlockContents,
-        signature: &Option<BlockSignature>,
-    ) {
-        log::info!(self.logger, "S3: Handling block {}", block.index);
+    fn handle_block(&mut self, block_data: &BlockData) {
+        log::info!(
+            self.logger,
+            "S3: Handling block {}",
+            block_data.block().index
+        );
 
-        let bc_block = blockchain::Block::from(block);
-        let bc_block_contents = blockchain::BlockContents::from(block_contents);
-
-        let mut archive_block_v1 = blockchain::ArchiveBlockV1::new();
-        archive_block_v1.set_block(bc_block);
-        archive_block_v1.set_block_contents(bc_block_contents);
-
-        if let Some(signature) = signature {
-            let bc_signature = blockchain::BlockSignature::from(signature);
-            archive_block_v1.set_signature(bc_signature);
-        }
-
-        let mut archive_block = blockchain::ArchiveBlock::new();
-        archive_block.set_v1(archive_block_v1);
+        let archive_block = blockchain::ArchiveBlock::from(block_data);
 
         let dest = self
             .path
             .as_path()
-            .join(block_num_to_s3block_path(block.index));
+            .join(block_num_to_s3block_path(block_data.block().index));
 
         let dir = dest.as_path().parent().expect("failed getting parent");
         let filename = dest.file_name().unwrap();
@@ -198,28 +179,14 @@ impl LocalBlockWriter {
 }
 
 impl BlockHandler for LocalBlockWriter {
-    fn handle_block(
-        &mut self,
-        block: &Block,
-        block_contents: &BlockContents,
-        signature: &Option<BlockSignature>,
-    ) {
-        log::info!(self.logger, "S3: Handling block {}", block.index);
+    fn handle_block(&mut self, block_data: &BlockData) {
+        log::info!(
+            self.logger,
+            "Local: Handling block {}",
+            block_data.block().index
+        );
 
-        let bc_block = blockchain::Block::from(block);
-        let bc_block_contents = blockchain::BlockContents::from(block_contents);
-
-        let mut archive_block_v1 = blockchain::ArchiveBlockV1::new();
-        archive_block_v1.set_block(bc_block);
-        archive_block_v1.set_block_contents(bc_block_contents);
-
-        if let Some(signature) = signature {
-            let bc_signature = blockchain::BlockSignature::from(signature);
-            archive_block_v1.set_signature(bc_signature);
-        }
-
-        let mut archive_block = blockchain::ArchiveBlock::new();
-        archive_block.set_v1(archive_block_v1);
+        let archive_block = blockchain::ArchiveBlock::from(block_data);
 
         let bytes = archive_block
             .write_to_bytes()
@@ -228,13 +195,18 @@ impl BlockHandler for LocalBlockWriter {
         let dest = self
             .path
             .as_path()
-            .join(block_num_to_s3block_path(block.index));
+            .join(block_num_to_s3block_path(block_data.block().index));
         let dir = dest.as_path().parent().expect("failed getting parent");
 
         fs::create_dir_all(dir)
             .unwrap_or_else(|e| panic!("failed creating directory {:?}: {:?}", dir, e));
-        fs::write(&dest, bytes)
-            .unwrap_or_else(|_| panic!("failed writing block #{} to {:?}", block.index, dest));
+        fs::write(&dest, bytes).unwrap_or_else(|_| {
+            panic!(
+                "failed writing block #{} to {:?}",
+                block_data.block().index,
+                dest
+            )
+        });
     }
 }
 
@@ -303,27 +275,10 @@ fn main() {
     );
     let mut next_block_num = first_desired_block;
     loop {
-        while let (Ok(block_contents), Ok(block)) = (
-            ledger_db.get_block_contents(next_block_num),
-            ledger_db.get_block(next_block_num),
-        ) {
+        while let Ok(block_data) = ledger_db.get_block_data(next_block_num) {
             log::trace!(logger, "Handling block #{}", next_block_num);
 
-            let signature = match ledger_db.get_block_signature(next_block_num) {
-                Ok(signature) => Some(signature),
-                Err(LedgerDbError::NotFound) => None,
-                Err(err) => {
-                    log::error!(
-                        logger,
-                        "Failed getting signature for block #{}: {:?}",
-                        next_block_num,
-                        err
-                    );
-                    None
-                }
-            };
-
-            block_handler.handle_block(&block, &block_contents, &signature);
+            block_handler.handle_block(&block_data);
             next_block_num += 1;
 
             let state = StateData {
