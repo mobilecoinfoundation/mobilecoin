@@ -6,7 +6,7 @@
 pub mod uri;
 
 use crate::uri::{Destination, Uri};
-use mc_api::{block_num_to_s3block_path, blockchain};
+use mc_api::{block_num_to_s3block_path, blockchain, merged_block_num_to_s3block_path};
 use mc_common::logger::{create_app_logger, log, o, Logger};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::{BlockData, BlockIndex};
@@ -18,7 +18,8 @@ use std::{fs, path::PathBuf, str::FromStr};
 use structopt::StructOpt;
 
 pub trait BlockHandler {
-    fn handle_block(&mut self, block_data: &BlockData);
+    fn write_single_block(&mut self, block_data: &BlockData);
+    fn write_multiple_blocks(&mut self, blocks_data: &[BlockData]);
 }
 
 /// Block to start syncing from.
@@ -68,6 +69,10 @@ pub struct Config {
     /// State file, defaults to ~/.mc-ledger-distribution-state
     #[structopt(long)]
     pub state_file: Option<PathBuf>,
+
+    /// Merged blocks bucket sizes. Use 0 to disable.
+    #[structopt(long, default_value = "100,1000,10000", use_delimiter = true)]
+    merge_buckets: Vec<u64>,
 }
 
 /// State file contents.
@@ -137,7 +142,7 @@ impl S3BlockWriter {
 }
 
 impl BlockHandler for S3BlockWriter {
-    fn handle_block(&mut self, block_data: &BlockData) {
+    fn write_single_block(&mut self, block_data: &BlockData) {
         log::info!(
             self.logger,
             "S3: Handling block {}",
@@ -162,6 +167,42 @@ impl BlockHandler for S3BlockWriter {
                 .expect("failed to serialize ArchiveBlock"),
         );
     }
+
+    fn write_multiple_blocks(&mut self, blocks_data: &[BlockData]) {
+        assert!(blocks_data.len() >= 2);
+
+        let first_block_index = blocks_data[0].block().index;
+        let last_block_index = blocks_data.last().unwrap().block().index;
+        assert_eq!(
+            last_block_index,
+            first_block_index + blocks_data.len() as u64 - 1
+        );
+
+        log::info!(
+            self.logger,
+            "S3: Handling blocks {}-{}",
+            first_block_index,
+            last_block_index,
+        );
+
+        let archive_blocks = blockchain::ArchiveBlocks::from(blocks_data);
+
+        let dest = self.path.as_path().join(merged_block_num_to_s3block_path(
+            blocks_data.len() as u64,
+            first_block_index,
+        ));
+
+        let dir = dest.as_path().parent().expect("failed getting parent");
+        let filename = dest.file_name().unwrap();
+
+        self.write_bytes_to_s3(
+            dir.to_str().unwrap(),
+            filename.to_str().unwrap(),
+            &archive_blocks
+                .write_to_bytes()
+                .expect("failed to serialize ArchiveBlocks"),
+        );
+    }
 }
 
 /// Local directory block writer.
@@ -179,7 +220,7 @@ impl LocalBlockWriter {
 }
 
 impl BlockHandler for LocalBlockWriter {
-    fn handle_block(&mut self, block_data: &BlockData) {
+    fn write_single_block(&mut self, block_data: &BlockData) {
         log::info!(
             self.logger,
             "Local: Handling block {}",
@@ -205,6 +246,45 @@ impl BlockHandler for LocalBlockWriter {
                 "failed writing block #{} to {:?}",
                 block_data.block().index,
                 dest
+            )
+        });
+    }
+
+    fn write_multiple_blocks(&mut self, blocks_data: &[BlockData]) {
+        assert!(blocks_data.len() >= 2);
+
+        let first_block_index = blocks_data[0].block().index;
+        let last_block_index = blocks_data.last().unwrap().block().index;
+        assert_eq!(
+            last_block_index,
+            first_block_index + blocks_data.len() as u64 - 1
+        );
+
+        log::info!(
+            self.logger,
+            "Local: Handling blocks {}-{}",
+            first_block_index,
+            last_block_index,
+        );
+
+        let archive_blocks = blockchain::ArchiveBlocks::from(blocks_data);
+
+        let bytes = archive_blocks
+            .write_to_bytes()
+            .expect("failed to serialize ArchiveBlock");
+
+        let dest = self.path.as_path().join(merged_block_num_to_s3block_path(
+            blocks_data.len() as u64,
+            first_block_index,
+        ));
+        let dir = dest.as_path().parent().expect("failed getting parent");
+
+        fs::create_dir_all(dir)
+            .unwrap_or_else(|e| panic!("failed creating directory {:?}: {:?}", dir, e));
+        fs::write(&dest, bytes).unwrap_or_else(|_| {
+            panic!(
+                "failed writing merged block #{}-{} to {:?}",
+                first_block_index, last_block_index, dest
             )
         });
     }
@@ -278,7 +358,44 @@ fn main() {
         while let Ok(block_data) = ledger_db.get_block_data(next_block_num) {
             log::trace!(logger, "Handling block #{}", next_block_num);
 
-            block_handler.handle_block(&block_data);
+            block_handler.write_single_block(&block_data);
+
+            let cur_block_index = block_data.block().index;
+            for bucket_size in config.merge_buckets.iter() {
+                // Zero bucket size is invalid, bucket size of 1 is a single block.
+                if *bucket_size <= 1 {
+                    continue;
+                }
+
+                // Check if we just completed a bucket.
+                if (cur_block_index + 1) % bucket_size != 0 {
+                    continue;
+                }
+
+                let first_block_index = cur_block_index + 1 - *bucket_size;
+                let last_block_index = cur_block_index;
+
+                log::debug!(
+                    logger,
+                    "Preparing to write merged block [{}-{}]",
+                    first_block_index,
+                    last_block_index
+                );
+
+                let mut blocks_data = Vec::new();
+                for block_index in first_block_index..=last_block_index {
+                    // We panic here since this block and its associated data is expected to be in the ledger
+                    // due to block_index <= next_block_num (which we successfully fetched or otherwise
+                    // this code wouldn't be running).
+                    let block_data = ledger_db.get_block_data(block_index).unwrap_or_else(|err| {
+                        panic!("failed getting block #{}: {}", block_index, err)
+                    });
+                    blocks_data.push(block_data);
+                }
+
+                block_handler.write_multiple_blocks(&blocks_data);
+            }
+
             next_block_num += 1;
 
             let state = StateData {

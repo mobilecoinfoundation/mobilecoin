@@ -1,6 +1,7 @@
 //! Convert to/from blockchain::ArchiveBlock
 
 use crate::{blockchain, convert::ConversionError};
+use protobuf::RepeatedField;
 use std::convert::TryFrom;
 
 /// Convert mc_transaction_core::BlockData --> blockchain::ArchiveBlock.
@@ -61,5 +62,16 @@ impl TryFrom<&blockchain::ArchiveBlock> for mc_transaction_core::BlockData {
             block_contents,
             signature,
         ))
+    }
+}
+
+/// Convert &[mc_transaction_core::BlockData] -> blockchain::ArchiveBlocks
+impl From<&[mc_transaction_core::BlockData]> for blockchain::ArchiveBlocks {
+    fn from(src: &[mc_transaction_core::BlockData]) -> Self {
+        let mut archive_blocks = blockchain::ArchiveBlocks::new();
+        archive_blocks.set_blocks(RepeatedField::from_vec(
+            src.iter().map(blockchain::ArchiveBlock::from).collect(),
+        ));
+        archive_blocks
     }
 }
