@@ -197,7 +197,9 @@ mod display_tests {
     fn test_transfer_payload_roundtrip() {
         let mut transfer_payload = TransferPayload::new();
         transfer_payload.set_entropy(vec![1u8; 32]);
-        transfer_payload.set_tx_out_public_key(vec![2u8; 32]);
+        transfer_payload
+            .mut_tx_out_public_key()
+            .set_data(vec![2u8; 32]);
 
         let mut wrapper = PrintableWrapper::new();
         wrapper.set_transfer_payload(transfer_payload);
