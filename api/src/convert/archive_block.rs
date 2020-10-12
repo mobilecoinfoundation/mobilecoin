@@ -1,6 +1,7 @@
 //! Convert to/from blockchain::ArchiveBlock
 
 use crate::{blockchain, convert::ConversionError};
+use mc_transaction_core::compute_block_id;
 use protobuf::RepeatedField;
 use std::convert::TryFrom;
 
@@ -72,6 +73,42 @@ impl From<&[mc_transaction_core::BlockData]> for blockchain::ArchiveBlocks {
         archive_blocks.set_blocks(RepeatedField::from_vec(
             src.iter().map(blockchain::ArchiveBlock::from).collect(),
         ));
+
         archive_blocks
+    }
+}
+
+/// Convert blockchain::ArchiveBlocks -> Vec<mc_transaction_core::BlockData>
+impl TryFrom<&blockchain::ArchiveBlocks> for Vec<mc_transaction_core::BlockData> {
+    type Error = ConversionError;
+
+    fn try_from(src: &blockchain::ArchiveBlocks) -> Result<Self, Self::Error> {
+        let blocks_data = src
+            .get_blocks()
+            .into_iter()
+            .map(mc_transaction_core::BlockData::try_from)
+            .collect::<Result<Vec<_>, ConversionError>>()?;
+
+        if blocks_data.len() > 1 {
+            // Ensure blocks_data form a legitimate chain of blocks.
+            for i in 1..blocks_data.len() {
+                let parent_block = &blocks_data[i - 1].block();
+                let block = &blocks_data[i].block();
+
+                let expected_block_id = compute_block_id(
+                    block.version,
+                    &parent_block.id,
+                    block.index,
+                    block.cumulative_txo_count,
+                    &block.root_element,
+                    &block.contents_hash,
+                );
+                if expected_block_id != block.id {
+                    return Err(ConversionError::InvalidContents);
+                }
+            }
+        }
+
+        Ok(blocks_data)
     }
 }

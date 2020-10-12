@@ -5,19 +5,21 @@
 
 use crate::transactions_fetcher_trait::{TransactionFetcherError, TransactionsFetcher};
 use failure::Fail;
-use mc_api::{block_num_to_s3block_path, blockchain};
+use mc_api::{block_num_to_s3block_path, blockchain, merged_block_num_to_s3block_path};
 use mc_common::{
     logger::{log, Logger},
+    lru::LruCache,
     ResponderId,
 };
-use mc_transaction_core::{Block, BlockData};
+use mc_transaction_core::{Block, BlockData, BlockID};
+use protobuf::Message;
 use reqwest::Error as ReqwestError;
 use std::{
     convert::TryFrom,
     fs,
     sync::{
         atomic::{AtomicU64, Ordering},
-        Arc,
+        Arc, Mutex,
     },
 };
 use url::Url;
@@ -57,6 +59,10 @@ pub struct ReqwestTransactionsFetcher {
     client: reqwest::blocking::Client,
     logger: Logger,
     source_index_counter: Arc<AtomicU64>,
+    blocks_cache: Arc<Mutex<LruCache<BlockID, BlockData>>>,
+
+    hits: Arc<AtomicU64>,
+    misses: Arc<AtomicU64>,
 }
 
 impl ReqwestTransactionsFetcher {
@@ -93,39 +99,33 @@ impl ReqwestTransactionsFetcher {
             client,
             logger,
             source_index_counter: Arc::new(AtomicU64::new(0)),
+            blocks_cache: Arc::new(Mutex::new(LruCache::new(10000))), // TODO constant
+
+            hits: Arc::new(AtomicU64::new(0)),
+            misses: Arc::new(AtomicU64::new(0)),
         })
     }
 
     pub fn block_from_url(&self, url: &Url) -> Result<BlockData, ReqwestTransactionsFetcherError> {
-        // Special treatment for file:// to read from a local directory.
-        let bytes: Vec<u8> = if url.scheme() == "file" {
-            let path = &url[url::Position::BeforeHost..url::Position::AfterPath];
-            fs::read(path)
-                .map_err(|err| ReqwestTransactionsFetcherError::IO(path.to_string(), err))?
-                .to_vec()
-        } else {
-            let mut response = self.client.get(url.as_str()).send().map_err(|err| {
-                ReqwestTransactionsFetcherError::ReqwestError(url.to_string(), err)
-            })?;
-
-            let mut bytes = Vec::new();
-            response.copy_to(&mut bytes)?;
-            bytes
-        };
-
-        let archive_block: blockchain::ArchiveBlock =
-            protobuf::parse_from_bytes(&bytes).map_err(|err| {
-                ReqwestTransactionsFetcherError::InvalidBlockReceived(
-                    url.to_string(),
-                    format!("protobuf parse failed: {:?}", err),
-                )
-            })?;
+        let archive_block: blockchain::ArchiveBlock = self.fetch_protobuf_object(&url)?;
 
         let block_data = BlockData::try_from(&archive_block).map_err(|err| {
             ReqwestTransactionsFetcherError::InvalidBlockReceived(url.to_string(), err.to_string())
         })?;
 
         Ok(block_data)
+    }
+
+    // Fetches multiple blocks (a "merged block") from a given url.
+    pub fn blocks_from_url(
+        &self,
+        url: &Url,
+    ) -> Result<Vec<BlockData>, ReqwestTransactionsFetcherError> {
+        let archive_blocks: blockchain::ArchiveBlocks = self.fetch_protobuf_object(url)?;
+
+        Ok(Vec::<BlockData>::try_from(&archive_blocks).map_err(|err| {
+            ReqwestTransactionsFetcherError::InvalidBlockReceived(url.to_string(), err.to_string())
+        })?)
     }
 
     pub fn get_origin_block_and_transactions(
@@ -142,6 +142,36 @@ impl ReqwestTransactionsFetcher {
         let url = source_url.join(&filename).unwrap();
         self.block_from_url(&url)
     }
+
+    fn fetch_protobuf_object<M: Message>(
+        &self,
+        url: &Url,
+    ) -> Result<M, ReqwestTransactionsFetcherError> {
+        // Special treatment for file:// to read from a local directory.
+        let bytes: Vec<u8> = if url.scheme() == "file" {
+            let path = &url[url::Position::BeforeHost..url::Position::AfterPath];
+            fs::read(path)
+                .map_err(|err| ReqwestTransactionsFetcherError::IO(path.to_string(), err))?
+                .to_vec()
+        } else {
+            let mut response = self.client.get(url.as_str()).send().map_err(|err| {
+                ReqwestTransactionsFetcherError::ReqwestError(url.to_string(), err)
+            })?;
+
+            let mut bytes = Vec::new();
+            response.copy_to(&mut bytes)?;
+            bytes
+        };
+
+        let obj: M = protobuf::parse_from_bytes(&bytes).map_err(|err| {
+            ReqwestTransactionsFetcherError::InvalidBlockReceived(
+                url.to_string(),
+                format!("protobuf parse failed: {:?}", err),
+            )
+        })?;
+
+        Ok(obj)
+    }
 }
 
 impl TransactionsFetcher for ReqwestTransactionsFetcher {
@@ -152,10 +182,62 @@ impl TransactionsFetcher for ReqwestTransactionsFetcher {
         _safe_responder_ids: &[ResponderId],
         block: &Block,
     ) -> Result<BlockData, Self::Error> {
+        // Try and see if we can get this block from our cache.
+        {
+            let mut blocks_cache = self.blocks_cache.lock().expect("mutex poisoned");
+
+            // Note: If this block id is in the cache, we take it out under the assumption that our
+            // primary caller, LedgerSyncService, is not going to try and fetch the same block
+            // twice if it managed to get a valid block.
+            if let Some(block_data) = blocks_cache.pop(&block.id) {
+                if block_data.block() == block {
+                    let hits = self.hits.fetch_add(1, Ordering::SeqCst);
+                    let misses = self.misses.load(Ordering::SeqCst);
+                    log::crit!(self.logger, "{} / {}", hits, misses);
+                    return Ok(block_data);
+                }
+            }
+        }
+
         // Get the source to fetch from.
         let source_index_counter =
             self.source_index_counter.fetch_add(1, Ordering::SeqCst) as usize;
         let source_url = &self.source_urls[source_index_counter % self.source_urls.len()];
+
+        // TODO bucket sizes need to live somewhere that isn't here.
+        for bucket in &[10000, 1000, 100] {
+            if block.index % bucket == 0 {
+                log::debug!(
+                    self.logger,
+                    "Attempting to fetch a merged block for #{} (bucket size {})",
+                    block.index,
+                    bucket
+                );
+                let filename = merged_block_num_to_s3block_path(*bucket, block.index)
+                    .into_os_string()
+                    .into_string()
+                    .unwrap();
+                let url = source_url
+                    .join(&filename)
+                    .map_err(|e| ReqwestTransactionsFetcherError::UrlParse(filename.clone(), e))?;
+
+                if let Ok(blocks_data) = self.blocks_from_url(&url) {
+                    log::debug!(
+                        self.logger,
+                        "Got a merged block for #{} (bucket size {}): {} entries",
+                        block.index,
+                        bucket,
+                        blocks_data.len()
+                    );
+
+                    let mut blocks_cache = self.blocks_cache.lock().expect("mutex poisoned");
+                    for block_data in blocks_data.into_iter() {
+                        blocks_cache.put(block_data.block().id.clone(), block_data);
+                    }
+                    break;
+                }
+            }
+        }
 
         // Construct URL for the block we are trying to fetch.
         let filename = block_num_to_s3block_path(block.index)
@@ -183,6 +265,10 @@ impl TransactionsFetcher for ReqwestTransactionsFetcher {
                 "block data mismatch".to_string(),
             ));
         }
+
+        let hits = self.hits.load(Ordering::SeqCst);
+        let misses = self.misses.fetch_add(1, Ordering::SeqCst);
+        log::crit!(self.logger, "{} / {}", hits, misses);
 
         // Got what we wanted!
         Ok(block_data)
