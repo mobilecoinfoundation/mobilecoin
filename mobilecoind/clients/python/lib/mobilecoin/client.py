@@ -24,23 +24,19 @@ DEFAULT_SUBADDRESS_INDEX = 0
 # see transaction/core/src/constants.rs
 MINIMUM_FEE = 10_000_000_000
 
-# Transaction Status Codes
-TX_STATUS_UNKNOWN = TxStatus.Unknown
-TX_STATUS_VERIFIED = TxStatus.Verified
-TX_STATUS_TOMBSTONE_BLOCK_EXCEEDED = TxStatus.TombstoneBlockExceeded
-TX_STATUS_INVALID_CONFIRMATION_NUMBER = TxStatus.InvalidConfirmationNumber
 
-def parse_tx_status(status:int) -> str:
-    if status == TX_STATUS_UNKNOWN:
-        return "UNKNOWN"
-    elif status == TX_STATUS_VERIFIED:
-        return "VERIFIED"
-    elif status == TX_STATUS_TOMBSTONE_BLOCK_EXCEEDED:
-        return "TOMBSTONE_BLOCK_EXCEEDED"
-    elif status == TX_STATUS_INVALID_CONFIRMATION_NUMBER:
-        return "INVALID_CONFIRMATION_NUMBER"
+def parse_tx_status(status) -> str:
+    if status == TxStatus.Unknown:
+        return "Unknown"
+    elif status == TxStatus.Verified:
+        return "Verified"
+    elif status == TxStatus.TombstoneBlockExceeded:
+        return "Tombstone Block Exceeded"
+    elif status == TxStatus.InvalidConfirmationNumber:
+        return "Invalid Confirmation Number"
     else:
-        return "UNEXPECTED?"
+        return "Error: Unexpected TxStatus ({})".format(tx_status)
+
 
 class MonitorNotFound(Exception):
     """ When a Monitor is not Found"""
@@ -278,7 +274,7 @@ class Client(object):
         return self.stub.GenerateTxFromTxOutList(request)
 
     def submit_tx(self, tx_proposal):
-        """ Submit a prepared transaction, optionall requesting a tombstone block.
+        """ Submit a prepared transaction proposal.
         """
         request = SubmitTxRequest(tx_proposal=tx_proposal)
         return self.stub.SubmitTx(request)
