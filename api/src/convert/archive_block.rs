@@ -85,7 +85,7 @@ impl TryFrom<&blockchain::ArchiveBlocks> for Vec<mc_transaction_core::BlockData>
     fn try_from(src: &blockchain::ArchiveBlocks) -> Result<Self, Self::Error> {
         let blocks_data = src
             .get_blocks()
-            .into_iter()
+            .iter()
             .map(mc_transaction_core::BlockData::try_from)
             .collect::<Result<Vec<_>, ConversionError>>()?;
 
