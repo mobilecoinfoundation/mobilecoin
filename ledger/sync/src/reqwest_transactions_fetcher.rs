@@ -24,6 +24,17 @@ use std::{
 };
 use url::Url;
 
+/// Default merged blocks bucket sizes. Merged blocks are objects that contain multiple consecutive
+/// blocks that have been bundled together in order to reduce the amount of requests needed to get
+/// the block data.
+/// Notes:
+/// - This should match the defaults in `mc-ledger-distribution`.
+/// - This must be sorted in descending order.
+pub const DEFAULT_MERGED_BLOCKS_BUCKET_SIZES: &[u64] = &[10000, 1000, 100];
+
+/// Maximum number of pre-fetched blocks to keep in cache.
+pub const MAX_PREFETCHED_BLOCKS: usize = 10000;
+
 #[derive(Debug, Fail)]
 pub enum ReqwestTransactionsFetcherError {
     #[fail(display = "Url parse error on {}: {}", _0, _1)]
@@ -55,13 +66,30 @@ impl TransactionFetcherError for ReqwestTransactionsFetcherError {}
 
 #[derive(Clone)]
 pub struct ReqwestTransactionsFetcher {
+    /// List of URLs to try and fetch objects from.
     pub source_urls: Vec<Url>,
+
+    /// Client used for HTTP(s) requests.
     client: reqwest::blocking::Client,
+
+    /// Logger.
     logger: Logger,
+
+    /// The most recently used URL  index (in `source_urls`).
     source_index_counter: Arc<AtomicU64>,
+
+    /// Cache mapping a `BlockID` to `BlockData`, filled by merged blocks when possible.
     blocks_cache: Arc<Mutex<LruCache<BlockID, BlockData>>>,
 
+    /// Merged blocks bucket sizes to attempt fetching.
+    merged_blocks_bucket_sizes: Vec<u64>,
+
+    /// Number of successful cache hits when attempting ot get block data.
+    /// Used for debugging purposes.
     hits: Arc<AtomicU64>,
+
+    /// Number of cache misses when attempting to get block data.
+    /// Used for debugging purposes.
     misses: Arc<AtomicU64>,
 }
 
@@ -99,11 +127,15 @@ impl ReqwestTransactionsFetcher {
             client,
             logger,
             source_index_counter: Arc::new(AtomicU64::new(0)),
-            blocks_cache: Arc::new(Mutex::new(LruCache::new(10000))), // TODO constant
-
+            blocks_cache: Arc::new(Mutex::new(LruCache::new(MAX_PREFETCHED_BLOCKS))),
+            merged_blocks_bucket_sizes: DEFAULT_MERGED_BLOCKS_BUCKET_SIZES.to_vec(),
             hits: Arc::new(AtomicU64::new(0)),
             misses: Arc::new(AtomicU64::new(0)),
         })
+    }
+
+    pub fn set_merged_blocks_bucket_sizes(&mut self, bucket_sizes: &[u64]) {
+        self.merged_blocks_bucket_sizes = bucket_sizes.to_vec();
     }
 
     pub fn block_from_url(&self, url: &Url) -> Result<BlockData, ReqwestTransactionsFetcherError> {
@@ -193,7 +225,13 @@ impl TransactionsFetcher for ReqwestTransactionsFetcher {
                 if block_data.block() == block {
                     let hits = self.hits.fetch_add(1, Ordering::SeqCst);
                     let misses = self.misses.load(Ordering::SeqCst);
-                    log::crit!(self.logger, "{} / {}", hits, misses);
+                    log::trace!(
+                        self.logger,
+                        "Got block #{} from cache (total hits/misses: {}/{})",
+                        block.index,
+                        hits,
+                        misses
+                    );
                     return Ok(block_data);
                 }
             }
@@ -204,8 +242,8 @@ impl TransactionsFetcher for ReqwestTransactionsFetcher {
             self.source_index_counter.fetch_add(1, Ordering::SeqCst) as usize;
         let source_url = &self.source_urls[source_index_counter % self.source_urls.len()];
 
-        // TODO bucket sizes need to live somewhere that isn't here.
-        for bucket in &[10000, 1000, 100] {
+        // Try and fetch a merged block if we stand a chance of finding one.
+        for bucket in self.merged_blocks_bucket_sizes.iter() {
             if block.index % bucket == 0 {
                 log::debug!(
                     self.logger,
@@ -268,7 +306,13 @@ impl TransactionsFetcher for ReqwestTransactionsFetcher {
 
         let hits = self.hits.load(Ordering::SeqCst);
         let misses = self.misses.fetch_add(1, Ordering::SeqCst);
-        log::crit!(self.logger, "{} / {}", hits, misses);
+        log::trace!(
+            self.logger,
+            "Cache miss while getting block #{} (total hits/misses: {}/{})",
+            block.index,
+            hits,
+            misses
+        );
 
         // Got what we wanted!
         Ok(block_data)
