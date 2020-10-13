@@ -234,7 +234,10 @@ fn main() {
     // Figure out the first block to sync from.
     let first_desired_block = match config.start_from {
         StartFrom::Zero => 0,
-        StartFrom::Next => {
+        StartFrom::Next => ledger_db
+            .num_blocks()
+            .expect("Failed getting number of blocks in ledger"),
+        StartFrom::Last => {
             // See if the state file exists and read it if it does.
             if state_file_path.as_path().exists() {
                 let file_data = fs::read_to_string(&state_file_path).unwrap_or_else(|e| {
@@ -248,9 +251,6 @@ fn main() {
                 0
             }
         }
-        StartFrom::Last => ledger_db
-            .num_blocks()
-            .expect("Failed getting number of blocks in ledger"),
     };
 
     // Create block handler
