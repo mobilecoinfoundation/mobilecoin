@@ -64,7 +64,6 @@ members = [
     "transaction/core",
     "transaction/core/test-utils",
     "transaction/std",
-    "util/b58-payloads",
     "util/build/bolt-signalapp",
     "util/build/enclave",
     "util/build/grpc",
@@ -86,7 +85,6 @@ members = [
     "util/test-helper",
     "util/test-vector",
     "util/uri",
-    "util/url-encoding",
     "watcher",
     "watcher/api",
 ]
