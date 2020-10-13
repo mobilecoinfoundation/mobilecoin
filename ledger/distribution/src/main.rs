@@ -233,10 +233,15 @@ fn main() {
 
     // Figure out the first block to sync from.
     let first_desired_block = match config.start_from {
+        // Sync from the beginning of the ledger.
         StartFrom::Zero => 0,
+
+        // Sync from the next block in the current ledger.
         StartFrom::Next => ledger_db
             .num_blocks()
             .expect("Failed getting number of blocks in ledger"),
+
+        // Sync from the last attempted block, according to a previous state file.
         StartFrom::Last => {
             // See if the state file exists and read it if it does.
             if state_file_path.as_path().exists() {
