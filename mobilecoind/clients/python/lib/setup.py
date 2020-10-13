@@ -15,8 +15,8 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/mobilecoinofficial/mobilecoin/tree/master/mobilecoind/clients/python/lib",
-    packages=setuptools.find_packages(exclude=("test*",)),
     package_data={'mobilecoin': ['py.typed']},
+    packages=['mobilecoin'],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
