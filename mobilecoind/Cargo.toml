@@ -25,14 +25,12 @@ mc-ledger-sync = { path = "../ledger/sync" }
 mc-mobilecoind-api = { path = "../mobilecoind/api" }
 mc-transaction-core = { path = "../transaction/core" }
 mc-transaction-std = { path = "../transaction/std" }
-mc-util-b58-payloads = { path = "../util/b58-payloads" }
 mc-util-from-random = { path = "../util/from-random" }
 mc-util-grpc = { path = "../util/grpc" }
 mc-util-lmdb = { path = "../util/lmdb" }
 mc-util-repr-bytes = { path = "../util/repr-bytes" }
 mc-util-serial = { path = "../util/serial" }
 mc-util-uri = { path = "../util/uri" }
-mc-util-url-encoding = { path = "../util/url-encoding" }
 mc-watcher = { path = "../watcher" }
 
 crossbeam-channel = "0.3"

@@ -52,7 +52,7 @@ if __name__ == '__main__':
     print("    {:<18}{}".format("Master Key:", args.key))
     print("    {:<18}{}".format("Subaddress Index:", args.subaddress))
     print("    {:<18}{}".format("Address Code:", public_address.b58_code))
-    print("    {:<18}{}".format("Address URL:", public_address.mob_url))
+    print("    {:<18}{}".format("Address URL:", "mob58://"+ public_address.b58_code))
     print("    {:<18}{} pMOB".format("Balance:", balance_picoMOB))
     print("    {:<18}{}".format(" ", mobilecoin.display_as_MOB(balance_picoMOB)))
     print("\n")
