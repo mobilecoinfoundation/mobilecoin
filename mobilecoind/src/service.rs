@@ -1578,7 +1578,6 @@ mod test {
     use std::{
         convert::{TryFrom, TryInto},
         iter::FromIterator,
-        str::FromStr,
     };
 
     #[test_with_logger]
