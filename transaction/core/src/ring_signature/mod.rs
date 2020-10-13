@@ -26,8 +26,8 @@ lazy_static! {
     /// Generators (base points) for Pedersen commitments.
     /// For commitment to amount 'v' with blinding 'b', we want 'C = v*H + b*G' so commitments to zero are signed on G.
     /// Note: our H is not the same point as the dalek library's default version
-    pub static ref GENERATORS: PedersenGens {
-            B: hash_to_point(&RISTRETTO_BASEPOINT_POINT),
+    pub static ref GENERATORS: PedersenGens = PedersenGens {
+            B: hash_to_point(&RistrettoPublic::from(RISTRETTO_BASEPOINT_POINT)),
             B_blinding: RISTRETTO_BASEPOINT_POINT
     };
 
