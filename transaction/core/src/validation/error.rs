@@ -26,7 +26,7 @@ pub enum TransactionValidationError {
     /// Each input must have a valid signature.
     InvalidInputSignature,
 
-    /// The transaction must have a valid RingCT signature.
+    /// Invalid RingCT signature: `{0}`
     InvalidTransactionSignature(crate::ring_signature::Error),
 
     /// All Range Proofs in the transaction must be valid.
@@ -89,7 +89,7 @@ pub enum TransactionValidationError {
     /// Ledger context provided by the untrusted system is insufficient to validate the transaction.
     InvalidLedgerContext,
 
-    /// Error querying the local ledger.
+    /// Ledger error: `{0}`.
     Ledger(String),
 
     /// An error occurred while validating a membership proof.
