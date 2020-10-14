@@ -8,7 +8,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="mobilecoin",
-    version="0.3.2",
+    version="0.3.3",
     author="MobileCoin",
     author_email="support@mobilecoin.com",
     description="Python bindings for the MobileCoin daemon API.",

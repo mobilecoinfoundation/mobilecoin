@@ -194,7 +194,7 @@ class Client(object):
         request = ParseTransferCodeRequest(b58_code=b58_code)
         return self.stub.ParseTransferCode(request)
 
-    def crate_transfer_code(self, entropy: bytes, tx_public_key, memo: str = ""):
+    def create_transfer_code(self, entropy: bytes, tx_public_key, memo: str = ""):
         """ Create a "transfer code" used to generate a QR code for wallet apps.
         """
         request = CreateTransferCodeRequest(entropy=entropy,
