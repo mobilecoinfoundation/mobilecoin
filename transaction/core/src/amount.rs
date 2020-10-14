@@ -14,17 +14,16 @@ use crate::{
 };
 use blake2::{Blake2b, Digest};
 use curve25519_dalek::scalar::Scalar;
-use failure::Fail;
+use displaydoc::Display;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::RistrettoPublic;
 use prost::Message;
 use serde::{Deserialize, Serialize};
 
 /// Errors that can occur when constructing an amount.
-#[derive(Debug, Fail, Eq, PartialEq)]
+#[derive(Debug, Display, Eq, PartialEq)]
 pub enum AmountError {
     /// The masked value, blinding, or shared secret are not consistent with the commitment.
-    #[fail(display = "Inconsistent Commitment")]
     InconsistentCommitment,
 }
 

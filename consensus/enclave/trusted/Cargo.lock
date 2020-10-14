@@ -1049,7 +1049,10 @@ dependencies = [
  "curve25519-dalek 3.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "displaydoc 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
+<<<<<<< HEAD
  "failure 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
+=======
+>>>>>>> Replaces failure usages with displaydoc
  "generic-array 0.14.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex_fmt 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
