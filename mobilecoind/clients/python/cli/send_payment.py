@@ -128,20 +128,11 @@ if __name__ == '__main__':
     tx_proposal = mobilecoind.generate_tx(sender_monitor_id, args.sender_subaddress, tx_list, outlays).tx_proposal
     sender_tx_receipt = mobilecoind.submit_tx(tx_proposal).sender_tx_receipt
     # Wait for the transaction to clear
-    tx_status = mobilecoin.TX_STATUS_UNKNOWN
-    while tx_status == mobilecoin.TX_STATUS_UNKNOWN:
+    tx_status = mobilecoin.TxStatus.Unknown
+    while tx_status == mobilecoin.TxStatus.Unknown:
         time.sleep(TX_RECEIPT_CHECK_INTERVAL_SECONDS)
-        tx_status = int(mobilecoind.get_tx_status_as_sender(sender_tx_receipt)).status
-        print("transaction status is: {}".format(mobilecoin.parse_tx_status(tx_status)))
-
-    if tx_status == mobilecoin.TX_STATUS_VERIFIED:
-        transaction_status = "Verified"
-    elif tx_status == mobilecoin.TX_STATUS_TOMBSTONE_BLOCK_EXCEEDED:
-        transaction_status = "Tombstone Block Exceeded"
-    elif tx_status == mobilecoin.TX_STATUS_INVALID_CONFIRMATION_NUMBER:
-        transaction_status = "Invalid Confirmation Number"
-    else:
-        transaction_status = "ERROR: Unexpected STATUS CODE {}".format(tx_status)
+        tx_status = mobilecoind.get_tx_status_as_sender(sender_tx_receipt).status
+        print("Transaction status: {}".format(mobilecoin.parse_tx_status(tx_status)))
 
     # print summary
     print("\n")
@@ -150,5 +141,5 @@ if __name__ == '__main__':
     print("    {:<18}{} picoMOB".format("Value:", value_to_send_picoMOB))
     print("    {:<18}{}".format(" ", mobilecoin.display_as_MOB(value_to_send_picoMOB)))
     print("\n")
-    print("    {:<18}{}".format("Final Status:", transaction_status))
+    print("    {:<18}{}".format("Final Status:", mobilecoin.parse_tx_status(tx_status)))
     print("\n")
