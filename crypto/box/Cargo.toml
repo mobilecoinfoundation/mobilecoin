@@ -9,7 +9,7 @@ aead = "0.3"
 aes-gcm = { version = "0.6.0" }
 blake2 = { version = "0.9", default-features = false }
 digest = { version = "0.9" }
-failure = { version = "0.1.5", default-features = false }
+failure = { version = "0.1.8", default-features = false }
 hkdf = { version = "0.9.0", default-features = false }
 mc-crypto-keys = { path = "../keys", default-features = false }
 rand_core = { version = "0.5", default-features = false }

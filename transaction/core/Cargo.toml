@@ -8,7 +8,7 @@ edition = "2018"
 # External dependencies
 digest = { version = "0.9", default-features = false }
 displaydoc = { version = "0.1", default-features = false }
-failure = { version = "0.1.5", default-features = false, features = ["derive"] }
+failure = { version = "0.1.8", default-features = false, features = ["derive"] }
 generic-array = { version = "0.14", features = ["serde"] }
 hex_fmt = "0.3"
 lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
