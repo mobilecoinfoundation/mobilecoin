@@ -34,7 +34,7 @@ const DEFAULT_GET_BLOCKS_TIMEOUT: Duration = Duration::from_secs(30);
 const DEFAULT_GET_TRANSACTIONS_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Maximal amount of concurrent get_block_contents calls to allow.
-const MAX_CONCURRENT_GET_BLOCK_CONTENTS_CALLS: usize = 500;
+const MAX_CONCURRENT_GET_BLOCK_CONTENTS_CALLS: usize = 50;
 
 pub struct LedgerSyncService<L: Ledger, BC: BlockchainConnection, TF: TransactionsFetcher> {
     ledger: L,
