@@ -75,7 +75,7 @@ pub struct ReqwestTransactionsFetcher {
     /// Logger.
     logger: Logger,
 
-    /// The most recently used URL  index (in `source_urls`).
+    /// The most recently used URL index (in `source_urls`).
     source_index_counter: Arc<AtomicU64>,
 
     /// Cache mapping a `BlockID` to `BlockData`, filled by merged blocks when possible.
