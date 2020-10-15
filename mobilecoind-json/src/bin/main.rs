@@ -90,9 +90,9 @@ fn add_monitor(
 
     let mut req = mc_mobilecoind_api::AddMonitorRequest::new();
     req.set_account_key(account_key);
-    req.set_first_subaddress(monitor.first_subaddress);
+    req.set_first_subaddress_index(monitor.first_subaddress);
     req.set_num_subaddresses(monitor.num_subaddresses);
-    req.set_first_block(0);
+    req.set_first_block_index(0);
 
     let monitor_response = state
         .mobilecoind_api_client
@@ -342,7 +342,7 @@ fn build_and_submit(
     // Send the payment request
     let mut req = mc_mobilecoind_api::SendPaymentRequest::new();
     req.set_sender_monitor_id(monitor_id);
-    req.set_sender_subaddress(subaddress_index);
+    req.set_sender_subaddress_index(subaddress_index);
     req.set_outlay_list(RepeatedField::from_vec(vec![outlay]));
     req.set_max_input_utxo_value(max_input_utxo_value);
 
@@ -387,7 +387,7 @@ fn pay_address_code(
     // Send the pay address code request
     let mut req = mc_mobilecoind_api::PayAddressCodeRequest::new();
     req.set_sender_monitor_id(monitor_id);
-    req.set_sender_subaddress(subaddress_index);
+    req.set_sender_subaddress_index(subaddress_index);
     req.set_b58_code(transfer.b58_code.clone());
     req.set_amount(amount);
     req.set_max_input_utxo_value(max_input_utxo_value);
@@ -548,13 +548,13 @@ fn ledger_info(state: rocket::State<State>) -> Result<Json<JsonLedgerInfoRespons
 }
 
 /// Retrieves the data in a request code
-#[get("/ledger/blocks/<block_num>/header")]
+#[get("/ledger/blocks/<block_index>/header")]
 fn block_info(
     state: rocket::State<State>,
-    block_num: u64,
+    block_index: u64,
 ) -> Result<Json<JsonBlockInfoResponse>, String> {
     let mut req = mc_mobilecoind_api::GetBlockInfoRequest::new();
-    req.set_block(block_num);
+    req.set_block_index(block_index);
 
     let resp = state
         .mobilecoind_api_client
@@ -565,13 +565,13 @@ fn block_info(
 }
 
 /// Retrieves the details for a given block.
-#[get("/ledger/blocks/<block_num>")]
+#[get("/ledger/blocks/<block_index>")]
 fn block_details(
     state: rocket::State<State>,
-    block_num: u64,
+    block_index: u64,
 ) -> Result<Json<JsonBlockDetailsResponse>, String> {
     let mut req = mc_mobilecoind_api::GetBlockRequest::new();
-    req.set_block(block_num);
+    req.set_block_index(block_index);
 
     let resp = state
         .mobilecoind_api_client
@@ -581,18 +581,18 @@ fn block_details(
     Ok(Json(JsonBlockDetailsResponse::from(&resp)))
 }
 /// Retreives processed block information.
-#[get("/monitors/<monitor_hex>/processed-block/<block_num>")]
+#[get("/monitors/<monitor_hex>/processed-block/<block_index>")]
 fn processed_block(
     state: rocket::State<State>,
     monitor_hex: String,
-    block_num: u64,
+    block_index: u64,
 ) -> Result<Json<JsonProcessedBlockResponse>, String> {
     let monitor_id =
         hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
 
     let mut req = mc_mobilecoind_api::GetProcessedBlockRequest::new();
     req.set_monitor_id(monitor_id);
-    req.set_block(block_num);
+    req.set_block_index(block_index);
 
     let resp = state
         .mobilecoind_api_client
