@@ -435,6 +435,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         }
         let transfer_payload = wrapper.get_transfer_payload();
 
+        // we need to use the txo public key in both compressed and uncompressed formats
         let tx_public_key = RistrettoPublic::try_from(transfer_payload.get_tx_out_public_key())
             .map_err(|err| rpc_internal_error("RistrettoPublic.try_from", err, &self.logger))?;
 
@@ -490,7 +491,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
 
         let mut response = mc_mobilecoind_api::ParseTransferCodeResponse::new();
         response.set_entropy(root_entropy.to_vec());
-        response.set_tx_public_key((&tx_public_key).into());
+        response.set_tx_out_public_key((&tx_public_key).into());
         response.set_memo(transfer_payload.get_memo().to_string());
         response.set_utxo((&utxo).into());
 
@@ -507,16 +508,16 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                 Some("entropy".to_string()),
             ));
         }
-        if request.get_tx_public_key().get_data().len() != 32 {
+        if request.get_tx_out_public_key().get_data().len() != 32 {
             return Err(RpcStatus::new(
                 RpcStatusCode::INVALID_ARGUMENT,
-                Some("tx_public_key".to_string()),
+                Some("tx_out_public_key".to_string()),
             ));
         }
 
         let mut transfer_payload = mc_mobilecoind_api::printable::TransferPayload::new();
         transfer_payload.set_entropy(request.get_entropy().to_vec());
-        transfer_payload.set_tx_out_public_key(request.get_tx_public_key().clone());
+        transfer_payload.set_tx_out_public_key(request.get_tx_out_public_key().clone());
         transfer_payload.set_memo(request.get_memo().to_string());
 
         let mut transfer_wrapper = mc_mobilecoind_api::printable::PrintableWrapper::new();
@@ -784,7 +785,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         let tx_proposal = generate_tx_response.take_tx_proposal();
 
         // Grab the public key of the relevant tx out.
-        let proto_tx_public_key = {
+        let proto_tx_out_public_key = {
             // We expect only a single outlay.
             if tx_proposal.get_outlay_index_to_tx_out_index().len() != 1 {
                 return Err(RpcStatus::new(
@@ -824,12 +825,12 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             tx_out.get_public_key().clone()
         };
 
-        let tx_public_key = RistrettoPublic::try_from(&proto_tx_public_key)
+        let tx_out_public_key = RistrettoPublic::try_from(&proto_tx_out_public_key)
             .map_err(|err| rpc_internal_error("ristretto_public.try_from", err, &self.logger))?;
 
         let mut transfer_payload = mc_mobilecoind_api::printable::TransferPayload::new();
         transfer_payload.set_entropy(entropy_bytes.to_vec());
-        transfer_payload.set_tx_out_public_key((&tx_public_key).into());
+        transfer_payload.set_tx_out_public_key((&tx_out_public_key).into());
         transfer_payload.set_memo(request.get_memo().to_string());
 
         let mut transfer_wrapper = mc_mobilecoind_api::printable::PrintableWrapper::new();
@@ -843,7 +844,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         let mut response = mc_mobilecoind_api::GenerateTransferCodeTxResponse::new();
         response.set_tx_proposal(tx_proposal);
         response.set_entropy(entropy);
-        response.set_tx_public_key(proto_tx_public_key);
+        response.set_tx_out_public_key((&tx_out_public_key).into());
         response.set_memo(request.get_memo().to_string());
         response.set_b58_code(b58_code);
         Ok(response)
@@ -924,7 +925,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
 
                 let mut receiver_tx_receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
                 receiver_tx_receipt.set_public_address((&outlay.receiver).into());
-                receiver_tx_receipt.set_tx_public_key((&tx_out.public_key).into());
+                receiver_tx_receipt.set_tx_out_public_key((&tx_out.public_key).into());
                 receiver_tx_receipt.set_tx_out_hash(tx_out.hash().to_vec());
                 receiver_tx_receipt.set_tombstone(tx_proposal.tx.prefix.tombstone_block);
 
@@ -1156,7 +1157,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                                 )
                             })?;
                         let tx_public_key =
-                            RistrettoPublic::try_from(request.get_receipt().get_tx_public_key())
+                            RistrettoPublic::try_from(request.get_receipt().get_tx_out_public_key())
                                 .map_err(|err| {
                                     rpc_internal_error(
                                         "RistrettoPublic.try_from",
@@ -1264,7 +1265,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                 let mut dst = mc_mobilecoind_api::ProcessedTxOut::new();
                 dst.set_monitor_id(monitor_id.to_vec());
                 dst.set_subaddress_index(src.subaddress_index);
-                dst.set_tx_public_key((&src.public_key).into());
+                dst.set_tx_out_public_key((&src.public_key).into());
                 dst.set_key_image((&src.key_image).into());
                 dst.set_value(src.value);
                 dst.set_direction(
@@ -1293,7 +1294,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         &mut self,
         request: mc_mobilecoind_api::GetBlockIndexByTxPubKeyRequest,
     ) -> Result<mc_mobilecoind_api::GetBlockIndexByTxPubKeyResponse, RpcStatus> {
-        let tx_public_key = RistrettoPublic::try_from(request.get_tx_public_key())
+        let tx_public_key = RistrettoPublic::try_from(request.get_tx_out_public_key())
             .map_err(|err| rpc_internal_error("RistrettoPublic.try_from", err, &self.logger))?;
 
         let compressed_tx_public_key = CompressedRistrettoPublic::from(&tx_public_key);
@@ -2252,7 +2253,7 @@ mod test {
             let hash = tx_out.hash();
 
             let mut receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
-            receipt.set_tx_public_key(mc_mobilecoind_api::external::CompressedRistretto::from(
+            receipt.set_tx_out_public_key(mc_mobilecoind_api::external::CompressedRistretto::from(
                 &tx_out.public_key,
             ));
             receipt.set_tx_out_hash(hash.to_vec());
@@ -2275,7 +2276,7 @@ mod test {
             let hash = tx_out.hash();
 
             let mut receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
-            receipt.set_tx_public_key(mc_mobilecoind_api::external::CompressedRistretto::from(
+            receipt.set_tx_out_public_key(mc_mobilecoind_api::external::CompressedRistretto::from(
                 &tx_out.public_key,
             ));
             receipt.set_tx_out_hash(hash.to_vec());
@@ -2385,7 +2386,7 @@ mod test {
                 expected_utxo.subaddress_index
             );
             assert_eq!(
-                tx_out.get_tx_public_key(),
+                tx_out.get_tx_out_public_key(),
                 &(&expected_utxo.tx_out.public_key).into(),
             );
             assert_eq!(tx_out.get_key_image(), &(&expected_utxo.key_image).into());
@@ -2460,7 +2461,7 @@ mod test {
                     expected_utxo.subaddress_index
                 );
                 assert_eq!(
-                    tx_out.get_tx_public_key(),
+                    tx_out.get_tx_out_public_key(),
                     &(&expected_utxo.tx_out.public_key).into(),
                 );
                 assert_eq!(tx_out.get_key_image(), &(&expected_utxo.key_image).into());
@@ -2709,7 +2710,7 @@ mod test {
             );
 
             let mut request = mc_mobilecoind_api::GetBlockIndexByTxPubKeyRequest::new();
-            request.set_tx_public_key(tx_out_pub_key);
+            request.set_tx_out_public_key(tx_out_pub_key);
 
             let response = client.get_block_index_by_tx_pub_key(&request).unwrap();
             assert_eq!(block_index, response.block_index);
@@ -2818,7 +2819,7 @@ mod test {
             assert_eq!(utxo.value, 1337);
             assert_eq!(
                 utxo.tx_out.public_key,
-                RistrettoPublic::try_from(response.get_tx_public_key())
+                RistrettoPublic::try_from(response.get_tx_out_public_key())
                     .unwrap()
                     .into()
             );
@@ -3156,7 +3157,7 @@ mod test {
                 assert!(tx_out_hashes.contains(&hash));
 
                 let public_key =
-                    GenericArray::<u8, U32>::from_slice(receipt.get_tx_public_key().get_data());
+                    GenericArray::<u8, U32>::from_slice(receipt.get_tx_out_public_key().get_data());
                 assert!(tx_out_public_keys.contains(&public_key));
             }
 
@@ -3396,7 +3397,7 @@ mod test {
             assert!(tx_out_hashes.contains(&hash));
 
             let public_key =
-                GenericArray::<u8, U32>::from_slice(receipt.get_tx_public_key().get_data());
+                GenericArray::<u8, U32>::from_slice(receipt.get_tx_out_public_key().get_data());
             assert!(tx_out_public_keys.contains(&public_key));
         }
 
@@ -3708,7 +3709,7 @@ mod test {
         let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
 
-        // a valid transfer code must reference a tx_public_key that appears in the ledger
+        // a valid transfer code must reference a tx_out_public_key that appears in the ledger
         // that is controlled by the root_entropy included in the code
 
         let root_entropy = [3u8; 32];
@@ -3735,7 +3736,7 @@ mod test {
         {
             let mut request = mc_mobilecoind_api::CreateTransferCodeRequest::new();
             request.set_entropy(vec![3u8; 8]); // key is wrong size
-            request.set_tx_public_key((&tx_public_key).into());
+            request.set_tx_out_public_key((&tx_public_key).into());
             request.set_memo("memo".to_owned());
             assert!(client.create_transfer_code(&request).is_err());
 
@@ -3750,7 +3751,7 @@ mod test {
             // Encode
             let mut request = mc_mobilecoind_api::CreateTransferCodeRequest::new();
             request.set_entropy(root_entropy.to_vec());
-            request.set_tx_public_key((&tx_public_key).into());
+            request.set_tx_out_public_key((&tx_public_key).into());
             request.set_memo("test memo".to_owned());
 
             let response = client.create_transfer_code(&request).unwrap();
@@ -3766,7 +3767,7 @@ mod test {
             assert_eq!(&root_entropy, response.get_entropy());
             assert_eq!(
                 tx_public_key,
-                CompressedRistrettoPublic::try_from(response.get_tx_public_key()).unwrap()
+                CompressedRistrettoPublic::try_from(response.get_tx_out_public_key()).unwrap()
             );
             assert_eq!(response.get_memo(), "test memo");
 

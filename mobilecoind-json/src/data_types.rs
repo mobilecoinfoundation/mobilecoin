@@ -386,7 +386,7 @@ impl From<&mc_mobilecoind_api::ReceiverTxReceipt> for JsonReceiverTxReceipt {
     fn from(src: &mc_mobilecoind_api::ReceiverTxReceipt) -> Self {
         Self {
             recipient: JsonPublicAddress::from(src.get_public_address()),
-            tx_public_key: hex::encode(&src.get_tx_public_key().get_data()),
+            tx_public_key: hex::encode(&src.get_tx_out_public_key().get_data()),
             tx_out_hash: hex::encode(&src.get_tx_out_hash()),
             tombstone: src.get_tombstone(),
             confirmation_number: hex::encode(&src.get_tx_out_hash()),
@@ -453,7 +453,7 @@ impl TryFrom<&JsonOutlay> for mc_mobilecoind_api::Outlay {
         );
         outlay.set_public_address(
             PublicAddress::try_from(&src.receiver)
-                .map_err(|err| format!("Could not convert public_address: {}", err))?,
+                .map_err(|err| format!("Could not convert receiver: {}", err))?,
         );
 
         Ok(outlay)
@@ -1091,7 +1091,7 @@ impl From<&mc_mobilecoind_api::ProcessedTxOut> for JsonProcessedTxOut {
         Self {
             monitor_id: hex::encode(&src.get_monitor_id()),
             subaddress_index: src.subaddress_index,
-            public_key: hex::encode(&src.get_tx_public_key().get_data()),
+            public_key: hex::encode(&src.get_tx_out_public_key().get_data()),
             key_image: hex::encode(&src.get_key_image().get_data()),
             value: src.value.to_string(),
             direction: direction_str.to_owned(),

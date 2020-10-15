@@ -158,7 +158,7 @@ message ReceiverTxReceipt {
     external.PublicAddress public_address = 1;
 
     // The public key of the TxOut sent to this receiver.
-    external.CompressedRistretto tx_public_key = 2;
+    external.CompressedRistretto tx_out_public_key = 2;
 
     // The hash of the TxOut sent to this receiver.
     bytes tx_out_hash = 3;
@@ -215,7 +215,7 @@ message ProcessedTxOut {
     uint64 subaddress_index = 2;
 
     // The public key of the TxOut.
-    external.CompressedRistretto tx_public_key = 3;
+    external.CompressedRistretto tx_out_public_key = 3;
 
     // The key image of the TxOut.
     external.KeyImage key_image = 4;
@@ -344,22 +344,22 @@ message CreateRequestCodeResponse {
     string b58_code = 1;
 }
 
-// Decode a base-58 encoded "MobileCoin Transfer Code" into entropy/tx_public_key/memo.
+// Decode a base-58 encoded "MobileCoin Transfer Code" into entropy/tx_out_public_key/memo.
 // This code provides a mobile client with everything required to construct a self-payment, allowing funds to be withdrawn from a gift card.
 message ParseTransferCodeRequest {
     string b58_code = 1;
 }
 message ParseTransferCodeResponse {
     bytes entropy = 1;
-    external.CompressedRistretto tx_public_key = 2;
+    external.CompressedRistretto tx_out_public_key = 2;
     string memo = 3;
     UnspentTxOut utxo = 4;
 }
 
-// Encode entropy/tx_public_key/memo into a base-58 "MobileCoin Transfer Code".
+// Encode entropy/tx_out_public_key/memo into a base-58 "MobileCoin Transfer Code".
 message CreateTransferCodeRequest {
     bytes entropy = 1;
-    external.CompressedRistretto tx_public_key = 2;
+    external.CompressedRistretto tx_out_public_key = 2;
     string memo = 3;
 }
 message CreateTransferCodeResponse {
@@ -467,7 +467,7 @@ message GenerateTransferCodeTxResponse {
     bytes entropy = 2;
 
     // The TxOut public key that has the funds.
-    external.CompressedRistretto tx_public_key = 3;
+    external.CompressedRistretto tx_out_public_key = 3;
 
     // The memo (simply copied from the request).
     string memo = 4;
@@ -597,7 +597,7 @@ message GetProcessedBlockResponse {
 // Get the block index containing a given TxOut public key.
 message GetBlockIndexByTxPubKeyRequest {
     // The TxOut public key to look for.
-    external.CompressedRistretto tx_public_key = 1;
+    external.CompressedRistretto tx_out_public_key = 1;
 }
 message GetBlockIndexByTxPubKeyResponse {
     // The block index.

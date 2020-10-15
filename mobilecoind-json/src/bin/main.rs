@@ -517,9 +517,9 @@ fn check_receiver_transfer_status(
     receipt: Json<JsonReceiverTxReceipt>,
 ) -> Result<Json<JsonStatusResponse>, String> {
     let mut receiver_receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
-    let mut tx_public_key = CompressedRistretto::new();
-    tx_public_key.set_data(hex::decode(&receipt.tx_public_key).map_err(|err| format!("{}", err))?);
-    receiver_receipt.set_tx_public_key(tx_public_key);
+    let mut tx_out_public_key = CompressedRistretto::new();
+    tx_out_public_key.set_data(hex::decode(&receipt.tx_public_key).map_err(|err| format!("{}", err))?);
+    receiver_receipt.set_tx_out_public_key(tx_out_public_key);
     receiver_receipt
         .set_tx_out_hash(hex::decode(&receipt.tx_out_hash).map_err(|err| format!("{}", err))?);
     receiver_receipt.set_tombstone(receipt.tombstone);
@@ -610,14 +610,14 @@ fn tx_out_get_block_index_by_public_key(
     state: rocket::State<State>,
     public_key_hex: String,
 ) -> Result<Json<JsonBlockIndexByTxPubKeyResponse>, String> {
-    let tx_out_public_key = hex::decode(public_key_hex)
+    let tx_out_public_key_bytes = hex::decode(public_key_hex)
         .map_err(|err| format!("Failed to decode hex public key: {}", err))?;
 
-    let mut tx_out_public_key_proto = CompressedRistretto::new();
-    tx_out_public_key_proto.set_data(tx_out_public_key);
+    let mut tx_out_public_key = CompressedRistretto::new();
+    tx_out_public_key.set_data(tx_out_public_key_bytes);
 
     let mut req = mc_mobilecoind_api::GetBlockIndexByTxPubKeyRequest::new();
-    req.set_tx_public_key(tx_out_public_key_proto);
+    req.set_tx_out_public_key(tx_out_public_key);
 
     let resp = state
         .mobilecoind_api_client
