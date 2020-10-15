@@ -221,12 +221,12 @@ fn create_request_code(
     state: rocket::State<State>,
     request: Json<JsonCreateRequestCodeRequest>,
 ) -> Result<Json<JsonCreateRequestCodeResponse>, String> {
-    let receiver = mc_mobilecoind_api::external::PublicAddress::try_from(&request.public_address)
+    let public_address = mc_mobilecoind_api::external::PublicAddress::try_from(&request.public_address)
         .map_err(|err| format!("Failed to parse receiver's public address: {}", err))?;
 
     // Generate b58 code
     let mut req = mc_mobilecoind_api::CreateRequestCodeRequest::new();
-    req.set_public_address(receiver);
+    req.set_public_address(public_address);
     if let Some(value) = request.value.clone() {
         req.set_value(
             value

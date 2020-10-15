@@ -267,9 +267,9 @@ dc74edf1d8842dfdf49d6db5d3d4e873665c2dd400c0955dd9729571826a26be
         // Add monitor for this account.
         let mut req = mc_mobilecoind_api::AddMonitorRequest::new();
         req.set_account_key(account_key);
-        req.set_first_subaddress(0);
+        req.set_first_subaddress_index(0);
         req.set_num_subaddresses(1);
-        req.set_first_block(0);
+        req.set_first_block_index(0);
 
         let resp = self
             .client
@@ -623,7 +623,7 @@ MobileCoin forums. Visit http://community.mobilecoin.com
 
         // Generate b58 code
         let mut req = mc_mobilecoind_api::CreateRequestCodeRequest::new();
-        req.set_receiver(public_address);
+        req.set_public_address(public_address);
         req.set_value(amount);
         req.set_memo(memo);
 
@@ -695,7 +695,7 @@ MobileCoin forums. Visit http://community.mobilecoin.com
         // Create the outlay
         let mut outlay = mc_mobilecoind_api::Outlay::new();
         outlay.set_value(request_payload.value);
-        outlay.set_receiver(mc_api::external::PublicAddress::from(
+        outlay.set_public_address(mc_api::external::PublicAddress::from(
             &(request_payload
                 .get_public_address()
                 .try_into()
@@ -716,14 +716,14 @@ MobileCoin forums. Visit http://community.mobilecoin.com
         Ok((resp.take_tx_proposal(), balance))
     }
 
-    // Display a progress bar and wait until the local monitor has synced to a given block height
-    // (if provided), or to the current ledger height if not.
-    fn wait_for_monitor_sync(&mut self, block_height: Option<u64>) -> Result<(), String> {
+    // Display a progress bar and wait until the local monitor has synced to a given block count
+    // (if provided), or to the current ledger block count if not.
+    fn wait_for_monitor_sync(&mut self, block_count: Option<u64>) -> Result<(), String> {
         let resp = self
             .client
             .get_ledger_info(&mc_mobilecoind_api::Empty::new())
             .map_err(|err| format!("Failed getting number of blocks in ledger: {}", err))?;
-        let num_blocks = block_height.unwrap_or(resp.block_count);
+        let num_blocks = block_count.unwrap_or(resp.block_count);
 
         let pb = ProgressBar::new(num_blocks);
         pb.set_style(
@@ -746,7 +746,7 @@ MobileCoin forums. Visit http://community.mobilecoin.com
                 .map_err(|err| format!("Failed getting monitor status: {}", err))?;
 
             pb.set_position(blocks_synced);
-            blocks_synced = resp.get_status().next_block;
+            blocks_synced = resp.get_status().next_block_index;
         }
 
         Ok(())

@@ -116,7 +116,7 @@ pub struct JsonUnspentTxOut {
     pub subaddress_index: u64,
     pub key_image: String,
     pub value: String, // Needs to be String since Javascript ints are not 64 bit.
-    pub attempted_spend_height: u64,
+    pub attempted_spend_block_count: u64,
     pub attempted_spend_tombstone: u64,
     pub monitor_id: String,
 }
@@ -128,7 +128,7 @@ impl From<&mc_mobilecoind_api::UnspentTxOut> for JsonUnspentTxOut {
             subaddress_index: src.get_subaddress_index(),
             key_image: hex::encode(&src.get_key_image().get_data()),
             value: src.value.to_string(),
-            attempted_spend_height: src.get_attempted_spend_block_count(),
+            attempted_spend_block_count: src.get_attempted_spend_block_count(),
             attempted_spend_tombstone: src.get_attempted_spend_tombstone(),
             monitor_id: hex::encode(&src.get_monitor_id()),
         }
@@ -159,7 +159,7 @@ impl TryFrom<&JsonUnspentTxOut> for mc_mobilecoind_api::UnspentTxOut {
                 .parse::<u64>()
                 .map_err(|err| format!("Failed to parse u64 from value: {}", err))?,
         );
-        utxo.set_attempted_spend_height(src.attempted_spend_height);
+        utxo.set_attempted_spend_height(src.attempted_spend_block_count);
         utxo.set_attempted_spend_tombstone(src.attempted_spend_tombstone);
         utxo.set_monitor_id(
             hex::decode(&src.monitor_id)
@@ -374,7 +374,7 @@ impl From<&mc_mobilecoind_api::SenderTxReceipt> for JsonSenderTxReceipt {
 }
 
 #[derive(Deserialize, Serialize)]
-pub struct Jsonpublic_addressTxReceipt {
+pub struct JsonReceiverTxReceipt {
     pub public_address: JsonPublicAddress,
     pub tx_public_key: String,
     pub tx_out_hash: String,
@@ -382,8 +382,8 @@ pub struct Jsonpublic_addressTxReceipt {
     pub confirmation_number: String,
 }
 
-impl From<&mc_mobilecoind_api::public_addressTxReceipt> for Jsonpublic_addressTxReceipt {
-    fn from(src: &mc_mobilecoind_api::public_addressTxReceipt) -> Self {
+impl From<&mc_mobilecoind_api::ReceiverTxReceipt> for JsonReceiverTxReceipt {
+    fn from(src: &mc_mobilecoind_api::ReceiverTxReceipt) -> Self {
         Self {
             public_address: JsonPublicAddress::from(src.get_public_address()),
             tx_public_key: hex::encode(&src.get_tx_public_key().get_data()),
@@ -1000,8 +1000,8 @@ impl From<&mc_mobilecoind_api::GetTxStatusAsSenderResponse> for JsonStatusRespon
     }
 }
 
-impl From<&mc_mobilecoind_api::GetTxStatusAspublic_addressResponse> for JsonStatusResponse {
-    fn from(src: &mc_mobilecoind_api::GetTxStatusAspublic_addressResponse) -> Self {
+impl From<&mc_mobilecoind_api::GetTxStatusAsReceiverResponse> for JsonStatusResponse {
+    fn from(src: &mc_mobilecoind_api::GetTxStatusAsReceiverResponse) -> Self {
         let status_str = match src.get_status() {
             mc_mobilecoind_api::TxStatus::Unknown => "unknown",
             mc_mobilecoind_api::TxStatus::Verified => "verified",
@@ -1179,7 +1179,7 @@ mod test {
             let subaddress_index = 123;
             let key_image = mc_transaction_core::ring_signature::KeyImage::from(456);
             let value = 789;
-            let attempted_spend_height = 1000;
+            let attempted_spend_block_count = 1000;
             let attempted_spend_tombstone = 1234;
 
             // make proto UnspentTxOut
@@ -1188,7 +1188,7 @@ mod test {
             unspent.set_subaddress_index(subaddress_index);
             unspent.set_key_image(mc_api::external::KeyImage::from(&key_image));
             unspent.set_value(value);
-            unspent.set_attempted_spend_height(attempted_spend_height);
+            unspent.set_attempted_spend_block_count(attempted_spend_block_count);
             unspent.set_attempted_spend_tombstone(attempted_spend_tombstone);
             unspent
         };
