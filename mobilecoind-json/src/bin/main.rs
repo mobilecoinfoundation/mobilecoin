@@ -221,12 +221,12 @@ fn create_request_code(
     state: rocket::State<State>,
     request: Json<JsonCreateRequestCodeRequest>,
 ) -> Result<Json<JsonCreateRequestCodeResponse>, String> {
-    let receiver = mc_mobilecoind_api::external::PublicAddress::try_from(&request.receiver)
+    let receiver = mc_mobilecoind_api::external::PublicAddress::try_from(&request.public_address)
         .map_err(|err| format!("Failed to parse receiver's public address: {}", err))?;
 
     // Generate b58 code
     let mut req = mc_mobilecoind_api::CreateRequestCodeRequest::new();
-    req.set_receiver(receiver);
+    req.set_public_address(receiver);
     if let Some(value) = request.value.clone() {
         req.set_value(
             value
@@ -271,12 +271,12 @@ fn create_address_code(
     state: rocket::State<State>,
     request: Json<JsonCreateAddressCodeRequest>,
 ) -> Result<Json<JsonCreateAddressCodeResponse>, String> {
-    let receiver = mc_mobilecoind_api::external::PublicAddress::try_from(&request.receiver)
+    let public_address = mc_mobilecoind_api::external::PublicAddress::try_from(&request.public_address)
         .map_err(|err| format!("Failed to parse receiver's public address: {}", err))?;
 
     // Generate b58 code
     let mut req = mc_mobilecoind_api::CreateAddressCodeRequest::new();
-    req.set_receiver(receiver);
+    req.set_public_address(public_address);
 
     let resp = state
         .mobilecoind_api_client
@@ -318,11 +318,11 @@ fn build_and_submit(
     let monitor_id =
         hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
 
-    let public_address = PublicAddress::try_from(&transfer.request_data.receiver)?;
+    let public_address = PublicAddress::try_from(&transfer.request_data.public_address)?;
 
     // Generate an outlay
     let mut outlay = mc_mobilecoind_api::Outlay::new();
-    outlay.set_receiver(public_address);
+    outlay.set_public_address(public_address);
     outlay.set_value(
         transfer
             .request_data
@@ -388,7 +388,7 @@ fn pay_address_code(
     let mut req = mc_mobilecoind_api::PayAddressCodeRequest::new();
     req.set_sender_monitor_id(monitor_id);
     req.set_sender_subaddress(subaddress_index);
-    req.set_receiver_b58_code(transfer.receiver_b58_address_code.clone());
+    req.set_b58_code(transfer.b58_code.clone());
     req.set_amount(amount);
     req.set_max_input_utxo_value(max_input_utxo_value);
 
@@ -418,11 +418,11 @@ fn generate_request_code_transaction(
     let monitor_id =
         hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
 
-    let public_address = PublicAddress::try_from(&request.transfer.receiver)?;
+    let public_address = PublicAddress::try_from(&request.transfer.public_address)?;
 
     // Generate an outlay
     let mut outlay = mc_mobilecoind_api::Outlay::new();
-    outlay.set_receiver(public_address);
+    outlay.set_public_address(public_address);
     outlay.set_value(
         request
             .transfer
