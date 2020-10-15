@@ -24,7 +24,7 @@ mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
 mc-util-metrics = { path = "../..//util/metrics" }
 mc-util-uri = { path = "../../util/uri" }
 
-crossbeam-channel = "0.3"
+crossbeam-channel = "0.4"
 failure = "0.1.8"
 grpcio = "0.6.0"
 lazy_static = "1.4"
