@@ -390,8 +390,8 @@ fn pay_address_code(
     let mut req = mc_mobilecoind_api::PayAddressCodeRequest::new();
     req.set_sender_monitor_id(monitor_id);
     req.set_sender_subaddress_index(subaddress_index);
-    req.set_b58_code(transfer.receiver_b58_address_code.clone());
-    req.set_amount(amount);
+    req.set_receiver_b58_code(transfer.receiver_b58_address_code.clone());
+    req.set_value(amount);
     req.set_max_input_utxo_value(max_input_utxo_value);
 
     let resp = state
@@ -518,7 +518,8 @@ fn check_receiver_transfer_status(
 ) -> Result<Json<JsonStatusResponse>, String> {
     let mut receiver_receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
     let mut tx_out_public_key = CompressedRistretto::new();
-    tx_out_public_key.set_data(hex::decode(&receipt.tx_public_key).map_err(|err| format!("{}", err))?);
+    tx_out_public_key
+        .set_data(hex::decode(&receipt.tx_public_key).map_err(|err| format!("{}", err))?);
     receiver_receipt.set_tx_out_public_key(tx_out_public_key);
     receiver_receipt
         .set_tx_out_hash(hex::decode(&receipt.tx_out_hash).map_err(|err| format!("{}", err))?);

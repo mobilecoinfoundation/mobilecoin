@@ -702,7 +702,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         &mut self,
         request: mc_mobilecoind_api::GenerateTxFromTxOutListRequest,
     ) -> Result<mc_mobilecoind_api::GenerateTxFromTxOutListResponse, RpcStatus> {
-        let proto_account_key = request.account_key.as_ref().ok_or_else(|| {
+        let proto_account_key = request.sender_account_key.as_ref().ok_or_else(|| {
             RpcStatus::new(
                 RpcStatusCode::INVALID_ARGUMENT,
                 Some("account_key".to_string()),
@@ -722,7 +722,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             })
             .collect::<Result<Vec<UnspentTxOut>, RpcStatus>>()?;
 
-        let public_address = PublicAddress::try_from(request.get_public_address())
+        let public_address = PublicAddress::try_from(request.get_receiver_public_address())
             .map_err(|err| rpc_internal_error("PublicAddress.try_from", err, &self.logger))?;
 
         let tx_proposal = self
@@ -1156,15 +1156,12 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                                     &self.logger,
                                 )
                             })?;
-                        let tx_public_key =
-                            RistrettoPublic::try_from(request.get_receipt().get_tx_out_public_key())
-                                .map_err(|err| {
-                                    rpc_internal_error(
-                                        "RistrettoPublic.try_from",
-                                        err,
-                                        &self.logger,
-                                    )
-                                })?;
+                        let tx_public_key = RistrettoPublic::try_from(
+                            request.get_receipt().get_tx_out_public_key()
+                        )
+                        .map_err(|err| {
+                            rpc_internal_error("RistrettoPublic.try_from", err, &self.logger)
+                        })?;
                         let view_private_key = monitor_data.account_key.view_private_key();
 
                         if request.get_receipt().get_confirmation_number().len() != 32 {
@@ -1428,7 +1425,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         request: mc_mobilecoind_api::PayAddressCodeRequest,
     ) -> Result<mc_mobilecoind_api::SendPaymentResponse, RpcStatus> {
         // Sanity check.
-        if request.get_amount() == 0 {
+        if request.get_value() == 0 {
             return Err(RpcStatus::new(
                 RpcStatusCode::INVALID_ARGUMENT,
                 Some("amount".to_string()),
@@ -1437,13 +1434,13 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
 
         // Try and decode the address code.
         let mut parse_address_code_request = mc_mobilecoind_api::ParseAddressCodeRequest::new();
-        parse_address_code_request.set_b58_code(request.get_b58_code().to_owned());
+        parse_address_code_request.set_b58_code(request.get_receiver_b58_code().to_owned());
         let parse_address_code_response =
             self.parse_address_code_impl(parse_address_code_request)?;
 
         // Forward to SendPayment
         let mut outlay = mc_mobilecoind_api::Outlay::new();
-        outlay.set_value(request.get_amount());
+        outlay.set_value(request.get_value());
         outlay.set_public_address(parse_address_code_response.get_public_address().clone());
 
         let mut send_payment_request = mc_mobilecoind_api::SendPaymentRequest::new();
@@ -2966,7 +2963,7 @@ mod test {
         // Build a request to transfer the first two TxOuts
         let tx_utxos = utxos[0..2].to_vec();
         let mut request = mc_mobilecoind_api::GenerateTxFromTxOutListRequest::new();
-        request.set_account_key((&sender).into());
+        request.set_sender_account_key((&sender).into());
         request.set_input_list(RepeatedField::from_vec(
             tx_utxos
                 .iter()
@@ -2974,7 +2971,7 @@ mod test {
                 .collect(),
         ));
         let receiver = AccountKey::random(&mut rng);
-        request.set_public_address((&receiver.default_subaddress()).into());
+        request.set_receiver_public_address((&receiver.default_subaddress()).into());
         request.set_fee(MINIMUM_FEE);
 
         let response = client.generate_tx_from_tx_out_list(&request).unwrap();
@@ -3593,8 +3590,8 @@ mod test {
         let mut request = mc_mobilecoind_api::PayAddressCodeRequest::new();
         request.set_sender_monitor_id(monitor_id.to_vec());
         request.set_sender_subaddress_index(0);
-        request.set_b58_code(b58_code);
-        request.set_amount(1234);
+        request.set_receiver_b58_code(b58_code);
+        request.set_value(1234);
 
         let response = client.pay_address_code(&request).unwrap();
 
