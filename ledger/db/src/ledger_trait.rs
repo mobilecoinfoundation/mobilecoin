@@ -6,7 +6,7 @@ use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipProof},
-    Block, BlockContents, BlockData, BlockSignature,
+    Block, BlockContents, BlockData, BlockIndex, BlockSignature,
 };
 use mockall::*;
 
@@ -71,9 +71,9 @@ pub trait Ledger: Send {
     }
 
     /// Checks if the ledger contains a given key image.
-    /// If so, returns the block height at which it entered the ledger.
+    /// If so, returns the index of the block in which it entered the ledger.
     /// Ok(None) is returned when the key image is not in the ledger.
-    fn check_key_image(&self, key_image: &KeyImage) -> Result<Option<u64>, Error>;
+    fn check_key_image(&self, key_image: &KeyImage) -> Result<Option<BlockIndex>, Error>;
 
     /// Gets the key images used by transactions in a single block.
     fn get_key_images_by_block(&self, block_number: u64) -> Result<Vec<KeyImage>, Error>;
