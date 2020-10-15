@@ -375,7 +375,7 @@ impl From<&mc_mobilecoind_api::SenderTxReceipt> for JsonSenderTxReceipt {
 
 #[derive(Deserialize, Serialize)]
 pub struct JsonReceiverTxReceipt {
-    pub receiver: JsonPublicAddress,
+    pub recipient: JsonPublicAddress,
     pub tx_public_key: String,
     pub tx_out_hash: String,
     pub tombstone: u64,
@@ -385,7 +385,7 @@ pub struct JsonReceiverTxReceipt {
 impl From<&mc_mobilecoind_api::ReceiverTxReceipt> for JsonReceiverTxReceipt {
     fn from(src: &mc_mobilecoind_api::ReceiverTxReceipt) -> Self {
         Self {
-            receiver: JsonPublicAddress::from(src.get_public_address()),
+            recipient: JsonPublicAddress::from(src.get_public_address()),
             tx_public_key: hex::encode(&src.get_tx_public_key().get_data()),
             tx_out_hash: hex::encode(&src.get_tx_out_hash()),
             tombstone: src.get_tombstone(),
@@ -1091,7 +1091,7 @@ impl From<&mc_mobilecoind_api::ProcessedTxOut> for JsonProcessedTxOut {
         Self {
             monitor_id: hex::encode(&src.get_monitor_id()),
             subaddress_index: src.subaddress_index,
-            tx_public_key: hex::encode(&src.get_tx_public_key().get_data()),
+            public_key: hex::encode(&src.get_tx_public_key().get_data()),
             key_image: hex::encode(&src.get_key_image().get_data()),
             value: src.value.to_string(),
             direction: direction_str.to_owned(),

@@ -318,7 +318,7 @@ fn build_and_submit(
     let monitor_id =
         hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
 
-    let public_address = PublicAddress::try_from(&transfer.request_data.public_address)?;
+    let public_address = PublicAddress::try_from(&transfer.request_data.receiver)?;
 
     // Generate an outlay
     let mut outlay = mc_mobilecoind_api::Outlay::new();
@@ -388,7 +388,7 @@ fn pay_address_code(
     let mut req = mc_mobilecoind_api::PayAddressCodeRequest::new();
     req.set_sender_monitor_id(monitor_id);
     req.set_sender_subaddress_index(subaddress_index);
-    req.set_b58_code(transfer.b58_code.clone());
+    req.set_b58_code(transfer.receiver_b58_address_code.clone());
     req.set_amount(amount);
     req.set_max_input_utxo_value(max_input_utxo_value);
 
