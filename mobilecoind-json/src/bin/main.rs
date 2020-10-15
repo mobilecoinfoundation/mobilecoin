@@ -221,7 +221,7 @@ fn create_request_code(
     state: rocket::State<State>,
     request: Json<JsonCreateRequestCodeRequest>,
 ) -> Result<Json<JsonCreateRequestCodeResponse>, String> {
-    let public_address = mc_mobilecoind_api::external::PublicAddress::try_from(&request.public_address)
+    let public_address = mc_mobilecoind_api::external::PublicAddress::try_from(&request.receiver)
         .map_err(|err| format!("Failed to parse receiver's public address: {}", err))?;
 
     // Generate b58 code
@@ -418,7 +418,7 @@ fn generate_request_code_transaction(
     let monitor_id =
         hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
 
-    let public_address = PublicAddress::try_from(&request.transfer.public_address)?;
+    let public_address = PublicAddress::try_from(&request.transfer.receiver)?;
 
     // Generate an outlay
     let mut outlay = mc_mobilecoind_api::Outlay::new();
