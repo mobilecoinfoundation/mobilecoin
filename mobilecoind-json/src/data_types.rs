@@ -488,7 +488,7 @@ impl From<&mc_api::external::TxOut> for JsonTxOut {
         Self {
             amount: src.get_amount().into(),
             target_key: hex::encode(src.get_target_key().get_data()),
-            tx_public_key: hex::encode(src.get_tx_public_key().get_data()),
+            tx_public_key: hex::encode(src.get_public_key().get_data()),
             e_fog_hint: hex::encode(src.get_e_fog_hint().get_data()),
         }
     }
@@ -519,7 +519,7 @@ impl TryFrom<&JsonTxOut> for mc_api::external::TxOut {
         );
         let mut public_key = CompressedRistretto::new();
         public_key.set_data(
-            hex::decode(&src.public_key)
+            hex::decode(&src.tx_public_key)
                 .map_err(|err| format!("Failed to decode public key hex: {}", err))?,
         );
         let mut e_fog_hint = EncryptedFogHint::new();

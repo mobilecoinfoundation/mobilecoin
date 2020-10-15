@@ -85,7 +85,7 @@ enum TxStatus {
 // Structure used in specifying the list of outputs when generating a transaction.
 message Outlay {
     uint64 value = 1;
-    external.PublicAddress receiver = 2;
+    external.PublicAddress public_address = 2;
 }
 
 // Structure used to refer to a TxOut in the ledger that is presumed to be spendable.
