@@ -15,8 +15,44 @@ use mc_crypto_box::{
 use mc_crypto_keys::{
     CompressedRistrettoPublic, ReprBytes, Ristretto, RistrettoPrivate, RistrettoPublic,
 };
+use mc_crypto_rand::McRng;
+use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
-use subtle::Choice;
+use subtle::{Choice, ConditionallySelectable};
+
+pub type PlaintextArray = GenericArray<
+    u8,
+    Diff<EncryptedFogHintSize, <VersionedCryptoBox as CryptoBox<Ristretto>>::FooterSize>,
+>;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Plaintext(PlaintextArray);
+
+impl Default for Plaintext {
+    fn default() -> Self {
+        Self(PlaintextArray::default())
+    }
+}
+
+impl ConditionallySelectable for Plaintext {
+    fn conditional_select(a: &Self, b: &Self, c: subtle::Choice) -> Self {
+        if bool::from(c) {
+            *a
+        } else {
+            *b
+        }
+    }
+}
+
+impl Plaintext {
+    fn as_mut(&mut self) -> &mut PlaintextArray {
+        &mut self.0
+    }
+
+    fn as_ref(&self) -> &PlaintextArray {
+        &self.0
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct FogHint {
@@ -79,16 +115,14 @@ impl FogHint {
         ingest_server_pubkey: &RistrettoPublic,
         rng: &mut T,
     ) -> EncryptedFogHint {
-        let mut plaintext = GenericArray::<
-            u8,
-            Diff<EncryptedFogHintSize, <VersionedCryptoBox as CryptoBox<Ristretto>>::FooterSize>,
-        >::default();
+        let mut plaintext = Plaintext::default();
+
         plaintext.as_mut()[..RISTRETTO_PUBLIC_LEN].copy_from_slice(&self.view_pubkey.to_bytes());
         for byte in &mut plaintext.as_mut()[RISTRETTO_PUBLIC_LEN..] {
             *byte = MAGIC_NUMBER;
         }
         let bytes = VersionedCryptoBox::default()
-            .encrypt_fixed_length(rng, ingest_server_pubkey, &plaintext)
+            .encrypt_fixed_length(rng, ingest_server_pubkey, &plaintext.0)
             .expect("cryptobox encryption failed unexpectedly");
         EncryptedFogHint::from(bytes)
     }
@@ -110,21 +144,26 @@ impl FogHint {
     pub fn ct_decrypt(
         ingest_server_private_key: &RistrettoPrivate,
         ciphertext: &EncryptedFogHint,
-        default_plaintext: GenericArray<
-            u8,
-            Diff<EncryptedFogHintSize, <VersionedCryptoBox as CryptoBox<Ristretto>>::FooterSize>,
-        >,
         output: &mut Self,
     ) -> Choice {
-        let (plaintext, mut success) = match VersionedCryptoBox::default()
+        let mut rng = McRng::default();
+        let mut plaintext = Plaintext::default();
+        let default_pubkey = RistrettoPublic::from_random(&mut rng);
+
+        plaintext.as_mut()[..RISTRETTO_PUBLIC_LEN].copy_from_slice(&default_pubkey.to_bytes());
+
+        let (real_plaintext, mut success) = match VersionedCryptoBox::default()
             .decrypt_fixed_length(ingest_server_private_key, ciphertext.as_ref())
         {
-            Ok((result, real_plaintext)) => (real_plaintext, result),
-            Err(_) => (default_plaintext, false),
+            Ok((result, real_plaintext)) => (Plaintext(real_plaintext.clone()), result),
+            Err(_) => (plaintext.clone(), false),
         };
 
+        let choice = Choice::from(success as u8);
+        plaintext.conditional_assign(&real_plaintext, choice);
+
         // Check magic numbers
-        for byte in &plaintext[RISTRETTO_PUBLIC_LEN..] {
+        for byte in &plaintext.as_ref()[RISTRETTO_PUBLIC_LEN..] {
             if *byte != MAGIC_NUMBER {
                 success = false;
             }
@@ -164,21 +203,7 @@ mod testing {
 
             let mut output_fog_hint = random_fog_hint(&mut rng);
 
-            let mut default_plaintext = GenericArray::<
-                u8,
-                Diff<
-                    EncryptedFogHintSize,
-                    <VersionedCryptoBox as CryptoBox<Ristretto>>::FooterSize,
-                >,
-            >::default();
-
-            let default_pubkey = RistrettoPublic::from_random(&mut rng);
-
-            default_plaintext.as_mut()[..RISTRETTO_PUBLIC_LEN]
-                .copy_from_slice(&default_pubkey.to_bytes());
-
-            let choice =
-                FogHint::ct_decrypt(&z, &ciphertext, default_plaintext, &mut output_fog_hint);
+            let choice = FogHint::ct_decrypt(&z, &ciphertext, &mut output_fog_hint);
             assert_eq!(fog_hint, output_fog_hint);
             assert!(bool::from(choice));
         });
@@ -196,21 +221,7 @@ mod testing {
 
             let mut output_fog_hint = random_fog_hint(&mut rng);
 
-            let mut default_plaintext = GenericArray::<
-                u8,
-                Diff<
-                    EncryptedFogHintSize,
-                    <VersionedCryptoBox as CryptoBox<Ristretto>>::FooterSize,
-                >,
-            >::default();
-
-            let default_pubkey = RistrettoPublic::from_random(&mut rng);
-
-            default_plaintext.as_mut()[..RISTRETTO_PUBLIC_LEN]
-                .copy_from_slice(&default_pubkey.to_bytes());
-
-            let choice =
-                FogHint::ct_decrypt(&not_z, &ciphertext, default_plaintext, &mut output_fog_hint);
+            let choice = FogHint::ct_decrypt(&not_z, &ciphertext, &mut output_fog_hint);
             assert!(fog_hint != output_fog_hint);
             assert!(!bool::from(choice));
         });
