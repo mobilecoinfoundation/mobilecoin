@@ -155,8 +155,8 @@ impl FogHint {
         let (real_plaintext, mut success) = match VersionedCryptoBox::default()
             .decrypt_fixed_length(ingest_server_private_key, ciphertext.as_ref())
         {
-            Ok((result, real_plaintext)) => (Plaintext(real_plaintext.clone()), result),
-            Err(_) => (plaintext.clone(), false),
+            Ok((result, real_plaintext)) => (Plaintext(real_plaintext), result),
+            Err(_) => (plaintext, false),
         };
 
         let choice = Choice::from(success as u8);
