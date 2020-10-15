@@ -159,7 +159,7 @@ impl TryFrom<&JsonUnspentTxOut> for mc_mobilecoind_api::UnspentTxOut {
                 .parse::<u64>()
                 .map_err(|err| format!("Failed to parse u64 from value: {}", err))?,
         );
-        utxo.set_attempted_spend_height(src.attempted_spend_block_count);
+        utxo.set_attempted_spend_block_count(src.attempted_spend_block_count);
         utxo.set_attempted_spend_tombstone(src.attempted_spend_tombstone);
         utxo.set_monitor_id(
             hex::decode(&src.monitor_id)
@@ -403,17 +403,17 @@ pub struct JsonSendPaymentRequest {
 #[derive(Deserialize, Serialize)]
 pub struct JsonSendPaymentResponse {
     pub sender_tx_receipt: JsonSenderTxReceipt,
-    pub public_address_tx_receipt_list: Vec<Jsonpublic_addressTxReceipt>,
+    pub receiver_tx_receipt_list: Vec<JsonReceiverTxReceipt>,
 }
 
 impl From<&mc_mobilecoind_api::SendPaymentResponse> for JsonSendPaymentResponse {
     fn from(src: &mc_mobilecoind_api::SendPaymentResponse) -> Self {
         Self {
             sender_tx_receipt: JsonSenderTxReceipt::from(src.get_sender_tx_receipt()),
-            public_address_tx_receipt_list: src
-                .get_public_address_tx_receipt_list()
+            receiver_tx_receipt_list: src
+                .get_receiver_tx_receipt_list()
                 .iter()
-                .map(Jsonpublic_addressTxReceipt::from)
+                .map(JsonReceiverTxReceipt::from)
                 .collect(),
         }
     }
@@ -421,7 +421,7 @@ impl From<&mc_mobilecoind_api::SendPaymentResponse> for JsonSendPaymentResponse 
 
 #[derive(Deserialize, Serialize)]
 pub struct JsonPayAddressCodeRequest {
-    pub public_address_b58_address_code: String,
+    pub b58_code: String,
     pub value: String,
     pub max_input_utxo_value: Option<String>,
 }
@@ -479,7 +479,7 @@ impl From<&Amount> for JsonAmount {
 pub struct JsonTxOut {
     pub amount: JsonAmount,
     pub target_key: String,
-    pub public_key: String,
+    pub tx_public_key: String,
     pub e_fog_hint: String,
 }
 
@@ -488,7 +488,7 @@ impl From<&mc_api::external::TxOut> for JsonTxOut {
         Self {
             amount: src.get_amount().into(),
             target_key: hex::encode(src.get_target_key().get_data()),
-            public_key: hex::encode(src.get_public_key().get_data()),
+            tx_public_key: hex::encode(src.get_tx_public_key().get_data()),
             e_fog_hint: hex::encode(src.get_e_fog_hint().get_data()),
         }
     }
@@ -964,17 +964,17 @@ pub struct JsonTxProposalRequest {
 #[derive(Deserialize, Serialize)]
 pub struct JsonSubmitTxResponse {
     pub sender_tx_receipt: JsonSenderTxReceipt,
-    pub public_address_tx_receipt_list: Vec<Jsonpublic_addressTxReceipt>,
+    pub receiver_tx_receipt_list: Vec<JsonReceiverTxReceipt>,
 }
 
 impl From<&mc_mobilecoind_api::SubmitTxResponse> for JsonSubmitTxResponse {
     fn from(src: &mc_mobilecoind_api::SubmitTxResponse) -> Self {
         Self {
             sender_tx_receipt: src.get_sender_tx_receipt().into(),
-            public_address_tx_receipt_list: src
-                .get_public_address_tx_receipt_list()
+            receiver_tx_receipt_list: src
+                .get_receiver_tx_receipt_list()
                 .iter()
-                .map(Jsonpublic_addressTxReceipt::from)
+                .map(JsonReceiverTxReceipt::from)
                 .collect(),
         }
     }
@@ -1074,7 +1074,7 @@ impl From<&mc_mobilecoind_api::GetBlockResponse> for JsonBlockDetailsResponse {
 pub struct JsonProcessedTxOut {
     pub monitor_id: String,
     pub subaddress_index: u64,
-    pub public_key: String,
+    pub tx_public_key: String,
     pub key_image: String,
     pub value: String, // Needs to be String since Javascript ints are not 64 bit.
     pub direction: String,
@@ -1091,7 +1091,7 @@ impl From<&mc_mobilecoind_api::ProcessedTxOut> for JsonProcessedTxOut {
         Self {
             monitor_id: hex::encode(&src.get_monitor_id()),
             subaddress_index: src.subaddress_index,
-            public_key: hex::encode(&src.get_public_key().get_data()),
+            tx_public_key: hex::encode(&src.get_tx_public_key().get_data()),
             key_image: hex::encode(&src.get_key_image().get_data()),
             value: src.value.to_string(),
             direction: direction_str.to_owned(),
