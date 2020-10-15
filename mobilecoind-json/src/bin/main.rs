@@ -69,7 +69,7 @@ fn account_key(
 }
 
 /// Creates a monitor. Data for the key and range is POSTed using the struct above.
-#[post("/monitors", format = "json", data = "<monitor>")]
+#[post("/monitors", format = "application/json", data = "<monitor>")]
 fn add_monitor(
     state: rocket::State<State>,
     monitor: Json<JsonMonitorRequest>,
@@ -216,7 +216,7 @@ fn public_address(
 }
 
 /// Generates a request code with an optional value and memo
-#[post("/codes/request", format = "json", data = "<request>")]
+#[post("/codes/request", format = "application/json", data = "<request>")]
 fn create_request_code(
     state: rocket::State<State>,
     request: Json<JsonCreateRequestCodeRequest>,
@@ -266,7 +266,7 @@ fn parse_request_code(
 }
 
 /// Generates an address code
-#[post("/codes/address", format = "json", data = "<request>")]
+#[post("/codes/address", format = "application/json", data = "<request>")]
 fn create_address_code(
     state: rocket::State<State>,
     request: Json<JsonCreateAddressCodeRequest>,
@@ -306,7 +306,7 @@ fn parse_address_code(
 /// Performs a transfer from a monitor and subaddress. The public keys and amount are in the POST data.
 #[post(
     "/monitors/<monitor_hex>/subaddresses/<subaddress_index>/build-and-submit",
-    format = "json",
+    format = "application/json",
     data = "<transfer>"
 )]
 fn build_and_submit(
@@ -358,7 +358,7 @@ fn build_and_submit(
 /// Performs a transfer from a monitor and subaddress to a given address code/amount.
 #[post(
     "/monitors/<monitor_hex>/subaddresses/<subaddress_index>/pay-address-code",
-    format = "json",
+    format = "application/json",
     data = "<transfer>"
 )]
 fn pay_address_code(
@@ -406,7 +406,7 @@ fn pay_address_code(
 /// machine for submission, via submit-tx.
 #[post(
     "/monitors/<monitor_hex>/subaddresses/<subaddress_index>/generate-request-code-transaction",
-    format = "json",
+    format = "application/json",
     data = "<request>"
 )]
 fn generate_request_code_transaction(
@@ -456,7 +456,7 @@ fn generate_request_code_transaction(
 }
 
 /// Submit a prepared TxProposal
-#[post("/submit-tx", format = "json", data = "<proposal>")]
+#[post("/submit-tx", format = "application/json", data = "<proposal>")]
 fn submit_tx(
     state: rocket::State<State>,
     proposal: Json<JsonTxProposalRequest>,
@@ -478,7 +478,7 @@ fn submit_tx(
 }
 
 /// Checks the status of a transfer given a key image and tombstone block
-#[post("/tx/status-as-sender", data = "<receipt>")]
+#[post("/tx/status-as-sender", format = "application/json", data = "<receipt>")]
 fn check_transfer_status(
     state: rocket::State<State>,
     receipt: String,
@@ -517,7 +517,7 @@ fn check_transfer_status(
 /// The sender of the transaction will take specific receipt data from the /transfer call
 /// and distribute it to the recipient(s) so they can verify that a transaction has been
 /// processed and the the person supplying the receipt can prove they initiated it
-#[post("/tx/status-as-receiver", format = "json", data = "<receipt>")]
+#[post("/tx/status-as-receiver", format = "application/json", data = "<receipt>")]
 fn check_receiver_transfer_status(
     state: rocket::State<State>,
     receipt: Json<JsonReceiverTxReceipt>,
