@@ -19,7 +19,7 @@ dotenv = "0.14"
 failure = "0.1.8"
 protobuf = "2.12"
 retry = "0.5"
-rusoto_core = { version = "0.42.0", features = ["rustls"], default_features = false }
+rusoto_core = { version = "0.45.0", features = ["rustls"], default_features = false }
 rusoto_s3 = { version = "0.42.0", features = ["rustls"], default_features = false }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
