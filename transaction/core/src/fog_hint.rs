@@ -175,7 +175,10 @@ impl FogHint {
                 output.view_pubkey = key;
                 Choice::from(success as u8)
             }
-            Err(_) => Choice::from(0),
+            Err(_) => {
+                output.view_pubkey = CompressedRistrettoPublic::from(default_pubkey);
+                Choice::from(0)
+            }
         }
     }
 }
