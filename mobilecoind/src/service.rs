@@ -1769,7 +1769,7 @@ mod test {
         assert_eq!(status.first_subaddress_index, data.first_subaddress_index);
         assert_eq!(status.num_subaddresses, data.num_subaddresses);
         assert_eq!(status.first_block_index, data.first_block_index);
-        assert_eq!(status.next_block_index, data.next_block_index);
+        assert_eq!(status.next_block_index, data.next_block);
 
         // Calling get_monitor_status for nonexistent or invalid monitor_id should return an error.
         mobilecoind_db.remove_monitor(&id).unwrap();
@@ -1875,7 +1875,7 @@ mod test {
                     subaddress_index: 0,
                     key_image,
                     value: test_utils::DEFAULT_PER_RECIPIENT_AMOUNT,
-                    attempted_spend_block_count: 0,
+                    attempted_spend_block_height: 0,
                     attempted_spend_tombstone: 0,
                 }
             })
@@ -2022,7 +2022,7 @@ mod test {
 
         // Call get block info for a valid block.
         let mut request = mc_mobilecoind_api::GetBlockInfoRequest::new();
-        request.set_block(0);
+        request.set_block_index(0);
 
         let response = client.get_block_info(&request).unwrap();
         assert_eq!(response.key_image_count, 0); // test code does not generate any key images
@@ -2030,7 +2030,7 @@ mod test {
 
         // Call with an invalid block number.
         let mut request = mc_mobilecoind_api::GetBlockInfoRequest::new();
-        request.set_block(ledger_db.num_blocks().unwrap());
+        request.set_block_index(ledger_db.num_blocks().unwrap());
 
         assert!(client.get_block_info(&request).is_err());
     }
@@ -2045,7 +2045,7 @@ mod test {
 
         // Call get block info for a valid block.
         let mut request = mc_mobilecoind_api::GetBlockRequest::new();
-        request.set_block(0);
+        request.set_block_index(0);
 
         let response = client.get_block(&request).unwrap();
         assert_eq!(
@@ -2356,7 +2356,7 @@ mod test {
                     subaddress_index: 0,
                     key_image,
                     value: test_utils::DEFAULT_PER_RECIPIENT_AMOUNT,
-                    attempted_spend_block_count: 0,
+                    attempted_spend_block_height: 0,
                     attempted_spend_tombstone: 0,
                 }
             })
@@ -2366,7 +2366,7 @@ mod test {
         for block_index in 1..num_blocks {
             let mut request = mc_mobilecoind_api::GetProcessedBlockRequest::new();
             request.set_monitor_id(monitor_id.to_vec());
-            request.set_block(block_index);
+            request.set_block_index(block_index);
 
             let response = client
                 .get_processed_block(&request)
@@ -2385,7 +2385,7 @@ mod test {
                 expected_utxo.subaddress_index
             );
             assert_eq!(
-                tx_out.get_public_key(),
+                tx_out.get_tx_public_key(),
                 &(&expected_utxo.tx_out.public_key).into(),
             );
             assert_eq!(tx_out.get_key_image(), &(&expected_utxo.key_image).into());
@@ -2407,7 +2407,7 @@ mod test {
             let response = client.create_address_code(&request).unwrap();
             let b58_code = response.get_b58_code();
 
-            assert_eq!(tx_out.get_address_code(), b58_code);
+            assert_eq!(tx_out.get_b58_code(), b58_code);
         }
 
         // Add a block with a key images that spend the first two utxos and see that we get the
@@ -2419,8 +2419,8 @@ mod test {
                 &[recipient],
                 DEFAULT_PER_RECIPIENT_AMOUNT,
                 &[
-                    expected_utxos[monitor_data.first_block_index as usize].key_image,
-                    expected_utxos[monitor_data.first_block_index as usize + 1].key_image,
+                    expected_utxos[monitor_data.first_block as usize].key_image,
+                    expected_utxos[monitor_data.first_block as usize + 1].key_image,
                 ],
                 &mut rng,
             );
@@ -2429,7 +2429,7 @@ mod test {
 
             let mut request = mc_mobilecoind_api::GetProcessedBlockRequest::new();
             request.set_monitor_id(monitor_id.to_vec());
-            request.set_block(num_blocks);
+            request.set_block_index(num_blocks);
 
             let response = client
                 .get_processed_block(&request)
@@ -2441,7 +2441,7 @@ mod test {
             let expected_utxos_by_key_image = HashMap::from_iter(
                 expected_utxos
                     .iter()
-                    .skip(monitor_data.first_block_index as usize)
+                    .skip(monitor_data.first_block as usize)
                     .take(2)
                     .map(|utxo| (utxo.key_image, utxo.clone())),
             );
@@ -2460,7 +2460,7 @@ mod test {
                     expected_utxo.subaddress_index
                 );
                 assert_eq!(
-                    tx_out.get_public_key(),
+                    tx_out.get_tx_public_key(),
                     &(&expected_utxo.tx_out.public_key).into(),
                 );
                 assert_eq!(tx_out.get_key_image(), &(&expected_utxo.key_image).into());
@@ -2475,21 +2475,21 @@ mod test {
         // Query a block that will never get processed since its before the monitor's first block.
         let mut request = mc_mobilecoind_api::GetProcessedBlockRequest::new();
         request.set_monitor_id(monitor_id.to_vec());
-        request.set_block(0);
+        request.set_block_index(0);
 
         assert!(client.get_processed_block(&request).is_err());
 
         // Query a block that hasn't been processed yet.
         let mut request = mc_mobilecoind_api::GetProcessedBlockRequest::new();
         request.set_monitor_id(monitor_id.to_vec());
-        request.set_block(num_blocks + 1);
+        request.set_block_index(num_blocks + 1);
 
         assert!(client.get_processed_block(&request).is_err());
 
         // Query with an unknown monitor id.
         let mut request = mc_mobilecoind_api::GetProcessedBlockRequest::new();
         request.set_monitor_id(vec![1; 32]);
-        request.set_block(1);
+        request.set_block_index(1);
 
         assert!(client.get_processed_block(&request).is_err());
     }
@@ -2666,7 +2666,7 @@ mod test {
         {
             // Subaddress index out of range
             let mut request = request.clone();
-            request.set_change_subaddress_index(data.first_subaddress_index + data.num_subaddresses + 1);
+            request.set_change_subaddress_index(data.first_subaddress + data.num_subaddresses + 1);
             assert!(client.generate_tx(&request).is_err());
         }
 
@@ -2712,7 +2712,7 @@ mod test {
             request.set_tx_public_key(tx_out_pub_key);
 
             let response = client.get_block_index_by_tx_pub_key(&request).unwrap();
-            assert_eq!(block_index, response.block);
+            assert_eq!(block_index, response.block_index);
         }
     }
 
@@ -2879,7 +2879,7 @@ mod test {
         // Call generate optimization tx.
         let mut request = mc_mobilecoind_api::GenerateOptimizationTxRequest::new();
         request.set_monitor_id(monitor_id.to_vec());
-        request.set_subaddress(0);
+        request.set_subaddress_index(0);
 
         let response = client.generate_optimization_tx(&request).unwrap();
 
@@ -2892,7 +2892,7 @@ mod test {
 
         assert_eq!(tx_proposal.outlays.len(), 1);
         assert_eq!(
-            tx_proposal.outlays[0].public_address,
+            tx_proposal.outlays[0].receiver,
             data.account_key.subaddress(0)
         );
         assert_eq!(
@@ -3126,8 +3126,8 @@ mod test {
                 .zip(response.get_receiver_tx_receipt_list().iter())
             {
                 assert_eq!(
-                    outlay.public_address,
-                    PublicAddress::try_from(receipt.get_recipient()).unwrap()
+                    outlay.receiver,
+                    PublicAddress::try_from(receipt.get_public_address()).unwrap()
                 );
 
                 assert_eq!(receipt.tombstone, tx.prefix.tombstone_block);
@@ -3300,7 +3300,7 @@ mod test {
         // Call send payment.
         let mut request = mc_mobilecoind_api::SendPaymentRequest::new();
         request.set_sender_monitor_id(monitor_id.to_vec());
-        request.set_sender_subaddress(0);
+        request.set_sender_subaddress_index(0);
         request.set_outlay_list(RepeatedField::from_vec(
             outlays
                 .iter()
@@ -3411,10 +3411,10 @@ mod test {
         let mut matched_utxos = 0;
         for utxo in account_utxos.iter() {
             if tx_proposal_utxo_ids.contains(&UtxoId::from(utxo)) {
-                assert!(utxo.attempted_spend_block_count > 0);
+                assert!(utxo.attempted_spend_block_height > 0);
                 matched_utxos += 1;
             } else {
-                assert_eq!(utxo.attempted_spend_block_count, 0);
+                assert_eq!(utxo.attempted_spend_block_height, 0);
             }
         }
         assert_eq!(matched_utxos, tx_proposal.utxos.len());
@@ -3485,7 +3485,7 @@ mod test {
         // Call send payment without a limit on UTXOs - a single large UTXO should be selected.
         let mut request = mc_mobilecoind_api::SendPaymentRequest::new();
         request.set_sender_monitor_id(monitor_id.to_vec());
-        request.set_sender_subaddress(0);
+        request.set_sender_subaddress_index(0);
         request.set_outlay_list(RepeatedField::from_vec(
             outlays
                 .iter()
@@ -3591,8 +3591,8 @@ mod test {
         // Call pay address code.
         let mut request = mc_mobilecoind_api::PayAddressCodeRequest::new();
         request.set_sender_monitor_id(monitor_id.to_vec());
-        request.set_sender_subaddress(0);
-        request.set_public_address_b58_code(b58_code);
+        request.set_sender_subaddress_index(0);
+        request.set_b58_code(b58_code);
         request.set_amount(1234);
 
         let response = client.pay_address_code(&request).unwrap();
@@ -3916,9 +3916,9 @@ mod test {
 
         let mut request = mc_mobilecoind_api::AddMonitorRequest::new();
         request.set_account_key(mc_api::external::AccountKey::from(&data.account_key));
-        request.set_first_subaddress_index(data.first_subaddress_index);
+        request.set_first_subaddress_index(data.first_subaddress);
         request.set_num_subaddresses(data.num_subaddresses);
-        request.set_first_block_index(data.first_block_index);
+        request.set_first_block_index(data.first_block);
 
         // Send request.
         let response = client.add_monitor(&request).expect("failed to add monitor");
@@ -3975,7 +3975,7 @@ mod test {
         // Verify we have processed block information for this monitor.
         let mut request = mc_mobilecoind_api::GetProcessedBlockRequest::new();
         request.set_monitor_id(monitor_id.to_vec());
-        request.set_block(0);
+        request.set_block_index(0);
 
         let response = client
             .get_processed_block(&request)
@@ -3996,16 +3996,16 @@ mod test {
         // Verify we no longer have processed block information for this monitor.
         let mut request = mc_mobilecoind_api::GetProcessedBlockRequest::new();
         request.set_monitor_id(monitor_id.to_vec());
-        request.set_block(0);
+        request.set_block_index(0);
 
         assert!(client.get_processed_block(&request).is_err());
 
         // Re-add the monitor.
         let mut request = mc_mobilecoind_api::AddMonitorRequest::new();
         request.set_account_key(mc_api::external::AccountKey::from(&data.account_key));
-        request.set_first_subaddress_index(data.first_subaddress_index);
+        request.set_first_subaddress_index(data.first_subaddress);
         request.set_num_subaddresses(data.num_subaddresses);
-        request.set_first_block_index(data.first_block_index);
+        request.set_first_block_index(data.first_block);
 
         let response = client.add_monitor(&request).expect("failed to add monitor");
         assert_eq!(monitor_id, response.get_monitor_id());

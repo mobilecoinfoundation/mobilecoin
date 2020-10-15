@@ -59,7 +59,7 @@ impl From<&Outlay> for mc_mobilecoind_api::Outlay {
         let mut dst = Self::new();
 
         dst.set_value(src.value);
-        dst.set_public_address((&src.public_address).into());
+        dst.set_public_address((&src.receiver).into());
 
         dst
     }
@@ -214,7 +214,7 @@ mod test {
             KeyImage::try_from(proto.get_key_image()).unwrap()
         );
         assert_eq!(value, proto.value);
-        assert_eq!(attempted_spend_height, proto.attempted_spend_height);
+        assert_eq!(attempted_spend_height, proto.attempted_spend_block_count);
         assert_eq!(attempted_spend_tombstone, proto.attempted_spend_tombstone);
 
         // Proto -> Rust
@@ -235,7 +235,7 @@ mod test {
 
         assert_eq!(proto.value, rust.value);
         assert_eq!(
-            PublicAddress::try_from(proto.get_receiver()).unwrap(),
+            PublicAddress::try_from(proto.get_public_address()).unwrap(),
             public_addr
         );
 
@@ -293,7 +293,7 @@ mod test {
         let outlay = {
             let public_addr = AccountKey::random(&mut rng).default_subaddress();
             Outlay {
-                public_address: public_addr.clone(),
+                receiver: public_addr.clone(),
                 value: 1234,
             }
         };
