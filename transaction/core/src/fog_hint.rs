@@ -37,9 +37,9 @@ impl Default for Plaintext {
 impl ConditionallySelectable for Plaintext {
     fn conditional_select(a: &Self, b: &Self, c: subtle::Choice) -> Self {
         if bool::from(c) {
-            *a
-        } else {
             *b
+        } else {
+            *a
         }
     }
 }
@@ -204,8 +204,9 @@ mod testing {
             let mut output_fog_hint = random_fog_hint(&mut rng);
 
             let choice = FogHint::ct_decrypt(&z, &ciphertext, &mut output_fog_hint);
-            assert_eq!(fog_hint, output_fog_hint);
+
             assert!(bool::from(choice));
+            assert_eq!(fog_hint, output_fog_hint);
         });
     }
 
@@ -222,8 +223,9 @@ mod testing {
             let mut output_fog_hint = random_fog_hint(&mut rng);
 
             let choice = FogHint::ct_decrypt(&not_z, &ciphertext, &mut output_fog_hint);
-            assert!(fog_hint != output_fog_hint);
+
             assert!(!bool::from(choice));
+            assert!(fog_hint != output_fog_hint);
         });
     }
 }
