@@ -774,7 +774,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         // Generate transaction.
         let mut generate_tx_request = mc_mobilecoind_api::GenerateTxRequest::new();
         generate_tx_request.set_sender_monitor_id(request.get_sender_monitor_id().to_vec());
-        generate_tx_request.set_change_subaddress(request.change_subaddress);
+        generate_tx_request.set_change_subaddress_index(request.change_subaddress_index);
         generate_tx_request.set_input_list(RepeatedField::from_vec(request.input_list.to_vec()));
         generate_tx_request.set_outlay_list(RepeatedField::from_vec(vec![(&outlay).into()]));
         generate_tx_request.set_fee(request.fee);
@@ -923,7 +923,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                     })?;
 
                 let mut receiver_tx_receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
-                receiver_tx_receipt.set_recipient((&outlay.public_address).into());
+                receiver_tx_receipt.set_public_address((&outlay.receiver).into());
                 receiver_tx_receipt.set_tx_public_key((&tx_out.public_key).into());
                 receiver_tx_receipt.set_tx_out_hash(tx_out.hash().to_vec());
                 receiver_tx_receipt.set_tombstone(tx_proposal.tx.prefix.tombstone_block);
@@ -941,7 +941,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         // Return response.
         let mut response = mc_mobilecoind_api::SubmitTxResponse::new();
         response.set_sender_tx_receipt(sender_tx_receipt);
-        response.set_public_address_tx_receipt_list(RepeatedField::from_vec(receiver_tx_receipts));
+        response.set_receiver_tx_receipt_list(RepeatedField::from_vec(receiver_tx_receipts));
         Ok(response)
     }
 
@@ -1012,7 +1012,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
 
         if let Some(watcher_db) = self.watcher_db.as_ref() {
             let signatures = watcher_db
-                .get_block_signatures(request.block)
+                .get_block_signatures(request.block_index)
                 .map_err(|err| {
                     rpc_internal_error("watcher_db.get_block_signatures", err, &self.logger)
                 })?;
@@ -1255,7 +1255,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         // Get all processed block data for the requested block.
         let processed_tx_outs = self
             .mobilecoind_db
-            .get_processed_block(&monitor_id, request.block)
+            .get_processed_block(&monitor_id, request.block_index)
             .map_err(|err| {
                 rpc_internal_error("mobilecoind_db.get_processed_block", err, &self.logger)
             })?
@@ -1397,7 +1397,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             .transactions_manager
             .build_transaction(
                 &sender_monitor_id,
-                request.sender_subaddress,
+                request.sender_subaddress_index,
                 &utxos,
                 &outlays,
                 request.fee,
@@ -1417,7 +1417,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         // Return response.
         let mut response = mc_mobilecoind_api::SendPaymentResponse::new();
         response.set_sender_tx_receipt(submit_tx_response.take_sender_tx_receipt());
-        response.set_public_address_tx_receipt_list(submit_tx_response.take_receiver_tx_receipt_list());
+        response.set_receiver_tx_receipt_list(submit_tx_response.take_receiver_tx_receipt_list());
         response.set_tx_proposal(proto_tx_proposal);
         Ok(response)
     }
@@ -1436,7 +1436,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
 
         // Try and decode the address code.
         let mut parse_address_code_request = mc_mobilecoind_api::ParseAddressCodeRequest::new();
-        parse_address_code_request.set_b58_code(request.get_receiver_b58_code().to_owned());
+        parse_address_code_request.set_b58_code(request.get_b58_code().to_owned());
         let parse_address_code_response =
             self.parse_address_code_impl(parse_address_code_request)?;
 
@@ -1600,9 +1600,9 @@ mod test {
 
         let mut request = mc_mobilecoind_api::AddMonitorRequest::new();
         request.set_account_key(mc_api::external::AccountKey::from(&data.account_key));
-        request.set_first_subaddress_index(data.first_subaddress_index);
+        request.set_first_subaddress_index(data.first_subaddress);
         request.set_num_subaddresses(data.num_subaddresses);
-        request.set_first_block_index(data.first_block_index);
+        request.set_first_block_index(data.first_block);
 
         // Send request.
         let response = client.add_monitor(&request).expect("failed to add monitor");
@@ -1766,9 +1766,9 @@ mod test {
             data.account_key,
             AccountKey::try_from(status.account_key.as_ref().unwrap()).unwrap(),
         );
-        assert_eq!(status.first_subaddress_index, data.first_subaddress_index);
+        assert_eq!(status.first_subaddress_index, data.first_subaddress);
         assert_eq!(status.num_subaddresses, data.num_subaddresses);
-        assert_eq!(status.first_block_index, data.first_block_index);
+        assert_eq!(status.first_block_index, data.first_block);
         assert_eq!(status.next_block_index, data.next_block);
 
         // Calling get_monitor_status for nonexistent or invalid monitor_id should return an error.
@@ -1875,7 +1875,7 @@ mod test {
                     subaddress_index: 0,
                     key_image,
                     value: test_utils::DEFAULT_PER_RECIPIENT_AMOUNT,
-                    attempted_spend_block_height: 0,
+                    attempted_spend_height: 0,
                     attempted_spend_tombstone: 0,
                 }
             })
@@ -2356,7 +2356,7 @@ mod test {
                     subaddress_index: 0,
                     key_image,
                     value: test_utils::DEFAULT_PER_RECIPIENT_AMOUNT,
-                    attempted_spend_block_height: 0,
+                    attempted_spend_height: 0,
                     attempted_spend_tombstone: 0,
                 }
             })
@@ -3169,10 +3169,10 @@ mod test {
             let mut matched_utxos = 0;
             for utxo in account_utxos.iter() {
                 if tx_proposal_utxo_ids.contains(&UtxoId::from(utxo)) {
-                    assert!(utxo.attempted_spend_block_count > 0);
+                    assert!(utxo.attempted_spend_height > 0);
                     matched_utxos += 1;
                 } else {
-                    assert_eq!(utxo.attempted_spend_block_count, 0);
+                    assert_eq!(utxo.attempted_spend_height, 0);
                 }
             }
             assert_eq!(matched_utxos, tx_proposal.utxos.len());
@@ -3366,8 +3366,8 @@ mod test {
             .zip(response.get_receiver_tx_receipt_list().iter())
         {
             assert_eq!(
-                outlay.public_address,
-                PublicAddress::try_from(receipt.get_recipient()).unwrap()
+                outlay.receiver,
+                PublicAddress::try_from(receipt.get_public_address()).unwrap()
             );
 
             assert_eq!(receipt.tombstone, submitted_tx.prefix.tombstone_block);
@@ -3411,10 +3411,10 @@ mod test {
         let mut matched_utxos = 0;
         for utxo in account_utxos.iter() {
             if tx_proposal_utxo_ids.contains(&UtxoId::from(utxo)) {
-                assert!(utxo.attempted_spend_block_height > 0);
+                assert!(utxo.attempted_spend_height > 0);
                 matched_utxos += 1;
             } else {
-                assert_eq!(utxo.attempted_spend_block_height, 0);
+                assert_eq!(utxo.attempted_spend_height, 0);
             }
         }
         assert_eq!(matched_utxos, tx_proposal.utxos.len());
@@ -3602,7 +3602,7 @@ mod test {
 
         let receipt = &response.get_receiver_tx_receipt_list()[0];
         assert_eq!(
-            receipt.get_recipient(),
+            receipt.get_public_address(),
             &mc_mobilecoind_api::external::PublicAddress::from(&receiver_public_address)
         );
     }
@@ -4016,7 +4016,7 @@ mod test {
         // Verify we have processed block information for this monitor.
         let mut request = mc_mobilecoind_api::GetProcessedBlockRequest::new();
         request.set_monitor_id(monitor_id.to_vec());
-        request.set_block(0);
+        request.set_block_index(0);
 
         let response = client
             .get_processed_block(&request)

@@ -40,7 +40,7 @@ impl TryFrom<&mc_mobilecoind_api::UnspentTxOut> for UnspentTxOut {
         let subaddress_index = src.subaddress_index;
         let key_image = KeyImage::try_from(src.get_key_image())?;
         let value = src.value;
-        let attempted_spend_height = src.attempted_spend_height;
+        let attempted_spend_height = src.attempted_spend_block_count;
         let attempted_spend_tombstone = src.attempted_spend_tombstone;
 
         Ok(Self {
@@ -228,7 +228,7 @@ mod test {
 
         // Rust -> Proto
         let rust = Outlay {
-            public_address: public_addr.clone(),
+            receiver: public_addr.clone(),
             value: 1234,
         };
         let proto = mc_mobilecoind_api::Outlay::from(&rust);
