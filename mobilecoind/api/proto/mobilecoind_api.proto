@@ -94,7 +94,7 @@ message UnspentTxOut {
     // The actual TxOut object found in the ledger.
     external.TxOut tx_out = 1;
 
-    // The subaddress the TxOut was sent to.
+    // The subaddress index the TxOut was sent to.
     uint64 subaddress_index = 2;
 
     // The key image of the TxOut.
@@ -103,8 +103,8 @@ message UnspentTxOut {
     // The value of the TxOut.
     uint64 value = 4;
 
-    // The block height at which this UnspentTxOut was last attempted to be spent.
-    uint64 attempted_spend_height = 5;
+    // The ledger block count when this UnspentTxOut was last attempted to be spent.
+    uint64 attempted_spend_block_count = 5;
 
     // The tombstone block used when we attempted to spend the UTXO.
     uint64 attempted_spend_tombstone = 6;
@@ -133,7 +133,7 @@ message TxProposal {
     uint64 fee = 4;
 
     /// A map of outlay index -> TxOut index in the Tx object.
-    /// This is needed to map recipients to their respective TxOuts.
+    /// This is needed to map receivers to their respective TxOuts.
     map<uint64, uint64> outlay_index_to_tx_out_index = 5;
 
     /// A list of the confirmation numbers, in the same order
@@ -150,17 +150,17 @@ message SenderTxReceipt {
     uint64 tombstone = 2;
 }
 
-// Structure used to check transaction status as a recipient.
+// Structure used to check transaction status as a receiver.
 // There exists one receipt per output, so a transaction having multiple outputs would have
 // multiple ReceiverTxReceipts.
 message ReceiverTxReceipt {
-    // The recipient this receipt refers to
-    external.PublicAddress recipient = 1;
+    // The receiver this receipt refers to
+    external.PublicAddress public_address = 1;
 
-    // The public key of the TxOut sent to this recipient.
+    // The public key of the TxOut sent to this receiver.
     external.CompressedRistretto tx_public_key = 2;
 
-    // The hash of the TxOut sent to this recipient.
+    // The hash of the TxOut sent to this receiver.
     bytes tx_out_hash = 3;
 
     // Tombstone block set in the transaction.
@@ -175,17 +175,17 @@ message MonitorStatus {
     // The account key the monitor is monitoring.
     external.AccountKey account_key = 1;
 
-    // The first subaddress being monitored.
-    uint64 first_subaddress = 2;
+    // The first subaddress index being monitored.
+    uint64 first_subaddress_index = 2;
 
     // The number of subaddresses being monitored, starting at first_subaddress.
     uint64 num_subaddresses = 3;
 
     // Block index we started scanning from.
-    uint64 first_block = 4;
+    uint64 first_block_index = 4;
 
-    // Next block we are waiting to sync.
-    uint64 next_block = 5;
+    // Next block index we are waiting to sync.
+    uint64 next_block_index = 5;
 
     // Optional monitor name.
     string name = 6;
@@ -215,7 +215,7 @@ message ProcessedTxOut {
     uint64 subaddress_index = 2;
 
     // The public key of the TxOut.
-    external.CompressedRistretto public_key = 3;
+    external.CompressedRistretto tx_public_key = 3;
 
     // The key image of the TxOut.
     external.KeyImage key_image = 4;
@@ -227,7 +227,7 @@ message ProcessedTxOut {
     ProcessedTxOutDirection direction = 6;
 
     // The b58-encoded Address Code for the subaddress that owns the TxOut.
-    string address_code = 7;
+    string b58_code = 7;
 }
 
 //*********************************
@@ -245,14 +245,14 @@ message AddMonitorRequest {
     // Account key to monitor.
     external.AccountKey account_key = 1;
 
-    // The first subaddress being monitored.
-    uint64 first_subaddress = 2;
+    // The first subaddress index being monitored.
+    uint64 first_subaddress_index = 2;
 
     // The number of subaddresses being monitored, starting at first_subaddress.
     uint64 num_subaddresses = 3;
 
     // Block index to start monitoring from.
-    uint64 first_block = 4;
+    uint64 first_block_index = 4;
 
     // Optional name.
     string name = 5;
@@ -329,14 +329,14 @@ message ParseRequestCodeRequest {
     string b58_code = 1;
 }
 message ParseRequestCodeResponse {
-    external.PublicAddress receiver = 1;
+    external.PublicAddress public_address = 1;
     uint64 value = 2;
     string memo = 3;
 }
 
 // Encode receiver's public address, value, and memo into a base-58 "MobileCoin Request Code".
 message CreateRequestCodeRequest {
-    external.PublicAddress receiver = 1;
+    external.PublicAddress public_address = 1;
     uint64 value = 2;
     string memo = 3;
 }
@@ -371,12 +371,12 @@ message ParseAddressCodeRequest {
     string b58_code = 1;
 }
 message ParseAddressCodeResponse {
-    external.PublicAddress receiver = 1;
+    external.PublicAddress public_address = 1;
 }
 
 // Encode receiver's public address into a base-58 "MobileCoin Address Code".
 message CreateAddressCodeRequest {
-    external.PublicAddress receiver = 1;
+    external.PublicAddress public_address = 1;
 }
 message CreateAddressCodeResponse {
     string b58_code = 1;
@@ -396,8 +396,8 @@ message GenerateTxRequest {
     // Monitor id sending the funds.
     bytes sender_monitor_id = 1;
 
-    // Subaddress to return change to.
-    uint64 change_subaddress = 2;
+    // Subaddress index to return change to.
+    uint64 change_subaddress_index = 2;
 
     // List of UnspentTxOuts to be spent by the transaction.
     // All UnspentTxOuts must belong to the same sender_monitor_id.
@@ -426,20 +426,37 @@ message GenerateOptimizationTxRequest {
     bytes monitor_id = 1;
 
     // Subaddress to operate on.
-    uint64 subaddress = 2;
+    uint64 subaddress_index = 2;
 }
 message GenerateOptimizationTxResponse {
     TxProposal tx_proposal = 1;
 }
 
-// Generate a transaction that can be used for a "MobileCoin Transfer Code"
+// Generate a transaction that can be used to fund a "MobileCoin Transfer Code"
 message GenerateTransferCodeTxRequest {
+    // Monitor id sending the funds.
     bytes sender_monitor_id = 1;
-    uint64 change_subaddress = 2;
+
+    // Subaddress index to return change to.
+    uint64 change_subaddress_index = 2;
+
+    // List of UnspentTxOuts available for this transaction. All must belong to sender_monitor_id.
+    // mobilecoind will choose a subset of these inputs to construct the transaction.
+    // Total value must be >= sum of outlays + fees.
     repeated UnspentTxOut input_list = 3;
+
+    // Value to move to the "Transfer Code" in picoMOB
     uint64 value = 4;
+
+    // Fee in picoMOB (setting to 0 causes mobilecoind to choose a value).
+    // The value used can be checked (but not changed) in the resulting tx_proposal.tx.prefix.fee
     uint64 fee = 5;
+
+    // Tombstone block (setting to 0 causes mobilecoind to choose a value).
+    // The value used can be checked (but not changed) in tx_proposal.tx.prefix.tombstone_block
     uint64 tombstone = 6;
+
+    // The memo to be included in the Transfer Code
     string memo = 7;
 }
 message GenerateTransferCodeTxResponse {
@@ -470,17 +487,16 @@ message GenerateTxFromTxOutListRequest {
     repeated UnspentTxOut input_list = 2;
 
     // Address to transfer coins to
-    external.PublicAddress receiver = 3;
+    external.PublicAddress public_address = 3;
 
     // Fee
     uint64 fee = 4;
 }
-
 message GenerateTxFromTxOutListResponse {
     TxProposal tx_proposal = 1;
 }
 
-// Submits a transaction to the network.
+// Submits a generated transaction proposal to the network.
 message SubmitTxRequest {
     TxProposal tx_proposal = 1;
 }
@@ -505,7 +521,8 @@ message GetLedgerInfoResponse {
 
 // Get information about a downloaded block.
 message GetBlockInfoRequest {
-    uint64 block = 1;
+    // the block index of interest
+    uint64 block_index = 1;
 }
 message GetBlockInfoResponse {
     // Number of key images in the block.
@@ -528,7 +545,8 @@ message ArchiveBlockSignatureData {
 
 // Get more detailed information about a downloaded block
 message GetBlockRequest {
-    uint64 block = 1;
+    // the block index of interest
+    uint64 block_index = 1;
 }
 message GetBlockResponse {
     // The block
@@ -552,7 +570,7 @@ message GetTxStatusAsSenderResponse {
     TxStatus status = 1;
 }
 
-// Get the status of a submitted transaction as the Recipient (using the tx public key).
+// Get the status of a submitted transaction as the receiver (using the tx public key).
 message GetTxStatusAsReceiverRequest {
     ReceiverTxReceipt receipt = 1;
 
@@ -568,8 +586,8 @@ message GetProcessedBlockRequest {
     // Monitor id to query data for.
     bytes monitor_id = 1;
 
-    // Block number to query.
-    uint64 block = 2;
+    // Block index to query.
+    uint64 block_index = 2;
 }
 message GetProcessedBlockResponse {
     // Processed tx output information that belongs to the requested monitor_id/block.
@@ -583,7 +601,7 @@ message GetBlockIndexByTxPubKeyRequest {
 }
 message GetBlockIndexByTxPubKeyResponse {
     // The block index.
-    uint64 block = 1;
+    uint64 block_index = 1;
 }
 
 //
@@ -609,7 +627,7 @@ message SendPaymentRequest {
     bytes sender_monitor_id = 1;
 
     // Subaddress the funds are coming from.
-    uint64 sender_subaddress = 2;
+    uint64 sender_subaddress_index = 2;
 
     // Outputs to be generated by the transaction. This excludes change and fee.
     repeated Outlay outlay_list = 3;
@@ -644,10 +662,10 @@ message PayAddressCodeRequest {
     bytes sender_monitor_id = 1;
 
     // Subaddress the funds are coming from.
-    uint64 sender_subaddress = 2;
+    uint64 sender_subaddress_index = 2;
 
     // Base-58 encoded "MobileCoin Address Code"
-    string receiver_b58_code = 3;
+    string b58_code = 3;
 
     // Amount to pay
     uint64 amount = 4;
