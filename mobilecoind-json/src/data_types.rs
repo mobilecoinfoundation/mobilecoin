@@ -116,7 +116,7 @@ pub struct JsonUnspentTxOut {
     pub subaddress_index: u64,
     pub key_image: String,
     pub value: String, // Needs to be String since Javascript ints are not 64 bit.
-    pub attempted_spend_block_count: u64,
+    pub attempted_spend_height: u64,
     pub attempted_spend_tombstone: u64,
     pub monitor_id: String,
 }
@@ -128,7 +128,7 @@ impl From<&mc_mobilecoind_api::UnspentTxOut> for JsonUnspentTxOut {
             subaddress_index: src.get_subaddress_index(),
             key_image: hex::encode(&src.get_key_image().get_data()),
             value: src.value.to_string(),
-            attempted_spend_block_count: src.get_attempted_spend_block_count(),
+            attempted_spend_height: src.get_attempted_spend_block_count(),
             attempted_spend_tombstone: src.get_attempted_spend_tombstone(),
             monitor_id: hex::encode(&src.get_monitor_id()),
         }
@@ -159,7 +159,7 @@ impl TryFrom<&JsonUnspentTxOut> for mc_mobilecoind_api::UnspentTxOut {
                 .parse::<u64>()
                 .map_err(|err| format!("Failed to parse u64 from value: {}", err))?,
         );
-        utxo.set_attempted_spend_block_count(src.attempted_spend_block_count);
+        utxo.set_attempted_spend_block_count(src.attempted_spend_height);
         utxo.set_attempted_spend_tombstone(src.attempted_spend_tombstone);
         utxo.set_monitor_id(
             hex::decode(&src.monitor_id)
@@ -189,7 +189,7 @@ impl From<&mc_mobilecoind_api::GetUnspentTxOutListResponse> for JsonUtxosRespons
 
 #[derive(Deserialize)]
 pub struct JsonCreateRequestCodeRequest {
-    pub public_address: JsonPublicAddress,
+    pub receiver: JsonPublicAddress,
     pub value: Option<String>,
     pub memo: Option<String>,
 }
@@ -308,7 +308,7 @@ impl TryFrom<&JsonPublicAddress> for PublicAddress {
 
 #[derive(Deserialize, Serialize, Default)]
 pub struct JsonParseRequestCodeResponse {
-    pub public_address: JsonPublicAddress,
+    pub receiver: JsonPublicAddress,
     pub value: String,
     pub memo: String,
 }
@@ -316,7 +316,7 @@ pub struct JsonParseRequestCodeResponse {
 impl From<&mc_mobilecoind_api::ParseRequestCodeResponse> for JsonParseRequestCodeResponse {
     fn from(src: &mc_mobilecoind_api::ParseRequestCodeResponse) -> Self {
         Self {
-            public_address: JsonPublicAddress::from(src.get_public_address()),
+            receiver: JsonPublicAddress::from(src.get_public_address()),
             value: src.get_value().to_string(),
             memo: src.get_memo().to_string(),
         }
@@ -325,7 +325,7 @@ impl From<&mc_mobilecoind_api::ParseRequestCodeResponse> for JsonParseRequestCod
 
 #[derive(Deserialize)]
 pub struct JsonCreateAddressCodeRequest {
-    pub public_address: JsonPublicAddress,
+    pub receiver: JsonPublicAddress,
 }
 
 #[derive(Serialize, Default)]
@@ -343,13 +343,13 @@ impl From<&mc_mobilecoind_api::CreateAddressCodeResponse> for JsonCreateAddressC
 
 #[derive(Deserialize, Serialize, Default)]
 pub struct JsonParseAddressCodeResponse {
-    pub public_address: JsonPublicAddress,
+    pub receiver: JsonPublicAddress,
 }
 
 impl From<&mc_mobilecoind_api::ParseAddressCodeResponse> for JsonParseAddressCodeResponse {
     fn from(src: &mc_mobilecoind_api::ParseAddressCodeResponse) -> Self {
         Self {
-            public_address: JsonPublicAddress::from(src.get_public_address()),
+            receiver: JsonPublicAddress::from(src.get_public_address()),
         }
     }
 }
@@ -375,7 +375,7 @@ impl From<&mc_mobilecoind_api::SenderTxReceipt> for JsonSenderTxReceipt {
 
 #[derive(Deserialize, Serialize)]
 pub struct JsonReceiverTxReceipt {
-    pub public_address: JsonPublicAddress,
+    pub receiver: JsonPublicAddress,
     pub tx_public_key: String,
     pub tx_out_hash: String,
     pub tombstone: u64,
@@ -385,7 +385,7 @@ pub struct JsonReceiverTxReceipt {
 impl From<&mc_mobilecoind_api::ReceiverTxReceipt> for JsonReceiverTxReceipt {
     fn from(src: &mc_mobilecoind_api::ReceiverTxReceipt) -> Self {
         Self {
-            public_address: JsonPublicAddress::from(src.get_public_address()),
+            receiver: JsonPublicAddress::from(src.get_public_address()),
             tx_public_key: hex::encode(&src.get_tx_public_key().get_data()),
             tx_out_hash: hex::encode(&src.get_tx_out_hash()),
             tombstone: src.get_tombstone(),
@@ -421,7 +421,7 @@ impl From<&mc_mobilecoind_api::SendPaymentResponse> for JsonSendPaymentResponse 
 
 #[derive(Deserialize, Serialize)]
 pub struct JsonPayAddressCodeRequest {
-    pub b58_code: String,
+    pub receiver_b58_address_code: String,
     pub value: String,
     pub max_input_utxo_value: Option<String>,
 }
@@ -429,14 +429,14 @@ pub struct JsonPayAddressCodeRequest {
 #[derive(Deserialize, Serialize)]
 pub struct JsonOutlay {
     pub value: String,
-    pub public_address: JsonPublicAddress,
+    pub receiver: JsonPublicAddress,
 }
 
 impl From<&mc_mobilecoind_api::Outlay> for JsonOutlay {
     fn from(src: &mc_mobilecoind_api::Outlay) -> Self {
         Self {
             value: src.get_value().to_string(),
-            public_address: src.get_public_address().into(),
+            receiver: src.get_public_address().into(),
         }
     }
 }
@@ -452,7 +452,7 @@ impl TryFrom<&JsonOutlay> for mc_mobilecoind_api::Outlay {
                 .map_err(|err| format!("Failed to parse u64 from value: {}", err))?,
         );
         outlay.set_public_address(
-            PublicAddress::try_from(&src.public_address)
+            PublicAddress::try_from(&src.receiver)
                 .map_err(|err| format!("Could not convert public_address: {}", err))?,
         );
 
@@ -479,7 +479,7 @@ impl From<&Amount> for JsonAmount {
 pub struct JsonTxOut {
     pub amount: JsonAmount,
     pub target_key: String,
-    pub tx_public_key: String,
+    pub public_key: String,
     pub e_fog_hint: String,
 }
 
@@ -488,7 +488,7 @@ impl From<&mc_api::external::TxOut> for JsonTxOut {
         Self {
             amount: src.get_amount().into(),
             target_key: hex::encode(src.get_target_key().get_data()),
-            tx_public_key: hex::encode(src.get_public_key().get_data()),
+            public_key: hex::encode(src.get_public_key().get_data()),
             e_fog_hint: hex::encode(src.get_e_fog_hint().get_data()),
         }
     }
@@ -519,7 +519,7 @@ impl TryFrom<&JsonTxOut> for mc_api::external::TxOut {
         );
         let mut public_key = CompressedRistretto::new();
         public_key.set_data(
-            hex::decode(&src.tx_public_key)
+            hex::decode(&src.public_key)
                 .map_err(|err| format!("Failed to decode public key hex: {}", err))?,
         );
         let mut e_fog_hint = EncryptedFogHint::new();
@@ -1074,7 +1074,7 @@ impl From<&mc_mobilecoind_api::GetBlockResponse> for JsonBlockDetailsResponse {
 pub struct JsonProcessedTxOut {
     pub monitor_id: String,
     pub subaddress_index: u64,
-    pub tx_public_key: String,
+    pub public_key: String,
     pub key_image: String,
     pub value: String, // Needs to be String since Javascript ints are not 64 bit.
     pub direction: String,
