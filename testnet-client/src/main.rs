@@ -705,7 +705,7 @@ MobileCoin forums. Visit http://community.mobilecoin.com
         // Construct the tx
         let mut req = mc_mobilecoind_api::GenerateTxRequest::new();
         req.set_sender_monitor_id(self.monitor_id.clone());
-        req.set_change_subaddress(0);
+        req.set_change_subaddress_index(0);
         req.set_input_list(utxos);
         req.set_outlay_list(RepeatedField::from_vec(vec![outlay]));
 

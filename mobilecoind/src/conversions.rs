@@ -59,7 +59,7 @@ impl From<&Outlay> for mc_mobilecoind_api::Outlay {
         let mut dst = Self::new();
 
         dst.set_value(src.value);
-        dst.set_receiver((&src.receiver).into());
+        dst.set_public_address((&src.public_address).into());
 
         dst
     }
@@ -70,9 +70,9 @@ impl TryFrom<&mc_mobilecoind_api::Outlay> for Outlay {
 
     fn try_from(src: &mc_mobilecoind_api::Outlay) -> Result<Self, Self::Error> {
         let value = src.value;
-        let receiver = PublicAddress::try_from(src.get_receiver())?;
+        let public_address = PublicAddress::try_from(src.get_public_address())?;
 
-        Ok(Self { value, receiver })
+        Ok(Self { value, public_address })
     }
 }
 
@@ -228,7 +228,7 @@ mod test {
 
         // Rust -> Proto
         let rust = Outlay {
-            receiver: public_addr.clone(),
+            public_address: public_addr.clone(),
             value: 1234,
         };
         let proto = mc_mobilecoind_api::Outlay::from(&rust);
@@ -293,7 +293,7 @@ mod test {
         let outlay = {
             let public_addr = AccountKey::random(&mut rng).default_subaddress();
             Outlay {
-                receiver: public_addr.clone(),
+                public_address: public_addr.clone(),
                 value: 1234,
             }
         };

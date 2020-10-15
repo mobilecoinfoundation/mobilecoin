@@ -443,7 +443,7 @@ fn generate_request_code_transaction(
     // Get a tx proposal
     let mut req = mc_mobilecoind_api::GenerateTxRequest::new();
     req.set_sender_monitor_id(monitor_id);
-    req.set_change_subaddress(subaddress_index);
+    req.set_change_subaddress_index(subaddress_index);
     req.set_outlay_list(RepeatedField::from_vec(vec![outlay]));
     req.set_input_list(RepeatedField::from_vec(inputs));
 
