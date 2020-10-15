@@ -1157,7 +1157,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                                 )
                             })?;
                         let tx_public_key = RistrettoPublic::try_from(
-                            request.get_receipt().get_tx_out_public_key()
+                            request.get_receipt().get_tx_out_public_key(),
                         )
                         .map_err(|err| {
                             rpc_internal_error("RistrettoPublic.try_from", err, &self.logger)
