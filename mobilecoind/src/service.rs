@@ -245,10 +245,10 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
 
         let mut status = mc_mobilecoind_api::MonitorStatus::new();
         status.set_account_key(mc_api::external::AccountKey::from(&data.account_key));
-        status.set_first_subaddress_index(data.first_subaddress_index);
+        status.set_first_subaddress_index(data.first_subaddress);
         status.set_num_subaddresses(data.num_subaddresses);
-        status.set_first_block_index(data.first_block_index);
-        status.set_next_block_index(data.next_block_index);
+        status.set_first_block_index(data.first_block);
+        status.set_next_block_index(data.next_block);
 
         let mut response = mc_mobilecoind_api::GetMonitorStatusResponse::new();
         response.set_status(status);
@@ -484,7 +484,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             subaddress_index: DEFAULT_SUBADDRESS_INDEX,
             key_image,
             value,
-            attempted_spend_block_count: 0,
+            attempted_spend_height: 0,
             attempted_spend_tombstone: 0,
         };
 
@@ -682,7 +682,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         // Generate optimization tx.
         let tx_proposal = self
             .transactions_manager
-            .generate_optimization_tx(&monitor_id, request.subaddress)
+            .generate_optimization_tx(&monitor_id, request.subaddress_index)
             .map_err(|err| {
                 rpc_internal_error(
                     "transactions_manager.generate_optimization_tx",
@@ -767,7 +767,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
 
         // The outlay we are sending the money to.
         let outlay = Outlay {
-            public_address: account_key.default_subaddress(),
+            receiver: account_key.default_subaddress(),
             value: request.value,
         };
 
@@ -971,7 +971,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
     ) -> Result<mc_mobilecoind_api::GetBlockInfoResponse, RpcStatus> {
         let block_contents = self
             .ledger_db
-            .get_block_contents(request.block)
+            .get_block_contents(request.block_index)
             .map_err(|err| rpc_internal_error("ledger_db.get_block_contents", err, &self.logger))?;
 
         let num_tx_outs = block_contents.outputs.len();
@@ -992,7 +992,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
 
         let block_data = self
             .ledger_db
-            .get_block_data(request.block)
+            .get_block_data(request.block_index)
             .map_err(|err| rpc_internal_error("ledger_db.get_block_data", err, &self.logger))?;
 
         response.set_block(mc_consensus_api::blockchain::Block::from(
@@ -1264,7 +1264,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                 let mut dst = mc_mobilecoind_api::ProcessedTxOut::new();
                 dst.set_monitor_id(monitor_id.to_vec());
                 dst.set_subaddress_index(src.subaddress_index);
-                dst.set_public_key((&src.public_key).into());
+                dst.set_tx_public_key((&src.public_key).into());
                 dst.set_key_image((&src.key_image).into());
                 dst.set_value(src.value);
                 dst.set_direction(
@@ -1278,7 +1278,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                 let encoded = wrapper
                     .b58_encode()
                     .map_err(|err| rpc_internal_error("wrapper.b58_encode", err, &self.logger))?;
-                dst.set_address_code(encoded);
+                dst.set_b58_code(encoded);
                 Ok(dst)
             })
             .collect::<Result<Vec<_>, _>>()?;
@@ -1321,7 +1321,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             })?;
 
         let mut response = mc_mobilecoind_api::GetBlockIndexByTxPubKeyResponse::new();
-        response.set_block(block_index);
+        response.set_block_index(block_index);
         Ok(response)
     }
 
@@ -1372,7 +1372,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         // Get all utxos for this monitor id.
         let mut utxos = self
             .mobilecoind_db
-            .get_utxos_for_subaddress(&sender_monitor_id, request.sender_subaddress)
+            .get_utxos_for_subaddress(&sender_monitor_id, request.sender_subaddress_index)
             .map_err(|err| {
                 rpc_internal_error("mobilecoind_db.get_utxos_for_subaddress", err, &self.logger)
             })?;
@@ -1447,7 +1447,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
 
         let mut send_payment_request = mc_mobilecoind_api::SendPaymentRequest::new();
         send_payment_request.set_sender_monitor_id(request.get_sender_monitor_id().to_vec());
-        send_payment_request.set_sender_subaddress(request.get_sender_subaddress());
+        send_payment_request.set_sender_subaddress_index(request.get_sender_subaddress_index());
         send_payment_request.set_outlay_list(RepeatedField::from_vec(vec![outlay]));
         send_payment_request.set_fee(request.get_fee());
         send_payment_request.set_tombstone(request.get_tombstone());

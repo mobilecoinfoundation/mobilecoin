@@ -25,7 +25,7 @@ impl From<&UnspentTxOut> for mc_mobilecoind_api::UnspentTxOut {
         dst.set_subaddress_index(src.subaddress_index);
         dst.set_key_image((&src.key_image).into());
         dst.set_value(src.value);
-        dst.set_attempted_spend_height(src.attempted_spend_height);
+        dst.set_attempted_spend_block_count(src.attempted_spend_height);
         dst.set_attempted_spend_tombstone(src.attempted_spend_tombstone);
 
         dst
@@ -70,9 +70,9 @@ impl TryFrom<&mc_mobilecoind_api::Outlay> for Outlay {
 
     fn try_from(src: &mc_mobilecoind_api::Outlay) -> Result<Self, Self::Error> {
         let value = src.value;
-        let public_address = PublicAddress::try_from(src.get_public_address())?;
+        let receiver = PublicAddress::try_from(src.get_public_address())?;
 
-        Ok(Self { value, public_address })
+        Ok(Self { value, receiver })
     }
 }
 
