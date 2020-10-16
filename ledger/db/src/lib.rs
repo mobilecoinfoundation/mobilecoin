@@ -382,13 +382,7 @@ impl LedgerDB {
         let env = Environment::new()
             .set_max_dbs(22)
             .set_map_size(MAX_LMDB_FILE_SIZE)
-            .open(&path)
-            .unwrap_or_else(|_| {
-                panic!(
-                    "Could not create environment for ledger_db. Check that path exists {:?}",
-                    path
-                )
-            });
+            .open(&path)?;
 
         let counts = env.create_db(Some(COUNTS_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(BLOCKS_DB_NAME), DatabaseFlags::empty())?;
