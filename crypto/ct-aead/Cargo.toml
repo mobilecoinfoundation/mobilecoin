@@ -1,0 +1,11 @@
+[package]
+name = "mc-crypto-ct-aead"
+version = "0.5.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[dependencies]
+aead = "0.3"
+aes-gcm = { version = "0.6", default-features = false }
+block-cipher = "0.7"
+subtle = { version = "2", default-features = false }

@@ -29,8 +29,7 @@ dependencies = [
 [[package]]
 name = "aes-gcm"
 version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86f5007801316299f922a6198d1d09a0bae95786815d066d5880d13f7c45ead1"
+source = "git+https://github.com/xoloki/AEADs?rev=d1a8517d3dd867ed9c5794002add67992a42f6aa#d1a8517d3dd867ed9c5794002add67992a42f6aa"
 dependencies = [
  "aead",
  "aes",
@@ -2592,10 +2591,21 @@ dependencies = [
  "digest 0.9.0",
  "failure",
  "hkdf",
+ "mc-crypto-ct-aead",
  "mc-crypto-keys",
  "mc-util-from-random",
  "mc-util-test-helper",
  "rand_core 0.5.1",
+]
+
+[[package]]
+name = "mc-crypto-ct-aead"
+version = "0.5.0"
+dependencies = [
+ "aead",
+ "aes-gcm",
+ "block-cipher",
+ "subtle 2.2.3",
 ]
 
 [[package]]

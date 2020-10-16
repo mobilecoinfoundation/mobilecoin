@@ -52,16 +52,17 @@ pub trait CryptoBox<KexAlgo: Kex>: Default {
     ///
     /// Meant to mirror aead::decrypt_in_place_detached
     ///
-    /// Fails if:
-    /// - Curvepoint cannot be decoded
-    /// - MAC check fails
-    /// - Anything is wrong with the footer (magic bytes? version code?)
+    /// NOTE: Meant to run in constant-time even if the mac-check fails.
+    ///
+    /// Returns
+    /// `Ok(true)` if decryption succeeds. `buffer` contains the plaintext and SHOULD be zeroized after use.
+    /// `Ok(false) if MAC check fails. `buffer` contains failed plaintext and SHOULD be zeroized after use.
     fn decrypt_in_place_detached(
         &self,
         key: &KexAlgo::Private,
         footer: &GenericArray<u8, Self::FooterSize>,
         buffer: &mut [u8],
-    ) -> Result<(), Error>;
+    ) -> Result<bool, Error>;
 
     // Provided functions
     // These functions consume and produce "cryptograms" where the footer bytes
@@ -82,13 +83,14 @@ pub trait CryptoBox<KexAlgo: Kex>: Default {
         Ok(result)
     }
 
-    /// Decrypt a slice pointing to the cryptogram, returning a Vec<u8> plaintext.
+    /// Decrypt a slice pointing to the cryptogram, returning a status and a Vec<u8> plaintext.
+    /// If status is false then mac check failed and plaintext should be zeroed.
     ///
     /// Meant to mirror aead::decrypt
-    fn decrypt(&self, key: &KexAlgo::Private, cryptogram: &[u8]) -> Result<Vec<u8>, Error> {
+    fn decrypt(&self, key: &KexAlgo::Private, cryptogram: &[u8]) -> Result<(bool, Vec<u8>), Error> {
         let mut result = cryptogram.to_vec();
-        self.decrypt_in_place(key, &mut result)?;
-        Ok(result)
+        let status = self.decrypt_in_place(key, &mut result)?;
+        Ok((status, result))
     }
 
     /// Encrypt a buffer, extending the buffer to place the footer at the end.
@@ -115,11 +117,17 @@ pub trait CryptoBox<KexAlgo: Kex>: Default {
     /// - The buffer is too short to be interpretted
     /// - The curvepoint cannot be deserialized
     /// - The mac check fails
+    ///
+    /// Returns:
+    /// - true if decryption succeeded, buffer contains plaintext
+    /// - false if mac check failed, buffer contains failed plaintext.
+    ///   Buffer SHOULD be zeroized to avoid attacks
+    /// - error if anything else is wrong
     fn decrypt_in_place(
         &self,
         key: &KexAlgo::Private,
         cryptogram: &mut impl aead::Buffer,
-    ) -> Result<(), Error> {
+    ) -> Result<bool, Error> {
         // Extract the footer from end of ciphertext, doing bounds checks
         if cryptogram.len() < Self::FooterSize::USIZE {
             return Err(Error::TooShort(cryptogram.len(), Self::FooterSize::USIZE));
@@ -127,9 +135,10 @@ pub trait CryptoBox<KexAlgo: Kex>: Default {
         let footer_pos = cryptogram.len() - Self::FooterSize::USIZE;
         let (ciphertext, footer) = cryptogram.as_mut().split_at_mut(footer_pos);
         // Note: this is modifying the cryptogram via the mutable slice ciphertext
-        self.decrypt_in_place_detached(key, GenericArray::from_slice(footer), ciphertext)?;
+        let status =
+            self.decrypt_in_place_detached(key, GenericArray::from_slice(footer), ciphertext)?;
         cryptogram.truncate(footer_pos);
-        Ok(())
+        Ok(status)
     }
 
     /// Encrypt a fixed-length buffer, producing a fixed-length buffer containing
@@ -156,14 +165,17 @@ pub trait CryptoBox<KexAlgo: Kex>: Default {
     /// the plaintext in a fixed-length buffer.
     ///
     /// A non-allocating counterpart to decrypt
+    ///
+    /// Returns:
+    /// - true if decryption succeeded, buffer contains plaintext
+    /// - false if mac check failed, buffer contains failed plaintext.
+    ///   Buffer SHOULD be zeroized to avoid attacks
+    /// - error if anything else is wrong
     fn decrypt_fixed_length<L>(
         &self,
         key: &KexAlgo::Private,
         cryptogram: &GenericArray<u8, L>,
-    ) -> Result<GenericArray<u8, Diff<L, Self::FooterSize>>, Error>
-    // generic_array/typenum can be really annoying...
-    // we have to convince it that not only is L - FooterSize a number,
-    // and an array length, but also that L - (L - FooterSize) is FooterSize
+    ) -> Result<(bool, GenericArray<u8, Diff<L, Self::FooterSize>>), Error>
     where
         L: ArrayLength<u8>
             + Sub<Self::FooterSize>
@@ -172,7 +184,7 @@ pub trait CryptoBox<KexAlgo: Kex>: Default {
     {
         let (mut ciphertext, footer) =
             Split::<u8, Diff<L, Self::FooterSize>>::split(cryptogram.clone());
-        self.decrypt_in_place_detached(key, &footer, ciphertext.as_mut_slice())?;
-        Ok(ciphertext)
+        let status = self.decrypt_in_place_detached(key, &footer, ciphertext.as_mut_slice())?;
+        Ok((status, ciphertext))
     }
 }
