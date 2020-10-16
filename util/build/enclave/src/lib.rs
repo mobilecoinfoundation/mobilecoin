@@ -475,21 +475,31 @@ impl Builder {
             unsigned_enclave
         };
 
-        // Re-create the gendata from the unsigned enclave
-        let mut gendata = self.out_dir.join(&self.name);
-        gendata.set_extension("dat");
-        if !SgxSign::new(&self.target_arch)?
-            .gendata(&unsigned_enclave, &config_xml, &gendata)
-            .status()?
-            .success()
-        {
-            return Err(Error::SgxSignGendata);
-        }
+        let gendata = if let Some(gendata) = &self.gendata {
+            rerun_if_changed!(gendata
+                .as_os_str()
+                .to_str()
+                .expect("Invalid UTF-8 in GENDATA path"));
+            gendata.clone()
+        } else {
+            // Re-create the gendata from the unsigned enclave
+            let mut gendata = self.out_dir.join(&self.name);
+            gendata.set_extension("dat");
+            if !SgxSign::new(&self.target_arch)?
+                .gendata(&unsigned_enclave, &config_xml, &gendata)
+                .status()?
+                .success()
+            {
+                return Err(Error::SgxSignGendata);
+            }
 
-        // The generated data is an artifact, so copy it to our target profile dir
-        let mut gendata_artifact = self.profile_target_dir.join(&self.name);
-        gendata_artifact.set_extension("dat");
-        fs::copy(&gendata, gendata_artifact)?;
+            // The generated data is an artifact, so copy it to our target profile dir
+            let mut gendata_artifact = self.profile_target_dir.join(&self.name);
+            gendata_artifact.set_extension("dat");
+            fs::copy(&gendata, gendata_artifact)?;
+
+            gendata
+        };
 
         // The signed enclave is also an artifact, so we will copy it to the target profile dir
         let mut signed_artifact = self.profile_target_dir.join(
