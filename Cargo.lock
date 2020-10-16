@@ -599,7 +599,7 @@ checksum = "b3a71ab494c0b5b860bdc8407ae08978052417070c2ced38573a9157ad75b8ac"
 [[package]]
 name = "cpuid-bool"
 version = "0.1.2"
-source = "git+https://github.com/eranrund/RustCrypto-utils?rev=e00f5f16e395349c2c2395aac9287da0ac843a73#e00f5f16e395349c2c2395aac9287da0ac843a73"
+source = "git+https://github.com/eranrund/RustCrypto-utils?rev=74f8e04e9d18d93fc6d05c72756c236dc88daa19#74f8e04e9d18d93fc6d05c72756c236dc88daa19"
 
 [[package]]
 name = "crc"
