@@ -1,0 +1,14 @@
+[package]
+name = "mc-fog-report-validation"
+version = "1.0.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[dependencies]
+mc-account-keys = { path = "../../../account-keys" }
+mc-attest-core = { path = "../../../attest/core", default-features = false }
+mc-crypto-keys = { path = "../../../crypto/keys" }
+mc-util-encodings = { path = "../../../util/encodings" }
+mc-util-serial = { path = "../../../util/serial", default-features = false }
+
+displaydoc = { version = "0.1", default-features = false }

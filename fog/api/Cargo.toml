@@ -1,0 +1,21 @@
+[package]
+name = "mc-fog-api"
+version = "1.0.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[dependencies]
+futures = "0.3"
+grpcio = "0.6.0"
+protobuf = "2.12"
+
+mc-api = { path = "../../api" }
+mc-attest-api = { path = "../../attest/api" }
+mc-common = { path = "../../common" }
+mc-consensus-api = { path = "../../consensus/api" }
+
+[build-dependencies]
+mc-util-build-grpc = { path = "../../util/build/grpc" }
+mc-util-build-script = { path = "../../util/build/script" }
+
+cargo-emit = "0.1.1"
