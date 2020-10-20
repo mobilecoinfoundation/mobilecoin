@@ -1,51 +1,49 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-use failure::Fail;
+use displaydoc::Display;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, Eq, Hash, Fail, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(
+    Clone, Copy, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize,
+)]
 pub enum Error {
-    #[fail(
-        display = "Incorrect length for array copy, provided {}, required {}",
-        _0, _1
-    )]
+    /// Incorrect length for array copy, provided `{0}`, required `{1}`.
     LengthMismatch(usize, usize),
 
-    #[fail(display = "Real index out of bounds")]
+    /// Real index out of bounds
     IndexOutOfBounds,
 
-    #[fail(display = "Inputs is empty")]
+    /// No inputs
     NoInputs,
 
-    #[fail(display = "Invalid ring size: {}", _0)]
+    /// Invalid ring size: `{0}`
     InvalidRingSize(usize),
 
-    #[fail(display = "Invalid input_secrets size: {}", _0)]
+    /// Invalid input_secrets size: `{0}`
     InvalidInputSecretsSize(usize),
 
-    #[fail(display = "Invalid curve point")]
+    /// Invalid curve point
     InvalidCurvePoint,
 
-    #[fail(display = "Invalid curve scalar")]
+    /// Invalid curve scalar
     InvalidCurveScalar,
 
-    #[fail(display = "The signature was not able to be validated")]
+    /// The signature was not able to be validated
     InvalidSignature,
 
-    #[fail(display = "Failed to compress/decompress a KeyImage")]
+    /// Failed to compress/decompress a KeyImage
     InvalidKeyImage,
 
-    #[fail(display = "Duplicate key image")]
+    /// Duplicate key image
     DuplicateKeyImage,
 
-    #[fail(display = "There was an opaque error returned by another crate or library")]
+    /// There was an opaque error returned by another crate or library
     InternalError,
 
     /// Signing failed because the value of inputs did not equal the value of outputs.
-    #[fail(display = "ValueNotConserved")]
     ValueNotConserved,
 
-    #[fail(display = "Invalid RangeProof")]
+    /// Invalid RangeProof
     RangeProofError,
 }
 

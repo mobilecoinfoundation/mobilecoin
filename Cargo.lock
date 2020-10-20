@@ -3300,7 +3300,6 @@ dependencies = [
  "curve25519-dalek",
  "digest 0.9.0",
  "displaydoc",
- "failure",
  "generic-array 0.14.4",
  "hex_fmt",
  "lazy_static",

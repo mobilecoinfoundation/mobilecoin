@@ -1,13 +1,13 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-use failure::Fail;
+use displaydoc::Display;
 
-#[derive(Debug, Fail, PartialEq)]
+#[derive(Debug, Display, PartialEq)]
 pub enum Error {
-    #[fail(display = "ProofError: {:?}", _0)]
+    /// ProofError: `{0:?}`
     ProofError(bulletproofs::ProofError),
 
-    #[fail(display = "ResizeError")]
+    /// Resize error
     ResizeError,
 }
 
