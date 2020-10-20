@@ -20,9 +20,11 @@ mc-consensus-scp = { path = "../consensus/scp" }
 mc-crypto-digestible = { path = "../crypto/digestible", features = ["derive"] }
 mc-crypto-keys = { path = "../crypto/keys" }
 mc-crypto-rand = { path = "../crypto/rand" }
+mc-fog-report-connection = { path = "../fog/report/connection" }
 mc-ledger-db = { path = "../ledger/db" }
 mc-ledger-sync = { path = "../ledger/sync" }
 mc-mobilecoind-api = { path = "../mobilecoind/api" }
+mc-sgx-css = { path = "../sgx/css" }
 mc-transaction-core = { path = "../transaction/core" }
 mc-transaction-std = { path = "../transaction/std" }
 mc-util-from-random = { path = "../util/from-random" }
@@ -54,6 +56,7 @@ tempdir = "0.3"
 [dev-dependencies]
 mc-common = { path = "../common", features = ["loggers"] }
 mc-connection-test-utils = { path = "../connection/test-utils" }
+mc-fog-report-validation = { path = "../fog/report/validation", features = ["std"] }
 mc-transaction-core-test-utils = { path = "../transaction/core/test-utils" }
 mc-util-from-random = { path = "../util/from-random" }
 

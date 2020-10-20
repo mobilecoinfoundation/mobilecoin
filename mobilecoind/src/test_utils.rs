@@ -19,6 +19,7 @@ use mc_connection_test_utils::{test_client_uri, MockBlockchainConnection};
 use mc_consensus_scp::QuorumSet;
 use mc_crypto_keys::RistrettoPrivate;
 use mc_crypto_rand::{CryptoRng, RngCore};
+use mc_fog_report_validation::{FogPubkeyResolver, MockFogPubkeyResolver};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::PollingNetworkState;
 use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri};
@@ -219,16 +220,17 @@ pub fn add_txos_to_ledger_db(
     ledger_db.num_blocks().expect("failed to get block height")
 }
 
-fn get_free_port() -> u16 {
+pub fn get_free_port() -> u16 {
     static PORT_NR: AtomicUsize = AtomicUsize::new(0);
     PORT_NR.fetch_add(1, SeqCst) as u16 + 30100
 }
 
-fn setup_server(
+pub fn setup_server<FPR: FogPubkeyResolver + Send + Sync + 'static>(
     logger: Logger,
     ledger_db: LedgerDB,
     mobilecoind_db: Database,
     watcher_db: Option<WatcherDB>,
+    fog_pubkey_resolver: Option<Arc<FPR>>,
     uri: &MobilecoindUri,
 ) -> (
     Service,
@@ -262,6 +264,7 @@ fn setup_server(
         ledger_db.clone(),
         mobilecoind_db.clone(),
         conn_manager.clone(),
+        fog_pubkey_resolver,
         logger.clone(),
     );
 
@@ -279,7 +282,7 @@ fn setup_server(
     (service, conn_manager)
 }
 
-fn setup_client(uri: &MobilecoindUri, logger: &Logger) -> MobilecoindApiClient {
+pub fn setup_client(uri: &MobilecoindUri, logger: &Logger) -> MobilecoindApiClient {
     let env = Arc::new(
         EnvBuilder::new()
             .name_prefix("gRPC-mobilecoind-tests")
@@ -333,6 +336,7 @@ pub fn get_testing_environment(
         ledger_db.clone(),
         mobilecoind_db.clone(),
         None,
+        Option::<Arc<MockFogPubkeyResolver>>::None,
         &uri,
     );
     log::debug!(logger, "Setting up client {:?}", port);
@@ -345,6 +349,7 @@ pub fn get_testing_environment(
     }
 
     wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
     (
         ledger_db,
         mobilecoind_db,

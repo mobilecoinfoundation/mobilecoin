@@ -2793,6 +2793,7 @@ dependencies = [
  "mc-crypto-keys",
  "mc-util-encodings",
  "mc-util-serial",
+ "mockall",
 ]
 
 [[package]]
@@ -2924,9 +2925,12 @@ dependencies = [
  "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-crypto-rand",
+ "mc-fog-report-connection",
+ "mc-fog-report-validation",
  "mc-ledger-db",
  "mc-ledger-sync",
  "mc-mobilecoind-api",
+ "mc-sgx-css",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
  "mc-transaction-std",

@@ -66,13 +66,13 @@ fn main() {
     };
 
     // Optionally instantiate the watcher sync thread and get the watcher_db handle.
-    let (watcher_db, _watcher_sync_thread) = match config.watcher_db {
+    let (watcher_db, _watcher_sync_thread) = match &config.watcher_db {
         Some(watcher_db_path) => {
             log::info!(logger, "Launching watcher.");
 
             log::info!(logger, "Opening watcher db at {:?}.", watcher_db_path);
             let watcher_db = create_or_open_rw_watcher_db(
-                watcher_db_path,
+                watcher_db_path.clone(),
                 &transactions_fetcher.source_urls,
                 logger.clone(),
             )
@@ -110,6 +110,7 @@ fn main() {
                 ledger_db.clone(),
                 mobilecoind_db.clone(),
                 peer_manager,
+                config.get_fog_pubkey_resolver(logger.clone()).map(Arc::new),
                 logger.clone(),
             );
 

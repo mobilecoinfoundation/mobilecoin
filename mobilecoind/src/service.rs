@@ -33,6 +33,7 @@ use mc_transaction_core::{
     tx::TxOutConfirmationNumber,
 };
 
+use mc_fog_report_connection::FogPubkeyResolver;
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::{
     rpc_internal_error, rpc_logger, send_result, BuildInfoService, ConnectionUriGrpcioServer,
@@ -53,11 +54,14 @@ pub struct Service {
 }
 
 impl Service {
-    pub fn new<T: BlockchainConnection + UserTxConnection + 'static>(
+    pub fn new<
+        T: BlockchainConnection + UserTxConnection + 'static,
+        FPR: FogPubkeyResolver + Send + Sync + 'static,
+    >(
         ledger_db: LedgerDB,
         mobilecoind_db: Database,
         watcher_db: Option<WatcherDB>,
-        transactions_manager: TransactionsManager<T>,
+        transactions_manager: TransactionsManager<T, FPR>,
         network_state: Arc<RwLock<PollingNetworkState<T>>>,
         listen_uri: &MobilecoindUri,
         num_workers: Option<usize>,
@@ -113,8 +117,11 @@ impl Service {
     }
 }
 
-pub struct ServiceApi<T: BlockchainConnection + UserTxConnection + 'static> {
-    transactions_manager: TransactionsManager<T>,
+pub struct ServiceApi<
+    T: BlockchainConnection + UserTxConnection + 'static,
+    FPR: FogPubkeyResolver + Send + Sync + 'static,
+> {
+    transactions_manager: TransactionsManager<T, FPR>,
     ledger_db: LedgerDB,
     mobilecoind_db: Database,
     watcher_db: Option<WatcherDB>,
@@ -122,7 +129,11 @@ pub struct ServiceApi<T: BlockchainConnection + UserTxConnection + 'static> {
     logger: Logger,
 }
 
-impl<T: BlockchainConnection + UserTxConnection + 'static> Clone for ServiceApi<T> {
+impl<
+        T: BlockchainConnection + UserTxConnection + 'static,
+        FPR: FogPubkeyResolver + Send + Sync + 'static,
+    > Clone for ServiceApi<T, FPR>
+{
     fn clone(&self) -> Self {
         Self {
             transactions_manager: self.transactions_manager.clone(),
@@ -135,9 +146,13 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> Clone for ServiceApi<
     }
 }
 
-impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
+impl<
+        T: BlockchainConnection + UserTxConnection + 'static,
+        FPR: FogPubkeyResolver + Send + Sync + 'static,
+    > ServiceApi<T, FPR>
+{
     pub fn new(
-        transactions_manager: TransactionsManager<T>,
+        transactions_manager: TransactionsManager<T, FPR>,
         ledger_db: LedgerDB,
         mobilecoind_db: Database,
         watcher_db: Option<WatcherDB>,
@@ -1496,7 +1511,7 @@ macro_rules! build_api {
     ($( $service_function_name:ident $service_request_type:ident $service_response_type:ident $service_function_impl:ident ),+)
     =>
     (
-        impl<T: BlockchainConnection + UserTxConnection + 'static> MobilecoindApi for ServiceApi<T> {
+        impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'static> MobilecoindApi for ServiceApi<T, FPR> {
             $(
                 fn $service_function_name(
                     &mut self,
@@ -1564,9 +1579,12 @@ mod test {
     use grpcio::{Error as GrpcError, RpcStatus};
     use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
     use mc_common::{logger::test_with_logger, HashSet};
+    use mc_crypto_keys::RistrettoPrivate;
     use mc_crypto_rand::RngCore;
+    use mc_fog_report_validation::{FullyValidatedFogPubkey, MockFogPubkeyResolver};
     use mc_transaction_core::{
         constants::{MAX_INPUTS, MINIMUM_FEE, RING_SIZE},
+        fog_hint::FogHint,
         get_tx_out_shared_secret,
         onetime_keys::recover_onetime_private_key,
         tx::{Tx, TxOut},
@@ -1578,6 +1596,7 @@ mod test {
     use std::{
         convert::{TryFrom, TryInto},
         iter::FromIterator,
+        str::FromStr,
     };
 
     #[test_with_logger]
@@ -3541,6 +3560,230 @@ mod test {
             HashSet::from_iter(selected_utxos),
             HashSet::from_iter(utxos)
         );
+    }
+
+    #[test_with_logger]
+    fn test_send_payment_to_fog(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        // Fog resolver
+        let fog_private_key = RistrettoPrivate::from_random(&mut rng);
+        let fog_pubkey_resolver = Arc::new({
+            let mut fog_pubkey_resolver = MockFogPubkeyResolver::new();
+            let pubkey = RistrettoPublic::from(&fog_private_key);
+            fog_pubkey_resolver
+                .expect_get_fog_pubkey()
+                .return_once(move |_recipient| {
+                    Ok(FullyValidatedFogPubkey {
+                        fog_report_id: "".to_owned(),
+                        pubkey,
+                        pubkey_expiry: 10000,
+                    })
+                });
+            fog_pubkey_resolver
+        });
+
+        let sender = AccountKey::random(&mut rng);
+        let data = MonitorData::new(
+            sender.clone(),
+            0,  // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        // 1 known recipient, 3 random recipients and no monitors.
+        let (ledger_db, mobilecoind_db) = test_utils::get_test_databases(
+            3,
+            &vec![sender.default_subaddress()],
+            test_utils::GET_TESTING_ENVIRONMENT_NUM_BLOCKS,
+            logger.clone(),
+            &mut rng,
+        );
+        let port = test_utils::get_free_port();
+
+        let uri = MobilecoindUri::from_str(&format!("insecure-mobilecoind://127.0.0.1:{}/", port))
+            .unwrap();
+
+        log::debug!(logger, "Setting up server {:?}", port);
+        let (_server, server_conn_manager) = test_utils::setup_server(
+            logger.clone(),
+            ledger_db.clone(),
+            mobilecoind_db.clone(),
+            None,
+            Some(fog_pubkey_resolver),
+            &uri,
+        );
+        log::debug!(logger, "Setting up client {:?}", port);
+        let client = test_utils::setup_client(&uri, &logger);
+
+        // Insert into database.
+        let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
+
+        // Allow the new monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Get list of unspent tx outs
+        let utxos = mobilecoind_db
+            .get_utxos_for_subaddress(&monitor_id, 0)
+            .unwrap();
+        assert!(!utxos.is_empty());
+
+        // Generate two random recipients.
+        let receiver1 = AccountKey::random(&mut rng);
+        let receiver2 = AccountKey::random_with_fog(&mut rng);
+
+        let outlays = vec![
+            Outlay {
+                value: 123,
+                receiver: receiver1.default_subaddress(),
+            },
+            Outlay {
+                value: 456,
+                receiver: receiver2.default_subaddress(),
+            },
+        ];
+
+        // Call send payment.
+        let mut request = mc_mobilecoind_api::SendPaymentRequest::new();
+        request.set_sender_monitor_id(monitor_id.to_vec());
+        request.set_sender_subaddress(0);
+        request.set_outlay_list(RepeatedField::from_vec(
+            outlays
+                .iter()
+                .map(mc_mobilecoind_api::Outlay::from)
+                .collect(),
+        ));
+
+        let response = client.send_payment(&request).unwrap();
+
+        // Get the submitted transaction - it was submitted to one of our mock peers, but we
+        // don't know to which. We enforce the invariant that only one transaction should've been
+        // submitted.
+        let mut opt_submitted_tx: Option<Tx> = None;
+        for mock_peer in server_conn_manager.conns() {
+            let inner = mock_peer.read();
+            match (inner.proposed_txs.len(), opt_submitted_tx.clone()) {
+                (0, _) => {
+                    // Nothing submitted to the current peer.
+                }
+                (1, None) => {
+                    // Found our tx.
+                    opt_submitted_tx = Some(inner.proposed_txs[0].clone())
+                }
+                (1, Some(_)) => {
+                    panic!("Tx submitted to two peers?!");
+                }
+                (_, _) => {
+                    panic!("Multiple transactions submitted?!");
+                }
+            }
+        }
+        let submitted_tx = opt_submitted_tx.unwrap();
+        assert_eq!(
+            submitted_tx,
+            Tx::try_from(response.get_tx_proposal().get_tx()).unwrap()
+        );
+
+        // Verify that the first receipient TxOut hint cannot be decrypted with the fog key, since
+        // that one was not going to a fog address.
+        let tx_out_index1 = *(response
+            .get_tx_proposal()
+            .get_outlay_index_to_tx_out_index()
+            .get(&0)
+            .unwrap()) as usize;
+        let tx_out1 = submitted_tx.prefix.outputs.get(tx_out_index1).unwrap();
+        let mut output_fog_hint = FogHint::new(RistrettoPublic::from_random(&mut rng));
+        assert!(!bool::from(FogHint::ct_decrypt(
+            &fog_private_key,
+            &tx_out1.e_fog_hint,
+            &mut output_fog_hint
+        )));
+
+        // The second recipient (the fog recipient) should have a valid hint.
+        let tx_out_index2 = *(response
+            .get_tx_proposal()
+            .get_outlay_index_to_tx_out_index()
+            .get(&1)
+            .unwrap()) as usize;
+        let tx_out2 = submitted_tx.prefix.outputs.get(tx_out_index2).unwrap();
+        let mut output_fog_hint = FogHint::new(RistrettoPublic::from_random(&mut rng));
+        assert!(bool::from(FogHint::ct_decrypt(
+            &fog_private_key,
+            &tx_out2.e_fog_hint,
+            &mut output_fog_hint
+        )));
+        assert_eq!(
+            output_fog_hint.get_view_pubkey(),
+            &CompressedRistrettoPublic::from(receiver2.default_subaddress().view_public_key())
+        );
+    }
+
+    #[test_with_logger]
+    fn test_send_payment_to_fog_fails_without_fog_resolver(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        let sender = AccountKey::random(&mut rng);
+        let data = MonitorData::new(
+            sender.clone(),
+            0,  // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        // 1 known recipient, 3 random recipients and no monitors.
+        let (ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(
+                3,
+                &vec![sender.default_subaddress()],
+                &vec![],
+                logger.clone(),
+                &mut rng,
+            );
+
+        // Insert into database.
+        let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
+
+        // Allow the new monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Get list of unspent tx outs
+        let utxos = mobilecoind_db
+            .get_utxos_for_subaddress(&monitor_id, 0)
+            .unwrap();
+        assert!(!utxos.is_empty());
+
+        // Generate two random recipients.
+        let receiver1 = AccountKey::random(&mut rng);
+        let receiver2 = AccountKey::random_with_fog(&mut rng);
+
+        let outlays = vec![
+            Outlay {
+                value: 123,
+                receiver: receiver1.default_subaddress(),
+            },
+            Outlay {
+                value: 456,
+                receiver: receiver2.default_subaddress(),
+            },
+        ];
+
+        // Call send payment.
+        let mut request = mc_mobilecoind_api::SendPaymentRequest::new();
+        request.set_sender_monitor_id(monitor_id.to_vec());
+        request.set_sender_subaddress(0);
+        request.set_outlay_list(RepeatedField::from_vec(
+            outlays
+                .iter()
+                .map(mc_mobilecoind_api::Outlay::from)
+                .collect(),
+        ));
+
+        let response = client.send_payment(&request);
+        assert!(response.is_err());
     }
 
     #[test_with_logger]
