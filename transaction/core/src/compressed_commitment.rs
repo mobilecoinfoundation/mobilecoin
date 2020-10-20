@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Copy, Clone, Default, Eq, Serialize, Deserialize, Digestible)]
 #[digestible(transparent)]
 pub struct CompressedCommitment {
-    /// A Pedersen commitment `v*G + b*H` to a quantity `v` with blinding `b`,
+    /// A Pedersen commitment `v*H + b*G` to a quantity `v` with blinding `b`,
     pub point: CompressedRistretto,
 }
 
@@ -103,9 +103,9 @@ mod compressed_commitment_tests {
         let commitment = CompressedCommitment::new(value, blinding);
 
         let expected_point: CompressedRistretto = {
-            let G = GENERATORS.B;
-            let H = GENERATORS.B_blinding;
-            let point = Scalar::from(value) * G + blinding * H;
+            let H = GENERATORS.B;
+            let G = GENERATORS.B_blinding;
+            let point = Scalar::from(value) * H + blinding * G;
             point.compress()
         };
 

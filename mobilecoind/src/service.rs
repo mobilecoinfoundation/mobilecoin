@@ -37,7 +37,6 @@ use mc_util_from_random::FromRandom;
 use mc_util_grpc::{
     rpc_internal_error, rpc_logger, send_result, BuildInfoService, ConnectionUriGrpcioServer,
 };
-use mc_util_url_encoding::MobUrl;
 use mc_watcher::watcher_db::WatcherDB;
 use protobuf::{ProtobufEnum, RepeatedField};
 use std::{
@@ -179,10 +178,10 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         )
         .map_err(|err| rpc_internal_error("monitor_data.new", err, &self.logger))?;
 
-        // Insert into database. If the monitor already exists, we will simply return its id.
-        let id = match self.mobilecoind_db.add_monitor(&data) {
-            Ok(id) => Ok(id),
-            Err(Error::MonitorIdExists) => Ok(MonitorId::from(&data)),
+        // Insert into database. Return the id and flag if the monitor already existed.
+        let (id, is_new) = match self.mobilecoind_db.add_monitor(&data) {
+            Ok(id) => Ok((id, true)),
+            Err(Error::MonitorIdExists) => Ok((MonitorId::from(&data), false)),
             Err(err) => Err(err),
         }
         .map_err(|err| rpc_internal_error("mobilecoind_db.add_monitor", err, &self.logger))?;
@@ -190,6 +189,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         // Return success response.
         let mut response = mc_mobilecoind_api::AddMonitorResponse::new();
         response.set_monitor_id(id.to_vec());
+        response.set_is_new(is_new);
         Ok(response)
     }
 
@@ -350,10 +350,6 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
         let mut wrapper = mc_mobilecoind_api::printable::PrintableWrapper::new();
         wrapper.set_public_address((&subaddress).into());
 
-        // Create the MobUrl for the response
-        let mob_url = MobUrl::try_from(&subaddress)
-            .map_err(|err| rpc_internal_error("MobUrl.try_from", err, &self.logger))?;
-
         // Return response.
         let mut response = mc_mobilecoind_api::GetPublicAddressResponse::new();
         response.set_public_address((&subaddress).into());
@@ -362,7 +358,6 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
                 .b58_encode()
                 .map_err(|err| rpc_internal_error("b58_encode", err, &self.logger))?,
         );
-        response.set_mob_url(mob_url.as_ref().to_string());
 
         Ok(response)
     }
@@ -418,14 +413,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
             .b58_encode()
             .map_err(|err| rpc_internal_error("b58_encode", err, &self.logger))?;
 
-        let mut mob_url = MobUrl::try_from(&receiver)
-            .map_err(|err| rpc_internal_error("MobUrl.try_from", err, &self.logger))?;
-        mob_url.set_amount(request.get_value());
-        mob_url.set_memo(request.get_memo());
-
         let mut response = mc_mobilecoind_api::CreateRequestCodeResponse::new();
         response.set_b58_code(encoded);
-        response.set_mob_url(mob_url.as_ref().to_string());
         Ok(response)
     }
 
@@ -527,7 +516,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
 
         let mut transfer_payload = mc_mobilecoind_api::printable::TransferPayload::new();
         transfer_payload.set_entropy(request.get_entropy().to_vec());
-        transfer_payload.set_tx_out_public_key(request.get_tx_public_key().get_data().to_vec());
+        transfer_payload.set_tx_out_public_key(request.get_tx_public_key().clone());
         transfer_payload.set_memo(request.get_memo().to_string());
 
         let mut transfer_wrapper = mc_mobilecoind_api::printable::PrintableWrapper::new();
@@ -840,7 +829,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static> ServiceApi<T> {
 
         let mut transfer_payload = mc_mobilecoind_api::printable::TransferPayload::new();
         transfer_payload.set_entropy(entropy_bytes.to_vec());
-        transfer_payload.set_tx_out_public_key(tx_public_key.to_bytes().to_vec());
+        transfer_payload.set_tx_out_public_key((&tx_public_key).into());
         transfer_payload.set_memo(request.get_memo().to_string());
 
         let mut transfer_wrapper = mc_mobilecoind_api::printable::PrintableWrapper::new();
@@ -1589,7 +1578,6 @@ mod test {
     use std::{
         convert::{TryFrom, TryInto},
         iter::FromIterator,
-        str::FromStr,
     };
 
     #[test_with_logger]
@@ -1628,6 +1616,21 @@ mod test {
         let expected_monitor_id = MonitorId::from(&data);
 
         assert_eq!(expected_monitor_id, monitor_id);
+
+        // Check that the monitor is reported as new
+        assert!(response.is_new);
+
+        // Add the same monitor again
+        let repeated_response = client.add_monitor(&request).expect("failed to add monitor");
+
+        // Compare the MonitorId we got back to the value we expected.
+        let repeated_monitor_id = MonitorId::try_from(&repeated_response.monitor_id)
+            .expect("failed to convert repeated_response to MonitorId");
+
+        assert_eq!(expected_monitor_id, repeated_monitor_id);
+
+        // Check that the monitor is not reported as new
+        assert!(!repeated_response.is_new);
     }
 
     #[test_with_logger]
@@ -1972,13 +1975,6 @@ mod test {
         wrapper.set_public_address((&account_key.subaddress(10)).into());
         let b58_code = wrapper.b58_encode().unwrap();
         assert_eq!(response.get_b58_code(), b58_code,);
-
-        // Test the the mob_url encoding is correct
-        let mob_url = MobUrl::from_str(response.get_mob_url()).unwrap();
-        assert_eq!(
-            PublicAddress::try_from(&mob_url).unwrap(),
-            account_key.subaddress(10).into()
-        );
 
         // Subaddress that is out of index or an invalid monitor id should error.
         let request = mc_mobilecoind_api::GetPublicAddressRequest::new();
@@ -3679,12 +3675,6 @@ mod test {
 
             let response = client.create_request_code(&request).unwrap();
             let b58_code = response.get_b58_code();
-
-            // Check that the mob url is correct
-            let mob_url = MobUrl::from_str(response.get_mob_url()).unwrap();
-            assert_eq!(PublicAddress::try_from(&mob_url).unwrap(), receiver);
-            assert_eq!(mob_url.get_amount().unwrap(), "1234567890");
-            assert_eq!(mob_url.get_memo().unwrap(), "hello there");
 
             // Attempt to decode it.
             let mut request = mc_mobilecoind_api::ParseRequestCodeRequest::new();

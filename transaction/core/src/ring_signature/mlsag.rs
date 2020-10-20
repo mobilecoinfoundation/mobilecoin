@@ -108,8 +108,7 @@ impl RingMLSAG {
             return Err(Error::IndexOutOfBounds);
         }
 
-        let G = GENERATORS.B;
-        let H = GENERATORS.B_blinding;
+        let G = GENERATORS.B_blinding;
 
         let key_image = KeyImage::from(onetime_private_key);
 
@@ -145,7 +144,7 @@ impl RingMLSAG {
             let (P_i, input_commitment) = &decompressed_ring[i];
 
             let (L0, R0, L1) = if i == real_index {
-                // c_{i+1} = Hn( m | key_image | alpha_0 * G | alpha_0 * Hp(P_i) | alpha_1 * H )
+                // c_{i+1} = Hn( m | key_image | alpha_0 * G | alpha_0 * Hp(P_i) | alpha_1 * G )
                 //         = Hn( m | key_image |      L0     |         R0        |      L1     )
                 //
                 // where P_i is the i^th onetime public key.
@@ -153,7 +152,7 @@ impl RingMLSAG {
 
                 let L0 = *alpha_0 * G;
                 let R0 = *alpha_0 * hash_to_point(&P_i);
-                let L1 = *alpha_1 * H;
+                let L1 = *alpha_1 * G;
                 (L0, R0, L1)
             } else {
                 // c_{i+1} = Hn( m | key_image | r_{i,0} * G + c_i * P_i | r_{i,0} * Hp(P_i) + c_i * I | r_{i,1} * G + c_i * Z_i )
@@ -169,7 +168,7 @@ impl RingMLSAG {
                 let L0 = r[2 * i] * G + c[i] * P_i.as_ref();
                 let R0 = r[2 * i] * hash_to_point(&P_i) + c[i] * I;
                 let L1 =
-                    r[2 * i + 1] * H + c[i] * (output_commitment.point - input_commitment.point);
+                    r[2 * i + 1] * G + c[i] * (output_commitment.point - input_commitment.point);
                 (L0, R0, L1)
             };
 
@@ -196,7 +195,7 @@ impl RingMLSAG {
         if check_value_is_preserved {
             let (_, input_commitment) = decompressed_ring[real_index];
             let difference: RistrettoPoint = output_commitment.point - input_commitment.point;
-            if difference != (z * H) {
+            if difference != (z * G) {
                 return Err(Error::ValueNotConserved);
             }
         }
@@ -228,8 +227,7 @@ impl RingMLSAG {
             return Err(Error::LengthMismatch(2 * ring_size, self.responses.len()));
         }
 
-        let G = GENERATORS.B;
-        let H = GENERATORS.B_blinding;
+        let G = GENERATORS.B_blinding;
 
         // The key image must decompress.
         // This ensures that the key image encodes a valid Ristretto point.
@@ -275,7 +273,7 @@ impl RingMLSAG {
                 recomputed_c[i]
             };
 
-            // c_{i+1} = Hn( m | key_image |  r_{i,0} * G + c_i * P_i | r_{i,0} * Hp(P_i) + c_i * I | r_{i,1} * H + c_i * Z_i )
+            // c_{i+1} = Hn( m | key_image |  r_{i,0} * G + c_i * P_i | r_{i,0} * Hp(P_i) + c_i * I | r_{i,1} * G + c_i * Z_i )
             //         = Hn( m | key_image |           L0            |               R0            |           L1            )
             //
             // where:
@@ -285,7 +283,7 @@ impl RingMLSAG {
 
             let L0 = r[2 * i] * G + c_i * P_i.as_ref();
             let R0 = r[2 * i] * hash_to_point(P_i) + c_i * I;
-            let L1 = r[2 * i + 1] * H + c_i * (output_commitment.point - input_commitment.point);
+            let L1 = r[2 * i + 1] * G + c_i * (output_commitment.point - input_commitment.point);
 
             recomputed_c[(i + 1) % ring_size] = {
                 let mut hasher = Blake2b::new();

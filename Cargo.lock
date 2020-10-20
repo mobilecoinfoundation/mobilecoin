@@ -29,8 +29,7 @@ dependencies = [
 [[package]]
 name = "aes-gcm"
 version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86f5007801316299f922a6198d1d09a0bae95786815d066d5880d13f7c45ead1"
+source = "git+https://github.com/xoloki/AEADs?rev=d1a8517d3dd867ed9c5794002add67992a42f6aa#d1a8517d3dd867ed9c5794002add67992a42f6aa"
 dependencies = [
  "aead",
  "aes",
@@ -599,7 +598,7 @@ checksum = "b3a71ab494c0b5b860bdc8407ae08978052417070c2ced38573a9157ad75b8ac"
 [[package]]
 name = "cpuid-bool"
 version = "0.1.2"
-source = "git+https://github.com/eranrund/RustCrypto-utils?rev=e00f5f16e395349c2c2395aac9287da0ac843a73#e00f5f16e395349c2c2395aac9287da0ac843a73"
+source = "git+https://github.com/eranrund/RustCrypto-utils?rev=74f8e04e9d18d93fc6d05c72756c236dc88daa19#74f8e04e9d18d93fc6d05c72756c236dc88daa19"
 
 [[package]]
 name = "crc"
@@ -1378,7 +1377,8 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 [[package]]
 name = "grpcio"
 version = "0.6.0"
-source = "git+https://github.com/jcape/grpc-rs?rev=74797d973f0e81555c3c01857ccdbb8092f21f67#74797d973f0e81555c3c01857ccdbb8092f21f67"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "63fac32f9f74fa1fd78215d04b47f134c1ee5a535c237a54d52bf18cf65ac983"
 dependencies = [
  "futures 0.3.5",
  "grpcio-sys",
@@ -1400,7 +1400,8 @@ dependencies = [
 [[package]]
 name = "grpcio-sys"
 version = "0.6.0"
-source = "git+https://github.com/jcape/grpc-rs?rev=74797d973f0e81555c3c01857ccdbb8092f21f67#74797d973f0e81555c3c01857ccdbb8092f21f67"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "12d4e9309f1151c9ebcd07622858c4a504b6ea6cd2821524fe74ccde8ea830d7"
 dependencies = [
  "bindgen",
  "cc",
@@ -2590,10 +2591,21 @@ dependencies = [
  "digest 0.9.0",
  "failure",
  "hkdf",
+ "mc-crypto-ct-aead",
  "mc-crypto-keys",
  "mc-util-from-random",
  "mc-util-test-helper",
  "rand_core 0.5.1",
+]
+
+[[package]]
+name = "mc-crypto-ct-aead"
+version = "0.5.0"
+dependencies = [
+ "aead",
+ "aes-gcm",
+ "block-cipher",
+ "subtle 2.2.3",
 ]
 
 [[package]]
@@ -2884,14 +2896,12 @@ dependencies = [
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
  "mc-transaction-std",
- "mc-util-b58-payloads",
  "mc-util-from-random",
  "mc-util-grpc",
  "mc-util-lmdb",
  "mc-util-repr-bytes",
  "mc-util-serial",
  "mc-util-uri",
- "mc-util-url-encoding",
  "mc-watcher",
  "more-asserts",
  "num_cpus",
@@ -3285,7 +3295,6 @@ dependencies = [
  "mc-api",
  "mc-common",
  "mc-mobilecoind-api",
- "mc-util-b58-payloads",
  "mc-util-grpc",
  "protobuf",
  "rust_decimal",
@@ -3371,23 +3380,6 @@ dependencies = [
  "serde",
  "yaml-rust",
  "zeroize 1.1.0",
-]
-
-[[package]]
-name = "mc-util-b58-payloads"
-version = "1.0.0"
-dependencies = [
- "bs58",
- "crc",
- "failure",
- "hex_fmt",
- "mc-account-keys",
- "mc-common",
- "mc-crypto-keys",
- "mc-util-serial",
- "mc-util-test-helper",
- "mc-util-uri",
- "rand 0.7.3",
 ]
 
 [[package]]
@@ -3657,25 +3649,6 @@ dependencies = [
  "rand 0.7.3",
  "rand_hc 0.2.0",
  "serde",
- "url 2.1.1",
-]
-
-[[package]]
-name = "mc-util-url-encoding"
-version = "1.0.0"
-dependencies = [
- "base64 0.11.0",
- "crc",
- "displaydoc",
- "hex 0.4.2",
- "mc-account-keys",
- "mc-common",
- "mc-crypto-keys",
- "mc-util-b58-payloads",
- "mc-util-from-random",
- "mc-util-test-helper",
- "mc-util-uri",
- "rand_hc 0.2.0",
  "url 2.1.1",
 ]
 

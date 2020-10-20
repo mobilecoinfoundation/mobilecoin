@@ -34,7 +34,7 @@ pub type Blinding = CurveScalar;
 /// A commitment to an amount of MobileCoin, denominated in picoMOB.
 #[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Message, Digestible)]
 pub struct Amount {
-    /// A Pedersen commitment `v*G + b*H` to a quantity `v` of MobileCoin, with blinding `b`,
+    /// A Pedersen commitment `v*H + b*G` to a quantity `v` of MobileCoin, with blinding `b`,
     #[prost(message, required, tag = "1")]
     pub commitment: CompressedCommitment,
 
@@ -44,7 +44,7 @@ pub struct Amount {
 }
 
 impl Amount {
-    /// Creates a commitment `value*G + blinding*H`, and "masks" the commitment secrets
+    /// Creates a commitment `value*H + blinding*G`, and "masks" the commitment secrets
     /// so that they can be recovered by the recipient.
     ///
     /// # Arguments
@@ -55,7 +55,7 @@ impl Amount {
         // The blinding is `Blake2B("blinding" | shared_secret)`
         let blinding: Scalar = get_blinding(shared_secret);
 
-        // Pedersen commitment `v*G + b*H`.
+        // Pedersen commitment `v*H + b*G`.
         let commitment = CompressedCommitment::new(value, blinding);
 
         // The value is XORed with the first 8 bytes of the mask.
@@ -75,7 +75,7 @@ impl Amount {
         })
     }
 
-    /// Returns the value `v` and blinding `b` in the commitment `v*G + b*H`.
+    /// Returns the value `v` and blinding `b` in the commitment `v*H + b*G`.
     ///
     /// Value is denominated in picoMOB.
     ///

@@ -31,7 +31,7 @@ message TransferPayload {
 
     /// The public key of the UTXO to spend. This is an optimization, meaning
     /// the recipient does not need to scan the entire ledger.
-    bytes tx_out_public_key = 2;
+    external.CompressedRistretto tx_out_public_key = 2;
 
     /// Any additional text explaining the gift
     string memo = 3;

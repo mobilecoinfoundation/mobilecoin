@@ -51,12 +51,14 @@ pub struct JsonMonitorRequest {
 #[derive(Serialize, Default)]
 pub struct JsonMonitorResponse {
     pub monitor_id: String,
+    pub is_new: bool,
 }
 
 impl From<&mc_mobilecoind_api::AddMonitorResponse> for JsonMonitorResponse {
     fn from(src: &mc_mobilecoind_api::AddMonitorResponse) -> Self {
         Self {
             monitor_id: hex::encode(&src.monitor_id),
+            is_new: src.is_new,
         }
     }
 }

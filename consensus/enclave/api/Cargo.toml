@@ -30,5 +30,5 @@ mc-sgx-report-cache-api = { path = "../../../sgx/report-cache/api" }
 mc-transaction-core = { path = "../../../transaction/core" }
 
 cfg-if = "0.1"
-failure = { version = "0.1.5", default-features = false, features = ["derive"] }
+failure = { version = "0.1.8", default-features = false, features = ["derive"] }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }

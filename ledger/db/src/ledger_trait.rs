@@ -6,7 +6,7 @@ use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{
     ring_signature::KeyImage,
     tx::{TxOut, TxOutMembershipProof},
-    Block, BlockContents, BlockData, BlockSignature,
+    Block, BlockContents, BlockData, BlockIndex, BlockSignature,
 };
 use mockall::*;
 
@@ -24,19 +24,19 @@ pub trait Ledger: Send {
     fn num_blocks(&self) -> Result<u64, Error>;
 
     /// Gets a Block by its index in the blockchain.
-    fn get_block(&self, block_number: u64) -> Result<Block, Error>;
+    fn get_block(&self, block_number: BlockIndex) -> Result<Block, Error>;
 
     /// Get the contents of a block.
-    fn get_block_contents(&self, block_number: u64) -> Result<BlockContents, Error>;
+    fn get_block_contents(&self, block_number: BlockIndex) -> Result<BlockContents, Error>;
 
     /// Gets a block signature by its index in the blockchain.
-    fn get_block_signature(&self, block_number: u64) -> Result<BlockSignature, Error>;
+    fn get_block_signature(&self, block_number: BlockIndex) -> Result<BlockSignature, Error>;
 
     /// Gets a block and all of its associated data by its index in the blockchain.
-    fn get_block_data(&self, block_number: u64) -> Result<BlockData, Error>;
+    fn get_block_data(&self, block_number: BlockIndex) -> Result<BlockData, Error>;
 
     /// Gets block index by a TxOut global index.
-    fn get_block_index_by_tx_out_index(&self, tx_out_index: u64) -> Result<u64, Error>;
+    fn get_block_index_by_tx_out_index(&self, tx_out_index: u64) -> Result<BlockIndex, Error>;
 
     /// Get the total number of TxOuts in the ledger.
     fn num_txos(&self) -> Result<u64, Error>;
@@ -71,10 +71,10 @@ pub trait Ledger: Send {
     }
 
     /// Checks if the ledger contains a given key image.
-    /// If so, returns the block height at which it entered the ledger.
+    /// If so, returns the index of the block in which it entered the ledger.
     /// Ok(None) is returned when the key image is not in the ledger.
-    fn check_key_image(&self, key_image: &KeyImage) -> Result<Option<u64>, Error>;
+    fn check_key_image(&self, key_image: &KeyImage) -> Result<Option<BlockIndex>, Error>;
 
     /// Gets the key images used by transactions in a single block.
-    fn get_key_images_by_block(&self, block_number: u64) -> Result<Vec<KeyImage>, Error>;
+    fn get_key_images_by_block(&self, block_number: BlockIndex) -> Result<Vec<KeyImage>, Error>;
 }

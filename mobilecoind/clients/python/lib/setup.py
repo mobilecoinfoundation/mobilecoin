@@ -8,14 +8,15 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="mobilecoin",
-    version="0.3.0",
+    version="0.3.3",
     author="MobileCoin",
     author_email="support@mobilecoin.com",
     description="Python bindings for the MobileCoin daemon API.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/mobilecoinofficial/mobilecoin/tree/master/mobilecoind/clients/python/lib",
-    packages=setuptools.find_packages(),
+    package_data={'mobilecoin': ['py.typed']},
+    packages=['mobilecoin'],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
@@ -24,4 +25,5 @@ setuptools.setup(
     python_requires='>=3.6',
     test_suite='nose.collector',
     tests_require=['nose'],
+    install_requires=['grpcio', 'grpcio-tools'],
 )

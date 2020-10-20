@@ -14,7 +14,7 @@ use mc_util_repr_bytes::{
 #[derive(Copy, Clone, Default, Digestible)]
 #[digestible(transparent)]
 pub struct Commitment {
-    /// A Pedersen commitment `v*G + b*H` to a quantity `v` with blinding `b`,
+    /// A Pedersen commitment `v*H + b*G` to a quantity `v` with blinding `b`,
     pub point: RistrettoPoint,
 }
 
@@ -82,9 +82,9 @@ mod commitment_tests {
         let commitment = Commitment::new(value, blinding);
 
         let expected_point: RistrettoPoint = {
-            let G = GENERATORS.B;
-            let H = GENERATORS.B_blinding;
-            Scalar::from(value) * G + blinding * H
+            let H = GENERATORS.B;
+            let G = GENERATORS.B_blinding;
+            Scalar::from(value) * H + blinding * G
         };
 
         assert_eq!(commitment.point, expected_point);

@@ -259,6 +259,7 @@ message AddMonitorRequest {
 }
 message AddMonitorResponse {
     bytes monitor_id = 1;
+    bool is_new = 2;
 }
 
 // Remove a monitor and all associated data.
@@ -317,7 +318,6 @@ message GetPublicAddressRequest {
 message GetPublicAddressResponse {
     external.PublicAddress public_address = 1;
     string b58_code = 2;
-    string mob_url = 3;
 }
 
 //
@@ -342,7 +342,6 @@ message CreateRequestCodeRequest {
 }
 message CreateRequestCodeResponse {
     string b58_code = 1;
-    string mob_url = 2;
 }
 
 // Decode a base-58 encoded "MobileCoin Transfer Code" into entropy/tx_public_key/memo.
@@ -460,8 +459,8 @@ message GenerateTransferCodeTxResponse {
     string b58_code = 5;
 }
 
-// Generate a transaction without a monitor, requires an account key and 
-// a list of UnspentTxOuts. All coins (minus the fee) are transferred to 
+// Generate a transaction without a monitor, requires an account key and
+// a list of UnspentTxOuts. All coins (minus the fee) are transferred to
 // a single recipient. Used for temporary accounts like gift codes.
 message GenerateTxFromTxOutListRequest {
     // Account key that owns the transactions

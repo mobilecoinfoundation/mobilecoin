@@ -33,5 +33,5 @@ if __name__ == '__main__':
     print("    {:<18}{}".format("Master Key:", entropy_bytes.hex()))
     print("    {:<18}{}".format("Subaddress Index:", args.subaddress))
     print("    {:<18}{}".format("Address Code:", public_address.b58_code))
-    print("    {:<18}{}".format("Address URL:", public_address.mob_url))
+    print("    {:<18}{}".format("Address URL:", "mob58://"+ public_address.b58_code))
     print("\n")
