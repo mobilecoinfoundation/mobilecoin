@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-use crate::range;
+use crate::membership_proofs;
 use displaydoc::Display;
 
 /// Reasons why a creating or validating a proof of membership might fail.
@@ -13,7 +13,7 @@ pub enum Error {
     MissingLeafHash(u64),
 
     /// Invalid Range: {0}
-    RangeError(range::RangeError),
+    RangeError(membership_proofs::RangeError),
 
     /// An unexpected tx out membership element was provided, which was not adjacent to the preceding elements, at index {0}
     UnexpectedMembershipElement(usize),
@@ -37,8 +37,8 @@ impl From<mc_util_serial::encode::Error> for Error {
     }
 }
 
-impl From<range::RangeError> for Error {
-    fn from(e: range::RangeError) -> Self {
+impl From<membership_proofs::RangeError> for Error {
+    fn from(e: membership_proofs::RangeError) -> Self {
         Error::RangeError(e)
     }
 }

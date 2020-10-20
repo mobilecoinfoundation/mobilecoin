@@ -379,7 +379,9 @@ mod tests {
         },
     };
 
-    use crate::{range::Range, validation::validate::validate_ring_elements_are_sorted};
+    use crate::{
+        membership_proofs::Range, validation::validate::validate_ring_elements_are_sorted,
+    };
     use mc_crypto_keys::{CompressedRistrettoPublic, ReprBytes};
     use mc_ledger_db::{Ledger, LedgerDB};
     use mc_transaction_core_test_utils::{

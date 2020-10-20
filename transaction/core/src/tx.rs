@@ -20,8 +20,8 @@ use crate::{
     domain_separators::TXOUT_CONFIRMATION_NUMBER_DOMAIN_TAG,
     encrypted_fog_hint::EncryptedFogHint,
     get_tx_out_shared_secret,
+    membership_proofs::Range,
     onetime_keys::{create_onetime_public_key, create_shared_secret, create_tx_public_key},
-    range::Range,
     ring_signature::{KeyImage, SignatureRctBulletproofs},
     CompressedCommitment,
 };

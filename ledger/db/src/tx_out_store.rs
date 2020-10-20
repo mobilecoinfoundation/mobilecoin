@@ -29,7 +29,6 @@ use mc_common::Hash;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use mc_transaction_core::{
     membership_proofs::*,
-    range::Range,
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipProof},
 };
 use mc_util_serial::{decode, encode};
@@ -771,9 +770,8 @@ pub mod tx_out_store_tests {
     use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
     use mc_transaction_core::{
         encrypted_fog_hint::{EncryptedFogHint, ENCRYPTED_FOG_HINT_LEN},
-        membership_proofs::{hash_leaf, hash_nodes, NIL_HASH},
+        membership_proofs::{hash_leaf, hash_nodes, Range, NIL_HASH},
         onetime_keys::*,
-        range::Range,
         tx::TxOut,
         Amount,
     };

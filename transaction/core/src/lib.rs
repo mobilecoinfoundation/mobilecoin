@@ -23,7 +23,6 @@ pub mod encrypted_fog_hint;
 pub mod fog_hint;
 pub mod membership_proofs;
 pub mod onetime_keys;
-pub mod range;
 pub mod range_proofs;
 pub mod ring_signature;
 pub mod tx;

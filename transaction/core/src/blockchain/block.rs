@@ -195,7 +195,7 @@ pub fn compute_block_id(
 #[cfg(test)]
 mod block_tests {
     use crate::{
-        range::Range,
+        membership_proofs::Range,
         tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash},
         Block, BlockContents, BlockContentsHash, BlockID, BLOCK_VERSION,
     };

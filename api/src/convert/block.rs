@@ -48,7 +48,7 @@ mod tests {
     use super::*;
     use crate::external;
     use mc_transaction_core::{
-        range::Range,
+        membership_proofs::Range,
         tx::{TxOutMembershipElement, TxOutMembershipHash},
     };
     use protobuf::Message;

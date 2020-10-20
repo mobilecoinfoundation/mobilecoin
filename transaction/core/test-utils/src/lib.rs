@@ -9,12 +9,11 @@ pub use mc_transaction_core::{
     constants::MINIMUM_FEE,
     get_tx_out_shared_secret,
     onetime_keys::recover_onetime_private_key,
-    range::Range,
     ring_signature::KeyImage,
     tx::{Tx, TxOut, TxOutMembershipElement, TxOutMembershipHash},
     Block, BlockID, BlockIndex, BLOCK_VERSION,
 };
-use mc_transaction_core::{constants::RING_SIZE, BlockContents};
+use mc_transaction_core::{constants::RING_SIZE, membership_proofs::Range, BlockContents};
 use mc_transaction_std::{InputCredentials, TransactionBuilder};
 use mc_util_from_random::FromRandom;
 use rand::{seq::SliceRandom, Rng};

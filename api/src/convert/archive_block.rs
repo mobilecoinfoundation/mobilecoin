@@ -119,7 +119,7 @@ mod tests {
     use mc_crypto_keys::{Ed25519Private, RistrettoPublic};
     use mc_transaction_core::{
         encrypted_fog_hint::ENCRYPTED_FOG_HINT_LEN,
-        range::Range,
+        membership_proofs::Range,
         ring_signature::KeyImage,
         tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash},
         Amount, Block, BlockContents, BlockData, BlockID, BlockSignature,
