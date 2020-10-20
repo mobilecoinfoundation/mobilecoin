@@ -45,13 +45,12 @@ use mc_crypto_rand::McRng;
 use mc_sgx_compat::sync::Mutex;
 use mc_sgx_report_cache_api::{ReportableEnclave, Result as ReportableEnclaveResult};
 use mc_transaction_core::{
-    amount::Amount,
     membership_proofs::compute_implied_merkle_root,
     onetime_keys::{create_onetime_public_key, create_shared_secret, create_tx_public_key},
     ring_signature::{KeyImage, Scalar},
     tx::{Tx, TxOut, TxOutMembershipProof},
     validation::TransactionValidationError,
-    Block, BlockContents, BlockSignature, BLOCK_VERSION,
+    Amount, Block, BlockContents, BlockSignature, BLOCK_VERSION,
 };
 use prost::Message;
 use rand_core::{CryptoRng, RngCore};

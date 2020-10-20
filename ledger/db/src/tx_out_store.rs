@@ -770,12 +770,12 @@ pub mod tx_out_store_tests {
     use mc_common::Hash;
     use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
     use mc_transaction_core::{
-        amount::Amount,
         encrypted_fog_hint::{EncryptedFogHint, ENCRYPTED_FOG_HINT_LEN},
         membership_proofs::{hash_leaf, hash_nodes, NIL_HASH},
         onetime_keys::*,
         range::Range,
         tx::TxOut,
+        Amount,
     };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};

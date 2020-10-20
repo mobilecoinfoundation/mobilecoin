@@ -7,28 +7,21 @@
 
 #![cfg_attr(test, allow(clippy::unnecessary_operation))]
 
-use crate::{
-    domain_separators::{AMOUNT_BLINDING_DOMAIN_TAG, AMOUNT_VALUE_DOMAIN_TAG},
-    ring_signature::CurveScalar,
-    CompressedCommitment,
-};
+use crate::domain_separators::{AMOUNT_BLINDING_DOMAIN_TAG, AMOUNT_VALUE_DOMAIN_TAG};
 use blake2::{Blake2b, Digest};
 use curve25519_dalek::scalar::Scalar;
-use displaydoc::Display;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::RistrettoPublic;
 use prost::Message;
 use serde::{Deserialize, Serialize};
 
-/// Errors that can occur when constructing an amount.
-#[derive(Debug, Display, Eq, PartialEq)]
-pub enum AmountError {
-    /// The masked value, blinding, or shared secret are not consistent with the commitment.
-    InconsistentCommitment,
-}
+mod commitment;
+mod compressed_commitment;
+mod error;
 
-// The "blinding factor" in a Pedersen commitment.
-pub type Blinding = CurveScalar;
+pub use commitment::Commitment;
+pub use compressed_commitment::CompressedCommitment;
+pub use error::AmountError;
 
 /// A commitment to an amount of MobileCoin, denominated in picoMOB.
 #[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Message, Digestible)]

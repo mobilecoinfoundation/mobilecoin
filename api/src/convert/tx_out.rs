@@ -2,7 +2,7 @@
 
 use crate::{convert::ConversionError, external};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
-use mc_transaction_core::{amount::Amount, encrypted_fog_hint::EncryptedFogHint, tx};
+use mc_transaction_core::{encrypted_fog_hint::EncryptedFogHint, tx, Amount};
 use std::convert::TryFrom;
 
 /// Convert tx::TxOut --> external::TxOut.
@@ -60,7 +60,7 @@ impl TryFrom<&external::TxOut> for tx::TxOut {
 mod tests {
     use super::*;
     use mc_crypto_keys::RistrettoPublic;
-    use mc_transaction_core::{amount::Amount, encrypted_fog_hint::ENCRYPTED_FOG_HINT_LEN};
+    use mc_transaction_core::{encrypted_fog_hint::ENCRYPTED_FOG_HINT_LEN, Amount};
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
 

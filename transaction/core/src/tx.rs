@@ -463,11 +463,11 @@ derive_prost_message_from_repr_bytes!(TxOutConfirmationNumber);
 #[cfg(test)]
 mod tests {
     use crate::{
-        amount::Amount,
         constants::MINIMUM_FEE,
         encrypted_fog_hint::{EncryptedFogHint, ENCRYPTED_FOG_HINT_LEN},
         ring_signature::SignatureRctBulletproofs,
         tx::{Tx, TxIn, TxOut, TxPrefix},
+        Amount,
     };
     use alloc::vec::Vec;
     use mc_crypto_keys::RistrettoPublic;
