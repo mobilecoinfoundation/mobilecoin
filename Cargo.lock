@@ -660,20 +660,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "69323bff1fb41c635347b8ead484a5ca6c3f11914d784170b158d8449ab07f8e"
 dependencies = [
  "cfg-if",
- "crossbeam-channel 0.4.2",
+ "crossbeam-channel",
  "crossbeam-deque",
  "crossbeam-epoch",
  "crossbeam-queue 0.2.1",
  "crossbeam-utils 0.7.2",
-]
-
-[[package]]
-name = "crossbeam-channel"
-version = "0.3.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8ec7fcd21571dc78f96cc96243cab8d8f035247c3efd16c687be154c3fa9efa"
-dependencies = [
- "crossbeam-utils 0.6.6",
 ]
 
 [[package]]
@@ -2457,7 +2448,7 @@ name = "mc-consensus-scp"
 version = "1.0.0"
 dependencies = [
  "bigint",
- "crossbeam-channel 0.3.9",
+ "crossbeam-channel",
  "maplit",
  "mc-common",
  "mc-crypto-digestible",
@@ -2834,7 +2825,7 @@ dependencies = [
 name = "mc-ledger-sync"
 version = "1.0.0"
 dependencies = [
- "crossbeam-channel 0.3.9",
+ "crossbeam-channel",
  "failure",
  "grpcio",
  "lazy_static",
@@ -2868,7 +2859,7 @@ dependencies = [
 name = "mc-mobilecoind"
 version = "1.0.0"
 dependencies = [
- "crossbeam-channel 0.3.9",
+ "crossbeam-channel",
  "failure",
  "futures 0.3.5",
  "grpcio",
@@ -2962,7 +2953,7 @@ dependencies = [
 name = "mc-peers"
 version = "1.0.0"
 dependencies = [
- "crossbeam-channel 0.3.9",
+ "crossbeam-channel",
  "ed25519",
  "failure",
  "grpcio",
@@ -3562,7 +3553,7 @@ name = "mc-util-metered-channel"
 version = "1.0.0"
 dependencies = [
  "chrono",
- "crossbeam-channel 0.3.9",
+ "crossbeam-channel",
  "grpcio",
  "lazy_static",
  "mc-common",
@@ -3577,7 +3568,7 @@ name = "mc-util-metrics"
 version = "1.0.0"
 dependencies = [
  "chrono",
- "crossbeam-channel 0.3.9",
+ "crossbeam-channel",
  "grpcio",
  "lazy_static",
  "mc-common",
@@ -5336,7 +5327,7 @@ version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51b3336ce47ce2f96673499fc07eb85e3472727b9a7a2959964b002c2ce8fbbb"
 dependencies = [
- "crossbeam-channel 0.4.2",
+ "crossbeam-channel",
  "slog",
  "take_mut",
  "thread_local",
