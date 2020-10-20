@@ -82,10 +82,7 @@ impl GrpcFogPubkeyResolver {
 impl FogPubkeyResolver for GrpcFogPubkeyResolver {
     type Error = Error;
 
-    fn get_fog_pubkey(
-        &mut self,
-        recipient: &PublicAddress,
-    ) -> Result<FullyValidatedFogPubkey, Error> {
+    fn get_fog_pubkey(&self, recipient: &PublicAddress) -> Result<FullyValidatedFogPubkey, Error> {
         let fog_report_url_str = recipient.fog_report_url().ok_or(Error::RecipientHasNoFog)?;
         let fog_report_url = FogUri::from_str(fog_report_url_str)?;
         let fog_report_id_str = recipient.fog_report_id().unwrap_or("");
