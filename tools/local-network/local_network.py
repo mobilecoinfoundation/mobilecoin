@@ -410,7 +410,7 @@ class Network:
             )
 
         subprocess.run(
-            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p mc-consensus-service -p mc-ledger-distribution -p mc-admin-http-gateway -p mc-mobilecoind {CARGO_FLAGS}',
+            f'cd {PROJECT_DIR} && CONSENSUS_ENCLAVE_PRIVKEY="{enclave_pem}" cargo build -p mc-consensus-service -p mc-ledger-distribution -p mc-admin-http-gateway -p mc-mobilecoind -p mc-util-grpc-admin-tool {CARGO_FLAGS}',
             shell=True,
             check=True,
         )

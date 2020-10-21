@@ -1,0 +1,23 @@
+[package]
+name = "mc-util-grpc-admin-tool"
+version = "1.0.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[[bin]]
+name = "mc-util-grpc-admin-tool"
+path = "src/bin/main.rs"
+
+[dependencies]
+mc-common = { path = "../../common", features = ["std"] }
+mc-util-grpc = { path = "../grpc" }
+mc-util-uri = { path = "../uri" }
+
+grpcio = "0.6.0"
+percent-encoding = "2.1.0"
+structopt = "0.3"
+
+[build-dependencies]
+# Even though this is unused, it needs to be here otherwise Cargo brings in some weird mixture of packages/features that refuses to compile.
+# Go figure ¯\_(ツ)_/¯
+serde = { version = "1", default-features = false, features = ["alloc", "derive"] }

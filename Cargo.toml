@@ -76,6 +76,7 @@ members = [
     "util/from-random",
     "util/generate-sample-ledger",
     "util/grpc",
+    "util/grpc-admin-tool",
     "util/grpc-token-generator",
     "util/host-cert",
     "util/keyfile",
