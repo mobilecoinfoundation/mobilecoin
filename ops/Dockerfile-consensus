@@ -72,6 +72,7 @@ COPY bin/consensus-service /usr/bin/
 COPY bin/ledger-distribution /usr/bin/
 COPY bin/mc-admin-http-gateway /usr/bin/
 COPY bin/mc-ledger-migration /usr/bin/
+COPY bin/mc-util-grpc-admin-tool /usr/bin/
 
 # Q: Why not use NODE_LEDGER_DIR here?
 # A: The ENV dictates where the app actually looks, and the ARG sets
