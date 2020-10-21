@@ -752,8 +752,11 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
         let mut tx_out_to_outlay_index = HashMap::default();
         let mut outlay_confirmation_numbers = Vec::default();
         for (i, outlay) in destinations.iter().enumerate() {
-            let target_acct_pubkey =
-                Self::get_fog_pubkey_for_outlay(outlay, fog_pubkey_resolver, tombstone_block)?;
+            let target_acct_pubkey = Self::get_fog_pubkey_for_public_address(
+                &outlay.receiver,
+                fog_pubkey_resolver,
+                tombstone_block,
+            )?;
 
             let (tx_out, confirmation_number) = tx_builder
                 .add_output(
@@ -781,11 +784,18 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
 
         // If we do, add an output for that as well.
         if change > 0 {
+            let change_public_address = from_account_key.subaddress(change_subaddress);
+            let target_acct_pubkey = Self::get_fog_pubkey_for_public_address(
+                &change_public_address,
+                fog_pubkey_resolver,
+                tombstone_block,
+            )?;
+
             tx_builder
                 .add_output(
                     change,
-                    &from_account_key.subaddress(change_subaddress),
-                    None,
+                    &change_public_address,
+                    target_acct_pubkey.as_ref(),
                     rng,
                 )
                 .map_err(|err| {
@@ -840,31 +850,31 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
         })
     }
 
-    fn get_fog_pubkey_for_outlay(
-        outlay: &Outlay,
+    fn get_fog_pubkey_for_public_address(
+        address: &PublicAddress,
         fog_pubkey_resolver: &Option<Arc<FPR>>,
         tombstone_block: BlockIndex,
     ) -> Result<Option<RistrettoPublic>, Error> {
-        if outlay.receiver.fog_report_url().is_none() {
+        if address.fog_report_url().is_none() {
             return Ok(None);
         }
 
         match fog_pubkey_resolver.as_ref() {
             None => Err(Error::FogError(format!(
-                "Recipient {} uses fog but mobilecoind was started without fog support",
-                outlay.receiver
+                "{} uses fog but mobilecoind was started without fog support",
+                address,
             ))),
             Some(resolver) => resolver
-                .get_fog_pubkey(&outlay.receiver)
+                .get_fog_pubkey(address)
                 .map_err(|err| {
                     Error::FogError(format!(
-                        "Failed getting fog public key for recipient {}: {}",
-                        outlay.receiver, err
+                        "Failed getting fog public key for{}: {}",
+                        address, err
                     ))
                 })
                 .and_then(|result| {
                     if tombstone_block > result.pubkey_expiry {
-                        return Err(Error::FogError(format!("Recipient {} fog public key expiry block ({}) is lower than the provided tombstone block ({})", outlay.receiver, result.pubkey_expiry, tombstone_block)));
+                        return Err(Error::FogError(format!("{} fog public key expiry block ({}) is lower than the provided tombstone block ({})", address, result.pubkey_expiry, tombstone_block)));
                     }
                     Ok(Some(result.pubkey))
                 }),
