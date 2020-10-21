@@ -40,7 +40,7 @@ base64 = "0.11"
 cfg-if = "0.1"
 chrono = "0.4"
 displaydoc = { version = "0.1.7", default-features = false }
-fs_extra = "1.1"
+fs_extra = "1.2"
 futures = "0.3"
 grpcio = "0.6.0"
 hex = "0.4"
