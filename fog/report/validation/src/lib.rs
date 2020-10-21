@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-#![cfg_attr(not(any(test, feature = "std")), no_std)]
+#![cfg_attr(not(any(test, feature = "automock")), no_std)]
 
 extern crate alloc;
 
@@ -9,7 +9,7 @@ use core::fmt::{Debug, Display};
 use mc_account_keys::PublicAddress;
 use mc_crypto_keys::RistrettoPublic;
 
-#[cfg(any(test, feature = "std"))]
+#[cfg(any(test, feature = "automock"))]
 use mockall::*;
 
 pub mod ingest_report;
@@ -29,7 +29,7 @@ impl AsRef<RistrettoPublic> for IasValidatedFogPubkey {
 /// including all the data from the report server.
 /// This interface may include grpc and so likely cannot be implemented in a way
 /// that is safe for libmobilecoin / asynchronous java requirements.
-#[cfg_attr(any(test, feature = "std"), automock(type Error = String;))]
+#[cfg_attr(any(test, feature = "automock"), automock(type Error = String;))]
 pub trait FogPubkeyResolver {
     type Error: Display + Debug;
     fn get_fog_pubkey(

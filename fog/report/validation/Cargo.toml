@@ -6,7 +6,7 @@ edition = "2018"
 
 [features]
 default = []
-std = []
+automock = ["mockall"]
 
 [dependencies]
 mc-account-keys = { path = "../../../account-keys" }
@@ -16,4 +16,4 @@ mc-util-encodings = { path = "../../../util/encodings" }
 mc-util-serial = { path = "../../../util/serial", default-features = false }
 
 displaydoc = { version = "0.1", default-features = false }
-mockall = "0.7.2"
+mockall = { version = "0.7.2", optional = true }
