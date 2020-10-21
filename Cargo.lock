@@ -3592,7 +3592,7 @@ name = "mc-util-logger-macros"
 version = "1.0.0"
 dependencies = [
  "proc-macro2 0.4.30",
- "quote 0.6.13",
+ "quote 1.0.4",
  "syn 0.15.44",
 ]
 
