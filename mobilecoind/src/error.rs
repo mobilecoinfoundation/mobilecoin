@@ -81,6 +81,9 @@ pub enum Error {
     #[fail(display = "Tx build error: {}", _0)]
     TxBuildError(String),
 
+    #[fail(display = "Fog error: {}", _0)]
+    FogError(String),
+
     #[fail(display = "Insufficient funds")]
     InsufficientFunds,
 

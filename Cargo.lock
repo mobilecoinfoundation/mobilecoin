@@ -2751,6 +2751,52 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-fog-api"
+version = "1.0.0"
+dependencies = [
+ "cargo-emit",
+ "futures 0.3.5",
+ "grpcio",
+ "mc-api",
+ "mc-attest-api",
+ "mc-common",
+ "mc-consensus-api",
+ "mc-util-build-grpc",
+ "mc-util-build-script",
+ "protobuf",
+]
+
+[[package]]
+name = "mc-fog-report-connection"
+version = "1.0.0"
+dependencies = [
+ "displaydoc",
+ "grpcio",
+ "mc-account-keys",
+ "mc-attest-core",
+ "mc-common",
+ "mc-crypto-keys",
+ "mc-fog-api",
+ "mc-fog-report-validation",
+ "mc-util-grpc",
+ "mc-util-serial",
+ "mc-util-uri",
+]
+
+[[package]]
+name = "mc-fog-report-validation"
+version = "1.0.0"
+dependencies = [
+ "displaydoc",
+ "mc-account-keys",
+ "mc-attest-core",
+ "mc-crypto-keys",
+ "mc-util-encodings",
+ "mc-util-serial",
+ "mockall",
+]
+
+[[package]]
 name = "mc-ledger-db"
 version = "1.0.0"
 dependencies = [
@@ -2879,9 +2925,12 @@ dependencies = [
  "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-crypto-rand",
+ "mc-fog-report-connection",
+ "mc-fog-report-validation",
  "mc-ledger-db",
  "mc-ledger-sync",
  "mc-mobilecoind-api",
+ "mc-sgx-css",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
  "mc-transaction-std",

@@ -11,6 +11,7 @@ use mc_common::{
 use mc_connection::{ConnectionManager, RetryableUserTxConnection, UserTxConnection};
 use mc_crypto_keys::RistrettoPublic;
 use mc_crypto_rand::{CryptoRng, RngCore};
+use mc_fog_report_connection::FogPubkeyResolver;
 use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
 use mc_transaction_core::{
     constants::{MAX_INPUTS, MINIMUM_FEE, RING_SIZE},
@@ -75,7 +76,10 @@ impl TxProposal {
     }
 }
 
-pub struct TransactionsManager<T: UserTxConnection + 'static> {
+pub struct TransactionsManager<
+    T: UserTxConnection + 'static,
+    FPR: FogPubkeyResolver + Send + Sync + 'static,
+> {
     /// Ledger database.
     ledger_db: LedgerDB,
 
@@ -90,9 +94,14 @@ pub struct TransactionsManager<T: UserTxConnection + 'static> {
 
     /// Monotonically increasing counter. This is used for node round-robin selection.
     submit_node_offset: Arc<AtomicUsize>,
+
+    /// Fog pub key resolver, used when constructing outputs to fog recipients.
+    fog_pubkey_resolver: Option<Arc<FPR>>,
 }
 
-impl<T: UserTxConnection + 'static> Clone for TransactionsManager<T> {
+impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'static> Clone
+    for TransactionsManager<T, FPR>
+{
     fn clone(&self) -> Self {
         Self {
             ledger_db: self.ledger_db.clone(),
@@ -100,15 +109,19 @@ impl<T: UserTxConnection + 'static> Clone for TransactionsManager<T> {
             peer_manager: self.peer_manager.clone(),
             logger: self.logger.clone(),
             submit_node_offset: self.submit_node_offset.clone(),
+            fog_pubkey_resolver: self.fog_pubkey_resolver.clone(),
         }
     }
 }
 
-impl<T: UserTxConnection + 'static> TransactionsManager<T> {
+impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'static>
+    TransactionsManager<T, FPR>
+{
     pub fn new(
         ledger_db: LedgerDB,
         mobilecoind_db: Database,
         peer_manager: ConnectionManager<T>,
+        fog_pubkey_resolver: Option<Arc<FPR>>,
         logger: Logger,
     ) -> Self {
         let mut rng = rand::thread_rng();
@@ -118,6 +131,7 @@ impl<T: UserTxConnection + 'static> TransactionsManager<T> {
             peer_manager,
             logger,
             submit_node_offset: Arc::new(AtomicUsize::new(rng.next_u64() as usize)),
+            fog_pubkey_resolver,
         }
     }
 
@@ -132,11 +146,6 @@ impl<T: UserTxConnection + 'static> TransactionsManager<T> {
     ) -> Result<TxProposal, Error> {
         let logger = self.logger.new(o!("sender_monitor_id" => sender_monitor_id.to_string(), "outlays" => format!("{:?}", outlays)));
         log::trace!(logger, "Building pending transaction...");
-
-        // TODO fog service is currently unsupported.
-        assert!(!outlays
-            .iter()
-            .any(|outlay| outlay.receiver.fog_report_url().is_some()));
 
         // Must have at least one output
         if outlays.is_empty() {
@@ -210,6 +219,7 @@ impl<T: UserTxConnection + 'static> TransactionsManager<T> {
             change_subaddress,
             outlays,
             tombstone_block,
+            &self.fog_pubkey_resolver,
             &mut rng,
             &self.logger,
         )?;
@@ -300,6 +310,7 @@ impl<T: UserTxConnection + 'static> TransactionsManager<T> {
             subaddress_index,
             &outlays,
             tombstone_block,
+            &self.fog_pubkey_resolver,
             &mut rng,
             &self.logger,
         )?;
@@ -377,6 +388,7 @@ impl<T: UserTxConnection + 'static> TransactionsManager<T> {
             0,
             &outlays,
             tombstone_block,
+            &self.fog_pubkey_resolver,
             &mut rng,
             &self.logger,
         )?;
@@ -631,6 +643,7 @@ impl<T: UserTxConnection + 'static> TransactionsManager<T> {
         change_subaddress: u64,
         destinations: &[Outlay],
         tombstone_block: BlockIndex,
+        fog_pubkey_resolver: &Option<Arc<FPR>>,
         rng: &mut (impl RngCore + CryptoRng),
         logger: &Logger,
     ) -> Result<TxProposal, Error> {
@@ -739,8 +752,19 @@ impl<T: UserTxConnection + 'static> TransactionsManager<T> {
         let mut tx_out_to_outlay_index = HashMap::default();
         let mut outlay_confirmation_numbers = Vec::default();
         for (i, outlay) in destinations.iter().enumerate() {
+            let target_acct_pubkey = Self::get_fog_pubkey_for_public_address(
+                &outlay.receiver,
+                fog_pubkey_resolver,
+                tombstone_block,
+            )?;
+
             let (tx_out, confirmation_number) = tx_builder
-                .add_output(outlay.value, &outlay.receiver, None, rng)
+                .add_output(
+                    outlay.value,
+                    &outlay.receiver,
+                    target_acct_pubkey.as_ref(),
+                    rng,
+                )
                 .map_err(|err| Error::TxBuildError(format!("failed adding output: {}", err)))?;
 
             tx_out_to_outlay_index.insert(tx_out, i);
@@ -760,11 +784,18 @@ impl<T: UserTxConnection + 'static> TransactionsManager<T> {
 
         // If we do, add an output for that as well.
         if change > 0 {
+            let change_public_address = from_account_key.subaddress(change_subaddress);
+            let target_acct_pubkey = Self::get_fog_pubkey_for_public_address(
+                &change_public_address,
+                fog_pubkey_resolver,
+                tombstone_block,
+            )?;
+
             tx_builder
                 .add_output(
                     change,
-                    &from_account_key.subaddress(change_subaddress),
-                    None,
+                    &change_public_address,
+                    target_acct_pubkey.as_ref(),
                     rng,
                 )
                 .map_err(|err| {
@@ -818,6 +849,37 @@ impl<T: UserTxConnection + 'static> TransactionsManager<T> {
             outlay_confirmation_numbers,
         })
     }
+
+    fn get_fog_pubkey_for_public_address(
+        address: &PublicAddress,
+        fog_pubkey_resolver: &Option<Arc<FPR>>,
+        tombstone_block: BlockIndex,
+    ) -> Result<Option<RistrettoPublic>, Error> {
+        if address.fog_report_url().is_none() {
+            return Ok(None);
+        }
+
+        match fog_pubkey_resolver.as_ref() {
+            None => Err(Error::FogError(format!(
+                "{} uses fog but mobilecoind was started without fog support",
+                address,
+            ))),
+            Some(resolver) => resolver
+                .get_fog_pubkey(address)
+                .map_err(|err| {
+                    Error::FogError(format!(
+                        "Failed getting fog public key for{}: {}",
+                        address, err
+                    ))
+                })
+                .and_then(|result| {
+                    if tombstone_block > result.pubkey_expiry {
+                        return Err(Error::FogError(format!("{} fog public key expiry block ({}) is lower than the provided tombstone block ({})", address, result.pubkey_expiry, tombstone_block)));
+                    }
+                    Ok(Some(result.pubkey))
+                }),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -825,6 +887,7 @@ mod test {
     use super::*;
     use mc_connection::ThickClient;
     use mc_crypto_keys::RistrettoPrivate;
+    use mc_fog_report_validation::MockFogPubkeyResolver;
     use mc_transaction_core::constants::MILLIMOB_TO_PICOMOB;
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
@@ -867,15 +930,23 @@ mod test {
 
         // Sending 300 should select 100 + 200 when 2 inputs are allowed.
         let selected_utxos =
-            TransactionsManager::<ThickClient>::select_utxos_for_value(&utxos, 300, utxos.len())
-                .unwrap();
+            TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_value(
+                &utxos,
+                300,
+                utxos.len(),
+            )
+            .unwrap();
 
         assert_eq!(selected_utxos, vec![utxos[0].clone(), utxos[1].clone()]);
 
         // Sending 301 should select 100 + 200 + 300 when 3 inputs are allowed.
         let selected_utxos =
-            TransactionsManager::<ThickClient>::select_utxos_for_value(&utxos, 301, utxos.len())
-                .unwrap();
+            TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_value(
+                &utxos,
+                301,
+                utxos.len(),
+            )
+            .unwrap();
 
         assert_eq!(
             selected_utxos,
@@ -884,7 +955,10 @@ mod test {
 
         // Sending 301 should select 200 + 300 when only 2  inputs are allowed.
         let selected_utxos =
-            TransactionsManager::<ThickClient>::select_utxos_for_value(&utxos, 301, 2).unwrap();
+            TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_value(
+                &utxos, 301, 2,
+            )
+            .unwrap();
 
         assert_eq!(selected_utxos, vec![utxos[1].clone(), utxos[2].clone()]);
     }
@@ -893,7 +967,9 @@ mod test {
     fn test_select_utxos_for_value_errors_if_too_many_inputs_are_needed() {
         let utxos = generate_utxos(10);
         // While we have enough utxos to sum to 5, if the input limit is 4 we should fail.
-        match TransactionsManager::<ThickClient>::select_utxos_for_value(&utxos, 5, 4) {
+        match TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_value(
+            &utxos, 5, 4,
+        ) {
             Err(Error::InsufficientFundsFragmentedUtxos) => {
                 // Expected.
             }
@@ -905,7 +981,9 @@ mod test {
     fn test_select_utxos_for_value_errors_if_insufficient_funds() {
         let utxos = generate_utxos(10);
         // While we have enough utxos to sum to 5, if the input limit is 4 we should fail.
-        match TransactionsManager::<ThickClient>::select_utxos_for_value(&utxos, 50, 100) {
+        match TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_value(
+            &utxos, 50, 100,
+        ) {
             Err(Error::InsufficientFunds) => {
                 // Expected.
             }
@@ -927,7 +1005,7 @@ mod test {
             utxos[5].value = 1000 * MILLIMOB_TO_PICOMOB;
 
             let (selected_utxos, fee) =
-                TransactionsManager::<ThickClient>::select_utxos_for_optimization(1000, &utxos, 2)
+                TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_optimization(1000, &utxos, 2)
                     .unwrap();
 
             assert_eq!(selected_utxos, vec![utxos[0].clone(), utxos[4].clone()]);
@@ -946,7 +1024,7 @@ mod test {
             utxos[5].value = 1000 * MILLIMOB_TO_PICOMOB;
 
             let (selected_utxos, fee) =
-                TransactionsManager::<ThickClient>::select_utxos_for_optimization(1000, &utxos, 3)
+                TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_optimization(1000, &utxos, 3)
                     .unwrap();
 
             assert_eq!(
@@ -976,7 +1054,7 @@ mod test {
                     < MINIMUM_FEE
             );
 
-            let result = TransactionsManager::<ThickClient>::select_utxos_for_optimization(
+            let result = TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_optimization(
                 1000, &utxos, 100,
             );
             assert!(result.is_err());
@@ -989,7 +1067,7 @@ mod test {
             utxos[0].value = MINIMUM_FEE;
             utxos[1].value = 2000 * MILLIMOB_TO_PICOMOB;
 
-            let result = TransactionsManager::<ThickClient>::select_utxos_for_optimization(
+            let result = TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_optimization(
                 1000, &utxos, 100,
             );
             assert!(result.is_err());
@@ -1005,7 +1083,7 @@ mod test {
             utxos[3].value = 2 * MILLIMOB_TO_PICOMOB;
 
             let (selected_utxos, fee) =
-                TransactionsManager::<ThickClient>::select_utxos_for_optimization(1000, &utxos, 3)
+                TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_optimization(1000, &utxos, 3)
                     .unwrap();
             // Since we're limited to 3 inputs, the lowest input (of value 1) is going to get excluded.
             assert_eq!(
@@ -1025,10 +1103,10 @@ mod test {
         utxos[1].value = 2000 * MILLIMOB_TO_PICOMOB;
 
         let result =
-            TransactionsManager::<ThickClient>::select_utxos_for_optimization(1000, &[], 100);
+            TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_optimization(1000, &[], 100);
         assert!(result.is_err());
 
-        let result = TransactionsManager::<ThickClient>::select_utxos_for_optimization(
+        let result = TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_optimization(
             1000,
             &utxos[0..1],
             100,
@@ -1036,14 +1114,14 @@ mod test {
         assert!(result.is_err());
 
         // A set of 2 utxos succeeds when max inputs is 2, but fails when it is 3 (since there's no point to merge 2 when we can directly spend 3)
-        let result = TransactionsManager::<ThickClient>::select_utxos_for_optimization(
+        let result = TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_optimization(
             1000,
             &utxos[0..2],
             2,
         );
         assert!(result.is_ok());
 
-        let result = TransactionsManager::<ThickClient>::select_utxos_for_optimization(
+        let result = TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_optimization(
             1000,
             &utxos[0..2],
             3,
