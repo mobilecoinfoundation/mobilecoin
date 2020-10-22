@@ -35,6 +35,7 @@ mod tx_out_confirmation_number;
 mod tx_out_membership_element;
 mod tx_out_membership_proof;
 mod tx_prefix;
+mod watcher;
 
 pub use account_key::*;
 pub use amount::*;
@@ -61,6 +62,7 @@ pub use tx_out_confirmation_number::*;
 pub use tx_out_membership_element::*;
 pub use tx_out_membership_proof::*;
 pub use tx_prefix::*;
+pub use watcher::*;
 
 use std::path::PathBuf;
 

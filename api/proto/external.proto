@@ -267,3 +267,28 @@ message Receipt {
     // Note: This value is self-reported by the sender and is unverifiable.
     Amount amount = 4;
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// `watcher/api` crate
+///////////////////////////////////////////////////////////////////////////////
+
+/// The result code indicating whether the timestamp was found, can be tried again later, or will
+/// never be found with the current configuration of the service offering timestamps via the watcher.
+enum TimestampResultCode {
+    /// The default value for fixed32 is intentionally unused to avoid omitting this field.
+    UnusedField = 0;
+    /// The timestamp was found for at least one watched consensus validator.
+    TimestampFound = 1;
+    /// The timestamp was not found, but the watcher sync is behind for at least one watched consensus
+    /// validator. It is possible that the timestamp will be available once the watcher is fully synced.
+    WatcherBehind = 2;
+    /// The timestamp cannot be known with the service's current watcher configuration.
+    /// In this case, the watcher must be restarted to include in its watched URLs a sufficient
+    /// set of consensus validators so that at least one of those validators participated in
+    /// consensus for every block.
+    Unavailable = 3;
+    /// A WatcherDBError occurred when getting signatures and timestamps.
+    WatcherDatabaseError = 4;
+    /// A timestamp was requested for a block index out of bounds, e.g. 0.
+    BlockIndexOutOfBounds = 5;
+}
