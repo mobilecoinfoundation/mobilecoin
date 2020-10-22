@@ -19,6 +19,7 @@ MC_ROOT=../../../../..
 MC_API=$MC_ROOT/api/proto
 MCD_API=$MC_ROOT/mobilecoind/api/proto
 CONSENSUS_API=$MC_ROOT/consensus/api/proto
+MC_FOG_API=$MC_ROOT/fog/api/proto
 
 # compile protobuf for python
 case "$(uname -s)" in
@@ -26,12 +27,14 @@ case "$(uname -s)" in
     py.exe -m grpc_tools.protoc -I$MC_API --python_out=. $MC_API/external.proto
     py.exe -m grpc_tools.protoc -I$MC_API --python_out=. $MC_API/blockchain.proto
     py.exe -m grpc_tools.protoc -I$MCD_API -I$CONSENSUS_API -I$MC_API --python_out=. --grpc_python_out=. $MCD_API/mobilecoind_api.proto
+    py.exe -m grpc_tools.protoc -I$MC_FOG_API --python_out=. $MC_FOG_API/report.proto
   ;;
 
   *)
     python3 -m grpc_tools.protoc -I$MC_API --python_out=. $MC_API/external.proto
     python3 -m grpc_tools.protoc -I$MC_API --python_out=. $MC_API/blockchain.proto
     python3 -m grpc_tools.protoc -I$MCD_API -I$CONSENSUS_API -I$MC_API --python_out=. --grpc_python_out=. $MCD_API/mobilecoind_api.proto
+    python3 -m grpc_tools.protoc -I$MC_FOG_API --python_out=. $MC_FOG_API/report.proto
   ;;
 esac
 
