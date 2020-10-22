@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 cfg-if = "0.1"
 merlin = { version = "2.0", default-features = false }
-generic-array = { version = "0.14", default-features = false }
+generic-array = "0.14"
 
 # For derive support
 mc-crypto-digestible-derive = { path = "./derive", optional = true }
