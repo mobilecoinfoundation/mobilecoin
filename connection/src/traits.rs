@@ -3,7 +3,7 @@
 //! Traits which connection implementations can implement.
 
 use crate::error::{Result, RetryResult};
-use grpcio::{Error as GrpcError, RpcStatusCode};
+use grpcio::Error as GrpcError;
 use mc_transaction_core::{tx::Tx, Block, BlockID, BlockIndex};
 use mc_util_uri::ConnectionUri;
 use std::{
