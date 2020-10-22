@@ -2,7 +2,7 @@
 
 You must separately install and run `mobilecoind`.
 
-See https://github.com/mobilecoinofficial/mobilecoin/ for details.
+See https://github.com/mobilecoinfoundation/mobilecoin/ for details.
 
 ### Example
 

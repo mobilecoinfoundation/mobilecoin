@@ -18,7 +18,7 @@ Register to participate in the MobileCoin TestNet to receive an allocation of *m
 
 You can make your first MobileCoin payment right now!
 
-1. Download the TestNet client package for [mac](https://github.com/mobilecoinofficial/mobilecoin/releases/latest/download/MobileCoin.TestNet.dmg) or [linux](https://github.com/mobilecoinofficial/mobilecoin/releases/latest/download/mobilecoin-testnet-linux.tar.gz).
+1. Download the TestNet client package for [mac](https://github.com/mobilecoinfoundation/mobilecoin/releases/latest/download/MobileCoin.TestNet.dmg) or [linux](https://github.com/mobilecoinfoundation/mobilecoin/releases/latest/download/mobilecoin-testnet-linux.tar.gz).
 
 1. Expand the package archive and launch the "MobileCoin TestNet" client, an app bundle (mac) or shell script (linux).
 
@@ -32,7 +32,7 @@ You can make your first MobileCoin payment right now!
 
 If you have a Linux-compatible home computer, or if you are willing to operate a Linux-compatible server in the cloud, you can run a *watcher node* in the MobileCoin TestNet.
 
-1. Clone the official MobileCoin repository at [Github](https://github.com/mobilecoinofficial/mobilecoin).
+1. Clone the official MobileCoin repository at [Github](https://github.com/mobilecoinfoundation/mobilecoin).
 
 1. Make sure you've installed [Docker](https://docs.docker.com/get-docker/) and [Python](https://www.python.org/downloads/).
 

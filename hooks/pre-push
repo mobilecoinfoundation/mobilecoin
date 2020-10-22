@@ -12,9 +12,9 @@
 ORIGIN="$1"
 REMOTE_URL="$2"
 
-if [[ "$REMOTE_URL" == *"mobilecoinofficial/"* ]]; then
+if [[ "$REMOTE_URL" == *"mobilecoinfoundation/"* ]]; then
   echo
-  echo "Prevented pushing to mobilecoinofficial/mobilecoin. Please push to your fork instead."
+  echo "Prevented pushing to mobilecoinfoundation/mobilecoin. Please push to your fork instead."
   echo "If you really want to do this, use --no-verify to bypass this pre-push hook."
   echo
   exit 1

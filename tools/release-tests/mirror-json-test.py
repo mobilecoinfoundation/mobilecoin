@@ -15,7 +15,7 @@ import time
 
 parser = argparse.ArgumentParser(description='Download and test mobilecoind / mirror and json gateway')
 parser.add_argument('entropy', metavar='e', type=str, help='Root entropy of account for testing')
-parser.add_argument('--url', metavar='u', type=str, help='URL of release tarball', default='https://github.com/mobilecoinofficial/mobilecoin/releases/latest/download/mobilecoind-mirror-tls.tar.gz')
+parser.add_argument('--url', metavar='u', type=str, help='URL of release tarball', default='https://github.com/mobilecoinfoundation/mobilecoin/releases/latest/download/mobilecoind-mirror-tls.tar.gz')
 parser.add_argument('--skip-clean', action='store_true', help='Do not delete ledger-db and mobilecoind-db on start')
 parser.add_argument('--services', action='store_true', help='Leave services up after test run is complete')
 args = parser.parse_args()

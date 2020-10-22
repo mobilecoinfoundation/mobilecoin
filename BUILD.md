@@ -115,4 +115,4 @@ using the Remote Attestation process.
 
 If you want to download a prebuilt enclave, signed using the production signing key, in order use `IAS_MODE=PROD`
 and participate in a production-environment network, check out the `enclave-signing-material` instructions:
-https://github.com/mobilecoinofficial/mobilecoin/blob/master/consensus/service/BUILD.md#enclave-signing-material
+https://github.com/mobilecoinfoundation/mobilecoin/blob/master/consensus/service/BUILD.md#enclave-signing-material
