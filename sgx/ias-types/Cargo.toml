@@ -7,7 +7,7 @@ readme = "README.md"
 edition = "2018"
 
 [badges]
-circle-ci = { repository = "mobilecoinofficial/mobilecoin", branch = "master" }
+circle-ci = { repository = "mobilecoinfoundation/mobilecoin", branch = "master" }
 
 [package.metadata.docs.rs]
 features = ["use_prost"]

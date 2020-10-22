@@ -2,7 +2,7 @@
 
 MobileCoin is a prototype that is being actively developed.
 
-Please report issues to https://github.com/mobilecoinofficial/mobilecoin/issues.
+Please report issues to https://github.com/mobilecoinfoundation/mobilecoin/issues.
 
 1. Search both open and closed tickets to make sure your bug report is not a duplicate.
 1. Do not use github issues as a forum. To participate in community discussions, please use the community forum at [community.mobilecoin.com](https://community.mobilecoin.com).

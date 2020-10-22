@@ -34,7 +34,7 @@ fi
 # install mobilecoind from the current TestNet release
 echo "Installing mobilecoind from latest $RELEASE_URL..."
 rm -rf $TMP_DIR/$RELEASE_DIR
-curl -L https://github.com/mobilecoinofficial/mobilecoin/releases/latest/download/$RELEASE_URL.tar.gz --output latest.tar.gz
+curl -L https://github.com/mobilecoinfoundation/mobilecoin/releases/latest/download/$RELEASE_URL.tar.gz --output latest.tar.gz
 tar -zxvf ./latest.tar.gz
 rm ./latest.tar.gz
 mv ./$RELEASE_DIR $TMP_DIR

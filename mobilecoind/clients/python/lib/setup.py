@@ -14,7 +14,7 @@ setuptools.setup(
     description="Python bindings for the MobileCoin daemon API.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/mobilecoinofficial/mobilecoin/tree/master/mobilecoind/clients/python/lib",
+    url="https://github.com/mobilecoinfoundation/mobilecoin/tree/master/mobilecoind/clients/python/lib",
     package_data={'mobilecoin': ['py.typed']},
     packages=['mobilecoin'],
     classifiers=[

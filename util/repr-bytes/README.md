@@ -244,10 +244,10 @@ References
 2. RustCrypto digest trait: https://github.com/RustCrypto/traits/blob/e020ecfd83c5d1f5d19b674d071b858ea1369088/digest/src/digest.rs#L9
 3. Dalek-cryptography curve25519 RistrettoPoint: https://github.com/dalek-cryptography/curve25519-dalek/blob/409ebd94c011472cb2d24bd4f957448d52065ab6/src/ristretto.rs#L227
 4. Dalek-cryptography x25519 implementation: https://github.com/dalek-cryptography/x25519-dalek/blob/be82bcb15b57ed6a07e92a0643b8355bd8d653a3/src/x25519.rs#L46
-5. Mobilecoin keys and Kex traits: https://github.com/mobilecoinofficial/mobilecoin/blob/a13fa2246c8df4054ef5bad69f0566c0161be8cb/crypto/keys/src/traits.rs#L195
-6. Mobilecoin transaction TxOut structure, showing use of Prost with Ristretto wrappers: https://github.com/mobilecoinofficial/mobilecoin/blob/a13fa2246c8df4054ef5bad69f0566c0161be8cb/transaction/core/src/tx.rs#L234
-7. Mobilecoin noise implementation: https://github.com/mobilecoinofficial/mobilecoin/blob/a13fa2246c8df4054ef5bad69f0566c0161be8cb/crypto/ake/mcnoise/src/handshake_state.rs#L128
-8. Mobilecoin cryptobox implementation: https://github.com/mobilecoinofficial/mobilecoin/pull/74
+5. Mobilecoin keys and Kex traits: https://github.com/mobilecoinfoundation/mobilecoin/blob/a13fa2246c8df4054ef5bad69f0566c0161be8cb/crypto/keys/src/traits.rs#L195
+6. Mobilecoin transaction TxOut structure, showing use of Prost with Ristretto wrappers: https://github.com/mobilecoinfoundation/mobilecoin/blob/a13fa2246c8df4054ef5bad69f0566c0161be8cb/transaction/core/src/tx.rs#L234
+7. Mobilecoin noise implementation: https://github.com/mobilecoinfoundation/mobilecoin/blob/a13fa2246c8df4054ef5bad69f0566c0161be8cb/crypto/ake/mcnoise/src/handshake_state.rs#L128
+8. Mobilecoin cryptobox implementation: https://github.com/mobilecoinfoundation/mobilecoin/pull/74
 9. Return value optimization in compilers: https://en.wikipedia.org/wiki/Copy_elision
     (This is a discussion of C++, but this has been a major focus of work in the optimizing
      backends such as llvm as well, for many years.)
