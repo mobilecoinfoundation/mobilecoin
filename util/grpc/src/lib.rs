@@ -65,10 +65,11 @@ pub fn send_result<T>(
 /// database error
 #[inline]
 pub fn rpc_enclave_err<E: core::fmt::Debug>(err: E, logger: &Logger) -> RpcStatus {
+    // Return permission denied if there's anything wrong with the enclave, to force re-attestation.
     report_err_with_code(
         "Enclave Error",
         err,
-        RpcStatusCode::INVALID_ARGUMENT,
+        RpcStatusCode::PERMISSION_DENIED,
         logger,
     )
 }
