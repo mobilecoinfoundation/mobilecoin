@@ -43,6 +43,22 @@ fn create_stdout_logger() -> slog::Fuse<slog_async::Async> {
         .fuse()
 }
 
+/// Create a basic stderr logger.
+fn create_stderr_logger() -> slog::Fuse<slog_async::Async> {
+    let decorator = slog_term::TermDecorator::new().stderr().build();
+    let drain = slog_envlogger::new(
+        slog_term::FullFormat::new(decorator)
+            .use_custom_timestamp(custom_timestamp)
+            .build()
+            .fuse(),
+    );
+    slog_async::Async::new(drain)
+        .thread_name("slog-stderr".into())
+        .chan_size(STDOUT_CHANNEL_SIZE)
+        .build()
+        .fuse()
+}
+
 /// Create a GELF (https://docs.graylog.org/en/3.0/pages/gelf.html) logger.
 fn create_gelf_logger() -> Option<slog::Fuse<slog_async::Async>> {
     env::var("MC_LOG_GELF").ok().map(|remote_host_port| {
@@ -123,7 +139,13 @@ pub fn create_root_logger() -> Logger {
         (None, Some(udp_json)) => Some(udp_json),
         (Some(_), Some(_)) => panic!("MC_LOG_GELF and MC_LOG_UDP_JSON are mutually exclusive!"),
     };
-    let stdout_logger = create_stdout_logger();
+
+    // Create stdout / stderr sink
+    let std_logger = if env::var("MC_LOG_STDERR").is_ok() {
+        create_stderr_logger()
+    } else {
+        create_stdout_logger()
+    };
 
     // Extra context that always gets added to each log message.
     let extra_kv = o!(
@@ -133,12 +155,9 @@ pub fn create_root_logger() -> Logger {
 
     // Create root logger.
     let mut root_logger = if let Some(network_logger) = network_logger {
-        Logger::root(
-            slog::Duplicate(stdout_logger, network_logger).fuse(),
-            extra_kv,
-        )
+        Logger::root(slog::Duplicate(std_logger, network_logger).fuse(), extra_kv)
     } else {
-        Logger::root(stdout_logger, extra_kv)
+        Logger::root(std_logger, extra_kv)
     };
 
     // Add extra context if it is available.
@@ -165,6 +184,9 @@ pub fn create_root_logger() -> Logger {
 
 /// Create a logger that is suitable for use during test execution.
 pub fn create_test_logger(test_name: String) -> Logger {
+    if env::var("MC_LOG_STDERR").is_err() {
+        env::set_var("MC_LOG_STDERR", "1");
+    }
     create_root_logger().new(o!(
         "mc.test_name" => test_name,
     ))
