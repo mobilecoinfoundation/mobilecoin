@@ -113,6 +113,13 @@ RUN wget https://github.com/SimonKagstrom/kcov/archive/v36.tar.gz && \
 COPY --chown=root:root install-bolt.sh /tmp
 RUN /bin/bash /tmp/install-bolt.sh
 
+# Install grpcurl
+RUN mkdir -p /tmp/grpcurl
+WORKDIR /tmp/grpcurl
+RUN wget https://github.com/fullstorydev/grpcurl/releases/download/v1.7.0/grpcurl_1.7.0_linux_x86_64.tar.gz && \
+    tar xvf grpcurl_1.7.0_linux_x86_64.tar.gz && \
+    mv grpcurl /usr/bin/
+
 # Conditionally install intel SGX libs
 
 ARG DOCKER_NO_SGX=false
