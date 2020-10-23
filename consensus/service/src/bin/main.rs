@@ -126,7 +126,7 @@ fn setup_ledger_dir(config_origin_path: &Option<PathBuf>, ledger_path: &PathBuf)
 
         // Copy the data.mdb file from the origin directory to the ledger
         data_file_path.push("data.mdb");
-        fs_extra::copy_items(&vec![data_file_path], ledger_path, &options)
+        fs_extra::copy_items(&[data_file_path], ledger_path, &options)
             .expect("Could not copy origin block");
     }
 }
