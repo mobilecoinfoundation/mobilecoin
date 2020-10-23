@@ -2,6 +2,7 @@
 
 /// Sets chan_size for stdout, gelf, and UDP loggers
 const STDOUT_CHANNEL_SIZE: usize = 100_000;
+const STDERR_CHANNEL_SIZE: usize = 100_000;
 const GELF_CHANNEL_SIZE: usize = 100_000;
 const UDP_CHANNEL_SIZE: usize = 100_000;
 
@@ -54,7 +55,7 @@ fn create_stderr_logger() -> slog::Fuse<slog_async::Async> {
     );
     slog_async::Async::new(drain)
         .thread_name("slog-stderr".into())
-        .chan_size(STDOUT_CHANNEL_SIZE)
+        .chan_size(STDERR_CHANNEL_SIZE)
         .build()
         .fuse()
 }
@@ -141,7 +142,7 @@ pub fn create_root_logger() -> Logger {
     };
 
     // Create stdout / stderr sink
-    let std_logger = if env::var("MC_LOG_STDERR").is_ok() {
+    let std_logger = if env::var("MC_LOG_STDERR") == Ok("1".to_string()) {
         create_stderr_logger()
     } else {
         create_stdout_logger()
@@ -184,6 +185,9 @@ pub fn create_root_logger() -> Logger {
 
 /// Create a logger that is suitable for use during test execution.
 pub fn create_test_logger(test_name: String) -> Logger {
+    // Make it so that tests log to stderr by default.
+    // This can be overrided by setting MC_LOG_STDERR to 0,
+    // but that isn't expected to be necessary
     if env::var("MC_LOG_STDERR").is_err() {
         env::set_var("MC_LOG_STDERR", "1");
     }
