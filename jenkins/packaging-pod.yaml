@@ -20,7 +20,7 @@ spec:
           topologyKey: "kubernetes.io/hostname"
 
   containers:
-  
+
     - name: kaniko
       # Need the debug container to get busybox
       image: gcr.io/kaniko-project/executor:debug-v0.23.0

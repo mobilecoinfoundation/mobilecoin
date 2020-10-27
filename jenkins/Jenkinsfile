@@ -141,7 +141,7 @@ pipeline {
             }
             container('kaniko'){
               sh '''
-                  for i in 1 2 3; do              
+                  for i in 1 2 3; do
                     /kaniko/executor -f $WORKSPACE/ops/Dockerfile-mobilecoind -c $WORKSPACE/ops \
                       --build-arg ORIGIN_DATA_DIR=sample_data \
                       --build-arg GIT_COMMIT=${GIT_COMMIT} \
@@ -190,7 +190,7 @@ pipeline {
 
                   // Update the 01* configs
                   sh(script: 'for i in 01*yaml; do kubectl apply -n ${NETWORK} -f ${i}; done')
-                  
+
                   // Launch the consensus node deployments
                   sh(script: 'for i in 03*yaml; do kubectl apply -n ${NETWORK} -f ${i}; done')
 

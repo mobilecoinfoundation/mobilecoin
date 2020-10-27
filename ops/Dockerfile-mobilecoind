@@ -28,6 +28,7 @@ RUN GRPC_HEALTH_PROBE_VERSION=v0.3.2 && \
 
 WORKDIR /
 COPY bin/mobilecoind /usr/bin/
+COPY bin/mc-util-grpc-admin-tool /usr/bin/
 
 # Q: Why not use NODE_LEDGER_DIR here?
 # A: The ENV dictates where the app actually looks, and the ARG sets

@@ -3547,6 +3547,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-util-grpc-admin-tool"
+version = "1.0.0"
+dependencies = [
+ "grpcio",
+ "mc-common",
+ "mc-util-grpc",
+ "mc-util-uri",
+ "percent-encoding 2.1.0",
+ "serde",
+ "structopt",
+]
+
+[[package]]
 name = "mc-util-grpc-token-generator"
 version = "1.0.0"
 dependencies = [
