@@ -38,7 +38,7 @@ pub struct SignatureRctBulletproofs {
     #[prost(message, repeated, tag = "2")]
     pub pseudo_output_commitments: Vec<CompressedCommitment>,
 
-    /// Proof that all pseudo_outputs and transaction outputs are in [0, 2^64).
+    /// Proof that all transaction outputs are in [0, 2^64).
     /// This contains range_proof.to_bytes(). It is stored this way so that this struct may derive
     /// Default, which is a requirement for serializing with Prost.
     #[prost(bytes, tag = "3")]
@@ -135,12 +135,10 @@ impl SignatureRctBulletproofs {
             decompressed_pseudo_output_commitments.push(commitment);
         }
 
-        // pseudo_output_commitments and output commitments must be in [0, 2^64).
+        // Output commitments must be in [0, 2^64).
         {
-            let commitments: Vec<CompressedRistretto> = self
-                .pseudo_output_commitments
+            let commitments: Vec<CompressedRistretto> = output_commitments
                 .iter()
-                .chain(output_commitments.iter())
                 .map(|compressed_commitment| compressed_commitment.point)
                 .collect();
 
@@ -248,68 +246,45 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
         }
     }
 
-    // Blindings for pseudo_outputs. All but the last are random.
-    // Constructing blindings in this way ensures that sum_of_outputs - sum_of_pseudo_outputs = 0
-    // if the sum of outputs and the sum of pseudo_outputs have equal value.
-    let mut pseudo_output_blindings: Vec<Scalar> = Vec::new();
-    for _i in 0..num_inputs - 1 {
-        pseudo_output_blindings.push(Scalar::random(rng));
-    }
-    // The implicit fee output is ommitted because its blinding is zero.
-    let sum_of_output_blindings: Scalar = output_values_and_blindings
-        .iter()
-        .map(|(_, blinding)| blinding)
-        .sum();
-
-    let sum_of_pseudo_output_blindings: Scalar = pseudo_output_blindings.iter().sum();
-    let last_blinding: Scalar = sum_of_output_blindings - sum_of_pseudo_output_blindings;
-    pseudo_output_blindings.push(last_blinding);
-
-    // Create Range proofs for outputs and pseudo-outputs.
-    let pseudo_output_values_and_blindings: Vec<(u64, Scalar)> = input_secrets
-        .iter()
-        .zip(pseudo_output_blindings.iter())
-        .map(|((_, value, _), blinding)| (*value, *blinding))
-        .collect();
-
-    let (range_proof, commitments) = {
-        let values_and_blindings: Vec<(u64, Scalar)> = pseudo_output_values_and_blindings
-            .iter()
-            .chain(output_values_and_blindings.iter())
-            .map(|(value, blinding)| (*value, *blinding))
-            .collect();
-
-        // The implicit fee output is omitted from the range proof because it is known.
-
-        let (values, blindings): (Vec<_>, Vec<_>) = values_and_blindings.into_iter().unzip();
-        generate_range_proofs(&values, &blindings, rng).map_err(|_e| Error::RangeProofError)?
-    };
+    let input_values: Vec<u64> = input_secrets.iter().map(|(_, value, _)| *value).collect();
+    let (output_values, output_blindings): (Vec<u64>, Vec<Scalar>) =
+        output_values_and_blindings.iter().cloned().unzip();
 
     if check_value_is_preserved {
-        let sum_of_output_commitments: RistrettoPoint = output_values_and_blindings
-            .iter()
-            .map(|(value, blinding)| GENERATORS.commit(Scalar::from(*value), *blinding))
-            .sum();
-
-        let sum_of_pseudo_output_commitments: RistrettoPoint = pseudo_output_values_and_blindings
-            .iter()
-            .map(|(value, blinding)| GENERATORS.commit(Scalar::from(*value), *blinding))
-            .sum();
-
-        // The implicit fee output.
-        let fee_commitment = GENERATORS.commit(Scalar::from(fee), *FEE_BLINDING);
-
-        let difference =
-            sum_of_output_commitments + fee_commitment - sum_of_pseudo_output_commitments;
-        if difference != GENERATORS.commit(Scalar::zero(), Scalar::zero()) {
+        let input_sum: Scalar = input_values.iter().map(|&x| Scalar::from(x)).sum();
+        let output_sum: Scalar = output_values.iter().map(|&x| Scalar::from(x)).sum();
+        // The value of inputs should equal the value of outputs, including the implicit fee output.
+        if input_sum != output_sum + Scalar::from(fee) {
             return Err(Error::ValueNotConserved);
         }
     }
 
-    let pseudo_output_commitments: Vec<CompressedCommitment> = commitments
+    // Proof that output values are in [0, 2^64).
+    // The implicit fee output is omitted from the range proof because it is known.
+    let (range_proof, _commitments) = generate_range_proofs(&output_values, &output_blindings, rng)
+        .map_err(|_e| Error::RangeProofError)?;
+
+    // Blindings for pseudo_outputs. All but the last are random.
+    // Constructing blindings in this way ensures that sum_of_outputs - sum_of_pseudo_outputs = 0
+    // if the sum of outputs and the sum of pseudo_outputs have equal value.
+    let pseudo_output_blindings: Vec<Scalar> = {
+        let mut blindings = Vec::new();
+        for _i in 0..num_inputs - 1 {
+            blindings.push(Scalar::random(rng));
+        }
+        // The implicit fee output is omitted because its blinding is zero.
+        let last_blinding =
+            output_blindings.iter().sum::<Scalar>() - blindings.iter().sum::<Scalar>();
+        blindings.push(last_blinding);
+        blindings
+    };
+
+    // Each pseudo_output commits to the same value as an input, but uses a different blinding.
+    let pseudo_output_commitments: Vec<CompressedCommitment> = input_values
         .iter()
-        .take(num_inputs)
-        .map(CompressedCommitment::from)
+        .zip(pseudo_output_blindings.iter())
+        .map(|(&value, &blinding)| GENERATORS.commit(Scalar::from(value), blinding))
+        .map(|point| CompressedCommitment::from(&point.compress()))
         .collect();
 
     // Extend the message with the range proof and pseudo_output_commitments.
@@ -582,7 +557,7 @@ mod rct_bulletproofs_tests {
                 fee,
                 &mut rng,
             );
-            assert!(result.is_ok());
+            assert_eq!(result, Ok(()));
         }
 
         #[test]
