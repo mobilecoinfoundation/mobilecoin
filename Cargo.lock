@@ -3581,9 +3581,12 @@ version = "1.0.0"
 dependencies = [
  "hex 0.4.2",
  "mc-account-keys",
+ "mc-api",
+ "mc-crypto-keys",
  "mc-crypto-rand",
  "mc-util-from-random",
  "mc-util-serial",
+ "protobuf",
  "rand 0.7.3",
  "rand_hc 0.2.0",
  "serde",
