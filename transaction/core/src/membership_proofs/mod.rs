@@ -4,22 +4,25 @@
 
 extern crate alloc;
 
-mod errors;
-
 use crate::{
     domain_separators::{
         TXOUT_MERKLE_LEAF_DOMAIN_TAG, TXOUT_MERKLE_NIL_DOMAIN_TAG, TXOUT_MERKLE_NODE_DOMAIN_TAG,
     },
     membership_proofs::errors::Error,
-    range::{Range, RangeError},
     tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash, TxOutMembershipProof},
 };
 use alloc::vec::Vec;
 use blake2::digest::Update;
 use core::convert::TryInto;
-pub use errors::Error as MembershipProofError;
+
 use mc_crypto_hashes::Blake2b256;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
+
+mod errors;
+mod range;
+
+pub use errors::Error as MembershipProofError;
+pub use range::{Range, RangeError};
 
 lazy_static! {
     pub static ref NIL_HASH: [u8; 32] = hash_nil();

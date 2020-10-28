@@ -1,6 +1,6 @@
 use crate::{
-    compressed_commitment::CompressedCommitment,
     ring_signature::{Error, Scalar, GENERATORS},
+    CompressedCommitment,
 };
 use core::{convert::TryFrom, fmt};
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};

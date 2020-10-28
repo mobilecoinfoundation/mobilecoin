@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use failure::Fail;
-use mc_transaction_core::{amount::AmountError, ring_signature, ring_signature::Error};
+use mc_transaction_core::{ring_signature, ring_signature::Error, AmountError};
 
 #[derive(Debug, Fail)]
 pub enum TxBuilderError {
@@ -55,8 +55,8 @@ impl From<prost::EncodeError> for TxBuilderError {
     }
 }
 
-impl From<mc_transaction_core::amount::AmountError> for TxBuilderError {
-    fn from(x: mc_transaction_core::amount::AmountError) -> Self {
+impl From<AmountError> for TxBuilderError {
+    fn from(x: AmountError) -> Self {
         TxBuilderError::BadAmount(x)
     }
 }

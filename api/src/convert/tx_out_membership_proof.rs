@@ -2,7 +2,7 @@
 
 use crate::{convert::ConversionError, external};
 use mc_transaction_core::{
-    range::Range,
+    membership_proofs::Range,
     tx::{TxOutMembershipElement, TxOutMembershipProof},
 };
 use protobuf::RepeatedField;
@@ -36,9 +36,8 @@ impl TryFrom<&external::TxOutMembershipProof> for TxOutMembershipProof {
 
         let mut elements = Vec::<TxOutMembershipElement>::default();
         for element in membership_proof.get_elements() {
-            let range: Range =
-                Range::new(element.get_range().get_from(), element.get_range().get_to())
-                    .map_err(|_e| ConversionError::Other)?;
+            let range = Range::new(element.get_range().get_from(), element.get_range().get_to())
+                .map_err(|_e| ConversionError::Other)?;
 
             let bytes: &[u8] = element.get_hash().get_data();
             let mut hash = [0u8; 32];
