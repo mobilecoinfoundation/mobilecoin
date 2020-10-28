@@ -4,6 +4,7 @@ pub mod config;
 mod json_format;
 pub mod keygen;
 
+use hex::FromHexError;
 use json_format::RootIdentityJson;
 use mc_account_keys::{PublicAddress, RootIdentity};
 use std::{fs::File, io::prelude::*, path::Path};
@@ -36,7 +37,7 @@ pub fn read_keyfile_data<R: std::io::Read>(buffer: &mut R) -> Result<RootIdentit
 
 /// Write user public address to disk
 pub fn write_pubfile<P: AsRef<Path>>(path: P, addr: &PublicAddress) -> Result<(), std::io::Error> {
-    File::create(path)?.write_all(&mc_util_serial::encode(addr))?;
+    File::create(path)?.write_all(hex::encode(&mc_util_serial::encode(addr)).as_bytes())?;
     Ok(())
 }
 
@@ -49,12 +50,13 @@ pub fn read_pubfile<P: AsRef<Path>>(path: P) -> Result<PublicAddress, std::io::E
 pub fn read_pubfile_data<R: std::io::Read>(
     buffer: &mut R,
 ) -> Result<PublicAddress, std::io::Error> {
-    let data = {
-        let mut data = Vec::new();
-        buffer.read_to_end(&mut data)?;
-        data
+    let hex_data = {
+        let mut hex_data = Vec::new();
+        buffer.read_to_end(&mut hex_data)?;
+        hex_data
     };
-    let result: PublicAddress = mc_util_serial::decode(&data).map_err(prost_to_io_error)?;
+    let bytes = hex::decode(&hex_data).map_err(hex_to_io_error)?;
+    let result: PublicAddress = mc_util_serial::decode(&bytes).map_err(prost_to_io_error)?;
     Ok(result)
 }
 
@@ -64,6 +66,10 @@ fn to_io_error(err: serde_json::error::Error) -> std::io::Error {
 
 fn prost_to_io_error(err: mc_util_serial::DecodeError) -> std::io::Error {
     std::io::Error::new(std::io::ErrorKind::Other, Box::new(ProstError { err }))
+}
+
+fn hex_to_io_error(err: FromHexError) -> std::io::Error {
+    std::io::Error::new(std::io::ErrorKind::Other, Box::new(err))
 }
 
 // Helper boilerplate mapping prost::DecodeError to io::Error
