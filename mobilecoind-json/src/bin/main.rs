@@ -641,7 +641,7 @@ fn main() {
     );
 
     // Set up the gRPC connection to the mobilecoind client
-    let env = Arc::new(grpcio::EnvBuilder::new().build());
+    let env = Arc::new(grpcio::EnvBuilder::new().cq_count(1).build());
     let ch = ChannelBuilder::new(env)
         .max_receive_message_len(std::i32::MAX)
         .max_send_message_len(std::i32::MAX)

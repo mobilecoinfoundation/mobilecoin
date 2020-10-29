@@ -201,7 +201,8 @@ impl PeersConfig {
     ) -> ConnectionManager<ThickClient> {
         let grpc_env = Arc::new(
             grpcio::EnvBuilder::new()
-                .name_prefix("RPC".to_string())
+                .cq_count(1)
+                .name_prefix("peer")
                 .build(),
         );
         let peers = self.create_peers(verifier, grpc_env, logger.clone());

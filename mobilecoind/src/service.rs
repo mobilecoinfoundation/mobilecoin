@@ -107,6 +107,7 @@ impl Service {
         log::info!(logger, "Starting mobilecoind API Service on {}", listen_uri);
         let env = Arc::new(
             EnvBuilder::new()
+                .cq_count(1)
                 .name_prefix("Mobilecoind-RPC".to_string())
                 .build(),
         );
