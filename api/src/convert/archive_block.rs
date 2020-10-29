@@ -118,12 +118,11 @@ mod tests {
     use super::*;
     use mc_crypto_keys::{Ed25519Private, RistrettoPublic};
     use mc_transaction_core::{
-        amount::Amount,
         encrypted_fog_hint::ENCRYPTED_FOG_HINT_LEN,
-        range::Range,
+        membership_proofs::Range,
         ring_signature::KeyImage,
         tx::{TxOut, TxOutMembershipElement, TxOutMembershipHash},
-        Block, BlockContents, BlockData, BlockID, BlockSignature,
+        Amount, Block, BlockContents, BlockData, BlockID, BlockSignature,
     };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};

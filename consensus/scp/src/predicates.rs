@@ -360,7 +360,7 @@ mod predicates_tests {
             Msg::new(test_node_id(6), node_6_quorum_set, 1, topic),
         );
 
-        // Look for quorum intersecting with ballot_1 and some ballot for which there is no quorum
+        // Find a blocking set intersecting with ballot_1 and ballot_3.
         let (node_ids, pred) = local_node_quorum_set.findBlockingSet(
             &msgs,
             BallotSetPredicate {

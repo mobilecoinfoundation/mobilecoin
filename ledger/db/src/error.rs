@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use failure::Fail;
+use mc_transaction_core::membership_proofs::RangeError;
 use mc_util_lmdb::MetadataStoreError;
 
 /// A Ledger error kind.
@@ -90,8 +91,8 @@ impl From<mc_util_serial::EncodeError> for Error {
     }
 }
 
-impl From<mc_transaction_core::range::RangeError> for Error {
-    fn from(_: mc_transaction_core::range::RangeError) -> Self {
+impl From<RangeError> for Error {
+    fn from(_: RangeError) -> Self {
         Error::RangeError
     }
 }
