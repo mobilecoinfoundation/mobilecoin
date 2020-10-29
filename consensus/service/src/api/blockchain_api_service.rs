@@ -11,7 +11,7 @@ use mc_consensus_api::{
     empty::Empty,
 };
 use mc_ledger_db::Ledger;
-use mc_util_grpc::{auth::Authenticator, rpc_logger, send_result};
+use mc_util_grpc::{rpc_logger, send_result, Authenticator};
 use mc_util_metrics::{self, SVC_COUNTERS};
 use protobuf::RepeatedField;
 use std::{cmp, convert::From, sync::Arc};
@@ -161,7 +161,7 @@ mod tests {
     use mc_common::{logger::test_with_logger, time::SystemTimeProvider};
     use mc_consensus_api::consensus_common_grpc::{self, BlockchainApiClient};
     use mc_transaction_core_test_utils::{create_ledger, initialize_ledger, AccountKey};
-    use mc_util_grpc::auth::{AnonymousAuthenticator, TokenAuthenticator};
+    use mc_util_grpc::{AnonymousAuthenticator, TokenAuthenticator};
     use rand::{rngs::StdRng, SeedableRng};
     use std::{
         sync::atomic::{AtomicUsize, Ordering::SeqCst},
