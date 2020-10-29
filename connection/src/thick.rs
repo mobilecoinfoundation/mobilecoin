@@ -201,7 +201,7 @@ impl AttestedConnection for ThickClient {
             .cookies
             .update_from_server_metadata(header.as_ref(), trailer.as_ref())
         {
-            log::info!(
+            log::warn!(
                 self.logger,
                 "Could not update cookies from gRPC metadata: {}",
                 e
@@ -248,7 +248,7 @@ impl BlockchainConnection for ThickClient {
                 .cookies
                 .update_from_server_metadata(header.as_ref(), trailer.as_ref())
             {
-                log::info!(
+                log::warn!(
                     this.logger,
                     "Could not update cookies from gRPC metadata: {}",
                     e
@@ -281,7 +281,7 @@ impl BlockchainConnection for ThickClient {
                 .cookies
                 .update_from_server_metadata(header.as_ref(), trailer.as_ref())
             {
-                log::info!(
+                log::warn!(
                     this.logger,
                     "Could not update cookies from gRPC metadata: {}",
                     e
@@ -310,7 +310,7 @@ impl BlockchainConnection for ThickClient {
                     .cookies
                     .update_from_server_metadata(header.as_ref(), trailer.as_ref())
                 {
-                    log::info!(
+                    log::warn!(
                         this.logger,
                         "Could not update cookies from gRPC metadata: {}",
                         e
@@ -355,7 +355,7 @@ impl UserTxConnection for ThickClient {
                 .cookies
                 .update_from_server_metadata(header.as_ref(), trailer.as_ref())
             {
-                log::info!(
+                log::warn!(
                     this.logger,
                     "Could not update cookies from gRPC metadata: {}",
                     e
