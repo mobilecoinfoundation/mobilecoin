@@ -18,28 +18,28 @@ use prost::DecodeError;
 use protobuf::{Message as ProtobufMessage, ProtobufError};
 use schnorrkel::{Signature as SchnorrkelSignature, SignatureError as SchnorrkelSignatureError};
 
-/// Enumeration of possible errors in course of verifying fog authority
+/// Enumeration of possible errors in course of verifying fog authority.
 #[derive(Debug, Display)]
 pub enum ReportAuthorityError {
-    /// Certificate is invalid {0}
+    /// Certificate is invalid {0}.
     InvalidCertificate(CertValidationError),
-    /// Verification failure
+    /// Verification failure.
     VerificationFailure,
-    /// Could not create Ed25519Public from cert pubkey
+    /// Could not create Ed25519Public from cert pubkey.
     Ed25519ParseError,
-    /// Ed25519 Signature Error {0}
+    /// Ed25519 Signature Error {0}.
     SignatureError(Ed25519SignatureError),
-    /// Cert signature validation failed
+    /// Cert signature validation failed.
     CertSignatureFailure,
-    /// Schnorrkel signature validation failed
+    /// Schnorrkel signature validation failed.
     SchnorrkelSignatureFailure,
-    /// Empty Cert Chain
+    /// Empty Cert Chain.
     EmptyCertChain,
-    /// Protobuf Error
+    /// Protobuf Error.
     ProtobufError,
-    /// Prost Decode Error
+    /// Prost Decode Error.
     ProstDecodeError,
-    /// Recipient did not provide a signature in their public address
+    /// Recipient did not provide a signature in their public address.
     NoRecipientSignature,
 }
 
@@ -205,12 +205,11 @@ mod tests {
         let ed25519_cert = include_str!(concat!(env!("OUT_DIR"), "/server-ed25519.crt")).trim();
         let ed25519_chain = Chain::from_chain_str(&ed25519_cert).unwrap();
         assert_eq!(chain.pems[1].contents, ed25519_chain.pems[0].contents);
+        // Note: Our to_der() includes the DER prefix, while x509-parser's does not
         assert_eq!(
             &signing_key.public_key().to_der()[12..],
             validated_chain.terminal_public_key(),
         );
-
-        // Note: Our to_der() includes the DER prefix, while x509-parser's does not
         assert_eq!(
             &signing_key.public_key().to_der()[12..],
             parse_x509_der(&ed25519_chain.pems[0].contents)
@@ -221,20 +220,18 @@ mod tests {
                 .subject_public_key
                 .data,
         );
-
         // Sanity check that terminal pubkey matches signer pubkey
-        // FIXME: Why is the sanity check failing?
-        // let terminal = &chain.pems[chain.pems.len() - 1];
-        // assert_eq!(
-        //     &signing_key.public_key().to_der()[12..],
-        //     parse_x509_der(&terminal.contents)
-        //         .unwrap()
-        //         .1
-        //         .tbs_certificate
-        //         .subject_pki
-        //         .subject_public_key
-        //         .data
-        // );
+        let terminal = &chain.pems[chain.pems.len() - 1];
+        assert_eq!(
+            &signing_key.public_key().to_der()[12..],
+            parse_x509_der(&terminal.contents)
+                .unwrap()
+                .1
+                .tbs_certificate
+                .subject_pki
+                .subject_public_key
+                .data
+        );
 
         // Construct the Report which Ingest would Publish to the ReportServer
         let report_id = "".to_string();

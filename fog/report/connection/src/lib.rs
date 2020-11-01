@@ -170,7 +170,8 @@ impl FogPubkeyResolver for GrpcFogPubkeyResolver {
         }
 
         let found_urls: Vec<String> = resp
-            .reports
+            .get_all_reports()
+            .get_reports()
             .iter()
             .map(|rep| format!("'{}'", rep.fog_report_id))
             .collect();
