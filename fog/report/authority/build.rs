@@ -6,12 +6,12 @@ use mc_util_build_script::Environment;
 use std::process::Command;
 
 fn main() {
-    if cfg!(test) {
-        let env = Environment::default();
+    //if cfg!(test) { // FIXME: Doesn't seem to trigger with cargo test
+    let env = Environment::default();
 
-        let _output = Command::new("tests/generate-certs.sh")
-            .arg(env.out_dir())
-            .output()
-            .expect("Could not generate certs");
-    }
+    let _output = Command::new("tests/generate-certs.sh")
+        .arg(env.out_dir())
+        .output()
+        .expect("Could not generate certs");
+    //}
 }

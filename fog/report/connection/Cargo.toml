@@ -10,6 +10,7 @@ mc-attest-core = { path = "../../../attest/core" }
 mc-common = { path = "../../../common", features = ["log"] }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-fog-api = { path = "../../api" }
+mc-fog-report-authority = { path = "../authority" }
 mc-fog-report-validation = { path = "../validation" }
 mc-util-grpc = { path = "../../../util/grpc" }
 mc-util-serial = { path = "../../../util/serial" }

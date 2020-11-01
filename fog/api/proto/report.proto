@@ -12,8 +12,10 @@ message ReportRequest {
 }
 
 message ReportResponse {
-    /// All available reports
-    Reports reports = 1;
+    /// All available reports. Nested message type as opposed to directly providing
+    /// repeated reports, in order to encapsulate the contents under signature in
+    /// reports_sig.
+    Reports all_reports = 1;
     /// The fog report service authority signature over the Report array.
     bytes reports_sig = 2;
     /// The x509 cert chain leading back to the fog authority root, and containing the
@@ -39,7 +41,8 @@ message Report {
     fixed64 pubkey_expiry = 3;
 }
 
+/// The message contents over which to construct the reports_sig in the ReportResponse.
 message Reports {
-    /// All available reports
+    /// All available reports.
     repeated Report reports = 1;
 }

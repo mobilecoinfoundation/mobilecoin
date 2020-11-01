@@ -2,7 +2,7 @@
 
 mod validated_chain;
 mod verify;
-pub use validated_chain::parse_keypair_from_pem;
+pub use validated_chain::{parse_keypair_from_pem, Chain};
 pub use verify::{verify_fog_authority, ReportAuthorityError};
 
 use mc_crypto_digestible::Digestible;

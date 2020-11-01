@@ -63,6 +63,7 @@ impl From<nom::Err<X509Error>> for CertValidationError {
 
 pub struct Chain {
     pub pems: Vec<Pem>,
+    pub byte_vec: Vec<Vec<u8>>,
 }
 
 impl Chain {
@@ -86,6 +87,7 @@ impl Chain {
         */
         Ok(Chain {
             pems: cert_bytes_view,
+            byte_vec: chain_bytes.to_vec(),
         })
     }
 
@@ -93,23 +95,22 @@ impl Chain {
     pub fn from_chain_str(chain_str: &str) -> Result<Chain, CertValidationError> {
         let mut buf = Cursor::new(chain_str);
         let mut certs: Vec<Pem> = Vec::new();
+        let mut cert_bytes: Vec<Vec<u8>> = Vec::new();
+        let mut prev_seek = 0;
         loop {
             let (pem, seek) = x509_parser::pem::Pem::read(&mut buf).unwrap();
-            println!("\x1b[1;32m Got seek = {:?}\x1b[0m", seek);
             certs.push(pem);
+            cert_bytes.push(chain_str.get(prev_seek..seek).unwrap().as_bytes().to_vec());
             buf.set_position(seek as u64);
+            prev_seek = seek;
             if seek >= chain_str.len() {
                 break;
             }
         }
-        Ok(Chain { pems: certs })
-    }
-
-    pub fn as_bytes(&self) -> Vec<Vec<u8>> {
-        self.pems
-            .iter()
-            .map(|p| p.contents.clone())
-            .collect::<Vec<Vec<u8>>>()
+        Ok(Chain {
+            pems: certs,
+            byte_vec: cert_bytes,
+        })
     }
 }
 

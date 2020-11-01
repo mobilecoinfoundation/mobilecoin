@@ -10,6 +10,7 @@ use mc_account_keys::PublicAddress;
 use mc_attest_core::{VerificationReport, Verifier};
 use mc_common::logger::{log, o, Logger};
 use mc_fog_api::report_grpc;
+use mc_fog_report_authority::{verify_fog_authority, ReportAuthorityError};
 use mc_fog_report_validation::ingest_report::{Error as IngestReportError, IngestReportVerifier};
 use mc_util_grpc::{auth::BasicCredentials, ConnectionUriGrpcioChannel};
 use mc_util_uri::{ConnectionUri, FogUri, UriParseError};
@@ -33,6 +34,8 @@ pub enum Error {
     NoReports,
     /// Matching report not found
     NotFound,
+    /// Report fog authority verification failed
+    ReportAuthorityVerificationFailed(ReportAuthorityError),
 }
 
 impl From<UriParseError> for Error {
@@ -56,6 +59,12 @@ impl From<mc_util_serial::decode::Error> for Error {
 impl From<IngestReportError> for Error {
     fn from(src: IngestReportError) -> Self {
         Self::Rejected(src)
+    }
+}
+
+impl From<ReportAuthorityError> for Error {
+    fn from(src: ReportAuthorityError) -> Self {
+        Self::ReportAuthorityVerificationFailed(src)
     }
 }
 
@@ -94,7 +103,6 @@ impl FogPubkeyResolver for GrpcFogPubkeyResolver {
         let creds = BasicCredentials::new(&fog_report_url.username(), &fog_report_url.password());
 
         // Build channel to this URI
-        // FIXME: We must get the TLS fingerprints and do fingerprint checking with sig
         let ch = ChannelBuilder::default_channel_builder(self.env.clone())
             .connect_to_uri(&fog_report_url, &logger);
         let report_grpc_client = report_grpc::ReportApiClient::new(ch);
@@ -103,7 +111,7 @@ impl FogPubkeyResolver for GrpcFogPubkeyResolver {
         let req = mc_fog_api::report::ReportRequest::new();
         let resp = report_grpc_client.get_reports_opt(&req, creds.call_option()?)?;
 
-        if resp.reports.len() == 0 {
+        if resp.get_all_reports().get_reports().len() == 0 {
             log::warn!(
                 self.logger,
                 "Report server at {} has no available reports",
@@ -112,7 +120,12 @@ impl FogPubkeyResolver for GrpcFogPubkeyResolver {
             return Err(Error::NoReports);
         }
 
-        for rep in resp.reports.iter() {
+        // Verify that the recipient's signature over the authority public key matches
+        // the root public key of the report cert chain, and that the reports were signed
+        // by the terminal pubkey in the chain.
+        verify_fog_authority(&resp, &recipient)?;
+
+        for rep in resp.get_all_reports().get_reports().iter() {
             // Make sure the fog_url, which came from ingest --fqdn config param,
             // matches Alice's fog_url in her public identity
             // Note: Neither of these strings is expected to have scheme or port

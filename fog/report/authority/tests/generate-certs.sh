@@ -13,7 +13,7 @@ openssl genrsa \
 
 # Create the self-signed cert.
 openssl req -new -x509 \
-  -key ca.key \
+  -key ${OUT_DIR}/ca.key \
   -config openssl-ca.cnf \
   -extensions root_ca_ext \
   -out ${OUT_DIR}/ca.crt
@@ -31,15 +31,15 @@ openssl genpkey -algorithm ED25519 \
 
 # Generate the certificate signing request
 openssl req -new \
-  -key server-ed25519.key \
+  -key ${OUT_DIR}/server-ed25519.key \
   -config openssl-ed25519.cnf \
   -out ${OUT_DIR}/server-ed25519.csr
 
 # Sign with the root cert
 openssl x509 -req \
-  -in server-ed25519.csr \
-  -CA ca.crt \
-  -CAkey ca.key \
+  -in ${OUT_DIR}/server-ed25519.csr \
+  -CA ${OUT_DIR}/ca.crt \
+  -CAkey ${OUT_DIR}/ca.key \
   -CAcreateserial \
   -extfile openssl-ext.cnf \
   -extensions server_cert \

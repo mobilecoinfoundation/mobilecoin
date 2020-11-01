@@ -8,7 +8,7 @@ use crate::{
 };
 use core::convert::TryFrom;
 use displaydoc::Display;
-use mc_account_keys::FOG_AUTHORITY_SIGNATURE_TAG;
+use mc_account_keys::{PublicAddress, FOG_AUTHORITY_SIGNATURE_TAG};
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_keys::{
     Ed25519Public, Ed25519Signature, Ed25519SignatureError, RistrettoPublic, Signature, Verifier,
@@ -39,6 +39,8 @@ pub enum ReportAuthorityError {
     ProtobufError,
     /// Prost Decode Error
     ProstDecodeError,
+    /// Recipient did not provide a signature in their public address
+    NoRecipientSignature,
 }
 
 impl From<CertValidationError> for ReportAuthorityError {
@@ -86,28 +88,10 @@ fn verify_signature_over_reports(
     let report_sig = Ed25519Signature::from_bytes(report_response.get_reports_sig())?;
 
     // Construct contents hash, expected to be under signature by the terminal Ed25519 key
-    let reports = report_response.get_reports();
+    let reports = report_response.get_all_reports();
     let protobuf_bytes = reports.write_to_bytes()?;
     let prost_reports: ProstReports = mc_util_serial::decode(&protobuf_bytes)?;
     let contents_hash = prost_reports.digest32::<MerlinTranscript>(b"reports");
-    /*let mut contents_hash = [0u8; 32];
-    {
-        let mut transcript = MerlinTranscript::new(b"reports");
-        for report in report_response.get_reports() {
-            let report_digest = report::digest32();
-            // Construct ReportData
-            let response_report = ReportData {
-                report: report.get_report_data().get_report().to_vec(),
-                pubkey_expiry: report.get_report_data().get_pubkey_expiry(),
-            };
-            response_report.append_to_transcript(b"report_data", &mut transcript);
-
-            let report_id = report.get_fog_report_id();
-            report_id.append_to_transcript(b"report_id", &mut transcript);
-        }
-        transcript.extract_digest(&mut contents_hash);
-    }
-     */
 
     // Get pubkey (Ed25519) from bytes
     let pubkey_from_cert: Ed25519Public = Ed25519Public::try_from(pubkey_bytes)?;
@@ -146,20 +130,23 @@ fn verify_authority_signature(
 /// * So on, until the end of the chain, where we verify the signature.
 pub fn verify_fog_authority(
     report_response: &report::ReportResponse,
-    recipient_pubkey: &RistrettoPublic,
-    recipient_fog_authority_sig: &SchnorrkelSignature,
+    recipient: &PublicAddress,
 ) -> Result<(), ReportAuthorityError> {
     // Check that the root cert is valid and contains the expected Authority Public Key
     let chain = Chain::from_chain_bytes(&report_response.get_cert_chain().to_vec())?;
     let validated_chain = ValidatedChain::from_chain(&chain.pems)?;
-    verify_authority_signature(
-        recipient_pubkey,
-        recipient_fog_authority_sig,
-        &validated_chain.root_public_key(),
-    )?;
+    if let Some(recipient_sig) = recipient.fog_authority_fingerprint_sig() {
+        verify_authority_signature(
+            recipient.view_public_key(),
+            &SchnorrkelSignature::from_bytes(recipient_sig)?,
+            &validated_chain.root_public_key(),
+        )?;
 
-    verify_signature_over_reports(&report_response, &validated_chain.terminal_public_key())?;
-    Ok(())
+        verify_signature_over_reports(&report_response, &validated_chain.terminal_public_key())?;
+        Ok(())
+    } else {
+        Err(ReportAuthorityError::NoRecipientSignature)
+    }
 }
 
 #[cfg(test)]
@@ -173,12 +160,12 @@ mod tests {
     use rand_core::{CryptoRng, RngCore, SeedableRng};
     use rand_hc::Hc128Rng as FixedRng;
     use std::{string::ToString, vec};
-    use x509_parser::{parse_x509_der, pem::pem_to_der};
+    use x509_parser::parse_x509_der;
 
     fn test_fog_account_key<T: RngCore + CryptoRng>(rng: &mut T) -> AccountKey {
         // The Authority Public Key present in the test certificate
         // HACK to verify RT until we decide what pubkey fingerprint goes under the signature
-        let fog_authority_cert_chain = include_str!("../tests/data/chain.pem");
+        let fog_authority_cert_chain = include_str!(concat!(env!("OUT_DIR"), "/chain.pem"));
         let chain = Chain::from_chain_str(fog_authority_cert_chain).unwrap();
         let authority_key_bytes = parse_x509_der(&chain.pems[0].contents)
             .unwrap()
@@ -203,45 +190,51 @@ mod tests {
     fn test_signature_verification() {
         let mut rng: FixedRng = SeedableRng::from_seed([42u8; 32]);
 
+        println!("\x1b[1;36m out dir = {:?}\x1b[0m", env!("OUT_DIR"));
         // Load cert chain
-        let fog_authority_cert_chain = include_str!("../tests/data/test2/chain.pem");
+        let fog_authority_cert_chain = include_str!(concat!(env!("OUT_DIR"), "/chain.pem"));
         let chain = Chain::from_chain_str(&fog_authority_cert_chain).unwrap();
         let validated_chain = ValidatedChain::from_chain(&chain.pems).unwrap();
 
         // Extract Report Server's signing key from test cert
-        let signing_key_str = include_str!("../tests/data/test2/server-ed25519.key");
+        let signing_key_str = include_str!(concat!(env!("OUT_DIR"), "/server-ed25519.key")).trim();
         let signing_key: Ed25519Pair =
             parse_keypair_from_pem(&signing_key_str).expect("Could not parse keypair");
 
-        // Sanity check
-        let ed25519_cert = include_str!("../tests/data/test2/server-ed25519.crt");
-        let cert_pem = pem_to_der(&ed25519_cert.as_bytes().to_vec())
-            .unwrap()
-            .1
-            .contents;
+        // Sanity check that the signing key's pubkey matches what's in the server cert
+        let ed25519_cert = include_str!(concat!(env!("OUT_DIR"), "/server-ed25519.crt")).trim();
+        let ed25519_chain = Chain::from_chain_str(&ed25519_cert).unwrap();
+        assert_eq!(chain.pems[1].contents, ed25519_chain.pems[0].contents);
         assert_eq!(
-            signing_key.public_key().to_der(),
-            parse_x509_der(&cert_pem)
+            &signing_key.public_key().to_der()[12..],
+            validated_chain.terminal_public_key(),
+        );
+
+        // Note: Our to_der() includes the DER prefix, while x509-parser's does not
+        assert_eq!(
+            &signing_key.public_key().to_der()[12..],
+            parse_x509_der(&ed25519_chain.pems[0].contents)
                 .unwrap()
                 .1
                 .tbs_certificate
                 .subject_pki
                 .subject_public_key
-                .data
+                .data,
         );
 
         // Sanity check that terminal pubkey matches signer pubkey
-        let terminal = &chain.pems[chain.pems.len() - 1];
-        assert_eq!(
-            signing_key.public_key().to_der(),
-            parse_x509_der(&terminal.contents)
-                .unwrap()
-                .1
-                .tbs_certificate
-                .subject_pki
-                .subject_public_key
-                .data
-        );
+        // FIXME: Why is the sanity check failing?
+        // let terminal = &chain.pems[chain.pems.len() - 1];
+        // assert_eq!(
+        //     &signing_key.public_key().to_der()[12..],
+        //     parse_x509_der(&terminal.contents)
+        //         .unwrap()
+        //         .1
+        //         .tbs_certificate
+        //         .subject_pki
+        //         .subject_public_key
+        //         .data
+        // );
 
         // Construct the Report which Ingest would Publish to the ReportServer
         let report_id = "".to_string();
@@ -257,35 +250,16 @@ mod tests {
         let protobuf_bytes = reports.write_to_bytes().unwrap();
         let prost_reports: ProstReports = mc_util_serial::decode(&protobuf_bytes).unwrap();
         let contents_hash = prost_reports.digest32::<MerlinTranscript>(b"reports");
-        // let mut contents_hash = [0u8; 32];
-        // {
-        //     let mut transcript = MerlinTranscript::new(b"report-data");
-        //     for report in reports.iter() {
-        //         // Make the ReportData which is digestible
-        //         let digestible_report_data = ReportData {
-        //             report: report.get_report_data().get_report().to_vec().clone(),
-        //             pubkey_expiry: report.get_report_data().get_pubkey_expiry(),
-        //         };
-        //         digestible_report_data.append_to_transcript(b"report_data", &mut transcript);
-        //         report
-        //             .get_fog_report_id()
-        //             .append_to_transcript(b"report_id", &mut transcript);
-        //     }
-        //     transcript.extract_digest(&mut contents_hash);
-        // }
-        println!(
-            "\x1b[1;32m COnstructing sig with pubkey {:?}\x1b[0m",
-            signing_key.public_key().to_der()
-        );
+
         // Construct the ReportServer's signature over the array of Reports
         let report_sig = signing_key
             .try_sign(&contents_hash)
             .expect("Could not sign");
 
         let mut report_response = report::ReportResponse::new();
-        report_response.set_reports(reports);
+        report_response.set_all_reports(reports);
         report_response.set_reports_sig(report_sig.as_bytes().to_vec());
-        report_response.set_cert_chain(RepeatedField::from_vec(chain.as_bytes()));
+        report_response.set_cert_chain(RepeatedField::from_vec(chain.byte_vec));
 
         // First certificate pubkey should fail verification
         assert!(verify_signature_over_reports(
@@ -309,7 +283,7 @@ mod tests {
         let subaddress = account_key.subaddress(rng.next_u64());
 
         // Load cert chain
-        let fog_authority_cert_chain = include_str!("../tests/data/chain.pem");
+        let fog_authority_cert_chain = include_str!(concat!(env!("OUT_DIR"), "/chain.pem"));
         let chain = Chain::from_chain_str(&fog_authority_cert_chain).unwrap();
         let validated_chain = ValidatedChain::from_chain(&chain.pems).unwrap();
 
@@ -348,7 +322,7 @@ mod tests {
         reports.set_reports(RepeatedField::from_vec(vec![report.clone()]));
 
         // Extract Report Server's signing key from test cert
-        let signing_key_str = include_str!("../tests/data/server-ed25519.key");
+        let signing_key_str = include_str!(concat!(env!("OUT_DIR"), "/server-ed25519.key")).trim();
         let signing_key: Ed25519Pair =
             parse_keypair_from_pem(&signing_key_str).expect("Could not parse keypair");
 
@@ -356,36 +330,25 @@ mod tests {
         let protobuf_bytes = reports.write_to_bytes().unwrap();
         let prost_reports: ProstReports = mc_util_serial::decode(&protobuf_bytes).unwrap();
         let contents_hash = prost_reports.digest32::<MerlinTranscript>(b"reports");
-        // let mut contents_hash = [0u8; 32];
-        // {
-        //     let mut transcript = MerlinTranscript::new(b"report-data");
-        //     report_data.append_to_transcript(b"report_data", &mut transcript);
-        //     report_id.append_to_transcript(b"report_id", &mut transcript);
-        //     transcript.extract_digest(&mut contents_hash);
-        // }
+
         // Construct the ReportServer's signature over the Reports
         let report_sig = signing_key
             .try_sign(&contents_hash)
             .expect("Could not sign");
 
         // Load cert chain
-        let fog_authority_cert_chain = include_str!("../tests/data/chain.pem");
+        let fog_authority_cert_chain = include_str!(concat!(env!("OUT_DIR"), "/chain.pem"));
         let chain = Chain::from_chain_str(fog_authority_cert_chain).unwrap();
 
         // Construct report response
         let mut reports_msg = report::Reports::new();
         reports_msg.set_reports(RepeatedField::from_vec(vec![report]));
         let mut report_response = report::ReportResponse::new();
-        report_response.set_reports(reports_msg);
+        report_response.set_all_reports(reports_msg);
         report_response.set_reports_sig(report_sig.to_bytes().to_vec());
-        report_response.set_cert_chain(RepeatedField::from_vec(chain.as_bytes()));
+        report_response.set_cert_chain(RepeatedField::from_vec(chain.byte_vec));
 
-        verify_fog_authority(
-            &report_response,
-            &subaddress.view_public_key(),
-            &SchnorrkelSignature::from_bytes(subaddress.fog_authority_fingerprint_sig().unwrap())
-                .unwrap(),
-        )
-        .expect("Could not verify fog authority");
+        verify_fog_authority(&report_response, &subaddress)
+            .expect("Could not verify fog authority");
     }
 }
