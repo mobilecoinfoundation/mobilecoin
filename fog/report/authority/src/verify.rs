@@ -3,7 +3,7 @@
 //! Verify fog authority and report signature.
 
 use crate::{
-    validated_chain::{CertValidationError, ValidatedChain},
+    validated_chain::{CertValidationError, Chain, ValidatedChain},
     ProstReports,
 };
 use core::convert::TryFrom;
@@ -150,8 +150,8 @@ pub fn verify_fog_authority(
     recipient_fog_authority_sig: &SchnorrkelSignature,
 ) -> Result<(), ReportAuthorityError> {
     // Check that the root cert is valid and contains the expected Authority Public Key
-    let validated_chain =
-        ValidatedChain::from_chain_bytes(&report_response.get_cert_chain().to_vec())?;
+    let chain = Chain::from_chain_bytes(&report_response.get_cert_chain().to_vec())?;
+    let validated_chain = ValidatedChain::from_chain(&chain.pems)?;
     verify_authority_signature(
         recipient_pubkey,
         recipient_fog_authority_sig,
@@ -166,7 +166,7 @@ pub fn verify_fog_authority(
 mod tests {
     use super::*;
 
-    use crate::validated_chain::{parse_keypair_from_pem, split_certs_to_byte_vec};
+    use crate::validated_chain::parse_keypair_from_pem;
     use mc_account_keys::{AccountKey, RootIdentity};
     use mc_crypto_keys::{DistinguishedEncoding, Ed25519Pair, Signer};
     use protobuf::RepeatedField;
@@ -179,10 +179,8 @@ mod tests {
         // The Authority Public Key present in the test certificate
         // HACK to verify RT until we decide what pubkey fingerprint goes under the signature
         let fog_authority_cert_chain = include_str!("../tests/data/chain.pem");
-        let certs = split_certs_to_byte_vec(fog_authority_cert_chain);
-        let root = certs[0].clone();
-        let cert_pem = pem_to_der(&root).unwrap().1.contents;
-        let authority_key_bytes = parse_x509_der(&cert_pem)
+        let chain = Chain::from_chain_str(fog_authority_cert_chain).unwrap();
+        let authority_key_bytes = parse_x509_der(&chain.pems[0].contents)
             .unwrap()
             .1
             .tbs_certificate
@@ -207,8 +205,8 @@ mod tests {
 
         // Load cert chain
         let fog_authority_cert_chain = include_str!("../tests/data/test2/chain.pem");
-        let certs = split_certs_to_byte_vec(fog_authority_cert_chain);
-        let validated_chain = ValidatedChain::from_chain_bytes(&certs).unwrap();
+        let chain = Chain::from_chain_str(&fog_authority_cert_chain).unwrap();
+        let validated_chain = ValidatedChain::from_chain(&chain.pems).unwrap();
 
         // Extract Report Server's signing key from test cert
         let signing_key_str = include_str!("../tests/data/test2/server-ed25519.key");
@@ -233,11 +231,10 @@ mod tests {
         );
 
         // Sanity check that terminal pubkey matches signer pubkey
-        let terminal = certs[certs.len() - 1].clone();
-        let cert_pem = pem_to_der(&terminal).unwrap().1.contents;
+        let terminal = &chain.pems[chain.pems.len() - 1];
         assert_eq!(
             signing_key.public_key().to_der(),
-            parse_x509_der(&cert_pem)
+            parse_x509_der(&terminal.contents)
                 .unwrap()
                 .1
                 .tbs_certificate
@@ -288,7 +285,7 @@ mod tests {
         let mut report_response = report::ReportResponse::new();
         report_response.set_reports(reports);
         report_response.set_reports_sig(report_sig.as_bytes().to_vec());
-        report_response.set_cert_chain(RepeatedField::from_vec(certs.to_vec()));
+        report_response.set_cert_chain(RepeatedField::from_vec(chain.as_bytes()));
 
         // First certificate pubkey should fail verification
         assert!(verify_signature_over_reports(
@@ -313,8 +310,8 @@ mod tests {
 
         // Load cert chain
         let fog_authority_cert_chain = include_str!("../tests/data/chain.pem");
-        let certs = split_certs_to_byte_vec(fog_authority_cert_chain);
-        let validated_chain = ValidatedChain::from_chain_bytes(&certs).unwrap();
+        let chain = Chain::from_chain_str(&fog_authority_cert_chain).unwrap();
+        let validated_chain = ValidatedChain::from_chain(&chain.pems).unwrap();
 
         assert!(verify_authority_signature(
             &subaddress.view_public_key(),
@@ -373,7 +370,7 @@ mod tests {
 
         // Load cert chain
         let fog_authority_cert_chain = include_str!("../tests/data/chain.pem");
-        let certs = split_certs_to_byte_vec(fog_authority_cert_chain);
+        let chain = Chain::from_chain_str(fog_authority_cert_chain).unwrap();
 
         // Construct report response
         let mut reports_msg = report::Reports::new();
@@ -381,7 +378,7 @@ mod tests {
         let mut report_response = report::ReportResponse::new();
         report_response.set_reports(reports_msg);
         report_response.set_reports_sig(report_sig.to_bytes().to_vec());
-        report_response.set_cert_chain(RepeatedField::from_vec(certs));
+        report_response.set_cert_chain(RepeatedField::from_vec(chain.as_bytes()));
 
         verify_fog_authority(
             &report_response,

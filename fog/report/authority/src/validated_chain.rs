@@ -5,7 +5,7 @@
 use displaydoc::Display;
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Pair, Ed25519Private};
 use nom;
-use std::vec::Vec;
+use std::{io::Cursor, vec::Vec};
 use x509_parser::{
     error::{PEMError, X509Error},
     parse_x509_der,
@@ -34,6 +34,8 @@ pub enum CertValidationError {
     EmptyCertChain,
     /// Cert signature validation failed
     CertSignatureFailure,
+    /// Unable to extract Ed25519 Private Key
+    Ed25519Privkey,
 }
 
 impl From<X509Error> for CertValidationError {
@@ -59,20 +61,15 @@ impl From<nom::Err<X509Error>> for CertValidationError {
     }
 }
 
-pub struct ValidatedChain {
-    pubkeys: Vec<Vec<u8>>,
+pub struct Chain {
+    pub pems: Vec<Pem>,
 }
 
-impl ValidatedChain {
-    pub fn from_chain_bytes(
-        chain_bytes: &[Vec<u8>],
-    ) -> Result<ValidatedChain, CertValidationError> {
+impl Chain {
+    pub fn from_chain_bytes(chain_bytes: &[Vec<u8>]) -> Result<Chain, CertValidationError> {
         if chain_bytes.is_empty() {
             return Err(CertValidationError::EmptyCertChain);
         }
-
-        // Store the pubkey from each cert
-        let mut pubkeys = Vec::new();
 
         // Construct an array of the views over the cert bytes
         let cert_bytes_view = chain_bytes
@@ -80,7 +77,6 @@ impl ValidatedChain {
             .map(|cert_bytes| pem_to_der(cert_bytes))
             .filter_map(|res| Some(res.ok().unwrap().1))
             .collect::<Vec<Pem>>();
-
         /*
                let cert_bytes_view = chain_bytes
                    .iter()
@@ -88,6 +84,44 @@ impl ValidatedChain {
                    .collect::<Result<Vec<Pem>, PEMError>>()?;
 
         */
+        Ok(Chain {
+            pems: cert_bytes_view,
+        })
+    }
+
+    /// Helper method to parse a chaim.pem string to an array of Pems
+    pub fn from_chain_str(chain_str: &str) -> Result<Chain, CertValidationError> {
+        let mut buf = Cursor::new(chain_str);
+        let mut certs: Vec<Pem> = Vec::new();
+        loop {
+            let (pem, seek) = x509_parser::pem::Pem::read(&mut buf).unwrap();
+            println!("\x1b[1;32m Got seek = {:?}\x1b[0m", seek);
+            certs.push(pem);
+            buf.set_position(seek as u64);
+            if seek >= chain_str.len() {
+                break;
+            }
+        }
+        Ok(Chain { pems: certs })
+    }
+
+    pub fn as_bytes(&self) -> Vec<Vec<u8>> {
+        self.pems
+            .iter()
+            .map(|p| p.contents.clone())
+            .collect::<Vec<Vec<u8>>>()
+    }
+}
+
+pub struct ValidatedChain {
+    pubkeys: Vec<Vec<u8>>,
+}
+
+impl ValidatedChain {
+    /// Process and validate a certificate chain from bytes.
+    pub fn from_chain(cert_bytes_view: &Vec<Pem>) -> Result<ValidatedChain, CertValidationError> {
+        // Store the pubkey from each cert
+        let mut pubkeys = Vec::new();
 
         // For each cert in the remaining chain, check that:
         // * It is valid
@@ -156,33 +190,8 @@ impl ValidatedChain {
     }
 }
 
-/// Utilities to help with parsing certs
-type CertByteVec = Vec<Vec<u8>>;
-
-/// Simple helper method to split a cert chain string, e.g. from a chain.pem file
-/// to a vector containing a vector of bytes for each certificate in the chain.
-pub fn split_certs_to_byte_vec(contents: &str) -> CertByteVec {
-    let mut cert_strs: Vec<&str> = Vec::new();
-    let mut next: &str = contents.trim();
-    loop {
-        match next.find("-\n-") {
-            Some(ind) => {
-                let (first, n) = next.split_at(ind + 1);
-                next = &n[1..];
-                cert_strs.push(first);
-                // FIXME: add max chain size
-            }
-            None => {
-                cert_strs.push(next);
-                break;
-            }
-        }
-    }
-    let certs: Vec<Vec<u8>> = cert_strs.iter().map(|x| x.as_bytes().to_vec()).collect();
-    certs
-}
-
-pub fn parse_keypair_from_pem(privkey_str: &str) -> Result<Ed25519Pair, ()> {
+/// Helper method to extract Ed25519 Keypair from Pem file
+pub fn parse_keypair_from_pem(privkey_str: &str) -> Result<Ed25519Pair, CertValidationError> {
     let res = pem_to_der(privkey_str.as_bytes());
     match res {
         Ok((rem, pem)) => {
@@ -194,7 +203,7 @@ pub fn parse_keypair_from_pem(privkey_str: &str) -> Result<Ed25519Pair, ()> {
             let keypair = Ed25519Pair::from(privkey);
             Ok(keypair)
         }
-        Err(_e) => Err(()),
+        Err(_e) => Err(CertValidationError::Ed25519Privkey),
     }
 }
 
@@ -203,14 +212,24 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_cert_validation() {
+    fn test_cert_validation_str() {
         // Load cert chain, expect no errors.
         let fog_authority_cert_chain = include_str!(concat!(env!("OUT_DIR"), "/chain.pem"));
-        let certs = split_certs_to_byte_vec(fog_authority_cert_chain);
-        ValidatedChain::from_chain_bytes(&certs).unwrap();
+        let chain = Chain::from_chain_str(&fog_authority_cert_chain).unwrap();
+        ValidatedChain::from_chain(&chain.pems).unwrap();
     }
 
-    // FIXME: Add error cases to tests
+    #[test]
+    fn test_cert_validation_bytes() {
+        // Load cert chain, expect no errors.
+        let ca_cert = include_str!(concat!(env!("OUT_DIR"), "/ca.crt")).trim();
+        let server_cert = include_str!(concat!(env!("OUT_DIR"), "/server-ed25519.crt")).trim();
+        let input_chain = vec![ca_cert.as_bytes().to_vec(), server_cert.as_bytes().to_vec()];
+        let chain = Chain::from_chain_bytes(&input_chain).unwrap();
+        ValidatedChain::from_chain(&chain.pems).unwrap();
+    }
+
+    // FIXME: Add error cases to tests, including empty cert chain
 
     #[test]
     fn test_split_certs_to_byte_vec() {
@@ -218,13 +237,15 @@ mod tests {
         let ca_cert = include_str!(concat!(env!("OUT_DIR"), "/ca.crt")).trim();
         let server_cert = include_str!(concat!(env!("OUT_DIR"), "/server-ed25519.crt")).trim();
 
-        let split = split_certs_to_byte_vec(cert_chain);
-        assert_eq!(split.len(), 2);
-        assert_eq!(split[0], ca_cert.as_bytes());
-        assert_eq!(split[1], server_cert.as_bytes());
+        let chain = Chain::from_chain_str(cert_chain).unwrap();
+        let ca = Chain::from_chain_str(ca_cert).unwrap();
+        let server = Chain::from_chain_str(server_cert).unwrap();
 
-        assert_eq!(String::from_utf8(split[0].clone()).unwrap(), ca_cert);
-        assert_eq!(String::from_utf8(split[1].clone()).unwrap(), server_cert);
+        assert_eq!(chain.pems.len(), 2);
+        assert_eq!(ca.pems.len(), 1);
+        assert_eq!(server.pems.len(), 1);
+        assert_eq!(chain.pems[0].contents, ca.pems[0].contents);
+        assert_eq!(chain.pems[1].contents, server.pems[0].contents);
     }
 
     #[test]
