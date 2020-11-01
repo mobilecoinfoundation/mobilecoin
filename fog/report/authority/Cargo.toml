@@ -16,6 +16,7 @@ mc-util-serial = { path = "../../../util/serial" }
 schnorrkel = { git = "https://github.com/w3f/schnorrkel", rev = "cfdbe9ae865a4d3ffa2566d896d4dbedf5107028", default-features = false }
 
 displaydoc = { version = "0.1", default-features = false }
+nom = "6.0"
 prost = "0.6.1"
 protobuf = "2.12"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
@@ -29,3 +30,6 @@ protobuf = "2.12"
 rand_core = "0.5"
 rand_hc = "0.2"
 rand = "0.7"
+
+[build-dependencies]
+mc-util-build-script = { path = "../../../util/build/script" }

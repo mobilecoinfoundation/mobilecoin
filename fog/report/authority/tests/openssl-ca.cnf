@@ -1,0 +1,17 @@
+[ req ]
+prompt = no
+distinguished_name = ca_dn
+req_extensions = root_ca_ext
+
+[ ca_dn ]
+0.domainComponent       = "org"
+1.domainComponent       = "simple"
+organizationName        = "Simple Inc"
+organizationalUnitName  = "Simple Root CA"
+commonName              = "Simple Root CA"
+
+[ root_ca_ext ]
+keyUsage                = critical,keyCertSign,cRLSign
+basicConstraints        = critical,CA:true
+subjectKeyIdentifier    = hash
+authorityKeyIdentifier  = keyid:always

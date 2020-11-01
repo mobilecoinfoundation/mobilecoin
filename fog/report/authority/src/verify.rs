@@ -83,8 +83,7 @@ fn verify_signature_over_reports(
     pubkey_bytes: &[u8],
 ) -> Result<(), ReportAuthorityError> {
     // For the final cert in the chain, check that the report signature verifies with the pubkey.
-    let report_sig: Ed25519Signature =
-        Signature::from_bytes(&report_response.get_reports_sig().to_vec())?;
+    let report_sig = Ed25519Signature::from_bytes(report_response.get_reports_sig())?;
 
     // Construct contents hash, expected to be under signature by the terminal Ed25519 key
     let reports = report_response.get_reports();

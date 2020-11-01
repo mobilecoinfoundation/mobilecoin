@@ -4,14 +4,16 @@
 
 use displaydoc::Display;
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Pair, Ed25519Private};
+use nom;
 use std::vec::Vec;
 use x509_parser::{
-    error::X509Error,
+    error::{PEMError, X509Error},
     parse_x509_der,
     pem::{pem_to_der, Pem},
+    X509Version,
 };
 
-const EXPECTED_TBS_CERT_VERSION: u32 = 2;
+const EXPECTED_TBS_CERT_VERSION: X509Version = X509Version::V3;
 
 /// Enumeration of possible errors in course of verifying fog authority
 #[derive(Debug, Display)]
@@ -40,6 +42,23 @@ impl From<X509Error> for CertValidationError {
     }
 }
 
+impl From<PEMError> for CertValidationError {
+    fn from(_src: PEMError) -> Self {
+        Self::PEMParseFailure
+    }
+}
+
+// FIXME: Not sure what I'm missing here - using map_err instead below
+//  the trait `std::convert::From<nom::internal::Err<x509_parser::error::X509Error>>` is not implemented for `validated_chain::CertValidationError`
+//    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+//    = help: the following implementations were found:
+//              <validated_chain::CertValidationError as std::convert::From<nom::internal::Err<x509_parser::error::X509Error>>>
+impl From<nom::Err<X509Error>> for CertValidationError {
+    fn from(_src: nom::Err<X509Error>) -> Self {
+        Self::X509ParseFailure
+    }
+}
+
 pub struct ValidatedChain {
     pubkeys: Vec<Vec<u8>>,
 }
@@ -56,22 +75,23 @@ impl ValidatedChain {
         let mut pubkeys = Vec::new();
 
         // Construct an array of the views over the cert bytes
-        let cert_bytes_view: Vec<Pem> = chain_bytes
+        let cert_bytes_view = chain_bytes
             .iter()
-            .map(|cert_bytes| {
-                // Parse Pem
-                let (_rem, pem) = pem_to_der(cert_bytes).unwrap(); //.map_err(|_| CertValidationError::PEMParseFailure)?;
-                                                                   /*if !rem.is_empty() || pem.label != "CERTIFICATE" {
-                                                                       return Err(CertValidationError::PEMParseFailure);
-                                                                   }*/
-                // FIXME: Surface error within map
-                pem
-            })
-            .collect();
+            .map(|cert_bytes| pem_to_der(cert_bytes))
+            .filter_map(|res| Some(res.ok().unwrap().1))
+            .collect::<Vec<Pem>>();
+
+        /*
+               let cert_bytes_view = chain_bytes
+                   .iter()
+                   .map(pem_to_der)
+                   .collect::<Result<Vec<Pem>, PEMError>>()?;
+
+        */
 
         // For each cert in the remaining chain, check that:
-        // * It was issued by the parent (validate signature)
         // * It is valid
+        // * It was issued by the parent (validate signature)
         for (i, pem) in cert_bytes_view.iter().enumerate() {
             // Parse x509 from pem
             let (rem, cert) =
@@ -85,11 +105,7 @@ impl ValidatedChain {
                 return Err(CertValidationError::CertValidityFailed);
             }
 
-            if cert.tbs_certificate.version != EXPECTED_TBS_CERT_VERSION {
-                println!(
-                    "\x1b[1;31m expected {:?} got {:?}\x1b[0m",
-                    cert.tbs_certificate.version, EXPECTED_TBS_CERT_VERSION
-                );
+            if cert.version() != EXPECTED_TBS_CERT_VERSION {
                 return Err(CertValidationError::IncorrectCertVersion);
             }
 
@@ -121,16 +137,16 @@ impl ValidatedChain {
         Ok(Self { pubkeys })
     }
 
-    pub fn public_key(&self, index: usize) -> Vec<u8> {
-        self.pubkeys[index].clone() // FIXME: error handling
+    pub fn public_key(&self, index: usize) -> &[u8] {
+        &self.pubkeys[index] // FIXME: error handling
     }
 
-    pub fn root_public_key(&self) -> Vec<u8> {
+    pub fn root_public_key(&self) -> &[u8] {
         println!("\x1b[1;36mGot root pubkey {:?}\x1b[0m", self.public_key(0));
         self.public_key(0)
     }
 
-    pub fn terminal_public_key(&self) -> Vec<u8> {
+    pub fn terminal_public_key(&self) -> &[u8] {
         println!(
             "\x1b[1;36mGot terminal pubkey {:?}\x1b[0m",
             self.public_key(self.pubkeys.len() - 1)
@@ -185,12 +201,11 @@ pub fn parse_keypair_from_pem(privkey_str: &str) -> Result<Ed25519Pair, ()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mc_crypto_keys::DistinguishedEncoding;
 
     #[test]
     fn test_cert_validation() {
         // Load cert chain, expect no errors.
-        let fog_authority_cert_chain = include_str!("../tests/data/chain.pem");
+        let fog_authority_cert_chain = include_str!(concat!(env!("OUT_DIR"), "/chain.pem"));
         let certs = split_certs_to_byte_vec(fog_authority_cert_chain);
         ValidatedChain::from_chain_bytes(&certs).unwrap();
     }
@@ -199,32 +214,22 @@ mod tests {
 
     #[test]
     fn test_split_certs_to_byte_vec() {
-        let cert_chain = include_str!("../tests/data/chain.pem");
+        let cert_chain = include_str!(concat!(env!("OUT_DIR"), "/chain.pem"));
+        let ca_cert = include_str!(concat!(env!("OUT_DIR"), "/ca.crt")).trim();
+        let server_cert = include_str!(concat!(env!("OUT_DIR"), "/server-ed25519.crt")).trim();
+
         let split = split_certs_to_byte_vec(cert_chain);
         assert_eq!(split.len(), 2);
-        assert_eq!(
-            split[0],
-            include_str!("../tests/data/ca.crt").trim().as_bytes()
-        );
-        assert_eq!(
-            split[1],
-            include_str!("../tests/data/server-ed25519.crt")
-                .trim()
-                .as_bytes()
-        );
+        assert_eq!(split[0], ca_cert.as_bytes());
+        assert_eq!(split[1], server_cert.as_bytes());
+
+        assert_eq!(String::from_utf8(split[0].clone()).unwrap(), ca_cert);
+        assert_eq!(String::from_utf8(split[1].clone()).unwrap(), server_cert);
     }
 
     #[test]
     fn test_read_signing_key() {
-        let server_privkey = include_str!("../tests/data/server-ed25519.key");
-        let keypair = parse_keypair_from_pem(server_privkey).expect("Could not parse privkey");
-        assert_eq!(
-            keypair.private_key().to_der(),
-            vec![
-                48, 46, 2, 1, 0, 48, 5, 6, 3, 43, 101, 112, 4, 34, 4, 32, 250, 52, 67, 152, 137,
-                127, 169, 190, 155, 163, 182, 99, 100, 45, 59, 134, 69, 111, 246, 168, 10, 5, 194,
-                116, 28, 94, 171, 189, 167, 111, 169, 128
-            ]
-        );
+        let server_privkey = include_str!(concat!(env!("OUT_DIR"), "/server-ed25519.key"));
+        assert!(parse_keypair_from_pem(server_privkey).is_ok());
     }
 }
