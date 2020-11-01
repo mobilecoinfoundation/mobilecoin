@@ -80,7 +80,7 @@ impl From<DecodeError> for ReportAuthorityError {
 }
 
 /// Verify the signature over the reports.
-fn verify_signature_over_reports(
+pub fn verify_signature_over_reports(
     report_response: &report::ReportResponse,
     pubkey_bytes: &[u8],
 ) -> Result<(), ReportAuthorityError> {
@@ -91,7 +91,7 @@ fn verify_signature_over_reports(
     let reports = report_response.get_all_reports();
     let protobuf_bytes = reports.write_to_bytes()?;
     let prost_reports: ProstReports = mc_util_serial::decode(&protobuf_bytes)?;
-    let contents_hash = prost_reports.digest32::<MerlinTranscript>(b"reports");
+    let contents_hash = prost_reports.digest32::<MerlinTranscript>(b"reports"); // FIXME: constant somewhere
 
     // Get pubkey (Ed25519) from bytes
     let pubkey_from_cert: Ed25519Public = Ed25519Public::try_from(pubkey_bytes)?;
@@ -164,16 +164,10 @@ mod tests {
 
     fn test_fog_account_key<T: RngCore + CryptoRng>(rng: &mut T) -> AccountKey {
         // The Authority Public Key present in the test certificate
-        // HACK to verify RT until we decide what pubkey fingerprint goes under the signature
         let fog_authority_cert_chain = include_str!(concat!(env!("OUT_DIR"), "/chain.pem"));
         let chain = Chain::from_chain_str(fog_authority_cert_chain).unwrap();
-        let authority_key_bytes = parse_x509_der(&chain.pems[0].contents)
-            .unwrap()
-            .1
-            .tbs_certificate
-            .subject_pki
-            .subject_public_key
-            .data;
+        let validated_chain = ValidatedChain::from_chain(&chain).unwrap();
+        let authority_key_bytes = validated_chain.root_public_key();
 
         // Construct Schnorrkel signature over the authority key fingerprint via
         // creating an account key

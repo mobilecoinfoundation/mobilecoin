@@ -18,13 +18,6 @@ openssl req -new -x509 \
   -extensions root_ca_ext \
   -out ${OUT_DIR}/ca.crt
 
-# FIXME: add intermediate cert
-# Generate the key for an intermediate cert
-# openssl req -new -newkey rsa:2048 -nodes -keyout server.key -out server.csr
-
-# Tell the CA to sign the certificate
-# openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt -extfile openssl-ext.cnf -extensions server_cert
-
 # Create the terminal cert
 openssl genpkey -algorithm ED25519 \
   -out ${OUT_DIR}/server-ed25519.key
