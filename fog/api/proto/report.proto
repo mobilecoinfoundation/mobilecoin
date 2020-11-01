@@ -13,21 +13,33 @@ message ReportRequest {
 
 message ReportResponse {
     /// All available reports
-    repeated Report reports = 1;
+    Reports reports = 1;
+    /// The fog report service authority signature over the Report array.
+    bytes reports_sig = 2;
+    /// The x509 cert chain leading back to the fog authority root, and containing the
+    /// fog authority fingerprint. Each entry in the repeated field is the bytes of
+    /// a single certificate, with the first element being the root certificate, and the
+    /// last element containing the ed25519 public key that will verify the report_sig.
+    repeated bytes cert_chain = 3;
 }
 
 message Report {
-    /// The fog_report_id of users with which this pubkey should be used
-    /// This should match fog_report_id in Bob's public_address
+    /// The fog_report_id of users with which this pubkey should be used.
+    /// This should match fog_report_id in Bob's public_address.
     string fog_report_id = 1;
-    /// The signed intel report from Fog ingest node
-    /// This report structure includes the pubkey bytes themselves
-    /// At time of writing this is a CBOR serialized VerificationReport from attest crate
-    /// but we should perhaps make this also a proto to make it easier to inspect
+    /// The signed intel report from Fog Ingest node.
+    /// This report structure includes the pubkey bytes themselves.
+    /// At time of writing this is a CBOR serialized VerificationReport from attest crate,
+    /// but we should perhaps make this also a proto to make it easier to inspect.
     bytes report = 2;
     /// The last block at which a well-formed client may use this pubkey.
     /// The tombstone block of a Tx formed using this pubkey should not exceed this.
     /// This number is likely to be e.g. current block height + 50,
     /// and may be updated (larger) if you come back to the server later.
     fixed64 pubkey_expiry = 3;
+}
+
+message Reports {
+    /// All available reports
+    repeated Report reports = 1;
 }

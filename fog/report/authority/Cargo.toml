@@ -1,0 +1,31 @@
+[package]
+name = "mc-fog-report-authority"
+version = "1.0.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[dependencies]
+mc-account-keys = { path = "../../../account-keys" }
+mc-crypto-digestible = { path = "../../../crypto/digestible", features = ["derive"] }
+mc-crypto-keys = { path = "../../../crypto/keys" }
+mc-crypto-sig = { path = "../../../crypto/sig" }
+mc-fog-api = { path = "../../api" }
+mc-util-serial = { path = "../../../util/serial" }
+
+# Overridden since we need a not-yet-released commit that uprevs several dependencies.
+schnorrkel = { git = "https://github.com/w3f/schnorrkel", rev = "cfdbe9ae865a4d3ffa2566d896d4dbedf5107028", default-features = false }
+
+displaydoc = { version = "0.1", default-features = false }
+prost = "0.6.1"
+protobuf = "2.12"
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
+x509-parser = { version = "0.8", features = ["verify"] }
+
+[dev-dependencies]
+mc-util-from-random = { path = "../../../util/from-random" }
+mc-util-test-helper = { path = "../../../util/test-helper" }
+
+protobuf = "2.12"
+rand_core = "0.5"
+rand_hc = "0.2"
+rand = "0.7"

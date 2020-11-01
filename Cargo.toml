@@ -34,6 +34,7 @@ members = [
     "crypto/rand",
     "enclave-boundary",
     "fog/api",
+    "fog/report/authority",
     "fog/report/connection",
     "fog/report/validation",
     "ledger/db",
