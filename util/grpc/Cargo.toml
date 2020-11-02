@@ -3,7 +3,10 @@ name = "mc-util-grpc"
 version = "1.0.0"
 authors = ["MobileCoin"]
 edition = "2018"
-build = "build.rs"
+description = "Runtime gRPC Utilities"
+
+[badges]
+circle-ci = { repository = "mobilecoinfoundation/mobilecoin", branch = "master" }
 
 [dependencies]
 mc-common = { path = "../../common", features = ["loggers"] }
