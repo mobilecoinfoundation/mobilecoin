@@ -15,10 +15,9 @@ use serde::{Deserialize, Serialize};
 use zeroize::Zeroizing;
 
 use crate::{
-    commitment::Commitment,
-    compressed_commitment::CompressedCommitment,
     domain_separators::RING_MLSAG_CHALLENGE_DOMAIN_TAG,
     ring_signature::{hash_to_point, CurveScalar, Error, KeyImage, Scalar, GENERATORS},
+    Commitment, CompressedCommitment,
 };
 
 /// MLSAG for a ring of public keys and amount commitments.
@@ -117,7 +116,7 @@ impl RingMLSAG {
 
         // Uncompressed output commitment.
         // This ensures that each address and commitment encodes a valid Ristretto point.
-        let output_commitment: Commitment = Commitment::new(value, *output_blinding);
+        let output_commitment = Commitment::new(value, *output_blinding);
 
         // Ring must decompress.
         let decompressed_ring = decompress_ring(ring)?;

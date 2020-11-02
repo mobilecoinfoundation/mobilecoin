@@ -8,10 +8,10 @@ use alloc::vec::Vec;
 
 use super::error::{TransactionValidationError, TransactionValidationResult};
 use crate::{
-    compressed_commitment::CompressedCommitment,
     constants::*,
     membership_proofs::{derive_proof_at_index, is_membership_proof_valid},
     tx::{Tx, TxOut, TxOutMembershipProof, TxPrefix},
+    CompressedCommitment,
 };
 use mc_common::HashSet;
 use mc_crypto_keys::CompressedRistrettoPublic;
@@ -379,7 +379,9 @@ mod tests {
         },
     };
 
-    use crate::{range::Range, validation::validate::validate_ring_elements_are_sorted};
+    use crate::{
+        membership_proofs::Range, validation::validate::validate_ring_elements_are_sorted,
+    };
     use mc_crypto_keys::{CompressedRistrettoPublic, ReprBytes};
     use mc_ledger_db::{Ledger, LedgerDB};
     use mc_transaction_core_test_utils::{

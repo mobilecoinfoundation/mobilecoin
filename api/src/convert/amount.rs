@@ -1,7 +1,7 @@
 //! Convert to/from external::Amount
 
 use crate::{convert::ConversionError, external};
-use mc_transaction_core::{amount::Amount, CompressedCommitment};
+use mc_transaction_core::{Amount, CompressedCommitment};
 use mc_util_repr_bytes::ReprBytes;
 use std::convert::TryFrom;
 

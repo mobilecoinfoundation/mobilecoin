@@ -2,7 +2,7 @@
 
 use crate::{convert::ConversionError, external};
 use mc_transaction_core::{
-    range::Range,
+    membership_proofs::Range,
     tx::{TxOutMembershipElement, TxOutMembershipHash},
 };
 use std::convert::TryFrom;
