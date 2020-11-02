@@ -7,7 +7,7 @@ data:
   ledger_dist.conf: |
     [program:ledger-distribution]
     command=/usr/bin/ledger-distribution
-      --dest s3://mobilecoin.chain/node5.NETWORKNAME.mobilecoin.com?region=us-west-1
+      --dest s3://mobilecoin.chain/node5.NETWORKNAME.mobilecoin.com
       --ledger-path /ledger
 
     stdout_logfile=/dev/fd/1
@@ -207,7 +207,9 @@ spec:
             - name: MC_BRANCH
               value: "NETWORKNAME"
             - name: AWS_PATH
-              value: "AWS_PATH=s3://mobilecoin.chain/node5.NETWORKNAME.mobilecoin.com?region=us-west-1"
+              value: "AWS_PATH=s3://mobilecoin.chain/node5.NETWORKNAME.mobilecoin.com"
+            - name: AWS_REGION
+              value: "us-west-1"
             - name: PROD_IAS_SPID
               valueFrom:
                 secretKeyRef:

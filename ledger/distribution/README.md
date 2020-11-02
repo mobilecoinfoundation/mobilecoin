@@ -9,6 +9,7 @@ You must obtain AWS credentials and set them in your env.
 ```
 export AWS_ACCESS_KEY_ID=...
 export AWS_SECRET_ACCESS_KEY=...
+export AWS_REGION=...
 ```
 
 ### Usage
@@ -16,5 +17,5 @@ export AWS_SECRET_ACCESS_KEY=...
 ```
 cargo run --release -p mc-ledger-distribution -- \
     ---ledger-path /tmp/ledger \
-    ---dest "s3://my_bucket/my_node.my_domain.com?region=us-west-1"
+    ---dest "s3://my_bucket/my_node.my_domain.com"
 ```
