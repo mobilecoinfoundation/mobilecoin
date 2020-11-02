@@ -98,8 +98,6 @@ cfg_if::cfg_if! {
         /// Expose slog_scope
         pub use slog_scope;
 
-        use std::time::Instant;
-
         /// Get the global Logger instance, managed by `slog_scope`.
         #[cfg(feature = "log")]
         pub fn global_logger() -> Logger {
@@ -114,6 +112,13 @@ cfg_if::cfg_if! {
         {
             slog_scope::scope(&logger, || f(&logger))
         }
+    }
+}
+
+cfg_if::cfg_if! {
+    // Time tracing - only available when std is enable, since no_std has no concept of time.
+    if #[cfg(all(feature = "log", feature="std"))] {
+        use std::time::Instant;
 
         /// Simple time measurement utility, based on the [measure_time](https://docs.rs/measure_time/) crate.
         /// Note that even though the macro lives inside the `logger` module, it needs to be imported by
