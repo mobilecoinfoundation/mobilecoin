@@ -625,6 +625,10 @@ message SendPaymentRequest {
     // Optional: When selecting input UTXOs for the transaction, limit selection only to UTXOs whose
     // value is lower or equal to to this.
     uint64 max_input_utxo_value = 6;
+
+    // Optional: Return change to a different subaddress than the sender
+    bool override_change_subaddress = 7;
+    uint64 change_subaddress = 8;
 }
 message SendPaymentResponse {
     // Information the sender can use to check if the transaction landed in the ledger.
@@ -663,6 +667,10 @@ message PayAddressCodeRequest {
     // Optional: When selecting input UTXOs for the transaction, limit selection only to UTXOs whose
     // value is lower or equal to to this.
     uint64 max_input_utxo_value = 7;
+
+    // Optional: Return change to a different subaddress than the sender
+    bool override_change_subaddress = 8;
+    uint64 change_subaddress = 9;
 }
 
 //

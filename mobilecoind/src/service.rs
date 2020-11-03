@@ -1418,12 +1418,21 @@ impl<
             })
             .collect::<Result<Vec<Outlay>, RpcStatus>>()?;
 
+        // Set change address to sender address unless it has been overridden
+        let change_subaddress = {
+            if request.override_change_subaddress {
+                request.change_subaddress
+            } else {
+                request.sender_subaddress
+            }
+        };
+
         // Attempt to construct a transaction.
         let tx_proposal = self
             .transactions_manager
             .build_transaction(
                 &sender_monitor_id,
-                request.sender_subaddress,
+                change_subaddress,
                 &utxos,
                 &outlays,
                 request.fee,
@@ -1478,6 +1487,8 @@ impl<
         send_payment_request.set_fee(request.get_fee());
         send_payment_request.set_tombstone(request.get_tombstone());
         send_payment_request.set_max_input_utxo_value(request.get_max_input_utxo_value());
+        send_payment_request.set_override_change_subaddress(request.override_change_subaddress);
+        send_payment_request.set_change_subaddress(request.change_subaddress);
 
         self.send_payment_impl(send_payment_request)
     }
