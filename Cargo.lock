@@ -3195,6 +3195,7 @@ dependencies = [
  "bytes 0.5.4",
  "chrono",
  "displaydoc",
+ "generic-array 0.14.4",
  "hex 0.4.2",
  "hex_fmt",
  "mc-sgx-core-types",
@@ -3210,7 +3211,6 @@ dependencies = [
  "rand_hc 0.2.0",
  "rjson",
  "subtle 2.2.3",
- "typenum",
 ]
 
 [[package]]

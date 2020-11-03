@@ -34,7 +34,7 @@ bitflags = "1.2"
 bytes = "0.5"
 chrono = { version = "0.4.10", default-features = false, features = ["alloc"] }
 displaydoc = { version = "0.1.7", default-features = false }
-typenum = { version = "1.12", features = ["no_std"] }
+generic-array = { version = "0.14", features = ["more_lengths"] }
 hex = { version = "0.4", default-features = false }
 hex_fmt = "0.3"
 prost = { version = "0.6.1", optional = true, default-features = false }

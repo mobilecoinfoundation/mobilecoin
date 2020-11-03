@@ -9,8 +9,8 @@ use core::{
     fmt::{Debug, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
 };
+use generic_array::typenum::U128;
 use mc_util_encodings::FromBase64;
-use typenum::U128;
 
 const EPID_PSEUDONYM_B_SIZE: usize = 64;
 const EPID_PSEUDONYM_K_SIZE: usize = 64;
