@@ -236,8 +236,6 @@ spec:
             - name: "SEALED_BLOCK_SIGNING_KEY"
               value: "/keys/sealed-block-signing-key"
           volumeMounts:
-            - name: dev-isgx
-              mountPath: /dev/isgx
             - name: aesm-socket-dir
               mountPath: /var/run/aesmd
             - name: config-dir
@@ -252,15 +250,13 @@ spec:
             - name: supervisor-conf
               mountPath: /etc/supervisor/conf.d
               readOnly: true
-          securityContext:
-            privileged: true
+          resources:
+            limits:
+              intel.com/sgx: 5000
+            requests:
+              intel.com/sgx: 5000
 
       volumes:
-        # Volume-mapped SGX device
-        - name: dev-isgx
-          hostPath:
-            path: /dev/isgx
-            type: CharDevice
         - name: ledger-db-dir
           emptyDir: {}
         - name: account-db-dir
