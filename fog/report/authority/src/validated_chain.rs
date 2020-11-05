@@ -4,7 +4,6 @@
 
 use displaydoc::Display;
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Pair, Ed25519Private};
-use nom;
 use std::{io::Cursor, vec::Vec};
 use x509_parser::{
     error::{PEMError, X509Error},
