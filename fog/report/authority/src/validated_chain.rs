@@ -75,7 +75,7 @@ impl Chain {
         let cert_bytes_view = chain_bytes
             .iter()
             .map(|cert_bytes| pem_to_der(cert_bytes))
-            .filter_map(|res| Some(res.ok().unwrap().1))
+            .map(|res| Some(res.ok().unwrap().1))
             .collect::<Vec<Pem>>();
         /*
                let cert_bytes_view = chain_bytes
@@ -119,7 +119,7 @@ pub struct ValidatedChain {
 
 impl ValidatedChain {
     /// Process and validate a certificate chain from bytes.
-    pub fn from_chain(cert_bytes_view: &Vec<Pem>) -> Result<ValidatedChain, CertValidationError> {
+    pub fn from_chain(cert_bytes_view: &[Pem]) -> Result<ValidatedChain, CertValidationError> {
         // Store the pubkey from each cert
         let mut pubkeys = Vec::new();
 
