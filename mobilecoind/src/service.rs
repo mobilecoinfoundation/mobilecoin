@@ -3925,7 +3925,7 @@ mod test {
         request.set_amount(test_amount);
         request.set_override_change_subaddress(true);
         request.set_change_subaddress(1);
-        
+
         // Explicitly set fee so we can check change amount
         let fee = 1000;
         request.set_fee(fee);
