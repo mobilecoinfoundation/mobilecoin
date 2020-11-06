@@ -1427,8 +1427,6 @@ impl<
             }
         };
 
-        println!("!!!! change subaddress = {}", change_subaddress);
-
         // Attempt to construct a transaction.
         let tx_proposal = self
             .transactions_manager
