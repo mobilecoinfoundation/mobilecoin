@@ -75,7 +75,7 @@ impl Chain {
         let cert_bytes_view = chain_bytes
             .iter()
             .map(|cert_bytes| pem_to_der(cert_bytes))
-            .map(|res| Some(res.ok().unwrap().1))
+            .map(|res| res.ok().unwrap().1)
             .collect::<Vec<Pem>>();
         /*
                let cert_bytes_view = chain_bytes
