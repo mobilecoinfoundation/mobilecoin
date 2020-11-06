@@ -1419,12 +1419,10 @@ impl<
             .collect::<Result<Vec<Outlay>, RpcStatus>>()?;
 
         // Set change address to sender address unless it has been overridden
-        let change_subaddress = {
-            if request.override_change_subaddress {
-                request.change_subaddress
-            } else {
-                request.sender_subaddress
-            }
+        let change_subaddress = if request.override_change_subaddress {
+            request.change_subaddress
+        } else {
+            request.sender_subaddress
         };
 
         // Attempt to construct a transaction.
@@ -3918,15 +3916,27 @@ mod test {
         wrapper.set_public_address((&receiver_public_address).into());
         let b58_code = wrapper.b58_encode().unwrap();
 
+        let test_amount = 345;
+
         let mut request = mc_mobilecoind_api::PayAddressCodeRequest::new();
         request.set_sender_monitor_id(monitor_id.to_vec());
         request.set_sender_subaddress(0);
         request.set_receiver_b58_code(b58_code);
-        request.set_amount(345);
+        request.set_amount(test_amount);
         request.set_override_change_subaddress(true);
         request.set_change_subaddress(1);
+        
+        // Explicitly set fee so we can check change amount
+        let fee = 1000;
+        request.set_fee(fee);
 
-        let _response = client.pay_address_code(&request).unwrap();
+        let response = client.pay_address_code(&request).unwrap();
+        let total_value = response
+            .get_tx_proposal()
+            .get_input_list()
+            .iter()
+            .map(|utxo| utxo.value as u64)
+            .sum::<u64>();
 
         let mut opt_submitted_tx: Option<Tx> = None;
         for mock_peer in server_conn_manager.conns() {
@@ -3964,6 +3974,15 @@ mod test {
                 Ok(data) => {
                     if data.index == 1 {
                         change_subaddress_found = true;
+                        let shared_secret =
+                            get_tx_out_shared_secret(sender.view_private_key(), &tx_public_key);
+
+                        let (change_value, _blinding) = tx_out
+                            .amount
+                            .get_value(&shared_secret)
+                            .expect("Malformed amount");
+
+                        assert_eq!(total_value - test_amount - fee, change_value);
                     }
                 }
                 Err(Error::SubaddressSPKNotFound) => continue,
