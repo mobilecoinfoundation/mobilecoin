@@ -3,6 +3,7 @@
 // Consensus service client-facing data types and service descriptors.
 
 syntax = "proto3";
+import "google/protobuf/empty.proto";
 import "attest.proto";
 import "consensus_common.proto";
 
@@ -12,4 +13,8 @@ service ConsensusClientAPI {
     /// This API call is made with an encrypted payload for the enclave,
     /// indicating a new value to be acted upon.
     rpc ClientTxPropose(attest.Message) returns (consensus_common.ProposeTxResponse);
+
+    /// This API call is made made in cleartext and returns the peers sets
+    /// for the node
+    rpc ClientGetPeerSets(google.protobuf.Empty) returns (google.protobuf.Empty);
 }

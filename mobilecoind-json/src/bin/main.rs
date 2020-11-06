@@ -346,11 +346,14 @@ fn build_and_submit(
     req.set_outlay_list(RepeatedField::from_vec(vec![outlay]));
     req.set_max_input_utxo_value(max_input_utxo_value);
     match &transfer.change_subaddress {
-        Some(subaddress) => req.set_change_subaddress(
-            subaddress
-                .parse::<u64>()
-                .map_err(|err| format!("Failed to parse change subaddress: {}", err))?,
-        ),
+        Some(subaddress) => {
+            req.set_override_change_subaddress(true);
+            req.set_change_subaddress(
+                subaddress
+                    .parse::<u64>()
+                    .map_err(|err| format!("Failed to parse change subaddress: {}", err))?,
+            )
+        }
         None => {}
     }
 
@@ -400,11 +403,14 @@ fn pay_address_code(
     req.set_amount(amount);
     req.set_max_input_utxo_value(max_input_utxo_value);
     match &transfer.change_subaddress {
-        Some(subaddress) => req.set_change_subaddress(
-            subaddress
-                .parse::<u64>()
-                .map_err(|err| format!("Failed to parse change subaddress: {}", err))?,
-        ),
+        Some(subaddress) => {
+            req.set_override_change_subaddress(true);
+            req.set_change_subaddress(
+                subaddress
+                    .parse::<u64>()
+                    .map_err(|err| format!("Failed to parse change subaddress: {}", err))?,
+            )
+        }
         None => {}
     }
 
