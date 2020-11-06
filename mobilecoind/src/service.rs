@@ -1419,12 +1419,19 @@ impl<
             })
             .collect::<Result<Vec<Outlay>, RpcStatus>>()?;
 
+        // Set change address to sender address unless it has been overridden
+        let change_subaddress = if request.override_change_subaddress {
+            request.change_subaddress
+        } else {
+            request.sender_subaddress
+        };
+
         // Attempt to construct a transaction.
         let tx_proposal = self
             .transactions_manager
             .build_transaction(
                 &sender_monitor_id,
-                request.sender_subaddress,
+                change_subaddress,
                 &utxos,
                 &outlays,
                 request.fee,
@@ -1479,6 +1486,8 @@ impl<
         send_payment_request.set_fee(request.get_fee());
         send_payment_request.set_tombstone(request.get_tombstone());
         send_payment_request.set_max_input_utxo_value(request.get_max_input_utxo_value());
+        send_payment_request.set_override_change_subaddress(request.override_change_subaddress);
+        send_payment_request.set_change_subaddress(request.change_subaddress);
 
         self.send_payment_impl(send_payment_request)
     }
@@ -1582,6 +1591,7 @@ mod test {
     use super::*;
     use crate::{
         payments::DEFAULT_NEW_TX_BLOCK_ATTEMPTS,
+        subaddress_store::SubaddressSPKId,
         test_utils::{
             self, add_block_to_ledger_db, add_txos_to_ledger_db, get_testing_environment,
             wait_for_monitors, DEFAULT_PER_RECIPIENT_AMOUNT,
@@ -1598,7 +1608,7 @@ mod test {
         constants::{MAX_INPUTS, MINIMUM_FEE, RING_SIZE},
         fog_hint::FogHint,
         get_tx_out_shared_secret,
-        onetime_keys::recover_onetime_private_key,
+        onetime_keys::{recover_onetime_private_key, recover_public_subaddress_spend_key},
         tx::{Tx, TxOut},
         Block, BlockContents, BLOCK_VERSION,
     };
@@ -3860,6 +3870,131 @@ mod test {
             receipt.get_recipient(),
             &mc_mobilecoind_api::external::PublicAddress::from(&receiver_public_address)
         );
+    }
+
+    #[test_with_logger]
+    fn test_pay_address_code_alternate_change(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        let sender = AccountKey::random(&mut rng);
+        let data = MonitorData::new(
+            sender.clone(),
+            0,  // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        // 1 known recipient, 3 random recipients and no monitors.
+        let (ledger_db, mobilecoind_db, client, _server, server_conn_manager) =
+            get_testing_environment(
+                3,
+                &vec![sender.default_subaddress()],
+                &vec![],
+                logger.clone(),
+                &mut rng,
+            );
+
+        // Insert into database.
+        let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
+
+        // Allow the new monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Get list of unspent tx outs
+        let utxos = mobilecoind_db
+            .get_utxos_for_subaddress(&monitor_id, 0)
+            .unwrap();
+        assert!(!utxos.is_empty());
+
+        // Generate a random recipient.
+        let receiver = AccountKey::random(&mut rng);
+
+        // Generate b58 address code for this recipient.
+        let receiver_public_address = receiver.default_subaddress();
+        let mut wrapper = mc_mobilecoind_api::printable::PrintableWrapper::new();
+        wrapper.set_public_address((&receiver_public_address).into());
+        let b58_code = wrapper.b58_encode().unwrap();
+
+        let test_amount = 345;
+
+        let mut request = mc_mobilecoind_api::PayAddressCodeRequest::new();
+        request.set_sender_monitor_id(monitor_id.to_vec());
+        request.set_sender_subaddress(0);
+        request.set_receiver_b58_code(b58_code);
+        request.set_amount(test_amount);
+        request.set_override_change_subaddress(true);
+        request.set_change_subaddress(1);
+
+        // Explicitly set fee so we can check change amount
+        let fee = 1000;
+        request.set_fee(fee);
+
+        let response = client.pay_address_code(&request).unwrap();
+        let total_value = response
+            .get_tx_proposal()
+            .get_input_list()
+            .iter()
+            .map(|utxo| utxo.value as u64)
+            .sum::<u64>();
+
+        let mut opt_submitted_tx: Option<Tx> = None;
+        for mock_peer in server_conn_manager.conns() {
+            let inner = mock_peer.read();
+            match (inner.proposed_txs.len(), opt_submitted_tx.clone()) {
+                (0, _) => {
+                    // Nothing submitted to the current peer.
+                }
+                (1, None) => {
+                    // Found our tx.
+                    opt_submitted_tx = Some(inner.proposed_txs[0].clone())
+                }
+                (1, Some(_)) => {
+                    panic!("Tx submitted to two peers?!");
+                }
+                (_, _) => {
+                    panic!("Multiple transactions submitted?!");
+                }
+            }
+        }
+
+        let submitted_tx = opt_submitted_tx.unwrap();
+        let mut change_subaddress_found = false;
+        for tx_out in submitted_tx.prefix.outputs {
+            let tx_out_target_key = RistrettoPublic::try_from(&tx_out.target_key).unwrap();
+            let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
+
+            let subaddress_spk = SubaddressSPKId::from(&recover_public_subaddress_spend_key(
+                &sender.view_private_key(),
+                &tx_out_target_key,
+                &tx_public_key,
+            ));
+
+            match mobilecoind_db.get_subaddress_id_by_spk(&subaddress_spk) {
+                Ok(data) => {
+                    if data.index == 1 {
+                        assert!(!change_subaddress_found);
+                        change_subaddress_found = true;
+                        let shared_secret =
+                            get_tx_out_shared_secret(sender.view_private_key(), &tx_public_key);
+
+                        let (change_value, _blinding) = tx_out
+                            .amount
+                            .get_value(&shared_secret)
+                            .expect("Malformed amount");
+
+                        assert_eq!(total_value - test_amount - fee, change_value);
+                    }
+                }
+                Err(Error::SubaddressSPKNotFound) => continue,
+                Err(_err) => {
+                    panic!("Error matching subaddress");
+                }
+            };
+        }
+
+        assert!(change_subaddress_found);
     }
 
     #[test_with_logger]

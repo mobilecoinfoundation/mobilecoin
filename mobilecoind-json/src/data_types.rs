@@ -398,6 +398,7 @@ impl From<&mc_mobilecoind_api::ReceiverTxReceipt> for JsonReceiverTxReceipt {
 pub struct JsonSendPaymentRequest {
     pub request_data: JsonParseRequestCodeResponse,
     pub max_input_utxo_value: Option<String>, // String due to u64 limitation.
+    pub change_subaddress: Option<String>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -424,6 +425,7 @@ pub struct JsonPayAddressCodeRequest {
     pub receiver_b58_address_code: String,
     pub value: String,
     pub max_input_utxo_value: Option<String>,
+    pub change_subaddress: Option<String>,
 }
 
 #[derive(Deserialize, Serialize)]
