@@ -171,16 +171,7 @@ impl RingMLSAG {
                 (L0, R0, L1)
             };
 
-            c[(i + 1) % ring_size] = {
-                let mut hasher = Blake2b::new();
-                hasher.update(&RING_MLSAG_CHALLENGE_DOMAIN_TAG);
-                hasher.update(message);
-                hasher.update(&key_image);
-                hasher.update(L0.compress().as_bytes());
-                hasher.update(R0.compress().as_bytes());
-                hasher.update(L1.compress().as_bytes());
-                Scalar::from_hash::<Blake2b>(hasher)
-            };
+            c[(i + 1) % ring_size] = challenge(message, &key_image, &L0, &R0, &L1);
         }
 
         // "Close the loop" by computing responses for the real index.
@@ -284,16 +275,7 @@ impl RingMLSAG {
             let R0 = r[2 * i] * hash_to_point(P_i) + c_i * I;
             let L1 = r[2 * i + 1] * G + c_i * (output_commitment.point - input_commitment.point);
 
-            recomputed_c[(i + 1) % ring_size] = {
-                let mut hasher = Blake2b::new();
-                hasher.update(&RING_MLSAG_CHALLENGE_DOMAIN_TAG);
-                hasher.update(message);
-                hasher.update(&self.key_image);
-                hasher.update(L0.compress().as_bytes());
-                hasher.update(R0.compress().as_bytes());
-                hasher.update(L1.compress().as_bytes());
-                Scalar::from_hash::<Blake2b>(hasher)
-            };
+            recomputed_c[(i + 1) % ring_size] = challenge(message, &self.key_image, &L0, &R0, &L1);
         }
 
         if self.c_zero.scalar == recomputed_c[0] {
@@ -302,6 +284,24 @@ impl RingMLSAG {
             Err(Error::InvalidSignature)
         }
     }
+}
+
+// Compute the "challenge" H( message | key_image | L0 | R0 | L1 ).
+fn challenge(
+    message: &[u8],
+    key_image: &KeyImage,
+    L0: &RistrettoPoint,
+    R0: &RistrettoPoint,
+    L1: &RistrettoPoint,
+) -> Scalar {
+    let mut hasher = Blake2b::new();
+    hasher.update(&RING_MLSAG_CHALLENGE_DOMAIN_TAG);
+    hasher.update(message);
+    hasher.update(key_image);
+    hasher.update(L0.compress().as_bytes());
+    hasher.update(R0.compress().as_bytes());
+    hasher.update(L1.compress().as_bytes());
+    Scalar::from_hash::<Blake2b>(hasher)
 }
 
 fn decompress_ring(
