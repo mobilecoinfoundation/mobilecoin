@@ -3973,6 +3973,7 @@ mod test {
             match mobilecoind_db.get_subaddress_id_by_spk(&subaddress_spk) {
                 Ok(data) => {
                     if data.index == 1 {
+                        assert!(!change_subaddress_found);
                         change_subaddress_found = true;
                         let shared_secret =
                             get_tx_out_shared_secret(sender.view_private_key(), &tx_public_key);
