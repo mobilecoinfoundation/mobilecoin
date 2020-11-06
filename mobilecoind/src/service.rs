@@ -3949,7 +3949,7 @@ mod test {
         }
 
         let submitted_tx = opt_submitted_tx.unwrap();
-        let mut change_subaddress_found = false;  
+        let mut change_subaddress_found = false;
         for tx_out in submitted_tx.prefix.outputs {
             let tx_out_target_key = RistrettoPublic::try_from(&tx_out.target_key).unwrap();
             let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
@@ -3959,7 +3959,7 @@ mod test {
                 &tx_out_target_key,
                 &tx_public_key,
             ));
-        
+
             match mobilecoind_db.get_subaddress_id_by_spk(&subaddress_spk) {
                 Ok(data) => {
                     if data.index == 1 {
