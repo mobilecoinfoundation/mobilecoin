@@ -111,7 +111,7 @@ impl FogPubkeyResolver for GrpcFogPubkeyResolver {
         let req = mc_fog_api::report::ReportRequest::new();
         let resp = report_grpc_client.get_reports_opt(&req, creds.call_option()?)?;
 
-        if resp.get_all_reports().get_reports().len() == 0 {
+        if resp.get_all_reports().get_reports().is_empty() {
             log::warn!(
                 self.logger,
                 "Report server at {} has no available reports",
