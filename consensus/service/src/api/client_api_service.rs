@@ -14,7 +14,6 @@ use mc_common::logger::Logger;
 use mc_consensus_api::{
     consensus_client_grpc::ConsensusClientApi,
     consensus_common::{ProposeTxResponse, ProposeTxResult},
-    empty::Empty,
 };
 use mc_consensus_enclave::ConsensusEnclave;
 use mc_ledger_db::Ledger;
@@ -135,10 +134,6 @@ impl ConsensusClientApi for ClientApiService {
         mc_common::logger::scoped_global_logger(&rpc_logger(&ctx, &self.logger), |logger| {
             send_result(ctx, sink, result, &logger)
         });
-    }
-
-    fn client_get_peer_sets(&mut self, _ctx: RpcContext, _request: Empty, _sink: UnarySink<Empty>) {
-        todo!()
     }
 }
 
