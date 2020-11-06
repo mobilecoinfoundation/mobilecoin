@@ -4930,13 +4930,12 @@ dependencies = [
 
 [[package]]
 name = "rust_decimal"
-version = "1.4.1"
+version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1989cf75ea3463a3584ad69f92642e8046083482f519017aa2258333e5dc61cd"
+checksum = "c9e81662973c7a8d9663e64a0de4cd642b89a21d64966e3d99606efdc5fb0cc6"
 dependencies = [
- "byteorder",
- "bytes 0.5.4",
  "num-traits",
+ "serde",
 ]
 
 [[package]]
