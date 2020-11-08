@@ -183,9 +183,81 @@ while True:
 # Monitor must update to avoid a double-spend
 time.sleep(10)
 
-# Test pay address code also
+# Test pay address code also with an alternate change subaddress
 url = "http://localhost:9090/monitors/%s/subaddresses/0/pay-address-code" % monitor_id
-payment_data = {"receiver_b58_address_code": b58_address_code, "value": "1"}
+payment_data = {"receiver_b58_address_code": b58_address_code, "value": "1", "change_subaddress": "2"}
+response = requests.post(url, json=payment_data)
+if response.status_code == 200:
+    receipts = response.json()
+    receiver_tx_receipt = response.json()['receiver_tx_receipt_list'][0]
+else:
+    print("pay-address-code returned status code %d" % response.status_code)
+    shutdown(1)
+
+print("Polling for transaction status")
+while True:
+    response = requests.post("http://localhost:9090/tx/status-as-sender", json=receipts)
+    if response.status_code == 200:
+        status = response.json()['status']
+        print('status = %s' % status)
+        if status == 'verified': break
+        time.sleep(1)
+    else:
+        print("status-as-sender returned status code %d" % response.status_code)
+        shutdown(1)
+
+print("Testing mirror block API")
+response = requests.get("http://localhost:8001/ledger/blocks/0")
+if response.status_code == 200:
+    data = response.json()
+    if data['index'] != '0':
+        print("Block API returned invalid data")
+        shutdown(1)
+    print("Block API call succeeded")
+else:
+    print("Block API returned status code %d" % response.status_code)
+    shutdown(1)
+
+# Check the mirror to see the block height of the transaction
+tx_pubkey = receiver_tx_receipt['tx_public_key']
+url = f"http://localhost:8001/tx-out/{tx_pubkey}/block-index"
+response = requests.get(url)
+if response.status_code == 200:
+    block_index = response.json()["block_index"]
+    print(f"Got block_index = {block_index}")
+else:
+    print("tx-out/tx_public_key/block-index returned status code %d" % response.status_code)
+    shutdown(1)
+
+# Allow block to get processed
+time.sleep(5)
+
+# Get the processed block for that block index
+url = f"http://localhost:8001/processed-block/{block_index}"
+response = requests.get(url)
+if response.status_code == 200:
+    processed_block_pub = response.json()
+    print(f"Got processed_block = {processed_block_pub}")
+else:
+    print("processed-block/block-index returned status code %d" % response.status_code)
+    shutdown(1)
+
+# Get the processed block for that block index via mobilecoind-json
+url = f"http://localhost:9090/monitors/{monitor_id}/processed-block/{block_index}"
+response = requests.get(url)
+if response.status_code == 200:
+    processed_block = response.json()
+    print(f"Got processed_block = {processed_block}")
+    assert processed_block == processed_block_pub, "Processed blocks do not match"
+else:
+    print("monitors/monitor-id/processed-block/block-index returned status code %d" % response.status_code)
+    shutdown(1)
+
+time.sleep(10)
+
+# Now do the reverse to make sure the original subaddress is still funded
+url = "http://localhost:9090/monitors/%s/subaddresses/2/pay-address-code" % monitor_id
+payment_data = {"receiver_b58_address_code": b58_address_code, "value": "1", "change_subaddress": "0"}
 response = requests.post(url, json=payment_data)
 if response.status_code == 200:
     receipts = response.json()
