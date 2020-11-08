@@ -101,6 +101,15 @@ $ curl localhost:9090/monitors/<monitor_id>/subaddresses/<subaddress>/pay-addres
     "confirmation_number":"190ec89253bf47a05385b24e5b289a3a31127462aad613da9484f77d03986112"}]}
 ```
 
+If you would like the change from a used TXO returned to a different subaddress, there is an optional field to do so:
+```
+$ curl localhost:9090/monitors/<monitor_id>/subaddresses/<subaddress>/pay-address-code" \
+  -d '{"receiver_b58_address_code": "7Q6gtA5EqSxkEsqsf5p2j7qEHkA8fBZYNsfuWTZTQaFAqo3FPo8PvhrrUobZfXagrLopzpxqxGBs7Hphwhsc56ryWriPWLCRadhRpnZW6AT",
+       "value": "1",
+       "change_subaddress", "2"}' \
+  -X POST -H 'Content-Type: application/json'
+```
+
 #### Check the status of a transaction with a key image and tombstone block
 The return value from `pay-address-code` (and `build-and-submit` below) can be passed directly to `status-as-sender`
 ```
