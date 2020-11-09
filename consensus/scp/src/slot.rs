@@ -4503,7 +4503,7 @@ mod tests {
     #[test]
     /// If the ballot's counter is greater than the limit, and the ballot's value is less than or
     /// equal to the limit's value, then the clamped ballot should be (limit.counter, ballot.values).
-    fn test_clamp_() {
+    fn test_clamp_counter() {
         // ballot.values < limit.values
         let ballot = Ballot::new(7, &["A"]);
         let limit = Ballot::new(5, &["B"]);
