@@ -1779,18 +1779,16 @@ fn clamp<V: Value>(ballot: &Ballot<V>, limit: &Ballot<V>) -> Option<Ballot<V>> {
     if ballot <= limit {
         // ballot does not exceed limit. It does not need to be clamped.
         Some(ballot.clone())
+    } else if ballot.X <= limit.X {
+        // ballot exceeds limit and has a higher counter.
+        Some(Ballot::new(limit.N, &ballot.X))
+    } else if limit.N > 0 {
+        // ballot exceeds limit and has a higher value.
+        Some(Ballot::new(limit.N - 1, &ballot.X))
     } else {
-        if ballot.X <= limit.X {
-            // ballot exceeds limit and has a higher counter.
-            Some(Ballot::new(limit.N, &ballot.X))
-        } else if limit.N > 0 {
-            // ballot exceeds limit and has a higher value.
-            Some(Ballot::new(limit.N - 1, &ballot.X))
-        } else {
-            // limit.N is zero, so ballot is clamped to None.
-            // Unclear if this should ever occur?
-            None
-        }
+        // limit.N is zero, so ballot is clamped to None.
+        // Unclear if this should ever occur?
+        None
     }
 }
 
