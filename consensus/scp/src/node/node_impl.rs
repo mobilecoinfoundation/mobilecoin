@@ -178,31 +178,29 @@ impl<V: Value, ValidationError: Clone + Display + 'static> ScpNode<V> for Node<V
         Ok(outgoing_messages.get(0).cloned())
     }
 
-    /// Handle incoming message from the network.
+    /// Handle incoming message from the network. Messages must be for the current or previous slots.
     fn handle_messages(&mut self, msgs: Vec<Msg<V>>) -> Result<Vec<Msg<V>>, String> {
-        // Omit messages from self.
+        // `msgs` should not contain messages from self.
         let (msgs_from_peers, msgs_from_self): (Vec<_>, Vec<_>) =
             msgs.into_iter().partition(|msg| msg.sender_id != self.ID);
 
         if !msgs_from_self.is_empty() {
-            log::error!(
-                self.logger,
-                "Received {} messages from self.",
+            return Err(format!(
+                "msgs contains {} messages from self.",
                 msgs_from_self.len()
-            );
+            ));
         }
 
-        // Omit messages for future slots.
+        // `msgs` should not contain messages for future slots.
         let (msgs_to_process, future_msgs): (Vec<_>, Vec<_>) = msgs_from_peers
             .into_iter()
             .partition(|msg| msg.slot_index <= self.current_slot.get_index());
 
         if !future_msgs.is_empty() {
-            log::error!(
-                self.logger,
-                "Received {} messages for future slots.",
-                future_msgs.len()
-            );
+            return Err(format!(
+                "msgs contains {} messages for future slots.",
+                msgs_from_self.len()
+            ));
         }
 
         // Group messages by slot index.
@@ -434,8 +432,8 @@ mod tests {
     }
 
     #[test_with_logger]
-    // Should omit messages from self.
-    fn test_handle_messages_omit_from_self(logger: Logger) {
+    // Should return an error if `msgs` contains messages from self.
+    fn test_handle_messages_err_messages_from_self(logger: Logger) {
         let slot_index = 1985;
         let mut node = get_node(slot_index, logger);
 
@@ -462,13 +460,13 @@ mod tests {
         );
 
         match node.handle_messages(vec![msg_from_self.clone(), msg_from_self.clone()]) {
-            Ok(outgoing_msgs) => assert_eq!(outgoing_msgs.len(), 0),
-            Err(e) => panic!("Unexpected error {:?}", e),
+            Ok(outgoing_msgs) => panic!("Unexpected result {:?}", outgoing_msgs),
+            Err(_e) => {} // This is expected
         }
     }
 
     #[test_with_logger]
-    // Should omit messages for future slots.
+    // Should return an error if `msgs` contains messages for future slots.
     fn test_handle_messages_omit_from_future(logger: Logger) {
         let slot_index = 1985;
         let mut node = get_node(slot_index, logger);
@@ -486,7 +484,7 @@ mod tests {
         node.push_externalized_slot(Box::new(externalized_slot));
 
         // A message from a peer for a future slot index.
-        let msg_for_future_slot = Msg::new(
+        let msg = Msg::new(
             test_node_id(2),
             QuorumSet::new_with_node_ids(1, vec![test_node_id(3)]),
             2015, // Where we're going, we don't need roads.
@@ -496,9 +494,9 @@ mod tests {
             }),
         );
 
-        match node.handle_messages(vec![msg_for_future_slot]) {
-            Ok(outgoing_msgs) => assert_eq!(outgoing_msgs.len(), 0),
-            Err(e) => panic!("Unexpected error {:?}", e),
+        match node.handle_messages(vec![msg.clone(), msg.clone()]) {
+            Ok(outgoing_msgs) => panic!("Unexpected result {:?}", outgoing_msgs),
+            Err(_e) => {} // This is expected
         }
     }
 
