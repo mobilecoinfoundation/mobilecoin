@@ -1229,40 +1229,21 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
     /// Calculate the message to send to the network based on our current state.
     /// Any duplicate messages are suppressed.
     fn out_msg(&mut self) -> Option<Msg<V>> {
-        // Prepared is " the highest accepted prepared ballot not exceeding the "ballot" field...
+        // Prepared is "the highest accepted prepared ballot not exceeding the "ballot" field...
         // if "ballot = <n, x>" and the highest prepared ballot is "<n, y>" where "x < y",
         // then the "prepared" field in sent messages must be set to "<n-1, y>" instead of "<n, y>""
         // See p.15 of the [IETF draft](https://tools.ietf.org/pdf/draft-mazieres-dinrg-scp-04.pdf).
 
-        let mut clamped_P: Option<Ballot<V>> = None;
-        if let Some(P) = &self.P {
-            if *P > self.B {
-                if P.X > self.B.X {
-                    clamped_P = Some(Ballot::new(self.B.N - 1, &P.X));
-                } else {
-                    clamped_P = Some(Ballot::new(self.B.N, &P.X));
-                }
-            } else {
-                clamped_P = Some(P.clone())
-            }
-        }
+        let clamped_P: Option<Ballot<V>> = self.P.as_ref().and_then(|P| clamp(P, &self.B));
 
-        let mut clamped_PP: Option<Ballot<V>> = None;
-        if let (Some(clamped_P), Some(PP)) = (&clamped_P, &self.PP) {
-            if PP > clamped_P {
-                if PP.N > 0 {
-                    if PP.X > clamped_P.X {
-                        clamped_PP = Some(Ballot::new(clamped_P.N - 1, &PP.X))
-                    } else {
-                        clamped_PP = Some(Ballot::new(clamped_P.N, &PP.X))
-                    }
-                } else {
-                    clamped_PP = None;
-                }
+        let clamped_PP = {
+            if let (Some(P), Some(PP)) = (&clamped_P, &self.PP) {
+                // Clamp PP so that it does not exceed P.
+                clamp(PP, P)
             } else {
-                clamped_PP = Some(PP.clone())
+                None
             }
-        }
+        };
 
         let topic_opt = match self.phase {
             Phase::NominatePrepare => {
@@ -1784,6 +1765,30 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
         if !node_ids.is_empty() {
             pred.result().remove(&self.B.X)
         } else {
+            None
+        }
+    }
+}
+
+/// "Clamp" a ballot's counter so that it does not exceed `limit`.
+///
+/// # Arguments
+/// * `ballot` - A ballot to clamp.
+/// * `limit` - A ballot that cannot be exceeded.
+fn clamp<V: Value>(ballot: &Ballot<V>, limit: &Ballot<V>) -> Option<Ballot<V>> {
+    if ballot <= limit {
+        // ballot does not exceed limit. It does not need to be clamped.
+        Some(ballot.clone())
+    } else {
+        if ballot.X <= limit.X {
+            // ballot exceeds limit and has a higher counter.
+            Some(Ballot::new(limit.N, &ballot.X))
+        } else if limit.N > 0 {
+            // ballot exceeds limit and has a higher value.
+            Some(Ballot::new(limit.N - 1, &ballot.X))
+        } else {
+            // limit.N is zero, so ballot is clamped to None.
+            // Unclear if this should ever occur?
             None
         }
     }
@@ -4398,6 +4403,7 @@ mod ballot_protocol_tests {
 }
 
 #[cfg(test)]
+/// Test helper functions, etc.
 mod tests {
     use super::*;
     use crate::{core_types::*, test_utils::*};
@@ -4475,4 +4481,50 @@ mod tests {
     // TODO: test_ballots_accepted_committed_quorum
 
     // TODO: test_ballots_confirmed_committed
+
+    #[test]
+    /// Should not panic if the limit is the "zero" ballot.
+    fn test_clamp_doesnt_panic() {
+        let ballot = Ballot::new(3, &["hello"]);
+        let limit = Ballot::new(0, &[]);
+        let clamped = clamp(&ballot, &limit);
+        assert_eq!(clamped, None);
+    }
+
+    #[test]
+    /// Should return `ballot` if `ballot` is less than `limit`.
+    fn test_clamp_ballot_is_less_than_limit() {
+        let ballot = Ballot::new(3, &["hello"]);
+        let limit = Ballot::new(4, &["hello"]);
+        let clamped = clamp(&ballot, &limit);
+        assert_eq!(clamped, Some(ballot));
+    }
+
+    #[test]
+    /// If the ballot's counter is greater than the limit, and the ballot's value is less than or
+    /// equal to the limit's value, then the clamped ballot should be (limit.counter, ballot.values).
+    fn test_clamp_() {
+        // ballot.values < limit.values
+        let ballot = Ballot::new(7, &["A"]);
+        let limit = Ballot::new(5, &["B"]);
+        let clamped = clamp(&ballot, &limit);
+        assert_eq!(clamped, Some(Ballot::new(5, &["A"])));
+
+        // ballot.values = limit.values
+        let ballot = Ballot::new(7, &["A"]);
+        let limit = Ballot::new(5, &["A"]);
+        let clamped = clamp(&ballot, &limit);
+        assert_eq!(clamped, Some(Ballot::new(5, &["A"])));
+    }
+
+    #[test]
+    /// If the ballot's counter is greater than the limit, and the ballot's value is greater than the
+    /// limit's value, then the clamped ballot should be (limit.counter - 1, ballot.values)
+    fn test_clamp_to_counter_minus_one() {
+        // ballot.values > limit.values
+        let ballot = Ballot::new(7, &["B"]);
+        let limit = Ballot::new(5, &["A"]);
+        let clamped = clamp(&ballot, &limit);
+        assert_eq!(clamped, Some(Ballot::new(4, &["B"])));
+    }
 }
