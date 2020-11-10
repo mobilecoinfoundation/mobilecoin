@@ -117,7 +117,9 @@ rpath = true
 
 [patch.crates-io]
 # grpcio patched with metadata
-grpcio = { git = "https://github.com/jcape/grpc-rs", rev = "74797d973f0e81555c3c01857ccdbb8092f21f67" }
+grpcio = { git = "https://github.com/jcape/grpc-rs", rev = "2ad042e9e65ecb664a60e034d0a899a8760d81d3" }
+# Code gen patched with metadata
+grpcio-compiler = { git = "https://github.com/jcape/grpc-rs", rev = "2ad042e9e65ecb664a60e034d0a899a8760d81d3" }
 
 # prost is patched with no_std support (https://github.com/danburkert/prost/pull/319)
 # current revision is from jun 13 2020, waiting for a new prost release

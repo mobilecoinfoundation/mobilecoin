@@ -32,9 +32,9 @@ use mc_peers::{PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
 use mc_sgx_report_cache_untrusted::{Error as ReportCacheError, ReportCacheThread};
 use mc_transaction_core::tx::TxHash;
 use mc_util_grpc::{
-    auth::{AnonymousAuthenticator, Authenticator, TokenAuthenticator},
-    AdminServer, BuildInfoService, ConnectionUriGrpcioServer, GetConfigJsonFn, HealthCheckStatus,
-    HealthService,
+    AdminServer, AnonymousAuthenticator, Authenticator, BuildInfoService,
+    ConnectionUriGrpcioServer, GetConfigJsonFn, HealthCheckStatus, HealthService,
+    TokenAuthenticator,
 };
 use mc_util_uri::{ConnectionUri, ConsensusPeerUriApi};
 use once_cell::sync::OnceCell;

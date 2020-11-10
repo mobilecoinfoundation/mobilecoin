@@ -3,7 +3,7 @@
 //! A utility for generating GRPC authentication tokens.
 
 use mc_common::time::SystemTimeProvider;
-use mc_util_grpc::auth::TokenBasicCredentialsGenerator;
+use mc_util_grpc::TokenBasicCredentialsGenerator;
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use structopt::StructOpt;
 

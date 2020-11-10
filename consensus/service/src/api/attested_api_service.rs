@@ -10,7 +10,7 @@ use mc_common::{
     HashSet,
 };
 use mc_consensus_enclave::ConsensusEnclave;
-use mc_util_grpc::{auth::Authenticator, rpc_logger, rpc_permissions_error, send_result};
+use mc_util_grpc::{rpc_logger, rpc_permissions_error, send_result, Authenticator};
 use mc_util_metrics::SVC_COUNTERS;
 use std::sync::{Arc, Mutex};
 
@@ -132,7 +132,7 @@ mod peer_tests {
     use mc_attest_api::attest_grpc::{self, AttestedApiClient};
     use mc_common::{logger::test_with_logger, time::SystemTimeProvider};
     use mc_consensus_enclave_mock::MockConsensusEnclave;
-    use mc_util_grpc::auth::TokenAuthenticator;
+    use mc_util_grpc::TokenAuthenticator;
     use std::{
         sync::atomic::{AtomicUsize, Ordering::SeqCst},
         time::Duration,
@@ -197,7 +197,7 @@ mod client_tests {
     use mc_attest_api::attest_grpc::{self, AttestedApiClient};
     use mc_common::{logger::test_with_logger, time::SystemTimeProvider};
     use mc_consensus_enclave_mock::MockConsensusEnclave;
-    use mc_util_grpc::auth::TokenAuthenticator;
+    use mc_util_grpc::TokenAuthenticator;
     use std::{
         sync::atomic::{AtomicUsize, Ordering::SeqCst},
         time::Duration,

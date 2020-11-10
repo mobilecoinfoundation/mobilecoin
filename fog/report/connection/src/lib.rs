@@ -11,7 +11,7 @@ use mc_attest_core::{VerificationReport, Verifier};
 use mc_common::logger::{log, o, Logger};
 use mc_fog_api::report_grpc;
 use mc_fog_report_validation::ingest_report::{Error as IngestReportError, IngestReportVerifier};
-use mc_util_grpc::{auth::BasicCredentials, ConnectionUriGrpcioChannel};
+use mc_util_grpc::{BasicCredentials, ConnectionUriGrpcioChannel};
 use mc_util_uri::{ConnectionUri, FogUri, UriParseError};
 use std::sync::Arc;
 

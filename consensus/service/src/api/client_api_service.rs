@@ -17,7 +17,7 @@ use mc_consensus_api::{
 };
 use mc_consensus_enclave::ConsensusEnclave;
 use mc_ledger_db::Ledger;
-use mc_util_grpc::{auth::Authenticator, rpc_logger, send_result};
+use mc_util_grpc::{rpc_logger, send_result, Authenticator};
 use mc_util_metrics::{self, SVC_COUNTERS};
 use std::sync::Arc;
 
@@ -163,7 +163,7 @@ mod client_api_tests {
     use mc_transaction_core::{
         ring_signature::KeyImage, tx::TxHash, validation::TransactionValidationError,
     };
-    use mc_util_grpc::auth::{AnonymousAuthenticator, TokenAuthenticator};
+    use mc_util_grpc::{AnonymousAuthenticator, TokenAuthenticator};
     use serial_test_derive::serial;
     use std::{sync::Arc, time::Duration};
 
