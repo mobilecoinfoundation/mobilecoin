@@ -106,7 +106,7 @@ If you would like the change from a used TXO returned to a different subaddress,
 $ curl localhost:9090/monitors/<monitor_id>/subaddresses/<subaddress>/pay-address-code" \
   -d '{"receiver_b58_address_code": "7Q6gtA5EqSxkEsqsf5p2j7qEHkA8fBZYNsfuWTZTQaFAqo3FPo8PvhrrUobZfXagrLopzpxqxGBs7Hphwhsc56ryWriPWLCRadhRpnZW6AT",
        "value": "1",
-       "change_subaddress", "2"}' \
+       "change_subaddress": "2"}' \
   -X POST -H 'Content-Type: application/json'
 ```
 
