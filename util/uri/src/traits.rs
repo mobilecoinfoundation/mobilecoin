@@ -155,7 +155,7 @@ pub trait ConnectionUri:
         )
     }
 
-    /// Retreieve the TLS chain file path to use for this connection.
+    /// Retrieve the TLS chain file path to use for this connection.
     fn tls_chain_path(&self) -> StdResult<String, String> {
         Ok(self
             .get_param("tls-chain")
