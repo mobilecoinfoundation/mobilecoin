@@ -18,3 +18,7 @@ rustflags = ["-D", "warnings", "-C", "target-cpu=skylake"]
 
 [target.x86_64-apple-darwin]
 rustflags = ["-D", "warnings", "-C", "target-cpu=skylake"]
+
+[cargo-new]
+name = "MobileCoin"
+email = ""
