@@ -4,15 +4,14 @@
 
 extern crate alloc;
 
-use alloc::{format, vec::Vec};
-
-use super::error::{TransactionValidationError, TransactionValidationResult};
+use super::{TransactionValidationError, TransactionValidationResult};
 use crate::{
     constants::*,
     membership_proofs::{derive_proof_at_index, is_membership_proof_valid},
     tx::{Tx, TxOut, TxOutMembershipProof, TxPrefix},
     BlockVersion, CompressedCommitment,
 };
+use alloc::{format, vec::Vec};
 use mc_common::HashSet;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use rand_core::{CryptoRng, RngCore};
@@ -53,6 +52,8 @@ pub fn validate<R: RngCore + CryptoRng>(
     validate_ring_elements_are_sorted(&tx.prefix)?;
 
     validate_inputs_are_sorted(&tx.prefix)?;
+
+    validate_outputs_are_sorted(&tx.prefix)?;
 
     validate_membership_proofs(&tx.prefix, root_proofs)?;
 
@@ -189,14 +190,16 @@ fn validate_inputs_are_sorted(tx_prefix: &TxPrefix) -> TransactionValidationResu
     Ok(())
 }
 
-/// All key images within the transaction must be unique.
-fn validate_key_images_are_unique(tx: &Tx) -> TransactionValidationResult<()> {
-    let mut uniques = HashSet::default();
-    for key_image in tx.key_images() {
-        if !uniques.insert(key_image) {
-            return Err(TransactionValidationError::DuplicateKeyImages);
-        }
+/// Transaction outputs must be sorted by public_key, ascending.
+fn validate_outputs_are_sorted(tx_prefix: &TxPrefix) -> TransactionValidationResult<()> {
+    let outputs_are_sorted = tx_prefix
+        .outputs
+        .windows(2)
+        .all(|window| window[0].public_key <= window[1].public_key);
+    if !outputs_are_sorted {
+        return Err(TransactionValidationError::UnsortedOutputs);
     }
+
     Ok(())
 }
 
@@ -206,6 +209,17 @@ fn validate_outputs_public_keys_are_unique(tx: &Tx) -> TransactionValidationResu
     for public_key in tx.output_public_keys() {
         if !uniques.insert(public_key) {
             return Err(TransactionValidationError::DuplicateOutputPublicKey);
+        }
+    }
+    Ok(())
+}
+
+/// All key images within the transaction must be unique.
+fn validate_key_images_are_unique(tx: &Tx) -> TransactionValidationResult<()> {
+    let mut uniques = HashSet::default();
+    for key_image in tx.key_images() {
+        if !uniques.insert(key_image) {
+            return Err(TransactionValidationError::DuplicateKeyImages);
         }
     }
     Ok(())
@@ -417,20 +431,7 @@ pub fn validate_tombstone(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    extern crate alloc;
-
-    use alloc::vec::Vec;
-
-    use crate::{
-        constants::RING_SIZE,
-        tokens::Mob,
-        tx::{Tx, TxOutMembershipHash, TxOutMembershipProof},
-        validation::error::TransactionValidationError,
-        Token,
-    };
-
-    use crate::membership_proofs::Range;
+    use crate::{membership_proofs::Range, tokens::Mob, tx::TxOutMembershipHash, Token};
     use mc_crypto_keys::{CompressedRistrettoPublic, ReprBytes};
     use mc_ledger_db::{Ledger, LedgerDB};
     use mc_transaction_core_test_utils::{
@@ -864,6 +865,46 @@ mod tests {
                 validate_inputs_are_sorted(&tx_prefix),
                 Err(TransactionValidationError::UnsortedInputs)
             );
+        }
+    }
+
+    #[test]
+    /// Should reject a transaction with unsorted outputs.
+    fn test_validate_outputs_are_sorted() {
+        for block_version in BlockVersion::iterator() {
+            let (tx, _ledger) = create_test_tx(block_version);
+
+            let mut output_a = tx.prefix.outputs.get(0).unwrap().clone();
+            output_a.public_key = CompressedRistrettoPublic::from(&[1u8; 32]);
+
+            let mut output_b = output_a.clone();
+            output_b.public_key = CompressedRistrettoPublic::from(&[2u8; 32]);
+
+            assert!(output_a.public_key < output_b.public_key);
+
+            {
+                let mut tx_prefix = tx.prefix.clone();
+                // A single output is trivially sorted.
+                tx_prefix.outputs = vec![output_a.clone()];
+                assert_eq!(validate_outputs_are_sorted(&tx_prefix), Ok(()));
+            }
+
+            {
+                let mut tx_prefix = tx.prefix.clone();
+                // Outputs sorted by public_key, ascending.
+                tx_prefix.outputs = vec![output_a.clone(), output_b.clone()];
+                assert_eq!(validate_outputs_are_sorted(&tx_prefix), Ok(()));
+            }
+
+            {
+                let mut tx_prefix = tx.prefix.clone();
+                // Outputs are not correctly sorted.
+                tx_prefix.outputs = vec![output_b.clone(), output_a.clone()];
+                assert_eq!(
+                    validate_outputs_are_sorted(&tx_prefix),
+                    Err(TransactionValidationError::UnsortedOutputs)
+                );
+            }
         }
     }
 
