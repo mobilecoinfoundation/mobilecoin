@@ -794,12 +794,6 @@ fn config_and_status_as_json(
     is_behind: bool,
     highest_peer_block_index: u64,
 ) -> String {
-    // Number of blocks in the local ledger.
-    let block_height = highest_block.index + 1;
-
-    // ID of the last block in the local ledger.
-    let highest_block_id = hex::encode(&highest_block.id.0);
-
     // The approximate time in which the block was signed, represented at seconds
     //  of UTC time since Unix epoch 1970-01-01T00:00:00Z.
     let highest_block_signed_at: Option<u64> =
@@ -808,7 +802,8 @@ fn config_and_status_as_json(
     let sync_status = if is_behind { "catchup" } else { "synced" };
 
     // Number of blocks that the local node is behind, or zero if the local node is not behind.
-    // TODO: it's funky that this is both an Option and a saturating value...
+    // (It's funky that this is both an Option and a saturating value. It would probably be simpler to
+    // return the local node's block index and the highest peers' block index.)
     let blocks_behind = Some(highest_peer_block_index.saturating_sub(highest_block.index));
 
     json!({
@@ -828,13 +823,13 @@ fn config_and_status_as_json(
                 },
                 "network": network_config,
                 "status": {
-                    "block_height": block_height,
+                    "block_height": highest_block.index + 1,
                     "version": VERSION,
                     "broadcast_peer_count": network_config.broadcast_peers.len(),
                     "known_peer_count": network_config.known_peers.as_ref().map_or(0, |x| x.len()),
                     "sync_status": sync_status,
                     "blocks_behind": blocks_behind,
-                    "latest_block_hash": highest_block_id,
+                    "latest_block_hash": hex::encode(&highest_block.id.0),
                     "latest_block_timestamp": highest_block_signed_at.map_or("".to_string(), |u| u.to_string()),
                 },
             })
@@ -851,6 +846,7 @@ mod tests {
     use mc_common::ResponderId;
     use mc_transaction_core::Block;
     use mc_util_uri::{AdminUri, ConsensusClientUri, ConsensusPeerUri};
+    use serde_json::Value;
     use std::{path::PathBuf, str::FromStr, time::Duration};
 
     // Sample ConsensusService configurations.
@@ -889,6 +885,7 @@ mod tests {
     }
 
     #[test]
+    /// Should return parsable JSON.
     fn test_config_and_status_as_json() {
         let config = get_config();
         let network_config = get_network_config();
@@ -897,7 +894,7 @@ mod tests {
         let is_behind = true;
         let highest_peer_block_index = 13;
 
-        let _json = config_and_status_as_json(
+        let json: String = config_and_status_as_json(
             &config,
             &network_config,
             &highest_block,
@@ -906,6 +903,11 @@ mod tests {
             highest_peer_block_index,
         );
 
-        // TODO: check the json.
+        // Spot-check some of the fields.
+        let v: Value = serde_json::from_str(&json).expect("Could not parse JSON");
+
+        assert_eq!(v["status"]["block_height"], highest_block.index + 1);
+        assert_eq!(v["status"]["sync_status"], "catchup");
+        assert_eq!(v["status"]["blocks_behind"], 13);
     }
 }
