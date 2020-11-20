@@ -4,7 +4,7 @@
 #![macro_use]
 extern crate alloc;
 
-use crate::domain_separators::HASH_TO_POINT_DOMAIN_TAG;
+use crate::{constants::MAX_OUTPUTS, domain_separators::HASH_TO_POINT_DOMAIN_TAG};
 use blake2::{Blake2b, Digest};
 use bulletproofs::{BulletproofGens, PedersenGens};
 pub use curve25519_dalek::scalar::Scalar;
@@ -33,9 +33,9 @@ lazy_static! {
 
     /// Generators (base points) for Bulletproofs.
     /// The `party_capacity` is the maximum number of values in one proof. It should
-    /// be at least 2 * MAX_INPUTS + MAX_OUTPUTS, which allows for inputs, pseudo outputs, and outputs.
+    /// be at least MAX_OUTPUTS to allow for all outputs in a transaction
     pub static ref BP_GENERATORS: BulletproofGens =
-        BulletproofGens::new(64, 64);
+        BulletproofGens::new(64, MAX_OUTPUTS);
 }
 
 /// Applies a hash function and returns a RistrettoPoint.
