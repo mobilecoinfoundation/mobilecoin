@@ -140,7 +140,7 @@ impl<
     /// * `ledger_db` - Ledger.
     /// * `ra_client` - Remote attestation client.
     /// * `tx_manager` - TransactionManager.
-    /// * `time_provider` - ???
+    /// * `time_provider` - TimeProvider for client Authenticator.
     /// * `logger`
     pub fn new<TP: TimeProvider + 'static>(
         config: Config,
@@ -645,8 +645,6 @@ impl<
 
     /// Helper method for creating the get config json function needed by the GRPC admin service.
     fn create_get_config_json_fn(&self) -> GetConfigJsonFn {
-        // Returns Arc<dyn Fn() -> Result<String, RpcStatus> + Sync + Send>;
-
         let ledger_db = self.ledger_db.clone();
 
         let byzantine_ledger: Weak<OnceCell<ByzantineLedger>> = self
