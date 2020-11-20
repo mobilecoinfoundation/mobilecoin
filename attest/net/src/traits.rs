@@ -66,7 +66,7 @@ impl From<ToStrError> for Error {
 /// Syntactic sugar for a result with an RaClientError.
 pub type Result<T> = StdResult<T, Error>;
 
-/// A trait for generic remote attesation service clients.
+/// A trait for generic remote attestation service clients.
 ///
 /// It is assumed this will be updated/changed for DCAP.
 pub trait RaClient: Clone + Send + Sized + Sync {

@@ -76,7 +76,8 @@ impl BlockSignature {
         &self.signer
     }
 
-    /// Get the signed at timestamp.
+    /// The approximate time in which the block was signed, represented at seconds
+    //  of UTC time since Unix epoch 1970-01-01T00:00:00Z.
     pub fn signed_at(&self) -> u64 {
         self.signed_at
     }
