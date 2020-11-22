@@ -19,7 +19,7 @@ use structopt::StructOpt;
 fn main() {
     let config = Config::from_args();
     if !cfg!(debug_assertions) {
-        config.check_host().expect("Could not check host");
+        config.validate_host().expect("Could not validate host");
     }
 
     mc_common::setup_panic_handler();

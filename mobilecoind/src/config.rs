@@ -189,7 +189,7 @@ impl Config {
     ///
     /// Note, both of these services are free tier and rate-limited. A longer term solution
     /// would be to filter on the consensus server.
-    pub fn check_host(&self) -> Result<(), ConfigError> {
+    pub fn validate_host(&self) -> Result<(), ConfigError> {
         let client = Client::builder().gzip(true).use_rustls_tls().build()?;
         let mut json_headers = HeaderMap::new();
         json_headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
