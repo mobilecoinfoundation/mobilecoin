@@ -2,6 +2,7 @@
 
 //! Configuration parameters for mobilecoind
 
+use displaydoc::Display;
 use mc_attest_core::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::{logger::Logger, ResponderId};
 use mc_connection::{ConnectionManager, ThickClient};
@@ -10,6 +11,10 @@ use mc_fog_report_connection::GrpcFogPubkeyResolver;
 use mc_mobilecoind_api::MobilecoindUri;
 use mc_sgx_css::Signature;
 use mc_util_uri::{ConnectionUri, ConsensusClientUri};
+use reqwest::{
+    blocking::Client,
+    header::{HeaderMap, HeaderValue, CONTENT_TYPE},
+};
 use std::{convert::TryFrom, fs, path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 use structopt::StructOpt;
 
@@ -95,6 +100,33 @@ fn load_css_file(filename: &str) -> Result<Signature, String> {
     Ok(signature)
 }
 
+#[derive(Display, Debug)]
+pub enum ConfigError {
+    /// Error parsing json {0}
+    Json(serde_json::Error),
+
+    /// Error handling reqwest {0}
+    Reqwest(reqwest::Error),
+
+    /// Invalid country
+    InvalidCountry,
+
+    /// Data missing in the response {0}
+    DataMissing(String),
+}
+
+impl From<serde_json::Error> for ConfigError {
+    fn from(e: serde_json::Error) -> Self {
+        Self::Json(e)
+    }
+}
+
+impl From<reqwest::Error> for ConfigError {
+    fn from(e: reqwest::Error) -> Self {
+        Self::Reqwest(e)
+    }
+}
+
 impl Config {
     pub fn quorum_set(&self) -> QuorumSet<ResponderId> {
         // If we have an explicit quorum set, use that.
@@ -148,6 +180,43 @@ impl Config {
 
             GrpcFogPubkeyResolver::new(&report_verifier, env, logger)
         })
+    }
+
+    /// Ensure local IP address is valid.
+    ///
+    /// Uses icanhazip.com for getting local IP.
+    /// Uses ipinfo.io for getting details about IP address.
+    ///
+    /// Note, both of these services are free tier and rate-limited. A longer term solution
+    /// would be to filter on the consensus server.
+    pub fn check_host(&self) -> Result<(), ConfigError> {
+        let client = Client::builder().gzip(true).use_rustls_tls().build()?;
+        let mut json_headers = HeaderMap::new();
+        json_headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+        let response = client
+            .get("https://icanhazip.com")
+            .send()?
+            .error_for_status()?;
+        let local_ip_addr = response.text()?;
+        let response = client
+            .get(format!("https://ipinfo.io/{}/json/", local_ip_addr).as_str())
+            .headers(json_headers)
+            .send()?
+            .error_for_status()?;
+        let data = response.text()?;
+        let data_json: serde_json::Value = serde_json::from_str(&data)?;
+        if let Some(v) = data_json.get("country") {
+            if let Some(country) = v.as_str() {
+                match country {
+                    "US" => Err(ConfigError::InvalidCountry),
+                    _ => Ok(()),
+                }
+            } else {
+                Err(ConfigError::DataMissing(data_json.to_string()))
+            }
+        } else {
+            Err(ConfigError::DataMissing(data_json.to_string()))
+        }
     }
 }
 

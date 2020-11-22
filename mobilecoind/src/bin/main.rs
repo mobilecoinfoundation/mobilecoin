@@ -18,6 +18,9 @@ use structopt::StructOpt;
 
 fn main() {
     let config = Config::from_args();
+    if !cfg!(debug_assertions) {
+        config.check_host().expect("Could not check host");
+    }
 
     mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
