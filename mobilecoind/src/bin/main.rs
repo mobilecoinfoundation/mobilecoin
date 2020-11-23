@@ -18,7 +18,7 @@ use structopt::StructOpt;
 
 fn main() {
     let config = Config::from_args();
-    if !cfg!(debug_assertions) {
+    if !cfg!(debug_assertions) && !config.offline {
         config.validate_host().expect("Could not validate host");
     }
 
