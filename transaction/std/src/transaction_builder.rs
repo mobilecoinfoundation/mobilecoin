@@ -236,7 +236,7 @@ fn create_fog_hint<RNG: CryptoRng + RngCore>(
             if recipient.fog_report_url().is_some() {
                 return Err(TxBuilderError::IngestPubkeyNotProvided);
             }
-            Ok(EncryptedFogHint::fake_onetime_hint(rng, None))
+            Ok(EncryptedFogHint::fake_onetime_hint(rng))
         }
     }
 }

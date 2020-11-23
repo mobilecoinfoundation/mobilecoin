@@ -1,12 +1,14 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use mc_account_keys::PublicAddress;
-use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_keys::RistrettoPrivate;
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::{
-    constants::TOTAL_MOB, encrypted_fog_hint::EncryptedFogHint, ring_signature::KeyImage,
-    tx::TxOut, Block, BlockContents, BLOCK_VERSION,
+    constants::TOTAL_MOB,
+    encrypted_fog_hint::{EncryptedFogHint, ENCRYPTED_FOG_HINT_LEN},
+    ring_signature::KeyImage,
+    tx::TxOut,
+    Block, BlockContents, BLOCK_VERSION,
 };
 use mc_util_from_random::FromRandom;
 use rand::{RngCore, SeedableRng};
@@ -122,25 +124,15 @@ fn create_output(
     let tx_private_key = RistrettoPrivate::from_random(rng);
 
     let hint = if let Some(hs) = hint_slice {
-        // Hash the hint slice to a buffer of the appropriate length
-        #[derive(Digestible)]
-        struct HintData {
-            pub hint_slice: String,
-        }
-        let const_data = HintData {
-            hint_slice: hs.to_string(),
-        };
+        let mut hint_buf = [1u8; ENCRYPTED_FOG_HINT_LEN];
+        let slice_len = std::cmp::min(hs.as_bytes().len(), ENCRYPTED_FOG_HINT_LEN);
+        hint_buf[..slice_len].copy_from_slice(hs.as_bytes());
 
-        // Note: Hint Plaintext Length is Sum<RistrettoLen, AesMacLen> = 32 + 2, but
-        // we leave the tag bytes empty for convenience of constructing the hash to 32 bytes.
-        let temp: [u8; 32] = const_data.digest32::<MerlinTranscript>(b"monitor_data");
-        let mut hint_buf = [0u8; 34];
-        hint_buf[0..32].copy_from_slice(&temp);
-
-        EncryptedFogHint::fake_onetime_hint(rng, Some(hint_buf.as_ref()))
+        EncryptedFogHint::new(&hint_buf)
     } else {
-        EncryptedFogHint::fake_onetime_hint(rng, None)
+        EncryptedFogHint::fake_onetime_hint(rng)
     };
 
-    TxOut::new(value, recipient, &tx_private_key, hint).unwrap()
+    let output = TxOut::new(value, recipient, &tx_private_key, hint).unwrap();
+    output
 }
