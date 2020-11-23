@@ -8,6 +8,10 @@ edition = "2018"
 name = "mobilecoind"
 path = "src/bin/main.rs"
 
+[features]
+default = ["ip-check"]
+ip-check = []
+
 [dependencies]
 mc-account-keys = { path = "../account-keys" }
 mc-api = { path = "../api" }
@@ -46,7 +50,7 @@ lru = { version = "0.1" }
 num_cpus = "1.12"
 prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
 protobuf = "2.12"
-reqwest = { version = "0.10" , default-features = false, features = ["rustls-tls", "gzip"] }
+reqwest = { version = "0.10", default-features = false, features = ["rustls-tls", "gzip"] }
 rand = "0.7"
 rand_core = "0.5"
 retry = "0.5.1"
