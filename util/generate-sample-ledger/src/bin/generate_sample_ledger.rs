@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-use mc_common::logger::{create_app_logger, o};
+use mc_common::logger::create_root_logger;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -30,7 +30,7 @@ fn main() {
     let config = Config::from_args();
 
     mc_common::setup_panic_handler();
-    let (logger, _global_logger_guard) = create_app_logger(o!());
+    let logger = create_root_logger();
 
     // Read user public keys from disk
     let pub_addrs = mc_util_keyfile::keygen::read_default_pubfiles("keys")
