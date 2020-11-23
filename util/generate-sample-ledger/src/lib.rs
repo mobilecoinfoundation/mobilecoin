@@ -142,10 +142,11 @@ fn create_output(
 mod tests {
     use super::*;
     use mc_account_keys::{AccountKey, RootIdentity};
+    use mc_common::logger::test_with_logger;
     use rand::{rngs::StdRng, SeedableRng};
 
-    #[test]
-    fn test_arbitrary_hint_text() {
+    #[test_with_logger]
+    fn test_arbitrary_hint_text(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([20u8; 32]);
         let mut fixed_rng: FixedRng = SeedableRng::from_seed([33u8; 32]);
 
@@ -158,18 +159,20 @@ mod tests {
             10,
             &mut fixed_rng,
             Some(hint_slice),
+            &logger,
         );
         let mut expected = [1u8; ENCRYPTED_FOG_HINT_LEN];
         expected[..hint_slice.as_bytes().len()].copy_from_slice(hint_slice.as_bytes());
         assert_eq!(output.e_fog_hint.to_bytes().to_vec(), expected.to_vec());
 
         // Case hint text longer than ENCRYPTED_FOG_HINT_LEN
-        let hint_slice = "Vaccine 90% effective LONDON— the University of Oxford added their vaccine candidate to a growing list of shots showing promising effectiveness against Covid-19—setting in motion disparate regulatory and distribution tracks that executives and researchers hope will result in the start of widespread vaccinations by the end of the year";
+        let hint_slice = "Covid-19 Vaccine 90% Up to 90% Effective in Late-Stage Trials - LONDON — the University of Oxford added their vaccine candidate to a growing list of shots showing promising effectiveness against Covid-19 — setting in motion disparate regulatory and distribution tracks that executives and researchers hope will result in the start of widespread vaccinations by the end of the year.";
         let output = create_output(
             &account_key.subaddress(0),
             10,
             &mut fixed_rng,
             Some(hint_slice),
+            &logger,
         );
         let mut expected = [1u8; ENCRYPTED_FOG_HINT_LEN];
         expected[..ENCRYPTED_FOG_HINT_LEN]
@@ -183,6 +186,7 @@ mod tests {
             10,
             &mut fixed_rng,
             Some(hint_slice),
+            &logger,
         );
         let expected = [1u8; ENCRYPTED_FOG_HINT_LEN];
         assert_eq!(output.e_fog_hint.to_bytes().to_vec(), expected.to_vec());
