@@ -1,5 +1,6 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
+use mc_common::logger::{create_app_logger, o};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -28,6 +29,9 @@ struct Config {
 fn main() {
     let config = Config::from_args();
 
+    mc_common::setup_panic_handler();
+    let (logger, _global_logger_guard) = create_app_logger(o!());
+
     // Read user public keys from disk
     let pub_addrs = mc_util_keyfile::keygen::read_default_pubfiles("keys")
         .expect("Could not read default pubfiles from ./keys");
@@ -42,5 +46,6 @@ fn main() {
         config.num_key_images,
         config.seed,
         config.hint_text.as_deref(),
+        logger,
     );
 }

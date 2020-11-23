@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use mc_account_keys::PublicAddress;
+use mc_common::logger::{log, Logger};
 use mc_crypto_keys::RistrettoPrivate;
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::{
@@ -36,6 +37,7 @@ pub fn bootstrap_ledger(
     key_images_per_block: usize,
     seed: Option<[u8; 32]>,
     hint_text: Option<&str>,
+    logger: Logger,
 ) {
     // Create the DB
     std::fs::create_dir_all(path.clone()).expect("Could not create ledger dir");
@@ -47,37 +49,31 @@ pub fn bootstrap_ledger(
 
     let picomob_per_output: u64 = (TOTAL_MOB / num_outputs) * 1_000_000_000_000;
 
-    println!("recipients: {}", recipients.len());
-    println!(
+    log::info!(logger, "recipients: {}", recipients.len());
+    log::info!(
+        logger,
         "Making {:?} outputs of {:?} picoMOB.",
-        num_outputs, picomob_per_output
+        num_outputs,
+        picomob_per_output
     );
 
     let mut blocks_and_contents: Vec<(Block, BlockContents)> = Vec::new();
     let mut previous_block: Option<Block> = None;
 
     let mut rng: FixedRng = SeedableRng::from_seed(seed.unwrap_or([33u8; 32]));
-    let mut hint_cursor = 0;
 
     for block_index in 0..num_blocks as u64 {
-        println!("Creating block {} of {}.", block_index, num_blocks);
+        log::info!(logger, "Creating block {} of {}.", block_index, num_blocks);
 
         let mut outputs: Vec<TxOut> = Vec::new();
         for recipient in recipients {
             for _i in 0..outputs_per_recipient_per_block {
-                let hint_slice = if let Some(ht) = hint_text {
-                    let hint_chunk = ht.len() / num_outputs as usize;
-                    let hs = &ht[hint_cursor..hint_cursor + hint_chunk];
-                    hint_cursor += hint_chunk;
-                    Some(hs)
-                } else {
-                    None
-                };
                 outputs.push(create_output(
                     recipient,
                     picomob_per_output,
                     &mut rng,
-                    hint_slice,
+                    hint_text,
+                    &logger,
                 ));
             }
         }
@@ -120,13 +116,17 @@ fn create_output(
     value: u64,
     rng: &mut FixedRng,
     hint_slice: Option<&str>,
+    logger: &Logger,
 ) -> TxOut {
     let tx_private_key = RistrettoPrivate::from_random(rng);
 
     let hint = if let Some(hs) = hint_slice {
         let mut hint_buf = [1u8; ENCRYPTED_FOG_HINT_LEN];
-        let slice_len = std::cmp::min(hs.as_bytes().len(), ENCRYPTED_FOG_HINT_LEN);
-        hint_buf[..slice_len].copy_from_slice(hs.as_bytes());
+        let hint_len = hs.as_bytes().len();
+        if hint_len > 0 {
+            let slice_len = std::cmp::min(hint_len, ENCRYPTED_FOG_HINT_LEN);
+            hint_buf[..slice_len].copy_from_slice(&hs.as_bytes()[..slice_len]);
+        }
 
         EncryptedFogHint::new(&hint_buf)
     } else {
@@ -134,5 +134,57 @@ fn create_output(
     };
 
     let output = TxOut::new(value, recipient, &tx_private_key, hint).unwrap();
+    log::debug!(logger, "Creating output: {:?}", output);
     output
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mc_account_keys::{AccountKey, RootIdentity};
+    use rand::{rngs::StdRng, SeedableRng};
+
+    #[test]
+    fn test_arbitrary_hint_text() {
+        let mut rng: StdRng = SeedableRng::from_seed([20u8; 32]);
+        let mut fixed_rng: FixedRng = SeedableRng::from_seed([33u8; 32]);
+
+        let account_key = AccountKey::from(&RootIdentity::from_random(&mut rng));
+
+        // Case with short hint text
+        let hint_slice = "Vaccine 90% effective";
+        let output = create_output(
+            &account_key.subaddress(0),
+            10,
+            &mut fixed_rng,
+            Some(hint_slice),
+        );
+        let mut expected = [1u8; ENCRYPTED_FOG_HINT_LEN];
+        expected[..hint_slice.as_bytes().len()].copy_from_slice(hint_slice.as_bytes());
+        assert_eq!(output.e_fog_hint.to_bytes().to_vec(), expected.to_vec());
+
+        // Case hint text longer than ENCRYPTED_FOG_HINT_LEN
+        let hint_slice = "Vaccine 90% effective LONDON— the University of Oxford added their vaccine candidate to a growing list of shots showing promising effectiveness against Covid-19—setting in motion disparate regulatory and distribution tracks that executives and researchers hope will result in the start of widespread vaccinations by the end of the year";
+        let output = create_output(
+            &account_key.subaddress(0),
+            10,
+            &mut fixed_rng,
+            Some(hint_slice),
+        );
+        let mut expected = [1u8; ENCRYPTED_FOG_HINT_LEN];
+        expected[..ENCRYPTED_FOG_HINT_LEN]
+            .copy_from_slice(&hint_slice.as_bytes()[..ENCRYPTED_FOG_HINT_LEN]);
+        assert_eq!(output.e_fog_hint.to_bytes().to_vec(), expected.to_vec());
+
+        // Case with empty string as hint text
+        let hint_slice = "";
+        let output = create_output(
+            &account_key.subaddress(0),
+            10,
+            &mut fixed_rng,
+            Some(hint_slice),
+        );
+        let expected = [1u8; ENCRYPTED_FOG_HINT_LEN];
+        assert_eq!(output.e_fog_hint.to_bytes().to_vec(), expected.to_vec());
+    }
 }

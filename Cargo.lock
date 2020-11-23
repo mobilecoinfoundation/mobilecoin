@@ -3566,6 +3566,7 @@ dependencies = [
  "curve25519-dalek",
  "hex 0.3.2",
  "mc-account-keys",
+ "mc-common",
  "mc-crypto-keys",
  "mc-ledger-db",
  "mc-transaction-core",
@@ -3575,6 +3576,7 @@ dependencies = [
  "rand 0.7.3",
  "rand_hc 0.2.0",
  "rayon",
+ "serde",
  "structopt",
  "tempdir",
 ]
