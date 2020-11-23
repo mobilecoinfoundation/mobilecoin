@@ -103,12 +103,31 @@ impl EncryptedFogHint {
     /// random plaintext. There are several ways we could sample that distribution
     /// but the simplest is to do exactly that. This is also future-proof if we later
     /// tweak the cryptobox implementation.
-    pub fn fake_onetime_hint<T: RngCore + CryptoRng>(rng: &mut T) -> Self {
+    /// Optionally provide the random plaintext buffer to be encrypted.
+    pub fn fake_onetime_hint<T: RngCore + CryptoRng>(
+        rng: &mut T,
+        plaintext_buf: Option<&[u8]>,
+    ) -> Self {
         // Make plaintext of the right size
-        let plaintext = GenericArray::<
-            u8,
-            Diff<EncryptedFogHintSize, <VersionedCryptoBox as CryptoBox<Ristretto>>::FooterSize>,
-        >::default();
+        let plaintext = if let Some(pt) = plaintext_buf {
+            // Truncate the plaintext to a buffer of the correct size
+            GenericArray::<
+                u8,
+                Diff<
+                    EncryptedFogHintSize,
+                    <VersionedCryptoBox as CryptoBox<Ristretto>>::FooterSize,
+                >,
+            >::clone_from_slice(pt)
+        } else {
+            GenericArray::<
+                u8,
+                Diff<
+                    EncryptedFogHintSize,
+                    <VersionedCryptoBox as CryptoBox<Ristretto>>::FooterSize,
+                >,
+            >::default()
+        };
+
         // Make a random key
         let key = mc_crypto_keys::RistrettoPublic::from_random(rng);
         // encrypt_in_place into the buffer

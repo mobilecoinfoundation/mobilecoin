@@ -23,7 +23,7 @@ fn test_origin_tx_outs() -> Vec<TxOut> {
                 rng.next_u32() as u64,
                 &acct.default_subaddress(),
                 &RistrettoPrivate::from_random(&mut rng),
-                EncryptedFogHint::fake_onetime_hint(&mut rng),
+                EncryptedFogHint::fake_onetime_hint(&mut rng, None),
             )
             .unwrap()
         })

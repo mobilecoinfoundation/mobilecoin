@@ -10,6 +10,7 @@ path = "src/bin/generate_sample_ledger.rs"
 
 [dependencies]
 mc-account-keys = { path = "../../account-keys" }
+mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek", "derive"] }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-ledger-db = { path = "../../ledger/db" }
 mc-transaction-core = { path = "../../transaction/core" }
@@ -18,6 +19,7 @@ mc-util-from-random = { path = "../../util/from-random" }
 mc-util-keyfile = { path = "../../util/keyfile" }
 
 hex = "0.3"
+merlin = { version = "2.0", default-features = false }
 rand = "0.7"
 rand_hc = "0.2.0"
 rayon = "1.1"

@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 use mc_account_keys::PublicAddress;
+use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_keys::RistrettoPrivate;
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_transaction_core::{
@@ -22,6 +23,7 @@ use std::{path::PathBuf, vec::Vec};
 /// * `num_outputs_per_recipient` - Number of equal-valued outputs that each recipient receives, per block.
 /// * `num_blocks` - Number of blocks that will be created.
 /// * `key_images_per_block` - Number of randomly generated key images per block.
+/// * `hint_text` - A string to be hashed into the hints for the outputs
 ///
 /// This will panic if it attempts to distribute the total value of mobilecoin into fewer than 16 outputs.
 pub fn bootstrap_ledger(
@@ -31,6 +33,7 @@ pub fn bootstrap_ledger(
     num_blocks: usize,
     key_images_per_block: usize,
     seed: Option<[u8; 32]>,
+    hint_text: Option<&str>,
 ) {
     // Create the DB
     std::fs::create_dir_all(path.clone()).expect("Could not create ledger dir");
@@ -52,6 +55,7 @@ pub fn bootstrap_ledger(
     let mut previous_block: Option<Block> = None;
 
     let mut rng: FixedRng = SeedableRng::from_seed(seed.unwrap_or([33u8; 32]));
+    let mut hint_cursor = 0;
 
     for block_index in 0..num_blocks as u64 {
         println!("Creating block {} of {}.", block_index, num_blocks);
@@ -59,7 +63,20 @@ pub fn bootstrap_ledger(
         let mut outputs: Vec<TxOut> = Vec::new();
         for recipient in recipients {
             for _i in 0..outputs_per_recipient_per_block {
-                outputs.push(create_output(recipient, picomob_per_output, &mut rng));
+                let hint_slice = if let Some(ht) = hint_text {
+                    let hint_chunk = ht.len() / num_outputs as usize;
+                    let hs = &ht[hint_cursor..hint_cursor + hint_chunk];
+                    hint_cursor += hint_chunk;
+                    Some(hs)
+                } else {
+                    None
+                };
+                outputs.push(create_output(
+                    recipient,
+                    picomob_per_output,
+                    &mut rng,
+                    hint_slice,
+                ));
             }
         }
 
@@ -96,8 +113,34 @@ pub fn bootstrap_ledger(
     ).expect("File I/O");
 }
 
-fn create_output(recipient: &PublicAddress, value: u64, rng: &mut FixedRng) -> TxOut {
+fn create_output(
+    recipient: &PublicAddress,
+    value: u64,
+    rng: &mut FixedRng,
+    hint_slice: Option<&str>,
+) -> TxOut {
     let tx_private_key = RistrettoPrivate::from_random(rng);
-    let hint = EncryptedFogHint::fake_onetime_hint(rng);
+
+    let hint = if let Some(hs) = hint_slice {
+        // Hash the hint slice to a buffer of the appropriate length
+        #[derive(Digestible)]
+        struct HintData {
+            pub hint_slice: String,
+        }
+        let const_data = HintData {
+            hint_slice: hs.to_string(),
+        };
+
+        // Note: Hint Plaintext Length is Sum<RistrettoLen, AesMacLen> = 32 + 2, but
+        // we leave the tag bytes empty for convenience of constructing the hash to 32 bytes.
+        let temp: [u8; 32] = const_data.digest32::<MerlinTranscript>(b"monitor_data");
+        let mut hint_buf = [0u8; 34];
+        hint_buf[0..32].copy_from_slice(&temp);
+
+        EncryptedFogHint::fake_onetime_hint(rng, Some(hint_buf.as_ref()))
+    } else {
+        EncryptedFogHint::fake_onetime_hint(rng, None)
+    };
+
     TxOut::new(value, recipient, &tx_private_key, hint).unwrap()
 }

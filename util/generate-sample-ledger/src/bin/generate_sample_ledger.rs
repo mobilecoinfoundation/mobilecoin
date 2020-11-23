@@ -20,6 +20,9 @@ struct Config {
     // Seed to use when generating blocks (e.g. 1234567812345678123456781234567812345678123456781234567812345678).
     #[structopt(long = "seed", short = "s", parse(try_from_str=hex::FromHex::from_hex))]
     pub seed: Option<[u8; 32]>,
+
+    #[structopt(long = "hint-text")]
+    pub hint_text: Option<String>,
 }
 
 fn main() {
@@ -38,5 +41,6 @@ fn main() {
         config.num_blocks,
         config.num_key_images,
         config.seed,
+        config.hint_text.as_deref(),
     );
 }
