@@ -11,6 +11,7 @@ use mc_fog_report_connection::GrpcFogPubkeyResolver;
 use mc_mobilecoind_api::MobilecoindUri;
 use mc_sgx_css::Signature;
 use mc_util_uri::{ConnectionUri, ConsensusClientUri};
+#[cfg(feature = "ip-check")]
 use reqwest::{
     blocking::Client,
     header::{HeaderMap, HeaderValue, CONTENT_TYPE},
@@ -189,6 +190,7 @@ impl Config {
     ///
     /// Note, both of these services are free tier and rate-limited. A longer term solution
     /// would be to filter on the consensus server.
+    #[cfg(feature = "ip-check")]
     pub fn validate_host(&self) -> Result<(), ConfigError> {
         let client = Client::builder().gzip(true).use_rustls_tls().build()?;
         let mut json_headers = HeaderMap::new();
@@ -217,6 +219,11 @@ impl Config {
         } else {
             Err(ConfigError::DataMissing(data_json.to_string()))
         }
+    }
+
+    #[cfg(not(feature = "ip-check"))]
+    pub fn validate_host(&self) -> Result<(), ConfigError> {
+        Ok(())
     }
 }
 
