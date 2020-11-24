@@ -2969,6 +2969,7 @@ name = "mc-mobilecoind"
 version = "1.0.0"
 dependencies = [
  "crossbeam-channel",
+ "displaydoc",
  "failure",
  "futures 0.3.5",
  "grpcio",
@@ -3010,6 +3011,7 @@ dependencies = [
  "protobuf",
  "rand 0.7.3",
  "rand_core 0.5.1",
+ "reqwest",
  "retry",
  "serde_json",
  "sha3",

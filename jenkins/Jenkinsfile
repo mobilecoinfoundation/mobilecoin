@@ -54,6 +54,9 @@ pipeline {
           // Can be swapped out for specific build commands
           sh 'cargo build --release'
 
+          // Build mobilecoind without default features
+          sh 'cargo build --release -p mc-mobilecoind --no-default-features'
+
           // Staging area for binary packaging
           sh 'mkdir -p $WORKSPACE/ops/bin'
 
