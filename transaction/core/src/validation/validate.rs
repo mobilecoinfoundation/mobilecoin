@@ -63,7 +63,7 @@ pub fn validate<R: RngCore + CryptoRng>(
 /// The transaction must have at least one input, and no more than the maximum allowed number of inputs.
 fn validate_number_of_inputs(
     tx_prefix: &TxPrefix,
-    maximum_allowed_inputs: usize,
+    maximum_allowed_inputs: u64,
 ) -> TransactionValidationResult<()> {
     let num_inputs = tx_prefix.inputs.len();
 
@@ -73,7 +73,7 @@ fn validate_number_of_inputs(
     }
 
     // Each transaction must have no more than the maximum allowed number of inputs.
-    if num_inputs > maximum_allowed_inputs {
+    if num_inputs > maximum_allowed_inputs as usize {
         return Err(TransactionValidationError::TooManyInputs);
     }
 
@@ -83,7 +83,7 @@ fn validate_number_of_inputs(
 /// The transaction must have at least one output.
 fn validate_number_of_outputs(
     tx_prefix: &TxPrefix,
-    maximum_allowed_outputs: usize,
+    maximum_allowed_outputs: u64,
 ) -> TransactionValidationResult<()> {
     let num_outputs = tx_prefix.outputs.len();
 
@@ -93,7 +93,7 @@ fn validate_number_of_outputs(
     }
 
     // Each transaction must have no more than the maximum allowed number of outputs.
-    if num_outputs > maximum_allowed_outputs {
+    if num_outputs > maximum_allowed_outputs as usize {
         return Err(TransactionValidationError::TooManyOutputs);
     }
 
