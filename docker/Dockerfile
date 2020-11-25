@@ -21,50 +21,55 @@ FROM ubuntu:18.04 AS builder-install
 #
 SHELL ["/bin/bash", "-c"]
 
+# Certain Installers make 'installations' easier by having a nice front-end. While this is great when you have a manual install, this becomes an issue during automated installations.
+ENV DEBIAN_FRONTEND=noninteractive
+
 # Install build tools and dependencies
 #
 RUN apt-get update -q -q && \
  apt-get upgrade --yes --force-yes && \
  apt-get install --yes --force-yes \
-  automake \
-  autoconf \
   alien \
+  autoconf \
+  automake \
   binutils-dev \
   build-essential \
-  libclang-dev \
   clang \
   cmake \
   curl \
-  libcurl4-openssl-dev \
-  libdw-dev \
   git \
   golang \
-  libiberty-dev \
   jq \
+  libclang-dev \
+  libcurl4-openssl-dev \
+  libdw-dev \
+  libiberty-dev \
+  libpq-dev \
+  libprotobuf-c-dev \
+  libprotobuf-dev \
+  libssl-dev \
+  libssl1.1 \
+  libsystemd-dev \
+  libtool \
+  libxml2-dev \
   llvm-dev \
   nano \
   ninja-build \
   ocaml-native-compilers \
   ocamlbuild \
   patch \
-  protobuf-compiler \
-  protobuf-c-compiler \
-  libprotobuf-c-dev \
-  libprotobuf-dev \
-  psmisc \
   pkg-config \
+  postgresql-10 \
   prometheus \
+  protobuf-c-compiler \
+  protobuf-compiler \
+  psmisc \
   python \
   python3-pip \
-  libssl1.1 \
-  libssl-dev \
   systemd \
-  libsystemd-dev \
-  libtool \
   unzip \
   uuid-dev \
   wget \
-  libxml2-dev \
   zlib1g-dev
 
 # psmisc = killall
