@@ -66,6 +66,8 @@ RUN apt-get update -q -q && \
   psmisc \
   python \
   python3-pip \
+  sqlite3 \
+  libsqlite3-dev \
   systemd \
   unzip \
   uuid-dev \
