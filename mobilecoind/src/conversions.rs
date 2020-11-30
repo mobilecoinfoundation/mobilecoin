@@ -99,6 +99,7 @@ impl From<&TxProposal> for mc_mobilecoind_api::TxProposal {
                 .map(|val| val.to_vec())
                 .collect(),
         );
+        dst.set_change_value(src.change_value);
 
         dst
     }
@@ -162,6 +163,7 @@ impl TryFrom<&mc_mobilecoind_api::TxProposal> for TxProposal {
             tx,
             outlay_index_to_tx_out_index,
             outlay_confirmation_numbers,
+            change_value: src.get_change_value(),
         })
     }
 }
@@ -308,6 +310,7 @@ mod test {
             tx,
             outlay_index_to_tx_out_index,
             outlay_confirmation_numbers,
+            change_value,
         };
 
         let proto = mc_mobilecoind_api::TxProposal::from(&rust);

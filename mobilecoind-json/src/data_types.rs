@@ -898,6 +898,7 @@ pub struct JsonTxProposal {
     pub fee: u64,
     pub outlay_index_to_tx_out_index: Vec<(u64, u64)>,
     pub outlay_confirmation_numbers: Vec<Vec<u8>>,
+    pub change_value: u64,
 }
 
 impl From<&mc_mobilecoind_api::TxProposal> for JsonTxProposal {
@@ -918,6 +919,7 @@ impl From<&mc_mobilecoind_api::TxProposal> for JsonTxProposal {
             fee: src.get_fee(),
             outlay_index_to_tx_out_index: outlay_map,
             outlay_confirmation_numbers: src.get_outlay_confirmation_numbers().to_vec(),
+            change_value: src.get_change_value(),
         }
     }
 }
@@ -954,6 +956,7 @@ impl TryFrom<&JsonTxProposal> for mc_mobilecoind_api::TxProposal {
         proposal.set_outlay_confirmation_numbers(RepeatedField::from_vec(
             src.outlay_confirmation_numbers.clone(),
         ));
+        proposal.set_change_value(src.change_value);
 
         Ok(proposal)
     }

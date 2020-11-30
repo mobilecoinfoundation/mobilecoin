@@ -143,6 +143,9 @@ message TxProposal {
     /// A list of the confirmation numbers, in the same order
     /// as the outlays.
     repeated bytes outlay_confirmation_numbers = 6;
+
+    /// Value of the change output
+    uint64 change_value = 7;
 }
 
 // Structure used to check transaction status as a Sender.
