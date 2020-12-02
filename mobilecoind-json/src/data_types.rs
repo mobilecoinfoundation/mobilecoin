@@ -781,7 +781,7 @@ impl From<&RingMLSAG> for JsonRingMLSAG {
 pub struct JsonSignatureRctBulletproofs {
     pub ring_signatures: Vec<JsonRingMLSAG>,
     pub pseudo_output_commitments: Vec<String>,
-    range_proofs: Vec<u8>,
+    range_proofs: String,
 }
 
 impl From<&SignatureRctBulletproofs> for JsonSignatureRctBulletproofs {
@@ -797,7 +797,7 @@ impl From<&SignatureRctBulletproofs> for JsonSignatureRctBulletproofs {
                 .iter()
                 .map(|x| hex::encode(x.get_data()))
                 .collect(),
-            range_proofs: src.get_range_proofs().to_vec(),
+            range_proofs: hex::encode(src.get_range_proofs().to_vec()),
         }
     }
 }
@@ -850,7 +850,9 @@ impl TryFrom<&JsonSignatureRctBulletproofs> for SignatureRctBulletproofs {
         let mut signature = SignatureRctBulletproofs::new();
         signature.set_ring_signatures(RepeatedField::from_vec(ring_sigs));
         signature.set_pseudo_output_commitments(RepeatedField::from_vec(commitments));
-        signature.set_range_proofs(src.range_proofs.clone());
+        let proofs_bytes = hex::decode(&src.range_proofs)
+            .map_err(|err| format!("Could not decode from hex: {}", err))?;
+        signature.set_range_proofs(proofs_bytes);
 
         Ok(signature)
     }
