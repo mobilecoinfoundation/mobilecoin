@@ -188,18 +188,15 @@ commands:
       - restore_cache:
           name: Restore Homebrew cache
           key: v0-homebrew-{{ arch }}
-      - when:
-          condition: { equal: [ << pipeline.git.branch >>, master ] }
-          steps:
-            - run:
-                name: Update Homebrew
-                command: |
-                  brew --version
-                  brew update --preinstall
+      - run:
+          name: Update Homebrew
+          command: |
+            brew --version
+            brew update --preinstall
+            brew --version
       - run:
           name: Install Homebrew dependencies
           command: |
-            brew --version
             brew bundle --no-upgrade
 
   save-homebrew-cache:
