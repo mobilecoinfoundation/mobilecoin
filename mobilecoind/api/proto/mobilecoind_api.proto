@@ -20,6 +20,7 @@ service MobilecoindAPI {
     rpc RemoveMonitor (RemoveMonitorRequest) returns (google.protobuf.Empty) {}
     rpc GetMonitorList (google.protobuf.Empty) returns (GetMonitorListResponse) {}
     rpc GetMonitorStatus (GetMonitorStatusRequest) returns (GetMonitorStatusResponse) {}
+    rpc GetMonitorAccountKey (GetMonitorAccountKeyRequest) returns (GetAccountKeyResponse) {}
     rpc GetUnspentTxOutList (GetUnspentTxOutListRequest) returns (GetUnspentTxOutListResponse) {}
 
     // Utilities
@@ -282,6 +283,13 @@ message GetMonitorStatusRequest {
 }
 message GetMonitorStatusResponse {
     MonitorStatus status = 1;
+}
+
+message GetMonitorAccountKeyRequest {
+    bytes monitor_id = 1;
+
+    // Password hash to recover encrypted account key.
+    bytes password_hash = 6;
 }
 
 // Get a list of UnspentTxOuts for a given monitor and subadddress index.

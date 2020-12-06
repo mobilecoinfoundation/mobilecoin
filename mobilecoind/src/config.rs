@@ -76,9 +76,6 @@ pub struct Config {
     /// recipients).
     #[structopt(long, parse(try_from_str=load_css_file))]
     pub fog_ingest_enclave_css: Option<Signature>,
-
-    /// Password for encrypting account key in the DB
-    pub password: Option<String>,
 }
 
 fn parse_duration_in_seconds(src: &str) -> Result<Duration, std::num::ParseIntError> {

@@ -104,7 +104,11 @@ impl Database {
         })
     }
 
-    pub fn add_monitor(&self, monitor_id: &MonitorId, data: &MonitorData) -> Result<MonitorId, Error> {
+    pub fn add_monitor(
+        &self,
+        monitor_id: &MonitorId,
+        data: &MonitorData,
+    ) -> Result<MonitorId, Error> {
         mc_common::trace_time!(self.logger, "add_monitor");
 
         let mut db_txn = self.env.begin_rw_txn()?;
@@ -122,6 +126,7 @@ impl Database {
 
     pub fn remove_monitor(&self, id: &MonitorId) -> Result<(), Error> {
         mc_common::trace_time!(self.logger, "remove_monitor");
+        println!("\x1b[1;32m removing monitor {:?}\x1b[0m", id);
 
         let mut db_txn = self.env.begin_rw_txn()?;
 
@@ -328,26 +333,26 @@ mod test {
         // Insert the first monitor, with subaddresses 0-9 (inclusive).
         let initial_data = MonitorData::new(
             account_key.clone(),
-            0,  // first_subaddress
-            10, // num_subaddresses
-            0,  // first_block
-            "", // name
+            0,    // first_subaddress
+            10,   // num_subaddresses
+            0,    // first_block
+            "",   // name
             None, // password hash
         )
         .unwrap();
 
-        let monitor_id = MonitorId::new(account_key.clone(), 0, 10, 0);
+        let initial_monitor_id = MonitorId::new(account_key.clone(), 0, 10, 0);
         let _monitor_id = mobilecoind_db
-            .add_monitor(&monitor_id, &initial_data)
+            .add_monitor(&initial_monitor_id, &initial_data)
             .expect("failed adding monitor");
 
         // Inserting an identical monitor should fail.
         let data = MonitorData::new(
             account_key.clone(),
-            0,  // first_subaddress
-            10, // num_subaddresses
-            0,  // first_block
-            "", // name
+            0,    // first_subaddress
+            10,   // num_subaddresses
+            0,    // first_block
+            "",   // name
             None, // password hash
         )
         .unwrap();
@@ -362,10 +367,10 @@ mod test {
         // Inserting a monitor with overlapping subaddresses should fail.
         let data = MonitorData::new(
             account_key.clone(),
-            5,  // first_subaddress
-            10, // num_subaddresses
-            0,  // first_block
-            "", // name
+            5,    // first_subaddress
+            10,   // num_subaddresses
+            0,    // first_block
+            "",   // name
             None, // password hash
         )
         .unwrap();
@@ -381,15 +386,16 @@ mod test {
         // fail.
         let data = MonitorData::new(
             account_key.clone(),
-            0,  // first_subaddress
-            10, // num_subaddresses
-            10, // first_block
-            "", // name
-            None // password hash
+            0,    // first_subaddress
+            10,   // num_subaddresses
+            10,   // first_block
+            "",   // name
+            None, // password hash
         )
         .unwrap();
 
         let monitor_id = MonitorId::new(account_key.clone(), 0, 10, 10);
+
         match mobilecoind_db.add_monitor(&monitor_id, &data) {
             Ok(_) => panic!("unexpected success!"),
             Err(Error::SubaddressSPKIdExists) => {}
@@ -399,10 +405,10 @@ mod test {
         // Inserting a monitor with non overlapping subaddresses should succeed.
         let data = MonitorData::new(
             account_key.clone(),
-            10, // first_subaddress
-            10, // num_subaddresses
-            0,  // first_block
-            "", // name
+            10,   // first_subaddress
+            10,   // num_subaddresses
+            0,    // first_block
+            "",   // name
             None, // password hash
         )
         .unwrap();
@@ -415,12 +421,11 @@ mod test {
 
         // Removing the first monitor and re-adding it should succeed.
         mobilecoind_db
-            .remove_monitor(&monitor_id)
+            .remove_monitor(&initial_monitor_id)
             .expect("failed removing monitor");
 
-        let monitor_id = MonitorId::new(account_key.clone(), 10, 10, 0);
         let _ = mobilecoind_db
-            .add_monitor(&monitor_id, &initial_data)
+            .add_monitor(&initial_monitor_id, &initial_data)
             .expect("failed adding monitor");
     }
 }

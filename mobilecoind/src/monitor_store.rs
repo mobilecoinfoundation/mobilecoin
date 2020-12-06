@@ -6,30 +6,19 @@
 
 use crate::{database_key::DatabaseByteArrayKey, error::Error};
 
-use aes_gcm::Aes256Gcm;
-use aes_gcm::aead::{Aead, NewAead, generic_array::GenericArray};
-// use mc_crypto_box::{CryptoBox, VersionedCryptoBox};
-// use mc_crypto_keys::Ristretto;
-// use generic_array::{
-//     typenum::{Diff, Unsigned, U84},
-//     GenericArray,
-// };
-// use mc_util_repr_bytes::typenum::U84;
+use aes_gcm::{
+    aead::{generic_array::GenericArray, Aead, NewAead},
+    Aes256Gcm,
+};
 use lmdb::{Cursor, Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
-// use mc_util_from_random::FromRandom;
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_util_serial::Message;
-// use rand::{rngs::StdRng, SeedableRng};
 use std::{convert::TryFrom, ops::Range, sync::Arc};
-
-// FIXME: what shoudl this be?
-// pub type EncryptedAccountKeySize = U84;
-// pub const ENCRYPTED_ACCOUNT_KEY_SIZE: usize = EncryptedAccountKeySize::USIZE;
 
 // LMDB Database Names
 pub const MONITOR_ID_TO_MONITOR_DATA_DB_NAME: &str =
@@ -85,20 +74,6 @@ impl MonitorData {
         }
 
         if let Some(pw) = password_hash {
-            // // Make plaintext of the right size
-            // let plaintext = GenericArray::<
-            //     u8,
-            //     Diff<EncryptedAccountKeySize, <VersionedCryptoBox as CryptoBox<Ristretto>>::FooterSize>,
-            // >::default();
-            // // Make a key seeded by the password
-            // // FIXME: copy password hash from slice (confirm it's 32 bytes)
-            // let mut rng: StdRng = SeedableRng::from_seed([0u8; 32]);
-            // let key = mc_crypto_keys::RistrettoPublic::from_random(&mut rng);
-            // // encrypt_in_place into the buffer
-            // let ciphertext = VersionedCryptoBox::default()
-            //     .encrypt_fixed_length(rng, &key, &plaintext)
-            //     .expect("Encryption error");
-
             let key = GenericArray::from_slice(&pw);
             // Get cipher from hash bytes
             let cipher = Aes256Gcm::new(key);
@@ -107,7 +82,8 @@ impl MonitorData {
 
             let plaintext_bytes = mc_util_serial::encode(&account_key);
 
-            let ciphertext = cipher.encrypt(nonce, &plaintext_bytes[..])
+            let ciphertext = cipher
+                .encrypt(nonce, &plaintext_bytes[..])
                 .expect("encryption failure!"); // NOTE: handle this error to avoid panics!
 
             Ok(Self {
@@ -120,7 +96,6 @@ impl MonitorData {
                 name: name.to_owned(),
                 encrypted_account_key: Some(ciphertext.to_vec()),
             })
-
         } else {
             Ok(Self {
                 account_key: Some(account_key),
@@ -130,7 +105,7 @@ impl MonitorData {
                 // The next block we need to sync is our first block.
                 next_block: first_block,
                 name: name.to_owned(),
-                encrypted_account_key: None
+                encrypted_account_key: None,
             })
         }
     }
@@ -141,6 +116,7 @@ impl MonitorData {
 
     // FIXME: error handling
     pub fn decrypt_account_key(&self, password_hash: &Vec<u8>) -> AccountKey {
+        //Result<AccountKey, Error> {
         let key = GenericArray::from_slice(&password_hash);
         let cipher = Aes256Gcm::new(key);
         let nonce = GenericArray::from_slice(b"unique nonce"); // 96-bits; unique per message
@@ -148,10 +124,12 @@ impl MonitorData {
         let encrypted_bytes = self.encrypted_account_key.clone().unwrap();
         // Make it big enough to include all the optional fog data strings
 
-        let plaintext = cipher.decrypt(nonce, encrypted_bytes.as_ref())
+        let plaintext = cipher
+            .decrypt(nonce, encrypted_bytes.as_ref())
             .expect("decryption failure!"); // NOTE: handle this error to avoid panics!
 
         let decrypted_account_key = mc_util_serial::decode(&plaintext).unwrap();
+        // Ok(decrypted_account_key)
         decrypted_account_key
     }
 }
@@ -167,9 +145,13 @@ impl MonitorId {
     // and that data can only be decrypted with the password hash stored in memory, you can only
     // construct a MonitorId when you have the plaintext account key.
     // FIXME: could just pass in public address here, since we don't use anything else about the account_key,
-    //        or even just store the public address so that we can construct MonitorId from DB data.
-    pub fn new(account_key: AccountKey, first_subaddress: u64, num_subaddresses: u64, first_block: u64) -> MonitorId {
-
+    //        or even just store the public address in the MonitorData so that we can construct MonitorId from DB data.
+    pub fn new(
+        account_key: AccountKey,
+        first_subaddress: u64,
+        num_subaddresses: u64,
+        first_block: u64,
+    ) -> MonitorId {
         #[derive(Digestible)]
         struct ConstMonitorData {
             // We use PublicAddress and not AccountKey so that the monitor_id is not sensitive.
@@ -340,8 +322,9 @@ mod test {
     };
     use mc_account_keys::RootIdentity;
     use mc_common::logger::{test_with_logger, Logger};
-    use rand::{rngs::StdRng, SeedableRng};
     use mc_util_from_random::FromRandom;
+    use rand::{rngs::StdRng, SeedableRng};
+    use rand_core::RngCore;
 
     // MonitorStore basic functionality tests
     #[test_with_logger]
@@ -427,44 +410,25 @@ mod test {
     }
 
     #[test_with_logger]
-    fn test_basic(_logger: Logger) {
-        use aes_gcm::Aes256Gcm; // Or `Aes128Gcm`
-        use aes_gcm::aead::{Aead, NewAead, generic_array::GenericArray};
-
-        let password_hash = vec![0u8; 32];
-        let key = GenericArray::from_slice(&password_hash);
-        let cipher = Aes256Gcm::new(key);
-
-        let nonce = GenericArray::from_slice(b"unique nonce"); // 96-bits; unique per message
-
-        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
-        let account_key = AccountKey::from(&RootIdentity::from_random(&mut rng));
-        let account_key_bytes = mc_util_serial::encode(&account_key);
-
-        let ciphertext = cipher.encrypt(nonce, &account_key_bytes[..])
-            .expect("encryption failure!"); // NOTE: handle this error to avoid panics!
-
-        let plaintext = cipher.decrypt(nonce, ciphertext.as_ref())
-            .expect("decryption failure!"); // NOTE: handle this error to avoid panics!
-
-        assert_eq!(&plaintext, &account_key_bytes);
-    }
-
-    #[test_with_logger]
     fn test_account_key_encryption(_logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
 
-        let password_hash = vec![0u8; 32];
-
+        let mut password_hash = vec![0u8; 32];
+        rng.fill_bytes(&mut password_hash);
 
         let account_key = AccountKey::from(&RootIdentity::from_random(&mut rng));
         let monitor_data = MonitorData::new(
-            account_key.clone(), 0, 1, 0, "", Some(password_hash.clone())).unwrap();
+            account_key.clone(),
+            0,
+            1,
+            0,
+            "",
+            Some(password_hash.clone()),
+        )
+        .unwrap();
 
         let decrypted_account_key = monitor_data.decrypt_account_key(&password_hash);
 
-
         assert_eq!(decrypted_account_key, account_key);
-
     }
 }

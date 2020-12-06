@@ -167,10 +167,10 @@ impl SubaddressStore {
         data: &MonitorData,
         index: u64,
     ) -> Result<(), Error> {
+        // FIXME: We could only delete if we have the account key
         if let Some(account_key) = data.account_key.clone() {
             let subaddress_spk =
                 SubaddressSPKId::from(account_key.subaddress(index).spend_public_key());
-
             db_txn.del(self.spk_to_index_data, &subaddress_spk, None)?;
         } else {
             // FIXME: delete from encrypted account key

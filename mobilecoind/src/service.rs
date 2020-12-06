@@ -11,7 +11,7 @@ use crate::{
     error::Error,
     monitor_store::{MonitorData, MonitorId},
     payments::{Outlay, TransactionsManager, TxProposal},
-    sync::{SyncThread, MonitorPwMessage},
+    sync::{MonitorPwMessage, SyncThread},
     utxo_store::{UnspentTxOut, UtxoId},
 };
 use grpcio::{EnvBuilder, RpcContext, RpcStatus, RpcStatusCode, ServerBuilder, UnarySink};
@@ -70,7 +70,8 @@ impl Service {
     ) -> Self {
         log::info!(logger, "Starting mobilecoind sync task thread");
         let active_passwords = HashMap::<MonitorId, Vec<u8>>::default();
-        let (monitor_passwords_sender, monitor_passwords_receiver) = crossbeam_channel::unbounded::<MonitorPwMessage>();
+        let (monitor_passwords_sender, monitor_passwords_receiver) =
+            crossbeam_channel::unbounded::<MonitorPwMessage>();
         let sync_thread = SyncThread::start(
             ledger_db.clone(),
             mobilecoind_db.clone(),
@@ -227,7 +228,12 @@ impl<
         .map_err(|err| rpc_internal_error("monitor_data.new", err, &self.logger))?;
 
         // Insert into database. Return the id and flag if the monitor already existed.
-        let monitor_id = MonitorId::new(account_key, request.first_subaddress, request.num_subaddresses, request.first_block);
+        let monitor_id = MonitorId::new(
+            account_key,
+            request.first_subaddress,
+            request.num_subaddresses,
+            request.first_block,
+        );
         // FIXME: change return type since we're constructing the monitor_id here
         let (id, is_new) = match self.mobilecoind_db.add_monitor(&monitor_id, &data) {
             Ok(id) => Ok((id, true)),
@@ -239,10 +245,14 @@ impl<
         // Update the in-memory store of password hashes on the transaction manager and sync thread
         if let Some(pw) = password_hash.clone() {
             // FIXME: error handling
-             self.active_passwords.insert(monitor_id, pw.clone()).unwrap();
+            self.active_passwords
+                .insert(monitor_id, pw.clone())
+                .unwrap();
 
             // Send the monitor password to the sync thread
-            self.monitor_passwords_sender.send(MonitorPwMessage::MonitorPw(pw)).expect("Could not send password");
+            self.monitor_passwords_sender
+                .send(MonitorPwMessage::MonitorPw(pw))
+                .expect("Could not send password");
         }
 
         // Return success response.
@@ -310,6 +320,14 @@ impl<
 
         let mut response = mc_mobilecoind_api::GetMonitorStatusResponse::new();
         response.set_status(status);
+        Ok(response)
+    }
+
+    fn get_monitor_account_key_impl(
+        &mut self,
+        _request: mc_mobilecoind_api::GetMonitorAccountKeyRequest,
+    ) -> Result<mc_mobilecoind_api::GetAccountKeyResponse, RpcStatus> {
+        let response = mc_mobilecoind_api::GetAccountKeyResponse::new();
         Ok(response)
     }
 
@@ -402,7 +420,15 @@ impl<
         }
 
         // Get the subaddress.
-        let subaddress = data.decrypt_account_key(&self.active_passwords[&monitor_id]).subaddress(request.subaddress_index);
+        let subaddress = if data.encrypted_account_key.is_some() {
+            // FIXME error if no password
+            data.decrypt_account_key(&self.active_passwords[&monitor_id])
+                .subaddress(request.subaddress_index)
+        } else {
+            data.account_key
+                .unwrap()
+                .subaddress(request.subaddress_index)
+        };
 
         // Also build the b58 wrapper
         let mut wrapper = mc_mobilecoind_api::printable::PrintableWrapper::new();
@@ -718,7 +744,7 @@ impl<
                 &outlays,
                 request.fee,
                 request.tombstone,
-                self.active_passwords.get(&sender_monitor_id)
+                self.active_passwords.get(&sender_monitor_id),
             )
             .map_err(|err| {
                 rpc_internal_error("transactions_manager.build_transaction", err, &self.logger)
@@ -1333,7 +1359,10 @@ impl<
                         .unwrap_or(mc_mobilecoind_api::ProcessedTxOutDirection::Invalid),
                 );
 
-                let subaddress = account_key.clone().unwrap().subaddress(src.subaddress_index);
+                let subaddress = account_key
+                    .clone()
+                    .unwrap()
+                    .subaddress(src.subaddress_index);
                 let mut wrapper = mc_mobilecoind_api::printable::PrintableWrapper::new();
                 wrapper.set_public_address((&subaddress).into());
                 let encoded = wrapper
@@ -1593,6 +1622,7 @@ build_api! {
     remove_monitor RemoveMonitorRequest Empty remove_monitor_impl,
     get_monitor_list Empty GetMonitorListResponse get_monitor_list_impl,
     get_monitor_status GetMonitorStatusRequest GetMonitorStatusResponse get_monitor_status_impl,
+    get_monitor_account_key GetMonitorAccountKeyRequest GetAccountKeyResponse get_monitor_account_key_impl,
     get_unspent_tx_out_list GetUnspentTxOutListRequest GetUnspentTxOutListResponse get_unspent_tx_out_list_impl,
     generate_entropy Empty GenerateEntropyResponse generate_entropy_impl,
     get_account_key GetAccountKeyRequest GetAccountKeyResponse get_account_key_impl,
@@ -1672,12 +1702,14 @@ mod test {
             1,                        // num_subaddresses
             0,                        // first_block
             "",                       // name
-            None // password hash
+            None,                     // password hash
         )
         .expect("failed to create data");
 
         let mut request = mc_mobilecoind_api::AddMonitorRequest::new();
-        request.set_account_key(mc_api::external::AccountKey::from(&data.account_key.unwrap()));
+        request.set_account_key(mc_api::external::AccountKey::from(
+            &data.account_key.unwrap(),
+        ));
         request.set_first_subaddress(data.first_subaddress);
         request.set_num_subaddresses(data.num_subaddresses);
         request.set_first_block(data.first_block);
@@ -1709,6 +1741,9 @@ mod test {
 
         // Check that the monitor is not reported as new
         assert!(!repeated_response.is_new);
+
+        // Add a monitor with an encrypted account key
+        // let mut password_hash = [0u8;  32];
     }
 
     #[test_with_logger]
@@ -1733,7 +1768,7 @@ mod test {
                     1,                        // num_subaddresses
                     0,                        // first_block
                     "",                       // name
-                    None, // password hash
+                    None,                     // password hash
                 )
                 .unwrap();
                 let monitor_id = MonitorId::new(account_key, DEFAULT_SUBADDRESS_INDEX, 1, 0);
@@ -1777,7 +1812,7 @@ mod test {
                     1,                        // num_subaddresses
                     0,                        // first_block
                     "",                       // name
-                    None, // password hash
+                    None,                     // password hash
                 )
                 .unwrap();
                 let monitor_id = MonitorId::new(account_key, DEFAULT_SUBADDRESS_INDEX, 1, 0);
@@ -1825,10 +1860,10 @@ mod test {
 
         let data = MonitorData::new(
             account_key.clone(),
-            10, // first_subaddress
-            20, // num_subaddresses
-            30, // first_block
-            "", // name
+            10,   // first_subaddress
+            20,   // num_subaddresses
+            30,   // first_block
+            "",   // name
             None, // password hash
         )
         .unwrap();
@@ -1877,10 +1912,10 @@ mod test {
         let account_key = AccountKey::random(&mut rng);
         let data = MonitorData::new(
             account_key.clone(),
-            0,  // first_subaddress
-            20, // num_subaddresses
-            0,  // first_block
-            "", // name
+            0,    // first_subaddress
+            20,   // num_subaddresses
+            0,    // first_block
+            "",   // name
             None, // password hash
         )
         .unwrap();
@@ -2320,10 +2355,10 @@ mod test {
         let receiver = AccountKey::random(&mut rng);
         let data = MonitorData::new(
             receiver.clone(),
-            0,  // first_subaddress
-            20, // num_subaddresses
-            0,  // first_block
-            "", // name
+            0,    // first_subaddress
+            20,   // num_subaddresses
+            0,    // first_block
+            "",   // name
             None, // password hash
         )
         .unwrap();
@@ -2414,7 +2449,9 @@ mod test {
         // Insert into database.
         let monitor_id = MonitorId::new(account_key.clone(), 0, 20, 1);
 
-        let monitor_id = mobilecoind_db.add_monitor(&monitor_id, &monitor_data).unwrap();
+        let monitor_id = mobilecoind_db
+            .add_monitor(&monitor_id, &monitor_data)
+            .unwrap();
 
         // Allow the new monitor to process the ledger.
         wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
@@ -2748,10 +2785,10 @@ mod test {
             let sender = AccountKey::random(&mut rng);
             let _data = MonitorData::new(
                 sender.clone(),
-                0,  // first_subaddress
-                20, // num_subaddresses
-                0,  // first_block
-                "", // name
+                0,    // first_subaddress
+                20,   // num_subaddresses
+                0,    // first_block
+                "",   // name
                 None, // password hash
             )
             .unwrap();
@@ -2825,7 +2862,7 @@ mod test {
             20, // num_subaddresses
             0,  // first_block
             "", // name
-            None
+            None,
         )
         .unwrap();
 
@@ -2905,7 +2942,9 @@ mod test {
             .unwrap();
             let monitor_id = MonitorId::new(account_key, DEFAULT_SUBADDRESS_INDEX, 1, 0);
 
-            let monitor_id = mobilecoind_db.add_monitor(&monitor_id, &monitor_data).unwrap();
+            let monitor_id = mobilecoind_db
+                .add_monitor(&monitor_id, &monitor_data)
+                .unwrap();
 
             // Wait for sync to complete.
             wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
@@ -3113,7 +3152,7 @@ mod test {
             20, // num_subaddresses
             0,  // first_block
             "", // name
-            None
+            None,
         )
         .unwrap();
 
@@ -3693,7 +3732,7 @@ mod test {
             20, // num_subaddresses
             0,  // first_block
             "", // name
-            None
+            None,
         )
         .unwrap();
 
@@ -3836,7 +3875,7 @@ mod test {
             20, // num_subaddresses
             0,  // first_block
             "", // name
-            None
+            None,
         )
         .unwrap();
 
@@ -4262,7 +4301,9 @@ mod test {
             )
             .unwrap();
             let monitor_id = MonitorId::new(account_key.clone(), DEFAULT_SUBADDRESS_INDEX, 1, 0);
-            let monitor_id = mobilecoind_db.add_monitor(&monitor_id, &monitor_data).unwrap();
+            let monitor_id = mobilecoind_db
+                .add_monitor(&monitor_id, &monitor_data)
+                .unwrap();
 
             // Wait for sync to complete.
             wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
