@@ -20,13 +20,15 @@
 use crate::{
     database::Database,
     error::Error,
-    monitor_store::{MonitorData, MonitorId},
+    monitor_store::{MonitorId},
     subaddress_store::SubaddressSPKId,
     utxo_store::UnspentTxOut,
 };
+use mc_account_keys::AccountKey;
 use mc_common::{
     logger::{log, Logger},
     HashSet,
+    HashMap,
 };
 use mc_crypto_keys::RistrettoPublic;
 use mc_ledger_db::{Ledger, LedgerDB};
@@ -54,6 +56,12 @@ enum SyncMsg {
     Stop,
 }
 
+
+/// Message for adding password hashes to new monitors
+pub enum MonitorPwMessage {
+    MonitorPw(Vec<u8>)
+}
+
 /// Possible return values for the `sync_monitor` function.
 #[derive(Debug, Eq, PartialEq)]
 enum SyncMonitorOk {
@@ -69,7 +77,7 @@ pub struct SyncThread {
     /// The main sync thread handle.
     join_handle: Option<thread::JoinHandle<()>>,
 
-    /// Stop trigger, used to signal the thread to reminate.
+    /// Stop trigger, used to signal the thread to terminate.
     stop_requested: Arc<AtomicBool>,
 }
 
@@ -78,6 +86,7 @@ impl SyncThread {
         ledger_db: LedgerDB,
         mobilecoind_db: Database,
         num_workers: Option<usize>,
+        monitor_passwords_receiver: crossbeam_channel::Receiver<MonitorPwMessage>,
         logger: Logger,
     ) -> Self {
         // Queue for sending jobs to our worker threads.
@@ -87,6 +96,7 @@ impl SyncThread {
         // preventing them from being sent again until they are processed.
         let queued_monitor_ids = Arc::new(Mutex::new(HashSet::<MonitorId>::default()));
 
+        let monitor_passwords = Arc::new(Mutex::new(HashMap::<MonitorId, Vec<u8>>::default()));
         // Create worker threads.
         let mut worker_join_handles = Vec::new();
 
@@ -96,6 +106,8 @@ impl SyncThread {
             let thread_sender = sender.clone();
             let thread_receiver = receiver.clone();
             let thread_queued_monitor_ids = queued_monitor_ids.clone();
+           let thread_monitor_passwords = monitor_passwords.clone();
+            let thread_pw_receiver = monitor_passwords_receiver.clone();
             let thread_logger = logger.clone();
             let join_handle = thread::Builder::new()
                 .name(format!("sync_worker_{}", idx))
@@ -106,6 +118,8 @@ impl SyncThread {
                         thread_sender,
                         thread_receiver,
                         thread_queued_monitor_ids,
+                        thread_monitor_passwords,
+                        thread_pw_receiver,
                         thread_logger,
                     );
                 })
@@ -232,12 +246,37 @@ fn sync_thread_entry_point(
     sender: crossbeam_channel::Sender<SyncMsg>,
     receiver: crossbeam_channel::Receiver<SyncMsg>,
     queued_monitor_ids: Arc<Mutex<HashSet<MonitorId>>>,
+    active_monitor_passwords: Arc<Mutex<HashMap<MonitorId, Vec<u8>>>>,
+    monitor_passwords_receiver: crossbeam_channel::Receiver<MonitorPwMessage>,
     logger: Logger,
 ) {
     for msg in receiver.iter() {
         match msg {
             SyncMsg::SyncMonitor(monitor_id) => {
-                match sync_monitor(&ledger_db, &mobilecoind_db, &monitor_id, &logger) {
+
+                // Check whether we have received a password for this monitor, if it is encrypted.
+                let mut passwords = active_monitor_passwords.lock().expect("mutex poisoned");
+                match mobilecoind_db.get_monitor_data(&monitor_id) {
+                    Ok(data) => {
+                        if let Some(_encrypted_account_key) = data.encrypted_account_key {
+
+                            // If we don't have this password yet, see whether it's been added.
+                            if !passwords.contains_key(&monitor_id) {
+                                // Drain the password channel and update the map
+                                for pw_msg in monitor_passwords_receiver.iter() {
+                                    match pw_msg {
+                                        MonitorPwMessage::MonitorPw(pw_hash) => {
+                                            passwords.insert(monitor_id, pw_hash);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Err(_e) => {}, // Nothing to do if we don't have the monitor in our DB
+                };
+
+                match sync_monitor(&ledger_db, &mobilecoind_db, &monitor_id, passwords.get(&monitor_id), &logger) {
                     // Success - No more blocks are currently available.
                     Ok(SyncMonitorOk::NoMoreBlocks) => {
                         // Remove the monitor id from the list of queued ones so that the main thread could
@@ -285,12 +324,17 @@ fn sync_monitor(
     ledger_db: &LedgerDB,
     mobilecoind_db: &Database,
     monitor_id: &MonitorId,
+    _password_hash: Option<&Vec<u8>>,
     logger: &Logger,
 ) -> Result<SyncMonitorOk, Error> {
     for _ in 0..MAX_BLOCKS_PROCESSING_CHUNK_SIZE {
         // Get the monitor data. If it is no longer available, the monitor has been removed and we
         // can simply return.
         let monitor_data = mobilecoind_db.get_monitor_data(monitor_id)?;
+
+        // FIXME: TODO - decrypt the account key data if necessary with the password hash
+        let account_key = &monitor_data.account_key.unwrap();
+
         let block_contents = match ledger_db.get_block_contents(monitor_data.next_block) {
             Ok(block_contents) => block_contents,
             Err(mc_ledger_db::Error::NotFound) => {
@@ -315,7 +359,7 @@ fn sync_monitor(
             &mobilecoind_db,
             &block_contents.outputs,
             monitor_id,
-            &monitor_data,
+            &account_key,
             logger,
         )?;
 
@@ -336,10 +380,9 @@ fn match_tx_outs_into_utxos(
     mobilecoind_db: &Database,
     outputs: &[TxOut],
     monitor_id: &MonitorId,
-    monitor_data: &MonitorData,
+    account_key: &AccountKey,
     logger: &Logger,
 ) -> Result<Vec<UnspentTxOut>, Error> {
-    let account_key = &monitor_data.account_key;
     let view_key = account_key.view_key();
     let mut results = Vec::new();
 
@@ -432,10 +475,11 @@ mod test {
             5,                        // number of subaddresses
             0,                        // first block
             "",                       // name
+            None, // password hash
         )
         .unwrap();
 
-        let monitor_id = MonitorId::from(&data);
+        let monitor_id = MonitorId::new(account_keys[0].clone(), DEFAULT_SUBADDRESS_INDEX, 5, 0);
 
         let recipients: Vec<PublicAddress> = account_keys
             .iter()
@@ -466,7 +510,7 @@ mod test {
         assert_eq!(utxos.len(), 0);
 
         // Add monitor, should still have 0 outputs.
-        assert_eq!(mobilecoind_db.add_monitor(&data).unwrap(), monitor_id);
+        assert_eq!(mobilecoind_db.add_monitor(&monitor_id, &data).unwrap(), monitor_id);
 
         // Haven't synced yet, so still no outputs expected.
         let utxos = mobilecoind_db
@@ -478,7 +522,7 @@ mod test {
         assert_eq!(monitor_data.next_block, 0);
 
         // Process the first MAX_BLOCKS_PROCESSING_CHUNK_SIZE blocks.
-        let result = sync_monitor(&ledger_db, &mobilecoind_db, &monitor_id, &logger).unwrap();
+        let result = sync_monitor(&ledger_db, &mobilecoind_db, &monitor_id, None, &logger).unwrap();
         assert_eq!(result, SyncMonitorOk::MoreBlocksPotentiallyAvailable);
 
         // We should now discover some outputs. Each block has 1 output per recipient, and we
@@ -503,7 +547,7 @@ mod test {
         }
 
         // Process the second MAX_BLOCKS_PROCESSING_CHUNK_SIZE blocks.
-        let result = sync_monitor(&ledger_db, &mobilecoind_db, &monitor_id, &logger).unwrap();
+        let result = sync_monitor(&ledger_db, &mobilecoind_db, &monitor_id, None, &logger).unwrap();
         assert_eq!(result, SyncMonitorOk::MoreBlocksPotentiallyAvailable);
 
         let monitor_data = mobilecoind_db.get_monitor_data(&monitor_id).unwrap();
@@ -526,7 +570,7 @@ mod test {
         }
 
         // Process the last remaining block.
-        let result = sync_monitor(&ledger_db, &mobilecoind_db, &monitor_id, &logger).unwrap();
+        let result = sync_monitor(&ledger_db, &mobilecoind_db, &monitor_id, None, &logger).unwrap();
         assert_eq!(result, SyncMonitorOk::NoMoreBlocks);
 
         let monitor_data = mobilecoind_db.get_monitor_data(&monitor_id).unwrap();
@@ -546,7 +590,7 @@ mod test {
         }
 
         // Calling sync_monitor again should not change the results.
-        let result = sync_monitor(&ledger_db, &mobilecoind_db, &monitor_id, &logger).unwrap();
+        let result = sync_monitor(&ledger_db, &mobilecoind_db, &monitor_id, None, &logger).unwrap();
         assert_eq!(result, SyncMonitorOk::NoMoreBlocks);
 
         let monitor_data = mobilecoind_db.get_monitor_data(&monitor_id).unwrap();
@@ -579,7 +623,7 @@ mod test {
             &mut rng,
         );
 
-        let result = sync_monitor(&ledger_db, &mobilecoind_db, &monitor_id, &logger).unwrap();
+        let result = sync_monitor(&ledger_db, &mobilecoind_db, &monitor_id, None, &logger).unwrap();
         assert_eq!(result, SyncMonitorOk::NoMoreBlocks);
 
         let utxos = mobilecoind_db

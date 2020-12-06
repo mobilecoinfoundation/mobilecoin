@@ -172,24 +172,23 @@ message ReceiverTxReceipt {
 
 // Structure used to report monitor status
 message MonitorStatus {
-    // The account key the monitor is monitoring.
-    external.AccountKey account_key = 1;
-
     // The first subaddress being monitored.
-    uint64 first_subaddress = 2;
+    uint64 first_subaddress = 1;
 
     // The number of subaddresses being monitored, starting at first_subaddress.
-    uint64 num_subaddresses = 3;
+    uint64 num_subaddresses = 2;
 
     // Block index we started scanning from.
-    uint64 first_block = 4;
+    uint64 first_block = 3;
 
     // Next block we are waiting to sync.
-    uint64 next_block = 5;
+    uint64 next_block = 4;
 
     // Optional monitor name.
-    string name = 6;
+    string name = 5;
 }
+
+// FIXME add a way to export account key with provided password
 
 // Enum used to indicate whether a ProcessedTxOut is a sent one or a received one.
 enum ProcessedTxOutDirection {
@@ -256,6 +255,9 @@ message AddMonitorRequest {
 
     // Optional name.
     string name = 5;
+
+    // Password hash to encrypt account key at rest in DB. Optional, but recommended.
+    bytes password_hash = 6;
 }
 message AddMonitorResponse {
     bytes monitor_id = 1;

@@ -116,29 +116,33 @@ impl SubaddressStore {
         data: &MonitorData,
         index: u64,
     ) -> Result<(), Error> {
-        let subaddress_spk =
-            SubaddressSPKId::from(data.account_key.subaddress(index).spend_public_key());
-        let subaddress_id: SubaddressId = SubaddressId::new(monitor_id, index);
+        if let Some(account_key) = data.account_key.clone() {
+            let subaddress_spk =
+                SubaddressSPKId::from(account_key.subaddress(index).spend_public_key());
+            let subaddress_id: SubaddressId = SubaddressId::new(monitor_id, index);
 
-        let value_bytes = mc_util_serial::encode(&subaddress_id);
-        match db_txn.put(
-            self.spk_to_index_data,
-            &subaddress_spk,
-            &value_bytes,
-            WriteFlags::NO_OVERWRITE,
-        ) {
-            Ok(_) => Ok(()),
-            Err(lmdb::Error::KeyExist) => Err(Error::SubaddressSPKIdExists),
-            Err(err) => Err(err.into()),
-        }?;
+            let value_bytes = mc_util_serial::encode(&subaddress_id);
+            match db_txn.put(
+                self.spk_to_index_data,
+                &subaddress_spk,
+                &value_bytes,
+                WriteFlags::NO_OVERWRITE,
+            ) {
+                Ok(_) => Ok(()),
+                Err(lmdb::Error::KeyExist) => Err(Error::SubaddressSPKIdExists),
+                Err(err) => Err(err.into()),
+            }?;
 
-        log::trace!(
-            self.logger,
-            "Inserting {} ({}@{}) to subaddress store",
-            subaddress_spk,
-            monitor_id,
-            index,
-        );
+            log::trace!(
+                self.logger,
+                "Inserting {} ({}@{}) to subaddress store",
+                subaddress_spk,
+                monitor_id,
+                index,
+            );
+        } else {
+            // FIXME: insert for encrypted account key
+        }
 
         Ok(())
     }
@@ -163,10 +167,14 @@ impl SubaddressStore {
         data: &MonitorData,
         index: u64,
     ) -> Result<(), Error> {
-        let subaddress_spk =
-            SubaddressSPKId::from(data.account_key.subaddress(index).spend_public_key());
+        if let Some(account_key) = data.account_key.clone() {
+            let subaddress_spk =
+                SubaddressSPKId::from(account_key.subaddress(index).spend_public_key());
 
-        db_txn.del(self.spk_to_index_data, &subaddress_spk, None)?;
+            db_txn.del(self.spk_to_index_data, &subaddress_spk, None)?;
+        } else {
+            // FIXME: delete from encrypted account key
+        }
 
         Ok(())
     }

@@ -348,16 +348,17 @@ mod test {
         assert_eq!(num_blocks, utxos.len() as u64);
 
         // Create a monitor id for our account.
-        let monitor_data = MonitorData::new(
+        let _monitor_data = MonitorData::new(
             account.clone(),
             0,  // first_subaddress
             20, // num_subaddresses
             0,  // first_block
             "", // name
+            None, // password hash
         )
         .expect("failed to create data");
 
-        let monitor_id = MonitorId::from(&monitor_data);
+        let monitor_id = MonitorId::new(account.clone(), 0, 20, 0);
 
         // Initially, we should have no data for any of our blocks.
         {
@@ -428,16 +429,17 @@ mod test {
 
         // Querying with a different monitor id should return no results.
         {
-            let monitor_data = MonitorData::new(
+            let _monitor_data = MonitorData::new(
                 account.clone(),
                 30, // first_subaddress
                 20, // num_subaddresses
                 0,  // first_block
                 "", // name
+                None, // password hash
             )
             .expect("failed to create data");
 
-            let monitor_id = MonitorId::from(&monitor_data);
+            let monitor_id = MonitorId::new(account.clone(), 30, 20, 0);
 
             let mut db_txn = store.env.begin_rw_txn().unwrap();
 
@@ -496,16 +498,17 @@ mod test {
                 .block_processed(&mut db_txn, &monitor_id, 1, &utxos[5..], &[])
                 .expect("block_processed failed");
 
-            let monitor_data2 = MonitorData::new(
+            let _monitor_data2 = MonitorData::new(
                 account.clone(),
                 30, // first_subaddress
                 20, // num_subaddresses
                 0,  // first_block
                 "", // name
+                None, // password hash
             )
             .expect("failed to create data");
 
-            let monitor_id2 = MonitorId::from(&monitor_data2);
+            let monitor_id2 = MonitorId::new(account.clone(), 30, 20, 0);
 
             store
                 .block_processed(&mut db_txn, &monitor_id2, 0, &utxos[0..1], &utxos[1..2])

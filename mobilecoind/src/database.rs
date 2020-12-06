@@ -104,11 +104,11 @@ impl Database {
         })
     }
 
-    pub fn add_monitor(&self, data: &MonitorData) -> Result<MonitorId, Error> {
+    pub fn add_monitor(&self, monitor_id: &MonitorId, data: &MonitorData) -> Result<MonitorId, Error> {
         mc_common::trace_time!(self.logger, "add_monitor");
 
         let mut db_txn = self.env.begin_rw_txn()?;
-        let id = self.monitor_store.add(&mut db_txn, data)?;
+        let id = self.monitor_store.add(&mut db_txn, monitor_id, data)?;
 
         //for index in 0..data.num_subaddresses {
         for index in data.subaddress_indexes() {
@@ -332,11 +332,13 @@ mod test {
             10, // num_subaddresses
             0,  // first_block
             "", // name
+            None, // password hash
         )
         .unwrap();
 
-        let monitor_id = mobilecoind_db
-            .add_monitor(&initial_data)
+        let monitor_id = MonitorId::new(account_key.clone(), 0, 10, 0);
+        let _monitor_id = mobilecoind_db
+            .add_monitor(&monitor_id, &initial_data)
             .expect("failed adding monitor");
 
         // Inserting an identical monitor should fail.
@@ -346,10 +348,12 @@ mod test {
             10, // num_subaddresses
             0,  // first_block
             "", // name
+            None, // password hash
         )
         .unwrap();
 
-        match mobilecoind_db.add_monitor(&data) {
+        let monitor_id = MonitorId::new(account_key.clone(), 0, 10, 0);
+        match mobilecoind_db.add_monitor(&monitor_id, &data) {
             Ok(_) => panic!("unexpected success!"),
             Err(Error::MonitorIdExists) => {}
             Err(err) => panic!("unexpected error {:?}", err),
@@ -362,10 +366,12 @@ mod test {
             10, // num_subaddresses
             0,  // first_block
             "", // name
+            None, // password hash
         )
         .unwrap();
 
-        match mobilecoind_db.add_monitor(&data) {
+        let monitor_id = MonitorId::new(account_key.clone(), 5, 10, 0);
+        match mobilecoind_db.add_monitor(&monitor_id, &data) {
             Ok(_) => panic!("unexpected success!"),
             Err(Error::SubaddressSPKIdExists) => {}
             Err(err) => panic!("unexpected error {:?}", err),
@@ -379,10 +385,12 @@ mod test {
             10, // num_subaddresses
             10, // first_block
             "", // name
+            None // password hash
         )
         .unwrap();
 
-        match mobilecoind_db.add_monitor(&data) {
+        let monitor_id = MonitorId::new(account_key.clone(), 0, 10, 10);
+        match mobilecoind_db.add_monitor(&monitor_id, &data) {
             Ok(_) => panic!("unexpected success!"),
             Err(Error::SubaddressSPKIdExists) => {}
             Err(err) => panic!("unexpected error {:?}", err),
@@ -390,16 +398,19 @@ mod test {
 
         // Inserting a monitor with non overlapping subaddresses should succeed.
         let data = MonitorData::new(
-            account_key,
+            account_key.clone(),
             10, // first_subaddress
             10, // num_subaddresses
             0,  // first_block
             "", // name
+            None, // password hash
         )
         .unwrap();
 
+        let monitor_id = MonitorId::new(account_key.clone(), 10, 10, 0);
+
         let _ = mobilecoind_db
-            .add_monitor(&data)
+            .add_monitor(&monitor_id, &data)
             .expect("failed adding monitor");
 
         // Removing the first monitor and re-adding it should succeed.
@@ -407,8 +418,9 @@ mod test {
             .remove_monitor(&monitor_id)
             .expect("failed removing monitor");
 
+        let monitor_id = MonitorId::new(account_key.clone(), 10, 10, 0);
         let _ = mobilecoind_db
-            .add_monitor(&initial_data)
+            .add_monitor(&monitor_id, &initial_data)
             .expect("failed adding monitor");
     }
 }

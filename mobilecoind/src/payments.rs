@@ -143,6 +143,7 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
         outlays: &[Outlay],
         opt_fee: u64,
         opt_tombstone: u64,
+        opt_password_hash: Option<&Vec<u8>>
     ) -> Result<TxProposal, Error> {
         let logger = self.logger.new(o!("sender_monitor_id" => sender_monitor_id.to_string(), "outlays" => format!("{:?}", outlays)));
         log::trace!(logger, "Building pending transaction...");
@@ -209,13 +210,20 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
         };
         log::trace!(logger, "Tombstone block set to {}", tombstone_block);
 
+        let account_key = if sender_monitor_data.encrypted_account_key.is_some() {
+            // FIXME: error handling
+            sender_monitor_data.clone().decrypt_account_key(&opt_password_hash.unwrap())
+        } else {
+            sender_monitor_data.account_key.clone().unwrap()
+        };
+
         // Build and return the TxProposal object
         let mut rng = rand::thread_rng();
         let tx_proposal = Self::build_tx_proposal(
             &selected_utxos_with_proofs,
             rings,
             fee,
-            &sender_monitor_data.account_key,
+            &account_key,
             change_subaddress,
             outlays,
             tombstone_block,
@@ -232,6 +240,7 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
         &self,
         monitor_id: &MonitorId,
         subaddress_index: u64,
+        opt_password_hash: Option<Vec<u8>>,
     ) -> Result<TxProposal, Error> {
         let logger = self.logger.new(
             o!("monitor_id" => monitor_id.to_string(), "subaddress_index" => subaddress_index),
@@ -294,9 +303,16 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
         let tombstone_block = num_blocks_in_ledger + DEFAULT_NEW_TX_BLOCK_ATTEMPTS;
         log::trace!(logger, "Tombstone block set to {}", tombstone_block);
 
+        let account_key = if let Some(_encrypted_key) = monitor_data.encrypted_account_key.clone() {
+            // FIXME: error handling
+            monitor_data.clone().decrypt_account_key(&opt_password_hash.unwrap())
+        } else {
+            monitor_data.account_key.unwrap()
+        };
+
         // We are paying ourselves the entire amount.
         let outlays = vec![Outlay {
-            receiver: monitor_data.account_key.subaddress(subaddress_index),
+            receiver: account_key.subaddress(subaddress_index),
             value: total_value - fee,
         }];
 
@@ -306,7 +322,7 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
             &selected_utxos_with_proofs,
             rings,
             fee,
-            &monitor_data.account_key,
+            &account_key,
             subaddress_index,
             &outlays,
             tombstone_block,

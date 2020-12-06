@@ -113,15 +113,16 @@ pub fn get_test_monitor_data_and_id(
     let account_key = AccountKey::random(rng);
 
     let data = MonitorData::new(
-        account_key,
+        account_key.clone(),
         DEFAULT_SUBADDRESS_INDEX, // first_subaddress
         1,                        // num_subaddresses
         0,                        // first_block
         "",                       // name
+        None, // password_hash
     )
     .unwrap();
 
-    let monitor_id = MonitorId::from(&data);
+    let monitor_id = MonitorId::new(account_key, DEFAULT_SUBADDRESS_INDEX, 1, 0);
     (data, monitor_id)
 }
 
@@ -308,7 +309,7 @@ pub fn setup_client(uri: &MobilecoindUri, logger: &Logger) -> MobilecoindApiClie
 pub fn get_testing_environment(
     num_random_recipients: u32,
     recipients: &[PublicAddress],
-    monitors: &[MonitorData],
+    monitors: &[(MonitorId, MonitorData)],
     logger: Logger,
     mut rng: &mut (impl CryptoRng + RngCore),
 ) -> (
@@ -342,9 +343,9 @@ pub fn get_testing_environment(
     log::debug!(logger, "Setting up client {:?}", port);
     let client = setup_client(&uri, &logger);
 
-    for data in monitors {
+    for (monitor_id, data) in monitors {
         mobilecoind_db
-            .add_monitor(&data)
+            .add_monitor(&monitor_id, &data)
             .expect("failed adding monitor");
     }
 

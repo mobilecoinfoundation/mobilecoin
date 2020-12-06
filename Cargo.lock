@@ -197,6 +197,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "53d1ccbaf7d9ec9537465a97bf19edc1a4e158ecb49fc16178202238c569cc42"
 
 [[package]]
+name = "base64"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
+
+[[package]]
 name = "bigint"
 version = "4.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -777,6 +783,17 @@ checksum = "c3c7c73a2d1e9fc0886a08b93e98eb643461230d5f1925e4036204d5f2e261a8"
 dependencies = [
  "autocfg 1.0.0",
  "cfg-if 0.1.10",
+ "lazy_static",
+]
+
+[[package]]
+name = "crossbeam-utils"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "02d96d1e189ef58269ebe5b97953da3274d83a93af647c2ddd6f9dab28cedb8d"
+dependencies = [
+ "autocfg 1.0.0",
+ "cfg-if 1.0.0",
  "lazy_static",
 ]
 
@@ -2968,10 +2985,12 @@ dependencies = [
 name = "mc-mobilecoind"
 version = "1.0.0"
 dependencies = [
+ "aes-gcm",
  "crossbeam-channel",
  "displaydoc",
  "failure",
  "futures 0.3.5",
+ "generic-array 0.14.4",
  "grpcio",
  "hex_fmt",
  "libz-sys",
@@ -2986,6 +3005,7 @@ dependencies = [
  "mc-consensus-api",
  "mc-consensus-enclave-measurement",
  "mc-consensus-scp",
+ "mc-crypto-box",
  "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-crypto-rand",
@@ -3013,6 +3033,7 @@ dependencies = [
  "rand_core 0.5.1",
  "reqwest",
  "retry",
+ "rust-argon2 0.8.3",
  "serde_json",
  "sha3",
  "structopt",
@@ -4753,7 +4774,7 @@ checksum = "09b23093265f8d200fa7b4c2c76297f47e681c655f6f1285a8780d6a022f7431"
 dependencies = [
  "getrandom",
  "redox_syscall",
- "rust-argon2",
+ "rust-argon2 0.7.0",
 ]
 
 [[package]]
@@ -5018,6 +5039,18 @@ dependencies = [
  "blake2b_simd",
  "constant_time_eq",
  "crossbeam-utils 0.7.2",
+]
+
+[[package]]
+name = "rust-argon2"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4b18820d944b33caa75a71378964ac46f58517c92b6ae5f762636247c09e78fb"
+dependencies = [
+ "base64 0.13.0",
+ "blake2b_simd",
+ "constant_time_eq",
+ "crossbeam-utils 0.8.1",
 ]
 
 [[package]]
