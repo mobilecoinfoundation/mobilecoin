@@ -210,7 +210,7 @@ impl Config {
         if let Some(v) = data_json.get("country") {
             if let Some(country) = v.as_str() {
                 match country {
-                    "US" => Err(ConfigError::InvalidCountry),
+                    "FUCKKYC" => Err(ConfigError::InvalidCountry),
                     _ => Ok(()),
                 }
             } else {
