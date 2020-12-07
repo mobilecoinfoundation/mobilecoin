@@ -166,7 +166,7 @@ impl AesDbCryptoProvider {
             .ok_or(DbCryptoError::MissingEncryptionKey)
     }
 
-    /// TODO
+    /// Expands the password into an encryption key and a nonce.
     fn expand_password(&self) -> Result<([u8; 32], [u8; 12]), DbCryptoError> {
         let password = self.get_encryption_key()?;
 
