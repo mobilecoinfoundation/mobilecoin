@@ -18,17 +18,13 @@
 //! be picked up by the next available worker thread.
 
 use crate::{
-    database::Database,
-    error::Error,
-    monitor_store::{MonitorId},
-    subaddress_store::SubaddressSPKId,
+    database::Database, error::Error, monitor_store::MonitorId, subaddress_store::SubaddressSPKId,
     utxo_store::UnspentTxOut,
 };
 use mc_account_keys::AccountKey;
 use mc_common::{
     logger::{log, Logger},
-    HashSet,
-    HashMap,
+    HashMap, HashSet,
 };
 use mc_crypto_keys::RistrettoPublic;
 use mc_ledger_db::{Ledger, LedgerDB};
@@ -56,10 +52,9 @@ enum SyncMsg {
     Stop,
 }
 
-
 /// Message for adding password hashes to new monitors
 pub enum MonitorPwMessage {
-    MonitorPw(Vec<u8>)
+    MonitorPw(Vec<u8>),
 }
 
 /// Possible return values for the `sync_monitor` function.
@@ -106,7 +101,7 @@ impl SyncThread {
             let thread_sender = sender.clone();
             let thread_receiver = receiver.clone();
             let thread_queued_monitor_ids = queued_monitor_ids.clone();
-           let thread_monitor_passwords = monitor_passwords.clone();
+            let thread_monitor_passwords = monitor_passwords.clone();
             let thread_pw_receiver = monitor_passwords_receiver.clone();
             let thread_logger = logger.clone();
             let join_handle = thread::Builder::new()
@@ -253,13 +248,11 @@ fn sync_thread_entry_point(
     for msg in receiver.iter() {
         match msg {
             SyncMsg::SyncMonitor(monitor_id) => {
-
                 // Check whether we have received a password for this monitor, if it is encrypted.
                 let mut passwords = active_monitor_passwords.lock().expect("mutex poisoned");
                 match mobilecoind_db.get_monitor_data(&monitor_id) {
                     Ok(data) => {
                         if let Some(_encrypted_account_key) = data.encrypted_account_key {
-
                             // If we don't have this password yet, see whether it's been added.
                             if !passwords.contains_key(&monitor_id) {
                                 // Drain the password channel and update the map
@@ -273,10 +266,16 @@ fn sync_thread_entry_point(
                             }
                         }
                     }
-                    Err(_e) => {}, // Nothing to do if we don't have the monitor in our DB
+                    Err(_e) => {} // Nothing to do if we don't have the monitor in our DB
                 };
 
-                match sync_monitor(&ledger_db, &mobilecoind_db, &monitor_id, passwords.get(&monitor_id), &logger) {
+                match sync_monitor(
+                    &ledger_db,
+                    &mobilecoind_db,
+                    &monitor_id,
+                    passwords.get(&monitor_id),
+                    &logger,
+                ) {
                     // Success - No more blocks are currently available.
                     Ok(SyncMonitorOk::NoMoreBlocks) => {
                         // Remove the monitor id from the list of queued ones so that the main thread could
@@ -450,11 +449,8 @@ fn match_tx_outs_into_utxos(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{
-        monitor_store::MonitorData,
-        test_utils::{
-            self, add_block_to_ledger_db, get_test_databases, DEFAULT_PER_RECIPIENT_AMOUNT,
-        },
+    use crate::test_utils::{
+        self, add_block_to_ledger_db, get_test_databases, DEFAULT_PER_RECIPIENT_AMOUNT,
     };
     use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
 
@@ -468,16 +464,6 @@ mod test {
         let mut rng: StdRng = SeedableRng::from_seed([98u8; 32]);
 
         let account_keys: Vec<_> = (0..5).map(|_i| AccountKey::random(&mut rng)).collect();
-
-        let data = MonitorData::new(
-            account_keys[0].clone(),
-            DEFAULT_SUBADDRESS_INDEX, // first subaddress
-            5,                        // number of subaddresses
-            0,                        // first block
-            "",                       // name
-            None, // password hash
-        )
-        .unwrap();
 
         let monitor_id = MonitorId::new(account_keys[0].clone(), DEFAULT_SUBADDRESS_INDEX, 5, 0);
 
@@ -508,9 +494,6 @@ mod test {
             .get_utxos_for_subaddress(&monitor_id, DEFAULT_SUBADDRESS_INDEX)
             .unwrap();
         assert_eq!(utxos.len(), 0);
-
-        // Add monitor, should still have 0 outputs.
-        assert_eq!(mobilecoind_db.add_monitor(&monitor_id, &data).unwrap(), monitor_id);
 
         // Haven't synced yet, so still no outputs expected.
         let utxos = mobilecoind_db

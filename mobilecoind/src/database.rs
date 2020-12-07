@@ -104,24 +104,20 @@ impl Database {
         })
     }
 
-    pub fn add_monitor(
-        &self,
-        monitor_id: &MonitorId,
-        data: &MonitorData,
-    ) -> Result<MonitorId, Error> {
+    pub fn add_monitor(&self, monitor_id: &MonitorId, data: &MonitorData) -> Result<(), Error> {
         mc_common::trace_time!(self.logger, "add_monitor");
 
         let mut db_txn = self.env.begin_rw_txn()?;
-        let id = self.monitor_store.add(&mut db_txn, monitor_id, data)?;
+        self.monitor_store.add(&mut db_txn, monitor_id, data)?;
 
         //for index in 0..data.num_subaddresses {
         for index in data.subaddress_indexes() {
             self.subaddress_store
-                .insert(&mut db_txn, &id, data, index)?;
+                .insert(&mut db_txn, &monitor_id, data, index)?;
         }
 
         db_txn.commit()?;
-        Ok(id)
+        Ok(())
     }
 
     pub fn remove_monitor(&self, id: &MonitorId) -> Result<(), Error> {
@@ -342,7 +338,7 @@ mod test {
         .unwrap();
 
         let initial_monitor_id = MonitorId::new(account_key.clone(), 0, 10, 0);
-        let _monitor_id = mobilecoind_db
+        mobilecoind_db
             .add_monitor(&initial_monitor_id, &initial_data)
             .expect("failed adding monitor");
 
@@ -415,7 +411,7 @@ mod test {
 
         let monitor_id = MonitorId::new(account_key.clone(), 10, 10, 0);
 
-        let _ = mobilecoind_db
+        mobilecoind_db
             .add_monitor(&monitor_id, &data)
             .expect("failed adding monitor");
 
@@ -424,7 +420,7 @@ mod test {
             .remove_monitor(&initial_monitor_id)
             .expect("failed removing monitor");
 
-        let _ = mobilecoind_db
+        mobilecoind_db
             .add_monitor(&initial_monitor_id, &initial_data)
             .expect("failed adding monitor");
     }

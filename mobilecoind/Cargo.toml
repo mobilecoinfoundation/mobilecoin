@@ -21,7 +21,6 @@ mc-connection = { path = "../connection" }
 mc-consensus-api = { path = "../consensus/api" }
 mc-consensus-enclave-measurement = { path = "../consensus/enclave/measurement" }
 mc-consensus-scp = { path = "../consensus/scp" }
-mc-crypto-box = { path = "../crypto/box" }
 mc-crypto-digestible = { path = "../crypto/digestible", features = ["derive"] }
 mc-crypto-keys = { path = "../crypto/keys" }
 mc-crypto-rand = { path = "../crypto/rand" }

@@ -243,7 +243,7 @@ impl MonitorStore {
         db_txn: &mut RwTransaction<'env>,
         monitor_id: &MonitorId,
         data: &MonitorData,
-    ) -> Result<MonitorId, Error> {
+    ) -> Result<(), Error> {
         let key_bytes = monitor_id.as_bytes();
 
         let value_bytes = mc_util_serial::encode(data);
@@ -256,7 +256,7 @@ impl MonitorStore {
             &value_bytes,
             WriteFlags::NO_OVERWRITE,
         ) {
-            Ok(_) => Ok(*monitor_id),
+            Ok(_) => Ok(()),
             Err(lmdb::Error::KeyExist) => Err(Error::MonitorIdExists),
             Err(err) => Err(err.into()),
         }
@@ -393,7 +393,7 @@ mod test {
 
         monitor_data0.name = "test name".to_owned();
 
-        let _ = mobilecoind_db
+        mobilecoind_db
             .add_monitor(&monitor_id0, &monitor_data0)
             .expect("failed inserting monitor 0");
         assert_eq!(
@@ -406,7 +406,7 @@ mod test {
             vec![monitor_id0.clone()]
         );
 
-        let _ = mobilecoind_db
+        mobilecoind_db
             .add_monitor(&monitor_id1, &monitor_data1)
             .expect("failed inserting monitor 1");
         assert_eq!(

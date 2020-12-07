@@ -189,9 +189,7 @@ message MonitorStatus {
     string name = 5;
 }
 
-// FIXME add a way to export account key with provided password
-
-// Enum used to indicate whether a ProcessedTxOut is a sent one or a received one.
+    // Enum used to indicate whether a ProcessedTxOut is a sent one or a received one.
 enum ProcessedTxOutDirection {
     // This should never happen, but is available here as an option to catch uninitialized data.
     // The name "Unknown" cannot be used because, quoting the protobuf compiler:

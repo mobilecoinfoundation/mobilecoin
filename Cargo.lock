@@ -2988,7 +2988,6 @@ dependencies = [
  "mc-consensus-api",
  "mc-consensus-enclave-measurement",
  "mc-consensus-scp",
- "mc-crypto-box",
  "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-crypto-rand",

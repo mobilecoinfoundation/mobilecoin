@@ -236,7 +236,7 @@ impl<
         );
         // FIXME: change return type since we're constructing the monitor_id here
         let (id, is_new) = match self.mobilecoind_db.add_monitor(&monitor_id, &data) {
-            Ok(id) => Ok((id, true)),
+            Ok(_) => Ok((monitor_id, true)),
             Err(Error::MonitorIdExists) => Ok((monitor_id, false)),
             Err(err) => Err(err),
         }
@@ -1767,7 +1767,8 @@ mod test {
                 )
                 .unwrap();
                 let monitor_id = MonitorId::new(account_key, DEFAULT_SUBADDRESS_INDEX, 1, 0);
-                mobilecoind_db.add_monitor(&monitor_id, &data).unwrap()
+                mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
+                monitor_id
             })
             .collect();
 
@@ -1811,9 +1812,9 @@ mod test {
                 )
                 .unwrap();
                 let monitor_id = MonitorId::new(account_key, DEFAULT_SUBADDRESS_INDEX, 1, 0);
-                let id = mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
-                log::debug!(logger, "adding monitor {}", id,);
-                id
+                mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
+                log::debug!(logger, "adding monitor {}", monitor_id,);
+                monitor_id
             })
             .collect();
 
@@ -1865,14 +1866,14 @@ mod test {
 
         // Insert into database.
         let monitor_id = MonitorId::new(account_key, 10, 20, 30);
-        let id = mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
+        mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
 
         // Allow the new monitor to process the ledger.
         wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
 
         // Query monitor status.
         let mut request = mc_mobilecoind_api::GetMonitorStatusRequest::new();
-        request.set_monitor_id(id.to_vec());
+        request.set_monitor_id(monitor_id.to_vec());
 
         let response = client
             .get_monitor_status(&request)
@@ -1886,10 +1887,10 @@ mod test {
         assert_eq!(status.next_block, data.next_block);
 
         // Calling get_monitor_status for nonexistent or invalid monitor_id should return an error.
-        mobilecoind_db.remove_monitor(&id).unwrap();
+        mobilecoind_db.remove_monitor(&monitor_id).unwrap();
 
         let mut request = mc_mobilecoind_api::GetMonitorStatusRequest::new();
-        request.set_monitor_id(id.to_vec());
+        request.set_monitor_id(monitor_id.to_vec());
         assert!(client.get_monitor_status(&request).is_err());
 
         let request = mc_mobilecoind_api::GetMonitorStatusRequest::new();
@@ -1927,14 +1928,14 @@ mod test {
 
         // Insert into database.
         let monitor_id = MonitorId::new(account_key.clone(), 0, 20, 0);
-        let id = mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
+        mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
 
         // Allow the new monitor to process the ledger.
         wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
 
         // Query for unspent tx outs for a subaddress that did not receive any tx outs.
         let mut request = mc_mobilecoind_api::GetUnspentTxOutListRequest::new();
-        request.set_monitor_id(id.to_vec());
+        request.set_monitor_id(monitor_id.to_vec());
         request.set_subaddress_index(1);
 
         let response = client
@@ -1945,7 +1946,7 @@ mod test {
 
         // Query with the correct subaddress index.
         let mut request = mc_mobilecoind_api::GetUnspentTxOutListRequest::new();
-        request.set_monitor_id(id.to_vec());
+        request.set_monitor_id(monitor_id.to_vec());
         request.set_subaddress_index(0);
 
         let response = client
@@ -2076,11 +2077,11 @@ mod test {
         // Insert into database.
         let monitor_id = MonitorId::new(account_key.clone(), 10, 20, 0);
 
-        let id = mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
+        mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
 
         // Call get public address.
         let mut request = mc_mobilecoind_api::GetPublicAddressRequest::new();
-        request.set_monitor_id(id.to_vec());
+        request.set_monitor_id(monitor_id.to_vec());
         request.set_subaddress_index(10);
         let response = client.get_public_address(&request).unwrap();
 
@@ -2105,12 +2106,12 @@ mod test {
         assert!(client.get_public_address(&request).is_err());
 
         let mut request = mc_mobilecoind_api::GetPublicAddressRequest::new();
-        request.set_monitor_id(id.to_vec());
+        request.set_monitor_id(monitor_id.to_vec());
         request.set_subaddress_index(0);
         assert!(client.get_public_address(&request).is_err());
 
         let mut request = mc_mobilecoind_api::GetPublicAddressRequest::new();
-        request.set_monitor_id(id.to_vec());
+        request.set_monitor_id(monitor_id.to_vec());
         request.set_subaddress_index(1000);
         assert!(client.get_public_address(&request).is_err());
     }
@@ -2360,7 +2361,7 @@ mod test {
 
         // Insert into database.
         let monitor_id = MonitorId::new(receiver.clone(), 0, 20, 0);
-        let monitor_id = mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
+        mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
         let mut transaction_builder = TransactionBuilder::new();
         let (tx_out, tx_confirmation) = transaction_builder
             .add_output(10, &receiver.subaddress(0), None, &mut rng)
@@ -2444,7 +2445,7 @@ mod test {
         // Insert into database.
         let monitor_id = MonitorId::new(account_key.clone(), 0, 20, 1);
 
-        let monitor_id = mobilecoind_db
+        mobilecoind_db
             .add_monitor(&monitor_id, &monitor_data)
             .unwrap();
 
@@ -2647,8 +2648,7 @@ mod test {
 
         // Insert into database.
         let monitor_id = MonitorId::new(sender.clone(), 0, 20, 0);
-
-        let monitor_id = mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
+        mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
 
         // Allow the new monitor to process the ledger.
         wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
@@ -2873,8 +2873,7 @@ mod test {
 
         // Insert into database.
         let monitor_id = MonitorId::new(sender.clone(), 0, 20, 0);
-
-        let monitor_id = mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
+        mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
 
         // Allow the new monitor to process the ledger.
         wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
@@ -2936,8 +2935,7 @@ mod test {
             )
             .unwrap();
             let monitor_id = MonitorId::new(account_key, DEFAULT_SUBADDRESS_INDEX, 1, 0);
-
-            let monitor_id = mobilecoind_db
+            mobilecoind_db
                 .add_monitor(&monitor_id, &monitor_data)
                 .unwrap();
 
@@ -3004,8 +3002,7 @@ mod test {
 
         // Insert into database.
         let monitor_id = MonitorId::new(sender.clone(), 0, 20, 0);
-
-        let monitor_id = mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
+        mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
 
         // Allow the new monitor to process the ledger.
         wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
@@ -3094,8 +3091,7 @@ mod test {
 
         // Insert into database.
         let monitor_id = MonitorId::new(sender.clone(), 0, 20, 0);
-
-        let monitor_id = mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
+        mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
 
         // Allow the new monitor to process the ledger.
         wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
@@ -3163,8 +3159,7 @@ mod test {
 
         // Insert into database.
         let monitor_id = MonitorId::new(sender.clone(), 0, 20, 0);
-
-        let monitor_id = mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
+        mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
 
         // Allow the new monitor to process the ledger.
         wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
@@ -3353,15 +3348,14 @@ mod test {
 
         // Insert into database.
         let monitor_id = MonitorId::new(account_key.clone(), 0, 20, 0);
-
-        let id = mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
+        mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
 
         // Allow the new monitor to process the ledger.
         wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
 
         // Get balance for a monitor_id/subaddress index that has a balance.
         let mut request = mc_mobilecoind_api::GetBalanceRequest::new();
-        request.set_monitor_id(id.to_vec());
+        request.set_monitor_id(monitor_id.to_vec());
         request.set_subaddress_index(0);
 
         let response = client.get_balance(&request).unwrap();
@@ -3372,14 +3366,14 @@ mod test {
 
         // Get balance for subaddress with no utxos should return 0.
         let mut request = mc_mobilecoind_api::GetBalanceRequest::new();
-        request.set_monitor_id(id.to_vec());
+        request.set_monitor_id(monitor_id.to_vec());
         request.set_subaddress_index(1);
 
         let response = client.get_balance(&request).unwrap();
         assert_eq!(response.balance, 0);
 
         // Non-existent monitor id should return 0
-        let mut id2 = id.clone().to_vec();
+        let mut id2 = monitor_id.clone().to_vec();
         id2[0] = !id2[0];
 
         let mut request = mc_mobilecoind_api::GetBalanceRequest::new();
@@ -3423,8 +3417,7 @@ mod test {
 
         // Insert into database.
         let monitor_id = MonitorId::new(sender.clone(), 0, 20, 0);
-
-        let monitor_id = mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
+        mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
 
         // Allow the new monitor to process the ledger.
         wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
@@ -3606,8 +3599,7 @@ mod test {
 
         // Insert into database.
         let monitor_id = MonitorId::new(sender.clone(), 0, 20, 0);
-
-        let monitor_id = mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
+        mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
 
         // Allow the new monitor to process the ledger.
         wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
@@ -3758,7 +3750,7 @@ mod test {
 
         // Insert into database.
         let monitor_id = MonitorId::new(sender.clone(), 0, 20, 0);
-        let monitor_id = mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
+        mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
 
         // Allow the new monitor to process the ledger.
         wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
@@ -3886,7 +3878,7 @@ mod test {
 
         // Insert into database.
         let monitor_id = MonitorId::new(sender.clone(), 0, 20, 0);
-        let monitor_id = mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
+        mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
 
         // Allow the new monitor to process the ledger.
         wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
@@ -3954,7 +3946,7 @@ mod test {
 
         // Insert into database.
         let monitor_id = MonitorId::new(sender.clone(), 0, 20, 0);
-        let monitor_id = mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
+        mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
 
         // Allow the new monitor to process the ledger.
         wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
@@ -4020,7 +4012,7 @@ mod test {
 
         // Insert into database.
         let monitor_id = MonitorId::new(sender.clone(), 0, 20, 0);
-        let monitor_id = mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
+        mobilecoind_db.add_monitor(&monitor_id, &data).unwrap();
 
         // Allow the new monitor to process the ledger.
         wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
@@ -4296,7 +4288,7 @@ mod test {
             )
             .unwrap();
             let monitor_id = MonitorId::new(account_key.clone(), DEFAULT_SUBADDRESS_INDEX, 1, 0);
-            let monitor_id = mobilecoind_db
+            mobilecoind_db
                 .add_monitor(&monitor_id, &monitor_data)
                 .unwrap();
 
