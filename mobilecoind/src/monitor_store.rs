@@ -119,7 +119,7 @@ impl MonitorData {
         self.first_subaddress..self.first_subaddress + self.num_subaddresses
     }
 
-    fn expand_password_hash(password_hash: &Vec<u8>) -> Result<([u8; 32], [u8; 12]), Error> {
+    fn expand_password_hash(password_hash: &[u8]) -> Result<([u8; 32], [u8; 12]), Error> {
         // Password hash must be 32 bytes
         if password_hash.len() < 32 {
             return Err(Error::PasswordHashLen);

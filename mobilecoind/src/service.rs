@@ -210,7 +210,7 @@ impl<
             .map_err(|err| rpc_internal_error("account_key.try_from", err, &self.logger))?;
 
         // Optional vector field in proto3 is empty vec
-        let password_hash = if request.get_password_hash().len() == 0 {
+        let password_hash = if request.get_password_hash().is_empty() {
             None
         } else {
             Some(request.get_password_hash().to_vec())
@@ -245,7 +245,7 @@ impl<
         .map_err(|err| rpc_internal_error("mobilecoind_db.add_monitor", err, &self.logger))?;
 
         // Update the in-memory store of password hashes on the transaction manager and sync thread
-        if let Some(pw) = password_hash.clone() {
+        if let Some(pw) = password_hash {
             self.active_passwords.insert(monitor_id, pw.clone());
 
             // Send the monitor password to the sync thread
@@ -270,7 +270,7 @@ impl<
             .map_err(|err| rpc_internal_error("monitor_id.try_from.bytes", err, &self.logger))?;
 
         // Optional vector field in proto3 is empty vec
-        let password_hash = if request.get_password_hash().len() == 0 {
+        let password_hash = if request.get_password_hash().is_empty() {
             None
         } else {
             Some(request.get_password_hash().to_vec())
@@ -344,7 +344,7 @@ impl<
             })?;
 
         // Optional vector field in proto3 is empty vec
-        let password_hash = if request.get_password_hash().len() == 0 {
+        let password_hash = if request.get_password_hash().is_empty() {
             None
         } else {
             Some(request.get_password_hash().to_vec())
@@ -1272,7 +1272,7 @@ impl<
                                         &self.logger,
                                     )
                                 })?;
-                        let account_key = monitor_data.account_key.clone().unwrap();
+                        let account_key = monitor_data.get_account_key(None).unwrap();
                         let view_private_key = account_key.view_private_key();
 
                         if request.get_receipt().get_confirmation_number().len() != 32 {
