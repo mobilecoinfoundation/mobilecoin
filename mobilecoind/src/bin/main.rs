@@ -140,6 +140,7 @@ fn main() {
                     logger,
                 );
 
+                // All the work is done by background threads but the main thread has to stay alive otherwise the process terminates.
                 loop {
                     std::thread::sleep(config.poll_interval);
                 }
@@ -170,6 +171,7 @@ fn main() {
                     logger,
                 );
 
+                // All the work is done by background threads but the main thread has to stay alive otherwise the process terminates.
                 loop {
                     std::thread::sleep(config.poll_interval);
                 }
