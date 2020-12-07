@@ -895,6 +895,7 @@ impl<
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::db_crypto::NoDbCryptoProvider;
     use mc_connection::ThickClient;
     use mc_crypto_keys::RistrettoPrivate;
     use mc_fog_report_validation::MockFogPubkeyResolver;
@@ -939,24 +940,22 @@ mod test {
         utxos[4].value = 1000;
 
         // Sending 300 should select 100 + 200 when 2 inputs are allowed.
-        let selected_utxos =
-            TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_value(
-                &utxos,
-                300,
-                utxos.len(),
-            )
-            .unwrap();
+        let selected_utxos = TransactionsManager::<
+            ThickClient,
+            MockFogPubkeyResolver,
+            NoDbCryptoProvider,
+        >::select_utxos_for_value(&utxos, 300, utxos.len())
+        .unwrap();
 
         assert_eq!(selected_utxos, vec![utxos[0].clone(), utxos[1].clone()]);
 
         // Sending 301 should select 100 + 200 + 300 when 3 inputs are allowed.
-        let selected_utxos =
-            TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_value(
-                &utxos,
-                301,
-                utxos.len(),
-            )
-            .unwrap();
+        let selected_utxos = TransactionsManager::<
+            ThickClient,
+            MockFogPubkeyResolver,
+            NoDbCryptoProvider,
+        >::select_utxos_for_value(&utxos, 301, utxos.len())
+        .unwrap();
 
         assert_eq!(
             selected_utxos,
@@ -964,11 +963,12 @@ mod test {
         );
 
         // Sending 301 should select 200 + 300 when only 2  inputs are allowed.
-        let selected_utxos =
-            TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_value(
-                &utxos, 301, 2,
-            )
-            .unwrap();
+        let selected_utxos = TransactionsManager::<
+            ThickClient,
+            MockFogPubkeyResolver,
+            NoDbCryptoProvider,
+        >::select_utxos_for_value(&utxos, 301, 2)
+        .unwrap();
 
         assert_eq!(selected_utxos, vec![utxos[1].clone(), utxos[2].clone()]);
     }
@@ -977,7 +977,7 @@ mod test {
     fn test_select_utxos_for_value_errors_if_too_many_inputs_are_needed() {
         let utxos = generate_utxos(10);
         // While we have enough utxos to sum to 5, if the input limit is 4 we should fail.
-        match TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_value(
+        match TransactionsManager::<ThickClient, MockFogPubkeyResolver, NoDbCryptoProvider>::select_utxos_for_value(
             &utxos, 5, 4,
         ) {
             Err(Error::InsufficientFundsFragmentedUtxos) => {
@@ -991,7 +991,7 @@ mod test {
     fn test_select_utxos_for_value_errors_if_insufficient_funds() {
         let utxos = generate_utxos(10);
         // While we have enough utxos to sum to 5, if the input limit is 4 we should fail.
-        match TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_value(
+        match TransactionsManager::<ThickClient, MockFogPubkeyResolver, NoDbCryptoProvider>::select_utxos_for_value(
             &utxos, 50, 100,
         ) {
             Err(Error::InsufficientFunds) => {
@@ -1014,9 +1014,14 @@ mod test {
             utxos[4].value = 2000 * MILLIMOB_TO_PICOMOB;
             utxos[5].value = 1000 * MILLIMOB_TO_PICOMOB;
 
-            let (selected_utxos, fee) =
-                TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_optimization(1000, &utxos, 2)
-                    .unwrap();
+            let (selected_utxos, fee) = TransactionsManager::<
+                ThickClient,
+                MockFogPubkeyResolver,
+                NoDbCryptoProvider,
+            >::select_utxos_for_optimization(
+                1000, &utxos, 2
+            )
+            .unwrap();
 
             assert_eq!(selected_utxos, vec![utxos[0].clone(), utxos[4].clone()]);
             assert_eq!(fee, MINIMUM_FEE);
@@ -1033,9 +1038,14 @@ mod test {
             utxos[4].value = 2000 * MILLIMOB_TO_PICOMOB;
             utxos[5].value = 1000 * MILLIMOB_TO_PICOMOB;
 
-            let (selected_utxos, fee) =
-                TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_optimization(1000, &utxos, 3)
-                    .unwrap();
+            let (selected_utxos, fee) = TransactionsManager::<
+                ThickClient,
+                MockFogPubkeyResolver,
+                NoDbCryptoProvider,
+            >::select_utxos_for_optimization(
+                1000, &utxos, 3
+            )
+            .unwrap();
 
             assert_eq!(
                 selected_utxos,
@@ -1064,9 +1074,11 @@ mod test {
                     < MINIMUM_FEE
             );
 
-            let result = TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_optimization(
-                1000, &utxos, 100,
-            );
+            let result = TransactionsManager::<
+                ThickClient,
+                MockFogPubkeyResolver,
+                NoDbCryptoProvider,
+            >::select_utxos_for_optimization(1000, &utxos, 100);
             assert!(result.is_err());
         }
 
@@ -1077,9 +1089,11 @@ mod test {
             utxos[0].value = MINIMUM_FEE;
             utxos[1].value = 2000 * MILLIMOB_TO_PICOMOB;
 
-            let result = TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_optimization(
-                1000, &utxos, 100,
-            );
+            let result = TransactionsManager::<
+                ThickClient,
+                MockFogPubkeyResolver,
+                NoDbCryptoProvider,
+            >::select_utxos_for_optimization(1000, &utxos, 100);
             assert!(result.is_err());
         }
 
@@ -1092,9 +1106,14 @@ mod test {
             utxos[2].value = 1 * MILLIMOB_TO_PICOMOB;
             utxos[3].value = 2 * MILLIMOB_TO_PICOMOB;
 
-            let (selected_utxos, fee) =
-                TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_optimization(1000, &utxos, 3)
-                    .unwrap();
+            let (selected_utxos, fee) = TransactionsManager::<
+                ThickClient,
+                MockFogPubkeyResolver,
+                NoDbCryptoProvider,
+            >::select_utxos_for_optimization(
+                1000, &utxos, 3
+            )
+            .unwrap();
             // Since we're limited to 3 inputs, the lowest input (of value 1) is going to get excluded.
             assert_eq!(
                 selected_utxos,
@@ -1113,10 +1132,10 @@ mod test {
         utxos[1].value = 2000 * MILLIMOB_TO_PICOMOB;
 
         let result =
-            TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_optimization(1000, &[], 100);
+            TransactionsManager::<ThickClient, MockFogPubkeyResolver, NoDbCryptoProvider>::select_utxos_for_optimization(1000, &[], 100);
         assert!(result.is_err());
 
-        let result = TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_optimization(
+        let result = TransactionsManager::<ThickClient, MockFogPubkeyResolver, NoDbCryptoProvider>::select_utxos_for_optimization(
             1000,
             &utxos[0..1],
             100,
@@ -1124,14 +1143,14 @@ mod test {
         assert!(result.is_err());
 
         // A set of 2 utxos succeeds when max inputs is 2, but fails when it is 3 (since there's no point to merge 2 when we can directly spend 3)
-        let result = TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_optimization(
+        let result = TransactionsManager::<ThickClient, MockFogPubkeyResolver, NoDbCryptoProvider>::select_utxos_for_optimization(
             1000,
             &utxos[0..2],
             2,
         );
         assert!(result.is_ok());
 
-        let result = TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_optimization(
+        let result = TransactionsManager::<ThickClient, MockFogPubkeyResolver, NoDbCryptoProvider>::select_utxos_for_optimization(
             1000,
             &utxos[0..2],
             3,
