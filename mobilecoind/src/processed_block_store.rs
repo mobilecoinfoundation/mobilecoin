@@ -350,10 +350,10 @@ mod test {
         // Create a monitor id for our account.
         let _monitor_data = MonitorData::new(
             account.clone(),
-            0,  // first_subaddress
-            20, // num_subaddresses
-            0,  // first_block
-            "", // name
+            0,    // first_subaddress
+            20,   // num_subaddresses
+            0,    // first_block
+            "",   // name
             None, // password hash
         )
         .expect("failed to create data");
@@ -431,10 +431,10 @@ mod test {
         {
             let _monitor_data = MonitorData::new(
                 account.clone(),
-                30, // first_subaddress
-                20, // num_subaddresses
-                0,  // first_block
-                "", // name
+                30,   // first_subaddress
+                20,   // num_subaddresses
+                0,    // first_block
+                "",   // name
                 None, // password hash
             )
             .expect("failed to create data");
@@ -500,10 +500,10 @@ mod test {
 
             let _monitor_data2 = MonitorData::new(
                 account.clone(),
-                30, // first_subaddress
-                20, // num_subaddresses
-                0,  // first_block
-                "", // name
+                30,   // first_subaddress
+                20,   // num_subaddresses
+                0,    // first_block
+                "",   // name
                 None, // password hash
             )
             .expect("failed to create data");
