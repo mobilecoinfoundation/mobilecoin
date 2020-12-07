@@ -4,13 +4,10 @@
 //! * A lookup table, mapping subaddress_spend_public_key to monitor_id and subaddress index.
 //!   This is used by the ledger sync code, allowing it to match TxOuts into specific monitor_ids.
 
-use crate::{
-    database_key::DatabaseByteArrayKey,
-    error::Error,
-    monitor_store::{MonitorData, MonitorId},
-};
+use crate::{database_key::DatabaseByteArrayKey, error::Error, monitor_store::MonitorId};
 
 use lmdb::{Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
+use mc_account_keys::PublicAddress;
 use mc_common::logger::{log, Logger};
 use mc_crypto_keys::RistrettoPublic;
 use prost::Message;
@@ -113,36 +110,31 @@ impl SubaddressStore {
         &self,
         db_txn: &mut RwTransaction<'env>,
         monitor_id: &MonitorId,
-        data: &MonitorData,
+        subaddress: &PublicAddress,
         index: u64,
     ) -> Result<(), Error> {
-        if let Some(account_key) = data.account_key.clone() {
-            let subaddress_spk =
-                SubaddressSPKId::from(account_key.subaddress(index).spend_public_key());
-            let subaddress_id: SubaddressId = SubaddressId::new(monitor_id, index);
+        let subaddress_spk = SubaddressSPKId::from(subaddress.spend_public_key());
+        let subaddress_id: SubaddressId = SubaddressId::new(monitor_id, index);
 
-            let value_bytes = mc_util_serial::encode(&subaddress_id);
-            match db_txn.put(
-                self.spk_to_index_data,
-                &subaddress_spk,
-                &value_bytes,
-                WriteFlags::NO_OVERWRITE,
-            ) {
-                Ok(_) => Ok(()),
-                Err(lmdb::Error::KeyExist) => Err(Error::SubaddressSPKIdExists),
-                Err(err) => Err(err.into()),
-            }?;
+        let value_bytes = mc_util_serial::encode(&subaddress_id);
+        match db_txn.put(
+            self.spk_to_index_data,
+            &subaddress_spk,
+            &value_bytes,
+            WriteFlags::NO_OVERWRITE,
+        ) {
+            Ok(_) => Ok(()),
+            Err(lmdb::Error::KeyExist) => Err(Error::SubaddressSPKIdExists),
+            Err(err) => Err(err.into()),
+        }?;
 
-            log::trace!(
-                self.logger,
-                "Inserting {} ({}@{}) to subaddress store",
-                subaddress_spk,
-                monitor_id,
-                index,
-            );
-        } else {
-            // FIXME: insert for encrypted account key
-        }
+        log::trace!(
+            self.logger,
+            "Inserting {} ({}@{}) to subaddress store",
+            subaddress_spk,
+            monitor_id,
+            index,
+        );
 
         Ok(())
     }
@@ -164,17 +156,10 @@ impl SubaddressStore {
     pub fn delete<'env>(
         &self,
         db_txn: &mut RwTransaction<'env>,
-        data: &MonitorData,
-        index: u64,
+        subaddress: &PublicAddress,
     ) -> Result<(), Error> {
-        // FIXME: We could only delete if we have the account key
-        if let Some(account_key) = data.account_key.clone() {
-            let subaddress_spk =
-                SubaddressSPKId::from(account_key.subaddress(index).spend_public_key());
-            db_txn.del(self.spk_to_index_data, &subaddress_spk, None)?;
-        } else {
-            // FIXME: delete from encrypted account key
-        }
+        let subaddress_spk = SubaddressSPKId::from(subaddress.spend_public_key());
+        db_txn.del(self.spk_to_index_data, &subaddress_spk, None)?;
 
         Ok(())
     }

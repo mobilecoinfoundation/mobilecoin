@@ -12,6 +12,7 @@ use crate::{
 
 use crate::utxo_store::UnspentTxOut;
 use lmdb::{Environment, Transaction};
+use mc_account_keys::AccountKey;
 use mc_common::{
     logger::{log, Logger},
     HashMap,
@@ -104,7 +105,12 @@ impl Database {
         })
     }
 
-    pub fn add_monitor(&self, monitor_id: &MonitorId, data: &MonitorData) -> Result<(), Error> {
+    pub fn add_monitor(
+        &self,
+        monitor_id: &MonitorId,
+        account_key: &AccountKey,
+        data: &MonitorData,
+    ) -> Result<(), Error> {
         mc_common::trace_time!(self.logger, "add_monitor");
 
         let mut db_txn = self.env.begin_rw_txn()?;
@@ -112,24 +118,29 @@ impl Database {
 
         //for index in 0..data.num_subaddresses {
         for index in data.subaddress_indexes() {
+            let subaddress = account_key.subaddress(index);
             self.subaddress_store
-                .insert(&mut db_txn, &monitor_id, data, index)?;
+                .insert(&mut db_txn, &monitor_id, &subaddress, index)?;
         }
 
         db_txn.commit()?;
         Ok(())
     }
 
-    pub fn remove_monitor(&self, id: &MonitorId) -> Result<(), Error> {
+    pub fn remove_monitor(
+        &self,
+        id: &MonitorId,
+        password_hash: Option<&Vec<u8>>,
+    ) -> Result<(), Error> {
         mc_common::trace_time!(self.logger, "remove_monitor");
-        println!("\x1b[1;32m removing monitor {:?}\x1b[0m", id);
-
         let mut db_txn = self.env.begin_rw_txn()?;
 
         let data = self.monitor_store.get_data(&db_txn, &id)?;
 
+        let account_key = data.get_account_key(password_hash)?;
         for index in data.subaddress_indexes() {
-            self.subaddress_store.delete(&mut db_txn, &data, index)?;
+            let subaddress = account_key.subaddress(index);
+            self.subaddress_store.delete(&mut db_txn, &subaddress)?;
             self.utxo_store.remove_utxos(&mut db_txn, id, index)?;
         }
 
@@ -339,7 +350,7 @@ mod test {
 
         let initial_monitor_id = MonitorId::new(account_key.clone(), 0, 10, 0);
         mobilecoind_db
-            .add_monitor(&initial_monitor_id, &initial_data)
+            .add_monitor(&initial_monitor_id, &account_key, &initial_data)
             .expect("failed adding monitor");
 
         // Inserting an identical monitor should fail.
@@ -354,7 +365,7 @@ mod test {
         .unwrap();
 
         let monitor_id = MonitorId::new(account_key.clone(), 0, 10, 0);
-        match mobilecoind_db.add_monitor(&monitor_id, &data) {
+        match mobilecoind_db.add_monitor(&monitor_id, &account_key, &data) {
             Ok(_) => panic!("unexpected success!"),
             Err(Error::MonitorIdExists) => {}
             Err(err) => panic!("unexpected error {:?}", err),
@@ -372,7 +383,7 @@ mod test {
         .unwrap();
 
         let monitor_id = MonitorId::new(account_key.clone(), 5, 10, 0);
-        match mobilecoind_db.add_monitor(&monitor_id, &data) {
+        match mobilecoind_db.add_monitor(&monitor_id, &account_key, &data) {
             Ok(_) => panic!("unexpected success!"),
             Err(Error::SubaddressSPKIdExists) => {}
             Err(err) => panic!("unexpected error {:?}", err),
@@ -392,7 +403,7 @@ mod test {
 
         let monitor_id = MonitorId::new(account_key.clone(), 0, 10, 10);
 
-        match mobilecoind_db.add_monitor(&monitor_id, &data) {
+        match mobilecoind_db.add_monitor(&monitor_id, &account_key, &data) {
             Ok(_) => panic!("unexpected success!"),
             Err(Error::SubaddressSPKIdExists) => {}
             Err(err) => panic!("unexpected error {:?}", err),
@@ -412,16 +423,16 @@ mod test {
         let monitor_id = MonitorId::new(account_key.clone(), 10, 10, 0);
 
         mobilecoind_db
-            .add_monitor(&monitor_id, &data)
+            .add_monitor(&monitor_id, &account_key, &data)
             .expect("failed adding monitor");
 
         // Removing the first monitor and re-adding it should succeed.
         mobilecoind_db
-            .remove_monitor(&initial_monitor_id)
+            .remove_monitor(&initial_monitor_id, None)
             .expect("failed removing monitor");
 
         mobilecoind_db
-            .add_monitor(&initial_monitor_id, &initial_data)
+            .add_monitor(&initial_monitor_id, &account_key, &initial_data)
             .expect("failed adding monitor");
     }
 }

@@ -266,6 +266,9 @@ message AddMonitorResponse {
 // Remove a monitor and all associated data.
 message RemoveMonitorRequest {
     bytes monitor_id = 1;
+
+    // If monitor is password-protected, must provide the password hash to remove.
+    bytes password_hash = 2;
 }
 // - empty response
 

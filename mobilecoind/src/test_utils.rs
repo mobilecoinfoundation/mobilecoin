@@ -118,7 +118,7 @@ pub fn get_test_monitor_data_and_id(
         1,                        // num_subaddresses
         0,                        // first_block
         "",                       // name
-        None, // password_hash
+        None,                     // password_hash
     )
     .unwrap();
 
@@ -344,8 +344,9 @@ pub fn get_testing_environment(
     let client = setup_client(&uri, &logger);
 
     for (monitor_id, data) in monitors {
+        let account_key = data.get_account_key(None).unwrap();
         mobilecoind_db
-            .add_monitor(&monitor_id, &data)
+            .add_monitor(&monitor_id, &account_key, &data)
             .expect("failed adding monitor");
     }
 

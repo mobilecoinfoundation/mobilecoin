@@ -393,8 +393,9 @@ mod test {
 
         monitor_data0.name = "test name".to_owned();
 
+        let account_key0 = monitor_data0.get_account_key(None).unwrap();
         mobilecoind_db
-            .add_monitor(&monitor_id0, &monitor_data0)
+            .add_monitor(&monitor_id0, &account_key0, &monitor_data0)
             .expect("failed inserting monitor 0");
         assert_eq!(
             mobilecoind_db
@@ -406,8 +407,9 @@ mod test {
             vec![monitor_id0.clone()]
         );
 
+        let account_key1 = monitor_data1.get_account_key(None).unwrap();
         mobilecoind_db
-            .add_monitor(&monitor_id1, &monitor_data1)
+            .add_monitor(&monitor_id1, &account_key1, &monitor_data1)
             .expect("failed inserting monitor 1");
         assert_eq!(
             mobilecoind_db
