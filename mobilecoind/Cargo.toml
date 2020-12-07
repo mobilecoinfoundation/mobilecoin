@@ -41,6 +41,7 @@ mc-util-uri = { path = "../util/uri" }
 mc-watcher = { path = "../watcher" }
 
 aes-gcm = "0.6"
+blake2 = { version = "0.9", default-features = false }
 crossbeam-channel = "0.4"
 displaydoc = { version = "0.1", default-features = false}
 failure = "0.1.8"

@@ -126,6 +126,9 @@ pub enum Error {
 
     #[fail(display = "AEAD Error: {}", _0)]
     AEAD(aead::Error),
+
+    #[fail(display = "Password Hash Invalid Length. Must be > 32 bytes")]
+    PasswordHashLen,
 }
 
 impl From<RetryError<ConnectionError>> for Error {

@@ -10,6 +10,7 @@ use aes_gcm::{
     aead::{generic_array::GenericArray, Aead, NewAead},
     Aes256Gcm,
 };
+use blake2::{Blake2b, Digest};
 use lmdb::{Cursor, Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_common::{
@@ -23,6 +24,9 @@ use std::{convert::TryFrom, ops::Range, sync::Arc};
 // LMDB Database Names
 pub const MONITOR_ID_TO_MONITOR_DATA_DB_NAME: &str =
     "mobilecoind_db:monitor_store:monitor_id_to_monitor_data";
+
+// Domain tag for account key encryption
+pub const ACCOUNT_KEY_DOMAIN_TAG: &str = "mc_account_key";
 
 /// Type used as the stored data in the monitor_id_to_monitor_data database.
 #[derive(Clone, Eq, Hash, PartialEq, Message)]
@@ -74,15 +78,18 @@ impl MonitorData {
         }
 
         if let Some(pw) = password_hash {
-            let key = GenericArray::from_slice(&pw);
-            // Get cipher from hash bytes
-            let cipher = Aes256Gcm::new(key);
+            let (key, nonce) = Self::expand_password_hash(&pw)?;
 
-            let nonce = GenericArray::from_slice(b"unique nonce"); // 96-bits; unique per message
+            let key_arr = GenericArray::from_slice(&key[..]);
+            let nonce_arr = GenericArray::from_slice(&nonce[..]);
+
+            // Get cipher from hash bytes
+            let cipher = Aes256Gcm::new(key_arr);
+
             let plaintext_bytes = mc_util_serial::encode(&account_key);
 
             let ciphertext = cipher
-                .encrypt(nonce, &plaintext_bytes[..])
+                .encrypt(nonce_arr, &plaintext_bytes[..])
                 .expect("encryption failure!"); // NOTE: handle this error to avoid panics!
 
             Ok(Self {
@@ -113,6 +120,25 @@ impl MonitorData {
         self.first_subaddress..self.first_subaddress + self.num_subaddresses
     }
 
+    fn expand_password_hash(password_hash: &Vec<u8>) -> Result<([u8; 32], [u8; 12]), Error> {
+        // Password hash must be 32 bytes
+        if password_hash.len() < 32 {
+            return Err(Error::PasswordHashLen);
+        }
+        // Hash the password hash with Blake2b to get 64 bytes, first 32 for aeskey, second 32 for nonce
+        let mut hasher = Blake2b::new();
+        hasher.update(&ACCOUNT_KEY_DOMAIN_TAG);
+        hasher.update(&password_hash);
+        let mut key = [0u8; 32];
+        let mut nonce = [0u8; 12];
+        let result = hasher.finalize();
+        key[..32].copy_from_slice(&result.as_slice()[..32]);
+        // Nonce is 96 bits
+        nonce[..12].copy_from_slice(&result.as_slice()[32..44]);
+
+        Ok((key, nonce))
+    }
+
     pub fn get_account_key(
         &self,
         opt_password_hash: Option<&Vec<u8>>,
@@ -122,11 +148,13 @@ impl MonitorData {
             Ok(ac)
         } else if self.encrypted_account_key.is_some() {
             if let Some(password_hash) = opt_password_hash {
-                let key = GenericArray::from_slice(&password_hash);
-                let cipher = Aes256Gcm::new(key);
-                let nonce = GenericArray::from_slice(b"unique nonce"); // 96-bits; unique per message
+                let (key, nonce) = Self::expand_password_hash(password_hash)?;
+                let key_arr = GenericArray::from_slice(&key[..]);
+                let nonce_arr = GenericArray::from_slice(&nonce[..]);
+
+                let cipher = Aes256Gcm::new(key_arr);
                 if let Some(encrypted_bytes) = self.encrypted_account_key.clone() {
-                    let plaintext = cipher.decrypt(nonce, encrypted_bytes.as_ref())?;
+                    let plaintext = cipher.decrypt(nonce_arr, encrypted_bytes.as_ref())?;
 
                     let decrypted_account_key = mc_util_serial::decode(&plaintext)?;
                     Ok(decrypted_account_key)
