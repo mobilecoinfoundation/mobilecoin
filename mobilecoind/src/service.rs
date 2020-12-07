@@ -168,7 +168,7 @@ pub struct ServiceApi<
     watcher_db: Option<WatcherDB>,
     network_state: Arc<RwLock<PollingNetworkState<T>>>,
     crypto_provider: DCP,
-    start_sync_thread: Arc<dyn Fn() -> () + Send + Sync>,
+    start_sync_thread: Arc<dyn Fn() + Send + Sync>,
     logger: Logger,
 }
 
@@ -205,7 +205,7 @@ impl<
         watcher_db: Option<WatcherDB>,
         network_state: Arc<RwLock<PollingNetworkState<T>>>,
         crypto_provider: DCP,
-        start_sync_thread: Arc<dyn Fn() -> () + Send + Sync>,
+        start_sync_thread: Arc<dyn Fn() + Send + Sync>,
         logger: Logger,
     ) -> Self {
         Self {
@@ -1656,6 +1656,7 @@ build_api! {
 mod test {
     use super::*;
     use crate::{
+        db_crypto::AesDbCryptoProvider,
         payments::DEFAULT_NEW_TX_BLOCK_ATTEMPTS,
         subaddress_store::SubaddressSPKId,
         test_utils::{
@@ -1664,12 +1665,16 @@ mod test {
         },
         utxo_store::UnspentTxOut,
     };
-    use grpcio::{Error as GrpcError, RpcStatus};
+    use grpcio::{ChannelBuilder, EnvBuilder, Error as GrpcError, RpcStatus};
     use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
     use mc_common::{logger::test_with_logger, HashSet};
+    use mc_connection::{Connection, ConnectionManager};
+    use mc_connection_test_utils::{test_client_uri, MockBlockchainConnection};
+    use mc_consensus_scp::QuorumSet;
     use mc_crypto_keys::RistrettoPrivate;
     use mc_crypto_rand::RngCore;
     use mc_fog_report_validation::{FullyValidatedFogPubkey, MockFogPubkeyResolver};
+    use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri};
     use mc_transaction_core::{
         constants::{MAX_INPUTS, MINIMUM_FEE, RING_SIZE},
         fog_hint::FogHint,
@@ -1679,13 +1684,16 @@ mod test {
         Block, BlockContents, BLOCK_VERSION,
     };
     use mc_transaction_std::TransactionBuilder;
+    use mc_util_grpc::ConnectionUriGrpcioChannel;
     use mc_util_repr_bytes::{typenum::U32, GenericArray, ReprBytes};
+    use mc_util_uri::ConnectionUri;
     use rand::{rngs::StdRng, SeedableRng};
     use std::{
         convert::{TryFrom, TryInto},
         iter::FromIterator,
         str::FromStr,
     };
+    use tempdir::TempDir;
 
     #[test_with_logger]
     fn test_add_monitor_impl(logger: Logger) {
@@ -4478,5 +4486,208 @@ mod test {
             .get_processed_block(&request)
             .expect("Failed getting processed block");
         assert_eq!(response.get_tx_outs().len(), 1);
+    }
+
+    #[test_with_logger]
+    fn test_aes_db_crypto_provider(logger: Logger) {
+        // This test has a lot of tedious setup copied from test_utils.rs in order to initialize
+        // everything with an AesDbCryptoProvider instead of NoDbCryptoProvider.
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        let sender = AccountKey::random(&mut rng);
+        let data = MonitorData::new(
+            sender.clone(),
+            0,  // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        let (ledger_db, _) = test_utils::get_test_databases(
+            0,
+            &vec![sender.default_subaddress()],
+            10,
+            logger.clone(),
+            &mut rng,
+        );
+
+        let mobilecoind_db_tmp =
+            TempDir::new("mobilecoind_db").expect("Could not make tempdir for mobilecoind db");
+        let mobilecoind_db_path = mobilecoind_db_tmp
+            .path()
+            .to_str()
+            .expect("Could not get path as string");
+
+        let crypto_provider = AesDbCryptoProvider::default();
+
+        let mobilecoind_db = Database::new(
+            mobilecoind_db_path.to_string(),
+            crypto_provider.clone(),
+            logger.clone(),
+        )
+        .expect("failed creating new mobilecoind db");
+
+        let port = test_utils::get_free_port();
+
+        let uri = MobilecoindUri::from_str(&format!("insecure-mobilecoind://127.0.0.1:{}/", port))
+            .unwrap();
+
+        let _server = {
+            let peer1 = MockBlockchainConnection::new(test_client_uri(1), ledger_db.clone(), 0);
+            let peer2 = MockBlockchainConnection::new(test_client_uri(2), ledger_db.clone(), 0);
+
+            let quorum_set = QuorumSet::new_with_node_ids(
+                2,
+                vec![
+                    peer1.uri().responder_id().unwrap(),
+                    peer2.uri().responder_id().unwrap(),
+                ],
+            );
+
+            let conn_manager = ConnectionManager::new(vec![peer1, peer2], logger.clone());
+
+            let network_state = Arc::new(RwLock::new(PollingNetworkState::new(
+                quorum_set,
+                conn_manager.clone(),
+                logger.clone(),
+            )));
+
+            {
+                let mut network_state = network_state.write().unwrap();
+                network_state.poll();
+            }
+
+            let transactions_manager = TransactionsManager::new(
+                ledger_db.clone(),
+                mobilecoind_db.clone(),
+                conn_manager.clone(),
+                Option::<Arc<MockFogPubkeyResolver>>::None,
+                logger.clone(),
+            );
+
+            Service::new(
+                ledger_db.clone(),
+                mobilecoind_db.clone(),
+                None,
+                transactions_manager,
+                network_state,
+                &uri,
+                None,
+                crypto_provider.clone(),
+                logger.clone(),
+            )
+        };
+
+        let client = {
+            let env = Arc::new(
+                EnvBuilder::new()
+                    .name_prefix("gRPC-mobilecoind-tests")
+                    .build(),
+            );
+            let ch = ChannelBuilder::new(env).connect_to_uri(&uri, &logger);
+            MobilecoindApiClient::new(ch)
+        };
+
+        // Insert into database - we expect a failure since we haven't provided an encryption key.
+        assert!(mobilecoind_db.add_monitor(&data).is_err());
+
+        // Attempt to provide an invalid encryption key.
+        let mut request = mc_mobilecoind_api::SetDbPasswordRequest::default();
+        assert!(client.set_db_password(&request).is_err());
+
+        request.set_password(vec![1, 2, 3]);
+        assert!(client.set_db_password(&request).is_err());
+
+        // Set a valid password, this should start the sync thread.
+        request.set_password([10; 32].to_vec());
+        let _ = client.set_db_password(&request).unwrap();
+
+        // Another attempt should fail.
+        assert!(client.set_db_password(&request).is_err());
+
+        // Insert into database - this should now succeed since we've set a password.
+        let id = mobilecoind_db.add_monitor(&data).unwrap();
+
+        // Allow the new monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Query with the correct subaddress index.
+        let mut request = mc_mobilecoind_api::GetUnspentTxOutListRequest::new();
+        request.set_monitor_id(id.to_vec());
+        request.set_subaddress_index(0);
+
+        let response = client
+            .get_unspent_tx_out_list(&request)
+            .expect("failed to get unspent tx out list");
+
+        let utxos: Vec<UnspentTxOut> = response
+            .output_list
+            .iter()
+            .map(|proto_utxo| {
+                UnspentTxOut::try_from(proto_utxo).expect("failed converting proto utxo")
+            })
+            .collect();
+
+        // Verify the data we got matches what we expected. This assumes knowledge about how the
+        // test ledger is constructed by the test utils.
+        let num_blocks = ledger_db.num_blocks().unwrap();
+        let account_tx_outs: Vec<TxOut> = (0..num_blocks)
+            .map(|idx| {
+                let block_contents = ledger_db.get_block_contents(idx as u64).unwrap();
+                block_contents.outputs[0].clone()
+            })
+            .collect();
+
+        let expected_utxos: Vec<UnspentTxOut> = account_tx_outs
+            .iter()
+            .map(|tx_out| {
+                // Calculate the key image for this tx out.
+                let tx_public_key = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
+                let onetime_private_key = recover_onetime_private_key(
+                    &tx_public_key,
+                    sender.view_private_key(),
+                    &sender.subaddress_spend_private(0),
+                );
+                let key_image = KeyImage::from(&onetime_private_key);
+
+                // Craft the expected UnspentTxOut
+                UnspentTxOut {
+                    tx_out: tx_out.clone(),
+                    subaddress_index: 0,
+                    key_image,
+                    value: test_utils::DEFAULT_PER_RECIPIENT_AMOUNT,
+                    attempted_spend_height: 0,
+                    attempted_spend_tombstone: 0,
+                }
+            })
+            .collect();
+
+        // Compare
+        assert_eq!(utxos.len(), num_blocks as usize);
+        assert_eq!(
+            HashSet::from_iter(utxos),
+            HashSet::from_iter(expected_utxos)
+        );
+
+        // Getting monitors should work.
+        let response = client
+            .get_monitor_list(&mc_mobilecoind_api::Empty::new())
+            .expect("failed to get monitor list");
+
+        let monitor_id_list: Vec<MonitorId> = response
+            .monitor_id_list
+            .iter()
+            .map(|bytes| {
+                let id =
+                    MonitorId::try_from(bytes).expect("failed to convert response to MonitorId");
+                log::debug!(logger, "found monitor {}", id,);
+                id
+            })
+            .collect();
+
+        // Check monitor count.
+        assert_eq!(1, monitor_id_list.len());
+        assert_eq!(monitor_id_list[0], id);
     }
 }
