@@ -77,7 +77,7 @@ pub struct Config {
     #[structopt(long, parse(try_from_str=load_css_file))]
     pub fog_ingest_enclave_css: Option<Signature>,
 
-    /// Encrypte account keys at rest.
+    /// Encrypt account keys at rest.
     #[structopt(long)]
     pub encrypted_db: bool,
 }
