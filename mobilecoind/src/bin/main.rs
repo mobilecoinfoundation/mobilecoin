@@ -9,7 +9,7 @@ use mc_ledger_sync::{LedgerSyncServiceThread, PollingNetworkState, ReqwestTransa
 use mc_mobilecoind::{
     config::Config,
     database::Database,
-    db_crypto::{AesDbCryptoProvider, NoDbCryptoProvider},
+    db_crypto::{AesDbCryptoProvider, NullDbCryptoProvider},
     payments::TransactionsManager,
     service::Service,
 };
@@ -145,7 +145,7 @@ fn main() {
                     std::thread::sleep(config.poll_interval);
                 }
             } else {
-                let crypto_provider = NoDbCryptoProvider::default();
+                let crypto_provider = NullDbCryptoProvider::default();
 
                 let mobilecoind_db =
                     Database::new(mobilecoind_db, crypto_provider.clone(), logger.clone())

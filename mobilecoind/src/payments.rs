@@ -895,7 +895,7 @@ impl<
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::db_crypto::NoDbCryptoProvider;
+    use crate::db_crypto::NullDbCryptoProvider;
     use mc_connection::ThickClient;
     use mc_crypto_keys::RistrettoPrivate;
     use mc_fog_report_validation::MockFogPubkeyResolver;
@@ -943,7 +943,7 @@ mod test {
         let selected_utxos = TransactionsManager::<
             ThickClient,
             MockFogPubkeyResolver,
-            NoDbCryptoProvider,
+            NullDbCryptoProvider,
         >::select_utxos_for_value(&utxos, 300, utxos.len())
         .unwrap();
 
@@ -953,7 +953,7 @@ mod test {
         let selected_utxos = TransactionsManager::<
             ThickClient,
             MockFogPubkeyResolver,
-            NoDbCryptoProvider,
+            NullDbCryptoProvider,
         >::select_utxos_for_value(&utxos, 301, utxos.len())
         .unwrap();
 
@@ -966,7 +966,7 @@ mod test {
         let selected_utxos = TransactionsManager::<
             ThickClient,
             MockFogPubkeyResolver,
-            NoDbCryptoProvider,
+            NullDbCryptoProvider,
         >::select_utxos_for_value(&utxos, 301, 2)
         .unwrap();
 
@@ -977,7 +977,7 @@ mod test {
     fn test_select_utxos_for_value_errors_if_too_many_inputs_are_needed() {
         let utxos = generate_utxos(10);
         // While we have enough utxos to sum to 5, if the input limit is 4 we should fail.
-        match TransactionsManager::<ThickClient, MockFogPubkeyResolver, NoDbCryptoProvider>::select_utxos_for_value(
+        match TransactionsManager::<ThickClient, MockFogPubkeyResolver, NullDbCryptoProvider>::select_utxos_for_value(
             &utxos, 5, 4,
         ) {
             Err(Error::InsufficientFundsFragmentedUtxos) => {
@@ -991,7 +991,7 @@ mod test {
     fn test_select_utxos_for_value_errors_if_insufficient_funds() {
         let utxos = generate_utxos(10);
         // While we have enough utxos to sum to 5, if the input limit is 4 we should fail.
-        match TransactionsManager::<ThickClient, MockFogPubkeyResolver, NoDbCryptoProvider>::select_utxos_for_value(
+        match TransactionsManager::<ThickClient, MockFogPubkeyResolver, NullDbCryptoProvider>::select_utxos_for_value(
             &utxos, 50, 100,
         ) {
             Err(Error::InsufficientFunds) => {
@@ -1017,7 +1017,7 @@ mod test {
             let (selected_utxos, fee) = TransactionsManager::<
                 ThickClient,
                 MockFogPubkeyResolver,
-                NoDbCryptoProvider,
+                NullDbCryptoProvider,
             >::select_utxos_for_optimization(
                 1000, &utxos, 2
             )
@@ -1041,7 +1041,7 @@ mod test {
             let (selected_utxos, fee) = TransactionsManager::<
                 ThickClient,
                 MockFogPubkeyResolver,
-                NoDbCryptoProvider,
+                NullDbCryptoProvider,
             >::select_utxos_for_optimization(
                 1000, &utxos, 3
             )
@@ -1077,7 +1077,7 @@ mod test {
             let result = TransactionsManager::<
                 ThickClient,
                 MockFogPubkeyResolver,
-                NoDbCryptoProvider,
+                NullDbCryptoProvider,
             >::select_utxos_for_optimization(1000, &utxos, 100);
             assert!(result.is_err());
         }
@@ -1092,7 +1092,7 @@ mod test {
             let result = TransactionsManager::<
                 ThickClient,
                 MockFogPubkeyResolver,
-                NoDbCryptoProvider,
+                NullDbCryptoProvider,
             >::select_utxos_for_optimization(1000, &utxos, 100);
             assert!(result.is_err());
         }
@@ -1109,7 +1109,7 @@ mod test {
             let (selected_utxos, fee) = TransactionsManager::<
                 ThickClient,
                 MockFogPubkeyResolver,
-                NoDbCryptoProvider,
+                NullDbCryptoProvider,
             >::select_utxos_for_optimization(
                 1000, &utxos, 3
             )
@@ -1132,10 +1132,10 @@ mod test {
         utxos[1].value = 2000 * MILLIMOB_TO_PICOMOB;
 
         let result =
-            TransactionsManager::<ThickClient, MockFogPubkeyResolver, NoDbCryptoProvider>::select_utxos_for_optimization(1000, &[], 100);
+            TransactionsManager::<ThickClient, MockFogPubkeyResolver, NullDbCryptoProvider>::select_utxos_for_optimization(1000, &[], 100);
         assert!(result.is_err());
 
-        let result = TransactionsManager::<ThickClient, MockFogPubkeyResolver, NoDbCryptoProvider>::select_utxos_for_optimization(
+        let result = TransactionsManager::<ThickClient, MockFogPubkeyResolver, NullDbCryptoProvider>::select_utxos_for_optimization(
             1000,
             &utxos[0..1],
             100,
@@ -1143,14 +1143,14 @@ mod test {
         assert!(result.is_err());
 
         // A set of 2 utxos succeeds when max inputs is 2, but fails when it is 3 (since there's no point to merge 2 when we can directly spend 3)
-        let result = TransactionsManager::<ThickClient, MockFogPubkeyResolver, NoDbCryptoProvider>::select_utxos_for_optimization(
+        let result = TransactionsManager::<ThickClient, MockFogPubkeyResolver, NullDbCryptoProvider>::select_utxos_for_optimization(
             1000,
             &utxos[0..2],
             2,
         );
         assert!(result.is_ok());
 
-        let result = TransactionsManager::<ThickClient, MockFogPubkeyResolver, NoDbCryptoProvider>::select_utxos_for_optimization(
+        let result = TransactionsManager::<ThickClient, MockFogPubkeyResolver, NullDbCryptoProvider>::select_utxos_for_optimization(
             1000,
             &utxos[0..2],
             3,

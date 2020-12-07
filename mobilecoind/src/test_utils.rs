@@ -7,7 +7,7 @@
 
 use crate::{
     database::Database,
-    db_crypto::{DbCryptoProvider, NoDbCryptoProvider},
+    db_crypto::{DbCryptoProvider, NullDbCryptoProvider},
     monitor_store::{MonitorData, MonitorId},
     payments::TransactionsManager,
     service::Service,
@@ -64,7 +64,7 @@ pub fn get_test_databases(
     num_blocks: usize,
     logger: Logger,
     mut rng: &mut (impl CryptoRng + RngCore),
-) -> (LedgerDB, Database<NoDbCryptoProvider>) {
+) -> (LedgerDB, Database<NullDbCryptoProvider>) {
     let mut public_addresses: Vec<PublicAddress> = (0..num_random_recipients)
         .map(|_i| mc_account_keys::AccountKey::random(&mut rng).default_subaddress())
         .collect();
@@ -104,7 +104,7 @@ pub fn get_test_databases(
 
     let mobilecoind_db = Database::new(
         mobilecoind_db_path.to_string(),
-        NoDbCryptoProvider::default(),
+        NullDbCryptoProvider::default(),
         logger,
     )
     .expect("failed creating new mobilecoind db");
@@ -233,7 +233,7 @@ pub fn get_free_port() -> u16 {
 pub fn setup_server<FPR: FogPubkeyResolver + Send + Sync + 'static>(
     logger: Logger,
     ledger_db: LedgerDB,
-    mobilecoind_db: Database<NoDbCryptoProvider>,
+    mobilecoind_db: Database<NullDbCryptoProvider>,
     watcher_db: Option<WatcherDB>,
     fog_pubkey_resolver: Option<Arc<FPR>>,
     uri: &MobilecoindUri,
@@ -281,7 +281,7 @@ pub fn setup_server<FPR: FogPubkeyResolver + Send + Sync + 'static>(
         network_state,
         uri,
         None,
-        NoDbCryptoProvider::default(),
+        NullDbCryptoProvider::default(),
         logger,
     );
 
@@ -319,7 +319,7 @@ pub fn get_testing_environment(
     mut rng: &mut (impl CryptoRng + RngCore),
 ) -> (
     LedgerDB,
-    Database<NoDbCryptoProvider>,
+    Database<NullDbCryptoProvider>,
     MobilecoindApiClient,
     Service,
     ConnectionManager<MockBlockchainConnection<LedgerDB>>,

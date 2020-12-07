@@ -59,9 +59,9 @@ pub trait DbCryptoProvider: Clone {
 
 /// A no-op crypto provider, used when encryption is disabled.
 #[derive(Clone, Default)]
-pub struct NoDbCryptoProvider;
+pub struct NullDbCryptoProvider;
 
-impl DbCryptoProvider for NoDbCryptoProvider {
+impl DbCryptoProvider for NullDbCryptoProvider {
     /// Sets the password to use.
     fn set_password(&self, _password: &[u8]) -> Result<(), DbCryptoError> {
         Err(DbCryptoError::EncryptionNotEnabled)

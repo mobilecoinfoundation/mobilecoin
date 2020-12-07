@@ -4491,7 +4491,7 @@ mod test {
     #[test_with_logger]
     fn test_aes_db_crypto_provider(logger: Logger) {
         // This test has a lot of tedious setup copied from test_utils.rs in order to initialize
-        // everything with an AesDbCryptoProvider instead of NoDbCryptoProvider.
+        // everything with an AesDbCryptoProvider instead of NullDbCryptoProvider.
         let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
 
         let sender = AccountKey::random(&mut rng);

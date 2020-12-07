@@ -264,7 +264,7 @@ mod test {
     use super::*;
     use crate::{
         database::Database,
-        db_crypto::{AesDbCryptoProvider, DbCryptoProvider, NoDbCryptoProvider},
+        db_crypto::{AesDbCryptoProvider, DbCryptoProvider, NullDbCryptoProvider},
         error::Error,
         test_utils::{get_test_databases, get_test_monitor_data_and_id},
     };
@@ -392,7 +392,7 @@ mod test {
         {
             let mobilecoind_db = Database::new(
                 mobilecoind_db_path.to_string(),
-                NoDbCryptoProvider::default(),
+                NullDbCryptoProvider::default(),
                 logger.clone(),
             )
             .expect("failed creating new mobilecoind db");
