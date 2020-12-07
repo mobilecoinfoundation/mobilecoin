@@ -147,7 +147,11 @@ fn monitors(state: rocket::State<State>) -> Result<Json<JsonMonitorListResponse>
 }
 
 /// Get the current status of a created monitor
-#[post("/monitors/<monitor_hex>", format = "json", data = "<monitor>")]
+#[post(
+    "/monitors/<monitor_hex>/account-key",
+    format = "json",
+    data = "<monitor>"
+)]
 fn get_monitor_account_key(
     state: rocket::State<State>,
     monitor_hex: String,

@@ -239,7 +239,7 @@ On the airgapped machine, get the utxos in the local ledger.
 $ curl localhost:9090/monitors/<monitor_id>/subaddresses/<subaddress>/utxos
 ```
 
-### GenerateTx
+#### GenerateTx
 On the airgapped machine, generate a tx proposal.
 
 ```
@@ -248,9 +248,43 @@ $ curl localhost:9090/monitors/<monitor-id>/subaddresses/<subaddress>/generate-t
   -X POST -H ‘Content-Type: application/json’ > tx_proposal.json
 ```
 
-### Submit Propsoal
+#### Submit Propsoal
 Copy the tx_proposal.json to the internet connected machine, and submit.
 
 ```
 $ curl localhost:9090/submit -d $(cat tx_propsoal.json) -X POST -H 'Content-Type: application/json'
+```
+
+### Encrypting Account Keys
+
+You can encrypt your account keys in the mobilecoind-db by passing a password_hash to the following calls:
+
+#### Add Monitor
+
+```
+curl -s localhost:9090/monitors -d '{"account_key": '$(cat account_key.json)', "first_subaddress":
+ 0, "num_subaddresses": 1, "password_hash": "'$(cat password_hash)'"}' -X POST -H 'Content-type: app
+lication/json' | jq
+{
+  "monitor_id": "d96ef064ffe3056b4fb6442b9e4741419c6c74fadbd51d09b4309da19438d624",
+  "is_new": false
+}
+```
+
+#### Remove Monitor
+
+```
+curl -s localhost:9090/monitors/d96ef064ffe3056b4fb6442b9e4741419c6c74fadbd51d09b4309da19438d624/remove -d '{"passwo
+rd_hash": "'$(cat test-encrypted-db/password_hash)'"}' -X DELETE -H 'Content-type: application/json'
+```
+
+#### Get Unencrypted Account Key for Monitor
+
+```
+curl -s localhost:9090/monitors/d96ef064ffe3056b4fb6442b9e4741419c6c74fadbd51d09b4309da19438d624/account-key -d '{"password_hash
+": "'$(cat test-encrypted-db/password_hash)'"}' -X POST -H 'Content-type: application/json' | jq
+{
+  "view_private_key": "934c2cfd6b4b8d4319e87e05ef3dd4450083325c0c9bb893e6004f22a07d47f8",
+  "spend_private_key": "c248ff24e9d270c5cb6909171e4a1b6927ff015044f24de06feed6e0823920a4"
+}
 ```

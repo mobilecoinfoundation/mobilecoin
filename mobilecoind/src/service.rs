@@ -246,10 +246,7 @@ impl<
 
         // Update the in-memory store of password hashes on the transaction manager and sync thread
         if let Some(pw) = password_hash.clone() {
-            // FIXME: error handling
-            self.active_passwords
-                .insert(monitor_id, pw.clone())
-                .unwrap();
+            self.active_passwords.insert(monitor_id, pw.clone());
 
             // Send the monitor password to the sync thread
             self.monitor_passwords_sender
