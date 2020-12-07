@@ -3,7 +3,10 @@
 //! Helper for managing database encryption.
 
 use aes_gcm::{
-    aead::{generic_array::GenericArray, Aead, Error as AeadError, NewAead},
+    aead::{
+        generic_array::{sequence::Split, GenericArray},
+        Aead, AeadInPlace, Error as AeadError, NewAead,
+    },
     Aes256Gcm,
 };
 use blake2::{Blake2b, Digest};
@@ -12,6 +15,11 @@ use std::sync::{Arc, Mutex};
 
 // Domain tag for database-wide encryption.
 pub const MOBILECOIND_DB_KEY_DOMAIN_TAG: &str = "mc_account_key";
+
+/// AES password length.
+/// This is set to 32 bytes as the intended purpose is for the user to pass a hash of a
+/// password and not the actual password the user typed.
+pub const AES_PASSWORD_LEN: usize = 32;
 
 /// Possible db crypto error types.
 #[derive(Debug, Fail)]
@@ -105,13 +113,11 @@ impl Default for AesDbCryptoProvider {
 
 impl DbCryptoProvider for AesDbCryptoProvider {
     /// Sets the password to use.
-    /// The password needs to be 32 bytes - the intended purpose is for this to be a hash of the
-    /// password and not the actual password the user typed.
     fn set_password(&self, password: &[u8]) -> Result<(), DbCryptoError> {
         let mut encryption_key = self.encryption_key.lock().expect("muted poisoned");
         if encryption_key.is_some() {
             Err(DbCryptoError::EncryptionKeyAlreadySet)
-        } else if password.len() != 32 {
+        } else if password.len() != AES_PASSWORD_LEN {
             Err(DbCryptoError::EncryptionInvalidKeyLength)
         } else {
             *encryption_key = Some(password.to_vec());
@@ -136,23 +142,18 @@ impl DbCryptoProvider for AesDbCryptoProvider {
     fn encrypt(&self, plaintext_bytes: &[u8]) -> Result<Vec<u8>, DbCryptoError> {
         let (key, nonce) = self.expand_password()?;
 
-        let key_arr = GenericArray::from_slice(&key[..]);
-        let nonce_arr = GenericArray::from_slice(&nonce[..]);
-
         // Get cipher from hash bytes
-        let cipher = Aes256Gcm::new(key_arr);
+        let cipher = Aes256Gcm::new(&key);
 
-        Ok(cipher.encrypt(nonce_arr, &plaintext_bytes[..])?)
+        Ok(cipher.encrypt(&nonce, &plaintext_bytes[..])?)
     }
 
     /// Decrypt data.
     fn decrypt(&self, ciphertext: &[u8]) -> Result<Vec<u8>, DbCryptoError> {
         let (key, nonce) = self.expand_password()?;
-        let key_arr = GenericArray::from_slice(&key[..]);
-        let nonce_arr = GenericArray::from_slice(&nonce[..]);
 
-        let cipher = Aes256Gcm::new(key_arr);
-        Ok(cipher.decrypt(nonce_arr, ciphertext)?)
+        let cipher = Aes256Gcm::new(&key);
+        Ok(cipher.decrypt(&nonce, ciphertext)?)
     }
 }
 
@@ -167,19 +168,26 @@ impl AesDbCryptoProvider {
     }
 
     /// Expands the password into an encryption key and a nonce.
-    fn expand_password(&self) -> Result<([u8; 32], [u8; 12]), DbCryptoError> {
+    fn expand_password(
+        &self,
+    ) -> Result<
+        (
+            GenericArray<u8, <Aes256Gcm as NewAead>::KeySize>,
+            GenericArray<u8, <Aes256Gcm as AeadInPlace>::NonceSize>,
+        ),
+        DbCryptoError,
+    > {
         let password = self.get_encryption_key()?;
 
         // Hash the password hash with Blake2b to get 64 bytes, first 32 for aeskey, second 32 for nonce
         let mut hasher = Blake2b::new();
         hasher.update(&MOBILECOIND_DB_KEY_DOMAIN_TAG);
         hasher.update(&password);
-        let mut key = [0u8; 32];
-        let mut nonce = [0u8; 12];
         let result = hasher.finalize();
-        key[..32].copy_from_slice(&result.as_slice()[..32]);
-        // Nonce is 96 bits
-        nonce[..12].copy_from_slice(&result.as_slice()[32..44]);
+
+        let (key, remainder) = Split::<u8, <Aes256Gcm as NewAead>::KeySize>::split(result);
+        let (nonce, _remainder) =
+            Split::<u8, <Aes256Gcm as AeadInPlace>::NonceSize>::split(remainder);
 
         Ok((key, nonce))
     }
