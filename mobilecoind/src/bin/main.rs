@@ -110,7 +110,7 @@ fn main() {
 
             let _ = std::fs::create_dir_all(mobilecoind_db);
 
-            // This if contains a lot of duplication due to TransactionManager and Service being
+            // This contains a lot of duplication due to TransactionManager and Service being
             // generic over the crypto provider.
             // TODO: See if there is a way to clean this up.
             if config.encrypted_db {
