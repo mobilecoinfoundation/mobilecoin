@@ -447,8 +447,11 @@ fn match_tx_outs_into_utxos(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::test_utils::{
-        self, add_block_to_ledger_db, get_test_databases, DEFAULT_PER_RECIPIENT_AMOUNT,
+    use crate::{
+        monitor_store::MonitorData,
+        test_utils::{
+            self, add_block_to_ledger_db, get_test_databases, DEFAULT_PER_RECIPIENT_AMOUNT,
+        },
     };
     use mc_account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
 
@@ -463,6 +466,15 @@ mod test {
 
         let account_keys: Vec<_> = (0..5).map(|_i| AccountKey::random(&mut rng)).collect();
 
+        let data = MonitorData::new(
+            account_keys[0].clone(),
+            DEFAULT_SUBADDRESS_INDEX, // first subaddress
+            5,                        // number of subaddresses
+            0,                        // first block
+            "",                       // name
+            None,                     // password hash
+        )
+        .unwrap();
         let monitor_id = MonitorId::new(account_keys[0].clone(), DEFAULT_SUBADDRESS_INDEX, 5, 0);
 
         let recipients: Vec<PublicAddress> = account_keys
@@ -492,6 +504,11 @@ mod test {
             .get_utxos_for_subaddress(&monitor_id, DEFAULT_SUBADDRESS_INDEX)
             .unwrap();
         assert_eq!(utxos.len(), 0);
+
+        let account_key = data.get_account_key(None).unwrap();
+        mobilecoind_db
+            .add_monitor(&monitor_id, &account_key, &data)
+            .unwrap();
 
         // Haven't synced yet, so still no outputs expected.
         let utxos = mobilecoind_db

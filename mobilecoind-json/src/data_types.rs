@@ -46,6 +46,7 @@ pub struct JsonMonitorRequest {
     pub account_key: JsonAccountKeyResponse,
     pub first_subaddress: u64,
     pub num_subaddresses: u64,
+    pub password_hash: Option<String>,
 }
 
 #[derive(Serialize, Default)]
@@ -61,6 +62,11 @@ impl From<&mc_mobilecoind_api::AddMonitorResponse> for JsonMonitorResponse {
             is_new: src.is_new,
         }
     }
+}
+
+#[derive(Deserialize, Default)]
+pub struct JsonRemoveMonitorRequest {
+    pub password_hash: Option<String>,
 }
 
 #[derive(Serialize, Default)]

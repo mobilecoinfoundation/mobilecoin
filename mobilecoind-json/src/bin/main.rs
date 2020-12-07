@@ -94,6 +94,13 @@ fn add_monitor(
     req.set_num_subaddresses(monitor.num_subaddresses);
     req.set_first_block(0);
 
+    let password_hash = if let Some(pw) = monitor.password_hash {
+        hex::decode(&pw).unwrap()
+    } else {
+        Vec::new()
+    };
+    req.set_password_hash(password_hash);
+
     let monitor_response = state
         .mobilecoind_api_client
         .add_monitor(&req)
@@ -103,13 +110,23 @@ fn add_monitor(
 }
 
 /// Remove a monitor
-#[delete("/monitors/<monitor_hex>")]
-fn remove_monitor(state: rocket::State<State>, monitor_hex: String) -> Result<(), String> {
+#[delete("/monitors/<monitor_hex>", format = "json", data = "<monitor>")]
+fn remove_monitor(
+    state: rocket::State<State>,
+    monitor_hex: String,
+    monitor: Json<JsonremoveMonitorRequest>,
+) -> Result<(), String> {
     let monitor_id =
         hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
 
+    let password_hash = if let Some(pw) = monitor.password_hash {
+        hex::decode(&pw).unwrap()
+    } else {
+        Vec::new();
+    };
     let mut req = mc_mobilecoind_api::RemoveMonitorRequest::new();
     req.set_monitor_id(monitor_id);
+    req.set_password_hash(password_hash);
 
     let _resp = state
         .mobilecoind_api_client
