@@ -263,11 +263,14 @@ impl<DCP: DbCryptoProvider> MonitorStore<DCP> {
 mod test {
     use super::*;
     use crate::{
+        database::Database,
+        db_crypto::{AesDbCryptoProvider, DbCryptoProvider, NoDbCryptoProvider},
         error::Error,
         test_utils::{get_test_databases, get_test_monitor_data_and_id},
     };
     use mc_common::logger::{test_with_logger, Logger};
     use rand::{rngs::StdRng, SeedableRng};
+    use tempdir::TempDir;
 
     // MonitorStore basic functionality tests
     #[test_with_logger]
@@ -349,6 +352,84 @@ mod test {
             Err(_) => {
                 panic!("shouldn't happen");
             }
+        }
+    }
+
+    /// Test that encryption prevents access to the account key.
+    #[test_with_logger]
+    fn test_encryption(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+        let crypto_provider = AesDbCryptoProvider::default();
+
+        let mobilecoind_db_tmp =
+            TempDir::new("mobilecoind_db").expect("Could not make tempdir for mobilecoind db");
+        let mobilecoind_db_path = mobilecoind_db_tmp
+            .path()
+            .to_str()
+            .expect("Could not get path as string");
+
+        let mobilecoind_db = Database::new(
+            mobilecoind_db_path.to_string(),
+            crypto_provider.clone(),
+            logger.clone(),
+        )
+        .expect("failed creating new mobilecoind db");
+
+        let (monitor_data, monitor_id) = get_test_monitor_data_and_id(&mut rng);
+
+        // Inserting without a password should fail.
+        assert!(mobilecoind_db.add_monitor(&monitor_data).is_err());
+
+        // Set a password and try again.
+        crypto_provider.set_password(&[4; 32]).unwrap();
+
+        assert_eq!(
+            monitor_id,
+            mobilecoind_db.add_monitor(&monitor_data).unwrap()
+        );
+
+        // Open the db again without encryption and see that we can't get the monitors.
+        {
+            let mobilecoind_db = Database::new(
+                mobilecoind_db_path.to_string(),
+                NoDbCryptoProvider::default(),
+                logger.clone(),
+            )
+            .expect("failed creating new mobilecoind db");
+
+            assert!(mobilecoind_db.get_monitor_map().is_err());
+            assert!(mobilecoind_db.get_monitor_data(&monitor_id).is_err());
+        }
+
+        // Open the db again with encryption and see that we can only get the data once the correct
+        // password is provided.
+        {
+            let crypto_provider = AesDbCryptoProvider::default();
+            let mobilecoind_db = Database::new(
+                mobilecoind_db_path.to_string(),
+                crypto_provider.clone(),
+                logger.clone(),
+            )
+            .expect("failed creating new mobilecoind db");
+
+            assert!(mobilecoind_db.get_monitor_map().is_err());
+            assert!(mobilecoind_db.get_monitor_data(&monitor_id).is_err());
+
+            crypto_provider.set_password(&[1; 32]).unwrap();
+            assert!(mobilecoind_db.get_monitor_map().is_err());
+            assert!(mobilecoind_db.get_monitor_data(&monitor_id).is_err());
+
+            crypto_provider.clear_password().unwrap();
+            crypto_provider.set_password(&[4; 32]).unwrap();
+            let monitor_map = mobilecoind_db.get_monitor_map().unwrap();
+            assert_eq!(monitor_map[&monitor_id], monitor_data);
+
+            let monitor_data2 = mobilecoind_db.get_monitor_data(&monitor_id).unwrap();
+            assert_eq!(monitor_data, monitor_data2);
+
+            crypto_provider.clear_password().unwrap();
+            assert!(mobilecoind_db.get_monitor_map().is_err());
+            assert!(mobilecoind_db.get_monitor_data(&monitor_id).is_err());
         }
     }
 }
