@@ -323,16 +323,13 @@ fn sync_monitor(
     ledger_db: &LedgerDB,
     mobilecoind_db: &Database,
     monitor_id: &MonitorId,
-    _password_hash: Option<&Vec<u8>>,
+    password_hash: Option<&Vec<u8>>,
     logger: &Logger,
 ) -> Result<SyncMonitorOk, Error> {
     for _ in 0..MAX_BLOCKS_PROCESSING_CHUNK_SIZE {
         // Get the monitor data. If it is no longer available, the monitor has been removed and we
         // can simply return.
         let monitor_data = mobilecoind_db.get_monitor_data(monitor_id)?;
-
-        // FIXME: TODO - decrypt the account key data if necessary with the password hash
-        let account_key = &monitor_data.account_key.unwrap();
 
         let block_contents = match ledger_db.get_block_contents(monitor_data.next_block) {
             Ok(block_contents) => block_contents,
@@ -354,6 +351,7 @@ fn sync_monitor(
         );
 
         // Match tx outs into UTXOs.
+        let account_key = monitor_data.get_account_key(password_hash)?;
         let utxos = match_tx_outs_into_utxos(
             &mobilecoind_db,
             &block_contents.outputs,

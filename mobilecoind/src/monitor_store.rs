@@ -60,7 +60,6 @@ pub struct MonitorData {
     pub encrypted_account_key: Option<Vec<u8>>,
 }
 
-// FIXME: maybe have constructor return MonitorId as well
 impl MonitorData {
     pub fn new(
         account_key: AccountKey,
@@ -182,8 +181,6 @@ impl MonitorId {
     // Note that because a Monitor can have either unencrypted or encrypted account key data,
     // and that data can only be decrypted with the password hash stored in memory, you can only
     // construct a MonitorId when you have the plaintext account key.
-    // FIXME: could just pass in public address here, since we don't use anything else about the account_key,
-    //        or even just store the public address in the MonitorData so that we can construct MonitorId from DB data.
     pub fn new(
         account_key: AccountKey,
         first_subaddress: u64,
