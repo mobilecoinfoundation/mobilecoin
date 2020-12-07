@@ -79,7 +79,6 @@ impl MonitorData {
             let cipher = Aes256Gcm::new(key);
 
             let nonce = GenericArray::from_slice(b"unique nonce"); // 96-bits; unique per message
-
             let plaintext_bytes = mc_util_serial::encode(&account_key);
 
             let ciphertext = cipher
@@ -114,23 +113,34 @@ impl MonitorData {
         self.first_subaddress..self.first_subaddress + self.num_subaddresses
     }
 
-    // FIXME: error handling
-    pub fn decrypt_account_key(&self, password_hash: &Vec<u8>) -> AccountKey {
-        //Result<AccountKey, Error> {
-        let key = GenericArray::from_slice(&password_hash);
-        let cipher = Aes256Gcm::new(key);
-        let nonce = GenericArray::from_slice(b"unique nonce"); // 96-bits; unique per message
+    pub fn get_account_key(
+        &self,
+        opt_password_hash: Option<&Vec<u8>>,
+    ) -> Result<AccountKey, Error> {
+        // If we are storing the account key unencrypted, return it directly.
+        if let Some(ac) = self.account_key.clone() {
+            Ok(ac)
+        } else if self.encrypted_account_key.is_some() {
+            if let Some(password_hash) = opt_password_hash {
+                let key = GenericArray::from_slice(&password_hash);
+                let cipher = Aes256Gcm::new(key);
+                let nonce = GenericArray::from_slice(b"unique nonce"); // 96-bits; unique per message
+                if let Some(encrypted_bytes) = self.encrypted_account_key.clone() {
+                    let plaintext = cipher.decrypt(nonce, encrypted_bytes.as_ref())?;
 
-        let encrypted_bytes = self.encrypted_account_key.clone().unwrap();
-        // Make it big enough to include all the optional fog data strings
-
-        let plaintext = cipher
-            .decrypt(nonce, encrypted_bytes.as_ref())
-            .expect("decryption failure!"); // NOTE: handle this error to avoid panics!
-
-        let decrypted_account_key = mc_util_serial::decode(&plaintext).unwrap();
-        // Ok(decrypted_account_key)
-        decrypted_account_key
+                    let decrypted_account_key = mc_util_serial::decode(&plaintext)?;
+                    Ok(decrypted_account_key)
+                } else {
+                    Err(Error::AccountKeyNotEncrypted)
+                }
+            } else {
+                // Password required to decrypt account key
+                Err(Error::AccountKeyDecryption)
+            }
+        } else {
+            // We should not get here, but always good to error just in case.
+            Err(Error::NoAccountKeyInMonitor)
+        }
     }
 }
 
@@ -427,7 +437,7 @@ mod test {
         )
         .unwrap();
 
-        let decrypted_account_key = monitor_data.decrypt_account_key(&password_hash);
+        let decrypted_account_key = monitor_data.get_account_key(Some(&password_hash)).unwrap();
 
         assert_eq!(decrypted_account_key, account_key);
     }

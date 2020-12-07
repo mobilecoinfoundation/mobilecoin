@@ -420,15 +420,10 @@ impl<
         }
 
         // Get the subaddress.
-        let subaddress = if data.encrypted_account_key.is_some() {
-            // FIXME error if no password
-            data.decrypt_account_key(&self.active_passwords[&monitor_id])
-                .subaddress(request.subaddress_index)
-        } else {
-            data.account_key
-                .unwrap()
-                .subaddress(request.subaddress_index)
-        };
+        let account_key = data
+            .get_account_key(self.active_passwords.get(&monitor_id))
+            .map_err(|err| rpc_internal_error("monitor_data.get_account_key", err, &self.logger))?;
+        let subaddress = account_key.subaddress(request.subaddress_index);
 
         // Also build the b58 wrapper
         let mut wrapper = mc_mobilecoind_api::printable::PrintableWrapper::new();

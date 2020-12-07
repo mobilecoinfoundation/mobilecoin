@@ -143,7 +143,7 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
         outlays: &[Outlay],
         opt_fee: u64,
         opt_tombstone: u64,
-        opt_password_hash: Option<&Vec<u8>>
+        opt_password_hash: Option<&Vec<u8>>,
     ) -> Result<TxProposal, Error> {
         let logger = self.logger.new(o!("sender_monitor_id" => sender_monitor_id.to_string(), "outlays" => format!("{:?}", outlays)));
         log::trace!(logger, "Building pending transaction...");
@@ -210,12 +210,7 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
         };
         log::trace!(logger, "Tombstone block set to {}", tombstone_block);
 
-        let account_key = if sender_monitor_data.encrypted_account_key.is_some() {
-            // FIXME: error handling
-            sender_monitor_data.clone().decrypt_account_key(&opt_password_hash.unwrap())
-        } else {
-            sender_monitor_data.account_key.clone().unwrap()
-        };
+        let account_key = sender_monitor_data.get_account_key(opt_password_hash)?;
 
         // Build and return the TxProposal object
         let mut rng = rand::thread_rng();
@@ -303,12 +298,7 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
         let tombstone_block = num_blocks_in_ledger + DEFAULT_NEW_TX_BLOCK_ATTEMPTS;
         log::trace!(logger, "Tombstone block set to {}", tombstone_block);
 
-        let account_key = if let Some(_encrypted_key) = monitor_data.encrypted_account_key.clone() {
-            // FIXME: error handling
-            monitor_data.clone().decrypt_account_key(&opt_password_hash.unwrap())
-        } else {
-            monitor_data.account_key.unwrap()
-        };
+        let account_key = monitor_data.get_account_key(opt_password_hash.as_ref())?;
 
         // We are paying ourselves the entire amount.
         let outlays = vec![Outlay {
