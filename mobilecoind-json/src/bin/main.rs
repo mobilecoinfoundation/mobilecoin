@@ -146,7 +146,7 @@ fn monitors(state: rocket::State<State>) -> Result<Json<JsonMonitorListResponse>
     Ok(Json(JsonMonitorListResponse::from(&resp)))
 }
 
-/// Get the current status of a created monitor
+/// Get the account key for a monitor, with optional password to decrypt
 #[post(
     "/monitors/<monitor_hex>/account-key",
     format = "json",
@@ -178,7 +178,7 @@ fn get_monitor_account_key(
     Ok(Json(JsonAccountKeyResponse::from(&resp)))
 }
 
-/// Get the account key for a monitor, with optional password to decrypt
+/// Get the current status of a created monitor
 #[get("/monitors/<monitor_hex>")]
 fn monitor_status(
     state: rocket::State<State>,
