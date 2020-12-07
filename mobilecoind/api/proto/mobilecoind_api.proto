@@ -290,7 +290,7 @@ message GetMonitorAccountKeyRequest {
     bytes monitor_id = 1;
 
     // Password hash to recover encrypted account key.
-    bytes password_hash = 6;
+    bytes password_hash = 2;
 }
 
 // Get a list of UnspentTxOuts for a given monitor and subadddress index.

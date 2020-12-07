@@ -103,6 +103,11 @@ impl From<&mc_mobilecoind_api::GetMonitorStatusResponse> for JsonMonitorStatusRe
     }
 }
 
+#[derive(Deserialize, Default)]
+pub struct JsonGetMonitorAccountKeyRequest {
+    pub password_hash: Option<String>,
+}
+
 #[derive(Serialize, Default)]
 pub struct JsonBalanceResponse {
     pub balance: String,

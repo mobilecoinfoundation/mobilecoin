@@ -334,9 +334,30 @@ impl<
 
     fn get_monitor_account_key_impl(
         &mut self,
-        _request: mc_mobilecoind_api::GetMonitorAccountKeyRequest,
+        request: mc_mobilecoind_api::GetMonitorAccountKeyRequest,
     ) -> Result<mc_mobilecoind_api::GetAccountKeyResponse, RpcStatus> {
-        let response = mc_mobilecoind_api::GetAccountKeyResponse::new();
+        let monitor_id = MonitorId::try_from(&request.monitor_id)
+            .map_err(|err| rpc_internal_error("monitor_id.try_from.bytes", err, &self.logger))?;
+
+        let data = self
+            .mobilecoind_db
+            .get_monitor_data(&monitor_id)
+            .map_err(|err| {
+                rpc_internal_error("mobilecoind_db.get_monitor_data", err, &self.logger)
+            })?;
+
+        // Optional vector field in proto3 is empty vec
+        let password_hash = if request.get_password_hash().len() == 0 {
+            None
+        } else {
+            Some(request.get_password_hash().to_vec())
+        };
+        let account_key = data
+            .get_account_key(password_hash.as_ref())
+            .map_err(|err| rpc_internal_error("get_account_key", err, &self.logger))?;
+
+        let mut response = mc_mobilecoind_api::GetAccountKeyResponse::new();
+        response.set_account_key((&account_key).into());
         Ok(response)
     }
 

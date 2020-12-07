@@ -147,6 +147,34 @@ fn monitors(state: rocket::State<State>) -> Result<Json<JsonMonitorListResponse>
 }
 
 /// Get the current status of a created monitor
+#[post("/monitors/<monitor_hex>", format = "json", data = "<monitor>")]
+fn get_monitor_account_key(
+    state: rocket::State<State>,
+    monitor_hex: String,
+    monitor: Json<JsonGetMonitorAccountKeyRequest>,
+) -> Result<Json<JsonAccountKeyResponse>, String> {
+    let monitor_id =
+        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
+
+    let mut req = mc_mobilecoind_api::GetMonitorAccountKeyRequest::new();
+    req.set_monitor_id(monitor_id);
+
+    let password_hash = if let Some(pw) = &monitor.password_hash {
+        hex::decode(&pw).unwrap()
+    } else {
+        Vec::new()
+    };
+    req.set_password_hash(password_hash);
+
+    let resp = state
+        .mobilecoind_api_client
+        .get_monitor_account_key(&req)
+        .map_err(|err| format!("Failed getting monitor account key: {}", err))?;
+
+    Ok(Json(JsonAccountKeyResponse::from(&resp)))
+}
+
+/// Get the account key for a monitor, with optional password to decrypt
 #[get("/monitors/<monitor_hex>")]
 fn monitor_status(
     state: rocket::State<State>,
@@ -696,6 +724,7 @@ fn main() {
                 add_monitor,
                 remove_monitor,
                 monitors,
+                get_monitor_account_key,
                 monitor_status,
                 balance,
                 utxos,
