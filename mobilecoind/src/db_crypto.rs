@@ -105,6 +105,8 @@ impl Default for AesDbCryptoProvider {
 
 impl DbCryptoProvider for AesDbCryptoProvider {
     /// Sets the password to use.
+    /// The password needs to be 32 bytes - the intended purpose is for this to be a hash of the
+    /// password and not the actual password the user typed.
     fn set_password(&self, password: &[u8]) -> Result<(), DbCryptoError> {
         let mut encryption_key = self.encryption_key.lock().expect("muted poisoned");
         if encryption_key.is_some() {
