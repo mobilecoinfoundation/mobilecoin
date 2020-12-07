@@ -2968,6 +2968,8 @@ dependencies = [
 name = "mc-mobilecoind"
 version = "1.0.0"
 dependencies = [
+ "aes-gcm",
+ "blake2",
  "crossbeam-channel",
  "displaydoc",
  "failure",

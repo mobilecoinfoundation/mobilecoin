@@ -8,6 +8,7 @@
 
 use crate::{
     database::Database,
+    db_crypto::DbCryptoProvider,
     error::Error,
     monitor_store::{MonitorData, MonitorId},
     payments::{Outlay, TransactionsManager, TxProposal},
@@ -43,12 +44,12 @@ use mc_watcher::watcher_db::WatcherDB;
 use protobuf::{ProtobufEnum, RepeatedField};
 use std::{
     convert::TryFrom,
-    sync::{Arc, RwLock},
+    sync::{Arc, Mutex, RwLock},
 };
 
 pub struct Service {
     /// Sync thread.
-    _sync_thread: SyncThread,
+    _sync_thread: Arc<Mutex<Option<SyncThread>>>,
 
     /// GRPC server.
     _server: grpcio::Server,
@@ -58,23 +59,48 @@ impl Service {
     pub fn new<
         T: BlockchainConnection + UserTxConnection + 'static,
         FPR: FogPubkeyResolver + Send + Sync + 'static,
+        DCP: DbCryptoProvider + Send + Sync + 'static,
     >(
         ledger_db: LedgerDB,
-        mobilecoind_db: Database,
+        mobilecoind_db: Database<DCP>,
         watcher_db: Option<WatcherDB>,
-        transactions_manager: TransactionsManager<T, FPR>,
+        transactions_manager: TransactionsManager<T, FPR, DCP>,
         network_state: Arc<RwLock<PollingNetworkState<T>>>,
         listen_uri: &MobilecoindUri,
         num_workers: Option<usize>,
+        crypto_provider: DCP,
         logger: Logger,
     ) -> Self {
-        log::info!(logger, "Starting mobilecoind sync task thread");
-        let sync_thread = SyncThread::start(
-            ledger_db.clone(),
-            mobilecoind_db.clone(),
-            num_workers,
-            logger.clone(),
-        );
+        let sync_thread = if crypto_provider.requires_password() {
+            log::info!(logger, "Db encryption enabled, sync task would start once password is provided via the API.");
+            Arc::new(Mutex::new(None))
+        } else {
+            log::info!(logger, "Starting mobilecoind sync task thread");
+            Arc::new(Mutex::new(Some(SyncThread::start(
+                ledger_db.clone(),
+                mobilecoind_db.clone(),
+                num_workers,
+                logger.clone(),
+            ))))
+        };
+
+        let start_sync_thread = {
+            let ledger_db = ledger_db.clone();
+            let mobilecoind_db = mobilecoind_db.clone();
+            let logger = logger.clone();
+            let sync_thread = sync_thread.clone();
+            Arc::new(move || {
+                let mut sync_thread = sync_thread.lock().expect("mutex poisoned");
+                assert!(sync_thread.is_none());
+
+                *sync_thread = Some(SyncThread::start(
+                    ledger_db.clone(),
+                    mobilecoind_db.clone(),
+                    num_workers,
+                    logger.clone(),
+                ));
+            })
+        };
 
         let api = ServiceApi::new(
             transactions_manager,
@@ -82,6 +108,8 @@ impl Service {
             mobilecoind_db,
             watcher_db,
             network_state,
+            crypto_provider,
+            start_sync_thread,
             logger.clone(),
         );
 
@@ -132,19 +160,23 @@ impl Service {
 pub struct ServiceApi<
     T: BlockchainConnection + UserTxConnection + 'static,
     FPR: FogPubkeyResolver + Send + Sync + 'static,
+    DCP: DbCryptoProvider + Send + Sync + 'static,
 > {
-    transactions_manager: TransactionsManager<T, FPR>,
+    transactions_manager: TransactionsManager<T, FPR, DCP>,
     ledger_db: LedgerDB,
-    mobilecoind_db: Database,
+    mobilecoind_db: Database<DCP>,
     watcher_db: Option<WatcherDB>,
     network_state: Arc<RwLock<PollingNetworkState<T>>>,
+    crypto_provider: DCP,
+    start_sync_thread: Arc<dyn Fn() -> () + Send + Sync>,
     logger: Logger,
 }
 
 impl<
         T: BlockchainConnection + UserTxConnection + 'static,
         FPR: FogPubkeyResolver + Send + Sync + 'static,
-    > Clone for ServiceApi<T, FPR>
+        DCP: DbCryptoProvider + Send + Sync + 'static,
+    > Clone for ServiceApi<T, FPR, DCP>
 {
     fn clone(&self) -> Self {
         Self {
@@ -153,6 +185,8 @@ impl<
             mobilecoind_db: self.mobilecoind_db.clone(),
             watcher_db: self.watcher_db.clone(),
             network_state: self.network_state.clone(),
+            crypto_provider: self.crypto_provider.clone(),
+            start_sync_thread: self.start_sync_thread.clone(),
             logger: self.logger.clone(),
         }
     }
@@ -161,14 +195,17 @@ impl<
 impl<
         T: BlockchainConnection + UserTxConnection + 'static,
         FPR: FogPubkeyResolver + Send + Sync + 'static,
-    > ServiceApi<T, FPR>
+        DCP: DbCryptoProvider + Send + Sync + 'static,
+    > ServiceApi<T, FPR, DCP>
 {
     pub fn new(
-        transactions_manager: TransactionsManager<T, FPR>,
+        transactions_manager: TransactionsManager<T, FPR, DCP>,
         ledger_db: LedgerDB,
-        mobilecoind_db: Database,
+        mobilecoind_db: Database<DCP>,
         watcher_db: Option<WatcherDB>,
         network_state: Arc<RwLock<PollingNetworkState<T>>>,
+        crypto_provider: DCP,
+        start_sync_thread: Arc<dyn Fn() -> () + Send + Sync>,
         logger: Logger,
     ) -> Self {
         Self {
@@ -177,6 +214,8 @@ impl<
             mobilecoind_db,
             watcher_db,
             network_state,
+            crypto_provider,
+            start_sync_thread,
             logger,
         }
     }
@@ -1526,13 +1565,39 @@ impl<
 
         Ok(response)
     }
+
+    fn set_db_password_impl(
+        &mut self,
+        request: mc_mobilecoind_api::SetDbPasswordRequest,
+    ) -> Result<mc_mobilecoind_api::Empty, RpcStatus> {
+        self.crypto_provider
+            .set_password(request.get_password())
+            .map_err(|err| rpc_internal_error("set_db_password", err, &self.logger))?;
+
+        // Get the monitors list - this will attempt to decode any potential monitors, and will
+        // fail if the password is incorrect. If there are no monitors then we have no encrypted
+        let _ = self.mobilecoind_db.get_monitor_map().map_err(|err| {
+            let _ = self.crypto_provider.clear_password();
+            rpc_internal_error("set_db_password.validate", err, &self.logger)
+        })?;
+
+        (self.start_sync_thread)();
+
+        log::info!(self.logger, "Password set and sync db started!");
+
+        Ok(mc_mobilecoind_api::Empty::default())
+    }
 }
 
 macro_rules! build_api {
     ($( $service_function_name:ident $service_request_type:ident $service_response_type:ident $service_function_impl:ident ),+)
     =>
     (
-        impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'static> MobilecoindApi for ServiceApi<T, FPR> {
+        impl<
+            T: BlockchainConnection + UserTxConnection + 'static,
+            FPR: FogPubkeyResolver + Send + Sync + 'static,
+            DCP: DbCryptoProvider + Send + Sync + 'static,
+        > MobilecoindApi for ServiceApi<T, FPR, DCP> {
             $(
                 fn $service_function_name(
                     &mut self,
@@ -1583,7 +1648,8 @@ build_api! {
     get_balance GetBalanceRequest GetBalanceResponse get_balance_impl,
     send_payment SendPaymentRequest SendPaymentResponse send_payment_impl,
     pay_address_code PayAddressCodeRequest SendPaymentResponse pay_address_code_impl,
-    get_network_status Empty GetNetworkStatusResponse get_network_status_impl
+    get_network_status Empty GetNetworkStatusResponse get_network_status_impl,
+    set_db_password SetDbPasswordRequest Empty set_db_password_impl
 }
 
 #[cfg(test)]

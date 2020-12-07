@@ -2,7 +2,10 @@
 
 //! Construct and submit transactions to the validator network.
 
-use crate::{database::Database, error::Error, monitor_store::MonitorId, utxo_store::UnspentTxOut};
+use crate::{
+    database::Database, db_crypto::DbCryptoProvider, error::Error, monitor_store::MonitorId,
+    utxo_store::UnspentTxOut,
+};
 use mc_account_keys::{AccountKey, PublicAddress};
 use mc_common::{
     logger::{log, o, Logger},
@@ -79,12 +82,13 @@ impl TxProposal {
 pub struct TransactionsManager<
     T: UserTxConnection + 'static,
     FPR: FogPubkeyResolver + Send + Sync + 'static,
+    DCP: DbCryptoProvider,
 > {
     /// Ledger database.
     ledger_db: LedgerDB,
 
     /// mobilecoind database.
-    mobilecoind_db: Database,
+    mobilecoind_db: Database<DCP>,
 
     /// Peer manager, for communicating with validator nodes.
     peer_manager: ConnectionManager<T>,
@@ -99,8 +103,11 @@ pub struct TransactionsManager<
     fog_pubkey_resolver: Option<Arc<FPR>>,
 }
 
-impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'static> Clone
-    for TransactionsManager<T, FPR>
+impl<
+        T: UserTxConnection + 'static,
+        FPR: FogPubkeyResolver + Send + Sync + 'static,
+        DCP: DbCryptoProvider,
+    > Clone for TransactionsManager<T, FPR, DCP>
 {
     fn clone(&self) -> Self {
         Self {
@@ -114,12 +121,15 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
     }
 }
 
-impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'static>
-    TransactionsManager<T, FPR>
+impl<
+        T: UserTxConnection + 'static,
+        FPR: FogPubkeyResolver + Send + Sync + 'static,
+        DCP: DbCryptoProvider,
+    > TransactionsManager<T, FPR, DCP>
 {
     pub fn new(
         ledger_db: LedgerDB,
-        mobilecoind_db: Database,
+        mobilecoind_db: Database<DCP>,
         peer_manager: ConnectionManager<T>,
         fog_pubkey_resolver: Option<Arc<FPR>>,
         logger: Logger,

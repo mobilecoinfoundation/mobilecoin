@@ -4,7 +4,7 @@
 //! * Provides monitor configuration and status from MonitorId.
 //! * MonitorId is a hash of the instantiation parameters.
 
-use crate::{database_key::DatabaseByteArrayKey, error::Error};
+use crate::{database_key::DatabaseByteArrayKey, db_crypto::DbCryptoProvider, error::Error};
 
 use lmdb::{Cursor, Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
 use mc_account_keys::{AccountKey, PublicAddress};
@@ -110,19 +110,22 @@ impl From<&MonitorData> for MonitorId {
 
 /// Wrapper for the monitor_id_to_monitor_data database
 #[derive(Clone)]
-pub struct MonitorStore {
+pub struct MonitorStore<DCP: DbCryptoProvider> {
     env: Arc<Environment>,
 
     /// Mapping of MonitorId -> MonitorData
     monitor_id_to_monitor_data: Database,
+
+    /// Crypto provider, used to enable optional encryption.
+    crypto_provider: DCP,
 
     /// Logger.
     logger: Logger,
 }
 
 /// A DB mapping account IDs to keys
-impl MonitorStore {
-    pub fn new(env: Arc<Environment>, logger: Logger) -> Result<Self, Error> {
+impl<DCP: DbCryptoProvider> MonitorStore<DCP> {
+    pub fn new(env: Arc<Environment>, crypto_provider: DCP, logger: Logger) -> Result<Self, Error> {
         let monitor_id_to_monitor_data = env.create_db(
             Some(MONITOR_ID_TO_MONITOR_DATA_DB_NAME),
             DatabaseFlags::empty(),
@@ -131,6 +134,7 @@ impl MonitorStore {
         Ok(Self {
             env,
             monitor_id_to_monitor_data,
+            crypto_provider,
             logger,
         })
     }
@@ -144,7 +148,9 @@ impl MonitorStore {
         let monitor_id = MonitorId::from(data);
         let key_bytes = monitor_id.as_bytes();
 
-        let value_bytes = mc_util_serial::encode(data);
+        let value_bytes = self
+            .crypto_provider
+            .encrypt(&mc_util_serial::encode(data))?;
 
         log::trace!(self.logger, "adding new monitor {}: {:?}", monitor_id, data);
 
@@ -178,7 +184,8 @@ impl MonitorStore {
     ) -> Result<MonitorData, Error> {
         match db_txn.get(self.monitor_id_to_monitor_data, monitor_id) {
             Ok(value_bytes) => {
-                let data: MonitorData = mc_util_serial::decode(value_bytes)?;
+                let value_bytes = self.crypto_provider.decrypt(value_bytes)?;
+                let data: MonitorData = mc_util_serial::decode(&value_bytes)?;
                 Ok(data)
             }
             Err(lmdb::Error::NotFound) => Err(Error::MonitorIdNotFound),
@@ -201,7 +208,8 @@ impl MonitorStore {
                     .and_then(|(key_bytes, value_bytes)| {
                         let monitor_id = MonitorId::try_from(key_bytes)
                             .map_err(|_| Error::KeyDeserializationError)?;
-                        let data: MonitorData = mc_util_serial::decode(value_bytes)?;
+                        let value_bytes = self.crypto_provider.decrypt(value_bytes)?;
+                        let data: MonitorData = mc_util_serial::decode(&value_bytes)?;
 
                         Ok((monitor_id, data))
                     })
@@ -234,7 +242,9 @@ impl MonitorStore {
         let key_bytes = monitor_id.to_vec();
         match db_txn.get(self.monitor_id_to_monitor_data, &key_bytes) {
             Ok(_value_bytes) => {
-                let new_value_bytes = mc_util_serial::encode(data);
+                let new_value_bytes = self
+                    .crypto_provider
+                    .encrypt(&mc_util_serial::encode(data))?;
                 db_txn.put(
                     self.monitor_id_to_monitor_data,
                     &key_bytes,
