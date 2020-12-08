@@ -19,7 +19,6 @@
 
 use crate::{
     database::Database,
-    db_crypto::DbCryptoProvider,
     error::Error,
     monitor_store::{MonitorData, MonitorId},
     subaddress_store::SubaddressSPKId,
@@ -75,9 +74,9 @@ pub struct SyncThread {
 }
 
 impl SyncThread {
-    pub fn start<DCP: DbCryptoProvider + Send + Sync + 'static>(
+    pub fn start(
         ledger_db: LedgerDB,
-        mobilecoind_db: Database<DCP>,
+        mobilecoind_db: Database,
         num_workers: Option<usize>,
         logger: Logger,
     ) -> Self {
@@ -227,9 +226,9 @@ impl Drop for SyncThread {
     }
 }
 /// The entry point of a sync worker thread that processes queue messages.
-fn sync_thread_entry_point<DCP: DbCryptoProvider>(
+fn sync_thread_entry_point(
     ledger_db: LedgerDB,
-    mobilecoind_db: Database<DCP>,
+    mobilecoind_db: Database,
     sender: crossbeam_channel::Sender<SyncMsg>,
     receiver: crossbeam_channel::Receiver<SyncMsg>,
     queued_monitor_ids: Arc<Mutex<HashSet<MonitorId>>>,
@@ -282,9 +281,9 @@ fn sync_thread_entry_point<DCP: DbCryptoProvider>(
 }
 
 /// Sync a single monitor.
-fn sync_monitor<DCP: DbCryptoProvider>(
+fn sync_monitor(
     ledger_db: &LedgerDB,
-    mobilecoind_db: &Database<DCP>,
+    mobilecoind_db: &Database,
     monitor_id: &MonitorId,
     logger: &Logger,
 ) -> Result<SyncMonitorOk, Error> {
@@ -333,8 +332,8 @@ fn sync_monitor<DCP: DbCryptoProvider>(
 }
 
 /// Helper function for matching a list of TxOuts to a given monitor.
-fn match_tx_outs_into_utxos<DCP: DbCryptoProvider>(
-    mobilecoind_db: &Database<DCP>,
+fn match_tx_outs_into_utxos(
+    mobilecoind_db: &Database,
     outputs: &[TxOut],
     monitor_id: &MonitorId,
     monitor_data: &MonitorData,

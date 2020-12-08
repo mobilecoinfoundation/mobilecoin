@@ -10,7 +10,7 @@ use crate::{
     utxo_store::{UtxoId, UtxoStore},
 };
 
-use crate::{db_crypto::DbCryptoProvider, utxo_store::UnspentTxOut};
+use crate::utxo_store::UnspentTxOut;
 use lmdb::{Environment, Transaction};
 use mc_common::{
     logger::{log, Logger},
@@ -42,12 +42,12 @@ impl MetadataStoreSettings for MobilecoindDbMetadataStoreSettings {
 
 /// The main mobilecoind database.
 #[derive(Clone)]
-pub struct Database<DCP: DbCryptoProvider> {
+pub struct Database {
     // LMDB Environment (database).
     env: Arc<Environment>,
 
     /// Monitor store.
-    monitor_store: MonitorStore<DCP>,
+    monitor_store: MonitorStore,
 
     /// Subaddress store.
     subaddress_store: SubaddressStore,
@@ -65,12 +65,8 @@ pub struct Database<DCP: DbCryptoProvider> {
     logger: Logger,
 }
 
-impl<DCP: DbCryptoProvider> Database<DCP> {
-    pub fn new<P: AsRef<Path>>(
-        path: P,
-        crypto_provider: DCP,
-        logger: Logger,
-    ) -> Result<Self, Error> {
+impl Database {
+    pub fn new<P: AsRef<Path>>(path: P, logger: Logger) -> Result<Self, Error> {
         let env = Arc::new(
             Environment::new()
                 .set_max_dbs(10)
@@ -92,7 +88,7 @@ impl<DCP: DbCryptoProvider> Database<DCP> {
 
         version.is_compatible_with_latest()?;
 
-        let monitor_store = MonitorStore::new(env.clone(), crypto_provider, logger.clone())?;
+        let monitor_store = MonitorStore::new(env.clone(), logger.clone())?;
         let subaddress_store = SubaddressStore::new(env.clone(), logger.clone())?;
         let utxo_store = UtxoStore::new(env.clone(), logger.clone())?;
         let processed_block_store = ProcessedBlockStore::new(env.clone(), logger.clone())?;
