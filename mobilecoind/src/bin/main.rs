@@ -7,7 +7,11 @@ use mc_common::logger::{create_app_logger, log, o, Logger};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::{LedgerSyncServiceThread, PollingNetworkState, ReqwestTransactionsFetcher};
 use mc_mobilecoind::{
-    config::Config, database::Database, payments::TransactionsManager, service::Service,
+    config::Config,
+    database::Database,
+    db_crypto::{AesDbCryptoProvider, NullDbCryptoProvider},
+    payments::TransactionsManager,
+    service::Service,
 };
 use mc_watcher::{watcher::WatcherSyncThread, watcher_db::create_or_open_rw_watcher_db};
 use std::{
@@ -106,30 +110,71 @@ fn main() {
 
             let _ = std::fs::create_dir_all(mobilecoind_db);
 
-            let mobilecoind_db = Database::new(mobilecoind_db, logger.clone())
-                .expect("Could not open mobilecoind_db");
+            // This contains a lot of duplication due to TransactionManager and Service being
+            // generic over the crypto provider.
+            // TODO: See if there is a way to clean this up.
+            if config.encrypted_db {
+                let crypto_provider = AesDbCryptoProvider::default();
 
-            let transactions_manager = TransactionsManager::new(
-                ledger_db.clone(),
-                mobilecoind_db.clone(),
-                peer_manager,
-                config.get_fog_pubkey_resolver(logger.clone()).map(Arc::new),
-                logger.clone(),
-            );
+                let mobilecoind_db =
+                    Database::new(mobilecoind_db, crypto_provider.clone(), logger.clone())
+                        .expect("Could not open mobilecoind_db");
 
-            let _api_server = Service::new(
-                ledger_db,
-                mobilecoind_db,
-                watcher_db,
-                transactions_manager,
-                network_state,
-                listen_uri,
-                config.num_workers,
-                logger,
-            );
+                let transactions_manager = TransactionsManager::new(
+                    ledger_db.clone(),
+                    mobilecoind_db.clone(),
+                    peer_manager,
+                    config.get_fog_pubkey_resolver(logger.clone()).map(Arc::new),
+                    logger.clone(),
+                );
 
-            loop {
-                std::thread::sleep(config.poll_interval);
+                let _api_server = Service::new(
+                    ledger_db,
+                    mobilecoind_db,
+                    watcher_db,
+                    transactions_manager,
+                    network_state,
+                    listen_uri,
+                    config.num_workers,
+                    crypto_provider,
+                    logger,
+                );
+
+                // All the work is done by background threads but the main thread has to stay alive otherwise the process terminates.
+                loop {
+                    std::thread::sleep(config.poll_interval);
+                }
+            } else {
+                let crypto_provider = NullDbCryptoProvider::default();
+
+                let mobilecoind_db =
+                    Database::new(mobilecoind_db, crypto_provider.clone(), logger.clone())
+                        .expect("Could not open mobilecoind_db");
+
+                let transactions_manager = TransactionsManager::new(
+                    ledger_db.clone(),
+                    mobilecoind_db.clone(),
+                    peer_manager,
+                    config.get_fog_pubkey_resolver(logger.clone()).map(Arc::new),
+                    logger.clone(),
+                );
+
+                let _api_server = Service::new(
+                    ledger_db,
+                    mobilecoind_db,
+                    watcher_db,
+                    transactions_manager,
+                    network_state,
+                    listen_uri,
+                    config.num_workers,
+                    crypto_provider,
+                    logger,
+                );
+
+                // All the work is done by background threads but the main thread has to stay alive otherwise the process terminates.
+                loop {
+                    std::thread::sleep(config.poll_interval);
+                }
             }
         }
 

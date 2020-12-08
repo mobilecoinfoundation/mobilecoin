@@ -7,6 +7,7 @@
 
 use crate::{
     database::Database,
+    db_crypto::{DbCryptoProvider, NullDbCryptoProvider},
     monitor_store::{MonitorData, MonitorId},
     payments::TransactionsManager,
     service::Service,
@@ -63,7 +64,7 @@ pub fn get_test_databases(
     num_blocks: usize,
     logger: Logger,
     mut rng: &mut (impl CryptoRng + RngCore),
-) -> (LedgerDB, Database) {
+) -> (LedgerDB, Database<NullDbCryptoProvider>) {
     let mut public_addresses: Vec<PublicAddress> = (0..num_random_recipients)
         .map(|_i| mc_account_keys::AccountKey::random(&mut rng).default_subaddress())
         .collect();
@@ -101,8 +102,12 @@ pub fn get_test_databases(
         );
     }
 
-    let mobilecoind_db = Database::new(mobilecoind_db_path.to_string(), logger)
-        .expect("failed creating new mobilecoind db");
+    let mobilecoind_db = Database::new(
+        mobilecoind_db_path.to_string(),
+        NullDbCryptoProvider::default(),
+        logger,
+    )
+    .expect("failed creating new mobilecoind db");
 
     (ledger_db, mobilecoind_db)
 }
@@ -228,7 +233,7 @@ pub fn get_free_port() -> u16 {
 pub fn setup_server<FPR: FogPubkeyResolver + Send + Sync + 'static>(
     logger: Logger,
     ledger_db: LedgerDB,
-    mobilecoind_db: Database,
+    mobilecoind_db: Database<NullDbCryptoProvider>,
     watcher_db: Option<WatcherDB>,
     fog_pubkey_resolver: Option<Arc<FPR>>,
     uri: &MobilecoindUri,
@@ -276,6 +281,7 @@ pub fn setup_server<FPR: FogPubkeyResolver + Send + Sync + 'static>(
         network_state,
         uri,
         None,
+        NullDbCryptoProvider::default(),
         logger,
     );
 
@@ -313,7 +319,7 @@ pub fn get_testing_environment(
     mut rng: &mut (impl CryptoRng + RngCore),
 ) -> (
     LedgerDB,
-    Database,
+    Database<NullDbCryptoProvider>,
     MobilecoindApiClient,
     Service,
     ConnectionManager<MockBlockchainConnection<LedgerDB>>,
@@ -365,7 +371,11 @@ pub fn get_testing_environment(
 /// * `mobilecoind_db` - Database instance
 /// * `ledger_db` - LedgerDB instance
 /// * `logger`
-pub fn wait_for_monitors(mobilecoind_db: &Database, ledger_db: &LedgerDB, logger: &Logger) {
+pub fn wait_for_monitors<DCP: DbCryptoProvider>(
+    mobilecoind_db: &Database<DCP>,
+    ledger_db: &LedgerDB,
+    logger: &Logger,
+) {
     let num_blocks = ledger_db.num_blocks().unwrap();
 
     let mut monitor_map_len: usize;

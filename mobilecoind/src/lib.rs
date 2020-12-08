@@ -6,6 +6,7 @@ extern crate alloc;
 
 pub mod config;
 pub mod database;
+pub mod db_crypto;
 pub mod payments;
 pub mod service;
 
