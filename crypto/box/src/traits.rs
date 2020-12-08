@@ -114,7 +114,7 @@ pub trait CryptoBox<KexAlgo: Kex>: Default {
     /// Meant to mirror aead::decrypt_in_place
     ///
     /// Decryption can fail if:
-    /// - The buffer is too short to be interpretted
+    /// - The buffer is too short to be interpreted
     /// - The curvepoint cannot be deserialized
     /// - The mac check fails
     ///

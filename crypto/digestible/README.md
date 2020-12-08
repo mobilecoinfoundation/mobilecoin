@@ -426,7 +426,7 @@ to an enumerator. In this case, we follow the rules for an aggregate when append
 the anonymous struct to the transcript, and use the empty string for its name.
 
 In rust, an enum where every variant has no associated data can be tagged with e.g. `repr(u32)`
-and interpretted directly as a `u32`, as in C enums. An implementor may reasonably decide
+and interpreted directly as a `u32`, as in C enums. An implementor may reasonably decide
 to implement `digestible` for such an enum by converting to a `u32` and then appending that
 as a primitive. In this case `derive(Digestible)` should not be used, and this choice should be documented
 to allow cross-language implementations to do the same.
