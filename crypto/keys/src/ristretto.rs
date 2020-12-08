@@ -108,7 +108,7 @@ impl RistrettoPrivate {
         let mut t = MerlinTranscript::new(b"SigningContext");
         t.append_message(b"", context);
         t.append_message(b"sign-bytes", &message);
-        // NOTE: The fog_authority_fingerprint_sig is deterministic due to using the above nonce as the rng seed
+        // NOTE: This signature is deterministic due to using the above nonce as the rng seed
         let csprng = Hc128Rng::from_seed(nonce);
         let transcript = attach_rng(t, csprng);
         keypair.sign(transcript)
@@ -138,17 +138,17 @@ impl Debug for RistrettoPrivate {
 }
 
 impl<T: Digestible> DigestibleSigner<RistrettoSignature, T> for RistrettoPrivate {
-    fn sign_semantic(&self, context: &'static [u8], message: &T) -> RistrettoSignature {
+    fn sign_digestible(&self, context: &'static [u8], message: &T) -> RistrettoSignature {
         let message = message.digest32::<MerlinTranscript>(context);
         RistrettoSignature::from(self.sign_schnorrkel(context, &message))
     }
 
-    fn try_sign_semantic(
+    fn try_sign_digestible(
         &self,
         context: &'static [u8],
         message: &T,
     ) -> Result<RistrettoSignature, Error> {
-        Ok(self.sign_semantic(context, message))
+        Ok(self.sign_digestible(context, message))
     }
 }
 
@@ -352,7 +352,7 @@ impl Debug for RistrettoPublic {
 }
 
 impl<T: Digestible> DigestibleVerifier<RistrettoSignature, T> for RistrettoPublic {
-    fn verify_semantic(
+    fn verify_digestible(
         &self,
         context: &'static [u8],
         message: &T,

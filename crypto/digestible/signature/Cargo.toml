@@ -3,7 +3,7 @@ name = "mc-crypto-digestible-signature"
 version = "1.0.0"
 authors = ["MobileCoin"]
 edition = "2018"
-description = "Semantic Signatures by MobileCoin"
+description = "Digestible Signatures"
 readme = "README.md"
 
 [dependencies]
