@@ -2693,6 +2693,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-crypto-digestible-signature"
+version = "1.0.0"
+dependencies = [
+ "mc-crypto-digestible",
+ "schnorrkel",
+ "signature",
+]
+
+[[package]]
 name = "mc-crypto-digestible-test-utils"
 version = "1.0.0"
 dependencies = [
@@ -2722,6 +2731,7 @@ dependencies = [
  "failure",
  "hex_fmt",
  "mc-crypto-digestible",
+ "mc-crypto-digestible-signature",
  "mc-crypto-hashes",
  "mc-util-from-random",
  "mc-util-repr-bytes",
@@ -2731,6 +2741,7 @@ dependencies = [
  "prost",
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
+ "schnorrkel",
  "semver",
  "serde",
  "serde_json",

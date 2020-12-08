@@ -101,6 +101,7 @@ impl DistinguishedEncoding for Ed25519Signature {
     }
 }
 
+/// An Ed25519 public key.
 #[derive(Copy, Clone, Debug, Default, Deserialize, Eq, Serialize, Digestible)]
 pub struct Ed25519Public(DalekPublicKey);
 

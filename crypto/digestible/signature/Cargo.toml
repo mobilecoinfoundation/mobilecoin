@@ -1,0 +1,15 @@
+[package]
+name = "mc-crypto-digestible-signature"
+version = "1.0.0"
+authors = ["MobileCoin"]
+edition = "2018"
+description = "Semantic Signatures by MobileCoin"
+readme = "README.md"
+
+[dependencies]
+mc-crypto-digestible = { path = ".." }
+
+signature = { version = "1.2", default-features = false }
+
+# Overridden since we need a not-yet-released commit that uprevs a bunch of dependencies.
+schnorrkel = { git = "https://github.com/w3f/schnorrkel", rev = "cfdbe9ae865a4d3ffa2566d896d4dbedf5107028", default-features = false }

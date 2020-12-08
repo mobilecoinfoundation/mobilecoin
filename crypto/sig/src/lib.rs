@@ -8,10 +8,6 @@
 //! and this crate provides a way to create signatures that is compatible with these key pairs.
 
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
-use merlin::Transcript;
-use rand_core::SeedableRng;
-use rand_hc::Hc128Rng as FixedRng;
-use schnorrkel::{context::attach_rng, signing_context, SecretKey};
 pub use schnorrkel::{Signature, SignatureError, SIGNATURE_LENGTH};
 
 /// Create a deterministic Schnorrkel signature
@@ -23,34 +19,12 @@ pub use schnorrkel::{Signature, SignatureError, SIGNATURE_LENGTH};
 ///
 /// Returns:
 /// * A 64-byte Schnorrkel Signature object which can be converted to and from bytes using its API.
-pub fn sign(context_tag: &[u8], private_key: &RistrettoPrivate, message: &[u8]) -> Signature {
-    // Create a deterministic nonce using a merlin transcript. See this crate's README
-    // for a security statement.
-    let nonce = {
-        let mut transcript = Transcript::new(b"SigningNonce");
-        transcript.append_message(b"context", &context_tag);
-        transcript.append_message(b"private", &private_key.to_bytes());
-        transcript.append_message(b"message", &message);
-        let mut nonce = [0u8; 32];
-        transcript.challenge_bytes(b"nonce", &mut nonce);
-        nonce
-    };
-
-    // Construct a Schnorrkel SecretKey object from private_key and our nonce value
-    let mut secret_bytes = [0u8; 64];
-    secret_bytes[0..32].copy_from_slice(&private_key.to_bytes());
-    secret_bytes[32..64].copy_from_slice(&nonce);
-    let secret_key = SecretKey::from_bytes(&secret_bytes).unwrap();
-    let keypair = secret_key.to_keypair();
-
-    // SigningContext provides domain separation for signature
-    let mut t = Transcript::new(b"SigningContext");
-    t.append_message(b"", context_tag);
-    t.append_message(b"sign-bytes", message);
-    // NOTE: The fog_authority_fingerprint_sig is deterministic due to using the above nonce as the rng seed
-    let csprng: FixedRng = SeedableRng::from_seed(nonce);
-    let transcript = attach_rng(t, csprng);
-    keypair.sign(transcript)
+pub fn sign(
+    context_tag: &'static [u8],
+    private_key: &RistrettoPrivate,
+    message: &[u8],
+) -> Signature {
+    private_key.sign_schnorrkel(context_tag, message)
 }
 
 /// Verify a Schnorrkel signature
@@ -69,14 +43,12 @@ pub fn sign(context_tag: &[u8], private_key: &RistrettoPrivate, message: &[u8]) 
 /// Returns:
 /// * Ok if the signature checks out, SignatureError otherwise.
 pub fn verify(
-    context_tag: &[u8],
+    context_tag: &'static [u8],
     public_key: &RistrettoPublic,
     message: &[u8],
     signature: &Signature,
 ) -> Result<(), SignatureError> {
-    let ctx = signing_context(context_tag);
-    let pubkey = schnorrkel::PublicKey::from_point(*public_key.as_ref());
-    pubkey.verify(ctx.bytes(message), signature)
+    public_key.verify_schnorrkel(context_tag, message, signature)
 }
 
 #[cfg(test)]
