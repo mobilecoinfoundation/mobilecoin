@@ -85,7 +85,7 @@ pub fn create_transaction_with_amount<L: Ledger, R: RngCore + CryptoRng>(
     tombstone_block: BlockIndex,
     rng: &mut R,
 ) -> Tx {
-    let mut transaction_builder = TransactionBuilder::new();
+    let mut transaction_builder = TransactionBuilder::new(Default::default());
 
     // The first transaction in the origin block should contain enough outputs to use as mixins.
     let origin_block_contents = ledger.get_block_contents(0).unwrap();
@@ -125,7 +125,7 @@ pub fn create_transaction_with_amount<L: Ledger, R: RngCore + CryptoRng>(
 
     // Output
     transaction_builder
-        .add_output(amount, recipient, None, rng)
+        .add_output(amount, recipient, rng)
         .unwrap();
 
     // Tombstone block

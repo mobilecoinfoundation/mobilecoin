@@ -8,6 +8,7 @@ use crate::{InputCredentials, TxBuilderError};
 use curve25519_dalek::scalar::Scalar;
 use mc_account_keys::PublicAddress;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic};
+use mc_fog_report_validation::{FogPubkeyResolver, FullyValidatedFogPubkeys};
 use mc_transaction_core::{
     constants::MINIMUM_FEE,
     encrypted_fog_hint::EncryptedFogHint,
@@ -28,16 +29,21 @@ pub struct TransactionBuilder {
     outputs_and_shared_secrets: Vec<(TxOut, RistrettoPublic)>,
     tombstone_block: u64,
     pub fee: u64,
+    fog_pubkeys: FullyValidatedFogPubkeys,
 }
 
 impl TransactionBuilder {
     /// Initializes a new TransactionBuilder.
-    pub fn new() -> Self {
+    ///
+    /// # Arguments
+    /// * `fog_pubkeys` - Set of prefetched fog public keys to choose from
+    pub fn new(fog_pubkeys: FullyValidatedFogPubkeys) -> Self {
         TransactionBuilder {
             input_credentials: Vec::new(),
             outputs_and_shared_secrets: Vec::new(),
-            tombstone_block: u64::max_value(),
+            tombstone_block: fog_pubkeys.smallest_pubkey_expiry_value(),
             fee: MINIMUM_FEE,
+            fog_pubkeys,
         }
     }
 
@@ -60,11 +66,9 @@ impl TransactionBuilder {
         &mut self,
         value: u64,
         recipient: &PublicAddress,
-        recipient_fog_ingest_key: Option<&RistrettoPublic>,
         rng: &mut RNG,
     ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
-        let (tx_out, shared_secret) =
-            create_output(value, recipient, recipient_fog_ingest_key, rng)?;
+        let (tx_out, shared_secret) = create_output(value, recipient, &self.fog_pubkeys, rng)?;
 
         self.outputs_and_shared_secrets
             .push((tx_out.clone(), shared_secret));
@@ -94,10 +98,9 @@ impl TransactionBuilder {
         value: u64,
         recipient: &PublicAddress,
         fog_hint_address: &PublicAddress,
-        fog_ingest_key: &RistrettoPublic,
         rng: &mut RNG,
     ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
-        let hint = create_fog_hint(fog_hint_address, Some(fog_ingest_key), rng)?;
+        let hint = create_fog_hint(fog_hint_address, &self.fog_pubkeys, rng)?;
         let (tx_out, shared_secret) = create_output_with_fog_hint(value, recipient, hint, rng)?;
 
         self.outputs_and_shared_secrets
@@ -108,12 +111,16 @@ impl TransactionBuilder {
         Ok((tx_out, confirmation))
     }
 
-    /// Sets the tombstone block.
+    /// Sets the tombstone block, clamping to smallest pubkey expiry value.
     ///
     /// # Arguments
     /// * `tombstone_block` - Tombstone block number.
-    pub fn set_tombstone_block(&mut self, tombstone_block: u64) {
-        self.tombstone_block = tombstone_block;
+    pub fn set_tombstone_block(&mut self, tombstone_block: u64) -> u64 {
+        self.tombstone_block = core::cmp::min(
+            tombstone_block,
+            self.fog_pubkeys.smallest_pubkey_expiry_value(),
+        );
+        self.tombstone_block
     }
 
     /// Sets the transaction fee.
@@ -225,27 +232,23 @@ impl TransactionBuilder {
     }
 }
 
-// This appeases clippy's new_without_default rule.
-impl Default for TransactionBuilder {
-    fn default() -> Self {
-        TransactionBuilder::new()
-    }
-}
-
 /// Creates a TxOut that sends `value` to `recipient`.
 ///
 /// # Arguments
 /// * `value` - Value of the output, in picoMOB.
 /// * `recipient` - Recipient's address.
-/// * `ingest_pubkey` - The public key for the recipients fog server, if any
-/// * `rng` -
+/// * `fog_pubkeys` - Set of prefetched fog public keys to choose from
+/// * `rng` - Entropy for the encryption.
+///
+/// # Returns
+/// * A transaction output, and the shared secret for this TxOut.
 fn create_output<RNG: CryptoRng + RngCore>(
     value: u64,
     recipient: &PublicAddress,
-    ingest_pubkey: Option<&RistrettoPublic>,
+    fog_pubkeys: &FullyValidatedFogPubkeys,
     rng: &mut RNG,
 ) -> Result<(TxOut, RistrettoPublic), TxBuilderError> {
-    let hint = create_fog_hint(recipient, ingest_pubkey, rng)?;
+    let hint = create_fog_hint(recipient, fog_pubkeys, rng)?;
     create_output_with_fog_hint(value, recipient, hint, rng)
 }
 
@@ -268,32 +271,35 @@ fn create_output_with_fog_hint<RNG: CryptoRng + RngCore>(
     Ok((tx_out, shared_secret))
 }
 
-/// Creates an Encrypted Fog Hint for a recipient
-fn create_fog_hint<RNG: CryptoRng + RngCore>(
+/// Create a fog hint, using the fog_pubkeys collection in self.
+///
+/// # Arguments
+/// * `recipient` - Recipient's address.
+/// * `fog_pubkeys` - Set of prefetched fog public keys to choose from
+/// * `rng` - Entropy for the encryption.
+///
+/// # Returns
+/// * `encrypted_fog_hint` - The fog hint to use for a TxOut.
+fn create_fog_hint<RNG: RngCore + CryptoRng>(
     recipient: &PublicAddress,
-    maybe_ingest_pubkey: Option<&RistrettoPublic>,
+    fog_pubkeys: &FullyValidatedFogPubkeys,
     rng: &mut RNG,
 ) -> Result<EncryptedFogHint, TxBuilderError> {
-    match maybe_ingest_pubkey {
-        Some(ingest_pubkey) => {
-            if recipient.fog_report_url().is_none() {
-                return Err(TxBuilderError::IngestPubkeyUnexpectedlyProvided);
-            }
-            Ok(FogHint::from(recipient).encrypt(ingest_pubkey, rng))
-        }
-        None => {
-            if recipient.fog_report_url().is_some() {
-                return Err(TxBuilderError::IngestPubkeyNotProvided);
-            }
-            Ok(EncryptedFogHint::fake_onetime_hint(rng))
-        }
+    if recipient.fog_report_url().is_none() {
+        return Ok(EncryptedFogHint::fake_onetime_hint(rng));
     }
+
+    // Find fog pubkey from set of pre-fetched fog pubkeys
+    let validated_fog_pubkey = fog_pubkeys.get_fog_pubkey(recipient)?;
+
+    Ok(FogHint::from(recipient).encrypt(&validated_fog_pubkey.pubkey, rng))
 }
 
 #[cfg(test)]
 pub mod transaction_builder_tests {
     use super::*;
     use mc_account_keys::{AccountKey, DEFAULT_SUBADDRESS_INDEX};
+    use mc_fog_report_validation::FullyValidatedFogPubkey;
     use mc_transaction_core::{
         constants::{MAX_INPUTS, MAX_OUTPUTS, MILLIMOB_TO_PICOMOB},
         onetime_keys::*,
@@ -324,13 +330,19 @@ pub mod transaction_builder_tests {
         // Create ring_size - 1 mixins.
         for _i in 0..ring_size - 1 {
             let address = AccountKey::random(rng).default_subaddress();
-            let (tx_out, _) = create_output(value, &address, None, rng).unwrap();
+            let (tx_out, _) = create_output(value, &address, &Default::default(), rng).unwrap();
             ring.push(tx_out);
         }
 
         // Insert the real element.
         let real_index = (rng.next_u64() % ring_size as u64) as usize;
-        let (tx_out, _) = create_output(value, &account.default_subaddress(), None, rng).unwrap();
+        let (tx_out, _) = create_output(
+            value,
+            &account.default_subaddress(),
+            &Default::default(),
+            rng,
+        )
+        .unwrap();
         ring.insert(real_index, tx_out);
         assert_eq!(ring.len(), ring_size);
 
@@ -386,7 +398,7 @@ pub mod transaction_builder_tests {
         recipient: &AccountKey,
         rng: &mut RNG,
     ) -> Result<Tx, TxBuilderError> {
-        let mut transaction_builder = TransactionBuilder::new();
+        let mut transaction_builder = TransactionBuilder::new(Default::default());
         let input_value = 1000;
         let output_value = 10;
 
@@ -399,7 +411,7 @@ pub mod transaction_builder_tests {
         // Outputs
         for _i in 0..num_outputs {
             transaction_builder
-                .add_output(output_value, &recipient.default_subaddress(), None, rng)
+                .add_output(output_value, &recipient.default_subaddress(), rng)
                 .unwrap();
         }
 
@@ -424,14 +436,13 @@ pub mod transaction_builder_tests {
         let membership_proofs = input_credentials.membership_proofs.clone();
         let key_image = KeyImage::from(&input_credentials.onetime_private_key);
 
-        let mut transaction_builder = TransactionBuilder::new();
+        let mut transaction_builder = TransactionBuilder::new(Default::default());
 
         transaction_builder.add_input(input_credentials);
         let (_txout, confirmation) = transaction_builder
             .add_output(
                 value - MINIMUM_FEE,
                 &recipient.default_subaddress(),
-                None,
                 &mut rng,
             )
             .unwrap();
@@ -484,14 +495,30 @@ pub mod transaction_builder_tests {
         let membership_proofs = input_credentials.membership_proofs.clone();
         let key_image = KeyImage::from(&input_credentials.onetime_private_key);
 
-        let mut transaction_builder = TransactionBuilder::new();
+        let fog_pubkeys = {
+            let mut fog_pubkeys = FullyValidatedFogPubkeys::default();
+            fog_pubkeys.add_key(
+                recipient
+                    .default_subaddress()
+                    .fog_report_url()
+                    .unwrap()
+                    .to_string(),
+                FullyValidatedFogPubkey {
+                    fog_report_id: Default::default(),
+                    pubkey: RistrettoPublic::from(&ingest_private_key),
+                    pubkey_expiry: 1000,
+                },
+            );
+            fog_pubkeys
+        };
+
+        let mut transaction_builder = TransactionBuilder::new(fog_pubkeys);
 
         transaction_builder.add_input(input_credentials);
         let (_txout, confirmation) = transaction_builder
             .add_output(
                 value - MINIMUM_FEE,
                 &recipient.default_subaddress(),
-                Some(&RistrettoPublic::from(&ingest_private_key)),
                 &mut rng,
             )
             .unwrap();
@@ -554,7 +581,20 @@ pub mod transaction_builder_tests {
         let ingest_private_key = RistrettoPrivate::from_random(&mut rng);
         let value = 1475 * MILLIMOB_TO_PICOMOB;
 
-        let mut transaction_builder = TransactionBuilder::new();
+        let fog_pubkeys = {
+            let mut fog_pubkeys = FullyValidatedFogPubkeys::default();
+            fog_pubkeys.add_key(
+                fog_hint_address.fog_report_url().unwrap().to_string(),
+                FullyValidatedFogPubkey {
+                    fog_report_id: "".to_string(),
+                    pubkey: RistrettoPublic::from(&ingest_private_key),
+                    pubkey_expiry: 1000,
+                },
+            );
+            fog_pubkeys
+        };
+
+        let mut transaction_builder = TransactionBuilder::new(fog_pubkeys);
 
         let input_credentials = get_input_credentials(&sender, value, &mut rng);
         transaction_builder.add_input(input_credentials);
@@ -564,7 +604,6 @@ pub mod transaction_builder_tests {
                 value - MINIMUM_FEE,
                 &recipient.default_subaddress(),
                 &fog_hint_address,
-                &RistrettoPublic::from(&ingest_private_key),
                 &mut rng,
             )
             .unwrap();
@@ -643,12 +682,12 @@ pub mod transaction_builder_tests {
         )
         .unwrap();
 
-        let mut transaction_builder = TransactionBuilder::new();
+        let mut transaction_builder = TransactionBuilder::new(Default::default());
         transaction_builder.add_input(input_credentials);
 
         let wrong_value = 999;
         transaction_builder
-            .add_output(wrong_value, &bob.default_subaddress(), None, &mut rng)
+            .add_output(wrong_value, &bob.default_subaddress(), &mut rng)
             .unwrap();
 
         let result = transaction_builder.build(&mut rng);

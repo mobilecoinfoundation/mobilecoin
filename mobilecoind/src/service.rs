@@ -2664,9 +2664,9 @@ mod test {
 
         // Insert into database.
         let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
-        let mut transaction_builder = TransactionBuilder::new();
+        let mut transaction_builder = TransactionBuilder::new(Default::default());
         let (tx_out, tx_confirmation) = transaction_builder
-            .add_output(10, &receiver.subaddress(0), None, &mut rng)
+            .add_output(10, &receiver.subaddress(0), &mut rng)
             .unwrap();
 
         add_txos_to_ledger_db(&mut ledger_db, &vec![tx_out.clone()], &mut rng);
@@ -4736,12 +4736,11 @@ mod test {
         let root_id = RootIdentity::from(&root_entropy);
         let account_key = AccountKey::from(&root_id);
 
-        let mut transaction_builder = TransactionBuilder::new();
+        let mut transaction_builder = TransactionBuilder::new(Default::default());
         let (tx_out, _tx_confirmation) = transaction_builder
             .add_output(
                 10,
                 &account_key.subaddress(DEFAULT_SUBADDRESS_INDEX),
-                None,
                 &mut rng,
             )
             .unwrap();

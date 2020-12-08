@@ -3400,6 +3400,7 @@ dependencies = [
  "failure",
  "mc-account-keys",
  "mc-crypto-keys",
+ "mc-fog-report-validation",
  "mc-transaction-core",
  "mc-util-from-random",
  "mc-util-serial",
