@@ -16,19 +16,11 @@ pushd "$(dirname "$0")"
 
 echo "Pulling down TestNet consensus validator signature material"
 
-SIGSTRUCT_URI=$(curl -s https://enclave-distribution.test.mobilecoin.com/production.json | grep sigstruct | awk '{print $2}' | tr -d \")
-curl -O https://enclave-distribution.test.mobilecoin.com/${SIGSTRUCT_URI}
-
-TARGETDIR=./target/release
+TARGETDIR=./target/debug
 
 echo "Building mobilecoind and mc-testnet-client. This will take a few moments."
 SGX_MODE=HW IAS_MODE=PROD CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css \
-        cargo build --release -p mc-mobilecoind -p mc-testnet-client
-
-if [[ -f /tmp/ledger-db ]] || [[ -f /tmp/transaction-db ]]; then
-    echo "Removing ledger-db and transaction_db from previous runs. Comment out this line to keep them for future runs."
-    rm -rf /tmp/ledger-db; rm -rf /tmp/transaction-db; mkdir /tmp/transaction-db
-fi
+        cargo build -p mc-mobilecoind
 
 echo "Starting local mobilecoind using TestNet servers for source of ledger. Check log at $(pwd)/mobilecoind.log."
 ${TARGETDIR}/mobilecoind \
@@ -39,19 +31,4 @@ ${TARGETDIR}/mobilecoind \
         --tx-source-url https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node1.test.mobilecoin.com/ \
         --tx-source-url https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node2.test.mobilecoin.com/ \
         --mobilecoind-db /tmp/transaction-db \
-        --listen-uri insecure-mobilecoind://127.0.0.1:4444/ &> $(pwd)/mobilecoind.log &
-
-pid=$!
-
-sleep 2
-if ps -p $pid > /dev/null; then
-    echo "Sleeping 5s to allow mobilecoind to sync the ledger"
-    sleep 5
-
-    echo "Starting local mc-test-client."
-    ${TARGETDIR}/mc-testnet-client
-else
-    echo "Starting mobilecoind failed. Please check logs at $(pwd)/mobilecoind.log."
-fi
-
-popd
+        --listen-uri insecure-mobilecoind://0.0.0.0:4444/

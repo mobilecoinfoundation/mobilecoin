@@ -3,6 +3,7 @@
 //! The mobilecoind database
 
 use crate::{
+    db_crypto::DbCryptoProvider,
     error::Error,
     monitor_store::{MonitorData, MonitorId, MonitorStore},
     processed_block_store::{ProcessedBlockStore, ProcessedTxOut},
@@ -46,6 +47,9 @@ pub struct Database {
     // LMDB Environment (database).
     env: Arc<Environment>,
 
+    /// Crypto provider, used for managing database encryption.
+    crypto_provider: DbCryptoProvider,
+
     /// Monitor store.
     monitor_store: MonitorStore,
 
@@ -88,13 +92,17 @@ impl Database {
 
         version.is_compatible_with_latest()?;
 
-        let monitor_store = MonitorStore::new(env.clone(), logger.clone())?;
+        let crypto_provider = DbCryptoProvider::new(env.clone())?;
+
+        let monitor_store =
+            MonitorStore::new(env.clone(), crypto_provider.clone(), logger.clone())?;
         let subaddress_store = SubaddressStore::new(env.clone(), logger.clone())?;
         let utxo_store = UtxoStore::new(env.clone(), logger.clone())?;
         let processed_block_store = ProcessedBlockStore::new(env.clone(), logger.clone())?;
 
         Ok(Self {
             env,
+            crypto_provider,
             monitor_store,
             subaddress_store,
             utxo_store,
@@ -102,6 +110,38 @@ impl Database {
             metadata_store,
             logger,
         })
+    }
+
+    /// Check if data is currently being encrypted.
+    pub fn is_db_encrypted(&self) -> bool {
+        self.crypto_provider.is_db_encrypted()
+    }
+
+    /// Check if the data is currently accessible (this checks if the correct encryption key has
+    /// been provided)
+    pub fn is_unlocked(&self) -> Result<bool, Error> {
+        Ok(self.crypto_provider.is_unlocked())
+    }
+
+    /// Check if a given password is the correct password to decrypt the database.
+    /// This also stores it for future encryption/decryption operations.
+    pub fn check_and_store_password(&self, password: &[u8]) -> Result<(), Error> {
+        Ok(self.crypto_provider.check_and_store_password(password)?)
+    }
+
+    /// Re-encrypt the encrypted parts of the database with a new password.
+    /// This will fail if the current password is not set in the crypto_provider since part of the
+    /// re-encryption process relies on being able to decrypt the existing data.
+    pub fn re_encrypt(&self, new_password: &[u8]) -> Result<(), Error> {
+        let mut db_txn = self.env.begin_rw_txn()?;
+
+        // Currently only the monitor store stores encrypted data.
+        self.monitor_store.re_encrypt(&mut db_txn, new_password)?;
+
+        // set_password consumes the transaction to ensure atomicity.
+        self.crypto_provider.change_password(db_txn, new_password)?;
+
+        Ok(())
     }
 
     pub fn add_monitor(&self, data: &MonitorData) -> Result<MonitorId, Error> {

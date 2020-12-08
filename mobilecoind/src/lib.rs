@@ -11,6 +11,7 @@ pub mod service;
 
 mod conversions;
 mod database_key;
+mod db_crypto;
 mod error;
 mod monitor_store;
 mod processed_block_store;
