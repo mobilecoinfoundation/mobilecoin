@@ -15,7 +15,7 @@
 #  builder-install - Build environment  #
 # ##################################### #
 
-FROM ubuntu:18.04 AS builder-install
+FROM debian:stable-slim AS builder-install
 
 # Party like it's June 8th, 1989.
 #
@@ -26,9 +26,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install build tools and dependencies
 #
-RUN apt-get update -q -q && \
- apt-get upgrade --yes --force-yes && \
- apt-get install --yes --force-yes \
+RUN apt-get update && apt-get install -y \
   alien \
   autoconf \
   automake \
@@ -55,16 +53,12 @@ RUN apt-get update -q -q && \
   llvm-dev \
   nano \
   ninja-build \
-  ocaml-native-compilers \
-  ocamlbuild \
   patch \
   pkg-config \
-  postgresql-10 \
   prometheus \
   protobuf-c-compiler \
   protobuf-compiler \
   psmisc \
-  python \
   python3-pip \
   systemd \
   unzip \
