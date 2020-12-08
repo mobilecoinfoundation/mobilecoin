@@ -11,6 +11,16 @@ use protobuf::RepeatedField;
 use serde_derive::{Deserialize, Serialize};
 use std::{collections::HashMap, convert::TryFrom, iter::FromIterator};
 
+#[derive(Deserialize, Default)]
+pub struct JsonPasswordRequest {
+    pub password_hash: String,
+}
+
+#[derive(Serialize, Default)]
+pub struct JsonPasswordResponse {
+    pub success: bool,
+}
+
 #[derive(Serialize, Default)]
 pub struct JsonEntropyResponse {
     pub entropy: String,

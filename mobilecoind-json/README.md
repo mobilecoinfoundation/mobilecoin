@@ -19,6 +19,15 @@ Options are:
 
 ### Usage with cURL
 
+#### Set password for DB
+
+To ensure that the DB stores the account keys at rest, you should make sure that you run mobilecoind with `--encrypted-db` and then call "set-password" via mobilecoind-json on startup. This will set the password hash for the mobilecoinid-db backend. The password hash should be derived according to your security needs, for example, with argon2.
+
+```
+curl -s localhost:9090/set-password -d '{"password_hash": "c7f04fcd40d093ca6578b13d790df0790c96e94a77815e5052993af1b9d12923"}' -X POST -H 'Content-type: application/json'
+{"success":true}
+```
+
 #### Generate a new master key
 ```
 $ curl localhost:9090/entropy -X POST

@@ -39,6 +39,24 @@ struct State {
     pub mobilecoind_api_client: MobilecoindApiClient,
 }
 
+/// Set the password for the mobilecoind-db
+#[post("/set-password", format = "json", data = "<password>")]
+fn set_password(
+    state: rocket::State<State>,
+    password: Json<JsonPasswordRequest>,
+) -> Result<Json<JsonPasswordResponse>, String> {
+    let mut req = mc_mobilecoind_api::SetDbPasswordRequest::new();
+    req.set_password(
+        hex::decode(password.password_hash.clone())
+            .map_err(|err| format!("Failed decoding password hex: {}", err))?,
+    );
+    let _resp = state
+        .mobilecoind_api_client
+        .set_db_password(&req)
+        .map_err(|err| format!("Failed setting password: {}", err))?;
+    Ok(Json(JsonPasswordResponse { success: true }))
+}
+
 /// Requests a new root entropy from mobilecoind
 #[post("/entropy")]
 fn entropy(state: rocket::State<State>) -> Result<Json<JsonEntropyResponse>, String> {
@@ -674,6 +692,7 @@ fn main() {
         .mount(
             "/",
             routes![
+                set_password,
                 entropy,
                 account_key,
                 add_monitor,
