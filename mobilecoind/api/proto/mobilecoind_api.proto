@@ -61,6 +61,7 @@ service MobilecoindAPI {
 
     // Database encryption
     rpc SetDbPassword (SetDbPasswordRequest) returns (google.protobuf.Empty) {}
+    rpc UnlockDb (UnlockDbRequest) returns (google.protobuf.Empty) {}
 }
 
 //*********************************
@@ -701,8 +702,12 @@ message GetNetworkStatusResponse {
 // Database encryption
 //
 
-// Unlocks (or sets the initial lock password) for the database.
-// In order to use database encryption. mobilecoind must be started with the --encrypted-db flag
+// Set the current database encryption password.
 message SetDbPasswordRequest {
+    bytes password = 2;
+}
+
+// Unlock a currently password-protected database.
+message UnlockDbRequest {
     bytes password = 1;
 }

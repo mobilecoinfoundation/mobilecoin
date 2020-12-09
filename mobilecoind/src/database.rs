@@ -3,6 +3,7 @@
 //! The mobilecoind database
 
 use crate::{
+    db_crypto::DbCryptoProvider,
     error::Error,
     monitor_store::{MonitorData, MonitorId, MonitorStore},
     processed_block_store::{ProcessedBlockStore, ProcessedTxOut},
@@ -10,7 +11,7 @@ use crate::{
     utxo_store::{UtxoId, UtxoStore},
 };
 
-use crate::{db_crypto::DbCryptoProvider, utxo_store::UnspentTxOut};
+use crate::utxo_store::UnspentTxOut;
 use lmdb::{Environment, Transaction};
 use mc_common::{
     logger::{log, Logger},
@@ -42,12 +43,15 @@ impl MetadataStoreSettings for MobilecoindDbMetadataStoreSettings {
 
 /// The main mobilecoind database.
 #[derive(Clone)]
-pub struct Database<DCP: DbCryptoProvider> {
+pub struct Database {
     // LMDB Environment (database).
     env: Arc<Environment>,
 
+    /// Crypto provider, used for managing database encryption.
+    crypto_provider: DbCryptoProvider,
+
     /// Monitor store.
-    monitor_store: MonitorStore<DCP>,
+    monitor_store: MonitorStore,
 
     /// Subaddress store.
     subaddress_store: SubaddressStore,
@@ -65,12 +69,8 @@ pub struct Database<DCP: DbCryptoProvider> {
     logger: Logger,
 }
 
-impl<DCP: DbCryptoProvider> Database<DCP> {
-    pub fn new<P: AsRef<Path>>(
-        path: P,
-        crypto_provider: DCP,
-        logger: Logger,
-    ) -> Result<Self, Error> {
+impl Database {
+    pub fn new<P: AsRef<Path>>(path: P, logger: Logger) -> Result<Self, Error> {
         let env = Arc::new(
             Environment::new()
                 .set_max_dbs(10)
@@ -92,13 +92,17 @@ impl<DCP: DbCryptoProvider> Database<DCP> {
 
         version.is_compatible_with_latest()?;
 
-        let monitor_store = MonitorStore::new(env.clone(), crypto_provider, logger.clone())?;
+        let crypto_provider = DbCryptoProvider::new(env.clone())?;
+
+        let monitor_store =
+            MonitorStore::new(env.clone(), crypto_provider.clone(), logger.clone())?;
         let subaddress_store = SubaddressStore::new(env.clone(), logger.clone())?;
         let utxo_store = UtxoStore::new(env.clone(), logger.clone())?;
         let processed_block_store = ProcessedBlockStore::new(env.clone(), logger.clone())?;
 
         Ok(Self {
             env,
+            crypto_provider,
             monitor_store,
             subaddress_store,
             utxo_store,
@@ -106,6 +110,38 @@ impl<DCP: DbCryptoProvider> Database<DCP> {
             metadata_store,
             logger,
         })
+    }
+
+    /// Check if data is currently being encrypted.
+    pub fn is_db_encrypted(&self) -> bool {
+        self.crypto_provider.is_db_encrypted()
+    }
+
+    /// Check if the data is currently accessible (this checks if the correct encryption key has
+    /// been provided)
+    pub fn is_unlocked(&self) -> bool {
+        self.crypto_provider.is_unlocked()
+    }
+
+    /// Check if a given password is the correct password to decrypt the database.
+    /// This also stores it for future encryption/decryption operations.
+    pub fn check_and_store_password(&self, password: &[u8]) -> Result<(), Error> {
+        Ok(self.crypto_provider.check_and_store_password(password)?)
+    }
+
+    /// Re-encrypt the encrypted parts of the database with a new password.
+    /// This will fail if the current password is not set in the crypto_provider since part of the
+    /// re-encryption process relies on being able to decrypt the existing data.
+    pub fn re_encrypt(&self, new_password: &[u8]) -> Result<(), Error> {
+        let mut db_txn = self.env.begin_rw_txn()?;
+
+        // Currently only the monitor store stores encrypted data.
+        self.monitor_store.re_encrypt(&mut db_txn, new_password)?;
+
+        // set_password consumes the transaction to ensure atomicity.
+        self.crypto_provider.change_password(db_txn, new_password)?;
+
+        Ok(())
     }
 
     pub fn add_monitor(&self, data: &MonitorData) -> Result<MonitorId, Error> {
@@ -316,6 +352,172 @@ mod test {
     use mc_account_keys::AccountKey;
     use mc_common::logger::{test_with_logger, Logger};
     use rand::{rngs::StdRng, SeedableRng};
+    use std::iter::FromIterator;
+    use tempdir::TempDir;
+
+    // Test that encryption happy path works as expected.
+    #[test_with_logger]
+    fn test_encryption_happy_path(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+        let account_key = AccountKey::random(&mut rng);
+
+        let mobilecoind_db_tmp =
+            TempDir::new("mobilecoind_db").expect("Could not make tempdir for mobilecoind db");
+        let mobilecoind_db_path = mobilecoind_db_tmp
+            .path()
+            .to_str()
+            .expect("Could not get path as string");
+
+        let mobilecoind_db = Database::new(mobilecoind_db_path.to_string(), logger.clone())
+            .expect("failed creating new mobilecoind db");
+
+        // The db starts unencrypted.
+        assert!(!mobilecoind_db.is_db_encrypted());
+        assert!(mobilecoind_db.is_unlocked());
+
+        // We should be able to insert a monitor at this point.
+        let monitor_data = MonitorData::new(
+            account_key.clone(),
+            0,  // first_subaddress
+            10, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        let monitor_id = mobilecoind_db
+            .add_monitor(&monitor_data)
+            .expect("failed adding monitor");
+
+        // We should be able to get our monitor.
+        assert_eq!(
+            mobilecoind_db.get_monitor_map().unwrap(),
+            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+        );
+
+        // Re-encrypting with an empty password should not affect things.
+        mobilecoind_db.re_encrypt(&[]).unwrap();
+
+        assert!(!mobilecoind_db.is_db_encrypted());
+        assert!(mobilecoind_db.is_unlocked());
+
+        assert_eq!(
+            mobilecoind_db.get_monitor_map().unwrap(),
+            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+        );
+
+        // Checking an empty password should not affect anything.
+        mobilecoind_db.check_and_store_password(&[]).unwrap();
+
+        assert!(!mobilecoind_db.is_db_encrypted());
+        assert!(mobilecoind_db.is_unlocked());
+
+        assert_eq!(
+            mobilecoind_db.get_monitor_map().unwrap(),
+            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+        );
+
+        // Checking a non-empty password should error and not affect things.
+        assert!(mobilecoind_db.check_and_store_password(&[1; 32]).is_err());
+
+        assert!(!mobilecoind_db.is_db_encrypted());
+        assert!(mobilecoind_db.is_unlocked());
+
+        assert_eq!(
+            mobilecoind_db.get_monitor_map().unwrap(),
+            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+        );
+
+        // Set a password.
+        mobilecoind_db.re_encrypt(&[10; 32]).unwrap();
+
+        assert!(mobilecoind_db.is_db_encrypted());
+        assert!(mobilecoind_db.is_unlocked());
+
+        assert_eq!(
+            mobilecoind_db.get_monitor_map().unwrap(),
+            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+        );
+
+        // Re-open the db.
+        let mobilecoind_db = Database::new(mobilecoind_db_path.to_string(), logger.clone())
+            .expect("failed creating new mobilecoind db");
+
+        // This time we're encrypted and locked.
+        assert!(mobilecoind_db.is_db_encrypted());
+        assert!(!mobilecoind_db.is_unlocked());
+
+        // We can't get monitors yet.
+        assert!(mobilecoind_db.get_monitor_map().is_err());
+
+        // We can't re-encrypt.
+        assert!(mobilecoind_db.re_encrypt(&[10; 32]).is_err());
+
+        // Invalid password gets us nothing.
+        assert!(mobilecoind_db.check_and_store_password(&[20; 32]).is_err());
+
+        assert!(mobilecoind_db.is_db_encrypted());
+        assert!(!mobilecoind_db.is_unlocked());
+        assert!(mobilecoind_db.get_monitor_map().is_err());
+        assert!(mobilecoind_db.re_encrypt(&[10; 32]).is_err());
+
+        // Correct password allows unlocking.
+        mobilecoind_db.check_and_store_password(&[10; 32]).unwrap();
+
+        assert!(mobilecoind_db.is_db_encrypted());
+        assert!(mobilecoind_db.is_unlocked());
+
+        assert_eq!(
+            mobilecoind_db.get_monitor_map().unwrap(),
+            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+        );
+
+        // Re-encrypt and repeat the test.
+        mobilecoind_db.re_encrypt(&[11; 32]).unwrap();
+
+        let mobilecoind_db = Database::new(mobilecoind_db_path.to_string(), logger.clone())
+            .expect("failed creating new mobilecoind db");
+
+        assert!(mobilecoind_db.is_db_encrypted());
+        assert!(!mobilecoind_db.is_unlocked());
+
+        assert!(mobilecoind_db.get_monitor_map().is_err());
+
+        assert!(mobilecoind_db.re_encrypt(&[10; 32]).is_err());
+
+        assert!(mobilecoind_db.check_and_store_password(&[10; 32]).is_err());
+
+        assert!(mobilecoind_db.is_db_encrypted());
+        assert!(!mobilecoind_db.is_unlocked());
+        assert!(mobilecoind_db.get_monitor_map().is_err());
+        assert!(mobilecoind_db.re_encrypt(&[10; 32]).is_err());
+
+        mobilecoind_db.check_and_store_password(&[11; 32]).unwrap();
+
+        assert!(mobilecoind_db.is_db_encrypted());
+        assert!(mobilecoind_db.is_unlocked());
+
+        assert_eq!(
+            mobilecoind_db.get_monitor_map().unwrap(),
+            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+        );
+
+        // Remove password and try again.
+        mobilecoind_db.re_encrypt(&[]).unwrap();
+
+        let mobilecoind_db = Database::new(mobilecoind_db_path.to_string(), logger)
+            .expect("failed creating new mobilecoind db");
+
+        assert!(!mobilecoind_db.is_db_encrypted());
+        assert!(mobilecoind_db.is_unlocked());
+
+        assert!(mobilecoind_db.check_and_store_password(&[10; 32]).is_err());
+
+        assert_eq!(
+            mobilecoind_db.get_monitor_map().unwrap(),
+            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+        );
+    }
 
     // Inserting a monitor that overlaps subaddresses of another monitor should result in an error.
     #[test_with_logger]

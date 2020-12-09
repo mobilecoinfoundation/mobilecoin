@@ -6,12 +6,12 @@ extern crate alloc;
 
 pub mod config;
 pub mod database;
-pub mod db_crypto;
 pub mod payments;
 pub mod service;
 
 mod conversions;
 mod database_key;
+mod db_crypto;
 mod error;
 mod monitor_store;
 mod processed_block_store;
