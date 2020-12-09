@@ -2803,6 +2803,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-crypto-x509-chain"
+version = "1.0.0"
+
+[[package]]
 name = "mc-enclave-boundary"
 version = "1.0.0"
 dependencies = [
