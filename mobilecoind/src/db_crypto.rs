@@ -29,8 +29,8 @@ pub const PASSWORD_LEN: usize = 32;
 const CRYPTO_DB_NAME: &str = "db_crypto";
 
 /// Key/value used for testing we have the correct encryption key.
-const ENCRYPTION_STATE_KEY: &str = "encryption indicator key";
-const ENCRYPTION_STATE_VAL: &str = "encryption indicator val";
+const ENCRYPTION_STATE_KEY: &str = "db_encrypted";
+const ENCRYPTION_STATE_VAL: &str = "true";
 
 /// Possible db crypto error types.
 #[derive(Debug, Fail)]
