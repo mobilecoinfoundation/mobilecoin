@@ -1559,7 +1559,7 @@ impl<
         &mut self,
         request: mc_mobilecoind_api::SetDbPasswordRequest,
     ) -> Result<mc_mobilecoind_api::Empty, RpcStatus> {
-        // Check if the database is unlocked and allowing this operations.
+        // Check if the database is unlocked and allowing this operation.
         let is_unlocked = self
             .mobilecoind_db
             .is_unlocked()
