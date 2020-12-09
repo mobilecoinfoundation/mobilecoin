@@ -21,10 +21,17 @@ Options are:
 
 #### Set password for DB
 
-To ensure that the DB stores the account keys at rest, you should make sure that you run mobilecoind with `--encrypted-db` and then call "set-password" via mobilecoind-json on startup. This will set the password hash for the mobilecoinid-db backend. The password hash should be derived according to your security needs, for example, with argon2.
+To ensure that the DB stores the account keys at rest, you should call "set-password" via mobilecoind-json on startup. This will set the password for the mobilecoinid-db backend. The password should be derived according to your security needs, for example, with argon2. It needs to be 32 bytes long, so 64 characters hex-encoded.
 
 ```
-curl -s localhost:9090/set-password -d '{"password_hash": "c7f04fcd40d093ca6578b13d790df0790c96e94a77815e5052993af1b9d12923"}' -X POST -H 'Content-type: application/json'
+curl -s localhost:9090/set-password -d '{"password": "c7f04fcd40d093ca6578b13d790df0790c96e94a77815e5052993af1b9d12923"}' -X POST -H 'Content-type: application/json'
+{"success":true}
+```
+
+The password can also be changed with the same API endpoint. Once a password has been set, future invocations of mobilecoind would need to have it provided in order to unlock (decrypt) the previously-encrypted database.
+
+```
+curl -s localhost:9090/unlock-db -d '{"password": "c7f04fcd40d093ca6578b13d790df0790c96e94a77815e5052993af1b9d12923"}' -X POST -H 'Content-type: application/json'
 {"success":true}
 ```
 

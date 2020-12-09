@@ -13,11 +13,21 @@ use std::{collections::HashMap, convert::TryFrom, iter::FromIterator};
 
 #[derive(Deserialize, Default)]
 pub struct JsonPasswordRequest {
-    pub password_hash: String,
+    pub password: String,
 }
 
 #[derive(Serialize, Default)]
 pub struct JsonPasswordResponse {
+    pub success: bool,
+}
+
+#[derive(Deserialize, Default)]
+pub struct JsonUnlockDbRequest {
+    pub password: String,
+}
+
+#[derive(Serialize, Default)]
+pub struct JsonUnlockDbResponse {
     pub success: bool,
 }
 
