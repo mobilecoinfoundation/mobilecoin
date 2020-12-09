@@ -29,8 +29,8 @@ pub const PASSWORD_LEN: usize = 32;
 const CRYPTO_DB_NAME: &str = "db_crypto";
 
 /// Key/value used for testing we have the correct encryption key.
-const TEST_KEY: &str = "encryption test key";
-const TEST_VAL: &str = "encryption test val";
+const ENCRYPTION_STATE_KEY: &str = "encryption indicator key";
+const ENCRYPTION_STATE_VAL: &str = "encryption indicator val";
 
 /// Possible db crypto error types.
 #[derive(Debug, Fail)]
@@ -94,13 +94,13 @@ impl DbCryptoProvider {
         // Check if the database is currently encrypted.
         let is_db_encrypted = {
             let db_txn = env.begin_ro_txn()?;
-            match db_txn.get(database, &TEST_KEY.as_bytes()) {
+            match db_txn.get(database, &ENCRYPTION_STATE_KEY.as_bytes()) {
                 Ok(_test_val) => {
-                    // The test key is present in the database, this means encryption is enabled.
+                    // The encryption indicator key is present in the database, this means encryption is enabled.
                     true
                 }
                 Err(LmdbError::NotFound) => {
-                    // The test key is not in the database, this means encryption is not enabled.
+                    // The encryption indicator key is not in the database, this means encryption is not enabled.
                     false
                 }
                 Err(err) => {
@@ -133,8 +133,9 @@ impl DbCryptoProvider {
             // Database is encrypted, see if we can decrypt our test value with the provided
             // password.
             let db_txn = self.env.begin_ro_txn()?;
-            let test_val = db_txn.get(self.database, &TEST_KEY.as_bytes())?;
-            let expected_val = self.encrypt_with_password(password, TEST_VAL.as_bytes())?;
+            let test_val = db_txn.get(self.database, &ENCRYPTION_STATE_KEY.as_bytes())?;
+            let expected_val =
+                self.encrypt_with_password(password, ENCRYPTION_STATE_VAL.as_bytes())?;
             if test_val == expected_val {
                 state.encryption_key = password.to_vec();
                 Ok(())
@@ -179,7 +180,7 @@ impl DbCryptoProvider {
         // The test value will be used to verify whether a given password is correct.
         if password.is_empty() {
             if state.is_db_encrypted {
-                db_txn.del(self.database, &TEST_KEY.as_bytes(), None)?;
+                db_txn.del(self.database, &ENCRYPTION_STATE_KEY.as_bytes(), None)?;
             }
         } else {
             if password.len() != PASSWORD_LEN {
@@ -188,8 +189,8 @@ impl DbCryptoProvider {
 
             db_txn.put(
                 self.database,
-                &TEST_KEY.as_bytes(),
-                &self.encrypt_with_password(password, TEST_VAL.as_bytes())?,
+                &ENCRYPTION_STATE_KEY.as_bytes(),
+                &self.encrypt_with_password(password, ENCRYPTION_STATE_VAL.as_bytes())?,
                 WriteFlags::empty(),
             )?;
         }
