@@ -76,7 +76,7 @@ RUN apt-get update -q -q && \
 # prometheus = helps with running slam scripts locally
 
 # For use in CI
-RUN pip3 install awscli
+RUN pip3 install awscli black
 
 # filebeat is used for logs when running slam scripts locally
 RUN curl -L -O https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-7.4.2-amd64.deb && \
