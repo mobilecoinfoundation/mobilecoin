@@ -211,7 +211,9 @@ impl DbCryptoProvider {
     pub fn encrypt(&self, plaintext_bytes: &[u8]) -> Result<Vec<u8>, DbCryptoError> {
         let state = self.state.lock().expect("mutex poisoned");
         if state.is_db_encrypted {
-            assert!(!state.encryption_key.is_empty());
+            if state.encryption_key.is_empty() {
+                return Err(DbCryptoError::PasswordNeeded);
+            }
 
             let (key, nonce) = Self::expand_password(&state.encryption_key)?;
 
@@ -303,5 +305,358 @@ impl DbCryptoProvider {
             Split::<u8, <Aes256Gcm as AeadInPlace>::NonceSize>::split(remainder);
 
         Ok((key, nonce))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempdir::TempDir;
+    const TEST_DATA: &[u8; 10] = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+    fn get_test_db_crypto_provider() -> (DbCryptoProvider, TempDir) {
+        let path = TempDir::new("db_crypto_test").expect("Could not make tempdir for ledger db");
+
+        let env = Arc::new(
+            Environment::new()
+                .set_max_dbs(10)
+                .set_map_size(10000000)
+                .open(path.as_ref())
+                .unwrap(),
+        );
+
+        (DbCryptoProvider::new(env).unwrap(), path)
+    }
+
+    #[test]
+    fn test_basic() {
+        let (crypto_provider, _) = get_test_db_crypto_provider();
+
+        // We start un-encrypted and unlocked.
+        assert!(!crypto_provider.is_db_encrypted());
+        assert!(crypto_provider.is_unlocked());
+
+        // check_and_store_password should only accept an empty password and we should stay
+        // unencrypted.
+        assert!(crypto_provider
+            .check_and_store_password(&[1, 2, 3])
+            .is_err());
+        assert!(!crypto_provider.is_db_encrypted());
+        assert!(crypto_provider.is_unlocked());
+
+        assert!(crypto_provider.check_and_store_password(&[]).is_ok());
+        assert!(!crypto_provider.is_db_encrypted());
+        assert!(crypto_provider.is_unlocked());
+
+        // Encrypting/decrypting should be a no-op at this point.
+        assert_eq!(
+            crypto_provider.encrypt(&TEST_DATA[..]).unwrap(),
+            TEST_DATA.to_vec()
+        );
+        assert_eq!(
+            crypto_provider.decrypt(&TEST_DATA[..]).unwrap(),
+            TEST_DATA.to_vec()
+        );
+        assert_eq!(
+            crypto_provider
+                .encrypt_with_password(&[], &TEST_DATA[..])
+                .unwrap(),
+            TEST_DATA.to_vec()
+        );
+        assert_ne!(
+            crypto_provider
+                .encrypt_with_password(&[1; PASSWORD_LEN], &TEST_DATA[..])
+                .unwrap(),
+            TEST_DATA.to_vec()
+        );
+
+        // Changing to empty password should not affect anything.
+        let db_txn = crypto_provider.env.begin_rw_txn().unwrap();
+        crypto_provider.change_password(db_txn, &[]).unwrap();
+
+        assert!(crypto_provider
+            .check_and_store_password(&[1, 2, 3])
+            .is_err());
+        assert!(!crypto_provider.is_db_encrypted());
+        assert!(crypto_provider.is_unlocked());
+
+        assert!(crypto_provider.check_and_store_password(&[]).is_ok());
+        assert!(crypto_provider.check_and_store_password(&[200; 1]).is_err());
+        assert!(crypto_provider
+            .check_and_store_password(&[200; PASSWORD_LEN])
+            .is_err());
+        assert!(!crypto_provider.is_db_encrypted());
+        assert!(crypto_provider.is_unlocked());
+
+        // Encrypting/decrypting should be a no-op at this point.
+        assert_eq!(
+            crypto_provider.encrypt(&TEST_DATA[..]).unwrap(),
+            TEST_DATA.to_vec()
+        );
+        assert_eq!(
+            crypto_provider.decrypt(&TEST_DATA[..]).unwrap(),
+            TEST_DATA.to_vec()
+        );
+        assert_eq!(
+            crypto_provider
+                .encrypt_with_password(&[], &TEST_DATA[..])
+                .unwrap(),
+            TEST_DATA.to_vec()
+        );
+        assert_ne!(
+            crypto_provider
+                .encrypt_with_password(&[1; PASSWORD_LEN], &TEST_DATA[..])
+                .unwrap(),
+            TEST_DATA.to_vec()
+        );
+
+        // Changing a password should indicate we are now encrypted, and encryption/decryption
+        // should no longer be the identity function.
+        let db_txn = crypto_provider.env.begin_rw_txn().unwrap();
+        crypto_provider
+            .change_password(db_txn, &[6; PASSWORD_LEN])
+            .unwrap();
+
+        assert!(crypto_provider.check_and_store_password(&[]).is_err());
+        assert!(crypto_provider.check_and_store_password(&[200; 1]).is_err());
+        assert!(crypto_provider
+            .check_and_store_password(&[200; PASSWORD_LEN])
+            .is_err());
+        assert!(crypto_provider
+            .check_and_store_password(&[6; PASSWORD_LEN])
+            .is_ok());
+
+        assert!(crypto_provider.is_db_encrypted());
+        assert!(crypto_provider.is_unlocked());
+
+        let encrypted_data = crypto_provider.encrypt(&TEST_DATA[..]).unwrap();
+        assert_ne!(encrypted_data, TEST_DATA.to_vec()); // No longer the identity function
+        assert!(crypto_provider.decrypt(&TEST_DATA[..]).is_err()); // TEST_DATA is not encrypted so this shoud fail.
+        assert_eq!(
+            TEST_DATA.to_vec(),
+            crypto_provider.decrypt(&encrypted_data).unwrap()
+        );
+
+        assert_eq!(
+            encrypted_data,
+            crypto_provider
+                .encrypt_with_password(&[6; PASSWORD_LEN], &TEST_DATA[..])
+                .unwrap()
+        );
+
+        // Changing to a different password should result in different encrypted data.
+        let db_txn = crypto_provider.env.begin_rw_txn().unwrap();
+        crypto_provider
+            .change_password(db_txn, &[7; PASSWORD_LEN])
+            .unwrap();
+
+        assert!(crypto_provider.is_db_encrypted());
+        assert!(crypto_provider.is_unlocked());
+
+        let encrypted_data2 = crypto_provider.encrypt(&TEST_DATA[..]).unwrap();
+        assert_ne!(encrypted_data, encrypted_data2);
+        assert_ne!(TEST_DATA.to_vec(), encrypted_data2);
+
+        assert_eq!(
+            encrypted_data2,
+            crypto_provider
+                .encrypt_with_password(&[7; PASSWORD_LEN], &TEST_DATA[..])
+                .unwrap()
+        );
+
+        // Previously encrypted data should not decrypt.
+        assert!(crypto_provider.decrypt(&encrypted_data).is_err());
+
+        // check_and_store_password should behave as expected.
+        assert!(crypto_provider.check_and_store_password(&[]).is_err());
+        assert!(crypto_provider.check_and_store_password(&[200; 1]).is_err());
+        assert!(crypto_provider
+            .check_and_store_password(&[200; PASSWORD_LEN])
+            .is_err());
+        assert!(crypto_provider
+            .check_and_store_password(&[7; PASSWORD_LEN])
+            .is_ok());
+
+        // Changing back to an empty password should clear the is_db_encrypted flag.
+        let db_txn = crypto_provider.env.begin_rw_txn().unwrap();
+        crypto_provider.change_password(db_txn, &[]).unwrap();
+
+        assert!(crypto_provider.check_and_store_password(&[]).is_ok());
+        assert!(!crypto_provider.is_db_encrypted());
+        assert!(crypto_provider.is_unlocked());
+
+        // Encrypting/decrypting should be a no-op at this point.
+        assert_eq!(
+            crypto_provider.encrypt(&TEST_DATA[..]).unwrap(),
+            TEST_DATA.to_vec()
+        );
+        assert_eq!(
+            crypto_provider.decrypt(&TEST_DATA[..]).unwrap(),
+            TEST_DATA.to_vec()
+        );
+        assert_eq!(
+            crypto_provider
+                .encrypt_with_password(&[], &TEST_DATA[..])
+                .unwrap(),
+            TEST_DATA.to_vec()
+        );
+        assert_ne!(
+            crypto_provider
+                .encrypt_with_password(&[1; PASSWORD_LEN], &TEST_DATA[..])
+                .unwrap(),
+            TEST_DATA.to_vec()
+        );
+
+        // check_and_store_password should behave as expected.
+        assert!(crypto_provider.check_and_store_password(&[]).is_ok());
+        assert!(crypto_provider.check_and_store_password(&[200; 1]).is_err());
+        assert!(crypto_provider
+            .check_and_store_password(&[200; PASSWORD_LEN])
+            .is_err());
+        assert!(crypto_provider.check_and_store_password(&[7; 1]).is_err());
+    }
+
+    #[test]
+    fn test_encrypt_with_password_rejects_invalid_password_len() {
+        let (crypto_provider, _) = get_test_db_crypto_provider();
+
+        assert!(crypto_provider
+            .encrypt_with_password(&[123; PASSWORD_LEN - 1], &TEST_DATA[..])
+            .is_err());
+
+        assert!(crypto_provider
+            .encrypt_with_password(&[123; PASSWORD_LEN + 1], &TEST_DATA[..])
+            .is_err());
+
+        assert!(crypto_provider
+            .encrypt_with_password(&[123; PASSWORD_LEN], &TEST_DATA[..])
+            .is_ok());
+    }
+
+    #[test]
+    fn test_change_password_rejects_invalid_password_len() {
+        let (crypto_provider, _) = get_test_db_crypto_provider();
+
+        assert!(crypto_provider
+            .change_password(
+                crypto_provider.env.begin_rw_txn().unwrap(),
+                &[123; PASSWORD_LEN - 1]
+            )
+            .is_err());
+
+        assert!(crypto_provider
+            .change_password(
+                crypto_provider.env.begin_rw_txn().unwrap(),
+                &[123; PASSWORD_LEN + 1]
+            )
+            .is_err());
+
+        assert!(crypto_provider
+            .change_password(
+                crypto_provider.env.begin_rw_txn().unwrap(),
+                &[123; PASSWORD_LEN]
+            )
+            .is_ok());
+    }
+
+    #[test]
+    fn test_db_reopen() {
+        // Get the initial db.
+        let (_crypto_provider, path) = get_test_db_crypto_provider();
+
+        let mut password = [0; PASSWORD_LEN];
+
+        // We will toggle the encrytpion every other iteraction.
+        // Even executions are un-encrypted, odd executions are encrypted.
+        for i in 0..100 {
+            let is_encrypted = i % 2 == 1;
+
+            let env = Arc::new(
+                Environment::new()
+                    .set_max_dbs(10)
+                    .set_map_size(10000000)
+                    .open(path.as_ref())
+                    .unwrap(),
+            );
+
+            let crypto_provider = DbCryptoProvider::new(env).unwrap();
+
+            if is_encrypted {
+                let expected_encrypted_bytes = crypto_provider
+                    .encrypt_with_password(&password[..], &TEST_DATA[..])
+                    .unwrap();
+
+                assert!(crypto_provider.is_db_encrypted());
+                assert!(!crypto_provider.is_unlocked());
+
+                // encrypt/decrypt should fail if a password is not provided.
+                assert!(crypto_provider.encrypt(&TEST_DATA[..]).is_err());
+                assert!(crypto_provider.decrypt(&expected_encrypted_bytes).is_err());
+
+                // Providing the wrong password should fail.
+                assert!(crypto_provider
+                    .check_and_store_password(&[255; PASSWORD_LEN])
+                    .is_err());
+
+                assert!(crypto_provider.is_db_encrypted());
+                assert!(!crypto_provider.is_unlocked());
+
+                // encrypt/decrypt should fail if a password is not provided.
+                assert!(crypto_provider.encrypt(&TEST_DATA[..]).is_err());
+                assert!(crypto_provider.decrypt(&expected_encrypted_bytes).is_err());
+
+                // Provide the correct password
+                crypto_provider
+                    .check_and_store_password(&password[..])
+                    .unwrap();
+
+                assert!(crypto_provider.is_db_encrypted());
+                assert!(crypto_provider.is_unlocked());
+
+                assert_eq!(
+                    crypto_provider.encrypt(&TEST_DATA[..]).unwrap(),
+                    expected_encrypted_bytes
+                );
+                assert_eq!(
+                    crypto_provider.decrypt(&expected_encrypted_bytes).unwrap(),
+                    TEST_DATA.to_vec()
+                );
+
+                // Remove password
+                crypto_provider
+                    .change_password(crypto_provider.env.begin_rw_txn().unwrap(), &[])
+                    .unwrap();
+            } else {
+                assert!(!crypto_provider.is_db_encrypted());
+                assert!(crypto_provider.is_unlocked());
+
+                assert_eq!(
+                    crypto_provider.encrypt(&TEST_DATA[..]).unwrap(),
+                    TEST_DATA.to_vec()
+                );
+                assert_eq!(
+                    crypto_provider.decrypt(&TEST_DATA[..]).unwrap(),
+                    TEST_DATA.to_vec()
+                );
+                assert_eq!(
+                    crypto_provider
+                        .encrypt_with_password(&[], &TEST_DATA[..])
+                        .unwrap(),
+                    TEST_DATA.to_vec()
+                );
+                assert_ne!(
+                    crypto_provider
+                        .encrypt_with_password(&[1; PASSWORD_LEN], &TEST_DATA[..])
+                        .unwrap(),
+                    TEST_DATA.to_vec()
+                );
+
+                // Encrypt for the next iteration.
+                password = [i; PASSWORD_LEN];
+                crypto_provider
+                    .change_password(crypto_provider.env.begin_rw_txn().unwrap(), &password[..])
+                    .unwrap();
+            }
+        }
     }
 }
