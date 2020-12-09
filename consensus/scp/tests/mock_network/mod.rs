@@ -238,7 +238,7 @@ impl SCPNetwork {
             .lock()
             .expect("lock failed on nodes_map in broadcast");
 
-        log::trace!(logger, "(broadcast) {}", msg.to_display());
+        log::trace!(logger, "(broadcast) {}", msg);
 
         let amsg = Arc::new(msg);
 

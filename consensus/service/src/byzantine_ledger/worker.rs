@@ -481,7 +481,7 @@ impl<
             log::warn!(
                 self.logger,
                 "Msg refers to a different blockchain. Msg {}, previous block ID: {:?}",
-                consensus_msg.scp_msg().to_display(),
+                consensus_msg.scp_msg(),
                 consensus_msg.prev_block_id(),
             );
         }
