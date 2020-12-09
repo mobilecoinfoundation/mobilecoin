@@ -119,8 +119,8 @@ impl Database {
 
     /// Check if the data is currently accessible (this checks if the correct encryption key has
     /// been provided)
-    pub fn is_unlocked(&self) -> Result<bool, Error> {
-        Ok(self.crypto_provider.is_unlocked())
+    pub fn is_unlocked(&self) -> bool {
+        self.crypto_provider.is_unlocked()
     }
 
     /// Check if a given password is the correct password to decrypt the database.
@@ -352,6 +352,172 @@ mod test {
     use mc_account_keys::AccountKey;
     use mc_common::logger::{test_with_logger, Logger};
     use rand::{rngs::StdRng, SeedableRng};
+    use std::iter::FromIterator;
+    use tempdir::TempDir;
+
+    // Test that encryption happy path works as expected.
+    #[test_with_logger]
+    fn test_encryption_happy_path(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+        let account_key = AccountKey::random(&mut rng);
+
+        let mobilecoind_db_tmp =
+            TempDir::new("mobilecoind_db").expect("Could not make tempdir for mobilecoind db");
+        let mobilecoind_db_path = mobilecoind_db_tmp
+            .path()
+            .to_str()
+            .expect("Could not get path as string");
+
+        let mobilecoind_db = Database::new(mobilecoind_db_path.to_string(), logger.clone())
+            .expect("failed creating new mobilecoind db");
+
+        // The db starts unencrypted.
+        assert!(!mobilecoind_db.is_db_encrypted());
+        assert!(mobilecoind_db.is_unlocked());
+
+        // We should be able to insert a monitor at this point.
+        let monitor_data = MonitorData::new(
+            account_key.clone(),
+            0,  // first_subaddress
+            10, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        let monitor_id = mobilecoind_db
+            .add_monitor(&monitor_data)
+            .expect("failed adding monitor");
+
+        // We should be able to get our monitor.
+        assert_eq!(
+            mobilecoind_db.get_monitor_map().unwrap(),
+            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+        );
+
+        // Re-encrypting with an empty password should not affect things.
+        mobilecoind_db.re_encrypt(&[]).unwrap();
+
+        assert!(!mobilecoind_db.is_db_encrypted());
+        assert!(mobilecoind_db.is_unlocked());
+
+        assert_eq!(
+            mobilecoind_db.get_monitor_map().unwrap(),
+            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+        );
+
+        // Checking an empty password should not affect anything.
+        mobilecoind_db.check_and_store_password(&[]).unwrap();
+
+        assert!(!mobilecoind_db.is_db_encrypted());
+        assert!(mobilecoind_db.is_unlocked());
+
+        assert_eq!(
+            mobilecoind_db.get_monitor_map().unwrap(),
+            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+        );
+
+        // Checking a non-empty password should error and not affect things.
+        assert!(mobilecoind_db.check_and_store_password(&[1; 32]).is_err());
+
+        assert!(!mobilecoind_db.is_db_encrypted());
+        assert!(mobilecoind_db.is_unlocked());
+
+        assert_eq!(
+            mobilecoind_db.get_monitor_map().unwrap(),
+            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+        );
+
+        // Set a password.
+        mobilecoind_db.re_encrypt(&[10; 32]).unwrap();
+
+        assert!(mobilecoind_db.is_db_encrypted());
+        assert!(mobilecoind_db.is_unlocked());
+
+        assert_eq!(
+            mobilecoind_db.get_monitor_map().unwrap(),
+            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+        );
+
+        // Re-open the db.
+        let mobilecoind_db = Database::new(mobilecoind_db_path.to_string(), logger.clone())
+            .expect("failed creating new mobilecoind db");
+
+        // This time we're encrypted and locked.
+        assert!(mobilecoind_db.is_db_encrypted());
+        assert!(!mobilecoind_db.is_unlocked());
+
+        // We can't get monitors yet.
+        assert!(mobilecoind_db.get_monitor_map().is_err());
+
+        // We can't re-encrypt.
+        assert!(mobilecoind_db.re_encrypt(&[10; 32]).is_err());
+
+        // Invalid password gets us nothing.
+        assert!(mobilecoind_db.check_and_store_password(&[20; 32]).is_err());
+
+        assert!(mobilecoind_db.is_db_encrypted());
+        assert!(!mobilecoind_db.is_unlocked());
+        assert!(mobilecoind_db.get_monitor_map().is_err());
+        assert!(mobilecoind_db.re_encrypt(&[10; 32]).is_err());
+
+        // Correct password allows unlocking.
+        mobilecoind_db.check_and_store_password(&[10; 32]).unwrap();
+
+        assert!(mobilecoind_db.is_db_encrypted());
+        assert!(mobilecoind_db.is_unlocked());
+
+        assert_eq!(
+            mobilecoind_db.get_monitor_map().unwrap(),
+            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+        );
+
+        // Re-encrypt and repeat the test.
+        mobilecoind_db.re_encrypt(&[11; 32]).unwrap();
+
+        let mobilecoind_db = Database::new(mobilecoind_db_path.to_string(), logger.clone())
+            .expect("failed creating new mobilecoind db");
+
+        assert!(mobilecoind_db.is_db_encrypted());
+        assert!(!mobilecoind_db.is_unlocked());
+
+        assert!(mobilecoind_db.get_monitor_map().is_err());
+
+        assert!(mobilecoind_db.re_encrypt(&[10; 32]).is_err());
+
+        assert!(mobilecoind_db.check_and_store_password(&[10; 32]).is_err());
+
+        assert!(mobilecoind_db.is_db_encrypted());
+        assert!(!mobilecoind_db.is_unlocked());
+        assert!(mobilecoind_db.get_monitor_map().is_err());
+        assert!(mobilecoind_db.re_encrypt(&[10; 32]).is_err());
+
+        mobilecoind_db.check_and_store_password(&[11; 32]).unwrap();
+
+        assert!(mobilecoind_db.is_db_encrypted());
+        assert!(mobilecoind_db.is_unlocked());
+
+        assert_eq!(
+            mobilecoind_db.get_monitor_map().unwrap(),
+            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+        );
+
+        // Remove password and try again.
+        mobilecoind_db.re_encrypt(&[]).unwrap();
+
+        let mobilecoind_db = Database::new(mobilecoind_db_path.to_string(), logger)
+            .expect("failed creating new mobilecoind db");
+
+        assert!(!mobilecoind_db.is_db_encrypted());
+        assert!(mobilecoind_db.is_unlocked());
+
+        assert!(mobilecoind_db.check_and_store_password(&[10; 32]).is_err());
+
+        assert_eq!(
+            mobilecoind_db.get_monitor_map().unwrap(),
+            HashMap::from_iter(vec![(monitor_id.clone(), monitor_data.clone())])
+        );
+    }
 
     // Inserting a monitor that overlaps subaddresses of another monitor should result in an error.
     #[test_with_logger]

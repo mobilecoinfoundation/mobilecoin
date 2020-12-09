@@ -1560,11 +1560,7 @@ impl<
         request: mc_mobilecoind_api::SetDbPasswordRequest,
     ) -> Result<mc_mobilecoind_api::Empty, RpcStatus> {
         // Check if the database is unlocked and allowing this operation.
-        let is_unlocked = self
-            .mobilecoind_db
-            .is_unlocked()
-            .map_err(|err| rpc_internal_error("mobilecoind_db.is_unlocked", err, &self.logger))?;
-        if !is_unlocked {
+        if !self.mobilecoind_db.is_unlocked() {
             return Err(RpcStatus::new(
                 RpcStatusCode::INTERNAL,
                 Some("must unlock before changing current password".to_owned()),
@@ -1585,11 +1581,7 @@ impl<
         &mut self,
         request: mc_mobilecoind_api::UnlockDbRequest,
     ) -> Result<mc_mobilecoind_api::Empty, RpcStatus> {
-        let is_unlocked = self
-            .mobilecoind_db
-            .is_unlocked()
-            .map_err(|err| rpc_internal_error("mobilecoind_db.is_unlocked", err, &self.logger))?;
-        if is_unlocked {
+        if self.mobilecoind_db.is_unlocked() {
             return Err(RpcStatus::new(
                 RpcStatusCode::INTERNAL,
                 Some("already unlocked".to_owned()),
