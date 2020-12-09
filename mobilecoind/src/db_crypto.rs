@@ -269,7 +269,7 @@ impl DbCryptoProvider {
             (false, true) => Ok(ciphertext.to_vec()),
 
             // Db is not encrypted and password is not empty (should never happen)
-            (false, false) => panic!("invalid state"),
+            (false, false) => panic!("invalid db encryption state"),
 
             // Db is encrypted but password is missing
             (true, true) => Err(DbCryptoError::PasswordNeeded),
