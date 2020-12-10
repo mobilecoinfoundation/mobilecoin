@@ -60,7 +60,7 @@ impl<'de> Deserialize<'de> for ResponderId {
         D: Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        ResponderId::from_str(&s).map_err(|e| D::Error::custom(format!("{:?}", e)))
+        ResponderId::from_str(&s).map_err(|_e| D::Error::custom("Invalid ResponderId"))
     }
 }
 
