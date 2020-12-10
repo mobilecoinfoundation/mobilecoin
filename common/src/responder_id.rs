@@ -13,7 +13,7 @@ use core::{
 use failure::Fail;
 use mc_crypto_digestible::Digestible;
 use regex::Regex;
-use serde::{Deserialize, Serialize};
+use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 
 /// Potential parse errors
 #[derive(Debug, Fail, Ord, PartialOrd, Eq, PartialEq, Clone)]
@@ -25,9 +25,7 @@ pub enum ResponderIdParseError {
 }
 
 /// Node unique identifier.
-#[derive(
-    Clone, Default, Debug, Eq, Serialize, Deserialize, PartialEq, PartialOrd, Ord, Hash, Digestible,
-)]
+#[derive(Clone, Default, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, Digestible)]
 pub struct ResponderId {
     /// The node's host name. See https://tools.ietf.org/html/rfc1123
     pub host: String,
@@ -36,14 +34,33 @@ pub struct ResponderId {
 }
 
 impl ResponderId {
-    /// Create a new ResponderId
+    /// Create a new ResponderId.
     ///
     /// # Arguments
     /// * `host` - Node's host name
     /// * `port` - Node's port number
     pub fn new(host: &str, port: u16) -> Result<Self, ResponderIdParseError> {
-        let host_port = format!("{}:{}", host, port);
+        let host_port = alloc::format!("{}:{}", host, port);
         ResponderId::from_str(&host_port)
+    }
+}
+
+impl Serialize for ResponderId {
+    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&alloc::format!("{}:{}", &self.host, &self.port))
+    }
+}
+
+impl<'de> Deserialize<'de> for ResponderId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        ResponderId::from_str(&s).map_err(|e| D::Error::custom(format!("{:?}", e)))
     }
 }
 
@@ -57,22 +74,22 @@ impl FromStr for ResponderId {
     type Err = ResponderIdParseError;
 
     fn from_str(src: &str) -> Result<ResponderId, Self::Err> {
-        // host:port
-        let re = Regex::new(r#"(?P<host>^[^:]+):(?P<port>[0-9]{1,5})"#).unwrap();
+        // host:port or host:port/, with named capture groups.
+        let re = Regex::new(r#"(?P<host>^[^:]+):(?P<port>[0-9]{1,5})/?"#).unwrap();
 
         let captures = re
             .captures(src)
-            .ok_or(ResponderIdParseError::InvalidFormat(src.to_string()))?;
+            .ok_or_else(|| ResponderIdParseError::InvalidFormat(src.to_string()))?;
 
         let host: &str = captures
             .name("host")
             .map(|host| host.as_str())
-            .ok_or(ResponderIdParseError::InvalidFormat(src.to_string()))?;
+            .ok_or_else(|| ResponderIdParseError::InvalidFormat(src.to_string()))?;
 
         let port_str: &str = captures
             .name("port")
             .map(|port| port.as_str())
-            .ok_or(ResponderIdParseError::InvalidFormat(src.to_string()))?;
+            .ok_or_else(|| ResponderIdParseError::InvalidFormat(src.to_string()))?;
 
         let port = port_str
             .parse::<u16>()
@@ -108,6 +125,16 @@ mod tests {
     }
 
     #[test]
+    fn new_accepts_valid_ip_port() {
+        let host = "0.0.0.0";
+        let port = 8082;
+
+        let responder_id = ResponderId::new(host, port).unwrap();
+        assert_eq!(responder_id.host, host);
+        assert_eq!(responder_id.port, port);
+    }
+
+    #[test]
     fn new_rejects_invalid_host() {
         let host = "hostname:com"; // Contains a forbidden extra colon.
         let port = 6;
@@ -124,5 +151,11 @@ mod tests {
     /// Valid ports have number 0 to 65353.
     fn from_str_rejects_invalid_port_number() {
         assert!(ResponderId::from_str("foo.com:99999").is_err());
+    }
+
+    #[test]
+    /// from_str accepts trailing slash.
+    fn from_str_accepts_trailing_slash() {
+        assert!(ResponderId::from_str("foo.com:23/").is_ok());
     }
 }
