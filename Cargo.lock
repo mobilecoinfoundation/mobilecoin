@@ -1952,6 +1952,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "libm"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7fc7aa29613bd6a620df431842069224d8bc9011086b1db4c0e0cd47fa03ec9a"
+
+[[package]]
 name = "libz-sys"
 version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4105,11 +4111,11 @@ dependencies = [
 
 [[package]]
 name = "packed_simd"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a85ea9fc0d4ac0deb6fe7911d38786b32fc11119afd9e9d38b84ff691ce64220"
+version = "0.3.4"
+source = "git+https://github.com/rust-lang/packed_simd.git?rev=32303805c1c363c2dff6a752c66da173f71d3056#32303805c1c363c2dff6a752c66da173f71d3056"
 dependencies = [
  "cfg-if 0.1.10",
+ "libm",
 ]
 
 [[package]]
