@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
 mod mock_network;
-
+use crate::mock_network::TestOptions;
 use mc_common::logger::{test_with_logger, Logger};
 use serial_test_derive::serial;
 
@@ -17,7 +17,7 @@ fn mesh_test_helper(
         return;
     }
 
-    let mut test_options = mock_network::TestOptions::new();
+    let mut test_options = TestOptions::new();
     test_options.values_to_submit = 10000;
     let network_config = mock_network::mesh_topology::dense_mesh(n, k);
     mock_network::build_and_test(&network_config, &test_options, logger.clone());
