@@ -68,9 +68,6 @@ pub struct TxProposal {
     /// A list of the confirmation numbers, in the same order
     /// as the outlays.
     pub outlay_confirmation_numbers: Vec<TxOutConfirmationNumber>,
-
-    /// Value of the change TxOut
-    pub change_value: u64,
 }
 
 impl TxProposal {
@@ -850,7 +847,6 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
             tx,
             outlay_index_to_tx_out_index,
             outlay_confirmation_numbers,
-            change_value: change,
         })
     }
 
