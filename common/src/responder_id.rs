@@ -41,9 +41,9 @@ impl ResponderId {
     /// # Arguments
     /// * `host` - Node's host name
     /// * `port` - Node's port number
-    pub fn new(host: &str, port: u16) -> Self {
+    pub fn new(host: &str, port: u16) -> Result<Self, ResponderIdParseError> {
         let host_port = format!("{}:{}", host, port);
-        ResponderId::from_str(&host_port).unwrap() // TODO
+        ResponderId::from_str(&host_port)
     }
 }
 
@@ -58,7 +58,7 @@ impl FromStr for ResponderId {
 
     fn from_str(src: &str) -> Result<ResponderId, Self::Err> {
         // host:port
-        let re = Regex::new(r#"(?P<host>[^:]+):(?P<port>[0-9]{1,5})"#).unwrap();
+        let re = Regex::new(r#"(?P<host>^[^:]+):(?P<port>[0-9]{1,5})"#).unwrap();
 
         let captures = re
             .captures(src)
@@ -102,17 +102,27 @@ mod tests {
         let host = "hostname.com";
         let port = 65353;
 
-        let responder_id = ResponderId::new(host, port);
+        let responder_id = ResponderId::new(host, port).unwrap();
         assert_eq!(responder_id.host, host);
         assert_eq!(responder_id.port, port);
     }
 
     #[test]
+    fn new_rejects_invalid_host() {
+        let host = "hostname:com"; // Contains a forbidden extra colon.
+        let port = 6;
+        match ResponderId::new(host, port) {
+            Ok(responder_id) => panic!(format!(
+                "host: {}, port: {}",
+                responder_id.host, responder_id.port
+            )),
+            Err(_) => {} // This is expected.
+        }
+    }
+
+    #[test]
     /// Valid ports have number 0 to 65353.
     fn from_str_rejects_invalid_port_number() {
-        match ResponderId::from_str("foo.com:99999") {
-            Ok(_responder_id) => panic!(),
-            Err(_e) => {} // This is expected.
-        }
+        assert!(ResponderId::from_str("foo.com:99999").is_err());
     }
 }

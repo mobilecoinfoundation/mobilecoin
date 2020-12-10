@@ -465,13 +465,20 @@ mod tests {
         (client, server)
     }
 
+    fn get_responder_ids() -> Vec<ResponderId> {
+        vec![
+            ResponderId::new("A", 1234).unwrap(),
+            ResponderId::new("B", 1234).unwrap(),
+        ]
+    }
+
     #[test_with_logger]
     // Should ignore a message from an unknown peer.
     fn test_send_consensus_msg_ignore_unknown_peer(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([67u8; 32]);
         let (consensus_enclave, ledger, tx_manager) = get_mocks();
 
-        let known_responder_ids = vec![ResponderId::new("A", 1234), ResponderId::new("B", 1234)];
+        let known_responder_ids = get_responder_ids();
 
         let instance = PeerApiService::new(
             Arc::new(consensus_enclave),
@@ -487,7 +494,7 @@ mod tests {
         let (client, _server) = get_client_server(instance);
 
         // A message from an unknown peer.
-        let from = ResponderId::new("X", 1234);
+        let from = ResponderId::new("X", 1234).unwrap();
         let node_x_signer_key = Ed25519Pair::from_random(&mut rng);
         let scp_msg = Msg {
             sender_id: NodeID {
@@ -541,7 +548,7 @@ mod tests {
             Ed25519Pair::from(private_key)
         };
 
-        let known_responder_ids = vec![ResponderId::new("A", 1234), ResponderId::new("B", 1234)];
+        let known_responder_ids = get_responder_ids();
 
         let instance = PeerApiService::new(
             Arc::new(consensus_enclave),
@@ -603,7 +610,7 @@ mod tests {
     fn test_send_consensus_msg_deserialize_error(logger: Logger) {
         let (consensus_enclave, ledger, tx_manager) = get_mocks();
 
-        let known_responder_ids = vec![ResponderId::new("A", 1234), ResponderId::new("B", 1234)];
+        let known_responder_ids = get_responder_ids();
 
         let instance = PeerApiService::new(
             Arc::new(consensus_enclave),
@@ -646,7 +653,7 @@ mod tests {
             Ed25519Pair::from(private_key)
         };
 
-        let known_responder_ids = vec![ResponderId::new("A", 1234), ResponderId::new("B", 1234)];
+        let known_responder_ids = get_responder_ids();
 
         let instance = PeerApiService::new(
             Arc::new(consensus_enclave),
