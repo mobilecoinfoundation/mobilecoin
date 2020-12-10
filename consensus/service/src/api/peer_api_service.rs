@@ -471,11 +471,7 @@ mod tests {
         let mut rng: StdRng = SeedableRng::from_seed([67u8; 32]);
         let (consensus_enclave, ledger, tx_manager) = get_mocks();
 
-        // ResponderIds seem to be "host:port" strings.
-        let known_responder_ids = vec![
-            ResponderId("A:port".to_owned()),
-            ResponderId("B:port".to_owned()),
-        ];
+        let known_responder_ids = vec![ResponderId::new("A", 1234), ResponderId::new("B", 1234)];
 
         let instance = PeerApiService::new(
             Arc::new(consensus_enclave),
@@ -491,7 +487,7 @@ mod tests {
         let (client, _server) = get_client_server(instance);
 
         // A message from an unknown peer.
-        let from = ResponderId("X:port".to_owned());
+        let from = ResponderId::new("X", 1234);
         let node_x_signer_key = Ed25519Pair::from_random(&mut rng);
         let scp_msg = Msg {
             sender_id: NodeID {
@@ -545,11 +541,7 @@ mod tests {
             Ed25519Pair::from(private_key)
         };
 
-        // ResponderIds seem to be "host:port" strings.
-        let known_responder_ids = vec![
-            ResponderId("A:port".to_owned()),
-            ResponderId("B:port".to_owned()),
-        ];
+        let known_responder_ids = vec![ResponderId::new("A", 1234), ResponderId::new("B", 1234)];
 
         let instance = PeerApiService::new(
             Arc::new(consensus_enclave),
@@ -611,11 +603,7 @@ mod tests {
     fn test_send_consensus_msg_deserialize_error(logger: Logger) {
         let (consensus_enclave, ledger, tx_manager) = get_mocks();
 
-        // ResponderIds seem to be "host:port" strings.
-        let known_responder_ids = vec![
-            ResponderId("A:port".to_owned()),
-            ResponderId("B:port".to_owned()),
-        ];
+        let known_responder_ids = vec![ResponderId::new("A", 1234), ResponderId::new("B", 1234)];
 
         let instance = PeerApiService::new(
             Arc::new(consensus_enclave),
@@ -658,11 +646,7 @@ mod tests {
             Ed25519Pair::from(private_key)
         };
 
-        // ResponderIds seem to be "host:port" strings.
-        let known_responder_ids = vec![
-            ResponderId("A:port".to_owned()),
-            ResponderId("B:port".to_owned()),
-        ];
+        let known_responder_ids = vec![ResponderId::new("A", 1234), ResponderId::new("B", 1234)];
 
         let instance = PeerApiService::new(
             Arc::new(consensus_enclave),
