@@ -10,7 +10,6 @@ use mc_consensus_scp::{
     core_types::SlotIndex,
     msg::Msg,
     node::{Node, ScpNode},
-    quorum_set::QuorumSet,
 };
 use std::{
     collections::{BTreeSet, HashMap, HashSet},
@@ -23,39 +22,14 @@ use std::{
 pub mod cyclic_topology;
 pub mod mesh_topology;
 pub mod metamesh_topology;
+mod node_config;
 mod test_options;
 
+pub use node_config::NodeConfig;
 pub use test_options::TestOptions;
 
 // Test values are random strings of this length.
 const CHARACTERS_PER_VALUE: usize = 10;
-
-// Describes one simulated node
-#[derive(Clone)]
-pub struct NodeConfig {
-    /// This node's short name
-    name: String,
-
-    /// This node's id
-    id: NodeID,
-
-    /// The nodes to which this node broadcasts
-    peers: HashSet<NodeID>,
-
-    /// This node's quorum set
-    quorum_set: QuorumSet,
-}
-
-impl NodeConfig {
-    pub fn new(name: String, id: NodeID, peers: HashSet<NodeID>, quorum_set: QuorumSet) -> Self {
-        Self {
-            name,
-            id,
-            peers,
-            quorum_set,
-        }
-    }
-}
 
 // Describes a network of nodes for simulation
 #[derive(Clone)]
