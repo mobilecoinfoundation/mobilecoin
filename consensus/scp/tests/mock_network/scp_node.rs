@@ -1,6 +1,7 @@
 //! A simulated SCP node.
 
 use crate::mock_network::{NodeConfig, TestOptions};
+use crossbeam_channel::TrySendError;
 use mc_common::logger::{log, Logger};
 use mc_consensus_scp::{Msg, Node, ScpNode, SlotIndex};
 use std::{
@@ -189,43 +190,17 @@ impl SCPNode {
     }
 
     /// Push value to this node's consensus task.
-    pub fn send_value(&self, value: &str) {
-        match self
-            .sender
+    pub fn send_value(&self, value: &str) -> Result<(), TrySendError<SCPNodeTaskMessage>> {
+        self.sender
             .try_send(SCPNodeTaskMessage::Value(value.to_owned()))
-        {
-            Ok(_) => {}
-            Err(err) => match err {
-                crossbeam_channel::TrySendError::Disconnected(_) => {}
-                _ => {
-                    panic!("send_value failed: {:?}", err);
-                }
-            },
-        }
     }
 
     /// Feed message from the network to this node's consensus task.
-    pub fn send_msg(&self, msg: &Msg<String>) {
-        match self.sender.try_send(SCPNodeTaskMessage::Msg(msg.clone())) {
-            Ok(_) => {}
-            Err(err) => match err {
-                crossbeam_channel::TrySendError::Disconnected(_) => {}
-                _ => {
-                    panic!("send_msg failed: {:?}", err);
-                }
-            },
-        }
+    pub fn send_msg(&self, msg: &Msg<String>) -> Result<(), TrySendError<SCPNodeTaskMessage>> {
+        self.sender.try_send(SCPNodeTaskMessage::Msg(msg.clone()))
     }
 
-    pub fn send_stop(&self) {
-        match self.sender.try_send(SCPNodeTaskMessage::StopTrigger) {
-            Ok(_) => {}
-            Err(err) => match err {
-                crossbeam_channel::TrySendError::Disconnected(_) => {}
-                _ => {
-                    panic!("send_stop failed: {:?}", err);
-                }
-            },
-        }
+    pub fn send_stop(&self) -> Result<(), TrySendError<SCPNodeTaskMessage>> {
+        self.sender.try_send(SCPNodeTaskMessage::StopTrigger)
     }
 }

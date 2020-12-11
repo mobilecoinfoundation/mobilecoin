@@ -83,31 +83,23 @@ impl SCPNetwork {
 
     /// Stop each node's thread.
     pub fn stop_all(&mut self) {
-        let mut nodes_map = self.nodes.lock().unwrap();
-        let mut node_ids: Vec<NodeID> = Vec::new();
-        for (node_id, node) in nodes_map.iter_mut() {
-            log::trace!(
-                self.logger,
-                "sending stop to {}",
-                self.names.get(node_id).unwrap(),
-            );
-            node.send_stop();
-            node_ids.push(node_id.clone());
-        }
-        drop(nodes_map);
+        log::trace!(self.logger, "stop_all");
 
-        for node_id in node_ids {
-            self.handles
-                .remove(&node_id)
-                .expect("Handle is missing")
-                .join()
-                .expect("SCPNode join failed");
+        for (_, node) in self.nodes.lock().unwrap().iter_mut() {
+            // TODO: may fail if the channel is full or disconnected.
+            let _res = node.send_stop();
+        }
+
+        for (_node_id, handle) in self.handles.drain() {
+            handle.join().unwrap()
         }
     }
 
     /// Submit a value to a node.
     pub fn submit_value_to_node(&self, value: &str, node_id: &NodeID) {
-        self.nodes
+        // TODO: sending may fail if the channel is full or disconnected.
+        let _res = self
+            .nodes
             .lock()
             .expect("lock failed on nodes_map pushing value")
             .get(node_id)
@@ -150,21 +142,16 @@ impl SCPNetwork {
 
     pub fn broadcast_msg(
         logger: Logger,
-        nodes_map: &Arc<Mutex<HashMap<NodeID, SCPNode>>>,
+        nodes: &Arc<Mutex<HashMap<NodeID, SCPNode>>>,
         peers: &HashSet<NodeID>,
         msg: Msg<String>,
     ) {
-        let mut nodes_map = nodes_map
-            .lock()
-            .expect("lock failed on nodes_map in broadcast");
-
         log::trace!(logger, "(broadcast) {}", msg);
 
+        let mut nodes = nodes.lock().unwrap();
         for peer_id in peers {
-            nodes_map
-                .get_mut(&peer_id)
-                .expect("failed to get peer from nodes_map")
-                .send_msg(&msg);
+            // TODO: sending may fail if the channel is full or disconnected.
+            let _res = nodes.get_mut(&peer_id).unwrap().send_msg(&msg);
         }
     }
 }
