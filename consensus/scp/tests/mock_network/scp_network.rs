@@ -34,27 +34,36 @@ impl NetworkConfig {
 }
 
 pub struct SCPNetwork {
+    /// NodeID to node.
+    nodes: Arc<Mutex<HashMap<NodeID, SCPNode>>>,
+
+    /// NodeID to the node's thread handle.
     handles: HashMap<NodeID, JoinHandle<()>>,
-    pub names_map: HashMap<NodeID, String>,
-    nodes_map: Arc<Mutex<HashMap<NodeID, SCPNode>>>,
-    shared_data_map: HashMap<NodeID, Arc<Mutex<SCPNodeSharedData>>>, // ???
-    pub logger: Logger,
+
+    /// NodeID to node name.
+    pub names: HashMap<NodeID, String>,
+
+    /// NodeID to ...???
+    shared_data: HashMap<NodeID, Arc<Mutex<SCPNodeSharedData>>>,
+
+    logger: Logger,
 }
 
 impl SCPNetwork {
     // Creates a simulated network.
-    pub fn new(nodes: &[NodeConfig], test_options: &TestOptions, logger: Logger) -> Self {
+    pub fn new(node_configs: &[NodeConfig], test_options: &TestOptions, logger: Logger) -> Self {
         let mut handles = HashMap::default();
-        let mut names_map = HashMap::default();
-        let nodes_map = Arc::new(Mutex::new(HashMap::default()));
-        let mut shared_data_map = HashMap::default();
+        let mut names = HashMap::default();
+        let nodes = Arc::new(Mutex::new(HashMap::default()));
+        let mut shared_data = HashMap::default();
 
-        for node_config in nodes {
+        for node_config in node_configs {
             let node_id = &node_config.id;
+            let name = &node_config.name;
             assert!(!node_config.peers.contains(node_id)); // ???
 
             let (node, join_handle) = {
-                let nodes_map = nodes_map.clone(); // ???
+                let nodes_map = nodes.clone(); // ???
                 let peers = node_config.peers.clone();
 
                 SCPNode::new(
@@ -69,29 +78,28 @@ impl SCPNetwork {
             };
 
             handles.insert(node_id.clone(), join_handle);
-
-            names_map.insert(node_id.clone(), node_config.name.clone());
-            shared_data_map.insert(node_id.clone(), node.shared_data.clone());
-            nodes_map.lock().unwrap().insert(node_id.clone(), node);
+            names.insert(node_id.clone(), name.clone());
+            shared_data.insert(node_id.clone(), node.shared_data.clone());
+            nodes.lock().unwrap().insert(node_id.clone(), node);
         }
 
         SCPNetwork {
             handles,
-            names_map,
-            nodes_map,
-            shared_data_map,
+            names,
+            nodes,
+            shared_data,
             logger,
         }
     }
 
     pub fn stop_all(&mut self) {
-        let mut nodes_map = self.nodes_map.lock().unwrap();
+        let mut nodes_map = self.nodes.lock().unwrap();
         let mut node_ids: Vec<NodeID> = Vec::new();
         for (node_id, node) in nodes_map.iter_mut() {
             log::trace!(
                 self.logger,
                 "sending stop to {}",
-                self.names_map.get(node_id).unwrap(),
+                self.names.get(node_id).unwrap(),
             );
             node.send_stop();
             node_ids.push(node_id.clone());
@@ -108,7 +116,7 @@ impl SCPNetwork {
     }
 
     pub fn push_value(&self, node_id: &NodeID, value: &str) {
-        self.nodes_map
+        self.nodes
             .lock()
             .expect("lock failed on nodes_map pushing value")
             .get(node_id)
@@ -117,7 +125,7 @@ impl SCPNetwork {
     }
 
     pub fn get_ledger(&self, node_id: &NodeID) -> Vec<Vec<String>> {
-        self.shared_data_map
+        self.shared_data
             .get(node_id)
             .expect("could not find node_id in shared_data_map")
             .lock()
@@ -127,7 +135,7 @@ impl SCPNetwork {
     }
 
     pub fn get_ledger_size(&self, node_id: &NodeID) -> usize {
-        self.shared_data_map
+        self.shared_data
             .get(node_id)
             .expect("could not find node_id in shared_data_map")
             .lock()

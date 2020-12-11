@@ -69,12 +69,7 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
         }
 
         if last_log.elapsed().as_millis() > 999 {
-            log::info!(
-                simulation.logger,
-                "( testing ) pushed {}/{} values",
-                i,
-                values.len()
-            );
+            log::info!(logger, "( testing ) pushed {}/{} values", i, values.len());
             last_log = Instant::now();
         }
 
@@ -87,7 +82,7 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
 
     // All values have been pushed.
     log::info!(
-        simulation.logger,
+        logger,
         "( testing ) pushed {} values",
         test_options.values_to_submit
     );
@@ -101,10 +96,10 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
         loop {
             if Instant::now() > deadline {
                 log::error!(
-                    simulation.logger,
+                    logger,
                     "( testing ) failed to externalize all values within {} sec at node {}!",
                     test_options.allowed_test_time.as_secs(),
-                    simulation.names_map.get(node_id).unwrap()
+                    simulation.names.get(node_id).unwrap()
                 );
                 panic!("test failed due to timeout");
             }
@@ -115,18 +110,18 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
                 // with values that appear in multiple slots. This is not a problem
                 // provided that all the nodes externalize the same ledger!
                 log::info!(
-                    simulation.logger,
+                    logger,
                     "( testing ) externalized {}/{} values at node {}",
                     num_externalized_values,
                     test_options.values_to_submit,
-                    simulation.names_map.get(node_id).unwrap(),
+                    simulation.names.get(node_id).unwrap(),
                 );
 
                 if num_externalized_values > test_options.values_to_submit {
                     log::warn!(
-                        simulation.logger,
+                        logger,
                         "( testing ) externalized extra values at node {}",
-                        simulation.names_map.get(node_id).unwrap(),
+                        simulation.names.get(node_id).unwrap(),
                     );
                 }
 
@@ -135,11 +130,11 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
 
             if last_log.elapsed().as_millis() > 999 {
                 log::info!(
-                    simulation.logger,
+                    logger,
                     "( testing ) externalized {}/{} values at node {}",
                     num_externalized_values,
                     test_options.values_to_submit,
-                    simulation.names_map.get(node_id).unwrap(),
+                    simulation.names.get(node_id).unwrap(),
                 );
                 last_log = Instant::now();
             }
@@ -168,9 +163,9 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
                 .collect();
 
             log::error!(
-                simulation.logger,
+                logger,
                 "node {} externalized wrong values! missing: {:?}, unexpected: {:?}",
-                simulation.names_map.get(node_id).unwrap(),
+                simulation.names.get(node_id).unwrap(),
                 missing_values,
                 unexpected_values,
             );
@@ -186,7 +181,7 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
 
         if first_node_ledger.len() != other_node_ledger.len() {
             log::error!(
-                simulation.logger,
+                logger,
                 "first_node_ledger.len() != other_node_ledger.len() in run_test()"
             );
             // panic
@@ -196,7 +191,7 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
         for block_index in 0..first_node_ledger.len() {
             if first_node_ledger.get(block_index) != other_node_ledger.get(block_index) {
                 log::error!(
-                    simulation.logger,
+                    logger,
                     "first_node_ledger block differs from other_node_ledger block at block {}",
                     block_index,
                 );
