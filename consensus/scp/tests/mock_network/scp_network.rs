@@ -106,7 +106,7 @@ impl SCPNetwork {
     }
 
     /// Submit a value to a node.
-    pub fn push_value(&self, node_id: &NodeID, value: &str) {
+    pub fn submit_value(&self, node_id: &NodeID, value: &str) {
         self.nodes
             .lock()
             .expect("lock failed on nodes_map pushing value")

@@ -41,12 +41,16 @@ pub struct NetworkConfig {
 }
 
 impl NetworkConfig {
+    /// Create a new NetworkConfig
+    ///
+    /// # Arguments
+    /// * `name` - Network name
+    /// * `nodes` - Configuration for each node in the network
     pub fn new(name: String, nodes: Vec<NodeConfig>) -> Self {
         Self { name, nodes }
     }
 
     /// The NodeID of each node in the network.
-    #[allow(unused)]
     pub fn node_ids(&self) -> Vec<NodeID> {
         self.nodes.iter().map(|n| n.id.clone()).collect()
     }
@@ -58,12 +62,12 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
     log::info!(logger, "Network name: {}", network_config.name);
     log::info!(logger, "{}", test_options);
 
-    let simulation = SCPNetwork::new(&network_config.nodes, test_options, logger.clone());
+    let network = SCPNetwork::new(&network_config.nodes, test_options, logger.clone());
     let node_ids: Vec<NodeID> = network_config.node_ids();
 
     // Initially: each node has an empty ledger.
     for node_id in &node_ids {
-        assert!(simulation.get_ledger_size(node_id) == 0);
+        assert_eq!(network.get_ledger_size(node_id), 0);
     }
 
     // Values that each node should eventually write to its ledger.
@@ -77,12 +81,12 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
         if test_options.submit_in_parallel {
             // Submit the value to each node in parallel.
             for node_id in &node_ids {
-                simulation.push_value(node_id, value);
+                network.submit_value(node_id, value);
             }
         } else {
             // Submit the value to a single node in round-robin order.
             let index = i % node_ids.len();
-            simulation.push_value(&node_ids[index], value);
+            network.submit_value(&node_ids[index], value);
         }
 
         if last_log.elapsed().as_millis() > 999 {
@@ -116,12 +120,12 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
                     logger,
                     "( testing ) failed to externalize all values within {} sec at node {}!",
                     test_options.allowed_test_time.as_secs(),
-                    simulation.names.get(node_id).unwrap()
+                    network.names.get(node_id).unwrap()
                 );
                 panic!("test failed due to timeout");
             }
 
-            let num_externalized_values = simulation.get_ledger_size(&node_id);
+            let num_externalized_values = network.get_ledger_size(&node_id);
             if num_externalized_values >= test_options.values_to_submit {
                 // if the validity_fn does not enforce unique values, we can end up
                 // with values that appear in multiple slots. This is not a problem
@@ -131,14 +135,14 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
                     "( testing ) externalized {}/{} values at node {}",
                     num_externalized_values,
                     test_options.values_to_submit,
-                    simulation.names.get(node_id).unwrap(),
+                    network.names.get(node_id).unwrap(),
                 );
 
                 if num_externalized_values > test_options.values_to_submit {
                     log::warn!(
                         logger,
                         "( testing ) externalized extra values at node {}",
-                        simulation.names.get(node_id).unwrap(),
+                        network.names.get(node_id).unwrap(),
                     );
                 }
 
@@ -151,7 +155,7 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
                     "( testing ) externalized {}/{} values at node {}",
                     num_externalized_values,
                     test_options.values_to_submit,
-                    simulation.names.get(node_id).unwrap(),
+                    network.names.get(node_id).unwrap(),
                 );
                 last_log = Instant::now();
             }
@@ -159,7 +163,7 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
 
         // check that all submitted values are externalized at least once
         // duplicate values are possible depending on validity_fn
-        let externalized_values_hashset = simulation
+        let externalized_values_hashset = network
             .get_ledger(&node_id)
             .iter()
             .flatten()
@@ -182,7 +186,7 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
             log::error!(
                 logger,
                 "node {} externalized wrong values! missing: {:?}, unexpected: {:?}",
-                simulation.names.get(node_id).unwrap(),
+                network.names.get(node_id).unwrap(),
                 missing_values,
                 unexpected_values,
             );
@@ -192,9 +196,9 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
     }
 
     // Check that all of the externalized ledgers match block-by-block
-    let first_node_ledger = simulation.get_ledger(&node_ids[0]);
+    let first_node_ledger = network.get_ledger(&node_ids[0]);
     for node_id in node_ids.iter().skip(1) {
-        let other_node_ledger = simulation.get_ledger(&node_id);
+        let other_node_ledger = network.get_ledger(&node_id);
 
         if first_node_ledger.len() != other_node_ledger.len() {
             log::error!(
@@ -218,8 +222,8 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
         }
     }
 
-    // drop the simulation here so that MESSAGES log statements appear before results
-    drop(simulation);
+    // Drop the network here so that MESSAGES log statements appear before results.
+    drop(network);
 
     // csv for scripting use
     log::info!(
