@@ -1,3 +1,5 @@
+//! A simulated SCP node.
+
 use crate::mock_network::{NodeConfig, TestOptions};
 use mc_common::logger::{log, Logger};
 use mc_consensus_scp::{Msg, Node, ScpNode, SlotIndex};
@@ -26,7 +28,7 @@ impl SCPNodeSharedData {
     }
 }
 
-// A simulated validator node
+// A simulated SCP node.
 pub struct SCPNode {
     pub sender: crossbeam_channel::Sender<SCPNodeTaskMessage>,
     pub shared_data: Arc<Mutex<SCPNodeSharedData>>,

@@ -1,4 +1,4 @@
-//! A simulated network of nodes.
+//! A simulated SCP network.
 
 use crate::mock_network::{
     scp_node::{SCPNode, SCPNodeSharedData},
@@ -43,7 +43,7 @@ pub struct SCPNetwork {
 
 impl SCPNetwork {
     // Creates a simulated network.
-    pub fn new(network_config: &NetworkConfig, test_options: &TestOptions, logger: Logger) -> Self {
+    pub fn new(nodes: &[NodeConfig], test_options: &TestOptions, logger: Logger) -> Self {
         let mut network = SCPNetwork {
             handles: HashMap::default(),
             names_map: HashMap::default(),
@@ -52,7 +52,7 @@ impl SCPNetwork {
             logger: logger.clone(),
         };
 
-        for node_config in &network_config.nodes {
+        for node_config in nodes {
             let node_id = &node_config.id;
             assert!(!node_config.peers.contains(node_id)); // ???
 
@@ -68,6 +68,7 @@ impl SCPNetwork {
                 0, // first slot index
                 logger.clone(),
             );
+
             network.handles.insert(node_id.clone(), join_handle);
             network
                 .names_map

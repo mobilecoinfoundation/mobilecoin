@@ -41,7 +41,7 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
     log::info!(logger, "Network name: {}", network_config.name);
     log::info!(logger, "{}", test_options);
 
-    let simulation = SCPNetwork::new(network_config, test_options, logger.clone());
+    let simulation = SCPNetwork::new(&network_config.nodes, test_options, logger.clone());
     let node_ids: Vec<NodeID> = network_config.node_ids();
 
     // Initially: each node has an empty ledger.
