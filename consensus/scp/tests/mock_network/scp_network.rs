@@ -106,13 +106,27 @@ impl SCPNetwork {
     }
 
     /// Submit a value to a node.
-    pub fn submit_value(&self, node_id: &NodeID, value: &str) {
+    pub fn submit_value_to_node(&self, value: &str, node_id: &NodeID) {
         self.nodes
             .lock()
             .expect("lock failed on nodes_map pushing value")
             .get(node_id)
             .expect("could not find node_id in nodes_map")
             .send_value(value);
+    }
+
+    /// Submit a value to each node in parallel.
+    pub fn submit_value_to_nodes(&self, value: &str) {
+        let node_ids: Vec<NodeID> = self
+            .nodes
+            .lock()
+            .iter()
+            .flat_map(|id_to_node| id_to_node.iter().map(|(node_id, _)| node_id.clone()))
+            .collect();
+
+        for node_id in &node_ids {
+            self.submit_value_to_node(value.clone(), node_id);
+        }
     }
 
     pub fn get_ledger(&self, node_id: &NodeID) -> Vec<Vec<String>> {

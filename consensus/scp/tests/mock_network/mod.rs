@@ -80,13 +80,11 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
 
         if test_options.submit_in_parallel {
             // Submit the value to each node in parallel.
-            for node_id in &node_ids {
-                network.submit_value(node_id, value);
-            }
+            network.submit_value_to_nodes(value);
         } else {
             // Submit the value to a single node in round-robin order.
-            let index = i % node_ids.len();
-            network.submit_value(&node_ids[index], value);
+            let node_id = &node_ids[i % node_ids.len()];
+            network.submit_value_to_node(value, node_id);
         }
 
         if last_log.elapsed().as_millis() > 999 {

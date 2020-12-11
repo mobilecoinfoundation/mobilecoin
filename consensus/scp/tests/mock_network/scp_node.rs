@@ -19,7 +19,7 @@ pub enum SCPNodeTaskMessage {
 // Node data shared between threads
 #[derive(Clone)]
 pub struct SCPNodeSharedData {
-    pub ledger: Vec<Vec<String>>,
+    pub ledger: Vec<Vec<String>>, // ???
 }
 
 impl SCPNodeSharedData {
