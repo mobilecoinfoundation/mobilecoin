@@ -19,10 +19,12 @@ pub enum SCPNodeTaskMessage {
 // Node data shared between threads
 #[derive(Clone)]
 pub struct SCPNodeSharedData {
-    pub ledger: Vec<Vec<String>>, // ???
+    /// Each "block" is a list of values.
+    pub ledger: Vec<Vec<String>>,
 }
 
 impl SCPNodeSharedData {
+    /// Total number of values in the ledger.
     pub fn ledger_size(&self) -> usize {
         self.ledger.iter().fold(0, |acc, block| acc + block.len())
     }
@@ -59,7 +61,7 @@ impl SCPNode {
         );
         thread_local_node.scp_timebase = test_options.scp_timebase;
 
-        let thread_shared_data = Arc::clone(&scp_node.shared_data);
+        let shared_data = scp_node.shared_data.clone();
         let max_slot_proposed_values: usize = test_options.max_slot_proposed_values;
 
         let mut current_slot: usize = 0;
@@ -150,9 +152,8 @@ impl SCPNode {
                             // Continue proposing only values that were not externalized.
                             pending_values.retain(|v| !externalized_values.contains(v));
 
-                            let mut locked_shared_data = thread_shared_data
-                                .lock()
-                                .expect("thread_shared_data lock failed");
+                            let mut locked_shared_data =
+                                shared_data.lock().expect("thread_shared_data lock failed");
 
                             locked_shared_data.ledger.push(new_block);
 

@@ -34,7 +34,7 @@ pub struct SCPNetwork {
 impl SCPNetwork {
     // Creates a simulated network.
     pub fn new(node_configs: &[NodeConfig], test_options: &TestOptions, logger: Logger) -> Self {
-        // Why is this check necessary?
+        // A node should not "peer" with itself. (Maybe this check is unnecessary.)
         for node_config in node_configs {
             let node_id = &node_config.id;
             assert!(!node_config.peers.contains(node_id));
@@ -53,7 +53,7 @@ impl SCPNetwork {
         for node_config in node_configs {
             let node_id = &node_config.id;
             let (node, join_handle) = {
-                let nodes_map = nodes.clone(); // ???
+                let nodes_map = nodes.clone();
                 let peers = node_config.peers.clone();
 
                 SCPNode::new(
@@ -62,7 +62,7 @@ impl SCPNetwork {
                     Arc::new(move |logger, msg| {
                         SCPNetwork::broadcast_msg(logger, &nodes_map, &peers, msg)
                     }),
-                    0, // first slot index
+                    0, // Initial slot index
                     logger.clone(),
                 )
             };
