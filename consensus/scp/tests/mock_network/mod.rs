@@ -38,6 +38,12 @@ pub fn skip_slow_tests() -> bool {
 /// Injects values to a network and waits for completion
 pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions, logger: Logger) {
     let simulation = SCPNetwork::new(network_config, test_options, logger.clone());
+    let node_ids: Vec<NodeID> = network_config.node_ids();
+
+    // Initially: each node has an empty ledger.
+    for node_id in &node_ids {
+        assert!(simulation.get_ledger_size(node_id) == 0);
+    }
 
     if test_options.submit_in_parallel {
         log::info!(
@@ -57,41 +63,28 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
 
     let start = Instant::now();
 
-    let mut rng = mc_util_test_helper::get_seeded_rng();
-    let mut values = Vec::<String>::with_capacity(test_options.values_to_submit);
-    for _i in 0..test_options.values_to_submit {
-        let value = mc_util_test_helper::random_str(&mut rng, CHARACTERS_PER_VALUE);
-        values.push(value);
-    }
-
+    // Values that the nodes should eventually write to their ledgers.
+    let values = get_values(test_options.values_to_submit);
     log::info!(
         simulation.logger,
-        "( testing ) finished generating {} values",
-        test_options.values_to_submit
+        "( testing ) Generated {} values",
+        values.len()
     );
 
-    // get a vector of the node_ids
-    let node_ids: Vec<NodeID> = network_config.nodes.iter().map(|n| n.id.clone()).collect();
-
-    // check that all ledgers start empty
-    for n in 0..network_config.nodes.len() {
-        assert!(simulation.get_ledger_size(&node_ids[n]) == 0);
-    }
-
-    // push values
+    // Submit values to nodes.
     let mut last_log = Instant::now();
-    for i in 0..test_options.values_to_submit {
+    for (i, value) in values.iter().enumerate() {
         let start = Instant::now();
 
         if test_options.submit_in_parallel {
-            // simulate broadcast of values to all nodes in parallel
-            for n in 0..network_config.nodes.len() {
-                simulation.push_value(&node_ids[n], &values[i]);
+            // Submit the value to each node in parallel.
+            for node_id in &node_ids {
+                simulation.push_value(node_id, value);
             }
         } else {
-            // submit values to nodes in sequence
-            let n = i % network_config.nodes.len();
-            simulation.push_value(&node_ids[n], &values[i]);
+            // Submit the value to a single node in round-robin order.
+            let index = i % node_ids.len();
+            simulation.push_value(&node_ids[index], value);
         }
 
         if last_log.elapsed().as_millis() > 999 {
@@ -99,7 +92,7 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
                 simulation.logger,
                 "( testing ) pushed {}/{} values",
                 i,
-                test_options.values_to_submit
+                values.len()
             );
             last_log = Instant::now();
         }
@@ -130,12 +123,8 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
                     simulation.logger,
                     "( testing ) failed to externalize all values within {} sec at node {}!",
                     test_options.allowed_test_time.as_secs(),
-                    simulation
-                        .names_map
-                        .get(node_id)
-                        .expect("could not find node_id"),
+                    simulation.names_map.get(node_id).unwrap()
                 );
-                // panic
                 panic!("test failed due to timeout");
             }
 
@@ -149,20 +138,14 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
                     "( testing ) externalized {}/{} values at node {}",
                     num_externalized_values,
                     test_options.values_to_submit,
-                    simulation
-                        .names_map
-                        .get(node_id)
-                        .expect("could not find node_id"),
+                    simulation.names_map.get(node_id).unwrap(),
                 );
 
                 if num_externalized_values > test_options.values_to_submit {
                     log::warn!(
                         simulation.logger,
                         "( testing ) externalized extra values at node {}",
-                        simulation
-                            .names_map
-                            .get(node_id)
-                            .expect("could not find node_id"),
+                        simulation.names_map.get(node_id).unwrap(),
                     );
                 }
 
@@ -175,10 +158,7 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
                     "( testing ) externalized {}/{} values at node {}",
                     num_externalized_values,
                     test_options.values_to_submit,
-                    simulation
-                        .names_map
-                        .get(node_id)
-                        .expect("could not find node_id"),
+                    simulation.names_map.get(node_id).unwrap(),
                 );
                 last_log = Instant::now();
             }
@@ -209,10 +189,7 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
             log::error!(
                 simulation.logger,
                 "node {} externalized wrong values! missing: {:?}, unexpected: {:?}",
-                simulation
-                    .names_map
-                    .get(node_id)
-                    .expect("could not find node_id"),
+                simulation.names_map.get(node_id).unwrap(),
                 missing_values,
                 unexpected_values,
             );
@@ -274,4 +251,15 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
 
     // allow log to flush
     std::thread::sleep(test_options.log_flush_delay);
+}
+
+/// Randomly generated values, not necessarily unique.
+fn get_values(num_values: usize) -> Vec<String> {
+    let mut rng = mc_util_test_helper::get_seeded_rng();
+    let mut values = Vec::new();
+    for _i in 0..num_values {
+        let value = mc_util_test_helper::random_str(&mut rng, CHARACTERS_PER_VALUE);
+        values.push(value);
+    }
+    values
 }

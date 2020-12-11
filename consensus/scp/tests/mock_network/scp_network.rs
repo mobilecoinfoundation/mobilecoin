@@ -25,6 +25,12 @@ impl NetworkConfig {
     pub fn new(name: String, nodes: Vec<NodeConfig>) -> Self {
         Self { name, nodes }
     }
+
+    /// The NodeID of each node in the network.
+    #[allow(unused)]
+    pub fn node_ids(&self) -> Vec<NodeID> {
+        self.nodes.iter().map(|n| n.id.clone()).collect()
+    }
 }
 
 pub struct SCPNetwork {
