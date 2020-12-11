@@ -26,16 +26,12 @@ pub use test_options::TestOptions;
 // Test values are random strings of this length.
 const CHARACTERS_PER_VALUE: usize = 10;
 
-///////////////////////////////////////////////////////////////////////////////
-/// Test Helpers
-///////////////////////////////////////////////////////////////////////////////
-
-/// Support skipping slow tests based on environment variables
+/// Support skipping slow tests based on environment variables.
 pub fn skip_slow_tests() -> bool {
     std::env::var("SKIP_SLOW_TESTS") == Ok("1".to_string())
 }
 
-/// Injects values to a network and waits for completion
+/// Injects values to a network and waits for completion.
 pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions, logger: Logger) {
     let start = Instant::now();
     log::info!(logger, "Network name: {}", network_config.name);
@@ -49,7 +45,7 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
         assert!(simulation.get_ledger_size(node_id) == 0);
     }
 
-    // Values that the nodes should eventually write to their ledgers.
+    // Values that each node should eventually write to its ledger.
     let values = get_values(test_options.values_to_submit);
 
     // Submit values to nodes.

@@ -52,16 +52,24 @@ pub struct SCPNetwork {
 impl SCPNetwork {
     // Creates a simulated network.
     pub fn new(node_configs: &[NodeConfig], test_options: &TestOptions, logger: Logger) -> Self {
-        let mut handles = HashMap::default();
-        let mut names = HashMap::default();
+        // Why is this check necessary?
+        for node_config in node_configs {
+            let node_id = &node_config.id;
+            assert!(!node_config.peers.contains(node_id));
+        }
+
+        // NodeID to node name.
+        let names: HashMap<NodeID, String> = node_configs
+            .iter()
+            .map(|node_config| (node_config.id.clone(), node_config.name.clone()))
+            .collect();
+
         let nodes = Arc::new(Mutex::new(HashMap::default()));
+        let mut handles = HashMap::default();
         let mut shared_data = HashMap::default();
 
         for node_config in node_configs {
             let node_id = &node_config.id;
-            let name = &node_config.name;
-            assert!(!node_config.peers.contains(node_id)); // ???
-
             let (node, join_handle) = {
                 let nodes_map = nodes.clone(); // ???
                 let peers = node_config.peers.clone();
@@ -78,12 +86,11 @@ impl SCPNetwork {
             };
 
             handles.insert(node_id.clone(), join_handle);
-            names.insert(node_id.clone(), name.clone());
             shared_data.insert(node_id.clone(), node.shared_data.clone());
             nodes.lock().unwrap().insert(node_id.clone(), node);
         }
 
-        SCPNetwork {
+        Self {
             handles,
             names,
             nodes,
@@ -92,6 +99,7 @@ impl SCPNetwork {
         }
     }
 
+    /// Stop each node's thread.
     pub fn stop_all(&mut self) {
         let mut nodes_map = self.nodes.lock().unwrap();
         let mut node_ids: Vec<NodeID> = Vec::new();
@@ -115,6 +123,7 @@ impl SCPNetwork {
         }
     }
 
+    /// Submit a value to a node.
     pub fn push_value(&self, node_id: &NodeID, value: &str) {
         self.nodes
             .lock()
