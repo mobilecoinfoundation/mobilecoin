@@ -1,5 +1,5 @@
 [package]
-name = "mc-crypto-x509-chain"
+name = "mc-crypto-x509-utils"
 version = "1.0.0"
 authors = ["MobileCoin"]
 edition = "2018"
@@ -7,3 +7,4 @@ description = "Verification of X509 certificate chains"
 readme = "README.md"
 
 [dependencies]
+x509-parser = "0.9.0"

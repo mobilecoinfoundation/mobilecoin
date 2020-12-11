@@ -32,7 +32,7 @@ members = [
     "crypto/message-cipher",
     "crypto/noise",
     "crypto/rand",
-    "crypto/x509-chain",
+    "crypto/x509-utils",
     "enclave-boundary",
     "fog/api",
     "fog/report/connection",
