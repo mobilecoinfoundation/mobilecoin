@@ -19,7 +19,7 @@ mod scp_network;
 mod scp_node;
 mod test_options;
 
-use crate::mock_network::scp_network::{NetworkConfig, SCPNetwork};
+use crate::mock_network::scp_network::SCPNetwork;
 pub use node_config::NodeConfig;
 pub use test_options::TestOptions;
 
@@ -29,6 +29,27 @@ const CHARACTERS_PER_VALUE: usize = 10;
 /// Support skipping slow tests based on environment variables.
 pub fn skip_slow_tests() -> bool {
     std::env::var("SKIP_SLOW_TESTS") == Ok("1".to_string())
+}
+
+/// Simulated network configuration.
+#[derive(Clone)]
+pub struct NetworkConfig {
+    /// The name of this network.
+    pub name: String,
+    /// Configuration for nodes in this network.
+    pub nodes: Vec<NodeConfig>,
+}
+
+impl NetworkConfig {
+    pub fn new(name: String, nodes: Vec<NodeConfig>) -> Self {
+        Self { name, nodes }
+    }
+
+    /// The NodeID of each node in the network.
+    #[allow(unused)]
+    pub fn node_ids(&self) -> Vec<NodeID> {
+        self.nodes.iter().map(|n| n.id.clone()).collect()
+    }
 }
 
 /// Injects values to a network and waits for completion.

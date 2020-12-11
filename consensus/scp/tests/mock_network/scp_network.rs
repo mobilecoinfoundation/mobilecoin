@@ -15,24 +15,6 @@ use std::{
     thread::JoinHandle,
 };
 
-#[derive(Clone)]
-pub struct NetworkConfig {
-    pub name: String,
-    pub nodes: Vec<NodeConfig>,
-}
-
-impl NetworkConfig {
-    pub fn new(name: String, nodes: Vec<NodeConfig>) -> Self {
-        Self { name, nodes }
-    }
-
-    /// The NodeID of each node in the network.
-    #[allow(unused)]
-    pub fn node_ids(&self) -> Vec<NodeID> {
-        self.nodes.iter().map(|n| n.id.clone()).collect()
-    }
-}
-
 pub struct SCPNetwork {
     /// NodeID to node.
     nodes: Arc<Mutex<HashMap<NodeID, SCPNode>>>,
