@@ -12,7 +12,7 @@ use std::{
 
 pub enum SCPNodeTaskMessage {
     Value(String),
-    Msg(Arc<Msg<String>>),
+    Msg(Msg<String>),
     StopTrigger,
 }
 
@@ -77,7 +77,7 @@ impl SCPNode {
                     'main_loop: loop {
                         // Compare to byzantine_ledger::tick()
                         // there pending values are proposed before incoming msg is handled
-                        let mut incoming_msg_option: Option<Arc<Msg<String>>> = None;
+                        let mut incoming_msg_option: Option<Msg<String>> = None;
 
                         // Collect one incoming message using a non-blocking channel read
                         match receiver.try_recv() {
@@ -205,8 +205,8 @@ impl SCPNode {
     }
 
     /// Feed message from the network to this node's consensus task.
-    pub fn send_msg(&self, msg: Arc<Msg<String>>) {
-        match self.sender.try_send(SCPNodeTaskMessage::Msg(msg)) {
+    pub fn send_msg(&self, msg: &Msg<String>) {
+        match self.sender.try_send(SCPNodeTaskMessage::Msg(msg.clone())) {
             Ok(_) => {}
             Err(err) => match err {
                 crossbeam_channel::TrySendError::Disconnected(_) => {}

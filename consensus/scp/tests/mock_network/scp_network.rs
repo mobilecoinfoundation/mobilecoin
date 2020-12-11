@@ -160,13 +160,11 @@ impl SCPNetwork {
 
         log::trace!(logger, "(broadcast) {}", msg);
 
-        let amsg = Arc::new(msg);
-
         for peer_id in peers {
             nodes_map
                 .get_mut(&peer_id)
                 .expect("failed to get peer from nodes_map")
-                .send_msg(amsg.clone());
+                .send_msg(&msg);
         }
     }
 }
