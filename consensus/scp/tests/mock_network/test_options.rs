@@ -1,5 +1,6 @@
 use mc_consensus_scp::{test_utils, CombineFn, ValidityFn};
-use std::{sync::Arc, time::Duration};
+use mc_util_serial::prost::alloc::fmt::Formatter;
+use std::{fmt, sync::Arc, time::Duration};
 
 #[derive(Clone)]
 pub struct TestOptions {
@@ -48,5 +49,30 @@ impl TestOptions {
             validity_fn: Arc::new(test_utils::trivial_validity_fn::<String>),
             combine_fn: Arc::new(test_utils::get_bounded_combine_fn::<String>(100)),
         }
+    }
+}
+
+impl fmt::Display for TestOptions {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        writeln!(f, "TestOptions:")?;
+        let submit = if self.submit_in_parallel {
+            "parallel"
+        } else {
+            "sequential"
+        };
+
+        writeln!(f, "submit: {}", submit)?;
+        writeln!(f, "values_to_submit: {}", self.values_to_submit)?;
+        writeln!(f, "submissions_per_sec: {}", self.submissions_per_sec)?;
+        writeln!(
+            f,
+            "max_slot_proposed_values: {}",
+            self.max_slot_proposed_values
+        )?;
+        writeln!(
+            f,
+            "allowed_test_time: {} seconds",
+            self.allowed_test_time.as_secs_f32()
+        )
     }
 }

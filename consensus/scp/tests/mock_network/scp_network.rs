@@ -34,7 +34,7 @@ impl NetworkConfig {
 }
 
 pub struct SCPNetwork {
-    handle_map: HashMap<NodeID, JoinHandle<()>>,
+    handles: HashMap<NodeID, JoinHandle<()>>,
     pub names_map: HashMap<NodeID, String>,
     nodes_map: Arc<Mutex<HashMap<NodeID, SCPNode>>>,
     shared_data_map: HashMap<NodeID, Arc<Mutex<SCPNodeSharedData>>>,
@@ -44,46 +44,45 @@ pub struct SCPNetwork {
 impl SCPNetwork {
     // Creates a simulated network.
     pub fn new(network_config: &NetworkConfig, test_options: &TestOptions, logger: Logger) -> Self {
-        let mut scp_network = SCPNetwork {
-            handle_map: HashMap::default(),
+        let mut network = SCPNetwork {
+            handles: HashMap::default(),
             names_map: HashMap::default(),
             nodes_map: Arc::new(Mutex::new(HashMap::default())),
             shared_data_map: HashMap::default(),
             logger: logger.clone(),
         };
 
-        for node_config in network_config.nodes.iter() {
-            assert!(!node_config.peers.contains(&node_config.id));
+        for node_config in &network_config.nodes {
+            let node_id = &node_config.id;
+            assert!(!node_config.peers.contains(node_id)); // ???
 
-            let nodes_map_clone = Arc::clone(&scp_network.nodes_map);
-            let peers_clone = node_config.peers.clone();
+            let nodes_map = network.nodes_map.clone();
+            let peers = node_config.peers.clone();
 
             let (node, join_handle) = SCPNode::new(
                 node_config.clone(),
                 test_options,
                 Arc::new(move |logger, msg| {
-                    SCPNetwork::broadcast_msg(logger, &nodes_map_clone, &peers_clone, msg)
+                    SCPNetwork::broadcast_msg(logger, &nodes_map, &peers, msg)
                 }),
                 0, // first slot index
                 logger.clone(),
             );
-            scp_network
-                .handle_map
-                .insert(node_config.id.clone(), join_handle);
-            scp_network
+            network.handles.insert(node_id.clone(), join_handle);
+            network
                 .names_map
-                .insert(node_config.id.clone(), node_config.name.clone());
-            scp_network
+                .insert(node_id.clone(), node_config.name.clone());
+            network
                 .shared_data_map
-                .insert(node_config.id.clone(), node.shared_data.clone());
-            scp_network
+                .insert(node_id.clone(), node.shared_data.clone());
+            network
                 .nodes_map
                 .lock()
                 .expect("lock failed on nodes_map inserting node")
-                .insert(node_config.id.clone(), node);
+                .insert(node_id.clone(), node);
         }
 
-        scp_network
+        network
     }
 
     pub fn stop_all(&mut self) {
@@ -106,7 +105,7 @@ impl SCPNetwork {
         drop(nodes_map);
 
         for node_id in node_ids {
-            self.handle_map
+            self.handles
                 .remove(&node_id)
                 .expect("thread handle is missing")
                 .join()

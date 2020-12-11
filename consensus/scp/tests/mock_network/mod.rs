@@ -37,6 +37,10 @@ pub fn skip_slow_tests() -> bool {
 
 /// Injects values to a network and waits for completion
 pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions, logger: Logger) {
+    let start = Instant::now();
+    log::info!(logger, "Network name: {}", network_config.name);
+    log::info!(logger, "{}", test_options);
+
     let simulation = SCPNetwork::new(network_config, test_options, logger.clone());
     let node_ids: Vec<NodeID> = network_config.node_ids();
 
@@ -45,31 +49,8 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
         assert!(simulation.get_ledger_size(node_id) == 0);
     }
 
-    if test_options.submit_in_parallel {
-        log::info!(
-            logger,
-            "( testing ) begin test for {} with {} values in parallel",
-            network_config.name,
-            test_options.values_to_submit,
-        );
-    } else {
-        log::info!(
-            logger,
-            "( testing ) begin test for {} with {} values in sequence",
-            network_config.name,
-            test_options.values_to_submit,
-        );
-    }
-
-    let start = Instant::now();
-
     // Values that the nodes should eventually write to their ledgers.
     let values = get_values(test_options.values_to_submit);
-    log::info!(
-        simulation.logger,
-        "( testing ) Generated {} values",
-        values.len()
-    );
 
     // Submit values to nodes.
     let mut last_log = Instant::now();
@@ -104,7 +85,7 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
         }
     }
 
-    // report end of value push
+    // All values have been pushed.
     log::info!(
         simulation.logger,
         "( testing ) pushed {} values",
