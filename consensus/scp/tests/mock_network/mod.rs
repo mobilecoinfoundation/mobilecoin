@@ -92,6 +92,7 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
             last_log = Instant::now();
         }
 
+        // Throttle the rate at which values are submitted to the network.
         let elapsed_duration = Instant::now().duration_since(start);
         let target_duration = Duration::from_micros(1_000_000 / test_options.submissions_per_sec);
         if let Some(extra_delay) = target_duration.checked_sub(elapsed_duration) {

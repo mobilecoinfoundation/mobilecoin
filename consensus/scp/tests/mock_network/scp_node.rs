@@ -153,8 +153,7 @@ impl SCPNode {
                             // Continue proposing only values that were not externalized.
                             pending_values.retain(|v| !externalized_values.contains(v));
 
-                            let mut locked_shared_data =
-                                shared_data.lock().expect("thread_shared_data lock failed");
+                            let mut locked_shared_data = shared_data.lock().unwrap();
 
                             locked_shared_data.ledger.push(new_block);
 
