@@ -43,12 +43,12 @@ use mc_watcher::watcher_db::WatcherDB;
 use protobuf::{ProtobufEnum, RepeatedField};
 use std::{
     convert::TryFrom,
-    sync::{Arc, RwLock},
+    sync::{Arc, Mutex, RwLock},
 };
 
 pub struct Service {
     /// Sync thread.
-    _sync_thread: SyncThread,
+    _sync_thread: Arc<Mutex<Option<SyncThread>>>,
 
     /// GRPC server.
     _server: grpcio::Server,
@@ -68,13 +68,36 @@ impl Service {
         num_workers: Option<usize>,
         logger: Logger,
     ) -> Self {
-        log::info!(logger, "Starting mobilecoind sync task thread");
-        let sync_thread = SyncThread::start(
-            ledger_db.clone(),
-            mobilecoind_db.clone(),
-            num_workers,
-            logger.clone(),
-        );
+        let sync_thread = if mobilecoind_db.is_db_encrypted() {
+            log::info!(logger, "Db encryption enabled, sync task would start once password is provided via the API.");
+            Arc::new(Mutex::new(None))
+        } else {
+            log::info!(logger, "Starting mobilecoind sync task thread");
+            Arc::new(Mutex::new(Some(SyncThread::start(
+                ledger_db.clone(),
+                mobilecoind_db.clone(),
+                num_workers,
+                logger.clone(),
+            ))))
+        };
+
+        let start_sync_thread = {
+            let ledger_db = ledger_db.clone();
+            let mobilecoind_db = mobilecoind_db.clone();
+            let logger = logger.clone();
+            let sync_thread = sync_thread.clone();
+            Arc::new(move || {
+                let mut sync_thread = sync_thread.lock().expect("mutex poisoned");
+                assert!(sync_thread.is_none());
+
+                *sync_thread = Some(SyncThread::start(
+                    ledger_db.clone(),
+                    mobilecoind_db.clone(),
+                    num_workers,
+                    logger.clone(),
+                ));
+            })
+        };
 
         let api = ServiceApi::new(
             transactions_manager,
@@ -82,6 +105,7 @@ impl Service {
             mobilecoind_db,
             watcher_db,
             network_state,
+            start_sync_thread,
             logger.clone(),
         );
 
@@ -138,6 +162,7 @@ pub struct ServiceApi<
     mobilecoind_db: Database,
     watcher_db: Option<WatcherDB>,
     network_state: Arc<RwLock<PollingNetworkState<T>>>,
+    start_sync_thread: Arc<dyn Fn() + Send + Sync>,
     logger: Logger,
 }
 
@@ -153,6 +178,7 @@ impl<
             mobilecoind_db: self.mobilecoind_db.clone(),
             watcher_db: self.watcher_db.clone(),
             network_state: self.network_state.clone(),
+            start_sync_thread: self.start_sync_thread.clone(),
             logger: self.logger.clone(),
         }
     }
@@ -169,6 +195,7 @@ impl<
         mobilecoind_db: Database,
         watcher_db: Option<WatcherDB>,
         network_state: Arc<RwLock<PollingNetworkState<T>>>,
+        start_sync_thread: Arc<dyn Fn() + Send + Sync>,
         logger: Logger,
     ) -> Self {
         Self {
@@ -177,6 +204,7 @@ impl<
             mobilecoind_db,
             watcher_db,
             network_state,
+            start_sync_thread,
             logger,
         }
     }
@@ -1526,6 +1554,51 @@ impl<
 
         Ok(response)
     }
+
+    fn set_db_password_impl(
+        &mut self,
+        request: mc_mobilecoind_api::SetDbPasswordRequest,
+    ) -> Result<mc_mobilecoind_api::Empty, RpcStatus> {
+        // Check if the database is unlocked and allowing this operation.
+        if !self.mobilecoind_db.is_unlocked() {
+            return Err(RpcStatus::new(
+                RpcStatusCode::INTERNAL,
+                Some("must unlock before changing current password".to_owned()),
+            ));
+        }
+
+        // Re-encrypt data using the new password.
+        self.mobilecoind_db
+            .re_encrypt(&request.get_password())
+            .map_err(|err| rpc_internal_error("mobilecoind_db.re_encrypt", err, &self.logger))?;
+
+        log::info!(self.logger, "DB encryption password updated successfully.");
+
+        Ok(mc_mobilecoind_api::Empty::default())
+    }
+
+    fn unlock_db_impl(
+        &mut self,
+        request: mc_mobilecoind_api::UnlockDbRequest,
+    ) -> Result<mc_mobilecoind_api::Empty, RpcStatus> {
+        if self.mobilecoind_db.is_unlocked() {
+            return Err(RpcStatus::new(
+                RpcStatusCode::INTERNAL,
+                Some("already unlocked".to_owned()),
+            ));
+        }
+
+        self.mobilecoind_db
+            .check_and_store_password(&request.get_password())
+            .map_err(|err| {
+                rpc_internal_error("mobilecoind_db.check_and_store_password", err, &self.logger)
+            })?;
+
+        log::info!(self.logger, "Successfully unlocked, starting sync thread.");
+        (self.start_sync_thread)();
+
+        Ok(mc_mobilecoind_api::Empty::default())
+    }
 }
 
 macro_rules! build_api {
@@ -1583,7 +1656,9 @@ build_api! {
     get_balance GetBalanceRequest GetBalanceResponse get_balance_impl,
     send_payment SendPaymentRequest SendPaymentResponse send_payment_impl,
     pay_address_code PayAddressCodeRequest SendPaymentResponse pay_address_code_impl,
-    get_network_status Empty GetNetworkStatusResponse get_network_status_impl
+    get_network_status Empty GetNetworkStatusResponse get_network_status_impl,
+    set_db_password SetDbPasswordRequest Empty set_db_password_impl,
+    unlock_db UnlockDbRequest Empty unlock_db_impl
 }
 
 #[cfg(test)]

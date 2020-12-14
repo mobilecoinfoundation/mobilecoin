@@ -4,7 +4,7 @@
 //! * Provides monitor configuration and status from MonitorId.
 //! * MonitorId is a hash of the instantiation parameters.
 
-use crate::{database_key::DatabaseByteArrayKey, error::Error};
+use crate::{database_key::DatabaseByteArrayKey, db_crypto::DbCryptoProvider, error::Error};
 
 use lmdb::{Cursor, Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
 use mc_account_keys::{AccountKey, PublicAddress};
@@ -113,6 +113,9 @@ impl From<&MonitorData> for MonitorId {
 pub struct MonitorStore {
     env: Arc<Environment>,
 
+    /// Crypto provider, used for managing database encryption.
+    crypto_provider: DbCryptoProvider,
+
     /// Mapping of MonitorId -> MonitorData
     monitor_id_to_monitor_data: Database,
 
@@ -122,7 +125,11 @@ pub struct MonitorStore {
 
 /// A DB mapping account IDs to keys
 impl MonitorStore {
-    pub fn new(env: Arc<Environment>, logger: Logger) -> Result<Self, Error> {
+    pub fn new(
+        env: Arc<Environment>,
+        crypto_provider: DbCryptoProvider,
+        logger: Logger,
+    ) -> Result<Self, Error> {
         let monitor_id_to_monitor_data = env.create_db(
             Some(MONITOR_ID_TO_MONITOR_DATA_DB_NAME),
             DatabaseFlags::empty(),
@@ -130,6 +137,7 @@ impl MonitorStore {
 
         Ok(Self {
             env,
+            crypto_provider,
             monitor_id_to_monitor_data,
             logger,
         })
@@ -144,7 +152,9 @@ impl MonitorStore {
         let monitor_id = MonitorId::from(data);
         let key_bytes = monitor_id.as_bytes();
 
-        let value_bytes = mc_util_serial::encode(data);
+        let value_bytes = self
+            .crypto_provider
+            .encrypt(&mc_util_serial::encode(data))?;
 
         log::trace!(self.logger, "adding new monitor {}: {:?}", monitor_id, data);
 
@@ -178,7 +188,8 @@ impl MonitorStore {
     ) -> Result<MonitorData, Error> {
         match db_txn.get(self.monitor_id_to_monitor_data, monitor_id) {
             Ok(value_bytes) => {
-                let data: MonitorData = mc_util_serial::decode(value_bytes)?;
+                let value_bytes = self.crypto_provider.decrypt(value_bytes)?;
+                let data: MonitorData = mc_util_serial::decode(&value_bytes)?;
                 Ok(data)
             }
             Err(lmdb::Error::NotFound) => Err(Error::MonitorIdNotFound),
@@ -201,7 +212,8 @@ impl MonitorStore {
                     .and_then(|(key_bytes, value_bytes)| {
                         let monitor_id = MonitorId::try_from(key_bytes)
                             .map_err(|_| Error::KeyDeserializationError)?;
-                        let data: MonitorData = mc_util_serial::decode(value_bytes)?;
+                        let value_bytes = self.crypto_provider.decrypt(value_bytes)?;
+                        let data: MonitorData = mc_util_serial::decode(&value_bytes)?;
 
                         Ok((monitor_id, data))
                     })
@@ -234,7 +246,9 @@ impl MonitorStore {
         let key_bytes = monitor_id.to_vec();
         match db_txn.get(self.monitor_id_to_monitor_data, &key_bytes) {
             Ok(_value_bytes) => {
-                let new_value_bytes = mc_util_serial::encode(data);
+                let new_value_bytes = self
+                    .crypto_provider
+                    .encrypt(&mc_util_serial::encode(data))?;
                 db_txn.put(
                     self.monitor_id_to_monitor_data,
                     &key_bytes,
@@ -246,6 +260,27 @@ impl MonitorStore {
             Err(lmdb::Error::NotFound) => Err(Error::MonitorIdNotFound),
             Err(err) => Err(Error::LMDB(err)),
         }
+    }
+
+    /// Re-encrypt the encrypted parts of the database with a new password.
+    /// This will fail if the current password is not set in the crypto_provider since part of the
+    /// re-encryption process relies on being able to decrypt the existing data.
+    pub fn re_encrypt<'env>(
+        &self,
+        db_txn: &mut RwTransaction<'env>,
+        new_password: &[u8],
+    ) -> Result<(), Error> {
+        let mut cursor = db_txn.open_rw_cursor(self.monitor_id_to_monitor_data)?;
+
+        for (key_bytes, value_bytes) in cursor.iter().filter_map(|r| r.ok()) {
+            let decrypted_bytes = self.crypto_provider.decrypt(value_bytes)?;
+            let encrypted_bytes = self
+                .crypto_provider
+                .encrypt_with_password(new_password, &decrypted_bytes)?;
+            cursor.put(&key_bytes, &encrypted_bytes, WriteFlags::CURRENT)?;
+        }
+
+        Ok(())
     }
 }
 

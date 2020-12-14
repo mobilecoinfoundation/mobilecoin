@@ -43,7 +43,7 @@ use rand_core::{CryptoRng, RngCore};
 
 pub type RistrettoHkdfBlake2bAes128Gcm = HkdfBox<Ristretto, Blake2b, Aes128Gcm>;
 
-/// A "magic byte" value checked during this process, but not interpretted.
+/// A "magic byte" value checked during this process, but not interpreted.
 const MAJOR_VERSION: u8 = 1;
 /// The "default" version that we would use for encryption lacking any version negotiation.
 const LATEST_MINOR_VERSION: u8 = 0;
@@ -82,7 +82,7 @@ impl VersionedCryptoBox {
     pub fn acceptable_minor_versions() -> Vec<u8> {
         ACCEPTABLE_MINOR_VERSIONS.to_vec()
     }
-    /// Called by a client to select an acceptable version based on what a server adverstised
+    /// Called by a client to select an acceptable version based on what a server advertised
     pub fn select_version(others_acceptable_versions: &[u8]) -> Result<Self, VersionError> {
         Self::acceptable_minor_versions()
             .iter()
