@@ -44,6 +44,20 @@ An example MainNet build and launch command for mobilecoind is:
         --listen-uri insecure-mobilecoind://127.0.0.1:4444/
     ```
 
+1. Run mobilecoind-json
+
+    ```
+    ./target/release/mbilecoind-json
+    ```
+
+1. Issue curl commands to mobilecoind-json, listening on 9090, or send protobuf requests to mobilecoind, listening on localhost:4444.
+
+    ```
+    curl localhost:9090/ledger/local
+    ```
+
+    See the [mobilecoind protobuf API](./mobilecoind/api/proto/mobilecoind_api.proto) and the [mobilecoind-json README](./mobilecoind-json/README.md) for the full API descriptions.
+
 ### Run a MainNet *Watcher Node*
 
 If you have a Linux-compatible home computer, or choose to operate a Linux-compatible server in the cloud, you can run a *watcher node* in the MobileCoin MainNet. This involves running [`mobilecoind`](./mobilecoind/README.md) in watcher mode.
