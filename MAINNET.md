@@ -15,6 +15,35 @@ Please note that currently, the MobileCoin Wallet is not available for download 
 * Run [`mobilecoind`](./mobilecoind/README.md) for the wallet backend. Note that the `mobilecoind-db` is considered sensitive and should follow best practices for isolation and security.
 * Run [`mobilecoind-json`](./mobilecoind-json/README.md) to issue HTTP requests through a proxy to the `mobilecoind` backend.
 
+An example MainNet build and launch command for mobilecoind is:
+
+1. Get the enclave sigstruct:
+
+    ```
+    SIGSTRUCT_URI=$(curl -s https://enclave-distribution.prod.mobilecoin.com/production.json | grep sigstruct | awk '{print $2}' | tr -d \")
+    curl -O https://enclave-distribution.prod.mobilecoin.com/${SIGSTRUCT_URI}
+    ```
+
+1. Build mobilecoind and mobilecoind-json
+
+    ```
+    SGX_MODE=HW IAS_MODE=PROD CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css cargo build --release -p mc-mobilecoind -p mc-mobilecoind-json
+    ```
+
+1. Run mobilecoind, connecting to one or mulltiple Consensus Validator Nodes:
+
+    ```
+    ./target/release/mobilecoind \
+        --ledger-db /path/to/ledger-db \
+        --mobilecoind-db /path/to/mobiilecoind-db \
+        --poll-interval 10 \
+        --peer mc://node1.prod.mobilecoinww.com/ \
+        --peer mc://node2.prod.mobilecoinww.com/ \
+        --tx-source-url https://ledger.mobilecoinww.com/node1.prod.mobilecoinww.com/ \
+        --tx-source-url https://ledger.mobilecoinww.com/node2.prod.mobilecoinww.com/ \
+        --listen-uri insecure-mobilecoind://127.0.0.1:4444/
+    ```
+
 ### Run a MainNet *Watcher Node*
 
 If you have a Linux-compatible home computer, or choose to operate a Linux-compatible server in the cloud, you can run a *watcher node* in the MobileCoin MainNet. This involves running [`mobilecoind`](./mobilecoind/README.md) in watcher mode.
