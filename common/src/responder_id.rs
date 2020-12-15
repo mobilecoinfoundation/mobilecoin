@@ -74,8 +74,8 @@ impl FromStr for ResponderId {
     type Err = ResponderIdParseError;
 
     fn from_str(src: &str) -> Result<ResponderId, Self::Err> {
-        // host:port or host:port/, with named capture groups.
-        let re = Regex::new(r#"(?P<host>^[^:]+):(?P<port>[0-9]{1,5})/?"#).unwrap();
+        // host:port with named capture groups.
+        let re = Regex::new(r#"(?P<host>^[^:]+):(?P<port>[0-9]{1,5})"#).unwrap();
 
         let captures = re
             .captures(src)
@@ -151,11 +151,5 @@ mod tests {
     /// Valid ports have number 0 to 65353.
     fn from_str_rejects_invalid_port_number() {
         assert!(ResponderId::from_str("foo.com:99999").is_err());
-    }
-
-    #[test]
-    /// from_str accepts trailing slash.
-    fn from_str_accepts_trailing_slash() {
-        assert!(ResponderId::from_str("foo.com:23/").is_ok());
     }
 }
