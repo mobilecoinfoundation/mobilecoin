@@ -1,6 +1,6 @@
 ## MainNet User Guide
 
-The Terms of Use for MobileCoins and MobileCoin Wallets (available at www.buymobilecoin.com) applies to all MobileCoins and MobileCoin Wallets.
+The [Terms of Use for MobileCoins and MobileCoin Wallets](./TERMS-OF-USE.md) (also available at www.buymobilecoin.com) applies to all MobileCoins and MobileCoin Wallets.
 
 You must read and accept these terms to use MobileCoin Software.
 

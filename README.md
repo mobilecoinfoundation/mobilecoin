@@ -1,8 +1,14 @@
 ![](./img/mobilecoin_logo.png)
 
-### Sending your first payment
+### Testing your first payment
 
 * Please see [*TESTNET.md*](./TESTNET.md) for instructions on participating in the TestNet!
+
+### Sending your first payment
+
+* Please see [*MAINNET.md*](./MAINNET.md) for instructions on using MobileCoin!
+* You must read and accept the [Terms of Use for MobileCoins and MobileCoin Wallets](./TERMS-OF-USE.md) to use MobileCoin Software.
+* Please note that currently, the MobileCoin Wallet is not available for download or use by U.S. persons or entities, persons or entities located in the U.S., or persons or entities in other prohibited jurisdictions.
 
 ### Note to Developers
 
