@@ -2642,6 +2642,79 @@ mod test {
     }
 
     #[test_with_logger]
+    fn test_get_membership_proofs(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        let sender = AccountKey::random(&mut rng);
+        let data = MonitorData::new(
+            sender.clone(),
+            0,  // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        // 1 known recipient, 3 random recipients and no monitors.
+        let (ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(
+                3,
+                &vec![sender.default_subaddress()],
+                &vec![],
+                logger.clone(),
+                &mut rng,
+            );
+
+        // Insert into database.
+        let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
+
+        // Allow the new monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Get list of unspent tx outs
+        let all_utxos = mobilecoind_db
+            .get_utxos_for_subaddress(&monitor_id, 0)
+            .unwrap();
+
+        // Get membership proofs for utxos 1, 3, 5.
+        let utxos = vec![
+            all_utxos[1].clone(),
+            all_utxos[3].clone(),
+            all_utxos[5].clone(),
+        ];
+
+        let mut request = mc_mobilecoind_api::GetMembershipProofsRequest::new();
+        request.set_input_list(RepeatedField::from_vec(
+            utxos
+                .iter()
+                .map(mc_mobilecoind_api::UnspentTxOut::from)
+                .collect(),
+        ));
+
+        let response = client.get_membership_proofs(&request).unwrap();
+
+        assert_eq!(response.output_list.len(), utxos.len());
+
+        for (utxo, output) in utxos.iter().zip(response.get_output_list().iter()) {
+            assert_eq!(
+                output.get_utxo(),
+                &mc_mobilecoind_api::UnspentTxOut::from(utxo)
+            );
+
+            let index = ledger_db
+                .get_tx_out_index_by_hash(&utxo.tx_out.hash())
+                .unwrap();
+            let proofs = ledger_db.get_tx_out_proof_of_memberships(&[index]).unwrap();
+            assert_eq!(proofs.len(), 1);
+
+            assert_eq!(
+                output.get_proof(),
+                &mc_mobilecoind_api::external::TxOutMembershipProof::from(&proofs[0])
+            );
+        }
+    }
+
+    #[test_with_logger]
     fn test_generate_tx(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
 
