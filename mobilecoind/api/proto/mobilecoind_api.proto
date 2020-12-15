@@ -36,6 +36,7 @@ service MobilecoindAPI {
     rpc CreateAddressCode (CreateAddressCodeRequest) returns (CreateAddressCodeResponse) {}
 
     // Txs
+    rpc GetMembershipProofs (GetMembershipProofsRequest) returns (GetMembershipProofsResponse) {}
     rpc GenerateTx (GenerateTxRequest) returns (GenerateTxResponse) {}
     rpc GenerateOptimizationTx (GenerateOptimizationTxRequest) returns (GenerateOptimizationTxResponse) {}
     rpc GenerateTransferCodeTx (GenerateTransferCodeTxRequest) returns (GenerateTransferCodeTxResponse) {}
@@ -389,6 +390,19 @@ message CreateAddressCodeResponse {
 //
 // Transactions
 //
+
+message TxOutWithProof {
+    UnspentTxOut utxo = 1;
+    external.TxOutMembershipProof proof = 2;
+}
+
+message GetMembershipProofsRequest {
+    repeated UnspentTxOut input_list = 1;
+}
+
+message GetMembershipProofsResponse {
+    repeated TxOutWithProof output_list = 1;
+}
 
 // Generate a transaction proposal object.
 // Notes:

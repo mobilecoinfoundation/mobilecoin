@@ -561,7 +561,7 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
     }
 
     /// Get membership proofs for a list of UTXOs.
-    fn get_membership_proofs(
+    pub fn get_membership_proofs(
         &self,
         utxos: Vec<UnspentTxOut>,
     ) -> Result<Vec<(UnspentTxOut, TxOutMembershipProof)>, Error> {

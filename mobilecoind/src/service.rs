@@ -633,6 +633,36 @@ impl<
         Ok(response)
     }
 
+    fn get_membership_proofs_impl(
+        &mut self,
+        request: mc_mobilecoind_api::GetMembershipProofsRequest,
+    ) -> Result<mc_mobilecoind_api::GetMembershipProofsResponse, RpcStatus> {
+        let input_list: Vec<UnspentTxOut> = request
+            .get_input_list()
+            .iter()
+            .map(|proto_utxo| {
+                // Proto -> Rust struct conversion.
+                UnspentTxOut::try_from(proto_utxo)
+                    .map_err(|err| rpc_internal_error("unspent_tx_out.try_from", err, &self.logger))
+            })
+            .collect::<Result<Vec<UnspentTxOut>, RpcStatus>>()?;
+
+        let inputs = self
+            .transactions_manager
+            .get_membership_proofs(input_list)
+            .map_err(|err| rpc_internal_error("get_membership_proofs", err, &self.logger))?;
+
+        let mut response = mc_mobilecoind_api::GetMembershipProofsResponse::new();
+        for (utxo, proof) in inputs.iter() {
+            let mut utxo_with_proof = mc_mobilecoind_api::TxOutWithProof::new();
+            utxo_with_proof.set_utxo(utxo.into());
+            utxo_with_proof.set_proof(proof.into());
+            response.mut_output_list().push(utxo_with_proof);
+        }
+
+        Ok(response)
+    }
+
     fn generate_tx_impl(
         &mut self,
         request: mc_mobilecoind_api::GenerateTxRequest,
@@ -1641,6 +1671,7 @@ build_api! {
     create_transfer_code CreateTransferCodeRequest CreateTransferCodeResponse create_transfer_code_impl,
     parse_address_code ParseAddressCodeRequest ParseAddressCodeResponse parse_address_code_impl,
     create_address_code CreateAddressCodeRequest CreateAddressCodeResponse create_address_code_impl,
+    get_membership_proofs GetMembershipProofsRequest GetMembershipProofsResponse get_membership_proofs_impl,
     generate_tx GenerateTxRequest GenerateTxResponse generate_tx_impl,
     generate_optimization_tx GenerateOptimizationTxRequest GenerateOptimizationTxResponse generate_optimization_tx_impl,
     generate_transfer_code_tx GenerateTransferCodeTxRequest GenerateTransferCodeTxResponse generate_transfer_code_tx_impl,
