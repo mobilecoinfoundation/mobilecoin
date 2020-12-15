@@ -633,6 +633,36 @@ impl<
         Ok(response)
     }
 
+    fn get_membership_proofs_impl(
+        &mut self,
+        request: mc_mobilecoind_api::GetMembershipProofsRequest,
+    ) -> Result<mc_mobilecoind_api::GetMembershipProofsResponse, RpcStatus> {
+        let input_list: Vec<UnspentTxOut> = request
+            .get_input_list()
+            .iter()
+            .map(|proto_utxo| {
+                // Proto -> Rust struct conversion.
+                UnspentTxOut::try_from(proto_utxo)
+                    .map_err(|err| rpc_internal_error("unspent_tx_out.try_from", err, &self.logger))
+            })
+            .collect::<Result<Vec<UnspentTxOut>, RpcStatus>>()?;
+
+        let inputs = self
+            .transactions_manager
+            .get_membership_proofs(input_list)
+            .map_err(|err| rpc_internal_error("get_membership_proofs", err, &self.logger))?;
+
+        let mut response = mc_mobilecoind_api::GetMembershipProofsResponse::new();
+        for (utxo, proof) in inputs.iter() {
+            let mut utxo_with_proof = mc_mobilecoind_api::TxOutWithProof::new();
+            utxo_with_proof.set_utxo(utxo.into());
+            utxo_with_proof.set_proof(proof.into());
+            response.mut_output_list().push(utxo_with_proof);
+        }
+
+        Ok(response)
+    }
+
     fn generate_tx_impl(
         &mut self,
         request: mc_mobilecoind_api::GenerateTxRequest,
@@ -1641,6 +1671,7 @@ build_api! {
     create_transfer_code CreateTransferCodeRequest CreateTransferCodeResponse create_transfer_code_impl,
     parse_address_code ParseAddressCodeRequest ParseAddressCodeResponse parse_address_code_impl,
     create_address_code CreateAddressCodeRequest CreateAddressCodeResponse create_address_code_impl,
+    get_membership_proofs GetMembershipProofsRequest GetMembershipProofsResponse get_membership_proofs_impl,
     generate_tx GenerateTxRequest GenerateTxResponse generate_tx_impl,
     generate_optimization_tx GenerateOptimizationTxRequest GenerateOptimizationTxResponse generate_optimization_tx_impl,
     generate_transfer_code_tx GenerateTransferCodeTxRequest GenerateTransferCodeTxResponse generate_transfer_code_tx_impl,
@@ -2608,6 +2639,79 @@ mod test {
         request.set_block(1);
 
         assert!(client.get_processed_block(&request).is_err());
+    }
+
+    #[test_with_logger]
+    fn test_get_membership_proofs(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        let sender = AccountKey::random(&mut rng);
+        let data = MonitorData::new(
+            sender.clone(),
+            0,  // first_subaddress
+            20, // num_subaddresses
+            0,  // first_block
+            "", // name
+        )
+        .unwrap();
+
+        // 1 known recipient, 3 random recipients and no monitors.
+        let (ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(
+                3,
+                &vec![sender.default_subaddress()],
+                &vec![],
+                logger.clone(),
+                &mut rng,
+            );
+
+        // Insert into database.
+        let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
+
+        // Allow the new monitor to process the ledger.
+        wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+        // Get list of unspent tx outs
+        let all_utxos = mobilecoind_db
+            .get_utxos_for_subaddress(&monitor_id, 0)
+            .unwrap();
+
+        // Get membership proofs for utxos 1, 3, 5.
+        let utxos = vec![
+            all_utxos[1].clone(),
+            all_utxos[3].clone(),
+            all_utxos[5].clone(),
+        ];
+
+        let mut request = mc_mobilecoind_api::GetMembershipProofsRequest::new();
+        request.set_input_list(RepeatedField::from_vec(
+            utxos
+                .iter()
+                .map(mc_mobilecoind_api::UnspentTxOut::from)
+                .collect(),
+        ));
+
+        let response = client.get_membership_proofs(&request).unwrap();
+
+        assert_eq!(response.output_list.len(), utxos.len());
+
+        for (utxo, output) in utxos.iter().zip(response.get_output_list().iter()) {
+            assert_eq!(
+                output.get_utxo(),
+                &mc_mobilecoind_api::UnspentTxOut::from(utxo)
+            );
+
+            let index = ledger_db
+                .get_tx_out_index_by_hash(&utxo.tx_out.hash())
+                .unwrap();
+            let proofs = ledger_db.get_tx_out_proof_of_memberships(&[index]).unwrap();
+            assert_eq!(proofs.len(), 1);
+
+            assert_eq!(
+                output.get_proof(),
+                &mc_mobilecoind_api::external::TxOutMembershipProof::from(&proofs[0])
+            );
+        }
     }
 
     #[test_with_logger]
