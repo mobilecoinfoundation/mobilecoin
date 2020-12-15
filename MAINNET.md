@@ -12,7 +12,7 @@ Please note that currently, the MobileCoin Wallet is not available for download 
 
 #### MobileCoin Wallet CLI
 
-* Run [`mobilecoind`](./mobilecoind/README.md) for the wallet backend. Note that the `mobilecoind-db` is considered sensitive and should follow best practices for isolation and security.
+* Run [`mobilecoind`](./mobilecoind/README.md) for the wallet backend. Note that the mobilecoind-db is considered sensitive; you should follow best practices for isolation and security.
 * Run [`mobilecoind-json`](./mobilecoind-json/README.md) to issue HTTP requests through a proxy to the `mobilecoind` backend.
 
 An example MainNet build and launch command for mobilecoind is:
