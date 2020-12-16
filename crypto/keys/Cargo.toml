@@ -39,4 +39,4 @@ rand_hc = "0.2"
 serde_json = "1.0"
 mc-util-test-helper = { path = "../../util/test-helper" }
 tempdir = "0.3"
-semver = "0.9"
+semver = "0.11"
