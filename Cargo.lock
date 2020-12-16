@@ -1581,16 +1581,6 @@ dependencies = [
 
 [[package]]
 name = "hostname"
-version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21ceb46a83a85e824ef93669c8b390009623863b5c195d1ba747292c0c72f94e"
-dependencies = [
- "libc",
- "winutil",
-]
-
-[[package]]
-name = "hostname"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3c731c3e10504cc8ed35cfe2f1db4c9274c3d35fa486e3b31df46f068ef3e867"
@@ -2302,7 +2292,7 @@ dependencies = [
  "generic-array 0.14.4",
  "hashbrown 0.6.3",
  "hex_fmt",
- "hostname 0.1.5",
+ "hostname",
  "lazy_static",
  "mc-crypto-digestible",
  "mc-crypto-keys",
@@ -5228,7 +5218,7 @@ checksum = "efe1c6c258797410d14ef90993e00916318d17461b201538d76fd8d3031cad4e"
 dependencies = [
  "backtrace",
  "failure",
- "hostname 0.3.1",
+ "hostname",
  "httpdate",
  "im",
  "lazy_static",
@@ -6649,15 +6639,6 @@ name = "winreg"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b2986deb581c4fe11b621998a5e53361efe6b48a151178d0cd9eeffa4dc6acc9"
-dependencies = [
- "winapi 0.3.8",
-]
-
-[[package]]
-name = "winutil"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7daf138b6b14196e3830a588acf1e86966c694d3e8fb026fb105b8b5dca07e6e"
 dependencies = [
  "winapi 0.3.8",
 ]
