@@ -24,7 +24,7 @@ cookie = "0.14"
 displaydoc = { version = "0.1.7", default-features = false }
 grpcio = "0.6.0"
 retry = "0.5"
-secrecy = "0.4"
+secrecy = "0.7"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 sha2 = "0.9"
 

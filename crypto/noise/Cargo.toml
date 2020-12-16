@@ -16,7 +16,7 @@ failure = { version = "0.1.8", default-features = false, features = ["derive"] }
 generic-array = { version = "0.14", features = ["serde"] }
 hkdf = "0.9.0"
 rand_core = "0.5"
-secrecy = "0.4"
+secrecy = "0.7"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 sha2 = { version = "0.9", default-features = false }
 subtle = { version = "2.2", default-features = false, features = ["i128"] }
