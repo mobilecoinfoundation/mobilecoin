@@ -277,15 +277,13 @@ dependencies = [
 
 [[package]]
 name = "blake2"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "84ce5b6108f8e154604bd4eb76a2f726066c3464d5a552a4229262a18c9bb471"
+checksum = "10a5720225ef5daecf08657f23791354e1685a8c91a4c60c7f3d3b2892f978f4"
 dependencies = [
- "byte-tools",
- "byteorder",
  "crypto-mac 0.8.0",
  "digest 0.9.0",
- "opaque-debug 0.2.3",
+ "opaque-debug 0.3.0",
 ]
 
 [[package]]
