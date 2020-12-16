@@ -35,7 +35,7 @@ reqwest = { version = "0.10" , features = ["rustls-tls"], default_features = fal
 retry = "0.5"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 tempdir = "0.3"
-url = "2.1"
+url = "2.2"
 
 [dev-dependencies]
 mc-common = { path = "../../common", features = ["loggers"] }

@@ -1185,6 +1185,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2fad85553e09a6f881f739c29f0b00b0f01357c743266d478b68951ce23285f3"
 
 [[package]]
+name = "form_urlencoded"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ece68d15c92e84fa4f19d3780f1294e5ca82a78a6d515f1efaabcc144688be00"
+dependencies = [
+ "matches",
+ "percent-encoding 2.1.0",
+]
+
+[[package]]
 name = "fragile"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2904,7 +2914,7 @@ dependencies = [
  "serde",
  "serde_json",
  "structopt",
- "url 2.1.1",
+ "url 2.2.0",
 ]
 
 [[package]]
@@ -2962,7 +2972,7 @@ dependencies = [
  "retry",
  "serde",
  "tempdir",
- "url 2.1.1",
+ "url 2.2.0",
 ]
 
 [[package]]
@@ -3097,7 +3107,7 @@ dependencies = [
  "retry",
  "serde",
  "sha2 0.9.1",
- "url 2.1.1",
+ "url 2.2.0",
 ]
 
 [[package]]
@@ -3529,7 +3539,7 @@ dependencies = [
  "cargo-emit",
  "failure",
  "lazy_static",
- "url 2.1.1",
+ "url 2.2.0",
  "walkdir",
 ]
 
@@ -3770,7 +3780,7 @@ dependencies = [
  "rand 0.7.3",
  "rand_hc 0.2.0",
  "serde",
- "url 2.1.1",
+ "url 2.2.0",
 ]
 
 [[package]]
@@ -3797,7 +3807,7 @@ dependencies = [
  "rand_hc 0.2.0",
  "structopt",
  "tempdir",
- "url 2.1.1",
+ "url 2.2.0",
 ]
 
 [[package]]
@@ -4825,7 +4835,7 @@ dependencies = [
  "time 0.1.43",
  "tokio 0.2.20",
  "tokio-rustls 0.13.0",
- "url 2.1.1",
+ "url 2.2.0",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -5239,7 +5249,7 @@ dependencies = [
  "rustc_version",
  "sentry-types",
  "uname",
- "url 2.1.1",
+ "url 2.2.0",
 ]
 
 [[package]]
@@ -5253,7 +5263,7 @@ dependencies = [
  "failure",
  "serde",
  "serde_json",
- "url 2.1.1",
+ "url 2.2.0",
  "uuid",
 ]
 
@@ -5306,7 +5316,7 @@ dependencies = [
  "dtoa",
  "itoa",
  "serde",
- "url 2.1.1",
+ "url 2.2.0",
 ]
 
 [[package]]
@@ -6389,10 +6399,11 @@ dependencies = [
 
 [[package]]
 name = "url"
-version = "2.1.1"
+version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "829d4a8476c35c9bf0bbce5a3b23f4106f79728039b726d292bb93bc106787cb"
+checksum = "5909f2b0817350449ed73e8bcd81c8c3c8d9a7a5d8acba4b27db277f1868976e"
 dependencies = [
+ "form_urlencoded",
  "idna 0.2.0",
  "matches",
  "percent-encoding 2.1.0",
