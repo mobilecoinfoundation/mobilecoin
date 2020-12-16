@@ -818,6 +818,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "crypto-mac"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4857fd85a0c34b3c3297875b747c1e02e06b6a0ea32dd892d8192b9ce0813ea6"
+dependencies = [
+ "generic-array 0.14.4",
+ "subtle 2.2.3",
+]
+
+[[package]]
 name = "csv"
 version = "1.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1550,6 +1560,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "hkdf"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "51ab2f639c231793c5f6114bdb9bbe50a7dbbfcd7c7c6bd8475dec2d991e964f"
+dependencies = [
+ "digest 0.9.0",
+ "hmac 0.10.1",
+]
+
+[[package]]
 name = "hmac"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1576,6 +1596,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "deae6d9dbb35ec2c502d62b8f7b1c000a0822c3b0794ba36b3149c0a1c840dff"
 dependencies = [
  "crypto-mac 0.9.1",
+ "digest 0.9.0",
+]
+
+[[package]]
+name = "hmac"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c1441c6b1e930e2817404b5046f1f989899143a12bf92de603b69f4e0aee1e15"
+dependencies = [
+ "crypto-mac 0.10.0",
  "digest 0.9.0",
 ]
 
@@ -2094,7 +2124,7 @@ dependencies = [
  "datatest",
  "digest 0.9.0",
  "displaydoc",
- "hkdf",
+ "hkdf 0.9.0",
  "mc-crypto-digestible",
  "mc-crypto-hashes",
  "mc-crypto-keys",
@@ -2643,7 +2673,7 @@ dependencies = [
  "blake2",
  "digest 0.9.0",
  "failure",
- "hkdf",
+ "hkdf 0.10.0",
  "mc-crypto-ct-aead",
  "mc-crypto-keys",
  "mc-util-from-random",
@@ -2765,7 +2795,7 @@ dependencies = [
  "digest 0.9.0",
  "failure",
  "generic-array 0.14.4",
- "hkdf",
+ "hkdf 0.10.0",
  "mc-crypto-keys",
  "mc-util-from-random",
  "mc-util-repr-bytes",
@@ -3470,7 +3500,7 @@ dependencies = [
  "blake2",
  "curve25519-dalek",
  "failure",
- "hkdf",
+ "hkdf 0.10.0",
  "mc-account-keys",
  "mc-common",
  "mc-crypto-hashes",
