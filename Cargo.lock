@@ -2210,7 +2210,7 @@ dependencies = [
  "binascii",
  "bincode",
  "bitflags",
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "chrono",
  "digest 0.9.0",
  "displaydoc",
@@ -2254,7 +2254,7 @@ dependencies = [
 name = "mc-attest-net"
 version = "1.0.0"
 dependencies = [
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "failure",
  "mbedtls",
  "mc-attest-core",
@@ -2296,7 +2296,7 @@ version = "1.0.0"
 dependencies = [
  "backtrace",
  "binascii",
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "chrono",
  "failure",
  "generic-array 0.14.4",
@@ -2413,7 +2413,7 @@ dependencies = [
 name = "mc-consensus-enclave-api"
 version = "1.0.0"
 dependencies = [
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "failure",
  "mc-attest-ake",
  "mc-attest-core",
@@ -2442,7 +2442,7 @@ name = "mc-consensus-enclave-impl"
 version = "1.0.0"
 dependencies = [
  "cargo-emit",
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "digest 0.9.0",
  "hex 0.4.2",
  "mbedtls",
@@ -2553,7 +2553,7 @@ name = "mc-consensus-service"
 version = "1.0.0"
 dependencies = [
  "base64 0.11.0",
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "chrono",
  "curve25519-dalek",
  "displaydoc",
@@ -2665,7 +2665,7 @@ dependencies = [
 name = "mc-crypto-digestible"
 version = "1.0.0"
 dependencies = [
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "curve25519-dalek",
  "ed25519-dalek",
  "generic-array 0.14.4",
@@ -2715,7 +2715,7 @@ name = "mc-crypto-keys"
 version = "1.0.0"
 dependencies = [
  "binascii",
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "curve25519-dalek",
  "digest 0.9.0",
  "ed25519",
@@ -2782,7 +2782,7 @@ dependencies = [
 name = "mc-crypto-rand"
 version = "1.0.0"
 dependencies = [
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "getrandom",
  "rand 0.7.3",
  "rand_core 0.5.1",

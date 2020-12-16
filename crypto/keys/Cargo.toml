@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 binascii = "0.1.2"
-cfg-if = "0.1"
+cfg-if = "1.0"
 digest = { version = "0.9", default-features = false }
 ed25519 = { version = "1.0.1", default-features = false, features = ["serde"] }
 mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek", "derive"] }

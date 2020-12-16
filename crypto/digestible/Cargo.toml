@@ -5,7 +5,7 @@ authors = ["MobileCoin"]
 edition = "2018"
 
 [dependencies]
-cfg-if = "0.1"
+cfg-if = "1.0"
 merlin = { version = "2.0", default-features = false }
 generic-array = "0.14"
 
