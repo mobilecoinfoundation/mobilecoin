@@ -23,7 +23,7 @@ mc-util-grpc = { path = "../util/grpc" }
 mc-util-serial = { path = "../util/serial" }
 mc-util-uri = { path = "../util/uri" }
 
-crossbeam-channel = "0.4"
+crossbeam-channel = "0.5"
 ed25519 = { version = "1.0.1", default-features = false, features = ["serde"] }
 failure = "0.1.8"
 grpcio = "0.6.0"
