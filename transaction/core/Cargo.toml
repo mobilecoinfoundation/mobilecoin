@@ -49,7 +49,7 @@ blake2 = { version = "0.9", default-features = false }
 rand = "0.7"
 rand_hc = "0.2"
 tempdir = "0.3"
-time = "0.1"
+time = "0.2"
 
 mc-ledger-db = { path = "../../ledger/db" }
 mc-util-serial = { path = "../../util/serial", features = ["std"] }

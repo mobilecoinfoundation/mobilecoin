@@ -503,7 +503,7 @@ dependencies = [
  "num-integer",
  "num-traits",
  "serde",
- "time 0.1.43",
+ "time 0.1.44",
 ]
 
 [[package]]
@@ -604,7 +604,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5795cda0897252e34380a27baf884c53aa7ad9990329cdad96d4c5d027015d44"
 dependencies = [
  "percent-encoding 2.1.0",
- "time 0.1.43",
+ "time 0.1.44",
 ]
 
 [[package]]
@@ -1385,7 +1385,7 @@ checksum = "7abc8dd8451921606d809ba32e95b6111925cd2906060d2dcc29c070220503eb"
 dependencies = [
  "cfg-if 0.1.10",
  "libc",
- "wasi",
+ "wasi 0.9.0+wasi-snapshot-preview1",
 ]
 
 [[package]]
@@ -1677,7 +1677,7 @@ dependencies = [
  "log 0.3.9",
  "mime 0.2.6",
  "num_cpus",
- "time 0.1.43",
+ "time 0.1.44",
  "traitobject",
  "typeable",
  "unicase 1.4.2",
@@ -1702,7 +1702,7 @@ dependencies = [
  "log 0.4.8",
  "net2",
  "rustc_version",
- "time 0.1.43",
+ "time 0.1.44",
  "tokio 0.1.22",
  "tokio-buf",
  "tokio-executor",
@@ -1732,7 +1732,7 @@ dependencies = [
  "log 0.4.8",
  "net2",
  "pin-project",
- "time 0.1.43",
+ "time 0.1.44",
  "tokio 0.2.20",
  "tower-service",
  "want 0.3.0",
@@ -3444,7 +3444,7 @@ dependencies = [
  "sha2 0.9.1",
  "subtle 2.2.3",
  "tempdir",
- "time 0.1.43",
+ "time 0.2.22",
  "zeroize 1.1.0",
 ]
 
@@ -4822,7 +4822,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_urlencoded",
- "time 0.1.43",
+ "time 0.1.44",
  "tokio 0.2.20",
  "tokio-rustls 0.13.0",
  "url 2.1.1",
@@ -4878,7 +4878,7 @@ dependencies = [
  "rocket_codegen",
  "rocket_http",
  "state",
- "time 0.1.43",
+ "time 0.1.44",
  "toml 0.4.10",
  "version_check 0.9.1",
  "yansi",
@@ -4925,7 +4925,7 @@ dependencies = [
  "percent-encoding 1.0.1",
  "smallvec 1.4.0",
  "state",
- "time 0.1.43",
+ "time 0.1.44",
  "unicode-xid 0.1.0",
 ]
 
@@ -4949,7 +4949,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
- "time 0.1.43",
+ "time 0.1.44",
  "tokio 0.1.22",
  "tokio-timer",
  "xml-rs",
@@ -5007,7 +5007,7 @@ dependencies = [
  "rustc_version",
  "serde",
  "sha2 0.8.1",
- "time 0.1.43",
+ "time 0.1.44",
  "tokio 0.1.22",
 ]
 
@@ -5894,11 +5894,12 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.1.43"
+version = "0.1.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca8a50ef2360fbd1eeb0ecd46795a87a19024eb4b53c5dc916ca1fd95fe62438"
+checksum = "6db9e6914ab8b1ae1c260a4ae7a49b6c5611b40328a735b21862567685e73255"
 dependencies = [
  "libc",
+ "wasi 0.10.0+wasi-snapshot-preview1",
  "winapi 0.3.8",
 ]
 
@@ -6485,6 +6486,12 @@ name = "wasi"
 version = "0.9.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cccddf32554fecc6acb585f82a32a72e28b48f8c4c1883ddfeeeaa96f7d8e519"
+
+[[package]]
+name = "wasi"
+version = "0.10.0+wasi-snapshot-preview1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a143597ca7c7793eff794def352d41792a93c481eb1042423ff7ff72ba2c31f"
 
 [[package]]
 name = "wasm-bindgen"
