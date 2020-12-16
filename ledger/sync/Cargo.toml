@@ -24,7 +24,7 @@ mc-util-uri = { path = "../../util/uri" }
 crossbeam-channel = "0.4"
 failure = "0.1.8"
 grpcio = "0.6.0"
-mockall = "0.7.2"
+mockall = "0.8.3"
 protobuf = "2.12"
 rand = "0.7"
 reqwest = { version = "0.10" , features = ["rustls-tls"], default_features = false }

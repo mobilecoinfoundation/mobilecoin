@@ -27,7 +27,7 @@ crossbeam-channel = "0.4"
 ed25519 = { version = "1.0.1", default-features = false, features = ["serde"] }
 failure = "0.1.8"
 grpcio = "0.6.0"
-mockall = "0.7.2"
+mockall = "0.8.3"
 protobuf = "2.12"
 retry = "0.5"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }

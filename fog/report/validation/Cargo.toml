@@ -15,4 +15,4 @@ mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-util-encodings = { path = "../../../util/encodings" }
 
 displaydoc = { version = "0.1", default-features = false }
-mockall = { version = "0.7.2", optional = true }
+mockall = { version = "0.8.3", optional = true }
