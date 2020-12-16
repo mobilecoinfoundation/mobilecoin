@@ -2499,7 +2499,7 @@ dependencies = [
 name = "mc-consensus-service"
 version = "1.0.0"
 dependencies = [
- "base64 0.11.0",
+ "base64 0.12.1",
  "chrono",
  "curve25519-dalek",
  "displaydoc",
@@ -3640,7 +3640,7 @@ dependencies = [
 name = "mc-util-uri"
 version = "1.0.0"
 dependencies = [
- "base64 0.11.0",
+ "base64 0.12.1",
  "displaydoc",
  "ed25519",
  "hex 0.4.2",
