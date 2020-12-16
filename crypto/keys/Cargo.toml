@@ -25,7 +25,7 @@ zeroize = { version = "1", default-features = false }
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
 curve25519-dalek = { version = "3.0", default-features = false, features = ["simd_backend", "nightly"] }
-ed25519-dalek = { version = "1.0.0", default-features = false, features = ["alloc", "nightly", "serde", "simd_backend"] }
+ed25519-dalek = { version = "1.0.1", default-features = false, features = ["alloc", "nightly", "serde", "simd_backend"] }
 
 [target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
 curve25519-dalek = { version = "3.0", default-features = false, features = ["nightly", "u64_backend"] }
