@@ -39,4 +39,4 @@ subtle = { version = "2.2", default-features = false, features = ["i128"] }
 
 [dev-dependencies]
 bincode = "1.2"
-rand_hc = "0.2"
+rand_hc = "0.3"

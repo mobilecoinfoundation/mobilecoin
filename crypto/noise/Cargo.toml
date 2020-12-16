@@ -23,4 +23,4 @@ subtle = { version = "2.2", default-features = false, features = ["i128"] }
 zeroize = "0.10"
 
 [dev-dependencies]
-rand_hc = "0.2"
+rand_hc = "0.3"

@@ -22,7 +22,7 @@ bigint = "4.4"
 maplit = "1.0.2"
 mockall = "0.7.2"
 rand = "0.7"
-rand_hc = "0.2"
+rand_hc = "0.3"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 serde_json = "1.0"
 sha3 = "0.9"

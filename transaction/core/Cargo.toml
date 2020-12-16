@@ -47,7 +47,7 @@ blake2 = { version = "0.9", default-features = false }
 
 [dev-dependencies]
 rand = "0.7"
-rand_hc = "0.2"
+rand_hc = "0.3"
 tempdir = "0.3"
 time = "0.1"
 

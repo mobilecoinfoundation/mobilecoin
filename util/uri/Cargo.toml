@@ -21,4 +21,4 @@ url = "2.1"
 mc-util-from-random = { path = "../../util/from-random" }
 
 rand = "0.7"
-rand_hc = "0.2.0"
+rand_hc = "0.3.0"

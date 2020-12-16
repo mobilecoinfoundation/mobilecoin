@@ -2179,7 +2179,7 @@ dependencies = [
  "mc-util-from-random",
  "prost",
  "rand_core 0.5.1",
- "rand_hc 0.2.0",
+ "rand_hc 0.3.0",
  "serde",
  "sha2 0.9.1",
 ]
@@ -2231,7 +2231,7 @@ dependencies = [
  "prost",
  "rand 0.7.3",
  "rand_core 0.5.1",
- "rand_hc 0.2.0",
+ "rand_hc 0.3.0",
  "rjson",
  "serde",
  "sha2 0.9.1",
@@ -2350,7 +2350,7 @@ dependencies = [
  "mc-util-serial",
  "mc-util-uri",
  "rand 0.7.3",
- "rand_hc 0.2.0",
+ "rand_hc 0.3.0",
  "retry",
  "secrecy",
  "serde",
@@ -2470,7 +2470,7 @@ dependencies = [
  "prost",
  "rand 0.7.3",
  "rand_core 0.5.1",
- "rand_hc 0.2.0",
+ "rand_hc 0.3.0",
  "sha2 0.9.1",
 ]
 
@@ -2503,7 +2503,7 @@ dependencies = [
  "mc-util-serial",
  "mockall",
  "rand_core 0.5.1",
- "rand_hc 0.2.0",
+ "rand_hc 0.3.0",
  "sha2 0.9.1",
 ]
 
@@ -2525,7 +2525,7 @@ dependencies = [
  "mockall",
  "pretty_assertions",
  "rand 0.7.3",
- "rand_hc 0.2.0",
+ "rand_hc 0.3.0",
  "serde",
  "serde_json",
  "serial_test 0.1.0",
@@ -2597,7 +2597,7 @@ dependencies = [
  "protobuf",
  "rand 0.7.3",
  "rand_core 0.5.1",
- "rand_hc 0.2.0",
+ "rand_hc 0.3.0",
  "rayon",
  "retry",
  "serde",
@@ -2731,7 +2731,7 @@ dependencies = [
  "pem",
  "prost",
  "rand_core 0.5.1",
- "rand_hc 0.2.0",
+ "rand_hc 0.3.0",
  "semver",
  "serde",
  "serde_json",
@@ -2770,7 +2770,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-repr-bytes",
  "rand_core 0.5.1",
- "rand_hc 0.2.0",
+ "rand_hc 0.3.0",
  "secrecy",
  "serde",
  "sha2 0.9.1",
@@ -2786,7 +2786,7 @@ dependencies = [
  "getrandom",
  "rand 0.7.3",
  "rand_core 0.5.1",
- "rand_hc 0.2.0",
+ "rand_hc 0.3.0",
 ]
 
 [[package]]
@@ -3093,7 +3093,7 @@ dependencies = [
  "mockall",
  "protobuf",
  "rand 0.7.3",
- "rand_hc 0.2.0",
+ "rand_hc 0.3.0",
  "retry",
  "serde",
  "sha2 0.9.1",
@@ -3118,7 +3118,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-uri",
  "rand 0.7.3",
- "rand_hc 0.2.0",
+ "rand_hc 0.3.0",
  "retry",
  "sha2 0.9.1",
 ]
@@ -3235,7 +3235,7 @@ dependencies = [
  "mc-util-repr-bytes",
  "prost",
  "rand_core 0.5.1",
- "rand_hc 0.2.0",
+ "rand_hc 0.3.0",
  "serde",
  "subtle 2.2.3",
 ]
@@ -3274,7 +3274,7 @@ dependencies = [
  "prost",
  "prost-types",
  "rand_core 0.5.1",
- "rand_hc 0.2.0",
+ "rand_hc 0.3.0",
  "rjson",
  "subtle 2.2.3",
 ]
@@ -3439,7 +3439,7 @@ dependencies = [
  "prost",
  "rand 0.7.3",
  "rand_core 0.5.1",
- "rand_hc 0.2.0",
+ "rand_hc 0.3.0",
  "serde",
  "sha2 0.9.1",
  "subtle 2.2.3",
@@ -3579,7 +3579,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-keyfile",
  "rand 0.7.3",
- "rand_hc 0.2.0",
+ "rand_hc 0.3.0",
  "rayon",
  "serde",
  "structopt",
@@ -3654,7 +3654,7 @@ dependencies = [
  "mc-util-from-random",
  "mc-util-serial",
  "rand 0.7.3",
- "rand_hc 0.2.0",
+ "rand_hc 0.3.0",
  "serde",
  "serde_json",
  "structopt",
@@ -3741,7 +3741,7 @@ dependencies = [
  "mc-util-serial",
  "rand 0.7.3",
  "rand_core 0.5.1",
- "rand_hc 0.2.0",
+ "rand_hc 0.3.0",
  "structopt",
 ]
 
@@ -3768,7 +3768,7 @@ dependencies = [
  "mc-util-host-cert",
  "percent-encoding 2.1.0",
  "rand 0.7.3",
- "rand_hc 0.2.0",
+ "rand_hc 0.3.0",
  "serde",
  "url 2.1.1",
 ]
@@ -3794,7 +3794,7 @@ dependencies = [
  "mc-watcher-api",
  "prost",
  "rand_core 0.5.1",
- "rand_hc 0.2.0",
+ "rand_hc 0.3.0",
  "structopt",
  "tempdir",
  "url 2.1.1",
@@ -4630,6 +4630,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "rand_core"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8b34ba8cfb21243bd8df91854c830ff0d785fff2e82ebd4434c2644cb9ada18"
+
+[[package]]
 name = "rand_hc"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4645,6 +4651,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ca3129af7b92a17112d59ad498c6f81eaf463253766b90396d39ea7a39d6613c"
 dependencies = [
  "rand_core 0.5.1",
+]
+
+[[package]]
+name = "rand_hc"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3190ef7066a446f2e7f42e239d161e905420ccab01eb967c9eb27d21b2322a73"
+dependencies = [
+ "rand_core 0.6.0",
 ]
 
 [[package]]

@@ -20,7 +20,7 @@ mc-util-keyfile = { path = "../../util/keyfile" }
 
 hex = "0.3"
 rand = "0.7"
-rand_hc = "0.2.0"
+rand_hc = "0.3.0"
 rayon = "1.1"
 structopt = "0.3"
 

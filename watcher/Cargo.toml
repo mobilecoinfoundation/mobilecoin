@@ -33,5 +33,5 @@ mc-common = { path = "../common", features = ["loggers"] }
 mc-util-test-helper = { path = "../util/test-helper" }
 
 rand_core = "0.5"
-rand_hc = "0.2"
+rand_hc = "0.3"
 tempdir = "0.3"
