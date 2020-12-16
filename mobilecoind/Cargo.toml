@@ -48,7 +48,7 @@ futures = "0.3"
 grpcio = "0.6.0"
 hex_fmt = "0.3"
 lmdb-rkv = "0.14.0"
-lru = { version = "0.1" }
+lru = { version = "0.6" }
 num_cpus = "1.12"
 prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
 protobuf = "2.12"
