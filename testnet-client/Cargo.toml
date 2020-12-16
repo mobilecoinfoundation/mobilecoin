@@ -9,7 +9,7 @@ chrono = "0.4"
 dialoguer = "0.6"
 grpcio = "0.6.0"
 hex = "0.4"
-indicatif = "0.14"
+indicatif = "0.15"
 protobuf = "2.12"
 rust_decimal = { version = "1.8" }
 structopt = "0.3"
