@@ -13,6 +13,6 @@ mc-sgx-core-types-sys = { path = "../core-types-sys" }
 mc-util-build-script = { path = "../../util/build/script" }
 mc-util-build-sgx = { path = "../../util/build/sgx" }
 
-bindgen = "0.51.1"
+bindgen = "0.53.1"
 cargo-emit = "0.1"
 pkg-config = "0.3"

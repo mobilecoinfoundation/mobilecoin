@@ -233,8 +233,32 @@ dependencies = [
  "cfg-if 0.1.10",
  "clang-sys",
  "clap",
- "env_logger",
+ "env_logger 0.6.2",
  "lazy_static",
+ "log 0.4.8",
+ "peeking_take_while",
+ "proc-macro2 1.0.24",
+ "quote 1.0.4",
+ "regex",
+ "rustc-hash",
+ "shlex",
+ "which",
+]
+
+[[package]]
+name = "bindgen"
+version = "0.53.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "99de13bb6361e01e493b3db7928085dcc474b7ba4f5481818e53a89d76b8393f"
+dependencies = [
+ "bitflags",
+ "cexpr",
+ "cfg-if 0.1.10",
+ "clang-sys",
+ "clap",
+ "env_logger 0.7.1",
+ "lazy_static",
+ "lazycell",
  "log 0.4.8",
  "peeking_take_while",
  "proc-macro2 1.0.24",
@@ -1108,6 +1132,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "env_logger"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "44533bbbb3bb3c1fa17d9f2e4e38bbbaf8396ba82193c4cb1b6445d711445d36"
+dependencies = [
+ "atty",
+ "humantime",
+ "log 0.4.8",
+ "regex",
+ "termcolor",
+]
+
+[[package]]
 name = "error-chain"
 version = "0.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1435,7 +1472,7 @@ name = "grpcio-sys"
 version = "0.6.0"
 source = "git+https://github.com/jcape/grpc-rs?rev=2ad042e9e65ecb664a60e034d0a899a8760d81d3#2ad042e9e65ecb664a60e034d0a899a8760d81d3"
 dependencies = [
- "bindgen",
+ "bindgen 0.51.1",
  "cc",
  "cmake",
  "libc",
@@ -2079,7 +2116,7 @@ name = "mbedtls-sys-auto"
 version = "2.18.1"
 source = "git+https://github.com/mobilecoinofficial/rust-mbedtls.git?tag=mc-0.3#8cac1fd1b9c521efb742a1014471e8563b2d6426"
 dependencies = [
- "bindgen",
+ "bindgen 0.51.1",
  "cmake",
  "libc",
 ]
@@ -3172,7 +3209,7 @@ dependencies = [
 name = "mc-sgx-core-types-sys"
 version = "1.0.0"
 dependencies = [
- "bindgen",
+ "bindgen 0.53.1",
  "cargo-emit",
  "mc-util-build-script",
  "mc-util-build-sgx",
@@ -3209,7 +3246,7 @@ dependencies = [
 name = "mc-sgx-epid-sys"
 version = "1.0.0"
 dependencies = [
- "bindgen",
+ "bindgen 0.53.1",
  "cargo-emit",
  "mc-sgx-core-types-sys",
  "mc-sgx-epid-types-sys",
@@ -3244,7 +3281,7 @@ dependencies = [
 name = "mc-sgx-epid-types-sys"
 version = "1.0.0"
 dependencies = [
- "bindgen",
+ "bindgen 0.53.1",
  "cargo-emit",
  "mc-sgx-core-types-sys",
  "mc-util-build-script",
@@ -3348,7 +3385,7 @@ dependencies = [
 name = "mc-sgx-urts-sys"
 version = "1.0.0"
 dependencies = [
- "bindgen",
+ "bindgen 0.53.1",
  "cargo-emit",
  "mc-sgx-core-types-sys",
  "mc-util-build-script",
