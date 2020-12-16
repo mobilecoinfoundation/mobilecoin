@@ -8,7 +8,7 @@ edition = "2018"
 binascii = "0.1.2"
 cfg-if = "0.1"
 digest = { version = "0.9", default-features = false }
-ed25519 = { version = "1.0.1", default-features = false, features = ["serde"] }
+ed25519 = { version = "1.0.3", default-features = false, features = ["serde"] }
 mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek", "derive"] }
 failure = { version = "0.1.8", default-features = false, features = ["derive"] }
 hex_fmt = "0.3"
