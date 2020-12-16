@@ -11,7 +11,7 @@ mc-util-uri = { path = "../util/uri" }
 
 grpcio = "0.6.0"
 rocket = { version = "0.4.4", default-features = false }
-rocket_contrib = { version = "0.4.4", default-features = false, features = ["json"] }
+rocket_contrib = { version = "0.4.6", default-features = false, features = ["json"] }
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
