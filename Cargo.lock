@@ -2528,7 +2528,7 @@ dependencies = [
  "rand_hc 0.2.0",
  "serde",
  "serde_json",
- "serial_test 0.1.0",
+ "serial_test",
  "serial_test_derive 0.1.0",
  "sha3",
  "tempdir",
@@ -2602,7 +2602,7 @@ dependencies = [
  "retry",
  "serde",
  "serde_json",
- "serial_test 0.5.0",
+ "serial_test",
  "serial_test_derive 0.5.0",
  "structopt",
  "tempdir",
@@ -5319,15 +5319,6 @@ dependencies = [
  "linked-hash-map",
  "serde",
  "yaml-rust",
-]
-
-[[package]]
-name = "serial_test"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba22db78004fb4f112cdb92895a65395ca0aa25215a467316e064ac2e487dc63"
-dependencies = [
- "lazy_static",
 ]
 
 [[package]]

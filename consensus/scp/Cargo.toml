@@ -34,6 +34,6 @@ mc-util-test-helper = { path = "../../util/test-helper" }
 
 crossbeam-channel = "0.4"
 pretty_assertions = "0.6.1"
-serial_test = "0.1"
+serial_test = "0.5"
 serial_test_derive = "0.1"
 tempdir = "0.3"
