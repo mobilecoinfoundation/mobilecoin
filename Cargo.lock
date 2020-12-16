@@ -870,7 +870,7 @@ dependencies = [
  "rand_core 0.5.1",
  "serde",
  "subtle 2.2.3",
- "zeroize 1.1.0",
+ "zeroize 1.2.0",
 ]
 
 [[package]]
@@ -1070,7 +1070,7 @@ dependencies = [
  "rand 0.7.3",
  "serde",
  "sha2 0.9.1",
- "zeroize 1.1.0",
+ "zeroize 1.2.0",
 ]
 
 [[package]]
@@ -2110,7 +2110,7 @@ dependencies = [
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
  "tempdir",
- "zeroize 1.1.0",
+ "zeroize 1.2.0",
 ]
 
 [[package]]
@@ -2739,7 +2739,7 @@ dependencies = [
  "signature",
  "tempdir",
  "x25519-dalek",
- "zeroize 1.1.0",
+ "zeroize 1.2.0",
 ]
 
 [[package]]
@@ -2775,7 +2775,7 @@ dependencies = [
  "serde",
  "sha2 0.9.1",
  "subtle 2.2.3",
- "zeroize 0.10.1",
+ "zeroize 1.2.0",
 ]
 
 [[package]]
@@ -3445,7 +3445,7 @@ dependencies = [
  "subtle 2.2.3",
  "tempdir",
  "time 0.1.43",
- "zeroize 1.1.0",
+ "zeroize 1.2.0",
 ]
 
 [[package]]
@@ -3484,7 +3484,7 @@ dependencies = [
  "rand_core 0.5.1",
  "serde",
  "yaml-rust",
- "zeroize 1.1.0",
+ "zeroize 1.2.0",
 ]
 
 [[package]]
@@ -3612,7 +3612,7 @@ dependencies = [
  "rand 0.6.5",
  "sha2 0.9.1",
  "subtle 2.2.3",
- "zeroize 1.1.0",
+ "zeroize 1.2.0",
 ]
 
 [[package]]
@@ -3838,7 +3838,7 @@ dependencies = [
  "byteorder",
  "keccak",
  "rand_core 0.5.1",
- "zeroize 1.1.0",
+ "zeroize 1.2.0",
 ]
 
 [[package]]
@@ -5147,7 +5147,7 @@ dependencies = [
  "rand_core 0.5.1",
  "sha2 0.9.1",
  "subtle 2.2.3",
- "zeroize 1.1.0",
+ "zeroize 1.2.0",
 ]
 
 [[package]]
@@ -5178,7 +5178,7 @@ version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9eb052cf770a381fa9a6ee63038ff9a0b11d30abb53be970672e950649ff0bfb"
 dependencies = [
- "zeroize 1.1.0",
+ "zeroize 1.2.0",
 ]
 
 [[package]]
@@ -6680,7 +6680,7 @@ checksum = "bc614d95359fd7afc321b66d2107ede58b246b844cf5d8a0adcca413e439f088"
 dependencies = [
  "curve25519-dalek",
  "rand_core 0.5.1",
- "zeroize 1.1.0",
+ "zeroize 1.2.0",
 ]
 
 [[package]]
@@ -6721,15 +6721,9 @@ dependencies = [
 
 [[package]]
 name = "zeroize"
-version = "0.10.1"
+version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4090487fa66630f7b166fba2bbb525e247a5449f41c468cc1d98f8ae6ac03120"
-
-[[package]]
-name = "zeroize"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3cbac2ed2ba24cc90f5e06485ac8c7c1e5449fe8911aef4d8877218af021a5b8"
+checksum = "81a974bcdd357f0dca4d41677db03436324d45a4c9ed2d0b873a5a360ce41c36"
 dependencies = [
  "zeroize_derive 1.0.0",
 ]
