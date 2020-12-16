@@ -15,5 +15,5 @@ version = "0.4"
 features = ["nightly"]
 
 [dependencies.syn]
-version = "0.15"
+version = "1.0"
 features = ["full", "extra-traits"]
