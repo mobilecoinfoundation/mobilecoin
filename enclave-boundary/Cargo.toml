@@ -5,7 +5,7 @@ authors = ["MobileCoin"]
 edition = "2018"
 
 [dependencies]
-rand_core = { version = "0.5", default-features = false }
+rand_core = { version = "0.6", default-features = false }
 
 mc-common = { path = "../common", default-features = false }
 mc-crypto-rand = { path = "../crypto/rand" }

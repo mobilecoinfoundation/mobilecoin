@@ -54,7 +54,7 @@ prost = { version = "0.6.1", default-features = false, features = ["prost-derive
 protobuf = "2.12"
 reqwest = { version = "0.10", default-features = false, features = ["rustls-tls", "gzip"] }
 rand = "0.7"
-rand_core = "0.5"
+rand_core = "0.6"
 retry = "0.5.1"
 serde_json = "1.0"
 sha3 = "0.9"
