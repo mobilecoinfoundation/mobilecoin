@@ -3663,7 +3663,6 @@ name = "mc-util-metered-channel"
 version = "1.0.0"
 dependencies = [
  "crossbeam-channel",
- "grpcio",
  "lazy_static",
  "mc-util-metrics",
  "protobuf",
