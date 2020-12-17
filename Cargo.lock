@@ -2077,7 +2077,6 @@ dependencies = [
  "criterion",
  "curve25519-dalek",
  "datatest",
- "displaydoc",
  "hkdf",
  "mc-crypto-digestible",
  "mc-crypto-hashes",
