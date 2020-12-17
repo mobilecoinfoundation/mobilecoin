@@ -2809,7 +2809,6 @@ dependencies = [
  "mc-attest-core",
  "mc-crypto-keys",
  "mc-util-encodings",
- "mc-util-serial",
  "mockall",
 ]
 
