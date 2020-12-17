@@ -3442,7 +3442,6 @@ dependencies = [
  "curve25519-dalek",
  "failure",
  "mc-account-keys",
- "mc-common",
  "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-transaction-core",
