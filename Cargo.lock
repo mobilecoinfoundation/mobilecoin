@@ -2974,7 +2974,6 @@ dependencies = [
  "crossbeam-channel",
  "displaydoc",
  "failure",
- "futures 0.3.5",
  "grpcio",
  "hex_fmt",
  "libz-sys",
