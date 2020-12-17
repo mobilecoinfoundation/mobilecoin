@@ -3315,7 +3315,6 @@ dependencies = [
  "mc-account-keys",
  "mc-test-vectors-definitions",
  "mc-util-test-vector",
- "serde_json",
 ]
 
 [[package]]
