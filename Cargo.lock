@@ -2509,7 +2509,6 @@ dependencies = [
  "mc-common",
  "mc-consensus-scp",
  "mc-transaction-core",
- "mc-util-serial",
  "mc-util-uri",
  "serde",
  "serde_json",
