@@ -2186,7 +2186,6 @@ dependencies = [
  "digest 0.9.0",
  "displaydoc",
  "failure",
- "generic-array 0.14.4",
  "hex 0.4.2",
  "hex_fmt",
  "mbedtls",
