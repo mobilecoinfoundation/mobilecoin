@@ -6,8 +6,6 @@ edition = "2018"
 
 [dependencies]
 mc-util-metrics = { path = "../../util/metrics" }
-
-chrono = "0.4"
 crossbeam-channel = "0.4"
 grpcio = "0.6.0"
 lazy_static = "1.4"
