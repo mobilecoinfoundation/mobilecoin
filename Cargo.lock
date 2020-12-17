@@ -2489,7 +2489,6 @@ dependencies = [
  "mc-crypto-keys",
  "mc-util-from-random",
  "mc-util-logger-macros",
- "mc-util-metrics",
  "mc-util-serial",
  "mc-util-test-helper",
  "mockall",
