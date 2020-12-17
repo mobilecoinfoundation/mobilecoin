@@ -2579,7 +2579,6 @@ dependencies = [
 name = "mc-crypto-ake-enclave"
 version = "1.0.0"
 dependencies = [
- "aead",
  "aes-gcm",
  "digest 0.9.0",
  "failure",
