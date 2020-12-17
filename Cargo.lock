@@ -3664,7 +3664,6 @@ version = "1.0.0"
 dependencies = [
  "crossbeam-channel",
  "mc-util-metrics",
- "protobuf",
  "reqwest",
  "serde_json",
 ]
