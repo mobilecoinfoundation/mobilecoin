@@ -8,7 +8,6 @@ links = "mc-mobilecoind-api"
 
 [dependencies]
 mc-api = { path = "../../api" }
-mc-common = { path = "../../common", features = ["log"] }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-util-uri = { path = "../../util/uri" }
