@@ -2591,7 +2591,6 @@ dependencies = [
  "mc-sgx-build",
  "mc-sgx-compat",
  "mc-util-from-random",
- "rand_core 0.5.1",
  "serde",
  "sha2 0.9.1",
 ]
