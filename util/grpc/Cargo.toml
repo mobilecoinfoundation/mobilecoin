@@ -25,7 +25,6 @@ hex_fmt = "0.3"
 hmac = "0.9"
 lazy_static = "1.4"
 prometheus = "0.9"
-prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
 protobuf = "2.12"
 rand = "0.6.5"
 sha2 = "0.9"

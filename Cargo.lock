@@ -3585,7 +3585,6 @@ dependencies = [
  "mc-util-serial",
  "mc-util-uri",
  "prometheus",
- "prost",
  "protobuf",
  "rand 0.6.5",
  "sha2 0.9.1",
