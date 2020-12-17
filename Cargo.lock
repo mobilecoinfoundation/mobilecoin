@@ -2355,7 +2355,6 @@ dependencies = [
  "mc-common",
  "mc-consensus-enclave-api",
  "mc-consensus-enclave-edl",
- "mc-consensus-enclave-measurement",
  "mc-crypto-keys",
  "mc-enclave-boundary",
  "mc-sgx-debug-edl",

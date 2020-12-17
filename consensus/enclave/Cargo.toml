@@ -11,7 +11,6 @@ mc-attest-enclave-api = { path = "../../attest/enclave-api" }
 mc-common = { path = "../../common" }
 mc-consensus-enclave-api = { path = "./api" }
 mc-consensus-enclave-edl = { path = "./edl"}
-mc-consensus-enclave-measurement = { path = "./measurement" }
 mc-enclave-boundary = { path = "../../enclave-boundary" }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-util-serial = { path = "../../util/serial" }
