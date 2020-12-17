@@ -17,7 +17,6 @@ sgx-sim = [
 
 [dependencies]
 mc-attest-core = { path = "../../attest/core", default-features = false }
-mc-common = { path = "../../common", default-features = false }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-crypto-noise = { path = "../../crypto/noise", default-features = false }
 

@@ -2141,7 +2141,6 @@ dependencies = [
  "displaydoc",
  "mc-attest-core",
  "mc-attest-net",
- "mc-common",
  "mc-crypto-keys",
  "mc-crypto-noise",
  "mc-util-build-script",
