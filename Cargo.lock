@@ -3603,7 +3603,6 @@ dependencies = [
  "mc-common",
  "mc-util-grpc",
  "mc-util-uri",
- "percent-encoding 2.1.0",
  "serde",
  "structopt",
 ]
