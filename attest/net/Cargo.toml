@@ -17,6 +17,7 @@ sgx-sim = [
 
 [dependencies]
 mc-attest-core = { path = "../../attest/core" }
+mc-common = { path = "../../common", features = ["log"] }
 mc-util-encodings = { path = "../../util/encodings" }
 
 mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.3" }
