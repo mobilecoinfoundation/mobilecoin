@@ -2674,7 +2674,6 @@ version = "1.0.0"
 dependencies = [
  "generic-array 0.14.4",
  "mc-crypto-digestible",
- "mc-crypto-digestible-derive",
  "mc-crypto-digestible-test-utils",
 ]
 
