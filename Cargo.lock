@@ -2383,7 +2383,6 @@ dependencies = [
  "mc-common",
  "mc-crypto-keys",
  "mc-crypto-message-cipher",
- "mc-crypto-noise",
  "mc-sgx-compat",
  "mc-sgx-report-cache-api",
  "mc-transaction-core",
