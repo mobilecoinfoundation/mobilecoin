@@ -2171,7 +2171,6 @@ dependencies = [
  "mc-util-build-grpc",
  "mc-util-build-script",
  "protobuf",
- "serde",
 ]
 
 [[package]]
