@@ -2996,7 +2996,6 @@ dependencies = [
  "prost",
  "protobuf",
  "rand 0.7.3",
- "rand_core 0.5.1",
  "reqwest",
  "retry",
  "serde_json",
