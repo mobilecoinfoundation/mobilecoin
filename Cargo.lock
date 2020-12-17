@@ -3669,7 +3669,6 @@ name = "mc-util-metrics"
 version = "1.0.0"
 dependencies = [
  "chrono",
- "crossbeam-channel",
  "grpcio",
  "lazy_static",
  "mc-common",
