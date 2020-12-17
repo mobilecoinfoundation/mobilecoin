@@ -2316,7 +2316,6 @@ dependencies = [
  "mc-crypto-rand",
  "mc-transaction-core",
  "mc-util-grpc",
- "mc-util-host-cert",
  "mc-util-serial",
  "mc-util-uri",
  "rand 0.7.3",
