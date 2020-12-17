@@ -2774,7 +2774,6 @@ dependencies = [
 name = "mc-crypto-sig"
 version = "1.0.0"
 dependencies = [
- "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-util-from-random",
  "mc-util-test-helper",
