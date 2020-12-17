@@ -2449,7 +2449,6 @@ dependencies = [
  "mc-attest-enclave-api",
  "mc-common",
  "mc-consensus-enclave-api",
- "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-crypto-rand",
  "mc-sgx-report-cache-api",
