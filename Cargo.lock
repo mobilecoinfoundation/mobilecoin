@@ -2243,7 +2243,6 @@ version = "1.0.0"
 dependencies = [
  "failure",
  "mc-attest-core",
- "mc-common",
  "mc-sgx-compat",
  "mc-sgx-types",
  "prost",
