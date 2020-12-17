@@ -31,7 +31,6 @@ mockall = "0.7.2"
 protobuf = "2.12"
 retry = "0.5"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-url = "2.1"
 
 [dev-dependencies]
 mc-connection-test-utils = { path = "../connection/test-utils" }
