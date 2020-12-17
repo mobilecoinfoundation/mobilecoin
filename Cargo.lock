@@ -2500,7 +2500,6 @@ name = "mc-consensus-service"
 version = "1.0.0"
 dependencies = [
  "base64 0.11.0",
- "cfg-if 0.1.10",
  "chrono",
  "curve25519-dalek",
  "displaydoc",
