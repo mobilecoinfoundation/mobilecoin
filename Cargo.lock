@@ -2897,7 +2897,6 @@ dependencies = [
  "mc-consensus-enclave-measurement",
  "mc-consensus-scp",
  "mc-ledger-db",
- "mc-peers",
  "mc-peers-test-utils",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",

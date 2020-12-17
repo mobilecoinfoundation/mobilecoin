@@ -17,7 +17,6 @@ mc-connection = { path = "../../connection" }
 mc-consensus-enclave-measurement = { path = "../../consensus/enclave/measurement" }
 mc-consensus-scp = { path = "../../consensus/scp" }
 mc-ledger-db = { path = "../../ledger/db" }
-mc-peers = { path = "../../peers" }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
 mc-util-metrics = { path = "../..//util/metrics" }
