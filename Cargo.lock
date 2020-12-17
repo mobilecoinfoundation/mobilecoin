@@ -2589,7 +2589,6 @@ dependencies = [
  "mc-attest-trusted",
  "mc-common",
  "mc-crypto-keys",
- "mc-crypto-noise",
  "mc-crypto-rand",
  "mc-sgx-build",
  "mc-sgx-compat",
