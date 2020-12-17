@@ -3321,7 +3321,6 @@ dependencies = [
 name = "mc-test-vectors-b58-encodings"
 version = "1.0.0"
 dependencies = [
- "datatest",
  "mc-account-keys",
  "mc-api",
  "mc-test-vectors-definitions",
