@@ -2537,7 +2537,6 @@ dependencies = [
  "mc-util-uri",
  "mockall",
  "once_cell",
- "prost",
  "protobuf",
  "rand 0.7.3",
  "rand_core 0.5.1",
