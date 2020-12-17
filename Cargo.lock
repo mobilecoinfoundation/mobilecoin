@@ -3204,7 +3204,6 @@ dependencies = [
  "hex 0.4.2",
  "hex_fmt",
  "mc-sgx-core-types",
- "mc-sgx-core-types-sys",
  "mc-sgx-epid-types",
  "mc-sgx-epid-types-sys",
  "mc-util-encodings",
