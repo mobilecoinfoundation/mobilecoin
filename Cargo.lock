@@ -3441,7 +3441,6 @@ dependencies = [
  "blake2",
  "curve25519-dalek",
  "failure",
- "hkdf",
  "mc-account-keys",
  "mc-common",
  "mc-crypto-hashes",
