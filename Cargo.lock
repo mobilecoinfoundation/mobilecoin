@@ -3715,7 +3715,6 @@ dependencies = [
  "lazy_static",
  "mc-account-keys",
  "mc-common",
- "mc-util-serial",
  "rand 0.7.3",
  "rand_core 0.5.1",
  "rand_hc 0.2.0",

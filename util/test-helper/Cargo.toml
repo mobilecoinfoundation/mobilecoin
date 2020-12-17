@@ -18,7 +18,6 @@ structopt = "0.3"
 
 # MobileCoin dependencies
 mc-account-keys = { path = "../../account-keys" }
-mc-util-serial = { path = "../../util/serial", features = ["std"] }
 
 [dev-dependencies]
 mc-common = { path = "../../common", features = ["loggers"] }
