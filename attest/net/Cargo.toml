@@ -25,8 +25,8 @@ mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag 
 cfg-if = "0.1"
 failure = { version = "0.1.8", features = ["derive"] }
 pem = "0.6"
-reqwest = { version = "0.10" , default-features = false, features = ["rustls-tls", "gzip"] }
 percent-encoding = "2.1.0"
+reqwest = { version = "0.10" , default-features = false, features = ["rustls-tls", "gzip"] }
 serde_json = "1.0"
 sha2 = "0.9"
 

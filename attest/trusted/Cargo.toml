@@ -6,7 +6,6 @@ edition = "2018"
 
 [dependencies]
 mc-attest-core = { path = "../../attest/core", default-features = false }
-mc-common = { path = "../../common", default-features = false }
 mc-sgx-compat = { path = "../../sgx/compat" }
 mc-sgx-types = { path = "../../sgx/types" }
 

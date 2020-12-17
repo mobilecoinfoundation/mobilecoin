@@ -14,7 +14,6 @@ mc-util-grpc = { path = "../grpc" }
 mc-util-uri = { path = "../uri" }
 
 grpcio = "0.6.0"
-percent-encoding = "2.1.0"
 structopt = "0.3"
 
 [build-dependencies]

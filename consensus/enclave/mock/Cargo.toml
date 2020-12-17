@@ -9,7 +9,6 @@ mc-attest-core = { path = "../../../attest/core" }
 mc-attest-enclave-api = { path = "../../../attest/enclave-api" }
 mc-common = { path = "../../../common" }
 mc-consensus-enclave-api = { path = "../api" }
-mc-crypto-digestible = { path = "../../../crypto/digestible" }
 mc-crypto-keys = { path = "../../../crypto/keys" }
 mc-crypto-rand = { path = "../../../crypto/rand" }
 mc-sgx-report-cache-api = { path = "../../../sgx/report-cache/api" }
@@ -20,4 +19,3 @@ mc-util-serial = { path = "../../../util/serial" }
 mockall = "0.7.2"
 rand_core = "0.5"
 rand_hc = "0.2"
-sha2 = { version = "0.9", default-features = false, features = ["asm"] }

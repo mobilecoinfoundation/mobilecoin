@@ -1027,17 +1027,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dotenv"
-version = "0.14.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4424bad868b0ffe6ae351ee463526ba625bbca817978293bbe6bb7dc1804a175"
-dependencies = [
- "failure",
- "lazy_static",
- "regex",
-]
-
-[[package]]
 name = "downcast"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1486,12 +1475,6 @@ name = "half"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f36b5f248235f45773d4944f555f83ea61fe07b18b561ccf99d7483d7381e54d"
-
-[[package]]
-name = "hashbrown"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1de41fb8dba9714efd92241565cdff73f78508c95697dd56787d3cba27e2353"
 
 [[package]]
 name = "hashbrown"
@@ -2027,15 +2010,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lru"
-version = "0.1.17"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d8f669d42c72d18514dfca8115689c5f6370a17d980cb5bd777a67f404594c8"
-dependencies = [
- "hashbrown 0.5.0",
-]
-
-[[package]]
 name = "maplit"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2092,8 +2066,6 @@ dependencies = [
  "criterion",
  "curve25519-dalek",
  "datatest",
- "digest 0.9.0",
- "displaydoc",
  "hkdf",
  "mc-crypto-digestible",
  "mc-crypto-hashes",
@@ -2140,7 +2112,6 @@ dependencies = [
  "datatest",
  "displaydoc",
  "mc-account-keys",
- "mc-common",
  "mc-crypto-keys",
  "mc-test-vectors-b58-encodings",
  "mc-transaction-core",
@@ -2170,7 +2141,6 @@ dependencies = [
  "displaydoc",
  "mc-attest-core",
  "mc-attest-net",
- "mc-common",
  "mc-crypto-keys",
  "mc-crypto-noise",
  "mc-util-build-script",
@@ -2200,7 +2170,6 @@ dependencies = [
  "mc-util-build-grpc",
  "mc-util-build-script",
  "protobuf",
- "serde",
 ]
 
 [[package]]
@@ -2215,7 +2184,6 @@ dependencies = [
  "digest 0.9.0",
  "displaydoc",
  "failure",
- "generic-array 0.14.4",
  "hex 0.4.2",
  "hex_fmt",
  "mbedtls",
@@ -2275,7 +2243,6 @@ version = "1.0.0"
 dependencies = [
  "failure",
  "mc-attest-core",
- "mc-common",
  "mc-sgx-compat",
  "mc-sgx-types",
  "prost",
@@ -2299,8 +2266,7 @@ dependencies = [
  "cfg-if 0.1.10",
  "chrono",
  "failure",
- "generic-array 0.14.4",
- "hashbrown 0.6.3",
+ "hashbrown",
  "hex_fmt",
  "hostname 0.1.5",
  "lazy_static",
@@ -2346,14 +2312,12 @@ dependencies = [
  "mc-crypto-rand",
  "mc-transaction-core",
  "mc-util-grpc",
- "mc-util-host-cert",
  "mc-util-serial",
  "mc-util-uri",
  "rand 0.7.3",
  "rand_hc 0.2.0",
  "retry",
  "secrecy",
- "serde",
  "sha2 0.9.1",
  "tempdir",
 ]
@@ -2393,10 +2357,8 @@ dependencies = [
  "mc-common",
  "mc-consensus-enclave-api",
  "mc-consensus-enclave-edl",
- "mc-consensus-enclave-measurement",
  "mc-crypto-keys",
  "mc-enclave-boundary",
- "mc-sgx-debug-edl",
  "mc-sgx-panic-edl",
  "mc-sgx-report-cache-api",
  "mc-sgx-slog-edl",
@@ -2413,7 +2375,6 @@ dependencies = [
 name = "mc-consensus-enclave-api"
 version = "1.0.0"
 dependencies = [
- "cfg-if 0.1.10",
  "failure",
  "mc-attest-ake",
  "mc-attest-core",
@@ -2421,7 +2382,6 @@ dependencies = [
  "mc-common",
  "mc-crypto-keys",
  "mc-crypto-message-cipher",
- "mc-crypto-noise",
  "mc-sgx-compat",
  "mc-sgx-report-cache-api",
  "mc-transaction-core",
@@ -2442,8 +2402,6 @@ name = "mc-consensus-enclave-impl"
 version = "1.0.0"
 dependencies = [
  "cargo-emit",
- "cfg-if 0.1.10",
- "digest 0.9.0",
  "hex 0.4.2",
  "mbedtls",
  "mc-account-keys",
@@ -2454,14 +2412,12 @@ dependencies = [
  "mc-consensus-enclave-api",
  "mc-crypto-ake-enclave",
  "mc-crypto-digestible",
- "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-crypto-message-cipher",
  "mc-crypto-rand",
  "mc-ledger-db",
  "mc-sgx-compat",
  "mc-sgx-report-cache-api",
- "mc-sgx-slog",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
  "mc-util-build-script",
@@ -2471,7 +2427,6 @@ dependencies = [
  "rand 0.7.3",
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
- "sha2 0.9.1",
 ]
 
 [[package]]
@@ -2494,7 +2449,6 @@ dependencies = [
  "mc-attest-enclave-api",
  "mc-common",
  "mc-consensus-enclave-api",
- "mc-crypto-digestible",
  "mc-crypto-keys",
  "mc-crypto-rand",
  "mc-sgx-report-cache-api",
@@ -2504,7 +2458,6 @@ dependencies = [
  "mockall",
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
- "sha2 0.9.1",
 ]
 
 [[package]]
@@ -2519,7 +2472,6 @@ dependencies = [
  "mc-crypto-keys",
  "mc-util-from-random",
  "mc-util-logger-macros",
- "mc-util-metrics",
  "mc-util-serial",
  "mc-util-test-helper",
  "mockall",
@@ -2530,7 +2482,6 @@ dependencies = [
  "serde_json",
  "serial_test 0.1.0",
  "serial_test_derive 0.1.0",
- "sha3",
  "tempdir",
 ]
 
@@ -2541,9 +2492,7 @@ dependencies = [
  "mc-common",
  "mc-consensus-scp",
  "mc-transaction-core",
- "mc-util-serial",
  "mc-util-uri",
- "serde",
  "serde_json",
  "structopt",
 ]
@@ -2553,7 +2502,6 @@ name = "mc-consensus-service"
 version = "1.0.0"
 dependencies = [
  "base64 0.11.0",
- "cfg-if 0.1.10",
  "chrono",
  "curve25519-dalek",
  "displaydoc",
@@ -2579,11 +2527,9 @@ dependencies = [
  "mc-peers-test-utils",
  "mc-sgx-build",
  "mc-sgx-report-cache-untrusted",
- "mc-sgx-urts",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
  "mc-transaction-std",
- "mc-util-build-info",
  "mc-util-from-random",
  "mc-util-grpc",
  "mc-util-logger-macros",
@@ -2593,7 +2539,6 @@ dependencies = [
  "mc-util-uri",
  "mockall",
  "once_cell",
- "prost",
  "protobuf",
  "rand 0.7.3",
  "rand_core 0.5.1",
@@ -2613,24 +2558,18 @@ dependencies = [
 name = "mc-crypto-ake-enclave"
 version = "1.0.0"
 dependencies = [
- "aead",
  "aes-gcm",
  "digest 0.9.0",
- "failure",
  "mc-attest-ake",
  "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-attest-trusted",
  "mc-common",
  "mc-crypto-keys",
- "mc-crypto-noise",
  "mc-crypto-rand",
  "mc-sgx-build",
  "mc-sgx-compat",
  "mc-util-from-random",
- "mc-util-serial",
- "rand_core 0.5.1",
- "serde",
  "sha2 0.9.1",
 ]
 
@@ -2687,9 +2626,7 @@ dependencies = [
 name = "mc-crypto-digestible-derive-test"
 version = "1.0.0"
 dependencies = [
- "generic-array 0.14.4",
  "mc-crypto-digestible",
- "mc-crypto-digestible-derive",
  "mc-crypto-digestible-test-utils",
 ]
 
@@ -2715,7 +2652,6 @@ name = "mc-crypto-keys"
 version = "1.0.0"
 dependencies = [
  "binascii",
- "cfg-if 0.1.10",
  "curve25519-dalek",
  "digest 0.9.0",
  "ed25519",
@@ -2729,7 +2665,6 @@ dependencies = [
  "mc-util-serial",
  "mc-util-test-helper",
  "pem",
- "prost",
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
  "semver",
@@ -2768,7 +2703,6 @@ dependencies = [
  "hkdf",
  "mc-crypto-keys",
  "mc-util-from-random",
- "mc-util-repr-bytes",
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
  "secrecy",
@@ -2793,7 +2727,6 @@ dependencies = [
 name = "mc-crypto-sig"
 version = "1.0.0"
 dependencies = [
- "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-util-from-random",
  "mc-util-test-helper",
@@ -2823,7 +2756,6 @@ dependencies = [
  "grpcio",
  "mc-api",
  "mc-attest-api",
- "mc-common",
  "mc-consensus-api",
  "mc-util-build-grpc",
  "mc-util-build-script",
@@ -2839,7 +2771,6 @@ dependencies = [
  "mc-account-keys",
  "mc-attest-core",
  "mc-common",
- "mc-crypto-keys",
  "mc-fog-api",
  "mc-fog-report-validation",
  "mc-util-grpc",
@@ -2856,7 +2787,6 @@ dependencies = [
  "mc-attest-core",
  "mc-crypto-keys",
  "mc-util-encodings",
- "mc-util-serial",
  "mockall",
 ]
 
@@ -2882,7 +2812,6 @@ dependencies = [
  "prost",
  "rand 0.7.3",
  "rand_core 0.5.1",
- "serde",
  "tempdir",
 ]
 
@@ -2891,7 +2820,6 @@ name = "mc-ledger-distribution"
 version = "1.0.0"
 dependencies = [
  "dirs 2.0.2",
- "dotenv",
  "failure",
  "mc-api",
  "mc-common",
@@ -2938,7 +2866,6 @@ dependencies = [
  "crossbeam-channel",
  "failure",
  "grpcio",
- "lazy_static",
  "mc-account-keys",
  "mc-api",
  "mc-attest-core",
@@ -2947,13 +2874,10 @@ dependencies = [
  "mc-connection-test-utils",
  "mc-consensus-enclave-measurement",
  "mc-consensus-scp",
- "mc-crypto-keys",
  "mc-ledger-db",
- "mc-peers",
  "mc-peers-test-utils",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
- "mc-util-metrics",
  "mc-util-uri",
  "mockall",
  "protobuf",
@@ -2974,12 +2898,10 @@ dependencies = [
  "crossbeam-channel",
  "displaydoc",
  "failure",
- "futures 0.3.5",
  "grpcio",
  "hex_fmt",
  "libz-sys",
  "lmdb-rkv",
- "lru",
  "mc-account-keys",
  "mc-api",
  "mc-attest-core",
@@ -3013,11 +2935,9 @@ dependencies = [
  "prost",
  "protobuf",
  "rand 0.7.3",
- "rand_core 0.5.1",
  "reqwest",
  "retry",
  "serde_json",
- "sha3",
  "structopt",
  "tempdir",
 ]
@@ -3032,8 +2952,6 @@ dependencies = [
  "hex_fmt",
  "mc-api",
  "mc-common",
- "mc-crypto-keys",
- "mc-transaction-core",
  "mc-transaction-std",
  "mc-util-build-grpc",
  "mc-util-build-script",
@@ -3096,8 +3014,6 @@ dependencies = [
  "rand_hc 0.2.0",
  "retry",
  "serde",
- "sha2 0.9.1",
- "url 2.1.1",
 ]
 
 [[package]]
@@ -3258,16 +3174,13 @@ version = "1.0.0"
 dependencies = [
  "base64 0.12.1",
  "bitflags",
- "bytes 0.5.4",
  "chrono",
  "displaydoc",
  "generic-array 0.14.4",
  "hex 0.4.2",
  "hex_fmt",
  "mc-sgx-core-types",
- "mc-sgx-core-types-sys",
  "mc-sgx-epid-types",
- "mc-sgx-epid-types-sys",
  "mc-util-encodings",
  "mc-util-from-random",
  "mc-util-repr-bytes",
@@ -3276,7 +3189,6 @@ dependencies = [
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
  "rjson",
- "subtle 2.2.3",
 ]
 
 [[package]]
@@ -3360,25 +3272,19 @@ dependencies = [
 name = "mc-test-vectors-account-keys"
 version = "1.0.0"
 dependencies = [
- "datatest",
  "mc-account-keys",
  "mc-test-vectors-definitions",
  "mc-util-test-vector",
- "serde",
- "serde_json",
 ]
 
 [[package]]
 name = "mc-test-vectors-b58-encodings"
 version = "1.0.0"
 dependencies = [
- "datatest",
  "mc-account-keys",
  "mc-api",
  "mc-test-vectors-definitions",
  "mc-util-test-vector",
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -3415,7 +3321,6 @@ dependencies = [
  "blake2",
  "bulletproofs",
  "curve25519-dalek",
- "digest 0.9.0",
  "displaydoc",
  "generic-array 0.14.4",
  "hex_fmt",
@@ -3441,7 +3346,6 @@ dependencies = [
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
  "serde",
- "sha2 0.9.1",
  "subtle 2.2.3",
  "tempdir",
  "time 0.1.43",
@@ -3470,10 +3374,7 @@ dependencies = [
  "blake2",
  "curve25519-dalek",
  "failure",
- "hkdf",
  "mc-account-keys",
- "mc-common",
- "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-transaction-core",
  "mc-util-from-random",
@@ -3482,7 +3383,6 @@ dependencies = [
  "prost",
  "rand 0.7.3",
  "rand_core 0.5.1",
- "serde",
  "yaml-rust",
  "zeroize 1.1.0",
 ]
@@ -3540,7 +3440,6 @@ dependencies = [
  "cargo-emit",
  "cc",
  "displaydoc",
- "lazy_static",
  "mc-util-build-script",
  "pkg-config",
 ]
@@ -3580,7 +3479,6 @@ dependencies = [
  "mc-util-keyfile",
  "rand 0.7.3",
  "rand_hc 0.2.0",
- "rayon",
  "serde",
  "structopt",
  "tempdir",
@@ -3592,7 +3490,6 @@ version = "1.0.0"
 dependencies = [
  "base64 0.12.1",
  "cookie 0.14.2",
- "digest 0.9.0",
  "displaydoc",
  "futures 0.3.5",
  "grpcio",
@@ -3607,7 +3504,6 @@ dependencies = [
  "mc-util-serial",
  "mc-util-uri",
  "prometheus",
- "prost",
  "protobuf",
  "rand 0.6.5",
  "sha2 0.9.1",
@@ -3623,7 +3519,6 @@ dependencies = [
  "mc-common",
  "mc-util-grpc",
  "mc-util-uri",
- "percent-encoding 2.1.0",
  "serde",
  "structopt",
 ]
@@ -3684,15 +3579,8 @@ dependencies = [
 name = "mc-util-metered-channel"
 version = "1.0.0"
 dependencies = [
- "chrono",
  "crossbeam-channel",
- "grpcio",
- "lazy_static",
- "mc-common",
  "mc-util-metrics",
- "protobuf",
- "reqwest",
- "serde_json",
 ]
 
 [[package]]
@@ -3700,13 +3588,11 @@ name = "mc-util-metrics"
 version = "1.0.0"
 dependencies = [
  "chrono",
- "crossbeam-channel",
  "grpcio",
  "lazy_static",
  "mc-common",
  "prometheus",
  "protobuf",
- "reqwest",
  "serde_json",
 ]
 
@@ -3737,8 +3623,6 @@ dependencies = [
  "lazy_static",
  "mc-account-keys",
  "mc-common",
- "mc-crypto-keys",
- "mc-util-serial",
  "rand 0.7.3",
  "rand_core 0.5.1",
  "rand_hc 0.2.0",

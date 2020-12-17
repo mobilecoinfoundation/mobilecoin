@@ -5,7 +5,6 @@ authors = ["MobileCoin"]
 edition = "2018"
 
 [dependencies]
-mc-crypto-hashes = { path = "../hashes" }
 mc-crypto-keys = { path = "../keys", default-features = false }
 
 merlin = { version = "2.0", default-features = false }

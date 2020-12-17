@@ -16,18 +16,14 @@ mc-common = { path = "../../common", features = ["log"] }
 mc-connection = { path = "../../connection" }
 mc-consensus-enclave-measurement = { path = "../../consensus/enclave/measurement" }
 mc-consensus-scp = { path = "../../consensus/scp" }
-mc-crypto-keys = { path = "../../crypto/keys" }
 mc-ledger-db = { path = "../../ledger/db" }
-mc-peers = { path = "../../peers" }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
-mc-util-metrics = { path = "../..//util/metrics" }
 mc-util-uri = { path = "../../util/uri" }
 
 crossbeam-channel = "0.4"
 failure = "0.1.8"
 grpcio = "0.6.0"
-lazy_static = "1.4"
 mockall = "0.7.2"
 protobuf = "2.12"
 rand = "0.7"
