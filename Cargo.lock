@@ -2700,7 +2700,6 @@ name = "mc-crypto-keys"
 version = "1.0.0"
 dependencies = [
  "binascii",
- "cfg-if 0.1.10",
  "curve25519-dalek",
  "digest 0.9.0",
  "ed25519",
