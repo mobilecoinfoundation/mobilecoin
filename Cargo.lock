@@ -2226,6 +2226,7 @@ dependencies = [
  "failure",
  "mbedtls",
  "mc-attest-core",
+ "mc-common",
  "mc-sgx-build",
  "mc-util-encodings",
  "pem",
