@@ -2230,6 +2230,7 @@ dependencies = [
  "mc-sgx-build",
  "mc-util-encodings",
  "pem",
+ "percent-encoding 2.1.0",
  "rand 0.7.3",
  "reqwest",
  "serde_json",
