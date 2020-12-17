@@ -3674,7 +3674,6 @@ dependencies = [
  "mc-common",
  "prometheus",
  "protobuf",
- "reqwest",
  "serde_json",
 ]
 
