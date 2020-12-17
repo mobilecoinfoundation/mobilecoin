@@ -2422,7 +2422,6 @@ dependencies = [
  "mc-ledger-db",
  "mc-sgx-compat",
  "mc-sgx-report-cache-api",
- "mc-sgx-slog",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
  "mc-util-build-script",
