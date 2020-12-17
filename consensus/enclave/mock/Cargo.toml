@@ -19,4 +19,3 @@ mc-util-serial = { path = "../../../util/serial" }
 mockall = "0.7.2"
 rand_core = "0.5"
 rand_hc = "0.2"
-sha2 = { version = "0.9", default-features = false, features = ["asm"] }
