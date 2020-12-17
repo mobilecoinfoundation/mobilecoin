@@ -1489,12 +1489,6 @@ checksum = "f36b5f248235f45773d4944f555f83ea61fe07b18b561ccf99d7483d7381e54d"
 
 [[package]]
 name = "hashbrown"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1de41fb8dba9714efd92241565cdff73f78508c95697dd56787d3cba27e2353"
-
-[[package]]
-name = "hashbrown"
 version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8e6073d0ca812575946eb5f35ff68dbe519907b25c42530389ff946dc84c6ead"
@@ -2027,15 +2021,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lru"
-version = "0.1.17"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d8f669d42c72d18514dfca8115689c5f6370a17d980cb5bd777a67f404594c8"
-dependencies = [
- "hashbrown 0.5.0",
-]
-
-[[package]]
 name = "maplit"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2300,7 +2285,7 @@ dependencies = [
  "chrono",
  "failure",
  "generic-array 0.14.4",
- "hashbrown 0.6.3",
+ "hashbrown",
  "hex_fmt",
  "hostname 0.1.5",
  "lazy_static",
@@ -2978,7 +2963,6 @@ dependencies = [
  "hex_fmt",
  "libz-sys",
  "lmdb-rkv",
- "lru",
  "mc-account-keys",
  "mc-api",
  "mc-attest-core",
