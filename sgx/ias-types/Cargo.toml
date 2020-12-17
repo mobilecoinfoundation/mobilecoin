@@ -23,7 +23,6 @@ use_prost = [
 [dependencies]
 mc-sgx-core-types = { path = "../core-types" }
 mc-sgx-epid-types = { path = "../epid-types" }
-mc-sgx-epid-types-sys = { path = "../epid-types-sys" }
 mc-util-encodings = { path = "../../util/encodings" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-repr-bytes = { path = "../../util/repr-bytes", default-features = false, features = ["alloc"] }
