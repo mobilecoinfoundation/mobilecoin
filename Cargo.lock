@@ -3312,7 +3312,6 @@ dependencies = [
 name = "mc-test-vectors-account-keys"
 version = "1.0.0"
 dependencies = [
- "datatest",
  "mc-account-keys",
  "mc-test-vectors-definitions",
  "mc-util-test-vector",
