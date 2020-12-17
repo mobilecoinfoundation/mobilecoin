@@ -2887,7 +2887,6 @@ dependencies = [
  "crossbeam-channel",
  "failure",
  "grpcio",
- "lazy_static",
  "mc-account-keys",
  "mc-api",
  "mc-attest-core",
