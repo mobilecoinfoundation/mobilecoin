@@ -1027,17 +1027,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dotenv"
-version = "0.14.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4424bad868b0ffe6ae351ee463526ba625bbca817978293bbe6bb7dc1804a175"
-dependencies = [
- "failure",
- "lazy_static",
- "regex",
-]
-
-[[package]]
 name = "downcast"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2865,7 +2854,6 @@ name = "mc-ledger-distribution"
 version = "1.0.0"
 dependencies = [
  "dirs 2.0.2",
- "dotenv",
  "failure",
  "mc-api",
  "mc-common",
