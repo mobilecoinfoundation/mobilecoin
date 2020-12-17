@@ -3561,7 +3561,6 @@ dependencies = [
  "mc-util-keyfile",
  "rand 0.7.3",
  "rand_hc 0.2.0",
- "rayon",
  "serde",
  "structopt",
  "tempdir",
