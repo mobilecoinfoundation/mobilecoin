@@ -2581,7 +2581,6 @@ version = "1.0.0"
 dependencies = [
  "aes-gcm",
  "digest 0.9.0",
- "failure",
  "mc-attest-ake",
  "mc-attest-core",
  "mc-attest-enclave-api",
