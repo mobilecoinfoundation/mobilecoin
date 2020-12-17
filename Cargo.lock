@@ -2375,7 +2375,6 @@ dependencies = [
 name = "mc-consensus-enclave-api"
 version = "1.0.0"
 dependencies = [
- "cfg-if 0.1.10",
  "failure",
  "mc-attest-ake",
  "mc-attest-core",
