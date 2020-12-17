@@ -2713,7 +2713,6 @@ dependencies = [
  "mc-util-serial",
  "mc-util-test-helper",
  "pem",
- "prost",
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
  "semver",
