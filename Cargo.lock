@@ -2529,7 +2529,6 @@ dependencies = [
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
  "mc-transaction-std",
- "mc-util-build-info",
  "mc-util-from-random",
  "mc-util-grpc",
  "mc-util-logger-macros",
