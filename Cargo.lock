@@ -2123,7 +2123,6 @@ dependencies = [
  "datatest",
  "displaydoc",
  "mc-account-keys",
- "mc-common",
  "mc-crypto-keys",
  "mc-test-vectors-b58-encodings",
  "mc-transaction-core",
