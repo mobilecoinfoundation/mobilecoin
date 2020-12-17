@@ -2999,7 +2999,6 @@ dependencies = [
  "reqwest",
  "retry",
  "serde_json",
- "sha3",
  "structopt",
  "tempdir",
 ]

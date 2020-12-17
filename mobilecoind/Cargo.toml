@@ -54,7 +54,6 @@ reqwest = { version = "0.10", default-features = false, features = ["rustls-tls"
 rand = "0.7"
 retry = "0.5.1"
 serde_json = "1.0"
-sha3 = "0.9"
 structopt = "0.3"
 tempdir = "0.3"
 
