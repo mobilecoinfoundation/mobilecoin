@@ -45,7 +45,6 @@ lazy_static = "1.4"
 once_cell = "1.4"
 protobuf = "2.12"
 rand = "0.7"
-rand_hc = "0.2.0"
 rayon = "1.2"
 retry = "0.5"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
