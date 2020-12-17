@@ -2900,7 +2900,6 @@ dependencies = [
  "mc-peers-test-utils",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
- "mc-util-metrics",
  "mc-util-uri",
  "mockall",
  "protobuf",
