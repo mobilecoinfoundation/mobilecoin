@@ -2404,7 +2404,6 @@ name = "mc-consensus-enclave-impl"
 version = "1.0.0"
 dependencies = [
  "cargo-emit",
- "cfg-if 0.1.10",
  "digest 0.9.0",
  "hex 0.4.2",
  "mbedtls",
