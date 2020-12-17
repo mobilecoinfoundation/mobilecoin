@@ -2322,7 +2322,6 @@ dependencies = [
  "rand_hc 0.2.0",
  "retry",
  "secrecy",
- "serde",
  "sha2 0.9.1",
  "tempdir",
 ]
