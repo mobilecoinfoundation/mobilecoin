@@ -2357,7 +2357,6 @@ dependencies = [
  "mc-consensus-enclave-edl",
  "mc-crypto-keys",
  "mc-enclave-boundary",
- "mc-sgx-debug-edl",
  "mc-sgx-panic-edl",
  "mc-sgx-report-cache-api",
  "mc-sgx-slog-edl",
