@@ -3325,7 +3325,6 @@ dependencies = [
  "mc-api",
  "mc-test-vectors-definitions",
  "mc-util-test-vector",
- "serde",
  "serde_json",
 ]
 
