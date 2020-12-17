@@ -5,8 +5,6 @@ authors = ["MobileCoin"]
 edition = "2018"
 
 [dependencies]
-# External dependencies
-digest = { version = "0.9", default-features = false }
 displaydoc = { version = "0.1", default-features = false }
 generic-array = { version = "0.14", features = ["serde", "more_lengths"] }
 hex_fmt = "0.3"
