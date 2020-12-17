@@ -3005,7 +3005,6 @@ dependencies = [
  "hex_fmt",
  "mc-api",
  "mc-common",
- "mc-crypto-keys",
  "mc-transaction-core",
  "mc-transaction-std",
  "mc-util-build-grpc",
