@@ -2777,7 +2777,6 @@ dependencies = [
  "grpcio",
  "mc-api",
  "mc-attest-api",
- "mc-common",
  "mc-consensus-api",
  "mc-util-build-grpc",
  "mc-util-build-script",
