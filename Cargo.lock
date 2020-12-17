@@ -2282,7 +2282,6 @@ dependencies = [
  "cfg-if 0.1.10",
  "chrono",
  "failure",
- "generic-array 0.14.4",
  "hashbrown",
  "hex_fmt",
  "hostname 0.1.5",
