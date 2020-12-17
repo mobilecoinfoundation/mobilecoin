@@ -3666,7 +3666,6 @@ dependencies = [
  "crossbeam-channel",
  "grpcio",
  "lazy_static",
- "mc-common",
  "mc-util-metrics",
  "protobuf",
  "reqwest",

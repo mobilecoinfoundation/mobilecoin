@@ -5,7 +5,6 @@ authors = ["MobileCoin"]
 edition = "2018"
 
 [dependencies]
-mc-common = { path = "../../common", features = ["log"] }
 mc-util-metrics = { path = "../../util/metrics" }
 
 chrono = "0.4"
