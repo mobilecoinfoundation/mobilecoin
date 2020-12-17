@@ -7,4 +7,3 @@ edition = "2018"
 [dependencies]
 mc-crypto-digestible = { path = "../.." }
 mc-crypto-digestible-test-utils = { path = "../../test-utils" }
-generic-array = "0.14"
