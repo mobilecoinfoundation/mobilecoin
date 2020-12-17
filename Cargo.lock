@@ -3197,7 +3197,6 @@ version = "1.0.0"
 dependencies = [
  "base64 0.12.1",
  "bitflags",
- "bytes 0.5.4",
  "chrono",
  "displaydoc",
  "generic-array 0.14.4",
