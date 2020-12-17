@@ -3212,7 +3212,6 @@ dependencies = [
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
  "rjson",
- "subtle 2.2.3",
 ]
 
 [[package]]

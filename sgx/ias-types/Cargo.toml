@@ -38,7 +38,6 @@ prost = { version = "0.6.1", optional = true, default-features = false }
 prost-types = { version = "0.6.1", optional = true, default-features = false }
 rand_core = "0.5"
 rjson = "0.3"
-subtle = { version = "2.2", default-features = false, features = ["i128"] }
 
 [dev-dependencies]
 rand_hc = "0.2"
