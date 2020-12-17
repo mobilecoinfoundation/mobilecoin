@@ -2792,7 +2792,6 @@ dependencies = [
  "mc-account-keys",
  "mc-attest-core",
  "mc-common",
- "mc-crypto-keys",
  "mc-fog-api",
  "mc-fog-report-validation",
  "mc-util-grpc",
