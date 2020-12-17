@@ -30,7 +30,6 @@ grpcio = "0.6.0"
 mockall = "0.7.2"
 protobuf = "2.12"
 retry = "0.5"
-sha2 = { version = "0.9", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 url = "2.1"
 
