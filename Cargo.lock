@@ -2416,7 +2416,6 @@ dependencies = [
  "mc-consensus-enclave-api",
  "mc-crypto-ake-enclave",
  "mc-crypto-digestible",
- "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-crypto-message-cipher",
  "mc-crypto-rand",
