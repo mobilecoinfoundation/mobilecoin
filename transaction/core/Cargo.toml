@@ -56,7 +56,7 @@ mc-crypto-digestible-test-utils = { path = "../../crypto/digestible/test-utils" 
 mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
 
 [dev-dependencies.proptest]
-version = "0.9" # Only works for 0.9.1 or newer
+version = "0.10" # Only works for 0.9.1 or newer
 default-features = false
 # Enable all default features not known to break code coverage builds
 features = ["default-code-coverage"]
