@@ -28,7 +28,7 @@ mockall = "0.8.3"
 protobuf = "2.12"
 rand = "0.7"
 reqwest = { version = "0.10" , features = ["rustls-tls"], default_features = false }
-retry = "0.5"
+retry = "1.2"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 tempdir = "0.3"
 url = "2.1"

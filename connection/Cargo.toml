@@ -22,7 +22,7 @@ aes-gcm = "0.6"
 cookie = "0.14"
 displaydoc = { version = "0.1.7", default-features = false }
 grpcio = "0.6.0"
-retry = "0.5"
+retry = "1.2"
 secrecy = "0.4"
 sha2 = "0.9"
 

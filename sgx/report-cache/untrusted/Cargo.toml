@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 displaydoc = { version = "0.1.7", default-features = false }
-retry = "0.5"
+retry = "1.2"
 
 mc-attest-core = { path = "../../../attest/core" }
 mc-attest-enclave-api = { path = "../../../attest/enclave-api" }
