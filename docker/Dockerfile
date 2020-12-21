@@ -127,6 +127,16 @@ ARG DOCKER_NO_SGX=false
 COPY --chown=root:root install_sgx.sh /tmp
 RUN if [ "$DOCKER_NO_SGX" = "false" ] ; then cd /tmp && chmod +x install_sgx.sh && ./install_sgx.sh; else echo 'skipping sgx'; fi
 
+# Setup postgresql for local testing
+RUN sed -ie 's|host    all             all             127.0.0.1/32            md5|host    all             all             127.0.0.1/32            trust|' /etc/postgresql/10/main/pg_hba.conf && \
+    sed -ie 's|host    all             all             ::1/128                 md5|host    all             all             ::1/128                 trust|' /etc/postgresql/10/main/pg_hba.conf && \
+    service postgresql start && \
+    su postgres -c "createuser --superuser root"
+
+# Export postgres database url's for build environment, for local testing and conformance tests
+ENV DATABASE_URL="postgres://localhost"
+ENV TEST_DATABASE_URL="postgres://localhost"
+
 # Export sgx sdk environment variables
 # Doing this here means that we don't have to constantly source /opt/intel/sgxsdk/environment
 # Docker doesn't appear to allow conditional ENV setting, but if DOCKER_NO_SGX is true then they won't use any of this I think
