@@ -131,10 +131,10 @@ commands:
           command: |
             set -x
 
-            command -v cargo-install-update >/dev/null || cargo install cargo-update
-            command -v cargo-trim >/dev/null || cargo install cargo-trim
+            command -v cargo-install-update >/dev/null || (cd .. && cargo install cargo-update)
+            command -v cargo-trim >/dev/null || (cd .. && cargo install cargo-trim)
 
-            cargo install-update --all
+            (cd .. && cargo install-update --all)
 
             # Configure cargo-trim with the project's Cargo.lock files
             mkdir -p ~/.config
@@ -233,9 +233,9 @@ commands:
       - run:
           name: Install CI dependencies
           command: |
-            command -v sccache >/dev/null || cargo install sccache
-            command -v cargo-cache >/dev/null || cargo install cargo-cache
-            command -v cargo2junit >/dev/null || cargo install cargo2junit
+            command -v sccache >/dev/null || (cd .. && cargo install sccache)
+            command -v cargo-cache >/dev/null || (cd .. && cargo install cargo-cache)
+            command -v cargo2junit >/dev/null || (cd .. && cargo install cargo2junit)
 
   prefetch-cargo-deps:
     steps:
