@@ -4775,9 +4775,9 @@ checksum = "5510dbde48c4c37bf69123b1f636b6dd5f8dffe1f4e358af03c46a4947dca219"
 
 [[package]]
 name = "rocket"
-version = "0.4.5"
+version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6130967b369cfb8411b0b73e96fcba1229c32a9cc6f295d144f879bfced13c6e"
+checksum = "4fc7e5d6aaa32ace6893ae8a1875688ca7b07d6c2428ae88e704c3623c8866e9"
 dependencies = [
  "atty",
  "base64 0.12.1",
@@ -4796,9 +4796,9 @@ dependencies = [
 
 [[package]]
 name = "rocket_codegen"
-version = "0.4.5"
+version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb852e6da168fb948a8f2b798ba2e2f0e4fc860eae0efa9cf2bf0f5466bb0425"
+checksum = "519154b16df5fe552a8f9cd76a97793a9f5d58e34f186ab79c7b29ce1d009358"
 dependencies = [
  "devise",
  "glob 0.3.0",
@@ -4811,9 +4811,9 @@ dependencies = [
 
 [[package]]
 name = "rocket_contrib"
-version = "0.4.5"
+version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3946ca815127041d8f64455561031d058c22ae1b135251502c5ea523cf9e14b"
+checksum = "9465babd59cfb360669b60431db510f3dc3268d51ccd69fc9264e626681e596a"
 dependencies = [
  "log 0.4.11",
  "notify",
@@ -4824,9 +4824,9 @@ dependencies = [
 
 [[package]]
 name = "rocket_http"
-version = "0.4.5"
+version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1aff5a5480175f2f553a876b251e9350c74196128806d176da3a51c82aab5428"
+checksum = "a9d087de7203c7a60a0ed5cd3a135b552dbfbed9932c52d49d083e8629935257"
 dependencies = [
  "cookie 0.11.3",
  "hyper 0.10.16",
