@@ -35,7 +35,7 @@ An example MainNet build and launch command for mobilecoind is:
     ```
     ./target/release/mobilecoind \
         --ledger-db /path/to/ledger-db \
-        --mobilecoind-db /path/to/mobiilecoind-db \
+        --mobilecoind-db /path/to/mobilecoind-db \
         --poll-interval 10 \
         --peer mc://node1.prod.mobilecoinww.com/ \
         --peer mc://node2.prod.mobilecoinww.com/ \
@@ -47,7 +47,7 @@ An example MainNet build and launch command for mobilecoind is:
 1. Run mobilecoind-json
 
     ```
-    ./target/release/mbilecoind-json
+    ./target/release/mobilecoind-json
     ```
 
 1. Issue curl commands to mobilecoind-json, listening on 9090, or send protobuf requests to mobilecoind, listening on localhost:4444.
