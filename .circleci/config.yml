@@ -173,9 +173,9 @@ commands:
             - ~/.cargo/git/db
             - ~/.cargo/registry/cache
             - ~/.cargo/registry/index
-      - record-cargo-cache-stats
+      - print-cargo-cache-stats
 
-  record-cargo-cache-stats:
+  print-cargo-cache-stats:
     steps:
       - run:
           name: Print Cargo cache statistics
