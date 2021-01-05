@@ -1070,17 +1070,21 @@ impl From<&mc_mobilecoind_api::GetBlockInfoResponse> for JsonBlockInfoResponse {
 }
 
 #[derive(Serialize, Default, Debug)]
-pub struct JsonBlockDetails {
+pub struct JsonBlockDetailsResponse {
     pub block_id: String,
     pub version: u32,
     pub parent_id: String,
     pub index: String,
     pub cumulative_txo_count: String,
     pub contents_hash: String,
+    pub key_images: Vec<String>,
+    pub txos: Vec<JsonTxOut>,
 }
 
-impl From<&mc_api::blockchain::Block> for JsonBlockDetails {
-    fn from(block: &mc_api::blockchain::Block) -> Self {
+impl From<&mc_mobilecoind_api::GetBlockResponse> for JsonBlockDetailsResponse {
+    fn from(src: &mc_mobilecoind_api::GetBlockResponse) -> Self {
+        let block = src.get_block();
+
         Self {
             block_id: hex::encode(&block.get_id().get_data()),
             version: block.get_version(),
@@ -1088,21 +1092,6 @@ impl From<&mc_api::blockchain::Block> for JsonBlockDetails {
             index: block.get_index().to_string(),
             cumulative_txo_count: block.get_cumulative_txo_count().to_string(),
             contents_hash: hex::encode(&block.get_contents_hash().get_data()),
-        }
-    }
-}
-
-#[derive(Serialize, Default, Debug)]
-pub struct JsonBlockDetailsResponse {
-    pub block: JsonBlockDetails,
-    pub key_images: Vec<String>,
-    pub txos: Vec<JsonTxOut>,
-}
-
-impl From<&mc_mobilecoind_api::GetBlockResponse> for JsonBlockDetailsResponse {
-    fn from(src: &mc_mobilecoind_api::GetBlockResponse) -> Self {
-        Self {
-            block: src.get_block().into(),
             txos: src.get_txos().iter().map(JsonTxOut::from).collect(),
             key_images: src
                 .get_key_images()
