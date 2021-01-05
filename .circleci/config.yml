@@ -343,7 +343,6 @@ jobs:
   # Run tests on a single container
   run-tests:
     executor: build-executor
-    parallelism: 1
     environment:
       <<: *default-build-environment
     steps:
