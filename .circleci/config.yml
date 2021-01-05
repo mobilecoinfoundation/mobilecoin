@@ -32,11 +32,6 @@ executors:
       - image: *builder-install
     resource_class: xlarge
 
-  test-executor:
-    docker:
-      - image: *builder-install
-    resource_class: large
-
   macos:
     parameters:
       xcode-version: { type: string, default: *default-xcode-version }
