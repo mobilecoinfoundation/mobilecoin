@@ -578,7 +578,7 @@ string that we send you. It should look something like:
 
 You can create a request code to share with another MobileCoin user
 to receive a payment. You can meet other TestNet users online at the
-MobileCoin forums. Visit http://community.mobilecoin.com
+MobileCoin forums. Visit http://community.mobilecoin.foundation
 
 "#
         );

@@ -64,7 +64,7 @@ If you have a Linux-compatible home computer, or choose to operate a Linux-compa
 
 ### Join the Community
 
-1. Exchange payment request information with other community members at the [MobileCoin Community Forum](https://community.mobilecoin.com).
+1. Exchange payment request information with other community members at the [MobileCoin Community Forum](https://community.mobilecoin.foundation).
 
 1. Collaborate to help stress test the *validator nodes* to discover potential problems.
 
@@ -76,4 +76,4 @@ If you have an SGX-capable machine, or choose to operate an SGX-capable server i
 
 ## Getting Help
 
-For troubleshooting and questions, please visit the community forum at https://community.mobilecoin.com. You can also open a technical support ticket via email to <support@mobilecoin.foundation>.
+For troubleshooting and questions, please visit the community forum at https://community.mobilecoin.foundation. You can also open a technical support ticket via email to <support@mobilecoin.foundation>.
