@@ -98,6 +98,8 @@ commands:
           name: Restore sccache cache
           key: v0-sccache-{{ arch }}-{{ .Environment.CIRCLE_JOB }}.
 
+  # Saves sccache cache on a per-job, per-architecture basis. Adds the git revision as a suffix
+  # so that each saved cache is stored using a unique key.
   save-sccache-cache:
     steps:
       - save_cache:
@@ -122,6 +124,8 @@ commands:
           name: Restore Cargo cache
           key: v0-cargo-{{ arch }}
 
+  # Saves cargo cache on a per-architecture basis. Adds the git revision as a suffix so that each
+  # saved cache is stored using a unique key.
   save-cargo-cache:
     steps:
       - run:
