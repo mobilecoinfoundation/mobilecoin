@@ -5,7 +5,7 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 
 use grpcio::ChannelBuilder;
-use mc_api::external::{CompressedRistretto, KeyImage, PublicAddress, RistrettoPrivate, TxOut};
+use mc_api::external::{CompressedRistretto, KeyImage, PublicAddress, RistrettoPrivate};
 use mc_common::logger::{create_app_logger, log, o};
 use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri};
 use mc_mobilecoind_json::data_types::*;

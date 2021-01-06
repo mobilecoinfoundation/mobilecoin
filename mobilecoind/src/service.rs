@@ -12,7 +12,7 @@ use crate::{
     monitor_store::{MonitorData, MonitorId},
     payments::{Outlay, TransactionsManager, TxProposal},
     sync::SyncThread,
-    utxo_store::{TxOut, UnspentTxOut, UtxoId},
+    utxo_store::{UnspentTxOut, UtxoId},
 };
 use grpcio::{EnvBuilder, RpcContext, RpcStatus, RpcStatusCode, ServerBuilder, UnarySink};
 use mc_account_keys::{AccountKey, PublicAddress, RootIdentity, DEFAULT_SUBADDRESS_INDEX};
@@ -29,8 +29,11 @@ use mc_mobilecoind_api::{
     MobilecoindUri,
 };
 use mc_transaction_core::{
-    get_tx_out_shared_secret, onetime_keys::recover_onetime_private_key, ring_signature::KeyImage,
-    tx::TxOutConfirmationNumber,
+    constants::RING_SIZE,
+    get_tx_out_shared_secret,
+    onetime_keys::recover_onetime_private_key,
+    ring_signature::KeyImage,
+    tx::{TxOut, TxOutConfirmationNumber},
 };
 
 use mc_fog_report_connection::FogPubkeyResolver;
@@ -652,32 +655,38 @@ impl<
             .map(|tx_out| {
                 self.ledger_db
                     .get_tx_out_index_by_hash(&tx_out.hash())
-                    .map_err(Error::LedgerDB)
+                    .map_err(|err| {
+                        rpc_internal_error("get_tx_out_index_by_hash", err, &self.logger)
+                    })
             })
-            .collect::<Result<Vec<u64>, Error>>()?;
+            .collect::<Result<Vec<u64>, RpcStatus>>()?;
 
-        let proofs = self.ledger_db.get_tx_out_proof_of_memberships(&indexes)?;
+        let proofs = self
+            .ledger_db
+            .get_tx_out_proof_of_memberships(&indexes)
+            .map_err(|err| {
+                rpc_internal_error("get_tx_out_proof_of_memberships", err, &self.logger)
+            })?;
 
-        let tx_outs_with_proofs = input_list.into_iter().zip(proofs.into_iter).collect();
-
-        let rings =
-            self.transactions_manager
-                .get_rings(RING_SIZE, tx_outs_with_proofs.len(), &indexes);
+        let rings = self
+            .transactions_manager
+            .get_rings(RING_SIZE, input_list.len(), &indexes)
+            .map_err(|err| rpc_internal_error("get_rings", err, &self.logger))?;
 
         let mut response = mc_mobilecoind_api::GetMembershipProofsResponse::new();
-        for (tx_out, proof) in tx_outs_with_proofs.iter() {
+        for (tx_out, proof) in input_list.into_iter().zip(proofs.into_iter()) {
             let mut top = mc_mobilecoind_api::TxOutProof::new();
-            top.set_tx_out(tx_out.into());
-            top.set_proof(proof.into());
+            top.set_tx_out(mc_api::external::TxOut::from(&tx_out));
+            top.set_proof(mc_api::external::TxOutMembershipProof::from(&proof));
             response.mut_ring().push(top);
         }
 
-        for ring in rings.iter() {
+        for ring in rings.into_iter() {
             let mut rs = mc_mobilecoind_api::Rings::new();
-            for (tx_out, proof) in ring.iter() {
+            for (tx_out, proof) in ring.into_iter() {
                 let mut top = mc_mobilecoind_api::TxOutProof::new();
-                top.set_tx_out(tx_out.into());
-                top.set_proof(proof.into());
+                top.set_tx_out(mc_api::external::TxOut::from(&tx_out));
+                top.set_proof(mc_api::external::TxOutMembershipProof::from(&proof));
                 rs.mut_ring().push(top);
             }
             response.mut_rings().push(rs);

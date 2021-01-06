@@ -61,3 +61,5 @@ __pycache__/
 mobilecoind/clients/python/blockchain_explorer/latest.tar.gz
 mobilecoind/clients/python/env/
 mobilecoind/clients/python/mob_client/blockchain_pb2.py
+
+consensus-enclave.css
