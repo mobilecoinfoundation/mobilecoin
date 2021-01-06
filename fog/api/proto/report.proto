@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 package report;
+option go_package = "mobilecoin/api";
 
 /// The public API for getting reports
 service ReportAPI {
