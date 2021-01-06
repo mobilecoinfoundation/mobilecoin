@@ -129,7 +129,8 @@ commands:
           command: |
             set -x
 
-            command -v cargo-trim >/dev/null || (cd .. && cargo install cargo-trim)
+            command -v cargo-trim >/dev/null \
+              || (cd .. && rustup run --install stable cargo install cargo-trim)
 
             # Configure cargo-trim with the project's Cargo.lock files
             mkdir -p ~/.config
