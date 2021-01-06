@@ -375,6 +375,45 @@ impl From<&mc_mobilecoind_api::ParseAddressCodeResponse> for JsonParseAddressCod
 }
 
 #[derive(Deserialize, Serialize, Default, Debug)]
+pub struct JsonTxOutsRequest {
+    pub tx_outs: Vec<JsonTxOut>,
+}
+
+#[derive(Serialize, Default, Debug)]
+pub struct JsonRing {
+    pub tx_out: JsonTxOut,
+    pub proof: JsonTxOutMembershipProof,
+}
+
+impl From<&mc_mobilecoind_api::TxOutProof> for JsonRing {
+    fn from(src: &mc_mobilecoind_api::TxOutProof) -> Self {
+        Self {
+            tx_out: src.get_tx_out().into(),
+            proof: src.get_proof().into(),
+        }
+    }
+}
+
+#[derive(Serialize, Default, Debug)]
+pub struct JsonMembershipProofsResponse {
+    pub ring: Vec<JsonRing>,
+    pub rings: Vec<Vec<JsonRing>>,
+}
+
+impl From<&mc_mobilecoind_api::GetMembershipProofsResponse> for JsonMembershipProofsResponse {
+    fn from(src: &mc_mobilecoind_api::GetMembershipProofsResponse) -> Self {
+        Self {
+            ring: src.get_ring().iter().map(JsonRing::from).collect(),
+            rings: src
+                .get_rings()
+                .iter()
+                .map(|ring| ring.get_ring().iter().map(JsonRing::from).collect())
+                .collect(),
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonSenderTxReceipt {
     pub key_images: Vec<String>,
     pub tombstone: u64,

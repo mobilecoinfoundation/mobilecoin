@@ -5,7 +5,7 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 
 use grpcio::ChannelBuilder;
-use mc_api::external::{CompressedRistretto, KeyImage, PublicAddress, RistrettoPrivate};
+use mc_api::external::{CompressedRistretto, KeyImage, PublicAddress, RistrettoPrivate, TxOut};
 use mc_common::logger::{create_app_logger, log, o};
 use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri};
 use mc_mobilecoind_json::data_types::*;
@@ -337,6 +337,32 @@ fn parse_address_code(
 
     // The response contains the public keys encoded in the read request
     Ok(Json(JsonParseAddressCodeResponse::from(&resp)))
+}
+
+/// Retrieves the membership_proofs & rings or the tx_outs
+#[post("/membership_proofs", format = "json", data = "<tx>")]
+fn get_membership_proofs(
+    state: rocket::State<State>,
+    tx: Json<JsonTxOutsRequest>,
+) -> Result<Json<JsonMembershipProofsResponse>, String> {
+    let mut req = mc_mobilecoind_api::GetMembershipProofsRequest::new();
+    let tx_outs: Vec<mc_mobilecoind_api::external::TxOut> = tx
+        .tx_outs
+        .iter()
+        .map(|input| {
+            mc_mobilecoind_api::external::TxOut::try_from(input)
+                .map_err(|err| format!("Failed to convert input: {}", err))
+        })
+        .collect::<Result<_, String>>()?;
+
+    req.set_tx_out_list(RepeatedField::from_vec(tx_outs));
+
+    let resp = state
+        .mobilecoind_api_client
+        .get_membership_proofs(&req)
+        .map_err(|err| format!("Failed to get membership proofs: {}", err))?;
+
+    Ok(Json(JsonMembershipProofsResponse::from(&resp)))
 }
 
 /// Performs a transfer from a monitor and subaddress. The public keys and amount are in the POST data.
@@ -725,6 +751,7 @@ fn main() {
                 parse_request_code,
                 create_address_code,
                 parse_address_code,
+                get_membership_proofs,
                 build_and_submit,
                 pay_address_code,
                 generate_request_code_transaction,

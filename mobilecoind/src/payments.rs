@@ -575,7 +575,7 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
     }
 
     /// Get rings.
-    fn get_rings(
+    pub fn get_rings(
         &self,
         ring_size: usize,
         num_rings: usize,

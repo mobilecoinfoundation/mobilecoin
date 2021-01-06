@@ -391,17 +391,25 @@ message CreateAddressCodeResponse {
 // Transactions
 //
 
-message TxOutWithProof {
-    UnspentTxOut utxo = 1;
+message GetMembershipProofsRequest {
+    repeated external.TxOut tx_out_list = 1;
+}
+
+message TxOutProof {
+    external.TxOut tx_out = 1;
     external.TxOutMembershipProof proof = 2;
 }
 
-message GetMembershipProofsRequest {
-    repeated UnspentTxOut input_list = 1;
+message Rings {
+    repeated TxOutProof ring = 1;
 }
 
 message GetMembershipProofsResponse {
-    repeated TxOutWithProof output_list = 1;
+    // unspent txouts with proofs
+    repeated TxOutProof ring = 1;
+
+    // txouts with proofs
+    repeated Rings rings = 2;
 }
 
 // Generate a transaction proposal object.

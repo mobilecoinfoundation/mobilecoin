@@ -12,7 +12,7 @@ use crate::{
     monitor_store::{MonitorData, MonitorId},
     payments::{Outlay, TransactionsManager, TxProposal},
     sync::SyncThread,
-    utxo_store::{UnspentTxOut, UtxoId},
+    utxo_store::{TxOut, UnspentTxOut, UtxoId},
 };
 use grpcio::{EnvBuilder, RpcContext, RpcStatus, RpcStatusCode, ServerBuilder, UnarySink};
 use mc_account_keys::{AccountKey, PublicAddress, RootIdentity, DEFAULT_SUBADDRESS_INDEX};
@@ -637,27 +637,50 @@ impl<
         &mut self,
         request: mc_mobilecoind_api::GetMembershipProofsRequest,
     ) -> Result<mc_mobilecoind_api::GetMembershipProofsResponse, RpcStatus> {
-        let input_list: Vec<UnspentTxOut> = request
-            .get_input_list()
+        let input_list: Vec<TxOut> = request
+            .get_tx_out_list()
             .iter()
-            .map(|proto_utxo| {
+            .map(|tx_out| {
                 // Proto -> Rust struct conversion.
-                UnspentTxOut::try_from(proto_utxo)
-                    .map_err(|err| rpc_internal_error("unspent_tx_out.try_from", err, &self.logger))
+                TxOut::try_from(tx_out)
+                    .map_err(|err| rpc_internal_error("tx_out.try_from", err, &self.logger))
             })
-            .collect::<Result<Vec<UnspentTxOut>, RpcStatus>>()?;
+            .collect::<Result<Vec<TxOut>, RpcStatus>>()?;
 
-        let inputs = self
-            .transactions_manager
-            .get_membership_proofs(input_list)
-            .map_err(|err| rpc_internal_error("get_membership_proofs", err, &self.logger))?;
+        let indexes: Vec<u64> = input_list
+            .iter()
+            .map(|tx_out| {
+                self.ledger_db
+                    .get_tx_out_index_by_hash(&tx_out.hash())
+                    .map_err(Error::LedgerDB)
+            })
+            .collect::<Result<Vec<u64>, Error>>()?;
+
+        let proofs = self.ledger_db.get_tx_out_proof_of_memberships(&indexes)?;
+
+        let tx_outs_with_proofs = input_list.into_iter().zip(proofs.into_iter).collect();
+
+        let rings =
+            self.transactions_manager
+                .get_rings(RING_SIZE, tx_outs_with_proofs.len(), &indexes);
 
         let mut response = mc_mobilecoind_api::GetMembershipProofsResponse::new();
-        for (utxo, proof) in inputs.iter() {
-            let mut utxo_with_proof = mc_mobilecoind_api::TxOutWithProof::new();
-            utxo_with_proof.set_utxo(utxo.into());
-            utxo_with_proof.set_proof(proof.into());
-            response.mut_output_list().push(utxo_with_proof);
+        for (tx_out, proof) in tx_outs_with_proofs.iter() {
+            let mut top = mc_mobilecoind_api::TxOutProof::new();
+            top.set_tx_out(tx_out.into());
+            top.set_proof(proof.into());
+            response.mut_ring().push(top);
+        }
+
+        for ring in rings.iter() {
+            let mut rs = mc_mobilecoind_api::Rings::new();
+            for (tx_out, proof) in ring.iter() {
+                let mut top = mc_mobilecoind_api::TxOutProof::new();
+                top.set_tx_out(tx_out.into());
+                top.set_proof(proof.into());
+                rs.mut_ring().push(top);
+            }
+            response.mut_rings().push(rs);
         }
 
         Ok(response)
