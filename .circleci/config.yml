@@ -173,7 +173,6 @@ commands:
             - ~/.cargo/git/db
             - ~/.cargo/registry/cache
             - ~/.cargo/registry/index
-      - print-cargo-cache-stats
 
   print-cargo-cache-stats:
     steps:
@@ -315,6 +314,7 @@ commands:
   post-build:
     steps:
       - record-sccache-cache-stats
+      - print-cargo-cache-stats
 
   post-test:
     steps:
