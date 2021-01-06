@@ -438,11 +438,8 @@ jobs:
       - check-dirty-git
       - when:
           condition: { equal: [ << pipeline.git.branch >>, master ] }
-          steps: [ save-sccache-cache, save-cargo-cache ]
+          steps: [ save-sccache-cache, save-cargo-cache, save-homebrew-cache ]
       - post-build
-      - when:
-          condition: { equal: [ << pipeline.git.branch >>, master ] }
-          steps: [ save-homebrew-cache ]
 
 workflows:
   version: 2
