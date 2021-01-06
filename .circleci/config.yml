@@ -392,7 +392,7 @@ jobs:
       - check-dirty-git
       - when:
           condition: { equal: [ << pipeline.git.branch >>, master ] }
-          steps: [ save-cargo-cache, save-sccache-cache ]
+          steps: [ save-sccache-cache, save-cargo-cache ]
       - post-build
 
   # Build using macOS
@@ -434,7 +434,7 @@ jobs:
       - check-dirty-git
       - when:
           condition: { equal: [ << pipeline.git.branch >>, master ] }
-          steps: [ save-cargo-cache, save-sccache-cache ]
+          steps: [ save-sccache-cache, save-cargo-cache ]
       - post-build
       - when:
           condition: { equal: [ << pipeline.git.branch >>, master ] }
