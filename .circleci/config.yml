@@ -129,10 +129,7 @@ commands:
           command: |
             set -x
 
-            command -v cargo-install-update >/dev/null || (cd .. && cargo install cargo-update)
             command -v cargo-trim >/dev/null || (cd .. && cargo install cargo-trim)
-
-            (cd .. && cargo install-update --all)
 
             # Configure cargo-trim with the project's Cargo.lock files
             mkdir -p ~/.config
@@ -158,7 +155,7 @@ commands:
             cargo trim --query
 
             # Uninstall binary cargo crates that don't need to be cached
-            time cargo uninstall cargo-trim cargo-update
+            time cargo uninstall cargo-trim
       - save_cache:
           name: Save Cargo cache
           # See https://discuss.circleci.com/t/add-mechanism-to-update-existing-cache-key/9014/13
@@ -236,6 +233,17 @@ commands:
             command -v cargo-cache >/dev/null || rustup run --install stable cargo install cargo-cache
             command -v cargo2junit >/dev/null || rustup run --install stable cargo install cargo2junit
 
+  update-ci-deps:
+    steps:
+      - run:
+          name: Update CI dependencies
+          command: |
+            cd ..
+            rustup default stable
+            command -v cargo-install-update >/dev/null || cargo install cargo-update
+            cargo install-update --all
+            time cargo uninstall cargo-update
+
   prefetch-cargo-deps:
     steps:
       - run:
@@ -256,6 +264,9 @@ commands:
       - install-rust
       - restore-cargo-cache
       - install-ci-deps
+      - when:
+          condition: { equal: [ << pipeline.git.branch >>, master ] }
+          steps: [ update-ci-deps ]
       - env_setup
       - print_versions
       - enable_sccache
