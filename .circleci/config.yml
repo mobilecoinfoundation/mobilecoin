@@ -180,7 +180,7 @@ commands:
           name: Print Cargo cache statistics
           command: |
             cargo cache
-            cargo cache local
+            cargo cache local || true
 
   restore-homebrew-cache:
     steps:
