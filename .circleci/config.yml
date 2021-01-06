@@ -49,6 +49,9 @@ commands:
       - run:
           name: Version Info
           command: |
+            set -x
+
+            rustup show
             rustc --version
             cargo --version
             rustup --version
