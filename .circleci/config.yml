@@ -231,9 +231,10 @@ commands:
       - run:
           name: Install CI dependencies
           command: |
-            command -v sccache >/dev/null || (cd .. && cargo install sccache)
-            command -v cargo-cache >/dev/null || (cd .. && cargo install cargo-cache)
-            command -v cargo2junit >/dev/null || (cd .. && cargo install cargo2junit)
+            cd ..
+            command -v sccache >/dev/null || rustup run --install stable cargo install sccache
+            command -v cargo-cache >/dev/null || rustup run --install stable cargo install cargo-cache
+            command -v cargo2junit >/dev/null || rustup run --install stable cargo install cargo2junit
 
   prefetch-cargo-deps:
     steps:
