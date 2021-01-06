@@ -218,8 +218,8 @@ commands:
       - run:
           name: Install Rust
           command: |
-            command -v rustup >/dev/null || \
-              curl https://sh.rustup.rs --tlsv1.2 -sSf | sh -s -- -y --default-toolchain none
+            command -v rustup >/dev/null \
+              || curl https://sh.rustup.rs --tlsv1.2 -sSf | sh -s -- -y --default-toolchain none
             # Installs the toolchain specified in `rust-toolchain`
             "$HOME/.cargo/bin/rustup" show active-toolchain
 
