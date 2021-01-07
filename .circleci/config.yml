@@ -32,11 +32,6 @@ executors:
       - image: *builder-install
     resource_class: xlarge
 
-  test-executor:
-    docker:
-      - image: *builder-install
-    resource_class: large
-
   macos:
     parameters:
       xcode-version: { type: string, default: *default-xcode-version }
@@ -54,6 +49,9 @@ commands:
       - run:
           name: Version Info
           command: |
+            set -x
+
+            rustup show
             rustc --version
             cargo --version
             rustup --version
@@ -100,6 +98,8 @@ commands:
           name: Restore sccache cache
           key: v0-sccache-{{ arch }}-{{ .Environment.CIRCLE_JOB }}.
 
+  # Saves sccache cache on a per-job, per-architecture basis. Adds the git revision as a suffix
+  # so that each saved cache is stored using a unique key.
   save-sccache-cache:
     steps:
       - save_cache:
@@ -124,6 +124,8 @@ commands:
           name: Restore Cargo cache
           key: v0-cargo-{{ arch }}
 
+  # Saves cargo cache on a per-architecture basis. Adds the git revision as a suffix so that each
+  # saved cache is stored using a unique key.
   save-cargo-cache:
     steps:
       - run:
@@ -131,10 +133,8 @@ commands:
           command: |
             set -x
 
-            command -v cargo-install-update >/dev/null || (cd .. && cargo install cargo-update)
-            command -v cargo-trim >/dev/null || (cd .. && cargo install cargo-trim)
-
-            (cd .. && cargo install-update --all)
+            command -v cargo-trim >/dev/null \
+              || (cd .. && rustup run --install stable cargo install cargo-trim)
 
             # Configure cargo-trim with the project's Cargo.lock files
             mkdir -p ~/.config
@@ -160,7 +160,7 @@ commands:
             cargo trim --query
 
             # Uninstall binary cargo crates that don't need to be cached
-            time cargo uninstall cargo-trim cargo-update
+            time cargo uninstall cargo-trim
       - save_cache:
           name: Save Cargo cache
           # See https://discuss.circleci.com/t/add-mechanism-to-update-existing-cache-key/9014/13
@@ -173,15 +173,14 @@ commands:
             - ~/.cargo/git/db
             - ~/.cargo/registry/cache
             - ~/.cargo/registry/index
-      - record-cargo-cache-stats
 
-  record-cargo-cache-stats:
+  print-cargo-cache-stats:
     steps:
       - run:
           name: Print Cargo cache statistics
           command: |
             cargo cache
-            cargo cache local
+            cargo cache local || true
 
   restore-homebrew-cache:
     steps:
@@ -223,8 +222,8 @@ commands:
       - run:
           name: Install Rust
           command: |
-            command -v rustup >/dev/null || \
-              curl https://sh.rustup.rs --tlsv1.2 -sSf | sh -s -- -y --default-toolchain none
+            command -v rustup >/dev/null \
+              || curl https://sh.rustup.rs --tlsv1.2 -sSf | sh -s -- -y --default-toolchain none
             # Installs the toolchain specified in `rust-toolchain`
             "$HOME/.cargo/bin/rustup" show active-toolchain
 
@@ -233,9 +232,21 @@ commands:
       - run:
           name: Install CI dependencies
           command: |
-            command -v sccache >/dev/null || (cd .. && cargo install sccache)
-            command -v cargo-cache >/dev/null || (cd .. && cargo install cargo-cache)
-            command -v cargo2junit >/dev/null || (cd .. && cargo install cargo2junit)
+            cd ..
+            command -v sccache >/dev/null || rustup run --install stable cargo install sccache
+            command -v cargo-cache >/dev/null || rustup run --install stable cargo install cargo-cache
+            command -v cargo2junit >/dev/null || rustup run --install stable cargo install cargo2junit
+
+  update-ci-deps:
+    steps:
+      - run:
+          name: Update CI dependencies
+          command: |
+            cd ..
+            rustup default stable
+            command -v cargo-install-update >/dev/null || cargo install cargo-update
+            cargo install-update --all
+            time cargo uninstall cargo-update
 
   prefetch-cargo-deps:
     steps:
@@ -257,6 +268,9 @@ commands:
       - install-rust
       - restore-cargo-cache
       - install-ci-deps
+      - when:
+          condition: { equal: [ << pipeline.git.branch >>, master ] }
+          steps: [ update-ci-deps ]
       - env_setup
       - print_versions
       - enable_sccache
@@ -300,6 +314,7 @@ commands:
   post-build:
     steps:
       - record-sccache-cache-stats
+      - print-cargo-cache-stats
 
   post-test:
     steps:
@@ -340,112 +355,9 @@ commands:
             fi
 
 jobs:
-  # A job that builds all the tests in the workspace, and stores them in a test-bins/ directory.
-  # This directory then gets uploaded to the CircleCI workflow's workspace to be consumed
-  # by the run-parallel-tests jobs
-  build-parallel-tests:
-    executor: build-executor
-    environment:
-      <<: *default-build-environment
-    steps:
-      - prepare-for-build
-      - run:
-          name: Build/prepare unit tests
-          command: |
-            # Get a list of package names to test and the binaries that need to be executed in order to run them.
-            # It's possible for a package to produce multiple test binaries. This also compiles the tests.
-            rm -rf test-bins && mkdir test-bins && mkdir test-bins/bins-per-pkg
-
-            echo "Discovering tests..."
-            cargo test --frozen --no-run --message-format=json | jq -r "select(.profile.test == true) | (.package_id | split(\" \")[0]) + \" \" + .filenames[]" | sort | uniq | tee test-list
-
-            while read line; do
-              PKG=$(echo $line | cut -f 1 -d ' ')
-              TEST_BIN=$(echo $line | cut -f 2 -d ' ')
-              echo "Discovered package $PKG with binary $TEST_BIN"
-              echo $PKG >> test-bins/all-pkgs.txt.unsorted
-              echo $TEST_BIN >> test-bins/bins-per-pkg/$PKG
-            done < test-list
-
-            # De-dupe packages in all-pkgs.txt
-            cat test-bins/all-pkgs.txt.unsorted | sort | uniq > test-bins/all-pkgs.txt
-
-            # Collect all test bins into test-bins/
-            for PKG in $(cat test-bins/all-pkgs.txt); do
-              for TEST_BIN in $(cat test-bins/bins-per-pkg/$PKG); do
-                cp $TEST_BIN test-bins
-              done
-            done
-
-            # Some logging
-            echo 'inside test-bins/:'
-            ls -lRa test-bins
-            echo "inside all-pkgs.txt:"
-            cat test-bins/all-pkgs.txt
-
-      - lint
-
-      - check-dirty-git
-
-      # Save the test binaries and helper text files into the workspace so that they could be consumed by the `run-tests` job.
-      - persist_to_workspace:
-          root: test-bins
-          paths:
-            - .
-      - save-cargo-cache
-      - save-sccache-cache
-      - post-build
-
-  # Runs tests from a test-bin directory previously generated by the build-tests job
-  run-parallel-tests:
-    executor: test-executor
-    parallelism: 2
-    environment:
-      <<: *default-build-environment
-    steps:
-      - restore-cargo-cache
-      - env_setup
-      - attach_workspace:
-          at: test-bins
-
-      - run:
-          name: Run unit tests
-          command: |
-            ls -lRa test-bins
-
-            # Crates that define macros (e.g. `digestible_derive`) link dynamically against libtest*.so, which sits here.
-            export LD_LIBRARY_PATH="$HOME/.rustup/toolchains/$(rustup show active-toolchain | awk '{print $1}')/lib"
-            echo "LD_LIBRARY_PATH = $LD_LIBRARY_PATH"
-
-            # Run the test binaries for all the packages we're assigned by CircleCI's test splitting mechanism,
-            rm -rf test-results && mkdir test-results
-            echo "About to run: $(cat test-bins/all-pkgs.txt | circleci tests split --split-by=timings --timings-type=classname | sort | uniq)"
-            for PKG in $(cat test-bins/all-pkgs.txt | circleci tests split --split-by=timings --timings-type=classname); do
-              echo "Running tests for $PKG"
-              for TEST_BIN in $(cat test-bins/bins-per-pkg/$PKG); do
-                echo "Running bin $TEST_BIN for pkg $PKG..."
-                JSON_OUT="results-$PKG.json"
-                # Run the test and also store the output into a JSON file
-                ./test-bins/$(basename $TEST_BIN) -Z unstable-options --report-time --format json | tee $JSON_OUT
-
-                # For CircleCI's time-based splitting to work, we need to convert Cargo's JSON output into a JUNIT xml file.
-                # Sadly, cargo does not output the name of the package it is testing. This search-and-replace is a hack around that.
-                cat $JSON_OUT | cargo2junit | sed -e 's/name="\(.*\)" package/name="'"$PKG"'" package/' > test-results/$(basename $TEST_BIN).xml
-              done
-            done
-
-      - check-dirty-git
-
-      - store_test_results:
-          path: test-results
-      - store_artifacts:
-          path: test-results
-
-
   # Run tests on a single container
   run-tests:
     executor: build-executor
-    parallelism: 1
     environment:
       <<: *default-build-environment
     steps:
@@ -484,7 +396,7 @@ jobs:
       - check-dirty-git
       - when:
           condition: { equal: [ << pipeline.git.branch >>, master ] }
-          steps: [ save-cargo-cache, save-sccache-cache ]
+          steps: [ save-sccache-cache, save-cargo-cache ]
       - post-build
 
   # Build using macOS
@@ -526,23 +438,14 @@ jobs:
       - check-dirty-git
       - when:
           condition: { equal: [ << pipeline.git.branch >>, master ] }
-          steps: [ save-cargo-cache, save-sccache-cache ]
+          steps: [ save-sccache-cache, save-cargo-cache, save-homebrew-cache ]
       - post-build
-      - when:
-          condition: { equal: [ << pipeline.git.branch >>, master ] }
-          steps: [ save-homebrew-cache ]
 
 workflows:
   version: 2
   # Build and run tests on a single container
   build-and-run-tests:
     jobs:
-      # Build and run tests in parallel - not needed at the moment since the test suite is fast enough.
-      # - build-parallel-tests
-      # - run-parallel-tests:
-      #     requires:
-      #       - build-parallel-tests
-
       # Run tests on a single container
       - run-tests
 
