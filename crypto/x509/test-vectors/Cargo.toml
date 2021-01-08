@@ -1,0 +1,7 @@
+[package]
+name = "mc-crypto-x509-test-utils"
+version = "1.0.0"
+authors = ["MobileCoin"]
+edition = "2018"
+description = "Utilities for generating certificates and chains for unit tests"
+readme = "README.md"

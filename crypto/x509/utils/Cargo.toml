@@ -7,4 +7,6 @@ description = "Verification of X509 certificate chains"
 readme = "README.md"
 
 [dependencies]
-x509-parser = "0.9.0"
+mc-crypto-keys = { path = "../../keys" }
+
+x509-parser = { version = "0.9.0", features = ["verify"] }
