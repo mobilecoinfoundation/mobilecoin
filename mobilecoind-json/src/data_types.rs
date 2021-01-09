@@ -1004,6 +1004,61 @@ impl From<&mc_mobilecoind_api::SubmitTxResponse> for JsonSubmitTxResponse {
     }
 }
 
+impl TryFrom<&JsonSubmitTxResponse> for mc_mobilecoind_api::SubmitTxResponse {
+    type Error = String;
+
+    fn try_from(src: &JsonSubmitTxResponse) -> Result<Self, String> {
+        let mut sender_receipt = mc_mobilecoind_api::SenderTxReceipt::new();
+
+        let key_images: Vec<KeyImage> = src
+            .sender_tx_receipt
+            .key_images
+            .iter()
+            .map(|k| {
+                hex::decode(&k)
+                    .and_then(|x| Ok(KeyImage::from(x)))
+                    .map_err(|err| format!("Failed to decode hex: {}", err))
+            })
+            .collect::<Result<Vec<KeyImage>, String>>()?;
+
+        sender_receipt.set_key_image_list(RepeatedField::from_vec(key_images));
+        sender_receipt.set_tombstone(src.sender_tx_receipt.tombstone);
+
+        let mut receiver_receipts = Vec::new();
+        for r in src.receiver_tx_receipt_list.iter() {
+            let mut receiver_receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
+            receiver_receipt.set_recipient(
+                PublicAddress::try_from(&r.recipient)
+                    .map_err(|err| format!("Failed to convert recipient: {}", err))?,
+            );
+            let mut pubkey = mc_api::external::CompressedRistretto::new();
+            pubkey.set_data(
+                hex::decode(&r.tx_public_key)
+                    .map_err(|err| format!("Failed to decode hex: {}", err))?,
+            );
+            receiver_receipt.set_tx_public_key(pubkey);
+            receiver_receipt.set_tx_out_hash(
+                hex::decode(&r.tx_out_hash)
+                    .map_err(|err| format!("Failed to decode hex: {}", err))?
+                    .into(),
+            );
+            receiver_receipt.set_tombstone(r.tombstone);
+            receiver_receipt.set_confirmation_number(
+                hex::decode(&r.confirmation_number)
+                    .map_err(|err| format!("Failed to decode hex: {}", err))?
+                    .into(),
+            );
+            receiver_receipts.push(receiver_receipt);
+        }
+
+        let mut resp = mc_mobilecoind_api::SubmitTxResponse::new();
+        resp.set_sender_tx_receipt(sender_receipt);
+        resp.set_receiver_tx_receipt_list(RepeatedField::from_vec(receiver_receipts));
+
+        Ok(resp)
+    }
+}
+
 #[derive(Serialize, Default, Debug)]
 pub struct JsonStatusResponse {
     pub status: String,
@@ -1016,6 +1071,15 @@ impl From<&mc_mobilecoind_api::GetTxStatusAsSenderResponse> for JsonStatusRespon
             mc_mobilecoind_api::TxStatus::Verified => "verified",
             mc_mobilecoind_api::TxStatus::TombstoneBlockExceeded => "failed",
             mc_mobilecoind_api::TxStatus::InvalidConfirmationNumber => "invalid_confirmation",
+            mc_mobilecoind_api::TxStatus::PublicKeysInDifferentBlocks => {
+                "public_keys_in_different_blocks"
+            }
+            mc_mobilecoind_api::TxStatus::TransactionFailureKeyImageBlockMismatch => {
+                "transaction_failure_key_image_block_mismatch"
+            }
+            mc_mobilecoind_api::TxStatus::TransactionFailureKeyImageAlreadySpent => {
+                "transaction_failure_key_image_already_spent"
+            }
         };
 
         Self {
@@ -1031,6 +1095,15 @@ impl From<&mc_mobilecoind_api::GetTxStatusAsReceiverResponse> for JsonStatusResp
             mc_mobilecoind_api::TxStatus::Verified => "verified",
             mc_mobilecoind_api::TxStatus::TombstoneBlockExceeded => "failed",
             mc_mobilecoind_api::TxStatus::InvalidConfirmationNumber => "invalid_confirmation",
+            mc_mobilecoind_api::TxStatus::PublicKeysInDifferentBlocks => {
+                "public_keys_in_different_blocks"
+            }
+            mc_mobilecoind_api::TxStatus::TransactionFailureKeyImageBlockMismatch => {
+                "transaction_failure_key_image_block_mismatch"
+            }
+            mc_mobilecoind_api::TxStatus::TransactionFailureKeyImageAlreadySpent => {
+                "transaction_failure_key_image_already_spent"
+            }
         };
 
         Self {

@@ -5,7 +5,7 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 
 use grpcio::ChannelBuilder;
-use mc_api::external::{CompressedRistretto, KeyImage, PublicAddress, RistrettoPrivate};
+use mc_api::external::{CompressedRistretto, PublicAddress, RistrettoPrivate};
 use mc_common::logger::{create_app_logger, log, o};
 use mc_mobilecoind_api::{mobilecoind_api_grpc::MobilecoindApiClient, MobilecoindUri};
 use mc_mobilecoind_json::data_types::*;
@@ -530,28 +530,17 @@ fn submit_tx(
 }
 
 /// Checks the status of a transfer given a key image and tombstone block
-#[post("/tx/status-as-sender", format = "json", data = "<receipt>")]
+#[post("/tx/status-as-sender", format = "json", data = "<submit_response>")]
 fn check_transfer_status(
     state: rocket::State<State>,
-    receipt: Json<JsonSendPaymentResponse>,
+    submit_response: Json<JsonSubmitTxResponse>,
 ) -> Result<Json<JsonStatusResponse>, String> {
-    let mut sender_receipt = mc_mobilecoind_api::SenderTxReceipt::new();
-    let mut key_images = Vec::new();
-    for key_image_hex in &receipt.sender_tx_receipt.key_images {
-        key_images.push(KeyImage::from(
-            hex::decode(&key_image_hex).map_err(|err| format!("{}", err))?,
-        ))
-    }
-
-    sender_receipt.set_key_image_list(RepeatedField::from_vec(key_images));
-    sender_receipt.set_tombstone(receipt.sender_tx_receipt.tombstone);
-
-    let mut req = mc_mobilecoind_api::GetTxStatusAsSenderRequest::new();
-    req.set_receipt(sender_receipt);
-
     let resp = state
         .mobilecoind_api_client
-        .get_tx_status_as_sender(&req)
+        .get_tx_status_as_sender(
+            &mc_mobilecoind_api::SubmitTxResponse::try_from(&submit_response.0)
+                .map_err(|err| format!("Could not convert JsonSubmitTxResponse: {}", err))?,
+        )
         .map_err(|err| format!("Failed getting status: {}", err))?;
 
     Ok(Json(JsonStatusResponse::from(&resp)))
