@@ -7,7 +7,7 @@ data:
   ledger_dist.conf: |
     [program:ledger-distribution]
     command=/usr/bin/ledger-distribution
-      --dest s3://mobilecoin.chain/node3.NETWORKNAME.mobilecoin.com?region=us-west-1
+      --dest s3://mobilecoin.chain/node3.NETWORKNAME.mobilecoin.com
       --ledger-path /ledger
 
     stdout_logfile=/dev/fd/1
@@ -207,7 +207,9 @@ spec:
             - name: MC_BRANCH
               value: "NETWORKNAME"
             - name: AWS_PATH
-              value: "AWS_PATH=s3://mobilecoin.chain/node3.NETWORKNAME.mobilecoin.com?region=us-west-1"
+              value: "AWS_PATH=s3://mobilecoin.chain/node3.NETWORKNAME.mobilecoin.com"
+            - name: AWS_REGION
+              value: "us-west-1"
             - name: PROD_IAS_SPID
               valueFrom:
                 secretKeyRef:
@@ -236,8 +238,6 @@ spec:
             - name: "SEALED_BLOCK_SIGNING_KEY"
               value: "/keys/sealed-block-signing-key"
           volumeMounts:
-            - name: dev-isgx
-              mountPath: /dev/isgx
             - name: aesm-socket-dir
               mountPath: /var/run/aesmd
             - name: config-dir
@@ -252,15 +252,13 @@ spec:
             - name: supervisor-conf
               mountPath: /etc/supervisor/conf.d
               readOnly: true
-          securityContext:
-            privileged: true
+          resources:
+            limits:
+              intel.com/sgx: 5000
+            requests:
+              intel.com/sgx: 5000
 
       volumes:
-        # Volume-mapped SGX device
-        - name: dev-isgx
-          hostPath:
-            path: /dev/isgx
-            type: CharDevice
         - name: ledger-db-dir
           emptyDir: {}
         - name: config-dir

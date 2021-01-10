@@ -3,7 +3,7 @@
 //! Traits which connection implementations can implement.
 
 use crate::error::{Result, RetryResult};
-use grpcio::{Error as GrpcError, RpcStatusCode};
+use grpcio::Error as GrpcError;
 use mc_transaction_core::{tx::Tx, Block, BlockID, BlockIndex};
 use mc_util_uri::ConnectionUri;
 use std::{
@@ -43,10 +43,8 @@ pub trait AttestedConnection: Connection {
 
         let result = func(self);
 
-        if let Err(GrpcError::RpcFailure(rpc_status)) = &result {
-            if rpc_status.status == RpcStatusCode::UNAUTHENTICATED {
-                self.deattest();
-            }
+        if let Err(GrpcError::RpcFailure(_rpc_status)) = &result {
+            self.deattest();
         }
 
         Ok(result?)

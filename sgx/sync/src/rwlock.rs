@@ -26,8 +26,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use mc_sgx_libc_types as libc;
-use mc_sgx_types::{sgx_thread_t, SysError, SGX_THREAD_T_NULL};
+use mc_sgx_types::{libc, sgx_thread_t, SysError, SGX_THREAD_T_NULL};
 //use panic::{UnwindSafe, RefUnwindSafe};
 use super::{
     condvar::SgxThreadCondvar,

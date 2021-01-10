@@ -8,7 +8,6 @@ import "external.proto";
 package printable;
 
 option java_package = "com.mobilecoin.api";
-option java_outer_classname = "MobileCoinAPI";
 
 /// Message for a payment request, which combines a public address
 /// with an a requested payment amount and memo field
@@ -32,7 +31,7 @@ message TransferPayload {
 
     /// The public key of the UTXO to spend. This is an optimization, meaning
     /// the recipient does not need to scan the entire ledger.
-    bytes tx_public_key = 2;
+    external.CompressedRistretto tx_out_public_key = 2;
 
     /// Any additional text explaining the gift
     string memo = 3;

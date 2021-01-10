@@ -99,8 +99,9 @@ Offline transactions are a way of constructing a transaction on a machine that i
 The steps for constructing and submitting an offline transaction are:
 
 1. Copy a recent copy of the ledger database into the airgapped machine. The copied ledger should include TxOuts that are spendable by the user.
-1. Run `mobilecoind` on the airgapped machine: `MC_LOG=trace CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css SGX_MODE=SW IAS_MODE=DEV cargo run -p mc-mobilecoind --release -- --offline --listen-uri insecure-mobilecoind://127.0.0.1:4444/ --mobilecoind-db /tmp/wallet-db`. Note that a CSS file is still needed since its impossible to build mobilecoind without one, unless you are able to compile the enclave.
-1. Connect to this `mobilecoind`, add a monitor with your keys, let it scan the ledger, and construct a transaction using the `GenerateTx` API call.
-1. `GenerateTx` will return a `TxProposal` message, which you can then protobuf-encode into a blob of bytes.
-1. Copy this blob of bytes into a machine that has internet access and `mobilecoind` running.
-1. Decode the blob of bytes back into a `TxProposaland` submit it using the `SubmitTx` API call. Even if the `mobilecoind` instance you are submitting to has no monitors defined at all, this would still work.
+1. Copy the pre-built mobilecoind binary to the airgapped machine.
+1. Run `mobilecoind` on the airgapped machine: `MC_LOG=trace ./mobilecoind --release -- --offline --listen-uri insecure-mobilecoind://127.0.0.1:4444/ --mobilecoind-db /tmp/wallet-db`.
+1. Connect to this `mobilecoind`, add a monitor with your keys, let it scan the ledger, and construct a transaction using the `GenerateTx` API call, using one of the clients such as `mobilecoind-json`.
+1. `GenerateTx` will return a `TxProposal`, which you can then copy back to the internet-connected machine.
+1. Copy this `TxProposal` into a machine that has internet access and `mobilecoind` running.
+1. Decode the `TxProposal` and submit it using the `SubmitTx` API call. Even if the `mobilecoind` instance you are submitting to has no monitors defined at all, this would still work.

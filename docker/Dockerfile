@@ -21,57 +21,64 @@ FROM ubuntu:18.04 AS builder-install
 #
 SHELL ["/bin/bash", "-c"]
 
+# Certain Installers make 'installations' easier by having a nice front-end. While this is great when you have a manual install, this becomes an issue during automated installations.
+ENV DEBIAN_FRONTEND=noninteractive
+
 # Install build tools and dependencies
 #
 RUN apt-get update -q -q && \
  apt-get upgrade --yes --force-yes && \
  apt-get install --yes --force-yes \
-  automake \
-  autoconf \
   alien \
+  autoconf \
+  automake \
   binutils-dev \
   build-essential \
-  libclang-dev \
   clang \
   cmake \
   curl \
-  libcurl4-openssl-dev \
-  libdw-dev \
   git \
   golang \
-  libiberty-dev \
   jq \
+  libclang-dev \
+  libcurl4-openssl-dev \
+  libdw-dev \
+  libiberty-dev \
+  libpq-dev \
+  libprotobuf-c-dev \
+  libprotobuf-dev \
+  libssl-dev \
+  libssl1.1 \
+  libsystemd-dev \
+  libtool \
+  libxml2-dev \
   llvm-dev \
   nano \
   ninja-build \
   ocaml-native-compilers \
   ocamlbuild \
   patch \
-  protobuf-compiler \
-  protobuf-c-compiler \
-  libprotobuf-c-dev \
-  libprotobuf-dev \
-  psmisc \
   pkg-config \
+  postgresql-10 \
   prometheus \
+  protobuf-c-compiler \
+  protobuf-compiler \
+  psmisc \
   python \
   python3-pip \
-  libssl1.1 \
-  libssl-dev \
+  sqlite3 \
+  libsqlite3-dev \
   systemd \
-  libsystemd-dev \
-  libtool \
   unzip \
   uuid-dev \
   wget \
-  libxml2-dev \
   zlib1g-dev
 
 # psmisc = killall
 # prometheus = helps with running slam scripts locally
 
 # For use in CI
-RUN pip3 install awscli
+RUN pip3 install awscli black
 
 # filebeat is used for logs when running slam scripts locally
 RUN curl -L -O https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-7.4.2-amd64.deb && \
@@ -119,6 +126,16 @@ ARG DOCKER_NO_SGX=false
 
 COPY --chown=root:root install_sgx.sh /tmp
 RUN if [ "$DOCKER_NO_SGX" = "false" ] ; then cd /tmp && chmod +x install_sgx.sh && ./install_sgx.sh; else echo 'skipping sgx'; fi
+
+# Setup postgresql for local testing
+RUN sed -ie 's|host    all             all             127.0.0.1/32            md5|host    all             all             127.0.0.1/32            trust|' /etc/postgresql/10/main/pg_hba.conf && \
+    sed -ie 's|host    all             all             ::1/128                 md5|host    all             all             ::1/128                 trust|' /etc/postgresql/10/main/pg_hba.conf && \
+    service postgresql start && \
+    su postgres -c "createuser --superuser root"
+
+# Export postgres database url's for build environment, for local testing and conformance tests
+ENV DATABASE_URL="postgres://localhost"
+ENV TEST_DATABASE_URL="postgres://localhost"
 
 # Export sgx sdk environment variables
 # Doing this here means that we don't have to constantly source /opt/intel/sgxsdk/environment

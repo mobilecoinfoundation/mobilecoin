@@ -12,12 +12,15 @@ use mc_mobilecoind::{
 use mc_watcher::{watcher::WatcherSyncThread, watcher_db::create_or_open_rw_watcher_db};
 use std::{
     path::Path,
-    sync::{Arc, Mutex},
+    sync::{Arc, RwLock},
 };
 use structopt::StructOpt;
 
 fn main() {
     let config = Config::from_args();
+    if !cfg!(debug_assertions) && !config.offline {
+        config.validate_host().expect("Could not validate host");
+    }
 
     mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
@@ -36,7 +39,7 @@ fn main() {
     let peer_manager = config.peers_config.create_peer_manager(verifier, &logger);
 
     // Create network state, transactions fetcher and ledger sync.
-    let network_state = Arc::new(Mutex::new(PollingNetworkState::new(
+    let network_state = Arc::new(RwLock::new(PollingNetworkState::new(
         config.quorum_set(),
         peer_manager.clone(),
         logger.clone(),
@@ -66,13 +69,13 @@ fn main() {
     };
 
     // Optionally instantiate the watcher sync thread and get the watcher_db handle.
-    let (watcher_db, _watcher_sync_thread) = match config.watcher_db {
+    let (watcher_db, _watcher_sync_thread) = match &config.watcher_db {
         Some(watcher_db_path) => {
             log::info!(logger, "Launching watcher.");
 
             log::info!(logger, "Opening watcher db at {:?}.", watcher_db_path);
             let watcher_db = create_or_open_rw_watcher_db(
-                watcher_db_path,
+                watcher_db_path.clone(),
                 &transactions_fetcher.source_urls,
                 logger.clone(),
             )
@@ -110,6 +113,7 @@ fn main() {
                 ledger_db.clone(),
                 mobilecoind_db.clone(),
                 peer_manager,
+                config.get_fog_pubkey_resolver(logger.clone()).map(Arc::new),
                 logger.clone(),
             );
 
@@ -201,13 +205,17 @@ fn create_or_open_ledger_db(
                 );
             std::fs::create_dir_all(config.ledger_db.clone()).expect("Could not create ledger dir");
             LedgerDB::create(config.ledger_db.clone()).expect("Could not create ledger_db");
-            let (block, transactions) = transactions_fetcher
+            let block_data = transactions_fetcher
                 .get_origin_block_and_transactions()
                 .expect("Failed to download initial transactions");
             let mut db =
                 LedgerDB::open(config.ledger_db.clone()).expect("Could not open ledger_db");
-            db.append_block(&block, &transactions, None)
-                .expect("Failed to appened initial transactions");
+            db.append_block(
+                block_data.block(),
+                block_data.contents(),
+                block_data.signature().clone(),
+            )
+            .expect("Failed to appened initial transactions");
             log::info!(logger, "Bootstrapping completed!");
         }
     }

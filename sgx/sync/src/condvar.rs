@@ -44,8 +44,9 @@ use super::{
 use core::{cell::UnsafeCell, fmt};
 //use core::mem;
 use core::sync::atomic::{AtomicUsize, Ordering};
-use mc_sgx_libc_types as libc;
-use mc_sgx_types::{self, sgx_thread_cond_t, sgx_thread_condattr_t, sgx_thread_mutex_t, SysError};
+use mc_sgx_types::{
+    self, libc, sgx_thread_cond_t, sgx_thread_condattr_t, sgx_thread_mutex_t, SysError,
+};
 //use core::alloc::AllocErr;
 use alloc::boxed::Box;
 

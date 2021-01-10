@@ -1,8 +1,0 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
-
-enclave {
-    untrusted {
-        void enclave_log([in, size=msg_len] const uint8_t* msg,
-                         size_t msg_len);
-    };
-};

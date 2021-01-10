@@ -95,6 +95,26 @@ impl<ID: GenericNodeId> QuorumSet<ID> {
         Self::new(0, vec![])
     }
 
+    /// Check if a quorum set is valid.
+    pub fn is_valid(&self) -> bool {
+        // Must have at least `threshold` members.
+        if self.threshold as usize > self.members.len() {
+            return false;
+        }
+
+        // All of our inner sets must be valid.
+        for member in self.members.iter() {
+            if let QuorumSetMember::InnerSet(qs) = member {
+                if !qs.is_valid() {
+                    return false;
+                }
+            }
+        }
+
+        // QuorumSet is valid
+        true
+    }
+
     /// Recursively sort the qs and all inner sets
     pub fn sort(&mut self) {
         for member in self.members.iter_mut() {
@@ -985,5 +1005,86 @@ mod quorum_set_tests {
                 test_node_id(3).responder_id
             ])
         );
+    }
+
+    #[test]
+    fn test_is_valid() {
+        // An empty quorum set is valid.
+        assert!(QuorumSet::<String>::empty().is_valid());
+
+        // A quorum set with num of members > threshold is valid.
+        assert!(QuorumSet::new(
+            2,
+            vec![
+                QuorumSetMember::Node(test_node_id(0)),
+                QuorumSetMember::Node(test_node_id(1)),
+                QuorumSetMember::Node(test_node_id(2)),
+            ],
+        )
+        .is_valid());
+
+        // A quorum set with num of members == threshold is valid.
+        assert!(QuorumSet::new(
+            3,
+            vec![
+                QuorumSetMember::Node(test_node_id(0)),
+                QuorumSetMember::Node(test_node_id(1)),
+                QuorumSetMember::Node(test_node_id(2)),
+            ],
+        )
+        .is_valid());
+
+        // A quorum set with num of members < threshold is invalid
+        assert!(!QuorumSet::new(
+            4,
+            vec![
+                QuorumSetMember::Node(test_node_id(0)),
+                QuorumSetMember::Node(test_node_id(1)),
+                QuorumSetMember::Node(test_node_id(2)),
+            ],
+        )
+        .is_valid());
+
+        // A quorum set with a valid inner set is valid.
+        let qs = QuorumSet::new(
+            2,
+            vec![
+                QuorumSetMember::Node(test_node_id(1)),
+                QuorumSetMember::InnerSet(QuorumSet::new(
+                    2,
+                    vec![
+                        QuorumSetMember::Node(test_node_id(3)),
+                        QuorumSetMember::Node(test_node_id(2)),
+                        QuorumSetMember::InnerSet(QuorumSet::new_with_node_ids(
+                            2,
+                            vec![test_node_id(5), test_node_id(7), test_node_id(6)],
+                        )),
+                    ],
+                )),
+                QuorumSetMember::Node(test_node_id(0)),
+            ],
+        );
+        assert!(qs.is_valid());
+
+        // A quorum set with an invalid inner set is invalid.
+        let qs = QuorumSet::new(
+            2,
+            vec![
+                QuorumSetMember::Node(test_node_id(1)),
+                QuorumSetMember::InnerSet(QuorumSet::new(
+                    2,
+                    vec![
+                        QuorumSetMember::Node(test_node_id(3)),
+                        QuorumSetMember::Node(test_node_id(2)),
+                        QuorumSetMember::InnerSet(QuorumSet::new_with_node_ids(
+                            20,
+                            vec![test_node_id(5), test_node_id(7), test_node_id(6)],
+                        )),
+                    ],
+                )),
+                QuorumSetMember::Node(test_node_id(0)),
+            ],
+        );
+        assert!(!qs.is_valid());
     }
 }

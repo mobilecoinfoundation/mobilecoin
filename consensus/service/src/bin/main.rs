@@ -4,7 +4,10 @@
 
 use mc_attest_core::DEBUG_ENCLAVE;
 use mc_attest_net::{Client, RaClient};
-use mc_common::logger::{create_app_logger, log, o};
+use mc_common::{
+    logger::{create_app_logger, log, o},
+    time::SystemTimeProvider,
+};
 use mc_consensus_enclave::{ConsensusServiceSgxEnclave, ENCLAVE_FILE};
 use mc_consensus_service::{
     config::Config,
@@ -96,6 +99,7 @@ fn main() -> Result<(), ConsensusServiceError> {
         local_ledger,
         ias_client,
         Arc::new(tx_manager),
+        Arc::new(SystemTimeProvider::default()),
         logger.clone(),
     );
     consensus_service
@@ -122,7 +126,7 @@ fn setup_ledger_dir(config_origin_path: &Option<PathBuf>, ledger_path: &PathBuf)
 
         // Copy the data.mdb file from the origin directory to the ledger
         data_file_path.push("data.mdb");
-        fs_extra::copy_items(&vec![data_file_path], ledger_path, &options)
+        fs_extra::copy_items(&[data_file_path], ledger_path, &options)
             .expect("Could not copy origin block");
     }
 }

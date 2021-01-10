@@ -11,18 +11,12 @@ mc-attest-enclave-api = { path = "../../../attest/enclave-api", default-features
 mc-attest-trusted = { path = "../../../attest/trusted", default-features = false }
 mc-common = { path = "../../../common", default-features = false }
 mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
-mc-crypto-noise = { path = "../../../crypto/noise", default-features = false }
 mc-crypto-rand = { path = "../../../crypto/rand", default-features = false }
 mc-util-from-random = { path = "../../../util/from-random" }
-mc-util-serial = { path = "../../../util/serial", default-features = false }
 mc-sgx-compat = { path = "../../../sgx/compat", default-features = false }
 
-aead = "0.3"
 aes-gcm = "0.6"
 digest = { version = "0.9", default-features = false }
-failure = { version = "0.1.5", default-features = false, features = ["derive"] }
-rand_core = { version = "0.5", default-features = false }
-serde = { version = "1.0", default-features = false, features = ["alloc"] }
 sha2 = { version = "0.9", default-features = false }
 
 [build-dependencies]

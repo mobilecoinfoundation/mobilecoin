@@ -7,7 +7,7 @@ readme = "README.md"
 edition = "2018"
 
 [badges]
-circle-ci = { repository = "mobilecoinofficial/mobilecoin", branch = "master" }
+circle-ci = { repository = "mobilecoinfoundation/mobilecoin", branch = "master" }
 
 [package.metadata.docs.rs]
 features = ["use_prost"]
@@ -22,26 +22,22 @@ use_prost = [
 
 [dependencies]
 mc-sgx-core-types = { path = "../core-types" }
-mc-sgx-core-types-sys = { path = "../core-types-sys" }
 mc-sgx-epid-types = { path = "../epid-types" }
-mc-sgx-epid-types-sys = { path = "../epid-types-sys" }
 mc-util-encodings = { path = "../../util/encodings" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-repr-bytes = { path = "../../util/repr-bytes", default-features = false, features = ["alloc"] }
 
 base64 = { version = "0.12", default-features = false, features = ["alloc"] }
 bitflags = "1.2"
-bytes = "0.5"
 chrono = { version = "0.4.10", default-features = false, features = ["alloc"] }
 displaydoc = { version = "0.1.7", default-features = false }
-typenum = { version = "1.12", features = ["no_std"] }
+generic-array = { version = "0.14", features = ["more_lengths"] }
 hex = { version = "0.4", default-features = false }
 hex_fmt = "0.3"
 prost = { version = "0.6.1", optional = true, default-features = false }
 prost-types = { version = "0.6.1", optional = true, default-features = false }
 rand_core = "0.5"
 rjson = "0.3"
-subtle = { version = "2.2", default-features = false, features = ["i128"] }
 
 [dev-dependencies]
 rand_hc = "0.2"

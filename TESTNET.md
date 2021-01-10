@@ -18,7 +18,7 @@ Register to participate in the MobileCoin TestNet to receive an allocation of *m
 
 You can make your first MobileCoin payment right now!
 
-1. Download the TestNet client package for [mac](https://github.com/mobilecoinofficial/mobilecoin/releases/latest/download/MobileCoin.TestNet.dmg) or [linux](https://github.com/mobilecoinofficial/mobilecoin/releases/latest/download/mobilecoin-testnet-linux.tar.gz).
+1. Download the TestNet client package for [mac](https://github.com/mobilecoinfoundation/mobilecoin/releases/latest/download/MobileCoin.TestNet.dmg) or [linux](https://github.com/mobilecoinfoundation/mobilecoin/releases/latest/download/mobilecoin-testnet-linux.tar.gz).
 
 1. Expand the package archive and launch the "MobileCoin TestNet" client, an app bundle (mac) or shell script (linux).
 
@@ -26,13 +26,13 @@ You can make your first MobileCoin payment right now!
 
 1. Try completing a payment to the sample request code you received in your email.
 
-1. Create your own payment request and share it in the [MobileCoin forum](https://community.mobilecoin.com).
+1. Create your own payment request and share it in the [MobileCoin forum](https://community.mobilecoin.foundation).
 
 ### Run a TestNet *Watcher Node*
 
 If you have a Linux-compatible home computer, or if you are willing to operate a Linux-compatible server in the cloud, you can run a *watcher node* in the MobileCoin TestNet.
 
-1. Clone the official MobileCoin repository at [Github](https://github.com/mobilecoinofficial/mobilecoin).
+1. Clone the official MobileCoin repository at [Github](https://github.com/mobilecoinfoundation/mobilecoin).
 
 1. Make sure you've installed [Docker](https://docs.docker.com/get-docker/) and [Python](https://www.python.org/downloads/).
 
@@ -42,7 +42,7 @@ If you have a Linux-compatible home computer, or if you are willing to operate a
 
 1. Use your *master key* with the [TestNet client](#send-your-first-payment), or as the *root entropy* in one of the `mobilecoind` [example clients](./mobilecoind/clients) or your own code!
 
-1. Exchange payment request information with other community members at the [MobileCoin Forum](https://community.mobilecoin.com).
+1. Exchange payment request information with other community members at the [MobileCoin Forum](https://community.mobilecoin.foundation).
 
 1. Collaborate to help stress test the *validator nodes* to help discover potential problems.
 
@@ -66,4 +66,4 @@ During *Operating Hours* our goal will be to maintain 100% uptime. We plan to re
 
 ## Getting Help
 
-For troubleshooting and questions, please visit the community forum at https://community.mobilecoin.com. You can also open a technical support ticket via email to <support@mobilecoin.com>.
+For troubleshooting and questions, please visit the community forum at https://community.mobilecoin.foundation. You can also open a technical support ticket via email to <support@mobilecoin.com>.

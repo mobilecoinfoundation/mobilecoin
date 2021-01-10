@@ -578,7 +578,7 @@ string that we send you. It should look something like:
 
 You can create a request code to share with another MobileCoin user
 to receive a payment. You can meet other TestNet users online at the
-MobileCoin forums. Visit http://community.mobilecoin.com
+MobileCoin forums. Visit http://community.mobilecoin.foundation
 
 "#
         );
@@ -622,12 +622,12 @@ MobileCoin forums. Visit http://community.mobilecoin.com
         let public_address = resp.take_public_address();
 
         // Generate b58 code
-        let mut req = mc_mobilecoind_api::GetRequestCodeRequest::new();
+        let mut req = mc_mobilecoind_api::CreateRequestCodeRequest::new();
         req.set_receiver(public_address);
         req.set_value(amount);
         req.set_memo(memo);
 
-        let resp = match self.client.get_request_code(&req) {
+        let resp = match self.client.create_request_code(&req) {
             Ok(resp) => resp,
             Err(err) => {
                 println!("Failed generating request code: {}", err);

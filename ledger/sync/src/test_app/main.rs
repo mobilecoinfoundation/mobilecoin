@@ -8,7 +8,7 @@ use mc_common::{logger::log, ResponderId};
 use mc_connection::{ConnectionManager, ThickClient};
 use mc_consensus_scp::{test_utils::test_node_id, QuorumSet};
 use mc_ledger_db::{Ledger, LedgerDB};
-use mc_ledger_sync::{LedgerSyncService, PollingNetworkState};
+use mc_ledger_sync::{LedgerSync, LedgerSyncService, PollingNetworkState};
 use mc_transaction_core::{Block, BlockContents};
 use mc_util_uri::ConsensusClientUri as ClientUri;
 use std::{path::PathBuf, str::FromStr, sync::Arc};

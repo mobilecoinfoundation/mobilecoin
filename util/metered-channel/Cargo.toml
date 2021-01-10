@@ -5,13 +5,6 @@ authors = ["MobileCoin"]
 edition = "2018"
 
 [dependencies]
-mc-common = { path = "../../common", features = ["log"] }
 mc-util-metrics = { path = "../../util/metrics" }
 
-chrono = "0.4"
-crossbeam-channel = "0.3"
-grpcio = "0.6.0"
-lazy_static = "1.4"
-protobuf = "2.12"
-reqwest = { version = "0.10", features = ["rustls-tls"], default_features = false }
-serde_json = "1.0"
+crossbeam-channel = "0.4"

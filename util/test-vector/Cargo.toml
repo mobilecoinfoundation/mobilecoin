@@ -1,0 +1,10 @@
+[package]
+name = "mc-util-test-vector"
+version = "1.0.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[dependencies]
+datatest = "0.6"
+serde = "1.0"
+serde_json = "1.0"

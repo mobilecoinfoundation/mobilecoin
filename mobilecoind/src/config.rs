@@ -2,13 +2,21 @@
 
 //! Configuration parameters for mobilecoind
 
-use mc_attest_core::Verifier;
+use displaydoc::Display;
+use mc_attest_core::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::{logger::Logger, ResponderId};
 use mc_connection::{ConnectionManager, ThickClient};
 use mc_consensus_scp::QuorumSet;
+use mc_fog_report_connection::GrpcFogPubkeyResolver;
 use mc_mobilecoind_api::MobilecoindUri;
+use mc_sgx_css::Signature;
 use mc_util_uri::{ConnectionUri, ConsensusClientUri};
-use std::{path::PathBuf, str::FromStr, sync::Arc, time::Duration};
+#[cfg(feature = "ip-check")]
+use reqwest::{
+    blocking::Client,
+    header::{HeaderMap, HeaderValue, CONTENT_TYPE},
+};
+use std::{convert::TryFrom, fs, path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -63,6 +71,11 @@ pub struct Config {
     /// Offline mode.
     #[structopt(long)]
     pub offline: bool,
+
+    /// Fog ingest enclave CSS file (needed in order to enable sending transactions to fog
+    /// recipients).
+    #[structopt(long, parse(try_from_str=load_css_file))]
+    pub fog_ingest_enclave_css: Option<Signature>,
 }
 
 fn parse_duration_in_seconds(src: &str) -> Result<Duration, std::num::ParseIntError> {
@@ -70,8 +83,49 @@ fn parse_duration_in_seconds(src: &str) -> Result<Duration, std::num::ParseIntEr
 }
 
 fn parse_quorum_set_from_json(src: &str) -> Result<QuorumSet<ResponderId>, String> {
-    Ok(serde_json::from_str(src)
-        .map_err(|err| format!("Error parsing quorum set {}: {:?}", src, err))?)
+    let quorum_set: QuorumSet<ResponderId> = serde_json::from_str(src)
+        .map_err(|err| format!("Error parsing quorum set {}: {:?}", src, err))?;
+
+    if !quorum_set.is_valid() {
+        return Err(format!("Invalid quorum set: {:?}", quorum_set));
+    }
+
+    Ok(quorum_set)
+}
+
+fn load_css_file(filename: &str) -> Result<Signature, String> {
+    let bytes =
+        fs::read(filename).map_err(|err| format!("Failed reading file '{}': {}", filename, err))?;
+    let signature = Signature::try_from(&bytes[..])
+        .map_err(|err| format!("Failed parsing CSS file '{}': {}", filename, err))?;
+    Ok(signature)
+}
+
+#[derive(Display, Debug)]
+pub enum ConfigError {
+    /// Error parsing json {0}
+    Json(serde_json::Error),
+
+    /// Error handling reqwest {0}
+    Reqwest(reqwest::Error),
+
+    /// Invalid country
+    InvalidCountry,
+
+    /// Data missing in the response {0}
+    DataMissing(String),
+}
+
+impl From<serde_json::Error> for ConfigError {
+    fn from(e: serde_json::Error) -> Self {
+        Self::Json(e)
+    }
+}
+
+impl From<reqwest::Error> for ConfigError {
+    fn from(e: reqwest::Error) -> Self {
+        Self::Reqwest(e)
+    }
 }
 
 impl Config {
@@ -99,6 +153,77 @@ impl Config {
             })
             .collect::<Vec<ResponderId>>();
         QuorumSet::new_with_node_ids(node_ids.len() as u32, node_ids)
+    }
+
+    pub fn get_fog_pubkey_resolver(&self, logger: Logger) -> Option<GrpcFogPubkeyResolver> {
+        self.fog_ingest_enclave_css.as_ref().map(|signature| {
+            let mr_signer_verifier = {
+                let mut mr_signer_verifier = MrSignerVerifier::new(
+                    signature.mrsigner().into(),
+                    signature.product_id(),
+                    signature.version(),
+                );
+                mr_signer_verifier.allow_hardening_advisories(&["INTEL-SA-00334"]);
+                mr_signer_verifier
+            };
+
+            let report_verifier = {
+                let mut verifier = Verifier::default();
+                verifier.debug(DEBUG_ENCLAVE).mr_signer(mr_signer_verifier);
+                verifier
+            };
+
+            let env = Arc::new(
+                grpcio::EnvBuilder::new()
+                    .name_prefix("FogPubkeyResolver-RPC".to_string())
+                    .build(),
+            );
+
+            GrpcFogPubkeyResolver::new(&report_verifier, env, logger)
+        })
+    }
+
+    /// Ensure local IP address is valid.
+    ///
+    /// Uses icanhazip.com for getting local IP.
+    /// Uses ipinfo.io for getting details about IP address.
+    ///
+    /// Note, both of these services are free tier and rate-limited. A longer term solution
+    /// would be to filter on the consensus server.
+    #[cfg(feature = "ip-check")]
+    pub fn validate_host(&self) -> Result<(), ConfigError> {
+        let client = Client::builder().gzip(true).use_rustls_tls().build()?;
+        let mut json_headers = HeaderMap::new();
+        json_headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+        let response = client
+            .get("https://icanhazip.com")
+            .send()?
+            .error_for_status()?;
+        let local_ip_addr = response.text()?;
+        let response = client
+            .get(format!("https://ipinfo.io/{}/json/", local_ip_addr).as_str())
+            .headers(json_headers)
+            .send()?
+            .error_for_status()?;
+        let data = response.text()?;
+        let data_json: serde_json::Value = serde_json::from_str(&data)?;
+        if let Some(v) = data_json.get("country") {
+            if let Some(country) = v.as_str() {
+                match country {
+                    "US" => Err(ConfigError::InvalidCountry),
+                    _ => Ok(()),
+                }
+            } else {
+                Err(ConfigError::DataMissing(data_json.to_string()))
+            }
+        } else {
+            Err(ConfigError::DataMissing(data_json.to_string()))
+        }
+    }
+
+    #[cfg(not(feature = "ip-check"))]
+    pub fn validate_host(&self) -> Result<(), ConfigError> {
+        Ok(())
     }
 }
 
@@ -152,7 +277,8 @@ impl PeersConfig {
     ) -> ConnectionManager<ThickClient> {
         let grpc_env = Arc::new(
             grpcio::EnvBuilder::new()
-                .name_prefix("RPC".to_string())
+                .cq_count(1)
+                .name_prefix("peer")
                 .build(),
         );
         let peers = self.create_peers(verifier, grpc_env, logger.clone());

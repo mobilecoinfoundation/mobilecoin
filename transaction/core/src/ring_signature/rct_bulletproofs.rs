@@ -20,11 +20,10 @@ use rand_core::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    commitment::Commitment,
-    compressed_commitment::CompressedCommitment,
     constants::FEE_BLINDING,
     range_proofs::{check_range_proofs, generate_range_proofs},
     ring_signature::{mlsag::RingMLSAG, Error, KeyImage, Scalar, GENERATORS},
+    Commitment, CompressedCommitment,
 };
 
 /// An RCT_TYPE_BULLETPROOFS_2 signature.
@@ -364,9 +363,9 @@ fn extend_message(
 mod rct_bulletproofs_tests {
     use super::sign_with_balance_check;
     use crate::{
-        compressed_commitment::CompressedCommitment,
         range_proofs::generate_range_proofs,
         ring_signature::{Error, KeyImage, SignatureRctBulletproofs},
+        CompressedCommitment,
     };
     use alloc::vec::Vec;
     use curve25519_dalek::scalar::Scalar;

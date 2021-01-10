@@ -8,11 +8,13 @@ use crate::{
 };
 use mc_common::NodeID;
 use mc_crypto_digestible::Digestible;
+use mc_util_serial::prost::alloc::fmt::Formatter;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     cmp,
     cmp::Ordering,
     collections::{hash_map::DefaultHasher, BTreeSet, HashSet},
+    fmt,
     fmt::{Debug, Display},
     hash::{Hash, Hasher},
 };
@@ -311,58 +313,15 @@ impl<
         }
     }
 
-    /// Provides a display string for the Msg.
-    pub fn to_display(&self) -> String {
-        let opt_ballot = |b: &Option<Ballot<V>>| match b {
-            None => "<>".to_string(),
-            Some(b) => format!("{}", b),
-        };
-        let hash_set = |hs: &BTreeSet<V>| {
-            let values_hash = {
-                let mut s = DefaultHasher::new();
-                hs.hash(&mut s);
-                s.finish()
-            };
-            format!("<{}:{}>", hs.len(), values_hash)
-        };
-
-        let topic = match &self.topic {
-            Nominate(ref payload) => {
-                format!("NOM X={}, Y={}", hash_set(&payload.X), hash_set(&payload.Y))
-            }
-            NominatePrepare(ref nominate_payload, ref prepare_payload) => format!(
-                "NOM/PREP X={}, Y={}, B={}, P={}, PP={}, HN={}, CN={}",
-                hash_set(&nominate_payload.X),
-                hash_set(&nominate_payload.Y),
-                prepare_payload.B,
-                opt_ballot(&prepare_payload.P),
-                opt_ballot(&prepare_payload.PP),
-                prepare_payload.HN,
-                prepare_payload.CN
-            ),
-            Prepare(ref prepare_payload) => format!(
-                "PREP B={}, P={}, PP={}, HN={}, CN={}",
-                prepare_payload.B,
-                opt_ballot(&prepare_payload.P),
-                opt_ballot(&prepare_payload.PP),
-                prepare_payload.HN,
-                prepare_payload.CN
-            ),
-            Commit(ref payload) => format!(
-                "COMMIT B={}, PN={}, HN={}, CN={}",
-                payload.B, payload.PN, payload.HN, payload.CN
-            ),
-            Externalize(ref payload) => format!("EXT C={} HN={}", payload.C, payload.HN),
-        };
-
-        format!("(V={} I={} {})", self.sender_id, self.slot_index, topic)
-    }
-
     /// Basic validation of Msg structure.
     pub fn validate(&self) -> Result<(), String> {
+        if !self.quorum_set.is_valid() {
+            return Err(format!("Invalid quorum set {:?}", self.quorum_set));
+        }
+
         let validate_nominate = |payload: &NominatePayload<V>| -> Result<(), String> {
             if payload.X.intersection(&payload.Y).next().is_some() {
-                Err(format!("X intersects Y, msg: {}", self.to_display()))
+                Err(format!("X intersects Y, msg: {}", self))
             } else {
                 Ok(())
             }
@@ -371,21 +330,21 @@ impl<
         let validate_prepare = |payload: &PreparePayload<V>| -> Result<(), String> {
             if let Some(P) = &payload.P {
                 if payload.B < *P {
-                    return Err(format!("B < P, msg: {}", self.to_display()));
+                    return Err(format!("B < P, msg: {}", self));
                 }
 
                 if let Some(PP) = &payload.PP {
                     if *PP >= *P {
-                        return Err(format!("PP >= P, msg: {}", self.to_display()));
+                        return Err(format!("PP >= P, msg: {}", self));
                     }
                 }
             }
 
             if payload.CN > payload.HN {
-                return Err(format!("CN > HN, msg: {}", self.to_display()));
+                return Err(format!("CN > HN, msg: {}", self));
             }
             if payload.HN > payload.B.N {
-                return Err(format!("HN > BN, msg: {}", self.to_display()));
+                return Err(format!("HN > BN, msg: {}", self));
             }
 
             Ok(())
@@ -407,7 +366,7 @@ impl<
 
             Commit(ref payload) => {
                 if payload.CN > payload.HN {
-                    return Err(format!("CN > HN, msg: {}", self.to_display()));
+                    return Err(format!("CN > HN, msg: {}", self));
                 }
             }
 
@@ -656,6 +615,58 @@ impl<
             }
         };
         values
+    }
+}
+
+impl<V: Value, ID: GenericNodeId> fmt::Display for Msg<V, ID> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let format_opt_ballot = |b: &Option<Ballot<V>>| match b {
+            None => "<>".to_string(),
+            Some(b) => format!("{}", b),
+        };
+
+        // Returns "<set.len, hash(set)>".
+        let format_b_tree_set = |b_tree_set: &BTreeSet<V>| {
+            let hash = {
+                let mut hasher = DefaultHasher::new();
+                b_tree_set.hash(&mut hasher);
+                hasher.finish()
+            };
+            format!("<{}:{}>", b_tree_set.len(), hash)
+        };
+
+        let topic = match &self.topic {
+            Nominate(ref payload) => format!(
+                "NOM X={}, Y={}",
+                format_b_tree_set(&payload.X),
+                format_b_tree_set(&payload.Y)
+            ),
+            NominatePrepare(ref nominate_payload, ref prepare_payload) => format!(
+                "NOM/PREP X={}, Y={}, B={}, P={}, PP={}, HN={}, CN={}",
+                format_b_tree_set(&nominate_payload.X),
+                format_b_tree_set(&nominate_payload.Y),
+                prepare_payload.B,
+                format_opt_ballot(&prepare_payload.P),
+                format_opt_ballot(&prepare_payload.PP),
+                prepare_payload.HN,
+                prepare_payload.CN
+            ),
+            Prepare(ref prepare_payload) => format!(
+                "PREP B={}, P={}, PP={}, HN={}, CN={}",
+                prepare_payload.B,
+                format_opt_ballot(&prepare_payload.P),
+                format_opt_ballot(&prepare_payload.PP),
+                prepare_payload.HN,
+                prepare_payload.CN
+            ),
+            Commit(ref payload) => format!(
+                "COMMIT B={}, PN={}, HN={}, CN={}",
+                payload.B, payload.PN, payload.HN, payload.CN
+            ),
+            Externalize(ref payload) => format!("EXT C={} HN={}", payload.C, payload.HN),
+        };
+
+        write!(f, "(V={} I={} {})", self.sender_id, self.slot_index, topic)
     }
 }
 

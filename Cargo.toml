@@ -26,13 +26,16 @@ members = [
     "consensus/service",
     "crypto/box",
     "crypto/digestible",
-    "crypto/digestible/test-utils",
     "crypto/digestible/derive/test",
+    "crypto/digestible/test-utils",
     "crypto/keys",
+    "crypto/message-cipher",
     "crypto/noise",
     "crypto/rand",
-    "crypto/message-cipher",
     "enclave-boundary",
+    "fog/api",
+    "fog/report/connection",
+    "fog/report/validation",
     "ledger/db",
     "ledger/distribution",
     "ledger/from-archive",
@@ -43,7 +46,6 @@ members = [
     "mobilecoind/api",
     "peers",
     "peers/test-utils",
-    "sgx/backtrace-edl",
     "sgx/compat-edl",
     "sgx/core-types",
     "sgx/core-types-sys",
@@ -59,20 +61,23 @@ members = [
     "sgx/report-cache/untrusted",
     "sgx/slog-edl",
     "sgx/urts-sys",
+    "test-vectors/account-keys",
+    "test-vectors/b58-encodings",
     "testnet-client",
     "transaction/core",
     "transaction/core/test-utils",
     "transaction/std",
-    "util/b58-payloads",
+    "util/build/bolt-signalapp",
     "util/build/enclave",
     "util/build/grpc",
-    "util/build/bolt-signalapp",
-    "util/build/sgx",
     "util/build/script",
+    "util/build/sgx",
     "util/encodings",
     "util/from-random",
     "util/generate-sample-ledger",
     "util/grpc",
+    "util/grpc-admin-tool",
+    "util/grpc-token-generator",
     "util/host-cert",
     "util/keyfile",
     "util/lmdb",
@@ -82,8 +87,8 @@ members = [
     "util/repr-bytes",
     "util/serial",
     "util/test-helper",
+    "util/test-vector",
     "util/uri",
-    "util/url-encoding",
     "watcher",
     "watcher/api",
 ]
@@ -111,6 +116,11 @@ overflow-checks = false
 rpath = true
 
 [patch.crates-io]
+# grpcio patched with metadata
+grpcio = { git = "https://github.com/jcape/grpc-rs", rev = "2ad042e9e65ecb664a60e034d0a899a8760d81d3" }
+# Code gen patched with metadata
+grpcio-compiler = { git = "https://github.com/jcape/grpc-rs", rev = "2ad042e9e65ecb664a60e034d0a899a8760d81d3" }
+
 # prost is patched with no_std support (https://github.com/danburkert/prost/pull/319)
 # current revision is from jun 13 2020, waiting for a new prost release
 # https://github.com/danburkert/prost/issues/329
@@ -120,7 +130,6 @@ prost-derive = { git = "https://github.com/danburkert/prost", rev = "6113789f70b
 # https://github.com/slog-rs/slog/pull/268
 slog = { git = "https://github.com/mobilecoinofficial/slog", rev = "cc1562258b81353426d17a55b7447256fa6eabbf" }
 dialoguer = { git = "https://github.com/mitsuhiko/dialoguer", rev = "a0c6c1e" }
-console = { git = "https://github.com/mitsuhiko/console", rev = "1307823" }
 
 # Override lmdb-rkv for a necessary bugfix (see https://github.com/mozilla/lmdb-rs/pull/80)
 lmdb-rkv = { git = "https://github.com/mozilla/lmdb-rs", rev = "df1c2f5" }
@@ -134,4 +143,8 @@ serde_cbor = { git = "https://github.com/mobilecoinofficial/cbor", rev = "4c886a
 bulletproofs = { git = "https://github.com/eranrund/bulletproofs", rev = "e8e8ef45ecc6d31f1a9525140edc977351d0f780" }
 
 # Patched to disable the cpuid instruction because that is incompatible with our sgx builds.
-cpuid-bool = { git = "https://github.com/eranrund/RustCrypto-utils", rev = "e00f5f16e395349c2c2395aac9287da0ac843a73" }
+cpuid-bool = { git = "https://github.com/eranrund/RustCrypto-utils", rev = "74f8e04e9d18d93fc6d05c72756c236dc88daa19" }
+
+# We need to patch aes-gcm so we can make some fields/functions/structs pub in order to have a constant time decrypt
+aes-gcm = { git = "https://github.com/xoloki/AEADs", rev = "d1a8517d3dd867ed9c5794002add67992a42f6aa" }
+

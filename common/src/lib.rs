@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-#![cfg_attr(not(any(test, feature = "log")), no_std)]
+#![cfg_attr(not(any(test, feature = "std")), no_std)]
 #![feature(optin_builtin_traits)]
 #![warn(unused_extern_crates)]
 
@@ -14,6 +14,8 @@ mod responder_id;
 
 pub mod lru;
 pub use lru::LruCache;
+
+pub mod time;
 
 pub use node_id::NodeID;
 pub use responder_id::{ResponderId, ResponderIdParseError};
@@ -38,18 +40,13 @@ pub fn fast_hash(data: &[u8]) -> Hash {
 
 pub mod logger;
 
-// Logging related functionality
-cfg_if::cfg_if! {
-    if #[cfg(feature = "log")] {
-        mod panic_handler;
-
-        pub use panic_handler::setup_panic_handler;
-    }
-}
-
 // Loggers
 cfg_if::cfg_if! {
     if #[cfg(feature = "loggers")] {
+        mod panic_handler;
+
         pub mod sentry;
+
+        pub use panic_handler::setup_panic_handler;
     }
 }

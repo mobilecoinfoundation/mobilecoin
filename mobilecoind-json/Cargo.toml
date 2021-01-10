@@ -16,12 +16,21 @@ mc-util-grpc = { path = "../util/grpc" }
 
 grpcio = "0.6.0"
 hex = "0.4"
-rocket = { version = "0.4.5", default-features = false }
-rocket_contrib = { version = "0.4.5", default-features = false, features = ["json"] }
+rocket = { version = "0.4.6", default-features = false }
+rocket_contrib = { version = "0.4.6", default-features = false, features = ["json"] }
 serde = "1.0"
 serde_derive = "1.0"
 structopt = "0.3"
 protobuf = "2.12"
+
+[dev-dependencies]
+mc-crypto-keys = { path = "../crypto/keys" }
+mc-ledger-db = { path = "../ledger/db" }
+mc-util-from-random = { path = "../util/from-random" }
+mc-transaction-core = { path = "../transaction/core" }
+mc-transaction-core-test-utils = { path = "../transaction/core/test-utils" }
+
+rand = "0.7"
 
 [build-dependencies]
 # Even though this is unused, it needs to be here otherwise Cargo brings in some weird mixture of packages/features that refuses to compile.

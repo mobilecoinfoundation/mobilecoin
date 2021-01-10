@@ -1,12 +1,59 @@
-## MobileCoin Python Client for Use with `mobilecoind`
+## Python and `mobilecoind`
 
-To send and receive transactions, you can use `mobilecoind`'s wallet bindings.
+### Starting `mobilecoind`
 
-See the jupyter notebook at [Wallet.ipynb](./Wallet.ipynb) for a walk through of an example Python wallet client.
+These examples assume that `mobilecoind` is available without SSL, on `localhost` port `4444`. You can start up an instance of `mobilecoind` by running the included shell script `start-mobilecoind.sh`
+
+Usage:
+```
+
+./start-mobilecoind.sh [options: --clean]
+
+```
+
+If you include the option `--clean` any previously downloaded release packages and database files will be replaced.
+
+### Examples
 
 
-## Running the Blockchain Explorer
+#### CLI tools
 
-The `blockchain_explorer` directory contains a simple webserver for the blockchain content that mobilecoind downloads.
+This directory contains simple command line utilities for interacting with the MobileCoin network using python and `mobilecoind`:
+ * `check_balance.py`
+ * `send_payment.py`
+ * `get_public_address.py`
+ * `benchmark.py`
+ * `cleanup_monitors.py`
 
-Run the included `start_webserver.sh` script to launch the server at http://localhost:5000
+See the included README.md file for details.
+
+#### Blockchain Explorer
+
+The `blockchain_explorer` directory contains a simple webserver that displays the raw blockchain content that `mobilecoind` downloads.
+
+See the [blockchain_explorer README](./blockchain_explorer/README.md) for more info.
+
+#### Jupyter Wallet
+
+This simple example demonstrates using Python with `mobilecoind` to send a transaction.
+
+Install and use [jupyter](https://jupyter.org/) to view the example [wallet notebook](./jupyter/wallet.ipynb).
+
+
+#### PizzaMOB Leaderboard
+
+This directory contains a webserver that was used in a TestNet game during the summer of 2020.
+
+Usage:
+```
+
+python3 ./pizzamob_leaderboard.py --entropy <master key as a 64 character hexidecimal string>
+
+```
+
+You can then view the leaderboard website at http://localhost:5000
+
+
+## The `mobilecoin` Python Library
+
+The `lib` directory contains the source for the `mobilecoin` library available at [PyPi](https://pypi.org/project/mobilecoin).

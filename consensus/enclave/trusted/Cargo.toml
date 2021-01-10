@@ -29,9 +29,7 @@ mc-consensus-enclave-impl = { path = "../impl", default-features = false }
 mc-enclave-boundary = { path = "../../../enclave-boundary" }
 mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
 mc-util-serial = { path = "../../../util/serial"}
-mc-sgx-backtrace-edl = { path = "../../../sgx/backtrace-edl" }
 mc-sgx-compat = { path = "../../../sgx/compat", features = ["sgx"] }
-mc-sgx-debug-edl = { path = "../../../sgx/debug-edl" }
 mc-sgx-enclave-id = { path = "../../../sgx/enclave-id" }
 mc-sgx-panic-edl = { path = "../../../sgx/panic-edl" }
 mc-sgx-report-cache-api = { path = "../../../sgx/report-cache/api" }
@@ -79,6 +77,10 @@ serde_cbor = { git = "https://github.com/mobilecoinofficial/cbor", rev = "4c886a
 bulletproofs = { git = "https://github.com/eranrund/bulletproofs", rev = "e8e8ef45ecc6d31f1a9525140edc977351d0f780" }
 
 # Patched to disable the cpuid instruction because that is incompatible with our sgx builds.
-cpuid-bool = { git = "https://github.com/eranrund/RustCrypto-utils", rev = "e00f5f16e395349c2c2395aac9287da0ac843a73" }
+cpuid-bool = { git = "https://github.com/eranrund/RustCrypto-utils", rev = "74f8e04e9d18d93fc6d05c72756c236dc88daa19" }
+
+# We need to patch aes-gcm so we can make some fields/functions/structs pub in order to have a constant time decrypt
+aes-gcm = { git = "https://github.com/xoloki/AEADs", rev = "d1a8517d3dd867ed9c5794002add67992a42f6aa" }
+
 
 [workspace]

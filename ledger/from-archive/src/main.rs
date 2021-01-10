@@ -7,7 +7,7 @@
 mod config;
 
 use config::LedgerFromArchiveConfig;
-use mc_api::conversions::block_num_to_s3block_path;
+use mc_api::block_num_to_s3block_path;
 use mc_common::logger::{create_app_logger, log, o};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::ReqwestTransactionsFetcher;
@@ -30,11 +30,15 @@ fn main() {
 
     // Sync Origin Block
     log::debug!(logger, "Getting origin block");
-    let (origin_block, origin_txs) = transactions_fetcher
+    let block_data = transactions_fetcher
         .get_origin_block_and_transactions()
         .expect("Could not retrieve origin block");
     local_ledger
-        .append_block(&origin_block, &origin_txs, None)
+        .append_block(
+            block_data.block(),
+            block_data.contents(),
+            block_data.signature().clone(),
+        )
         .expect("Could not append origin block to ledger");
 
     // Sync all blocks
@@ -65,13 +69,13 @@ fn main() {
             url
         );
         match transactions_fetcher.block_from_url(&url) {
-            Ok(s3_block_data) => {
+            Ok(block_data) => {
                 // Append new data to the ledger
                 local_ledger
                     .append_block(
-                        &s3_block_data.block,
-                        &s3_block_data.block_contents,
-                        s3_block_data.signature,
+                        block_data.block(),
+                        block_data.contents(),
+                        block_data.signature().clone(),
                     )
                     .unwrap_or_else(|_| panic!("Could not append block {:?}", block_index))
             }

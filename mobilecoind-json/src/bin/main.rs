@@ -39,6 +39,42 @@ struct State {
     pub mobilecoind_api_client: MobilecoindApiClient,
 }
 
+/// Set the password for the mobilecoind-db
+#[post("/set-password", format = "json", data = "<password>")]
+fn set_password(
+    state: rocket::State<State>,
+    password: Json<JsonPasswordRequest>,
+) -> Result<Json<JsonPasswordResponse>, String> {
+    let mut req = mc_mobilecoind_api::SetDbPasswordRequest::new();
+    req.set_password(
+        hex::decode(password.password.clone())
+            .map_err(|err| format!("Failed decoding password hex: {}", err))?,
+    );
+    let _resp = state
+        .mobilecoind_api_client
+        .set_db_password(&req)
+        .map_err(|err| format!("Failed setting password: {}", err))?;
+    Ok(Json(JsonPasswordResponse { success: true }))
+}
+
+/// Unlock a previously-encrypted mobilecoind-db
+#[post("/unlock-db", format = "json", data = "<password>")]
+fn unlock_db(
+    state: rocket::State<State>,
+    password: Json<JsonUnlockDbRequest>,
+) -> Result<Json<JsonUnlockDbResponse>, String> {
+    let mut req = mc_mobilecoind_api::UnlockDbRequest::new();
+    req.set_password(
+        hex::decode(password.password.clone())
+            .map_err(|err| format!("Failed decoding password hex: {}", err))?,
+    );
+    let _resp = state
+        .mobilecoind_api_client
+        .unlock_db(&req)
+        .map_err(|err| format!("Failed unlocking database: {}", err))?;
+    Ok(Json(JsonUnlockDbResponse { success: true }))
+}
+
 /// Requests a new root entropy from mobilecoind
 #[post("/entropy")]
 fn entropy(state: rocket::State<State>) -> Result<Json<JsonEntropyResponse>, String> {
@@ -171,13 +207,34 @@ fn balance(
     Ok(Json(JsonBalanceResponse::from(&resp)))
 }
 
+#[get("/monitors/<monitor_hex>/subaddresses/<subaddress_index>/utxos")]
+fn utxos(
+    state: rocket::State<State>,
+    monitor_hex: String,
+    subaddress_index: u64,
+) -> Result<Json<JsonUtxosResponse>, String> {
+    let monitor_id =
+        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
+
+    let mut req = mc_mobilecoind_api::GetUnspentTxOutListRequest::new();
+    req.set_monitor_id(monitor_id);
+    req.set_subaddress_index(subaddress_index);
+
+    let resp = state
+        .mobilecoind_api_client
+        .get_unspent_tx_out_list(&req)
+        .map_err(|err| format!("Failed getting utxos: {}", err))?;
+
+    Ok(Json(JsonUtxosResponse::from(&resp)))
+}
+
 /// Balance check using a created monitor and subaddress index
 #[get("/monitors/<monitor_hex>/subaddresses/<subaddress_index>/public-address")]
 fn public_address(
     state: rocket::State<State>,
     monitor_hex: String,
     subaddress_index: u64,
-) -> Result<Json<JsonPublicAddress>, String> {
+) -> Result<Json<JsonPublicAddressResponse>, String> {
     let monitor_id =
         hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
 
@@ -191,24 +248,27 @@ fn public_address(
         .get_public_address(&req)
         .map_err(|err| format!("Failed getting public address: {}", err))?;
 
-    let public_address = resp.get_public_address();
-    Ok(Json(JsonPublicAddress::from(public_address)))
+    Ok(Json(JsonPublicAddressResponse::from(&resp)))
 }
 
 /// Generates a request code with an optional value and memo
 #[post("/codes/request", format = "json", data = "<request>")]
-fn get_request_code(
+fn create_request_code(
     state: rocket::State<State>,
-    request: Json<JsonGetRequestCodeRequest>,
-) -> Result<Json<JsonGetRequestCodeResponse>, String> {
+    request: Json<JsonCreateRequestCodeRequest>,
+) -> Result<Json<JsonCreateRequestCodeResponse>, String> {
     let receiver = mc_mobilecoind_api::external::PublicAddress::try_from(&request.receiver)
         .map_err(|err| format!("Failed to parse receiver's public address: {}", err))?;
 
     // Generate b58 code
-    let mut req = mc_mobilecoind_api::GetRequestCodeRequest::new();
+    let mut req = mc_mobilecoind_api::CreateRequestCodeRequest::new();
     req.set_receiver(receiver);
-    if let Some(value) = request.value {
-        req.set_value(value);
+    if let Some(value) = request.value.clone() {
+        req.set_value(
+            value
+                .parse::<u64>()
+                .map_err(|err| format!("Failed to parse value field: {}", err))?,
+        );
     }
     if let Some(memo) = request.memo.clone() {
         req.set_memo(memo);
@@ -216,67 +276,67 @@ fn get_request_code(
 
     let resp = state
         .mobilecoind_api_client
-        .get_request_code(&req)
-        .map_err(|err| format!("Failed getting request code: {}", err))?;
+        .create_request_code(&req)
+        .map_err(|err| format!("Failed creating request code: {}", err))?;
 
-    Ok(Json(JsonGetRequestCodeResponse::from(&resp)))
+    Ok(Json(JsonCreateRequestCodeResponse::from(&resp)))
 }
 
 /// Retrieves the data in a request b58_code
 #[get("/codes/request/<b58_code>")]
-fn read_request_code(
+fn parse_request_code(
     state: rocket::State<State>,
     b58_code: String,
-) -> Result<Json<JsonReadRequestCodeResponse>, String> {
-    let mut req = mc_mobilecoind_api::ReadRequestCodeRequest::new();
+) -> Result<Json<JsonParseRequestCodeResponse>, String> {
+    let mut req = mc_mobilecoind_api::ParseRequestCodeRequest::new();
     req.set_b58_code(b58_code);
     let resp = state
         .mobilecoind_api_client
-        .read_request_code(&req)
-        .map_err(|err| format!("Failed reading request code: {}", err))?;
+        .parse_request_code(&req)
+        .map_err(|err| format!("Failed parsing request code: {}", err))?;
 
     // The response contains the public keys encoded in the read request, as well as a memo and
     // requested value. This can be used as-is in the transfer call below, or the value can be
     // modified.
-    Ok(Json(JsonReadRequestCodeResponse::from(&resp)))
+    Ok(Json(JsonParseRequestCodeResponse::from(&resp)))
 }
 
 /// Generates an address code
 #[post("/codes/address", format = "json", data = "<request>")]
-fn get_address_code(
+fn create_address_code(
     state: rocket::State<State>,
-    request: Json<JsonGetAddressCodeRequest>,
-) -> Result<Json<JsonGetAddressCodeResponse>, String> {
+    request: Json<JsonCreateAddressCodeRequest>,
+) -> Result<Json<JsonCreateAddressCodeResponse>, String> {
     let receiver = mc_mobilecoind_api::external::PublicAddress::try_from(&request.receiver)
         .map_err(|err| format!("Failed to parse receiver's public address: {}", err))?;
 
     // Generate b58 code
-    let mut req = mc_mobilecoind_api::GetAddressCodeRequest::new();
+    let mut req = mc_mobilecoind_api::CreateAddressCodeRequest::new();
     req.set_receiver(receiver);
 
     let resp = state
         .mobilecoind_api_client
-        .get_address_code(&req)
-        .map_err(|err| format!("Failed getting address code: {}", err))?;
+        .create_address_code(&req)
+        .map_err(|err| format!("Failed creating address code: {}", err))?;
 
-    Ok(Json(JsonGetAddressCodeResponse::from(&resp)))
+    Ok(Json(JsonCreateAddressCodeResponse::from(&resp)))
 }
 
 /// Retrieves the data in an address b58_code
 #[get("/codes/address/<b58_code>")]
-fn read_address_code(
+fn parse_address_code(
     state: rocket::State<State>,
     b58_code: String,
-) -> Result<Json<JsonReadAddressCodeResponse>, String> {
-    let mut req = mc_mobilecoind_api::ReadAddressCodeRequest::new();
+) -> Result<Json<JsonParseAddressCodeResponse>, String> {
+    let mut req = mc_mobilecoind_api::ParseAddressCodeRequest::new();
     req.set_b58_code(b58_code);
     let resp = state
         .mobilecoind_api_client
-        .read_address_code(&req)
-        .map_err(|err| format!("Failed reading address code: {}", err))?;
+        .parse_address_code(&req)
+        .map_err(|err| format!("Failed parding address code: {}", err))?;
 
     // The response contains the public keys encoded in the read request
-    Ok(Json(JsonReadAddressCodeResponse::from(&resp)))
+    Ok(Json(JsonParseAddressCodeResponse::from(&resp)))
 }
 
 /// Performs a transfer from a monitor and subaddress. The public keys and amount are in the POST data.
@@ -285,32 +345,50 @@ fn read_address_code(
     format = "json",
     data = "<transfer>"
 )]
-fn transfer(
+fn build_and_submit(
     state: rocket::State<State>,
     monitor_hex: String,
     subaddress_index: u64,
-    transfer: Json<JsonReadRequestCodeResponse>,
-) -> Result<Json<JsonTransferResponse>, String> {
+    transfer: Json<JsonSendPaymentRequest>,
+) -> Result<Json<JsonSendPaymentResponse>, String> {
     let monitor_id =
         hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
 
-    let public_address = PublicAddress::try_from(&transfer.receiver)?;
+    let public_address = PublicAddress::try_from(&transfer.request_data.receiver)?;
 
     // Generate an outlay
     let mut outlay = mc_mobilecoind_api::Outlay::new();
     outlay.set_receiver(public_address);
     outlay.set_value(
         transfer
+            .request_data
             .value
             .parse::<u64>()
-            .map_err(|err| format!("Failed to parse amount: {}", err))?,
+            .map_err(|err| format!("Failed to parse request_code.amount: {}", err))?,
     );
+
+    // Get max_input_utxo_value.
+    let max_input_utxo_value = transfer
+        .max_input_utxo_value
+        .clone()
+        .unwrap_or_else(|| "0".to_owned()) // A value of 0 disables the max limit.
+        .parse::<u64>()
+        .map_err(|err| format!("Failed to parse max_input_utxo_value: {}", err))?;
 
     // Send the payment request
     let mut req = mc_mobilecoind_api::SendPaymentRequest::new();
     req.set_sender_monitor_id(monitor_id);
     req.set_sender_subaddress(subaddress_index);
     req.set_outlay_list(RepeatedField::from_vec(vec![outlay]));
+    req.set_max_input_utxo_value(max_input_utxo_value);
+    if let Some(subaddress) = transfer.change_subaddress.as_ref() {
+        req.set_override_change_subaddress(true);
+        req.set_change_subaddress(
+            subaddress
+                .parse::<u64>()
+                .map_err(|err| format!("Failed to parse change subaddress: {}", err))?,
+        )
+    }
 
     let resp = state
         .mobilecoind_api_client
@@ -318,14 +396,144 @@ fn transfer(
         .map_err(|err| format!("Failed to send payment: {}", err))?;
 
     // The receipt from the payment request can be used by the status check below
-    Ok(Json(JsonTransferResponse::from(&resp)))
+    Ok(Json(JsonSendPaymentResponse::from(&resp)))
+}
+
+/// Performs a transfer from a monitor and subaddress to a given address code/amount.
+#[post(
+    "/monitors/<monitor_hex>/subaddresses/<subaddress_index>/pay-address-code",
+    format = "json",
+    data = "<transfer>"
+)]
+fn pay_address_code(
+    state: rocket::State<State>,
+    monitor_hex: String,
+    subaddress_index: u64,
+    transfer: Json<JsonPayAddressCodeRequest>,
+) -> Result<Json<JsonSendPaymentResponse>, String> {
+    let monitor_id =
+        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
+
+    // Get amount.
+    let amount = transfer
+        .value
+        .parse::<u64>()
+        .map_err(|err| format!("Failed parsing amount: {}", err))?;
+
+    // Get max_input_utxo_value.
+    let max_input_utxo_value = transfer
+        .max_input_utxo_value
+        .clone()
+        .unwrap_or_else(|| "0".to_owned()) // A value of 0 disables the max limit.
+        .parse::<u64>()
+        .map_err(|err| format!("Failed to parse max_input_utxo_value: {}", err))?;
+
+    // Send the pay address code request
+    let mut req = mc_mobilecoind_api::PayAddressCodeRequest::new();
+    req.set_sender_monitor_id(monitor_id);
+    req.set_sender_subaddress(subaddress_index);
+    req.set_receiver_b58_code(transfer.receiver_b58_address_code.clone());
+    req.set_amount(amount);
+    req.set_max_input_utxo_value(max_input_utxo_value);
+    if let Some(subaddress) = transfer.change_subaddress.as_ref() {
+        req.set_override_change_subaddress(true);
+        req.set_change_subaddress(
+            subaddress
+                .parse::<u64>()
+                .map_err(|err| format!("Failed to parse change subaddress: {}", err))?,
+        )
+    }
+
+    let resp = state
+        .mobilecoind_api_client
+        .pay_address_code(&req)
+        .map_err(|err| format!("Failed to send payment: {}", err))?;
+
+    // The receipt from the payment request can be used by the status check below
+    Ok(Json(JsonSendPaymentResponse::from(&resp)))
+}
+
+/// Creates a transaction proposal. This can be used in an offline transaction construction
+/// flow, where the proposal is created on the offline machine, and copied to the connected
+/// machine for submission, via submit-tx.
+#[post(
+    "/monitors/<monitor_hex>/subaddresses/<subaddress_index>/generate-request-code-transaction",
+    format = "json",
+    data = "<request>"
+)]
+fn generate_request_code_transaction(
+    state: rocket::State<State>,
+    monitor_hex: String,
+    subaddress_index: u64,
+    request: Json<JsonCreateTxProposalRequest>,
+) -> Result<Json<JsonCreateTxProposalResponse>, String> {
+    let monitor_id =
+        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
+
+    let public_address = PublicAddress::try_from(&request.transfer.receiver)?;
+
+    // Generate an outlay
+    let mut outlay = mc_mobilecoind_api::Outlay::new();
+    outlay.set_receiver(public_address);
+    outlay.set_value(
+        request
+            .transfer
+            .value
+            .parse::<u64>()
+            .map_err(|err| format!("Failed to parse amount: {}", err))?,
+    );
+
+    let inputs: Vec<mc_mobilecoind_api::UnspentTxOut> = request
+        .input_list
+        .iter()
+        .map(|input| {
+            mc_mobilecoind_api::UnspentTxOut::try_from(input)
+                .map_err(|err| format!("Failed to convert input: {}", err))
+        })
+        .collect::<Result<_, String>>()?;
+
+    // Get a tx proposal
+    let mut req = mc_mobilecoind_api::GenerateTxRequest::new();
+    req.set_sender_monitor_id(monitor_id);
+    req.set_change_subaddress(subaddress_index);
+    req.set_outlay_list(RepeatedField::from_vec(vec![outlay]));
+    req.set_input_list(RepeatedField::from_vec(inputs));
+
+    let resp = state
+        .mobilecoind_api_client
+        .generate_tx(&req)
+        .map_err(|err| format!("Failed to generate tx: {}", err))?;
+
+    Ok(Json(JsonCreateTxProposalResponse::from(&resp)))
+}
+
+/// Submit a prepared TxProposal
+#[post("/submit-tx", format = "json", data = "<proposal>")]
+fn submit_tx(
+    state: rocket::State<State>,
+    proposal: Json<JsonTxProposalRequest>,
+) -> Result<Json<JsonSubmitTxResponse>, String> {
+    // Send the payment request
+    let mut req = mc_mobilecoind_api::SubmitTxRequest::new();
+    req.set_tx_proposal(
+        mc_mobilecoind_api::TxProposal::try_from(&proposal.tx_proposal)
+            .map_err(|err| format!("Failed to convert tx proposal: {}", err))?,
+    );
+
+    let resp = state
+        .mobilecoind_api_client
+        .submit_tx(&req)
+        .map_err(|err| format!("Failed to send payment: {}", err))?;
+
+    // The receipt from the payment request can be used by the status check below
+    Ok(Json(JsonSubmitTxResponse::from(&resp)))
 }
 
 /// Checks the status of a transfer given a key image and tombstone block
 #[post("/tx/status-as-sender", format = "json", data = "<receipt>")]
 fn check_transfer_status(
     state: rocket::State<State>,
-    receipt: Json<JsonTransferResponse>,
+    receipt: Json<JsonSendPaymentResponse>,
 ) -> Result<Json<JsonStatusResponse>, String> {
     let mut sender_receipt = mc_mobilecoind_api::SenderTxReceipt::new();
     let mut key_images = Vec::new();
@@ -425,7 +633,7 @@ fn block_details(
     Ok(Json(JsonBlockDetailsResponse::from(&resp)))
 }
 /// Retreives processed block information.
-#[get("/monitors/<monitor_hex>/processed-blocks/<block_num>")]
+#[get("/monitors/<monitor_hex>/processed-block/<block_num>")]
 fn processed_block(
     state: rocket::State<State>,
     monitor_hex: String,
@@ -446,6 +654,29 @@ fn processed_block(
     Ok(Json(JsonProcessedBlockResponse::from(&resp)))
 }
 
+/// Get the block index of a given tx out, identified by its public key.
+#[get("/tx-out/<public_key_hex>/block-index")]
+fn tx_out_get_block_index_by_public_key(
+    state: rocket::State<State>,
+    public_key_hex: String,
+) -> Result<Json<JsonBlockIndexByTxPubKeyResponse>, String> {
+    let tx_out_public_key = hex::decode(public_key_hex)
+        .map_err(|err| format!("Failed to decode hex public key: {}", err))?;
+
+    let mut tx_out_public_key_proto = CompressedRistretto::new();
+    tx_out_public_key_proto.set_data(tx_out_public_key);
+
+    let mut req = mc_mobilecoind_api::GetBlockIndexByTxPubKeyRequest::new();
+    req.set_tx_public_key(tx_out_public_key_proto);
+
+    let resp = state
+        .mobilecoind_api_client
+        .get_block_index_by_tx_pub_key(&req)
+        .map_err(|err| format!("Failed getting block index: {}", err))?;
+
+    Ok(Json(JsonBlockIndexByTxPubKeyResponse::from(&resp)))
+}
+
 fn main() {
     mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
@@ -462,7 +693,7 @@ fn main() {
     );
 
     // Set up the gRPC connection to the mobilecoind client
-    let env = Arc::new(grpcio::EnvBuilder::new().build());
+    let env = Arc::new(grpcio::EnvBuilder::new().cq_count(1).build());
     let ch = ChannelBuilder::new(env)
         .max_receive_message_len(std::i32::MAX)
         .max_send_message_len(std::i32::MAX)
@@ -479,6 +710,8 @@ fn main() {
         .mount(
             "/",
             routes![
+                set_password,
+                unlock_db,
                 entropy,
                 account_key,
                 add_monitor,
@@ -486,18 +719,23 @@ fn main() {
                 monitors,
                 monitor_status,
                 balance,
+                utxos,
                 public_address,
-                get_request_code,
-                read_request_code,
-                get_address_code,
-                read_address_code,
-                transfer,
+                create_request_code,
+                parse_request_code,
+                create_address_code,
+                parse_address_code,
+                build_and_submit,
+                pay_address_code,
+                generate_request_code_transaction,
+                submit_tx,
                 check_transfer_status,
                 check_receiver_transfer_status,
                 ledger_info,
                 block_info,
                 block_details,
                 processed_block,
+                tx_out_get_block_index_by_public_key,
             ],
         )
         .manage(State {

@@ -1,10 +1,13 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 # Copyright (c) 2018-2020 MobileCoin Inc.
 
-import argparse, datetime, sys
+import argparse, datetime
 from flask import Flask, render_template
 
-sys.path.append('../mob_client')
-from mob_client import mob_client
+import os,sys
+import mobilecoin
 
 client = None  # client is initialized at the bottom of this file
 app = Flask(__name__)
@@ -29,7 +32,10 @@ def command_args():
     return parser.parse_args()
 
 def render_ledger_range(start, count):
-    num_blocks, num_transactions = client.get_ledger_info()
+    ledger_info_response = client.get_ledger_info()
+    num_blocks = ledger_info_response.block_count
+    num_transactions = ledger_info_response.txo_count
+
     start = max(int(start), 0)
     finish = min(int(start + 100), num_blocks - 1)
     if finish - start < 100:
@@ -39,7 +45,9 @@ def render_ledger_range(start, count):
     signers = {}
 
     for i in range(finish, start, -1):
-        key_image_count, txo_count = client.get_block_info(i)
+        block_info_response = client.get_block_info(i)
+        key_image_count = block_info_response.key_image_count
+        txo_count = block_info_response.txo_count
 
         # very large blocks cause errors for client.get_block()
         # specifically ResourceExhausted for messages larger than 4194304
@@ -81,7 +89,9 @@ def format_datetime(value):
 
 @app.route('/')
 def index():
-    num_blocks, num_transactions = client.get_ledger_info()
+    ledger_info_response = client.get_ledger_info()
+    num_blocks = ledger_info_response.block_count
+    num_transactions = ledger_info_response.txo_count
     return render_ledger_range(num_blocks - 101, 100)
 
 @app.route('/from/<block_num>')
@@ -90,7 +100,9 @@ def ledger(block_num):
 
 @app.route('/block/<block_num>')
 def block(block_num):
-    num_blocks, num_transactions = client.get_ledger_info()
+    ledger_info_response = client.get_ledger_info()
+    num_blocks = ledger_info_response.block_count
+    num_transactions = ledger_info_response.txo_count
     block_num = int(block_num)
     if block_num < 0 or block_num >= num_blocks:
         return render_template('block404.html',
@@ -115,6 +127,5 @@ def block(block_num):
 
 if __name__ == "__main__":
     args = command_args()
-    client = mob_client(
-        args.mobilecoind_host + ':' + str(args.mobilecoind_port), False)
+    client = mobilecoin.Client(args.mobilecoind_host + ':' + str(args.mobilecoind_port), False)
     app.run(host='0.0.0.0', port=str(args.port))

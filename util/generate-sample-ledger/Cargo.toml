@@ -10,6 +10,7 @@ path = "src/bin/generate_sample_ledger.rs"
 
 [dependencies]
 mc-account-keys = { path = "../../account-keys" }
+mc-common = { path = "../../common", features = ["log", "loggers"] }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-ledger-db = { path = "../../ledger/db" }
 mc-transaction-core = { path = "../../transaction/core" }
@@ -20,7 +21,6 @@ mc-util-keyfile = { path = "../../util/keyfile" }
 hex = "0.3"
 rand = "0.7"
 rand_hc = "0.2.0"
-rayon = "1.1"
 structopt = "0.3"
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
@@ -31,3 +31,8 @@ curve25519-dalek = { version = "3.0", default-features = false, features = ["nig
 
 [dev-dependencies]
 tempdir = "0.3"
+
+[build-dependencies]
+# Even though this is unused, it needs to be here otherwise Cargo brings in some weird mixture of packages/features that refuses to compile.
+# Go figure ¯\_(ツ)_/¯
+serde = { version = "1", default-features = false, features = ["alloc", "derive"] }

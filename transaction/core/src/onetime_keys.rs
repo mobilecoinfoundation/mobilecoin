@@ -52,8 +52,10 @@
 //! ## Spending MobileCoin sent to your subaddress (C_i, D_i)
 //! To spend an output sent to your i^th subaddress, compute the onetime private key:
 //!
-//!     `onetime_private_key = Hs(a * tx_public_key) + d`
-//!                         `= Hs(a * tx_public_key) + b + Hs( a | i )`
+//! ```text
+//!     onetime_private_key = Hs(a * tx_public_key) + d
+//!                         = Hs(a * tx_public_key) + b + Hs( a | i )
+//! ```
 //!
 //! # References
 //! * [CryptoNote Whitepaper, Sections 4.3 and 4.4](https://cryptonote.org/whitepaper.pdf)

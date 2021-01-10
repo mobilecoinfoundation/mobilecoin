@@ -80,3 +80,8 @@ message ArchiveBlock {
         ArchiveBlockV1 v1 = 1;
     }
 }
+
+// A collection of archived blocks.
+message ArchiveBlocks {
+    repeated ArchiveBlock blocks = 1;
+}

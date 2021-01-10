@@ -4,7 +4,7 @@ This code serves both as an example of how to use the services provided by mobil
 in Java through gRPC and as a CLI tool to interact with mobilecoind.
 
 To use it, you must have an instance of mobilecoind running, this is typically run
-locally. You can find instructions at https://github.com/mobilecoinofficial/mobilecoin/tree/master/mobilecoind
+locally. You can find instructions at https://github.com/mobilecoinfoundation/mobilecoin/tree/master/mobilecoind
 
 A gradle wrapper is included, `gradlew` (or `gradlew.bat` on Windows). The most simple call, assuming you are running
 mobilecoind on port 4444 is to create a new root entropy key with the command

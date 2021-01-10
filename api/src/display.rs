@@ -74,6 +74,9 @@ mod display_tests {
         external,
         printable::{PaymentRequest, PrintableWrapper, TransferPayload},
     };
+    use datatest::data;
+    use mc_test_vectors_b58_encodings::*;
+    use mc_util_test_vector::TestVector;
 
     fn sample_public_address() -> external::PublicAddress {
         let mut public_address = external::PublicAddress::new();
@@ -101,6 +104,79 @@ mod display_tests {
         assert_eq!(wrapper, decoded);
     }
 
+    fn printable_wrapper_from_b58_encode_public_address_without_fog(
+        case: &B58EncodePublicAddressWithoutFog,
+    ) -> PrintableWrapper {
+        let mut public_address = external::PublicAddress::new();
+
+        let mut view_bytes = external::CompressedRistretto::new();
+        view_bytes.set_data(case.view_public_key.to_vec());
+        public_address.set_view_public_key(view_bytes);
+
+        let mut spend_bytes = external::CompressedRistretto::new();
+        spend_bytes.set_data(case.spend_public_key.to_vec());
+        public_address.set_spend_public_key(spend_bytes);
+
+        let mut wrapper = PrintableWrapper::new();
+        wrapper.set_public_address(public_address);
+
+        wrapper
+    }
+
+    #[data(B58EncodePublicAddressWithoutFog::from_jsonl("../test-vectors/vectors"))]
+    #[test]
+    fn test_b58_encode_public_address_without_fog(case: B58EncodePublicAddressWithoutFog) {
+        let wrapper = printable_wrapper_from_b58_encode_public_address_without_fog(&case);
+        assert_eq!(wrapper.b58_encode().unwrap(), case.b58_encoded);
+    }
+
+    #[data(B58EncodePublicAddressWithoutFog::from_jsonl("../test-vectors/vectors"))]
+    #[test]
+    fn test_b58_decode_public_address_without_fog(case: B58EncodePublicAddressWithoutFog) {
+        let decoded_wrapper = PrintableWrapper::b58_decode(case.b58_encoded.clone()).unwrap();
+        let expected = printable_wrapper_from_b58_encode_public_address_without_fog(&case);
+        assert_eq!(decoded_wrapper, expected);
+    }
+
+    fn printable_wrapper_from_b58_encode_public_address_with_fog(
+        case: &B58EncodePublicAddressWithFog,
+    ) -> PrintableWrapper {
+        let mut public_address = external::PublicAddress::new();
+
+        let mut view_bytes = external::CompressedRistretto::new();
+        view_bytes.set_data(case.view_public_key.to_vec());
+        public_address.set_view_public_key(view_bytes);
+
+        let mut spend_bytes = external::CompressedRistretto::new();
+        spend_bytes.set_data(case.spend_public_key.to_vec());
+        public_address.set_spend_public_key(spend_bytes);
+
+        public_address.set_fog_report_url(case.fog_report_url.clone());
+        public_address.set_fog_report_id(case.fog_report_id.clone());
+        public_address
+            .set_fog_authority_fingerprint_sig(case.fog_authority_fingerprint_sig.clone());
+
+        let mut wrapper = PrintableWrapper::new();
+        wrapper.set_public_address(public_address);
+
+        wrapper
+    }
+
+    #[data(B58EncodePublicAddressWithFog::from_jsonl("../test-vectors/vectors"))]
+    #[test]
+    fn test_b58_encode_public_address_with_fog(case: B58EncodePublicAddressWithFog) {
+        let wrapper = printable_wrapper_from_b58_encode_public_address_with_fog(&case);
+        assert_eq!(wrapper.b58_encode().unwrap(), case.b58_encoded);
+    }
+
+    #[data(B58EncodePublicAddressWithFog::from_jsonl("../test-vectors/vectors"))]
+    #[test]
+    fn test_b58_decode_public_address_with_fog(case: B58EncodePublicAddressWithFog) {
+        let decoded_wrapper = PrintableWrapper::b58_decode(case.b58_encoded.clone()).unwrap();
+        let expected = printable_wrapper_from_b58_encode_public_address_with_fog(&case);
+        assert_eq!(decoded_wrapper, expected);
+    }
+
     #[test]
     fn test_payment_request_roundtrip() {
         let public_address = sample_public_address();
@@ -121,7 +197,9 @@ mod display_tests {
     fn test_transfer_payload_roundtrip() {
         let mut transfer_payload = TransferPayload::new();
         transfer_payload.set_entropy(vec![1u8; 32]);
-        transfer_payload.set_tx_public_key(vec![2u8; 32]);
+        transfer_payload
+            .mut_tx_out_public_key()
+            .set_data(vec![2u8; 32]);
 
         let mut wrapper = PrintableWrapper::new();
         wrapper.set_transfer_payload(transfer_payload);

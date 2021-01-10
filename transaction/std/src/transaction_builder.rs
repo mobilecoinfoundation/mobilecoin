@@ -56,7 +56,6 @@ impl TransactionBuilder {
     /// * `recipient` - The recipient's public address
     /// * `recipient_fog_ingest_key` - The recipient's fog server's public key
     /// * `rng` - RNG used to generate blinding for commitment
-    ///
     pub fn add_output<RNG: CryptoRng + RngCore>(
         &mut self,
         value: u64,
@@ -66,6 +65,40 @@ impl TransactionBuilder {
     ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
         let (tx_out, shared_secret) =
             create_output(value, recipient, recipient_fog_ingest_key, rng)?;
+
+        self.outputs_and_shared_secrets
+            .push((tx_out.clone(), shared_secret));
+
+        let confirmation = TxOutConfirmationNumber::from(&shared_secret);
+
+        Ok((tx_out, confirmation))
+    }
+
+    /// Add an output to the transaction, using `fog_hint_address` to construct the fog hint.
+    ///
+    /// Caution: This method should not be used without fully understanding the implications.
+    ///
+    /// Receiving a `TxOut` addressed to a different recipient than what's contained in the
+    /// fog hint is normally considered to be a violation of convention and is likely to be filtered
+    /// out silently by the client, except in special circumstances where the recipient is expressly
+    /// expecting it.
+    ///
+    /// # Arguments
+    /// * `value` - The value of this output, in picoMOB.
+    /// * `recipient` - The recipient's public address
+    /// * `fog_hint_address` - The public address used to create the fog hint
+    /// * `fog_ingest_key` - The fog hint address's fog server's public key
+    /// * `rng` - RNG used to generate blinding for commitment
+    pub fn add_output_with_fog_hint_address<RNG: CryptoRng + RngCore>(
+        &mut self,
+        value: u64,
+        recipient: &PublicAddress,
+        fog_hint_address: &PublicAddress,
+        fog_ingest_key: &RistrettoPublic,
+        rng: &mut RNG,
+    ) -> Result<(TxOut, TxOutConfirmationNumber), TxBuilderError> {
+        let hint = create_fog_hint(fog_hint_address, Some(fog_ingest_key), rng)?;
+        let (tx_out, shared_secret) = create_output_with_fog_hint(value, recipient, hint, rng)?;
 
         self.outputs_and_shared_secrets
             .push((tx_out.clone(), shared_secret));
@@ -212,9 +245,25 @@ fn create_output<RNG: CryptoRng + RngCore>(
     ingest_pubkey: Option<&RistrettoPublic>,
     rng: &mut RNG,
 ) -> Result<(TxOut, RistrettoPublic), TxBuilderError> {
-    let private_key = RistrettoPrivate::from_random(rng);
     let hint = create_fog_hint(recipient, ingest_pubkey, rng)?;
-    let tx_out = TxOut::new(value, recipient, &private_key, hint)?;
+    create_output_with_fog_hint(value, recipient, hint, rng)
+}
+
+/// Creates a TxOut that sends `value` to `recipient` using the provided `fog_hint`.
+///
+/// # Arguments
+/// * `value` - Value of the output, in picoMOB.
+/// * `recipient` - Recipient's address.
+/// * `fog_hint` - The encrypted fog hint to use
+/// * `rng` -
+fn create_output_with_fog_hint<RNG: CryptoRng + RngCore>(
+    value: u64,
+    recipient: &PublicAddress,
+    fog_hint: EncryptedFogHint,
+    rng: &mut RNG,
+) -> Result<(TxOut, RistrettoPublic), TxBuilderError> {
+    let private_key = RistrettoPrivate::from_random(rng);
+    let tx_out = TxOut::new(value, recipient, &private_key, fog_hint)?;
     let shared_secret = create_shared_secret(recipient.view_public_key(), &private_key);
     Ok((tx_out, shared_secret))
 }
@@ -288,6 +337,47 @@ pub mod transaction_builder_tests {
         (ring, real_index)
     }
 
+    /// Creates an `InputCredentials` for an account.
+    ///
+    /// # Arguments
+    /// * `account` - Owner of one of the ring elements.
+    /// * `value` - Value of the real element.
+    /// * `rng` - Randomness.
+    ///
+    /// Returns (input_credentials)
+    fn get_input_credentials<RNG: CryptoRng + RngCore>(
+        account: &AccountKey,
+        value: u64,
+        rng: &mut RNG,
+    ) -> InputCredentials {
+        let (ring, real_index) = get_ring(3, account, value, rng);
+        let real_output = ring[real_index].clone();
+
+        let onetime_private_key = recover_onetime_private_key(
+            &RistrettoPublic::try_from(&real_output.public_key).unwrap(),
+            &account.view_private_key(),
+            &account.subaddress_spend_private(DEFAULT_SUBADDRESS_INDEX),
+        );
+
+        let membership_proofs: Vec<TxOutMembershipProof> = ring
+            .iter()
+            .map(|_tx_out| {
+                // TransactionBuilder does not validate membership proofs, but does require one
+                // for each ring member.
+                TxOutMembershipProof::default()
+            })
+            .collect();
+
+        InputCredentials::new(
+            ring,
+            membership_proofs.clone(),
+            real_index,
+            onetime_private_key,
+            *account.view_private_key(),
+        )
+        .unwrap()
+    }
+
     // Uses TransactionBuilder to build a transaction.
     fn get_transaction<RNG: RngCore + CryptoRng>(
         num_inputs: usize,
@@ -302,32 +392,7 @@ pub mod transaction_builder_tests {
 
         // Inputs
         for _i in 0..num_inputs {
-            let (ring, real_index) = get_ring(3, sender, input_value, rng);
-            let real_output = ring[real_index].clone();
-
-            let onetime_private_key = recover_onetime_private_key(
-                &RistrettoPublic::try_from(&real_output.public_key).unwrap(),
-                &sender.view_private_key(),
-                &sender.subaddress_spend_private(DEFAULT_SUBADDRESS_INDEX),
-            );
-
-            let membership_proofs: Vec<TxOutMembershipProof> = ring
-                .iter()
-                .map(|_tx_out| {
-                    // TransactionBuilder does not validate membership proofs, but does require one
-                    // for each ring member.
-                    TxOutMembershipProof::default()
-                })
-                .collect();
-
-            let input_credentials = InputCredentials::new(
-                ring,
-                membership_proofs.clone(),
-                real_index,
-                onetime_private_key,
-                *sender.view_private_key(),
-            )
-            .unwrap();
+            let input_credentials = get_input_credentials(sender, input_value, rng);
             transaction_builder.add_input(input_credentials);
         }
 
@@ -354,34 +419,10 @@ pub mod transaction_builder_tests {
         let value = 1475 * MILLIMOB_TO_PICOMOB;
 
         // Mint an initial collection of outputs, including one belonging to Alice.
-        let (ring, real_index) = get_ring(3, &sender, value, &mut rng);
-        let real_output = ring[real_index].clone();
+        let input_credentials = get_input_credentials(&sender, value, &mut rng);
 
-        let onetime_private_key = recover_onetime_private_key(
-            &RistrettoPublic::try_from(&real_output.public_key).unwrap(),
-            &sender.view_private_key(),
-            &sender.subaddress_spend_private(DEFAULT_SUBADDRESS_INDEX),
-        );
-
-        let key_image = KeyImage::from(&onetime_private_key);
-
-        let membership_proofs: Vec<TxOutMembershipProof> = ring
-            .iter()
-            .map(|_tx_out| {
-                // TransactionBuilder does not validate membership proofs, but does require one
-                // for each ring member.
-                TxOutMembershipProof::default()
-            })
-            .collect();
-
-        let input_credentials = InputCredentials::new(
-            ring,
-            membership_proofs.clone(),
-            real_index,
-            onetime_private_key,
-            *sender.view_private_key(),
-        )
-        .unwrap();
+        let membership_proofs = input_credentials.membership_proofs.clone();
+        let key_image = KeyImage::from(&input_credentials.onetime_private_key);
 
         let mut transaction_builder = TransactionBuilder::new();
 
@@ -427,6 +468,136 @@ pub mod transaction_builder_tests {
 
         // The transaction should have a valid signature.
         assert!(validate_signature(&tx, &mut rng).is_ok());
+    }
+
+    #[test]
+    // Spend a single input and send its full value to a single fog recipient.
+    fn test_simple_fog_transaction() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let sender = AccountKey::random(&mut rng);
+        let recipient = AccountKey::random_with_fog(&mut rng);
+        let ingest_private_key = RistrettoPrivate::from_random(&mut rng);
+        let value = 1475 * MILLIMOB_TO_PICOMOB;
+
+        let input_credentials = get_input_credentials(&sender, value, &mut rng);
+
+        let membership_proofs = input_credentials.membership_proofs.clone();
+        let key_image = KeyImage::from(&input_credentials.onetime_private_key);
+
+        let mut transaction_builder = TransactionBuilder::new();
+
+        transaction_builder.add_input(input_credentials);
+        let (_txout, confirmation) = transaction_builder
+            .add_output(
+                value - MINIMUM_FEE,
+                &recipient.default_subaddress(),
+                Some(&RistrettoPublic::from(&ingest_private_key)),
+                &mut rng,
+            )
+            .unwrap();
+
+        let tx = transaction_builder.build(&mut rng).unwrap();
+
+        // The transaction should have a single input.
+        assert_eq!(tx.prefix.inputs.len(), 1);
+
+        assert_eq!(tx.prefix.inputs[0].proofs.len(), membership_proofs.len());
+
+        let expected_key_images = vec![key_image];
+        assert_eq!(tx.key_images(), expected_key_images);
+
+        // The transaction should have one output.
+        assert_eq!(tx.prefix.outputs.len(), 1);
+
+        let output: &TxOut = tx.prefix.outputs.get(0).unwrap();
+
+        // The output should belong to the correct recipient.
+        {
+            assert!(view_key_matches_output(
+                &recipient.view_key(),
+                &RistrettoPublic::try_from(&output.target_key).unwrap(),
+                &RistrettoPublic::try_from(&output.public_key).unwrap()
+            ));
+        }
+
+        // The output should have the correct value and confirmation number
+        {
+            let public_key = RistrettoPublic::try_from(&output.public_key).unwrap();
+            assert!(confirmation.validate(&public_key, &recipient.view_private_key()));
+        }
+
+        // The output's fog hint should contain the correct public key.
+        {
+            let mut output_fog_hint = FogHint::new(RistrettoPublic::from_random(&mut rng));
+            assert!(bool::from(FogHint::ct_decrypt(
+                &ingest_private_key,
+                &output.e_fog_hint,
+                &mut output_fog_hint
+            )));
+            assert_eq!(
+                output_fog_hint.get_view_pubkey(),
+                &CompressedRistrettoPublic::from(recipient.default_subaddress().view_public_key())
+            );
+        }
+
+        // The transaction should have a valid signature.
+        assert!(validate_signature(&tx, &mut rng).is_ok());
+    }
+
+    #[test]
+    // Use a custom PublicAddress to create the fog hint.
+    fn test_custom_fog_hint_address() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let sender = AccountKey::random(&mut rng);
+        let recipient = AccountKey::random(&mut rng);
+        let fog_hint_address = AccountKey::random_with_fog(&mut rng).default_subaddress();
+        let ingest_private_key = RistrettoPrivate::from_random(&mut rng);
+        let value = 1475 * MILLIMOB_TO_PICOMOB;
+
+        let mut transaction_builder = TransactionBuilder::new();
+
+        let input_credentials = get_input_credentials(&sender, value, &mut rng);
+        transaction_builder.add_input(input_credentials);
+
+        let (_txout, _confirmation) = transaction_builder
+            .add_output_with_fog_hint_address(
+                value - MINIMUM_FEE,
+                &recipient.default_subaddress(),
+                &fog_hint_address,
+                &RistrettoPublic::from(&ingest_private_key),
+                &mut rng,
+            )
+            .unwrap();
+
+        let tx = transaction_builder.build(&mut rng).unwrap();
+
+        // The transaction should have one output.
+        assert_eq!(tx.prefix.outputs.len(), 1);
+
+        let output: &TxOut = tx.prefix.outputs.get(0).unwrap();
+
+        // The output should belong to the correct recipient.
+        {
+            assert!(view_key_matches_output(
+                &recipient.view_key(),
+                &RistrettoPublic::try_from(&output.target_key).unwrap(),
+                &RistrettoPublic::try_from(&output.public_key).unwrap()
+            ));
+        }
+
+        // The output's fog hint should contain the correct public key.
+        {
+            let mut output_fog_hint = FogHint::new(RistrettoPublic::from_random(&mut rng));
+            assert!(bool::from(FogHint::ct_decrypt(
+                &ingest_private_key,
+                &output.e_fog_hint,
+                &mut output_fog_hint
+            )));
+            assert_eq!(
+                output_fog_hint.get_view_pubkey(),
+                &CompressedRistrettoPublic::from(fog_hint_address.view_public_key())
+            );
+        }
     }
 
     #[test]

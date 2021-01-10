@@ -20,6 +20,6 @@ mod utils;
 pub use self::{
     core_types::{CombineFn, GenericNodeId, Identifier, SlotIndex, ValidityFn, Value},
     msg::{Msg, Topic},
-    node::{Node, ScpNode},
+    node::{MockScpNode, Node, ScpNode},
     quorum_set::{QuorumSet, QuorumSetMember},
 };

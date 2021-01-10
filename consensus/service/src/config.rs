@@ -10,7 +10,10 @@ use mc_util_uri::{
     AdminUri, ConnectionUri, ConsensusClientUri as ClientUri, ConsensusPeerUri as PeerUri,
 };
 use serde::{Deserialize, Serialize};
-use std::{fmt::Debug, fs, iter::FromIterator, path::PathBuf, string::String, sync::Arc};
+use std::{
+    fmt::Debug, fs, iter::FromIterator, path::PathBuf, str::FromStr, string::String, sync::Arc,
+    time::Duration,
+};
 use structopt::StructOpt;
 
 #[derive(Clone, Debug, StructOpt)]
@@ -79,6 +82,16 @@ pub struct Config {
     /// Path to the sealed block signing key
     #[structopt(long, parse(from_os_str))]
     pub sealed_block_signing_key: PathBuf,
+
+    /// Enables authenticating client requests using Authorization tokens using the provided
+    /// hex-encoded 32 bytes shared secret.
+    #[structopt(long, parse(try_from_str=hex::FromHex::from_hex))]
+    pub client_auth_token_secret: Option<[u8; 32]>,
+
+    /// Maximal client authentication token lifetime, in seconds (only relevant when
+    /// --client-auth-token-secret is used. Defaults to 86400 - 24 hours).
+    #[structopt(long, default_value = "86400", parse(try_from_str=parse_duration_in_seconds))]
+    pub client_auth_token_max_lifetime: Duration,
 }
 
 /// Decodes an Ed25519 private key.
@@ -92,6 +105,11 @@ fn keypair_from_base64(private_key: &str) -> Result<Arc<Ed25519Pair>, String> {
     let secret_key = Ed25519Private::try_from_der(privkey_bytes.as_slice())
         .map_err(|err| format!("Could not get Ed25519Private from der {:?}", err))?;
     Ok(Arc::new(Ed25519Pair::from(secret_key)))
+}
+
+/// Converts a string containing number of seconds to a Duration object.
+fn parse_duration_in_seconds(src: &str) -> Result<Duration, std::num::ParseIntError> {
+    Ok(Duration::from_secs(u64::from_str(src)?))
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Hash)]
@@ -111,6 +129,10 @@ pub struct NetworkConfig {
 
 impl NetworkConfig {
     pub fn quorum_set(&self) -> QuorumSet {
+        if !self.quorum_set.is_valid() {
+            panic!("invalid quorum set: {:?}", self.quorum_set);
+        }
+
         let mut peer_map: HashMap<ResponderId, NodeID> =
             HashMap::from_iter(self.broadcast_peers.iter().cloned().map(|uri| {
                 (
@@ -405,6 +427,8 @@ mod tests {
             scp_debug_dump: None,
             origin_block_path: None,
             sealed_block_signing_key: PathBuf::default(),
+            client_auth_token_secret: None,
+            client_auth_token_max_lifetime: Duration::from_secs(60),
         };
 
         assert_eq!(
@@ -458,6 +482,8 @@ mod tests {
             scp_debug_dump: None,
             origin_block_path: None,
             sealed_block_signing_key: PathBuf::default(),
+            client_auth_token_secret: None,
+            client_auth_token_max_lifetime: Duration::from_secs(60),
         };
 
         assert_eq!(

@@ -1,3 +1,4 @@
-flask==1.1.2
-grpcio==1.29.0
-grpcio-tools==1.29.0
+Flask==1.1.2
+grpcio==1.32.0
+grpcio-tools==1.32.0
+mobilecoin==0.2.1

@@ -7,13 +7,12 @@ edition = "2018"
 [dependencies]
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-util-from-random = { path = "../../util/from-random" }
-mc-util-repr-bytes = { path = "../../util/repr-bytes" }
 
 aes-gcm = "0.6"
 aead = "0.3"
 digest = { version = "0.9", default-features = false }
-failure = { version = "0.1", default-features = false, features = ["derive"] }
-generic-array = { version = "0.14", default-features = false, features = ["serde"] }
+failure = { version = "0.1.8", default-features = false, features = ["derive"] }
+generic-array = { version = "0.14", features = ["serde"] }
 hkdf = "0.9.0"
 rand_core = "0.5"
 secrecy = "0.4"

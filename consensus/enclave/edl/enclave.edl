@@ -2,8 +2,6 @@
 
 enclave {
     from "sgx_tstdc.edl" import *;
-    from "sgx_backtrace.edl" import *;
-    from "sgx_debug.edl" import *;
     from "sgx_panic.edl" import *;
     from "sgx_slog.edl" import *;
 
@@ -11,7 +9,7 @@ enclave {
         /*
          * Entry point for enclave functionality.
          */
-        public sgx_status_t mobileenclave_call([user_check] const uint8_t* inbuf,
+        public sgx_status_t mobileenclave_call([in, size=inbuf_len] const uint8_t* inbuf,
                                                size_t inbuf_len,
                                                [user_check] uint8_t *outbuf,
                                                size_t outbuf_len,

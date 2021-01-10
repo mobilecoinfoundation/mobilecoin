@@ -432,9 +432,10 @@ impl AccountKey {
 mod account_key_tests {
     use super::*;
     use alloc::boxed::Box;
+    use core::convert::TryFrom;
     use datatest::data;
-    use mc_account_keys_test_vectors::*;
-    use mc_util_test_vectors::TestVectorReader;
+    use mc_test_vectors_account_keys::*;
+    use mc_util_test_vector::TestVector;
     use rand::prelude::StdRng;
     use rand_core::SeedableRng;
 
@@ -496,54 +497,58 @@ mod account_key_tests {
         );
     }
 
-    #[data(DefaultSubaddrKeysFromAcctPrivKeys::from_jsonl("test-vectors/vectors"))]
+    #[data(DefaultSubaddrKeysFromAcctPrivKeys::from_jsonl("../test-vectors/vectors"))]
     #[test]
     fn default_subaddr_keys_from_acct_priv_keys(case: DefaultSubaddrKeysFromAcctPrivKeys) {
-        let account_key = AccountKey::new(&case.spend_private_key, &case.view_private_key);
+        let spend_private_key = RistrettoPrivate::try_from(&case.spend_private_key).unwrap();
+        let view_private_key = RistrettoPrivate::try_from(&case.view_private_key).unwrap();
+        let account_key = AccountKey::new(&spend_private_key, &view_private_key);
         let public_address = account_key.default_subaddress();
         assert_eq!(
             account_key.default_subaddress_view_private().to_bytes(),
-            case.subaddress_view_private_key.to_bytes()
+            case.subaddress_view_private_key
         );
         assert_eq!(
             account_key.default_subaddress_spend_private().to_bytes(),
-            case.subaddress_spend_private_key.to_bytes()
+            case.subaddress_spend_private_key
         );
         assert_eq!(
-            public_address.view_public_key(),
-            &case.subaddress_view_public_key
+            public_address.view_public_key().to_bytes(),
+            case.subaddress_view_public_key
         );
 
         assert_eq!(
-            public_address.spend_public_key(),
-            &case.subaddress_spend_public_key
+            public_address.spend_public_key().to_bytes(),
+            case.subaddress_spend_public_key
         );
     }
 
-    #[data(SubaddrKeysFromAcctPrivKeys::from_jsonl("test-vectors/vectors"))]
+    #[data(SubaddrKeysFromAcctPrivKeys::from_jsonl("../test-vectors/vectors"))]
     #[test]
     fn subaddr_keys_from_acct_priv_keys(case: SubaddrKeysFromAcctPrivKeys) {
-        let account_key = AccountKey::new(&case.spend_private_key, &case.view_private_key);
+        let spend_private_key = RistrettoPrivate::try_from(&case.spend_private_key).unwrap();
+        let view_private_key = RistrettoPrivate::try_from(&case.view_private_key).unwrap();
+        let account_key = AccountKey::new(&spend_private_key, &view_private_key);
         let public_address = account_key.subaddress(case.subaddress_index);
         assert_eq!(
             account_key
                 .subaddress_view_private(case.subaddress_index)
                 .to_bytes(),
-            case.subaddress_view_private_key.to_bytes()
+            case.subaddress_view_private_key
         );
         assert_eq!(
             account_key
                 .subaddress_spend_private(case.subaddress_index)
                 .to_bytes(),
-            case.subaddress_spend_private_key.to_bytes()
+            case.subaddress_spend_private_key
         );
         assert_eq!(
-            public_address.view_public_key(),
-            &case.subaddress_view_public_key
+            public_address.view_public_key().to_bytes(),
+            case.subaddress_view_public_key
         );
         assert_eq!(
-            public_address.spend_public_key(),
-            &case.subaddress_spend_public_key
+            public_address.spend_public_key().to_bytes(),
+            case.subaddress_spend_public_key
         );
     }
 

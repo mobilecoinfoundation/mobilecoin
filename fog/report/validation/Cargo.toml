@@ -1,0 +1,18 @@
+[package]
+name = "mc-fog-report-validation"
+version = "1.0.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[features]
+default = []
+automock = ["mockall"]
+
+[dependencies]
+mc-account-keys = { path = "../../../account-keys" }
+mc-attest-core = { path = "../../../attest/core", default-features = false }
+mc-crypto-keys = { path = "../../../crypto/keys" }
+mc-util-encodings = { path = "../../../util/encodings" }
+
+displaydoc = { version = "0.1", default-features = false }
+mockall = { version = "0.8.3", optional = true }

@@ -10,19 +10,21 @@
 version: 2.1
 
 defaults:
-  builder-install: &builder-install gcr.io/mobilenode-211420/builder-install:1_12
+  builder-install: &builder-install gcr.io/mobilenode-211420/builder-install:1_15
+  default-xcode-version: &default-xcode-version "12.0.0"
 
   default-environment: &default-environment
-    IAS_MODE: DEV
-    SGX_MODE: SW
-    RUST_BACKTRACE: 1
-    SKIP_SLOW_TESTS: 1
-    CARGO_INCREMENTAL: 0
-
     # sccache config
-    SCCACHE_IDLE_TIMEOUT: 1200
+    SCCACHE_IDLE_TIMEOUT: "1200"
     SCCACHE_CACHE_SIZE: 1G
     SCCACHE_ERROR_LOG: /tmp/sccache.log
+
+  default-build-environment: &default-build-environment
+    <<: *default-environment
+    IAS_MODE: DEV
+    SGX_MODE: SW
+    RUST_BACKTRACE: "1"
+    SKIP_SLOW_TESTS: "1"
 
 executors:
   build-executor:
@@ -30,18 +32,15 @@ executors:
       - image: *builder-install
     resource_class: xlarge
 
-  test-executor:
-    docker:
-      - image: *builder-install
-    resource_class: large
-
   macos:
+    parameters:
+      xcode-version: { type: string, default: *default-xcode-version }
     macos:
-      xcode: 11.6.0
+      xcode: << parameters.xcode-version >>
     environment:
-      HOMEBREW_NO_AUTO_UPDATE: 1
-      HOMEBREW_NO_INSTALL_CLEANUP: 1
-      HOMEBREW_BUNDLE_NO_LOCK: 1
+      HOMEBREW_NO_AUTO_UPDATE: "1"
+      HOMEBREW_NO_INSTALL_CLEANUP: "1"
+      HOMEBREW_BUNDLE_NO_LOCK: "1"
 
 commands:
   print_versions:
@@ -50,11 +49,14 @@ commands:
       - run:
           name: Version Info
           command: |
+            set -x
+
+            rustup show
             rustc --version
             cargo --version
             rustup --version
             sccache --version
-            command -v jq >/dev/null && jq --version
+            command -v jq >/dev/null && jq --version || true
 
   env_setup:
     description: Environment Setup
@@ -65,6 +67,7 @@ commands:
             mkdir -p ~/.cargo
             echo '[net]' >> ~/.cargo/config
             echo 'git-fetch-with-cli = true' >> ~/.cargo/config
+
             if [ -f ~/.gitconfig ]; then
               sed -i -e 's/github/git-non-exist-hub/g' ~/.gitconfig # https://github.com/rust-lang/cargo/issues/3900
             fi
@@ -83,6 +86,9 @@ commands:
             echo 'export CMAKE_C_COMPILER_LAUNCHER=sccache' >> $BASH_ENV
             echo 'export CMAKE_CXX_COMPILER_LAUNCHER=sccache' >> $BASH_ENV
 
+            # Sccache doesn't support incremental building
+            echo 'export CARGO_INCREMENTAL=0' >> $BASH_ENV
+
             # Set cache dir explicitly so that all platforms use the same location
             echo 'export SCCACHE_DIR=$HOME/.cache/sccache' >> $BASH_ENV
 
@@ -92,6 +98,8 @@ commands:
           name: Restore sccache cache
           key: v0-sccache-{{ arch }}-{{ .Environment.CIRCLE_JOB }}.
 
+  # Saves sccache cache on a per-job, per-architecture basis. Adds the git revision as a suffix
+  # so that each saved cache is stored using a unique key.
   save-sccache-cache:
     steps:
       - save_cache:
@@ -116,6 +124,8 @@ commands:
           name: Restore Cargo cache
           key: v0-cargo-{{ arch }}
 
+  # Saves cargo cache on a per-architecture basis. Adds the git revision as a suffix so that each
+  # saved cache is stored using a unique key.
   save-cargo-cache:
     steps:
       - run:
@@ -123,10 +133,8 @@ commands:
           command: |
             set -x
 
-            command -v cargo-install-update >/dev/null || cargo install cargo-update
-            command -v cargo-trim >/dev/null || cargo install cargo-trim
-
-            cargo install-update --all
+            command -v cargo-trim >/dev/null \
+              || (cd .. && rustup run --install stable cargo install cargo-trim)
 
             # Configure cargo-trim with the project's Cargo.lock files
             mkdir -p ~/.config
@@ -152,7 +160,7 @@ commands:
             cargo trim --query
 
             # Uninstall binary cargo crates that don't need to be cached
-            time cargo uninstall cargo-trim cargo-update
+            time cargo uninstall cargo-trim
       - save_cache:
           name: Save Cargo cache
           # See https://discuss.circleci.com/t/add-mechanism-to-update-existing-cache-key/9014/13
@@ -165,15 +173,14 @@ commands:
             - ~/.cargo/git/db
             - ~/.cargo/registry/cache
             - ~/.cargo/registry/index
-      - record-cargo-cache-stats
 
-  record-cargo-cache-stats:
+  print-cargo-cache-stats:
     steps:
       - run:
           name: Print Cargo cache statistics
           command: |
             cargo cache
-            cargo cache local
+            cargo cache local || true
 
   restore-homebrew-cache:
     steps:
@@ -181,14 +188,15 @@ commands:
           name: Restore Homebrew cache
           key: v0-homebrew-{{ arch }}
       - run:
+          name: Update Homebrew
+          command: |
+            brew --version
+            brew update --preinstall
+            brew --version
+      - run:
           name: Install Homebrew dependencies
-          # Update Homebrew before running `brew bundle` to fix a bug in the
-          # version of Homebrew that comes preinstalled on CircleCI's macOS
-          # image. Once the CircleCI macOS image comes preinstalled with the
-          # updated version, then we should be able to remove `brew update`
-          # from this step.
-          # See: https://github.com/Homebrew/homebrew-bundle/issues/751
-          command: brew update --preinstall && brew bundle --no-upgrade
+          command: |
+            brew bundle --no-upgrade
 
   save-homebrew-cache:
     steps:
@@ -214,8 +222,8 @@ commands:
       - run:
           name: Install Rust
           command: |
-            command -v rustup >/dev/null || \
-              curl https://sh.rustup.rs --tlsv1.2 -sSf | sh -s -- -y --default-toolchain none
+            command -v rustup >/dev/null \
+              || curl https://sh.rustup.rs --tlsv1.2 -sSf | sh -s -- -y --default-toolchain none
             # Installs the toolchain specified in `rust-toolchain`
             "$HOME/.cargo/bin/rustup" show active-toolchain
 
@@ -224,9 +232,21 @@ commands:
       - run:
           name: Install CI dependencies
           command: |
-            command -v sccache >/dev/null || cargo install sccache
-            command -v cargo-cache >/dev/null || cargo install cargo-cache
-            command -v cargo2junit >/dev/null || cargo install cargo2junit
+            cd ..
+            command -v sccache >/dev/null || rustup run --install stable cargo install sccache
+            command -v cargo-cache >/dev/null || rustup run --install stable cargo install cargo-cache
+            command -v cargo2junit >/dev/null || rustup run --install stable cargo install cargo2junit
+
+  update-ci-deps:
+    steps:
+      - run:
+          name: Update CI dependencies
+          command: |
+            cd ..
+            rustup default stable
+            command -v cargo-install-update >/dev/null || cargo install cargo-update
+            cargo install-update --all
+            time cargo uninstall cargo-update
 
   prefetch-cargo-deps:
     steps:
@@ -239,10 +259,7 @@ commands:
 
   prepare-for-build:
     parameters:
-      os:
-        type: enum
-        enum: ["linux", "macos", "windows"]
-        default: linux
+      os: { type: enum, enum: [ "linux", "macos", "windows" ], default: linux }
     steps:
       - checkout
       - when:
@@ -251,6 +268,9 @@ commands:
       - install-rust
       - restore-cargo-cache
       - install-ci-deps
+      - when:
+          condition: { equal: [ << pipeline.git.branch >>, master ] }
+          steps: [ update-ci-deps ]
       - env_setup
       - print_versions
       - enable_sccache
@@ -268,7 +288,7 @@ commands:
         default: cargo test --frozen --target "$HOST_TARGET_TRIPLE" --no-fail-fast --tests
     steps:
       - run:
-          name: Run all tests
+          name: Run tests
           command: |
             mkdir -p /tmp/test-results
 
@@ -283,7 +303,7 @@ commands:
             # the test results, and unfortunately Cargo does not always output the test results in
             # such a way that is cleanly parsable.
             << parameters.test_command >> -- \
-                -Z unstable-options --format json --report-time \
+                -Zunstable-options --format json --report-time \
               | {
                   tee /tmp/test-results/output.log
                   cat /tmp/test-results/output.log \
@@ -294,6 +314,7 @@ commands:
   post-build:
     steps:
       - record-sccache-cache-stats
+      - print-cargo-cache-stats
 
   post-test:
     steps:
@@ -301,6 +322,26 @@ commands:
           path: /tmp/test-results
       - store_artifacts:
           path: /tmp/test-results
+
+  lint:
+    steps:
+      - run:
+          name: Lint/fmt
+          command: |
+            ./tools/lint.sh
+
+  generate-docs:
+    steps:
+      - run:
+          name: Generating docs...
+          command: |
+            cargo doc --no-deps
+            tar -C target -czvf /tmp/doc.tgz doc/
+
+  store-docs:
+    steps:
+      - store_artifacts:
+          path: /tmp/doc.tgz
 
   check-dirty-git:
     steps:
@@ -314,120 +355,11 @@ commands:
             fi
 
 jobs:
-  # A job that builds all the tests in the workspace, and stores them in a test-bins/ directory.
-  # This directory then gets uploaded to the CircleCI workflow's workspace to be consumed
-  # by the run-tests jobs
-  build-parallel-tests:
-    executor: build-executor
-    environment:
-      <<: *default-environment
-    steps:
-      - prepare-for-build
-      - run:
-          name: Build/prepare unit tests
-          command: |
-            # TODO where do put this?
-            cargo install -Z install-upgrade cargo2junit
-
-            # Get a list of package names to test and the binaries that need to be executed in order to run them.
-            # It's possible for a package to produce multiple test binaries. This also compiles the tests.
-            rm -rf test-bins && mkdir test-bins && mkdir test-bins/bins-per-pkg
-
-            echo "Discovering tests..."
-            cargo test --frozen --no-run --message-format=json | jq -r "select(.profile.test == true) | (.package_id | split(\" \")[0]) + \" \" + .filenames[]" | sort | uniq | tee test-list
-
-            while read line; do
-              PKG=$(echo $line | cut -f 1 -d ' ')
-              TEST_BIN=$(echo $line | cut -f 2 -d ' ')
-              echo "Discovered package $PKG with binary $TEST_BIN"
-              echo $PKG >> test-bins/all-pkgs.txt.unsorted
-              echo $TEST_BIN >> test-bins/bins-per-pkg/$PKG
-            done < test-list
-
-            # De-dupe packages in all-pkgs.txt
-            cat test-bins/all-pkgs.txt.unsorted | sort | uniq > test-bins/all-pkgs.txt
-
-            # Collect all test bins into test-bins/
-            for PKG in $(cat test-bins/all-pkgs.txt); do
-              for TEST_BIN in $(cat test-bins/bins-per-pkg/$PKG); do
-                cp $TEST_BIN test-bins
-              done
-            done
-
-            # Some logging
-            echo 'inside test-bins/:'
-            ls -lRa test-bins
-            echo "inside all-pkgs.txt:"
-            cat test-bins/all-pkgs.txt
-
-      - run:
-          name: Linting
-          command: ./tools/lint.sh
-
-      - check-dirty-git
-
-      # Save the test binaries and helper text files into the workspace so that they could be consumed by the `run-tests` job.
-      - persist_to_workspace:
-          root: test-bins
-          paths:
-            - .
-      - save-cargo-cache
-      - save-sccache-cache
-      - post-build
-
-  # Runs tests from a test-bin directory previously generated by the build-tests job
+  # Run tests on a single container
   run-tests:
-    executor: test-executor
-    parallelism: 2
-    environment:
-      <<: *default-environment
-    steps:
-      - restore-cargo-cache
-      - env_setup
-      - attach_workspace:
-          at: test-bins
-
-      - run:
-          name: Run unit tests
-          command: |
-            ls -lRa test-bins
-
-            # Crates that define macros (e.g. `digestible_derive`) link dynamically against libtest*.so, which sits here.
-            export LD_LIBRARY_PATH="$HOME/.rustup/toolchains/$(rustup show active-toolchain | awk '{print $1}')/lib"
-            echo "LD_LIBRARY_PATH = $LD_LIBRARY_PATH"
-
-            # Run the test binaries for all the packages we're assigned by CircleCI's test splitting mechanism,
-            rm -rf test-results && mkdir test-results
-            echo "About to run: $(cat test-bins/all-pkgs.txt | circleci tests split --split-by=timings --timings-type=classname | sort | uniq)"
-            for PKG in $(cat test-bins/all-pkgs.txt | circleci tests split --split-by=timings --timings-type=classname); do
-              echo "Running tests for $PKG"
-              for TEST_BIN in $(cat test-bins/bins-per-pkg/$PKG); do
-                echo "Running bin $TEST_BIN for pkg $PKG..."
-                JSON_OUT="results-$PKG.json"
-                # Run the test and also store the output into a JSON file
-                ./test-bins/$(basename $TEST_BIN) -Z unstable-options --report-time --format json | tee $JSON_OUT
-
-                # For CircleCI's time-based splitting to work, we need to convert Cargo's JSON output into a JUNIT xml file.
-                # Sadly, cargo does not output the name of the package it is testing. This search-and-replace is a hack around that.
-                cat $JSON_OUT | cargo2junit | sed -e 's/name="\(.*\)" package/name="'"$PKG"'" package/' > test-results/$(basename $TEST_BIN).xml
-              done
-            done
-
-      - check-dirty-git
-
-      - post-build
-      - store_test_results:
-          path: test-results
-      - store_artifacts:
-          path: test-results
-
-
-  # Run all tests on a single container
-  run-all-tests:
     executor: build-executor
-    parallelism: 1
     environment:
-      <<: *default-environment
+      <<: *default-build-environment
     steps:
       - prepare-for-build
       - run-tests
@@ -439,10 +371,10 @@ jobs:
       - post-test
 
   # Build and lint in debug mode
-  build-all-and-lint-debug:
+  build-and-lint-debug:
     executor: build-executor
     environment:
-      << : *default-environment
+      <<: *default-build-environment
     steps:
       - prepare-for-build
       - run:
@@ -455,37 +387,32 @@ jobs:
             SGX_MODE: HW
             IAS_MODE: PROD
           command: cargo check --frozen --target "$HOST_TARGET_TRIPLE"
-      - check-dirty-git
 
-      # The lint and saving of caches happens here since this job is faster than the run-all-tests job.
+      # The lint and saving of caches happens here since this job is faster than the run-tests job.
       # This results in shorter CI times.
-      - run:
-          name: Lint/fmt
-          command: |
-            ./tools/lint.sh
-      - run:
-          name: Generating docs...
-          command: |
-            cargo doc --no-deps
-            tar -C target -czvf /tmp/doc.tgz doc/
+      - lint
+      - generate-docs
+      - store-docs
+      - check-dirty-git
       - when:
           condition: { equal: [ << pipeline.git.branch >>, master ] }
-          steps: [ save-cargo-cache, save-sccache-cache ]
+          steps: [ save-sccache-cache, save-cargo-cache ]
       - post-build
-      - store_artifacts:
-          path: /tmp/doc.tgz
 
   # Build using macOS
-  build-all-macos:
-    executor: macos
+  build-macos:
+    parameters:
+      xcode-version: { type: string, default: *default-xcode-version }
+    executor:
+      name: macos
+      xcode-version: << parameters.xcode-version >>
     environment:
-      <<: *default-environment
+      <<: *default-build-environment
       SCCACHE_CACHE_SIZE: 450M
       RUSTFLAGS: -D warnings -C target-cpu=penryn
       CONSENSUS_ENCLAVE_CSS: /Users/distiller/project/sgx/css/src/valid.css
     steps:
-      - prepare-for-build:
-          os: macos
+      - prepare-for-build: { os: macos }
       - run:
           name: Cargo check
           command: |
@@ -502,33 +429,32 @@ jobs:
               --exclude mc-sgx-ias-types \
               --exclude mc-sgx-report-cache-untrusted \
               --exclude mc-sgx-urts-sys
+      - run:
+          name: Cargo check mobilecoind/testnet-client
+          command: |
+            cargo check --frozen --target "$HOST_TARGET_TRIPLE" \
+              -p mc-mobilecoind --bin mobilecoind \
+              -p mc-testnet-client --bin mc-testnet-client
       - check-dirty-git
       - when:
           condition: { equal: [ << pipeline.git.branch >>, master ] }
-          steps: [ save-cargo-cache, save-sccache-cache ]
+          steps: [ save-sccache-cache, save-cargo-cache, save-homebrew-cache ]
       - post-build
-      - when:
-          condition: { equal: [ << pipeline.git.branch >>, master ] }
-          steps: [ save-homebrew-cache ]
 
 workflows:
   version: 2
   # Build and run tests on a single container
-  build-and-run-all-tests:
+  build-and-run-tests:
     jobs:
       # Run tests on a single container
-      - run-all-tests
+      - run-tests
 
       # Build everything in debug
-      - build-all-and-lint-debug
+      - build-and-lint-debug
 
       # Build using macOS
-      - build-all-macos
-
-  # Build and run tests in parallel - not needed at the moment since the test suite is fast enough.
-  # build-and-run-tests:
-  #   jobs:
-  #     - build-parallel-tests
-  #     - run-parallel-tests:
-  #         requires:
-  #           - build-parallel-tests
+      - build-macos:
+          name: build-macos-xcode-<< matrix.xcode-version >>
+          matrix:
+            parameters:
+              xcode-version: ["11.7.0", *default-xcode-version]

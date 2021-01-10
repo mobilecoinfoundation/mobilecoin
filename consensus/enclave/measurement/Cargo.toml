@@ -11,6 +11,7 @@ links = "consensus_enclave_measurement"
 sgx-sim = []
 
 [dependencies]
+mc-attest-core = { path = "../../../attest/core" }
 mc-sgx-css = { path = "../../../sgx/css" }
 
 [build-dependencies]
