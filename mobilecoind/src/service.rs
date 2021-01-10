@@ -1147,6 +1147,18 @@ impl<
             ));
         }
 
+        // Get list of key images from the request.
+        let key_images: Vec<KeyImage> = request
+            .get_sender_tx_receipt()
+            .get_key_image_list()
+            .iter()
+            .map(|key_image| {
+                KeyImage::try_from(key_image)
+                    .map_err(|err| rpc_internal_error("key_image.try_from", err, &self.logger))
+            })
+            .collect::<Result<Vec<KeyImage>, RpcStatus>>()?;
+
+        // Get list of tx_public_keys from the request.
         let compressed_pubkeys: Vec<CompressedRistrettoPublic> = request
             .get_receiver_tx_receipt_list()
             .iter()
@@ -1171,8 +1183,30 @@ impl<
             .filter_map(Result::ok)
             .collect();
 
-        // If we didn't find any of the tx_public_keys, then the transaction is likely still pending.
+        // If we didn't find any of the tx_public_keys, then the transaction is either still pending,
+        // or the inputs were spent in another transaction and this transaction will never land.
         if found_pubkey_indices.is_empty() {
+            // Verify that the key images are not anywhere else in the ledger.
+            let key_image_in_ledger: Vec<bool> = key_images
+                .iter()
+                .map(|key_image| {
+                    self.ledger_db.contains_key_image(key_image).map_err(|err| {
+                        rpc_internal_error("ledger_db.contains_key_image", err, &self.logger)
+                    })
+                })
+                .collect::<Result<Vec<bool>, RpcStatus>>()?;
+            if key_image_in_ledger
+                .iter()
+                .any(|key_image_in_ledger| *key_image_in_ledger)
+            {
+                let mut response = mc_mobilecoind_api::GetTxStatusAsSenderResponse::new();
+                response.set_status(
+                    mc_mobilecoind_api::TxStatus::TransactionFailureKeyImageAlreadySpent,
+                );
+                return Ok(response);
+            }
+
+            // Otherwise, the transaction is still pending or otherwise status unknown.
             let mut response = mc_mobilecoind_api::GetTxStatusAsSenderResponse::new();
             response.set_status(mc_mobilecoind_api::TxStatus::Unknown);
             return Ok(response);
@@ -1193,17 +1227,6 @@ impl<
             .ledger_db
             .get_block_contents(block_index)
             .map_err(|err| rpc_internal_error("ledger_db.get_block_contents", err, &self.logger))?;
-
-        // Get list of key images from the request.
-        let key_images: Vec<KeyImage> = request
-            .get_sender_tx_receipt()
-            .get_key_image_list()
-            .iter()
-            .map(|key_image| {
-                KeyImage::try_from(key_image)
-                    .map_err(|err| rpc_internal_error("key_image.try_from", err, &self.logger))
-            })
-            .collect::<Result<Vec<KeyImage>, RpcStatus>>()?;
 
         // Convert key images to a list of booleans indicating whether they were found in the
         // block or not. All key_images from the same transaction should land in the same block.
@@ -1230,27 +1253,6 @@ impl<
             let mut response = mc_mobilecoind_api::GetTxStatusAsSenderResponse::new();
             response
                 .set_status(mc_mobilecoind_api::TxStatus::TransactionFailureKeyImageBlockMismatch);
-            return Ok(response);
-        }
-
-        // Verify that the key images are not anywhere else in the ledger. Note: it should be impossible to
-        // fail this check after the previous checks succeeded that the tx_public_keys are all in the same
-        // block, and the key_images are also all in the same block.
-        let key_image_in_ledger: Vec<bool> = key_images
-            .iter()
-            .map(|key_image| {
-                self.ledger_db.contains_key_image(key_image).map_err(|err| {
-                    rpc_internal_error("ledger_db.contains_key_image", err, &self.logger)
-                })
-            })
-            .collect::<Result<Vec<bool>, RpcStatus>>()?;
-        if key_image_in_ledger
-            .iter()
-            .any(|key_image_in_ledger| *key_image_in_ledger)
-        {
-            let mut response = mc_mobilecoind_api::GetTxStatusAsSenderResponse::new();
-            response
-                .set_status(mc_mobilecoind_api::TxStatus::TransactionFailureKeyImageAlreadySpent);
             return Ok(response);
         }
 

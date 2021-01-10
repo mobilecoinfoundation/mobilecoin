@@ -92,7 +92,7 @@ enum TxStatus {
     // Not all key_images in the same block as the tx_public_keys, indicating the transaction for this receipt failed.
     TransactionFailureKeyImageBlockMismatch = 5;
 
-    // Some key_images in a separate block from tx_public_keys, indicating the transaction for this receipt failed.
+    // Some key_images are spent elsewhere in the ledger, despite the tx_public_keys not appearing in the ledger.
     TransactionFailureKeyImageAlreadySpent = 6;
 }
 
