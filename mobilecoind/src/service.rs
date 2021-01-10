@@ -1167,7 +1167,7 @@ impl<
                     .map_err(|err| {
                         rpc_internal_error("RistrettoPublic.try_from", err, &self.logger)
                     })
-                    .and_then(|pubkey| Ok(CompressedRistrettoPublic::from(&pubkey)))
+                    .map(|pubkey| CompressedRistrettoPublic::from(&pubkey))
             })
             .collect::<Result<Vec<CompressedRistrettoPublic>, RpcStatus>>()?;
 

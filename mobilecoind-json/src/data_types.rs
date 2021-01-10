@@ -1016,7 +1016,7 @@ impl TryFrom<&JsonSubmitTxResponse> for mc_mobilecoind_api::SubmitTxResponse {
             .iter()
             .map(|k| {
                 hex::decode(&k)
-                    .and_then(|x| Ok(KeyImage::from(x)))
+                    .map(KeyImage::from)
                     .map_err(|err| format!("Failed to decode hex: {}", err))
             })
             .collect::<Result<Vec<KeyImage>, String>>()?;
@@ -1039,14 +1039,12 @@ impl TryFrom<&JsonSubmitTxResponse> for mc_mobilecoind_api::SubmitTxResponse {
             receiver_receipt.set_tx_public_key(pubkey);
             receiver_receipt.set_tx_out_hash(
                 hex::decode(&r.tx_out_hash)
-                    .map_err(|err| format!("Failed to decode hex: {}", err))?
-                    .into(),
+                    .map_err(|err| format!("Failed to decode hex: {}", err))?,
             );
             receiver_receipt.set_tombstone(r.tombstone);
             receiver_receipt.set_confirmation_number(
                 hex::decode(&r.confirmation_number)
-                    .map_err(|err| format!("Failed to decode hex: {}", err))?
-                    .into(),
+                    .map_err(|err| format!("Failed to decode hex: {}", err))?,
             );
             receiver_receipts.push(receiver_receipt);
         }
