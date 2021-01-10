@@ -1015,9 +1015,12 @@ impl TryFrom<&JsonSubmitTxResponse> for mc_mobilecoind_api::SubmitTxResponse {
             .key_images
             .iter()
             .map(|k| {
-                hex::decode(&k)
-                    .map(KeyImage::from)
-                    .map_err(|err| format!("Failed to decode hex: {}", err))
+                hex::decode(&k).map(KeyImage::from).map_err(|err| {
+                    format!(
+                        "Failed to decode hex for sender_tx_receipt.key_images: {}",
+                        err
+                    )
+                })
             })
             .collect::<Result<Vec<KeyImage>, String>>()?;
 
@@ -1034,17 +1037,18 @@ impl TryFrom<&JsonSubmitTxResponse> for mc_mobilecoind_api::SubmitTxResponse {
             let mut pubkey = mc_api::external::CompressedRistretto::new();
             pubkey.set_data(
                 hex::decode(&r.tx_public_key)
-                    .map_err(|err| format!("Failed to decode hex: {}", err))?,
+                    .map_err(|err| format!("Failed to decode hex for tx_public_key: {}", err))?,
             );
             receiver_receipt.set_tx_public_key(pubkey);
             receiver_receipt.set_tx_out_hash(
                 hex::decode(&r.tx_out_hash)
-                    .map_err(|err| format!("Failed to decode hex: {}", err))?,
+                    .map_err(|err| format!("Failed to decode hex for tx_out_hash: {}", err))?,
             );
             receiver_receipt.set_tombstone(r.tombstone);
             receiver_receipt.set_confirmation_number(
-                hex::decode(&r.confirmation_number)
-                    .map_err(|err| format!("Failed to decode hex: {}", err))?,
+                hex::decode(&r.confirmation_number).map_err(|err| {
+                    format!("Failed to decode hex for confirmation_number: {}", err)
+                })?,
             );
             receiver_receipts.push(receiver_receipt);
         }
