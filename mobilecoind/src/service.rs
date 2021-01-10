@@ -2473,7 +2473,7 @@ mod test {
             let mut request = mc_mobilecoind_api::SubmitTxResponse::new();
             request.set_sender_tx_receipt(sender_receipt);
             request.set_receiver_tx_receipt_list(RepeatedField::from_vec(vec![
-                receiver_receipt,
+                receiver_receipt.clone(),
                 receiver_receipt2,
             ]));
 
@@ -2482,6 +2482,35 @@ mod test {
             assert_eq!(
                 response.get_status(),
                 mc_mobilecoind_api::TxStatus::PublicKeysInDifferentBlocks
+            );
+        }
+
+        // A receipt with a public key which has not landed in the ledger, but key_images which have
+        // should fail.
+        // A receiver receipt with multiple public keys in different blocks should fail
+        {
+            let mut sender_receipt = mc_mobilecoind_api::SenderTxReceipt::new();
+            sender_receipt.set_key_image_list(RepeatedField::from_vec(vec![
+                (&KeyImage::from(1)).into(),
+                (&KeyImage::from(4)).into(),
+            ]));
+            sender_receipt.set_tombstone(1);
+
+            let mut request = mc_mobilecoind_api::SubmitTxResponse::new();
+            request.set_sender_tx_receipt(sender_receipt);
+            // Modify the receiver_receipt to have a public key not in the ledger
+            receiver_receipt.set_tx_public_key(
+                mc_mobilecoind_api::external::CompressedRistretto::from(
+                    &CompressedRistrettoPublic::from(&RistrettoPublic::from_random(&mut rng)),
+                ),
+            );
+            request.set_receiver_tx_receipt_list(RepeatedField::from_vec(vec![receiver_receipt]));
+
+            let response = client.get_tx_status_as_sender(&request).unwrap();
+
+            assert_eq!(
+                response.get_status(),
+                mc_mobilecoind_api::TxStatus::TransactionFailureKeyImageAlreadySpent
             );
         }
     }
