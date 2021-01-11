@@ -36,9 +36,9 @@ impl Default for Plaintext {
 
 impl ConditionallySelectable for Plaintext {
     fn conditional_select(a: &Self, b: &Self, c: subtle::Choice) -> Self {
-        let ret: Self = a;
+        let mut ret: Self = *a;
 
-        ret.cmov(c, b);
+        Plaintext::conditional_assign_array(&mut ret.0, &b.0, c);
 
         ret
     }
