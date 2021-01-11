@@ -52,6 +52,14 @@ impl Plaintext {
     fn as_ref(&self) -> &PlaintextArray {
         &self.0
     }
+
+    fn conditional_assign_array(target: &mut PlaintextArray, src: &PlaintextArray, cond: Choice) {
+        assert_eq!(target.len(), src.len());
+
+        for idx in 0..target.len() {
+            target[idx].conditional_assign(&src[idx], cond);
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
