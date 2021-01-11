@@ -36,11 +36,11 @@ impl Default for Plaintext {
 
 impl ConditionallySelectable for Plaintext {
     fn conditional_select(a: &Self, b: &Self, c: subtle::Choice) -> Self {
-        if bool::from(c) {
-            *b
-        } else {
-            *a
-        }
+        let mut ret: Self = *a;
+
+        Plaintext::conditional_assign_array(&mut ret.0, &b.0, c);
+
+        ret
     }
 }
 
@@ -51,6 +51,14 @@ impl Plaintext {
 
     fn as_ref(&self) -> &PlaintextArray {
         &self.0
+    }
+
+    fn conditional_assign_array(target: &mut PlaintextArray, src: &PlaintextArray, cond: Choice) {
+        assert_eq!(target.len(), src.len());
+
+        for idx in 0..target.len() {
+            target[idx].conditional_assign(&src[idx], cond);
+        }
     }
 }
 
