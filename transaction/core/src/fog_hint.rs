@@ -36,11 +36,11 @@ impl Default for Plaintext {
 
 impl ConditionallySelectable for Plaintext {
     fn conditional_select(a: &Self, b: &Self, c: subtle::Choice) -> Self {
-        if bool::from(c) {
-            *b
-        } else {
-            *a
-        }
+        let ret: Self = a;
+
+        ret.cmov(c, b);
+
+        ret
     }
 }
 
