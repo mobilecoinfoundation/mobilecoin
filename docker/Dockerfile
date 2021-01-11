@@ -74,6 +74,15 @@ RUN apt-get update -q -q && \
   wget \
   zlib1g-dev
 
+
+RUN wget https://golang.org/dl/go1.15.6.linux-amd64.tar.gz && \
+    tar xvf go1.15.6.linux-amd64.tar.gz && \
+    rm go1.15.6.linux-amd64.tar.gz && \
+    mv go /usr/local/
+
+ENV GOROOT="/usr/local/go"
+ENV GOPATH="/.go"
+
 # psmisc = killall
 # prometheus = helps with running slam scripts locally
 
@@ -102,8 +111,8 @@ RUN wget https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustu
     rustfmt && \
   /root/.cargo/bin/cargo install sccache cargo-cache cargo2junit cargo-tree cargo-feature-analyst
 
-# Set PATH in the container environment to include cargo bin
-ENV PATH="/root/.cargo/bin:$PATH"
+# Set PATH in the container environment to include cargo bin and go
+ENV PATH="/root/.cargo/bin:/.go/bin:/usr/local/go/bin:$PATH"
 
 # Install kcov. So that we don't have to do this again with every build in ci.
 RUN mkdir -p /tmp/kcov
