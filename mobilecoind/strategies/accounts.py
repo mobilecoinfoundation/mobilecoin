@@ -130,14 +130,16 @@ def poll_mitosis(starting_balance, account_data, tx_stats, stub):
 
 def poll(monitor_id, tx_stats, stub):
     complete = {t: False for t in tx_stats.keys()}
-    receipts = {t: tx_stats[t]['receipt'] for t in tx_stats.keys()}
+    receipts = {t: tx_stats[t] for t in tx_stats.keys()}
     pending = complete.keys()
     while not all(complete.values()):
         for tx_id in pending:
             try:
                 resp = stub.GetTxStatusAsSender(
-                    mobilecoind_api_pb2.GetTxStatusAsSenderRequest(
-                        receipt=receipts[tx_id]))
+                    mobilecoind_api_pb2.SubmitTxResponse(
+                        sender_tx_receipt=receipts[tx_id]["receipt"].sender_tx_receipt,
+                        receiver_tx_receipt_list=receipts[tx_id]["receipt"].receiver_tx_receipt_list
+                    ))
                 if resp.status == mobilecoind_api_pb2.TxStatus.TombstoneBlockExceeded:
                     print("Transfer did not complete in time", tx_id)
                     complete[tx_id] = True
