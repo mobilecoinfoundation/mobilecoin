@@ -1664,26 +1664,35 @@ macro_rules! build_api {
 }
 
 build_api! {
+    // Monitors
     add_monitor AddMonitorRequest AddMonitorResponse add_monitor_impl,
     remove_monitor RemoveMonitorRequest Empty remove_monitor_impl,
     get_monitor_list Empty GetMonitorListResponse get_monitor_list_impl,
     get_monitor_status GetMonitorStatusRequest GetMonitorStatusResponse get_monitor_status_impl,
     get_unspent_tx_out_list GetUnspentTxOutListRequest GetUnspentTxOutListResponse get_unspent_tx_out_list_impl,
+
+    // Utilities
     generate_entropy Empty GenerateEntropyResponse generate_entropy_impl,
     get_account_key GetAccountKeyRequest GetAccountKeyResponse get_account_key_impl,
     get_public_address GetPublicAddressRequest GetPublicAddressResponse get_public_address_impl,
+
+    // b58 codes
     parse_request_code ParseRequestCodeRequest ParseRequestCodeResponse parse_request_code_impl,
     create_request_code CreateRequestCodeRequest CreateRequestCodeResponse create_request_code_impl,
     parse_transfer_code ParseTransferCodeRequest ParseTransferCodeResponse parse_transfer_code_impl,
     create_transfer_code CreateTransferCodeRequest CreateTransferCodeResponse create_transfer_code_impl,
     parse_address_code ParseAddressCodeRequest ParseAddressCodeResponse parse_address_code_impl,
     create_address_code CreateAddressCodeRequest CreateAddressCodeResponse create_address_code_impl,
+
+    // Transactions
     get_membership_proofs GetMembershipProofsRequest GetMembershipProofsResponse get_membership_proofs_impl,
     generate_tx GenerateTxRequest GenerateTxResponse generate_tx_impl,
     generate_optimization_tx GenerateOptimizationTxRequest GenerateOptimizationTxResponse generate_optimization_tx_impl,
     generate_transfer_code_tx GenerateTransferCodeTxRequest GenerateTransferCodeTxResponse generate_transfer_code_tx_impl,
     generate_tx_from_tx_out_list GenerateTxFromTxOutListRequest GenerateTxFromTxOutListResponse generate_tx_from_tx_out_list_impl,
     submit_tx SubmitTxRequest SubmitTxResponse submit_tx_impl,
+
+    // Databases
     get_ledger_info Empty GetLedgerInfoResponse get_ledger_info_impl,
     get_block_info GetBlockInfoRequest GetBlockInfoResponse get_block_info_impl,
     get_block GetBlockRequest GetBlockResponse get_block_impl,
@@ -1691,10 +1700,16 @@ build_api! {
     get_tx_status_as_receiver GetTxStatusAsReceiverRequest GetTxStatusAsReceiverResponse get_tx_status_as_receiver_impl,
     get_processed_block GetProcessedBlockRequest GetProcessedBlockResponse get_processed_block_impl,
     get_block_index_by_tx_pub_key GetBlockIndexByTxPubKeyRequest GetBlockIndexByTxPubKeyResponse get_block_index_by_tx_pub_key_impl,
+
+    // Convenience calls
     get_balance GetBalanceRequest GetBalanceResponse get_balance_impl,
     send_payment SendPaymentRequest SendPaymentResponse send_payment_impl,
     pay_address_code PayAddressCodeRequest SendPaymentResponse pay_address_code_impl,
+
+    // Network status
     get_network_status Empty GetNetworkStatusResponse get_network_status_impl,
+
+    // Database encryption
     set_db_password SetDbPasswordRequest Empty set_db_password_impl,
     unlock_db UnlockDbRequest Empty unlock_db_impl
 }
