@@ -180,11 +180,11 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
 
         // The selected_utxos with corresponding proofs of membership.
         let selected_utxos_with_proofs: Vec<(UnspentTxOut, TxOutMembershipProof)> = {
-            let outputs = selected_utxos
+            let outputs: Vec<TxOut> = selected_utxos
                 .iter()
                 .map(|utxo| utxo.tx_out.clone())
                 .collect();
-            let proofs = self.get_membership_proofs(outputs)?;
+            let proofs = self.get_membership_proofs(&outputs)?;
 
             selected_utxos.into_iter().zip(proofs.into_iter()).collect()
         };
@@ -275,11 +275,11 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
 
         // The selected_utxos with corresponding proofs of membership.
         let selected_utxos_with_proofs: Vec<(UnspentTxOut, TxOutMembershipProof)> = {
-            let outputs = selected_utxos
+            let outputs: Vec<TxOut> = selected_utxos
                 .iter()
                 .map(|utxo| utxo.tx_out.clone())
                 .collect();
-            let proofs = self.get_membership_proofs(outputs)?;
+            let proofs = self.get_membership_proofs(&outputs)?;
 
             selected_utxos.into_iter().zip(proofs.into_iter()).collect()
         };
@@ -360,8 +360,8 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
 
         // The inputs with corresponding proofs of membership.
         let inputs_with_proofs: Vec<(UnspentTxOut, TxOutMembershipProof)> = {
-            let proofs = self
-                .get_membership_proofs(inputs.iter().map(|utxo| utxo.tx_out.clone()).collect())?;
+            let tx_outs: Vec<TxOut> = inputs.iter().map(|utxo| utxo.tx_out.clone()).collect();
+            let proofs = self.get_membership_proofs(&tx_outs)?;
             inputs.iter().cloned().zip(proofs.into_iter()).collect()
         };
         log::trace!(logger, "Got membership proofs");
@@ -371,15 +371,6 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
             .iter()
             .map(|(_, membership_proof)| membership_proof.index)
             .collect();
-
-        // let excluded_tx_out_indices: Vec<u64> = inputs
-        //     .iter()
-        //     .map(|utxo| {
-        //         self.ledger_db
-        //             .get_tx_out_index_by_hash(&utxo.tx_out.hash())
-        //             .map_err(Error::LedgerDB)
-        //     })
-        //     .collect::<Result<Vec<u64>, Error>>()?;
 
         let rings = self.get_rings(DEFAULT_RING_SIZE, inputs.len(), &input_indices)?;
         log::trace!(logger, "Got {} rings", rings.len());
@@ -579,7 +570,7 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
     /// Get membership proofs for a list of transaction outputs.
     pub fn get_membership_proofs(
         &self,
-        outputs: Vec<TxOut>,
+        outputs: &[TxOut],
     ) -> Result<Vec<TxOutMembershipProof>, Error> {
         let indexes = outputs
             .iter()

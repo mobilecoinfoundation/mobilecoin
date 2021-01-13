@@ -655,7 +655,7 @@ impl<
 
         let proofs: Vec<TxOutMembershipProof> = self
             .transactions_manager
-            .get_membership_proofs(outputs.clone())
+            .get_membership_proofs(&outputs)
             .map_err(|err| rpc_internal_error("get_membership_proofs", err, &self.logger))?;
 
         let mut response = mc_mobilecoind_api::GetMembershipProofsResponse::new();
