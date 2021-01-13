@@ -392,12 +392,12 @@ message CreateAddressCodeResponse {
 //
 
 message TxOutWithProof {
-    UnspentTxOut utxo = 1;
+    external.TxOut output = 1;
     external.TxOutMembershipProof proof = 2;
 }
 
 message GetMembershipProofsRequest {
-    repeated UnspentTxOut input_list = 1;
+    repeated external.TxOut outputs = 1;
 }
 
 message GetMembershipProofsResponse {

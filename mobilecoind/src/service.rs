@@ -29,11 +29,14 @@ use mc_mobilecoind_api::{
     MobilecoindUri,
 };
 use mc_transaction_core::{
-    get_tx_out_shared_secret, onetime_keys::recover_onetime_private_key, ring_signature::KeyImage,
-    tx::TxOutConfirmationNumber,
+    get_tx_out_shared_secret,
+    onetime_keys::recover_onetime_private_key,
+    ring_signature::KeyImage,
+    tx::{TxOut, TxOutConfirmationNumber},
 };
 
 use mc_fog_report_connection::FogPubkeyResolver;
+use mc_transaction_core::tx::TxOutMembershipProof;
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::{
     rpc_internal_error, rpc_logger, send_result, AdminService, BuildInfoService,
@@ -633,31 +636,35 @@ impl<
         Ok(response)
     }
 
+    /// Get a proof of membership for each requested TxOut.
     fn get_membership_proofs_impl(
         &mut self,
         request: mc_mobilecoind_api::GetMembershipProofsRequest,
     ) -> Result<mc_mobilecoind_api::GetMembershipProofsResponse, RpcStatus> {
-        let input_list: Vec<UnspentTxOut> = request
-            .get_input_list()
+        let outputs: Vec<TxOut> = request
+            .get_outputs()
             .iter()
-            .map(|proto_utxo| {
+            .map(|tx_out| {
                 // Proto -> Rust struct conversion.
-                UnspentTxOut::try_from(proto_utxo)
+                TxOut::try_from(tx_out)
                     .map_err(|err| rpc_internal_error("unspent_tx_out.try_from", err, &self.logger))
+                // UnspentTxOut::try_from(tx_out)
+                //     .map_err(|err| rpc_internal_error("unspent_tx_out.try_from", err, &self.logger))
             })
-            .collect::<Result<Vec<UnspentTxOut>, RpcStatus>>()?;
+            .collect::<Result<Vec<TxOut>, RpcStatus>>()?;
 
-        let inputs = self
+        let proofs: Vec<TxOutMembershipProof> = self
             .transactions_manager
-            .get_membership_proofs(input_list)
+            .get_membership_proofs(outputs.clone())
             .map_err(|err| rpc_internal_error("get_membership_proofs", err, &self.logger))?;
 
         let mut response = mc_mobilecoind_api::GetMembershipProofsResponse::new();
-        for (utxo, proof) in inputs.iter() {
-            let mut utxo_with_proof = mc_mobilecoind_api::TxOutWithProof::new();
-            utxo_with_proof.set_utxo(utxo.into());
-            utxo_with_proof.set_proof(proof.into());
-            response.mut_output_list().push(utxo_with_proof);
+
+        for (tx_out, proof) in outputs.iter().zip(proofs.iter()) {
+            let mut tx_out_with_proof = mc_mobilecoind_api::TxOutWithProof::new();
+            tx_out_with_proof.set_output(tx_out.into());
+            tx_out_with_proof.set_proof(proof.into());
+            response.mut_output_list().push(tx_out_with_proof);
         }
 
         Ok(response)
@@ -2642,6 +2649,7 @@ mod test {
     }
 
     #[test_with_logger]
+    /// Should return a correct proof-of-membership for each requested TxOut.
     fn test_get_membership_proofs(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
 
@@ -2671,46 +2679,49 @@ mod test {
         // Allow the new monitor to process the ledger.
         wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
 
-        // Get list of unspent tx outs
-        let all_utxos = mobilecoind_db
-            .get_utxos_for_subaddress(&monitor_id, 0)
-            .unwrap();
+        // Select some outputs from the ledger.
+        let outputs: Vec<TxOut> = {
+            let unspent_outputs = mobilecoind_db
+                .get_utxos_for_subaddress(&monitor_id, 0)
+                .unwrap();
 
-        // Get membership proofs for utxos 1, 3, 5.
-        let utxos = vec![
-            all_utxos[1].clone(),
-            all_utxos[3].clone(),
-            all_utxos[5].clone(),
-        ];
+            vec![
+                unspent_outputs[1].tx_out.clone(),
+                unspent_outputs[3].tx_out.clone(),
+                unspent_outputs[5].tx_out.clone(),
+            ]
+        };
 
         let mut request = mc_mobilecoind_api::GetMembershipProofsRequest::new();
-        request.set_input_list(RepeatedField::from_vec(
-            utxos
+        request.set_outputs(RepeatedField::from_vec(
+            outputs
                 .iter()
-                .map(mc_mobilecoind_api::UnspentTxOut::from)
+                .map(mc_mobilecoind_api::external::TxOut::from)
                 .collect(),
         ));
 
         let response = client.get_membership_proofs(&request).unwrap();
 
-        assert_eq!(response.output_list.len(), utxos.len());
+        // The response should should contain an element for each requested output.
+        assert_eq!(response.output_list.len(), outputs.len());
 
-        for (utxo, output) in utxos.iter().zip(response.get_output_list().iter()) {
+        for (tx_out, output_with_proof) in outputs.iter().zip(response.get_output_list().iter()) {
+            // The response should contain a TxOutWithProof for each requested TxOut.
             assert_eq!(
-                output.get_utxo(),
-                &mc_mobilecoind_api::UnspentTxOut::from(utxo)
+                output_with_proof.get_output(),
+                &mc_mobilecoind_api::external::TxOut::from(tx_out)
             );
 
-            let index = ledger_db
-                .get_tx_out_index_by_hash(&utxo.tx_out.hash())
-                .unwrap();
-            let proofs = ledger_db.get_tx_out_proof_of_memberships(&[index]).unwrap();
-            assert_eq!(proofs.len(), 1);
+            // The returned proof should be correct.
+            let expected_proof = {
+                let index = ledger_db.get_tx_out_index_by_hash(&tx_out.hash()).unwrap();
+                let proofs = ledger_db.get_tx_out_proof_of_memberships(&[index]).unwrap();
+                assert_eq!(proofs.len(), 1);
 
-            assert_eq!(
-                output.get_proof(),
-                &mc_mobilecoind_api::external::TxOutMembershipProof::from(&proofs[0])
-            );
+                mc_mobilecoind_api::external::TxOutMembershipProof::from(&proofs[0])
+            };
+
+            assert_eq!(output_with_proof.get_proof(), &expected_proof);
         }
     }
 

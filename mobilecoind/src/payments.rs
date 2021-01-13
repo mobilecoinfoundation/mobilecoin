@@ -178,26 +178,31 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
             selected_utxos,
         );
 
-        // Get membership proofs for selected utxos.
-        let selected_utxos_with_proofs = self.get_membership_proofs(selected_utxos.clone())?;
+        // The selected_utxos with corresponding proofs of membership.
+        let selected_utxos_with_proofs: Vec<(UnspentTxOut, TxOutMembershipProof)> = {
+            let outputs = selected_utxos
+                .iter()
+                .map(|utxo| utxo.tx_out.clone())
+                .collect();
+            let proofs = self.get_membership_proofs(outputs)?;
+
+            selected_utxos.into_iter().zip(proofs.into_iter()).collect()
+        };
         log::trace!(logger, "Got membership proofs");
 
-        // Get rings.
-        // TODO configurable ring size
-        let excluded_tx_out_indices: Vec<u64> = selected_utxos
-            .iter()
-            .map(|utxo| {
-                self.ledger_db
-                    .get_tx_out_index_by_hash(&utxo.tx_out.hash())
-                    .map_err(Error::LedgerDB)
-            })
-            .collect::<Result<Vec<u64>, Error>>()?;
+        // A ring of mixins for each UTXO.
+        let rings = {
+            let excluded_tx_out_indices: Vec<u64> = selected_utxos_with_proofs
+                .iter()
+                .map(|(_, proof)| proof.index)
+                .collect();
 
-        let rings = self.get_rings(
-            DEFAULT_RING_SIZE,
-            selected_utxos_with_proofs.len(),
-            &excluded_tx_out_indices,
-        )?;
+            self.get_rings(
+                DEFAULT_RING_SIZE, // TODO configurable ring size
+                selected_utxos_with_proofs.len(),
+                &excluded_tx_out_indices,
+            )?
+        };
         log::trace!(logger, "Got {} rings", rings.len());
 
         // Come up with tombstone block.
@@ -268,26 +273,31 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
             total_value
         );
 
-        // Get membership proofs for selected utxos.
-        let selected_utxos_with_proofs = self.get_membership_proofs(selected_utxos.clone())?;
+        // The selected_utxos with corresponding proofs of membership.
+        let selected_utxos_with_proofs: Vec<(UnspentTxOut, TxOutMembershipProof)> = {
+            let outputs = selected_utxos
+                .iter()
+                .map(|utxo| utxo.tx_out.clone())
+                .collect();
+            let proofs = self.get_membership_proofs(outputs)?;
+
+            selected_utxos.into_iter().zip(proofs.into_iter()).collect()
+        };
         log::trace!(logger, "Got membership proofs");
 
-        // Get rings.
-        // TODO configurable ring size
-        let excluded_tx_out_indices: Vec<u64> = selected_utxos
-            .iter()
-            .map(|utxo| {
-                self.ledger_db
-                    .get_tx_out_index_by_hash(&utxo.tx_out.hash())
-                    .map_err(Error::LedgerDB)
-            })
-            .collect::<Result<Vec<u64>, Error>>()?;
+        // A ring of mixins for each selected utxo.
+        let rings = {
+            let excluded_tx_out_indices: Vec<u64> = selected_utxos_with_proofs
+                .iter()
+                .map(|(_, proof)| proof.index)
+                .collect();
 
-        let rings = self.get_rings(
-            DEFAULT_RING_SIZE,
-            selected_utxos_with_proofs.len(),
-            &excluded_tx_out_indices,
-        )?;
+            self.get_rings(
+                DEFAULT_RING_SIZE, // TODO configurable ring size
+                selected_utxos_with_proofs.len(),
+                &excluded_tx_out_indices,
+            )?
+        };
         log::trace!(logger, "Got {} rings", rings.len());
 
         // Come up with tombstone block.
@@ -326,7 +336,7 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
     pub fn generate_tx_from_tx_list(
         &self,
         account_key: &AccountKey,
-        input_list: &[UnspentTxOut],
+        inputs: &[UnspentTxOut],
         receiver: &PublicAddress,
         fee: u64,
     ) -> Result<TxProposal, Error> {
@@ -336,7 +346,7 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
         let fee = if fee == 0 { MINIMUM_FEE } else { fee };
 
         // All inputs are to be spent
-        let total_value: u64 = input_list.iter().map(|utxo| utxo.value).sum();
+        let total_value: u64 = inputs.iter().map(|utxo| utxo.value).sum();
 
         if total_value < fee {
             return Err(Error::InsufficientFunds);
@@ -348,24 +358,30 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
             total_value - fee
         );
 
-        // Get the proofs and the rings
-        let utxos_with_proofs = self.get_membership_proofs(input_list.to_vec())?;
+        // The inputs with corresponding proofs of membership.
+        let inputs_with_proofs: Vec<(UnspentTxOut, TxOutMembershipProof)> = {
+            let proofs = self
+                .get_membership_proofs(inputs.iter().map(|utxo| utxo.tx_out.clone()).collect())?;
+            inputs.iter().cloned().zip(proofs.into_iter()).collect()
+        };
         log::trace!(logger, "Got membership proofs");
 
-        let excluded_tx_out_indices: Vec<u64> = input_list
+        // The index of each input in the ledger.
+        let input_indices: Vec<u64> = inputs_with_proofs
             .iter()
-            .map(|utxo| {
-                self.ledger_db
-                    .get_tx_out_index_by_hash(&utxo.tx_out.hash())
-                    .map_err(Error::LedgerDB)
-            })
-            .collect::<Result<Vec<u64>, Error>>()?;
+            .map(|(_, membership_proof)| membership_proof.index)
+            .collect();
 
-        let rings = self.get_rings(
-            DEFAULT_RING_SIZE,
-            utxos_with_proofs.len(),
-            &excluded_tx_out_indices,
-        )?;
+        // let excluded_tx_out_indices: Vec<u64> = inputs
+        //     .iter()
+        //     .map(|utxo| {
+        //         self.ledger_db
+        //             .get_tx_out_index_by_hash(&utxo.tx_out.hash())
+        //             .map_err(Error::LedgerDB)
+        //     })
+        //     .collect::<Result<Vec<u64>, Error>>()?;
+
+        let rings = self.get_rings(DEFAULT_RING_SIZE, inputs.len(), &input_indices)?;
         log::trace!(logger, "Got {} rings", rings.len());
 
         // Come up with tombstone block.
@@ -381,7 +397,7 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
         // Build and return the TxProposal object
         let mut rng = rand::thread_rng();
         let tx_proposal = Self::build_tx_proposal(
-            &utxos_with_proofs,
+            &inputs_with_proofs,
             rings,
             fee,
             &account_key,
@@ -560,18 +576,18 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
         }
     }
 
-    /// Get membership proofs for a list of UTXOs.
+    /// Get membership proofs for a list of transaction outputs.
     pub fn get_membership_proofs(
         &self,
-        utxos: Vec<UnspentTxOut>,
-    ) -> Result<Vec<(UnspentTxOut, TxOutMembershipProof)>, Error> {
-        let indexes = utxos
+        outputs: Vec<TxOut>,
+    ) -> Result<Vec<TxOutMembershipProof>, Error> {
+        let indexes = outputs
             .iter()
-            .map(|utxo| self.ledger_db.get_tx_out_index_by_hash(&utxo.tx_out.hash()))
+            .map(|tx_out| self.ledger_db.get_tx_out_index_by_hash(&tx_out.hash()))
             .collect::<Result<Vec<u64>, LedgerError>>()?;
-        let proofs = self.ledger_db.get_tx_out_proof_of_memberships(&indexes)?;
+        Ok(self.ledger_db.get_tx_out_proof_of_memberships(&indexes)?)
 
-        Ok(utxos.into_iter().zip(proofs.into_iter()).collect())
+        // Ok(outputs.into_iter().zip(proofs.into_iter()).collect())
     }
 
     /// Get rings.
