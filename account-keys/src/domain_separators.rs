@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 /// The tag for the signature context
 pub const FOG_AUTHORITY_SIGNATURE_TAG: &[u8; 23] = b"Fog authority signature";

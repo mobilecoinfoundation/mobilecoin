@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 #![no_std]
 #![feature(alloc_error_handler)] // for alloc_error_handler

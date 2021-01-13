@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 //! Implementation of the `TransactionsFetcher` trait that fetches transactions data over http(s)
 //! using the `reqwest` library. It can be used, for example, to get transaction data from S3.

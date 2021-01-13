@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 //! A node determines whether transactions are valid, and participates in voting with the members of its quorum set.
 use crate::{

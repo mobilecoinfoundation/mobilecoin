@@ -1,4 +1,4 @@
-# Copyright (c) 2018-2020 MobileCoin Inc.
+# Copyright (c) 2018-2021 The MobileCoin Foundation
 
 MOB_PER_PICOMOB = 1_000_000_000_000
 

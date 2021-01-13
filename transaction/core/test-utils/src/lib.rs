@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 use core::convert::TryFrom;
 pub use mc_account_keys::{AccountKey, PublicAddress, ViewKey, DEFAULT_SUBADDRESS_INDEX};

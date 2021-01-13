@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 //! Provides an mpsc (multi-producer single-consumer) channel wrapped in an
 //! [`IntGauge`](mc_util_metrics::IntGauge)

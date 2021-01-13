@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 //! Fog Report Connection handles resolving the public key from the report service
 //! on making grpc to the reports endpoint

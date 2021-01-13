@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 //! Database storage for data obtained by processing blocks.
 //! * Stores a map of (monitor id, block number) -> list of transactions that

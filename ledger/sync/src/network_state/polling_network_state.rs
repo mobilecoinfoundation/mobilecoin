@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 //! NetworkState implementation that polls nodes for their current state and is not part of
 //! consensus. This is currently implemented by faking SCP messages and utilizing SCPNetworkState.

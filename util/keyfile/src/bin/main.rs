@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 //! A tool for inspecting binary keyfiles
 //! Reads .bin file on stdin, or a path to .bin file, emits description on stdout

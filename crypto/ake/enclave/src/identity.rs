@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 /// Trait for user-defined EnclaveIdentity objects that produce data that must go into Reports.
 /// An AkeEnclaveState contains an EnclaveIdentity object and queries it when it needs to make
