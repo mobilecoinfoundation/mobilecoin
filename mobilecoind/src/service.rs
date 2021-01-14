@@ -22,7 +22,8 @@ use mc_common::{
 };
 use mc_connection::{BlockchainConnection, UserTxConnection};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
-use mc_ledger_db::{Ledger, LedgerDB};
+use mc_fog_report_connection::FogPubkeyResolver;
+use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
 use mc_ledger_sync::{NetworkState, PollingNetworkState};
 use mc_mobilecoind_api::{
     mobilecoind_api_grpc::{create_mobilecoind_api, MobilecoindApi},
@@ -32,11 +33,8 @@ use mc_transaction_core::{
     get_tx_out_shared_secret,
     onetime_keys::recover_onetime_private_key,
     ring_signature::KeyImage,
-    tx::{TxOut, TxOutConfirmationNumber},
+    tx::{TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
 };
-
-use mc_fog_report_connection::FogPubkeyResolver;
-use mc_transaction_core::tx::TxOutMembershipProof;
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::{
     rpc_internal_error, rpc_logger, send_result, AdminService, BuildInfoService,
@@ -636,6 +634,50 @@ impl<
         Ok(response)
     }
 
+    /// Get mixins
+    fn get_mixins_impl(
+        &mut self,
+        request: mc_mobilecoind_api::GetMixinsRequest,
+    ) -> Result<mc_mobilecoind_api::GetMixinsResponse, RpcStatus> {
+        let num_mixins: usize = request.get_num_mixins() as usize;
+        let excluded: Vec<TxOut> = request
+            .get_excluded()
+            .iter()
+            .map(|tx_out| {
+                // Proto -> Rust struct conversion.
+                TxOut::try_from(tx_out)
+                    .map_err(|err| rpc_internal_error("tx_out.try_from", err, &self.logger))
+            })
+            .collect::<Result<Vec<TxOut>, RpcStatus>>()?;
+
+        let excluded_indexes = excluded
+            .iter()
+            .map(|tx_out| self.ledger_db.get_tx_out_index_by_hash(&tx_out.hash()))
+            .collect::<Result<Vec<u64>, LedgerError>>()
+            .map_err(|e| rpc_internal_error("ledger_error", e, &self.logger))?; // TODO better error handling
+
+        let mixins_with_proofs: Vec<(TxOut, TxOutMembershipProof)> = self
+            .transactions_manager
+            .get_rings(num_mixins, 1, &excluded_indexes)
+            .map(|nested| nested.into_iter().flatten().collect())
+            .map_err(|e| rpc_internal_error("get_rings_error", e, &self.logger))?; // TODO better error handling
+
+        let mut response = mc_mobilecoind_api::GetMixinsResponse::new();
+
+        let tx_outs_with_proofs: Vec<mc_mobilecoind_api::TxOutWithProof> = mixins_with_proofs
+            .iter()
+            .map(|(tx_out, proof)| {
+                let mut tx_out_with_proof = mc_mobilecoind_api::TxOutWithProof::new();
+                tx_out_with_proof.set_output(tx_out.into());
+                tx_out_with_proof.set_proof(proof.into());
+                tx_out_with_proof
+            })
+            .collect();
+
+        response.set_mixins(RepeatedField::from(tx_outs_with_proofs));
+        Ok(response)
+    }
+
     /// Get a proof of membership for each requested TxOut.
     fn get_membership_proofs_impl(
         &mut self,
@@ -647,9 +689,7 @@ impl<
             .map(|tx_out| {
                 // Proto -> Rust struct conversion.
                 TxOut::try_from(tx_out)
-                    .map_err(|err| rpc_internal_error("unspent_tx_out.try_from", err, &self.logger))
-                // UnspentTxOut::try_from(tx_out)
-                //     .map_err(|err| rpc_internal_error("unspent_tx_out.try_from", err, &self.logger))
+                    .map_err(|err| rpc_internal_error("tx_out.try_from", err, &self.logger))
             })
             .collect::<Result<Vec<TxOut>, RpcStatus>>()?;
 
@@ -1685,6 +1725,7 @@ build_api! {
     create_address_code CreateAddressCodeRequest CreateAddressCodeResponse create_address_code_impl,
 
     // Transactions
+    get_mixins GetMixinsRequest GetMixinsResponse get_mixins_impl,
     get_membership_proofs GetMembershipProofsRequest GetMembershipProofsResponse get_membership_proofs_impl,
     generate_tx GenerateTxRequest GenerateTxResponse generate_tx_impl,
     generate_optimization_tx GenerateOptimizationTxRequest GenerateOptimizationTxResponse generate_optimization_tx_impl,

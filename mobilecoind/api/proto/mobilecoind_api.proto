@@ -36,6 +36,7 @@ service MobilecoindAPI {
     rpc CreateAddressCode (CreateAddressCodeRequest) returns (CreateAddressCodeResponse) {}
 
     // Txs
+    rpc GetMixins( GetMixinsRequest) returns (GetMixinsResponse) {}
     rpc GetMembershipProofs (GetMembershipProofsRequest) returns (GetMembershipProofsResponse) {}
     rpc GenerateTx (GenerateTxRequest) returns (GenerateTxResponse) {}
     rpc GenerateOptimizationTx (GenerateOptimizationTxRequest) returns (GenerateOptimizationTxResponse) {}
@@ -394,6 +395,15 @@ message CreateAddressCodeResponse {
 message TxOutWithProof {
     external.TxOut output = 1;
     external.TxOutMembershipProof proof = 2;
+}
+
+message GetMixinsRequest {
+    uint64 num_mixins = 1;
+    repeated external.TxOut excluded = 2;
+}
+
+message GetMixinsResponse {
+    repeated TxOutWithProof mixins = 1;
 }
 
 message GetMembershipProofsRequest {
