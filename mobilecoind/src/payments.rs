@@ -245,8 +245,8 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
     /// Create a TxProposal that attempts to merge multiple UTXOs into a single larger UTXO.
     ///
     /// # Arguments
-    /// * `monitor_id` - ???
-    /// * `subaddress_index` - ???
+    /// * `monitor_id` - Monitor ID of the inputs to spend.
+    /// * `subaddress_index` - Subaddress of the inputs to spend.
     pub fn generate_optimization_tx(
         &self,
         monitor_id: &MonitorId,
@@ -348,7 +348,7 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
     /// Create a TxProposal that sends the total value of all inputs minus the fee to a single receiver.
     ///
     /// # Arguments
-    /// * `account_key` -
+    /// * `account_key` -Account key that owns the inputs.
     /// * `inputs` - UTXOs that will be spent by the transaction.
     /// * `receiver` - The single receiver of the transaction's outputs.
     /// * `fee` - Transaction fee in picoMOB. If zero, defaults to MIN_FEE.
@@ -664,11 +664,11 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
     /// * `inputs` - UTXOs to spend, with membership proofs.
     /// * `rings` - A set of mixins for each input, with membership proofs.
     /// * `fee` - Transaction fee, in picoMOB.
-    /// * `from_account_key` - ???
-    /// * `change_subaddress` - ???
-    /// * `destinations` - ???
-    /// * `tombstone_block` - ???
-    /// * `fog_pubkey_resolver` - ???
+    /// * `from_account_key` - Owns the inputs. Also the recipient of any change.
+    /// * `change_subaddress` - Subaddress for change recipient.
+    /// * `destinations` - Outputs of the transaction.
+    /// * `tombstone_block` - Tombstone block of the transaciton.
+    /// * `fog_pubkey_resolver` - Provides Fog key report, when Fog is enabled.
     /// * `rng` -
     /// * `logger` - Logger
     fn build_tx_proposal(
