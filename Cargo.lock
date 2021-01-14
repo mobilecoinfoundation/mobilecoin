@@ -2873,8 +2873,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "mc-crypto-x509-test-utils"
+name = "mc-crypto-x509-test-vectors"
 version = "1.0.0"
+dependencies = [
+ "cargo-emit",
+ "mc-crypto-keys",
+ "mc-util-build-script",
+ "x509-parser",
+]
 
 [[package]]
 name = "mc-crypto-x509-utils"

@@ -1,7 +1,15 @@
 [package]
-name = "mc-crypto-x509-test-utils"
+name = "mc-crypto-x509-test-vectors"
 version = "1.0.0"
 authors = ["MobileCoin"]
 edition = "2018"
 description = "Utilities for generating certificates and chains for unit tests"
 readme = "README.md"
+
+[build-dependencies]
+cargo-emit = "0.1.1"
+mc-util-build-script = { path = "../../../util/build/script" }
+
+[dependencies]
+mc-crypto-keys = { path = "../../keys" }
+x509-parser = "0.9"
