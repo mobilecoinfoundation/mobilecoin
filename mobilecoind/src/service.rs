@@ -2705,6 +2705,175 @@ mod test {
     }
 
     #[test_with_logger]
+    /// Get mixins should return the correct number of distinct mixins.
+    fn test_get_mixins(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([44u8; 32]);
+
+        let sender = AccountKey::random(&mut rng);
+
+        // 1 known recipient, 3 random recipients and no monitors.
+        let (ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(
+                3,
+                &vec![sender.default_subaddress()],
+                &vec![],
+                logger.clone(),
+                &mut rng,
+            );
+
+        // The ledger contains 40 transaction outputs.
+        assert_eq!(ledger_db.num_txos().unwrap(), 40);
+
+        // Response should contain the requested number of distinct mixins.
+        {
+            let mut request = mc_mobilecoind_api::GetMixinsRequest::new();
+            request.set_num_mixins(13);
+            let response = client.get_mixins(&request).unwrap();
+            let mixins_with_proofs: Vec<mc_mobilecoind_api::TxOutWithProof> =
+                response.get_mixins().to_vec();
+
+            assert_eq!(mixins_with_proofs.len(), 13);
+
+            // Mixins should be distinct.
+            let mixin_hashes: HashSet<_> = mixins_with_proofs
+                .iter()
+                .map(|mixin| {
+                    let tx_out: TxOut = TxOut::try_from(mixin.get_output()).unwrap();
+                    tx_out.hash()
+                })
+                .collect();
+
+            assert_eq!(mixin_hashes.len(), mixins_with_proofs.len());
+        }
+
+        // Requesting more mixins than exist in the ledger should return an error.
+        // TODO: enforce a limit on the number of mixins that may be requested.
+        {
+            let mut bad_request = mc_mobilecoind_api::GetMixinsRequest::new();
+            bad_request.set_num_mixins(10000);
+            let response = client.get_mixins(&bad_request);
+
+            assert!(response.is_err());
+        }
+    }
+
+    #[test_with_logger]
+    /// Get mixins should not return an "excluded" TxOut.
+    fn test_get_mixins_excluded(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([44u8; 32]);
+
+        let sender = AccountKey::random(&mut rng);
+
+        // 1 known recipient, 3 random recipients and no monitors.
+        let (ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(
+                3,
+                &vec![sender.default_subaddress()],
+                &vec![],
+                logger.clone(),
+                &mut rng,
+            );
+
+        assert_eq!(ledger_db.num_txos().unwrap(), 40);
+
+        // A list of outputs to exclude.
+        let to_exclude: Vec<TxOut> = {
+            let data = MonitorData::new(
+                sender.clone(),
+                0,  // first_subaddress
+                20, // num_subaddresses
+                0,  // first_block
+                "", // name
+            )
+            .unwrap();
+
+            // Insert into database.
+            let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
+
+            // Allow the new monitor to process the ledger.
+            wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+            // Select some outputs from the ledger.
+            mobilecoind_db
+                .get_utxos_for_subaddress(&monitor_id, 0)
+                .unwrap()
+                .into_iter()
+                .map(|utxo| utxo.tx_out)
+                .collect()
+        };
+
+        assert_eq!(to_exclude.len(), 10);
+
+        // The ledger contains 40 outputs. Requesting 30 and excluding 10 should return exactly the
+        // remaining 30.
+        let mut request = mc_mobilecoind_api::GetMixinsRequest::new();
+        request.set_num_mixins(30);
+        request.set_excluded(RepeatedField::from_vec(
+            to_exclude
+                .iter()
+                .map(mc_mobilecoind_api::external::TxOut::from)
+                .collect(),
+        ));
+
+        let response = client.get_mixins(&request).unwrap();
+
+        let mixins_with_proofs: Vec<mc_mobilecoind_api::TxOutWithProof> =
+            response.get_mixins().to_vec();
+
+        // Should contain 30 mixins
+        assert_eq!(mixins_with_proofs.len(), 30);
+
+        // None of the excluded outputs should be returned as mixins.
+        let excluded_hashes: HashSet<_> = to_exclude.iter().map(|tx_out| tx_out.hash()).collect();
+
+        for mixin in &mixins_with_proofs {
+            let mixin: TxOut = TxOut::try_from(mixin.get_output()).unwrap();
+            assert!(!excluded_hashes.contains(&mixin.hash()));
+        }
+    }
+
+    #[test_with_logger]
+    /// Get mixins should return valid membership proofs.
+    fn test_get_mixins_membership_proofs(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([89u8; 32]);
+        let sender = AccountKey::random(&mut rng);
+
+        // 1 known recipient, 3 random recipients and no monitors.
+        let (ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(
+                3,
+                &vec![sender.default_subaddress()],
+                &vec![],
+                logger.clone(),
+                &mut rng,
+            );
+
+        let mixins_with_proofs: Vec<mc_mobilecoind_api::TxOutWithProof> = {
+            let mut request = mc_mobilecoind_api::GetMixinsRequest::new();
+            request.set_num_mixins(13);
+            let response = client.get_mixins(&request).unwrap();
+            response.get_mixins().to_vec()
+        };
+
+        assert_eq!(mixins_with_proofs.len(), 13);
+
+        // Each membership proof should be correct.
+        for mixin_with_proof in &mixins_with_proofs {
+            let mixin: TxOut = TxOut::try_from(mixin_with_proof.get_output()).unwrap();
+
+            // The returned proof should be correct.
+            let expected_proof = {
+                let index = ledger_db.get_tx_out_index_by_hash(&mixin.hash()).unwrap();
+                let proofs = ledger_db.get_tx_out_proof_of_memberships(&[index]).unwrap();
+                assert_eq!(proofs.len(), 1);
+                mc_mobilecoind_api::external::TxOutMembershipProof::from(&proofs[0])
+            };
+
+            assert_eq!(mixin_with_proof.get_proof(), &expected_proof);
+        }
+    }
+
+    #[test_with_logger]
     /// Should return a correct proof-of-membership for each requested TxOut.
     fn test_get_membership_proofs(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
