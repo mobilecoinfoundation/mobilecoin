@@ -2760,7 +2760,7 @@ mod test {
     #[test_with_logger]
     /// Get mixins should not return an "excluded" TxOut.
     fn test_get_mixins_excluded(logger: Logger) {
-        let mut rng: StdRng = SeedableRng::from_seed([44u8; 32]);
+        let mut rng: StdRng = SeedableRng::from_seed([74u8; 32]);
 
         let sender = AccountKey::random(&mut rng);
 
