@@ -687,7 +687,7 @@ fn get_proof_of_membership(
     let outputs: Vec<mc_api::external::TxOut> = request
         .outputs
         .iter()
-        .map(|json_tx_out| mc_api::external::TxOut::try_from(json_tx_out))
+        .map(mc_api::external::TxOut::try_from)
         .collect::<Result<Vec<_>, _>>()?;
 
     // Make gRPC request.
@@ -732,7 +732,7 @@ fn get_mixins(
     let excluded: Vec<mc_api::external::TxOut> = request
         .excluded
         .iter()
-        .map(|json_tx_out| mc_api::external::TxOut::try_from(json_tx_out))
+        .map(mc_api::external::TxOut::try_from)
         .collect::<Result<Vec<_>, _>>()?;
 
     // Make gRPC request
