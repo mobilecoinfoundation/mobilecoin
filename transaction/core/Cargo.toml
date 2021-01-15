@@ -6,7 +6,6 @@ edition = "2018"
 
 [dependencies]
 # External dependencies
-digest = { version = "0.9", default-features = false }
 displaydoc = { version = "0.1", default-features = false }
 generic-array = { version = "0.14", features = ["serde", "more_lengths"] }
 hex_fmt = "0.3"
@@ -15,7 +14,6 @@ merlin = { version = "2.0", default-features = false }
 prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
 rand_core = { version = "0.5", default-features = false }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
-sha2 = { version = "0.9", default-features = false }
 subtle = { version = "2.2", default-features = false, features = ["i128"] }
 zeroize = { version = "1", default-features = false }
 
@@ -58,7 +56,7 @@ mc-crypto-digestible-test-utils = { path = "../../crypto/digestible/test-utils" 
 mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
 
 [dev-dependencies.proptest]
-version = "0.9" # Only works for 0.9.1 or newer
+version = "0.10" # Only works for 0.9.1 or newer
 default-features = false
 # Enable all default features not known to break code coverage builds
 features = ["default-code-coverage"]

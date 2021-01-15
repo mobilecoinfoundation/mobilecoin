@@ -21,7 +21,7 @@ grpcio = "0.6.0"
 hex = "0.4"
 rand = "0.7"
 rand_hc = "0.2"
-retry = "0.5"
+retry = "1.2"
 sha2 = { version = "0.9", features = ["asm"] }
 
 [dev-dependencies]

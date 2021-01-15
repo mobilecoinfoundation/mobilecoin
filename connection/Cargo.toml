@@ -15,7 +15,6 @@ mc-crypto-noise = { path = "../crypto/noise" }
 mc-crypto-rand = { path = "../crypto/rand" }
 mc-transaction-core = { path = "../transaction/core" }
 mc-util-grpc = { path = "../util/grpc" }
-mc-util-host-cert = { path = "../util/host-cert" }
 mc-util-serial = { path = "../util/serial" }
 mc-util-uri = { path = "../util/uri" }
 
@@ -23,9 +22,8 @@ aes-gcm = "0.6"
 cookie = "0.14"
 displaydoc = { version = "0.1.7", default-features = false }
 grpcio = "0.6.0"
-retry = "0.5"
+retry = "1.2"
 secrecy = "0.4"
-serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 sha2 = "0.9"
 
 [dev-dependencies]

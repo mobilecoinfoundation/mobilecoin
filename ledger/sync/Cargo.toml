@@ -16,23 +16,19 @@ mc-common = { path = "../../common", features = ["log"] }
 mc-connection = { path = "../../connection" }
 mc-consensus-enclave-measurement = { path = "../../consensus/enclave/measurement" }
 mc-consensus-scp = { path = "../../consensus/scp" }
-mc-crypto-keys = { path = "../../crypto/keys" }
 mc-ledger-db = { path = "../../ledger/db" }
-mc-peers = { path = "../../peers" }
 mc-transaction-core = { path = "../../transaction/core" }
 mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
-mc-util-metrics = { path = "../..//util/metrics" }
 mc-util-uri = { path = "../../util/uri" }
 
 crossbeam-channel = "0.4"
 failure = "0.1.8"
 grpcio = "0.6.0"
-lazy_static = "1.4"
-mockall = "0.7.2"
+mockall = "0.8.3"
 protobuf = "2.12"
 rand = "0.7"
 reqwest = { version = "0.10" , features = ["rustls-tls"], default_features = false }
-retry = "0.5"
+retry = "1.2"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 tempdir = "0.3"
 url = "2.1"

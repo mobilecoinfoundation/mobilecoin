@@ -36,6 +36,7 @@ service MobilecoindAPI {
     rpc CreateAddressCode (CreateAddressCodeRequest) returns (CreateAddressCodeResponse) {}
 
     // Txs
+    rpc GetMembershipProofs (GetMembershipProofsRequest) returns (GetMembershipProofsResponse) {}
     rpc GenerateTx (GenerateTxRequest) returns (GenerateTxResponse) {}
     rpc GenerateOptimizationTx (GenerateOptimizationTxRequest) returns (GenerateOptimizationTxResponse) {}
     rpc GenerateTransferCodeTx (GenerateTransferCodeTxRequest) returns (GenerateTransferCodeTxResponse) {}
@@ -46,7 +47,7 @@ service MobilecoindAPI {
     rpc GetLedgerInfo (google.protobuf.Empty) returns (GetLedgerInfoResponse) {}
     rpc GetBlockInfo (GetBlockInfoRequest) returns (GetBlockInfoResponse) {}
     rpc GetBlock (GetBlockRequest) returns (GetBlockResponse) {}
-    rpc GetTxStatusAsSender (GetTxStatusAsSenderRequest) returns (GetTxStatusAsSenderResponse) {}
+    rpc GetTxStatusAsSender (SubmitTxResponse) returns (GetTxStatusAsSenderResponse) {}
     rpc GetTxStatusAsReceiver (GetTxStatusAsReceiverRequest) returns (GetTxStatusAsReceiverResponse) {}
     rpc GetProcessedBlock (GetProcessedBlockRequest) returns (GetProcessedBlockResponse) {}
     rpc GetBlockIndexByTxPubKey (GetBlockIndexByTxPubKeyRequest) returns (GetBlockIndexByTxPubKeyResponse) {}
@@ -71,7 +72,7 @@ service MobilecoindAPI {
 //*********************************
 
 
-// Possible transaction status values. Senders check with key images. Receivers check with tx public keys.
+// Possible transaction status values. Senders check with key images and tx public keys. Receivers check with tx public keys.
 enum TxStatus {
     // The transaction is not in the public ledger.
     Unknown = 0;
@@ -82,8 +83,17 @@ enum TxStatus {
     // Error: The transaction is not in the public ledger, and the tombstone block has been exceeded.
     TombstoneBlockExceeded = 2;
 
-    // The transaction was found in the ledger but the confirmation number is incorrect
+    // The transaction was found in the ledger but the confirmation number is incorrect.
     InvalidConfirmationNumber = 3;
+
+    // The tx public keys are in different blocks. This indicates the receipt is possibly malformed.
+    PublicKeysInDifferentBlocks = 4;
+
+    // Not all key_images in the same block as the tx_public_keys, indicating the transaction for this receipt failed.
+    TransactionFailureKeyImageBlockMismatch = 5;
+
+    // Some key_images are spent elsewhere in the ledger, despite the tx_public_keys not appearing in the ledger.
+    TransactionFailureKeyImageAlreadySpent = 6;
 }
 
 // Structure used in specifying the list of outputs when generating a transaction.
@@ -390,6 +400,19 @@ message CreateAddressCodeResponse {
 // Transactions
 //
 
+message TxOutWithProof {
+    UnspentTxOut utxo = 1;
+    external.TxOutMembershipProof proof = 2;
+}
+
+message GetMembershipProofsRequest {
+    repeated UnspentTxOut input_list = 1;
+}
+
+message GetMembershipProofsResponse {
+    repeated TxOutWithProof output_list = 1;
+}
+
 // Generate a transaction proposal object.
 // Notes:
 // - Sum of inputs needs to be greater than sum of outlays and fee.
@@ -548,10 +571,7 @@ message GetBlockResponse {
     repeated external.TxOut txos = 4;
 }
 
-// Get the status of a submitted transaction as the Sender (using the key image).
-message GetTxStatusAsSenderRequest {
-    SenderTxReceipt receipt = 1;
-}
+// Get the status of a submitted transaction as the Sender.
 message GetTxStatusAsSenderResponse {
     TxStatus status = 1;
 }

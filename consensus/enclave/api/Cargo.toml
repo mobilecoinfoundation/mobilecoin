@@ -22,13 +22,11 @@ mc-attest-ake = { path = "../../../attest/ake", default-features = false }
 mc-attest-enclave-api = { path = "../../../attest/enclave-api", default-features = false }
 mc-common = { path = "../../../common", default-features = false }
 mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
-mc-crypto-noise = { path = "../../../crypto/noise", default-features = false }
 mc-util-serial = { path = "../../../util/serial", default-features = false }
 mc-crypto-message-cipher = { path = "../../../crypto/message-cipher" }
 mc-sgx-compat = { path = "../../../sgx/compat" }
 mc-sgx-report-cache-api = { path = "../../../sgx/report-cache/api" }
 mc-transaction-core = { path = "../../../transaction/core" }
 
-cfg-if = "0.1"
 failure = { version = "0.1.8", default-features = false, features = ["derive"] }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }

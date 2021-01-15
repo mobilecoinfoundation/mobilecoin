@@ -15,10 +15,9 @@ mc-ledger-db = { path = "../../ledger/db" }
 mc-transaction-core = { path = "../../transaction/core" }
 
 dirs = "2.0"
-dotenv = "0.14"
 failure = "0.1.8"
 protobuf = "2.12"
-retry = "0.5"
+retry = "1.2"
 rusoto_core = { version = "0.42.0", features = ["rustls"], default_features = false }
 rusoto_s3 = { version = "0.42.0", features = ["rustls"], default_features = false }
 serde = { version = "1.0", features = ["derive"] }

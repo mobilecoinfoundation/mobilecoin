@@ -26,4 +26,3 @@ digest = "0.9"
 futures = "0.3"
 grpcio = "0.6.0"
 protobuf = "2.12"
-serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }

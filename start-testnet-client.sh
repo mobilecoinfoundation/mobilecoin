@@ -21,9 +21,9 @@ curl -O https://enclave-distribution.test.mobilecoin.com/${SIGSTRUCT_URI}
 
 TARGETDIR=./target/release
 
-echo "Building mobilecoind and mc-testnet-client. This will take a few moments."
+echo "Building mobilecoind and mc-mobilecoind-json. This will take a few moments."
 SGX_MODE=HW IAS_MODE=PROD CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css \
-        cargo build --release -p mc-mobilecoind -p mc-testnet-client
+        cargo build --release -p mc-mobilecoind -p mc-mobilecoind-json
 
 if [[ -f /tmp/ledger-db ]] || [[ -f /tmp/transaction-db ]]; then
     echo "Removing ledger-db and transaction_db from previous runs. Comment out this line to keep them for future runs."
@@ -48,8 +48,8 @@ if ps -p $pid > /dev/null; then
     echo "Sleeping 5s to allow mobilecoind to sync the ledger"
     sleep 5
 
-    echo "Starting local mc-test-client."
-    ${TARGETDIR}/mc-testnet-client
+    echo "Starting local mc-mobilecoind-json."
+    ${TARGETDIR}/mc-mobilecoind-json
 else
     echo "Starting mobilecoind failed. Please check logs at $(pwd)/mobilecoind.log."
 fi
