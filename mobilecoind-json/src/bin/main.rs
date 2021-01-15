@@ -677,6 +677,95 @@ fn tx_out_get_block_index_by_public_key(
     Ok(Json(JsonBlockIndexByTxPubKeyResponse::from(&resp)))
 }
 
+#[post("/tx-out/proof-of-membership", format = "json", data = "<request>")]
+/// Get a proof of membership for each queried TxOut.
+fn get_proof_of_membership(
+    state: rocket::State<State>,
+    request: Json<JsonMembershipProofRequest>,
+) -> Result<Json<JsonMembershipProofResponse>, String> {
+    // Requested TxOuts.
+    let outputs: Vec<mc_api::external::TxOut> = request
+        .outputs
+        .iter()
+        .map(|json_tx_out| mc_api::external::TxOut::try_from(json_tx_out))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    // Make gRPC request.
+    let mut get_membership_proofs_request = mc_mobilecoind_api::GetMembershipProofsRequest::new();
+    get_membership_proofs_request.set_outputs(RepeatedField::from_vec(outputs));
+
+    let get_membership_proofs_response = state
+        .mobilecoind_api_client
+        .get_membership_proofs(&get_membership_proofs_request)
+        .map_err(|err| format!("Failed getting membership proofs: {}", err))?;
+
+    // Return JSON response
+    let outputs_and_proofs: Vec<(JsonTxOut, JsonTxOutMembershipProof)> =
+        get_membership_proofs_response
+            .get_output_list()
+            .iter()
+            .map(|tx_out_with_proof| {
+                let tx_out = JsonTxOut::from(tx_out_with_proof.get_output());
+                let proof = JsonTxOutMembershipProof::from(tx_out_with_proof.get_proof());
+                (tx_out, proof)
+            })
+            .collect();
+
+    let (outputs, membership_proofs): (Vec<JsonTxOut>, Vec<JsonTxOutMembershipProof>) =
+        outputs_and_proofs.into_iter().unzip();
+
+    let response = JsonMembershipProofResponse {
+        outputs,
+        membership_proofs,
+    };
+
+    Ok(Json(response))
+}
+
+#[post("/tx-out/mixin", format = "json", data = "<request>")]
+/// Get a list of TxOuts for use as mixins.
+fn get_mixins(
+    state: rocket::State<State>,
+    request: Json<JsonMixinRequest>,
+) -> Result<Json<JsonMixinResponse>, String> {
+    let num_mixins = request.num_mixins;
+    let excluded: Vec<mc_api::external::TxOut> = request
+        .excluded
+        .iter()
+        .map(|json_tx_out| mc_api::external::TxOut::try_from(json_tx_out))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    // Make gRPC request
+    let mut get_mixins_request = mc_mobilecoind_api::GetMixinsRequest::new();
+    get_mixins_request.set_num_mixins(num_mixins);
+    get_mixins_request.set_excluded(RepeatedField::from_vec(excluded));
+
+    let get_mixins_response = state
+        .mobilecoind_api_client
+        .get_mixins(&get_mixins_request)
+        .map_err(|err| format!("Failed getting mixins: {}", err))?;
+
+    let mixins_and_proofs: Vec<(JsonTxOut, JsonTxOutMembershipProof)> = get_mixins_response
+        .get_mixins()
+        .iter()
+        .map(|tx_out_with_proof| {
+            let tx_out = JsonTxOut::from(tx_out_with_proof.get_output());
+            let proof = JsonTxOutMembershipProof::from(tx_out_with_proof.get_proof());
+            (tx_out, proof)
+        })
+        .collect();
+
+    let (mixins, membership_proofs): (Vec<JsonTxOut>, Vec<JsonTxOutMembershipProof>) =
+        mixins_and_proofs.into_iter().unzip();
+
+    let response = JsonMixinResponse {
+        mixins,
+        membership_proofs,
+    };
+
+    Ok(Json(response))
+}
+
 fn main() {
     mc_common::setup_panic_handler();
     let _sentry_guard = mc_common::sentry::init();
@@ -736,6 +825,8 @@ fn main() {
                 block_details,
                 processed_block,
                 tx_out_get_block_index_by_public_key,
+                get_mixins,
+                get_proof_of_membership,
             ],
         )
         .manage(State {
