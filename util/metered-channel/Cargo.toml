@@ -7,4 +7,4 @@ edition = "2018"
 [dependencies]
 mc-util-metrics = { path = "../../util/metrics" }
 
-crossbeam-channel = "0.4"
+crossbeam-channel = "0.5"
