@@ -3,8 +3,7 @@
 //! Generate canned certificate data (via bash script)
 
 use mc_util_build_script::Environment;
-use std::fs;
-use std::process::Command;
+use std::{fs, io::ErrorKind, process::Command};
 
 fn main() {
     let env = Environment::default();
@@ -23,7 +22,14 @@ fn main() {
     );
 
     let mut openssl_cnf = env.out_dir().join("openssl");
-    fs::remove_dir_all(&openssl_cnf).expect("Could not remove existing openssl output dir");
+    match fs::remove_dir_all(&openssl_cnf) {
+        Ok(()) => (),
+        Err(e) => {
+            if e.kind() != ErrorKind::NotFound {
+                panic!("Error removing existing openssl dir: {}", e);
+            }
+        }
+    }
     fs::create_dir_all(&openssl_cnf).expect("Could not create openssl output dir");
 
     openssl_cnf.push("openssl.cnf");
