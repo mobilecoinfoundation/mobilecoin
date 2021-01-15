@@ -3,13 +3,31 @@
 //! Generate canned certificate data (via bash script)
 
 use mc_util_build_script::Environment;
+use std::fs;
 use std::process::Command;
 
 fn main() {
     let env = Environment::default();
 
-    let openssl = env.dir().join("openssl.cnf");
-    cargo_emit::rerun_if_changed!("{}", openssl.display());
+    let openssl_tmpl = env.dir().join("openssl.cnf.tmpl");
+    cargo_emit::rerun_if_changed!("{}", openssl_tmpl.display());
+
+    let tmpl_contents =
+        fs::read_to_string(openssl_tmpl).expect("Could not read openssl.cnf template");
+    let cnf_contents = tmpl_contents.replace(
+        "${ENV::OUT_DIR}",
+        env.out_dir()
+            .as_os_str()
+            .to_str()
+            .expect("OUT_DIR contains invalid UTF-8"),
+    );
+
+    let mut openssl_cnf = env.out_dir().join("openssl");
+    fs::remove_dir_all(&openssl_cnf).expect("Could not remove existing openssl output dir");
+    fs::create_dir_all(&openssl_cnf).expect("Could not create openssl output dir");
+
+    openssl_cnf.push("openssl.cnf");
+    fs::write(openssl_cnf, cnf_contents).expect("Could not write openssl.cnf file");
 
     let generate = env.dir().join("generate.sh");
     cargo_emit::rerun_if_changed!("{}", generate.display());

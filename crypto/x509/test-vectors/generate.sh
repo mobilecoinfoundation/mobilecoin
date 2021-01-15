@@ -8,9 +8,9 @@ set -e
 # Some variables we'll use later
 FIFTYYEARS="$(expr 365 \* 50 + 50 / 4)"
 BASEDIR="$(dirname $0)"
-OPENSSL_CNF="${BASEDIR}/openssl.cnf"
 
 OUTPUT_BASE_DIR="${OUT_DIR}/openssl"
+OPENSSL_CNF="${OUT_DIR}/openssl/openssl.cnf"
 
 OK_ROOT_DIR="${OUTPUT_BASE_DIR}/ok_root"
 OK_PENULTIMATE_DIR="${OUTPUT_BASE_DIR}/ok_penultimate"
@@ -22,10 +22,6 @@ OK_INTERMEDIATE5_DIR="${OUTPUT_BASE_DIR}/ok_intermediate5"
 OK_INTERMEDIATE6_DIR="${OUTPUT_BASE_DIR}/ok_intermediate6"
 OK_INTERMEDIATE7_DIR="${OUTPUT_BASE_DIR}/ok_intermediate7"
 OK_PENULTIMATE8_DIR="${OUTPUT_BASE_DIR}/ok_penultimate8"
-
-
-# Cleanup any existing data
-rm -rf "${OUTPUT_BASE_DIR}"
 
 
 # Initialize a directory to contain a certificate authority
