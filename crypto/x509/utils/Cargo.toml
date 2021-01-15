@@ -6,6 +6,9 @@ edition = "2018"
 description = "Verification of X509 certificate chains"
 readme = "README.md"
 
+[dev-dependencies]
+mc-crypto-x509-test-vectors = { path = "../test-vectors" }
+
 [dependencies]
 mc-crypto-keys = { path = "../../keys" }
 

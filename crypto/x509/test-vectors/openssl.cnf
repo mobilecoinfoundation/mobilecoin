@@ -36,7 +36,7 @@ stateOrProvinceName_default    = California
 localityName_default           = San Francisco
 0.organizationName_default     = TESTING ONLY
 organizationalUnitName_default = TESTING
-emailAddress_default           = 
+emailAddress_default           =
 
 [req]
 default_bits        = 2048
@@ -234,8 +234,8 @@ default_days     = 182500
 preserve         = no
 policy           = policy_strict
 
-[ok_intermediate8]
-dir              = ${ENV::OUT_DIR}/openssl/ok_intermediate8
+[ok_penultimate8]
+dir              = ${ENV::OUT_DIR}/openssl/ok_penultimate8
 certs            = $dir/certs
 crl_dir          = $dir/crl
 new_certs_dir    = $dir/newcerts

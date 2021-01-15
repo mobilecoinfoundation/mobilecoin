@@ -74,7 +74,7 @@ function make_intermediate_ca() {
 		-batch \
 		-config "$OPENSSL_CNF" \
 		-name "${PARENT}" \
-		-extensions leaf_cert \
+		-extensions v3_intermediate_ca \
 		-days $FIFTYYEARS \
 		-md sha256 \
 		-in "${!DIR}/req/ca.csr" \
@@ -231,6 +231,7 @@ openssl ca \
 	-notext \
 	-out "${OK_PENULTIMATE8_DIR}/certs/ca.crt"
 
+
 # Depth 10 Leaf Certificate
 openssl genpkey \
 	-algorithm ed25519 \
@@ -249,7 +250,7 @@ openssl req \
 openssl ca \
 	-batch \
 	-config "$OPENSSL_CNF" \
-	-name ok_penultimate \
+	-name ok_penultimate8 \
 	-extensions leaf_cert \
 	-days $FIFTYYEARS \
 	-md sha256 \
@@ -287,7 +288,7 @@ cat "${OK_PENULTIMATE_DIR}/certs/leaf.crt" >> "${OUTPUT_BASE_DIR}/fail_missing_l
 cat "${OK_PENULTIMATE_DIR}/private/leaf.key" > "${OUTPUT_BASE_DIR}/fail_missing_link.key"
 
 
-# Expired Leaf Certificate (valid Jan 1, 2021 @ 00:00:00 - Jan 1, 2021 @ 00:00:01)
+# Expired Leaf (valid Jan 1, 2021 @ 00:00:00 - Jan 1, 2021 @ 00:00:01)
 openssl genpkey \
 	-algorithm ed25519 \
 	-outform PEM \
@@ -307,8 +308,8 @@ openssl ca \
 	-config "$OPENSSL_CNF" \
 	-name ok_penultimate \
 	-extensions leaf_cert \
-	-startdate 210101000000Z \
-	-enddate 210101000001Z \
+	-startdate 010101000000Z \
+	-enddate 100101000001Z \
 	-md sha256 \
 	-in "${OK_PENULTIMATE_DIR}/req/expired.csr" \
 	-notext \
@@ -318,12 +319,12 @@ openssl ca \
 # fail_leaf_expired()
 cat "${OK_ROOT_DIR}/certs/ca.crt" > "${OUTPUT_BASE_DIR}/fail_leaf_expired.pem"
 cat "${OK_PENULTIMATE_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/fail_leaf_expired.pem"
-cat "${OK_PENULTIMATE_DIR}/certs/leaf.crt" >> "${OUTPUT_BASE_DIR}/fail_leaf_expired.pem"
+cat "${OK_PENULTIMATE_DIR}/certs/expired.crt" >> "${OUTPUT_BASE_DIR}/fail_leaf_expired.pem"
 
 cat "${OK_PENULTIMATE_DIR}/private/leaf.key" > "${OUTPUT_BASE_DIR}/fail_leaf_expired.key"
 
 
-# Expired Leaf Too Soon (valid Jan 1, 2070 @ 00:00:00 - Jan 1, 2070 @ 00:00:01)
+# Leaf Too Soon (valid Jan 1, 2070 @ 00:00:00 - Jan 1, 2070 @ 00:00:01)
 openssl genpkey \
 	-algorithm ed25519 \
 	-outform PEM \
