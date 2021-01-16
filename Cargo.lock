@@ -2752,6 +2752,7 @@ dependencies = [
 name = "mc-crypto-x509-utils"
 version = "1.0.0"
 dependencies = [
+ "displaydoc",
  "mc-crypto-keys",
  "mc-crypto-x509-test-vectors",
  "x509-parser",

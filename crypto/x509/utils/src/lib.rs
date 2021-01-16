@@ -1,11 +1,13 @@
 // Copyright (c) 2018-2020 MobileCoin Inc.
 
-//!
+//! Utilities for handling X509 certificate chains
 
-use mc_crypto_keys::Ed25519Public;
+use displaydoc::Display;
+use mc_crypto_keys::{Ed25519Public, KeyError};
 use std::{cmp, convert::TryFrom, io::Cursor, str::FromStr};
 use x509_parser::{
-    certificate::X509Certificate, der_parser::oid::Oid, pem::Pem, x509::AlgorithmIdentifier,
+    certificate::X509Certificate, der_parser::oid::Oid, error::X509Error, pem::Pem,
+    x509::AlgorithmIdentifier,
 };
 
 /// An iterator of [`Pem`] structures created over a string slice.
@@ -96,32 +98,49 @@ impl<T: AsRef<[Pem]>> X509CertificateIterable for T {
     }
 }
 
+/// An emumeration of errors
+#[derive(Debug, Display, PartialEq)]
+pub enum ChainError {
+    /// The chain slice is empty
+    Empty,
+    /// X509 signature verification error: {0}
+    X509(X509Error),
+    /// Certificate with an invalid date
+    InvalidDate,
+    /// The last certificate is an Authority
+    TailIsAuthority,
+}
+
+impl From<X509Error> for ChainError {
+    fn from(src: X509Error) -> ChainError {
+        ChainError::X509(src)
+    }
+}
+
 /// A trait used to monkey-patch an X509Certificate chain verifier onto a slice
 /// of X509Certificate objects.
 pub trait X509CertificateChain {
     /// Verify the chain (checks validity, signatures, and CA extension of each
     /// element)
-    fn verify_chain(&self) -> bool;
+    fn verify_chain(&self) -> Result<usize, ChainError>;
 }
 
 impl<'a, T: AsRef<[X509Certificate<'a>]>> X509CertificateChain for T {
-    fn verify_chain(&self) -> bool {
+    fn verify_chain(&self) -> Result<usize, ChainError> {
         let mut previous = None;
         let mut cert_count = 0usize;
 
         if self.as_ref().is_empty() {
-            return false;
+            return Err(ChainError::Empty);
         }
 
         for (index, cert) in self.as_ref().iter().enumerate() {
             // If the cert wasn't signed by the preceeding cert (or itself, if first), fail.
-            if cert.verify_signature(previous).is_err() {
-                return false;
-            }
+            cert.verify_signature(previous)?;
 
             // If the cert isn't valid (temporally), fail.
             if !cert.validity().is_valid() {
-                return false;
+                return Err(ChainError::InvalidDate);
             }
 
             // Update state for the next iteration
@@ -134,24 +153,21 @@ impl<'a, T: AsRef<[X509Certificate<'a>]>> X509CertificateChain for T {
             }
         }
 
-        // If any of the certs didn't pass verification, or there was a non-CA
-        // cert in the middle of the chain, fail.
-        if cert_count != self.as_ref().len() {
-            return false;
-        }
-
         // If the last cert in the chain is a CA, fail.
-        !self.as_ref()[cmp::max(0, cert_count - 1)]
+        if self.as_ref()[cmp::max(0, cert_count - 1)]
             .tbs_certificate
             .is_ca()
+        {
+            Err(ChainError::TailIsAuthority)
+        } else {
+            Ok(cert_count)
+        }
     }
 }
 
 /// A list of key types supported by both X.509 and mc-crypto-keys.
 pub enum PublicKeyType {
-    /// The public key type is invalid
-    Invalid,
-    Unknown(Vec<u8>),
+    /// The public key is Ed25519
     Ed25519(Ed25519Public),
 }
 
@@ -159,7 +175,7 @@ pub enum PublicKeyType {
 /// certificates.
 pub trait X509KeyExtrator {
     /// Try to retrieve the public key.
-    fn mc_public_key(&self) -> PublicKeyType;
+    fn mc_public_key(&self) -> Result<PublicKeyType, KeyError>;
 }
 
 fn ed25519_algorithm_identifier() -> AlgorithmIdentifier<'static> {
@@ -170,19 +186,14 @@ fn ed25519_algorithm_identifier() -> AlgorithmIdentifier<'static> {
 }
 
 impl X509KeyExtrator for X509Certificate<'_> {
-    fn mc_public_key(&self) -> PublicKeyType {
+    fn mc_public_key(&self) -> Result<PublicKeyType, KeyError> {
         if self.tbs_certificate.subject_pki.algorithm == ed25519_algorithm_identifier() {
-            if let Ok(pubkey) = Ed25519Public::try_from(
+            let pubkey = Ed25519Public::try_from(
                 self.tbs_certificate.subject_pki.subject_public_key.as_ref(),
-            ) {
-                PublicKeyType::Ed25519(pubkey)
-            } else {
-                PublicKeyType::Invalid
-            }
+            )?;
+            Ok(PublicKeyType::Ed25519(pubkey))
         } else {
-            PublicKeyType::Unknown(Vec::from(
-                self.tbs_certificate.subject_pki.subject_public_key.as_ref(),
-            ))
+            Err(KeyError::AlgorithmMismatch)
         }
     }
 }
@@ -208,9 +219,9 @@ mod test {
             .mc_public_key();
         if let PublicKeyType::Ed25519(pubkey) = pubkey {
             assert_eq!(pair.public_key(), pubkey);
-        } else {
-            panic!("Last cert in the chain does not contain an Ed25519 public key");
         }
+
+        panic!("Last cert in the chain does not contain an Ed25519 public key");
     }
 
     /// Ensure a longer (but still valid) chain is validated correctly.
@@ -229,9 +240,9 @@ mod test {
             .mc_public_key();
         if let PublicKeyType::Ed25519(pubkey) = pubkey {
             assert_eq!(pair.public_key(), pubkey);
-        } else {
-            panic!("Last cert in the chain does not contain an Ed25519 public key");
         }
+
+        panic!("Last cert in the chain does not contain an Ed25519 public key");
     }
 
     /// Ensure a (valid) tree of certs is not verified as a chain.
