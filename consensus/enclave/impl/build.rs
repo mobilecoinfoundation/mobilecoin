@@ -57,7 +57,8 @@ fn main() {
     );
 
     let mut constants =
-        "// Copyright (c) 2018-2021 The MobileCoin Foundation\n\n// Auto-generated file\n\n".to_string();
+        "// Copyright (c) 2018-2021 The MobileCoin Foundation\n\n// Auto-generated file\n\n"
+            .to_string();
     constants.push_str(&format!(
         "pub const FEE_SPEND_PUBLIC_KEY: [u8; 32] = {:?};\n\n",
         fee_spend_public_key
