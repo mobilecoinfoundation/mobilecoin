@@ -203,6 +203,9 @@ mod test {
     use super::*;
     use mc_crypto_x509_test_vectors as test_vectors;
 
+    const TYPICAL_CHAIN_LEN: usize = 3;
+    const DEPTH10_CHAIN_LEN: usize = 10;
+
     /// Ensure a valid RSA-RSA-Ed25519 chain is validated correctly.
     #[test]
     fn valid_chain() {
@@ -211,17 +214,20 @@ mod test {
         let cert_ders = pem_string.into_pem_iter().collect::<Vec<Pem>>();
         let certs = cert_ders.iter_x509().collect::<Vec<X509Certificate>>();
 
-        assert!(certs.verify_chain());
+        assert_eq!(
+            TYPICAL_CHAIN_LEN,
+            certs.verify_chain().expect("Could not verify valid chain")
+        );
 
         let pubkey = certs
             .last()
             .expect("Could not get last cert")
-            .mc_public_key();
-        if let PublicKeyType::Ed25519(pubkey) = pubkey {
-            assert_eq!(pair.public_key(), pubkey);
-        }
+            .mc_public_key()
+            .expect("Could not parse last cert's pubkey");
 
-        panic!("Last cert in the chain does not contain an Ed25519 public key");
+        match pubkey {
+            PublicKeyType::Ed25519(key) => assert_eq!(pair.public_key(), key),
+        }
     }
 
     /// Ensure a longer (but still valid) chain is validated correctly.
@@ -232,17 +238,20 @@ mod test {
         let cert_ders = pem_string.into_pem_iter().collect::<Vec<Pem>>();
         let certs = cert_ders.iter_x509().collect::<Vec<X509Certificate>>();
 
-        assert!(certs.verify_chain());
+        assert_eq!(
+            DEPTH10_CHAIN_LEN,
+            certs.verify_chain().expect("Could not verify valid chain")
+        );
 
         let pubkey = certs
             .last()
             .expect("Could not get last cert")
-            .mc_public_key();
-        if let PublicKeyType::Ed25519(pubkey) = pubkey {
-            assert_eq!(pair.public_key(), pubkey);
-        }
+            .mc_public_key()
+            .expect("Could not parse last cert's pubkey");
 
-        panic!("Last cert in the chain does not contain an Ed25519 public key");
+        match pubkey {
+            PublicKeyType::Ed25519(key) => assert_eq!(pair.public_key(), key),
+        }
     }
 
     /// Ensure a (valid) tree of certs is not verified as a chain.
@@ -252,8 +261,11 @@ mod test {
 
         let cert_ders = pem_string.into_pem_iter().collect::<Vec<Pem>>();
         let certs = cert_ders.iter_x509().collect::<Vec<X509Certificate>>();
+        let err = certs
+            .verify_chain()
+            .expect_err("Verification of known-bad chain didn't succed");
 
-        assert!(!certs.verify_chain());
+        assert_eq!(err, ChainError::X509(X509Error::SignatureVerificationError));
     }
 
     /// Ensure a certificate chain missing its root (no root, intermediate,
@@ -264,8 +276,11 @@ mod test {
 
         let cert_ders = pem_string.into_pem_iter().collect::<Vec<Pem>>();
         let certs = cert_ders.iter_x509().collect::<Vec<X509Certificate>>();
+        let err = certs
+            .verify_chain()
+            .expect_err("Verification of known-bad chain didn't succed");
 
-        assert!(!certs.verify_chain());
+        assert_eq!(err, ChainError::X509(X509Error::SignatureVerificationError));
     }
 
     /// Ensure a broken chain (root, no intermediate, leaf) is not verified.
@@ -275,8 +290,11 @@ mod test {
 
         let cert_ders = pem_string.into_pem_iter().collect::<Vec<Pem>>();
         let certs = cert_ders.iter_x509().collect::<Vec<X509Certificate>>();
+        let err = certs
+            .verify_chain()
+            .expect_err("Verification of known-bad chain didn't succed");
 
-        assert!(!certs.verify_chain());
+        assert_eq!(err, ChainError::X509(X509Error::SignatureVerificationError));
     }
 
     /// Ensure a chain containing a not-yet-valid cert is not verified.
@@ -286,8 +304,11 @@ mod test {
 
         let cert_ders = pem_string.into_pem_iter().collect::<Vec<Pem>>();
         let certs = cert_ders.iter_x509().collect::<Vec<X509Certificate>>();
+        let err = certs
+            .verify_chain()
+            .expect_err("Verification of known-bad chain didn't succed");
 
-        assert!(!certs.verify_chain());
+        assert_eq!(err, ChainError::InvalidDate);
     }
 
     /// Ensure a chain containing an expired cert is not verified.
@@ -297,7 +318,10 @@ mod test {
 
         let cert_ders = pem_string.into_pem_iter().collect::<Vec<Pem>>();
         let certs = cert_ders.iter_x509().collect::<Vec<X509Certificate>>();
+        let err = certs
+            .verify_chain()
+            .expect_err("Verification of known-bad chain didn't succed");
 
-        assert!(!certs.verify_chain());
+        assert_eq!(err, ChainError::InvalidDate);
     }
 }
