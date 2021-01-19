@@ -1,9 +1,10 @@
 #!/bin/bash
 
 set -x
-set -u
 set -e
+set -u
 
+OPENSSL="${OPENSSL_BIN:-$(which openssl)}"
 
 # Some variables we'll use later
 FIFTYYEARS="$(expr 365 \* 50 + 50 / 4)"
@@ -51,13 +52,13 @@ function make_intermediate_ca() {
 
 	DIR="OK_INTERMEDIATE${ID}_DIR"
 
-	openssl genpkey \
+	"${OPENSSL}" genpkey \
 		-algorithm rsa \
 		-pkeyopt rsa_keygen_bits:2048 \
 		-outform PEM \
 		-out "${!DIR}/private/ca.key"
 
-	openssl req \
+	"${OPENSSL}" req \
 		-config "$OPENSSL_CNF" \
 		-subj "/C=US/ST=California/L=San Francisco/O=TESTING ONLY/OU=TESTING/CN=Test Intermediate Authority ${ID}" \
 		-key "${!DIR}/private/ca.key" \
@@ -66,7 +67,7 @@ function make_intermediate_ca() {
 		-extensions v3_intermediate_ca \
 		-out "${!DIR}/req/ca.csr"
 
-	openssl ca \
+	"${OPENSSL}" ca \
 		-batch \
 		-config "$OPENSSL_CNF" \
 		-name "${PARENT}" \
@@ -97,13 +98,13 @@ init_ca_dir "${OK_PENULTIMATE8_DIR}"
 
 
 # Root CA
-openssl genpkey \
+"${OPENSSL}" genpkey \
 	-algorithm rsa \
 	-pkeyopt rsa_keygen_bits:4096 \
 	-outform PEM \
 	-out "${OK_ROOT_DIR}/private/ca.key"
 
-openssl req \
+"${OPENSSL}" req \
 	-config "$OPENSSL_CNF" \
 	-subj "/C=US/ST=California/L=San Francisco/O=TESTING ONLY/OU=TESTING/CN=Test Root Authority" \
 	-key "${OK_ROOT_DIR}/private/ca.key" \
@@ -116,13 +117,13 @@ openssl req \
 
 
 # Penultimate Authority
-openssl genpkey \
+"${OPENSSL}" genpkey \
 	-algorithm rsa \
 	-pkeyopt rsa_keygen_bits:2048 \
 	-outform PEM \
 	-out "${OK_PENULTIMATE_DIR}/private/ca.key"
 
-openssl req \
+"${OPENSSL}" req \
 	-config "$OPENSSL_CNF" \
 	-subj "/C=US/ST=California/L=San Francisco/O=TESTING ONLY/OU=TESTING/CN=Test Penultimate Authority 1" \
 	-key "${OK_PENULTIMATE_DIR}/private/ca.key" \
@@ -131,7 +132,7 @@ openssl req \
 	-extensions v3_penultimate_ca \
 	-out "${OK_PENULTIMATE_DIR}/req/ca.csr"
 
-openssl ca \
+"${OPENSSL}" ca \
 	-batch \
 	-config "$OPENSSL_CNF" \
 	-name ok_root \
@@ -144,12 +145,12 @@ openssl ca \
 
 
 # Leaf Certificate
-openssl genpkey \
+"${OPENSSL}" genpkey \
 	-algorithm ed25519 \
 	-outform PEM \
 	-out "${OK_PENULTIMATE_DIR}/private/leaf.key"
 
-openssl req \
+"${OPENSSL}" req \
 	-config "$OPENSSL_CNF" \
 	-subj "/C=US/ST=California/L=San Francisco/O=TESTING ONLY/OU=TESTING/CN=Test Leaf Certificate 1" \
 	-key "${OK_PENULTIMATE_DIR}/private/leaf.key" \
@@ -158,7 +159,7 @@ openssl req \
 	-extensions leaf_cert \
 	-out "${OK_PENULTIMATE_DIR}/req/leaf.csr"
 
-openssl ca \
+"${OPENSSL}" ca \
 	-batch \
 	-config "$OPENSSL_CNF" \
 	-name ok_penultimate \
@@ -201,13 +202,13 @@ make_intermediate_ca 7
 
 
 # Depth-10 Penultimate Authority
-openssl genpkey \
+"${OPENSSL}" genpkey \
 	-algorithm rsa \
 	-pkeyopt rsa_keygen_bits:2048 \
 	-outform PEM \
 	-out "${OK_PENULTIMATE8_DIR}/private/ca.key"
 
-openssl req \
+"${OPENSSL}" req \
 	-config "$OPENSSL_CNF" \
 	-subj "/C=US/ST=California/L=San Francisco/O=TESTING ONLY/OU=TESTING/CN=Test Penultimate Authority 8" \
 	-key "${OK_PENULTIMATE8_DIR}/private/ca.key" \
@@ -216,7 +217,7 @@ openssl req \
 	-extensions v3_penultimate_ca \
 	-out "${OK_PENULTIMATE8_DIR}/req/ca.csr"
 
-openssl ca \
+"${OPENSSL}" ca \
 	-batch \
 	-config "$OPENSSL_CNF" \
 	-name ok_intermediate7 \
@@ -229,12 +230,12 @@ openssl ca \
 
 
 # Depth 10 Leaf Certificate
-openssl genpkey \
+"${OPENSSL}" genpkey \
 	-algorithm ed25519 \
 	-outform PEM \
 	-out "${OK_PENULTIMATE8_DIR}/private/leaf.key"
 
-openssl req \
+"${OPENSSL}" req \
 	-config "$OPENSSL_CNF" \
 	-subj "/C=US/ST=California/L=San Francisco/O=TESTING ONLY/OU=TESTING/CN=Test Leaf Certificate 9" \
 	-key "${OK_PENULTIMATE8_DIR}/private/leaf.key" \
@@ -243,7 +244,7 @@ openssl req \
 	-extensions leaf_cert \
 	-out "${OK_PENULTIMATE8_DIR}/req/leaf.csr"
 
-openssl ca \
+"${OPENSSL}" ca \
 	-batch \
 	-config "$OPENSSL_CNF" \
 	-name ok_penultimate8 \
@@ -285,12 +286,12 @@ cat "${OK_PENULTIMATE_DIR}/private/leaf.key" > "${OUTPUT_BASE_DIR}/fail_missing_
 
 
 # Expired Leaf (valid Jan 1, 2021 @ 00:00:00 - Jan 1, 2021 @ 00:00:01)
-openssl genpkey \
+"${OPENSSL}" genpkey \
 	-algorithm ed25519 \
 	-outform PEM \
 	-out "${OK_PENULTIMATE_DIR}/private/expired.key"
 
-openssl req \
+"${OPENSSL}" req \
 	-config "$OPENSSL_CNF" \
 	-subj "/C=US/ST=California/L=San Francisco/O=TESTING ONLY/OU=TESTING/CN=Test Expired Leaf Certificate" \
 	-key "${OK_PENULTIMATE_DIR}/private/expired.key" \
@@ -299,7 +300,7 @@ openssl req \
 	-extensions leaf_cert \
 	-out "${OK_PENULTIMATE_DIR}/req/expired.csr"
 
-openssl ca \
+"${OPENSSL}" ca \
 	-batch \
 	-config "$OPENSSL_CNF" \
 	-name ok_penultimate \
@@ -321,12 +322,12 @@ cat "${OK_PENULTIMATE_DIR}/private/leaf.key" > "${OUTPUT_BASE_DIR}/fail_leaf_exp
 
 
 # Leaf Too Soon (valid Jan 1, 2070 @ 00:00:00 - Jan 1, 2070 @ 00:00:01)
-openssl genpkey \
+"${OPENSSL}" genpkey \
 	-algorithm ed25519 \
 	-outform PEM \
 	-out "${OK_PENULTIMATE_DIR}/private/too_soon.key"
 
-openssl req \
+"${OPENSSL}" req \
 	-config "$OPENSSL_CNF" \
 	-subj "/C=US/ST=California/L=San Francisco/O=TESTING ONLY/OU=TESTING/CN=Test Too Soon Leaf Certificate" \
 	-key "${OK_PENULTIMATE_DIR}/private/too_soon.key" \
@@ -335,7 +336,7 @@ openssl req \
 	-extensions leaf_cert \
 	-out "${OK_PENULTIMATE_DIR}/req/too_soon.csr"
 
-openssl ca \
+"${OPENSSL}" ca \
 	-batch \
 	-config "$OPENSSL_CNF" \
 	-name ok_penultimate \
