@@ -103,7 +103,7 @@ impl FogPubkeyResolver for FogResolver {
                 for report in result.reports.iter() {
                     if report_id == report.fog_report_id {
                         // TODO validate x509 chain and recipient.fog_authority_sig here,
-                        // Howeve, probably skip that if uri scheme is "insecure-fog"?
+                        // However, probably skip that if uri scheme is "insecure-fog"?
                         let remote_report: VerificationReport =
                             mc_util_serial::deserialize(&report.report)?;
                         let pubkey = self.verifier.validate_ingest_ias_report(remote_report)?;

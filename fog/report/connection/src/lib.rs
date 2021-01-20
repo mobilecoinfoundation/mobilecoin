@@ -9,7 +9,10 @@
 use displaydoc::Display;
 use grpcio::{ChannelBuilder, Environment};
 use mc_common::logger::{log, o, Logger};
-use mc_fog_api::report_grpc;
+use mc_fog_api::{
+    report::{ReportRequest, ReportResponse},
+    report_grpc,
+};
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_uri::FogUri;
 use std::sync::Arc;
@@ -37,54 +40,60 @@ impl GrpcFogReportConnection {
         Self { env, logger }
     }
 
-    /// Fetch fog reports corresponding to a series of FogUris.
+    /// Fetch fog reports corresponding to a series of FogUris, returning FogReportResponses table.
     /// This attempts to be efficient, not contacting a server twice if a FogUri appears twice.
     pub fn fetch_fog_reports(
         &self,
         uris: impl Iterator<Item = FogUri>,
     ) -> Result<FogReportResponses, Error> {
         let mut responses = FogReportResponses::default();
-        for uri in uris {
-            self.fetch_fog_report(&mut responses, &uri)?;
-        }
+        self.fetch_fog_reports_if_not_cached(&mut responses, uris)?;
         Ok(responses)
     }
 
-    /// Given a set of previously collected FogReportResponse's, and another Uri, make a corresponding
-    /// request and add it to the collection, if such a response is not already present.
-    pub fn fetch_fog_report(
+    /// Fetch fog reports, adding them to an existing cache, if they are not already cached.
+    /// This can be used if e.g. the recipients are not all known at once, and
+    /// the fetch operation needs to be called multiple times.
+    pub fn fetch_fog_reports_if_not_cached(
         &self,
         responses: &mut FogReportResponses,
-        uri: &FogUri,
+        uris: impl Iterator<Item = FogUri>,
     ) -> Result<(), Error> {
-        match responses.entry(uri.to_string()) {
-            std::collections::btree_map::Entry::Occupied(_) => Ok(()),
-            std::collections::btree_map::Entry::Vacant(ent) => {
-                let logger = self.logger.new(o!("mc.fog.cxn" => uri.to_string()));
-
-                // Build channel to this URI
-                let ch = ChannelBuilder::default_channel_builder(self.env.clone())
-                    .connect_to_uri(uri, &logger);
-                let report_grpc_client = report_grpc::ReportApiClient::new(ch);
-
-                // Request reports
-                let req = mc_fog_api::report::ReportRequest::new();
-                let resp = report_grpc_client.get_reports(&req)?;
-
-                if resp.reports.len() == 0 {
-                    log::warn!(
-                        self.logger,
-                        "Report server at {} has no available reports",
-                        uri
-                    );
-                    return Err(Error::NoReports);
+        for uri in uris {
+            match responses.entry(uri.to_string()) {
+                std::collections::btree_map::Entry::Occupied(_) => {}
+                std::collections::btree_map::Entry::Vacant(ent) => {
+                    ent.insert(self.fetch_fog_report(&uri)?);
                 }
-
-                // Store entire response, for later validation against measurement and public addresses
-                ent.insert(resp);
-                Ok(())
             }
         }
+        Ok(())
+    }
+
+    /// Given a fog report uri, fetch its response over grpc, or return an error.
+    pub fn fetch_fog_report(&self, uri: &FogUri) -> Result<ReportResponse, Error> {
+        let logger = self.logger.new(o!("mc.fog.cxn" => uri.to_string()));
+
+        // Build channel to this URI
+        let ch =
+            ChannelBuilder::default_channel_builder(self.env.clone()).connect_to_uri(uri, &logger);
+        let report_grpc_client = report_grpc::ReportApiClient::new(ch);
+
+        // Request reports
+        let req = ReportRequest::new();
+        let resp = report_grpc_client.get_reports(&req)?;
+
+        if resp.reports.len() == 0 {
+            log::warn!(
+                self.logger,
+                "Report server at {} has no available reports",
+                uri
+            );
+            return Err(Error::NoReports);
+        }
+
+        // Return entire response
+        Ok(resp)
     }
 }
 
