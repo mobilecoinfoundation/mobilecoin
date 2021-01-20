@@ -657,6 +657,39 @@ impl TryFrom<&JsonTxOutMembershipProof> for TxOutMembershipProof {
 }
 
 #[derive(Deserialize, Serialize, Default, Debug)]
+/// A request for randomly sampled TxOuts for use as mixins.
+pub struct JsonMixinRequest {
+    /// Number of mixins requested.
+    pub num_mixins: u64,
+    /// Outputs that should be excluded from the result.
+    pub excluded: Vec<JsonTxOut>,
+}
+
+#[derive(Deserialize, Serialize, Default, Debug)]
+/// Randomly sampled TxOuts for use as mixins, with membership proofs.
+pub struct JsonMixinResponse {
+    /// TxOuts to use as mixins.
+    pub mixins: Vec<JsonTxOut>,
+    /// Corresponding membership proofs.
+    pub membership_proofs: Vec<JsonTxOutMembershipProof>,
+}
+
+#[derive(Deserialize, Serialize, Default, Debug)]
+/// Requests Merkle proof-of-membership for each queried TxOut
+pub struct JsonMembershipProofRequest {
+    pub outputs: Vec<JsonTxOut>,
+}
+
+#[derive(Deserialize, Serialize, Default, Debug)]
+/// Outputs and their corresponding proofs of membership.
+pub struct JsonMembershipProofResponse {
+    /// Queried outputs.
+    pub outputs: Vec<JsonTxOut>,
+    /// Corresponding membership proofs.
+    pub membership_proofs: Vec<JsonTxOutMembershipProof>,
+}
+
+#[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonTxIn {
     pub ring: Vec<JsonTxOut>,
     pub proofs: Vec<JsonTxOutMembershipProof>,
