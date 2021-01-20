@@ -113,7 +113,7 @@ fn main() {
                 ledger_db.clone(),
                 mobilecoind_db.clone(),
                 peer_manager,
-                config.get_fog_pubkey_resolver(logger.clone()).map(Arc::new),
+                config.get_fog_resolver_factory(logger.clone()),
                 logger.clone(),
             );
 

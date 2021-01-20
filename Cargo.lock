@@ -2829,7 +2829,9 @@ dependencies = [
  "mc-account-keys",
  "mc-attest-core",
  "mc-crypto-keys",
+ "mc-fog-api",
  "mc-util-encodings",
+ "mc-util-serial",
  "mockall",
 ]
 
@@ -3383,6 +3385,7 @@ dependencies = [
  "mc-account-keys",
  "mc-crypto-keys",
  "mc-crypto-rand",
+ "mc-fog-report-validation",
  "mc-ledger-db",
  "mc-transaction-core",
  "mc-transaction-std",
@@ -3398,6 +3401,7 @@ dependencies = [
  "blake2",
  "curve25519-dalek",
  "failure",
+ "maplit",
  "mc-account-keys",
  "mc-crypto-keys",
  "mc-fog-report-validation",
