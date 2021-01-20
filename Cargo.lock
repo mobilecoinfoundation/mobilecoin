@@ -6694,8 +6694,3 @@ dependencies = [
  "syn 1.0.45",
  "synstructure",
 ]
-
-[[patch.unused]]
-name = "dialoguer"
-version = "0.6.2"
-source = "git+https://github.com/mitsuhiko/dialoguer?rev=a0c6c1e#a0c6c1e0e9d536b04c20d76c3097de4fccd59caf"

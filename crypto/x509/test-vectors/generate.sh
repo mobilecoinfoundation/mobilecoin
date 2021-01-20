@@ -10,9 +10,9 @@ OPENSSL="${OPENSSL_BIN:-$(which openssl)}"
 FIFTYYEARS="$(expr 365 \* 50 + 50 / 4)"
 BASEDIR="$(dirname $0)"
 
-OUTPUT_BASE_DIR="${OUT_DIR}/openssl"
-OPENSSL_CNF="${OUT_DIR}/openssl/openssl.cnf"
+OPENSSL_CNF="${BASEDIR}/openssl.cnf"
 
+OUTPUT_BASE_DIR="${OUT_DIR}/openssl"
 OK_ROOT_DIR="${OUTPUT_BASE_DIR}/ok_root"
 OK_PENULTIMATE_DIR="${OUTPUT_BASE_DIR}/ok_penultimate"
 OK_INTERMEDIATE1_DIR="${OUTPUT_BASE_DIR}/ok_intermediate1"
@@ -78,6 +78,9 @@ function make_intermediate_ca() {
 		-notext \
 		-out "${!DIR}/certs/ca.crt"
 }
+
+# Clean any existing directories
+rm -rf "${OUTPUT_BASE_DIR}"
 
 
 # Setup the directories
@@ -365,3 +368,5 @@ cat "${OK_INTERMEDIATE2_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_tree.pe
 cat "${OK_PENULTIMATE_DIR}/certs/leaf.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_tree.pem"
 
 cat "${OK_PENULTIMATE_DIR}/private/leaf.key" > "${OUTPUT_BASE_DIR}/ok_rsa_tree.key"
+
+echo "foo"

@@ -3,43 +3,23 @@
 //! Generate canned certificate data (via bash script)
 
 use mc_util_build_script::Environment;
-use std::{fs, io::ErrorKind, process::Command};
+use std::process::Command;
 
 fn main() {
     let env = Environment::default();
-
-    let openssl_tmpl = env.dir().join("openssl.cnf.tmpl");
-    cargo_emit::rerun_if_changed!("{}", openssl_tmpl.display());
-
-    let tmpl_contents =
-        fs::read_to_string(openssl_tmpl).expect("Could not read openssl.cnf template");
-    let cnf_contents = tmpl_contents.replace(
-        "${ENV::OUT_DIR}",
-        env.out_dir()
-            .as_os_str()
-            .to_str()
-            .expect("OUT_DIR contains invalid UTF-8"),
-    );
-
-    let mut openssl_cnf = env.out_dir().join("openssl");
-    match fs::remove_dir_all(&openssl_cnf) {
-        Ok(()) => (),
-        Err(e) => {
-            if e.kind() != ErrorKind::NotFound {
-                panic!("Error removing existing openssl dir: {}", e);
-            }
-        }
-    }
-    fs::create_dir_all(&openssl_cnf).expect("Could not create openssl output dir");
-
-    openssl_cnf.push("openssl.cnf");
-    fs::write(openssl_cnf, cnf_contents).expect("Could not write openssl.cnf file");
-
     let generate = env.dir().join("generate.sh");
-    cargo_emit::rerun_if_changed!("{}", generate.display());
+    let openssl_cnf = env.dir().join("openssl.cnf");
 
-    assert!(Command::new(generate)
+    cargo_emit::rerun_if_changed!(openssl_cnf.display());
+    cargo_emit::rerun_if_changed!(generate.display());
+    cargo_emit::rerun_if_env_changed!("OUT_DIR");
+    cargo_emit::rerun_if_env_changed!("OPENSSL_BIN");
+
+    if !Command::new(generate)
         .status()
         .expect("Failed to run generate.sh")
-        .success())
+        .success()
+    {
+        panic!("Generate script did not succeed");
+    }
 }
