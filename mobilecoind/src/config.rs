@@ -194,15 +194,16 @@ impl Config {
         Arc::new(move |fog_uris| -> Result<FogResolver, String> {
             if fog_uris.is_empty() {
                 Ok(Default::default())
+            } else if let Some(verifier) = verifier.as_ref() {
+                let report_responses = conn
+                    .fetch_fog_reports(fog_uris.iter().cloned())
+                    .map_err(|err| format!("Failed fetching fog reports: {}", err))?;
+                Ok(FogResolver::new(report_responses, verifier))
             } else {
-                if let Some(verifier) = verifier.as_ref() {
-                    let report_responses = conn
-                        .fetch_fog_reports(fog_uris.iter().cloned())
-                        .map_err(|err| format!("Failed fetching fog reports: {}", err))?;
-                    Ok(FogResolver::new(report_responses, verifier))
-                } else {
-                    Err("Some recipients have fog, but no fog ingest report verifier was configured".to_string())
-                }
+                Err(
+                    "Some recipients have fog, but no fog ingest report verifier was configured"
+                        .to_string(),
+                )
             }
         })
     }
