@@ -2832,6 +2832,7 @@ dependencies = [
  "mc-fog-api",
  "mc-util-encodings",
  "mc-util-serial",
+ "mc-util-uri",
  "mockall",
 ]
 

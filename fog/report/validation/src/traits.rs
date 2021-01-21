@@ -3,6 +3,7 @@ use core::fmt::Debug;
 use displaydoc::Display;
 use mc_account_keys::PublicAddress;
 use mc_crypto_keys::RistrettoPublic;
+use mc_util_uri::UriParseError;
 
 #[cfg(any(test, feature = "automock"))]
 use mockall::*;
@@ -47,6 +48,8 @@ pub enum FogPubkeyError {
     NoMatchingReportId(String, String),
     /// Address has no fog_report_url, cannot fetch fog pubkey
     NoFogReportUrl,
+    /// Failed to parse fog url: {0}
+    Url(UriParseError),
     /// Ingest report deserialization error: {0},
     Deserialization(mc_util_serial::decode::Error),
     /// Ingest report verification error: {0}
@@ -62,5 +65,11 @@ impl From<IngestReportError> for FogPubkeyError {
 impl From<mc_util_serial::decode::Error> for FogPubkeyError {
     fn from(src: mc_util_serial::decode::Error) -> Self {
         Self::Deserialization(src)
+    }
+}
+
+impl From<UriParseError> for FogPubkeyError {
+    fn from(src: UriParseError) -> Self {
+        Self::Url(src)
     }
 }
