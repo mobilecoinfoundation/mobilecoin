@@ -34,6 +34,7 @@ mod tests {
         onetime_keys::recover_onetime_private_key,
         tx::{Tx, TxOut, TxOutMembershipProof},
     };
+    use mc_transaction_core_test_utils::MockFogResolver;
     use mc_transaction_std::{InputCredentials, TransactionBuilder};
     use protobuf::Message;
     use rand::{rngs::StdRng, SeedableRng};
@@ -60,7 +61,7 @@ mod tests {
             mc_transaction_core_test_utils::get_outputs(&recipient_and_amounts, &mut rng)
         };
 
-        let mut transaction_builder = TransactionBuilder::new();
+        let mut transaction_builder = TransactionBuilder::new(MockFogResolver::default());
 
         let ring: Vec<TxOut> = minted_outputs.clone();
         let public_key = RistrettoPublic::try_from(&minted_outputs[0].public_key).unwrap();
@@ -91,7 +92,7 @@ mod tests {
         transaction_builder.add_input(input_credentials);
         transaction_builder.set_fee(0);
         transaction_builder
-            .add_output(65536, &bob.default_subaddress(), None, &mut rng)
+            .add_output(65536, &bob.default_subaddress(), &mut rng)
             .unwrap();
 
         let tx = transaction_builder.build(&mut rng).unwrap();

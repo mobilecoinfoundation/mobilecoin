@@ -18,6 +18,7 @@ mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
 mc-util-serial = { path = "../../util/serial" }
 mc-transaction-core = { path = "../../transaction/core"}
 mc-util-from-random = { path = "../../util/from-random" }
+mc-fog-report-validation = { path = "../../fog/report/validation" }
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
 curve25519-dalek = { version = "3.0", default-features = false, features = ["simd_backend", "nightly"] }
@@ -28,6 +29,8 @@ curve25519-dalek = { version = "3.0", default-features = false, features = ["nig
 blake2 = { version = "0.9", default-features = false }
 
 [dev-dependencies]
+maplit = "1.0"
 yaml-rust = "0.4"
 
+mc-fog-report-validation-test-utils = { path = "../../fog/report/validation/test-utils" }
 mc-util-test-helper = { path = "../../util/test-helper" }

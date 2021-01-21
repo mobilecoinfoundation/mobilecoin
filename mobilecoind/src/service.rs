@@ -22,7 +22,7 @@ use mc_common::{
 };
 use mc_connection::{BlockchainConnection, UserTxConnection};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
-use mc_fog_report_connection::FogPubkeyResolver;
+use mc_fog_report_validation::FogPubkeyResolver;
 use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
 use mc_ledger_sync::{NetworkState, PollingNetworkState};
 use mc_mobilecoind_api::{
@@ -58,7 +58,7 @@ pub struct Service {
 impl Service {
     pub fn new<
         T: BlockchainConnection + UserTxConnection + 'static,
-        FPR: FogPubkeyResolver + Send + Sync + 'static,
+        FPR: FogPubkeyResolver + 'static,
     >(
         ledger_db: LedgerDB,
         mobilecoind_db: Database,
@@ -156,7 +156,7 @@ impl Service {
 
 pub struct ServiceApi<
     T: BlockchainConnection + UserTxConnection + 'static,
-    FPR: FogPubkeyResolver + Send + Sync + 'static,
+    FPR: FogPubkeyResolver + 'static,
 > {
     transactions_manager: TransactionsManager<T, FPR>,
     ledger_db: LedgerDB,
@@ -167,10 +167,8 @@ pub struct ServiceApi<
     logger: Logger,
 }
 
-impl<
-        T: BlockchainConnection + UserTxConnection + 'static,
-        FPR: FogPubkeyResolver + Send + Sync + 'static,
-    > Clone for ServiceApi<T, FPR>
+impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolver + 'static> Clone
+    for ServiceApi<T, FPR>
 {
     fn clone(&self) -> Self {
         Self {
@@ -185,10 +183,8 @@ impl<
     }
 }
 
-impl<
-        T: BlockchainConnection + UserTxConnection + 'static,
-        FPR: FogPubkeyResolver + Send + Sync + 'static,
-    > ServiceApi<T, FPR>
+impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolver + 'static>
+    ServiceApi<T, FPR>
 {
     pub fn new(
         transactions_manager: TransactionsManager<T, FPR>,
@@ -1761,7 +1757,7 @@ macro_rules! build_api {
     ($( $service_function_name:ident $service_request_type:ident $service_response_type:ident $service_function_impl:ident ),+)
     =>
     (
-        impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'static> MobilecoindApi for ServiceApi<T, FPR> {
+        impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolver> MobilecoindApi for ServiceApi<T, FPR> {
             $(
                 fn $service_function_name(
                     &mut self,
@@ -1852,6 +1848,7 @@ mod test {
     use mc_crypto_keys::RistrettoPrivate;
     use mc_crypto_rand::RngCore;
     use mc_fog_report_validation::{FullyValidatedFogPubkey, MockFogPubkeyResolver};
+    use mc_fog_report_validation_test_utils::MockFogResolver;
     use mc_transaction_core::{
         constants::{MAX_INPUTS, MINIMUM_FEE, RING_SIZE},
         fog_hint::FogHint,
@@ -1862,6 +1859,7 @@ mod test {
     };
     use mc_transaction_std::TransactionBuilder;
     use mc_util_repr_bytes::{typenum::U32, GenericArray, ReprBytes};
+    use mc_util_uri::FogUri;
     use rand::{rngs::StdRng, SeedableRng};
     use std::{
         convert::{TryFrom, TryInto},
@@ -2664,9 +2662,9 @@ mod test {
 
         // Insert into database.
         let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
-        let mut transaction_builder = TransactionBuilder::new();
+        let mut transaction_builder = TransactionBuilder::new(MockFogResolver::default());
         let (tx_out, tx_confirmation) = transaction_builder
-            .add_output(10, &receiver.subaddress(0), None, &mut rng)
+            .add_output(10, &receiver.subaddress(0), &mut rng)
             .unwrap();
 
         add_txos_to_ledger_db(&mut ledger_db, &vec![tx_out.clone()], &mut rng);
@@ -4219,19 +4217,20 @@ mod test {
 
         // Fog resolver
         let fog_private_key = RistrettoPrivate::from_random(&mut rng);
-        let fog_pubkey_resolver = Arc::new({
+        let fog_pubkey_resolver_factory: Arc<
+            dyn Fn(&[FogUri]) -> Result<MockFogPubkeyResolver, String> + Send + Sync,
+        > = Arc::new(move |_| -> Result<MockFogPubkeyResolver, String> {
             let mut fog_pubkey_resolver = MockFogPubkeyResolver::new();
             let pubkey = RistrettoPublic::from(&fog_private_key);
             fog_pubkey_resolver
                 .expect_get_fog_pubkey()
                 .return_once(move |_recipient| {
                     Ok(FullyValidatedFogPubkey {
-                        fog_report_id: "".to_owned(),
                         pubkey,
                         pubkey_expiry: 10000,
                     })
                 });
-            fog_pubkey_resolver
+            Ok(fog_pubkey_resolver)
         });
 
         let sender = AccountKey::random(&mut rng);
@@ -4258,12 +4257,12 @@ mod test {
             .unwrap();
 
         log::debug!(logger, "Setting up server {:?}", port);
-        let (_server, server_conn_manager) = test_utils::setup_server(
+        let (_server, server_conn_manager) = test_utils::setup_server::<MockFogPubkeyResolver>(
             logger.clone(),
             ledger_db.clone(),
             mobilecoind_db.clone(),
             None,
-            Some(fog_pubkey_resolver),
+            Some(fog_pubkey_resolver_factory),
             &uri,
         );
         log::debug!(logger, "Setting up client {:?}", port);
@@ -4736,12 +4735,11 @@ mod test {
         let root_id = RootIdentity::from(&root_entropy);
         let account_key = AccountKey::from(&root_id);
 
-        let mut transaction_builder = TransactionBuilder::new();
+        let mut transaction_builder = TransactionBuilder::new(MockFogResolver::default());
         let (tx_out, _tx_confirmation) = transaction_builder
             .add_output(
                 10,
                 &account_key.subaddress(DEFAULT_SUBADDRESS_INDEX),
-                None,
                 &mut rng,
             )
             .unwrap();

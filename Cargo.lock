@@ -2829,8 +2829,18 @@ dependencies = [
  "mc-account-keys",
  "mc-attest-core",
  "mc-crypto-keys",
+ "mc-fog-api",
  "mc-util-encodings",
+ "mc-util-serial",
  "mockall",
+]
+
+[[package]]
+name = "mc-fog-report-validation-test-utils"
+version = "1.0.0"
+dependencies = [
+ "mc-account-keys",
+ "mc-fog-report-validation",
 ]
 
 [[package]]
@@ -2959,6 +2969,7 @@ dependencies = [
  "mc-crypto-rand",
  "mc-fog-report-connection",
  "mc-fog-report-validation",
+ "mc-fog-report-validation-test-utils",
  "mc-ledger-db",
  "mc-ledger-sync",
  "mc-mobilecoind-api",
@@ -3383,6 +3394,7 @@ dependencies = [
  "mc-account-keys",
  "mc-crypto-keys",
  "mc-crypto-rand",
+ "mc-fog-report-validation-test-utils",
  "mc-ledger-db",
  "mc-transaction-core",
  "mc-transaction-std",
@@ -3398,8 +3410,11 @@ dependencies = [
  "blake2",
  "curve25519-dalek",
  "failure",
+ "maplit",
  "mc-account-keys",
  "mc-crypto-keys",
+ "mc-fog-report-validation",
+ "mc-fog-report-validation-test-utils",
  "mc-transaction-core",
  "mc-util-from-random",
  "mc-util-serial",

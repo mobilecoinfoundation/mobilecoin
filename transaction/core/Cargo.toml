@@ -49,11 +49,11 @@ rand_hc = "0.2"
 tempdir = "0.3"
 time = "0.1"
 
+mc-crypto-digestible-test-utils = { path = "../../crypto/digestible/test-utils" }
 mc-ledger-db = { path = "../../ledger/db" }
+mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
 mc-util-serial = { path = "../../util/serial", features = ["std"] }
 mc-util-test-helper = { path = "../../util/test-helper" }
-mc-crypto-digestible-test-utils = { path = "../../crypto/digestible/test-utils" }
-mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
 
 [dev-dependencies.proptest]
 version = "0.10" # Only works for 0.9.1 or newer

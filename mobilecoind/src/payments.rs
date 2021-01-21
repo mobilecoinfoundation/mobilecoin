@@ -11,7 +11,7 @@ use mc_common::{
 use mc_connection::{ConnectionManager, RetryableUserTxConnection, UserTxConnection};
 use mc_crypto_keys::RistrettoPublic;
 use mc_crypto_rand::{CryptoRng, RngCore};
-use mc_fog_report_connection::FogPubkeyResolver;
+use mc_fog_report_validation::FogPubkeyResolver;
 use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
 use mc_transaction_core::{
     constants::{MAX_INPUTS, MINIMUM_FEE, RING_SIZE},
@@ -21,11 +21,13 @@ use mc_transaction_core::{
     BlockIndex,
 };
 use mc_transaction_std::{InputCredentials, TransactionBuilder};
+use mc_util_uri::FogUri;
 use rand::Rng;
 use std::{
     cmp::Reverse,
     convert::TryFrom,
     iter::{empty, FromIterator},
+    str::FromStr,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc,
@@ -76,10 +78,7 @@ impl TxProposal {
     }
 }
 
-pub struct TransactionsManager<
-    T: UserTxConnection + 'static,
-    FPR: FogPubkeyResolver + Send + Sync + 'static,
-> {
+pub struct TransactionsManager<T: UserTxConnection + 'static, FPR: FogPubkeyResolver> {
     /// Ledger database.
     ledger_db: LedgerDB,
 
@@ -95,13 +94,12 @@ pub struct TransactionsManager<
     /// Monotonically increasing counter. This is used for node round-robin selection.
     submit_node_offset: Arc<AtomicUsize>,
 
-    /// Fog pub key resolver, used when constructing outputs to fog recipients.
-    fog_pubkey_resolver: Option<Arc<FPR>>,
+    /// Fog resolver maker, used when constructing outputs to fog recipients.
+    /// This is abstracted because in tests, we don't want to form grpc connections to fog
+    fog_resolver_factory: Arc<dyn Fn(&[FogUri]) -> Result<FPR, String> + Send + Sync>,
 }
 
-impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'static> Clone
-    for TransactionsManager<T, FPR>
-{
+impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver> Clone for TransactionsManager<T, FPR> {
     fn clone(&self) -> Self {
         Self {
             ledger_db: self.ledger_db.clone(),
@@ -109,19 +107,17 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
             peer_manager: self.peer_manager.clone(),
             logger: self.logger.clone(),
             submit_node_offset: self.submit_node_offset.clone(),
-            fog_pubkey_resolver: self.fog_pubkey_resolver.clone(),
+            fog_resolver_factory: self.fog_resolver_factory.clone(),
         }
     }
 }
 
-impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'static>
-    TransactionsManager<T, FPR>
-{
+impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver> TransactionsManager<T, FPR> {
     pub fn new(
         ledger_db: LedgerDB,
         mobilecoind_db: Database,
         peer_manager: ConnectionManager<T>,
-        fog_pubkey_resolver: Option<Arc<FPR>>,
+        fog_resolver_factory: Arc<dyn Fn(&[FogUri]) -> Result<FPR, String> + Send + Sync>,
         logger: Logger,
     ) -> Self {
         let mut rng = rand::thread_rng();
@@ -131,7 +127,7 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
             peer_manager,
             logger,
             submit_node_offset: Arc::new(AtomicUsize::new(rng.next_u64() as usize)),
-            fog_pubkey_resolver,
+            fog_resolver_factory,
         }
     }
 
@@ -233,7 +229,7 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
             change_subaddress,
             outlays,
             tombstone_block,
-            &self.fog_pubkey_resolver,
+            &self.fog_resolver_factory,
             &mut rng,
             &self.logger,
         )?;
@@ -332,7 +328,7 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
             subaddress_index,
             &outlays,
             tombstone_block,
-            &self.fog_pubkey_resolver,
+            &self.fog_resolver_factory,
             &mut rng,
             &self.logger,
         )?;
@@ -414,7 +410,7 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
             0,
             &outlays,
             tombstone_block,
-            &self.fog_pubkey_resolver,
+            &self.fog_resolver_factory,
             &mut rng,
             &self.logger,
         )?;
@@ -679,7 +675,7 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
         change_subaddress: u64,
         destinations: &[Outlay],
         tombstone_block: BlockIndex,
-        fog_pubkey_resolver: &Option<Arc<FPR>>,
+        fog_resolver_factory: &Arc<dyn Fn(&[FogUri]) -> Result<FPR, String> + Send + Sync>,
         rng: &mut (impl RngCore + CryptoRng),
         logger: &Logger,
     ) -> Result<TxProposal, Error> {
@@ -701,8 +697,19 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
             ));
         }
 
+        // Collect all required FogUris from public addresses, then pass to resolver factory
+        let fog_resolver = {
+            let change_address = from_account_key.subaddress(change_subaddress);
+            let fog_uris = core::slice::from_ref(&change_address)
+                .iter()
+                .chain(destinations.iter().map(|x| &x.receiver))
+                .filter_map(|x| extract_fog_uri(x).transpose())
+                .collect::<Result<Vec<_>, _>>()?;
+            fog_resolver_factory(&fog_uris).map_err(Error::FogError)?
+        };
+
         // Create tx_builder.
-        let mut tx_builder = TransactionBuilder::new();
+        let mut tx_builder = TransactionBuilder::new(fog_resolver);
 
         tx_builder.set_fee(fee);
 
@@ -788,19 +795,8 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
         let mut tx_out_to_outlay_index = HashMap::default();
         let mut outlay_confirmation_numbers = Vec::default();
         for (i, outlay) in destinations.iter().enumerate() {
-            let target_acct_pubkey = Self::get_fog_pubkey_for_public_address(
-                &outlay.receiver,
-                fog_pubkey_resolver,
-                tombstone_block,
-            )?;
-
             let (tx_out, confirmation_number) = tx_builder
-                .add_output(
-                    outlay.value,
-                    &outlay.receiver,
-                    target_acct_pubkey.as_ref(),
-                    rng,
-                )
+                .add_output(outlay.value, &outlay.receiver, rng)
                 .map_err(|err| Error::TxBuildError(format!("failed adding output: {}", err)))?;
 
             tx_out_to_outlay_index.insert(tx_out, i);
@@ -821,19 +817,9 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
         // If we do, add an output for that as well.
         if change > 0 {
             let change_public_address = from_account_key.subaddress(change_subaddress);
-            let target_acct_pubkey = Self::get_fog_pubkey_for_public_address(
-                &change_public_address,
-                fog_pubkey_resolver,
-                tombstone_block,
-            )?;
 
             tx_builder
-                .add_output(
-                    change,
-                    &change_public_address,
-                    target_acct_pubkey.as_ref(),
-                    rng,
-                )
+                .add_output(change, &change_public_address, rng)
                 .map_err(|err| {
                     Error::TxBuildError(format!("failed adding output (change): {}", err))
                 })?;
@@ -885,36 +871,16 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
             outlay_confirmation_numbers,
         })
     }
+}
 
-    fn get_fog_pubkey_for_public_address(
-        address: &PublicAddress,
-        fog_pubkey_resolver: &Option<Arc<FPR>>,
-        tombstone_block: BlockIndex,
-    ) -> Result<Option<RistrettoPublic>, Error> {
-        if address.fog_report_url().is_none() {
-            return Ok(None);
-        }
-
-        match fog_pubkey_resolver.as_ref() {
-            None => Err(Error::FogError(format!(
-                "{} uses fog but mobilecoind was started without fog support",
-                address,
-            ))),
-            Some(resolver) => resolver
-                .get_fog_pubkey(address)
-                .map_err(|err| {
-                    Error::FogError(format!(
-                        "Failed getting fog public key for{}: {}",
-                        address, err
-                    ))
-                })
-                .and_then(|result| {
-                    if tombstone_block > result.pubkey_expiry {
-                        return Err(Error::FogError(format!("{} fog public key expiry block ({}) is lower than the provided tombstone block ({})", address, result.pubkey_expiry, tombstone_block)));
-                    }
-                    Ok(Some(result.pubkey))
-                }),
-        }
+// Helper which extracts FogUri from PublicAddress or returns None, or returns an error
+fn extract_fog_uri(addr: &PublicAddress) -> Result<Option<FogUri>, Error> {
+    if let Some(string) = addr.fog_report_url() {
+        Ok(Some(FogUri::from_str(string).map_err(|err| {
+            Error::FogError(format!("Could not parse recipient Fog Url: {}", err))
+        })?))
+    } else {
+        Ok(None)
     }
 }
 
@@ -1139,7 +1105,7 @@ mod test {
         utxos[1].value = 2000 * MILLIMOB_TO_PICOMOB;
 
         let result =
-            TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_optimization(1000, &[], 100);
+            TransactionsManager::<ThickClient,MockFogPubkeyResolver>::select_utxos_for_optimization(1000, &[], 100);
         assert!(result.is_err());
 
         let result = TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_optimization(
