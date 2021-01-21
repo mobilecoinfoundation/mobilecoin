@@ -21,7 +21,7 @@ use alloc::{
 use core::str::FromStr;
 use mc_account_keys::PublicAddress;
 use mc_attest_core::{VerificationReport, Verifier};
-use mc_fog_api::report::ReportResponse;
+use mc_fog_types::ReportResponse;
 use mc_util_uri::FogUri;
 
 /// Data structure for fog-ingest report validation
