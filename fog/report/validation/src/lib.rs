@@ -104,6 +104,7 @@ impl FogPubkeyResolver for FogResolver {
                     if report_id == report.fog_report_id {
                         // TODO validate x509 chain and recipient.fog_authority_sig here,
                         // However, probably skip that if uri scheme is "insecure-fog"?
+                        // TODO this should not use mc_util_serial::deserialize, we should use prost
                         let remote_report: VerificationReport =
                             mc_util_serial::deserialize(&report.report)?;
                         let pubkey = self.verifier.validate_ingest_ias_report(remote_report)?;
@@ -116,32 +117,6 @@ impl FogPubkeyResolver for FogResolver {
                 Err(FogPubkeyError::NoMatchingReportId(url, report_id))
             } else {
                 Err(FogPubkeyError::NoMatchingReportResponse(url))
-            }
-        } else {
-            Err(FogPubkeyError::NoFogReportUrl)
-        }
-    }
-}
-
-/// A mock fog resolver for tests, which skips all IAS, x509, and grpc
-/// It maps Fog-urls (Strings) to FullyValidatedFogPubkey
-///
-/// DO NOT use this except in test code!
-#[derive(Default, Debug)]
-pub struct MockFogResolver(pub BTreeMap<String, FullyValidatedFogPubkey>);
-
-impl FogPubkeyResolver for MockFogResolver {
-    fn get_fog_pubkey(
-        &self,
-        addr: &PublicAddress,
-    ) -> Result<FullyValidatedFogPubkey, FogPubkeyError> {
-        if let Some(fog_url) = addr.fog_report_url() {
-            if let Some(result) = self.0.get(fog_url) {
-                Ok(result.clone())
-            } else {
-                Err(FogPubkeyError::NoMatchingReportResponse(
-                    fog_url.to_string(),
-                ))
             }
         } else {
             Err(FogPubkeyError::NoFogReportUrl)

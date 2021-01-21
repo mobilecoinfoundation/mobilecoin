@@ -32,4 +32,5 @@ blake2 = { version = "0.9", default-features = false }
 maplit = "1.0"
 yaml-rust = "0.4"
 
+mc-fog-report-validation-test-utils = { path = "../../fog/report/validation/test-utils" }
 mc-util-test-helper = { path = "../../util/test-helper" }

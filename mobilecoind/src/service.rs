@@ -1847,9 +1847,8 @@ mod test {
     use mc_common::{logger::test_with_logger, HashSet};
     use mc_crypto_keys::RistrettoPrivate;
     use mc_crypto_rand::RngCore;
-    use mc_fog_report_validation::{
-        FullyValidatedFogPubkey, MockFogPubkeyResolver, MockFogResolver,
-    };
+    use mc_fog_report_validation::{FullyValidatedFogPubkey, MockFogPubkeyResolver};
+    use mc_fog_report_validation_test_utils::MockFogResolver;
     use mc_transaction_core::{
         constants::{MAX_INPUTS, MINIMUM_FEE, RING_SIZE},
         fog_hint::FogHint,

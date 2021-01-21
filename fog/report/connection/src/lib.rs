@@ -21,11 +21,9 @@ pub use mc_fog_report_validation::FogReportResponses;
 
 /// Fog report server connection based on grpcio
 ///
-/// TODO: As an optimization, it might be good to make this like a connection
-/// pool that holds onto its grpc connections, so that they can be reused
-/// if a client is constructing transactions frequently.
-/// The user of this API would tear down this object when they want these
-/// connections to be closed.
+/// TODO: As an optimization, it might be good to make this object hold onto its
+/// grpc channels, so that they can be reused across calls, instead of establishing
+/// new connections each time.
 #[derive(Clone)]
 pub struct GrpcFogReportConnection {
     /// grpc environment
@@ -89,7 +87,7 @@ impl GrpcFogReportConnection {
                 "Report server at {} has no available reports",
                 uri
             );
-            return Err(Error::NoReports);
+            return Err(Error::NoReports(uri.clone()));
         }
 
         // Return entire response
@@ -102,8 +100,8 @@ impl GrpcFogReportConnection {
 pub enum Error {
     /// grpc failure: {0}
     Rpc(grpcio::Error),
-    /// Fog Report Server has no available reports
-    NoReports,
+    /// Fog Report Server has no available reports: {0}
+    NoReports(FogUri),
 }
 
 impl From<grpcio::Error> for Error {

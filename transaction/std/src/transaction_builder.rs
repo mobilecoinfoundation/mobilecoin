@@ -243,29 +243,6 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     }
 }
 
-/// Creates a TxOut that sends `value` to `recipient`.
-///
-/// Note: This is only used in test code
-///
-/// # Arguments
-/// * `value` - Value of the output, in picoMOB.
-/// * `recipient` - Recipient's address.
-/// * `fog_resolver` - Set of prefetched fog public keys to choose from
-/// * `rng` - Entropy for the encryption.
-///
-/// # Returns
-/// * A transaction output, and the shared secret for this TxOut.
-#[allow(unused)]
-fn create_output<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
-    value: u64,
-    recipient: &PublicAddress,
-    fog_resolver: &FPR,
-    rng: &mut RNG,
-) -> Result<(TxOut, RistrettoPublic), TxBuilderError> {
-    let (hint, _pubkey_expiry) = create_fog_hint(recipient, fog_resolver, rng)?;
-    create_output_with_fog_hint(value, recipient, hint, rng)
-}
-
 /// Creates a TxOut that sends `value` to `recipient` using the provided `fog_hint`.
 ///
 /// # Arguments
@@ -319,7 +296,7 @@ pub mod transaction_builder_tests {
     use super::*;
     use maplit::btreemap;
     use mc_account_keys::{AccountKey, DEFAULT_SUBADDRESS_INDEX};
-    use mc_fog_report_validation::{FullyValidatedFogPubkey, MockFogResolver};
+    use mc_fog_report_validation_test_utils::{FullyValidatedFogPubkey, MockFogResolver};
     use mc_transaction_core::{
         constants::{MAX_INPUTS, MAX_OUTPUTS, MILLIMOB_TO_PICOMOB},
         onetime_keys::*,
@@ -329,6 +306,28 @@ pub mod transaction_builder_tests {
     };
     use rand::{rngs::StdRng, SeedableRng};
     use std::convert::TryFrom;
+
+    /// Creates a TxOut that sends `value` to `recipient`.
+    ///
+    /// Note: This is only used in test code
+    ///
+    /// # Arguments
+    /// * `value` - Value of the output, in picoMOB.
+    /// * `recipient` - Recipient's address.
+    /// * `fog_resolver` - Set of prefetched fog public keys to choose from
+    /// * `rng` - Entropy for the encryption.
+    ///
+    /// # Returns
+    /// * A transaction output, and the shared secret for this TxOut.
+    fn create_output<RNG: CryptoRng + RngCore, FPR: FogPubkeyResolver>(
+        value: u64,
+        recipient: &PublicAddress,
+        fog_resolver: &FPR,
+        rng: &mut RNG,
+    ) -> Result<(TxOut, RistrettoPublic), TxBuilderError> {
+        let (hint, _pubkey_expiry) = create_fog_hint(recipient, fog_resolver, rng)?;
+        create_output_with_fog_hint(value, recipient, hint, rng)
+    }
 
     /// Creates a ring of of TxOuts.
     ///

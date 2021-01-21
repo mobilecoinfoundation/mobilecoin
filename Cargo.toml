@@ -38,6 +38,7 @@ members = [
     "fog/api",
     "fog/report/connection",
     "fog/report/validation",
+    "fog/report/validation/test-utils",
     "ledger/db",
     "ledger/distribution",
     "ledger/from-archive",
