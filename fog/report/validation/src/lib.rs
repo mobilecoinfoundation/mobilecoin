@@ -18,9 +18,11 @@ use alloc::{
     collections::BTreeMap,
     string::{String, ToString},
 };
+use core::str::FromStr;
 use mc_account_keys::PublicAddress;
 use mc_attest_core::{VerificationReport, Verifier};
 use mc_fog_api::report::ReportResponse;
+use mc_util_uri::FogUri;
 
 /// Data structure for fog-ingest report validation
 pub mod ingest_report;
@@ -97,6 +99,8 @@ impl FogPubkeyResolver for FogResolver {
         recipient: &PublicAddress,
     ) -> Result<FullyValidatedFogPubkey, FogPubkeyError> {
         if let Some(url) = recipient.fog_report_url() {
+            // Normalize the string to URL before lookup
+            let url = FogUri::from_str(url)?;
             let url = url.to_string();
             if let Some(result) = self.responses.get(&url) {
                 let report_id = recipient.fog_report_id().unwrap_or("").to_string();
