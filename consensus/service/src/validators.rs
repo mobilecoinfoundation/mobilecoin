@@ -475,7 +475,7 @@ mod combine_tests {
         onetime_keys::recover_onetime_private_key,
         tx::{TxOut, TxOutMembershipProof},
     };
-    use mc_transaction_core_test_utils::AccountKey;
+    use mc_transaction_core_test_utils::{AccountKey, MockFogResolver};
     use mc_transaction_std::{InputCredentials, TransactionBuilder};
     use mc_util_from_random::FromRandom;
     use rand::SeedableRng;
@@ -548,11 +548,11 @@ mod combine_tests {
         )
         .unwrap();
 
-        let mut transaction_builder = TransactionBuilder::new();
+        let mut transaction_builder = TransactionBuilder::new(MockFogResolver::default());
         transaction_builder.add_input(input_credentials);
         transaction_builder.set_fee(0);
         transaction_builder
-            .add_output(123, &bob.default_subaddress(), None, &mut rng)
+            .add_output(123, &bob.default_subaddress(), &mut rng)
             .unwrap();
 
         let tx = transaction_builder.build(&mut rng).unwrap();
@@ -592,7 +592,7 @@ mod combine_tests {
 
                 // Step 2: Create a transaction that sends the full value of `tx_out` to `recipient_account`.
 
-                let mut transaction_builder = TransactionBuilder::new();
+                let mut transaction_builder = TransactionBuilder::new(MockFogResolver::default());
 
                 // Create InputCredentials to spend the TxOut.
                 let onetime_private_key = recover_onetime_private_key(
@@ -622,7 +622,7 @@ mod combine_tests {
                 transaction_builder.add_input(input_credentials);
                 transaction_builder.set_fee(0);
                 transaction_builder
-                    .add_output(88, &bob.default_subaddress(), None, &mut rng)
+                    .add_output(88, &bob.default_subaddress(), &mut rng)
                     .unwrap();
 
                 let tx = transaction_builder.build(&mut rng).unwrap();
@@ -682,11 +682,11 @@ mod combine_tests {
             )
             .unwrap();
 
-            let mut transaction_builder = TransactionBuilder::new();
+            let mut transaction_builder = TransactionBuilder::new(MockFogResolver::default());
             transaction_builder.add_input(input_credentials);
             transaction_builder.set_fee(0);
             transaction_builder
-                .add_output(123, &bob.default_subaddress(), None, &mut rng)
+                .add_output(123, &bob.default_subaddress(), &mut rng)
                 .unwrap();
 
             let tx = transaction_builder.build(&mut rng).unwrap();
@@ -714,11 +714,11 @@ mod combine_tests {
             )
             .unwrap();
 
-            let mut transaction_builder = TransactionBuilder::new();
+            let mut transaction_builder = TransactionBuilder::new(MockFogResolver::default());
             transaction_builder.add_input(input_credentials);
             transaction_builder.set_fee(0);
             transaction_builder
-                .add_output(123, &recipient_account.default_subaddress(), None, &mut rng)
+                .add_output(123, &recipient_account.default_subaddress(), &mut rng)
                 .unwrap();
 
             let tx = transaction_builder.build(&mut rng).unwrap();
@@ -767,11 +767,11 @@ mod combine_tests {
             )
             .unwrap();
 
-            let mut transaction_builder = TransactionBuilder::new();
+            let mut transaction_builder = TransactionBuilder::new(MockFogResolver::default());
             transaction_builder.add_input(input_credentials);
             transaction_builder.set_fee(0);
             transaction_builder
-                .add_output(123, &recipient_account.default_subaddress(), None, &mut rng)
+                .add_output(123, &recipient_account.default_subaddress(), &mut rng)
                 .unwrap();
 
             let tx = transaction_builder.build(&mut rng).unwrap();
@@ -845,11 +845,11 @@ mod combine_tests {
             )
             .unwrap();
 
-            let mut transaction_builder = TransactionBuilder::new();
+            let mut transaction_builder = TransactionBuilder::new(MockFogResolver::default());
             transaction_builder.add_input(input_credentials);
             transaction_builder.set_fee(0);
             transaction_builder
-                .add_output(123, &bob.default_subaddress(), None, &mut rng)
+                .add_output(123, &bob.default_subaddress(), &mut rng)
                 .unwrap();
 
             let tx = transaction_builder.build(&mut rng).unwrap();
@@ -878,11 +878,11 @@ mod combine_tests {
             )
             .unwrap();
 
-            let mut transaction_builder = TransactionBuilder::new();
+            let mut transaction_builder = TransactionBuilder::new(MockFogResolver::default());
             transaction_builder.add_input(input_credentials);
             transaction_builder.set_fee(0);
             transaction_builder
-                .add_output(123, &recipient_account.default_subaddress(), None, &mut rng)
+                .add_output(123, &recipient_account.default_subaddress(), &mut rng)
                 .unwrap();
 
             let mut tx = transaction_builder.build(&mut rng).unwrap();
@@ -932,11 +932,11 @@ mod combine_tests {
             )
             .unwrap();
 
-            let mut transaction_builder = TransactionBuilder::new();
+            let mut transaction_builder = TransactionBuilder::new(MockFogResolver::default());
             transaction_builder.add_input(input_credentials);
             transaction_builder.set_fee(0);
             transaction_builder
-                .add_output(123, &recipient_account.default_subaddress(), None, &mut rng)
+                .add_output(123, &recipient_account.default_subaddress(), &mut rng)
                 .unwrap();
 
             let tx = transaction_builder.build(&mut rng).unwrap();

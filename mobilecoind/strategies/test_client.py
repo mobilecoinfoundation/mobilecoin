@@ -64,14 +64,13 @@ def run_test(stub, amount, monitor_id, dest, max_seconds):
             tombstone=0,
         ))
 
-    tx_receipt = tx_resp.sender_tx_receipt
     tx_stats[0] = {
         'start': time.time(),
         'time_delta': None,
-        'tombstone': tx_receipt.tombstone,
+        'tombstone': tx_resp.sender_tx_receipt.tombstone,
         'block_delta': None,
         'status': TransferStatus.pending,
-        'receipt': tx_receipt,
+        'receipt': tx_resp,
     }
     stats = poll(monitor_id, tx_stats, stub)
     # FIXME: Move max seconds check inside polling

@@ -460,7 +460,7 @@ mod tests {
         }
 
         fn from_bytes(src: &GenericArray<u8, U12>) -> Result<Self, Self::Error> {
-            let (a_bytes, b_bytes) = Split::<u8, U4>::split(src.clone());
+            let (a_bytes, b_bytes) = Split::<u8, U4>::split(*src);
             Ok(Self {
                 a: u32::from_le_bytes(a_bytes.try_into().unwrap()),
                 b: u64::from_le_bytes(b_bytes.try_into().unwrap()),

@@ -11,7 +11,27 @@ use protobuf::RepeatedField;
 use serde_derive::{Deserialize, Serialize};
 use std::{collections::HashMap, convert::TryFrom, iter::FromIterator};
 
-#[derive(Serialize, Default)]
+#[derive(Deserialize, Default, Debug)]
+pub struct JsonPasswordRequest {
+    pub password: String,
+}
+
+#[derive(Serialize, Default, Debug)]
+pub struct JsonPasswordResponse {
+    pub success: bool,
+}
+
+#[derive(Deserialize, Default, Debug)]
+pub struct JsonUnlockDbRequest {
+    pub password: String,
+}
+
+#[derive(Serialize, Default, Debug)]
+pub struct JsonUnlockDbResponse {
+    pub success: bool,
+}
+
+#[derive(Serialize, Default, Debug)]
 pub struct JsonEntropyResponse {
     pub entropy: String,
 }
@@ -24,7 +44,7 @@ impl From<&mc_mobilecoind_api::GenerateEntropyResponse> for JsonEntropyResponse 
     }
 }
 
-#[derive(Deserialize, Serialize, Default)]
+#[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonAccountKeyResponse {
     pub view_private_key: String,
     pub spend_private_key: String,
@@ -41,14 +61,14 @@ impl From<&mc_mobilecoind_api::GetAccountKeyResponse> for JsonAccountKeyResponse
     }
 }
 
-#[derive(Deserialize, Default)]
+#[derive(Deserialize, Default, Debug)]
 pub struct JsonMonitorRequest {
     pub account_key: JsonAccountKeyResponse,
     pub first_subaddress: u64,
     pub num_subaddresses: u64,
 }
 
-#[derive(Serialize, Default)]
+#[derive(Serialize, Default, Debug)]
 pub struct JsonMonitorResponse {
     pub monitor_id: String,
     pub is_new: bool,
@@ -63,7 +83,7 @@ impl From<&mc_mobilecoind_api::AddMonitorResponse> for JsonMonitorResponse {
     }
 }
 
-#[derive(Serialize, Default)]
+#[derive(Serialize, Default, Debug)]
 pub struct JsonMonitorListResponse {
     pub monitor_ids: Vec<String>,
 }
@@ -76,7 +96,7 @@ impl From<&mc_mobilecoind_api::GetMonitorListResponse> for JsonMonitorListRespon
     }
 }
 
-#[derive(Serialize, Default)]
+#[derive(Serialize, Default, Debug)]
 pub struct JsonMonitorStatusResponse {
     pub first_subaddress: u64,
     pub num_subaddresses: u64,
@@ -97,7 +117,7 @@ impl From<&mc_mobilecoind_api::GetMonitorStatusResponse> for JsonMonitorStatusRe
     }
 }
 
-#[derive(Serialize, Default)]
+#[derive(Serialize, Default, Debug)]
 pub struct JsonBalanceResponse {
     pub balance: String,
 }
@@ -110,7 +130,7 @@ impl From<&mc_mobilecoind_api::GetBalanceResponse> for JsonBalanceResponse {
     }
 }
 
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default, Debug)]
 pub struct JsonUnspentTxOut {
     pub tx_out: JsonTxOut,
     pub subaddress_index: u64,
@@ -170,7 +190,7 @@ impl TryFrom<&JsonUnspentTxOut> for mc_mobilecoind_api::UnspentTxOut {
     }
 }
 
-#[derive(Serialize, Default)]
+#[derive(Serialize, Default, Debug)]
 pub struct JsonUtxosResponse {
     pub output_list: Vec<JsonUnspentTxOut>,
 }
@@ -187,14 +207,14 @@ impl From<&mc_mobilecoind_api::GetUnspentTxOutListResponse> for JsonUtxosRespons
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default, Debug)]
 pub struct JsonCreateRequestCodeRequest {
     pub receiver: JsonPublicAddress,
     pub value: Option<String>,
     pub memo: Option<String>,
 }
 
-#[derive(Serialize, Default)]
+#[derive(Serialize, Default, Debug)]
 pub struct JsonCreateRequestCodeResponse {
     pub b58_request_code: String,
 }
@@ -207,7 +227,7 @@ impl From<&mc_mobilecoind_api::CreateRequestCodeResponse> for JsonCreateRequestC
     }
 }
 
-#[derive(Deserialize, Serialize, Default)]
+#[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonPublicAddress {
     /// Hex encoded compressed ristretto bytes
     pub view_public_key: String,
@@ -237,7 +257,7 @@ impl From<&PublicAddress> for JsonPublicAddress {
     }
 }
 
-#[derive(Deserialize, Serialize, Default)]
+#[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonPublicAddressResponse {
     /// Hex encoded compressed ristretto bytes
     pub view_public_key: String,
@@ -306,7 +326,7 @@ impl TryFrom<&JsonPublicAddress> for PublicAddress {
     }
 }
 
-#[derive(Deserialize, Serialize, Default)]
+#[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonParseRequestCodeResponse {
     pub receiver: JsonPublicAddress,
     pub value: String,
@@ -323,12 +343,12 @@ impl From<&mc_mobilecoind_api::ParseRequestCodeResponse> for JsonParseRequestCod
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default, Debug)]
 pub struct JsonCreateAddressCodeRequest {
     pub receiver: JsonPublicAddress,
 }
 
-#[derive(Serialize, Default)]
+#[derive(Serialize, Default, Debug)]
 pub struct JsonCreateAddressCodeResponse {
     pub b58_code: String,
 }
@@ -341,7 +361,7 @@ impl From<&mc_mobilecoind_api::CreateAddressCodeResponse> for JsonCreateAddressC
     }
 }
 
-#[derive(Deserialize, Serialize, Default)]
+#[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonParseAddressCodeResponse {
     pub receiver: JsonPublicAddress,
 }
@@ -354,7 +374,7 @@ impl From<&mc_mobilecoind_api::ParseAddressCodeResponse> for JsonParseAddressCod
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonSenderTxReceipt {
     pub key_images: Vec<String>,
     pub tombstone: u64,
@@ -373,7 +393,7 @@ impl From<&mc_mobilecoind_api::SenderTxReceipt> for JsonSenderTxReceipt {
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonReceiverTxReceipt {
     pub recipient: JsonPublicAddress,
     pub tx_public_key: String,
@@ -394,14 +414,14 @@ impl From<&mc_mobilecoind_api::ReceiverTxReceipt> for JsonReceiverTxReceipt {
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonSendPaymentRequest {
     pub request_data: JsonParseRequestCodeResponse,
     pub max_input_utxo_value: Option<String>, // String due to u64 limitation.
     pub change_subaddress: Option<String>,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonSendPaymentResponse {
     pub sender_tx_receipt: JsonSenderTxReceipt,
     pub receiver_tx_receipt_list: Vec<JsonReceiverTxReceipt>,
@@ -420,7 +440,7 @@ impl From<&mc_mobilecoind_api::SendPaymentResponse> for JsonSendPaymentResponse 
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct JsonPayAddressCodeRequest {
     pub receiver_b58_address_code: String,
     pub value: String,
@@ -428,7 +448,7 @@ pub struct JsonPayAddressCodeRequest {
     pub change_subaddress: Option<String>,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonOutlay {
     pub value: String,
     pub receiver: JsonPublicAddress,
@@ -462,7 +482,7 @@ impl TryFrom<&JsonOutlay> for mc_mobilecoind_api::Outlay {
     }
 }
 
-#[derive(Deserialize, Serialize, Default)]
+#[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonAmount {
     pub commitment: String,
     pub masked_value: String,
@@ -477,7 +497,7 @@ impl From<&Amount> for JsonAmount {
     }
 }
 
-#[derive(Deserialize, Serialize, Default)]
+#[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonTxOut {
     pub amount: JsonAmount,
     pub target_key: String,
@@ -540,13 +560,13 @@ impl TryFrom<&JsonTxOut> for mc_api::external::TxOut {
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonRange {
     pub from: String,
     pub to: String,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonTxOutMembershipElement {
     pub range: JsonRange,
     pub hash: String,
@@ -564,7 +584,7 @@ impl From<&TxOutMembershipElement> for JsonTxOutMembershipElement {
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonTxOutMembershipProof {
     pub index: String,
     pub highest_index: String,
@@ -636,7 +656,40 @@ impl TryFrom<&JsonTxOutMembershipProof> for TxOutMembershipProof {
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default, Debug)]
+/// A request for randomly sampled TxOuts for use as mixins.
+pub struct JsonMixinRequest {
+    /// Number of mixins requested.
+    pub num_mixins: u64,
+    /// Outputs that should be excluded from the result.
+    pub excluded: Vec<JsonTxOut>,
+}
+
+#[derive(Deserialize, Serialize, Default, Debug)]
+/// Randomly sampled TxOuts for use as mixins, with membership proofs.
+pub struct JsonMixinResponse {
+    /// TxOuts to use as mixins.
+    pub mixins: Vec<JsonTxOut>,
+    /// Corresponding membership proofs.
+    pub membership_proofs: Vec<JsonTxOutMembershipProof>,
+}
+
+#[derive(Deserialize, Serialize, Default, Debug)]
+/// Requests Merkle proof-of-membership for each queried TxOut
+pub struct JsonMembershipProofRequest {
+    pub outputs: Vec<JsonTxOut>,
+}
+
+#[derive(Deserialize, Serialize, Default, Debug)]
+/// Outputs and their corresponding proofs of membership.
+pub struct JsonMembershipProofResponse {
+    /// Queried outputs.
+    pub outputs: Vec<JsonTxOut>,
+    /// Corresponding membership proofs.
+    pub membership_proofs: Vec<JsonTxOutMembershipProof>,
+}
+
+#[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonTxIn {
     pub ring: Vec<JsonTxOut>,
     pub proofs: Vec<JsonTxOutMembershipProof>,
@@ -681,7 +734,7 @@ impl TryFrom<&JsonTxIn> for TxIn {
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonTxPrefix {
     pub inputs: Vec<JsonTxIn>,
     pub outputs: Vec<JsonTxOut>,
@@ -736,7 +789,7 @@ impl TryFrom<&JsonTxPrefix> for TxPrefix {
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonRingMLSAG {
     pub c_zero: String,
     pub responses: Vec<String>,
@@ -757,11 +810,11 @@ impl From<&RingMLSAG> for JsonRingMLSAG {
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonSignatureRctBulletproofs {
     pub ring_signatures: Vec<JsonRingMLSAG>,
     pub pseudo_output_commitments: Vec<String>,
-    range_proofs: Vec<u8>,
+    range_proofs: String,
 }
 
 impl From<&SignatureRctBulletproofs> for JsonSignatureRctBulletproofs {
@@ -777,7 +830,7 @@ impl From<&SignatureRctBulletproofs> for JsonSignatureRctBulletproofs {
                 .iter()
                 .map(|x| hex::encode(x.get_data()))
                 .collect(),
-            range_proofs: src.get_range_proofs().to_vec(),
+            range_proofs: hex::encode(src.get_range_proofs().to_vec()),
         }
     }
 }
@@ -830,13 +883,15 @@ impl TryFrom<&JsonSignatureRctBulletproofs> for SignatureRctBulletproofs {
         let mut signature = SignatureRctBulletproofs::new();
         signature.set_ring_signatures(RepeatedField::from_vec(ring_sigs));
         signature.set_pseudo_output_commitments(RepeatedField::from_vec(commitments));
-        signature.set_range_proofs(src.range_proofs.clone());
+        let proofs_bytes = hex::decode(&src.range_proofs)
+            .map_err(|err| format!("Could not decode from hex: {}", err))?;
+        signature.set_range_proofs(proofs_bytes);
 
         Ok(signature)
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonTx {
     pub prefix: JsonTxPrefix,
     pub signature: JsonSignatureRctBulletproofs,
@@ -870,7 +925,7 @@ impl TryFrom<&JsonTx> for Tx {
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonTxProposal {
     pub input_list: Vec<JsonUnspentTxOut>,
     pub outlay_list: Vec<JsonOutlay>,
@@ -939,13 +994,13 @@ impl TryFrom<&JsonTxProposal> for mc_mobilecoind_api::TxProposal {
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonCreateTxProposalRequest {
     pub input_list: Vec<JsonUnspentTxOut>,
     pub transfer: JsonParseRequestCodeResponse,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonCreateTxProposalResponse {
     pub tx_proposal: JsonTxProposal,
 }
@@ -958,12 +1013,12 @@ impl From<&mc_mobilecoind_api::GenerateTxResponse> for JsonCreateTxProposalRespo
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonTxProposalRequest {
     pub tx_proposal: JsonTxProposal,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonSubmitTxResponse {
     pub sender_tx_receipt: JsonSenderTxReceipt,
     pub receiver_tx_receipt_list: Vec<JsonReceiverTxReceipt>,
@@ -982,7 +1037,64 @@ impl From<&mc_mobilecoind_api::SubmitTxResponse> for JsonSubmitTxResponse {
     }
 }
 
-#[derive(Serialize, Default)]
+impl TryFrom<&JsonSubmitTxResponse> for mc_mobilecoind_api::SubmitTxResponse {
+    type Error = String;
+
+    fn try_from(src: &JsonSubmitTxResponse) -> Result<Self, String> {
+        let mut sender_receipt = mc_mobilecoind_api::SenderTxReceipt::new();
+
+        let key_images: Vec<KeyImage> = src
+            .sender_tx_receipt
+            .key_images
+            .iter()
+            .map(|k| {
+                hex::decode(&k).map(KeyImage::from).map_err(|err| {
+                    format!(
+                        "Failed to decode hex for sender_tx_receipt.key_images: {}",
+                        err
+                    )
+                })
+            })
+            .collect::<Result<Vec<KeyImage>, String>>()?;
+
+        sender_receipt.set_key_image_list(RepeatedField::from_vec(key_images));
+        sender_receipt.set_tombstone(src.sender_tx_receipt.tombstone);
+
+        let mut receiver_receipts = Vec::new();
+        for r in src.receiver_tx_receipt_list.iter() {
+            let mut receiver_receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
+            receiver_receipt.set_recipient(
+                PublicAddress::try_from(&r.recipient)
+                    .map_err(|err| format!("Failed to convert recipient: {}", err))?,
+            );
+            let mut pubkey = mc_api::external::CompressedRistretto::new();
+            pubkey.set_data(
+                hex::decode(&r.tx_public_key)
+                    .map_err(|err| format!("Failed to decode hex for tx_public_key: {}", err))?,
+            );
+            receiver_receipt.set_tx_public_key(pubkey);
+            receiver_receipt.set_tx_out_hash(
+                hex::decode(&r.tx_out_hash)
+                    .map_err(|err| format!("Failed to decode hex for tx_out_hash: {}", err))?,
+            );
+            receiver_receipt.set_tombstone(r.tombstone);
+            receiver_receipt.set_confirmation_number(
+                hex::decode(&r.confirmation_number).map_err(|err| {
+                    format!("Failed to decode hex for confirmation_number: {}", err)
+                })?,
+            );
+            receiver_receipts.push(receiver_receipt);
+        }
+
+        let mut resp = mc_mobilecoind_api::SubmitTxResponse::new();
+        resp.set_sender_tx_receipt(sender_receipt);
+        resp.set_receiver_tx_receipt_list(RepeatedField::from_vec(receiver_receipts));
+
+        Ok(resp)
+    }
+}
+
+#[derive(Serialize, Default, Debug)]
 pub struct JsonStatusResponse {
     pub status: String,
 }
@@ -994,6 +1106,15 @@ impl From<&mc_mobilecoind_api::GetTxStatusAsSenderResponse> for JsonStatusRespon
             mc_mobilecoind_api::TxStatus::Verified => "verified",
             mc_mobilecoind_api::TxStatus::TombstoneBlockExceeded => "failed",
             mc_mobilecoind_api::TxStatus::InvalidConfirmationNumber => "invalid_confirmation",
+            mc_mobilecoind_api::TxStatus::PublicKeysInDifferentBlocks => {
+                "public_keys_in_different_blocks"
+            }
+            mc_mobilecoind_api::TxStatus::TransactionFailureKeyImageBlockMismatch => {
+                "transaction_failure_key_image_block_mismatch"
+            }
+            mc_mobilecoind_api::TxStatus::TransactionFailureKeyImageAlreadySpent => {
+                "transaction_failure_key_image_already_spent"
+            }
         };
 
         Self {
@@ -1009,6 +1130,15 @@ impl From<&mc_mobilecoind_api::GetTxStatusAsReceiverResponse> for JsonStatusResp
             mc_mobilecoind_api::TxStatus::Verified => "verified",
             mc_mobilecoind_api::TxStatus::TombstoneBlockExceeded => "failed",
             mc_mobilecoind_api::TxStatus::InvalidConfirmationNumber => "invalid_confirmation",
+            mc_mobilecoind_api::TxStatus::PublicKeysInDifferentBlocks => {
+                "public_keys_in_different_blocks"
+            }
+            mc_mobilecoind_api::TxStatus::TransactionFailureKeyImageBlockMismatch => {
+                "transaction_failure_key_image_block_mismatch"
+            }
+            mc_mobilecoind_api::TxStatus::TransactionFailureKeyImageAlreadySpent => {
+                "transaction_failure_key_image_already_spent"
+            }
         };
 
         Self {
@@ -1017,7 +1147,7 @@ impl From<&mc_mobilecoind_api::GetTxStatusAsReceiverResponse> for JsonStatusResp
     }
 }
 
-#[derive(Serialize, Default)]
+#[derive(Serialize, Default, Debug)]
 pub struct JsonLedgerInfoResponse {
     pub block_count: String,
     pub txo_count: String,
@@ -1032,7 +1162,7 @@ impl From<&mc_mobilecoind_api::GetLedgerInfoResponse> for JsonLedgerInfoResponse
     }
 }
 
-#[derive(Serialize, Default)]
+#[derive(Serialize, Default, Debug)]
 pub struct JsonBlockInfoResponse {
     pub key_image_count: String,
     pub txo_count: String,
@@ -1047,7 +1177,7 @@ impl From<&mc_mobilecoind_api::GetBlockInfoResponse> for JsonBlockInfoResponse {
     }
 }
 
-#[derive(Serialize, Default)]
+#[derive(Serialize, Default, Debug)]
 pub struct JsonBlockDetailsResponse {
     pub block_id: String,
     pub version: u32,
@@ -1072,7 +1202,7 @@ impl From<&mc_mobilecoind_api::GetBlockResponse> for JsonBlockDetailsResponse {
     }
 }
 
-#[derive(Serialize, Default)]
+#[derive(Serialize, Default, Debug)]
 pub struct JsonProcessedTxOut {
     pub monitor_id: String,
     pub subaddress_index: u64,
@@ -1101,7 +1231,7 @@ impl From<&mc_mobilecoind_api::ProcessedTxOut> for JsonProcessedTxOut {
     }
 }
 
-#[derive(Serialize, Default)]
+#[derive(Serialize, Default, Debug)]
 pub struct JsonProcessedBlockResponse {
     pub tx_outs: Vec<JsonProcessedTxOut>,
 }
@@ -1118,7 +1248,7 @@ impl From<&mc_mobilecoind_api::GetProcessedBlockResponse> for JsonProcessedBlock
     }
 }
 
-#[derive(Serialize, Default)]
+#[derive(Serialize, Default, Debug)]
 pub struct JsonBlockIndexByTxPubKeyResponse {
     pub block_index: String,
 }

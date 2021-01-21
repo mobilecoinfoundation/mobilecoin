@@ -66,6 +66,8 @@ RUN apt-get update -q -q && \
   psmisc \
   python \
   python3-pip \
+  sqlite3 \
+  libsqlite3-dev \
   systemd \
   unzip \
   uuid-dev \
@@ -76,7 +78,7 @@ RUN apt-get update -q -q && \
 # prometheus = helps with running slam scripts locally
 
 # For use in CI
-RUN pip3 install awscli
+RUN pip3 install awscli black
 
 # filebeat is used for logs when running slam scripts locally
 RUN curl -L -O https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-7.4.2-amd64.deb && \
@@ -124,6 +126,16 @@ ARG DOCKER_NO_SGX=false
 
 COPY --chown=root:root install_sgx.sh /tmp
 RUN if [ "$DOCKER_NO_SGX" = "false" ] ; then cd /tmp && chmod +x install_sgx.sh && ./install_sgx.sh; else echo 'skipping sgx'; fi
+
+# Setup postgresql for local testing
+RUN sed -ie 's|host    all             all             127.0.0.1/32            md5|host    all             all             127.0.0.1/32            trust|' /etc/postgresql/10/main/pg_hba.conf && \
+    sed -ie 's|host    all             all             ::1/128                 md5|host    all             all             ::1/128                 trust|' /etc/postgresql/10/main/pg_hba.conf && \
+    service postgresql start && \
+    su postgres -c "createuser --superuser root"
+
+# Export postgres database url's for build environment, for local testing and conformance tests
+ENV DATABASE_URL="postgres://localhost"
+ENV TEST_DATABASE_URL="postgres://localhost"
 
 # Export sgx sdk environment variables
 # Doing this here means that we don't have to constantly source /opt/intel/sgxsdk/environment

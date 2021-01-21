@@ -12,7 +12,6 @@ protobuf = "2.12"
 
 mc-api = { path = "../../api" }
 mc-attest-api = { path = "../../attest/api" }
-mc-common = { path = "../../common" }
 mc-consensus-api = { path = "../../consensus/api" }
 
 [build-dependencies]

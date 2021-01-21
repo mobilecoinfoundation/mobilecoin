@@ -67,8 +67,8 @@ mod tests {
     fn buffer_size() {
         const RESULTS: [usize; 13] = [1, 4, 4, 5, 8, 8, 9, 12, 12, 13, 16, 16, 17];
 
-        for i in 0..13 {
-            assert_eq!(RESULTS[i], base64_buffer_size(i));
+        for (i, result) in RESULTS.iter().enumerate() {
+            assert_eq!(*result, base64_buffer_size(i));
         }
     }
 }

@@ -365,14 +365,7 @@ impl LedgerDB {
         };
 
         // Get initial values for gauges.
-        let num_blocks = ledger_db.num_blocks()?;
-        ledger_db.metrics.num_blocks.set(num_blocks as i64);
-
-        let num_txos = ledger_db.num_txos()?;
-        ledger_db.metrics.num_txos.set(num_txos as i64);
-
-        let file_size = ledger_db.db_file_size().unwrap_or(0);
-        ledger_db.metrics.db_file_size.set(file_size as i64);
+        ledger_db.update_metrics()?;
 
         Ok(ledger_db)
     }
@@ -405,6 +398,22 @@ impl LedgerDB {
         )?;
 
         db_transaction.commit()?;
+        Ok(())
+    }
+
+    /// Force an update of the metric gauges. This is useful when the ledger db is being updated
+    /// externally (for example by mobilecoind), but we still want to publish the correct metrics.
+    /// Users can call this periodically to do that.
+    pub fn update_metrics(&self) -> Result<(), Error> {
+        let num_blocks = self.num_blocks()?;
+        self.metrics.num_blocks.set(num_blocks as i64);
+
+        let num_txos = self.num_txos()?;
+        self.metrics.num_txos.set(num_txos as i64);
+
+        let file_size = self.db_file_size().unwrap_or(0);
+        self.metrics.db_file_size.set(file_size as i64);
+
         Ok(())
     }
 
