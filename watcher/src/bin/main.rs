@@ -10,9 +10,12 @@ use mc_watcher::{
     config::WatcherConfig, watcher::Watcher, watcher_db::create_or_open_rw_watcher_db,
 };
 
-use mc_common::logger::{create_app_logger, o};
+use mc_common::logger::{create_app_logger, log, o};
 use mc_ledger_sync::ReqwestTransactionsFetcher;
+use std::{thread::sleep, time::Duration};
 use structopt::StructOpt;
+
+const SYNC_RETRY_INTERVAL: Duration = Duration::from_secs(1);
 
 fn main() {
     mc_common::setup_panic_handler();
@@ -32,7 +35,15 @@ fn main() {
     .expect("Could not create or open watcher db");
     let watcher = Watcher::new(watcher_db, transactions_fetcher, logger);
     // For now, ignore origin block, as it does not have a signature.
-    watcher
-        .sync_signatures(1, config.max_block_height)
-        .expect("Could not sync signatures");
+    loop {
+        let syncing_done = watcher
+            .sync_signatures(1, config.max_block_height)
+            .expect("Could not sync signatures");
+        if syncing_done {
+            log::info!(logger, "sync_signatures indicates we're done");
+            break;
+        }
+
+        sleep(SYNC_RETRY_INTERVAL);
+    }
 }
