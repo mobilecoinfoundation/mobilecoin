@@ -1,59 +1,129 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-#![cfg_attr(not(any(test, feature = "automock")), no_std)]
+//! Logic for representing fog public keys from the fog-report server
+//! that have been fully validated, and the associated metadata.
+//!
+//! Note: Ideally this crate would be no_std compatible, but that is aspirational.
+//! The ReportResponse object is not no_std right now, and neither is x509 stuff.
+//! This is tracked in FOG-334.
+//! The main reason to make it no_std compatible is to support constructing
+//! mobilecoin transactions with fog recipients on an embedded device like a
+//! tiny hardware wallet, that doesn't have threads and won't have rust std.
+
+#![deny(missing_docs)]
 
 extern crate alloc;
 
-use alloc::string::String;
-use core::fmt::{Debug, Display};
+use alloc::{
+    collections::BTreeMap,
+    string::{String, ToString},
+};
+use core::str::FromStr;
 use mc_account_keys::PublicAddress;
-use mc_crypto_keys::RistrettoPublic;
+use mc_attest_core::{VerificationReport, Verifier};
+use mc_fog_api::report::ReportResponse;
+use mc_util_uri::FogUri;
+
+/// Data structure for fog-ingest report validation
+pub mod ingest_report;
+use ingest_report::IngestReportVerifier;
+
+/// Interface for a class that can take public addresses and produce validated
+/// fog pubkeys suitable for the transaction builder.
+/// This is the FogResolver object.
+mod traits;
+pub use traits::{FogPubkeyError, FogPubkeyResolver, FullyValidatedFogPubkey};
 
 #[cfg(any(test, feature = "automock"))]
-use mockall::*;
+pub use traits::MockFogPubkeyResolver;
 
-pub mod ingest_report;
+/// Represents a set of unvalidated responses from Fog report servers
+/// Key = Fog-url that was contacted, must match the string in user's public address
+/// Value = The complete response from the fog report server
+///
+/// When constructing a transaction, the fog-url for each recipient should be
+/// extracted from their public address, then a request to that report server should
+/// be made. The responses should be collected in a map-structure (like this).
+/// This should be done for each recipient.
+///
+/// This map structure is ultimately consumed by the TransactionBuilder object,
+/// which validates the responses against the fog data in the public addresses when
+/// building the transaction.
+///
+/// This map structure should not be cached, because the fog pubkeys have an
+/// expiry date and don't live that long. They can be cached for a short time,
+/// but the transaction builder enforces that the tombstone block for the transaction
+/// is limited by the pubkey expiry value of any fog pubkey that is used,
+/// so if these are cached too long, the transaction will be rejected by consensus.
+///
+/// In the case of constructing off-line transactions with Fog recipients, the flow is:
+/// (1) Take fog-urls from (offline) public addresses to the online machine
+/// (2) Hit the fog report servers (online machine), producing FogReportResponses
+/// (3) Take FogReportResponses to the offline machine, and use with transaction builder,
+///     to create the transaction offline.
+/// (4) Take the constructed transaction to the online machine and submit to consensus.
+///
+/// Note: there is no particular reason for this to be BTreeMap instead of HashMap,
+/// except that it is slightly more portable, only requiring the alloc crate.
+pub type FogReportResponses = BTreeMap<String, ReportResponse>;
 
-/// Represents a fog public key validated to use for creating encrypted fog hints.
-/// This object should be constructed only when the IAS report has been validated.
-#[derive(Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
-pub struct IasValidatedFogPubkey(pub RistrettoPublic);
+/// A collection of unvalidated fog reports, together with an IAS verifier.
+/// This object is passed to the TransactionBuilder object.
+/// When fog is not involved, it can simply be defaulted.
+///
+/// Once constructed, this object can get validated fog pubkeys to build fog hints
+/// for transactions, without talking to the internet, and so is compatible with
+/// offline transactions to fog recipients. Only getting the FogReportResponses
+/// requires an online connection.
+#[derive(Default, Clone, Debug)]
+pub struct FogResolver {
+    responses: FogReportResponses,
+    verifier: IngestReportVerifier,
+}
 
-impl AsRef<RistrettoPublic> for IasValidatedFogPubkey {
-    fn as_ref(&self) -> &RistrettoPublic {
-        &self.0
+impl FogResolver {
+    /// Create a new FogResolver object, given serialized (unverified)
+    /// fog report server responses,
+    /// and an attestation verifier for fog ingest measurements.
+    pub fn new(responses: FogReportResponses, verifier: &Verifier) -> Self {
+        Self {
+            responses,
+            verifier: IngestReportVerifier::from(verifier),
+        }
     }
 }
 
-/// Fully resolves a public address to a fully validated fog public key structure,
-/// including all the data from the report server.
-/// This interface may include grpc and so likely cannot be implemented in a way
-/// that is safe for libmobilecoin / asynchronous java requirements.
-#[cfg_attr(any(test, feature = "automock"), automock(type Error = String;))]
-pub trait FogPubkeyResolver {
-    type Error: Display + Debug;
+impl FogPubkeyResolver for FogResolver {
     fn get_fog_pubkey(
         &self,
         recipient: &PublicAddress,
-    ) -> Result<FullyValidatedFogPubkey, Self::Error>;
-}
-
-/// Represents a fog public key validated to use for creating encrypted fog hints.
-/// This object should be constructed only when the IAS report has been validated,
-/// and the chain of trust from the connection has been validated, and the
-/// the fog user's fog_authority_fingerprint_sig over the fingerprints in the signature chain
-/// has been validated for at least one fingerprint.
-#[derive(Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
-pub struct FullyValidatedFogPubkey {
-    /// The fog_report_id value from the fog report.Report proto structure
-    pub fog_report_id: String,
-    /// The ristretto curve point which was extracted from the IAS report additional data
-    /// after validation. This is the encryption key used to create encrypted fog hints.
-    /// The corresponding private key lives only in SGX ingest nodes.
-    pub pubkey: RistrettoPublic,
-    /// The pubkey_expiry value is the latest block that fog-service promises
-    /// that is valid to encrypt fog hints using this key for.
-    /// The client should obey this limit by not setting tombstone block for a
-    /// transaction larger than this limit if the fog pubkey is used.
-    pub pubkey_expiry: u64,
+    ) -> Result<FullyValidatedFogPubkey, FogPubkeyError> {
+        if let Some(url) = recipient.fog_report_url() {
+            // Normalize the string to URL before lookup
+            let url = FogUri::from_str(url)?;
+            let url = url.to_string();
+            if let Some(result) = self.responses.get(&url) {
+                let report_id = recipient.fog_report_id().unwrap_or("").to_string();
+                for report in result.reports.iter() {
+                    if report_id == report.fog_report_id {
+                        // TODO validate x509 chain and recipient.fog_authority_sig here,
+                        // However, probably skip that if uri scheme is "insecure-fog"?
+                        // TODO this should not use mc_util_serial::deserialize, we should use prost
+                        let remote_report: VerificationReport =
+                            mc_util_serial::deserialize(&report.report)?;
+                        let pubkey = self.verifier.validate_ingest_ias_report(remote_report)?;
+                        return Ok(FullyValidatedFogPubkey {
+                            pubkey,
+                            pubkey_expiry: report.pubkey_expiry,
+                        });
+                    }
+                }
+                Err(FogPubkeyError::NoMatchingReportId(url, report_id))
+            } else {
+                Err(FogPubkeyError::NoMatchingReportResponse(url))
+            }
+        } else {
+            Err(FogPubkeyError::NoFogReportUrl)
+        }
+    }
 }

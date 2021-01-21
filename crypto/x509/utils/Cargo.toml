@@ -1,0 +1,16 @@
+[package]
+name = "mc-crypto-x509-utils"
+version = "1.0.0"
+authors = ["MobileCoin"]
+edition = "2018"
+description = "Verification of X509 certificate chains"
+readme = "README.md"
+
+[dev-dependencies]
+mc-crypto-x509-test-vectors = { path = "../test-vectors" }
+
+[dependencies]
+mc-crypto-keys = { path = "../../keys" }
+
+displaydoc = { version = "0.1.7", default-features = false }
+x509-parser = { version = "0.9.0", features = ["verify"] }

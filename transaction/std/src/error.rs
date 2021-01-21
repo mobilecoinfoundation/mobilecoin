@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
 use failure::Fail;
+use mc_fog_report_validation::FogPubkeyError;
 use mc_transaction_core::{ring_signature, ring_signature::Error, AmountError};
 
 #[derive(Debug, Fail)]
@@ -29,15 +30,8 @@ pub enum TxBuilderError {
     #[fail(display = "No inputs")]
     NoInputs,
 
-    #[fail(
-        display = "When building a transaction, a public key was provided for the recipient's fog server, but their public address does not have a Fog server"
-    )]
-    IngestPubkeyUnexpectedlyProvided,
-
-    #[fail(
-        display = "When building a transaction, a public key was not provided for the recipient's fog server, but their public address does have a Fog server"
-    )]
-    IngestPubkeyNotProvided,
+    #[fail(display = "Fog public key error: {}", _0)]
+    FogPublicKey(FogPubkeyError),
 
     #[fail(display = "Key error: {}", _0)]
     KeyError(mc_crypto_keys::KeyError),
@@ -70,5 +64,11 @@ impl From<mc_crypto_keys::KeyError> for TxBuilderError {
 impl From<ring_signature::Error> for TxBuilderError {
     fn from(_: Error) -> Self {
         TxBuilderError::RingSignatureFailed
+    }
+}
+
+impl From<FogPubkeyError> for TxBuilderError {
+    fn from(src: FogPubkeyError) -> Self {
+        TxBuilderError::FogPublicKey(src)
     }
 }

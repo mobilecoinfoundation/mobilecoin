@@ -4,6 +4,7 @@ use core::convert::TryFrom;
 pub use mc_account_keys::{AccountKey, PublicAddress, ViewKey, DEFAULT_SUBADDRESS_INDEX};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 use mc_crypto_rand::{CryptoRng, RngCore};
+pub use mc_fog_report_validation_test_utils::MockFogResolver;
 use mc_ledger_db::{Ledger, LedgerDB};
 pub use mc_transaction_core::{
     constants::MINIMUM_FEE,
@@ -85,7 +86,7 @@ pub fn create_transaction_with_amount<L: Ledger, R: RngCore + CryptoRng>(
     tombstone_block: BlockIndex,
     rng: &mut R,
 ) -> Tx {
-    let mut transaction_builder = TransactionBuilder::new();
+    let mut transaction_builder = TransactionBuilder::new(MockFogResolver::default());
 
     // The first transaction in the origin block should contain enough outputs to use as mixins.
     let origin_block_contents = ledger.get_block_contents(0).unwrap();
@@ -125,7 +126,7 @@ pub fn create_transaction_with_amount<L: Ledger, R: RngCore + CryptoRng>(
 
     // Output
     transaction_builder
-        .add_output(amount, recipient, None, rng)
+        .add_output(amount, recipient, rng)
         .unwrap();
 
     // Tombstone block

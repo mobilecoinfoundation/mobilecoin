@@ -22,18 +22,19 @@ use mc_common::{
 };
 use mc_connection::{BlockchainConnection, UserTxConnection};
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
-use mc_ledger_db::{Ledger, LedgerDB};
+use mc_fog_report_validation::FogPubkeyResolver;
+use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
 use mc_ledger_sync::{NetworkState, PollingNetworkState};
 use mc_mobilecoind_api::{
     mobilecoind_api_grpc::{create_mobilecoind_api, MobilecoindApi},
     MobilecoindUri,
 };
 use mc_transaction_core::{
-    get_tx_out_shared_secret, onetime_keys::recover_onetime_private_key, ring_signature::KeyImage,
-    tx::TxOutConfirmationNumber,
+    get_tx_out_shared_secret,
+    onetime_keys::recover_onetime_private_key,
+    ring_signature::KeyImage,
+    tx::{TxOut, TxOutConfirmationNumber, TxOutMembershipProof},
 };
-
-use mc_fog_report_connection::FogPubkeyResolver;
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::{
     rpc_internal_error, rpc_logger, send_result, AdminService, BuildInfoService,
@@ -57,7 +58,7 @@ pub struct Service {
 impl Service {
     pub fn new<
         T: BlockchainConnection + UserTxConnection + 'static,
-        FPR: FogPubkeyResolver + Send + Sync + 'static,
+        FPR: FogPubkeyResolver + 'static,
     >(
         ledger_db: LedgerDB,
         mobilecoind_db: Database,
@@ -155,7 +156,7 @@ impl Service {
 
 pub struct ServiceApi<
     T: BlockchainConnection + UserTxConnection + 'static,
-    FPR: FogPubkeyResolver + Send + Sync + 'static,
+    FPR: FogPubkeyResolver + 'static,
 > {
     transactions_manager: TransactionsManager<T, FPR>,
     ledger_db: LedgerDB,
@@ -166,10 +167,8 @@ pub struct ServiceApi<
     logger: Logger,
 }
 
-impl<
-        T: BlockchainConnection + UserTxConnection + 'static,
-        FPR: FogPubkeyResolver + Send + Sync + 'static,
-    > Clone for ServiceApi<T, FPR>
+impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolver + 'static> Clone
+    for ServiceApi<T, FPR>
 {
     fn clone(&self) -> Self {
         Self {
@@ -184,10 +183,8 @@ impl<
     }
 }
 
-impl<
-        T: BlockchainConnection + UserTxConnection + 'static,
-        FPR: FogPubkeyResolver + Send + Sync + 'static,
-    > ServiceApi<T, FPR>
+impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolver + 'static>
+    ServiceApi<T, FPR>
 {
     pub fn new(
         transactions_manager: TransactionsManager<T, FPR>,
@@ -633,31 +630,77 @@ impl<
         Ok(response)
     }
 
+    /// Get mixins
+    fn get_mixins_impl(
+        &mut self,
+        request: mc_mobilecoind_api::GetMixinsRequest,
+    ) -> Result<mc_mobilecoind_api::GetMixinsResponse, RpcStatus> {
+        let num_mixins: usize = request.get_num_mixins() as usize;
+        let excluded: Vec<TxOut> = request
+            .get_excluded()
+            .iter()
+            .map(|tx_out| {
+                // Proto -> Rust struct conversion.
+                TxOut::try_from(tx_out)
+                    .map_err(|err| rpc_internal_error("tx_out.try_from", err, &self.logger))
+            })
+            .collect::<Result<Vec<TxOut>, RpcStatus>>()?;
+
+        let excluded_indexes = excluded
+            .iter()
+            .map(|tx_out| self.ledger_db.get_tx_out_index_by_hash(&tx_out.hash()))
+            .collect::<Result<Vec<u64>, LedgerError>>()
+            .map_err(|e| rpc_internal_error("ledger_error", e, &self.logger))?; // TODO better error handling
+
+        let mixins_with_proofs: Vec<(TxOut, TxOutMembershipProof)> = self
+            .transactions_manager
+            .get_rings(num_mixins, 1, &excluded_indexes)
+            .map(|nested| nested.into_iter().flatten().collect())
+            .map_err(|e| rpc_internal_error("get_rings_error", e, &self.logger))?; // TODO better error handling
+
+        let mut response = mc_mobilecoind_api::GetMixinsResponse::new();
+
+        let tx_outs_with_proofs: Vec<mc_mobilecoind_api::TxOutWithProof> = mixins_with_proofs
+            .iter()
+            .map(|(tx_out, proof)| {
+                let mut tx_out_with_proof = mc_mobilecoind_api::TxOutWithProof::new();
+                tx_out_with_proof.set_output(tx_out.into());
+                tx_out_with_proof.set_proof(proof.into());
+                tx_out_with_proof
+            })
+            .collect();
+
+        response.set_mixins(RepeatedField::from(tx_outs_with_proofs));
+        Ok(response)
+    }
+
+    /// Get a proof of membership for each requested TxOut.
     fn get_membership_proofs_impl(
         &mut self,
         request: mc_mobilecoind_api::GetMembershipProofsRequest,
     ) -> Result<mc_mobilecoind_api::GetMembershipProofsResponse, RpcStatus> {
-        let input_list: Vec<UnspentTxOut> = request
-            .get_input_list()
+        let outputs: Vec<TxOut> = request
+            .get_outputs()
             .iter()
-            .map(|proto_utxo| {
+            .map(|tx_out| {
                 // Proto -> Rust struct conversion.
-                UnspentTxOut::try_from(proto_utxo)
-                    .map_err(|err| rpc_internal_error("unspent_tx_out.try_from", err, &self.logger))
+                TxOut::try_from(tx_out)
+                    .map_err(|err| rpc_internal_error("tx_out.try_from", err, &self.logger))
             })
-            .collect::<Result<Vec<UnspentTxOut>, RpcStatus>>()?;
+            .collect::<Result<Vec<TxOut>, RpcStatus>>()?;
 
-        let inputs = self
+        let proofs: Vec<TxOutMembershipProof> = self
             .transactions_manager
-            .get_membership_proofs(input_list)
+            .get_membership_proofs(&outputs)
             .map_err(|err| rpc_internal_error("get_membership_proofs", err, &self.logger))?;
 
         let mut response = mc_mobilecoind_api::GetMembershipProofsResponse::new();
-        for (utxo, proof) in inputs.iter() {
-            let mut utxo_with_proof = mc_mobilecoind_api::TxOutWithProof::new();
-            utxo_with_proof.set_utxo(utxo.into());
-            utxo_with_proof.set_proof(proof.into());
-            response.mut_output_list().push(utxo_with_proof);
+
+        for (tx_out, proof) in outputs.iter().zip(proofs.iter()) {
+            let mut tx_out_with_proof = mc_mobilecoind_api::TxOutWithProof::new();
+            tx_out_with_proof.set_output(tx_out.into());
+            tx_out_with_proof.set_proof(proof.into());
+            response.mut_output_list().push(tx_out_with_proof);
         }
 
         Ok(response)
@@ -1714,7 +1757,7 @@ macro_rules! build_api {
     ($( $service_function_name:ident $service_request_type:ident $service_response_type:ident $service_function_impl:ident ),+)
     =>
     (
-        impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'static> MobilecoindApi for ServiceApi<T, FPR> {
+        impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolver> MobilecoindApi for ServiceApi<T, FPR> {
             $(
                 fn $service_function_name(
                     &mut self,
@@ -1736,26 +1779,36 @@ macro_rules! build_api {
 }
 
 build_api! {
+    // Monitors
     add_monitor AddMonitorRequest AddMonitorResponse add_monitor_impl,
     remove_monitor RemoveMonitorRequest Empty remove_monitor_impl,
     get_monitor_list Empty GetMonitorListResponse get_monitor_list_impl,
     get_monitor_status GetMonitorStatusRequest GetMonitorStatusResponse get_monitor_status_impl,
     get_unspent_tx_out_list GetUnspentTxOutListRequest GetUnspentTxOutListResponse get_unspent_tx_out_list_impl,
+
+    // Utilities
     generate_entropy Empty GenerateEntropyResponse generate_entropy_impl,
     get_account_key GetAccountKeyRequest GetAccountKeyResponse get_account_key_impl,
     get_public_address GetPublicAddressRequest GetPublicAddressResponse get_public_address_impl,
+
+    // b58 codes
     parse_request_code ParseRequestCodeRequest ParseRequestCodeResponse parse_request_code_impl,
     create_request_code CreateRequestCodeRequest CreateRequestCodeResponse create_request_code_impl,
     parse_transfer_code ParseTransferCodeRequest ParseTransferCodeResponse parse_transfer_code_impl,
     create_transfer_code CreateTransferCodeRequest CreateTransferCodeResponse create_transfer_code_impl,
     parse_address_code ParseAddressCodeRequest ParseAddressCodeResponse parse_address_code_impl,
     create_address_code CreateAddressCodeRequest CreateAddressCodeResponse create_address_code_impl,
+
+    // Transactions
+    get_mixins GetMixinsRequest GetMixinsResponse get_mixins_impl,
     get_membership_proofs GetMembershipProofsRequest GetMembershipProofsResponse get_membership_proofs_impl,
     generate_tx GenerateTxRequest GenerateTxResponse generate_tx_impl,
     generate_optimization_tx GenerateOptimizationTxRequest GenerateOptimizationTxResponse generate_optimization_tx_impl,
     generate_transfer_code_tx GenerateTransferCodeTxRequest GenerateTransferCodeTxResponse generate_transfer_code_tx_impl,
     generate_tx_from_tx_out_list GenerateTxFromTxOutListRequest GenerateTxFromTxOutListResponse generate_tx_from_tx_out_list_impl,
     submit_tx SubmitTxRequest SubmitTxResponse submit_tx_impl,
+
+    // Databases
     get_ledger_info Empty GetLedgerInfoResponse get_ledger_info_impl,
     get_block_info GetBlockInfoRequest GetBlockInfoResponse get_block_info_impl,
     get_block GetBlockRequest GetBlockResponse get_block_impl,
@@ -1763,10 +1816,16 @@ build_api! {
     get_tx_status_as_receiver GetTxStatusAsReceiverRequest GetTxStatusAsReceiverResponse get_tx_status_as_receiver_impl,
     get_processed_block GetProcessedBlockRequest GetProcessedBlockResponse get_processed_block_impl,
     get_block_index_by_tx_pub_key GetBlockIndexByTxPubKeyRequest GetBlockIndexByTxPubKeyResponse get_block_index_by_tx_pub_key_impl,
+
+    // Convenience calls
     get_balance GetBalanceRequest GetBalanceResponse get_balance_impl,
     send_payment SendPaymentRequest SendPaymentResponse send_payment_impl,
     pay_address_code PayAddressCodeRequest SendPaymentResponse pay_address_code_impl,
+
+    // Network status
     get_network_status Empty GetNetworkStatusResponse get_network_status_impl,
+
+    // Database encryption
     set_db_password SetDbPasswordRequest Empty set_db_password_impl,
     unlock_db UnlockDbRequest Empty unlock_db_impl
 }
@@ -1789,6 +1848,7 @@ mod test {
     use mc_crypto_keys::RistrettoPrivate;
     use mc_crypto_rand::RngCore;
     use mc_fog_report_validation::{FullyValidatedFogPubkey, MockFogPubkeyResolver};
+    use mc_fog_report_validation_test_utils::MockFogResolver;
     use mc_transaction_core::{
         constants::{MAX_INPUTS, MINIMUM_FEE, RING_SIZE},
         fog_hint::FogHint,
@@ -1799,6 +1859,7 @@ mod test {
     };
     use mc_transaction_std::TransactionBuilder;
     use mc_util_repr_bytes::{typenum::U32, GenericArray, ReprBytes};
+    use mc_util_uri::FogUri;
     use rand::{rngs::StdRng, SeedableRng};
     use std::{
         convert::{TryFrom, TryInto},
@@ -2601,9 +2662,9 @@ mod test {
 
         // Insert into database.
         let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
-        let mut transaction_builder = TransactionBuilder::new();
+        let mut transaction_builder = TransactionBuilder::new(MockFogResolver::default());
         let (tx_out, tx_confirmation) = transaction_builder
-            .add_output(10, &receiver.subaddress(0), None, &mut rng)
+            .add_output(10, &receiver.subaddress(0), &mut rng)
             .unwrap();
 
         add_txos_to_ledger_db(&mut ledger_db, &vec![tx_out.clone()], &mut rng);
@@ -2856,6 +2917,176 @@ mod test {
     }
 
     #[test_with_logger]
+    /// Get mixins should return the correct number of distinct mixins.
+    fn test_get_mixins(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([44u8; 32]);
+
+        let sender = AccountKey::random(&mut rng);
+
+        // 1 known recipient, 3 random recipients and no monitors.
+        let (ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(
+                3,
+                &vec![sender.default_subaddress()],
+                &vec![],
+                logger.clone(),
+                &mut rng,
+            );
+
+        // The ledger contains 40 transaction outputs.
+        assert_eq!(ledger_db.num_txos().unwrap(), 40);
+
+        // Response should contain the requested number of distinct mixins.
+        {
+            let mut request = mc_mobilecoind_api::GetMixinsRequest::new();
+            request.set_num_mixins(13);
+            let response = client.get_mixins(&request).unwrap();
+            let mixins_with_proofs: Vec<mc_mobilecoind_api::TxOutWithProof> =
+                response.get_mixins().to_vec();
+
+            assert_eq!(mixins_with_proofs.len(), 13);
+
+            // Mixins should be distinct.
+            let mixin_hashes: HashSet<_> = mixins_with_proofs
+                .iter()
+                .map(|mixin| {
+                    let tx_out: TxOut = TxOut::try_from(mixin.get_output()).unwrap();
+                    tx_out.hash()
+                })
+                .collect();
+
+            assert_eq!(mixin_hashes.len(), mixins_with_proofs.len());
+        }
+
+        // Requesting more mixins than exist in the ledger should return an error.
+        // TODO: enforce a limit on the number of mixins that may be requested.
+        {
+            let mut bad_request = mc_mobilecoind_api::GetMixinsRequest::new();
+            bad_request.set_num_mixins(10000);
+            let response = client.get_mixins(&bad_request);
+
+            assert!(response.is_err());
+        }
+    }
+
+    #[test_with_logger]
+    /// Get mixins should not return an "excluded" TxOut.
+    fn test_get_mixins_excluded(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([74u8; 32]);
+
+        let sender = AccountKey::random(&mut rng);
+
+        // 1 known recipient, 3 random recipients and no monitors.
+        let (ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(
+                3,
+                &vec![sender.default_subaddress()],
+                &vec![],
+                logger.clone(),
+                &mut rng,
+            );
+
+        assert_eq!(ledger_db.num_txos().unwrap(), 40);
+
+        // A list of outputs to exclude.
+        let to_exclude: Vec<TxOut> = {
+            let data = MonitorData::new(
+                sender.clone(),
+                0,  // first_subaddress
+                20, // num_subaddresses
+                0,  // first_block
+                "", // name
+            )
+            .unwrap();
+
+            // Insert into database.
+            let monitor_id = mobilecoind_db.add_monitor(&data).unwrap();
+
+            // Allow the new monitor to process the ledger.
+            wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
+
+            // Select some outputs from the ledger.
+            mobilecoind_db
+                .get_utxos_for_subaddress(&monitor_id, 0)
+                .unwrap()
+                .into_iter()
+                .map(|utxo| utxo.tx_out)
+                .collect()
+        };
+
+        assert_eq!(to_exclude.len(), 10);
+
+        // The ledger contains 40 outputs. Requesting 30 and excluding 10 should return exactly the
+        // remaining 30.
+        let mut request = mc_mobilecoind_api::GetMixinsRequest::new();
+        request.set_num_mixins(30);
+        request.set_excluded(RepeatedField::from_vec(
+            to_exclude
+                .iter()
+                .map(mc_mobilecoind_api::external::TxOut::from)
+                .collect(),
+        ));
+
+        let response = client.get_mixins(&request).unwrap();
+
+        let mixins_with_proofs: Vec<mc_mobilecoind_api::TxOutWithProof> =
+            response.get_mixins().to_vec();
+
+        // Should contain 30 mixins
+        assert_eq!(mixins_with_proofs.len(), 30);
+
+        // None of the excluded outputs should be returned as mixins.
+        let excluded_hashes: HashSet<_> = to_exclude.iter().map(|tx_out| tx_out.hash()).collect();
+
+        for mixin in &mixins_with_proofs {
+            let mixin: TxOut = TxOut::try_from(mixin.get_output()).unwrap();
+            assert!(!excluded_hashes.contains(&mixin.hash()));
+        }
+    }
+
+    #[test_with_logger]
+    /// Get mixins should return valid membership proofs.
+    fn test_get_mixins_membership_proofs(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([89u8; 32]);
+        let sender = AccountKey::random(&mut rng);
+
+        // 1 known recipient, 3 random recipients and no monitors.
+        let (ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(
+                3,
+                &vec![sender.default_subaddress()],
+                &vec![],
+                logger.clone(),
+                &mut rng,
+            );
+
+        let mixins_with_proofs: Vec<mc_mobilecoind_api::TxOutWithProof> = {
+            let mut request = mc_mobilecoind_api::GetMixinsRequest::new();
+            request.set_num_mixins(13);
+            let response = client.get_mixins(&request).unwrap();
+            response.get_mixins().to_vec()
+        };
+
+        assert_eq!(mixins_with_proofs.len(), 13);
+
+        // Each membership proof should be correct.
+        for mixin_with_proof in &mixins_with_proofs {
+            let mixin: TxOut = TxOut::try_from(mixin_with_proof.get_output()).unwrap();
+
+            // The returned proof should be correct.
+            let expected_proof = {
+                let index = ledger_db.get_tx_out_index_by_hash(&mixin.hash()).unwrap();
+                let proofs = ledger_db.get_tx_out_proof_of_memberships(&[index]).unwrap();
+                assert_eq!(proofs.len(), 1);
+                mc_mobilecoind_api::external::TxOutMembershipProof::from(&proofs[0])
+            };
+
+            assert_eq!(mixin_with_proof.get_proof(), &expected_proof);
+        }
+    }
+
+    #[test_with_logger]
+    /// Should return a correct proof-of-membership for each requested TxOut.
     fn test_get_membership_proofs(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
 
@@ -2885,46 +3116,49 @@ mod test {
         // Allow the new monitor to process the ledger.
         wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
 
-        // Get list of unspent tx outs
-        let all_utxos = mobilecoind_db
-            .get_utxos_for_subaddress(&monitor_id, 0)
-            .unwrap();
+        // Select some outputs from the ledger.
+        let outputs: Vec<TxOut> = {
+            let unspent_outputs = mobilecoind_db
+                .get_utxos_for_subaddress(&monitor_id, 0)
+                .unwrap();
 
-        // Get membership proofs for utxos 1, 3, 5.
-        let utxos = vec![
-            all_utxos[1].clone(),
-            all_utxos[3].clone(),
-            all_utxos[5].clone(),
-        ];
+            vec![
+                unspent_outputs[1].tx_out.clone(),
+                unspent_outputs[3].tx_out.clone(),
+                unspent_outputs[5].tx_out.clone(),
+            ]
+        };
 
         let mut request = mc_mobilecoind_api::GetMembershipProofsRequest::new();
-        request.set_input_list(RepeatedField::from_vec(
-            utxos
+        request.set_outputs(RepeatedField::from_vec(
+            outputs
                 .iter()
-                .map(mc_mobilecoind_api::UnspentTxOut::from)
+                .map(mc_mobilecoind_api::external::TxOut::from)
                 .collect(),
         ));
 
         let response = client.get_membership_proofs(&request).unwrap();
 
-        assert_eq!(response.output_list.len(), utxos.len());
+        // The response should should contain an element for each requested output.
+        assert_eq!(response.output_list.len(), outputs.len());
 
-        for (utxo, output) in utxos.iter().zip(response.get_output_list().iter()) {
+        for (tx_out, output_with_proof) in outputs.iter().zip(response.get_output_list().iter()) {
+            // The response should contain a TxOutWithProof for each requested TxOut.
             assert_eq!(
-                output.get_utxo(),
-                &mc_mobilecoind_api::UnspentTxOut::from(utxo)
+                output_with_proof.get_output(),
+                &mc_mobilecoind_api::external::TxOut::from(tx_out)
             );
 
-            let index = ledger_db
-                .get_tx_out_index_by_hash(&utxo.tx_out.hash())
-                .unwrap();
-            let proofs = ledger_db.get_tx_out_proof_of_memberships(&[index]).unwrap();
-            assert_eq!(proofs.len(), 1);
+            // The returned proof should be correct.
+            let expected_proof = {
+                let index = ledger_db.get_tx_out_index_by_hash(&tx_out.hash()).unwrap();
+                let proofs = ledger_db.get_tx_out_proof_of_memberships(&[index]).unwrap();
+                assert_eq!(proofs.len(), 1);
 
-            assert_eq!(
-                output.get_proof(),
-                &mc_mobilecoind_api::external::TxOutMembershipProof::from(&proofs[0])
-            );
+                mc_mobilecoind_api::external::TxOutMembershipProof::from(&proofs[0])
+            };
+
+            assert_eq!(output_with_proof.get_proof(), &expected_proof);
         }
     }
 
@@ -3983,19 +4217,20 @@ mod test {
 
         // Fog resolver
         let fog_private_key = RistrettoPrivate::from_random(&mut rng);
-        let fog_pubkey_resolver = Arc::new({
+        let fog_pubkey_resolver_factory: Arc<
+            dyn Fn(&[FogUri]) -> Result<MockFogPubkeyResolver, String> + Send + Sync,
+        > = Arc::new(move |_| -> Result<MockFogPubkeyResolver, String> {
             let mut fog_pubkey_resolver = MockFogPubkeyResolver::new();
             let pubkey = RistrettoPublic::from(&fog_private_key);
             fog_pubkey_resolver
                 .expect_get_fog_pubkey()
                 .return_once(move |_recipient| {
                     Ok(FullyValidatedFogPubkey {
-                        fog_report_id: "".to_owned(),
                         pubkey,
                         pubkey_expiry: 10000,
                     })
                 });
-            fog_pubkey_resolver
+            Ok(fog_pubkey_resolver)
         });
 
         let sender = AccountKey::random(&mut rng);
@@ -4022,12 +4257,12 @@ mod test {
             .unwrap();
 
         log::debug!(logger, "Setting up server {:?}", port);
-        let (_server, server_conn_manager) = test_utils::setup_server(
+        let (_server, server_conn_manager) = test_utils::setup_server::<MockFogPubkeyResolver>(
             logger.clone(),
             ledger_db.clone(),
             mobilecoind_db.clone(),
             None,
-            Some(fog_pubkey_resolver),
+            Some(fog_pubkey_resolver_factory),
             &uri,
         );
         log::debug!(logger, "Setting up client {:?}", port);
@@ -4500,12 +4735,11 @@ mod test {
         let root_id = RootIdentity::from(&root_entropy);
         let account_key = AccountKey::from(&root_id);
 
-        let mut transaction_builder = TransactionBuilder::new();
+        let mut transaction_builder = TransactionBuilder::new(MockFogResolver::default());
         let (tx_out, _tx_confirmation) = transaction_builder
             .add_output(
                 10,
                 &account_key.subaddress(DEFAULT_SUBADDRESS_INDEX),
-                None,
                 &mut rng,
             )
             .unwrap();

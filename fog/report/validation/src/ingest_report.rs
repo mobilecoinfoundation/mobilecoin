@@ -12,7 +12,7 @@ use mc_util_encodings::Error as EncodingError;
 /// A structure that can validate ingest enclave reports and measurements at runtime.
 ///
 /// This is expected to take the verification report and produce the ias-validated and decompressed RistrettoPublic key.
-#[derive(Clone, Debug)]
+#[derive(Default, Clone, Debug)]
 pub struct IngestReportVerifier {
     verifier: Verifier,
 }

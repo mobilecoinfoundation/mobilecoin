@@ -1,0 +1,292 @@
+#
+# OpenSSL Configuration file for test vector certificate generation.
+#
+
+[ca]
+default_ca = root
+
+[policy_strict]
+countryName             = match
+localityName            = match
+stateOrProvinceName     = match
+organizationName        = match
+organizationalUnitName  = optional
+commonName              = supplied
+emailAddress            = optional
+
+[policy_loose]
+countryName             = optional
+stateOrProvinceName     = optional
+localityName            = optional
+organizationName        = optional
+organizationalUnitName  = optional
+commonName              = supplied
+emailAddress            = optional
+
+[req_distinguished_name]
+countryName                    = Country Name (2 letter code)
+stateOrProvinceName            = State or Province Name
+localityName                   = Locality Name
+0.organizationName             = Organization Name
+organizationalUnitName         = Organizational Unit Name
+commonName                     = Common Name
+emailAddress                   = Email Address
+countryName_default            = US
+stateOrProvinceName_default    = California
+localityName_default           = San Francisco
+0.organizationName_default     = TESTING ONLY
+organizationalUnitName_default = TESTING
+emailAddress_default           =
+
+[req]
+default_bits        = 2048
+distinguished_name  = req_distinguished_name
+string_mask         = utf8only
+default_md          = sha256
+x509_extensions     = v3_ca
+
+[ok_root]
+dir              = ${ENV::OUT_DIR}/openssl/ok_root
+certs            = $dir/certs
+crl_dir          = $dir/crl
+new_certs_dir    = $dir/newcerts
+database         = $dir/index.txt
+serial           = $dir/serial
+RANDFILE         = $dir/private/.rand
+private_key      = $dir/private/ca.key
+certificate      = $dir/certs/ca.crt
+crlnumber        = $dir/crlnumber
+crl              = $dir/crl/ca.crl
+crl_extensions   = crl_extensions
+default_crl_days = 182500
+default_md       = sha256
+name_opt         = ca_default
+cert_opt         = ca_default
+default_days     = 182500
+preserve         = no
+policy           = policy_strict
+
+[ok_penultimate]
+dir              = ${ENV::OUT_DIR}/openssl/ok_penultimate
+certs            = $dir/certs
+crl_dir          = $dir/crl
+new_certs_dir    = $dir/newcerts
+database         = $dir/index.txt
+serial           = $dir/serial
+RANDFILE         = $dir/private/.rand
+private_key      = $dir/private/ca.key
+certificate      = $dir/certs/ca.crt
+crlnumber        = $dir/crlnumber
+crl              = $dir/crl/ca.crl
+crl_extensions   = crl_extensions
+default_crl_days = 182500
+default_md       = sha256
+name_opt         = ca_default
+cert_opt         = ca_default
+default_days     = 182500
+preserve         = no
+policy           = policy_strict
+
+[ok_intermediate1]
+dir              = ${ENV::OUT_DIR}/openssl/ok_intermediate1
+certs            = $dir/certs
+crl_dir          = $dir/crl
+new_certs_dir    = $dir/newcerts
+database         = $dir/index.txt
+serial           = $dir/serial
+RANDFILE         = $dir/private/.rand
+private_key      = $dir/private/ca.key
+certificate      = $dir/certs/ca.crt
+crlnumber        = $dir/crlnumber
+crl              = $dir/crl/ca.crl
+crl_extensions   = crl_extensions
+default_crl_days = 182500
+default_md       = sha256
+name_opt         = ca_default
+cert_opt         = ca_default
+default_days     = 182500
+preserve         = no
+policy           = policy_strict
+
+[ok_intermediate2]
+dir              = ${ENV::OUT_DIR}/openssl/ok_intermediate2
+certs            = $dir/certs
+crl_dir          = $dir/crl
+new_certs_dir    = $dir/newcerts
+database         = $dir/index.txt
+serial           = $dir/serial
+RANDFILE         = $dir/private/.rand
+private_key      = $dir/private/ca.key
+certificate      = $dir/certs/ca.crt
+crlnumber        = $dir/crlnumber
+crl              = $dir/crl/ca.crl
+crl_extensions   = crl_extensions
+default_crl_days = 182500
+default_md       = sha256
+name_opt         = ca_default
+cert_opt         = ca_default
+default_days     = 182500
+preserve         = no
+policy           = policy_strict
+
+[ok_intermediate3]
+dir              = ${ENV::OUT_DIR}/openssl/ok_intermediate3
+certs            = $dir/certs
+crl_dir          = $dir/crl
+new_certs_dir    = $dir/newcerts
+database         = $dir/index.txt
+serial           = $dir/serial
+RANDFILE         = $dir/private/.rand
+private_key      = $dir/private/ca.key
+certificate      = $dir/certs/ca.crt
+crlnumber        = $dir/crlnumber
+crl              = $dir/crl/ca.crl
+crl_extensions   = crl_extensions
+default_crl_days = 182500
+default_md       = sha256
+name_opt         = ca_default
+cert_opt         = ca_default
+default_days     = 182500
+preserve         = no
+policy           = policy_strict
+
+[ok_intermediate4]
+dir              = ${ENV::OUT_DIR}/openssl/ok_intermediate4
+certs            = $dir/certs
+crl_dir          = $dir/crl
+new_certs_dir    = $dir/newcerts
+database         = $dir/index.txt
+serial           = $dir/serial
+RANDFILE         = $dir/private/.rand
+private_key      = $dir/private/ca.key
+certificate      = $dir/certs/ca.crt
+crlnumber        = $dir/crlnumber
+crl              = $dir/crl/ca.crl
+crl_extensions   = crl_extensions
+default_crl_days = 182500
+default_md       = sha256
+name_opt         = ca_default
+cert_opt         = ca_default
+default_days     = 182500
+preserve         = no
+policy           = policy_strict
+
+[ok_intermediate5]
+dir              = ${ENV::OUT_DIR}/openssl/ok_intermediate5
+certs            = $dir/certs
+crl_dir          = $dir/crl
+new_certs_dir    = $dir/newcerts
+database         = $dir/index.txt
+serial           = $dir/serial
+RANDFILE         = $dir/private/.rand
+private_key      = $dir/private/ca.key
+certificate      = $dir/certs/ca.crt
+crlnumber        = $dir/crlnumber
+crl              = $dir/crl/ca.crl
+crl_extensions   = crl_extensions
+default_crl_days = 182500
+default_md       = sha256
+name_opt         = ca_default
+cert_opt         = ca_default
+default_days     = 182500
+preserve         = no
+policy           = policy_strict
+
+[ok_intermediate6]
+dir              = ${ENV::OUT_DIR}/openssl/ok_intermediate6
+certs            = $dir/certs
+crl_dir          = $dir/crl
+new_certs_dir    = $dir/newcerts
+database         = $dir/index.txt
+serial           = $dir/serial
+RANDFILE         = $dir/private/.rand
+private_key      = $dir/private/ca.key
+certificate      = $dir/certs/ca.crt
+crlnumber        = $dir/crlnumber
+crl              = $dir/crl/ca.crl
+crl_extensions   = crl_extensions
+default_crl_days = 182500
+default_md       = sha256
+name_opt         = ca_default
+cert_opt         = ca_default
+default_days     = 182500
+preserve         = no
+policy           = policy_strict
+
+[ok_intermediate7]
+dir              = ${ENV::OUT_DIR}/openssl/ok_intermediate7
+certs            = $dir/certs
+crl_dir          = $dir/crl
+new_certs_dir    = $dir/newcerts
+database         = $dir/index.txt
+serial           = $dir/serial
+RANDFILE         = $dir/private/.rand
+private_key      = $dir/private/ca.key
+certificate      = $dir/certs/ca.crt
+crlnumber        = $dir/crlnumber
+crl              = $dir/crl/ca.crl
+crl_extensions   = crl_extensions
+default_crl_days = 182500
+default_md       = sha256
+name_opt         = ca_default
+cert_opt         = ca_default
+default_days     = 182500
+preserve         = no
+policy           = policy_strict
+
+[ok_penultimate8]
+dir              = ${ENV::OUT_DIR}/openssl/ok_penultimate8
+certs            = $dir/certs
+crl_dir          = $dir/crl
+new_certs_dir    = $dir/newcerts
+database         = $dir/index.txt
+serial           = $dir/serial
+RANDFILE         = $dir/private/.rand
+private_key      = $dir/private/ca.key
+certificate      = $dir/certs/ca.crt
+crlnumber        = $dir/crlnumber
+crl              = $dir/crl/ca.crl
+crl_extensions   = crl_extensions
+default_crl_days = 182500
+default_md       = sha256
+name_opt         = ca_default
+cert_opt         = ca_default
+default_days     = 182500
+preserve         = no
+policy           = policy_strict
+
+[v3_ca]
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always,issuer
+basicConstraints = critical, CA:true
+keyUsage = critical, digitalSignature, cRLSign, keyCertSign
+
+[v3_intermediate_ca]
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always,issuer
+basicConstraints = critical, CA:true
+keyUsage = critical, digitalSignature, cRLSign, keyCertSign
+
+[v3_penultimate_ca]
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always,issuer
+basicConstraints = critical, CA:true, pathlen:0
+keyUsage = critical, digitalSignature, cRLSign, keyCertSign
+
+[leaf_cert]
+basicConstraints = CA:FALSE
+nsCertType = email, objsign
+nsComment = "OpenSSL Generated Test Certificate"
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid,issuer
+keyUsage = critical, nonRepudiation, digitalSignature, keyEncipherment
+extendedKeyUsage = emailProtection
+
+[broken_leaf_cert]
+basicConstraints = CA:TRUE
+nsCertType = email, objsign
+nsComment = "OpenSSL Generated Broken Test Certificate"
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid,issuer
+keyUsage = critical, nonRepudiation, digitalSignature, keyEncipherment
+extendedKeyUsage = emailProtection

@@ -11,7 +11,7 @@ use mc_common::{
 use mc_connection::{ConnectionManager, RetryableUserTxConnection, UserTxConnection};
 use mc_crypto_keys::RistrettoPublic;
 use mc_crypto_rand::{CryptoRng, RngCore};
-use mc_fog_report_connection::FogPubkeyResolver;
+use mc_fog_report_validation::FogPubkeyResolver;
 use mc_ledger_db::{Error as LedgerError, Ledger, LedgerDB};
 use mc_transaction_core::{
     constants::{MAX_INPUTS, MINIMUM_FEE, RING_SIZE},
@@ -21,11 +21,13 @@ use mc_transaction_core::{
     BlockIndex,
 };
 use mc_transaction_std::{InputCredentials, TransactionBuilder};
+use mc_util_uri::FogUri;
 use rand::Rng;
 use std::{
     cmp::Reverse,
     convert::TryFrom,
     iter::{empty, FromIterator},
+    str::FromStr,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc,
@@ -76,10 +78,7 @@ impl TxProposal {
     }
 }
 
-pub struct TransactionsManager<
-    T: UserTxConnection + 'static,
-    FPR: FogPubkeyResolver + Send + Sync + 'static,
-> {
+pub struct TransactionsManager<T: UserTxConnection + 'static, FPR: FogPubkeyResolver> {
     /// Ledger database.
     ledger_db: LedgerDB,
 
@@ -95,13 +94,12 @@ pub struct TransactionsManager<
     /// Monotonically increasing counter. This is used for node round-robin selection.
     submit_node_offset: Arc<AtomicUsize>,
 
-    /// Fog pub key resolver, used when constructing outputs to fog recipients.
-    fog_pubkey_resolver: Option<Arc<FPR>>,
+    /// Fog resolver maker, used when constructing outputs to fog recipients.
+    /// This is abstracted because in tests, we don't want to form grpc connections to fog
+    fog_resolver_factory: Arc<dyn Fn(&[FogUri]) -> Result<FPR, String> + Send + Sync>,
 }
 
-impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'static> Clone
-    for TransactionsManager<T, FPR>
-{
+impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver> Clone for TransactionsManager<T, FPR> {
     fn clone(&self) -> Self {
         Self {
             ledger_db: self.ledger_db.clone(),
@@ -109,19 +107,17 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
             peer_manager: self.peer_manager.clone(),
             logger: self.logger.clone(),
             submit_node_offset: self.submit_node_offset.clone(),
-            fog_pubkey_resolver: self.fog_pubkey_resolver.clone(),
+            fog_resolver_factory: self.fog_resolver_factory.clone(),
         }
     }
 }
 
-impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'static>
-    TransactionsManager<T, FPR>
-{
+impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver> TransactionsManager<T, FPR> {
     pub fn new(
         ledger_db: LedgerDB,
         mobilecoind_db: Database,
         peer_manager: ConnectionManager<T>,
-        fog_pubkey_resolver: Option<Arc<FPR>>,
+        fog_resolver_factory: Arc<dyn Fn(&[FogUri]) -> Result<FPR, String> + Send + Sync>,
         logger: Logger,
     ) -> Self {
         let mut rng = rand::thread_rng();
@@ -131,10 +127,19 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
             peer_manager,
             logger,
             submit_node_offset: Arc::new(AtomicUsize::new(rng.next_u64() as usize)),
-            fog_pubkey_resolver,
+            fog_resolver_factory,
         }
     }
 
+    /// Create a TxProposal.
+    ///
+    /// # Arguments
+    /// * `send_monitor_id` - ???
+    /// * `change_subaddress` - Recipient of any change.
+    /// * `inputs` - UTXOs that will be spent by the transaction.
+    /// * `outlays` - Output amounts and recipients.
+    /// * `opt_fee` - Transaction fee in picoMOB. If zero, defaults to MIN_FEE.
+    /// * `opt_tombstone` - Tombstone block. If zero, sets to default.
     pub fn build_transaction(
         &self,
         sender_monitor_id: &MonitorId,
@@ -178,26 +183,31 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
             selected_utxos,
         );
 
-        // Get membership proofs for selected utxos.
-        let selected_utxos_with_proofs = self.get_membership_proofs(selected_utxos.clone())?;
+        // The selected_utxos with corresponding proofs of membership.
+        let selected_utxos_with_proofs: Vec<(UnspentTxOut, TxOutMembershipProof)> = {
+            let outputs: Vec<TxOut> = selected_utxos
+                .iter()
+                .map(|utxo| utxo.tx_out.clone())
+                .collect();
+            let proofs = self.get_membership_proofs(&outputs)?;
+
+            selected_utxos.into_iter().zip(proofs.into_iter()).collect()
+        };
         log::trace!(logger, "Got membership proofs");
 
-        // Get rings.
-        // TODO configurable ring size
-        let excluded_tx_out_indices: Vec<u64> = selected_utxos
-            .iter()
-            .map(|utxo| {
-                self.ledger_db
-                    .get_tx_out_index_by_hash(&utxo.tx_out.hash())
-                    .map_err(Error::LedgerDB)
-            })
-            .collect::<Result<Vec<u64>, Error>>()?;
+        // A ring of mixins for each UTXO.
+        let rings = {
+            let excluded_tx_out_indices: Vec<u64> = selected_utxos_with_proofs
+                .iter()
+                .map(|(_, proof)| proof.index)
+                .collect();
 
-        let rings = self.get_rings(
-            DEFAULT_RING_SIZE,
-            selected_utxos_with_proofs.len(),
-            &excluded_tx_out_indices,
-        )?;
+            self.get_rings(
+                DEFAULT_RING_SIZE, // TODO configurable ring size
+                selected_utxos_with_proofs.len(),
+                &excluded_tx_out_indices,
+            )?
+        };
         log::trace!(logger, "Got {} rings", rings.len());
 
         // Come up with tombstone block.
@@ -219,7 +229,7 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
             change_subaddress,
             outlays,
             tombstone_block,
-            &self.fog_pubkey_resolver,
+            &self.fog_resolver_factory,
             &mut rng,
             &self.logger,
         )?;
@@ -228,6 +238,11 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
         Ok(tx_proposal)
     }
 
+    /// Create a TxProposal that attempts to merge multiple UTXOs into a single larger UTXO.
+    ///
+    /// # Arguments
+    /// * `monitor_id` - Monitor ID of the inputs to spend.
+    /// * `subaddress_index` - Subaddress of the inputs to spend.
     pub fn generate_optimization_tx(
         &self,
         monitor_id: &MonitorId,
@@ -241,17 +256,15 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
         // Get monitor data.
         let monitor_data = self.mobilecoind_db.get_monitor_data(monitor_id)?;
 
-        // Select UTXOs.
         let num_blocks_in_ledger = self.ledger_db.num_blocks()?;
 
-        let inputs = self
-            .mobilecoind_db
-            .get_utxos_for_subaddress(monitor_id, subaddress_index)?;
-        let (selected_utxos, fee) = Self::select_utxos_for_optimization(
-            num_blocks_in_ledger,
-            &inputs,
-            MAX_INPUTS as usize,
-        )?;
+        // Select UTXOs that will be spent by this transaction.
+        let (selected_utxos, fee) = {
+            let inputs = self
+                .mobilecoind_db
+                .get_utxos_for_subaddress(monitor_id, subaddress_index)?;
+            Self::select_utxos_for_optimization(num_blocks_in_ledger, &inputs, MAX_INPUTS as usize)?
+        };
 
         log::trace!(
             logger,
@@ -268,26 +281,31 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
             total_value
         );
 
-        // Get membership proofs for selected utxos.
-        let selected_utxos_with_proofs = self.get_membership_proofs(selected_utxos.clone())?;
+        // The selected_utxos with corresponding proofs of membership.
+        let selected_utxos_with_proofs: Vec<(UnspentTxOut, TxOutMembershipProof)> = {
+            let outputs: Vec<TxOut> = selected_utxos
+                .iter()
+                .map(|utxo| utxo.tx_out.clone())
+                .collect();
+            let proofs = self.get_membership_proofs(&outputs)?;
+
+            selected_utxos.into_iter().zip(proofs.into_iter()).collect()
+        };
         log::trace!(logger, "Got membership proofs");
 
-        // Get rings.
-        // TODO configurable ring size
-        let excluded_tx_out_indices: Vec<u64> = selected_utxos
-            .iter()
-            .map(|utxo| {
-                self.ledger_db
-                    .get_tx_out_index_by_hash(&utxo.tx_out.hash())
-                    .map_err(Error::LedgerDB)
-            })
-            .collect::<Result<Vec<u64>, Error>>()?;
+        // A ring of mixins for each selected UTXO.
+        let rings = {
+            let excluded_tx_out_indices: Vec<u64> = selected_utxos_with_proofs
+                .iter()
+                .map(|(_, proof)| proof.index)
+                .collect();
 
-        let rings = self.get_rings(
-            DEFAULT_RING_SIZE,
-            selected_utxos_with_proofs.len(),
-            &excluded_tx_out_indices,
-        )?;
+            self.get_rings(
+                DEFAULT_RING_SIZE, // TODO configurable ring size
+                selected_utxos_with_proofs.len(),
+                &excluded_tx_out_indices,
+            )?
+        };
         log::trace!(logger, "Got {} rings", rings.len());
 
         // Come up with tombstone block.
@@ -310,7 +328,7 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
             subaddress_index,
             &outlays,
             tombstone_block,
-            &self.fog_pubkey_resolver,
+            &self.fog_resolver_factory,
             &mut rng,
             &self.logger,
         )?;
@@ -323,10 +341,17 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
         Ok(tx_proposal)
     }
 
+    /// Create a TxProposal that sends the total value of all inputs minus the fee to a single receiver.
+    ///
+    /// # Arguments
+    /// * `account_key` -Account key that owns the inputs.
+    /// * `inputs` - UTXOs that will be spent by the transaction.
+    /// * `receiver` - The single receiver of the transaction's outputs.
+    /// * `fee` - Transaction fee in picoMOB. If zero, defaults to MIN_FEE.
     pub fn generate_tx_from_tx_list(
         &self,
         account_key: &AccountKey,
-        input_list: &[UnspentTxOut],
+        inputs: &[UnspentTxOut],
         receiver: &PublicAddress,
         fee: u64,
     ) -> Result<TxProposal, Error> {
@@ -336,7 +361,7 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
         let fee = if fee == 0 { MINIMUM_FEE } else { fee };
 
         // All inputs are to be spent
-        let total_value: u64 = input_list.iter().map(|utxo| utxo.value).sum();
+        let total_value: u64 = inputs.iter().map(|utxo| utxo.value).sum();
 
         if total_value < fee {
             return Err(Error::InsufficientFunds);
@@ -348,24 +373,21 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
             total_value - fee
         );
 
-        // Get the proofs and the rings
-        let utxos_with_proofs = self.get_membership_proofs(input_list.to_vec())?;
+        // The inputs with corresponding proofs of membership.
+        let inputs_with_proofs: Vec<(UnspentTxOut, TxOutMembershipProof)> = {
+            let tx_outs: Vec<TxOut> = inputs.iter().map(|utxo| utxo.tx_out.clone()).collect();
+            let proofs = self.get_membership_proofs(&tx_outs)?;
+            inputs.iter().cloned().zip(proofs.into_iter()).collect()
+        };
         log::trace!(logger, "Got membership proofs");
 
-        let excluded_tx_out_indices: Vec<u64> = input_list
+        // The index of each input in the ledger.
+        let input_indices: Vec<u64> = inputs_with_proofs
             .iter()
-            .map(|utxo| {
-                self.ledger_db
-                    .get_tx_out_index_by_hash(&utxo.tx_out.hash())
-                    .map_err(Error::LedgerDB)
-            })
-            .collect::<Result<Vec<u64>, Error>>()?;
+            .map(|(_, membership_proof)| membership_proof.index)
+            .collect();
 
-        let rings = self.get_rings(
-            DEFAULT_RING_SIZE,
-            utxos_with_proofs.len(),
-            &excluded_tx_out_indices,
-        )?;
+        let rings = self.get_rings(DEFAULT_RING_SIZE, inputs.len(), &input_indices)?;
         log::trace!(logger, "Got {} rings", rings.len());
 
         // Come up with tombstone block.
@@ -381,14 +403,14 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
         // Build and return the TxProposal object
         let mut rng = rand::thread_rng();
         let tx_proposal = Self::build_tx_proposal(
-            &utxos_with_proofs,
+            &inputs_with_proofs,
             rings,
             fee,
             &account_key,
             0,
             &outlays,
             tombstone_block,
-            &self.fog_pubkey_resolver,
+            &self.fog_resolver_factory,
             &mut rng,
             &self.logger,
         )?;
@@ -560,22 +582,20 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
         }
     }
 
-    /// Get membership proofs for a list of UTXOs.
+    /// Get membership proofs for a list of transaction outputs.
     pub fn get_membership_proofs(
         &self,
-        utxos: Vec<UnspentTxOut>,
-    ) -> Result<Vec<(UnspentTxOut, TxOutMembershipProof)>, Error> {
-        let indexes = utxos
+        outputs: &[TxOut],
+    ) -> Result<Vec<TxOutMembershipProof>, Error> {
+        let indexes = outputs
             .iter()
-            .map(|utxo| self.ledger_db.get_tx_out_index_by_hash(&utxo.tx_out.hash()))
+            .map(|tx_out| self.ledger_db.get_tx_out_index_by_hash(&tx_out.hash()))
             .collect::<Result<Vec<u64>, LedgerError>>()?;
-        let proofs = self.ledger_db.get_tx_out_proof_of_memberships(&indexes)?;
-
-        Ok(utxos.into_iter().zip(proofs.into_iter()).collect())
+        Ok(self.ledger_db.get_tx_out_proof_of_memberships(&indexes)?)
     }
 
-    /// Get rings.
-    fn get_rings(
+    /// Get `num_rings` rings of mixins.
+    pub fn get_rings(
         &self,
         ring_size: usize,
         num_rings: usize,
@@ -596,45 +616,57 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
             return Err(Error::InsufficientTxOuts);
         }
 
-        // Randomly sample `num_requested` TxOuts, without replacement and convert into a Vec<u64>
-        let mut rng = rand::thread_rng();
-        let mut sampled_indices: HashSet<u64> = HashSet::default();
-        while sampled_indices.len() < num_requested {
-            let index = rng.gen_range(0, num_txos);
-            if excluded_tx_out_indices.contains(&index) {
-                continue;
+        // Randomly sample `num_requested` indices of TxOuts to use as mixins.
+        let mixin_indices: Vec<u64> = {
+            let mut rng = rand::thread_rng();
+            let mut samples: HashSet<u64> = HashSet::default();
+            while samples.len() < num_requested {
+                let index = rng.gen_range(0, num_txos);
+                if excluded_tx_out_indices.contains(&index) {
+                    continue;
+                }
+                samples.insert(index);
             }
-            sampled_indices.insert(index);
-        }
-        let sampled_indices_vec: Vec<u64> = sampled_indices.into_iter().collect();
+            samples.into_iter().collect()
+        };
 
-        // Get proofs for all of those indexes.
-        let proofs = self
+        let mixins_result: Result<Vec<TxOut>, _> = mixin_indices
+            .iter()
+            .map(|&index| self.ledger_db.get_tx_out_by_index(index))
+            .collect();
+        let mixins: Vec<TxOut> = mixins_result?;
+
+        let membership_proofs = self
             .ledger_db
-            .get_tx_out_proof_of_memberships(&sampled_indices_vec)?;
+            .get_tx_out_proof_of_memberships(&mixin_indices)?;
 
-        // Create an iterator that returns (index, proof) elements.
-        let mut indexes_and_proofs_iterator =
-            sampled_indices_vec.into_iter().zip(proofs.into_iter());
+        let mixins_with_proofs: Vec<(TxOut, TxOutMembershipProof)> = mixins
+            .into_iter()
+            .zip(membership_proofs.into_iter())
+            .collect();
 
-        // Convert that into a Vec<Vec<TxOut, TxOutMembershipProof>>
-        let mut rings_with_proofs = Vec::new();
+        // Group mixins and proofs into individual rings.
+        let result: Vec<Vec<(_, _)>> = mixins_with_proofs
+            .chunks(ring_size)
+            .map(|chunk| chunk.to_vec())
+            .collect();
 
-        for _ in 0..num_rings {
-            let mut ring = Vec::new();
-            for _ in 0..ring_size {
-                let (index, proof) = indexes_and_proofs_iterator.next().unwrap();
-                let tx_out = self.ledger_db.get_tx_out_by_index(index)?;
-
-                ring.push((tx_out, proof));
-            }
-            rings_with_proofs.push(ring);
-        }
-
-        Ok(rings_with_proofs)
+        Ok(result)
     }
 
-    /// Build a TxProposal object.
+    /// Create a TxProposal.
+    ///
+    /// # Arguments
+    /// * `inputs` - UTXOs to spend, with membership proofs.
+    /// * `rings` - A set of mixins for each input, with membership proofs.
+    /// * `fee` - Transaction fee, in picoMOB.
+    /// * `from_account_key` - Owns the inputs. Also the recipient of any change.
+    /// * `change_subaddress` - Subaddress for change recipient.
+    /// * `destinations` - Outputs of the transaction.
+    /// * `tombstone_block` - Tombstone block of the transaciton.
+    /// * `fog_pubkey_resolver` - Provides Fog key report, when Fog is enabled.
+    /// * `rng` -
+    /// * `logger` - Logger
     fn build_tx_proposal(
         inputs: &[(UnspentTxOut, TxOutMembershipProof)],
         rings: Vec<Vec<(TxOut, TxOutMembershipProof)>>,
@@ -643,7 +675,7 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
         change_subaddress: u64,
         destinations: &[Outlay],
         tombstone_block: BlockIndex,
-        fog_pubkey_resolver: &Option<Arc<FPR>>,
+        fog_resolver_factory: &Arc<dyn Fn(&[FogUri]) -> Result<FPR, String> + Send + Sync>,
         rng: &mut (impl RngCore + CryptoRng),
         logger: &Logger,
     ) -> Result<TxProposal, Error> {
@@ -665,8 +697,19 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
             ));
         }
 
+        // Collect all required FogUris from public addresses, then pass to resolver factory
+        let fog_resolver = {
+            let change_address = from_account_key.subaddress(change_subaddress);
+            let fog_uris = core::slice::from_ref(&change_address)
+                .iter()
+                .chain(destinations.iter().map(|x| &x.receiver))
+                .filter_map(|x| extract_fog_uri(x).transpose())
+                .collect::<Result<Vec<_>, _>>()?;
+            fog_resolver_factory(&fog_uris).map_err(Error::FogError)?
+        };
+
         // Create tx_builder.
-        let mut tx_builder = TransactionBuilder::new();
+        let mut tx_builder = TransactionBuilder::new(fog_resolver);
 
         tx_builder.set_fee(fee);
 
@@ -752,19 +795,8 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
         let mut tx_out_to_outlay_index = HashMap::default();
         let mut outlay_confirmation_numbers = Vec::default();
         for (i, outlay) in destinations.iter().enumerate() {
-            let target_acct_pubkey = Self::get_fog_pubkey_for_public_address(
-                &outlay.receiver,
-                fog_pubkey_resolver,
-                tombstone_block,
-            )?;
-
             let (tx_out, confirmation_number) = tx_builder
-                .add_output(
-                    outlay.value,
-                    &outlay.receiver,
-                    target_acct_pubkey.as_ref(),
-                    rng,
-                )
+                .add_output(outlay.value, &outlay.receiver, rng)
                 .map_err(|err| Error::TxBuildError(format!("failed adding output: {}", err)))?;
 
             tx_out_to_outlay_index.insert(tx_out, i);
@@ -785,19 +817,9 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
         // If we do, add an output for that as well.
         if change > 0 {
             let change_public_address = from_account_key.subaddress(change_subaddress);
-            let target_acct_pubkey = Self::get_fog_pubkey_for_public_address(
-                &change_public_address,
-                fog_pubkey_resolver,
-                tombstone_block,
-            )?;
 
             tx_builder
-                .add_output(
-                    change,
-                    &change_public_address,
-                    target_acct_pubkey.as_ref(),
-                    rng,
-                )
+                .add_output(change, &change_public_address, rng)
                 .map_err(|err| {
                     Error::TxBuildError(format!("failed adding output (change): {}", err))
                 })?;
@@ -849,36 +871,16 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver + Send + Sync + 'stat
             outlay_confirmation_numbers,
         })
     }
+}
 
-    fn get_fog_pubkey_for_public_address(
-        address: &PublicAddress,
-        fog_pubkey_resolver: &Option<Arc<FPR>>,
-        tombstone_block: BlockIndex,
-    ) -> Result<Option<RistrettoPublic>, Error> {
-        if address.fog_report_url().is_none() {
-            return Ok(None);
-        }
-
-        match fog_pubkey_resolver.as_ref() {
-            None => Err(Error::FogError(format!(
-                "{} uses fog but mobilecoind was started without fog support",
-                address,
-            ))),
-            Some(resolver) => resolver
-                .get_fog_pubkey(address)
-                .map_err(|err| {
-                    Error::FogError(format!(
-                        "Failed getting fog public key for{}: {}",
-                        address, err
-                    ))
-                })
-                .and_then(|result| {
-                    if tombstone_block > result.pubkey_expiry {
-                        return Err(Error::FogError(format!("{} fog public key expiry block ({}) is lower than the provided tombstone block ({})", address, result.pubkey_expiry, tombstone_block)));
-                    }
-                    Ok(Some(result.pubkey))
-                }),
-        }
+// Helper which extracts FogUri from PublicAddress or returns None, or returns an error
+fn extract_fog_uri(addr: &PublicAddress) -> Result<Option<FogUri>, Error> {
+    if let Some(string) = addr.fog_report_url() {
+        Ok(Some(FogUri::from_str(string).map_err(|err| {
+            Error::FogError(format!("Could not parse recipient Fog Url: {}", err))
+        })?))
+    } else {
+        Ok(None)
     }
 }
 
@@ -1103,7 +1105,7 @@ mod test {
         utxos[1].value = 2000 * MILLIMOB_TO_PICOMOB;
 
         let result =
-            TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_optimization(1000, &[], 100);
+            TransactionsManager::<ThickClient,MockFogPubkeyResolver>::select_utxos_for_optimization(1000, &[], 100);
         assert!(result.is_err());
 
         let result = TransactionsManager::<ThickClient, MockFogPubkeyResolver>::select_utxos_for_optimization(
