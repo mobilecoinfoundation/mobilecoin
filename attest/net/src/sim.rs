@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 //! An implementation of the IAS client for simulation purposes
 

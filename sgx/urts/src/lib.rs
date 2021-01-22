@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 extern crate mc_common;
 extern crate mc_sgx_slog;

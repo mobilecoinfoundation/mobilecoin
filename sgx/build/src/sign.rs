@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 //! Builder for signing an enclave using the sgx_sign binary application
 

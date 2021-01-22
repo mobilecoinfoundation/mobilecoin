@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 //! Attestation verification code and data structures shared between the
 //! SDK, node, and enclave

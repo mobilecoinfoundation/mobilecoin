@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 //! TxManager maps operations on transaction hashes to in-enclave operations on the corresponding transactions.
 //!

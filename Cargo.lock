@@ -2811,8 +2811,20 @@ dependencies = [
  "mc-api",
  "mc-attest-api",
  "mc-consensus-api",
+ "mc-fog-api-test-utils",
+ "mc-fog-types",
  "mc-util-build-grpc",
  "mc-util-build-script",
+ "prost",
+ "protobuf",
+]
+
+[[package]]
+name = "mc-fog-api-test-utils"
+version = "1.0.0"
+dependencies = [
+ "mc-util-serial",
+ "prost",
  "protobuf",
 ]
 
@@ -2827,6 +2839,7 @@ dependencies = [
  "mc-common",
  "mc-fog-api",
  "mc-fog-report-validation",
+ "mc-fog-types",
  "mc-util-grpc",
  "mc-util-serial",
  "mc-util-uri",
@@ -2840,7 +2853,7 @@ dependencies = [
  "mc-account-keys",
  "mc-attest-core",
  "mc-crypto-keys",
- "mc-fog-api",
+ "mc-fog-types",
  "mc-util-encodings",
  "mc-util-serial",
  "mc-util-uri",
@@ -2853,6 +2866,14 @@ version = "1.0.0"
 dependencies = [
  "mc-account-keys",
  "mc-fog-report-validation",
+]
+
+[[package]]
+name = "mc-fog-types"
+version = "0.10.0"
+dependencies = [
+ "prost",
+ "serde",
 ]
 
 [[package]]

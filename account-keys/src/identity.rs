@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 //! In cryptography, several private keys can be derived from a single source of
 //! entropy using a strong KDF (key derivation function).

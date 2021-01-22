@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 //! Core types for MobileCoin's implementation of SCP.
 use mc_crypto_digestible::Digestible;

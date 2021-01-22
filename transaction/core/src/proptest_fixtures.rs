@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 use crate::{ring_signature::CurveScalar, Amount};
 use curve25519_dalek::scalar::Scalar;

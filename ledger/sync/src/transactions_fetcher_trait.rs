@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 //! The `TransactionsFetcher` trait describes the interface used by `LedgerSyncService` for
 //! fetching transaction data.

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 //! Ledger migration: Perform updates of LedgerDB to accommodate for backward-incompatible changes.
 

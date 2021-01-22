@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 /// Tests of the schema evolution properties of derive(Digestible) implementations
 use mc_crypto_digestible::{Digestible, MerlinTranscript};

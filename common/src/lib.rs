@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 #![cfg_attr(not(any(test, feature = "std")), no_std)]
 #![feature(optin_builtin_traits)]

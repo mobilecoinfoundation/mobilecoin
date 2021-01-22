@@ -13,6 +13,12 @@ protobuf = "2.12"
 mc-api = { path = "../../api" }
 mc-attest-api = { path = "../../attest/api" }
 mc-consensus-api = { path = "../../consensus/api" }
+mc-fog-types = { path = "../types" }
+
+[dev-dependencies]
+prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
+
+mc-fog-api-test-utils = { path = "test-utils" }
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../../util/build/grpc" }

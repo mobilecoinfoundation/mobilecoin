@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 //! A tool for writing private and public key files to disk,
 //! corresponding to `mc_account_keys::RootIdentity`, and

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 //! MetadataStore - an LMDB database that stores metadata about the database. Right now this is
 //! limited to versioning information.

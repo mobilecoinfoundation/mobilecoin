@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2021 The MobileCoin Foundation
+
 //! Logic for representing fog public keys from the fog-report server
 //! that have been fully validated, and the associated metadata.
 //!
@@ -7,8 +9,6 @@
 //! The main reason to make it no_std compatible is to support constructing
 //! mobilecoin transactions with fog recipients on an embedded device like a
 //! tiny hardware wallet, that doesn't have threads and won't have rust std.
-
-// Copyright (c) 2018-2020 MobileCoin Inc.
 
 #![deny(missing_docs)]
 
@@ -21,7 +21,7 @@ use alloc::{
 use core::str::FromStr;
 use mc_account_keys::PublicAddress;
 use mc_attest_core::{VerificationReport, Verifier};
-use mc_fog_api::report::ReportResponse;
+use mc_fog_types::ReportResponse;
 use mc_util_uri::FogUri;
 
 /// Data structure for fog-ingest report validation

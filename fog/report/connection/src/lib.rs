@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 #![deny(missing_docs)]
 
@@ -9,10 +9,8 @@
 use displaydoc::Display;
 use grpcio::{ChannelBuilder, Environment};
 use mc_common::logger::{log, o, Logger};
-use mc_fog_api::{
-    report::{ReportRequest, ReportResponse},
-    report_grpc,
-};
+use mc_fog_api::{report::ReportRequest, report_grpc};
+use mc_fog_types::ReportResponse;
 use mc_util_grpc::ConnectionUriGrpcioChannel;
 use mc_util_uri::FogUri;
 use std::sync::Arc;
@@ -90,8 +88,8 @@ impl GrpcFogReportConnection {
             return Err(Error::NoReports(uri.clone()));
         }
 
-        // Return entire response
-        Ok(resp)
+        // Return PROST version of entire response
+        Ok(resp.into())
     }
 }
 
