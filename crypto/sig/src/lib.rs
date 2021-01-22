@@ -57,6 +57,154 @@ mod tests {
     use mc_util_from_random::FromRandom;
     use mc_util_test_helper::run_with_several_seeds;
 
+    mod compat_20210122 {
+        use crate::*;
+        use core::convert::TryFrom;
+
+        const EXPECTED_SUCCESS_SECKEY: [&[u8; 32]; 3] = [
+            include_bytes!("testdata/20210121/expected_success/0/seckey.bin"),
+            include_bytes!("testdata/20210121/expected_success/1/seckey.bin"),
+            include_bytes!("testdata/20210121/expected_success/2/seckey.bin"),
+        ];
+
+        const EXPECTED_SUCCESS_PUBKEY: [&[u8; 32]; 3] = [
+            include_bytes!("testdata/20210121/expected_success/0/pubkey.bin"),
+            include_bytes!("testdata/20210121/expected_success/1/pubkey.bin"),
+            include_bytes!("testdata/20210121/expected_success/2/pubkey.bin"),
+        ];
+
+        const EXPECTED_SUCCESS_SIG: [&[u8; 64]; 3] = [
+            include_bytes!("testdata/20210121/expected_success/0/sig.bin"),
+            include_bytes!("testdata/20210121/expected_success/1/sig.bin"),
+            include_bytes!("testdata/20210121/expected_success/2/sig.bin"),
+        ];
+
+        #[test]
+        fn expected_success() {
+            for i in 0..2 {
+                let seckey = RistrettoPrivate::try_from(EXPECTED_SUCCESS_SECKEY[i])
+                    .expect("Could not load seckey");
+                let pubkey = RistrettoPublic::try_from(EXPECTED_SUCCESS_PUBKEY[i])
+                    .expect("Could not load pubkey");
+                let sig = Signature::from_bytes(EXPECTED_SUCCESS_SIG[i])
+                    .expect("Could not load signature");
+
+                verify(b"test", &pubkey, b"foobar", &sig).expect("unexpected failure");
+
+                let sig2 = sign(b"test", &seckey, b"foobar");
+                assert_eq!(sig2, sig);
+            }
+        }
+
+        const EXPECTED_FAILURE_BAD_CONTEXT_SECKEY: [&[u8; 32]; 3] = [
+            include_bytes!("testdata/20210121/expected_failure_bad_context/0/seckey.bin"),
+            include_bytes!("testdata/20210121/expected_failure_bad_context/1/seckey.bin"),
+            include_bytes!("testdata/20210121/expected_failure_bad_context/2/seckey.bin"),
+        ];
+        const EXPECTED_FAILURE_BAD_CONTEXT_PUBKEY: [&[u8; 32]; 3] = [
+            include_bytes!("testdata/20210121/expected_failure_bad_context/0/pubkey.bin"),
+            include_bytes!("testdata/20210121/expected_failure_bad_context/1/pubkey.bin"),
+            include_bytes!("testdata/20210121/expected_failure_bad_context/2/pubkey.bin"),
+        ];
+        const EXPECTED_FAILURE_BAD_CONTEXT_SIG: [&[u8; 64]; 3] = [
+            include_bytes!("testdata/20210121/expected_failure_bad_context/0/sig.bin"),
+            include_bytes!("testdata/20210121/expected_failure_bad_context/1/sig.bin"),
+            include_bytes!("testdata/20210121/expected_failure_bad_context/2/sig.bin"),
+        ];
+
+        #[test]
+        fn expected_failure_bad_context() {
+            for i in 0..2 {
+                let seckey = RistrettoPrivate::try_from(EXPECTED_FAILURE_BAD_CONTEXT_SECKEY[i])
+                    .expect("Could not load seckey");
+                let pubkey = RistrettoPublic::try_from(EXPECTED_FAILURE_BAD_CONTEXT_PUBKEY[i])
+                    .expect("Could not load pubkey");
+                let sig = Signature::from_bytes(EXPECTED_FAILURE_BAD_CONTEXT_SIG[i])
+                    .expect("Could not load signature");
+
+                assert!(verify(b"prod", &pubkey, b"foobar", &sig).is_err());
+
+                let sig2 = sign(b"test", &seckey, b"foobar");
+                assert_eq!(sig2, sig);
+            }
+        }
+
+        const EXPECTED_FAILURE_BAD_KEYS_SECKEY: [&[u8; 32]; 3] = [
+            include_bytes!("testdata/20210121/expected_failure_bad_keys/0/seckey.bin"),
+            include_bytes!("testdata/20210121/expected_failure_bad_keys/1/seckey.bin"),
+            include_bytes!("testdata/20210121/expected_failure_bad_keys/2/seckey.bin"),
+        ];
+        const EXPECTED_FAILURE_BAD_KEYS_SECKEY2: [&[u8; 32]; 3] = [
+            include_bytes!("testdata/20210121/expected_failure_bad_keys/0/seckey2.bin"),
+            include_bytes!("testdata/20210121/expected_failure_bad_keys/1/seckey2.bin"),
+            include_bytes!("testdata/20210121/expected_failure_bad_keys/2/seckey2.bin"),
+        ];
+        const EXPECTED_FAILURE_BAD_KEYS_PUBKEY: [&[u8; 32]; 3] = [
+            include_bytes!("testdata/20210121/expected_failure_bad_keys/0/pubkey.bin"),
+            include_bytes!("testdata/20210121/expected_failure_bad_keys/1/pubkey.bin"),
+            include_bytes!("testdata/20210121/expected_failure_bad_keys/2/pubkey.bin"),
+        ];
+        const EXPECTED_FAILURE_BAD_KEYS_SIG: [&[u8; 64]; 3] = [
+            include_bytes!("testdata/20210121/expected_failure_bad_keys/0/sig.bin"),
+            include_bytes!("testdata/20210121/expected_failure_bad_keys/1/sig.bin"),
+            include_bytes!("testdata/20210121/expected_failure_bad_keys/2/sig.bin"),
+        ];
+
+        #[test]
+        fn expected_failure_bad_keys() {
+            for i in 0..2 {
+                let seckey = RistrettoPrivate::try_from(EXPECTED_FAILURE_BAD_KEYS_SECKEY[i])
+                    .expect("Could not load seckey");
+                let seckey2 = RistrettoPrivate::try_from(EXPECTED_FAILURE_BAD_KEYS_SECKEY2[i])
+                    .expect("Could not load seckey");
+                let pubkey = RistrettoPublic::try_from(EXPECTED_FAILURE_BAD_KEYS_PUBKEY[i])
+                    .expect("Could not load pubkey");
+                let sig = Signature::from_bytes(EXPECTED_FAILURE_BAD_KEYS_SIG[i])
+                    .expect("Could not load signature");
+
+                assert!(verify(b"test", &pubkey, b"foobar", &sig).is_err());
+
+                let sig1 = sign(b"test", &seckey, b"foobar");
+                let sig2 = sign(b"test", &seckey2, b"foobar");
+                assert_ne!(sig1, sig2);
+                assert_eq!(sig2, sig);
+            }
+        }
+
+        const EXPECTED_FAILURE_BAD_MESSAGE_SECKEY: [&[u8; 32]; 3] = [
+            include_bytes!("testdata/20210121/expected_failure_bad_message/0/seckey.bin"),
+            include_bytes!("testdata/20210121/expected_failure_bad_message/1/seckey.bin"),
+            include_bytes!("testdata/20210121/expected_failure_bad_message/2/seckey.bin"),
+        ];
+        const EXPECTED_FAILURE_BAD_MESSAGE_PUBKEY: [&[u8; 32]; 3] = [
+            include_bytes!("testdata/20210121/expected_failure_bad_message/0/pubkey.bin"),
+            include_bytes!("testdata/20210121/expected_failure_bad_message/1/pubkey.bin"),
+            include_bytes!("testdata/20210121/expected_failure_bad_message/2/pubkey.bin"),
+        ];
+        const EXPECTED_FAILURE_BAD_MESSAGE_SIG: [&[u8; 64]; 3] = [
+            include_bytes!("testdata/20210121/expected_failure_bad_message/0/sig.bin"),
+            include_bytes!("testdata/20210121/expected_failure_bad_message/1/sig.bin"),
+            include_bytes!("testdata/20210121/expected_failure_bad_message/2/sig.bin"),
+        ];
+
+        #[test]
+        fn expected_failure_bad_message() {
+            for i in 0..2 {
+                let seckey = RistrettoPrivate::try_from(EXPECTED_FAILURE_BAD_MESSAGE_SECKEY[i])
+                    .expect("Could not load seckey");
+                let pubkey = RistrettoPublic::try_from(EXPECTED_FAILURE_BAD_MESSAGE_PUBKEY[i])
+                    .expect("Could not load pubkey");
+                let sig = Signature::from_bytes(EXPECTED_FAILURE_BAD_MESSAGE_SIG[i])
+                    .expect("Could not load signature");
+
+                assert!(verify(b"test", &pubkey, b"foobarbaz", &sig).is_err());
+
+                let sig2 = sign(b"test", &seckey, b"foobar");
+                assert_eq!(sig2, sig);
+            }
+        }
+    }
+
     // Expected successes
     #[test]
     fn expected_success() {
