@@ -28,7 +28,7 @@ impl MetadataStoreSettings for WatcherDbMetadataStoreSettings {
     // If this is properly maintained, we could check during ledger db opening for any
     // incompatibilities, and either refuse to open or perform a migration.
     #[allow(clippy::unreadable_literal)]
-    const LATEST_VERSION: u64 = 20200805;
+    const LATEST_VERSION: u64 = 20210121;
 
     /// The current crate version that manages the database.
     const CRATE_VERSION: &'static str = env!("CARGO_PKG_VERSION");
@@ -39,6 +39,10 @@ impl MetadataStoreSettings for WatcherDbMetadataStoreSettings {
 
 /// Block signatures database name.
 pub const BLOCK_SIGNATURES_DB_NAME: &str = "watcher_db:block_signatures";
+
+/// VerificationReports database name.
+pub const VERIFICATION_REPORTS_BY_BLOCK_SIGNER_DB_NANE: &str =
+    "watcher_db:verification_reports_by_block_signer";
 
 /// Last synced archive blocks database name.
 pub const LAST_SYNCED_DB_NAME: &str = "watcher_db:last_synced";
@@ -73,6 +77,9 @@ pub struct WatcherDB {
 
     /// Signature store.
     block_signatures: Database,
+
+    /// Verification reports by block signer database.
+    verification_reports_by_signer: Database,
 
     /// Last synced archive block.
     last_synced: Database,
@@ -112,12 +119,15 @@ impl WatcherDB {
         version.is_compatible_with_latest()?;
 
         let block_signatures = env.open_db(Some(BLOCK_SIGNATURES_DB_NAME))?;
+        let verification_reports_by_signer =
+            env.open_db(Some(VERIFICATION_REPORTS_BY_BLOCK_SIGNER_DB_NANE))?;
         let last_synced = env.open_db(Some(LAST_SYNCED_DB_NAME))?;
         let config = env.open_db(Some(CONFIG_DB_NAME))?;
 
         Ok(WatcherDB {
             env,
             block_signatures,
+            verification_reports_by_signer,
             last_synced,
             config,
             write_allowed: false,
