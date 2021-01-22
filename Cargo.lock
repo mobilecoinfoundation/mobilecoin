@@ -3735,10 +3735,13 @@ name = "mc-watcher"
 version = "1.0.0"
 dependencies = [
  "failure",
+ "grpcio",
  "lmdb-rkv",
  "mc-account-keys",
  "mc-api",
+ "mc-attest-core",
  "mc-common",
+ "mc-connection",
  "mc-crypto-keys",
  "mc-ledger-db",
  "mc-ledger-sync",
@@ -3748,12 +3751,15 @@ dependencies = [
  "mc-util-lmdb",
  "mc-util-serial",
  "mc-util-test-helper",
+ "mc-util-uri",
  "mc-watcher-api",
  "prost",
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
+ "serde",
  "structopt",
  "tempdir",
+ "toml 0.5.7",
  "url 2.1.1",
 ]
 
