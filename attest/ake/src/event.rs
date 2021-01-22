@@ -7,7 +7,7 @@ use aead::{AeadMut, NewAead};
 use alloc::vec::Vec;
 use core::marker::PhantomData;
 use digest::{BlockInput, FixedOutput, Reset, Update};
-use mc_attest_core::{VerificationReport, VerificationReportData, Verifier};
+use mc_attest_core::{VerificationReport, Verifier};
 use mc_crypto_keys::Kex;
 use mc_crypto_noise::{HandshakeIX, HandshakeNX, HandshakePattern, NoiseCipher, ProtocolName};
 
@@ -313,8 +313,8 @@ impl Into<Vec<u8>> for AuthResponseInput {
 /// An authentication response input to a responder
 impl MealyInput for AuthResponseInput {}
 
-/// The IAS report contents are the final output when authentication succeeds.
-impl MealyOutput for VerificationReportData {}
+/// The IAS report us the final output when authentication succeeds.
+impl MealyOutput for VerificationReport {}
 
 /// A type similar to aead::Payload used to distinguish writer inputs from
 /// outputs.
