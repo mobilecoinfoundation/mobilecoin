@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 //! A public type used for mobilecoind database keys.
 //! Keys are aliases for DatabaseByteArrayKey, which is a newtype for [u8; 32]

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 use super::panic_strategy;
 /// This module defines a `panic_handler` lang item and defines a function

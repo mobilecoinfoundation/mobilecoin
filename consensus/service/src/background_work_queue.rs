@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 //! BackgroundWorkQueue: A data structure that wraps crossbeam_channel queues for background message processing
 //! by a worker thread. It allows multiple threads to send messages to the queue.

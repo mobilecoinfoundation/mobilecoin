@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright (c) 2018-2020 MobileCoin Inc.
+# Copyright (c) 2018-2021 The MobileCoin Foundation
 
 """
 The purpose of this strategy is to test client behavior with a mobilecoind wallet.

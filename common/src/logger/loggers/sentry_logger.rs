@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 use slog::{o, Drain, Key, Level, Logger, Never, OwnedKVList, Record, Serializer, KV};
 

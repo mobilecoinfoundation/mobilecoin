@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 //! This crate provides a logging framework for recording and replaying SCP messages.
 use crate::{slot::SlotMetrics, Msg, QuorumSet, ScpNode, SlotIndex, Value};

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 /// Implementation of ed25519 signer identity for report
 use mc_crypto_ake_enclave::EnclaveIdentity;

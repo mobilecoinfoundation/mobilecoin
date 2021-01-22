@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 //! Implementation of the [GRPC Health Checking
 //! Protocol](https://github.com/grpc/grpc/blob/master/doc/health-checking.md) with some added

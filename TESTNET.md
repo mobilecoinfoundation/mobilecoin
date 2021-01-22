@@ -4,8 +4,6 @@ A public TestNet is now online to help node operators practice running MobileCoi
 
 In addition to bug reports and code contributions, we are seeking feedback on the clarity of our documentation, any criticisms you may have of our design, and any other constructive feedback you would like to share.
 
-MobileCoin Inc. will be announcing details on a formal bug bounty program in the coming weeks.
-
 ### Sign up to receive TestNet *mobilecoins*
 
 Register to participate in the MobileCoin TestNet to receive an allocation of *mobilecoins*.

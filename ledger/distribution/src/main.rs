@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 //! A helper utility for collecting blocks from a local ledger file and storing them as
 //! Protobuf-serialized files on S3.

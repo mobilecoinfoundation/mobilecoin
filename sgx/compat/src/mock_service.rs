@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 /// mock_service is a series of stub implementations for functions from sgx_tservice,
 /// used in unit tests that are not sgx enabled

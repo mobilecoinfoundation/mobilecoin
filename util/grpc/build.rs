@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 fn main() {
     mc_util_build_grpc::compile_protos_and_generate_mod_rs(

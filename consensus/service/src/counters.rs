@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 MobileCoin Inc.
+// Copyright (c) 2018-2021 The MobileCoin Foundation
 
 use mc_util_metrics::{
     register, register_histogram, Collector, Desc, Histogram, IntCounter, IntCounterVec, IntGauge,

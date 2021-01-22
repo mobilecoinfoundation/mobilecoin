@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2018-2020 MobileCoin Inc.
+# Copyright (c) 2018-2021 The MobileCoin Foundation
 
 """ used to download our mailing list and output a table with all user balances """
 
