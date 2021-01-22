@@ -118,11 +118,14 @@ impl Watcher {
     ///
     /// * `start` - starting block to sync.
     /// * `max_block_height` - the max block height to sync per archive url. If None, continue polling.
+    ///
+    /// Returns true if syncing has reached max_block_height, false if more blocks still need to be
+    /// synced.
     pub fn sync_signatures(
         &self,
         start: u64,
         max_block_height: Option<u64>,
-    ) -> Result<(), WatcherError> {
+    ) -> Result<bool, WatcherError> {
         log::debug!(
             self.logger,
             "Now syncing signatures from {} to {:?}",
@@ -143,7 +146,7 @@ impl Watcher {
                 });
             }
             if last_synced.is_empty() {
-                return Ok(());
+                return Ok(true);
             }
 
             // Track whether sync failed - this catches cases where S3 is behind local ledger,
@@ -170,7 +173,7 @@ impl Watcher {
                 }
             }
             if sync_failed.values().all(|x| *x) {
-                return Ok(());
+                return Ok(false);
             }
         }
     }

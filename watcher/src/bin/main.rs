@@ -22,9 +22,11 @@ fn main() {
     let (logger, _global_logger_guard) = create_app_logger(o!());
 
     let config = WatcherConfig::from_args();
+    let sources_config = config.sources_config();
+
 
     let transactions_fetcher =
-        ReqwestTransactionsFetcher::new(config.tx_source_urls.clone(), logger.clone())
+        ReqwestTransactionsFetcher::new(sources_config.tx_source_urls(), logger.clone())
             .expect("Failed creating ReqwestTransactionsFetcher");
 
     let watcher_db = create_or_open_rw_watcher_db(
