@@ -61,6 +61,18 @@ mod tests {
         use crate::*;
         use core::convert::TryFrom;
 
+        // These example files were created by hacking the unit tests in
+        // the tests module to save their data to /tmp, and then manually
+        // importing it into the repo. The unit tests above use
+        // run_with_several_seeds() to execute multiple iterations of the
+        // test with different randomized inputs, and the outputs were
+        // saved to directories of the pattern:
+        //
+        // /tmp/testdata/<function>/<iteration>/data.bin
+        //
+        // It's useful to use .bin here because gitattributes specifies
+        // files with that extension be treated as binary.
+
         const EXPECTED_SUCCESS_SECKEY: [&[u8; 32]; 3] = [
             include_bytes!("testdata/20210121/expected_success/0/seckey.bin"),
             include_bytes!("testdata/20210121/expected_success/1/seckey.bin"),
