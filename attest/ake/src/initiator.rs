@@ -174,7 +174,7 @@ where
                 // However, we still make sure the report contains valid data
                 // before we continue by calling `.verify`. Callers can then
                 // safely construct a VerificationReportData object out of the
-                // VeriVerificationReport returned.
+                // VerificationReport returned.
                 let _report_data = verifier
                     .report_data(
                         &result
