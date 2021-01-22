@@ -313,7 +313,7 @@ impl Into<Vec<u8>> for AuthResponseInput {
 /// An authentication response input to a responder
 impl MealyInput for AuthResponseInput {}
 
-/// The IAS report us the final output when authentication succeeds.
+/// The IAS report is the final output when authentication succeeds.
 impl MealyOutput for VerificationReport {}
 
 /// A type similar to aead::Payload used to distinguish writer inputs from
