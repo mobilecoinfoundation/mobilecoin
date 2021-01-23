@@ -3,22 +3,29 @@ name = "mc-crypto-keys"
 version = "1.0.0"
 authors = ["MobileCoin"]
 edition = "2018"
+description = "MobileCoin DH Key Exchange and Digital Signatures"
+readme = "README.md"
 
 [dependencies]
 binascii = "0.1.2"
 digest = { version = "0.9", default-features = false }
 ed25519 = { version = "1.0.1", default-features = false, features = ["serde"] }
 mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek", "derive"] }
+mc-crypto-digestible-signature = { path = "../../crypto/digestible/signature" }
 failure = { version = "0.1.8", default-features = false, features = ["derive"] }
 hex_fmt = "0.3"
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-repr-bytes = { path = "../../util/repr-bytes" }
 rand_core = { version = "0.5", default-features = false }
+rand_hc = "0.2"
 signature = { version = "1.2", default-features = false, features = ["digest-preview"] }
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 sha2 = { version = "0.9", default-features = false }
 x25519-dalek = { version = "1.1.0", default-features = false, features = ["nightly", "u64_backend"] }
 zeroize = { version = "1", default-features = false }
+
+# Overridden since we need a not-yet-released commit that uprevs a bunch of dependencies.
+schnorrkel = { git = "https://github.com/w3f/schnorrkel", rev = "cfdbe9ae865a4d3ffa2566d896d4dbedf5107028", default-features = false }
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
 curve25519-dalek = { version = "3.0", default-features = false, features = ["simd_backend", "nightly"] }

@@ -28,6 +28,7 @@ members = [
     "crypto/digestible",
     "crypto/digestible/derive/test",
     "crypto/digestible/test-utils",
+    "crypto/digestible/signature",
     "crypto/keys",
     "crypto/message-cipher",
     "crypto/noise",

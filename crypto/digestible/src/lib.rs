@@ -2,9 +2,10 @@
 
 #![no_std]
 
+pub use merlin::Transcript as MerlinTranscript;
+
 use cfg_if::cfg_if;
 use generic_array::{ArrayLength, GenericArray};
-pub use merlin::Transcript as MerlinTranscript;
 
 /// A trait for creating non-malleable digests of objects using merlin transcripts.
 ///

@@ -824,6 +824,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-crypto-digestible-signature"
+version = "1.0.0"
+dependencies = [
+ "mc-crypto-digestible 1.0.0",
+ "schnorrkel 0.9.1 (git+https://github.com/w3f/schnorrkel?rev=cfdbe9ae865a4d3ffa2566d896d4dbedf5107028)",
+ "signature 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "mc-crypto-hashes"
 version = "1.0.0"
 dependencies = [
@@ -844,9 +853,12 @@ dependencies = [
  "failure 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex_fmt 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mc-crypto-digestible 1.0.0",
+ "mc-crypto-digestible-signature 1.0.0",
  "mc-util-from-random 1.0.0",
  "mc-util-repr-bytes 1.0.0",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand_hc 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "schnorrkel 0.9.1 (git+https://github.com/w3f/schnorrkel?rev=cfdbe9ae865a4d3ffa2566d896d4dbedf5107028)",
  "serde 1.0.118 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha2 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "signature 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
