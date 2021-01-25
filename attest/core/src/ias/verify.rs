@@ -756,7 +756,7 @@ impl VerificationReport {
         // Parse the JSON
         let report_data: VerificationReportData = self.try_into()?;
 
-        // Check the report contains
+        // Check the report contents
         report_data.verify(
             IAS_VERSION,
             expected_ias_nonce,

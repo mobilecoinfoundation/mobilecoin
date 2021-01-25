@@ -12,7 +12,7 @@ use aead::{AeadMut, NewAead};
 use alloc::vec::Vec;
 use core::convert::TryFrom;
 use digest::{BlockInput, Digest, FixedOutput, Reset, Update};
-use mc_attest_core::{ReportDataMask, VerificationReport, VerificationReportData};
+use mc_attest_core::{ReportDataMask, VerificationReport};
 use mc_crypto_keys::{Kex, ReprBytes};
 use mc_crypto_noise::{
     HandshakeIX, HandshakeNX, HandshakeOutput, HandshakePattern, HandshakeState, HandshakeStatus,
@@ -142,9 +142,8 @@ where
     }
 }
 
-/// AuthPending + AuthResponseInput => Ready + VerificationReportData
-impl<KexAlgo, Cipher, DigestType>
-    Transition<Ready<Cipher>, AuthResponseInput, VerificationReportData>
+/// AuthPending + AuthResponseInput => Ready + VerificationReport
+impl<KexAlgo, Cipher, DigestType> Transition<Ready<Cipher>, AuthResponseInput, VerificationReport>
     for AuthPending<KexAlgo, Cipher, DigestType>
 where
     KexAlgo: Kex,
@@ -157,7 +156,7 @@ where
         self,
         _csprng: &mut R,
         input: AuthResponseInput,
-    ) -> Result<(Ready<Cipher>, VerificationReportData), Self::Error> {
+    ) -> Result<(Ready<Cipher>, VerificationReport), Self::Error> {
         let output = self
             .state
             .read_message(input.as_ref())
@@ -169,7 +168,14 @@ where
                     .map_err(|_e| Error::ReportDeserialization)?;
 
                 let mut verifier = input.verifier;
-                let report_data = verifier
+
+                // We are not returning the report data and instead returning the raw report
+                // since that also includes the signature and certificate chain.
+                // However, we still make sure the report contains valid data
+                // before we continue by calling `.verify`. Callers can then
+                // safely construct a VerificationReportData object out of the
+                // VerificationReport returned.
+                let _report_data = verifier
                     .report_data(
                         &result
                             .remote_identity
@@ -186,7 +192,7 @@ where
                         reader: result.responder_cipher,
                         binding: result.channel_binding,
                     },
-                    report_data,
+                    remote_report,
                 ))
             }
         }
