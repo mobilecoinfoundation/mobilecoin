@@ -2,6 +2,7 @@
 
 use failure::Fail;
 use mc_util_lmdb::MetadataStoreError;
+use std::string::FromUtf8Error;
 
 /// Watcher Errors
 #[derive(Debug, Eq, PartialEq, Copy, Clone, Fail)]
@@ -54,6 +55,9 @@ pub enum WatcherDBError {
 
     #[fail(display = "Metadata store error: {}", _0)]
     MetadataStore(MetadataStoreError),
+
+    #[fail(display = "Utf8 error")]
+    Utf8,
 }
 
 impl From<lmdb::Error> for WatcherDBError {
@@ -83,5 +87,11 @@ impl From<std::io::Error> for WatcherDBError {
 impl From<MetadataStoreError> for WatcherDBError {
     fn from(e: MetadataStoreError) -> Self {
         Self::MetadataStore(e)
+    }
+}
+
+impl From<FromUtf8Error> for WatcherDBError {
+    fn from(_src: FromUtf8Error) -> Self {
+        Self::Utf8
     }
 }

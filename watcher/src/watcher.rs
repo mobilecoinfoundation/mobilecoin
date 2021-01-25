@@ -2,16 +2,25 @@
 
 //! Basic Watcher Node
 
-use crate::{error::WatcherError, watcher_db::WatcherDB};
+use crate::{
+    error::{WatcherDBError, WatcherError},
+    watcher_db::WatcherDB,
+};
 
 use mc_api::block_num_to_s3block_path;
+use mc_attest_core::{Verifier, DEBUG_ENCLAVE};
 use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
+use mc_connection::ThickClient;
+use mc_crypto_keys::Ed25519Public;
 use mc_ledger_db::Ledger;
 use mc_ledger_sync::ReqwestTransactionsFetcher;
+use mc_util_repr_bytes::ReprBytes;
+use mc_util_uri::ConsensusClientUri;
 
+use grpcio::Environment;
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -26,14 +35,26 @@ use url::Url;
 pub struct Watcher {
     transactions_fetcher: Arc<ReqwestTransactionsFetcher>,
     watcher_db: WatcherDB,
+    tx_source_urls_to_consensus_client_urls: HashMap<String, ConsensusClientUri>,
     logger: Logger,
+    grpcio_env: Arc<Environment>,
 }
 
 impl Watcher {
     /// Create a new Watcher.
+    ///
+    /// # Arguments
+    /// * `watcher_db` - The backing database to use for storing and retreiving data
+    /// * `transactions_fetcher` - The trnasaction fetcher used to fetch blocks from watched source
+    /// URLs
+    /// * `tx_source_urls_to_consensus_client_urls` - An optional map (can be empty) of tx source
+    /// urls to consensus client URLs. When blocks are fetched from various tx source urls, we will
+    /// attempt to fetch an attestation verification report each time we enounter a new block
+    /// signer, assuming an entry in this map can point us at the node to connect to.
     pub fn new(
         watcher_db: WatcherDB,
         transactions_fetcher: ReqwestTransactionsFetcher,
+        tx_source_urls_to_consensus_client_urls: HashMap<String, ConsensusClientUri>,
         logger: Logger,
     ) -> Self {
         // Sanity check that the watcher db and transaction fetcher were initialized with the same
@@ -45,10 +66,18 @@ impl Watcher {
                 .expect("get_config_urls failed")
         );
 
+        let grpcio_env = Arc::new(
+            grpcio::EnvBuilder::new()
+                .name_prefix("WatcherNodeGrpc")
+                .build(),
+        );
+
         Self {
             transactions_fetcher: Arc::new(transactions_fetcher),
             watcher_db,
+            tx_source_urls_to_consensus_client_urls,
             logger,
+            grpcio_env,
         }
     }
 
@@ -97,6 +126,8 @@ impl Watcher {
                         signature.clone(),
                         filename,
                     )?;
+
+                    self.maybe_sync_verification_report(src_url, signature.signer())?;
                 } else {
                     self.watcher_db.update_last_synced(src_url, block_index)?;
                 }
@@ -112,6 +143,66 @@ impl Watcher {
                 Err(WatcherError::SyncFailed)
             }
         }
+    }
+
+    /// Try and sync a verification report for the given URL/signer, unless we already did that.
+    fn maybe_sync_verification_report(
+        &self,
+        src_url: &Url,
+        block_signer: &Ed25519Public,
+    ) -> Result<(), WatcherError> {
+        // See if there's any point in trying to process this url - we should only process it if we
+        // have a way of connecting to the node.
+        let node_url = self
+            .tx_source_urls_to_consensus_client_urls
+            .get(src_url.as_str());
+        if node_url.is_none() {
+            return Ok(());
+        }
+        let node_url = node_url.unwrap();
+
+        // Check if we have already processed this signer/url combo.
+        match self
+            .watcher_db
+            .get_verification_report_for_signer_and_url(block_signer, src_url)
+        {
+            Ok(_) => {
+                log::debug!(
+                    self.logger,
+                    "Skipping verification report sync for signer:{} url:{} - already in database",
+                    hex::encode(block_signer.to_bytes()),
+                    src_url
+                );
+                return Ok(());
+            }
+
+            Err(WatcherDBError::NotFound) => {
+                log::debug!(
+                    self.logger,
+                    "Attempting to fetch verification report for signer:{} url:{}",
+                    hex::encode(block_signer.to_bytes()),
+                    src_url,
+                );
+            }
+
+            Err(err) => {
+                return Err(err.into());
+            }
+        };
+
+        // Not processed yet, make an attempt to get a VerificationReport from the node.
+        let mut verifier = Verifier::default();
+        verifier.debug(DEBUG_ENCLAVE);
+
+        let mut client = ThickClient::new(
+            &node_url,
+            verifier,
+            self.grpc_env.clone(),
+            self.logger.clone(),
+        )?;
+
+        // Done
+        Ok(())
     }
 
     /// Sync blocks and collect signatures.
@@ -195,12 +286,18 @@ impl WatcherSyncThread {
     pub fn new(
         watcher_db: WatcherDB,
         transactions_fetcher: ReqwestTransactionsFetcher,
+        tx_source_urls_to_consensus_client_urls: HashMap<String, ConsensusClientUri>,
         ledger: impl Ledger + 'static,
         poll_interval: Duration,
         logger: Logger,
     ) -> Self {
         log::debug!(logger, "Creating watcher sync thread.");
-        let watcher = Watcher::new(watcher_db, transactions_fetcher, logger.clone());
+        let watcher = Watcher::new(
+            watcher_db,
+            transactions_fetcher,
+            tx_source_urls_to_consensus_client_urls,
+            logger.clone(),
+        );
 
         let currently_behind = Arc::new(AtomicBool::new(false));
         let stop_requested = Arc::new(AtomicBool::new(false));

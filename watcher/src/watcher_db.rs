@@ -423,21 +423,40 @@ impl WatcherDB {
         Ok(results)
     }
 
-    /// Add a verification report for a given block signer.
+    /// Add a verification report for a given block signer/src_url pair.
+    /// We support storing a None value since we want to have a way to indicate that we were unable
+    /// to get a verification report of a given signer.
+    /// For example, that would happen if by the time we query a given node that node has restarted
+    /// and its report had changed before we had a time to grab it.
     pub fn add_verification_report(
         &self,
         block_signer: &Ed25519Public,
-        verification_report: &VerificationReport,
+        src_url: &Url,
+        verification_report: Option<&VerificationReport>,
     ) -> Result<(), WatcherDBError> {
         if !self.write_allowed {
             return Err(WatcherDBError::ReadOnly);
         }
 
+        let mut key_bytes = block_signer.to_bytes().to_vec();
+        key_bytes.extend(src_url.as_str().as_bytes());
+
+        let value_bytes = verification_report
+            .map(mc_util_serial::encode)
+            .unwrap_or_else(Vec::new);
+
         let mut db_txn = self.env.begin_rw_txn()?;
+
+        // Sanity test - the URL needs to be configured.
+        let urls = self.get_config_urls_with_txn(&db_txn)?;
+        if !urls.contains(&src_url) {
+            return Err(WatcherDBError::NotFound);
+        }
+
         db_txn.put(
             self.verification_reports_by_signer,
-            &block_signer.to_bytes(),
-            &mc_util_serial::encode(verification_report),
+            &key_bytes,
+            &value_bytes,
             WriteFlags::NO_OVERWRITE,
         )?;
         db_txn.commit()?;
@@ -446,16 +465,72 @@ impl WatcherDB {
     }
 
     /// Get a verification report for a given block signer.
-    pub fn get_verification_report_for_signer(
+    /// Returns a map of tx source url to optional verification report, or None if we attempted and
+    /// failed at getting one.
+    pub fn get_verification_reports_for_signer(
         &self,
         block_signer: &Ed25519Public,
-    ) -> Result<VerificationReport, WatcherDBError> {
+    ) -> Result<HashMap<String, Option<VerificationReport>>, WatcherDBError> {
         let db_txn = self.env.begin_ro_txn()?;
-        match db_txn.get(
-            self.verification_reports_by_signer,
-            &block_signer.to_bytes(),
-        ) {
-            Ok(bytes) => Ok(mc_util_serial::decode(bytes)?),
+        let mut cursor = db_txn.open_ro_cursor(self.verification_reports_by_signer)?;
+        let signer_key_bytes = block_signer.to_bytes().to_vec();
+
+        log::trace!(
+            self.logger,
+            "Getting verification reports for signer {:?}",
+            block_signer
+        );
+
+        let mut results = HashMap::default();
+        for (key_bytes, value_bytes) in cursor.iter_from(&signer_key_bytes).filter_map(Result::ok) {
+            // Try and get the signer key bytes and tx source url from the database key.
+            // Remember that the key is the signer key, followed by the source url.
+            if key_bytes.len() < signer_key_bytes.len() {
+                continue;
+            }
+
+            let signer_key_bytes2 = &key_bytes[0..signer_key_bytes.len()];
+            if signer_key_bytes != signer_key_bytes2 {
+                // Moved to a different signer key, we're done.
+                break;
+            }
+
+            let tx_source_url_bytes = &key_bytes[signer_key_bytes.len()..];
+            let tx_source_url = String::from_utf8(tx_source_url_bytes.to_vec())?;
+
+            // Deserialize value, if available.
+            let verification_report = if value_bytes.is_empty() {
+                None
+            } else {
+                Some(mc_util_serial::decode(value_bytes)?)
+            };
+
+            results.insert(tx_source_url, verification_report);
+        }
+
+        Ok(results)
+    }
+
+    /// Get the verification report for a specific block signer/URL pair.
+    /// Returns error if there is no record of the pair in the database.
+    pub fn get_verification_report_for_signer_and_url(
+        &self,
+        block_signer: &Ed25519Public,
+        src_url: &Url,
+    ) -> Result<Option<VerificationReport>, WatcherDBError> {
+        let db_txn = self.env.begin_ro_txn()?;
+
+        let mut key_bytes = block_signer.to_bytes().to_vec();
+        key_bytes.extend(src_url.as_str().as_bytes());
+
+        match db_txn.get(self.verification_reports_by_signer, &key_bytes) {
+            Ok(value_bytes) => {
+                if value_bytes.is_empty() {
+                    Ok(None)
+                } else {
+                    Ok(Some(mc_util_serial::decode(value_bytes)?))
+                }
+            }
             Err(lmdb::Error::NotFound) => Err(WatcherDBError::NotFound),
             Err(err) => Err(err.into()),
         }
@@ -507,6 +582,7 @@ mod test {
     use mc_util_test_helper::run_with_one_seed;
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
+    use std::iter::FromIterator;
     use tempdir::TempDir;
 
     fn setup_watcher_db(src_urls: &[Url], logger: Logger) -> WatcherDB {
@@ -725,12 +801,18 @@ mod test {
     #[test_with_logger]
     fn test_verification_report_insert_and_get(logger: Logger) {
         run_with_one_seed(|mut rng| {
-            let watcher_db = setup_watcher_db(&[], logger.clone());
+            let url1 = Url::parse("http://www.my_url1.com").unwrap();
+            let url2 = Url::parse("http://www.my_url2.com").unwrap();
+            let urls = vec![url1.clone(), url2.clone()];
+
+            let watcher_db = setup_watcher_db(&urls, logger.clone());
 
             let signing_key_a = Ed25519Pair::from_random(&mut rng);
             let signing_key_b = Ed25519Pair::from_random(&mut rng);
             let signing_key_c = Ed25519Pair::from_random(&mut rng);
+            let signing_key_d = Ed25519Pair::from_random(&mut rng);
 
+            // Test the simple scenario of adding two reports to the same URL (url1)
             let verification_report_a = VerificationReport {
                 sig: VerificationSignature::from(vec![1; 32]),
                 chain: vec![vec![2; 16], vec![3; 32]],
@@ -738,40 +820,150 @@ mod test {
             };
 
             let verification_report_b = VerificationReport {
-                sig: VerificationSignature::from(vec![1; 32]),
-                chain: vec![vec![2; 16], vec![3; 32]],
-                http_body: "test body a".to_owned(),
+                sig: VerificationSignature::from(vec![10; 32]),
+                chain: vec![vec![20; 16], vec![30; 32]],
+                http_body: "test body b".to_owned(),
             };
 
             watcher_db
-                .add_verification_report(&signing_key_a.public_key(), &verification_report_a)
+                .add_verification_report(
+                    &signing_key_a.public_key(),
+                    &url1,
+                    Some(&verification_report_a),
+                )
                 .unwrap();
             watcher_db
-                .add_verification_report(&signing_key_b.public_key(), &verification_report_b)
+                .add_verification_report(
+                    &signing_key_b.public_key(),
+                    &url1,
+                    Some(&verification_report_b),
+                )
                 .unwrap();
 
             assert_eq!(
                 watcher_db
-                    .get_verification_report_for_signer(&signing_key_a.public_key())
+                    .get_verification_reports_for_signer(&signing_key_a.public_key())
                     .unwrap(),
-                verification_report_a
+                HashMap::from_iter(vec![(
+                    url1.as_str().to_string(),
+                    Some(verification_report_a.clone())
+                )]),
             );
             assert_eq!(
                 watcher_db
-                    .get_verification_report_for_signer(&signing_key_a.public_key())
+                    .get_verification_reports_for_signer(&signing_key_b.public_key())
                     .unwrap(),
-                verification_report_b
+                HashMap::from_iter(vec![(
+                    url1.as_str().to_string(),
+                    Some(verification_report_b.clone())
+                )]),
             );
             assert_eq!(
-                watcher_db.get_verification_report_for_signer(&signing_key_c.public_key()),
-                Err(WatcherDBError::NotFound)
+                watcher_db
+                    .get_verification_reports_for_signer(&signing_key_c.public_key())
+                    .unwrap(),
+                HashMap::default()
             );
 
             // Double adding should fail.
             assert_eq!(
-                watcher_db
-                    .add_verification_report(&signing_key_a.public_key(), &verification_report_a),
+                watcher_db.add_verification_report(
+                    &signing_key_a.public_key(),
+                    &url1,
+                    Some(&verification_report_a)
+                ),
                 Err(WatcherDBError::LmdbError(lmdb::Error::KeyExist))
+            );
+
+            // Storing no report should work.
+            watcher_db
+                .add_verification_report(&signing_key_c.public_key(), &url1, None)
+                .unwrap();
+
+            assert_eq!(
+                watcher_db
+                    .get_verification_reports_for_signer(&signing_key_c.public_key())
+                    .unwrap(),
+                HashMap::from_iter(vec![(url1.as_str().to_string(), None)]),
+            );
+
+            // Adding an already-seen report to a different URL should work.
+            watcher_db
+                .add_verification_report(
+                    &signing_key_a.public_key(),
+                    &url2,
+                    Some(&verification_report_a),
+                )
+                .unwrap();
+
+            assert_eq!(
+                watcher_db
+                    .get_verification_reports_for_signer(&signing_key_a.public_key())
+                    .unwrap(),
+                HashMap::from_iter(vec![
+                    (
+                        url1.as_str().to_string(),
+                        Some(verification_report_a.clone())
+                    ),
+                    (
+                        url2.as_str().to_string(),
+                        Some(verification_report_a.clone())
+                    ),
+                ]),
+            );
+            assert_eq!(
+                watcher_db
+                    .get_verification_reports_for_signer(&signing_key_b.public_key())
+                    .unwrap(),
+                HashMap::from_iter(vec![(
+                    url1.as_str().to_string(),
+                    Some(verification_report_b.clone())
+                )]),
+            );
+
+            // Getting reports for an unknown signer should return an empty map.
+            assert_eq!(
+                watcher_db
+                    .get_verification_reports_for_signer(&signing_key_d.public_key())
+                    .unwrap(),
+                HashMap::default(),
+            );
+
+            // Sanity check get reports for specific URLs
+            assert_eq!(
+                watcher_db
+                    .get_verification_report_for_signer_and_url(&signing_key_a.public_key(), &url1),
+                Ok(Some(verification_report_a.clone())),
+            );
+
+            assert_eq!(
+                watcher_db
+                    .get_verification_report_for_signer_and_url(&signing_key_b.public_key(), &url1),
+                Ok(Some(verification_report_b)),
+            );
+
+            assert_eq!(
+                watcher_db
+                    .get_verification_report_for_signer_and_url(&signing_key_c.public_key(), &url1),
+                Ok(None),
+            );
+
+            assert_eq!(
+                watcher_db
+                    .get_verification_report_for_signer_and_url(&signing_key_a.public_key(), &url2),
+                Ok(Some(verification_report_a)),
+            );
+
+            assert_eq!(
+                watcher_db
+                    .get_verification_report_for_signer_and_url(&signing_key_b.public_key(), &url2),
+                Err(WatcherDBError::NotFound),
+            );
+
+            assert_eq!(
+                watcher_db
+                    .get_verification_report_for_signer_and_url(&signing_key_c.public_key(), &url2),
+                Err(WatcherDBError::NotFound),
             );
         })
     }

@@ -34,7 +34,12 @@ fn main() {
         logger.clone(),
     )
     .expect("Could not create or open watcher db");
-    let watcher = Watcher::new(watcher_db, transactions_fetcher, logger.clone());
+    let watcher = Watcher::new(
+        watcher_db,
+        transactions_fetcher,
+        sources_config.tx_source_urls_to_consensus_client_urls(),
+        logger.clone(),
+    );
 
     loop {
         // For now, ignore origin block, as it does not have a signature.

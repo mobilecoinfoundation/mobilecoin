@@ -2,9 +2,10 @@
 
 //! Configuration parameters for the watcher test utility.
 
+use mc_common::HashMap;
 use mc_util_uri::ConsensusClientUri;
 use serde::{Deserialize, Serialize};
-use std::{fs, path::PathBuf};
+use std::{fs, iter::FromIterator, path::PathBuf};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -68,6 +69,17 @@ impl SourcesConfig {
             .iter()
             .map(|source_config| source_config.tx_source_url.clone())
             .collect()
+    }
+
+    /// Returns a map of tx source url -> consensus client url. This is used when we want to try
+    /// and connect to the consensus block that provided some block from a given URL.
+    pub fn tx_source_urls_to_consensus_client_urls(&self) -> HashMap<String, ConsensusClientUri> {
+        HashMap::from_iter(self.sources.iter().filter_map(|source_config| {
+            source_config
+                .consensus_client_url
+                .clone()
+                .map(|client_url| (source_config.tx_source_url.clone(), client_url))
+        }))
     }
 }
 

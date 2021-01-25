@@ -3736,6 +3736,7 @@ version = "1.0.0"
 dependencies = [
  "failure",
  "grpcio",
+ "hex 0.4.2",
  "lmdb-rkv",
  "mc-account-keys",
  "mc-api",
