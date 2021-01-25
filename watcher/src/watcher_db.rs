@@ -4,12 +4,15 @@
 
 use crate::error::WatcherDBError;
 
+use mc_attest_core::VerificationReport;
 use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
+use mc_crypto_keys::Ed25519Public;
 use mc_transaction_core::BlockSignature;
 use mc_util_lmdb::{MetadataStore, MetadataStoreSettings};
+use mc_util_repr_bytes::ReprBytes;
 use mc_util_serial::{decode, encode, Message};
 use mc_watcher_api::TimestampResultCode;
 
@@ -160,6 +163,10 @@ impl WatcherDB {
         MetadataStore::<WatcherDbMetadataStoreSettings>::create(&env)?;
 
         env.create_db(Some(BLOCK_SIGNATURES_DB_NAME), DatabaseFlags::DUP_SORT)?;
+        env.create_db(
+            Some(VERIFICATION_REPORTS_BY_BLOCK_SIGNER_DB_NANE),
+            DatabaseFlags::empty(),
+        )?;
         env.create_db(Some(LAST_SYNCED_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(CONFIG_DB_NAME), DatabaseFlags::DUP_SORT)?;
 
@@ -415,6 +422,44 @@ impl WatcherDB {
         }
         Ok(results)
     }
+
+    /// Add a verification report for a given block signer.
+    pub fn add_verification_report(
+        &self,
+        block_signer: &Ed25519Public,
+        verification_report: &VerificationReport,
+    ) -> Result<(), WatcherDBError> {
+        if !self.write_allowed {
+            return Err(WatcherDBError::ReadOnly);
+        }
+
+        let mut db_txn = self.env.begin_rw_txn()?;
+        db_txn.put(
+            self.verification_reports_by_signer,
+            &block_signer.to_bytes(),
+            &mc_util_serial::encode(verification_report),
+            WriteFlags::NO_OVERWRITE,
+        )?;
+        db_txn.commit()?;
+
+        Ok(())
+    }
+
+    /// Get a verification report for a given block signer.
+    pub fn get_verification_report_for_signer(
+        &self,
+        block_signer: &Ed25519Public,
+    ) -> Result<VerificationReport, WatcherDBError> {
+        let db_txn = self.env.begin_ro_txn()?;
+        match db_txn.get(
+            self.verification_reports_by_signer,
+            &block_signer.to_bytes(),
+        ) {
+            Ok(bytes) => Ok(mc_util_serial::decode(bytes)?),
+            Err(lmdb::Error::NotFound) => Err(WatcherDBError::NotFound),
+            Err(err) => Err(err.into()),
+        }
+    }
 }
 
 /// Open an existing WatcherDB or create a new one in read-write mode.
@@ -453,6 +498,7 @@ pub fn create_or_open_rw_watcher_db(
 mod test {
     use super::*;
     use mc_account_keys::AccountKey;
+    use mc_attest_core::VerificationSignature;
     use mc_common::logger::{test_with_logger, Logger};
     use mc_crypto_keys::Ed25519Pair;
     use mc_transaction_core::{Block, BlockContents};
@@ -673,5 +719,60 @@ mod test {
                 (u64::MAX, TimestampResultCode::BlockIndexOutOfBounds)
             );
         });
+    }
+
+    // Storing of verification report should work.
+    #[test_with_logger]
+    fn test_verification_report_insert_and_get(logger: Logger) {
+        run_with_one_seed(|mut rng| {
+            let watcher_db = setup_watcher_db(&[], logger.clone());
+
+            let signing_key_a = Ed25519Pair::from_random(&mut rng);
+            let signing_key_b = Ed25519Pair::from_random(&mut rng);
+            let signing_key_c = Ed25519Pair::from_random(&mut rng);
+
+            let verification_report_a = VerificationReport {
+                sig: VerificationSignature::from(vec![1; 32]),
+                chain: vec![vec![2; 16], vec![3; 32]],
+                http_body: "test body a".to_owned(),
+            };
+
+            let verification_report_b = VerificationReport {
+                sig: VerificationSignature::from(vec![1; 32]),
+                chain: vec![vec![2; 16], vec![3; 32]],
+                http_body: "test body a".to_owned(),
+            };
+
+            watcher_db
+                .add_verification_report(&signing_key_a.public_key(), &verification_report_a)
+                .unwrap();
+            watcher_db
+                .add_verification_report(&signing_key_b.public_key(), &verification_report_b)
+                .unwrap();
+
+            assert_eq!(
+                watcher_db
+                    .get_verification_report_for_signer(&signing_key_a.public_key())
+                    .unwrap(),
+                verification_report_a
+            );
+            assert_eq!(
+                watcher_db
+                    .get_verification_report_for_signer(&signing_key_a.public_key())
+                    .unwrap(),
+                verification_report_b
+            );
+            assert_eq!(
+                watcher_db.get_verification_report_for_signer(&signing_key_c.public_key()),
+                Err(WatcherDBError::NotFound)
+            );
+
+            // Double adding should fail.
+            assert_eq!(
+                watcher_db
+                    .add_verification_report(&signing_key_a.public_key(), &verification_report_a),
+                Err(WatcherDBError::LmdbError(lmdb::Error::KeyExist))
+            );
+        })
     }
 }

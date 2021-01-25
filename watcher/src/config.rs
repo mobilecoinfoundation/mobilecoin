@@ -29,6 +29,7 @@ pub struct WatcherConfig {
 }
 
 impl WatcherConfig {
+    /// Load the sources configuration file.
     pub fn sources_config(&self) -> SourcesConfig {
         // Read configuration file.
         let data = fs::read_to_string(&self.sources_path)
@@ -56,10 +57,12 @@ pub struct SourceConfig {
 /// Sources configuration - this configures which sources are being watched.
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq, Hash)]
 pub struct SourcesConfig {
+    /// List of sources being watched.
     pub sources: Vec<SourceConfig>,
 }
 
 impl SourcesConfig {
+    /// Returns a list of URLs that can be used to fetch block contents from.
     pub fn tx_source_urls(&self) -> Vec<String> {
         self.sources
             .iter()

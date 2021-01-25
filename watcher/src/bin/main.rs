@@ -24,7 +24,6 @@ fn main() {
     let config = WatcherConfig::from_args();
     let sources_config = config.sources_config();
 
-
     let transactions_fetcher =
         ReqwestTransactionsFetcher::new(sources_config.tx_source_urls(), logger.clone())
             .expect("Failed creating ReqwestTransactionsFetcher");
@@ -35,9 +34,10 @@ fn main() {
         logger.clone(),
     )
     .expect("Could not create or open watcher db");
-    let watcher = Watcher::new(watcher_db, transactions_fetcher, logger);
-    // For now, ignore origin block, as it does not have a signature.
+    let watcher = Watcher::new(watcher_db, transactions_fetcher, logger.clone());
+
     loop {
+        // For now, ignore origin block, as it does not have a signature.
         let syncing_done = watcher
             .sync_signatures(1, config.max_block_height)
             .expect("Could not sync signatures");
