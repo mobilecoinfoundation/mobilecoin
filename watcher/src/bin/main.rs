@@ -7,7 +7,8 @@
 //! blocks are synced.
 
 use mc_watcher::{
-    config::WatcherConfig, watcher::Watcher, watcher_db::create_or_open_rw_watcher_db,
+    config::WatcherConfig, verification_reports_collector::VerificationReportsCollector,
+    watcher::Watcher, watcher_db::create_or_open_rw_watcher_db,
 };
 
 use mc_common::logger::{create_app_logger, log, o};
@@ -35,9 +36,16 @@ fn main() {
     )
     .expect("Could not create or open watcher db");
     let watcher = Watcher::new(
-        watcher_db,
+        watcher_db.clone(),
         transactions_fetcher,
         sources_config.tx_source_urls_to_consensus_client_urls(),
+        logger.clone(),
+    );
+
+    let _verification_reports_collector = VerificationReportsCollector::new(
+        watcher_db,
+        sources_config.tx_source_urls_to_consensus_client_urls(),
+        SYNC_RETRY_INTERVAL,
         logger.clone(),
     );
 

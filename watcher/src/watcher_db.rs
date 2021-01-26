@@ -16,8 +16,16 @@ use mc_util_repr_bytes::ReprBytes;
 use mc_util_serial::{decode, encode, Message};
 use mc_watcher_api::TimestampResultCode;
 
-use lmdb::{Cursor, Database, DatabaseFlags, Environment, RoTransaction, Transaction, WriteFlags};
-use std::{convert::TryInto, path::PathBuf, str::FromStr, sync::Arc};
+use lmdb::{
+    Cursor, Database, DatabaseFlags, Environment, RoTransaction, RwTransaction, Transaction,
+    WriteFlags,
+};
+use std::{
+    convert::{TryFrom, TryInto},
+    path::PathBuf,
+    str::FromStr,
+    sync::Arc,
+};
 use url::Url;
 
 /// LMDB Constant.
@@ -46,6 +54,9 @@ pub const BLOCK_SIGNATURES_DB_NAME: &str = "watcher_db:block_signatures";
 /// VerificationReports database name.
 pub const VERIFICATION_REPORTS_BY_BLOCK_SIGNER_DB_NANE: &str =
     "watcher_db:verification_reports_by_block_signer";
+
+/// Verification reports poll queue database name.
+pub const VERIFICATION_REPORTS_POLL_QUEUE: &str = "watcher_db:verification_reports_poll_queue";
 
 /// Last synced archive blocks database name.
 pub const LAST_SYNCED_DB_NAME: &str = "watcher_db:last_synced";
@@ -83,6 +94,14 @@ pub struct WatcherDB {
 
     /// Verification reports by block signer database.
     verification_reports_by_signer: Database,
+
+    /// Verification reports poll queue database.
+    /// This database holds a map of tx source url -> list of observed block signers.
+    /// A background thread polls this database, trying to fetch the attestation verification
+    /// report for each of queued tx source urls, and if successfull match the reported block
+    /// signer identity with the list of observed signers. The verification report is then stored
+    /// using `add_verification_report` and the tx source url is removed from the queue.
+    verification_reports_poll_queue: Database,
 
     /// Last synced archive block.
     last_synced: Database,
@@ -124,6 +143,7 @@ impl WatcherDB {
         let block_signatures = env.open_db(Some(BLOCK_SIGNATURES_DB_NAME))?;
         let verification_reports_by_signer =
             env.open_db(Some(VERIFICATION_REPORTS_BY_BLOCK_SIGNER_DB_NANE))?;
+        let verification_reports_poll_queue = env.open_db(Some(VERIFICATION_REPORTS_POLL_QUEUE))?;
         let last_synced = env.open_db(Some(LAST_SYNCED_DB_NAME))?;
         let config = env.open_db(Some(CONFIG_DB_NAME))?;
 
@@ -131,6 +151,7 @@ impl WatcherDB {
             env,
             block_signatures,
             verification_reports_by_signer,
+            verification_reports_poll_queue,
             last_synced,
             config,
             write_allowed: false,
@@ -167,6 +188,10 @@ impl WatcherDB {
             Some(VERIFICATION_REPORTS_BY_BLOCK_SIGNER_DB_NANE),
             DatabaseFlags::empty(),
         )?;
+        env.create_db(
+            Some(VERIFICATION_REPORTS_POLL_QUEUE),
+            DatabaseFlags::DUP_SORT,
+        )?;
         env.create_db(Some(LAST_SYNCED_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(CONFIG_DB_NAME), DatabaseFlags::DUP_SORT)?;
 
@@ -199,6 +224,7 @@ impl WatcherDB {
             return Err(WatcherDBError::NotFound);
         }
 
+        // Store the block signature.
         let signature_data = BlockSignatureData {
             src_url: src_url.as_str().to_string(),
             archive_filename,
@@ -219,6 +245,35 @@ impl WatcherDB {
             &key_bytes,
             WriteFlags::empty(),
         )?;
+
+        // Add the block signer to our polling queue, unless we already have a report for it.
+        if !self.has_verification_report_for_signer_and_url(
+            &db_txn,
+            signature_data.block_signature.signer(),
+            src_url,
+        )? {
+            log::trace!(
+                self.logger,
+                "Attempting to queue signer {:?} from {} for polling",
+                hex::encode(signature_data.block_signature.signer().to_bytes()),
+                src_url
+            );
+
+            self.queue_verification_report_poll(
+                &mut db_txn,
+                src_url,
+                signature_data.block_signature.signer(),
+            )?;
+        } else {
+            log::trace!(
+                self.logger,
+                "Not queuing signer {:?} from {} for polling - already have results",
+                hex::encode(signature_data.block_signature.signer().to_bytes()),
+                src_url
+            );
+        }
+
+        // Done
         db_txn.commit()?;
         Ok(())
     }
@@ -423,27 +478,29 @@ impl WatcherDB {
         Ok(results)
     }
 
-    /// Add a verification report for a given block signer/src_url pair.
-    /// We support storing a None value since we want to have a way to indicate that we were unable
-    /// to get a verification report of a given signer.
-    /// For example, that would happen if by the time we query a given node that node has restarted
-    /// and its report had changed before we had a time to grab it.
+    /// Record a verification report for a given source URL, that is associated with a specific
+    /// block signer.
+    /// Additionally, record no report for an optional list of expected block signers.
+    /// When going over the blockchain we are likely going to encounter a few block signers for a
+    /// given src_url since every time the node restarts a new block signer key is generated. If we
+    /// are back-filling the database and not polling in real time, we will only manage to get a
+    /// verification report for the current signer identity. The previous ones are then lost, and
+    /// we use `other_not_found_block_signers` to mark them as such in order to stop trying to get
+    /// reports for them from this particular node (identified by `src_url`).
+    ///
+    /// Note that it is possible for us to extract `verification_report_block_signer` out of
+    /// `verification_report` but we let the caller handle that in case the report format changes
+    /// over time.
     pub fn add_verification_report(
         &self,
-        block_signer: &Ed25519Public,
         src_url: &Url,
-        verification_report: Option<&VerificationReport>,
+        verification_report_block_signer: &Ed25519Public,
+        verification_report: &VerificationReport,
+        other_not_found_block_signers: &[Ed25519Public],
     ) -> Result<(), WatcherDBError> {
         if !self.write_allowed {
             return Err(WatcherDBError::ReadOnly);
         }
-
-        let mut key_bytes = block_signer.to_bytes().to_vec();
-        key_bytes.extend(src_url.as_str().as_bytes());
-
-        let value_bytes = verification_report
-            .map(mc_util_serial::encode)
-            .unwrap_or_else(Vec::new);
 
         let mut db_txn = self.env.begin_rw_txn()?;
 
@@ -453,14 +510,34 @@ impl WatcherDB {
             return Err(WatcherDBError::NotFound);
         }
 
+        // Write the verification report for `verification_report_block_signer`.
+        let mut key_bytes = verification_report_block_signer.to_bytes().to_vec();
+        key_bytes.extend(src_url.as_str().as_bytes());
+
+        let value_bytes = mc_util_serial::encode(verification_report);
+
         db_txn.put(
             self.verification_reports_by_signer,
             &key_bytes,
             &value_bytes,
             WriteFlags::NO_OVERWRITE,
         )?;
-        db_txn.commit()?;
 
+        // Write no reports for all the other block signers we missed.
+        for block_signer in other_not_found_block_signers {
+            let mut key_bytes = block_signer.to_bytes().to_vec();
+            key_bytes.extend(src_url.as_str().as_bytes());
+
+            db_txn.put(
+                self.verification_reports_by_signer,
+                &key_bytes,
+                &[],
+                WriteFlags::NO_OVERWRITE,
+            )?;
+        }
+
+        // Done
+        db_txn.commit()?;
         Ok(())
     }
 
@@ -534,6 +611,101 @@ impl WatcherDB {
             Err(lmdb::Error::NotFound) => Err(WatcherDBError::NotFound),
             Err(err) => Err(err.into()),
         }
+    }
+
+    /// Check if a given pair of src_url/block_signer have already been polled.
+    fn has_verification_report_for_signer_and_url(
+        &self,
+        db_txn: &impl Transaction,
+        block_signer: &Ed25519Public,
+        src_url: &Url,
+    ) -> Result<bool, WatcherDBError> {
+        let mut key_bytes = block_signer.to_bytes().to_vec();
+        key_bytes.extend(src_url.as_str().as_bytes());
+
+        match db_txn.get(self.verification_reports_by_signer, &key_bytes) {
+            Ok(_value_bytes) => Ok(true),
+            Err(lmdb::Error::NotFound) => Ok(false),
+            Err(err) => Err(err.into()),
+        }
+    }
+
+    /// Queue a tx source url for attestation verification report polling. We keep track of the
+    /// expected block signer so that when we get the report we can see if we were able to confirm
+    /// the block signer and associate to a report, or have to mark the block signer as having no
+    /// report. That will happen if we have missed an opportunity to poll for a report and the
+    /// report has changed.
+    ///
+    /// Note that this method is not exposed outside of this object. It is used inside
+    /// `add_block_signature` to ensure all block signers get queued up automatically.
+    fn queue_verification_report_poll<'env>(
+        &self,
+        db_txn: &mut RwTransaction<'env>,
+        src_url: &Url,
+        expected_block_signer: &Ed25519Public,
+    ) -> Result<(), WatcherDBError> {
+        if !self.write_allowed {
+            return Err(WatcherDBError::ReadOnly);
+        }
+
+        // Sanity test - the URL needs to be configured.
+        let urls = self.get_config_urls_with_txn(db_txn)?;
+        if !urls.contains(&src_url) {
+            return Err(WatcherDBError::NotFound);
+        }
+
+        let key_bytes = src_url.as_str().as_bytes();
+        let value_bytes = expected_block_signer.to_bytes();
+
+        match db_txn.put(
+            self.verification_reports_poll_queue,
+            &key_bytes,
+            &value_bytes,
+            WriteFlags::NO_DUP_DATA,
+        ) {
+            Ok(_) => {
+                log::trace!(
+                    self.logger,
+                    "Added src_url:{} signer:{} to poll queue",
+                    src_url,
+                    hex::encode(expected_block_signer.to_bytes())
+                );
+                Ok(())
+            }
+            Err(lmdb::Error::KeyExist) => {
+                log::trace!(
+                    self.logger,
+                    "Not adding src_url:{} signer:{} to poll queue - already queued",
+                    src_url,
+                    hex::encode(expected_block_signer.to_bytes())
+                );
+                Ok(())
+            }
+            Err(err) => Err(err.into()),
+        }
+    }
+
+    /// Get a map of queued-for-verification-report-polling tx source urls -> encountered block
+    /// signers.
+    pub fn get_verification_report_poll_queue(
+        &self,
+    ) -> Result<HashMap<Url, Vec<Ed25519Public>>, WatcherDBError> {
+        let db_txn = self.env.begin_ro_txn()?;
+        let mut cursor = db_txn.open_ro_cursor(self.verification_reports_poll_queue)?;
+
+        let mut results = HashMap::default();
+        for (key_bytes, value_bytes) in cursor.iter_start().filter_map(Result::ok) {
+            let url_str = String::from_utf8(key_bytes.to_vec())?;
+            let url = Url::from_str(&url_str)?;
+
+            let block_signer = Ed25519Public::try_from(value_bytes)?;
+
+            results
+                .entry(url)
+                .or_insert_with(Vec::new)
+                .push(block_signer);
+        }
+        Ok(results)
     }
 }
 

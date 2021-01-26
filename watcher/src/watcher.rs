@@ -13,14 +13,12 @@ use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
-use mc_connection::ThickClient;
 use mc_crypto_keys::Ed25519Public;
 use mc_ledger_db::Ledger;
 use mc_ledger_sync::ReqwestTransactionsFetcher;
 use mc_util_repr_bytes::ReprBytes;
 use mc_util_uri::ConsensusClientUri;
 
-use grpcio::Environment;
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -37,7 +35,6 @@ pub struct Watcher {
     watcher_db: WatcherDB,
     tx_source_urls_to_consensus_client_urls: HashMap<String, ConsensusClientUri>,
     logger: Logger,
-    grpcio_env: Arc<Environment>,
 }
 
 impl Watcher {
@@ -66,18 +63,11 @@ impl Watcher {
                 .expect("get_config_urls failed")
         );
 
-        let grpcio_env = Arc::new(
-            grpcio::EnvBuilder::new()
-                .name_prefix("WatcherNodeGrpc")
-                .build(),
-        );
-
         Self {
             transactions_fetcher: Arc::new(transactions_fetcher),
             watcher_db,
             tx_source_urls_to_consensus_client_urls,
             logger,
-            grpcio_env,
         }
     }
 
@@ -126,8 +116,6 @@ impl Watcher {
                         signature.clone(),
                         filename,
                     )?;
-
-                    self.maybe_sync_verification_report(src_url, signature.signer())?;
                 } else {
                     self.watcher_db.update_last_synced(src_url, block_index)?;
                 }
@@ -143,66 +131,6 @@ impl Watcher {
                 Err(WatcherError::SyncFailed)
             }
         }
-    }
-
-    /// Try and sync a verification report for the given URL/signer, unless we already did that.
-    fn maybe_sync_verification_report(
-        &self,
-        src_url: &Url,
-        block_signer: &Ed25519Public,
-    ) -> Result<(), WatcherError> {
-        // See if there's any point in trying to process this url - we should only process it if we
-        // have a way of connecting to the node.
-        let node_url = self
-            .tx_source_urls_to_consensus_client_urls
-            .get(src_url.as_str());
-        if node_url.is_none() {
-            return Ok(());
-        }
-        let node_url = node_url.unwrap();
-
-        // Check if we have already processed this signer/url combo.
-        match self
-            .watcher_db
-            .get_verification_report_for_signer_and_url(block_signer, src_url)
-        {
-            Ok(_) => {
-                log::debug!(
-                    self.logger,
-                    "Skipping verification report sync for signer:{} url:{} - already in database",
-                    hex::encode(block_signer.to_bytes()),
-                    src_url
-                );
-                return Ok(());
-            }
-
-            Err(WatcherDBError::NotFound) => {
-                log::debug!(
-                    self.logger,
-                    "Attempting to fetch verification report for signer:{} url:{}",
-                    hex::encode(block_signer.to_bytes()),
-                    src_url,
-                );
-            }
-
-            Err(err) => {
-                return Err(err.into());
-            }
-        };
-
-        // Not processed yet, make an attempt to get a VerificationReport from the node.
-        let mut verifier = Verifier::default();
-        verifier.debug(DEBUG_ENCLAVE);
-
-        let mut client = ThickClient::new(
-            &node_url,
-            verifier,
-            self.grpc_env.clone(),
-            self.logger.clone(),
-        )?;
-
-        // Done
-        Ok(())
     }
 
     /// Sync blocks and collect signatures.
@@ -252,7 +180,7 @@ impl Watcher {
             for (src_url, opt_last_synced) in last_synced {
                 let next_block_index = opt_last_synced
                     .map(|block_index| block_index + 1)
-                    .unwrap_or(0);
+                    .unwrap_or(start);
                 match self.sync_signature(&src_url, next_block_index) {
                     Ok(()) => {}
                     Err(WatcherError::SyncFailed) => {
@@ -317,7 +245,7 @@ impl WatcherSyncThread {
                         logger,
                     );
                 })
-                .expect("Failed spawning LedgerSync thread"),
+                .expect("Failed spawning WatcherSync thread"),
         );
 
         Self {
