@@ -4,6 +4,7 @@
 
 use crate::error::{Result, RetryResult};
 use grpcio::Error as GrpcError;
+use mc_attest_core::VerificationReport;
 use mc_transaction_core::{tx::Tx, Block, BlockID, BlockIndex};
 use mc_util_uri::ConnectionUri;
 use std::{
@@ -29,7 +30,7 @@ pub trait AttestedConnection: Connection {
 
     fn is_attested(&self) -> bool;
 
-    fn attest(&mut self) -> StdResult<(), Self::Error>;
+    fn attest(&mut self) -> StdResult<VerificationReport, Self::Error>;
 
     fn deattest(&mut self);
 
@@ -38,7 +39,7 @@ pub trait AttestedConnection: Connection {
         func: impl FnOnce(&mut Self) -> StdResult<T, GrpcError>,
     ) -> StdResult<T, Self::Error> {
         if !self.is_attested() {
-            self.attest()?;
+            let _verification_report = self.attest()?;
         }
 
         let result = func(self);

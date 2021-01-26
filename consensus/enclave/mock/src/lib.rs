@@ -147,8 +147,12 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         Ok((PeerAuthResponse::default(), PeerSession::default()))
     }
 
-    fn peer_connect(&self, _node_id: &ResponderId, _msg: PeerAuthResponse) -> Result<PeerSession> {
-        Ok(vec![].into())
+    fn peer_connect(
+        &self,
+        _node_id: &ResponderId,
+        _msg: PeerAuthResponse,
+    ) -> Result<(PeerSession, VerificationReport)> {
+        Ok((vec![].into(), VerificationReport::default()))
     }
 
     fn peer_close(&self, _msg: &PeerSession) -> Result<()> {

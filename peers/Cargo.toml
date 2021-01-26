@@ -9,6 +9,7 @@ test_utils = []
 
 [dependencies]
 mc-attest-api = { path = "../attest/api" }
+mc-attest-core = { path = "../attest/core" }
 mc-attest-enclave-api = { path = "../attest/enclave-api" }
 mc-common = { path = "../common", features = ["log"] }
 mc-connection = { path = "../connection" }
