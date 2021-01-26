@@ -17,7 +17,7 @@ use mc_attest_ake::{
     AuthResponseInput, ClientInitiate, Error as AkeError, Ready, Start, Transition,
 };
 use mc_attest_api::{attest::Message, attest_grpc::AttestedApiClient};
-use mc_attest_core::Verifier;
+use mc_attest_core::{VerificationReport, Verifier};
 use mc_common::{
     logger::{log, o, Logger},
     trace_time,
@@ -179,7 +179,7 @@ impl AttestedConnection for ThickClient {
         self.enclave_connection.is_some()
     }
 
-    fn attest(&mut self) -> StdResult<(), Self::Error> {
+    fn attest(&mut self) -> StdResult<VerificationReport, Self::Error> {
         trace_time!(self.logger, "ThickClient::attest");
         // If we have an existing attestation, nuke it.
         self.deattest();
@@ -210,11 +210,12 @@ impl AttestedConnection for ThickClient {
 
         let auth_response_event =
             AuthResponseInput::new(auth_response_msg.into(), self.verifier.clone());
-        let (initiator, _) = initiator.try_next(&mut csprng, auth_response_event)?;
+        let (initiator, verification_report) =
+            initiator.try_next(&mut csprng, auth_response_event)?;
 
         self.enclave_connection = Some(initiator);
 
-        Ok(())
+        Ok(verification_report)
     }
 
     fn deattest(&mut self) {
@@ -328,7 +329,7 @@ impl UserTxConnection for ThickClient {
         trace_time!(self.logger, "ThickClient::propose_tx");
 
         if !self.is_attested() {
-            self.attest()?
+            let _verification_report = self.attest()?;
         }
 
         let enclave_connection = self

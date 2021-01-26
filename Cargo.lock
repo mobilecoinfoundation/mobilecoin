@@ -3080,6 +3080,7 @@ dependencies = [
  "failure",
  "grpcio",
  "mc-attest-api",
+ "mc-attest-core",
  "mc-attest-enclave-api",
  "mc-common",
  "mc-connection",

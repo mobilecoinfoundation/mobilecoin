@@ -13,6 +13,7 @@ pub use crate::{error::Error, messages::EnclaveCall};
 
 use alloc::{string::String, vec::Vec};
 use core::{cmp::Ordering, hash::Hash, result::Result as StdResult};
+use mc_attest_core::VerificationReport;
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, ClientSession, EnclaveMessage, PeerAuthRequest,
     PeerAuthResponse, PeerSession,
@@ -238,7 +239,11 @@ pub trait ConsensusEnclave: ReportableEnclave {
     fn peer_accept(&self, req: PeerAuthRequest) -> Result<(PeerAuthResponse, PeerSession)>;
 
     /// Complete the connection
-    fn peer_connect(&self, peer_id: &ResponderId, res: PeerAuthResponse) -> Result<PeerSession>;
+    fn peer_connect(
+        &self,
+        peer_id: &ResponderId,
+        res: PeerAuthResponse,
+    ) -> Result<(PeerSession, VerificationReport)>;
 
     /// Destroy a peer association
     fn peer_close(&self, channel_id: &PeerSession) -> Result<()>;
