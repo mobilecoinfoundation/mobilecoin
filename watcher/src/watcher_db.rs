@@ -600,7 +600,13 @@ impl WatcherDB {
             WriteFlags::NO_OVERWRITE,
         ) {
             Ok(()) => Ok(()),
-            Err(lmdb::Error::KeyExist) => Ok(()),
+            Err(lmdb::Error::KeyExist) => {
+                log::trace!(
+                    self.logger,
+                    "write_verification_report: report hash already in db"
+                );
+                Ok(())
+            }
             Err(err) => Err(err),
         }?;
 
@@ -612,7 +618,13 @@ impl WatcherDB {
             WriteFlags::NO_DUP_DATA,
         ) {
             Ok(()) => Ok(()),
-            Err(lmdb::Error::KeyExist) => Ok(()),
+            Err(lmdb::Error::KeyExist) => {
+                log::trace!(
+                    self.logger,
+                    "write_verification_report: report already associated with signer+src_url"
+                );
+                Ok(())
+            }
             Err(err) => Err(err),
         }?;
 
@@ -710,7 +722,7 @@ impl WatcherDB {
         for (key_bytes2, value_bytes) in cursor.iter_dup_of(&key_bytes).filter_map(Result::ok) {
             assert_eq!(key_bytes, key_bytes2);
 
-            let report = self.get_verification_report_by_hash(db_txn, value_bytes)?;
+            let report = self.get_verification_report_by_hash(&db_txn, value_bytes)?;
             results.push(report);
         }
 
