@@ -215,37 +215,82 @@ impl VerificationReportsCollectorThread {
         potential_signers: &[Ed25519Public],
         verification_report: &VerificationReport,
     ) {
-        let report_data = match VerificationReportData::try_from(verification_report) {
-            Ok(data) => data,
+        let verification_report_block_signer =
+            match get_block_signer_from_verification_report(verification_report) {
+                Ok(key) => key,
+                Err(err) => {
+                    log::error!(
+                        self.logger,
+                        "Failed extracting signer key from report by {}: {}",
+                        node_url,
+                        err
+                    );
+                    return;
+                }
+            };
+
+        log::info!(
+            self.logger,
+            "Verification report from {} has block signer {}",
+            node_url,
+            hex::encode(verification_report_block_signer.to_bytes())
+        );
+
+        match self.watcher_db.add_verification_report(
+            tx_src_url,
+            &verification_report_block_signer,
+            verification_report,
+            potential_signers,
+        ) {
+            Ok(()) => {
+                log::info!(
+                    self.logger,
+                    "Captured report for {}: block signer is {}",
+                    tx_src_url,
+                    hex::encode(verification_report_block_signer.to_bytes())
+                );
+            }
             Err(err) => {
                 log::error!(
                     self.logger,
-                    "Failed extracting report data from {}: {}",
-                    node_url,
-                    err
+                    "Failed writing verification report to database: {} (src_url:{} verification_report_block_signer:{} potential_signers:{:?}",
+                    err,
+                    tx_src_url,
+                    hex::encode(verification_report_block_signer.to_bytes()),
+                    potential_signers.iter().map(|key| hex::encode(key.to_bytes())).collect::<Vec<_>>(),
                 );
-                return;
             }
-        };
-
-        let report_body = match report_data.quote.report_body() {
-            Ok(body) => body,
-            Err(err) => {
-                log::error!(
-                    self.logger,
-                    "Failed getting report body from {}: {}",
-                    node_url,
-                    err
-                );
-                return;
-            }
-        };
-
-        let custom_data = report_body.report_data();
-        let custom_data_bytes: &[u8] = custom_data.as_ref();
-
-        let signer_bytes = &custom_data_bytes[32..];
-
-        log::crit!(self.logger, "HEH {:?}", hex::encode(signer_bytes));
+        }
     }
+}
+
+// Attempt to extract the block signer public key from a verification report.
+// The block signer public key is available in bytes 32..64 inside the report data.
+fn get_block_signer_from_verification_report(
+    verification_report: &VerificationReport,
+) -> Result<Ed25519Public, String> {
+    let report_data = VerificationReportData::try_from(verification_report)
+        .map_err(|err| format!("Failed constructing VerificationReportData: {}", err))?;
+
+    let report_body = report_data
+        .quote
+        .report_body()
+        .map_err(|err| format!("Failed getting report body: {}", err))?;
+
+    let custom_data = report_body.report_data();
+    let custom_data_bytes: &[u8] = custom_data.as_ref();
+
+    if custom_data_bytes.len() != 64 {
+        return Err(format!(
+            "Unspected report data length: expected 64, got {}",
+            custom_data_bytes.len()
+        ));
+    }
+
+    let signer_bytes = &custom_data_bytes[32..];
+
+    let signer_public_key = Ed25519Public::try_from(signer_bytes)
+        .map_err(|err| format!("Unable to construct key: {}", err))?;
+
+    Ok(signer_public_key)
 }

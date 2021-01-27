@@ -485,7 +485,7 @@ impl WatcherDB {
     /// given src_url since every time the node restarts a new block signer key is generated. If we
     /// are back-filling the database and not polling in real time, we will only manage to get a
     /// verification report for the current signer identity. The previous ones are then lost, and
-    /// we use `other_not_found_block_signers` to mark them as such in order to stop trying to get
+    /// we use `potential_block_signers` to mark them as such in order to stop trying to get
     /// reports for them from this particular node (identified by `src_url`).
     ///
     /// Note that it is possible for us to extract `verification_report_block_signer` out of
@@ -496,7 +496,7 @@ impl WatcherDB {
         src_url: &Url,
         verification_report_block_signer: &Ed25519Public,
         verification_report: &VerificationReport,
-        other_not_found_block_signers: &[Ed25519Public],
+        potential_block_signers: &[Ed25519Public],
     ) -> Result<(), WatcherDBError> {
         if !self.write_allowed {
             return Err(WatcherDBError::ReadOnly);
@@ -511,11 +511,101 @@ impl WatcherDB {
         }
 
         // Write the verification report for `verification_report_block_signer`.
-        let mut key_bytes = verification_report_block_signer.to_bytes().to_vec();
+        self.write_verification_report(
+            &mut db_txn,
+            src_url,
+            verification_report_block_signer,
+            Some(verification_report),
+        )?;
+
+        // Write no reports for all the other block signers we missed.
+        for block_signer in potential_block_signers.iter() {
+            // The verification_report_block_signer gets written together with the
+            // verification_report outside of this loop.
+            if block_signer == verification_report_block_signer {
+                continue;
+            }
+
+            self.write_verification_report(&mut db_txn, src_url, block_signer, None)?;
+        }
+
+        // Remove all the keys we encountered from the queue - we no longer need to poll for them.
+        self.remove_verification_report_poll_from_queue(
+            &mut db_txn,
+            src_url,
+            verification_report_block_signer,
+        )?;
+        for block_signer in potential_block_signers.iter() {
+            self.remove_verification_report_poll_from_queue(&mut db_txn, src_url, block_signer)?;
+        }
+
+        // Done
+        db_txn.commit()?;
+        Ok(())
+    }
+
+    /// A helper for writing a single (src_url, signer) -> VerificationReport entry in the
+    /// database.
+    fn write_verification_report<'env>(
+        &self,
+        db_txn: &mut RwTransaction<'env>,
+        src_url: &Url,
+        signer: &Ed25519Public,
+        verification_report: Option<&VerificationReport>,
+    ) -> Result<(), WatcherDBError> {
+        let mut key_bytes = signer.to_bytes().to_vec();
         key_bytes.extend(src_url.as_str().as_bytes());
 
-        let value_bytes = mc_util_serial::encode(verification_report);
+        let value_bytes = verification_report
+            .map(mc_util_serial::encode)
+            .unwrap_or_else(Vec::new);
 
+        log::trace!(
+            self.logger,
+            "write_verification_report: src_url:{} signer:{} report-provided:{}",
+            src_url,
+            hex::encode(signer.to_bytes()),
+            verification_report.is_some()
+        );
+
+        // See if this src_url/signer already has an entry in the database.
+        let existing_value = match db_txn.get(self.verification_reports_by_signer, &key_bytes) {
+            Ok(existing_value_bytes) => Some(existing_value_bytes.to_vec()),
+            Err(lmdb::Error::NotFound) => None,
+            Err(err) => return Err(err.into()),
+        };
+        log::trace!(self.logger, "Existing val {:?}", existing_value);
+        if let Some(existing_value) = existing_value {
+            if existing_value.is_empty() {
+                log::warn!(
+                    self.logger,
+                    "Updating report for src_url:{} signer:{} - previously had None stored",
+                    src_url,
+                    hex::encode(signer.to_bytes())
+                );
+                db_txn.del(
+                    self.verification_reports_by_signer,
+                    &key_bytes,
+                    Some(&existing_value),
+                )?;
+            } else if value_bytes != existing_value {
+                log::error!(
+                        self.logger,
+                        "Attempting to re-write an already written verification report with a different one. This should not happen - leaving old value in place. src_url:{} old:{:?} new:{:?}", src_url, existing_value, value_bytes);
+
+                // NOTE: We return Ok here since we want our caller (add_verification_report)
+                // to resume writing other values for other signer keys that might've been
+                // passed to it. Returning an error here would not be actionable unless we want
+                // to abort the syncing process, or if in the future we want to support
+                // multiple reports.
+                return Ok(());
+            } else {
+                // We already have this exact report in the database, we don't need to do anything.
+                return Ok(());
+            }
+        }
+
+        // Write.
         db_txn.put(
             self.verification_reports_by_signer,
             &key_bytes,
@@ -523,21 +613,6 @@ impl WatcherDB {
             WriteFlags::NO_OVERWRITE,
         )?;
 
-        // Write no reports for all the other block signers we missed.
-        for block_signer in other_not_found_block_signers {
-            let mut key_bytes = block_signer.to_bytes().to_vec();
-            key_bytes.extend(src_url.as_str().as_bytes());
-
-            db_txn.put(
-                self.verification_reports_by_signer,
-                &key_bytes,
-                &[],
-                WriteFlags::NO_OVERWRITE,
-            )?;
-        }
-
-        // Done
-        db_txn.commit()?;
         Ok(())
     }
 
@@ -706,6 +781,27 @@ impl WatcherDB {
                 .push(block_signer);
         }
         Ok(results)
+    }
+
+    /// Remove a single entry from the verification report polling queue
+    pub fn remove_verification_report_poll_from_queue<'env>(
+        &self,
+        db_txn: &mut RwTransaction<'env>,
+        src_url: &Url,
+        block_signer: &Ed25519Public,
+    ) -> Result<(), WatcherDBError> {
+        let key_bytes = src_url.as_str().as_bytes();
+        let value_bytes = block_signer.to_bytes();
+
+        match db_txn.del(
+            self.verification_reports_poll_queue,
+            &key_bytes,
+            Some(&value_bytes),
+        ) {
+            Ok(()) => Ok(()),
+            Err(lmdb::Error::NotFound) => Ok(()),
+            Err(err) => Err(err.into()),
+        }
     }
 }
 

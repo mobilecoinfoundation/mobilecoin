@@ -2,22 +2,15 @@
 
 //! Basic Watcher Node
 
-use crate::{
-    error::{WatcherDBError, WatcherError},
-    watcher_db::WatcherDB,
-};
+use crate::{error::WatcherError, watcher_db::WatcherDB};
 
 use mc_api::block_num_to_s3block_path;
-use mc_attest_core::{Verifier, DEBUG_ENCLAVE};
 use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
-use mc_crypto_keys::Ed25519Public;
 use mc_ledger_db::Ledger;
 use mc_ledger_sync::ReqwestTransactionsFetcher;
-use mc_util_repr_bytes::ReprBytes;
-use mc_util_uri::ConsensusClientUri;
 
 use std::{
     sync::{
@@ -33,7 +26,6 @@ use url::Url;
 pub struct Watcher {
     transactions_fetcher: Arc<ReqwestTransactionsFetcher>,
     watcher_db: WatcherDB,
-    tx_source_urls_to_consensus_client_urls: HashMap<String, ConsensusClientUri>,
     logger: Logger,
 }
 
@@ -44,14 +36,9 @@ impl Watcher {
     /// * `watcher_db` - The backing database to use for storing and retreiving data
     /// * `transactions_fetcher` - The trnasaction fetcher used to fetch blocks from watched source
     /// URLs
-    /// * `tx_source_urls_to_consensus_client_urls` - An optional map (can be empty) of tx source
-    /// urls to consensus client URLs. When blocks are fetched from various tx source urls, we will
-    /// attempt to fetch an attestation verification report each time we enounter a new block
-    /// signer, assuming an entry in this map can point us at the node to connect to.
     pub fn new(
         watcher_db: WatcherDB,
         transactions_fetcher: ReqwestTransactionsFetcher,
-        tx_source_urls_to_consensus_client_urls: HashMap<String, ConsensusClientUri>,
         logger: Logger,
     ) -> Self {
         // Sanity check that the watcher db and transaction fetcher were initialized with the same
@@ -66,7 +53,6 @@ impl Watcher {
         Self {
             transactions_fetcher: Arc::new(transactions_fetcher),
             watcher_db,
-            tx_source_urls_to_consensus_client_urls,
             logger,
         }
     }
@@ -103,7 +89,7 @@ impl Watcher {
         );
         match self.transactions_fetcher.block_from_url(&url) {
             Ok(block_data) => {
-                log::debug!(
+                log::info!(
                     self.logger,
                     "Archive block retrieved for {:?} {:?}",
                     src_url,
@@ -214,18 +200,12 @@ impl WatcherSyncThread {
     pub fn new(
         watcher_db: WatcherDB,
         transactions_fetcher: ReqwestTransactionsFetcher,
-        tx_source_urls_to_consensus_client_urls: HashMap<String, ConsensusClientUri>,
         ledger: impl Ledger + 'static,
         poll_interval: Duration,
         logger: Logger,
     ) -> Self {
         log::debug!(logger, "Creating watcher sync thread.");
-        let watcher = Watcher::new(
-            watcher_db,
-            transactions_fetcher,
-            tx_source_urls_to_consensus_client_urls,
-            logger.clone(),
-        );
+        let watcher = Watcher::new(watcher_db, transactions_fetcher, logger.clone());
 
         let currently_behind = Arc::new(AtomicBool::new(false));
         let stop_requested = Arc::new(AtomicBool::new(false));

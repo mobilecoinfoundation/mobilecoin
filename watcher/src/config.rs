@@ -44,22 +44,35 @@ impl WatcherConfig {
 
 /// A single watched source configuration.
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq, Hash)]
-pub struct SourceConfig {
+struct SourceConfig {
     /// URL to use for pulling blocks.
     ///
     /// For example: https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node1.master.mobilecoin.com/
-    pub tx_source_url: String,
+    tx_source_url: String,
 
     /// (Optional) Consensus node client URL to use for fetching the remote attestation report
     /// whenever a block signer change is detected.
-    pub consensus_client_url: Option<ConsensusClientUri>,
+    consensus_client_url: Option<ConsensusClientUri>,
+}
+
+impl SourceConfig {
+    // Get the tx_source_url and ensure it has a trailing slash.
+    // This is compatible with the behavior inside ReqwestTransactionsFetcher and ensures
+    // everywhere we use URLs we always have "slash-terminated" URLs
+    pub fn tx_source_url(&self) -> String {
+        let mut url = self.tx_source_url.clone();
+        if !url.ends_with('/') {
+            url.push_str("/");
+        }
+        url
+    }
 }
 
 /// Sources configuration - this configures which sources are being watched.
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq, Hash)]
 pub struct SourcesConfig {
     /// List of sources being watched.
-    pub sources: Vec<SourceConfig>,
+    sources: Vec<SourceConfig>,
 }
 
 impl SourcesConfig {
@@ -67,7 +80,7 @@ impl SourcesConfig {
     pub fn tx_source_urls(&self) -> Vec<String> {
         self.sources
             .iter()
-            .map(|source_config| source_config.tx_source_url.clone())
+            .map(|source_config| source_config.tx_source_url())
             .collect()
     }
 
@@ -78,7 +91,7 @@ impl SourcesConfig {
             source_config
                 .consensus_client_url
                 .clone()
-                .map(|client_url| (source_config.tx_source_url.clone(), client_url))
+                .map(|client_url| (source_config.tx_source_url(), client_url))
         }))
     }
 }
