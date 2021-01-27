@@ -6,7 +6,7 @@
 use crate::printable;
 use crc::crc32;
 use displaydoc::Display;
-use protobuf::{parse_from_bytes, Message};
+use protobuf::Message;
 
 /// Decoding / encoding errors
 #[derive(Clone, Debug, Eq, PartialEq, Display)]
@@ -61,7 +61,7 @@ impl printable::PrintableWrapper {
         if expected_checksum.to_vec() != decoded_bytes {
             return Err(Error::ChecksumMismatch);
         }
-        let wrapper = parse_from_bytes(&wrapper_bytes)
+        let wrapper = PrintableWrapper::parse_from_bytes(&wrapper_bytes)
             .map_err(|err| Error::Deserialization(err.to_string()))?;
         Ok(wrapper)
     }
