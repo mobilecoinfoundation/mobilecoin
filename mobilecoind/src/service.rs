@@ -4186,7 +4186,7 @@ mod test {
             Err(GrpcError::RpcFailure(RpcStatus { details, .. })) => {
                 assert_eq!(
                     details,
-                    Some("transactions_manager.build_transaction: InsufficientFunds".to_owned())
+                    Some("transactions_manager.build_transaction: Insufficient funds".to_owned())
                 );
             }
             Err(err) => panic!("Unexpected error: {:?}", err),
