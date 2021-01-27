@@ -1,0 +1,12 @@
+[package]
+name = "mc-fog-sig"
+version = "1.0.0"
+authors = ["MobileCoin"]
+edition = "2018"
+description = "MobileCoin Fog Signatures"
+readme = "README.md"
+
+[dependencies]
+mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
+mc-crypto-digestible-signature = { path = "../../crypto/digestible/signature", default-features = false }
+mc-crypto-x509-utils = { path = "../../crypto/x509/utils", default-features = false }
