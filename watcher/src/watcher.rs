@@ -26,6 +26,7 @@ use url::Url;
 pub struct Watcher {
     transactions_fetcher: Arc<ReqwestTransactionsFetcher>,
     watcher_db: WatcherDB,
+    store_block_data: bool,
     logger: Logger,
 }
 
@@ -36,9 +37,12 @@ impl Watcher {
     /// * `watcher_db` - The backing database to use for storing and retreiving data
     /// * `transactions_fetcher` - The transaction fetcher used to fetch blocks from watched source
     ///   URLs
+    /// * `store_block_data` - The fetched BlockData objects into the database
+    /// * `logger` - Logger
     pub fn new(
         watcher_db: WatcherDB,
         transactions_fetcher: ReqwestTransactionsFetcher,
+        store_block_data: bool,
         logger: Logger,
     ) -> Self {
         // Sanity check that the watcher db and transaction fetcher were initialized with the same
@@ -53,6 +57,7 @@ impl Watcher {
         Self {
             transactions_fetcher: Arc::new(transactions_fetcher),
             watcher_db,
+            store_block_data,
             logger,
         }
     }
@@ -72,8 +77,8 @@ impl Watcher {
             .unwrap_or(0))
     }
 
-    /// Sync a signature from a url at a given block_index.
-    pub fn sync_signature(&self, src_url: &Url, block_index: u64) -> Result<(), WatcherError> {
+    /// Sync a specific block from a url.
+    pub fn sync_block(&self, src_url: &Url, block_index: u64) -> Result<(), WatcherError> {
         let filename = block_num_to_s3block_path(block_index)
             .into_os_string()
             .into_string()
@@ -95,6 +100,11 @@ impl Watcher {
                     src_url,
                     block_index
                 );
+
+                if self.store_block_data {
+                    self.watcher_db.add_block_data(src_url, &block_data)?;
+                }
+
                 if let Some(signature) = block_data.signature() {
                     self.watcher_db.add_block_signature(
                         src_url,
@@ -119,14 +129,14 @@ impl Watcher {
         }
     }
 
-    /// Sync blocks and collect signatures.
+    /// Sync blocks and collect signatures (and block data, when enabled).
     ///
     /// * `start` - starting block to sync.
     /// * `max_block_height` - the max block height to sync per archive url. If None, continue polling.
     ///
     /// Returns true if syncing has reached max_block_height, false if more blocks still need to be
     /// synced.
-    pub fn sync_signatures(
+    pub fn sync_blocks(
         &self,
         start: u64,
         max_block_height: Option<u64>,
@@ -167,7 +177,7 @@ impl Watcher {
                 let next_block_index = opt_last_synced
                     .map(|block_index| block_index + 1)
                     .unwrap_or(start);
-                match self.sync_signature(&src_url, next_block_index) {
+                match self.sync_block(&src_url, next_block_index) {
                     Ok(()) => {}
                     Err(WatcherError::SyncFailed) => {
                         sync_failed.insert(src_url.clone(), true);
@@ -202,10 +212,16 @@ impl WatcherSyncThread {
         transactions_fetcher: ReqwestTransactionsFetcher,
         ledger: impl Ledger + 'static,
         poll_interval: Duration,
+        store_block_data: bool,
         logger: Logger,
     ) -> Self {
         log::debug!(logger, "Creating watcher sync thread.");
-        let watcher = Watcher::new(watcher_db, transactions_fetcher, logger.clone());
+        let watcher = Watcher::new(
+            watcher_db,
+            transactions_fetcher,
+            store_block_data,
+            logger.clone(),
+        );
 
         let currently_behind = Arc::new(AtomicBool::new(false));
         let stop_requested = Arc::new(AtomicBool::new(false));
@@ -298,8 +314,8 @@ impl WatcherSyncThread {
                     lowest_next_block_to_sync + MAX_BLOCKS_PER_SYNC_ITERATION as u64,
                 );
                 watcher
-                    .sync_signatures(lowest_next_block_to_sync, Some(max_blocks))
-                    .expect("Could not sync signatures");
+                    .sync_blocks(lowest_next_block_to_sync, Some(max_blocks))
+                    .expect("Could not sync blocks");
             } else if !stop_requested.load(Ordering::SeqCst) {
                 log::trace!(
                     logger,

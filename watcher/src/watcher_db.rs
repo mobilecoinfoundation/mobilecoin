@@ -2,7 +2,7 @@
 
 //! The watcher database
 
-use crate::error::WatcherDBError;
+use crate::{block_data_store::BlockDataStore, error::WatcherDBError};
 
 use mc_attest_core::VerificationReport;
 use mc_common::{
@@ -11,7 +11,7 @@ use mc_common::{
 };
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_keys::Ed25519Public;
-use mc_transaction_core::BlockSignature;
+use mc_transaction_core::{BlockData, BlockIndex, BlockSignature};
 use mc_util_lmdb::{MetadataStore, MetadataStoreSettings};
 use mc_util_repr_bytes::ReprBytes;
 use mc_util_serial::{decode, encode, Message};
@@ -40,7 +40,7 @@ impl MetadataStoreSettings for WatcherDbMetadataStoreSettings {
     // If this is properly maintained, we could check during ledger db opening for any
     // incompatibilities, and either refuse to open or perform a migration.
     #[allow(clippy::unreadable_literal)]
-    const LATEST_VERSION: u64 = 20210121;
+    const LATEST_VERSION: u64 = 20210127;
 
     /// The current crate version that manages the database.
     const CRATE_VERSION: &'static str = env!("CARGO_PKG_VERSION");
@@ -93,6 +93,9 @@ pub struct BlockSignatureData {
 pub struct WatcherDB {
     /// LMDB Environment (database).
     env: Arc<Environment>,
+
+    /// BlockData store.
+    block_data_store: BlockDataStore,
 
     /// Signature store.
     block_signatures: Database,
@@ -164,8 +167,11 @@ impl WatcherDB {
         let last_synced = env.open_db(Some(LAST_SYNCED_DB_NAME))?;
         let config = env.open_db(Some(CONFIG_DB_NAME))?;
 
+        let block_data_store = BlockDataStore::new(env.clone(), logger.clone())?;
+
         Ok(WatcherDB {
             env,
+            block_data_store,
             block_signatures,
             verification_reports_by_signer,
             verification_reports_by_hash,
@@ -217,6 +223,8 @@ impl WatcherDB {
         env.create_db(Some(LAST_SYNCED_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(CONFIG_DB_NAME), DatabaseFlags::DUP_SORT)?;
 
+        BlockDataStore::create(env.clone())?;
+
         Ok(())
     }
 
@@ -224,6 +232,34 @@ impl WatcherDB {
     pub fn get_config_urls(&self) -> Result<Vec<Url>, WatcherDBError> {
         let db_txn = self.env.begin_ro_txn()?;
         self.get_config_urls_with_txn(&db_txn)
+    }
+
+    /// Store BlockData for a URL at a given block index (the block index comes from the
+    /// BlockData).
+    pub fn add_block_data(
+        &self,
+        src_url: &Url,
+        block_data: &BlockData,
+    ) -> Result<(), WatcherDBError> {
+        if !self.write_allowed {
+            return Err(WatcherDBError::ReadOnly);
+        }
+
+        let mut db_txn = self.env.begin_rw_txn()?;
+
+        // Sanity test - the URL needs to be configured.
+        let urls = self.get_config_urls_with_txn(&db_txn)?;
+        if !urls.contains(&src_url) {
+            return Err(WatcherDBError::NotFound);
+        }
+
+        // Add.
+        self.block_data_store
+            .add_block_data(&mut db_txn, src_url, block_data)?;
+
+        // Done
+        db_txn.commit()?;
+        Ok(())
     }
 
     /// Add a block signature for a URL at a given block index.
@@ -498,6 +534,15 @@ impl WatcherDB {
             };
         }
         Ok(results)
+    }
+
+    /// Get all known BlockDatas for a given block index, mapped by tx source url.
+    pub fn get_block_data(
+        &self,
+        block_index: BlockIndex,
+    ) -> Result<HashMap<Url, BlockData>, WatcherDBError> {
+        let db_txn = self.env.begin_ro_txn()?;
+        self.block_data_store.get_block_data(&db_txn, block_index)
     }
 
     /// Record a verification report for a given source URL, that is associated with a specific

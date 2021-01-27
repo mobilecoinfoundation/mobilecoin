@@ -33,7 +33,12 @@ fn main() {
         logger.clone(),
     )
     .expect("Could not create or open watcher db");
-    let watcher = Watcher::new(watcher_db.clone(), transactions_fetcher, logger.clone());
+    let watcher = Watcher::new(
+        watcher_db.clone(),
+        transactions_fetcher,
+        config.store_block_data,
+        logger.clone(),
+    );
 
     let _verification_reports_collector = <VerificationReportsCollector>::new(
         watcher_db,
@@ -45,7 +50,7 @@ fn main() {
     loop {
         // For now, ignore origin block, as it does not have a signature.
         let syncing_done = watcher
-            .sync_signatures(1, config.max_block_height)
+            .sync_blocks(1, config.max_block_height)
             .expect("Could not sync signatures");
         if syncing_done {
             log::info!(logger, "sync_signatures indicates we're done");

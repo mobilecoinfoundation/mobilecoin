@@ -32,6 +32,9 @@ pub struct WatcherConfig {
     /// How many seconds to wait between polling.
     #[structopt(long, default_value = "1", parse(try_from_str=parse_duration_in_seconds))]
     pub poll_interval: Duration,
+    /// Store block data for every fetched block.
+    #[structopt(long)]
+    pub store_block_data: bool,
 }
 
 impl WatcherConfig {
