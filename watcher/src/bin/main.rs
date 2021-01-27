@@ -35,7 +35,7 @@ fn main() {
     .expect("Could not create or open watcher db");
     let watcher = Watcher::new(watcher_db.clone(), transactions_fetcher, logger.clone());
 
-    let _verification_reports_collector = VerificationReportsCollector::new(
+    let _verification_reports_collector = <VerificationReportsCollector>::new(
         watcher_db,
         sources_config.tx_source_urls_to_consensus_client_urls(),
         config.poll_interval,

@@ -879,7 +879,7 @@ pub fn create_or_open_rw_watcher_db(
 }
 
 #[cfg(test)]
-mod test {
+pub mod tests {
     use super::*;
     use mc_account_keys::AccountKey;
     use mc_attest_core::VerificationSignature;
@@ -894,13 +894,13 @@ mod test {
     use std::iter::FromIterator;
     use tempdir::TempDir;
 
-    fn setup_watcher_db(src_urls: &[Url], logger: Logger) -> WatcherDB {
+    pub fn setup_watcher_db(src_urls: &[Url], logger: Logger) -> WatcherDB {
         let db_tmp = TempDir::new("wallet_db").expect("Could not make tempdir for wallet db");
         WatcherDB::create(db_tmp.path().to_path_buf()).unwrap();
         WatcherDB::open_rw(db_tmp.path().to_path_buf(), src_urls, logger).unwrap()
     }
 
-    fn setup_blocks() -> Vec<(Block, BlockContents)> {
+    pub fn setup_blocks() -> Vec<(Block, BlockContents)> {
         let mut rng: Hc128Rng = Hc128Rng::from_seed([8u8; 32]);
         let origin = Block::new_origin_block(&[]);
 

@@ -7,6 +7,7 @@ use mc_util_uri::ConsensusClientUri;
 use serde::{Deserialize, Serialize};
 use std::{fs, iter::FromIterator, path::PathBuf, str::FromStr, time::Duration};
 use structopt::StructOpt;
+use url::Url;
 
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -63,12 +64,12 @@ impl SourceConfig {
     // Get the tx_source_url and ensure it has a trailing slash.
     // This is compatible with the behavior inside ReqwestTransactionsFetcher and ensures
     // everywhere we use URLs we always have "slash-terminated" URLs
-    pub fn tx_source_url(&self) -> String {
+    pub fn tx_source_url(&self) -> Url {
         let mut url = self.tx_source_url.clone();
         if !url.ends_with('/') {
             url.push_str("/");
         }
-        url
+        Url::from_str(&url).unwrap_or_else(|err| panic!("invalid url {}: {}", url, err))
     }
 }
 
@@ -84,13 +85,13 @@ impl SourcesConfig {
     pub fn tx_source_urls(&self) -> Vec<String> {
         self.sources
             .iter()
-            .map(|source_config| source_config.tx_source_url())
+            .map(|source_config| source_config.tx_source_url().as_str().to_owned())
             .collect()
     }
 
     /// Returns a map of tx source url -> consensus client url. This is used when we want to try
     /// and connect to the consensus block that provided some block from a given URL.
-    pub fn tx_source_urls_to_consensus_client_urls(&self) -> HashMap<String, ConsensusClientUri> {
+    pub fn tx_source_urls_to_consensus_client_urls(&self) -> HashMap<Url, ConsensusClientUri> {
         HashMap::from_iter(self.sources.iter().filter_map(|source_config| {
             source_config
                 .consensus_client_url
