@@ -67,7 +67,6 @@ impl VerificationReportsCollector {
 
     /// Stop the thread.
     pub fn stop(&mut self) {
-        // TODO an option to wait until the queue is empty.
         self.stop_requested.store(true, Ordering::SeqCst);
         if let Some(thread) = self.join_handle.take() {
             thread.join().expect("thread join failed");
@@ -236,6 +235,8 @@ impl VerificationReportsCollectorThread {
             hex::encode(verification_report_block_signer.to_bytes())
         );
 
+        // Store the VerificationReport in the database, and also remove
+        // verification_report_block_signer and potential_signers from the polling queue.
         match self.watcher_db.add_verification_report(
             tx_src_url,
             &verification_report_block_signer,

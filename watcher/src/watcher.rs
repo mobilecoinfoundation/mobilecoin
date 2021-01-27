@@ -34,8 +34,8 @@ impl Watcher {
     ///
     /// # Arguments
     /// * `watcher_db` - The backing database to use for storing and retreiving data
-    /// * `transactions_fetcher` - The trnasaction fetcher used to fetch blocks from watched source
-    /// URLs
+    /// * `transactions_fetcher` - The transaction fetcher used to fetch blocks from watched source
+    ///   URLs
     pub fn new(
         watcher_db: WatcherDB,
         transactions_fetcher: ReqwestTransactionsFetcher,
