@@ -825,7 +825,7 @@ impl WatcherDB {
     }
 
     /// Remove a single entry from the verification report polling queue
-    pub fn remove_verification_report_poll_from_queue<'env>(
+    fn remove_verification_report_poll_from_queue<'env>(
         &self,
         db_txn: &mut RwTransaction<'env>,
         src_url: &Url,
@@ -1106,22 +1106,20 @@ mod test {
         });
     }
 
-    // Storing of verification report should work.
+    // Storing and fetching of verification reports should work.
     #[test_with_logger]
     fn test_verification_report_insert_and_get(logger: Logger) {
         run_with_one_seed(|mut rng| {
             let url1 = Url::parse("http://www.my_url1.com").unwrap();
             let url2 = Url::parse("http://www.my_url2.com").unwrap();
+            let url3 = Url::parse("http://www.my_url3.com").unwrap();
             let urls = vec![url1.clone(), url2.clone()];
 
-            let watcher_db = setup_watcher_db(&urls, logger.clone());
+            let signing_key_a = Ed25519Pair::from_random(&mut rng).public_key();
+            let signing_key_b = Ed25519Pair::from_random(&mut rng).public_key();
+            let signing_key_c = Ed25519Pair::from_random(&mut rng).public_key();
+            let signing_key_d = Ed25519Pair::from_random(&mut rng).public_key();
 
-            let signing_key_a = Ed25519Pair::from_random(&mut rng);
-            let signing_key_b = Ed25519Pair::from_random(&mut rng);
-            let signing_key_c = Ed25519Pair::from_random(&mut rng);
-            let signing_key_d = Ed25519Pair::from_random(&mut rng);
-
-            // Test the simple scenario of adding two reports to the same URL (url1)
             let verification_report_a = VerificationReport {
                 sig: VerificationSignature::from(vec![1; 32]),
                 chain: vec![vec![2; 16], vec![3; 32]],
@@ -1134,145 +1132,495 @@ mod test {
                 http_body: "test body b".to_owned(),
             };
 
-            watcher_db
-                .add_verification_report(
-                    &signing_key_a.public_key(),
-                    &url1,
-                    Some(&verification_report_a),
-                )
-                .unwrap();
-            watcher_db
-                .add_verification_report(
-                    &signing_key_b.public_key(),
-                    &url1,
-                    Some(&verification_report_b),
-                )
-                .unwrap();
+            {
+                let watcher_db = setup_watcher_db(&urls, logger.clone());
 
+                // Add a verification report for signing_key_a, and also include signing_key_b.
+                // Result should be report is assocaited with signing_key_a and None is associated with
+                // signing_key_b. Nothing is associated with signing_key_c.
+                for _ in 0..5 {
+                    watcher_db
+                        .add_verification_report(
+                            &url1,
+                            &signing_key_a,
+                            &verification_report_a,
+                            &[signing_key_b],
+                        )
+                        .unwrap();
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_reports_for_signer(&signing_key_a)
+                            .unwrap(),
+                        HashMap::from_iter(vec![(
+                            url1.clone(),
+                            vec![Some(verification_report_a.clone())]
+                        )])
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_reports_for_signer(&signing_key_b)
+                            .unwrap(),
+                        HashMap::from_iter(vec![(url1.clone(), vec![None])])
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_reports_for_signer(&signing_key_c)
+                            .unwrap(),
+                        HashMap::from_iter(vec![])
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_report_for_signer_and_url(&signing_key_a, &url1)
+                            .unwrap(),
+                        vec![Some(verification_report_a.clone())],
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_report_for_signer_and_url(&signing_key_a, &url2)
+                            .unwrap(),
+                        vec![],
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_report_for_signer_and_url(&signing_key_b, &url1)
+                            .unwrap(),
+                        vec![None],
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_report_for_signer_and_url(&signing_key_b, &url2)
+                            .unwrap(),
+                        vec![],
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_report_for_signer_and_url(&signing_key_c, &url1)
+                            .unwrap(),
+                        vec![],
+                    );
+                }
+
+                // Add a second verification report for signing_key_a and test that we can fetch
+                // it.
+                for _ in 0..5 {
+                    watcher_db
+                        .add_verification_report(
+                            &url1,
+                            &signing_key_a,
+                            &verification_report_b,
+                            &[signing_key_b],
+                        )
+                        .unwrap();
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_reports_for_signer(&signing_key_a)
+                            .unwrap(),
+                        HashMap::from_iter(vec![(
+                            url1.clone(),
+                            vec![
+                                Some(verification_report_a.clone()),
+                                Some(verification_report_b.clone())
+                            ]
+                        )])
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_reports_for_signer(&signing_key_b)
+                            .unwrap(),
+                        HashMap::from_iter(vec![(url1.clone(), vec![None])])
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_reports_for_signer(&signing_key_c)
+                            .unwrap(),
+                        HashMap::from_iter(vec![])
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_report_for_signer_and_url(&signing_key_a, &url1)
+                            .unwrap(),
+                        vec![
+                            Some(verification_report_a.clone()),
+                            Some(verification_report_b.clone())
+                        ]
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_report_for_signer_and_url(&signing_key_b, &url1)
+                            .unwrap(),
+                        vec![None]
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_report_for_signer_and_url(&signing_key_c, &url1)
+                            .unwrap(),
+                        vec![]
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_report_for_signer_and_url(&signing_key_c, &url2)
+                            .unwrap(),
+                        vec![]
+                    );
+                }
+            }
+
+            // While this should never happen in the real world, test that the database supports
+            // adding the same verification report to two different URLs.
+            {
+                let watcher_db = setup_watcher_db(&urls, logger.clone());
+
+                // This is done in a loop since repeated executions should not result in different
+                // results
+                for _ in 0..5 {
+                    watcher_db
+                        .add_verification_report(
+                            &url1,
+                            &signing_key_a,
+                            &verification_report_a,
+                            &[signing_key_b],
+                        )
+                        .unwrap();
+
+                    watcher_db
+                        .add_verification_report(
+                            &url2,
+                            &signing_key_a,
+                            &verification_report_a,
+                            &[signing_key_b],
+                        )
+                        .unwrap();
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_reports_for_signer(&signing_key_a)
+                            .unwrap(),
+                        HashMap::from_iter(vec![
+                            (url1.clone(), vec![Some(verification_report_a.clone())]),
+                            (url2.clone(), vec![Some(verification_report_a.clone())]),
+                        ])
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_reports_for_signer(&signing_key_b)
+                            .unwrap(),
+                        HashMap::from_iter(vec![
+                            (url1.clone(), vec![None]),
+                            (url2.clone(), vec![None])
+                        ])
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_reports_for_signer(&signing_key_c)
+                            .unwrap(),
+                        HashMap::from_iter(vec![])
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_report_for_signer_and_url(&signing_key_a, &url1)
+                            .unwrap(),
+                        vec![Some(verification_report_a.clone())]
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_report_for_signer_and_url(&signing_key_a, &url2)
+                            .unwrap(),
+                        vec![Some(verification_report_a.clone())]
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_report_for_signer_and_url(&signing_key_a, &url3)
+                            .unwrap(),
+                        vec![]
+                    );
+                }
+            }
+
+            // Add a None verification report and then add an actual verification report to some
+            // key.
+            {
+                let watcher_db = setup_watcher_db(&urls, logger.clone());
+
+                for _ in 0..5 {
+                    // Adds None to signing_key_b
+                    watcher_db
+                        .add_verification_report(
+                            &url1,
+                            &signing_key_a,
+                            &verification_report_a,
+                            &[signing_key_b],
+                        )
+                        .unwrap();
+
+                    // Add verification_report_b to signing_key_b
+                    watcher_db
+                        .add_verification_report(
+                            &url1,
+                            &signing_key_b,
+                            &verification_report_b,
+                            &[signing_key_c],
+                        )
+                        .unwrap();
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_reports_for_signer(&signing_key_a)
+                            .unwrap(),
+                        HashMap::from_iter(vec![(
+                            url1.clone(),
+                            vec![Some(verification_report_a.clone())]
+                        ),])
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_reports_for_signer(&signing_key_b)
+                            .unwrap(),
+                        HashMap::from_iter(vec![(
+                            url1.clone(),
+                            vec![Some(verification_report_b.clone()), None]
+                        ),])
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_reports_for_signer(&signing_key_c)
+                            .unwrap(),
+                        HashMap::from_iter(vec![(url1.clone(), vec![None])])
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_reports_for_signer(&signing_key_d)
+                            .unwrap(),
+                        HashMap::from_iter(vec![])
+                    );
+                }
+            }
+        })
+    }
+
+    // Verification report polling queue should behave as expected.
+    #[test_with_logger]
+    fn test_verification_report_poll_queue(logger: Logger) {
+        run_with_one_seed(|mut rng| {
+            let url1 = Url::parse("http://www.my_url1.com").unwrap();
+            let url2 = Url::parse("http://www.my_url2.com").unwrap();
+            let url3 = Url::parse("http://www.my_url3.com").unwrap();
+            let urls = vec![url1.clone(), url2.clone(), url3.clone()];
+
+            let verification_report_a = VerificationReport {
+                sig: VerificationSignature::from(vec![1; 32]),
+                chain: vec![vec![2; 16], vec![3; 32]],
+                http_body: "test body a".to_owned(),
+            };
+
+            let blocks = setup_blocks();
+            let signing_key_a = Ed25519Pair::from_random(&mut rng);
+            let signing_key_b = Ed25519Pair::from_random(&mut rng);
+            let signing_key_c = Ed25519Pair::from_random(&mut rng);
+            let filename = String::from("00/00");
+
+            let watcher_db = setup_watcher_db(&urls, logger.clone());
+
+            // Queue starts empty.
             assert_eq!(
-                watcher_db
-                    .get_verification_reports_for_signer(&signing_key_a.public_key())
-                    .unwrap(),
-                HashMap::from_iter(vec![(
-                    url1.as_str().to_string(),
-                    Some(verification_report_a.clone())
-                )]),
-            );
-            assert_eq!(
-                watcher_db
-                    .get_verification_reports_for_signer(&signing_key_b.public_key())
-                    .unwrap(),
-                HashMap::from_iter(vec![(
-                    url1.as_str().to_string(),
-                    Some(verification_report_b.clone())
-                )]),
-            );
-            assert_eq!(
-                watcher_db
-                    .get_verification_reports_for_signer(&signing_key_c.public_key())
-                    .unwrap(),
+                watcher_db.get_verification_report_poll_queue().unwrap(),
                 HashMap::default()
             );
 
-            // Double adding should fail.
-            assert_eq!(
-                watcher_db.add_verification_report(
-                    &signing_key_a.public_key(),
-                    &url1,
-                    Some(&verification_report_a)
-                ),
-                Err(WatcherDBError::LmdbError(lmdb::Error::KeyExist))
-            );
-
-            // Storing no report should work.
+            // Add a block signature, the signing key should make it into the queue.
+            let signed_block_a1 =
+                BlockSignature::from_block_and_keypair(&blocks[0].0, &signing_key_a).unwrap();
             watcher_db
-                .add_verification_report(&signing_key_c.public_key(), &url1, None)
+                .add_block_signature(&url1, 1, signed_block_a1, filename.clone())
                 .unwrap();
 
-            assert_eq!(
-                watcher_db
-                    .get_verification_reports_for_signer(&signing_key_c.public_key())
-                    .unwrap(),
-                HashMap::from_iter(vec![(url1.as_str().to_string(), None)]),
-            );
+            // Repeated calls should all behave the same.
+            for _ in 0..5 {
+                assert_eq!(
+                    watcher_db.get_verification_report_poll_queue().unwrap(),
+                    HashMap::from_iter(vec![(url1.clone(), vec![signing_key_a.public_key()])])
+                );
+            }
 
-            // Adding an already-seen report to a different URL should work.
+            // Adding another block with the same signing key should not affect the queue.
+            let signed_block_a2 =
+                BlockSignature::from_block_and_keypair(&blocks[1].0, &signing_key_a).unwrap();
+            watcher_db
+                .add_block_signature(&url1, 2, signed_block_a2, filename.clone())
+                .unwrap();
+
+            for _ in 0..5 {
+                assert_eq!(
+                    watcher_db.get_verification_report_poll_queue().unwrap(),
+                    HashMap::from_iter(vec![(url1.clone(), vec![signing_key_a.public_key()])])
+                );
+            }
+
+            // Adding a block with a different key should show up in the queue.
+            let signed_block_b1 =
+                BlockSignature::from_block_and_keypair(&blocks[0].0, &signing_key_b).unwrap();
+            watcher_db
+                .add_block_signature(&url1, 1, signed_block_b1.clone(), filename.clone())
+                .unwrap();
+
+            for _ in 0..5 {
+                assert_eq!(
+                    watcher_db.get_verification_report_poll_queue().unwrap(),
+                    HashMap::from_iter(vec![(
+                        url1.clone(),
+                        vec![signing_key_b.public_key(), signing_key_a.public_key()]
+                    )])
+                );
+            }
+
+            // Adding a block with the same signing key but a different url should make it into the
+            // queue.
+            watcher_db
+                .add_block_signature(&url2, 1, signed_block_b1, filename.clone())
+                .unwrap();
+
+            for _ in 0..5 {
+                assert_eq!(
+                    watcher_db.get_verification_report_poll_queue().unwrap(),
+                    HashMap::from_iter(vec![
+                        (
+                            url1.clone(),
+                            vec![signing_key_b.public_key(), signing_key_a.public_key()]
+                        ),
+                        (url2.clone(), vec![signing_key_b.public_key()]),
+                    ])
+                );
+            }
+
+            // Adding a verification report for some key that is not in the queue should not affect
+            // things.
             watcher_db
                 .add_verification_report(
-                    &signing_key_a.public_key(),
-                    &url2,
-                    Some(&verification_report_a),
+                    &url1,
+                    &signing_key_c.public_key(),
+                    &verification_report_a,
+                    &[],
                 )
                 .unwrap();
 
             assert_eq!(
-                watcher_db
-                    .get_verification_reports_for_signer(&signing_key_a.public_key())
-                    .unwrap(),
+                watcher_db.get_verification_report_poll_queue().unwrap(),
                 HashMap::from_iter(vec![
                     (
-                        url1.as_str().to_string(),
-                        Some(verification_report_a.clone())
+                        url1.clone(),
+                        vec![signing_key_b.public_key(), signing_key_a.public_key()]
                     ),
-                    (
-                        url2.as_str().to_string(),
-                        Some(verification_report_a.clone())
-                    ),
-                ]),
+                    (url2.clone(), vec![signing_key_b.public_key()]),
+                ])
             );
+
+            // Adding a verification report that references one of the keys in the queue should
+            // cause it to get removed.
+            watcher_db
+                .add_verification_report(
+                    &url2,
+                    &signing_key_b.public_key(),
+                    &verification_report_a,
+                    &[],
+                )
+                .unwrap();
+
             assert_eq!(
-                watcher_db
-                    .get_verification_reports_for_signer(&signing_key_b.public_key())
-                    .unwrap(),
+                watcher_db.get_verification_report_poll_queue().unwrap(),
                 HashMap::from_iter(vec![(
-                    url1.as_str().to_string(),
-                    Some(verification_report_b.clone())
-                )]),
+                    url1.clone(),
+                    vec![signing_key_b.public_key(), signing_key_a.public_key()]
+                ),])
             );
 
-            // Getting reports for an unknown signer should return an empty map.
-            assert_eq!(
-                watcher_db
-                    .get_verification_reports_for_signer(&signing_key_d.public_key())
-                    .unwrap(),
-                HashMap::default(),
-            );
-
-            // Sanity check get reports for specific URLs
-            assert_eq!(
-                watcher_db
-                    .get_verification_report_for_signer_and_url(&signing_key_a.public_key(), &url1),
-                Ok(Some(verification_report_a.clone())),
-            );
+            // Adding a block signature for a key that already has a verification report should not
+            // affect the queue.
+            let signed_block_b2 =
+                BlockSignature::from_block_and_keypair(&blocks[1].0, &signing_key_b).unwrap();
+            watcher_db
+                .add_block_signature(&url2, 2, signed_block_b2.clone(), filename.clone())
+                .unwrap();
 
             assert_eq!(
-                watcher_db
-                    .get_verification_report_for_signer_and_url(&signing_key_b.public_key(), &url1),
-                Ok(Some(verification_report_b)),
+                watcher_db.get_verification_report_poll_queue().unwrap(),
+                HashMap::from_iter(vec![(
+                    url1.clone(),
+                    vec![signing_key_b.public_key(), signing_key_a.public_key()]
+                ),])
             );
 
-            assert_eq!(
-                watcher_db
-                    .get_verification_report_for_signer_and_url(&signing_key_c.public_key(), &url1),
-                Ok(None),
-            );
+            // Unless it is added to a url we have not encountered before.
+            watcher_db
+                .add_block_signature(&url3, 2, signed_block_b2, filename.clone())
+                .unwrap();
 
             assert_eq!(
-                watcher_db
-                    .get_verification_report_for_signer_and_url(&signing_key_a.public_key(), &url2),
-                Ok(Some(verification_report_a)),
+                watcher_db.get_verification_report_poll_queue().unwrap(),
+                HashMap::from_iter(vec![
+                    (
+                        url1.clone(),
+                        vec![signing_key_b.public_key(), signing_key_a.public_key()]
+                    ),
+                    (url3.clone(), vec![signing_key_b.public_key()]),
+                ])
             );
 
-            assert_eq!(
-                watcher_db
-                    .get_verification_report_for_signer_and_url(&signing_key_b.public_key(), &url2),
-                Err(WatcherDBError::NotFound),
-            );
+            // Referencing signing_key_a and signing_key_b for url1 will cause them to be removed
+            // from the queue but only when the correct url is used.
+            watcher_db
+                .add_verification_report(
+                    &url2,
+                    &signing_key_b.public_key(),
+                    &verification_report_a,
+                    &[signing_key_a.public_key()],
+                )
+                .unwrap();
 
             assert_eq!(
-                watcher_db
-                    .get_verification_report_for_signer_and_url(&signing_key_c.public_key(), &url2),
-                Err(WatcherDBError::NotFound),
+                watcher_db.get_verification_report_poll_queue().unwrap(),
+                HashMap::from_iter(vec![
+                    (
+                        url1.clone(),
+                        vec![signing_key_b.public_key(), signing_key_a.public_key()]
+                    ),
+                    (url3.clone(), vec![signing_key_b.public_key()]),
+                ])
+            );
+
+            watcher_db
+                .add_verification_report(
+                    &url1,
+                    &signing_key_b.public_key(),
+                    &verification_report_a,
+                    &[signing_key_a.public_key()],
+                )
+                .unwrap();
+
+            assert_eq!(
+                watcher_db.get_verification_report_poll_queue().unwrap(),
+                HashMap::from_iter(vec![(url3.clone(), vec![signing_key_b.public_key()]),])
             );
         })
     }
