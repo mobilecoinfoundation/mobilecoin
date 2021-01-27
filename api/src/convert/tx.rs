@@ -114,7 +114,7 @@ mod tests {
         // Encoding with prost, decoding with protobuf should be the identity function.
         {
             let bytes = mc_util_serial::encode(&tx);
-            let recovered_tx: external::Tx = protobuf::parse_from_bytes(&bytes).unwrap();
+            let recovered_tx = external::Tx::parse_from_bytes(&bytes).unwrap();
             assert_eq!(recovered_tx, external::Tx::from(&tx));
         }
 

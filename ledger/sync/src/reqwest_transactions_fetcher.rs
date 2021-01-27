@@ -195,7 +195,7 @@ impl ReqwestTransactionsFetcher {
             bytes
         };
 
-        let obj: M = protobuf::parse_from_bytes(&bytes).map_err(|err| {
+        let obj = M::parse_from_bytes(&bytes).map_err(|err| {
             ReqwestTransactionsFetcherError::InvalidBlockReceived(
                 url.to_string(),
                 format!("protobuf parse failed: {:?}", err),

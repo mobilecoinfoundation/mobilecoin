@@ -12,8 +12,8 @@ use protobuf::Message as ProtobufMessage;
 fn round_trip_message<SRC: ProstMessage + Eq + Default, DEST: ProtobufMessage>(prost_val: &SRC) {
     let prost_bytes = mc_util_serial::encode(prost_val);
 
-    let dest_val: DEST =
-        protobuf::parse_from_bytes(&prost_bytes).expect("Parsing protobuf from prost bytes failed");
+    let dest_val =
+        DEST::parse_from_bytes(&prost_bytes).expect("Parsing protobuf from prost bytes failed");
 
     let protobuf_bytes = dest_val
         .write_to_bytes()
