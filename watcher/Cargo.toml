@@ -13,6 +13,7 @@ mc-api = { path = "../api" }
 mc-attest-core = { path = "../attest/core" }
 mc-common = { path = "../common", features = ["log"] }
 mc-connection = { path = "../connection" }
+mc-crypto-digestible = { path = "../crypto/digestible" }
 mc-crypto-keys = { path = "../crypto/keys" }
 mc-ledger-db = { path = "../ledger/db" }
 mc-ledger-sync = { path = "../ledger/sync" }

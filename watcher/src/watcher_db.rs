@@ -9,6 +9,7 @@ use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
+use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_keys::Ed25519Public;
 use mc_transaction_core::BlockSignature;
 use mc_util_lmdb::{MetadataStore, MetadataStoreSettings};
@@ -56,7 +57,11 @@ pub const VERIFICATION_REPORTS_BY_BLOCK_SIGNER_DB_NANE: &str =
     "watcher_db:verification_reports_by_block_signer";
 
 /// Verification reports poll queue database name.
-pub const VERIFICATION_REPORTS_POLL_QUEUE: &str = "watcher_db:verification_reports_poll_queue";
+pub const VERIFICATION_REPORTS_POLL_QUEUE_DB_NAME: &str =
+    "watcher_db:verification_reports_poll_queue";
+
+/// Verification reports by report hash database name.
+pub const VERIFICATION_REPORTS_BY_HASH_DB_NAME: &str = "watcher_db:verification_reports_by_hash";
 
 /// Last synced archive blocks database name.
 pub const LAST_SYNCED_DB_NAME: &str = "watcher_db:last_synced";
@@ -92,8 +97,17 @@ pub struct WatcherDB {
     /// Signature store.
     block_signatures: Database,
 
-    /// Verification reports by block signer database.
+    /// Verification reports by block signer (and tx source url) database.
+    /// This actually points to report hashes, which then allow getting the actual report contents
+    /// from the verification_reports_by_hash database.
+    /// This is needed because LMDB limits the value size in DUP_SORT databases to 511 bytes, not
+    /// enough to fit the report. This database needs to be DUP_SORT since we want to support the
+    /// odd case of different reports showing up for the same signer/url pair. It shouldn't happen,
+    /// but we sure don't want to miss it if it does.
     verification_reports_by_signer: Database,
+
+    /// Verification report hash -> VerificationReport.
+    verification_reports_by_hash: Database,
 
     /// Verification reports poll queue database.
     /// This database holds a map of tx source url -> list of observed block signers.
@@ -143,7 +157,10 @@ impl WatcherDB {
         let block_signatures = env.open_db(Some(BLOCK_SIGNATURES_DB_NAME))?;
         let verification_reports_by_signer =
             env.open_db(Some(VERIFICATION_REPORTS_BY_BLOCK_SIGNER_DB_NANE))?;
-        let verification_reports_poll_queue = env.open_db(Some(VERIFICATION_REPORTS_POLL_QUEUE))?;
+        let verification_reports_by_hash =
+            env.open_db(Some(VERIFICATION_REPORTS_BY_HASH_DB_NAME))?;
+        let verification_reports_poll_queue =
+            env.open_db(Some(VERIFICATION_REPORTS_POLL_QUEUE_DB_NAME))?;
         let last_synced = env.open_db(Some(LAST_SYNCED_DB_NAME))?;
         let config = env.open_db(Some(CONFIG_DB_NAME))?;
 
@@ -151,6 +168,7 @@ impl WatcherDB {
             env,
             block_signatures,
             verification_reports_by_signer,
+            verification_reports_by_hash,
             verification_reports_poll_queue,
             last_synced,
             config,
@@ -186,10 +204,14 @@ impl WatcherDB {
         env.create_db(Some(BLOCK_SIGNATURES_DB_NAME), DatabaseFlags::DUP_SORT)?;
         env.create_db(
             Some(VERIFICATION_REPORTS_BY_BLOCK_SIGNER_DB_NANE),
+            DatabaseFlags::DUP_SORT,
+        )?;
+        env.create_db(
+            Some(VERIFICATION_REPORTS_BY_HASH_DB_NAME),
             DatabaseFlags::empty(),
         )?;
         env.create_db(
-            Some(VERIFICATION_REPORTS_POLL_QUEUE),
+            Some(VERIFICATION_REPORTS_POLL_QUEUE_DB_NAME),
             DatabaseFlags::DUP_SORT,
         )?;
         env.create_db(Some(LAST_SYNCED_DB_NAME), DatabaseFlags::empty())?;
@@ -562,67 +584,71 @@ impl WatcherDB {
 
         log::trace!(
             self.logger,
-            "write_verification_report: src_url:{} signer:{} report-provided:{}",
+            "write_verification_report: src_url:{} signer:{} report-provided:{} report-len:{}",
             src_url,
             hex::encode(signer.to_bytes()),
-            verification_report.is_some()
+            verification_report.is_some(),
+            value_bytes.len(),
         );
 
-        // See if this src_url/signer already has an entry in the database.
-        let existing_value = match db_txn.get(self.verification_reports_by_signer, &key_bytes) {
-            Ok(existing_value_bytes) => Some(existing_value_bytes.to_vec()),
-            Err(lmdb::Error::NotFound) => None,
-            Err(err) => return Err(err.into()),
-        };
-        log::trace!(self.logger, "Existing val {:?}", existing_value);
-        if let Some(existing_value) = existing_value {
-            if existing_value.is_empty() {
-                log::warn!(
-                    self.logger,
-                    "Updating report for src_url:{} signer:{} - previously had None stored",
-                    src_url,
-                    hex::encode(signer.to_bytes())
-                );
-                db_txn.del(
-                    self.verification_reports_by_signer,
-                    &key_bytes,
-                    Some(&existing_value),
-                )?;
-            } else if value_bytes != existing_value {
-                log::error!(
-                        self.logger,
-                        "Attempting to re-write an already written verification report with a different one. This should not happen - leaving old value in place. src_url:{} old:{:?} new:{:?}", src_url, existing_value, value_bytes);
-
-                // NOTE: We return Ok here since we want our caller (add_verification_report)
-                // to resume writing other values for other signer keys that might've been
-                // passed to it. Returning an error here would not be actionable unless we want
-                // to abort the syncing process, or if in the future we want to support
-                // multiple reports.
-                return Ok(());
-            } else {
-                // We already have this exact report in the database, we don't need to do anything.
-                return Ok(());
-            }
-        }
-
-        // Write.
-        db_txn.put(
-            self.verification_reports_by_signer,
-            &key_bytes,
+        // First, write the hash -> verification report entry.
+        let hash: [u8; 32] = value_bytes.digest32::<MerlinTranscript>(b"verification_report");
+        match db_txn.put(
+            self.verification_reports_by_hash,
+            &hash,
             &value_bytes,
             WriteFlags::NO_OVERWRITE,
-        )?;
+        ) {
+            Ok(()) => Ok(()),
+            Err(lmdb::Error::KeyExist) => Ok(()),
+            Err(err) => Err(err),
+        }?;
 
+        // Now, write the entry that points at the hash.
+        match db_txn.put(
+            self.verification_reports_by_signer,
+            &key_bytes,
+            &hash,
+            WriteFlags::NO_DUP_DATA,
+        ) {
+            Ok(()) => Ok(()),
+            Err(lmdb::Error::KeyExist) => Ok(()),
+            Err(err) => Err(err),
+        }?;
+
+        // Done
         Ok(())
     }
 
+    /// Get a VerificationReport by hash.
+    fn get_verification_report_by_hash(
+        &self,
+        db_txn: &impl Transaction,
+        hash: &[u8],
+    ) -> Result<Option<VerificationReport>, WatcherDBError> {
+        let value_bytes = db_txn.get(self.verification_reports_by_hash, &hash)?;
+        if value_bytes.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(mc_util_serial::decode(value_bytes)?))
+        }
+    }
+
     /// Get a verification report for a given block signer.
-    /// Returns a map of tx source url to optional verification report, or None if we attempted and
-    /// failed at getting one.
+    /// Returns a map of tx source url to all verification reports seen for the given signer.
+    /// Notes:
+    /// 1) In general there should only be one report per given block signer since the key is
+    ///    unique to an enclave. However, the database is structured in such a way that if
+    ///    something funky is happening, and somehow different reports are seen in the wild for a
+    ///    given signer, they will all get logged.
+    /// 2) The VerificationReport is wrapped in an Option to indicate that at some point we tried
+    ///    getting a report for the given Url, but failed since the report we got referenced a
+    ///    different signer. This could happen if we're trying to get reports for old block signers
+    ///    whose enclaves are no longer alive.
     pub fn get_verification_reports_for_signer(
         &self,
         block_signer: &Ed25519Public,
-    ) -> Result<HashMap<String, Option<VerificationReport>>, WatcherDBError> {
+    ) -> Result<HashMap<Url, Vec<Option<VerificationReport>>>, WatcherDBError> {
         let db_txn = self.env.begin_ro_txn()?;
         let mut cursor = db_txn.open_ro_cursor(self.verification_reports_by_signer)?;
         let signer_key_bytes = block_signer.to_bytes().to_vec();
@@ -648,44 +674,47 @@ impl WatcherDB {
             }
 
             let tx_source_url_bytes = &key_bytes[signer_key_bytes.len()..];
-            let tx_source_url = String::from_utf8(tx_source_url_bytes.to_vec())?;
+            let tx_source_url = Url::from_str(&String::from_utf8(tx_source_url_bytes.to_vec())?)?;
 
-            // Deserialize value, if available.
-            let verification_report = if value_bytes.is_empty() {
-                None
-            } else {
-                Some(mc_util_serial::decode(value_bytes)?)
-            };
+            // Resolve the hash into the actual report.
+            let verification_report = self.get_verification_report_by_hash(&db_txn, value_bytes)?;
 
-            results.insert(tx_source_url, verification_report);
+            // Add to hashmap
+            results
+                .entry(tx_source_url)
+                .or_insert_with(Vec::new)
+                .push(verification_report);
         }
 
         Ok(results)
     }
 
-    /// Get the verification report for a specific block signer/URL pair.
-    /// Returns error if there is no record of the pair in the database.
+    /// Get verification reports seen for a specific block signer/URL pair.
+    /// In theory there should ever be a single report (or none) for a given block_signer+src_url
+    /// pair but if something weird is going on we want to capture that, and as such multiple
+    /// reports are supported. See more detailed explanation above
+    /// `get_verification_reports_for_signer`.
+    /// Returns an empty array if we have no record of block_signer+src_url in the database.
     pub fn get_verification_report_for_signer_and_url(
         &self,
         block_signer: &Ed25519Public,
         src_url: &Url,
-    ) -> Result<Option<VerificationReport>, WatcherDBError> {
+    ) -> Result<Vec<Option<VerificationReport>>, WatcherDBError> {
         let db_txn = self.env.begin_ro_txn()?;
 
         let mut key_bytes = block_signer.to_bytes().to_vec();
         key_bytes.extend(src_url.as_str().as_bytes());
 
-        match db_txn.get(self.verification_reports_by_signer, &key_bytes) {
-            Ok(value_bytes) => {
-                if value_bytes.is_empty() {
-                    Ok(None)
-                } else {
-                    Ok(Some(mc_util_serial::decode(value_bytes)?))
-                }
-            }
-            Err(lmdb::Error::NotFound) => Err(WatcherDBError::NotFound),
-            Err(err) => Err(err.into()),
+        let mut cursor = db_txn.open_ro_cursor(self.verification_reports_by_signer)?;
+        let mut results = Vec::new();
+        for (key_bytes2, value_bytes) in cursor.iter_dup_of(&key_bytes).filter_map(Result::ok) {
+            assert_eq!(key_bytes, key_bytes2);
+
+            let report = self.get_verification_report_by_hash(db_txn, value_bytes)?;
+            results.push(report);
         }
+
+        Ok(results)
     }
 
     /// Check if a given pair of src_url/block_signer have already been polled.
