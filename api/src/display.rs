@@ -61,7 +61,7 @@ impl printable::PrintableWrapper {
         if expected_checksum.to_vec() != decoded_bytes {
             return Err(Error::ChecksumMismatch);
         }
-        let wrapper = PrintableWrapper::parse_from_bytes(&wrapper_bytes)
+        let wrapper = Self::parse_from_bytes(&wrapper_bytes)
             .map_err(|err| Error::Deserialization(err.to_string()))?;
         Ok(wrapper)
     }

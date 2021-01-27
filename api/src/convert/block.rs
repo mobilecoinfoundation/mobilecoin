@@ -150,8 +150,8 @@ mod tests {
         // Encode using `prost`, decode using `protobuf`.
         {
             let prost_block_bytes = mc_util_serial::encode(&source_block);
-            let blockchain_block: blockchain::Block =
-                protobuf::parse_from_bytes(&prost_block_bytes).expect("failed decoding");
+            let blockchain_block =
+                blockchain::Block::parse_from_bytes(&prost_block_bytes).expect("failed decoding");
 
             assert_eq!(blockchain_block, blockchain::Block::from(&source_block));
         }
