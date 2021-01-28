@@ -111,14 +111,16 @@ impl BlockDataStore {
             value_bytes.len()
         );
 
-        db_txn.put(
+        match db_txn.put(
             self.block_datas_by_index,
             &key_bytes,
             &value_bytes,
             WriteFlags::NO_OVERWRITE,
-        )?;
-
-        Ok(())
+        ) {
+            Ok(()) => Ok(()),
+            Err(lmdb::Error::KeyExist) => Err(WatcherDBError::AlreadyExists),
+            Err(err) => Err(err.into()),
+        }
     }
 
     /// Get all known BlockDatas for a given block index, mapped by tx source url.

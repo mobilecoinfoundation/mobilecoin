@@ -2,17 +2,21 @@
 
 //! Basic Watcher Node
 
-use crate::{error::WatcherError, watcher_db::WatcherDB};
+use crate::{
+    error::{WatcherDBError, WatcherError},
+    watcher_db::WatcherDB,
+};
 
 use mc_api::block_num_to_s3block_path;
 use mc_common::{
     logger::{log, Logger},
-    HashMap,
+    HashMap, HashSet,
 };
 use mc_ledger_db::Ledger;
 use mc_ledger_sync::ReqwestTransactionsFetcher;
 
 use std::{
+    iter::FromIterator,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -48,10 +52,13 @@ impl Watcher {
         // Sanity check that the watcher db and transaction fetcher were initialized with the same
         // set of URLs.
         assert_eq!(
-            transactions_fetcher.source_urls,
-            watcher_db
-                .get_config_urls()
-                .expect("get_config_urls failed")
+            HashSet::from_iter(transactions_fetcher.source_urls.iter()),
+            HashSet::from_iter(
+                watcher_db
+                    .get_config_urls()
+                    .expect("get_config_urls failed")
+                    .iter()
+            )
         );
 
         Self {
@@ -102,7 +109,13 @@ impl Watcher {
                 );
 
                 if self.store_block_data {
-                    self.watcher_db.add_block_data(src_url, &block_data)?;
+                    match self.watcher_db.add_block_data(src_url, &block_data) {
+                        Ok(()) => {}
+                        Err(WatcherDBError::AlreadyExists) => {}
+                        Err(err) => {
+                            return Err(err.into());
+                        }
+                    };
                 }
 
                 if let Some(signature) = block_data.signature() {
