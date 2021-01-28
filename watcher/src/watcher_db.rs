@@ -536,13 +536,25 @@ impl WatcherDB {
         Ok(results)
     }
 
-    /// Get all known BlockDatas for a given block index, mapped by tx source url.
+    /// Get BlockData for a given block index provided by a specific tx source url.
     pub fn get_block_data(
+        &self,
+        src_url: &Url,
+        block_index: BlockIndex,
+    ) -> Result<BlockData, WatcherDBError> {
+        let db_txn = self.env.begin_ro_txn()?;
+        self.block_data_store
+            .get_block_data(&db_txn, src_url, block_index)
+    }
+
+    /// Get all known BlockDatas for a given block index, mapped by tx source url.
+    pub fn get_block_data_map(
         &self,
         block_index: BlockIndex,
     ) -> Result<HashMap<Url, BlockData>, WatcherDBError> {
         let db_txn = self.env.begin_ro_txn()?;
-        self.block_data_store.get_block_data(&db_txn, block_index)
+        self.block_data_store
+            .get_block_data_map(&db_txn, block_index)
     }
 
     /// Record a verification report for a given source URL, that is associated with a specific
