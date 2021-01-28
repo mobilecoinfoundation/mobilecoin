@@ -16,12 +16,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee2a4ec343196209d6594e19543ae87a39f96d5534d7174822a3ad825dd6ed7e"
 
 [[package]]
-name = "adler32"
-version = "1.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d2e7343e7fc9de883d1b0341e0b13970f764c14101234857d2ddafa1cb1cac2"
-
-[[package]]
 name = "aead"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -161,16 +155,16 @@ dependencies = [
  "addr2line",
  "cfg-if 1.0.0",
  "libc",
- "miniz_oxide 0.4.3",
+ "miniz_oxide",
  "object",
  "rustc-demangle",
 ]
 
 [[package]]
 name = "base-x"
-version = "0.2.6"
+version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b20b618342cf9891c292c4f5ac2cde7287cc5c87e87e9c769d617793607dec1"
+checksum = "a4521f3e3d031370679b3b140beb36dfe4801b09ac77e30c61941f97df3ef28b"
 
 [[package]]
 name = "base64"
@@ -199,9 +193,9 @@ checksum = "b41b7ea54a0c9d92199de89e20e58d49f02f8e699814ef3fdf266f6f748d15c7"
 
 [[package]]
 name = "base64"
-version = "0.12.1"
+version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53d1ccbaf7d9ec9537465a97bf19edc1a4e158ecb49fc16178202238c569cc42"
+checksum = "3441f0f7b02788e948e47f457ca01f1d7e6d92c693bc132c22b087d3141c03ff"
 
 [[package]]
 name = "base64"
@@ -593,9 +587,9 @@ dependencies = [
 
 [[package]]
 name = "const_fn"
-version = "0.4.2"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce90df4c658c62f12d78f7508cf92f9173e5184a539c10bfe54a3107b3ffd0f2"
+checksum = "c478836e029dcef17fb47c89023448c64f781a046e0300e257ad8225ae59afab"
 
 [[package]]
 name = "constant_time_eq"
@@ -1160,14 +1154,14 @@ dependencies = [
 
 [[package]]
 name = "flate2"
-version = "1.0.14"
+version = "1.0.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2cfff41391129e0a856d6d822600b8d71179d46879e310417eb9c762eb178b42"
+checksum = "7411863d55df97a419aa64cb4d2f167103ea9d767e2c54a1868b7ac3f6b47129"
 dependencies = [
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "crc32fast",
  "libc",
- "miniz_oxide 0.3.6",
+ "miniz_oxide",
 ]
 
 [[package]]
@@ -2524,7 +2518,7 @@ dependencies = [
 name = "mc-consensus-service"
 version = "1.0.0"
 dependencies = [
- "base64 0.12.1",
+ "base64 0.12.3",
  "chrono",
  "curve25519-dalek",
  "displaydoc",
@@ -3158,7 +3152,7 @@ dependencies = [
 name = "mc-sgx-core-types"
 version = "1.0.0"
 dependencies = [
- "base64 0.12.1",
+ "base64 0.12.3",
  "bincode",
  "bitflags",
  "displaydoc",
@@ -3226,7 +3220,7 @@ dependencies = [
 name = "mc-sgx-epid-types"
 version = "1.0.0"
 dependencies = [
- "base64 0.12.1",
+ "base64 0.12.3",
  "bincode",
  "bytes 0.5.4",
  "hex 0.4.2",
@@ -3260,7 +3254,7 @@ dependencies = [
 name = "mc-sgx-ias-types"
 version = "1.0.0"
 dependencies = [
- "base64 0.12.1",
+ "base64 0.12.3",
  "bitflags",
  "chrono",
  "displaydoc",
@@ -3521,7 +3515,7 @@ dependencies = [
 name = "mc-util-encodings"
 version = "1.0.0"
 dependencies = [
- "base64 0.12.1",
+ "base64 0.12.3",
  "binascii",
  "displaydoc",
  "hex 0.4.2",
@@ -3561,7 +3555,7 @@ dependencies = [
 name = "mc-util-grpc"
 version = "1.0.0"
 dependencies = [
- "base64 0.12.1",
+ "base64 0.12.3",
  "cookie 0.14.3",
  "displaydoc",
  "futures 0.3.8",
@@ -3715,7 +3709,7 @@ dependencies = [
 name = "mc-util-uri"
 version = "1.0.0"
 dependencies = [
- "base64 0.12.1",
+ "base64 0.12.3",
  "displaydoc",
  "ed25519",
  "hex 0.4.2",
@@ -3821,15 +3815,6 @@ checksum = "2684d4c2e97d99848d30b324b00c8fcc7e5c897b7cbb5819b09e7c90e8baf212"
 dependencies = [
  "mime 0.3.16",
  "unicase 2.6.0",
-]
-
-[[package]]
-name = "miniz_oxide"
-version = "0.3.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa679ff6578b1cddee93d7e82e263b94a575e0bfced07284eb0c037c1d2416a5"
-dependencies = [
- "adler32",
 ]
 
 [[package]]
@@ -4838,7 +4823,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3b82c9238b305f26f53443e3a4bc8528d64b8d0bee408ec949eb7bf5635ec680"
 dependencies = [
  "async-compression",
- "base64 0.12.1",
+ "base64 0.12.3",
  "bytes 0.5.4",
  "encoding_rs",
  "futures-core",
@@ -4905,7 +4890,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4fc7e5d6aaa32ace6893ae8a1875688ca7b07d6c2428ae88e704c3623c8866e9"
 dependencies = [
  "atty",
- "base64 0.12.1",
+ "base64 0.12.3",
  "log 0.4.11",
  "memchr",
  "num_cpus",
