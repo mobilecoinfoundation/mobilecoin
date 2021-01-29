@@ -352,7 +352,7 @@ impl ConsensusPeerApi for PeerApiService {
                 match TxHash::try_from(&tx_hash_bytes[..]) {
                     Ok(tx_hash) => tx_hashes.push(tx_hash),
                     Err(_) => {
-                        let result = Err(rpc_invalid_arg_error("tx_hash", (), &logger));
+                        let result = Err(rpc_invalid_arg_error("tx_hash", "", &logger));
                         send_result(ctx, sink, result, &logger);
                         return;
                     }

@@ -40,7 +40,10 @@ use grpcio::{RpcContext, RpcStatus, RpcStatusCode, UnarySink};
 use mc_common::logger::{log, o, Logger};
 use mc_util_metrics::SVC_COUNTERS;
 use rand::Rng;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::{
+    fmt::Display,
+    sync::atomic::{AtomicU64, Ordering},
+};
 
 /// Helper which reduces boilerplate when implementing grpc API traits.
 #[inline]
@@ -56,12 +59,12 @@ pub fn send_result<T>(
     match resp {
         Ok(ok) => ctx.spawn(
             sink.success(ok)
-                .map_err(move |err| log::error!(logger, "failed to reply: {:?}", err))
+                .map_err(move |err| log::error!(logger, "failed to reply: {}", err))
                 .map(|_| ()),
         ),
         Err(e) => ctx.spawn(
             sink.fail(e)
-                .map_err(move |err| log::error!(logger, "failed to reply: {:?}", err))
+                .map_err(move |err| log::error!(logger, "failed to reply: {}", err))
                 .map(|_| ()),
         ),
     }
@@ -72,7 +75,7 @@ pub fn send_result<T>(
 /// The most common context strings for `report_err_with_code` are `Enclave Error` and
 /// database error
 #[inline]
-pub fn rpc_enclave_err<E: core::fmt::Debug>(err: E, logger: &Logger) -> RpcStatus {
+pub fn rpc_enclave_err<E: Display>(err: E, logger: &Logger) -> RpcStatus {
     // Return permission denied if there's anything wrong with the enclave, to force re-attestation.
     report_err_with_code(
         "Enclave Error",
@@ -83,7 +86,7 @@ pub fn rpc_enclave_err<E: core::fmt::Debug>(err: E, logger: &Logger) -> RpcStatu
 }
 
 #[inline]
-pub fn rpc_database_err<E: core::fmt::Debug>(err: E, logger: &Logger) -> RpcStatus {
+pub fn rpc_database_err<E: Display>(err: E, logger: &Logger) -> RpcStatus {
     report_err_with_code("Database Error", err, RpcStatusCode::INTERNAL, logger)
 }
 
@@ -92,7 +95,7 @@ pub fn rpc_database_err<E: core::fmt::Debug>(err: E, logger: &Logger) -> RpcStat
 /// indicate what kind of error. For instance deserialization might sometimes be
 /// invalid input and sometimes an internal or database error.
 #[inline]
-pub fn rpc_internal_error<S: ToString, E: core::fmt::Debug>(
+pub fn rpc_internal_error<S: Display, E: Display>(
     context: S,
     err: E,
     logger: &Logger,
@@ -101,7 +104,7 @@ pub fn rpc_internal_error<S: ToString, E: core::fmt::Debug>(
 }
 
 #[inline]
-pub fn rpc_invalid_arg_error<S: ToString, E: core::fmt::Debug>(
+pub fn rpc_invalid_arg_error<S: Display, E: Display>(
     context: S,
     err: E,
     logger: &Logger,
@@ -110,7 +113,7 @@ pub fn rpc_invalid_arg_error<S: ToString, E: core::fmt::Debug>(
 }
 
 #[inline]
-pub fn rpc_permissions_error<S: ToString, E: core::fmt::Debug>(
+pub fn rpc_permissions_error<S: Display, E: Display>(
     context: S,
     err: E,
     logger: &Logger,
@@ -119,7 +122,7 @@ pub fn rpc_permissions_error<S: ToString, E: core::fmt::Debug>(
 }
 
 #[inline]
-pub fn rpc_out_of_range_error<S: ToString, E: core::fmt::Debug>(
+pub fn rpc_out_of_range_error<S: Display, E: Display>(
     context: S,
     err: E,
     logger: &Logger,
@@ -128,13 +131,22 @@ pub fn rpc_out_of_range_error<S: ToString, E: core::fmt::Debug>(
 }
 
 #[inline]
-pub fn report_err_with_code<S: ToString, E: core::fmt::Debug>(
+pub fn rpc_precondition_error<S: Display, E: Display>(
+    context: S,
+    err: E,
+    logger: &Logger,
+) -> RpcStatus {
+    report_err_with_code(context, err, RpcStatusCode::FAILED_PRECONDITION, logger)
+}
+
+#[inline]
+pub fn report_err_with_code<S: Display, E: Display>(
     context: S,
     err: E,
     code: RpcStatusCode,
     logger: &Logger,
 ) -> RpcStatus {
-    let err_str = format!("{}: {:?}", context.to_string(), err);
+    let err_str = format!("{}: {}", context, err);
     log::error!(logger, "{}", err_str);
     RpcStatus::new(code, Some(err_str))
 }

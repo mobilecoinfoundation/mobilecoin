@@ -266,7 +266,7 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
         &self,
         peer_id: &ResponderId,
         msg: PeerAuthResponse,
-    ) -> Result<PeerSession> {
+    ) -> Result<(PeerSession, VerificationReport)> {
         // Find our state machine
         let initiator = self
             .initiator_auth_pending
@@ -281,13 +281,16 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
 
         // Advance the state machine to ready (or failure)
         let mut csprng = McRng::default();
-        let (initiator, _) = initiator.try_next(&mut csprng, auth_response_input)?;
+        let (initiator, verification_report) =
+            initiator.try_next(&mut csprng, auth_response_input)?;
 
-        let retval = PeerSession::from(initiator.binding());
+        let peer_session = PeerSession::from(initiator.binding());
 
-        self.peer_outbound.lock()?.put(retval.clone(), initiator);
+        self.peer_outbound
+            .lock()?
+            .put(peer_session.clone(), initiator);
 
-        Ok(retval)
+        Ok((peer_session, verification_report))
     }
 
     /// Close a peer connection

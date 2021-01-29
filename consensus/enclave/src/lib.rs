@@ -174,7 +174,11 @@ impl ConsensusEnclave for ConsensusServiceSgxEnclave {
         mc_util_serial::deserialize(&outbuf[..])?
     }
 
-    fn peer_connect(&self, peer_id: &ResponderId, msg: PeerAuthResponse) -> Result<PeerSession> {
+    fn peer_connect(
+        &self,
+        peer_id: &ResponderId,
+        msg: PeerAuthResponse,
+    ) -> Result<(PeerSession, VerificationReport)> {
         let inbuf = mc_util_serial::serialize(&EnclaveCall::PeerConnect(peer_id.clone(), msg))?;
         let outbuf = self.enclave_call(&inbuf)?;
         mc_util_serial::deserialize(&outbuf[..])?

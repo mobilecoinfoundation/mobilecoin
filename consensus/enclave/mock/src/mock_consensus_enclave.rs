@@ -46,7 +46,7 @@ mock! {
 
         fn peer_accept(&self, req: PeerAuthRequest) -> ConsensusEnclaveResult<(PeerAuthResponse, PeerSession)>;
 
-        fn peer_connect(&self, peer_id: &ResponderId, res: PeerAuthResponse) -> ConsensusEnclaveResult<PeerSession>;
+        fn peer_connect(&self, peer_id: &ResponderId, res: PeerAuthResponse) -> ConsensusEnclaveResult<(PeerSession, VerificationReport)>;
 
         fn peer_close(&self, channel_id: &PeerSession) -> ConsensusEnclaveResult<()>;
 

@@ -64,9 +64,6 @@ overflow-checks = false
 # https://github.com/danburkert/prost/issues/329
 prost = { git = "https://github.com/danburkert/prost", rev = "6113789f70b69709820becba4242824b4fb3ffec" }
 prost-derive = { git = "https://github.com/danburkert/prost", rev = "6113789f70b69709820becba4242824b4fb3ffec" }
-# slog is patched in order to build in no_std config with dynamic_keys feature on
-# https://github.com/slog-rs/slog/pull/268
-slog = { git = "https://github.com/mobilecoinofficial/slog", rev = "cc1562258b81353426d17a55b7447256fa6eabbf" }
 
 # Fixes the following:
 # * Allow enabling `serde/std` without also requiring `serde_cbor/std` to be enabled.

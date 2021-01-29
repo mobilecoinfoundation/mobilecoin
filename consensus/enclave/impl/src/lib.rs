@@ -240,7 +240,11 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         Ok(self.ake.peer_accept(req)?)
     }
 
-    fn peer_connect(&self, peer_id: &ResponderId, msg: PeerAuthResponse) -> Result<PeerSession> {
+    fn peer_connect(
+        &self,
+        peer_id: &ResponderId,
+        msg: PeerAuthResponse,
+    ) -> Result<(PeerSession, VerificationReport)> {
         Ok(self.ake.peer_connect(peer_id, msg)?)
     }
 

@@ -17,8 +17,8 @@ pub fn round_trip_message<SRC: ProstMessage + Eq + Default, DEST: ProtobufMessag
 ) {
     let prost_bytes = mc_util_serial::encode(prost_val);
 
-    let dest_val: DEST =
-        protobuf::parse_from_bytes(&prost_bytes).expect("Parsing protobuf from prost bytes failed");
+    let dest_val =
+        DEST::parse_from_bytes(&prost_bytes).expect("Parsing protobuf from prost bytes failed");
 
     let protobuf_bytes = dest_val
         .write_to_bytes()
@@ -42,8 +42,8 @@ pub fn round_trip_protobuf_object<SRC: ProtobufMessage + Eq, DEST: ProstMessage 
 
     let prost_bytes = mc_util_serial::encode(&prost_val);
 
-    let final_val: SRC =
-        protobuf::parse_from_bytes(&prost_bytes).expect("Parsing protobuf from prost bytes failed");
+    let final_val =
+        SRC::parse_from_bytes(&prost_bytes).expect("Parsing protobuf from prost bytes failed");
 
     assert_eq!(*protobuf_val, final_val);
 }
