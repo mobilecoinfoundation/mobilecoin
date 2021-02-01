@@ -107,14 +107,15 @@ $ curl localhost:9090/monitors/<monitor_id>/subaddresses/<subaddress>/pay-addres
                       ["dc8a91dbacad97b59e9709379c279a28b3c35262f6744226d15ee87be6bbf132",
                       "7e22679d8e3c14ba9c6c45256902e7af8e82644618e65a4589bab268bfde4b61"],
                       "tombstone":2121},
- "receiver_tx_receipt_list":[
-    {"recipient":{"view_public_key":"f460626a6cefb0bdfc73bb0c3a9c1a303a858f0b1b4ea59b154a1aa8d927af71",
-                  "spend_public_key":"6a74da2dc6ff116d9278a30a4f8584e9edf165a22faf04a3ac210f219641a92d",
-                  "fog_report_url":"", "fog_authority_fingerprint_sig":"", "fog_report_id":""},
-    "tx_public_key":"7060ad50195686ebba591ccfed18ff9536b729d07a00022a21eb21db7e9a266b",
-    "tx_out_hash":"190ec89253bf47a05385b24e5b289a3a31127462aad613da9484f77d03986112",
-    "tombstone":2329,
-    "confirmation_number":"190ec89253bf47a05385b24e5b289a3a31127462aad613da9484f77d03986112"}]}
+ "receiver_tx_receipt_list":[{
+    "public_key":"7060ad50195686ebba591ccfed18ff9536b729d07a00022a21eb21db7e9a266b",
+    "confirmation":"190ec89253bf47a05385b24e5b289a3a31127462aad613da9484f77d03986112",
+    "tombstone_block":2329,
+    "amount":{
+        "commitment":"190ec89253bf47a05385b24e5b289a3a31127462aad613da9484f77d03986112",
+        "masked_value":"8c109687365677f0c9/bf7fa957a6a94acb588851bc8767eca5776c79f4fc2bb"
+    }
+}]
 ```
 
 If you would like the change from a used TXO returned to a different subaddress, there is an optional field to do so:
@@ -145,13 +146,14 @@ the list can be send to the recipient over a separate channel (e.g. a secure cha
 verify that they were paid by the sender.
 ```
 $ curl localhost:9090/tx/status-as-receiver \
-  -d '{"recipient":{"view_public_key":"f460626a6cefb0bdfc73bb0c3a9c1a303a858f0b1b4ea59b154a1aa8d927af71",
-                    "spend_public_key":"6a74da2dc6ff116d9278a30a4f8584e9edf165a22faf04a3ac210f219641a92d",
-                    "fog_report_url":"", "fog_authority_fingerprint_sig":"", "fog_report_id":""},
-        "tx_public_key":"7060ad50195686ebba591ccfed18ff9536b729d07a00022a21eb21db7e9a266b",
-        "tx_out_hash":"190ec89253bf47a05385b24e5b289a3a31127462aad613da9484f77d03986112",
-        "tombstone":2329,
-        "confirmation_number":"190ec89253bf47a05385b24e5b289a3a31127462aad613da9484f77d03986112"}' \
+  -d '{"public_key":"7060ad50195686ebba591ccfed18ff9536b729d07a00022a21eb21db7e9a266b",
+       "confirmation":"190ec89253bf47a05385b24e5b289a3a31127462aad613da9484f77d03986112",
+       "tombstone_block":2329,
+       "amount":{
+           "commitment":"190ec89253bf47a05385b24e5b289a3a31127462aad613da9484f77d03986112",
+           "masked_value":"8c109687365677f0c9/bf7fa957a6a94acb588851bc8767eca5776c79f4fc2bb"
+       }
+  }' \
   -X POST -H 'Content-Type: application/json'
 
 {"status":"verified"}
@@ -200,13 +202,16 @@ $ curl localhost:9090/monitors/<monitor_id>/subaddresses/<subaddress>/build-and-
                       "7e22679d8e3c14ba9c6c45256902e7af8e82644618e65a4589bab268bfde4b61"],
                       "tombstone":2121},
  "receiver_tx_receipt_list":[
-    {"recipient":{"view_public_key":"f460626a6cefb0bdfc73bb0c3a9c1a303a858f0b1b4ea59b154a1aa8d927af71",
-                  "spend_public_key":"6a74da2dc6ff116d9278a30a4f8584e9edf165a22faf04a3ac210f219641a92d",
-                  "fog_report_url":"", "fog_authority_fingerprint_sig":"", "fog_report_id":""},
-    "tx_public_key":"7060ad50195686ebba591ccfed18ff9536b729d07a00022a21eb21db7e9a266b",
-    "tx_out_hash":"190ec89253bf47a05385b24e5b289a3a31127462aad613da9484f77d03986112",
-    "tombstone":2329,
-    "confirmation_number":"190ec89253bf47a05385b24e5b289a3a31127462aad613da9484f77d03986112"}]}
+    {"recipient":{
+        "public_key":"7060ad50195686ebba591ccfed18ff9536b729d07a00022a21eb21db7e9a266b",
+        "confirmation":"190ec89253bf47a05385b24e5b289a3a31127462aad613da9484f77d03986112",
+        "tombstone_block":2329,
+        "amount":{
+            "commitment":"190ec89253bf47a05385b24e5b289a3a31127462aad613da9484f77d03986112",
+            "masked_value":"8c109687365677f0c9/bf7fa957a6a94acb588851bc8767eca5776c79f4fc2bb"
+        }
+    }}]
+}
 ```
 
 This returns receipt information that can be used by the sender to verify their transaction went through and also receipts to give to the receivers

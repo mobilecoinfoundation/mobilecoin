@@ -162,27 +162,7 @@ message SenderTxReceipt {
     repeated external.KeyImage key_image_list = 1;
 
     // Tombstone block set in the transaction.
-    uint64 tombstone = 2;
-}
-
-// Structure used to check transaction status as a recipient.
-// There exists one receipt per output, so a transaction having multiple outputs would have
-// multiple ReceiverTxReceipts.
-message ReceiverTxReceipt {
-    // The recipient this receipt refers to
-    external.PublicAddress recipient = 1;
-
-    // The public key of the TxOut sent to this recipient.
-    external.CompressedRistretto tx_public_key = 2;
-
-    // The hash of the TxOut sent to this recipient.
-    bytes tx_out_hash = 3;
-
-    // Tombstone block set in the transaction.
-    uint64 tombstone = 4;
-
-    // Confirmation number for this TxOut
-    bytes confirmation_number = 5;
+    uint64 tombstone_block = 2;
 }
 
 // Structure used to report monitor status
@@ -522,8 +502,12 @@ message SubmitTxRequest {
     TxProposal tx_proposal = 1;
 }
 message SubmitTxResponse {
+    // Sender tx receipt, used for checking the tx status as the sender.
     SenderTxReceipt sender_tx_receipt = 1;
-    repeated ReceiverTxReceipt receiver_tx_receipt_list = 2;
+
+    // Receiver tx receipt, used for checking the tx status as the receiver.
+    // Receits order match the outlay order in the TxProposal.
+    repeated external.Receipt receiver_tx_receipt_list = 2;
 }
 
 //
@@ -588,7 +572,7 @@ message GetTxStatusAsSenderResponse {
 
 // Get the status of a submitted transaction as the Recipient (using the tx public key).
 message GetTxStatusAsReceiverRequest {
-    ReceiverTxReceipt receipt = 1;
+    external.Receipt receipt = 1;
 
     // Optionally pass in a monitor ID to validate confirmation number
     bytes monitor_id = 2;
@@ -669,7 +653,8 @@ message SendPaymentResponse {
     SenderTxReceipt sender_tx_receipt = 1;
 
     // Information receivers can use to check if the transaction landed in the ledger.
-    repeated ReceiverTxReceipt receiver_tx_receipt_list = 2;
+    // Receits are ordered based on the outlays in the payment request.
+    repeated external.Receipt receiver_tx_receipt_list = 2;
 
     // The TxProposal that was submitted to the network. The fee that was paid can be checked at
     // tx_proposal.tx.prefix.fee

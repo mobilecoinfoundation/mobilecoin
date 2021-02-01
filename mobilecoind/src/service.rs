@@ -37,8 +37,8 @@ use mc_transaction_core::{
 };
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::{
-    rpc_internal_error, rpc_logger, send_result, AdminService, BuildInfoService,
-    ConnectionUriGrpcioServer,
+    rpc_internal_error, rpc_invalid_arg_error, rpc_logger, send_result, AdminService,
+    BuildInfoService, ConnectionUriGrpcioServer,
 };
 use mc_watcher::watcher_db::WatcherDB;
 use protobuf::{ProtobufEnum, RepeatedField};
@@ -1020,51 +1020,45 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 .map(|utxo| (&utxo.key_image).into())
                 .collect(),
         ));
-        sender_tx_receipt.set_tombstone(tx_proposal.tx.prefix.tombstone_block);
+        sender_tx_receipt.set_tombstone_block(tx_proposal.tx.prefix.tombstone_block);
 
         // Construct receiver receipts.
-        let receiver_tx_receipts: Vec<_> = tx_proposal
-            .outlays
-            .iter()
-            .enumerate()
-            .map(|(outlay_index, outlay)| {
-                let tx_out_index = tx_proposal
-                    .outlay_index_to_tx_out_index
-                    .get(&outlay_index)
-                    .ok_or_else(|| {
-                        RpcStatus::new(
-                            RpcStatusCode::INVALID_ARGUMENT,
-                            Some("outlay_index_to_tx_out_index".to_string()),
-                        )
-                    })?;
+        let mut receiver_tx_receipts = Vec::new();
+        for outlay_index in 0..tx_proposal.outlays.len() {
+            let tx_out_index = tx_proposal
+                .outlay_index_to_tx_out_index
+                .get(&outlay_index)
+                .ok_or_else(|| {
+                    RpcStatus::new(
+                        RpcStatusCode::INVALID_ARGUMENT,
+                        Some("outlay_index_to_tx_out_index".to_string()),
+                    )
+                })?;
 
-                let tx_out = tx_proposal
-                    .tx
-                    .prefix
-                    .outputs
-                    .get(*tx_out_index)
-                    .ok_or_else(|| {
-                        RpcStatus::new(
-                            RpcStatusCode::INVALID_ARGUMENT,
-                            Some("outlay_index_to_tx_out_index".to_string()),
-                        )
-                    })?;
+            let tx_out = tx_proposal
+                .tx
+                .prefix
+                .outputs
+                .get(*tx_out_index)
+                .ok_or_else(|| {
+                    RpcStatus::new(
+                        RpcStatusCode::INVALID_ARGUMENT,
+                        Some("outlay_index_to_tx_out_index".to_string()),
+                    )
+                })?;
 
-                let mut receiver_tx_receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
-                receiver_tx_receipt.set_recipient((&outlay.receiver).into());
-                receiver_tx_receipt.set_tx_public_key((&tx_out.public_key).into());
-                receiver_tx_receipt.set_tx_out_hash(tx_out.hash().to_vec());
-                receiver_tx_receipt.set_tombstone(tx_proposal.tx.prefix.tombstone_block);
+            let mut receiver_tx_receipt = mc_api::external::Receipt::new();
+            receiver_tx_receipt.set_public_key((&tx_out.public_key).into());
+            if tx_proposal.outlay_confirmation_numbers.len() > outlay_index {
+                receiver_tx_receipt.set_confirmation(
+                    (&tx_proposal.outlay_confirmation_numbers[outlay_index]).into(),
+                );
+            }
+            receiver_tx_receipt.set_tombstone_block(tx_proposal.tx.prefix.tombstone_block);
+            receiver_tx_receipt.set_amount((&tx_out.amount).into());
 
-                if tx_proposal.outlay_confirmation_numbers.len() > outlay_index {
-                    receiver_tx_receipt.set_confirmation_number(
-                        tx_proposal.outlay_confirmation_numbers[outlay_index].to_vec(),
-                    );
-                }
-
-                Ok(receiver_tx_receipt)
-            })
-            .collect::<Result<Vec<mc_mobilecoind_api::ReceiverTxReceipt>, RpcStatus>>()?;
+            receiver_tx_receipts.push(receiver_tx_receipt)
+        }
 
         // Return response.
         let mut response = mc_mobilecoind_api::SubmitTxResponse::new();
@@ -1175,7 +1169,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             ));
         }
 
-        if request.get_sender_tx_receipt().tombstone == 0 {
+        if request.get_sender_tx_receipt().tombstone_block == 0 {
             return Err(RpcStatus::new(
                 RpcStatusCode::INVALID_ARGUMENT,
                 Some("sender_receipt.tombstone".to_string()),
@@ -1206,7 +1200,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .get_receiver_tx_receipt_list()
             .iter()
             .map(|r| {
-                RistrettoPublic::try_from(r.get_tx_public_key())
+                RistrettoPublic::try_from(r.get_public_key())
                     .map_err(|err| {
                         rpc_internal_error("RistrettoPublic.try_from", err, &self.logger)
                     })
@@ -1305,7 +1299,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .num_blocks()
             .map_err(|err| rpc_internal_error("ledger_db.num_blocks", err, &self.logger))?;
 
-        if num_blocks >= request.get_sender_tx_receipt().tombstone {
+        if num_blocks >= request.get_sender_tx_receipt().tombstone_block {
             let mut response = mc_mobilecoind_api::GetTxStatusAsSenderResponse::new();
             response.set_status(mc_mobilecoind_api::TxStatus::TombstoneBlockExceeded);
             return Ok(response);
@@ -1322,25 +1316,27 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         request: mc_mobilecoind_api::GetTxStatusAsReceiverRequest,
     ) -> Result<mc_mobilecoind_api::GetTxStatusAsReceiverResponse, RpcStatus> {
         // Sanity-test the request.
-        if request.get_receipt().get_tx_out_hash().len() != 32 {
+        if request.get_receipt().tombstone_block == 0 {
             return Err(RpcStatus::new(
                 RpcStatusCode::INVALID_ARGUMENT,
-                Some("receipt.tx_out_hash".to_string()),
+                Some("receipt.tombstone_block".to_string()),
             ));
         }
 
-        if request.get_receipt().tombstone == 0 {
-            return Err(RpcStatus::new(
-                RpcStatusCode::INVALID_ARGUMENT,
-                Some("receipt.tombstone".to_string()),
-            ));
-        }
+        // Check if the public keylanded in the ledger.
+        let tx_out_public_key =
+            CompressedRistrettoPublic::try_from(request.get_receipt().get_public_key())
+                .map_err(|err| rpc_invalid_arg_error("receipt.public_key", err, &self.logger))?;
 
-        // Check if the hash landed in the ledger.
-        let mut hash_bytes = [0u8; 32];
-        hash_bytes.copy_from_slice(&request.get_receipt().tx_out_hash);
+        let uncompressed_tx_out_public_key = RistrettoPublic::try_from(&tx_out_public_key)
+            .map_err(|err| {
+                rpc_internal_error("receipt.public_key.uncompress", err, &self.logger)
+            })?;
 
-        match self.ledger_db.get_tx_out_index_by_hash(&hash_bytes) {
+        match self
+            .ledger_db
+            .get_tx_out_index_by_public_key(&tx_out_public_key)
+        {
             Ok(_) => {
                 // If a monitor ID was given then validate the confirmation number
                 match request.get_monitor_id().len() {
@@ -1362,33 +1358,19 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                                     &self.logger,
                                 )
                             })?;
-                        let tx_public_key =
-                            RistrettoPublic::try_from(request.get_receipt().get_tx_public_key())
-                                .map_err(|err| {
-                                    rpc_internal_error(
-                                        "RistrettoPublic.try_from",
-                                        err,
-                                        &self.logger,
-                                    )
-                                })?;
                         let view_private_key = monitor_data.account_key.view_private_key();
-
-                        if request.get_receipt().get_confirmation_number().len() != 32 {
-                            return Err(RpcStatus::new(
-                                RpcStatusCode::INVALID_ARGUMENT,
-                                Some("receipt.confirmation_number".to_string()),
-                            ));
-                        }
 
                         // Test that the confirmation number is valid. Only the party constructing
                         // the transaction could have created the correct confirmation number.
-                        let confirmation_number = {
-                            let mut confirmation_bytes = [0u8; 32];
-                            confirmation_bytes
-                                .copy_from_slice(request.get_receipt().get_confirmation_number());
-                            TxOutConfirmationNumber::from(confirmation_bytes)
-                        };
-                        if !confirmation_number.validate(&tx_public_key, &view_private_key) {
+                        let confirmation_number = TxOutConfirmationNumber::try_from(
+                            request.get_receipt().get_confirmation(),
+                        )
+                        .map_err(|err| {
+                            rpc_invalid_arg_error("receipt.confirmation", err, &self.logger)
+                        })?;
+                        if !confirmation_number
+                            .validate(&uncompressed_tx_out_public_key, &view_private_key)
+                        {
                             // If the confirmation number is invalid, this means that the transaction did
                             // get added to the ledger but the party constructing the receipt failed
                             // to prove that they created it. This prevents a third-party observer from
@@ -1430,7 +1412,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .num_blocks()
             .map_err(|err| rpc_internal_error("ledger_db.num_blocks", err, &self.logger))?;
 
-        if num_blocks >= request.get_receipt().tombstone {
+        if num_blocks >= request.get_receipt().tombstone_block {
             let mut response = mc_mobilecoind_api::GetTxStatusAsReceiverResponse::new();
             response.set_status(mc_mobilecoind_api::TxStatus::TombstoneBlockExceeded);
             return Ok(response);
@@ -1861,11 +1843,7 @@ mod test {
     use mc_util_repr_bytes::{typenum::U32, GenericArray, ReprBytes};
     use mc_util_uri::FogUri;
     use rand::{rngs::StdRng, SeedableRng};
-    use std::{
-        convert::{TryFrom, TryInto},
-        iter::FromIterator,
-        str::FromStr,
-    };
+    use std::{convert::TryFrom, iter::FromIterator, str::FromStr};
 
     #[test_with_logger]
     fn test_add_monitor_impl(logger: Logger) {
@@ -2368,16 +2346,12 @@ mod test {
             .unwrap();
         let output = block.outputs[0].clone();
 
-        let mut receiver_receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
-        receiver_receipt.set_recipient(mc_mobilecoind_api::external::PublicAddress::from(
-            &recipient,
+        let mut receiver_receipt = mc_api::external::Receipt::new();
+        receiver_receipt.set_public_key(mc_mobilecoind_api::external::CompressedRistretto::from(
+            &output.public_key,
         ));
-        receiver_receipt.set_tx_public_key(
-            mc_mobilecoind_api::external::CompressedRistretto::from(&output.public_key),
-        );
-        receiver_receipt.set_tx_out_hash(output.hash().into());
-        receiver_receipt.set_tombstone(1);
-        // For this test, confirmation number is irrelevant, so left blank
+        receiver_receipt.set_tombstone_block(1);
+        // For this test, confirmation number and amount are irrelevant, so left blank
 
         // A receipt with all key images in the same block is verified.
         {
@@ -2387,7 +2361,7 @@ mod test {
                 (&KeyImage::from(2)).into(),
                 (&KeyImage::from(3)).into(),
             ]));
-            sender_receipt.set_tombstone(1);
+            sender_receipt.set_tombstone_block(1);
 
             let mut request = mc_mobilecoind_api::SubmitTxResponse::new();
             request.set_sender_tx_receipt(sender_receipt);
@@ -2412,7 +2386,7 @@ mod test {
                 (&KeyImage::from(3)).into(),
                 (&KeyImage::from(4)).into(),
             ]));
-            sender_receipt.set_tombstone(1);
+            sender_receipt.set_tombstone_block(1);
 
             let mut request = mc_mobilecoind_api::SubmitTxResponse::new();
             request.set_sender_tx_receipt(sender_receipt);
@@ -2436,7 +2410,7 @@ mod test {
                 (&KeyImage::from(4)).into(),
                 (&KeyImage::from(5)).into(),
             ]));
-            sender_receipt.set_tombstone(ledger_db.num_blocks().unwrap() as u64 + 1);
+            sender_receipt.set_tombstone_block(ledger_db.num_blocks().unwrap() as u64 + 1);
 
             let mut request = mc_mobilecoind_api::SubmitTxResponse::new();
             request.set_sender_tx_receipt(sender_receipt);
@@ -2456,7 +2430,7 @@ mod test {
                 (&KeyImage::from(4)).into(),
                 (&KeyImage::from(5)).into(),
             ]));
-            sender_receipt.set_tombstone(ledger_db.num_blocks().unwrap() as u64);
+            sender_receipt.set_tombstone_block(ledger_db.num_blocks().unwrap() as u64);
 
             let mut request = mc_mobilecoind_api::SubmitTxResponse::new();
             request.set_sender_tx_receipt(sender_receipt);
@@ -2489,7 +2463,7 @@ mod test {
                 (&KeyImage::from(2)).into(),
                 (&KeyImage::from(4)).into(),
             ]));
-            sender_receipt.set_tombstone(1);
+            sender_receipt.set_tombstone_block(1);
 
             let mut request = mc_mobilecoind_api::SubmitTxResponse::new();
             request.set_sender_tx_receipt(sender_receipt);
@@ -2511,16 +2485,12 @@ mod test {
             .unwrap();
         let output2 = block2.outputs[0].clone();
 
-        let mut receiver_receipt2 = mc_mobilecoind_api::ReceiverTxReceipt::new();
-        receiver_receipt2.set_recipient(mc_mobilecoind_api::external::PublicAddress::from(
-            &recipient,
+        let mut receiver_receipt2 = mc_api::external::Receipt::new();
+        receiver_receipt2.set_public_key(mc_mobilecoind_api::external::CompressedRistretto::from(
+            &output2.public_key,
         ));
-        receiver_receipt2.set_tx_public_key(
-            mc_mobilecoind_api::external::CompressedRistretto::from(&output2.public_key),
-        );
-        receiver_receipt2.set_tx_out_hash(output2.hash().into());
-        receiver_receipt2.set_tombstone(1);
-        // For this test, confirmation number is irrelevant, so left blank
+        receiver_receipt2.set_tombstone_block(1);
+        // For this test, confirmation number and amount are irrelevant, so left blank
 
         // A receiver receipt with multiple public keys in different blocks should fail
         {
@@ -2529,7 +2499,7 @@ mod test {
                 (&KeyImage::from(1)).into(),
                 (&KeyImage::from(2)).into(),
             ]));
-            sender_receipt.set_tombstone(1);
+            sender_receipt.set_tombstone_block(1);
 
             let mut request = mc_mobilecoind_api::SubmitTxResponse::new();
             request.set_sender_tx_receipt(sender_receipt);
@@ -2555,12 +2525,12 @@ mod test {
                 (&KeyImage::from(1)).into(),
                 (&KeyImage::from(4)).into(),
             ]));
-            sender_receipt.set_tombstone(1);
+            sender_receipt.set_tombstone_block(1);
 
             let mut request = mc_mobilecoind_api::SubmitTxResponse::new();
             request.set_sender_tx_receipt(sender_receipt);
             // Modify the receiver_receipt to have a public key not in the ledger
-            receiver_receipt.set_tx_public_key(
+            receiver_receipt.set_public_key(
                 mc_mobilecoind_api::external::CompressedRistretto::from(
                     &CompressedRistrettoPublic::from(&RistrettoPublic::from_random(&mut rng)),
                 ),
@@ -2586,8 +2556,8 @@ mod test {
 
         // A call with an invalid hash should fail
         {
-            let mut receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
-            receipt.set_tombstone(1);
+            let mut receipt = mc_api::external::Receipt::new();
+            receipt.set_tombstone_block(1);
 
             let mut request = mc_mobilecoind_api::GetTxStatusAsReceiverRequest::new();
             request.set_receipt(receipt);
@@ -2595,14 +2565,13 @@ mod test {
             assert!(client.get_tx_status_as_receiver(&request).is_err());
         }
 
-        // A call with a hash thats in the ledger should return Verified
+        // A call with a public key thats in the ledger should return Verified
         {
             let tx_out = ledger_db.get_tx_out_by_index(1).unwrap();
-            let hash = tx_out.hash();
 
-            let mut receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
-            receipt.set_tx_out_hash(hash.to_vec());
-            receipt.set_tombstone(1);
+            let mut receipt = mc_api::external::Receipt::new();
+            receipt.set_public_key((&tx_out.public_key).into());
+            receipt.set_tombstone_block(1);
 
             let mut request = mc_mobilecoind_api::GetTxStatusAsReceiverRequest::new();
             request.set_receipt(receipt);
@@ -2614,14 +2583,14 @@ mod test {
             );
         }
 
-        // A call with a hash thats is not in the ledger and hasn't exceeded tombstone block should
+        // A call with a public key thats is not in the ledger and hasn't exceeded tombstone block should
         // return Unknown
         {
-            let hash = [0; 32];
-
-            let mut receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
-            receipt.set_tx_out_hash(hash.to_vec());
-            receipt.set_tombstone(ledger_db.num_blocks().unwrap() as u64 + 1);
+            let pub_key =
+                CompressedRistrettoPublic::from(&RistrettoPublic::try_from(&[0; 32]).unwrap());
+            let mut receipt = mc_api::external::Receipt::new();
+            receipt.set_public_key((&pub_key).into());
+            receipt.set_tombstone_block(ledger_db.num_blocks().unwrap() as u64 + 1);
 
             let mut request = mc_mobilecoind_api::GetTxStatusAsReceiverRequest::new();
             request.set_receipt(receipt);
@@ -2630,14 +2599,15 @@ mod test {
             assert_eq!(response.get_status(), mc_mobilecoind_api::TxStatus::Unknown);
         }
 
-        // A call with a hash thats is not in the ledger and has exceeded tombstone block should
+        // A call with a public key thats is not in the ledger and has exceeded tombstone block should
         // return TombstoneBlockExceeded
         {
-            let hash = [0; 32];
+            let pub_key =
+                CompressedRistrettoPublic::from(&RistrettoPublic::try_from(&[0; 32]).unwrap());
 
-            let mut receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
-            receipt.set_tx_out_hash(hash.to_vec());
-            receipt.set_tombstone(ledger_db.num_blocks().unwrap() as u64);
+            let mut receipt = mc_api::external::Receipt::new();
+            receipt.set_public_key((&pub_key).into());
+            receipt.set_tombstone_block(ledger_db.num_blocks().unwrap() as u64);
 
             let mut request = mc_mobilecoind_api::GetTxStatusAsReceiverRequest::new();
             request.set_receipt(receipt);
@@ -2671,15 +2641,12 @@ mod test {
 
         // A request with a valid confirmation number and monitor ID should return Verified
         {
-            let hash = tx_out.hash();
-
-            let mut receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
-            receipt.set_tx_public_key(mc_mobilecoind_api::external::CompressedRistretto::from(
+            let mut receipt = mc_api::external::Receipt::new();
+            receipt.set_public_key(mc_mobilecoind_api::external::CompressedRistretto::from(
                 &tx_out.public_key,
             ));
-            receipt.set_tx_out_hash(hash.to_vec());
-            receipt.set_tombstone(10);
-            receipt.set_confirmation_number(tx_confirmation.to_vec());
+            receipt.set_tombstone_block(10);
+            receipt.set_confirmation((&tx_confirmation).into());
 
             let mut request = mc_mobilecoind_api::GetTxStatusAsReceiverRequest::new();
             request.set_receipt(receipt);
@@ -2694,15 +2661,15 @@ mod test {
 
         // A request with an a bad confirmation number and a monitor ID should return InvalidConfirmationNumber
         {
-            let hash = tx_out.hash();
-
-            let mut receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
-            receipt.set_tx_public_key(mc_mobilecoind_api::external::CompressedRistretto::from(
+            let mut receipt = mc_api::external::Receipt::new();
+            receipt.set_public_key(mc_mobilecoind_api::external::CompressedRistretto::from(
                 &tx_out.public_key,
             ));
-            receipt.set_tx_out_hash(hash.to_vec());
-            receipt.set_tombstone(10);
-            receipt.set_confirmation_number(vec![0u8; 32]);
+            receipt.set_tombstone_block(10);
+
+            let mut confirmation_number = mc_api::external::TxOutConfirmationNumber::new();
+            confirmation_number.set_hash(vec![0u8; 32]);
+            receipt.set_confirmation(confirmation_number);
 
             let mut request = mc_mobilecoind_api::GetTxStatusAsReceiverRequest::new();
             request.set_receipt(receipt);
@@ -3732,7 +3699,6 @@ mod test {
         let response = client.generate_tx(&request).unwrap();
         let tx_proposal = TxProposal::try_from(response.get_tx_proposal()).unwrap();
         let tx = tx_proposal.tx.clone();
-        let outlay_confirmation_numbers = tx_proposal.outlay_confirmation_numbers.clone();
 
         // Test the happy flow.
         {
@@ -3783,27 +3749,29 @@ mod test {
             }
 
             assert_eq!(
-                response.get_sender_tx_receipt().tombstone,
+                response.get_sender_tx_receipt().tombstone_block,
                 tx.prefix.tombstone_block
             );
 
             // Sanity the receiver receipts.
             assert_eq!(response.get_receiver_tx_receipt_list().len(), outlays.len());
-            for (outlay, receipt) in outlays
-                .iter()
-                .zip(response.get_receiver_tx_receipt_list().iter())
-            {
-                assert_eq!(
-                    outlay.receiver,
-                    PublicAddress::try_from(receipt.get_recipient()).unwrap()
-                );
+            for (i, receipt) in response.get_receiver_tx_receipt_list().iter().enumerate() {
+                let tx_out_index = (*request
+                    .get_tx_proposal()
+                    .get_outlay_index_to_tx_out_index()
+                    .get(&(i as u64))
+                    .unwrap()) as usize;
+                let tx_out = request
+                    .get_tx_proposal()
+                    .get_tx()
+                    .get_prefix()
+                    .get_outputs()
+                    .get(tx_out_index)
+                    .unwrap();
 
-                assert_eq!(receipt.tombstone, tx.prefix.tombstone_block);
-                let mut confirmation_bytes = [0u8; 32];
-                confirmation_bytes.copy_from_slice(&receipt.confirmation_number);
+                assert_eq!(tx_out.get_public_key(), receipt.get_public_key());
 
-                let confirmation_number = TxOutConfirmationNumber::from(confirmation_bytes);
-                assert!(outlay_confirmation_numbers.contains(&confirmation_number));
+                assert_eq!(receipt.tombstone_block, submitted_tx.prefix.tombstone_block);
             }
 
             assert_eq!(
@@ -3811,7 +3779,6 @@ mod test {
                 tx.prefix.outputs.len()
             );
 
-            let tx_out_hashes: Vec<_> = tx.prefix.outputs.iter().map(TxOut::hash).collect();
             let tx_out_public_keys: Vec<_> = tx
                 .prefix
                 .outputs
@@ -3820,11 +3787,8 @@ mod test {
                 .collect();
 
             for receipt in response.get_receiver_tx_receipt_list().iter() {
-                let hash: [u8; 32] = receipt.get_tx_out_hash().try_into().unwrap();
-                assert!(tx_out_hashes.contains(&hash));
-
                 let public_key =
-                    GenericArray::<u8, U32>::from_slice(receipt.get_tx_public_key().get_data());
+                    GenericArray::<u8, U32>::from_slice(receipt.get_public_key().get_data());
                 assert!(tx_out_public_keys.contains(&public_key));
             }
 
@@ -4023,22 +3987,29 @@ mod test {
         }
 
         assert_eq!(
-            response.get_sender_tx_receipt().tombstone,
+            response.get_sender_tx_receipt().tombstone_block,
             submitted_tx.prefix.tombstone_block
         );
 
         // Sanity the receiver receipts.
         assert_eq!(response.get_receiver_tx_receipt_list().len(), outlays.len());
-        for (outlay, receipt) in outlays
-            .iter()
-            .zip(response.get_receiver_tx_receipt_list().iter())
-        {
-            assert_eq!(
-                outlay.receiver,
-                PublicAddress::try_from(receipt.get_recipient()).unwrap()
-            );
+        for (i, receipt) in response.get_receiver_tx_receipt_list().iter().enumerate() {
+            let tx_out_index = (*response
+                .get_tx_proposal()
+                .get_outlay_index_to_tx_out_index()
+                .get(&(i as u64))
+                .unwrap()) as usize;
+            let tx_out = response
+                .get_tx_proposal()
+                .get_tx()
+                .get_prefix()
+                .get_outputs()
+                .get(tx_out_index)
+                .unwrap();
 
-            assert_eq!(receipt.tombstone, submitted_tx.prefix.tombstone_block);
+            assert_eq!(tx_out.get_public_key(), receipt.get_public_key());
+
+            assert_eq!(receipt.tombstone_block, submitted_tx.prefix.tombstone_block);
         }
 
         assert_eq!(
@@ -4046,12 +4017,6 @@ mod test {
             submitted_tx.prefix.outputs.len()
         );
 
-        let tx_out_hashes: Vec<_> = submitted_tx
-            .prefix
-            .outputs
-            .iter()
-            .map(TxOut::hash)
-            .collect();
         let tx_out_public_keys: Vec<_> = submitted_tx
             .prefix
             .outputs
@@ -4060,11 +4025,8 @@ mod test {
             .collect();
 
         for receipt in response.get_receiver_tx_receipt_list().iter() {
-            let hash: [u8; 32] = receipt.get_tx_out_hash().try_into().unwrap();
-            assert!(tx_out_hashes.contains(&hash));
-
             let public_key =
-                GenericArray::<u8, U32>::from_slice(receipt.get_tx_public_key().get_data());
+                GenericArray::<u8, U32>::from_slice(receipt.get_public_key().get_data());
             assert!(tx_out_public_keys.contains(&public_key));
         }
 
@@ -4493,11 +4455,21 @@ mod test {
         // Sanity the receiver receipt.
         assert_eq!(response.get_receiver_tx_receipt_list().len(), 1);
 
+        let tx_out_index = (*response
+            .get_tx_proposal()
+            .get_outlay_index_to_tx_out_index()
+            .get(&0)
+            .unwrap()) as usize;
+        let tx_out = response
+            .get_tx_proposal()
+            .get_tx()
+            .get_prefix()
+            .get_outputs()
+            .get(tx_out_index)
+            .unwrap();
+
         let receipt = &response.get_receiver_tx_receipt_list()[0];
-        assert_eq!(
-            receipt.get_recipient(),
-            &mc_mobilecoind_api::external::PublicAddress::from(&receiver_public_address)
-        );
+        assert_eq!(receipt.get_public_key(), tx_out.get_public_key());
     }
 
     #[test_with_logger]

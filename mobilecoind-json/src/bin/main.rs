@@ -553,18 +553,19 @@ fn check_transfer_status(
 #[post("/tx/status-as-receiver", format = "json", data = "<receipt>")]
 fn check_receiver_transfer_status(
     state: rocket::State<State>,
-    receipt: Json<JsonReceiverTxReceipt>,
+    receipt: Json<JsonReceipt>,
 ) -> Result<Json<JsonStatusResponse>, String> {
-    let mut receiver_receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
+    let mut receiver_receipt = mc_api::external::Receipt::new();
+
     let mut tx_public_key = CompressedRistretto::new();
-    tx_public_key.set_data(hex::decode(&receipt.tx_public_key).map_err(|err| format!("{}", err))?);
-    receiver_receipt.set_tx_public_key(tx_public_key);
-    receiver_receipt
-        .set_tx_out_hash(hex::decode(&receipt.tx_out_hash).map_err(|err| format!("{}", err))?);
-    receiver_receipt.set_tombstone(receipt.tombstone);
-    receiver_receipt.set_confirmation_number(
-        hex::decode(&receipt.confirmation_number).map_err(|err| format!("{}", err))?,
-    );
+    tx_public_key.set_data(hex::decode(&receipt.public_key).map_err(|err| format!("{}", err))?);
+    receiver_receipt.set_public_key(tx_public_key);
+
+    let mut confirmation_number = mc_api::external::TxOutConfirmationNumber::new();
+    confirmation_number
+        .set_hash(hex::decode(&receipt.confirmation).map_err(|err| format!("{}", err))?);
+
+    receiver_receipt.set_tombstone_block(receipt.tombstone_block);
 
     let mut req = mc_mobilecoind_api::GetTxStatusAsReceiverRequest::new();
     req.set_receipt(receiver_receipt);

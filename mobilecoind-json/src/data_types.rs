@@ -377,7 +377,7 @@ impl From<&mc_mobilecoind_api::ParseAddressCodeResponse> for JsonParseAddressCod
 #[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonSenderTxReceipt {
     pub key_images: Vec<String>,
-    pub tombstone: u64,
+    pub tombstone_block: u64,
 }
 
 impl From<&mc_mobilecoind_api::SenderTxReceipt> for JsonSenderTxReceipt {
@@ -388,28 +388,26 @@ impl From<&mc_mobilecoind_api::SenderTxReceipt> for JsonSenderTxReceipt {
                 .iter()
                 .map(|key_image| hex::encode(key_image.get_data()))
                 .collect(),
-            tombstone: src.get_tombstone(),
+            tombstone_block: src.get_tombstone_block(),
         }
     }
 }
 
 #[derive(Deserialize, Serialize, Default, Debug)]
-pub struct JsonReceiverTxReceipt {
-    pub recipient: JsonPublicAddress,
-    pub tx_public_key: String,
-    pub tx_out_hash: String,
-    pub tombstone: u64,
-    pub confirmation_number: String,
+pub struct JsonReceipt {
+    pub public_key: String,
+    pub confirmation: String,
+    pub tombstone_block: u64,
+    pub amount: JsonAmount,
 }
 
-impl From<&mc_mobilecoind_api::ReceiverTxReceipt> for JsonReceiverTxReceipt {
-    fn from(src: &mc_mobilecoind_api::ReceiverTxReceipt) -> Self {
+impl From<&mc_api::external::Receipt> for JsonReceipt {
+    fn from(src: &mc_api::external::Receipt) -> Self {
         Self {
-            recipient: JsonPublicAddress::from(src.get_recipient()),
-            tx_public_key: hex::encode(&src.get_tx_public_key().get_data()),
-            tx_out_hash: hex::encode(&src.get_tx_out_hash()),
-            tombstone: src.get_tombstone(),
-            confirmation_number: hex::encode(&src.get_tx_out_hash()),
+            public_key: hex::encode(&src.get_public_key().get_data()),
+            confirmation: hex::encode(&src.get_confirmation().get_hash()),
+            tombstone_block: src.get_tombstone_block(),
+            amount: JsonAmount::from(src.get_amount()),
         }
     }
 }
@@ -424,7 +422,7 @@ pub struct JsonSendPaymentRequest {
 #[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonSendPaymentResponse {
     pub sender_tx_receipt: JsonSenderTxReceipt,
-    pub receiver_tx_receipt_list: Vec<JsonReceiverTxReceipt>,
+    pub receiver_tx_receipt_list: Vec<JsonReceipt>,
 }
 
 impl From<&mc_mobilecoind_api::SendPaymentResponse> for JsonSendPaymentResponse {
@@ -434,7 +432,7 @@ impl From<&mc_mobilecoind_api::SendPaymentResponse> for JsonSendPaymentResponse 
             receiver_tx_receipt_list: src
                 .get_receiver_tx_receipt_list()
                 .iter()
-                .map(JsonReceiverTxReceipt::from)
+                .map(JsonReceipt::from)
                 .collect(),
         }
     }
@@ -1021,7 +1019,7 @@ pub struct JsonTxProposalRequest {
 #[derive(Deserialize, Serialize, Default, Debug)]
 pub struct JsonSubmitTxResponse {
     pub sender_tx_receipt: JsonSenderTxReceipt,
-    pub receiver_tx_receipt_list: Vec<JsonReceiverTxReceipt>,
+    pub receiver_tx_receipt_list: Vec<JsonReceipt>,
 }
 
 impl From<&mc_mobilecoind_api::SubmitTxResponse> for JsonSubmitTxResponse {
@@ -1031,7 +1029,7 @@ impl From<&mc_mobilecoind_api::SubmitTxResponse> for JsonSubmitTxResponse {
             receiver_tx_receipt_list: src
                 .get_receiver_tx_receipt_list()
                 .iter()
-                .map(JsonReceiverTxReceipt::from)
+                .map(JsonReceipt::from)
                 .collect(),
         }
     }
@@ -1058,31 +1056,43 @@ impl TryFrom<&JsonSubmitTxResponse> for mc_mobilecoind_api::SubmitTxResponse {
             .collect::<Result<Vec<KeyImage>, String>>()?;
 
         sender_receipt.set_key_image_list(RepeatedField::from_vec(key_images));
-        sender_receipt.set_tombstone(src.sender_tx_receipt.tombstone);
+        sender_receipt.set_tombstone_block(src.sender_tx_receipt.tombstone_block);
 
         let mut receiver_receipts = Vec::new();
         for r in src.receiver_tx_receipt_list.iter() {
-            let mut receiver_receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
-            receiver_receipt.set_recipient(
-                PublicAddress::try_from(&r.recipient)
-                    .map_err(|err| format!("Failed to convert recipient: {}", err))?,
-            );
+            let mut receiver_receipt = mc_api::external::Receipt::new();
+
             let mut pubkey = mc_api::external::CompressedRistretto::new();
             pubkey.set_data(
-                hex::decode(&r.tx_public_key)
-                    .map_err(|err| format!("Failed to decode hex for tx_public_key: {}", err))?,
+                hex::decode(&r.public_key)
+                    .map_err(|err| format!("Failed to decode hex for public_key: {}", err))?,
             );
-            receiver_receipt.set_tx_public_key(pubkey);
-            receiver_receipt.set_tx_out_hash(
-                hex::decode(&r.tx_out_hash)
-                    .map_err(|err| format!("Failed to decode hex for tx_out_hash: {}", err))?,
+            receiver_receipt.set_public_key(pubkey);
+
+            let mut tx_out_confirmation = mc_api::external::TxOutConfirmationNumber::new();
+            tx_out_confirmation.set_hash(
+                hex::decode(&r.confirmation)
+                    .map_err(|err| format!("Failed to decode hex for confirmation: {}", err))?,
             );
-            receiver_receipt.set_tombstone(r.tombstone);
-            receiver_receipt.set_confirmation_number(
-                hex::decode(&r.confirmation_number).map_err(|err| {
-                    format!("Failed to decode hex for confirmation_number: {}", err)
-                })?,
+            receiver_receipt.set_confirmation(tx_out_confirmation);
+
+            receiver_receipt.set_tombstone_block(r.tombstone_block);
+
+            let mut commitment = CompressedRistretto::new();
+            commitment.set_data(
+                hex::decode(&r.amount.commitment)
+                    .map_err(|err| format!("Failed to decode commitment hex: {}", err))?,
             );
+            let mut amount = Amount::new();
+            amount.set_commitment(commitment);
+            amount.set_masked_value(
+                r.amount
+                    .masked_value
+                    .parse::<u64>()
+                    .map_err(|err| format!("Failed to parse u64 from value: {}", err))?,
+            );
+            receiver_receipt.set_amount(amount);
+
             receiver_receipts.push(receiver_receipt);
         }
 
