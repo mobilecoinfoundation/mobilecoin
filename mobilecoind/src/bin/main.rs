@@ -91,6 +91,7 @@ fn main() {
                     transactions_fetcher,
                     ledger_db.clone(),
                     config.poll_interval,
+                    false,
                     logger.clone(),
                 ))
             };
