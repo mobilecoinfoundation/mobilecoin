@@ -84,7 +84,7 @@ impl RistrettoPrivate {
     }
 
     /// Sign the given bytes using a deterministic scheme based on Schnorrkel.
-    pub fn sign_schnorrkel(&self, context: &[u8], message: &[u8]) -> SchnorrkelSignature {
+    pub fn sign_schnorrkel(&self, context: &[u8], message: &[u8]) -> RistrettoSignature {
         // Create a deterministic nonce using a merlin transcript. See this crate's README
         // for a security statement.
         let nonce = {
@@ -111,7 +111,7 @@ impl RistrettoPrivate {
         // NOTE: This signature is deterministic due to using the above nonce as the rng seed
         let csprng = Hc128Rng::from_seed(nonce);
         let transcript = attach_rng(t, csprng);
-        keypair.sign(transcript)
+        RistrettoSignature::from(keypair.sign(transcript))
     }
 }
 
@@ -289,11 +289,11 @@ impl RistrettoPublic {
         &self,
         context: &'static [u8],
         message: &[u8],
-        signature: &SchnorrkelSignature,
+        signature: &RistrettoSignature,
     ) -> Result<(), SchnorrkelError> {
         let ctx = schnorrkel::signing_context(context);
         let pubkey = SchnorrkelPublic::from_point(*self.as_ref());
-        pubkey.verify(ctx.bytes(&message), &signature)
+        pubkey.verify(ctx.bytes(&message), &signature.try_into()?)
     }
 }
 
@@ -359,7 +359,6 @@ impl<T: Digestible> DigestibleVerifier<RistrettoSignature, T> for RistrettoPubli
         signature: &RistrettoSignature,
     ) -> Result<(), SignatureError> {
         let message = message.digest32::<MerlinTranscript>(context);
-        let signature = signature.try_into().map_err(|_e| SignatureError::new())?;
         Ok(self
             .verify_schnorrkel(context, &message, &signature)
             .map_err(|_e| SignatureError::new())?)
@@ -566,6 +565,12 @@ impl Eq for RistrettoSignature {}
 
 impl From<SchnorrkelSignature> for RistrettoSignature {
     fn from(src: SchnorrkelSignature) -> RistrettoSignature {
+        Self::from(&src)
+    }
+}
+
+impl From<&SchnorrkelSignature> for RistrettoSignature {
+    fn from(src: &SchnorrkelSignature) -> RistrettoSignature {
         Self(src.to_bytes())
     }
 }
@@ -595,6 +600,14 @@ impl TryFrom<&RistrettoSignature> for SchnorrkelSignature {
 
     fn try_from(src: &RistrettoSignature) -> Result<SchnorrkelSignature, SchnorrkelError> {
         SchnorrkelSignature::from_bytes(&src.0)
+    }
+}
+
+impl TryFrom<RistrettoSignature> for SchnorrkelSignature {
+    type Error = SchnorrkelError;
+
+    fn try_from(src: RistrettoSignature) -> Result<SchnorrkelSignature, SchnorrkelError> {
+        SchnorrkelSignature::try_from(&src)
     }
 }
 

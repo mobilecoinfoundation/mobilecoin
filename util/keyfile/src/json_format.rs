@@ -18,8 +18,8 @@ pub struct RootIdentityJson {
     pub fog_url: String,
     /// User's report id
     pub fog_report_id: String,
-    /// User's fog authority fingerprint if any
-    pub fog_authority_fingerprint: Vec<u8>,
+    /// User's fog authority subjectPublicKeyInfo bytes, if any
+    pub fog_authority_spki: Vec<u8>,
 }
 
 impl From<&RootIdentity> for RootIdentityJson {
@@ -28,7 +28,7 @@ impl From<&RootIdentity> for RootIdentityJson {
             root_entropy: src.root_entropy.bytes,
             fog_url: src.fog_report_url.clone(),
             fog_report_id: src.fog_report_id.clone(),
-            fog_authority_fingerprint: src.fog_authority_fingerprint.clone(),
+            fog_authority_spki: src.fog_authority_spki.clone(),
         }
     }
 }
@@ -39,7 +39,7 @@ impl From<RootIdentityJson> for RootIdentity {
             root_entropy: RootEntropy::from(&src.root_entropy),
             fog_report_url: src.fog_url,
             fog_report_id: src.fog_report_id,
-            fog_authority_fingerprint: src.fog_authority_fingerprint,
+            fog_authority_spki: src.fog_authority_spki,
         }
     }
 }

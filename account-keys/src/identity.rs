@@ -92,9 +92,9 @@ pub struct RootIdentity {
     /// Fog report id
     #[prost(string, tag = 3)]
     pub fog_report_id: String,
-    /// Fog authority fingerprint
+    /// Fog authority subjectPUblicKeyInfo
     #[prost(bytes, tag = 4)]
-    pub fog_authority_fingerprint: Vec<u8>,
+    pub fog_authority_spki: Vec<u8>,
 }
 
 impl RootIdentity {
@@ -103,14 +103,14 @@ impl RootIdentity {
         rng: &mut T,
         fog_report_url: &str,
         fog_report_id: &str,
-        fog_authority_fingerprint: &[u8],
+        fog_authority_spki: &[u8],
     ) -> Self {
         let mut result = Self::from_random(rng);
 
         if !fog_report_url.is_empty() {
             result.fog_report_url = fog_report_url.to_owned();
             result.fog_report_id = fog_report_id.to_owned();
-            result.fog_authority_fingerprint = fog_authority_fingerprint.to_owned();
+            result.fog_authority_spki = fog_authority_spki.to_owned();
         }
 
         result
@@ -124,7 +124,7 @@ impl From<&RootEntropy> for RootIdentity {
             root_entropy: src.clone(),
             fog_report_url: Default::default(),
             fog_report_id: Default::default(),
-            fog_authority_fingerprint: Default::default(),
+            fog_authority_spki: Default::default(),
         }
     }
 }
@@ -152,7 +152,7 @@ impl From<&RootIdentity> for AccountKey {
             &view_private_key,
             src.fog_report_url.clone(),
             src.fog_report_id.clone(),
-            src.fog_authority_fingerprint.clone(),
+            src.fog_authority_spki.clone(),
         )
     }
 }

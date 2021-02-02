@@ -15,8 +15,8 @@ impl From<&AccountKey> for external::AccountKey {
             dst.set_fog_report_url(url.to_string());
         }
 
-        if let Some(fingerprint) = src.fog_authority_fingerprint() {
-            dst.set_fog_authority_fingerprint(fingerprint.to_vec());
+        if let Some(spki) = src.fog_authority_spki() {
+            dst.set_fog_authority_spki(spki.to_vec());
         }
 
         if let Some(key) = src.fog_report_id() {
@@ -51,7 +51,7 @@ impl TryFrom<&external::AccountKey> for AccountKey {
                 &view_private_key,
                 &src.fog_report_url,
                 src.fog_report_id.clone(),
-                &src.fog_authority_fingerprint[..],
+                &src.fog_authority_spki[..],
             ))
         }
     }
@@ -82,7 +82,7 @@ mod tests {
             );
             assert_eq!(proto_credentials.fog_report_url, String::from(""));
 
-            assert_eq!(proto_credentials.fog_authority_fingerprint.len(), 0);
+            assert_eq!(proto_credentials.fog_authority_spki.len(), 0);
 
             assert_eq!(proto_credentials.fog_report_id, String::from(""));
 
@@ -117,10 +117,7 @@ mod tests {
                 String::from("fog://test.mobilecoin.com")
             );
 
-            assert_eq!(
-                proto_credentials.fog_authority_fingerprint,
-                vec![9, 9, 9, 9],
-            );
+            assert_eq!(proto_credentials.fog_authority_spki, vec![9, 9, 9, 9],);
 
             assert_eq!(proto_credentials.fog_report_id, String::from("99"));
 
