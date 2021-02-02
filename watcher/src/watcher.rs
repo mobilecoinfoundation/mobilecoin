@@ -31,6 +31,11 @@ pub struct Watcher {
 
 impl Watcher {
     /// Create a new Watcher.
+    ///
+    /// # Arguments
+    /// * `watcher_db` - The backing database to use for storing and retreiving data
+    /// * `transactions_fetcher` - The transaction fetcher used to fetch blocks from watched source
+    ///   URLs
     pub fn new(
         watcher_db: WatcherDB,
         transactions_fetcher: ReqwestTransactionsFetcher,
@@ -84,7 +89,7 @@ impl Watcher {
         );
         match self.transactions_fetcher.block_from_url(&url) {
             Ok(block_data) => {
-                log::debug!(
+                log::info!(
                     self.logger,
                     "Archive block retrieved for {:?} {:?}",
                     src_url,
@@ -118,11 +123,14 @@ impl Watcher {
     ///
     /// * `start` - starting block to sync.
     /// * `max_block_height` - the max block height to sync per archive url. If None, continue polling.
+    ///
+    /// Returns true if syncing has reached max_block_height, false if more blocks still need to be
+    /// synced.
     pub fn sync_signatures(
         &self,
         start: u64,
         max_block_height: Option<u64>,
-    ) -> Result<(), WatcherError> {
+    ) -> Result<bool, WatcherError> {
         log::debug!(
             self.logger,
             "Now syncing signatures from {} to {:?}",
@@ -143,7 +151,7 @@ impl Watcher {
                 });
             }
             if last_synced.is_empty() {
-                return Ok(());
+                return Ok(true);
             }
 
             // Track whether sync failed - this catches cases where S3 is behind local ledger,
@@ -158,7 +166,7 @@ impl Watcher {
             for (src_url, opt_last_synced) in last_synced {
                 let next_block_index = opt_last_synced
                     .map(|block_index| block_index + 1)
-                    .unwrap_or(0);
+                    .unwrap_or(start);
                 match self.sync_signature(&src_url, next_block_index) {
                     Ok(()) => {}
                     Err(WatcherError::SyncFailed) => {
@@ -170,7 +178,7 @@ impl Watcher {
                 }
             }
             if sync_failed.values().all(|x| *x) {
-                return Ok(());
+                return Ok(false);
             }
         }
     }
@@ -217,7 +225,7 @@ impl WatcherSyncThread {
                         logger,
                     );
                 })
-                .expect("Failed spawning LedgerSync thread"),
+                .expect("Failed spawning WatcherSync thread"),
         );
 
         Self {

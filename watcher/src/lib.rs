@@ -6,6 +6,7 @@
 #![forbid(unsafe_code)]
 
 pub mod config;
+pub mod verification_reports_collector;
 pub mod watcher;
 pub mod watcher_db;
 
