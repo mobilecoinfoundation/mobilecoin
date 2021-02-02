@@ -219,7 +219,7 @@ else:
     shutdown(1)
 
 # Check the mirror to see the block height of the transaction
-tx_pubkey = receiver_tx_receipt['tx_public_key']
+tx_pubkey = receiver_tx_receipt['public_key']
 url = f"http://localhost:8001/tx-out/{tx_pubkey}/block-index"
 response = requests.get(url)
 if response.status_code == 200:
@@ -291,7 +291,7 @@ else:
     shutdown(1)
 
 # Check the mirror to see the block height of the transaction
-tx_pubkey = receiver_tx_receipt['tx_public_key']
+tx_pubkey = receiver_tx_receipt['public_key']
 url = f"http://localhost:8001/tx-out/{tx_pubkey}/block-index"
 response = requests.get(url)
 if response.status_code == 200:
