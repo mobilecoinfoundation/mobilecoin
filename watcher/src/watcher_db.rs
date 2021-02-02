@@ -223,7 +223,7 @@ impl WatcherDB {
         env.create_db(Some(LAST_SYNCED_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(CONFIG_DB_NAME), DatabaseFlags::DUP_SORT)?;
 
-        BlockDataStore::create(env.clone())?;
+        BlockDataStore::create(env)?;
 
         Ok(())
     }

@@ -210,8 +210,8 @@ impl BlockDataStore {
     ) -> Result<Block, WatcherDBError> {
         db_txn
             .get(self.blocks_by_hash, &hash)
-            .map_err(|err| WatcherDBError::from(err))
-            .and_then(|bytes| decode(bytes).map_err(|err| WatcherDBError::from(err)))
+            .map_err(WatcherDBError::from)
+            .and_then(|bytes| decode(bytes).map_err(WatcherDBError::from))
     }
 
     fn get_block_contents_by_hash(
@@ -221,8 +221,8 @@ impl BlockDataStore {
     ) -> Result<BlockContents, WatcherDBError> {
         db_txn
             .get(self.block_contents_by_hash, &hash)
-            .map_err(|err| WatcherDBError::from(err))
-            .and_then(|bytes| decode(bytes).map_err(|err| WatcherDBError::from(err)))
+            .map_err(WatcherDBError::from)
+            .and_then(|bytes| decode(bytes).map_err(WatcherDBError::from))
     }
 }
 
