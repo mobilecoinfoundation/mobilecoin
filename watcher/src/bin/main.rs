@@ -13,10 +13,8 @@ use mc_watcher::{
 
 use mc_common::logger::{create_app_logger, log, o};
 use mc_ledger_sync::ReqwestTransactionsFetcher;
-use std::{thread::sleep, time::Duration};
+use std::thread::sleep;
 use structopt::StructOpt;
-
-const SYNC_RETRY_INTERVAL: Duration = Duration::from_secs(1);
 
 fn main() {
     mc_common::setup_panic_handler();
@@ -40,7 +38,7 @@ fn main() {
     let _verification_reports_collector = VerificationReportsCollector::new(
         watcher_db,
         sources_config.tx_source_urls_to_consensus_client_urls(),
-        SYNC_RETRY_INTERVAL,
+        config.poll_interval,
         logger.clone(),
     );
 
@@ -54,6 +52,6 @@ fn main() {
             break;
         }
 
-        sleep(SYNC_RETRY_INTERVAL);
+        sleep(config.poll_interval);
     }
 }

@@ -53,7 +53,7 @@ impl MetadataStoreSettings for WatcherDbMetadataStoreSettings {
 pub const BLOCK_SIGNATURES_DB_NAME: &str = "watcher_db:block_signatures";
 
 /// VerificationReports database name.
-pub const VERIFICATION_REPORTS_BY_BLOCK_SIGNER_DB_NANE: &str =
+pub const VERIFICATION_REPORTS_BY_BLOCK_SIGNER_DB_NAME: &str =
     "watcher_db:verification_reports_by_block_signer";
 
 /// Verification reports poll queue database name.
@@ -156,7 +156,7 @@ impl WatcherDB {
 
         let block_signatures = env.open_db(Some(BLOCK_SIGNATURES_DB_NAME))?;
         let verification_reports_by_signer =
-            env.open_db(Some(VERIFICATION_REPORTS_BY_BLOCK_SIGNER_DB_NANE))?;
+            env.open_db(Some(VERIFICATION_REPORTS_BY_BLOCK_SIGNER_DB_NAME))?;
         let verification_reports_by_hash =
             env.open_db(Some(VERIFICATION_REPORTS_BY_HASH_DB_NAME))?;
         let verification_reports_poll_queue =
@@ -203,7 +203,7 @@ impl WatcherDB {
 
         env.create_db(Some(BLOCK_SIGNATURES_DB_NAME), DatabaseFlags::DUP_SORT)?;
         env.create_db(
-            Some(VERIFICATION_REPORTS_BY_BLOCK_SIGNER_DB_NANE),
+            Some(VERIFICATION_REPORTS_BY_BLOCK_SIGNER_DB_NAME),
             DatabaseFlags::DUP_SORT,
         )?;
         env.create_db(
@@ -702,7 +702,7 @@ impl WatcherDB {
     }
 
     /// Get verification reports seen for a specific block signer/URL pair.
-    /// In theory there should ever be a single report (or none) for a given block_signer+src_url
+    /// In theory there should only ever be a single report (or none) for a given block_signer+src_url
     /// pair but if something weird is going on we want to capture that, and as such multiple
     /// reports are supported. See more detailed explanation above
     /// `get_verification_reports_for_signer`.

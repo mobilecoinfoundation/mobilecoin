@@ -5,7 +5,7 @@
 use mc_common::HashMap;
 use mc_util_uri::ConsensusClientUri;
 use serde::{Deserialize, Serialize};
-use std::{fs, iter::FromIterator, path::PathBuf};
+use std::{fs, iter::FromIterator, path::PathBuf, str::FromStr, time::Duration};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -27,6 +27,10 @@ pub struct WatcherConfig {
     /// (Optional) Number of blocks to sync
     #[structopt(long)]
     pub max_block_height: Option<u64>,
+
+    /// How many seconds to wait between polling.
+    #[structopt(long, default_value = "1", parse(try_from_str=parse_duration_in_seconds))]
+    pub poll_interval: Duration,
 }
 
 impl WatcherConfig {
@@ -47,7 +51,7 @@ impl WatcherConfig {
 struct SourceConfig {
     /// URL to use for pulling blocks.
     ///
-    /// For example: https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node1.master.mobilecoin.com/
+    /// For example: https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node1.test.mobilecoin.com/
     tx_source_url: String,
 
     /// (Optional) Consensus node client URL to use for fetching the remote attestation report
@@ -94,6 +98,10 @@ impl SourcesConfig {
                 .map(|client_url| (source_config.tx_source_url(), client_url))
         }))
     }
+}
+
+fn parse_duration_in_seconds(src: &str) -> Result<Duration, std::num::ParseIntError> {
+    Ok(Duration::from_secs(u64::from_str(src)?))
 }
 
 #[cfg(test)]
