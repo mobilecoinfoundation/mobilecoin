@@ -506,7 +506,7 @@ message SubmitTxResponse {
     SenderTxReceipt sender_tx_receipt = 1;
 
     // Receiver tx receipt, used for checking the tx status as the receiver.
-    // Receits order match the outlay order in the TxProposal.
+    // Receipts order match the outlay order in the TxProposal.
     repeated external.Receipt receiver_tx_receipt_list = 2;
 }
 
