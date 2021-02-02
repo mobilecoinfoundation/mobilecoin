@@ -367,7 +367,7 @@ impl UserTxConnection for ThickClient {
         })?;
 
         if resp.get_result() == ProposeTxResult::Ok {
-            Ok(resp.get_num_blocks())
+            Ok(resp.get_block_count())
         } else {
             Err(resp.get_result().into())
         }

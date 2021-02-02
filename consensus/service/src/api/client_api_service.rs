@@ -127,7 +127,7 @@ impl ConsensusClientApi for ClientApiService {
 
         result = result.and_then(|mut response| {
             let num_blocks = self.ledger.num_blocks().map_err(ConsensusGrpcError::from)?;
-            response.set_num_blocks(num_blocks);
+            response.set_block_count(num_blocks);
             Ok(response)
         });
 
@@ -240,7 +240,7 @@ mod client_api_tests {
         match client.client_tx_propose(&message) {
             Ok(propose_tx_response) => {
                 assert_eq!(propose_tx_response.get_result(), ProposeTxResult::Ok);
-                assert_eq!(propose_tx_response.get_num_blocks(), num_blocks);
+                assert_eq!(propose_tx_response.get_block_count(), num_blocks);
             }
             Err(e) => panic!("Unexpected error: {:?}", e),
         }
@@ -311,7 +311,7 @@ mod client_api_tests {
                     propose_tx_response.get_result(),
                     ProposeTxResult::ContainsSpentKeyImage
                 );
-                assert_eq!(propose_tx_response.get_num_blocks(), num_blocks);
+                assert_eq!(propose_tx_response.get_block_count(), num_blocks);
             }
             Err(e) => panic!("Unexpected error: {:?}", e),
         }
@@ -373,7 +373,7 @@ mod client_api_tests {
                     propose_tx_response.get_result(),
                     ProposeTxResult::InvalidRangeProof
                 );
-                assert_eq!(propose_tx_response.get_num_blocks(), num_blocks);
+                assert_eq!(propose_tx_response.get_block_count(), num_blocks);
             }
             Err(e) => panic!("Unexpected error: {:?}", e),
         }
