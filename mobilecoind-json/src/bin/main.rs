@@ -549,12 +549,22 @@ fn check_transfer_status(
 /// Checks the status of a transfer given data for a specific receiver
 /// The sender of the transaction will take specific receipt data from the /transfer call
 /// and distribute it to the recipient(s) so they can verify that a transaction has been
-/// processed and the the person supplying the receipt can prove they intiated it
-#[post("/tx/status-as-receiver", format = "json", data = "<receipt>")]
+/// processed and the the person supplying the receipt can prove they intiated it.
+/// This API is tied to a specific monitor id since the account information is required in order to
+/// validate the confirmation number.
+#[post(
+    "/monitors/<monitor_hex>/tx-status-as-receiver",
+    format = "json",
+    data = "<receipt>"
+)]
 fn check_receiver_transfer_status(
     state: rocket::State<State>,
+    monitor_hex: String,
     receipt: Json<JsonReceiverTxReceipt>,
 ) -> Result<Json<JsonStatusResponse>, String> {
+    let monitor_id =
+        hex::decode(monitor_hex).map_err(|err| format!("Failed to decode monitor hex: {}", err))?;
+
     let mut receiver_receipt = mc_mobilecoind_api::ReceiverTxReceipt::new();
     let mut tx_public_key = CompressedRistretto::new();
     tx_public_key.set_data(hex::decode(&receipt.tx_public_key).map_err(|err| format!("{}", err))?);
@@ -568,6 +578,7 @@ fn check_receiver_transfer_status(
 
     let mut req = mc_mobilecoind_api::GetTxStatusAsReceiverRequest::new();
     req.set_receipt(receiver_receipt);
+    req.set_monitor_id(monitor_id);
 
     let resp = state
         .mobilecoind_api_client
