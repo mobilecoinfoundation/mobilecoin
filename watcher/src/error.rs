@@ -46,6 +46,9 @@ pub enum WatcherDBError {
     #[fail(display = "NotFound")]
     NotFound,
 
+    #[fail(display = "AlreadyExists")]
+    AlreadyExists,
+
     #[fail(display = "Serialization")]
     Serialization,
 
