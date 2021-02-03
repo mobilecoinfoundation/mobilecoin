@@ -22,7 +22,7 @@ pub const BLOCK_DATAS_BY_INDEX_DB_NAME: &str = "watcher_db:block_data:blocks_dat
 /// Blocks by hash database name.
 pub const BLOCKS_BY_HASH_DB_NAME: &str = "watcher_db:block_data:blocks_by_hash";
 
-/// BlockContentss by hash database name.
+/// BlockContents by hash database name.
 pub const BLOCK_CONTENTS_BY_HASH_DB_NAME: &str = "watcher_db:block_data:block_contents_by_hash";
 
 /// An internal object for representing BlockData that doesn't hold the actual Block and
