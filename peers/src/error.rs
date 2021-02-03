@@ -26,7 +26,7 @@ pub type RetryResult<T> = StdResult<T, RetryError<Error>>;
 /// An enumeration of errors which can occur as the result of a peer connection issue
 #[derive(Debug, Fail)]
 pub enum Error {
-    /// There was an eror during attestation
+    /// There was an error during attestation
     #[fail(display = "Attestation failure: {}", _0)]
     Attestation(PeerAttestationError),
     /// A requested resource was not found.
