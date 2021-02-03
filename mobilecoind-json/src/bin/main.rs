@@ -549,7 +549,7 @@ fn check_transfer_status(
 /// Checks the status of a transfer given data for a specific receiver
 /// The sender of the transaction will take specific receipt data from the /transfer call
 /// and distribute it to the recipient(s) so they can verify that a transaction has been
-/// processed and the the person supplying the receipt can prove they intiated it.
+/// processed and the the person supplying the receipt can prove they initiated it.
 /// This API is tied to a specific monitor id since the account information is required in order to
 /// validate the confirmation number.
 #[post(
