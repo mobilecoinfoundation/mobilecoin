@@ -75,10 +75,7 @@ where
         use mc_crypto_keys::KexPublic;
         let (our_public, shared_secret) = key.new_secret(rng);
 
-        // FIXME: using to_bytes API here seems to confuse the compiler
-        let curve_point_bytes = // our_public.to_bytes();
-            our_public.map_bytes(|bytes|
-            GenericArray::<u8, <KexAlgo::Public as ReprBytes>::Size>::clone_from_slice(bytes));
+        let curve_point_bytes = our_public.to_bytes();
 
         // KDF
         let (aes_key, aes_nonce) = Self::kdf_step(&shared_secret);

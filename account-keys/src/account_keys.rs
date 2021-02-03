@@ -365,7 +365,6 @@ impl AccountKey {
             fog_authority_fingerprint_sig: Default::default(),
         };
 
-        // FIXME: MC-1614 Pending cryptographer review
         if !self.fog_report_url.is_empty() {
             // Construct the fog authority signature over the fingerprint using the view privkey
             let view_private = self.subaddress_view_private(index);
