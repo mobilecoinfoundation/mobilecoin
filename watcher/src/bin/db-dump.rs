@@ -50,11 +50,6 @@ fn main() {
     }
     println!();
 
-    // let highest_synced_block_count = last_synced_blocks
-    //     .iter()
-    //     .map(|(url, block_index)| block_index + 1)
-    // .unwrap_or(0);
-
     println!("Signers:");
     for (tx_src_url, max_block_index) in last_synced_blocks.iter() {
         let max_block_count = max_block_index.map(|idx| idx + 1).unwrap_or(0);
