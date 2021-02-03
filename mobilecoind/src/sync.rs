@@ -589,4 +589,66 @@ mod test {
 
         assert!(!utxos.contains(&first_utxo));
     }
+
+    #[test_with_logger]
+    fn test_utxo_value_zero(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([98u8; 32]);
+
+        let account_keys: Vec<_> = (0..5).map(|_i| AccountKey::random(&mut rng)).collect();
+
+        let data = MonitorData::new(
+            account_keys[0].clone(),
+            DEFAULT_SUBADDRESS_INDEX, // first subaddress
+            5,                        // number of subaddresses
+            0,                        // first block
+            "",                       // name
+        )
+        .unwrap();
+
+        let monitor_id = MonitorId::from(&data);
+
+        let recipients: Vec<PublicAddress> = account_keys
+            .iter()
+            .map(AccountKey::default_subaddress)
+            .collect();
+
+        // Generate a test database with one block.
+        let (mut ledger_db, mobilecoind_db) =
+            get_test_databases(0, &recipients, 1, logger.clone(), &mut rng);
+
+        // Add monitor.
+        assert_eq!(mobilecoind_db.add_monitor(&data).unwrap(), monitor_id);
+
+        // Sync.
+        let result = sync_monitor(&ledger_db, &mobilecoind_db, &monitor_id, &logger).unwrap();
+        assert_eq!(result, SyncMonitorOk::NoMoreBlocks);
+
+        // Should have a single non-zero utxo for our monitor.
+        let utxos = mobilecoind_db
+            .get_utxos_for_subaddress(&monitor_id, DEFAULT_SUBADDRESS_INDEX)
+            .unwrap();
+
+        assert_eq!(utxos.len(), 1);
+        assert_ne!(utxos[0].value, 0);
+
+        // Add a block with 0-value txout that spends our first utxo and sync it.
+        add_block_to_ledger_db(
+            &mut ledger_db,
+            &[recipients[0].clone()],
+            0,
+            &[utxos[0].key_image.clone()],
+            &mut rng,
+        );
+
+        let result = sync_monitor(&ledger_db, &mobilecoind_db, &monitor_id, &logger).unwrap();
+        assert_eq!(result, SyncMonitorOk::NoMoreBlocks);
+
+        // We should now have only a zero utxo.
+        let utxos = mobilecoind_db
+            .get_utxos_for_subaddress(&monitor_id, DEFAULT_SUBADDRESS_INDEX)
+            .unwrap();
+
+        assert_eq!(utxos.len(), 1);
+        assert_eq!(utxos[0].value, 0);
+    }
 }
