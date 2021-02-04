@@ -3,8 +3,7 @@
 #![feature(external_doc)]
 #![doc(include = "../../README.md")]
 
-//! This is a test utility for the watcher, to sync block signatures and stop once all
-//! blocks are synced.
+//! A standalone watcher program that can sync data from multiple sources.
 
 use mc_watcher::{
     config::WatcherConfig, verification_reports_collector::VerificationReportsCollector,

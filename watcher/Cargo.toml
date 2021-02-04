@@ -5,8 +5,12 @@ authors = ["MobileCoin"]
 edition = "2018"
 
 [[bin]]
-name = "watcher"
+name = "mc-watcher"
 path = "src/bin/main.rs"
+
+[[bin]]
+name = "mc-watcher-db-dump"
+path = "src/bin/db-dump.rs"
 
 [dependencies]
 mc-api = { path = "../api" }

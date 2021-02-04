@@ -123,8 +123,37 @@ impl BlockDataStore {
         }
     }
 
-    /// Get all known BlockDatas for a given block index, mapped by tx source url.
+    /// Get BlockData for a given block index provided by a specific tx source url.
     pub fn get_block_data(
+        &self,
+        db_txn: &impl Transaction,
+        src_url: &Url,
+        block_index: BlockIndex,
+    ) -> Result<BlockData, WatcherDBError> {
+        let mut key_bytes = block_index.to_be_bytes().to_vec();
+        key_bytes.extend(src_url.as_str().as_bytes());
+
+        let stored_block_data_bytes = match db_txn.get(self.block_datas_by_index, &key_bytes) {
+            Ok(bytes) => Ok(bytes),
+            Err(lmdb::Error::NotFound) => Err(WatcherDBError::NotFound),
+            Err(err) => Err(err.into()),
+        }?;
+
+        let stored_block_data: StoredBlockData = decode(&stored_block_data_bytes)?;
+
+        let block = self.get_block_by_hash(db_txn, &stored_block_data.block_hash)?;
+        let block_contents =
+            self.get_block_contents_by_hash(db_txn, &stored_block_data.block_contents_hash)?;
+
+        Ok(BlockData::new(
+            block,
+            block_contents,
+            stored_block_data.signature,
+        ))
+    }
+
+    /// Get all known BlockDatas for a given block index, mapped by tx source url.
+    pub fn get_block_data_map(
         &self,
         db_txn: &impl Transaction,
         block_index: BlockIndex,
@@ -266,7 +295,9 @@ mod tests {
         // Initially, there is no data.
         for block_data in block_datas.iter() {
             assert_eq!(
-                watcher_db.get_block_data(block_data.block().index).unwrap(),
+                watcher_db
+                    .get_block_data_map(block_data.block().index)
+                    .unwrap(),
                 HashMap::default()
             );
         }
@@ -278,13 +309,13 @@ mod tests {
 
         assert_eq!(
             watcher_db
-                .get_block_data(block_datas[0].block().index)
+                .get_block_data_map(block_datas[0].block().index)
                 .unwrap(),
             HashMap::from_iter(vec![(tx_src_url1.clone(), block_datas[0].clone()),])
         );
         assert_eq!(
             watcher_db
-                .get_block_data(block_datas[1].block().index)
+                .get_block_data_map(block_datas[1].block().index)
                 .unwrap(),
             HashMap::default()
         );
@@ -296,7 +327,7 @@ mod tests {
 
         assert_eq!(
             watcher_db
-                .get_block_data(block_datas[0].block().index)
+                .get_block_data_map(block_datas[0].block().index)
                 .unwrap(),
             HashMap::from_iter(vec![
                 (tx_src_url1.clone(), block_datas[0].clone()),
@@ -305,7 +336,7 @@ mod tests {
         );
         assert_eq!(
             watcher_db
-                .get_block_data(block_datas[1].block().index)
+                .get_block_data_map(block_datas[1].block().index)
                 .unwrap(),
             HashMap::default()
         );
@@ -322,7 +353,7 @@ mod tests {
 
         assert_eq!(
             watcher_db
-                .get_block_data(block_datas[0].block().index)
+                .get_block_data_map(block_datas[0].block().index)
                 .unwrap(),
             HashMap::from_iter(vec![
                 (tx_src_url1.clone(), block_datas[0].clone()),
@@ -331,7 +362,7 @@ mod tests {
         );
         assert_eq!(
             watcher_db
-                .get_block_data(block_datas[1].block().index)
+                .get_block_data_map(block_datas[1].block().index)
                 .unwrap(),
             HashMap::from_iter(vec![(tx_src_url2.clone(), block_datas[1].clone()),])
         );

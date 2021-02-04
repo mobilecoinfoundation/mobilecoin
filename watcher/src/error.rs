@@ -1,5 +1,7 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
+//! Error data types
+
 use failure::Fail;
 use mc_connection::Error as ConnectionError;
 use mc_crypto_keys::KeyError;
@@ -9,15 +11,19 @@ use std::string::FromUtf8Error;
 /// Watcher Errors
 #[derive(Debug, Fail)]
 pub enum WatcherError {
+    /// URL parse error: {}
     #[fail(display = "URL Parse Error: {}", _0)]
     URLParse(url::ParseError),
 
+    /// DB error: {}
     #[fail(display = "WatcherDBError: {}", _0)]
     DB(WatcherDBError),
 
+    /// Sync failed
     #[fail(display = "SyncFailed")]
     SyncFailed,
 
+    /// Connection error: {}
     #[fail(display = "Node connection error: {}", _0)]
     Connection(ConnectionError),
 }
@@ -43,39 +49,51 @@ impl From<ConnectionError> for WatcherError {
 /// WatcherDB Errors
 #[derive(Debug, Eq, PartialEq, Copy, Clone, Fail)]
 pub enum WatcherDBError {
+    /// Not found
     #[fail(display = "NotFound")]
     NotFound,
 
+    /// Already exists
     #[fail(display = "AlreadyExists")]
     AlreadyExists,
 
+    /// Serialization
     #[fail(display = "Serialization")]
     Serialization,
 
+    /// Deserialization
     #[fail(display = "Deserialization")]
     Deserialization,
 
+    /// Loading blocks out of order
     #[fail(display = "Loading blocks out of order.")]
     BlockOrder,
 
+    /// LMDB error: {}
     #[fail(display = "LmdbError: {}", _0)]
     LmdbError(lmdb::Error),
 
+    /// IO Error
     #[fail(display = "Error managing IO")]
     IO,
 
+    /// Database was opened in read-only mode
     #[fail(display = "Database was opened in read-only mode")]
     ReadOnly,
 
+    /// Metadata store error: {}
     #[fail(display = "Metadata store error: {}", _0)]
     MetadataStore(MetadataStoreError),
 
+    /// UTF8 error
     #[fail(display = "Utf8 error")]
     Utf8,
 
+    /// URL Parse error: {}
     #[fail(display = "URL Parse Error: {}", _0)]
     URLParse(url::ParseError),
 
+    /// Cryptographic key error: {}
     #[fail(display = "Crypto key error: {}", _0)]
     CryptoKey(KeyError),
 }

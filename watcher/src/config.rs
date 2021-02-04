@@ -11,7 +11,7 @@ use url::Url;
 
 #[derive(Debug, StructOpt)]
 #[structopt(
-    name = "watcher",
+    name = "mc-watcher",
     about = "Sync data from multiple sources, reconcile blocks, and verify signatures."
 )]
 /// Configuration for the Watcher Node.
