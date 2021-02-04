@@ -36,6 +36,7 @@ use mbedtls::{
     hash, pk,
     x509::{Certificate, Profile},
 };
+use mc_crypto_digestible::Digestible;
 use mc_util_encodings::{Error as EncodingError, FromBase64, FromHex, ToBase64};
 use prost::{
     bytes::{Buf, BufMut},
@@ -465,7 +466,9 @@ impl<'src> TryFrom<&'src VerificationReport> for VerificationReportData {
 }
 
 /// A type containing the bytes of the VerificationReport signature
-#[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(
+    Clone, Debug, Default, Deserialize, Digestible, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize,
+)]
 #[repr(transparent)]
 pub struct VerificationSignature(Vec<u8>);
 
@@ -545,7 +548,9 @@ const MAX_CHAIN_DEPTH: usize = 5;
 /// This structure is supposed to be filled in from the results of an IAS
 /// web request and then validated directly or serialized into an enclave for
 /// validation.
-#[derive(Clone, Deserialize, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(
+    Clone, Deserialize, Digestible, Eq, Hash, Message, Ord, PartialEq, PartialOrd, Serialize,
+)]
 pub struct VerificationReport {
     /// Report Signature bytes, from the X-IASReport-Signature HTTP header.
     #[prost(message, required)]
