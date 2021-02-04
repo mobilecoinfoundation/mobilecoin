@@ -2,29 +2,25 @@
 
 //! Error data types
 
-use failure::Fail;
+use displaydoc::Display;
 use mc_connection::Error as ConnectionError;
 use mc_crypto_keys::KeyError;
 use mc_util_lmdb::MetadataStoreError;
 use std::string::FromUtf8Error;
 
 /// Watcher Errors
-#[derive(Debug, Fail)]
+#[derive(Debug, Display)]
 pub enum WatcherError {
-    /// URL parse error: {}
-    #[fail(display = "URL Parse Error: {}", _0)]
+    /// URL parse: {0}
     URLParse(url::ParseError),
 
-    /// DB error: {}
-    #[fail(display = "WatcherDBError: {}", _0)]
+    /// DB: {0}
     DB(WatcherDBError),
 
     /// Sync failed
-    #[fail(display = "SyncFailed")]
     SyncFailed,
 
-    /// Connection error: {}
-    #[fail(display = "Node connection error: {}", _0)]
+    /// Connection: {0}
     Connection(ConnectionError),
 }
 
@@ -47,54 +43,42 @@ impl From<ConnectionError> for WatcherError {
 }
 
 /// WatcherDB Errors
-#[derive(Debug, Eq, PartialEq, Copy, Clone, Fail)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, Display)]
 pub enum WatcherDBError {
     /// Not found
-    #[fail(display = "NotFound")]
     NotFound,
 
     /// Already exists
-    #[fail(display = "AlreadyExists")]
     AlreadyExists,
 
     /// Serialization
-    #[fail(display = "Serialization")]
     Serialization,
 
     /// Deserialization
-    #[fail(display = "Deserialization")]
     Deserialization,
 
     /// Loading blocks out of order
-    #[fail(display = "Loading blocks out of order.")]
     BlockOrder,
 
-    /// LMDB error: {}
-    #[fail(display = "LmdbError: {}", _0)]
+    /// LMDB: {0}
     LmdbError(lmdb::Error),
 
-    /// IO Error
-    #[fail(display = "Error managing IO")]
+    /// IO
     IO,
 
     /// Database was opened in read-only mode
-    #[fail(display = "Database was opened in read-only mode")]
     ReadOnly,
 
-    /// Metadata store error: {}
-    #[fail(display = "Metadata store error: {}", _0)]
+    /// Metadata store: {0}
     MetadataStore(MetadataStoreError),
 
-    /// UTF8 error
-    #[fail(display = "Utf8 error")]
+    /// UTF8
     Utf8,
 
-    /// URL Parse error: {}
-    #[fail(display = "URL Parse Error: {}", _0)]
+    /// URL Parse: {0}
     URLParse(url::ParseError),
 
-    /// Cryptographic key error: {}
-    #[fail(display = "Crypto key error: {}", _0)]
+    /// Cryptographic key: {0}
     CryptoKey(KeyError),
 }
 

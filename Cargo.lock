@@ -3728,7 +3728,7 @@ dependencies = [
 name = "mc-watcher"
 version = "1.0.0"
 dependencies = [
- "failure",
+ "displaydoc",
  "grpcio",
  "hex 0.4.2",
  "lazy_static",
