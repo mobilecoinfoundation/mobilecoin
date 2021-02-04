@@ -40,6 +40,7 @@ members = [
     "fog/report/connection",
     "fog/report/validation",
     "fog/report/validation/test-utils",
+    "fog/sig",
     "fog/types",
     "ledger/db",
     "ledger/distribution",

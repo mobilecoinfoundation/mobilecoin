@@ -3,10 +3,12 @@ name = "mc-fog-sig"
 version = "1.0.0"
 authors = ["MobileCoin"]
 edition = "2018"
-description = "MobileCoin Fog Signatures"
-readme = "README.md"
+description = "Create and verify fog authority and report signatures"
 
 [dependencies]
-mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
-mc-crypto-digestible-signature = { path = "../../crypto/digestible/signature", default-features = false }
-mc-crypto-x509-utils = { path = "../../crypto/x509/utils", default-features = false }
+mc-crypto-keys = { path = "../../crypto/keys" }
+
+displaydoc = { version = "0.1.7", default-features = false }
+pem = "0.8"
+signature = { version = "1.2.2" }
+x509-signature = "0.5"
