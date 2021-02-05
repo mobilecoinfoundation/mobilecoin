@@ -14,5 +14,6 @@
 //! certificate.
 
 mod authority;
+mod report;
 
 pub use authority::{context, Signer as AuthoritySigner, Verifier as AuthorityVerifier};
