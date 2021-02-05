@@ -148,9 +148,8 @@ mod test {
     //! We're only testing the default implementations here, everything else is
     //! assumed to be tested in-situ.
 
-    use crate::authority::{AuthorityError, Signer, Verifier};
-    use mc_crypto_digestible_signature::Error;
-    use signature::Signature;
+    use super::*;
+    use signature::{Error as SignatureError, Signature};
 
     #[derive(Debug)]
     struct MockSig(Vec<u8>);
@@ -162,7 +161,7 @@ mod test {
     }
 
     impl Signature for MockSig {
-        fn from_bytes(bytes: &[u8]) -> Result<Self, Error> {
+        fn from_bytes(bytes: &[u8]) -> Result<Self, SignatureError> {
             Ok(Self(Vec::from(bytes)))
         }
     }

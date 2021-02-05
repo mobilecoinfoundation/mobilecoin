@@ -29,3 +29,37 @@ impl Verifier for Ed25519Public {
         self.verify_digestible(super::context(), &reports, sig)
     }
 }
+
+#[cfg(test)]
+mod test {
+    //! Unit tests.
+    //!
+    //! We assume signing, context changes, mutability, etc. is tested at lower
+    //! level, and just do a round-trip.
+
+    use super::*;
+    use mc_attest_core::VerificationSignature;
+    use mc_util_from_random::FromRandom;
+    use rand_core::SeedableRng;
+    use rand_hc::Hc128Rng;
+
+    #[test]
+    fn roundtrip() {
+        let reports = [VerificationReport {
+            sig: VerificationSignature::default(),
+            chain: vec![],
+            http_body: "this should probably be a json".to_string(),
+        }];
+
+        let mut csprng = Hc128Rng::seed_from_u64(0);
+        let pair = Ed25519Pair::from_random(&mut csprng);
+        let sig = pair
+            .sign_reports(&reports)
+            .expect("Could not sign verification reports");
+
+        let public = pair.public_key();
+        public
+            .verify_reports(&reports, &sig)
+            .expect("Could not verify signature over reports");
+    }
+}

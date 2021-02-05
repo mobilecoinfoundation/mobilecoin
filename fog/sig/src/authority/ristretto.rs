@@ -39,8 +39,7 @@ mod test {
     //! We assume signing, context changes, mutability, etc. is tested at lower
     //! level, and just do a round-trip.
 
-    use crate::authority::{Signer, Verifier};
-    use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
+    use super::*;
     use mc_util_from_random::FromRandom;
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
