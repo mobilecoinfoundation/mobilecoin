@@ -478,6 +478,12 @@ impl AsRef<[u8]> for VerificationSignature {
     }
 }
 
+impl Into<Vec<u8>> for VerificationSignature {
+    fn into(self) -> Vec<u8> {
+        self.0
+    }
+}
+
 impl From<Vec<u8>> for VerificationSignature {
     fn from(src: Vec<u8>) -> Self {
         Self(src)

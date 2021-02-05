@@ -17,6 +17,7 @@ cargo-emit = "0.1.1"
 
 [dependencies]
 mc-attest-ake = { path = "../ake" }
+mc-attest-core = { path = "../core" }
 mc-attest-enclave-api = { path = "../enclave-api" }
 mc-crypto-keys = { path = "../../crypto/keys" }
 mc-crypto-noise = { path = "../../crypto/noise" }

@@ -2,10 +2,14 @@
 
 //! Conversions from gRPC message types into consensus_enclave_api types.
 
-use crate::attest::{AuthMessage, Message};
+use crate::{
+    attest::{AuthMessage, Message},
+    attest_types::VerificationReport,
+};
 use aead::{AeadMut, NewAead};
 use digest::{BlockInput, FixedOutput, Reset, Update};
 use mc_attest_ake::{AuthRequestOutput, AuthResponseOutput};
+use mc_attest_core::VerificationReport as AttestVerificationReport;
 use mc_attest_enclave_api::{
     ClientAuthRequest, ClientAuthResponse, EnclaveMessage, PeerAuthRequest, PeerAuthResponse,
     Session,
@@ -107,6 +111,26 @@ impl<S: Session> From<EnclaveMessage<S>> for Message {
         retval.set_aad(src.aad);
         retval.set_channel_id(src.channel_id.clone().into());
         retval.set_data(src.data);
+        retval
+    }
+}
+
+impl Into<AttestVerificationReport> for VerificationReport {
+    fn into(self) -> AttestVerificationReport {
+        AttestVerificationReport {
+            sig: self.sig.into(),
+            chain: self.chain.into(),
+            http_body: self.http_body,
+        }
+    }
+}
+
+impl From<AttestVerificationReport> for VerificationReport {
+    fn from(src: AttestVerificationReport) -> VerificationReport {
+        let mut retval = VerificationReport::default();
+        retval.set_sig(src.sig.into());
+        retval.set_chain(src.chain.into());
+        retval.set_http_body(src.http_body);
         retval
     }
 }
