@@ -3,54 +3,13 @@
 //! Utilities for handling X509 certificate chains
 
 use displaydoc::Display;
-use mc_crypto_keys::{Ed25519Public, KeyError};
-use std::{cmp, convert::TryFrom, io::Cursor, str::FromStr};
-use x509_parser::{
-    certificate::X509Certificate, der_parser::oid::Oid, error::X509Error, pem::Pem,
-    x509::AlgorithmIdentifier,
+use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public, KeyError};
+use pem::Pem;
+use std::{
+    convert::TryFrom,
+    time::{SystemTime, SystemTimeError},
 };
-
-/// An iterator of [`Pem`] structures created over a string slice.
-pub struct PemStringIter<T> {
-    string: Cursor<T>,
-    offset: usize,
-}
-
-impl<T: AsRef<[u8]>> PemStringIter<T> {
-    /// Create a new iterator based on the given string.
-    fn new(inner: T) -> Self {
-        Self {
-            string: Cursor::new(inner),
-            offset: 0,
-        }
-    }
-}
-
-impl<T: AsRef<[u8]>> Iterator for PemStringIter<T> {
-    type Item = Pem;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        Pem::read(&mut self.string)
-            .map(|(pem, new_offset)| {
-                self.offset = new_offset;
-                pem
-            })
-            .ok()
-    }
-}
-
-/// A trait used to monkey-patch a pem parsing iterator over string slices
-pub trait PemStringIterable: AsRef<[u8]> + Sized {
-    /// Create an iterator over a string which contains Pem objects
-    fn into_pem_iter(self) -> PemStringIter<Self>;
-}
-
-/// Anything which can be referenced as a byte slice gets into_iter_pem()
-impl<T: AsRef<[u8]>> PemStringIterable for T {
-    fn into_pem_iter(self) -> PemStringIter<T> {
-        PemStringIter::new(self)
-    }
-}
+use x509_signature::{ASN1Time, Error as X509Error, X509Certificate};
 
 /// An iterator of [`X509Certificate`] objects over a slice of [`Pem`] objects.
 pub struct X509CertificateIter<'a> {
@@ -74,12 +33,8 @@ impl<'a> Iterator for X509CertificateIter<'a> {
         if self.offset == self.pem_slice.len() {
             None
         } else {
-            X509Certificate::from_der(&self.pem_slice[self.offset].contents)
-                .map(|(_, x509)| {
-                    self.offset += 1;
-                    x509
-                })
-                .ok()
+            self.offset += 1;
+            x509_signature::parse_certificate(&self.pem_slice[self.offset - 1].contents).ok()
         }
     }
 }
@@ -99,16 +54,21 @@ impl<T: AsRef<[Pem]>> X509CertificateIterable for T {
 }
 
 /// An emumeration of errors
-#[derive(Debug, Display, PartialEq)]
+#[derive(Debug, Display, Eq, PartialEq)]
 pub enum ChainError {
     /// The chain slice is empty
     Empty,
-    /// X509 signature verification error: {0}
+    /// Could not retrieve the current time: second time provided was later than
+    /// self
+    SystemTime,
+    /// X509 error: {0:?}
     X509(X509Error),
-    /// Certificate with an invalid date
-    InvalidDate,
-    /// The last certificate is an Authority
-    TailIsAuthority,
+}
+
+impl From<SystemTimeError> for ChainError {
+    fn from(_src: SystemTimeError) -> ChainError {
+        ChainError::SystemTime
+    }
 }
 
 impl From<X509Error> for ChainError {
@@ -136,32 +96,32 @@ impl<'a, T: AsRef<[X509Certificate<'a>]>> X509CertificateChain for T {
 
         for (index, cert) in self.as_ref().iter().enumerate() {
             // If the cert wasn't signed by the preceeding cert (or itself, if first), fail.
-            cert.verify_signature(previous)?;
+            if let Some(prev_cert) = previous {
+                cert.check_issued_by(prev_cert)?;
+            } else {
+                cert.check_self_issued()?;
+            }
+
+            let timestamp = SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)?
+                .as_secs() as i64;
+            eprintln!(
+                "Cert: Now: {:?}, Not Before: {:?}, Not After: {:?}",
+                ASN1Time::try_from(timestamp).expect("asn1 timestamp of now is incorrect"),
+                cert.not_before(),
+                cert.not_after()
+            );
 
             // If the cert isn't valid (temporally), fail.
-            if !cert.validity().is_valid() {
-                return Err(ChainError::InvalidDate);
-            }
+            cert.valid_at_timestamp(timestamp)?;
 
             // Update state for the next iteration
-            previous = Some(&cert.tbs_certificate.subject_pki);
+            previous = Some(cert);
             // Update the number of certificates which have passed validation
             cert_count = index + 1;
-
-            if !cert.tbs_certificate.is_ca() {
-                break;
-            }
         }
 
-        // If the last cert in the chain is a CA, fail.
-        if self.as_ref()[cmp::max(0, cert_count - 1)]
-            .tbs_certificate
-            .is_ca()
-        {
-            Err(ChainError::TailIsAuthority)
-        } else {
-            Ok(cert_count)
-        }
+        Ok(cert_count)
     }
 }
 
@@ -178,19 +138,9 @@ pub trait X509KeyExtrator {
     fn mc_public_key(&self) -> Result<PublicKeyType, KeyError>;
 }
 
-fn ed25519_algorithm_identifier() -> AlgorithmIdentifier<'static> {
-    AlgorithmIdentifier {
-        algorithm: Oid::from_str("1.3.101.112").expect("Invalid hard-coded OID for Ed25519"),
-        parameters: None,
-    }
-}
-
 impl X509KeyExtrator for X509Certificate<'_> {
     fn mc_public_key(&self) -> Result<PublicKeyType, KeyError> {
-        if self.tbs_certificate.subject_pki.algorithm == ed25519_algorithm_identifier() {
-            let pubkey = Ed25519Public::try_from(
-                self.tbs_certificate.subject_pki.subject_public_key.as_ref(),
-            )?;
+        if let Ok(pubkey) = Ed25519Public::try_from_der(self.subject_public_key_info().spki()) {
             Ok(PublicKeyType::Ed25519(pubkey))
         } else {
             Err(KeyError::AlgorithmMismatch)
@@ -211,7 +161,7 @@ mod test {
     fn valid_chain() {
         let (pem_string, pair) = test_vectors::ok_rsa_chain_25519_leaf();
 
-        let cert_ders = pem_string.into_pem_iter().collect::<Vec<Pem>>();
+        let cert_ders = pem::parse_many(pem_string);
         let certs = cert_ders.iter_x509().collect::<Vec<X509Certificate>>();
 
         assert_eq!(
@@ -235,7 +185,7 @@ mod test {
     fn depth10_chain() {
         let (pem_string, pair) = test_vectors::ok_rsa_chain_depth_10();
 
-        let cert_ders = pem_string.into_pem_iter().collect::<Vec<Pem>>();
+        let cert_ders = pem::parse_many(pem_string);
         let certs = cert_ders.iter_x509().collect::<Vec<X509Certificate>>();
 
         assert_eq!(
@@ -259,13 +209,13 @@ mod test {
     fn tree_not_chain() {
         let pem_string = test_vectors::ok_rsa_tree();
 
-        let cert_ders = pem_string.into_pem_iter().collect::<Vec<Pem>>();
+        let cert_ders = pem::parse_many(pem_string);
         let certs = cert_ders.iter_x509().collect::<Vec<X509Certificate>>();
         let err = certs
             .verify_chain()
-            .expect_err("Verification of known-bad chain didn't succed");
+            .expect_err("Verification of tree-not-chain did not fail");
 
-        assert_eq!(err, ChainError::X509(X509Error::SignatureVerificationError));
+        assert_eq!(err, ChainError::X509(X509Error::UnknownIssuer));
     }
 
     /// Ensure a certificate chain missing its root (no root, intermediate,
@@ -274,13 +224,13 @@ mod test {
     fn missing_head() {
         let (pem_string, _pair) = test_vectors::fail_missing_head();
 
-        let cert_ders = pem_string.into_pem_iter().collect::<Vec<Pem>>();
+        let cert_ders = pem::parse_many(pem_string);
         let certs = cert_ders.iter_x509().collect::<Vec<X509Certificate>>();
         let err = certs
             .verify_chain()
-            .expect_err("Verification of known-bad chain didn't succed");
+            .expect_err("Verification of missing head chain did not fail");
 
-        assert_eq!(err, ChainError::X509(X509Error::SignatureVerificationError));
+        assert_eq!(err, ChainError::X509(X509Error::UnknownIssuer));
     }
 
     /// Ensure a broken chain (root, no intermediate, leaf) is not verified.
@@ -288,13 +238,13 @@ mod test {
     fn missing_link() {
         let (pem_string, _pair) = test_vectors::fail_missing_link();
 
-        let cert_ders = pem_string.into_pem_iter().collect::<Vec<Pem>>();
+        let cert_ders = pem::parse_many(pem_string);
         let certs = cert_ders.iter_x509().collect::<Vec<X509Certificate>>();
         let err = certs
             .verify_chain()
-            .expect_err("Verification of known-bad chain didn't succed");
+            .expect_err("Verification of missing-link chain did not fail");
 
-        assert_eq!(err, ChainError::X509(X509Error::SignatureVerificationError));
+        assert_eq!(err, ChainError::X509(X509Error::UnknownIssuer));
     }
 
     /// Ensure a chain containing a not-yet-valid cert is not verified.
@@ -302,13 +252,14 @@ mod test {
     fn too_soon() {
         let (pem_string, _pair) = test_vectors::fail_leaf_too_soon();
 
-        let cert_ders = pem_string.into_pem_iter().collect::<Vec<Pem>>();
+        let cert_ders = pem::parse_many(pem_string);
         let certs = cert_ders.iter_x509().collect::<Vec<X509Certificate>>();
         let err = certs
             .verify_chain()
-            .expect_err("Verification of known-bad chain didn't succed");
+            .expect_err("Verification of not-yet-valid chain did not fail");
 
-        assert_eq!(err, ChainError::InvalidDate);
+        // FIXME: Investigate
+        assert_eq!(err, ChainError::X509(X509Error::CertNotValidYet));
     }
 
     /// Ensure a chain containing an expired cert is not verified.
@@ -316,12 +267,12 @@ mod test {
     fn expired() {
         let (pem_string, _pair) = test_vectors::fail_leaf_expired();
 
-        let cert_ders = pem_string.into_pem_iter().collect::<Vec<Pem>>();
+        let cert_ders = pem::parse_many(pem_string);
         let certs = cert_ders.iter_x509().collect::<Vec<X509Certificate>>();
         let err = certs
             .verify_chain()
-            .expect_err("Verification of known-bad chain didn't succed");
+            .expect_err("Verification of expired chain did not fail");
 
-        assert_eq!(err, ChainError::InvalidDate);
+        assert_eq!(err, ChainError::X509(X509Error::CertExpired));
     }
 }
