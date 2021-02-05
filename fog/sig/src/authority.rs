@@ -8,20 +8,16 @@ mod ristretto;
 
 use core::fmt::{Debug, Display as DisplayTrait};
 use displaydoc::Display;
-use mc_crypto_keys::{PrivateKey, PublicKey};
 use pem::PemError;
 use signature::Signature;
 use x509_signature::{Error as X509Error, SubjectPublicKeyInfo, X509Certificate};
-
-/// The context tag/domain separator for fog signatures
-const DOMAIN_SEPARATOR: &[u8; 23] = b"Fog authority signature";
 
 /// Retrieve the canonical signing context byte string.
 ///
 /// This is intended to be used by crate-remote implementations of the
 /// signature who want a "standard"
 pub fn context() -> &'static [u8] {
-    DOMAIN_SEPARATOR
+    b"Fog authority signature"
 }
 
 /// A wrap-up error type which can display authority signature-related errors
@@ -49,7 +45,7 @@ impl<E: Debug + DisplayTrait + Eq + PartialEq> From<X509Error> for AuthorityErro
 
 /// A trait used to monkey-patch authority signatures onto existing private-key
 /// types.
-pub trait Signer: PrivateKey {
+pub trait Signer {
     /// The signature output type
     type Sig: Signature;
     /// The error type
@@ -94,7 +90,7 @@ pub trait Signer: PrivateKey {
     ) -> Result<Self::Sig, AuthorityError<<Self as Signer>::Error>>;
 }
 
-pub trait Verifier: PublicKey {
+pub trait Verifier {
     /// The signature type to be verified
     type Sig: Signature;
     /// The error type if a signature could not be verified
@@ -140,7 +136,85 @@ pub trait Verifier: PublicKey {
     /// Verify a signature over the raw subjectPublicKeyInfo bytes.
     fn verify_authority_sig_bytes(
         &self,
-        spki_byptes: &[u8],
+        spki_bytes: &[u8],
         sig: &Self::Sig,
     ) -> Result<(), AuthorityError<<Self as Verifier>::Error>>;
+}
+
+#[cfg(test)]
+mod test {
+    //! Unit tests for the authority traits
+    //!
+    //! We're only testing the default implementations here, everything else is
+    //! assumed to be tested in-situ.
+
+    use crate::authority::{AuthorityError, Signer, Verifier};
+    use mc_crypto_digestible_signature::Error;
+    use signature::Signature;
+
+    #[derive(Debug)]
+    struct MockSig(Vec<u8>);
+
+    impl AsRef<[u8]> for MockSig {
+        fn as_ref(&self) -> &[u8] {
+            self.0.as_ref()
+        }
+    }
+
+    impl Signature for MockSig {
+        fn from_bytes(bytes: &[u8]) -> Result<Self, Error> {
+            Ok(Self(Vec::from(bytes)))
+        }
+    }
+
+    #[derive(Default)]
+    struct MockSigner;
+
+    impl Signer for MockSigner {
+        type Sig = MockSig;
+        type Error = String;
+
+        fn sign_authority_bytes(
+            &self,
+            spki_bytes: &[u8],
+        ) -> Result<Self::Sig, AuthorityError<Self::Error>> {
+            Ok(MockSig::from_bytes(spki_bytes).expect("Could not construct mock sig from bytes"))
+        }
+    }
+
+    #[derive(Default)]
+    struct MockVerifier;
+
+    impl Verifier for MockVerifier {
+        type Sig = MockSig;
+        type Error = String;
+
+        fn verify_authority_sig_bytes(
+            &self,
+            spki_bytes: &[u8],
+            sig: &Self::Sig,
+        ) -> Result<(), AuthorityError<Self::Error>> {
+            if spki_bytes == &sig.0[..] {
+                Ok(())
+            } else {
+                Err(AuthorityError::Algorithm("spki difference".to_owned()))
+            }
+        }
+    }
+
+    /// Test the default implementations
+    #[test]
+    fn default_impls() {
+        let authority = mc_crypto_x509_test_vectors::ok_rsa_head();
+
+        let signer = MockSigner::default();
+        let sig = signer
+            .sign_authority_pem(&authority)
+            .expect("Could not sign sample authority");
+
+        let verifier = MockVerifier::default();
+        verifier
+            .verify_authority_sig(&authority, &sig)
+            .expect("Could not verify signature");
+    }
 }

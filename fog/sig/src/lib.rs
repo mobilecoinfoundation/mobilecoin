@@ -16,4 +16,9 @@
 mod authority;
 mod report;
 
-pub use authority::{context, Signer as AuthoritySigner, Verifier as AuthorityVerifier};
+pub use crate::{
+    authority::{
+        context as authority_context, Signer as AuthoritySigner, Verifier as AuthorityVerifier,
+    },
+    report::{context as report_context, Signer as ReportSigner, Verifier as ReportVerifier},
+};

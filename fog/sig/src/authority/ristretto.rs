@@ -31,3 +31,33 @@ impl AuthorityVerifier for RistrettoPublic {
             .map_err(|e| AuthorityError::Algorithm(format!("{:#}", e)))
     }
 }
+
+#[cfg(test)]
+mod test {
+    //! Unit tests.
+    //!
+    //! We assume signing, context changes, mutability, etc. is tested at lower
+    //! level, and just do a round-trip.
+
+    use crate::authority::{Signer, Verifier};
+    use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
+    use mc_util_from_random::FromRandom;
+    use rand_core::SeedableRng;
+    use rand_hc::Hc128Rng;
+
+    const TEST_MSG: &[u8] = b"The era of \"electronic mail\" may soon be upon us;";
+
+    #[test]
+    fn roundtrip() {
+        let mut csprng = Hc128Rng::seed_from_u64(0);
+        let privkey = RistrettoPrivate::from_random(&mut csprng);
+
+        let sig = privkey
+            .sign_authority_bytes(TEST_MSG)
+            .expect("Could not sign test message");
+        let pubkey = RistrettoPublic::from(&privkey);
+        pubkey
+            .verify_authority_sig_bytes(TEST_MSG, &sig)
+            .expect("Could not verify signature");
+    }
+}
