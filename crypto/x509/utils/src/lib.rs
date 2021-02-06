@@ -13,14 +13,14 @@ use x509_signature::{ASN1Time, Error as X509Error, X509Certificate};
 
 /// An iterator of [`X509Certificate`] objects over a slice of [`Pem`] objects.
 pub struct X509CertificateIter<'a> {
-    pem_slice: &'a [Pem],
+    pem_slice: Vec<&'a [u8]>,
     offset: usize,
 }
 
-impl<'a> X509CertificateIter<'a> {
-    fn new<T: AsRef<[Pem]>>(pems: &'a T) -> Self {
+impl<'a> From<Vec<&'a [u8]>> for X509CertificateIter<'a> {
+    fn from(pem_slice: Vec<&'a [u8]>) -> Self {
         Self {
-            pem_slice: pems.as_ref(),
+            pem_slice,
             offset: 0,
         }
     }
@@ -34,7 +34,7 @@ impl<'a> Iterator for X509CertificateIter<'a> {
             None
         } else {
             self.offset += 1;
-            x509_signature::parse_certificate(&self.pem_slice[self.offset - 1].contents).ok()
+            x509_signature::parse_certificate(self.pem_slice[self.offset - 1]).ok()
         }
     }
 }
@@ -49,7 +49,11 @@ pub trait X509CertificateIterable {
 /// certificates, and verify it is a well-formed single-path certificate chain.
 impl<T: AsRef<[Pem]>> X509CertificateIterable for T {
     fn iter_x509(&self) -> X509CertificateIter {
-        X509CertificateIter::new(self)
+        self.as_ref()
+            .iter()
+            .map(|pem| &pem.contents[..])
+            .collect::<Vec<&[u8]>>()
+            .into()
     }
 }
 
