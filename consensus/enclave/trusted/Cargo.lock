@@ -618,6 +618,7 @@ dependencies = [
  "mbedtls 0.5.1 (git+https://github.com/mobilecoinofficial/rust-mbedtls.git?tag=mc-0.3)",
  "mbedtls-sys-auto 2.18.1 (git+https://github.com/mobilecoinofficial/rust-mbedtls.git?tag=mc-0.3)",
  "mc-common 1.0.0",
+ "mc-crypto-digestible 1.0.0",
  "mc-crypto-rand 1.0.0",
  "mc-sgx-build 1.0.0",
  "mc-sgx-css 1.0.0",

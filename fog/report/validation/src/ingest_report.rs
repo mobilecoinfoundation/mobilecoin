@@ -2,10 +2,7 @@
 
 use core::convert::TryFrom;
 use displaydoc::Display;
-use mc_attest_core::{
-    QuoteSignType, ReportData, ReportDataMask, VerificationReport, VerificationReportData,
-    Verifier, VerifierError, VerifyError,
-};
+use mc_attest_core::{VerificationReport, Verifier, VerifierError, VerifyError};
 use mc_crypto_keys::{KeyError, RistrettoPublic};
 use mc_util_encodings::Error as EncodingError;
 
@@ -24,23 +21,10 @@ impl IngestReportVerifier {
         &self,
         remote_report: VerificationReport,
     ) -> Result<RistrettoPublic, Error> {
-        let verification_report_data = VerificationReportData::try_from(&remote_report)?;
-        let report_data: ReportData = verification_report_data.quote.report_body()?.report_data();
+        let parsed_report = self.verifier.verify(&remote_report)?;
+        let report_data = parsed_report.quote.report_body()?.report_data();
         let report_data_bytes: &[u8] = report_data.as_ref();
-
-        // Extract the pubkey from the signed evidence
-        let report_pubkey: RistrettoPublic = RistrettoPublic::try_from(&report_data_bytes[32..64])?;
-
-        let masked_report_data = ReportDataMask::new_with_mask(report_data_bytes, &[0u8; 32])?;
-
-        let mut verifier = self.verifier.clone();
-        verifier
-            .sign_type(QuoteSignType::Linkable)
-            .report_data(&masked_report_data);
-
-        verifier.verify(&remote_report)?;
-
-        Ok(report_pubkey)
+        Ok(RistrettoPublic::try_from(&report_data_bytes[32..64])?)
     }
 }
 

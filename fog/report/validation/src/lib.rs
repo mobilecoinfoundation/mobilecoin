@@ -20,7 +20,7 @@ use alloc::{
 };
 use core::str::FromStr;
 use mc_account_keys::PublicAddress;
-use mc_attest_core::{VerificationReport, Verifier};
+use mc_attest_core::Verifier;
 use mc_fog_types::ReportResponse;
 use mc_util_uri::FogUri;
 
@@ -100,18 +100,14 @@ impl FogPubkeyResolver for FogResolver {
     ) -> Result<FullyValidatedFogPubkey, FogPubkeyError> {
         if let Some(url) = recipient.fog_report_url() {
             // Normalize the string to URL before lookup
-            let url = FogUri::from_str(url)?;
-            let url = url.to_string();
+            let url = FogUri::from_str(url)?.to_string();
             if let Some(result) = self.responses.get(&url) {
                 let report_id = recipient.fog_report_id().unwrap_or("").to_string();
                 for report in result.reports.iter() {
                     if report_id == report.fog_report_id {
-                        // TODO validate x509 chain and recipient.fog_authority_sig here,
-                        // However, probably skip that if uri scheme is "insecure-fog"?
-                        // TODO this should not use mc_util_serial::deserialize, we should use prost
-                        let remote_report: VerificationReport =
-                            mc_util_serial::deserialize(&report.report)?;
-                        let pubkey = self.verifier.validate_ingest_ias_report(remote_report)?;
+                        let pubkey = self
+                            .verifier
+                            .validate_ingest_ias_report(report.report.clone())?;
                         return Ok(FullyValidatedFogPubkey {
                             pubkey,
                             pubkey_expiry: report.pubkey_expiry,
