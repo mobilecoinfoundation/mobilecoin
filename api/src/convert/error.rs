@@ -1,11 +1,10 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
+use mc_transaction_core::ring_signature::Error as RingSigError;
 use std::{
     error::Error,
     fmt::{self, Formatter},
 };
-
-use mc_transaction_core::ring_signature::Error as RingSigError;
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum ConversionError {

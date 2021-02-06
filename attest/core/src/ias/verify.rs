@@ -490,6 +490,12 @@ impl From<Vec<u8>> for VerificationSignature {
     }
 }
 
+impl From<&[u8]> for VerificationSignature {
+    fn from(src: &[u8]) -> Self {
+        src.to_vec().into()
+    }
+}
+
 impl FromHex for VerificationSignature {
     type Error = EncodingError;
 

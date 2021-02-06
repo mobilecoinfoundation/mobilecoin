@@ -267,3 +267,16 @@ message Receipt {
     // Note: This value is self-reported by the sender and is unverifiable.
     Amount amount = 4;
 }
+
+/// The IAS verification report response encoded as a protocol buffer
+message VerificationReport {
+    /// The IAS-generated signature over the response string
+    bytes sig = 1;
+
+    /// A list of byte strings representing the DER-encoded certificate
+    /// chain provided by IAS.
+    repeated bytes chain = 2;
+
+    /// The raw report body JSON, as a byte sequence
+    string http_body = 3;
+}
