@@ -3,10 +3,13 @@
 //! This module provide an implementation of the verifier for the x509 utils
 //! "PublicKeyType" enum.
 //!
-//! Only Ed25519 is supported.
+//! Only Ed25519 is currently supported.
+
+#![no_std]
+#![warn(missing_docs)]
+#![warn(unsafe_code)]
 
 mod ed25519;
-mod public_key_type;
 
 use core::fmt::{Debug, Display};
 use mc_fog_types::Report;

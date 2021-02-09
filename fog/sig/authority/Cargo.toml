@@ -1,0 +1,17 @@
+[package]
+name = "mc-fog-sig-authority"
+version = "1.0.0"
+authors = ["MobileCoin"]
+edition = "2018"
+description = "Create and verify fog authority signatures"
+
+[dependencies]
+mc-crypto-keys = { path = "../../../crypto/keys", default-features = false }
+
+signature = { version = "1.2.2" }
+
+[dev-dependencies]
+mc-util-from-random = { path = "../../../util/from-random" }
+
+rand_core = "0.5"
+rand_hc = "0.2"

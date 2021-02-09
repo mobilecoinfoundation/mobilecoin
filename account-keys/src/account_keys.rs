@@ -12,10 +12,7 @@
 
 #![allow(non_snake_case)]
 
-use crate::{
-    domain_separators::{FOG_AUTHORITY_SIGNATURE_TAG, SUBADDRESS_DOMAIN_TAG},
-    view_key::ViewKey,
-};
+use crate::{domain_separators::SUBADDRESS_DOMAIN_TAG, view_key::ViewKey};
 use alloc::{
     string::{String, ToString},
     vec::Vec,
@@ -29,8 +26,8 @@ use core::{
 use curve25519_dalek::scalar::Scalar;
 use mc_crypto_digestible::Digestible;
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
+use mc_fog_sig_authority::{Signer as AuthoritySigner, Verifier as AuthorityVerifier};
 use mc_util_from_random::FromRandom;
-use mc_util_repr_bytes::ReprBytes;
 use prost::Message;
 use rand_core::{CryptoRng, RngCore};
 use zeroize::Zeroize;
@@ -175,6 +172,15 @@ impl PublicAddress {
         } else {
             Some(&self.fog_report_id)
         }
+    }
+}
+
+impl AuthorityVerifier for PublicAddress {
+    type Sig = <RistrettoPublic as AuthorityVerifier>::Sig;
+    type Error = <RistrettoPublic as AuthorityVerifier>::Error;
+
+    fn verify_authority(&self, spki_bytes: &[u8], sig: &Self::Sig) -> Result<(), Self::Error> {
+        self.view_public_key.verify_authority(spki_bytes, sig)
     }
 }
 
@@ -366,14 +372,12 @@ impl AccountKey {
         };
 
         let fog_authority_sig = if !self.fog_report_url.is_empty() {
-            // Construct the fog authority signature over the fingerprint using the view privkey
-            let view_private = self.subaddress_view_private(index);
-
-            // This is an optimization which
-            let sig_bytes = view_private
-                .sign_schnorrkel(FOG_AUTHORITY_SIGNATURE_TAG, &self.fog_authority_spki)
-                .to_bytes();
-            Vec::from(&sig_bytes[..])
+            let sig = self
+                .subaddress_view_private(index)
+                .sign_authority(&self.fog_authority_spki)
+                .expect("Could not sign authority bytes with view-key private address");
+            let sig_bytes: &[u8] = sig.as_ref();
+            sig_bytes.to_vec()
         } else {
             Vec::default()
         };
@@ -448,7 +452,7 @@ mod account_key_tests {
     use rand_core::SeedableRng;
 
     // Helper method to verify the signature of a public address
-    fn verify_signature(subaddress: &PublicAddress, fingerprint: &[u8]) {
+    fn verify_signature(subaddress: &PublicAddress, spki: &[u8]) {
         let signature = RistrettoSignature::try_from(
             subaddress
                 .fog_authority_sig()
@@ -457,7 +461,7 @@ mod account_key_tests {
         .expect("Could not construct signature from fog authority sig bytes");
         assert!(subaddress
             .view_public_key
-            .verify_schnorrkel(FOG_AUTHORITY_SIGNATURE_TAG, fingerprint, &signature)
+            .verify_authority(spki, &signature)
             .is_ok());
     }
 

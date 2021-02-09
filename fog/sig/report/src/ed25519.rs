@@ -3,7 +3,7 @@
 //! This module provides implementations of the report signer for the Ed25519
 //! signature scheme.
 
-use crate::report::{Signer, Verifier};
+use crate::{Signer, Verifier};
 use mc_crypto_digestible_signature::{DigestibleSigner, DigestibleVerifier};
 use mc_crypto_keys::{Ed25519Pair, Ed25519Public, Ed25519Signature, Ed25519SignatureError};
 use mc_fog_types::Report;
@@ -33,7 +33,10 @@ mod test {
     //! We assume signing, context changes, mutability, etc. is tested at lower
     //! level, and just do a round-trip.
 
+    extern crate alloc;
+
     use super::*;
+    use alloc::{borrow::ToOwned, vec};
     use mc_attest_core::{VerificationReport, VerificationSignature};
     use mc_util_from_random::FromRandom;
     use rand_core::SeedableRng;
@@ -42,11 +45,11 @@ mod test {
     #[test]
     fn roundtrip() {
         let reports = [Report {
-            fog_report_id: "id".to_string(),
+            fog_report_id: "id".to_owned(),
             report: VerificationReport {
                 sig: VerificationSignature::default(),
                 chain: vec![],
-                http_body: "this should probably be a json".to_string(),
+                http_body: "this should probably be a json".to_owned(),
             },
             pubkey_expiry: 0,
         }];

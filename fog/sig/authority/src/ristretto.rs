@@ -6,14 +6,15 @@
 // TODO: If/when we have a ViewPublic/ViewPrivate types, this should be
 //       implemented on those types, instead of all ristretto public keys.
 
-use crate::authority::{Error, Signer, Verifier};
+use crate::{Signer, Verifier};
+use alloc::{format, string::String};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic, RistrettoSignature};
 
 impl Signer for RistrettoPrivate {
     type Sig = RistrettoSignature;
     type Error = String;
 
-    fn sign_authority_bytes(&self, spki_bytes: &[u8]) -> Result<Self::Sig, Error<String>> {
+    fn sign_authority(&self, spki_bytes: &[u8]) -> Result<Self::Sig, String> {
         Ok(self.sign_schnorrkel(super::context(), spki_bytes))
     }
 }
@@ -22,13 +23,9 @@ impl Verifier for RistrettoPublic {
     type Sig = RistrettoSignature;
     type Error = String;
 
-    fn verify_authority_sig_bytes(
-        &self,
-        spki_bytes: &[u8],
-        sig: &Self::Sig,
-    ) -> Result<(), Error<String>> {
+    fn verify_authority(&self, spki_bytes: &[u8], sig: &Self::Sig) -> Result<(), String> {
         self.verify_schnorrkel(super::context(), spki_bytes, sig)
-            .map_err(|e| Error::Algorithm(format!("{:#}", e)))
+            .map_err(|e| format!("{:#}", e))
     }
 }
 
@@ -52,11 +49,11 @@ mod test {
         let privkey = RistrettoPrivate::from_random(&mut csprng);
 
         let sig = privkey
-            .sign_authority_bytes(TEST_MSG)
+            .sign_authority(TEST_MSG)
             .expect("Could not sign test message");
         let pubkey = RistrettoPublic::from(&privkey);
         pubkey
-            .verify_authority_sig_bytes(TEST_MSG, &sig)
+            .verify_authority(TEST_MSG, &sig)
             .expect("Could not verify signature");
     }
 }

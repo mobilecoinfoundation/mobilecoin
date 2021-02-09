@@ -2096,6 +2096,7 @@ dependencies = [
  "mc-crypto-hashes",
  "mc-crypto-keys",
  "mc-crypto-sig",
+ "mc-fog-sig-authority",
  "mc-test-vectors-account-keys",
  "mc-util-from-random",
  "mc-util-repr-bytes",
@@ -2882,11 +2883,11 @@ version = "1.0.0"
 dependencies = [
  "displaydoc",
  "mc-account-keys",
- "mc-attest-core",
- "mc-crypto-digestible-signature",
  "mc-crypto-keys",
  "mc-crypto-x509-test-vectors",
  "mc-crypto-x509-utils",
+ "mc-fog-sig-authority",
+ "mc-fog-sig-report",
  "mc-fog-types",
  "mc-util-from-random",
  "pem",
@@ -2894,6 +2895,32 @@ dependencies = [
  "rand_hc 0.2.0",
  "signature",
  "x509-signature",
+]
+
+[[package]]
+name = "mc-fog-sig-authority"
+version = "1.0.0"
+dependencies = [
+ "mc-crypto-keys",
+ "mc-util-from-random",
+ "rand_core 0.5.1",
+ "rand_hc 0.2.0",
+ "signature",
+]
+
+[[package]]
+name = "mc-fog-sig-report"
+version = "1.0.0"
+dependencies = [
+ "displaydoc",
+ "mc-attest-core",
+ "mc-crypto-digestible-signature",
+ "mc-crypto-keys",
+ "mc-fog-types",
+ "mc-util-from-random",
+ "rand_core 0.5.1",
+ "rand_hc 0.2.0",
+ "signature",
 ]
 
 [[package]]
