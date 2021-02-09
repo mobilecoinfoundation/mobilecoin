@@ -11,7 +11,7 @@
 //!
 //! Fog authority signatures are created by the owner of an account, in order to
 //! delegate transaction monitoring to an enclave using the on-chain fog
-//! accounts hints. In order to accomplish this, the user signs the  DER-encoded
+//! accounts hints. In order to accomplish this, the user signs the DER-encoded
 //! bytes of a `subjectPublicKeyInfo` X509 structure from the root certificate
 //! of their fog operator.
 //!

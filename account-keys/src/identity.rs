@@ -92,7 +92,7 @@ pub struct RootIdentity {
     /// Fog report id
     #[prost(string, tag = 3)]
     pub fog_report_id: String,
-    /// Fog authority subjectPUblicKeyInfo
+    /// Fog authority subjectPublicKeyInfo
     #[prost(bytes, tag = 4)]
     pub fog_authority_spki: Vec<u8>,
 }
