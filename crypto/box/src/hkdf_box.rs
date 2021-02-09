@@ -1,13 +1,15 @@
-use crate::traits::{CryptoBox, Error};
-
-use aead::{
-    generic_array::{
-        sequence::{Concat, Split},
-        typenum::{Sum, Unsigned},
-        ArrayLength, GenericArray,
+use crate::{
+    aead::{
+        generic_array::{
+            sequence::{Concat, Split},
+            typenum::{Sum, Unsigned},
+            ArrayLength, GenericArray,
+        },
+        AeadInPlace, Error as AeadError, NewAead,
     },
-    AeadInPlace, Error as AeadError, NewAead,
+    traits::{CryptoBox, Error},
 };
+
 use core::{
     convert::TryFrom,
     marker::PhantomData,
@@ -15,7 +17,7 @@ use core::{
 };
 use digest::{BlockInput, Digest, FixedOutput, Reset, Update};
 use hkdf::Hkdf;
-use mc_crypto_ct_aead::CtAeadDecrypt;
+use mc_crypto_ct_aead::{CtAeadDecrypt, CtDecryptResult};
 use mc_crypto_keys::{Kex, ReprBytes};
 use rand_core::{CryptoRng, RngCore};
 
@@ -93,7 +95,7 @@ where
         key: &KexAlgo::Private,
         tag: &GenericArray<u8, Self::FooterSize>,
         buffer: &mut [u8],
-    ) -> Result<bool, Error> {
+    ) -> Result<CtDecryptResult, Error> {
         // ECDH
         use mc_crypto_keys::KexReusablePrivate;
         // TODO: In generic_array 0.14 the tag can be split without copying it

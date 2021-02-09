@@ -16,6 +16,7 @@
 extern crate alloc;
 
 pub use aead::generic_array;
+pub use mc_crypto_ct_aead::aead;
 
 mod hkdf_box;
 mod traits;
@@ -55,7 +56,7 @@ mod test {
                         algo.decrypt(&a, &ciphertext).expect("decryption failed!");
                     assert_eq!(plaintext.len(), decrypted.len());
                     assert_eq!(plaintext, &&decrypted[..]);
-                    assert_eq!(success, true);
+                    assert_eq!(bool::from(success), true);
                 }
             }
         });
@@ -76,12 +77,8 @@ mod test {
             for plaintext in &[&plaintext1[..], &plaintext2[..]] {
                 for _reps in 0..50 {
                     let ciphertext = algo.encrypt(&mut rng, &a_pub, plaintext).unwrap();
-                    let decrypted = algo.decrypt(&not_a, &ciphertext);
-                    if decrypted.is_err() {
-                        assert_eq!(decrypted, Err(Error::MacFailed));
-                    } else {
-                        assert_eq!(decrypted.unwrap().0, false);
-                    }
+                    let (success, _decrypted) = algo.decrypt(&not_a, &ciphertext).unwrap();
+                    assert_eq!(bool::from(success), false);
                 }
             }
         });
@@ -106,7 +103,7 @@ mod test {
                         .decrypt_fixed_length(&a, &ciphertext)
                         .expect("decryption failed!");
                     assert_eq!(plaintext, &decrypted);
-                    assert_eq!(success, true);
+                    assert_eq!(bool::from(success), true);
                 }
             }
         });

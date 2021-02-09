@@ -1,3 +1,4 @@
+use crate::aead;
 use aead::{Buffer, Error};
 
 /// The rust aead crate is organized around a Buffer trait which abstracts
