@@ -1,59 +1,85 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use failure::Fail;
+//! Error data types
+
+use displaydoc::Display;
+use mc_connection::Error as ConnectionError;
+use mc_crypto_keys::KeyError;
 use mc_util_lmdb::MetadataStoreError;
+use std::string::FromUtf8Error;
 
 /// Watcher Errors
-#[derive(Debug, Eq, PartialEq, Copy, Clone, Fail)]
+#[derive(Debug, Display)]
 pub enum WatcherError {
-    #[fail(display = "URL Parse Error: {}", _0)]
+    /// URL parse: {0}
     URLParse(url::ParseError),
 
-    #[fail(display = "WatcherDBError: {}", _0)]
+    /// DB: {0}
     DB(WatcherDBError),
 
-    #[fail(display = "SyncFailed")]
+    /// Sync failed
     SyncFailed,
+
+    /// Connection: {0}
+    Connection(ConnectionError),
 }
 
 impl From<url::ParseError> for WatcherError {
     fn from(src: url::ParseError) -> Self {
-        WatcherError::URLParse(src)
+        Self::URLParse(src)
     }
 }
 
 impl From<WatcherDBError> for WatcherError {
     fn from(src: WatcherDBError) -> Self {
-        WatcherError::DB(src)
+        Self::DB(src)
+    }
+}
+
+impl From<ConnectionError> for WatcherError {
+    fn from(src: ConnectionError) -> Self {
+        Self::Connection(src)
     }
 }
 
 /// WatcherDB Errors
-#[derive(Debug, Eq, PartialEq, Copy, Clone, Fail)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, Display)]
 pub enum WatcherDBError {
-    #[fail(display = "NotFound")]
+    /// Not found
     NotFound,
 
-    #[fail(display = "Serialization")]
+    /// Already exists
+    AlreadyExists,
+
+    /// Serialization
     Serialization,
 
-    #[fail(display = "Deserialization")]
+    /// Deserialization
     Deserialization,
 
-    #[fail(display = "Loading blocks out of order.")]
+    /// Loading blocks out of order
     BlockOrder,
 
-    #[fail(display = "LmdbError: {}", _0)]
+    /// LMDB: {0}
     LmdbError(lmdb::Error),
 
-    #[fail(display = "Error managing IO")]
+    /// IO
     IO,
 
-    #[fail(display = "Database was opened in read-only mode")]
+    /// Database was opened in read-only mode
     ReadOnly,
 
-    #[fail(display = "Metadata store error: {}", _0)]
+    /// Metadata store: {0}
     MetadataStore(MetadataStoreError),
+
+    /// UTF8
+    Utf8,
+
+    /// URL Parse: {0}
+    URLParse(url::ParseError),
+
+    /// Cryptographic key: {0}
+    CryptoKey(KeyError),
 }
 
 impl From<lmdb::Error> for WatcherDBError {
@@ -83,5 +109,23 @@ impl From<std::io::Error> for WatcherDBError {
 impl From<MetadataStoreError> for WatcherDBError {
     fn from(e: MetadataStoreError) -> Self {
         Self::MetadataStore(e)
+    }
+}
+
+impl From<FromUtf8Error> for WatcherDBError {
+    fn from(_src: FromUtf8Error) -> Self {
+        Self::Utf8
+    }
+}
+
+impl From<url::ParseError> for WatcherDBError {
+    fn from(src: url::ParseError) -> Self {
+        Self::URLParse(src)
+    }
+}
+
+impl From<KeyError> for WatcherDBError {
+    fn from(src: KeyError) -> Self {
+        Self::CryptoKey(src)
     }
 }

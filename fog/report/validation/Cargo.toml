@@ -18,5 +18,5 @@ mc-util-encodings = { path = "../../../util/encodings" }
 mc-util-serial = { path = "../../../util/serial" }
 mc-util-uri = { path = "../../../util/uri" }
 
-displaydoc = { version = "0.1", default-features = false }
+displaydoc = { version = "0.1.7", default-features = false }
 mockall = { version = "0.8.3", optional = true }

@@ -130,7 +130,7 @@ impl ToBase64 for EpidPseudonym {
 /// VerificationReport.http_body JSON after signature and chain validation.
 #[derive(Clone, Debug, Deserialize, PartialEq, PartialOrd, Serialize)]
 pub struct VerificationReportData {
-    /// A unqiue ID of this report
+    /// A unique ID of this report
     pub id: String,
     /// The timestamp this report was generated, as an ISO8601 string.
     pub timestamp: String,

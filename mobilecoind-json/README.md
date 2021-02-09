@@ -144,7 +144,7 @@ The return value from `pay-address-code` includes a list called `receiver_tx_rec
 the list can be send to the recipient over a separate channel (e.g. a secure chat application) and they can use it to
 verify that they were paid by the sender.
 ```
-$ curl localhost:9090/tx/status-as-receiver \
+$ curl localhost:9090/monitors/<monitor_id>/tx-status-as-receiver \
   -d '{"recipient":{"view_public_key":"f460626a6cefb0bdfc73bb0c3a9c1a303a858f0b1b4ea59b154a1aa8d927af71",
                     "spend_public_key":"6a74da2dc6ff116d9278a30a4f8584e9edf165a22faf04a3ac210f219641a92d",
                     "fog_report_url":"", "fog_authority_fingerprint_sig":"", "fog_report_id":""},

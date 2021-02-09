@@ -116,7 +116,7 @@ fn round_trip_prost_report_response() {
 fn round_trip_protobuf_report_response() {
     let mut case = ProtobufReportResponse::new();
     case.set_reports(protobuf::RepeatedField::from_vec(protobuf_test_cases()));
-    case.set_chain(make_chain());
-    case.set_sig(b"report sig".to_vec());
+    case.set_chain(make_chain().into());
+    case.set_signature(b"report sig".to_vec());
     round_trip_protobuf::<ProtobufReportResponse, ProstReportResponse>(case);
 }

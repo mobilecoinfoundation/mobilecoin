@@ -5,12 +5,19 @@ authors = ["MobileCoin"]
 edition = "2018"
 
 [[bin]]
-name = "watcher"
+name = "mc-watcher"
 path = "src/bin/main.rs"
+
+[[bin]]
+name = "mc-watcher-db-dump"
+path = "src/bin/db-dump.rs"
 
 [dependencies]
 mc-api = { path = "../api" }
+mc-attest-core = { path = "../attest/core" }
 mc-common = { path = "../common", features = ["log"] }
+mc-connection = { path = "../connection" }
+mc-crypto-digestible = { path = "../crypto/digestible" }
 mc-crypto-keys = { path = "../crypto/keys" }
 mc-ledger-db = { path = "../ledger/db" }
 mc-ledger-sync = { path = "../ledger/sync" }
@@ -18,13 +25,19 @@ mc-transaction-core = { path = "../transaction/core" }
 mc-transaction-core-test-utils = { path = "../transaction/core/test-utils" }
 mc-util-from-random = { path = "../util/from-random" }
 mc-util-lmdb = { path = "../util/lmdb" }
+mc-util-repr-bytes = { path = "../util/repr-bytes" }
 mc-util-serial = { path = "../util/serial" }
+mc-util-uri = { path = "../util/uri" }
 mc-watcher-api = { path = "api" }
 
-failure = "0.1.8"
+displaydoc = { version = "0.1.7", default-features = false }
+grpcio = "0.6.0"
+hex = "0.4"
 lmdb-rkv = "0.14.0"
 prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
+serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 structopt = "0.3"
+toml = "0.5"
 url = "2.1"
 
 [dev-dependencies]
@@ -32,6 +45,9 @@ mc-account-keys = { path = "../account-keys" }
 mc-common = { path = "../common", features = ["loggers"] }
 mc-util-test-helper = { path = "../util/test-helper" }
 
+lazy_static = "1.4"
 rand_core = "0.5"
 rand_hc = "0.2"
+serial_test = "0.5"
+serial_test_derive = "0.5"
 tempdir = "0.3"

@@ -75,5 +75,5 @@ message ProposeTxResponse {
     ProposeTxResult result = 1;
 
     /// The number of blocks in the ledger at the time the request was received.
-    uint64 num_blocks = 2;
+    uint64 block_count = 2;
 }

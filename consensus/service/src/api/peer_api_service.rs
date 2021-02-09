@@ -240,7 +240,7 @@ impl ConsensusPeerApi for PeerApiService {
                 match self.handle_tx_propose(enclave_msg, logger) {
                     Ok(num_blocks) => {
                         let mut response = ProposeTxResponse::new();
-                        response.set_num_blocks(num_blocks);
+                        response.set_block_count(num_blocks);
                         Ok(response)
                     }
 

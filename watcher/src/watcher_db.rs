@@ -2,19 +2,31 @@
 
 //! The watcher database
 
-use crate::error::WatcherDBError;
+use crate::{block_data_store::BlockDataStore, error::WatcherDBError};
 
+use mc_attest_core::VerificationReport;
 use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
-use mc_transaction_core::BlockSignature;
+use mc_crypto_digestible::{Digestible, MerlinTranscript};
+use mc_crypto_keys::Ed25519Public;
+use mc_transaction_core::{BlockData, BlockIndex, BlockSignature};
 use mc_util_lmdb::{MetadataStore, MetadataStoreSettings};
+use mc_util_repr_bytes::ReprBytes;
 use mc_util_serial::{decode, encode, Message};
 use mc_watcher_api::TimestampResultCode;
 
-use lmdb::{Cursor, Database, DatabaseFlags, Environment, RoTransaction, Transaction, WriteFlags};
-use std::{convert::TryInto, path::PathBuf, str::FromStr, sync::Arc};
+use lmdb::{
+    Cursor, Database, DatabaseFlags, Environment, RoTransaction, RwTransaction, Transaction,
+    WriteFlags,
+};
+use std::{
+    convert::{TryFrom, TryInto},
+    path::PathBuf,
+    str::FromStr,
+    sync::Arc,
+};
 use url::Url;
 
 /// LMDB Constant.
@@ -28,7 +40,7 @@ impl MetadataStoreSettings for WatcherDbMetadataStoreSettings {
     // If this is properly maintained, we could check during ledger db opening for any
     // incompatibilities, and either refuse to open or perform a migration.
     #[allow(clippy::unreadable_literal)]
-    const LATEST_VERSION: u64 = 20200805;
+    const LATEST_VERSION: u64 = 20210127;
 
     /// The current crate version that manages the database.
     const CRATE_VERSION: &'static str = env!("CARGO_PKG_VERSION");
@@ -39,6 +51,17 @@ impl MetadataStoreSettings for WatcherDbMetadataStoreSettings {
 
 /// Block signatures database name.
 pub const BLOCK_SIGNATURES_DB_NAME: &str = "watcher_db:block_signatures";
+
+/// VerificationReports database name.
+pub const VERIFICATION_REPORTS_BY_BLOCK_SIGNER_DB_NAME: &str =
+    "watcher_db:verification_reports_by_block_signer";
+
+/// Verification reports poll queue database name.
+pub const VERIFICATION_REPORTS_POLL_QUEUE_DB_NAME: &str =
+    "watcher_db:verification_reports_poll_queue";
+
+/// Verification reports by report hash database name.
+pub const VERIFICATION_REPORTS_BY_HASH_DB_NAME: &str = "watcher_db:verification_reports_by_hash";
 
 /// Last synced archive blocks database name.
 pub const LAST_SYNCED_DB_NAME: &str = "watcher_db:last_synced";
@@ -71,8 +94,31 @@ pub struct WatcherDB {
     /// LMDB Environment (database).
     env: Arc<Environment>,
 
+    /// BlockData store.
+    block_data_store: BlockDataStore,
+
     /// Signature store.
     block_signatures: Database,
+
+    /// Verification reports by block signer (and tx source url) database.
+    /// This actually points to report hashes, which then allow getting the actual report contents
+    /// from the verification_reports_by_hash database.
+    /// This is needed because LMDB limits the value size in DUP_SORT databases to 511 bytes, not
+    /// enough to fit the report. This database needs to be DUP_SORT since we want to support the
+    /// odd case of different reports showing up for the same signer/url pair. It shouldn't happen,
+    /// but we sure don't want to miss it if it does.
+    verification_reports_by_signer: Database,
+
+    /// Verification report hash -> VerificationReport.
+    verification_reports_by_hash: Database,
+
+    /// Verification reports poll queue database.
+    /// This database holds a map of tx source url -> list of observed block signers.
+    /// A background thread polls this database, trying to fetch the attestation verification
+    /// report for each of queued tx source urls, and if successfull match the reported block
+    /// signer identity with the list of observed signers. The verification report is then stored
+    /// using `add_verification_report` and the tx source url is removed from the queue.
+    verification_reports_poll_queue: Database,
 
     /// Last synced archive block.
     last_synced: Database,
@@ -112,12 +158,24 @@ impl WatcherDB {
         version.is_compatible_with_latest()?;
 
         let block_signatures = env.open_db(Some(BLOCK_SIGNATURES_DB_NAME))?;
+        let verification_reports_by_signer =
+            env.open_db(Some(VERIFICATION_REPORTS_BY_BLOCK_SIGNER_DB_NAME))?;
+        let verification_reports_by_hash =
+            env.open_db(Some(VERIFICATION_REPORTS_BY_HASH_DB_NAME))?;
+        let verification_reports_poll_queue =
+            env.open_db(Some(VERIFICATION_REPORTS_POLL_QUEUE_DB_NAME))?;
         let last_synced = env.open_db(Some(LAST_SYNCED_DB_NAME))?;
         let config = env.open_db(Some(CONFIG_DB_NAME))?;
 
+        let block_data_store = BlockDataStore::new(env.clone(), logger.clone())?;
+
         Ok(WatcherDB {
             env,
+            block_data_store,
             block_signatures,
+            verification_reports_by_signer,
+            verification_reports_by_hash,
+            verification_reports_poll_queue,
             last_synced,
             config,
             write_allowed: false,
@@ -150,8 +208,22 @@ impl WatcherDB {
         MetadataStore::<WatcherDbMetadataStoreSettings>::create(&env)?;
 
         env.create_db(Some(BLOCK_SIGNATURES_DB_NAME), DatabaseFlags::DUP_SORT)?;
+        env.create_db(
+            Some(VERIFICATION_REPORTS_BY_BLOCK_SIGNER_DB_NAME),
+            DatabaseFlags::DUP_SORT,
+        )?;
+        env.create_db(
+            Some(VERIFICATION_REPORTS_BY_HASH_DB_NAME),
+            DatabaseFlags::empty(),
+        )?;
+        env.create_db(
+            Some(VERIFICATION_REPORTS_POLL_QUEUE_DB_NAME),
+            DatabaseFlags::DUP_SORT,
+        )?;
         env.create_db(Some(LAST_SYNCED_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(CONFIG_DB_NAME), DatabaseFlags::DUP_SORT)?;
+
+        BlockDataStore::create(env)?;
 
         Ok(())
     }
@@ -160,6 +232,34 @@ impl WatcherDB {
     pub fn get_config_urls(&self) -> Result<Vec<Url>, WatcherDBError> {
         let db_txn = self.env.begin_ro_txn()?;
         self.get_config_urls_with_txn(&db_txn)
+    }
+
+    /// Store BlockData for a URL at a given block index (the block index comes from the
+    /// BlockData).
+    pub fn add_block_data(
+        &self,
+        src_url: &Url,
+        block_data: &BlockData,
+    ) -> Result<(), WatcherDBError> {
+        if !self.write_allowed {
+            return Err(WatcherDBError::ReadOnly);
+        }
+
+        let mut db_txn = self.env.begin_rw_txn()?;
+
+        // Sanity test - the URL needs to be configured.
+        let urls = self.get_config_urls_with_txn(&db_txn)?;
+        if !urls.contains(&src_url) {
+            return Err(WatcherDBError::NotFound);
+        }
+
+        // Add.
+        self.block_data_store
+            .add_block_data(&mut db_txn, src_url, block_data)?;
+
+        // Done
+        db_txn.commit()?;
+        Ok(())
     }
 
     /// Add a block signature for a URL at a given block index.
@@ -182,6 +282,7 @@ impl WatcherDB {
             return Err(WatcherDBError::NotFound);
         }
 
+        // Store the block signature.
         let signature_data = BlockSignatureData {
             src_url: src_url.as_str().to_string(),
             archive_filename,
@@ -202,6 +303,35 @@ impl WatcherDB {
             &key_bytes,
             WriteFlags::empty(),
         )?;
+
+        // Add the block signer to our polling queue, unless we already have a report for it.
+        if !self.has_verification_report_for_signer_and_url(
+            &db_txn,
+            signature_data.block_signature.signer(),
+            src_url,
+        )? {
+            log::trace!(
+                self.logger,
+                "Attempting to queue signer {:?} from {} for polling",
+                hex::encode(signature_data.block_signature.signer().to_bytes()),
+                src_url
+            );
+
+            self.queue_verification_report_poll(
+                &mut db_txn,
+                src_url,
+                signature_data.block_signature.signer(),
+            )?;
+        } else {
+            log::trace!(
+                self.logger,
+                "Not queuing signer {:?} from {} for polling - already have results",
+                hex::encode(signature_data.block_signature.signer().to_bytes()),
+                src_url
+            );
+        }
+
+        // Done
         db_txn.commit()?;
         Ok(())
     }
@@ -405,6 +535,372 @@ impl WatcherDB {
         }
         Ok(results)
     }
+
+    /// Get BlockData for a given block index provided by a specific tx source url.
+    pub fn get_block_data(
+        &self,
+        src_url: &Url,
+        block_index: BlockIndex,
+    ) -> Result<BlockData, WatcherDBError> {
+        let db_txn = self.env.begin_ro_txn()?;
+        self.block_data_store
+            .get_block_data(&db_txn, src_url, block_index)
+    }
+
+    /// Get all known BlockDatas for a given block index, mapped by tx source url.
+    pub fn get_block_data_map(
+        &self,
+        block_index: BlockIndex,
+    ) -> Result<HashMap<Url, BlockData>, WatcherDBError> {
+        let db_txn = self.env.begin_ro_txn()?;
+        self.block_data_store
+            .get_block_data_map(&db_txn, block_index)
+    }
+
+    /// Record a verification report for a given source URL, that is associated with a specific
+    /// block signer.
+    /// Additionally, record no report for an optional list of expected block signers.
+    /// When going over the blockchain we are likely going to encounter a few block signers for a
+    /// given src_url since every time the node restarts a new block signer key is generated. If we
+    /// are back-filling the database and not polling in real time, we will only manage to get a
+    /// verification report for the current signer identity. The previous ones are then lost, and
+    /// we use `potential_block_signers` to mark them as such in order to stop trying to get
+    /// reports for them from this particular node (identified by `src_url`).
+    ///
+    /// Note that it is possible for us to extract `verification_report_block_signer` out of
+    /// `verification_report` but we let the caller handle that in case the report format changes
+    /// over time.
+    pub fn add_verification_report(
+        &self,
+        src_url: &Url,
+        verification_report_block_signer: &Ed25519Public,
+        verification_report: &VerificationReport,
+        potential_block_signers: &[Ed25519Public],
+    ) -> Result<(), WatcherDBError> {
+        if !self.write_allowed {
+            return Err(WatcherDBError::ReadOnly);
+        }
+
+        let mut db_txn = self.env.begin_rw_txn()?;
+
+        // Sanity test - the URL needs to be configured.
+        let urls = self.get_config_urls_with_txn(&db_txn)?;
+        if !urls.contains(&src_url) {
+            return Err(WatcherDBError::NotFound);
+        }
+
+        // Write the verification report for `verification_report_block_signer`.
+        self.write_verification_report(
+            &mut db_txn,
+            src_url,
+            verification_report_block_signer,
+            Some(verification_report),
+        )?;
+
+        // Write no reports for all the other block signers we missed.
+        for block_signer in potential_block_signers.iter() {
+            // The verification_report_block_signer gets written together with the
+            // verification_report outside of this loop.
+            if block_signer == verification_report_block_signer {
+                continue;
+            }
+
+            self.write_verification_report(&mut db_txn, src_url, block_signer, None)?;
+        }
+
+        // Remove all the keys we encountered from the queue - we no longer need to poll for them.
+        self.remove_verification_report_poll_from_queue(
+            &mut db_txn,
+            src_url,
+            verification_report_block_signer,
+        )?;
+        for block_signer in potential_block_signers.iter() {
+            self.remove_verification_report_poll_from_queue(&mut db_txn, src_url, block_signer)?;
+        }
+
+        // Done
+        db_txn.commit()?;
+        Ok(())
+    }
+
+    /// A helper for writing a single (src_url, signer) -> VerificationReport entry in the
+    /// database.
+    fn write_verification_report<'env>(
+        &self,
+        db_txn: &mut RwTransaction<'env>,
+        src_url: &Url,
+        signer: &Ed25519Public,
+        verification_report: Option<&VerificationReport>,
+    ) -> Result<(), WatcherDBError> {
+        let mut key_bytes = signer.to_bytes().to_vec();
+        key_bytes.extend(src_url.as_str().as_bytes());
+
+        let value_bytes = verification_report
+            .map(mc_util_serial::encode)
+            .unwrap_or_else(Vec::new);
+
+        log::trace!(
+            self.logger,
+            "write_verification_report: src_url:{} signer:{} report-provided:{} report-len:{}",
+            src_url,
+            hex::encode(signer.to_bytes()),
+            verification_report.is_some(),
+            value_bytes.len(),
+        );
+
+        // First, write the hash -> verification report entry.
+        let hash: [u8; 32] = value_bytes.digest32::<MerlinTranscript>(b"verification_report");
+        match db_txn.put(
+            self.verification_reports_by_hash,
+            &hash,
+            &value_bytes,
+            WriteFlags::NO_OVERWRITE,
+        ) {
+            Ok(()) => Ok(()),
+            Err(lmdb::Error::KeyExist) => {
+                log::trace!(
+                    self.logger,
+                    "write_verification_report: report hash already in db"
+                );
+                Ok(())
+            }
+            Err(err) => Err(err),
+        }?;
+
+        // Now, write the entry that points at the hash.
+        match db_txn.put(
+            self.verification_reports_by_signer,
+            &key_bytes,
+            &hash,
+            WriteFlags::NO_DUP_DATA,
+        ) {
+            Ok(()) => Ok(()),
+            Err(lmdb::Error::KeyExist) => {
+                log::trace!(
+                    self.logger,
+                    "write_verification_report: report already associated with signer+src_url"
+                );
+                Ok(())
+            }
+            Err(err) => Err(err),
+        }?;
+
+        // Done
+        Ok(())
+    }
+
+    /// Get a VerificationReport by hash.
+    fn get_verification_report_by_hash(
+        &self,
+        db_txn: &impl Transaction,
+        hash: &[u8],
+    ) -> Result<Option<VerificationReport>, WatcherDBError> {
+        let value_bytes = db_txn.get(self.verification_reports_by_hash, &hash)?;
+        if value_bytes.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(mc_util_serial::decode(value_bytes)?))
+        }
+    }
+
+    /// Get a verification report for a given block signer.
+    /// Returns a map of tx source url to all verification reports seen for the given signer.
+    /// Notes:
+    /// 1) In general there should only be one report per given block signer since the key is
+    ///    unique to an enclave. However, the database is structured in such a way that if
+    ///    something funky is happening, and somehow different reports are seen in the wild for a
+    ///    given signer, they will all get logged.
+    /// 2) The VerificationReport is wrapped in an Option to indicate that at some point we tried
+    ///    getting a report for the given Url, but failed since the report we got referenced a
+    ///    different signer. This could happen if we're trying to get reports for old block signers
+    ///    whose enclaves are no longer alive.
+    pub fn get_verification_reports_for_signer(
+        &self,
+        block_signer: &Ed25519Public,
+    ) -> Result<HashMap<Url, Vec<Option<VerificationReport>>>, WatcherDBError> {
+        let db_txn = self.env.begin_ro_txn()?;
+        let mut cursor = db_txn.open_ro_cursor(self.verification_reports_by_signer)?;
+        let signer_key_bytes = block_signer.to_bytes().to_vec();
+
+        log::trace!(
+            self.logger,
+            "Getting verification reports for signer {:?}",
+            block_signer
+        );
+
+        let mut results = HashMap::default();
+        for (key_bytes, value_bytes) in cursor.iter_from(&signer_key_bytes).filter_map(Result::ok) {
+            // Try and get the signer key bytes and tx source url from the database key.
+            // Remember that the key is the signer key, followed by the source url.
+            if key_bytes.len() < signer_key_bytes.len() {
+                continue;
+            }
+
+            let signer_key_bytes2 = &key_bytes[0..signer_key_bytes.len()];
+            if signer_key_bytes != signer_key_bytes2 {
+                // Moved to a different signer key, we're done.
+                break;
+            }
+
+            let tx_source_url_bytes = &key_bytes[signer_key_bytes.len()..];
+            let tx_source_url = Url::from_str(&String::from_utf8(tx_source_url_bytes.to_vec())?)?;
+
+            // Resolve the hash into the actual report.
+            let verification_report = self.get_verification_report_by_hash(&db_txn, value_bytes)?;
+
+            // Add to hashmap
+            results
+                .entry(tx_source_url)
+                .or_insert_with(Vec::new)
+                .push(verification_report);
+        }
+
+        Ok(results)
+    }
+
+    /// Get verification reports seen for a specific block signer/URL pair.
+    /// In theory there should only ever be a single report (or none) for a given block_signer+src_url
+    /// pair but if something weird is going on we want to capture that, and as such multiple
+    /// reports are supported. See more detailed explanation above
+    /// `get_verification_reports_for_signer`.
+    /// Returns an empty array if we have no record of block_signer+src_url in the database.
+    pub fn get_verification_report_for_signer_and_url(
+        &self,
+        block_signer: &Ed25519Public,
+        src_url: &Url,
+    ) -> Result<Vec<Option<VerificationReport>>, WatcherDBError> {
+        let db_txn = self.env.begin_ro_txn()?;
+
+        let mut key_bytes = block_signer.to_bytes().to_vec();
+        key_bytes.extend(src_url.as_str().as_bytes());
+
+        let mut cursor = db_txn.open_ro_cursor(self.verification_reports_by_signer)?;
+        let mut results = Vec::new();
+        for (key_bytes2, value_bytes) in cursor.iter_dup_of(&key_bytes).filter_map(Result::ok) {
+            assert_eq!(key_bytes, key_bytes2);
+
+            let report = self.get_verification_report_by_hash(&db_txn, value_bytes)?;
+            results.push(report);
+        }
+
+        Ok(results)
+    }
+
+    /// Check if a given pair of src_url/block_signer have already been polled.
+    fn has_verification_report_for_signer_and_url(
+        &self,
+        db_txn: &impl Transaction,
+        block_signer: &Ed25519Public,
+        src_url: &Url,
+    ) -> Result<bool, WatcherDBError> {
+        let mut key_bytes = block_signer.to_bytes().to_vec();
+        key_bytes.extend(src_url.as_str().as_bytes());
+
+        match db_txn.get(self.verification_reports_by_signer, &key_bytes) {
+            Ok(_value_bytes) => Ok(true),
+            Err(lmdb::Error::NotFound) => Ok(false),
+            Err(err) => Err(err.into()),
+        }
+    }
+
+    /// Queue a tx source url for attestation verification report polling. We keep track of the
+    /// expected block signer so that when we get the report we can see if we were able to confirm
+    /// the block signer and associate to a report, or have to mark the block signer as having no
+    /// report. That will happen if we have missed an opportunity to poll for a report and the
+    /// report has changed.
+    ///
+    /// Note that this method is not exposed outside of this object. It is used inside
+    /// `add_block_signature` to ensure all block signers get queued up automatically.
+    fn queue_verification_report_poll<'env>(
+        &self,
+        db_txn: &mut RwTransaction<'env>,
+        src_url: &Url,
+        expected_block_signer: &Ed25519Public,
+    ) -> Result<(), WatcherDBError> {
+        if !self.write_allowed {
+            return Err(WatcherDBError::ReadOnly);
+        }
+
+        // Sanity test - the URL needs to be configured.
+        let urls = self.get_config_urls_with_txn(db_txn)?;
+        if !urls.contains(&src_url) {
+            return Err(WatcherDBError::NotFound);
+        }
+
+        let key_bytes = src_url.as_str().as_bytes();
+        let value_bytes = expected_block_signer.to_bytes();
+
+        match db_txn.put(
+            self.verification_reports_poll_queue,
+            &key_bytes,
+            &value_bytes,
+            WriteFlags::NO_DUP_DATA,
+        ) {
+            Ok(_) => {
+                log::trace!(
+                    self.logger,
+                    "Added src_url:{} signer:{} to poll queue",
+                    src_url,
+                    hex::encode(expected_block_signer.to_bytes())
+                );
+                Ok(())
+            }
+            Err(lmdb::Error::KeyExist) => {
+                log::trace!(
+                    self.logger,
+                    "Not adding src_url:{} signer:{} to poll queue - already queued",
+                    src_url,
+                    hex::encode(expected_block_signer.to_bytes())
+                );
+                Ok(())
+            }
+            Err(err) => Err(err.into()),
+        }
+    }
+
+    /// Get a map of queued-for-verification-report-polling tx source urls -> encountered block
+    /// signers.
+    pub fn get_verification_report_poll_queue(
+        &self,
+    ) -> Result<HashMap<Url, Vec<Ed25519Public>>, WatcherDBError> {
+        let db_txn = self.env.begin_ro_txn()?;
+        let mut cursor = db_txn.open_ro_cursor(self.verification_reports_poll_queue)?;
+
+        let mut results = HashMap::default();
+        for (key_bytes, value_bytes) in cursor.iter_start().filter_map(Result::ok) {
+            let url_str = String::from_utf8(key_bytes.to_vec())?;
+            let url = Url::from_str(&url_str)?;
+
+            let block_signer = Ed25519Public::try_from(value_bytes)?;
+
+            results
+                .entry(url)
+                .or_insert_with(Vec::new)
+                .push(block_signer);
+        }
+        Ok(results)
+    }
+
+    /// Remove a single entry from the verification report polling queue
+    fn remove_verification_report_poll_from_queue<'env>(
+        &self,
+        db_txn: &mut RwTransaction<'env>,
+        src_url: &Url,
+        block_signer: &Ed25519Public,
+    ) -> Result<(), WatcherDBError> {
+        let key_bytes = src_url.as_str().as_bytes();
+        let value_bytes = block_signer.to_bytes();
+
+        match db_txn.del(
+            self.verification_reports_poll_queue,
+            &key_bytes,
+            Some(&value_bytes),
+        ) {
+            Ok(()) => Ok(()),
+            Err(lmdb::Error::NotFound) => Ok(()),
+            Err(err) => Err(err.into()),
+        }
+    }
 }
 
 /// Open an existing WatcherDB or create a new one in read-write mode.
@@ -440,9 +936,10 @@ pub fn create_or_open_rw_watcher_db(
 }
 
 #[cfg(test)]
-mod test {
+pub mod tests {
     use super::*;
     use mc_account_keys::AccountKey;
+    use mc_attest_core::VerificationSignature;
     use mc_common::logger::{test_with_logger, Logger};
     use mc_crypto_keys::Ed25519Pair;
     use mc_transaction_core::{Block, BlockContents};
@@ -451,15 +948,16 @@ mod test {
     use mc_util_test_helper::run_with_one_seed;
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
+    use std::iter::FromIterator;
     use tempdir::TempDir;
 
-    fn setup_watcher_db(src_urls: &[Url], logger: Logger) -> WatcherDB {
+    pub fn setup_watcher_db(src_urls: &[Url], logger: Logger) -> WatcherDB {
         let db_tmp = TempDir::new("wallet_db").expect("Could not make tempdir for wallet db");
         WatcherDB::create(db_tmp.path().to_path_buf()).unwrap();
         WatcherDB::open_rw(db_tmp.path().to_path_buf(), src_urls, logger).unwrap()
     }
 
-    fn setup_blocks() -> Vec<(Block, BlockContents)> {
+    pub fn setup_blocks() -> Vec<(Block, BlockContents)> {
         let mut rng: Hc128Rng = Hc128Rng::from_seed([8u8; 32]);
         let origin = Block::new_origin_block(&[]);
 
@@ -663,5 +1161,524 @@ mod test {
                 (u64::MAX, TimestampResultCode::BlockIndexOutOfBounds)
             );
         });
+    }
+
+    // Storing and fetching of verification reports should work.
+    #[test_with_logger]
+    fn test_verification_report_insert_and_get(logger: Logger) {
+        run_with_one_seed(|mut rng| {
+            let url1 = Url::parse("http://www.my_url1.com").unwrap();
+            let url2 = Url::parse("http://www.my_url2.com").unwrap();
+            let url3 = Url::parse("http://www.my_url3.com").unwrap();
+            let urls = vec![url1.clone(), url2.clone()];
+
+            let signing_key_a = Ed25519Pair::from_random(&mut rng).public_key();
+            let signing_key_b = Ed25519Pair::from_random(&mut rng).public_key();
+            let signing_key_c = Ed25519Pair::from_random(&mut rng).public_key();
+            let signing_key_d = Ed25519Pair::from_random(&mut rng).public_key();
+
+            let verification_report_a = VerificationReport {
+                sig: VerificationSignature::from(vec![1; 32]),
+                chain: vec![vec![2; 16], vec![3; 32]],
+                http_body: "test body a".to_owned(),
+            };
+
+            let verification_report_b = VerificationReport {
+                sig: VerificationSignature::from(vec![10; 32]),
+                chain: vec![vec![20; 16], vec![30; 32]],
+                http_body: "test body b".to_owned(),
+            };
+
+            {
+                let watcher_db = setup_watcher_db(&urls, logger.clone());
+
+                // Add a verification report for signing_key_a, and also include signing_key_b.
+                // Result should be report is assocaited with signing_key_a and None is associated with
+                // signing_key_b. Nothing is associated with signing_key_c.
+                for _ in 0..5 {
+                    watcher_db
+                        .add_verification_report(
+                            &url1,
+                            &signing_key_a,
+                            &verification_report_a,
+                            &[signing_key_b],
+                        )
+                        .unwrap();
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_reports_for_signer(&signing_key_a)
+                            .unwrap(),
+                        HashMap::from_iter(vec![(
+                            url1.clone(),
+                            vec![Some(verification_report_a.clone())]
+                        )])
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_reports_for_signer(&signing_key_b)
+                            .unwrap(),
+                        HashMap::from_iter(vec![(url1.clone(), vec![None])])
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_reports_for_signer(&signing_key_c)
+                            .unwrap(),
+                        HashMap::from_iter(vec![])
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_report_for_signer_and_url(&signing_key_a, &url1)
+                            .unwrap(),
+                        vec![Some(verification_report_a.clone())],
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_report_for_signer_and_url(&signing_key_a, &url2)
+                            .unwrap(),
+                        vec![],
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_report_for_signer_and_url(&signing_key_b, &url1)
+                            .unwrap(),
+                        vec![None],
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_report_for_signer_and_url(&signing_key_b, &url2)
+                            .unwrap(),
+                        vec![],
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_report_for_signer_and_url(&signing_key_c, &url1)
+                            .unwrap(),
+                        vec![],
+                    );
+                }
+
+                // Add a second verification report for signing_key_a and test that we can fetch
+                // it.
+                for _ in 0..5 {
+                    watcher_db
+                        .add_verification_report(
+                            &url1,
+                            &signing_key_a,
+                            &verification_report_b,
+                            &[signing_key_b],
+                        )
+                        .unwrap();
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_reports_for_signer(&signing_key_a)
+                            .unwrap(),
+                        HashMap::from_iter(vec![(
+                            url1.clone(),
+                            vec![
+                                Some(verification_report_a.clone()),
+                                Some(verification_report_b.clone())
+                            ]
+                        )])
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_reports_for_signer(&signing_key_b)
+                            .unwrap(),
+                        HashMap::from_iter(vec![(url1.clone(), vec![None])])
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_reports_for_signer(&signing_key_c)
+                            .unwrap(),
+                        HashMap::from_iter(vec![])
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_report_for_signer_and_url(&signing_key_a, &url1)
+                            .unwrap(),
+                        vec![
+                            Some(verification_report_a.clone()),
+                            Some(verification_report_b.clone())
+                        ]
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_report_for_signer_and_url(&signing_key_b, &url1)
+                            .unwrap(),
+                        vec![None]
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_report_for_signer_and_url(&signing_key_c, &url1)
+                            .unwrap(),
+                        vec![]
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_report_for_signer_and_url(&signing_key_c, &url2)
+                            .unwrap(),
+                        vec![]
+                    );
+                }
+            }
+
+            // While this should never happen in the real world, test that the database supports
+            // adding the same verification report to two different URLs.
+            {
+                let watcher_db = setup_watcher_db(&urls, logger.clone());
+
+                // This is done in a loop since repeated executions should not result in different
+                // results
+                for _ in 0..5 {
+                    watcher_db
+                        .add_verification_report(
+                            &url1,
+                            &signing_key_a,
+                            &verification_report_a,
+                            &[signing_key_b],
+                        )
+                        .unwrap();
+
+                    watcher_db
+                        .add_verification_report(
+                            &url2,
+                            &signing_key_a,
+                            &verification_report_a,
+                            &[signing_key_b],
+                        )
+                        .unwrap();
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_reports_for_signer(&signing_key_a)
+                            .unwrap(),
+                        HashMap::from_iter(vec![
+                            (url1.clone(), vec![Some(verification_report_a.clone())]),
+                            (url2.clone(), vec![Some(verification_report_a.clone())]),
+                        ])
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_reports_for_signer(&signing_key_b)
+                            .unwrap(),
+                        HashMap::from_iter(vec![
+                            (url1.clone(), vec![None]),
+                            (url2.clone(), vec![None])
+                        ])
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_reports_for_signer(&signing_key_c)
+                            .unwrap(),
+                        HashMap::from_iter(vec![])
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_report_for_signer_and_url(&signing_key_a, &url1)
+                            .unwrap(),
+                        vec![Some(verification_report_a.clone())]
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_report_for_signer_and_url(&signing_key_a, &url2)
+                            .unwrap(),
+                        vec![Some(verification_report_a.clone())]
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_report_for_signer_and_url(&signing_key_a, &url3)
+                            .unwrap(),
+                        vec![]
+                    );
+                }
+            }
+
+            // Add a None verification report and then add an actual verification report to some
+            // key.
+            {
+                let watcher_db = setup_watcher_db(&urls, logger.clone());
+
+                for _ in 0..5 {
+                    // Adds None to signing_key_b
+                    watcher_db
+                        .add_verification_report(
+                            &url1,
+                            &signing_key_a,
+                            &verification_report_a,
+                            &[signing_key_b],
+                        )
+                        .unwrap();
+
+                    // Add verification_report_b to signing_key_b
+                    watcher_db
+                        .add_verification_report(
+                            &url1,
+                            &signing_key_b,
+                            &verification_report_b,
+                            &[signing_key_c],
+                        )
+                        .unwrap();
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_reports_for_signer(&signing_key_a)
+                            .unwrap(),
+                        HashMap::from_iter(vec![(
+                            url1.clone(),
+                            vec![Some(verification_report_a.clone())]
+                        ),])
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_reports_for_signer(&signing_key_b)
+                            .unwrap(),
+                        HashMap::from_iter(vec![(
+                            url1.clone(),
+                            vec![Some(verification_report_b.clone()), None]
+                        ),])
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_reports_for_signer(&signing_key_c)
+                            .unwrap(),
+                        HashMap::from_iter(vec![(url1.clone(), vec![None])])
+                    );
+
+                    assert_eq!(
+                        watcher_db
+                            .get_verification_reports_for_signer(&signing_key_d)
+                            .unwrap(),
+                        HashMap::from_iter(vec![])
+                    );
+                }
+            }
+        })
+    }
+
+    // Verification report polling queue should behave as expected.
+    #[test_with_logger]
+    fn test_verification_report_poll_queue(logger: Logger) {
+        run_with_one_seed(|mut rng| {
+            let url1 = Url::parse("http://www.my_url1.com").unwrap();
+            let url2 = Url::parse("http://www.my_url2.com").unwrap();
+            let url3 = Url::parse("http://www.my_url3.com").unwrap();
+            let urls = vec![url1.clone(), url2.clone(), url3.clone()];
+
+            let verification_report_a = VerificationReport {
+                sig: VerificationSignature::from(vec![1; 32]),
+                chain: vec![vec![2; 16], vec![3; 32]],
+                http_body: "test body a".to_owned(),
+            };
+
+            let blocks = setup_blocks();
+            let signing_key_a = Ed25519Pair::from_random(&mut rng);
+            let signing_key_b = Ed25519Pair::from_random(&mut rng);
+            let signing_key_c = Ed25519Pair::from_random(&mut rng);
+            let filename = String::from("00/00");
+
+            let watcher_db = setup_watcher_db(&urls, logger.clone());
+
+            // Queue starts empty.
+            assert_eq!(
+                watcher_db.get_verification_report_poll_queue().unwrap(),
+                HashMap::default()
+            );
+
+            // Add a block signature, the signing key should make it into the queue.
+            let signed_block_a1 =
+                BlockSignature::from_block_and_keypair(&blocks[0].0, &signing_key_a).unwrap();
+            watcher_db
+                .add_block_signature(&url1, 1, signed_block_a1, filename.clone())
+                .unwrap();
+
+            // Repeated calls should all behave the same.
+            for _ in 0..5 {
+                assert_eq!(
+                    watcher_db.get_verification_report_poll_queue().unwrap(),
+                    HashMap::from_iter(vec![(url1.clone(), vec![signing_key_a.public_key()])])
+                );
+            }
+
+            // Adding another block with the same signing key should not affect the queue.
+            let signed_block_a2 =
+                BlockSignature::from_block_and_keypair(&blocks[1].0, &signing_key_a).unwrap();
+            watcher_db
+                .add_block_signature(&url1, 2, signed_block_a2, filename.clone())
+                .unwrap();
+
+            for _ in 0..5 {
+                assert_eq!(
+                    watcher_db.get_verification_report_poll_queue().unwrap(),
+                    HashMap::from_iter(vec![(url1.clone(), vec![signing_key_a.public_key()])])
+                );
+            }
+
+            // Adding a block with a different key should show up in the queue.
+            let signed_block_b1 =
+                BlockSignature::from_block_and_keypair(&blocks[0].0, &signing_key_b).unwrap();
+            watcher_db
+                .add_block_signature(&url1, 1, signed_block_b1.clone(), filename.clone())
+                .unwrap();
+
+            for _ in 0..5 {
+                assert_eq!(
+                    watcher_db.get_verification_report_poll_queue().unwrap(),
+                    HashMap::from_iter(vec![(
+                        url1.clone(),
+                        vec![signing_key_b.public_key(), signing_key_a.public_key()]
+                    )])
+                );
+            }
+
+            // Adding a block with the same signing key but a different url should make it into the
+            // queue.
+            watcher_db
+                .add_block_signature(&url2, 1, signed_block_b1, filename.clone())
+                .unwrap();
+
+            for _ in 0..5 {
+                assert_eq!(
+                    watcher_db.get_verification_report_poll_queue().unwrap(),
+                    HashMap::from_iter(vec![
+                        (
+                            url1.clone(),
+                            vec![signing_key_b.public_key(), signing_key_a.public_key()]
+                        ),
+                        (url2.clone(), vec![signing_key_b.public_key()]),
+                    ])
+                );
+            }
+
+            // Adding a verification report for some key that is not in the queue should not affect
+            // things.
+            watcher_db
+                .add_verification_report(
+                    &url1,
+                    &signing_key_c.public_key(),
+                    &verification_report_a,
+                    &[],
+                )
+                .unwrap();
+
+            assert_eq!(
+                watcher_db.get_verification_report_poll_queue().unwrap(),
+                HashMap::from_iter(vec![
+                    (
+                        url1.clone(),
+                        vec![signing_key_b.public_key(), signing_key_a.public_key()]
+                    ),
+                    (url2.clone(), vec![signing_key_b.public_key()]),
+                ])
+            );
+
+            // Adding a verification report that references one of the keys in the queue should
+            // cause it to get removed.
+            watcher_db
+                .add_verification_report(
+                    &url2,
+                    &signing_key_b.public_key(),
+                    &verification_report_a,
+                    &[],
+                )
+                .unwrap();
+
+            assert_eq!(
+                watcher_db.get_verification_report_poll_queue().unwrap(),
+                HashMap::from_iter(vec![(
+                    url1.clone(),
+                    vec![signing_key_b.public_key(), signing_key_a.public_key()]
+                ),])
+            );
+
+            // Adding a block signature for a key that already has a verification report should not
+            // affect the queue.
+            let signed_block_b2 =
+                BlockSignature::from_block_and_keypair(&blocks[1].0, &signing_key_b).unwrap();
+            watcher_db
+                .add_block_signature(&url2, 2, signed_block_b2.clone(), filename.clone())
+                .unwrap();
+
+            assert_eq!(
+                watcher_db.get_verification_report_poll_queue().unwrap(),
+                HashMap::from_iter(vec![(
+                    url1.clone(),
+                    vec![signing_key_b.public_key(), signing_key_a.public_key()]
+                ),])
+            );
+
+            // Unless it is added to a url we have not encountered before.
+            watcher_db
+                .add_block_signature(&url3, 2, signed_block_b2, filename.clone())
+                .unwrap();
+
+            assert_eq!(
+                watcher_db.get_verification_report_poll_queue().unwrap(),
+                HashMap::from_iter(vec![
+                    (
+                        url1.clone(),
+                        vec![signing_key_b.public_key(), signing_key_a.public_key()]
+                    ),
+                    (url3.clone(), vec![signing_key_b.public_key()]),
+                ])
+            );
+
+            // Referencing signing_key_a and signing_key_b for url1 will cause them to be removed
+            // from the queue but only when the correct url is used.
+            watcher_db
+                .add_verification_report(
+                    &url2,
+                    &signing_key_b.public_key(),
+                    &verification_report_a,
+                    &[signing_key_a.public_key()],
+                )
+                .unwrap();
+
+            assert_eq!(
+                watcher_db.get_verification_report_poll_queue().unwrap(),
+                HashMap::from_iter(vec![
+                    (
+                        url1.clone(),
+                        vec![signing_key_b.public_key(), signing_key_a.public_key()]
+                    ),
+                    (url3.clone(), vec![signing_key_b.public_key()]),
+                ])
+            );
+
+            watcher_db
+                .add_verification_report(
+                    &url1,
+                    &signing_key_b.public_key(),
+                    &verification_report_a,
+                    &[signing_key_a.public_key()],
+                )
+                .unwrap();
+
+            assert_eq!(
+                watcher_db.get_verification_report_poll_queue().unwrap(),
+                HashMap::from_iter(vec![(url3.clone(), vec![signing_key_b.public_key()]),])
+            );
+        })
     }
 }
