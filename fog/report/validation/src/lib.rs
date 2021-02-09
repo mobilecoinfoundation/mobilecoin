@@ -14,6 +14,16 @@
 
 extern crate alloc;
 
+mod traits;
+
+/// Data structure for fog-ingest report validation
+pub mod ingest_report;
+
+#[cfg(any(test, feature = "automock"))]
+pub use crate::traits::MockFogPubkeyResolver;
+pub use crate::traits::{FogPubkeyError, FogPubkeyResolver, FullyValidatedFogPubkey};
+
+use crate::ingest_report::IngestReportVerifier;
 use alloc::{
     collections::BTreeMap,
     string::{String, ToString},
@@ -21,21 +31,9 @@ use alloc::{
 use core::str::FromStr;
 use mc_account_keys::PublicAddress;
 use mc_attest_core::Verifier;
+use mc_fog_sig::FogSignatureVerifier;
 use mc_fog_types::ReportResponse;
 use mc_util_uri::FogUri;
-
-/// Data structure for fog-ingest report validation
-pub mod ingest_report;
-use ingest_report::IngestReportVerifier;
-
-/// Interface for a class that can take public addresses and produce validated
-/// fog pubkeys suitable for the transaction builder.
-/// This is the FogResolver object.
-mod traits;
-pub use traits::{FogPubkeyError, FogPubkeyResolver, FullyValidatedFogPubkey};
-
-#[cfg(any(test, feature = "automock"))]
-pub use traits::MockFogPubkeyResolver;
 
 /// Represents a set of unvalidated responses from Fog report servers
 /// Key = Fog-url that was contacted, must match the string in user's public address
@@ -102,6 +100,9 @@ impl FogPubkeyResolver for FogResolver {
             // Normalize the string to URL before lookup
             let url = FogUri::from_str(url)?.to_string();
             if let Some(result) = self.responses.get(&url) {
+                // Verify the authority signature chain
+                recipient.verify_fog_sig(result)?;
+                // Get the report corresponding to our ID
                 let report_id = recipient.fog_report_id().unwrap_or("").to_string();
                 for report in result.reports.iter() {
                     if report_id == report.fog_report_id {

@@ -579,10 +579,6 @@ impl Signature for RistrettoSignature {
     fn from_bytes(bytes: &[u8]) -> Result<Self, SignatureError> {
         Self::try_from(bytes)
     }
-
-    fn as_bytes(&self) -> &[u8] {
-        self.as_ref()
-    }
 }
 
 impl TryFrom<&[u8]> for RistrettoSignature {

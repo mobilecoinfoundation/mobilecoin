@@ -2788,6 +2788,7 @@ dependencies = [
  "mc-account-keys",
  "mc-attest-core",
  "mc-crypto-keys",
+ "mc-fog-sig",
  "mc-fog-types",
  "mc-util-encodings",
  "mc-util-serial",
@@ -2808,10 +2809,13 @@ name = "mc-fog-sig"
 version = "1.0.0"
 dependencies = [
  "displaydoc",
+ "mc-account-keys",
  "mc-attest-core",
  "mc-crypto-digestible-signature",
  "mc-crypto-keys",
  "mc-crypto-x509-test-vectors",
+ "mc-crypto-x509-utils",
+ "mc-fog-types",
  "mc-util-from-random",
  "pem",
  "rand_core 0.5.1",

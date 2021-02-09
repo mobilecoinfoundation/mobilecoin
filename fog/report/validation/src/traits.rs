@@ -1,12 +1,13 @@
+#[cfg(any(test, feature = "automock"))]
+use mockall::*;
+
 use crate::ingest_report::Error as IngestReportError;
-use core::fmt::Debug;
+use core::fmt::{Debug, Display};
 use displaydoc::Display;
 use mc_account_keys::PublicAddress;
 use mc_crypto_keys::RistrettoPublic;
+use mc_fog_sig::FogSignatureError;
 use mc_util_uri::UriParseError;
-
-#[cfg(any(test, feature = "automock"))]
-use mockall::*;
 
 /// Class that can resolve a public address to a fully-validated fog public key structure,
 /// including the pubkey expiry data from the report server.
@@ -54,6 +55,8 @@ pub enum FogPubkeyError {
     Deserialization(mc_util_serial::decode::Error),
     /// Ingest report verification error: {0}
     IngestReport(IngestReportError),
+    /// Authority verification error: {0}
+    Authority(String),
 }
 
 impl From<IngestReportError> for FogPubkeyError {
@@ -71,5 +74,11 @@ impl From<mc_util_serial::decode::Error> for FogPubkeyError {
 impl From<UriParseError> for FogPubkeyError {
     fn from(src: UriParseError) -> Self {
         Self::Url(src)
+    }
+}
+
+impl<A: Debug + Display, R: Debug + Display> From<FogSignatureError<A, R>> for FogPubkeyError {
+    fn from(src: FogSignatureError<A, R>) -> Self {
+        FogPubkeyError::Authority(src.to_string())
     }
 }

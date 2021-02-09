@@ -4,6 +4,7 @@
 //! fog authority public keys and the canonical signing context/domain separator
 //! byte string.
 
+mod account_keys;
 mod ristretto;
 
 use core::fmt::{Debug, Display as DisplayTrait};
@@ -21,8 +22,8 @@ pub fn context() -> &'static [u8] {
 }
 
 /// A wrap-up error type which can display authority signature-related errors
-#[derive(Debug, Display, Eq, PartialEq)]
-pub enum AuthorityError<E: Debug + DisplayTrait + Eq + PartialEq> {
+#[derive(Debug, Display)]
+pub enum Error<E: Debug + DisplayTrait> {
     /// Error decoding PEM into DER: {0}
     Pem(PemError),
     /// Error parsing the X509 certificate: {0:?}
@@ -31,14 +32,14 @@ pub enum AuthorityError<E: Debug + DisplayTrait + Eq + PartialEq> {
     Algorithm(E),
 }
 
-impl<E: Debug + DisplayTrait + Eq + PartialEq> From<PemError> for AuthorityError<E> {
-    fn from(src: PemError) -> AuthorityError<E> {
+impl<E: Debug + DisplayTrait> From<PemError> for Error<E> {
+    fn from(src: PemError) -> Error<E> {
         Self::Pem(src)
     }
 }
 
-impl<E: Debug + DisplayTrait + Eq + PartialEq> From<X509Error> for AuthorityError<E> {
-    fn from(src: X509Error) -> AuthorityError<E> {
+impl<E: Debug + DisplayTrait> From<X509Error> for Error<E> {
+    fn from(src: X509Error) -> Error<E> {
         Self::X509(src)
     }
 }
@@ -49,13 +50,13 @@ pub trait Signer {
     /// The signature output type
     type Sig: Signature;
     /// The error type
-    type Error: Debug + DisplayTrait + Eq + PartialEq;
+    type Error: Debug + DisplayTrait;
 
     /// Signs a pem-encoded string containing a fog authority certificate
     fn sign_authority_pem<P: AsRef<[u8]>>(
         &self,
         authority: P,
-    ) -> Result<Self::Sig, AuthorityError<<Self as Signer>::Error>> {
+    ) -> Result<Self::Sig, Error<<Self as Signer>::Error>> {
         self.sign_authority_der(pem::parse(authority.as_ref())?.contents)
     }
 
@@ -63,7 +64,7 @@ pub trait Signer {
     fn sign_authority_der<D: AsRef<[u8]>>(
         &self,
         authority: D,
-    ) -> Result<Self::Sig, AuthorityError<<Self as Signer>::Error>> {
+    ) -> Result<Self::Sig, Error<<Self as Signer>::Error>> {
         self.sign_authority_x509(&x509_signature::parse_certificate(authority.as_ref())?)
     }
 
@@ -71,7 +72,7 @@ pub trait Signer {
     fn sign_authority_x509(
         &self,
         x509: &X509Certificate,
-    ) -> Result<Self::Sig, AuthorityError<<Self as Signer>::Error>> {
+    ) -> Result<Self::Sig, Error<<Self as Signer>::Error>> {
         self.sign_authority_spki(&x509.subject_public_key_info())
     }
 
@@ -79,7 +80,7 @@ pub trait Signer {
     fn sign_authority_spki(
         &self,
         spki: &SubjectPublicKeyInfo,
-    ) -> Result<Self::Sig, AuthorityError<<Self as Signer>::Error>> {
+    ) -> Result<Self::Sig, Error<<Self as Signer>::Error>> {
         self.sign_authority_bytes(spki.spki())
     }
 
@@ -87,14 +88,14 @@ pub trait Signer {
     fn sign_authority_bytes(
         &self,
         spki_bytes: &[u8],
-    ) -> Result<Self::Sig, AuthorityError<<Self as Signer>::Error>>;
+    ) -> Result<Self::Sig, Error<<Self as Signer>::Error>>;
 }
 
 pub trait Verifier {
     /// The signature type to be verified
     type Sig: Signature;
     /// The error type if a signature could not be verified
-    type Error: Debug + DisplayTrait + Eq + PartialEq;
+    type Error: Debug + DisplayTrait;
 
     /// Verify a signature over a PEM-encoded string containing a fog authority
     /// certificate
@@ -102,7 +103,7 @@ pub trait Verifier {
         &self,
         authority: P,
         sig: &Self::Sig,
-    ) -> Result<(), AuthorityError<<Self as Verifier>::Error>> {
+    ) -> Result<(), Error<<Self as Verifier>::Error>> {
         self.verify_authority_sig_der(pem::parse(authority.as_ref())?.contents, sig)
     }
 
@@ -111,7 +112,7 @@ pub trait Verifier {
         &self,
         authority: D,
         sig: &Self::Sig,
-    ) -> Result<(), AuthorityError<<Self as Verifier>::Error>> {
+    ) -> Result<(), Error<<Self as Verifier>::Error>> {
         self.verify_authority_sig_x509(&x509_signature::parse_certificate(authority.as_ref())?, sig)
     }
 
@@ -120,7 +121,7 @@ pub trait Verifier {
         &self,
         authority: &X509Certificate,
         sig: &Self::Sig,
-    ) -> Result<(), AuthorityError<<Self as Verifier>::Error>> {
+    ) -> Result<(), Error<<Self as Verifier>::Error>> {
         self.verify_authority_sig_spki(&authority.subject_public_key_info(), sig)
     }
 
@@ -129,7 +130,7 @@ pub trait Verifier {
         &self,
         spki: &SubjectPublicKeyInfo,
         sig: &Self::Sig,
-    ) -> Result<(), AuthorityError<<Self as Verifier>::Error>> {
+    ) -> Result<(), Error<<Self as Verifier>::Error>> {
         self.verify_authority_sig_bytes(spki.spki(), sig)
     }
 
@@ -138,7 +139,7 @@ pub trait Verifier {
         &self,
         spki_bytes: &[u8],
         sig: &Self::Sig,
-    ) -> Result<(), AuthorityError<<Self as Verifier>::Error>>;
+    ) -> Result<(), Error<<Self as Verifier>::Error>>;
 }
 
 #[cfg(test)]
@@ -173,10 +174,7 @@ mod test {
         type Sig = MockSig;
         type Error = String;
 
-        fn sign_authority_bytes(
-            &self,
-            spki_bytes: &[u8],
-        ) -> Result<Self::Sig, AuthorityError<Self::Error>> {
+        fn sign_authority_bytes(&self, spki_bytes: &[u8]) -> Result<Self::Sig, Error<Self::Error>> {
             Ok(MockSig::from_bytes(spki_bytes).expect("Could not construct mock sig from bytes"))
         }
     }
@@ -192,11 +190,11 @@ mod test {
             &self,
             spki_bytes: &[u8],
             sig: &Self::Sig,
-        ) -> Result<(), AuthorityError<Self::Error>> {
+        ) -> Result<(), Error<Self::Error>> {
             if spki_bytes == &sig.0[..] {
                 Ok(())
             } else {
-                Err(AuthorityError::Algorithm("spki difference".to_owned()))
+                Err(Error::Algorithm("spki difference".to_owned()))
             }
         }
     }

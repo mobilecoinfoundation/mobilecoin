@@ -6,19 +6,19 @@
 // TODO: If/when we have a ViewPublic/ViewPrivate types, this should be
 //       implemented on those types, instead of all ristretto public keys.
 
-use crate::authority::{AuthorityError, Signer as AuthoritySigner, Verifier as AuthorityVerifier};
+use crate::authority::{Error, Signer, Verifier};
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic, RistrettoSignature};
 
-impl AuthoritySigner for RistrettoPrivate {
+impl Signer for RistrettoPrivate {
     type Sig = RistrettoSignature;
     type Error = String;
 
-    fn sign_authority_bytes(&self, spki_bytes: &[u8]) -> Result<Self::Sig, AuthorityError<String>> {
+    fn sign_authority_bytes(&self, spki_bytes: &[u8]) -> Result<Self::Sig, Error<String>> {
         Ok(self.sign_schnorrkel(super::context(), spki_bytes))
     }
 }
 
-impl AuthorityVerifier for RistrettoPublic {
+impl Verifier for RistrettoPublic {
     type Sig = RistrettoSignature;
     type Error = String;
 
@@ -26,9 +26,9 @@ impl AuthorityVerifier for RistrettoPublic {
         &self,
         spki_bytes: &[u8],
         sig: &Self::Sig,
-    ) -> Result<(), AuthorityError<String>> {
+    ) -> Result<(), Error<String>> {
         self.verify_schnorrkel(super::context(), spki_bytes, sig)
-            .map_err(|e| AuthorityError::Algorithm(format!("{:#}", e)))
+            .map_err(|e| Error::Algorithm(format!("{:#}", e)))
     }
 }
 

@@ -6,9 +6,12 @@ edition = "2018"
 description = "Create and verify fog authority and report signatures"
 
 [dependencies]
+mc-account-keys = { path = "../../account-keys", default-features = false }
 mc-attest-core = { path = "../../attest/core", default-features = false }
 mc-crypto-digestible-signature = { path = "../../crypto/digestible/signature", default-features = false }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
+mc-crypto-x509-utils = { path = "../../crypto/x509/utils" }
+mc-fog-types = { path = "../types", default-features = false }
 
 displaydoc = { version = "0.1.7", default-features = false }
 pem = "0.8"

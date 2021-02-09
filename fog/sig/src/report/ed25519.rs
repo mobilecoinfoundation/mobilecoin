@@ -4,15 +4,15 @@
 //! signature scheme.
 
 use crate::report::{Signer, Verifier};
-use mc_attest_core::VerificationReport;
 use mc_crypto_digestible_signature::{DigestibleSigner, DigestibleVerifier};
 use mc_crypto_keys::{Ed25519Pair, Ed25519Public, Ed25519Signature, Ed25519SignatureError};
+use mc_fog_types::Report;
 
 impl Signer for Ed25519Pair {
     type Sig = Ed25519Signature;
     type Error = Ed25519SignatureError;
 
-    fn sign_reports(&self, reports: &[VerificationReport]) -> Result<Self::Sig, Self::Error> {
+    fn sign_reports(&self, reports: &[Report]) -> Result<Self::Sig, Self::Error> {
         self.try_sign_digestible(super::context(), &reports)
     }
 }
@@ -21,11 +21,7 @@ impl Verifier for Ed25519Public {
     type Sig = Ed25519Signature;
     type Error = Ed25519SignatureError;
 
-    fn verify_reports(
-        &self,
-        reports: &[VerificationReport],
-        sig: &Self::Sig,
-    ) -> Result<(), Self::Error> {
+    fn verify_reports(&self, reports: &[Report], sig: &Self::Sig) -> Result<(), Self::Error> {
         self.verify_digestible(super::context(), &reports, sig)
     }
 }
@@ -38,17 +34,21 @@ mod test {
     //! level, and just do a round-trip.
 
     use super::*;
-    use mc_attest_core::VerificationSignature;
+    use mc_attest_core::{VerificationReport, VerificationSignature};
     use mc_util_from_random::FromRandom;
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
 
     #[test]
     fn roundtrip() {
-        let reports = [VerificationReport {
-            sig: VerificationSignature::default(),
-            chain: vec![],
-            http_body: "this should probably be a json".to_string(),
+        let reports = [Report {
+            fog_report_id: "id".to_string(),
+            report: VerificationReport {
+                sig: VerificationSignature::default(),
+                chain: vec![],
+                http_body: "this should probably be a json".to_string(),
+            },
+            pubkey_expiry: 0,
         }];
 
         let mut csprng = Hc128Rng::seed_from_u64(0);

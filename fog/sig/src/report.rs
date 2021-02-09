@@ -1,13 +1,16 @@
 // Copyright 2018-2021 The MobileCoin Foundation
 
-//! This module provides traits and methods for the signing and verification
-//! of report server responses.
+//! This module provide an implementation of the verifier for the x509 utils
+//! "PublicKeyType" enum.
+//!
+//! Only Ed25519 is supported.
 
 mod ed25519;
+mod public_key_type;
 
-use mc_attest_core::VerificationReport;
+use core::fmt::{Debug, Display};
+use mc_fog_types::Report;
 use signature::Signature;
-use std::fmt::Display;
 
 /// Retrieve the domain separator used to sign a report server response
 pub fn context() -> &'static [u8] {
@@ -18,26 +21,22 @@ pub fn context() -> &'static [u8] {
 /// list of IAS verification reports with appropriate domain separators.
 pub trait Signer {
     /// The signature output type
-    type Sig: Signature;
+    type Sig: Signature + Clone;
     /// A printable error type
-    type Error: Display;
+    type Error: Debug + Display;
 
     /// Sign a list of IAS verification report.
-    fn sign_reports(&self, reports: &[VerificationReport]) -> Result<Self::Sig, Self::Error>;
+    fn sign_reports(&self, reports: &[Report]) -> Result<Self::Sig, Self::Error>;
 }
 
 /// A trait which public keys can implement to allow them to verify a signature
 /// over a list of IAS verification reports with appropriate domain separators.
 pub trait Verifier {
     /// The signature output type
-    type Sig: Signature;
+    type Sig: Signature + Clone;
     /// The printable error type
-    type Error: Display;
+    type Error: Debug + Display;
 
     /// Verify the provided signature is valid for the object over the reports.
-    fn verify_reports(
-        &self,
-        reports: &[VerificationReport],
-        sig: &Self::Sig,
-    ) -> Result<(), Self::Error>;
+    fn verify_reports(&self, reports: &[Report], sig: &Self::Sig) -> Result<(), Self::Error>;
 }
