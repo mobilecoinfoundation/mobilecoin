@@ -19,9 +19,11 @@ use rand_core::{CryptoRng, RngCore};
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 use zeroize::Zeroize;
 
-// The size of the plaintext (with magic numbers) in a fog hint.
-// This is slightly larger than ristretto public.
-type PlaintextArray = GenericArray<
+/// The size of the plaintext (with magic numbers) in a fog hint.
+/// This is slightly larger than CompressedRistrettoPublic.
+///
+/// This type is pub because it is used in some tests in other crates
+pub type PlaintextArray = GenericArray<
     u8,
     Diff<EncryptedFogHintSize, <VersionedCryptoBox as CryptoBox<Ristretto>>::FooterSize>,
 >;
