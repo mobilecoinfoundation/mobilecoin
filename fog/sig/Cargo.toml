@@ -19,6 +19,7 @@ signature = { version = "1.2.2" }
 x509-signature = "0.5"
 
 [dev-dependencies]
+mc-attest-core = { path = "../../attest/core" }
 mc-crypto-x509-test-vectors = { path = "../../crypto/x509/test-vectors" }
 mc-util-from-random = { path = "../../util/from-random" }
 
