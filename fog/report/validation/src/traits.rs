@@ -6,7 +6,7 @@ use core::fmt::{Debug, Display};
 use displaydoc::Display;
 use mc_account_keys::PublicAddress;
 use mc_crypto_keys::RistrettoPublic;
-use mc_fog_sig::FogSignatureError;
+use mc_fog_sig::Error as FogSigError;
 use mc_util_uri::UriParseError;
 
 /// Class that can resolve a public address to a fully-validated fog public key structure,
@@ -77,8 +77,8 @@ impl From<UriParseError> for FogPubkeyError {
     }
 }
 
-impl<A: Debug + Display, R: Debug + Display> From<FogSignatureError<A, R>> for FogPubkeyError {
-    fn from(src: FogSignatureError<A, R>) -> Self {
+impl<A: Debug + Display, R: Debug + Display> From<FogSigError<A, R>> for FogPubkeyError {
+    fn from(src: FogSigError<A, R>) -> Self {
         FogPubkeyError::Authority(src.to_string())
     }
 }

@@ -1,3 +1,5 @@
+// Copyright 2018-2020 The MobileCoin Foundation
+
 //! Convert to/from external::VerificationReport
 
 use crate::external;
@@ -8,7 +10,7 @@ impl From<&VerificationReport> for external::VerificationReport {
     fn from(src: &VerificationReport) -> Self {
         let mut dst = external::VerificationReport::new();
 
-        dst.set_sig(Vec::from(src.sig.as_ref()));
+        dst.set_sig((&src.sig).into());
         dst.set_chain(RepeatedField::from_slice(&src.chain));
         dst.set_http_body(src.http_body.clone());
         dst
@@ -25,73 +27,29 @@ impl From<&external::VerificationReport> for VerificationReport {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use rand::{rngs::StdRng, SeedableRng};
-//
-//     // Test converting between external::AccountKey and account_keys::AccountKey
-//     #[test]
-//     fn test_account_key_conversion() {
-//         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
-//
-//         // without fog_report_url
-//         {
-//             // account_keys -> external
-//             let account_key = AccountKey::random(&mut rng);
-//             let proto_credentials = external::AccountKey::from(&account_key);
-//             assert_eq!(
-//                 *proto_credentials.get_view_private_key(),
-//                 external::RistrettoPrivate::from(account_key.view_private_key())
-//             );
-//             assert_eq!(
-//                 *proto_credentials.get_spend_private_key(),
-//                 external::RistrettoPrivate::from(account_key.spend_private_key())
-//             );
-//             assert_eq!(proto_credentials.fog_report_url, String::from(""));
-//
-//             assert_eq!(proto_credentials.fog_authority_spki.len(), 0);
-//
-//             assert_eq!(proto_credentials.fog_report_id, String::from(""));
-//
-//             // external -> account_keys
-//             let account_key2 = AccountKey::try_from(&proto_credentials).unwrap();
-//             assert_eq!(account_key, account_key2);
-//         }
-//
-//         // with valid fog_report_url
-//         {
-//             // account_keys -> external
-//             let tmp_account_key = AccountKey::random(&mut rng);
-//             let account_key = AccountKey::new_with_fog(
-//                 tmp_account_key.spend_private_key(),
-//                 tmp_account_key.view_private_key(),
-//                 "fog://test.mobilecoin.com".to_string(),
-//                 "99".to_string(),
-//                 vec![9, 9, 9, 9],
-//             );
-//
-//             let proto_credentials = external::AccountKey::from(&account_key);
-//             assert_eq!(
-//                 *proto_credentials.get_view_private_key(),
-//                 external::RistrettoPrivate::from(account_key.view_private_key())
-//             );
-//             assert_eq!(
-//                 *proto_credentials.get_spend_private_key(),
-//                 external::RistrettoPrivate::from(account_key.spend_private_key())
-//             );
-//             assert_eq!(
-//                 proto_credentials.fog_report_url,
-//                 String::from("fog://test.mobilecoin.com")
-//             );
-//
-//             assert_eq!(proto_credentials.fog_authority_spki, vec![9, 9, 9, 9],);
-//
-//             assert_eq!(proto_credentials.fog_report_id, String::from("99"));
-//
-//             // external -> account_keys
-//             let account_key2 = AccountKey::try_from(&proto_credentials).unwrap();
-//             assert_eq!(account_key, account_key2);
-//         }
-//     }
-// }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const IAS_JSON: &str = include_str!("ias_ok.json");
+
+    /// Test round-trip conversion of prost to protobuf to prost
+    #[test]
+    fn prost_to_proto_roundtrip() {
+        let report = VerificationReport {
+            sig: VerificationSignature::from(&b"this is a fake signature"[..]),
+            chain: pem::parse_many(mc_crypto_x509_test_vectors::ok_rsa_chain_25519_leaf().0)
+                .into_iter()
+                .map(|p| p.contents)
+                .collect::<Vec<Vec<u8>>>(),
+            http_body: IAS_JSON.to_owned(),
+        };
+
+        // external -> prost
+        let proto_report = external::VerificationReport::from(&report);
+        // prost -> external
+        let prost_report = VerificationReport::from(&proto_report);
+
+        assert_eq!(report, prost_report);
+    }
+}

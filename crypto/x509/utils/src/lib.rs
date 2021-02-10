@@ -5,13 +5,11 @@
 use displaydoc::Display;
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Public, KeyError};
 use pem::Pem;
-use std::{
-    convert::TryFrom,
-    time::{SystemTime, SystemTimeError},
-};
-use x509_signature::{ASN1Time, Error as X509Error, X509Certificate};
+use std::time::{SystemTime, SystemTimeError};
+use x509_signature::{Error as X509Error, X509Certificate};
 
-/// An iterator of [`X509Certificate`] objects over a slice of [`Pem`] objects.
+/// An iterator of [`X509Certificate`] objects over things which can be
+/// converted to vectors of byte slices.
 pub struct X509CertificateIter<'a> {
     pem_slice: Vec<&'a [u8]>,
     offset: usize,
@@ -40,7 +38,7 @@ impl<'a> Iterator for X509CertificateIter<'a> {
 }
 
 /// A trait used to monkey-patch an X509Certificate parsing iterator over a
-/// slice of [`Pem`] objects.
+/// vector of byte slices.
 pub trait X509CertificateIterable {
     fn iter_x509(&self) -> X509CertificateIter;
 }
@@ -109,12 +107,6 @@ impl<'a, T: AsRef<[X509Certificate<'a>]>> X509CertificateChain for T {
             let timestamp = SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)?
                 .as_secs() as i64;
-            eprintln!(
-                "Cert: Now: {:?}, Not Before: {:?}, Not After: {:?}",
-                ASN1Time::try_from(timestamp).expect("asn1 timestamp of now is incorrect"),
-                cert.not_before(),
-                cert.not_after()
-            );
 
             // If the cert isn't valid (temporally), fail.
             cert.valid_at_timestamp(timestamp)?;

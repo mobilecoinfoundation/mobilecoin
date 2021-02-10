@@ -21,7 +21,7 @@ message ReportResponse {
     repeated Report reports = 1;
     /// The X509 chain from the fog authority to the signer
     repeated bytes chain = 2;
-    /// The signature over the report list
+    /// The signature over the report list made by the last cert in the chain
     bytes signature = 3;
 }
 

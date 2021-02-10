@@ -31,7 +31,7 @@ use alloc::{
 use core::str::FromStr;
 use mc_account_keys::PublicAddress;
 use mc_attest_core::Verifier;
-use mc_fog_sig::FogSignatureVerifier;
+use mc_fog_sig::Verifier as FogSigVerifier;
 use mc_fog_types::ReportResponse;
 use mc_util_uri::FogUri;
 

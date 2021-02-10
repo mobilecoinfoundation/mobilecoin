@@ -36,6 +36,7 @@ mod tx_out_membership_element;
 mod tx_out_membership_proof;
 mod tx_prefix;
 mod verification_report;
+mod verification_signature;
 mod watcher;
 
 pub use self::error::ConversionError;

@@ -81,8 +81,8 @@ message PublicAddress {
     /// which one to use when sending to this account.
     string fog_report_id = 4;
 
-    /// Signature over the fog authority subjectPublicKeyInfo the view key.
-
+    /// View key signature over the fog authority subjectPublicKeyInfo.
+    ///
     /// This must be parseable as a RistrettoSignature.
     bytes fog_authority_sig = 5;
 }
@@ -268,10 +268,15 @@ message Receipt {
     Amount amount = 4;
 }
 
+/// The signature over an IAS JSON reponse, created by Intel
+message VerificationSignature {
+    bytes contents = 1;
+}
+
 /// The IAS verification report response encoded as a protocol buffer
 message VerificationReport {
     /// The IAS-generated signature over the response string
-    bytes sig = 1;
+    VerificationSignature sig = 1;
 
     /// A list of byte strings representing the DER-encoded certificate
     /// chain provided by IAS.

@@ -2095,7 +2095,6 @@ dependencies = [
  "mc-crypto-digestible",
  "mc-crypto-hashes",
  "mc-crypto-keys",
- "mc-crypto-sig",
  "mc-fog-sig-authority",
  "mc-test-vectors-account-keys",
  "mc-util-from-random",
@@ -2140,6 +2139,7 @@ dependencies = [
  "mc-account-keys",
  "mc-attest-core",
  "mc-crypto-keys",
+ "mc-crypto-x509-test-vectors",
  "mc-test-vectors-b58-encodings",
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
@@ -2152,6 +2152,7 @@ dependencies = [
  "mc-util-test-helper",
  "mc-util-test-vector",
  "mc-watcher-api",
+ "pem",
  "prost",
  "protobuf",
  "rand 0.7.3",
@@ -2760,19 +2761,6 @@ dependencies = [
  "rand 0.7.3",
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
-]
-
-[[package]]
-name = "mc-crypto-sig"
-version = "1.0.0"
-dependencies = [
- "mc-crypto-keys",
- "mc-util-from-random",
- "mc-util-test-helper",
- "merlin",
- "rand_core 0.5.1",
- "rand_hc 0.2.0",
- "schnorrkel",
 ]
 
 [[package]]
