@@ -1,3 +1,4 @@
+use crate::aead;
 use alloc::vec::Vec;
 
 use aead::{
@@ -10,10 +11,15 @@ use aead::{
 };
 use core::ops::{Add, Sub};
 use failure::Fail;
+use mc_crypto_ct_aead::CtDecryptResult;
 use mc_crypto_keys::{Kex, KeyError};
 use rand_core::{CryptoRng, RngCore};
 
 /// Error type for decryption
+///
+/// Note that mac failed is indicated separately from this enum,
+/// because a design goal is that we can be constant-time with respect to mac failure,
+/// but enum cannot be matched or accessed without branching.
 #[derive(PartialEq, Eq, Fail, Debug)]
 pub enum Error {
     #[fail(display = "Error decoding curvepoint: {}", _0)]
@@ -23,8 +29,6 @@ pub enum Error {
         _0, _1
     )]
     TooShort(usize, usize),
-    #[fail(display = "Mac failed")]
-    MacFailed,
     #[fail(display = "Unknown algorithm code: {}", _0)]
     UnknownAlgorithm(usize),
     #[fail(display = "Wrong magic bytes")]
@@ -56,13 +60,14 @@ pub trait CryptoBox<KexAlgo: Kex>: Default {
     ///
     /// Returns
     /// `Ok(true)` if decryption succeeds. `buffer` contains the plaintext and SHOULD be zeroized after use.
-    /// `Ok(false) if MAC check fails. `buffer` contains failed plaintext and SHOULD be zeroized after use.
+    /// `Ok(false) if MAC check / aead fails. `buffer` contains failed plaintext and SHOULD be zeroized after use.
+    /// `Err` if something is wrong with the cryptogram format.
     fn decrypt_in_place_detached(
         &self,
         key: &KexAlgo::Private,
         footer: &GenericArray<u8, Self::FooterSize>,
         buffer: &mut [u8],
-    ) -> Result<bool, Error>;
+    ) -> Result<CtDecryptResult, Error>;
 
     // Provided functions
     // These functions consume and produce "cryptograms" where the footer bytes
@@ -87,7 +92,11 @@ pub trait CryptoBox<KexAlgo: Kex>: Default {
     /// If status is false then mac check failed and plaintext should be zeroed.
     ///
     /// Meant to mirror aead::decrypt
-    fn decrypt(&self, key: &KexAlgo::Private, cryptogram: &[u8]) -> Result<(bool, Vec<u8>), Error> {
+    fn decrypt(
+        &self,
+        key: &KexAlgo::Private,
+        cryptogram: &[u8],
+    ) -> Result<(CtDecryptResult, Vec<u8>), Error> {
         let mut result = cryptogram.to_vec();
         let status = self.decrypt_in_place(key, &mut result)?;
         Ok((status, result))
@@ -127,7 +136,7 @@ pub trait CryptoBox<KexAlgo: Kex>: Default {
         &self,
         key: &KexAlgo::Private,
         cryptogram: &mut impl aead::Buffer,
-    ) -> Result<bool, Error> {
+    ) -> Result<CtDecryptResult, Error> {
         // Extract the footer from end of ciphertext, doing bounds checks
         if cryptogram.len() < Self::FooterSize::USIZE {
             return Err(Error::TooShort(cryptogram.len(), Self::FooterSize::USIZE));
@@ -175,7 +184,7 @@ pub trait CryptoBox<KexAlgo: Kex>: Default {
         &self,
         key: &KexAlgo::Private,
         cryptogram: &GenericArray<u8, L>,
-    ) -> Result<(bool, GenericArray<u8, Diff<L, Self::FooterSize>>), Error>
+    ) -> Result<(CtDecryptResult, GenericArray<u8, Diff<L, Self::FooterSize>>), Error>
     where
         L: ArrayLength<u8>
             + Sub<Self::FooterSize>

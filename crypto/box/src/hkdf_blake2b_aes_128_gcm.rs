@@ -1,17 +1,20 @@
-use crate::traits::{CryptoBox, Error};
-
-use aead::{
-    generic_array::{
-        sequence::{Concat, Split},
-        typenum::{Sum, U12, U16, U32},
-        GenericArray,
+use crate::{
+    aead::{
+        generic_array::{
+            sequence::{Concat, Split},
+            typenum::{Sum, U12, U16, U32},
+            GenericArray,
+        },
+        Aead, Error as AeadError, NewAead,
     },
-    Aead, Error as AeadError, NewAead,
+    traits::{CryptoBox, Error},
 };
+
 use aes_gcm::Aes128Gcm;
 use blake2::Blake2b;
 use core::convert::TryFrom;
 use hkdf::Hkdf;
+use mc_crypto_ct_aead::CtAeadDecrypt;
 use mc_crypto_keys::{
     CompressedRistrettoPublic, RistrettoPrivate, RistrettoPublic, RISTRETTO_PUBLIC_LEN,
 };
@@ -70,7 +73,7 @@ impl CryptoBox for RistrettoHkdfBlake2bAes128Gcm {
         key: &RistrettoPrivate,
         tag: &GenericArray<u8, Self::FooterSize>,
         buffer: &mut [u8],
-    ) -> Result<(), Error> {
+    ) -> Result<CtDecryptResult, Error> {
         // ECDH
         use mc_crypto_keys::KexReusablePrivate;
         let curve_point_bytes =
@@ -94,10 +97,7 @@ impl CryptoBox for RistrettoHkdfBlake2bAes128Gcm {
         // AES
         let mac_ref = <&GenericArray<u8, AesMacLen>>::from(&tag[RISTRETTO_PUBLIC_LEN..]);
         let aead = Aes128Gcm::new(aes_key);
-        aead.decrypt_in_place_detached(&aes_nonce, &aad, buffer, mac_ref)
-            .map_err(|_| Error::MacFailed)?;
-
-        Ok(())
+        Ok(aead.ct_decrypt_in_place_detached(&aes_nonce, &aad, buffer, mac_ref));
     }
 }
 
