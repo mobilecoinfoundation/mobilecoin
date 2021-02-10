@@ -24,7 +24,6 @@ mc-crypto-box = { path = "../../crypto/box" }
 mc-crypto-digestible = { path = "../../crypto/digestible", features = ["dalek", "derive"] }
 mc-crypto-hashes = { path = "../../crypto/hashes" }
 mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
-mc-crypto-rand = { path = "../../crypto/rand" }
 mc-util-from-random = { path = "../../util/from-random" }
 mc-util-repr-bytes = { path = "../../util/repr-bytes" }
 mc-util-serial = { path = "../../util/serial" }
@@ -50,6 +49,7 @@ tempdir = "0.3"
 time = "0.1"
 
 mc-crypto-digestible-test-utils = { path = "../../crypto/digestible/test-utils" }
+mc-crypto-rand = { path = "../../crypto/rand" }
 mc-ledger-db = { path = "../../ledger/db" }
 mc-transaction-core-test-utils = { path = "../../transaction/core/test-utils" }
 mc-util-serial = { path = "../../util/serial", features = ["std"] }

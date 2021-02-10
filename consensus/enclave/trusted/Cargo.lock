@@ -1053,7 +1053,6 @@ dependencies = [
  "mc-crypto-digestible 1.0.0",
  "mc-crypto-hashes 1.0.0",
  "mc-crypto-keys 1.0.0",
- "mc-crypto-rand 1.0.0",
  "mc-util-from-random 1.0.0",
  "mc-util-repr-bytes 1.0.0",
  "mc-util-serial 1.0.0",
