@@ -15,52 +15,18 @@ use mc_crypto_box::{
 use mc_crypto_keys::{
     CompressedRistrettoPublic, ReprBytes, Ristretto, RistrettoPrivate, RistrettoPublic,
 };
-use mc_crypto_rand::McRng;
-use mc_util_from_random::FromRandom;
 use rand_core::{CryptoRng, RngCore};
-use subtle::{Choice, ConditionallySelectable};
+use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
+use zeroize::Zeroize;
 
+/// The size of the plaintext (with magic numbers) in a fog hint.
+/// This is slightly larger than CompressedRistrettoPublic.
+///
+/// This type is pub because it is used in some tests in other crates
 pub type PlaintextArray = GenericArray<
     u8,
     Diff<EncryptedFogHintSize, <VersionedCryptoBox as CryptoBox<Ristretto>>::FooterSize>,
 >;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct Plaintext(PlaintextArray);
-
-impl Default for Plaintext {
-    fn default() -> Self {
-        Self(PlaintextArray::default())
-    }
-}
-
-impl ConditionallySelectable for Plaintext {
-    fn conditional_select(a: &Self, b: &Self, c: subtle::Choice) -> Self {
-        let mut ret: Self = *a;
-
-        Plaintext::conditional_assign_array(&mut ret.0, &b.0, c);
-
-        ret
-    }
-}
-
-impl Plaintext {
-    fn as_mut(&mut self) -> &mut PlaintextArray {
-        &mut self.0
-    }
-
-    fn as_ref(&self) -> &PlaintextArray {
-        &self.0
-    }
-
-    fn conditional_assign_array(target: &mut PlaintextArray, src: &PlaintextArray, cond: Choice) {
-        assert_eq!(target.len(), src.len());
-
-        for idx in 0..target.len() {
-            target[idx].conditional_assign(&src[idx], cond);
-        }
-    }
-}
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct FogHint {
@@ -123,15 +89,16 @@ impl FogHint {
         ingest_server_pubkey: &RistrettoPublic,
         rng: &mut T,
     ) -> EncryptedFogHint {
-        let mut plaintext = Plaintext::default();
+        let mut plaintext = PlaintextArray::default();
 
-        plaintext.as_mut()[..RISTRETTO_PUBLIC_LEN].copy_from_slice(&self.view_pubkey.to_bytes());
-        for byte in &mut plaintext.as_mut()[RISTRETTO_PUBLIC_LEN..] {
+        plaintext[..RISTRETTO_PUBLIC_LEN].copy_from_slice(&self.view_pubkey.to_bytes());
+        for byte in &mut plaintext[RISTRETTO_PUBLIC_LEN..] {
             *byte = MAGIC_NUMBER;
         }
         let bytes = VersionedCryptoBox::default()
-            .encrypt_fixed_length(rng, ingest_server_pubkey, &plaintext.0)
+            .encrypt_fixed_length(rng, ingest_server_pubkey, &plaintext)
             .expect("cryptobox encryption failed unexpectedly");
+        plaintext.zeroize();
         EncryptedFogHint::from(bytes)
     }
 
@@ -148,46 +115,40 @@ impl FogHint {
     ///
     /// # Returns
     /// * Choice(1) on success Choice(0) otherwise
+    /// * self is only modified in the operation is successful
     #[inline(never)]
     pub fn ct_decrypt(
         ingest_server_private_key: &RistrettoPrivate,
         ciphertext: &EncryptedFogHint,
         output: &mut Self,
     ) -> Choice {
-        let mut rng = McRng::default();
-        let mut plaintext = Plaintext::default();
-        let default_pubkey = RistrettoPublic::from_random(&mut rng);
-
-        plaintext.as_mut()[..RISTRETTO_PUBLIC_LEN].copy_from_slice(&default_pubkey.to_bytes());
-
-        let (real_plaintext, mut success) = match VersionedCryptoBox::default()
-            .decrypt_fixed_length(ingest_server_private_key, ciphertext.as_ref())
-        {
-            Ok((result, real_plaintext)) => (Plaintext(real_plaintext), result),
-            Err(_) => (plaintext, false),
-        };
-
-        let choice = Choice::from(success as u8);
-        plaintext.conditional_assign(&real_plaintext, choice);
+        let (mut success, mut plaintext): (Choice, PlaintextArray) =
+            match VersionedCryptoBox::default()
+                .decrypt_fixed_length(ingest_server_private_key, ciphertext.as_ref())
+            {
+                Ok((success, plaintext)) => (Choice::from(success), plaintext),
+                Err(_) => {
+                    // An error that we don't have to be constant time with respect to, since rust Result was used
+                    return Choice::from(0);
+                }
+            };
 
         // Check magic numbers
-        for byte in &plaintext.as_ref()[RISTRETTO_PUBLIC_LEN..] {
-            if *byte != MAGIC_NUMBER {
-                success = false;
-            }
+        for byte in &plaintext[RISTRETTO_PUBLIC_LEN..] {
+            success &= byte.ct_eq(&MAGIC_NUMBER);
         }
 
-        let bytes = &plaintext.as_ref()[0..RISTRETTO_PUBLIC_LEN];
-        match CompressedRistrettoPublic::try_from(bytes) {
-            Ok(key) => {
-                output.view_pubkey = key;
-                Choice::from(success as u8)
-            }
-            Err(_) => {
-                output.view_pubkey = CompressedRistrettoPublic::from(default_pubkey);
-                Choice::from(0)
-            }
+        // Write pubkey bytes to output if success is true, otherwise don't change output
+        let mut output_bytes = output.view_pubkey.to_bytes();
+        for idx in 0..output_bytes.len() {
+            output_bytes[idx].conditional_assign(&plaintext[idx], success);
         }
+        output.view_pubkey = CompressedRistrettoPublic::try_from(output_bytes.as_slice()).expect("Converting from bytes to compressed ristretto doesn't fail if they have the right size");
+
+        // Zeroize temporary buffers
+        plaintext.zeroize();
+        output_bytes.zeroize();
+        success
     }
 }
 

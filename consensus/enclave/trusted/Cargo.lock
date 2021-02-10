@@ -21,7 +21,7 @@ dependencies = [
 [[package]]
 name = "aes-gcm"
 version = "0.6.0"
-source = "git+https://github.com/xoloki/AEADs?rev=d1a8517d3dd867ed9c5794002add67992a42f6aa#d1a8517d3dd867ed9c5794002add67992a42f6aa"
+source = "git+https://github.com/mobilecoinofficial/AEADs?rev=d1a8517d3dd867ed9c5794002add67992a42f6aa#d1a8517d3dd867ed9c5794002add67992a42f6aa"
 dependencies = [
  "aead 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "aes 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -761,7 +761,7 @@ dependencies = [
 name = "mc-crypto-ake-enclave"
 version = "1.0.0"
 dependencies = [
- "aes-gcm 0.6.0 (git+https://github.com/xoloki/AEADs?rev=d1a8517d3dd867ed9c5794002add67992a42f6aa)",
+ "aes-gcm 0.6.0 (git+https://github.com/mobilecoinofficial/AEADs?rev=d1a8517d3dd867ed9c5794002add67992a42f6aa)",
  "digest 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mc-attest-ake 1.0.0",
  "mc-attest-core 1.0.0",
@@ -780,8 +780,7 @@ dependencies = [
 name = "mc-crypto-box"
 version = "1.0.0"
 dependencies = [
- "aead 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "aes-gcm 0.6.0 (git+https://github.com/xoloki/AEADs?rev=d1a8517d3dd867ed9c5794002add67992a42f6aa)",
+ "aes-gcm 0.6.0 (git+https://github.com/mobilecoinofficial/AEADs?rev=d1a8517d3dd867ed9c5794002add67992a42f6aa)",
  "blake2 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -796,7 +795,7 @@ name = "mc-crypto-ct-aead"
 version = "0.5.0"
 dependencies = [
  "aead 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "aes-gcm 0.6.0 (git+https://github.com/xoloki/AEADs?rev=d1a8517d3dd867ed9c5794002add67992a42f6aa)",
+ "aes-gcm 0.6.0 (git+https://github.com/mobilecoinofficial/AEADs?rev=d1a8517d3dd867ed9c5794002add67992a42f6aa)",
  "block-cipher 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "subtle 2.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -870,7 +869,7 @@ dependencies = [
 name = "mc-crypto-message-cipher"
 version = "1.0.0"
 dependencies = [
- "aes-gcm 0.6.0 (git+https://github.com/xoloki/AEADs?rev=d1a8517d3dd867ed9c5794002add67992a42f6aa)",
+ "aes-gcm 0.6.0 (git+https://github.com/mobilecoinofficial/AEADs?rev=d1a8517d3dd867ed9c5794002add67992a42f6aa)",
  "failure 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "generic-array 0.14.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "mc-util-serial 1.0.0",
@@ -884,7 +883,7 @@ name = "mc-crypto-noise"
 version = "1.0.0"
 dependencies = [
  "aead 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "aes-gcm 0.6.0 (git+https://github.com/xoloki/AEADs?rev=d1a8517d3dd867ed9c5794002add67992a42f6aa)",
+ "aes-gcm 0.6.0 (git+https://github.com/mobilecoinofficial/AEADs?rev=d1a8517d3dd867ed9c5794002add67992a42f6aa)",
  "digest 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "generic-array 0.14.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1661,7 +1660,7 @@ dependencies = [
 [metadata]
 "checksum aead 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7fc95d1bdb8e6666b2b217308eeeb09f2d6728d104be3e31916cc74d15420331"
 "checksum aes 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f7001367fde4c768a19d1029f0a8be5abd9308e1119846d5bd9ad26297b8faf5"
-"checksum aes-gcm 0.6.0 (git+https://github.com/xoloki/AEADs?rev=d1a8517d3dd867ed9c5794002add67992a42f6aa)" = "<none>"
+"checksum aes-gcm 0.6.0 (git+https://github.com/mobilecoinofficial/AEADs?rev=d1a8517d3dd867ed9c5794002add67992a42f6aa)" = "<none>"
 "checksum aes-soft 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "4925647ee64e5056cf231608957ce7c81e12d6d6e316b9ce1404778cc1d35fa7"
 "checksum aesni 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d050d39b0b7688b3a3254394c3e30a9d66c41dcf9b05b0e2dbdc623f6505d264"
 "checksum aho-corasick 0.7.8 (registry+https://github.com/rust-lang/crates.io-index)" = "743ad5a418686aad3b87fd14c43badd828cf26e214a00f92a384291cf22e1811"

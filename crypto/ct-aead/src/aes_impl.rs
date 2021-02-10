@@ -1,4 +1,4 @@
-use crate::CtAeadDecrypt;
+use crate::{CtAeadDecrypt, CtDecryptResult};
 
 use aes_gcm::{AesGcm, Tag, A_MAX, C_MAX};
 use block_cipher::{
@@ -6,6 +6,7 @@ use block_cipher::{
     generic_array::{ArrayLength, GenericArray},
     Block, BlockCipher,
 };
+use subtle::{Choice, ConstantTimeEq};
 
 impl<Aes, NonceSize> CtAeadDecrypt for AesGcm<Aes, NonceSize>
 where
@@ -21,9 +22,9 @@ where
         associated_data: &[u8],
         buffer: &mut [u8],
         tag: &Tag,
-    ) -> bool {
+    ) -> CtDecryptResult {
         if buffer.len() as u64 > C_MAX || associated_data.len() as u64 > A_MAX {
-            return false;
+            return CtDecryptResult(Choice::from(0));
         }
 
         // TODO(tarcieri): interleave encryption with GHASH
@@ -33,7 +34,6 @@ where
         ctr.apply_keystream(&self.cipher, expected_tag.as_mut_slice());
         ctr.apply_keystream(&self.cipher, buffer);
 
-        use subtle::ConstantTimeEq;
-        bool::from(expected_tag.ct_eq(&tag))
+        CtDecryptResult(expected_tag.ct_eq(&tag))
     }
 }

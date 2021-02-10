@@ -17,23 +17,24 @@
 //! 0 = hkdf_blake2b_aes_128_gcm
 
 use crate::{
+    aead::{
+        generic_array::{
+            arr,
+            sequence::Concat,
+            typenum::{Unsigned, U50},
+            GenericArray,
+        },
+        Error as AeadError,
+    },
     hkdf_box::HkdfBox,
     traits::{CryptoBox, Error},
 };
 
-use aead::{
-    generic_array::{
-        arr,
-        sequence::Concat,
-        typenum::{Unsigned, U50},
-        GenericArray,
-    },
-    Error as AeadError,
-};
 use aes_gcm::Aes128Gcm;
 use alloc::vec::Vec;
 use blake2::Blake2b;
 use failure::Fail;
+use mc_crypto_ct_aead::CtDecryptResult;
 use mc_crypto_keys::{Kex, Ristretto};
 use rand_core::{CryptoRng, RngCore};
 
@@ -141,7 +142,7 @@ impl CryptoBox<Ristretto> for VersionedCryptoBox {
         key: &<Ristretto as Kex>::Private,
         footer: &GenericArray<u8, Self::FooterSize>,
         buffer: &mut [u8],
-    ) -> Result<bool, Error> {
+    ) -> Result<CtDecryptResult, Error> {
         // Note: When generic_array is upreved, this can be tidier using this:
         // https://docs.rs/generic-array/0.14.1/src/generic_array/sequence.rs.html#302-320
         // For now we have to split as a slice, then convert back to Generic Array.
@@ -190,7 +191,7 @@ mod test {
                         algo.decrypt(&a, &ciphertext).expect("decryption failed!");
                     assert_eq!(plaintext.len(), decrypted.len());
                     assert_eq!(plaintext, &&decrypted[..]);
-                    assert_eq!(success, true);
+                    assert!(bool::from(success));
                 }
             }
         });
@@ -211,12 +212,8 @@ mod test {
             for plaintext in &[&plaintext1[..], &plaintext2[..]] {
                 for _reps in 0..50 {
                     let ciphertext = algo.encrypt(&mut rng, &a_pub, plaintext).unwrap();
-                    let decrypted = algo.decrypt(&not_a, &ciphertext);
-                    if decrypted.is_err() {
-                        assert_eq!(decrypted, Err(Error::MacFailed));
-                    } else {
-                        assert_eq!(decrypted.unwrap().0, false);
-                    }
+                    let (success, _decrypted) = algo.decrypt(&not_a, &ciphertext).unwrap();
+                    assert!(!bool::from(success));
                 }
             }
         });
