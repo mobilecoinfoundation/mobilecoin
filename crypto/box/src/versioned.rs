@@ -213,7 +213,7 @@ mod test {
                 for _reps in 0..50 {
                     let ciphertext = algo.encrypt(&mut rng, &a_pub, plaintext).unwrap();
                     let (success, _decrypted) = algo.decrypt(&not_a, &ciphertext).unwrap();
-                    assert_eq!(bool::from(success), false);
+                    assert!(!bool::from(success));
                 }
             }
         });
