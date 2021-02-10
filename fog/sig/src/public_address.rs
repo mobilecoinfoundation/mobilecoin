@@ -14,7 +14,6 @@ use mc_fog_sig_authority::Verifier as AuthorityVerifier;
 use mc_fog_sig_report::Verifier as ReportVerifier;
 use mc_fog_types::ReportResponse;
 use signature::{Error as SignatureError, Signature};
-use std::cmp;
 use x509_signature::X509Certificate;
 
 impl Verifier for PublicAddress {
