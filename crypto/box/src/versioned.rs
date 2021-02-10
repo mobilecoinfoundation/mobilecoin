@@ -191,7 +191,7 @@ mod test {
                         algo.decrypt(&a, &ciphertext).expect("decryption failed!");
                     assert_eq!(plaintext.len(), decrypted.len());
                     assert_eq!(plaintext, &&decrypted[..]);
-                    assert_eq!(bool::from(success), true);
+                    assert!(bool::from(success));
                 }
             }
         });
