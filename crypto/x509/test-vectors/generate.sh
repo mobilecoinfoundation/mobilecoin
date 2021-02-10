@@ -308,8 +308,8 @@ cat "${OK_PENULTIMATE_DIR}/private/leaf.key" > "${OUTPUT_BASE_DIR}/fail_missing_
 	-config "$OPENSSL_CNF" \
 	-name ok_penultimate \
 	-extensions leaf_cert \
-	-startdate 010101000000Z \
-	-enddate 100101000001Z \
+	-startdate 20010101000000Z \
+	-enddate 20100101000001Z \
 	-md sha256 \
 	-in "${OK_PENULTIMATE_DIR}/req/expired.csr" \
 	-notext \
@@ -344,8 +344,8 @@ cat "${OK_PENULTIMATE_DIR}/private/leaf.key" > "${OUTPUT_BASE_DIR}/fail_leaf_exp
 	-config "$OPENSSL_CNF" \
 	-name ok_penultimate \
 	-extensions leaf_cert \
-	-startdate 700101000000Z \
-	-enddate 700101000001Z \
+	-startdate 20590101000000Z \
+	-enddate 20770101000001Z \
 	-md sha256 \
 	-in "${OK_PENULTIMATE_DIR}/req/too_soon.csr" \
 	-notext \

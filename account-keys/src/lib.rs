@@ -15,7 +15,8 @@ mod domain_separators;
 mod identity;
 mod view_key;
 
-pub use account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX};
-pub use domain_separators::FOG_AUTHORITY_SIGNATURE_TAG;
-pub use identity::{RootEntropy, RootIdentity};
-pub use view_key::ViewKey;
+pub use crate::{
+    account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX},
+    identity::{RootEntropy, RootIdentity},
+    view_key::ViewKey,
+};

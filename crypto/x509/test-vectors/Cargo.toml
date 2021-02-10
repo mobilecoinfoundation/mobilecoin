@@ -12,4 +12,6 @@ mc-util-build-script = { path = "../../../util/build/script" }
 
 [dependencies]
 mc-crypto-keys = { path = "../../keys" }
-x509-parser = "0.9"
+
+pem = "0.8"
+x509-signature = "0.5"

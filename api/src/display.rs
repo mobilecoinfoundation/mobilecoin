@@ -153,8 +153,7 @@ mod display_tests {
 
         public_address.set_fog_report_url(case.fog_report_url.clone());
         public_address.set_fog_report_id(case.fog_report_id.clone());
-        public_address
-            .set_fog_authority_fingerprint_sig(case.fog_authority_fingerprint_sig.clone());
+        public_address.set_fog_authority_sig(case.fog_authority_sig.clone());
 
         let mut wrapper = PrintableWrapper::new();
         wrapper.set_public_address(public_address);

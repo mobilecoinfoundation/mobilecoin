@@ -15,8 +15,8 @@ impl From<&PublicAddress> for external::PublicAddress {
             dst.set_fog_report_url(url.to_string());
         }
 
-        if let Some(sig) = src.fog_authority_fingerprint_sig() {
-            dst.set_fog_authority_fingerprint_sig(sig.to_vec());
+        if let Some(sig) = src.fog_authority_sig() {
+            dst.set_fog_authority_sig(sig.to_vec());
         }
 
         if let Some(key) = src.fog_report_id() {
@@ -51,7 +51,7 @@ impl TryFrom<&external::PublicAddress> for PublicAddress {
                 &view_public_key,
                 &src.fog_report_url,
                 src.fog_report_id.clone(),
-                src.fog_authority_fingerprint_sig.clone(),
+                src.fog_authority_sig.clone(),
             ))
         }
     }
@@ -83,7 +83,7 @@ mod tests {
             );
             assert_eq!(proto_credentials.fog_report_url, String::from(""));
 
-            assert_eq!(proto_credentials.fog_authority_fingerprint_sig.len(), 0);
+            assert_eq!(proto_credentials.fog_authority_sig.len(), 0);
 
             assert_eq!(proto_credentials.fog_report_id, String::from(""));
 
@@ -118,10 +118,7 @@ mod tests {
                 String::from("fog://test.mobilecoin.com")
             );
 
-            assert_eq!(
-                proto_credentials.fog_authority_fingerprint_sig,
-                vec![9, 9, 9, 9],
-            );
+            assert_eq!(proto_credentials.fog_authority_sig, vec![9, 9, 9, 9],);
 
             assert_eq!(proto_credentials.fog_report_id, "99");
 

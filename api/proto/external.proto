@@ -58,9 +58,9 @@ message AccountKey {
     /// which one to use when sending to this account.
     string fog_report_id = 4;
 
-    /// Optional fingerprint of fog authority key.
+    /// Optional fog authority subjectPublicKeyInfo.
     /// Empty when not in use.
-    bytes fog_authority_fingerprint = 5;
+    bytes fog_authority_spki = 5;
 }
 
 /// A public address, used to identify recipients.
@@ -81,10 +81,10 @@ message PublicAddress {
     /// which one to use when sending to this account.
     string fog_report_id = 4;
 
-    /// Signature of fog authority fingerprint using private key which
-    /// corresponds to view_public_key.
-    /// This should be a Schnorrkel signature.
-    bytes fog_authority_fingerprint_sig = 5;
+    /// View key signature over the fog authority subjectPublicKeyInfo.
+    ///
+    /// This must be parseable as a RistrettoSignature.
+    bytes fog_authority_sig = 5;
 }
 
 /// A KDF can be used to stretch a 32 byte secret into multiple secret private keys.
@@ -97,9 +97,9 @@ message RootIdentity {
     string fog_report_url = 2;
     /// Optional fog report id, same as in AccountKey
     string fog_report_id = 3;
-    /// Optional fingerprint of fog authority key.
+    /// Optional fog authority subjectPublicKeyInfo.
     /// Empty when not in use.
-    bytes fog_authority_fingerprint = 5;
+    bytes fog_authority_spki = 5;
 }
 
 /// A 32 byte secret used as input key material to derive private keys
@@ -266,4 +266,22 @@ message Receipt {
     // Amount of the TxOut.
     // Note: This value is self-reported by the sender and is unverifiable.
     Amount amount = 4;
+}
+
+/// The signature over an IAS JSON reponse, created by Intel
+message VerificationSignature {
+    bytes contents = 1;
+}
+
+/// The IAS verification report response encoded as a protocol buffer
+message VerificationReport {
+    /// The IAS-generated signature over the response string
+    VerificationSignature sig = 1;
+
+    /// A list of byte strings representing the DER-encoded certificate
+    /// chain provided by IAS.
+    repeated bytes chain = 2;
+
+    /// The raw report body JSON, as a byte sequence
+    string http_body = 3;
 }

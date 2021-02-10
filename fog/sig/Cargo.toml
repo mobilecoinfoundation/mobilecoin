@@ -1,0 +1,27 @@
+[package]
+name = "mc-fog-sig"
+version = "1.0.0"
+authors = ["MobileCoin"]
+edition = "2018"
+description = "Verify Fog Signatures"
+
+[dependencies]
+mc-account-keys = { path = "../../account-keys"}
+mc-crypto-keys = { path = "../../crypto/keys" }
+mc-crypto-x509-utils = { path = "../../crypto/x509/utils" }
+mc-fog-sig-report = { path = "./report" }
+mc-fog-sig-authority = { path = "./authority" }
+mc-fog-types = { path = "../types" }
+
+displaydoc = { version = "0.1.7" }
+pem = "0.8"
+signature = { version = "1.2.2" }
+x509-signature = "0.5"
+
+[dev-dependencies]
+mc-attest-core = { path = "../../attest/core" }
+mc-crypto-x509-test-vectors = { path = "../../crypto/x509/test-vectors" }
+mc-util-from-random = { path = "../../util/from-random" }
+
+rand_core = "0.5"
+rand_hc = "0.2"

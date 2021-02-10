@@ -4,7 +4,6 @@
 
 use mc_crypto_keys::{DistinguishedEncoding, Ed25519Pair, Ed25519Private};
 use std::{fs, path::PathBuf};
-use x509_parser::pem;
 
 /// Retrieve a pathbuf for a file containing a PEM string
 fn base_path() -> PathBuf {
@@ -26,11 +25,13 @@ fn get_leaf_key(name: &str) -> Ed25519Pair {
     path.set_extension("key");
 
     let pem_string = fs::read_to_string(path).expect("Could not read certificate chain");
-    let (_, pem_data) =
-        pem::parse_x509_pem(pem_string.as_ref()).expect("Could not parse PEM string");
-
+    eprintln!("Parsing PEM key");
+    let pem_data = pem::parse(pem_string).expect("Could not parse PEM string");
+    eprintln!("Done parsing PEM key");
     let privkey = Ed25519Private::try_from_der(&pem_data.contents)
         .expect("Could not construct private key from key DER bytes");
+
+    eprintln!("Returning pair");
     Ed25519Pair::from(privkey)
 }
 

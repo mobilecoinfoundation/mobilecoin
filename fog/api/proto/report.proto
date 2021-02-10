@@ -1,6 +1,11 @@
+// Copyright (c) 2018-2021 The MobileCoin Foundation
+
+// MUST BE KEPT IN SYNC WITH RUST CODE!
 syntax = "proto3";
 
 package report;
+
+import "external.proto";
 
 /// The public API for getting reports
 service ReportAPI {
@@ -14,17 +19,22 @@ message ReportRequest {
 message ReportResponse {
     /// All available reports
     repeated Report reports = 1;
+    /// The X509 chain from the fog authority to the signer
+    repeated bytes chain = 2;
+    /// The signature over the report list made by the last cert in the chain
+    bytes signature = 3;
 }
 
 message Report {
     /// The fog_report_id of users with which this pubkey should be used
     /// This should match fog_report_id in Bob's public_address
     string fog_report_id = 1;
-    /// The signed intel report from Fog ingest node
-    /// This report structure includes the pubkey bytes themselves
-    /// At time of writing this is a CBOR serialized VerificationReport from attest crate
-    /// but we should perhaps make this also a proto to make it easier to inspect
-    bytes report = 2;
+
+    /// The IAS report of the Fog Ingest node.
+    ///
+    /// This report structure includes the ingest server's ingress public key.
+    external.VerificationReport report = 2;
+
     /// The last block at which a well-formed client may use this pubkey.
     /// The tombstone block of a Tx formed using this pubkey should not exceed this.
     /// This number is likely to be e.g. current block height + 50,

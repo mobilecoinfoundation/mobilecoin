@@ -30,7 +30,7 @@ fn main() {
                     root_entropy: (&[n; 32]).into(),
                     fog_report_url: "fog://example.com".to_owned(),
                     fog_report_id: "".to_owned(),
-                    fog_authority_fingerprint: Vec::new(),
+                    fog_authority_spki: Vec::new(),
                 });
                 let public_address = account_key.default_subaddress();
                 let mut wrapper = PrintableWrapper::new();
@@ -41,10 +41,7 @@ fn main() {
                     spend_public_key: public_address.spend_public_key().to_bytes(),
                     fog_report_url: public_address.fog_report_url().unwrap_or("").to_owned(),
                     fog_report_id: public_address.fog_report_id().unwrap_or("").to_owned(),
-                    fog_authority_fingerprint_sig: public_address
-                        .fog_authority_fingerprint_sig()
-                        .unwrap_or(&[])
-                        .to_owned(),
+                    fog_authority_sig: public_address.fog_authority_sig().unwrap_or(&[]).to_owned(),
                     b58_encoded,
                 }
             })

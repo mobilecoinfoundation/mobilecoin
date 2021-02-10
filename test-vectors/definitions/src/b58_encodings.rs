@@ -19,7 +19,7 @@ pub struct B58EncodePublicAddressWithFog {
     pub spend_public_key: [u8; 32],
     pub fog_report_url: String,
     pub fog_report_id: String,
-    pub fog_authority_fingerprint_sig: Vec<u8>,
+    pub fog_authority_sig: Vec<u8>,
     pub b58_encoded: String,
 }
 

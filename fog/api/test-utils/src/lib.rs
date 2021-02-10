@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2021 The MobileCoin Foundation
+
 use prost::Message as ProstMessage;
 use protobuf::Message as ProtobufMessage;
 
@@ -24,8 +26,8 @@ pub fn round_trip_message<SRC: ProstMessage + Eq + Default, DEST: ProtobufMessag
         .write_to_bytes()
         .expect("Writing protobuf to bytes failed");
 
-    let final_val: SRC =
-        mc_util_serial::decode(&protobuf_bytes).expect("Parsing prost from protobuf bytes failed");
+    let final_val: SRC = mc_util_serial::decode(&protobuf_bytes)
+        .expect("Parsing prost back from protobuf bytes failed");
 
     assert_eq!(*prost_val, final_val);
 }
@@ -43,7 +45,7 @@ pub fn round_trip_protobuf_object<SRC: ProtobufMessage + Eq, DEST: ProstMessage 
     let prost_bytes = mc_util_serial::encode(&prost_val);
 
     let final_val =
-        SRC::parse_from_bytes(&prost_bytes).expect("Parsing protobuf from prost bytes failed");
+        SRC::parse_from_bytes(&prost_bytes).expect("Parsing protobuf back from prost bytes failed");
 
     assert_eq!(*protobuf_val, final_val);
 }

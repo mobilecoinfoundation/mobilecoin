@@ -7,6 +7,7 @@
 //! and implements many handy traits for performing high-level cryptography operations,
 //! and this crate provides a way to create signatures that is compatible with these key pairs.
 
+use core::convert::TryInto;
 use mc_crypto_keys::{RistrettoPrivate, RistrettoPublic};
 pub use schnorrkel::{Signature, SignatureError, SIGNATURE_LENGTH};
 
@@ -24,7 +25,7 @@ pub fn sign(
     private_key: &RistrettoPrivate,
     message: &[u8],
 ) -> Signature {
-    private_key.sign_schnorrkel(context_tag, message)
+    private_key.sign_schnorrkel(context_tag, message).try_into().expect("Could not convert RistrettoSignature made from schnorrkel::Signature back to schnorrkel::Signature")
 }
 
 /// Verify a Schnorrkel signature
@@ -48,7 +49,7 @@ pub fn verify(
     message: &[u8],
     signature: &Signature,
 ) -> Result<(), SignatureError> {
-    public_key.verify_schnorrkel(context_tag, message, signature)
+    public_key.verify_schnorrkel(context_tag, message, &signature.into())
 }
 
 #[cfg(test)]

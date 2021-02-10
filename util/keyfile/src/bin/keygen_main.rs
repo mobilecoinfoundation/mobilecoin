@@ -21,7 +21,7 @@ fn main() {
         root_entropy: RootEntropy::from(&root_entropy),
         fog_report_url: fog_url.unwrap_or_default(),
         fog_report_id: Default::default(),
-        fog_authority_fingerprint: Default::default(),
+        fog_authority_spki: Default::default(),
     };
 
     println!("Writing to {:?}", path);

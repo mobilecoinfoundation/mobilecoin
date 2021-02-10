@@ -576,7 +576,7 @@ dependencies = [
  "mc-crypto-digestible 1.0.0",
  "mc-crypto-hashes 1.0.0",
  "mc-crypto-keys 1.0.0",
- "mc-crypto-sig 1.0.0",
+ "mc-fog-sig-authority 1.0.0",
  "mc-util-from-random 1.0.0",
  "mc-util-repr-bytes 1.0.0",
  "mc-util-serial 1.0.0",
@@ -618,6 +618,7 @@ dependencies = [
  "mbedtls 0.5.1 (git+https://github.com/mobilecoinofficial/rust-mbedtls.git?tag=mc-0.3)",
  "mbedtls-sys-auto 2.18.1 (git+https://github.com/mobilecoinofficial/rust-mbedtls.git?tag=mc-0.3)",
  "mc-common 1.0.0",
+ "mc-crypto-digestible 1.0.0",
  "mc-crypto-rand 1.0.0",
  "mc-sgx-build 1.0.0",
  "mc-sgx-css 1.0.0",
@@ -910,17 +911,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mc-crypto-sig"
-version = "1.0.0"
-dependencies = [
- "mc-crypto-keys 1.0.0",
- "merlin 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "rand_hc 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "schnorrkel 0.9.1 (git+https://github.com/w3f/schnorrkel?rev=cfdbe9ae865a4d3ffa2566d896d4dbedf5107028)",
-]
-
-[[package]]
 name = "mc-enclave-boundary"
 version = "1.0.0"
 dependencies = [
@@ -929,6 +919,14 @@ dependencies = [
  "mc-sgx-compat 1.0.0",
  "mc-sgx-types 1.0.0",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "mc-fog-sig-authority"
+version = "1.0.0"
+dependencies = [
+ "mc-crypto-keys 1.0.0",
+ "signature 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
