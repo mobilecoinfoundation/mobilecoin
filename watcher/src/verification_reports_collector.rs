@@ -4,7 +4,7 @@
 
 use crate::watcher_db::WatcherDB;
 use grpcio::Environment;
-use mc_attest_core::{VerificationReport, VerificationReportData, Verifier, DEBUG_ENCLAVE};
+use mc_attest_core::{VerificationReport, VerificationReportData, Verifier};
 use mc_common::{
     logger::{log, Logger},
     HashMap,
@@ -48,8 +48,7 @@ impl NodeClient for ConsensusNodeClient {
         logger: Logger,
     ) -> Result<VerificationReport, String> {
         // Contact node and get a VerificationReport.
-        let mut verifier = Verifier::default();
-        verifier.debug(DEBUG_ENCLAVE);
+        let verifier = Verifier::default();
 
         let mut client =
             ThickClient::new(node_url.clone(), verifier, env, logger).map_err(|err| {
