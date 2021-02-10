@@ -14,6 +14,7 @@ use mc_fog_sig_authority::Verifier as AuthorityVerifier;
 use mc_fog_sig_report::Verifier as ReportVerifier;
 use mc_fog_types::ReportResponse;
 use signature::{Error as SignatureError, Signature};
+use std::cmp;
 use x509_signature::X509Certificate;
 
 impl Verifier for PublicAddress {
@@ -48,7 +49,7 @@ impl Verifier for PublicAddress {
             .map_err(Error::Authority)?;
 
         // Verify the signature over the reports matches the last verified member of the
-        // chain
+        // chain (chainlen is guaranteed by verify_chain() to be >= 1 at this point)
         match certs[chainlen - 1].mc_public_key().map_err(Error::Pubkey)? {
             PublicKeyType::Ed25519(pubkey) => {
                 let sig = Ed25519Signature::from_bytes(&report_response.signature)
@@ -108,6 +109,7 @@ mod tests {
         )
     }
 
+    /// Test a correctly produced signature
     #[test]
     fn success() {
         let (public_address, chain, keypair) = setup();
@@ -132,9 +134,10 @@ mod tests {
 
         public_address
             .verify_fog_sig(&report_response)
-            .expect("Could not verify response");
+            .expect("Correct ReportResponse did not pass");
     }
 
+    /// Test a scenario where the chain has been removed.
     #[test]
     fn empty_chain() {
         let (public_address, _chain, keypair) = setup();
@@ -159,6 +162,6 @@ mod tests {
 
         public_address
             .verify_fog_sig(&report_response)
-            .expect_err("Invalid response with empty chain accepted");
+            .expect_err("Bad ReportResponse with empty chain accepted");
     }
 }
