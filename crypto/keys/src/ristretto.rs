@@ -140,7 +140,7 @@ impl Debug for RistrettoPrivate {
 impl<T: Digestible> DigestibleSigner<RistrettoSignature, T> for RistrettoPrivate {
     fn sign_digestible(&self, context: &'static [u8], message: &T) -> RistrettoSignature {
         let message = message.digest32::<MerlinTranscript>(context);
-        RistrettoSignature::from(self.sign_schnorrkel(context, &message))
+        self.sign_schnorrkel(context, &message)
     }
 
     fn try_sign_digestible(
