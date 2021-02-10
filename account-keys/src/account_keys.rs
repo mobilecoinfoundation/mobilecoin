@@ -62,7 +62,7 @@ pub struct PublicAddress {
     /// subjectPublicKeyInfo.
     ///
     /// Empty if no fog for this public address, must be parseable as a
-    /// [`SchnorkelSignature`].
+    /// [`SchnorrkelSignature`].
     #[prost(bytes, tag = "5")]
     fog_authority_sig: Vec<u8>,
 }
