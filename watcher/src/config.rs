@@ -2,10 +2,9 @@
 
 //! Configuration parameters for the watcher test utility.
 
-use mc_common::HashMap;
 use mc_util_uri::ConsensusClientUri;
 use serde::{Deserialize, Serialize};
-use std::{fs, iter::FromIterator, path::PathBuf, str::FromStr, time::Duration};
+use std::{fs, path::PathBuf, str::FromStr, time::Duration};
 use structopt::StructOpt;
 use url::Url;
 
@@ -52,7 +51,7 @@ impl WatcherConfig {
 
 /// A single watched source configuration.
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq, Hash)]
-struct SourceConfig {
+pub struct SourceConfig {
     /// URL to use for pulling blocks.
     ///
     /// For example: https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node1.test.mobilecoin.com/
@@ -61,18 +60,36 @@ struct SourceConfig {
     /// (Optional) Consensus node client URL to use for fetching the remote attestation report
     /// whenever a block signer change is detected.
     consensus_client_url: Option<ConsensusClientUri>,
+
+    /// (Optional) Client authentication token secret, for generating Authorization tokens when
+    /// connecting to consensus nodes.
+    consensus_client_auth_token_secret: Option<String>,
 }
 
 impl SourceConfig {
-    // Get the tx_source_url and ensure it has a trailing slash.
-    // This is compatible with the behavior inside ReqwestTransactionsFetcher and ensures
-    // everywhere we use URLs we always have "slash-terminated" URLs
+    /// Get the tx_source_url and ensure it has a trailing slash.
+    /// This is compatible with the behavior inside ReqwestTransactionsFetcher and ensures
+    /// everywhere we use URLs we always have "slash-terminated" URLs
     pub fn tx_source_url(&self) -> Url {
         let mut url = self.tx_source_url.clone();
         if !url.ends_with('/') {
             url.push_str("/");
         }
         Url::from_str(&url).unwrap_or_else(|err| panic!("invalid url {}: {}", url, err))
+    }
+
+    /// Get consensus client URL, if available.
+    pub fn consensus_client_url(&self) -> &Option<ConsensusClientUri> {
+        &self.consensus_client_url
+    }
+
+    /// Get consensus client authentication token secret, if available.
+    pub fn consensus_client_auth_token_secret(&self) -> Option<[u8; 32]> {
+        self.consensus_client_auth_token_secret.as_ref().map(|s| {
+            hex::FromHex::from_hex(s).unwrap_or_else(|err| {
+                panic!("failed parsing consensus client auth token secret: {}", err)
+            })
+        })
     }
 }
 
@@ -92,15 +109,9 @@ impl SourcesConfig {
             .collect()
     }
 
-    /// Returns a map of tx source url -> consensus client url. This is used when we want to try
-    /// and connect to the consensus block that provided some block from a given URL.
-    pub fn tx_source_urls_to_consensus_client_urls(&self) -> HashMap<Url, ConsensusClientUri> {
-        HashMap::from_iter(self.sources.iter().filter_map(|source_config| {
-            source_config
-                .consensus_client_url
-                .clone()
-                .map(|client_url| (source_config.tx_source_url(), client_url))
-        }))
+    /// Get the complete list of sources we are watching.
+    pub fn sources(&self) -> &[SourceConfig] {
+        &self.sources
     }
 }
 

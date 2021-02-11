@@ -2,7 +2,7 @@
 
 //! Worker thread for collecting verification reports from nodes.
 
-use crate::watcher_db::WatcherDB;
+use crate::{config::SourceConfig, watcher_db::WatcherDB};
 use grpcio::Environment;
 use mc_attest_core::{VerificationReport, VerificationReportData, Verifier};
 use mc_common::{
@@ -30,7 +30,7 @@ use url::Url;
 pub trait NodeClient {
     /// Get a verification report for a given client.
     fn get_verification_report(
-        node_url: ConsensusClientUri,
+        source_config: &SourceConfig,
         env: Arc<Environment>,
         logger: Logger,
     ) -> Result<VerificationReport, String>;
@@ -43,10 +43,15 @@ pub trait NodeClient {
 pub struct ConsensusNodeClient;
 impl NodeClient for ConsensusNodeClient {
     fn get_verification_report(
-        node_url: ConsensusClientUri,
+        source_config: &SourceConfig,
         env: Arc<Environment>,
         logger: Logger,
     ) -> Result<VerificationReport, String> {
+        let node_url = source_config
+            .consensus_client_url()
+            .clone()
+            .ok_or("No consensus client url".to_owned())?;
+
         // Contact node and get a VerificationReport.
         let verifier = Verifier::default();
 
@@ -57,6 +62,16 @@ impl NodeClient for ConsensusNodeClient {
                     node_url, err
                 )
             })?;
+
+        if let Some(secret) = source_config.consensus_client_auth_token_secret() {
+            use mc_common::time::SystemTimeProvider;
+            use mc_connection::TokenBasicCredentialsProvider;
+            use mc_util_grpc::TokenBasicCredentialsGenerator;
+            let token_generator =
+                TokenBasicCredentialsGenerator::new(secret, SystemTimeProvider::default());
+            let credentials_provider = TokenBasicCredentialsProvider::from(token_generator);
+            client.set_credentials_provider(Box::new(credentials_provider));
+        }
 
         // Attest in order to get a VerificationReport
         Ok(client
@@ -105,7 +120,7 @@ impl<NC: NodeClient> VerificationReportsCollector<NC> {
     /// Create a new verification reports collector thread.
     pub fn new(
         watcher_db: WatcherDB,
-        tx_source_urls_to_consensus_client_urls: HashMap<Url, ConsensusClientUri>,
+        sources: Vec<SourceConfig>,
         poll_interval: Duration,
         logger: Logger,
     ) -> Self {
@@ -118,7 +133,7 @@ impl<NC: NodeClient> VerificationReportsCollector<NC> {
                 .spawn(move || {
                     let thread = VerificationReportsCollectorThread::<NC>::new(
                         watcher_db,
-                        tx_source_urls_to_consensus_client_urls,
+                        sources,
                         poll_interval,
                         logger,
                         thread_stop_requested,
@@ -153,7 +168,7 @@ impl<NC: NodeClient> Drop for VerificationReportsCollector<NC> {
 
 struct VerificationReportsCollectorThread<NC: NodeClient> {
     watcher_db: WatcherDB,
-    tx_source_urls_to_consensus_client_urls: HashMap<Url, ConsensusClientUri>,
+    sources: Vec<SourceConfig>,
     poll_interval: Duration,
     logger: Logger,
     stop_requested: Arc<AtomicBool>,
@@ -164,7 +179,7 @@ struct VerificationReportsCollectorThread<NC: NodeClient> {
 impl<NC: NodeClient> VerificationReportsCollectorThread<NC> {
     pub fn new(
         watcher_db: WatcherDB,
-        tx_source_urls_to_consensus_client_urls: HashMap<Url, ConsensusClientUri>,
+        sources: Vec<SourceConfig>,
         poll_interval: Duration,
         logger: Logger,
         stop_requested: Arc<AtomicBool>,
@@ -177,7 +192,7 @@ impl<NC: NodeClient> VerificationReportsCollectorThread<NC> {
 
         Self {
             watcher_db,
-            tx_source_urls_to_consensus_client_urls,
+            sources,
             poll_interval,
             logger,
             stop_requested,
@@ -226,23 +241,30 @@ impl<NC: NodeClient> VerificationReportsCollectorThread<NC> {
                 hex_potential_signers
             );
 
-            // See if we can get a node url for this tx_src_url.
-            let node_url = self
-                .tx_source_urls_to_consensus_client_urls
-                .get(&tx_src_url);
-            if node_url.is_none() {
+            // See if we can get source information for this url.
+            let source_config = self
+                .sources
+                .iter()
+                .find(|source| source.tx_source_url() == tx_src_url);
+            if source_config.is_none() {
+                log::debug!(self.logger, "Skipping {} - not in sources", tx_src_url,);
+                continue;
+            }
+            let source_config = source_config.unwrap();
+
+            if source_config.consensus_client_url().is_none() {
                 log::debug!(
                     self.logger,
-                    "Skipping {} - not in tx_source_urls_to_consensus_client_urls",
+                    "Skipping {} - no consensus_client_url configured",
                     tx_src_url,
                 );
                 continue;
             }
-            let node_url = node_url.unwrap();
+            let node_url = source_config.consensus_client_url().clone().unwrap();
 
             // Contact node and get a VerificationReport.
             let verification_report = match NC::get_verification_report(
-                node_url.clone(),
+                &source_config,
                 self.grpcio_env.clone(),
                 self.logger.clone(),
             ) {

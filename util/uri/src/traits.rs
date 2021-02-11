@@ -87,8 +87,10 @@ pub trait ConnectionUri:
 
     /// Retrieve the responder id for this connection.
     fn responder_id(&self) -> StdResult<ResponderId, UriConversionError> {
-        // .addr() is always expected to return a host:port, so from_str should not fail.
-        Ok(ResponderId::from_str(&self.addr())?)
+        let responder_id_string = self
+            .get_param("responder-id")
+            .unwrap_or_else(|| self.addr());
+        Ok(ResponderId::from_str(&responder_id_string)?)
     }
 
     fn node_id(&self) -> StdResult<NodeID, UriConversionError> {

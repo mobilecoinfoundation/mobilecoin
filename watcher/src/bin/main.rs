@@ -41,7 +41,7 @@ fn main() {
 
     let _verification_reports_collector = <VerificationReportsCollector>::new(
         watcher_db,
-        sources_config.tx_source_urls_to_consensus_client_urls(),
+        sources_config.sources().to_vec(),
         config.poll_interval,
         logger.clone(),
     );

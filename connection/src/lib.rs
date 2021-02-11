@@ -2,6 +2,7 @@
 
 //! Connection support
 
+mod credentials;
 mod error;
 mod manager;
 mod sync;
@@ -9,6 +10,10 @@ mod thick;
 mod traits;
 
 pub use self::{
+    credentials::{
+        AuthenticationError, CredentialsProvider, CredentialsProviderError,
+        TokenBasicCredentialsProvider, UriUserPassCredentialsProvider,
+    },
     error::{Error, Result, RetryError, RetryResult},
     manager::ConnectionManager,
     sync::SyncConnection,
