@@ -929,16 +929,16 @@ pub struct JsonTxProposal {
     pub outlay_list: Vec<JsonOutlay>,
     pub tx: JsonTx,
     pub fee: u64,
-    pub outlay_index_to_tx_out_index: Vec<(u64, u64)>,
+    pub outlay_index_to_tx_out_index: Vec<(usize, usize)>,
     pub outlay_confirmation_numbers: Vec<Vec<u8>>,
 }
 
 impl From<&mc_mobilecoind_api::TxProposal> for JsonTxProposal {
     fn from(src: &mc_mobilecoind_api::TxProposal) -> Self {
-        let outlay_map: Vec<(u64, u64)> = src
+        let outlay_map: Vec<(usize, usize)> = src
             .get_outlay_index_to_tx_out_index()
             .iter()
-            .map(|(key, val)| (*key, *val))
+            .map(|(key, val)| (*key as usize, *val as usize))
             .collect();
         Self {
             input_list: src
@@ -982,7 +982,7 @@ impl TryFrom<&JsonTxProposal> for mc_mobilecoind_api::TxProposal {
             .set_tx(Tx::try_from(&src.tx).map_err(|err| format!("Could not convert tx: {}", err))?);
         proposal.set_fee(src.fee);
         proposal.set_outlay_index_to_tx_out_index(HashMap::from_iter(
-            src.outlay_index_to_tx_out_index.clone(),
+            src.outlay_index_to_tx_out_index.iter().map(|(key, val)| (*key as u64, *val as u64)),
         ));
         proposal.set_outlay_confirmation_numbers(RepeatedField::from_vec(
             src.outlay_confirmation_numbers.clone(),
