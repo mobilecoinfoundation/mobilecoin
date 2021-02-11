@@ -227,7 +227,7 @@ impl From<&mc_mobilecoind_api::CreateRequestCodeResponse> for JsonCreateRequestC
     }
 }
 
-#[derive(Deserialize, Serialize, Default, Debug)]
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonPublicAddress {
     /// Hex encoded compressed ristretto bytes
     pub view_public_key: String,
@@ -446,7 +446,7 @@ pub struct JsonPayAddressCodeRequest {
     pub change_subaddress: Option<String>,
 }
 
-#[derive(Deserialize, Serialize, Default, Debug)]
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonOutlay {
     pub value: String,
     pub receiver: JsonPublicAddress,
@@ -480,7 +480,7 @@ impl TryFrom<&JsonOutlay> for mc_mobilecoind_api::Outlay {
     }
 }
 
-#[derive(Deserialize, Serialize, Default, Debug)]
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonAmount {
     pub commitment: String,
     pub masked_value: String,
@@ -495,7 +495,7 @@ impl From<&Amount> for JsonAmount {
     }
 }
 
-#[derive(Deserialize, Serialize, Default, Debug)]
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonTxOut {
     pub amount: JsonAmount,
     pub target_key: String,
@@ -558,13 +558,13 @@ impl TryFrom<&JsonTxOut> for mc_api::external::TxOut {
     }
 }
 
-#[derive(Deserialize, Serialize, Default, Debug)]
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonRange {
     pub from: String,
     pub to: String,
 }
 
-#[derive(Deserialize, Serialize, Default, Debug)]
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonTxOutMembershipElement {
     pub range: JsonRange,
     pub hash: String,
@@ -582,7 +582,7 @@ impl From<&TxOutMembershipElement> for JsonTxOutMembershipElement {
     }
 }
 
-#[derive(Deserialize, Serialize, Default, Debug)]
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonTxOutMembershipProof {
     pub index: String,
     pub highest_index: String,
@@ -654,40 +654,7 @@ impl TryFrom<&JsonTxOutMembershipProof> for TxOutMembershipProof {
     }
 }
 
-#[derive(Deserialize, Serialize, Default, Debug)]
-/// A request for randomly sampled TxOuts for use as mixins.
-pub struct JsonMixinRequest {
-    /// Number of mixins requested.
-    pub num_mixins: u64,
-    /// Outputs that should be excluded from the result.
-    pub excluded: Vec<JsonTxOut>,
-}
-
-#[derive(Deserialize, Serialize, Default, Debug)]
-/// Randomly sampled TxOuts for use as mixins, with membership proofs.
-pub struct JsonMixinResponse {
-    /// TxOuts to use as mixins.
-    pub mixins: Vec<JsonTxOut>,
-    /// Corresponding membership proofs.
-    pub membership_proofs: Vec<JsonTxOutMembershipProof>,
-}
-
-#[derive(Deserialize, Serialize, Default, Debug)]
-/// Requests Merkle proof-of-membership for each queried TxOut
-pub struct JsonMembershipProofRequest {
-    pub outputs: Vec<JsonTxOut>,
-}
-
-#[derive(Deserialize, Serialize, Default, Debug)]
-/// Outputs and their corresponding proofs of membership.
-pub struct JsonMembershipProofResponse {
-    /// Queried outputs.
-    pub outputs: Vec<JsonTxOut>,
-    /// Corresponding membership proofs.
-    pub membership_proofs: Vec<JsonTxOutMembershipProof>,
-}
-
-#[derive(Deserialize, Serialize, Default, Debug)]
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonTxIn {
     pub ring: Vec<JsonTxOut>,
     pub proofs: Vec<JsonTxOutMembershipProof>,
@@ -732,7 +699,7 @@ impl TryFrom<&JsonTxIn> for TxIn {
     }
 }
 
-#[derive(Deserialize, Serialize, Default, Debug)]
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonTxPrefix {
     pub inputs: Vec<JsonTxIn>,
     pub outputs: Vec<JsonTxOut>,
@@ -787,7 +754,7 @@ impl TryFrom<&JsonTxPrefix> for TxPrefix {
     }
 }
 
-#[derive(Deserialize, Serialize, Default, Debug)]
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonRingMLSAG {
     pub c_zero: String,
     pub responses: Vec<String>,
@@ -808,7 +775,7 @@ impl From<&RingMLSAG> for JsonRingMLSAG {
     }
 }
 
-#[derive(Deserialize, Serialize, Default, Debug)]
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonSignatureRctBulletproofs {
     pub ring_signatures: Vec<JsonRingMLSAG>,
     pub pseudo_output_commitments: Vec<String>,
@@ -889,7 +856,7 @@ impl TryFrom<&JsonSignatureRctBulletproofs> for SignatureRctBulletproofs {
     }
 }
 
-#[derive(Deserialize, Serialize, Default, Debug)]
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonTx {
     pub prefix: JsonTxPrefix,
     pub signature: JsonSignatureRctBulletproofs,
