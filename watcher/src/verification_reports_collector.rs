@@ -52,7 +52,7 @@ impl NodeClient for ConsensusNodeClient {
         let node_url = source_config
             .consensus_client_url()
             .clone()
-            .ok_or("No consensus client url".to_owned())?;
+            .ok_or_else(|| "No consensus client url".to_owned())?;
 
         // Contact node and get a VerificationReport.
         let verifier = Verifier::default();
@@ -402,11 +402,13 @@ mod tests {
     }
     impl NodeClient for TestNodeClient {
         fn get_verification_report(
-            node_url: ConsensusClientUri,
+            source_config: &SourceConfig,
             _env: Arc<Environment>,
             _logger: Logger,
         ) -> Result<VerificationReport, String> {
-            Ok(Self::current_expected_report(&node_url))
+            Ok(Self::current_expected_report(
+                &source_config.consensus_client_url().clone().unwrap(),
+            ))
         }
 
         fn get_block_signer(
@@ -436,15 +438,16 @@ mod tests {
         let node1_url = ConsensusClientUri::from_str("mc://node1.test.com:443/").unwrap();
         let node2_url = ConsensusClientUri::from_str("mc://node2.test.com:443/").unwrap();
         let node3_url = ConsensusClientUri::from_str("mc://node3.test.com:443/").unwrap();
-        let tx_source_urls_to_consensus_client_urls = HashMap::from_iter(vec![
-            (tx_src_url1.clone(), node1_url.clone()),
-            (tx_src_url2.clone(), node2_url.clone()),
+
+        let sources = vec![
+            SourceConfig::new(tx_src_url1.to_string(), Some(node1_url.clone()), None),
+            SourceConfig::new(tx_src_url2.to_string(), Some(node2_url.clone()), None),
             // Node 3 is omitted on purpose to ensure it gets no data.
-        ]);
+        ];
 
         let _verification_reports_collector = VerificationReportsCollector::<TestNodeClient>::new(
             watcher_db.clone(),
-            tx_source_urls_to_consensus_client_urls,
+            sources,
             Duration::from_millis(100),
             logger,
         );

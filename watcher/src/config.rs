@@ -67,6 +67,19 @@ pub struct SourceConfig {
 }
 
 impl SourceConfig {
+    /// Construct a new SourceConfig object.
+    pub fn new(
+        tx_source_url: String,
+        consensus_client_url: Option<ConsensusClientUri>,
+        consensus_client_auth_token_secret: Option<String>,
+    ) -> Self {
+        Self {
+            tx_source_url,
+            consensus_client_url,
+            consensus_client_auth_token_secret,
+        }
+    }
+
     /// Get the tx_source_url and ensure it has a trailing slash.
     /// This is compatible with the behavior inside ReqwestTransactionsFetcher and ensures
     /// everywhere we use URLs we always have "slash-terminated" URLs
@@ -128,16 +141,15 @@ mod tests {
     fn sources_config_toml() {
         let expected_config = SourcesConfig {
             sources: vec![
-                SourceConfig {
-                    tx_source_url: "https://www.source.com/".to_owned(),
-                    consensus_client_url: None,
-                },
-                SourceConfig {
-                    tx_source_url: "https://www.2nd-source.com/".to_owned(),
-                    consensus_client_url: Some(
-                        ConsensusClientUri::from_str("mc://www.x.com:443/").unwrap(),
+                SourceConfig::new("https://www.source.com/".to_owned(), None, None),
+                SourceConfig::new(
+                    "https://www.2nd-source.com/".to_owned(),
+                    Some(ConsensusClientUri::from_str("mc://www.x.com:443/").unwrap()),
+                    Some(
+                        "1111111111111111111111111111111111111111111111111111111111111111"
+                            .to_owned(),
                     ),
-                },
+                ),
             ],
         };
 
@@ -148,6 +160,7 @@ mod tests {
             [[sources]]
             tx_source_url = "https://www.2nd-source.com/"
             consensus_client_url = "mc://www.x.com:443/"
+            consensus_client_auth_token_secret = "1111111111111111111111111111111111111111111111111111111111111111"
         "#;
         let config: SourcesConfig = toml::from_str(input_toml).expect("failed parsing toml");
 
