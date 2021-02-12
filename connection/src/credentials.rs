@@ -28,6 +28,7 @@ impl AuthenticationError for GrpcError {
 
 /// Error relating to credential providing.
 pub trait CredentialsProviderError: Debug + Display + Send + Sync {}
+impl<T> CredentialsProviderError for T where T: Debug + Display + Send + Sync {}
 
 /// An interface for providing credentials for a given URI.
 pub trait CredentialsProvider: Send + Sync {
@@ -94,8 +95,21 @@ impl<TP: TimeProvider, URI: ConnectionUri> CredentialsProvider
 
     fn get_credentials(
         &self,
-        _uri: &Self::Uri,
+        uri: &Self::Uri,
     ) -> Result<Option<BasicCredentials>, Box<dyn CredentialsProviderError + 'static>> {
-        Ok(Some(self.generator.generate_for("TODO").unwrap()))
+        let username = uri.username();
+        if username.is_empty() {
+            return Err(Box::new(format!(
+                "TokenBasicCredentialsProvider requires a username in the url ({})",
+                uri
+            )));
+        }
+
+        Ok(Some(self.generator.generate_for(&username).map_err(
+            |err| {
+                let boxed_err: Box<dyn CredentialsProviderError + 'static> = Box::new(err);
+                boxed_err
+            },
+        )?))
     }
 }

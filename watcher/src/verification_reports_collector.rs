@@ -7,10 +7,12 @@ use grpcio::Environment;
 use mc_attest_core::{VerificationReport, VerificationReportData, Verifier};
 use mc_common::{
     logger::{log, Logger},
+    time::SystemTimeProvider,
     HashMap,
 };
-use mc_connection::{AttestedConnection, ThickClient};
+use mc_connection::{AttestedConnection, ThickClient, TokenBasicCredentialsProvider};
 use mc_crypto_keys::Ed25519Public;
+use mc_util_grpc::TokenBasicCredentialsGenerator;
 use mc_util_repr_bytes::ReprBytes;
 use mc_util_uri::ConsensusClientUri;
 use std::{
@@ -63,10 +65,9 @@ impl NodeClient for ConsensusNodeClient {
                 )
             })?;
 
+        // If client authentication token secret is provided then we need to configure a
+        // credentials provider.
         if let Some(secret) = source_config.consensus_client_auth_token_secret() {
-            use mc_common::time::SystemTimeProvider;
-            use mc_connection::TokenBasicCredentialsProvider;
-            use mc_util_grpc::TokenBasicCredentialsGenerator;
             let token_generator =
                 TokenBasicCredentialsGenerator::new(secret, SystemTimeProvider::default());
             let credentials_provider = TokenBasicCredentialsProvider::from(token_generator);
