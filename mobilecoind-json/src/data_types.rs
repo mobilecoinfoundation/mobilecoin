@@ -982,7 +982,9 @@ impl TryFrom<&JsonTxProposal> for mc_mobilecoind_api::TxProposal {
             .set_tx(Tx::try_from(&src.tx).map_err(|err| format!("Could not convert tx: {}", err))?);
         proposal.set_fee(src.fee);
         proposal.set_outlay_index_to_tx_out_index(HashMap::from_iter(
-            src.outlay_index_to_tx_out_index.iter().map(|(key, val)| (*key as u64, *val as u64)),
+            src.outlay_index_to_tx_out_index
+                .iter()
+                .map(|(key, val)| (*key as u64, *val as u64)),
         ));
         proposal.set_outlay_confirmation_numbers(RepeatedField::from_vec(
             src.outlay_confirmation_numbers.clone(),
