@@ -2,17 +2,22 @@
 
 //! Worker thread for collecting verification reports from nodes.
 
-use crate::watcher_db::WatcherDB;
+use crate::{config::SourceConfig, watcher_db::WatcherDB};
 use grpcio::Environment;
 use mc_attest_core::{VerificationReport, VerificationReportData, Verifier};
 use mc_common::{
     logger::{log, Logger},
+    time::SystemTimeProvider,
     HashMap,
 };
-use mc_connection::{AttestedConnection, ThickClient};
+use mc_connection::{
+    AnyCredentialsProvider, AttestedConnection, HardcodedCredentialsProvider, ThickClient,
+    TokenBasicCredentialsProvider,
+};
 use mc_crypto_keys::Ed25519Public;
+use mc_util_grpc::TokenBasicCredentialsGenerator;
 use mc_util_repr_bytes::ReprBytes;
-use mc_util_uri::ConsensusClientUri;
+use mc_util_uri::{ConnectionUri, ConsensusClientUri};
 use std::{
     convert::TryFrom,
     marker::PhantomData,
@@ -30,7 +35,7 @@ use url::Url;
 pub trait NodeClient {
     /// Get a verification report for a given client.
     fn get_verification_report(
-        node_url: ConsensusClientUri,
+        source_config: &SourceConfig,
         env: Arc<Environment>,
         logger: Logger,
     ) -> Result<VerificationReport, String>;
@@ -43,22 +48,44 @@ pub trait NodeClient {
 pub struct ConsensusNodeClient;
 impl NodeClient for ConsensusNodeClient {
     fn get_verification_report(
-        node_url: ConsensusClientUri,
+        source_config: &SourceConfig,
         env: Arc<Environment>,
         logger: Logger,
     ) -> Result<VerificationReport, String> {
+        let node_url = source_config
+            .consensus_client_url()
+            .clone()
+            .ok_or_else(|| "No consensus client url".to_owned())?;
+
+        // Construct a credentials_provider based on our configuration.
+        let credentials_provider =
+            if let Some(secret) = source_config.consensus_client_auth_token_secret() {
+                let username = node_url.username();
+                let token_generator =
+                    TokenBasicCredentialsGenerator::new(secret, SystemTimeProvider::default());
+                let token_credentials_provider =
+                    TokenBasicCredentialsProvider::new(username, token_generator);
+                AnyCredentialsProvider::Token(token_credentials_provider)
+            } else {
+                AnyCredentialsProvider::Hardcoded(HardcodedCredentialsProvider::from(&node_url))
+            };
+
         // Contact node and get a VerificationReport.
         let verifier = Verifier::default();
+        let mut client = ThickClient::new(
+            node_url.clone(),
+            verifier,
+            env,
+            credentials_provider,
+            logger,
+        )
+        .map_err(|err| {
+            format!(
+                "Failed constructing client to connect to {}: {}",
+                node_url, err
+            )
+        })?;
 
-        let mut client =
-            ThickClient::new(node_url.clone(), verifier, env, logger).map_err(|err| {
-                format!(
-                    "Failed constructing client to connect to {}: {}",
-                    node_url, err
-                )
-            })?;
-
-        // Attest in order to get a VerificationReport
         Ok(client
             .attest()
             .map_err(|err| format!("Failed attesting {}: {}", node_url, err))?)
@@ -105,7 +132,7 @@ impl<NC: NodeClient> VerificationReportsCollector<NC> {
     /// Create a new verification reports collector thread.
     pub fn new(
         watcher_db: WatcherDB,
-        tx_source_urls_to_consensus_client_urls: HashMap<Url, ConsensusClientUri>,
+        sources: Vec<SourceConfig>,
         poll_interval: Duration,
         logger: Logger,
     ) -> Self {
@@ -118,7 +145,7 @@ impl<NC: NodeClient> VerificationReportsCollector<NC> {
                 .spawn(move || {
                     let thread = VerificationReportsCollectorThread::<NC>::new(
                         watcher_db,
-                        tx_source_urls_to_consensus_client_urls,
+                        sources,
                         poll_interval,
                         logger,
                         thread_stop_requested,
@@ -153,7 +180,7 @@ impl<NC: NodeClient> Drop for VerificationReportsCollector<NC> {
 
 struct VerificationReportsCollectorThread<NC: NodeClient> {
     watcher_db: WatcherDB,
-    tx_source_urls_to_consensus_client_urls: HashMap<Url, ConsensusClientUri>,
+    sources: Vec<SourceConfig>,
     poll_interval: Duration,
     logger: Logger,
     stop_requested: Arc<AtomicBool>,
@@ -164,7 +191,7 @@ struct VerificationReportsCollectorThread<NC: NodeClient> {
 impl<NC: NodeClient> VerificationReportsCollectorThread<NC> {
     pub fn new(
         watcher_db: WatcherDB,
-        tx_source_urls_to_consensus_client_urls: HashMap<Url, ConsensusClientUri>,
+        sources: Vec<SourceConfig>,
         poll_interval: Duration,
         logger: Logger,
         stop_requested: Arc<AtomicBool>,
@@ -177,7 +204,7 @@ impl<NC: NodeClient> VerificationReportsCollectorThread<NC> {
 
         Self {
             watcher_db,
-            tx_source_urls_to_consensus_client_urls,
+            sources,
             poll_interval,
             logger,
             stop_requested,
@@ -226,23 +253,30 @@ impl<NC: NodeClient> VerificationReportsCollectorThread<NC> {
                 hex_potential_signers
             );
 
-            // See if we can get a node url for this tx_src_url.
-            let node_url = self
-                .tx_source_urls_to_consensus_client_urls
-                .get(&tx_src_url);
-            if node_url.is_none() {
+            // See if we can get source information for this url.
+            let source_config = self
+                .sources
+                .iter()
+                .find(|source| source.tx_source_url() == tx_src_url);
+            if source_config.is_none() {
+                log::debug!(self.logger, "Skipping {} - not in sources", tx_src_url,);
+                continue;
+            }
+            let source_config = source_config.unwrap();
+
+            if source_config.consensus_client_url().is_none() {
                 log::debug!(
                     self.logger,
-                    "Skipping {} - not in tx_source_urls_to_consensus_client_urls",
+                    "Skipping {} - no consensus_client_url configured",
                     tx_src_url,
                 );
                 continue;
             }
-            let node_url = node_url.unwrap();
+            let node_url = source_config.consensus_client_url().clone().unwrap();
 
             // Contact node and get a VerificationReport.
             let verification_report = match NC::get_verification_report(
-                node_url.clone(),
+                &source_config,
                 self.grpcio_env.clone(),
                 self.logger.clone(),
             ) {
@@ -379,11 +413,13 @@ mod tests {
     }
     impl NodeClient for TestNodeClient {
         fn get_verification_report(
-            node_url: ConsensusClientUri,
+            source_config: &SourceConfig,
             _env: Arc<Environment>,
             _logger: Logger,
         ) -> Result<VerificationReport, String> {
-            Ok(Self::current_expected_report(&node_url))
+            Ok(Self::current_expected_report(
+                &source_config.consensus_client_url().clone().unwrap(),
+            ))
         }
 
         fn get_block_signer(
@@ -413,15 +449,16 @@ mod tests {
         let node1_url = ConsensusClientUri::from_str("mc://node1.test.com:443/").unwrap();
         let node2_url = ConsensusClientUri::from_str("mc://node2.test.com:443/").unwrap();
         let node3_url = ConsensusClientUri::from_str("mc://node3.test.com:443/").unwrap();
-        let tx_source_urls_to_consensus_client_urls = HashMap::from_iter(vec![
-            (tx_src_url1.clone(), node1_url.clone()),
-            (tx_src_url2.clone(), node2_url.clone()),
+
+        let sources = vec![
+            SourceConfig::new(tx_src_url1.to_string(), Some(node1_url.clone()), None),
+            SourceConfig::new(tx_src_url2.to_string(), Some(node2_url.clone()), None),
             // Node 3 is omitted on purpose to ensure it gets no data.
-        ]);
+        ];
 
         let _verification_reports_collector = VerificationReportsCollector::<TestNodeClient>::new(
             watcher_db.clone(),
-            tx_source_urls_to_consensus_client_urls,
+            sources,
             Duration::from_millis(100),
             logger,
         );

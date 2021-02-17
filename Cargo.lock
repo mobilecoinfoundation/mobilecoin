@@ -3725,6 +3725,7 @@ dependencies = [
  "mc-transaction-core",
  "mc-transaction-core-test-utils",
  "mc-util-from-random",
+ "mc-util-grpc",
  "mc-util-lmdb",
  "mc-util-repr-bytes",
  "mc-util-serial",

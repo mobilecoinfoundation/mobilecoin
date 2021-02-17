@@ -6,7 +6,9 @@ mod anonymous_authenticator;
 mod token_authenticator;
 
 pub use anonymous_authenticator::{AnonymousAuthenticator, ANONYMOUS_USER};
-pub use token_authenticator::{TokenAuthenticator, TokenBasicCredentialsGenerator};
+pub use token_authenticator::{
+    TokenAuthenticator, TokenBasicCredentialsGenerator, TokenBasicCredentialsGeneratorError,
+};
 
 use displaydoc::Display;
 use grpcio::{
@@ -78,6 +80,7 @@ pub trait Authenticator {
 }
 
 /// Standard username/password credentials.
+#[derive(Clone, Default)]
 pub struct BasicCredentials {
     username: String,
     password: String,
