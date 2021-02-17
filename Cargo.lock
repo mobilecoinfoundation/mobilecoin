@@ -2699,6 +2699,7 @@ dependencies = [
  "mc-crypto-keys",
  "mc-util-build-script",
  "pem",
+ "structopt",
  "x509-signature",
 ]
 

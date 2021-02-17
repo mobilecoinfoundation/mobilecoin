@@ -12,26 +12,36 @@ fn base_path() -> PathBuf {
     path
 }
 
-fn get_chain(name: &str) -> String {
+fn get_path(name: &str, extension: &str) -> PathBuf {
     let mut path = base_path();
     path.push(name);
-    path.set_extension("pem");
+    path.set_extension(extension);
+    path
+}
+
+/// Retrieve the path to a generated X509 Certificate Chain
+pub fn chain_path(name: &str) -> PathBuf {
+    get_path(name, "pem")
+}
+
+/// Retrieve the path to a generate X509 key
+pub fn key_path(name: &str) -> PathBuf {
+    get_path(name, "key")
+}
+
+fn get_chain(name: &str) -> String {
+    let path = chain_path(name);
     fs::read_to_string(path).expect("Could not read certificate chain")
 }
 
 fn get_leaf_key(name: &str) -> Ed25519Pair {
-    let mut path = base_path();
-    path.push(name);
-    path.set_extension("key");
+    let path = key_path(name);
 
     let pem_string = fs::read_to_string(path).expect("Could not read certificate chain");
-    eprintln!("Parsing PEM key");
     let pem_data = pem::parse(pem_string).expect("Could not parse PEM string");
-    eprintln!("Done parsing PEM key");
     let privkey = Ed25519Private::try_from_der(&pem_data.contents)
         .expect("Could not construct private key from key DER bytes");
 
-    eprintln!("Returning pair");
     Ed25519Pair::from(privkey)
 }
 

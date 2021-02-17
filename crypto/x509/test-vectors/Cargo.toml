@@ -6,6 +6,13 @@ edition = "2018"
 description = "Utilities for generating certificates and chains for unit tests"
 readme = "README.md"
 
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "mc-crypto-x509-test-vectors"
+path = "src/main.rs"
+
 [build-dependencies]
 cargo-emit = "0.1.1"
 mc-util-build-script = { path = "../../../util/build/script" }
@@ -14,4 +21,5 @@ mc-util-build-script = { path = "../../../util/build/script" }
 mc-crypto-keys = { path = "../../keys" }
 
 pem = "0.8"
+structopt = "0.3"
 x509-signature = "0.5"
