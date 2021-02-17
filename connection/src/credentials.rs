@@ -30,9 +30,14 @@ impl<T> CredentialsProviderError for T where T: Debug + Display + Send + Sync {}
 
 /// An interface for providing credentials for a given URI.
 pub trait CredentialsProvider: Send + Sync {
+    /// Get credentials to be used for a GRPC call.
     fn get_credentials(
         &self,
     ) -> Result<Option<BasicCredentials>, Box<dyn CredentialsProviderError + 'static>>;
+
+    /// Clear any cached credentials so that new ones can be generated.
+    /// The default implementation is a no-op.
+    fn clear(&self) {}
 }
 
 /// A credentials provider that has hardcoded user/password credentials.

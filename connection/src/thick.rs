@@ -33,7 +33,7 @@ use mc_crypto_keys::X25519;
 use mc_crypto_noise::CipherError;
 use mc_crypto_rand::McRng;
 use mc_transaction_core::{tx::Tx, Block, BlockID, BlockIndex};
-use mc_util_grpc::{BasicCredentials, ConnectionUriGrpcioChannel, GrpcCookieStore};
+use mc_util_grpc::{ConnectionUriGrpcioChannel, GrpcCookieStore};
 use mc_util_serial::encode;
 use mc_util_uri::{ConnectionUri, ConsensusClientUri as ClientUri, UriConversionError};
 use secrecy::{ExposeSecret, SecretVec};
@@ -129,9 +129,6 @@ pub struct ThickClient<CP: CredentialsProvider> {
     enclave_connection: Option<Ready<Aes256Gcm>>,
     /// Generic interface for retreiving GRPC credentials.
     credentials_provider: CP,
-    /// Credentials to use for all GRPC calls (this allows authentication username/password to go
-    /// through, if provided).
-    creds: Option<BasicCredentials>,
     /// A hash map of metadata to set on outbound requests, filled by inbound `Set-Cookie` metadata
     cookies: CookieJar,
 }
@@ -162,7 +159,6 @@ impl<CP: CredentialsProvider> ThickClient<CP> {
             verifier,
             enclave_connection: None,
             credentials_provider,
-            creds: None,
             cookies: CookieJar::default(),
         })
     }
@@ -176,12 +172,6 @@ impl<CP: CredentialsProvider> ThickClient<CP> {
         &mut self,
         func: impl FnOnce(&mut Self, CallOption) -> StdResult<T, E>,
     ) -> StdResult<T, E> {
-        // Use credentials provider to get new credentials if we don't have any.
-        if self.creds.is_none() {
-            log::trace!(self.logger, "Credentials are empty, attempting to get.");
-            self.creds = self.credentials_provider.get_credentials()?;
-        }
-
         // Make the actual RPC call.
         let call_option = self.call_option()?;
         let result = func(self, call_option);
@@ -190,7 +180,7 @@ impl<CP: CredentialsProvider> ThickClient<CP> {
         // gets re-created on the next call.
         if let Err(err) = result.as_ref() {
             if err.is_unauthenticated() {
-                self.creds = None;
+                self.credentials_provider.clear();
             }
         }
         result
@@ -215,7 +205,7 @@ impl<CP: CredentialsProvider> ThickClient<CP> {
             .to_client_metadata()
             .unwrap_or_else(|_| MetadataBuilder::new());
 
-        if let Some(creds) = self.creds.as_ref() {
+        if let Some(creds) = self.credentials_provider.get_credentials()? {
             if !creds.username().is_empty() && !creds.password().is_empty() {
                 metadata_builder
                     .add_str("Authorization", &creds.authorization_header())
