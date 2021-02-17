@@ -11,8 +11,8 @@ mod traits;
 
 pub use self::{
     credentials::{
-        AnyCredentialsProvider, AuthenticationError, CredentialsProvider, CredentialsProviderError,
-        HardcodedCredentialsProvider, TokenBasicCredentialsProvider,
+        AnyCredentialsError, AnyCredentialsProvider, AuthenticationError, CredentialsProvider,
+        CredentialsProviderError, HardcodedCredentialsProvider, TokenBasicCredentialsProvider,
     },
     error::{Error, Result, RetryError, RetryResult},
     manager::ConnectionManager,

@@ -205,7 +205,11 @@ impl<CP: CredentialsProvider> ThickClient<CP> {
             .to_client_metadata()
             .unwrap_or_else(|_| MetadataBuilder::new());
 
-        if let Some(creds) = self.credentials_provider.get_credentials()? {
+        if let Some(creds) = self
+            .credentials_provider
+            .get_credentials()
+            .map_err(|err| -> Box<dyn CredentialsProviderError + 'static> { Box::new(err) })?
+        {
             if !creds.username().is_empty() && !creds.password().is_empty() {
                 metadata_builder
                     .add_str("Authorization", &creds.authorization_header())
