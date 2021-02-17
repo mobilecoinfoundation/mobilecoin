@@ -227,7 +227,7 @@ impl From<&mc_mobilecoind_api::CreateRequestCodeResponse> for JsonCreateRequestC
     }
 }
 
-#[derive(Deserialize, Serialize, Default, Debug)]
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonPublicAddress {
     /// Hex encoded compressed ristretto bytes
     pub view_public_key: String,
@@ -446,7 +446,7 @@ pub struct JsonPayAddressCodeRequest {
     pub change_subaddress: Option<String>,
 }
 
-#[derive(Deserialize, Serialize, Default, Debug)]
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonOutlay {
     pub value: String,
     pub receiver: JsonPublicAddress,
@@ -480,7 +480,7 @@ impl TryFrom<&JsonOutlay> for mc_mobilecoind_api::Outlay {
     }
 }
 
-#[derive(Deserialize, Serialize, Default, Debug)]
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonAmount {
     pub commitment: String,
     pub masked_value: String,
@@ -495,7 +495,7 @@ impl From<&Amount> for JsonAmount {
     }
 }
 
-#[derive(Deserialize, Serialize, Default, Debug)]
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonTxOut {
     pub amount: JsonAmount,
     pub target_key: String,
@@ -558,13 +558,13 @@ impl TryFrom<&JsonTxOut> for mc_api::external::TxOut {
     }
 }
 
-#[derive(Deserialize, Serialize, Default, Debug)]
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonRange {
     pub from: String,
     pub to: String,
 }
 
-#[derive(Deserialize, Serialize, Default, Debug)]
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonTxOutMembershipElement {
     pub range: JsonRange,
     pub hash: String,
@@ -582,7 +582,7 @@ impl From<&TxOutMembershipElement> for JsonTxOutMembershipElement {
     }
 }
 
-#[derive(Deserialize, Serialize, Default, Debug)]
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonTxOutMembershipProof {
     pub index: String,
     pub highest_index: String,
@@ -687,7 +687,7 @@ pub struct JsonMembershipProofResponse {
     pub membership_proofs: Vec<JsonTxOutMembershipProof>,
 }
 
-#[derive(Deserialize, Serialize, Default, Debug)]
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonTxIn {
     pub ring: Vec<JsonTxOut>,
     pub proofs: Vec<JsonTxOutMembershipProof>,
@@ -732,7 +732,7 @@ impl TryFrom<&JsonTxIn> for TxIn {
     }
 }
 
-#[derive(Deserialize, Serialize, Default, Debug)]
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonTxPrefix {
     pub inputs: Vec<JsonTxIn>,
     pub outputs: Vec<JsonTxOut>,
@@ -787,7 +787,7 @@ impl TryFrom<&JsonTxPrefix> for TxPrefix {
     }
 }
 
-#[derive(Deserialize, Serialize, Default, Debug)]
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonRingMLSAG {
     pub c_zero: String,
     pub responses: Vec<String>,
@@ -808,7 +808,7 @@ impl From<&RingMLSAG> for JsonRingMLSAG {
     }
 }
 
-#[derive(Deserialize, Serialize, Default, Debug)]
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonSignatureRctBulletproofs {
     pub ring_signatures: Vec<JsonRingMLSAG>,
     pub pseudo_output_commitments: Vec<String>,
@@ -889,7 +889,7 @@ impl TryFrom<&JsonSignatureRctBulletproofs> for SignatureRctBulletproofs {
     }
 }
 
-#[derive(Deserialize, Serialize, Default, Debug)]
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct JsonTx {
     pub prefix: JsonTxPrefix,
     pub signature: JsonSignatureRctBulletproofs,
@@ -929,16 +929,16 @@ pub struct JsonTxProposal {
     pub outlay_list: Vec<JsonOutlay>,
     pub tx: JsonTx,
     pub fee: u64,
-    pub outlay_index_to_tx_out_index: Vec<(u64, u64)>,
+    pub outlay_index_to_tx_out_index: Vec<(usize, usize)>,
     pub outlay_confirmation_numbers: Vec<Vec<u8>>,
 }
 
 impl From<&mc_mobilecoind_api::TxProposal> for JsonTxProposal {
     fn from(src: &mc_mobilecoind_api::TxProposal) -> Self {
-        let outlay_map: Vec<(u64, u64)> = src
+        let outlay_map: Vec<(usize, usize)> = src
             .get_outlay_index_to_tx_out_index()
             .iter()
-            .map(|(key, val)| (*key, *val))
+            .map(|(key, val)| (*key as usize, *val as usize))
             .collect();
         Self {
             input_list: src
@@ -982,7 +982,9 @@ impl TryFrom<&JsonTxProposal> for mc_mobilecoind_api::TxProposal {
             .set_tx(Tx::try_from(&src.tx).map_err(|err| format!("Could not convert tx: {}", err))?);
         proposal.set_fee(src.fee);
         proposal.set_outlay_index_to_tx_out_index(HashMap::from_iter(
-            src.outlay_index_to_tx_out_index.clone(),
+            src.outlay_index_to_tx_out_index
+                .iter()
+                .map(|(key, val)| (*key as u64, *val as u64)),
         ));
         proposal.set_outlay_confirmation_numbers(RepeatedField::from_vec(
             src.outlay_confirmation_numbers.clone(),
