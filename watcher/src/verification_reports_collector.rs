@@ -10,11 +10,14 @@ use mc_common::{
     time::SystemTimeProvider,
     HashMap,
 };
-use mc_connection::{AttestedConnection, ThickClient, TokenBasicCredentialsProvider};
+use mc_connection::{
+    AnyCredentialsProvider, AttestedConnection, HardcodedCredentialsProvider, ThickClient,
+    TokenBasicCredentialsProvider,
+};
 use mc_crypto_keys::Ed25519Public;
 use mc_util_grpc::TokenBasicCredentialsGenerator;
 use mc_util_repr_bytes::ReprBytes;
-use mc_util_uri::ConsensusClientUri;
+use mc_util_uri::{ConnectionUri, ConsensusClientUri};
 use std::{
     convert::TryFrom,
     marker::PhantomData,
@@ -54,27 +57,35 @@ impl NodeClient for ConsensusNodeClient {
             .clone()
             .ok_or_else(|| "No consensus client url".to_owned())?;
 
+        // Construct a credentials_provider based on our configuration.
+        let credentials_provider =
+            if let Some(secret) = source_config.consensus_client_auth_token_secret() {
+                let username = node_url.username();
+                let token_generator =
+                    TokenBasicCredentialsGenerator::new(secret, SystemTimeProvider::default());
+                let token_credentials_provider =
+                    TokenBasicCredentialsProvider::new(username, token_generator);
+                AnyCredentialsProvider::Token(token_credentials_provider)
+            } else {
+                AnyCredentialsProvider::Hardcoded(HardcodedCredentialsProvider::from(&node_url))
+            };
+
         // Contact node and get a VerificationReport.
         let verifier = Verifier::default();
+        let mut client = ThickClient::new(
+            node_url.clone(),
+            verifier,
+            env,
+            credentials_provider,
+            logger,
+        )
+        .map_err(|err| {
+            format!(
+                "Failed constructing client to connect to {}: {}",
+                node_url, err
+            )
+        })?;
 
-        let mut client =
-            ThickClient::new(node_url.clone(), verifier, env, logger).map_err(|err| {
-                format!(
-                    "Failed constructing client to connect to {}: {}",
-                    node_url, err
-                )
-            })?;
-
-        // If client authentication token secret is provided then we need to configure a
-        // credentials provider.
-        if let Some(secret) = source_config.consensus_client_auth_token_secret() {
-            let token_generator =
-                TokenBasicCredentialsGenerator::new(secret, SystemTimeProvider::default());
-            let credentials_provider = TokenBasicCredentialsProvider::from(token_generator);
-            client.set_credentials_provider(Box::new(credentials_provider));
-        }
-
-        // Attest in order to get a VerificationReport
         Ok(client
             .attest()
             .map_err(|err| format!("Failed attesting {}: {}", node_url, err))?)

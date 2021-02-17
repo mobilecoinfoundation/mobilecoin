@@ -78,6 +78,7 @@ pub trait Authenticator {
 }
 
 /// Standard username/password credentials.
+#[derive(Clone, Default)]
 pub struct BasicCredentials {
     username: String,
     password: String,

@@ -4,10 +4,7 @@
 //! The attested client implementation.
 
 use crate::{
-    credentials::{
-        AuthenticationError, CredentialsProvider, CredentialsProviderError,
-        UriUserPassCredentialsProvider,
-    },
+    credentials::{AuthenticationError, CredentialsProvider, CredentialsProviderError},
     error::{Error, Result},
     traits::{
         AttestationError, AttestedConnection, BlockchainConnection, Connection, UserTxConnection,
@@ -115,7 +112,7 @@ impl AuthenticationError for ThickClientAttestationError {
 impl AttestationError for ThickClientAttestationError {}
 
 /// A connection from a client to a consensus enclave.
-pub struct ThickClient {
+pub struct ThickClient<CP: CredentialsProvider> {
     /// The destination's URI
     uri: ClientUri,
     /// The logging instance
@@ -131,7 +128,7 @@ pub struct ThickClient {
     /// The AKE state machine object, if one is available.
     enclave_connection: Option<Ready<Aes256Gcm>>,
     /// Generic interface for retreiving GRPC credentials.
-    credentials_provider: Box<dyn CredentialsProvider<Uri = ClientUri>>,
+    credentials_provider: CP,
     /// Credentials to use for all GRPC calls (this allows authentication username/password to go
     /// through, if provided).
     creds: Option<BasicCredentials>,
@@ -139,12 +136,13 @@ pub struct ThickClient {
     cookies: CookieJar,
 }
 
-impl ThickClient {
+impl<CP: CredentialsProvider> ThickClient<CP> {
     /// Create a new attested connection to the given consensus node.
     pub fn new(
         uri: ClientUri,
         verifier: Verifier,
         env: Arc<Environment>,
+        credentials_provider: CP,
         logger: Logger,
     ) -> Result<Self> {
         let logger = logger.new(o!("mc.cxn" => uri.to_string()));
@@ -163,18 +161,10 @@ impl ThickClient {
             attested_api_client,
             verifier,
             enclave_connection: None,
-            credentials_provider: Box::new(UriUserPassCredentialsProvider::default()),
+            credentials_provider,
             creds: None,
             cookies: CookieJar::default(),
         })
-    }
-
-    /// Replace the current credentials_provider with a different one.
-    pub fn set_credentials_provider(
-        &mut self,
-        credentials_provider: Box<dyn CredentialsProvider<Uri = ClientUri>>,
-    ) {
-        self.credentials_provider = credentials_provider;
     }
 
     /// A wrapper for performing an authenticated call. This also takes care to properly include
@@ -189,7 +179,7 @@ impl ThickClient {
         // Use credentials provider to get new credentials if we don't have any.
         if self.creds.is_none() {
             log::trace!(self.logger, "Credentials are empty, attempting to get.");
-            self.creds = self.credentials_provider.get_credentials(&self.uri)?;
+            self.creds = self.credentials_provider.get_credentials()?;
         }
 
         // Make the actual RPC call.
@@ -237,7 +227,7 @@ impl ThickClient {
     }
 }
 
-impl Connection for ThickClient {
+impl<CP: CredentialsProvider> Connection for ThickClient<CP> {
     type Uri = ClientUri;
 
     fn uri(&self) -> Self::Uri {
@@ -245,7 +235,7 @@ impl Connection for ThickClient {
     }
 }
 
-impl AttestedConnection for ThickClient {
+impl<CP: CredentialsProvider> AttestedConnection for ThickClient<CP> {
     type Error = ThickClientAttestationError;
 
     fn is_attested(&self) -> bool {
@@ -306,7 +296,7 @@ impl AttestedConnection for ThickClient {
     }
 }
 
-impl BlockchainConnection for ThickClient {
+impl<CP: CredentialsProvider> BlockchainConnection for ThickClient<CP> {
     fn fetch_blocks(&mut self, range: Range<BlockIndex>) -> Result<Vec<Block>> {
         trace_time!(self.logger, "ThickClient::get_blocks");
 
@@ -400,7 +390,7 @@ impl BlockchainConnection for ThickClient {
     }
 }
 
-impl UserTxConnection for ThickClient {
+impl<CP: CredentialsProvider> UserTxConnection for ThickClient<CP> {
     fn propose_tx(&mut self, tx: &Tx) -> Result<BlockIndex> {
         trace_time!(self.logger, "ThickClient::propose_tx");
 
@@ -450,33 +440,33 @@ impl UserTxConnection for ThickClient {
     }
 }
 
-impl Display for ThickClient {
+impl<CP: CredentialsProvider> Display for ThickClient<CP> {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         write!(f, "{}", self.uri)
     }
 }
 
-impl Eq for ThickClient {}
+impl<CP: CredentialsProvider> Eq for ThickClient<CP> {}
 
-impl Hash for ThickClient {
+impl<CP: CredentialsProvider> Hash for ThickClient<CP> {
     fn hash<H: Hasher>(&self, hasher: &mut H) {
         self.uri.addr().hash(hasher);
     }
 }
 
-impl PartialEq for ThickClient {
+impl<CP: CredentialsProvider> PartialEq for ThickClient<CP> {
     fn eq(&self, other: &Self) -> bool {
         self.uri.addr() == other.uri.addr()
     }
 }
 
-impl Ord for ThickClient {
+impl<CP: CredentialsProvider> Ord for ThickClient<CP> {
     fn cmp(&self, other: &Self) -> Ordering {
         self.uri.addr().cmp(&other.uri.addr())
     }
 }
 
-impl PartialOrd for ThickClient {
+impl<CP: CredentialsProvider> PartialOrd for ThickClient<CP> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.uri.addr().partial_cmp(&other.uri.addr())
     }
