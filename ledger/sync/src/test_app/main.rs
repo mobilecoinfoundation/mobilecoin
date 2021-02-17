@@ -5,7 +5,7 @@
 use mc_account_keys::AccountKey;
 use mc_attest_core::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::{logger::log, ResponderId};
-use mc_connection::{ConnectionManager, ThickClient};
+use mc_connection::{ConnectionManager, HardcodedCredentialsProvider, ThickClient};
 use mc_consensus_scp::{test_utils::test_node_id, QuorumSet};
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::{LedgerSync, LedgerSyncService, PollingNetworkState};
@@ -105,11 +105,15 @@ fn main() {
     let peers = vec!["1", "2", "3", "4"]
         .into_iter()
         .map(|node_id| {
-            ThickClient::new(
+            let node_uri =
                 ClientUri::from_str(&format!("mc://node{}.{}.mobilecoin.com/", node_id, NETWORK))
-                    .expect("failed parsing URI"),
+                    .expect("failed parsing URI");
+
+            ThickClient::new(
+                node_uri.clone(),
                 verifier.clone(),
                 grpc_env.clone(),
+                HardcodedCredentialsProvider::from(&node_uri),
                 logger.clone(),
             )
             .expect("Could not construct ThickClient")

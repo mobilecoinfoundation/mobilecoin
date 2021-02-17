@@ -5,7 +5,7 @@
 use displaydoc::Display;
 use mc_attest_core::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::{logger::Logger, ResponderId};
-use mc_connection::{ConnectionManager, ThickClient};
+use mc_connection::{ConnectionManager, HardcodedCredentialsProvider, ThickClient};
 use mc_consensus_scp::QuorumSet;
 use mc_fog_report_connection::GrpcFogReportConnection;
 use mc_fog_report_validation::FogResolver;
@@ -278,7 +278,7 @@ impl PeersConfig {
         verifier: Verifier,
         grpc_env: Arc<grpcio::Environment>,
         logger: Logger,
-    ) -> Vec<ThickClient> {
+    ) -> Vec<ThickClient<HardcodedCredentialsProvider>> {
         self.peers
             .clone()
             .unwrap_or_default()
@@ -288,6 +288,7 @@ impl PeersConfig {
                     client_uri.clone(),
                     verifier.clone(),
                     grpc_env.clone(),
+                    HardcodedCredentialsProvider::from(client_uri),
                     logger.clone(),
                 )
                 .expect("Could not create thick client.")
@@ -299,7 +300,7 @@ impl PeersConfig {
         &self,
         verifier: Verifier,
         logger: &Logger,
-    ) -> ConnectionManager<ThickClient> {
+    ) -> ConnectionManager<ThickClient<HardcodedCredentialsProvider>> {
         let grpc_env = Arc::new(
             grpcio::EnvBuilder::new()
                 .cq_count(1)
