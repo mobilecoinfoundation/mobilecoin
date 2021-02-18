@@ -2,9 +2,10 @@
 
 //! Extension traits that make it easier to start GRPC servers and connect to them using URIs.
 
+use crate::ServerCertReloader;
 use grpcio::{
-    Channel, ChannelBuilder, ChannelCredentialsBuilder, Environment, ServerBuilder,
-    ServerCredentialsBuilder,
+    CertificateRequestType, Channel, ChannelBuilder, ChannelCredentialsBuilder, Environment,
+    ServerBuilder, ServerCredentialsBuilder,
 };
 use mc_common::logger::{log, Logger};
 use mc_util_uri::ConnectionUri;
@@ -57,6 +58,10 @@ impl ConnectionUriGrpcioChannel for ChannelBuilder {
 pub trait ConnectionUriGrpcioServer {
     /// Bind a ServerBuilder using information from a URI.
     fn bind_using_uri(self, uri: &impl ConnectionUri) -> Self;
+
+    /// Bind a ServerBuilder using information from a URI and enable support for hot-reloading
+    /// certificates when TLS is used.
+    fn bind_using_uri_with_reloading(self, uri: &impl ConnectionUri, logger: Logger) -> Self;
 }
 
 impl ConnectionUriGrpcioServer for ServerBuilder {
@@ -72,6 +77,29 @@ impl ConnectionUriGrpcioServer for ServerBuilder {
                 .build();
 
             self.bind_with_cred(uri.host(), uri.port(), server_credentials)
+        } else {
+            self.bind(uri.host(), uri.port())
+        }
+    }
+
+    fn bind_using_uri_with_reloading(self, uri: &impl ConnectionUri, logger: Logger) -> Self {
+        if uri.use_tls() {
+            let tls_chain_path = uri
+                .tls_chain_path()
+                .expect("Uri must have tls-chain when using TLS");
+            let tls_key_path = uri
+                .tls_key_path()
+                .expect("Uri must have tls-key in when using TLS");
+
+            let reloader = ServerCertReloader::new(&tls_chain_path, &tls_key_path, logger)
+                .expect("Failed creating ServerCertReloader");
+
+            self.bind_with_fetcher(
+                uri.host(),
+                uri.port(),
+                Box::new(reloader),
+                CertificateRequestType::DontRequestClientCertificate,
+            )
         } else {
             self.bind(uri.host(), uri.port())
         }

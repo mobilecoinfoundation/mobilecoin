@@ -169,6 +169,10 @@ impl ServerCredentialsFetcher for ServerCertReloader {
         let key = fs::read_to_string(&self.key_file)?;
 
         let new_cred = ServerCredentialsBuilder::new()
+            // This sets the client root certificate to verify client's identity.
+            // We are not using this feature, however grpcio still requires something to be set
+            // there when using the ServerCredentialsFetcher mechanism. As a workaround we are
+            // using the server's certificate chain here.
             .root_cert(
                 crt.as_bytes().to_vec(),
                 CertificateRequestType::DontRequestClientCertificate,
