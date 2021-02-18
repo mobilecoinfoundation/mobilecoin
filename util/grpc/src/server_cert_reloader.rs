@@ -35,7 +35,7 @@ pub struct ServerCertReloader {
     /// Certificate file to watch.
     cert_file: PathBuf,
 
-    /// Private ke yfile to watch.
+    /// Private key file to watch.
     key_file: PathBuf,
 
     /// Signal that we need to re-load the certificate/key files.
