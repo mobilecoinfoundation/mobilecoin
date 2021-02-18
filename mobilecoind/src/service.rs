@@ -142,7 +142,7 @@ impl Service {
             .register_service(build_info_service)
             .register_service(health_service)
             .register_service(mobilecoind_service)
-            .bind_using_uri_with_reloading(listen_uri);
+            .bind_using_uri_with_reloading(listen_uri, logger.clone());
 
         let mut server = server_builder.build().unwrap();
         server.start();
