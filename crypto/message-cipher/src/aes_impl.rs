@@ -1,6 +1,6 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-/// Implement LocalCipher trait around an Aes128Gcm object that does rekeying
+/// Implement LocalCipher trait around an AesGcm object that does rekeying
 use alloc::vec;
 use alloc::vec::Vec;
 use core::convert::TryInto;

@@ -14,7 +14,7 @@
 //! if we decide that the FooterSize must increase.
 //!
 //! Minor version mapping:
-//! 0 = hkdf_blake2b_aes_128_gcm
+//! 0 = hkdf_blake2b_aes_256_gcm
 
 use crate::{
     aead::{
@@ -30,7 +30,7 @@ use crate::{
     traits::{CryptoBox, Error},
 };
 
-use aes_gcm::Aes128Gcm;
+use aes_gcm::Aes256Gcm;
 use alloc::vec::Vec;
 use blake2::Blake2b;
 use failure::Fail;
@@ -42,7 +42,7 @@ use rand_core::{CryptoRng, RngCore};
 // CONFIGURATION
 ////
 
-pub type RistrettoHkdfBlake2bAes128Gcm = HkdfBox<Ristretto, Blake2b, Aes128Gcm>;
+pub type RistrettoHkdfBlake2bAes256Gcm = HkdfBox<Ristretto, Blake2b, Aes256Gcm>;
 
 /// A "magic byte" value checked during this process, but not interpreted.
 const MAJOR_VERSION: u8 = 1;
@@ -58,7 +58,7 @@ const ACCEPTABLE_MINOR_VERSIONS: &[u8] = &[0];
 /// and make it impossible for users to read old data from the recovery db.
 /// Note: When extending this tuple, you must add additional arms to the match
 /// statements in the implementation below.
-type ImplTuple = (RistrettoHkdfBlake2bAes128Gcm,);
+type ImplTuple = (RistrettoHkdfBlake2bAes256Gcm,);
 
 ////
 // Implementation
@@ -175,8 +175,8 @@ mod test {
     extern crate mc_util_test_helper;
 
     #[test]
-    fn test_ristretto_hkdf_blake2b_aes128_gcm_round_trip() {
-        let algo = RistrettoHkdfBlake2bAes128Gcm::default();
+    fn test_ristretto_hkdf_blake2b_aes256_gcm_round_trip() {
+        let algo = RistrettoHkdfBlake2bAes256Gcm::default();
         let plaintext1 = b"01234567".to_vec();
         let plaintext2 = plaintext1.repeat(50);
 
@@ -198,8 +198,8 @@ mod test {
     }
 
     #[test]
-    fn test_ristretto_hkdf_blake2b_aes128_expected_failure() {
-        let algo = RistrettoHkdfBlake2bAes128Gcm::default();
+    fn test_ristretto_hkdf_blake2b_aes256_expected_failure() {
+        let algo = RistrettoHkdfBlake2bAes256Gcm::default();
         let plaintext1 = b"01234567".to_vec();
         let plaintext2 = plaintext1.repeat(50);
 

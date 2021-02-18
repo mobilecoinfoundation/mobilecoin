@@ -10,5 +10,5 @@ pub use aes_impl::*;
 pub use traits::*;
 
 /// AesMessageCipher is the one we expect to use
-use aes_gcm::Aes128Gcm;
-pub type AesMessageCipher = AeadMessageCipher<Aes128Gcm>;
+use aes_gcm::Aes256Gcm;
+pub type AesMessageCipher = AeadMessageCipher<Aes256Gcm>;
