@@ -18,8 +18,8 @@ struct Config {
     pub fog_report_id: Option<String>,
 
     /// Fog Authority Fingerprint, hex encoded
-    #[structopt(long, parse(try_from_str=parse_hex_to_vec))]
-    pub fog_authority_fingerprint: Option<VecBytes>,
+    #[structopt(long, parse(try_from_str=load_spki_from_file))]
+    pub fog_authority_spki: Option<VecBytes>,
 
     /// Number of user keys to generate.
     #[structopt(short, long, default_value = "10")]
@@ -33,6 +33,8 @@ struct Config {
     #[structopt(short, long, parse(try_from_str=hex::FromHex::from_hex))]
     pub seed: Option<[u8; 32]>,
 }
+
+fn load_spki_from_file(src: &str) -> Result<VecBytes, String> {}
 
 fn parse_hex_to_vec(src: &str) -> Result<VecBytes, String> {
     let v: Vec<u8> = Vec::from_hex(src)
