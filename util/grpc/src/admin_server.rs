@@ -46,7 +46,7 @@ impl AdminServer {
             .register_service(admin_service)
             .register_service(health_service)
             .register_service(build_info_service)
-            .bind_using_uri(admin_listen_uri);
+            .bind_using_uri_with_reloading(admin_listen_uri);
 
         let mut server = server_builder.build()?;
         server.start();
