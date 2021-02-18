@@ -24,11 +24,11 @@ hex = "0.4"
 hex_fmt = "0.3"
 hmac = "0.10"
 lazy_static = "1.4"
-notify = "4.0"
 prometheus = "0.9"
 protobuf = "2.12"
 rand = "0.6.5"
 sha2 = "0.9"
+signal-hook = "0.3"
 subtle = { version = "2.2", default-features = false, features = ["i128"] }
 zeroize = { version = "1", default-features = false }
 
@@ -36,4 +36,5 @@ zeroize = { version = "1", default-features = false }
 mc-util-build-grpc = { path = "../build/grpc" }
 
 [dev-dependencies]
+libc = "0.2"
 tempdir = "0.3"
