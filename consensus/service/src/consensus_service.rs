@@ -364,7 +364,7 @@ impl<
             .register_service(health_service)
             .register_service(attested_service)
             .register_service(build_info_service)
-            .bind_using_uri(&self.config.client_listen_uri);
+            .bind_using_uri_with_reloading(&self.config.client_listen_uri);
 
         let mut server = server_builder.build().unwrap();
         server.start();
@@ -457,7 +457,7 @@ impl<
             .register_service(health_service)
             .register_service(attested_service)
             .register_service(build_info_service)
-            .bind_using_uri(&self.config.peer_listen_uri);
+            .bind_using_uri_with_reloading(&self.config.peer_listen_uri);
 
         let mut server = server_builder.build().unwrap();
         server.start();

@@ -95,10 +95,14 @@ impl ServerCredentialsFetcher for ServerCertReloader {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{health_api::PingRequest, health_api_grpc::HealthClient, HealthService};
+    use crate::{
+        health_api::PingRequest, health_api_grpc::HealthClient, ConnectionUriGrpcioServer,
+        HealthService,
+    };
     use grpcio::{ChannelBuilder, ChannelCredentialsBuilder, EnvBuilder, Server, ServerBuilder};
     use mc_common::logger::test_with_logger;
-    use std::{io::Read, thread, time::Duration};
+    use mc_util_uri::ConsensusClientUri;
+    use std::{io::Read, str::FromStr, thread, time::Duration};
 
     pub fn read_single_crt(name: &str) -> Result<String, io::Error> {
         let mut crt = String::new();
@@ -302,6 +306,70 @@ mod tests {
         let mut req = PingRequest::default();
         req.set_data(vec![1, 2, 3]);
         let reply = client4.ping(&req).expect("rpc");
+        assert_eq!(reply.get_data(), vec![1, 2, 3]);
+    }
+
+    #[test_with_logger]
+    fn test_bind_using_uri_with_reloading(logger: Logger) {
+        let temp_dir = tempdir::TempDir::new("cert-reload").unwrap();
+        let cert_file = temp_dir.path().join("server.crt");
+        let key_file = temp_dir.path().join("server.key");
+
+        // Copy server1's cert files into the temp dir.
+        std::fs::copy("tests/certs/server1.crt", &cert_file).unwrap();
+        std::fs::copy("tests/certs/server1.key", &key_file).unwrap();
+
+        // Create a listener URI.
+        let port: u16 = 6544;
+        let uri = ConsensusClientUri::from_str(&format!(
+            "mc://localhost:{}/?tls-chain={}&tls-key={}",
+            port,
+            cert_file.clone().into_os_string().into_string().unwrap(),
+            key_file.clone().into_os_string().into_string().unwrap()
+        ))
+        .unwrap();
+
+        // Start server using bind_using_uri_with_reloading.
+        let env = Arc::new(EnvBuilder::new().build());
+        let service = HealthService::new(None, logger.clone()).into_service();
+
+        let mut server = ServerBuilder::new(env.clone())
+            .register_service(service)
+            .bind_using_uri_with_reloading(&uri, logger.clone())
+            .build()
+            .unwrap();
+        server.start();
+
+        // Sanity that the servers works.
+        let client1 = create_test_client("server1", "www.server1.com", port);
+        let mut req = PingRequest::default();
+        req.set_data(vec![1, 2, 3]);
+        let reply = client1.ping(&req).expect("rpc");
+        assert_eq!(reply.get_data(), vec![1, 2, 3]);
+
+        // Replace server1 certificates with server2. This should trigger the reloading mechanism.
+        std::fs::copy("tests/certs/server2.crt", &cert_file).unwrap();
+        std::fs::copy("tests/certs/server2.key", &key_file).unwrap();
+
+        // Trigger reloading.
+        unsafe {
+            libc::kill(libc::getpid(), libc::SIGHUP);
+        }
+
+        // Give the reloader time to pick up the changes.
+        thread::sleep(Duration::from_secs(2));
+
+        // Server should now have the new cerficate.
+        let client2 = create_test_client("server2", "www.server2.com", port);
+        let mut req = PingRequest::default();
+        req.set_data(vec![1, 2, 3]);
+        let reply = client2.ping(&req).expect("rpc");
+        assert_eq!(reply.get_data(), vec![1, 2, 3]);
+
+        // Original client should still be alive.
+        let mut req = PingRequest::default();
+        req.set_data(vec![1, 2, 3]);
+        let reply = client1.ping(&req).expect("rpc");
         assert_eq!(reply.get_data(), vec![1, 2, 3]);
     }
 }
