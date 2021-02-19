@@ -194,6 +194,39 @@ impl BlockDataStore {
         Ok(results)
     }
 
+    /// Remove all block data associated with a given source url.
+    /// Note that this assumes blocks where added in a sequential order, and that there are no gaps
+    /// (no blocks were skipped).
+    /// It does not remove Block/BlockContents as those might be shared with other source URLs.
+    pub fn remove_all_for_source_url<'env>(
+        &self,
+        db_txn: &mut RwTransaction<'env>,
+        src_url: &Url,
+        last_synced_block_index: u64,
+    ) -> Result<(), WatcherDBError> {
+        let mut block_index: u64 = 0;
+        loop {
+            let mut key_bytes = block_index.to_be_bytes().to_vec();
+            key_bytes.extend(src_url.as_str().as_bytes());
+
+            match db_txn.del(self.block_datas_by_index, &key_bytes, None) {
+                Ok(()) => {}
+                Err(lmdb::Error::NotFound) => {
+                    if block_index > last_synced_block_index {
+                        break;
+                    }
+                }
+                Err(err) => {
+                    return Err(err.into());
+                }
+            }
+
+            block_index += 1;
+        }
+
+        Ok(())
+    }
+
     fn store_block<'env>(
         &self,
         db_txn: &mut RwTransaction<'env>,
