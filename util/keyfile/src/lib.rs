@@ -1,7 +1,8 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-pub mod config;
 mod json_format;
+
+pub mod config;
 pub mod keygen;
 
 use json_format::RootIdentityJson;

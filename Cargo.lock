@@ -3595,12 +3595,14 @@ dependencies = [
  "mc-crypto-rand",
  "mc-util-from-random",
  "mc-util-serial",
+ "pem",
  "rand 0.7.3",
  "rand_hc 0.2.0",
  "serde",
  "serde_json",
  "structopt",
  "tempdir",
+ "x509-signature",
 ]
 
 [[package]]
