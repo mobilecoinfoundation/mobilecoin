@@ -150,13 +150,6 @@ impl PublicAddress {
     }
 
     /// Get the optional fog authority sig (if it exists / is not empty).
-    #[deprecated]
-    #[inline]
-    pub fn fog_authority_fingerprint_sig(&self) -> Option<&[u8]> {
-        self.fog_authority_sig()
-    }
-
-    /// Get the optional fog authority sig (if it exists / is not empty).
     pub fn fog_authority_sig(&self) -> Option<&[u8]> {
         if self.fog_authority_sig.is_empty() {
             None
@@ -566,13 +559,13 @@ mod account_key_tests {
 
     #[test]
     // Subaddress fog authority signature should verify
-    fn test_fog_authority_fingerprint_signature() {
+    fn test_fog_authority_signature() {
         let mut rng: StdRng = SeedableRng::from_seed([42u8; 32]);
         let view_private = RistrettoPrivate::from_random(&mut rng);
         let spend_private = RistrettoPrivate::from_random(&mut rng);
         let fog_url = "fog://example.com";
-        let mut fog_authority_fingerprint = [0u8; 32];
-        rng.fill_bytes(&mut fog_authority_fingerprint);
+        let mut fog_authority_spki = [0u8; 32];
+        rng.fill_bytes(&mut fog_authority_spki);
         let fog_report_key = String::from("");
 
         let account_key = AccountKey::new_with_fog(
@@ -580,13 +573,13 @@ mod account_key_tests {
             &view_private,
             fog_url,
             fog_report_key,
-            fog_authority_fingerprint,
+            fog_authority_spki,
         );
 
         let index = rng.next_u64();
         let subaddress = account_key.subaddress(index);
 
         // Note: The fog_authority_fingerprint is published, so it is known by the verifier.
-        verify_signature(&subaddress, &fog_authority_fingerprint);
+        verify_signature(&subaddress, &fog_authority_spki);
     }
 }
