@@ -117,36 +117,45 @@ if args.dry_run or not sys.stdout.isatty():
 # Implement verbose, dry_run settings
 ###
 
-# When python is invoked from docker in CI, we won't see anything because of
-# buffered output unless we flush. It's hard to ensure PYTHONUNBUFFERED=0 or -u
-# is used consistently.
 def eprint(*argv, **kwargs):
+    """
+    When python is invoked from docker in CI, we won't see anything because of
+    buffered output unless we flush. It's hard to ensure PYTHONUNBUFFERED=0 or -u
+    is used consistently.
+    """
     print(*argv, file=sys.stderr, **kwargs)
     sys.stderr.flush()
 
-# vprint is eprint that only happens in verbose mode
 def vprint(*argv, **kwargs):
+    """ vprint is eprint that only happens in verbose mode """
     if args.verbose:
         eprint(*argv, **kwargs)
+
+def vprint_command(cmd):
+    """ Print a command, whether it is in shell style or list style. """
+    if isinstance(cmd, list):
+        cmd = ' '.join(cmd)
+    vprint('$ ' + cmd)
+
 
 # Run a command, unless we are in dry_run mode and should not do that
 # Print the command if in verbose mode
 def maybe_run(command):
-    vprint(command)
+    vprint_command(command)
     if not args.dry_run:
         subprocess.check_call(command)
 
 # Change directory.
 # Print the command if in verbose mode
 def verbose_chdir(path):
-    vprint("cd", path)
+    vprint_command(['cd', path])
     os.chdir(path)
 
 # Check if we have a given docker tag
 def have_tag(arg):
     try:
         cmd = ["docker", "images", "-q", arg]
-        vprint(cmd)
+        vprint_command(cmd)
         return len(subprocess.check_output(cmd)) > 0
     except subprocess.CalledProcessError:
         eprint("Error searching for image: " + arg)
@@ -161,7 +170,7 @@ def get_git_commit():
     else:
         try:
             cmd = ["git", "describe", "--always", "--dirty=-modified"]
-            vprint(cmd)
+            vprint_command(cmd)
             return subprocess.check_output(cmd)[:-1].decode()
         except subprocess.CalledProcessError:
             eprint("Couldn't get git revision")
@@ -174,7 +183,7 @@ def get_git_commit():
 # Check if docker is available and bail out early with a message if appropriate
 if not args.dry_run:
     cmd = "command -v docker > /dev/null 2>&1"
-    vprint(cmd)
+    vprint_command(cmd)
     try:
         retcode = subprocess.call(cmd, shell=True)
     except:
