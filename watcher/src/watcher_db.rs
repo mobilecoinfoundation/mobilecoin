@@ -910,7 +910,7 @@ impl WatcherDB {
     /// Remove all the data associated with a given source url.
     pub fn remove_all_for_source_url(&self, src_url: &Url) -> Result<(), WatcherDBError> {
         if !self.write_allowed {
-            //return Err(WatcherDBError::ReadOnly);
+            return Err(WatcherDBError::ReadOnly);
         }
 
         let mut db_txn = self.env.begin_rw_txn()?;
