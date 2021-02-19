@@ -150,13 +150,6 @@ impl PublicAddress {
     }
 
     /// Get the optional fog authority sig (if it exists / is not empty).
-    #[deprecated]
-    #[inline]
-    pub fn fog_authority_fingerprint_sig(&self) -> Option<&[u8]> {
-        self.fog_authority_sig()
-    }
-
-    /// Get the optional fog authority sig (if it exists / is not empty).
     pub fn fog_authority_sig(&self) -> Option<&[u8]> {
         if self.fog_authority_sig.is_empty() {
             None
