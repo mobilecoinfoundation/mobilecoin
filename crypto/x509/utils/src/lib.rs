@@ -81,15 +81,21 @@ impl From<X509Error> for ChainError {
 
 /// A trait used to monkey-patch an X509Certificate chain verifier onto a slice
 /// of X509Certificate objects.
-pub trait X509CertificateChain {
+pub trait X509CertificateChain<'a> {
     /// Verify the chain (checks validity, signatures, and CA extension of each
     /// element)
     fn verify_chain(&self) -> Result<usize, ChainError>;
+
+    /// Get the leaf certificate
+    fn leaf(&self) -> Result<&X509Certificate<'a>, ChainError>;
+
+    /// Verify the chain and retrieve the self-signed root certificate.
+    fn verified_root(&self) -> Result<&X509Certificate<'a>, ChainError>;
 }
 
-impl<'a, T: AsRef<[X509Certificate<'a>]>> X509CertificateChain for T {
+impl<'a, T: AsRef<[X509Certificate<'a>]>> X509CertificateChain<'a> for T {
     fn verify_chain(&self) -> Result<usize, ChainError> {
-        let mut previous = None;
+        let mut previous: Option<&X509Certificate> = None;
         let mut cert_count = 0usize;
 
         if self.as_ref().is_empty() {
@@ -97,11 +103,10 @@ impl<'a, T: AsRef<[X509Certificate<'a>]>> X509CertificateChain for T {
         }
 
         for (index, cert) in self.as_ref().iter().enumerate() {
-            // If the cert wasn't signed by the preceeding cert (or itself, if first), fail.
+            // If we aren't the first cert in the chain, and there were no errors before us,
+            // verify we signed the previous cert.
             if let Some(prev_cert) = previous {
-                cert.check_issued_by(prev_cert)?;
-            } else {
-                cert.check_self_issued()?;
+                prev_cert.check_issued_by(cert)?;
             }
 
             let timestamp = SystemTime::now()
@@ -117,7 +122,26 @@ impl<'a, T: AsRef<[X509Certificate<'a>]>> X509CertificateChain for T {
             cert_count = index + 1;
         }
 
+        // The last cert in the chain must be self-signed.
+        if let Some(previous) = previous {
+            previous.check_self_issued()?;
+        }
+
         Ok(cert_count)
+    }
+
+    fn leaf(&self) -> Result<&X509Certificate<'a>, ChainError> {
+        if self.as_ref().is_empty() {
+            Err(ChainError::Empty)
+        } else {
+            let slice = self.as_ref();
+            Ok(&slice[0])
+        }
+    }
+
+    fn verified_root(&self) -> Result<&X509Certificate<'a>, ChainError> {
+        let slice = self.as_ref();
+        Ok(&slice[self.verify_chain()? - 1])
     }
 }
 
@@ -166,10 +190,10 @@ mod test {
         );
 
         let pubkey = certs
-            .last()
-            .expect("Could not get last cert")
+            .leaf()
+            .expect("Could not get leaf cert")
             .mc_public_key()
-            .expect("Could not parse last cert's pubkey");
+            .expect("Could not parse leaf cert's pubkey");
 
         match pubkey {
             PublicKeyType::Ed25519(key) => assert_eq!(pair.public_key(), key),
@@ -190,7 +214,7 @@ mod test {
         );
 
         let pubkey = certs
-            .last()
+            .leaf()
             .expect("Could not get last cert")
             .mc_public_key()
             .expect("Could not parse last cert's pubkey");

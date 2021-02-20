@@ -179,17 +179,17 @@ cp "${OK_ROOT_DIR}/certs/ca.crt" "${OUTPUT_BASE_DIR}/ok_rsa_head.pem"
 
 
 # ok_rsa_chain_25519_leaf()
-cat "${OK_ROOT_DIR}/certs/ca.crt" > "${OUTPUT_BASE_DIR}/ok_rsa_chain_25519_leaf.pem"
+cat "${OK_PENULTIMATE_DIR}/certs/leaf.crt" > "${OUTPUT_BASE_DIR}/ok_rsa_chain_25519_leaf.pem"
 cat "${OK_PENULTIMATE_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_chain_25519_leaf.pem"
-cat "${OK_PENULTIMATE_DIR}/certs/leaf.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_chain_25519_leaf.pem"
+cat "${OK_ROOT_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_chain_25519_leaf.pem"
 
 cat "${OK_PENULTIMATE_DIR}/private/leaf.key" > "${OUTPUT_BASE_DIR}/ok_rsa_chain_25519_leaf.key"
 
 
 # ok_rsa_out_of_order()
-cat "${OK_PENULTIMATE_DIR}/certs/leaf.crt" > "${OUTPUT_BASE_DIR}/ok_rsa_out_of_order.pem"
-cat "${OK_ROOT_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_out_of_order.pem"
+cat "${OK_ROOT_DIR}/certs/ca.crt" > "${OUTPUT_BASE_DIR}/ok_rsa_out_of_order.pem"
 cat "${OK_PENULTIMATE_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_out_of_order.pem"
+cat "${OK_PENULTIMATE_DIR}/certs/leaf.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_out_of_order.pem"
 
 cat "${OK_PENULTIMATE_DIR}/private/leaf.key" > "${OUTPUT_BASE_DIR}/ok_rsa_out_of_order.key"
 
@@ -260,30 +260,30 @@ make_intermediate_ca 7
 
 
 # ok_rsa_chain_depth_10()
-cat "${OK_ROOT_DIR}/certs/ca.crt" > "${OUTPUT_BASE_DIR}/ok_rsa_chain_depth_10.pem"
-cat "${OK_INTERMEDIATE1_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_chain_depth_10.pem"
-cat "${OK_INTERMEDIATE2_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_chain_depth_10.pem"
-cat "${OK_INTERMEDIATE3_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_chain_depth_10.pem"
-cat "${OK_INTERMEDIATE4_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_chain_depth_10.pem"
-cat "${OK_INTERMEDIATE5_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_chain_depth_10.pem"
-cat "${OK_INTERMEDIATE6_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_chain_depth_10.pem"
-cat "${OK_INTERMEDIATE7_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_chain_depth_10.pem"
+cat "${OK_PENULTIMATE8_DIR}/certs/leaf.crt" > "${OUTPUT_BASE_DIR}/ok_rsa_chain_depth_10.pem"
 cat "${OK_PENULTIMATE8_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_chain_depth_10.pem"
-cat "${OK_PENULTIMATE8_DIR}/certs/leaf.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_chain_depth_10.pem"
+cat "${OK_INTERMEDIATE7_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_chain_depth_10.pem"
+cat "${OK_INTERMEDIATE6_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_chain_depth_10.pem"
+cat "${OK_INTERMEDIATE5_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_chain_depth_10.pem"
+cat "${OK_INTERMEDIATE4_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_chain_depth_10.pem"
+cat "${OK_INTERMEDIATE3_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_chain_depth_10.pem"
+cat "${OK_INTERMEDIATE2_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_chain_depth_10.pem"
+cat "${OK_INTERMEDIATE1_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_chain_depth_10.pem"
+cat "${OK_ROOT_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_chain_depth_10.pem"
 
 cat "${OK_PENULTIMATE8_DIR}/private/leaf.key" > "${OUTPUT_BASE_DIR}/ok_rsa_chain_depth_10.key"
 
 
 # fail_missing_head()
-cat "${OK_PENULTIMATE_DIR}/certs/ca.crt" > "${OUTPUT_BASE_DIR}/fail_missing_head.pem"
-cat "${OK_PENULTIMATE_DIR}/certs/leaf.crt" >> "${OUTPUT_BASE_DIR}/fail_missing_head.pem"
+cat "${OK_PENULTIMATE_DIR}/certs/leaf.crt" > "${OUTPUT_BASE_DIR}/fail_missing_head.pem"
+cat "${OK_PENULTIMATE_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/fail_missing_head.pem"
 
 cat "${OK_PENULTIMATE_DIR}/private/leaf.key" > "${OUTPUT_BASE_DIR}/fail_missing_head.key"
 
 
 # fail_missing_link()
-cat "${OK_ROOT_DIR}/certs/ca.crt" > "${OUTPUT_BASE_DIR}/fail_missing_link.pem"
-cat "${OK_PENULTIMATE_DIR}/certs/leaf.crt" >> "${OUTPUT_BASE_DIR}/fail_missing_link.pem"
+cat "${OK_PENULTIMATE_DIR}/certs/leaf.crt" > "${OUTPUT_BASE_DIR}/fail_missing_link.pem"
+cat "${OK_ROOT_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/fail_missing_link.pem"
 
 cat "${OK_PENULTIMATE_DIR}/private/leaf.key" > "${OUTPUT_BASE_DIR}/fail_missing_link.key"
 
@@ -317,9 +317,9 @@ cat "${OK_PENULTIMATE_DIR}/private/leaf.key" > "${OUTPUT_BASE_DIR}/fail_missing_
 
 
 # fail_leaf_expired()
-cat "${OK_ROOT_DIR}/certs/ca.crt" > "${OUTPUT_BASE_DIR}/fail_leaf_expired.pem"
+cat "${OK_PENULTIMATE_DIR}/certs/expired.crt" > "${OUTPUT_BASE_DIR}/fail_leaf_expired.pem"
 cat "${OK_PENULTIMATE_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/fail_leaf_expired.pem"
-cat "${OK_PENULTIMATE_DIR}/certs/expired.crt" >> "${OUTPUT_BASE_DIR}/fail_leaf_expired.pem"
+cat "${OK_ROOT_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/fail_leaf_expired.pem"
 
 cat "${OK_PENULTIMATE_DIR}/private/leaf.key" > "${OUTPUT_BASE_DIR}/fail_leaf_expired.key"
 
@@ -353,20 +353,18 @@ cat "${OK_PENULTIMATE_DIR}/private/leaf.key" > "${OUTPUT_BASE_DIR}/fail_leaf_exp
 
 
 # fail_leaf_too_soon()
-cat "${OK_ROOT_DIR}/certs/ca.crt" > "${OUTPUT_BASE_DIR}/fail_leaf_too_soon.pem"
+cat "${OK_PENULTIMATE_DIR}/certs/too_soon.crt" > "${OUTPUT_BASE_DIR}/fail_leaf_too_soon.pem"
 cat "${OK_PENULTIMATE_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/fail_leaf_too_soon.pem"
-cat "${OK_PENULTIMATE_DIR}/certs/too_soon.crt" >> "${OUTPUT_BASE_DIR}/fail_leaf_too_soon.pem"
+cat "${OK_ROOT_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/fail_leaf_too_soon.pem"
 
 cat "${OK_PENULTIMATE_DIR}/private/too_soon.key" > "${OUTPUT_BASE_DIR}/fail_leaf_too_soon.key"
 
 
 # ok_rsa_tree()
-cat "${OK_ROOT_DIR}/certs/ca.crt" > "${OUTPUT_BASE_DIR}/ok_rsa_tree.pem"
-cat "${OK_PENULTIMATE_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_tree.pem"
+cat "${OK_PENULTIMATE_DIR}/certs/leaf.crt" > "${OUTPUT_BASE_DIR}/ok_rsa_tree.pem"
 cat "${OK_INTERMEDIATE1_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_tree.pem"
 cat "${OK_INTERMEDIATE2_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_tree.pem"
-cat "${OK_PENULTIMATE_DIR}/certs/leaf.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_tree.pem"
+cat "${OK_PENULTIMATE_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_tree.pem"
+cat "${OK_ROOT_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_tree.pem"
 
 cat "${OK_PENULTIMATE_DIR}/private/leaf.key" > "${OUTPUT_BASE_DIR}/ok_rsa_tree.key"
-
-echo "foo"
