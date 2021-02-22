@@ -388,5 +388,3 @@ cat "${OK_PENULTIMATE_DIR}/private/leaf.key" > "${OUTPUT_BASE_DIR}/ok_rsa_tree.k
     -days 3650 \
     -subj "/C=US/ST=Neverland/L=California/O=Company Name/OU=Org/CN=www.server2.com" \
     -nodes
-
-echo "foo"
