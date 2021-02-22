@@ -101,14 +101,9 @@ mod tests {
     };
     use grpcio::{ChannelBuilder, ChannelCredentialsBuilder, EnvBuilder, Server, ServerBuilder};
     use mc_common::logger::test_with_logger;
+    use mc_crypto_x509_test_vectors::{ok_self_signed_1, ok_self_signed_2};
     use mc_util_uri::ConsensusClientUri;
-    use std::{io::Read, str::FromStr, thread, time::Duration};
-
-    pub fn read_single_crt(name: &str) -> Result<String, io::Error> {
-        let mut crt = String::new();
-        fs::File::open(format!("tests/certs/{}.crt", name))?.read_to_string(&mut crt)?;
-        Ok(crt)
-    }
+    use std::{str::FromStr, thread, time::Duration};
 
     fn create_test_server(
         cert_file: &impl AsRef<Path>,
@@ -136,10 +131,10 @@ mod tests {
         (server, port)
     }
 
-    fn create_test_client(crt_name: &str, ssl_target: &str, port: u16) -> HealthClient {
+    fn create_test_client(cert: &str, ssl_target: &str, port: u16) -> HealthClient {
         let env = Arc::new(EnvBuilder::new().build());
         let cred = ChannelCredentialsBuilder::new()
-            .root_cert(read_single_crt(crt_name).unwrap().into())
+            .root_cert(cert.into())
             .build();
         let ch = ChannelBuilder::new(env.clone())
             .override_ssl_target(ssl_target)
@@ -149,46 +144,50 @@ mod tests {
 
     #[test_with_logger]
     fn test_cert_reloading(logger: Logger) {
-        let temp_dir = tempdir::TempDir::new("cert-reload").unwrap();
+        let temp_dir = tempfile::TempDir::new().unwrap();
         let cert_file = temp_dir.path().join("server.crt");
         let key_file = temp_dir.path().join("server.key");
 
-        // Copy server1's cert files into the temp dir.
-        std::fs::copy("tests/certs/server1.crt", &cert_file).unwrap();
-        std::fs::copy("tests/certs/server1.key", &key_file).unwrap();
+        // Load test certs and keys
+        let (server1_cert, server1_key) = ok_self_signed_1();
+        let (server2_cert, server2_key) = ok_self_signed_2();
+
+        // Write server1's cert files into the temp dir.
+        std::fs::write(&cert_file, &server1_cert).unwrap();
+        std::fs::write(&key_file, &server1_key).unwrap();
 
         // Start the GRPC server.
         let (_server, port) = create_test_server(&cert_file, &key_file, logger.clone());
 
         // Connect the server whose CN is "www.server1.com" with the correct certificate.
-        let client1 = create_test_client("server1", "www.server1.com", port);
+        let client1 = create_test_client(&server1_cert, "www.server1.com", port);
         let mut req = PingRequest::default();
         req.set_data(vec![1, 2, 3]);
         let reply = client1.ping(&req).expect("rpc");
         assert_eq!(reply.get_data(), vec![1, 2, 3]);
 
         // Connect the server whose CN is "www.server1.com" with a different ssl target should fail.
-        let client2 = create_test_client("server1", "www.server2.com", port);
+        let client2 = create_test_client(&server1_cert, "www.server2.com", port);
         let mut req = PingRequest::default();
         req.set_data(vec![1, 2, 3]);
         assert!(client2.ping(&req).is_err());
 
         // Connect the server whose CN is "www.server1.com" with an incorrect certificate.
-        let client3 = create_test_client("server2", "www.server1.com", port);
+        let client3 = create_test_client(&server2_cert, "www.server1.com", port);
         let mut req = PingRequest::default();
         req.set_data(vec![1, 2, 3]);
         assert!(client3.ping(&req).is_err());
 
         // Connecting with server2/"www.server2.com" should not work until we replace the certificate
         // and key file.
-        let client4 = create_test_client("server2", "www.server2.com", port);
+        let client4 = create_test_client(&server2_cert, "www.server2.com", port);
         let mut req = PingRequest::default();
         req.set_data(vec![1, 2, 3]);
         assert!(client4.ping(&req).is_err());
 
         // Replace server1 certificates with server2. This should trigger the reloading mechanism.
-        std::fs::copy("tests/certs/server2.crt", &cert_file).unwrap();
-        std::fs::copy("tests/certs/server2.key", &key_file).unwrap();
+        std::fs::write(&cert_file, &server2_cert).unwrap();
+        std::fs::write(&key_file, &server2_key).unwrap();
 
         // Trigger reloading.
         unsafe {
@@ -199,7 +198,7 @@ mod tests {
         thread::sleep(Duration::from_secs(2));
 
         // We should be able to connect using "www.server2.com".
-        let client5 = create_test_client("server2", "www.server2.com", port);
+        let client5 = create_test_client(&server2_cert, "www.server2.com", port);
         let mut req = PingRequest::default();
         req.set_data(vec![1, 2, 3]);
         let reply = client5.ping(&req).expect("rpc");
@@ -219,19 +218,22 @@ mod tests {
 
     #[test_with_logger]
     fn test_reload_invalid_data(logger: Logger) {
-        let temp_dir = tempdir::TempDir::new("cert-reload").unwrap();
+        let temp_dir = tempfile::TempDir::new().unwrap();
         let cert_file = temp_dir.path().join("server.crt");
         let key_file = temp_dir.path().join("server.key");
 
-        // Copy server1's cert files into the temp dir.
-        std::fs::copy("tests/certs/server1.crt", &cert_file).unwrap();
-        std::fs::copy("tests/certs/server1.key", &key_file).unwrap();
+        // Load test certs and keys
+        let (server1_cert, server1_key) = ok_self_signed_1();
+
+        // Write server1's cert files into the temp dir.
+        std::fs::write(&cert_file, &server1_cert).unwrap();
+        std::fs::write(&key_file, &server1_key).unwrap();
 
         // Start the GRPC server.
         let (_server, port) = create_test_server(&cert_file, &key_file, logger.clone());
 
         // Sanity that the server works.
-        let client1 = create_test_client("server1", "www.server1.com", port);
+        let client1 = create_test_client(&server1_cert, "www.server1.com", port);
         let mut req = PingRequest::default();
         req.set_data(vec![1, 2, 3]);
         let reply = client1.ping(&req).expect("rpc");
@@ -249,7 +251,7 @@ mod tests {
         thread::sleep(Duration::from_secs(2));
 
         // Server should still respond with the old certificate.
-        let client2 = create_test_client("server1", "www.server1.com", port);
+        let client2 = create_test_client(&server1_cert, "www.server1.com", port);
         let mut req = PingRequest::default();
         req.set_data(vec![1, 2, 3]);
         let reply = client2.ping(&req).expect("rpc");
@@ -258,34 +260,38 @@ mod tests {
 
     #[test_with_logger]
     fn test_multiple_servers(logger: Logger) {
-        let temp_dir = tempdir::TempDir::new("cert-reload").unwrap();
+        let temp_dir = tempfile::TempDir::new().unwrap();
         let cert_file = temp_dir.path().join("server.crt");
         let key_file = temp_dir.path().join("server.key");
 
-        // Copy server1's cert files into the temp dir.
-        std::fs::copy("tests/certs/server1.crt", &cert_file).unwrap();
-        std::fs::copy("tests/certs/server1.key", &key_file).unwrap();
+        // Load test certs and keys
+        let (server1_cert, server1_key) = ok_self_signed_1();
+        let (server2_cert, server2_key) = ok_self_signed_2();
+
+        // Write server1's cert files into the temp dir.
+        std::fs::write(&cert_file, &server1_cert).unwrap();
+        std::fs::write(&key_file, &server1_key).unwrap();
 
         // Start the GRPC servers.
         let (_server1, port1) = create_test_server(&cert_file, &key_file, logger.clone());
         let (_server2, port2) = create_test_server(&cert_file, &key_file, logger.clone());
 
         // Sanity that the servers works.
-        let client1 = create_test_client("server1", "www.server1.com", port1);
+        let client1 = create_test_client(&server1_cert, "www.server1.com", port1);
         let mut req = PingRequest::default();
         req.set_data(vec![1, 2, 3]);
         let reply = client1.ping(&req).expect("rpc");
         assert_eq!(reply.get_data(), vec![1, 2, 3]);
 
-        let client2 = create_test_client("server1", "www.server1.com", port2);
+        let client2 = create_test_client(&server1_cert, "www.server1.com", port2);
         let mut req = PingRequest::default();
         req.set_data(vec![1, 2, 3]);
         let reply = client2.ping(&req).expect("rpc");
         assert_eq!(reply.get_data(), vec![1, 2, 3]);
 
-        // Replace server1 certificates with server2. This should trigger the reloading mechanism.
-        std::fs::copy("tests/certs/server2.crt", &cert_file).unwrap();
-        std::fs::copy("tests/certs/server2.key", &key_file).unwrap();
+        // Replace server1 certificates with server2.
+        std::fs::write(&cert_file, &server2_cert).unwrap();
+        std::fs::write(&key_file, &server2_key).unwrap();
 
         // Trigger reloading.
         unsafe {
@@ -296,13 +302,13 @@ mod tests {
         thread::sleep(Duration::from_secs(2));
 
         // Both servers should now have the new cerficates.
-        let client3 = create_test_client("server2", "www.server2.com", port1);
+        let client3 = create_test_client(&server2_cert, "www.server2.com", port1);
         let mut req = PingRequest::default();
         req.set_data(vec![1, 2, 3]);
         let reply = client3.ping(&req).expect("rpc");
         assert_eq!(reply.get_data(), vec![1, 2, 3]);
 
-        let client4 = create_test_client("server2", "www.server2.com", port2);
+        let client4 = create_test_client(&server2_cert, "www.server2.com", port2);
         let mut req = PingRequest::default();
         req.set_data(vec![1, 2, 3]);
         let reply = client4.ping(&req).expect("rpc");
@@ -311,13 +317,17 @@ mod tests {
 
     #[test_with_logger]
     fn test_bind_using_uri_with_reloading(logger: Logger) {
-        let temp_dir = tempdir::TempDir::new("cert-reload").unwrap();
+        let temp_dir = tempfile::TempDir::new().unwrap();
         let cert_file = temp_dir.path().join("server.crt");
         let key_file = temp_dir.path().join("server.key");
 
-        // Copy server1's cert files into the temp dir.
-        std::fs::copy("tests/certs/server1.crt", &cert_file).unwrap();
-        std::fs::copy("tests/certs/server1.key", &key_file).unwrap();
+        // Load test certs and keys
+        let (server1_cert, server1_key) = ok_self_signed_1();
+        let (server2_cert, server2_key) = ok_self_signed_2();
+
+        // Write server1's cert files into the temp dir.
+        std::fs::write(&cert_file, &server1_cert).unwrap();
+        std::fs::write(&key_file, &server1_key).unwrap();
 
         // Create a listener URI.
         let port: u16 = 6544;
@@ -341,15 +351,15 @@ mod tests {
         server.start();
 
         // Sanity that the servers works.
-        let client1 = create_test_client("server1", "www.server1.com", port);
+        let client1 = create_test_client(&server1_cert, "www.server1.com", port);
         let mut req = PingRequest::default();
         req.set_data(vec![1, 2, 3]);
         let reply = client1.ping(&req).expect("rpc");
         assert_eq!(reply.get_data(), vec![1, 2, 3]);
 
-        // Replace server1 certificates with server2. This should trigger the reloading mechanism.
-        std::fs::copy("tests/certs/server2.crt", &cert_file).unwrap();
-        std::fs::copy("tests/certs/server2.key", &key_file).unwrap();
+        // Replace server1 certificates with server2.
+        std::fs::write(&cert_file, &server2_cert).unwrap();
+        std::fs::write(&key_file, &server2_key).unwrap();
 
         // Trigger reloading.
         unsafe {
@@ -360,7 +370,7 @@ mod tests {
         thread::sleep(Duration::from_secs(2));
 
         // Server should now have the new cerficate.
-        let client2 = create_test_client("server2", "www.server2.com", port);
+        let client2 = create_test_client(&server2_cert, "www.server2.com", port);
         let mut req = PingRequest::default();
         req.set_data(vec![1, 2, 3]);
         let reply = client2.ping(&req).expect("rpc");
