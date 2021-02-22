@@ -5,11 +5,21 @@ Watcher nodes perform an essential role in the MobileCoin network by verifying t
 
 Basic run command to sync block signatures from two nodes on the test network:
 
+Create a `sources.toml` file, for example:
+```
+[[sources]]
+tx_source_url = "https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node1.test.mobilecoin.com/"
+consensus_client_url = "mc://node1.test.mobilecoin.com/"
+
+[[sources]]
+tx_source_url = "https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node2.test.mobilecoin.com/"
+consensus_client_url = "mc://node2.test.mobilecoin.com/"
+```
+
 ```sh
-RUST_LOG=trace,hyper=error,want=error,reqwest=error,mio=error,rustls=error \
-    cargo run -p mc-watcher --bin watcher -- \
-    --tx-source-url https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node1.test.mobilecoin.com/ \
-    --tx-source-url https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node2.test.mobilecoin.com/ \
+SGX_MODE=HW IAS_MODE=PROD MC_LOG=debug,hyper=error,want=error,reqwest=error,mio=error,rustls=error \
+    cargo run -p mc-watcher --bin mc-watcher -- \
+    --sources-path sources.toml \
     --watcher-db /tmp/watcher-db
 ```
 
