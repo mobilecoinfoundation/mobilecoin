@@ -99,7 +99,7 @@ impl FromBase64 for EpidPseudonym {
             let output = b64decode(src.as_bytes(), &mut buffer[..])?;
             output.len()
         };
-        if buflen < EPID_PSEUDONYM_LEN {
+        if buflen != EPID_PSEUDONYM_LEN {
             return Err(EncodingError::InvalidInputLength);
         }
         let (left, right) = buffer.split_at(buflen / 2);
