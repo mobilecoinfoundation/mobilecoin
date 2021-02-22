@@ -368,3 +368,23 @@ cat "${OK_PENULTIMATE_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_tree.pem"
 cat "${OK_ROOT_DIR}/certs/ca.crt" >> "${OUTPUT_BASE_DIR}/ok_rsa_tree.pem"
 
 cat "${OK_PENULTIMATE_DIR}/private/leaf.key" > "${OUTPUT_BASE_DIR}/ok_rsa_tree.key"
+
+# ok_self_signed_1()
+"${OPENSSL}" req \
+    -x509 \
+    -newkey rsa:4096 \
+    -keyout "${OUTPUT_BASE_DIR}/ok_self_signed_1.key" \
+    -out "${OUTPUT_BASE_DIR}/ok_self_signed_1.pem" \
+    -days 3650 \
+    -subj "/C=US/ST=Neverland/L=California/O=Company Name/OU=Org/CN=www.server1.com" \
+    -nodes
+
+# ok_self_signed_2()
+"${OPENSSL}" req \
+    -x509 \
+    -newkey rsa:4096 \
+    -keyout "${OUTPUT_BASE_DIR}/ok_self_signed_2.key" \
+    -out "${OUTPUT_BASE_DIR}/ok_self_signed_2.pem" \
+    -days 3650 \
+    -subj "/C=US/ST=Neverland/L=California/O=Company Name/OU=Org/CN=www.server2.com" \
+    -nodes

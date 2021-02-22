@@ -20,6 +20,7 @@ mod build_info_service;
 mod cookie_helper;
 mod grpcio_extensions;
 mod health_service;
+mod server_cert_reloader;
 
 pub use crate::{
     admin_server::AdminServer,
@@ -34,6 +35,7 @@ pub use crate::{
     cookie_helper::{Error as CookieError, GrpcCookieStore},
     grpcio_extensions::{ConnectionUriGrpcioChannel, ConnectionUriGrpcioServer},
     health_service::{HealthCheckStatus, HealthService},
+    server_cert_reloader::{ServerCertReloader, ServerCertReloaderError},
 };
 
 use futures::prelude::*;
