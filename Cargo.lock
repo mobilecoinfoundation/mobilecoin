@@ -5475,6 +5475,34 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c111b5bd5695e56cffe5129854aa230b39c93a305372fdbb2668ca2394eea9f8"
 
 [[package]]
+name = "slam"
+version = "0.13.0"
+dependencies = [
+ "crossbeam-channel 0.5.0",
+ "curve25519-dalek",
+ "grpcio",
+ "lazy_static",
+ "mc-account-keys",
+ "mc-attest-core",
+ "mc-common",
+ "mc-connection",
+ "mc-consensus-enclave-measurement",
+ "mc-consensus-scp",
+ "mc-crypto-keys",
+ "mc-fog-report-validation",
+ "mc-ledger-db",
+ "mc-ledger-sync",
+ "mc-mobilecoind",
+ "mc-transaction-core",
+ "mc-transaction-std",
+ "mc-util-keyfile",
+ "mc-util-uri",
+ "rand 0.7.3",
+ "structopt",
+ "tempdir",
+]
+
+[[package]]
 name = "slog"
 version = "2.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

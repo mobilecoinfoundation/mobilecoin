@@ -1,0 +1,38 @@
+[package]
+name = "slam"
+version = "0.13.0"
+authors = ["drakeley <sara.drakeley@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+mc-account-keys = { path = "../account-keys" }
+mc-attest-core = { path = "../attest/core" }
+mc-common = { path = "../common", features = ["log"] }
+mc-connection = { path = "../connection" }
+mc-consensus-enclave-measurement = { path = "../consensus/enclave/measurement" }
+mc-consensus-scp = { path = "../consensus/scp" }
+mc-crypto-keys = { path = "../crypto/keys" }
+mc-fog-report-validation = { path = "../fog/report/validation" }
+mc-ledger-db = { path = "../ledger/db" }
+mc-ledger-sync = { path = "../ledger/sync" }
+mc-mobilecoind = { path = "../mobilecoind" }
+mc-transaction-core = { path = "../transaction/core" }
+mc-transaction-std = { path = "../transaction/std" }
+mc-util-keyfile = { path = "../util/keyfile" }
+mc-util-uri = { path = "../util/uri" }
+
+crossbeam-channel = "0.5"
+grpcio = "0.6.0"
+lazy_static = "1.4"
+rand = "0.7"
+structopt = "0.3"
+tempdir = "0.3"
+
+[target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
+curve25519-dalek = { version = "3.0", default-features = false, features = ["simd_backend", "nightly"] }
+
+[target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
+curve25519-dalek = { version = "3.0", default-features = false, features = ["nightly", "u64_backend"] }
+
+[dev-dependencies]
+mc-common = { path = "../common", features = ["loggers"] }
