@@ -1,9 +1,13 @@
+// Copyright (c) 2018-2021 The MobileCoin Foundation
+
 //! Configuration parameters for the slam script
 
 use grpcio::EnvBuilder;
 use mc_attest_core::{MrSignerVerifier, Verifier, DEBUG_ENCLAVE};
 use mc_common::logger::{o, Logger};
-use mc_connection::{Result as ConnectionResult, SyncConnection, ThickClient};
+use mc_connection::{
+    HardcodedCredentialsProvider, Result as ConnectionResult, SyncConnection, ThickClient,
+};
 use mc_mobilecoind::config::PeersConfig;
 use mc_util_uri::ConnectionUri;
 use std::{fs, path::PathBuf, str::FromStr, sync::Arc};
@@ -73,7 +77,7 @@ impl SlamConfig {
     pub fn get_connections(
         &self,
         logger: &Logger,
-    ) -> ConnectionResult<Vec<SyncConnection<ThickClient>>> {
+    ) -> ConnectionResult<Vec<SyncConnection<ThickClient<HardcodedCredentialsProvider>>>> {
         let mut mr_signer_verifier =
             MrSignerVerifier::from(mc_consensus_enclave_measurement::sigstruct());
         mr_signer_verifier.allow_hardening_advisory("INTEL-SA-00334");
@@ -94,8 +98,14 @@ impl SlamConfig {
                         .build(),
                 );
                 let logger = logger.new(o!("mc.cxn" => uri.addr()));
-                ThickClient::new(uri.clone(), verifier.clone(), env, logger.clone())
-                    .map(|inner| SyncConnection::new(inner, logger))
+                ThickClient::new(
+                    uri.clone(),
+                    verifier.clone(),
+                    env,
+                    HardcodedCredentialsProvider::from(uri),
+                    logger.clone(),
+                )
+                .map(|inner| SyncConnection::new(inner, logger))
             })
             .collect()
     }

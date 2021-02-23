@@ -16,13 +16,11 @@ In order to create transactions, Slam requires a copy of the ledger and the set 
 If you know how the consensus network's ledger was initialized, you can initialize the same ledger locally with:
 
 ```
-    internal $ mkdir -p target/sample_data
-    internal $ cd sample_data
-    internal/target/sample_data $ cargo run --manifest-path=../../public/Cargo.toml -p mc-util-keyfile \
-        --bin sample-keys --release -- --num 1000
+    mobilecoin $ mkdir -p target/sample_data
+    mobilecoin $ cd sample_data
+    mobilecoin/target/sample_data $ cargo run -p mc-util-keyfile --bin sample-keys --release -- --num 1000
 
-    internal/target/sample_data $ cargo run --manifest-path=../../public/Cargo.toml -p mc-util-generate-sample-ledger \
-        --bin generate-sample-ledger --release -- --num 100
+    mobilecoin/target/sample_data $ cargo run -p mc-util-generate-sample-ledger --bin generate-sample-ledger --release -- --num 100
 ```
 
 

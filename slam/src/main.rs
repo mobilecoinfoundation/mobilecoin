@@ -1,3 +1,5 @@
+// Copyright (c) 2018-2021 The MobileCoin Foundation
+
 use core::{cell::RefCell, convert::TryFrom};
 use lazy_static::lazy_static;
 use mc_account_keys::{AccountKey, PublicAddress};
@@ -6,7 +8,10 @@ use mc_common::{
     logger::{create_app_logger, log, o, Logger},
     HashMap, HashSet, ResponderId,
 };
-use mc_connection::{RetryError, RetryableUserTxConnection, SyncConnection, ThickClient};
+use mc_connection::{
+    HardcodedCredentialsProvider, RetryError, RetryableUserTxConnection, SyncConnection,
+    ThickClient,
+};
 use mc_consensus_scp::QuorumSet;
 use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_fog_report_validation::FogResolver;
@@ -37,13 +42,16 @@ use structopt::StructOpt;
 use tempdir::TempDir;
 
 thread_local! {
-    pub static CONNS: RefCell<Option<Vec<SyncConnection<ThickClient>>>> = RefCell::new(None);
+    pub static CONNS: RefCell<Option<Vec<SyncConnection<ThickClient<HardcodedCredentialsProvider>>>>> = RefCell::new(None);
 }
 fn set_conns(config: &SlamConfig, logger: &Logger) {
     let conns = config.get_connections(logger).unwrap();
     CONNS.with(|c| *c.borrow_mut() = Some(conns));
 }
-fn get_conns(config: &SlamConfig, logger: &Logger) -> Vec<SyncConnection<ThickClient>> {
+fn get_conns(
+    config: &SlamConfig,
+    logger: &Logger,
+) -> Vec<SyncConnection<ThickClient<HardcodedCredentialsProvider>>> {
     let conns = CONNS.with(|c| c.borrow().clone());
     match conns {
         Some(c) => c,
@@ -378,7 +386,7 @@ fn worker_thread_entry(
 
 fn submit_tx(
     counter: usize,
-    conns: &[SyncConnection<ThickClient>],
+    conns: &[SyncConnection<ThickClient<HardcodedCredentialsProvider>>],
     tx: &Tx,
     config: &SlamConfig,
     logger: &Logger,

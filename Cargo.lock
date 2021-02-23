@@ -5476,7 +5476,7 @@ checksum = "c111b5bd5695e56cffe5129854aa230b39c93a305372fdbb2668ca2394eea9f8"
 
 [[package]]
 name = "slam"
-version = "0.13.0"
+version = "1.0.0"
 dependencies = [
  "crossbeam-channel 0.5.0",
  "curve25519-dalek",
