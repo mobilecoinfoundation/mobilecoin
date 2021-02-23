@@ -48,7 +48,7 @@ export CONSENSUS_ENCLAVE_PRIVKEY=/home/you/Enclave_private.pem
 Then, run slam in `release` mode:
 
 ```
-    cargo run -p slam --release -- --sample-data-dir target/sample_data/ \
+    cargo run -p mc-slam --release -- --sample-data-dir target/sample_data/ \
         --peer mc://node1.demo.mobilecoin.com \
         --peer mc://node2.demo.mobilecoin.com \
         --peer mc://node3.demo.mobilecoin.com \
