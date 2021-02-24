@@ -5,6 +5,7 @@
 use displaydoc::Display;
 use mc_connection::Error as ConnectionError;
 use mc_crypto_keys::KeyError;
+use mc_ledger_sync::ReqwestTransactionsFetcherError;
 use mc_util_lmdb::MetadataStoreError;
 use std::string::FromUtf8Error;
 
@@ -17,8 +18,8 @@ pub enum WatcherError {
     /// DB: {0}
     DB(WatcherDBError),
 
-    /// Sync failed
-    SyncFailed,
+    /// Block fetching failed
+    BlockFetch(ReqwestTransactionsFetcherError),
 
     /// Connection: {0}
     Connection(ConnectionError),
@@ -33,6 +34,12 @@ impl From<url::ParseError> for WatcherError {
 impl From<WatcherDBError> for WatcherError {
     fn from(src: WatcherDBError) -> Self {
         Self::DB(src)
+    }
+}
+
+impl From<ReqwestTransactionsFetcherError> for WatcherError {
+    fn from(src: ReqwestTransactionsFetcherError) -> Self {
+        Self::BlockFetch(src)
     }
 }
 
