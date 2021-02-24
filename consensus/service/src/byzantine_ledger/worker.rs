@@ -83,7 +83,11 @@ pub struct ByzantineLedgerWorker<
     // Pending scp messages we need to process.
     pending_consensus_msgs: Vec<(VerifiedConsensusMsg, ResponderId)>,
 
-    // Pending transactions we're trying to push. We need to store them as a vec so we can process values
+    // Transactions that this node will attempt to submit to consensus.
+    // Invariant: each pending transaction is well-formed.
+    // Invariant: each pending transaction is valid w.r.t the current ledger.
+    //
+    // We need to store them as a vec so we can process values
     // on a first-come first-served basis. However, we want to be able to:
     // 1) Efficiently see if we already have a given transaction and ignore duplicates
     // 2) Track how long each transaction took to externalize.
@@ -386,14 +390,27 @@ impl<
     fn receive_tasks(&mut self) -> bool {
         for task_msg in self.tasks.try_iter() {
             match task_msg {
-                // Transactions submitted by clients.
+                // Transactions submitted by clients. These are assumed to be well-formed, but may not be valid.
                 TaskMessage::Values(timestamp, new_values) => {
                     for tx_hash in new_values {
                         if let Vacant(entry) = self.pending_values_map.entry(tx_hash) {
-                            // A new value.
-                            entry.insert(timestamp);
-                            self.pending_values.push(tx_hash);
-                            self.need_nominate = true;
+                            // A new transaction.
+                            match self.tx_manager.validate(&tx_hash) {
+                                Ok(_) => {
+                                    // The transaction is well-formed and valid.
+                                    entry.insert(timestamp);
+                                    self.pending_values.push(tx_hash);
+                                    self.need_nominate = true;
+                                }
+                                Err(err) => {
+                                    log::debug!(
+                                        self.logger,
+                                        "receive_tasks: ignoring invalid transaction {}: {}",
+                                        tx_hash,
+                                        err
+                                    );
+                                }
+                            };
                         }
                     }
                 }
