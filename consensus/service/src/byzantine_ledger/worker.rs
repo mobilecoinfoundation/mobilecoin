@@ -83,7 +83,11 @@ pub struct ByzantineLedgerWorker<
     // Pending scp messages we need to process.
     pending_consensus_msgs: Vec<(VerifiedConsensusMsg, ResponderId)>,
 
-    // Pending transactions we're trying to push. We need to store them as a vec so we can process values
+    // Transactions that this node will attempt to submit to consensus.
+    // Invariant: each pending transaction is well-formed.
+    // Invariant: each pending transaction is valid w.r.t he current ledger.
+    //
+    // We need to store them as a vec so we can process values
     // on a first-come first-served basis. However, we want to be able to:
     // 1) Efficiently see if we already have a given transaction and ignore duplicates
     // 2) Track how long each transaction took to externalize.
@@ -386,14 +390,17 @@ impl<
     fn receive_tasks(&mut self) -> bool {
         for task_msg in self.tasks.try_iter() {
             match task_msg {
-                // Transactions submitted by clients.
+                // Transactions submitted by clients. These are assumed to be well-formed, but may not be valid.
                 TaskMessage::Values(timestamp, new_values) => {
                     for tx_hash in new_values {
                         if let Vacant(entry) = self.pending_values_map.entry(tx_hash) {
-                            // A new value.
-                            entry.insert(timestamp);
-                            self.pending_values.push(tx_hash);
-                            self.need_nominate = true;
+                            // A new transaction.
+                            if self.tx_manager.validate(&tx_hash).is_ok() {
+                                // The transaction is well-formed and valid.
+                                entry.insert(timestamp);
+                                self.pending_values.push(tx_hash);
+                                self.need_nominate = true;
+                            }
                         }
                     }
                 }
@@ -1244,8 +1251,38 @@ mod tests {
             QuorumSet::new_with_node_ids(2, vec![peers[0].id.clone(), peers[1].id.clone()]);
 
         let num_blocks = 12;
-        let (scp_node, mut ledger, ledger_sync, tx_manager, broadcast) =
+        let (scp_node, mut ledger, ledger_sync, mut tx_manager, broadcast) =
             get_mocks(&node_id, &quorum_set, num_blocks);
+
+        // Transaction hashes that will be submitted by clients.
+        let tx_hashes: Vec<_> = (0..200).map(|i| TxHash([i as u8; 32])).collect();
+
+        // The first 100 are valid.
+        for tx_hash in &tx_hashes[0..100] {
+            tx_manager
+                .expect_validate()
+                .with(eq(tx_hash.clone()))
+                .return_const(Ok(()));
+        }
+
+        // The next 3 have expired.
+        for tx_hash in &tx_hashes[100..103] {
+            tx_manager
+                .expect_validate()
+                .with(eq(tx_hash.clone()))
+                .return_const(Err(TxManagerError::TransactionValidation(
+                    TransactionValidationError::TombstoneBlockExceeded,
+                )));
+        }
+
+        // The rest are valid.
+        for tx_hash in &tx_hashes[103..] {
+            tx_manager
+                .expect_validate()
+                .with(eq(tx_hash.clone()))
+                .return_const(Ok(()));
+        }
+
         let connection_manager = get_connection_manager(&node_id, &peers, &logger);
         let (task_sender, task_receiver) = get_channel();
 
@@ -1280,8 +1317,6 @@ mod tests {
         task_sender.send(TaskMessage::StopTrigger).unwrap();
         assert_eq!(worker.receive_tasks(), false);
 
-        // Should update pending_values and pending_values_map when new values are received.
-        let tx_hashes: Vec<_> = (0..200).map(|i| TxHash([i as u8; 32])).collect();
         for tx_hash in &tx_hashes {
             task_sender
                 .send(TaskMessage::Values(Some(Instant::now()), vec![*tx_hash]))
@@ -1290,9 +1325,10 @@ mod tests {
         // Initially, pending_values should be empty.
         assert_eq!(worker.pending_values, vec![]);
         assert_eq!(worker.receive_tasks(), true);
-        // All task messages should have been consumed.
-        assert_eq!(worker.pending_values.len(), tx_hashes.len());
-        assert_eq!(worker.pending_values_map.len(), tx_hashes.len());
+        // Should maintain the invariant that pending_values and pending_values map
+        // only contain tx_hashes corresponding to transactions that are valid w.r.t the current ledger.
+        assert_eq!(worker.pending_values.len(), tx_hashes.len() - 3);
+        assert_eq!(worker.pending_values_map.len(), tx_hashes.len() - 3);
 
         let responder_id = ResponderId::default();
 
