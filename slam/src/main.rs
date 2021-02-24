@@ -17,6 +17,7 @@ use mc_crypto_keys::{CompressedRistrettoPublic, RistrettoPublic};
 use mc_fog_report_validation::FogResolver;
 use mc_ledger_db::{Ledger, LedgerDB};
 use mc_ledger_sync::{LedgerSyncServiceThread, PollingNetworkState, ReqwestTransactionsFetcher};
+use mc_slam::SlamConfig;
 use mc_transaction_core::{
     constants::MINIMUM_FEE,
     get_tx_out_shared_secret,
@@ -27,7 +28,6 @@ use mc_transaction_core::{
 use mc_transaction_std::{InputCredentials, TransactionBuilder};
 use mc_util_uri::ConnectionUri;
 use rand::{seq::SliceRandom, thread_rng, Rng};
-use slam::SlamConfig;
 use std::{
     iter::empty,
     path::Path,
