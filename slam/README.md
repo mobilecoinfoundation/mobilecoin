@@ -35,13 +35,13 @@ Alternatively, Slam can use the ledger from a deployed network instead of a loca
 
 # Running Slam
 
-To Run Slam against a deployed network (e.g. "demo"), set one of the following environment variables. If you get them wrong, you'll probably see "Attestation failure" messages.
+To Run Slam against a deployed network (e.g. "other"), set one of the following environment variables. If you get them wrong, you'll probably see "Attestation failure" messages.
 
 ```
 # aws s3 cp s3://enclave-distribution.other.mobilecoin.com/consensus/consensus-enclave.css ./s
 export CONSENSUS_ENCLAVE_CSS=/home/you/consensus-enclave.css
 
-# Local development for mobilecoinofficial/internal
+# Local development
 export CONSENSUS_ENCLAVE_PRIVKEY=/home/you/Enclave_private.pem
 ```
 
@@ -66,7 +66,3 @@ If you are running a consensus network locally, you will replace the peer URIs a
 
 * `insecure-mc://localhost:3223` if running outside Docker, with the port matching the local ports corresponding to the consensus nodes.
 * `insecure-mc://<container_name>:3223` if running inside Docker, making sure that the ports are published on the docker container
-
-# Monitoring the network's performance
-
-Currently, Grafana is the best way to view the network's performance.
