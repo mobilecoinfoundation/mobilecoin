@@ -1342,10 +1342,13 @@ mod tests {
             QuorumSet::new_with_node_ids(2, vec![peers[0].id.clone(), peers[1].id.clone()]);
 
         let num_blocks = 12;
-        let (mut scp_node, ledger, ledger_sync, tx_manager, broadcast) =
+        let (mut scp_node, ledger, ledger_sync, mut tx_manager, broadcast) =
             get_mocks(&node_id, &quorum_set, num_blocks);
         let connection_manager = get_connection_manager(&node_id, &peers, &logger);
         let (_task_sender, task_receiver) = get_channel();
+
+        // `validate` will be called one for each pushed value.
+        tx_manager.expect_validate().return_const(Ok(()));
 
         // Up to MAX_PENDING_VALUES_TO_NOMINATE values should be proposed to the scp_node.
         scp_node
