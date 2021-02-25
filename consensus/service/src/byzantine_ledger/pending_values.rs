@@ -97,3 +97,66 @@ impl<TXM: TxManager> PendingValues<TXM> {
         self.retain(|tx_hash| tx_manager.validate(tx_hash).is_ok());
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tx_manager::{MockTxManager, TxManagerError};
+    use mc_transaction_core::validation::TransactionValidationError;
+    use mockall::predicate::eq;
+
+    #[test]
+    /// Should discard values that are no longer valid.
+    fn test_clear_invalid_values_discards_invalid_values() {
+        let mut tx_manager = MockTxManager::new();
+
+        // A few test values.
+        let values = vec![TxHash([1u8; 32]), TxHash([2u8; 32]), TxHash([3u8; 32])];
+
+        // `validate` should be called one for each pending value.
+        tx_manager
+            .expect_validate()
+            .with(eq(values[0].clone()))
+            .return_const(Ok(()));
+        // This transaction has expired.
+        tx_manager
+            .expect_validate()
+            .with(eq(values[1].clone()))
+            .return_const(Err(TxManagerError::TransactionValidation(
+                TransactionValidationError::TombstoneBlockExceeded,
+            )));
+        tx_manager
+            .expect_validate()
+            .with(eq(values[2].clone()))
+            .return_const(Ok(()));
+
+        // Create new PendingValues and forcefully shove the pending values into it in order to
+        // skip the validation call done by `push()`.
+        let mut pending_values = PendingValues::new(Arc::new(tx_manager));
+
+        pending_values.pending_values = values.clone();
+        pending_values.pending_values_map = values
+            .iter()
+            .cloned()
+            .map(|tx_hash| (tx_hash, Some(Instant::now())))
+            .collect();
+
+        pending_values.clear_invalid_values();
+
+        // The second transaction is no longer valid and should be removed.
+        let expected_pending_values = vec![values[0].clone(), values[2].clone()];
+        assert_eq!(pending_values.pending_values, expected_pending_values);
+        assert_eq!(
+            pending_values.pending_values.len(),
+            pending_values.pending_values_map.len()
+        );
+        assert_eq!(
+            pending_values
+                .pending_values_map
+                .keys()
+                .cloned()
+                .collect::<Vec<_>>(),
+            expected_pending_values
+        );
+    }
+}
