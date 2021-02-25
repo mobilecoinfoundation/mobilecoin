@@ -104,6 +104,78 @@ mod tests {
     use crate::tx_manager::{MockTxManager, TxManagerError};
     use mc_transaction_core::validation::TransactionValidationError;
     use mockall::predicate::eq;
+    use std::{collections::HashSet, iter::FromIterator};
+
+    #[test]
+    /// Should only allow valid values to be pushed.
+    fn test_push_skips_invalid_values() {
+        let mut tx_manager = MockTxManager::new();
+
+        // A few test values.
+        let values = vec![TxHash([1u8; 32]), TxHash([2u8; 32]), TxHash([3u8; 32])];
+
+        // `validate` should be called one for each pending value.
+        tx_manager
+            .expect_validate()
+            .with(eq(values[0].clone()))
+            .return_const(Ok(()));
+        // This transaction has expired.
+        tx_manager
+            .expect_validate()
+            .with(eq(values[1].clone()))
+            .return_const(Err(TxManagerError::TransactionValidation(
+                TransactionValidationError::TombstoneBlockExceeded,
+            )));
+        tx_manager
+            .expect_validate()
+            .with(eq(values[2].clone()))
+            .return_const(Ok(()));
+
+        let mut pending_values = PendingValues::new(Arc::new(tx_manager));
+        assert!(pending_values.push(values[0].clone(), None));
+        assert!(!pending_values.push(values[1].clone(), None));
+        assert!(pending_values.push(values[2].clone(), None));
+
+        assert_eq!(
+            pending_values.pending_values,
+            vec![values[0].clone(), values[2].clone(),]
+        );
+        assert_eq!(
+            pending_values.pending_values_map,
+            HashMap::from_iter(vec![(values[0].clone(), None), (values[2].clone(), None)])
+        );
+    }
+
+    #[test]
+    /// Should only allow a single instance of each value
+    fn test_push_skips_already_present_values() {
+        let mut tx_manager = MockTxManager::new();
+
+        // A few test values.
+        let values = vec![TxHash([1u8; 32]), TxHash([2u8; 32]), TxHash([3u8; 32])];
+
+        // All values are considered valid for this test.
+        tx_manager.expect_validate().return_const(Ok(()));
+
+        let mut pending_values = PendingValues::new(Arc::new(tx_manager));
+        assert!(pending_values.push(values[0].clone(), None));
+        assert!(pending_values.push(values[1].clone(), None));
+        assert!(pending_values.push(values[2].clone(), None));
+
+        assert!(!pending_values.push(values[0].clone(), None));
+        assert!(!pending_values.push(values[1].clone(), Some(Instant::now())));
+        assert!(!pending_values.push(values[2].clone(), None));
+
+        assert_eq!(pending_values.pending_values, values,);
+        assert_eq!(
+            pending_values.pending_values_map,
+            HashMap::from_iter(vec![
+                (values[0].clone(), None),
+                (values[1].clone(), None),
+                (values[2].clone(), None)
+            ])
+        );
+    }
 
     #[test]
     /// Should discard values that are no longer valid.
@@ -155,8 +227,8 @@ mod tests {
                 .pending_values_map
                 .keys()
                 .cloned()
-                .collect::<Vec<_>>(),
-            expected_pending_values
+                .collect::<HashSet<_>>(),
+            HashSet::from_iter(expected_pending_values),
         );
     }
 }
