@@ -1,5 +1,7 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
+//! A utility object for keeping track of pending transaction hashes.
+
 use crate::tx_manager::TxManager;
 use mc_transaction_core::tx::TxHash;
 use std::{
@@ -8,27 +10,32 @@ use std::{
     time::Instant,
 };
 
-/// Transactions that this node will attempt to submit to consensus.
+/// A list of transactions that this node will attempt to submit to consensus.
 /// Invariant: each pending transaction is well-formed.
 /// Invariant: each pending transaction is valid w.r.t he current ledger.
-///
-/// We need to store them as a vec so we can process values
-/// on a first-come first-served basis. However, we want to be able to:
-/// 1) Efficiently see if we already have a given transaction and ignore duplicates
-/// 2) Track how long each transaction took to externalize.
-///
-/// To accomplish these goals we store, in addition to the queue of pending values, a
-/// map that maps a value to when we first encountered it. Note that we only store a
-/// timestamp for values that were handed to us directly from a client. We skip tracking
-/// processing times for relayed values since we want to track the time from when the network
-/// first saw a value, and not when a specific node saw it.
 pub struct PendingValues<TXM: TxManager> {
+    // Transaction manager instance, used for validating values.
     tx_manager: Arc<TXM>,
+
+    /// We need to store pending values vec so we can process values
+    /// on a first-come first-served basis. However, we want to be able to:
+    /// 1) Efficiently see if we already have a given transaction and ignore duplicates
+    /// 2) Track how long each transaction took to externalize.
+    ///
+    /// To accomplish these goals we store, in addition to the queue of pending values, a
+    /// map that maps a value to when we first encountered it. This essentially gives us an ordered
+    /// HashMap.
+    ///
+    /// Note that we only store a timestamp for values that were handed to us directly from a client.
+    /// That behavior is enforced by ByzantineLedger.
+    /// We skip tracking processing times for relayed values since we want to track the time from when
+    /// the network first saw a value, and not when a specific node saw it.
     pending_values: Vec<TxHash>,
     pending_values_map: HashMap<TxHash, Option<Instant>>,
 }
 
 impl<TXM: TxManager> PendingValues<TXM> {
+    /// Create a new instance of `PendingValues`.
     pub fn new(tx_manager: Arc<TXM>) -> Self {
         Self {
             tx_manager,
@@ -37,6 +44,7 @@ impl<TXM: TxManager> PendingValues<TXM> {
         }
     }
 
+    /// Check whether the list of pending values is empty.
     pub fn is_empty(&self) -> bool {
         // Invariant
         assert_eq!(self.pending_values.len(), self.pending_values_map.len());
@@ -44,6 +52,7 @@ impl<TXM: TxManager> PendingValues<TXM> {
         self.pending_values.is_empty()
     }
 
+    /// Get the number of pending values.
     pub fn len(&self) -> usize {
         // Invariant
         assert_eq!(self.pending_values.len(), self.pending_values_map.len());
@@ -51,6 +60,8 @@ impl<TXM: TxManager> PendingValues<TXM> {
         self.pending_values.len()
     }
 
+    /// Try and add a pending value, associated with a given timestamp, to the list. Returns `true`
+    /// if the value is valid and not already on the list, false otherwise.
     pub fn push(&mut self, tx_hash: TxHash, timestamp: Option<Instant>) -> bool {
         if let Vacant(entry) = self.pending_values_map.entry(tx_hash) {
             // A new transaction.
@@ -67,14 +78,17 @@ impl<TXM: TxManager> PendingValues<TXM> {
         }
     }
 
+    /// Iterate over the list of pending values.
     pub fn iter(&self) -> impl Iterator<Item = &TxHash> {
         self.pending_values.iter()
     }
 
+    /// Try and get the timestamp associated with a given value.
     pub fn get_timestamp_for_value(&self, tx_hash: &TxHash) -> Option<Instant> {
         self.pending_values_map.get(tx_hash).cloned().flatten()
     }
 
+    /// Retains only the values specified by the predicate.
     pub fn retain<F>(&mut self, predicate: F)
     where
         F: Fn(&TxHash) -> bool,
