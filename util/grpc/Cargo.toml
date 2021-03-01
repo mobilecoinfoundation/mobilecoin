@@ -28,8 +28,15 @@ prometheus = "0.9"
 protobuf = "2.12"
 rand = "0.6.5"
 sha2 = "0.9"
+signal-hook = "0.3"
 subtle = { version = "2.2", default-features = false, features = ["i128"] }
 zeroize = { version = "1", default-features = false }
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../build/grpc" }
+
+[dev-dependencies]
+libc = "0.2"
+tempfile = "3.2"
+
+mc-crypto-x509-test-vectors = { path = "../../crypto/x509/test-vectors" }

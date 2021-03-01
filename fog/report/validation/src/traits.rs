@@ -23,8 +23,8 @@ pub trait FogPubkeyResolver {
 /// Represents a fog public key validated to use for creating encrypted fog hints.
 /// This object should be constructed only when the IAS report has been validated,
 /// and the chain of trust from the connection has been validated, and the
-/// the fog user's fog_authority_fingerprint_sig over the fingerprints in the signature chain
-/// has been validated for at least one fingerprint.
+/// the fog user's fog_authority_sig over the root subjectPublicKeyInfo in the
+/// signature chain has been validated.
 #[derive(Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub struct FullyValidatedFogPubkey {
     /// The ristretto curve point which was extracted from the IAS report additional data

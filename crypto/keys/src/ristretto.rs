@@ -515,6 +515,12 @@ impl From<CompressedRistretto> for CompressedRistrettoPublic {
     }
 }
 
+impl FromRandom for CompressedRistrettoPublic {
+    fn from_random<R: CryptoRng + RngCore>(csprng: &mut R) -> CompressedRistrettoPublic {
+        Self::from(RistrettoPoint::random(csprng))
+    }
+}
+
 impl PublicKey for CompressedRistrettoPublic {}
 
 /// A zero-width type used to identify the Ristretto key exchange system.

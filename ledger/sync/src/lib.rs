@@ -9,7 +9,9 @@ pub use ledger_sync::{
     LedgerSync, LedgerSyncError, LedgerSyncService, LedgerSyncServiceThread, MockLedgerSync,
 };
 pub use network_state::{NetworkState, PollingNetworkState, SCPNetworkState};
-pub use reqwest_transactions_fetcher::ReqwestTransactionsFetcher;
+pub use reqwest_transactions_fetcher::{
+    ReqwestTransactionsFetcher, ReqwestTransactionsFetcherError,
+};
 pub use transactions_fetcher_trait::{TransactionFetcherError, TransactionsFetcher};
 
 #[cfg(any(test, feature = "test_utils"))]

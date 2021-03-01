@@ -34,10 +34,16 @@ fn get_chain(name: &str) -> String {
     fs::read_to_string(path).expect("Could not read certificate chain")
 }
 
-fn get_leaf_key(name: &str) -> Ed25519Pair {
-    let path = key_path(name);
+fn get_key(name: &str) -> String {
+    let mut path = base_path();
+    path.push(name);
+    path.set_extension("key");
 
-    let pem_string = fs::read_to_string(path).expect("Could not read certificate chain");
+    fs::read_to_string(path).expect("Could not read key")
+}
+
+fn get_leaf_key(name: &str) -> Ed25519Pair {
+    let pem_string = get_key(name);
     let pem_data = pem::parse(pem_string).expect("Could not parse PEM string");
     let privkey = Ed25519Private::try_from_der(&pem_data.contents)
         .expect("Could not construct private key from key DER bytes");
@@ -130,4 +136,16 @@ pub fn fail_missing_head() -> (String, Ed25519Pair) {
         get_chain("fail_missing_head"),
         get_leaf_key("fail_missing_head"),
     )
+}
+
+/// Retrieve PEM strings containing a self-signed certificate and key for
+/// www.server2.com
+pub fn ok_self_signed_1() -> (String, String) {
+    (get_chain("ok_self_signed_1"), get_key("ok_self_signed_1"))
+}
+
+/// Retrieve PEM strings containing a ok_self-signed certificate and key for
+/// www.server2.com
+pub fn ok_self_signed_2() -> (String, String) {
+    (get_chain("ok_self_signed_2"), get_key("ok_self_signed_2"))
 }

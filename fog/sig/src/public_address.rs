@@ -40,16 +40,15 @@ impl Verifier for PublicAddress {
             .ok_or(Error::NoSignature)?
             .try_into()?;
 
-        // Verify the chain
-        let chainlen = certs.verify_chain()?;
+        // Verify the chain and signature over the resulting authority
+        self.verify_authority(
+            &certs.verified_root()?.subject_public_key_info().spki(),
+            &authority_sig,
+        )
+        .map_err(Error::Authority)?;
 
-        // Verify the authority signature
-        self.verify_authority(&certs[0].subject_public_key_info().spki(), &authority_sig)
-            .map_err(Error::Authority)?;
-
-        // Verify the signature over the reports matches the last verified member of the
-        // chain (chainlen is guaranteed by verify_chain() to be >= 1 at this point)
-        match certs[chainlen - 1].mc_public_key().map_err(Error::Pubkey)? {
+        // Verify the signature over the reports matches the leaf cert in the chain
+        match certs.leaf()?.mc_public_key().map_err(Error::Pubkey)? {
             PublicKeyType::Ed25519(pubkey) => {
                 let sig = Ed25519Signature::from_bytes(&report_response.signature)
                     .map_err(Error::SignatureParse)?;
@@ -84,16 +83,17 @@ mod tests {
         let (pem_chain, keypair) = mc_crypto_x509_test_vectors::ok_rsa_chain_25519_leaf();
         let der_chain = pem::parse_many(pem_chain);
         let x509_chain = der_chain.iter_x509().collect::<Vec<X509Certificate>>();
-        let _size = x509_chain
-            .verify_chain()
-            .expect("Could not verify test chain");
 
         let mut csprng = Hc128Rng::seed_from_u64(0);
         let root_identity = RootIdentity::random_with_fog(
             &mut csprng,
             "fog://fog.unittest.mobilecoin.foundation",
             "1",
-            x509_chain[0].subject_public_key_info().spki(),
+            x509_chain
+                .verified_root()
+                .expect("Could not verify test chain")
+                .subject_public_key_info()
+                .spki(),
         );
         let account_key = AccountKey::from(&root_identity);
         let public_address = account_key.default_subaddress();

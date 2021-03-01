@@ -48,7 +48,7 @@ pub fn write_default_keyfiles<P: AsRef<Path>>(
     num_accounts: usize,
     fog_url: Option<&str>,
     fog_report_id: Option<&str>,
-    fog_authority_fingerprint: Option<&[u8]>,
+    fog_authority_spki: Option<&[u8]>,
     seed: [u8; 32],
 ) -> Result<(), std::io::Error> {
     let mut keys_rng: FixedRng = SeedableRng::from_seed(seed);
@@ -59,7 +59,7 @@ pub fn write_default_keyfiles<P: AsRef<Path>>(
             &mut keys_rng,
             fog_url.unwrap_or(&""),
             fog_report_id.unwrap_or_default(),
-            fog_authority_fingerprint.unwrap_or_default(),
+            fog_authority_spki.unwrap_or_default(),
         );
 
         write_keyfiles(path.as_ref(), &keyfile_name(i), &root_id)?;
@@ -144,13 +144,13 @@ mod testing {
 
         let fqdn = "example.com".to_string();
         let fog_report_id = "1";
-        let fog_authority_fingerprint = [18, 52, 18, 52];
+        let fog_authority_spki = [18, 52, 18, 52];
         write_default_keyfiles(
             &dir1,
             10,
             Some(&fqdn),
             Some(fog_report_id),
-            Some(&fog_authority_fingerprint),
+            Some(&fog_authority_spki),
             DEFAULT_SEED,
         )
         .unwrap();
@@ -159,7 +159,7 @@ mod testing {
             10,
             Some(&fqdn),
             Some(fog_report_id),
-            Some(&fog_authority_fingerprint),
+            Some(&fog_authority_spki),
             DEFAULT_SEED,
         )
         .unwrap();
