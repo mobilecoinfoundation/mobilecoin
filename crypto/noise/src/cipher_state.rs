@@ -180,7 +180,7 @@ impl<Cipher: AeadMut + NewAead + Sized + NoiseCipher> CipherState<Cipher> {
         // Instead, we're going to throw an error, which means the caller that
         // wants to send plaintext anyways needs to catch it and override.
         // Nobody lets you add a NULL cipher to a config for a reason,
-        // gentlemen.
+        // folks.
         if let Some(cipher) = &mut self.cipher {
             let nonce = Cipher::nonce_to_arr(self.nonce);
             let retval = cipher.encrypt(&nonce, Payload { msg, aad })?;
