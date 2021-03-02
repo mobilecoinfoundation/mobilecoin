@@ -1,4 +1,4 @@
-### Table of Contents
+#"## Table of Contents
 
   - [Getting Started](#getting-started)
     - [Requirements](#requirements)
@@ -154,8 +154,10 @@ This retrieves a json record of:
 
 ```json
 {
-    "enclave": "pool/<git revision>/<signing hash>/<filename>",
-    "sigstruct": "pool/<git revision>/<signing hash>/<filename>",
+    "consensus": {
+        "enclave": "pool/<git revision>/<signing hash>/<filename>",
+        "sigstruct": "pool/<git revision>/<signing hash>/<filename>"
+    }
 }
 ```
 

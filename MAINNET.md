@@ -20,7 +20,7 @@ An example MainNet build and launch command for mobilecoind is:
 1. Get the enclave sigstruct:
 
     ```
-    SIGSTRUCT_URI=$(curl -s https://enclave-distribution.prod.mobilecoin.com/production.json | grep sigstruct | awk '{print $2}' | tr -d \")
+    SIGSTRUCT_URI=$(curl -s https://enclave-distribution.prod.mobilecoin.com/production.json | jq -r '.consensus.sigstruct')
     curl -O https://enclave-distribution.prod.mobilecoin.com/${SIGSTRUCT_URI}
     ```
 
