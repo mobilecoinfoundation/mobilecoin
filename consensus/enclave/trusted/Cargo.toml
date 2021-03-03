@@ -2,7 +2,7 @@ cargo-features = ["resolver"]
 
 [package]
 name = "mc-consensus-enclave-trusted"
-version = "1.0.0"
+version = "1.0.1-pre1"
 authors = ["MobileCoin"]
 edition = "2018"
 description = "The MobileCoin Consensus Service's internal enclave entry point."
