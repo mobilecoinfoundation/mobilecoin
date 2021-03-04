@@ -2207,7 +2207,9 @@ mod test {
         // Use root entropy to construct AccountKey.
         let root_entropy = [123u8; 32];
         let root_id = RootIdentity::from(&root_entropy);
-        let account_key = AccountKey::from(&root_id);
+        // expect because AK::try_from(RI) should be infallible
+        let account_key = AccountKey::try_from(&root_id)
+            .expect("Could not construct AccountKey from RootIdentity");
 
         let mut request = mc_mobilecoind_api::GetAccountKeyRequest::new();
         request.set_entropy(root_entropy.to_vec());
@@ -3461,7 +3463,8 @@ mod test {
             let mut root_entropy = [0u8; 32];
             root_entropy.copy_from_slice(response.get_entropy());
             let root_id = RootIdentity::from(&root_entropy);
-            let account_key = AccountKey::from(&root_id);
+            let account_key = AccountKey::try_from(&root_id)
+                .expect("Could not create account key from root identity");
 
             // Add a monitor based on the entropy we received.
             let monitor_data = MonitorData::new(
@@ -4285,7 +4288,22 @@ mod test {
 
         // Generate two random recipients.
         let receiver1 = AccountKey::random(&mut rng);
-        let receiver2 = AccountKey::random_with_fog(&mut rng);
+
+        let der_bytes = pem::parse(mc_crypto_x509_test_vectors::ok_rsa_head())
+            .expect("Could not parse RSA test vector as PEM")
+            .contents;
+        let fog_authority_spki = x509_signature::parse_certificate(&der_bytes)
+            .expect("Could not parse X509 certificate from DER")
+            .subject_public_key_info()
+            .spki();
+
+        let receiver2 = AccountKey::random_with_fog(
+            &mut rng,
+            "fog://fog.unittest.mobilecoin.com",
+            "",
+            fog_authority_spki,
+        )
+        .expect("Could not create AccountKey with fog data");
 
         let outlays = vec![
             Outlay {
@@ -4411,7 +4429,22 @@ mod test {
 
         // Generate two random recipients.
         let receiver1 = AccountKey::random(&mut rng);
-        let receiver2 = AccountKey::random_with_fog(&mut rng);
+
+        let der_bytes = pem::parse(mc_crypto_x509_test_vectors::ok_rsa_head())
+            .expect("Could not parse RSA test vector as PEM")
+            .contents;
+        let fog_authority_spki = x509_signature::parse_certificate(&der_bytes)
+            .expect("Could not parse X509 certificate from DER")
+            .subject_public_key_info()
+            .spki();
+
+        let receiver2 = AccountKey::random_with_fog(
+            &mut rng,
+            "fog://fog.unittest.mobilecoin.com",
+            "",
+            fog_authority_spki,
+        )
+        .expect("Could not create AccountKey with fog details");
 
         let outlays = vec![
             Outlay {
@@ -4736,7 +4769,8 @@ mod test {
 
         // Use root entropy to construct AccountKey.
         let root_id = RootIdentity::from(&root_entropy);
-        let account_key = AccountKey::from(&root_id);
+        let account_key =
+            AccountKey::try_from(&root_id).expect("Could not create AccountKey from RootIdentity");
 
         let mut transaction_builder = TransactionBuilder::new(MockFogResolver::default());
         let (tx_out, _tx_confirmation) = transaction_builder

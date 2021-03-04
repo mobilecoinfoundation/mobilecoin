@@ -7,6 +7,7 @@ use mc_util_from_random::FromRandom;
 use mc_util_test_helper::{run_with_several_seeds, CryptoRng, RngCore};
 use prost::Message as ProstMessage;
 use protobuf::Message as ProtobufMessage;
+use std::convert::TryFrom;
 
 // Take a prost type and try to roundtrip it through a protobuf type
 fn round_trip_message<SRC: ProstMessage + Eq + Default, DEST: ProtobufMessage>(prost_val: &SRC) {
@@ -59,7 +60,10 @@ fn root_identity_round_trip() {
 fn account_key_round_trip() {
     run_with_several_seeds(|mut rng| {
         for example in root_identity_examples(&mut rng).iter() {
-            round_trip_message::<AccountKey, external::AccountKey>(&AccountKey::from(example));
+            round_trip_message::<AccountKey, external::AccountKey>(
+                &AccountKey::try_from(example)
+                    .expect("Could not create AccountKey from RootIdentity example"),
+            );
         }
     })
 }
@@ -70,7 +74,9 @@ fn public_address_round_trip() {
     run_with_several_seeds(|mut rng| {
         for example in root_identity_examples(&mut rng).iter() {
             round_trip_message::<PublicAddress, external::PublicAddress>(
-                &AccountKey::from(example).default_subaddress(),
+                &AccountKey::try_from(example)
+                    .expect("Could not create AccountKey from RootIdentity example")
+                    .default_subaddress(),
             );
         }
     })
