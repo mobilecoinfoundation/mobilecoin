@@ -26,9 +26,6 @@ const FOG_AUTHORITY_SPKI_MIN_LENGTH: usize = 44;
 /// The maximum length of a operator authority's subjectPublicKeyInfo, in bytes
 const FOG_AUTHORITY_SPKI_MAX_LENGTH: usize = 2048;
 
-// /// The maximum length of signature over an operator authority, in bytes
-// const FOG_AUTHORITY_SIG_MAX_LENGTH: usize = 64;
-
 /// Check if the fog report URL is a reasonable length
 #[inline]
 pub fn check_fog_report_url_length(url: &str) -> Result<()> {
