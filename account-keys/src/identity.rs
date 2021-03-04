@@ -223,7 +223,7 @@ mod testing {
 
             let root_id = RootIdentity::random_with_fog(
                 &mut rng,
-                "fog://example.com",
+                "fog://fog.unittest.mobilecoin.com",
                 "1",
                 fog_authority_spki,
             )

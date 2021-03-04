@@ -111,7 +111,7 @@ mod tests {
         let account_key = AccountKey::new_with_fog(
             tmp_account_key.spend_private_key(),
             tmp_account_key.view_private_key(),
-            "fog://test.mobilecoin.com".to_string(),
+            "fog://fog.unittest.mobilecoin.com".to_string(),
             "99".to_string(),
             fog_authority_spki,
         )
@@ -128,7 +128,7 @@ mod tests {
         );
         assert_eq!(
             proto_credentials.fog_report_url,
-            String::from("fog://test.mobilecoin.com")
+            String::from("fog://fog.unittest.mobilecoin.com")
         );
 
         assert_eq!(proto_credentials.fog_authority_spki, fog_authority_spki);

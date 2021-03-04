@@ -152,7 +152,7 @@ mod testing {
             .subject_public_key_info()
             .spki();
 
-        let fqdn = "fog://fog.test.mobilecoin.com".to_string();
+        let fqdn = "fog://fog.unittest.mobilecoin.com".to_string();
         let fog_report_id = "1";
         write_default_keyfiles(
             &dir1,

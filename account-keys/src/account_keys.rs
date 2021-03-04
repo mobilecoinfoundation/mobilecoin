@@ -349,7 +349,7 @@ impl AccountKey {
     }
 
     /// Create an account key with random secret keys, and the fog service
-    /// url "fog://example.com"
+    /// url "fog://fog.unittest.mobilecoin.com"
     /// (intended for tests).
     pub fn random_with_fog<T: RngCore + CryptoRng>(
         rng: &mut T,
@@ -502,7 +502,7 @@ mod account_key_tests {
 
                 let acct = AccountKey::random_with_fog(
                     &mut rng,
-                    "fog://foobar.com",
+                    "fog://fog.unittest.mobilecoin.com",
                     "",
                     fog_authority_spki,
                 )
@@ -600,7 +600,7 @@ mod account_key_tests {
         let mut rng: StdRng = SeedableRng::from_seed([42u8; 32]);
         let view_private = RistrettoPrivate::from_random(&mut rng);
         let spend_private = RistrettoPrivate::from_random(&mut rng);
-        let fog_url = "fog://example.com";
+        let fog_url = "fog://fog.unittest.mobilecoin.com";
         let der_bytes = pem::parse(mc_crypto_x509_test_vectors::ok_rsa_head())
             .expect("Could not parse RSA test vector as PEM")
             .contents;

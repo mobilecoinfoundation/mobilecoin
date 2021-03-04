@@ -121,9 +121,13 @@ mod testing {
             .spki();
 
         {
-            let entropy =
-                RootIdentity::random_with_fog(&mut rng, "fog://foobar.com", "", fog_authority_spki)
-                    .expect("Could not create fake keyfile identity");
+            let entropy = RootIdentity::random_with_fog(
+                &mut rng,
+                "fog://fog.unittest.mobilecoin.com",
+                "",
+                fog_authority_spki,
+            )
+            .expect("Could not create fake keyfile identity");
             let f1 = dir.path().join("f0");
             write_keyfile(&f1, &entropy).unwrap();
             let result = read_keyfile(&f1).unwrap();
@@ -154,9 +158,13 @@ mod testing {
                 .subject_public_key_info()
                 .spki();
 
-            let acct_key =
-                AccountKey::random_with_fog(&mut rng, "fog://foobar.com", "", fog_authority_spki)
-                    .expect("Could not create fake authority key");
+            let acct_key = AccountKey::random_with_fog(
+                &mut rng,
+                "fog://fog.unittest.mobilecoin.com",
+                "",
+                fog_authority_spki,
+            )
+            .expect("Could not create fake authority key");
             let pubaddr = acct_key.default_subaddress();
             let f3 = dir.path().join("f3");
             write_pubfile(&f3, &pubaddr).unwrap();

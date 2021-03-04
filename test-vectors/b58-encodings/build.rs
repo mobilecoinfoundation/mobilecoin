@@ -36,7 +36,7 @@ fn main() {
                     .spki();
                 let account_key = AccountKey::try_from(&RootIdentity {
                     root_entropy: (&[n; 32]).into(),
-                    fog_report_url: "fog://example.com".to_owned(),
+                    fog_report_url: "fog://fog.unittest.mobilecoin.com".to_owned(),
                     fog_report_id: "".to_owned(),
                     fog_authority_spki: fog_authority_spki.to_owned(),
                 })

@@ -104,7 +104,7 @@ mod tests {
         let public_address = PublicAddress::new_with_fog(
             tmp_public_address.spend_public_key(),
             tmp_public_address.view_public_key(),
-            "fog://test.mobilecoin.com",
+            "fog://fog.unittest.mobilecoin.com",
             "99".to_string(),
             vec![9u8; 64],
         )
@@ -112,6 +112,7 @@ mod tests {
 
         let proto_credentials = external::PublicAddress::from(&public_address);
         assert_eq!(
+            *proto_credentials.get_view_public_key(),
             *proto_credentials.get_view_public_key(),
             external::CompressedRistretto::from(public_address.view_public_key())
         );
@@ -121,7 +122,7 @@ mod tests {
         );
         assert_eq!(
             proto_credentials.fog_report_url,
-            String::from("fog://test.mobilecoin.com")
+            String::from("fog://fog.unittest.mobilecoin.com")
         );
 
         assert_eq!(proto_credentials.fog_authority_sig, vec![9u8; 64]);

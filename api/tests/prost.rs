@@ -38,10 +38,20 @@ fn root_identity_examples<T: RngCore + CryptoRng>(rng: &mut T) -> Vec<RootIdenti
 
     vec![
         RootIdentity::from_random(rng),
-        RootIdentity::random_with_fog(rng, "fog://example.com", "", fog_authority_spki)
-            .expect("Could not construct root identity with fog data"),
-        RootIdentity::random_with_fog(rng, "fog://example.com", "1", fog_authority_spki)
-            .expect("Could not construct root identity with fog data"),
+        RootIdentity::random_with_fog(
+            rng,
+            "fog://fog.unittest.mobilecoin.com",
+            "",
+            fog_authority_spki,
+        )
+        .expect("Could not construct root identity with fog data"),
+        RootIdentity::random_with_fog(
+            rng,
+            "fog://fog.unittest.mobilecoin.com",
+            "1",
+            fog_authority_spki,
+        )
+        .expect("Could not construct root identity with fog data"),
     ]
 }
 
