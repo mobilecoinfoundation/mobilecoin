@@ -113,7 +113,6 @@ mod tests {
         let proto_credentials = external::PublicAddress::from(&public_address);
         assert_eq!(
             *proto_credentials.get_view_public_key(),
-            *proto_credentials.get_view_public_key(),
             external::CompressedRistretto::from(public_address.view_public_key())
         );
         assert_eq!(
