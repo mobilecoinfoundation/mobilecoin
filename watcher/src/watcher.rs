@@ -14,6 +14,7 @@ use mc_common::{
 };
 use mc_ledger_db::Ledger;
 use mc_ledger_sync::ReqwestTransactionsFetcher;
+use mc_transaction_core::BlockData;
 
 use std::{
     iter::FromIterator,
@@ -84,64 +85,6 @@ impl Watcher {
             .unwrap_or(0))
     }
 
-    /// Sync a specific block from a url.
-    pub fn sync_block(&self, src_url: &Url, block_index: u64) -> Result<(), WatcherError> {
-        let filename = block_num_to_s3block_path(block_index)
-            .into_os_string()
-            .into_string()
-            .unwrap();
-        let url = src_url.join(&filename)?;
-
-        // Try and get the block.
-        log::debug!(
-            self.logger,
-            "Attempting to fetch block {} from {}",
-            block_index,
-            url
-        );
-        match self.transactions_fetcher.block_from_url(&url) {
-            Ok(block_data) => {
-                log::info!(
-                    self.logger,
-                    "Archive block retrieved for {:?} {:?}",
-                    src_url,
-                    block_index
-                );
-
-                if self.store_block_data {
-                    match self.watcher_db.add_block_data(src_url, &block_data) {
-                        Ok(()) => {}
-                        Err(WatcherDBError::AlreadyExists) => {}
-                        Err(err) => {
-                            return Err(err.into());
-                        }
-                    };
-                }
-
-                if let Some(signature) = block_data.signature() {
-                    self.watcher_db.add_block_signature(
-                        src_url,
-                        block_index,
-                        signature.clone(),
-                        filename,
-                    )?;
-                } else {
-                    self.watcher_db.update_last_synced(src_url, block_index)?;
-                }
-                Ok(())
-            }
-            Err(err) => {
-                log::debug!(
-                    self.logger,
-                    "Could not sync block {} for url ({:?})",
-                    block_index,
-                    err
-                );
-                Err(WatcherError::SyncFailed)
-            }
-        }
-    }
-
     /// Sync blocks and collect signatures (and block data, when enabled).
     ///
     /// * `start` - starting block to sync.
@@ -177,34 +120,125 @@ impl Watcher {
                 return Ok(true);
             }
 
-            // Track whether sync failed - this catches cases where S3 is behind local ledger,
-            // which could happen if your local ledger was synced previously from different nodes
-            // than you are now watching. We track the sync failures so we can return control to the
-            // polling thread rather than continuously loop in this method.
-            let mut sync_failed: HashMap<Url, bool> = last_synced
+            // Construct a map of src_url -> next block index we want to attempt to sync.
+            let url_to_block_index: HashMap<Url, u64> = last_synced
                 .iter()
-                .map(|(url, _opt_block_index)| (url.clone(), false))
+                .map(|(src_url, opt_block_index)| {
+                    (
+                        src_url.clone(),
+                        opt_block_index.map(|i| i + 1).unwrap_or(start),
+                    )
+                })
                 .collect();
 
-            for (src_url, opt_last_synced) in last_synced {
-                let next_block_index = opt_last_synced
-                    .map(|block_index| block_index + 1)
-                    .unwrap_or(start);
-                match self.sync_block(&src_url, next_block_index) {
-                    Ok(()) => {}
-                    Err(WatcherError::SyncFailed) => {
-                        sync_failed.insert(src_url.clone(), true);
+            // Attempt to fetch block data for all urls in parallel.
+            let url_to_block_data_result =
+                parallel_fetch_blocks(url_to_block_index, self.transactions_fetcher.clone())?;
+
+            // Store data for each successfully synced blocked. Track on whether any of the sources
+            // was able to produce block data. If so, more data might be available.
+            let mut had_success = false;
+
+            for (src_url, (block_index, block_data_result)) in url_to_block_data_result.iter() {
+                match block_data_result {
+                    Ok(block_data) => {
+                        log::info!(
+                            self.logger,
+                            "Archive block retrieved for {:?} {:?}",
+                            src_url,
+                            block_index
+                        );
+                        if self.store_block_data {
+                            match self.watcher_db.add_block_data(src_url, &block_data) {
+                                Ok(()) => {}
+                                Err(WatcherDBError::AlreadyExists) => {}
+                                Err(err) => {
+                                    return Err(err.into());
+                                }
+                            };
+                        }
+
+                        if let Some(signature) = block_data.signature() {
+                            let filename = block_num_to_s3block_path(*block_index)
+                                .into_os_string()
+                                .into_string()
+                                .unwrap();
+                            self.watcher_db.add_block_signature(
+                                src_url,
+                                *block_index,
+                                signature.clone(),
+                                filename,
+                            )?;
+                        } else {
+                            self.watcher_db.update_last_synced(src_url, *block_index)?;
+                        }
+
+                        had_success = true;
                     }
-                    Err(e) => {
-                        return Err(e);
+
+                    Err(err) => {
+                        log::debug!(
+                            self.logger,
+                            "Could not sync block {} for url ({:?})",
+                            block_index,
+                            err
+                        );
                     }
                 }
             }
-            if sync_failed.values().all(|x| *x) {
+
+            // If nothing succeeded, maybe we are synced all the way through or something else is
+            // wrong.
+            if !had_success {
                 return Ok(false);
             }
         }
     }
+}
+
+/// A naive implementation for fetching blocks from multiple source urls concurrently. It is naive
+/// in the sense that is spawns one thread per source URL, which in theory does not scale but in
+/// reality we do not expect a large number of sources.
+fn parallel_fetch_blocks(
+    url_to_block_index: HashMap<Url, u64>,
+    transactions_fetcher: Arc<ReqwestTransactionsFetcher>,
+) -> Result<HashMap<Url, (u64, Result<BlockData, WatcherError>)>, WatcherError> {
+    let join_handles = url_to_block_index
+        .into_iter()
+        .map(|(src_url, block_index)| {
+            let transactions_fetcher = transactions_fetcher.clone();
+
+            thread::Builder::new()
+                .name("ParallelFetch".into())
+                .spawn(move || {
+                    let block_fetch_result =
+                        fetch_single_block(transactions_fetcher, &src_url, block_index);
+                    (src_url, (block_index, block_fetch_result))
+                })
+                .expect("Failed spawning ParallelFetch thread")
+        })
+        .collect::<Vec<_>>();
+
+    Ok(HashMap::from_iter(
+        join_handles
+            .into_iter()
+            .map(|handle| handle.join().expect("Thread join failed")),
+    ))
+}
+
+/// A helper for fetching a single block (identified by a given block index) from some source url.
+fn fetch_single_block(
+    transactions_fetcher: Arc<ReqwestTransactionsFetcher>,
+    src_url: &Url,
+    block_index: u64,
+) -> Result<BlockData, WatcherError> {
+    let filename = block_num_to_s3block_path(block_index)
+        .into_os_string()
+        .into_string()
+        .unwrap();
+    let block_url = src_url.join(&filename)?;
+
+    Ok(transactions_fetcher.block_from_url(&block_url)?)
 }
 
 /// Maximal number of blocks to attempt to sync at each loop iteration.
