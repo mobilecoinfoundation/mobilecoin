@@ -27,12 +27,20 @@ fn round_trip_message<SRC: ProstMessage + Eq + Default, DEST: ProtobufMessage>(p
 
 // Generate some example root identities
 fn root_identity_examples<T: RngCore + CryptoRng>(rng: &mut T) -> Vec<RootIdentity> {
+    let der_bytes = pem::parse(mc_crypto_x509_test_vectors::ok_rsa_head())
+        .expect("Could not parse RSA test vector as PEM")
+        .contents;
+    let fog_authority_spki = x509_signature::parse_certificate(&der_bytes)
+        .expect("Could not parse X509 certificate from DER")
+        .subject_public_key_info()
+        .spki();
+
     vec![
         RootIdentity::from_random(rng),
-        RootIdentity::random_with_fog(rng, "fog://example.com", "", &[]),
-        RootIdentity::random_with_fog(rng, "fog://example.com", "", &[7u8, 7u8, 7u8, 7u8]),
-        RootIdentity::random_with_fog(rng, "fog://example.com", "1", &[7u8, 7u8, 7u8, 7u8]),
-        RootIdentity::random_with_fog(rng, "fog://example.com", "1", &[]),
+        RootIdentity::random_with_fog(rng, "fog://example.com", "", fog_authority_spki)
+            .expect("Could not construct root identity with fog data"),
+        RootIdentity::random_with_fog(rng, "fog://example.com", "1", fog_authority_spki)
+            .expect("Could not construct root identity with fog data"),
     ]
 }
 

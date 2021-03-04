@@ -10,6 +10,7 @@ use rand::SeedableRng;
 use rand_hc::Hc128Rng as FixedRng;
 use std::{
     cmp::Ordering,
+    convert::TryFrom,
     ffi::OsStr,
     fs,
     path::{Path, PathBuf},
@@ -23,7 +24,7 @@ pub fn write_keyfiles<P: AsRef<Path>>(
     name: &str,
     root_id: &RootIdentity,
 ) -> Result<(), std::io::Error> {
-    let acct_key = AccountKey::from(root_id);
+    let acct_key = AccountKey::try_from(root_id).expect("Invalid root identity");
 
     fs::create_dir_all(&path)?;
 
@@ -60,7 +61,8 @@ pub fn write_default_keyfiles<P: AsRef<Path>>(
             fog_url.unwrap_or(&""),
             fog_report_id.unwrap_or_default(),
             fog_authority_spki.unwrap_or_default(),
-        );
+        )
+        .expect("Invalid fog data given when creating root identity");
 
         write_keyfiles(path.as_ref(), &keyfile_name(i), &root_id)?;
     }

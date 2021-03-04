@@ -360,7 +360,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let mut root_entropy = [0u8; 32];
         root_entropy.copy_from_slice(request.get_entropy());
         let root_id = RootIdentity::from(&root_entropy);
-        let account_key = AccountKey::from(&root_id);
+        // we use expect here because AccountKey from a non-Fog identity should be infallible.
+        let account_key = AccountKey::try_from(&root_id).expect("AccountKey Creation failed");
 
         // Return response.
         let mut response = mc_mobilecoind_api::GetAccountKeyResponse::new();
@@ -513,7 +514,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let mut root_entropy = [0u8; 32];
         root_entropy.copy_from_slice(transfer_payload.get_entropy());
         let root_id = RootIdentity::from(&root_entropy);
-        let account_key = AccountKey::from(&root_id);
+        // this is expect because AccountKey::from(RootIdentity) should be infallible
+        let account_key =
+            AccountKey::try_from(&root_id).expect("AccountKey creation from RootIdentity failed");
 
         let shared_secret =
             get_tx_out_shared_secret(account_key.view_private_key(), &tx_public_key);

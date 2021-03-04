@@ -52,7 +52,7 @@ impl TryFrom<&external::PublicAddress> for PublicAddress {
                 &src.fog_report_url,
                 src.fog_report_id.clone(),
                 src.fog_authority_sig.clone(),
-            ))
+            )?)
         }
     }
 }

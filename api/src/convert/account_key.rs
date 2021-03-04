@@ -52,7 +52,7 @@ impl TryFrom<&external::AccountKey> for AccountKey {
                 &src.fog_report_url,
                 src.fog_report_id.clone(),
                 &src.fog_authority_spki[..],
-            ))
+            )?)
         }
     }
 }
@@ -93,6 +93,14 @@ mod tests {
 
         // with valid fog_report_url
         {
+            let der_bytes = pem::parse(mc_crypto_x509_test_vectors::ok_rsa_head())
+                .expect("Could not parse RSA test vector as PEM")
+                .contents;
+            let fog_authority_spki = x509_signature::parse_certificate(&der_bytes)
+                .expect("Could not parse X509 certificate from DER")
+                .subject_public_key_info()
+                .spki();
+
             // account_keys -> external
             let tmp_account_key = AccountKey::random(&mut rng);
             let account_key = AccountKey::new_with_fog(
@@ -100,8 +108,9 @@ mod tests {
                 tmp_account_key.view_private_key(),
                 "fog://test.mobilecoin.com".to_string(),
                 "99".to_string(),
-                vec![9, 9, 9, 9],
-            );
+                fog_authority_spki,
+            )
+            .expect("Could not construct account key with fog data");
 
             let proto_credentials = external::AccountKey::from(&account_key);
             assert_eq!(
