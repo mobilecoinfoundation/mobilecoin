@@ -52,7 +52,7 @@ pub fn derive_ed25519_private_key(seed: &[u8], indexes: &[u32]) -> [u8; 32] {
 
 fn hmac_sha512(key: &[u8], data: &[u8]) -> [u8; 64] {
     let mut mac =
-        Hmac::<sha2::Sha512>::new_varkey(key).expect("hnew_varkey has no key size restrictions");
+        Hmac::<sha2::Sha512>::new_varkey(key).expect("new_varkey has no key size restrictions");
     mac.update(data);
     let bytes = mac.finalize().into_bytes();
 
