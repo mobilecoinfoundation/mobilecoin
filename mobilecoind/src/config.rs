@@ -198,7 +198,8 @@ impl Config {
                 let report_responses = conn
                     .fetch_fog_reports(fog_uris.iter().cloned())
                     .map_err(|err| format!("Failed fetching fog reports: {}", err))?;
-                Ok(FogResolver::new(report_responses, verifier))
+                Ok(FogResolver::new(report_responses, verifier)
+                    .map_err(|err| format!("Invalid fog url: {}", err))?)
             } else {
                 Err(
                     "Some recipients have fog, but no fog ingest report verifier was configured"
