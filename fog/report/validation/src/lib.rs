@@ -33,7 +33,7 @@ use mc_account_keys::PublicAddress;
 use mc_attest_core::Verifier;
 use mc_fog_sig::Verifier as FogSigVerifier;
 use mc_fog_types::ReportResponse;
-use mc_util_uri::FogUri;
+use mc_util_uri::{FogUri, UriParseError};
 
 /// Represents a set of unvalidated responses from Fog report servers
 /// Key = Fog-url that was contacted, must match the string in user's public address
@@ -83,11 +83,21 @@ impl FogResolver {
     /// Create a new FogResolver object, given serialized (unverified)
     /// fog report server responses,
     /// and an attestation verifier for fog ingest measurements.
-    pub fn new(responses: FogReportResponses, verifier: &Verifier) -> Self {
-        Self {
+    pub fn new(responses: FogReportResponses, verifier: &Verifier) -> Result<Self, UriParseError> {
+        // Normalize URI strings
+        let responses: FogReportResponses = responses
+            .into_iter()
+            .map(
+                |(uri_str, resp)| -> Result<(String, ReportResponse), UriParseError> {
+                    let uri = FogUri::from_str(&uri_str)?.to_string();
+                    Ok((uri, resp))
+                },
+            )
+            .collect::<Result<_, UriParseError>>()?;
+        Ok(Self {
             responses,
             verifier: IngestReportVerifier::from(verifier),
-        }
+        })
     }
 }
 
