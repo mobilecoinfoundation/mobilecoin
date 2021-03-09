@@ -93,6 +93,7 @@ members = [
     "util/metrics",
     "util/repr-bytes",
     "util/serial",
+    "util/slip10",
     "util/test-helper",
     "util/test-vector",
     "util/uri",

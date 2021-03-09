@@ -3681,6 +3681,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-util-slip10"
+version = "0.13.0"
+dependencies = [
+ "hex 0.4.2",
+ "hmac 0.10.1",
+ "sha2 0.9.2",
+]
+
+[[package]]
 name = "mc-util-test-helper"
 version = "1.0.0"
 dependencies = [

@@ -1,0 +1,12 @@
+[package]
+name = "mc-util-slip10"
+version = "0.13.0"
+authors = ["MobileCoin"]
+edition = "2018"
+
+[dependencies]
+hmac = "0.10"
+sha2 = "0.9"
+
+[dev-dependencies]
+hex = "0.4"
