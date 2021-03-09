@@ -11,9 +11,7 @@ use hmac::{Hmac, Mac, NewMac};
 /// [SLIP-0010](https://github.com/satoshilabs/slips/blob/master/slip-0010.md).
 ///
 /// # Arguments
-///
 /// * `seed` - Seed, the BIP0039 output.
-///
 /// * `indexes` - an array of indexes that define the path. E.g. for m/1'/2'/3', pass 1, 2, 3.
 ///               As with Ed25519 non-hardened child indexes are not supported, this function treats all indexes
 ///                    as hardened.
@@ -49,7 +47,7 @@ pub fn derive_ed25519_private_key(seed: &[u8], indexes: &[u32]) -> [u8; 32] {
 
     let mut result = [0u8; 32];
     result.copy_from_slice(&I[0..32]);
-    return result;
+    result
 }
 
 fn hmac_sha512(key: &[u8], data: &[u8]) -> [u8; 64] {
