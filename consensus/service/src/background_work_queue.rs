@@ -1,7 +1,8 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-//! BackgroundWorkQueue: A data structure that wraps crossbeam_channel queues for background message processing
-//! by a worker thread. It allows multiple threads to send messages to the queue.
+//! BackgroundWorkQueue: A data structure that wraps crossbeam_channel queues
+//! for background message processing by a worker thread. It allows multiple
+//! threads to send messages to the queue.
 
 use mc_util_metered_channel::{self, Receiver, Sender};
 use mc_util_metrics::IntGauge;
@@ -82,7 +83,8 @@ impl<T: Send + 'static> BackgroundWorkQueue<T> {
     }
 
     pub fn stop(&mut self) -> Result<(), BackgroundWorkQueueError> {
-        // Send a stop request. We ignore return value since we might already be stopped.
+        // Send a stop request. We ignore return value since we might already be
+        // stopped.
         let _ = self.send_msg(QueueMsg::StopRequested);
 
         self.join()

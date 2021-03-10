@@ -4,12 +4,13 @@
 //!
 //! The point of the version numbers is to allow clients to decrypt arbitrarily
 //! old ciphertexts from the recovery database.
-//! (And also, to allow to upgrade the ingest server separately from the clients.)
+//! (And also, to allow to upgrade the ingest server separately from the
+//! clients.)
 //!
 //! The idea here is, take one or several implementations of CryptoBox trait,
 //! with FooterSize = 48, then stick two additional bytes in the footer. The
-//! first is a major version (or "magic byte"), and the second is a minor version.
-//! The minor version selects which algorithm we will use.
+//! first is a major version (or "magic byte"), and the second is a minor
+//! version. The minor version selects which algorithm we will use.
 //! A major version mismatch means we can't proceed at all. This might happen
 //! if we decide that the FooterSize must increase.
 //!
@@ -46,7 +47,8 @@ pub type RistrettoHkdfBlake2bAes256Gcm = HkdfBox<Ristretto, Blake2b, Aes256Gcm>;
 
 /// A "magic byte" value checked during this process, but not interpreted.
 const MAJOR_VERSION: u8 = 1;
-/// The "default" version that we would use for encryption lacking any version negotiation.
+/// The "default" version that we would use for encryption lacking any version
+/// negotiation.
 const LATEST_MINOR_VERSION: u8 = 0;
 /// The versions that we would find "acceptable" during version negotiation.
 /// This list allows clients and servers to be upgraded at different times.
@@ -64,9 +66,9 @@ type ImplTuple = (RistrettoHkdfBlake2bAes256Gcm,);
 // Implementation
 ////
 
-/// An object implementing CryptoBox trait that calls out to one of several other
-/// implementations, then attaches versioning tags. When decrypting, it interprets
-/// those versioning tags.
+/// An object implementing CryptoBox trait that calls out to one of several
+/// other implementations, then attaches versioning tags. When decrypting, it
+/// interprets those versioning tags.
 pub struct VersionedCryptoBox {
     /// The version that this cipher object will use for encryption.
     /// Decryption will always work for any implemented scheme.
@@ -83,7 +85,8 @@ impl VersionedCryptoBox {
     pub fn acceptable_minor_versions() -> Vec<u8> {
         ACCEPTABLE_MINOR_VERSIONS.to_vec()
     }
-    /// Called by a client to select an acceptable version based on what a server advertised
+    /// Called by a client to select an acceptable version based on what a
+    /// server advertised
     pub fn select_version(others_acceptable_versions: &[u8]) -> Result<Self, VersionError> {
         Self::acceptable_minor_versions()
             .iter()
@@ -97,8 +100,9 @@ impl VersionedCryptoBox {
     }
 }
 
-/// Default to the latest version for encryption, lacking any version negotiation info
-/// This is typical in the ingest node, which cannot negotiate with all clients.
+/// Default to the latest version for encryption, lacking any version
+/// negotiation info This is typical in the ingest node, which cannot negotiate
+/// with all clients.
 impl Default for VersionedCryptoBox {
     fn default() -> Self {
         Self {

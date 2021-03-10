@@ -6,17 +6,20 @@ use mc_attest_core::{VerificationReport, Verifier, VerifierError, VerifyError};
 use mc_crypto_keys::{KeyError, RistrettoPublic};
 use mc_util_encodings::Error as EncodingError;
 
-/// A structure that can validate ingest enclave reports and measurements at runtime.
+/// A structure that can validate ingest enclave reports and measurements at
+/// runtime.
 ///
-/// This is expected to take the verification report and produce the ias-validated and decompressed RistrettoPublic key.
+/// This is expected to take the verification report and produce the
+/// ias-validated and decompressed RistrettoPublic key.
 #[derive(Default, Clone, Debug)]
 pub struct IngestReportVerifier {
     verifier: Verifier,
 }
 
 impl IngestReportVerifier {
-    /// Validate a remote ingest ias report, and extract the pubkey from the report data bytes.
-    /// The details of this are tied to the layout of the "identity" object in the ingest enclave impl.
+    /// Validate a remote ingest ias report, and extract the pubkey from the
+    /// report data bytes. The details of this are tied to the layout of the
+    /// "identity" object in the ingest enclave impl.
     pub fn validate_ingest_ias_report(
         &self,
         remote_report: VerificationReport,

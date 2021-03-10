@@ -63,7 +63,8 @@ mod tests {
     use mc_account_keys::AccountKey;
     use rand::{rngs::StdRng, SeedableRng};
 
-    // Test converting between external::PublicAddress and account_keys::PublicAddress
+    // Test converting between external::PublicAddress and
+    // account_keys::PublicAddress
     #[test]
     fn test_public_address_conversion() {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);

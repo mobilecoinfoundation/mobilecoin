@@ -105,11 +105,12 @@ pub fn read_default_root_entropies<P: AsRef<Path>>(
     Ok(result)
 }
 
-// This comparator is used when sorting the files so that the i'th keyfile written
-// is also the i'th keyfile in the vector that is returned when reading
+// This comparator is used when sorting the files so that the i'th keyfile
+// written is also the i'th keyfile in the vector that is returned when reading
 //
 // The implementation is, first sort by length, and then if there's a tie,
-// sort lexicographically. This makes keyfile_name(a) < keyfile_name(b) iff a < b
+// sort lexicographically. This makes keyfile_name(a) < keyfile_name(b) iff a <
+// b
 fn compare_keyfile_names(a: &PathBuf, b: &PathBuf) -> Ordering {
     let a = a.as_os_str();
     let b = b.as_os_str();

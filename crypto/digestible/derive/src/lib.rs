@@ -16,8 +16,9 @@ use syn::{
     Generics, Ident, Lit, Meta, NestedMeta,
 };
 
-/// These are configuration options that are selected by #[digestible(..)] attributes
-/// at struct or enum declaration. They are parsed from the DeriveInput::attrs field.
+/// These are configuration options that are selected by #[digestible(..)]
+/// attributes at struct or enum declaration. They are parsed from the
+/// DeriveInput::attrs field.
 #[derive(Default, Clone)]
 struct AttributeConfig {
     /// Whether digestible should be derived "transparently", meaning,
@@ -120,7 +121,8 @@ fn try_digestible(input: TokenStream) -> Result<TokenStream, &'static str> {
             Data::Union(..) => Err("Digestible cannot be derived for a union"),
         }
     } else {
-        // If the user specified a name, that's the custom name, otherwise use the rust ident
+        // If the user specified a name, that's the custom name, otherwise use the rust
+        // ident
         let custom_name = if let Some(name) = attr_config.rename {
             Ident::new(name.as_ref(), Span::call_site())
         } else {
@@ -200,8 +202,8 @@ fn try_digestible_struct(
     Ok(expanded.into())
 }
 
-// digestible(transparent) means that, this struct is a "wrapper" around a single
-// value, and when digesting it, we don't create an agg node.
+// digestible(transparent) means that, this struct is a "wrapper" around a
+// single value, and when digesting it, we don't create an agg node.
 // Instead, we forward calls to `append_to_transcript`
 // and `append_to_transcript_allow_omit` directly to the inner value.
 //

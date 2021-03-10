@@ -34,7 +34,8 @@ impl From<GrpcioError> for Error {
     }
 }
 
-/// A trait used to monkey-patch helper methods onto the `cookie::CookieJar` type.
+/// A trait used to monkey-patch helper methods onto the `cookie::CookieJar`
+/// type.
 pub trait GrpcCookieStore {
     /// Search metadata received from a server and treat any `Set-Cookie` values
     /// appropriately.
@@ -44,8 +45,8 @@ pub trait GrpcCookieStore {
         trailers: Option<&Metadata>,
     ) -> Result<(), Error>;
 
-    /// Copy the contents of this CookieJar into a Metadata structure containing any `Cookie`
-    /// headers to send to a server.
+    /// Copy the contents of this CookieJar into a Metadata structure containing
+    /// any `Cookie` headers to send to a server.
     fn to_client_metadata(&self) -> Result<MetadataBuilder, Error>;
 }
 

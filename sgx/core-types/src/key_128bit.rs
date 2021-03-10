@@ -15,7 +15,8 @@ pub const KEY128_SIZE: usize = 16;
 
 /// The ISV Family ID for a given enclave.
 ///
-/// This is used when deriving keys when the Key Separation & Sharing feature is enabled.
+/// This is used when deriving keys when the Key Separation & Sharing feature is
+/// enabled.
 #[derive(Default)]
 #[repr(transparent)]
 pub struct Key128(sgx_key_128bit_t);

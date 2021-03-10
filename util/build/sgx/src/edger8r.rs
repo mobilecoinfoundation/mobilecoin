@@ -22,7 +22,8 @@ pub enum Error {
     PkgConfig(PkgConfigError),
     /// There was missing data in the environment
     Environment(EnvironmentError),
-    /// The given SGX library collection did not allow us to deduce the binary location
+    /// The given SGX library collection did not allow us to deduce the binary
+    /// location
     NoBinDir,
     /// The given SGX library collection did not contain any include paths
     NoIncludePaths,
@@ -30,7 +31,8 @@ pub enum Error {
     Io(IoError),
     /// The edger8r command failed, and also printed invalid UTF-8
     Utf8Error,
-    /// There was an error generating the code, command:\n{0}\nstdout:\n{0}\n\nstderr:\n{1}
+    /// There was an error generating the code,
+    /// command:\n{0}\nstdout:\n{0}\n\nstderr:\n{1}
     Generate(String, String, String),
     /// There was an error building the generated code
     Build,
@@ -121,8 +123,8 @@ impl Edger8r {
         })
     }
 
-    /// Set an enclave name. This will be used to generate the EDL filename if edl_path is
-    /// unspecified.
+    /// Set an enclave name. This will be used to generate the EDL filename if
+    /// edl_path is unspecified.
     pub fn enclave_name(&mut self, enclave_name: &str) -> &mut Self {
         self.enclave_name = enclave_name.to_owned();
         self

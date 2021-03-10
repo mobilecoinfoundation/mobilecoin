@@ -34,7 +34,8 @@ use std::{
     },
 };
 
-/// Default number of blocks used for calculating transaction tombstone block number.
+/// Default number of blocks used for calculating transaction tombstone block
+/// number.
 // TODO support for making this configurable
 pub const DEFAULT_NEW_TX_BLOCK_ATTEMPTS: u64 = 50;
 
@@ -91,11 +92,13 @@ pub struct TransactionsManager<T: UserTxConnection + 'static, FPR: FogPubkeyReso
     /// Logger.
     logger: Logger,
 
-    /// Monotonically increasing counter. This is used for node round-robin selection.
+    /// Monotonically increasing counter. This is used for node round-robin
+    /// selection.
     submit_node_offset: Arc<AtomicUsize>,
 
     /// Fog resolver maker, used when constructing outputs to fog recipients.
-    /// This is abstracted because in tests, we don't want to form grpc connections to fog
+    /// This is abstracted because in tests, we don't want to form grpc
+    /// connections to fog
     fog_resolver_factory: Arc<dyn Fn(&[FogUri]) -> Result<FPR, String> + Send + Sync>,
 }
 
@@ -238,7 +241,8 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver> TransactionsManager<
         Ok(tx_proposal)
     }
 
-    /// Create a TxProposal that attempts to merge multiple UTXOs into a single larger UTXO.
+    /// Create a TxProposal that attempts to merge multiple UTXOs into a single
+    /// larger UTXO.
     ///
     /// # Arguments
     /// * `monitor_id` - Monitor ID of the inputs to spend.
@@ -341,7 +345,8 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver> TransactionsManager<
         Ok(tx_proposal)
     }
 
-    /// Create a TxProposal that sends the total value of all inputs minus the fee to a single receiver.
+    /// Create a TxProposal that sends the total value of all inputs minus the
+    /// fee to a single receiver.
     ///
     /// # Arguments
     /// * `account_key` -Account key that owns the inputs.
@@ -507,15 +512,17 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver> TransactionsManager<
         Ok(selected_utxos)
     }
 
-    /// Select UTXOs for optimization. The current strategy is to to attempt to add the maximum number
-    /// of small UTXOs into the biggest one, which is the one most likely to be used when spending.
-    /// The assumption is that if we maintain it as the biggest, we're less likely to need multiple
+    /// Select UTXOs for optimization. The current strategy is to to attempt to
+    /// add the maximum number of small UTXOs into the biggest one, which is
+    /// the one most likely to be used when spending. The assumption is that
+    /// if we maintain it as the biggest, we're less likely to need multiple
     /// UTXOs in future transactions.
-    /// 1) Filter out UTXOs which we believe are currently still pending/at an unknown state.
-    /// 2) Sort remaining UTXOs in ascending order (by their value).
-    /// 3) Grab the largest available UTXO, and MAX_INPUTS-1 smallest available UTXOs.
-    /// 4) If the sum of the smallest available UTXOs > fee, we would be able to increase our largest
-    ///    UTXO and we're done. If not, try again without the smallest UTXO.
+    /// 1) Filter out UTXOs which we believe are currently still pending/at an
+    /// unknown state. 2) Sort remaining UTXOs in ascending order (by their
+    /// value). 3) Grab the largest available UTXO, and MAX_INPUTS-1
+    /// smallest available UTXOs. 4) If the sum of the smallest available
+    /// UTXOs > fee, we would be able to increase our largest    UTXO and
+    /// we're done. If not, try again without the smallest UTXO.
     ///
     /// Returns a tuple of (selected UTXOs, fee).
     fn select_utxos_for_optimization(
@@ -546,7 +553,8 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver> TransactionsManager<
 
         let biggest_utxo = spendable_inputs.pop().unwrap();
         loop {
-            // If there are no spendable inputs, we've tried merging all of them and still ended up losing it all to fees.
+            // If there are no spendable inputs, we've tried merging all of them and still
+            // ended up losing it all to fees.
             if spendable_inputs.is_empty() {
                 return Err(Error::OptimizationNotBeneficial(
                     "Merging UTXOs would result in a loss".to_owned(),
@@ -563,13 +571,15 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver> TransactionsManager<
             // Calculate the fee - right now this is constant.
             let fee = MINIMUM_FEE;
 
-            // See if the total amount we are trying to merge into our biggest UTXO is bigger than the fee.
-            // If it's smaller, the merge would just lose us money.
+            // See if the total amount we are trying to merge into our biggest UTXO is
+            // bigger than the fee. If it's smaller, the merge would just lose
+            // us money.
             if total > fee {
                 // Grab the UTXO we are merging into and stop iterating.
                 selected_utxos.push(biggest_utxo);
 
-                // Sanity - the amount we're moving sans the fee needs to increase the value of our biggest UTXO.
+                // Sanity - the amount we're moving sans the fee needs to increase the value of
+                // our biggest UTXO.
                 let total_value: u64 = selected_utxos.iter().map(|utxo| utxo.value).sum();
                 assert!(total_value - fee > biggest_utxo.value);
 
@@ -577,7 +587,8 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver> TransactionsManager<
                 return Ok((selected_utxos.into_iter().cloned().collect(), fee));
             }
 
-            // Merging the currently selected set of UTXOs would lose us money. Try again without the smallest UTXO.
+            // Merging the currently selected set of UTXOs would lose us money. Try again
+            // without the smallest UTXO.
             spendable_inputs.remove(0);
         }
     }
@@ -660,7 +671,8 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver> TransactionsManager<
     /// * `inputs` - UTXOs to spend, with membership proofs.
     /// * `rings` - A set of mixins for each input, with membership proofs.
     /// * `fee` - Transaction fee, in picoMOB.
-    /// * `from_account_key` - Owns the inputs. Also the recipient of any change.
+    /// * `from_account_key` - Owns the inputs. Also the recipient of any
+    ///   change.
     /// * `change_subaddress` - Subaddress for change recipient.
     /// * `destinations` - Outputs of the transaction.
     /// * `tombstone_block` - Tombstone block of the transaciton.
@@ -697,7 +709,8 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver> TransactionsManager<
             ));
         }
 
-        // Collect all required FogUris from public addresses, then pass to resolver factory
+        // Collect all required FogUris from public addresses, then pass to resolver
+        // factory
         let fog_resolver = {
             let change_address = from_account_key.subaddress(change_subaddress);
             let fog_uris = core::slice::from_ref(&change_address)
@@ -749,8 +762,8 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver> TransactionsManager<
                         ring[0] = utxo.tx_out.clone();
                         membership_proofs[0] = proof.clone();
                     }
-                    // The real input is always the first element. This is safe because TransactionBuilder
-                    // sorts each ring.
+                    // The real input is always the first element. This is safe because
+                    // TransactionBuilder sorts each ring.
                     0
                 }
             };
@@ -873,7 +886,8 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver> TransactionsManager<
     }
 }
 
-// Helper which extracts FogUri from PublicAddress or returns None, or returns an error
+// Helper which extracts FogUri from PublicAddress or returns None, or returns
+// an error
 fn extract_fog_uri(addr: &PublicAddress) -> Result<Option<FogUri>, Error> {
     if let Some(string) = addr.fog_report_url() {
         Ok(Some(FogUri::from_str(string).map_err(|err| {
@@ -964,7 +978,8 @@ mod test {
     #[test]
     fn test_select_utxos_for_value_errors_if_too_many_inputs_are_needed() {
         let utxos = generate_utxos(10);
-        // While we have enough utxos to sum to 5, if the input limit is 4 we should fail.
+        // While we have enough utxos to sum to 5, if the input limit is 4 we should
+        // fail.
         match TransactionsManager::<ThickClient<HardcodedCredentialsProvider>, MockFogPubkeyResolver>::select_utxos_for_value(
             &utxos, 5, 4,
         ) {
@@ -978,7 +993,8 @@ mod test {
     #[test]
     fn test_select_utxos_for_value_errors_if_insufficient_funds() {
         let utxos = generate_utxos(10);
-        // While we have enough utxos to sum to 5, if the input limit is 4 we should fail.
+        // While we have enough utxos to sum to 5, if the input limit is 4 we should
+        // fail.
         match TransactionsManager::<ThickClient<HardcodedCredentialsProvider>, MockFogPubkeyResolver>::select_utxos_for_value(
             &utxos, 50, 100,
         ) {
@@ -1042,7 +1058,8 @@ mod test {
     // Test behavior around the fee amount (off by one, exact fee, etc).
     #[test]
     fn test_select_utxos_for_optimization_behavior_around_fee() {
-        // When the sum of available UTXOs is lower than the fee, no merging will take place.
+        // When the sum of available UTXOs is lower than the fee, no merging will take
+        // place.
         {
             let mut utxos = generate_utxos(6);
 
@@ -1065,7 +1082,8 @@ mod test {
             assert!(result.is_err());
         }
 
-        // When the sum of available UTXOs is exactly equal the fee amount, no merging will ltake place.
+        // When the sum of available UTXOs is exactly equal the fee amount, no merging
+        // will ltake place.
         {
             let mut utxos = generate_utxos(2);
 
@@ -1094,7 +1112,8 @@ mod test {
                     MockFogPubkeyResolver,
                 >::select_utxos_for_optimization(1000, &utxos, 3)
                 .unwrap();
-            // Since we're limited to 3 inputs, the lowest input (of value 1) is going to get excluded.
+            // Since we're limited to 3 inputs, the lowest input (of value 1) is going to
+            // get excluded.
             assert_eq!(
                 selected_utxos,
                 vec![utxos[3].clone(), utxos[0].clone(), utxos[1].clone()]
@@ -1123,7 +1142,8 @@ mod test {
         >::select_utxos_for_optimization(1000, &utxos[0..1], 100);
         assert!(result.is_err());
 
-        // A set of 2 utxos succeeds when max inputs is 2, but fails when it is 3 (since there's no point to merge 2 when we can directly spend 3)
+        // A set of 2 utxos succeeds when max inputs is 2, but fails when it is 3 (since
+        // there's no point to merge 2 when we can directly spend 3)
         let result = TransactionsManager::<
             ThickClient<HardcodedCredentialsProvider>,
             MockFogPubkeyResolver,

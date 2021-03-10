@@ -203,7 +203,8 @@ pub fn get_mock_ledger(n_blocks: usize) -> MockLedger {
 }
 
 #[allow(dead_code)]
-/// Creates a sequence of `Block`s and the transactions corresponding to each block.
+/// Creates a sequence of `Block`s and the transactions corresponding to each
+/// block.
 pub fn get_test_ledger_blocks(n_blocks: usize) -> Vec<(Block, BlockContents)> {
     let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 
@@ -264,7 +265,8 @@ mod tests {
     use mc_transaction_core::compute_block_id;
 
     #[test]
-    // `get_test_ledger_blocks` should return a valid blockchain of the specified length.
+    // `get_test_ledger_blocks` should return a valid blockchain of the specified
+    // length.
     fn test_get_test_ledger_blocks() {
         let blocks_and_transactions = get_test_ledger_blocks(3);
         assert_eq!(

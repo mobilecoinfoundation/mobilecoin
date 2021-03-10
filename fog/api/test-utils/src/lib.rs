@@ -3,17 +3,18 @@
 use prost::Message as ProstMessage;
 use protobuf::Message as ProtobufMessage;
 
-/// Take a ProstMessage value, and a ProtobufMessage type. Try to encode the prost message,
-/// decode as protobuf, re-encode that, and decode as prost again, and check that you got the
-/// original value back.
+/// Take a ProstMessage value, and a ProtobufMessage type. Try to encode the
+/// prost message, decode as protobuf, re-encode that, and decode as prost
+/// again, and check that you got the original value back.
 /// This ensures that the fields in the manually written, prosty rust structure,
-/// are at least a subset of the fields in the .proto file, so no data loss occurs if the client
-/// decodes using that .proto file.
+/// are at least a subset of the fields in the .proto file, so no data loss
+/// occurs if the client decodes using that .proto file.
 ///
-/// We could have another version of this function that tests that the ProtobufMessage round-trips
-/// through the prosty structure. That would ensure that the struct and the .proto are identical.
-/// I haven't found that necessary yet but maybe I'm wrong. It would have caught a subtle bug
-/// where we were using external.TxOut instead of transaction.TxOut in the fog view proto.
+/// We could have another version of this function that tests that the
+/// ProtobufMessage round-trips through the prosty structure. That would ensure
+/// that the struct and the .proto are identical. I haven't found that necessary
+/// yet but maybe I'm wrong. It would have caught a subtle bug where we were
+/// using external.TxOut instead of transaction.TxOut in the fog view proto.
 pub fn round_trip_message<SRC: ProstMessage + Eq + Default, DEST: ProtobufMessage>(
     prost_val: &SRC,
 ) {

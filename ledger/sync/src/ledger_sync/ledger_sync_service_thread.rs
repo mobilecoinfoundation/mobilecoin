@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-//! An integration between `PollingNetworkState` and `LedgerSyncService` that performs the sync in
-//! a background thread.
+//! An integration between `PollingNetworkState` and `LedgerSyncService` that
+//! performs the sync in a background thread.
 
 use crate::{LedgerSync, LedgerSyncService, PollingNetworkState, TransactionsFetcher};
 use mc_common::logger::{log, Logger};

@@ -27,8 +27,8 @@ lazy_static! {
         Arc::new(Mutex::new(build_hash_set(DEFAULT_FILES)));
 }
 
-/// Adds all the known source files under the given path which match the given extensions and
-/// filenames.
+/// Adds all the known source files under the given path which match the given
+/// extensions and filenames.
 pub fn rerun_if_path_changed(path: &Path) {
     let extensions = EXTENSION_SET
         .lock()

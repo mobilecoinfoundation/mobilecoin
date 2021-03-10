@@ -15,7 +15,8 @@ pub struct Config {
     #[structopt(short, long)]
     pub name: String,
 
-    // Root entropy to use, in hex format (e.g. 1234567812345678123456781234567812345678123456781234567812345678).
+    // Root entropy to use, in hex format (e.g.
+    // 1234567812345678123456781234567812345678123456781234567812345678).
     #[structopt(short, long, parse(try_from_str=hex::FromHex::from_hex), conflicts_with("seed"))]
     pub root: Option<[u8; 32]>,
 

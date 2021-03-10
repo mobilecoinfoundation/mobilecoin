@@ -22,7 +22,8 @@ pub trait Connection: Display + Eq + Hash + Ord + PartialEq + PartialOrd + Send 
     fn uri(&self) -> Self::Uri;
 }
 
-/// A marker trait used to encapsulate connection-impl-specific attestation errors.
+/// A marker trait used to encapsulate connection-impl-specific attestation
+/// errors.
 pub trait AttestationError: Debug + Display + Send + Sync {}
 
 pub trait AttestedConnection: Connection {
@@ -52,12 +53,14 @@ pub trait AttestedConnection: Connection {
     }
 }
 
-/// A connection trait providing APIs for use in retrieving blocks from a consensus node.
+/// A connection trait providing APIs for use in retrieving blocks from a
+/// consensus node.
 pub trait BlockchainConnection: Connection {
     /// Retrieve the block metadata from the blockchain service.
     fn fetch_blocks(&mut self, range: Range<BlockIndex>) -> Result<Vec<Block>>;
 
-    /// Retrieve the BlockIDs (hashes) of the given blocks from the blockchain service.
+    /// Retrieve the BlockIDs (hashes) of the given blocks from the blockchain
+    /// service.
     fn fetch_block_ids(&mut self, range: Range<BlockIndex>) -> Result<Vec<BlockID>>;
 
     /// Retrieve the consensus node's current block height
@@ -67,12 +70,13 @@ pub trait BlockchainConnection: Connection {
 /// A trait which supports supporting the submission of transactions to a node
 pub trait UserTxConnection: Connection {
     /// Propose a transaction over the encrypted channel.
-    /// Returns the number of blocks in the ledger at the time the call was received.
+    /// Returns the number of blocks in the ledger at the time the call was
+    /// received.
     fn propose_tx(&mut self, tx: &Tx) -> Result<BlockIndex>;
 }
 
-// Retryable connections: these traits exist to allow SyncConnection to extend itself when its
-// inner connection API supports additional APIs.
+// Retryable connections: these traits exist to allow SyncConnection to extend
+// itself when its inner connection API supports additional APIs.
 
 /// A connection trait providing retryable blockchain data APIs
 pub trait RetryableBlockchainConnection {
@@ -83,7 +87,8 @@ pub trait RetryableBlockchainConnection {
         retry_iterator: impl IntoIterator<Item = Duration>,
     ) -> RetryResult<Vec<Block>>;
 
-    /// Retrieve the BlockIDs (hashes) of the given blocks from the blockchain service.
+    /// Retrieve the BlockIDs (hashes) of the given blocks from the blockchain
+    /// service.
     fn fetch_block_ids(
         &self,
         range: Range<BlockIndex>,
@@ -100,7 +105,8 @@ pub trait RetryableBlockchainConnection {
 /// A trait which supports re-trying transaction submission
 pub trait RetryableUserTxConnection {
     /// Propose a transaction over the encrypted channel.
-    /// Returns the number of blocks in the ledger at the time the call was received.
+    /// Returns the number of blocks in the ledger at the time the call was
+    /// received.
     fn propose_tx(
         &self,
         tx: &Tx,

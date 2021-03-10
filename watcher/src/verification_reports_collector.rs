@@ -30,8 +30,9 @@ use std::{
 };
 use url::Url;
 
-/// A trait that specifies the functionality VerificationReportsCollector needs in order to go from
-/// a ConsensusClientUri into a VerificationReport, and the associated signer key.
+/// A trait that specifies the functionality VerificationReportsCollector needs
+/// in order to go from a ConsensusClientUri into a VerificationReport, and the
+/// associated signer key.
 pub trait NodeClient {
     /// Get a verification report for a given client.
     fn get_verification_report(
@@ -44,7 +45,8 @@ pub trait NodeClient {
     fn get_block_signer(verification_report: &VerificationReport) -> Result<Ed25519Public, String>;
 }
 
-/// An implementation of `NodeClient` that talks to a consensus node using `ThickClient`.
+/// An implementation of `NodeClient` that talks to a consensus node using
+/// `ThickClient`.
 pub struct ConsensusNodeClient;
 impl NodeClient for ConsensusNodeClient {
     fn get_verification_report(
@@ -120,8 +122,8 @@ impl NodeClient for ConsensusNodeClient {
     }
 }
 
-/// Periodically checks the verification report poll queue in the database and attempts to contact
-/// nodes and get their verification report.
+/// Periodically checks the verification report poll queue in the database and
+/// attempts to contact nodes and get their verification report.
 pub struct VerificationReportsCollector<NC: NodeClient = ConsensusNodeClient> {
     join_handle: Option<thread::JoinHandle<()>>,
     stop_requested: Arc<AtomicBool>,
@@ -329,7 +331,8 @@ impl<NC: NodeClient> VerificationReportsCollectorThread<NC> {
         );
 
         // Store the VerificationReport in the database, and also remove
-        // verification_report_block_signer and potential_signers from the polling queue.
+        // verification_report_block_signer and potential_signers from the polling
+        // queue.
         match self.watcher_db.add_verification_report(
             tx_src_url,
             &verification_report_block_signer,
@@ -370,10 +373,10 @@ mod tests {
     use serial_test_derive::serial;
     use std::{iter::FromIterator, str::FromStr, sync::Mutex, thread::sleep};
 
-    // A contraption that allows us to return a specific VerificationReport for a given
-    // ConsensusClientUri while also allowing the tests to control it.
-    // Due to the global scope of this, mandated by the NodeClient trait, the tests have to run in
-    // serial.
+    // A contraption that allows us to return a specific VerificationReport for a
+    // given ConsensusClientUri while also allowing the tests to control it.
+    // Due to the global scope of this, mandated by the NodeClient trait, the tests
+    // have to run in serial.
     lazy_static::lazy_static! {
         static ref REPORT_VERSION: Arc<Mutex<HashMap<ConsensusClientUri, u8>>> =
         Arc::new(Mutex::new(HashMap::default()));
@@ -398,8 +401,8 @@ mod tests {
         }
 
         pub fn report_signer(verification_report: &VerificationReport) -> Ed25519Pair {
-            // Convert the report into a 32 bytes hash so that we could construct a consistent key
-            // from it.
+            // Convert the report into a 32 bytes hash so that we could construct a
+            // consistent key from it.
             let bytes = mc_util_serial::encode(verification_report);
             let hash: [u8; 32] = bytes.digest32::<MerlinTranscript>(b"verification_report");
             let priv_key = Ed25519Private::try_from(&hash[..]).unwrap();
@@ -463,8 +466,8 @@ mod tests {
             logger,
         );
 
-        // Get the current signers for node1, node2 and node3. They should all be different and
-        // consistent.
+        // Get the current signers for node1, node2 and node3. They should all be
+        // different and consistent.
         let signer1 = TestNodeClient::current_signer(&node1_url);
         let signer2 = TestNodeClient::current_signer(&node2_url);
         let signer3 = TestNodeClient::current_signer(&node3_url);
@@ -506,8 +509,8 @@ mod tests {
             HashMap::default()
         );
 
-        // Add a block signature for signer1, this should get the background thread to get the
-        // VerificationReport from node1 and put it into the database.
+        // Add a block signature for signer1, this should get the background thread to
+        // get the VerificationReport from node1 and put it into the database.
         let signed_block_a1 =
             BlockSignature::from_block_and_keypair(&blocks[0].0, &signer1).unwrap();
         watcher_db
@@ -534,7 +537,8 @@ mod tests {
             sleep(Duration::from_millis(100));
         }
 
-        // Add a block signature for signer2, while the returned report is still signer1.
+        // Add a block signature for signer2, while the returned report is still
+        // signer1.
         let signed_block_a2 =
             BlockSignature::from_block_and_keypair(&blocks[1].0, &signer2).unwrap();
         watcher_db
@@ -613,8 +617,8 @@ mod tests {
             sleep(Duration::from_millis(100));
         }
 
-        // Add two more blocks, one for node2 (that we can reach) and one for node3 (that we can't
-        // reach)
+        // Add two more blocks, one for node2 (that we can reach) and one for node3
+        // (that we can't reach)
         let signed_block_b1 =
             BlockSignature::from_block_and_keypair(&blocks[0].0, &signer2).unwrap();
         watcher_db

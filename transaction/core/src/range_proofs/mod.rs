@@ -23,7 +23,8 @@ use error::Error;
 /// `blindings` - Pedersen commitment blinding for each value.
 ///
 /// # Returns
-/// The proof and the Pedersen commitments from `values` and `blindings` (padded to a power of 2).
+/// The proof and the Pedersen commitments from `values` and `blindings` (padded
+/// to a power of 2).
 pub fn generate_range_proofs<T: RngCore + CryptoRng>(
     values: &[u64],
     blindings: &[Scalar],
@@ -32,8 +33,8 @@ pub fn generate_range_proofs<T: RngCore + CryptoRng>(
     // Most of this comes directly from the example at
     // https://doc-internal.dalek.rs/bulletproofs/struct.RangeProof.html#example-1
 
-    // Aggregated rangeproofs operate on sets of `m` values, where `m` must be a power of 2.
-    // If the number of inputs is not a power of 2, pad them.
+    // Aggregated rangeproofs operate on sets of `m` values, where `m` must be a
+    // power of 2. If the number of inputs is not a power of 2, pad them.
     let values_padded: Vec<u64> = resize_slice_to_pow2::<u64>(values)?;
     let blindings_padded: Vec<Scalar> = resize_slice_to_pow2::<Scalar>(blindings)?;
 
@@ -77,10 +78,11 @@ pub fn check_range_proofs<T: RngCore + CryptoRng>(
         .map_err(Error::from)
 }
 
-/// Return a vector which is the slice plus enough of the final element such that
-/// the length of the vector is a power of two.
+/// Return a vector which is the slice plus enough of the final element such
+/// that the length of the vector is a power of two.
 ///
-/// If the next power of two is greater than the type's maximum value, an Error is returned.
+/// If the next power of two is greater than the type's maximum value, an Error
+/// is returned.
 ///
 /// # Arguments
 /// `slice` - (in) the slice with the data to use
@@ -132,7 +134,8 @@ pub mod tests {
     }
 
     #[test]
-    // `check_range_proofs` should return an error if the commitments do not agree with the proof.
+    // `check_range_proofs` should return an error if the commitments do not agree
+    // with the proof.
     fn test_check_range_proofs_rejects_wrong_commitments() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 

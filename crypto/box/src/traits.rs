@@ -18,8 +18,8 @@ use rand_core::{CryptoRng, RngCore};
 /// Error type for decryption
 ///
 /// Note that mac failed is indicated separately from this enum,
-/// because a design goal is that we can be constant-time with respect to mac failure,
-/// but enum cannot be matched or accessed without branching.
+/// because a design goal is that we can be constant-time with respect to mac
+/// failure, but enum cannot be matched or accessed without branching.
 #[derive(PartialEq, Eq, Fail, Debug)]
 pub enum Error {
     #[fail(display = "Error decoding curvepoint: {}", _0)]
@@ -52,15 +52,17 @@ pub trait CryptoBox<KexAlgo: Kex>: Default {
         buffer: &mut [u8],
     ) -> Result<GenericArray<u8, Self::FooterSize>, AeadError>;
 
-    /// Decrypt a buffer in place given the private key, and given the footer also
+    /// Decrypt a buffer in place given the private key, and given the footer
+    /// also
     ///
     /// Meant to mirror aead::decrypt_in_place_detached
     ///
     /// NOTE: Meant to run in constant-time even if the mac-check fails.
     ///
     /// Returns
-    /// `Ok(true)` if decryption succeeds. `buffer` contains the plaintext and SHOULD be zeroized after use.
-    /// `Ok(false) if MAC check / aead fails. `buffer` contains failed plaintext and SHOULD be zeroized after use.
+    /// `Ok(true)` if decryption succeeds. `buffer` contains the plaintext and
+    /// SHOULD be zeroized after use. `Ok(false) if MAC check / aead fails.
+    /// `buffer` contains failed plaintext and SHOULD be zeroized after use.
     /// `Err` if something is wrong with the cryptogram format.
     fn decrypt_in_place_detached(
         &self,
@@ -88,8 +90,9 @@ pub trait CryptoBox<KexAlgo: Kex>: Default {
         Ok(result)
     }
 
-    /// Decrypt a slice pointing to the cryptogram, returning a status and a Vec<u8> plaintext.
-    /// If status is false then mac check failed and plaintext should be zeroed.
+    /// Decrypt a slice pointing to the cryptogram, returning a status and a
+    /// Vec<u8> plaintext. If status is false then mac check failed and
+    /// plaintext should be zeroed.
     ///
     /// Meant to mirror aead::decrypt
     fn decrypt(
@@ -129,8 +132,8 @@ pub trait CryptoBox<KexAlgo: Kex>: Default {
     ///
     /// Returns:
     /// - true if decryption succeeded, buffer contains plaintext
-    /// - false if mac check failed, buffer contains failed plaintext.
-    ///   Buffer SHOULD be zeroized to avoid attacks
+    /// - false if mac check failed, buffer contains failed plaintext. Buffer
+    ///   SHOULD be zeroized to avoid attacks
     /// - error if anything else is wrong
     fn decrypt_in_place(
         &self,
@@ -150,8 +153,8 @@ pub trait CryptoBox<KexAlgo: Kex>: Default {
         Ok(status)
     }
 
-    /// Encrypt a fixed-length buffer, producing a fixed-length buffer containing
-    /// the cryptogram.
+    /// Encrypt a fixed-length buffer, producing a fixed-length buffer
+    /// containing the cryptogram.
     ///
     /// A non-allocating counterpart to encrypt
     fn encrypt_fixed_length<T, L>(
@@ -177,8 +180,8 @@ pub trait CryptoBox<KexAlgo: Kex>: Default {
     ///
     /// Returns:
     /// - true if decryption succeeded, buffer contains plaintext
-    /// - false if mac check failed, buffer contains failed plaintext.
-    ///   Buffer SHOULD be zeroized to avoid attacks
+    /// - false if mac check failed, buffer contains failed plaintext. Buffer
+    ///   SHOULD be zeroized to avoid attacks
     /// - error if anything else is wrong
     fn decrypt_fixed_length<L>(
         &self,

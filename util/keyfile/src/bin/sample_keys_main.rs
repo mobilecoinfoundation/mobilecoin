@@ -29,7 +29,8 @@ struct Config {
     #[structopt(long)]
     pub output_dir: Option<PathBuf>,
 
-    // Seed to use when generating keys (e.g. 1234567812345678123456781234567812345678123456781234567812345678).
+    // Seed to use when generating keys (e.g.
+    // 1234567812345678123456781234567812345678123456781234567812345678).
     #[structopt(short, long, parse(try_from_str=FromHex::from_hex))]
     pub seed: Option<[u8; 32]>,
 }

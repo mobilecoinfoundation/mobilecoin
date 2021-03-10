@@ -16,7 +16,8 @@ use core::hash::Hash;
 use mc_attest_core::{QuoteNonce, Report};
 use serde::{Deserialize, Serialize};
 
-/// The raw authentication request message, sent from an initiator to a responder
+/// The raw authentication request message, sent from an initiator to a
+/// responder
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct ClientAuthRequest(Vec<u8>);
 
@@ -32,7 +33,8 @@ impl Into<Vec<u8>> for ClientAuthRequest {
     }
 }
 
-/// The raw authentication response message, sent from a responder to an initiator.
+/// The raw authentication response message, sent from a responder to an
+/// initiator.
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct ClientAuthResponse(Vec<u8>);
 
@@ -48,7 +50,8 @@ impl From<Vec<u8>> for ClientAuthResponse {
     }
 }
 
-/// The raw authentication request message, sent from an initiator to a responder
+/// The raw authentication request message, sent from an initiator to a
+/// responder
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct PeerAuthRequest(Vec<u8>);
 
@@ -64,7 +67,8 @@ impl Into<Vec<u8>> for PeerAuthRequest {
     }
 }
 
-/// The raw authentication response message, sent from a responder to an initiator.
+/// The raw authentication response message, sent from a responder to an
+/// initiator.
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct PeerAuthResponse(Vec<u8>);
 

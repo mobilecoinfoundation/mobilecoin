@@ -1,8 +1,9 @@
 // Copyright (c) The Libra Core Contributors
 // SPDX-License-Identifier: Apache-2.0
 
-//! `OpCounters` is a collection of convenience methods to add arbitrary counters to modules.
-//! For now, it supports Int-Counters, Int-Gauges, and Histogram.
+//! `OpCounters` is a collection of convenience methods to add arbitrary
+//! counters to modules. For now, it supports Int-Counters, Int-Gauges, and
+//! Histogram.
 
 use prometheus::{
     core::{Collector, Desc},

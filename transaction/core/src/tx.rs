@@ -127,7 +127,8 @@ impl Tx {
         self.signature.key_images()
     }
 
-    /// Get the highest index of each membership proof referenced by the transaction.
+    /// Get the highest index of each membership proof referenced by the
+    /// transaction.
     pub fn get_membership_proof_highest_indices(&self) -> Vec<u64> {
         self.prefix.get_membership_proof_highest_indices()
     }
@@ -170,7 +171,8 @@ impl TxPrefix {
     /// * `inputs` - Inputs spent by the transaction.
     /// * `outputs` - Outputs created by the transaction.
     /// * `fee` - Transaction fee.
-    /// * `tombstone_block` - The block index at which this transaction is no longer valid.
+    /// * `tombstone_block` - The block index at which this transaction is no
+    ///   longer valid.
     pub fn new(inputs: Vec<TxIn>, outputs: Vec<TxOut>, fee: u64, tombstone_block: u64) -> TxPrefix {
         TxPrefix {
             inputs,
@@ -185,7 +187,8 @@ impl TxPrefix {
         TxHash::from(self.digest32::<MerlinTranscript>(b"mobilecoin-tx-prefix"))
     }
 
-    /// Return the `highest_index` for each tx_out membership proof in this transaction.
+    /// Return the `highest_index` for each tx_out membership proof in this
+    /// transaction.
     pub fn get_membership_proof_highest_indices(&self) -> Vec<u64> {
         self.inputs
             .iter()
@@ -213,12 +216,14 @@ impl TxPrefix {
 #[derive(Clone, Deserialize, Eq, PartialEq, Serialize, Message, Digestible)]
 pub struct TxIn {
     /// A "ring" of outputs containing the single output that is being spent.
-    /// It would be nice to use [TxOut; RING_SIZE] here, but Prost only works with Vec.
+    /// It would be nice to use [TxOut; RING_SIZE] here, but Prost only works
+    /// with Vec.
     #[prost(message, repeated, tag = "1")]
     pub ring: Vec<TxOut>,
 
     /// Proof that each TxOut in `ring` is in the ledger.
-    /// It would be nice to use [TxOutMembershipProof; RING_SIZE] here, but Prost only works with Vec.
+    /// It would be nice to use [TxOutMembershipProof; RING_SIZE] here, but
+    /// Prost only works with Vec.
     #[prost(message, repeated, tag = "2")]
     pub proofs: Vec<TxOutMembershipProof>,
 }
@@ -279,13 +284,14 @@ impl TxOut {
     }
 }
 
-/// A Merkle proof-of-membership for the TxOut at the given index contains a set of hashes:
-/// it includes each hash between the leaf and the root, as well as each "other" child hash.
-/// It is assumed that the proof accompanies the leaf TxOut, so its leaf hash may be computed as
-/// part of checking the proof.
+/// A Merkle proof-of-membership for the TxOut at the given index contains a set
+/// of hashes: it includes each hash between the leaf and the root, as well as
+/// each "other" child hash. It is assumed that the proof accompanies the leaf
+/// TxOut, so its leaf hash may be computed as part of checking the proof.
 ///
-/// In total, the TxOut, its index, and the set of non-leaf hashes are sufficient to re-compute
-/// the root hash, which completes the proof-of-membership verification.
+/// In total, the TxOut, its index, and the set of non-leaf hashes are
+/// sufficient to re-compute the root hash, which completes the
+/// proof-of-membership verification.
 ///
 /// # References
 /// * [How Log Proofs Work](http://www.certificate-transparency.org/log-proofs-work)
@@ -300,8 +306,8 @@ pub struct TxOutMembershipProof {
     pub highest_index: u64,
 
     /// All hashes needed to recompute the root hash.
-    /// These elements must be listed in the order in which they should be combined
-    /// for the proof to be valid.
+    /// These elements must be listed in the order in which they should be
+    /// combined for the proof to be valid.
     #[prost(message, repeated, tag = "3")]
     pub elements: Vec<TxOutMembershipElement>,
 }
@@ -311,9 +317,11 @@ impl TxOutMembershipProof {
     ///
     /// # Arguments
     /// * `index` - The index of the TxOut.
-    /// * `highest_index` - The index of the last TxOut in the ledger, indicating the size of the tree that the proof refers to.
-    /// * `elements` - The tx out membership elements, containing ranges referring to subtrees in the tree, and hashes.
-    ///                These must be provided in the order in which they should be combined to validate the proof.
+    /// * `highest_index` - The index of the last TxOut in the ledger,
+    ///   indicating the size of the tree that the proof refers to.
+    /// * `elements` - The tx out membership elements, containing ranges
+    ///   referring to subtrees in the tree, and hashes. These must be provided
+    ///   in the order in which they should be combined to validate the proof.
     pub fn new(index: u64, highest_index: u64, elements: Vec<TxOutMembershipElement>) -> Self {
         Self {
             index,
@@ -324,7 +332,8 @@ impl TxOutMembershipProof {
 }
 
 #[derive(Clone, Deserialize, Eq, PartialOrd, Ord, PartialEq, Serialize, Message, Digestible)]
-/// An element of a TxOut membership proof, denoting an internal hash node in a Merkle tree.
+/// An element of a TxOut membership proof, denoting an internal hash node in a
+/// Merkle tree.
 pub struct TxOutMembershipElement {
     /// The range of leaf nodes "under" this internal hash.
     #[prost(message, required, tag = "1")]

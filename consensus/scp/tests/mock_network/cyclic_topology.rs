@@ -2,8 +2,8 @@
 
 // Ring style network topologies.
 
-// We allow dead code because not all integration tests use all of the common code.
-// https://github.com/rust-lang/rust/issues/46379
+// We allow dead code because not all integration tests use all of the common
+// code. https://github.com/rust-lang/rust/issues/46379
 #![allow(dead_code)]
 
 use crate::mock_network;

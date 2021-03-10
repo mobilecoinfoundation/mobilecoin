@@ -12,8 +12,8 @@ use mc_fog_types::{Report as ProstReport, ReportResponse as ProstReportResponse}
 use prost::Message as ProstMessage;
 use protobuf::{Message as ProtobufMessage, RepeatedField};
 
-// Round trip a structure through protobuf type, once using serialization to bytes
-// and deserialization, and once using the From conversions.
+// Round trip a structure through protobuf type, once using serialization to
+// bytes and deserialization, and once using the From conversions.
 fn round_trip_prosty<SRC, DEST>(prost_val: SRC)
 where
     SRC: ProstMessage + Eq + Default + Clone + From<DEST>,
@@ -25,8 +25,8 @@ where
     assert!(prost_val == prost_val2);
 }
 
-// Round trip a structure through protobuf type, once using serialization to bytes
-// and deserialization, and once using the From conversions.
+// Round trip a structure through protobuf type, once using serialization to
+// bytes and deserialization, and once using the From conversions.
 fn round_trip_protobuf<SRC, DEST>(protobuf_val: SRC)
 where
     SRC: ProtobufMessage + Eq + Clone + From<DEST>,

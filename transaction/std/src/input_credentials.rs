@@ -21,7 +21,8 @@ pub struct InputCredentials {
     /// Private key for the "real" output being spent.
     pub onetime_private_key: RistrettoPrivate,
 
-    /// Public key of the transaction that created the "real" output being spent.
+    /// Public key of the transaction that created the "real" output being
+    /// spent.
     pub real_output_public_key: RistrettoPublic,
 
     /// View private key for the address this input was sent to
@@ -33,10 +34,12 @@ impl InputCredentials {
     ///
     /// # Arguments
     /// * `ring` - A "ring" of transaction outputs.
-    /// * `membership_proofs` - Proof that each TxOut in `ring` is in the ledger.
+    /// * `membership_proofs` - Proof that each TxOut in `ring` is in the
+    ///   ledger.
     /// * `real_index` - Index in `ring` of the output being spent.
     /// * `onetime_private_key` - Private key for the output being spent.
-    /// * `view_private_key` - The view private key belonging to the owner of the real output.
+    /// * `view_private_key` - The view private key belonging to the owner of
+    ///   the real output.
     pub fn new(
         ring: Vec<TxOut>,
         membership_proofs: Vec<TxOutMembershipProof>,
@@ -57,8 +60,8 @@ impl InputCredentials {
         let real_output_public_key = RistrettoPublic::try_from(&real_input.public_key)?;
 
         // Sort the ring and the corresponding proofs. This ensures that the ordering
-        // of mixins in the transaction does not depend on the user's implementation for obtaining
-        // mixins.
+        // of mixins in the transaction does not depend on the user's implementation for
+        // obtaining mixins.
         let mut ring_and_proofs: Vec<(TxOut, TxOutMembershipProof)> = ring
             .into_iter()
             .zip(membership_proofs.into_iter())

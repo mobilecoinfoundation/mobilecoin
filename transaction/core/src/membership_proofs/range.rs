@@ -45,12 +45,14 @@ impl Range {
 
 /// Ranges are ordered by `len`, then lexicographically by (from,to).
 ///
-/// This is a total ordering of (u64, u64) tuples. Additionally, when a node of a binary tree
-/// (i.e. Merkle tree) is identified with the range of indices below that node, the len of a
-/// range is equal to 2^h, where h is the height of the node in the tree. This means that traversing
-/// a list of ranges sorted in ascending order corresponds to a bottom-up traversal of the tree
-/// (which is handy for computing Merkle hashes). Ordering ranges of equal len lexicographically
-/// makes it a bottom-up and left-to-right traversal of the tree.
+/// This is a total ordering of (u64, u64) tuples. Additionally, when a node of
+/// a binary tree (i.e. Merkle tree) is identified with the range of indices
+/// below that node, the len of a range is equal to 2^h, where h is the height
+/// of the node in the tree. This means that traversing a list of ranges sorted
+/// in ascending order corresponds to a bottom-up traversal of the tree
+/// (which is handy for computing Merkle hashes). Ordering ranges of equal len
+/// lexicographically makes it a bottom-up and left-to-right traversal of the
+/// tree.
 impl Ord for Range {
     fn cmp(&self, other: &Range) -> Ordering {
         if self.len() != other.len() {
@@ -82,9 +84,11 @@ mod range_tests {
     }
 
     #[test]
-    // `len` should return the number of indices in a "negative" range where from > to.
+    // `len` should return the number of indices in a "negative" range where from >
+    // to.
     fn test_len_negative_range() {
-        // A "negative" range is possible by bypassing the constructor, e.g. when deserializing.
+        // A "negative" range is possible by bypassing the constructor, e.g. when
+        // deserializing.
         assert_eq!(Range { from: 7, to: 0 }.len(), 8);
         assert_eq!(Range { from: 44, to: 6 }.len(), 39);
         assert_eq!(

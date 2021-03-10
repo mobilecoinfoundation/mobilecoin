@@ -160,7 +160,8 @@ mod peer_tests {
     }
 
     #[test_with_logger]
-    // `auth` should reject unauthenticated responses when configured with an authenticator.
+    // `auth` should reject unauthenticated responses when configured with an
+    // authenticator.
     fn test_peer_auth_unauthenticated(logger: Logger) {
         let authenticator = Arc::new(TokenAuthenticator::new(
             [1; 32],
@@ -227,7 +228,8 @@ mod client_tests {
     }
 
     #[test_with_logger]
-    // `auth` should reject unauthenticated responses when configured with an authenticator.
+    // `auth` should reject unauthenticated responses when configured with an
+    // authenticator.
     fn test_client_auth_unauthenticated(logger: Logger) {
         let authenticator = Arc::new(TokenAuthenticator::new(
             [1; 32],

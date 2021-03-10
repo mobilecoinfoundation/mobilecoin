@@ -46,13 +46,14 @@ use std::{
     sync::Arc,
 };
 
-/// This is a PeerConnection implementation which ensures transparent attestation between the local
-/// and remote enclaves.
+/// This is a PeerConnection implementation which ensures transparent
+/// attestation between the local and remote enclaves.
 pub struct PeerConnection<Enclave: ConsensusEnclave + Clone + Send + Sync> {
     /// The local enclave, which the remote node will be peered with.
     enclave: Enclave,
 
-    /// When communicating with the remote enclave, this is the handshake hash / session ID / channel ID.
+    /// When communicating with the remote enclave, this is the handshake hash /
+    /// session ID / channel ID.
     channel_id: Option<PeerSession>,
 
     /// The local node ID

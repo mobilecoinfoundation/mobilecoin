@@ -24,7 +24,8 @@ pub struct BlockchainApiService<L: Ledger + Clone> {
     /// GRPC request authenticator.
     authenticator: Arc<dyn Authenticator + Send + Sync>,
 
-    /// Maximal number of results to return in API calls that return multiple results.
+    /// Maximal number of results to return in API calls that return multiple
+    /// results.
     max_page_size: u16,
 
     /// Logger.
@@ -62,9 +63,10 @@ impl<L: Ledger + Clone> BlockchainApiService<L> {
 
     /// Returns blocks in the range [offset, offset + limit).
     ///
-    /// If `limit` exceeds `max_page_size`, then only [offset, offset + max_page_size) is returned.
-    /// If `limit` exceeds the maximum index in the database, then only [offset, max_index] is returned.
-    /// This method is a hack to expose the `get_blocks` implementation for unit testing.
+    /// If `limit` exceeds `max_page_size`, then only [offset, offset +
+    /// max_page_size) is returned. If `limit` exceeds the maximum index in
+    /// the database, then only [offset, max_index] is returned. This method
+    /// is a hack to expose the `get_blocks` implementation for unit testing.
     fn get_blocks_helper(&mut self, offset: u64, limit: u32) -> Result<BlocksResponse, ()> {
         let start_index = offset;
         let end_index = offset + cmp::min(limit, self.max_page_size as u32) as u64;
@@ -215,8 +217,8 @@ mod tests {
     }
 
     #[test_with_logger]
-    // `get_last_block_info` should reject unauthenticated responses when configured with an
-    // authenticator.
+    // `get_last_block_info` should reject unauthenticated responses when configured
+    // with an authenticator.
     fn test_get_last_block_info_rejects_unauthenticated(logger: Logger) {
         let ledger_db = create_ledger();
         let authenticator = Arc::new(TokenAuthenticator::new(
@@ -285,8 +287,8 @@ mod tests {
     }
 
     #[test_with_logger]
-    // `get_blocks` should return the intersection of the request with the available data
-    // if a client requests data that does not exist.
+    // `get_blocks` should return the intersection of the request with the available
+    // data if a client requests data that does not exist.
     fn test_get_blocks_request_out_of_bounds(logger: Logger) {
         let mut ledger_db = create_ledger();
         let authenticator = Arc::new(AnonymousAuthenticator::default());
@@ -298,14 +300,16 @@ mod tests {
             BlockchainApiService::new(ledger_db, authenticator, logger);
 
         {
-            // The range [0, 1000) requests values that don't exist. The response should contain [0,10).
+            // The range [0, 1000) requests values that don't exist. The response should
+            // contain [0,10).
             let block_response = blockchain_api_service.get_blocks_helper(0, 1000).unwrap();
             assert_eq!(10, block_response.blocks.len());
         }
     }
 
     #[test_with_logger]
-    // `get_blocks` should only return the "maximum" number of items if the requested range is larger.
+    // `get_blocks` should only return the "maximum" number of items if the
+    // requested range is larger.
     fn test_get_blocks_max_size(logger: Logger) {
         let mut ledger_db = create_ledger();
         let authenticator = Arc::new(AnonymousAuthenticator::default());
@@ -322,7 +326,8 @@ mod tests {
             BlockchainApiService::new(ledger_db, authenticator, logger);
         blockchain_api_service.set_max_page_size(5);
 
-        // The request exceeds the max_page_size, so only max_page_size items should be returned.
+        // The request exceeds the max_page_size, so only max_page_size items should be
+        // returned.
         let block_response = blockchain_api_service.get_blocks_helper(0, 100).unwrap();
         let blocks = block_response.blocks;
         assert_eq!(5, blocks.len());

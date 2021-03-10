@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-//! GRPC authenticator that relies on a shared secret for generating and verifying tokens.
+//! GRPC authenticator that relies on a shared secret for generating and
+//! verifying tokens.
 
 use super::*;
 
@@ -11,11 +12,12 @@ use std::{str, time::Duration};
 use subtle::ConstantTimeEq;
 use zeroize::Zeroize;
 
-/// Token-based authentication: An object that implements `Authenticator`, allowing to authenticate
-/// users using HMAC-generated tokens.
+/// Token-based authentication: An object that implements `Authenticator`,
+/// allowing to authenticate users using HMAC-generated tokens.
 pub struct TokenAuthenticator<TP: TimeProvider> {
-    /// Secret shared between the authenticator and then token generator, allowing for generated
-    /// tokens to be cryptographically-verified by the authenticator.
+    /// Secret shared between the authenticator and then token generator,
+    /// allowing for generated tokens to be cryptographically-verified by
+    /// the authenticator.
     shared_secret: [u8; 32],
 
     /// The maximum duration a token is valid for.

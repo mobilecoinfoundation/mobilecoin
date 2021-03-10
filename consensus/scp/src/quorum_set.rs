@@ -2,7 +2,8 @@
 
 //! The quorum set is the essential unit of trust in SCP.
 //!
-//! A quorum set includes the members of the network, which a given node trusts and depends on.
+//! A quorum set includes the members of the network, which a given node trusts
+//! and depends on.
 use mc_common::{NodeID, ResponderId};
 use mc_crypto_digestible::Digestible;
 use serde::{Deserialize, Serialize};
@@ -126,7 +127,8 @@ impl<ID: GenericNodeId> QuorumSet<ID> {
         self.members.sort();
     }
 
-    /// Returns a flattened set of all nodes contained in q and its nested QSets.
+    /// Returns a flattened set of all nodes contained in q and its nested
+    /// QSets.
     pub fn nodes(&self) -> HashSet<ID> {
         let mut result = HashSet::<ID>::default();
         for member in self.members.iter() {
@@ -172,12 +174,14 @@ impl<ID: GenericNodeId> QuorumSet<ID> {
     /// Attempts to find a blocking set matching a given predicate `predicate`.
     ///
     /// # Arguments
-    /// * `msgs` - A map of ID -> Msg holding the newest message received from each node.
+    /// * `msgs` - A map of ID -> Msg holding the newest message received from
+    ///   each node.
     /// * `pred` - Predicate to apply to the messages.
     ///
     /// # Returns
-    /// * (Set of nodes forming a bocking set and matching the predicate, the predicate).
-    ///   The set of nodes would be empty if no blocking set matching the predicate was found.
+    /// * (Set of nodes forming a bocking set and matching the predicate, the
+    ///   predicate). The set of nodes would be empty if no blocking set
+    ///   matching the predicate was found.
     pub fn findBlockingSet<V: Value, P: Predicate<V, ID>>(
         &self,
         msgs: &HashMap<ID, Msg<V, ID>>,
@@ -192,15 +196,18 @@ impl<ID: GenericNodeId> QuorumSet<ID> {
         )
     }
 
-    /// Internal helper method, implementing the logic for finding a blocking set.
+    /// Internal helper method, implementing the logic for finding a blocking
+    /// set.
     ///
     /// # Arguments
     /// * `needed` - How many more nodes do we need to reach a blocking set.
-    /// * `members` - Array of quorum set members we are considering as potential blocking set
-    ///    members.
-    /// * `msgs` - A map of ID -> Msg holding the newest message received from each node.
+    /// * `members` - Array of quorum set members we are considering as
+    ///   potential blocking set members.
+    /// * `msgs` - A map of ID -> Msg holding the newest message received from
+    ///   each node.
     /// * `pred` - Predicate to apply to the messages.
-    /// * `node_so_far` - Nodes we have collected so far in our quest for finding a blocking set.
+    /// * `node_so_far` - Nodes we have collected so far in our quest for
+    ///   finding a blocking set.
     fn findBlockingSetHelper<V: Value, P: Predicate<V, ID>>(
         needed: u32,
         members: &[QuorumSetMember<ID>],
@@ -218,8 +225,8 @@ impl<ID: GenericNodeId> QuorumSet<ID> {
             return (HashSet::default(), pred);
         }
 
-        // See if the first member of our potential nodes/sets allows us to reach a blocking
-        // threshold.
+        // See if the first member of our potential nodes/sets allows us to reach a
+        // blocking threshold.
         match &members[0] {
             QuorumSetMember::Node(N) => {
                 // If we have received a message from this member
@@ -264,7 +271,8 @@ impl<ID: GenericNodeId> QuorumSet<ID> {
             }
         }
 
-        // First member didn't get us to a blocking set, move to the next member and try again.
+        // First member didn't get us to a blocking set, move to the next member and try
+        // again.
         Self::findBlockingSetHelper(needed, &members[1..], msgs, pred, nodes_so_far)
     }
 
@@ -272,12 +280,14 @@ impl<ID: GenericNodeId> QuorumSet<ID> {
     ///
     /// # Arguments
     /// * `node_id` - The local node ID.
-    /// * `msgs` - A map of ID -> Msg holding the newest message received from each node.
+    /// * `msgs` - A map of ID -> Msg holding the newest message received from
+    ///   each node.
     /// * `pred` - Predicate to apply to the messages.
     ///
     /// # Returns
-    /// * (Set of nodes forming a quorum and matching the predicate, the predicate).
-    ///   The set of nodes would be empty if no quorum matching the predicate was found.
+    /// * (Set of nodes forming a quorum and matching the predicate, the
+    ///   predicate). The set of nodes would be empty if no quorum matching the
+    ///   predicate was found.
     pub fn findQuorum<V: Value, P: Predicate<V, ID>>(
         &self,
         node_id: &ID,
@@ -297,10 +307,13 @@ impl<ID: GenericNodeId> QuorumSet<ID> {
     ///
     /// # Arguments
     /// * `threshold` - How many more nodes do we need to reach a quorum.
-    /// * `members` - Array of quorum set members we are considering as potential quorum members.
-    /// * `msgs` - A map of ID -> Msg holding the newest message received from each node.
+    /// * `members` - Array of quorum set members we are considering as
+    ///   potential quorum members.
+    /// * `msgs` - A map of ID -> Msg holding the newest message received from
+    ///   each node.
     /// * `pred` - Predicate to apply to the messages.
-    /// * `node_so_far` - Nodes we have collected so far in our quest for finding a quorum.
+    /// * `node_so_far` - Nodes we have collected so far in our quest for
+    ///   finding a quorum.
     fn findQuorumHelper<V: Value, P: Predicate<V, ID>>(
         threshold: u32,
         members: &[QuorumSetMember<ID>],
@@ -318,7 +331,8 @@ impl<ID: GenericNodeId> QuorumSet<ID> {
             return (HashSet::default(), pred);
         }
 
-        // See if the first member of our potential nodes/sets allows us to reach quorum.
+        // See if the first member of our potential nodes/sets allows us to reach
+        // quorum.
         match &members[0] {
             QuorumSetMember::Node(N) => {
                 // If we already seen this node and it got added to the list of potential
@@ -385,7 +399,8 @@ impl<ID: GenericNodeId> QuorumSet<ID> {
             }
         }
 
-        // First member didn't get us to a quorum, move to the next member and try again.
+        // First member didn't get us to a quorum, move to the next member and try
+        // again.
         Self::findQuorumHelper(threshold, &members[1..], msgs, pred, nodes_so_far)
     }
 }
@@ -706,7 +721,8 @@ mod quorum_set_tests {
     }
 
     #[test]
-    // findBlockingSet returns an empty set if the predicate returns false for the blocking set
+    // findBlockingSet returns an empty set if the predicate returns false for the
+    // blocking set
     fn test_blocking_set_with_false_predicate() {
         // Node 2 and 3 form a blocking set
         let local_node_quorum_set: QuorumSet = {
@@ -875,7 +891,8 @@ mod quorum_set_tests {
     }
 
     #[test]
-    // findQuorum returns an empty set when there is a quorum but the predicate returns false
+    // findQuorum returns an empty set when there is a quorum but the predicate
+    // returns false
     fn test_has_quorum_with_false_predicate() {
         // Node 2 and 3 form a blocking set. Node 2, 3, 5, 6 form a quorum.
         let local_node_quorum_set: QuorumSet = {

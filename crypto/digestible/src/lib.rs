@@ -7,39 +7,43 @@ pub use merlin::Transcript as MerlinTranscript;
 use cfg_if::cfg_if;
 use generic_array::{ArrayLength, GenericArray};
 
-/// A trait for creating non-malleable digests of objects using merlin transcripts.
+/// A trait for creating non-malleable digests of objects using merlin
+/// transcripts.
 ///
 /// An implementation of the trait brings the DigestTranscript object to the
 /// bytes of self in a fixed sequence, adding any appropriate context.
 ///
-/// Intuitively, this is like serializing the object into a series of "append_bytes"
-/// calls -- however, the representation must be totally canonical.
+/// Intuitively, this is like serializing the object into a series of
+/// "append_bytes" calls -- however, the representation must be totally
+/// canonical.
 ///
 /// For small objects it likely calls "append_bytes" once.
-/// For aggregates it likely calls "append_to_transcript" recursively on the members,
-/// passing member names as context. (See digestible-derive crate for specifics.)
+/// For aggregates it likely calls "append_to_transcript" recursively on the
+/// members, passing member names as context. (See digestible-derive crate for
+/// specifics.)
 ///
-/// In merlin documentation, having the transcript protocol call itself recursively
-/// is called "protocol composition".
+/// In merlin documentation, having the transcript protocol call itself
+/// recursively is called "protocol composition".
 /// (We refer the reader to merlin docu for more discussion.)
 ///
 /// Implementations of this trait should generally just call `append_primitive`.
-/// The data that they pass should be a canonical representation of the value as bytes.
-/// Implementations should not produce results that depends on
+/// The data that they pass should be a canonical representation of the value as
+/// bytes. Implementations should not produce results that depends on
 /// endianness of the target, should prefer little endian if relevant.
-/// Implementations may assume that when calling `append_primitive`, the data will
-/// be framed automatically, and need not frame it themselves.
+/// Implementations may assume that when calling `append_primitive`, the data
+/// will be framed automatically, and need not frame it themselves.
 ///
 /// Implementations of this trait for containers should usually work by calling
-/// `append_seq_header` and then iterating over their children and appending them.
-/// See `BTreeSet` as an example -- if needed, we could make a macro to reduce the
-/// amount of code duplication when doing this.
+/// `append_seq_header` and then iterating over their children and appending
+/// them. See `BTreeSet` as an example -- if needed, we could make a macro to
+/// reduce the amount of code duplication when doing this.
 ///
-/// Implementations of this trait for structs and enums should generally use `derive(Digestible)`.
+/// Implementations of this trait for structs and enums should generally use
+/// `derive(Digestible)`.
 ///
 /// One benefit of this version of Digestible is that it integrates well with
-/// Schnorrkel -- a Digestible object can be added directly to the signing transcript,
-/// avoiding the overhead of creating multiple merlin transcripts.
+/// Schnorrkel -- a Digestible object can be added directly to the signing
+/// transcript, avoiding the overhead of creating multiple merlin transcripts.
 pub trait Digestible {
     /// Add the data from self to the transcript
     /// Context should be a string-literal
@@ -61,14 +65,15 @@ pub trait Digestible {
         result
     }
 
-    /// To support schema evolution, in some contexts the generated code for a Digestible
-    /// implementation of a compound type should append its children to the transcript,
-    /// but allow them to skip themselves if they are empty.
-    /// For members of a struct, this is allowed, because they don't have a fixed set of members
-    /// but for a variant it isn't allowed, because the value cannot be omitted.
+    /// To support schema evolution, in some contexts the generated code for a
+    /// Digestible implementation of a compound type should append its
+    /// children to the transcript, but allow them to skip themselves if
+    /// they are empty. For members of a struct, this is allowed, because
+    /// they don't have a fixed set of members but for a variant it isn't
+    /// allowed, because the value cannot be omitted.
     ///
-    /// The user of the library should normally not call this directly, or override it.
-    /// It has special implementations for types like Option.
+    /// The user of the library should normally not call this directly, or
+    /// override it. It has special implementations for types like Option.
     #[inline]
     fn append_to_transcript_allow_omit<DT: DigestTranscript>(
         &self,
@@ -80,9 +85,9 @@ pub trait Digestible {
 }
 
 /// A trait implemented by protocol transcript objects.
-/// This represents the functions of merlin::Transcript that we need for digestible
-/// to function. By having a trait, we can easily substitute mock objects for tests,
-/// etc.,
+/// This represents the functions of merlin::Transcript that we need for
+/// digestible to function. By having a trait, we can easily substitute mock
+/// objects for tests, etc.,
 pub trait DigestTranscript {
     // These low-level calls are needed to implement digest32 etc.,
     // and correspond to raw calls on a MerlinTranscript
@@ -90,13 +95,14 @@ pub trait DigestTranscript {
     fn append_bytes(&mut self, context: &'static [u8], data: impl AsRef<[u8]>);
     fn extract_digest(self, output: &mut [u8; 32]);
 
-    // These high-level calls should be used exclusivley when implementing digestible.
-    // These four calls correspond to the four types of nodes in the AST
-    // that is being encoded into the digest.
+    // These high-level calls should be used exclusivley when implementing
+    // digestible. These four calls correspond to the four types of nodes in the
+    // AST that is being encoded into the digest.
     //
     // Not recommended to override any of these, except for testing purposes
 
-    /// Append a primitive with particular context string, type name, and byte data.
+    /// Append a primitive with particular context string, type name, and byte
+    /// data.
     ///
     /// The context string comes from the caller context.
     /// If the primitive is a struct member, this is its field name.
@@ -124,8 +130,9 @@ pub trait DigestTranscript {
     /// Begin a sequence with a particular context string and length.
     ///
     /// The context string comes from the caller context.
-    /// The length is the number of elements you will then append to the transcript.
-    /// You must actually append all of these elements, and it is not okay to omit any of them.
+    /// The length is the number of elements you will then append to the
+    /// transcript. You must actually append all of these elements, and it
+    /// is not okay to omit any of them.
     #[inline]
     fn append_seq_header(&mut self, context: &'static [u8], len: usize) {
         debug_assert!(len != 0, "You should usually use append_none when length is zero, to better support schema evolution");
@@ -135,10 +142,11 @@ pub trait DigestTranscript {
 
     /// Begin an aggregate.
     ///
-    /// The context string comes from the caller context, the type_name should normally
-    /// be the identifier of the struct.
-    /// You should then append any elements correpsonding to members of the struct,
-    /// with appropriate context strings, then append a matching aggregate closer.
+    /// The context string comes from the caller context, the type_name should
+    /// normally be the identifier of the struct.
+    /// You should then append any elements correpsonding to members of the
+    /// struct, with appropriate context strings, then append a matching
+    /// aggregate closer.
     #[inline]
     fn append_agg_header(&mut self, context: &'static [u8], type_name: &[u8]) {
         self.append_bytes(context, ast_domain_separators::AGGREGATE);
@@ -147,17 +155,19 @@ pub trait DigestTranscript {
 
     /// Close an aggregate
     ///
-    /// The context string and type name must match the header that you are closing.
+    /// The context string and type name must match the header that you are
+    /// closing.
     #[inline]
     fn append_agg_closer(&mut self, context: &'static [u8], type_name: &[u8]) {
         self.append_bytes(context, ast_domain_separators::AGGREGATE_END);
         self.append_bytes(b"name", type_name);
     }
 
-    /// Create a variant with a particular context string, type_name, and discriminant.
+    /// Create a variant with a particular context string, type_name, and
+    /// discriminant.
     ///
-    /// You must append one valid AST node after this header to complete the variant node,
-    /// and this node must not be omitted.
+    /// You must append one valid AST node after this header to complete the
+    /// variant node, and this node must not be omitted.
     #[inline]
     fn append_var_header(&mut self, context: &'static [u8], type_name: &[u8], which: u32) {
         self.append_bytes(context, ast_domain_separators::VARIANT);
@@ -170,7 +180,8 @@ pub trait DigestTranscript {
     /// This is used with
     /// (1) empty options, when it is not allowed to omit completely
     /// (2) empty sequences, when it is not allowed to omit completely
-    /// (3) rust enum without any associated data, because it is not allowed to omit completely
+    /// (3) rust enum without any associated data, because it is not allowed to
+    /// omit completely
     #[inline]
     fn append_none(&mut self, context: &'static [u8]) {
         self.append_bytes(context, ast_domain_separators::NONE);
@@ -206,15 +217,18 @@ pub mod ast_domain_separators {
 
 // Unfortunately, there is a tension between the following things:
 //
-// - Vec<Digestible> should have a generic implementation that inserts length padding, then iterates
-// - Vec<u8> should have a fast implementation that inserts length, then passes the entire slice.
+// - Vec<Digestible> should have a generic implementation that inserts length
+//   padding, then iterates
+// - Vec<u8> should have a fast implementation that inserts length, then passes
+//   the entire slice.
 // - u8 should be digestible because it is a builtin primitive.
 //
-// Because rust does not allow Specialization yet, these three things cannot all implement Digestible.
+// Because rust does not allow Specialization yet, these three things cannot all
+// implement Digestible.
 //
-// We have almost no use-cases for putting raw u8's in our structs, and we have lots
-// of use cases for Vec<Digestible> and Vec<u8> in our structs, so the simplest thing
-// is to not mark u8 as digestible.
+// We have almost no use-cases for putting raw u8's in our structs, and we have
+// lots of use cases for Vec<Digestible> and Vec<u8> in our structs, so the
+// simplest thing is to not mark u8 as digestible.
 //
 // We should fix this when rust adds support for specialization.
 // impl Digestible for u8 {
@@ -348,9 +362,11 @@ impl Digestible for &[u8] {
 }
 
 /// Occasionally, a type can be digested by the same implementation it uses for
-/// AsRef<[u8]>, and no additional disambiguating context information or type information.
+/// AsRef<[u8]>, and no additional disambiguating context information or type
+/// information.
 ///
-/// This is mainly for some core types that really are just dumb representations of bytes.
+/// This is mainly for some core types that really are just dumb representations
+/// of bytes.
 ///
 /// This trait can be used to mark such types. It provides a blanket
 /// impl for digestible in terms of AsRef<u8>.
@@ -409,8 +425,8 @@ impl<Length: ArrayLength<u8>> DigestibleAsBytes for GenericArray<u8, Length> {}
 // Implementation for slices of Digestible
 // This is treated as a Seq in the abstract structure hashing schema
 //
-// Note that this includes length, because the size is dynamic so we must protect
-// against length extension attacks.
+// Note that this includes length, because the size is dynamic so we must
+// protect against length extension attacks.
 impl<T: Digestible> Digestible for &[T] {
     #[inline]
     fn append_to_transcript<DT: DigestTranscript>(
@@ -419,7 +435,8 @@ impl<T: Digestible> Digestible for &[T] {
         transcript: &mut DT,
     ) {
         if self.is_empty() {
-            // This allows for schema evolution in variant types, it means Vec can be added to a fieldless enum
+            // This allows for schema evolution in variant types, it means Vec can be added
+            // to a fieldless enum
             transcript.append_none(context);
         } else {
             transcript.append_seq_header(context, self.len());
@@ -447,11 +464,12 @@ impl<T: Digestible> Digestible for &[T] {
 
 // Implement for Option<T>
 //
-// Option has a special implementation because it is used to allow for schema evolution,
-// like "optional" fields in protobuf.
+// Option has a special implementation because it is used to allow for schema
+// evolution, like "optional" fields in protobuf.
 //
-// When we are allowed to omit ourselves, we don't append anything to transcript when we are empty.
-// When we aren't allowed to omit ourselves, we call append_none on the transcript if we are empty.
+// When we are allowed to omit ourselves, we don't append anything to transcript
+// when we are empty. When we aren't allowed to omit ourselves, we call
+// append_none on the transcript if we are empty.
 impl<T: Digestible> Digestible for Option<T> {
     #[inline]
     fn append_to_transcript<DT: DigestTranscript>(
@@ -468,7 +486,8 @@ impl<T: Digestible> Digestible for Option<T> {
             }
         }
     }
-    // When we are permitted to omit ourselves, we don't create an AST node at all when we are empty
+    // When we are permitted to omit ourselves, we don't create an AST node at all
+    // when we are empty
     #[inline]
     fn append_to_transcript_allow_omit<DT: DigestTranscript>(
         &self,

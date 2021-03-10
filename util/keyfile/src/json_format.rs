@@ -3,8 +3,8 @@
 //! account key root entropy. As part of our CD, we maintain the
 //! strategies/test_client code based on this format.
 //!
-//! It is NOT RECOMMENDED to use this for new code, please use protobuf RootIdentity
-//! This is only being used in the .json files.
+//! It is NOT RECOMMENDED to use this for new code, please use protobuf
+//! RootIdentity This is only being used in the .json files.
 
 use mc_account_keys::{RootEntropy, RootIdentity};
 use serde::{Deserialize, Serialize};

@@ -92,9 +92,9 @@ mod tests {
     }
 
     #[test]
-    // the blockchain::BlockSignature definition matches the BlockSignature prost attributes.
-    // This ensures the definition in the .proto files matches the prost attributes inside the
-    // BlockSignature struct.
+    // the blockchain::BlockSignature definition matches the BlockSignature prost
+    // attributes. This ensures the definition in the .proto files matches the
+    // prost attributes inside the BlockSignature struct.
     fn test_blockchain_block_signature_matches_prost() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
 

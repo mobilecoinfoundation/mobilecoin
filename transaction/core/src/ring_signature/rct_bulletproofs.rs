@@ -38,8 +38,9 @@ pub struct SignatureRctBulletproofs {
     pub pseudo_output_commitments: Vec<CompressedCommitment>,
 
     /// Proof that all pseudo_outputs and transaction outputs are in [0, 2^64).
-    /// This contains range_proof.to_bytes(). It is stored this way so that this struct may derive
-    /// Default, which is a requirement for serializing with Prost.
+    /// This contains range_proof.to_bytes(). It is stored this way so that this
+    /// struct may derive Default, which is a requirement for serializing
+    /// with Prost.
     #[prost(bytes, tag = "3")]
     pub range_proof_bytes: Vec<u8>,
 }
@@ -49,10 +50,13 @@ impl SignatureRctBulletproofs {
     ///
     /// # Arguments
     /// * `message` - The messages to be signed, e.g. Hash(TxPrefix).
-    /// * `rings` - One or more rings of one-time addresses and amount commitments.
+    /// * `rings` - One or more rings of one-time addresses and amount
+    ///   commitments.
     /// * `real_input_indices` - The index of the real input in each ring.
-    /// * `input_secrets` - One-time private key, amount value, and amount blinding for each real input.
-    /// * `output_values_and_blindings` - Value and blinding for each output amount commitment.
+    /// * `input_secrets` - One-time private key, amount value, and amount
+    ///   blinding for each real input.
+    /// * `output_values_and_blindings` - Value and blinding for each output
+    ///   amount commitment.
     /// * `fee` - Value of the implicit fee output.
     pub fn sign<CSPRNG: RngCore + CryptoRng>(
         message: &[u8; 32],
@@ -79,7 +83,8 @@ impl SignatureRctBulletproofs {
     ///
     /// # Arguments
     /// * `message` - The signed message.
-    /// * `rings` - One or more rings of one-time addresses and amount commitments.
+    /// * `rings` - One or more rings of one-time addresses and amount
+    ///   commitments.
     /// * `output_commitments` - Output amount commitments.
     /// * `fee` - Value of the implicit fee output.
     /// * `rng` -
@@ -205,10 +210,13 @@ impl SignatureRctBulletproofs {
 /// * `message` - The messages to be signed, e.g. Hash(TxPrefix).
 /// * `rings` - One or more rings of one-time addresses and amount commitments.
 /// * `real_input_indices` - The index of the real input in each ring.
-/// * `input_secrets` - One-time private key, amount value, and amount blinding for each real input.
-/// * `output_values_and_blindings` - Value and blinding for each output amount commitment.
+/// * `input_secrets` - One-time private key, amount value, and amount blinding
+///   for each real input.
+/// * `output_values_and_blindings` - Value and blinding for each output amount
+///   commitment.
 /// * `fee` - Value of the implicit fee output.
-/// * `check_value_is_preserved` - If true, check that the value of inputs equals value of outputs.
+/// * `check_value_is_preserved` - If true, check that the value of inputs
+///   equals value of outputs.
 fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
     message: &[u8; 32],
     rings: &[Vec<(CompressedRistrettoPublic, CompressedCommitment)>],
@@ -248,8 +256,9 @@ fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
     }
 
     // Blindings for pseudo_outputs. All but the last are random.
-    // Constructing blindings in this way ensures that sum_of_outputs - sum_of_pseudo_outputs = 0
-    // if the sum of outputs and the sum of pseudo_outputs have equal value.
+    // Constructing blindings in this way ensures that sum_of_outputs -
+    // sum_of_pseudo_outputs = 0 if the sum of outputs and the sum of
+    // pseudo_outputs have equal value.
     let mut pseudo_output_blindings: Vec<Scalar> = Vec::new();
     for _i in 0..num_inputs - 1 {
         pseudo_output_blindings.push(Scalar::random(rng));
@@ -387,7 +396,8 @@ mod rct_bulletproofs_tests {
         /// The index of the real input in each ring.
         real_input_indices: Vec<usize>,
 
-        /// One-time private key, amount value, and amount blinding for each real input.
+        /// One-time private key, amount value, and amount blinding for each
+        /// real input.
         input_secrets: Vec<(RistrettoPrivate, u64, Scalar)>,
 
         /// Value and blinding for each output amount commitment.

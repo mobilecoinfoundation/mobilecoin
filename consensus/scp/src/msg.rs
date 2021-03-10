@@ -82,15 +82,16 @@ pub struct PreparePayload<V: Value> {
     /// The highest accepted prepared ballot.
     pub P: Option<Ballot<V>>,
 
-    /// Prepared prime: the highest ballot that satisfies the same criteria as `prepared`,
-    /// but has a different value than `prepared`.
+    /// Prepared prime: the highest ballot that satisfies the same criteria as
+    /// `prepared`, but has a different value than `prepared`.
     pub PP: Option<Ballot<V>>,
 
     /// The counter for the lowest ballot the sender is attempting to confirm.
     pub CN: u32,
 
-    /// The counter for the highest ballot in a sender's quorum for which all members have
-    /// sent `prepared` with at least this counter, or `prepared_prime` with at least this counter.
+    /// The counter for the highest ballot in a sender's quorum for which all
+    /// members have sent `prepared` with at least this counter, or
+    /// `prepared_prime` with at least this counter.
     pub HN: u32,
 }
 
@@ -136,7 +137,8 @@ pub struct CommitPayload<V: Value> {
     /// The counter of the lowest ballot for which the node has accepted commit.
     pub CN: u32,
 
-    /// The counter of the highest ballot for which the node has accepted commit.
+    /// The counter of the highest ballot for which the node has accepted
+    /// commit.
     pub HN: u32,
 }
 
@@ -376,8 +378,8 @@ impl<
         Ok(())
     }
 
-    /// Return the ballot counter (if any) used for checking if this node has fallen behind
-    /// other nodes.
+    /// Return the ballot counter (if any) used for checking if this node has
+    /// fallen behind other nodes.
     ///
     /// "Note that for the purposes of determining whether a quorum has
     /// a particular "ballot.counter", a node considers "ballot" fields
@@ -386,9 +388,9 @@ impl<
     /// "ballot.counter" of "infinity"."
     /// (p.14 of the [IETF draft](https://tools.ietf.org/pdf/draft-mazieres-dinrg-scp-04.pdf))
     ///
-    /// "Note that the blocking threshold may include ballots from "SCPCommit" messages *as well as
-    /// "SCPExternalize" messages, which implicitly have an infinite ballot counter."
-    /// (p.15 of the [IETF draft](https://tools.ietf.org/pdf/draft-mazieres-dinrg-scp-04.pdf))
+    /// "Note that the blocking threshold may include ballots from "SCPCommit"
+    /// messages *as well as "SCPExternalize" messages, which implicitly
+    /// have an infinite ballot counter." (p.15 of the [IETF draft](https://tools.ietf.org/pdf/draft-mazieres-dinrg-scp-04.pdf))
     pub fn bN(&self) -> u32 {
         match self.topic {
             Nominate(_) => 0,
@@ -497,7 +499,8 @@ impl<
     pub fn votes_or_accepts_commits(&self, value: &[V], min: u32, max: u32) -> Option<(u32, u32)> {
         assert!(min <= max);
 
-        // Range of ballot counters for which this message implies "vote_or_accept commit" for these values.
+        // Range of ballot counters for which this message implies "vote_or_accept
+        // commit" for these values.
         let range = match self.topic {
             NominatePrepare(_, ref payload) | Prepare(ref payload) => {
                 if &payload.B.X[..] == value && payload.CN != 0 {
@@ -700,7 +703,8 @@ mod msg_tests {
 
         let votes_or_accepts_prepared = msg.votes_or_accepts_prepared();
 
-        // ballot, prepared, and prepared_prime have all been voted or accepted prepared.
+        // ballot, prepared, and prepared_prime have all been voted or accepted
+        // prepared.
         assert_eq!(3, votes_or_accepts_prepared.len());
         assert!(votes_or_accepts_prepared.contains(&ballot));
         assert!(votes_or_accepts_prepared.contains(&prepared));
@@ -776,7 +780,8 @@ mod msg_tests {
                     B: ballot.clone(),
                     P: Some(prepared.clone()),
                     PP: Some(prepared_prime.clone()),
-                    CN: 0, // c_counter -> if h_counter > 0, and ballot is confirmed prepared, c_counter = ballot.counter
+                    CN: 0, /* c_counter -> if h_counter > 0, and ballot is confirmed prepared,
+                            * c_counter = ballot.counter */
                     HN: 0, // h_counter -> highest confirmed prepared counter
                 }),
             );
@@ -795,8 +800,10 @@ mod msg_tests {
                 Prepare(PreparePayload {
                     B: Ballot::new(10, &["meow"]), // ballot
                     P: None,                       // prepared -> highest accepted prepared ballot
-                    PP: None, // prepared_prime -> highest accepted prepared < prepared with with value != ballot.value
-                    CN: 0, // c_counter -> if h_counter > 0, and ballot is confirmed prepared, c_counter = ballot.counter
+                    PP: None, /* prepared_prime -> highest accepted prepared < prepared with with
+                               * value != ballot.value */
+                    CN: 0, /* c_counter -> if h_counter > 0, and ballot is confirmed prepared,
+                            * c_counter = ballot.counter */
                     HN: 0, // h_counter -> highest confirmed prepared counter
                 }),
             );
@@ -925,7 +932,8 @@ mod msg_tests {
     }
 
     #[test]
-    // An ExternalizePayload implies "accept commit(<n, commit.value>)" for every "n >= commit.counter"
+    // An ExternalizePayload implies "accept commit(<n, commit.value>)" for every "n
+    // >= commit.counter"
     fn test_votes_or_accepts_commits_with_externalize_topic() {
         let msg = Msg::new(
             test_node_id(1),
@@ -995,7 +1003,8 @@ mod msg_tests {
     }
 
     #[test]
-    // An ExternalizePayload implies "accept commit(<n, commit.value>)" for every "n >= ballot.counter".
+    // An ExternalizePayload implies "accept commit(<n, commit.value>)" for every "n
+    // >= ballot.counter".
     fn test_accepts_commits_with_externalize_topic() {
         let ballot = Ballot::new(5, &["meow"]);
 
@@ -1017,8 +1026,8 @@ mod msg_tests {
     }
 
     #[test]
-    // NominatePayload's BTreeSet's that are populated in a random order gets serialized
-    // deterministically.
+    // NominatePayload's BTreeSet's that are populated in a random order gets
+    // serialized deterministically.
     fn nominatepayload_deterministic_serialize() {
         let values = "kantzzcemc xzbvuwkjae wllqmutprx hkhdtpehmo myfcxwjtim rihkjzfayw ykifmibexv fbyzrjpjte ylbycdyprn cflmqswwrf".split(' ').map(|s| s.to_string()).collect::<Vec<String>>();
         let mut rng = mc_util_test_helper::get_seeded_rng();

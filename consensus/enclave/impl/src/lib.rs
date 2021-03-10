@@ -80,11 +80,11 @@ impl From<Tx> for WellFormedTx {
     }
 }
 
-/// A list of transactions. This is the contents of the encrypted payload returned by
-/// `txs_for_peer` and fed into `peer_tx_propose`.
+/// A list of transactions. This is the contents of the encrypted payload
+/// returned by `txs_for_peer` and fed into `peer_tx_propose`.
 /// We need to define this since that's the only way to get Prost to serialize a
-/// list of transactions. Prost is used for the sake of uniformity - all other data inside
-/// `consensus_enclave_impl` is also serialized using it.
+/// list of transactions. Prost is used for the sake of uniformity - all other
+/// data inside `consensus_enclave_impl` is also serialized using it.
 #[derive(Message)]
 pub struct TxList {
     /// Transactions.
@@ -92,10 +92,12 @@ pub struct TxList {
     pub txs: Vec<Tx>,
 }
 
-/// Internal state of the enclave, including AKE and attestation related as well as any business logic state
+/// Internal state of the enclave, including AKE and attestation related as well
+/// as any business logic state
 pub struct SgxConsensusEnclave {
-    /// All AKE and attestation related state including responder ids, established channels for peers and clients,
-    /// and any pending quotes or ias reports
+    /// All AKE and attestation related state including responder ids,
+    /// established channels for peers and clients, and any pending quotes
+    /// or ias reports
     ake: AkeEnclaveState<Ed25519Identity>,
 
     /// Cipher used to encrypt locally-cached transactions.
@@ -321,8 +323,9 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         block_index: u64,
         proofs: Vec<TxOutMembershipProof>,
     ) -> Result<(WellFormedEncryptedTx, WellFormedTxContext)> {
-        // Enforce that all membership proofs provided by the untrusted system for transaction validation
-        // came from the same ledger state. This can be checked by requiring all proofs to have the same root hash.
+        // Enforce that all membership proofs provided by the untrusted system for
+        // transaction validation came from the same ledger state. This can be
+        // checked by requiring all proofs to have the same root hash.
         let mut root_elements = BTreeSet::new();
         for proof in &proofs {
             let root_element = compute_implied_merkle_root(proof)
@@ -358,10 +361,11 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         aad: &[u8],
         peer: &PeerSession,
     ) -> Result<EnclaveMessage<PeerSession>> {
-        // Quick check that we are aware of this peer. While it might still go away after this
-        // check, this allows us to quickly bail out and skip expensive work if the peer is
-        // definitely not known to us. This also lets us figure whether we are referencing an
-        // incoming or outgoing connection
+        // Quick check that we are aware of this peer. While it might still go away
+        // after this check, this allows us to quickly bail out and skip
+        // expensive work if the peer is definitely not known to us. This also
+        // lets us figure whether we are referencing an incoming or outgoing
+        // connection
         if !self.ake.is_peer_known(peer)? {
             return Err(Error::Attest(AttestEnclaveError::NotFound));
         }
@@ -388,8 +392,9 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         parent_block: &Block,
         encrypted_txs_with_proofs: &[(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)],
     ) -> Result<(Block, BlockContents, BlockSignature)> {
-        // This implicitly converts Vec<Result<(Tx Vec<TxOutMembershipProof>),_>> into Result<Vec<(Tx, Vec<TxOutMembershipProof>)>, _>,
-        // and terminates the iteration when the first Error is encountered.
+        // This implicitly converts Vec<Result<(Tx Vec<TxOutMembershipProof>),_>> into
+        // Result<Vec<(Tx, Vec<TxOutMembershipProof>)>, _>, and terminates the
+        // iteration when the first Error is encountered.
         let transactions_with_proofs = encrypted_txs_with_proofs
             .iter()
             .map(|(encrypted_tx, proofs)| {
@@ -400,8 +405,8 @@ impl ConsensusEnclave for SgxConsensusEnclave {
             })
             .collect::<Result<Vec<(Tx, Vec<TxOutMembershipProof>)>>>()?;
 
-        // root_elements contains the root hash of the Merkle tree of all TxOuts in the ledger
-        // that were used to validate the transactions.
+        // root_elements contains the root hash of the Merkle tree of all TxOuts in the
+        // ledger that were used to validate the transactions.
         let mut root_elements = Vec::new();
         let mut rng = McRng::default();
 
@@ -488,8 +493,9 @@ impl ConsensusEnclave for SgxConsensusEnclave {
                 transcript.extract_digest(&mut hash_value);
             };
 
-            // This private key is generated from the hash of all transactions in this block.
-            // This ensures that all nodes generate the same fee output transaction.
+            // This private key is generated from the hash of all transactions in this
+            // block. This ensures that all nodes generate the same fee output
+            // transaction.
             RistrettoPrivate::from(Scalar::from_bytes_mod_order(hash_value))
         };
 
@@ -512,8 +518,9 @@ impl ConsensusEnclave for SgxConsensusEnclave {
         }
         outputs.push(fee_output);
 
-        // Sort outputs and key images. This removes ordering information which could be used to
-        // infer the per-transaction relationships among outputs and/or key images.
+        // Sort outputs and key images. This removes ordering information which could be
+        // used to infer the per-transaction relationships among outputs and/or
+        // key images.
         outputs.sort_by(|a, b| a.public_key.cmp(&b.public_key));
         key_images.sort();
         let block_contents = BlockContents::new(key_images, outputs);
@@ -583,8 +590,9 @@ mod tests {
     use rand_core::SeedableRng;
     use rand_hc::Hc128Rng;
 
-    // The private key is only used by tests. This does not need to be specified for main net.
-    // The public keys associated with this private key are the defaults in build.rs
+    // The private key is only used by tests. This does not need to be specified for
+    // main net. The public keys associated with this private key are the
+    // defaults in build.rs
     const FEE_VIEW_PRIVATE_KEY: [u8; 32] = [
         21, 152, 99, 251, 140, 2, 50, 154, 2, 171, 188, 60, 163, 243, 204, 195, 241, 78, 204, 85,
         202, 52, 250, 242, 215, 247, 175, 59, 121, 185, 111, 8,
@@ -693,7 +701,8 @@ mod tests {
                 .encrypt_bytes(&mut rng, tx_bytes.clone()),
         );
 
-        // Call `tx_is_well_formed` with a block index that puts us past the tombstone block.
+        // Call `tx_is_well_formed` with a block index that puts us past the tombstone
+        // block.
         let highest_indices = tx.get_membership_proof_highest_indices();
         let proofs = ledger
             .get_tx_out_proof_of_memberships(&highest_indices)
@@ -752,8 +761,9 @@ mod tests {
         let root_element = inconsistent_proof.elements.last_mut().unwrap();
         root_element.hash = TxOutMembershipHash::from([33u8; 32]);
 
-        // The membership proofs supplied by the server are checked before this is decrypted and
-        // validated, so it can just be constructed from an empty vector of bytes.
+        // The membership proofs supplied by the server are checked before this is
+        // decrypted and validated, so it can just be constructed from an empty
+        // vector of bytes.
         let locally_encrypted_tx = LocallyEncryptedTx(Vec::new());
         let block_index = 77;
         let result =
@@ -867,19 +877,22 @@ mod tests {
 
         let fee_output_public_key = RistrettoPublic::try_from(&fee_output.public_key).unwrap();
 
-        // The value of the aggregate fee should equal the total value of fees in the input transaction.
+        // The value of the aggregate fee should equal the total value of fees in the
+        // input transaction.
         let shared_secret = create_shared_secret(&fee_output_public_key, &view_secret_key);
         let (value, _blinding) = fee_output.amount.get_value(&shared_secret).unwrap();
         assert_eq!(value, total_fee);
     }
 
     #[test_with_logger]
-    /// form_block should return an error if the input transactions contain a double-spend.
+    /// form_block should return an error if the input transactions contain a
+    /// double-spend.
     fn test_form_block_prevents_duplicate_spend(logger: Logger) {
         let enclave = SgxConsensusEnclave::new(logger);
         let mut rng = Hc128Rng::from_seed([77u8; 32]);
 
-        // Initialize a ledger. `sender` is the owner of all outputs in the initial ledger.
+        // Initialize a ledger. `sender` is the owner of all outputs in the initial
+        // ledger.
         let sender = AccountKey::random(&mut rng);
         let mut ledger = create_ledger();
         let n_blocks = 3;
@@ -956,13 +969,14 @@ mod tests {
     }
 
     #[test_with_logger]
-    /// form_block should return an error if the input transactions contain a duplicate output
-    /// public key.
+    /// form_block should return an error if the input transactions contain a
+    /// duplicate output public key.
     fn test_form_block_prevents_duplicate_output_public_key(logger: Logger) {
         let enclave = SgxConsensusEnclave::new(logger);
         let mut rng = Hc128Rng::from_seed([77u8; 32]);
 
-        // Initialize a ledger. `sender` is the owner of all outputs in the initial ledger.
+        // Initialize a ledger. `sender` is the owner of all outputs in the initial
+        // ledger.
         let sender = AccountKey::random(&mut rng);
         let mut ledger = create_ledger();
         let n_blocks = 3;
@@ -975,7 +989,8 @@ mod tests {
         // The first block contains RING_SIZE outputs.
         let block_zero_contents = ledger.get_block_contents(0).unwrap();
 
-        // Re-create the rng so that we could more easily generate a duplicate output public key.
+        // Re-create the rng so that we could more easily generate a duplicate output
+        // public key.
         let mut rng = Hc128Rng::from_seed([77u8; 32]);
 
         let mut new_transactions = Vec::new();
@@ -1052,7 +1067,8 @@ mod tests {
         let enclave = SgxConsensusEnclave::new(logger);
         let mut rng = Hc128Rng::from_seed([77u8; 32]);
 
-        // Initialize a ledger. `sender` is the owner of all outputs in the initial ledger.
+        // Initialize a ledger. `sender` is the owner of all outputs in the initial
+        // ledger.
         let sender = AccountKey::random(&mut rng);
         let mut ledger = create_ledger();
         let n_blocks = 3;
@@ -1100,7 +1116,8 @@ mod tests {
                 let membership_proofs = highest_indices
                     .iter()
                     .map(|index| {
-                        // Make one of the proofs have a different root element by creating it from a different
+                        // Make one of the proofs have a different root element by creating it from
+                        // a different
                         if tx_idx == 0 {
                             ledger2
                                 .get_tx_out_proof_of_memberships(&[*index])

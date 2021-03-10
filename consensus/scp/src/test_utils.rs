@@ -112,7 +112,8 @@ pub fn three_node_cycle() -> (
 
 /// The four-node network from Fig. 2 of the [Stellar Whitepaper](https://www.stellar.org/papers/stellar-consensus-protocol).
 ///
-/// * Node 1 has the quorum slice {1,2,3}, where {2}, {3}, {2,3} are blocking sets.
+/// * Node 1 has the quorum slice {1,2,3}, where {2}, {3}, {2,3} are blocking
+///   sets.
 /// * Nodes 2,3, and 4 have the quorum slice {2,3,4}.
 /// * The only quorum is the set of all nodes {1,2,3,4}.
 pub fn fig_2_network() -> (

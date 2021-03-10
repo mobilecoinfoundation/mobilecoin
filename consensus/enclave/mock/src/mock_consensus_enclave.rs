@@ -17,8 +17,9 @@ use mc_transaction_core::{tx::TxOutMembershipProof, Block, BlockContents, BlockS
 
 use mockall::*;
 
-// ConsensusEnclave inherits from ReportableEnclave, so the traits have o be re-typed here.
-// Splitting the traits apart might help because TxManager only uses a few of these functions.
+// ConsensusEnclave inherits from ReportableEnclave, so the traits have o be
+// re-typed here. Splitting the traits apart might help because TxManager only
+// uses a few of these functions.
 
 mock! {
     pub ConsensusEnclave {} // This is used to generate a MockConsensusEnclave struct.

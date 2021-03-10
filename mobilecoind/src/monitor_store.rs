@@ -84,10 +84,11 @@ impl MonitorData {
 pub type MonitorId = DatabaseByteArrayKey;
 
 impl From<&MonitorData> for MonitorId {
-    // When constructing a MonitorId from a given MonitorData object we only want to hash the data
-    // that doesn't change over time.
-    // Name isn't included here - two monitors with identical address/subaddress range/first_block
-    // should have the same id even if they have a different name,
+    // When constructing a MonitorId from a given MonitorData object we only want to
+    // hash the data that doesn't change over time.
+    // Name isn't included here - two monitors with identical address/subaddress
+    // range/first_block should have the same id even if they have a different
+    // name,
     fn from(src: &MonitorData) -> MonitorId {
         // The structure of mc_account_keys::PublicAddress changed when the fog
         // signature scheme was implemented. This re-implements the original
@@ -297,8 +298,9 @@ impl MonitorStore {
     }
 
     /// Re-encrypt the encrypted parts of the database with a new password.
-    /// This will fail if the current password is not set in the crypto_provider since part of the
-    /// re-encryption process relies on being able to decrypt the existing data.
+    /// This will fail if the current password is not set in the crypto_provider
+    /// since part of the re-encryption process relies on being able to
+    /// decrypt the existing data.
     pub fn re_encrypt<'env>(
         &self,
         db_txn: &mut RwTransaction<'env>,
@@ -462,7 +464,8 @@ pKZkdp8MQU5TLFOE9qjNeVsCAwEAAQ==
             monitor_data0.clone()
         );
 
-        // monitor_id2 was never inserted into the database, so getting its data should fail.
+        // monitor_id2 was never inserted into the database, so getting its data should
+        // fail.
         #[allow(clippy::match_wild_err_arm)]
         match mobilecoind_db.get_monitor_data(&monitor_id2) {
             Ok(_) => {

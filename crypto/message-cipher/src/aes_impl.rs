@@ -118,7 +118,8 @@ impl<C: AeadInPlace + NewAead> MessageCipher for AeadMessageCipher<C> {
 // Details
 ////
 
-/// A representation of a nonce suitable for e.g. AES, supporting inc(), copy_to_slice(), and other functions
+/// A representation of a nonce suitable for e.g. AES, supporting inc(),
+/// copy_to_slice(), and other functions
 struct Nonce<L: ArrayLength<u8>> {
     bytes: GenericArray<u8, L>,
 }

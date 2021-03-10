@@ -13,7 +13,8 @@ use serde::{Deserialize, Serialize};
 /// A generic result type for enclave calls
 pub type Result<T> = StdResult<T, Error>;
 
-/// An enumeration of errors which can occur inside an enclave, in connection to attestation or AKE
+/// An enumeration of errors which can occur inside an enclave, in connection to
+/// attestation or AKE
 #[derive(Clone, Debug, Deserialize, Display, PartialEq, PartialOrd, Serialize)]
 pub enum Error {
     /// Enclave not initialized

@@ -1,10 +1,11 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
 //! LedgerDB metrics.
-//! Usually we would use `uc_util_metrics::OpMetrics` for metric collections. However, since there
-//! could exist multiple LedgerDB instances in a given process, we'd like to group the metric
-//! collection by the database so that they do not get mixed together. The code here is based on
-//! OpMetrics and allows us to do so.
+//! Usually we would use `uc_util_metrics::OpMetrics` for metric collections.
+//! However, since there could exist multiple LedgerDB instances in a given
+//! process, we'd like to group the metric collection by the database so that
+//! they do not get mixed together. The code here is based on OpMetrics and
+//! allows us to do so.
 
 use mc_util_metrics::{
     register, Collector, Desc, Histogram, HistogramOpts, HistogramVec, IntCounter, IntCounterVec,
@@ -15,7 +16,8 @@ use std::{
     time::{Duration, Instant},
 };
 
-/// Metrics collector - used internally to report metrics into the Prometheus crate.
+/// Metrics collector - used internally to report metrics into the Prometheus
+/// crate.
 #[derive(Clone)]
 struct LedgerMetricsCollector {
     /// Counters collection to be reported to Prometheus.

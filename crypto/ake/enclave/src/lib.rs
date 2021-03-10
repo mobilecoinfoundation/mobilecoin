@@ -38,8 +38,9 @@ const MAX_PEER_SESSIONS: usize = 64;
 /// Max number of client sessions.
 const MAX_CLIENT_SESSIONS: usize = 10000;
 
-/// Any additional "identities" (e.g. key material) for a given enclave that needs to become
-/// a part of the report. We provide some simple identities, and a trait to allow extensions
+/// Any additional "identities" (e.g. key material) for a given enclave that
+/// needs to become a part of the report. We provide some simple identities, and
+/// a trait to allow extensions
 mod identity;
 pub use identity::{EnclaveIdentity, NullIdentity};
 
@@ -53,13 +54,15 @@ pub struct AkeEnclaveState<EI: EnclaveIdentity> {
     client_self_id: Mutex<Option<ResponderId>>,
 
     /// The static identity used for key exchange, generated on startup
-    /// Initialized once, read only after that, so doesn't need to be behind a mutex
+    /// Initialized once, read only after that, so doesn't need to be behind a
+    /// mutex
     kex_identity: X25519Private,
 
     /// Any additional (customized) identity
     custom_identity: EI,
 
-    /// A map of generated EREPORTs awaiting confirmation by the quoting enclave.
+    /// A map of generated EREPORTs awaiting confirmation by the quoting
+    /// enclave.
     quote_pending: Mutex<LruCache<QuoteNonce, Report>>,
 
     /// A map of generated quotes, awaiting reporting and signature by IAS.
@@ -507,7 +510,8 @@ impl<EI: EnclaveIdentity> AkeEnclaveState<EI> {
     // Details
     //
 
-    /// Helper: Find peer connection among either the inbound set or outbound set
+    /// Helper: Find peer connection among either the inbound set or outbound
+    /// set
     fn get_peer_map_by_session(
         &self,
         session: &PeerSession,

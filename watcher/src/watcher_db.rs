@@ -34,9 +34,10 @@ const MAX_LMDB_FILE_SIZE: usize = 1_099_511_627_776; // 1 TB
 #[derive(Clone, Default, Debug)]
 pub struct WatcherDbMetadataStoreSettings;
 impl MetadataStoreSettings for WatcherDbMetadataStoreSettings {
-    // Default database version. This should be bumped when breaking changes are introduced.
-    // If this is properly maintained, we could check during ledger db opening for any
-    // incompatibilities, and either refuse to open or perform a migration.
+    // Default database version. This should be bumped when breaking changes are
+    // introduced. If this is properly maintained, we could check during ledger
+    // db opening for any incompatibilities, and either refuse to open or
+    // perform a migration.
     #[allow(clippy::unreadable_literal)]
     const LATEST_VERSION: u64 = 20210127;
 
@@ -99,31 +100,34 @@ pub struct WatcherDB {
     block_signatures: Database,
 
     /// Verification reports by block signer (and tx source url) database.
-    /// This actually points to report hashes, which then allow getting the actual report contents
-    /// from the verification_reports_by_hash database.
-    /// This is needed because LMDB limits the value size in DUP_SORT databases to 511 bytes, not
-    /// enough to fit the report. This database needs to be DUP_SORT since we want to support the
-    /// odd case of different reports showing up for the same signer/url pair. It shouldn't happen,
-    /// but we sure don't want to miss it if it does.
+    /// This actually points to report hashes, which then allow getting the
+    /// actual report contents from the verification_reports_by_hash
+    /// database. This is needed because LMDB limits the value size in
+    /// DUP_SORT databases to 511 bytes, not enough to fit the report. This
+    /// database needs to be DUP_SORT since we want to support the
+    /// odd case of different reports showing up for the same signer/url pair.
+    /// It shouldn't happen, but we sure don't want to miss it if it does.
     verification_reports_by_signer: Database,
 
     /// Verification report hash -> VerificationReport.
     verification_reports_by_hash: Database,
 
     /// Verification reports poll queue database.
-    /// This database holds a map of tx source url -> list of observed block signers.
-    /// A background thread polls this database, trying to fetch the attestation verification
-    /// report for each of queued tx source urls, and if successfull match the reported block
-    /// signer identity with the list of observed signers. The verification report is then stored
-    /// using `add_verification_report` and the tx source url is removed from the queue.
+    /// This database holds a map of tx source url -> list of observed block
+    /// signers. A background thread polls this database, trying to fetch
+    /// the attestation verification report for each of queued tx source
+    /// urls, and if successfull match the reported block signer identity
+    /// with the list of observed signers. The verification report is then
+    /// stored using `add_verification_report` and the tx source url is
+    /// removed from the queue.
     verification_reports_poll_queue: Database,
 
     /// Last synced archive block.
     last_synced: Database,
 
     /// Config database - stores the settings the watcher was started with.
-    /// This allows the code that reads data from the database to only look at the set of URLs
-    /// currently being polled.
+    /// This allows the code that reads data from the database to only look at
+    /// the set of URLs currently being polled.
     config: Database,
 
     /// Were we opened in write mode?
@@ -232,8 +236,8 @@ impl WatcherDB {
         self.get_config_urls_with_txn(&db_txn)
     }
 
-    /// Store BlockData for a URL at a given block index (the block index comes from the
-    /// BlockData).
+    /// Store BlockData for a URL at a given block index (the block index comes
+    /// from the BlockData).
     pub fn add_block_data(
         &self,
         src_url: &Url,
@@ -303,7 +307,8 @@ impl WatcherDB {
             WriteFlags::empty(),
         )?;
 
-        // Add the block signer to our polling queue, unless we already have a report for it.
+        // Add the block signer to our polling queue, unless we already have a report
+        // for it.
         if !self.has_verification_report_for_signer_and_url(
             &db_txn,
             signature_data.block_signature.signer(),
@@ -381,16 +386,18 @@ impl WatcherDB {
     }
 
     /// Get the earliest timestamp for a given block.
-    /// The earliest timestamp reflects the time closest to when the block passed consensus.
-    /// If no timestamp is present, return u64::MAX, and a status code.
+    /// The earliest timestamp reflects the time closest to when the block
+    /// passed consensus. If no timestamp is present, return u64::MAX, and a
+    /// status code.
     ///
-    /// Note: If there are no Signatures (and therefore no timestamps) for the given
-    ///       block, the result from get_signatures will be Ok(vec![]).
-    ///       A consensus validator only writes a signature for a block in which it
-    ///       participated in consensus. Therefore, if the watcher is only watching
-    ///       a subset of nodes, and those nodes happened to not participate in this
-    ///       block, the timestamp result will be unavailable for this block. It is
-    ///       also possible to be in a temporary state where there are no signatures
+    /// Note: If there are no Signatures (and therefore no timestamps) for the
+    /// given       block, the result from get_signatures will be
+    /// Ok(vec![]).       A consensus validator only writes a signature for
+    /// a block in which it       participated in consensus. Therefore, if
+    /// the watcher is only watching       a subset of nodes, and those
+    /// nodes happened to not participate in this       block, the timestamp
+    /// result will be unavailable for this block. It is       also possible
+    /// to be in a temporary state where there are no signatures
     ///       for the given block if the watcher sync is behind the ledger sync.
     pub fn get_block_timestamp(
         &self,
@@ -420,7 +427,8 @@ impl WatcherDB {
         self.get_url_to_last_synced(&db_txn)
     }
 
-    /// In the case where a synced block did not have a signature, update last synced.
+    /// In the case where a synced block did not have a signature, update last
+    /// synced.
     pub fn update_last_synced(
         &self,
         src_url: &Url,
@@ -442,11 +450,12 @@ impl WatcherDB {
     }
 
     /// Get the highest block that all currently-configured urls have synced.
-    /// Note: In the case where one watched consensus validator dies and is no longer
-    ///       reporting blocks to S3, this will cause the highest_common_block to
-    ///       always remain at the lowest common denominator, so in the case where the
-    ///       the highest_common_block is being used to determine if the watcher is
-    ///       behind, the watcher will need to be restarted with the dead node removed
+    /// Note: In the case where one watched consensus validator dies and is no
+    /// longer       reporting blocks to S3, this will cause the
+    /// highest_common_block to       always remain at the lowest common
+    /// denominator, so in the case where the       the highest_common_block
+    /// is being used to determine if the watcher is       behind, the
+    /// watcher will need to be restarted with the dead node removed
     ///       from the set of watched URLs.
     pub fn highest_common_block(&self) -> Result<u64, WatcherDBError> {
         let db_txn = self.env.begin_ro_txn()?;
@@ -542,7 +551,8 @@ impl WatcherDB {
         Ok(results)
     }
 
-    /// Get BlockData for a given block index provided by a specific tx source url.
+    /// Get BlockData for a given block index provided by a specific tx source
+    /// url.
     pub fn get_block_data(
         &self,
         src_url: &Url,
@@ -553,7 +563,8 @@ impl WatcherDB {
             .get_block_data(&db_txn, src_url, block_index)
     }
 
-    /// Get all known BlockDatas for a given block index, mapped by tx source url.
+    /// Get all known BlockDatas for a given block index, mapped by tx source
+    /// url.
     pub fn get_block_data_map(
         &self,
         block_index: BlockIndex,
@@ -563,19 +574,23 @@ impl WatcherDB {
             .get_block_data_map(&db_txn, block_index)
     }
 
-    /// Record a verification report for a given source URL, that is associated with a specific
-    /// block signer.
-    /// Additionally, record no report for an optional list of expected block signers.
-    /// When going over the blockchain we are likely going to encounter a few block signers for a
-    /// given src_url since every time the node restarts a new block signer key is generated. If we
-    /// are back-filling the database and not polling in real time, we will only manage to get a
-    /// verification report for the current signer identity. The previous ones are then lost, and
-    /// we use `potential_block_signers` to mark them as such in order to stop trying to get
-    /// reports for them from this particular node (identified by `src_url`).
+    /// Record a verification report for a given source URL, that is associated
+    /// with a specific block signer.
+    /// Additionally, record no report for an optional list of expected block
+    /// signers. When going over the blockchain we are likely going to
+    /// encounter a few block signers for a given src_url since every time
+    /// the node restarts a new block signer key is generated. If we
+    /// are back-filling the database and not polling in real time, we will only
+    /// manage to get a verification report for the current signer identity.
+    /// The previous ones are then lost, and
+    /// we use `potential_block_signers` to mark them as such in order to stop
+    /// trying to get reports for them from this particular node (identified
+    /// by `src_url`).
     ///
-    /// Note that it is possible for us to extract `verification_report_block_signer` out of
-    /// `verification_report` but we let the caller handle that in case the report format changes
-    /// over time.
+    /// Note that it is possible for us to extract
+    /// `verification_report_block_signer` out of `verification_report` but
+    /// we let the caller handle that in case the report format changes over
+    /// time.
     pub fn add_verification_report(
         &self,
         src_url: &Url,
@@ -614,7 +629,8 @@ impl WatcherDB {
             self.write_verification_report(&mut db_txn, src_url, block_signer, None)?;
         }
 
-        // Remove all the keys we encountered from the queue - we no longer need to poll for them.
+        // Remove all the keys we encountered from the queue - we no longer need to poll
+        // for them.
         self.remove_verification_report_poll_from_queue(
             &mut db_txn,
             src_url,
@@ -629,8 +645,8 @@ impl WatcherDB {
         Ok(())
     }
 
-    /// A helper for writing a single (src_url, signer) -> VerificationReport entry in the
-    /// database.
+    /// A helper for writing a single (src_url, signer) -> VerificationReport
+    /// entry in the database.
     fn write_verification_report<'env>(
         &self,
         db_txn: &mut RwTransaction<'env>,
@@ -710,15 +726,17 @@ impl WatcherDB {
     }
 
     /// Get a verification report for a given block signer.
-    /// Returns a map of tx source url to all verification reports seen for the given signer.
-    /// Notes:
-    /// 1) In general there should only be one report per given block signer since the key is
-    ///    unique to an enclave. However, the database is structured in such a way that if
-    ///    something funky is happening, and somehow different reports are seen in the wild for a
+    /// Returns a map of tx source url to all verification reports seen for the
+    /// given signer. Notes:
+    /// 1) In general there should only be one report per given block signer
+    /// since the key is    unique to an enclave. However, the database is
+    /// structured in such a way that if    something funky is happening,
+    /// and somehow different reports are seen in the wild for a
     ///    given signer, they will all get logged.
-    /// 2) The VerificationReport is wrapped in an Option to indicate that at some point we tried
-    ///    getting a report for the given Url, but failed since the report we got referenced a
-    ///    different signer. This could happen if we're trying to get reports for old block signers
+    /// 2) The VerificationReport is wrapped in an Option to indicate that at
+    /// some point we tried    getting a report for the given Url, but
+    /// failed since the report we got referenced a    different signer.
+    /// This could happen if we're trying to get reports for old block signers
     ///    whose enclaves are no longer alive.
     pub fn get_verification_reports_for_signer(
         &self,
@@ -765,11 +783,13 @@ impl WatcherDB {
     }
 
     /// Get verification reports seen for a specific block signer/URL pair.
-    /// In theory there should only ever be a single report (or none) for a given block_signer+src_url
-    /// pair but if something weird is going on we want to capture that, and as such multiple
-    /// reports are supported. See more detailed explanation above
+    /// In theory there should only ever be a single report (or none) for a
+    /// given block_signer+src_url pair but if something weird is going on
+    /// we want to capture that, and as such multiple reports are supported.
+    /// See more detailed explanation above
     /// `get_verification_reports_for_signer`.
-    /// Returns an empty array if we have no record of block_signer+src_url in the database.
+    /// Returns an empty array if we have no record of block_signer+src_url in
+    /// the database.
     pub fn get_verification_report_for_signer_and_url(
         &self,
         block_signer: &Ed25519Public,
@@ -809,14 +829,16 @@ impl WatcherDB {
         }
     }
 
-    /// Queue a tx source url for attestation verification report polling. We keep track of the
-    /// expected block signer so that when we get the report we can see if we were able to confirm
-    /// the block signer and associate to a report, or have to mark the block signer as having no
-    /// report. That will happen if we have missed an opportunity to poll for a report and the
-    /// report has changed.
+    /// Queue a tx source url for attestation verification report polling. We
+    /// keep track of the expected block signer so that when we get the
+    /// report we can see if we were able to confirm the block signer and
+    /// associate to a report, or have to mark the block signer as having no
+    /// report. That will happen if we have missed an opportunity to poll for a
+    /// report and the report has changed.
     ///
-    /// Note that this method is not exposed outside of this object. It is used inside
-    /// `add_block_signature` to ensure all block signers get queued up automatically.
+    /// Note that this method is not exposed outside of this object. It is used
+    /// inside `add_block_signature` to ensure all block signers get queued
+    /// up automatically.
     fn queue_verification_report_poll<'env>(
         &self,
         db_txn: &mut RwTransaction<'env>,
@@ -864,8 +886,8 @@ impl WatcherDB {
         }
     }
 
-    /// Get a map of queued-for-verification-report-polling tx source urls -> encountered block
-    /// signers.
+    /// Get a map of queued-for-verification-report-polling tx source urls ->
+    /// encountered block signers.
     pub fn get_verification_report_poll_queue(
         &self,
     ) -> Result<HashMap<Url, Vec<Ed25519Public>>, WatcherDBError> {
@@ -1068,7 +1090,8 @@ pub mod tests {
         assert_eq!(watcher_db.get_block_signatures(1).unwrap().len(), 2);
     }
 
-    // Highest synced block should return the minimum highest synced block for all URLs
+    // Highest synced block should return the minimum highest synced block for all
+    // URLs
     #[test_with_logger]
     fn test_highest_synced(logger: Logger) {
         run_with_one_seed(|mut rng| {
@@ -1164,7 +1187,8 @@ pub mod tests {
         );
     }
 
-    // Watcher should return timestamps based on watched nodes' signature.signed_at values
+    // Watcher should return timestamps based on watched nodes' signature.signed_at
+    // values
     #[test_with_logger]
     fn test_timestamps(logger: Logger) {
         run_with_one_seed(|mut rng| {
@@ -1261,8 +1285,9 @@ pub mod tests {
                 let watcher_db = setup_watcher_db(&urls, logger.clone());
 
                 // Add a verification report for signing_key_a, and also include signing_key_b.
-                // Result should be report is assocaited with signing_key_a and None is associated with
-                // signing_key_b. Nothing is associated with signing_key_c.
+                // Result should be report is assocaited with signing_key_a and None is
+                // associated with signing_key_b. Nothing is associated with
+                // signing_key_c.
                 for _ in 0..5 {
                     watcher_db
                         .add_verification_report(
@@ -1405,13 +1430,14 @@ pub mod tests {
                 }
             }
 
-            // While this should never happen in the real world, test that the database supports
-            // adding the same verification report to two different URLs.
+            // While this should never happen in the real world, test that the database
+            // supports adding the same verification report to two different
+            // URLs.
             {
                 let watcher_db = setup_watcher_db(&urls, logger.clone());
 
-                // This is done in a loop since repeated executions should not result in different
-                // results
+                // This is done in a loop since repeated executions should not result in
+                // different results
                 for _ in 0..5 {
                     watcher_db
                         .add_verification_report(
@@ -1481,8 +1507,8 @@ pub mod tests {
                 }
             }
 
-            // Add a None verification report and then add an actual verification report to some
-            // key.
+            // Add a None verification report and then add an actual verification report to
+            // some key.
             {
                 let watcher_db = setup_watcher_db(&urls, logger.clone());
 
@@ -1620,8 +1646,8 @@ pub mod tests {
                 );
             }
 
-            // Adding a block with the same signing key but a different url should make it into the
-            // queue.
+            // Adding a block with the same signing key but a different url should make it
+            // into the queue.
             watcher_db
                 .add_block_signature(&url2, 1, signed_block_b1, filename.clone())
                 .unwrap();
@@ -1639,8 +1665,8 @@ pub mod tests {
                 );
             }
 
-            // Adding a verification report for some key that is not in the queue should not affect
-            // things.
+            // Adding a verification report for some key that is not in the queue should not
+            // affect things.
             watcher_db
                 .add_verification_report(
                     &url1,
@@ -1661,8 +1687,8 @@ pub mod tests {
                 ])
             );
 
-            // Adding a verification report that references one of the keys in the queue should
-            // cause it to get removed.
+            // Adding a verification report that references one of the keys in the queue
+            // should cause it to get removed.
             watcher_db
                 .add_verification_report(
                     &url2,
@@ -1680,8 +1706,8 @@ pub mod tests {
                 ),])
             );
 
-            // Adding a block signature for a key that already has a verification report should not
-            // affect the queue.
+            // Adding a block signature for a key that already has a verification report
+            // should not affect the queue.
             let signed_block_b2 =
                 BlockSignature::from_block_and_keypair(&blocks[1].0, &signing_key_b).unwrap();
             watcher_db
@@ -1712,8 +1738,8 @@ pub mod tests {
                 ])
             );
 
-            // Referencing signing_key_a and signing_key_b for url1 will cause them to be removed
-            // from the queue but only when the correct url is used.
+            // Referencing signing_key_a and signing_key_b for url1 will cause them to be
+            // removed from the queue but only when the correct url is used.
             watcher_db
                 .add_verification_report(
                     &url2,

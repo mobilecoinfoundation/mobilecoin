@@ -21,9 +21,10 @@ use std::sync::Arc;
 // Re-export the health check status enum for convenience.
 pub use crate::health_api::HealthCheckResponse_ServingStatus as HealthCheckStatus;
 
-// A prototype of a callback function that receives a service name and returns it's health status.
-// By defauult, `HealthService` would respond SERVING to all health check requests, but passing a
-// callback to it allows customization of this behavior.
+// A prototype of a callback function that receives a service name and returns
+// it's health status. By defauult, `HealthService` would respond SERVING to all
+// health check requests, but passing a callback to it allows customization of
+// this behavior.
 pub type ServiceHealthCheckCallback = Arc<dyn Fn(&str) -> HealthCheckStatus + Sync + Send>;
 
 #[derive(Clone)]

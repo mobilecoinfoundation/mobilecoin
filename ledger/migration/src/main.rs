@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-//! Ledger migration: Perform updates of LedgerDB to accommodate for backward-incompatible changes.
+//! Ledger migration: Perform updates of LedgerDB to accommodate for
+//! backward-incompatible changes.
 
 use lmdb::{DatabaseFlags, Environment, Transaction, WriteFlags};
 use mc_common::logger::{create_app_logger, log, o, Logger};
@@ -44,7 +45,8 @@ fn main() {
 
     // Incrementally perform upgrades until we reach the current version.
     loop {
-        // Check if the database we opened is compatible with the current implementation.
+        // Check if the database we opened is compatible with the current
+        // implementation.
         let db_txn = env.begin_ro_txn().expect("Failed starting ro transaction");
         let version = metadata_store
             .get_version(&db_txn)
@@ -104,13 +106,14 @@ fn main() {
     sleep(Duration::from_secs(1));
 }
 
-/// A utility function for constructing the tx_out_index_by_public_key store using existing
-/// data.
+/// A utility function for constructing the tx_out_index_by_public_key store
+/// using existing data.
 fn construct_tx_out_index_by_public_key_from_existing_data(
     env: &Environment,
     logger: &Logger,
 ) -> Result<(), Error> {
-    // When constructing the tx out index by public key database, we first need to create it.
+    // When constructing the tx out index by public key database, we first need to
+    // create it.
     env.create_db(
         Some(TX_OUT_INDEX_BY_PUBLIC_KEY_DB_NAME),
         DatabaseFlags::empty(),
@@ -148,13 +151,14 @@ fn construct_tx_out_index_by_public_key_from_existing_data(
     Ok(db_txn.commit()?)
 }
 
-/// A utility function for constructing the block_number_by_tx_out_index store using existing
-/// data.
+/// A utility function for constructing the block_number_by_tx_out_index store
+/// using existing data.
 fn construct_block_number_by_tx_out_index_from_existing_data(
     env: &Environment,
     logger: &Logger,
 ) -> Result<(), Error> {
-    // When constructing the block index by tx out index database, we first need to create it.
+    // When constructing the block index by tx out index database, we first need to
+    // create it.
     let block_number_by_tx_out_index_db =
         env.create_db(Some(BLOCK_NUMBER_BY_TX_OUT_INDEX), DatabaseFlags::empty())?;
 

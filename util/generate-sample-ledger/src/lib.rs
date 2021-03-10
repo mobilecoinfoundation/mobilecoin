@@ -23,12 +23,15 @@ use std::{path::PathBuf, vec::Vec};
 /// # Arguments
 /// * `path` - Opens a LedgerDB instance at the given path.
 /// * `recipients` -
-/// * `num_outputs_per_recipient` - Number of equal-valued outputs that each recipient receives, per block.
+/// * `num_outputs_per_recipient` - Number of equal-valued outputs that each
+///   recipient receives, per block.
 /// * `num_blocks` - Number of blocks that will be created.
-/// * `key_images_per_block` - Number of randomly generated key images per block.
+/// * `key_images_per_block` - Number of randomly generated key images per
+///   block.
 /// * `hint_text` - A string to be hashed into the hints for the outputs
 ///
-/// This will panic if it attempts to distribute the total value of mobilecoin into fewer than 16 outputs.
+/// This will panic if it attempts to distribute the total value of mobilecoin
+/// into fewer than 16 outputs.
 pub fn bootstrap_ledger(
     path: &PathBuf,
     recipients: &[PublicAddress],

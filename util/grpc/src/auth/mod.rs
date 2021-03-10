@@ -50,8 +50,8 @@ impl<T> Into<Result<T, RpcStatus>> for AuthenticatorError {
     }
 }
 
-/// Interface for performing an authentication using `BasicCredentials`, resulting in a String
-/// username or an error.
+/// Interface for performing an authentication using `BasicCredentials`,
+/// resulting in a String username or an error.
 pub trait Authenticator {
     fn authenticate(
         &self,
@@ -107,7 +107,8 @@ impl BasicCredentials {
         }
     }
 
-    /// Try and construct `BasicCredentials` from an HTTP Basic Authorization header.
+    /// Try and construct `BasicCredentials` from an HTTP Basic Authorization
+    /// header.
     pub fn try_from(header_value: &[u8]) -> Result<Self, AuthorizationHeaderError> {
         let header = str::from_utf8(header_value)
             .map_err(|_| AuthorizationHeaderError::InvalidAuthorizationHeader)?;
@@ -152,8 +153,8 @@ impl BasicCredentials {
         &self.password
     }
 
-    /// Convenience method for constructing an HTTP Authorization header based on the username and
-    /// password stored in this object.
+    /// Convenience method for constructing an HTTP Authorization header based
+    /// on the username and password stored in this object.
     pub fn authorization_header(&self) -> String {
         format!(
             "Basic {}",
@@ -161,8 +162,9 @@ impl BasicCredentials {
         )
     }
 
-    /// Convenience method for constructing a `grpcio::CallOption` object that passes an
-    /// Authorization header if this object contains non-empty username or password.
+    /// Convenience method for constructing a `grpcio::CallOption` object that
+    /// passes an Authorization header if this object contains non-empty
+    /// username or password.
     pub fn call_option(&self) -> Result<CallOption, GrpcError> {
         let mut call_option = CallOption::default();
         if !self.username.is_empty() || !self.password.is_empty() {

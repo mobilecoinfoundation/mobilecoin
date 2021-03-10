@@ -38,9 +38,9 @@ impl<T> Sender<T> {
     }
 }
 
-// #[derive(Clone)] adds an implementation of Clone that is conditional on all the type parameters also implementing Clone.
-// Since we do not require that, we have to manually implement clone().
-// See https://github.com/rust-lang/rust/issues/41481
+// #[derive(Clone)] adds an implementation of Clone that is conditional on all
+// the type parameters also implementing Clone. Since we do not require that, we
+// have to manually implement clone(). See https://github.com/rust-lang/rust/issues/41481
 impl<T> Clone for Sender<T> {
     fn clone(&self) -> Self {
         Self {
@@ -82,9 +82,9 @@ impl<T> Receiver<T> {
     }
 }
 
-// #[derive(Clone)] adds an implementation of Clone that is conditional on all the type parameters also implementing Clone.
-// Since we do not require that, we have to manually implement clone().
-// See https://github.com/rust-lang/rust/issues/41481
+// #[derive(Clone)] adds an implementation of Clone that is conditional on all
+// the type parameters also implementing Clone. Since we do not require that, we
+// have to manually implement clone(). See https://github.com/rust-lang/rust/issues/41481
 impl<T> Clone for Receiver<T> {
     fn clone(&self) -> Self {
         Self {
@@ -94,7 +94,8 @@ impl<T> Clone for Receiver<T> {
     }
 }
 
-/// Iterator for `Receiver::iter()` - copied from the crossbeam_channel implementation.
+/// Iterator for `Receiver::iter()` - copied from the crossbeam_channel
+/// implementation.
 pub struct Iter<'a, T: 'a> {
     receiver: &'a Receiver<T>,
 }
@@ -115,7 +116,8 @@ impl<'a, T> fmt::Debug for Iter<'a, T> {
     }
 }
 
-/// Iterator for `Receiver::try_iter()` - copied from the crossbeam_channel implementation.
+/// Iterator for `Receiver::try_iter()` - copied from the crossbeam_channel
+/// implementation.
 pub struct TryIter<'a, T: 'a> {
     receiver: &'a Receiver<T>,
 }
@@ -134,7 +136,8 @@ impl<'a, T> fmt::Debug for TryIter<'a, T> {
     }
 }
 
-/// Similar to `crossbeam_channel::bounded`, `bounded` creates a pair of `Sender` and `Receiver`.
+/// Similar to `crossbeam_channel::bounded`, `bounded` creates a pair of
+/// `Sender` and `Receiver`.
 pub fn bounded<T>(cap: usize, gauge: &IntGauge) -> (Sender<T>, Receiver<T>) {
     let (sender, receiver) = crossbeam_channel::bounded(cap);
     (
@@ -149,7 +152,8 @@ pub fn bounded<T>(cap: usize, gauge: &IntGauge) -> (Sender<T>, Receiver<T>) {
     )
 }
 
-/// Similar to `crossbeam_channel::unbounded`, `unbounded` creates a pair of `Sender` and `Receiver`.
+/// Similar to `crossbeam_channel::unbounded`, `unbounded` creates a pair of
+/// `Sender` and `Receiver`.
 pub fn unbounded<T>(gauge: &IntGauge) -> (Sender<T>, Receiver<T>) {
     let (sender, receiver) = crossbeam_channel::unbounded();
     (

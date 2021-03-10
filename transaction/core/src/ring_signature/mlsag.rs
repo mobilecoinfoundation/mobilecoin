@@ -21,14 +21,16 @@ use crate::{
 };
 
 /// MLSAG for a ring of public keys and amount commitments.
-/// Note: Serialize and Deserialize appear to be cruft left over from sdk_json_interface.
+/// Note: Serialize and Deserialize appear to be cruft left over from
+/// sdk_json_interface.
 #[derive(Clone, Digestible, PartialEq, Eq, Serialize, Deserialize, Message)]
 pub struct RingMLSAG {
     /// The initial challenge `c[0]`.
     #[prost(message, required, tag = "1")]
     pub c_zero: CurveScalar,
 
-    /// Responses `r_{0,0}, r_{0,1}, ... , r_{ring_size-1,0}, r_{ring_size-1,1}`.
+    /// Responses `r_{0,0}, r_{0,1}, ... , r_{ring_size-1,0},
+    /// r_{ring_size-1,1}`.
     #[prost(message, repeated, tag = "2")]
     pub responses: Vec<CurveScalar>,
 
@@ -41,7 +43,8 @@ impl RingMLSAG {
     // Sign a ring of input addresses and amount commitments.
     //
     // Sign a ring of input addresses and amount commitments using a modified MLSAG
-    // that omits the "key image" term for the amount commitments (which do not need to be linkable).
+    // that omits the "key image" term for the amount commitments (which do not need
+    // to be linkable).
     //
     // # Arguments
     // * `message` - Message to be signed.
@@ -78,7 +81,8 @@ impl RingMLSAG {
     // Sign a ring of input addresses and amount commitments.
     //
     // Sign a ring of input addresses and amount commitments using a modified MLSAG
-    // that omits the "key image" term for the amount commitments (which do not need to be linkable).
+    // that omits the "key image" term for the amount commitments (which do not need
+    // to be linkable).
     //
     // # Arguments
     // * `message` - Message to be signed.
@@ -88,7 +92,8 @@ impl RingMLSAG {
     // * `value` - Value of the real input.
     // * `blinding` - Blinding of the real input.
     // * `output_blinding` - The output amount's blinding factor.
-    // * `check_value_is_preserved` - If true, check that the value of inputs equals value of outputs.
+    // * `check_value_is_preserved` - If true, check that the value of inputs equals
+    //   value of outputs.
     // * `rng` - Randomness.
     fn sign_with_balance_check<CSPRNG: RngCore + CryptoRng>(
         message: &[u8],
@@ -115,7 +120,8 @@ impl RingMLSAG {
         let I: RistrettoPoint = key_image.point.decompress().ok_or(Error::InvalidKeyImage)?;
 
         // Uncompressed output commitment.
-        // This ensures that each address and commitment encodes a valid Ristretto point.
+        // This ensures that each address and commitment encodes a valid Ristretto
+        // point.
         let output_commitment = Commitment::new(value, *output_blinding);
 
         // Ring must decompress.
@@ -147,22 +153,27 @@ impl RingMLSAG {
                 //         = Hn( m | key_image |      L0     |         R0        |      L1     )
                 //
                 // where P_i is the i^th onetime public key.
-                // There is no R1 term because no key image is needed for the commitment to zero.
+                // There is no R1 term because no key image is needed for the commitment to
+                // zero.
 
                 let L0 = *alpha_0 * G;
                 let R0 = *alpha_0 * hash_to_point(&P_i);
                 let L1 = *alpha_1 * G;
                 (L0, R0, L1)
             } else {
-                // c_{i+1} = Hn( m | key_image | r_{i,0} * G + c_i * P_i | r_{i,0} * Hp(P_i) + c_i * I | r_{i,1} * G + c_i * Z_i )
-                //         = Hn( m | key_image |           L0            |               R0            |             L1          )
+                // c_{i+1} = Hn( m | key_image | r_{i,0} * G + c_i * P_i | r_{i,0} * Hp(P_i) +
+                // c_i * I | r_{i,1} * G + c_i * Z_i )         = Hn( m |
+                // key_image |           L0            |               R0            |
+                // L1          )
                 //
                 // where:
                 // * P_i is the i^th onetime public key.
                 // * I is the key image of the real input's private key,
-                // * Z_i is the i^th "commitment to zero" = output_commitment - input_commitment.
+                // * Z_i is the i^th "commitment to zero" = output_commitment -
+                //   input_commitment.
                 //
-                // There is no R1 term because no key image is needed for the commitment to zero.
+                // There is no R1 term because no key image is needed for the commitment to
+                // zero.
 
                 let L0 = r[2 * i] * G + c[i] * P_i.as_ref();
                 let R0 = r[2 * i] * hash_to_point(&P_i) + c[i] * I;
@@ -237,7 +248,8 @@ impl RingMLSAG {
         let output_commitment: Commitment = Commitment::try_from(output_commitment)?;
 
         // Ring must decompress.
-        // This ensures that each address and commitment encodes a valid Ristretto point.
+        // This ensures that each address and commitment encodes a valid Ristretto
+        // point.
         let decompressed_ring = decompress_ring(ring)?;
 
         // Scalars must be canonical.
@@ -263,13 +275,15 @@ impl RingMLSAG {
                 recomputed_c[i]
             };
 
-            // c_{i+1} = Hn( m | key_image |  r_{i,0} * G + c_i * P_i | r_{i,0} * Hp(P_i) + c_i * I | r_{i,1} * G + c_i * Z_i )
-            //         = Hn( m | key_image |           L0            |               R0            |           L1            )
+            // c_{i+1} = Hn( m | key_image |  r_{i,0} * G + c_i * P_i | r_{i,0} * Hp(P_i) +
+            // c_i * I | r_{i,1} * G + c_i * Z_i )         = Hn( m | key_image |
+            // L0            |               R0            |           L1            )
             //
             // where:
             // * P_i is the i^th onetime public key.
             // * I is the key image of the real input's private key,
-            // * Z_i is the i^th "commitment to zero" = output_commitment - i^th input_commitment.
+            // * Z_i is the i^th "commitment to zero" = output_commitment - i^th
+            //   input_commitment.
 
             let L0 = r[2 * i] * G + c_i * P_i.as_ref();
             let R0 = r[2 * i] * hash_to_point(P_i) + c_i * I;

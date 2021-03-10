@@ -325,7 +325,8 @@ where
         csprng: &mut (impl CryptoRng + RngCore),
         payload: &[u8],
     ) -> Result<Vec<u8>, HandshakeError> {
-        // Create an output buffer large enough to encrypt our payload and any tokens into
+        // Create an output buffer large enough to encrypt our payload and any tokens
+        // into
         let mut retval = Vec::with_capacity(
             tokens.len() * 32 + payload.len() + Cipher::CiphertextOverhead::to_usize(),
         );
@@ -575,7 +576,8 @@ where
         self.local_identity.as_ref().map(KexAlgo::Public::from)
     }
 
-    /// Retrieve a reference to the remote ephemeral pubkey, if it has been read yet.
+    /// Retrieve a reference to the remote ephemeral pubkey, if it has been read
+    /// yet.
     pub fn remote_ephemeral(&self) -> Option<&KexAlgo::Public> {
         self.remote_ephemeral.as_ref()
     }

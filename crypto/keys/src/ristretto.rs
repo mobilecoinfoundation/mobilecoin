@@ -85,8 +85,8 @@ impl RistrettoPrivate {
 
     /// Sign the given bytes using a deterministic scheme based on Schnorrkel.
     pub fn sign_schnorrkel(&self, context: &[u8], message: &[u8]) -> RistrettoSignature {
-        // Create a deterministic nonce using a merlin transcript. See this crate's README
-        // for a security statement.
+        // Create a deterministic nonce using a merlin transcript. See this crate's
+        // README for a security statement.
         let nonce = {
             let mut transcript = MerlinTranscript::new(b"SigningNonce");
             transcript.append_message(b"context", &context);
@@ -108,7 +108,8 @@ impl RistrettoPrivate {
         let mut t = MerlinTranscript::new(b"SigningContext");
         t.append_message(b"", context);
         t.append_message(b"sign-bytes", &message);
-        // NOTE: This signature is deterministic due to using the above nonce as the rng seed
+        // NOTE: This signature is deterministic due to using the above nonce as the rng
+        // seed
         let csprng = Hc128Rng::from_seed(nonce);
         let transcript = attach_rng(t, csprng);
         RistrettoSignature::from(keypair.sign(transcript))
@@ -278,13 +279,14 @@ impl TryFrom<&[u8; 32]> for RistrettoPublic {
 }
 
 impl RistrettoPublic {
-    // Many historical APIs based on ReprBytes32 in mobilecoin use to_bytes() -> [u8;32].
-    // This is okay in non-generic code
+    // Many historical APIs based on ReprBytes32 in mobilecoin use to_bytes() ->
+    // [u8;32]. This is okay in non-generic code
     pub fn to_bytes(&self) -> [u8; 32] {
         self.0.compress().to_bytes()
     }
 
-    /// Verify a deterministic Schnorrkel signature created with the corresponding [`RistrettoPrivate::sign_schnorrkel()`] method.
+    /// Verify a deterministic Schnorrkel signature created with the
+    /// corresponding [`RistrettoPrivate::sign_schnorrkel()`] method.
     pub fn verify_schnorrkel(
         &self,
         context: &'static [u8],

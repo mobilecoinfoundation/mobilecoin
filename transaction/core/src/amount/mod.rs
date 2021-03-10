@@ -2,8 +2,8 @@
 
 //! A commitment to an output's amount, denominated in picoMOB.
 //!
-//! Amounts are implemented as Pedersen commitments. The associated private keys are "masked" using
-//! a shared secret.
+//! Amounts are implemented as Pedersen commitments. The associated private keys
+//! are "masked" using a shared secret.
 
 #![cfg_attr(test, allow(clippy::unnecessary_operation))]
 
@@ -26,7 +26,8 @@ pub use error::AmountError;
 /// A commitment to an amount of MobileCoin, denominated in picoMOB.
 #[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Message, Digestible)]
 pub struct Amount {
-    /// A Pedersen commitment `v*H + b*G` to a quantity `v` of MobileCoin, with blinding `b`,
+    /// A Pedersen commitment `v*H + b*G` to a quantity `v` of MobileCoin, with
+    /// blinding `b`,
     #[prost(message, required, tag = "1")]
     pub commitment: CompressedCommitment,
 
@@ -36,12 +37,13 @@ pub struct Amount {
 }
 
 impl Amount {
-    /// Creates a commitment `value*H + blinding*G`, and "masks" the commitment secrets
-    /// so that they can be recovered by the recipient.
+    /// Creates a commitment `value*H + blinding*G`, and "masks" the commitment
+    /// secrets so that they can be recovered by the recipient.
     ///
     /// # Arguments
     /// * `value` - The committed value `v`, in picoMOB.
-    /// * `shared_secret` - The shared secret, e.g. `rB` for transaction private key `r` and recipient public key `B`.
+    /// * `shared_secret` - The shared secret, e.g. `rB` for transaction private
+    ///   key `r` and recipient public key `B`.
     #[inline]
     pub fn new(value: u64, shared_secret: &RistrettoPublic) -> Result<Amount, AmountError> {
         // The blinding is `Blake2B("blinding" | shared_secret)`
@@ -80,8 +82,9 @@ impl Amount {
         let expected_commitment = CompressedCommitment::new(value, blinding);
         if self.commitment != expected_commitment {
             // The commitment does not agree with the provided value and blinding.
-            // This either means that the commitment does not correspond to the shared secret, or
-            // that the amount is malformed (and is probably not spendable).
+            // This either means that the commitment does not correspond to the shared
+            // secret, or that the amount is malformed (and is probably not
+            // spendable).
             return Err(AmountError::InconsistentCommitment);
         }
 

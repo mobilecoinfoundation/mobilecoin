@@ -91,7 +91,8 @@ pub struct Signature {
     header: [u8; 16],
     /// Intel enclaves will use 0x00008086, other enclaves will use 0x00000000
     vendor: [u8; 4],
-    /// The build date of the enclave, as an 8-decimal date (YYYYMMDD) stored as little-endian bytes
+    /// The build date of the enclave, as an 8-decimal date (YYYYMMDD) stored as
+    /// little-endian bytes
     date: [u8; 4],
     /// The byte stream 0x01010000600000006000000001000000
     header2: [u8; 16],
@@ -142,8 +143,9 @@ impl Signature {
     /// Retrieve the date (without timezone) the enclave was built as a
     /// [Binary-Coded Decimal](https://en.wikipedia.org/wiki/Binary-coded_decimal).
     ///
-    /// This means that a date like April 15, 2020 will be encoded as the hexadecimal 0x20200415.
-    /// It's a terrible way of encoding dates, but it's how SIGSTRUCT works internally.
+    /// This means that a date like April 15, 2020 will be encoded as the
+    /// hexadecimal 0x20200415. It's a terrible way of encoding dates, but
+    /// it's how SIGSTRUCT works internally.
     pub fn date(&self) -> u32 {
         u32::from_le_bytes(self.date)
     }
@@ -193,7 +195,8 @@ impl Signature {
         &self.enclavehash
     }
 
-    /// Generate the MRSIGNER value for this signature and return it as an array of bytes
+    /// Generate the MRSIGNER value for this signature and return it as an array
+    /// of bytes
     pub fn mrsigner(&self) -> [u8; MRSIGNER_LEN] {
         Sha256::digest(&self.modulus[..]).into()
     }
@@ -323,7 +326,8 @@ mod tests {
 
     const VALID: &[u8] = include_bytes!("valid.css");
 
-    // values copied from the sgx_sign generated dump file at the time valid.css was generated
+    // values copied from the sgx_sign generated dump file at the time valid.css was
+    // generated
     const VALID_PARSED: Signature = Signature {
         header: HEADER1,
         vendor: [0x0, 0x0, 0x0, 0x0],

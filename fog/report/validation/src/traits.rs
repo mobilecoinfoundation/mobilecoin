@@ -9,8 +9,8 @@ use mc_crypto_keys::RistrettoPublic;
 use mc_fog_sig::Error as FogSigError;
 use mc_util_uri::UriParseError;
 
-/// Class that can resolve a public address to a fully-validated fog public key structure,
-/// including the pubkey expiry data from the report server.
+/// Class that can resolve a public address to a fully-validated fog public key
+/// structure, including the pubkey expiry data from the report server.
 #[cfg_attr(any(test, feature = "automock"), automock)]
 pub trait FogPubkeyResolver {
     /// Fetch and validate a fog public key, given a recipient's public address
@@ -20,16 +20,17 @@ pub trait FogPubkeyResolver {
     ) -> Result<FullyValidatedFogPubkey, FogPubkeyError>;
 }
 
-/// Represents a fog public key validated to use for creating encrypted fog hints.
-/// This object should be constructed only when the IAS report has been validated,
-/// and the chain of trust from the connection has been validated, and the
-/// the fog user's fog_authority_sig over the root subjectPublicKeyInfo in the
-/// signature chain has been validated.
+/// Represents a fog public key validated to use for creating encrypted fog
+/// hints. This object should be constructed only when the IAS report has been
+/// validated, and the chain of trust from the connection has been validated,
+/// and the the fog user's fog_authority_sig over the root subjectPublicKeyInfo
+/// in the signature chain has been validated.
 #[derive(Clone, Debug, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub struct FullyValidatedFogPubkey {
-    /// The ristretto curve point which was extracted from the IAS report additional data
-    /// after validation. This is the encryption key used to create encrypted fog hints.
-    /// The corresponding private key lives only in SGX ingest nodes.
+    /// The ristretto curve point which was extracted from the IAS report
+    /// additional data after validation. This is the encryption key used to
+    /// create encrypted fog hints. The corresponding private key lives only
+    /// in SGX ingest nodes.
     pub pubkey: RistrettoPublic,
     /// The pubkey_expiry value is the latest block that fog-service promises
     /// that is valid to encrypt fog hints using this key for.

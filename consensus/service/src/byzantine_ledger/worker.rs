@@ -59,7 +59,8 @@ pub struct ByzantineLedgerWorker<
     // as expect to be doing more lookups than inserts.
     unavailable_tx_hashes: HashMap<ResponderId, BTreeSet<TxHash>>,
 
-    // Current slot index (the one that is not yet in the ledger / the one currently being worked on).
+    // Current slot index (the one that is not yet in the ledger / the one currently being worked
+    // on).
     current_slot_index: SlotIndex,
     ledger: L,
     ledger_sync_service: LS,
@@ -86,7 +87,8 @@ pub struct ByzantineLedgerWorker<
     // Transactions that this node will attempt to submit to consensus.
     pending_values: PendingValues<TXM>,
 
-    // Set to true when the worker has pending values that have not yet been proposed to the scp_node.
+    // Set to true when the worker has pending values that have not yet been proposed to the
+    // scp_node.
     need_nominate: bool,
 
     logger: Logger,
@@ -109,10 +111,14 @@ impl<
     /// * `connection_manager` - Manages connections to peers.
     /// * `tx_manager` - TxManager
     /// * `broadcaster` - Broadcaster
-    /// * `tasks` - Receiver-end of a queue of task messages for this worker to process.
-    /// * `is_behind` - Worker sets to true when the local node is behind its peers.
-    /// * `highest_peer_block` - Worker sets to highest block index that the network agrees on.
-    /// * `highest_issued_msg` - Worker sets to highest consensus message issued by this node.
+    /// * `tasks` - Receiver-end of a queue of task messages for this worker to
+    ///   process.
+    /// * `is_behind` - Worker sets to true when the local node is behind its
+    ///   peers.
+    /// * `highest_peer_block` - Worker sets to highest block index that the
+    ///   network agrees on.
+    /// * `highest_issued_msg` - Worker sets to highest consensus message issued
+    ///   by this node.
     /// * `logger` - Logger instance.
     pub fn new(
         scp_node: Box<dyn ScpNode<TxHash>>,
@@ -194,7 +200,7 @@ impl<
             }
 
             // (5) MaybeBehind --> MaybeBehind
-            (LedgerSyncState::MaybeBehind(_), LedgerSyncState::MaybeBehind(_)) => {} // Nothing to do.
+            (LedgerSyncState::MaybeBehind(_), LedgerSyncState::MaybeBehind(_)) => {} /* Nothing to do. */
 
             // (6) MaybeBehind --> IsBehind
             (LedgerSyncState::MaybeBehind(_), LedgerSyncState::IsBehind { .. }) => {
@@ -360,7 +366,8 @@ impl<
     fn receive_tasks(&mut self) -> bool {
         for task_msg in self.tasks.try_iter() {
             match task_msg {
-                // Transactions submitted by clients. These are assumed to be well-formed, but may not be valid.
+                // Transactions submitted by clients. These are assumed to be well-formed, but may
+                // not be valid.
                 TaskMessage::Values(timestamp, new_values) => {
                     for tx_hash in new_values {
                         if self.pending_values.push(tx_hash, timestamp) {
@@ -419,7 +426,8 @@ impl<
         self.need_nominate = false;
     }
 
-    // Process messages for current slot and recent previous slots; retain messages for future slots.
+    // Process messages for current slot and recent previous slots; retain messages
+    // for future slots.
     fn process_consensus_msgs(&mut self) {
         // Process messages for slot indices in [oldest_slot, current_slot].
         let current_slot_index = self.current_slot_index;
@@ -510,7 +518,8 @@ impl<
             }
         }
 
-        // Invariant: pending_values only contains valid values that were not externalized.
+        // Invariant: pending_values only contains valid values that were not
+        // externalized.
         self.pending_values
             .retain(|tx_hash| !externalized.contains(tx_hash));
 
@@ -556,7 +565,8 @@ impl<
             current_slot_index
         };
 
-        // Purge transactions that can no longer be processed based on their tombstone block.
+        // Purge transactions that can no longer be processed based on their tombstone
+        // block.
         let max_externalized_slots = self.scp_node.max_externalized_slots() as u64;
         let purged_hashes = {
             let index = self
@@ -593,10 +603,11 @@ impl<
         // different slot, it is possible we might be able to fetch it.
         self.unavailable_tx_hashes.clear();
 
-        // If we think we're behind, reset us back to InSync since we made progress. If we're still
-        // behind this will result in restarting the grace period timer, which is the desired
-        // behavior. This protects us from a node that is slightly behind it's peers but has queued
-        // up all the SCP statements it needs to make progress and catch up.
+        // If we think we're behind, reset us back to InSync since we made progress. If
+        // we're still behind this will result in restarting the grace period
+        // timer, which is the desired behavior. This protects us from a node
+        // that is slightly behind it's peers but has queued up all the SCP
+        // statements it needs to make progress and catch up.
         if self.ledger_sync_state != LedgerSyncState::InSync {
             log::info!(self.logger, "sync_service reported we're behind, but we just externalized a slot. resetting to InSync");
             self.ledger_sync_state = LedgerSyncState::InSync;
@@ -891,11 +902,13 @@ mod tests {
         // current_slot_index should be initialized from the ledger.
         assert_eq!(worker.current_slot_index, num_blocks);
 
-        // Initially, the worker should think that its ledger is in sync with the network.
+        // Initially, the worker should think that its ledger is in sync with the
+        // network.
         assert_eq!(worker.ledger_sync_state, LedgerSyncState::InSync);
     }
 
-    /// Asserts that next_sync_state maps (initial_state, is_behind, now) --> expected_state
+    /// Asserts that next_sync_state maps (initial_state, is_behind, now) -->
+    /// expected_state
     fn next_sync_state_helper(
         initial_state: LedgerSyncState,
         is_behind: bool,
@@ -987,7 +1000,8 @@ mod tests {
         );
 
         // is_behind = true, MaybeBehind -> MaybeBehind
-        // This happens when not enough time has elapsed since entering the MaybeBehind state.
+        // This happens when not enough time has elapsed since entering the MaybeBehind
+        // state.
         let now = Instant::now();
         next_sync_state_helper(
             LedgerSyncState::MaybeBehind(now),
@@ -998,7 +1012,8 @@ mod tests {
         );
 
         // is_behind = true, MaybeBehind -> IsBehind
-        // This happens when the grace period has elapsed since entering the MaybeBehind state.
+        // This happens when the grace period has elapsed since entering the MaybeBehind
+        // state.
         let behind_since = Instant::now();
         // IS_BEHIND_GRACE_PERIOD + 1 seconds has elapsed
         let now = behind_since
@@ -1282,7 +1297,8 @@ mod tests {
         // `validate` will be called one for each pushed value.
         tx_manager.expect_validate().return_const(Ok(()));
 
-        // Up to MAX_PENDING_VALUES_TO_NOMINATE values should be proposed to the scp_node.
+        // Up to MAX_PENDING_VALUES_TO_NOMINATE values should be proposed to the
+        // scp_node.
         scp_node
             .expect_propose_values()
             .times(1)

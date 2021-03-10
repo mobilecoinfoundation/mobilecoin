@@ -59,7 +59,8 @@ pub enum Error {
     /// There was an error reading the signature file: {0}
     Io(String),
 
-    /// There was an error executing cargo metadata against the staticlib crate: {0}
+    /// There was an error executing cargo metadata against the staticlib crate:
+    /// {0}
     Metadata(MetadataError),
 
     /// There was an error executing pkg-config
@@ -68,7 +69,8 @@ pub enum Error {
     /// The SGX signing executable could not dump output
     SgxSignDump,
 
-    /// The SGX signing executable could not append the signature to the unsigned binary
+    /// The SGX signing executable could not append the signature to the
+    /// unsigned binary
     SgxSignCatsig,
 
     /// The SGX signing executable could not perform a one-shot signature
@@ -77,7 +79,8 @@ pub enum Error {
     /// The SGX signing executable could not generate the data to be signed
     SgxSignGendata,
 
-    /// The gendata to be signed doesn't match what the given unsigned enclave produces
+    /// The gendata to be signed doesn't match what the given unsigned enclave
+    /// produces
     BadGendata,
 
     /// The enclave staticlib's crate name was in a screwy format
@@ -122,8 +125,8 @@ impl From<SignatureError> for Error {
 
 /// A builder structure which will configure and build an enclave.
 ///
-/// The basic rule of thumb for provided paths is that it will invent temporary paths for things
-/// if they aren't specified
+/// The basic rule of thumb for provided paths is that it will invent temporary
+/// paths for things if they aren't specified
 #[derive(Clone, Debug)]
 pub struct Builder {
     /// The cargo command builder
@@ -274,7 +277,8 @@ impl Builder {
 
     /// Add rust flags to use when building an enclave.
     ///
-    /// Note that the target and required compiler mitigations will be set already.
+    /// Note that the target and required compiler mitigations will be set
+    /// already.
     pub fn add_rust_flags(&mut self, flags: &[&str]) -> &mut Self {
         self.cargo_builder.add_rust_flags(flags);
         self
@@ -282,7 +286,8 @@ impl Builder {
 
     /// Set the CSS file path explicitly.
     ///
-    /// If unset, one will be derived from the enclave name and profile target dir
+    /// If unset, one will be derived from the enclave name and profile target
+    /// dir
     pub fn css(&mut self, css: PathBuf) -> &mut Self {
         self.css = Some(css);
         self
@@ -290,7 +295,8 @@ impl Builder {
 
     /// Set the dump file path explicitly.
     ///
-    /// If unset, one will be derived from the enclave name and profile target dir
+    /// If unset, one will be derived from the enclave name and profile target
+    /// dir
     pub fn dump(&mut self, dump: PathBuf) -> &mut Self {
         self.dump = Some(dump);
         self
@@ -298,7 +304,8 @@ impl Builder {
 
     /// Set the signed enclave path explicitly.
     ///
-    /// If unset, one will be derived from the enclave name and profile target dir
+    /// If unset, one will be derived from the enclave name and profile target
+    /// dir
     pub fn signed_enclave(&mut self, enclave: PathBuf) -> &mut Self {
         self.signed_enclave = Some(enclave);
         self
@@ -306,19 +313,20 @@ impl Builder {
 
     /// Set the unsigned enclave path explicitly.
     ///
-    /// If unset, one will be derived from the enclave name and profile target dir
+    /// If unset, one will be derived from the enclave name and profile target
+    /// dir
     pub fn unsigned_enclave(&mut self, enclave: PathBuf) -> &mut Self {
         self.unsigned_enclave = Some(enclave);
         self
     }
 
-    /// Set the gendata, pubkey, and signature path explicitly, and explicitly request the offline,
-    /// catsig process be used.
+    /// Set the gendata, pubkey, and signature path explicitly, and explicitly
+    /// request the offline, catsig process be used.
     ///
     /// If set, the privkey option will be removed.
     ///
-    /// If neither and no privkey is set, a private key will be generated from scratch and used to
-    /// sign the enclave.
+    /// If neither and no privkey is set, a private key will be generated from
+    /// scratch and used to sign the enclave.
     // TBD: This may cause problems when trying to load the enclave.
     pub fn catsig(&mut self, gendata: PathBuf, pubkey: PathBuf, signature: PathBuf) -> &mut Self {
         self.gendata = Some(gendata);
@@ -328,12 +336,13 @@ impl Builder {
         self
     }
 
-    /// Set a privkey path an explicitly request the online one-shot signature process be used.
+    /// Set a privkey path an explicitly request the online one-shot signature
+    /// process be used.
     ///
     /// If set, any catsig options will be removed.
     ///
-    /// If neither privkey nor catsig are called, a private key will be generated from scratch and
-    /// used to sign the enclave.
+    /// If neither privkey nor catsig are called, a private key will be
+    /// generated from scratch and used to sign the enclave.
     // TBD: This may cause problems when trying to load the enclave.
     pub fn privkey(&mut self, privkey: PathBuf) -> &mut Self {
         self.privkey = Some(privkey);
@@ -345,23 +354,25 @@ impl Builder {
 
     /// Set the LDS path explicitly.
     ///
-    /// If unset, the builder will expect the static crate to provide an "enclave.lds" file. If
-    /// that file does not exist, one will be created automatically in the output dir.
+    /// If unset, the builder will expect the static crate to provide an
+    /// "enclave.lds" file. If that file does not exist, one will be created
+    /// automatically in the output dir.
     pub fn lds(&mut self, lds: PathBuf) -> &mut Self {
         self.lds = Some(lds);
         self
     }
 
-    /// This method will extract the signature from a signed enclave sigstruct dump.
+    /// This method will extract the signature from a signed enclave sigstruct
+    /// dump.
     ///
-    /// If the dump is not found, it will try to extract one from a signed enclave, either in the
-    /// output dir or specified in the builder.
+    /// If the dump is not found, it will try to extract one from a signed
+    /// enclave, either in the output dir or specified in the builder.
     ///
-    /// If a signed enclave is not found, it will try to combine a pre-staged signature, pubkey,
-    /// generated data, and unsigned enclave.
+    /// If a signed enclave is not found, it will try to combine a pre-staged
+    /// signature, pubkey, generated data, and unsigned enclave.
     ///
-    /// If the signature, pubkey, or generated data do not exist, it will generate a new private
-    /// key and sign an unsigned enclave.
+    /// If the signature, pubkey, or generated data do not exist, it will
+    /// generate a new private key and sign an unsigned enclave.
     ///
     /// If an unsigned enclave does not exist, it will build it.
     pub fn build(&mut self) -> Result<Signature, Error> {
@@ -439,7 +450,8 @@ impl Builder {
         }
     }
 
-    /// Create the signed enclave binary by applying a signature to an unsigned binary
+    /// Create the signed enclave binary by applying a signature to an unsigned
+    /// binary
     fn sign_enclave(&mut self, signed_enclave: &Path) -> Result<(), Error> {
         // Write the configuration file if one isn't provided
         let config_xml = if let Some(config_xml) = &self.config_xml {
@@ -501,7 +513,8 @@ impl Builder {
             gendata
         };
 
-        // The signed enclave is also an artifact, so we will copy it to the target profile dir
+        // The signed enclave is also an artifact, so we will copy it to the target
+        // profile dir
         let mut signed_artifact = self.profile_target_dir.join(
             unsigned_enclave
                 .file_name()
@@ -509,8 +522,8 @@ impl Builder {
         );
         signed_artifact.set_extension("signed.so");
 
-        // If we have been given a private key to use, just sign the enclave in the insecure,
-        // one-shot mode
+        // If we have been given a private key to use, just sign the enclave in the
+        // insecure, one-shot mode
         if let Some(private_key) = &self.privkey.clone() {
             self.oneshot(
                 &unsigned_enclave,
@@ -598,8 +611,8 @@ impl Builder {
         }
     }
 
-    /// Using the static archive generated from the staticlib crate, link an unsigned dynamic
-    /// object.
+    /// Using the static archive generated from the staticlib crate, link an
+    /// unsigned dynamic object.
     fn link_unsigned(&mut self, unsigned_enclave: &Path) -> Result<(), Error> {
         let lds = if let Some(lds) = &self.lds {
             rerun_if_changed!(lds.as_os_str().to_str().expect("Invalid UTF-8 in LDS path"));
@@ -643,8 +656,8 @@ impl Builder {
             .next()
             .ok_or(Error::TrustedCrateName)?;
 
-        // "target/name/<profile>/libmc_foo_enclave_trusted.a" -- not xplatform, but neither is our
-        // use of SGX, so meh.
+        // "target/name/<profile>/libmc_foo_enclave_trusted.a" -- not xplatform, but
+        // neither is our use of SGX, so meh.
         let mut static_archive_name = "lib".to_owned();
         // libnames are not kebab, crate names are
         static_archive_name.push_str(&staticlib_crate_name.replace("-", "_"));
@@ -669,9 +682,9 @@ impl Builder {
         //  but we should include it if it is in [1], and it likely has no effect.
         //
         // -now means that the usual "lazily resolve symbol on first use" strategy
-        //  for shared libraries is disabled and all symbols get resolved immediately on load.
-        //  Since the enclave is ultimatley a self-contained static blob, we don't need or
-        //  want any of those trampolines. [4]
+        //  for shared libraries is disabled and all symbols get resolved immediately on
+        // load.  Since the enclave is ultimatley a self-contained static blob,
+        // we don't need or  want any of those trampolines. [4]
         //
         // Note: [2] suggests in the last sentence that the sgx_sign utility
         // *should* issue a warning if there are any text relocations.

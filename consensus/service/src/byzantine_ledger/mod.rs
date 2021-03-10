@@ -2,7 +2,8 @@
 
 //! A Federated, Byzantine Fault-Tolerant Ledger.
 //!
-//! Orchestrates running single-slot consensus, or performing ledger sync with peers.
+//! Orchestrates running single-slot consensus, or performing ledger sync with
+//! peers.
 
 mod ledger_sync_state;
 mod pending_values;
@@ -39,8 +40,9 @@ use std::{
 pub const IS_BEHIND_GRACE_PERIOD: Duration = Duration::from_secs(10);
 
 /// Maximum number of pending values to hand over to `scp` at each slot.
-/// This is currently capped due to pending values not being capped and an outstanding issue of
-/// `scp` performing more expensive and exhaustive validation than is sometimes required.
+/// This is currently capped due to pending values not being capped and an
+/// outstanding issue of `scp` performing more expensive and exhaustive
+/// validation than is sometimes required.
 pub const MAX_PENDING_VALUES_TO_NOMINATE: usize = 100;
 
 pub struct ByzantineLedger {
@@ -72,7 +74,8 @@ impl ByzantineLedger {
     /// * `broadcaster` - Broadcaster
     /// * `msg_signer_key` - Signs consensus messages issued by this node.
     /// * `tx_source_urls` - Source URLs for fetching block contents.
-    /// * `scp_debug_dir` - If Some, debugging info will be written in this directory.
+    /// * `scp_debug_dir` - If Some, debugging info will be written in this
+    ///   directory.
     /// * `logger` -
     pub fn new<
         PC: BlockchainConnection + ConsensusConnection + 'static,
@@ -127,7 +130,7 @@ impl ByzantineLedger {
             let ledger_sync_service = LedgerSyncService::new(
                 ledger.clone(),
                 peer_manager.clone(),
-                ReqwestTransactionsFetcher::new(tx_source_urls, logger.clone()).unwrap(), // Unwrap?
+                ReqwestTransactionsFetcher::new(tx_source_urls, logger.clone()).unwrap(), /* Unwrap? */
                 logger.clone(),
             );
 
@@ -382,7 +385,8 @@ mod tests {
         assert_eq!(byzantine_ledger.is_behind(), false);
     }
 
-    // Initially, ByzantineLedger should emit the normal SCPStatements from single-slot consensus.
+    // Initially, ByzantineLedger should emit the normal SCPStatements from
+    // single-slot consensus.
     #[test_with_logger]
     fn test_single_slot_consensus(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([209u8; 32]);
@@ -645,7 +649,8 @@ mod tests {
         // bad_msg.scp_msg.slot_index = 80;
         // byzantine_ledger.handle_consensus_msg(bad_msg, node_c.0.responder_id);
 
-        // After some time, this node should emit some statements and write a new block to its ledger.
+        // After some time, this node should emit some statements and write a new block
+        // to its ledger.
         let deadline = Instant::now() + Duration::from_secs(60);
         while Instant::now() < deadline {
             let num_blocks_after = ledger.num_blocks().unwrap();
@@ -694,7 +699,8 @@ mod tests {
 
     #[test]
     #[ignore]
-    // ByzantineLedger should sync its ledger with its peers, and then emit the normal SCPStatements from single-slot consensus.
+    // ByzantineLedger should sync its ledger with its peers, and then emit the
+    // normal SCPStatements from single-slot consensus.
     fn test_ledger_sync() {
         unimplemented!()
     }

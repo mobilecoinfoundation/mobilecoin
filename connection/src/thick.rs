@@ -119,7 +119,8 @@ pub struct ThickClient<CP: CredentialsProvider> {
     logger: Logger,
     /// The gRPC API client we will use for blockchain detail retrieval.
     blockchain_api_client: BlockchainApiClient,
-    /// The gRPC API client we will use for attestation and (eventually) transactions
+    /// The gRPC API client we will use for attestation and (eventually)
+    /// transactions
     attested_api_client: AttestedApiClient,
     /// The gRPC API client we will use for legacy transaction submission.
     consensus_client_api_client: ConsensusClientApiClient,
@@ -129,7 +130,8 @@ pub struct ThickClient<CP: CredentialsProvider> {
     enclave_connection: Option<Ready<Aes256Gcm>>,
     /// Generic interface for retreiving GRPC credentials.
     credentials_provider: CP,
-    /// A hash map of metadata to set on outbound requests, filled by inbound `Set-Cookie` metadata
+    /// A hash map of metadata to set on outbound requests, filled by inbound
+    /// `Set-Cookie` metadata
     cookies: CookieJar,
 }
 
@@ -163,8 +165,8 @@ impl<CP: CredentialsProvider> ThickClient<CP> {
         })
     }
 
-    /// A wrapper for performing an authenticated call. This also takes care to properly include
-    /// cookie information in the request.
+    /// A wrapper for performing an authenticated call. This also takes care to
+    /// properly include cookie information in the request.
     fn authenticated_call<
         T,
         E: AuthenticationError + From<Box<dyn CredentialsProviderError + 'static>>,
@@ -176,8 +178,8 @@ impl<CP: CredentialsProvider> ThickClient<CP> {
         let call_option = self.call_option()?;
         let result = func(self, call_option);
 
-        // If the call failed due to authentication (credentials) error, reset creds so that it
-        // gets re-created on the next call.
+        // If the call failed due to authentication (credentials) error, reset creds so
+        // that it gets re-created on the next call.
         if let Err(err) = result.as_ref() {
             if err.is_unauthenticated() {
                 self.credentials_provider.clear();

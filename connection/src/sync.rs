@@ -132,13 +132,13 @@ macro_rules! _retry_wrapper {
     }};
 }
 
-// Generic retry implementation, locks the inner object, calls the underlying function and passes
-// the given argument(s).
+// Generic retry implementation, locks the inner object, calls the underlying
+// function and passes the given argument(s).
 //
 // This will immediately stop on any non-gRPC error, however.
 //
-// This is required to allow the locks on the underlying object to live only for as long as the
-// request itself (not the entire retry interval).
+// This is required to allow the locks on the underlying object to live only for
+// as long as the request itself (not the entire retry interval).
 #[macro_export]
 macro_rules! impl_sync_connection_retry {
     ($obj:expr, $logger:expr, $func:ident, $iter:expr) => {{

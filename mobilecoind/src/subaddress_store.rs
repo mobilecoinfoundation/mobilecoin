@@ -1,8 +1,9 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
 //! Database storage for subaddress indices
-//! * A lookup table, mapping subaddress_spend_public_key to monitor_id and subaddress index.
-//!   This is used by the ledger sync code, allowing it to match TxOuts into specific monitor_ids.
+//! * A lookup table, mapping subaddress_spend_public_key to monitor_id and
+//!   subaddress index. This is used by the ledger sync code, allowing it to
+//!   match TxOuts into specific monitor_ids.
 
 use crate::{
     database_key::DatabaseByteArrayKey,

@@ -3,9 +3,9 @@
 #![no_std]
 #![deny(missing_docs)]
 
-//! This crate provides prost versions of some types from fog report server proto
-//! One reason that these prost versions are needed is so that mc-fog-report-validation
-//! doesn't depend on grpcio, as `mc-fog-api` does.
+//! This crate provides prost versions of some types from fog report server
+//! proto One reason that these prost versions are needed is so that
+//! mc-fog-report-validation doesn't depend on grpcio, as `mc-fog-api` does.
 
 extern crate alloc;
 

@@ -27,7 +27,8 @@ pub struct Config {
     #[structopt(long, default_value = "/tmp/ledgerdb", parse(from_os_str))]
     pub ledger_db: PathBuf,
 
-    /// Path to existing ledger db that contains the origin block, used when initializing new ledger dbs.
+    /// Path to existing ledger db that contains the origin block, used when
+    /// initializing new ledger dbs.
     #[structopt(long)]
     pub ledger_db_bootstrap: Option<String>,
 
@@ -38,10 +39,12 @@ pub struct Config {
     #[structopt(flatten)]
     pub peers_config: PeersConfig,
 
-    /// Quorum set for ledger syncing. By default, the quorum set would include all peers.
+    /// Quorum set for ledger syncing. By default, the quorum set would include
+    /// all peers.
     ///
     /// The quorum set is represented in JSON. For example:
-    /// {"threshold":1,"members":[{"type":"Node","args":"node2.test.mobilecoin.com:443"},{"type":"Node","args":"node3.test.mobilecoin.com:443"}]}
+    /// {"threshold":1,"members":[{"type":"Node","args":"node2.test.mobilecoin.
+    /// com:443"},{"type":"Node","args":"node3.test.mobilecoin.com:443"}]}
     #[structopt(long, parse(try_from_str=parse_quorum_set_from_json))]
     quorum_set: Option<QuorumSet<ResponderId>>,
 
@@ -73,8 +76,8 @@ pub struct Config {
     #[structopt(long)]
     pub offline: bool,
 
-    /// Fog ingest enclave CSS file (needed in order to enable sending transactions to fog
-    /// recipients).
+    /// Fog ingest enclave CSS file (needed in order to enable sending
+    /// transactions to fog recipients).
     #[structopt(long, parse(try_from_str=load_css_file))]
     pub fog_ingest_enclave_css: Option<Signature>,
 }
@@ -156,7 +159,8 @@ impl Config {
         QuorumSet::new_with_node_ids(node_ids.len() as u32, node_ids)
     }
 
-    /// Get the attestation verifier used to verify fog reports when sending to fog recipients
+    /// Get the attestation verifier used to verify fog reports when sending to
+    /// fog recipients
     pub fn get_fog_ingest_verifier(&self) -> Option<Verifier> {
         self.fog_ingest_enclave_css.as_ref().map(|signature| {
             let mr_signer_verifier = {
@@ -175,8 +179,9 @@ impl Config {
         })
     }
 
-    /// Get the function which creates FogResolver given a list of recipient addresses
-    /// The string error should be mapped by invoker of this factory to Error::FogError
+    /// Get the function which creates FogResolver given a list of recipient
+    /// addresses The string error should be mapped by invoker of this
+    /// factory to Error::FogError
     pub fn get_fog_resolver_factory(
         &self,
         logger: Logger,
@@ -214,8 +219,8 @@ impl Config {
     /// Uses icanhazip.com for getting local IP.
     /// Uses ipinfo.io for getting details about IP address.
     ///
-    /// Note, both of these services are free tier and rate-limited. A longer term solution
-    /// would be to filter on the consensus server.
+    /// Note, both of these services are free tier and rate-limited. A longer
+    /// term solution would be to filter on the consensus server.
     #[cfg(feature = "ip-check")]
     pub fn validate_host(&self) -> Result<(), ConfigError> {
         let client = Client::builder().gzip(true).use_rustls_tls().build()?;

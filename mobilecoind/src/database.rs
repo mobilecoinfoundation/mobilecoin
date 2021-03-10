@@ -28,9 +28,10 @@ const MAX_LMDB_FILE_SIZE: usize = 1_099_511_627_776; // 1 TB
 #[derive(Clone, Default, Debug)]
 pub struct MobilecoindDbMetadataStoreSettings;
 impl MetadataStoreSettings for MobilecoindDbMetadataStoreSettings {
-    // Default database version. This should be bumped when breaking changes are introduced.
-    // If this is properly maintained, we could check during ledger db opening for any
-    // incompatibilities, and either refuse to open or perform a migration.
+    // Default database version. This should be bumped when breaking changes are
+    // introduced. If this is properly maintained, we could check during ledger
+    // db opening for any incompatibilities, and either refuse to open or
+    // perform a migration.
     #[allow(clippy::unreadable_literal)]
     const LATEST_VERSION: u64 = 20200805;
 
@@ -117,21 +118,23 @@ impl Database {
         self.crypto_provider.is_db_encrypted()
     }
 
-    /// Check if the data is currently accessible (this checks if the correct encryption key has
-    /// been provided)
+    /// Check if the data is currently accessible (this checks if the correct
+    /// encryption key has been provided)
     pub fn is_unlocked(&self) -> bool {
         self.crypto_provider.is_unlocked()
     }
 
-    /// Check if a given password is the correct password to decrypt the database.
-    /// This also stores it for future encryption/decryption operations.
+    /// Check if a given password is the correct password to decrypt the
+    /// database. This also stores it for future encryption/decryption
+    /// operations.
     pub fn check_and_store_password(&self, password: &[u8]) -> Result<(), Error> {
         Ok(self.crypto_provider.check_and_store_password(password)?)
     }
 
     /// Re-encrypt the encrypted parts of the database with a new password.
-    /// This will fail if the current password is not set in the crypto_provider since part of the
-    /// re-encryption process relies on being able to decrypt the existing data.
+    /// This will fail if the current password is not set in the crypto_provider
+    /// since part of the re-encryption process relies on being able to
+    /// decrypt the existing data.
     pub fn re_encrypt(&self, new_password: &[u8]) -> Result<(), Error> {
         let mut db_txn = self.env.begin_rw_txn()?;
 
@@ -519,7 +522,8 @@ mod test {
         );
     }
 
-    // Inserting a monitor that overlaps subaddresses of another monitor should result in an error.
+    // Inserting a monitor that overlaps subaddresses of another monitor should
+    // result in an error.
     #[test_with_logger]
     fn test_overlapping_add_monitor_fails(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
@@ -577,8 +581,8 @@ mod test {
             Err(err) => panic!("unexpected error {:?}", err),
         };
 
-        // Inserting a monitor with overlapping subaddresses and a different `first_block` should
-        // fail.
+        // Inserting a monitor with overlapping subaddresses and a different
+        // `first_block` should fail.
         let data = MonitorData::new(
             account_key.clone(),
             0,  // first_subaddress

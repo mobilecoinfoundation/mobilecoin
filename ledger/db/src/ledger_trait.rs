@@ -32,7 +32,8 @@ pub trait Ledger: Send {
     /// Gets a block signature by its index in the blockchain.
     fn get_block_signature(&self, block_number: BlockIndex) -> Result<BlockSignature, Error>;
 
-    /// Gets a block and all of its associated data by its index in the blockchain.
+    /// Gets a block and all of its associated data by its index in the
+    /// blockchain.
     fn get_block_data(&self, block_number: BlockIndex) -> Result<BlockData, Error>;
 
     /// Gets block index by a TxOut global index.

@@ -6,8 +6,9 @@
 //! at least enough entropy as the length of any one of the derived keys.
 //!
 //! The RootIdentity object contains 32 bytes of "root entropy", used with HKDF
-//! to produce the other MobileCoin private keys. This is useful because an AccountKey
-//! derived this way can be represented with a smaller amount of information.
+//! to produce the other MobileCoin private keys. This is useful because an
+//! AccountKey derived this way can be represented with a smaller amount of
+//! information.
 //!
 //! The other (fog-related) fields of RootIdentity are analogous to AccountKey.
 
@@ -98,7 +99,8 @@ pub struct RootIdentity {
 }
 
 impl RootIdentity {
-    /// Generate a random root identity with a specific fog_report_url configured
+    /// Generate a random root identity with a specific fog_report_url
+    /// configured
     pub fn random_with_fog<T: RngCore + CryptoRng>(
         rng: &mut T,
         fog_report_url: &str,

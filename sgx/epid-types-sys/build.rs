@@ -14,7 +14,8 @@ use pkg_config::{Config, Error as PkgConfigError, Library};
 const SGX_LIBS: &[&str] = &["libsgx_epid"];
 const SGX_SIMULATION_LIBS: &[&str] = &["libsgx_epid_sim"];
 
-// Changing this version is a breaking change, you must update the crate version if you do.
+// Changing this version is a breaking change, you must update the crate version
+// if you do.
 const SGX_VERSION: &str = "2.9.101.2";
 
 #[derive(Debug)]
@@ -42,11 +43,11 @@ impl ParseCallbacks for Callbacks {
             //
             // Yelling in the wilderness:
             //
-            // Is there someone going around teaching students that "`_t` means it's a C type"
-            // without further explanation? The `_t` suffix exists for POSIX to namespace itself
-            // from the code of mere mortals, not for every damned fool to remind themselves what
-            // language they are writing code for.
-            //   -jmc
+            // Is there someone going around teaching students that "`_t` means it's a C
+            // type" without further explanation? The `_t` suffix exists for
+            // POSIX to namespace itself from the code of mere mortals, not for
+            // every damned fool to remind themselves what language they are
+            // writing code for.   -jmc
             if !name.ends_with("_t") {
                 retval.push_str("_t")
             }

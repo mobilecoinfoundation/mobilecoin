@@ -10,8 +10,8 @@
 //!
 //! There is also a versioning tag used to allow for a wire-stable format
 //!
-//! To use, create the object `VersionedCryptoBox`, then use the CryptoBox trait to
-//! encrypt and decrypt.
+//! To use, create the object `VersionedCryptoBox`, then use the CryptoBox trait
+//! to encrypt and decrypt.
 
 extern crate alloc;
 

@@ -15,9 +15,10 @@ pub trait CtAeadDecrypt: AeadInPlace {
     /// not branching on whether or not the mac check succeeded.
     ///
     /// Returns:
-    /// Choice::from(true): The mac check succeeded and the buffer contains the plaintext
-    /// Choice::from(false): Decryption failed, and the buffer contains failed decryption.
-    ///        The caller SHOULD zeroize buffer before it is discarded.
+    /// Choice::from(true): The mac check succeeded and the buffer contains the
+    /// plaintext Choice::from(false): Decryption failed, and the buffer
+    /// contains failed decryption.        The caller SHOULD zeroize buffer
+    /// before it is discarded.
     fn ct_decrypt_in_place_detached(
         &self,
         nonce: &GenericArray<u8, Self::NonceSize>,
@@ -27,8 +28,9 @@ pub trait CtAeadDecrypt: AeadInPlace {
     ) -> CtDecryptResult;
 }
 
-/// A new-type wrapper around choice with the #[must_use] annotation that Result has.
-/// This wraps the value Choice::from(true) when decryption succeeded, and Choice::from(false) otherwise.
+/// A new-type wrapper around choice with the #[must_use] annotation that Result
+/// has. This wraps the value Choice::from(true) when decryption succeeded, and
+/// Choice::from(false) otherwise.
 #[must_use = "The result of constant time decryption should not be discarded"]
 #[derive(Copy, Clone, Debug)]
 pub struct CtDecryptResult(pub Choice);

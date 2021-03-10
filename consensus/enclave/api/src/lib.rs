@@ -31,8 +31,8 @@ use serde::{Deserialize, Serialize};
 /// A generic result type for enclave calls
 pub type Result<T> = StdResult<T, Error>;
 
-/// A `mc_transaction_core::Tx` that has been encrypted for the local enclave, to be used during the
-/// two-step is-wellformed check.
+/// A `mc_transaction_core::Tx` that has been encrypted for the local enclave,
+/// to be used during the two-step is-wellformed check.
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct LocallyEncryptedTx(pub Vec<u8>);
 
@@ -121,7 +121,8 @@ impl From<&Tx> for WellFormedTxContext {
 }
 
 /// Defines a sort order for transactions in a block.
-/// Transactions are sorted by fee (high to low), then by transaction hash and any other fields.
+/// Transactions are sorted by fee (high to low), then by transaction hash and
+/// any other fields.
 impl Ord for WellFormedTxContext {
     fn cmp(&self, other: &Self) -> Ordering {
         if self.fee != other.fee {
@@ -174,9 +175,10 @@ mod well_formed_tx_context_tests {
     }
 }
 
-/// An intermediate struct for holding data required to perform the two-step is-well-formed test.
-/// This is returned by `txs_propose` and allows untrusted to gather data required for the
-/// in-enclave well-formedness test that takes place in `tx_is_well_formed`.
+/// An intermediate struct for holding data required to perform the two-step
+/// is-well-formed test. This is returned by `txs_propose` and allows untrusted
+/// to gather data required for the in-enclave well-formedness test that takes
+/// place in `tx_is_well_formed`.
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct TxContext {
     pub locally_encrypted_tx: LocallyEncryptedTx,
@@ -188,8 +190,9 @@ pub struct TxContext {
 
 pub type SealedBlockSigningKey = Vec<u8>;
 
-/// PublicAddress is not serializable with serde currently, and rather than pollute
-/// dependencies, we simply pass the View and Spend public keys as RistrettoPublic.
+/// PublicAddress is not serializable with serde currently, and rather than
+/// pollute dependencies, we simply pass the View and Spend public keys as
+/// RistrettoPublic.
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct FeePublicKey {
     pub spend_public_key: RistrettoPublic,
@@ -225,9 +228,9 @@ pub trait ConsensusEnclave: ReportableEnclave {
     /// Destroy a peer association
     fn client_close(&self, channel_id: ClientSession) -> Result<()>;
 
-    /// Decrypts a message from a client and then immediately discard it. This is useful when we
-    /// want to skip processing an incoming message, but still properly maintain our AKE state in
-    /// sync with the client.
+    /// Decrypts a message from a client and then immediately discard it. This
+    /// is useful when we want to skip processing an incoming message, but
+    /// still properly maintain our AKE state in sync with the client.
     fn client_discard_message(&self, msg: EnclaveMessage<ClientSession>) -> Result<()>;
 
     // NODE-FACING METHODS
@@ -252,18 +255,19 @@ pub trait ConsensusEnclave: ReportableEnclave {
 
     /// Performs the first steps in accepting transactions from a remote client:
     /// 1) Re-encrypt all txs for the local enclave
-    /// 2) Extract context data to be handed back to untrusted so that it could collect the
-    ///    information required by `tx_is_well_formed`.
+    /// 2) Extract context data to be handed back to untrusted so that it could
+    /// collect the    information required by `tx_is_well_formed`.
     fn client_tx_propose(&self, msg: EnclaveMessage<ClientSession>) -> Result<TxContext>;
 
     /// Performs the first steps in accepting transactions from a remote peer:
     /// 1) Re-encrypt all txs for the local enclave
-    /// 2) Extract context data to be handed back to untrusted so that it could collect the
-    ///    information required by `tx_is_well_formed`.
+    /// 2) Extract context data to be handed back to untrusted so that it could
+    /// collect the    information required by `tx_is_well_formed`.
     /// TODO: rename to txs_propose since this operates on multiple txs?
     fn peer_tx_propose(&self, msg: EnclaveMessage<PeerSession>) -> Result<Vec<TxContext>>;
 
-    /// Checks a LocallyEncryptedTx for well-formedness using the given membership proofs and current block index.
+    /// Checks a LocallyEncryptedTx for well-formedness using the given
+    /// membership proofs and current block index.
     fn tx_is_well_formed(
         &self,
         locally_encrypted_tx: LocallyEncryptedTx,
@@ -271,8 +275,8 @@ pub trait ConsensusEnclave: ReportableEnclave {
         proofs: Vec<TxOutMembershipProof>,
     ) -> Result<(WellFormedEncryptedTx, WellFormedTxContext)>;
 
-    /// Re-encrypt sealed transactions for the given peer session, using the given authenticated
-    /// data for the peer.
+    /// Re-encrypt sealed transactions for the given peer session, using the
+    /// given authenticated data for the peer.
     fn txs_for_peer(
         &self,
         encrypted_txs: &[WellFormedEncryptedTx],
@@ -281,7 +285,8 @@ pub trait ConsensusEnclave: ReportableEnclave {
     ) -> Result<EnclaveMessage<PeerSession>>;
 
     /// Redact txs in order to form a new block.
-    /// Returns a block, the block contents, and a signature over the block's digest.
+    /// Returns a block, the block contents, and a signature over the block's
+    /// digest.
     fn form_block(
         &self,
         parent_block: &Block,
@@ -290,8 +295,9 @@ pub trait ConsensusEnclave: ReportableEnclave {
 }
 
 /// Helper trait which reduces boiler-plate in untrusted side
-/// The trusted object which implements consensus_enclave usually cannot implement
-/// Clone, Send, Sync, etc., but the untrusted side can and usually having a "handle to an enclave"
-/// is what is most useful for a webserver.
-/// This marker trait can be implemented for the untrusted-side representation of the enclave.
+/// The trusted object which implements consensus_enclave usually cannot
+/// implement Clone, Send, Sync, etc., but the untrusted side can and usually
+/// having a "handle to an enclave" is what is most useful for a webserver.
+/// This marker trait can be implemented for the untrusted-side representation
+/// of the enclave.
 pub trait ConsensusEnclaveProxy: ConsensusEnclave + Clone + Send + Sync + 'static {}

@@ -2,9 +2,10 @@
 
 //! Conversions between "API types" and "domain/persistence types".
 //!
-//! gRPC and Protobuf provide a reduced selection of types, and so there are some differences between
-//! values stored in the ledger and values transmitted over the API. This module provides conversions
-//! between "equivalent" types, such as `mc_api::blockchain::Block` and `mc_transaction_core::Block`.
+//! gRPC and Protobuf provide a reduced selection of types, and so there are
+//! some differences between values stored in the ledger and values transmitted
+//! over the API. This module provides conversions between "equivalent" types,
+//! such as `mc_api::blockchain::Block` and `mc_transaction_core::Block`.
 
 mod error;
 
@@ -43,7 +44,8 @@ pub use self::error::ConversionError;
 
 use std::path::PathBuf;
 
-/// Helper method for getting the suggested path/filename for a given block index.
+/// Helper method for getting the suggested path/filename for a given block
+/// index.
 pub fn block_num_to_s3block_path(block_index: mc_transaction_core::BlockIndex) -> PathBuf {
     let filename = format!("{:016x}.pb", block_index);
     let mut path = PathBuf::new();
@@ -55,8 +57,8 @@ pub fn block_num_to_s3block_path(block_index: mc_transaction_core::BlockIndex) -
 }
 
 /// Helper method for getting the suggested path/filename of a "merged block".
-/// A "merged block" is a consecutive collection of blocks that were joined together to speed up
-/// ledger syncing.
+/// A "merged block" is a consecutive collection of blocks that were joined
+/// together to speed up ledger syncing.
 /// `bucket_size` specifies how many blocks are expected to be joined together.
 pub fn merged_block_num_to_s3block_path(
     bucket_size: u64,

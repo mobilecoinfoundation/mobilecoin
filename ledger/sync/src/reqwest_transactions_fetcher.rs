@@ -1,7 +1,8 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-//! Implementation of the `TransactionsFetcher` trait that fetches transactions data over http(s)
-//! using the `reqwest` library. It can be used, for example, to get transaction data from S3.
+//! Implementation of the `TransactionsFetcher` trait that fetches transactions
+//! data over http(s) using the `reqwest` library. It can be used, for example,
+//! to get transaction data from S3.
 
 use crate::transactions_fetcher_trait::{TransactionFetcherError, TransactionsFetcher};
 use failure::Fail;
@@ -24,9 +25,9 @@ use std::{
 };
 use url::Url;
 
-/// Default merged blocks bucket sizes. Merged blocks are objects that contain multiple consecutive
-/// blocks that have been bundled together in order to reduce the amount of requests needed to get
-/// the block data.
+/// Default merged blocks bucket sizes. Merged blocks are objects that contain
+/// multiple consecutive blocks that have been bundled together in order to
+/// reduce the amount of requests needed to get the block data.
 /// Notes:
 /// - This should match the defaults in `mc-ledger-distribution`.
 /// - This must be sorted in descending order.
@@ -78,7 +79,8 @@ pub struct ReqwestTransactionsFetcher {
     /// The most recently used URL index (in `source_urls`).
     source_index_counter: Arc<AtomicU64>,
 
-    /// Cache mapping a `BlockID` to `BlockData`, filled by merged blocks when possible.
+    /// Cache mapping a `BlockID` to `BlockData`, filled by merged blocks when
+    /// possible.
     blocks_cache: Arc<Mutex<LruCache<BlockID, BlockData>>>,
 
     /// Merged blocks bucket sizes to attempt fetching.
@@ -218,9 +220,10 @@ impl TransactionsFetcher for ReqwestTransactionsFetcher {
         {
             let mut blocks_cache = self.blocks_cache.lock().expect("mutex poisoned");
 
-            // Note: If this block id is in the cache, we take it out under the assumption that our
-            // primary caller, LedgerSyncService, is not going to try and fetch the same block
-            // twice if it managed to get a valid block.
+            // Note: If this block id is in the cache, we take it out under the assumption
+            // that our primary caller, LedgerSyncService, is not going to try
+            // and fetch the same block twice if it managed to get a valid
+            // block.
             if let Some(block_data) = blocks_cache.pop(&block.id) {
                 if block_data.block() == block {
                     let hits = self.hits.fetch_add(1, Ordering::SeqCst);

@@ -79,10 +79,12 @@ pub trait ConnectionUri:
     /// Whether TLS should be used for this connection.
     fn use_tls(&self) -> bool;
 
-    /// Retrieve the username part of the URI, or an empty string if one is not available.
+    /// Retrieve the username part of the URI, or an empty string if one is not
+    /// available.
     fn username(&self) -> String;
 
-    /// Retrieve the password part of the URI, or an empty string if one is not available.
+    /// Retrieve the password part of the URI, or an empty string if one is not
+    /// available.
     fn password(&self) -> String;
 
     /// Retrieve the responder id for this connection.
@@ -102,9 +104,9 @@ pub trait ConnectionUri:
 
     /// Retrieve the Public Key for Message Signing for this connection.
     ///
-    /// Public keys via URIs are expected to be either hex or base64 encoded, with the
-    /// key algorithm specified in the URI as well, for future compatibility
-    /// with different key schemes.
+    /// Public keys via URIs are expected to be either hex or base64 encoded,
+    /// with the key algorithm specified in the URI as well, for future
+    /// compatibility with different key schemes.
     // FIXME: Add key ?algo=ED25519
     fn consensus_msg_key(&self) -> StdResult<Ed25519Public, UriConversionError> {
         if let Some(pubkey) = self.get_param("consensus-msg-key") {
@@ -142,15 +144,16 @@ pub trait ConnectionUri:
         self.get_param("tls-hostname")
     }
 
-    /// Retrieve the CA bundle to use for this connection. If the `ca-bundle` query parameter is
-    /// present, we will error if we fail at loading a certificate. When it is not present we will
-    /// make a best-effort attempt and return Ok(None) if no certificate could be loaded.
+    /// Retrieve the CA bundle to use for this connection. If the `ca-bundle`
+    /// query parameter is present, we will error if we fail at loading a
+    /// certificate. When it is not present we will make a best-effort
+    /// attempt and return Ok(None) if no certificate could be loaded.
     fn ca_bundle(&self) -> StdResult<Option<Vec<u8>>, String> {
         let ca_bundle_path = self.get_param("ca-bundle").map(PathBuf::from);
 
-        // If we haven't received a ca-bundle query parameter, we're okay with host_cert not
-        // returning anything. If the ca-bundle query parameter was present we will propagate
-        // errors from `read_ca_bundle`.
+        // If we haven't received a ca-bundle query parameter, we're okay with host_cert
+        // not returning anything. If the ca-bundle query parameter was present
+        // we will propagate errors from `read_ca_bundle`.
         ca_bundle_path.map_or_else(
             || Ok(mc_util_host_cert::read_ca_bundle(None).ok()),
             |bundle_path| mc_util_host_cert::read_ca_bundle(Some(bundle_path)).map(Some),
@@ -186,7 +189,8 @@ pub trait ConnectionUri:
     }
 }
 
-/// A trait with associated constants, representing a URI scheme and default ports
+/// A trait with associated constants, representing a URI scheme and default
+/// ports
 pub trait UriScheme:
     Debug + Hash + Ord + PartialOrd + Eq + PartialEq + Send + Sync + Clone
 {

@@ -146,7 +146,8 @@ fn main() {
             block_count
         );
 
-        // NOTE: This will start at the same offset per block - we may want just the first offset
+        // NOTE: This will start at the same offset per block - we may want just the
+        // first offset
         let mut account_index = config.account_offset;
         let mut account = &accounts[account_index];
         let mut num_per_account_processed = 0;
@@ -510,8 +511,8 @@ fn build_tx(
                     ring[0] = utxo.tx_out.clone();
                     membership_proofs[0] = proof.clone();
                 }
-                // The real input is always the first element. This is safe because TransactionBuilder
-                // sorts each ring.
+                // The real input is always the first element. This is safe because
+                // TransactionBuilder sorts each ring.
                 0
             }
         };
@@ -597,7 +598,8 @@ fn get_rings(
     let num_requested = ring_size * num_rings;
     let num_txos = ledger_db.num_txos().unwrap();
 
-    // Randomly sample `num_requested` TxOuts, without replacement and convert into a Vec<u64>
+    // Randomly sample `num_requested` TxOuts, without replacement and convert into
+    // a Vec<u64>
     let mut rng = rand::thread_rng();
     let mut sampled_indices: HashSet<u64> = HashSet::default();
     while sampled_indices.len() < num_requested {

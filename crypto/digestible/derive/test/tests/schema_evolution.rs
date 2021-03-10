@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-/// Tests of the schema evolution properties of derive(Digestible) implementations
+/// Tests of the schema evolution properties of derive(Digestible)
+/// implementations
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
 use mc_crypto_digestible_test_utils::*;
 
@@ -158,7 +159,8 @@ fn struct_schema_evolution() {
     );
 }
 
-// Tests for what happens in exotic cases, like Option<Option> and Option<Vec> that are less likely to happen
+// Tests for what happens in exotic cases, like Option<Option> and Option<Vec>
+// that are less likely to happen
 #[test]
 fn thing_struct_exotic() {
     // b is made doubly optional

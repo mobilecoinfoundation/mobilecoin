@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-//! This crate provides a logging framework for recording and replaying SCP messages.
+//! This crate provides a logging framework for recording and replaying SCP
+//! messages.
 use crate::{slot::SlotMetrics, Msg, QuorumSet, ScpNode, SlotIndex, Value};
 use mc_common::{
     logger::{log, Logger},
@@ -30,7 +31,8 @@ pub struct LoggingScpNode<V: Value, N: ScpNode<V>> {
     /// Highest slot number we've encountered so far.
     highest_slot_index: SlotIndex,
 
-    /// Message counter counting how many messages we logged since we cleaned the directory.
+    /// Message counter counting how many messages we logged since we cleaned
+    /// the directory.
     msg_count: usize,
 
     /// Time when we started logging for current slot.
@@ -39,7 +41,8 @@ pub struct LoggingScpNode<V: Value, N: ScpNode<V>> {
     /// Underlying node implementation.
     node: N,
 
-    /// List of slot state filenames that make it easy to maintain `MAX_SLOT_STATE_FILES` on disk.
+    /// List of slot state filenames that make it easy to maintain
+    /// `MAX_SLOT_STATE_FILES` on disk.
     slot_state_filenames: Vec<PathBuf>,
 
     /// Logger

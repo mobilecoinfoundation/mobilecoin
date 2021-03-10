@@ -17,12 +17,15 @@ use mc_common::HashSet;
 use mc_crypto_keys::CompressedRistrettoPublic;
 use rand_core::{CryptoRng, RngCore};
 
-/// Determines if the transaction is valid, with respect to the provided context.
+/// Determines if the transaction is valid, with respect to the provided
+/// context.
 ///
 /// # Arguments
 /// * `tx` - A pending transaction.
-/// * `current_block_index` - The index of the current block that is being built.
-/// * `root_proofs` - Membership proofs for each input ring element contained in `tx`.
+/// * `current_block_index` - The index of the current block that is being
+///   built.
+/// * `root_proofs` - Membership proofs for each input ring element contained in
+///   `tx`.
 /// * `csprng` - Cryptographically secure random number generator.
 pub fn validate<R: RngCore + CryptoRng>(
     tx: &Tx,
@@ -54,13 +57,14 @@ pub fn validate<R: RngCore + CryptoRng>(
 
     validate_tombstone(current_block_index, tx.prefix.tombstone_block)?;
 
-    // Note: The transaction must not contain a Key Image that has previously been spent.
-    // This must be checked outside the enclave.
+    // Note: The transaction must not contain a Key Image that has previously been
+    // spent. This must be checked outside the enclave.
 
     Ok(())
 }
 
-/// The transaction must have at least one input, and no more than the maximum allowed number of inputs.
+/// The transaction must have at least one input, and no more than the maximum
+/// allowed number of inputs.
 fn validate_number_of_inputs(
     tx_prefix: &TxPrefix,
     maximum_allowed_inputs: u64,
@@ -92,7 +96,8 @@ fn validate_number_of_outputs(
         return Err(TransactionValidationError::NoOutputs);
     }
 
-    // Each transaction must have no more than the maximum allowed number of outputs.
+    // Each transaction must have no more than the maximum allowed number of
+    // outputs.
     if num_outputs > maximum_allowed_outputs as usize {
         return Err(TransactionValidationError::TooManyOutputs);
     }
@@ -148,7 +153,8 @@ fn validate_ring_elements_are_sorted(tx_prefix: &TxPrefix) -> TransactionValidat
     Ok(())
 }
 
-/// Inputs must be sorted by the public key of the first ring element of each input.
+/// Inputs must be sorted by the public key of the first ring element of each
+/// input.
 fn validate_inputs_are_sorted(tx_prefix: &TxPrefix) -> TransactionValidationResult<()> {
     let inputs_are_sorted = tx_prefix.inputs.windows(2).all(|w| {
         !w[0].ring.is_empty()
@@ -231,8 +237,9 @@ fn validate_transaction_fee(tx: &Tx) -> TransactionValidationResult<()> {
 ///
 /// # Arguments
 /// * `tx_prefix` - Prefix of the transaction being validated.
-/// * `root_proofs` - Proofs of membership, provided by the untrusted system, that are used to check
-///         the root hashes of the transaction's membership proofs.
+/// * `root_proofs` - Proofs of membership, provided by the untrusted system,
+///   that are used to check the root hashes of the transaction's membership
+///   proofs.
 fn validate_membership_proofs(
     tx_prefix: &TxPrefix,
     root_proofs: &[TxOutMembershipProof],
@@ -255,14 +262,15 @@ fn validate_membership_proofs(
         .collect();
 
     // Each TxOut used as input must have a corresponding "root proof".
-    // This could later be optimized if multiple input TxOuts have membership proofs that
-    // share the same root hash.
+    // This could later be optimized if multiple input TxOuts have membership proofs
+    // that share the same root hash.
     if tx_out_with_membership_proof.len() != root_proofs.len() {
         return Err(TransactionValidationError::InvalidLedgerContext);
     }
 
     // Each root proof must contain valid ranges.
-    // (Ranges in the transaction's membership proofs are checked in `is_membership_proof_valid`).
+    // (Ranges in the transaction's membership proofs are checked in
+    // `is_membership_proof_valid`).
     for root_proof in root_proofs {
         if root_proof
             .elements
@@ -340,8 +348,8 @@ fn validate_membership_proofs(
 ///
 /// # Arguments
 /// * `current_block_index` - The index of the block currently being built.
-/// * `tombstone_block_index` - The block index at which this transaction is no longer considered valid.
-///
+/// * `tombstone_block_index` - The block index at which this transaction is no
+///   longer considered valid.
 pub fn validate_tombstone(
     current_block_index: u64,
     tombstone_block_index: u64,
@@ -391,14 +399,16 @@ mod tests {
     use rand::{rngs::StdRng, SeedableRng};
     use serde::{de::DeserializeOwned, ser::Serialize};
 
-    // HACK: To test validation we need valid Tx objects. The code to create them is complicated,
-    // and a variant of it resides inside the `transaction_test_utils` crate. However,when we
-    // depend on it in our [dev-dependencies], it will compile and link against another copy of
-    // this crate, since cargo is weird like that.
-    // Relying in the fact that both data structures are actually the same, this hack lets us
-    // convert from the `transaction` crate being compiled by `transaction_test_utils` to the one
+    // HACK: To test validation we need valid Tx objects. The code to create them is
+    // complicated, and a variant of it resides inside the
+    // `transaction_test_utils` crate. However,when we depend on it in our
+    // [dev-dependencies], it will compile and link against another copy of this
+    // crate, since cargo is weird like that. Relying in the fact that both data
+    // structures are actually the same, this hack lets us convert from the
+    // `transaction` crate being compiled by `transaction_test_utils` to the one
     // compiled as part of building test tests.
-    // If we want to avoid this hack, we could move transaction validation into its own crate.
+    // If we want to avoid this hack, we could move transaction validation into its
+    // own crate.
     fn adapt_hack<Src: Serialize, Dst: DeserializeOwned>(src: &Src) -> Dst {
         let bytes = mc_util_serial::serialize(src).unwrap();
         mc_util_serial::deserialize(&bytes).unwrap()
@@ -455,7 +465,8 @@ mod tests {
     }
 
     #[test]
-    // Should return Ok(()) when the Tx's membership proofs are correct and agree with ledger.
+    // Should return Ok(()) when the Tx's membership proofs are correct and agree
+    // with ledger.
     fn test_validate_membership_proofs() {
         let (tx, ledger) = create_test_tx();
 
@@ -489,7 +500,8 @@ mod tests {
     }
 
     #[test]
-    // Should return InvalidRangeProof if a membership proof containing an invalid Range.
+    // Should return InvalidRangeProof if a membership proof containing an invalid
+    // Range.
     fn test_validate_membership_proofs_invalid_range_in_tx() {
         let (mut tx, ledger) = create_test_tx();
 
@@ -693,7 +705,8 @@ mod tests {
             assert_eq!(validate_ring_elements_are_unique(&tx_prefix), Ok(()));
         }
 
-        // A transaction with a multiple inputs and duplicate ring elements in different rings.
+        // A transaction with a multiple inputs and duplicate ring elements in different
+        // rings.
         {
             let mut tx_prefix = tx.prefix.clone();
             tx_prefix.inputs.push(tx.prefix.inputs[0].clone());
@@ -728,8 +741,9 @@ mod tests {
         let mut tx_prefix = tx.prefix.clone();
         tx_prefix.inputs.push(tx.prefix.inputs[0].clone());
 
-        // By removing the first ring element of the second input we ensure the inputs are
-        // different, but remain sorted (since the ring elements are sorted).
+        // By removing the first ring element of the second input we ensure the inputs
+        // are different, but remain sorted (since the ring elements are
+        // sorted).
         tx_prefix.inputs[1].ring.remove(0);
 
         assert_eq!(validate_inputs_are_sorted(&tx_prefix), Ok(()));
@@ -746,8 +760,9 @@ mod tests {
     /// validate_key_images_are_unique rejects duplicate key image.
     fn test_validate_key_images_are_unique_rejects_duplicate() {
         let (mut tx, _ledger) = create_test_tx();
-        // Tx only contains a single ring signature, which contains the key image. Duplicate the
-        // ring signature so that tx.key_images() returns a duplicate key image.
+        // Tx only contains a single ring signature, which contains the key image.
+        // Duplicate the ring signature so that tx.key_images() returns a
+        // duplicate key image.
         let ring_signature = tx.signature.ring_signatures[0].clone();
         tx.signature.ring_signatures.push(ring_signature);
 
@@ -780,7 +795,8 @@ mod tests {
     }
 
     #[test]
-    /// validate_outputs_public_keys_are_unique returns Ok if all public keys are unique.
+    /// validate_outputs_public_keys_are_unique returns Ok if all public keys
+    /// are unique.
     fn test_validate_output_public_keys_are_unique_ok() {
         let (tx, _ledger) = create_test_tx();
         assert_eq!(validate_outputs_public_keys_are_unique(&tx), Ok(()),);
@@ -919,7 +935,8 @@ mod tests {
     }
 
     #[test]
-    /// Should return TombstoneBlockTooFar if the tombstone is too far in the future.
+    /// Should return TombstoneBlockTooFar if the tombstone is too far in the
+    /// future.
     fn test_validate_tombstone_tombstone_block_too_far() {
         {
             // The tombstone block is in the near future, so Ok.

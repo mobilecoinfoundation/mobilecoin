@@ -31,7 +31,8 @@ pub fn create_ledger() -> LedgerDB {
     LedgerDB::open(path).unwrap()
 }
 
-/// Creates a transaction that sends the full value of `tx_out` to a single recipient.
+/// Creates a transaction that sends the full value of `tx_out` to a single
+/// recipient.
 ///
 /// # Arguments:
 /// * `ledger` - A ledger containing `tx_out`.
@@ -88,7 +89,8 @@ pub fn create_transaction_with_amount<L: Ledger, R: RngCore + CryptoRng>(
 ) -> Tx {
     let mut transaction_builder = TransactionBuilder::new(MockFogResolver::default());
 
-    // The first transaction in the origin block should contain enough outputs to use as mixins.
+    // The first transaction in the origin block should contain enough outputs to
+    // use as mixins.
     let origin_block_contents = ledger.get_block_contents(0).unwrap();
     let origin_outputs = &origin_block_contents.outputs;
 
@@ -145,8 +147,8 @@ pub fn create_transaction_with_amount<L: Ledger, R: RngCore + CryptoRng>(
 /// The first contains RING_SIZE txos so we can create more valid transactions.
 /// The rest have a single TxOut.
 ///
-/// The first block "mints" coins, and each subsequent block spends the TxOut produced by the
-/// previous block.
+/// The first block "mints" coins, and each subsequent block spends the TxOut
+/// produced by the previous block.
 ///
 /// # Arguments
 /// * `ledger` -

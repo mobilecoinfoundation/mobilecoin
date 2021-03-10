@@ -54,8 +54,8 @@ fn main() {
     for (tx_src_url, max_block_index) in last_synced_blocks.iter() {
         let max_block_count = max_block_index.map(|idx| idx + 1).unwrap_or(0);
 
-        // Construct a list of ranges, where each range is mapped to the signer that signed the
-        // range, assuming that information is available.
+        // Construct a list of ranges, where each range is mapped to the signer that
+        // signed the range, assuming that information is available.
         let mut ranges = Vec::new();
         let mut cur_start_index = 0;
         let mut cur_end_index = 0;

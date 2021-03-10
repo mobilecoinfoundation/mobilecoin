@@ -50,7 +50,8 @@ struct GenericExampleStruct<X: Digestible> {
     b: X,
 }
 
-// Test that an instance of ExampleStruct is being mapped to AST and hashed as expected
+// Test that an instance of ExampleStruct is being mapped to AST and hashed as
+// expected
 #[test]
 fn example_struct1() {
     let arg = ExampleStruct { a: 0, b: 1, c: 2 };
@@ -144,7 +145,8 @@ struct Tricky {
     var: Option<ExampleStruct2>,
 }
 
-// Test that a struct with tricky field names is being parsed and hashed as expected
+// Test that a struct with tricky field names is being parsed and hashed as
+// expected
 #[test]
 fn tricky_struct() {
     let arg = Tricky {
@@ -257,7 +259,8 @@ fn blob1() {
     );
 }
 
-// Test that an instance of TransBlob is being mapped to AST and hashed as expected
+// Test that an instance of TransBlob is being mapped to AST and hashed as
+// expected
 #[test]
 fn blob2() {
     let arg = TransBlob(vec![1, 2, 3, 4]);
@@ -342,7 +345,8 @@ fn bar1() {
     );
 }
 
-// Test that an instance of BarWithTransparent is being mapped to AST and hashed as expected
+// Test that an instance of BarWithTransparent is being mapped to AST and hashed
+// as expected
 #[test]
 fn bar2() {
     let arg = BarWithTransparent {
@@ -399,7 +403,8 @@ fn bar2() {
     );
 }
 
-// Test cases for GenericExampleStruct::<u32> and GenericExampleStruct::<Option<u32>>
+// Test cases for GenericExampleStruct::<u32> and
+// GenericExampleStruct::<Option<u32>>
 #[test]
 fn generic_example_struct1() {
     let arg = GenericExampleStruct {
@@ -448,7 +453,8 @@ fn generic_example_struct1() {
     );
 }
 
-// Test cases for GenericExampleStruct::<i32> and GenericExampleStruct::<Option<i32>>
+// Test cases for GenericExampleStruct::<i32> and
+// GenericExampleStruct::<Option<i32>>
 #[test]
 fn generic_example_struct2() {
     let arg = GenericExampleStruct {
@@ -497,7 +503,8 @@ fn generic_example_struct2() {
     );
 }
 
-// Test cases for GenericExampleStruct::<String> and GenericExampleStruct::<Option<String>>
+// Test cases for GenericExampleStruct::<String> and
+// GenericExampleStruct::<Option<String>>
 #[test]
 fn generic_example_struct3() {
     let arg = GenericExampleStruct {

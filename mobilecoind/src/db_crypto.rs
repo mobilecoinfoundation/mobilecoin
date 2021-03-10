@@ -21,8 +21,8 @@ use std::sync::{Arc, Mutex};
 pub const MOBILECOIND_DB_KEY_DOMAIN_TAG: &str = "mc_mobilecoind";
 
 /// Required password length.
-/// This is set to 32 bytes as the intended purpose is for the user to pass a hash of a
-/// password and not the actual password the user typed.
+/// This is set to 32 bytes as the intended purpose is for the user to pass a
+/// hash of a password and not the actual password the user typed.
 pub const PASSWORD_LEN: usize = 32;
 
 /// LMDB database name for storing metadata.
@@ -68,9 +68,10 @@ struct DbCryptoProviderState {
     /// Is the database currently encrypted?
     is_db_encrypted: bool,
 
-    /// The current encryption key, stored inside Arc/Mutex so that this object could be safely
-    /// shared.
-    /// This should only be set once the password has been determined to be valid!
+    /// The current encryption key, stored inside Arc/Mutex so that this object
+    /// could be safely shared.
+    /// This should only be set once the password has been determined to be
+    /// valid!
     encryption_key: Vec<u8>,
 }
 
@@ -80,7 +81,8 @@ pub struct DbCryptoProvider {
     /// LMDB Environment (database).
     env: Arc<Environment>,
 
-    /// Database used for testing whether we have the correct encryption key or not.
+    /// Database used for testing whether we have the correct encryption key or
+    /// not.
     database: Database,
 
     /// Shared state.
@@ -96,11 +98,13 @@ impl DbCryptoProvider {
             let db_txn = env.begin_ro_txn()?;
             match db_txn.get(database, &ENCRYPTION_STATE_KEY.as_bytes()) {
                 Ok(_test_val) => {
-                    // The encryption indicator key is present in the database, this means encryption is enabled.
+                    // The encryption indicator key is present in the database, this means
+                    // encryption is enabled.
                     true
                 }
                 Err(LmdbError::NotFound) => {
-                    // The encryption indicator key is not in the database, this means encryption is not enabled.
+                    // The encryption indicator key is not in the database, this means encryption is
+                    // not enabled.
                     false
                 }
                 Err(err) => {
@@ -125,8 +129,8 @@ impl DbCryptoProvider {
         state.is_db_encrypted
     }
 
-    /// Check if a given password is the password used to encrypt data in the db, and if so store
-    /// it for future encryption/decryption operations.
+    /// Check if a given password is the password used to encrypt data in the
+    /// db, and if so store it for future encryption/decryption operations.
     pub fn check_and_store_password(&self, password: &[u8]) -> Result<(), DbCryptoError> {
         let mut state = self.state.lock().expect("mutex poisoned");
         if state.is_db_encrypted {
@@ -153,8 +157,9 @@ impl DbCryptoProvider {
         }
     }
 
-    /// Check if the database has been "unlocked" - meaning, whether we are able to successfully
-    /// decrypt data using the information in our state object.
+    /// Check if the database has been "unlocked" - meaning, whether we are able
+    /// to successfully decrypt data using the information in our state
+    /// object.
     pub fn is_unlocked(&self) -> bool {
         let state = self.state.lock().expect("mutex poisoned");
         if state.is_db_encrypted {
@@ -167,9 +172,9 @@ impl DbCryptoProvider {
         }
     }
 
-    /// Change the password that will be used for all future encryption/decryption operations.
-    /// This should only be called after all existing data has been re-encrypted to the new
-    /// password!
+    /// Change the password that will be used for all future
+    /// encryption/decryption operations. This should only be called after
+    /// all existing data has been re-encrypted to the new password!
     pub fn change_password<'env>(
         &self,
         mut db_txn: RwTransaction<'env>,
@@ -227,11 +232,11 @@ impl DbCryptoProvider {
     }
 
     /// Encrypt data with a specific password.
-    /// This is used when we want to re-encrypt data as a result of a password change:
-    /// 1. Go over all encrypted data, decrypt it with the current password and re-encrypt with the
-    ///    new password using this method.
-    /// 2. Once all data has been re-encrypted, call set_password so that future operations use the
-    ///    new password.
+    /// This is used when we want to re-encrypt data as a result of a password
+    /// change: 1. Go over all encrypted data, decrypt it with the current
+    /// password and re-encrypt with the    new password using this method.
+    /// 2. Once all data has been re-encrypted, call set_password so that future
+    /// operations use the    new password.
     pub fn encrypt_with_password(
         &self,
         password: &[u8],
@@ -295,7 +300,8 @@ impl DbCryptoProvider {
         ),
         DbCryptoError,
     > {
-        // Hash the password hash with Blake2b to get 64 bytes, first 32 for aeskey, second 32 for nonce
+        // Hash the password hash with Blake2b to get 64 bytes, first 32 for aeskey,
+        // second 32 for nonce
         let mut hasher = Blake2b::new();
         hasher.update(&MOBILECOIND_DB_KEY_DOMAIN_TAG);
         hasher.update(&password);
@@ -337,8 +343,8 @@ mod tests {
         assert!(!crypto_provider.is_db_encrypted());
         assert!(crypto_provider.is_unlocked());
 
-        // check_and_store_password should only accept an empty password and we should stay
-        // unencrypted.
+        // check_and_store_password should only accept an empty password and we should
+        // stay unencrypted.
         assert!(crypto_provider
             .check_and_store_password(&[1, 2, 3])
             .is_err());
@@ -411,8 +417,8 @@ mod tests {
             TEST_DATA.to_vec()
         );
 
-        // Changing a password should indicate we are now encrypted, and encryption/decryption
-        // should no longer be the identity function.
+        // Changing a password should indicate we are now encrypted, and
+        // encryption/decryption should no longer be the identity function.
         let db_txn = crypto_provider.env.begin_rw_txn().unwrap();
         crypto_provider
             .change_password(db_txn, &[6; PASSWORD_LEN])

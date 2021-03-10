@@ -21,7 +21,8 @@ pub trait RetryPolicy: Clone + Send + 'static {
     fn get_max_message_age(&self) -> Duration;
 }
 
-/// A simple retry policy, where each retry uses a delay that is the sum of the two previous delays.
+/// A simple retry policy, where each retry uses a delay that is the sum of the
+/// two previous delays.
 #[derive(Clone)]
 pub struct FibonacciRetryPolicy {
     /// Initial value for the Fibonacci series.
@@ -30,7 +31,8 @@ pub struct FibonacciRetryPolicy {
     /// Maxmimal number of attempts to perform.
     max_attempts: usize,
 
-    /// Maximal message age to process (messages older than this would get dropped).
+    /// Maximal message age to process (messages older than this would get
+    /// dropped).
     max_message_age: Duration,
 }
 impl Default for FibonacciRetryPolicy {

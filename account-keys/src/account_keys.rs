@@ -47,7 +47,8 @@ pub struct PublicAddress {
     spend_public_key: RistrettoPublic,
 
     /// This is the URL to talk to the fog report server.
-    /// Empty if no fog for this public address, should be parseable as mc_util_uri::FogUri.
+    /// Empty if no fog for this public address, should be parseable as
+    /// mc_util_uri::FogUri.
     #[prost(string, tag = "3")]
     fog_report_url: String,
 
@@ -89,7 +90,8 @@ impl fmt::Display for PublicAddress {
 }
 
 impl PublicAddress {
-    /// Create a new public address from CryptoNote key pair (with no account service)
+    /// Create a new public address from CryptoNote key pair (with no account
+    /// service)
     ///
     /// # Arguments
     /// `spend_public_key` - The user's public subaddress spend key `D`,
@@ -105,14 +107,17 @@ impl PublicAddress {
         }
     }
 
-    /// Create a new public address with specific public keys and account service name and authority sig.
+    /// Create a new public address with specific public keys and account
+    /// service name and authority sig.
     ///
     /// # Arguments
     /// `spend_public_key` - The user's public subaddress spend key `D`,
     /// `view_public_key` - The user's public subaddress view key `C`,
     /// `fog_report_url` - User's fog report server url
-    /// `fog_report_id` - The id labelling the report to use, from among the several reports which might be served by the fog report server.
-    /// `fog_authority_sig` - A signature over the fog authority fingerprint using the subaddress_spend_private_key
+    /// `fog_report_id` - The id labelling the report to use, from among the
+    /// several reports which might be served by the fog report server.
+    /// `fog_authority_sig` - A signature over the fog authority fingerprint
+    /// using the subaddress_spend_private_key
     #[inline]
     pub fn new_with_fog(
         spend_public_key: &RistrettoPublic,
@@ -259,10 +264,10 @@ impl AccountKey {
     /// * `view_private_key` - The user's private view key `a`.
     /// * `fog_report_url` - Url of fog report service
     /// * `fog_report_id` - The id labelling the report to use, from among the
-    ///                     several reports which might be served by the fog report server.
+    ///   several reports which might be served by the fog report server.
     /// * `fog_authority` - The DER-encoded subjectPublicKeyInfo of the fog
-    ///                     authority, which will be signed by the user when
-    ///                     constructing the public address.
+    ///   authority, which will be signed by the user when constructing the
+    ///   public address.
     pub fn new_with_fog(
         spend_private_key: &RistrettoPrivate,
         view_private_key: &RistrettoPrivate,
@@ -579,7 +584,8 @@ mod account_key_tests {
         let index = rng.next_u64();
         let subaddress = account_key.subaddress(index);
 
-        // Note: The fog_authority_fingerprint is published, so it is known by the verifier.
+        // Note: The fog_authority_fingerprint is published, so it is known by the
+        // verifier.
         verify_signature(&subaddress, &fog_authority_spki);
     }
 }

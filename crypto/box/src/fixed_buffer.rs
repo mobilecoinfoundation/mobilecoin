@@ -81,8 +81,8 @@ impl<'a> FixedBuffer<'a> {
 
 impl<'a> From<&'a mut [u8]> for FixedBuffer<'a> {
     /// Initialize a fixed buffer from a mutable slice, which is initially
-    /// "exhausted", so all of the initial values of those bytes are in the buffer.
-    /// This buffer can then be modified or truncated etc.
+    /// "exhausted", so all of the initial values of those bytes are in the
+    /// buffer. This buffer can then be modified or truncated etc.
     fn from(buf: &'a mut [u8]) -> Self {
         let length = buf.len();
         Self { buf, length }

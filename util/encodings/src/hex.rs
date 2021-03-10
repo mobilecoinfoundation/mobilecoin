@@ -17,14 +17,15 @@ pub trait FromHex: Sized {
 pub trait ToHex {
     /// Serialize the contents of this object into the given byte slice.
     ///
-    /// If the data fit in the given slice, this method should return `Ok(length_used)`. If the
-    /// data does not fit, this method should return `Err(length_needed)`.
+    /// If the data fit in the given slice, this method should return
+    /// `Ok(length_used)`. If the data does not fit, this method should
+    /// return `Err(length_needed)`.
     fn to_hex(&self, dest: &mut [u8]) -> Result<usize, usize>;
 
     /// Serialize the contents of this object into a newly allocated string.
     ///
-    /// Most implementers of this trate will not need to provide a custom implementation for this
-    /// method.
+    /// Most implementers of this trate will not need to provide a custom
+    /// implementation for this method.
     fn to_hex_owned(&self) -> String {
         let mut v = Vec::new();
 

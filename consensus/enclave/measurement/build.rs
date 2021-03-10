@@ -8,7 +8,8 @@ use mc_util_build_script::Environment;
 use mc_util_build_sgx::{IasMode, SgxEnvironment, SgxMode, TcsPolicy};
 use std::{env::var, path::PathBuf};
 
-// Changing this version is a breaking change, you must update the crate version if you do.
+// Changing this version is a breaking change, you must update the crate version
+// if you do.
 const SGX_VERSION: &str = "2.9.101.2";
 
 const CONSENSUS_ENCLAVE_PRODUCT_ID: u16 = 1;

@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-//! An store object for managing storage of BlockData objects in the database, while taking care of
-//! de-duplicating contents when possible.
+//! An store object for managing storage of BlockData objects in the database,
+//! while taking care of de-duplicating contents when possible.
 
 use crate::error::WatcherDBError;
 use lmdb::{Cursor, Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
@@ -25,8 +25,8 @@ pub const BLOCKS_BY_HASH_DB_NAME: &str = "watcher_db:block_data:blocks_by_hash";
 /// BlockContents by hash database name.
 pub const BLOCK_CONTENTS_BY_HASH_DB_NAME: &str = "watcher_db:block_data:block_contents_by_hash";
 
-/// An internal object for representing BlockData that doesn't hold the actual Block and
-/// BlockContents since those might be shared with other blocks.
+/// An internal object for representing BlockData that doesn't hold the actual
+/// Block and BlockContents since those might be shared with other blocks.
 #[derive(Clone, Message)]
 pub struct StoredBlockData {
     /// 32 bytes hash of Block.
@@ -47,7 +47,8 @@ pub struct StoredBlockData {
 /// Object for managing the storage of BlockDatas.
 #[derive(Clone)]
 pub struct BlockDataStore {
-    /// Blocks data database. Indexed by (block index, tx_src_url) and maps into a StoredBlockData object
+    /// Blocks data database. Indexed by (block index, tx_src_url) and maps into
+    /// a StoredBlockData object
     block_datas_by_index: Database,
 
     /// Block hash -> Block.
@@ -82,7 +83,8 @@ impl BlockDataStore {
         Ok(())
     }
 
-    /// Add a single BlockData that was fetched from `src_url` into the database.
+    /// Add a single BlockData that was fetched from `src_url` into the
+    /// database.
     pub fn add_block_data<'env>(
         &self,
         db_txn: &mut RwTransaction<'env>,
@@ -123,7 +125,8 @@ impl BlockDataStore {
         }
     }
 
-    /// Get BlockData for a given block index provided by a specific tx source url.
+    /// Get BlockData for a given block index provided by a specific tx source
+    /// url.
     pub fn get_block_data(
         &self,
         db_txn: &impl Transaction,
@@ -152,7 +155,8 @@ impl BlockDataStore {
         ))
     }
 
-    /// Get all known BlockDatas for a given block index, mapped by tx source url.
+    /// Get all known BlockDatas for a given block index, mapped by tx source
+    /// url.
     pub fn get_block_data_map(
         &self,
         db_txn: &impl Transaction,
@@ -195,9 +199,10 @@ impl BlockDataStore {
     }
 
     /// Remove all block data associated with a given source url.
-    /// Note that this assumes blocks where added in a sequential order, and that there are no gaps
-    /// (no blocks were skipped).
-    /// It does not remove Block/BlockContents as those might be shared with other source URLs.
+    /// Note that this assumes blocks where added in a sequential order, and
+    /// that there are no gaps (no blocks were skipped).
+    /// It does not remove Block/BlockContents as those might be shared with
+    /// other source URLs.
     pub fn remove_all_for_source_url<'env>(
         &self,
         db_txn: &mut RwTransaction<'env>,

@@ -2,20 +2,22 @@
 
 // "Metamesh" network topologies.
 
-// A metamesh consists of a set of (n) "organizations", each comprising (m) servers.
-// Quorum is configured with hierarchy, such that each node requires (k_n) of the
-// organizations to agree, and each organization is considered to reach agreement
-// when (k_m) of its constituent servers reach agreement.
+// A metamesh consists of a set of (n) "organizations", each comprising (m)
+// servers. Quorum is configured with hierarchy, such that each node requires
+// (k_n) of the organizations to agree, and each organization is considered to
+// reach agreement when (k_m) of its constituent servers reach agreement.
 
-// As an example, consider a network with n=3 and m=3, with nodes labeled "n-index/m-index"
+// As an example, consider a network with n=3 and m=3, with nodes labeled
+// "n-index/m-index"
 //
 // The quorum set for node "0/0" is as follows:
-// ([k_n], ([k_m - 1], 0/1, 0/2]), ([k_m], 1/0, 1/1, 1/2]), ([k_m], 2/0, 2/1, 2/2]])
-// The quorum set for node "1/2" is:
-// ([k_n], ([k_m], 0/0, 0/1, 0/2]), ([k_m - 1], 1/0, 1/1]), ([k_m], 2/0, 2/1, 2/2]])
+// ([k_n], ([k_m - 1], 0/1, 0/2]), ([k_m], 1/0, 1/1, 1/2]), ([k_m], 2/0, 2/1,
+// 2/2]]) The quorum set for node "1/2" is:
+// ([k_n], ([k_m], 0/0, 0/1, 0/2]), ([k_m - 1], 1/0, 1/1]), ([k_m], 2/0, 2/1,
+// 2/2]])
 
-// We allow dead code because not all integration tests use all of the common code.
-// https://github.com/rust-lang/rust/issues/46379
+// We allow dead code because not all integration tests use all of the common
+// code. https://github.com/rust-lang/rust/issues/46379
 #![allow(dead_code)]
 
 use crate::mock_network;

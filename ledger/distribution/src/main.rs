@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-//! A helper utility for collecting blocks from a local ledger file and storing them as
-//! Protobuf-serialized files on S3.
+//! A helper utility for collecting blocks from a local ledger file and storing
+//! them as Protobuf-serialized files on S3.
 
 pub mod uri;
 
@@ -31,7 +31,8 @@ pub enum StartFrom {
     /// Sync new blocks only, skipping all blocks initially in the ledger.
     Next,
 
-    /// Start from the last block we successfully synced (stored inside a state file).
+    /// Start from the last block we successfully synced (stored inside a state
+    /// file).
     Last,
 }
 
@@ -389,9 +390,10 @@ fn main() {
 
                 let mut blocks_data = Vec::new();
                 for block_index in first_block_index..=last_block_index {
-                    // We panic here since this block and its associated data is expected to be in the ledger
-                    // due to block_index <= next_block_num (which we successfully fetched or otherwise
-                    // this code wouldn't be running).
+                    // We panic here since this block and its associated data is expected to be in
+                    // the ledger due to block_index <= next_block_num (which we
+                    // successfully fetched or otherwise this code wouldn't be
+                    // running).
                     let block_data = ledger_db.get_block_data(block_index).unwrap_or_else(|err| {
                         panic!("failed getting block #{}: {}", block_index, err)
                     });

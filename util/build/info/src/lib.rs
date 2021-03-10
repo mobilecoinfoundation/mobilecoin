@@ -5,7 +5,8 @@
 include!(concat!(env!("OUT_DIR"), "/build_info_generated.rs"));
 
 // Write a report as a json blob containing all the info
-// For example pass a string to this, or any other implementor of core::fmt::Write
+// For example pass a string to this, or any other implementor of
+// core::fmt::Write
 use core::fmt::{Result, Write};
 pub fn write_report(output: &mut dyn Write) -> Result {
     write!(

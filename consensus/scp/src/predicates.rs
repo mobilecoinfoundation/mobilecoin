@@ -12,15 +12,16 @@ use crate::{
     msg::Msg,
 };
 
-/// An interface for predicates, used for performing searches for quorums and blocking sets.
-/// See `findQuorum`, `findBlockingSet`.
+/// An interface for predicates, used for performing searches for quorums and
+/// blocking sets. See `findQuorum`, `findBlockingSet`.
 pub trait Predicate<V: Value, ID: GenericNodeId = NodeID>: Clone {
     /// The type of result this predicates could return.
     type Result;
 
     /// Tests whether the predicate is true for a given message.
-    /// Retruns Some(Predicate) if `msg` satisfies the predicate, `None` otherwise.
-    /// This allows the predicate to evolve it's state as it is called on more and more messages.
+    /// Retruns Some(Predicate) if `msg` satisfies the predicate, `None`
+    /// otherwise. This allows the predicate to evolve it's state as it is
+    /// called on more and more messages.
     fn test(&self, msg: &Msg<V, ID>) -> Option<Self>;
 
     /// Returns the result stored inside the predicate.
@@ -130,8 +131,9 @@ impl<V: Value> Predicate<V> for ValueSetPredicate<V> {
 }
 
 impl<V: Value> ValueSetPredicate<V> {
-    /// Given a list of results, each containg a set of values, find the "biggest" set of values.
-    /// Sets of values are sorted by their length, and if the lenght matches then by their values.
+    /// Given a list of results, each containg a set of values, find the
+    /// "biggest" set of values. Sets of values are sorted by their length,
+    /// and if the lenght matches then by their values.
     pub fn filter_to_max_values(
         results: Vec<(HashSet<NodeID>, BTreeSet<V>)>,
     ) -> Option<BTreeSet<V>> {
@@ -184,7 +186,8 @@ mod predicates_tests {
     use std::iter::FromIterator;
 
     #[test]
-    // BallotSetPredicate can be used to pick a quorum that intersects with a given set of ballots.
+    // BallotSetPredicate can be used to pick a quorum that intersects with a given
+    // set of ballots.
     pub fn test_ballot_set_predicate_quorum() {
         let local_node_id = test_node_id(1);
         let local_node_quorum_set = QuorumSet::new_with_node_ids(
@@ -274,7 +277,8 @@ mod predicates_tests {
             Msg::new(test_node_id(5), node_5_quorum_set, 1, topic),
         );
 
-        // Look for quorum intersecting with ballot_1 and some ballot for which there is no quorum
+        // Look for quorum intersecting with ballot_1 and some ballot for which there is
+        // no quorum
         let (node_ids, pred) = local_node_quorum_set.findQuorum(
             &local_node_id,
             &msgs,
@@ -296,7 +300,8 @@ mod predicates_tests {
     }
 
     #[test]
-    // BallotSetPredicate can be used to pick a blocking set that intersects with a given set of ballots.
+    // BallotSetPredicate can be used to pick a blocking set that intersects with a
+    // given set of ballots.
     pub fn test_ballot_set_predicate_blocking_set() {
         // Node 2 and 3 form a blocking set. Node 5 and 6 also form a blocking set.
         let local_node_quorum_set: QuorumSet = {
@@ -381,7 +386,8 @@ mod predicates_tests {
     }
 
     #[test]
-    // ValueSetPredicate can be used to pick a set of values that has reached quorum.
+    // ValueSetPredicate can be used to pick a set of values that has reached
+    // quorum.
     pub fn test_value_set_predicate_quorum() {
         let local_node_id = test_node_id(1);
         let local_node_quorum_set = QuorumSet::new_with_node_ids(
@@ -489,7 +495,8 @@ mod predicates_tests {
     }
 
     #[test]
-    // ValueSetPredicate can be used to pick a set values that has reached blocking threshold.
+    // ValueSetPredicate can be used to pick a set values that has reached blocking
+    // threshold.
     pub fn test_value_set_predicate_blocking_set() {
         // Node 2 and 3 form a blocking set. Node 5 and 6 also form a blocking set.
         let local_node_quorum_set: QuorumSet = {

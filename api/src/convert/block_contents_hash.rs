@@ -3,7 +3,8 @@
 use crate::{blockchain, convert::ConversionError};
 use std::convert::TryFrom;
 
-/// Convert mc_transaction_core::BlockContentsHash --> blockchain::BlockContentsHash.
+/// Convert mc_transaction_core::BlockContentsHash -->
+/// blockchain::BlockContentsHash.
 impl From<&mc_transaction_core::BlockContentsHash> for blockchain::BlockContentsHash {
     fn from(src: &mc_transaction_core::BlockContentsHash) -> Self {
         let mut dst = blockchain::BlockContentsHash::new();
@@ -12,7 +13,8 @@ impl From<&mc_transaction_core::BlockContentsHash> for blockchain::BlockContents
     }
 }
 
-/// Convert blockchain::BlockContentsHash --> mc_transaction_core::BlockContentsHash.
+/// Convert blockchain::BlockContentsHash -->
+/// mc_transaction_core::BlockContentsHash.
 impl TryFrom<&blockchain::BlockContentsHash> for mc_transaction_core::BlockContentsHash {
     type Error = ConversionError;
 
@@ -27,7 +29,8 @@ mod tests {
     use super::*;
 
     #[test]
-    // Unmarshalling too many bytes into a BlockContentsHash should produce an error.
+    // Unmarshalling too many bytes into a BlockContentsHash should produce an
+    // error.
     fn test_from_blockchain_block_contents_hash_error() {
         // Cannot convert 37 bytes to a BlockContentsHash.
         let mut bad_block_contents_hash = blockchain::BlockContentsHash::new();

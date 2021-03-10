@@ -1,8 +1,8 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-//! The state held by a single slot. Currently this duplicates the state inside `Slot` and is only
-//! used for debug/serialization purposes but a future change might embed a `SlotIndex` directly
-//! inside a `Slot`.
+//! The state held by a single slot. Currently this duplicates the state inside
+//! `Slot` and is only used for debug/serialization purposes but a future change
+//! might embed a `SlotIndex` directly inside a `Slot`.
 
 use crate::{
     core_types::{Ballot, SlotIndex, Value},
@@ -26,8 +26,8 @@ pub struct SlotState<V: Value> {
     node_id: NodeID,
 
     /// List of highest messages from each node.
-    /// This is not stored as a HashMap since it simplifies serialization. The node id is part of
-    /// the message so that can be derived.
+    /// This is not stored as a HashMap since it simplifies serialization. The
+    /// node id is part of the message so that can be derived.
     M: Vec<Msg<V>>,
 
     /// Set of values that have been proposed, but not yet voted for.
@@ -48,7 +48,8 @@ pub struct SlotState<V: Value> {
     /// The highest accepted prepared ballot, if any.
     P: Option<Ballot<V>>,
 
-    /// The highest accepted prepared ballot that is less-than-and-incompatible with P.
+    /// The highest accepted prepared ballot that is less-than-and-incompatible
+    /// with P.
     PP: Option<Ballot<V>>,
 
     /// In Prepare: the highest ballot that this node confirms prepared, if any.
@@ -75,7 +76,8 @@ pub struct SlotState<V: Value> {
     nominate_round: u32,
 
     /// List of values that have been checked to be valid for the current slot.
-    /// We can cache this and save on validation calls since the ledger doesn't change during a slot.
+    /// We can cache this and save on validation calls since the ledger doesn't
+    /// change during a slot.
     valid_values: BTreeSet<V>,
 }
 impl<V: Value, ValidationError: Display> From<&Slot<V, ValidationError>> for SlotState<V> {
