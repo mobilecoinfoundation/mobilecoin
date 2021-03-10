@@ -800,8 +800,9 @@ mod msg_tests {
                 Prepare(PreparePayload {
                     B: Ballot::new(10, &["meow"]), // ballot
                     P: None,                       // prepared -> highest accepted prepared ballot
-                    PP: None, /* prepared_prime -> highest accepted prepared < prepared with with
-                               * value != ballot.value */
+                    PP: None,                      /* prepared_prime -> highest accepted prepared
+                                                    * < prepared with with
+                                                    * value != ballot.value */
                     CN: 0, /* c_counter -> if h_counter > 0, and ballot is confirmed prepared,
                             * c_counter = ballot.counter */
                     HN: 0, // h_counter -> highest confirmed prepared counter
