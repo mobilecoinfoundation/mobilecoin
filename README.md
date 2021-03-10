@@ -1,22 +1,16 @@
-![](./img/mobilecoin_logo.png)
+[](./img/mobilecoin_logo.png)
 
-### Testing your first payment
+# MobileCoin Fog
 
-* Please see [*TESTNET.md*](./TESTNET.md) for instructions on participating in the TestNet!
-
-### Sending your first payment
-
-* Please see [*MAINNET.md*](./MAINNET.md) for instructions on using MobileCoin!
-* You must read and accept the [Terms of Use for MobileCoins and MobileCoin Wallets](./TERMS-OF-USE.md) to use MobileCoin Software.
-* Please note that currently, the MobileCoin Wallet is not available for download or use by U.S. persons or entities, persons or entities located in the U.S., or persons or entities in other prohibited jurisdictions.
+Crates that are not part of the initial open source release.
 
 ### Note to Developers
 
-* MobileCoin is a prototype. Expect substantial changes before the release.
+* MobileCoin Fog is a prototype. Expect substantial changes before and after the release.
 * Please see [*CONTRIBUTING.md*](./CONTRIBUTING.md) for notes on contributing bug reports and code.
 
-# MobileCoin
-MobileCoin is a privacy-preserving payments network designed for use on mobile devices.
+# MobileCoin Fog
+MobileCoin Fog is a privacy-preserving service designed to support use of the MobileCoin Payments Network on mobile devices.
 
 # Table of Contents
 - [License](#license)
@@ -28,7 +22,7 @@ MobileCoin is a privacy-preserving payments network designed for use on mobile d
 - [Support](#support)
 
 ## License
-MobileCoin is available under open-source licenses. Look for the *LICENSE* file in each crate for more information.
+MobileCoin Fog is available under open-source licenses. Look for the *LICENSE* file in each crate for more information.
 
 ## Cryptography Notice
 This distribution includes cryptographic software. Your country may have restrictions on the use of encryption software. Please check your country's laws before downloading or using this software.
@@ -36,33 +30,24 @@ This distribution includes cryptographic software. Your country may have restric
 ## Repository Structure
 |Directory |Description |
 | :-- | :-- |
-| [attest](./attest) | Remote attestation primitives. |
-| [build-info](./build-info) | Measurements made at compile time. |
-| [common](./common) | Items shared across MobileCoin crates. |
-| [consensus](./consensus) | Byzantine Fault Tolerant Consensus. |
-| [crypto](./crypto) | Cryptography. |
-| [enclave-boundary](./enclave-boundary) | Intel® SGX ECALL infrastructure. |
-| [ledger](./ledger) | Storage and synchronization for the MobileCoin blockchain. |
-| [mcbuild](./mcbuild/) | Tools for building and signing enclaves. |
-| [mcconnection](./mcconnection/) | Attested MobileCoin connections. |
-| [mobilecoind](./mobilecoind/) | Blockchain daemon and example client code. |
-| [peers](./peers/) | Peer-to-peer networking. |
-| [sgx](./sgx/) | Support for Intel® Software Guard eXtensions (Intel SGX). |
-| [transaction](./transaction/) | Private transactions. |
-| [util](./util/) | Miscellaneous utilities. |
+| [fog](./fog) | Privacy-preserving services to support MobileCoin payments on mobile devices. |
+| [android-bindings](./android-bindings) | Bindings for android clients. |
+| [libmobilecoin](./libmobilecoin) | Library for use in SDKs to interact with MobileCoin payment primitives. |
+| [util](./util) | Miscellaneous utilities. |
 
 #### Selected Binaries
 | Target | Description | Used by... |
 | :-- | :-- |:--|
-| [`consensus-service`](./consensus/service) | Validates new transactions for the public ledger.| Validator Nodes |
-| [`ledger-distribution`](./ledger/distribution) | Publishes the ledger to long-term storage. | Full Validator Nodes|
-| [`mobilecoind`](./mobilecoind) | Synchronizes the ledger and provides the desktop API. | Watcher and Validator Nodes |
+| [`fog-ingest-server`](./fog/ingest/server) | Obliviously post-processes the blockchain to organize transaction outputs according to fog hints.| 
+| [`fog-ledger-server`](./fog/ledger/server) | Obliviously serves ledger materials such as rings, merkle proofs, and key images, used to verify whether a Txo was spent, or construct new transactions. | 
+| [`fog-report-server`](./fog/report/server) | Provides the ingest enclave's Attestation Verification Report for transaction construction. | 
+| [`fog-view-server`](./fog/view/server) | Obliviously serves the post-processed Txos to clients who wish to check their balance and construct new transactions. | 
 
 ## Build Instructions
 
 The workspace can be built with `cargo build` and tested with `cargo test`. Either command will recognize the cargo `--release` flag to build with optimizations.
 
-Some crates (for example [`consensus-service`](./consensus/service)) depend on Intel SGX, which adds additional build and runtime requirements. For detailed information about setting up a build environment, how enclaves are built, and on configuring the build, see [BUILD.md](BUILD.md).
+Some crates (for example [`fog-ingest-service`](./fog/ingest/service)) depend on Intel SGX, which adds additional build and runtime requirements. For detailed information about setting up a build environment, how enclaves are built, and on configuring the build, see [BUILD.md](BUILD.md).
 
 For a quick start, you can build in the same docker image that we use for CI, using the `mob` tool. Note that this requires you to install [Docker](https://docs.docker.com/get-docker/). You can use the `mob` tool with the following commands:
 
@@ -76,68 +61,85 @@ cargo build
 
 ## Overview
 
-MobileCoin is a payment network with no central authority. The fundamental goal of the network is to safely and efficiently enable the exchange of value, represented as fractional ownership of the total value of the network. Like most cryptocurrencies, MobileCoin maintains a permanent and immutable record of all successfully completed payments in a blockchain data structure. Cryptography is used extensively to establish ownership, control transfers, and to preserve cash-like privacy for users.
+MobileCoin Fog is a suite of microservices designed to enable MobileCoin payments on mobile devices.
 
-Here we review a few design concepts that are essential for understanding the software.
+For MobileCoin payments to be practical, we cannot require the mobile device to 
+sync the ledger or download the entire blockchain. However, a so-called “thin wallet” doesn’t 
+work either, because the types of queries that a thin wallet makes generally reveal to the 
+server what the user's balance is, when they got paid, etc. In typical thin wallet designs, the 
+server is trusted by the user.
 
-##### Transactions
+MobileCoin has been engineered to eliminate this sort of trust — the service is “oblivious” 
+to the nature of the user requests, and the service operator is unable to harvest the users’ 
+data in exchange for running the service.
 
-The MobileCoin blockchain is the source of truth for the allocation of value. It consists of an ordered collection of *transaction outputs*, organized into blocks. Each *transaction output* ("*txo*") has a unique corresponding construction called a *key image*. Every *txo* initially appears in the blockchain in a spendable state, as an *unspent transaction output* or *utxo*. Every successful payment consumes some *utxos* as inputs and creates new *utxos* as outputs. When a *utxo* is consumed, its corresponding *key image* is permanently added to the blockchain, ensuring that it can not be spent a second time.
+Because of this, off-the-shelf solutions to wallet services simply don’t work — in many cases, 
+if we naively make a database query to handle a query that a wallet would make if it had access 
+to the ledger, it reveals significant information about e.g. whether Bob was paid or not in the 
+last block, which payments Bob recieved, whether Alice paid Bob, etc., any of which would not 
+meet our privacy goals.
 
-The total value of the MobileCoin network is fixed by convention at a sum of 250 million *mobilecoins*. Each *mobilecoin* consists of 10<sup>12</sup> indivisible parts, each referred to as one *picomob*. Each *utxo* represents an integer number of *picomob* that can be consumed in a valid payment.
+Instead, Fog makes heavy use of SGX enclaves and Oblivious RAM data structures to serve such 
+queries privately, without compromising scalability. The use of SGX in this way has the 
+potential to create operational challenges, and the system has been carefully designed to 
+navigate that.
 
-Ownership of a *utxo* in the MobileCoin network is equivalent to knowledge of two private keys, called the *spend private key* and the *view private key*, that provision control over discovery and transfer of value. Most users will derive these two private key values from a single underlying key we call the *root entropy*.
+### Architecture
 
-To receive a payment, a user must calculate the two  public key values corresponding to their private keys to share with their counter-party. MobileCoin specifies a standard encoding scheme using a base-58 symbol library for users to safely exchange payment information.
+Fog works by post-processing the blockchain in an SGX-mediated way, writing records to a 
+database (the “recovery database”) which contains all the information that a user needs to 
+recover all of their transactions privately.
 
-For more information on how transactions work, and how they use CrytpoNote-style transactions to preserve privacy of both the sender and receiver, see the [transaction](./transaction) crate.
+Fog consists of four services:
 
-To understand the blockchain format and storage, see the [ledger_db](./ledger/db) crate.
+  • The “fog-ingest” service consumes and post-processes the blockchain, writing records to the
+    recovery database. This is an SGX service. It additionally publishes a public key to the 
+    “fog-report” service.
 
-##### Consensus
+  • The “fog-view” service provides an API for fog users to access this database. Some of the 
+    queries that the user needs to make to the database are sensitive. To protect them, this 
+    is an SGX service and some of the queries are resolved obliviously.
 
-New transactions must be checked for attempts to counterfeit value before new *key images* and *utxos* can be added to the MobileCoin blockchain. Transactions are prepared by the user on their local computer or mobile device, and submitted to a secure enclave running on a *validator node* of their choice. The *validator node* checks the transaction and, assuming it believes the transaction is valid, shares it with other nodes in the MobileCoin network. The transaction is passed only to peer secure enclaves that can establish via remote attestation that they are running unmodified MobileCoin software on an authentic Intel processor. Each secure enclave replicates a state machine that adds valid transactions to the ledger in a deterministic order using a consensus algorithm called the MobileCoin Consensus Protocol.
+  • The “fog-ledger” service provides several APIs for fog users to make queries against the 
+    MobileCoin ledger. Some of the queries that the user needs to make are sensitive, so this is 
+    also an SGX service and some of the queries are resolved obliviously.
 
-The MobileCoin Consensus Protocol is a high-performance solution to the byzantine agreement problem that allows new payments to be rapidly confirmed. The `consensus-service` target binary uses Intel Software Guard eXtensions (Intel SGX) to provide defense-in-depth improvements to privacy and trust.
-
-To learn how MobileCoin uses Intel SGX to provide integrity in Byzantine Fault Tolerant (BFT) consensus as well as forward secrecy to secure your privacy, see the [consensus/enclave](./consensus/enclave) crate. To build and run consensus, see the [consensus/service](./consensus/service) crate.
-
-*Full validator nodes* additionally use the `ledger-distribution` target binary to publish a copy of their computed blockchain to content delivery networks (currently to Amazon S3 only). The public blockchain is a zero-knowledge data structure that consists only of *utxos*, *key images* and block metadata used to ensure consistency and to construct Merkle proofs. To build and run ledger distribution, see the [ledger/distribution](./ledger/distribution) crate.
-
-*Watcher nodes* perform an essential role in the MobileCoin network by verifying the signatures that the *full validator nodes* attach to each block. In this way the *watcher nodes* continuously monitor the integrity of the decentralized MobileCoin network. A *watcher node* also maintains a complete local copy of the blockchain and provides an API for wallet or exchange clients.
-
-To run a *watcher node*, build and run the [`mobilecoind`](./mobilecoind) daemon.
+  • The “fog-report” service. The fog report service publishes a signed fog public key which 
+    comes from the fog-ingest SGX enclave. This public key needs to be available to anyone 
+    who wants to send MobileCoin to a fog user, so the fog report service is expected to be 
+    publicly accessible and not require authentication (the way the others probably would). 
+    In addition to the Intel report, there is an X509 certificate chain signing the report as 
+    well. The “fog-report” service is not an SGX service.
 
 ## FAQ
 
-1. What is the impact of an Intel SGX compromise on transaction privacy?
+1. Is Fog decentralized?
 
-    Secure enclaves can provide improved integrity and confidentiality while functioning as intended. Like most complex new technologies, we should anticipate that design flaws will inevitably be discovered. Several side channel attacks against secrets protected by Intel SGX have been published, and subsequently patched or otherwise mitigated. MobileCoin is designed to provide "defense in depth" in the event of an attack based on a secure enclave exploit. MobileCoin transactions use CryptoNote technology to ensure that, even in the clear, the recipient is concealed with a one-time address, the sender is concealed in a ring signature, and the amounts are concealed with Ring Confidential Transactions (RingCT).
+   Fog is a scalable service that helps users find their transactions, conduct balance checks,
+   and build new transactions, without needing a local copy of the blockchain, and without
+   revealing their activities or giving away their private keys.
 
-    In the event of an Intel SGX compromise, the attacker's view of the ledger inside the enclave would still be protected by both ring signatures and one-time addresses, and amounts would remain concealed with RingCT. These privacy protection mechanisms leave open the possibility of statistical attacks that rely on tracing the inputs in ring signatures to determine probabilistic relationships between transactions. This attack is only applicable to transactions made during the time that the secure enclave exploit is known, but not patched. Once the Intel SGX vulnerability is discovered and addressed, statistical attacks are no longer possible, therefore forward secrecy is preserved.
+   Fog is intended to be run by app providers to help their users have both privacy and a
+   good mobile experience. Users only have to trust the integrity of SGX, and not the service
+   provider, for their privacy.
 
-1. Can I run a *validator node* without Intel SGX?
+   Fog is thus not a single, decentralized network, but can be deployed as needed by each
+   party that wants to offer it and treated as critical infrastructure for their app, and
+   scaled to meet their needs.
 
-    You can run the `consensus-service` using Intel SGX in simulation mode, however you will not be able to participate in consensus with other *validator nodes*. Your software measurement will be different from hardware-enabled Intel SGX peers and remote attestation will fail.
+1. What is the hint field? Can I put anything in there?
 
-1. Can I run a *watcher node* without Intel SGX?
-
-    Yes, you can operate a *watcher node* and validate block signatures by running the `mobilecoind` daemon, which does not require Intel SGX.
-
-1. I thought you were called *MobileCoin*. Where is the code for mobile devices?
-
-    We are hard at work building mobile SDKs for iOS and Android, as well as additional privacy-preserving infrastructure to support blockchain transactions from mobile devices. We will be releasing this software soon.
-
-1. Will I need to put my keys on a remote server to scan the blockchain for incoming transactions?
-
-    Keys will never leave your mobile device. This is a challenging problem and we are very excited to share our solution when we release our mobile SDK software.
-
+   The purpose of the hint field is to send an encrypted message to a fog enclave associated
+   to the transaction, which it finds when it post-processes the blockchain. A conforming
+   client puts only an mc-crypto-box ciphertext of a specific size there. For non-fog
+   transactions, a ciphertext encrypted for a random public key should be put there. Putting
+   something in the hint field which is distinguishable from this may degrade privacy.
 
 ## Support
 
 For troubleshooting help and other questions, please visit our [community forum](https://community.mobilecoin.foundation/).
 
-You can also open a technical support ticket via [email](mailto://support@mobilecoin.com).
+You can also open a technical support ticket via [email](mailto://support@mobilecoin.foundation).
 
 #### Trademarks
 
