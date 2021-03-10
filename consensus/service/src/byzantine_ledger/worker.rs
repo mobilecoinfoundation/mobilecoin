@@ -2,8 +2,8 @@
 
 use crate::{
     byzantine_ledger::{
-        ledger_sync_state::LedgerSyncState, task_message::TaskMessage, IS_BEHIND_GRACE_PERIOD,
-        MAX_PENDING_VALUES_TO_NOMINATE,
+        ledger_sync_state::LedgerSyncState, pending_values::PendingValues,
+        task_message::TaskMessage, IS_BEHIND_GRACE_PERIOD, MAX_PENDING_VALUES_TO_NOMINATE,
     },
     counters,
     tx_manager::TxManager,
@@ -29,7 +29,7 @@ use mc_util_metered_channel::Receiver;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
     cmp::min,
-    collections::{hash_map::Entry::Vacant, BTreeSet, HashMap},
+    collections::{BTreeSet, HashMap},
     iter::FromIterator,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
@@ -84,21 +84,7 @@ pub struct ByzantineLedgerWorker<
     pending_consensus_msgs: Vec<(VerifiedConsensusMsg, ResponderId)>,
 
     // Transactions that this node will attempt to submit to consensus.
-    // Invariant: each pending transaction is well-formed.
-    // Invariant: each pending transaction is valid w.r.t he current ledger.
-    //
-    // We need to store them as a vec so we can process values
-    // on a first-come first-served basis. However, we want to be able to:
-    // 1) Efficiently see if we already have a given transaction and ignore duplicates
-    // 2) Track how long each transaction took to externalize.
-    //
-    // To accomplish these goals we store, in addition to the queue of pending values, a
-    // map that maps a value to when we first encountered it. Note that we only store a
-    // timestamp for values that were handed to us directly from a client. We skip tracking
-    // processing times for relayed values since we want to track the time from when the network
-    // first saw a value, and not when a specific node saw it.
-    pending_values: Vec<TxHash>,
-    pending_values_map: HashMap<TxHash, Option<Instant>>,
+    pending_values: PendingValues<TXM>,
 
     // Set to true when the worker has pending values that have not yet been proposed to the scp_node.
     need_nominate: bool,
@@ -127,7 +113,7 @@ impl<
     /// * `is_behind` - Worker sets to true when the local node is behind its peers.
     /// * `highest_peer_block` - Worker sets to highest block index that the network agrees on.
     /// * `highest_issued_msg` - Worker sets to highest consensus message issued by this node.
-    /// * `logger`  
+    /// * `logger` - Logger instance.
     pub fn new(
         scp_node: Box<dyn ScpNode<TxHash>>,
         msg_signer_key: Arc<Ed25519Pair>,
@@ -154,14 +140,13 @@ impl<
             highest_peer_block,
             highest_issued_msg,
             ledger,
-            tx_manager,
+            tx_manager: tx_manager.clone(),
             broadcaster,
             connection_manager,
             logger,
             current_slot_index,
             pending_consensus_msgs: Default::default(),
-            pending_values: Vec::new(),
-            pending_values_map: Default::default(),
+            pending_values: PendingValues::new(tx_manager),
             need_nominate: false,
             network_state,
             ledger_sync_service,
@@ -173,8 +158,6 @@ impl<
     // The place where all the consensus work is actually done.
     // Returns true until stop is requested.
     pub fn tick(&mut self) -> bool {
-        assert_eq!(self.pending_values.len(), self.pending_values_map.len()); // Invariant
-
         if !self.receive_tasks() {
             // Stop requested
             return false;
@@ -232,7 +215,7 @@ impl<
 
                 self.scp_node.reset_slot_index(self.current_slot_index);
                 // Clear any pending values that might no longer be valid.
-                self.update_pending_values();
+                self.pending_values.clear_invalid_values();
                 if !self.pending_values.is_empty() {
                     // These values should be proposed for nomination.
                     self.need_nominate = true;
@@ -372,19 +355,6 @@ impl<
         };
     }
 
-    /// Clear any pending values that are no longer valid.
-    fn update_pending_values(&mut self) {
-        let tx_manager = self.tx_manager.clone();
-        self.pending_values_map
-            .retain(|tx_hash, _| tx_manager.validate(tx_hash).is_ok());
-        // (Help the borrow checker)
-        let self_pending_values_map = &self.pending_values_map;
-        self.pending_values
-            .retain(|tx_hash| self_pending_values_map.contains_key(tx_hash));
-
-        assert_eq!(self.pending_values_map.len(), self.pending_values.len());
-    }
-
     // Reads tasks from the task queue.
     // Returns false if the worker has been asked to stop.
     fn receive_tasks(&mut self) -> bool {
@@ -393,14 +363,8 @@ impl<
                 // Transactions submitted by clients. These are assumed to be well-formed, but may not be valid.
                 TaskMessage::Values(timestamp, new_values) => {
                     for tx_hash in new_values {
-                        if let Vacant(entry) = self.pending_values_map.entry(tx_hash) {
-                            // A new transaction.
-                            if self.tx_manager.validate(&tx_hash).is_ok() {
-                                // The transaction is well-formed and valid.
-                                entry.insert(timestamp);
-                                self.pending_values.push(tx_hash);
-                                self.need_nominate = true;
-                            }
+                        if self.pending_values.push(tx_hash, timestamp) {
+                            self.need_nominate = true;
                         }
                     }
                 }
@@ -540,8 +504,8 @@ impl<
     fn complete_current_slot(&mut self, externalized: Vec<TxHash>) {
         // Update pending value processing time metrics.
         for tx_hash in externalized.iter() {
-            if let Some(Some(timestamp)) = self.pending_values_map.get(tx_hash) {
-                let duration = Instant::now().saturating_duration_since(*timestamp);
+            if let Some(timestamp) = self.pending_values.get_timestamp_for_value(tx_hash) {
+                let duration = Instant::now().saturating_duration_since(timestamp);
                 counters::PENDING_VALUE_PROCESSING_TIME.observe(duration.as_secs_f64());
             }
         }
@@ -601,17 +565,11 @@ impl<
             self.tx_manager.remove_expired(index)
         };
 
-        // Drop pending values that are no longer considered valid.
-        let tx_manager = self.tx_manager.clone();
-        self.pending_values_map.retain(|tx_hash, _| {
-            !purged_hashes.contains(tx_hash) && tx_manager.validate(tx_hash).is_ok()
-        });
-        // help the borrow checker
-        let self_pending_values_map = &self.pending_values_map;
         self.pending_values
-            .retain(|tx_hash| self_pending_values_map.contains_key(tx_hash));
+            .retain(|tx_hash| !purged_hashes.contains(tx_hash));
 
-        assert_eq!(self.pending_values_map.len(), self.pending_values.len());
+        // Drop pending values that are no longer considered valid.
+        self.pending_values.clear_invalid_values();
 
         log::info!(
             self.logger,
@@ -1177,72 +1135,6 @@ mod tests {
     }
 
     #[test_with_logger]
-    /// Should discard values that are no longer valid.
-    fn test_update_pending_values_discards_invalid_values(logger: Logger) {
-        let (node_id, _local_node_uri, msg_signer_key) = get_local_node_config(11);
-
-        let mut rng: StdRng = SeedableRng::from_seed([97u8; 32]);
-        let peers = get_peers(&[22, 33], &mut rng);
-        let quorum_set =
-            QuorumSet::new_with_node_ids(2, vec![peers[0].id.clone(), peers[1].id.clone()]);
-
-        let num_blocks = 12;
-        let (scp_node, ledger, ledger_sync, mut tx_manager, broadcast) =
-            get_mocks(&node_id, &quorum_set, num_blocks);
-        let connection_manager = get_connection_manager(&node_id, &peers, &logger);
-        let (_task_sender, task_receiver) = get_channel();
-
-        let pending_values = vec![TxHash([1u8; 32]), TxHash([2u8; 32]), TxHash([3u8; 32])];
-
-        // `validate` should be called one for each pending value.
-        tx_manager
-            .expect_validate()
-            .with(eq(pending_values[0].clone()))
-            .return_const(Ok(()));
-        // This transaction has expired.
-        tx_manager
-            .expect_validate()
-            .with(eq(pending_values[1].clone()))
-            .return_const(Err(TxManagerError::TransactionValidation(
-                TransactionValidationError::TombstoneBlockExceeded,
-            )));
-        tx_manager
-            .expect_validate()
-            .with(eq(pending_values[2].clone()))
-            .return_const(Ok(()));
-
-        let mut worker = ByzantineLedgerWorker::new(
-            Box::new(scp_node),
-            msg_signer_key,
-            ledger,
-            ledger_sync,
-            connection_manager,
-            Arc::new(tx_manager),
-            Arc::new(Mutex::new(broadcast)),
-            task_receiver,
-            Arc::new(AtomicBool::new(false)),
-            Arc::new(AtomicU64::new(0)),
-            Arc::new(Mutex::new(Option::<ConsensusMsg>::None)),
-            logger,
-        );
-
-        // Set up pending_values, pending_values_map
-        worker.pending_values = pending_values.clone();
-
-        worker.pending_values_map = pending_values
-            .iter()
-            .map(|tx_hash| (tx_hash.clone(), Some(Instant::now())))
-            .collect();
-
-        worker.update_pending_values();
-
-        // The second transaction is no longer valid and should be removed.
-        let expected_pending_values = vec![pending_values[0].clone(), pending_values[2].clone()];
-        assert_eq!(worker.pending_values, expected_pending_values);
-        assert_eq!(worker.pending_values.len(), worker.pending_values_map.len());
-    }
-
-    #[test_with_logger]
     fn test_receive_tasks(logger: Logger) {
         let (node_id, _local_node_uri, msg_signer_key) = get_local_node_config(11);
         let mut rng: StdRng = SeedableRng::from_seed([97u8; 32]);
@@ -1323,12 +1215,11 @@ mod tests {
                 .unwrap();
         }
         // Initially, pending_values should be empty.
-        assert_eq!(worker.pending_values, vec![]);
+        assert!(worker.pending_values.is_empty());
         assert_eq!(worker.receive_tasks(), true);
-        // Should maintain the invariant that pending_values and pending_values map
-        // only contain tx_hashes corresponding to transactions that are valid w.r.t the current ledger.
+        // Should maintain the invariant that pending_values only contain tx_hashes
+        // corresponding to transactions that are valid w.r.t the current ledger.
         assert_eq!(worker.pending_values.len(), tx_hashes.len() - 3);
-        assert_eq!(worker.pending_values_map.len(), tx_hashes.len() - 3);
 
         let responder_id = ResponderId::default();
 
@@ -1383,10 +1274,13 @@ mod tests {
             QuorumSet::new_with_node_ids(2, vec![peers[0].id.clone(), peers[1].id.clone()]);
 
         let num_blocks = 12;
-        let (mut scp_node, ledger, ledger_sync, tx_manager, broadcast) =
+        let (mut scp_node, ledger, ledger_sync, mut tx_manager, broadcast) =
             get_mocks(&node_id, &quorum_set, num_blocks);
         let connection_manager = get_connection_manager(&node_id, &peers, &logger);
         let (_task_sender, task_receiver) = get_channel();
+
+        // `validate` will be called one for each pushed value.
+        tx_manager.expect_validate().return_const(Ok(()));
 
         // Up to MAX_PENDING_VALUES_TO_NOMINATE values should be proposed to the scp_node.
         scp_node
@@ -1414,11 +1308,9 @@ mod tests {
         let tx_hashes: Vec<_> = (0..MAX_PENDING_VALUES_TO_NOMINATE * 2)
             .map(|i| TxHash([i as u8; 32]))
             .collect();
-        worker.pending_values = tx_hashes.clone();
-        worker.pending_values_map = tx_hashes
-            .iter()
-            .map(|tx_hash| (tx_hash.clone(), Some(Instant::now())))
-            .collect();
+        for tx_hash in tx_hashes {
+            worker.pending_values.push(tx_hash, Some(Instant::now()));
+        }
         worker.need_nominate = true;
 
         worker.propose_pending_values();

@@ -69,6 +69,7 @@ members = [
     "sgx/report-cache/untrusted",
     "sgx/slog-edl",
     "sgx/urts-sys",
+    "slam",
     "test-vectors/account-keys",
     "test-vectors/b58-encodings",
     "transaction/core",
