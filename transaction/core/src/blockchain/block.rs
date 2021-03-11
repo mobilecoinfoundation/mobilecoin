@@ -10,7 +10,7 @@ use prost::Message;
 use serde::{Deserialize, Serialize};
 
 /// Version identifier.
-pub const BLOCK_VERSION: u32 = 0;
+pub const BLOCK_VERSION: u32 = 1;
 
 /// The index of a block in the blockchain.
 pub type BlockIndex = u64;
