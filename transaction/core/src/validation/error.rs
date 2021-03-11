@@ -18,8 +18,10 @@ pub enum TransactionValidationError {
     /// A transaction must have at least one input.
     NoInputs,
 
-    /// A transaction must have no more than the maximum allowed number of
-    /// inputs.
+    /**
+     * A transaction must have no more than the maximum allowed number of
+     * inputs.
+     */
     TooManyInputs,
 
     /// Each input must have a signature.
@@ -34,8 +36,10 @@ pub enum TransactionValidationError {
     /// All Range Proofs in the transaction must be valid.
     InvalidRangeProof,
 
-    /// Each input must contain a ring with no fewer than the minimum number of
-    /// elements.
+    /**
+     * Each input must contain a ring with no fewer than the minimum number
+     * of elements.
+     */
     InsufficientRingSize,
 
     /// Number of blocks in ledger exceeds the tombstone block number.
@@ -47,12 +51,16 @@ pub enum TransactionValidationError {
     /// Must have at least one output.
     NoOutputs,
 
-    /// A transaction must have no more than the maximum allowed number of
-    /// outputs.
+    /**
+     * A transaction must have no more than the maximum allowed number of
+     * outputs.
+     */
     TooManyOutputs,
 
-    /// Each input must contain a ring with no more than the maximum number of
-    /// elements.
+    /**
+     * Each input must contain a ring with no more than the maximum number
+     * of elements.
+     */
     ExcessiveRingSize,
 
     /// All elements in all rings within the transaction must be unique.
@@ -64,8 +72,10 @@ pub enum TransactionValidationError {
     /// All rings in a transaction must be of the same size.
     UnequalRingSizes,
 
-    /// Inputs must be sorted by the public key of the first ring element of
-    /// each input.
+    /**
+     * Inputs must be sorted by the public key of the first ring element of
+     * each input.
+     */
     UnsortedInputs,
 
     /// Key Images must be sorted.
@@ -80,8 +90,10 @@ pub enum TransactionValidationError {
     /// Output public keys in the transaction must be unique.
     DuplicateOutputPublicKey,
 
-    /// Contains an output public key that has previously appeared in the
-    /// ledger.
+    /**
+     * Contains an output public key that has previously appeared in the
+     * ledger.
+     */
     ContainsExistingOutputPublicKey,
 
     /// Each ring element must have a corresponding proof of membership.
@@ -93,8 +105,10 @@ pub enum TransactionValidationError {
     /// Public keys must be valid Ristretto points.
     InvalidRistrettoPublicKey,
 
-    /// Ledger context provided by the untrusted system is insufficient to
-    /// validate the transaction.
+    /**
+     * Ledger context provided by the untrusted system is insufficient to
+     *  validate the transaction.
+     */
     InvalidLedgerContext,
 
     /// Ledger error: `{0}`.

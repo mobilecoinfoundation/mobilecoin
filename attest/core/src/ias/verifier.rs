@@ -52,18 +52,24 @@ trait Verify<T>: Clone {
 /// An enumeration of errors which a [`Verifier`] can produce.
 #[derive(Clone, Debug, Deserialize, Display, PartialEq, PartialOrd, Serialize)]
 pub enum Error {
-    /// The user-provided array of trust anchor PEM contains an invalid
-    /// certificate.
+    /**
+     * The user-provided array of trust anchor PEM contains an invalid
+     * certificate.
+     */
     InvalidTrustAnchor(String),
     /// The IAS report does not contain a certificate chain.
     NoChain,
-    /// The signature is invalid, or was produced by a public key we do not
-    /// trust.
+    /**
+     * The signature is invalid, or was produced by a public key we do not
+     * trust.
+     */
     BadSignature,
     /// There was an error parsing the JSON contents: {0}
     Parse(VerifyError),
-    /// The report was properly constructed, but did not meet security
-    /// requirements, report contents: {0}
+    /**
+     * The report was properly constructed, but did not meet security
+     * requirements, report contents: {0:?}
+     */
     Verification(VerificationReportData),
 }
 

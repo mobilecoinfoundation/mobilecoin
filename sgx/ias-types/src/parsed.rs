@@ -35,37 +35,49 @@ use prost_types::Timestamp;
 /// This is defined in the [IAS API v4, S4.2.1](https://api.trustedservices.intel.com/documents/sgx-attestation-api-spec.pdf).
 #[derive(Clone, Debug, Display, Hash, Eq, Ord, PartialEq, PartialOrd)]
 pub enum PseError<'report> {
-    /// Security properties of the SGX Platform Service cannot be verified due
-    /// to unrecognized PSE Manifest.
+    /**
+     * Security properties of the SGX Platform Service cannot be verified
+     * due to unrecognized PSE Manifest.
+     */
     Unknown,
 
-    /// Security properties of the SGX Platform Service are invalid.
-    ///
-    /// SP should assume the SGX Platform Service utilized by the ISV enclave is
-    /// invalid.
+    /**
+     * Security properties of the SGX Platform Service are invalid.
+     *
+     * SP should assume the SGX Platform Service utilized by the ISV enclave
+     * is invalid.
+     */
     Invalid,
 
-    /// TCB level of SGX Platform Service is outdated but the Service has not
-    /// been identified as compromised and thus it is not revoked.
-    ///
-    /// It is up to the SP to decide whether or not to assume the SGX Platform
-    /// Service utilized by the ISV enclave is valid.
+    /**
+     * TCB level of SGX Platform Service is outdated but the Service has not
+     * been identified as compromised and thus it is not revoked.
+     *
+     * It is up to the SP to decide whether or not to assume the SGX
+     * Platform Service utilized by the ISV enclave is valid.
+     */
     OutOfDate,
 
-    /// The hardware/firmware component involved in the SGX Platform Service has
-    /// been revoked.
-    ///
-    /// SP should assume the SGX Platform Service utilized by the ISV enclave is
-    /// invalid.
+    /**
+     * The hardware/firmware component involved in the SGX Platform Service
+     * has been revoked.
+     *
+     * SP should assume the SGX Platform Service utilized by the ISV enclave
+     * is invalid.
+     */
     Revoked,
 
-    /// A specific type of Revocation List used to verify the hardware/firmware
-    /// component involved in the SGX Platform Service during the SGX
-    /// Platform Service initialization process is out of date.
-    ///
-    /// If the SP rejects the remote attestation and forwards the Platform Info
-    /// Blob to the SGX Platform SW through the ISV SGX Application, the SGX
-    /// Platform SW will attempt to refresh the SGX Platform Service.
+    /**
+     * A specific type of Revocation List used to verify the
+     * hardware/firmware component involved in the SGX Platform Service
+     * during the SGX Platform Service initialization process is out of
+     * date.
+     *
+     * If the SP rejects the remote attestation and forwards the Platform
+     * Info Blob to the SGX Platform SW through the ISV SGX Application,
+     * the SGX Platform SW will attempt to refresh the SGX Platform
+     * Service.
+     */
     RlVersionMismatch,
 
     /// The IAS server returned an unknown value: {0}
@@ -80,76 +92,97 @@ type PseResult<'report> = Result<&'report [u8], PseError<'report>>;
 /// This is defined in the [IAS API v6, S4.2.1](https://software.intel.com/sites/default/files/managed/7e/3b/ias-api-spec.pdf).
 #[derive(Clone, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum QuoteError<'report> {
-    /// EPID signature of the ISV enclave QUOTE was invalid.
-    ///
-    /// The content of the QUOTE is not trustworthy.
+    /**
+     * EPID signature of the ISV enclave QUOTE was invalid.
+     *
+     * The content of the QUOTE is not trustworthy.
+     */
     SignatureInvalid,
 
-    /// The EPID group has been revoked.
-    ///
-    /// When this value is returned, [`ReportBody::revocation_reason`] will
-    /// contain the revocation reason code for this EPID group as reported
-    /// in the EPID Group CRL. The content of the QUOTE is not trustworthy.
+    /**
+     * The EPID group has been revoked.
+     *
+     * When this value is returned, [`ReportBody::revocation_reason`] will
+     * contain the revocation reason code for this EPID group as reported
+     * in the EPID Group CRL. The content of the QUOTE is not trustworthy.
+     */
     GroupRevoked(RevocationReason),
 
-    /// The EPID private key used to sign the QUOTE has been revoked by
-    /// signature.
-    ///
-    /// The content of the QUOTE is not trustworthy.
+    /**
+     * The EPID private key used to sign the QUOTE has been revoked by
+     * signature.
+     *
+     * The content of the QUOTE is not trustworthy.
+     */
     SignatureRevoked,
 
-    /// The EPID private key used to sign the QUOTE has been directly revoked
-    /// (not by signature).
-    ///
-    /// The content of the QUOTE is not trustworthy.
+    /**
+     * The EPID private key used to sign the QUOTE has been directly revoked
+     * (not by signature).
+     *
+     * The content of the QUOTE is not trustworthy.
+     */
     KeyRevoked,
 
-    /// SigRL version in ISV enclave QUOTE does not match the most recent
-    /// version of the SigRL.
-    ///
-    /// In rare situations, after SP retrieved the SigRL from IAS and provided
-    /// it to the platform, a newer version of the SigRL is made available.
-    /// As a result, the Attestation Verification Report will indicate
-    /// SIGRL_VERSION_MISMATCH. SP can retrieve the most recent version of
-    /// SigRL from the IAS and request the platform to perform remote
-    /// attestation again with the most recent version of SigRL. If the
-    /// platform keeps failing to provide a valid QUOTE matching with the
-    /// most recent version of the SigRL, the content of the QUOTE is not
-    /// trustworthy.
+    /**
+     * SigRL version in ISV enclave QUOTE does not match the most recent
+     * version of the SigRL.
+     *
+     * In rare situations, after SP retrieved the SigRL from IAS and
+     * provided it to the platform, a newer version of the SigRL is made
+     * available. As a result, the Attestation Verification Report will
+     * indicate SIGRL_VERSION_MISMATCH. SP can retrieve the most recent
+     * version of SigRL from the IAS and request the platform to perform
+     * remote attestation again with the most recent version of SigRL.
+     * If the platform keeps failing to provide a valid QUOTE matching
+     * with the most recent version of the SigRL, the content of the
+     * QUOTE is not trustworthy.
+     */
     SigrlVersionMismatch,
 
-    /// The EPID signature of the ISV enclave QUOTE has been verified correctly,
-    /// but the TCB level of SGX platform is outdated (for further details
-    /// see Advisory IDs).
-    ///
-    /// The platform has not been identified as compromised and thus it is not
-    /// revoked. It is up to the Service Provider to decide whether or not
-    /// to trust the content of the QUOTE, and whether or not to trust the
-    /// platform performing the attestation to protect specific
-    /// sensitive information.
+    /**
+     * The EPID signature of the ISV enclave QUOTE has been verified
+     * correctly, but the TCB level of SGX platform is outdated (for
+     * further details see Advisory IDs).
+     *
+     * The platform has not been identified as compromised and thus it is
+     * not revoked. It is up to the Service Provider to decide whether
+     * or not to trust the content of the QUOTE, and whether or not to
+     * trust the platform performing the attestation to protect specific
+     * sensitive information.
+     */
     GroupOutOfDate(QuoteErrorData<'report>),
 
-    /// The EPID signature of the ISV enclave QUOTE has been verified correctly,
-    /// but additional configuration of SGX platform may be needed (for further
-    /// details see Advisory IDs).
-    ///
-    /// The platform has not been identified as compromised and thus it is not
-    /// revoked. It is up to the Service Provider to decide whether or not to
-    /// trust the content of the QUOTE, and whether or not to trust the platform
-    /// performing the attestation to protect specific sensitive information.
+    /**
+     * The EPID signature of the ISV enclave QUOTE has been verified
+     * correctly, but additional configuration of SGX platform may be
+     * needed (for further details see Advisory IDs).
+     *
+     * The platform has not been identified as compromised and thus it is
+     * not revoked. It is up to the Service Provider to decide whether
+     * or not to trust the content of the QUOTE, and whether or not to
+     * trust the platform performing the attestation to protect specific
+     * sensitive information.
+     */
     ConfigurationNeeded(QuoteErrorData<'report>),
 
-    /// The enclave requires software mitigation
+    /**
+     * The enclave requires software mitigation
+     */
     SwHardeningNeeded {
         pse_result: Option<PseResult<'report>>,
         advisory_url: &'report str,
         advisory_ids: &'report [String],
     },
 
-    /// The enclave requires configuration changes and software mitigation
+    /**
+     * The enclave requires configuration changes and software mitigation
+     */
     ConfigurationAndSwHardeningNeeded(QuoteErrorData<'report>),
 
-    /// Unknown error: {0}
+    /**
+     * Unknown error: {0}
+     */
     Other(&'report str),
 }
 

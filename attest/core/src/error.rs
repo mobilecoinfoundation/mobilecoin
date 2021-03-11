@@ -57,39 +57,49 @@ pub enum IasQuoteError {
     SignatureInvalid,
     /// The EPID group has been revoked. See RevocationCause
     GroupRevoked(RevocationCause, PlatformInfoBlob),
-    /// The EPID private key used to sign the QUOTE has been revoked by
-    /// signature
+    /**
+     * The EPID private key used to sign the QUOTE has been revoked by
+     * signature
+     */
     SignatureRevoked,
-    /// The EPID private key used to sign the QUOTE has been directly revoked
-    /// (not by signature)
+    /**
+     * The EPID private key used to sign the QUOTE has been directly revoked
+     * (not by signature)
+     */
     KeyRevoked,
     /// The SigRL used for the quote is out of date
     SigrlVersionMismatch,
-    /// The EPID group must be updated to mitigate {advisory_ids:?}, see
-    /// {advisory_url}
+    /**
+     * The EPID group must be updated to mitigate {advisory_ids:?}, see
+     * {advisory_url}
+     */
     GroupOutOfDate {
         pse_manifest_status: Option<PseManifestResult>,
         platform_info_blob: PlatformInfoBlob,
         advisory_url: String,
         advisory_ids: Vec<String>,
     },
-    /// The enclave requires additional BIOS configuration to mitigate
-    /// {advisory_ids:?}, see {advisory_url}
+    /** The enclave requires additional BIOS configuration to mitigate
+     * {advisory_ids:?}, see {advisory_url}
+     */
     ConfigurationNeeded {
         pse_manifest_status: Option<PseManifestResult>,
         platform_info_blob: PlatformInfoBlob,
         advisory_url: String,
         advisory_ids: Vec<String>,
     },
-    /// The enclave requires software mitigation for {advisory_ids:?}, see
-    /// {advisory_url}
+    /**
+     * The enclave requires software mitigation for {advisory_ids:?}, see
+     *  {advisory_url}
+     */
     SwHardeningNeeded {
         pse_manifest_status: Option<PseManifestResult>,
         advisory_url: String,
         advisory_ids: Vec<String>,
     },
-    /// The enclave requires additional BIOS configuration and software
-    /// mitigation for {advisory_ids:?}, see {advisory_url}
+    /** The enclave requires additional BIOS configuration and software
+     * mitigation for {advisory_ids:?}, see {advisory_url}
+     */
     ConfigurationAndSwHardeningNeeded {
         pse_manifest_status: Option<PseManifestResult>,
         platform_info_blob: PlatformInfoBlob,

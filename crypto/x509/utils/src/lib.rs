@@ -60,8 +60,10 @@ impl<T: AsRef<[Pem]>> X509CertificateIterable for T {
 pub enum ChainError {
     /// The chain slice is empty
     Empty,
-    /// Could not retrieve the current time: second time provided was later than
-    /// self
+    /**
+     * Could not retrieve the current time: second time provided was later
+     * than self
+     */
     SystemTime,
     /// X509 error: {0:?}
     X509(X509Error),

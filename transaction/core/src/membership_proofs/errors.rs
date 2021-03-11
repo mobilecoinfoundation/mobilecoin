@@ -15,8 +15,10 @@ pub enum Error {
     /// Invalid Range: {0}
     RangeError(membership_proofs::RangeError),
 
-    /// An unexpected tx out membership element was provided, which was not
-    /// adjacent to the preceding elements, at index {0}
+    /**
+     * An unexpected tx out membership element was provided, which was not
+     * adjacent to the preceding elements, at index {0}
+     */
     UnexpectedMembershipElement(usize),
 
     /// The value provided for proof.highest_index doesn't match the other data

@@ -59,8 +59,10 @@ pub enum Error {
     /// There was an error reading the signature file: {0}
     Io(String),
 
-    /// There was an error executing cargo metadata against the staticlib crate:
-    /// {0}
+    /**
+     * There was an error executing cargo metadata against the staticlib
+     * crate: {0}
+     */
     Metadata(MetadataError),
 
     /// There was an error executing pkg-config
@@ -69,8 +71,10 @@ pub enum Error {
     /// The SGX signing executable could not dump output
     SgxSignDump,
 
-    /// The SGX signing executable could not append the signature to the
-    /// unsigned binary
+    /**
+     * The SGX signing executable could not append the signature to the
+     * unsigned binary
+     */
     SgxSignCatsig,
 
     /// The SGX signing executable could not perform a one-shot signature
@@ -79,8 +83,10 @@ pub enum Error {
     /// The SGX signing executable could not generate the data to be signed
     SgxSignGendata,
 
-    /// The gendata to be signed doesn't match what the given unsigned enclave
-    /// produces
+    /**
+     * The gendata to be signed doesn't match what the given unsigned
+     * enclave produces
+     */
     BadGendata,
 
     /// The enclave staticlib's crate name was in a screwy format

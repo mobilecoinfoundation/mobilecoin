@@ -22,8 +22,10 @@ pub enum Error {
     PkgConfig(PkgConfigError),
     /// There was missing data in the environment
     Environment(EnvironmentError),
-    /// The given SGX library collection did not allow us to deduce the binary
-    /// location
+    /**
+     * The given SGX library collection did not allow us to deduce the
+     * binary location
+     */
     NoBinDir,
     /// The given SGX library collection did not contain any include paths
     NoIncludePaths,
@@ -31,8 +33,10 @@ pub enum Error {
     Io(IoError),
     /// The edger8r command failed, and also printed invalid UTF-8
     Utf8Error,
-    /// There was an error generating the code,
-    /// command:\n{0}\nstdout:\n{0}\n\nstderr:\n{1}
+    /**
+     * There was an error generating the code,
+     * command:\n{0}\nstdout:\n{0}\n\nstderr:\n{1}
+     */
     Generate(String, String, String),
     /// There was an error building the generated code
     Build,
