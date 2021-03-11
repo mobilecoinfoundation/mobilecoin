@@ -539,9 +539,39 @@ impl LedgerDB {
         block: &Block,
         block_contents: &BlockContents,
     ) -> Result<(), Error> {
-        // Check that version is correct
-        if block.version != BLOCK_VERSION {
-            return Err(Error::InvalidBlock);
+        // Check version is correct
+        // Check if block is being appended at the correct place.
+        let num_blocks = self.num_blocks()?;
+        if num_blocks == 0 {
+            // This must be an origin block.
+
+            // The origin block is version 0
+            if block.version != 0 {
+                return Err(Error::InvalidBlock);
+            }
+
+            // The origin block is index '0' with default-initialized parent ID, by convention
+            if block.index != 0 || block.parent_id != BlockID::default() {
+                return Err(Error::InvalidBlock);
+            }
+        } else {
+            let last_block = self.get_block(num_blocks - 1)?;
+
+            // The block's version should be bounded by
+            // [prev block version, min(prev block version + 1, max block version)]
+            if block.version >= last_block.version && block.version <= BLOCK_VERSION {
+                if block.version > last_block.version + 1 {
+                    return Err(Error::InvalidBlock);
+                }
+            }
+            else {
+                return Err(Error::InvalidBlock);
+            }
+
+            // The block must have the correct index and parent.
+            if block.index != num_blocks || block.parent_id != last_block.id {
+                return Err(Error::InvalidBlock);
+            }
         }
 
         // A block must have outputs.
@@ -552,21 +582,6 @@ impl LedgerDB {
         // Non-origin blocks must have key images.
         if block.index != 0 && block_contents.key_images.is_empty() {
             return Err(Error::InvalidBlock);
-        }
-
-        // Check if block is being appended at the correct place.
-        let num_blocks = self.num_blocks()?;
-        if num_blocks == 0 {
-            // This must be an origin block.
-            if block.index != 0 || block.parent_id != BlockID::default() {
-                return Err(Error::InvalidBlock);
-            }
-        } else {
-            // The block must have the correct index and parent.
-            let last_block = self.get_block(num_blocks - 1)?;
-            if block.index != num_blocks || block.parent_id != last_block.id {
-                return Err(Error::InvalidBlock);
-            }
         }
 
         // Check that the block contents match the hash.
