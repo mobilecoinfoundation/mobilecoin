@@ -6,7 +6,7 @@ use crate::{
     api::{AttestedApiService, BlockchainApiService, ClientApiService, PeerApiService},
     background_work_queue::BackgroundWorkQueue,
     byzantine_ledger::ByzantineLedger,
-    config::Config,
+    config::{Config, NetworkConfig},
     counters,
     peer_keepalive::PeerKeepalive,
     tx_manager::TxManager,
@@ -14,7 +14,7 @@ use crate::{
 use base64::{encode_config, URL_SAFE};
 use displaydoc::Display;
 use futures::executor::block_on;
-use grpcio::{EnvBuilder, Environment, Server, ServerBuilder};
+use grpcio::{EnvBuilder, Environment, RpcStatus, RpcStatusCode, Server, ServerBuilder};
 use mc_attest_api::attest_grpc::create_attested_api;
 use mc_attest_enclave_api::{ClientSession, PeerSession};
 use mc_attest_net::RaClient;
@@ -30,7 +30,7 @@ use mc_crypto_keys::DistinguishedEncoding;
 use mc_ledger_db::{Error as LedgerDbError, Ledger, LedgerDB};
 use mc_peers::{PeerConnection, ThreadedBroadcaster, VerifiedConsensusMsg};
 use mc_sgx_report_cache_untrusted::{Error as ReportCacheError, ReportCacheThread};
-use mc_transaction_core::tx::TxHash;
+use mc_transaction_core::{tx::TxHash, Block, BlockSignature};
 use mc_util_grpc::{
     AdminServer, AnonymousAuthenticator, Authenticator, BuildInfoService,
     ConnectionUriGrpcioServer, GetConfigJsonFn, HealthCheckStatus, HealthService,
@@ -41,7 +41,7 @@ use once_cell::sync::OnceCell;
 use serde_json::json;
 use std::{
     env,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, Weak},
     time::Instant,
 };
 
@@ -122,7 +122,7 @@ pub struct ConsensusService<
     consensus_rpc_server: Option<Server>,
     user_rpc_server: Option<Server>,
     // Option is only here because we need a way to drop the ByzantineLedger without mutex,
-    // if we want to implement Stop as currently concieved
+    // if we want to implement Stop as currently conceived.
     byzantine_ledger: Option<Arc<OnceCell<ByzantineLedger>>>,
 }
 
@@ -132,6 +132,16 @@ impl<
         TXM: TxManager + Clone + Send + Sync + 'static,
     > ConsensusService<E, R, TXM>
 {
+    /// Creates a new ConsensusService.
+    ///
+    /// # Arguments
+    /// * `config` - Service configurations.
+    /// * `enclave` - Consensus enclave.
+    /// * `ledger_db` - Ledger.
+    /// * `ra_client` - Remote attestation client.
+    /// * `tx_manager` - TransactionManager.
+    /// * `time_provider` - TimeProvider for client Authenticator.
+    /// * `logger`
     pub fn new<TP: TimeProvider + 'static>(
         config: Config,
         enclave: E,
@@ -636,70 +646,165 @@ impl<
     /// Helper method for creating the get config json function needed by the GRPC admin service.
     fn create_get_config_json_fn(&self) -> GetConfigJsonFn {
         let ledger_db = self.ledger_db.clone();
-        let byzantine_ledger = self
+
+        let byzantine_ledger: Weak<OnceCell<ByzantineLedger>> = self
             .byzantine_ledger
             .as_ref()
             .map(Arc::downgrade)
             .expect("Server was not initialized");
+
         let config = self.config.clone();
         let logger = self.logger.clone();
         Arc::new(move || {
-            let mut sync_status = "synced";
-            let mut peer_block_height: u64 = 0;
-            byzantine_ledger.upgrade().map(|ledger| {
-                ledger.get().map(|ledger| {
-                    if ledger.is_behind() {
-                        sync_status = "catchup";
-                    };
-                    peer_block_height = ledger.highest_peer_block();
-                })
-            });
-            let block_height;
-            let latest_block_hash;
-            let latest_block_timestamp;
-            let blocks_behind;
-            // If we do not get a num_blocks, several status points will be null
-            match ledger_db.num_blocks() {
-                Ok(b) => {
-                    block_height = Some(b);
-                    latest_block_hash = ledger_db
-                        .get_block(b - 1)
-                        .map(|x| hex::encode(x.id.0))
-                        .map_err(|e| log::error!(logger, "Error getting block {} {:?}", b - 1, e))
-                        .ok();
+            // The highest block in the local ledger, and its BlockSignature if available.
+            let (highest_block, highest_block_signature): (Block, Option<BlockSignature>) = {
+                // Number of blocks in the local ledger.
+                let num_blocks: u64 = ledger_db.num_blocks().map_err(|e| {
+                    log::error!(logger, "{:?}", e);
+                    RpcStatus::new(
+                        RpcStatusCode::UNAVAILABLE,
+                        Some("LedgerDB error".to_string()),
+                    )
+                })?;
 
-                    latest_block_timestamp = match ledger_db.get_block_signature(b - 1) {
-                        Ok(x) => Some(x.signed_at()),
-                        // Note, a block signature will be missing if the corresponding block was not
+                // The local ledger must at least contain the origin block.
+                assert_ne!(num_blocks, 0, "The local ledger must not be empty");
+                let highest_block_index = num_blocks - 1;
+
+                // The highest block in the local ledger.
+                let highest_block: Block =
+                    ledger_db.get_block(highest_block_index).map_err(|e| {
+                        log::error!(
+                            logger,
+                            "Error getting block {} {:?}",
+                            highest_block_index,
+                            e
+                        );
+                        RpcStatus::new(
+                            RpcStatusCode::UNAVAILABLE,
+                            Some("LedgerDB error".to_string()),
+                        )
+                    })?;
+
+                // Enclave signature for highest_block, if any.
+                let highest_block_signature: Option<BlockSignature> =
+                    match ledger_db.get_block_signature(highest_block_index) {
+                        Ok(block_signature) => Ok(Some(block_signature)),
+                        // A block signature will be missing if the corresponding block was not
                         // processed by an enclave participating in consensus. For example, unsigned
-                        // blocks can be created by a validator node that falls behind its peers and
+                        // blocks can be created by a node that falls behind its peers and
                         // enters into catchup.
                         Err(LedgerDbError::NotFound) => {
-                            log::trace!(logger, "Block signature not found for block {}", b - 1);
-                            None
+                            log::trace!(
+                                logger,
+                                "BlockSignature not found for block {}",
+                                highest_block_index
+                            );
+                            Ok(None)
                         }
                         Err(e) => {
                             log::error!(
                                 logger,
-                                "Error getting block signature for block {} {:?}",
-                                b - 1,
+                                "Error getting BlockSignature for block {} {:?}",
+                                highest_block_index,
                                 e
                             );
-                            None
+                            Err(RpcStatus::new(
+                                RpcStatusCode::UNAVAILABLE,
+                                Some("LedgerDB error".to_string()),
+                            ))
                         }
-                    };
-                    // peer_block_height - b, unless overflow, then 0
-                    blocks_behind = Some(peer_block_height.saturating_sub(b));
-                }
-                Err(e) => {
-                    log::error!(logger, "Error getting block height {:?}", e);
-                    block_height = None;
-                    latest_block_hash = None;
-                    latest_block_timestamp = None;
-                    blocks_behind = None;
-                }
+                    }?;
+
+                (highest_block, highest_block_signature)
             };
-            Ok(json!({
+
+            let (is_behind, highest_peer_block_index): (bool, u64) = {
+                let byzantine_ledger_arc_once_cell: Arc<OnceCell<ByzantineLedger>> =
+                    match byzantine_ledger.upgrade() {
+                        Some(instance) => Ok(instance),
+                        None => {
+                            log::error!(logger, "ByzantineLedger has been dropped.");
+                            Err(RpcStatus::new(
+                                RpcStatusCode::UNAVAILABLE,
+                                Some("ByzantineLedger has been dropped".to_string()),
+                            ))
+                        }
+                    }?;
+
+                let byzantine_ledger_instance = match byzantine_ledger_arc_once_cell.get() {
+                    Some(instance) => Ok(instance),
+                    None => {
+                        log::error!(logger, "ByzantineLedger has not been initialized.");
+                        Err(RpcStatus::new(
+                            RpcStatusCode::UNAVAILABLE,
+                            Some("ByzantineLedger has not been initialized".to_string()),
+                        ))
+                    }
+                }?;
+
+                let is_behind: bool = byzantine_ledger_instance.is_behind();
+                let highest_peer_block_index: u64 = byzantine_ledger_instance.highest_peer_block();
+                (is_behind, highest_peer_block_index)
+            };
+
+            let network_config = config.network();
+
+            let json: String = config_and_status_as_json(
+                &config,
+                &network_config,
+                &highest_block,
+                highest_block_signature.as_ref(),
+                is_behind,
+                highest_peer_block_index,
+            );
+
+            Ok(json)
+        })
+    }
+}
+
+impl<
+        E: ConsensusEnclave + Clone + Send + Sync + 'static,
+        R: RaClient + Send + Sync + 'static,
+        TXM: TxManager + Clone + Send + Sync + 'static,
+    > Drop for ConsensusService<E, R, TXM>
+{
+    fn drop(&mut self) {
+        let _ = self.stop();
+    }
+}
+
+/// Format the service's configuration and ledger status as JSON.
+///
+/// # Arguments
+/// * `config` - ConsensusService configurations.
+/// * `network_config` - Network configuration.
+/// * `highest_block` - Highest block in the local ledger.
+/// * `highest_block_signature` - Signature, if any, for the highest block in the local ledger.
+/// * `is_behind` - True if the local ledger is behind the peers' ledgers.
+/// * `highest_peer_block_index` -  Highest block index agreed upon by peers.
+fn config_and_status_as_json(
+    config: &Config,
+    network_config: &NetworkConfig,
+    highest_block: &Block,
+    highest_block_signature: Option<&BlockSignature>,
+    is_behind: bool,
+    highest_peer_block_index: u64,
+) -> String {
+    // The approximate time in which the block was signed, represented at seconds
+    //  of UTC time since Unix epoch 1970-01-01T00:00:00Z.
+    let highest_block_signed_at: Option<u64> =
+        highest_block_signature.map(|signature| signature.signed_at());
+
+    let sync_status = if is_behind { "catchup" } else { "synced" };
+
+    // Number of blocks that the local node is behind, or zero if the local node is not behind.
+    // (It's funky that this is both an Option and a saturating value. It would probably be simpler to
+    // return the local node's block index and the highest peers' block index.)
+    let blocks_behind = Some(highest_peer_block_index.saturating_sub(highest_block.index));
+
+    json!({
                 "config": {
                     "public_key": config.node_id().public_key,
                     "peer_responder_id": config.peer_responder_id,
@@ -714,30 +819,93 @@ impl<
                     "client_auth_token_enabled": config.client_auth_token_secret.map(|_| true).unwrap_or(false),
                     "client_auth_token_max_lifetime": config.client_auth_token_max_lifetime.as_secs(),
                 },
-                "network": config.network(),
+                "network": network_config,
                 "status": {
-                    "block_height": block_height,
+                    "block_height": highest_block.index + 1,
                     "version": VERSION,
-                    "broadcast_peer_count": config.network().broadcast_peers.len(),
-                    "known_peer_count": config.network().known_peers.map_or(0, |x| x.len()),
+                    "broadcast_peer_count": network_config.broadcast_peers.len(),
+                    "known_peer_count": network_config.known_peers.as_ref().map_or(0, |x| x.len()),
                     "sync_status": sync_status,
                     "blocks_behind": blocks_behind,
-                    "latest_block_hash": latest_block_hash,
-                    "latest_block_timestamp": latest_block_timestamp.map_or("".to_string(), |u| u.to_string()),
+                    "latest_block_hash": hex::encode(&highest_block.id.0),
+                    "latest_block_timestamp": highest_block_signed_at.map_or("".to_string(), |u| u.to_string()),
                 },
             })
-            .to_string())
-        })
-    }
+        .to_string()
 }
 
-impl<
-        E: ConsensusEnclave + Clone + Send + Sync + 'static,
-        R: RaClient + Send + Sync + 'static,
-        TXM: TxManager + Clone + Send + Sync + 'static,
-    > Drop for ConsensusService<E, R, TXM>
-{
-    fn drop(&mut self) {
-        let _ = self.stop();
+#[cfg(test)]
+mod tests {
+    use crate::{
+        config::{keypair_from_base64, Config, NetworkConfig},
+        consensus_service::config_and_status_as_json,
+    };
+    use mc_attest_core::ProviderId;
+    use mc_common::ResponderId;
+    use mc_transaction_core::Block;
+    use mc_util_uri::{AdminUri, ConsensusClientUri, ConsensusPeerUri};
+    use serde_json::Value;
+    use std::{path::PathBuf, str::FromStr, time::Duration};
+
+    // Sample ConsensusService configurations.
+    fn get_config() -> Config {
+        Config {
+            peer_responder_id: ResponderId::from_str("localhost:8081").unwrap(),
+            client_responder_id: ResponderId::from_str("localhost:3223").unwrap(),
+            msg_signer_key: keypair_from_base64(
+                "MC4CAQAwBQYDK2VwBCIEIC50QXQll2Y9qxztvmsUgcBBIxkmk7EQjxzQTa926bKo",
+            )
+            .unwrap(),
+            network_path: PathBuf::from("network.toml"),
+            ias_api_key: "".to_string(),
+            ias_spid: ProviderId::from_str("22222222222222222222222222222222").unwrap(),
+            peer_listen_uri: ConsensusPeerUri::from_str("insecure-mcp://0.0.0.0:8081/").unwrap(),
+            client_listen_uri: ConsensusClientUri::from_str("insecure-mc://0.0.0.0:3223/").unwrap(),
+            admin_listen_uri: Some(AdminUri::from_str("insecure-mca://0.0.0.0:9090/").unwrap()),
+            ledger_path: Default::default(),
+            scp_debug_dump: None,
+            origin_block_path: None,
+            sealed_block_signing_key: Default::default(),
+            client_auth_token_secret: None,
+            client_auth_token_max_lifetime: Duration::from_secs(60),
+        }
+    }
+
+    // network_config is constructed here instead of using config.network() because
+    // config.network() has the side effect of reading a toml file.
+    fn get_network_config() -> NetworkConfig {
+        let input_toml: &str = r#"
+                broadcast_peers = []
+                tx_source_urls = []
+                quorum_set = { threshold = 2, members = [] }
+            "#;
+        toml::from_str(input_toml).unwrap()
+    }
+
+    #[test]
+    /// Should return parsable JSON.
+    fn test_config_and_status_as_json() {
+        let config = get_config();
+        let network_config = get_network_config();
+        let highest_block = Block::new_origin_block(&vec![]);
+        let highest_block_signature = None;
+        let is_behind = true;
+        let highest_peer_block_index = 13;
+
+        let json: String = config_and_status_as_json(
+            &config,
+            &network_config,
+            &highest_block,
+            highest_block_signature.as_ref(),
+            is_behind,
+            highest_peer_block_index,
+        );
+
+        // Spot-check some of the fields.
+        let v: Value = serde_json::from_str(&json).expect("Could not parse JSON");
+
+        assert_eq!(v["status"]["block_height"], highest_block.index + 1);
+        assert_eq!(v["status"]["sync_status"], "catchup");
+        assert_eq!(v["status"]["blocks_behind"], 13);
     }
 }

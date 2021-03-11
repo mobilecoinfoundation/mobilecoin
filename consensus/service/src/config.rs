@@ -98,7 +98,7 @@ pub struct Config {
 ///
 /// # Arguments
 /// * `private_key` - A DER formatted, Base64 encoded Ed25519 private key.
-fn keypair_from_base64(private_key: &str) -> Result<Arc<Ed25519Pair>, String> {
+pub fn keypair_from_base64(private_key: &str) -> Result<Arc<Ed25519Pair>, String> {
     let privkey_bytes = base64::decode_config(private_key, base64::STANDARD)
         .map_err(|err| format!("Could not decode private key from base64 {:?}", err))?;
 
