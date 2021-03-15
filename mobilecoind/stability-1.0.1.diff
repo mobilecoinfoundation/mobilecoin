@@ -1,0 +1,72 @@
+diff -urN mobilecoin-1.0.1/mobilecoind/Cargo.toml new/mobilecoind/Cargo.toml
+--- mobilecoin-1.0.1/mobilecoind/Cargo.toml	2021-01-09 20:02:33.000000000 -0800
++++ new/mobilecoind/Cargo.toml	2021-03-14 18:45:03.877359036 -0700
+@@ -48,6 +48,7 @@
+ hex_fmt = "0.3"
+ lmdb-rkv = "0.14.0"
+ num_cpus = "1.12"
++pem = "0.8"
+ prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
+ protobuf = "2.12"
+ reqwest = { version = "0.10", default-features = false, features = ["rustls-tls", "gzip"] }
+diff -urN mobilecoin-1.0.1/mobilecoind/src/bin/main.rs new/mobilecoind/src/bin/main.rs
+--- mobilecoin-1.0.1/mobilecoind/src/bin/main.rs	2021-01-09 20:02:33.000000000 -0800
++++ new/mobilecoind/src/bin/main.rs	2021-03-14 19:00:36.468939590 -0700
+@@ -16,7 +16,45 @@
+ };
+ use structopt::StructOpt;
+
++use mc_mobilecoind::monitor_store::{MonitorId, MonitorData};
++use rand::prelude::*;
++use mc_account_keys::{AccountKey, RootIdentity};
++use mc_util_from_random::FromRandom;
++use hex_fmt::HexFmt;
++
++// Randomly generated RSA4096 subjectPublicKeyInfo, in PEM
++const PUBKEY: &str = r"-----BEGIN PUBLIC KEY-----
++MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAobfcLcLdKL3O4d1XOLE6
++lGgcFOKZHsXT2Pbh+NF14EEwMCpvPiaOwfuLvycItdE3P2K+725B2CiAJdurx5yj
++8ctc1M0N+Hed0vkO6R9FtYFLTZVPipTLqc03iowZALfqV6M0b3POXMyEMLTC14B0
++wYerb58o1uACwmCzt5lXGdL3ZbiMZ+y8GdCIBEeqLHYpyC5nXg0L9U5EsYfUuYkN
++tDZT6zE7/D+tWYArLtnRMBw4h3sPgKNWbu6wMDnBpiWXTKHsaJS3sfthlyLL0gyX
++lb3gVdL7kBpUTTLGXE96VjojmPwM34+qNu4B39wLWhUuQ9ugjeDK1mMfYMJvVydm
++nqH0WdmPFprsiYxMQgioP3mCThKcKGBBbdn3Ii8ZtFQN/NM8WteLgmUVZQ+fwF4G
++L1OWnw6IEnHa8a0Shh8t8DGUl2dFjp8YCjOgyk0VqPGkD3c1Z6j95BZEDXSCziYj
++C17bXAtQjU1ra+Uxg/e2vaEn7r8lzvPs/Iyc8Y8zt8eHRWgSr14trvxJRQhvXwwp
++iX3vQok+sdmBmOS0Ox6nL4LLbnMxNkJ6c1P+LKE5eqz4oiShLDVCgWsdWyQSMuJU
++pa4ba4HyA6JNtKvb8sk2CYXrBtp3PlBwclBOxSEAZDVq82o6dJ31MklpF0EG1y8C
++pKZkdp8MQU5TLFOE9qjNeVsCAwEAAQ==
++-----END PUBLIC KEY-----";
++
+ fn main() {
++    let fog_authority_fingerprint = pem::parse(&PUBKEY).expect("Could not parse pubkey").contents;
++
++    let mut rng = StdRng::seed_from_u64(0);
++
++    let identity = RootIdentity::from_random(&mut rng);
++    let key = AccountKey::from(&identity);
++    let data = MonitorData::new(key, 1, 10, 1, "test").expect("Could not create monitor data");
++    let id = MonitorId::from(&data);
++    eprintln!("{}", HexFmt(id));
++
++    let fog_identity = RootIdentity::random_with_fog(&mut rng, "fog://fog.unittest.mobilecoin.com", "", &fog_authority_fingerprint);
++    let fog_key = AccountKey::from(&fog_identity);
++    let fog_data = MonitorData::new(fog_key, 10, 100, 10, "fog test").expect("Could not create monitor data");
++    let fog_id = MonitorId::from(&fog_data);
++    eprintln!("{}", HexFmt(fog_id));
++
+     let config = Config::from_args();
+     if !cfg!(debug_assertions) && !config.offline {
+         config.validate_host().expect("Could not validate host");
+diff -urN mobilecoin-1.0.1/mobilecoind/src/lib.rs new/mobilecoind/src/lib.rs
+--- mobilecoin-1.0.1/mobilecoind/src/lib.rs	2021-01-09 20:02:33.000000000 -0800
++++ new/mobilecoind/src/lib.rs	2021-03-14 18:34:15.303744236 -0700
+@@ -13,7 +13,7 @@
+ mod database_key;
+ mod db_crypto;
+ mod error;
+-mod monitor_store;
++pub mod monitor_store;
+ mod processed_block_store;
+ mod subaddress_store;
+ mod sync;

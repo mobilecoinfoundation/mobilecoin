@@ -7,12 +7,13 @@
 use crate::{database_key::DatabaseByteArrayKey, db_crypto::DbCryptoProvider, error::Error};
 
 use lmdb::{Cursor, Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
-use mc_account_keys::{AccountKey, PublicAddress};
+use mc_account_keys::AccountKey;
 use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
+use mc_crypto_keys::RistrettoPublic;
 use mc_util_serial::Message;
 use std::{convert::TryFrom, ops::Range, sync::Arc};
 
@@ -88,7 +89,21 @@ impl From<&MonitorData> for MonitorId {
     // Name isn't included here - two monitors with identical address/subaddress range/first_block
     // should have the same id even if they have a different name,
     fn from(src: &MonitorData) -> MonitorId {
-        #[derive(Digestible)]
+        // The structure of mc_account_keys::PublicAddress changed when the fog
+        // signature scheme was implemented. This re-implements the original
+        // structure in order to maintain a consistent hash in the database.
+        //
+        // This should eventually be removed.
+        #[derive(Debug, Digestible)]
+        struct PublicAddress {
+            view_public_key: RistrettoPublic,
+            spend_public_key: RistrettoPublic,
+            fog_report_url: String,
+            fog_report_id: String,
+            fog_authority_fingerprint_sig: Vec<u8>,
+        }
+
+        #[derive(Debug, Digestible)]
         struct ConstMonitorData {
             // We use PublicAddress and not AccountKey so that the monitor_id is not sensitive.
             pub address: PublicAddress,
@@ -96,14 +111,33 @@ impl From<&MonitorData> for MonitorId {
             pub num_subaddresses: u64,
             pub first_block: u64,
         }
+
+        let real_subaddress = src.account_key.default_subaddress();
+
         let const_data = ConstMonitorData {
-            address: src.account_key.default_subaddress(),
+            address: PublicAddress {
+                view_public_key: *real_subaddress.view_public_key(),
+                spend_public_key: *real_subaddress.spend_public_key(),
+                fog_report_url: real_subaddress
+                    .fog_report_url()
+                    .unwrap_or_default()
+                    .to_owned(),
+                fog_report_id: real_subaddress
+                    .fog_report_id()
+                    .unwrap_or_default()
+                    .to_owned(),
+                fog_authority_fingerprint_sig: real_subaddress
+                    .fog_authority_sig()
+                    .unwrap_or_default()
+                    .to_vec(),
+            },
             first_subaddress: src.first_subaddress,
             num_subaddresses: src.num_subaddresses,
             first_block: src.first_block,
         };
 
         let temp: [u8; 32] = const_data.digest32::<MerlinTranscript>(b"monitor_data");
+
         Self::from(temp)
     }
 }
@@ -291,13 +325,77 @@ mod test {
         error::Error,
         test_utils::{get_test_databases, get_test_monitor_data_and_id},
     };
+    use mc_account_keys::RootIdentity;
     use mc_common::logger::{test_with_logger, Logger};
-    use rand::{rngs::StdRng, SeedableRng};
+    use mc_util_from_random::FromRandom;
+    use rand_chacha::ChaChaRng;
+    use rand_core::SeedableRng;
+
+    /// A randomly generated RSA subjectPublicKeyInfo, used as a fog authority.
+    const AUTHORITY_PUBKEY: &str = r"-----BEGIN PUBLIC KEY-----
+MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAobfcLcLdKL3O4d1XOLE6
+lGgcFOKZHsXT2Pbh+NF14EEwMCpvPiaOwfuLvycItdE3P2K+725B2CiAJdurx5yj
+8ctc1M0N+Hed0vkO6R9FtYFLTZVPipTLqc03iowZALfqV6M0b3POXMyEMLTC14B0
+wYerb58o1uACwmCzt5lXGdL3ZbiMZ+y8GdCIBEeqLHYpyC5nXg0L9U5EsYfUuYkN
+tDZT6zE7/D+tWYArLtnRMBw4h3sPgKNWbu6wMDnBpiWXTKHsaJS3sfthlyLL0gyX
+lb3gVdL7kBpUTTLGXE96VjojmPwM34+qNu4B39wLWhUuQ9ugjeDK1mMfYMJvVydm
+nqH0WdmPFprsiYxMQgioP3mCThKcKGBBbdn3Ii8ZtFQN/NM8WteLgmUVZQ+fwF4G
+L1OWnw6IEnHa8a0Shh8t8DGUl2dFjp8YCjOgyk0VqPGkD3c1Z6j95BZEDXSCziYj
+C17bXAtQjU1ra+Uxg/e2vaEn7r8lzvPs/Iyc8Y8zt8eHRWgSr14trvxJRQhvXwwp
+iX3vQok+sdmBmOS0Ox6nL4LLbnMxNkJ6c1P+LKE5eqz4oiShLDVCgWsdWyQSMuJU
+pa4ba4HyA6JNtKvb8sk2CYXrBtp3PlBwclBOxSEAZDVq82o6dJ31MklpF0EG1y8C
+pKZkdp8MQU5TLFOE9qjNeVsCAwEAAQ==
+-----END PUBLIC KEY-----";
+
+    /// Ensure the monitor ID for a test-vector key has not changed.
+    #[test]
+    fn monitor_id_stability() {
+        /// The constant output by mobilecoind when the 1.0.1 release has been
+        /// patched with stability-1.0.1.diff from the root of this tree.
+        const HEXPECTED: &str = r"cd57649f325d525cf96120dd303ab3bba6d15071861425c62fad6949335cc604";
+        /// The fog output by mobilecoind when the 1.0.1 release has been
+        /// patched with stability-1.0.1.diff from the root of this tree.
+        const FOG_HEXPECTED: &str =
+            r"e4bc6cd685d5b272e5a34c6b0aacf820029ad108df0007c46b0df1ba645107e5";
+
+        let mut rng = ChaChaRng::seed_from_u64(0);
+
+        let identity = RootIdentity::from_random(&mut rng);
+        let key = AccountKey::try_from(&identity)
+            .expect("Could not create account key from non-fog identity");
+        let data = MonitorData::new(key, 1, 10, 1, "test").expect("Could not create monitor data");
+        let id = MonitorId::from(&data);
+        let expected = hex::decode(HEXPECTED).expect("Could not decode expected data to bytes");
+        assert_eq!(expected, id.as_bytes().to_vec(), "{}", hex_fmt::HexFmt(id));
+
+        let fog_authority_spki = pem::parse(AUTHORITY_PUBKEY)
+            .expect("Could not parse pubkey")
+            .contents;
+        let fog_identity = RootIdentity::random_with_fog(
+            &mut rng,
+            "fog://fog.unittest.mobilecoin.com",
+            "",
+            &fog_authority_spki,
+        );
+        let fog_key = AccountKey::from(&fog_identity);
+        let fog_data = MonitorData::new(fog_key, 10, 100, 10, "fog test")
+            .expect("Could not create monitor data");
+        let fog_id = MonitorId::from(&fog_data);
+        let fog_expected =
+            hex::decode(FOG_HEXPECTED).expect("Could not decode expected data to bytes");
+        assert_eq!(
+            fog_expected,
+            fog_id.as_bytes().to_vec(),
+            "{}/{}",
+            FOG_HEXPECTED,
+            HEXPECTED
+        );
+    }
 
     // MonitorStore basic functionality tests
     #[test_with_logger]
     fn test_monitor_store(logger: Logger) {
-        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+        let mut rng = ChaChaRng::from_seed([123u8; 32]);
 
         // Set up a db with 3 random recipients and 10 blocks.
         let (_ledger_db, mobilecoind_db) =
