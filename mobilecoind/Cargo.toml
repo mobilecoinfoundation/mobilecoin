@@ -66,7 +66,11 @@ mc-fog-report-validation-test-utils = { path = "../fog/report/validation/test-ut
 mc-transaction-core-test-utils = { path = "../transaction/core/test-utils" }
 mc-util-from-random = { path = "../util/from-random" }
 
+hex = "0.4"
 more-asserts = "0.2"
+pem = "0.8"
+rand_hc = "0.2"
+rand_core = "0.5"
 
 [build-dependencies]
 # Resolves a build failure for the x86_64-apple-darwin target by overriding the grpcio libz dep, which is pinned to v1.0.25
