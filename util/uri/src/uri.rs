@@ -95,9 +95,7 @@ impl<Scheme: UriScheme> FromStr for Uri<Scheme> {
             Url::parse(src).map_err(|err| UriParseError::UrlParse(src.to_string(), err))?;
 
         if Scheme::NORMALIZE_PATH_TRAILING_SLASH && !url.path().ends_with('/') {
-            url = url
-                .join("/")
-                .map_err(|err| UriParseError::UrlParse(src.to_string(), err))?;
+            url.set_path(&format!("{}/", url.path()));
         }
 
         let host = url
