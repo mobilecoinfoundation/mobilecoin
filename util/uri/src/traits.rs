@@ -194,4 +194,7 @@ pub trait UriScheme:
     const SCHEME_INSECURE: &'static str;
     const DEFAULT_SECURE_PORT: u16;
     const DEFAULT_INSECURE_PORT: u16;
+
+    /// When true, ensure the path components of a URI ends with a slash.
+    const NORMALIZE_PATH_TRAILING_SLASH: bool = true;
 }
