@@ -136,9 +136,8 @@ impl From<&MonitorData> for MonitorId {
             first_block: src.first_block,
         };
 
-        eprintln!("address: {}")
-
         let temp: [u8; 32] = const_data.digest32::<MerlinTranscript>(b"monitor_data");
+
         Self::from(temp)
     }
 }
@@ -329,8 +328,8 @@ mod test {
     use mc_account_keys::RootIdentity;
     use mc_common::logger::{test_with_logger, Logger};
     use mc_util_from_random::FromRandom;
-    use rand::{rngs::StdRng, SeedableRng};
-    use rand_hc::Hc128Rng;
+    use rand_chacha::ChaChaRng;
+    use rand_core::SeedableRng;
 
     /// A randomly generated RSA subjectPublicKeyInfo, used as a fog authority.
     const AUTHORITY_PUBKEY: &str = r"-----BEGIN PUBLIC KEY-----
@@ -359,7 +358,7 @@ pKZkdp8MQU5TLFOE9qjNeVsCAwEAAQ==
         const FOG_HEXPECTED: &str =
             r"e4bc6cd685d5b272e5a34c6b0aacf820029ad108df0007c46b0df1ba645107e5";
 
-        let mut rng = Hc128Rng::seed_from_u64(0);
+        let mut rng = ChaChaRng::seed_from_u64(0);
 
         let identity = RootIdentity::from_random(&mut rng);
         let key = AccountKey::try_from(&identity)
@@ -396,7 +395,7 @@ pKZkdp8MQU5TLFOE9qjNeVsCAwEAAQ==
     // MonitorStore basic functionality tests
     #[test_with_logger]
     fn test_monitor_store(logger: Logger) {
-        let mut rng: StdRng = SeedableRng::from_seed([123u8; 32]);
+        let mut rng = ChaChaRng::from_seed([123u8; 32]);
 
         // Set up a db with 3 random recipients and 10 blocks.
         let (_ledger_db, mobilecoind_db) =
