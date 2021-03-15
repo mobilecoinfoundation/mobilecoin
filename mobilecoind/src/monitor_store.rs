@@ -7,12 +7,13 @@
 use crate::{database_key::DatabaseByteArrayKey, db_crypto::DbCryptoProvider, error::Error};
 
 use lmdb::{Cursor, Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
-use mc_account_keys::{AccountKey, PublicAddress};
+use mc_account_keys::AccountKey;
 use mc_common::{
     logger::{log, Logger},
     HashMap,
 };
 use mc_crypto_digestible::{Digestible, MerlinTranscript};
+use mc_crypto_keys::RistrettoPublic;
 use mc_util_serial::Message;
 use std::{convert::TryFrom, ops::Range, sync::Arc};
 
@@ -88,6 +89,20 @@ impl From<&MonitorData> for MonitorId {
     // Name isn't included here - two monitors with identical address/subaddress range/first_block
     // should have the same id even if they have a different name,
     fn from(src: &MonitorData) -> MonitorId {
+        // The structure of mc_account_keys::PublicAddress changed when the fog
+        // signature scheme was implemented. This re-implements the original
+        // structure in order to maintain a consistent hash in the database.
+        //
+        // This should eventually be removed.
+        #[derive(Digestible)]
+        struct PublicAddress {
+            view_public_key: RistrettoPublic,
+            spend_public_key: RistrettoPublic,
+            fog_report_url: String,
+            fog_report_id: String,
+            fog_authority_fingerprint_sig: Vec<u8>,
+        }
+
         #[derive(Digestible)]
         struct ConstMonitorData {
             // We use PublicAddress and not AccountKey so that the monitor_id is not sensitive.
@@ -96,8 +111,26 @@ impl From<&MonitorData> for MonitorId {
             pub num_subaddresses: u64,
             pub first_block: u64,
         }
+
+        let real_subaddress = src.account_key.default_subaddress();
+
         let const_data = ConstMonitorData {
-            address: src.account_key.default_subaddress(),
+            address: PublicAddress {
+                view_public_key: *real_subaddress.view_public_key(),
+                spend_public_key: *real_subaddress.spend_public_key(),
+                fog_report_url: real_subaddress
+                    .fog_report_url()
+                    .unwrap_or_default()
+                    .to_owned(),
+                fog_report_id: real_subaddress
+                    .fog_report_id()
+                    .unwrap_or_default()
+                    .to_owned(),
+                fog_authority_fingerprint_sig: real_subaddress
+                    .fog_authority_sig()
+                    .unwrap_or_default()
+                    .to_vec(),
+            },
             first_subaddress: src.first_subaddress,
             num_subaddresses: src.num_subaddresses,
             first_block: src.first_block,
@@ -293,6 +326,12 @@ mod test {
     };
     use mc_common::logger::{test_with_logger, Logger};
     use rand::{rngs::StdRng, SeedableRng};
+
+    /// Ensure the monitor ID for a test-vector key has not changed.
+    fn monitor_id_stability() {}
+
+    /// Ensure the monitor ID for a test-vector key with fog details has not changed.
+    fn monitor_id_stability_with_fog() {}
 
     // MonitorStore basic functionality tests
     #[test_with_logger]
