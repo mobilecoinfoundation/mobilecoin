@@ -91,7 +91,12 @@ impl<Scheme: UriScheme> FromStr for Uri<Scheme> {
     type Err = UriParseError;
 
     fn from_str(src: &str) -> Result<Self, Self::Err> {
-        let url = Url::parse(src).map_err(|err| UriParseError::UrlParse(src.to_string(), err))?;
+        let mut url =
+            Url::parse(src).map_err(|err| UriParseError::UrlParse(src.to_string(), err))?;
+
+        if Scheme::NORMALIZE_PATH_TRAILING_SLASH && !url.path().ends_with('/') {
+            url.set_path(&format!("{}/", url.path()));
+        }
 
         let host = url
             .host_str()
