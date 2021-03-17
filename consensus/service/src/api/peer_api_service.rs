@@ -40,8 +40,8 @@ use std::{
     sync::Arc,
 };
 
-// Callback method for returning the latest SCP message issued by the local node, used to
-// implement the `fetch_latest_msg` RPC call.
+// Callback method for returning the latest SCP message issued by the local
+// node, used to implement the `fetch_latest_msg` RPC call.
 type FetchLatestMsgFn = Arc<dyn Fn() -> Option<mc_peers::ConsensusMsg> + Sync + Send>;
 
 #[derive(Clone)]
@@ -61,13 +61,15 @@ pub struct PeerApiService {
     /// Ledger database.
     ledger: Arc<dyn Ledger + Send + Sync>,
 
-    /// Callback function for getting the latest SCP statement the local node has issued.
+    /// Callback function for getting the latest SCP statement the local node
+    /// has issued.
     fetch_latest_msg_fn: FetchLatestMsgFn,
 
     /// List of recognized responder IDs to accept messages from.
-    /// We only want to accept messages from peers we can initiate outgoing requests to. That is
-    /// necessary for resolving TxHashes into Txs. If we received a consensus message from a peer
-    /// not on this list, we won't be able to reach out to it to ask for the transaction contents.
+    /// We only want to accept messages from peers we can initiate outgoing
+    /// requests to. That is necessary for resolving TxHashes into Txs. If
+    /// we received a consensus message from a peer not on this list, we
+    /// won't be able to reach out to it to ask for the transaction contents.
     known_responder_ids: Vec<ResponderId>,
 
     /// Logger.
@@ -81,10 +83,12 @@ impl PeerApiService {
     /// * `consensus_enclave` - The local node's consensus enclave.
     /// * `ledger` - The local node's ledger.
     /// * `tx_manager` - The local node's TxManager.
-    /// * `incoming_consensus_msgs_sender` - Callback for a new consensus message from a peer.
+    /// * `incoming_consensus_msgs_sender` - Callback for a new consensus
+    ///   message from a peer.
     /// * `scp_client_value_sender` - Callback for proposed transactions.
     /// * `fetch_latest_msg_fn` - Returns highest message emitted by this node.
-    /// * `known_responder_ids` - Messages from peers not on this "whitelist" are ignored.
+    /// * `known_responder_ids` - Messages from peers not on this "whitelist"
+    ///   are ignored.
     /// * `logger` - Logger.
     pub fn new(
         consensus_enclave: Arc<dyn ConsensusEnclave + Send + Sync>,
@@ -115,7 +119,8 @@ impl PeerApiService {
     /// * `logger` -
     ///
     /// # Returns
-    /// The number of blocks in the local ledger when the tx_propose request was handled.
+    /// The number of blocks in the local ledger when the tx_propose request was
+    /// handled.
     fn handle_tx_propose(
         &mut self,
         enclave_msg: EnclaveMessage<PeerSession>,
@@ -135,7 +140,8 @@ impl PeerApiService {
                 .unwrap_or((None, None))
         };
 
-        // The number of blocks in the local ledger when the tx_propose request was handled.
+        // The number of blocks in the local ledger when the tx_propose request was
+        // handled.
         let num_blocks = self.ledger.num_blocks().map_err(|e| {
             log::warn!(logger, "{}", e);
             PeerServiceError::InternalError
@@ -202,7 +208,8 @@ impl PeerApiService {
         .map_err(|_| PeerServiceError::InternalError)
     }
 
-    /// Returns the full, encrypted transactions corresponding to a list of transaction hashes.
+    /// Returns the full, encrypted transactions corresponding to a list of
+    /// transaction hashes.
     fn handle_get_txs(
         &mut self,
         tx_hashes: Vec<TxHash>,
@@ -338,7 +345,8 @@ impl ConsensusPeerApi for PeerApiService {
         });
     }
 
-    /// Returns the full, encrypted transactions corresponding to a list of transaction hashes.
+    /// Returns the full, encrypted transactions corresponding to a list of
+    /// transaction hashes.
     fn get_txs(
         &mut self,
         ctx: RpcContext,
@@ -630,7 +638,8 @@ mod tests {
 
         let (client, _server) = get_client_server(instance);
 
-        // A message from a known peer. The payload does not deserialize to a ConsensusMsg.
+        // A message from a known peer. The payload does not deserialize to a
+        // ConsensusMsg.
         let mut message = ConsensusMsg::new();
         let from = known_responder_ids[0].clone();
         message.set_from_responder_id(from.to_string());

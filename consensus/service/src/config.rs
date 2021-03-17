@@ -24,9 +24,9 @@ use structopt::StructOpt;
 pub struct Config {
     /// Peer Responder ID
     ///
-    /// This ID needs to match the host:port remote peers use when connecting to this node.
-    /// This node is uniquely identified in the network by this ID as well as the public key
-    /// derived from the msg-signer-key.
+    /// This ID needs to match the host:port remote peers use when connecting to
+    /// this node. This node is uniquely identified in the network by this
+    /// ID as well as the public key derived from the msg-signer-key.
     #[structopt(long)]
     pub peer_responder_id: ResponderId,
 
@@ -36,7 +36,8 @@ pub struct Config {
 
     /// The keypair with which to sign consensus messages.
     ///
-    /// The value provided via config is the keypair derived from the input base64 DER-encoded private key.
+    /// The value provided via config is the keypair derived from the input
+    /// base64 DER-encoded private key.
     // FIXME: MC-973, get Ed25519 Pair from PEM
     #[structopt(long, parse(try_from_str=keypair_from_base64))]
     pub msg_signer_key: Arc<Ed25519Pair>,
@@ -83,13 +84,14 @@ pub struct Config {
     #[structopt(long, parse(from_os_str))]
     pub sealed_block_signing_key: PathBuf,
 
-    /// Enables authenticating client requests using Authorization tokens using the provided
-    /// hex-encoded 32 bytes shared secret.
+    /// Enables authenticating client requests using Authorization tokens using
+    /// the provided hex-encoded 32 bytes shared secret.
     #[structopt(long, parse(try_from_str=hex::FromHex::from_hex))]
     pub client_auth_token_secret: Option<[u8; 32]>,
 
-    /// Maximal client authentication token lifetime, in seconds (only relevant when
-    /// --client-auth-token-secret is used. Defaults to 86400 - 24 hours).
+    /// Maximal client authentication token lifetime, in seconds (only relevant
+    /// when --client-auth-token-secret is used. Defaults to 86400 - 24
+    /// hours).
     #[structopt(long, default_value = "86400", parse(try_from_str=parse_duration_in_seconds))]
     pub client_auth_token_max_lifetime: Duration,
 }
@@ -257,8 +259,8 @@ impl Config {
             }
         }
 
-        // Sanity test: We should have at least one source of transactions, if we have any peers
-        // configured.
+        // Sanity test: We should have at least one source of transactions, if we have
+        // any peers configured.
         if !network.broadcast_peers.is_empty() && network.tx_source_urls.is_empty() {
             panic!("Network configuration is missing tx_source_urls");
         }

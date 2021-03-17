@@ -56,9 +56,10 @@ pub const NUM_BLOCKS_KEY: &str = "num_blocks";
 #[derive(Clone, Default, Debug)]
 pub struct LedgerDbMetadataStoreSettings;
 impl MetadataStoreSettings for LedgerDbMetadataStoreSettings {
-    // Default database version. This should be bumped when breaking changes are introduced.
-    // If this is properly maintained, we could check during ledger db opening for any
-    // incompatibilities, and either refuse to open or perform a migration.
+    // Default database version. This should be bumped when breaking changes are
+    // introduced. If this is properly maintained, we could check during ledger
+    // db opening for any incompatibilities, and either refuse to open or
+    // perform a migration.
     #[allow(clippy::unreadable_literal)]
     const LATEST_VERSION: u64 = 20200707;
 
@@ -81,8 +82,8 @@ pub struct TxOutsByBlockValue {
     pub num_tx_outs: u64,
 }
 
-/// A list of key images that can be prost-encoded. This is needed since that's the only way to
-/// encode a Vec<KeyImage>.
+/// A list of key images that can be prost-encoded. This is needed since that's
+/// the only way to encode a Vec<KeyImage>.
 #[derive(Clone, Message)]
 pub struct KeyImageList {
     #[prost(message, repeated, tag = "1")]
@@ -115,9 +116,9 @@ pub struct LedgerDB {
     /// Storage abstraction for TxOuts.
     tx_out_store: TxOutStore,
 
-    /// TxOuts by block number. `block number -> (first TxOut index, number of TxOuts in block)`.
-    /// This map allows retrieval of all TxOuts that were included in a given block number by
-    /// querying `tx_out_store`.
+    /// TxOuts by block number. `block number -> (first TxOut index, number of
+    /// TxOuts in block)`. This map allows retrieval of all TxOuts that were
+    /// included in a given block number by querying `tx_out_store`.
     tx_outs_by_block: Database,
 
     /// TxOut global index -> block number.
@@ -216,7 +217,8 @@ impl Ledger for LedgerDB {
         self.get_block_signature_impl(&db_transaction, block_number)
     }
 
-    /// Gets a block and all of its associated data by its index in the blockchain.
+    /// Gets a block and all of its associated data by its index in the
+    /// blockchain.
     fn get_block_data(&self, block_number: u64) -> Result<BlockData, Error> {
         let db_transaction = self.env.begin_ro_txn()?;
 
@@ -401,9 +403,10 @@ impl LedgerDB {
         Ok(())
     }
 
-    /// Force an update of the metric gauges. This is useful when the ledger db is being updated
-    /// externally (for example by mobilecoind), but we still want to publish the correct metrics.
-    /// Users can call this periodically to do that.
+    /// Force an update of the metric gauges. This is useful when the ledger db
+    /// is being updated externally (for example by mobilecoind), but we
+    /// still want to publish the correct metrics. Users can call this
+    /// periodically to do that.
     pub fn update_metrics(&self) -> Result<(), Error> {
         let num_blocks = self.num_blocks()?;
         self.metrics.num_blocks.set(num_blocks as i64);
@@ -490,8 +493,9 @@ impl LedgerDB {
         tx_outs: &[TxOut],
         db_transaction: &mut RwTransaction,
     ) -> Result<(), Error> {
-        // The index of the next TxOut we would be writing, which is the first one for this block,
-        // is determined by how many TxOuts are currently in the ledger.
+        // The index of the next TxOut we would be writing, which is the first one for
+        // this block, is determined by how many TxOuts are currently in the
+        // ledger.
         let next_tx_out_index = self.tx_out_store.num_tx_outs(db_transaction)?;
 
         // Store information about the TxOuts included in this block.
@@ -602,7 +606,8 @@ impl LedgerDB {
         Ok(metadata.len())
     }
 
-    /// Implementatation of the `get_block` method that operates inside a given transaction.
+    /// Implementatation of the `get_block` method that operates inside a given
+    /// transaction.
     fn get_block_impl(
         &self,
         db_transaction: &impl Transaction,
@@ -614,7 +619,8 @@ impl LedgerDB {
         Ok(block)
     }
 
-    /// Implementation of the `get_block_contents` method that operates inside a given transaction.
+    /// Implementation of the `get_block_contents` method that operates inside a
+    /// given transaction.
     fn get_block_contents_impl(
         &self,
         db_transaction: &impl Transaction,
@@ -642,7 +648,8 @@ impl LedgerDB {
         })
     }
 
-    /// Implementation of the `get_block_signature` method that operates inside a given transaction.
+    /// Implementation of the `get_block_signature` method that operates inside
+    /// a given transaction.
     fn get_block_signature_impl(
         &self,
         db_transaction: &impl Transaction,
@@ -688,13 +695,13 @@ mod ledger_db_test {
         LedgerDB::open(path).unwrap()
     }
 
-    /// Populates the LedgerDB with initial data, and returns the Block entities that were written.
+    /// Populates the LedgerDB with initial data, and returns the Block entities
+    /// that were written.
     ///
     /// # Arguments
     /// * `db` - LedgerDb.
     /// * `num_blocks` - number of blocks  to write to `db`.
     /// * `n_txs_per_block` - number of transactions per block.
-    ///
     fn populate_db(
         db: &mut LedgerDB,
         num_blocks: u64,
@@ -788,7 +795,8 @@ mod ledger_db_test {
         let mut ledger_db = create_db();
 
         // === Create and append the origin block. ===
-        // The origin block contains a single output belonging to the `origin_account_key`.
+        // The origin block contains a single output belonging to the
+        // `origin_account_key`.
 
         let origin_account_key = AccountKey::random(&mut rng);
         let (origin_block, origin_block_contents) =
@@ -857,8 +865,8 @@ mod ledger_db_test {
 
         // Each TxOut from the current block should be in the ledger.
         for (i, tx_out) in block_contents.outputs.iter().enumerate() {
-            // The first tx_out is the origin block, tx_outs are for the following block hence the
-            // + 1
+            // The first tx_out is the origin block, tx_outs are for the following block
+            // hence the + 1
             assert_eq!(
                 ledger_db.get_tx_out_by_index((i + 1) as u64).unwrap(),
                 *tx_out
@@ -887,7 +895,8 @@ mod ledger_db_test {
         let mut ledger_db = create_db();
 
         // === Create and append the origin block. ===
-        // The origin block contains a single output belonging to the `origin_account_key`.
+        // The origin block contains a single output belonging to the
+        // `origin_account_key`.
 
         let origin_account_key = AccountKey::random(&mut rng);
         let (origin_block, origin_block_contents) =
@@ -962,7 +971,8 @@ mod ledger_db_test {
     }
 
     #[test]
-    // Getting block contents by index should return the correct block contents, if that exists.
+    // Getting block contents by index should return the correct block contents, if
+    // that exists.
     fn test_get_block_contents_by_index() {
         let mut ledger_db = create_db();
         let n_blocks = 43;
@@ -982,7 +992,8 @@ mod ledger_db_test {
     }
 
     #[test]
-    // Getting a block by its index should return an error if the block doesn't exist.
+    // Getting a block by its index should return an error if the block doesn't
+    // exist.
     fn test_get_block_by_index_doesnt_exist() {
         let mut ledger_db = create_db();
         let n_blocks = 43;
@@ -1000,7 +1011,8 @@ mod ledger_db_test {
     }
 
     #[test]
-    // Getting a block number by tx out index should return the correct block number, if it exists.
+    // Getting a block number by tx out index should return the correct block
+    // number, if it exists.
     fn test_get_block_index_by_tx_out_index() {
         let mut ledger_db = create_db();
         let n_blocks = 43;
@@ -1021,7 +1033,8 @@ mod ledger_db_test {
     }
 
     #[test]
-    // Getting a block index by a tx out index return an error if the tx out index doesn't exist.
+    // Getting a block index by a tx out index return an error if the tx out index
+    // doesn't exist.
     fn test_get_block_index_by_tx_out_index_doesnt_exist() {
         let mut ledger_db = create_db();
         let n_blocks = 43;
@@ -1087,7 +1100,8 @@ mod ledger_db_test {
     }
 
     #[test]
-    // `get_key_images_by_block` should return the correct set of key images used in a single block.
+    // `get_key_images_by_block` should return the correct set of key images used in
+    // a single block.
     fn test_get_key_images_by_block() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut ledger_db = create_db();
@@ -1162,7 +1176,8 @@ mod ledger_db_test {
     }
 
     #[test]
-    /// Appending an block of incorrect version should return Error::InvalidBlock.
+    /// Appending an block of incorrect version should return
+    /// Error::InvalidBlock.
     fn test_append_block_with_invalid_version() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut ledger_db = create_db();
@@ -1236,7 +1251,8 @@ mod ledger_db_test {
     }
 
     #[test]
-    /// Appending a block with a spent key image should return Error::KeyImageAlreadySpent.
+    /// Appending a block with a spent key image should return
+    /// Error::KeyImageAlreadySpent.
     fn test_append_block_with_spent_key_image() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut ledger_db = create_db();
@@ -1306,7 +1322,8 @@ mod ledger_db_test {
     }
 
     #[test]
-    /// Appending a block with a pre-existing output public key should return Error::DuplicateOutputPublicKey.
+    /// Appending a block with a pre-existing output public key should return
+    /// Error::DuplicateOutputPublicKey.
     fn test_append_block_with_duplicate_output_public_key() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut ledger_db = create_db();
@@ -1468,9 +1485,10 @@ mod ledger_db_test {
         }
     }
 
-    // FIXME(MC-526): If these benches are not marked ignore, they get run during cargo test
-    // and they are not compiled with optimizations which makes them take several minutes
-    // I think they should probably be moved to `ledger_db/benches/...` ?
+    // FIXME(MC-526): If these benches are not marked ignore, they get run during
+    // cargo test and they are not compiled with optimizations which makes them
+    // take several minutes I think they should probably be moved to
+    // `ledger_db/benches/...` ?
     #[bench]
     #[ignore]
     fn bench_num_blocks(b: &mut Bencher) {

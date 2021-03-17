@@ -20,8 +20,8 @@ pub use mc_fog_report_validation::FogReportResponses;
 /// Fog report server connection based on grpcio
 ///
 /// TODO: As an optimization, it might be good to make this object hold onto its
-/// grpc channels, so that they can be reused across calls, instead of establishing
-/// new connections each time.
+/// grpc channels, so that they can be reused across calls, instead of
+/// establishing new connections each time.
 #[derive(Clone)]
 pub struct GrpcFogReportConnection {
     /// grpc environment
@@ -36,8 +36,9 @@ impl GrpcFogReportConnection {
         Self { env, logger }
     }
 
-    /// Fetch fog reports corresponding to a series of FogUris, returning FogReportResponses table.
-    /// This attempts to be efficient, not contacting a server twice if a FogUri appears twice.
+    /// Fetch fog reports corresponding to a series of FogUris, returning
+    /// FogReportResponses table. This attempts to be efficient, not
+    /// contacting a server twice if a FogUri appears twice.
     pub fn fetch_fog_reports(
         &self,
         uris: impl Iterator<Item = FogUri>,
@@ -47,9 +48,10 @@ impl GrpcFogReportConnection {
         Ok(responses)
     }
 
-    /// Fetch fog reports, adding them to an existing cache, if they are not already cached.
-    /// This can be used if e.g. the recipients are not all known at once, and
-    /// the fetch operation needs to be called multiple times.
+    /// Fetch fog reports, adding them to an existing cache, if they are not
+    /// already cached. This can be used if e.g. the recipients are not all
+    /// known at once, and the fetch operation needs to be called multiple
+    /// times.
     pub fn fetch_fog_reports_if_not_cached(
         &self,
         responses: &mut FogReportResponses,
@@ -66,7 +68,8 @@ impl GrpcFogReportConnection {
         Ok(())
     }
 
-    /// Given a fog report uri, fetch its response over grpc, or return an error.
+    /// Given a fog report uri, fetch its response over grpc, or return an
+    /// error.
     pub fn fetch_fog_report(&self, uri: &FogUri) -> Result<ReportResponse, Error> {
         let logger = self.logger.new(o!("mc.fog.cxn" => uri.to_string()));
 

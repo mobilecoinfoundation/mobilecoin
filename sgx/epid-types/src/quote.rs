@@ -72,23 +72,27 @@ const SIGLEN_END: usize = SIGLEN_START + SIGLEN_SIZE;
 
 const SIGNATURE_START: usize = SIGLEN_END;
 
-/// When we consume a quote from the Quoting Engine, the minimum size includes the quote len.
+/// When we consume a quote from the Quoting Engine, the minimum size includes
+/// the quote len.
 pub const QUOTE_MIN_SIZE: usize = SIGLEN_END;
 
-/// Arbitrary maximum length for signatures, 4x larger than any reasonable cryptographic signature.
+/// Arbitrary maximum length for signatures, 4x larger than any reasonable
+/// cryptographic signature.
 pub const QUOTE_SIGLEN_MAX: usize = 16384;
 
 /// The output from the Quoting Enclave.
 ///
-/// A quoting enclave will be given a [`Report`](mc_sgx_core_types::Report) from the enclave under
-/// examination, and it will verify the report is from the same platform, and quote the report in
-/// its response. This quote will be returned to the requester, who will transmit it to IAS for
+/// A quoting enclave will be given a [`Report`](mc_sgx_core_types::Report) from
+/// the enclave under examination, and it will verify the report is from the
+/// same platform, and quote the report in its response. This quote will be
+/// returned to the requester, who will transmit it to IAS for
 /// further verification.
 ///
-/// Internally, this struct contains a vector of bytes, with an internal object that is aligned to
-/// the size of [`sgx_quote_t`](mc_sgx_epid_types_sys::sgx_quote_t). We use the unsafe
-/// [`core::slice::align_to()`] method to reference the bytes in native order at the
-/// proper alignment.
+/// Internally, this struct contains a vector of bytes, with an internal object
+/// that is aligned to the size of
+/// [`sgx_quote_t`](mc_sgx_epid_types_sys::sgx_quote_t). We use the unsafe
+/// [`core::slice::align_to()`] method to reference the bytes in native order at
+/// the proper alignment.
 #[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
 pub struct Quote(Vec<u8>);
@@ -107,7 +111,8 @@ impl Quote {
         ]))
     }
 
-    /// Find out how many bytes to skip in order to have our internal sgx_quote_t be aligned.
+    /// Find out how many bytes to skip in order to have our internal
+    /// sgx_quote_t be aligned.
     fn head_len(&self) -> usize {
         let (head, _body, _tail) = unsafe { self.0.align_to::<sgx_quote_t>() };
         head.len()
@@ -414,10 +419,11 @@ impl IntelLayout for Quote {
     }
 }
 
-/// A custom implementation of protobuf serialization as a message with a single opaque byte
-/// structure.
+/// A custom implementation of protobuf serialization as a message with a single
+/// opaque byte structure.
 ///
-/// Unfortunately we can't just use the ReprBytes macros here, because our data is variable length.
+/// Unfortunately we can't just use the ReprBytes macros here, because our data
+/// is variable length.
 #[cfg(feature = "use_prost")]
 impl Message for Quote {
     fn encode_raw<B>(&self, buf: &mut B)

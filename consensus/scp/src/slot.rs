@@ -2,7 +2,8 @@
 
 //! A unit of time during which the nodes agree on transactions.
 //!
-//! The transactions validated in this slot determine the values to include in the next block appended to the ledger.
+//! The transactions validated in this slot determine the values to include in
+//! the next block appended to the ledger.
 use crate::{
     core_types::{Ballot, CombineFn, SlotIndex, ValidityFn, Value},
     msg::*,
@@ -66,7 +67,8 @@ pub trait ScpSlot<V: Value>: Send {
     /// Handles an incoming message from a peer.
     fn handle_message(&mut self, msg: &Msg<V>) -> Result<Option<Msg<V>>, String>;
 
-    /// Handle incoming messages from peers. Messages for other slots are ignored.
+    /// Handle incoming messages from peers. Messages for other slots are
+    /// ignored.
     fn handle_messages(&mut self, msgs: &[Msg<V>]) -> Result<Option<Msg<V>>, String>;
 
     /// Additional debug info, e.g. a JSON representation of the Slot's state.
@@ -74,8 +76,8 @@ pub trait ScpSlot<V: Value>: Send {
 }
 
 /// The SCP slot.
-// Note: The fields representing the state of the slot are marked with pub(crate) so that they
-// could be accessed by `SlotState`.
+// Note: The fields representing the state of the slot are marked with
+// pub(crate) so that they could be accessed by `SlotState`.
 pub struct Slot<V: Value, ValidationError: Display> {
     /// Current slot number.
     pub(crate) slot_index: SlotIndex,
@@ -86,7 +88,8 @@ pub struct Slot<V: Value, ValidationError: Display> {
     /// Local node quorum set.
     pub(crate) quorum_set: QuorumSet,
 
-    /// Map of Node ID -> highest message from each node, including the local node.
+    /// Map of Node ID -> highest message from each node, including the local
+    /// node.
     pub(crate) M: HashMap<NodeID, Msg<V>>,
 
     /// Set of values that have been proposed, but not yet voted for.
@@ -107,7 +110,8 @@ pub struct Slot<V: Value, ValidationError: Display> {
     /// The highest accepted prepared ballot, if any.
     pub(crate) P: Option<Ballot<V>>,
 
-    /// The highest accepted prepared ballot that is less-than-and-incompatible with P.
+    /// The highest accepted prepared ballot that is less-than-and-incompatible
+    /// with P.
     pub(crate) PP: Option<Ballot<V>>,
 
     /// In Prepare: the highest ballot that this node confirms prepared, if any.
@@ -142,11 +146,13 @@ pub struct Slot<V: Value, ValidationError: Display> {
     /// Application-specific validation of value.
     validity_fn: ValidityFn<V, ValidationError>,
 
-    /// Application-specific function for combining multiple values. Must be deterministic.
+    /// Application-specific function for combining multiple values. Must be
+    /// deterministic.
     combine_fn: CombineFn<V, ValidationError>,
 
     /// List of values that have been checked to be valid for the current slot.
-    /// We can cache this and save on validation calls since the ledger doesn't change during a slot.
+    /// We can cache this and save on validation calls since the ledger doesn't
+    /// change during a slot.
     pub(crate) valid_values: BTreeSet<V>,
 
     /// Logger.
@@ -163,7 +169,8 @@ pub struct Slot<V: Value, ValidationError: Display> {
 
 /// Metrics and information about a given slot.
 pub struct SlotMetrics {
-    /// Which phase of consensus are we in? (Nominate, NomPrepare, Prepare, Commit, Externalize)
+    /// Which phase of consensus are we in? (Nominate, NomPrepare, Prepare,
+    /// Commit, Externalize)
     pub phase: Phase,
 
     /// The number of values voted nominated.
@@ -216,8 +223,8 @@ impl<V: Value, ValidationError: Display> ScpSlot<V> for Slot<V, ValidationError>
             && Instant::now() > self.next_nominate_round_at.unwrap()
         {
             timeout_occurred = true;
-            // Canceling is required since schedule_next_nomination_round will not schedule a round
-            // if one is already scheduled.
+            // Canceling is required since schedule_next_nomination_round will not schedule
+            // a round if one is already scheduled.
             self.cancel_next_nomination_round();
 
             self.nominate_round += 1;
@@ -292,7 +299,8 @@ impl<V: Value, ValidationError: Display> ScpSlot<V> for Slot<V, ValidationError>
 
     /// Propose values for this node to nominate.
     fn propose_values(&mut self, values: &BTreeSet<V>) -> Result<Option<Msg<V>>, String> {
-        // Only accept values during the Nominate phase and if no other values have been confirmed nominated.
+        // Only accept values during the Nominate phase and if no other values have been
+        // confirmed nominated.
         if !(self.phase == Phase::NominatePrepare && self.Z.is_empty()) {
             return Ok(self.out_msg());
         }
@@ -319,7 +327,8 @@ impl<V: Value, ValidationError: Display> ScpSlot<V> for Slot<V, ValidationError>
         self.handle_messages(&[msg.clone()])
     }
 
-    /// Handle incoming messages from peers. Messages for other slots are ignored.
+    /// Handle incoming messages from peers. Messages for other slots are
+    /// ignored.
     fn handle_messages(&mut self, msgs: &[Msg<V>]) -> Result<Option<Msg<V>>, String> {
         // Ignore messages from self.
         let msgs: Vec<&Msg<V>> = msgs
@@ -340,10 +349,12 @@ impl<V: Value, ValidationError: Display> ScpSlot<V> for Slot<V, ValidationError>
             );
         }
 
-        // Set to true if any input message is higher than previous messages from the same sender.
+        // Set to true if any input message is higher than previous messages from the
+        // same sender.
         let mut has_higher_messages = false;
 
-        // Sort messages in descending order by topic. This lets us process them greedily.
+        // Sort messages in descending order by topic. This lets us process them
+        // greedily.
         msgs_for_slot.sort_by(|a, b| b.topic.cmp(&a.topic));
 
         'msg_loop: for msg in msgs_for_slot {
@@ -475,9 +486,9 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
         }
     }
 
-    /// Get a list of the node's neighbor's for the current slot and nomination round.
-    /// Neighbors are nodes that the current node is willing to accept nomination values from.
-    /// See p.10 of the [IETF draft](https://tools.ietf.org/pdf/draft-mazieres-dinrg-scp-04.pdf).
+    /// Get a list of the node's neighbor's for the current slot and nomination
+    /// round. Neighbors are nodes that the current node is willing to
+    /// accept nomination values from. See p.10 of the [IETF draft](https://tools.ietf.org/pdf/draft-mazieres-dinrg-scp-04.pdf).
     /// See p.20 of the [Whitepaper](https://www.stellar.org/papers/stellar-consensus-protocol.pdf).
     fn neighbors(&self, slot_index: SlotIndex, nomination_round: u32) -> Vec<NodeID> {
         let mut self_and_peers = vec![self.node_id.clone()];
@@ -515,8 +526,9 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
         let mut max_priority = bigint::U256::zero();
 
         for node_id in neighbors.iter() {
-            // NOTE: this deviates from the spec. Without doing this we may have nomination rounds
-            // where no new peers gets added, so nothing changes which slows the protocol down.
+            // NOTE: this deviates from the spec. Without doing this we may have nomination
+            // rounds where no new peers gets added, so nothing changes which
+            // slows the protocol down.
             if self.max_priority_peers.contains(node_id) {
                 continue;
             }
@@ -556,7 +568,8 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
         // Schedule a round if one is not already scheduled.
         self.schedule_next_nomination_round();
 
-        // If no values have been confirmed nominated, the node may add new values to its voted set.
+        // If no values have been confirmed nominated, the node may add new values to
+        // its voted set.
         if self.Z.is_empty() {
             // Gather all nominate payloads from other nodes.
             let mut nominate_payloads: HashMap<NodeID, &NominatePayload<V>> = Default::default();
@@ -596,7 +609,8 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
             assert!(self.X.is_disjoint(&self.Y));
         }
 
-        // Move accepted-nominated values from X to Y, and confirmed-nominated values from Y to Z.
+        // Move accepted-nominated values from X to Y, and confirmed-nominated values
+        // from Y to Z.
         self.update_YZ();
 
         if !self.Z.is_empty() && self.B.is_zero() {
@@ -631,7 +645,8 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
         self.maybe_set_ballot_timer();
 
         // "Fall through" each phase of the ballot protocol. Each may change self.phase,
-        // so a simple match statement on phase could prevent later phases from being performed.
+        // so a simple match statement on phase could prevent later phases from being
+        // performed.
 
         if self.phase == Phase::NominatePrepare || self.phase == Phase::Prepare {
             self.do_prepare_phase();
@@ -718,7 +733,8 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
                     match &self.PP {
                         Some(current_PP) => {
                             if new_PP < current_PP {
-                                // decreasing PP here does not cause failures or decrease performance
+                                // decreasing PP here does not cause failures or decrease
+                                // performance
                                 log::debug!(self.logger, "Step 1: Allowing decreasing PP");
                             }
                             self.PP = Some(new_PP.clone());
@@ -740,8 +756,8 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
         }
 
         // If either P aborts C or PP aborts C, then set C to None.
-        // Note: This follows the Stellar IETF draft and differs slightly from the Stellar
-        // whitepaper, which tests if p or p' abort H.
+        // Note: This follows the Stellar IETF draft and differs slightly from the
+        // Stellar whitepaper, which tests if p or p' abort H.
         if let Some(c) = &self.C {
             let p_aborts_c = self.P.as_ref().map_or(false, |p| p > c && p.X != c.X);
             let pp_aborts_c = self.PP.as_ref().map_or(false, |pp| pp > c && pp.X != c.X);
@@ -804,7 +820,8 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
 
                     // H has not been aborted, which means some ballots with value H.X are confirmed
                     // prepared and not accepted aborted. This node may have voted to abort any
-                    // ballot less than B so, conservatively, c is required to be greater-than-or-equal-to B.
+                    // ballot less than B so, conservatively, c is required to be
+                    // greater-than-or-equal-to B.
 
                     let mut c = if h.X >= self.B.X {
                         Ballot::new(self.B.N, &h.X)
@@ -883,11 +900,13 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
 
             // "if h is not less-than-and-incompatible-with b, set b to h."
             //
-            // The description from the whitepaper feels strange. At this point in the protocol,
-            // some ballot has been accepted committed, which marks the start of the Commit phase.
-            // The following seems to meet the goal that in the commit phase, the node issues
-            // "accept commit(<n, ballot.value>)" for every "cCounter <= n <= hCounter", and
-            // also fulfills the requirement that the ballot value cannot change unless the counter increases.
+            // The description from the whitepaper feels strange. At this point in the
+            // protocol, some ballot has been accepted committed, which marks
+            // the start of the Commit phase. The following seems to meet the
+            // goal that in the commit phase, the node issues "accept commit(<n,
+            // ballot.value>)" for every "cCounter <= n <= hCounter", and
+            // also fulfills the requirement that the ballot value cannot change unless the
+            // counter increases.
 
             if self.B.X != h.X {
                 // Changing B's value requires changing its counter.
@@ -926,8 +945,9 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
         // (8) If b < h, set b to h.
         //
         // Note: The whitepaper seems to disagree with the IETF draft, which
-        // says that B's "value is updated when and only when counter changes". Maybe the assumption
-        // here is that h.N > b.N, so the counter increases whenever the value changes?
+        // says that B's "value is updated when and only when counter changes". Maybe
+        // the assumption here is that h.N > b.N, so the counter increases
+        // whenever the value changes?
         if let Some(h) = &self.H {
             if self.B.X != h.X {
                 // Changing B's value requires changing its counter.
@@ -1139,8 +1159,8 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
     // Helper methods
     ///////////////////////////////////////////////////////////////////////////
 
-    /// The lowest ballot counter such that no blocking set of other nodes exists with
-    /// higher ballot counters.
+    /// The lowest ballot counter such that no blocking set of other nodes
+    /// exists with higher ballot counters.
     fn get_unblocking_ballot_counter(&mut self) -> u32 {
         let mut unblocking_counter = self.B.N;
         loop {
@@ -1176,10 +1196,10 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
 
         // If no timer is currently set...
         if self.next_ballot_at.is_none() {
-            // "When a node sees messages from a quorum to which it belongs such that each message’s
-            // "ballot.counter" is greater than or equal to the local "ballot.counter", the node
-            // arms a timer to fire in a number of seconds equal to its "ballot.counter + 1""
-            // See p.14 of the [IETF draft](https://tools.ietf.org/pdf/draft-mazieres-dinrg-scp-04.pdf).
+            // "When a node sees messages from a quorum to which it belongs such that each
+            // message’s "ballot.counter" is greater than or equal to the local
+            // "ballot.counter", the node arms a timer to fire in a number of
+            // seconds equal to its "ballot.counter + 1"" See p.14 of the [IETF draft](https://tools.ietf.org/pdf/draft-mazieres-dinrg-scp-04.pdf).
             let (quorum_ids, _) = self.find_quorum(FuncPredicate::<V> {
                 test_fn: &|msg: &Msg<V>| msg.bN() >= self.B.N,
             });
@@ -1193,15 +1213,16 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
 
     /// The values, if any, for the next ballot.
     fn get_next_ballot_values(&self) -> Option<Vec<V>> {
-        // "If any ballot has been confirmed prepared, then "ballot.value" is taken to to be
-        // "h.value" for the highest confirmed prepared ballot "h"."
+        // "If any ballot has been confirmed prepared, then "ballot.value" is taken to
+        // to be "h.value" for the highest confirmed prepared ballot "h"."
         if let Some(h) = self.ballots_confirmed_prepared().into_iter().max() {
             return Some(h.X);
         }
 
-        // "Otherwise (if no such "h" exists), if one or more values are confirmed nominated,
-        // then "ballot.value" is taken as the output of the deterministic combining function
-        // applied to all confirmed nominated values."
+        // "Otherwise (if no such "h" exists), if one or more values are confirmed
+        // nominated, then "ballot.value" is taken as the output of the
+        // deterministic combining function applied to all confirmed nominated
+        // values."
         if !self.Z.is_empty() {
             let z_as_vec: Vec<V> = self.Z.iter().cloned().collect();
             match (self.combine_fn)(&z_as_vec) {
@@ -1210,9 +1231,10 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
             }
         }
 
-        // "Otherwise, if no ballot is confirmed prepared and no value is confirmed nominated,
-        // but the node has accepted a ballot prepared... , then "ballot.value" is
-        // the value of the highest such accepted prepared ballot."
+        // "Otherwise, if no ballot is confirmed prepared and no value is confirmed
+        // nominated, but the node has accepted a ballot prepared... , then
+        // "ballot.value" is the value of the highest such accepted prepared
+        // ballot."
         if let Some(p) = self.ballots_accepted_prepared().into_iter().max() {
             return Some(p.X);
         }
@@ -1229,10 +1251,10 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
     /// Calculate the message to send to the network based on our current state.
     /// Any duplicate messages are suppressed.
     fn out_msg(&mut self) -> Option<Msg<V>> {
-        // Prepared is " the highest accepted prepared ballot not exceeding the "ballot" field...
-        // if "ballot = <n, x>" and the highest prepared ballot is "<n, y>" where "x < y",
-        // then the "prepared" field in sent messages must be set to "<n-1, y>" instead of "<n, y>""
-        // See p.15 of the [IETF draft](https://tools.ietf.org/pdf/draft-mazieres-dinrg-scp-04.pdf).
+        // Prepared is " the highest accepted prepared ballot not exceeding the "ballot"
+        // field... if "ballot = <n, x>" and the highest prepared ballot is "<n,
+        // y>" where "x < y", then the "prepared" field in sent messages must be
+        // set to "<n-1, y>" instead of "<n, y>"" See p.15 of the [IETF draft](https://tools.ietf.org/pdf/draft-mazieres-dinrg-scp-04.pdf).
 
         let mut clamped_P: Option<Ballot<V>> = None;
         if let Some(P) = &self.P {
@@ -1424,7 +1446,8 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
 
     /// "Accepted Nominated" values that are not yet in self.Y.
     fn additional_values_accepted_nominated(&self) -> BTreeSet<V> {
-        // 1) Find values that can be accepted because a blocking set has issued accept nominate.
+        // 1) Find values that can be accepted because a blocking set has issued accept
+        // nominate.
         let mut accepted_from_blocking_set: BTreeSet<V> = {
             // All values accepted nominated by nodes other than the local node.
             let mut candidates: BTreeSet<V> = BTreeSet::default();
@@ -1461,10 +1484,12 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
             results
         };
 
-        // 2) Find values that can be accepted because a quorum has issued "vote nominate" or "accept nominate".
+        // 2) Find values that can be accepted because a quorum has issued "vote
+        // nominate" or "accept nominate".
         let mut accepted_from_quorum: BTreeSet<V> = {
-            // Predicate for identifying values in self.X that can be moved to self.Y because
-            // a quorum of nodes has issued "vote nominate" or "accept nominate".
+            // Predicate for identifying values in self.X that can be moved to self.Y
+            // because a quorum of nodes has issued "vote nominate" or "accept
+            // nominate".
             let votes_or_accepts_predicate = ValueSetPredicate::<V> {
                 values: self.X.iter().cloned().collect(),
                 test_fn: Arc::new(|msg, values| match msg.votes_or_accepts_nominated() {
@@ -1553,7 +1578,8 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
             results
         };
 
-        // Ballots that can be accepted because a quorum has issued vote-or-accept-prepare(b).
+        // Ballots that can be accepted because a quorum has issued
+        // vote-or-accept-prepare(b).
         let accepted_by_quorum: HashSet<Ballot<V>> = {
             let votes_or_accepts_predicate = {
                 // Ballots for which the local node has issued vote-or-accept prepare(b).
@@ -1637,14 +1663,16 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
     /// "accept commit(<n, values>)" for all n in [a,b].
     fn ballots_accepted_committed(&self) -> HashMap<Vec<V>, (u32, u32)> {
         let accepted_from_blocking_set: HashMap<Vec<V>, (u32, u32)> = {
-            // Ballot ranges that have been accepted committed by other nodes in this node's quorum set.
+            // Ballot ranges that have been accepted committed by other nodes in this node's
+            // quorum set.
             let mut candidates: HashMap<Vec<V>, (u32, u32)> = Default::default();
             for node_id in &self.quorum_set.nodes() {
                 if let Some(msg) = self.M.get(node_id) {
                     match msg.topic {
                         Topic::Commit(ref payload) => {
                             assert!(payload.CN <= payload.HN);
-                            // "accept commit(<n, ballot.value>)" for every "cCounter <= n <= hCounter".
+                            // "accept commit(<n, ballot.value>)" for every "cCounter <= n <=
+                            // hCounter".
                             candidates.insert(payload.B.X.clone(), (payload.CN, payload.HN));
                         }
                         Topic::Externalize(ref payload) => {
@@ -1962,21 +1990,25 @@ mod nominate_protocol_tests {
     }
 
     #[test_with_logger]
-    // Test that a node can be convinced by a blocking set to extend it's list of "accepted
-    // nominated" (Y) with whatever the blocking set has accepted.
-    // In this test node 1 has "accepted nominated" the value "B", while a blocking set of its
-    // peers accepted-nominated "A","B","C","D". When updateYZ() is called, it should extend it's "accepted
-    // nominated" (Y) list with "B", "C" and "D".
+    // Test that a node can be convinced by a blocking set to extend it's list of
+    // "accepted nominated" (Y) with whatever the blocking set has accepted.
+    // In this test node 1 has "accepted nominated" the value "B", while a blocking
+    // set of its peers accepted-nominated "A","B","C","D". When updateYZ() is
+    // called, it should extend it's "accepted nominated" (Y) list with "B", "C"
+    // and "D".
     fn test_blocking_set_forces_accept_vote(logger: Logger) {
         let slot_index = 10;
 
-        // (V=1 I=4731 NOM/PREP X=<>, Y=<"B">, B=<378, 1:["B"]>, P=<>, PP=<>, HN=0, CN=0)
-        // (V=2 I=4731 NOM/PREP X=<>, Y=<"A", "B", "C", "D">, B=<"A", "B", "C">, P=<>, PP=<>, HN=0, CN=0)
-        // (V=3 I=4731 NOM/PREP X=<>, Y=<"A", "B", "C", "D">, B=<"A", "B", "C", "D">, P=<>, PP=<>, HN=0, CN=0)
-        // (V=4 I=4731 NOM/PREP X=<>, Y=<"A", "B", "C", "D">, B=<"A", "B", "C", "D">, P=<>, PP=<>, HN=0, CN=0)
-        // (V=5 I=4731 NOM/PREP X=<>, Y=<"A", "B", "C", "D">, B=<"A", "B", "C", "D">, P=<>, PP=<>, HN=0, CN=0)
+        // (V=1 I=4731 NOM/PREP X=<>, Y=<"B">, B=<378, 1:["B"]>, P=<>, PP=<>, HN=0,
+        // CN=0) (V=2 I=4731 NOM/PREP X=<>, Y=<"A", "B", "C", "D">, B=<"A", "B",
+        // "C">, P=<>, PP=<>, HN=0, CN=0) (V=3 I=4731 NOM/PREP X=<>, Y=<"A",
+        // "B", "C", "D">, B=<"A", "B", "C", "D">, P=<>, PP=<>, HN=0, CN=0) (V=4
+        // I=4731 NOM/PREP X=<>, Y=<"A", "B", "C", "D">, B=<"A", "B", "C", "D">, P=<>,
+        // PP=<>, HN=0, CN=0) (V=5 I=4731 NOM/PREP X=<>, Y=<"A", "B", "C", "D">,
+        // B=<"A", "B", "C", "D">, P=<>, PP=<>, HN=0, CN=0)
 
-        // (V=2 I=4731 NOM/PREP X=<>, Y=<"A", "B", "C", "D">, B=<"A", "B", "C">, P=<>, PP=<>, HN=0, CN=0)
+        // (V=2 I=4731 NOM/PREP X=<>, Y=<"A", "B", "C", "D">, B=<"A", "B", "C">, P=<>,
+        // PP=<>, HN=0, CN=0)
         let msg_2 = Msg::new(
             test_node_id(2),
             QuorumSet::new_with_node_ids(
@@ -2004,7 +2036,8 @@ mod nominate_protocol_tests {
             ),
         );
 
-        // (V=3 I=4731 NOM/PREP X=<>, Y=<"A", "B", "C", "D">, B=<"A", "B", "C", "D">, P=<>, PP=<>, HN=0, CN=0)
+        // (V=3 I=4731 NOM/PREP X=<>, Y=<"A", "B", "C", "D">, B=<"A", "B", "C", "D">,
+        // P=<>, PP=<>, HN=0, CN=0)
         let msg_3 = Msg::new(
             test_node_id(3),
             QuorumSet::new_with_node_ids(
@@ -2032,7 +2065,8 @@ mod nominate_protocol_tests {
             ),
         );
 
-        // (V=4 I=4731 NOM/PREP X=<>, Y=<"A", "B", "C", "D">, B=<"A", "B", "C", "D">, P=<>, PP=<>, HN=0, CN=0)
+        // (V=4 I=4731 NOM/PREP X=<>, Y=<"A", "B", "C", "D">, B=<"A", "B", "C", "D">,
+        // P=<>, PP=<>, HN=0, CN=0)
         let msg_4 = Msg::new(
             test_node_id(4),
             QuorumSet::new_with_node_ids(
@@ -2060,7 +2094,8 @@ mod nominate_protocol_tests {
             ),
         );
 
-        // (V=5 I=4731 NOM/PREP X=<>, Y=<"A", "B", "C", "D">, B=<"A", "B", "C", "D">, P=<>, PP=<>, HN=0, CN=0)
+        // (V=5 I=4731 NOM/PREP X=<>, Y=<"A", "B", "C", "D">, B=<"A", "B", "C", "D">,
+        // P=<>, PP=<>, HN=0, CN=0)
         let msg_5 = Msg::new(
             test_node_id(5),
             QuorumSet::new_with_node_ids(
@@ -2088,7 +2123,8 @@ mod nominate_protocol_tests {
             ),
         );
 
-        // (V=1 I=4731 NOM/PREP X=<>, Y=<"B">, B=<378, 1:["B"]>, P=<>, PP=<>, HN=0, CN=0)
+        // (V=1 I=4731 NOM/PREP X=<>, Y=<"B">, B=<378, 1:["B"]>, P=<>, PP=<>, HN=0,
+        // CN=0)
         let mut slot = Slot::new(
             test_node_id(1),
             QuorumSet::new_with_node_ids(
@@ -2112,32 +2148,35 @@ mod nominate_protocol_tests {
         slot.M.insert(msg_4.sender_id.clone(), msg_4);
         slot.M.insert(msg_5.sender_id.clone(), msg_5);
 
-        // Nodes 2,3,4,5 form a blocking set for the local node 1. updateYZ should cause the local
-        // node to update it's accepted nominated (Y) list from what the blocking set has agreed
-        // on.
+        // Nodes 2,3,4,5 form a blocking set for the local node 1. updateYZ should cause
+        // the local node to update it's accepted nominated (Y) list from what
+        // the blocking set has agreed on.
         slot.update_YZ();
         assert_eq!(slot.Y, hashset! { "A", "B", "C", "D"});
     }
 
     #[test_with_logger]
-    // This test verifies that a node that sees two separate quorums with different but compatible
-    // "confirmed nominated" values ends up confirm-nominating both set of values.
-    // In this test, node 2 has confirmed-nominated "A","B","C" and accepted-nominated
-    // "A","B","C","D".
-    // Looking at the quorum (1,2,3,4) would not cause node 2 to confirm-nominate "D", but looking
-    // at the quorum (2,3,4,5) would. This test makes sure the node confirms-nominates all the
-    // possible values from it's various quorums (and not just the first one it sees when
-    // performing quorum checks).
+    // This test verifies that a node that sees two separate quorums with different
+    // but compatible "confirmed nominated" values ends up confirm-nominating
+    // both set of values. In this test, node 2 has confirmed-nominated
+    // "A","B","C" and accepted-nominated "A","B","C","D".
+    // Looking at the quorum (1,2,3,4) would not cause node 2 to confirm-nominate
+    // "D", but looking at the quorum (2,3,4,5) would. This test makes sure the
+    // node confirms-nominates all the possible values from it's various quorums
+    // (and not just the first one it sees when performing quorum checks).
     fn test_confirm_nominate_with_overlapping_quorums(logger: Logger) {
         let slot_index = 10;
 
-        // (V=1 I=4731 NOM/PREP X=<>, Y=<"B">, B=<378, 1:["B"]>, P=<>, PP=<>, HN=0, CN=0)
-        // (V=2 I=4731 NOM/PREP X=<>, Y=<"A", "B", "C", "D">, B=<"A", "B", "C">, P=<>, PP=<>, HN=0, CN=0)
-        // (V=3 I=4731 NOM/PREP X=<>, Y=<"A", "B", "C", "D">, B=<"A", "B", "C", "D">, P=<>, PP=<>, HN=0, CN=0)
-        // (V=4 I=4731 NOM/PREP X=<>, Y=<"A", "B", "C", "D">, B=<"A", "B", "C", "D">, P=<>, PP=<>, HN=0, CN=0)
-        // (V=5 I=4731 NOM/PREP X=<>, Y=<"A", "B", "C", "D">, B=<"A", "B", "C", "D">, P=<>, PP=<>, HN=0, CN=0)
+        // (V=1 I=4731 NOM/PREP X=<>, Y=<"B">, B=<378, 1:["B"]>, P=<>, PP=<>, HN=0,
+        // CN=0) (V=2 I=4731 NOM/PREP X=<>, Y=<"A", "B", "C", "D">, B=<"A", "B",
+        // "C">, P=<>, PP=<>, HN=0, CN=0) (V=3 I=4731 NOM/PREP X=<>, Y=<"A",
+        // "B", "C", "D">, B=<"A", "B", "C", "D">, P=<>, PP=<>, HN=0, CN=0) (V=4
+        // I=4731 NOM/PREP X=<>, Y=<"A", "B", "C", "D">, B=<"A", "B", "C", "D">, P=<>,
+        // PP=<>, HN=0, CN=0) (V=5 I=4731 NOM/PREP X=<>, Y=<"A", "B", "C", "D">,
+        // B=<"A", "B", "C", "D">, P=<>, PP=<>, HN=0, CN=0)
 
-        // (V=1 I=4731 NOM/PREP X=<>, Y=<"B">, B=<378, 1:["B"]>, P=<>, PP=<>, HN=0, CN=0)
+        // (V=1 I=4731 NOM/PREP X=<>, Y=<"B">, B=<378, 1:["B"]>, P=<>, PP=<>, HN=0,
+        // CN=0)
         let msg_1 = Msg::new(
             test_node_id(1),
             QuorumSet::new_with_node_ids(
@@ -2165,7 +2204,8 @@ mod nominate_protocol_tests {
             ),
         );
 
-        // (V=3 I=4731 NOM/PREP X=<>, Y=<"A", "B", "C", "D">, B=<"A", "B", "C", "D">, P=<>, PP=<>, HN=0, CN=0)
+        // (V=3 I=4731 NOM/PREP X=<>, Y=<"A", "B", "C", "D">, B=<"A", "B", "C", "D">,
+        // P=<>, PP=<>, HN=0, CN=0)
         let msg_3 = Msg::new(
             test_node_id(3),
             QuorumSet::new_with_node_ids(
@@ -2193,7 +2233,8 @@ mod nominate_protocol_tests {
             ),
         );
 
-        // (V=4 I=4731 NOM/PREP X=<>, Y=<"A", "B", "C", "D">, B=<"A", "B", "C", "D">, P=<>, PP=<>, HN=0, CN=0)
+        // (V=4 I=4731 NOM/PREP X=<>, Y=<"A", "B", "C", "D">, B=<"A", "B", "C", "D">,
+        // P=<>, PP=<>, HN=0, CN=0)
         let msg_4 = Msg::new(
             test_node_id(4),
             QuorumSet::new_with_node_ids(
@@ -2221,7 +2262,8 @@ mod nominate_protocol_tests {
             ),
         );
 
-        // (V=5 I=4731 NOM/PREP X=<>, Y=<"A", "B", "C", "D">, B=<"A", "B", "C", "D">, P=<>, PP=<>, HN=0, CN=0)
+        // (V=5 I=4731 NOM/PREP X=<>, Y=<"A", "B", "C", "D">, B=<"A", "B", "C", "D">,
+        // P=<>, PP=<>, HN=0, CN=0)
         let msg_5 = Msg::new(
             test_node_id(5),
             QuorumSet::new_with_node_ids(
@@ -2249,7 +2291,8 @@ mod nominate_protocol_tests {
             ),
         );
 
-        // (V=2 I=4731 NOM/PREP X=<>, Y=<"A", "B", "C", "D">, B=<"A", "B", "C">, P=<>, PP=<>, HN=0, CN=0)
+        // (V=2 I=4731 NOM/PREP X=<>, Y=<"A", "B", "C", "D">, B=<"A", "B", "C">, P=<>,
+        // PP=<>, HN=0, CN=0)
         let mut slot = Slot::new(
             test_node_id(2),
             QuorumSet::new_with_node_ids(
@@ -2273,13 +2316,15 @@ mod nominate_protocol_tests {
         slot.M.insert(msg_4.sender_id.clone(), msg_4);
         slot.M.insert(msg_5.sender_id.clone(), msg_5);
 
-        // Calling updateYZ should add "D" to confirmed nominated (Z) since a quorum (2,3,4,5) have accepted nominated (Y) it.
+        // Calling updateYZ should add "D" to confirmed nominated (Z) since a quorum
+        // (2,3,4,5) have accepted nominated (Y) it.
         slot.update_YZ();
         assert_eq!(slot.Z, hashset! { "A", "B", "C", "D"});
     }
 
     #[test_with_logger]
-    /// A node should not nominate proposed values if it is not in max_priority_peers.
+    /// A node should not nominate proposed values if it is not in
+    /// max_priority_peers.
     fn test_wait_to_nominate_proposed_values(logger: Logger) {
         let (local_node, _node_2, _node_3) = three_node_cycle();
 
@@ -2376,7 +2421,8 @@ mod ballot_protocol_tests {
     use pretty_assertions::assert_eq;
     use std::iter::FromIterator;
 
-    // TODO: reject a message if it contains a ballot containing incorrectly ordered values.
+    // TODO: reject a message if it contains a ballot containing incorrectly ordered
+    // values.
 
     // === Handling "confirmed nominated" values ===
 
@@ -2414,7 +2460,8 @@ mod ballot_protocol_tests {
     }
 
     #[test_with_logger]
-    // An "uncommitted" node should issue `vote-or-accept prepare <1,V>` when nomination produces values V.
+    // An "uncommitted" node should issue `vote-or-accept prepare <1,V>` when
+    // nomination produces values V.
     fn test_uncommitted_to_votes(logger: Logger) {
         let node_id = test_node_id(1);
         let quorum_set = QuorumSet::new_with_node_ids(1, vec![test_node_id(2)]);
@@ -2456,8 +2503,8 @@ mod ballot_protocol_tests {
     }
 
     #[test_with_logger]
-    // A node that has not issued confirmed prepare(b) should continue to vote for new, confirmed
-    // nominated values when it advances to a new ballot.
+    // A node that has not issued confirmed prepare(b) should continue to vote for
+    // new, confirmed nominated values when it advances to a new ballot.
     fn test_additional_confirmed_nominated_values(logger: Logger) {
         let node_1 = (
             test_node_id(1),
@@ -2613,8 +2660,9 @@ mod ballot_protocol_tests {
     }
 
     #[test_with_logger]
-    // A node that has issued "accept prepare(b)" but not "confirm prepare(b)" should include
-    // confirmed nominated values when it advances to the next ballot.
+    // A node that has issued "accept prepare(b)" but not "confirm prepare(b)"
+    // should include confirmed nominated values when it advances to the next
+    // ballot.
     fn test_confirmed_nominated_after_accepted_prepared(logger: Logger) {
         let node_1 = (
             test_node_id(1),
@@ -2648,8 +2696,8 @@ mod ballot_protocol_tests {
             logger,
         );
 
-        // Initialize slot so that it has issued "accept prepare(b)". This involves adding
-        // a Prepare message from node 2 as well.
+        // Initialize slot so that it has issued "accept prepare(b)". This involves
+        // adding a Prepare message from node 2 as well.
         {
             slot.phase = Phase::NominatePrepare;
             slot.X = hashset! { 1337, 1338};
@@ -2715,8 +2763,8 @@ mod ballot_protocol_tests {
         // Force ballot timeout timer to fire.
         slot.next_ballot_at = Some(Instant::now() - Duration::from_secs(1));
 
-        // When the timer fires, we should advance to a new ballot with all 4 values. The prepared
-        // value should not change.
+        // When the timer fires, we should advance to a new ballot with all 4 values.
+        // The prepared value should not change.
         {
             let msgs = slot.process_timeouts();
             assert_eq!(msgs.len(), 1);
@@ -2745,8 +2793,8 @@ mod ballot_protocol_tests {
     }
 
     #[test_with_logger]
-    // A node that has issued `confirm prepare(b)` should no longer include new confirmed nominated
-    // values in its subsequent ballots.
+    // A node that has issued `confirm prepare(b)` should no longer include new
+    // confirmed nominated values in its subsequent ballots.
     fn test_ignore_nominated_values_after_issuing_confirm_prepare(logger: Logger) {
         let node_1 = (
             test_node_id(1),
@@ -2826,7 +2874,8 @@ mod ballot_protocol_tests {
         // Force ballot timeout timer to fire.
         slot.next_ballot_at = Some(Instant::now() - Duration::from_secs(1));
 
-        // The next higher ballot should **not** include the latest confirmed nominated values.
+        // The next higher ballot should **not** include the latest confirmed nominated
+        // values.
         {
             let msgs = slot.process_timeouts();
             assert_eq!(msgs.len(), 1);
@@ -2912,8 +2961,8 @@ mod ballot_protocol_tests {
             );
         }
 
-        // Sanity for this test: Node 3 has issued "vote-or-accept prepare(b)", this should get
-        // local node to issue "accept prepare(b)".
+        // Sanity for this test: Node 3 has issued "vote-or-accept prepare(b)", this
+        // should get local node to issue "accept prepare(b)".
         {
             let msg = Msg::new(
                 node_3.0.clone(),
@@ -2951,8 +3000,9 @@ mod ballot_protocol_tests {
     }
 
     #[test_with_logger]
-    // An "uncommitted" node should issue `accept prepare <n,V>` when it sees a blocking set that
-    // issues `accept prepare <n, V>`. It should not issue any statement until then.
+    // An "uncommitted" node should issue `accept prepare <n,V>` when it sees a
+    // blocking set that issues `accept prepare <n, V>`. It should not issue any
+    // statement until then.
     fn test_uncommitted_to_blocking_set_accepts(logger: Logger) {
         let local_node_quorum_set: QuorumSet = {
             let inner_quorum_set_one = QuorumSet::new_with_node_ids(
@@ -3008,8 +3058,9 @@ mod ballot_protocol_tests {
             assert!(emitted_msg.is_none());
         }
 
-        // With this statement, the local node has seen a blocking set who have issued `accept prepare(b)`.
-        // The local node should also emit `accept prepare(b)`.
+        // With this statement, the local node has seen a blocking set who have issued
+        // `accept prepare(b)`. The local node should also emit `accept
+        // prepare(b)`.
         let statement_from_node_3 = Msg::new(
             node_3_id,
             node_3_quorum_set,
@@ -3053,8 +3104,8 @@ mod ballot_protocol_tests {
     }
 
     #[test_with_logger]
-    // A node who has issued `vote prepare<1,C>` should issue `accept prepare <1,C>` when:
-    // 1) A blocking set issues `accept prepare<1,C>, or
+    // A node who has issued `vote prepare<1,C>` should issue `accept prepare <1,C>`
+    // when: 1) A blocking set issues `accept prepare<1,C>, or
     // 2) A quorum votes or accepts prepare<1,C>
     fn test_votes_to_accepts_same_value_case_1(logger: Logger) {
         let local_node_quorum_set: QuorumSet = {
@@ -3112,7 +3163,8 @@ mod ballot_protocol_tests {
         let node_3_quorum_set =
             QuorumSet::new_with_node_ids(1, vec![test_node_id(2), test_node_id(4)]);
 
-        // A statement from only node_2 should not change the statement issued by the local node.
+        // A statement from only node_2 should not change the statement issued by the
+        // local node.
         {
             let statement_from_node_2 = Msg::new(
                 node_2_id,
@@ -3133,8 +3185,9 @@ mod ballot_protocol_tests {
             assert!(emitted_msg.is_none());
         }
 
-        // With this statement, the local node has seen a blocking set who have issued `accept prepare(b)`.
-        // The local node should also emit `accept prepare(b)`.
+        // With this statement, the local node has seen a blocking set who have issued
+        // `accept prepare(b)`. The local node should also emit `accept
+        // prepare(b)`.
         let statement_from_node_3 = Msg::new(
             node_3_id,
             node_3_quorum_set,
@@ -3172,8 +3225,8 @@ mod ballot_protocol_tests {
     }
 
     #[test_with_logger]
-    // A node may issue "accept prepare(b)" if it sees a blocking set of other nodes who
-    // have issued Prepare statements implying "accept prepare(b)".
+    // A node may issue "accept prepare(b)" if it sees a blocking set of other nodes
+    // who have issued Prepare statements implying "accept prepare(b)".
     fn test_ballots_accepted_prepared_with_blocking_set(logger: Logger) {
         // A 3-node cycle.
         let (local_node, node_2, _node_3) = three_node_cycle();
@@ -3246,8 +3299,9 @@ mod ballot_protocol_tests {
     }
 
     #[test_with_logger]
-    // A node may issue "accept prepare(b)" if it sees a blocking set of other nodes who
-    // have issued Prepare and Commit statements implying "accept prepare(b)".
+    // A node may issue "accept prepare(b)" if it sees a blocking set of other nodes
+    // who have issued Prepare and Commit statements implying "accept
+    // prepare(b)".
     fn test_ballots_accepted_prepared_blocking_with_commit_statements(logger: Logger) {
         // A 3-node cycle.
         let (local_node, node_2, _) = three_node_cycle();
@@ -3301,8 +3355,8 @@ mod ballot_protocol_tests {
     }
 
     #[test_with_logger]
-    // A node who has issued `vote prepare<1,C>` should issue `accept prepare <1,C>` when:
-    // 1) A blocking set issues `accept prepare<1,C>, or
+    // A node who has issued `vote prepare<1,C>` should issue `accept prepare <1,C>`
+    // when: 1) A blocking set issues `accept prepare<1,C>, or
     // 2) A quorum votes or accepts prepare<1,C>
     fn test_votes_to_accepts_same_value_case_2(logger: Logger) {
         let local_node_quorum_set: QuorumSet = {
@@ -3502,11 +3556,13 @@ mod ballot_protocol_tests {
 
     #[test_with_logger]
     // A node may issue "accept prepare(b)" if it is part of a quorum
-    // who has issued Prepare or Commit statements implying "vote or accept prepare(b)".
+    // who has issued Prepare or Commit statements implying "vote or accept
+    // prepare(b)".
     fn test_ballots_accepted_prepared_quorum_with_commit_statements(logger: Logger) {
         // {1, 2} is a quorum, and {1, 3} is a quorum.
-        // This configuration is useful because {2} is not a blocking threshold for the local node,
-        // which allows us to test the "is quorum but not blocking" scenario.
+        // This configuration is useful because {2} is not a blocking threshold for the
+        // local node, which allows us to test the "is quorum but not blocking"
+        // scenario.
         let local_node = (
             test_node_id(1),
             QuorumSet::new_with_node_ids(1, vec![test_node_id(2), test_node_id(3)]),
@@ -3594,8 +3650,9 @@ mod ballot_protocol_tests {
     }
 
     #[test_with_logger]
-    // A node who has issued `vote prepare<1,C>` should issue `accept prepare <n,C2>` for C != C2
-    // when it sees a blocking set issue `accept prepare <n, C2>.
+    // A node who has issued `vote prepare<1,C>` should issue `accept prepare
+    // <n,C2>` for C != C2 when it sees a blocking set issue `accept prepare <n,
+    // C2>.
     fn test_votes_to_accepts_different_value(logger: Logger) {
         let local_node_quorum_set: QuorumSet = {
             let inner_quorum_set_one = QuorumSet::new_with_node_ids(
@@ -3657,7 +3714,8 @@ mod ballot_protocol_tests {
             (node_3_id, node_3_quorum_set),
         ];
 
-        // The nodes forming a blocking threshold all have "ballot.counter" values greater than the local "ballot.counter".
+        // The nodes forming a blocking threshold all have "ballot.counter" values
+        // greater than the local "ballot.counter".
         let different_ballot = Ballot::new(2, &[1000, 2000]);
 
         let msgs: Vec<Msg<u32>> = blocking_set
@@ -3678,14 +3736,16 @@ mod ballot_protocol_tests {
             })
             .collect();
 
-        // A statement from only node_2 should not change the statement issued by the local node.
+        // A statement from only node_2 should not change the statement issued by the
+        // local node.
         {
             let emitted_msg = slot.handle_message(&msgs[0].clone());
             assert!(emitted_msg.unwrap().is_none());
         }
 
-        // With this statement, the local node has seen a blocking set who have issued `accept prepare(b)`.
-        // The local node should also emit `accept prepare(b)`.
+        // With this statement, the local node has seen a blocking set who have issued
+        // `accept prepare(b)`. The local node should also emit `accept
+        // prepare(b)`.
         {
             let emitted_msg = slot
                 .handle_message(&msgs[1].clone())
@@ -3710,7 +3770,8 @@ mod ballot_protocol_tests {
     }
 
     #[test_with_logger]
-    // A node that issues "accept prepare <n,V>" may not issue "accept prepare <n, W>" for a different value W.
+    // A node that issues "accept prepare <n,V>" may not issue "accept prepare <n,
+    // W>" for a different value W.
     fn test_contradicting_accept_prepare(logger: Logger) {
         // A 3-node network where the only quorum is the set of all three nodes.
         // Each node is a blocking set for each other.
@@ -3829,7 +3890,8 @@ mod ballot_protocol_tests {
     // === Issuing "confirm prepare" ===
 
     #[test_with_logger]
-    // A node issues "confirm prepare <n,C>" when a quorum issues "accept prepare <n,C>".
+    // A node issues "confirm prepare <n,C>" when a quorum issues "accept prepare
+    // <n,C>".
     fn test_accept_prepare_to_confirm_prepare_cycle(logger: Logger) {
         // Nodes 1, 2, 3, 4 form a cyclic quorum structure.
         let local_node = (
@@ -3923,7 +3985,8 @@ mod ballot_protocol_tests {
                     B: ballot.clone(),
                     P: Some(ballot.clone()),
                     PP: None,
-                    HN: ballot.N, //  "vote commit(<n, ballot.value>)" for every "cCounter <= n <= hCounter".
+                    HN: ballot.N, /*  "vote commit(<n, ballot.value>)" for every "cCounter <= n
+                                   * <= hCounter". */
                     CN: ballot.N, //  "confirm prepare(<hCounter, ballot.value>)".
                 }),
             );
@@ -3935,7 +3998,8 @@ mod ballot_protocol_tests {
     // === Issuing "accept commit" ===
 
     #[test_with_logger]
-    // A node issues "accept commit <n,C>" when a blocking set has issued "accept commit <n,C>".
+    // A node issues "accept commit <n,C>" when a blocking set has issued "accept
+    // commit <n,C>".
     fn test_accept_commit_from_blocking_set(logger: Logger) {
         // Node 2 is a blocking set for Node 1.
         let (node_1, node_2, _node_3) = three_node_cycle();
@@ -3979,7 +4043,8 @@ mod ballot_protocol_tests {
     }
 
     #[test_with_logger]
-    // A node issues "accept commit <n,C>" when a quorum issues "vote-or-accept commit <n,C>".
+    // A node issues "accept commit <n,C>" when a quorum issues "vote-or-accept
+    // commit <n,C>".
     fn test_accept_commit_from_quorum(logger: Logger) {
         // The only quorum is all three nodes.
         let (node_1, node_2, node_3) = three_node_cycle();
@@ -3999,7 +4064,8 @@ mod ballot_protocol_tests {
         slot.last_sent_msg = initial_msg;
 
         // Node 2 issues "vote commit <n,C>"
-        // If "cCounter != 0": "vote commit(<n, ballot.value>)" for every "CN <= n <= HN".
+        // If "cCounter != 0": "vote commit(<n, ballot.value>)" for every "CN <= n <=
+        // HN".
         {
             let msg_2 = Msg::new(
                 node_2.0.clone(),
@@ -4021,7 +4087,8 @@ mod ballot_protocol_tests {
         }
 
         // Node 3 issues "vote commit <n,C>"
-        // If "cCounter != 0": "vote commit(<n, ballot.value>)" for every "CN <= n <= HN".
+        // If "cCounter != 0": "vote commit(<n, ballot.value>)" for every "CN <= n <=
+        // HN".
         {
             let msg_3 = Msg::new(
                 node_3.0.clone(),
@@ -4059,7 +4126,8 @@ mod ballot_protocol_tests {
     }
 
     #[test_with_logger]
-    // A node that issues "accept commit <n,V>" may not issue "accept commit <n, W>" for a different value W.
+    // A node that issues "accept commit <n,V>" may not issue "accept commit <n, W>"
+    // for a different value W.
     fn test_contradicting_accept_commit(logger: Logger) {
         // Node 2 is a blocking set for Node 1.
         let (node_1, node_2, node_3) = three_node_dense_graph();
@@ -4131,9 +4199,11 @@ mod ballot_protocol_tests {
     // === Issuing "confirm commit" and externalizing ===
 
     #[test_with_logger]
-    // A node should issue "confirm commit<n,C>" when a quorum issues "accept commit <n,C>".
+    // A node should issue "confirm commit<n,C>" when a quorum issues "accept commit
+    // <n,C>".
     fn test_issue_confirm_commit(logger: Logger) {
-        // Each node is a blocking set for every other node, and the only quorum is all nodes.
+        // Each node is a blocking set for every other node, and the only quorum is all
+        // nodes.
         let (node_1, node_2, node_3) = three_node_dense_graph();
 
         let slot_index = 0;
@@ -4326,11 +4396,12 @@ mod ballot_protocol_tests {
     // === Setting / Clearing / Processing ballot timers ===
 
     #[test_with_logger]
-    // The node sets a ballot timeout when it sees a quorum of nodes send messages with ballot
-    // counters greater than or equal to the local node's ballot counter. If a prior timeout exists,
-    // the prior timeout takes precedence.
+    // The node sets a ballot timeout when it sees a quorum of nodes send messages
+    // with ballot counters greater than or equal to the local node's ballot
+    // counter. If a prior timeout exists, the prior timeout takes precedence.
     fn test_process_ballot_timeout_prepare_phase(logger: Logger) {
-        // Each node is a blocking set for every other node, and the only quorum is all nodes.
+        // Each node is a blocking set for every other node, and the only quorum is all
+        // nodes.
         let (node_1, node_2, node_3) = three_node_dense_graph();
 
         let slot_index = 0;
@@ -4404,7 +4475,8 @@ mod tests {
     use mc_common::logger::test_with_logger;
 
     #[test_with_logger]
-    // `ballots_accepted_prepared` should return all ballots accepted prepared by any blocking set.
+    // `ballots_accepted_prepared` should return all ballots accepted prepared by
+    // any blocking set.
     fn test_ballots_accepted_prepared_blocking_sets(logger: Logger) {
         //The four-node Fig.2 network.
         let (local_node, node_2, node_3, _node_4) = fig_2_network();

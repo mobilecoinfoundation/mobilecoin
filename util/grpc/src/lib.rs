@@ -75,11 +75,12 @@ pub fn send_result<T>(
     SVC_COUNTERS.resp(&ctx, success);
 }
 
-/// The most common context strings for `report_err_with_code` are `Enclave Error` and
-/// database error
+/// The most common context strings for `report_err_with_code` are `Enclave
+/// Error` and database error
 #[inline]
 pub fn rpc_enclave_err<E: Display>(err: E, logger: &Logger) -> RpcStatus {
-    // Return permission denied if there's anything wrong with the enclave, to force re-attestation.
+    // Return permission denied if there's anything wrong with the enclave, to force
+    // re-attestation.
     report_err_with_code(
         "Enclave Error",
         err,
@@ -203,8 +204,8 @@ pub fn run_server(
     server
 }
 
-/// A utility method for injecting peer information into a logger, ideally making it easier to
-/// debug RPC-related interactions.
+/// A utility method for injecting peer information into a logger, ideally
+/// making it easier to debug RPC-related interactions.
 pub fn rpc_logger(ctx: &RpcContext, logger: &Logger) -> Logger {
     let hash =
         mc_common::fast_hash(format!("{}{}", *RPC_LOGGER_CLIENT_ID_SEED, ctx.peer()).as_bytes());

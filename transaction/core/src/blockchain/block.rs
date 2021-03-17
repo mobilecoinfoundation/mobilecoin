@@ -38,8 +38,9 @@ pub struct Block {
     #[prost(uint64, tag = "5")]
     pub cumulative_txo_count: u64,
 
-    /// Root hash of the membership proofs provided by the untrusted local system for validation.
-    /// This captures the state of all TxOuts in the ledger that this block was validated against.
+    /// Root hash of the membership proofs provided by the untrusted local
+    /// system for validation. This captures the state of all TxOuts in the
+    /// ledger that this block was validated against.
     #[prost(message, required, tag = "6")]
     pub root_element: TxOutMembershipElement,
 
@@ -82,9 +83,10 @@ impl Block {
         }
     }
 
-    /// Creates a new `Block` intermediate in the block chain, from a parent block
-    /// Adds 1 to the parent.index, and adds block_contents.outputs.len()
-    /// to the parent.cumulative_txo_count, to compute values for the next block.
+    /// Creates a new `Block` intermediate in the block chain, from a parent
+    /// block Adds 1 to the parent.index, and adds
+    /// block_contents.outputs.len() to the parent.cumulative_txo_count, to
+    /// compute values for the next block.
     ///
     /// # Arguments
     /// * `version` - The block format version
@@ -115,7 +117,8 @@ impl Block {
     /// * `version` - The block format version.
     /// * `parent_id` - `BlockID` of previous block in the blockchain.
     /// * `index` - The index of this block in the blockchain.
-    /// * `cumulative_txo_count` - The cumulative txo count *including this block*
+    /// * `cumulative_txo_count` - The cumulative txo count *including this
+    ///   block*
     /// * `root_element` - The root element for membership proofs
     /// * `block_contents` - Contents of the block.
     pub fn new(
@@ -148,8 +151,9 @@ impl Block {
     }
 
     /// Checks if the block's ID is valid for the block.
-    /// A block constructed with `new` will be valid by virtue of `calling compute_block_id` on construction.
-    /// However, when converting between different block representations, you need to validate that the contents
+    /// A block constructed with `new` will be valid by virtue of `calling
+    /// compute_block_id` on construction. However, when converting between
+    /// different block representations, you need to validate that the contents
     /// of the converted structure is valid.
     pub fn is_block_id_valid(&self) -> bool {
         let expected_id = compute_block_id(
@@ -167,8 +171,8 @@ impl Block {
 
 /// Computes the BlockID by hashing the contents of a block.
 ///
-/// The identifier of a block is the result of hashing everything inside a block except the `id`
-/// field.
+/// The identifier of a block is the result of hashing everything inside a block
+/// except the `id` field.
 pub fn compute_block_id(
     version: u32,
     parent_id: &BlockID,

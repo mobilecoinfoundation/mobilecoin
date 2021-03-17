@@ -106,7 +106,8 @@ pub fn ecall_dispatcher(inbuf: &[u8]) -> Result<Vec<u8>, sgx_status_t> {
 
 /// The entry point implementation for consensus_enclave_api
 ///
-/// See mc_consensus_enclave_api::mobileenclave() declaration for more information
+/// See mc_consensus_enclave_api::mobileenclave() declaration for more
+/// information
 #[no_mangle]
 pub extern "C" fn mobileenclave_call(
     inbuf: *const u8,

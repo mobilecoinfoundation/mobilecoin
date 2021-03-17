@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-//! MetadataStore - an LMDB database that stores metadata about the database. Right now this is
-//! limited to versioning information.
+//! MetadataStore - an LMDB database that stores metadata about the database.
+//! Right now this is limited to versioning information.
 
 use displaydoc::Display;
 use lmdb::{
@@ -47,9 +47,10 @@ impl From<mc_util_serial::EncodeError> for MetadataStoreError {
 
 /// A trait that defines the per-db settings for a MetadataStore.
 pub trait MetadataStoreSettings: Default {
-    /// Default database version. This should be bumped when breaking changes are introduced.
-    /// If this is properly maintained, we could check during database opening for any
-    /// incompatibilities, and either refuse to open or perform a migration.
+    /// Default database version. This should be bumped when breaking changes
+    /// are introduced. If this is properly maintained, we could check
+    /// during database opening for any incompatibilities, and either refuse
+    /// to open or perform a migration.
     const LATEST_VERSION: u64;
 
     /// The current crate version that manages the database.
@@ -59,7 +60,8 @@ pub trait MetadataStoreSettings: Default {
     const DB_NAME: &'static str;
 
     /// Check if a given version is compatible with the latest version.
-    /// The default implementation assumes only the latest version is compatible.
+    /// The default implementation assumes only the latest version is
+    /// compatible.
     fn is_compatible_with_latest(
         metadata_version: &MetadataVersion<Self>,
     ) -> Result<(), MetadataStoreError> {
@@ -82,8 +84,8 @@ struct StoredMetadataVersion {
     #[prost(uint64)]
     pub database_format_version: u64,
 
-    /// Crate version that created the database. This could be bumped by a migration in a future
-    /// release.
+    /// Crate version that created the database. This could be bumped by a
+    /// migration in a future release.
     #[prost(string)]
     pub created_by_crate_version: String,
 }
@@ -102,8 +104,8 @@ pub struct MetadataVersion<S: MetadataStoreSettings> {
     /// Database format version.
     pub database_format_version: u64,
 
-    /// Crate version that created the database. This could be bumped by a migration in a future
-    /// release.
+    /// Crate version that created the database. This could be bumped by a
+    /// migration in a future release.
     pub created_by_crate_version: String,
 
     _s: S,
@@ -119,12 +121,14 @@ impl<S: MetadataStoreSettings> From<&StoredMetadataVersion> for MetadataVersion<
 }
 
 impl<S: MetadataStoreSettings> MetadataVersion<S> {
-    /// Construct a MetadataVersion instance with the most up to date versioning information.
+    /// Construct a MetadataVersion instance with the most up to date versioning
+    /// information.
     pub fn latest() -> Self {
         Self::with_database_format_version(S::LATEST_VERSION)
     }
 
-    /// Construct a MetadataVersion instance with a specific database_format_version.
+    /// Construct a MetadataVersion instance with a specific
+    /// database_format_version.
     pub fn with_database_format_version(database_format_version: u64) -> Self {
         Self {
             database_format_version,
@@ -174,7 +178,8 @@ impl<S: MetadataStoreSettings> MetadataStore<S> {
         Ok(())
     }
 
-    /// Open an existing MetadadataStore, or create a default one if it does not exist.
+    /// Open an existing MetadadataStore, or create a default one if it does not
+    /// exist.
     pub fn open_or_create(env: &Environment) -> Result<Self, MetadataStoreError> {
         Self::new(&env).or_else(|err| {
             if err == MetadataStoreError::Lmdb(lmdb::Error::NotFound) {

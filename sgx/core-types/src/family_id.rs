@@ -15,7 +15,8 @@ use mc_util_repr_bytes::typenum::U16;
 
 /// The ISV Family ID for a given enclave.
 ///
-/// This is used when deriving keys when the Key Separation & Sharing feature is enabled.
+/// This is used when deriving keys when the Key Separation & Sharing feature is
+/// enabled.
 #[derive(Default)]
 #[repr(transparent)]
 pub struct FamilyId(sgx_isvfamily_id_t);

@@ -116,8 +116,8 @@ fn main() -> Result<(), ConsensusServiceError> {
 
 fn setup_ledger_dir(config_origin_path: &Option<PathBuf>, ledger_path: &PathBuf) {
     if let Some(origin_block_path) = config_origin_path.clone() {
-        // Copy origin block to ledger_db path if there are not already contents in ledger_db.
-        // If ledger_path does not exist, create the dir.
+        // Copy origin block to ledger_db path if there are not already contents in
+        // ledger_db. If ledger_path does not exist, create the dir.
         std::fs::create_dir_all(ledger_path).expect("Could not create ledger directory");
         let mut options = fs_extra::dir::CopyOptions::new();
         options.skip_exist = true;
@@ -154,7 +154,8 @@ mod tests {
 
     #[test]
     fn test_empty_ledger_dir() {
-        // If the ledger directory exists and is empty, the origin files should be copied
+        // If the ledger directory exists and is empty, the origin files should be
+        // copied
         let origin_block_path = TempDir::new("origin").unwrap();
 
         // This will create the ledger path
@@ -175,7 +176,8 @@ mod tests {
 
     #[test]
     fn test_new_ledger_dir() {
-        // If the ledger directory does not exist, it should be created and the origin files copied
+        // If the ledger directory does not exist, it should be created and the origin
+        // files copied
         let origin_block_path = TempDir::new("origin").unwrap();
         let ledger_path = TempDir::new("ledger").unwrap();
 

@@ -11,7 +11,8 @@ use std::{
     result::Result as StdResult,
 };
 
-/// An enumeration of environment errors which occur when parsing SGX environments
+/// An enumeration of environment errors which occur when parsing SGX
+/// environments
 #[derive(Debug, Display)]
 pub enum Error {
     /// The IAS mode '{0}' is unknown

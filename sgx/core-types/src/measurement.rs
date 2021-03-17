@@ -20,15 +20,17 @@ use mc_util_repr_bytes::typenum::U32;
 
 /// An opaque type for MRENCLAVE values.
 ///
-/// A MRENCLAVE value is a chained cryptographic hash of the signed enclave binary (.so), and the
-/// results of the page initialization steps which created the enclave's encrypted pages.
+/// A MRENCLAVE value is a chained cryptographic hash of the signed enclave
+/// binary (.so), and the results of the page initialization steps which created
+/// the enclave's encrypted pages.
 #[derive(Default)]
 #[repr(transparent)]
 pub struct MrEnclave(sgx_measurement_t);
 
 /// An opaque type for MRSIGNER values.
 ///
-/// A MRSIGNER value is a SHA256 hash of the public key an enclave was signed with.
+/// A MRSIGNER value is a SHA256 hash of the public key an enclave was signed
+/// with.
 #[derive(Default)]
 #[repr(transparent)]
 pub struct MrSigner(sgx_measurement_t);

@@ -3,7 +3,8 @@
 use std::{env, process::Command};
 use tempdir::TempDir;
 
-// Get the build dir, which is one down from current_exe, which is in target/debug/deps,
+// Get the build dir, which is one down from current_exe, which is in
+// target/debug/deps,
 fn build_dir() -> std::path::PathBuf {
     let mut result = env::current_exe().unwrap();
     result.pop();
@@ -59,7 +60,8 @@ fn sample_keys_determinism() {
         .success());
 }
 
-// Test that if we generate 20 keys and look at only the first 10, its the same as if we just generate 10
+// Test that if we generate 20 keys and look at only the first 10, its the same
+// as if we just generate 10
 #[test]
 #[ignore]
 fn sample_keys_determinism2() {

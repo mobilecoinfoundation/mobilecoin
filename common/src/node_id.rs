@@ -45,7 +45,8 @@ impl From<KeyError> for NodeIDError {
     }
 }
 
-/// Node unique identifier containing a responder_id as well as a unique public key
+/// Node unique identifier containing a responder_id as well as a unique public
+/// key
 #[derive(Clone, Serialize, Deserialize, Digestible)]
 pub struct NodeID {
     pub responder_id: ResponderId,

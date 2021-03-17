@@ -2,8 +2,8 @@
 
 //! Data access abstraction for TxOuts stored in the ledger.
 //!
-//! Maintains a Merkle Tree of TxOuts. The tree can be thought of as full, with missing values
-//! replaced with a sentinel Nil value,
+//! Maintains a Merkle Tree of TxOuts. The tree can be thought of as full, with
+//! missing values replaced with a sentinel Nil value,
 //! .
 //!                               H(A..H)
 //!                       ------------------------
@@ -16,9 +16,9 @@
 //!   |       |       |       |      |         |        |        |
 //!   A       B       C       D      E        Nil      Nil      Nil
 //!
-//! As depicted above, this file refers to nodes by the range of leaf indices below them.
-//! Distinct hash functions are used for leaf values, Nil, and internal hashes in order to
-//! avoid second-preimage attacks.
+//! As depicted above, this file refers to nodes by the range of leaf indices
+//! below them. Distinct hash functions are used for leaf values, Nil, and
+//! internal hashes in order to avoid second-preimage attacks.
 //!
 //! # References
 //! * [Attacking Merkle Trees with a Second Preimage Attack](https://flawed.net.nz/2018/02/21/attacking-merkle-trees-with-a-second-preimage-attack/)
@@ -58,8 +58,9 @@ pub struct TxOutStore {
     /// `tx_out.public_key -> u64_to_key_bytes(index)`
     tx_out_index_by_public_key: Database,
 
-    /// Merkle hashes of subtrees. Range -> Merkle Hash of subtree containing TxOuts with indices in `[range.from, range.to]`.
-    /// range.to_key_bytes --> [u8; 32]
+    /// Merkle hashes of subtrees. Range -> Merkle Hash of subtree containing
+    /// TxOuts with indices in `[range.from, range.to]`. range.to_key_bytes
+    /// --> [u8; 32]
     merkle_hashes: Database,
 }
 
@@ -242,7 +243,8 @@ impl TxOutStore {
     /// Update Merkle Hashes to include the TxOut with the given index.
     ///
     /// # Arguments
-    /// * `index` - The index of a TxOut that has not yet been included in the Merkle Tree.
+    /// * `index` - The index of a TxOut that has not yet been included in the
+    ///   Merkle Tree.
     /// * `db_transaction` - an LMDB transaction.
     ///
     /// Returns (the new Merkle root hash?) or an Error.
@@ -326,7 +328,8 @@ impl TxOutStore {
             }
         }
 
-        // Scan over the ranges_for_proof and get hashes from the database corresponding to these
+        // Scan over the ranges_for_proof and get hashes from the database corresponding
+        // to these
         let mut elements = Vec::<TxOutMembershipElement>::default();
         for (low, high) in ranges_for_proof.iter().cloned() {
             let range = Range::new(low, high)?;
@@ -368,7 +371,8 @@ fn range_to_key_bytes(range: &Range) -> [u8; 16] {
 /// * `num_leaves` - The number of leaves in the tree.
 ///
 /// # Returns
-/// Enclosing ranges for the leaf index in a full binary tree. The ranges are in order from smallest to largest.
+/// Enclosing ranges for the leaf index in a full binary tree. The ranges are in
+/// order from smallest to largest.
 pub fn containing_ranges(index: u64, num_leaves: u64) -> Result<Vec<(u64, u64)>, Error> {
     if index >= num_leaves {
         return Err(Error::IndexOutOfBounds(index));
@@ -385,15 +389,17 @@ pub fn containing_ranges(index: u64, num_leaves: u64) -> Result<Vec<(u64, u64)>,
     }
 }
 
-/// In a binary tree whose leaves are labelled 0,1,..., this returns the leaves in a subtree
-/// of a given depth that contains the given leaf index.
+/// In a binary tree whose leaves are labelled 0,1,..., this returns the leaves
+/// in a subtree of a given depth that contains the given leaf index.
 ///
 /// # Arguments
 /// * `index` - A leaf index (zero-indexed).
-/// * `depth` - The depth of the subtree containing the leaf. Denotes a range of size 2^depth.
+/// * `depth` - The depth of the subtree containing the leaf. Denotes a range of
+///   size 2^depth.
 fn containing_range(index: u64, depth: u32) -> (u64, u64) {
-    // The low end of the range is found by setting the lowest `depth` bits to zeros, and
-    // the high end of the range is found by setting the lowest `depth` bits to ones.
+    // The low end of the range is found by setting the lowest `depth` bits to
+    // zeros, and the high end of the range is found by setting the lowest
+    // `depth` bits to ones.
 
     // A mask containing 1s in the lowest `depth` bits.
     // For example, (1 << 4) - 1 = (10000) - 1 = 01111
@@ -433,7 +439,8 @@ mod membership_proof_tests {
     }
 
     #[test]
-    // `is_valid` should return true for the proofs used by the `TxOutStore` unit tests.
+    // `is_valid` should return true for the proofs used by the `TxOutStore` unit
+    // tests.
     fn test_is_valid_for_non_trivial_proof() {
         let (tx_out_store, env) = init_tx_out_store();
         let num_tx_outs: u32 = 6;
@@ -496,7 +503,8 @@ mod membership_proof_tests {
                 .get_merkle_proof_of_membership(5, &db_transaction)
                 .unwrap();
 
-            // Tamper with proof after it is constructed. This bypasses checks in TxOutMembershipProof::new().
+            // Tamper with proof after it is constructed. This bypasses checks in
+            // TxOutMembershipProof::new().
             proof.index = 3;
             assert_eq!(
                 Err(
@@ -513,7 +521,8 @@ mod membership_proof_tests {
                 .get_merkle_proof_of_membership(5, &db_transaction)
                 .unwrap();
 
-            // Tamper with proof after it is constructed. This bypasses checks in TxOutMembershipProof::new().
+            // Tamper with proof after it is constructed. This bypasses checks in
+            // TxOutMembershipProof::new().
             proof.index = 6;
             assert_eq!(
                 Err(MembershipProofError::HighestIndexMismatch),
@@ -523,12 +532,15 @@ mod membership_proof_tests {
     }
 
     #[test]
-    // `is_valid` should return false for a proof with an implausible `highest_index` value.
+    // `is_valid` should return false for a proof with an implausible
+    // `highest_index` value.
     //
-    // `highest_index` exists to indicate when the proof was created so that the verifier can look
-    // up the correct root hash at that point in time. Other than indicating what (historic) root hash
-    // compare against, it is not required during validation. However, `is_valid` will reject
-    // a proof if its `highest_index` value is obviously incompatible with the `index` or the root range.
+    // `highest_index` exists to indicate when the proof was created so that the
+    // verifier can look up the correct root hash at that point in time. Other
+    // than indicating what (historic) root hash compare against, it is not
+    // required during validation. However, `is_valid` will reject a proof if
+    // its `highest_index` value is obviously incompatible with the `index` or the
+    // root range.
     fn test_is_valid_wrong_num_tx_outs() {
         // The number of ranges/hashes is a function of the number of tx_outs.
         // highest_index determines which hashes are the nil hash.
@@ -553,8 +565,9 @@ mod membership_proof_tests {
                 .get_merkle_proof_of_membership(5, &db_transaction)
                 .unwrap();
 
-            // Tamper with proof after it is constructed. This bypasses checks in TxOutMembershipProof::new().
-            // `num_tx_outs` is less than the index of the `TxOut` referenced by the proof.
+            // Tamper with proof after it is constructed. This bypasses checks in
+            // TxOutMembershipProof::new(). `num_tx_outs` is less than the index
+            // of the `TxOut` referenced by the proof.
             proof.highest_index = 2;
             assert_eq!(
                 Err(MembershipProofError::HighestIndexMismatch),
@@ -567,9 +580,10 @@ mod membership_proof_tests {
                 .get_merkle_proof_of_membership(5, &db_transaction)
                 .unwrap();
 
-            // Tamper with proof after it is constructed. This bypasses checks in TxOutMembershipProof::new().
-            // `num_tx_outs` is too large, implying that the proof would need to include hashes for the
-            // ranges [8,15] and [0,15].
+            // Tamper with proof after it is constructed. This bypasses checks in
+            // TxOutMembershipProof::new(). `num_tx_outs` is too large, implying
+            // that the proof would need to include hashes for the ranges [8,15]
+            // and [0,15].
             proof.highest_index = 8;
             assert_eq!(
                 Err(MembershipProofError::HighestIndexMismatch),
@@ -601,7 +615,8 @@ mod membership_proof_tests {
                 .get_merkle_proof_of_membership(5, &db_transaction)
                 .unwrap();
 
-            // Tamper with proof after it is constructed. This bypasses checks in TxOutMembershipProof::new().
+            // Tamper with proof after it is constructed. This bypasses checks in
+            // TxOutMembershipProof::new().
             proof.elements[3] = TxOutMembershipElement {
                 range: Range::new(6, 7).unwrap(),
                 hash: TxOutMembershipHash::from([7u8; 32]),
@@ -617,8 +632,9 @@ mod membership_proof_tests {
     #[ignore]
     // `is_valid` should return false if the proof includes non-required hashes.
     fn test_is_valid_too_many_hashes() {
-        // Including additional hashes doesn't necessarily make the proof incorrect, but we still
-        // might want to reject it because its funky and larger than necessary.
+        // Including additional hashes doesn't necessarily make the proof incorrect, but
+        // we still might want to reject it because its funky and larger than
+        // necessary.
         unimplemented!()
     }
 
@@ -665,7 +681,8 @@ mod membership_proof_tests {
         );
     }
 
-    // "Rederiving" should produce the same proof if the TxOut it references is the last TxOut.
+    // "Rederiving" should produce the same proof if the TxOut it references is the
+    // last TxOut.
     #[test]
     fn test_derive_proof_at_index_trivial() {
         let (tx_out_store, env) = init_tx_out_store();
@@ -702,8 +719,8 @@ mod membership_proof_tests {
     }
 
     #[test]
-    // A "rederived" proof for a TxOut should equal the proof-of-membership for that TxOut when
-    // it was the most recently added member.
+    // A "rederived" proof for a TxOut should equal the proof-of-membership for that
+    // TxOut when it was the most recently added member.
     fn test_derive_proof_at_index() {
         let (tx_out_store, env) = init_tx_out_store();
         let mut tx_outs = get_tx_outs(100);
@@ -799,7 +816,8 @@ pub mod tx_out_store_tests {
 
     /// Creates a number of TxOuts.
     ///
-    /// All TxOuts are created as part of the same transaction, with the same recipient.
+    /// All TxOuts are created as part of the same transaction, with the same
+    /// recipient.
     pub fn get_tx_outs(num_tx_outs: u32) -> Vec<TxOut> {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut tx_outs: Vec<TxOut> = Vec::new();
@@ -836,7 +854,8 @@ pub mod tx_out_store_tests {
     }
 
     #[test]
-    // `get_tx_out_index_by_hash` should return the correct index, or Error::NotFound.
+    // `get_tx_out_index_by_hash` should return the correct index, or
+    // Error::NotFound.
     fn test_get_tx_out_index_by_hash() {
         let (tx_out_store, env) = init_tx_out_store();
         let tx_outs = get_tx_outs(111);
@@ -856,7 +875,8 @@ pub mod tx_out_store_tests {
             tx_out_store.num_tx_outs(&ro_transaction).unwrap()
         );
 
-        // `get_tx_out_by_index_by_hash` should return the correct index when given a recognized hash.
+        // `get_tx_out_by_index_by_hash` should return the correct index when given a
+        // recognized hash.
         for (index, tx_out) in tx_outs.iter().enumerate() {
             assert_eq!(
                 index as u64,
@@ -866,7 +886,8 @@ pub mod tx_out_store_tests {
             );
         }
 
-        // `get_tx_out_index_by_hash` should return `Error::NotFound` for an unrecognized hash.
+        // `get_tx_out_index_by_hash` should return `Error::NotFound` for an
+        // unrecognized hash.
         let unrecognized_hash: Hash = [0u8; 32];
         match tx_out_store.get_tx_out_index_by_hash(&unrecognized_hash, &ro_transaction) {
             Ok(index) => panic!(format!("Returned index {:?} for unrecognized hash.", index)),
@@ -878,7 +899,8 @@ pub mod tx_out_store_tests {
     }
 
     #[test]
-    // `get_tx_out_index_by_public_key` should return the correct index, or Error::NotFound.
+    // `get_tx_out_index_by_public_key` should return the correct index, or
+    // Error::NotFound.
     fn test_get_tx_out_index_by_public_key() {
         let (tx_out_store, env) = init_tx_out_store();
         let tx_outs = get_tx_outs(111);
@@ -898,7 +920,8 @@ pub mod tx_out_store_tests {
             tx_out_store.num_tx_outs(&ro_transaction).unwrap()
         );
 
-        // `get_tx_out_by_index_by_hash` should return the correct index when given a recognized hash.
+        // `get_tx_out_by_index_by_hash` should return the correct index when given a
+        // recognized hash.
         for (index, tx_out) in tx_outs.iter().enumerate() {
             assert_eq!(
                 index as u64,
@@ -908,7 +931,8 @@ pub mod tx_out_store_tests {
             );
         }
 
-        // `get_tx_out_index_by_public_key` should return `Error::NotFound` for an unrecognized hash.
+        // `get_tx_out_index_by_public_key` should return `Error::NotFound` for an
+        // unrecognized hash.
         let unrecognized_public_key = CompressedRistrettoPublic::from(&[0; 32]);
         match tx_out_store.get_tx_out_index_by_public_key(&unrecognized_public_key, &ro_transaction)
         {
@@ -944,7 +968,8 @@ pub mod tx_out_store_tests {
             tx_out_store.num_tx_outs(&ro_transaction).unwrap()
         );
 
-        // `get_tx_out_by_index` should return the correct TxOut if the index is in the ledger.
+        // `get_tx_out_by_index` should return the correct TxOut if the index is in the
+        // ledger.
         for (index, tx_out) in tx_outs.iter().enumerate() {
             assert_eq!(
                 *tx_out,
@@ -954,7 +979,8 @@ pub mod tx_out_store_tests {
             );
         }
 
-        // `get_tx_out_by_index` should return `Error::NotFound` for out-of-bound indices
+        // `get_tx_out_by_index` should return `Error::NotFound` for out-of-bound
+        // indices
         for index in tx_outs.len()..tx_outs.len() + 100 {
             match tx_out_store.get_tx_out_by_index(index as u64, &ro_transaction) {
                 Ok(_tx_out) => panic!("Returned a TxOut for a nonexistent index."),
@@ -1145,7 +1171,8 @@ pub mod tx_out_store_tests {
         let tx_out_one: &TxOut = tx_outs.get(1).unwrap();
         let leaf_hash_one = hash_leaf(&tx_out_one);
         let root_hash_one = {
-            // The second root hash should be the internal hash fn applied to the leaf hash fn of tx_out_zero and tx_out_one.
+            // The second root hash should be the internal hash fn applied to the leaf hash
+            // fn of tx_out_zero and tx_out_one.
             let _index = tx_out_store.push(tx_out_one, &mut rw_transaction).unwrap();
             let expected_root_hash = hash_nodes(&leaf_hash_zero, &leaf_hash_one);
             let root_hash = tx_out_store.get_root_merkle_hash(&rw_transaction).unwrap();
@@ -1304,7 +1331,8 @@ pub mod tx_out_store_tests {
     }
 
     #[test]
-    // `get_merkle_proof_of_membership` should return an error if the TxOut index is out of bounds.
+    // `get_merkle_proof_of_membership` should return an error if the TxOut index is
+    // out of bounds.
     fn test_get_merkle_proof_of_membership_errors() {
         let (tx_out_store, env) = init_tx_out_store();
         {

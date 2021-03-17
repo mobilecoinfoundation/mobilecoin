@@ -78,9 +78,10 @@ pub enum ProcessedTxOutDirection {
     Spent = 2,
 }
 
-/// Type used as the stored data in the processed_block_id_to_processed_tx_outs database.
-/// Note that this is different than `mobilecoind_api::ProcessedTxOut`, as that one contains some
-/// extra data that can be derived upon construction.
+/// Type used as the stored data in the processed_block_id_to_processed_tx_outs
+/// database. Note that this is different than
+/// `mobilecoind_api::ProcessedTxOut`, as that one contains some extra data that
+/// can be derived upon construction.
 #[derive(Clone, Eq, Hash, PartialEq, Message)]
 pub struct ProcessedTxOut {
     /// The subaddress index the tx out belongs to/
@@ -276,8 +277,8 @@ mod test {
             &mut rng,
         );
 
-        // Get all utxos belonging to the test account. This assumes knowledge about how the test
-        // ledger is constructed by the test utils.
+        // Get all utxos belonging to the test account. This assumes knowledge about how
+        // the test ledger is constructed by the test utils.
         let num_blocks = ledger_db.num_blocks().expect("failed getting num blocks");
         let account_tx_outs: Vec<TxOut> = (0..num_blocks)
             .map(|idx| {
@@ -370,7 +371,8 @@ mod test {
             }
         }
 
-        // Associate the first 3 utxos with the first block and the rest into the second block.
+        // Associate the first 3 utxos with the first block and the rest into the second
+        // block.
         {
             let mut db_txn = store.env.begin_rw_txn().unwrap();
 
@@ -487,7 +489,8 @@ mod test {
         {
             let mut db_txn = store.env.begin_rw_txn().unwrap();
 
-            // Add in two chunks for the original monitor id and one chunk for a new monitor id.
+            // Add in two chunks for the original monitor id and one chunk for a new monitor
+            // id.
             store
                 .block_processed(&mut db_txn, &monitor_id, 0, &utxos[1..5], &[])
                 .expect("block_processed failed");

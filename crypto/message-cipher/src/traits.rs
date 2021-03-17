@@ -9,7 +9,8 @@ use serde::{Deserialize, Serialize};
 
 ////
 // A message cipher is a symmetric cipher meant to be used by the enclave as an
-// alternative to intel's "Sealing" when persistence across power cycles is not needed.
+// alternative to intel's "Sealing" when persistence across power cycles is not
+// needed.
 //
 // The trait also provides convenient wrappers over prost serialization.
 //
@@ -22,11 +23,13 @@ pub trait MessageCipher {
     fn new<R: CryptoRng + RngCore>(rng: &mut R) -> Self;
 
     // Encrypt plaintext bytes.
-    // An allocation is required when using this API, but we reuse the allocation made by caller.
+    // An allocation is required when using this API, but we reuse the allocation
+    // made by caller.
     fn encrypt_bytes<R: CryptoRng + RngCore>(&mut self, rng: &mut R, plaintext: Vec<u8>)
         -> Vec<u8>;
     // Decrypt bytes produced by encrypt_bytes
-    // An allocation is required when using this API, but we reuse the allocation made by caller.
+    // An allocation is required when using this API, but we reuse the allocation
+    // made by caller.
     fn decrypt_bytes(&mut self, ciphertext: Vec<u8>) -> Result<Vec<u8>, CipherError>;
 
     ////

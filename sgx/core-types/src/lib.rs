@@ -62,7 +62,8 @@ pub use mc_sgx_core_types_sys::sgx_misc_select_t as MiscSelect;
 /// The size of a [ProductId]'s x64 representation, in bytes.
 pub use mc_util_encodings::INTEL_U16_SIZE as PRODUCT_ID_SIZE;
 
-/// A vendor product ID used to distinguish between enclaves signed by the same author.
+/// A vendor product ID used to distinguish between enclaves signed by the same
+/// author.
 pub use mc_sgx_core_types_sys::sgx_prod_id_t as ProductId;
 
 /// The size of a [SecurityVersion]'s x64 representation, in bytes.
@@ -70,10 +71,11 @@ pub use mc_util_encodings::INTEL_U16_SIZE as SECURITY_VERSION_SIZE;
 
 /// A security version of a given enclave.
 ///
-/// The intent is that this value can be used to restrict trust to known-good versions of an
-/// enclave. That is, when an enclave wants to prove it's a secure place to give secret information
-/// to, the thing that is providing the secrets can check that the enclave is a particular
-/// [ProductId], was signed by a particular [MrSigner], and is no earlier than a particular
+/// The intent is that this value can be used to restrict trust to known-good
+/// versions of an enclave. That is, when an enclave wants to prove it's a
+/// secure place to give secret information to, the thing that is providing the
+/// secrets can check that the enclave is a particular [ProductId], was signed
+/// by a particular [MrSigner], and is no earlier than a particular
 /// [SecurityVersion].
 pub use mc_sgx_core_types_sys::sgx_isv_svn_t as SecurityVersion;
 

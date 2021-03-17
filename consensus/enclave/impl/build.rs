@@ -38,7 +38,8 @@ fn main() {
     let mut fee_view_public_key = [0u8; 32];
 
     // These public keys are associated with the private key used in the tests for
-    // consensus/enclave/impl. These are the hex-encoded public spend and view key bytes.
+    // consensus/enclave/impl. These are the hex-encoded public spend and view key
+    // bytes.
     let default_fee_spend_pub = "26b507c63124a2f5e940b4fb89e4b2bb0a2078ed0c8e551ad59268b9646ec241";
     let default_fee_view_pub = "5222a1e9ae32d21c23114a5ce6bb39e0cb56aea350d4619d43b1207061b10346";
 

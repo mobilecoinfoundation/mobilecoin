@@ -44,6 +44,7 @@ pub trait ScpNode<V: Value>: Send {
     /// Additional debug info, e.g. a JSON representation of the Slot's state.
     fn get_slot_debug_snapshot(&mut self, slot_index: SlotIndex) -> Option<String>;
 
-    /// Set the node's current slot index, abandoning any current and externalized slots.
+    /// Set the node's current slot index, abandoning any current and
+    /// externalized slots.
     fn reset_slot_index(&mut self, slot_index: SlotIndex);
 }

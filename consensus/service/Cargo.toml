@@ -36,7 +36,7 @@ mc-util-uri = { path = "../../util/uri" }
 
 base64 = "0.12"
 chrono = "0.4"
-displaydoc = { version = "0.1.7", default-features = false }
+displaydoc = { version = "0.2", default-features = false }
 fs_extra = "1.1"
 futures = "0.3"
 grpcio = "0.6.0"

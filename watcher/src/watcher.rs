@@ -39,9 +39,10 @@ impl Watcher {
     /// Create a new Watcher.
     ///
     /// # Arguments
-    /// * `watcher_db` - The backing database to use for storing and retreiving data
-    /// * `transactions_fetcher` - The transaction fetcher used to fetch blocks from watched source
-    ///   URLs
+    /// * `watcher_db` - The backing database to use for storing and retreiving
+    ///   data
+    /// * `transactions_fetcher` - The transaction fetcher used to fetch blocks
+    ///   from watched source URLs
     /// * `store_block_data` - The fetched BlockData objects into the database
     /// * `logger` - Logger
     pub fn new(
@@ -50,8 +51,8 @@ impl Watcher {
         store_block_data: bool,
         logger: Logger,
     ) -> Self {
-        // Sanity check that the watcher db and transaction fetcher were initialized with the same
-        // set of URLs.
+        // Sanity check that the watcher db and transaction fetcher were initialized
+        // with the same set of URLs.
         assert_eq!(
             HashSet::from_iter(transactions_fetcher.source_urls.iter()),
             HashSet::from_iter(
@@ -88,10 +89,11 @@ impl Watcher {
     /// Sync blocks and collect signatures (and block data, when enabled).
     ///
     /// * `start` - starting block to sync.
-    /// * `max_block_height` - the max block height to sync per archive url. If None, continue polling.
+    /// * `max_block_height` - the max block height to sync per archive url. If
+    ///   None, continue polling.
     ///
-    /// Returns true if syncing has reached max_block_height, false if more blocks still need to be
-    /// synced.
+    /// Returns true if syncing has reached max_block_height, false if more
+    /// blocks still need to be synced.
     pub fn sync_blocks(
         &self,
         start: u64,
@@ -135,8 +137,9 @@ impl Watcher {
             let url_to_block_data_result =
                 parallel_fetch_blocks(url_to_block_index, self.transactions_fetcher.clone())?;
 
-            // Store data for each successfully synced blocked. Track on whether any of the sources
-            // was able to produce block data. If so, more data might be available.
+            // Store data for each successfully synced blocked. Track on whether any of the
+            // sources was able to produce block data. If so, more data might be
+            // available.
             let mut had_success = false;
 
             for (src_url, (block_index, block_data_result)) in url_to_block_data_result.iter() {
@@ -187,8 +190,8 @@ impl Watcher {
                 }
             }
 
-            // If nothing succeeded, maybe we are synced all the way through or something else is
-            // wrong.
+            // If nothing succeeded, maybe we are synced all the way through or something
+            // else is wrong.
             if !had_success {
                 return Ok(false);
             }
@@ -196,9 +199,10 @@ impl Watcher {
     }
 }
 
-/// A naive implementation for fetching blocks from multiple source urls concurrently. It is naive
-/// in the sense that is spawns one thread per source URL, which in theory does not scale but in
-/// reality we do not expect a large number of sources.
+/// A naive implementation for fetching blocks from multiple source urls
+/// concurrently. It is naive in the sense that is spawns one thread per source
+/// URL, which in theory does not scale but in reality we do not expect a large
+/// number of sources.
 fn parallel_fetch_blocks(
     url_to_block_index: HashMap<Url, u64>,
     transactions_fetcher: Arc<ReqwestTransactionsFetcher>,
@@ -226,7 +230,8 @@ fn parallel_fetch_blocks(
     ))
 }
 
-/// A helper for fetching a single block (identified by a given block index) from some source url.
+/// A helper for fetching a single block (identified by a given block index)
+/// from some source url.
 fn fetch_single_block(
     transactions_fetcher: Arc<ReqwestTransactionsFetcher>,
     src_url: &Url,

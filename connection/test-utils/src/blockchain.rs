@@ -147,7 +147,8 @@ mod tests {
         }
 
         {
-            // Get blocks 25,26,27. These are entirely out of range, so should return an error.
+            // Get blocks 25,26,27. These are entirely out of range, so should return an
+            // error.
             if let Ok(blocks) = mock_peer.fetch_blocks(25..28) {
                 println!("Blocks: {:?}", blocks);
                 panic!();

@@ -49,7 +49,8 @@ pub mod encode {
 /// Serialize the given data structure.
 ///
 /// Forward mc_util_serial::serialize to bincode::serialize(..., Infinite)
-/// Serialization can fail if `T`'s implementation of `Serialize` decides to fail.
+/// Serialization can fail if `T`'s implementation of `Serialize` decides to
+/// fail.
 pub fn serialize<T: ?Sized>(value: &T) -> Result<Vec<u8>, encode::Error>
 where
     T: serde::ser::Serialize + Sized,

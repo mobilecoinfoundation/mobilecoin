@@ -117,7 +117,8 @@ pub trait PrivateKey: Debug + Sized + FromRandom {
 
 /// A dependency trait for shared secret implementations
 ///
-/// Objects which implement this can be read as bytes, but not copied or serialized.
+/// Objects which implement this can be read as bytes, but not copied or
+/// serialized.
 pub trait KexSecret: AsRef<[u8]> + Debug + Sized {}
 
 /// A marker trait for public keys to be used in key exchange

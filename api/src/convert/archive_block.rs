@@ -197,7 +197,8 @@ mod tests {
     }
 
     #[test]
-    // Attempting to convert an ArchiveBlock with invalid signature or contents should fail.
+    // Attempting to convert an ArchiveBlock with invalid signature or contents
+    // should fail.
     fn try_from_blockchain_archive_block_rejects_invalid() {
         let block_data = generate_test_blocks_data(1).pop().unwrap();
 
@@ -255,8 +256,8 @@ mod tests {
     }
 
     #[test]
-    // blockchain::ArchiveBlocks -> Vec<mc_transaction_core::BlockData> should fail if the blocks
-    // to not form a chain.
+    // blockchain::ArchiveBlocks -> Vec<mc_transaction_core::BlockData> should fail
+    // if the blocks to not form a chain.
     fn test_try_from_blockchain_archive_blocks_rejects_invalid() {
         let blocks_data = generate_test_blocks_data(10);
         let mut archive_blocks = blockchain::ArchiveBlocks::from(&blocks_data[..]);

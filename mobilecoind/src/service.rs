@@ -993,10 +993,11 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                 rpc_internal_error("transactions_manager.submit_tx_proposal", err, &self.logger)
             })?;
 
-        // Update the attempted spend block height in db. Note that we swallow the error here since
-        // our transaction did get sent to the network, and its better to have the user attempt a
-        // double spend by having stale UnspentTxOut data than having them not be aware that the
-        // transaction was submitted.
+        // Update the attempted spend block height in db. Note that we swallow the error
+        // here since our transaction did get sent to the network, and its
+        // better to have the user attempt a double spend by having stale
+        // UnspentTxOut data than having them not be aware that the transaction
+        // was submitted.
         let utxo_ids: Vec<UtxoId> = tx_proposal.utxos.iter().map(UtxoId::from).collect();
         if let Err(err) = self.mobilecoind_db.update_attempted_spend(
             &utxo_ids,
@@ -1214,8 +1215,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             })
             .collect::<Result<Vec<CompressedRistrettoPublic>, RpcStatus>>()?;
 
-        // Check the tx_public_keys in the receiver receipt, to also get the block_height. Note that
-        // if the transaction has not yet landed, the result will be a vec of LedgerDb::NotFound errors.
+        // Check the tx_public_keys in the receiver receipt, to also get the
+        // block_height. Note that if the transaction has not yet landed, the
+        // result will be a vec of LedgerDb::NotFound errors.
         let found_pubkey_indices: Vec<u64> = compressed_pubkeys
             .iter()
             .map(|compressed_tx_public_key| {
@@ -1226,8 +1228,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .filter_map(Result::ok)
             .collect();
 
-        // If we didn't find any of the tx_public_keys, then the transaction is either still pending,
-        // or the inputs were spent in another transaction and this transaction will never land.
+        // If we didn't find any of the tx_public_keys, then the transaction is either
+        // still pending, or the inputs were spent in another transaction and
+        // this transaction will never land.
         if found_pubkey_indices.is_empty() {
             // Verify that the key images are not anywhere else in the ledger.
             let key_image_in_ledger: Vec<bool> = key_images
@@ -1255,9 +1258,10 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             return Ok(response);
         }
 
-        // Verify that all block indices are the same value. If this fails, the receipt is likely
-        // malformed, because it should be impossible to construct a transaction containing output
-        // public keys that somehow end up landing in different blocks.
+        // Verify that all block indices are the same value. If this fails, the receipt
+        // is likely malformed, because it should be impossible to construct a
+        // transaction containing output public keys that somehow end up landing
+        // in different blocks.
         if found_pubkey_indices.iter().min() != found_pubkey_indices.iter().max() {
             let mut response = mc_mobilecoind_api::GetTxStatusAsSenderResponse::new();
             response.set_status(mc_mobilecoind_api::TxStatus::PublicKeysInDifferentBlocks);
@@ -1271,8 +1275,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .get_block_contents(block_index)
             .map_err(|err| rpc_internal_error("ledger_db.get_block_contents", err, &self.logger))?;
 
-        // Convert key images to a list of booleans indicating whether they were found in the
-        // block or not. All key_images from the same transaction should land in the same block.
+        // Convert key images to a list of booleans indicating whether they were found
+        // in the block or not. All key_images from the same transaction should
+        // land in the same block.
         let key_image_found: Vec<bool> = key_images
             .iter()
             .map(|key_image| block_contents.key_images.contains(&key_image))
@@ -1288,7 +1293,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             return Ok(response);
         }
 
-        // If only some key images found their way to the block, they were likely spent from another transaction.
+        // If only some key images found their way to the block, they were likely spent
+        // from another transaction.
         if key_image_found
             .iter()
             .any(|key_image_found| *key_image_found)
@@ -1389,10 +1395,12 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
                             TxOutConfirmationNumber::from(confirmation_bytes)
                         };
                         if !confirmation_number.validate(&tx_public_key, &view_private_key) {
-                            // If the confirmation number is invalid, this means that the transaction did
-                            // get added to the ledger but the party constructing the receipt failed
-                            // to prove that they created it. This prevents a third-party observer from
-                            // taking credit for someone elses payment.
+                            // If the confirmation number is invalid, this means that the
+                            // transaction did get added to the ledger
+                            // but the party constructing the receipt failed
+                            // to prove that they created it. This prevents a third-party observer
+                            // from taking credit for someone elses
+                            // payment.
                             let mut response =
                                 mc_mobilecoind_api::GetTxStatusAsReceiverResponse::new();
                             response.set_status(
@@ -2058,7 +2066,8 @@ mod test {
         assert_eq!(status.first_block, data.first_block);
         assert_eq!(status.next_block, data.next_block);
 
-        // Calling get_monitor_status for nonexistent or invalid monitor_id should return an error.
+        // Calling get_monitor_status for nonexistent or invalid monitor_id should
+        // return an error.
         mobilecoind_db.remove_monitor(&id).unwrap();
 
         let mut request = mc_mobilecoind_api::GetMonitorStatusRequest::new();
@@ -2131,8 +2140,8 @@ mod test {
             })
             .collect();
 
-        // Verify the data we got matches what we expected. This assumes knowledge about how the
-        // test ledger is constructed by the test utils.
+        // Verify the data we got matches what we expected. This assumes knowledge about
+        // how the test ledger is constructed by the test utils.
         let num_blocks = ledger_db.num_blocks().unwrap();
         let account_tx_outs: Vec<TxOut> = (0..num_blocks)
             .map(|idx| {
@@ -2341,7 +2350,8 @@ mod test {
         );
         // FIXME: Implement block signatures for mobilecoind and test
         assert_eq!(response.txos.len(), 3); // 3 recipients = 3 tx outs
-        assert_eq!(response.key_images.len(), 0); // test code does not generate any key images
+        assert_eq!(response.key_images.len(), 0); // test code does not generate
+                                                  // any key images
     }
 
     #[test_with_logger]
@@ -2362,7 +2372,8 @@ mod test {
             &mut rng,
         );
 
-        // Create receiver_tx_receipt based on the txout created in add_block_to_ledger_db
+        // Create receiver_tx_receipt based on the txout created in
+        // add_block_to_ledger_db
         let block = ledger_db
             .get_block_contents(ledger_db.num_blocks().unwrap() - 1)
             .unwrap();
@@ -2403,7 +2414,8 @@ mod test {
             );
         }
 
-        // A receipt with an extra key image should be TransactionFailureKeyImageBlockMismatch.
+        // A receipt with an extra key image should be
+        // TransactionFailureKeyImageBlockMismatch.
         {
             let mut sender_receipt = mc_mobilecoind_api::SenderTxReceipt::new();
             sender_receipt.set_key_image_list(RepeatedField::from_vec(vec![
@@ -2428,8 +2440,8 @@ mod test {
             );
         }
 
-        // A receipt with key images that are not in the ledger is pending (unknown) if its tombstone block
-        // has not been exceeded.
+        // A receipt with key images that are not in the ledger is pending (unknown) if
+        // its tombstone block has not been exceeded.
         {
             let mut sender_receipt = mc_mobilecoind_api::SenderTxReceipt::new();
             sender_receipt.set_key_image_list(RepeatedField::from_vec(vec![
@@ -2449,7 +2461,8 @@ mod test {
             assert_eq!(response.get_status(), mc_mobilecoind_api::TxStatus::Unknown);
         }
 
-        // A receipt with key images that are not in the ledger having its tombstone block exceeded.
+        // A receipt with key images that are not in the ledger having its tombstone
+        // block exceeded.
         {
             let mut sender_receipt = mc_mobilecoind_api::SenderTxReceipt::new();
             sender_receipt.set_key_image_list(RepeatedField::from_vec(vec![
@@ -2472,7 +2485,8 @@ mod test {
             );
         }
 
-        // Add another block to the ledger with different key images, to the same recipient
+        // Add another block to the ledger with different key images, to the same
+        // recipient
         add_block_to_ledger_db(
             &mut ledger_db,
             &[recipient.clone()],
@@ -2481,7 +2495,8 @@ mod test {
             &mut rng,
         );
 
-        // A receipt with all the key_images in the ledger, but in different blocks, should fail.
+        // A receipt with all the key_images in the ledger, but in different blocks,
+        // should fail.
         {
             let mut sender_receipt = mc_mobilecoind_api::SenderTxReceipt::new();
             sender_receipt.set_key_image_list(RepeatedField::from_vec(vec![
@@ -2505,7 +2520,8 @@ mod test {
             );
         }
 
-        // Create receiver_tx_receipt based on the txout created in add_block_to_ledger_db
+        // Create receiver_tx_receipt based on the txout created in
+        // add_block_to_ledger_db
         let block2 = ledger_db
             .get_block_contents(ledger_db.num_blocks().unwrap() - 1)
             .unwrap();
@@ -2546,8 +2562,8 @@ mod test {
             );
         }
 
-        // A receipt with a public key which has not landed in the ledger, but key_images which have
-        // should fail.
+        // A receipt with a public key which has not landed in the ledger, but
+        // key_images which have should fail.
         // A receiver receipt with multiple public keys in different blocks should fail
         {
             let mut sender_receipt = mc_mobilecoind_api::SenderTxReceipt::new();
@@ -2614,8 +2630,8 @@ mod test {
             );
         }
 
-        // A call with a hash thats is not in the ledger and hasn't exceeded tombstone block should
-        // return Unknown
+        // A call with a hash thats is not in the ledger and hasn't exceeded tombstone
+        // block should return Unknown
         {
             let hash = [0; 32];
 
@@ -2630,8 +2646,8 @@ mod test {
             assert_eq!(response.get_status(), mc_mobilecoind_api::TxStatus::Unknown);
         }
 
-        // A call with a hash thats is not in the ledger and has exceeded tombstone block should
-        // return TombstoneBlockExceeded
+        // A call with a hash thats is not in the ledger and has exceeded tombstone
+        // block should return TombstoneBlockExceeded
         {
             let hash = [0; 32];
 
@@ -2669,7 +2685,8 @@ mod test {
 
         add_txos_to_ledger_db(&mut ledger_db, &vec![tx_out.clone()], &mut rng);
 
-        // A request with a valid confirmation number and monitor ID should return Verified
+        // A request with a valid confirmation number and monitor ID should return
+        // Verified
         {
             let hash = tx_out.hash();
 
@@ -2692,7 +2709,8 @@ mod test {
             );
         }
 
-        // A request with an a bad confirmation number and a monitor ID should return InvalidConfirmationNumber
+        // A request with an a bad confirmation number and a monitor ID should return
+        // InvalidConfirmationNumber
         {
             let hash = tx_out.hash();
 
@@ -2721,7 +2739,8 @@ mod test {
         let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
 
         let account_key = AccountKey::random(&mut rng);
-        // Note: we skip the first block to test what happens when we try and query a block that will never get processed.
+        // Note: we skip the first block to test what happens when we try and query a
+        // block that will never get processed.
         let monitor_data = MonitorData::new(
             account_key.clone(),
             0,  // first_subaddress
@@ -2747,8 +2766,8 @@ mod test {
         // Allow the new monitor to process the ledger.
         wait_for_monitors(&mobilecoind_db, &ledger_db, &logger);
 
-        // Verify the data we got matches what we expected. This assumes knowledge about how the
-        // test ledger is constructed by the test utils.
+        // Verify the data we got matches what we expected. This assumes knowledge about
+        // how the test ledger is constructed by the test utils.
         let num_blocks = ledger_db.num_blocks().expect("failed getting num blocks");
         let account_tx_outs: Vec<TxOut> = (0..num_blocks)
             .map(|idx| {
@@ -2832,8 +2851,8 @@ mod test {
             assert_eq!(tx_out.get_address_code(), b58_code);
         }
 
-        // Add a block with a key images that spend the first two utxos and see that we get the
-        // data we expect.
+        // Add a block with a key images that spend the first two utxos and see that we
+        // get the data we expect.
         {
             let recipient = AccountKey::random(&mut rng).default_subaddress();
             add_block_to_ledger_db(
@@ -2894,7 +2913,8 @@ mod test {
             }
         }
 
-        // Query a block that will never get processed since its before the monitor's first block.
+        // Query a block that will never get processed since its before the monitor's
+        // first block.
         let mut request = mc_mobilecoind_api::GetProcessedBlockRequest::new();
         request.set_monitor_id(monitor_id.to_vec());
         request.set_block(0);
@@ -3016,8 +3036,8 @@ mod test {
 
         assert_eq!(to_exclude.len(), 10);
 
-        // The ledger contains 40 outputs. Requesting 30 and excluding 10 should return exactly the
-        // remaining 30.
+        // The ledger contains 40 outputs. Requesting 30 and excluding 10 should return
+        // exactly the remaining 30.
         let mut request = mc_mobilecoind_api::GetMixinsRequest::new();
         request.set_num_mixins(30);
         request.set_excluded(RepeatedField::from_vec(
@@ -3565,8 +3585,8 @@ mod test {
         );
         assert_eq!(
             tx_proposal.outlays[0].value,
-            // Each UTXO we have has PER_RECIPIENT_AMOUNT coins. We will be merging MAX_INPUTS of those
-            // into a single output, minus the fee.
+            // Each UTXO we have has PER_RECIPIENT_AMOUNT coins. We will be merging MAX_INPUTS of
+            // those into a single output, minus the fee.
             (DEFAULT_PER_RECIPIENT_AMOUNT * MAX_INPUTS as u64) - MINIMUM_FEE,
         );
 
@@ -3741,9 +3761,9 @@ mod test {
 
             let response = client.submit_tx(&request).unwrap();
 
-            // Get the submitted transaction - it was submitted to one of our mock peers, but we
-            // don't know to which. We enforce the invariant that only one transaction should've been
-            // submitted.
+            // Get the submitted transaction - it was submitted to one of our mock peers,
+            // but we don't know to which. We enforce the invariant that only
+            // one transaction should've been submitted.
             let mut opt_submitted_tx: Option<Tx> = None;
             for mock_peer in server_conn_manager.conns() {
                 let inner = mock_peer.read();
@@ -3807,7 +3827,9 @@ mod test {
             }
 
             assert_eq!(
-                response.get_receiver_tx_receipt_list().len() + 1, // There's a change output that is not part of the receipts
+                response.get_receiver_tx_receipt_list().len() + 1, /* There's a change output
+                                                                    * that is not part of the
+                                                                    * receipts */
                 tx.prefix.outputs.len()
             );
 
@@ -3978,9 +4000,9 @@ mod test {
 
         let response = client.send_payment(&request).unwrap();
 
-        // Get the submitted transaction - it was submitted to one of our mock peers, but we
-        // don't know to which. We enforce the invariant that only one transaction should've been
-        // submitted.
+        // Get the submitted transaction - it was submitted to one of our mock peers,
+        // but we don't know to which. We enforce the invariant that only one
+        // transaction should've been submitted.
         let mut opt_submitted_tx: Option<Tx> = None;
         for mock_peer in server_conn_manager.conns() {
             let inner = mock_peer.read();
@@ -4042,7 +4064,8 @@ mod test {
         }
 
         assert_eq!(
-            response.get_receiver_tx_receipt_list().len() + 1, // There's a change output that is not part of the receipts
+            response.get_receiver_tx_receipt_list().len() + 1, /* There's a change output that
+                                                                * is not part of the receipts */
             submitted_tx.prefix.outputs.len()
         );
 
@@ -4106,8 +4129,8 @@ mod test {
         let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(10, &vec![], &vec![], logger.clone(), &mut rng);
 
-        // Add a few utxos to our recipient, such that all of them are required to create the test
-        // transaction.
+        // Add a few utxos to our recipient, such that all of them are required to
+        // create the test transaction.
         for amount in &[10, 20, MINIMUM_FEE] {
             add_block_to_ledger_db(
                 &mut ledger_db,
@@ -4150,7 +4173,8 @@ mod test {
             },
         ];
 
-        // Call send payment without a limit on UTXOs - a single large UTXO should be selected.
+        // Call send payment without a limit on UTXOs - a single large UTXO should be
+        // selected.
         let mut request = mc_mobilecoind_api::SendPaymentRequest::new();
         request.set_sender_monitor_id(monitor_id.to_vec());
         request.set_sender_subaddress(0);
@@ -4178,8 +4202,8 @@ mod test {
             HashSet::from_iter(utxos.clone())
         );
 
-        // Try again, placing a cap at the max UTXO that can be selected. This should cause send
-        // payment to fail.
+        // Try again, placing a cap at the max UTXO that can be selected. This should
+        // cause send payment to fail.
         request.set_max_input_utxo_value(20);
         match client.send_payment(&request) {
             Ok(_) => panic!("Should've returned an error"),
@@ -4308,9 +4332,9 @@ mod test {
 
         let response = client.send_payment(&request).unwrap();
 
-        // Get the submitted transaction - it was submitted to one of our mock peers, but we
-        // don't know to which. We enforce the invariant that only one transaction should've been
-        // submitted.
+        // Get the submitted transaction - it was submitted to one of our mock peers,
+        // but we don't know to which. We enforce the invariant that only one
+        // transaction should've been submitted.
         let mut opt_submitted_tx: Option<Tx> = None;
         for mock_peer in server_conn_manager.conns() {
             let inner = mock_peer.read();
@@ -4336,8 +4360,8 @@ mod test {
             Tx::try_from(response.get_tx_proposal().get_tx()).unwrap()
         );
 
-        // Verify that the first receipient TxOut hint cannot be decrypted with the fog key, since
-        // that one was not going to a fog address.
+        // Verify that the first receipient TxOut hint cannot be decrypted with the fog
+        // key, since that one was not going to a fog address.
         let tx_out_index1 = *(response
             .get_tx_proposal()
             .get_outlay_index_to_tx_out_index()
@@ -4726,8 +4750,8 @@ mod test {
         let (mut ledger_db, mobilecoind_db, client, _server, _server_conn_manager) =
             get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
 
-        // a valid transfer code must reference a tx_public_key that appears in the ledger
-        // that is controlled by the root_entropy included in the code
+        // a valid transfer code must reference a tx_public_key that appears in the
+        // ledger that is controlled by the root_entropy included in the code
 
         let root_entropy = [3u8; 32];
 
@@ -4762,7 +4786,8 @@ mod test {
             assert!(client.create_transfer_code(&request).is_err());
         }
 
-        // A valid request should allow us to encode to b58 and back to the original data.
+        // A valid request should allow us to encode to b58 and back to the original
+        // data.
         {
             // Encode
             let mut request = mc_mobilecoind_api::CreateTransferCodeRequest::new();

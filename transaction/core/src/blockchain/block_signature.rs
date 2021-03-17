@@ -21,7 +21,8 @@ pub struct BlockSignature {
     signer: Ed25519Public,
 
     /// An approximate time in which the block was signed.
-    /// Represented as seconds of UTC time since Unix epoch 1970-01-01T00:00:00Z.
+    /// Represented as seconds of UTC time since Unix epoch
+    /// 1970-01-01T00:00:00Z.
     #[prost(uint64, tag = "3")]
     signed_at: u64,
 }
@@ -32,8 +33,9 @@ impl BlockSignature {
     /// # Arguments
     /// * `signature` - A block signature.
     /// * `signer` - The signer of the signature.
-    /// * `signed_at` - The approximate time in which the block was signed, represented at seconds
-    ///                 of UTC time since Unix epoch 1970-01-01T00:00:00Z.
+    /// * `signed_at` - The approximate time in which the block was signed,
+    ///   represented at seconds of UTC time since Unix epoch
+    ///   1970-01-01T00:00:00Z.
     pub fn new(signature: Ed25519Signature, signer: Ed25519Public, signed_at: u64) -> Self {
         Self {
             signature,
@@ -43,8 +45,9 @@ impl BlockSignature {
     }
 
     /// Create a new BlockSignature by signing a block.
-    /// Since is generally done inside an enclave, time is not available. As such, `signed_at` is
-    /// being initialized to zero. It can then be set by calling `set_signed_at`.
+    /// Since is generally done inside an enclave, time is not available. As
+    /// such, `signed_at` is being initialized to zero. It can then be set
+    /// by calling `set_signed_at`.
     pub fn from_block_and_keypair(
         block: &Block,
         keypair: &Ed25519Pair,

@@ -104,8 +104,8 @@ impl FogHint {
 
     /// ct_decrypt
     ///
-    /// Try to decrypt an encrypted payload onto this FogHint object in constant time.
-    /// Fails if decryption fails, or the magic number is wrong.
+    /// Try to decrypt an encrypted payload onto this FogHint object in constant
+    /// time. Fails if decryption fails, or the magic number is wrong.
     ///
     /// # Arguments
     /// * ingest_server_private_key
@@ -128,7 +128,8 @@ impl FogHint {
             {
                 Ok((success, plaintext)) => (Choice::from(success), plaintext),
                 Err(_) => {
-                    // An error that we don't have to be constant time with respect to, since rust Result was used
+                    // An error that we don't have to be constant time with respect to, since rust
+                    // Result was used
                     return Choice::from(0);
                 }
             };
@@ -138,7 +139,8 @@ impl FogHint {
             success &= byte.ct_eq(&MAGIC_NUMBER);
         }
 
-        // Write pubkey bytes to output if success is true, otherwise don't change output
+        // Write pubkey bytes to output if success is true, otherwise don't change
+        // output
         let mut output_bytes = output.view_pubkey.to_bytes();
         for idx in 0..output_bytes.len() {
             output_bytes[idx].conditional_assign(&plaintext[idx], success);

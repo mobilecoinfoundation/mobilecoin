@@ -20,14 +20,16 @@ use structopt::StructOpt;
 pub struct Config {
     /// Node Id
     ///
-    /// Should be specified with a PeerURI, with consensus-msg-key param provided
+    /// Should be specified with a PeerURI, with consensus-msg-key param
+    /// provided
     #[structopt(long, parse(try_from_str=parse_node_id_from_uri))]
     pub node_id: Option<NodeID>,
 
     /// Quorum set.
     ///
     /// The quorum set is represented in JSON. For example:
-    /// {"threshold":1,"members":[{"type":"Node","args":"node2.test.mobilecoin.com:8443"},{"type":"Node","args":"node3.test.mobilecoin.com:4843"}]}
+    /// {"threshold":1,"members":[{"type":"Node","args":"node2.test.mobilecoin.
+    /// com:8443"},{"type":"Node","args":"node3.test.mobilecoin.com:4843"}]}
     #[structopt(long, parse(try_from_str=parse_quorum_set_from_json))]
     pub quorum_set: Option<QuorumSet>,
 

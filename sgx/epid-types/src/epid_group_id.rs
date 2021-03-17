@@ -29,8 +29,8 @@ pub const EPID_GROUP_ID_SIZE: usize = 4;
 #[repr(transparent)]
 pub struct EpidGroupId(sgx_epid_group_id_t);
 
-// We can't just use impl_ffi_wrapper because in spite of the fact it's declared as a [u8; 4], it is
-// string-rendered as an LE u32. Yes, this is dumb.
+// We can't just use impl_ffi_wrapper because in spite of the fact it's declared
+// as a [u8; 4], it is string-rendered as an LE u32. Yes, this is dumb.
 impl_ffi_wrapper_base! {
     EpidGroupId, sgx_epid_group_id_t;
 }

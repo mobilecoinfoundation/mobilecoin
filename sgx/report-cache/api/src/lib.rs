@@ -13,7 +13,8 @@ use mc_attest_enclave_api::Error as AttestEnclaveError;
 use mc_util_serial::{decode::Error as RmpDecodeError, encode::Error as RmpEncodeError};
 use serde::{Deserialize, Serialize};
 
-/// An enumeration of errors which can be returned by the methods of the `ReportableEnclave` trait.
+/// An enumeration of errors which can be returned by the methods of the
+/// `ReportableEnclave` trait.
 #[derive(Debug, Display, Deserialize, Serialize)]
 pub enum Error {
     /// Attest enclave error: {0}
@@ -53,8 +54,8 @@ impl From<SgxError> for Error {
 /// A type alias for a ReportableEnclave result.
 pub type Result<T> = StdResult<T, Error>;
 
-/// A trait that report-caching enclaves need to implement in order to benefit from the
-/// functionality provided in `mc-sgx-report-cache-untrusted`.
+/// A trait that report-caching enclaves need to implement in order to benefit
+/// from the functionality provided in `mc-sgx-report-cache-untrusted`.
 pub trait ReportableEnclave {
     /// Retrieve a new report for this enclave, targetted for the given
     /// quoting enclave. Untrusted code should call this on startup as

@@ -1,21 +1,26 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-//! Validates that a transaction or list of transactions are safe to append to the ledger.
+//! Validates that a transaction or list of transactions are safe to append to
+//! the ledger.
 //!
 //! Validation is broken into two parts:
-//! 1) "Well formed"-ness - A transaction is considered "well formed" if all the data in it that is
-//!    not affected by future changes to the ledger is correct. This includes checks like
-//!    inputs/outputs counts, range proofs, signature validation, membership proofs, etc.
-//!    A transaction that is well-formed remains well-formed if additional transactions are
-//!    appended to the ledger. However, a transaction could transition from not well-formed to well-formed:
-//!    for example, the transaction may include inputs that are not yet in the local ledger because
-//!    the local ledger is out of sync with the consensus ledger.
+//! 1) "Well formed"-ness - A transaction is considered "well formed" if all the
+//! data in it that is    not affected by future changes to the ledger is
+//! correct. This includes checks like    inputs/outputs counts, range proofs,
+//! signature validation, membership proofs, etc.    A transaction that is
+//! well-formed remains well-formed if additional transactions are    appended
+//! to the ledger. However, a transaction could transition from not well-formed
+//! to well-formed:    for example, the transaction may include inputs that are
+//! not yet in the local ledger because    the local ledger is out of sync with
+//! the consensus ledger.
 //!
-//! 2) "Is valid [to add to the ledger]" - This checks whether a **single** transaction can be safely
-//!  appended to a ledger in it's current state. A valid transaction must also be well-formed.
+//! 2) "Is valid [to add to the ledger]" - This checks whether a **single**
+//! transaction can be safely  appended to a ledger in it's current state. A
+//! valid transaction must also be well-formed.
 //!
-//! This definition differs from what the `mc_transaction_core::validation` module - the check provided by
-//! it is actually the "Is well formed" check, and might be renamed in the future to match this.
+//! This definition differs from what the `mc_transaction_core::validation`
+//! module - the check provided by it is actually the "Is well formed" check,
+//! and might be renamed in the future to match this.
 
 use crate::tx_manager::UntrustedInterfaces as TxManagerUntrustedInterfaces;
 use mc_consensus_enclave::{TxContext, WellFormedTxContext};
@@ -42,18 +47,21 @@ impl<L: Ledger + Sync> DefaultTxManagerUntrustedInterfaces<L> {
 impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntrustedInterfaces<L> {
     /// Performs **only** the non-enclave part of the well-formed check.
     ///
-    /// Returns the local ledger's block index and membership proofs for each highest index.
+    /// Returns the local ledger's block index and membership proofs for each
+    /// highest index.
     fn well_formed_check(
         &self,
         tx_context: &TxContext,
     ) -> TransactionValidationResult<(u64, Vec<TxOutMembershipProof>)> {
-        // The transaction's membership proofs must reference data contained in the ledger.
-        // This check could fail if the local ledger is behind the network's consensus ledger.
+        // The transaction's membership proofs must reference data contained in the
+        // ledger. This check could fail if the local ledger is behind the
+        // network's consensus ledger.
         let membership_proofs =
             self.get_tx_out_proof_of_memberships(&tx_context.highest_indices)?;
 
-        // Note: It is possible that the proofs above are obtained for a different block index as a
-        // new block could be written between getting the proofs and the call to num_blocks().
+        // Note: It is possible that the proofs above are obtained for a different block
+        // index as a new block could be written between getting the proofs and
+        // the call to num_blocks().
         let num_blocks = self
             .ledger
             .num_blocks()
@@ -69,7 +77,8 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
             .num_blocks()
             .map_err(|e| TransactionValidationError::Ledger(e.to_string()))?;
 
-        // The transaction must not have expired, and the tombstone block must not be too far in the future.
+        // The transaction must not have expired, and the tombstone block must not be
+        // too far in the future.
         validate_tombstone(current_block_index, context.tombstone_block())?;
 
         // The `key_images` must not have already been spent.
@@ -90,7 +99,8 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
                 .unwrap_or(true)
         });
         if contains_existing_public_key {
-            // At least one public key is already in the ledger, or the ledger returned an error.
+            // At least one public key is already in the ledger, or the ledger returned an
+            // error.
             return Err(TransactionValidationError::ContainsExistingOutputPublicKey);
         }
 
@@ -99,13 +109,16 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
     }
 
     /// Combines a set of "candidate values" into a "composite value".
-    /// This assumes all values are well-formed and valid w.r.t the current ledger.
+    /// This assumes all values are well-formed and valid w.r.t the current
+    /// ledger.
     ///
     /// # Arguments
-    /// * `tx_contexts` - "Candidate" transactions. Each must be well-formed and valid.
+    /// * `tx_contexts` - "Candidate" transactions. Each must be well-formed and
+    ///   valid.
     /// * `max_elements` - Maximum number of elements to return.
     ///
-    /// Returns a bounded, deterministically-ordered list of transactions that are safe to append to the ledger.
+    /// Returns a bounded, deterministically-ordered list of transactions that
+    /// are safe to append to the ledger.
     fn combine(
         &self,
         tx_contexts: &[Arc<WellFormedTxContext>],
@@ -115,7 +128,8 @@ impl<L: Ledger + Sync> TxManagerUntrustedInterfaces for DefaultTxManagerUntruste
         let mut candidates: Vec<_> = tx_contexts.to_vec();
         candidates.sort();
 
-        // Allow transactions that do not cause duplicate key images or output public keys.
+        // Allow transactions that do not cause duplicate key images or output public
+        // keys.
         let mut allowed_hashes = Vec::new();
         let mut used_key_images: HashSet<&KeyImage> = HashSet::default();
         let mut used_output_public_keys: HashSet<&CompressedRistrettoPublic> = HashSet::default();
@@ -205,8 +219,9 @@ pub mod well_formed_tests {
     }
 
     #[test]
-    /// `is_well_formed` should reject a transaction that contains a proof-of-membership with
-    /// highest index outside the ledger, i.e. a transaction "from the future".
+    /// `is_well_formed` should reject a transaction that contains a
+    /// proof-of-membership with highest index outside the ledger, i.e. a
+    /// transaction "from the future".
     fn is_well_formed_rejects_excessive_highest_index() {
         // The ledger cannot provide membership proofs for highest indices.
         let mut ledger = MockLedger::new();
@@ -217,7 +232,8 @@ pub mod well_formed_tests {
 
         let untrusted = DefaultTxManagerUntrustedInterfaces::new(ledger);
 
-        // This tx_context contains highest_indices that exceed the number of TxOuts in the ledger.
+        // This tx_context contains highest_indices that exceed the number of TxOuts in
+        // the ledger.
         let mut tx_context = TxContext::default();
         tx_context.highest_indices = vec![99, 10002, 445];
 
@@ -331,7 +347,8 @@ mod is_valid_tests {
     }
 
     #[test]
-    /// `is_valid` should reject a transaction if tombstone_block is too far in the future.
+    /// `is_valid` should reject a transaction if tombstone_block is too far in
+    /// the future.
     fn is_valid_rejects_tombstone_too_far() {
         // Number of blocks in the local ledger.
         let num_blocks = 53;
@@ -409,7 +426,8 @@ mod is_valid_tests {
     }
 
     #[test]
-    /// `is_valid` should reject a transaction with an already used output public key.
+    /// `is_valid` should reject a transaction with an already used output
+    /// public key.
     fn is_valid_rejects_non_unique_output_public_key() {
         // Number of blocks in the local ledger.
         let num_blocks = 53;
@@ -498,15 +516,16 @@ mod combine_tests {
     }
 
     #[test]
-    // "Combining" a singleton set should return a vec containing the single element.
+    // "Combining" a singleton set should return a vec containing the single
+    // element.
     fn combine_single_transaction() {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
 
         let alice = AccountKey::random(&mut rng);
         let bob = AccountKey::random(&mut rng);
 
-        // Step 1: create a TxOut and the keys for its enclosing transaction. This TxOut will be
-        // used as the input for a transaction used in the test.
+        // Step 1: create a TxOut and the keys for its enclosing transaction. This TxOut
+        // will be used as the input for a transaction used in the test.
 
         // The transaction secret key r and its public key R.
         let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
@@ -521,7 +540,8 @@ mod combine_tests {
 
         let tx_public_key_for_txo = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
 
-        // Step 2: Alice creates a transaction that sends the full value of `tx_out` to Bob.
+        // Step 2: Alice creates a transaction that sends the full value of `tx_out` to
+        // Bob.
 
         // Create InputCredentials to spend the TxOut.
         let onetime_private_key = recover_onetime_private_key(
@@ -558,7 +578,8 @@ mod combine_tests {
         let tx = transaction_builder.build(&mut rng).unwrap();
         let client_tx = WellFormedTxContext::from(&tx);
 
-        // "Combining" a singleton set should return a vec containing the single element.
+        // "Combining" a singleton set should return a vec containing the single
+        // element.
         let combined_transactions = combine(vec![client_tx], 100);
         assert_eq!(combined_transactions.len(), 1);
     }
@@ -574,8 +595,8 @@ mod combine_tests {
 
         for _i in 0..10 {
             let client_tx: WellFormedTxContext = {
-                // Step 1: create a TxOut and the keys for its enclosing transaction. This TxOut will be
-                // used as the input for a transaction used in the test.
+                // Step 1: create a TxOut and the keys for its enclosing transaction. This TxOut
+                // will be used as the input for a transaction used in the test.
 
                 // The transaction keys.
                 let tx_secret_key_for_txo = RistrettoPrivate::from_random(&mut rng);
@@ -590,7 +611,8 @@ mod combine_tests {
 
                 let tx_public_key_for_txo = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
 
-                // Step 2: Create a transaction that sends the full value of `tx_out` to `recipient_account`.
+                // Step 2: Create a transaction that sends the full value of `tx_out` to
+                // `recipient_account`.
 
                 let mut transaction_builder = TransactionBuilder::new(MockFogResolver::default());
 
@@ -639,7 +661,8 @@ mod combine_tests {
     }
 
     #[test]
-    // `combine` should omit transactions that would cause a key image to be used twice.
+    // `combine` should omit transactions that would cause a key image to be used
+    // twice.
     fn combine_reject_reused_key_images() {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
 
@@ -725,7 +748,8 @@ mod combine_tests {
             WellFormedTxContext::from(&tx)
         };
 
-        // This transaction spends a different TxOut, unrelated to `first_client_tx` and `second_client_tx`.
+        // This transaction spends a different TxOut, unrelated to `first_client_tx` and
+        // `second_client_tx`.
         let third_client_tx: WellFormedTxContext = {
             let recipient_account = AccountKey::random(&mut rng);
 
@@ -740,7 +764,8 @@ mod combine_tests {
             .unwrap();
             let tx_public_key_for_txo = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
 
-            // Step 2: Create a transaction that sends the full value of `tx_out` to `recipient_account`.
+            // Step 2: Create a transaction that sends the full value of `tx_out` to
+            // `recipient_account`.
 
             // Create InputCredentials to spend the TxOut.
             let onetime_private_key = recover_onetime_private_key(
@@ -782,13 +807,15 @@ mod combine_tests {
         let transaction_set = vec![first_client_tx, second_client_tx, third_client_tx.clone()];
 
         let combined_transactions = combine(transaction_set, 10);
-        // `combine` should only allow one of the transactions that attempts to use the same key image.
+        // `combine` should only allow one of the transactions that attempts to use the
+        // same key image.
         assert_eq!(combined_transactions.len(), 2);
         assert!(combined_transactions.contains(third_client_tx.tx_hash()));
     }
 
     #[test]
-    // `combine` should omit transactions that would cause an output public key to appear twice.
+    // `combine` should omit transactions that would cause an output public key to
+    // appear twice.
     fn combine_reject_duplicate_output_public_key() {
         let mut rng = Hc128Rng::from_seed([1u8; 32]);
 
@@ -856,8 +883,8 @@ mod combine_tests {
             WellFormedTxContext::from(&tx)
         };
 
-        // Create another transaction that attempts to spend `tx_out2` but has the same output
-        // public key.
+        // Create another transaction that attempts to spend `tx_out2` but has the same
+        // output public key.
         let second_client_tx: WellFormedTxContext = {
             let recipient_account = AccountKey::random(&mut rng);
             let ring: Vec<TxOut> = vec![tx_out2];
@@ -890,7 +917,8 @@ mod combine_tests {
             WellFormedTxContext::from(&tx)
         };
 
-        // This transaction spends a different TxOut, unrelated to `first_client_tx` and `second_client_tx`.
+        // This transaction spends a different TxOut, unrelated to `first_client_tx` and
+        // `second_client_tx`.
         let third_client_tx: WellFormedTxContext = {
             let recipient_account = AccountKey::random(&mut rng);
 
@@ -905,7 +933,8 @@ mod combine_tests {
             .unwrap();
             let tx_public_key_for_txo = RistrettoPublic::try_from(&tx_out.public_key).unwrap();
 
-            // Step 2: Create a transaction that sends the full value of `tx_out` to `recipient_account`.
+            // Step 2: Create a transaction that sends the full value of `tx_out` to
+            // `recipient_account`.
 
             // Create InputCredentials to spend the TxOut.
             let onetime_private_key = recover_onetime_private_key(
@@ -947,8 +976,8 @@ mod combine_tests {
         let transaction_set = vec![first_client_tx, second_client_tx, third_client_tx.clone()];
 
         let combined_transactions = combine(transaction_set, 10);
-        // `combine` should only allow one of the transactions that attempts to use the same output
-        // public key.
+        // `combine` should only allow one of the transactions that attempts to use the
+        // same output public key.
         assert_eq!(combined_transactions.len(), 2);
         assert!(combined_transactions.contains(third_client_tx.tx_hash()));
     }

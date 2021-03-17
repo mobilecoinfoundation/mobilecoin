@@ -14,7 +14,8 @@ use std::{
     fmt::{Debug, Display},
 };
 
-/// A trait that lets us determine if an error relates to authentication failure.
+/// A trait that lets us determine if an error relates to authentication
+/// failure.
 pub trait AuthenticationError {
     fn is_unauthenticated(&self) -> bool;
 }
@@ -74,8 +75,8 @@ impl CredentialsProvider for HardcodedCredentialsProvider {
     }
 }
 
-/// A credentials provider that uses an underlying TokenBasicCredentialsGenerator for generating
-/// credentials.
+/// A credentials provider that uses an underlying
+/// TokenBasicCredentialsGenerator for generating credentials.
 pub struct TokenBasicCredentialsProvider<TP: TimeProvider> {
     username: String,
     generator: TokenBasicCredentialsGenerator<TP>,

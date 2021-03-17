@@ -60,8 +60,8 @@ use zeroize::Zeroize;
 //        OBJECT IDENTIFIER(06), Length = 03  -- T,L,V
 //           curveEd25519(1.3.101.112 = 2B 65 70)
 //     BIT STRING(03), Length = 41            -- T,L
-//        paddingBits = 00 (0x21 == 33, first byte is the number of padding bits to fill an octet)
-//        actualKeyBitsGoesHere
+//        paddingBits = 00 (0x21 == 33, first byte is the number of padding bits
+// to fill an octet)        actualKeyBitsGoesHere
 const ED25519_SIG_DER_PREFIX: [u8; 12] = [
     0x30, 0x4A, 0x30, 0x05, 0x06, 0x03, 0x2B, 0x65, 0x70, 0x03, 0x41, 0x00,
 ];
@@ -141,8 +141,8 @@ derive_prost_message_from_repr_bytes!(Ed25519Public);
 //        OBJECT IDENTIFIER(06), Length = 03  -- T,L,V
 //           curveEd25519(1.3.101.112 = 2B 65 70)
 //     BIT STRING(03), Length = 21            -- T,L
-//        paddingBits = 00 (0x21 == 33, first byte is the number of padding bits to fill an octet)
-//        actualKeyBitsGoesHere
+//        paddingBits = 00 (0x21 == 33, first byte is the number of padding bits
+// to fill an octet)        actualKeyBitsGoesHere
 const ED25519_SPKI_DER_PREFIX: [u8; 12] = [
     0x30, 0x2A, 0x30, 0x05, 0x06, 0x03, 0x2B, 0x65, 0x70, 0x03, 0x21, 0x00,
 ];
@@ -486,8 +486,8 @@ mod ed25519_tests {
             .expect("Failed to validate digest signature");
     }
 
-    // Test that our (typenum) constant for the size of Ed25519 matches the published constant
-    // in the dalek interface.
+    // Test that our (typenum) constant for the size of Ed25519 matches the
+    // published constant in the dalek interface.
     #[test]
     fn test_key_len() {
         assert_eq!(
@@ -504,20 +504,24 @@ mod ed25519_tests {
     // Validate ED25519_*_PREFIX against openssl implementation
     ////
     //
-    // In review, Isis suggested that the 12 byte pattern ED25519_SIG_DER_PREFIX should be validated by
+    // In review, Isis suggested that the 12 byte pattern ED25519_SIG_DER_PREFIX
+    // should be validated by
     //
-    // openssl genpkey -algorithm ed25519 -outform DER -out /tmp/openssl-ed25519-keypair.der
-    // openssl ec -in /tmp/openssl-ed25519-keypair.der -pubout -outform DER -out /tmp/openssl-ed25519-pubkey.der
+    // openssl genpkey -algorithm ed25519 -outform DER -out
+    // /tmp/openssl-ed25519-keypair.der openssl ec -in
+    // /tmp/openssl-ed25519-keypair.der -pubout -outform DER -out
+    // /tmp/openssl-ed25519-pubkey.der
     //
     // and then inspection of final pubkey.der file
     //
     // I couldn't get this to work with openssl version OpenSSL 1.1.1b  26 Feb 2019,
     //
-    // I tried some variations of this but in the end James and I determined that this isn't expected to work
-    // exactly because openssl produces der representations of public and private keys but not
-    // a detached signature.
+    // I tried some variations of this but in the end James and I determined that
+    // this isn't expected to work exactly because openssl produces der
+    // representations of public and private keys but not a detached signature.
     //
-    // So we're skipping validation of ED25519_SIG_DER_PREFIX, but we're validating the others
+    // So we're skipping validation of ED25519_SIG_DER_PREFIX, but we're validating
+    // the others
 
     extern crate std;
     use semver::{Version, VersionReq};
@@ -554,7 +558,8 @@ mod ed25519_tests {
         assert!(ver_req.matches(&ver), "Version of openssl should be {}, install a better one and put it in path (or run in docker)", ver_req);
     }
 
-    // This test is only run in nightly, because it has a dependency on host version of openssl
+    // This test is only run in nightly, because it has a dependency on host version
+    // of openssl
     #[test]
     #[ignore]
     fn validate_ed25519_priv_der_prefix() {
@@ -591,7 +596,8 @@ mod ed25519_tests {
         );
     }
 
-    // This test is only run in nightly, because it has a dependency on host version of openssl
+    // This test is only run in nightly, because it has a dependency on host version
+    // of openssl
     #[test]
     #[ignore]
     fn validate_ed25519_pub_der_prefix() {

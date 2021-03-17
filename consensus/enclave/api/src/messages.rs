@@ -12,7 +12,8 @@ use mc_attest_enclave_api::{
 use mc_transaction_core::{tx::TxOutMembershipProof, Block};
 use serde::{Deserialize, Serialize};
 
-/// An enumeration of API calls and their arguments for use across serialization boundaries.
+/// An enumeration of API calls and their arguments for use across serialization
+/// boundaries.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum EnclaveCall {
     /// The [ConsensusEnclave::enclave_init()] method.
@@ -77,8 +78,10 @@ pub enum EnclaveCall {
 
     /// The [ConsensusEnclave::verify_ias_report()] method.
     ///
-    /// * Verifies the signed report from IAS matches the previously received quote,
-    /// * Caches the signed report. This cached report may be overwritten by later calls.
+    /// * Verifies the signed report from IAS matches the previously received
+    ///   quote,
+    /// * Caches the signed report. This cached report may be overwritten by
+    ///   later calls.
     VerifyReport(VerificationReport),
 
     /// The [ConsensusEnclave::get_ias_report()] method.
@@ -88,7 +91,8 @@ pub enum EnclaveCall {
 
     /// The [ConsensusEnclave::client_tx_propose()] method.
     ///
-    /// Start a new transaction proposal given the encrypted message from a client.
+    /// Start a new transaction proposal given the encrypted message from a
+    /// client.
     ClientTxPropose(EnclaveMessage<ClientSession>),
 
     /// The [ConsensusEnclave::client_discard_message()] method.
@@ -98,12 +102,14 @@ pub enum EnclaveCall {
 
     /// The [ConsensusEnclave::client_tx_propose()] method.
     ///
-    /// Start a new transaction proposal given the encrypted message from a peer.
+    /// Start a new transaction proposal given the encrypted message from a
+    /// peer.
     PeerTxPropose(EnclaveMessage<PeerSession>),
 
     /// The [ConsensusEnclave::tx_is_well_formed()] method.
     ///
-    /// Provide the missing proofs required to check if a given sealed transaction is well-formed.
+    /// Provide the missing proofs required to check if a given sealed
+    /// transaction is well-formed.
     TxIsWellFormed(LocallyEncryptedTx, u64, Vec<TxOutMembershipProof>),
 
     /// The [ConsensusEnclave::txs_for_peer()] method.
@@ -113,8 +119,8 @@ pub enum EnclaveCall {
 
     /// The [ConsensusEnclave::form_block()] method.
     ///
-    /// Converts a list of well-formed, encrypted txs + proofs into a block, block contents (key
-    /// images + tx outs) and a signature.
+    /// Converts a list of well-formed, encrypted txs + proofs into a block,
+    /// block contents (key images + tx outs) and a signature.
     FormBlock(
         Block,
         Vec<(WellFormedEncryptedTx, Vec<TxOutMembershipProof>)>,

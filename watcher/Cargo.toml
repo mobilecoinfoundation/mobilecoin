@@ -31,7 +31,7 @@ mc-util-serial = { path = "../util/serial" }
 mc-util-uri = { path = "../util/uri" }
 mc-watcher-api = { path = "api" }
 
-displaydoc = { version = "0.1.7", default-features = false }
+displaydoc = { version = "0.2", default-features = false }
 grpcio = "0.6.0"
 hex = "0.4"
 lmdb-rkv = "0.14.0"

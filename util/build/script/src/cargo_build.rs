@@ -24,7 +24,8 @@ use std::{
 };
 use url::Url;
 
-/// A helper method to clear and/or inject new values into a command's environment
+/// A helper method to clear and/or inject new values into a command's
+/// environment
 fn str_env(command: &mut Command, clean_env: bool, value: Option<&impl AsRef<OsStr>>, env: &str) {
     if clean_env || value.is_some() {
         command.env_remove(env);
@@ -35,8 +36,8 @@ fn str_env(command: &mut Command, clean_env: bool, value: Option<&impl AsRef<OsS
     }
 }
 
-/// A helper method to clear and/or inject a separated array of strings into the given
-/// command's environment
+/// A helper method to clear and/or inject a separated array of strings into the
+/// given command's environment
 fn strv_env(command: &mut Command, clean_env: bool, values: &[String], env: &str, sep: &str) {
     if clean_env || !values.is_empty() {
         command.env_remove(env);
@@ -50,8 +51,8 @@ fn strv_env(command: &mut Command, clean_env: bool, values: &[String], env: &str
     }
 }
 
-/// A helper method to clear and/or inject an optional boolean value as a "0" or "1" into the
-/// given command's environment
+/// A helper method to clear and/or inject an optional boolean value as a "0" or
+/// "1" into the given command's environment
 fn onezero_env(command: &mut Command, clean_env: bool, value: Option<bool>, env: &str) {
     if clean_env || value.is_some() {
         command.env_remove(env);
@@ -63,8 +64,8 @@ fn onezero_env(command: &mut Command, clean_env: bool, value: Option<bool>, env:
     }
 }
 
-/// A helper method to clear and/or injected an optional duration value as seconds into the
-/// given command's environment
+/// A helper method to clear and/or injected an optional duration value as
+/// seconds into the given command's environment
 fn duration_env(command: &mut Command, clean_env: bool, value: Option<&Duration>, env: &str) {
     if clean_env || value.is_some() {
         command.env_remove(env);
@@ -75,8 +76,8 @@ fn duration_env(command: &mut Command, clean_env: bool, value: Option<&Duration>
     }
 }
 
-/// A helper method to clear and/or injected an optional integer value into the given command's
-/// environment
+/// A helper method to clear and/or injected an optional integer value into the
+/// given command's environment
 fn u64_env(command: &mut Command, clean_env: bool, value: Option<&u64>, env: &str) {
     if clean_env || value.is_some() {
         command.env_remove(env);
@@ -135,8 +136,8 @@ pub struct CargoBuilder {
 impl CargoBuilder {
     /// Construct a new builder instance to run cargo in the given directory.
     ///
-    /// If clean_env is set, cargo configuration variables will not be passed through from the
-    /// command.
+    /// If clean_env is set, cargo configuration variables will not be passed
+    /// through from the command.
     pub fn new(env: &Environment, working_dir: &Path, clean_env: bool) -> Self {
         let cargo_path = env.cargo().to_owned();
         let profile = env.profile().to_owned();

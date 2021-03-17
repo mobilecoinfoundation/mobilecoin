@@ -11,5 +11,5 @@ mc-util-build-script = { path = "../script" }
 
 cargo-emit = "0.1.1"
 cc = "1.0"
-displaydoc = { version = "0.1.7", default-features = false }
+displaydoc = { version = "0.2", default-features = false }
 pkg-config = "0.3"

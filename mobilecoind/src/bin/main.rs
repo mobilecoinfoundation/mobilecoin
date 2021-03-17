@@ -171,7 +171,8 @@ fn create_or_open_ledger_db(
         }
     }
 
-    // Ledger doesn't exist, or is empty. Copy a bootstrapped ledger or try and get it from the network.
+    // Ledger doesn't exist, or is empty. Copy a bootstrapped ledger or try and get
+    // it from the network.
     let ledger_db_file = Path::new(&config.ledger_db).join("data.mdb");
     match &config.ledger_db_bootstrap {
         Some(ledger_db_bootstrap) => {
@@ -182,8 +183,8 @@ fn create_or_open_ledger_db(
                 ledger_db_bootstrap
             );
 
-            // Try and create directory in case it doesn't exist. We need it to exist before we
-            // can copy the data.mdb file.
+            // Try and create directory in case it doesn't exist. We need it to exist before
+            // we can copy the data.mdb file.
             if !Path::new(&config.ledger_db).exists() {
                 std::fs::create_dir_all(config.ledger_db.clone())
                     .unwrap_or_else(|_| panic!("Failed creating directory {:?}", config.ledger_db));

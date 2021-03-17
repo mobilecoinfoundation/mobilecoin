@@ -31,21 +31,21 @@ use std::{
 /// Number of messages to keep track of.
 const HISTORY_SIZE: usize = 10000;
 
-/// `ThreadedBroadcaster` is used to broadcast consensus messages and transactions to a list of peers.
-/// It keeps track of the last `HISTORY_SIZE` messages handed to it,
-/// preventing duplicate messages from being broadcasted.
-/// It can be used by `consensus_service` to deliver outgoing messages to the local node's peers,
-/// as well as to relay messages received from peers to other peers.
-/// A thread is created per each peer to handle message delivery. This means a non-responsive
-/// peer does not slow message delivery to other peers, and does not block the caller of
-/// `broadcast_consensus_msg`.
+/// `ThreadedBroadcaster` is used to broadcast consensus messages and
+/// transactions to a list of peers. It keeps track of the last `HISTORY_SIZE`
+/// messages handed to it, preventing duplicate messages from being broadcasted.
+/// It can be used by `consensus_service` to deliver outgoing messages to the
+/// local node's peers, as well as to relay messages received from peers to
+/// other peers. A thread is created per each peer to handle message delivery.
+/// This means a non-responsive peer does not slow message delivery to other
+/// peers, and does not block the caller of `broadcast_consensus_msg`.
 pub struct ThreadedBroadcaster<RP: RetryPolicy = FibonacciRetryPolicy> {
     /// List of peers to communicate with.
     peer_threads: Vec<PeerThread>,
 
     /// Hashes of messages we've already processed.
-    /// (We store hashes to reduce memory footprint - we don't actually care about the message's
-    /// contents)
+    /// (We store hashes to reduce memory footprint - we don't actually care
+    /// about the message's contents)
     seen_msg_hashes: LruCache<Hash, ()>,
 
     /// Hashes of transactions we've already broadcasted.
@@ -103,15 +103,18 @@ impl<RP: RetryPolicy> ThreadedBroadcaster<RP> {
     ///
     /// # Arguments
     ///
-    /// * `origin_node` - The node the transaction was originally submitted to by a client.
+    /// * `origin_node` - The node the transaction was originally submitted to
+    ///   by a client.
     ///
-    /// * `from_node` - The node the transaction was received from. This allows us to not echo the
-    /// message back to the node that handed it to us. Note that due to message relaying, this can
-    /// be a different node than the one that created the message (`origin_node`).
+    /// * `from_node` - The node the transaction was received from. This allows
+    ///   us to not echo the
+    /// message back to the node that handed it to us. Note that due to message
+    /// relaying, this can be a different node than the one that created the
+    /// message (`origin_node`).
     ///
-    /// * `msgs` - A map of peer id -> message to broadcast. We need a map since messages are
+    /// * `msgs` - A map of peer id -> message to broadcast. We need a map since
+    ///   messages are
     /// encrypted for each peer using a peer-specific session key.
-    ///
     pub fn broadcast_propose_tx_msg(
         &mut self,
         tx_hash: &TxHash,
@@ -179,9 +182,10 @@ impl<RP: RetryPolicy> Broadcast for ThreadedBroadcaster<RP> {
     ///
     /// # Arguments
     /// * `msg` - The message to be broadcast.
-    /// * `received_from` - The peer the message was received from. This allows us to not echo the
-    ///     message back to the peer that handed it to us. Note that due to message relaying, this can
-    ///     be a different peer than the one that created the message.
+    /// * `received_from` - The peer the message was received from. This allows
+    ///   us to not echo the message back to the peer that handed it to us. Note
+    ///   that due to message relaying, this can be a different peer than the
+    ///   one that created the message.
     fn broadcast_consensus_msg(&mut self, msg: &ConsensusMsg, received_from: &ResponderId) {
         let msg_hash = msg.digest32::<MerlinTranscript>(b"broadcast");
 

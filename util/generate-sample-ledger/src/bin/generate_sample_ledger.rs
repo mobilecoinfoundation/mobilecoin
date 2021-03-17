@@ -18,7 +18,8 @@ struct Config {
     #[structopt(long = "key-images", short = "k", default_value = "0")]
     pub num_key_images: usize,
 
-    // Seed to use when generating blocks (e.g. 1234567812345678123456781234567812345678123456781234567812345678).
+    // Seed to use when generating blocks (e.g.
+    // 1234567812345678123456781234567812345678123456781234567812345678).
     #[structopt(long = "seed", short = "s", parse(try_from_str=hex::FromHex::from_hex))]
     pub seed: Option<[u8; 32]>,
 

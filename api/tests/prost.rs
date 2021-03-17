@@ -1,4 +1,5 @@
-//! Tests that prost-versions of structures round-trip with the versions generated from external.proto
+//! Tests that prost-versions of structures round-trip with the versions
+//! generated from external.proto
 
 use mc_account_keys::{AccountKey, PublicAddress, RootIdentity, ViewKey};
 use mc_api::external;

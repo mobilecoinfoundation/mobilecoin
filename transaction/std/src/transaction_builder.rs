@@ -32,13 +32,15 @@ pub struct TransactionBuilder<FPR: FogPubkeyResolver> {
     input_credentials: Vec<InputCredentials>,
     /// The outputs created by the transaction, and associated shared secrets
     outputs_and_shared_secrets: Vec<(TxOut, RistrettoPublic)>,
-    /// The tombstone_block value, a block index after which the transaction expires.
+    /// The tombstone_block value, a block index after which the transaction
+    /// expires.
     tombstone_block: u64,
     /// The fee paid in connection to this transaction
     pub fee: u64,
     /// The source of validated fog pubkeys used for this transaction
     fog_resolver: FPR,
-    /// The limit on the tombstone block value imposed pubkey_expiry values used so far
+    /// The limit on the tombstone block value imposed pubkey_expiry values used
+    /// so far
     fog_tombstone_block_limit: u64,
 }
 
@@ -46,7 +48,8 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     /// Initializes a new TransactionBuilder.
     ///
     /// # Arguments
-    /// * `fog_resolver` - Source of validated fog keys to use with this transaction
+    /// * `fog_resolver` - Source of validated fog keys to use with this
+    ///   transaction
     pub fn new(fog_resolver: FPR) -> Self {
         TransactionBuilder {
             input_credentials: Vec::new(),
@@ -61,7 +64,8 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     /// Add an Input to the transaction.
     ///
     /// # Arguments
-    /// * `input_credentials` - Credentials required to construct a ring signature for an input.
+    /// * `input_credentials` - Credentials required to construct a ring
+    ///   signature for an input.
     pub fn add_input(&mut self, input_credentials: InputCredentials) {
         self.input_credentials.push(input_credentials);
     }
@@ -81,13 +85,16 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         self.add_output_with_fog_hint_address(value, recipient, recipient, rng)
     }
 
-    /// Add an output to the transaction, using `fog_hint_address` to construct the fog hint.
+    /// Add an output to the transaction, using `fog_hint_address` to construct
+    /// the fog hint.
     ///
-    /// Caution: This method should not be used without fully understanding the implications.
+    /// Caution: This method should not be used without fully understanding the
+    /// implications.
     ///
-    /// Receiving a `TxOut` addressed to a different recipient than what's contained in the
-    /// fog hint is normally considered to be a violation of convention and is likely to be filtered
-    /// out silently by the client, except in special circumstances where the recipient is expressly
+    /// Receiving a `TxOut` addressed to a different recipient than what's
+    /// contained in the fog hint is normally considered to be a violation
+    /// of convention and is likely to be filtered out silently by the
+    /// client, except in special circumstances where the recipient is expressly
     /// expecting it.
     ///
     /// # Arguments
@@ -161,8 +168,8 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
         }
 
         // Construct a list of sorted inputs.
-        // Inputs are sorted by the first ring element's public key. Note that each ring is also
-        // sorted.
+        // Inputs are sorted by the first ring element's public key. Note that each ring
+        // is also sorted.
         self.input_credentials
             .sort_by(|a, b| a.ring[0].public_key.cmp(&b.ring[0].public_key));
 
@@ -243,7 +250,8 @@ impl<FPR: FogPubkeyResolver> TransactionBuilder<FPR> {
     }
 }
 
-/// Creates a TxOut that sends `value` to `recipient` using the provided `fog_hint`.
+/// Creates a TxOut that sends `value` to `recipient` using the provided
+/// `fog_hint`.
 ///
 /// # Arguments
 /// * `value` - Value of the output, in picoMOB.
@@ -271,8 +279,8 @@ fn create_output_with_fog_hint<RNG: CryptoRng + RngCore>(
 ///
 /// # Returns
 /// * `encrypted_fog_hint` - The fog hint to use for a TxOut.
-/// * `pubkey_expiry` - The block at which this fog pubkey expires, or u64::max_value()
-///   Imposes a limit on tombstone block for the transaction
+/// * `pubkey_expiry` - The block at which this fog pubkey expires, or
+///   u64::max_value() Imposes a limit on tombstone block for the transaction
 fn create_fog_hint<RNG: RngCore + CryptoRng, FPR: FogPubkeyResolver>(
     recipient: &PublicAddress,
     fog_resolver: &FPR,
@@ -656,13 +664,15 @@ pub mod transaction_builder_tests {
 
     #[test]
     #[ignore]
-    // `build` should return an error if the inputs contain rings of different sizes.
+    // `build` should return an error if the inputs contain rings of different
+    // sizes.
     fn test_inputs_with_different_ring_sizes() {
         unimplemented!()
     }
 
     #[test]
-    // `build` should return an error if the sum of inputs does not equal the sum of outputs and the fee.
+    // `build` should return an error if the sum of inputs does not equal the sum of
+    // outputs and the fee.
     fn test_inputs_do_not_equal_outputs() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let alice = AccountKey::random(&mut rng);
@@ -766,7 +776,8 @@ pub mod transaction_builder_tests {
     }
 
     #[test]
-    // Transaction inputs should be sorted by the public key of the first ring element.
+    // Transaction inputs should be sorted by the public key of the first ring
+    // element.
     fn test_inputs_are_sorted() {
         let mut rng: StdRng = SeedableRng::from_seed([92u8; 32]);
         let sender = AccountKey::random(&mut rng);

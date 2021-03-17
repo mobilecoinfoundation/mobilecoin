@@ -104,7 +104,8 @@ fn account_key(
     Ok(Json(JsonAccountKeyResponse::from(&resp)))
 }
 
-/// Creates a monitor. Data for the key and range is POSTed using the struct above.
+/// Creates a monitor. Data for the key and range is POSTed using the struct
+/// above.
 #[post("/monitors", format = "json", data = "<monitor>")]
 fn add_monitor(
     state: rocket::State<State>,
@@ -295,9 +296,9 @@ fn parse_request_code(
         .parse_request_code(&req)
         .map_err(|err| format!("Failed parsing request code: {}", err))?;
 
-    // The response contains the public keys encoded in the read request, as well as a memo and
-    // requested value. This can be used as-is in the transfer call below, or the value can be
-    // modified.
+    // The response contains the public keys encoded in the read request, as well as
+    // a memo and requested value. This can be used as-is in the transfer call
+    // below, or the value can be modified.
     Ok(Json(JsonParseRequestCodeResponse::from(&resp)))
 }
 
@@ -339,7 +340,8 @@ fn parse_address_code(
     Ok(Json(JsonParseAddressCodeResponse::from(&resp)))
 }
 
-/// Performs a transfer from a monitor and subaddress. The public keys and amount are in the POST data.
+/// Performs a transfer from a monitor and subaddress. The public keys and
+/// amount are in the POST data.
 #[post(
     "/monitors/<monitor_hex>/subaddresses/<subaddress_index>/build-and-submit",
     format = "json",
@@ -399,7 +401,8 @@ fn build_and_submit(
     Ok(Json(JsonSendPaymentResponse::from(&resp)))
 }
 
-/// Performs a transfer from a monitor and subaddress to a given address code/amount.
+/// Performs a transfer from a monitor and subaddress to a given address
+/// code/amount.
 #[post(
     "/monitors/<monitor_hex>/subaddresses/<subaddress_index>/pay-address-code",
     format = "json",
@@ -453,9 +456,9 @@ fn pay_address_code(
     Ok(Json(JsonSendPaymentResponse::from(&resp)))
 }
 
-/// Creates a transaction proposal. This can be used in an offline transaction construction
-/// flow, where the proposal is created on the offline machine, and copied to the connected
-/// machine for submission, via submit-tx.
+/// Creates a transaction proposal. This can be used in an offline transaction
+/// construction flow, where the proposal is created on the offline machine, and
+/// copied to the connected machine for submission, via submit-tx.
 #[post(
     "/monitors/<monitor_hex>/subaddresses/<subaddress_index>/generate-request-code-transaction",
     format = "json",
@@ -547,11 +550,12 @@ fn check_transfer_status(
 }
 
 /// Checks the status of a transfer given data for a specific receiver
-/// The sender of the transaction will take specific receipt data from the /transfer call
-/// and distribute it to the recipient(s) so they can verify that a transaction has been
-/// processed and the the person supplying the receipt can prove they initiated it.
-/// This API is tied to a specific monitor id since the account information is required in order to
-/// validate the confirmation number.
+/// The sender of the transaction will take specific receipt data from the
+/// /transfer call and distribute it to the recipient(s) so they can verify that
+/// a transaction has been processed and the the person supplying the receipt
+/// can prove they initiated it. This API is tied to a specific monitor id since
+/// the account information is required in order to validate the confirmation
+/// number.
 #[post(
     "/monitors/<monitor_hex>/tx-status-as-receiver",
     format = "json",

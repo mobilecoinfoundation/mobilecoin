@@ -1,10 +1,11 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-//! TxManager maps operations on transaction hashes to in-enclave operations on the corresponding transactions.
+//! TxManager maps operations on transaction hashes to in-enclave operations on
+//! the corresponding transactions.
 //!
-//! Internally, TxManager maintains a collection of (encrypted) transactions that have been found
-//! to be well-formed. These can be thought of as the "working set" of transactions that the consensus service
-//! may operate on.
+//! Internally, TxManager maintains a collection of (encrypted) transactions
+//! that have been found to be well-formed. These can be thought of as the
+//! "working set" of transactions that the consensus service may operate on.
 
 use crate::counters;
 use mc_attest_enclave_api::{EnclaveMessage, PeerSession};
@@ -56,8 +57,8 @@ pub struct TxManagerImpl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + S
     /// Enclave.
     enclave: E,
 
-    /// Application-specific custom interfaces for the untrusted part of validation/combining of
-    /// values.
+    /// Application-specific custom interfaces for the untrusted part of
+    /// validation/combining of values.
     untrusted: UI,
 
     /// Well-formed transactions, keyed by hash.
@@ -79,7 +80,8 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManagerImpl<E
     }
 
     /// Performs the untrusted and enclave parts of the well-formed checks.
-    /// If the transaction is well-formed, returns a new CacheEntry that may be added to the cache.
+    /// If the transaction is well-formed, returns a new CacheEntry that may be
+    /// added to the cache.
     fn is_well_formed(&self, tx_context: TxContext) -> TxManagerResult<CacheEntry> {
         let _metrics_timer = counters::WELL_FORMED_CHECK_TIME.start_timer();
 
@@ -108,7 +110,8 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManagerImpl<E
 impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
     for TxManagerImpl<E, UI>
 {
-    /// Insert a transaction into the cache. The transaction must be well-formed.
+    /// Insert a transaction into the cache. The transaction must be
+    /// well-formed.
     fn insert(&self, tx_context: TxContext) -> TxManagerResult<TxHash> {
         let tx_hash = tx_context.tx_hash;
 
@@ -179,7 +182,8 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
         self.lock_cache().len()
     }
 
-    /// Validate the transaction corresponding to the given hash against the current ledger.
+    /// Validate the transaction corresponding to the given hash against the
+    /// current ledger.
     fn validate(&self, tx_hash: &TxHash) -> TxManagerResult<()> {
         let context_opt = {
             let cache = self.lock_cache();
@@ -207,8 +211,8 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
         let tx_contexts: TxManagerResult<Vec<Arc<WellFormedTxContext>>> = {
             let cache = self.lock_cache();
 
-            // Split `tx_hashes` into a list of found hashes and missing ones. This allows us to return
-            // an error with the entire list of missing hashes.
+            // Split `tx_hashes` into a list of found hashes and missing ones. This allows
+            // us to return an error with the entire list of missing hashes.
             let (entries, not_found) = tx_hashes
                 .iter()
                 .map(|tx_hash| {
@@ -238,10 +242,12 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
             .combine(&tx_contexts?, MAX_TRANSACTIONS_PER_BLOCK))
     }
 
-    /// Forms a Block containing the transactions that correspond to the given hashes.
+    /// Forms a Block containing the transactions that correspond to the given
+    /// hashes.
     ///
     /// # Arguments
-    /// * `tx_hashes` - Hashes of well-formed transactions that are valid w.r.t. te current ledger.
+    /// * `tx_hashes` - Hashes of well-formed transactions that are valid w.r.t.
+    ///   te current ledger.
     /// * `parent_block` - The last block written to the ledger.
     fn tx_hashes_to_block(
         &self,
@@ -250,8 +256,8 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
     ) -> TxManagerResult<(Block, BlockContents, BlockSignature)> {
         let cache = self.lock_cache();
 
-        // Split `tx_hashes` into a list of found hashes and missing ones. This allows us to return
-        // an error with the entire list of missing hashes.
+        // Split `tx_hashes` into a list of found hashes and missing ones. This allows
+        // us to return an error with the entire list of missing hashes.
         let (entries, not_found) = tx_hashes
             .iter()
             .map(|tx_hash| {
@@ -292,7 +298,8 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
         Ok((block, block_contents, signature))
     }
 
-    /// Creates a message containing a set of transactions that are encrypted for a peer.
+    /// Creates a message containing a set of transactions that are encrypted
+    /// for a peer.
     ///
     /// # Arguments
     /// * `tx_hashes` - transaction hashes.
@@ -304,8 +311,8 @@ impl<E: ConsensusEnclave + Send, UI: UntrustedInterfaces + Send> TxManager
         aad: &[u8],
         peer: &PeerSession,
     ) -> TxManagerResult<EnclaveMessage<PeerSession>> {
-        // Split `tx_hashes` into a list of found hashes and missing ones. This allows us to return
-        // an error with the entire list of missing hashes.
+        // Split `tx_hashes` into a list of found hashes and missing ones. This allows
+        // us to return an error with the entire list of missing hashes.
         let (encrypted_txs, not_found) = {
             let cache = self.lock_cache();
             tx_hashes
@@ -368,13 +375,15 @@ mod tests {
         let tx_hash = tx_context.tx_hash;
 
         let mut mock_untrusted = MockUntrustedInterfaces::new();
-        // Untrusted's well-formed check should be called once each time insert_propose_tx is called.
+        // Untrusted's well-formed check should be called once each time
+        // insert_propose_tx is called.
         mock_untrusted
             .expect_well_formed_check()
             .times(1)
             .return_const(Ok((0, vec![])));
 
-        // The enclave's well-formed check also ought to be called, and should return Ok.
+        // The enclave's well-formed check also ought to be called, and should return
+        // Ok.
         let mut mock_enclave = MockConsensusEnclave::new();
 
         let well_formed_encrypted_tx = WellFormedEncryptedTx::default();
@@ -407,13 +416,15 @@ mod tests {
         let tx_hash = tx_context.tx_hash;
 
         let mut mock_untrusted = MockUntrustedInterfaces::new();
-        // Untrusted's well-formed check should be called once each time insert_propose_tx is called.
+        // Untrusted's well-formed check should be called once each time
+        // insert_propose_tx is called.
         mock_untrusted
             .expect_well_formed_check()
             .times(1)
             .return_const(Ok((0, vec![])));
 
-        // The enclave's well-formed check also ought to be called, and should return Ok.
+        // The enclave's well-formed check also ought to be called, and should return
+        // Ok.
         let mut mock_enclave = MockConsensusEnclave::new();
 
         let well_formed_encrypted_tx = WellFormedEncryptedTx::default();
@@ -451,7 +462,8 @@ mod tests {
         let tx_context = TxContext::default();
 
         let mut mock_untrusted = MockUntrustedInterfaces::new();
-        // Untrusted's well-formed check should be called once each time insert_propose_tx is called.
+        // Untrusted's well-formed check should be called once each time
+        // insert_propose_tx is called.
         mock_untrusted
             .expect_well_formed_check()
             .times(1)
@@ -472,7 +484,8 @@ mod tests {
         let tx_context = TxContext::default();
 
         let mut mock_untrusted = MockUntrustedInterfaces::new();
-        // Untrusted's well-formed check should be called once each time insert_propose_tx is called.
+        // Untrusted's well-formed check should be called once each time
+        // insert_propose_tx is called.
         mock_untrusted
             .expect_well_formed_check()
             .times(1)
@@ -595,7 +608,8 @@ mod tests {
     }
 
     #[test_with_logger]
-    // Should return Err if the transaction is in the cache (i.e., well-formed) but not valid.
+    // Should return Err if the transaction is in the cache (i.e., well-formed) but
+    // not valid.
     fn test_validate_err_not_valid(logger: Logger) {
         let tx_context = TxContext::default();
 
@@ -775,7 +789,8 @@ mod tests {
     }
 
     #[test_with_logger]
-    // Should return TxManagerError::NotInCache if any transactions are not in the cache.
+    // Should return TxManagerError::NotInCache if any transactions are not in the
+    // cache.
     fn test_hashes_to_block_missing_hashes(logger: Logger) {
         let tx_manager = TxManagerImpl::new(
             MockConsensusEnclave::new(),
@@ -913,21 +928,21 @@ mod tests {
             .is_err());
 
         // Attempting to assemble a block with a duplicate transaction should fail.
-        // TODO: The logic for actually making sure of this lives inside the Enclave, so it cannot
-        // currently be tested here.
+        // TODO: The logic for actually making sure of this lives inside the Enclave, so
+        // it cannot currently be tested here.
         // assert!(tx_manager
         //     .tx_hashes_to_block(&vec![hash_tx_zero, hash_tx_one, hash_tx_zero])
         //     .is_err());
 
-        // Attempting to assemble a block with a duplicate and a missing transaction should fail
-        // TODO: The logic for actually making sure of this lives inside the Enclave, so it cannot
-        // currently be tested here.
+        // Attempting to assemble a block with a duplicate and a missing transaction
+        // should fail TODO: The logic for actually making sure of this lives
+        // inside the Enclave, so it cannot currently be tested here.
         // assert!(tx_manager
         //     .tx_hashes_to_block(&vec![hash_tx_zero, hash_tx_zero, hash_tx_three])
         //     .is_err());
 
-        // Attempting to assemble a block without duplicates or missing transactions should
-        // succeed.
+        // Attempting to assemble a block without duplicates or missing transactions
+        // should succeed.
         // TODO: Right now this relies on ConsensusServiceMockEnclave::form_block
         let (block, block_contents, _signature) = tx_manager
             .tx_hashes_to_block(&[hash_tx_zero, hash_tx_one], &parent_block)

@@ -21,7 +21,8 @@ use mc_util_grpc::{rpc_logger, send_result, Authenticator};
 use mc_util_metrics::{self, SVC_COUNTERS};
 use std::sync::Arc;
 
-/// Maximum number of pending values for consensus service before rejecting add_transaction requests.
+/// Maximum number of pending values for consensus service before rejecting
+/// add_transaction requests.
 const PENDING_LIMIT: i64 = 500;
 
 #[derive(Clone)]
@@ -82,7 +83,8 @@ impl ClientApiService {
         })?;
 
         // Validate the transaction.
-        // This is done here as a courtesy to give clients immediate feedback about the transaction.
+        // This is done here as a courtesy to give clients immediate feedback about the
+        // transaction.
         self.tx_manager.validate(&tx_hash)?;
 
         // The transaction can be considered by the network.
@@ -248,7 +250,8 @@ mod client_api_tests {
 
     #[test_with_logger]
     #[serial(counters)]
-    // Should return ProposeTxResult::ContainsSpentKeyImage if the tx contains a spent key image.
+    // Should return ProposeTxResult::ContainsSpentKeyImage if the tx contains a
+    // spent key image.
     fn test_client_tx_propose_spent_key_image(logger: Logger) {
         let mut consensus_enclave = MockConsensusEnclave::new();
         {
@@ -416,7 +419,8 @@ mod client_api_tests {
                 panic!("Unexpected response {:?}", propose_tx_response);
             }
             Err(_) => {
-                // Should be RpcFailure(RpcStatus { status: 14-UNAVAILABLE, details: Some("Temporarily not serving requests")
+                // Should be RpcFailure(RpcStatus { status: 14-UNAVAILABLE,
+                // details: Some("Temporarily not serving requests")
             }
         }
     }
@@ -424,8 +428,9 @@ mod client_api_tests {
     #[test_with_logger]
     #[serial(counters)]
     // Should return RpcStatus Unavailable if the node is over capacity.
-    // This test modifies a the global variable `counters::CUR_NUM_PENDING_VALUES`, which means it
-    // cannot run in parallel with other tests that depend on that value (e.g. all tests in this module).
+    // This test modifies a the global variable `counters::CUR_NUM_PENDING_VALUES`,
+    // which means it cannot run in parallel with other tests that depend on
+    // that value (e.g. all tests in this module).
     fn test_client_tx_propose_tx_over_capacity(logger: Logger) {
         let mut enclave = MockConsensusEnclave::new();
         enclave
@@ -455,7 +460,8 @@ mod client_api_tests {
         let (client, _server) = get_client_server(instance);
 
         // Set the number of pending values to be above the PENDING_LIMIT
-        // This is a global variable, and so affects other unit tests. It must be reset afterwards :(
+        // This is a global variable, and so affects other unit tests. It must be reset
+        // afterwards :(
         counters::CUR_NUM_PENDING_VALUES.set(PENDING_LIMIT);
 
         let message = Message::default();
@@ -464,7 +470,8 @@ mod client_api_tests {
                 panic!("Unexpected response {:?}", propose_tx_response);
             }
             Err(_) => {
-                // Should be RpcFailure(RpcStatus { status: 14-UNAVAILABLE, details: Some("Temporarily not serving requests")
+                // Should be RpcFailure(RpcStatus { status: 14-UNAVAILABLE,
+                // details: Some("Temporarily not serving requests")
             }
         }
 

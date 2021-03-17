@@ -50,7 +50,8 @@ mod tests {
     }
 
     #[test]
-    // Unmarshalling too many bytes into a TxOutConfirmationNumber should produce an error.
+    // Unmarshalling too many bytes into a TxOutConfirmationNumber should produce an
+    // error.
     fn test_confirmation_number_try_from_too_many_bytes() {
         let mut source = external::TxOutConfirmationNumber::new();
         source.set_hash(vec![7u8; 99]); // Too many bytes.
@@ -58,7 +59,8 @@ mod tests {
     }
 
     #[test]
-    // Unmarshalling too few bytes into a TxOutConfirmationNumber should produce an error.
+    // Unmarshalling too few bytes into a TxOutConfirmationNumber should produce an
+    // error.
     fn test_confirmation_number_try_from_too_few_bytes() {
         let mut source = external::TxOutConfirmationNumber::new();
         source.set_hash(vec![7u8; 3]); // Too few bytes.

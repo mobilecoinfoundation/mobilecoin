@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-//! Macros and re-exports to support a common interface across all FFI-wrapping SGX types.
+//! Macros and re-exports to support a common interface across all FFI-wrapping
+//! SGX types.
 
 // Re-export stuff our macros are using
 pub use alloc::vec::Vec;
@@ -20,10 +21,11 @@ use ::core::{
     hash::Hash,
 };
 
-/// A helper marker trait which SGX-wrapper newtypes should implement to ensure a consistent API.
+/// A helper marker trait which SGX-wrapper newtypes should implement to ensure
+/// a consistent API.
 ///
-/// Note that types which are not `repr(transparent)` newtypes should manually implement
-/// `AsRef<FFI>` and `AsMut<FFI>`.
+/// Note that types which are not `repr(transparent)` newtypes should manually
+/// implement `AsRef<FFI>` and `AsMut<FFI>`.
 pub trait FfiWrapper<FFI>:
     AsRef<FFI>
     + AsMut<FFI>
@@ -47,8 +49,8 @@ pub trait FfiWrapper<FFI>:
 {
 }
 
-/// A boilerplate macro which implements the FFI-type-related traits required by the
-/// FfiWrapper trait.
+/// A boilerplate macro which implements the FFI-type-related traits required by
+/// the FfiWrapper trait.
 #[macro_export]
 macro_rules! impl_ffi_wrapper_base {
     ($($wrapper:ty, $inner:ty;)*) => {$(
@@ -88,8 +90,8 @@ macro_rules! impl_ffi_wrapper_base {
     )*}
 }
 
-/// A boilerplate macro which implements the FfiWrapper type and its dependencies for a newtype
-/// structure which wraps an FFI type.
+/// A boilerplate macro which implements the FfiWrapper type and its
+/// dependencies for a newtype structure which wraps an FFI type.
 #[macro_export]
 macro_rules! impl_ffi_wrapper {
     ($($wrapper:ty, $inner:ty, $size:ty;)*) => {$(
@@ -290,8 +292,9 @@ macro_rules! impl_ffi_wrapper {
     )*}
 }
 
-/// A boilerplate macro which implements the [`hex::FromHex`] and [`mc_util_encodings::FromBase64`]
-/// traits for a type which implements ReprBytes.
+/// A boilerplate macro which implements the [`hex::FromHex`] and
+/// [`mc_util_encodings::FromBase64`] traits for a type which implements
+/// ReprBytes.
 #[macro_export]
 macro_rules! impl_hex_base64_with_repr_bytes {
     ($wrapper:ty) => {

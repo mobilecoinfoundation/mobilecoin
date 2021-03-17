@@ -127,8 +127,10 @@ mod test {
     use mc_crypto_keys::X25519;
     use sha2::Sha512;
 
-    //  (echo -en "Noise_IX_25519_AESGCM_SHA512\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"; \
-    //   echo -n "data to be mixed") | sha512sum -b
+    //  (echo -en
+    // "Noise_IX_25519_AESGCM_SHA512\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\
+    // 0\0\0\0\0\0\0\0\0\0\0\0\0"; \   echo -n "data to be mixed") | sha512sum
+    // -b
     const OUTPUT: [u8; 64] = [
         0x29, 0x1b, 0x30, 0x52, 0x18, 0xe3, 0xc1, 0x0f, 0x1c, 0xf5, 0x34, 0x05, 0xc6, 0x67, 0x8c,
         0x81, 0xc0, 0xf6, 0x7a, 0x94, 0xd9, 0xdf, 0x84, 0x06, 0x14, 0x25, 0x33, 0x63, 0x9e, 0x21,

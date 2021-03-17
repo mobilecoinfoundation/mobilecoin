@@ -21,14 +21,16 @@ use mc_crypto_ct_aead::{CtAeadDecrypt, CtDecryptResult};
 use mc_crypto_keys::{Kex, ReprBytes};
 use rand_core::{CryptoRng, RngCore};
 
-/// Represents a generic implementation of CryptoBox using Hkdf, a KexAlgo, and an Aead.
+/// Represents a generic implementation of CryptoBox using Hkdf, a KexAlgo, and
+/// an Aead.
 ///
 /// This structure contains the actual cryptographic primitive details, and
 /// specifies part of the wire format of the "footer" where the ephemeral
 /// public key comes first, and the mac comes second.
 ///
 /// Preconditions:
-/// - Only stateless AEAD is supported. The build will fail if you only have AeadMut.
+/// - Only stateless AEAD is supported. The build will fail if you only have
+///   AeadMut.
 pub struct HkdfBox<KexAlgo, DigestAlgo, AeadAlgo>
 where
     KexAlgo: Kex,
@@ -127,7 +129,8 @@ where
         ArrayLength<u8> + Sub<AeadAlgo::KeySize, Output = AeadAlgo::NonceSize>,
 {
     /// KDF part, factored out to avoid duplication
-    /// This part must produce the key and IV/nonce for Aead, from the IKM, using Hkdf.
+    /// This part must produce the key and IV/nonce for Aead, from the IKM,
+    /// using Hkdf.
     fn kdf_step(
         dh_secret: &KexAlgo::Secret,
     ) -> (

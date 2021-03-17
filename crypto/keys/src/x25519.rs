@@ -33,7 +33,8 @@ use sha2::{self, Sha256};
 use x25519_dalek::{EphemeralSecret, PublicKey as DalekPublicKey, SharedSecret, StaticSecret};
 use zeroize::Zeroize;
 
-/// The length in bytes of canonical representation of x25519 (public and private keys)
+/// The length in bytes of canonical representation of x25519 (public and
+/// private keys)
 pub const X25519_LEN: usize = 32;
 
 /// A structure for keeping an X25519 shared secret
@@ -48,7 +49,8 @@ impl AsRef<[u8]> for X25519Secret {
     }
 }
 
-/// The debug implementation will output the SHA-256 sum of the secret, but not the secret itself
+/// The debug implementation will output the SHA-256 sum of the secret, but not
+/// the secret itself
 impl Debug for X25519Secret {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         let mut hasher = Sha256::new();
@@ -70,7 +72,8 @@ impl Debug for X25519Secret {
 }
 
 impl Serialize for X25519Secret {
-    /// Secret keys are serialized as bytes, as there is no ASN.1 representation of a symmetric key
+    /// Secret keys are serialized as bytes, as there is no ASN.1 representation
+    /// of a symmetric key
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.serialize_bytes(self.as_ref())
     }
@@ -88,8 +91,8 @@ pub struct X25519Public(DalekPublicKey);
 //        OBJECT IDENTIFIER(06), Length = 03  -- T,L,V
 //           curveX25519(1.3.101.110 = 2B 65 6E)
 //     BIT STRING(03), Length = 21            -- T,L
-//        paddingBits = 00 (0x21 == 33, first byte is the number of padding bits to fill an octet)
-//        actualKeyBitsGoesHere
+//        paddingBits = 00 (0x21 == 33, first byte is the number of padding bits
+// to fill an octet)        actualKeyBitsGoesHere
 const X25519_SPKI_DER_PREFIX: [u8; 12] = [
     0x30, 0x2A, 0x30, 0x05, 0x06, 0x03, 0x2B, 0x65, 0x6E, 0x03, 0x21, 0x00,
 ];
@@ -105,7 +108,8 @@ impl DistinguishedEncoding for X25519Public {
         X25519_SPKI_DER_LEN
     }
 
-    /// Constructs a new X25519Public from a DER-encoded SubjectPublicKeyInfo structure
+    /// Constructs a new X25519Public from a DER-encoded SubjectPublicKeyInfo
+    /// structure
     ///
     /// # Examples
     ///
@@ -486,7 +490,8 @@ impl Clone for X25519Private {
 }
 
 impl Debug for X25519Private {
-    /// Output the public key corresponding to this private key as a debug string
+    /// Output the public key corresponding to this private key as a debug
+    /// string
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         write!(
             f,

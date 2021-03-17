@@ -43,7 +43,7 @@ mc-watcher = { path = "../watcher" }
 aes-gcm = "0.6"
 blake2 = { version = "0.9", default-features = false }
 crossbeam-channel = "0.5"
-displaydoc = { version = "0.1", default-features = false}
+displaydoc = { version = "0.2", default-features = false}
 failure = "0.1.8"
 grpcio = "0.6.0"
 hex_fmt = "0.3"

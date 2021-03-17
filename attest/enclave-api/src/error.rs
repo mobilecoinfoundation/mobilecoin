@@ -13,7 +13,8 @@ use serde::{Deserialize, Serialize};
 /// A generic result type for enclave calls
 pub type Result<T> = StdResult<T, Error>;
 
-/// An enumeration of errors which can occur inside an enclave, in connection to attestation or AKE
+/// An enumeration of errors which can occur inside an enclave, in connection to
+/// attestation or AKE
 #[derive(Clone, Debug, Deserialize, Display, PartialEq, PartialOrd, Serialize)]
 pub enum Error {
     /// Enclave not initialized
@@ -31,10 +32,12 @@ pub enum Error {
     /// Encryption error after handshake: {0}
     Cipher(CipherError),
 
-    /// There was an error while handling a nonce: {0}
-    ///
-    /// This can represent a significant programming bug in the nonce
-    /// generation or report parsing code, or a simple mismatch.
+    /**
+     * There was an error while handling a nonce: {0}
+     *
+     * This can represent a significant programming bug in the nonce
+     * generation or report parsing code, or a simple mismatch.
+     */
     Nonce(NonceError),
 
     /// The local quote could not be verified: {0}
@@ -46,10 +49,12 @@ pub enum Error {
     /// Another thread crashed while holding a lock
     Poison,
 
-    /// Invalid state for call
-    ///
-    /// This indicates a bug in the calling code, typically attempting to
-    /// re-submit an already-verified quote or IAS report.
+    /**
+     * Invalid state for call
+     *
+     * This indicates a bug in the calling code, typically attempting to
+     * re-submit an already-verified quote or IAS report.
+     */
     InvalidState,
 
     /// No IAS report has been verified yet

@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-//! Utilities for converting between `mobilecoind` and `mobilecoind_api` data types.
+//! Utilities for converting between `mobilecoind` and `mobilecoind_api` data
+//! types.
 
 use crate::{
     payments::{Outlay, TxProposal},

@@ -19,8 +19,8 @@ pub struct WatcherConfig {
     #[structopt(long, default_value = "/tmp/watcher-db", parse(from_os_str))]
     pub watcher_db: PathBuf,
 
-    /// The location of the sources.toml file. This file configures the list of block sources and
-    /// consensus nodes that are being watched.
+    /// The location of the sources.toml file. This file configures the list of
+    /// block sources and consensus nodes that are being watched.
     #[structopt(long)]
     pub sources_path: PathBuf,
 
@@ -57,12 +57,12 @@ pub struct SourceConfig {
     /// For example: https://s3-us-west-1.amazonaws.com/mobilecoin.chain/node1.test.mobilecoin.com/
     tx_source_url: String,
 
-    /// (Optional) Consensus node client URL to use for fetching the remote attestation report
-    /// whenever a block signer change is detected.
+    /// (Optional) Consensus node client URL to use for fetching the remote
+    /// attestation report whenever a block signer change is detected.
     consensus_client_url: Option<ConsensusClientUri>,
 
-    /// (Optional) Client authentication token secret, for generating Authorization tokens when
-    /// connecting to consensus nodes.
+    /// (Optional) Client authentication token secret, for generating
+    /// Authorization tokens when connecting to consensus nodes.
     consensus_client_auth_token_secret: Option<String>,
 }
 
@@ -81,8 +81,9 @@ impl SourceConfig {
     }
 
     /// Get the tx_source_url and ensure it has a trailing slash.
-    /// This is compatible with the behavior inside ReqwestTransactionsFetcher and ensures
-    /// everywhere we use URLs we always have "slash-terminated" URLs
+    /// This is compatible with the behavior inside ReqwestTransactionsFetcher
+    /// and ensures everywhere we use URLs we always have "slash-terminated"
+    /// URLs
     pub fn tx_source_url(&self) -> Url {
         let mut url = self.tx_source_url.clone();
         if !url.ends_with('/') {

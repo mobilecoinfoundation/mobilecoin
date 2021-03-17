@@ -151,4 +151,3 @@ cpuid-bool = { git = "https://github.com/eranrund/RustCrypto-utils", rev = "74f8
 
 # We need to patch aes-gcm so we can make some fields/functions/structs pub in order to have a constant time decrypt
 aes-gcm = { git = "https://github.com/mobilecoinofficial/AEADs", rev = "d1a8517d3dd867ed9c5794002add67992a42f6aa" }
-

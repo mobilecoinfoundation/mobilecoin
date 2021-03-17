@@ -120,8 +120,8 @@ mod tests {
 
     #[test]
     // the blockchain::Block definition matches the Block prost attributes.
-    // This ensures the definition in the .proto files matches the prost attributes inside the
-    // Block struct.
+    // This ensures the definition in the .proto files matches the prost attributes
+    // inside the Block struct.
     fn test_blockchain_block_matches_prost() {
         let source_block = mc_transaction_core::Block {
             id: mc_transaction_core::BlockID::try_from(&[2u8; 32][..]).unwrap(),

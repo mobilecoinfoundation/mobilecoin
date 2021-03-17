@@ -10,7 +10,8 @@ pub use rand_core::{CryptoRng, RngCore};
 
 use cfg_if::cfg_if;
 
-// Not using cfg_attr( ..., path = fallback.rs) because it appears to confused rustfmt
+// Not using cfg_attr( ..., path = fallback.rs) because it appears to confused
+// rustfmt
 cfg_if! {
     if #[cfg(target_feature = "rdrand")] {
         mod rdrandrng;

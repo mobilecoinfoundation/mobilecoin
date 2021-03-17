@@ -39,8 +39,8 @@ impl FromStr for ResponderId {
     type Err = ResponderIdParseError;
 
     fn from_str(src: &str) -> Result<ResponderId, Self::Err> {
-        // ResponderId is expected to be host:port, so at least ensure we have a single colon as a
-        // small sanity test.
+        // ResponderId is expected to be host:port, so at least ensure we have a single
+        // colon as a small sanity test.
         if !src.contains(':') {
             return Err(ResponderIdParseError::InvalidFormat(src.to_string()));
         }

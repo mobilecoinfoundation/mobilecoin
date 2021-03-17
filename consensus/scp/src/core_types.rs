@@ -33,13 +33,15 @@ impl<T> GenericNodeId for T where
 {
 }
 
-/// Application-specific function for combining multiple values. Must be deterministic.
+/// Application-specific function for combining multiple values. Must be
+/// deterministic.
 pub type CombineFn<V, E> = Arc<(dyn Fn(&[V]) -> Result<Vec<V>, E> + Sync + Send)>;
 
 /// Application-specific validation of value.
 pub type ValidityFn<V, E> = Arc<(dyn Fn(&V) -> Result<(), E> + Sync + Send)>;
 
-/// The node identifier is used when reasoning about messages in federated voting.
+/// The node identifier is used when reasoning about messages in federated
+/// voting.
 ///
 /// For example, in production SCP, a message is signed by the node that emitted
 /// it, and the public key is a component of that node's identifier, so that the

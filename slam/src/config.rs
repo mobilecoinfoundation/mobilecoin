@@ -51,7 +51,8 @@ pub struct SlamConfig {
     #[structopt(long, default_value = "0")]
     pub account_offset: usize,
 
-    /// Number of threads with which to submit transactions (threadpool uses min with cpu)
+    /// Number of threads with which to submit transactions (threadpool uses min
+    /// with cpu)
     #[structopt(long, default_value = "32")]
     pub max_threads: usize,
 
@@ -59,7 +60,8 @@ pub struct SlamConfig {
     #[structopt(long, default_value = "0")]
     pub add_tx_delay_ms: u64,
 
-    /// Enable ledger sync, which allows slam to run indefinitely (until it runs out of money).
+    /// Enable ledger sync, which allows slam to run indefinitely (until it runs
+    /// out of money).
     #[structopt(long)]
     pub with_ledger_sync: bool,
 

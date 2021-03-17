@@ -92,16 +92,16 @@ derive_into_vec_from_repr_bytes!(KeyName);
 impl KeyName {
     /// Check if the given i32 value is a valid value.
     //
-    // This method is normally implemented by prost via derive(Enumeration), but the SGX SDK chooses
-    // to use a u16 for the in-situ data type.
+    // This method is normally implemented by prost via derive(Enumeration), but the
+    // SGX SDK chooses to use a u16 for the in-situ data type.
     pub fn is_valid(value: i32) -> bool {
         Self::from_i32(value).is_some()
     }
 
     /// Create a new Error from the given i32 value.
     //
-    // This method is normally implemented by prost via derive(Enumeration), but the SGX SDK chooses
-    // to use a u16 for the in-situ data type.
+    // This method is normally implemented by prost via derive(Enumeration), but the
+    // SGX SDK chooses to use a u16 for the in-situ data type.
     pub fn from_i32(value: i32) -> Option<Self> {
         Self::try_from(u16::try_from(value).ok()?).ok()
     }
@@ -301,7 +301,8 @@ impl KeyRequest {
         self.0.misc_mask
     }
 
-    /// Retrieve the configuration version used to lock a key to a particular enclave.
+    /// Retrieve the configuration version used to lock a key to a particular
+    /// enclave.
     pub fn config_security_version(&self) -> ConfigSecurityVersion {
         self.0.config_svn
     }

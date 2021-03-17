@@ -4,7 +4,8 @@ use crate::core_types::SlotIndex;
 use bigint::U256;
 use mc_common::fast_hash;
 
-/// A "salted" Keccak hash function, parametrized by slot, round, and an extra value.
+/// A "salted" Keccak hash function, parametrized by slot, round, and an extra
+/// value.
 ///
 /// # Arguments
 /// * `slot_index`
@@ -14,7 +15,8 @@ use mc_common::fast_hash;
 ///
 /// # Returns
 /// 256-bit unsigned value
-/// Keccak(slot_index || extra_salt || round_index || bytes), where || denotes concatenation,
+/// Keccak(slot_index || extra_salt || round_index || bytes), where || denotes
+/// concatenation,
 pub fn slot_round_salted_keccak(
     slot_index: SlotIndex,
     extra_salt: u8,

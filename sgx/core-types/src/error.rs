@@ -57,17 +57,18 @@ impl<T> SgxStatusToResult<T> for sgx_status_t {
 /// A enumeration of SGX errors.
 ///
 /// Those listed here are the ones which are identified in the
-/// [`sgx_status_t`](mc_sgx_core_types_sys::sgx_status_t) enum, in order of the actual value. Note
-/// that values are grouped (numerically) into the following general sections:
+/// [`sgx_status_t`](mc_sgx_core_types_sys::sgx_status_t) enum, in order of the
+/// actual value. Note that values are grouped (numerically) into the following
+/// general sections:
 ///
 ///  1. `0x0000`: Unknown (Success in `sgx_status_t`)
 ///  1. `0x0001-0x0fff`: Generic errors.
 ///  2. `0x1000-0x1fff`: Fatal runtime errors.
 ///  3. `0x2000-0x2fff`: Enclave creation errors.
 ///  4. `0x3000-0x3fff`: Local attestation/report verification errors.
-///  5. `0x4000-0x4fff`: Errors when communicating with the Architectural Enclave Service Manager (AESM).
-///  6. `0x5000-0x5fff`: Errors internal to AESM.
-///  7. `0x6000-0x6fff`: Errors with the encrypted enclave loader.
+///  5. `0x4000-0x4fff`: Errors when communicating with the Architectural
+/// Enclave Service Manager (AESM).  6. `0x5000-0x5fff`: Errors internal to
+/// AESM.  7. `0x6000-0x6fff`: Errors with the encrypted enclave loader.
 ///  8. `0x7000-0x7fff`: Errors with the "SGX Encrypted FS" utility.
 ///  9. `0x8000-0x8fff`: Attestation key errors.
 /// 10. `0xf000-0xffff`: Internal (to SGX) errors.
@@ -83,9 +84,16 @@ pub enum Error {
     Unexpected = SGX_ERROR_UNEXPECTED,
     /// The parameter is incorrect (`0x0002`)
     InvalidParameter = SGX_ERROR_INVALID_PARAMETER,
-    /// There is not enough memory available to complete this operation (`0x0003`)
+    /**
+     * There is not enough memory available to complete this operation
+     * (`0x0003`)
+     */
     OutOfMemory = SGX_ERROR_OUT_OF_MEMORY,
-    /// The enclave was lost after power transition or used in a child process created by fork() (`0x0004`)
+    /**
+     * The enclave was lost after power transition or used in a child
+     * process created by fork()
+     * (`0x0004`)
+     */
     EnclaveLost = SGX_ERROR_ENCLAVE_LOST,
     /// The API is invoked in incorrect order or state (`0x0005`)
     InvalidState = SGX_ERROR_INVALID_STATE,
@@ -101,13 +109,15 @@ pub enum Error {
     OutOfTcs = SGX_ERROR_OUT_OF_TCS,
     /// The enclave crashed (`0x1006`)
     EnclaveCrashed = SGX_ERROR_ENCLAVE_CRASHED,
-    /// ECALL is not allowed at this time (`0x1007`)
-    ///
-    /// Possible reasons include:
-    ///
-    ///  * ECALL is not public.
-    ///  * ECALL is blocked by the dynamic entry table.
-    ///  * A nested ECALL is not allowed during global initialization.
+    /**
+     * ECALL is not allowed at this time (`0x1007`)
+     *
+     * Possible reasons include:
+     *
+     *  * ECALL is not public.
+     *  * ECALL is blocked by the dynamic entry table.
+     *  * A nested ECALL is not allowed during global initialization.
+     */
     EcallNotAllowed = SGX_ERROR_ECALL_NOT_ALLOWED,
     /// OCALL is not allowed during exception handling (`0x1008`)
     OcallNotAllowed = SGX_ERROR_OCALL_NOT_ALLOWED,
@@ -123,9 +133,16 @@ pub enum Error {
     InvalidEnclaveId = SGX_ERROR_INVALID_ENCLAVE_ID,
     /// The signature for the enclave is invalid (`0x2003`)
     InvalidSignature = SGX_ERROR_INVALID_SIGNATURE,
-    /// The enclave was signed as a production enclave, and cannot be instantiated as debuggable (`0x2004`)
+    /**
+     * The enclave was signed as a production enclave, and cannot be
+     * instantiated as debuggable (`0x2004`)
+     */
     NdebugEnclave = SGX_ERROR_NDEBUG_ENCLAVE,
-    /// There is not enough EPC (encrypted page cache) available to load the enclave or one of the Architecture Enclaves needed to complete the operation requested (`0x2005`)
+    /**
+     * There is not enough EPC (encrypted page cache) available to load the
+     * enclave or one of the Architecture Enclaves needed to complete the
+     * operation requested (`0x2005`)
+     */
     OutOfEpc = SGX_ERROR_OUT_OF_EPC,
     /// Cannot open the device (`0x2006`)
     NoDevice = SGX_ERROR_NO_DEVICE,
@@ -135,9 +152,15 @@ pub enum Error {
     InvalidMetadata = SGX_ERROR_INVALID_METADATA,
     /// The device is busy (`0x200C`)
     DeviceBusy = SGX_ERROR_DEVICE_BUSY,
-    /// Metadata version is inconsistent between uRTS and `sgx_sign` or the uRTS is incompatible with the current platform (`0x200D`)
+    /**
+     * Metadata version is inconsistent between uRTS and `sgx_sign` or the
+     * uRTS is incompatible with the current platform (`0x200D`)
+     */
     InvalidVersion = SGX_ERROR_INVALID_VERSION,
-    /// The target enclave mode (either 32 vs. 64-bit, or hardware vs. simulation) is incompatible with the untrusted mode (`0x200E`)
+    /**
+     * The target enclave mode (either 32 vs. 64-bit, or hardware vs.
+     * simulation) is incompatible with the untrusted mode (`0x200E`)
+     */
     ModeIncompatible = SGX_ERROR_MODE_INCOMPATIBLE,
     /// Cannot open the enclave file (`0x200F`)
     EnclaveFileAccess = SGX_ERROR_ENCLAVE_FILE_ACCESS,
@@ -159,7 +182,10 @@ pub enum Error {
     InvalidKeyname = SGX_ERROR_INVALID_KEYNAME,
 
     // 0x4000 - 0x4fff: AESM
-    /// Architectural Enclave service does not respond or the requested service is not supported (`0x4001`)
+    /**
+     * Architectural Enclave service does not respond or the requested
+     * service is not supported (`0x4001`)
+     */
     ServiceUnavailable = SGX_ERROR_SERVICE_UNAVAILABLE,
     /// The request to the Architectural Enclave service timed out (`0x4002`)
     ServiceTimeout = SGX_ERROR_SERVICE_TIMEOUT,
@@ -167,21 +193,29 @@ pub enum Error {
     AeInvalidEpidblob = SGX_ERROR_AE_INVALID_EPIDBLOB,
     /// Enclave has no privilege to get a launch token (`0x4004`)
     ServiceInvalidPrivilege = SGX_ERROR_SERVICE_INVALID_PRIVILEGE,
-    /// The EPID group membership has been revoked  (`0x4005`)
-    ///
-    /// The platform is not trusted,and will not be trusted even if updated
+    /**
+     * The EPID group membership has been revoked  (`0x4005`)
+     *
+     * The platform is not trusted,and will not be trusted even if updated
+     */
     EpidMemberRevoked = SGX_ERROR_EPID_MEMBER_REVOKED,
     /// Intel SGX requires update (`0x4006`)
     UpdateNeeded = SGX_ERROR_UPDATE_NEEDED,
     /// Network or proxy issue (`0x4007`)
     NetworkFailure = SGX_ERROR_NETWORK_FAILURE,
-    /// The Architectural Enclave session is invalid or ended by the server (`0x4008`)
+    /**
+     * The Architectural Enclave session is invalid or ended by the server
+     * (`0x4008`)
+     */
     AeSessionInvalid = SGX_ERROR_AE_SESSION_INVALID,
     /// The requested service is temporarily not available (`0x400A`)
     Busy = SGX_ERROR_BUSY,
     /// The Monotonic Counter does not exist or has been invalidated (`0x400C`)
     McNotFound = SGX_ERROR_MC_NOT_FOUND,
-    /// The caller does not have the access right to the specified Virtual Monotonic Counter (`0x400D`)
+    /**
+     * The caller does not have the access right to the specified Virtual
+     *  Monotonic Counter (`0x400D`)
+     */
     McNoAccessRight = SGX_ERROR_MC_NO_ACCESS_RIGHT,
     /// No monotonic counter is available (`0x400E`)
     McUsedUp = SGX_ERROR_MC_USED_UP,
@@ -189,41 +223,80 @@ pub enum Error {
     McOverQuota = SGX_ERROR_MC_OVER_QUOTA,
     /// Key derivation function did not match during key exchange (`0x4011`)
     KdfMismatch = SGX_ERROR_KDF_MISMATCH,
-    /// Intel EPID provisioning failed because the platform is not recognized by the back-end server (`0x4012`)
+    /**
+     * Intel EPID provisioning failed because the platform is not recognized
+     * by the back-end server (`0x4012`)
+     */
     UnrecognizedPlatform = SGX_ERROR_UNRECOGNIZED_PLATFORM,
     /// There are unsupported bits in the config (`0x4013`)
     UnsupportedConfig = SGX_ERROR_UNSUPPORTED_CONFIG,
 
     // 0x5000 - 0x5fff: AESM-internal errors
-    /// The application does not have the privilege needed to read UEFI variables (`0x5002`)
+    /**
+     * The application does not have the privilege needed to read UEFI
+     * variables (`0x5002`)
+     */
     NoPrivilege = SGX_ERROR_NO_PRIVILEGE,
 
     // 0x6000 - 0x6fff: Encrypted Enclaves
-    /// Trying to load an encrypted enclave using API or parameters for plaintext enclaves (`0x6001`)
+    /**
+     * Trying to load an encrypted enclave using API or parameters for
+     * plaintext enclaves (`0x6001`)
+     */
     PclEncrypted = SGX_ERROR_PCL_ENCRYPTED,
-    /// Trying to load an enclave that is not encrypted with using API or parameters for encrypted enclaves (`0x6002`)
+    /**
+     * Trying to load an enclave that is not encrypted with using API or
+     * parameters for encrypted enclaves (`0x6002`)
+     */
     PclNotEncrypted = SGX_ERROR_PCL_NOT_ENCRYPTED,
-    /// The runtime AES-GCM-128 MAC result of an encrypted section does not match the one used at build time (`0x6003`)
+    /**
+     * The runtime AES-GCM-128 MAC result of an encrypted section does not
+     * match the one used at build time (`0x6003`)
+     */
     PclMacMismatch = SGX_ERROR_PCL_MAC_MISMATCH,
-    /// The runtime SHA256 hash of the decryption key does not match the one used at build time (`0x6004`)
+    /**
+     * The runtime SHA256 hash of the decryption key does not match the one
+     * used at build time (`0x6004`)
+     */
     PclShaMismatch = SGX_ERROR_PCL_SHA_MISMATCH,
-    /// The GUID in the decryption key sealed blob does not match the one used at build time (`0x6005`)
+    /**
+     * The GUID in the decryption key sealed blob does not match the one
+     * used at build time (`0x6005`)
+     */
     PclGuidMismatch = SGX_ERROR_PCL_GUID_MISMATCH,
 
     // 0x7000 - 0x7fff: SGX Encrypted FS
-    /// The file is in a bad status, run sgx_clearerr to try and fix it (`0x7001`)
+    /**
+     * The file is in a bad status, run sgx_clearerr to try and fix it
+     * (`0x7001`)
+     */
     FileBadStatus = SGX_ERROR_FILE_BAD_STATUS,
-    /// The Key ID field is all zeroes, the encryption key cannot be regenerated (`0x7002`)
+    /**
+     * The Key ID field is all zeroes, the encryption key cannot be
+     * regenerated (`0x7002`)
+     */
     FileNoKeyId = SGX_ERROR_FILE_NO_KEY_ID,
-    /// The current file name is different from the original file name (substitution attack) (`0x7003`)
+    /**
+     * The current file name is different from the original file name
+     * (substitution attack) (`0x7003`)
+     */
     FileNameMismatch = SGX_ERROR_FILE_NAME_MISMATCH,
     /// The file is not an Intel SGX file (`0x7004`)
     FileNotSgxFile = SGX_ERROR_FILE_NOT_SGX_FILE,
-    /// A recovery file cannot be opened, so the flush operation cannot continue (`0x7005`)
+    /**
+     * A recovery file cannot be opened, so the flush operation cannot
+     * continue (`0x7005`)
+     */
     FileCantOpenRecoveryFile = SGX_ERROR_FILE_CANT_OPEN_RECOVERY_FILE,
-    /// A recovery file cannot be written, so the flush operation cannot continue (`0x7006`)
+    /**
+     * A recovery file cannot be written, so the flush operation cannot
+     * continue (`0x7006`)
+     */
     FileCantWriteRecoveryFile = SGX_ERROR_FILE_CANT_WRITE_RECOVERY_FILE,
-    /// When opening the file, recovery is needed, but the recovery process failed (`0x7007`)
+    /**
+     * When opening the file, recovery is needed, but the recovery process
+     * failed (`0x7007`)
+     */
     FileRecoveryNeeded = SGX_ERROR_FILE_RECOVERY_NEEDED,
     /// The fflush() operation failed (`0x7008`)
     FileFlushFailed = SGX_ERROR_FILE_FLUSH_FAILED,
@@ -235,7 +308,10 @@ pub enum Error {
     UnsupportedAttKeyId = SGX_ERROR_UNSUPPORTED_ATT_KEY_ID,
     /// Failed to generate and certify the attestation key (`0x8002`)
     AttKeyCertificationFailure = SGX_ERROR_ATT_KEY_CERTIFICATION_FAILURE,
-    /// The platform quoting infrastructure does not have the attestation key available to generate a quote (`0x8003`)
+    /**
+     * The platform quoting infrastructure does not have the attestation key
+     * available to generate a quote (`0x8003`)
+     */
     AttKeyUninitialized = SGX_ERROR_ATT_KEY_UNINITIALIZED,
     /// The data returned by sgx_get_quote_config() is invalid (`0x8004`)
     InvalidAttKeyCertData = SGX_ERROR_INVALID_ATT_KEY_CERT_DATA,
@@ -250,24 +326,28 @@ pub enum Error {
 impl Error {
     /// Check if the given i32 value is a valid value.
     ///
-    /// This is a little convoluted, because zero in `sgx_status_t` is a the success value (i.e. not
-    /// an error), whereas zero in this type is the catch-all unknown error.
+    /// This is a little convoluted, because zero in `sgx_status_t` is a the
+    /// success value (i.e. not an error), whereas zero in this type is the
+    /// catch-all unknown error.
     //
-    // This method is normally implemented by prost via derive(Enumeration), but clang is
-    // determined to represent the [`sgx_status_t`](mc_sgx_core_types_sys::sgx_status_t)
-    // enumeration as a `u32`, standards be damned.
+    // This method is normally implemented by prost via derive(Enumeration), but
+    // clang is determined to represent the
+    // [`sgx_status_t`](mc_sgx_core_types_sys::sgx_status_t) enumeration as a
+    // `u32`, standards be damned.
     pub fn is_valid(value: i32) -> bool {
         Self::from_i32(value).is_some()
     }
 
     /// Create a new Error from the given i32 value.
     ///
-    /// This is a little convoluted, because zero in `sgx_status_t` is a the success value (i.e. not
-    /// an error), whereas zero in this type is the catch-all unknown error.
+    /// This is a little convoluted, because zero in `sgx_status_t` is a the
+    /// success value (i.e. not an error), whereas zero in this type is the
+    /// catch-all unknown error.
     //
-    // This method is normally implemented by prost via derive(Enumeration), but clang is
-    // determined to represent the [`sgx_status_t`](mc_sgx_core_types_sys::sgx_status_t)
-    // enumeration as a `u32`, standards be damned.
+    // This method is normally implemented by prost via derive(Enumeration), but
+    // clang is determined to represent the
+    // [`sgx_status_t`](mc_sgx_core_types_sys::sgx_status_t) enumeration as a
+    // `u32`, standards be damned.
     pub fn from_i32(value: i32) -> Option<Error> {
         match value {
             0 => Some(Error::Unknown),

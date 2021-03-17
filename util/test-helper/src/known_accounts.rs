@@ -7,7 +7,8 @@ use rand::rngs::StdRng;
 use rand_core::SeedableRng;
 use std::cmp;
 
-// The default accounts are the first NUMBER_OF_DEFAULT_ACCOUNTS that we generate
+// The default accounts are the first NUMBER_OF_DEFAULT_ACCOUNTS that we
+// generate
 const NUMBER_OF_DEFAULT_ACCOUNTS: usize = 10;
 
 // These three RNG seed values must be different!
@@ -15,7 +16,8 @@ const SEED_10_100: [u8; 32] = [42u8; 32];
 const SEED_100_1000: [u8; 32] = [43u8; 32];
 const SEED_1000_PLUS: [u8; 32] = [44u8; 32];
 
-// By convention, the first ten known accounts are derived from these root entropies
+// By convention, the first ten known accounts are derived from these root
+// entropies
 const E0: [u8; 32] = [
     86, 38, 184, 6, 231, 115, 110, 86, 143, 103, 115, 30, 138, 38, 216, 229, 129, 195, 47, 10, 175,
     253, 198, 67, 251, 189, 171, 114, 161, 235, 87, 8,
@@ -57,12 +59,14 @@ const E9: [u8; 32] = [
     242, 76, 195, 208, 76, 158, 247, 232, 7, 169, 59, 205,
 ];
 
-// TODO: consider updating this to AccountIdentity, or concatenating keys of both types
+// TODO: consider updating this to AccountIdentity, or concatenating keys of
+// both types
 fn derive_account_key(entropy: [u8; 32]) -> AccountKey {
     AccountKey::from(&RootIdentity::from(&entropy))
 }
 
-// This macro saves boilerplate in the creation of the lazy_static KNOWN_ACCOUNT_KEYS_0_10
+// This macro saves boilerplate in the creation of the lazy_static
+// KNOWN_ACCOUNT_KEYS_0_10
 macro_rules! build_derived_account_keys {
     ($( $entropy_const:ident ),+)
     =>

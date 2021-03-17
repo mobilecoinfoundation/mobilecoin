@@ -2,9 +2,10 @@
 
 //! Conversions between "API types" and "domain/persistence types".
 //!
-//! gRPC and Protobuf provide a reduced selection of types, and so there are some differences between
-//! values stored in the ledger and values transmitted over the API. This module provides conversions
-//! between "equivalent" types, such as `mc_consensus_api::consensus_common::ProposeTxResult` and
+//! gRPC and Protobuf provide a reduced selection of types, and so there are
+//! some differences between values stored in the ledger and values transmitted
+//! over the API. This module provides conversions between "equivalent" types,
+//! such as `mc_consensus_api::consensus_common::ProposeTxResult` and
 //! `mc_transaction_core::validation::TransactionValidationError`.
 
 use crate::consensus_common::ProposeTxResult;

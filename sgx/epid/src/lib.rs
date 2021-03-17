@@ -15,20 +15,22 @@ use mc_sgx_epid_types::{
     UpdateInfo,
 };
 
-/// Monkey-patch an existing structure to allow creation by Intel's EPID Quoting Enclave.
+/// Monkey-patch an existing structure to allow creation by Intel's EPID Quoting
+/// Enclave.
 pub trait EpidQuotingEnclave: Sized {
-    /// Create a new structure initialized for communications with Intel's EPID Quoting Enclave.
+    /// Create a new structure initialized for communications with Intel's EPID
+    /// Quoting Enclave.
     ///
-    /// This method wraps the [`sgx_init_quote`] FFI method to return the structure used for the
-    /// communications with the EPID Quoting Enclave. In particular, the [`TargetInfo`] and
-    /// [`EpidGroupId`] structures.
+    /// This method wraps the [`sgx_init_quote`] FFI method to return the
+    /// structure used for the communications with the EPID Quoting Enclave.
+    /// In particular, the [`TargetInfo`] and [`EpidGroupId`] structures.
     fn for_epid_qe() -> SgxResult<Self>;
 }
 
 /// Retrieve the target info structure for the Quoting Enclave.
 ///
-/// This target info is then used inside an enclave to create a new [`Report`] structure for remote
-/// attestation use.
+/// This target info is then used inside an enclave to create a new [`Report`]
+/// structure for remote attestation use.
 impl EpidQuotingEnclave for TargetInfo {
     fn for_epid_qe() -> SgxResult<TargetInfo> {
         let mut target_info = TargetInfo::default();
@@ -40,7 +42,8 @@ impl EpidQuotingEnclave for TargetInfo {
 
 /// Retrieve the EpidGroupId of the current Quoting Enclave.
 ///
-/// This is used to contact IAS and retrieve the [`SignatureRevocationList`] data structure.
+/// This is used to contact IAS and retrieve the [`SignatureRevocationList`]
+/// data structure.
 impl EpidQuotingEnclave for EpidGroupId {
     fn for_epid_qe() -> SgxResult<EpidGroupId> {
         let mut target_info = TargetInfo::default();
@@ -54,18 +57,20 @@ impl EpidQuotingEnclave for EpidGroupId {
 pub trait EpidQuoteReport {
     /// Contact the Quoting Enclave to create a new quote from the given report.
     ///
-    /// Given a report created inside an enclave using the Quoting Enclave's target info, this
-    /// method will contact the Quoting Enclave, and return a tuple containing the quote and the
-    /// Quoting Enclave's own report, targeting the original enclave.
+    /// Given a report created inside an enclave using the Quoting Enclave's
+    /// target info, this method will contact the Quoting Enclave, and
+    /// return a tuple containing the quote and the Quoting Enclave's own
+    /// report, targeting the original enclave.
     ///
     /// Therefore, the stages are:
     ///
     ///  1. Create a new report inside Enclave A targeting the Quoting Enclave.
     ///  1. Enclave A exports the report to the untrusted code.
-    ///  1. Untrusted code calls this method to create a new quote, using the given nonce.
-    ///  1. Untrusted code provides the resulting quote and QE enclave's report to enclave A.
-    ///  1. Enclave A verifies the QE enclave's report targets Enclave A.
-    ///  1. Enclave A verifies the QE enclave's report data contains the hash of the nonce and the
+    ///  1. Untrusted code calls this method to create a new quote, using the
+    /// given nonce.  1. Untrusted code provides the resulting quote and QE
+    /// enclave's report to enclave A.  1. Enclave A verifies the QE
+    /// enclave's report targets Enclave A.  1. Enclave A verifies the QE
+    /// enclave's report data contains the hash of the nonce and the
     ///     quote.
     ///  1. Enclave A verifies the contents of the quote.
     fn quote(
@@ -137,25 +142,29 @@ bitflags! {
     }
 }
 
-/// An optional update return, indicating what updates, if any are available or were performed.
+/// An optional update return, indicating what updates, if any are available or
+/// were performed.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct TcbUpdate {
     /// A description of what updates are needed/pending.
     pub status: EpidUpdateStatus,
-    /// The update info describing whether software updates must be performed out-of band.
+    /// The update info describing whether software updates must be performed
+    /// out-of band.
     pub update_info: UpdateInfo,
 }
 
-/// A trait encapsulating the various means of interacting with the TCB update process.
+/// A trait encapsulating the various means of interacting with the TCB update
+/// process.
 pub trait EpidPlatformInfo: Sized {
     /// Check if there is a TCB update available, potentially updating it.
     ///
-    /// This is fairly complex machinery: the given configuration will alternatively check for any
-    /// available updates, update some of the TCB, or update all of the TCB which can be updated.
+    /// This is fairly complex machinery: the given configuration will
+    /// alternatively check for any available updates, update some of the
+    /// TCB, or update all of the TCB which can be updated.
     ///
-    /// The outer `Result` indicates whether the API calls succeeded, and the inner `Option` on
-    /// the `Ok` branch indicates whether there is an update available, and/or whether one was
-    /// performed.
+    /// The outer `Result` indicates whether the API calls succeeded, and the
+    /// inner `Option` on the `Ok` branch indicates whether there is an
+    /// update available, and/or whether one was performed.
     fn check_update_status(&self, config: EpidUpdateConfig) -> SgxResult<Option<TcbUpdate>>;
 }
 

@@ -44,12 +44,13 @@ pub struct MockPeerState {
     /// Number of times send_consensus_msg was called.
     pub send_consensus_msg_call_count: usize,
 
-    /// Number of times to return an error code when send_consensus_msg is called.
+    /// Number of times to return an error code when send_consensus_msg is
+    /// called.
     pub send_consensus_msg_should_error_count: usize,
 }
 
-/// MockPeerConnection simulates a network-connected peer and adds a configurable amount of latency
-/// to each request.
+/// MockPeerConnection simulates a network-connected peer and adds a
+/// configurable amount of latency to each request.
 #[derive(Clone)]
 pub struct MockPeerConnection<L: Ledger + Sync = MockLedger> {
     pub uri: PeerUri,
@@ -301,7 +302,8 @@ mod peer_manager_tests {
         }
 
         {
-            // Get blocks 25,26,27. These are entirely out of range, so should return an error.
+            // Get blocks 25,26,27. These are entirely out of range, so should return an
+            // error.
             if let Ok(blocks) = mock_peer.fetch_blocks(25..28) {
                 println!("Blocks: {:?}", blocks);
                 panic!();
@@ -402,8 +404,9 @@ mod threaded_broadcaster_tests {
     };
 
     #[test_with_logger]
-    // A message from a local node (who is not in the peers list) should be broadcasted
-    // to all peers exactly once. A different message should also be broadcasted exactly once.
+    // A message from a local node (who is not in the peers list) should be
+    // broadcasted to all peers exactly once. A different message should also be
+    // broadcasted exactly once.
     fn test_local_broadcast(logger: Logger) {
         let (local_node_id, _) = test_node_id_and_signer(1);
         let node2_uri = test_peer_uri(2);
@@ -602,8 +605,8 @@ mod threaded_broadcaster_tests {
             assert!(peer3.msgs().is_empty());
         }
 
-        // Configure peer2 to fail a lot of times - we should see RETRY_MAX_ATTEMPTS attempts made
-        // but no message delivered.
+        // Configure peer2 to fail a lot of times - we should see RETRY_MAX_ATTEMPTS
+        // attempts made but no message delivered.
         peer2.set_send_consensus_msg_should_error_count(100);
 
         let mut seeded_rng: FixedRng = SeedableRng::from_seed([1u8; 32]);

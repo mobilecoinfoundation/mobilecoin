@@ -2,8 +2,9 @@
 
 //! A simple, safe LRU cache implementation.
 //!
-//! This design tradeoffs some memory usage in favor of faster item lookup times by storing an
-//! additional HashMap that allows quickly checking if a key is already in the cache.
+//! This design tradeoffs some memory usage in favor of faster item lookup times
+//! by storing an additional HashMap that allows quickly checking if a key is
+//! already in the cache.
 
 use crate::HashMap;
 use alloc::{collections::VecDeque, sync::Arc, vec::Vec};
@@ -14,10 +15,12 @@ pub struct LruCache<K, V> {
     /// Entries currently in cache.
     entries: Vec<Option<(Arc<K>, V)>>,
 
-    /// A map of keys -> their index in the `entries` vector, used to speed up lookups.
+    /// A map of keys -> their index in the `entries` vector, used to speed up
+    /// lookups.
     key_to_entry_index: HashMap<Arc<K>, usize>,
 
-    /// Indexes of used entries inside the `entries` array. Sorted from newest to oldest.
+    /// Indexes of used entries inside the `entries` array. Sorted from newest
+    /// to oldest.
     used_indexes: VecDeque<usize>,
 
     /// Indexes of free entries in the `entries` array.
@@ -74,10 +77,10 @@ impl<K: PartialEq + Eq + Hash, V> LruCache<K, V> {
 
     /// Insert a given key in the cache.
     ///
-    /// This item becomes the front (most-recently-used) item in the cache.  If the cache is full,
-    /// the back (least-recently-used) item will be removed.
-    /// If an item with the given key already existed, its value is replaced with the new value and
-    /// the old value is returned.
+    /// This item becomes the front (most-recently-used) item in the cache.  If
+    /// the cache is full, the back (least-recently-used) item will be
+    /// removed. If an item with the given key already existed, its value is
+    /// replaced with the new value and the old value is returned.
     pub fn put(&mut self, key: K, val: V) -> Option<V> {
         let key = Arc::new(key);
 
@@ -109,7 +112,8 @@ impl<K: PartialEq + Eq + Hash, V> LruCache<K, V> {
             self.used_indexes.push_front(free_index);
         } else {
             // No free entries.
-            // Get the index of the oldest entry in the cache, and remove it from the used list.
+            // Get the index of the oldest entry in the cache, and remove it from the used
+            // list.
             let index = self
                 .used_indexes
                 .pop_back()
@@ -129,28 +133,31 @@ impl<K: PartialEq + Eq + Hash, V> LruCache<K, V> {
     }
 
     /// Returns a reference to the value of the key in the cache or `None` if it
-    /// is not present in the cache. Moves the key to the head of the LRU list if it exists.
+    /// is not present in the cache. Moves the key to the head of the LRU list
+    /// if it exists.
     pub fn get(&mut self, key: &K) -> Option<&V> {
         self.get_mut(key).map(|x| &*x)
     }
 
-    /// Returns a mutable reference to the value of the key in the cache or `None` if it
-    /// is not present in the cache. Moves the key to the head of the LRU list if it exists.
+    /// Returns a mutable reference to the value of the key in the cache or
+    /// `None` if it is not present in the cache. Moves the key to the head
+    /// of the LRU list if it exists.
     pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
         // Try and locate key.
         let used_index = self.search_used(key)?;
 
-        // If we located the key, move it to the front of the used list and return a reference to
-        // its value.
+        // If we located the key, move it to the front of the used list and return a
+        // reference to its value.
         let entry_index = self.used_indexes[used_index];
         self.used_indexes.remove(used_index);
         self.used_indexes.push_front(entry_index);
         self.entries[entry_index].as_mut().map(|(_k, v)| v)
     }
 
-    /// Returns a reference to the value corresponding to the key in the cache or `None` if it is
-    /// not present in the cache. Unlike `get`, `peek` does not update the LRU list so the key's
-    /// position will be unchanged.
+    /// Returns a reference to the value corresponding to the key in the cache
+    /// or `None` if it is not present in the cache. Unlike `get`, `peek`
+    /// does not update the LRU list so the key's position will be
+    /// unchanged.
     pub fn peek(&self, key: &K) -> Option<&V> {
         // Try and locate key.
         let entry_index = self.key_to_entry_index.get(key)?;
@@ -194,7 +201,8 @@ impl<K: PartialEq + Eq + Hash, V> LruCache<K, V> {
         }
     }
 
-    /// Search for a given key in the cache, returing its index in the used array if found.
+    /// Search for a given key in the cache, returing its index in the used
+    /// array if found.
     fn search_used(&self, key: &K) -> Option<usize> {
         // Quick out if we do not have the key.
         if !self.key_to_entry_index.contains_key(key) {
@@ -214,7 +222,8 @@ impl<K: PartialEq + Eq + Hash, V> LruCache<K, V> {
     }
 }
 
-/// Iterator over values in an LruCache, from most-recently-used to least-recently-used.
+/// Iterator over values in an LruCache, from most-recently-used to
+/// least-recently-used.
 pub struct LruCacheIterator<'a, K: 'a, V: 'a> {
     cache: &'a LruCache<K, V>,
     pos: usize,
@@ -241,7 +250,8 @@ impl<'a, K, V> Iterator for LruCacheIterator<'a, K, V> {
     }
 }
 
-/// Mutable Iterator over values in an LruCache, from most-recently-used to least-recently-used.
+/// Mutable Iterator over values in an LruCache, from most-recently-used to
+/// least-recently-used.
 pub struct LruCacheMutIterator<'a, K: 'a, V: 'a> {
     cache: &'a mut LruCache<K, V>,
     pos: usize,
@@ -258,13 +268,15 @@ impl<'a, K, V> Iterator for LruCacheMutIterator<'a, K, V> {
 
             let entry_index = self.cache.used_indexes[self.pos];
 
-            // Hack to get around the borrow checker. The borrow checker would prevent us from
-            // returning a mutable reference to an entry, since in order to get the entry we need
-            // to hold a reference to the Option inside `self.cache.entries`. However, since we're
-            // holding that reference, we will then be denied from creating another mutable
+            // Hack to get around the borrow checker. The borrow checker would prevent us
+            // from returning a mutable reference to an entry, since in order to
+            // get the entry we need to hold a reference to the Option inside
+            // `self.cache.entries`. However, since we're holding that
+            // reference, we will then be denied from creating another mutable
             // reference.
-            // This code is safe because the list of entries is not going to be modified during
-            // iteration, since a mutable reference to the LruCache is held by the iterator.
+            // This code is safe because the list of entries is not going to be modified
+            // during iteration, since a mutable reference to the LruCache is
+            // held by the iterator.
             let entry =
                 unsafe { &mut *(&mut self.cache.entries[entry_index] as *mut Option<(Arc<K>, V)>) };
 
@@ -384,8 +396,9 @@ mod tests {
         assert_opt_eq(cache.get(&"banana"), "yellow");
         assert_opt_eq(cache.get(&"pear"), "green");
 
-        // Even though we inserted "apple" into the cache earlier it has since been removed from
-        // the cache so there is no current value for `put` to return.
+        // Even though we inserted "apple" into the cache earlier it has since been
+        // removed from the cache so there is no current value for `put` to
+        // return.
         assert_eq!(cache.put("apple", "green"), None);
         assert_eq!(cache.put("tomato", "red"), None);
 

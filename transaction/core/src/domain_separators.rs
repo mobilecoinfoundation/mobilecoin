@@ -1,16 +1,18 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-//! Domain separation tags for hash functions used in the MobileCoin transaction protocol.
+//! Domain separation tags for hash functions used in the MobileCoin transaction
+//! protocol.
 //!
-//! Domain separation allows multiple distinct hash functions to be derived from a single base function:
-//!   Hash_1(X) = Hash("Hash_1" || X),
+//! Domain separation allows multiple distinct hash functions to be derived from
+//! a single base function:   Hash_1(X) = Hash("Hash_1" || X),
 //!   Hash_2(X) = Hash("Hash_2" || X),
 //!   etc.
 //!
-//! Here, "Hash_1" and "Hash_2" are called domain separation tags. Tags should uniquely identify
-//! the hash function within the protocol and may include the protocol's version so that each
-//! derived hash function is independent of others within the protocol and independent of hash
-//! functions in other versions of the protocol.
+//! Here, "Hash_1" and "Hash_2" are called domain separation tags. Tags should
+//! uniquely identify the hash function within the protocol and may include the
+//! protocol's version so that each derived hash function is independent of
+//! others within the protocol and independent of hash functions in other
+//! versions of the protocol.
 
 /// Domain separator for Amount's value mask hash function.
 pub const AMOUNT_VALUE_DOMAIN_TAG: &str = "mc_amount_value";

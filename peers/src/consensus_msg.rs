@@ -13,11 +13,13 @@ use mc_transaction_core::{tx::TxHash, BlockID};
 use serde::{Deserialize, Serialize};
 use std::{convert::TryFrom, result::Result as StdResult};
 
-/// A consensus message holds the data that is exchanged by consensus service nodes as part of the
-/// process of reaching agreement on the contents of the next block.
+/// A consensus message holds the data that is exchanged by consensus service
+/// nodes as part of the process of reaching agreement on the contents of the
+/// next block.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize, Digestible)]
 pub struct ConsensusMsg {
-    /// An SCP message, used to reach agreement on the set of values the next block will contain.
+    /// An SCP message, used to reach agreement on the set of values the next
+    /// block will contain.
     pub scp_msg: Msg<TxHash>,
 
     /// The block ID of the block the message is trying to append values to.

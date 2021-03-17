@@ -1,4 +1,5 @@
-//! Tests and test vectors for digestible implementations of rust builtin and stdlib types.
+//! Tests and test vectors for digestible implementations of rust builtin and
+//! stdlib types.
 
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
@@ -7,8 +8,8 @@ use mc_crypto_digestible::{Digestible, MerlinTranscript};
 
 // Test merlin transcript hash values for various primitives
 //
-// Confirms that: digest of 1u16 != digest of 1u32 != digest of 1u64 != digest of 1i64, etc.
-// Confirms that: digest of string != digest of equivalent bytes
+// Confirms that: digest of 1u16 != digest of 1u32 != digest of 1u64 != digest
+// of 1i64, etc. Confirms that: digest of string != digest of equivalent bytes
 // Puts various other types like ristretto types, Vec<u32>, etc. under test
 #[test]
 fn primitives_test_vectors() {
@@ -374,8 +375,9 @@ fn test_digest_vec_option() {
 //
 // We want to see, particularly, that when the option value is None, that is
 // hashing the same way as when the Vec is empty.
-// This is expected to happen, because in either case, the value is represented by appending a None node
-// to the transcript, and it is the same for empty vec and for empty option.
+// This is expected to happen, because in either case, the value is represented
+// by appending a None node to the transcript, and it is the same for empty vec
+// and for empty option.
 #[test]
 fn test_digest_option_vec() {
     let temp: Option<Vec<String>> = Default::default();

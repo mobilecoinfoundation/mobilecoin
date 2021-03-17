@@ -24,7 +24,8 @@ pub enum TargetFamily {
     Windows,
 }
 
-/// An enumeration of errors which can occur while parsing the target family environment variable
+/// An enumeration of errors which can occur while parsing the target family
+/// environment variable
 #[derive(Clone, Debug, Fail)]
 pub enum TargetFamilyError {
     /// The family was not one of the values
@@ -53,7 +54,8 @@ pub enum Endianness {
     Big,
 }
 
-/// An enumeration of errors which can occur while parsing the endianness environment variable
+/// An enumeration of errors which can occur while parsing the endianness
+/// environment variable
 #[derive(Clone, Debug, Fail)]
 pub enum EndiannessError {
     /// The endianness value given was neither "big" nor "little".
@@ -85,10 +87,12 @@ pub enum EnvironmentError {
     /// The target family could not be parsed
     #[fail(display = "Target family error: {}", _0)]
     TargetFamily(TargetFamilyError),
-    /// There was an error parsing a variable which was supposed to be a numeric value
+    /// There was an error parsing a variable which was supposed to be a numeric
+    /// value
     #[fail(display = "Could not parse {}: {}", _0, _1)]
     ParseInt(String, ParseIntError),
-    /// The output directory was not in the form `.../<target-dir>/<profile>/out/etc.`
+    /// The output directory was not in the form
+    /// `.../<target-dir>/<profile>/out/etc.`
     #[fail(display = "Output directory badly constructed: {:?}", _0)]
     OutDir(PathBuf),
 }
@@ -396,19 +400,22 @@ impl Environment {
         self.locked
     }
 
-    /// Get a reference to a hash set of enabled cargo features (as `lower-kebab-case` strings)
+    /// Get a reference to a hash set of enabled cargo features (as
+    /// `lower-kebab-case` strings)
     pub fn features(&self) -> HashSetIter<String> {
         self.features.iter()
     }
 
     /// Get whether a feature is enabled or not.
     ///
-    /// Feature names are normalized into `lower-kebab-case` (as opposed to `UPPER_SNAKE_CASE`).
+    /// Feature names are normalized into `lower-kebab-case` (as opposed to
+    /// `UPPER_SNAKE_CASE`).
     pub fn feature(&self, feature: &str) -> bool {
         self.features.contains(feature)
     }
 
-    /// Get a reference to a hash map of variables injected by the current crate's dependencies
+    /// Get a reference to a hash map of variables injected by the current
+    /// crate's dependencies
     pub fn depvars(&self) -> HashMapIter<String, String> {
         self.depvars.iter()
     }
@@ -563,7 +570,8 @@ impl Environment {
         &self.target_features
     }
 
-    /// Get a list of types which support atomic operations on the target platform
+    /// Get a list of types which support atomic operations on the target
+    /// platform
     pub fn target_has_atomic(&self) -> &HashSet<String> {
         &self.target_has_atomic
     }

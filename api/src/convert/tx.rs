@@ -51,7 +51,8 @@ mod tests {
         let charlie = AccountKey::random(&mut rng);
 
         let minted_outputs: Vec<TxOut> = {
-            // Mint an initial collection of outputs, including one belonging to `sender_account`.
+            // Mint an initial collection of outputs, including one belonging to
+            // `sender_account`.
             let mut recipient_and_amounts: Vec<(PublicAddress, u64)> = Vec::new();
             recipient_and_amounts.push((alice.default_subaddress(), 65536));
 
@@ -104,7 +105,8 @@ mod tests {
             assert_eq!(tx, recovered_tx);
         }
 
-        // Converting mc_transaction_core::Tx -> external::Tx -> mc_transaction_core::Tx should be the identity function.
+        // Converting mc_transaction_core::Tx -> external::Tx -> mc_transaction_core::Tx
+        // should be the identity function.
         {
             let external_tx: external::Tx = external::Tx::from(&tx);
             let recovered_tx: Tx = Tx::try_from(&external_tx).unwrap();

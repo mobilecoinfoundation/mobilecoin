@@ -104,10 +104,11 @@ lazy_static::lazy_static! {
 
 }
 
-/// TxValidationErrorMetrics keeps track of tx validation errors upon ingress (with the add tx GRPC
-/// call). This cannot use the standard OpMetrics since we want to have a separate counter per each
-/// error (OpMetrics uses an "op" label to distinguish between different counters, this metric will
-/// have an "err" label).
+/// TxValidationErrorMetrics keeps track of tx validation errors upon ingress
+/// (with the add tx GRPC call). This cannot use the standard OpMetrics since we
+/// want to have a separate counter per each error (OpMetrics uses an "op" label
+/// to distinguish between different counters, this metric will have an "err"
+/// label).
 #[derive(Clone)]
 pub struct TxValidationErrorMetrics {
     counters: IntCounterVec,

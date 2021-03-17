@@ -18,9 +18,11 @@ use mc_attest_core::{
 use mc_sgx_types::sgx_status_t;
 use prost::Message;
 
-/// Methods on the `mc_attest_core::Report` object which are only usable inside a running SGX enclave.
+/// Methods on the `mc_attest_core::Report` object which are only usable inside
+/// a running SGX enclave.
 pub trait EnclaveReport: Sized {
-    /// Create a new EREPORT for the specified target enclave, with the given user data.
+    /// Create a new EREPORT for the specified target enclave, with the given
+    /// user data.
     fn new(target_info: Option<&TargetInfo>, report_data: Option<&ReportData>) -> SgxResult<Self>;
 
     /// Verify a report was created for the currently running enclave.
@@ -63,12 +65,15 @@ pub fn unseal<S: Sealed>(obj: &S) -> Result<S::Source, UnsealingError> {
 }
 
 /// Blob sealing and unsealing API
-/// This is a trait because reviewers desired that `seal_raw` and `unseal_raw` should
-/// be member functions of IntelSealed but they cannot be in the same crate.
+/// This is a trait because reviewers desired that `seal_raw` and `unseal_raw`
+/// should be member functions of IntelSealed but they cannot be in the same
+/// crate.
 pub trait SealAlgo: Sized {
-    /// Takes plaintext and optional additional text that is under the mac, produces sealed blob
+    /// Takes plaintext and optional additional text that is under the mac,
+    /// produces sealed blob
     fn seal_raw(plaintext: &[u8], additional_mac_txt: &[u8]) -> Result<Self, IntelSealingError>;
-    /// Takes a sealed blob, reproduces the plaintext and the additional mac text, in that order
+    /// Takes a sealed blob, reproduces the plaintext and the additional mac
+    /// text, in that order
     fn unseal_raw(&self) -> SgxResult<(Vec<u8>, Vec<u8>)>;
 }
 
@@ -120,8 +125,8 @@ impl From<ParseSealedError> for IntelSealingError {
     }
 }
 
-// allow conversion to a user defined type (Sealed::Error) that is general enough
-// to hold SgxError and ParseSealedError
+// allow conversion to a user defined type (Sealed::Error) that is general
+// enough to hold SgxError and ParseSealedError
 fn error_conversion_helper<T: From<SgxError> + From<ParseSealedError>>(
     src: IntelSealingError,
 ) -> T {

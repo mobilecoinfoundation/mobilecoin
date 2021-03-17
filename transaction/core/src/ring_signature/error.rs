@@ -40,7 +40,10 @@ pub enum Error {
     /// There was an opaque error returned by another crate or library
     InternalError,
 
-    /// Signing failed because the value of inputs did not equal the value of outputs.
+    /**
+     * Signing failed because the value of inputs did not equal the value of
+     * outputs.
+     */
     ValueNotConserved,
 
     /// Invalid RangeProof

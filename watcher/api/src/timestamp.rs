@@ -14,7 +14,10 @@ pub enum TimestampResultCode {
     TimestampFound = 1,
     /// The timestamp was not found and the watcher is behind.
     WatcherBehind,
-    /// The timestamp cannot be known unless restarted with a different set of watched nodes.
+    /**
+     * The timestamp cannot be known unless restarted with a different set
+     * of watched nodes.
+     */
     Unavailable,
     /// WatcherDBError when getting signatures and timestamps.
     WatcherDatabaseError,

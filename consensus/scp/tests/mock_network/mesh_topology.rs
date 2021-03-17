@@ -2,8 +2,8 @@
 
 // Mesh style network topologies.
 
-// We allow dead code because not all integration tests use all of the common code.
-// https://github.com/rust-lang/rust/issues/46379
+// We allow dead code because not all integration tests use all of the common
+// code. https://github.com/rust-lang/rust/issues/46379
 #![allow(dead_code)]
 
 use crate::mock_network;
@@ -16,7 +16,8 @@ use std::collections::HashSet;
 /// (N nodes, each node has all other nodes as it's validators)
 ///////////////////////////////////////////////////////////////////////////////
 
-/// Constructs a mesh network, where each node has all of it's peers as validators.
+/// Constructs a mesh network, where each node has all of it's peers as
+/// validators.
 pub fn dense_mesh(
     n: usize, // the number of nodes in the network
     k: usize, // the number of nodes that must agree within the network

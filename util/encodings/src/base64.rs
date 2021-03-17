@@ -18,14 +18,15 @@ pub trait FromBase64: Sized {
 pub trait ToBase64 {
     /// Serialize the contents of this object into the given byte slice.
     ///
-    /// If the data fit in the given slice, this method should return `Ok(length_used)`. If the
-    /// data does not fit, this method should return `Err(length_needed)`.
+    /// If the data fit in the given slice, this method should return
+    /// `Ok(length_used)`. If the data does not fit, this method should
+    /// return `Err(length_needed)`.
     fn to_base64(&self, dest: &mut [u8]) -> Result<usize, usize>;
 
     /// Serialize the contents of this object into a newly allocated string.
     ///
-    /// Most implementers of this trate will not need to provide a custom implementation for this
-    /// method.
+    /// Most implementers of this trate will not need to provide a custom
+    /// implementation for this method.
     fn to_base64_owned(&self) -> String {
         let mut v = Vec::new();
 
@@ -41,8 +42,9 @@ pub trait ToBase64 {
 
 /// Calculate the size of the buffer which [binascii::b64encode] must be given.
 ///
-/// This will ensure at least one extra byte beyond the unpadded data length is available for that
-/// function to write a (potentially) spurious padding character into.
+/// This will ensure at least one extra byte beyond the unpadded data length is
+/// available for that function to write a (potentially) spurious padding
+/// character into.
 #[inline(always)]
 pub fn base64_buffer_size(byte_len: usize) -> usize {
     let data_len = byte_len * 4 / 3;

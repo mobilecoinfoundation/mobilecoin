@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-//! Extension traits that make it easier to start GRPC servers and connect to them using URIs.
+//! Extension traits that make it easier to start GRPC servers and connect to
+//! them using URIs.
 
 use crate::ServerCertReloader;
 use grpcio::{
@@ -56,8 +57,8 @@ impl ConnectionUriGrpcioChannel for ChannelBuilder {
 
 /// A trait to ease grpio server construction from URIs.
 pub trait ConnectionUriGrpcioServer {
-    /// Bind a ServerBuilder using information from a URI and enable support for hot-reloading
-    /// certificates when TLS is used.
+    /// Bind a ServerBuilder using information from a URI and enable support for
+    /// hot-reloading certificates when TLS is used.
     fn bind_using_uri(self, uri: &impl ConnectionUri, logger: Logger) -> Self;
 }
 

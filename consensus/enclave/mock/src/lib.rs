@@ -104,9 +104,10 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
         Ok(self.signing_keypair.public_key())
     }
 
-    // NOTE: We hardcode here because we don't need the mock enclave currently to be configurable
-    //       by env vars, and we also do not currently have any tests verifying with the private fee key
-    //       for the mock enclave, so only the public keys are listed here.
+    // NOTE: We hardcode here because we don't need the mock enclave currently to be
+    // configurable       by env vars, and we also do not currently have any
+    // tests verifying with the private fee key       for the mock enclave, so
+    // only the public keys are listed here.
     fn get_fee_recipient(&self) -> Result<FeePublicKey> {
         let fee_spend_public_key = [
             38, 181, 7, 198, 49, 36, 162, 245, 233, 64, 180, 251, 137, 228, 178, 187, 10, 32, 120,
@@ -198,15 +199,16 @@ impl ConsensusEnclave for ConsensusServiceMockEnclave {
             encrypted_txs_with_proofs
                 .iter()
                 .map(|(encrypted_tx, proofs)| {
-                    // These bytes are normally an enclave-encrypted Tx, but here, it is just serialized.
+                    // These bytes are normally an enclave-encrypted Tx, but here, it is just
+                    // serialized.
                     let ciphertext = &encrypted_tx.0;
                     let tx = mc_util_serial::decode::<Tx>(ciphertext).unwrap();
                     (tx, proofs.clone())
                 })
                 .collect();
 
-        // root_elements contains the root hash of the Merkle tree of all TxOuts in the ledger
-        // that were used to validate the tranasctions.
+        // root_elements contains the root hash of the Merkle tree of all TxOuts in the
+        // ledger that were used to validate the tranasctions.
         let mut root_elements = Vec::new();
         let mut rng = McRng::default();
 

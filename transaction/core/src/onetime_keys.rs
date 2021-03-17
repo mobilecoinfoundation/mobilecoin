@@ -1,39 +1,44 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-//! # MobileCoin transactions use CryptoNote-style `onetime keys` to protect recipient privacy.
+//! # MobileCoin transactions use CryptoNote-style `onetime keys` to protect
+//! recipient privacy.
 //!
-//! When creating a transaction, the sender computes a onetime public key for each output in
-//! such a way that only the sender and the recipient know who the recipient is, and only the
-//! recipient is able to compute the corresponding onetime private key that is required to
-//! spend the output.
+//! When creating a transaction, the sender computes a onetime public key for
+//! each output in such a way that only the sender and the recipient know who
+//! the recipient is, and only the recipient is able to compute the
+//! corresponding onetime private key that is required to spend the output.
 //!
-//! To further protect recipient privacy, an output's onetime key is computed for a `subaddress`
-//! that the recipient generated from their CryptoNote-style address. This makes it easy for a
-//! recipient to use different subaddresses for different purposes and keep track of how much
-//! MobileCoin was sent to each subaddress.
+//! To further protect recipient privacy, an output's onetime key is computed
+//! for a `subaddress` that the recipient generated from their CryptoNote-style
+//! address. This makes it easy for a recipient to use different subaddresses
+//! for different purposes and keep track of how much MobileCoin was sent to
+//! each subaddress.
 //!
 //! ## User account keys (a,b)
-//! To begin, a user creates unique account keys `(a,b)`, where `a` is the private view key and
-//! `b` is the private spend key. The corresponding public keys are `A = a*G` and `B = b*G`, where
-//! `G` is the Ristretto base point. The keys `a`, `b`, `A`, and `B` "stay in the user's wallet":
-//! they are not shared with other users and they do not appear in the ledger.
+//! To begin, a user creates unique account keys `(a,b)`, where `a` is the
+//! private view key and `b` is the private spend key. The corresponding public
+//! keys are `A = a*G` and `B = b*G`, where `G` is the Ristretto base point. The
+//! keys `a`, `b`, `A`, and `B` "stay in the user's wallet": they are not shared
+//! with other users and they do not appear in the ledger.
 //!
 //! ## Creating the i^th subaddress (C_i, D_i)
-//! Instead, when a user wishes to receive MobileCoin, they compute a pair of public keys
+//! Instead, when a user wishes to receive MobileCoin, they compute a pair of
+//! public keys
 //!
 //!    `D_i = B + Hs( a | i ) * G`
 //!    `C_i = a * D`
 //!
-//! where `Hs` denotes an appropriately domain-separated hash function that returns a scalar.
-//! `C_i` is called the subaddress public view key; `D_i` is the public subadress spend key.
-//! The `subaddress index` `i` allows the user to generate many distinct subaddresses from a single
-//! address.
+//! where `Hs` denotes an appropriately domain-separated hash function that
+//! returns a scalar. `C_i` is called the subaddress public view key; `D_i` is
+//! the public subadress spend key. The `subaddress index` `i` allows the user
+//! to generate many distinct subaddresses from a single address.
 //!
 //! See the `account_keys` crate for more about account keys and subaddresses.
 //!
 //! ## Sending MobileCoin to a subaddress (C,D)
-//! To send MobileCoin to a recipient's subaddress (C,D), the sender generates a unique random
-//! number `r`, and creates the following public keys and includes them in a transaction output:
+//! To send MobileCoin to a recipient's subaddress (C,D), the sender generates a
+//! unique random number `r`, and creates the following public keys and includes
+//! them in a transaction output:
 //!
 //!    `onetime_public_key = Hs( r * C ) * G + D`
 //!    `tx_public_key = r * D`
@@ -41,16 +46,18 @@
 //! The `onetime_public_key` is sometimes called `target_key`.
 //!
 //! ## Identifying an output sent to your subaddress (C_i, D_i).
-//! If you are the recipient of an output, even though you don’t know the random number `r`
-//! used in the output's tx_pub_key, you can use the fact that `a * rD_i = r * aD_i = rC_i` and
-//! compute the value
+//! If you are the recipient of an output, even though you don’t know the random
+//! number `r` used in the output's tx_pub_key, you can use the fact that `a *
+//! rD_i = r * aD_i = rC_i` and compute the value
 //!
 //!    `Hs( a * tx_public_key ) * G + D_i`.
 //!
-//! If this value equals the output's onetime_key, then the output was sent to your i^th subaddress.
+//! If this value equals the output's onetime_key, then the output was sent to
+//! your i^th subaddress.
 //!
 //! ## Spending MobileCoin sent to your subaddress (C_i, D_i)
-//! To spend an output sent to your i^th subaddress, compute the onetime private key:
+//! To spend an output sent to your i^th subaddress, compute the onetime private
+//! key:
 //!
 //! ```text
 //!     onetime_private_key = Hs(a * tx_public_key) + d
@@ -80,12 +87,13 @@ fn hash_to_scalar(point: RistrettoPoint) -> Scalar {
     Scalar::from_hash::<Blake2b>(hasher)
 }
 
-/// Creates onetime_public_key `Hs( r * C ) * G + D` for an output sent to subaddress (C, D).
+/// Creates onetime_public_key `Hs( r * C ) * G + D` for an output sent to
+/// subaddress (C, D).
 ///
 /// # Arguments
-/// * `tx_private_key` - The output's tx_private_key `r`. Must be unique for each output.
+/// * `tx_private_key` - The output's tx_private_key `r`. Must be unique for
+///   each output.
 /// * `recipient` - The recipient subaddress `(C,D)`.
-///
 pub fn create_onetime_public_key(
     tx_private_key: &RistrettoPrivate,
     recipient: &PublicAddress,
@@ -104,9 +112,9 @@ pub fn create_onetime_public_key(
 /// Creates the `tx_public_key = r * D` for an output sent to subaddress (C, D).
 ///
 /// # Arguments
-/// * `tx_private_key` - The transaction private key `r`. Must be unique for each output.
+/// * `tx_private_key` - The transaction private key `r`. Must be unique for
+///   each output.
 /// * `recipient_spend_key` - The recipient's public subaddress spend key `D`.
-///
 pub fn create_tx_public_key(
     tx_private_key: &RistrettoPrivate,
     recipient_spend_key: &RistrettoPublic,
@@ -118,17 +126,17 @@ pub fn create_tx_public_key(
 
 /// Recovers the subaddress spend key D_i that an output was sent to.
 ///
-/// This computes `P - Hs( a * R ) * G`. If the output was sent to this recipient, the returned
-/// value equals D_i for some subaddress index i. This is helpful for checking an output against
-/// a set of subaddresses.
+/// This computes `P - Hs( a * R ) * G`. If the output was sent to this
+/// recipient, the returned value equals D_i for some subaddress index i. This
+/// is helpful for checking an output against a set of subaddresses.
 ///
-/// If the output was sent to a different recipient, the returned value is meaningless.
+/// If the output was sent to a different recipient, the returned value is
+/// meaningless.
 ///
 /// # Arguments
 /// * `view_private_key` - The recipient's view private key `a`.
 /// * `onetime_public_key` - The output's onetime_public_key.
 /// * `tx_public_key` - The output's tx_public_key.
-///
 pub fn recover_public_subaddress_spend_key(
     view_private_key: &RistrettoPrivate,
     onetime_public_key: &RistrettoPublic,
@@ -147,14 +155,15 @@ pub fn recover_public_subaddress_spend_key(
 
 /// Returns true if the output was sent to the recipient's i^th subaddress.
 ///
-/// If you are checking an output against multiple subadresses, it is more efficient to use
-/// `recover_public_subaddress_spend_key` and compare the result against a table of D_i keys.
+/// If you are checking an output against multiple subadresses, it is more
+/// efficient to use `recover_public_subaddress_spend_key` and compare the
+/// result against a table of D_i keys.
 ///
 /// # Arguments
-/// * `view_key` - The recipient's private view key and public subaddress spend key, `(a, D_i)`.
+/// * `view_key` - The recipient's private view key and public subaddress spend
+///   key, `(a, D_i)`.
 /// * `onetime_public_key` - The output's onetime_public_key
 /// * `tx_public_key` - The output's tx_public_key `R`.
-///
 pub fn view_key_matches_output(
     view_key: &ViewKey,
     onetime_public_key: &RistrettoPublic,
@@ -176,7 +185,6 @@ pub fn view_key_matches_output(
 /// * `tx_public_key` - The output's tx_public_key `R`.
 /// * `view_private_key` - A private view key `a`.
 /// * `subaddress_spend_private_key` - A private spend key `d = Hs(a || i) + b`.
-///
 pub fn recover_onetime_private_key(
     tx_public_key: &RistrettoPublic,
     view_private_key: &RistrettoPrivate,
@@ -245,7 +253,8 @@ mod tests {
     }
 
     #[test]
-    // `create_onetime_public_key` should produce a public key that agrees with the recipient's view key.
+    // `create_onetime_public_key` should produce a public key that agrees with the
+    // recipient's view key.
     fn test_create_onetime_public_key() {
         let mut rng = McRng::default();
         let account: AccountKey = AccountKey::random(&mut rng);
@@ -288,7 +297,8 @@ mod tests {
     }
 
     #[test]
-    // Should recover the correct public subaddress spend key D_i when the output belongs to the recipient.
+    // Should recover the correct public subaddress spend key D_i when the output
+    // belongs to the recipient.
     fn test_recover_public_subaddress_spend_key_ok() {
         let mut rng = McRng::default();
         let account: AccountKey = AccountKey::random(&mut rng);

@@ -28,8 +28,8 @@ pub enum Error {
 }
 
 /// A little-endian IEEE CRC32 checksum is prepended to payloads.
-/// Since this is public information with a possibility of transcription failure,
-/// a checksum is more appropriate than a hash function
+/// Since this is public information with a possibility of transcription
+/// failure, a checksum is more appropriate than a hash function
 fn calculate_checksum(data: &[u8]) -> [u8; 4] {
     crc32::checksum_ieee(data).to_le_bytes()
 }

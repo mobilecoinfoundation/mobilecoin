@@ -27,26 +27,30 @@ pub use generic_array::{typenum, ArrayLength, GenericArray};
 /// ReprBytes represents a type that has a canonical representation as a fixed
 /// number of bytes. This interface is meant to support generic programming.
 ///
-/// ReprBytes is meant to be general enough to support many forms of cryptographic
-/// primitives. Most cryptographic primitives implement AsRef<[u8]> and TryFrom<&[u8]>,
-/// but not all of them can -- RistrettoPoint requires an (expensive) compression
-/// step before the bytes of the canonical representation can be accessed.
+/// ReprBytes is meant to be general enough to support many forms of
+/// cryptographic primitives. Most cryptographic primitives implement
+/// AsRef<[u8]> and TryFrom<&[u8]>, but not all of them can -- RistrettoPoint
+/// requires an (expensive) compression step before the bytes of the canonical
+/// representation can be accessed.
 ///
 /// ReprBytes provides an API very close to AsRef<[u8]> and TryFrom<&[u8]> which
 /// can be used in generic code that handles cryptographic primitives, and in
 /// glue code so that these primitives can be used easily with serialization
 /// libraries and frameworks.
 ///
-/// The error types are constrained with Display so that both Prost and Serde can make effective use of them
+/// The error types are constrained with Display so that both Prost and Serde
+/// can make effective use of them
 ///
 /// To be useful, ReprBytes wants to provide many "blanket implementations" that
 /// connect it with core traits and traits from Prost and Serde.
-/// However, blanket implementations don't work very well in rust outside of stdlib.
-/// Instead, we provide macros so that these blanket implementations can be obtained
-/// on a per-type basis, and these macros are exported from this crate. We believe
-/// that this is consistent with current best practices around blanket implementations.
+/// However, blanket implementations don't work very well in rust outside of
+/// stdlib. Instead, we provide macros so that these blanket implementations can
+/// be obtained on a per-type basis, and these macros are exported from this
+/// crate. We believe that this is consistent with current best practices around
+/// blanket implementations.
 pub trait ReprBytes: Sized {
-    /// A typenum representing the size, in bytes, of the canonical representation
+    /// A typenum representing the size, in bytes, of the canonical
+    /// representation
     type Size: ArrayLength<u8>;
 
     /// The error type which may be returned by from_bytes.
@@ -58,11 +62,13 @@ pub trait ReprBytes: Sized {
     /// Convert to canonical representation bytes.
     fn to_bytes(&self) -> GenericArray<u8, Self::Size>;
 
-    /// In-place visitation of the canonical bytes representation, using a closure
+    /// In-place visitation of the canonical bytes representation, using a
+    /// closure
     ///
-    /// Implementation note: The default implementation is not the best when your
-    /// type implements AsRef<[u8]>, it will make a needless copy in that case.
-    /// If your type implements AsRef<[u8]>, then you are strongly recommended to use
+    /// Implementation note: The default implementation is not the best when
+    /// your type implements AsRef<[u8]>, it will make a needless copy in
+    /// that case. If your type implements AsRef<[u8]>, then you are
+    /// strongly recommended to use
     /// the macro `derive_repr_bytes_from_as_ref_try_from`.
     /// Otherwise the default implementation is probably the best.
     /// See also the suggested impl `derive_into_vec_from_repr_bytes`.
@@ -95,10 +101,10 @@ impl Display for LengthMismatch {
 
 ////
 // Suggested Implementations:
-// These macros provide instances of what can be thought of as "blanket implementations"
-// on a per-type basis.
-// These are macros because rust's coherence rules mean that blanket implementations
-// won't work out well for this use-case.
+// These macros provide instances of what can be thought of as "blanket
+// implementations" on a per-type basis.
+// These are macros because rust's coherence rules mean that blanket
+// implementations won't work out well for this use-case.
 //
 // There are two types of suggested impls:
 // - Impls of other traits in terms of ReprBytes
@@ -112,13 +118,15 @@ impl Display for LengthMismatch {
 ///
 /// Arguments:
 ///   - $mytype is the type you want to impl ReprBytes
-///   - $mysize is a typenum, representing the size of the canonical representation
+///   - $mysize is a typenum, representing the size of the canonical
+///     representation
 ///
 /// Requirements:
 ///   - <AsRef<[u8]> for $mytype>::as_ref().len() always equals $mysize::USIZE
 ///   - <TryFrom<&[u8]> for $mytype>::Error implements core::fmt::Display
 ///   - <TryFrom<&'a[u8]> for $mytype>::Error is the same for all values of 'a,
-///     OR they are all convertible to the value when 'a = 'static, via core::convert::From.
+///     OR they are all convertible to the value when 'a = 'static, via
+///     core::convert::From.
 #[macro_export]
 macro_rules! derive_repr_bytes_from_as_ref_and_try_from {
     ($mytype:ty, $mysize:ty) => {
@@ -263,8 +271,9 @@ macro_rules! derive_prost_message_from_repr_bytes {
 }
 
 /// Derive serde::{Deserialize, Serialize} from a ReprBytes implementation
-/// This is represented within serde as a bytes primitive. During deserialization,
-/// a sequence of individual bytes also works, which helps serde_json.
+/// This is represented within serde as a bytes primitive. During
+/// deserialization, a sequence of individual bytes also works, which helps
+/// serde_json.
 #[cfg(feature = "serde")]
 #[macro_export]
 macro_rules! derive_serde_from_repr_bytes {
@@ -360,15 +369,18 @@ macro_rules! derive_serde_from_repr_bytes {
 }
 
 /// Derive PartialOrd, Ord, PartialEq, Hash from AsRef<T>.
-/// This means we will compare or hash ourselves by first converting to T via AsRef.
+/// This means we will compare or hash ourselves by first converting to T via
+/// AsRef.
 ///
-/// These impls are generally needed to put the type in an associative container.
-/// NOTE: DO NOT DO THIS FOR PRIVATE keys! This is a hazard that can be a source of leaks.
+/// These impls are generally needed to put the type in an associative
+/// container. NOTE: DO NOT DO THIS FOR PRIVATE keys! This is a hazard that can
+/// be a source of leaks.
 ///
 /// This is not connected to ReprBytes but it is a macro like the above macros
 /// that is often needed for public key type wrappers.
-/// You probably don't want to try to implement this for types that don't have AsRef,
-/// because it will be slow. For Ristretto, maybe use CompressedRistretto.
+/// You probably don't want to try to implement this for types that don't have
+/// AsRef, because it will be slow. For Ristretto, maybe use
+/// CompressedRistretto.
 #[macro_export]
 macro_rules! derive_core_cmp_from_as_ref {
     ($mytype:ty, $asref:ty) => {

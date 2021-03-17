@@ -1,8 +1,9 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-//! PeerKeepalive is used to start a thread that periodically pings nodes we have not received an
-//! SCP statement from in a while. This allows nodes who have temporarily lost connectivity and
-//! came back online to re-sync with their peers.
+//! PeerKeepalive is used to start a thread that periodically pings nodes we
+//! have not received an SCP statement from in a while. This allows nodes who
+//! have temporarily lost connectivity and came back online to re-sync with
+//! their peers.
 
 use crate::{
     background_work_queue::BackgroundWorkQueueSenderFn, consensus_service::IncomingConsensusMsg,
@@ -24,7 +25,8 @@ use std::{
     time::{Duration, Instant},
 };
 
-/// How much time needs to pass since we last hear from a node before we try pinging it?
+/// How much time needs to pass since we last hear from a node before we try
+/// pinging it?
 const START_KEEPALIVE_CHECKS_AFTER: Duration = Duration::from_secs(30);
 
 /// Time between keepalive checks for silent nodes.
@@ -156,11 +158,13 @@ impl PeerKeepalive {
                         }
                         Ok(Some(unverified_consensus_msg)) => {
                             // Validate message signature
-                            // FIXME: Additional verification for quorum set members that public key matches expected
+                            // FIXME: Additional verification for quorum set members that public key
+                            // matches expected
                             match unverified_consensus_msg.clone().try_into() {
                                 Ok(consensus_msg) => {
-                                    // Note that we do not update `responder_id_to_last_heard` here since this
-                                    // will get to us through the `incoming_consensus_msgs` processing loop
+                                    // Note that we do not update `responder_id_to_last_heard` here
+                                    // since this will get to us
+                                    // through the `incoming_consensus_msgs` processing loop
                                     // in `ConsensusService`.
                                     log::trace!(
                                         logger,

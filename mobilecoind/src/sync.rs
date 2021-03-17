@@ -2,20 +2,23 @@
 
 //! Manages ledger block scanning for mobilecoind monitors.
 //!
-//! The sync code creates a pool of worker threads, and a main thread to hand off tasks to the
-//! worker threads over a crossbeam channel. Each task is a request to sync block data for a given
-//! monitor id. Each task is limited to a pre-defined amount of blocks - this is useful when the
-//! amount of monitors exceeds the amount of working threads as it ensures monitors are processed
+//! The sync code creates a pool of worker threads, and a main thread to hand
+//! off tasks to the worker threads over a crossbeam channel. Each task is a
+//! request to sync block data for a given monitor id. Each task is limited to a
+//! pre-defined amount of blocks - this is useful when the amount of monitors
+//! exceeds the amount of working threads as it ensures monitors are processed
 //! concurrently.
-//! The main thread periodically queries the database for all currently known monitor ids, and
-//! submits new jobs into the queue for each monitor not currently queued. In order to prevent
-//! duplicate queueing, the code also keeps track of the list of already-queued monitor ids inside
-//! a hashset that is shared with the worker threads. When a worker thread is finished with a given
-//! monitor id, it removes it from the hashset, which in turns allows the main thread to queue it
-//! again once the polling interval is exceeded. Since the worker thread processes blocks in
-//! chunks, it is possible that not all available blocks gets processed at once. When that happens,
-//! instead of removing the monitor id from the hashset, it would be placed back into the queue to
-//! be picked up by the next available worker thread.
+//! The main thread periodically queries the database for all currently known
+//! monitor ids, and submits new jobs into the queue for each monitor not
+//! currently queued. In order to prevent duplicate queueing, the code also
+//! keeps track of the list of already-queued monitor ids inside a hashset that
+//! is shared with the worker threads. When a worker thread is finished with a
+//! given monitor id, it removes it from the hashset, which in turns allows the
+//! main thread to queue it again once the polling interval is exceeded. Since
+//! the worker thread processes blocks in chunks, it is possible that not all
+//! available blocks gets processed at once. When that happens, instead of
+//! removing the monitor id from the hashset, it would be placed back into the
+//! queue to be picked up by the next available worker thread.
 
 use crate::{
     database::Database,
@@ -48,7 +51,8 @@ use std::{
 ///  The maximal number of blocks a worker thread would process at once.
 const MAX_BLOCKS_PROCESSING_CHUNK_SIZE: usize = 5;
 
-/// Message type the our crossbeam channel used to communicate with the worker thread pull.
+/// Message type the our crossbeam channel used to communicate with the worker
+/// thread pull.
 enum SyncMsg {
     SyncMonitor(MonitorId),
     Stop,
@@ -138,12 +142,14 @@ impl SyncThread {
                             .expect("failed getting number of blocks");
 
                         // A flag to track whether we sent a message to our work queue.
-                        // If we sent a message, that means new blocks have arrived and we can skip sleeping.
-                        // If no new blocks arrived, and we haven't had to sync any monitors, we can sleep for
+                        // If we sent a message, that means new blocks have arrived and we can skip
+                        // sleeping. If no new blocks arrived, and we
+                        // haven't had to sync any monitors, we can sleep for
                         // a bit so that we do not use 100% cpu.
                         let mut message_sent = false;
 
-                        // Go over our list of monitors and see which one needs to process these blocks.
+                        // Go over our list of monitors and see which one needs to process these
+                        // blocks.
                         for (monitor_id, monitor_data) in mobilecoind_db
                             .get_monitor_map()
                             .expect("failed getting monitor map")
@@ -240,8 +246,8 @@ fn sync_thread_entry_point(
                 match sync_monitor(&ledger_db, &mobilecoind_db, &monitor_id, &logger) {
                     // Success - No more blocks are currently available.
                     Ok(SyncMonitorOk::NoMoreBlocks) => {
-                        // Remove the monitor id from the list of queued ones so that the main thread could
-                        // queue it again if necessary.
+                        // Remove the monitor id from the list of queued ones so that the main
+                        // thread could queue it again if necessary.
                         log::trace!(logger, "{}: sync_monitor returned NoMoreBlocks", monitor_id);
 
                         let mut queued_monitor_ids =
@@ -288,8 +294,8 @@ fn sync_monitor(
     logger: &Logger,
 ) -> Result<SyncMonitorOk, Error> {
     for _ in 0..MAX_BLOCKS_PROCESSING_CHUNK_SIZE {
-        // Get the monitor data. If it is no longer available, the monitor has been removed and we
-        // can simply return.
+        // Get the monitor data. If it is no longer available, the monitor has been
+        // removed and we can simply return.
         let monitor_data = mobilecoind_db.get_monitor_data(monitor_id)?;
         let block_contents = match ledger_db.get_block_contents(monitor_data.next_block) {
             Ok(block_contents) => block_contents,
@@ -448,10 +454,10 @@ mod test {
         let (mut ledger_db, mobilecoind_db) =
             get_test_databases(0, &recipients, num_blocks, logger.clone(), &mut rng);
 
-        // Our recipient (controlled by the monitor id) is the first account (account_keys[0]).
-        // Each block generated by test_utils has a TxOut per recipient, so building on that
-        // knowledge the following code gets us the TxOuts relevant to our particular
-        // recipient.
+        // Our recipient (controlled by the monitor id) is the first account
+        // (account_keys[0]). Each block generated by test_utils has a TxOut per
+        // recipient, so building on that knowledge the following code gets us
+        // the TxOuts relevant to our particular recipient.
         let account0_tx_outs: Vec<TxOut> = (0..num_blocks)
             .map(|idx| {
                 let block_contents = ledger_db.get_block_contents(idx as u64).unwrap();
@@ -481,8 +487,8 @@ mod test {
         let result = sync_monitor(&ledger_db, &mobilecoind_db, &monitor_id, &logger).unwrap();
         assert_eq!(result, SyncMonitorOk::MoreBlocksPotentiallyAvailable);
 
-        // We should now discover some outputs. Each block has 1 output per recipient, and we
-        // synced the max chunk size.
+        // We should now discover some outputs. Each block has 1 output per recipient,
+        // and we synced the max chunk size.
         let monitor_data = mobilecoind_db.get_monitor_data(&monitor_id).unwrap();
         assert_eq!(
             monitor_data.next_block,

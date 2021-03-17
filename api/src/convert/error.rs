@@ -20,7 +20,8 @@ pub enum ConversionError {
     Other,
 }
 
-// This is needed for some code to compile, due to TryFrom being derived from From
+// This is needed for some code to compile, due to TryFrom being derived from
+// From
 impl From<core::convert::Infallible> for ConversionError {
     fn from(_src: core::convert::Infallible) -> Self {
         unreachable!();

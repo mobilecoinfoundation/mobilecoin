@@ -11,7 +11,8 @@ use mockall::*;
 
 #[cfg_attr(test, automock)]
 pub trait TxManager: Send {
-    /// Insert a transaction into the cache. The transaction must be well-formed.
+    /// Insert a transaction into the cache. The transaction must be
+    /// well-formed.
     fn insert(&self, tx_context: TxContext) -> TxManagerResult<TxHash>;
 
     /// Remove expired transactions from the cache and return their hashes.
@@ -26,20 +27,23 @@ pub trait TxManager: Send {
     /// Number of cached entries.
     fn num_entries(&self) -> usize;
 
-    /// Validate the transaction corresponding to the given hash against the current ledger.
+    /// Validate the transaction corresponding to the given hash against the
+    /// current ledger.
     fn validate(&self, tx_hash: &TxHash) -> TxManagerResult<()>;
 
     /// Combines the transactions that correspond to the given hashes.
     fn combine(&self, tx_hashes: &[TxHash]) -> TxManagerResult<Vec<TxHash>>;
 
-    /// Forms a Block containing the transactions that correspond to the given hashes.
+    /// Forms a Block containing the transactions that correspond to the given
+    /// hashes.
     fn tx_hashes_to_block(
         &self,
         tx_hashes: &[TxHash],
         parent_block: &Block,
     ) -> TxManagerResult<(Block, BlockContents, BlockSignature)>;
 
-    /// Creates a message containing a set of transactions that are encrypted for a peer.
+    /// Creates a message containing a set of transactions that are encrypted
+    /// for a peer.
     ///
     /// # Arguments
     /// * `tx_hashes` - transaction hashes.

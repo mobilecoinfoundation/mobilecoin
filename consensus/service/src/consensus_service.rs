@@ -67,9 +67,10 @@ impl From<ReportCacheError> for ConsensusServiceError {
     }
 }
 
-/// A consensus message relayed by the broadcast layer. In addition to the consensus message
-/// itself, it includes the node ID the message was received from. Note that this could be
-/// different from the node ID that initiated the message due to relaying.
+/// A consensus message relayed by the broadcast layer. In addition to the
+/// consensus message itself, it includes the node ID the message was received
+/// from. Note that this could be different from the node ID that initiated the
+/// message due to relaying.
 pub struct IncomingConsensusMsg {
     /// The broadcast-layer sender.
     pub from_responder_id: ResponderId,
@@ -78,13 +79,13 @@ pub struct IncomingConsensusMsg {
     pub consensus_msg: VerifiedConsensusMsg,
 }
 
-/// A callback for broadcasting a new transaction to peers and feeding it into ByztantineLedger.
-/// It receives 3 arguments:
+/// A callback for broadcasting a new transaction to peers and feeding it into
+/// ByztantineLedger. It receives 3 arguments:
 /// - TxHash of the the TX that was received
-/// - The NodeID the transaction was originally submitted to
-///   (will be None for values submitted by clients and not relayed by other nodes)
-/// - The NodeID that notified us about this transaction.
-///   (will be None for values submitted by clients and not relayed by other nodes)
+/// - The NodeID the transaction was originally submitted to (will be None for
+///   values submitted by clients and not relayed by other nodes)
+/// - The NodeID that notified us about this transaction. (will be None for
+///   values submitted by clients and not relayed by other nodes)
 pub type ProposeTxCallback =
     Arc<dyn Fn(TxHash, Option<&NodeID>, Option<&ResponderId>) + Sync + Send>;
 
@@ -255,7 +256,8 @@ impl<
     pub fn stop(&mut self) -> Result<(), ConsensusServiceError> {
         log::debug!(self.logger, "Attempting to stop node...");
 
-        // This will join the peer_keepalive in drop if we are the last thread holding it
+        // This will join the peer_keepalive in drop if we are the last thread holding
+        // it
         self.peer_keepalive = None;
 
         if let Some(ref mut server) = self.user_rpc_server.take() {
@@ -281,7 +283,8 @@ impl<
             ))
         })?;
 
-        // This will join the byzantine ledger in drop if we are the last thread holding it
+        // This will join the byzantine ledger in drop if we are the last thread holding
+        // it
         self.byzantine_ledger = None;
 
         if let Some(ref mut report_cache_thread) = self.report_cache_thread.take() {
@@ -533,7 +536,8 @@ impl<
         Ok(())
     }
 
-    /// Creates a function that returns true if the node is currently serving user requests.
+    /// Creates a function that returns true if the node is currently serving
+    /// user requests.
     fn create_is_serving_user_requests_fn(&self) -> Arc<dyn Fn() -> bool + Sync + Send> {
         let byzantine_ledger = self
             .byzantine_ledger
@@ -549,8 +553,8 @@ impl<
         })
     }
 
-    /// Creates a function that feeds client values into ByzantineLedger and broadcasts it to our
-    /// peers.
+    /// Creates a function that feeds client values into ByzantineLedger and
+    /// broadcasts it to our peers.
     fn create_scp_client_value_sender_fn(&self) -> ProposeTxCallback {
         let byzantine_ledger = self
             .byzantine_ledger
@@ -561,8 +565,8 @@ impl<
         let local_node_id = self.local_node_id.clone();
         let broadcaster = self.broadcaster.clone();
 
-        // Figure out which node IDs we are going to be relaying received transactions from.
-        // See comment below ("Broadcast to peers") for more details.
+        // Figure out which node IDs we are going to be relaying received transactions
+        // from. See comment below ("Broadcast to peers") for more details.
         let relay_from_nodes: Vec<ResponderId> = self
             .peer_manager
             .conns()
@@ -592,13 +596,14 @@ impl<
 
             // Broadcast to peers.
             //
-            // Nodes always relay transactions sent to them by clients to all their peers. As such, in
-            // mesh network configurations there is no need to relay transactions received from other
-            // peers since the originating node will already take care of sending the transaction to all
+            // Nodes always relay transactions sent to them by clients to all their peers.
+            // As such, in mesh network configurations there is no need to relay
+            // transactions received from other peers since the originating node
+            // will already take care of sending the transaction to all
             // of it's peers.
-            // However, in non-mesh configurations, network operators might want to selectively have
-            // incoming transactions from certain peers be relayed to other peers in order to improve
-            // consensus time.
+            // However, in non-mesh configurations, network operators might want to
+            // selectively have incoming transactions from certain peers be
+            // relayed to other peers in order to improve consensus time.
             if origin_node == &local_node_id || relay_from_nodes.contains(&origin_node.responder_id)
             {
                 if let Some(encrypted_tx) = tx_manager.get_encrypted_tx(&tx_hash) {
@@ -633,7 +638,8 @@ impl<
         })
     }
 
-    /// Helper method for creating the get config json function needed by the GRPC admin service.
+    /// Helper method for creating the get config json function needed by the
+    /// GRPC admin service.
     fn create_get_config_json_fn(&self) -> GetConfigJsonFn {
         let ledger_db = self.ledger_db.clone();
         let byzantine_ledger = self
@@ -670,9 +676,10 @@ impl<
 
                     latest_block_timestamp = match ledger_db.get_block_signature(b - 1) {
                         Ok(x) => Some(x.signed_at()),
-                        // Note, a block signature will be missing if the corresponding block was not
-                        // processed by an enclave participating in consensus. For example, unsigned
-                        // blocks can be created by a validator node that falls behind its peers and
+                        // Note, a block signature will be missing if the corresponding block was
+                        // not processed by an enclave participating in
+                        // consensus. For example, unsigned blocks can be
+                        // created by a validator node that falls behind its peers and
                         // enters into catchup.
                         Err(LedgerDbError::NotFound) => {
                             log::trace!(logger, "Block signature not found for block {}", b - 1);

@@ -14,7 +14,8 @@ use std::{
 pub struct SgxSign {
     /// The path to the sgx_sign executable.
     sgx_sign_path: PathBuf,
-    /// Whether to ignore the presence of relocations in the enclave shared object.
+    /// Whether to ignore the presence of relocations in the enclave shared
+    /// object.
     ignore_rel_error: bool,
     /// Whether to ignore .init sections in the enclave.
     ignore_init_sec_error: bool,
@@ -28,8 +29,8 @@ impl SgxSign {
         get_binary(target_arch, "sgx_sign").map(Self::from)
     }
 
-    /// Relocations are generally forbidden in the enclave shared object, this tells the `sgx_sign`
-    /// utility to ignore those errors.
+    /// Relocations are generally forbidden in the enclave shared object, this
+    /// tells the `sgx_sign` utility to ignore those errors.
     pub fn allow_relocations(mut self, allow: bool) -> Self {
         self.ignore_rel_error = allow;
         self
@@ -47,9 +48,9 @@ impl SgxSign {
         self
     }
 
-    /// Generate the command to sign the given enclave object with the given private key and write
-    /// the resulting enclave to the given path. Note that online signatures are inherently
-    /// insecure.
+    /// Generate the command to sign the given enclave object with the given
+    /// private key and write the resulting enclave to the given path. Note
+    /// that online signatures are inherently insecure.
     pub fn sign(
         &mut self,
         unsigned_enclave: &Path,
@@ -83,8 +84,8 @@ impl SgxSign {
         cmd
     }
 
-    /// Generate the command to create the data required for offline signing, and write it to the
-    /// given output data path.
+    /// Generate the command to create the data required for offline signing,
+    /// and write it to the given output data path.
     pub fn gendata(
         &mut self,
         unsigned_enclave: &Path,
@@ -115,8 +116,8 @@ impl SgxSign {
         cmd
     }
 
-    /// Combine an unsigned enclave and signature into the output enclave, after checking the
-    /// signature.
+    /// Combine an unsigned enclave and signature into the output enclave, after
+    /// checking the signature.
     pub fn catsig(
         &mut self,
         unsigned_enclave: &Path,

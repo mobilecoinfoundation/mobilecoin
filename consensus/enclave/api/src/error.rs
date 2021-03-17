@@ -47,7 +47,8 @@ pub enum Error {
     #[fail(display = "Invalid membership proof provided by local system")]
     InvalidLocalMembershipProof,
 
-    /// Error forming block (not expected to happen if untrusted plays by the rules).
+    /// Error forming block (not expected to happen if untrusted plays by the
+    /// rules).
     #[fail(display = "Form block error: {}", _0)]
     FormBlock(String),
 

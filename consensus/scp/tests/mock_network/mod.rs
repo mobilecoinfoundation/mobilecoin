@@ -31,16 +31,19 @@ const CHARACTERS_PER_VALUE: usize = 10;
 // Controls test parameters
 #[derive(Clone)]
 pub struct TestOptions {
-    /// Values can be submitted to all nodes in parallel (true) or to nodes in sequential order (false)
+    /// Values can be submitted to all nodes in parallel (true) or to nodes in
+    /// sequential order (false)
     pub submit_in_parallel: bool,
 
-    /// Total number of values to submit. Tests run until all values are externalized by all nodes.
-    /// N.B. if the validity fn doesn't enforce unique values, it's possible a value will appear in
-    /// multiple places in the ledger, and that the ledger will contain more than values_to_submit
+    /// Total number of values to submit. Tests run until all values are
+    /// externalized by all nodes. N.B. if the validity fn doesn't enforce
+    /// unique values, it's possible a value will appear in multiple places
+    /// in the ledger, and that the ledger will contain more than
+    /// values_to_submit
     pub values_to_submit: usize,
 
-    /// Approximate rate that values are submitted to nodes. Unless we are testing slow submission
-    /// is it better to set this quite high.
+    /// Approximate rate that values are submitted to nodes. Unless we are
+    /// testing slow submission is it better to set this quite high.
     pub submissions_per_sec: u64,
 
     /// We propose up to this many values from our pending set per slot.
@@ -698,7 +701,8 @@ pub fn build_and_test(network_config: &NetworkConfig, test_options: &TestOptions
         }
     }
 
-    // drop the simulation here so that MESSAGES log statements appear before results
+    // drop the simulation here so that MESSAGES log statements appear before
+    // results
     drop(simulation);
 
     // csv for scripting use

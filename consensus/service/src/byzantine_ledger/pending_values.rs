@@ -19,17 +19,18 @@ pub struct PendingValues<TXM: TxManager> {
 
     /// We need to store pending values vec so we can process values
     /// on a first-come first-served basis. However, we want to be able to:
-    /// 1) Efficiently see if we already have a given transaction and ignore duplicates
-    /// 2) Track how long each transaction took to externalize.
+    /// 1) Efficiently see if we already have a given transaction and ignore
+    /// duplicates 2) Track how long each transaction took to externalize.
     ///
-    /// To accomplish these goals we store, in addition to the queue of pending values, a
-    /// map that maps a value to when we first encountered it. This essentially gives us an ordered
-    /// HashMap.
+    /// To accomplish these goals we store, in addition to the queue of pending
+    /// values, a map that maps a value to when we first encountered it.
+    /// This essentially gives us an ordered HashMap.
     ///
-    /// Note that we only store a timestamp for values that were handed to us directly from a client.
-    /// That behavior is enforced by ByzantineLedger.
-    /// We skip tracking processing times for relayed values since we want to track the time from when
-    /// the network first saw a value, and not when a specific node saw it.
+    /// Note that we only store a timestamp for values that were handed to us
+    /// directly from a client. That behavior is enforced by
+    /// ByzantineLedger. We skip tracking processing times for relayed
+    /// values since we want to track the time from when the network first
+    /// saw a value, and not when a specific node saw it.
     pending_values: Vec<TxHash>,
     pending_values_map: HashMap<TxHash, Option<Instant>>,
 }
@@ -60,8 +61,9 @@ impl<TXM: TxManager> PendingValues<TXM> {
         self.pending_values.len()
     }
 
-    /// Try and add a pending value, associated with a given timestamp, to the list. Returns `true`
-    /// if the value is valid and not already on the list, false otherwise.
+    /// Try and add a pending value, associated with a given timestamp, to the
+    /// list. Returns `true` if the value is valid and not already on the
+    /// list, false otherwise.
     pub fn push(&mut self, tx_hash: TxHash, timestamp: Option<Instant>) -> bool {
         if let Vacant(entry) = self.pending_values_map.entry(tx_hash) {
             // A new transaction.
@@ -216,8 +218,8 @@ mod tests {
             .with(eq(values[2].clone()))
             .return_const(Ok(()));
 
-        // Create new PendingValues and forcefully shove the pending values into it in order to
-        // skip the validation call done by `push()`.
+        // Create new PendingValues and forcefully shove the pending values into it in
+        // order to skip the validation call done by `push()`.
         let mut pending_values = PendingValues::new(Arc::new(tx_manager));
 
         pending_values.pending_values = values.clone();

@@ -15,8 +15,9 @@ use mc_util_repr_bytes::typenum::U64;
 
 /// The SGX configuration ID data type.
 ///
-/// A rust-friendly alternative to sgx_config_id_t, which contains the enclave CONFIGID, which is
-/// used "to derive some keys" according to the SGX Developer Reference.
+/// A rust-friendly alternative to sgx_config_id_t, which contains the enclave
+/// CONFIGID, which is used "to derive some keys" according to the SGX Developer
+/// Reference.
 #[repr(transparent)]
 pub struct ConfigId(sgx_config_id_t);
 

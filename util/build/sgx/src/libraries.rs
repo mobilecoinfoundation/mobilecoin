@@ -20,7 +20,8 @@ pub trait SgxLibraryCollection {
     fn emit_cargo(&self);
 }
 
-/// A blanket implementation of the SGX libraries collection for a [`Library`] slice.
+/// A blanket implementation of the SGX libraries collection for a [`Library`]
+/// slice.
 impl SgxLibraryCollection for [Library] {
     /// Gather the include paths for all the include libraries together.
     fn include_paths(&self) -> HashSet<&Path> {

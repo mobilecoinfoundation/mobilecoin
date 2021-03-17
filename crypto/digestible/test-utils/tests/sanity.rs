@@ -1,7 +1,7 @@
-//! Test that our AST nodes are mapping to the append bytes calls that we expect.
-//! This is basically a test that the default implementations of `append_primitive`
-//! etc. in the DigestTranscript crate match the spec, and that nothing else went
-//! wrong wiring all this stuff up.
+//! Test that our AST nodes are mapping to the append bytes calls that we
+//! expect. This is basically a test that the default implementations of
+//! `append_primitive` etc. in the DigestTranscript crate match the spec, and
+//! that nothing else went wrong wiring all this stuff up.
 use mc_crypto_digestible::DigestTranscript;
 use mc_crypto_digestible_test_utils::{
     ASTAggregate, ASTNode, ASTNone, ASTPrimitive, ASTSequence, ASTVariant, MockMerlin,

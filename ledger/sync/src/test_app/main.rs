@@ -65,7 +65,8 @@ fn main() {
 
     // Hack to make the ledger longer
     if false {
-        // let mut ledger = LedgerDB::open(format!("../../target/sample_data/{}/ledger", NETWORK)).expect("Failed opening local LedgerDB");
+        // let mut ledger = LedgerDB::open(format!("../../target/sample_data/{}/ledger",
+        // NETWORK)).expect("Failed opening local LedgerDB");
         let mut ledger = LedgerDB::open(PathBuf::from("../../target/sample_data/ledger"))
             .expect("Failed opening local LedgerDB");
         _make_ledger_long(&mut ledger);

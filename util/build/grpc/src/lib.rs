@@ -6,8 +6,8 @@
 use mc_util_build_script::Environment;
 use std::{ffi::OsStr, fs, path::PathBuf};
 
-/// Compile protobuf files into Rust code, and generate a mod.rs that references all the generated
-/// modules.
+/// Compile protobuf files into Rust code, and generate a mod.rs that references
+/// all the generated modules.
 pub fn compile_protos_and_generate_mod_rs(proto_dirs: &[&str], proto_files: &[&str]) {
     let env = Environment::default();
 

@@ -10,43 +10,48 @@ use std::{ops::Deref, vec::Vec};
 /// Here "AST" means "abstract syntax tree", corresponding to the structure
 /// that we inferred from the way that DigestTranscript protocol was exercised.
 ///
-/// There is an enumerator here for every call to `DigestTranscript` that a `Digestible`
-/// implementation is permitted to use.
+/// There is an enumerator here for every call to `DigestTranscript` that a
+/// `Digestible` implementation is permitted to use.
 ///
-/// An ASTNode represents a kind of "parse tree", because when InspectAST captures
-/// a call, it tries to match it to its parent, and fails if it cannot, in order
-/// to validate what the proc-macro is doing.
-/// Therefore, its possible that the AST is in an "incomplete state", e.g. when we
-/// have started, but not finished, digesting a complex value through InspectAST.
+/// An ASTNode represents a kind of "parse tree", because when InspectAST
+/// captures a call, it tries to match it to its parent, and fails if it cannot,
+/// in order to validate what the proc-macro is doing.
+/// Therefore, its possible that the AST is in an "incomplete state", e.g. when
+/// we have started, but not finished, digesting a complex value through
+/// InspectAST.
 ///
 /// To recap:
-/// - A Primitive is a "simple" type (as opposed to a compound type),
-///   which has a direct representation as canonical bytes.
-/// - A Sequence is a variable length sequence of values of some other type.
-///   A Sequence has a length known at runtime.
-/// - An Aggregate is a fixed-length sequence of values ("fields"), of different types.
-///   Each field has a name.
+/// - A Primitive is a "simple" type (as opposed to a compound type), which has
+///   a direct representation as canonical bytes.
+/// - A Sequence is a variable length sequence of values of some other type. A
+///   Sequence has a length known at runtime.
+/// - An Aggregate is a fixed-length sequence of values ("fields"), of different
+///   types. Each field has a name.
 /// - A variant is a single value which may be one of several different types.
 ///   Each possibility has an associated name, in the context of this variant.
 ///   In the sequel we call this the "variant possibility name".
-/// - The None value is a sentinel used sometimes to indicate the absence of a value,
-///   inside of sequences or variants. Inside of aggregates, it is permitted to omit
-///   entirely a value that is absent, to facilitate schema evolution. Inside of
-///   sequences and variants, it is not, and could lead to problems. None is used instead.
+/// - The None value is a sentinel used sometimes to indicate the absence of a
+///   value, inside of sequences or variants. Inside of aggregates, it is
+///   permitted to omit entirely a value that is absent, to facilitate schema
+///   evolution. Inside of sequences and variants, it is not, and could lead to
+///   problems. None is used instead.
 #[derive(Clone, Eq, PartialEq)]
 pub enum ASTNode {
     /// This node represents a call to append_primitive
     Primitive(ASTPrimitive),
     /// This node represents a call to append_none
     None(ASTNone),
-    /// This node represents a call to append_seq_header, and any subsequent children
-    /// that we have captured, which are stored in its "elems" field.
+    /// This node represents a call to append_seq_header, and any subsequent
+    /// children that we have captured, which are stored in its "elems"
+    /// field.
     Sequence(ASTSequence),
-    /// This node represents a call to append_agg_header, and any subsequent children
-    /// that we have captured, which are stored in its "elems" field.
+    /// This node represents a call to append_agg_header, and any subsequent
+    /// children that we have captured, which are stored in its "elems"
+    /// field.
     Aggregate(ASTAggregate),
-    /// This node represents a call to append_agg_header, and the subsequent child
-    /// that we may have captured, which is stored in its "value" field.
+    /// This node represents a call to append_agg_header, and the subsequent
+    /// child that we may have captured, which is stored in its "value"
+    /// field.
     Variant(ASTVariant),
 }
 
@@ -118,11 +123,12 @@ pub struct ASTVariant {
     /// Box is required here to break the following cycle:
     /// ASTNode is a rust enum containing ASTVariant as a possible value,
     /// so sizeof(ASTNode>) > sizeof(ASTVariant).
-    /// But if Box is not used, then ASTVariant contains Option<ASTNode> as a member,
-    /// so sizeof(ASTVariant) > sizeof(ASTNode).
-    /// In otherwords the size of ASTNode on the stack could not be fixed at compile-time.
-    /// Using Box permits to break this cycle, so that ASTVariant has a small size
-    /// on the stack independent of the size of ASTNode.
+    /// But if Box is not used, then ASTVariant contains Option<ASTNode> as a
+    /// member, so sizeof(ASTVariant) > sizeof(ASTNode).
+    /// In otherwords the size of ASTNode on the stack could not be fixed at
+    /// compile-time. Using Box permits to break this cycle, so that
+    /// ASTVariant has a small size on the stack independent of the size of
+    /// ASTNode.
     pub value: Option<Box<ASTNode>>,
 }
 
@@ -153,8 +159,8 @@ impl ASTNode {
             // possible reference to self in the entire program, per semantics of &mut being
             // an exclusive reference.
             //
-            // Necessarily, this excludes the existence of any reference elsewhere in the program
-            // to self or any of its children.
+            // Necessarily, this excludes the existence of any reference elsewhere in the
+            // program to self or any of its children.
             //
             // When we call find_incomplete_child(), this call returns either &self,
             // or a child of self.
@@ -164,8 +170,9 @@ impl ASTNode {
             // it is necessarily the case that there is no other reference in the program
             // to that value. So we have upheld the semantics of `&mut`.
             //
-            // inline(never) is used to try to discourage the compiler from peering into here
-            // and thinking too hard about it, since nomicon says this is undefined behavior.
+            // inline(never) is used to try to discourage the compiler from peering into
+            // here and thinking too hard about it, since nomicon says this is
+            // undefined behavior.
             let ptr: *mut ASTNode = unsafe { core::mem::transmute(x as *const ASTNode) };
             unsafe { &mut *ptr }
         })
@@ -244,8 +251,9 @@ pub struct InspectAST {
 }
 
 impl InspectAST {
-    // Given an ASTNode (corresponding to the most recent call to a function from DigestTranscript),
-    // find its parent in the tree, or make it the next root-level element in self.ast_nodes.
+    // Given an ASTNode (corresponding to the most recent call to a function from
+    // DigestTranscript), find its parent in the tree, or make it the next
+    // root-level element in self.ast_nodes.
     fn push_ast_node(&mut self, new_node: ASTNode) {
         if let Some(incomplete_node) = self
             .ast_nodes
@@ -280,14 +288,16 @@ impl InspectAST {
                 }
             }
         } else {
-            // Either there are no root-level elements, or the most recent one is already complete.
+            // Either there are no root-level elements, or the most recent one is already
+            // complete.
             self.ast_nodes.push(new_node);
         }
     }
 }
 
-// Implement DigestTranscript for InspectAst by creating a new ASTNode corresponding to the call,
-// and calling self.push_ast_node to insert it into the structure at the appropriate point.
+// Implement DigestTranscript for InspectAst by creating a new ASTNode
+// corresponding to the call, and calling self.push_ast_node to insert it into
+// the structure at the appropriate point.
 impl DigestTranscript for InspectAST {
     fn new() -> Self {
         Default::default()
@@ -370,8 +380,8 @@ impl DigestTranscript for InspectAST {
 // by making a digestible structure, getting its merlin digest, and its AST,
 // then computing the merlin digest from the AST, and checking that it matches.
 //
-// We don't simply implement Digestible for ASTNode, because ASTNode's carry their context,
-// but Digestible API requires to provide a context.
+// We don't simply implement Digestible for ASTNode, because ASTNode's carry
+// their context, but Digestible API requires to provide a context.
 impl ASTNode {
     pub fn append_to_transcript<DT: DigestTranscript>(&self, transcript: &mut DT) {
         match self {
