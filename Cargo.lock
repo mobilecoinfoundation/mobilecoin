@@ -3182,6 +3182,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "mc-sgx-css-dump"
+version = "1.0.1-pre1"
+dependencies = [
+ "hex_fmt",
+ "mc-sgx-css",
+ "structopt",
+]
+
+[[package]]
 name = "mc-sgx-debug-edl"
 version = "1.0.1-pre1"
 dependencies = [

@@ -58,6 +58,7 @@ members = [
     "sgx/core-types",
     "sgx/core-types-sys",
     "sgx/css",
+    "sgx/css-dump",
     "sgx/debug-edl",
     "sgx/epid",
     "sgx/epid-sys",
