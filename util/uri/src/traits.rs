@@ -200,8 +200,9 @@ pub trait UriScheme:
     const DEFAULT_INSECURE_PORT: u16;
 
     /// When true, ensure the path components of a URI ends with a slash.
-    /// This is genenerally the desired behavior for our URIs since we currently do not use any of
-    /// them to point at a specific file. Having a consistent trailing slash ensures that parsing
-    /// `scheme://host` and `scheme://host/` results in equal objects.
+    /// This is genenerally the desired behavior for our URIs since we currently
+    /// do not use any of them to point at a specific file. Having a
+    /// consistent trailing slash ensures that parsing `scheme://host` and
+    /// `scheme://host/` results in equal objects.
     const NORMALIZE_PATH_TRAILING_SLASH: bool = true;
 }
