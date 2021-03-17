@@ -63,6 +63,10 @@ pub enum Error {
     NonZeroReserved,
 }
 
+/// The length of the header1 field, in bytes
+pub const HEADER_LEN: usize = 16;
+/// The length of the header2 field, in bytes
+pub const HEADER2_LEN: usize = 16;
 /// The length of the SWDEFINED field, in bytes
 pub const SWDEFINED_LEN: usize = 4;
 /// The length of the MODULUS field, in bytes
@@ -133,6 +137,11 @@ pub struct Signature {
 }
 
 impl Signature {
+    /// Retrieve a reference to the header bytes
+    pub fn header(&self) -> &[u8; HEADER_LEN] {
+        &self.header
+    }
+
     /// Retrieve the enclave vendor type.
     pub fn vendor(&self) -> EnclaveVendor {
         u32::from_le_bytes(self.vendor)
@@ -148,6 +157,11 @@ impl Signature {
     /// it's how SIGSTRUCT works internally.
     pub fn date(&self) -> u32 {
         u32::from_le_bytes(self.date)
+    }
+
+    /// Retrieve a reference to the secondary header bytes
+    pub fn header2(&self) -> &[u8; HEADER2_LEN] {
+        &self.header2
     }
 
     /// Retrieve the software-defined bytes

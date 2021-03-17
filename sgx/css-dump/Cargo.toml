@@ -1,0 +1,12 @@
+[package]
+name = "mc-sgx-css-dump"
+version = "1.0.1-pre1"
+authors = ["MobileCoin"]
+edition = "2018"
+license = "GPL-3.0"
+
+[dependencies]
+mc-sgx-css = { path = "../css" }
+
+hex_fmt = "0.3"
+structopt = "0.3"
