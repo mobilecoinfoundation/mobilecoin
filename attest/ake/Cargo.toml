@@ -22,7 +22,7 @@ mc-crypto-noise = { path = "../../crypto/noise", default-features = false }
 
 aead = "0.3"
 digest = { version = "0.9", default-features = false }
-displaydoc = { version = "0.1.7", default-features = false }
+displaydoc = { version = "0.2", default-features = false }
 prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
 rand_core = "0.5"
 serde = { version = "1.0", default-features = false, features = ["alloc"] }

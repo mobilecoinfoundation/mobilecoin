@@ -17,7 +17,7 @@ mc-watcher-api = { path = "../watcher/api" }
 
 bs58 = "0.3.0"
 crc = "1.8.1"
-displaydoc = { version = "0.1.7", default-features = false }
+displaydoc = { version = "0.2", default-features = false }
 protobuf = "2.20"
 
 [target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]

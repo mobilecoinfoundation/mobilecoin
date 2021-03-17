@@ -17,7 +17,7 @@ mc-util-uri = { path = "../uri" }
 
 base64 = "0.12"
 cookie = "0.14"
-displaydoc = { version = "0.1.7", default-features = false }
+displaydoc = { version = "0.2", default-features = false }
 futures = "0.3"
 grpcio = "0.6.0"
 hex = "0.4"

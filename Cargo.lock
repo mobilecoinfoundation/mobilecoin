@@ -985,8 +985,9 @@ checksum = "212d0f5754cb6769937f4501cc0e67f4f4483c8d2c3e1e922ee9edbe4ab4c7c0"
 
 [[package]]
 name = "displaydoc"
-version = "0.1.7"
-source = "git+https://github.com/mobilecoinofficial/displaydoc?rev=d21bcc4fa635659f5b181aec54a1c8ac0025bb0c#d21bcc4fa635659f5b181aec54a1c8ac0025bb0c"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f98e1bbbcbb1b2646d6e900da42974b641eb784851adcd4f0ae4c07c8bc7b42b"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.4",

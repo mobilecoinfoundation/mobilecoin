@@ -30,7 +30,7 @@ mc-util-repr-bytes = { path = "../../util/repr-bytes", default-features = false,
 base64 = { version = "0.12", default-features = false, features = ["alloc"] }
 bitflags = "1.2"
 chrono = { version = "0.4.10", default-features = false, features = ["alloc"] }
-displaydoc = { version = "0.1.7", default-features = false }
+displaydoc = { version = "0.2", default-features = false }
 generic-array = { version = "0.14", features = ["more_lengths"] }
 hex = { version = "0.4", default-features = false }
 hex_fmt = "0.3"

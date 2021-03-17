@@ -79,7 +79,4 @@ cpuid-bool = { git = "https://github.com/eranrund/RustCrypto-utils", rev = "74f8
 # We need to patch aes-gcm so we can make some fields/functions/structs pub in order to have a constant time decrypt
 aes-gcm = { git = "https://github.com/mobilecoinofficial/AEADs", rev = "d1a8517d3dd867ed9c5794002add67992a42f6aa" }
 
-# Forked displaydoc that panics when encountering unsupported multi-line comments.
-displaydoc = { git = "https://github.com/mobilecoinofficial/displaydoc", rev = "d21bcc4fa635659f5b181aec54a1c8ac0025bb0c" }
-
 [workspace]
