@@ -11,7 +11,7 @@ use crate::{
 };
 use mc_common::{
     logger::{log, Logger},
-    ResponderId,
+    trace_time, ResponderId,
 };
 use mc_connection::{
     BlockchainConnection, Connection, ConnectionManager, RetryableBlockchainConnection,
@@ -99,6 +99,8 @@ impl<L: Ledger, BC: BlockchainConnection + 'static, TF: TransactionsFetcher + 's
         network_state: &impl NetworkState,
         limit: u32,
     ) -> Option<(Vec<ResponderId>, BlockIndex, Vec<Block>)> {
+        trace_time!(self.logger, "get_potentially_safe_blocks");
+
         let next_block_index: BlockIndex = self.ledger.num_blocks().unwrap();
         let last_block = self.ledger.get_block(next_block_index - 1).unwrap();
         log::debug!(
@@ -254,6 +256,8 @@ impl<
         network_state: &NS,
         limit: u32,
     ) -> Result<(), LedgerSyncError> {
+        trace_time!(self.logger, "attempt_ledger_sync");
+
         let (responder_ids, _, potentially_safe_blocks) = self
             .get_potentially_safe_blocks(network_state, limit)
             .ok_or(LedgerSyncError::NoSafeBlocks)?;
@@ -349,6 +353,8 @@ fn get_blocks<BC: BlockchainConnection + 'static>(
     timeout: Duration,
     logger: &Logger,
 ) -> HashMap<ResponderId, Vec<Block>> {
+    trace_time!(logger, "get_blocks");
+
     // Query each peer in a separate worker thread. A separate thread performs a
     // timeout. Any responses obtained before the timeout are returned.
     type ResultsMap = HashMap<ResponderId, Vec<Block>>;
@@ -507,6 +513,8 @@ fn get_block_contents<TF: TransactionsFetcher + 'static>(
     timeout: Duration,
     logger: &Logger,
 ) -> BTreeMap<BlockIndex, Option<BlockContents>> {
+    trace_time!(logger, "get_block_contents");
+
     type ResultsMap = BTreeMap<BlockIndex, Option<BlockContents>>;
 
     enum Msg {
