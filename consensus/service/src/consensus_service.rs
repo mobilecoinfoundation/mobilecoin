@@ -356,7 +356,6 @@ impl<
         // Start GRPC server.
         let env = Arc::new(
             EnvBuilder::new()
-                .cq_count(1)
                 .name_prefix("User-RPC".to_string())
                 .build(),
         );
