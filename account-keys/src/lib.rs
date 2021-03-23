@@ -12,11 +12,13 @@ extern crate alloc;
 
 mod account_keys;
 mod domain_separators;
+mod error;
 mod identity;
 mod view_key;
 
 pub use crate::{
     account_keys::{AccountKey, PublicAddress, DEFAULT_SUBADDRESS_INDEX},
+    error::{Error, Result},
     identity::{RootEntropy, RootIdentity},
     view_key::ViewKey,
 };

@@ -1,0 +1,23 @@
+[package]
+name = "mc-account-keys-slip10"
+version = "1.0.1-pre1"
+authors = ["MobileCoin"]
+edition = "2018"
+readme = "README.md"
+description = "MobileCoin BIP-39 Key Derivation"
+license = "GPL-3.0"
+
+[dependencies]
+mc-account-keys = { path = "../", default-features = false }
+mc-crypto-keys = { path = "../../crypto/keys", default-features = false }
+
+hkdf = "0.9"
+sha2 = "0.9"
+tiny-bip39 = "0.8"
+zeroize = "1.2"
+
+[target.'cfg(any(target_feature = "avx2", target_feature = "avx"))'.dependencies]
+curve25519-dalek = { version = "3.0", default-features = false, features = ["simd_backend", "nightly"] }
+
+[target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
+curve25519-dalek = { version = "3.0", default-features = false, features = ["nightly", "u64_backend"] }
