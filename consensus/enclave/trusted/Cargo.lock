@@ -609,12 +609,15 @@ version = "1.0.1-pre1"
 dependencies = [
  "binascii 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitflags 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cargo-emit 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "cfg-if 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "chrono 0.4.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "displaydoc 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hex 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex_fmt 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "mbedtls 0.5.1 (git+https://github.com/mobilecoinofficial/rust-mbedtls.git?tag=mc-0.3)",
  "mbedtls-sys-auto 2.18.1 (git+https://github.com/mobilecoinofficial/rust-mbedtls.git?tag=mc-0.3)",
  "mc-common 1.0.1-pre1",
@@ -625,7 +628,8 @@ dependencies = [
  "mc-sgx-types 1.0.1-pre1",
  "mc-util-encodings 1.0.1-pre1",
  "prost 0.6.1 (git+https://github.com/danburkert/prost?rev=6113789f70b69709820becba4242824b4fb3ffec)",
- "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand_hc 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rjson 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.118 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha2 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1257,6 +1261,8 @@ name = "rand"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
+ "getrandom 0.1.14 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.81 (registry+https://github.com/rust-lang/crates.io-index)",
  "packed_simd 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_chacha 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_core 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1276,6 +1282,9 @@ dependencies = [
 name = "rand_core"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "getrandom 0.1.14 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "rand_hc"

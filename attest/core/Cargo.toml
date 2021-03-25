@@ -60,10 +60,15 @@ rand = "0.7"
 rand_hc = "0.2"
 
 [build-dependencies]
+mc-sgx-build =  { path = "../../sgx/build" }
+
+cargo-emit = "0.1"
+chrono = "0.4"
+hex = "0.4"
+lazy_static = "1.4"
+rand = "0.7"
+rand_hc = "0.2"
+
 # We use mbedtls to generate certificates for simulation mode
 mbedtls = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.3", default-features = false }
 mbedtls-sys-auto = { git = "https://github.com/mobilecoinofficial/rust-mbedtls.git", tag = "mc-0.3", default-features = false }
-rand_core = { version = "0.5", default-features = false }
-chrono = "0.4"
-mc-crypto-rand = { path = "../../crypto/rand" }
-mc-sgx-build =  { path = "../../sgx/build" }
