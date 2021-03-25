@@ -21,7 +21,8 @@ use mbedtls_sys::{
     },
     x509_crt,
 };
-use mc_crypto_rand::{McRng, RngCore};
+use rand::{RngCore, SeedableRng};
+use rand_hc::Hc128Rng;
 use std::{
     convert::TryFrom,
     env,
@@ -30,14 +31,30 @@ use std::{
     path::PathBuf,
 };
 
-struct McRandForMbedTls;
+struct RngForMbedTls;
 
-impl RngCallback for McRandForMbedTls {
+impl RngCallback for RngForMbedTls {
     #[inline(always)]
     unsafe extern "C" fn call(_: *mut c_void, data: *mut c_uchar, len: size_t) -> c_int {
-        let outbuf = from_raw_parts_mut(data, len);
-        let mut csprng = McRng::default();
-        csprng.fill_bytes(outbuf);
+        option_env!("MC_SEED").map_or_else(
+            || {
+                let outbuf = from_raw_parts_mut(data, len);
+                let mut csprng = rand::thread_rng();
+                csprng.fill_bytes(outbuf);
+            },
+            |seed_hex| {
+                cargo_emit::warning!(
+                    "Using MC_SEED to generate mock attestation report signatories for simulation-mode enclaves"
+                );
+                cargo_emit::rerun_if_env_changed!("MC_SEED");
+
+                let outbuf = from_raw_parts_mut(data, len);
+                let mut seed = <Hc128Rng as SeedableRng>::Seed::default();
+                hex::decode_to_slice(seed_hex, &mut seed).expect("Error decoding MC_SEED");
+                let mut csprng = Hc128Rng::from_seed(seed);
+                csprng.fill_bytes(outbuf);
+            },
+        );
         0
     }
 
@@ -102,24 +119,15 @@ fn main() {
     let mut chain_path = data_path;
     chain_path.push("chain.pem");
 
-    println!(
-        "cargo:rerun-if-changed={}",
-        root_anchor_path
-            .to_str()
-            .expect("Could not stringify root anchor path")
-    );
-    println!(
-        "cargo:rerun-if-changed={}",
-        signer_key_path
-            .to_str()
-            .expect("Could not stringify signer key path")
-    );
-    println!(
-        "cargo:rerun-if-changed={}",
-        chain_path
-            .to_str()
-            .expect("Could not stringify signer chain path")
-    );
+    cargo_emit::rerun_if_changed!(root_anchor_path
+        .to_str()
+        .expect("Could not stringify root anchor path"));
+    cargo_emit::rerun_if_changed!(signer_key_path
+        .to_str()
+        .expect("Could not stringify signer key path"));
+    cargo_emit::rerun_if_changed!(chain_path
+        .to_str()
+        .expect("Could not stringify signer chain path"));
 
     purge_expired_cert(&root_anchor_path);
     purge_expired_cert(&chain_path);
@@ -137,7 +145,7 @@ fn main() {
         // Good for 30 days
         let end_time = end_now + Duration::weeks(1);
 
-        let mut csprng = McRandForMbedTls {};
+        let mut csprng = RngForMbedTls {};
 
         // ROOT CERTIFICATE
         let mut root_subject_key =
