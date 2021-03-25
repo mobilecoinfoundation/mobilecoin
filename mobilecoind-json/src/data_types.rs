@@ -1185,6 +1185,8 @@ pub struct JsonBlockDetailsResponse {
     pub index: String,
     pub cumulative_txo_count: String,
     pub contents_hash: String,
+    pub key_images: Vec<String>,
+    pub txos: Vec<JsonTxOut>,
 }
 
 impl From<&mc_mobilecoind_api::GetBlockResponse> for JsonBlockDetailsResponse {
@@ -1198,6 +1200,12 @@ impl From<&mc_mobilecoind_api::GetBlockResponse> for JsonBlockDetailsResponse {
             index: block.get_index().to_string(),
             cumulative_txo_count: block.get_cumulative_txo_count().to_string(),
             contents_hash: hex::encode(&block.get_contents_hash().get_data()),
+            key_images: src
+                .get_key_images()
+                .iter()
+                .map(|k| hex::encode(k.get_data()))
+                .collect(),
+            txos: src.get_txos().iter().map(JsonTxOut::from).collect(),
         }
     }
 }
