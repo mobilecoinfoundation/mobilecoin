@@ -29,32 +29,41 @@ use std::{
     fs::{read, remove_file, write},
     ops::Deref,
     path::PathBuf,
+    sync::{Arc, Mutex},
 };
+
+lazy_static::lazy_static! {
+    static ref RNG: Arc<Mutex<Hc128Rng>> = Arc::new(Mutex::new({
+        let mut seed = <Hc128Rng as SeedableRng>::Seed::default();
+        match env::var("MC_SEED") {
+            Ok(seed_hex) => {
+                cargo_emit::warning!(
+                    "Using MC_SEED to generate mock attestation report signatories for simulation-mode enclaves"
+                );
+                hex::decode_to_slice(seed_hex, &mut seed).expect("Error decoding MC_SEED");
+            },
+            Err(_) => {
+                cargo_emit::warning!(
+                    "Using thread_rng() to generate mock attestation report signatories for simulation-mode enclaves"
+                );
+                let mut csprng = rand::thread_rng();
+                csprng.fill_bytes(&mut seed[..]);
+            }
+        }
+        Hc128Rng::from_seed(seed)
+    }));
+}
 
 struct RngForMbedTls;
 
 impl RngCallback for RngForMbedTls {
     #[inline(always)]
     unsafe extern "C" fn call(_: *mut c_void, data: *mut c_uchar, len: size_t) -> c_int {
-        option_env!("MC_SEED").map_or_else(
-            || {
-                let outbuf = from_raw_parts_mut(data, len);
-                let mut csprng = rand::thread_rng();
-                csprng.fill_bytes(outbuf);
-            },
-            |seed_hex| {
-                cargo_emit::warning!(
-                    "Using MC_SEED to generate mock attestation report signatories for simulation-mode enclaves"
-                );
-                cargo_emit::rerun_if_env_changed!("MC_SEED");
-
-                let outbuf = from_raw_parts_mut(data, len);
-                let mut seed = <Hc128Rng as SeedableRng>::Seed::default();
-                hex::decode_to_slice(seed_hex, &mut seed).expect("Error decoding MC_SEED");
-                let mut csprng = Hc128Rng::from_seed(seed);
-                csprng.fill_bytes(outbuf);
-            },
-        );
+        let outbuf = from_raw_parts_mut(data, len);
+        (*RNG)
+            .lock()
+            .expect("Could not acquire lock on RNG")
+            .fill_bytes(outbuf);
         0
     }
 
@@ -119,6 +128,7 @@ fn main() {
     let mut chain_path = data_path;
     chain_path.push("chain.pem");
 
+    cargo_emit::rerun_if_env_changed!("MC_SEED");
     cargo_emit::rerun_if_changed!(root_anchor_path
         .to_str()
         .expect("Could not stringify root anchor path"));

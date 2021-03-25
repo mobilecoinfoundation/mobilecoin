@@ -65,6 +65,7 @@ mc-sgx-build =  { path = "../../sgx/build" }
 cargo-emit = "0.1"
 chrono = "0.4"
 hex = "0.4"
+lazy_static = "1.4"
 rand = "0.7"
 rand_hc = "0.2"
 

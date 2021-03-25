@@ -2155,6 +2155,7 @@ dependencies = [
  "failure",
  "hex 0.4.2",
  "hex_fmt",
+ "lazy_static",
  "mbedtls",
  "mbedtls-sys-auto",
  "mc-common",
