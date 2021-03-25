@@ -19,4 +19,6 @@ pub enum Error {
     SignatureLength,
     /// The Fog authority subjectPublicKeyInfo bytes are too long
     AuthoritySubjectLength,
+    /// A Slip-0010 key could not be generated
+    Slip0010Keygen,
 }

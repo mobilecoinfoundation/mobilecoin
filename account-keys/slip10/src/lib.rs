@@ -7,11 +7,12 @@
 extern crate alloc;
 
 use alloc::borrow::ToOwned;
-// use bip39::{Mnemonic, Seed};
+use bip39::{Mnemonic, Seed};
 use core::fmt::Display;
 use curve25519_dalek::scalar::Scalar;
 use hkdf::Hkdf;
 use mc_account_keys::{AccountKey, Result as AccountKeyResult};
+use mc_account_keys::error;
 use mc_crypto_keys::RistrettoPrivate;
 use sha2::Sha512;
 use zeroize::Zeroize;
@@ -64,10 +65,23 @@ pub trait Slip10KeyGenerator {
     fn derive_slip10_key(self, path: &[u32]) -> Result<Slip10Key, Self::Error>;
 }
 
-// TODO: Slip10KeyGenerator for Mnemonic
-//
 // This lets us get to
 // Mnemonic::from_phrases().derive_slip10_key(path).try_into_account_key(...)
+impl Slip10KeyGenerator for Mnemonic {
+    type Error = error::Slip0010Keygen;
+
+    fn derive_slip10_key(
+        self,
+        path: &[u32],
+    ) -> Result<Slip10Key, Self::Error> {
+        // We explicitly do not support passphrases for BIP-39 mnemonics, please
+        // see the Mobilecoin Key Derivation design specification, v1.0.0, for
+        // design rationale.
+        let seed = Seed::new(self, "");
+        let key = slip10_ed25519::derive_ed25519_private_key(seed.as_bytes(), path);
+
+        Ok(key)
+}
 
 // TODO: Slip10KeyGenerator for Seed
 //
