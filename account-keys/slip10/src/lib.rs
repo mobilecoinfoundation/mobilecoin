@@ -1,4 +1,4 @@
-//! MobileCoin BIP-39 Key Derivation
+//! MobileCoin SLIP-0010-Based Key Derivation
 
 #![no_std]
 #![warn(missing_docs)]
@@ -8,14 +8,29 @@ extern crate alloc;
 
 use alloc::borrow::ToOwned;
 use bip39::{Mnemonic, Seed};
-use core::fmt::Display;
+use core::{fmt::Display, result::Result as CoreResult};
 use curve25519_dalek::scalar::Scalar;
+use displaydoc::Display;
 use hkdf::Hkdf;
-use mc_account_keys::{AccountKey, Result as AccountKeyResult};
-use mc_account_keys::error;
+use mc_account_keys::{AccountKey, Error as AccountKeyError};
 use mc_crypto_keys::RistrettoPrivate;
 use sha2::Sha512;
 use zeroize::Zeroize;
+
+/// An enumeration of errors which can occur while working with SLIP-0010 key
+/// derivation
+#[derive(Debug, Display, Eq, PartialEq)]
+pub enum Error {
+    /// The path provided contained a member that was not "hardened".
+    // FIXME: this is currently unused, and the slip10_ed25519 crate clamps to the appropriate
+    //        range.
+    UnhardenedPath,
+    /// There was an error creating the account key: {0}
+    AccountKey(AccountKeyError),
+}
+
+/// The result type
+pub type Result<T> = CoreResult<T, Error>;
 
 /// A key derived using SLIP-0010 key derivation
 #[derive(Zeroize)]
@@ -32,15 +47,18 @@ impl AsRef<[u8]> for Slip10Key {
 /// e.g. `(spend, view)`, to match `AccountKey::new()`
 impl Into<(RistrettoPrivate, RistrettoPrivate)> for Slip10Key {
     fn into(self) -> (RistrettoPrivate, RistrettoPrivate) {
-        let kdf = Hkdf::<Sha512>::new(None, self.as_ref());
         let mut okm = [0u8; 64];
 
-        kdf.expand(b"mobilecoin-ristretto255-view", &mut okm)
+        let view_kdf = Hkdf::<Sha512>::new(Some(b"mobilecoin-ristretto255-view"), self.as_ref());
+        view_kdf
+            .expand(b"", &mut okm)
             .expect("Invalid okm length when creating private view key");
         let view_scalar = Scalar::from_bytes_mod_order_wide(&okm);
         let view_private_key = RistrettoPrivate::from(view_scalar);
 
-        kdf.expand(b"mobilecoin-ristretto255-spend", &mut okm)
+        let spend_kdf = Hkdf::<Sha512>::new(Some(b"mobilecoin-ristretto255-spend"), self.as_ref());
+        spend_kdf
+            .expand(b"", &mut okm)
             .expect("Invalid okm length when creating private spend key");
         let spend_scalar = Scalar::from_bytes_mod_order_wide(&okm);
         let spend_private_key = RistrettoPrivate::from(spend_scalar);
@@ -62,25 +80,23 @@ pub trait Slip10KeyGenerator {
     type Error: Display;
 
     /// Derive a slip10 key for the given path from the current object
-    fn derive_slip10_key(self, path: &[u32]) -> Result<Slip10Key, Self::Error>;
+    fn derive_slip10_key(self, path: &[u32]) -> CoreResult<Slip10Key, Self::Error>;
 }
 
 // This lets us get to
 // Mnemonic::from_phrases().derive_slip10_key(path).try_into_account_key(...)
 impl Slip10KeyGenerator for Mnemonic {
-    type Error = error::Slip0010Keygen;
+    type Error = Error;
 
-    fn derive_slip10_key(
-        self,
-        path: &[u32],
-    ) -> Result<Slip10Key, Self::Error> {
+    fn derive_slip10_key(self, path: &[u32]) -> Result<Slip10Key> {
         // We explicitly do not support passphrases for BIP-39 mnemonics, please
         // see the Mobilecoin Key Derivation design specification, v1.0.0, for
         // design rationale.
-        let seed = Seed::new(self, "");
+        let seed = Seed::new(&self, "");
         let key = slip10_ed25519::derive_ed25519_private_key(seed.as_bytes(), path);
 
-        Ok(key)
+        Ok(Slip10Key(key))
+    }
 }
 
 // TODO: Slip10KeyGenerator for Seed
@@ -97,7 +113,7 @@ impl Slip10Key {
         fog_report_url: &str,
         fog_report_id: &str,
         fog_authority_spki: &[u8],
-    ) -> AccountKeyResult<AccountKey> {
+    ) -> Result<AccountKey> {
         let (spend_private_key, view_private_key) = self.into();
         Ok(AccountKey::new_with_fog(
             &spend_private_key,

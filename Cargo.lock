@@ -2068,6 +2068,7 @@ name = "mc-account-keys-slip10"
 version = "1.0.1-pre1"
 dependencies = [
  "curve25519-dalek",
+ "displaydoc",
  "hkdf",
  "mc-account-keys",
  "mc-crypto-keys",
