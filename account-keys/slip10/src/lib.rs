@@ -131,3 +131,6 @@ impl Into<AccountKey> for Slip10Key {
         AccountKey::new(&spend_private_key, &view_private_key)
     }
 }
+
+#[cfg(test)]
+mod test {}
