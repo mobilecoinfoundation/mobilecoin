@@ -8,15 +8,14 @@ use crate::{
 };
 
 use mc_api::block_num_to_s3block_path;
-use mc_common::{
-    logger::{log, Logger},
-    HashMap, HashSet,
-};
+use mc_common::logger::{log, Logger};
 use mc_ledger_db::Ledger;
 use mc_ledger_sync::ReqwestTransactionsFetcher;
-use mc_transaction_core::BlockData;
+use mc_transaction_core::{BlockData, BlockIndex};
 
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
+    collections::HashMap,
     iter::FromIterator,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -29,7 +28,16 @@ use url::Url;
 
 /// Watches multiple consensus validators and collects block signatures.
 pub struct Watcher {
-    transactions_fetcher: Arc<ReqwestTransactionsFetcher>,
+    /// A transaction fetcher per watched URL.
+    // The reason we keep a transaction fetcher per url has to do with the pre-fetching and caching
+    // mechanism implemented in ReqwestTransactionsFetcher: ReqwestTransactionsFetcher will try and
+    // fetch the large merged-blocks and then try to hand out results from its cache. However, it
+    // is oblivious as to which URL got used to cache the blocks. This behavior is suitable for
+    // LedgerSyncService but in the watcher we want to ensure the blocks are fetched from a
+    // specific URL. If we want to use the cache mechanism (which we do, since it cuts down sync
+    // time significantlly) then the workaround is to have a ReqwestTransactionsFetcher that only
+    // has a single source URL.
+    transactions_fetcher_by_url: Arc<HashMap<Url, ReqwestTransactionsFetcher>>,
     watcher_db: WatcherDB,
     store_block_data: bool,
     logger: Logger,
@@ -47,28 +55,32 @@ impl Watcher {
     /// * `logger` - Logger
     pub fn new(
         watcher_db: WatcherDB,
-        transactions_fetcher: ReqwestTransactionsFetcher,
         store_block_data: bool,
         logger: Logger,
-    ) -> Self {
-        // Sanity check that the watcher db and transaction fetcher were initialized
-        // with the same set of URLs.
-        assert_eq!(
-            HashSet::from_iter(transactions_fetcher.source_urls.iter()),
-            HashSet::from_iter(
-                watcher_db
-                    .get_config_urls()
-                    .expect("get_config_urls failed")
-                    .iter()
-            )
+    ) -> Result<Self, WatcherError> {
+        let tx_source_urls = watcher_db.get_config_urls()?;
+
+        let transactions_fetcher_by_url = Arc::new(
+            tx_source_urls
+                .into_iter()
+                .map(|source_url| {
+                    Ok((
+                        source_url.clone(),
+                        ReqwestTransactionsFetcher::new(
+                            vec![source_url.to_string()],
+                            logger.clone(),
+                        )?,
+                    ))
+                })
+                .collect::<Result<HashMap<_, _>, WatcherError>>()?,
         );
 
-        Self {
-            transactions_fetcher: Arc::new(transactions_fetcher),
+        Ok(Self {
+            transactions_fetcher_by_url,
             watcher_db,
             store_block_data,
             logger,
-        }
+        })
     }
 
     /// The lowest next block we need to try and sync.
@@ -99,7 +111,7 @@ impl Watcher {
         start: u64,
         max_block_height: Option<u64>,
     ) -> Result<bool, WatcherError> {
-        log::debug!(
+        log::info!(
             self.logger,
             "Now syncing signatures from {} to {:?}",
             start,
@@ -134,8 +146,10 @@ impl Watcher {
                 .collect();
 
             // Attempt to fetch block data for all urls in parallel.
-            let url_to_block_data_result =
-                parallel_fetch_blocks(url_to_block_index, self.transactions_fetcher.clone())?;
+            let url_to_block_data_result = parallel_fetch_blocks(
+                url_to_block_index,
+                self.transactions_fetcher_by_url.clone(),
+            )?;
 
             // Store data for each successfully synced blocked. Track on whether any of the
             // sources was able to produce block data. If so, more data might be
@@ -199,55 +213,36 @@ impl Watcher {
     }
 }
 
-/// A naive implementation for fetching blocks from multiple source urls
-/// concurrently. It is naive in the sense that is spawns one thread per source
-/// URL, which in theory does not scale but in reality we do not expect a large
-/// number of sources.
+/// Given a map of block indexes per source URL and a map of transaction
+/// fetchers per source URL, perform a parallel fetch of each of the blocks and
+/// return the result.
 fn parallel_fetch_blocks(
-    url_to_block_index: HashMap<Url, u64>,
-    transactions_fetcher: Arc<ReqwestTransactionsFetcher>,
+    url_to_block_index: HashMap<Url, BlockIndex>,
+    transactions_fetcher_by_url: Arc<HashMap<Url, ReqwestTransactionsFetcher>>,
 ) -> Result<HashMap<Url, (u64, Result<BlockData, WatcherError>)>, WatcherError> {
-    let join_handles = url_to_block_index
-        .into_iter()
-        .map(|(src_url, block_index)| {
-            let transactions_fetcher = transactions_fetcher.clone();
-
-            thread::Builder::new()
-                .name("ParallelFetch".into())
-                .spawn(move || {
-                    let block_fetch_result =
-                        fetch_single_block(transactions_fetcher, &src_url, block_index);
-                    (src_url, (block_index, block_fetch_result))
-                })
-                .expect("Failed spawning ParallelFetch thread")
-        })
-        .collect::<Vec<_>>();
-
     Ok(HashMap::from_iter(
-        join_handles
-            .into_iter()
-            .map(|handle| handle.join().expect("Thread join failed")),
+        url_to_block_index
+            .into_par_iter()
+            .map(|(src_url, block_index)| {
+                let block_fetch_result = transactions_fetcher_by_url
+                    .get(&src_url)
+                    .ok_or_else(|| WatcherError::UnknownTxSourceUrl(src_url.to_string()))
+                    .and_then(|transactions_fetcher| {
+                        assert_eq!(transactions_fetcher.source_urls, vec![src_url.clone()]);
+
+                        transactions_fetcher
+                            .get_block_data_by_index(block_index, None)
+                            .map_err(WatcherError::from)
+                    });
+
+                (src_url, (block_index, block_fetch_result))
+            })
+            .collect::<Vec<_>>(),
     ))
 }
 
-/// A helper for fetching a single block (identified by a given block index)
-/// from some source url.
-fn fetch_single_block(
-    transactions_fetcher: Arc<ReqwestTransactionsFetcher>,
-    src_url: &Url,
-    block_index: u64,
-) -> Result<BlockData, WatcherError> {
-    let filename = block_num_to_s3block_path(block_index)
-        .into_os_string()
-        .into_string()
-        .unwrap();
-    let block_url = src_url.join(&filename)?;
-
-    Ok(transactions_fetcher.block_from_url(&block_url)?)
-}
-
 /// Maximal number of blocks to attempt to sync at each loop iteration.
-const MAX_BLOCKS_PER_SYNC_ITERATION: u32 = 10;
+const MAX_BLOCKS_PER_SYNC_ITERATION: u32 = 1000;
 
 /// Syncs new ledger materials for the watcher when the local ledger
 /// appends new blocks.
@@ -261,19 +256,13 @@ impl WatcherSyncThread {
     /// Create a new watcher sync thread.
     pub fn new(
         watcher_db: WatcherDB,
-        transactions_fetcher: ReqwestTransactionsFetcher,
         ledger: impl Ledger + 'static,
         poll_interval: Duration,
         store_block_data: bool,
         logger: Logger,
-    ) -> Self {
+    ) -> Result<Self, WatcherError> {
         log::debug!(logger, "Creating watcher sync thread.");
-        let watcher = Watcher::new(
-            watcher_db,
-            transactions_fetcher,
-            store_block_data,
-            logger.clone(),
-        );
+        let watcher = Watcher::new(watcher_db, store_block_data, logger.clone())?;
 
         let currently_behind = Arc::new(AtomicBool::new(false));
         let stop_requested = Arc::new(AtomicBool::new(false));
@@ -296,11 +285,11 @@ impl WatcherSyncThread {
                 .expect("Failed spawning WatcherSync thread"),
         );
 
-        Self {
+        Ok(Self {
             join_handle,
             currently_behind,
             stop_requested,
-        }
+        })
     }
 
     /// Stop the watcher sync thread.

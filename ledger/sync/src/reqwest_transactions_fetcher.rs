@@ -12,7 +12,7 @@ use mc_common::{
     lru::LruCache,
     ResponderId,
 };
-use mc_transaction_core::{Block, BlockData, BlockID};
+use mc_transaction_core::{Block, BlockData, BlockIndex};
 use protobuf::Message;
 use reqwest::Error as ReqwestError;
 use std::{
@@ -79,9 +79,9 @@ pub struct ReqwestTransactionsFetcher {
     /// The most recently used URL index (in `source_urls`).
     source_index_counter: Arc<AtomicU64>,
 
-    /// Cache mapping a `BlockID` to `BlockData`, filled by merged blocks when
-    /// possible.
-    blocks_cache: Arc<Mutex<LruCache<BlockID, BlockData>>>,
+    /// Cache mapping a `BlockIndex` to `BlockData`, filled by merged blocks
+    /// when possible.
+    blocks_cache: Arc<Mutex<LruCache<BlockIndex, BlockData>>>,
 
     /// Merged blocks bucket sizes to attempt fetching.
     merged_blocks_bucket_sizes: Vec<u64>,
@@ -165,16 +165,7 @@ impl ReqwestTransactionsFetcher {
     pub fn get_origin_block_and_transactions(
         &self,
     ) -> Result<BlockData, ReqwestTransactionsFetcherError> {
-        let source_url = &self
-            .source_urls
-            .get(0)
-            .ok_or(ReqwestTransactionsFetcherError::NoUrlsConfigured)?;
-        let filename = block_num_to_s3block_path(0)
-            .into_os_string()
-            .into_string()
-            .unwrap();
-        let url = source_url.join(&filename).unwrap();
-        self.block_from_url(&url)
+        self.get_block_data_by_index(0, None)
     }
 
     fn fetch_protobuf_object<M: Message>(
@@ -206,38 +197,69 @@ impl ReqwestTransactionsFetcher {
 
         Ok(obj)
     }
-}
 
-impl TransactionsFetcher for ReqwestTransactionsFetcher {
-    type Error = ReqwestTransactionsFetcherError;
-
-    fn get_block_data(
+    fn get_cached_block_data(
         &self,
-        _safe_responder_ids: &[ResponderId],
-        block: &Block,
-    ) -> Result<BlockData, Self::Error> {
-        // Try and see if we can get this block from our cache.
-        {
-            let mut blocks_cache = self.blocks_cache.lock().expect("mutex poisoned");
+        block_index: BlockIndex,
+        expected_block: Option<&Block>,
+    ) -> Option<BlockData> {
+        // Sanity test.
+        if let Some(expected_block) = expected_block {
+            assert_eq!(block_index, expected_block.index);
+        }
 
-            // Note: If this block id is in the cache, we take it out under the assumption
-            // that our primary caller, LedgerSyncService, is not going to try
-            // and fetch the same block twice if it managed to get a valid
-            // block.
-            if let Some(block_data) = blocks_cache.pop(&block.id) {
-                if block_data.block() == block {
+        let mut blocks_cache = self.blocks_cache.lock().expect("mutex poisoned");
+
+        // Note: If this block index is in the cache, we take it out under the
+        // assumption that our primary caller, LedgerSyncService, is not
+        // going to try and fetch the same block twice if it managed to get
+        // a valid block.
+        blocks_cache.pop(&block_index).and_then(|block_data| {
+            // If we expect a specific Block then compare what the cache had with what we
+            // expect.
+            if let Some(expected_block) = expected_block {
+                if block_data.block() == expected_block {
                     let hits = self.hits.fetch_add(1, Ordering::SeqCst);
                     let misses = self.misses.load(Ordering::SeqCst);
                     log::trace!(
                         self.logger,
                         "Got block #{} from cache (total hits/misses: {}/{})",
-                        block.index,
+                        block_index,
                         hits,
                         misses
                     );
-                    return Ok(block_data);
+                    Some(block_data)
+                } else {
+                    log::warn!(
+                        self.logger,
+                        "Got cached block {:?} but actually requested {:?}! This should not happen",
+                        block_data.block(),
+                        expected_block
+                    );
+                    None
                 }
+            } else if block_data.block().index == block_index {
+                Some(block_data)
+            } else {
+                log::error!(
+                    self.logger,
+                    "Got cached block #{} but actually requested #{}! This should not happen",
+                    block_data.block().index,
+                    block_index
+                );
+                None
             }
+        })
+    }
+
+    pub fn get_block_data_by_index(
+        &self,
+        block_index: BlockIndex,
+        expected_block: Option<&Block>,
+    ) -> Result<BlockData, ReqwestTransactionsFetcherError> {
+        // Try and see if we can get this block from our cache.
+        if let Some(cached_block_data) = self.get_cached_block_data(block_index, expected_block) {
+            return Ok(cached_block_data);
         }
 
         // Get the source to fetch from.
@@ -247,14 +269,14 @@ impl TransactionsFetcher for ReqwestTransactionsFetcher {
 
         // Try and fetch a merged block if we stand a chance of finding one.
         for bucket in self.merged_blocks_bucket_sizes.iter() {
-            if block.index % bucket == 0 {
+            if block_index % bucket == 0 {
                 log::debug!(
                     self.logger,
                     "Attempting to fetch a merged block for #{} (bucket size {})",
-                    block.index,
+                    block_index,
                     bucket
                 );
-                let filename = merged_block_num_to_s3block_path(*bucket, block.index)
+                let filename = merged_block_num_to_s3block_path(*bucket, block_index)
                     .into_os_string()
                     .into_string()
                     .unwrap();
@@ -265,23 +287,32 @@ impl TransactionsFetcher for ReqwestTransactionsFetcher {
                 if let Ok(blocks_data) = self.blocks_from_url(&url) {
                     log::debug!(
                         self.logger,
-                        "Got a merged block for #{} (bucket size {}): {} entries",
-                        block.index,
+                        "Got a merged block for #{} (bucket size {}): {} entries @ {:?}",
+                        block_index,
                         bucket,
-                        blocks_data.len()
+                        blocks_data.len(),
+                        std::thread::current().name()
                     );
 
-                    let mut blocks_cache = self.blocks_cache.lock().expect("mutex poisoned");
-                    for block_data in blocks_data.into_iter() {
-                        blocks_cache.put(block_data.block().id.clone(), block_data);
+                    {
+                        let mut blocks_cache = self.blocks_cache.lock().expect("mutex poisoned");
+                        for block_data in blocks_data.into_iter() {
+                            blocks_cache.put(block_data.block().index, block_data);
+                        }
                     }
-                    break;
+
+                    // Supposedly we have the block we asked for in the cache now.
+                    if let Some(cached_block_data) =
+                        self.get_cached_block_data(block_index, expected_block)
+                    {
+                        return Ok(cached_block_data);
+                    }
                 }
             }
         }
 
         // Construct URL for the block we are trying to fetch.
-        let filename = block_num_to_s3block_path(block.index)
+        let filename = block_num_to_s3block_path(block_index)
             .into_os_string()
             .into_string()
             .unwrap();
@@ -293,18 +324,21 @@ impl TransactionsFetcher for ReqwestTransactionsFetcher {
         log::debug!(
             self.logger,
             "Attempting to fetch block {} from {}",
-            block.index,
+            block_index,
             url
         );
 
         let block_data = self.block_from_url(&url)?;
 
-        // Check that we received data for the block we actually asked about.
-        if block != block_data.block() {
-            return Err(ReqwestTransactionsFetcherError::InvalidBlockReceived(
-                url.to_string(),
-                "block data mismatch".to_string(),
-            ));
+        // If the caller is expecting a specific block, check that we received data for
+        // the block they asked for
+        if let Some(expected_block) = expected_block {
+            if expected_block != block_data.block() {
+                return Err(ReqwestTransactionsFetcherError::InvalidBlockReceived(
+                    url.to_string(),
+                    "block data mismatch".to_string(),
+                ));
+            }
         }
 
         let hits = self.hits.load(Ordering::SeqCst);
@@ -312,12 +346,24 @@ impl TransactionsFetcher for ReqwestTransactionsFetcher {
         log::trace!(
             self.logger,
             "Cache miss while getting block #{} (total hits/misses: {}/{})",
-            block.index,
+            block_data.block().index,
             hits,
             misses
         );
 
         // Got what we wanted!
         Ok(block_data)
+    }
+}
+
+impl TransactionsFetcher for ReqwestTransactionsFetcher {
+    type Error = ReqwestTransactionsFetcherError;
+
+    fn get_block_data(
+        &self,
+        _safe_responder_ids: &[ResponderId],
+        block: &Block,
+    ) -> Result<BlockData, Self::Error> {
+        self.get_block_data_by_index(block.index, Some(block))
     }
 }

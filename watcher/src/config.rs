@@ -116,10 +116,10 @@ pub struct SourcesConfig {
 
 impl SourcesConfig {
     /// Returns a list of URLs that can be used to fetch block contents from.
-    pub fn tx_source_urls(&self) -> Vec<String> {
+    pub fn tx_source_urls(&self) -> Vec<Url> {
         self.sources
             .iter()
-            .map(|source_config| source_config.tx_source_url().as_str().to_owned())
+            .map(|source_config| source_config.tx_source_url())
             .collect()
     }
 

@@ -11,7 +11,6 @@ use mc_watcher::{
 };
 
 use mc_common::logger::{create_app_logger, log, o};
-use mc_ledger_sync::ReqwestTransactionsFetcher;
 use std::thread::sleep;
 use structopt::StructOpt;
 
@@ -22,22 +21,14 @@ fn main() {
     let config = WatcherConfig::from_args();
     let sources_config = config.sources_config();
 
-    let transactions_fetcher =
-        ReqwestTransactionsFetcher::new(sources_config.tx_source_urls(), logger.clone())
-            .expect("Failed creating ReqwestTransactionsFetcher");
-
     let watcher_db = create_or_open_rw_watcher_db(
         config.watcher_db,
-        &transactions_fetcher.source_urls,
+        &sources_config.tx_source_urls()[..],
         logger.clone(),
     )
     .expect("Could not create or open watcher db");
-    let watcher = Watcher::new(
-        watcher_db.clone(),
-        transactions_fetcher,
-        config.store_block_data,
-        logger.clone(),
-    );
+    let watcher = Watcher::new(watcher_db.clone(), config.store_block_data, logger.clone())
+        .expect("Failed creating watcher");
 
     let _verification_reports_collector = <VerificationReportsCollector>::new(
         watcher_db,

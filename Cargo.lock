@@ -3794,6 +3794,7 @@ dependencies = [
  "prost",
  "rand_core 0.5.1",
  "rand_hc 0.2.0",
+ "rayon",
  "serde",
  "serial_test",
  "serial_test_derive",
