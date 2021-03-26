@@ -23,3 +23,6 @@ curve25519-dalek = { version = "3.0", default-features = false, features = ["sim
 
 [target.'cfg(not(any(target_feature = "avx2", target_feature = "avx")))'.dependencies]
 curve25519-dalek = { version = "3.0", default-features = false, features = ["nightly", "u64_backend"] }
+
+[dev-dependencies]
+hex = "0.4"
