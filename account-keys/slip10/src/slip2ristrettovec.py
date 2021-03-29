@@ -1,4 +1,13 @@
 #!/usr/bin/env python3
+#
+# Test vector generator for slip10 output -> mobilecoin conversion
+#
+# This takes a SLIP-0010 output (specifically, what is termed the "Ed25519
+# private key" by the spec) and runs it through a pair of KDF instances to
+# create the view and spend outputs.
+#
+# This code should not be re-used in a production system.
+#
 
 import hkdf
 import hashlib

@@ -1,4 +1,15 @@
 #!/usr/bin/env python3
+#
+# Test vector generator for mnemonics -> mobilecoin conversion.
+#
+# This code reads a series of BIP-39 wordlists encoded as string arguments and
+# runs them through BIP-39 and the SLIP-0010 test vector code, followed by the
+# our own pair of HKDF instances to construct both view and spend keys.
+#
+# Much of this code was copy/pasted from
+# https://github.com/satoshilabs/slips/slip-0010/testvectors.py and probably
+# should not be re-used in a production setting.
+#
 
 import hashlib
 import hkdf
@@ -28,7 +39,6 @@ def string_to_int(s):
 
 # mode 0 - compatible with BIP32 private derivation
 def seed2hdnode(seed, modifier, curve):
-    k = seed
     while True:
         h = hmac.new(modifier, seed, hashlib.sha512).digest()
         key, chaincode = h[:32], h[32:]

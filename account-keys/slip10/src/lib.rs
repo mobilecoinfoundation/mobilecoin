@@ -93,6 +93,11 @@ impl Slip10KeyGenerator for Mnemonic {
         // see the Mobilecoin Key Derivation design specification, v1.0.0, for
         // design rationale.
         let seed = Seed::new(&self, "");
+        // We're taking what the SLIP-0010 spec calls the "Ed25519 private key"
+        // here as our `SLip10Key`. That said, we're not actually using this as
+        // an Ed25519 key, just IKM for a pair of HKDF-SHA512 instances whose
+        // output will be correctly transformed into the Ristretto255 keypair we
+        // need.
         let key = slip10_ed25519::derive_ed25519_private_key(seed.as_bytes(), path);
 
         Ok(Slip10Key(key))
@@ -271,7 +276,8 @@ mod test {
     /// These are the strings used in the [BIP39 test vectors](https://github.com/trezor/python-mnemonic/blob/master/vectors.json).
     ///
     /// In those tests it's assumed the password is "TREZOR", but it's safe to
-    /// assume these are burned.
+    /// assume these wordlists are all burned. This particular structure was
+    /// generated using the `mnemonic2slip.py` script.
     const EN_MNEMONIC_STRINGS: [MnemonicToRistretto; 24] = [
         MnemonicToRistretto {
             phrase: "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
