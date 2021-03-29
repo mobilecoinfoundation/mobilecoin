@@ -3,6 +3,8 @@ cargo-features = ["resolver"]
 [workspace]
 resolver = "2"
 members = [
+    "account-keys",
+    "account-keys/slip10",
     "admin-http-gateway",
     "api",
     "attest/ake",
