@@ -96,12 +96,16 @@ def derive(parent_key, parent_chaincode, i, curve):
 def main():
     args = sys.argv[1:]
     for arg in args:
+        print("// Path: m/44'/866'/0'")
         print("MnemonicToRistretto {")
         print(f"    phrase: \"{arg}\",")
+        print("    account_index: 0,")
 
         mnemo = mnemonic.Mnemonic("english")
         master_seed = mnemo.to_seed(arg, "")
 
+        # manually build the path to m/usage/cointype/acctidx
+        # for us, usage is BIP-44, cointype is MobileCoin
         # m
         k, c = seed2hdnode(master_seed, b"ed25519 seed", 'ed25519')
         # m/44
@@ -109,18 +113,36 @@ def main():
         # m/44/866
         k, c = derive(k, c, 866 + privdev, 'ed25519')
         # m/44/866/0
-        k, _c = derive(k, c, 0 + privdev, 'ed25519')
+        acct0, _c = derive(k, c, 0 + privdev, 'ed25519')
 
-        kdf = hkdf.Hkdf(b"mobilecoin-ristretto255-view", k, hashlib.sha512)
+        kdf = hkdf.Hkdf(b"mobilecoin-ristretto255-view", acct0, hashlib.sha512)
         key = kdf.expand(length=64)
 
         print(f"    view_hex: \"{key.hex()}\",")
 
-        kdf = hkdf.Hkdf(b"mobilecoin-ristretto255-spend", k, hashlib.sha512)
+        kdf = hkdf.Hkdf(b"mobilecoin-ristretto255-spend", acct0, hashlib.sha512)
         key = kdf.expand(length=64)
 
         print(f"    spend_hex: \"{key.hex()}\",")
         print("},")
 
+        print("// Path: m/44'/866'/1'")
+        print("MnemonicToRistretto {")
+        print(f"    phrase: \"{arg}\",")
+        print("    account_index: 1,")
+
+        # m/44/866/1
+        acct1, _c = derive(k, c, 1 + privdev, 'ed25519')
+
+        kdf = hkdf.Hkdf(b"mobilecoin-ristretto255-view", acct1, hashlib.sha512)
+        key = kdf.expand(length=64)
+
+        print(f"    view_hex: \"{key.hex()}\",")
+
+        kdf = hkdf.Hkdf(b"mobilecoin-ristretto255-spend", acct1, hashlib.sha512)
+        key = kdf.expand(length=64)
+
+        print(f"    spend_hex: \"{key.hex()}\",")
+        print("},")
 
 main()
