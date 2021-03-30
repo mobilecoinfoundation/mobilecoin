@@ -7,15 +7,21 @@
 # our own pair of HKDF instances to construct both view and spend keys.
 #
 # Much of this code was copy/pasted from
-# https://github.com/satoshilabs/slips/slip-0010/testvectors.py and probably
-# should not be re-used in a production setting.
+# https://raw.githubusercontent.com/satoshilabs/slips/master/slip-0010/testvectors.py
+# and probably should not be re-used in a production setting.
 #
 
 import hashlib
+import struct
+
+import ed25519
 import hkdf
 import hmac
 import mnemonic
 import sys
+
+
+privdev = 0x80000000
 
 
 def int_to_string(x, pad):
@@ -39,6 +45,7 @@ def string_to_int(s):
 
 # mode 0 - compatible with BIP32 private derivation
 def seed2hdnode(seed, modifier, curve):
+    k = seed
     while True:
         h = hmac.new(modifier, seed, hashlib.sha512).digest()
         key, chaincode = h[:32], h[32:]
@@ -48,28 +55,68 @@ def seed2hdnode(seed, modifier, curve):
         if a < curve.order and a != 0:
             break
         seed = h
-        # print 'RETRY seed: ' + binascii.hexlify(seed)
+    return key, chaincode
+
+
+def publickey(private_key, curve):
+    if curve == 'ed25519':
+        sk = ed25519.SigningKey(private_key)
+        return b'\x00' + sk.get_verifying_key().to_bytes()
+    else:
+        Q = string_to_int(private_key) * curve.generator
+        xstr = int_to_string(Q.x(), 32)
+        parity = Q.y() & 1
+        return chr(2 + parity) + xstr
+
+
+def derive(parent_key, parent_chaincode, i, curve):
+    assert len(parent_key) == 32
+    assert len(parent_chaincode) == 32
+    k = parent_chaincode
+    if (i & privdev) != 0:
+        key = b'\x00' + parent_key
+    else:
+        key = publickey(parent_key, curve)
+    d = key + struct.pack('>L', i)
+    while True:
+        h = hmac.new(k, d, hashlib.sha512).digest()
+        key, chaincode = h[:32], h[32:]
+        if curve == 'ed25519':
+            break
+        a = string_to_int(key)
+        key = (a + string_to_int(parent_key)) % curve.order
+        if a < curve.order and key != 0:
+            key = int_to_string(key, 32)
+            break
+        d = '\x01' + h[32:] + struct.pack('>L', i)
+
     return key, chaincode
 
 
 def main():
     args = sys.argv[1:]
-    path_str = ""
-    i = 0
     for arg in args:
         print("MnemonicToRistretto {")
         print(f"    phrase: \"{arg}\",")
 
         mnemo = mnemonic.Mnemonic("english")
-        seed = mnemo.to_seed(arg, "")
+        master_seed = mnemo.to_seed(arg, "")
 
-        slip10, _chain = seed2hdnode(seed, b"ed25519 seed", 'ed25519')
-        kdf = hkdf.Hkdf(b"mobilecoin-ristretto255-view", slip10, hashlib.sha512)
+        # m
+        k, c = seed2hdnode(master_seed, b"ed25519 seed", 'ed25519')
+        # m/44
+        k, c = derive(k, c, 44 + privdev, 'ed25519')
+        # m/44/866
+        k, c = derive(k, c, 866 + privdev, 'ed25519')
+        # m/44/866/0
+        k, _c = derive(k, c, 0 + privdev, 'ed25519')
+
+        kdf = hkdf.Hkdf(b"mobilecoin-ristretto255-view", k, hashlib.sha512)
         key = kdf.expand(length=64)
 
         print(f"    view_hex: \"{key.hex()}\",")
 
-        kdf = hkdf.Hkdf(b"mobilecoin-ristretto255-spend", slip10, hashlib.sha512)
+        kdf = hkdf.Hkdf(b"mobilecoin-ristretto255-spend", k, hashlib.sha512)
         key = kdf.expand(length=64)
 
         print(f"    spend_hex: \"{key.hex()}\",")
