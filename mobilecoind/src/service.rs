@@ -14,8 +14,10 @@ use crate::{
     sync::SyncThread,
     utxo_store::{UnspentTxOut, UtxoId},
 };
+use bip39::{Language, Mnemonic, MnemonicType};
 use grpcio::{EnvBuilder, RpcContext, RpcStatus, RpcStatusCode, ServerBuilder, UnarySink};
 use mc_account_keys::{AccountKey, PublicAddress, RootIdentity, DEFAULT_SUBADDRESS_INDEX};
+use mc_account_keys_slip10::Slip10KeyGenerator;
 use mc_common::{
     logger::{log, Logger},
     HashMap,
@@ -37,8 +39,8 @@ use mc_transaction_core::{
 };
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::{
-    rpc_internal_error, rpc_logger, send_result, AdminService, BuildInfoService,
-    ConnectionUriGrpcioServer,
+    rpc_internal_error, rpc_invalid_arg_error, rpc_logger, send_result, AdminService,
+    BuildInfoService, ConnectionUriGrpcioServer,
 };
 use mc_watcher::watcher_db::WatcherDB;
 use protobuf::{ProtobufEnum, RepeatedField};
@@ -333,23 +335,34 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         Ok(response)
     }
 
-    fn generate_entropy_impl(
+    fn generate_root_entropy_impl(
         &mut self,
         _request: mc_mobilecoind_api::Empty,
-    ) -> Result<mc_mobilecoind_api::GenerateEntropyResponse, RpcStatus> {
+    ) -> Result<mc_mobilecoind_api::GenerateRootEntropyResponse, RpcStatus> {
         let mut rng = rand::thread_rng();
         let root_id = RootIdentity::from_random(&mut rng);
-        let mut response = mc_mobilecoind_api::GenerateEntropyResponse::new();
-        response.set_entropy(root_id.root_entropy.as_ref().to_vec());
+        let mut response = mc_mobilecoind_api::GenerateRootEntropyResponse::new();
+        response.set_root_entropy(root_id.root_entropy.as_ref().to_vec());
         Ok(response)
     }
 
-    fn get_account_key_impl(
+    fn generate_mnemonic_impl(
         &mut self,
-        request: mc_mobilecoind_api::GetAccountKeyRequest,
+        _request: mc_mobilecoind_api::Empty,
+    ) -> Result<mc_mobilecoind_api::GenerateMnemonicResponse, RpcStatus> {
+        let mnemonic = Mnemonic::new(MnemonicType::Words24, Language::English);
+
+        let mut response = mc_mobilecoind_api::GenerateMnemonicResponse::new();
+        response.set_mnemonic(mnemonic.phrase().to_string());
+        Ok(response)
+    }
+
+    fn get_account_key_from_root_entropy_impl(
+        &mut self,
+        request: mc_mobilecoind_api::GetAccountKeyFromRootEntropyRequest,
     ) -> Result<mc_mobilecoind_api::GetAccountKeyResponse, RpcStatus> {
         // Get the entropy.
-        if request.get_entropy().len() != 32 {
+        if request.get_root_entropy().len() != 32 {
             return Err(RpcStatus::new(
                 RpcStatusCode::INVALID_ARGUMENT,
                 Some("entropy".to_string()),
@@ -358,9 +371,24 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         // Use root entropy to construct AccountKey.
         let mut root_entropy = [0u8; 32];
-        root_entropy.copy_from_slice(request.get_entropy());
+        root_entropy.copy_from_slice(request.get_root_entropy());
         let root_id = RootIdentity::from(&root_entropy);
         let account_key = AccountKey::from(&root_id);
+
+        // Return response.
+        let mut response = mc_mobilecoind_api::GetAccountKeyResponse::new();
+        response.set_account_key((&account_key).into());
+        Ok(response)
+    }
+
+    fn get_account_key_from_mnemonic_impl(
+        &mut self,
+        request: mc_mobilecoind_api::GetAccountKeyFromMnemonicRequest,
+    ) -> Result<mc_mobilecoind_api::GetAccountKeyResponse, RpcStatus> {
+        let mnemonic = Mnemonic::from_phrase(request.get_mnemonic(), Language::English)
+            .map_err(|err| rpc_invalid_arg_error("mnemonic", err, &self.logger))?;
+        let key = mnemonic.derive_slip10_key(request.account_index);
+        let account_key = AccountKey::from(key);
 
         // Return response.
         let mut response = mc_mobilecoind_api::GetAccountKeyResponse::new();
@@ -511,7 +539,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         // Use root entropy to construct AccountKey.
         let mut root_entropy = [0u8; 32];
-        root_entropy.copy_from_slice(transfer_payload.get_entropy());
+        root_entropy.copy_from_slice(transfer_payload.get_root_entropy());
         let root_id = RootIdentity::from(&root_entropy);
         let account_key = AccountKey::from(&root_id);
 
@@ -541,7 +569,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         };
 
         let mut response = mc_mobilecoind_api::ParseTransferCodeResponse::new();
-        response.set_entropy(root_entropy.to_vec());
+        response.set_root_entropy(root_entropy.to_vec());
         response.set_tx_public_key((&tx_public_key).into());
         response.set_memo(transfer_payload.get_memo().to_string());
         response.set_utxo((&utxo).into());
@@ -553,10 +581,10 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         &mut self,
         request: mc_mobilecoind_api::CreateTransferCodeRequest,
     ) -> Result<mc_mobilecoind_api::CreateTransferCodeResponse, RpcStatus> {
-        if request.entropy.len() != 32 {
+        if request.root_entropy.len() != 32 {
             return Err(RpcStatus::new(
                 RpcStatusCode::INVALID_ARGUMENT,
-                Some("entropy".to_string()),
+                Some("root_entropy".to_string()),
             ));
         }
         if request.get_tx_public_key().get_data().len() != 32 {
@@ -567,7 +595,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         }
 
         let mut transfer_payload = mc_mobilecoind_api::printable::TransferPayload::new();
-        transfer_payload.set_entropy(request.get_entropy().to_vec());
+        transfer_payload.set_root_entropy(request.get_root_entropy().to_vec());
         transfer_payload.set_tx_out_public_key(request.get_tx_public_key().clone());
         transfer_payload.set_memo(request.get_memo().to_string());
 
@@ -873,8 +901,8 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         request: mc_mobilecoind_api::GenerateTransferCodeTxRequest,
     ) -> Result<mc_mobilecoind_api::GenerateTransferCodeTxResponse, RpcStatus> {
         // Generate entropy.
-        let entropy_response = self.generate_entropy_impl(mc_mobilecoind_api::Empty::new())?;
-        let entropy = entropy_response.get_entropy().to_vec();
+        let entropy_response = self.generate_root_entropy_impl(mc_mobilecoind_api::Empty::new())?;
+        let entropy = entropy_response.get_root_entropy().to_vec();
 
         let mut entropy_bytes = [0; 32];
         if entropy.len() != entropy_bytes.len() {
@@ -886,10 +914,12 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         entropy_bytes.copy_from_slice(&entropy);
 
         // Generate a new account using this entropy.
-        let mut account_key_request = mc_mobilecoind_api::GetAccountKeyRequest::new();
-        account_key_request.set_entropy(entropy.clone());
+        let mut account_key_request =
+            mc_mobilecoind_api::GetAccountKeyFromRootEntropyRequest::new();
+        account_key_request.set_root_entropy(entropy.clone());
 
-        let account_key_response = self.get_account_key_impl(account_key_request)?;
+        let account_key_response =
+            self.get_account_key_from_root_entropy_impl(account_key_request)?;
         let account_key = AccountKey::try_from(account_key_response.get_account_key())
             .map_err(|err| rpc_internal_error("account_key.try_from", err, &self.logger))?;
 
@@ -956,7 +986,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .map_err(|err| rpc_internal_error("ristretto_public.try_from", err, &self.logger))?;
 
         let mut transfer_payload = mc_mobilecoind_api::printable::TransferPayload::new();
-        transfer_payload.set_entropy(entropy_bytes.to_vec());
+        transfer_payload.set_root_entropy(entropy_bytes.to_vec());
         transfer_payload.set_tx_out_public_key((&tx_public_key).into());
         transfer_payload.set_memo(request.get_memo().to_string());
 
@@ -970,7 +1000,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         // Construct response.
         let mut response = mc_mobilecoind_api::GenerateTransferCodeTxResponse::new();
         response.set_tx_proposal(tx_proposal);
-        response.set_entropy(entropy);
+        response.set_root_entropy(entropy);
         response.set_tx_public_key(proto_tx_public_key);
         response.set_memo(request.get_memo().to_string());
         response.set_b58_code(b58_code);
@@ -1795,8 +1825,10 @@ build_api! {
     get_unspent_tx_out_list GetUnspentTxOutListRequest GetUnspentTxOutListResponse get_unspent_tx_out_list_impl,
 
     // Utilities
-    generate_entropy Empty GenerateEntropyResponse generate_entropy_impl,
-    get_account_key GetAccountKeyRequest GetAccountKeyResponse get_account_key_impl,
+    generate_root_entropy Empty GenerateRootEntropyResponse generate_root_entropy_impl,
+    generate_mnemonic Empty GenerateMnemonicResponse generate_mnemonic_impl,
+    get_account_key_from_root_entropy GetAccountKeyFromRootEntropyRequest GetAccountKeyResponse get_account_key_from_root_entropy_impl,
+    get_account_key_from_mnemonic GetAccountKeyFromMnemonicRequest GetAccountKeyResponse get_account_key_from_mnemonic_impl,
     get_public_address GetPublicAddressRequest GetPublicAddressResponse get_public_address_impl,
 
     // b58 codes
@@ -2195,15 +2227,74 @@ mod test {
 
         // call get entropy
         let response = client
-            .generate_entropy(&mc_mobilecoind_api::Empty::default())
+            .generate_root_entropy(&mc_mobilecoind_api::Empty::default())
             .unwrap();
-        let entropy = response.get_entropy().to_vec();
+        let entropy = response.get_root_entropy().to_vec();
         assert_eq!(entropy.len(), 32);
         assert_ne!(entropy, vec![0; 32]);
     }
 
     #[test_with_logger]
-    fn test_get_account_key_impl(logger: Logger) {
+    fn test_generate_mnemonic_impl(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        // no known recipient, 3 random recipients and no monitors.
+        let (_ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
+
+        // call get entropy
+        let response = client
+            .generate_mnemonic(&mc_mobilecoind_api::Empty::default())
+            .unwrap();
+        let mnemonic_str = response.get_mnemonic();
+        assert_ne!(mnemonic_str, "");
+
+        // Should be a valid mnemonic.
+        let mnemonic =
+            Mnemonic::from_phrase(mnemonic_str, Language::English).expect("invalid mnemonic_str");
+        assert_eq!(mnemonic.entropy().len(), 32);
+    }
+
+    #[test_with_logger]
+    fn test_get_account_key_from_mnemonic_impl(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        // no known recipient, 3 random recipients and no monitors.
+        let (_ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
+
+        // Use mnemonic to construct AccountKey.
+        let mnemonic_str =
+            "legal winner thank year wave sausage worth useful legal winner thank yellow";
+        let expected_account_key = {
+            let mnemonic =
+                Mnemonic::from_phrase(mnemonic_str, Language::English).expect("from_phrase failed");
+            let key = mnemonic.derive_slip10_key(666);
+            AccountKey::from(key)
+        };
+
+        let mut request = mc_mobilecoind_api::GetAccountKeyFromMnemonicRequest::new();
+        request.set_mnemonic(mnemonic_str.to_string());
+        request.set_account_index(666);
+
+        let response = client.get_account_key_from_mnemonic(&request).unwrap();
+
+        assert_eq!(
+            expected_account_key,
+            AccountKey::try_from(response.get_account_key()).unwrap(),
+        );
+
+        // Calling with no mnemonic or invalid mnemonic should error.
+        let request = mc_mobilecoind_api::GetAccountKeyFromMnemonicRequest::new();
+        assert!(client.get_account_key_from_mnemonic(&request).is_err());
+
+        let mut request = mc_mobilecoind_api::GetAccountKeyFromMnemonicRequest::new();
+        request.set_mnemonic("lol".to_string());
+        assert!(client.get_account_key_from_mnemonic(&request).is_err());
+    }
+
+    #[test_with_logger]
+    fn test_get_account_key_from_root_entropy_impl(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
 
         // no known recipient, 3 random recipients and no monitors.
@@ -2215,10 +2306,10 @@ mod test {
         let root_id = RootIdentity::from(&root_entropy);
         let account_key = AccountKey::from(&root_id);
 
-        let mut request = mc_mobilecoind_api::GetAccountKeyRequest::new();
-        request.set_entropy(root_entropy.to_vec());
+        let mut request = mc_mobilecoind_api::GetAccountKeyFromRootEntropyRequest::new();
+        request.set_root_entropy(root_entropy.to_vec());
 
-        let response = client.get_account_key(&request).unwrap();
+        let response = client.get_account_key_from_root_entropy(&request).unwrap();
 
         assert_eq!(
             account_key,
@@ -2226,13 +2317,13 @@ mod test {
         );
 
         // Calling with no root entropy or invalid root entropy should error.
-        let request = mc_mobilecoind_api::GetAccountKeyRequest::new();
-        assert!(client.get_account_key(&request).is_err());
+        let request = mc_mobilecoind_api::GetAccountKeyFromRootEntropyRequest::new();
+        assert!(client.get_account_key_from_root_entropy(&request).is_err());
 
         let root_entropy = [123u8; 31];
-        let mut request = mc_mobilecoind_api::GetAccountKeyRequest::new();
-        request.set_entropy(root_entropy.to_vec());
-        assert!(client.get_account_key(&request).is_err());
+        let mut request = mc_mobilecoind_api::GetAccountKeyFromRootEntropyRequest::new();
+        request.set_root_entropy(root_entropy.to_vec());
+        assert!(client.get_account_key_from_root_entropy(&request).is_err());
     }
 
     #[test_with_logger]
@@ -3476,7 +3567,7 @@ mod test {
 
             // Use root entropy to construct AccountKey.
             let mut root_entropy = [0u8; 32];
-            root_entropy.copy_from_slice(response.get_entropy());
+            root_entropy.copy_from_slice(response.get_root_entropy());
             let root_id = RootIdentity::from(&root_entropy);
             let account_key = AccountKey::from(&root_id);
 
@@ -4775,13 +4866,13 @@ mod test {
         // An invalid request should fail to encode.
         {
             let mut request = mc_mobilecoind_api::CreateTransferCodeRequest::new();
-            request.set_entropy(vec![3u8; 8]); // key is wrong size
+            request.set_root_entropy(vec![3u8; 8]); // key is wrong size
             request.set_tx_public_key((&tx_public_key).into());
             request.set_memo("memo".to_owned());
             assert!(client.create_transfer_code(&request).is_err());
 
             let mut request = mc_mobilecoind_api::CreateTransferCodeRequest::new();
-            request.set_entropy(vec![4u8; 32]);
+            request.set_root_entropy(vec![4u8; 32]);
             request.set_memo("memo".to_owned()); // forgot to set tx_public_key
             assert!(client.create_transfer_code(&request).is_err());
         }
@@ -4791,7 +4882,7 @@ mod test {
         {
             // Encode
             let mut request = mc_mobilecoind_api::CreateTransferCodeRequest::new();
-            request.set_entropy(root_entropy.to_vec());
+            request.set_root_entropy(root_entropy.to_vec());
             request.set_tx_public_key((&tx_public_key).into());
             request.set_memo("test memo".to_owned());
 
@@ -4805,7 +4896,7 @@ mod test {
             let response = client.parse_transfer_code(&request).unwrap();
 
             // Compare
-            assert_eq!(&root_entropy, response.get_entropy());
+            assert_eq!(&root_entropy, response.get_root_entropy());
             assert_eq!(
                 tx_public_key,
                 CompressedRistrettoPublic::try_from(response.get_tx_public_key()).unwrap()

@@ -27,7 +27,7 @@ message PaymentRequest {
 /// used for gift cards.
 message TransferPayload {
     /// The root entropy, allowing the recipient to spend the money
-    bytes entropy = 1;
+    bytes root_entropy = 1;
 
     /// The public key of the UTXO to spend. This is an optimization, meaning
     /// the recipient does not need to scan the entire ledger.
