@@ -23,7 +23,7 @@ service MobilecoindAPI {
     rpc GetUnspentTxOutList (GetUnspentTxOutListRequest) returns (GetUnspentTxOutListResponse) {}
 
     // Utilities
-    rpc GenerateEntropy (google.protobuf.Empty) returns (GenerateEntropyResponse) {}
+    rpc GenerateRootEntropy (google.protobuf.Empty) returns (GenerateRootEntropyResponse) {}
     rpc GenerateMnemonic (google.protobuf.Empty) returns (GenerateMnemonicResponse) {}
     rpc GetAccountKeyFromRootEntropy (GetAccountKeyFromRootEntropyRequest) returns (GetAccountKeyResponse) {}
     rpc GetAccountKeyFromMnemonic (GetAccountKeyFromMnemonicRequest) returns (GetAccountKeyResponse) {}
@@ -314,7 +314,7 @@ message GetUnspentTxOutListResponse {
 
 // Generate a new random root entropy value.
 // - empty request
-message GenerateEntropyResponse {
+message GenerateRootEntropyResponse {
 	  // 32 bytes generated using a cryptographically secure RNG.
     bytes root_entropy = 1;
 }

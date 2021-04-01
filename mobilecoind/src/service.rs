@@ -335,13 +335,13 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         Ok(response)
     }
 
-    fn generate_entropy_impl(
+    fn generate_root_entropy_impl(
         &mut self,
         _request: mc_mobilecoind_api::Empty,
-    ) -> Result<mc_mobilecoind_api::GenerateEntropyResponse, RpcStatus> {
+    ) -> Result<mc_mobilecoind_api::GenerateRootEntropyResponse, RpcStatus> {
         let mut rng = rand::thread_rng();
         let root_id = RootIdentity::from_random(&mut rng);
-        let mut response = mc_mobilecoind_api::GenerateEntropyResponse::new();
+        let mut response = mc_mobilecoind_api::GenerateRootEntropyResponse::new();
         response.set_root_entropy(root_id.root_entropy.as_ref().to_vec());
         Ok(response)
     }
@@ -901,7 +901,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         request: mc_mobilecoind_api::GenerateTransferCodeTxRequest,
     ) -> Result<mc_mobilecoind_api::GenerateTransferCodeTxResponse, RpcStatus> {
         // Generate entropy.
-        let entropy_response = self.generate_entropy_impl(mc_mobilecoind_api::Empty::new())?;
+        let entropy_response = self.generate_root_entropy_impl(mc_mobilecoind_api::Empty::new())?;
         let entropy = entropy_response.get_root_entropy().to_vec();
 
         let mut entropy_bytes = [0; 32];
@@ -1825,7 +1825,7 @@ build_api! {
     get_unspent_tx_out_list GetUnspentTxOutListRequest GetUnspentTxOutListResponse get_unspent_tx_out_list_impl,
 
     // Utilities
-    generate_entropy Empty GenerateEntropyResponse generate_entropy_impl,
+    generate_root_entropy Empty GenerateRootEntropyResponse generate_root_entropy_impl,
     generate_mnemonic Empty GenerateMnemonicResponse generate_mnemonic_impl,
     get_account_key_from_root_entropy GetAccountKeyFromRootEntropyRequest GetAccountKeyResponse get_account_key_from_root_entropy_impl,
     get_account_key_from_mnemonic GetAccountKeyFromMnemonicRequest GetAccountKeyResponse get_account_key_from_mnemonic_impl,
@@ -2227,7 +2227,7 @@ mod test {
 
         // call get entropy
         let response = client
-            .generate_entropy(&mc_mobilecoind_api::Empty::default())
+            .generate_root_entropy(&mc_mobilecoind_api::Empty::default())
             .unwrap();
         let entropy = response.get_root_entropy().to_vec();
         assert_eq!(entropy.len(), 32);
