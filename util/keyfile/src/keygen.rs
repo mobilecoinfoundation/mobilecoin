@@ -4,36 +4,43 @@
 //! corresponding to `mc_account_keys::RootIdentity`, and
 //! `mc_account_keys::PublicAddress` respectively.
 
-use crate::{read_keyfile, read_pubfile, write_keyfile, write_pubfile};
-use bip39::Mnemonic;
+use crate::{
+    error::Error, read_keyfile, read_pubfile, read_root_entropy_keyfile, write_keyfile,
+    write_pubfile,
+};
+use bip39::{Language, Mnemonic};
 use mc_account_keys::{AccountKey, PublicAddress, RootIdentity};
-use rand::SeedableRng;
-use rand_hc::Hc128Rng as FixedRng;
+use mc_account_keys_slip10::Slip10KeyGenerator;
+use rand::{RngCore, SeedableRng};
+use rand_hc::Hc128Rng;
 use std::{
     cmp::Ordering,
-    convert::TryInto,
     ffi::OsStr,
     fs,
     path::{Path, PathBuf},
 };
 
-// TODO: Fill this in from MC_SEED, if one is set.
-pub const DEFAULT_SEED: [u8; 32] = [1; 32];
-
-// Write a single pair of keyfiles using a given name and data
+/// Write a single pair of keyfiles using a given name and data
 pub fn write_keyfiles<P: AsRef<Path>>(
     path: P,
     name: &str,
     mnemonic: &Mnemonic,
     account_index: u32,
-    fog_report_url: &str,
-    fog_report_id: &str,
-    fog_authority_spki: &[u8],
-) -> Result<(), std::io::Error> {
-    let acct_key = mnemonic
-        .derive_slip10_key(account_index)
-        .try_into_account_key(fog_report_url, fog_report_id, fog_authority_spki)
-        .expect("Could not construct account key from Mnemonic");
+    fog_report_url: Option<&str>,
+    fog_report_id: Option<&str>,
+    fog_authority_spki: Option<&[u8]>,
+) -> Result<(), Error> {
+    let slip10key = mnemonic.clone().derive_slip10_key(account_index);
+    let acct_key =
+        if fog_report_url.is_some() && fog_report_id.is_some() && fog_authority_spki.is_some() {
+            slip10key.try_into_account_key(
+                fog_report_url.unwrap(),
+                fog_report_id.unwrap(),
+                fog_authority_spki.unwrap(),
+            )?
+        } else {
+            AccountKey::from(slip10key)
+        };
 
     fs::create_dir_all(&path)?;
 
@@ -54,40 +61,45 @@ pub fn write_keyfiles<P: AsRef<Path>>(
 
 // These functions help when implementing bootstrap / initialization / tests
 
-// Helper: Make i'th user's keyfiles' names
+/// Helper: Make i'th user's keyfiles' names
 fn keyfile_name(i: usize) -> String {
     format!("account_keys_{}", i)
 }
 
-// Write the sequence of default user key files used in tests and demos
+/// Write the sequence of default user key files used in tests and demos
 pub fn write_default_keyfiles<P: AsRef<Path>>(
     path: P,
     num_accounts: usize,
-    fog_url: Option<&str>,
+    fog_report_url: Option<&str>,
     fog_report_id: Option<&str>,
     fog_authority_spki: Option<&[u8]>,
     seed: [u8; 32],
-) -> Result<(), std::io::Error> {
-    let mut keys_rng: FixedRng = SeedableRng::from_seed(seed);
+) -> Result<(), Error> {
+    let mut keys_rng = Hc128Rng::from_seed(seed);
 
     // Generate user keys
     for i in 0..num_accounts {
-        let root_id = RootIdentity::random_with_fog(
-            &mut keys_rng,
-            fog_url.unwrap_or(&""),
-            fog_report_id.unwrap_or_default(),
-            fog_authority_spki.unwrap_or_default(),
-        );
+        let mut entropy = [0u8; 32];
+        keys_rng.fill_bytes(&mut entropy[..]);
 
-        write_keyfiles(path.as_ref(), &keyfile_name(i), &root_id)?;
+        let mnemonic = Mnemonic::from_entropy(&entropy, Language::English)
+            .map_err(|_e| Error::MnemonicSize)?;
+
+        write_keyfiles(
+            path.as_ref(),
+            &keyfile_name(i),
+            &mnemonic,
+            0,
+            fog_report_url,
+            fog_report_id,
+            fog_authority_spki,
+        )?;
     }
     Ok(())
 }
 
-// Read default pubkeys used in tests and demos
-pub fn read_default_pubfiles<P: AsRef<Path>>(
-    path: P,
-) -> Result<Vec<PublicAddress>, std::io::Error> {
+/// Read default pubkeys used in tests and demos
+pub fn read_default_pubfiles<P: AsRef<Path>>(path: P) -> Result<Vec<PublicAddress>, Error> {
     let mut entries = Vec::new();
     for entry in fs::read_dir(path)? {
         let filename = entry?.path();
@@ -103,10 +115,7 @@ pub fn read_default_pubfiles<P: AsRef<Path>>(
     Ok(result)
 }
 
-// Read default root entropies
-pub fn read_default_root_entropies<P: AsRef<Path>>(
-    path: P,
-) -> Result<Vec<RootIdentity>, std::io::Error> {
+fn read_default_keyfiles<P: AsRef<Path>>(path: P) -> Result<Vec<PathBuf>, Error> {
     let mut entries = Vec::new();
     for entry in fs::read_dir(path)? {
         let filename = entry?.path();
@@ -115,11 +124,24 @@ pub fn read_default_root_entropies<P: AsRef<Path>>(
         }
     }
     entries.sort_by(compare_keyfile_names);
-    let result: Vec<RootIdentity> = entries
-        .iter()
-        .map(|f| read_keyfile(f).expect("Could not read keyfile"))
-        .collect();
-    Ok(result)
+    Ok(entries)
+}
+
+/// Read default mnemonic keyfiles
+pub fn read_default_mnemonics<P: AsRef<Path>>(path: P) -> Result<Vec<AccountKey>, Error> {
+    read_default_keyfiles(path)?
+        .into_iter()
+        .map(read_keyfile)
+        .collect()
+}
+
+/// Read default root entropies
+#[deprecated]
+pub fn read_default_root_entropies<P: AsRef<Path>>(path: P) -> Result<Vec<RootIdentity>, Error> {
+    read_default_keyfiles(path)?
+        .into_iter()
+        .map(read_root_entropy_keyfile)
+        .collect()
 }
 
 // This comparator is used when sorting the files so that the i'th keyfile

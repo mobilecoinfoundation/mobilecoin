@@ -19,7 +19,7 @@ use zeroize::Zeroize;
 
 /// An enumeration of errors which can occur while working with SLIP-0010 key
 /// derivation
-#[derive(Debug, Display, Eq, PartialEq)]
+#[derive(Clone, Debug, Display, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Error {
     /// There was an error creating the account key: {0}
     AccountKey(AccountKeyError),
