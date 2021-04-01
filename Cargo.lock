@@ -3417,9 +3417,12 @@ dependencies = [
 name = "mc-test-vectors-account-keys"
 version = "1.0.1-pre1"
 dependencies = [
+ "hex 0.4.2",
  "mc-account-keys",
+ "mc-account-keys-slip10",
  "mc-test-vectors-definitions",
  "mc-util-test-vector",
+ "tiny-bip39",
 ]
 
 [[package]]
