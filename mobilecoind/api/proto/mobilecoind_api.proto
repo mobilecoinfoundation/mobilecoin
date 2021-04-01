@@ -24,6 +24,7 @@ service MobilecoindAPI {
 
     // Utilities
     rpc GenerateEntropy (google.protobuf.Empty) returns (GenerateEntropyResponse) {}
+    rpc GenerateMnemonic (google.protobuf.Empty) returns (GenerateMnemonicResponse) {}
     rpc GetAccountKeyFromRootEntropy (GetAccountKeyFromRootEntropyRequest) returns (GetAccountKeyResponse) {}
     rpc GetAccountKeyFromMnemonic (GetAccountKeyFromMnemonicRequest) returns (GetAccountKeyResponse) {}
     rpc GetPublicAddress (GetPublicAddressRequest) returns (GetPublicAddressResponse) {}
@@ -316,6 +317,13 @@ message GetUnspentTxOutListResponse {
 message GenerateEntropyResponse {
 	  // 32 bytes generated using a cryptographically secure RNG.
     bytes root_entropy = 1;
+}
+
+// Generate a new random mnemomic.
+// - empty request
+message GenerateMnemonicResponse {
+	// mnemonic generated using a cryptographically secure RNG.
+    string mnemonic = 1;
 }
 
 // Generate an AccountKey from a 32 byte root entropy value.

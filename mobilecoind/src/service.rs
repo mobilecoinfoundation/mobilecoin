@@ -14,7 +14,7 @@ use crate::{
     sync::SyncThread,
     utxo_store::{UnspentTxOut, UtxoId},
 };
-use bip39::{Language, Mnemonic};
+use bip39::{Language, Mnemonic, MnemonicType};
 use grpcio::{EnvBuilder, RpcContext, RpcStatus, RpcStatusCode, ServerBuilder, UnarySink};
 use mc_account_keys::{AccountKey, PublicAddress, RootIdentity, DEFAULT_SUBADDRESS_INDEX};
 use mc_account_keys_slip10::Slip10KeyGenerator;
@@ -343,6 +343,17 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let root_id = RootIdentity::from_random(&mut rng);
         let mut response = mc_mobilecoind_api::GenerateEntropyResponse::new();
         response.set_root_entropy(root_id.root_entropy.as_ref().to_vec());
+        Ok(response)
+    }
+
+    fn generate_mnemonic_impl(
+        &mut self,
+        _request: mc_mobilecoind_api::Empty,
+    ) -> Result<mc_mobilecoind_api::GenerateMnemonicResponse, RpcStatus> {
+        let mnemonic = Mnemonic::new(MnemonicType::Words24, Language::English);
+
+        let mut response = mc_mobilecoind_api::GenerateMnemonicResponse::new();
+        response.set_mnemonic(mnemonic.phrase().to_string());
         Ok(response)
     }
 
@@ -1815,6 +1826,7 @@ build_api! {
 
     // Utilities
     generate_entropy Empty GenerateEntropyResponse generate_entropy_impl,
+    generate_mnemonic Empty GenerateMnemonicResponse generate_mnemonic_impl,
     get_account_key_from_root_entropy GetAccountKeyFromRootEntropyRequest GetAccountKeyResponse get_account_key_from_root_entropy_impl,
     get_account_key_from_mnemonic GetAccountKeyFromMnemonicRequest GetAccountKeyResponse get_account_key_from_mnemonic_impl,
     get_public_address GetPublicAddressRequest GetPublicAddressResponse get_public_address_impl,
@@ -2220,6 +2232,27 @@ mod test {
         let entropy = response.get_root_entropy().to_vec();
         assert_eq!(entropy.len(), 32);
         assert_ne!(entropy, vec![0; 32]);
+    }
+
+    #[test_with_logger]
+    fn test_generate_mnemonic_impl(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        // no known recipient, 3 random recipients and no monitors.
+        let (_ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
+
+        // call get entropy
+        let response = client
+            .generate_mnemonic(&mc_mobilecoind_api::Empty::default())
+            .unwrap();
+        let mnemonic_str = response.get_mnemonic();
+        assert_ne!(mnemonic_str, "");
+
+        // Should be a valid mnemonic.
+        let mnemonic =
+            Mnemonic::from_phrase(mnemonic_str, Language::English).expect("invalid mnemonic_str");
+        assert_eq!(mnemonic.entropy().len(), 32);
     }
 
     #[test_with_logger]
