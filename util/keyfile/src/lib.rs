@@ -1,20 +1,49 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
 mod json_format;
+mod mnemonic_acct;
 
 pub mod config;
 pub mod keygen;
 
+use crate::mnemonic_acct::UncheckedMnemonicAccount;
+use bip39::Mnemonic;
 use json_format::RootIdentityJson;
-use mc_account_keys::{PublicAddress, RootIdentity};
+use mc_account_keys::{AccountKey, PublicAddress, RootIdentity};
 use std::{fs::File, io::prelude::*, path::Path};
 
 /// Write user root identity to disk
 pub fn write_keyfile<P: AsRef<Path>>(
     path: P,
-    root_id: &RootIdentity,
+    mnemonic: &Mnemonic,
+    account_index: u32,
+    fog_report_url: &str,
+    fog_report_id: &str,
+    fog_authority_spki: &[u8],
 ) -> Result<(), std::io::Error> {
-    let json = RootIdentityJson::from(root_id);
+    let fog_report_url = if fog_report_url.is_empty() {
+        None
+    } else {
+        Some(fog_report_url.to_owned())
+    };
+    let fog_report_id = if fog_report_id.is_empty() {
+        None
+    } else {
+        Some(fog_report_id.to_owned())
+    };
+    let fog_authority_spki = if fog_authority_spki.is_empty() {
+        None
+    } else {
+        Some(fog_authority_spki.to_owned())
+    };
+
+    let json = UncheckedMnemonicAccount {
+        mnemonic: Some(mnemonic.clone().into_phrase()),
+        account_index: Some(account_index),
+        fog_report_url,
+        fog_report_id,
+        fog_authority_spki,
+    };
     File::create(path)?.write_all(&serde_json::to_vec(&json).map_err(to_io_error)?)?;
     Ok(())
 }
@@ -25,12 +54,13 @@ pub fn read_keyfile<P: AsRef<Path>>(path: P) -> Result<RootIdentity, std::io::Er
 }
 
 /// Read user root identity from any implementor of `Read`
-pub fn read_keyfile_data<R: std::io::Read>(buffer: &mut R) -> Result<RootIdentity, std::io::Error> {
+pub fn read_keyfile_data<R: std::io::Read>(buffer: &mut R) -> Result<AccountKey, std::io::Error> {
     let data = {
         let mut data = Vec::new();
         buffer.read_to_end(&mut data)?;
         data
     };
+    Ok(serde_json::from_slice::<UncheckedMnemonicAccount>(&data).map_err())
     let result: RootIdentityJson = serde_json::from_slice(&data).map_err(to_io_error)?;
     Ok(RootIdentity::from(result))
 }
@@ -97,12 +127,11 @@ mod testing {
     use mc_account_keys::AccountKey;
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
-    use tempdir::TempDir;
 
     #[test]
     fn test_keyfile() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-        let dir = TempDir::new("test").unwrap();
+        let dir = tempfile::tempdir();
 
         {
             let entropy = RootIdentity::from_random(&mut rng);
@@ -129,7 +158,7 @@ mod testing {
     #[test]
     fn test_pubfile() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-        let dir = TempDir::new("test").unwrap();
+        let dir = tempfile::tempdir();
 
         {
             let acct_key = AccountKey::random(&mut rng);

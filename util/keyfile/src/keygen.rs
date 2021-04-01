@@ -5,29 +5,46 @@
 //! `mc_account_keys::PublicAddress` respectively.
 
 use crate::{read_keyfile, read_pubfile, write_keyfile, write_pubfile};
+use bip39::Mnemonic;
 use mc_account_keys::{AccountKey, PublicAddress, RootIdentity};
 use rand::SeedableRng;
 use rand_hc::Hc128Rng as FixedRng;
 use std::{
     cmp::Ordering,
+    convert::TryInto,
     ffi::OsStr,
     fs,
     path::{Path, PathBuf},
 };
 
+// TODO: Fill this in from MC_SEED, if one is set.
 pub const DEFAULT_SEED: [u8; 32] = [1; 32];
 
 // Write a single pair of keyfiles using a given name and data
 pub fn write_keyfiles<P: AsRef<Path>>(
     path: P,
     name: &str,
-    root_id: &RootIdentity,
+    mnemonic: &Mnemonic,
+    account_index: u32,
+    fog_report_url: &str,
+    fog_report_id: &str,
+    fog_authority_spki: &[u8],
 ) -> Result<(), std::io::Error> {
-    let acct_key = AccountKey::from(root_id);
+    let acct_key = mnemonic
+        .derive_slip10_key(account_index)
+        .try_into_account_key(fog_report_url, fog_report_id, fog_authority_spki)
+        .expect("Could not construct account key from Mnemonic");
 
     fs::create_dir_all(&path)?;
 
-    write_keyfile(path.as_ref().join(name).with_extension("json"), &root_id)?;
+    write_keyfile(
+        path.as_ref().join(name).with_extension("json"),
+        &mnemonic,
+        account_index,
+        fog_report_url,
+        fog_report_id,
+        fog_authority_spki,
+    )?;
     write_pubfile(
         path.as_ref().join(name).with_extension("pub"),
         &acct_key.default_subaddress(),
