@@ -14,8 +14,10 @@ use crate::{
     sync::SyncThread,
     utxo_store::{UnspentTxOut, UtxoId},
 };
+use bip39::{Language, Mnemonic};
 use grpcio::{EnvBuilder, RpcContext, RpcStatus, RpcStatusCode, ServerBuilder, UnarySink};
 use mc_account_keys::{AccountKey, PublicAddress, RootIdentity, DEFAULT_SUBADDRESS_INDEX};
+use mc_account_keys_slip10::Slip10KeyGenerator;
 use mc_common::{
     logger::{log, Logger},
     HashMap,
@@ -37,8 +39,8 @@ use mc_transaction_core::{
 };
 use mc_util_from_random::FromRandom;
 use mc_util_grpc::{
-    rpc_internal_error, rpc_logger, send_result, AdminService, BuildInfoService,
-    ConnectionUriGrpcioServer,
+    rpc_internal_error, rpc_invalid_arg_error, rpc_logger, send_result, AdminService,
+    BuildInfoService, ConnectionUriGrpcioServer,
 };
 use mc_watcher::watcher_db::WatcherDB;
 use protobuf::{ProtobufEnum, RepeatedField};
@@ -361,6 +363,21 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         root_entropy.copy_from_slice(request.get_entropy());
         let root_id = RootIdentity::from(&root_entropy);
         let account_key = AccountKey::from(&root_id);
+
+        // Return response.
+        let mut response = mc_mobilecoind_api::GetAccountKeyResponse::new();
+        response.set_account_key((&account_key).into());
+        Ok(response)
+    }
+
+    fn get_account_key_from_mnemonic_impl(
+        &mut self,
+        request: mc_mobilecoind_api::GetAccountKeyFromMnemonicRequest,
+    ) -> Result<mc_mobilecoind_api::GetAccountKeyResponse, RpcStatus> {
+        let mnemonic = Mnemonic::from_phrase(request.get_mnemonic(), Language::English)
+            .map_err(|err| rpc_invalid_arg_error("mnemonic", err, &self.logger))?;
+        let key = mnemonic.derive_slip10_key(request.account_index);
+        let account_key = AccountKey::from(key);
 
         // Return response.
         let mut response = mc_mobilecoind_api::GetAccountKeyResponse::new();
@@ -1799,6 +1816,7 @@ build_api! {
     // Utilities
     generate_entropy Empty GenerateEntropyResponse generate_entropy_impl,
     get_account_key_from_root_entropy GetAccountKeyFromRootEntropyRequest GetAccountKeyResponse get_account_key_from_root_entropy_impl,
+    get_account_key_from_mnemonic GetAccountKeyFromMnemonicRequest GetAccountKeyResponse get_account_key_from_mnemonic_impl,
     get_public_address GetPublicAddressRequest GetPublicAddressResponse get_public_address_impl,
 
     // b58 codes
@@ -2202,6 +2220,44 @@ mod test {
         let entropy = response.get_entropy().to_vec();
         assert_eq!(entropy.len(), 32);
         assert_ne!(entropy, vec![0; 32]);
+    }
+
+    #[test_with_logger]
+    fn test_get_account_key_from_mnemonic_impl(logger: Logger) {
+        let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
+
+        // no known recipient, 3 random recipients and no monitors.
+        let (_ledger_db, _mobilecoind_db, client, _server, _server_conn_manager) =
+            get_testing_environment(3, &vec![], &vec![], logger.clone(), &mut rng);
+
+        // Use mnemonic to construct AccountKey.
+        let mnemonic_str =
+            "legal winner thank year wave sausage worth useful legal winner thank yellow";
+        let expected_account_key = {
+            let mnemonic =
+                Mnemonic::from_phrase(mnemonic_str, Language::English).expect("from_phrase failed");
+            let key = mnemonic.derive_slip10_key(666);
+            AccountKey::from(key)
+        };
+
+        let mut request = mc_mobilecoind_api::GetAccountKeyFromMnemonicRequest::new();
+        request.set_mnemonic(mnemonic_str.to_string());
+        request.set_account_index(666);
+
+        let response = client.get_account_key_from_mnemonic(&request).unwrap();
+
+        assert_eq!(
+            expected_account_key,
+            AccountKey::try_from(response.get_account_key()).unwrap(),
+        );
+
+        // Calling with no mnemonic or invalid mnemonic should error.
+        let request = mc_mobilecoind_api::GetAccountKeyFromMnemonicRequest::new();
+        assert!(client.get_account_key_from_mnemonic(&request).is_err());
+
+        let mut request = mc_mobilecoind_api::GetAccountKeyFromMnemonicRequest::new();
+        request.set_mnemonic("lol".to_string());
+        assert!(client.get_account_key_from_mnemonic(&request).is_err());
     }
 
     #[test_with_logger]

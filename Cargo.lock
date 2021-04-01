@@ -3006,6 +3006,7 @@ dependencies = [
  "libz-sys",
  "lmdb-rkv",
  "mc-account-keys",
+ "mc-account-keys-slip10",
  "mc-api",
  "mc-attest-core",
  "mc-common",
@@ -3047,6 +3048,7 @@ dependencies = [
  "serde_json",
  "structopt",
  "tempdir",
+ "tiny-bip39",
 ]
 
 [[package]]
