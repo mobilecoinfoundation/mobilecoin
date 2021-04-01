@@ -24,7 +24,7 @@ service MobilecoindAPI {
 
     // Utilities
     rpc GenerateEntropy (google.protobuf.Empty) returns (GenerateEntropyResponse) {}
-    rpc GetAccountKey (GetAccountKeyRequest) returns (GetAccountKeyResponse) {}
+    rpc GetAccountKeyFromRootEntropy (GetAccountKeyFromRootEntropyRequest) returns (GetAccountKeyResponse) {}
     rpc GetPublicAddress (GetPublicAddressRequest) returns (GetPublicAddressResponse) {}
 
     // b58 Codes
@@ -318,7 +318,7 @@ message GenerateEntropyResponse {
 }
 
 // Generate an AccountKey from a 32 byte root entropy value.
-message GetAccountKeyRequest {
+message GetAccountKeyFromRootEntropyRequest {
     bytes entropy = 1;
 }
 message GetAccountKeyResponse {

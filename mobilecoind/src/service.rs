@@ -344,9 +344,9 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         Ok(response)
     }
 
-    fn get_account_key_impl(
+    fn get_account_key_from_root_entropy_impl(
         &mut self,
-        request: mc_mobilecoind_api::GetAccountKeyRequest,
+        request: mc_mobilecoind_api::GetAccountKeyFromRootEntropyRequest,
     ) -> Result<mc_mobilecoind_api::GetAccountKeyResponse, RpcStatus> {
         // Get the entropy.
         if request.get_entropy().len() != 32 {
@@ -886,10 +886,12 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         entropy_bytes.copy_from_slice(&entropy);
 
         // Generate a new account using this entropy.
-        let mut account_key_request = mc_mobilecoind_api::GetAccountKeyRequest::new();
+        let mut account_key_request =
+            mc_mobilecoind_api::GetAccountKeyFromRootEntropyRequest::new();
         account_key_request.set_entropy(entropy.clone());
 
-        let account_key_response = self.get_account_key_impl(account_key_request)?;
+        let account_key_response =
+            self.get_account_key_from_root_entropy_impl(account_key_request)?;
         let account_key = AccountKey::try_from(account_key_response.get_account_key())
             .map_err(|err| rpc_internal_error("account_key.try_from", err, &self.logger))?;
 
@@ -1796,7 +1798,7 @@ build_api! {
 
     // Utilities
     generate_entropy Empty GenerateEntropyResponse generate_entropy_impl,
-    get_account_key GetAccountKeyRequest GetAccountKeyResponse get_account_key_impl,
+    get_account_key_from_root_entropy GetAccountKeyFromRootEntropyRequest GetAccountKeyResponse get_account_key_from_root_entropy_impl,
     get_public_address GetPublicAddressRequest GetPublicAddressResponse get_public_address_impl,
 
     // b58 codes
@@ -2203,7 +2205,7 @@ mod test {
     }
 
     #[test_with_logger]
-    fn test_get_account_key_impl(logger: Logger) {
+    fn test_get_account_key_from_root_entropy_impl(logger: Logger) {
         let mut rng: StdRng = SeedableRng::from_seed([23u8; 32]);
 
         // no known recipient, 3 random recipients and no monitors.
@@ -2215,10 +2217,10 @@ mod test {
         let root_id = RootIdentity::from(&root_entropy);
         let account_key = AccountKey::from(&root_id);
 
-        let mut request = mc_mobilecoind_api::GetAccountKeyRequest::new();
+        let mut request = mc_mobilecoind_api::GetAccountKeyFromRootEntropyRequest::new();
         request.set_entropy(root_entropy.to_vec());
 
-        let response = client.get_account_key(&request).unwrap();
+        let response = client.get_account_key_from_root_entropy(&request).unwrap();
 
         assert_eq!(
             account_key,
@@ -2226,13 +2228,13 @@ mod test {
         );
 
         // Calling with no root entropy or invalid root entropy should error.
-        let request = mc_mobilecoind_api::GetAccountKeyRequest::new();
-        assert!(client.get_account_key(&request).is_err());
+        let request = mc_mobilecoind_api::GetAccountKeyFromRootEntropyRequest::new();
+        assert!(client.get_account_key_from_root_entropy(&request).is_err());
 
         let root_entropy = [123u8; 31];
-        let mut request = mc_mobilecoind_api::GetAccountKeyRequest::new();
+        let mut request = mc_mobilecoind_api::GetAccountKeyFromRootEntropyRequest::new();
         request.set_entropy(root_entropy.to_vec());
-        assert!(client.get_account_key(&request).is_err());
+        assert!(client.get_account_key_from_root_entropy(&request).is_err());
     }
 
     #[test_with_logger]
