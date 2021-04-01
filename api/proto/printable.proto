@@ -26,8 +26,9 @@ message PaymentRequest {
 /// giving someone access to an output. This would most likely be
 /// used for gift cards.
 message TransferPayload {
-    /// The root entropy, allowing the recipient to spend the money
-    bytes root_entropy = 1;
+    /// [Deprecated] The root entropy, allowing the recipient to spend the money.
+    /// This has been replaced by a BIP39 entropy.
+    bytes root_entropy = 1 [deprecated=true];
 
     /// The public key of the UTXO to spend. This is an optimization, meaning
     /// the recipient does not need to scan the entire ledger.
@@ -35,6 +36,9 @@ message TransferPayload {
 
     /// Any additional text explaining the gift
     string memo = 3;
+
+    /// BIP39 entropy, allowing the recipient to spend the money.
+    bytes bip39_entropy = 4;
 }
 
 /// This wraps all of the above messages using "oneof", allowing us to

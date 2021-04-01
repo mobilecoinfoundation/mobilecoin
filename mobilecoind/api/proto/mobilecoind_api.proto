@@ -324,6 +324,9 @@ message GenerateRootEntropyResponse {
 message GenerateMnemonicResponse {
 	// mnemonic generated using a cryptographically secure RNG.
     string mnemonic = 1;
+
+    // The mnemonic represented as 32 bytes entropy.
+    bytes bip39_entropy = 2;
 }
 
 // Generate an AccountKey from a 32 byte root entropy value.
@@ -379,17 +382,19 @@ message ParseTransferCodeRequest {
     string b58_code = 1;
 }
 message ParseTransferCodeResponse {
-    bytes root_entropy = 1;
+    bytes root_entropy = 1 [deprecated=true];
     external.CompressedRistretto tx_public_key = 2;
     string memo = 3;
     UnspentTxOut utxo = 4;
+    bytes bip39_entropy = 5;
 }
 
 // Encode entropy/tx_public_key/memo into a base-58 "MobileCoin Transfer Code".
 message CreateTransferCodeRequest {
-    bytes root_entropy = 1;
+    bytes root_entropy = 1 [deprecated=true];
     external.CompressedRistretto tx_public_key = 2;
     string memo = 3;
+    bytes bip39_entropy = 4;
 }
 message CreateTransferCodeResponse {
     string b58_code = 1;
@@ -497,8 +502,7 @@ message GenerateTransferCodeTxResponse {
     // The tx proposal to submit to the network.
     TxProposal tx_proposal = 1;
 
-    // The entropy for constructing the AccountKey that can access the funds.
-    bytes root_entropy = 2;
+    // Deprecated - left here as an explanation to why we skip tag 2: bytes root_entropy = 2;
 
     // The TxOut public key that has the funds.
     external.CompressedRistretto tx_public_key = 3;
@@ -508,6 +512,9 @@ message GenerateTransferCodeTxResponse {
 
     // The b58-encoded Transfer Code
     string b58_code = 5;
+
+    // The entropy for constructing the AccountKey that can access the funds.
+    bytes bip39_entropy = 6;
 }
 
 // Generate a transaction without a monitor, requires an account key and
