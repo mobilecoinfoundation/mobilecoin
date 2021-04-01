@@ -6,13 +6,60 @@ mod mnemonic_acct;
 pub mod config;
 pub mod keygen;
 
-use crate::mnemonic_acct::UncheckedMnemonicAccount;
+use crate::mnemonic_acct::{Error as MnemonicAccountError, UncheckedMnemonicAccount};
 use bip39::Mnemonic;
+use displaydoc::Display;
 use json_format::RootIdentityJson;
 use mc_account_keys::{AccountKey, PublicAddress, RootIdentity};
-use std::{fs::File, io::prelude::*, path::Path};
+use prost::EncodeError;
+use serde_json::Error as JsonError;
+use std::{
+    convert::TryInto,
+    fs::File,
+    io::{prelude::*, Error as IoError},
+    path::Path,
+};
 
-/// Write user root identity to disk
+/// There was an error while working with key files.
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub enum Error {
+    /// IO error: {0}
+    Io(String),
+    /// JSON error: {0}
+    Json(String),
+    /// Mnemonic account error: {0}
+    MnemonicAccount(MnemonicAccountError),
+    /// Protobuf encoding error: {0}
+    Encode(String),
+    /// Protobuf decoding error: {0}
+    Decode(String),
+}
+
+impl From<IoError> for Error {
+    fn from(src: IoError) -> Error {
+        Error::Io(format!("{}", src))
+    }
+}
+
+impl From<JsonError> for Error {
+    fn from(src: JsonError) -> Error {
+        Error::Json(format!("{}", src))
+    }
+}
+
+impl From<EncodeError> for Error {
+    fn from(src: EncodeError) -> Error {
+        Error::Encode(format!("{}", src))
+    }
+}
+
+impl From<DecodeError> for Error {
+    fn from(src: DecodeError) -> Error {
+        Error::Decode(format!("{}", src))
+    }
+}
+
+/// Write a user's account details to disk
 pub fn write_keyfile<P: AsRef<Path>>(
     path: P,
     mnemonic: &Mnemonic,
@@ -20,7 +67,7 @@ pub fn write_keyfile<P: AsRef<Path>>(
     fog_report_url: &str,
     fog_report_id: &str,
     fog_authority_spki: &[u8],
-) -> Result<(), std::io::Error> {
+) -> Result<(), Error> {
     let fog_report_url = if fog_report_url.is_empty() {
         None
     } else {
@@ -44,29 +91,21 @@ pub fn write_keyfile<P: AsRef<Path>>(
         fog_report_id,
         fog_authority_spki,
     };
-    File::create(path)?.write_all(&serde_json::to_vec(&json).map_err(to_io_error)?)?;
-    Ok(())
+    Ok(serde_json::to_writer(File::create(path)?, &json)?)
 }
 
 /// Read user root identity from disk
-pub fn read_keyfile<P: AsRef<Path>>(path: P) -> Result<RootIdentity, std::io::Error> {
+pub fn read_keyfile<P: AsRef<Path>>(path: P) -> Result<AccountKey, Error> {
     read_keyfile_data(&mut File::open(path)?)
 }
 
 /// Read user root identity from any implementor of `Read`
-pub fn read_keyfile_data<R: std::io::Read>(buffer: &mut R) -> Result<AccountKey, std::io::Error> {
-    let data = {
-        let mut data = Vec::new();
-        buffer.read_to_end(&mut data)?;
-        data
-    };
-    Ok(serde_json::from_slice::<UncheckedMnemonicAccount>(&data).map_err())
-    let result: RootIdentityJson = serde_json::from_slice(&data).map_err(to_io_error)?;
-    Ok(RootIdentity::from(result))
+pub fn read_keyfile_data<R: std::io::Read>(buffer: &mut R) -> Result<AccountKey, Error> {
+    Ok(serde_json::from_reader::<R, UncheckedMnemonicAccount>(buffer)?.try_into()?)
 }
 
 /// Write user public address to disk
-pub fn write_pubfile<P: AsRef<Path>>(path: P, addr: &PublicAddress) -> Result<(), std::io::Error> {
+pub fn write_pubfile<P: AsRef<Path>>(path: P, addr: &PublicAddress) -> Result<(), Error> {
     File::create(path)?.write_all(&mc_util_serial::encode(addr))?;
     Ok(())
 }
