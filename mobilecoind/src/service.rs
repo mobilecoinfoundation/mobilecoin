@@ -342,7 +342,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         let mut rng = rand::thread_rng();
         let root_id = RootIdentity::from_random(&mut rng);
         let mut response = mc_mobilecoind_api::GenerateEntropyResponse::new();
-        response.set_entropy(root_id.root_entropy.as_ref().to_vec());
+        response.set_root_entropy(root_id.root_entropy.as_ref().to_vec());
         Ok(response)
     }
 
@@ -351,7 +351,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         request: mc_mobilecoind_api::GetAccountKeyFromRootEntropyRequest,
     ) -> Result<mc_mobilecoind_api::GetAccountKeyResponse, RpcStatus> {
         // Get the entropy.
-        if request.get_entropy().len() != 32 {
+        if request.get_root_entropy().len() != 32 {
             return Err(RpcStatus::new(
                 RpcStatusCode::INVALID_ARGUMENT,
                 Some("entropy".to_string()),
@@ -360,7 +360,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         // Use root entropy to construct AccountKey.
         let mut root_entropy = [0u8; 32];
-        root_entropy.copy_from_slice(request.get_entropy());
+        root_entropy.copy_from_slice(request.get_root_entropy());
         let root_id = RootIdentity::from(&root_entropy);
         let account_key = AccountKey::from(&root_id);
 
@@ -528,7 +528,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         // Use root entropy to construct AccountKey.
         let mut root_entropy = [0u8; 32];
-        root_entropy.copy_from_slice(transfer_payload.get_entropy());
+        root_entropy.copy_from_slice(transfer_payload.get_root_entropy());
         let root_id = RootIdentity::from(&root_entropy);
         let account_key = AccountKey::from(&root_id);
 
@@ -558,7 +558,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         };
 
         let mut response = mc_mobilecoind_api::ParseTransferCodeResponse::new();
-        response.set_entropy(root_entropy.to_vec());
+        response.set_root_entropy(root_entropy.to_vec());
         response.set_tx_public_key((&tx_public_key).into());
         response.set_memo(transfer_payload.get_memo().to_string());
         response.set_utxo((&utxo).into());
@@ -570,10 +570,10 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         &mut self,
         request: mc_mobilecoind_api::CreateTransferCodeRequest,
     ) -> Result<mc_mobilecoind_api::CreateTransferCodeResponse, RpcStatus> {
-        if request.entropy.len() != 32 {
+        if request.root_entropy.len() != 32 {
             return Err(RpcStatus::new(
                 RpcStatusCode::INVALID_ARGUMENT,
-                Some("entropy".to_string()),
+                Some("root_entropy".to_string()),
             ));
         }
         if request.get_tx_public_key().get_data().len() != 32 {
@@ -584,7 +584,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         }
 
         let mut transfer_payload = mc_mobilecoind_api::printable::TransferPayload::new();
-        transfer_payload.set_entropy(request.get_entropy().to_vec());
+        transfer_payload.set_root_entropy(request.get_root_entropy().to_vec());
         transfer_payload.set_tx_out_public_key(request.get_tx_public_key().clone());
         transfer_payload.set_memo(request.get_memo().to_string());
 
@@ -891,7 +891,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
     ) -> Result<mc_mobilecoind_api::GenerateTransferCodeTxResponse, RpcStatus> {
         // Generate entropy.
         let entropy_response = self.generate_entropy_impl(mc_mobilecoind_api::Empty::new())?;
-        let entropy = entropy_response.get_entropy().to_vec();
+        let entropy = entropy_response.get_root_entropy().to_vec();
 
         let mut entropy_bytes = [0; 32];
         if entropy.len() != entropy_bytes.len() {
@@ -905,7 +905,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         // Generate a new account using this entropy.
         let mut account_key_request =
             mc_mobilecoind_api::GetAccountKeyFromRootEntropyRequest::new();
-        account_key_request.set_entropy(entropy.clone());
+        account_key_request.set_root_entropy(entropy.clone());
 
         let account_key_response =
             self.get_account_key_from_root_entropy_impl(account_key_request)?;
@@ -975,7 +975,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             .map_err(|err| rpc_internal_error("ristretto_public.try_from", err, &self.logger))?;
 
         let mut transfer_payload = mc_mobilecoind_api::printable::TransferPayload::new();
-        transfer_payload.set_entropy(entropy_bytes.to_vec());
+        transfer_payload.set_root_entropy(entropy_bytes.to_vec());
         transfer_payload.set_tx_out_public_key((&tx_public_key).into());
         transfer_payload.set_memo(request.get_memo().to_string());
 
@@ -989,7 +989,7 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         // Construct response.
         let mut response = mc_mobilecoind_api::GenerateTransferCodeTxResponse::new();
         response.set_tx_proposal(tx_proposal);
-        response.set_entropy(entropy);
+        response.set_root_entropy(entropy);
         response.set_tx_public_key(proto_tx_public_key);
         response.set_memo(request.get_memo().to_string());
         response.set_b58_code(b58_code);
@@ -2217,7 +2217,7 @@ mod test {
         let response = client
             .generate_entropy(&mc_mobilecoind_api::Empty::default())
             .unwrap();
-        let entropy = response.get_entropy().to_vec();
+        let entropy = response.get_root_entropy().to_vec();
         assert_eq!(entropy.len(), 32);
         assert_ne!(entropy, vec![0; 32]);
     }
@@ -2274,7 +2274,7 @@ mod test {
         let account_key = AccountKey::from(&root_id);
 
         let mut request = mc_mobilecoind_api::GetAccountKeyFromRootEntropyRequest::new();
-        request.set_entropy(root_entropy.to_vec());
+        request.set_root_entropy(root_entropy.to_vec());
 
         let response = client.get_account_key_from_root_entropy(&request).unwrap();
 
@@ -2289,7 +2289,7 @@ mod test {
 
         let root_entropy = [123u8; 31];
         let mut request = mc_mobilecoind_api::GetAccountKeyFromRootEntropyRequest::new();
-        request.set_entropy(root_entropy.to_vec());
+        request.set_root_entropy(root_entropy.to_vec());
         assert!(client.get_account_key_from_root_entropy(&request).is_err());
     }
 
@@ -3534,7 +3534,7 @@ mod test {
 
             // Use root entropy to construct AccountKey.
             let mut root_entropy = [0u8; 32];
-            root_entropy.copy_from_slice(response.get_entropy());
+            root_entropy.copy_from_slice(response.get_root_entropy());
             let root_id = RootIdentity::from(&root_entropy);
             let account_key = AccountKey::from(&root_id);
 
@@ -4833,13 +4833,13 @@ mod test {
         // An invalid request should fail to encode.
         {
             let mut request = mc_mobilecoind_api::CreateTransferCodeRequest::new();
-            request.set_entropy(vec![3u8; 8]); // key is wrong size
+            request.set_root_entropy(vec![3u8; 8]); // key is wrong size
             request.set_tx_public_key((&tx_public_key).into());
             request.set_memo("memo".to_owned());
             assert!(client.create_transfer_code(&request).is_err());
 
             let mut request = mc_mobilecoind_api::CreateTransferCodeRequest::new();
-            request.set_entropy(vec![4u8; 32]);
+            request.set_root_entropy(vec![4u8; 32]);
             request.set_memo("memo".to_owned()); // forgot to set tx_public_key
             assert!(client.create_transfer_code(&request).is_err());
         }
@@ -4849,7 +4849,7 @@ mod test {
         {
             // Encode
             let mut request = mc_mobilecoind_api::CreateTransferCodeRequest::new();
-            request.set_entropy(root_entropy.to_vec());
+            request.set_root_entropy(root_entropy.to_vec());
             request.set_tx_public_key((&tx_public_key).into());
             request.set_memo("test memo".to_owned());
 
@@ -4863,7 +4863,7 @@ mod test {
             let response = client.parse_transfer_code(&request).unwrap();
 
             // Compare
-            assert_eq!(&root_entropy, response.get_entropy());
+            assert_eq!(&root_entropy, response.get_root_entropy());
             assert_eq!(
                 tx_public_key,
                 CompressedRistrettoPublic::try_from(response.get_tx_public_key()).unwrap()
