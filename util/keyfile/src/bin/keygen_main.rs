@@ -13,6 +13,7 @@ struct Config {
     #[structopt(flatten)]
     pub general: GeneralConfig,
 
+    /// The name of the keyfile which will be output
     pub name: String,
 }
 
@@ -59,5 +60,5 @@ fn main() {
         fog_report_id,
         fog_authority_spki,
     )
-    .unwrap();
+    .expect("Could not write keyfile");
 }

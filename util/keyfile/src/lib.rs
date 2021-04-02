@@ -68,61 +68,100 @@ pub fn read_pubfile<P: AsRef<Path>>(path: P) -> Result<PublicAddress, Error> {
 }
 
 #[cfg(test)]
-mod testing {
+mod test {
     use super::*;
-
+    use bip39::{Language, MnemonicType};
     use mc_account_keys::AccountKey;
-    use mc_util_from_random::FromRandom;
-    use rand::{rngs::StdRng, SeedableRng};
+    use mc_account_keys_slip10::{Slip10Key, Slip10KeyGenerator};
 
+    /// Test that round-tripping through a keyfile without fog gets the same
+    /// result as creating the key directly.
     #[test]
-    fn test_keyfile() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-        let dir = tempfile::tempdir();
-
-        {
-            let entropy = RootIdentity::from_random(&mut rng);
-            let f1 = dir.path().join("f1");
-            write_keyfile(&f1, &entropy).unwrap();
-            let result = read_keyfile(&f1).unwrap();
-            assert_eq!(entropy, result);
-        }
-
-        {
-            let entropy = RootIdentity::random_with_fog(
-                &mut rng,
-                "fog://foobar.com",
-                "",
-                &[9u8, 9u8, 9u8, 9u8],
-            );
-            let f1 = dir.path().join("f0");
-            write_keyfile(&f1, &entropy).unwrap();
-            let result = read_keyfile(&f1).unwrap();
-            assert_eq!(entropy, result);
-        }
+    fn keyfile_roundtrip_no_fog() {
+        let dir = tempfile::tempdir().expect("Could not create temp dir");
+        let mnemonic = Mnemonic::new(MnemonicType::Words24, Language::English);
+        let path = dir.path().join("no_fog");
+        write_keyfile(&path, &mnemonic, 0, None, None, None).expect("Could not write keyfile");
+        let expected = AccountKey::from(mnemonic.derive_slip10_key(0));
+        let actual = read_keyfile(&path).expect("Could not read keyfile");
+        assert_eq!(expected, actual);
     }
 
+    /// Test that round-tripping through a keyfile with fog gets the same result
+    /// as creating the key directly.
     #[test]
-    fn test_pubfile() {
-        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
-        let dir = tempfile::tempdir();
+    fn keyfile_roundtrip_with_fog() {
+        let fog_report_url = "fog://unittest.mobilecoin.com";
+        let fog_report_id = "1";
+        let der_bytes = pem::parse(mc_crypto_x509_test_vectors::ok_rsa_head())
+            .expect("Could not parse DER bytes from PEM certificate file")
+            .contents;
+        let fog_authority_spki = x509_signature::parse_certificate(&der_bytes)
+            .expect("Could not parse X509 certificate from DER bytes")
+            .subject_public_key_info()
+            .spki();
 
-        {
-            let acct_key = AccountKey::random(&mut rng);
-            let pubaddr = acct_key.default_subaddress();
-            let f2 = dir.path().join("f2");
-            write_pubfile(&f2, &pubaddr).unwrap();
-            let result = read_pubfile(&f2).unwrap();
-            assert_eq!(pubaddr, result);
-        }
+        let dir = tempfile::tempdir().expect("Could not create temp dir");
+        let mnemonic = Mnemonic::new(MnemonicType::Words24, Language::English);
 
-        {
-            let acct_key = AccountKey::random_with_fog(&mut rng);
-            let pubaddr = acct_key.default_subaddress();
-            let f3 = dir.path().join("f3");
-            write_pubfile(&f3, &pubaddr).unwrap();
-            let result = read_pubfile(&f3).unwrap();
-            assert_eq!(pubaddr, result);
-        }
+        let path = dir.path().join("with_fog");
+        write_keyfile(
+            &path,
+            &mnemonic,
+            0,
+            Some(fog_report_url),
+            Some(fog_report_id),
+            Some(fog_authority_spki),
+        )
+        .expect("Could not write keyfile");
+
+        let expected = mnemonic
+            .derive_slip10_key(0)
+            .try_into_account_key(fog_report_url, fog_report_id, fog_authority_spki)
+            .expect("Could not create expected account key");
+        let actual = read_keyfile(&path).expect("Could not read keyfile");
+        assert_eq!(expected, actual);
+    }
+
+    /// Test that writing a [`PublicAddress`](mc_account_keys::PublicAddress)
+    /// and reading it back without fog details gets the same results.
+    #[test]
+    fn pubfile_roundtrip_no_fog() {
+        let expected = AccountKey::from(Slip10Key::from(Mnemonic::new(
+            MnemonicType::Words24,
+            Language::English,
+        )))
+        .default_subaddress();
+
+        let dir = tempfile::tempdir().expect("Could not create temporary directory");
+        let path = dir.path().join("pubfile_no_fog");
+        write_pubfile(&path, &expected).expect("Could not write pubfile");
+        let actual = read_pubfile(&path).expect("Could not read back pubfile");
+        assert_eq!(expected, actual);
+    }
+
+    /// Test that writing a [`PublicAddress`](mc_account_keys::PublicAddress)
+    /// and reading it back with fog details gets the same results.
+    #[test]
+    fn pubfile_roundtrip_with_fog() {
+        let fog_report_url = "fog://unittest.mobilecoin.com";
+        let fog_report_id = "1";
+        let der_bytes = pem::parse(mc_crypto_x509_test_vectors::ok_rsa_head())
+            .expect("Could not parse DER bytes from PEM certificate file")
+            .contents;
+        let fog_authority_spki = x509_signature::parse_certificate(&der_bytes)
+            .expect("Could not parse X509 certificate from DER bytes")
+            .subject_public_key_info()
+            .spki();
+        let expected = Slip10Key::from(Mnemonic::new(MnemonicType::Words24, Language::English))
+            .try_into_account_key(fog_report_url, fog_report_id, fog_authority_spki)
+            .expect("Could not create expected account key")
+            .default_subaddress();
+
+        let dir = tempfile::tempdir().expect("Could not create temporary directory");
+        let path = dir.path().join("pubfile_with_fog");
+        write_pubfile(&path, &expected).expect("Could not write fog pubfile");
+        let actual = read_pubfile(&path).expect("Could not read back fog pubfile");
+        assert_eq!(expected, actual);
     }
 }

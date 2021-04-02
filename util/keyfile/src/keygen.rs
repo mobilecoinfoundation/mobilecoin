@@ -31,16 +31,16 @@ pub fn write_keyfiles<P: AsRef<Path>>(
     fog_authority_spki: Option<&[u8]>,
 ) -> Result<(), Error> {
     let slip10key = mnemonic.clone().derive_slip10_key(account_index);
-    let acct_key =
-        if fog_report_url.is_some() && fog_report_id.is_some() && fog_authority_spki.is_some() {
-            slip10key.try_into_account_key(
+    let acct_key = match (fog_report_url, fog_report_id, fog_report_spki) {
+        (None, None, None) => AccountKey::from(slip10key),
+        (Some(fog_report_url), Some(fog_report_id), Some(fog_report_spki)) => slip10key
+            .try_into_account_key(
                 fog_report_url.unwrap(),
                 fog_report_id.unwrap(),
                 fog_authority_spki.unwrap(),
-            )?
-        } else {
-            AccountKey::from(slip10key)
-        };
+            )?,
+        _ => return Err(Error::MissingFogDetails),
+    };
 
     fs::create_dir_all(&path)?;
 
@@ -157,13 +157,34 @@ fn compare_keyfile_names(a: &PathBuf, b: &PathBuf) -> Ordering {
 }
 
 #[cfg(test)]
-mod testing {
+mod test {
     use super::*;
-    use std::{collections::HashSet, iter::FromIterator};
-    use tempdir::TempDir;
 
+    const DEFAULT_SEED: [u8; 32] = [1u8; 32];
+
+    /// Reads the default pubfiles written to two directories and compares them.
+    fn assert_default_pubfiles_eq<P1: AsRef<Path>, P2: AsRef<Path>>(dir1: P1, dir2: P2) {
+        let pub1 = read_default_pubfiles(dir1).unwrap();
+        let pub2 = read_default_pubfiles(dir2).unwrap();
+
+        assert_eq!(pub1.len(), 10);
+        assert_eq!(pub2.len(), 10);
+        assert_eq!(&pub1[..], &pub2[..]);
+    }
+
+    /// Reads the default pubfiles written to two directories and compares them.
+    fn assert_default_mnemonics_eq<P1: AsRef<Path>, P2: AsRef<Path>>(dir1: P1, dir2: P2) {
+        let bin1 = read_default_mnemonics(dir1).unwrap();
+        let bin2 = read_default_mnemonics(dir2).unwrap();
+
+        assert_eq!(bin1.len(), 10);
+        assert_eq!(bin2.len(), 10);
+        assert_eq!(&bin1[..], &bin2[..]);
+    }
+
+    /// Test [`compare_keyfile_names()`] is a natural sort
     #[test]
-    fn test_compare_keyfile_names() {
+    fn keyfile_is_natural_sort() {
         let entries = vec![
             PathBuf::from(keyfile_name(1)).with_extension("json"),
             PathBuf::from(keyfile_name(9)).with_extension("json"),
@@ -177,136 +198,73 @@ mod testing {
         assert_eq!(entries, entries2);
     }
 
+    /// Test that two runs of default generation come up with the same results
+    /// with fog details.
     #[test]
-    fn test_default_generation() {
-        let dir1 = TempDir::new("test").unwrap();
-        let dir2 = TempDir::new("test").unwrap();
+    fn default_generation_roundtrip_with_fog() {
+        let dir1 = tempfile::tempdir().expect("Could not create temporary dir1");
+        let dir2 = tempfile::tempdir().expect("Could not create temporary dir2");
 
-        let fqdn = "example.com".to_string();
+        let der_bytes = pem::parse(mc_crypto_x509_test_vectors::ok_rsa_head())
+            .expect("Could not parse DER bytes from PEM certificate file")
+            .contents;
+        let fog_authority_spki = x509_signature::parse_certificate(&der_bytes)
+            .expect("Could not parse X509 certificate from DER bytes")
+            .subject_public_key_info()
+            .spki();
+
+        let fqdn = "fog://fog.unittest.com";
         let fog_report_id = "1";
-        let fog_authority_spki = [18, 52, 18, 52];
         write_default_keyfiles(
             &dir1,
             10,
-            Some(&fqdn),
+            Some(fqdn),
             Some(fog_report_id),
             Some(&fog_authority_spki),
             DEFAULT_SEED,
         )
-        .unwrap();
+        .expect("Error writing default keyfiles to dir1");
         write_default_keyfiles(
             &dir2,
             10,
-            Some(&fqdn),
+            Some(fqdn),
             Some(fog_report_id),
             Some(&fog_authority_spki),
             DEFAULT_SEED,
         )
-        .unwrap();
+        .expect("Error writing default keyfiles to dir2");
 
-        {
-            let pub1 = read_default_pubfiles(&dir1).unwrap();
-            let pub2 = read_default_pubfiles(&dir2).unwrap();
-
-            assert_eq!(pub1.len(), 10);
-            assert_eq!(pub2.len(), 10);
-            assert_eq!(&pub1[..], &pub2[..]);
-        }
-        {
-            let bin1 = read_default_root_entropies(&dir1).unwrap();
-            let bin2 = read_default_root_entropies(&dir2).unwrap();
-
-            assert_eq!(bin1.len(), 10);
-            assert_eq!(bin2.len(), 10);
-            assert_eq!(&bin1[..], &bin2[..]);
-        }
+        assert_default_pubfiles_eq(&dir1, &dir2);
+        assert_default_mnemonics_eq(&dir1, &dir2);
     }
 
+    /// Test that two runs of default generation come up with the same results
+    /// without fog.
     #[test]
-    fn test_default_generation_no_fog_url() {
-        let dir1 = TempDir::new("test").unwrap();
-        let dir2 = TempDir::new("test").unwrap();
+    fn default_generation_no_fog() {
+        let dir1 = tempfile::tempdir().expect("Could not create temporary dir1");
+        let dir2 = tempfile::tempdir().expect("Could not create temporary dir2");
 
-        write_default_keyfiles(&dir1, 10, None, None, None, DEFAULT_SEED).unwrap();
-        write_default_keyfiles(&dir2, 10, None, None, None, DEFAULT_SEED).unwrap();
+        write_default_keyfiles(&dir1, 10, None, None, None, DEFAULT_SEED)
+            .expect("Could not write keyfiles to dir1");
+        write_default_keyfiles(&dir2, 10, None, None, None, DEFAULT_SEED)
+            .expect("Could not write keyfiles to dir2");
 
-        {
-            let pub1 = read_default_pubfiles(&dir1).unwrap();
-            let pub2 = read_default_pubfiles(&dir2).unwrap();
-
-            assert_eq!(pub1.len(), 10);
-            assert_eq!(pub2.len(), 10);
-            assert_eq!(&pub1[..], &pub2[..]);
-        }
-        {
-            let bin1 = read_default_root_entropies(&dir1).unwrap();
-            let bin2 = read_default_root_entropies(&dir2).unwrap();
-
-            assert_eq!(bin1.len(), 10);
-            assert_eq!(bin2.len(), 10);
-            assert_eq!(&bin1[..], &bin2[..]);
-        }
+        assert_default_pubfiles_eq(&dir1, &dir2);
+        assert_default_mnemonics_eq(&dir1, &dir2);
     }
 
+    // const KEYS_JSON: &str = include_str!("../tests/keys.json");
+
+    /// Test that the accounts generated here match those generated by earlier
+    /// versions.
     #[test]
-    fn test_hard_coded_root_entropy() {
-        let dir1 = TempDir::new("test").unwrap();
+    fn backwards_compatibility() {
+        let dir1 = tempfile::tempdir().expect("Could not create temporary dir1");
 
-        write_default_keyfiles(&dir1, 10, None, None, None, DEFAULT_SEED).unwrap();
+        write_default_keyfiles(&dir1, 10, None, None, None, DEFAULT_SEED)
+            .expect("Could not write example keyfiles");
 
-        {
-            let bin1 = read_default_root_entropies(&dir1).unwrap();
-            assert_eq!(bin1.len(), 10);
-            // Order doesn't matter for the keys - just that they are all processed.
-            let bin_set: HashSet<RootIdentity> = HashSet::from_iter(bin1.iter().cloned());
-            let expected = vec![
-                RootIdentity::from(&[
-                    2, 154, 47, 57, 69, 168, 246, 187, 31, 181, 177, 26, 84, 40, 58, 64, 82, 109,
-                    40, 35, 89, 36, 57, 5, 241, 163, 13, 184, 42, 158, 89, 124,
-                ]),
-                RootIdentity::from(&[
-                    145, 231, 241, 91, 240, 144, 214, 193, 230, 37, 152, 119, 69, 3, 60, 14, 43,
-                    117, 90, 203, 54, 133, 25, 210, 33, 104, 135, 216, 57, 67, 62, 212,
-                ]),
-                RootIdentity::from(&[
-                    29, 186, 225, 89, 96, 98, 80, 144, 202, 70, 150, 149, 157, 150, 60, 120, 14,
-                    200, 137, 235, 152, 231, 77, 80, 71, 212, 32, 82, 69, 206, 81, 55,
-                ]),
-                RootIdentity::from(&[
-                    28, 126, 75, 230, 193, 96, 159, 197, 223, 166, 62, 106, 153, 87, 184, 180, 126,
-                    12, 188, 128, 238, 64, 134, 207, 195, 142, 37, 20, 117, 39, 246, 63,
-                ]),
-                RootIdentity::from(&[
-                    86, 38, 184, 6, 231, 115, 110, 86, 143, 103, 115, 30, 138, 38, 216, 229, 129,
-                    195, 47, 10, 175, 253, 198, 67, 251, 189, 171, 114, 161, 235, 87, 8,
-                ]),
-                RootIdentity::from(&[
-                    77, 190, 236, 181, 53, 105, 80, 210, 166, 168, 216, 199, 228, 200, 146, 11,
-                    243, 21, 55, 191, 160, 155, 194, 74, 110, 129, 37, 21, 75, 113, 65, 97,
-                ]),
-                RootIdentity::from(&[
-                    79, 213, 120, 85, 72, 42, 9, 104, 143, 186, 253, 144, 137, 115, 37, 43, 155,
-                    47, 60, 75, 157, 110, 124, 55, 155, 101, 175, 167, 95, 235, 51, 66,
-                ]),
-                RootIdentity::from(&[
-                    235, 248, 189, 155, 66, 104, 44, 250, 214, 183, 186, 1, 207, 223, 8, 175, 44,
-                    56, 144, 124, 175, 51, 183, 218, 248, 136, 152, 109, 7, 181, 84, 156,
-                ]),
-                RootIdentity::from(&[
-                    114, 112, 34, 231, 208, 185, 252, 112, 117, 246, 59, 224, 40, 126, 182, 209,
-                    39, 130, 89, 86, 102, 77, 203, 73, 253, 88, 59, 238, 85, 130, 15, 200,
-                ]),
-                RootIdentity::from(&[
-                    79, 44, 181, 167, 130, 174, 148, 20, 20, 23, 100, 145, 154, 136, 48, 168, 119,
-                    124, 91, 161, 187, 53, 159, 117, 252, 55, 199, 84, 204, 164, 37, 64,
-                ]),
-                RootIdentity::from(&[
-                    2, 154, 47, 57, 69, 168, 246, 187, 31, 181, 177, 26, 84, 40, 58, 64, 82, 109,
-                    40, 35, 89, 36, 57, 5, 241, 163, 13, 184, 42, 158, 89, 124,
-                ]),
-            ];
-
-            assert_eq!(bin_set, HashSet::from_iter(expected.iter().cloned()),);
-        }
+        panic!("Wrote files to {}", dir1.path().display());
     }
 }

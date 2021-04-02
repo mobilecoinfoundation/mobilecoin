@@ -1,7 +1,6 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
 use std::{env, process::Command};
-use tempdir::TempDir;
 
 // Get the build dir, which is one down from current_exe, which is in
 // target/debug/deps,
@@ -12,9 +11,8 @@ fn build_dir() -> std::path::PathBuf {
     result
 }
 
-// Test that the sample keys binary is deterministic
+// Test that the sample keys binary is deterministic.
 #[test]
-#[ignore]
 fn sample_keys_determinism() {
     let sample_keys_bin = build_dir().join("sample-keys");
     assert!(
@@ -23,47 +21,56 @@ fn sample_keys_determinism() {
         sample_keys_bin.display()
     );
 
-    let tempdir = TempDir::new("keys").unwrap();
-    env::set_current_dir(&tempdir).unwrap();
+    let fog_authority_root = mc_crypto_x509_test_vectors::ok_rsa_head();
+
+    let tempdir = tempfile::tempdir().expect("Could not create tempdir");
+    let tempdir_path = tempdir.path().to_str().expect("tempdir was not UTF-8");
     assert!(Command::new(sample_keys_bin.clone())
         .args(&[
+            "--output-dir",
+            &tempdir_path,
             "--num",
             "10",
             "--fog-report-url",
-            "discovery.example.mobilecoin.com"
+            "fog://fog.unittest.mobilecoin.com",
+            "--fog-report-id",
+            "",
+            "--fog-authority-root",
+            &fog_authority_root,
         ])
         .status()
         .expect("sample_keys failed")
         .success());
 
-    let tempdir2 = TempDir::new("keys").unwrap();
-    env::set_current_dir(&tempdir2).unwrap();
+    let tempdir2 = tempfile::tempdir().expect("Could not create tempdir2");
+    let tempdir2_path = tempdir2.path().to_str().expect("tempdir2 was not UTF-8");
     assert!(Command::new(sample_keys_bin)
         .args(&[
+            "--output-dir",
+            &tempdir2_path,
             "--num",
             "10",
             "--fog-report-url",
-            "discovery.example.mobilecoin.com"
+            "fog://fog.unittest.mobilecoin.com",
+            "--fog-report-id",
+            "",
+            "--fog-authority-root",
+            &fog_authority_root,
         ])
         .status()
         .expect("sample_keys failed")
         .success());
 
     assert!(Command::new("diff")
-        .args(&[
-            "-rq",
-            tempdir.path().to_str().unwrap(),
-            tempdir2.path().to_str().unwrap()
-        ])
+        .args(&["-rq", tempdir_path, tempdir2_path])
         .status()
         .expect("Diff reported unexpected differences, this indicates nondeterminism")
         .success());
 }
 
-// Test that if we generate 20 keys and look at only the first 10, its the same
-// as if we just generate 10
+/// Generate 20 keys and look at only the first 10, should be the same as just
+/// generating 10
 #[test]
-#[ignore]
 fn sample_keys_determinism2() {
     let sample_keys_bin = build_dir().join("sample-keys");
     assert!(
@@ -72,27 +79,41 @@ fn sample_keys_determinism2() {
         sample_keys_bin.display()
     );
 
-    let tempdir = TempDir::new("keys").unwrap();
-    env::set_current_dir(&tempdir).unwrap();
+    let fog_authority_root = mc_crypto_x509_test_vectors::ok_rsa_head();
+
+    let tempdir = tempfile::tempdir().expect("Could not create tempdir");
+    let tempdir_path = tempdir.path().to_str().expect("tempdir was not UTF-8");
     assert!(Command::new(sample_keys_bin.clone())
         .args(&[
+            "--output-dir",
+            &tempdir_path,
             "--num",
             "10",
             "--fog-report-url",
-            "discovery.example.mobilecoin.com"
+            "fog://fog.unittest.mobilecoin.com",
+            "--fog-report-id",
+            "",
+            "--fog-authority-root",
+            &fog_authority_root,
         ])
         .status()
         .expect("sample_keys failed")
         .success());
 
-    let tempdir2 = TempDir::new("keys").unwrap();
-    env::set_current_dir(&tempdir2).unwrap();
+    let tempdir2 = tempfile::tempdir().expect("Could not create tempdir2");
+    let tempdir2_path = tempdir2.path().to_str().expect("tempdir2 was not UTF-8");
     assert!(Command::new(sample_keys_bin)
         .args(&[
+            "--output-dir",
+            &tempdir2_path,
             "--num",
             "20",
             "--fog-report-url",
-            "discovery.example.mobilecoin.com"
+            "fog://fog.unittest.mobilecoin.com",
+            "--fog-report-id",
+            "",
+            "--fog-authority-root",
+            &fog_authority_root,
         ])
         .status()
         .expect("sample_keys failed")
@@ -103,8 +124,8 @@ fn sample_keys_determinism2() {
         .args(&[
             "-rq",
             "--exclude=*1[0123456789].*",
-            tempdir.path().to_str().unwrap(),
-            tempdir2.path().to_str().unwrap()
+            tempdir_path,
+            tempdir2_path
         ])
         .status()
         .expect("Diff reported unexpected differences, this indicates nondeterminism")

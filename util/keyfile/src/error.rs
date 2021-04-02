@@ -30,6 +30,8 @@ pub enum Error {
     MnemonicSize,
     /// Key derivation error: {0}
     KeyDerivation(Slip10Error),
+    /// Fog details are all or nothing, some were missing
+    MissingFogDetails,
 }
 
 impl From<AccountKeyError> for Error {

@@ -93,7 +93,7 @@ fn main() {
 
     let config = SlamConfig::from_args();
 
-    // Read account root_entropies from disk
+    // Read account keys from disk
     let accounts: Vec<AccountKey> = mc_util_keyfile::keygen::read_default_mnemonics(
         config.sample_data_dir.join(Path::new("keys")),
     )
