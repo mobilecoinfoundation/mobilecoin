@@ -539,16 +539,11 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         // Use bip39 or root entropy to construct AccountKey.
         let account_key = if !transfer_payload.get_bip39_entropy().is_empty() {
-            let mut bip39_entropy = [0u8; 32];
-            if bip39_entropy.len() != transfer_payload.get_bip39_entropy().len() {
-                return Err(RpcStatus::new(
-                    RpcStatusCode::INVALID_ARGUMENT,
-                    Some("bip39_entropy".to_string()),
-                ));
-            }
-            bip39_entropy.copy_from_slice(transfer_payload.get_bip39_entropy());
-            let mnemonic = Mnemonic::from_entropy(&bip39_entropy, Language::English)
-                .map_err(|err| rpc_internal_error("Mnemonic.from_entropy", err, &self.logger))?;
+            let mnemonic =
+                Mnemonic::from_entropy(transfer_payload.get_bip39_entropy(), Language::English)
+                    .map_err(|err| {
+                        rpc_internal_error("Mnemonic.from_entropy", err, &self.logger)
+                    })?;
             let key = mnemonic.derive_slip10_key(0);
             AccountKey::from(key)
         } else {
@@ -611,15 +606,18 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
             ));
         }
 
-        // If we were provided with bip39 entropy, ensure it is 32 bytes long.
-        if !request.bip39_entropy.is_empty() && request.bip39_entropy.len() != 32 {
-            return Err(RpcStatus::new(
-                RpcStatusCode::INVALID_ARGUMENT,
-                Some("bip39_entropy".to_string()),
-            ));
+        // If we were provided with bip39 entropy, ensure it can be converted into a
+        // mnemonic.
+        if !request.bip39_entropy.is_empty() {
+            if Mnemonic::from_entropy(request.get_bip39_entropy(), Language::English).is_err() {
+                return Err(RpcStatus::new(
+                    RpcStatusCode::INVALID_ARGUMENT,
+                    Some("bip39_entropy".to_string()),
+                ));
+            }
         }
 
-        // If we were provided with bip39 entropy, ensure it is 32 bytes long.
+        // If we were provided with root entropy, ensure it is 32 bytes long.
         if !request.root_entropy.is_empty() && request.root_entropy.len() != 32 {
             return Err(RpcStatus::new(
                 RpcStatusCode::INVALID_ARGUMENT,
