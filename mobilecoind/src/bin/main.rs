@@ -82,18 +82,20 @@ fn main() {
             .expect("Could not create or open WatcherDB");
 
             // Start watcher db sync thread, unless running in offline mode.
-            log::info!(logger, "Starting watcher sync thread from mobilecoind.");
             let watcher_sync_thread = if config.offline {
-                None
+                panic!("Attempted to start watcher but we are configured in offline mode");
             } else {
-                Some(WatcherSyncThread::new(
-                    watcher_db.clone(),
-                    transactions_fetcher,
-                    ledger_db.clone(),
-                    config.poll_interval,
-                    false,
-                    logger.clone(),
-                ))
+                log::info!(logger, "Starting watcher sync thread from mobilecoind.");
+                Some(
+                    WatcherSyncThread::new(
+                        watcher_db.clone(),
+                        ledger_db.clone(),
+                        config.poll_interval,
+                        false,
+                        logger.clone(),
+                    )
+                    .expect("Failed starting watcher thread"),
+                )
             };
             (Some(watcher_db), watcher_sync_thread)
         }

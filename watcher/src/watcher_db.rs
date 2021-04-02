@@ -17,7 +17,10 @@ use mc_util_repr_bytes::ReprBytes;
 use mc_util_serial::{decode, encode, Message};
 use mc_watcher_api::TimestampResultCode;
 
-use lmdb::{Cursor, Database, DatabaseFlags, Environment, RwTransaction, Transaction, WriteFlags};
+use lmdb::{
+    Cursor, Database, DatabaseFlags, Environment, EnvironmentFlags, RwTransaction, Transaction,
+    WriteFlags,
+};
 use mc_util_repr_bytes::typenum::Unsigned;
 use std::{
     convert::{TryFrom, TryInto},
@@ -147,6 +150,8 @@ impl WatcherDB {
             Environment::new()
                 .set_max_dbs(10)
                 .set_map_size(MAX_LMDB_FILE_SIZE)
+                // TODO - needed because currently our test cloud machines have slow disks.
+                .set_flags(EnvironmentFlags::NO_SYNC)
                 .open(path.as_ref())?,
         );
 

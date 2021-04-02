@@ -36,6 +36,7 @@ grpcio = "0.6.0"
 hex = "0.4"
 lmdb-rkv = "0.14.0"
 prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
+rayon = "1.2"
 serde = { version = "1.0", default-features = false, features = ["alloc", "derive"] }
 structopt = "0.3"
 toml = "0.5"
