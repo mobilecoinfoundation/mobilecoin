@@ -77,29 +77,55 @@ fn unlock_db(
 
 /// Requests a new root entropy from mobilecoind
 #[post("/entropy")]
-fn entropy(state: rocket::State<State>) -> Result<Json<JsonEntropyResponse>, String> {
+fn entropy(state: rocket::State<State>) -> Result<Json<JsonRootEntropyResponse>, String> {
     let resp = state
         .mobilecoind_api_client
-        .generate_entropy(&mc_mobilecoind_api::Empty::new())
+        .generate_root_entropy(&mc_mobilecoind_api::Empty::new())
         .map_err(|err| format!("Failed getting entropy: {}", err))?;
-    Ok(Json(JsonEntropyResponse::from(&resp)))
+    Ok(Json(JsonRootEntropyResponse::from(&resp)))
 }
 
-#[get("/entropy/<entropy>")]
-fn account_key(
+#[get("/entropy/<root_entropy>")]
+fn account_key_from_root_entropy(
     state: rocket::State<State>,
-    entropy: String,
+    root_entropy: String,
 ) -> Result<Json<JsonAccountKeyResponse>, String> {
     let entropy =
-        hex::decode(entropy).map_err(|err| format!("Failed to decode hex key: {}", err))?;
+        hex::decode(root_entropy).map_err(|err| format!("Failed to decode hex key: {}", err))?;
 
-    let mut req = mc_mobilecoind_api::GetAccountKeyRequest::new();
-    req.set_entropy(entropy.to_vec());
+    let mut req = mc_mobilecoind_api::GetAccountKeyFromRootEntropyRequest::new();
+    req.set_root_entropy(entropy.to_vec());
 
     let resp = state
         .mobilecoind_api_client
-        .get_account_key(&req)
-        .map_err(|err| format!("Failed getting account key for entropy: {}", err))?;
+        .get_account_key_from_root_entropy(&req)
+        .map_err(|err| format!("Failed getting account key for root entropy: {}", err))?;
+
+    Ok(Json(JsonAccountKeyResponse::from(&resp)))
+}
+
+/// Requests a new mnemonic from mobilecoind
+#[post("/mnemonic")]
+fn mnemonic(state: rocket::State<State>) -> Result<Json<JsonMnemonicResponse>, String> {
+    let resp = state
+        .mobilecoind_api_client
+        .generate_mnemonic(&mc_mobilecoind_api::Empty::new())
+        .map_err(|err| format!("Failed getting entropy: {}", err))?;
+    Ok(Json(JsonMnemonicResponse::from(&resp)))
+}
+
+#[post("/account-key-from-mnemonic", format = "json", data = "<mnemonic>")]
+fn account_key_from_mnemonic(
+    state: rocket::State<State>,
+    mnemonic: Json<JsonMnemonicResponse>,
+) -> Result<Json<JsonAccountKeyResponse>, String> {
+    let mut req = mc_mobilecoind_api::GetAccountKeyFromMnemonicRequest::new();
+    req.set_mnemonic(mnemonic.mnemonic.clone());
+
+    let resp = state
+        .mobilecoind_api_client
+        .get_account_key_from_mnemonic(&req)
+        .map_err(|err| format!("Failed getting account key for mnemonic: {}", err))?;
 
     Ok(Json(JsonAccountKeyResponse::from(&resp)))
 }
@@ -806,7 +832,9 @@ fn main() {
                 set_password,
                 unlock_db,
                 entropy,
-                account_key,
+                account_key_from_root_entropy,
+                mnemonic,
+                account_key_from_mnemonic,
                 add_monitor,
                 remove_monitor,
                 monitors,

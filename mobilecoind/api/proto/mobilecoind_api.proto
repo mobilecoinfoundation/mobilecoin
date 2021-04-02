@@ -23,8 +23,10 @@ service MobilecoindAPI {
     rpc GetUnspentTxOutList (GetUnspentTxOutListRequest) returns (GetUnspentTxOutListResponse) {}
 
     // Utilities
-    rpc GenerateEntropy (google.protobuf.Empty) returns (GenerateEntropyResponse) {}
-    rpc GetAccountKey (GetAccountKeyRequest) returns (GetAccountKeyResponse) {}
+    rpc GenerateRootEntropy (google.protobuf.Empty) returns (GenerateRootEntropyResponse) {}
+    rpc GenerateMnemonic (google.protobuf.Empty) returns (GenerateMnemonicResponse) {}
+    rpc GetAccountKeyFromRootEntropy (GetAccountKeyFromRootEntropyRequest) returns (GetAccountKeyResponse) {}
+    rpc GetAccountKeyFromMnemonic (GetAccountKeyFromMnemonicRequest) returns (GetAccountKeyResponse) {}
     rpc GetPublicAddress (GetPublicAddressRequest) returns (GetPublicAddressResponse) {}
 
     // b58 Codes
@@ -312,14 +314,26 @@ message GetUnspentTxOutListResponse {
 
 // Generate a new random root entropy value.
 // - empty request
-message GenerateEntropyResponse {
+message GenerateRootEntropyResponse {
 	  // 32 bytes generated using a cryptographically secure RNG.
-    bytes entropy = 1;
+    bytes root_entropy = 1;
+}
+
+// Generate a new random mnemomic.
+// - empty request
+message GenerateMnemonicResponse {
+	// mnemonic generated using a cryptographically secure RNG.
+    string mnemonic = 1;
 }
 
 // Generate an AccountKey from a 32 byte root entropy value.
-message GetAccountKeyRequest {
-    bytes entropy = 1;
+message GetAccountKeyFromRootEntropyRequest {
+    bytes root_entropy = 1;
+}
+// Generate an AccountKey from a mnemonic.
+message GetAccountKeyFromMnemonicRequest {
+    string mnemonic = 1;
+    uint32 account_index = 2;
 }
 message GetAccountKeyResponse {
     external.AccountKey account_key = 1;
@@ -365,7 +379,7 @@ message ParseTransferCodeRequest {
     string b58_code = 1;
 }
 message ParseTransferCodeResponse {
-    bytes entropy = 1;
+    bytes root_entropy = 1;
     external.CompressedRistretto tx_public_key = 2;
     string memo = 3;
     UnspentTxOut utxo = 4;
@@ -373,7 +387,7 @@ message ParseTransferCodeResponse {
 
 // Encode entropy/tx_public_key/memo into a base-58 "MobileCoin Transfer Code".
 message CreateTransferCodeRequest {
-    bytes entropy = 1;
+    bytes root_entropy = 1;
     external.CompressedRistretto tx_public_key = 2;
     string memo = 3;
 }
@@ -484,7 +498,7 @@ message GenerateTransferCodeTxResponse {
     TxProposal tx_proposal = 1;
 
     // The entropy for constructing the AccountKey that can access the funds.
-    bytes entropy = 2;
+    bytes root_entropy = 2;
 
     // The TxOut public key that has the funds.
     external.CompressedRistretto tx_public_key = 3;

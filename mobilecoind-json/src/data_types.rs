@@ -32,14 +32,27 @@ pub struct JsonUnlockDbResponse {
 }
 
 #[derive(Serialize, Default, Debug)]
-pub struct JsonEntropyResponse {
+pub struct JsonRootEntropyResponse {
     pub entropy: String,
 }
 
-impl From<&mc_mobilecoind_api::GenerateEntropyResponse> for JsonEntropyResponse {
-    fn from(src: &mc_mobilecoind_api::GenerateEntropyResponse) -> Self {
+impl From<&mc_mobilecoind_api::GenerateRootEntropyResponse> for JsonRootEntropyResponse {
+    fn from(src: &mc_mobilecoind_api::GenerateRootEntropyResponse) -> Self {
         Self {
-            entropy: hex::encode(&src.entropy),
+            entropy: hex::encode(&src.root_entropy),
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Default, Debug)]
+pub struct JsonMnemonicResponse {
+    pub mnemonic: String,
+}
+
+impl From<&mc_mobilecoind_api::GenerateMnemonicResponse> for JsonMnemonicResponse {
+    fn from(src: &mc_mobilecoind_api::GenerateMnemonicResponse) -> Self {
+        Self {
+            mnemonic: src.mnemonic.clone(),
         }
     }
 }
