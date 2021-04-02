@@ -616,13 +616,13 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
 
         // If we were provided with bip39 entropy, ensure it can be converted into a
         // mnemonic.
-        if !request.bip39_entropy.is_empty() {
-            if Mnemonic::from_entropy(request.get_bip39_entropy(), Language::English).is_err() {
-                return Err(RpcStatus::new(
-                    RpcStatusCode::INVALID_ARGUMENT,
-                    Some("bip39_entropy".to_string()),
-                ));
-            }
+        if !request.bip39_entropy.is_empty()
+            && Mnemonic::from_entropy(request.get_bip39_entropy(), Language::English).is_err()
+        {
+            return Err(RpcStatus::new(
+                RpcStatusCode::INVALID_ARGUMENT,
+                Some("bip39_entropy".to_string()),
+            ));
         }
 
         // If we were provided with root entropy, ensure it is 32 bytes long.
