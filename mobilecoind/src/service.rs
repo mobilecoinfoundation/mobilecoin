@@ -598,6 +598,14 @@ impl<T: BlockchainConnection + UserTxConnection + 'static, FPR: FogPubkeyResolve
         &mut self,
         request: mc_mobilecoind_api::CreateTransferCodeRequest,
     ) -> Result<mc_mobilecoind_api::CreateTransferCodeResponse, RpcStatus> {
+        // Must have entropy.
+        if request.bip39_entropy.is_empty() && request.root_entropy.is_empty() {
+            return Err(RpcStatus::new(
+                RpcStatusCode::INVALID_ARGUMENT,
+                Some("bip39_entropy/root_entropy".to_string()),
+            ));
+        }
+
         // Only allow one type of entropy.
         if !request.bip39_entropy.is_empty() && !request.root_entropy.is_empty() {
             return Err(RpcStatus::new(
@@ -4906,6 +4914,12 @@ mod test {
             let mut request = mc_mobilecoind_api::CreateTransferCodeRequest::new();
             request.set_root_entropy(vec![4u8; 32]);
             request.set_memo("memo".to_owned()); // forgot to set tx_public_key
+            assert!(client.create_transfer_code(&request).is_err());
+
+            // no entropy is being set
+            let mut request = mc_mobilecoind_api::CreateTransferCodeRequest::new();
+            request.set_tx_public_key((&tx_public_key).into());
+            request.set_memo("memo".to_owned());
             assert!(client.create_transfer_code(&request).is_err());
         }
 
