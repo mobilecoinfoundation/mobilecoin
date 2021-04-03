@@ -1,6 +1,7 @@
 // Copyright (c) 2018-2021 The MobileCoin Foundation
 
-use std::{env, process::Command};
+use std::{env, io::Write, process::Command};
+use tempfile::NamedTempFile;
 
 // Get the build dir, which is one down from current_exe, which is in
 // target/debug/deps,
@@ -21,7 +22,15 @@ fn sample_keys_determinism() {
         sample_keys_bin.display()
     );
 
-    let fog_authority_root = mc_crypto_x509_test_vectors::ok_rsa_head();
+    let mut authority_pemfile =
+        NamedTempFile::new().expect("Could not create file for temp root authority");
+    authority_pemfile
+        .write_all(mc_crypto_x509_test_vectors::ok_rsa_head().as_bytes())
+        .expect("Could not write temp root authority");
+    let fog_authority_root = authority_pemfile
+        .path()
+        .to_str()
+        .expect("Authority pemfile is not valid UTF-8");
 
     let tempdir = tempfile::tempdir().expect("Could not create tempdir");
     let tempdir_path = tempdir.path().to_str().expect("tempdir was not UTF-8");
@@ -36,7 +45,7 @@ fn sample_keys_determinism() {
             "--fog-report-id",
             "",
             "--fog-authority-root",
-            &fog_authority_root,
+            fog_authority_root,
         ])
         .status()
         .expect("sample_keys failed")
@@ -79,7 +88,15 @@ fn sample_keys_determinism2() {
         sample_keys_bin.display()
     );
 
-    let fog_authority_root = mc_crypto_x509_test_vectors::ok_rsa_head();
+    let mut authority_pemfile =
+        NamedTempFile::new().expect("Could not create file for temp root authority");
+    authority_pemfile
+        .write_all(mc_crypto_x509_test_vectors::ok_rsa_head().as_bytes())
+        .expect("Could not write temp root authority");
+    let fog_authority_root = authority_pemfile
+        .path()
+        .to_str()
+        .expect("Authority pemfile is not valid UTF-8");
 
     let tempdir = tempfile::tempdir().expect("Could not create tempdir");
     let tempdir_path = tempdir.path().to_str().expect("tempdir was not UTF-8");
@@ -94,7 +111,7 @@ fn sample_keys_determinism2() {
             "--fog-report-id",
             "",
             "--fog-authority-root",
-            &fog_authority_root,
+            fog_authority_root,
         ])
         .status()
         .expect("sample_keys failed")
@@ -113,7 +130,7 @@ fn sample_keys_determinism2() {
             "--fog-report-id",
             "",
             "--fog-authority-root",
-            &fog_authority_root,
+            fog_authority_root,
         ])
         .status()
         .expect("sample_keys failed")

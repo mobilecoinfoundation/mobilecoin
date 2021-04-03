@@ -23,8 +23,6 @@ fn main() {
         .clone()
         .unwrap_or_else(|| std::env::current_dir().unwrap().join("keys"));
 
-    println!("Writing {} keys to {:?}", config.num, path);
-
     mc_util_keyfile::keygen::write_default_keyfiles(
         path,
         config.num,
