@@ -55,6 +55,7 @@ RUN apt-get update -q -q && \
   libxml2-dev \
   llvm-dev \
   nano \
+  nginx \
   ninja-build \
   ocaml-native-compilers \
   ocamlbuild \
