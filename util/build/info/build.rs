@@ -37,7 +37,7 @@ fn env_var_exists(name: &str) -> &'static str {
     match env::var(name) {
         Ok(_) => "true",
         Err(env::VarError::NotPresent) => "false",
-        Err(e) => panic!(e),
+        Err(e) => panic!("{}", e),
     }
 }
 
