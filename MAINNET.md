@@ -30,7 +30,7 @@ An example MainNet build and launch command for mobilecoind is:
     SGX_MODE=HW IAS_MODE=PROD CONSENSUS_ENCLAVE_CSS=$(pwd)/consensus-enclave.css cargo build --release -p mc-mobilecoind -p mc-mobilecoind-json
     ```
 
-1. Run mobilecoind, connecting to one or mulltiple Consensus Validator Nodes:
+1. Run mobilecoind, connecting to one or multiple Consensus Validator Nodes:
 
     ```
     ./target/release/mobilecoind \
