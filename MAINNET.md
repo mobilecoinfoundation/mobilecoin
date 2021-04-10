@@ -72,7 +72,7 @@ If you have a Linux-compatible home computer, or choose to operate a Linux-compa
 
 If you have an SGX-capable machine, or choose to operate an SGX-capable server in the cloud, you can run a *validator node* in the MobileCoin MainNet.
 
-1. Send an email to [support@mobilecoin.foundation](mailto://support@mobilecoin.foundation) and let the MobilCoin Foundation know how you'd like to get involved!
+1. Send an email to [support@mobilecoin.foundation](mailto://support@mobilecoin.foundation) and let the MobileCoin Foundation know how you'd like to get involved!
 
 ## Getting Help
 
