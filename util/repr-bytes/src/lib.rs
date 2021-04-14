@@ -158,7 +158,7 @@ macro_rules! derive_repr_bytes_from_as_ref_and_try_from {
     };
 }
 
-/// Derive From<...> for Vec<u8>  from a ReprBytes implementation
+/// Derive From<...> for Vec<u8> from a ReprBytes implementation
 #[cfg(feature = "alloc")]
 #[macro_export]
 macro_rules! derive_into_vec_from_repr_bytes {
