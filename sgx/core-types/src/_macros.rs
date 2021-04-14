@@ -82,9 +82,9 @@ macro_rules! impl_ffi_wrapper_base {
             }
         }
 
-        impl Into<$inner> for $wrapper {
-            fn into(self) -> $inner {
-                self.0
+        impl From<$wrapper> for $inner {
+            fn from(src: $wrapper) -> $inner {
+                src.0
             }
         }
     )*}

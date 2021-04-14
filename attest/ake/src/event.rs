@@ -123,16 +123,16 @@ where
     }
 }
 
-impl<Handshake, KexAlgo, Cipher, DigestType> Into<Vec<u8>>
-    for AuthRequestOutput<Handshake, KexAlgo, Cipher, DigestType>
+impl<Handshake, KexAlgo, Cipher, DigestType>
+    From<AuthRequestOutput<Handshake, KexAlgo, Cipher, DigestType>> for Vec<u8>
 where
     Handshake: HandshakePattern,
     KexAlgo: Kex,
     Cipher: AeadMut + NewAead + NoiseCipher + Sized,
     DigestType: BlockInput + Clone + Default + FixedOutput + Update + Reset,
 {
-    fn into(self) -> Vec<u8> {
-        self.data
+    fn from(src: AuthRequestOutput<Handshake, KexAlgo, Cipher, DigestType>) -> Vec<u8> {
+        src.data
     }
 }
 
@@ -274,9 +274,9 @@ impl AsRef<[u8]> for AuthResponseOutput {
     }
 }
 
-impl Into<Vec<u8>> for AuthResponseOutput {
-    fn into(self) -> Vec<u8> {
-        self.0
+impl From<AuthResponseOutput> for Vec<u8> {
+    fn from(src: AuthResponseOutput) -> Vec<u8> {
+        src.0
     }
 }
 
@@ -304,9 +304,9 @@ impl AsRef<[u8]> for AuthResponseInput {
     }
 }
 
-impl Into<Vec<u8>> for AuthResponseInput {
-    fn into(self) -> Vec<u8> {
-        self.data
+impl From<AuthResponseInput> for Vec<u8> {
+    fn from(src: AuthResponseInput) -> Vec<u8> {
+        src.data
     }
 }
 

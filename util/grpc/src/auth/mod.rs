@@ -41,11 +41,11 @@ impl From<AuthorizationHeaderError> for AuthenticatorError {
     }
 }
 
-impl<T> Into<Result<T, RpcStatus>> for AuthenticatorError {
-    fn into(self) -> Result<T, RpcStatus> {
+impl<T> From<AuthenticatorError> for Result<T, RpcStatus> {
+    fn from(src: AuthenticatorError) -> Result<T, RpcStatus> {
         Err(RpcStatus::new(
             RpcStatusCode::UNAUTHENTICATED,
-            Some(self.to_string()),
+            Some(src.to_string()),
         ))
     }
 }
@@ -241,7 +241,7 @@ mod test {
     fn authenticate_token() {
         let shared_secret = [66; 32];
         let authenticator = TokenAuthenticator::new(
-            shared_secret.clone(),
+            shared_secret,
             TOKEN_MAX_LIFETIME,
             SystemTimeProvider::default(),
         );
@@ -272,10 +272,8 @@ mod test {
         }
 
         // Authorizing with a valid Authorization header should succeed.
-        let generator = TokenBasicCredentialsGenerator::new(
-            shared_secret.clone(),
-            SystemTimeProvider::default(),
-        );
+        let generator =
+            TokenBasicCredentialsGenerator::new(shared_secret, SystemTimeProvider::default());
         let creds = generator
             .generate_for(TEST_USERNAME)
             .expect("failed generating token");

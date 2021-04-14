@@ -102,9 +102,9 @@ impl From<sgx_quote_sign_type_t> for QuoteSignType {
     }
 }
 
-impl Into<sgx_quote_sign_type_t> for QuoteSignType {
-    fn into(self) -> sgx_quote_sign_type_t {
-        match self {
+impl From<QuoteSignType> for sgx_quote_sign_type_t {
+    fn from(src: QuoteSignType) -> sgx_quote_sign_type_t {
+        match src {
             QuoteSignType::Unlinkable => sgx_quote_sign_type_t::SGX_UNLINKABLE_SIGNATURE,
             QuoteSignType::Linkable => sgx_quote_sign_type_t::SGX_LINKABLE_SIGNATURE,
         }

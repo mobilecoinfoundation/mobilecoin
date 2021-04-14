@@ -27,9 +27,9 @@ impl From<Vec<u8>> for ClientAuthRequest {
     }
 }
 
-impl Into<Vec<u8>> for ClientAuthRequest {
-    fn into(self) -> Vec<u8> {
-        self.0
+impl From<ClientAuthRequest> for Vec<u8> {
+    fn from(src: ClientAuthRequest) -> Vec<u8> {
+        src.0
     }
 }
 
@@ -38,9 +38,9 @@ impl Into<Vec<u8>> for ClientAuthRequest {
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct ClientAuthResponse(Vec<u8>);
 
-impl Into<Vec<u8>> for ClientAuthResponse {
-    fn into(self) -> Vec<u8> {
-        self.0
+impl From<ClientAuthResponse> for Vec<u8> {
+    fn from(src: ClientAuthResponse) -> Vec<u8> {
+        src.0
     }
 }
 
@@ -61,9 +61,9 @@ impl From<Vec<u8>> for PeerAuthRequest {
     }
 }
 
-impl Into<Vec<u8>> for PeerAuthRequest {
-    fn into(self) -> Vec<u8> {
-        self.0
+impl From<PeerAuthRequest> for Vec<u8> {
+    fn from(src: PeerAuthRequest) -> Vec<u8> {
+        src.0
     }
 }
 
@@ -72,9 +72,9 @@ impl Into<Vec<u8>> for PeerAuthRequest {
 #[derive(Clone, Debug, Default, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct PeerAuthResponse(Vec<u8>);
 
-impl Into<Vec<u8>> for PeerAuthResponse {
-    fn into(self) -> Vec<u8> {
-        self.0
+impl From<PeerAuthResponse> for Vec<u8> {
+    fn from(src: PeerAuthResponse) -> Vec<u8> {
+        src.0
     }
 }
 
@@ -134,9 +134,9 @@ impl From<Vec<u8>> for ClientSession {
     }
 }
 
-impl Into<Vec<u8>> for ClientSession {
-    fn into(self) -> Vec<u8> {
-        self.0
+impl From<ClientSession> for Vec<u8> {
+    fn from(src: ClientSession) -> Vec<u8> {
+        src.0
     }
 }
 
@@ -167,9 +167,9 @@ impl From<Vec<u8>> for PeerSession {
     }
 }
 
-impl Into<Vec<u8>> for PeerSession {
-    fn into(self) -> Vec<u8> {
-        self.0
+impl From<PeerSession> for Vec<u8> {
+    fn from(src: PeerSession) -> Vec<u8> {
+        src.0
     }
 }
 
