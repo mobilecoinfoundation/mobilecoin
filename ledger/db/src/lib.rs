@@ -559,12 +559,8 @@ impl LedgerDB {
             let last_block = self.get_block(num_blocks - 1)?;
 
             // The block's version should be bounded by
-            // [prev block version, min(prev block version + 1, max block version)]
-            if block.version >= last_block.version && block.version <= BLOCK_VERSION {
-                if block.version > last_block.version + 1 {
-                    return Err(Error::InvalidBlock);
-                }
-            } else {
+            // [prev block version, max block version]
+            if block.version < last_block.version || block.version > BLOCK_VERSION {
                 return Err(Error::InvalidBlock);
             }
 
