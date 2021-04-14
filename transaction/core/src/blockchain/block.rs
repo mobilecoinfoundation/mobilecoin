@@ -55,7 +55,7 @@ impl Block {
     /// # Arguments
     /// * `outputs` - Outputs "minted" by the origin block.
     pub fn new_origin_block(outputs: &[TxOut]) -> Self {
-        let version = BLOCK_VERSION;
+        let version = 0; // The origin block is always 0
         let parent_id = BlockID::default();
         let index: BlockIndex = 0;
         let cumulative_txo_count = outputs.len() as u64;
