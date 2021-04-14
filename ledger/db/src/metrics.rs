@@ -12,7 +12,7 @@ use mc_util_metrics::{
     IntGauge, IntGaugeVec, MetricFamily, Opts,
 };
 use std::{
-    path::PathBuf,
+    path::Path,
     time::{Duration, Instant},
 };
 
@@ -104,7 +104,7 @@ pub struct LedgerMetrics {
 }
 
 impl LedgerMetrics {
-    pub fn new(db_path: &PathBuf) -> Self {
+    pub fn new(db_path: &Path) -> Self {
         let db_path_str = db_path
             .to_str()
             .expect("failed converting ledger path to string");

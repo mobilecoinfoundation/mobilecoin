@@ -116,8 +116,7 @@ fn main() {
     )
     .expect("failed copying ledger");
 
-    let ledger_db =
-        LedgerDB::open(ledger_dir.path().to_path_buf()).expect("Could not open ledger_db");
+    let ledger_db = LedgerDB::open(ledger_dir.path()).expect("Could not open ledger_db");
 
     BLOCK_HEIGHT.store(ledger_db.num_blocks().unwrap(), Ordering::SeqCst);
 

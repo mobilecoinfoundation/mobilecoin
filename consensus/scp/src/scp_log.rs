@@ -13,7 +13,7 @@ use std::{
     fs::{create_dir_all, read, read_dir, remove_dir_all, remove_file, rename, File},
     io::Write,
     marker::PhantomData,
-    path::PathBuf,
+    path::{Path, PathBuf},
     time::{Instant, SystemTime},
 };
 
@@ -325,7 +325,7 @@ pub struct ScpLogReader<V: Value> {
 
 impl<V: Value> ScpLogReader<V> {
     /// Create a new ScpLogReader.
-    pub fn new(path: &PathBuf) -> Result<Self, String> {
+    pub fn new(path: &Path) -> Result<Self, String> {
         let mut files: Vec<_> = read_dir(path)
             .map_err(|e| format!("failed reading dir {:?}: {:?}", path, e))?
             .filter_map(|entry| {
@@ -390,15 +390,15 @@ mod tests {
         let dir = TempDir::new("test").unwrap();
         let out_path = dir.path().join("debug_output");
 
-        let cur_slot = out_path.clone().join("cur-slot");
+        let cur_slot = out_path.join("cur-slot");
         create_dir_all(cur_slot.as_path()).unwrap();
 
-        let slot_states = out_path.clone().join("slot-states");
+        let slot_states = out_path.join("slot-states");
         create_dir_all(slot_states.as_path()).unwrap();
 
         assert!(out_path.exists());
 
         let node = MockScpNode::<&'static str>::new();
-        let _logging_scp_node = LoggingScpNode::new(node, out_path.clone(), logger).unwrap();
+        let _logging_scp_node = LoggingScpNode::new(node, out_path, logger).unwrap();
     }
 }

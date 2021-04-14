@@ -26,8 +26,8 @@ pub const INITIALIZE_LEDGER_AMOUNT: u64 = 1_000_000 * 1_000_000_000;
 /// Creates a LedgerDB instance.
 pub fn create_ledger() -> LedgerDB {
     let temp_dir = TempDir::new("test").unwrap();
-    let path = temp_dir.path().to_path_buf();
-    LedgerDB::create(path.clone()).unwrap();
+    let path = temp_dir.path();
+    LedgerDB::create(path).unwrap();
     LedgerDB::open(path).unwrap()
 }
 

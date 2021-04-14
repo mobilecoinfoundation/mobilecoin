@@ -31,7 +31,12 @@ use mc_transaction_core::{
 use mc_util_lmdb::MetadataStoreSettings;
 use mc_util_serial::{decode, encode, Message};
 use metrics::LedgerMetrics;
-use std::{fs, path::PathBuf, sync::Arc, time::Instant};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Instant,
+};
 
 pub use error::Error;
 pub use ledger_trait::{Ledger, MockLedger};
@@ -323,13 +328,13 @@ impl Ledger for LedgerDB {
 impl LedgerDB {
     /// Opens an existing Ledger Database in the given path.
     #[allow(clippy::unreadable_literal)]
-    pub fn open(path: PathBuf) -> Result<LedgerDB, Error> {
+    pub fn open(path: &Path) -> Result<LedgerDB, Error> {
         let env = Environment::new()
             .set_max_dbs(22)
             .set_map_size(MAX_LMDB_FILE_SIZE)
             // TODO - needed because currently our test cloud machines have slow disks.
             .set_flags(EnvironmentFlags::NO_SYNC)
-            .open(&path)?;
+            .open(path)?;
 
         let metadata_store = MetadataStore::<LedgerDbMetadataStoreSettings>::new(&env)?;
         let db_txn = env.begin_ro_txn()?;
@@ -349,11 +354,11 @@ impl LedgerDB {
 
         let tx_out_store = TxOutStore::new(&env)?;
 
-        let metrics = LedgerMetrics::new(&path);
+        let metrics = LedgerMetrics::new(path);
 
         let ledger_db = LedgerDB {
             env: Arc::new(env),
-            path,
+            path: path.to_path_buf(),
             counts,
             blocks,
             block_signatures,
@@ -373,11 +378,11 @@ impl LedgerDB {
     }
 
     /// Creates a fresh Ledger Database in the given path.
-    pub fn create(path: PathBuf) -> Result<(), Error> {
+    pub fn create(path: &Path) -> Result<(), Error> {
         let env = Environment::new()
             .set_max_dbs(22)
             .set_map_size(MAX_LMDB_FILE_SIZE)
-            .open(&path)?;
+            .open(path)?;
 
         let counts = env.create_db(Some(COUNTS_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(BLOCKS_DB_NAME), DatabaseFlags::empty())?;
@@ -690,8 +695,8 @@ mod ledger_db_test {
     /// Creates a LedgerDB instance.
     fn create_db() -> LedgerDB {
         let temp_dir = TempDir::new("test").unwrap();
-        let path = temp_dir.path().to_path_buf();
-        LedgerDB::create(path.clone()).unwrap();
+        let path = temp_dir.path();
+        LedgerDB::create(path).unwrap();
         LedgerDB::open(path).unwrap()
     }
 
