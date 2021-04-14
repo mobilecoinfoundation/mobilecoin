@@ -550,7 +550,8 @@ impl LedgerDB {
                 return Err(Error::InvalidBlock);
             }
 
-            // The origin block is index '0' with default-initialized parent ID, by convention
+            // The origin block is index '0' with default-initialized parent ID, by
+            // convention
             if block.index != 0 || block.parent_id != BlockID::default() {
                 return Err(Error::InvalidBlock);
             }
@@ -563,8 +564,7 @@ impl LedgerDB {
                 if block.version > last_block.version + 1 {
                     return Err(Error::InvalidBlock);
                 }
-            }
-            else {
+            } else {
                 return Err(Error::InvalidBlock);
             }
 
