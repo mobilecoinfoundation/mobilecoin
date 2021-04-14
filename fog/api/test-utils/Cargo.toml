@@ -8,4 +8,4 @@ readme = "README.md"
 [dependencies]
 mc-util-serial = { path = "../../../util/serial" }
 prost = { version = "0.6.1", default-features = false, features = ["prost-derive"] }
-protobuf = "2.12"
+protobuf = "2.22.1"
