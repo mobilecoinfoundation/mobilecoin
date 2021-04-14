@@ -228,7 +228,7 @@ impl MonitorStore {
                 Ok(data)
             }
             Err(lmdb::Error::NotFound) => Err(Error::MonitorIdNotFound),
-            Err(err) => Err(Error::LMDB(err)),
+            Err(err) => Err(Error::Lmdb(err)),
         }
     }
 
@@ -293,7 +293,7 @@ impl MonitorStore {
                 Ok(())
             }
             Err(lmdb::Error::NotFound) => Err(Error::MonitorIdNotFound),
-            Err(err) => Err(Error::LMDB(err)),
+            Err(err) => Err(Error::Lmdb(err)),
         }
     }
 
