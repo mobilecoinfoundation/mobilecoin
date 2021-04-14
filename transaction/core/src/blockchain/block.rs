@@ -10,6 +10,8 @@ use prost::Message;
 use serde::{Deserialize, Serialize};
 
 /// Version identifier.
+/// This is the current version, which also implies it is the max version that
+/// could be considered valid.
 pub const BLOCK_VERSION: u32 = 1;
 
 /// The index of a block in the blockchain.

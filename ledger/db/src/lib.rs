@@ -1219,6 +1219,117 @@ mod ledger_db_test {
     }
 
     #[test]
+    /// Appending blocks that have ever-increasing and continous version numbers
+    /// should work as long as it is <= BLOCK_VERSION.
+    /// Appending a block > BLOCK_VERSION should fail even if it is after a
+    /// block with version == BLOCK_VERSION.
+    /// Appending a block with a version < last block's version should fail.
+    fn test_append_block_with_version_bumps() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut ledger_db = create_db();
+
+        let origin_account_key = AccountKey::random(&mut rng);
+        let (origin_block, origin_block_contents) =
+            get_origin_block_and_contents(&origin_account_key);
+
+        ledger_db
+            .append_block(&origin_block, &origin_block_contents, None)
+            .unwrap();
+
+        let mut last_block = origin_block;
+
+        // BLOCK_VERSION sets the current version, which is the max version.
+        for version in 0..=BLOCK_VERSION {
+            // In each iteration we add a few blocks with the same version.
+            for _ in 0..3 {
+                let recipient_account_key = AccountKey::random(&mut rng);
+                let outputs: Vec<TxOut> = (0..4)
+                    .map(|_i| {
+                        TxOut::new(
+                            1000,
+                            &recipient_account_key.default_subaddress(),
+                            &RistrettoPrivate::from_random(&mut rng),
+                            Default::default(),
+                        )
+                        .unwrap()
+                    })
+                    .collect();
+
+                let key_images: Vec<KeyImage> =
+                    (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
+
+                let block_contents = BlockContents::new(key_images.clone(), outputs);
+                last_block = Block::new_with_parent(
+                    version,
+                    &last_block,
+                    &Default::default(),
+                    &block_contents,
+                );
+
+                ledger_db
+                    .append_block(&last_block, &block_contents, None)
+                    .unwrap();
+            }
+        }
+
+        // All blocks should've been written (+ origin block).
+        assert_eq!(
+            ledger_db.num_blocks().unwrap(),
+            1 + (3 * (BLOCK_VERSION + 1)) as u64
+        );
+
+        // Last block version should be what we expect.
+        let last_block = ledger_db
+            .get_block(ledger_db.num_blocks().unwrap() - 1)
+            .unwrap();
+        assert_eq!(last_block.version, BLOCK_VERSION);
+
+        // Appending a block with version > BLOCK_VERSION should fail.
+        {
+            let recipient_account_key = AccountKey::random(&mut rng);
+            let outputs: Vec<TxOut> = (0..4)
+                .map(|_i| {
+                    TxOut::new(
+                        1000,
+                        &recipient_account_key.default_subaddress(),
+                        &RistrettoPrivate::from_random(&mut rng),
+                        Default::default(),
+                    )
+                    .unwrap()
+                })
+                .collect();
+
+            let key_images: Vec<KeyImage> =
+                (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
+
+            let block_contents = BlockContents::new(key_images.clone(), outputs);
+            assert_eq!(last_block.version, BLOCK_VERSION);
+
+            let invalid_block = Block::new_with_parent(
+                last_block.version + 1,
+                &last_block,
+                &Default::default(),
+                &block_contents,
+            );
+            assert_eq!(
+                ledger_db.append_block(&invalid_block, &block_contents, None),
+                Err(Error::InvalidBlock)
+            );
+
+            let invalid_block = Block::new_with_parent(
+                last_block.version - 1,
+                &last_block,
+                &Default::default(),
+                &block_contents,
+            );
+            assert_eq!(
+                ledger_db.append_block(&invalid_block, &block_contents, None),
+                Err(Error::InvalidBlock)
+            );
+        }
+    }
+
+    #[test]
     fn test_append_block_at_wrong_location() {
         let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
         let mut ledger_db = create_db();
