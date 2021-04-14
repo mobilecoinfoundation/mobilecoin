@@ -249,7 +249,7 @@ impl UtxoStore {
                     Ok(())
                 }
                 Err(lmdb::Error::NotFound) => Ok(()),
-                Err(err) => Err(Error::LMDB(err)),
+                Err(err) => Err(Error::Lmdb(err)),
             }?;
         }
 
