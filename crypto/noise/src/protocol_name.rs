@@ -15,7 +15,9 @@ use subtle::ConstantTimeEq;
 
 /// An enumeration of errors which can be generated while parsing a protocol
 /// name string.
-#[derive(Clone, Copy, Debug, Deserialize, Eq, Fail, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(
+    Clone, Copy, Debug, Deserialize, Eq, Fail, Hash, Ord, PartialEq, PartialOrd, Serialize,
+)]
 pub enum ProtocolNameError {
     #[fail(display = "The string given does not match the type in question")]
     Unknown,
