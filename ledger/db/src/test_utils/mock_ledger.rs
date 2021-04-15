@@ -12,10 +12,7 @@ use mc_transaction_core::{
 use mc_util_from_random::FromRandom;
 use rand::{rngs::StdRng, SeedableRng};
 use rand_core::RngCore;
-use std::{
-    iter::FromIterator,
-    sync::{Arc, Mutex, MutexGuard},
-};
+use std::sync::{Arc, Mutex, MutexGuard};
 
 #[derive(Default)]
 pub struct MockLedgerInner {
@@ -75,7 +72,7 @@ impl MockLedger {
         }
 
         let key_images = block_contents.key_images.clone();
-        inner.key_images = HashMap::from_iter(key_images.iter().map(|ki| (*ki, block.index)));
+        inner.key_images = key_images.iter().map(|ki| (*ki, block.index)).collect();
 
         inner
             .key_images_by_block_number

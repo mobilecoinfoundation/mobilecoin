@@ -16,7 +16,7 @@ use mc_transaction_core::{
     tx::{Tx, TxOut, TxOutConfirmationNumber},
 };
 use protobuf::RepeatedField;
-use std::{convert::TryFrom, iter::FromIterator};
+use std::convert::TryFrom;
 
 impl From<&UnspentTxOut> for mc_mobilecoind_api::UnspentTxOut {
     fn from(src: &UnspentTxOut) -> Self {
@@ -89,11 +89,12 @@ impl From<&TxProposal> for mc_mobilecoind_api::TxProposal {
         ));
         dst.set_tx((&src.tx).into());
         dst.set_fee(src.tx.prefix.fee);
-        dst.set_outlay_index_to_tx_out_index(std::collections::HashMap::from_iter(
+        dst.set_outlay_index_to_tx_out_index(
             src.outlay_index_to_tx_out_index
                 .iter()
-                .map(|(key, val)| (*key as u64, *val as u64)),
-        ));
+                .map(|(key, val)| (*key as u64, *val as u64))
+                .collect(),
+        );
         dst.set_outlay_confirmation_numbers(
             src.outlay_confirmation_numbers
                 .iter()
@@ -127,11 +128,11 @@ impl TryFrom<&mc_mobilecoind_api::TxProposal> for TxProposal {
 
         let tx = Tx::try_from(src.get_tx())?;
 
-        let outlay_index_to_tx_out_index = HashMap::from_iter(
-            src.get_outlay_index_to_tx_out_index()
-                .iter()
-                .map(|(key, val)| (*key as usize, *val as usize)),
-        );
+        let outlay_index_to_tx_out_index = src
+            .get_outlay_index_to_tx_out_index()
+            .iter()
+            .map(|(key, val)| (*key as usize, *val as usize))
+            .collect::<HashMap<_, _>>();
 
         // Check that none of the indices are out of bound.
         if outlay_index_to_tx_out_index.len() != outlays.len() {
@@ -178,6 +179,7 @@ mod test {
     };
     use mc_util_from_random::FromRandom;
     use rand::{rngs::StdRng, SeedableRng};
+    use std::iter::FromIterator;
 
     #[test]
     fn test_unspent_tx_out_conversion() {

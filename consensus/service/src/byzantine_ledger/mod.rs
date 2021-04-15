@@ -163,8 +163,8 @@ impl ByzantineLedger {
         };
 
         Self {
-            task_sender,
             worker_handle,
+            task_sender,
             is_behind,
             highest_peer_block,
             highest_issued_msg,
