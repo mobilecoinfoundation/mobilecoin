@@ -168,7 +168,7 @@ pub fn compute_implied_merkle_root(
     let first = proof
         .elements
         .first()
-        .ok_or_else(|| Error::MissingLeafHash(proof.index))?
+        .ok_or(Error::MissingLeafHash(proof.index))?
         .clone();
     if first.range.from != proof.index || first.range.to != proof.index {
         return Err(Error::MissingLeafHash(proof.index));
@@ -220,7 +220,7 @@ pub fn is_membership_proof_valid(
     let first = proof
         .elements
         .first()
-        .ok_or_else(|| Error::MissingLeafHash(proof.index))?;
+        .ok_or(Error::MissingLeafHash(proof.index))?;
     if first.range.from != proof.index || first.range.to != proof.index {
         return Err(Error::MissingLeafHash(proof.index));
     }
