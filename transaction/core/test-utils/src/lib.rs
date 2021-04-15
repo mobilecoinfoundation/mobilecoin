@@ -251,12 +251,12 @@ pub fn get_blocks<T: Rng + RngCore + CryptoRng>(
     let mut last_block = initial_block.clone();
 
     for block_index in 0..n_blocks {
-        let n_txs = rng.gen_range(min_txs_per_block, max_txs_per_block + 1);
+        let n_txs = rng.gen_range(min_txs_per_block..=max_txs_per_block);
         let recipient_and_amount: Vec<(PublicAddress, u64)> = (0..n_txs)
             .map(|_| {
                 (
                     recipients.choose(rng).unwrap().clone(),
-                    rng.gen_range(1, 10_000_000_000),
+                    rng.gen_range(1..10_000_000_000),
                 )
             })
             .collect();
