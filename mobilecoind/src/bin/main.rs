@@ -16,6 +16,12 @@ use std::{
 };
 use structopt::StructOpt;
 
+/// The minimum consensus version we will connect to.
+///
+/// This should be updated to whatever version has been deployed to MAINNET when
+/// this release is made.
+const MINIMUM_CONSENSUS_SVN: u16 = 0;
+
 fn main() {
     let config = Config::from_args();
     if !cfg!(debug_assertions) && !config.offline {
@@ -26,8 +32,13 @@ fn main() {
     let _sentry_guard = mc_common::sentry::init();
     let (logger, _global_logger_guard) = create_app_logger(o!());
 
-    let mut mr_signer_verifier =
-        MrSignerVerifier::from(mc_consensus_enclave_measurement::sigstruct());
+    let sigstruct = mc_consensus_enclave_measurement::sigstruct();
+
+    let mut mr_signer_verifier = MrSignerVerifier::new(
+        sigstruct.mrsigner().into(),
+        sigstruct.product_id(),
+        MINIMUM_CONSENSUS_SVN,
+    );
     mr_signer_verifier.allow_hardening_advisory("INTEL-SA-00334");
 
     let mut verifier = Verifier::default();
