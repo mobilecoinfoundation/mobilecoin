@@ -115,15 +115,15 @@ impl From<ConsensusGrpcError> for RpcStatus {
 
 /// Convert a `ConsensusGrpcError` into either `ProposeTxResponse` or
 /// `RpcStatus`, depending on which error it holds.
-impl Into<Result<ProposeTxResponse, RpcStatus>> for ConsensusGrpcError {
-    fn into(self) -> Result<ProposeTxResponse, RpcStatus> {
-        match self {
-            Self::TransactionValidation(err) => {
+impl From<ConsensusGrpcError> for Result<ProposeTxResponse, RpcStatus> {
+    fn from(src: ConsensusGrpcError) -> Result<ProposeTxResponse, RpcStatus> {
+        match src {
+            ConsensusGrpcError::TransactionValidation(err) => {
                 let mut resp = ProposeTxResponse::new();
                 resp.set_result(ProposeTxResult::from(err));
                 Ok(resp)
             }
-            _ => Err(RpcStatus::from(self)),
+            _ => Err(RpcStatus::from(src)),
         }
     }
 }

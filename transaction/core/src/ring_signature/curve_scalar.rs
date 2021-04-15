@@ -96,9 +96,9 @@ impl AsRef<Scalar> for CurveScalar {
     }
 }
 
-impl Into<Scalar> for CurveScalar {
-    fn into(self) -> Scalar {
-        self.scalar
+impl From<CurveScalar> for Scalar {
+    fn from(src: CurveScalar) -> Scalar {
+        src.scalar
     }
 }
 

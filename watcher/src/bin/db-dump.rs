@@ -28,7 +28,7 @@ fn main() {
 
     let config = Config::from_args();
     let watcher_db =
-        WatcherDB::open_ro(config.watcher_db, logger).expect("Failed opening watcher db");
+        WatcherDB::open_ro(&config.watcher_db, logger).expect("Failed opening watcher db");
 
     let last_synced_blocks = watcher_db
         .last_synced_blocks()

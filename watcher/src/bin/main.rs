@@ -22,7 +22,7 @@ fn main() {
     let sources_config = config.sources_config();
 
     let watcher_db = create_or_open_rw_watcher_db(
-        config.watcher_db,
+        &config.watcher_db,
         &sources_config.tx_source_urls()[..],
         logger.clone(),
     )

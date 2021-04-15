@@ -683,7 +683,7 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
         if let Some(C) = &self.C {
             // C is less-than-and-compatible-with H
             if let Some(H) = &self.H {
-                assert!(C.N <= H.N, format!("C.N: {}, H.N: {}", C.N, H.N));
+                assert!(C.N <= H.N, "C.N: {}, H.N: {}", C.N, H.N);
                 assert_eq!(C.X, H.X);
             } else {
                 panic!("C is Some but H is None");
@@ -751,7 +751,7 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
 
         // Invariants: p' is less-than-and-incompatible-with p.
         if let (Some(p), Some(pp)) = (&self.P, &self.PP) {
-            assert!(pp < p, format!("p: {:?}, pp: {:?}", p, pp));
+            assert!(pp < p, "p: {:?}, pp: {:?}", p, pp);
             assert_ne!(p.X, pp.X);
         }
 
@@ -784,11 +784,9 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
                     // decreasing H here does not cause failures or decrease performance
                     log::debug!(
                         self.logger,
-                        "{}",
-                        format!(
-                            "Step 2: Ignoring decreasing H. self.H.N: {:?}, h.N: {:?}",
-                            current_h.N, h.N
-                        )
+                        "Step 2: Ignoring decreasing H. self.H.N: {:?}, h.N: {:?}",
+                        current_h.N,
+                        h.N,
                     );
                 }
                 self.H = Some(core::cmp::max(&h, current_h).clone());
@@ -798,7 +796,7 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
         }
 
         if let (Some(C), Some(H)) = (&self.C, &self.H) {
-            assert!(C.N <= H.N, format!("C.N: {}, H.N: {}", C.N, H.N));
+            assert!(C.N <= H.N, "C.N: {}, H.N: {}", C.N, H.N);
         }
 
         // (3) Identify "voted committed" ballots.
@@ -856,7 +854,7 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
                     // B <= C less-than-and-compatible-with H
                     assert!(self.B <= c);
                     assert_eq!(c.X, h.X);
-                    assert!(c.N <= h.N, format!("c.N: {}, h.N: {}", c.N, h.N));
+                    assert!(c.N <= h.N, "c.N: {}, h.N: {}", c.N, h.N);
 
                     self.C = Some(c);
                 }
@@ -864,7 +862,7 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
         }
 
         if let (Some(C), Some(H)) = (&self.C, &self.H) {
-            assert!(C.N <= H.N, format!("C.N: {}, H.N: {}", C.N, H.N));
+            assert!(C.N <= H.N, "C.N: {}, H.N: {}", C.N, H.N);
         }
 
         // (4) Identify "accepted committed" ballots.
@@ -896,7 +894,7 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
                 }
             }
             self.H = Some(h.clone());
-            assert!(c.N <= h.N, format!("c.N: {}, h.N: {}", c.N, h.N));
+            assert!(c.N <= h.N, "c.N: {}, h.N: {}", c.N, h.N);
 
             // "if h is not less-than-and-incompatible-with b, set b to h."
             //
@@ -1142,12 +1140,9 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
             } else {
                 log::debug!(
                     self.logger,
-                    "{}",
-                    format!(
-                        "Externalize: Ignoring decreasing H. self.H.N: {:?}, hn: {:?}",
-                        self.H.as_ref().unwrap().N,
-                        hn
-                    )
+                    "Externalize: Ignoring decreasing H. self.H.N: {:?}, hn: {:?}",
+                    self.H.as_ref().unwrap().N,
+                    hn,
                 );
             }
         }
@@ -1717,7 +1712,7 @@ impl<V: Value, ValidationError: Display> Slot<V, ValidationError> {
                 // Range of ballots for which the local node issues "vote-or-accept commit(b)".
                 let mut candidates: HashMap<Vec<V>, (u32, u32)> = Default::default();
                 if let (Some(C), Some(H)) = (&self.C, &self.H) {
-                    assert!(C.N <= H.N, format!("C.N: {}, H.N: {}", C.N, H.N));
+                    assert!(C.N <= H.N, "C.N: {}, H.N: {}", C.N, H.N);
                     candidates.insert(self.B.X.clone(), (C.N, H.N));
                 }
 

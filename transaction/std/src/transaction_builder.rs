@@ -410,7 +410,7 @@ pub mod transaction_builder_tests {
 
         InputCredentials::new(
             ring,
-            membership_proofs.clone(),
+            membership_proofs,
             real_index,
             onetime_private_key,
             *account.view_private_key(),
@@ -700,7 +700,7 @@ pub mod transaction_builder_tests {
 
         let input_credentials = InputCredentials::new(
             ring,
-            membership_proofs.clone(),
+            membership_proofs,
             real_index,
             onetime_private_key,
             *alice.view_private_key(),

@@ -31,7 +31,12 @@ use mc_transaction_core::{
 use mc_util_lmdb::MetadataStoreSettings;
 use mc_util_serial::{decode, encode, Message};
 use metrics::LedgerMetrics;
-use std::{fs, path::PathBuf, sync::Arc, time::Instant};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Instant,
+};
 
 pub use error::Error;
 pub use ledger_trait::{Ledger, MockLedger};
@@ -323,13 +328,13 @@ impl Ledger for LedgerDB {
 impl LedgerDB {
     /// Opens an existing Ledger Database in the given path.
     #[allow(clippy::unreadable_literal)]
-    pub fn open(path: PathBuf) -> Result<LedgerDB, Error> {
+    pub fn open(path: &Path) -> Result<LedgerDB, Error> {
         let env = Environment::new()
             .set_max_dbs(22)
             .set_map_size(MAX_LMDB_FILE_SIZE)
             // TODO - needed because currently our test cloud machines have slow disks.
             .set_flags(EnvironmentFlags::NO_SYNC)
-            .open(&path)?;
+            .open(path)?;
 
         let metadata_store = MetadataStore::<LedgerDbMetadataStoreSettings>::new(&env)?;
         let db_txn = env.begin_ro_txn()?;
@@ -349,11 +354,11 @@ impl LedgerDB {
 
         let tx_out_store = TxOutStore::new(&env)?;
 
-        let metrics = LedgerMetrics::new(&path);
+        let metrics = LedgerMetrics::new(path);
 
         let ledger_db = LedgerDB {
             env: Arc::new(env),
-            path,
+            path: path.to_path_buf(),
             counts,
             blocks,
             block_signatures,
@@ -373,11 +378,11 @@ impl LedgerDB {
     }
 
     /// Creates a fresh Ledger Database in the given path.
-    pub fn create(path: PathBuf) -> Result<(), Error> {
+    pub fn create(path: &Path) -> Result<(), Error> {
         let env = Environment::new()
             .set_max_dbs(22)
             .set_map_size(MAX_LMDB_FILE_SIZE)
-            .open(&path)?;
+            .open(path)?;
 
         let counts = env.create_db(Some(COUNTS_DB_NAME), DatabaseFlags::empty())?;
         env.create_db(Some(BLOCKS_DB_NAME), DatabaseFlags::empty())?;
@@ -539,9 +544,35 @@ impl LedgerDB {
         block: &Block,
         block_contents: &BlockContents,
     ) -> Result<(), Error> {
-        // Check that version is correct
-        if block.version != BLOCK_VERSION {
-            return Err(Error::InvalidBlock);
+        // Check version is correct
+        // Check if block is being appended at the correct place.
+        let num_blocks = self.num_blocks()?;
+        if num_blocks == 0 {
+            // This must be an origin block.
+
+            // The origin block is version 0
+            if block.version != 0 {
+                return Err(Error::InvalidBlock);
+            }
+
+            // The origin block is index '0' with default-initialized parent ID, by
+            // convention
+            if block.index != 0 || block.parent_id != BlockID::default() {
+                return Err(Error::InvalidBlock);
+            }
+        } else {
+            let last_block = self.get_block(num_blocks - 1)?;
+
+            // The block's version should be bounded by
+            // [prev block version, max block version]
+            if block.version < last_block.version || block.version > BLOCK_VERSION {
+                return Err(Error::InvalidBlock);
+            }
+
+            // The block must have the correct index and parent.
+            if block.index != num_blocks || block.parent_id != last_block.id {
+                return Err(Error::InvalidBlock);
+            }
         }
 
         // A block must have outputs.
@@ -552,21 +583,6 @@ impl LedgerDB {
         // Non-origin blocks must have key images.
         if block.index != 0 && block_contents.key_images.is_empty() {
             return Err(Error::InvalidBlock);
-        }
-
-        // Check if block is being appended at the correct place.
-        let num_blocks = self.num_blocks()?;
-        if num_blocks == 0 {
-            // This must be an origin block.
-            if block.index != 0 || block.parent_id != BlockID::default() {
-                return Err(Error::InvalidBlock);
-            }
-        } else {
-            // The block must have the correct index and parent.
-            let last_block = self.get_block(num_blocks - 1)?;
-            if block.index != num_blocks || block.parent_id != last_block.id {
-                return Err(Error::InvalidBlock);
-            }
         }
 
         // Check that the block contents match the hash.
@@ -690,8 +706,8 @@ mod ledger_db_test {
     /// Creates a LedgerDB instance.
     fn create_db() -> LedgerDB {
         let temp_dir = TempDir::new("test").unwrap();
-        let path = temp_dir.path().to_path_buf();
-        LedgerDB::create(path.clone()).unwrap();
+        let path = temp_dir.path();
+        LedgerDB::create(path).unwrap();
         LedgerDB::open(path).unwrap()
     }
 
@@ -1201,6 +1217,117 @@ mod ledger_db_test {
             ledger_db.append_block(&block, &block_contents, None),
             Err(Error::InvalidBlock)
         );
+    }
+
+    #[test]
+    /// Appending blocks that have ever-increasing and continous version numbers
+    /// should work as long as it is <= BLOCK_VERSION.
+    /// Appending a block > BLOCK_VERSION should fail even if it is after a
+    /// block with version == BLOCK_VERSION.
+    /// Appending a block with a version < last block's version should fail.
+    fn test_append_block_with_version_bumps() {
+        let mut rng: StdRng = SeedableRng::from_seed([1u8; 32]);
+        let mut ledger_db = create_db();
+
+        let origin_account_key = AccountKey::random(&mut rng);
+        let (origin_block, origin_block_contents) =
+            get_origin_block_and_contents(&origin_account_key);
+
+        ledger_db
+            .append_block(&origin_block, &origin_block_contents, None)
+            .unwrap();
+
+        let mut last_block = origin_block;
+
+        // BLOCK_VERSION sets the current version, which is the max version.
+        for version in 0..=BLOCK_VERSION {
+            // In each iteration we add a few blocks with the same version.
+            for _ in 0..3 {
+                let recipient_account_key = AccountKey::random(&mut rng);
+                let outputs: Vec<TxOut> = (0..4)
+                    .map(|_i| {
+                        TxOut::new(
+                            1000,
+                            &recipient_account_key.default_subaddress(),
+                            &RistrettoPrivate::from_random(&mut rng),
+                            Default::default(),
+                        )
+                        .unwrap()
+                    })
+                    .collect();
+
+                let key_images: Vec<KeyImage> =
+                    (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
+
+                let block_contents = BlockContents::new(key_images.clone(), outputs);
+                last_block = Block::new_with_parent(
+                    version,
+                    &last_block,
+                    &Default::default(),
+                    &block_contents,
+                );
+
+                ledger_db
+                    .append_block(&last_block, &block_contents, None)
+                    .unwrap();
+            }
+        }
+
+        // All blocks should've been written (+ origin block).
+        assert_eq!(
+            ledger_db.num_blocks().unwrap(),
+            1 + (3 * (BLOCK_VERSION + 1)) as u64
+        );
+
+        // Last block version should be what we expect.
+        let last_block = ledger_db
+            .get_block(ledger_db.num_blocks().unwrap() - 1)
+            .unwrap();
+        assert_eq!(last_block.version, BLOCK_VERSION);
+
+        // Appending a block with version > BLOCK_VERSION should fail.
+        {
+            let recipient_account_key = AccountKey::random(&mut rng);
+            let outputs: Vec<TxOut> = (0..4)
+                .map(|_i| {
+                    TxOut::new(
+                        1000,
+                        &recipient_account_key.default_subaddress(),
+                        &RistrettoPrivate::from_random(&mut rng),
+                        Default::default(),
+                    )
+                    .unwrap()
+                })
+                .collect();
+
+            let key_images: Vec<KeyImage> =
+                (0..5).map(|_i| KeyImage::from(rng.next_u64())).collect();
+
+            let block_contents = BlockContents::new(key_images.clone(), outputs);
+            assert_eq!(last_block.version, BLOCK_VERSION);
+
+            let invalid_block = Block::new_with_parent(
+                last_block.version + 1,
+                &last_block,
+                &Default::default(),
+                &block_contents,
+            );
+            assert_eq!(
+                ledger_db.append_block(&invalid_block, &block_contents, None),
+                Err(Error::InvalidBlock)
+            );
+
+            let invalid_block = Block::new_with_parent(
+                last_block.version - 1,
+                &last_block,
+                &Default::default(),
+                &block_contents,
+            );
+            assert_eq!(
+                ledger_db.append_block(&invalid_block, &block_contents, None),
+                Err(Error::InvalidBlock)
+            );
+        }
     }
 
     #[test]

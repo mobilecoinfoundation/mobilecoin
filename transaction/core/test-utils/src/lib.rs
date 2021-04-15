@@ -26,8 +26,8 @@ pub const INITIALIZE_LEDGER_AMOUNT: u64 = 1_000_000 * 1_000_000_000;
 /// Creates a LedgerDB instance.
 pub fn create_ledger() -> LedgerDB {
     let temp_dir = TempDir::new("test").unwrap();
-    let path = temp_dir.path().to_path_buf();
-    LedgerDB::create(path.clone()).unwrap();
+    let path = temp_dir.path();
+    LedgerDB::create(path).unwrap();
     LedgerDB::open(path).unwrap()
 }
 
@@ -189,7 +189,7 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
                 let block_contents = BlockContents::new(key_images, outputs);
 
                 let block = Block::new(
-                    BLOCK_VERSION,
+                    0,
                     &parent.as_ref().unwrap().id,
                     block_index,
                     parent.as_ref().unwrap().cumulative_txo_count,

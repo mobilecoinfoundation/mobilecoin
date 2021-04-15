@@ -10,7 +10,9 @@ use prost::Message;
 use serde::{Deserialize, Serialize};
 
 /// Version identifier.
-pub const BLOCK_VERSION: u32 = 0;
+/// This is the current version, which also implies it is the max version that
+/// could be considered valid.
+pub const BLOCK_VERSION: u32 = 1;
 
 /// The index of a block in the blockchain.
 pub type BlockIndex = u64;
@@ -55,7 +57,7 @@ impl Block {
     /// # Arguments
     /// * `outputs` - Outputs "minted" by the origin block.
     pub fn new_origin_block(outputs: &[TxOut]) -> Self {
-        let version = BLOCK_VERSION;
+        let version = 0; // The origin block is always 0
         let parent_id = BlockID::default();
         let index: BlockIndex = 0;
         let cumulative_txo_count = outputs.len() as u64;

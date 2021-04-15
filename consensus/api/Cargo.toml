@@ -13,7 +13,7 @@ mc-transaction-core = { path = "../../transaction/core" }
 
 futures = "0.3"
 grpcio = "0.6.0"
-protobuf = "2.12"
+protobuf = "2.22.1"
 
 [build-dependencies]
 mc-util-build-grpc = { path = "../../util/build/grpc" }

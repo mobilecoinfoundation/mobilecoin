@@ -92,8 +92,8 @@ macro_rules! impl_sealed_traits {
                 <Self as ::mc_attest_core::Sealed>::as_bytes(self)
             }
         }
-        impl Into<::alloc::vec::Vec<u8>> for $sealed {
-            fn into(self) -> ::alloc::vec::Vec<u8> {
+        impl From<$sealed> for ::alloc::vec::Vec<u8> {
+            fn from(src: $sealed) -> ::alloc::vec::Vec<u8> {
                 <Self as ::mc_attest_core::Sealed>::to_bytes(self)
             }
         }
@@ -133,9 +133,9 @@ impl AsRef<[u8]> for IntelSealed {
     }
 }
 
-impl Into<Vec<u8>> for IntelSealed {
-    fn into(self) -> Vec<u8> {
-        self.payload
+impl From<IntelSealed> for Vec<u8> {
+    fn from(src: IntelSealed) -> Vec<u8> {
+        src.payload
     }
 }
 

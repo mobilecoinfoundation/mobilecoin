@@ -157,7 +157,7 @@ mod tests {
         let env = Arc::new(EnvBuilder::new().build());
         let service = HealthService::new(None, logger.clone()).into_service();
 
-        let mut server = ServerBuilder::new(env.clone())
+        let mut server = ServerBuilder::new(env)
             .register_service(service)
             .bind_with_fetcher(
                 "localhost",
@@ -180,7 +180,7 @@ mod tests {
         let cred = ChannelCredentialsBuilder::new()
             .root_cert(cert.into())
             .build();
-        let ch = ChannelBuilder::new(env.clone())
+        let ch = ChannelBuilder::new(env)
             .override_ssl_target(ssl_target)
             .secure_connect(&format!("localhost:{}", port), cred);
         HealthClient::new(ch)
@@ -391,7 +391,7 @@ mod tests {
         let env = Arc::new(EnvBuilder::new().build());
         let service = HealthService::new(None, logger.clone()).into_service();
 
-        let mut server = ServerBuilder::new(env.clone())
+        let mut server = ServerBuilder::new(env)
             .register_service(service)
             .bind_using_uri(&uri, logger.clone())
             .build()

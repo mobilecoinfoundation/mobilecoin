@@ -890,7 +890,7 @@ pub mod tx_out_store_tests {
         // unrecognized hash.
         let unrecognized_hash: Hash = [0u8; 32];
         match tx_out_store.get_tx_out_index_by_hash(&unrecognized_hash, &ro_transaction) {
-            Ok(index) => panic!(format!("Returned index {:?} for unrecognized hash.", index)),
+            Ok(index) => panic!("Returned index {:?} for unrecognized hash.", index),
             Err(Error::NotFound) => {
                 // This is expected.
             }
@@ -936,10 +936,7 @@ pub mod tx_out_store_tests {
         let unrecognized_public_key = CompressedRistrettoPublic::from(&[0; 32]);
         match tx_out_store.get_tx_out_index_by_public_key(&unrecognized_public_key, &ro_transaction)
         {
-            Ok(index) => panic!(format!(
-                "Returned index {:?} for unrecognized public key.",
-                index
-            )),
+            Ok(index) => panic!("Returned index {:?} for unrecognized public key.", index),
             Err(Error::NotFound) => {
                 // This is expected.
             }
