@@ -189,7 +189,7 @@ pub fn initialize_ledger<L: Ledger, R: RngCore + CryptoRng>(
                 let block_contents = BlockContents::new(key_images, outputs);
 
                 let block = Block::new(
-                    BLOCK_VERSION,
+                    0,
                     &parent.as_ref().unwrap().id,
                     block_index,
                     parent.as_ref().unwrap().cumulative_txo_count,
