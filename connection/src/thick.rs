@@ -194,7 +194,7 @@ impl<CP: CredentialsProvider> ThickClient<CP> {
         func: impl FnOnce(&mut Self, CallOption) -> StdResult<T, GrpcError>,
     ) -> StdResult<T, ThickClientAttestationError> {
         self.authenticated_call(|this, call_option| {
-            Ok(this.attested_call(|this| func(this, call_option))?)
+            this.attested_call(|this| func(this, call_option))
         })
     }
 

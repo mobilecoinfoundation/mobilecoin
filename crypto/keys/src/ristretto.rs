@@ -361,9 +361,8 @@ impl<T: Digestible> DigestibleVerifier<RistrettoSignature, T> for RistrettoPubli
         signature: &RistrettoSignature,
     ) -> Result<(), SignatureError> {
         let message = message.digest32::<MerlinTranscript>(context);
-        Ok(self
-            .verify_schnorrkel(context, &message, &signature)
-            .map_err(|_e| SignatureError::new())?)
+        self.verify_schnorrkel(context, &message, &signature)
+            .map_err(|_e| SignatureError::new())
     }
 }
 
