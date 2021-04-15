@@ -24,7 +24,6 @@ use mc_util_uri::ConnectionUri;
 use retry::delay::Fibonacci;
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
-    iter::FromIterator,
     sync::{Arc, Condvar, Mutex},
     thread,
     time::{Duration, Instant},
@@ -423,12 +422,11 @@ fn get_blocks<BC: BlockchainConnection + 'static>(
         .expect("waiting on condvar failed");
 
     // Filter out results with no blocks
-    HashMap::from_iter(
-        worker_results
-            .clone()
-            .into_iter()
-            .filter(|(_responder_id, blocks)| !blocks.is_empty()),
-    )
+    worker_results
+        .clone()
+        .into_iter()
+        .filter(|(_responder_id, blocks)| !blocks.is_empty())
+        .collect()
 }
 
 fn verify_block_ids(

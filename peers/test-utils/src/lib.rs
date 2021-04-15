@@ -28,7 +28,6 @@ use std::{
     convert::TryFrom,
     fmt::{Display, Formatter, Result as FmtResult},
     hash::{Hash, Hasher},
-    iter::FromIterator,
     ops::Range,
     str::FromStr,
     sync::{Arc, Mutex},
@@ -83,14 +82,13 @@ impl<L: Ledger + Sync> MockPeerConnection<L> {
     }
 
     pub fn msgs(&self) -> Vec<ConsensusMsg> {
-        Vec::from_iter(
-            self.state
-                .lock()
-                .expect("mutex poisoned")
-                .msgs
-                .iter()
-                .cloned(),
-        )
+        self.state
+            .lock()
+            .expect("mutex poisoned")
+            .msgs
+            .iter()
+            .cloned()
+            .collect()
     }
 
     pub fn reset_call_count(&mut self) {

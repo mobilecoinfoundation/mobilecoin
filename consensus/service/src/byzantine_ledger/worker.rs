@@ -30,7 +30,6 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
     cmp::min,
     collections::{BTreeSet, HashMap},
-    iter::FromIterator,
     sync::{
         atomic::{AtomicBool, AtomicU64, Ordering},
         Arc, Mutex,
@@ -407,12 +406,12 @@ impl<
         // Fairness heuristics:
         // * Values are proposed in the order that they were received.
         // * Each node limits the total number of values it proposes per slot.
-        let values = BTreeSet::from_iter(
-            self.pending_values
-                .iter()
-                .take(MAX_PENDING_VALUES_TO_NOMINATE)
-                .cloned(),
-        );
+        let values = self
+            .pending_values
+            .iter()
+            .take(MAX_PENDING_VALUES_TO_NOMINATE)
+            .cloned()
+            .collect();
 
         let msg_opt = self
             .scp_node

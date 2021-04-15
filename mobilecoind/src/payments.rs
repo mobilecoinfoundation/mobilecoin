@@ -26,7 +26,7 @@ use rand::Rng;
 use std::{
     cmp::Reverse,
     convert::TryFrom,
-    iter::{empty, FromIterator},
+    iter::empty,
     str::FromStr,
     sync::{
         atomic::{AtomicUsize, Ordering},
@@ -847,16 +847,19 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver> TransactionsManager<
             .map_err(|err| Error::TxBuildError(format!("build tx failed: {}", err)))?;
 
         // Map each TxOut in the constructed transaction to its respective outlay.
-        let outlay_index_to_tx_out_index =
-            HashMap::from_iter(tx.prefix.outputs.iter().enumerate().filter_map(
-                |(tx_out_index, tx_out)| {
-                    if let Some(outlay_index) = tx_out_to_outlay_index.get(tx_out) {
-                        Some((*outlay_index, tx_out_index))
-                    } else {
-                        None
-                    }
-                },
-            ));
+        let outlay_index_to_tx_out_index = tx
+            .prefix
+            .outputs
+            .iter()
+            .enumerate()
+            .filter_map(|(tx_out_index, tx_out)| {
+                if let Some(outlay_index) = tx_out_to_outlay_index.get(tx_out) {
+                    Some((*outlay_index, tx_out_index))
+                } else {
+                    None
+                }
+            })
+            .collect::<HashMap<_, _>>();
 
         // Sanity check: All of our outlays should have a unique index in the map.
         assert_eq!(outlay_index_to_tx_out_index.len(), destinations.len());

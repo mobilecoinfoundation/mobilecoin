@@ -9,7 +9,6 @@ use std::{
     collections::{hash_map::Iter as HashMapIter, hash_set::Iter as HashSetIter, HashMap, HashSet},
     convert::TryFrom,
     env::{split_paths, var, var_os, vars, VarError},
-    iter::FromIterator,
     num::ParseIntError,
     path::{Path, PathBuf},
     str::FromStr,
@@ -337,12 +336,11 @@ impl Environment {
                     ))
                 }
             },
-            authors: HashSet::from_iter(
-                var(ENV_CARGO_PKG_AUTHORS)
-                    .map_err(|e| EnvironmentError::Var(ENV_CARGO_PKG_AUTHORS.to_owned(), e))?
-                    .split(':')
-                    .map(ToOwned::to_owned),
-            ),
+            authors: var(ENV_CARGO_PKG_AUTHORS)
+                .map_err(|e| EnvironmentError::Var(ENV_CARGO_PKG_AUTHORS.to_owned(), e))?
+                .split(':')
+                .map(ToOwned::to_owned)
+                .collect(),
             name: var(ENV_CARGO_PKG_NAME)
                 .map_err(|e| EnvironmentError::Var(ENV_CARGO_PKG_NAME.to_owned(), e))?,
             description: var(ENV_CARGO_PKG_DESCRIPTION)
@@ -369,12 +367,11 @@ impl Environment {
                     .map_err(|e| EnvironmentError::Var(ENV_CARGO_CFG_TARGET_FAMILY.to_owned(), e))?
                     .as_ref(),
             )?,
-            target_features: HashSet::from_iter(
-                var(ENV_CARGO_CFG_TARGET_FEATURE)
-                    .map_err(|e| EnvironmentError::Var(ENV_CARGO_CFG_TARGET_FEATURE.to_owned(), e))?
-                    .split(',')
-                    .map(ToOwned::to_owned),
-            ),
+            target_features: var(ENV_CARGO_CFG_TARGET_FEATURE)
+                .map_err(|e| EnvironmentError::Var(ENV_CARGO_CFG_TARGET_FEATURE.to_owned(), e))?
+                .split(',')
+                .map(ToOwned::to_owned)
+                .collect(),
             target_has_atomic,
             target_has_atomic_load_store,
             target_os: var(ENV_CARGO_CFG_TARGET_OS)

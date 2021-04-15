@@ -10,10 +10,7 @@ use mc_util_uri::{
     AdminUri, ConnectionUri, ConsensusClientUri as ClientUri, ConsensusPeerUri as PeerUri,
 };
 use serde::{Deserialize, Serialize};
-use std::{
-    fmt::Debug, fs, iter::FromIterator, path::PathBuf, str::FromStr, string::String, sync::Arc,
-    time::Duration,
-};
+use std::{fmt::Debug, fs, path::PathBuf, str::FromStr, string::String, sync::Arc, time::Duration};
 use structopt::StructOpt;
 
 #[derive(Clone, Debug, StructOpt)]
@@ -135,8 +132,11 @@ impl NetworkConfig {
             panic!("invalid quorum set: {:?}", self.quorum_set);
         }
 
-        let mut peer_map: HashMap<ResponderId, NodeID> =
-            HashMap::from_iter(self.broadcast_peers.iter().cloned().map(|uri| {
+        let mut peer_map: HashMap<ResponderId, NodeID> = self
+            .broadcast_peers
+            .iter()
+            .cloned()
+            .map(|uri| {
                 (
                     uri.responder_id().unwrap_or_else(|e| {
                         panic!("unable to get responder_id for {}: {:?}", uri, e)
@@ -144,7 +144,8 @@ impl NetworkConfig {
                     uri.node_id()
                         .unwrap_or_else(|e| panic!("unable to get node_id for {}: {:?}", uri, e)),
                 )
-            }));
+            })
+            .collect();
 
         if let Some(known_peers) = self.known_peers.as_ref() {
             for uri in known_peers.iter() {
