@@ -383,7 +383,7 @@ impl UtxoStore {
         subaddress_id: &SubaddressId,
     ) -> Result<Vec<UtxoId>, Error> {
         let mut cursor = db_txn.open_ro_cursor(self.subaddress_id_to_utxo_id)?;
-        Ok(cursor
+        cursor
             .iter_dup_of(&subaddress_id.to_vec())
             .map(|result| {
                 result
@@ -392,10 +392,10 @@ impl UtxoStore {
                         // Sanity check.
                         assert_eq!(subaddress_id.to_vec(), subaddress_id_bytes);
 
-                        Ok(UtxoId::try_from(utxo_id_bytes)?)
+                        UtxoId::try_from(utxo_id_bytes)
                     })
             })
-            .collect::<Result<Vec<_>, Error>>()?)
+            .collect::<Result<Vec<_>, Error>>()
     }
 
     /// Get a single UnspentTxOut by its id.

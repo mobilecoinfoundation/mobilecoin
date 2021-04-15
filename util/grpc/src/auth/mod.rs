@@ -71,7 +71,7 @@ pub trait Authenticator {
             .map(BasicCredentials::try_from)
             .transpose()?;
 
-        Ok(self.authenticate(creds)?)
+        self.authenticate(creds)
     }
 
     fn authenticate_rpc(&self, context: &RpcContext) -> Result<String, AuthenticatorError> {

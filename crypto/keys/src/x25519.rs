@@ -290,7 +290,7 @@ impl<'de> Deserialize<'de> for X25519Public {
             }
 
             fn visit_bytes<E: DeserializeError>(self, value: &[u8]) -> Result<Self::Value, E> {
-                Ok(X25519Public::try_from_der(value).map_err(|err| E::custom(err.to_string()))?)
+                X25519Public::try_from_der(value).map_err(|err| E::custom(err.to_string()))
             }
         }
 
@@ -516,7 +516,7 @@ impl<'de> Deserialize<'de> for X25519Private {
             }
 
             fn visit_bytes<E: DeserializeError>(self, value: &[u8]) -> Result<Self::Value, E> {
-                Ok(X25519Private::try_from_der(value).map_err(|err| E::custom(err.to_string()))?)
+                X25519Private::try_from_der(value).map_err(|err| E::custom(err.to_string()))
             }
         }
 
