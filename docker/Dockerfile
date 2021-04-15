@@ -68,16 +68,25 @@ RUN apt-get update -q -q && \
   psmisc \
   python \
   python3-pip \
-  sqlite3 \
-  libsqlite3-dev \
   systemd \
   unzip \
   uuid-dev \
   wget \
   zlib1g-dev
-
 # psmisc = killall
 # prometheus = helps with running slam scripts locally
+
+# Install SQLite latest release.
+ENV SQLITE=sqlite-autoconf-3350400
+RUN wget https://www.sqlite.org/2021/$SQLITE.tar.gz && \
+    tar xf $SQLITE.tar.gz && \
+    mkdir bld && \
+    pushd bld && \
+    ../$SQLITE/configure && \
+    make && \
+    make install && \
+    popd && \
+    rm -r bld $SQLITE.tar.gz
 
 # For use in CI
 RUN pip3 install awscli black
