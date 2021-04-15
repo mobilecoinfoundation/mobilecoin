@@ -97,7 +97,7 @@ fn digest_sequence_append_bytes() {
     let seq3 = ASTNode::from(ASTSequence {
         context: b"list3",
         len: 2,
-        elems: vec![prim1.clone(), prim2.clone()],
+        elems: vec![prim1, prim2],
     });
 
     ast_test_case(
@@ -203,7 +203,7 @@ fn digest_variant_append_bytes() {
         context: b"enum",
         name: b"enum_type".to_vec(),
         which: 0,
-        value: Some(Box::new(prim1.clone())),
+        value: Some(Box::new(prim1)),
     });
 
     ast_test_case(
@@ -221,7 +221,7 @@ fn digest_variant_append_bytes() {
         context: b"enum",
         name: b"enum_type".to_vec(),
         which: 1,
-        value: Some(Box::new(prim2.clone())),
+        value: Some(Box::new(prim2)),
     });
 
     ast_test_case(

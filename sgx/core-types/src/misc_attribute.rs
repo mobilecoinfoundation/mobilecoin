@@ -154,9 +154,10 @@ impl ReprBytes for MiscAttribute {
     type Error = EncodingError;
 
     fn from_bytes(src: &GenericArray<u8, Self::Size>) -> Result<Self, Self::Error> {
-        let mut inner = sgx_misc_attribute_t::default();
-        inner.secs_attr = Attributes::try_from(&src[ATTRIBUTES_START..ATTRIBUTES_END])?.into();
-        inner.misc_select = u32::from_le_bytes(src[SELECT_START..SELECT_END].try_into()?);
+        let inner = sgx_misc_attribute_t {
+            secs_attr: Attributes::try_from(&src[ATTRIBUTES_START..ATTRIBUTES_END])?.into(),
+            misc_select: u32::from_le_bytes(src[SELECT_START..SELECT_END].try_into()?),
+        };
         Ok(Self(inner))
     }
 

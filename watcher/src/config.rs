@@ -87,7 +87,7 @@ impl SourceConfig {
     pub fn tx_source_url(&self) -> Url {
         let mut url = self.tx_source_url.clone();
         if !url.ends_with('/') {
-            url.push_str("/");
+            url.push('/');
         }
         Url::from_str(&url).unwrap_or_else(|err| panic!("invalid url {}: {}", url, err))
     }

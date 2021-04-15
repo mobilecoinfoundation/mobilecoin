@@ -331,8 +331,8 @@ mod tests {
         let node_id = test_node_id(1);
         let quorum_set = QuorumSet::new_with_node_ids(1, vec![test_node_id(2)]);
         Node::<&'static str, TransactionValidationError>::new(
-            node_id.clone(),
-            quorum_set.clone(),
+            node_id,
+            quorum_set,
             Arc::new(trivial_validity_fn),
             Arc::new(trivial_combine_fn),
             slot_index,

@@ -478,9 +478,9 @@ impl AsRef<[u8]> for VerificationSignature {
     }
 }
 
-impl Into<Vec<u8>> for VerificationSignature {
-    fn into(self) -> Vec<u8> {
-        self.0
+impl From<VerificationSignature> for Vec<u8> {
+    fn from(src: VerificationSignature) -> Vec<u8> {
+        src.0
     }
 }
 
@@ -690,8 +690,7 @@ impl VerificationReport {
             })
             // Then construct a set of chains, one for each signer certificate
             .filter_map(|cert| {
-                let mut signer_chain: Vec<Certificate> = Vec::new();
-                signer_chain.push(cert);
+                let mut signer_chain: Vec<Certificate> = vec![cert];
                 'outer: loop {
                     // Exclude any signing changes greater than our max depth
                     if signer_chain.len() > MAX_CHAIN_DEPTH {

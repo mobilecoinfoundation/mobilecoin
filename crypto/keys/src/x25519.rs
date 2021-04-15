@@ -538,9 +538,9 @@ impl<'de> Deserialize<'de> for X25519Private {
 /// let keyout: Vec<u8> = privkey.into();
 /// assert_eq!(&key as &[u8], keyout.as_slice());
 /// ```
-impl Into<Vec<u8>> for X25519Private {
-    fn into(self) -> Vec<u8> {
-        self.0.to_bytes().to_vec()
+impl From<X25519Private> for Vec<u8> {
+    fn from(src: X25519Private) -> Vec<u8> {
+        src.0.to_bytes().to_vec()
     }
 }
 

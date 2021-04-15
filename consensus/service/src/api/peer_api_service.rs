@@ -102,10 +102,10 @@ impl PeerApiService {
     ) -> Self {
         Self {
             consensus_enclave,
-            ledger,
             tx_manager,
             incoming_consensus_msgs_sender,
             scp_client_value_sender,
+            ledger,
             fetch_latest_msg_fn,
             known_responder_ids,
             logger,

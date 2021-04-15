@@ -173,10 +173,8 @@ mod tests {
         let shared_secret = [3; 32];
         const TEST_USERNAME: &str = "test user";
 
-        let generator = TokenBasicCredentialsGenerator::new(
-            shared_secret.clone(),
-            SystemTimeProvider::default(),
-        );
+        let generator =
+            TokenBasicCredentialsGenerator::new(shared_secret, SystemTimeProvider::default());
         let authenticator = TokenAuthenticator::new(
             shared_secret,
             TOKEN_MAX_LIFETIME,
@@ -212,10 +210,8 @@ mod tests {
         let shared_secret = [3; 32];
         const TEST_USERNAME: &str = "test user";
 
-        let generator = TokenBasicCredentialsGenerator::new(
-            shared_secret.clone(),
-            SystemTimeProvider::default(),
-        );
+        let generator =
+            TokenBasicCredentialsGenerator::new(shared_secret, SystemTimeProvider::default());
 
         // Signature will fail if authenticator uses a different shared secret.
         let authenticator =

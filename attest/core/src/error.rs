@@ -582,9 +582,9 @@ impl Hash for SgxError {
     }
 }
 
-impl Into<sgx_status_t> for SgxError {
-    fn into(self) -> sgx_status_t {
-        self.0
+impl From<SgxError> for sgx_status_t {
+    fn from(src: SgxError) -> sgx_status_t {
+        src.0
     }
 }
 

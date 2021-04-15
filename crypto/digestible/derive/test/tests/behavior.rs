@@ -221,7 +221,7 @@ fn tricky_struct() {
                 type_name: b"str",
                 data: b"var".to_vec(),
             }),
-            expected_var_ast.clone(),
+            expected_var_ast,
         ],
         is_completed: true,
     });
