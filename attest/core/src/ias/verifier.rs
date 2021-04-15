@@ -766,6 +766,7 @@ impl MrSignerVerifier {
     }
 }
 
+#[deprecated]
 impl From<Signature> for MrSignerVerifier {
     fn from(src: Signature) -> Self {
         Self::new(src.mrsigner().into(), src.product_id(), src.version())
