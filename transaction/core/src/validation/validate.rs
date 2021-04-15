@@ -822,9 +822,9 @@ mod tests {
         match validate_signature(&tx, &mut rng) {
             Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
             Err(e) => {
-                panic!(alloc::format!("Unexpected error {}", e));
+                panic!("Unexpected error {}", e);
             }
-            Ok(()) => panic!(),
+            Ok(()) => panic!("Unexpected success"),
         }
     }
 
@@ -841,9 +841,9 @@ mod tests {
         match validate_signature(&tx, &mut rng) {
             Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
             Err(e) => {
-                panic!(alloc::format!("Unexpected error {}", e));
+                panic!("Unexpected error {}", e);
             }
-            Ok(()) => panic!(),
+            Ok(()) => panic!("Unexpected success"),
         }
     }
 
@@ -858,9 +858,9 @@ mod tests {
         match validate_signature(&tx, &mut rng) {
             Err(TransactionValidationError::InvalidTransactionSignature(_e)) => {} // Expected.
             Err(e) => {
-                panic!(alloc::format!("Unexpected error {}", e));
+                panic!("Unexpected error {}", e);
             }
-            Ok(()) => panic!(),
+            Ok(()) => panic!("Unexpected success"),
         }
     }
 

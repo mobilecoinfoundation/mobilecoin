@@ -686,7 +686,7 @@ mod mlsag_tests {
 
             match signature.verify(&params.message, &params.ring, &output_commitment) {
                 Err(Error::InvalidKeyImage) => {} // This is expected.
-                Err(e) => panic!(format!("Unexpected error {}", e)),
+                Err(e) => panic!("Unexpected error {}", e),
                 Ok(()) => panic!("Signature should be rejected."),
             }
         }

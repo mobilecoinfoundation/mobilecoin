@@ -831,9 +831,9 @@ mod rct_bulletproofs_tests {
             ) {
                 Err(Error::ValueNotConserved) => {} // Expected
                 Err(e) => {
-                    panic!(alloc::format!("Unexpected error {}", e));
+                    panic!("Unexpected error {}", e);
                 }
-                _ => panic!()
+                _ => panic!("Unexpected success")
             }
 
         }
