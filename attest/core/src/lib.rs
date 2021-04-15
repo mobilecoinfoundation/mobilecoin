@@ -5,7 +5,6 @@
 
 #![no_std]
 #![feature(core_intrinsics)]
-#![cfg_attr(all(test, target_arch = "x86_64"), feature(ptr_offset_from))]
 
 extern crate alloc;
 
