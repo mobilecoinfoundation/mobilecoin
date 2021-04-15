@@ -55,7 +55,7 @@ pub fn seal<S: Sealed>(obj: &S::Source) -> Result<S, S::Error> {
     let mac_txt = S::compute_mac_txt(obj);
     let blob = IntelSealed::seal_raw(&buf[..], mac_txt.as_ref())
         .map_err(error_conversion_helper::<S::Error>)?;
-    Ok(S::validate_mac_txt(blob)?)
+    S::validate_mac_txt(blob)
 }
 
 /// Unseal a Sealed object and return a Sealed::Source

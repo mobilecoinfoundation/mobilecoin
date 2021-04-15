@@ -478,7 +478,7 @@ impl TryFrom<Vec<u8>> for Quote {
     type Error = QuoteError;
 
     fn try_from(src: Vec<u8>) -> Result<Self, QuoteError> {
-        Ok(Self::try_from(&src[..])?)
+        Self::try_from(&src[..])
     }
 }
 

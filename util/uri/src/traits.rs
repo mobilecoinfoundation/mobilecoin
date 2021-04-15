@@ -162,9 +162,8 @@ pub trait ConnectionUri:
 
     /// Retrieve the TLS chain file path to use for this connection.
     fn tls_chain_path(&self) -> StdResult<String, String> {
-        Ok(self
-            .get_param("tls-chain")
-            .ok_or_else(|| format!("Missing tls-chain query parameter for {}", self.url()))?)
+        self.get_param("tls-chain")
+            .ok_or_else(|| format!("Missing tls-chain query parameter for {}", self.url()))
     }
 
     /// Retrieve the TLS chain to use for this connection.
@@ -176,9 +175,8 @@ pub trait ConnectionUri:
 
     /// Retrieve the TLS key file path to use for this connection.
     fn tls_key_path(&self) -> StdResult<String, String> {
-        Ok(self
-            .get_param("tls-key")
-            .ok_or_else(|| format!("Missing tls-key query parameter for {}", self.url()))?)
+        self.get_param("tls-key")
+            .ok_or_else(|| format!("Missing tls-key query parameter for {}", self.url()))
     }
 
     /// Retrieve the TLS key to use for this connection.
