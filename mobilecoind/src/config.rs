@@ -20,9 +20,6 @@ use reqwest::{
 use std::{convert::TryFrom, fs, path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 use structopt::StructOpt;
 
-/// The minimum security version for ingest enclaves
-const MINIMUM_INGEST_SVN: u16 = 1;
-
 #[derive(Debug, StructOpt)]
 #[structopt(name = "mobilecoind", about = "The MobileCoin client daemon.")]
 pub struct Config {
@@ -170,7 +167,7 @@ impl Config {
                 let mut mr_signer_verifier = MrSignerVerifier::new(
                     signature.mrsigner().into(),
                     signature.product_id(),
-                    MINIMUM_INGEST_SVN,
+                    signature.version(),
                 );
                 mr_signer_verifier.allow_hardening_advisories(&["INTEL-SA-00334"]);
                 mr_signer_verifier
