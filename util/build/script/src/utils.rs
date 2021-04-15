@@ -7,7 +7,6 @@ use lazy_static::lazy_static;
 use std::{
     collections::HashSet,
     ffi::OsStr,
-    iter::FromIterator,
     path::Path,
     sync::{Arc, Mutex},
 };
@@ -17,7 +16,7 @@ const DEFAULT_EXTENSIONS: &[&str] = &["c", "cc", "cpp", "h", "hh", "hpp", "rs", 
 const DEFAULT_FILES: &[&str] = &["Cargo.toml", "Cargo.lock"];
 
 fn build_hash_set(str_contents: &'static [&'static str]) -> HashSet<&'static OsStr> {
-    HashSet::<&OsStr>::from_iter(str_contents.iter().map(OsStr::new))
+    str_contents.iter().map(OsStr::new).collect()
 }
 
 lazy_static! {
