@@ -373,7 +373,7 @@ impl FromBase64 for Quote {
         let expected_len = s.len() / 4 * 3;
         // Don't try to decode any base64 string that's larger than our size limits or
         // smaller than our minimum size
-        if expected_len > QUOTE_MINSIZE + QUOTE_SIGLEN_MAX || expected_len < QUOTE_IAS_SIZE {
+        if !(QUOTE_IAS_SIZE..=QUOTE_MINSIZE + QUOTE_SIGLEN_MAX).contains(&expected_len) {
             return Err(EncodingError::InvalidInputLength.into());
         }
 

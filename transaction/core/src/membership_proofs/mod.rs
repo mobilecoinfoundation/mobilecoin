@@ -80,7 +80,7 @@ fn hash_nil() -> [u8; 32] {
 pub fn compose_adjacent_membership_elements(
     a: &TxOutMembershipElement,
     b: &TxOutMembershipElement,
-) -> Result<TxOutMembershipElement, ()> {
+) -> Result<TxOutMembershipElement, Error> {
     // a is to the left if a.to matches b.from
     // a is to the right if a.from matches b.to
     // Because these are inclusive [,] ranges and not half-open ranges [,)
@@ -95,7 +95,7 @@ pub fn compose_adjacent_membership_elements(
     // this test, then one of the ranges must be reversed, contrary to the
     // precondition.
     if !bool::from(a_is_left ^ b_is_left) {
-        return Err(());
+        return Err(Error::PreconditionFailed);
     }
 
     // Initialize the result as if a is the left and b is right,

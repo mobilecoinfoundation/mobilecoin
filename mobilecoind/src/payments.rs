@@ -853,11 +853,9 @@ impl<T: UserTxConnection + 'static, FPR: FogPubkeyResolver> TransactionsManager<
             .iter()
             .enumerate()
             .filter_map(|(tx_out_index, tx_out)| {
-                if let Some(outlay_index) = tx_out_to_outlay_index.get(tx_out) {
-                    Some((*outlay_index, tx_out_index))
-                } else {
-                    None
-                }
+                tx_out_to_outlay_index
+                    .get(tx_out)
+                    .map(|outlay_index| (*outlay_index, tx_out_index))
             })
             .collect::<HashMap<_, _>>();
 

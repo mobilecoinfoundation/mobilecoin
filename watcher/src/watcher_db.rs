@@ -368,7 +368,7 @@ impl WatcherDB {
             block_index
         );
 
-        Ok(cursor
+        cursor
             .iter_dup_of(&key_bytes)
             .map(|result| {
                 result
@@ -387,7 +387,7 @@ impl WatcherDB {
                         Ok(signature_data)
                     })
             })
-            .collect::<Result<Vec<_>, WatcherDBError>>()?)
+            .collect::<Result<Vec<_>, WatcherDBError>>()
     }
 
     /// Get the earliest timestamp for a given block.

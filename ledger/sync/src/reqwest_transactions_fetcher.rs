@@ -113,7 +113,7 @@ impl ReqwestTransactionsFetcher {
             // All source_urls must end with a '/'
             .map(|mut url| {
                 if !url.ends_with('/') {
-                    url.push_str("/");
+                    url.push('/');
                 }
 
                 url

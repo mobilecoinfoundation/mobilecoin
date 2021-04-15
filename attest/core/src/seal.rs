@@ -55,7 +55,7 @@ pub trait Sealed: AsRef<IntelSealed> + Into<IntelSealed> {
 
     /// Rust does not let us implement Into<Vec<u8>> for all Sealed because of
     /// coherence issues
-    fn to_bytes(self) -> Vec<u8> {
+    fn into_bytes(self) -> Vec<u8> {
         <Self as Into<IntelSealed>>::into(self).into()
     }
 }
