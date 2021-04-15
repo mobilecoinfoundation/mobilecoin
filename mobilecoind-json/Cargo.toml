@@ -21,7 +21,7 @@ rocket_contrib = { version = "0.4.6", default-features = false, features = ["jso
 serde = "1.0"
 serde_derive = "1.0"
 structopt = "0.3"
-protobuf = "2.12"
+protobuf = "2.22.1"
 
 [dev-dependencies]
 mc-crypto-keys = { path = "../crypto/keys" }
